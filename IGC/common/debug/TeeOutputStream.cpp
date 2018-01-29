@@ -1,0 +1,113 @@
+/*===================== begin_copyright_notice ==================================
+
+Copyright (c) 2017 Intel Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+======================= end_copyright_notice ==================================*/
+
+#include "common/debug/TeeOutputStream.hpp"
+
+#include "common/debug/Debug.hpp"
+
+namespace IGC
+{
+namespace Debug
+{
+
+TeeOutputStream::TeeOutputStream(llvm::raw_ostream& lhs, llvm::raw_ostream& rhs)
+    : raw_ostream( true /* unbuffered */ )
+    , m_LHS(&lhs)
+    , m_RHS(&rhs)
+    , m_deleteLHS(false)
+    , m_deleteRHS(false)
+{
+}
+
+TeeOutputStream::TeeOutputStream(
+        llvm::raw_ostream* pLHS,
+        bool shouldDeleteLHS,
+        llvm::raw_ostream* pRHS,
+        bool shouldDeleteRHS)
+    : raw_ostream( true /* unbuffered */ )
+    , m_LHS(pLHS)
+    , m_RHS(pRHS)
+    , m_deleteLHS(shouldDeleteLHS)
+    , m_deleteRHS(shouldDeleteRHS)
+{
+    assert( nullptr != pLHS && "LHS must not be null" );
+    assert( nullptr != pRHS && "RHS must not be null" );
+}
+
+TeeOutputStream::~TeeOutputStream()
+{
+    if (m_deleteLHS)
+    {
+        delete m_LHS;
+    }
+    if (m_deleteRHS)
+    {
+        delete m_RHS;
+    }
+}
+
+size_t TeeOutputStream::preferred_buffer_size() const
+{
+    return m_LHS->GetBufferSize();
+}
+
+llvm::raw_ostream& TeeOutputStream::changeColor(
+    enum llvm::raw_ostream::Colors colors,
+    bool bold,
+    bool bg)
+{
+    if (m_LHS->has_colors()) m_LHS->changeColor(colors, bold, bg);
+    if (m_RHS->has_colors()) m_RHS->changeColor(colors, bold, bg);
+    return *this;
+}
+
+llvm::raw_ostream& TeeOutputStream::resetColor()
+{
+    if (m_LHS->has_colors()) m_LHS->resetColor();
+    if (m_RHS->has_colors()) m_RHS->resetColor();
+    return *this;
+}
+
+llvm::raw_ostream& TeeOutputStream::reverseColor()
+{
+    if (m_LHS->has_colors()) m_LHS->reverseColor();
+    if (m_RHS->has_colors()) m_RHS->reverseColor();
+    return *this;
+}
+
+void TeeOutputStream::write_impl(const char *Ptr, size_t Size)
+{
+    m_LHS->write(Ptr, Size);
+    m_RHS->write(Ptr, Size);
+}
+
+uint64_t TeeOutputStream::current_pos() const
+{
+    return m_LHS->tell() - m_LHS->GetNumBytesInBuffer();
+}
+
+} // namespace Debug
+} // namespace IGC

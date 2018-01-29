@@ -1,0 +1,71 @@
+#===================== begin_copyright_notice ==================================
+
+#Copyright (c) 2017 Intel Corporation
+
+#Permission is hereby granted, free of charge, to any person obtaining a
+#copy of this software and associated documentation files (the
+#"Software"), to deal in the Software without restriction, including
+#without limitation the rights to use, copy, modify, merge, publish,
+#distribute, sublicense, and/or sell copies of the Software, and to
+#permit persons to whom the Software is furnished to do so, subject to
+#the following conditions:
+
+#The above copyright notice and this permission notice shall be included
+#in all copies or substantial portions of the Software.
+
+#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+#OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+#MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+#IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+#CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+#TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+#SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+#======================= end_copyright_notice ==================================
+
+# We require cmake 3.2.0 or later
+cmake_minimum_required(VERSION 3.2.0 FATAL_ERROR)
+
+# We want to organize our IDE targets into folders
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+# This is the main CLElfLib project's cmakelists.txt file
+project(CLElfLib)
+
+# Set up a comprehensive source list
+set(CLELFLIB_READER_SRCS
+    ${CLELFLIB_READER_SRCS}
+    "${CMAKE_CURRENT_SOURCE_DIR}/ElfReader.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ElfReader.h"
+)
+
+set(CLELFLIB_WRITER_SRCS
+    ${CLELFLIB_WRITER_SRCS}
+    "${CMAKE_CURRENT_SOURCE_DIR}/ElfWriter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ElfWriter.h"
+)
+
+set(CLELFLIB_SRCS
+    ${CLELFLIB_SRCS}
+    "${CMAKE_CURRENT_SOURCE_DIR}/CLElfTypes.h"
+    ${CLELFLIB_READER_SRCS}
+    ${CLELFLIB_WRITER_SRCS}
+)
+
+# We want to create a lib so that everything in it can be tested
+add_library(CLElfLib STATIC ${CLELFLIB_SRCS})
+
+set_target_properties(CLElfLib PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+# The following filters are added to the VS IDE representation
+source_group("source files" FILES "${CMAKE_CURRENT_SOURCE_DIR}/CLElfTypes.h")
+source_group("source files\\Reader" FILES ${CLELFLIB_READER_SRCS})
+source_group("source files\\Writer" FILES ${CLELFLIB_WRITER_SRCS})
+
+# group the igdrcl specific projects
+set_target_properties(CLElfLib PROPERTIES FOLDER "elf utilities")
+
+
+target_link_libraries(CLElfLib ${ASAN_LIB} ${TSAN_LIB})
+set_property(TARGET CLElfLib APPEND_STRING PROPERTY COMPILE_FLAGS ${ASAN_FLAGS} ${TSAN_FLAGS})

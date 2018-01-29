@@ -1,0 +1,131 @@
+/*===================== begin_copyright_notice ==================================
+
+Copyright (c) 2017 Intel Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+======================= end_copyright_notice ==================================*/
+ 
+///=======================================================================================
+/// This file contains types, enumerations, classes and other declarations used by
+/// the IGC IR Verification Pass.
+#pragma once
+
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Pass.h>
+#include <llvm/IR/InstVisitor.h>
+#include <llvm/ADT/StringRef.h>
+#include <llvm/ADT/ArrayRef.h>
+#include "llvm/Support/raw_ostream.h"
+#include "common/LLVMWarningsPop.hpp"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
+
+#include <set>
+#include <vector>
+
+namespace IGC
+{
+    enum class IRSpecObjectClass
+    {
+        Instruction,
+        GenISAIntrinsic,
+        Intrinsic
+    };
+
+    class VerificationPass : public llvm::ModulePass
+    {
+    public:
+        // Pass identification, replacement for typeid
+        static char ID;
+
+        /// @brief  Constructor
+        VerificationPass();
+
+        /// Destructor
+        ~VerificationPass() {}
+
+        /// @brief  Provides name of pass
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "VerificationPass";
+        }
+
+        /// Entry point of the pass.
+        virtual bool runOnModule(llvm::Module &M) override;
+
+    protected:
+        // Module
+        llvm::Module *m_Module;
+
+        // String for collecting verification error messages.
+        std::string   m_str;
+
+        // Stream interface for m_str
+        llvm::raw_string_ostream m_messagesToDump;
+
+        /// This structure contains sets of valid IGC IR objects
+        /// such as types, intrinsic functions, etc.
+        struct
+        {
+            std::set<unsigned int>               FPTypeSizes;
+            std::set<unsigned int>               vectorTypeSizes;
+            std::set<unsigned int>               Instructions;
+            std::set<llvm::Intrinsic::ID>        IGCLLVMIntrinsics;  // LLVM intrinsics supported by IGC
+        } m_IGC_IR_spec;
+
+        /// Initialization of the pass data
+        void initVerificationPass();
+
+        void addIRSpecObject(IRSpecObjectClass objClass, unsigned int ID);
+            
+        /// Verification of the function and its content.
+        bool verifyFunction(llvm::Function &F);
+
+        /// Verification of instruction.
+        bool verifyInstruction(llvm::Instruction &inst);
+
+        /// Common verification function that is executed
+        /// for all types of instructions.
+        bool verifyInstCommon(llvm::Instruction &inst);
+
+        ///------------------------------------------------------
+        /// Instruction verification functions for specific
+        /// types of instructions should be declared here.
+        ///------------------------------------------------------
+
+        /// Specific verification function for Call instructions.
+        bool verifyInstCall(llvm::Instruction &inst);
+
+        ///------------------------------------------------------
+
+        /// Verification of values
+        bool verifyValue(llvm::Value *val);
+
+        /// Verification of type
+        bool verifyType(llvm::Type *type, llvm::Value *val);
+
+        /// Dumps the verification errors.
+        void dumpMessages(llvm::Module &M);
+
+        /// Prints the LLVM value into m_messagesToDump text stream.
+        void printValue(llvm::Value *value);
+    };
+} // namespace IGC

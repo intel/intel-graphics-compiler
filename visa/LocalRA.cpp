@@ -1,0 +1,3213 @@
+/*===================== begin_copyright_notice ==================================
+
+Copyright (c) 2017 Intel Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+======================= end_copyright_notice ==================================*/
+
+#include "LocalRA.h"
+#include "RegAlloc.h"
+#include <fstream>
+#include <tuple>
+#include "DebugInfo.h"
+
+using namespace std;
+using namespace vISA;
+
+//#define _DEBUG
+//#define cout cerr
+
+#define NUM_PREGS_FOR_UNIQUE_ASSIGN 50
+
+#define FF_LRA_WINDOW_SIZE 12
+
+#define SPLIT_REF_CNT_THRESHOLD 3
+#define SPLIT_USE_CNT_THRESHOLD 2
+#define SPLIT_USE_DISTANCE_THRESHOLD 100
+
+extern unsigned int getStackCallRegSize(bool reserveStackCallRegs);
+extern void getForbiddenGRFs(vector<unsigned int>& regNum, const Options *opt, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned reservedRegNum);
+extern void getCallerSaveGRF(vector<unsigned int>& regNum, G4_Kernel* kernel);
+
+const char* allDefsNoMask = "ALL DEFS NO MASK";
+const char* allDefsNotNoMask = "ALL DEFS NOT NO MASK";
+
+LocalRA::LocalRA(G4_Kernel& k, bool& h, BankConflictPass& b, GlobalRA& g) :
+    kernel(k), builder(*k.fg.builder), highInternalConflict(h),
+    mem(k.fg.builder->mem), bc(b), gra(g)
+{
+
+}
+
+G4_Align LocalRA::getBankAlignForUniqueAssign(G4_Declare *dcl)
+{
+    switch (gra.getBankConflict(dcl))
+    {
+    case BANK_CONFLICT_FIRST_HALF_EVEN:
+    case BANK_CONFLICT_FIRST_HALF_ODD:
+        if (builder.oneGRFBankDivision())
+        {
+            return Even;
+        }
+        else
+        {
+            return Even2GRF;
+        }
+        break;
+    case BANK_CONFLICT_SECOND_HALF_EVEN:
+    case BANK_CONFLICT_SECOND_HALF_ODD:
+        if (builder.oneGRFBankDivision())
+        {
+            return Odd;
+        }
+        else
+        {
+            return Odd2GRF;
+        }
+        break;
+    default: break;
+    }
+
+    return Either;
+}
+
+// returns true if kernel contains a back edge
+// call/return edge may also be considered as a back edge depending on layout.
+bool LocalRA::hasBackEdge()
+{
+    for (auto curBB : kernel.fg.BBs)
+    {
+
+        MUST_BE_TRUE(curBB->instList.size() > 0 || curBB->Succs.size() > 1,
+            "Error in detecting back-edge: Basic block found with no inst list and multiple successors.");
+
+        if (curBB->instList.size() > 0)
+        {
+            for (auto succ : curBB->Succs)
+            {
+                MUST_BE_TRUE(succ->instList.size() > 0,
+                    "Error in detecting back-edge: Destination basic block of a jmp has no instructions.");
+                if (curBB->getId() >= succ->getId())
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+void LocalRA::getRowInfo(int size, int& nrows, int& lastRowSize)
+{
+    if (size <= NUM_WORDS_PER_GRF)
+    {
+        nrows = 1;
+    }
+    else
+    {
+        // nrows is total number of rows, including last row even if it is partial
+        nrows = size / NUM_WORDS_PER_GRF;
+        // lastrowsize is number of words actually used in last row
+        lastRowSize = size%NUM_WORDS_PER_GRF;
+
+        if (size%NUM_WORDS_PER_GRF != 0)
+        {
+            nrows++;
+        }
+
+        if (lastRowSize == 0)
+        {
+            lastRowSize = NUM_WORDS_PER_GRF;
+        }
+    }
+
+    return;
+}
+
+void LocalRA::evenAlign()
+{
+    if (kernel.getOptions()->getTarget() == VISA_3D && kernel.fg.BBs.size() > 2)
+    {
+        if (kernel.getSimdSize() >= 16)
+        {
+            // Set alignment of all GRF candidates
+            // to 2GRF except for NoMask variables
+#ifdef DEBUG_VERBOSE_ON
+            DEBUG_VERBOSE("Updating alignment to Even for GRF candidates" << std::endl);
+#endif
+            gra.updateAlignment(G4_GRF, Even);
+        }
+        gra.updateSubRegAlignment(G4_GRF, Sixteen_Word);
+        // Since we are piggy backing on mask field of G4_Declare,
+        // we need to make sure we reset it before going further.
+        resetMasks();
+    }
+
+    return;
+}
+
+/*
+ *  Pre-localRA analsyis including:
+ *  1) Mark reference to create live ranges, 2) alignment handling, 3) Avialable register calcuating and marking
+ */
+void LocalRA::preLocalRAAnalysis()
+{
+    unsigned int   numRowsEOT = 0;
+    bool lifetimeOpFound = false;
+
+    int numGRF = kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+
+    // Mark references made to decls to sieve local from global ranges
+    markReferences(numRowsEOT, lifetimeOpFound);
+
+    // Mark those physical registers unavailable that are declared with Output attribute
+    blockOutputPhyRegs();
+
+    if (lifetimeOpFound == true)
+    {
+        // Check whether pseudo_kill/lifetime.end are only references
+        // for their respective variables. Remove them if so. Doing this
+        // helps reduce number of variables in symbol table increasing
+        // changes of skipping global RA.
+        removeUnrequiredLifetimeOps();
+    }
+
+    unsigned int numRowsReserved = numRowsEOT;
+
+    // Remove unreferenced dcls
+    gra.removeUnreferencedDcls();
+
+    numRegLRA = numGRF - numRowsReserved;
+
+    bool isStackCall = (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc());
+    unsigned int stackCallRegSize = getStackCallRegSize(isStackCall);
+    unsigned int reservedGRFNum = builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum);
+
+    if (isStackCall || reservedGRFNum || builder.getOption(vISA_Debug))
+    {
+        vector<unsigned int> forbiddenRegs;
+        getForbiddenGRFs(forbiddenRegs, builder.getOptions(), stackCallRegSize, 0, reservedGRFNum);
+        for (unsigned int i = 0; i < forbiddenRegs.size(); i++)
+        {
+            unsigned int regNum = forbiddenRegs[i];
+            pregs->setGRFUnavailable(regNum);
+        }
+
+        if (isStackCall)
+        {
+            // Set r60 to r99 as unavailable for local RA since these registers are callee saved
+            // Local RA will use only caller save registers for allocation.
+            vector<unsigned int> callerSaveRegs;
+            getCallerSaveGRF(callerSaveRegs, &kernel);
+            for (unsigned int i = 0; i < callerSaveRegs.size(); i++)
+            {
+                unsigned int regNum = callerSaveRegs[i];
+                pregs->setGRFUnavailable(regNum);
+            }
+
+            numRegLRA = 125 - numRowsReserved;
+        }
+
+        if (builder.getOption(vISA_Debug))
+        {
+            // Since LocalRA is not undone when debug info generation is required,
+            // for keeping compile time low, we allow fewer physical registers
+            // as assignable candidates. Without this, we could run in to a
+            // situation where very few physical registers are available for GRA
+            // and it is unable to assign registers even with spilling.
+#define USABLE_GRFS_WITH_DEBUG_INFO 80
+            int maxSendReg = 0;
+            for (auto bb : kernel.fg.BBs)
+            {
+                for (auto inst : bb->instList)
+                {
+                    if (inst->isSend() || inst->isSplitSend())
+                    {
+                        if (inst->getMsgDesc())
+                        {
+                            maxSendReg = (inst->getMsgDesc()->ResponseLength() > maxSendReg) ?
+                                (inst->getMsgDesc()->ResponseLength()) : maxSendReg;
+                            maxSendReg = (inst->getMsgDesc()->MessageLength() > maxSendReg) ?
+                                (inst->getMsgDesc()->MessageLength()) : maxSendReg;
+                            maxSendReg = (inst->getMsgDesc()->extMessageLength() > maxSendReg) ?
+                                (inst->getMsgDesc()->extMessageLength()) : maxSendReg;
+                        }
+                    }
+                }
+            }
+
+            int maxRegsToUse = USABLE_GRFS_WITH_DEBUG_INFO;
+            if (maxSendReg > (numGRF - USABLE_GRFS_WITH_DEBUG_INFO))
+            {
+                maxRegsToUse = (numGRF - maxSendReg) - 10;
+            }
+
+            // Also check max size of addressed GRF
+            unsigned int maxAddressedRows = 0;
+            for (auto dcl : kernel.Declares)
+            {
+                if (dcl->getAddressed() &&
+                    maxAddressedRows < dcl->getNumRows())
+                {
+                    maxAddressedRows = dcl->getNumRows();
+                }
+            }
+
+            // Assume indirect operand of maxAddressedRows exists
+            // on dst, src0, src1. This is overly conservative but
+            // should work for general cases.
+            if ((numGRF - maxRegsToUse) / 3 < (int)maxAddressedRows)
+            {
+                maxRegsToUse = (numGRF - (maxAddressedRows * 3));
+
+                if (maxRegsToUse < 0)
+                    maxRegsToUse = 0;
+            }
+
+            for (int i = maxRegsToUse; i < numGRF; i++)
+            {
+                pregs->setGRFUnavailable(i);
+            }
+        }
+    }
+    else
+    {
+        pregs->setSimpleGRFAvailable(true);
+        const Options *opt = builder.getOptions();
+        if (opt->getTarget() != VISA_3D ||
+            opt->getOption(vISA_enablePreemption) ||
+            stackCallRegSize > 0 ||
+            opt->getOption(vISA_ReserveR0))
+        {
+            pregs->setR0Forbidden();
+        }
+
+        if (opt->getOption(vISA_enablePreemption))
+        {
+            pregs->setR1Forbidden();
+        }
+    }
+
+    return;
+}
+
+void LocalRA::trivialAssignRA(bool& needGlobalRA, bool threeSourceCandidate)
+{
+    if (builder.getOption(vISA_RATrace))
+    {
+        std::cout << "\t--trivial RA\n";
+    }
+    if (builder.oneGRFBankDivision())
+    {
+        needGlobalRA = assignUniqueRegisters(threeSourceCandidate, true);
+    }
+    else
+    {
+        needGlobalRA = assignUniqueRegisters(threeSourceCandidate, highInternalConflict);
+    }
+
+
+    if (!needGlobalRA)
+    {
+        if (threeSourceCandidate)
+        {
+            kernel.setRAType(RA_Type::TRIVIAL_BC_RA);
+        }
+        else
+        {
+            kernel.setRAType(RA_Type::TRIVIAL_RA);
+        }
+    }
+
+    return;
+}
+
+// Entry point to local RA
+bool LocalRA::localRAPass(bool doRoundRobin, bool doBankConflictReduction, bool doSplitLLR)
+{
+    bool needGlobalRA = true;
+    PhyRegsLocalRA localPregs = *pregs;
+
+    // Iterate over each BB and perform linear scan
+#ifdef DEBUG_VERBOSE_ON
+    localPregs.printBusyRegs();
+    printAddressTakenDecls();
+    printLocalRACandidates();
+#endif
+
+    if (kernel.fg.funcInfoTable.empty() &&
+        !hasBackEdge())
+    {
+        calculateInputIntervals();
+    }
+
+#ifdef DEBUG_VERBOSE_ON
+    printInputLiveIntervals();
+#endif
+
+    int totalGRFNum = builder.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin(); bb_it != kernel.fg.BBs.end(); ++bb_it)
+    {
+        PhyRegsManager pregManager(localPregs, doBankConflictReduction);
+        std::vector<LocalLiveRange*> liveIntervals;
+        G4_BB* curBB = (*bb_it);
+        PhyRegSummary* summary = new (mem)PhyRegSummary(totalGRFNum);
+
+#ifdef FOR_DEBUG
+        // c:\> set BBEX = "1;2;3;4;5;6;7;" // skip local ra for basic blocks 1-7
+        char* envvar = getenv("BBEX");
+        char id[10];
+        id[0] = ';';
+        char* s = (char*)&id;
+        s++;
+        itoa(curBB->getId(), s, 10);
+        strcat(s, ";");
+
+        if (envvar && strstr(envvar, (const char*)&id) != NULL)
+        {
+            cout << "Skipping local RA for bb id " << curBB->getId() << std::endl;
+            continue;
+        }
+#endif
+
+        calculateLiveIntervals(curBB, liveIntervals);
+
+#ifdef DEBUG_VERBOSE_ON
+        printLocalLiveIntervals(curBB, liveIntervals);
+#endif
+
+        LinearScan ra(gra, builder, liveIntervals, inputIntervals, pregManager, localPregs, mem, summary, numRegLRA, globalLRSize, doRoundRobin, doBankConflictReduction, highInternalConflict, doSplitLLR, kernel.getSimdSize());
+        ra.run(curBB->instList, builder, LLRUseMap);
+
+#ifdef DEBUG_VERBOSE_ON
+        COUT_ERROR << "BB" << curBB->getId() << std::endl;
+        summary->printBusyRegs();
+#endif
+
+        // Tag summary of physical registers used by local RA
+        kernel.fg.addBBLRASummary(curBB, summary);
+
+        if (kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
+        {
+            updateDebugInfo(kernel, liveIntervals);
+        }
+    }
+
+    if (unassignedRangeFound() == false)
+    {
+        needGlobalRA = false;
+#ifdef DEBUG_VERBOSE_ON
+        DEBUG_VERBOSE("Skipping global RA because local RA allocated all live-ranges." << std::endl);
+#endif
+    }
+
+    if (builder.getOption(vISA_OptReport))
+    {
+        localRAOptReport();
+    }
+
+    if (needGlobalRA == true &&
+        !(kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc()))
+    {
+        // Check whether unique physical registers can be assigned
+        // to global ranges.
+        bool twoBanksAssign = false;
+
+        if (builder.oneGRFBankDivision())
+        {
+            twoBanksAssign = highInternalConflict || (kernel.getSimdSize() == 16);
+        }
+        else
+        {
+            twoBanksAssign = highInternalConflict;
+        }
+
+        needGlobalRA = assignUniqueRegisters(doBankConflictReduction, twoBanksAssign);
+    }
+
+    if (needGlobalRA && doRoundRobin)
+    {
+        undoLocalRAAssignments(true, nullptr);
+    }
+
+    if (needGlobalRA == false && builder.getOption(vISA_OptReport))
+    {
+        std::ofstream optreport;
+        getOptReportStream(optreport, builder.getOptions());
+        optreport << "Allocated 100% GRF ranges without graph coloring." << std::endl;
+        closeOptReportStream(optreport);
+    }
+
+    return needGlobalRA;
+}
+
+bool LocalRA::localRA(bool& doRoundRobin, bool& doBankConflict)
+{
+    if (builder.getOption(vISA_RATrace))
+    {
+        std::cout << "--local RA--\n";
+    }
+
+    int numGRF = kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    PhyRegsLocalRA phyRegs(numGRF);
+    pregs = &phyRegs;
+
+    globalLRSize = 0;
+    bool reduceBCInTAandFF = false;
+    bool needGlobalRA = true;
+
+    doSplitLLR = (builder.getOption(vISA_SpiltLLR) &&
+        kernel.fg.BBs.size() == 1 &&
+        kernel.getOptions()->getTarget() == VISA_3D);
+
+    preLocalRAAnalysis();
+
+    bool reduceBCInRR = false;
+
+    if (builder.getOption(vISA_LocalBankConflictReduction) && builder.hasBankCollision())
+    {
+        reduceBCInRR = bc.setupBankConflictsForKernel(kernel, doRoundRobin, reduceBCInTAandFF, numRegLRA, highInternalConflict);
+    }
+
+    if (!kernel.fg.getHasStackCalls() && !kernel.fg.getIsStackCallFunc())
+    {
+        trivialAssignRA(needGlobalRA, reduceBCInTAandFF);
+        if (!needGlobalRA)
+        {
+            return true;
+        }
+    }
+
+    if (doRoundRobin)
+    {
+        doRoundRobin = countLiveIntervals();
+    }
+
+    if ((!doRoundRobin && reduceBCInTAandFF) ||
+        (doRoundRobin && reduceBCInRR))  //To avoid the scheduling issue for send
+    {
+        doBankConflict = true;
+    }
+
+    // Local RA passes:
+    // RR+BC --> FF+BC -->FF-->Hybrids
+    // or
+    // RR --> FF --> Hybrid
+    if (doRoundRobin)
+    {
+        if (builder.getOption(vISA_RATrace))
+        {
+            std::cout << "\t--round-robin " << (doBankConflict ? "BCR " : "") << "RA\n";
+        }
+        needGlobalRA = localRAPass(true, doBankConflict, false);
+        if (needGlobalRA == true)
+        {
+            doRoundRobin = false;
+        }
+    }
+
+    if (!doRoundRobin)
+    {
+        if (builder.getOption(vISA_RATrace))
+        {
+            std::cout << "\t--first-fit " << (doBankConflict ? "BCR " : "") << "RA\n";
+        }
+        globalLRSize = 0;
+        evenAlign();
+        needGlobalRA = localRAPass(false, doBankConflict, doSplitLLR);
+    }
+
+    if (needGlobalRA == false)
+    {
+        if (doRoundRobin)
+        {
+            if (doBankConflict)
+            {
+                kernel.setRAType(RA_Type::LOCAL_ROUND_ROBIN_BC_RA);
+            }
+            else
+            {
+                kernel.setRAType(RA_Type::LOCAL_ROUND_ROBIN_RA);
+            }
+        }
+        else
+        {
+            if (doBankConflict)
+            {
+                kernel.setRAType(RA_Type::LOCAL_FIRST_FIT_BC_RA);
+            }
+            else
+            {
+                kernel.setRAType(RA_Type::LOCAL_FIRST_FIT_RA);
+            }
+        }
+    }
+
+    return !needGlobalRA;
+}
+
+void LocalRA::resetMasks()
+{
+    auto& dcls = kernel.Declares;
+
+    auto end_it = dcls.end();
+    for (auto it = dcls.begin();
+        it != end_it;
+        it++)
+    {
+        auto dcl = (*it);
+
+        gra.setMask(dcl, nullptr);
+    }
+}
+
+void LocalRA::blockOutputPhyRegs()
+{
+    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
+        dcl_it != kernel.Declares.end();
+        dcl_it++)
+    {
+        if ((*dcl_it)->isOutput() &&
+            (*dcl_it)->isInput())
+        {
+            // The live-range may never be referenced in the CFG so we need
+            // this special pass to block physical registers corresponding
+            // to those declares. This may be true for FC.
+            pregs->markPhyRegs(*dcl_it);
+        }
+    }
+}
+
+class isLifetimeCandidateOpCandidateForRemoval
+{
+public:
+    isLifetimeCandidateOpCandidateForRemoval(GlobalRA& g) : gra(g)
+    {
+    }
+
+    GlobalRA& gra;
+
+    bool operator()(G4_INST* inst)
+    {
+        if (inst->opcode() == G4_pseudo_kill ||
+            inst->opcode() == G4_pseudo_lifetime_end)
+        {
+            G4_Declare* topdcl;
+
+            if (inst->opcode() == G4_pseudo_kill)
+            {
+                topdcl = GetTopDclFromRegRegion(inst->getDst());
+            }
+            else
+            {
+                topdcl = GetTopDclFromRegRegion(inst->getSrc(0));
+            }
+
+            if (gra.getNumRefs(topdcl) == 0 &&
+                (topdcl->getRegFile() == G4_GRF ||
+                    topdcl->getRegFile() == G4_INPUT))
+            {
+                // Remove this lifetime op
+                return true;
+            }
+        }
+
+        return false;
+    }
+};
+
+void LocalRA::removeUnrequiredLifetimeOps()
+{
+    // Iterate over all instructions and inspect only
+    // pseudo_kills/lifetime.end instructions. Remove
+    // instructions that have no other useful instruction.
+
+    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin();
+        bb_it != kernel.fg.BBs.end();
+        bb_it++)
+    {
+        G4_BB* bb = (*bb_it);
+
+        bb->instList.remove_if(isLifetimeCandidateOpCandidateForRemoval(this->gra));
+    }
+}
+
+void LocalRA::findRegisterCandiateWithAlignForward(int &i, G4_Align align, bool evenAlign)
+{
+    if ((align == Even) && (i % 2 != 0))
+    {
+        i++;
+    }
+    else if ((align == Odd) && (i % 2 == 0))
+    {
+        i++;
+    }
+    else if (align == Even2GRF)
+    {
+        while ((i % 4 >= 2) || (evenAlign && (i % 2 != 0)))
+        {
+            i++;
+        }
+    }
+    else if (align == Odd2GRF)
+    {
+        while ((i % 4 < 2) || (evenAlign && (i % 2 != 0)))
+        {
+            i++;
+        }
+    }
+
+    return;
+}
+
+void LocalRA::findRegisterCandiateWithAlignBackward(int &i, G4_Align align, bool evenAlign)
+{
+    if ((align == Even) && (i % 2 != 0))
+    {
+        i--;
+    }
+    else if ((align == Odd) && (i % 2 == 0))
+    {
+        i--;
+    }
+    else if (align == Even2GRF)
+    {
+        while (i >= 0 && ((i % 4 >= 2) || (evenAlign && (i % 2 != 0))))
+        {
+            i--;
+        }
+    }
+    else if (align == Odd2GRF)
+    {
+        while (i >= 0 && ((i % 4 < 2) || (evenAlign && (i % 2 != 0))))
+        {
+            i--;
+        }
+    }
+}
+
+bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
+{
+    // Iterate over all dcls and calculate number of rows
+    // required if each unallocated dcl had its own physical
+    // register. Check number of registers used up by local RA.
+    // If unique assignments are possible, then assign and set
+    // needGlobalRA to false.
+    unsigned int numRows = 0;
+    std::vector<G4_Declare*> unallocatedRanges;
+    bool needGlobalRA = true;
+    uint32_t nextEOTGRF = numRegLRA;
+
+    if (nextEOTGRF < 112 && builder.hasEOTGRFBinding())
+    {
+        // we can't guarantee unique assignments for all the EOT sources
+        // punt to global RA
+        return true;
+    }
+
+    // Identify global ranges not having an allocation
+    for (auto dcl : kernel.Declares)
+    {
+        if (dcl->getAliasDeclare() == NULL &&
+            dcl->getRegFile() == G4_GRF &&
+            dcl->getRegVar()->isPhyRegAssigned() == false)
+        {
+            auto dclLR = gra.getLocalLR(dcl);
+
+            if (dclLR  && dclLR->isEOT() && builder.hasEOTGRFBinding())
+            {
+                // For EOT use r112 - r127
+                // for simplicity we assign each EOT source unique GRFs
+                MUST_BE_TRUE(nextEOTGRF + dcl->getNumRows() <= G4_DEFAULT_GRF_NUM, "Illegal EOT GRF");
+                G4_Greg* phyReg = builder.phyregpool.getGreg(nextEOTGRF);
+                dcl->getRegVar()->setPhyReg(phyReg, 0);
+                dclLR->setPhyReg(phyReg, 0);
+                dclLR->setAssigned(true);
+                // we have to make sure src0 and src1 of split send get different GRFs
+                nextEOTGRF += dcl->getNumRows();
+                if (kernel.getOption(vISA_GenerateDebugInfo))
+                {
+                    uint32_t start = 0, end = 0;
+                    for (auto rit = kernel.fg.BBs.rbegin();
+                        rit != kernel.fg.BBs.rend();
+                        rit++)
+                    {
+                        G4_BB* bb = (*rit);
+
+                        if (bb->instList.size() > 0)
+                        {
+                            end = bb->instList.back()->getCISAOff();
+                            break;
+                        }
+                    }
+                    updateDebugInfo(kernel, dcl, start, end, kernel.fg.mem);
+                }
+            }
+            else
+            {
+                numRows += dcl->getNumRows();
+                unallocatedRanges.push_back(dcl);
+            }
+        }
+    }
+
+    if (numRows < numRegLRA)
+    {
+        // Get superset of registers used by local RA
+        // in all basic blocks.
+        PhyRegsManager phyRegMgr(*pregs, twoBanksRA);
+
+        for (auto bb : kernel.fg.BBs)
+        {
+            PhyRegSummary* summary = kernel.fg.getBBLRASummary(bb);
+            if (summary != NULL)
+            {
+                for (unsigned int i = 0; i < numRegLRA; i++)
+                {
+                    if (summary->isGRFBusy(i))
+                    {
+                        phyRegMgr.getAvaialableRegs()->setGRFBusy(i, 1);
+                    }
+                }
+            }
+        }
+
+
+        needGlobalRA = false;
+        bool assignFromFront = true;
+#ifdef DEBUG_VERBOSE_ON
+        COUT_ERROR << "Trival RA: " << std::endl;
+#endif
+        for (auto dcl : unallocatedRanges)
+        {
+            int regNum = 0;
+            int subregNum = 0;
+            int sizeInWords = dcl->getWordSize();
+            int nrows = 0;
+            G4_Align align = dcl->getAlign();
+            G4_Align bankAlign = Either;
+
+            if (twoBanksRA &&
+                gra.getBankConflict(dcl) != BANK_CONFLICT_NONE)
+            {
+                bankAlign = getBankAlignForUniqueAssign(dcl);
+
+                if (bankAlign == Even || bankAlign == Even2GRF)
+                {
+                    assignFromFront = true;
+                }
+                if (twoDirectionsAssign && (bankAlign == Odd || bankAlign == Odd2GRF))
+                {
+                    assignFromFront = false;
+                }
+            }
+
+            // Why?
+            G4_SubReg_Align subAlign = builder.GRFAlign() ? Sixteen_Word : dcl->getSubRegAlign();
+
+            if (assignFromFront)
+            {
+                nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != Either) ? bankAlign : align, subAlign,
+                    regNum, subregNum, 0, numRegLRA - 1, 0, false);
+            }
+            else
+            {
+                nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != Either) ? bankAlign : align, subAlign,
+                    regNum, subregNum, numRegLRA - 1, 0, 0, false);
+            }
+
+            if (nrows)
+            {
+                G4_Greg* phyReg = builder.phyregpool.getGreg(regNum);
+                // adjust subreg num to type size
+                if (dcl->getElemSize() == 1)
+                {
+                    subregNum *= 2;
+                }
+                else
+                {
+                    subregNum /= (dcl->getElemSize() / 2);
+                }
+                dcl->getRegVar()->setPhyReg(phyReg, subregNum);
+#ifdef DEBUG_VERBOSE_ON
+                COUT_ERROR << "R" << phyReg->getRegNum() << ", ";
+#endif
+            }
+            else
+            {
+                needGlobalRA = true;
+                break;
+            }
+            if (twoBanksRA && twoDirectionsAssign)
+            {
+                assignFromFront = !assignFromFront;
+            }
+        }
+
+        if (needGlobalRA)
+        {
+            for (auto dcl : unallocatedRanges)
+            {
+                dcl->getRegVar()->resetPhyReg();
+            }
+        }
+        else
+        {
+            if (kernel.getOption(vISA_GenerateDebugInfo))
+            {
+                uint32_t start = 0, end = 0;
+                for (auto rit = kernel.fg.BBs.rbegin();
+                    rit != kernel.fg.BBs.rend();
+                    rit++)
+                {
+                    G4_BB* bb = (*rit);
+
+                    if (bb->instList.size() > 0)
+                    {
+                        end = bb->instList.back()->getCISAOff();
+                        break;
+                    }
+                }
+
+                for (auto dcl : unallocatedRanges)
+                {
+                    updateDebugInfo(kernel, dcl, start, end, kernel.fg.mem);
+                }
+            }
+        }
+
+    }
+    else
+    {
+        needGlobalRA = true;
+    }
+#ifdef DEBUG_VERBOSE_ON
+    COUT_ERROR << std::endl;
+#endif
+
+    return needGlobalRA;
+}
+
+void GlobalRA::removeUnreferencedDcls()
+{
+    // Iterate over all dcls and remove those with 0
+    // ref count and not addressed. This is done only for
+    // GRF dcls.
+
+    // Propagate top dcl info to aliases
+    for (auto dcl : kernel.Declares)
+    {
+        if (dcl->getAliasDeclare() != nullptr)
+        {
+            setNumRefs(dcl, getNumRefs(dcl->getAliasDeclare()));
+        }
+    }
+
+    for (auto dcl_it = kernel.Declares.begin();
+        dcl_it != kernel.Declares.end();)
+    {
+        G4_Declare* dcl = (*dcl_it);
+
+        if ((dcl->getRegFile() == G4_GRF || dcl->getRegFile() == G4_INPUT) &&
+            getNumRefs(dcl) == 0 &&
+            dcl->getRegVar()->isPhyRegAssigned() == false &&
+            !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
+                dcl == kernel.fg.builder->getBuiltinR0()))
+        {
+            DECLARE_LIST_ITER old_it = dcl_it;
+#ifdef DEBUG_VERBOSE_ON
+            DEBUG_VERBOSE("Removed unreferenced dcl " << (*old_it)->getName() << std::endl);
+#endif
+
+            dcl_it = kernel.Declares.erase(old_it);
+        }
+        else
+        {
+            dcl_it++;
+        }
+    }
+}
+
+bool LocalRA::unassignedRangeFound()
+{
+    bool unassignedRangeFound = false;
+    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
+        dcl_it != kernel.Declares.end();
+        dcl_it++)
+    {
+        G4_Declare* dcl = (*dcl_it);
+
+        if (dcl->getAliasDeclare() == NULL &&
+            dcl->getRegFile() == G4_GRF &&
+            dcl->getRegVar()->isPhyRegAssigned() == false)
+        {
+            unassignedRangeFound = true;
+            break;
+        }
+    }
+
+    return unassignedRangeFound;
+}
+
+// Update numRegsUsed to max physical register used based on summary
+void LocalRA::updateRegUsage(PhyRegSummary* summary, unsigned int& numRegsUsed)
+{
+    for (uint32_t i = 0; i < summary->getNumGRF(); i++)
+    {
+        if (numRegsUsed < i && summary->isGRFBusy(i) == true)
+        {
+            numRegsUsed = i;
+        }
+    }
+}
+
+// Emit out localRA opt report
+void LocalRA::localRAOptReport()
+{
+    unsigned int totalRanges = 0, localRanges = 0;
+
+    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
+        dcl_it != kernel.Declares.end();
+        dcl_it++)
+    {
+        auto dcl_it_lr = gra.getLocalLR(*dcl_it);
+        if (dcl_it_lr &&
+            dcl_it_lr->isLiveRangeLocal() &&
+            dcl_it_lr->isGRFRegAssigned())
+        {
+            localRanges++;
+        }
+
+        if (((*dcl_it)->getRegFile() == G4_GRF ||
+            (*dcl_it)->getRegFile() == G4_INPUT) &&
+            (*dcl_it)->getAliasDeclare() == NULL)
+        {
+            totalRanges++;
+        }
+    }
+
+    if (kernel.getOption(vISA_OptReport))
+    {
+        std::ofstream optreport;
+        getOptReportStream(optreport, kernel.getOptions());
+        optreport << std::endl;
+        optreport << "Total GRF ranges: " << totalRanges << std::endl;
+        optreport << "GRF ranges allocated by local RA: " << localRanges << std::endl;
+        if (totalRanges)
+        {
+            optreport << (int)(localRanges * 100 / totalRanges) <<
+                "% allocated by local RA" << std::endl << std::endl;
+        }
+        closeOptReportStream(optreport);
+    }
+}
+
+// Insert declarations with pre-assigned registers in kernel
+void LocalRA::insertDecls()
+{
+    int numGRF = kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    std::vector<bool> grfUsed;
+    grfUsed.resize(numGRF, false);
+    unsigned int numGRFsUsed = 0;
+
+
+    for (auto curBB : kernel.fg.BBs)
+    {
+        if (auto summary = kernel.fg.getBBLRASummary(curBB))
+        {
+            for (int i = 0; i < numGRF; i++)
+            {
+                if (summary->isGRFBusy(i))
+                {
+                    grfUsed[i] = true;
+                }
+            }
+        }
+    }
+
+    // Insert declarations for each GRF that is used
+    for (int i = 0; i < numGRF; i++)
+    {
+        if (grfUsed[i] == true)
+        {
+            char* dclName = builder.getNameString(builder.mem, 10, "r%d", i);
+            G4_Declare* phyRegDcl = builder.createDeclareNoLookup(dclName, G4_GRF, 8, 1, Type_D, Regular, NULL, NULL, 0, true);
+            G4_Greg* phyReg = builder.phyregpool.getGreg(i);
+            phyRegDcl->getRegVar()->setPhyReg(phyReg, 0);
+            numGRFsUsed++;
+        }
+    }
+
+    if (builder.getOption(vISA_OptReport))
+    {
+        std::ofstream optreport;
+        getOptReportStream(optreport, builder.getOptions());
+        optreport << "Local RA used " << numGRFsUsed <<
+            " GRFs" << std::endl << std::endl;
+    }
+}
+
+// Given a src/dst reg region in opnd, traverse to its base and
+// return the declaration. Resolve any aliases and return the
+// topmost declaration.
+// opnd->topdcl should give same result for most cases. But for
+// spill code, if an address register spills then opnd->topdcl does
+// not return expected dcl for the fill.
+G4_Declare* GetTopDclFromRegRegion(G4_Operand* opnd)
+{
+    G4_Declare* dcl = nullptr;
+
+    MUST_BE_TRUE(opnd->isRegRegion(), "Operand is not a register region so cannot have a top dcl");
+    G4_VarBase* base = opnd->getBase();
+
+    if (base && base->isRegVar())
+    {
+        dcl = base->asRegVar()->getDeclare()->getRootDeclare();
+    }
+
+    return dcl;
+}
+
+unsigned int LocalRA::convertSubRegOffFromWords(G4_Declare* dcl, int subregnuminwords)
+{
+    // Return subreg offset in units of dcl's element size.
+    // Input is subregnum in word units.
+    unsigned int subregnum;
+
+    subregnum = (subregnuminwords * 2) / dcl->getElemSize();
+
+    return subregnum;
+}
+
+unsigned int LocalRA::convertSubRegOffToWords(G4_Declare* dcl, int subregnum)
+{
+    // Return subreg offset in units of words from dcl's element size
+    unsigned int subregnuminwords;
+
+    subregnuminwords = subregnum * dcl->getElemSize() / 2;
+
+    return subregnuminwords;
+}
+
+void LocalRA::undoLocalRAAssignments(bool clearInterval, DECLARE_LIST_ITER* firstRealDclIter)
+{
+    if (kernel.getOption(vISA_OptReport))
+    {
+        std::ofstream optreport;
+        getOptReportStream(optreport, kernel.getOptions());
+        optreport << "Undoing local RA assignments" << std::endl;
+        closeOptReportStream(optreport);
+    }
+
+    if (firstRealDclIter)
+    {
+        kernel.Declares.erase(kernel.Declares.begin(), *firstRealDclIter);
+    }
+
+    // Undo all assignments made by local RA
+    for (auto dcl : kernel.Declares)
+    {
+        LocalLiveRange* lr = gra.getLocalLR(dcl);
+        if (lr != NULL)
+        {
+            if (lr->getAssigned() == true)
+            {
+                // Undo the assignment
+                lr->setAssigned(false);
+                lr->getTopDcl()->getRegVar()->resetPhyReg();
+
+                if (kernel.getOption(vISA_GenerateDebugInfo))
+                {
+                    kernel.getKernelDebugInfo()->getLiveIntervalInfo(lr->getTopDcl(), false)->clearLiveIntervals();
+                }
+            }
+            if (clearInterval)
+            {
+                if (lr->isLiveRangeLocal())
+                {
+                    lr->setFirstRef(NULL, 0);
+                }
+                if (lr->getTopDcl()->getRegFile() == G4_INPUT)
+                {
+                    lr->setLastRef(NULL, 0);
+                }
+            }
+        }
+
+        bool hybridRAUndo = firstRealDclIter != nullptr;
+        if (hybridRAUndo)
+        {
+            gra.setBankConflict(dcl, BANK_CONFLICT_NONE);
+        }
+    }
+
+    // Delete summary information stored with each basic block
+    kernel.fg.clearBBLRASummaries();
+}
+
+LocalLiveRange* GlobalRA::GetOrCreateLocalLiveRange(G4_Declare* topdcl, Mem_Manager& mem)
+{
+    LocalLiveRange* lr;
+
+    // Check topdcl of operand and setup a new live range if required
+    if (getLocalLR(topdcl) == NULL)
+    {
+        setLocalLR(topdcl, new (mem)LocalLiveRange());
+        getLocalLR(topdcl)->setTopDcl(topdcl);
+    }
+
+    lr = getLocalLR(topdcl);
+
+    MUST_BE_TRUE(lr != NULL, "Local LR could not be created");
+
+    return lr;
+
+}
+
+void LocalRA::markReferencesInOpnd(G4_Operand* opnd, bool isEOT, INST_LIST_ITER inst_it,
+    unsigned int pos)
+{
+    G4_Declare* topdcl = NULL;
+
+    if ((opnd->isSrcRegRegion() || opnd->isDstRegRegion()))
+    {
+        topdcl = GetTopDclFromRegRegion(opnd);
+
+        if (topdcl &&
+            (topdcl->getRegFile() == G4_GRF || topdcl->getRegFile() == G4_INPUT))
+        {
+            // Handle GRF here
+            MUST_BE_TRUE(topdcl->getAliasDeclare() == NULL, "Not topdcl");
+            LocalLiveRange* lr = gra.GetOrCreateLocalLiveRange(topdcl, mem);
+            lr->recordRef(curBB);
+
+            if (doSplitLLR &&
+                opnd->isSrcRegRegion())
+            {
+                LLR_USE_MAP_ITER useMapIter;
+                useMapIter = LLRUseMap.find(lr);
+                if (useMapIter == LLRUseMap.end())
+                {
+                    std::vector<std::pair<INST_LIST_ITER, unsigned int>> useList;
+                    useList.push_back(make_pair(inst_it, pos));
+                    LLRUseMap.insert(make_pair(lr, useList));
+                }
+                else
+                {
+                    (*useMapIter).second.push_back(make_pair(inst_it, pos));
+                }
+            }
+
+            if (topdcl->getRegVar()
+                && topdcl->getRegVar()->isPhyRegAssigned()
+                && topdcl->getRegVar()->getPhyReg()->isGreg())
+            {
+                pregs->markPhyRegs(topdcl);
+            }
+
+            if (isEOT)
+            {
+                lr->markEOT();
+            }
+
+            gra.recordRef(topdcl);
+
+            if (kernel.getOptions()->getTarget() == VISA_3D &&
+                opnd->isDstRegRegion() &&
+                !topdcl->getAddressed())
+            {
+                if (opnd->getInst()->isWriteEnableInst() == false)
+                {
+                    gra.setMask(topdcl, (unsigned char*)allDefsNotNoMask);
+                }
+                else
+                {
+                    if (gra.getMask(topdcl) == NULL)
+                    {
+                        gra.setMask(topdcl, (unsigned char*)allDefsNoMask);
+                    }
+                }
+            }
+        }
+        else {
+            // Handle register other than GRF
+        }
+    }
+    else if (opnd->isAddrExp())
+    {
+        G4_AddrExp* addrExp = opnd->asAddrExp();
+
+        topdcl = addrExp->getRegVar()->getDeclare();
+        while (topdcl->getAliasDeclare() != NULL)
+            topdcl = topdcl->getAliasDeclare();
+
+        MUST_BE_TRUE(topdcl != NULL, "Top dcl was null for addr exp opnd");
+
+        LocalLiveRange* lr = gra.GetOrCreateLocalLiveRange(topdcl, mem);
+        lr->recordRef(curBB);
+        lr->markIndirectRef();
+
+        if (topdcl->getRegVar()
+            && topdcl->getRegVar()->isPhyRegAssigned()
+            && topdcl->getRegVar()->getPhyReg()->isGreg())
+        {
+            pregs->markPhyRegs(topdcl);
+        }
+
+        gra.recordRef(topdcl);
+    }
+}
+
+void LocalRA::markReferencesInInst(INST_LIST_ITER inst_it)
+{
+    auto inst = (*inst_it);
+
+    if (G4_Inst_Table[inst->opcode()].n_dst == 1)
+    {
+        // Scan dst
+        G4_Operand* dst = inst->getDst();
+
+        if (dst)
+        {
+            markReferencesInOpnd(dst, false, inst_it, 0);
+        }
+    }
+
+    // Scan srcs
+    for (int i = 0; i < G4_Inst_Table[inst->opcode()].n_srcs; i++)
+    {
+        G4_Operand* src = inst->getSrc(i);
+
+        if (src)
+        {
+            markReferencesInOpnd(src, inst->isEOT(), inst_it, i);
+        }
+    }
+}
+
+void LocalRA::setLexicalID()
+{
+    unsigned int id = 0;
+    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin();
+        bb_it != kernel.fg.BBs.end();
+        bb_it++)
+    {
+        G4_BB* bb = (*bb_it);
+
+        for (INST_LIST_ITER inst_it = bb->instList.begin();
+            inst_it != bb->instList.end();
+            inst_it++)
+        {
+            G4_INST* curInst = (*inst_it);
+            curInst->setLexicalId(id++);
+        }
+    }
+}
+
+void LocalRA::markReferences(unsigned int& numRowsEOT,
+    bool& lifetimeOpFound)
+{
+
+    setLexicalID();
+
+    // Iterate over all BBs
+    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin(); bb_it != kernel.fg.BBs.end(); ++bb_it)
+    {
+        curBB = (*bb_it);
+
+
+        // Iterate over all insts
+        for (INST_LIST_ITER inst_it = curBB->instList.begin(); inst_it != curBB->instList.end(); ++inst_it)
+        {
+            G4_INST* curInst = (*inst_it);
+
+            if (curInst->opcode() == G4_pseudo_kill ||
+                curInst->opcode() == G4_pseudo_lifetime_end)
+            {
+                lifetimeOpFound = true;
+                continue;
+            }
+
+            if (curInst->isEOT() && kernel.fg.builder->hasEOTGRFBinding())
+            {
+                numRowsEOT += curInst->getSrc(0)->getTopDcl()->getNumRows();
+
+                if (curInst->isSplitSend() && !curInst->getSrc(1)->isNullReg())
+                {
+                    // both src0 and src1 have to be >=r112
+                    numRowsEOT += curInst->getSrc(1)->getTopDcl()->getNumRows();
+                }
+            }
+
+            markReferencesInInst(inst_it);
+        }
+    }
+}
+
+// Function to calculate input register live intervals,
+// which are now tracked at word granularity because
+// there may be overlap between two different input variables.
+void LocalRA::calculateInputIntervals()
+{
+    setLexicalID();
+
+    int numGRF = kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    std::vector<uint32_t> inputRegLastRef;
+    inputRegLastRef.resize(numGRF * G4_GRF_REG_SIZE, UINT_MAX);
+
+    for (BB_LIST_RITER bb_it = kernel.fg.BBs.rbegin();
+        bb_it != kernel.fg.BBs.rend();
+        bb_it++)
+    {
+        G4_BB* bb = (*bb_it);
+
+        for (INST_LIST_RITER inst_it = bb->instList.rbegin();
+            inst_it != bb->instList.rend();
+            inst_it++)
+        {
+            G4_INST* curInst = (*inst_it);
+
+            G4_Declare* topdcl = NULL;
+            LocalLiveRange* lr = NULL;
+
+            // scan dst operand (may be unnecessary but added for safety)
+            if (curInst->getDst() != NULL)
+            {
+                // Scan dst
+                G4_DstRegRegion* dst = curInst->getDst();
+
+                topdcl = GetTopDclFromRegRegion(dst);
+
+                if (topdcl && (lr = gra.getLocalLR(topdcl)))
+                {
+                    if (topdcl->getRegFile() == G4_INPUT &&
+                        !(dst->isAreg()) &&
+                        topdcl->isOutput() == false &&
+                        lr->hasIndirectAccess() == false &&
+                        !(topdcl->getIsPreDefArg()))
+                    {
+                        unsigned int lastRef = 0;
+
+                        MUST_BE_TRUE(lr->isGRFRegAssigned(), "Input variable has no pre-assigned physical register");
+
+                        if (lr->getLastRef(lastRef) == NULL)
+                        {
+                            unsigned int curInstId = curInst->getLexicalId();
+                            lr->setLastRef(curInst, curInstId);
+
+                            G4_RegVar* var = topdcl->getRegVar();
+                            unsigned int regNum = var->getPhyReg()->asGreg()->getRegNum();
+                            unsigned int regOff = var->getPhyRegOff();
+                            unsigned int idx = regNum * G4_GRF_REG_SIZE +
+                                (regOff * G4_Type_Table[topdcl->getElemType()].byteSize) / G4_WSIZE + topdcl->getWordSize() - 1;
+
+                            unsigned int numWords = topdcl->getWordSize();
+                            for (int i = numWords - 1; i >= 0; --i, --idx)
+                            {
+                                if (inputRegLastRef[idx] == UINT_MAX &&
+                                    // Check for registers that are marked as forbidden,
+                                    // e.g., BuiltinR0 and those reserved for stack call
+                                    pregs->isGRFAvailable(idx / G4_GRF_REG_SIZE))
+                                {
+                                    inputRegLastRef[idx] = curInstId;
+                                    inputIntervals.push_front(new (mem)InputLiveRange(idx, curInstId));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Scan src operands
+            for (int i = 0; i < G4_Inst_Table[curInst->opcode()].n_srcs; i++)
+            {
+                G4_Operand* src = curInst->getSrc(i);
+
+                if (src && src->getTopDcl())
+                {
+                    topdcl = GetTopDclFromRegRegion(src);
+
+                    if (topdcl && (lr = gra.getLocalLR(topdcl)))
+                    {
+                        // Check whether it is input
+                        if (topdcl->getRegFile() == G4_INPUT &&
+                            !(src->isAreg()) &&
+                            topdcl->isOutput() == false &&
+                            lr->hasIndirectAccess() == false &&
+                            !(topdcl->getIsPreDefArg()))
+                        {
+                            unsigned int lastRef = 0;
+
+                            MUST_BE_TRUE(lr->isGRFRegAssigned(), "Input variable has no pre-assigned physical register");
+
+                            if (lr->getLastRef(lastRef) == NULL)
+                            {
+                                unsigned int curInstId = curInst->getLexicalId();
+                                lr->setLastRef(curInst, curInstId);
+
+                                G4_RegVar* var = topdcl->getRegVar();
+                                unsigned int regNum = var->getPhyReg()->asGreg()->getRegNum();
+                                unsigned int regOff = var->getPhyRegOff();
+                                unsigned int idx = regNum * G4_GRF_REG_SIZE +
+                                    (regOff * G4_Type_Table[topdcl->getElemType()].byteSize) / G4_WSIZE + topdcl->getWordSize() - 1;
+
+                                unsigned int numWords = topdcl->getWordSize();
+                                for (int i = numWords - 1; i >= 0; --i, --idx)
+                                {
+                                    if (inputRegLastRef[idx] == UINT_MAX &&
+                                        // Check for registers that are marked as forbidden,
+                                        // e.g., BuiltinR0 and those reserved for stack call
+                                        pregs->isGRFAvailable(idx / G4_GRF_REG_SIZE))
+                                    {
+                                        inputRegLastRef[idx] = curInstId;
+                                        inputIntervals.push_front(new (mem)InputLiveRange(idx, curInstId));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+#ifdef _DEBUG
+    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
+        dcl_it != kernel.Declares.end();
+        dcl_it++)
+    {
+        G4_Declare* curDcl = (*dcl_it);
+
+        if (curDcl->isOutput() &&
+            gra.getLocalLR(curDcl) && gra.getLocalLR(curDcl)->isGRFRegAssigned())
+        {
+            G4_RegVar* var = curDcl->getRegVar();
+            unsigned int regNum = var->getPhyReg()->asGreg()->getRegNum();
+            unsigned int regOff = var->getPhyRegOff();
+            unsigned int idx = regNum * G4_GRF_REG_SIZE +
+                (regOff * G4_Type_Table[curDcl->getElemType()].byteSize) / G4_WSIZE;
+
+            unsigned int numWords = curDcl->getWordSize();
+            for (unsigned int i = 0; i < numWords; ++i, ++idx)
+            {
+                if (inputRegLastRef[idx] != UINT_MAX)
+                {
+                    MUST_BE_TRUE(false, "Invalid output variable with overlapping input variable!");
+                }
+            }
+        }
+    }
+#endif
+}
+
+// Function to calculate local live intervals in ascending order of starting point
+// in basic block bb.
+//
+// FIXME: current implementation cannot handle partial use-before-define case as shown below:
+//
+// loop_start:
+// V1 (1) =
+// P1 =
+// (P1) (16) = V1
+// ...
+// V1 (16) =
+// ...
+// (P2) Jmp  loop_start
+//
+// One way to fix this is to check the emask and simd size of local def/use and make sure they
+// satisfy the followign rules:
+// 1) The SIMD size of a use should be equal to or smaller than earlier def seen for that variable.
+// 2) The Emask of use should be equal of narrower than def seen earlier.
+// 3) Each use should be fully defined in current BB (e.g., if a use is predicated,
+//    the def should be either non-predicated or have the same predicate).
+//
+void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& liveIntervals)
+{
+    int idx = 0;
+    bool brk = false;
+
+    for (INST_LIST_ITER inst_it = bb->instList.begin();
+        inst_it != bb->instList.end() && !brk;
+        inst_it++, idx += 2)
+    {
+        G4_INST* curInst = (*inst_it);
+        G4_Declare* topdcl = NULL;
+        LocalLiveRange* lr = NULL;
+
+        if (curInst->isPseudoKill() ||
+            curInst->isLifeTimeEnd())
+        {
+            continue;
+        }
+
+        // Scan srcs
+        for (int i = 0; i < G4_Inst_Table[curInst->opcode()].n_srcs; i++)
+        {
+            G4_Operand* src = curInst->getSrc(i);
+
+            if (src && src->getTopDcl())
+            {
+                // Scan all srcs
+                topdcl = GetTopDclFromRegRegion(src);
+                LocalLiveRange* topdclLR = nullptr;
+
+                if (topdcl && (topdclLR = gra.getLocalLR(topdcl)))
+                {
+                    lr = topdclLR;
+
+                    // Check whether local LR is a candidate
+                    if (lr->isLiveRangeLocal() &&
+                        lr->isGRFRegAssigned() == false)
+                    {
+                        unsigned int startIdx;
+
+                        if (lr->getFirstRef(startIdx) == NULL)
+                        {
+                            // Skip this lr and update its ref count,
+                            // So it will be treated as a global LR
+                            lr->recordRef(NULL);
+                            continue;
+                        }
+
+                        MUST_BE_TRUE(idx > 0, "Candidate use found in first inst of basic block");
+
+                        if (VISA_WA_CHECK(builder.getPWaTable(), WaDisableSendSrcDstOverlap) &&
+                            ((curInst->isSend() && i == 0) ||
+                            (curInst->isSplitSend() && i == 1)))
+                        {
+                            lr->setLastRef(curInst, idx + 1);
+                        }
+                        else
+                        {
+                            lr->setLastRef(curInst, idx);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (G4_Inst_Table[curInst->opcode()].n_dst == 1)
+        {
+            // Scan dst
+            G4_DstRegRegion* dst = curInst->getDst();
+
+            if (dst)
+            {
+                topdcl = GetTopDclFromRegRegion(dst);
+
+                if (topdcl && (lr = gra.getLocalLR(topdcl)))
+                {
+                    // Check whether local LR is a candidate
+                    if (lr->isLiveRangeLocal() &&
+                        lr->isGRFRegAssigned() == false)
+                    {
+                        unsigned int startIdx;
+
+                        if (lr->getFirstRef(startIdx) == NULL)
+                        {
+                            lr->setFirstRef(curInst, idx);
+                            liveIntervals.push_back(lr);
+                        }
+
+                        lr->setLastRef(curInst, idx);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void LocalRA::printAddressTakenDecls()
+{
+    DEBUG_VERBOSE("Address taken decls:" << std::endl);
+
+    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
+        dcl_it != kernel.Declares.end();
+        dcl_it++)
+    {
+        G4_Declare* curDcl = (*dcl_it);
+
+        if (curDcl->getAliasDeclare() != NULL)
+        {
+            MUST_BE_TRUE(gra.getLocalLR(curDcl) == NULL, "Local LR found for alias declare");
+            continue;
+        }
+
+        if (gra.getLocalLR(curDcl) &&
+            gra.getLocalLR(curDcl)->hasIndirectAccess() == true)
+        {
+            DEBUG_VERBOSE(curDcl->getName() << ", ");
+        }
+    }
+
+    DEBUG_VERBOSE(std::endl);
+}
+
+void LocalRA::printLocalRACandidates()
+{
+    DEBUG_VERBOSE("Local RA candidates:" << std::endl);
+
+    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
+        dcl_it != kernel.Declares.end();
+        dcl_it++)
+    {
+        G4_Declare* curDcl = (*dcl_it);
+
+        if (curDcl->getAliasDeclare() != NULL)
+        {
+            MUST_BE_TRUE(gra.getLocalLR(curDcl) == NULL, "Local LR found for alias declare");
+            continue;
+        }
+
+        if (gra.getLocalLR(curDcl) &&
+            gra.getLocalLR(curDcl)->isLiveRangeLocal() &&
+            gra.getLocalLR(curDcl)->isGRFRegAssigned() == false)
+        {
+            DEBUG_VERBOSE(curDcl->getName() << ", ");
+        }
+    }
+
+    DEBUG_VERBOSE(std::endl);
+}
+
+void LocalRA::printLocalLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& liveIntervals)
+{
+    DEBUG_VERBOSE("Live intervals for bb " << bb->getId() << std::endl);
+
+    for (auto lr : liveIntervals)
+    {
+        unsigned int start, end;
+
+        lr->getFirstRef(start);
+        lr->getLastRef(end);
+
+        DEBUG_VERBOSE(lr->getTopDcl()->getName() << "(" << start << ", " << end << ", " << lr->getTopDcl()->getByteSize() << ")");
+        DEBUG_VERBOSE(std::endl);
+    }
+
+    DEBUG_VERBOSE(std::endl);
+}
+
+void LocalRA::printInputLiveIntervals()
+{
+    DEBUG_VERBOSE(std::endl << "Input Live intervals " << std::endl);
+
+    for (std::list<InputLiveRange*>::iterator it = inputIntervals.begin();
+        it != inputIntervals.end();
+        it++)
+    {
+        unsigned int regWordIdx, lrEndIdx, regNum, subRegInWord;
+
+        InputLiveRange* lr = (*it);
+
+        regWordIdx = lr->getRegWordIdx();
+        regNum = regWordIdx / G4_GRF_REG_SIZE;
+        subRegInWord = regWordIdx % G4_GRF_REG_SIZE;
+        lrEndIdx = lr->getLrEndIdx();
+
+        DEBUG_VERBOSE("r" << regNum << "." << subRegInWord << " " << lrEndIdx);
+        DEBUG_VERBOSE(std::endl);
+    }
+
+    DEBUG_VERBOSE(std::endl);
+}
+
+void LocalRA::countLocalLiveIntervals(std::vector<LocalLiveRange*>& liveIntervals)
+{
+    unsigned int numScalars = 0, numHalfGRF = 0, numOneGRF = 0, numTwoOrMoreGRF = 0, numTotal = 0;
+
+    for (auto lr : liveIntervals)
+    {
+        unsigned size, numrows;
+        G4_Declare* dcl = lr->getTopDcl();
+
+        numrows = dcl->getNumRows();
+        size = dcl->getNumElems() * dcl->getElemSize();
+        numTotal++;
+
+        if (numrows > 1)
+        {
+            numTwoOrMoreGRF++;
+        }
+        else
+        {
+            if (dcl->getNumElems() > 1 && size > 16 && size <= 32)
+                numOneGRF++;
+            else if (dcl->getNumElems() > 1 && size <= 16)
+                numHalfGRF++;
+            else if (dcl->getNumElems() == 1)
+                numScalars++;
+            else
+                ASSERT_USER(false, "Unknown size");
+        }
+    }
+
+    printLocalLiveIntervalDistribution(numScalars, numHalfGRF, numOneGRF, numTwoOrMoreGRF, numTotal);
+}
+
+void LocalRA::printLocalLiveIntervalDistribution(unsigned int numScalars,
+    unsigned int numHalfGRF, unsigned int numOneGRF, unsigned int numTwoOrMoreGRF,
+    unsigned int numTotal)
+{
+    DEBUG_VERBOSE("In units of num of live ranges:" << std::endl);
+    DEBUG_VERBOSE("Total local live ranges: " << numTotal << std::endl);
+    DEBUG_VERBOSE("2 GRFs or more: " << numTwoOrMoreGRF << std::endl);
+    DEBUG_VERBOSE("1 GRF: " << numOneGRF << std::endl);
+    DEBUG_VERBOSE("Half GRF: " << numHalfGRF << std::endl);
+    DEBUG_VERBOSE("Scalar: " << numScalars << std::endl);
+    DEBUG_VERBOSE(std::endl);
+}
+
+// return false if roundrobin RA should be disabled
+bool LocalRA::countLiveIntervals()
+{
+    int globalRows = 0;
+    uint32_t localRows = 0;
+    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
+        dcl_it != kernel.Declares.end();
+        dcl_it++)
+    {
+        G4_Declare* curDcl = (*dcl_it);
+        LocalLiveRange* curDclLR = nullptr;
+
+        if (curDcl->getAliasDeclare() == NULL &&
+            curDcl->getRegFile() == G4_GRF &&
+            (curDclLR = gra.getLocalLR(curDcl)) &&
+            curDclLR->isGRFRegAssigned() == false)
+        {
+            G4_Declare* dcl = (*dcl_it);
+            if (curDclLR->isLiveRangeGlobal())
+            {
+                globalRows += dcl->getNumRows();
+            }
+            else if (curDclLR->isLiveRangeLocal())
+            {
+                localRows += dcl->getNumRows();
+            }
+        }
+    }
+
+    if (globalRows <= NUM_PREGS_FOR_UNIQUE_ASSIGN)
+    {
+        globalLRSize = globalRows;
+    }
+    else
+    {
+        if (localRows < (numRegLRA - NUM_PREGS_FOR_UNIQUE_ASSIGN))
+        {
+            globalLRSize = NUM_PREGS_FOR_UNIQUE_ASSIGN;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// ********* LocalLiveRange class implementation *********
+void LocalLiveRange::recordRef(G4_BB* bb)
+{
+    if (bb != prevBBRef)
+        numRefsInFG++;
+
+    prevBBRef = bb;
+}
+
+bool LocalLiveRange::isLiveRangeLocal()
+{
+    if (isIndirectAccess == false && numRefsInFG == 1 &&
+        eot == false && topdcl->getHasFileScope() == false &&
+        topdcl->getIsPreDefRet() == false && topdcl->getIsPreDefArg() == false &&
+        topdcl->isOutput() == false)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+bool LocalLiveRange::isLiveRangeGlobal()
+{
+    if (isIndirectAccess == true || (numRefsInFG > 1 && eot == false) || topdcl->getHasFileScope() == true ||
+        topdcl->isOutput() == true)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+
+bool LocalLiveRange::isGRFRegAssigned()
+{
+    MUST_BE_TRUE(topdcl != NULL, "Top dcl not set");
+    G4_RegVar* rvar = topdcl->getRegVar();
+    bool isPhyRegAssigned = false;
+
+    if (rvar)
+    {
+        if (rvar->isPhyRegAssigned())
+            isPhyRegAssigned = true;
+    }
+
+    return isPhyRegAssigned;
+}
+
+unsigned int LocalLiveRange::getSizeInWords()
+{
+    int nrows = getTopDcl()->getNumRows();
+    int elemsize = getTopDcl()->getElemSize();
+    int nelems = getTopDcl()->getNumElems();
+    int words = 0;
+
+    if (nrows > 1)
+    {
+        // If sizeInWords is set, use it otherwise consider entire row reserved
+        unsigned int sizeInWords = getTopDcl()->getWordSize();
+
+        if (sizeInWords > 0)
+            words = sizeInWords;
+        else
+            words = nrows * NUM_WORDS_PER_GRF;
+    }
+    else if (nrows == 1)
+    {
+        int nbytesperword = 2;
+        words = (nelems * elemsize + 1) / nbytesperword;
+    }
+
+    return words;
+}
+
+// ********* PhyRegsLocalRA class implementation *********
+void PhyRegsLocalRA::setGRFBusy(int which)
+{
+    MUST_BE_TRUE(isGRFAvailable(which), "Invalid register");
+    regBusyVector[which] = 0xffff;
+    if (twoBanksRA)
+    {
+        if (which < SECOND_HALF_BANK_START_GRF)
+        {
+            bank1AvailableRegNum--;
+        }
+        else
+        {
+            bank2AvailableRegNum--;
+        }
+    }
+}
+
+void PhyRegsLocalRA::setGRFBusy(int which, int howmany)
+{
+    for (int i = 0; i < howmany; i++)
+    {
+        setGRFBusy(which + i);
+    }
+}
+
+void PhyRegsLocalRA::setWordBusy(int whichgrf, int word)
+{
+    MUST_BE_TRUE(isGRFAvailable(whichgrf), "Invalid register");
+    MUST_BE_TRUE(word <= NUM_WORDS_PER_GRF, "Invalid word");
+
+    if (twoBanksRA)
+    {
+        if (regBusyVector[whichgrf] == 0)
+        {
+            if (whichgrf < SECOND_HALF_BANK_START_GRF)
+            {
+                bank1AvailableRegNum--;
+            }
+            else
+            {
+                bank2AvailableRegNum--;
+            }
+        }
+    }
+
+    regBusyVector[whichgrf] |= (0x1 << word);
+}
+
+void PhyRegsLocalRA::setWordBusy(int whichgrf, int word, int howmany)
+{
+    for (int i = 0; i < howmany; i++)
+    {
+        setWordBusy(whichgrf, word + i);
+    }
+}
+
+void PhyRegsLocalRA::setGRFNotBusy(int which, int instID)
+{
+    MUST_BE_TRUE(isGRFAvailable(which), "Invalid register");
+    regBusyVector[which] = 0;
+
+    if (twoBanksRA)
+    {
+        if (which < SECOND_HALF_BANK_START_GRF)
+        {
+            lastUseSum1 -= regLastUse[which];
+            lastUseSum1 += instID;
+            bank1AvailableRegNum++;
+        }
+        else
+        {
+            lastUseSum2 -= regLastUse[which];
+            lastUseSum2 += instID;
+            bank2AvailableRegNum++;
+        }
+    }
+    if (instID)
+    {
+        regLastUse[which] = instID;
+    }
+}
+
+void PhyRegsLocalRA::setWordNotBusy(int whichgrf, int word, int instID)
+{
+    MUST_BE_TRUE(isGRFAvailable(whichgrf), "Invalid register");
+    MUST_BE_TRUE(word <= NUM_WORDS_PER_GRF, "Invalid word");
+
+    if (twoBanksRA)
+    {
+        if (whichgrf < SECOND_HALF_BANK_START_GRF)
+        {
+            lastUseSum1 -= regLastUse[whichgrf];
+            lastUseSum1 += instID;
+            if (regBusyVector[whichgrf] == 0)
+            {
+                bank1AvailableRegNum++;
+            }
+        }
+        else
+        {
+            lastUseSum2 -= regLastUse[whichgrf];
+            lastUseSum2 += instID;
+            if (regBusyVector[whichgrf] == 0)
+            {
+                bank2AvailableRegNum++;
+            }
+        }
+    }
+    int mask = ~(1 << word);
+    regBusyVector[whichgrf] &= mask;
+    if (instID)
+    {
+        regLastUse[whichgrf] = instID;
+    }
+}
+
+inline bool PhyRegsLocalRA::isWordBusy(int whichgrf, int word)
+{
+    MUST_BE_TRUE(isGRFAvailable(whichgrf), "Invalid register");
+
+    MUST_BE_TRUE(word <= NUM_WORDS_PER_GRF, "Invalid word");
+    bool isBusy = ((regBusyVector[whichgrf] & (WORD_BUSY << word)) != 0);
+    return isBusy;
+}
+
+inline bool PhyRegsLocalRA::isWordBusy(int whichgrf, int word, int howmany)
+{
+    bool retval = false;
+
+    for (int i = 0; i < howmany && !retval; i++)
+    {
+        retval |= isWordBusy(whichgrf, word + i);
+    }
+
+    return retval;
+}
+
+bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, G4_Align align, int &regnum, int nrows, int lastRowSize, int endReg, int instID, bool isHybridAlloc)
+{
+    int foundItem = 0;
+    int startReg = 0;
+    int i = regIdx;
+    int grfRows = 0;
+    bool multiSteps = nrows > 1;
+
+    if (lastRowSize % NUM_WORDS_PER_GRF == 0)
+    {
+        grfRows = nrows;
+    }
+    else
+    {
+        grfRows = nrows - 1;
+    }
+
+    LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
+
+    startReg = i;
+
+    while (i <= endReg + nrows - 1)
+    {
+        if (isGRFAvailable(i) &&
+            regBusyVector[i] == 0 &&
+            (!isHybridAlloc || (((instID - regLastUse[i]) / 2 >= FF_LRA_WINDOW_SIZE) || (regLastUse[i] == 0))))
+        {
+            foundItem++;
+        }
+        else if (foundItem < grfRows)
+        {
+            foundItem = 0;
+            i++;
+            LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
+            startReg = i;
+            continue;
+        }
+
+        if (foundItem == grfRows)
+        {
+            if (lastRowSize % NUM_WORDS_PER_GRF == 0)
+            {
+                regnum = startReg;
+                return true;
+            }
+            else
+            {
+                if (i + 1 <= endReg + nrows - 1 &&
+                    isGRFAvailable(i + 1) &&
+                    (isWordBusy(i + 1, 0, lastRowSize) == false) &&
+                    (!isHybridAlloc || (((instID - regLastUse[i + 1]) / 2 >= FF_LRA_WINDOW_SIZE) || (regLastUse[i + 1] == 0))))
+                {
+                    regnum = startReg;
+                    return true;
+                }
+                else
+                {
+                    foundItem = 0;
+                    i++;
+                    LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
+                    startReg = i;
+                    continue;
+                }
+            }
+        }
+
+        i++;
+    }
+
+    return false;
+}
+
+bool PhyRegsLocalRA::findFreeMultipleRegsBackward(int regIdx, G4_Align align, int &regnum, int nrows, int lastRowSize, int endReg, int instID, bool isHybridAlloc)
+{
+    int foundItem = 0;
+    int startReg = 0;
+    int grfRows = 0;
+    int i = regIdx;
+    bool multiSteps = nrows > 1;
+
+    if (lastRowSize % NUM_WORDS_PER_GRF == 0)
+    {
+        grfRows = nrows;
+    }
+    else
+    {
+        grfRows = nrows - 1;
+    }
+
+    LocalRA::findRegisterCandiateWithAlignBackward(i, align, multiSteps);
+
+    startReg = i;
+
+    while (i >= endReg && i >= 0)
+    {
+        if (isGRFAvailable(i) &&
+            regBusyVector[i] == 0 &&
+            (!isHybridAlloc || (((instID - regLastUse[i]) / 2 >= FF_LRA_WINDOW_SIZE) || (regLastUse[i] == 0))))
+        {
+            foundItem++;
+        }
+        else if (foundItem < grfRows)
+        {
+            foundItem = 0;
+            i -= nrows;
+            LocalRA::findRegisterCandiateWithAlignBackward(i, align, multiSteps);
+
+            startReg = i;
+            continue;
+        }
+
+        if (foundItem == grfRows)
+        {
+            if (lastRowSize % NUM_WORDS_PER_GRF == 0)
+            {
+                regnum = startReg;
+                return true;
+            }
+            else
+            {
+                if (i + 1 <= endReg &&
+                    isGRFAvailable(i + 1) &&
+                    (isWordBusy(i + 1, 0, lastRowSize) == false) &&
+                    (!isHybridAlloc || (((instID - regLastUse[i + 1]) / 2 >= FF_LRA_WINDOW_SIZE) || (regLastUse[i + 1] == 0))))
+                {
+                    regnum = startReg;
+                    return true;
+                }
+                else
+                {
+                    foundItem = 0;
+                    i -= nrows;
+                    LocalRA::findRegisterCandiateWithAlignBackward(i, align, multiSteps);
+
+                    startReg = i;
+                    continue;
+                }
+            }
+        }
+
+        i++;
+    }
+
+    return false;
+}
+
+bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, int size, G4_Align align, G4_SubReg_Align subalign, int &regnum, int &subregnum, int endReg, int instID, bool isHybridAlloc, bool forward)
+{
+    int i = regIdx;
+    bool found = false;
+
+    while (!found)
+    {
+        if (forward)
+        {
+            if (i > endReg) //<= works
+                break;
+        }
+        else
+        {
+            if (i < endReg) //>= works
+                break;
+        }
+
+        // Align GRF
+        if ((align == Even) && (i % 2 != 0))
+        {
+            if (forward) { i++; }
+            else { i--; }
+            continue;
+        }
+        else if ((align == Odd) && (i % 2 == 0))
+        {
+            if (forward) { i++; }
+            else { i--; }
+            continue;
+        }
+        else if ((align == Even2GRF) && ((i % 4 >= 2)))
+        {
+            if (forward) { i++; }
+            else { i--; }
+            continue;
+        }
+        else if ((align == Odd2GRF) && ((i % 4 < 2)))
+        {
+            if (forward) { i++; }
+            else { i--; }
+            continue;
+        }
+
+
+        if (isGRFAvailable(i, 1) &&
+            (!isHybridAlloc || (((instID - regLastUse[i]) / 2 >= FF_LRA_WINDOW_SIZE) || (regLastUse[i] == 0))))
+        {
+            found = findFreeSingleReg(i, subalign, regnum, subregnum, size);
+            if (found)
+            {
+                return true;
+            }
+        }
+
+        if (forward) { i++; }
+        else { i--; }
+    }
+
+    return false;
+}
+
+void PhyRegsLocalRA::printBusyRegs()
+{
+    for (int i = 0; i < (int)numRegs; i++)
+    {
+        if (isGRFAvailable(i) == false)
+            continue;
+
+        for (int j = 0; j < NUM_WORDS_PER_GRF; j++)
+        {
+            if (isWordBusy(i, j) == true)
+            {
+                DEBUG_VERBOSE("r" << i << "." << j << ":w, " << std::endl);
+            }
+        }
+    }
+}
+
+// Based on RegVar, mark available registers as busy
+void PhyRegsLocalRA::markPhyRegs(G4_Declare* topdcl)
+{
+    G4_RegVar* rvar = topdcl->getRegVar();
+    unsigned numrows = topdcl->getNumRows();
+    unsigned numwords = 0;
+    unsigned int regnum = 0;
+
+    // Calculate number of physical registers required by this dcl
+    if (numrows == 1)
+    {
+        unsigned numbytes = topdcl->getElemSize() * topdcl->getNumElems();
+        numwords = (numbytes + 1) / 2;
+        unsigned int subReg = rvar->getPhyRegOff();
+        unsigned int subRegInWord = subReg * rvar->getDeclare()->getElemSize() / 2;
+
+        regnum = rvar->getPhyReg()->asGreg()->getRegNum();
+        if (isGRFAvailable(regnum) == true) {
+            for (unsigned int i = 0; i < numwords; i++)
+            {
+                // Starting from first word, mark each consecutive word busy
+                setWordBusy(regnum, (subRegInWord + i));
+            }
+        }
+    }
+    else
+    {
+        regnum = rvar->getPhyReg()->asGreg()->getRegNum();
+        for (unsigned int i = 0; i < topdcl->getNumRows(); i++)
+        {
+            if (isGRFAvailable(i + regnum) == true)
+            {
+                // Set entire GRF busy
+                setGRFBusy(regnum + i);
+            }
+        }
+    }
+}
+
+// ********* PhyRegsManager class implementation *********
+bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, G4_SubReg_Align subalign, int &regnum, int &subregnum, int size)
+{
+    bool found = false;
+    if (subalign == Sixteen_Word)
+    {
+        if (isWordBusy(regIdx, 0, size) == false)
+        {
+            subregnum = 0;
+            found = true;
+        }
+    }
+    else if (subalign == Eight_Word)
+    {
+        if (isWordBusy(regIdx, 0, size) == false)
+        {
+            subregnum = 0;
+            found = true;
+        }
+        else if (size <= NUM_WORDS_PER_GRF / 2 && isWordBusy(regIdx, NUM_WORDS_PER_GRF / 2, size) == false)
+        {
+            subregnum = NUM_WORDS_PER_GRF / 2;
+            found = true;
+        }
+    }
+    else if (subalign == Four_Word)
+    {
+        for (int j = 0; j < (NUM_WORDS_PER_GRF - size + 1) && found == false; j += 4)
+        {
+            if (isWordBusy(regIdx, j, size) == false)
+            {
+                subregnum = j;
+                found = true;
+            }
+        }
+    }
+    else if (subalign == Even_Word)
+    {
+        for (int j = 0; j < (NUM_WORDS_PER_GRF - size + 1) && found == false; j += 2)
+        {
+            if (isWordBusy(regIdx, j, size) == false)
+            {
+                subregnum = j;
+                found = true;
+            }
+        }
+    }
+    else if (subalign == Any)
+    {
+        for (int j = 0; j < (NUM_WORDS_PER_GRF - size) && found == false; j++)
+        {
+            if (isWordBusy(regIdx, j, size) == false)
+            {
+                subregnum = j;
+                found = true;
+            }
+        }
+    }
+    else {
+        ASSERT_USER(false, "Dont know how to allocate this sub-alignment");
+    }
+
+    if (found)
+    {
+        regnum = regIdx;
+    }
+
+    return found;
+}
+
+int PhyRegsManager::findFreeRegs(int size, G4_Align align, G4_SubReg_Align subalign, int& regnum, int& subregnum,
+    int startRegNum, int endRegNum, unsigned int instID, bool isHybridAlloc)
+{
+    int nrows = 0;
+    int lastRowSize = 0;
+    LocalRA::getRowInfo(size, nrows, lastRowSize);
+
+    bool forward = startRegNum <= endRegNum ? true : false;
+    int startReg = forward ? startRegNum : startRegNum - nrows + 1;
+    int endReg = forward ? endRegNum - nrows + 1 : endRegNum;
+
+    bool found = false;
+
+    if (size >= NUM_WORDS_PER_GRF)
+    {
+        if (forward)
+        {
+            found = availableRegs.findFreeMultipleRegsForward(startReg, align, regnum, nrows, lastRowSize, endReg, instID, isHybridAlloc);
+        }
+        else
+        {
+            found = availableRegs.findFreeMultipleRegsBackward(startReg, align, regnum, nrows, lastRowSize, endReg, instID, isHybridAlloc);
+        }
+        if (found)
+        {
+            subregnum = 0;
+            if (size % NUM_WORDS_PER_GRF == 0)
+            {
+                availableRegs.setGRFBusy(regnum, nrows);
+            }
+            else
+            {
+                availableRegs.setGRFBusy(regnum, nrows - 1);
+                availableRegs.setWordBusy(regnum + nrows - 1, 0, lastRowSize);
+            }
+        }
+    }
+    else
+    {
+        found = availableRegs.findFreeSingleReg(startReg, size, align, subalign, regnum, subregnum, endReg, instID, isHybridAlloc, forward);
+        if (found)
+        {
+            availableRegs.setWordBusy(regnum, subregnum, size);
+        }
+    }
+
+    if (found)
+    {
+        return nrows;
+    }
+
+    return 0;
+}
+
+// subregnum parameter is expected to be in units of word
+void PhyRegsManager::freeRegs(int regnum, int subregnum, int numwords, int instID)
+{
+    while (numwords >= NUM_WORDS_PER_GRF)
+    {
+        availableRegs.setGRFNotBusy(regnum, instID);
+        numwords -= NUM_WORDS_PER_GRF;
+        regnum++;
+    }
+
+    while (numwords >= 1)
+    {
+        availableRegs.setWordNotBusy(regnum, subregnum, instID);
+        subregnum++;
+
+        if (subregnum >= NUM_WORDS_PER_GRF)
+        {
+            subregnum = 0;
+            regnum++;
+        }
+        numwords--;
+    }
+}
+
+// ********* LinearScan class implementation *********
+
+// Linear scan implementation
+void LinearScan::run(INST_LIST& instList, IR_Builder& builder, LLR_USE_MAP& LLRUseMap)
+{
+    unsigned int idx = 0;
+    bool allocateRegResult = false;
+
+    unsigned int firstLocalIdx = 0, firstGlobalIdx = 0;
+    if (liveIntervals.size() > 0)
+    {
+        LocalLiveRange* firstLr = (*liveIntervals.begin());
+        G4_INST *firstInst = firstLr->getFirstRef(firstLocalIdx);
+        firstGlobalIdx = firstInst->getLexicalId();
+    }
+
+    for (auto lr : liveIntervals)
+    {
+        G4_INST *currInst = lr->getFirstRef(idx);
+
+        expireRanges(idx);
+        expireInputRanges(currInst->getLexicalId(), idx, firstGlobalIdx);
+
+        if (doBankConflict && builder.lowHighBundle() && (highInternalConflict || (simdSize >= 16 && builder.oneGRFBankDivision())))
+        {
+            allocateRegResult = allocateRegsFromBanks(lr);
+        }
+        else
+        {
+            allocateRegResult = allocateRegs(lr, instList, builder, LLRUseMap);
+        }
+
+        if (allocateRegResult)
+        {
+            updateActiveList(lr);
+#ifdef _DEBUG
+            int startregnum, endregnum, startsregnum, endsregnum;
+            G4_VarBase* op;
+            op = lr->getPhyReg(startsregnum);
+
+            startregnum = endregnum = op->asGreg()->getRegNum();
+            endsregnum = startsregnum + (lr->getTopDcl()->getNumElems() * lr->getTopDcl()->getElemSize() / 2) - 1;
+
+            if (lr->getTopDcl()->getNumRows() > 1) {
+                endregnum = startregnum + lr->getTopDcl()->getNumRows() - 1;
+
+                if (lr->getTopDcl()->getWordSize() > 0)
+                {
+                    endsregnum = lr->getTopDcl()->getWordSize() % NUM_WORDS_PER_GRF - 1;
+                    if (endsregnum < 0) endsregnum = 15;
+                }
+                else
+                    endsregnum = 15; // last word in GRF
+            }
+#ifdef DEBUG_VERBOSE_ON
+            DEBUG_VERBOSE("Assigned physical register to " << lr->getTopDcl()->getName() <<
+                " (r" << startregnum << "." << startsregnum << ":w - " <<
+                "r" << endregnum << "." << endsregnum << ":w)" << std::endl);
+#endif
+#endif
+        }
+    }
+
+    expireAllActive();
+}
+
+void LinearScan::updateActiveList(LocalLiveRange* lr)
+{
+    bool done = false;
+    unsigned int newlr_end;
+
+    lr->getLastRef(newlr_end);
+
+    for (auto active_it = active.begin();
+        active_it != active.end();
+        active_it++)
+    {
+        unsigned int end_idx;
+        LocalLiveRange* active_lr = (*active_it);
+
+        active_lr->getLastRef(end_idx);
+
+        if (end_idx > newlr_end)
+        {
+            active.insert(active_it, lr);
+            done = true;
+            break;
+        }
+
+    }
+
+    if (done == false)
+        active.push_back(lr);
+
+}
+
+void LinearScan::expireAllActive()
+{
+    if (active.size() > 0)
+    {
+        // Expire any remaining ranges
+        LocalLiveRange* lastActive = active.back();
+        unsigned int endIdx;
+
+        lastActive->getLastRef(endIdx);
+
+        expireRanges(endIdx);
+    }
+}
+
+// idx is the current position being processed
+// The function will expire active ranges that end at or before idx
+void LinearScan::expireRanges(unsigned int idx)
+{
+    //active list is sorted in ascending order of starting index
+
+    while (active.size() > 0)
+    {
+        unsigned int endIdx;
+        LocalLiveRange* lr = active.front();
+
+        lr->getLastRef(endIdx);
+
+        if (endIdx <= idx)
+        {
+            G4_VarBase* preg;
+            int subregnumword, subregnum;
+
+            preg = lr->getPhyReg(subregnumword);
+
+            if (preg)
+            {
+                subregnum = LocalRA::convertSubRegOffFromWords(lr->getTopDcl(), subregnumword);
+
+                // Mark the RegVar object of dcl as assigned to physical register
+                lr->getTopDcl()->getRegVar()->setPhyReg(preg, subregnum);
+                lr->setAssigned(true);
+
+                if (summary)
+                {
+                    // mark physical register as used atleast once
+                    summary->markPhyRegs(preg, lr->getSizeInWords());
+                }
+            }
+
+            // Free physical regs marked for this range
+            freeAllocedRegs(lr, true);
+
+#ifdef DEBUG_VERBOSE_ON
+            DEBUG_VERBOSE("Expiring range " << lr->getTopDcl()->getName() << std::endl);
+#endif
+
+            // Remove range from active list
+            active.pop_front();
+        }
+        else
+        {
+            // As soon as we find first range that ends after ids break loop
+            break;
+        }
+    }
+}
+
+void LinearScan::expireInputRanges(unsigned int global_idx, unsigned int local_idx, unsigned int first_idx)
+{
+    while (inputIntervals.size() > 0)
+    {
+        InputLiveRange* lr = inputIntervals.front();
+        unsigned int endIdx = lr->getLrEndIdx();
+
+        if (endIdx <= global_idx)
+        {
+            unsigned int regnum = lr->getRegWordIdx() / G4_GRF_REG_SIZE;
+            unsigned int subRegInWord = lr->getRegWordIdx() % G4_GRF_REG_SIZE;
+            int inputIdx = (endIdx < first_idx) ? 0 : (local_idx - (global_idx - endIdx) * 2);
+
+            // Free physical regs marked for this range
+            pregManager.freeRegs(regnum, subRegInWord, 1, inputIdx);
+            initPregs.setWordNotBusy(regnum, subRegInWord, 0);
+
+#ifdef DEBUG_VERBOSE_ON
+            DEBUG_VERBOSE("Expiring input r" << regnum << "." << subRegInWord << std::endl);
+#endif
+
+            // Remove range from inputIntervals list
+            inputIntervals.pop_front();
+        }
+        else
+        {
+            // As soon as we find first range that ends after ids break loop
+            break;
+        }
+    }
+}
+
+// Allocate registers to live range. It makes a decision whether to spill
+// a currently active range or the range passed as parameter. The range
+// that has larger size and is longer is the spill candidate.
+// Return true if free registers found, false if range is to be spilled
+bool LinearScan::allocateRegs(LocalLiveRange* lr, INST_LIST& instList, IR_Builder& builder, LLR_USE_MAP& LLRUseMap)
+{
+    int regnum, subregnum;
+    unsigned int localRABound = 0;
+    unsigned int instID;
+
+    G4_INST* currInst = lr->getFirstRef(instID);
+
+    // Let local RA allocate only those ranges that need < 10 GRFs
+    // Larger ranges are not many and are best left to global RA
+    // as it can make a better judgement by considering the
+    // spill cost.
+    int nrows = 0;
+    int size = lr->getSizeInWords();
+    G4_Align align = lr->getTopDcl()->getRegVar()->getAlignment();
+    G4_SubReg_Align subalign = lr->getTopDcl()->getRegVar()->getSubRegAlignment();
+    G4_Align bankAlign = Either;
+
+    localRABound = numRegLRA - globalLRSize - 1;  //-1, localRABound will be counted in findFreeRegs()
+
+    if (doBankConflict &&
+        gra.getBankConflict(lr->getTopDcl()) != BANK_CONFLICT_NONE)
+    {
+        bankAlign = gra.getBankAlign(lr->getTopDcl());
+    }
+
+    if (useRoundRobin)
+    {
+        nrows = pregManager.findFreeRegs(size,
+            bankAlign != Either ? bankAlign : align,
+            subalign,
+            regnum,
+            subregnum,
+            *startGRFReg,
+            localRABound,
+            instID,
+            false);
+    }
+    else
+    {
+        nrows = pregManager.findFreeRegs(size,
+            bankAlign != Either ? bankAlign : align,
+            subalign,
+            regnum,
+            subregnum,
+            *startGRFReg,
+            localRABound,
+            instID,
+            true);
+
+        if (!nrows)
+        {
+            nrows = pregManager.findFreeRegs(size,
+                bankAlign != Either ? bankAlign : align,
+                subalign,
+                regnum,
+                subregnum,
+                *startGRFReg,
+                localRABound,
+                instID,
+                false);
+        }
+    }
+
+    if (useRoundRobin)
+    {
+        if (nrows)
+        {
+            *startGRFReg = (regnum + nrows) % (localRABound);
+        }
+        else
+        {
+            unsigned int endGRFReg = *startGRFReg + nrows;
+            endGRFReg = (endGRFReg > localRABound) ? localRABound : endGRFReg;
+
+            nrows = pregManager.findFreeRegs(size,
+                bankAlign != Either ? bankAlign : align,
+                subalign,
+                regnum,
+                subregnum,
+                0,
+                endGRFReg,
+                instID,
+                false);
+
+            if (nrows)
+            {
+                *startGRFReg = (regnum + nrows) % (localRABound);
+            }
+        }
+    }
+
+    // If allocations fails, return false
+    if (!nrows)
+    {
+        // Check if any range in active is longer and wider than lr.
+        // Spill it if it is and call self again.
+        for (auto active_it = active.rbegin();
+            active_it != active.rend();
+            active_it++)
+        {
+            LocalLiveRange* activeLR = (*active_it);
+
+            if (activeLR->getSizeInWords() >= lr->getSizeInWords() &&
+                (!doSplitLLR ||
+                    gra.getNumRefs(activeLR->getTopDcl()) > SPLIT_REF_CNT_THRESHOLD))
+            {
+                // Another active range is larger than lr
+                unsigned int active_lr_end, lr_end;
+
+                activeLR->getLastRef(active_lr_end);
+                lr->getLastRef(lr_end);
+
+                if (active_lr_end > lr_end)
+                {
+                    // Range in active is longer, so spill it
+#ifdef DEBUG_VERBOSE_ON
+                    DEBUG_VERBOSE("Spilling range " << activeLR->getTopDcl()->getName() << std::endl);
+#endif
+
+                    freeAllocedRegs(activeLR, false);
+                    active.erase(--(active_it.base()));
+
+                    if (doSplitLLR)
+                    {
+                        G4_Declare* oldDcl = activeLR->getTopDcl();
+                        unsigned short totalElems = oldDcl->getTotalElems();
+
+                        std::vector<std::pair<INST_LIST_ITER, unsigned int>>* useList = nullptr;
+                        auto Iter = LLRUseMap.find(activeLR);
+                        if (Iter != LLRUseMap.end())
+                            useList = &(Iter->second);
+
+                        if (useList &&
+                            useList->size() > 2 &&
+                            gra.getNumRefs(oldDcl) - useList->size() == 1 &&
+                            (totalElems == 8 || totalElems == 16 || totalElems == 32))
+                        {
+                            bool split = false;
+                            unsigned int useCnt = 0;
+                            INST_LIST_ITER lastUseIt;
+                            G4_Declare* newDcl = NULL;
+                            for (auto usePoint : *useList)
+                            {
+                                INST_LIST_ITER useIt = usePoint.first;
+                                G4_INST* useInst = *useIt;
+                                useCnt++;
+
+                                unsigned int currId = currInst->getLexicalId();
+                                if (useInst->getLexicalId() < currId ||
+                                    useCnt < SPLIT_USE_CNT_THRESHOLD)
+                                {
+                                    lastUseIt = useIt;
+                                }
+                                else if (split == false &&
+                                         (useInst->getLexicalId() - (*lastUseIt)->getLexicalId()) > SPLIT_USE_DISTANCE_THRESHOLD &&
+                                         !(oldDcl->getElemSize() >= 8 && oldDcl->getTotalElems() >= 16))
+                                {
+                                    G4_INST* last_use_inst = (*lastUseIt);
+
+                                    G4_Declare* splitDcl = NULL;
+                                    char* splitDclName = builder.getNameString(builder.mem, 16, "split_%s", oldDcl->getName());
+                                    splitDcl = builder.createDeclareNoLookup(splitDclName, G4_GRF, oldDcl->getNumElems(), oldDcl->getNumRows(), oldDcl->getElemType());
+                                    splitDcl->setAlign(oldDcl->getAlign());
+                                    splitDcl->setSubRegAlign(oldDcl->getSubRegAlign());
+
+                                    LocalLiveRange* splitLR = gra.GetOrCreateLocalLiveRange(splitDcl, builder.mem);
+                                    splitLR->markSplit();
+
+                                    INST_LIST_ITER iter = lastUseIt;
+                                    iter++;
+
+                                    // FIXME: The following code does not handle QWord variable spilling completely.
+                                    // See the last condition of this if-stmt.
+                                    G4_DstRegRegion* dst = builder.Create_Dst_Opnd_From_Dcl(splitDcl, 1);
+                                    G4_SrcRegRegion* src = builder.Create_Src_Opnd_From_Dcl(oldDcl, builder.getRegionStride1());
+                                    G4_INST* splitInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
+                                        (unsigned char)oldDcl->getTotalElems() > 16 ? 16 : (unsigned char)oldDcl->getTotalElems(), dst, src, nullptr, InstOpt_WriteEnable,
+                                        last_use_inst->getLineNo(), last_use_inst->getCISAOff(), last_use_inst->getSrcFilename());
+                                    instList.insert(iter, splitInst);
+
+                                    unsigned int idx = 0;
+                                    gra.getLocalLR(oldDcl)->setLastRef(splitInst, idx);
+                                    gra.setNumRefs(oldDcl, useCnt);
+                                    splitLR->setFirstRef(splitInst, idx);
+                                    gra.setNumRefs(splitDcl, 2);
+
+                                    if (totalElems == 32)
+                                    {
+                                        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, splitDcl->getRegVar(), 2, 0, 1, oldDcl->getElemType());
+                                        G4_SrcRegRegion* src = builder.Create_Src_Opnd_From_Dcl(oldDcl, builder.getRegionStride1());
+                                        src->setRegOff(2);
+                                        G4_INST* splitInst2 = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
+                                            16, dst, src, nullptr, InstOpt_WriteEnable,
+                                            last_use_inst->getLineNo(), last_use_inst->getCISAOff(), last_use_inst->getSrcFilename());
+                                        instList.insert(iter, splitInst2);
+                                    }
+
+                                    char* newDclName = builder.getNameString(builder.mem, 16, "copy_%s", oldDcl->getName());
+                                    newDcl = builder.createDeclareNoLookup(newDclName, G4_GRF, oldDcl->getNumElems(), oldDcl->getNumRows(), oldDcl->getElemType());
+                                    newDcl->setAlign(oldDcl->getAlign());
+                                    newDcl->setSubRegAlign(oldDcl->getSubRegAlign());
+
+                                    unsigned int oldRefs = gra.getNumRefs(oldDcl);
+                                    LocalLiveRange* newLR = gra.GetOrCreateLocalLiveRange(newDcl, builder.mem);
+
+                                    iter = useIt;
+
+                                    dst = builder.Create_Dst_Opnd_From_Dcl(newDcl, 1);
+                                    src = builder.Create_Src_Opnd_From_Dcl(splitDcl, builder.getRegionStride1());
+                                    G4_INST* movInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
+                                        (unsigned char)splitDcl->getTotalElems() > 16 ? 16 : (unsigned char)splitDcl->getTotalElems(), dst, src, nullptr, InstOpt_WriteEnable,
+                                        useInst->getLineNo(), useInst->getCISAOff(), useInst->getSrcFilename());
+                                    instList.insert(iter, movInst);
+
+                                    splitLR->setLastRef(movInst, idx);
+                                    G4_INST* old_last_use = activeLR->getLastRef(idx);
+                                    newLR->setFirstRef(splitInst, idx);
+                                    newLR->setLastRef(old_last_use, idx);
+                                    gra.setNumRefs(newDcl, oldRefs - useCnt + 1);
+
+                                    if (totalElems == 32)
+                                    {
+                                        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, newDcl->getRegVar(), 2, 0, 1, splitDcl->getElemType());
+                                        G4_SrcRegRegion* src = builder.Create_Src_Opnd_From_Dcl(splitDcl, builder.getRegionStride1());
+                                        src->setRegOff(2);
+                                        G4_INST* movInst2 = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
+                                            16, dst, src, nullptr, InstOpt_WriteEnable,
+                                            useInst->getLineNo(), useInst->getCISAOff(), useInst->getSrcFilename());
+                                        instList.insert(iter, movInst2);
+                                    }
+
+                                    unsigned int pos = usePoint.second;
+                                    G4_SrcRegRegion* oldSrc = useInst->getSrc(pos)->asSrcRegRegion();
+                                    G4_SrcRegRegion* newSrc = builder.Create_Src_Opnd_From_Dcl(newDcl, oldSrc->getRegion());
+                                    newSrc->setRegOff(oldSrc->getRegOff());
+                                    newSrc->setSubRegOff(oldSrc->getSubRegOff());
+                                    newSrc->setModifier(oldSrc->getModifier());
+                                    useInst->setSrc(newSrc, pos);
+
+                                    split = true;
+                                }
+                                else if (split)
+                                {
+                                    unsigned int pos = usePoint.second;
+                                    G4_SrcRegRegion* oldSrc = useInst->getSrc(pos)->asSrcRegRegion();
+                                    G4_SrcRegRegion* newSrc = builder.Create_Src_Opnd_From_Dcl(newDcl, oldSrc->getRegion());
+                                    newSrc->setRegOff(oldSrc->getRegOff());
+                                    newSrc->setSubRegOff(oldSrc->getSubRegOff());
+                                    newSrc->setModifier(oldSrc->getModifier());
+                                    useInst->setSrc(newSrc, pos);
+                                }
+                                else
+                                {
+                                    lastUseIt = useIt;
+                                }
+                            }
+                        }
+                    }
+
+                    // Try again
+                    return allocateRegs(lr, instList, builder, LLRUseMap);
+                }
+            }
+        }
+
+#ifdef DEBUG_VERBOSE_ON
+        DEBUG_VERBOSE("Spilling range " << lr->getTopDcl()->getName() << std::endl);
+#endif
+
+        // Even after spilling everything could not find an allocation
+        return false;
+    }
+#ifdef DEBUG_VERBOSE_ON
+    COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum << "  BANK: " << gra.getBankConflict(lr->getTopDcl()) << std::endl;
+#endif
+
+    lr->setPhyReg(builder.phyregpool.getGreg(regnum), subregnum);
+
+    return true;
+}
+
+
+bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
+{
+    int regnum, subregnum;
+    unsigned int tmpLocalRABound = 0;
+    int nrows = 0;
+    int lastUseSum1 = pregManager.getAvaialableRegs()->getLastUseSum1();
+    int lastUseSum2 = pregManager.getAvaialableRegs()->getLastUseSum2();
+    int bank1AvailableRegNum = pregManager.getAvaialableRegs()->getBank1AvailableRegNum();
+    int bank2AvailableRegNum = pregManager.getAvaialableRegs()->getBank2AvailableRegNum();
+    int size = lr->getSizeInWords();
+    G4_Align align = lr->getTopDcl()->getRegVar()->getAlignment();
+    G4_SubReg_Align subalign = lr->getTopDcl()->getRegVar()->getSubRegAlignment();
+    unsigned int instID;
+    lr->getFirstRef(instID);
+    auto lrBC = gra.getBankConflict(lr->getTopDcl());
+
+    // Reverse the order for FF two banks RA.
+    // For FF, second bank register allocated from back to front
+    if (lrBC != BANK_CONFLICT_NONE)
+    {
+        switch (lrBC)
+        {
+        case BANK_CONFLICT_FIRST_HALF_EVEN:
+        case BANK_CONFLICT_FIRST_HALF_ODD:
+            align = Even;
+            startGRFReg = &bank1StartGRFReg;
+            tmpLocalRABound = bank1_end;
+            break;
+        case BANK_CONFLICT_SECOND_HALF_EVEN:
+        case BANK_CONFLICT_SECOND_HALF_ODD:
+            if (useRoundRobin)
+            {
+                align = Odd;
+            }
+            startGRFReg = &bank2StartGRFReg;
+            tmpLocalRABound = bank2_end;
+            break;
+        default: break;
+        }
+    }
+    else
+    {
+        if (useRoundRobin)
+        {
+            if (bank1AvailableRegNum == 0 && bank2AvailableRegNum == 0)
+            {
+                return false;
+            }
+
+            float bank1Average = bank1AvailableRegNum == 0 ? (float)0x7fffffff : (float)lastUseSum1 / bank1AvailableRegNum;
+            float bank2Average = bank2AvailableRegNum == 0 ? (float)0x7fffffff : (float)lastUseSum2 / bank2AvailableRegNum;
+            if (bank1Average > bank2Average)
+            {
+                startGRFReg = &bank2StartGRFReg;
+                tmpLocalRABound = bank2_end;
+            }
+            else
+            {
+                startGRFReg = &bank1StartGRFReg;
+                tmpLocalRABound = bank1_end;
+            }
+        }
+        else
+        {
+            if (bank1AvailableRegNum < bank2AvailableRegNum)
+            {
+                startGRFReg = &bank2StartGRFReg;
+                tmpLocalRABound = bank2_end;
+            }
+            else
+            {
+                startGRFReg = &bank1StartGRFReg;
+                tmpLocalRABound = bank1_end;
+            }
+        }
+    }
+
+    if (useRoundRobin)
+    {
+        nrows = pregManager.findFreeRegs(size,
+            align,
+            subalign,
+            regnum,
+            subregnum,
+            *startGRFReg,
+            tmpLocalRABound,
+            instID,
+            false);
+
+        if (nrows)
+        {
+            //Wrapper handling
+            if (tmpLocalRABound)
+            {
+                *startGRFReg = (regnum + nrows) % (tmpLocalRABound);
+            }
+
+            if (startGRFReg == &bank2StartGRFReg)
+            {
+                if (*startGRFReg < SECOND_HALF_BANK_START_GRF)
+                {
+                    *startGRFReg += bank2_start;
+                }
+            }
+        }
+        else
+        {
+            //record the original endReg in case failed to allocate in bank switch
+            unsigned int endReg = *startGRFReg + nrows;
+
+            //If failed, try another bank first.
+            if (startGRFReg == &bank2StartGRFReg)
+            {
+                startGRFReg = &bank1StartGRFReg;
+                tmpLocalRABound = bank1_end;
+            }
+            else
+            {
+                startGRFReg = &bank2StartGRFReg;
+                tmpLocalRABound = bank2_end;
+            }
+
+            nrows = pregManager.findFreeRegs(size,
+                align,
+                subalign,
+                regnum,
+                subregnum,
+                *startGRFReg,
+                tmpLocalRABound,
+                instID,
+                false);
+
+            if (!nrows)
+            {
+                //Still fail, wrapper round in original bank
+                if (startGRFReg == &bank1StartGRFReg) //switch back to before
+                {
+                    startGRFReg = &bank2StartGRFReg;
+                    *startGRFReg = bank2_start;
+                    tmpLocalRABound = ((endReg) > (bank2_end)) ? bank2_end : endReg;
+                }
+                else
+                {
+                    startGRFReg = &bank1StartGRFReg;
+                    *startGRFReg = bank1_start;
+                    tmpLocalRABound = (endReg > bank1_end) ? bank1_end : endReg;
+                }
+                nrows = pregManager.findFreeRegs(size,
+                    align,
+                    subalign,
+                    regnum,
+                    subregnum,
+                    *startGRFReg,
+                    tmpLocalRABound,
+                    instID,
+                    false);
+            }
+        }
+    }
+    else
+    {
+        nrows = pregManager.findFreeRegs(size,
+            align,
+            subalign,
+            regnum,
+            subregnum,
+            *startGRFReg,
+            tmpLocalRABound,
+            instID,
+            true);
+
+        if (!nrows)
+        {   //Try without window, no even/odd alignment for bank, but still low and high(keep in same bank)
+            nrows = pregManager.findFreeRegs(size,
+                lr->getTopDcl()->getRegVar()->getAlignment(),
+                subalign,
+                regnum,
+                subregnum,
+                *startGRFReg,
+                tmpLocalRABound,
+                instID,
+                false);
+        }
+
+        if (!nrows)
+        {
+            //Try another bank, no even/odd alignment for bank, also no low and high
+            if (startGRFReg == &bank2StartGRFReg)
+            {
+                startGRFReg = &bank1StartGRFReg;
+                tmpLocalRABound = bank1_end;
+            }
+            else
+            {
+                startGRFReg = &bank2StartGRFReg;
+                tmpLocalRABound = bank2_end;
+            }
+
+            nrows = pregManager.findFreeRegs(size,
+                lr->getTopDcl()->getRegVar()->getAlignment(),
+                subalign,
+                regnum,
+                subregnum,
+                *startGRFReg,
+                tmpLocalRABound,
+                instID,
+                false);
+        }
+    }
+
+    // If allocations fails, return false
+    if (!nrows)
+    {
+        return false;
+    }
+
+    lr->setPhyReg(builder.phyregpool.getGreg(regnum), subregnum);
+#ifdef DEBUG_VERBOSE_ON
+    COUT_ERROR << lr->getTopDcl()->getName() << ":r" << regnum << "  BANK: " << gra.getBankConflict(lr->getTopDcl()) << std::endl;
+#endif
+    return true;
+}
+
+// Mark physical register allocated to range lr as available
+void LinearScan::freeAllocedRegs(LocalLiveRange* lr, bool setInstID)
+{
+    int sregnum;
+
+    G4_VarBase* preg = lr->getPhyReg(sregnum);
+
+    MUST_BE_TRUE(preg != NULL,
+        "Physical register not assigned to live range. Cannot free regs.");
+
+    unsigned int idx = 0;
+    if (setInstID)
+    {
+        lr->getLastRef(idx);
+    }
+
+    pregManager.freeRegs(preg->asGreg()->getRegNum(),
+        sregnum,
+        lr->getSizeInWords(),
+        idx);
+}
+
+// ********* PhyRegSummary class implementation *********
+
+// Mark GRFs as used
+void PhyRegSummary::markPhyRegs(G4_VarBase* pr, unsigned int size)
+{
+    // Assume that pr is aligned to GRF start if it cannot fit in a single GRF
+    MUST_BE_TRUE(pr->isGreg(), "Expecting GRF as operand");
+
+    int numGRFs = size / NUM_WORDS_PER_GRF;
+    unsigned int regnum = pr->asGreg()->getRegNum();
+
+    if (size%NUM_WORDS_PER_GRF != 0)
+        numGRFs++;
+
+    for (int i = 0; i < numGRFs; i++)
+    {
+        GRFUsage[regnum + i] = true;
+    }
+}
+
+void PhyRegSummary::printBusyRegs()
+{
+    DEBUG_VERBOSE("GRFs used: ");
+
+    for (int i = 0; i < (int)totalNumGRF; i++)
+    {
+        if (isGRFBusy(i) == true)
+        {
+            DEBUG_VERBOSE("r" << i << ", ");
+        }
+    }
+
+    DEBUG_VERBOSE(std::endl << std::endl);
+}

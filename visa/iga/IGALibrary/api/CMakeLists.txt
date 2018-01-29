@@ -1,0 +1,19 @@
+set(IGA_API
+  ${CMAKE_CURRENT_SOURCE_DIR}/iga.cpp
+  PARENT_SCOPE
+)
+set(IGA_API_Headers
+  ${CMAKE_CURRENT_SOURCE_DIR}/iga.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/iga.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/iga_bxml_ops.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/iga_types_ext.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/igad.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/igax.hpp
+  PARENT_SCOPE
+)
+
+set(IGA_API_EncoderInterface
+  ${CMAKE_CURRENT_SOURCE_DIR}/igaEncoderWrapper.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/igaEncoderWrapper.cpp
+  PARENT_SCOPE
+)
