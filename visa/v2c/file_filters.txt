@@ -1,0 +1,2 @@
+.*\$\(OutDir\)CISA\.tab\.c
+.*\$\(OutDir\)lex\.CISA\.c

@@ -1,0 +1,59 @@
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
+
+add_subdirectory(OpenCLPasses)
+add_subdirectory(OpenGLPasses)
+
+set(IGC_BUILD__SRC__Optimizer
+    "${CMAKE_CURRENT_SOURCE_DIR}/BuiltInFuncImport.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/InfiniteLoopRemoval.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/LinkMultiRateShaders.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/MCSOptimization.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/GatingSimilarSamples.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/OCLBIConverter.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/OCLBIUtils.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/PreCompiledFuncImport.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/PreCompiledFuncLibrary.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Scalarizer.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/SetMathPrecisionForPositionOutput.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/FixFastMathFlags.cpp"
+  )
+set(IGC_BUILD__SRC__Compiler_Optimizer
+    ${IGC_BUILD__SRC__Optimizer}
+    ${IGC_BUILD__SRC__Optimizer_OpenCLPasses}
+    ${IGC_BUILD__SRC__Optimizer_OpenGLPasses}
+    PARENT_SCOPE
+  )
+
+set(IGC_BUILD__HDR__Optimizer
+    "${CMAKE_CURRENT_SOURCE_DIR}/BuiltInFuncImport.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/InfiniteLoopRemoval.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/LinkMultiRateShaders.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/OCLBIConverter.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/OCLBIUtils.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/MCSOptimization.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/GatingSimilarSamples.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/PreCompiledFuncImport.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Scalarizer.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/SetMathPrecisionForPositionOutput.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/FixFastMathFlags.hpp"
+  )
+  
+
+set(IGC_BUILD__HDR__Compiler_Optimizer
+    ${IGC_BUILD__HDR__Optimizer}
+    ${IGC_BUILD__HDR__Optimizer_OpenCLPasses}
+    ${IGC_BUILD__HDR__Optimizer_OpenGLPasses}
+    PARENT_SCOPE
+  )
+
+
+igc_sg_register(
+    Compiler__Optimizer
+    "Optimizer"
+    GROUPS
+      Compiler__Optimizer_OpenCLPasses
+      Compiler__Optimizer_OpenGLPasses
+    FILES
+      ${IGC_BUILD__SRC__Optimizer}
+      ${IGC_BUILD__HDR__Optimizer}
+  )

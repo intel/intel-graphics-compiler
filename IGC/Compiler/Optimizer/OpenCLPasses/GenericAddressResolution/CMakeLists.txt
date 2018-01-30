@@ -1,0 +1,42 @@
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
+
+
+set(IGC_BUILD__SRC__GenericAddressResolution
+    "${CMAKE_CURRENT_SOURCE_DIR}/GenericAddressDynamicResolution.cpp"
+  )
+set(IGC_BUILD__SRC__GenericAddressSpaceStaticResolution
+    "${CMAKE_CURRENT_SOURCE_DIR}/GenericAddressStaticResolution.cpp"
+  )
+set(IGC_BUILD__SRC__OpenCLPasses_GenericAddressResolution
+    ${IGC_BUILD__SRC__GenericAddressResolution}
+    ${IGC_BUILD__SRC__GenericAddressSpaceStaticResolution}
+    PARENT_SCOPE
+  )
+
+set(IGC_BUILD__HDR__GenericAddressResolution
+    "${CMAKE_CURRENT_SOURCE_DIR}/GenericAddressDynamicResolution.hpp"
+  )
+set(IGC_BUILD__HDR__GenericAddressSpaceStaticResolution
+    "${CMAKE_CURRENT_SOURCE_DIR}/GenericAddressStaticResolution.hpp"
+  )
+set(IGC_BUILD__HDR__OpenCLPasses_GenericAddressResolution
+    ${IGC_BUILD__HDR__GenericAddressResolution}
+    ${IGC_BUILD__HDR__GenericAddressSpaceStaticResolution}
+    PARENT_SCOPE
+  )
+
+
+igc_sg_register(
+    Compiler__OpenCLPasses_GenericAddressResolution
+    "GenericAddressResolution"
+    FILES
+      ${IGC_BUILD__SRC__GenericAddressResolution}
+      ${IGC_BUILD__HDR__GenericAddressResolution}
+  )
+igc_sg_register(
+    Compiler__OpenCLPasses_GenericAddressSpaceStaticResolution
+    "GenericAddressSpaceStaticResolution"
+    FILES
+      ${IGC_BUILD__SRC__GenericAddressSpaceStaticResolution}
+      ${IGC_BUILD__HDR__GenericAddressSpaceStaticResolution}
+  )
