@@ -19,10 +19,10 @@ https://opensource.org/licenses/MIT
 
 ## Dependencies
 
-Common Clang - https://github.com/intel/opencl-clang
-Clang Source - https://github.com/llvm-mirror/clang
-Khronos OpenCL Headers - https://github.com/KhronosGroup/OpenCL-Headers
-LLVM Source -  https://github.com/llvm-mirror/llvm
+* Common Clang - https://github.com/intel/opencl-clang
+* Clang Source - https://github.com/llvm-mirror/clang
+* Khronos OpenCL Headers - https://github.com/KhronosGroup/OpenCL-Headers
+* LLVM Source -  https://github.com/llvm-mirror/llvm
 
 ## Supported Linux versions
 
@@ -64,10 +64,10 @@ $ make -j`nproc`
 
 ## Supported Platforms
 
-Intel Core Processors supporting Gen8 graphics devices
-Intel Core Processors supporting Gen9 graphics devices
-Intel Core Processors supporting Gen10 graphics devices
-Intel Atom Processors supporting Gen9 graphics devices
+* Intel Core Processors supporting Gen8 graphics devices
+* Intel Core Processors supporting Gen9 graphics devices
+* Intel Core Processors supporting Gen10 graphics devices
+* Intel Atom Processors supporting Gen9 graphics devices
 
 ## How to provide feedback
 Please submit an issue using native github.com interface: https://github.com/intel/intel-graphics-compiler/issues.
