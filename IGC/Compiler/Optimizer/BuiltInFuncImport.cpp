@@ -566,9 +566,12 @@ void BIImport::InitializeBIFlags(Module &M)
 
     initializeVarWithValue("__EnableSWSrgbWrites", IGC_GET_FLAG_VALUE(cl_khr_srgb_image_writes));
 
+    if (pCtx->type == ShaderType::OPENCL_SHADER)
+    {
     float profilingTimerResolution = static_cast<OpenCLProgramContext*>(pCtx)->getProfilingTimerResolution();
 
     initializeVarWithValue("__ProfilingTimerResolution", *reinterpret_cast<int*>(&profilingTimerResolution));
+    }
 }
 
 extern "C" llvm::ModulePass *createBuiltInImportPass(
