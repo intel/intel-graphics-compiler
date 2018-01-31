@@ -1764,7 +1764,7 @@ typedef struct _WA_TABLE
 
         WA_DECLARE(
         WaForceUAVOnlyToFalse,
-        "Workaround"per pixel\"Workaround",
+        "Workaround",
         WA_BUG_TYPE_CORRUPTION,
         WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
