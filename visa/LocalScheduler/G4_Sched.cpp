@@ -1765,7 +1765,12 @@ void preDDD::reset()
             N->setTupleLead(Lead);
             if (Inst->getMaskOffset() == 0)
                 Lead = nullptr;
+            continue;
         }
+        // This send is neither a lead nor a part, which means this block is
+        // already sliced. Bail out.
+        if (Lead && Inst->isSend())
+            break;
     }
 
     for (auto N : SNodes) {
