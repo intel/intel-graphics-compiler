@@ -41,6 +41,40 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include <stdlib.h>
 #include <string>
+#include <iomanip>
+
+#if defined( _DEBUG ) || defined( _INTERNAL )
+#define IGC_DEBUG_VARIABLES
+#endif
+
+
+#if defined(IGC_DEBUG_VARIABLES)
+#include "common/Types.hpp"
+#include "common/igc_regkeys.hpp"
+#include "AdaptorCommon/customApi.hpp"
+#include "3d/common/iStdLib/utility.h"
+#include <mutex>
+
+namespace IGC
+{
+	namespace Debug
+	{
+
+		static std::mutex stream_mutex;
+
+		void DumpLock()
+		{
+			stream_mutex.lock();
+		}
+
+		void DumpUnlock()
+		{
+			stream_mutex.unlock();
+		}
+
+	}
+}
+#endif
 
 #ifndef WIN32
 #include <dlfcn.h>
@@ -249,6 +283,13 @@ namespace TC
 				}
 #endif
 			}
+
+#if defined(IGC_DEBUG_VARIABLES)
+			if (success)
+			{
+				LoadRegistryKeys();
+			}
+#endif
 
 			if (!success)
 			{
@@ -1007,6 +1048,43 @@ namespace TC
 				&args,
 				exceptString);
 			bool successTC = TranslateClang(&args, pOutputArgs, exceptString, pInputArgs->pInternalOptions);
+
+#if defined(IGC_DEBUG_VARIABLES)
+			if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+			{
+
+				// Works for all OSes. Creates dir if necessary.
+				const char *pOutputFolder = IGC::Debug::GetShaderOutputFolder();
+				stringstream ss;
+				char* pBuffer = (char *)pInputArgs->pInput;
+				UINT  bufferSize = pInputArgs->InputSize;
+
+				// Create hash based on cclang binary output (currently llvm binary; later also spirv).
+				// Hash computed in fcl needs to be same as the one computed in igc.
+				// This is to ensure easy matching .cl files dumped in fcl with .ll/.dat/.asm/... files dumoed in igc.
+				QWORD hash = iSTD::Hash(reinterpret_cast<const DWORD *>(pOutputArgs->pOutput), int_cast<DWORD>(pOutputArgs->OutputSize) / 4);
+
+				ss << pOutputFolder;
+				ss << "OCL_"
+					<< "asm"
+					<< std::hex
+					<< std::setfill('0')
+					<< std::setw(sizeof(hash) * CHAR_BIT / 4)
+					<< hash
+					<< std::dec
+					<< std::setfill(' ')
+					<< ".cl";
+
+				FILE* pFile = NULL;
+				fopen_s(&pFile, ss.str().c_str(), "wb");
+				if (pFile)
+				{
+					fwrite(pBuffer, 1, bufferSize - 1, pFile);
+					fclose(pFile);
+				}
+			}
+#endif
+
 			if (exceptString.empty())
 			{
 				return successTC;

@@ -58,7 +58,7 @@ namespace TC
         bool NeedExtraPassesAfterAlwaysInlinerPass() const { return true; }
         bool enableVISAPreRAScheduler() const override { return true; }
 
-
+        bool NeedWAToTransformA32MessagesToA64() const override{ return true; }
         bool WALoadStorePatternMatch() const override { return true; }
         bool WADisableCustomPass() const override { return true; }
         bool WAEnableMemOpt2ForOCL() const override { return true; }

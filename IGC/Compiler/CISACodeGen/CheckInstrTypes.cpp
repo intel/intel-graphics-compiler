@@ -255,8 +255,7 @@ void CheckInstrTypes::visitStoreInst(StoreInst &I)
     g_InstrTypes->numInsts++;
     g_InstrTypes->hasLoadStore = true;
     uint as = I.getPointerAddressSpace();
-    BufferType bufType = GetBufferType(as);
-    if (bufType != BUFFER_TYPE_UNKNOWN)
+    if(as != ADDRESS_SPACE_PRIVATE)
     {
         g_InstrTypes->psHasSideEffect = true;
     }

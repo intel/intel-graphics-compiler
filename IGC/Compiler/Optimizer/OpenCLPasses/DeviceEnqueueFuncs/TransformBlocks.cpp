@@ -965,6 +965,21 @@ namespace //Anonymous
         }
     };
 
+    class KernelMaxWorkGroupSizeCall : public CallHandler
+    {
+    public:
+        explicit KernelMaxWorkGroupSizeCall(DeviceExecCallArgs* call) : CallHandler(call)
+        {}
+
+        virtual llvm::Value* getNewValue(const Dispatcher* dispatcher) override
+        {
+            const auto newName = "__builtin_IB_get_max_workgroup_size";
+            auto calledFunction = _deviceExecCall->getCalledFunction();
+            if (calledFunction == nullptr) report_fatal_error("indirect calls are not supported");
+            return CreateNewCall(newName, calledFunction->getReturnType(), {});
+        }
+    };
+
     //////////////////////////////////////////////////////////////////////////
     /// Handle get_kernel_sub_group_count_for_ndrange() call
     //////////////////////////////////////////////////////////////////////////
@@ -1651,7 +1666,7 @@ namespace //Anonymous
             },
             {
                 FNAME_WORK_GROUP_SIZE_IMPL,
-                [](llvm::CallInst& call, DataContext& dm) { return new KernelSubGroupSizeCall(new ObjCBlockCallArgs(call, dm)); }
+                [](llvm::CallInst& call, DataContext& dm) { return new KernelMaxWorkGroupSizeCall(new ObjCBlockCallArgs(call, dm)); }
             },
             {
                 FNAME_SUB_GROUP_COUNT_FOR_NDRANGE,

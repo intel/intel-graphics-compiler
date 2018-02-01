@@ -2117,9 +2117,13 @@ igc_arch_get_cpu(_cpuSuffix "${IGC_OPTION__ARCHITECTURE_TARGET}")
 if(NOT DEFINED IGC_OPTION__OUTPUT_DIR)
 set(IGC_OPTION__OUTPUT_DIR "${IGC_SOURCE_DIR}/../../dump${_cpuSuffix}/igc" CACHE PATH "Output directory path where the final libraries will be stored.")
 endif()
+get_filename_component(IGC_OPTION__OUTPUT_DIR ${IGC_OPTION__OUTPUT_DIR} ABSOLUTE)
 set(USC_OPTION__OUTPUT_DIR "${IGC_SOURCE_DIR}/../../dump${_cpuSuffix}/usc" CACHE PATH "Output directory path where the final USC libraries will be stored.")
 unset(_cpuSuffix)
 
+if(NOT DEFINED IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
+    set(IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS OFF)
+endif()
 
 set(IGC_OPTION__COMPILE_LINK_ALLOW_UNSAFE_SIZE_OPT ON CACHE BOOL "Compile/link: Allow unsafe size optimization like --gc-sections.")
 mark_as_advanced(IGC_OPTION__COMPILE_LINK_ALLOW_UNSAFE_SIZE_OPT)

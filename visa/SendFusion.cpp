@@ -43,7 +43,11 @@ namespace vISA
             // Control if one pair of two sends should be considered for
             // fusion. If their distance (#instructions) is greater than
             // SEND_FUSION_MAX_SPAN, it will not be fused.
-            SEND_FUSION_MAX_SPAN = 40
+            SEND_FUSION_MAX_SPAN = 40,
+
+			// Control how many instructions except send itself need to
+			// be moved in order to move two sends together for fusion.
+			SEND_FUSION_MAX_INST_TOBEMOVED = 4
         };
 
         FlowGraph* CFG;
@@ -62,15 +66,36 @@ namespace vISA
         // Flag var used within each BB (1 Type_UW).
         G4_INST* FlagDefPerBB;
 
+		// InstToBeSinked[]/InstToBeHoisted[] keeps all instructions
+		// that would be moved in order to keep two sends together
+		// for fusion. Note that the 1st entry is the send instruction
+		// to be moved (so the size has +1).
+		int numToBeSinked;
+		int numToBeHoisted;
+		G4_INST* InstToBeSinked [SEND_FUSION_MAX_INST_TOBEMOVED+1];
+		G4_INST* InstToBeHoisted[SEND_FUSION_MAX_INST_TOBEMOVED+1];
+
+		//
+		// For Both doSink() and doHoist(), all instructions to be moved
+		// are within range (StartIT, EndIT), not including StartIT and EndIT.
+		// All iterators (StartIT, EndIT, InsertBeforePos) remain valid.
+		// 
+		// Note that those iterators are for instructions in CurrBB.
+		void doSink(INST_LIST_ITER StartIT, INST_LIST_ITER EndIT,
+			        INST_LIST_ITER InsertBeforePos);
+		void doHoist(INST_LIST_ITER StartIT, INST_LIST_ITER EndIT,
+			         INST_LIST_ITER InsertBeforePos);
+		
+
         // If this optimization does any change to the code, set it to true.
         bool changed;
 
         // Check if this instruction is a candidate, might do simplification.
         // Return true if it is an candidate for send fusion.
         bool simplifyAndCheckCandidate(INST_LIST_ITER Iter);
-        bool canFusion(INST_LIST_ITER It0, INST_LIST_ITER It1);
+        bool canFusion(INST_LIST_ITER IT0, INST_LIST_ITER IT1);
         void doFusion(
-            INST_LIST_ITER IT0, INST_LIST_ITER IT1, INST_LIST_ITER InsertBeforePos);
+            INST_LIST_ITER IT0, INST_LIST_ITER IT1, bool IsSink);
 
         // Common function for canSink()/canHoist(). It checks if
         // StartIT can sink to EndIT or EndIT can hoist to StartIT
@@ -84,7 +109,7 @@ namespace vISA
         }
 
         // Return true if IT can be hoisted to hostToIT.
-        bool canHoist(INST_LIST_ITER IT, INST_LIST_ITER hoistAfterIT) {
+        bool canHoist(INST_LIST_ITER hoistAfterIT, INST_LIST_ITER IT) {
             return canMoveOver(hoistAfterIT, IT, false);
         }
 
@@ -504,12 +529,16 @@ bool SendFusion::canFusion(INST_LIST_ITER IT0, INST_LIST_ITER IT1)
 //   Check if StartIT can sink to EndIT (right before EndIT) :  isForward == true.
 //   Check if EndIT can hoist to StartIT (right after StartIT) : isForward == false.
 // Return true if so, false otherwise.
-// 
-// Note that since StartIT and EndIT should be independent upon each other, their
-// order (which one goes first) does not matter.
 bool SendFusion::canMoveOver(
     INST_LIST_ITER StartIT, INST_LIST_ITER EndIT, bool isForward)
 {
+	if (isForward) {
+		numToBeSinked = 0;
+	}
+	else {
+		numToBeHoisted = 0;
+	}
+
     G4_INST* Inst_first = *StartIT;
     G4_INST* Inst_last = *EndIT;
     if (Inst_first == Inst_last) {
@@ -526,23 +555,145 @@ bool SendFusion::canMoveOver(
 
     bool movable = true;
     G4_INST* moveInst = (isForward ? Inst_first : Inst_last);
+	G4_INST* destSend = (isForward ? Inst_last  : Inst_first);
     INST_LIST_ITER II = (isForward ? StartIT : EndIT);
     INST_LIST_ITER IE = (isForward ? EndIT : StartIT);
+
+	// Note that the send instruction is the 1st entry.
+	int numToBeMoved = 1;
+	G4_INST** toBeMoved = isForward ? InstToBeSinked : InstToBeHoisted;
+	toBeMoved[0] = moveInst;
+
     for (isForward ? ++II : --II;
          II != IE;
          isForward ? ++II : --II)
     {
        G4_INST* tmp = *II;
-       if (moveInst->isWARdep(tmp) ||
-           moveInst->isWAWdep(tmp) ||
-           moveInst->isRAWdep(tmp))
-       {
-           // there is dependence, cannot move.
-           movable = false;
-           break;
-       }
+	   for (int i = 0; i < numToBeMoved; ++i)
+	   {
+		   G4_INST *instToBeMoved = toBeMoved[i];
+		   if (instToBeMoved->isWARdep(tmp) ||
+			   instToBeMoved->isWAWdep(tmp) ||
+			   instToBeMoved->isRAWdep(tmp))
+		   {
+			   movable = false;
+		   }
+
+		   if (!movable)
+		   {
+			   if (numToBeMoved <= SEND_FUSION_MAX_INST_TOBEMOVED &&
+				   !tmp->isWARdep(destSend) &&
+				   !tmp->isWAWdep(destSend) &&
+				   !tmp->isRAWdep(destSend))
+			   {
+				   movable = true;
+				   toBeMoved[numToBeMoved] = tmp;
+				   ++numToBeMoved;
+			   }
+			   break;
+		   }
+	   }
+	   if (!movable)
+	   {
+		   break;
+	   }
     }
+
+	if (movable)
+	{
+		if (isForward)
+		{
+			numToBeSinked = numToBeMoved;
+		}
+		else
+		{
+			numToBeHoisted = numToBeMoved;
+		}
+	}
     return movable;
+}
+
+// doSink() sinks instructions InstToBeSinked[1 : numToBeSinked-1].
+//
+// Note that StartIT, EndIT, and InsertBeforePos remain valid after
+// invoking this function.
+void SendFusion::doSink(
+	INST_LIST_ITER StartIT, INST_LIST_ITER EndIT, INST_LIST_ITER InsertBeforePos)
+{
+	if (numToBeSinked > 1)
+	{
+		int j = 1;
+		G4_INST *Inst = InstToBeSinked[j];
+		for (INST_LIST_ITER IT = StartIT; IT != EndIT; )
+		{
+			G4_INST *tmp = *IT;
+			if (tmp == Inst) {
+				INST_LIST_ITER tmpIT = IT;
+				++IT;
+				CurrBB->instList.erase(tmpIT);
+
+				++j;
+				if (j == numToBeSinked)
+				{
+					break;
+				}
+				Inst = InstToBeSinked[j];
+			}
+			else {
+				++IT;
+			}
+		}
+		assert(j == numToBeSinked &&
+			"Internal Error(SendFusion) : Instructions not in the list!");
+
+		for (int i = 1; i < numToBeSinked; ++i)
+		{
+			CurrBB->instList.insert(InsertBeforePos, InstToBeSinked[i]);
+		}
+	}
+}
+
+// InstToBeHoisted[numToBeHosted-1 : 1] has instructions to be hoisted
+// in the reverse order. Thus InstToBeHoisted[numToBeHoisted-1] will
+// appear first, then InstToBeHoisted[numToBeHoisted-2], ..., and finally,
+// InstToBeHoisted[1].
+//
+// Note that StartIT, EndIT, and InsertBeforePos remain valid after
+// invoking this function.
+void SendFusion::doHoist(
+	INST_LIST_ITER StartIT, INST_LIST_ITER EndIT, INST_LIST_ITER InsertBeforePos)
+{
+    if (numToBeHoisted > 1)
+	{
+		int j = numToBeHoisted-1;
+		G4_INST *Inst = InstToBeHoisted[j];
+		for (INST_LIST_ITER IT = StartIT; IT != EndIT; )
+		{
+			G4_INST *tmp = *IT;
+			if (tmp == Inst) {
+				INST_LIST_ITER tmpIT = IT;
+				++IT;
+				CurrBB->instList.erase(tmpIT);
+
+				--j;
+				if (j == 0)
+				{
+					break;
+				}
+				Inst = InstToBeHoisted[j];
+			}
+			else {
+				++IT;
+			}
+		}
+		assert(j == 0 &&
+			"Internal Error(SendFusion) : Instructions not in the list!");
+
+		for (int i = numToBeHoisted - 1; i > 0; --i)
+		{
+			CurrBB->instList.insert(InsertBeforePos, InstToBeHoisted[i]);
+		}
+	}
 }
 
 // Packing payload:
@@ -846,8 +997,11 @@ void SendFusion::createFlagPerBB(INST_LIST* InsertList, INST_LIST_ITER InsertBef
     Inst1->addDefUse(FlagDefPerBB, Opnd_src0);
 }
 
+// Fuse IT0 and IT1, where IT0 precedes IT1 in the same BB.
+// IsSink : true  -> IT0 moves to IT1;
+//          false -> IT1 moves to IT0
 void SendFusion::doFusion(
-    INST_LIST_ITER IT0, INST_LIST_ITER IT1, INST_LIST_ITER InsertBeforePos)
+    INST_LIST_ITER IT0, INST_LIST_ITER IT1, bool IsSink)
 {
     // This function does the following:
     //    Given the following two sends:
@@ -879,6 +1033,7 @@ void SendFusion::doFusion(
 
     G4_INST* I0 = *IT0;
     G4_INST* I1 = *IT1;
+	INST_LIST_ITER InsertBeforePos = IsSink ? IT1 : IT0;
 
     // Use I0 as both I0 and I1 have the same properties
     G4_SendMsgDescriptor* desc = I0->getMsgDesc();
@@ -895,15 +1050,15 @@ void SendFusion::doFusion(
             // Note that if dispatch mask is modified in the shader, the DMaskUD
             // will need to be saved right after each modification.
             G4_BB* entryBB = CFG->getEntryBB();
-            INST_LIST_ITER insertBeforePos = entryBB->instList.begin();
+            INST_LIST_ITER beforePos = entryBB->instList.begin();
 
             // Skip the label if present (only first inst can be label).
-            if (insertBeforePos != entryBB->instList.end() &&
-                (*insertBeforePos)->isLabel())
+            if (beforePos != entryBB->instList.end() &&
+                (*beforePos)->isLabel())
             {
-                ++insertBeforePos;
+                ++beforePos;
             }
-            createDMask(&(entryBB->instList), insertBeforePos);
+            createDMask(&(entryBB->instList), beforePos);
         }
 
         if (FlagDefPerBB == nullptr)
@@ -959,6 +1114,30 @@ void SendFusion::doFusion(
     uint32_t newFC = (ExecSize < 8 ? desc->getFuncCtrl()
 		                           : getFuncCtrlWithSimd16(desc));
 
+	// In general, we have the following 
+	//       send0       <-- IT0
+	//        <O0>       <-- other instruction (no dep with send0/send1)
+	//       <DepInst>   <-- ToBeSinked/ToBeHoisted
+	//        <O1>       <-- other instruction (no dep with send0/send1)
+	//       send1       <-- IT1
+	//  which is translated into:
+	//
+	//    sink:    InsertBeforePos = IT1 (send1)
+	//           <O0>
+	//           <O1>
+	//           <packing>         <-- packPayload()
+	//           new_send
+	//           <unpacking>       <-- unpackPayload()
+	//           <DepInst>         <-- doSink()
+	//
+	//   hoist:  InsertBeforePos = IT0 (send0)
+	//           <DepInst>         <-- doHoist()
+	//           <packing>         <-- packPayload()
+	//           new_send
+	//           <unpacking>       <-- unpackPayload()
+	//           <O0>
+	//           <O1>
+
     // Special case of two reads whose payloads can be concatenated using split send.
     if (!isSplitSend && ExecSize == 8 && rspLen > 0 && (msgLen == 1))
     {
@@ -980,7 +1159,12 @@ void SendFusion::doFusion(
             Pred, G4_sends, 16, Dst, Src0, Src1,
             Builder->createImm(newDesc->getDesc(), Type_UD),
             InstOpt_WriteEnable, newDesc, nullptr, 0);
-        CurrBB->instList.insert(InsertBeforePos, sendInst);
+
+		if (!IsSink)
+		{   // move depInst first if doing hoisting
+			doHoist(IT0, IT1, InsertBeforePos);
+		}
+		CurrBB->instList.insert(InsertBeforePos, sendInst);
 
         // Update DefUse
         if (Pred)
@@ -992,6 +1176,11 @@ void SendFusion::doFusion(
 
         // Unpack the result
         unpackPayload(sendInst, I0, I1, CurrBB->instList, InsertBeforePos);
+
+		if (IsSink) {
+			// sink dep instructions
+			doSink(IT0, IT1, InsertBeforePos);
+		}
 
         // Delete I0 and I1 and updating defuse info
         CurrBB->instList.erase(IT0);
@@ -1047,6 +1236,11 @@ void SendFusion::doFusion(
             newDesc);
     }
 
+	if (!IsSink) {
+		// Hoisting dep instructions first
+		doHoist(IT0, IT1, InsertBeforePos);
+	}
+
     // For messages we handle here, payloads are packing/unpacking
 	// in an interleaving way.
     packPayload(sendInst, I0, I1, CurrBB->instList, InsertBeforePos);
@@ -1063,6 +1257,11 @@ void SendFusion::doFusion(
         // Unpack the result
         unpackPayload(sendInst, I0, I1, CurrBB->instList, InsertBeforePos);
     }
+
+	if (IsSink) {
+		// Sink dep instructions
+		doSink(IT0, IT1, InsertBeforePos);
+	}
 
     // Delete I0 and I1 and updating defUse info
     I0->removeAllUses();
@@ -1139,18 +1338,27 @@ bool SendFusion::run(G4_BB* BB)
         // At this point, inst0 and inst1 are the pair that can be fused.
         // Now, check if they can be moved to the same position.
         bool sinkable = canSink(II0, II1);
-        if (!sinkable && !canHoist(II1, II0)) {
+		bool hoistable = false;
+		if (!sinkable || numToBeSinked > 1)
+		{
+			hoistable = canHoist(II0, II1);
+			if (sinkable && hoistable && numToBeHoisted < numToBeSinked)
+			{   // Hoisting as it moves less instructions
+				sinkable = false;
+			}
+		}
+        if (!sinkable && !hoistable)
+		{   // Neither sinkable nor hoistable, looking for next candidates.
             II0 = II1;
             continue;
         }
-        INST_LIST_ITER insertPos = sinkable ? II1 : II0;
 
         // Perform fusion (either sink or hoist). It also delete
         // II0 and II1 after fusion. Thus, need to save ++II1
         // before invoking doFusion() for the next iteration.
         INST_LIST_ITER next_II = II1;
         ++next_II;
-        doFusion(II0, II1, insertPos);
+        doFusion(II0, II1, sinkable);
 
         changed = true;
         II0 = next_II;

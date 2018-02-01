@@ -2927,8 +2927,17 @@ void Optimizer::reassociateConst()
                     // can't sink source if def overwrites it
                     return false;
                 }
+                // additionally check for the use inst that dst type size is >= src type size
+                // otherwise the first add may truncate upper bits due to overflow,
+                // which makes reassociation unsafe
+                if (getTypeSize(useSrc->getType()) < getTypeSize(use->getDst()->getType()))
+                {
+                    return false;
+                }
+
                 return true;
             };
+
             if (isGoodSrc0Def(src0Def, inst) && !chkFwdOutputHazard(src0Def, iter))
             {
                 //std::cout << "reassociate: \n";
@@ -2977,79 +2986,79 @@ G4_Imm* Optimizer::foldConstVal(G4_Imm* const1, G4_Imm* const2, G4_opcode op)
     G4_Type src0T = const1->getType(), src1T = const2->getType(), resultType = src0T;
 
     if (op == G4_add || op == G4_mul || op == G4_and)
+    {
+        resultType = findConstFoldCommonType(src0T, src1T);
+        if (resultType == Type_UNDEF)
         {
-            resultType = findConstFoldCommonType( src0T, src1T );
-            if (resultType == Type_UNDEF)
-            {
             return nullptr;
-            }
-
-            int64_t res;
-        switch (op)
-            {
-            case G4_add:
-            res = (int64_t)(const1->getInt()) + (int64_t)(const2->getInt());
-                break;
-
-            case G4_mul:
-            res = (int64_t)(const1->getInt()) * (int64_t)(const2->getInt());
-                break;
-
-            case G4_and:
-            res = (int64_t)(const1->getInt()) & (int64_t)(const2->getInt());
-                break;
-
-            default:
-            return nullptr;
-            }
-
-            // result type is either D or UD
-            // don't fold if the value overflows D/UD
-            if (!G4_Imm::isInTypeRange(res, resultType))
-            {
-            return nullptr;
-            }
-        return builder.createImmWithLowerType(res, resultType);
         }
-        else
+
+        int64_t res;
+        switch (op)
         {
+        case G4_add:
+            res = (int64_t)(const1->getInt()) + (int64_t)(const2->getInt());
+            break;
+
+        case G4_mul:
+            res = (int64_t)(const1->getInt()) * (int64_t)(const2->getInt());
+            break;
+
+        case G4_and:
+            res = (int64_t)(const1->getInt()) & (int64_t)(const2->getInt());
+            break;
+
+        default:
+            return nullptr;
+        }
+
+        // result type is either D or UD
+        // don't fold if the value overflows D/UD
+        if (!G4_Imm::isInTypeRange(res, resultType))
+        {
+            return nullptr;
+        }
+        return builder.createImmWithLowerType(res, resultType);
+    }
+    else
+    {
         uint32_t shift = const2->getInt() & 0x1f;
 
         if (op == G4_shl || op == G4_shr)
-            {
+        {
             uint32_t value = (uint32_t)const1->getInt();
-                // set result type to D/UD as it may overflow W. If the value fits the type will be lowered later
-                // source type matters here since it affects sign extension
-                resultType = IS_SIGNED_INT(resultType) ? Type_D : Type_UD;
+            // set result type to D/UD as it may overflow W. If the value fits the type will be lowered later
+            // source type matters here since it affects sign extension
+            resultType = IS_SIGNED_INT(resultType) ? Type_D : Type_UD;
             int64_t res = op == G4_shl ?
-                    ((int64_t) value) << shift :
-                    value >> shift;
-                if (!G4_Imm::isInTypeRange(res, resultType))
-                {
+                ((int64_t)value) << shift :
+                value >> shift;
+            if (!G4_Imm::isInTypeRange(res, resultType))
+            {
                 return nullptr;
-                }
+            }
 
             return builder.createImmWithLowerType(res, resultType);
-            }
+        }
 
         if (op == G4_asr)
+        {
+            if (IS_SIGNED_INT(resultType))
             {
-                if( IS_SIGNED_INT(resultType) )
-                {
                 int64_t value = const1->getInt();
-                    int64_t res = value >> shift;
+                int64_t res = value >> shift;
                 return builder.createImmWithLowerType(res, resultType);
-                }
-                else
-                {
+            }
+            else
+            {
                 uint64_t value = const1->getInt();
-                    uint64_t res = value >> shift;
+                uint64_t res = value >> shift;
                 return builder.createImmWithLowerType(res, resultType);
-                }
             }
         }
-    return nullptr;
     }
+    return nullptr;
+}
 
 
 

@@ -366,7 +366,7 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
 					updateArgInfo(arg, gepProducesPositivePointer);
 				}
             }
-            if (gepProducesPositivePointer &&
+            if ((gepProducesPositivePointer || m_hasBufferOffsetArg) &&
                 getOffsetFromGEP(F, GEPs, argNumber, arg->isImplicitArg(), offset))
             {
                 return true;

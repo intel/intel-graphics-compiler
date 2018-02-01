@@ -579,6 +579,9 @@ bool TranslateBuild(
     llvm::Module* pKernelModule = nullptr;
     LLVMContextWrapper* llvmContext = new LLVMContextWrapper;
     RegisterComputeErrHandlers(*llvmContext);
+
+	ShaderHash inputShHash = ShaderHashOCL((const UINT*)pInputArgs->pInput, pInputArgs->InputSize / 4);
+
     if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *llvmContext, inputDataFormatTemp))
     {
         return false;
@@ -615,7 +618,7 @@ bool TranslateBuild(
         deserialize(*oclContext.getModuleMetaData(), pKernelModule);
     }
 
-    oclContext.hash = ShaderHashOCL((const UINT*)pInputArgs->pInput, pInputArgs->InputSize / 4);
+	oclContext.hash = inputShHash;
     oclContext.annotater = nullptr;
 
     // Set default denorm.
