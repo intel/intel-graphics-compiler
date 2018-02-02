@@ -370,7 +370,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     m_currShader->SetShaderSpecificHelper(this);
     m_currShader->SetDataLayout(m_DL);
     m_currShader->SetFunctionGroupAnalysis(m_FGA);
-	m_currShader->SetPushInfoHelper(&(m_moduleMD->pushInfo));
+    m_currShader->SetPushInfoHelper(&(m_moduleMD->pushInfo));
     if(IGC_IS_FLAG_DISABLED(DisableDeSSA))
     {
         m_currShader->SetDeSSAHelper(m_deSSA);
