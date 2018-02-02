@@ -542,6 +542,7 @@ TimeStats::TimeStats()
     std::fill(std::begin(m_wallclockStart), std::end(m_wallclockStart), 0);
     std::fill(std::begin(m_elapsedTime),    std::end(m_elapsedTime),    0);
     std::fill(std::begin(m_hitCount),       std::end(m_hitCount),       0);
+    m_freq = iSTD::GetTimestampFrequency();
 }
 
 void TimeStats::recordVISATimers()
@@ -566,13 +567,13 @@ void TimeStats::recordTimerEnd( COMPILE_TIME_INTERVALS compileInterval )
     m_hitCount[ compileInterval ]++;
 }
 
-QWORD TimeStats::getCompileTime( COMPILE_TIME_INTERVALS compileInterval ) const
+uint64_t TimeStats::getCompileTime( COMPILE_TIME_INTERVALS compileInterval ) const
 {
     assert( compileInterval >= 0 && compileInterval < MAX_COMPILE_TIME_INTERVALS );
     return m_elapsedTime[ compileInterval ];
 }
 
-QWORD TimeStats::getCompileHit( COMPILE_TIME_INTERVALS compileInterval ) const
+uint64_t TimeStats::getCompileHit( COMPILE_TIME_INTERVALS compileInterval ) const
 {
     assert( compileInterval >= 0 && compileInterval < MAX_COMPILE_TIME_INTERVALS );
     return m_hitCount[ compileInterval ];
@@ -648,7 +649,7 @@ bool TimeStats::skipTimer( int i ) const
 void TimeStats::printSumTimeCSV(const char* outputFile) const
 {
     assert( m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object" );
-    QWORD frequency = iSTD::GetTimestampFrequency();
+    uint64_t frequency = iSTD::GetTimestampFrequency();
 
     bool fileExist = 0;
 
@@ -663,7 +664,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
 
     if( !fileExist && fileName )
     {
-        fprintf(fileName, "Frequency,%llu\n\n", frequency );
+        fprintf(fileName, "Frequency,%ju\n\n", frequency );
 
         fprintf(fileName, "corpus name,shader count,");
         for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
@@ -685,7 +686,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
         {
             if( !skipTimer( i ) )
             {
-                fprintf(fileName, "%lld,", getCompileTime(static_cast<COMPILE_TIME_INTERVALS>(i)) );
+                fprintf(fileName, "%jd,", getCompileTime(static_cast<COMPILE_TIME_INTERVALS>(i)) );
             }
         }
         fprintf(fileName, "\n");
@@ -713,7 +714,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
             fprintf(fileName, "hit,," );
             for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
             {
-                fprintf(fileName, "%llu,", m_hitCount[i] );
+                fprintf(fileName, "%ju,", m_hitCount[i] );
             }
             fprintf(fileName, "\n");
         }
@@ -749,7 +750,7 @@ namespace {
 void TimeStats::printSumTimeTable( llvm::raw_ostream & OS ) const
 {
     assert( m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object" );
-    QWORD frequency = iSTD::GetTimestampFrequency();
+    uint64_t frequency = iSTD::GetTimestampFrequency();
 
     llvm::formatted_raw_ostream FS(OS);
 
@@ -784,7 +785,7 @@ void TimeStats::printSumTimeTable( llvm::raw_ostream & OS ) const
         const COMPILE_TIME_INTERVALS interval = static_cast<COMPILE_TIME_INTERVALS>(i);
         if (!skipTimer(i))
         {
-            const QWORD intervalTicks = getCompileTime(interval);
+            const uint64_t intervalTicks = getCompileTime(interval);
             if (intervalTicks)
             {
                 FS.PadToColumn(startCol).indent(2 * parentIntervalDepth(interval))
@@ -807,7 +808,7 @@ void TimeStats::printSumTimeTable( llvm::raw_ostream & OS ) const
 void TimeStats::printTimeCSV( std::string const& corpusName ) const
 {
     assert( m_isPostProcessed && "Print functions should only be called on a Post-Processed TimeStats object" );
-    QWORD frequency = iSTD::GetTimestampFrequency();
+    uint64_t frequency = iSTD::GetTimestampFrequency();
 
     const std::string outputFilePath = std::string("c:\\Intel\\") + "TimeStat_" + IGC::Debug::GetShaderCorpusName() + ".csv";
     const char *outputFile = outputFilePath.c_str();
@@ -825,7 +826,7 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
 
     if( !fileExist )
     {
-        fprintf(fileName, "Frequency:%llu,", frequency );
+        fprintf(fileName, "Frequency:%ju,", frequency );
         for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
         {
             if( !skipTimer(i) )
@@ -842,7 +843,7 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
         if( !skipTimer(i) )
         {
             const COMPILE_TIME_INTERVALS interval = static_cast<COMPILE_TIME_INTERVALS>(i);
-            fprintf(fileName, "%lld,", getCompileTime( interval ) );
+            fprintf(fileName, "%jd,", getCompileTime( interval ) );
         }
     }
 
@@ -854,7 +855,7 @@ TimeStats TimeStats::postProcess() const
 {
     TimeStats copy(*this);
 
-    QWORD childSum[MAX_COMPILE_TIME_INTERVALS+1];
+    uint64_t childSum[MAX_COMPILE_TIME_INTERVALS+1];
     std::fill( std::begin(childSum), std::end(childSum), 0 );
 
     for (int i=0; i <MAX_COMPILE_TIME_INTERVALS; ++i)

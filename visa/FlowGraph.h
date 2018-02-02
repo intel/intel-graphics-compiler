@@ -1271,6 +1271,8 @@ public:
     unsigned int calleeSaveStart();
     static unsigned int getNumScratchRegs() { return 3; }
     unsigned int getNumCalleeSaveRegs();
+
+    void renameAliasDeclares();
 };
 
 class SCCAnalysis

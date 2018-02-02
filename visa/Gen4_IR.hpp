@@ -1927,6 +1927,12 @@ public:
         regVar = rv;
     }
 
+    // caller manages the name str
+    void setName(const char* newName)
+    {
+        name = newName;
+    }
+
     unsigned int getByteSize() const { return numElements * getElemSize(); }
 
     unsigned int getWordSize()

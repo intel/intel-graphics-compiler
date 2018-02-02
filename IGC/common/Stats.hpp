@@ -27,8 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // turn on/off GET_TIME_STATS and GET_SHADER_STATS for the reports.
 
+#define GET_TIME_STATS 1
+
 #if defined( _INTERNAL ) || defined( _DEBUG )
-    #define GET_TIME_STATS 1
     #define GET_SHADER_STATS 1
     #define PRINT_PER_SHADER_STATS 1
     #define PRINT_DETAIL_SHADER_STATS 0
@@ -229,9 +230,9 @@ public:
     void recordTimerEnd( COMPILE_TIME_INTERVALS compileInterval );
 
     /// Get the total elapsed time recorded for a particular timer
-    QWORD getCompileTime( COMPILE_TIME_INTERVALS compileInterval ) const;
+    uint64_t getCompileTime( COMPILE_TIME_INTERVALS compileInterval ) const;
     /// Get the number of times a particular timer was triggered
-    QWORD getCompileHit( COMPILE_TIME_INTERVALS compileInterval ) const;
+    uint64_t getCompileHit( COMPILE_TIME_INTERVALS compileInterval ) const;
 
     /// Print the accumulated times for a single shader
     void printTime( ShaderType type, ShaderHash hash ) const;
@@ -240,6 +241,13 @@ public:
 
     /// Add other's statistics to this
     void sumWith( const TimeStats* pOther );
+
+    /// Get the time elapsed in nanoseconds
+    uint64_t getCompileTimeNS(COMPILE_TIME_INTERVALS compileInterval) const
+    {
+        return uint64_t(getCompileTime(compileInterval) /
+                (double)m_freq * 1000000000.0);
+    }
 
 private:
     /// \deprecated Print aggregate times for multiple shaders in csv format
@@ -257,12 +265,17 @@ private:
 
     bool  m_isPostProcessed;                              //!< Have the Unaccounted timers been calculated yet?
     int   m_totalShaderCount;                             //!< Total number of shaders for which time stats have been recorded
-    QWORD m_wallclockStart[MAX_COMPILE_TIME_INTERVALS];   //!< Most recent starting time of the timer
-    QWORD m_elapsedTime[MAX_COMPILE_TIME_INTERVALS];      //!< Running total of time measured by the timer
-    QWORD m_hitCount[MAX_COMPILE_TIME_INTERVALS];         //!< Number of times a timer was started
+    uint64_t m_wallclockStart[MAX_COMPILE_TIME_INTERVALS];   //!< Most recent starting time of the timer
+    uint64_t m_elapsedTime[MAX_COMPILE_TIME_INTERVALS];      //!< Running total of time measured by the timer
+    uint64_t m_hitCount[MAX_COMPILE_TIME_INTERVALS];         //!< Number of times a timer was started
+    uint64_t m_freq;
 };
 
-#   define COMPILER_TIME_START( pointer, compileTimeInterval ) \
+#define COMPILER_TIME_GETNS(pointer, timerName) \
+    ((pointer) && (pointer)->m_compilerTimeStats) ? \
+        (pointer)->m_compilerTimeStats->getCompileTimeNS(timerName) : 0
+
+#define COMPILER_TIME_START( pointer, compileTimeInterval ) \
     do \
     { \
         if( (pointer) && (pointer)->m_compilerTimeStats ) \
@@ -270,7 +283,7 @@ private:
             (pointer)->m_compilerTimeStats->recordTimerStart( compileTimeInterval );  \
         } \
     } while (0)
-#   define COMPILER_TIME_END( pointer, compileTimeInterval ) \
+#define COMPILER_TIME_END( pointer, compileTimeInterval ) \
     do \
     { \
         if( (pointer) && (pointer)->m_compilerTimeStats ) \
@@ -279,7 +292,7 @@ private:
         } \
     } while (0)
 
-#   define COMPILER_TIME_SUM( pointerDst, pointerSrc ) \
+#define COMPILER_TIME_SUM( pointerDst, pointerSrc ) \
     do \
     { \
         if( (pointerSrc) && (pointerDst) && (pointerDst)->m_sumCompilerTimeStats ) \
@@ -288,7 +301,7 @@ private:
         } \
     } while (0)
 
-#   define COMPILER_TIME_SUM2( pointerDst, pointerSrc ) \
+#define COMPILER_TIME_SUM2( pointerDst, pointerSrc ) \
     do \
     { \
         if( (pointerDst) && (pointerSrc) ) \
@@ -297,7 +310,7 @@ private:
         } \
     } while (0)
 
-#    define COMPILER_TIME_SUM_PRINT( pointer ) \
+#define COMPILER_TIME_SUM_PRINT( pointer ) \
     do \
     { \
         if( (pointer) && (pointer)->m_sumCompilerTimeStats ) \
@@ -309,19 +322,16 @@ private:
         } \
     } while (0)
 
-#   define COMPILER_TIME_INIT( pointer, statName ) \
-    do \
-    { \
-        (pointer)->statName  = nullptr; \
-        if( ( IGC::Debug::GetDebugFlag( IGC::Debug::DebugFlag::TIME_STATS_SUM ) || \
-              IGC::Debug::GetDebugFlag( IGC::Debug::DebugFlag::TIME_STATS_PER_SHADER ) ) && \
-            (pointer) && (pointer)->statName == nullptr ) \
-        { \
-            (pointer)->statName = new TimeStats(); \
-        } \
+#define COMPILER_TIME_INIT( pointer, statName )     \
+    do                                              \
+    {                                               \
+        if (pointer)                                \
+        {                                           \
+            (pointer)->statName = new TimeStats();  \
+        }                                           \
     } while (0)
 
-#   define COMPILER_TIME_DEL( pointer, statName ) \
+#define COMPILER_TIME_DEL( pointer, statName ) \
     do \
     { \
         if( pointer) \
@@ -331,14 +341,14 @@ private:
         } \
     } while (0)
 
-#   define COMPILER_TIME_DEL_NON_NULL( pointer, statName ) \
+#define COMPILER_TIME_DEL_NON_NULL( pointer, statName ) \
     do \
     { \
         delete (pointer)->statName; \
         (pointer)->statName = nullptr; \
     } while (0)
 
-#   define COMPILER_TIME_PRINT( pointer, shaderType, shaderHash ) \
+#define COMPILER_TIME_PRINT( pointer, shaderType, shaderHash ) \
     do \
     { \
         if( (pointer) && (pointer)->m_compilerTimeStats ) \

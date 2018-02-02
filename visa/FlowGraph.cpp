@@ -866,6 +866,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
 {
     MUST_BE_TRUE(!instlist.empty(), ERROR_SYNTAX("empty instruction list"));
 
+    pKernel->renameAliasDeclares();
     //
     // The funcInfoHashTable maintains a map between the id of the function's INIT block
     // to its FuncInfo definition.
@@ -5771,6 +5772,35 @@ void G4_Kernel::use64BitFESP()
     }
 
     fg.builder->set64BitFEStackVars();
+}
+
+//
+// rename non-root declares to their root decl name to make
+// it easier to read IR dump
+//
+void G4_Kernel::renameAliasDeclares()
+{
+#if _DEBUG
+    for (auto dcl : Declares)
+    {
+        if (dcl->getAliasDeclare())
+        {
+            uint32_t offset = 0;
+            G4_Declare* rootDcl = dcl->getRootDeclare(offset);
+            std::string newName(rootDcl->getName());
+            if (rootDcl->getElemType() != dcl->getElemType())
+            {
+                newName += "_";
+                newName += G4_Type_Table[dcl->getElemType()].str;
+            }
+            if (offset != 0)
+            {
+                newName += "_" + offset;
+            }
+            dcl->setName(fg.builder->getNameString(fg.mem, 64, newName.c_str()));
+        }
+    }
+#endif
 }
 
 void gtPinData::markInsts()
