@@ -903,9 +903,10 @@ public:
     }
 
     // create a new temp GRF with the specified type/size and undefined regions
-    G4_Declare* createTempVar(unsigned int numElements, G4_Type type, G4_Align align, G4_SubReg_Align subAlign, const char* prefix = "TV" )
+    G4_Declare* createTempVar(unsigned int numElements, G4_Type type, G4_Align align, G4_SubReg_Align subAlign, const char* prefix = "TV", bool appendIdToName = true )
     {
-        char* name = getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++);
+        char* name = appendIdToName ? getNameString(mem, 20, "%s%d", prefix, num_temp_dcl++) :
+            getNameString(mem, 20, "%s", prefix);
 
         unsigned short dcl_width = 0, dcl_height = 1;
         int totalByteSize = numElements * G4_Type_Table[type].byteSize;

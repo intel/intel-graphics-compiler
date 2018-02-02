@@ -1069,6 +1069,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(accSubPostSchedule,      vISA_accSubstitution,         TIMER_OPTIMIZER);
     INITIALIZE_PASS(dce,                     vISA_EnableDCE,               TIMER_OPTIMIZER);
     INITIALIZE_PASS(reassociateConst,        vISA_reassociate,             TIMER_OPTIMIZER);
+    INITIALIZE_PASS(split4GRFVars,           vISA_split4GRFVar,            TIMER_OPTIMIZER);  
 
     // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -1556,6 +1557,8 @@ int Optimizer::optimization()
 
     // Local Value Numbering
     runPass(PI_LVN);
+
+    runPass(PI_split4GRFVars);
 
     // PreRA scheduling
     runPass(PI_preRA_Schedule);
@@ -10142,7 +10145,8 @@ private:
 
         // Create such an alias if it does not exist yet.
         unsigned NElts = RootDcl->getByteSize() / G4_Type_Table[Ty].byteSize;
-        auto Alias = Builder.createTempVar(NElts, Ty, Either, Any);
+        auto Alias = Builder.createTempVar(NElts, Ty, Either, Any,
+            (std::string(RootDcl->getName()) + "_" + G4_Type_Table[Ty].str).c_str(), false);
         Alias->setAliasDeclare(RootDcl, 0);
         Aliases.push_back(Alias);
         return Alias;
@@ -10310,6 +10314,198 @@ void Optimizer::splitVariables()
     }
 
     // Cleanup.
+    for (auto DI : DclMap)
+    {
+        delete DI.second;
+    }
+}
+
+//
+// replacement of the above that can handle global variables
+// basically we split any 4GRF variables (they typically result from 
+// simd16 64-bit vars) into two half if
+// -- they are not address taken or used in send
+// -- none of the operands cross from the 2nd to the 3rd GRF
+// This is intended to give RA more freedom as the split variables do
+// not have to be allocated contiguously.
+// Note that this invalidates existing def-use chains
+//
+void Optimizer::split4GRFVars()
+{
+    std::unordered_set<G4_Declare*> varToSplit;
+    // map each split candidate to their replacement split variables
+    std::unordered_map<const G4_Declare *, DclMapInfo *> DclMap;
+
+    if (builder.getOptions()->getTarget() != VISA_3D)
+    {
+        return;
+    }
+
+    if (builder.getOption(vISA_Debug))
+    {
+        return;
+    }
+
+    // Only for simd16 and simd32.
+    if (kernel.getSimdSize() == 8)
+    {
+        return;
+    }
+
+    // first scan the decl list
+    for (auto dcl : kernel.Declares)
+    {
+        if (dcl->getAliasDeclare() == nullptr)
+        {
+            if (isCandidateDecl(dcl))
+            {
+                varToSplit.emplace(dcl);
+            }
+        }
+        else
+        {
+            // strictly speaking this condition is not necesary, but having
+            // no aliases that could point into a middle of the split candidate
+            // makes replacing the split var much easier. By construction the root 
+            // must appear before its alias decls
+            uint32_t offset = 0;
+            G4_Declare* rootDcl = dcl->getRootDeclare(offset);
+            if (offset != 0 && isCandidateDecl(rootDcl))
+            {
+                varToSplit.erase(rootDcl);
+            }
+        }
+    }
+
+    if (varToSplit.empty())
+    {
+        // early exit if there are no split candidate
+        return;
+    }
+
+    // first pass is to make sure the validity of all split candidates
+    for (auto bb : kernel.fg.BBs)
+    {
+        for (auto inst : bb->instList)
+        {
+            auto removeCandidate = [&varToSplit](G4_Declare* dcl)
+            {
+                if (dcl)
+                {
+                    dcl = dcl->getRootDeclare();
+                    varToSplit.erase(dcl);
+                }
+            };
+
+            if (inst->isSend())
+            {
+                removeCandidate(inst->getDst()->getTopDcl());
+                removeCandidate(inst->getSrc(0)->getTopDcl());
+                if (inst->isSplitSend())
+                {
+                    removeCandidate(inst->getSrc(1)->getTopDcl());
+                }
+            }
+            else
+            {
+                auto cross2GRF = [](G4_Operand* opnd)
+                {
+                    uint32_t lb = opnd->getLeftBound();
+                    uint32_t rb = opnd->getRightBound();
+                    return (lb < 2 * GENX_GRF_REG_SIZ) && (rb > 2 * GENX_GRF_REG_SIZ);
+                };
+                // check and remove decls with operands that cross 2GRF boundary
+                if (inst->getDst())
+                {
+                    G4_Declare* dstDcl = inst->getDst()->getTopDcl();
+                    if (dstDcl && cross2GRF(inst->getDst()))
+                    {
+                        removeCandidate(dstDcl);
+                    }
+                }
+                for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                {
+                    G4_Operand* src = inst->getSrc(i);
+                    if (src && src->getTopDcl() && cross2GRF(src))
+                    {
+                        removeCandidate(src->getTopDcl());
+                    }
+                }
+            }
+        }
+    }
+
+    if (varToSplit.empty())
+    {
+        // early exit if there are no split candidate
+        return;
+    }
+
+    // create Lo/Hi for each variable being split
+    for (auto splitDcl : varToSplit)
+    {
+        G4_Type Ty = splitDcl->getElemType();
+        unsigned NElts = splitDcl->getTotalElems();
+        std::string varName(splitDcl->getName());
+        auto DclLow = builder.createTempVar(NElts / 2, Ty, Either, Sixteen_Word, 
+            (varName + "Lo").c_str(), false);
+        auto DclHi = builder.createTempVar(NElts / 2, Ty, Either, Sixteen_Word,
+            (varName + "Hi").c_str(), false);
+        DclMap[splitDcl] = new DclMapInfo(DclLow, DclHi);
+        //std::cerr << "split " << splitDcl->getName() << " into (" <<
+        //    DclLow->getName() << ", " << DclHi->getName() << ")\n";
+    }
+
+    // second pass actually does the replacement
+    for (auto bb : kernel.fg.BBs)
+    {
+        for (auto inst : bb->instList)
+        {
+            bool changed = false;
+            auto dst = inst->getDst();
+            if (dst && dst->getTopDcl())
+            {
+                G4_Declare* dstRootDcl = dst->getTopDcl()->getRootDeclare();
+                if (DclMap.count(dstRootDcl))
+                {
+                    bool isLow = dst->getLeftBound() < 2 * GENX_GRF_REG_SIZ;
+                    auto NewDcl = DclMap[dstRootDcl]->getDcl(builder, dst->getType(), isLow);
+                    auto NewDst = builder.createDstRegRegion(Direct, NewDcl->getRegVar(), 
+                        dst->getRegOff() - (isLow ? 0 : 2), dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
+                    inst->setDest(NewDst);
+                    changed = true;
+                }
+            }
+
+            for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+            { 
+                G4_Operand* src = inst->getSrc(i);
+                if (src && src->getTopDcl())
+                {
+                    G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
+                    G4_Declare* srcRootDcl = src->getTopDcl()->getRootDeclare();;
+                    if (DclMap.count(srcRootDcl))
+                    {
+                        bool isLow = src->getLeftBound() < 2 * GENX_GRF_REG_SIZ;
+                        auto NewSrcDcl = DclMap[srcRootDcl]->getDcl(builder, src->getType(), isLow);
+                        auto NewSrc = builder.createSrcRegRegion(
+                            srcRegion->getModifier(), src->getRegAccess(),
+                            NewSrcDcl->getRegVar(), srcRegion->getRegOff() - (isLow ? 0 : 2), 
+                            srcRegion->getSubRegOff(), srcRegion->getRegion(), src->getType());
+                        inst->setSrc(NewSrc, i);
+                        changed = true;
+                    }
+                }
+            }
+#if 0
+            if (changed)
+            {
+                inst->dump();
+            }
+#endif
+        }
+    }
+
     for (auto DI : DclMap)
     {
         delete DI.second;

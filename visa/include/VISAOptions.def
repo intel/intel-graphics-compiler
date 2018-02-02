@@ -54,11 +54,12 @@ DEF_VISA_OPTION(vISA_EnableSplitVariables,  ET_BOOL, "-noSplitVariables", UNUSED
 DEF_VISA_OPTION(vISA_ChangeMoveType,        ET_BOOL, "-ALTMode",         UNUSED, true)
 DEF_VISA_OPTION(vISA_accSubstitution,       ET_BOOL, "-noAccSub",          UNUSED, true)
 DEF_VISA_OPTION(vISA_doAccSubAfterSchedule, ET_BOOL, "-accSubPostSchedule",	UNUSED, true)
-DEF_VISA_OPTION(vISA_ifCvt,                 ET_BOOL,  "-noifcvt",     UNUSED, true)
-DEF_VISA_OPTION(vISA_LVN,                   ET_BOOL,  "-nolvn",       UNUSED, true)
+DEF_VISA_OPTION(vISA_ifCvt,                 ET_BOOL, "-noifcvt",     UNUSED, true)
+DEF_VISA_OPTION(vISA_LVN,                   ET_BOOL, "-nolvn",       UNUSED, true)
 // only affects acc substitution for now
-DEF_VISA_OPTION(vISA_numGeneralAcc,     ET_INT32, "-numGeneralAcc", "USAGE: -numGeneralAcc <accNum>\n", 0)
-DEF_VISA_OPTION(vISA_reassociate,           ET_BOOL,  "-noreassoc",   UNUSED, true)
+DEF_VISA_OPTION(vISA_numGeneralAcc,         ET_INT32, "-numGeneralAcc", "USAGE: -numGeneralAcc <accNum>\n", 0)
+DEF_VISA_OPTION(vISA_reassociate,           ET_BOOL, "-noreassoc",   UNUSED, true)
+DEF_VISA_OPTION(vISA_split4GRFVar,          ET_BOOL, "-no4GRFSplit", UNUSED, false)
 
 //=== code gen options ===
 DEF_VISA_OPTION(vISA_noSrc1Byte,          ET_BOOL, "-nosrc1byte",         UNUSED, false)

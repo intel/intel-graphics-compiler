@@ -254,6 +254,7 @@ private:
     void countGRFUsage();
     void splitVariables();
     void changeMoveType();
+    void split4GRFVars();
 
     void countBankConflicts();
     unsigned int numBankConflicts;
@@ -355,6 +356,7 @@ public:
         PI_accSubPostSchedule,
         PI_dce,
         PI_reassociateConst,
+        PI_split4GRFVars,
         PI_NUM_PASSES
     };
 
