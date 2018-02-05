@@ -19,10 +19,10 @@ https://opensource.org/licenses/MIT
 
 ## Dependencies
 
-Common Clang - https://github.com/intel/opencl-clang
-Clang Source - https://github.com/llvm-mirror/clang
-Khronos OpenCL Headers - https://github.com/KhronosGroup/OpenCL-Headers
-LLVM Source -  https://github.com/llvm-mirror/llvm
+* Common Clang - https://github.com/intel/opencl-clang
+* Clang Source - https://github.com/llvm-mirror/clang
+* Khronos OpenCL Headers - https://github.com/KhronosGroup/OpenCL-Headers
+* LLVM Source -  https://github.com/llvm-mirror/llvm
 
 ## Supported Linux versions
 
@@ -33,8 +33,11 @@ IGC is supported on the following 32/64 bits Linux operating systems:
 ## Building
 
 1. Install prerequisites
+
+Building IGC need flxe, bision, clang 4.0, cmake version later than 3.4.3 and
+ libz.  You can install required packages on ubuntu 16.04 like below:
 ```
-$ sudo apt-get install flex bison clang-4.0
+$ sudo apt-get install flex bison clang-4.0 libz-dev cmake
 ```
 
 2. Download all dependencies and create workspace folder as below:
@@ -73,10 +76,10 @@ $ make -j`nproc`
 
 ## Supported Platforms
 
-Intel Core Processors supporting Gen8 graphics devices
-Intel Core Processors supporting Gen9 graphics devices
-Intel Core Processors supporting Gen10 graphics devices
-Intel Atom Processors supporting Gen9 graphics devices
+* Intel Core Processors supporting Gen8 graphics devices
+* Intel Core Processors supporting Gen9 graphics devices
+* Intel Core Processors supporting Gen10 graphics devices
+* Intel Atom Processors supporting Gen9 graphics devices
 
 ## How to provide feedback
 Please submit an issue using native github.com interface: https://github.com/intel/intel-graphics-compiler/issues.
