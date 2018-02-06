@@ -317,6 +317,11 @@ public:
         default: return false;
         }
     }
+    unsigned int getNumMcsOperands()
+    {
+        return 2;
+    }
+    Value* getMcsOperand(unsigned int i) { return getOperand(i + 1); }
     Value* getSampleIndexValue() { return getOperand(0); }
     static inline bool classof(const Value *V) {
         return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));

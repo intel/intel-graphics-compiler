@@ -102,9 +102,6 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
 
     if (LdmcsInstrinsic* ldMcs = dyn_cast<LdmcsInstrinsic>(&I))
     {
-        Value* EEI1 = nullptr;
-        Value* EEI2 = nullptr;
-
         CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
         {
@@ -139,28 +136,23 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
                 return;
             }
         }
-                    
+        ExtractElementInst* EEI = nullptr;
 		for (auto useItr : ldMcs->users())
 		{
-			if (EEI1 == nullptr)
-			{
-				if (Value* ee1 = dyn_cast<Instruction>(useItr))
-				{
-					EEI1 = ee1;
-				}
-			}
-			else
-			{
-				if (Value* ee2 = dyn_cast<Instruction>(useItr))
-				{
-					EEI2 = ee2;
-				}
-			}		
+            if(ExtractElementInst* ee1 = dyn_cast<ExtractElementInst>(useItr))
+            {
+                if(ConstantInt* channel = dyn_cast<ConstantInt>(ee1->getOperand(1)))
+                {
+                    if(channel->isZero())
+                    {
+                        EEI = ee1;
+                        break;
+                    }
+                }
+            }
 		}
-		if (EEI1 == nullptr || EEI2 == nullptr)
-			return;
 		
-		if (ExtractElementInst* EEI = dyn_cast<ExtractElementInst>(EEI1))
+		if (EEI != nullptr)
 		{
 			if (EEI->hasOneUse())
 				return; //only one use of EEI -- noOptimization
@@ -171,8 +163,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
             {
                 if (LdmsInstrinsic* ldmsIntr = dyn_cast<LdmsInstrinsic>(&*it))
                 {
-                    if (ldmsIntr->getOperand(1) == dyn_cast<Value>(EEI) ||
-                        ldmsIntr->getOperand(2) == dyn_cast<Value>(EEI))
+                    if (ldmsIntr->getOperand(1) == dyn_cast<Value>(EEI))
                     {
                         //first use and in the def's BB
                         firstUse = ldmsIntr;
@@ -201,8 +192,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
                 {
                     if (LdmsInstrinsic* ldmsIntr = dyn_cast<LdmsInstrinsic>(inst))
                     {
-                        if (ldmsIntr->getOperand(1) == dyn_cast<Value>(EEI) ||
-                            ldmsIntr->getOperand(2) == dyn_cast<Value>(EEI))
+                        if (ldmsIntr->getOperand(1) == dyn_cast<Value>(EEI))
                         {
                             if (ldmsIntr == firstUse)
                                 continue; //don't move the first use into the then block , need it for phi Node
@@ -245,12 +235,21 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
                         LdmsInstrinsic* ldmsUse = ldmsInstsToClub[0];
                         ldmsUseBB = ldmsUse->getParent();
                         IRB.SetInsertPoint(ldmsUse);
-                        Value* EEICompare = IRB.CreateBitCast(EEI, IRB.getInt32Ty());
-                        Value* cnd1 = IRB.CreateICmpNE(EEICompare, IRB.getInt32(0));
-                        Value* EEI2Compare = IRB.CreateBitCast(EEI2, IRB.getInt32Ty());
-                        Value* cnd2 = IRB.CreateICmpNE(EEI2Compare, IRB.getInt32(0));
-                        Value* isMCSNotZero = IRB.CreateOr(cnd1, cnd2);
-                        thenBlockTerminator = SplitBlockAndInsertIfThen(isMCSNotZero, ldmsUse, false);
+                        Value* ValueisMCSNotZero = nullptr;
+                        for(unsigned int i = 0; i < ldmsUse->getNumMcsOperands(); i++)
+                        {
+                            Value* mcs = firstUse->getMcsOperand(i);
+                            Value* cnd1 = IRB.CreateICmpNE(mcs, ConstantInt::get(mcs->getType(), 0));
+                            if(ValueisMCSNotZero == nullptr)
+                            {
+                                ValueisMCSNotZero = cnd1;
+                            }
+                            else
+                            {
+                                ValueisMCSNotZero = IRB.CreateOr(ValueisMCSNotZero, cnd1);
+                            }
+                        }
+                        thenBlockTerminator = SplitBlockAndInsertIfThen(ValueisMCSNotZero, ldmsUse, false);
                         thenBlock = thenBlockTerminator->getParent();
                     }
 

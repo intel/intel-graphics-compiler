@@ -37,7 +37,7 @@ namespace IGC
 {
     /// @brief  ImageFuncResolution pass used for resolving OpenCL image dimension functions.
     ///         This pass depends on the ImageFuncAnalysis and AddImplicitArgs passes runing before it
-    /// @Author Marina Yatsina
+
     class ImageFuncResolution : public llvm::FunctionPass, public llvm::InstVisitor<ImageFuncResolution>
     {
     public:

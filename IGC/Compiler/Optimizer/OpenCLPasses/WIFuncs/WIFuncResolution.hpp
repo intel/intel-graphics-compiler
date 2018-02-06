@@ -39,7 +39,7 @@ namespace IGC
 
     /// @brief  WIFuncResolution pass used for resolving OpenCL WI (work item) functions.
     ///         This pass depends on the WIFuncAnalysis and AddImplicitArgs passes running before it
-    /// @Author Marina Yatsina
+
     class WIFuncResolution : public llvm::FunctionPass, public llvm::InstVisitor<WIFuncResolution>
     {
     public:

@@ -2608,13 +2608,14 @@ bool CShader::isUnpacked(llvm::Value* value)
     bool isUnpacked = false;
     if(m_SIMDSize == SIMDMode::SIMD8)
     {
-        if(SampleIntrinsic* splInst = dyn_cast<SampleIntrinsic>(value))
+        if(isa<SampleIntrinsic>(value) || isa<LdmcsInstrinsic>(value))
         {
-            if(splInst->getType()->getVectorElementType()->isHalfTy())
+            if(value->getType()->getVectorElementType()->isHalfTy() || 
+                value->getType()->getVectorElementType()->isIntegerTy(16))
             {
                 isUnpacked = true;
-                auto uses = splInst->user_begin();
-                auto endUses = splInst->user_end();
+                auto uses = value->user_begin();
+                auto endUses = value->user_end();
                 while(uses != endUses)
                 {
                     if(llvm::ExtractElementInst* extrElement = dyn_cast<llvm::ExtractElementInst>(*uses))

@@ -138,7 +138,7 @@ DECLARE_IGC_REGKEY(DWORD, DebugInternalSwitch,          0,     "Code pass select
 DECLARE_IGC_REGKEY(bool, DisableCustomMemAllocator,     false, "This disables custom memory allocator.")
 DECLARE_IGC_REGKEY(bool, SToSProducesPositivePointer,   false, "This key is for StatelessToStatefull optimization if the  user knows the pointer offset is postive to the kernel argument.")
 DECLARE_IGC_REGKEY(bool, EnableSupportBufferOffset,     false, "[Temporary]For StatelessToStatefull optimization [OCL], support implicit buffer offset argument (same as -cl-intel-has-buffer-offset-arg).")
-DECLARE_IGC_REGKEY(bool, EnableOptionalBufferOffset,    false, "[Temporary]For StatelessToStatefull optimization [OCL], if offset can be proven to be positive, no offset arg would be generated..")
+DECLARE_IGC_REGKEY(bool, EnableOptionalBufferOffset,    true,  "[Temporary]For StatelessToStatefull optimization [OCL], if true, make buffer offset optional. Valid only if buffer offset is supported.")
 DECLARE_IGC_REGKEY(bool, EnableTestIGCBuiltin,          false, "Enable testing igc builtin (precompiled kernels) using OCL.")
 DECLARE_IGC_REGKEY(bool, EnableCSSIMD32, false, "Enable computer shader SIMD32 mode, and fall back to lower SIMD when spill")
 DECLARE_IGC_REGKEY(bool, ForceCSSIMD32, false, "Force computer shader SIMD32 mode")

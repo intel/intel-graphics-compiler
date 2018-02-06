@@ -40,7 +40,7 @@ namespace IGC
     ///         This is done by resolving the alloca instructions.
     ///         This pass depends on the PrivateMemoryUsageAnalysis and
     ///         AddImplicitArgs passes running before it.
-    /// @Author Marina Yatsina
+
     class PrivateMemoryResolution : public llvm::ModulePass
     {
     public:

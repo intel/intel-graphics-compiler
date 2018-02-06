@@ -101,15 +101,10 @@ static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 #define INTERNAL_CONFLICT_RATIO_HEURISTIC 0.25
 
 Interference::Interference(LivenessAnalysis* l, LiveRange**& lr, unsigned n, unsigned ns, unsigned nm,
-    G4_Declare* firstOrigDcl_, GlobalRA& g) : maxId(n),
-    splitStartId(ns), splitNum(nm), builder(*g.kernel.fg.builder), firstOrigDcl(firstOrigDcl_),
+    GlobalRA& g) : maxId(n),
+    splitStartId(ns), splitNum(nm), builder(*g.kernel.fg.builder),
     gra(g), kernel(g.kernel), lrs(lr), liveAnalysis(l)
 {
-    if (firstOrigDcl)
-    {
-        localRADcls.resize(kernel.getNumRegTotal());
-        getLocalRADcls();
-    }
 }
 
 bool Interference::varSplitCheckBeforeIntf(unsigned v1, unsigned v2)
@@ -141,22 +136,6 @@ bool Interference::varSplitCheckBeforeIntf(unsigned v1, unsigned v2)
     }
 
     return false;
-}
-
-void Interference::getLocalRADcls()
-{
-    for (auto dcl : kernel.Declares)
-    {
-        if (dcl == firstOrigDcl)
-        {
-            break;
-        }
-        assert(dcl->getRegFile() == G4_GRF && dcl->getRegVar()->isPhyRegAssigned() &&
-            "expect a fake dcl");
-        int regNum = dcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
-        assert(localRADcls[regNum] == nullptr && "have two declares to same GRF");
-        localRADcls[regNum] = dcl;
-    }
 }
 
 BankConflict BankConflictPass::setupBankAccordingToSiblingOperand(BankConflict assignedBank, unsigned int offset, bool oneGRFBank)
@@ -1838,7 +1817,7 @@ void Interference::markInterferenceForSend(G4_BB* bb,
                         {
                             for (int j = dstPreg; j < dstPreg + dstNumRows; j++)
                             {
-                                int k = localRADcls[j]->getRegVar()->getId();
+                                int k = getGRFDclForHRA(j)->getRegVar()->getId();
                                 if (!varSplitCheckBeforeIntf(k, srcId))
                                 {
                                     checkAndSetIntf(k, srcId);
@@ -1867,7 +1846,7 @@ void Interference::markInterferenceForSend(G4_BB* bb,
 
                             for (int j = reg; j < reg + numrows; j++)
                             {
-                                int k = localRADcls[j]->getRegVar()->getId();
+                                int k = getGRFDclForHRA(j)->getRegVar()->getId();
                                 if (!varSplitCheckBeforeIntf(dstId, k))
                                 {
                                     checkAndSetIntf(dstId, k);
@@ -3102,50 +3081,6 @@ bool Augmentation::verifyMaskIfInit(G4_Declare* dcl, AugmentationMasks mask)
     return false;
 }
 
-bool Augmentation::checkGRFPattern3(G4_Declare* dcl, G4_DstRegRegion* dst, unsigned maskOff,
-    unsigned int lb, unsigned int rb, unsigned int execSize)
-{
-    unsigned int modWith = 0;
-    if (kernel.getSimdSize() == 32)
-    {
-        modWith = 64;
-    }
-
-    if (modWith > 0)
-    {
-        auto opndByteSize = G4_Type_Table[dst->getType()].byteSize;
-        if ((lb%modWith == (maskOff * opndByteSize) &&
-            rb == (lb + (execSize * opndByteSize) - 1)))
-        {
-            if (opndByteSize == 2 &&
-                verifyMaskIfInit(dcl, AugmentationMasks::Default16Bit))
-            {
-                gra.setAugmentationMask(dcl, AugmentationMasks::Default16Bit);
-                return true;
-            }
-            else if (opndByteSize == 4 &&
-                verifyMaskIfInit(dcl, AugmentationMasks::Default32Bit))
-            {
-                gra.setAugmentationMask(dcl, AugmentationMasks::Default32Bit);
-                return true;
-            }
-            else if (opndByteSize == 8 &&
-                verifyMaskIfInit(dcl, AugmentationMasks::Default64Bit))
-            {
-                gra.setAugmentationMask(dcl, AugmentationMasks::Default64Bit);
-                return true;
-            }
-            else
-            {
-                gra.setAugmentationMask(dcl, AugmentationMasks::NonDefault);
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
 bool Augmentation::checkGRFPattern2(G4_Declare* dcl, G4_DstRegRegion* dst, unsigned maskOff,
     unsigned int lb, unsigned int rb, unsigned int execSize)
 {
@@ -3358,15 +3293,6 @@ void Augmentation::markNonDefaultDstRgn(G4_INST* inst, G4_Operand* opnd)
                 {
                     // hstride = 2 case
                     found |= checkGRFPattern2(dcl, dst, maskOff, lb, rb, execSize);
-                }
-
-                if (!found ||
-                    gra.getAugmentationMask(dcl) == AugmentationMasks::Undetermined)
-                {
-                    // SIMD32 kernel but dst defining 4 rows like:
-                    // mov (16) V8575(0,0)<1>:d V102(0,0)<1;1,0>:f {Align1, H1}
-                    // mov (16) V8575(2, 0)<1>:d V104(0, 0)<1; 1, 0> : f{ Align1, H1 }
-                    found |= checkGRFPattern3(dcl, dst, maskOff, lb, rb, execSize);
                 }
 
                 if (!found ||
@@ -4309,11 +4235,12 @@ void Augmentation::handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, b
 
             for (unsigned int i = start; i < (start + numRows); i++)
             {
-                intf.checkAndSetIntf(firstDcl->getRegVar()->getId(), intf.localRADcls[i]->getRegVar()->getId());
+                auto GRFDcl = intf.getGRFDclForHRA(i);
+                intf.checkAndSetIntf(firstDcl->getRegVar()->getId(), GRFDcl->getRegVar()->getId());
 
 #ifdef DEBUG_VERBOSE_ON
                 DEBUG_VERBOSE("Marking interference between " << firstDcl->getName() <<
-                    " and " << localRADcls[i]->getName() << std::endl);
+                    " and " << GRFDcl->getName() << std::endl);
 #endif
             }
         }
@@ -4482,7 +4409,7 @@ bool Interference::isStrongEdgeBetween(G4_Declare* dcl1, G4_Declare* dcl2)
             bool allEdgesStrong = true;
             for (unsigned int i = startPhyReg; i < (startPhyReg + dcl2NumRows); i++)
             {
-                G4_Declare* lraPreg = localRADcls[i];
+                G4_Declare* lraPreg = getGRFDclForHRA(i);
                 allEdgesStrong &= interfereBetween(lraPreg->getRegVar()->getId(), dcl1RegVar->getId());
             }
 
@@ -4826,7 +4753,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
                 // busy, so interference building can take place correctly.
                 for (int j = reg; j < reg + numrows; j++)
                 {
-                    int k = localRADcls[j]->getRegVar()->getId();
+                    int k = getGRFDclForHRA(j)->getRegVar()->getId();
 
                     if (cur.isSet(j) == true)
                     {
@@ -4861,7 +4788,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
                     {
                         for (int j = reg; j < reg + localLR->getTopDcl()->getNumRows(); j++)
                         {
-                            int k = localRADcls[j]->getRegVar()->getId();
+                            int k = getGRFDclForHRA(j)->getRegVar()->getId();
                             buildInterferenceWithLive(live, k);
                         }
                     }
@@ -4882,7 +4809,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
                     {
                         if (cur.isSet(i) == false)
                         {
-                            int k = localRADcls[i]->getRegVar()->getId();
+                            int k = getGRFDclForHRA(i)->getRegVar()->getId();
                             checkAndSetIntf(dst->getBase()->asRegVar()->getId(), k);
                         }
                     }
@@ -4925,7 +4852,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
 
                     for (int j = reg; j < reg + numrows; j++)
                     {
-                        int k = localRADcls[j]->getRegVar()->getId();
+                        int k = getGRFDclForHRA(j)->getRegVar()->getId();
 
                         if (cur.isSet(j) == true)
                         {
@@ -4968,7 +4895,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
             {
                 if (cur.isSet(i) == false)
                 {
-                    int k = localRADcls[i]->getRegVar()->getId();
+                    int k = getGRFDclForHRA(i)->getRegVar()->getId();
                     buildInterferenceWithLive(live, k);
                 }
             }
@@ -5014,7 +4941,7 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
             {
                 if (LRASummary->isGRFBusy(j))
                 {
-                    int k = localRADcls[j]->getRegVar()->getId();
+                    int k = getGRFDclForHRA(j)->getRegVar()->getId();
                     checkAndSetIntf(i, k);
                 }
             }
@@ -5068,9 +4995,9 @@ void Interference::dumpInterference() const
     }
 }
 
-GraphColor::GraphColor(LivenessAnalysis& live, unsigned totalGRF, bool hybrid, bool forceSpill_, G4_Declare* firstOrigDcl) :
+GraphColor::GraphColor(LivenessAnalysis& live, unsigned totalGRF, bool hybrid, bool forceSpill_) :
     gra(live.gra), isHybrid(hybrid), totalGRFRegCount(totalGRF), numVar(live.getNumSelectedVar()), numSplitStartID(live.getNumSplitStartID()), numSplitVar(live.getNumSplitVar()),
-    intf(&live, lrs, live.getNumSelectedVar(), live.getNumSplitStartID(), live.getNumSplitVar(), firstOrigDcl, gra), regPool(gra.regPool),
+    intf(&live, lrs, live.getNumSelectedVar(), live.getNumSplitStartID(), live.getNumSplitVar(), gra), regPool(gra.regPool),
     builder(gra.builder), lrs(NULL), requireCallerSaveRestoreCode(false), requireCalleeSaveRestoreCode(false),
     requireA0CallerSaveRestoreCode(false), requireFlagCallerSaveRestoreCode(false), forceSpill(forceSpill_), mem(GRAPH_COLOR_MEM_SIZE),
     liveAnalysis(live), kernel(gra.kernel)
@@ -9590,7 +9517,7 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
     if (liveAnalysis.getNumSelectedVar() > 0)
     {
         RPE rpe(*this, &liveAnalysis);
-        GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), true, false, *firstDclIter);
+        GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), true, false);
 
         unsigned spillRegSize = 0;
         unsigned indrSpillRegSize = 0;
@@ -9678,7 +9605,7 @@ int GlobalRA::coloringRegAlloc()
         if (!success)
         {
             startTimer(TIMER_HYBRID_RA);
-            lra.insertDecls(); // insert pseudo decls for physical registers to front of dcllist
+            insertPhyRegDecls(); // insert pseudo decls for physical registers to front of dcllist
             success = hybridRA(doBankConflictReduction, highInternalConflict, firstDclIter, lra);
             stopTimer(TIMER_HYBRID_RA);
         }
@@ -9778,7 +9705,7 @@ int GlobalRA::coloringRegAlloc()
             // force spill should be done only for the 1st iteration
             bool forceSpill = iterationNo > 0 ? false : builder.getOption(vISA_ForceSpills);
             RPE rpe(*this, &liveAnalysis);
-            GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), false, forceSpill, *firstDclIter);
+            GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), false, forceSpill);
 
             unsigned spillRegSize = 0;
             unsigned indrSpillRegSize = 0;
@@ -11272,6 +11199,52 @@ void FlagSpillCleanup::spillFillCodeCleanFlag(IR_Builder&        builder,
 #endif
 
     return;
+}
+
+// Insert declarations with pre-assigned registers in kernel
+// this is needed for HRA, and the fake declares will be removed at the end of HRA
+void GlobalRA::insertPhyRegDecls()
+{
+    int numGRF = kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    std::vector<bool> grfUsed;
+    grfUsed.resize(numGRF, false);
+    GRFDclsForHRA.resize(numGRF);
+
+    for (auto curBB : kernel.fg.BBs)
+    {
+        if (auto summary = kernel.fg.getBBLRASummary(curBB))
+        {
+            for (int i = 0; i < numGRF; i++)
+            {
+                if (summary->isGRFBusy(i))
+                {
+                    grfUsed[i] = true;
+                }
+            }
+        }
+    }
+
+    // Insert declarations for each GRF that is used
+    unsigned int numGRFsUsed = 0;
+    for (int i = 0; i < numGRF; i++)
+    {
+        if (grfUsed[i] == true)
+        {
+            char* dclName = builder.getNameString(builder.mem, 10, "r%d", i);
+            G4_Declare* phyRegDcl = builder.createDeclareNoLookup(dclName, G4_GRF, 8, 1, Type_D, Regular, NULL, NULL, 0, true);
+            G4_Greg* phyReg = builder.phyregpool.getGreg(i);
+            phyRegDcl->getRegVar()->setPhyReg(phyReg, 0);
+            GRFDclsForHRA[i] = phyRegDcl;
+            numGRFsUsed++;
+        }
+    }
+
+    if (builder.getOption(vISA_OptReport))
+    {
+        std::ofstream optreport;
+        getOptReportStream(optreport, builder.getOptions());
+        optreport << "Local RA used " << numGRFsUsed << " GRFs\n";
+    }
 }
 
 // compute physical register info and adjust foot print

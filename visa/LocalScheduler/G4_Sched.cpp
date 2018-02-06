@@ -227,6 +227,9 @@ private:
     // Each declare is associated with a list of live nodes.
     std::unordered_map<const G4_Declare*, std::vector<LiveNode>> LiveNodes;
 
+    // Use an extra list to track physically assigned nodes, I.e. a0.2 etc.
+    std::vector<LiveNode> LivePhysicalNodes;
+
     // Use an extra list to track send message dependency.
     std::vector<preNode*> LiveSends;
 
@@ -767,6 +770,10 @@ bool SethiUllmanQueue::compare(preNode* N1, preNode* N2)
 
 preNode* SethiUllmanQueue::scheduleClusteringNode()
 {
+    // Clustering does not work well for SIMD32 kernels.
+    if (ddd.getKernel().getSimdSize() == 32)
+        return nullptr;
+
     // Schedule clustering nodes first.
     if (IsInClusteringMode && !Clusterings.empty()) {
         // Pop off already scheduled node, if any.
@@ -803,6 +810,9 @@ preNode* SethiUllmanQueue::scheduleClusteringNode()
             // Match nodes with the same SU numbers, may not be ready.
             if (!E.isDataDep() || Numbers[N->getID()] != SU || N->isScheduled)
                 break;
+            // Do not cluster sends, which may confuse send pairing.
+            if (N->getInst() == nullptr || N->getInst()->isSend())
+                break;
             Clusterings.push_back(N);
         }
 
@@ -819,6 +829,9 @@ preNode* SethiUllmanQueue::scheduleClusteringNode()
                 preNode* N = E.getNode();
                 // Only match ready nodes.
                 if (!E.isDataDep() || N->isScheduled || N->NumSuccsLeft)
+                    break;
+                // Do not cluster sends, which may confuse send pairing.
+                if (N->getInst() == nullptr || N->getInst()->isSend())
                     break;
                 Clusterings.push_back(N);
             }
@@ -916,6 +929,7 @@ void BB_Scheduler::SethiUllmanScheduling()
         preNode *N = Q.pop();
         assert(!N->isScheduled && N->NumSuccsLeft == 0);
         if (N->getInst() != nullptr) {
+            // std::cerr << "emit: "; N->getInst()->dump();
             if (N->getInst()->isSend() && N->getTupleLead()) {
                 // If it's the pair of the current node, reset the node to be
                 // paired. If it's send with pair, ensure its pair is scheduled
@@ -1485,6 +1499,13 @@ void preDDD::buildGraph()
     reset();
 }
 
+static bool isPhyicallyAllocatedRegVar(G4_Operand* opnd)
+{
+    if (opnd && opnd->getBase() && opnd->getBase()->isRegVar())
+        return opnd->getBase()->asRegVar()->getPhyReg() != nullptr;
+    return false;
+}
+
 void preDDD::addNodeToGraph(preNode *N)
 {
     NewLiveOps.clear();
@@ -1510,6 +1531,9 @@ void preDDD::addNodeToGraph(preNode *N)
         assert(Opnd != nullptr);
         G4_Declare* Dcl = Opnd->getTopDcl();
         LiveNodes[Dcl].emplace_back(N, OpNum);
+
+        if (isPhyicallyAllocatedRegVar(Opnd))
+            LivePhysicalNodes.emplace_back(N, OpNum);
     }
 
     // Update live nodes on sends.
@@ -1539,6 +1563,14 @@ void preDDD::processBarrier(preNode* curNode, DepType Dep)
         }
         Nodes.second.clear();
     }
+
+    for (auto& X : LivePhysicalNodes) {
+        if (X.N->pred_empty()) {
+            addEdge(curNode, X.N, Dep);
+        }
+    }
+    LivePhysicalNodes.clear();
+
     for (auto N : LiveSends) {
         if (N->pred_empty()) {
             addEdge(curNode, N, Dep);
@@ -1647,6 +1679,24 @@ void preDDD::processReadWrite(preNode* curNode)
             } else
                 ++Iter;
         }
+
+        // If this is a physically allocated regvar, then check dependency on the
+        // physically allocated live nodes. This should be a cold path.
+        if (isPhyicallyAllocatedRegVar(opnd)) {
+            for (auto Iter = LivePhysicalNodes.begin(); Iter != LivePhysicalNodes.end(); /*empty*/) {
+                LiveNode& liveNode = *Iter;
+                auto DepRel = getDep(opnd, liveNode);
+                if (DepRel.first != DepType::NODEP) {
+                    addEdge(curNode, liveNode.N, DepRel.first);
+                    // Check if this kills current live node. If yes, remove it.
+                    bool pred = DepRel.second == G4_CmpRelation::Rel_eq ||
+                                DepRel.second == G4_CmpRelation::Rel_gt;
+                    Iter = kill_if(pred, LivePhysicalNodes, Iter);
+                } else
+                    ++Iter;
+            }
+        }
+
         NewLiveOps.emplace_back(curNode, OpNum);
     }
 
@@ -1670,6 +1720,20 @@ void preDDD::processReadWrite(preNode* curNode)
             if (DepRel.first != DepType::NODEP)
                 addEdge(curNode, liveNode.N, DepRel.first);
         }
+
+        // If this is a physically allocated regvar, then check dependency on the
+        // physically allocated live nodes. This should be a cold path.
+        if (isPhyicallyAllocatedRegVar(opnd)) {
+            for (auto& liveNode : LivePhysicalNodes) {
+                // Skip read live nodes.
+                if (liveNode.isRead())
+                    continue;
+                std::pair<DepType, G4_CmpRelation> DepRel = getDep(opnd, liveNode);
+                if (DepRel.first != DepType::NODEP)
+                    addEdge(curNode, liveNode.N, DepRel.first);
+            }
+        }
+
         NewLiveOps.emplace_back(curNode, OpNum);
     }
 }

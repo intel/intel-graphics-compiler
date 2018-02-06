@@ -10453,7 +10453,7 @@ void Optimizer::split4GRFVars()
             (varName + "Hi").c_str(), false);
         DclMap[splitDcl] = new DclMapInfo(DclLow, DclHi);
         //std::cerr << "split " << splitDcl->getName() << " into (" <<
-        //    DclLow->getName() << ", " << DclHi->getName() << ")\n";
+        //   DclLow->getName() << ", " << DclHi->getName() << ")\n";
     }
 
     // second pass actually does the replacement
@@ -10471,7 +10471,8 @@ void Optimizer::split4GRFVars()
                     bool isLow = dst->getLeftBound() < 2 * GENX_GRF_REG_SIZ;
                     auto NewDcl = DclMap[dstRootDcl]->getDcl(builder, dst->getType(), isLow);
                     auto NewDst = builder.createDstRegRegion(Direct, NewDcl->getRegVar(), 
-                        dst->getRegOff() - (isLow ? 0 : 2), dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
+                        dst->getRegOff() - (isLow ? 0 : 2), dst->getSubRegOff(), 
+                        dst->getHorzStride(), dst->getType(), dst->getAccRegSel());
                     inst->setDest(NewDst);
                     changed = true;
                 }
@@ -10491,18 +10492,12 @@ void Optimizer::split4GRFVars()
                         auto NewSrc = builder.createSrcRegRegion(
                             srcRegion->getModifier(), src->getRegAccess(),
                             NewSrcDcl->getRegVar(), srcRegion->getRegOff() - (isLow ? 0 : 2), 
-                            srcRegion->getSubRegOff(), srcRegion->getRegion(), src->getType());
+                            srcRegion->getSubRegOff(), srcRegion->getRegion(), src->getType(), src->getAccRegSel());
                         inst->setSrc(NewSrc, i);
                         changed = true;
                     }
                 }
             }
-#if 0
-            if (changed)
-            {
-                inst->dump();
-            }
-#endif
         }
     }
 

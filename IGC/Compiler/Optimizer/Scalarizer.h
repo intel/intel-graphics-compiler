@@ -59,7 +59,7 @@ namespace IGC
     ///  to several scalar operations).
     ///  Functions are also replaced (similar to instructions), according
     ///  to data received from RuntimeServices.
-    ///  @Author: Sion Berkowits
+
     class ScalarizeFunction : public llvm::FunctionPass
     {
     public:

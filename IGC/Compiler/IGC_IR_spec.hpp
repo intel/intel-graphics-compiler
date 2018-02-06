@@ -105,3 +105,5 @@ IGC_IR_LLVM_INSTRUCTION(AddrSpaceCast)
 // Specific verification for LLVM Instructions
 //--------------------------------------------
 SPECIFIC_INSTRUCTION_VERIFIER(Call, verifyInstCall)
+SPECIFIC_INSTRUCTION_VERIFIER(InsertElement, verifyVectorInst)
+SPECIFIC_INSTRUCTION_VERIFIER(ExtractElement, verifyVectorInst)

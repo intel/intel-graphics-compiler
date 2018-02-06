@@ -113,6 +113,8 @@ namespace IGC
 
         /// Specific verification function for Call instructions.
         bool verifyInstCall(llvm::Instruction &inst);
+        /// Specific verification function for insert/extract instructions.
+        bool verifyVectorInst(llvm::Instruction &inst);
 
         ///------------------------------------------------------
 

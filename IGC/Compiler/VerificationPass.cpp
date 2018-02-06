@@ -67,7 +67,7 @@ void VerificationPass::initVerificationPass()
 /// Fill the m_IGC_IR_spec structure with the values
 /// provided in the "IR" section of IGC_IR_spec.hpp.
 ///
-#define SPECIFIC_INSTRUCTION_VERIFIER(Call, verifyInstCall)  
+#define SPECIFIC_INSTRUCTION_VERIFIER(insType, verifierFunc)  
 
 #define IGC_IR_FP_TYPE(name, size) \
     m_IGC_IR_spec.FPTypeSizes.insert(size);\
@@ -154,7 +154,7 @@ bool VerificationPass::verifyFunction(Function &F)
 bool VerificationPass::verifyInstruction(Instruction &inst)
 {
     bool success = true;
-
+    bool verified = false;
     unsigned int opcode = inst.getOpcode();
     if (!m_IGC_IR_spec.Instructions.count(opcode))
     {
@@ -174,7 +174,7 @@ bool VerificationPass::verifyInstruction(Instruction &inst)
 #define DECLARE_OPCODE(llvm_name, inst_class, name, modifiers, sat, pred, condMod, mathIntrinsic, atomicIntrinsic, regioning)  
 
 #define SPECIFIC_INSTRUCTION_VERIFIER(instClass, verifier) \
-    if (opcode == Instruction::instClass) { success &= verifier(inst); } \
+    if (opcode == Instruction::instClass) { verified = true; success &= verifier(inst); } \
 
 #include "IGC_IR_spec.hpp"
 
@@ -184,8 +184,8 @@ bool VerificationPass::verifyInstruction(Instruction &inst)
 #undef  IGC_IR_LLVM_INSTRUCTION
 #undef  SPECIFIC_INSTRUCTION_VERIFIER
 #undef  DECLARE_OPCODE
-
-    if (!verifyInstCommon(inst))
+    
+    if (!verified && !verifyInstCommon(inst))
     {
        success = false;
     }
@@ -237,8 +237,34 @@ bool VerificationPass::verifyInstCall(Instruction &inst)
             return false;
         }
     }
+    if(!verifyInstCommon(inst))
+    {
+        return false;
+    }
 
     return true;
+}
+
+bool VerificationPass::verifyVectorInst(llvm::Instruction &inst)
+{
+    bool success = true;
+    int numOperands = inst.getNumOperands();
+
+    for(int i = 0; i < numOperands; ++i)
+    {
+        Value* val = inst.getOperand(i);
+        Type* T = val->getType();
+        if(T->isVectorTy())
+        {
+            // Insert and extract element support relaxed vector type
+            T = T->getVectorElementType();
+        }
+        if(!verifyType(T, val))
+        {
+            success = false;
+        }
+    }
+    return success;
 }
 
 ///-----------------------------------------------------------------------------------

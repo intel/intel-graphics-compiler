@@ -63,26 +63,23 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst &I)
         {
             case GenISAIntrinsic::GenISA_ldmsptr:
             {
-                const GenIntrinsicInst* ldmcs = nullptr;
-                const BitCastInst* bitcastInstr = dyn_cast<BitCastInst>(I.getOperand(2));
-                CallInst* ldmcsCallInst;
-                if(bitcastInstr)
+                GenIntrinsicInst* ldmcs = nullptr;
+                if(Instruction* mcsData = dyn_cast<Instruction>(I.getOperand(2)))
                 {
-                    const ExtractElementInst* extractInst = dyn_cast<ExtractElementInst>(bitcastInstr->getOperand(0));
-                    if (extractInst)
+                    if(BitCastInst* bcast = dyn_cast<BitCastInst>(mcsData))
                     {
-                        ldmcsCallInst = dyn_cast<CallInst>(extractInst->getOperand(0));
-                        if (ldmcsCallInst)
-                        {
-                            ldmcs = dyn_cast<GenIntrinsicInst>(ldmcsCallInst);
-                        }
+                        mcsData = bcast;
+                    }
+                    if(ExtractElementInst* extractInst = dyn_cast<ExtractElementInst>(mcsData))
+                    {
+                        ldmcs = dyn_cast<GenIntrinsicInst>(extractInst->getOperand(0));
                     }
                 }
 
                 assert(ldmcs!=NULL);
 
                 Type* types_ldmcs[] = { 
-                    VectorType::get(llvm::Type::getHalfTy(m_pModule->getContext()), 4), 
+                    VectorType::get(m_builder->getInt16Ty(), 4),
                     ldmcs->getOperand(4)->getType() };
 
                 Function *func_ldmcs =
@@ -102,17 +99,13 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst &I)
                     ldmcs->getOperand(7)
                 };
 
-               m_builder->SetInsertPoint(ldmcsCallInst);
+                m_builder->SetInsertPoint(ldmcs);
                llvm::CallInst* new_mcs_call = m_builder->CreateCall(func_ldmcs, packed_tex_params_ldmcs);
 
-               llvm::Value* float_mcs_ch0 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(0));
-               llvm::Value* mcs0 = m_builder->CreateBitCast(float_mcs_ch0, m_builder->getInt16Ty());
-               llvm::Value* float_mcs_ch1 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(1));
-               llvm::Value* mcs1 = m_builder->CreateBitCast(float_mcs_ch1, m_builder->getInt16Ty());
-               llvm::Value* float_mcs_ch2 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(2));
-               llvm::Value* mcs2 = m_builder->CreateBitCast(float_mcs_ch2, m_builder->getInt16Ty());
-               llvm::Value* float_mcs_ch3 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(3));
-               llvm::Value* mcs3 = m_builder->CreateBitCast(float_mcs_ch3, m_builder->getInt16Ty());
+                llvm::Value* mcs0 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(0));
+                llvm::Value* mcs1 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(1));
+                llvm::Value* mcs2 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(2));
+                llvm::Value* mcs3 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(3));
 
                Type* types_ldms[] = { I.getType(), I.getOperand(7)->getType() };
                Function *func_ldms = GenISAIntrinsic::getDeclaration(
@@ -127,10 +120,10 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst &I)
                     mcs1,
                     mcs2,
                     mcs3,
-                    m_builder->CreateTrunc(I.getOperand(3), m_builder->getInt16Ty(), ""),
-                    m_builder->CreateTrunc(I.getOperand(4), m_builder->getInt16Ty(), ""),
-                    m_builder->CreateTrunc(I.getOperand(5), m_builder->getInt16Ty(), ""),
-                    m_builder->CreateTrunc(I.getOperand(6), m_builder->getInt16Ty(), ""),
+                    m_builder->CreateTrunc(I.getOperand(3), m_builder->getInt16Ty()),
+                    m_builder->CreateTrunc(I.getOperand(4), m_builder->getInt16Ty()),
+                    m_builder->CreateTrunc(I.getOperand(5), m_builder->getInt16Ty()),
+                    m_builder->CreateTrunc(I.getOperand(6), m_builder->getInt16Ty()),
                     I.getOperand(7),
                     I.getOperand(8),
                     I.getOperand(9),

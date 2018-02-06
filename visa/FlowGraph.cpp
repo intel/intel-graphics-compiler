@@ -4187,7 +4187,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
             m_options->getOption(vISA_LabelStr, labelPrefix);
         }
         typedef struct {
-            char m_labelString[64]; // label string for uniqueLabels
+            char m_labelString[128]; // label string for uniqueLabels
             char* m_labelPrefix;    // label prefix
             char m_tmpString[64];   // tmp storage, default label
             KernelView *m_pkView;   // handle to KernelView object.
@@ -4207,7 +4207,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
             const char *retString;
             if (pArg->m_labelPrefix != nullptr)
             {
-                SNPRINTF(labelString, 60, "%s_%s", (const char*)pArg->m_labelPrefix, tmpString);
+                SNPRINTF(labelString, 128, "%s_%s", (const char*)pArg->m_labelPrefix, tmpString);
                 retString = labelString;
             }
             else

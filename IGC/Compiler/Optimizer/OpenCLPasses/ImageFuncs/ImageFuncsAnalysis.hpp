@@ -39,7 +39,7 @@ namespace IGC
     ///         (height, width, depth) are used in the different functions in the module and creating 
     ///         metadata that represents  the implicit image information needded by each function for 
     ///         resolving these function calls
-    /// @Author Marina Yatsina
+
     class ImageFuncsAnalysis : public llvm::ModulePass, public llvm::InstVisitor<ImageFuncsAnalysis>
     {
     public:

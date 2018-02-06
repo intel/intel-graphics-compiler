@@ -48,7 +48,7 @@ namespace IGC
     class ImplicitArg;
     /// @brief  KernelArg is used for representing the different OpenCL kernel arguments
     ///         This class is used for arguments allocation
-    /// @Author Marina Yatsina
+
     class KernelArg {
     public:
 
@@ -351,7 +351,7 @@ namespace IGC
 
     /// @brief  KernelArgsOrder class is used to define an order in which CISA variables are mapped to 
     ///         a physical grf "payload" locations
-    /// @Author Tomasz Wojtowicz
+
     class KernelArgsOrder {
     public:
         /// @brief  Predefined input layouts
@@ -401,7 +401,7 @@ namespace IGC
     };
 
     /// @brief  KernelArgs represent all the explicit and implicit kernel arguments and used for payload allocation
-    /// @Author Marina Yatsina
+ 
     class KernelArgs {
         // Types
     public:

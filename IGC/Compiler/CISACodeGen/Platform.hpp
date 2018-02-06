@@ -104,6 +104,13 @@ public:
     bool psSimd32SkipStallHeuristic() const { return m_caps.KernelHwCaps.EUThreadsPerEU == 6; }
     bool enablePSsimd32() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
     bool supportDisableMidThreadPreemptionSwitch() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
+    bool supportMixMode() const { 
+        return IGC_IS_FLAG_ENABLED(ForceMixMode) ||
+            (IGC_IS_FLAG_DISABLED(DisableMixMode) &&
+            (m_platformInfo.eProductFamily == IGFX_CHERRYVIEW ||
+            m_platformInfo.eRenderCoreFamily == IGFX_GEN9_CORE || 
+            m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE));
+    }
 
     bool needSWStencil() const
     {
@@ -249,13 +256,6 @@ public:
     bool useOnlyEightPatchDispatchHS() const { return false; }
     bool supports256GRFPerThread() const { return false; }
     bool hasFDIV() const { return true; }
-    bool supportMixMode() const {
-        return IGC_IS_FLAG_ENABLED(ForceMixMode) ||
-            (IGC_IS_FLAG_DISABLED(DisableMixMode) &&
-            (m_platformInfo.eProductFamily == IGFX_CHERRYVIEW ||
-                m_platformInfo.eRenderCoreFamily == IGFX_GEN9_CORE ||
-                m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE));
-    }
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const

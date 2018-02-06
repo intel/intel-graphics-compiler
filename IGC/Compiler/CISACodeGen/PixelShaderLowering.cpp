@@ -931,7 +931,18 @@ void PixelShaderLowering::LowerPositionInput(GenIntrinsicInst* positionInstr, ui
         Value* v = *floatPosition->user_begin();
         if(v->getType()->isIntegerTy(32) && (isa<FPToUIInst>(v) || isa<FPToSIInst>(v)))
         {
-            v->replaceAllUsesWith(builder.CreateZExt(intPosition, v->getType()));
+            for(auto UI = v->user_begin(), UE = v->user_end(); UI != UE;)
+            {
+                Value* use = *UI++;
+                if(TruncInst* truncI = dyn_cast<TruncInst>(use))
+                {
+                    truncI->replaceAllUsesWith(builder.CreateZExtOrTrunc(intPosition, truncI->getType()));
+                }
+            }
+            if(!v->user_empty())
+            {
+                v->replaceAllUsesWith(builder.CreateZExt(intPosition, v->getType()));
+            }
             return;
         }
     }

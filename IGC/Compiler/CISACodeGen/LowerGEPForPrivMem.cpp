@@ -173,31 +173,11 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
 
     for (auto II = pAlloca->user_begin(), IE = pAlloca->user_end(); II != IE; ++II)
     {
-        if (isa<GetElementPtrInst>(*II))
+        if (Instruction* inst = dyn_cast<Instruction>(*II))
         {
-            GetElementPtrInst *pGEP = llvm::cast<GetElementPtrInst>(*II);
-            // Handle GEP usages (which can be only store or load)
-            for (Value::user_iterator it = pGEP->user_begin(), e = pGEP->user_end(); it != e; ++it)
-            {
-                if (StoreInst *pStore = llvm::dyn_cast<StoreInst>(*it))
-                {
-                    assignedNumber =  m_pRegisterPressureEstimate->getAssignedNumberForInst(pStore);
-                }
-                else if (LoadInst *pLoad = llvm::dyn_cast<LoadInst>(*it))
-                {
-                    // find the last use of this load inst
-                    unsigned int loadInstUseNumber;
-                    for (Value::user_iterator load_it = pLoad->user_begin(), load_e = pLoad->user_end(); load_it != load_e; ++load_it)
-                    {
-                        Instruction* loadInst = llvm::cast<Instruction>(*load_it);
-                        loadInstUseNumber = m_pRegisterPressureEstimate->getAssignedNumberForInst(loadInst);
-                        assignedNumber = (loadInstUseNumber > assignedNumber) ? loadInstUseNumber : assignedNumber;
-                    }
-                }
-                
-                lowestAssignedNumber = (lowestAssignedNumber < assignedNumber) ? lowestAssignedNumber : assignedNumber;
-                highestAssignedNumber = (highestAssignedNumber > assignedNumber) ? highestAssignedNumber : assignedNumber;
-            }
+            assignedNumber = m_pRegisterPressureEstimate->getAssignedNumberForInst(inst);
+            lowestAssignedNumber = (lowestAssignedNumber < assignedNumber) ? lowestAssignedNumber : assignedNumber;
+            highestAssignedNumber = (highestAssignedNumber > assignedNumber) ? highestAssignedNumber : assignedNumber;
         }
     }
     

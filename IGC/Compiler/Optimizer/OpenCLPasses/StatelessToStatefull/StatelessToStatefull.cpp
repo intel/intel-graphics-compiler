@@ -167,6 +167,9 @@ bool StatelessToStatefull::runOnFunction(llvm::Function &F)
     }
 
 	// Caching arguments during the transformation
+	m_hasOptionalBufferOffsetArg =
+		(m_hasBufferOffsetArg && IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset));
+
     m_pImplicitArgs = new ImplicitArgs(F, pMdUtils);
 	m_pKernelArgs = new KernelArgs(F, &(F.getParent()->getDataLayout()), pMdUtils);
 
@@ -343,7 +346,7 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
             // 
             // Note that offset should be positive for any implicit ptr argument
             if (!arg->isImplicitArg() &&
-				(IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset) || !m_hasBufferOffsetArg) &&
+				(!m_hasBufferOffsetArg || m_hasOptionalBufferOffsetArg) &&
                 IGC_IS_FLAG_DISABLED(SToSProducesPositivePointer))
             {
                 // [This is conservative path]
@@ -360,8 +363,7 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
                     }
                 }
 
-				if (IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset) &&
-					m_hasBufferOffsetArg)
+				if (m_hasOptionalBufferOffsetArg)
 				{
 					updateArgInfo(arg, gepProducesPositivePointer);
 				}
@@ -599,8 +601,7 @@ void StatelessToStatefull::updateArgInfo(
 
 void StatelessToStatefull::finalizeArgInitialValue(Function *F)
 {
-	if (!m_hasBufferOffsetArg ||
-		IGC_IS_FLAG_DISABLED(EnableOptionalBufferOffset))
+	if (!m_hasOptionalBufferOffsetArg)
 	{
 		return;
 	}

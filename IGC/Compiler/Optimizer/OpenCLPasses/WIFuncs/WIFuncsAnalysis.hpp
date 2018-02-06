@@ -38,7 +38,7 @@ namespace IGC
     /// @brief  WIFuncsAnalysis pass used for analyzing which OpenCL WI (work item) functions
     ///         are used in the different functions in the module and creating metadata that represents 
     ///         the implicit information needed by each function for resolving these function calls
-    /// @Author Marina Yatsina
+
     class WIFuncsAnalysis : public llvm::ModulePass, public llvm::InstVisitor<WIFuncsAnalysis>
     {
     public:

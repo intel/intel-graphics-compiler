@@ -4693,23 +4693,40 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
         return Rel_disjoint;
     }
 
-    if (myDcl != opndDcl)
+    // both are physically assigned.
+    G4_VarBase *myPhyReg = myBase->isRegVar() ? myBase->asRegVar()->getPhyReg() : myBase;
+    G4_VarBase *opndPhyReg = opndBase->isRegVar() ? opndBase->asRegVar()->getPhyReg() : opndBase;
+    if (myPhyReg && opndPhyReg)
     {
-        return Rel_disjoint;
+        assert(myPhyReg->isPhyReg() && opndPhyReg->isPhyReg());
+        if (myPhyReg->getKind() != opndPhyReg->getKind())
+            return Rel_disjoint;
+
+        if (myPhyReg->isPhyAreg())
+        {
+            if (myPhyReg->asAreg()->getArchRegType() == AREG_NULL)
+            {
+                //like NaN, a null ARF is disjoint to everyone including itself
+                return Rel_disjoint;
+            }
+
+            // TODO: this is not accurate for flag/acc/address.
+            return (myPhyReg->asAreg()->getArchRegType() ==
+                  opndPhyReg->asAreg()->getArchRegType()) ? Rel_eq : Rel_disjoint;
+        }
+
+        // TODO: handle physically assigned GRF reg. Right now this should
+        // not happen prior to RA.
     }
+
     if (myBase->getKind() != opndBase->getKind())
     {
         return Rel_disjoint;
     }
-    if (myBase->isPhyAreg())
+
+    if (myDcl != opndDcl)
     {
-        if (myBase->asAreg()->getArchRegType() == AREG_NULL)
-        {
-            //like NaN, a null ARF is disjoint to everyone including itself
-            return Rel_disjoint;
-        }
-        return (myBase->asAreg()->getArchRegType() ==
-              opndBase->asAreg()->getArchRegType()) ? Rel_eq : Rel_disjoint;
+        return Rel_disjoint;
     }
 
     unsigned int left_bound2 = opnd->getLeftBound(), right_bound2 = opnd->getRightBound();

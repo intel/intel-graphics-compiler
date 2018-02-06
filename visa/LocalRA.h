@@ -117,7 +117,6 @@ namespace vISA
 
         LocalRA(G4_Kernel&, bool&, BankConflictPass&, GlobalRA&);
         bool localRA(bool& doRoundRobin, bool& doBankConflict);
-        void insertDecls();
         void undoLocalRAAssignments(bool clearInterval, DECLARE_LIST_ITER* firstRealDclIter);
     };
 
@@ -562,9 +561,22 @@ public:
 
 	void markPhyRegs( G4_VarBase* pr, unsigned int words );
 
-	bool isGRFBusy( int regnum ) { return GRFUsage[regnum]; }
+	bool isGRFBusy( int regnum ) const { return GRFUsage[regnum]; }
 
 	void printBusyRegs();
+
+    uint32_t getNumFreeGRF() const
+    {
+        uint32_t numFreeGRF = 0;
+        for (int i = 0, size = getNumGRF(); i < size; ++i)
+        {
+            if (!isGRFBusy(i))
+            {
+                numFreeGRF++;
+            }
+        }
+        return numFreeGRF;
+    }
 };
 }
 #endif // _INC_LOCALRA_H_

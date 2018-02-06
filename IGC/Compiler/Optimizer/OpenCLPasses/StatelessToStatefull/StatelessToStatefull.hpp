@@ -104,6 +104,11 @@ namespace IGC
 		}
 
         const bool m_hasBufferOffsetArg;
+
+		// When m_hasBufferOffsetArg is true, optional buffer offset
+		// can be on or off, which is indicated by this boolean flag.
+		bool       m_hasOptionalBufferOffsetArg;
+
         ImplicitArgs *m_pImplicitArgs;
 		KernelArgs   *m_pKernelArgs;
 		ArgInfoMap   m_argsInfo;

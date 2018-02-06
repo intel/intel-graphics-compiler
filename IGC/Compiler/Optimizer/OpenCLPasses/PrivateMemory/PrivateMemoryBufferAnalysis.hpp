@@ -39,7 +39,7 @@ namespace IGC
     /// @brief  PrivateMemoryBufferAnalysis pass used for analyzing private memory alloca instructions
     ///         and determining the size and offset of each buffer and the total amount of private memory
     ///          needed by each work item. This is done by analyzing the alloca instructions.
-    /// @Author Marina Yatsina
+
     class PrivateMemoryBufferAnalysis : public llvm::ModulePass, public llvm::InstVisitor<PrivateMemoryBufferAnalysis>
     {
     public:

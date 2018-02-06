@@ -253,9 +253,6 @@ namespace vISA
         // allocated by LRA will not have a valid id.
         std::map<G4_Declare*, std::vector<G4_Declare*>> compatibleSparseIntf;
 
-        // list of fake declares for physical GRF
-        std::vector<G4_Declare*> localRADcls;
-
     private:
         GlobalRA& gra;
         G4_Kernel& kernel;
@@ -281,15 +278,11 @@ namespace vISA
             live.set(id, val);
         }
 
-        // used by hybrid RA, this marks the first decl in kernel.Declares
-        // that is not a fake declare used to model physical GRF liveness
-        G4_Declare* firstOrigDcl = nullptr;
-
-        void getLocalRADcls();
+        G4_Declare* getGRFDclForHRA(int GRFNum) const;
 
     public:
         Interference(LivenessAnalysis* l, LiveRange**& lr, unsigned n, unsigned ns, unsigned nm,
-            G4_Declare* firstOrigDcl, GlobalRA& g);
+            GlobalRA& g);
 
         ~Interference()
         {
@@ -640,7 +633,7 @@ namespace vISA
         bool redundantAddrFill(G4_DstRegRegion*, G4_SrcRegRegion*, unsigned execSize);
 
     public:
-        GraphColor(LivenessAnalysis& live, unsigned totalGRF, bool hybrid, bool forceSpill_, G4_Declare* firstOrigDcl = nullptr);
+        GraphColor(LivenessAnalysis& live, unsigned totalGRF, bool hybrid, bool forceSpill_);
 
         static const char* StackCallStr;
 
@@ -728,6 +721,10 @@ namespace vISA
         RAVarInfo defaultValues;
         std::vector<RAVarInfo> vars;
 
+        // fake declares for each GRF reg, used by HRA
+        // note only GRFs that are used by LRA get a declare
+        std::vector<G4_Declare*> GRFDclsForHRA;
+
         void resize(unsigned int id)
         {
             if (id >= vars.size())
@@ -742,6 +739,8 @@ namespace vISA
         FCALL_RET_MAP fcallRetMap;
 
         // RA specific fields
+        G4_Declare* getGRFDclForHRA(int GRFNum) const { return GRFDclsForHRA[GRFNum]; }
+
         unsigned int getSplitVarNum(G4_Declare* dcl)
         {
             auto dclid = dcl->getDeclId();
@@ -797,7 +796,7 @@ namespace vISA
             vars[dclid].splittedDCL = sd;
         }
 
-        LocalLiveRange* getLocalLR(G4_Declare* dcl)
+        LocalLiveRange* getLocalLR(G4_Declare* dcl) const
         {
             auto dclid = dcl->getDeclId();
             if (dclid >= vars.size())
@@ -1027,7 +1026,14 @@ namespace vISA
         void setABIForStackCallFunctionCalls();
         void markGraphBlockLocalVars();
         void verifyRA(LivenessAnalysis & liveAnalysis);
+
+        void insertPhyRegDecls();
     };
+
+    inline G4_Declare* Interference::getGRFDclForHRA(int GRFNum) const 
+    {
+        return gra.getGRFDclForHRA(GRFNum);
+    }
 
     class VarSplit
     {

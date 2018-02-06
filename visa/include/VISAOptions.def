@@ -59,7 +59,7 @@ DEF_VISA_OPTION(vISA_LVN,                   ET_BOOL, "-nolvn",       UNUSED, tru
 // only affects acc substitution for now
 DEF_VISA_OPTION(vISA_numGeneralAcc,         ET_INT32, "-numGeneralAcc", "USAGE: -numGeneralAcc <accNum>\n", 0)
 DEF_VISA_OPTION(vISA_reassociate,           ET_BOOL, "-noreassoc",   UNUSED, true)
-DEF_VISA_OPTION(vISA_split4GRFVar,          ET_BOOL, "-no4GRFSplit", UNUSED, false)
+DEF_VISA_OPTION(vISA_split4GRFVar,          ET_BOOL, "-no4GRFSplit", UNUSED, true)
 
 //=== code gen options ===
 DEF_VISA_OPTION(vISA_noSrc1Byte,          ET_BOOL, "-nosrc1byte",         UNUSED, false)

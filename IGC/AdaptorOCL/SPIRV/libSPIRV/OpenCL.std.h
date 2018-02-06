@@ -49,10 +49,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ** IN THE MATERIALS.
 */
 
-//
-// Author: Boaz Ouriel, Intel
-//
-
 namespace OpenCLLIB {
 
 enum Entrypoints {

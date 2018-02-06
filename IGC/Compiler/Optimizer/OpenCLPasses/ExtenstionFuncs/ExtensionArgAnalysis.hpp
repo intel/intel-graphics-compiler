@@ -44,7 +44,7 @@ namespace IGC
 {
     /// @brief  ExtensionArgAnalysis pass used for analyzing if VME extension functions arguments.
     ///         This information needed by ResourceAllocator and helps create the right VME/media patch tokens
-    /// @Author Marina Yatsina
+
     class ExtensionArgAnalysis : public llvm::FunctionPass, public llvm::InstVisitor<ExtensionArgAnalysis>
     {
     public:

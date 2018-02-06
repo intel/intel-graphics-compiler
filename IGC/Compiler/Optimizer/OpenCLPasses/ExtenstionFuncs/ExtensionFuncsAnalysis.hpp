@@ -38,7 +38,7 @@ namespace IGC
     /// @brief  ExtensionFuncsAnalysis pass used for analyzing if VME functions are used in the 
     ///         different functions in the module and creating metadata that represents 
     ///         the implicit information needed by each function for resolving these function calls
-    /// @Author Marina Yatsina
+
     class ExtensionFuncsAnalysis : public llvm::ModulePass, public llvm::InstVisitor<ExtensionFuncsAnalysis>
     {
     public:

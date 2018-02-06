@@ -1021,51 +1021,6 @@ void LocalRA::localRAOptReport()
     }
 }
 
-// Insert declarations with pre-assigned registers in kernel
-void LocalRA::insertDecls()
-{
-    int numGRF = kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
-    std::vector<bool> grfUsed;
-    grfUsed.resize(numGRF, false);
-    unsigned int numGRFsUsed = 0;
-
-
-    for (auto curBB : kernel.fg.BBs)
-    {
-        if (auto summary = kernel.fg.getBBLRASummary(curBB))
-        {
-            for (int i = 0; i < numGRF; i++)
-            {
-                if (summary->isGRFBusy(i))
-                {
-                    grfUsed[i] = true;
-                }
-            }
-        }
-    }
-
-    // Insert declarations for each GRF that is used
-    for (int i = 0; i < numGRF; i++)
-    {
-        if (grfUsed[i] == true)
-        {
-            char* dclName = builder.getNameString(builder.mem, 10, "r%d", i);
-            G4_Declare* phyRegDcl = builder.createDeclareNoLookup(dclName, G4_GRF, 8, 1, Type_D, Regular, NULL, NULL, 0, true);
-            G4_Greg* phyReg = builder.phyregpool.getGreg(i);
-            phyRegDcl->getRegVar()->setPhyReg(phyReg, 0);
-            numGRFsUsed++;
-        }
-    }
-
-    if (builder.getOption(vISA_OptReport))
-    {
-        std::ofstream optreport;
-        getOptReportStream(optreport, builder.getOptions());
-        optreport << "Local RA used " << numGRFsUsed <<
-            " GRFs" << std::endl << std::endl;
-    }
-}
-
 // Given a src/dst reg region in opnd, traverse to its base and
 // return the declaration. Resolve any aliases and return the
 // topmost declaration.

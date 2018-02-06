@@ -36,7 +36,7 @@ namespace IGC
 {
     /// @brief  PrivateMemoryUsageAnalysis pass used for analyzing if functions use private memory.
     ///         This is done by analyzing the alloca instructions.
-    /// @Author Marina Yatsina
+
     class PrivateMemoryUsageAnalysis : public llvm::ModulePass, public llvm::InstVisitor<PrivateMemoryUsageAnalysis>
     {
     public:
