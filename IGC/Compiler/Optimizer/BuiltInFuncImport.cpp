@@ -569,7 +569,6 @@ void BIImport::InitializeBIFlags(Module &M)
     if (pCtx->type == ShaderType::OPENCL_SHADER)
     {
     float profilingTimerResolution = static_cast<OpenCLProgramContext*>(pCtx)->getProfilingTimerResolution();
-
     initializeVarWithValue("__ProfilingTimerResolution", *reinterpret_cast<int*>(&profilingTimerResolution));
     }
 }
