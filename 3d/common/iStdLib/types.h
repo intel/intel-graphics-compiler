@@ -86,9 +86,6 @@ struct SRangeA
 #ifdef _MSC_VER
 #pragma warning( push )
 #pragma warning( disable: 4201 ) // warning C4201: nonstandard extension used : nameless struct/union
-#elif (defined __GNUC__) && !(defined __clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-pedantic" // warning: ISO C++ prohibits anonymous structs [-pedantic]
 #endif
 
 
@@ -277,8 +274,6 @@ union FLOAT64
 
 #ifdef _MSC_VER
 #pragma warning( pop ) // warning C4201: nonstandard extension used : nameless struct/union
-#elif (defined __GNUC__) && !(defined __clang__)
-#pragma GCC diagnostic pop // warning: ISO C++ prohibits anonymous structs [-pedantic]
 #endif
 
 
