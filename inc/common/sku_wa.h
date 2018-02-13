@@ -8340,7 +8340,13 @@ typedef struct _WA_TABLE
         WaDisableEarlyEOT,
         "Workaround",
         WA_BUG_TYPE_HANG,
-        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_KMD)  
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_KMD)
+
+        WA_DECLARE(
+        Wa_2201674230,
+        "Workaround",
+        WA_BUG_TYPE_UNKNOWN,
+        WA_BUG_PERF_IMPACT_UNKNOWN, WA_COMPONENT_UNKNOWN)
 
 } WA_TABLE, *PWA_TABLE;
 
