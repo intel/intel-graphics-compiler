@@ -523,7 +523,7 @@ namespace vISA
             // chance of perf penalty with this.
             if (kernel.getSimdSize() == 8 ||
                 rematCandidates[topdcl->getRegVar()->getId()] == false ||
-                rpe.getRegisterPressure(srcInst) < REMAT_LOOP_REG_PRESSURE)
+                rpe.getRegisterPressure(srcInst) < rematLoopRegPressure)
                 return false;
 
             if (getNumRematsInLoop() > 0)
@@ -978,6 +978,11 @@ namespace vISA
     {
         //unsigned int before = getNumSamplers(kernel);
 
+        if (kernel.fg.builder->getOption(vISA_DumpDotAll))
+        {
+            kernel.dumpDotFile("before.remat");
+        }
+
         populateRefs();
 
         for (auto bb : kernel.fg.BBs)
@@ -1018,7 +1023,7 @@ namespace vISA
                 {
                     auto regPressure = rpe.getRegisterPressure(inst);
 
-                    if (regPressure < REMAT_REG_PRESSURE)
+                    if (regPressure < rematRegPressure)
                     {
                         continue;
                     }
@@ -1090,6 +1095,11 @@ namespace vISA
         }
 
         cleanRedundantSamplerHeaders();
+
+        if (kernel.fg.builder->getOption(vISA_DumpDotAll))
+        {
+            kernel.dumpDotFile("after.remat");
+        }
 
         //unsigned int after = getNumSamplers(kernel);
     }

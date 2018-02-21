@@ -1087,7 +1087,7 @@ void CoalesceSpillFills::fills()
             }
 
             if (fillsToCoalesce.size() > 0 &&
-                rpe.getRegisterPressure(inst) > 180)
+                rpe.getRegisterPressure(inst) > fillWindowSizeThreshold)
             {
                 // High register pressure region so reduce window size to 3
                 w = (cWindowSize - w > 3) ? cWindowSize - 3 : w;
@@ -1266,7 +1266,7 @@ void CoalesceSpillFills::spills()
             }
 
             if (spillsToCoalesce.size() > 0 &&
-                rpe.getRegisterPressure(inst) > 120)
+                rpe.getRegisterPressure(inst) > spillWindowSizeThreshold)
             {
                 if (!allSpillsSameVar(spillsToCoalesce))
                 {

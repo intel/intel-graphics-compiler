@@ -28,7 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantResolution.hpp"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
-#include "Compiler/DebugInfo/DebugInfoUtils.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
@@ -77,7 +76,6 @@ static bool needRunConservatively(const Module &M) {
 bool ProgramScopeConstantResolution::runOnModule(Module &M)
 {
     LLVMContext& C = M.getContext();
-    IF_DEBUG_INFO(bool hasDebugInfo = DebugInfoUtils::HasDebugInfo(M);)
 
     MetaDataUtils *mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
@@ -187,7 +185,7 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M)
             Function::arg_iterator bufArg = userFunc->arg_begin();
             for (unsigned int i = 0; i < implicitArgIndexInFunc; ++i, ++bufArg);
 
-            if (IF_DEBUG_INFO(hasDebugInfo &&) !funcToVarSet[userFunc].count(pGlobalVar))
+            if (!funcToVarSet[userFunc].count(pGlobalVar))
             {
                 Instruction *pEntryPoint = &(*userFunc->getEntryBlock().getFirstInsertionPt());
 
@@ -198,26 +196,9 @@ bool ProgramScopeConstantResolution::runOnModule(Module &M)
 
                 // Update the map with the fix new value
                 funcToVarSet[userFunc][pGlobalVar] = pNewVal;
-
-                // Add debug info intrinsic for this variable inside the "userFunc".
-                // Comment out following because now ResolvePredefinedConstant pass
-                // will emit out constant values for scalars and arrays alike to elf.
-                //IF_DEBUG_INFO(DebugInfoUtils::UpdateGlobalVarDebugInfo(pGlobalVar, pNewVal, pEntryPoint, true);)
             }
-
-            Value* bc = nullptr;
-            if (funcToVarSet[userFunc].count(pGlobalVar))
-            {
-                bc = funcToVarSet[userFunc][pGlobalVar];
-            }
-            else
-            {
-                // Create a GEP to get to the right offset in the constant buffer
-                GetElementPtrInst* gep = GetElementPtrInst::Create(nullptr, &*bufArg, pOffset, "off" + pGlobalVar->getName(), user);
-                // Cast it back to the correct type.
-                bc = CastInst::CreatePointerCast(gep, pGlobalVar->getType(), "cast" + pGlobalVar->getName(), user);
-            }
-
+            
+            Value* bc = funcToVarSet[userFunc][pGlobalVar];
             assert(bc != nullptr && "Program Scope buffer handling is broken!");
 
             // And actually use the bitcast.

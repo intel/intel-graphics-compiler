@@ -2149,7 +2149,9 @@ namespace //Anonymous
         llvm::FunctionType* dispatcherFunctionType = llvm::FunctionType::get(llvm::Type::getVoidTy(_context), argTypes, false);
         auto module = const_cast<llvm::Module*>(getBlockInvokeFunc()->getParent());
         _dispatchKernel = llvm::Function::Create(dispatcherFunctionType, llvm::GlobalValue::ExternalLinkage, dispatchKernelName, module);
-
+        // Copy debug metadata from block invoke function.
+        auto dbgMetadata = getBlockInvokeFunc()->getMetadata(LLVMContext::MD_dbg);
+        _dispatchKernel->setMetadata(LLVMContext::MD_dbg, dbgMetadata);
 
         auto byValI = byValArgs.begin(), byValE = byValArgs.end();
 

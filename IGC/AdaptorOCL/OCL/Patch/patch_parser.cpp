@@ -1407,6 +1407,15 @@ void DebugPatchList(
                 "\tBufferSize = %d\n",
                 pPatchItem->BufferSize);
         }
+        case iOpenCL::PATCH_TOKEN_GTPIN_INFO:
+        {
+            const iOpenCL::SPatchItemHeader* pPatchItem = pHeader;
+            
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                         "PATCH_TOKEN_GTPIN_INFO (%08X) (size = %d)\n",
+                         pPatchItem->Token,
+                         pPatchItem->Size);
+        }
         break;
 
         default:

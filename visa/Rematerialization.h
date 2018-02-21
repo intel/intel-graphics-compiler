@@ -35,12 +35,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace vISA
 {
-// Attempt remat only if reg pressure in loop is higher than this
-#define REMAT_LOOP_REG_PRESSURE 85
-
-// Remat will be attempted only when reg pressure is higher than this macro
-#define REMAT_REG_PRESSURE 120
-
 // Remat will trigger only for vars that have less than following uses
 #define MAX_USES_REMAT 6
 
@@ -110,6 +104,12 @@ namespace vISA
         unsigned int loopInstsBeforeRemat = 0;
         unsigned int totalInstsBeforeRemat = 0;
         RPE& rpe;
+
+        const unsigned int cRematLoopRegPressure128GRF = 85;
+        const unsigned int cRematRegPressure128GRF = 120;
+
+        unsigned int rematLoopRegPressure = 0;
+        unsigned int rematRegPressure = 0;
 
         std::vector<G4_Declare*> spills;
         // For each top dcl, this map holds all defs
@@ -205,6 +205,10 @@ namespace vISA
         Rematerialization(G4_Kernel& k, LivenessAnalysis& l, GraphColor& c, RPE& r) :
             kernel(k), liveness(l), coloring(c), doms(k.fg), rpe(r)
         {
+            unsigned int numGRFs = k.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+            rematLoopRegPressure = numGRFs - (128 - cRematLoopRegPressure128GRF);
+            rematRegPressure = numGRFs - (128 - cRematRegPressure128GRF);
+
             rematCandidates.resize(l.getNumSelectedVar(), false);
 
             for (auto&& lr : coloring.getSpilledLiveRanges())

@@ -94,7 +94,7 @@ typedef struct _VISA_WA_TABLE
         "Two send instructions with WAR dependency is not allowed on BDW SteppingA.",
         WA_BUG_TYPE_UNKNOWN)
 
-VISA_WA_DECLARE(
+    VISA_WA_DECLARE(
     WaSrc1ImmHfNotAllowed,
     "Immediate source1 of type HF is not allowed for SKL C0 && BXT A0",
     WA_BUG_TYPE_UNKNOWN)
@@ -184,33 +184,39 @@ VISA_WA_DECLARE(
     "Do not apply atomic instruction option on sends.",
     VISA_WA_BUG_TYPE_HANG)
 
+    VISA_WA_DECLARE(
+    Wa_2201674230,
+    "Limit the number of live sends to work-around HW hang bug.",
+    VISA_WA_BUG_TYPE_HANG)
+
     _VISA_WA_TABLE()
     {
         VISA_WA_INIT(WaHeaderRequiredOnSimd16Sample16bit)
-            VISA_WA_INIT(WaSendsSrc1SizeLimitWhenEOT)
-            VISA_WA_INIT(WaDisallow64BitImmMov)
-            VISA_WA_INIT(WaByteDstAlignRelaxedRule)
-            VISA_WA_INIT(WaSIMD16SIMD32CallDstAlign)
-            VISA_WA_INIT(WaThreadSwitchAfterCall)
-            VISA_WA_INIT(WaSendWARRestriction)
-            VISA_WA_INIT(WaSrc1ImmHfNotAllowed)
-            VISA_WA_INIT(WaDstSubRegNumNotAllowedWithLowPrecPacked)
-            VISA_WA_INIT(WaDisableMixedModeLog)
-            VISA_WA_INIT(WaDisableMixedModeFdiv)
-            VISA_WA_INIT(WaResetN0BeforeGatewayMessage)
-            VISA_WA_INIT(WaDisableMixedModePow)
-            VISA_WA_INIT(WaFloatMixedModeSelNotAllowedWithPackedDestination)
-            VISA_WA_INIT(WADisableWriteCommitForPageFault)
-            VISA_WA_INIT(WaDisableSIMD16On3SrcInstr)
-            VISA_WA_INIT(WaSendSEnableIndirectMsgDesc)
-            VISA_WA_INIT(WaClearArfDependenciesBeforeEot)
-            VISA_WA_INIT(WaDisableSendsSrc0DstOverlap)
-            VISA_WA_INIT(WaMixModeSelInstDstNotPacked)
-            VISA_WA_INIT(WaDisableSendSrcDstOverlap)
-            VISA_WA_INIT(WaDisableSendsPreemption)
-            VISA_WA_INIT(WaClearTDRRegBeforeEOTForNonPS)
-            VISA_WA_INIT(WaNoSimd16TernarySrc0Imm)
-            VISA_WA_INIT(Wa_1406306137)
+        VISA_WA_INIT(WaSendsSrc1SizeLimitWhenEOT)
+        VISA_WA_INIT(WaDisallow64BitImmMov)
+        VISA_WA_INIT(WaByteDstAlignRelaxedRule)
+        VISA_WA_INIT(WaSIMD16SIMD32CallDstAlign)
+        VISA_WA_INIT(WaThreadSwitchAfterCall)
+        VISA_WA_INIT(WaSendWARRestriction)
+        VISA_WA_INIT(WaSrc1ImmHfNotAllowed)
+        VISA_WA_INIT(WaDstSubRegNumNotAllowedWithLowPrecPacked)
+        VISA_WA_INIT(WaDisableMixedModeLog)
+        VISA_WA_INIT(WaDisableMixedModeFdiv)
+        VISA_WA_INIT(WaResetN0BeforeGatewayMessage)
+        VISA_WA_INIT(WaDisableMixedModePow)
+        VISA_WA_INIT(WaFloatMixedModeSelNotAllowedWithPackedDestination)
+        VISA_WA_INIT(WADisableWriteCommitForPageFault)
+        VISA_WA_INIT(WaDisableSIMD16On3SrcInstr)
+        VISA_WA_INIT(WaSendSEnableIndirectMsgDesc)
+        VISA_WA_INIT(WaClearArfDependenciesBeforeEot)
+        VISA_WA_INIT(WaDisableSendsSrc0DstOverlap)
+        VISA_WA_INIT(WaMixModeSelInstDstNotPacked)
+        VISA_WA_INIT(WaDisableSendSrcDstOverlap)
+        VISA_WA_INIT(WaDisableSendsPreemption)
+        VISA_WA_INIT(WaClearTDRRegBeforeEOTForNonPS)
+        VISA_WA_INIT(WaNoSimd16TernarySrc0Imm)
+        VISA_WA_INIT(Wa_1406306137)
+        VISA_WA_INIT(Wa_2201674230)
     }
 } VISA_WA_TABLE, *PVISA_WA_TABLE;
 

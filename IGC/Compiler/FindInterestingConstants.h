@@ -53,16 +53,16 @@ namespace IGC
         FindInterestingConstants();
         ~FindInterestingConstants() {}
 
-        virtual llvm::StringRef getPassName() const
+        virtual llvm::StringRef getPassName() const override
         {
             return "Find Interesting Constants";
         }
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const
+        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
         {
             AU.addRequired<CodeGenContextWrapper>();
         }
 
-        virtual bool runOnFunction(llvm::Function &F);
+        virtual bool runOnFunction(llvm::Function &F) override;
         bool doFinalization(llvm::Module &) override;
         void visitLoadInst(llvm::LoadInst &I);
 

@@ -46,6 +46,12 @@ if(WIN32)
 endif()
 
 add_library(LocalScheduler ${LocalScheduler_SOURCES} ${LocalScheduler_HEADERS})
+
+if(MSVC)
+#set up standard defines from the common WDK path.
+bs_set_wdk(LocalScheduler)
+endif()
+
 add_dependencies(LocalScheduler check_headers)
 source_group("Header Files" FILES ${LocalScheduler_HEADERS})
 if( WIN32 AND ("${BUILD_WINDOWS_MOBILE}" STREQUAL "TRUE") )

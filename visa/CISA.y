@@ -225,18 +225,17 @@ VISA_RawOpnd* rawOperandArray[16];
         bool               attr_set;
     } attr_gen;
 
-
-    /* Align Support in Declaration*/
+     /* Align Support in Declaration*/
     VISA_Align       CISA_align;
     VISA_Align       align;
 
     CMAtomicOperations     atomic_op;
-	VISASampler3DSubOpCode sample3DOp;
+  VISASampler3DSubOpCode sample3DOp;
 
     MEDIA_LD_mod           media_mode;
     bool                   oword_mod;
     VISAChannelMask        s_channel; // Cannot use ChannelMask here as it's a member of union where non-trivial constructor is not allowed.
-	CHANNEL_OUTPUT_FORMAT  s_channel_output;
+  CHANNEL_OUTPUT_FORMAT  s_channel_output;
     COMMON_ISA_VME_OP_MODE     VME_type;
     Common_VISA_EMask_Ctrl  emask;
     OutputFormatControl cntrl;
@@ -249,8 +248,8 @@ VISA_RawOpnd* rawOperandArray[16];
 
     // CPS LOD compensation enable for 3d sample.
     bool cps;
-	bool non_uniform_sampler;
-	bool flag;
+  bool non_uniform_sampler;
+  bool flag;
 }
 
 %start CISAStmt
@@ -273,7 +272,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %token SAT                  /* .sat */
 %token PIXEL_NULL_MASK      /* .pixel_null_mask */
 %token CPS                  /* .cps */
-%token NON_UNIFORM_SAMPLER	/* .divS */
+%token NON_UNIFORM_SAMPLER  /* .divS */
 %token ALIAS
 %token ALIGN
 %token RAW_SEND_STRING      /* raw_send */

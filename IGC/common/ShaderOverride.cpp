@@ -142,23 +142,15 @@ iga_gen_t GetIGAPlatform(const IGC::CPlatform* platform)
 
 void appendToShaderOverrideLogFile(std::string &binFileName, const char * message)
 {
-#if defined(WIN32)
-    auto lastOf = binFileName.find_last_of("\\");
-#else
-    auto lastOf = binFileName.find_last_of("/");
-#endif
-    if(lastOf != std::string::npos)
+    auto overridePath = std::string(IGC::Debug::GetShaderOverridePath());
+    overridePath.append("OverrideLog.txt");
+    std::cout << overridePath << std::endl;
+    std::ofstream os(overridePath.c_str(), std::ios::app);
+    if(os.is_open())
     {
-        auto overridePath = binFileName.substr(0, lastOf + 1);
-        overridePath.append("OverrideLog.txt");
-        std::cout << overridePath << std::endl;
-        std::ofstream os(overridePath.c_str(), std::ios::app);
-        if(os.is_open())
-        {
-            os << message << binFileName.c_str() << std::endl;
-        }
-        os.close();
+        os << message << binFileName.c_str() << std::endl;
     }
+    os.close();
 }
 
 void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int & binSize, std::string &binFileName, bool &binOverride)

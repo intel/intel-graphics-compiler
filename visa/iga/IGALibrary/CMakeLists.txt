@@ -159,6 +159,11 @@ set_target_properties(IGA_OLIB PROPERTIES
 	FOLDER                                     "IGAProjs"
   )
 
+if(MSVC)
+#set up standard defines from the common WDK path.
+bs_set_wdk(IGA_OLIB)
+endif()
+
 ##############################################################################
 # iga_s##.lib
 #
@@ -178,11 +183,19 @@ set(IGA_SLIB_DEFINITIONS ${IGA_DEFINITIONS} IGA_BUILDING_LIB)
 # this static library.  Hence, we must call this something other than the
 set_target_properties(IGA_SLIB PROPERTIES
     OUTPUT_NAME                                "iga_s${TARGET_MODIFIER}"
+  )
+set_target_properties(IGA_SLIB PROPERTIES
     COMPILE_DEFINITIONS                        "${IGA_SLIB_DEFINITIONS}"
     COMPILER_FLAGS                             "${IGA_COMPILER_FLAGS}"
     LINK_FLAGS                                 "${IGA_SLIB_LINK_FLAGS}"
     FOLDER                                     "IGAProjs"
   )
+
+if(MSVC)
+#set up standard defines from the common WDK path.
+bs_set_wdk(IGA_SLIB)
+endif()
+
 ##############################################################################
 # iga_enc##.lib
 #
@@ -218,6 +231,11 @@ set_target_properties(IGA_ENC_LIB PROPERTIES
 	FOLDER                                     "IGAProjs"
   )
 
+if(MSVC)
+#set up standard defines from the common WDK path.
+bs_set_wdk(IGA_ENC_LIB)
+endif()
+
 # DISABLE_ENCODER_EXCEPTIONS: Disabling exceptions for encoder only project.
 # So it can be used in vISA BE, which is used in IGC. (IGC doesn't permit C++
 # exceptions to be used
@@ -252,6 +270,10 @@ set_property(TARGET IGA_DLL APPEND PROPERTY
       FOLDER									"IGAProjs"
   )
 
+if(MSVC)
+#set up standard defines from the common WDK path.
+bs_set_wdk(IGA_DLL)
+endif()
 
 # Hidden visibility suppresses PLT entries from being created for GED
 # and functions and trims the interface down to a minimal size.
@@ -313,6 +335,7 @@ if(ANDROID AND MEDIA_IGA)
   target_link_libraries(IGA_ENC_LIB c++_static)
 endif(ANDROID AND MEDIA_IGA)
 # target_link_libraries(IGA PRIVATE GEDLibrary)
+
 INSTALL(TARGETS IGA_DLL
     RUNTIME DESTINATION .
     LIBRARY DESTINATION lib

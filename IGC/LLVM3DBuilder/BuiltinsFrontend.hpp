@@ -388,6 +388,16 @@ public:
         bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
+    SampleParamsFromCube Prepare_SAMPLE_Cube_ParamsFromUnormalizedCoords(
+        llvm::Value* int32_lod,
+        llvm::Value* int32_textureIdx,
+        llvm::Value* int32_u,
+        llvm::Value* int32_v,
+        llvm::Value* int32_faceid,
+        llvm::Value* int32_cube_array_index,
+        llvm::Value *float_array_6_3,
+        llvm::Value *int32_sampler);
+
     SampleParamsFromCube Prepare_SAMPLE_Cube_Params(
         llvm::Value* float_address_0,
         llvm::Value* float_address_1,
@@ -750,7 +760,7 @@ public:
     llvm::Value* create_wavePrefix(llvm::Value* src, llvm::Value* type, bool inclusive = false);
     llvm::Value* create_quadPrefix(llvm::Value* src, llvm::Value* type, bool inclusive = false);
     llvm::Value* get32BitLaneID();
-    llvm::Value* getLaneSize();
+    llvm::Value* getSimdSize();
     llvm::Value* getFirstLaneID();
     llvm::Value* readFirstLane(llvm::Value* src);
 

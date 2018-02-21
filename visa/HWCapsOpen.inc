@@ -361,4 +361,15 @@
     {
         return false;
     }
+
+    bool loadThreadPayload() const
+    {
+        return false;
+    }
+
+    bool supportSrcModforMul() const
+    {
+        return true;
+    }
+
     // end HW capabilities

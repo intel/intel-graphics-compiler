@@ -1907,6 +1907,117 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_ldms(
 }
 
 template<bool preserveNames, typename T, typename Inserter>
+inline SampleParamsFromCube LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_SAMPLE_Cube_ParamsFromUnormalizedCoords(
+    llvm::Value* int32_lod,
+    llvm::Value* int32_textureIdx,
+    llvm::Value* int32_u,
+    llvm::Value* int32_v,
+    llvm::Value* int32_faceid,
+    llvm::Value* int32_cube_array_index,
+    llvm::Value *float_array_6_3,
+    llvm::Value* int32_sampler
+    )
+{
+    //Samplers point of reference is always center of the face, which is (0,0)
+    //That means the four vertices of the normalized cube are depiced as below
+    //(-1,-1)        (1,-1)
+    //  -------|---------
+    //  |      |        |
+    //  |      |        |
+    //  |---------------|
+    //  |      |(0,0)   |
+    //  |      |        |
+    //  -------|---------
+    //(-1,1)          (1,1)
+    //Thus each un-normalized coordiate (x,y) needs to be normalized between <-1,1>
+    //Below is the Math to normalize between <-1,1>
+    //u = (u * 2 + 1)/width - 1 
+    //v = (v * 2 + 1)/height - 1 
+
+    //Using resinfo extract width and height of the buffer
+    //Using resinfo extract width and height of the buffer
+    llvm::Value *resinfo = this->Create_resinfo(int32_lod, int32_textureIdx);
+    llvm::Value *width = this->CreateExtractElement(resinfo, m_int0);
+    llvm::Value *height = this->CreateExtractElement(resinfo, m_int1);
+    
+    //convert u, v, width and height to float
+    llvm::Value *float_u = this->CreateUIToFP(int32_u, this->getFloatTy());
+    llvm::Value *float_v = this->CreateUIToFP(int32_v, this->getFloatTy());
+    width = this->CreateUIToFP(width, this->getFloatTy());
+    height = this->CreateUIToFP(height, this->getFloatTy());
+    //define some constants
+    llvm::Value* float_minus1 = this->getFloat(-1.0);
+    llvm::Value* float_2 = this->getFloat(2.0);
+    
+    //u and v represent the coordinates of a texel for a given face
+    //Now normalize u in the range [-1,1] using following equation
+    //u = (2*u + 1)/width -1
+    float_u = this->CreateFAdd(this->CreateFMul(float_u, float_2), m_float1);
+    float_u = this->CreateFSub(this->CreateFDiv(float_u, width), m_float1);
+    //Now normalize v in the range [-1,1] using following equation
+    //v = (v * 2 + 1)/height - 1 
+    float_v = this->CreateFAdd(this->CreateFMul(float_v, float_2), m_float1);
+    float_v = this->CreateFSub(this->CreateFDiv(float_v, height), m_float1);
+
+    llvm::Value *minus_floatu = this->CreateFMul(float_u, float_minus1); //-u
+    llvm::Value *minus_floatv = this->CreateFMul(float_v, float_minus1); //-v
+    llvm::Value *float_arrayIndex = this->CreateUIToFP(int32_cube_array_index, this->getFloatTy());
+    //This array represents how the u and v value needs to be picked, for a face
+    unsigned num_cube_faces = 6;
+    unsigned num_dimensions = 3;
+
+    //The mapping of face-id to texture surface is as follows
+    //+x->face 0, -x->face 1, +y -> face 2, -y -> face 3, +z -> face 4, -z -> face 5
+    //Now for each face we need to transform the normalized coordinates as follows
+    //face 0(+X) = (-v, -u), face 1(-X) = (-v, u), face 2(+Y) = (u, v)
+    //face 3(-Y) = (u, -v) , face 4(+Z) = (u, -v), face 5(+Z) = (-u, -v) 
+    //Refer to https://en.wikipedia.org/wiki/Cube_mapping for details
+    llvm::Value *cubeCoordMap[6][3] = { 
+        { m_float1     ,    minus_floatv,   minus_floatu    }, //+x = face0
+        { float_minus1 ,    minus_floatv,   float_u         }, //-x = face1
+        { float_u ,         m_float1    ,   float_v         }, //+y = face2
+        { float_u ,         float_minus1,   minus_floatv    }, //-y = face3
+        { float_u ,         minus_floatv,   m_float1        }, //+z = face4
+        { minus_floatu ,    minus_floatv,   float_minus1    }  //-z = face5
+    };
+    //Now populate the 6x3 array with values of cubeCoordMap
+    llvm::Value *indexList[2];
+    llvm::Value *row, *elt;
+    indexList[0] = m_int0;
+    for (unsigned faceid = 0; faceid < num_cube_faces; faceid++) {
+        indexList[1] = this->getInt32(faceid);
+        row = this->CreateGEP(float_array_6_3, llvm::ArrayRef<llvm::Value*>(indexList, 2));
+        for (unsigned j = 0; j < num_dimensions; j++) {
+            indexList[1] = this->getInt32(j);
+            elt = this->CreateGEP(row, llvm::ArrayRef<llvm::Value*>(indexList, 2));
+            this->CreateStore(cubeCoordMap[faceid][j], elt);
+        }
+    }
+
+    //Now pick the one the row indexed by int32_faceid 
+    llvm::Value *finalCoords[3];
+    indexList[1] = int32_faceid;
+    row = this->CreateGEP(float_array_6_3, llvm::ArrayRef<llvm::Value*>(indexList, 2));
+    for (unsigned i = 0; i < 3; i++) {
+        indexList[1] = this->getInt32(i);
+        elt = this->CreateGEP(row, llvm::ArrayRef<llvm::Value*>(indexList, 2));
+        finalCoords[i] = this->CreateLoad(elt);
+    }
+
+    SampleParamsFromCube CubeRetParams;
+    CubeRetParams.float_xcube = finalCoords[0];
+    CubeRetParams.float_ycube = finalCoords[1];
+    CubeRetParams.float_address_3 = finalCoords[2];
+    CubeRetParams.float_aicube = float_arrayIndex;
+    CubeRetParams.int32_textureIdx = int32_textureIdx;
+    CubeRetParams.int32_sampler = int32_sampler;
+    CubeRetParams.offsetU = int32_u;
+    CubeRetParams.offsetV = int32_v;
+    CubeRetParams.offsetR = m_int0; //Not used
+    return CubeRetParams;
+}
+
+template<bool preserveNames, typename T, typename Inserter>
 inline SampleParamsFromCube LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_SAMPLE_Cube_Params(
     llvm::Value* float_address_0,
     llvm::Value* float_address_1,
@@ -4288,7 +4399,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::get32BitLaneID()
 }
 
 template<bool preserveNames, typename T, typename Inserter>
-inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::getLaneSize()
+inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::getSimdSize()
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
     llvm::Function* pFunc = llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_simdSize);

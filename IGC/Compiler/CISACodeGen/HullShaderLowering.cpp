@@ -51,6 +51,8 @@ public:
 private:
     void LowerIntrinsicInputOutput(llvm::Function &F);
 
+    unsigned int GetDomainType(llvm::BasicBlock * bb, unsigned & numTEFactorsInDomain);
+
     llvm::GenIntrinsicInst* AddURBWriteControlPointOutputs(
         Value* mask,
         Value* data[8],
@@ -118,11 +120,15 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
 {
     SmallVector<Instruction*, 10> instructionToRemove;
 
-    IRBuilder<> builder(F.getContext());
+    IRBuilder<> builder(F.getContext());    
 
     for(auto BI = F.begin(), BE = F.end(); BI != BE; BI++)
     {
         m_pControlPointOutputs.clear();
+        
+        bool isTEFactorURBMsgPadded = false;
+        unsigned int numTEFactorsInDomain = 0;
+
         for(auto II = BI->begin(), IE = BI->end(); II!=IE; II++)
         {
             if(GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(II))
@@ -216,6 +222,40 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                     };
                     AddURBWriteControlPointOutputs(inst->getOperand(6), data, inst);
                     instructionToRemove.push_back(inst);
+                }
+
+                // Apply URB padding for TE factors.
+                if (IGC_IS_FLAG_ENABLED(EnableTEFactorsPadding) &&
+                    ((IID == GenISAIntrinsic::GenISA_OuterScalarTessFactors) ||
+                     (IID == GenISAIntrinsic::GenISA_InnerScalarTessFactors) ||
+                     (IID == GenISAIntrinsic::GenISA_ScalarTessFactors)))
+                {
+                    if (!isTEFactorURBMsgPadded)
+                    {
+                        // Parse all instructions within BB and count the Inner,Outer ScalarTessFactors factors
+                        // and get the domain type.
+                        BasicBlock* bb = dyn_cast<BasicBlock>(BI);
+                        uint32_t tessShaderDomain = GetDomainType(bb, numTEFactorsInDomain);                            
+
+                        if ((numTEFactorsInDomain == 2 && tessShaderDomain == USC::TESSELLATOR_DOMAIN_ISOLINE) ||
+                            (numTEFactorsInDomain == 4 && tessShaderDomain == USC::TESSELLATOR_DOMAIN_TRI) ||
+                            (numTEFactorsInDomain == 6 && tessShaderDomain == USC::TESSELLATOR_DOMAIN_QUAD))
+                        {
+
+                            // Adjust the mask value based on the TE factors number.
+                            unsigned int mask = (1 << (8 - numTEFactorsInDomain)) - 1;
+
+                            Value* undef = llvm::UndefValue::get(Type::getFloatTy(F.getContext()));
+                            Value* data[8] = { undef,undef,undef,undef,undef,undef,undef,undef };
+                            AddURBWrite(
+                                builder.getInt32(0),    // offset
+                                builder.getInt32(mask),
+                                data,
+                                inst);
+
+                            isTEFactorURBMsgPadded = true;
+                        }
+                    }                    
                 }
 
                 if ((IID == GenISAIntrinsic::GenISA_OuterScalarTessFactors) ||
@@ -463,6 +503,60 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
     {
         instructionToRemove[i]->eraseFromParent();
     }
+}
+
+unsigned int HullShaderLowering::GetDomainType(llvm::BasicBlock* bb, unsigned &numTEFactorsInDomain)
+{
+    unsigned int tessShaderDomain = USC::TESSELLATOR_DOMAIN_ISOLINE;
+    for (auto II = bb->begin(), IE = bb->end(); II != IE; II++)
+    {
+        if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(II))
+        {
+            GenISAIntrinsic::ID IID = inst->getIntrinsicID();
+            if ((IID == GenISAIntrinsic::GenISA_OuterScalarTessFactors) ||
+                (IID == GenISAIntrinsic::GenISA_InnerScalarTessFactors))
+            {
+                llvm::NamedMDNode *pMetaData = m_module->getOrInsertNamedMetadata("TessellationShaderDomain");
+                if (pMetaData && (pMetaData->getNumOperands() == 1))
+                {
+                    llvm::MDNode* pTessShaderDomain = pMetaData->getOperand(0);
+                    if (pTessShaderDomain)
+                    {
+                        tessShaderDomain = int_cast<uint32_t>(
+                            mdconst::dyn_extract<ConstantInt>(pTessShaderDomain->getOperand(0))->getZExtValue());
+                    }
+                }
+                numTEFactorsInDomain++;
+            }
+            else if (IID == GenISAIntrinsic::GenISA_ScalarTessFactors)
+            {
+                const unsigned int tessFactor = int_cast<unsigned int>(llvm::cast<ConstantInt>(inst->getOperand(0))->getZExtValue());
+                switch (tessFactor)
+                {
+                case SHADER_OUTPUT_TYPE_FINAL_QUAD_U_EQ_0_EDGE_TESSFACTOR:
+                case SHADER_OUTPUT_TYPE_FINAL_QUAD_V_EQ_0_EDGE_TESSFACTOR:
+                case SHADER_OUTPUT_TYPE_FINAL_QUAD_U_EQ_1_EDGE_TESSFACTOR:
+                case SHADER_OUTPUT_TYPE_FINAL_QUAD_V_EQ_1_EDGE_TESSFACTOR:
+                case SHADER_OUTPUT_TYPE_FINAL_QUAD_U_INSIDE_TESSFACTOR:
+                case SHADER_OUTPUT_TYPE_FINAL_QUAD_V_INSIDE_TESSFACTOR:
+                    tessShaderDomain = USC::TESSELLATOR_DOMAIN_QUAD;
+                    break;
+                case SHADER_OUTPUT_TYPE_FINAL_TRI_U_EQ_0_EDGE_TESSFACTOR:
+                case SHADER_OUTPUT_TYPE_FINAL_TRI_V_EQ_0_EDGE_TESSFACTOR:
+                case SHADER_OUTPUT_TYPE_FINAL_TRI_W_EQ_0_EDGE_TESSFACTOR:
+                case SHADER_OUTPUT_TYPE_FINAL_TRI_INSIDE_TESSFACTOR:
+                    tessShaderDomain = USC::TESSELLATOR_DOMAIN_TRI;
+                    break;
+                case SHADER_OUTPUT_TYPE_FINAL_LINE_DETAIL_TESSFACTOR:
+                case SHADER_OUTPUT_TYPE_FINAL_LINE_DENSITY_TESSFACTOR:
+                    tessShaderDomain = USC::TESSELLATOR_DOMAIN_ISOLINE;
+                    break;
+                }
+                numTEFactorsInDomain++;
+            }
+        }
+    }
+    return tessShaderDomain;
 }
 
 llvm::GenIntrinsicInst* HullShaderLowering::AddURBWriteControlPointOutputs(Value* mask, Value* data[8], Instruction* prev)

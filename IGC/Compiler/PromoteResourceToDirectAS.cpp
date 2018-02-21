@@ -296,31 +296,62 @@ bool PatchInstructionAddressSpace(const std::vector<Value*> &instList, Type* dst
     dstPtr = nullptr;
     bool success = false;
 
-    // Find the PHI node we need to patch, if any
+    // Find the first PHI node or select we need to patch, if any.
+    // In the most simple case, we assume only one branching instruction. If there are multiple selects, phis, or any
+    // combination of the two, we won't be able to handle it.
+
+    // First, we find the phi/select instruction. We patch all the GEP and ptrcast instructions for each branch, then
+    // finally any GEP and ptrcast instructions that comes after the phi/select, but before the load
     PHINode* phiNode = nullptr;
+    SelectInst* selectInst = nullptr;
+    std::vector<Value*> remainingInst;
     for(unsigned i = 0; i < numInstructions; i++)
     {
         Value* inst = instList[i];
         if (PHINode* phi = dyn_cast<PHINode>(inst))
         {
-            if(phiNode == nullptr)
-            {
-                phiNode = phi;
-            }
-            else
-            {
-                // We can only handle one PHI node for now!
-                return false;
-            }
+            phiNode = phi;
+            break;
+        }
+        else if (SelectInst *select = dyn_cast<SelectInst>(inst))
+        {
+            selectInst = select;
+            break;
+        }
+        else
+        {
+            remainingInst.push_back(inst);
         }
     }
 
-    if (phiNode == nullptr)
+    if (selectInst)
     {
-        // If there are no PHI nodes, we can just patch the GEPs
-        success = PatchGetElementPtr(instList, dstTy, directAS, nullptr, dstPtr);
+        Value* newSelectInst = nullptr;
+        Value* bufferPtr0 = nullptr;
+        Value* bufferPtr1 = nullptr;
+        std::vector<Value*> tempList0, tempList1;
+        // Call trace again to get the instructions list for each branch of the select
+        if(IGC::TracePointerSource(selectInst->getOperand(1), true, true, tempList0) &&
+           IGC::TracePointerSource(selectInst->getOperand(2), true, true, tempList1))
+        {
+            assert(selectInst->getOperand(1)->getType()->isPointerTy() && selectInst->getOperand(2)->getType()->isPointerTy());
+            Type* srcType0 = selectInst->getOperand(1)->getType()->getPointerElementType();
+            Type* srcType1 = selectInst->getOperand(1)->getType()->getPointerElementType();
+
+            // Patch both branches, then patch the select instruction
+            if (PatchGetElementPtr(tempList0, srcType0, directAS, nullptr, bufferPtr0) &&
+                PatchGetElementPtr(tempList1, srcType1, directAS, nullptr, bufferPtr1))
+            {
+                newSelectInst = SelectInst::Create(selectInst->getOperand(0), bufferPtr0, bufferPtr1, "", selectInst);
+            }
+            // If there are any remaining GEP/bitcast instructions after the select, patch them as well
+            if (newSelectInst)
+            {
+                success = PatchGetElementPtr(remainingInst, dstTy, directAS, newSelectInst, dstPtr);
+            }
+        }
     }
-    else
+    else if (phiNode)
     {
         PointerType* newPhiTy = PointerType::get(phiNode->getType()->getPointerElementType(), directAS);
         PHINode* pNewPhi = PHINode::Create(newPhiTy, phiNode->getNumIncomingValues(), "", phiNode);
@@ -349,16 +380,12 @@ bool PatchInstructionAddressSpace(const std::vector<Value*> &instList, Type* dst
         }
 
         // If there are any remaining GEP/bitcast instructions after the PHI node, patch them as well
-        std::vector<Value*> remainingInst;
-        for(unsigned i = 0; i < numInstructions; i++)
-        {
-            if(isa<PHINode>(instList[i]))
-            {
-                break;
-            }
-            remainingInst.push_back(instList[i]);
-        }
         success = PatchGetElementPtr(remainingInst, dstTy, directAS, pNewPhi, dstPtr);
+    }
+    else
+    {
+        // If there are no PHI nodes or selects, we can just patch the GEPs
+        success = PatchGetElementPtr(instList, dstTy, directAS, nullptr, dstPtr);
     }
 
     if(!dstPtr || !dstPtr->getType()->isPointerTy())

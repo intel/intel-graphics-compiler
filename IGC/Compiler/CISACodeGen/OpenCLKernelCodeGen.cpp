@@ -857,13 +857,6 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
     case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DATA_PARAMETER_OBJECT_ID:
     case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DISPATCHER_SIMD_SIZE:
     case KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET:
-		if (type == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET &&
-			IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset) &&
-			arg->use_empty())
-		{
-			// Don't generate BUFFER OFFSET for unused buffer offset
-			break;
-		}
         constantType = kernelArg->getDataParamToken();
         assert(constantType != iOpenCL::DATA_PARAMETER_TOKEN_UNKNOWN);
         {
@@ -1295,6 +1288,11 @@ void COpenCLKernel::AllocatePayload()
     for (KernelArgs::const_iterator i = kernelArgs.begin(), e = kernelArgs.end(); i != e; ++i) {
         KernelArg arg = *i;
 
+		// For now, only check BUFFER_OFFSET arguments (may move it into KernelArg class)
+		bool IsUnusedArg = (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET &&
+			                IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset) &&
+			                arg.getArg()->use_empty());
+
         if (!constantBufferStartSet && arg.isConstantBuf()) {
             constantBufferStart = offset;
             constantBufferStartSet = true;
@@ -1312,7 +1310,7 @@ void COpenCLKernel::AllocatePayload()
         // Local IDs are non-uniform and may have two instances in SIMD32 mode
         int numAllocInstances = arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_IDS ? m_numberInstance : 1;
 
-        if (arg.needsAllocation())
+        if (arg.needsAllocation() && !IsUnusedArg)
         {
             // Align on the desired alignment for this argument
             offset = iSTD::Align(offset, arg.getAlignment());
@@ -1346,9 +1344,13 @@ void COpenCLKernel::AllocatePayload()
         }
 
         // Create annotations for the kernel argument
-        CreateAnnotations(&arg, offset - constantBufferStart);
+		// If an arg is unused, don't generate patch token for it.
+		if (!IsUnusedArg)
+		{
+			CreateAnnotations(&arg, offset - constantBufferStart);
+		}
 
-        if (arg.needsAllocation())
+        if (arg.needsAllocation() && !IsUnusedArg)
         {
             for (int i = 0; i < numAllocInstances; ++i)
             {

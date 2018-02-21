@@ -664,8 +664,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
 
     if( !fileExist && fileName )
     {
-        fprintf(fileName, "Frequency,%ju\n\n", frequency );
-
+		fprintf(fileName, "Frequency,%ju\n\n", frequency );
         fprintf(fileName, "corpus name,shader count,");
         for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
         {
@@ -686,7 +685,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
         {
             if( !skipTimer( i ) )
             {
-                fprintf(fileName, "%jd,", getCompileTime(static_cast<COMPILE_TIME_INTERVALS>(i)) );
+				fprintf(fileName, "%jd,", getCompileTime(static_cast<COMPILE_TIME_INTERVALS>(i)) );
             }
         }
         fprintf(fileName, "\n");
@@ -714,7 +713,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
             fprintf(fileName, "hit,," );
             for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
             {
-                fprintf(fileName, "%ju,", m_hitCount[i] );
+				fprintf(fileName, "%ju,", m_hitCount[i] );
             }
             fprintf(fileName, "\n");
         }
@@ -826,7 +825,7 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
 
     if( !fileExist )
     {
-        fprintf(fileName, "Frequency:%ju,", frequency );
+		fprintf(fileName, "Frequency:%ju,", frequency );
         for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
         {
             if( !skipTimer(i) )
@@ -843,7 +842,7 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
         if( !skipTimer(i) )
         {
             const COMPILE_TIME_INTERVALS interval = static_cast<COMPILE_TIME_INTERVALS>(i);
-            fprintf(fileName, "%jd,", getCompileTime( interval ) );
+			fprintf(fileName, "%jd,", getCompileTime( interval ) );
         }
     }
 

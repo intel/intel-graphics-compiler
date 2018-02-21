@@ -1015,15 +1015,6 @@ void BB_Scheduler::LatencyScheduling()
         preNode *N = Q.pop();
         assert(N->NumPredsLeft == 0);
         if (N->getInst() != nullptr) {
-            if (N->getInst()->isSend() && N->getTupleLead()) {
-                // If it's the pair of the current node, reset the node to be
-                // paired. If it's send with pair, ensure its pair is scheduled
-                // before other sends by setting the current node to be paired.
-                if (!Q.getCurrTupleLead())
-                    Q.setCurrTupleLead(N);
-                if (Q.getCurrTupleLead())
-                    Q.updateCurrTupleLead(N);
-            }
             schedule.push_back(N->getInst());
             N->isScheduled = true;
         }
@@ -1265,11 +1256,7 @@ preNode* LatencyQueue::select()
     auto TopIter = Q.end();
     for (auto I = Q.begin(), E = Q.end(); I != E; ++I) {
         preNode* N = *I;
-        // If there's a node to be paired, skip send not in pair.
-        if (N->getInst() && N->getInst()->isSend())
-            if (TheCurrTupleLead && N->getTupleLead() != TheCurrTupleLead)
-                continue;
-        if (TopIter == Q.end() || compare(*TopIter, *I))
+        if (TopIter == Q.end() || compare(*TopIter, N))
             TopIter = I;
     }
     assert(TopIter != Q.end());

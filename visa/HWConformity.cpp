@@ -2485,6 +2485,26 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
 
     if (!isDMul)
     {
+        auto checkSrcMod = [this, bb, i, inst](int srcPos)
+        {
+            assert((srcPos == 0 || srcPos == 1) && "unexpected src pos");
+            auto src = inst->getSrc(srcPos);
+            if (src->isSrcRegRegion())
+            {
+                G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
+                if (srcRegion->getModifier() != Mod_src_undef)
+                {
+                    src = insertMovBefore(i, srcPos, src->getType(), bb);
+                    inst->setSrc(src, srcPos);
+                }
+            }
+        };
+
+        if (!builder.supportSrcModforMul())
+        {
+            checkSrcMod(0);
+            checkSrcMod(1);
+        }
         return false;
     }
 

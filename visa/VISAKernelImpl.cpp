@@ -1052,7 +1052,7 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
             {
                 m_asmName.erase(found, m_asmName.length());
             }
-            m_options->setOption(VISA_AsmFileName, m_asmName.c_str());
+            m_options->setOptionInternally(VISA_AsmFileName, m_asmName.c_str());
         }
     }
 

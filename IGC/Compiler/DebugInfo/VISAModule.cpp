@@ -436,7 +436,7 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
 
     if (const Constant *pConstVal = dyn_cast<Constant>(pVal))
     {
-        if (!isa<GlobalVariable>(pVal))
+        if (!isa<GlobalVariable>(pVal) && !isa<ConstantExpr>(pVal))
         {
             assert(!isDbgDclInst && "address cannot be immediate!");
             return VISAVariableLocation(pConstVal);

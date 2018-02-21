@@ -55,7 +55,7 @@ namespace TC
         bool benefitFromTypeDemotion() const override { return true; }
         bool benefitFromPreRARematFlag() const override { return true; }
 
-        bool NeedExtraPassesAfterAlwaysInlinerPass() const { return true; }
+        bool NeedExtraPassesAfterAlwaysInlinerPass() const override { return true; }
         bool enableVISAPreRAScheduler() const override { return true; }
 
         bool NeedWAToTransformA32MessagesToA64() const override{ return true; }

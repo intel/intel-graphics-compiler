@@ -26,7 +26,6 @@ set(IGC_BUILD__HDR__GenISAIntrinsics
     "${CMAKE_CURRENT_SOURCE_DIR}/GenIntrinsics.h"
   )
 
-
 add_library("${IGC_BUILD__PROJ__GenISAIntrinsics}" STATIC
     ${IGC_BUILD__SRC__GenISAIntrinsics}
     ${IGC_BUILD__HDR__GenISAIntrinsics}
@@ -67,6 +66,11 @@ set_property(TARGET "${IGC_BUILD__GenISAIntrinsics_TABLEGEN_TARGET_NAME}"
 
 add_dependencies("${IGC_BUILD__PROJ__GenISAIntrinsics}" "${IGC_BUILD__GenISAIntrinsics_TABLEGEN_TARGET_NAME}")
 
+#set up standard defines from the common WDK path.
+if(MSVC)
+    set_target_properties(${IGC_BUILD__PROJ__GenISAIntrinsics} PROPERTIES VS_PRE_DEFAULT_PROPS "${CMAKE_CURRENT_SOURCE_DIR}/../../WrkSpace/PropertySheets/igfx_env.props")
+    set_target_properties(${IGC_BUILD__GenISAIntrinsics_TABLEGEN_TARGET_NAME} PROPERTIES VS_PRE_DEFAULT_PROPS "${CMAKE_CURRENT_SOURCE_DIR}/../../WrkSpace/PropertySheets/igfx_env.props")
+endif()
 
 win_static_runtime()
 

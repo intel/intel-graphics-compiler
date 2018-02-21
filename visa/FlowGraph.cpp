@@ -5795,7 +5795,7 @@ void G4_Kernel::renameAliasDeclares()
             }
             if (offset != 0)
             {
-                newName += "_" + offset;
+                newName += "_" + to_string(offset);
             }
             dcl->setName(fg.builder->getNameString(fg.mem, 64, newName.c_str()));
         }

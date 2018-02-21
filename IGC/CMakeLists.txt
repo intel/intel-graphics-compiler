@@ -2072,6 +2072,7 @@ else()
   set(_igcLibraryName "igc")
 endif()
 #FCL
+
 if(DEFINED FCL_OPTION__LIBRARY_NAME)
   set(_fclLibraryName "${FCL_OPTION__LIBRARY_NAME}")
 else()
@@ -2160,6 +2161,11 @@ message(STATUS "================================================================
 
 # =========================================== Helper variables =========================================
 
+if(MSVC)
+#Utility cmake file for setting WDK and VC paths.
+include(${BUILD_SYS_INC}/utils.cmake)
+endif()
+
 # We are building IGC.
 set(IGC_BUILD YES)
 
@@ -2179,7 +2185,7 @@ else()
 endif()
 
 
-if(_igc_compiler_is_gnu_or_clang)
+if(_igc_compiler_is_gnu_or_clang AND NOT IGC_BUILD_DISABLE_FLAGS_GNU_CLANG)
   set(IGC_BUILD__WHOLE_ARCHIVE    "-Wl,--whole-archive")
   set(IGC_BUILD__NO_WHOLE_ARCHIVE "-Wl,--no-whole-archive")
   set(IGC_BUILD__START_GROUP      "-Wl,--start-group")
@@ -2234,8 +2240,6 @@ set(IGC_BUILD__TOOLS_7Z_LINUX_DIR "${IGC_BUILD__GFX_DEV_TOOLS_DIR}/Linux/tools/7
 set(IGC_BUILD__LLVM_DIR             "${IGC_OPTION__OUTPUT_DIR}/llvm")
 set(IGC_BUILD__BIF_DIR              "${IGC_OPTION__OUTPUT_DIR}/bif/${CMAKE_CFG_INTDIR}")
 set(IGC_BUILD__CTH_DIR              "${IGC_OPTION__OUTPUT_DIR}/fcl")
-
-
 
 # =========================================== Command-line Tools =======================================
 
@@ -2695,7 +2699,8 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
         RtMultiThreadedStaticDebug
         UnreferencedVariable
     )
-
+	
+	
   # Adding needed settings specific to MSVC.
   if(MSVC)
   # Adding needed settings specific to GCC.
@@ -3007,7 +3012,7 @@ if(MSVC)
   #)
 # Force static linking of common libraries on Android for shared objects.
 elseif(_igc_compiler_is_gnu_or_clang)
-  if(NOT ANDROID)
+  if(NOT ANDROID AND NOT IGC_BUILD_DISABLE_FLAGS_GNU_CLANG)
     igc_config_flag_apply_settings(
         LinkerOptions
         CMAKE_SHARED_LINKER_FLAGS
@@ -3575,6 +3580,7 @@ set(IGC_BUILD__HDR__IGC__fcl_dll
 set(IGC_BUILD__HDR__IGC__igc_lib
     ${IGC_BUILD__HDR__IGC__igc_dll}
   )
+  
 #FCL
 set(IGC_BUILD__RES__IGC__fcl_dll
     ${IGC_BUILD__RES__FCL}
@@ -3612,12 +3618,14 @@ set_property(TARGET "${IGC_BUILD__PROJ__fcl_dll}" PROPERTY PROJECT_LABEL "${IGC_
 
 #Set Universal properties if this is universal build
 if(IGC_OPTION__UNIVERSAL_DRIVER)
-    set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_PRE_DEFAULT_PROPS ${IGC_BUILD__GFX_DEV_SRC_DIR}/WrkSpace/PropertySheets/IGC_universal.props)
+    set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_PRE_DEFAULT_PROPS ${IGC_BUILD__GFX_DEV_SRC_DIR}/WrkSpace/PropertySheets/igfx_env.props)
     set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_PLATFORM_TOOLSET WindowsApplicationForDrivers10.0)
+    set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_GLOBAL_DriverTargetPlatform Universal)
     set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_TARGET_PLATFORM_VERSION "")
-    
-    set_target_properties(${IGC_BUILD__PROJ__fcl_dll} PROPERTIES VS_PRE_DEFAULT_PROPS ${IGC_BUILD__GFX_DEV_SRC_DIR}/WrkSpace/PropertySheets/IGC_universal.props)
+
+    set_target_properties(${IGC_BUILD__PROJ__fcl_dll} PROPERTIES VS_PRE_DEFAULT_PROPS ${IGC_BUILD__GFX_DEV_SRC_DIR}/WrkSpace/PropertySheets/igfx_env.props)
     set_target_properties(${IGC_BUILD__PROJ__fcl_dll} PROPERTIES VS_PLATFORM_TOOLSET WindowsApplicationForDrivers10.0)
+    set_target_properties(${IGC_BUILD__PROJ__fcl_dll} PROPERTIES VS_GLOBAL_DriverTargetPlatform Universal)
     set_target_properties(${IGC_BUILD__PROJ__fcl_dll} PROPERTIES VS_TARGET_PLATFORM_VERSION "")
 endif()
 
@@ -3674,7 +3682,6 @@ endif()
 set_target_properties("${IGC_BUILD__PROJ__fcl_dll}" PROPERTIES OUTPUT_NAME "${_fclLibraryName}${_cpuSuffix}")
 unset(_cpuSuffix)
 
-
 # Injecting external vISA project.
 add_subdirectory("${IGC_BUILD__VISA_DIR}" visa)
 set_property(TARGET "GenX_IR" "LocalScheduler" APPEND PROPERTY COMPILE_DEFINITIONS
@@ -3683,14 +3690,15 @@ set_property(TARGET "GenX_IR" "LocalScheduler" APPEND PROPERTY COMPILE_DEFINITIO
 set_property(TARGET "GenX_IR"        PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__GenX_IR}")
 set_property(TARGET "LocalScheduler" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__LocalScheduler}")
 
+
 # =================================== Link targets and dependencies ====================================
 
-# Build order dependencies.
+
 foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${IGC_BUILD__LLVM_PACKAGE}")
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${IGC_BUILD__PROJ__GenISAIntrinsics}")
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${_tgtName}")
-
+  
   if(MSVC AND IGC_OPTION__BIF_LINK_BC)
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFModule_OCL}")
   endif()
@@ -3788,6 +3796,7 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
       "${IGC_BUILD__PROJ__VulkanFrontend}"
     )
   endif()
+  
   
   list(APPEND _targetLinkLine
       "${IGC_BUILD__PROJ__Compiler}"
@@ -3956,6 +3965,7 @@ endif()
 ########################################################################
 # cpack to create deb package
 ########################################################################
+
 install(TARGETS ${IGC_BUILD__PROJ__igc_dll} DESTINATION lib)
 
 set(CPACK_GENERATOR "DEB")

@@ -51,6 +51,11 @@ namespace vISA
         const unsigned int cMaxFillPayloadSize = 4;
         const unsigned int cMaxSpillPayloadSize = 4;
         const unsigned int cSpillFillCleanupWindowSize = 10;
+        const unsigned int cFillWindowThreshold128GRF = 180;
+        const unsigned int cSpillWindowThreshold128GRF = 120;
+
+        unsigned int fillWindowSizeThreshold = 0;
+        unsigned int spillWindowSizeThreshold = 0;
 
         // <Old fill declare*, std::pair<Coalesced Decl*, Row Off>>
         // This data structure is used to replaced old spill/fill operands
@@ -101,6 +106,10 @@ namespace vISA
             SpillManagerGMRF& s, unsigned int iterationNo, RPE& r) :
             kernel(k), liveness(l), graphColor(g), spill(s), rpe(r)
         {
+            unsigned int numGRFs = k.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+            fillWindowSizeThreshold = numGRFs - (128 - cFillWindowThreshold128GRF);
+            spillWindowSizeThreshold = numGRFs - (128 - cSpillWindowThreshold128GRF);
+
             iterationNo = iterNo;
 
             computeAddressTakenDcls();

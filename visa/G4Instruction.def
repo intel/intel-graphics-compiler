@@ -92,6 +92,7 @@ HANDLE_INST( fbl, 1, 1, InstTypeLogic, GENX_BDW, \
 HANDLE_INST( cbit, 1, 1, InstTypeLogic, GENX_BDW, \
              ATTR_NONE )
 
+
 //
 // InstTypeArith
 //

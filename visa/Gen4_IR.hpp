@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _GEN4_IR_HPP_
 #define _GEN4_IR_HPP_
 
+
 #include <set>
 #include <list>
 #include <string>
@@ -763,7 +764,7 @@ public:
     bool isReturn() const { return op == G4_return; }
     bool isFReturn() const { return (op == G4_pseudo_fret); }
     bool isMath() const { return op == G4_math; }
-    bool isIntrinsic() const { return op == G4_intrinsic; }
+	bool isIntrinsic() const { return op == G4_intrinsic; }
     bool isSend() const
     {
         return op == G4_send || op == G4_sendc || op == G4_sends ||
@@ -846,6 +847,7 @@ public:
         MUST_BE_TRUE(isIntrinsic(), ERROR_UNKNOWN);
         return (G4_InstIntrinsic*) this;
     }
+
 
     bool isPseudoUse() const;
     G4_Type getExecType() const;

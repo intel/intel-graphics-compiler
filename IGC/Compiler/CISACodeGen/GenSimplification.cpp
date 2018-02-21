@@ -253,7 +253,7 @@ void GenSimplification::visitExtractElement(ExtractElementInst &EEI) {
   SmallVector<Value *, 2> Values(2);
   unsigned Mask = 0;
   InsertElementInst *IEI;
-  while (IEI = dyn_cast<InsertElementInst>(Vec)) {
+  while ((IEI = dyn_cast<InsertElementInst>(Vec))) {
     ConstantInt *Idx = dyn_cast<ConstantInt>(IEI->getOperand(2));
     if (!Idx)
       return;

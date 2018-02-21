@@ -316,11 +316,10 @@ void CGen8OpenCLStateProcessor::CreateKernelBinary(
 
     if (IGC_IS_FLAG_ENABLED(EnableCosDump))
     {
-        auto name =
-            DumpName(IGC::Debug::GetShaderOutputName())
+        auto name = DumpName(IGC::Debug::GetShaderOutputName())
             .Hash(m_Context.hash)
             .Type(ShaderType::OPENCL_SHADER)
-            .PostFix("kernel_" + annotations.m_kernelName)
+            .PostFix("kernel_" + annotations.m_kernelName + std::to_string( annotations.m_executionEnivronment.CompiledSIMDSize))
             .Extension("cos");
         Dump dump(name, DumpType::COS_TEXT);
 

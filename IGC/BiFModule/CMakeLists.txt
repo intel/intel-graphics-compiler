@@ -58,7 +58,18 @@
     set(_OS_folder "Windows")
   elseif(_archOs MATCHES "^Linux$")
     # Process TBD
-    set(_OS_folder "linux-${_osDirSuffix}")
+    set(_OS_folder "")
+    foreach(_clang_prebuilt_name "${_osDirSuffix}" "common" "ubuntu")
+      set(dir_test "${IGC_BUILD__GFX_DEV_SRC_DIR}/Clang/Prebuilt/linux-${_clang_prebuilt_name}/Release/${_cpuSuffix}/clang.7z")
+      if(EXISTS "${dir_test}")
+        set(_OS_folder "linux-${_clang_prebuilt_name}")
+        break()
+      endif()
+    endforeach()
+    if("${_OS_folder}" STREQUAL "")
+      # Prebuilt files not found.  Continue in case can be built below.
+      set(_OS_folder "linux-${_osDirSuffix}")
+    endif()
   elseif(_archOs MATCHES "^Android$")
     # Use Ubuntu package
     set(_OS_folder "linux-ubuntu")

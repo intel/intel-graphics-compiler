@@ -190,10 +190,8 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
         BasicBlock *BB = &*BI;
         unsigned int bbMaxAssignedNumber = m_pRegisterPressureEstimate->getMaxAssignedNumberForBB(BB);
         unsigned int bbMinAssignedNumber = m_pRegisterPressureEstimate->getMinAssignedNumberForBB(BB);
-        if (((lowestAssignedNumber >= bbMinAssignedNumber) && (highestAssignedNumber <= bbMaxAssignedNumber)) ||
-            ((bbMinAssignedNumber >= lowestAssignedNumber) && (bbMaxAssignedNumber <= highestAssignedNumber)) ||
-            ((lowestAssignedNumber <= bbMinAssignedNumber) && (bbMinAssignedNumber <= highestAssignedNumber)) ||
-            ((lowestAssignedNumber >= bbMaxAssignedNumber) && (bbMaxAssignedNumber <= highestAssignedNumber)))
+        if (((lowestAssignedNumber >= bbMinAssignedNumber) && (lowestAssignedNumber <= bbMaxAssignedNumber)) ||
+            ((bbMinAssignedNumber >= lowestAssignedNumber) && (bbMinAssignedNumber <= highestAssignedNumber)))
         {
             if (!m_pBBPressure.count(BB))
             {

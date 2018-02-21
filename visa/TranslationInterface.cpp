@@ -6792,16 +6792,9 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
     {
         // mov (1) a0.2<1>:ud src<0;1,0>:ud {NoMask} ;
 		// to hold the dynamic ext msg descriptor
-        G4_Declare *dcl_temp = createDeclareNoLookup(
-            "temp_exdesc",
-            G4_ADDRESS,
-            1,
-            1,
-            Type_UD );
-        dcl_temp->getRegVar()->setPhyReg( phyregpool.getAddrReg(), 2 );
-        G4_DstRegRegion *temp_exdesc_dst = createDstRegRegion(Direct, dcl_temp->getRegVar(), 0, 0, 1, Type_UD);
-        createInst( NULL, G4_mov, NULL, false, 1, temp_exdesc_dst, ex, NULL, InstOpt_WriteEnable, 0 );
-        temp_exdesc_src = createSrcRegRegion(Mod_src_undef,Direct,dcl_temp->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
+        G4_DstRegRegion* exDescDst = Create_Dst_Opnd_From_Dcl(getBuiltinA0Dot2(), 1);
+        createInst( NULL, G4_mov, NULL, false, 1, exDescDst, ex, NULL, InstOpt_WriteEnable, 0 );
+        temp_exdesc_src = Create_Src_Opnd_From_Dcl(getBuiltinA0Dot2(), getRegionScalar());
 
 		if (exDescVal == 0)
 		{

@@ -1069,7 +1069,8 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(accSubPostSchedule,      vISA_accSubstitution,         TIMER_OPTIMIZER);
     INITIALIZE_PASS(dce,                     vISA_EnableDCE,               TIMER_OPTIMIZER);
     INITIALIZE_PASS(reassociateConst,        vISA_reassociate,             TIMER_OPTIMIZER);
-    INITIALIZE_PASS(split4GRFVars,           vISA_split4GRFVar,            TIMER_OPTIMIZER);  
+    INITIALIZE_PASS(split4GRFVars,           vISA_split4GRFVar,            TIMER_OPTIMIZER);
+    INITIALIZE_PASS(loadThreadPayload,       vISA_loadThreadPayload,       TIMER_MISC_OPTS);
 
     // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -1652,6 +1653,8 @@ int Optimizer::optimization()
     runPass(PI_createR0Copy);
 
     runPass(PI_initializePayload);
+
+    runPass(PI_loadThreadPayload);
 
     // Insert a dummy compact instruction if requested for SKL+
     runPass(PI_insertDummyCompactInst);
@@ -6885,6 +6888,10 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             clearARFDependencies();
         }
+        if (VISA_WA_CHECK(builder.getPWaTable(), Wa_2201674230))
+        {
+            clearSendDependencies();
+        }
     }
 
 class NSDS {
@@ -7952,6 +7959,88 @@ public:
             bb->instList.insert(iter, addrInst);
         }
 
+    }
+
+    void Optimizer::loadThreadPayload()
+    {
+        if (!builder.loadThreadPayload() || !kernel.fg.builder->getIsKernel())
+        {
+            return;
+        }
+        // load input payload from address r1.2 
+        // assumption is input start at r1
+        uint32_t startGRF = 1;
+        uint32_t inputEnd = 32;
+        uint32_t inputCount = kernel.fg.builder->getInputCount();
+        for (unsigned int id = 0; id < inputCount; id++)
+        {
+            input_info_t* input_info = kernel.fg.builder->getInputArg(id);
+            if (inputEnd < (unsigned)(input_info->size + input_info->offset))
+            {
+                inputEnd = input_info->size + input_info->offset;
+            }
+        }
+        int numGRF = ((inputEnd + 31) / 32) - startGRF;
+        std::vector<G4_INST*> instBuffer;
+
+        G4_Declare* startAddrDcl = nullptr;
+        G4_Declare* r1 = builder.createHardwiredDeclare(8, Type_UD, 1, 0);     
+        if (numGRF > 4)
+        {
+            // need to copy r1.2 elsewhere so we don't overwrite it
+            G4_Declare* r127 = builder.createHardwiredDeclare(8, Type_UD, 127, 0);
+            auto src = builder.Create_Src_Opnd_From_Dcl(r1, builder.getRegionStride1());
+            auto dst = builder.Create_Dst_Opnd_From_Dcl(r127, 1);
+            auto movInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false, 8, 
+                dst, src, nullptr, InstOpt_WriteEnable);
+            instBuffer.push_back(movInst);
+            startAddrDcl = r127;
+        }
+        else
+        {
+            startAddrDcl = r1;
+        }
+
+        auto getMsgImm = [](int numGRF)
+        {
+            uint32_t dataBlocks = numGRF == 1 ? 2 : (numGRF == 2 ? 3 : 4);
+            //A32 oword block read
+            return (1 << 25) | (numGRF << 20) | (1 << 19) | (dataBlocks << 8) | 255;
+        };
+        for (int numRemaining = numGRF, nextGRF = startGRF; numRemaining > 0; /* updated in body */)
+        {
+            int numGRFToLoad = numRemaining > 2 ? 4 : numRemaining;
+            uint32_t msgDescVal = getMsgImm(numGRFToLoad);
+            uint32_t exDescVal = G4_SendMsgDescriptor::createExtDesc(SFID_DP_DC, false, 0);
+            G4_SendMsgDescriptor* desc = builder.createSendMsgDesc(msgDescVal, exDescVal,
+                true, false, nullptr, nullptr);
+            auto sendSrc = builder.Create_Src_Opnd_From_Dcl(startAddrDcl, builder.getRegionStride1());
+            auto sendDstDcl = builder.createHardwiredDeclare(numGRFToLoad * 8, Type_UD, nextGRF, 0);
+            auto sendDst = builder.Create_Dst_Opnd_From_Dcl(sendDstDcl, 1);
+            auto sendInst = builder.createSendInst(nullptr, G4_send, 8, sendDst, sendSrc,
+                builder.createImm(exDescVal, Type_UD), builder.createImm(msgDescVal, Type_UD), InstOpt_WriteEnable, true,
+                false, desc);
+            instBuffer.push_back(sendInst);
+            numRemaining -= numGRFToLoad;
+            nextGRF += numGRFToLoad;
+        }
+
+        G4_BB* entryBB = kernel.fg.getEntryBB();
+
+        // find the first non-label inst
+        auto iter = entryBB->instList.begin();
+        for (auto iterEnd = entryBB->instList.end(); iter != iterEnd; ++iter)
+        {
+            auto inst = *iter;
+            if (!inst->isLabel())
+            {
+                break;
+            }
+        }
+        for (auto inst : instBuffer)
+        {
+            entryBB->instList.insert(iter, inst);
+        }
     }
 
     /*
@@ -10333,6 +10422,7 @@ void Optimizer::splitVariables()
 void Optimizer::split4GRFVars()
 {
     std::unordered_set<G4_Declare*> varToSplit;
+    std::vector<G4_Declare*> varToSplitOrdering;
     // map each split candidate to their replacement split variables
     std::unordered_map<const G4_Declare *, DclMapInfo *> DclMap;
 
@@ -10359,6 +10449,11 @@ void Optimizer::split4GRFVars()
         {
             if (isCandidateDecl(dcl))
             {
+                if (varToSplit.find(dcl) == varToSplit.end())
+                {
+                    varToSplitOrdering.push_back(dcl);
+                }
+                   
                 varToSplit.emplace(dcl);
             }
         }
@@ -10442,8 +10537,11 @@ void Optimizer::split4GRFVars()
     }
 
     // create Lo/Hi for each variable being split
-    for (auto splitDcl : varToSplit)
+    for (auto splitDcl : varToSplitOrdering)
     {
+        // varToSplitOrdering may have extra elements since we never delete any inserted dcl from it.
+        if (varToSplit.find(splitDcl) == varToSplit.end())
+            continue;
         G4_Type Ty = splitDcl->getElemType();
         unsigned NElts = splitDcl->getTotalElems();
         std::string varName(splitDcl->getName());
@@ -11088,5 +11186,149 @@ void Optimizer::dce()
             }
         }
         bb->instList.remove_if([](G4_INST* Inst) { return Inst->isDead(); });
+    }
+}
+
+static bool retires(G4_Operand* Opnd, G4_INST* SI)
+{
+    assert(Opnd && Opnd->isGreg());
+    unsigned LB = Opnd->getLinearizedStart() / GENX_GRF_REG_SIZ;
+    unsigned RB = Opnd->getLinearizedEnd() / GENX_GRF_REG_SIZ;
+
+    auto overlaps = [=](G4_Operand* A) {
+        if (A == nullptr || A->isNullReg() || !A->isGreg())
+            return false;
+        unsigned LB1 = A->getLinearizedStart() / GENX_GRF_REG_SIZ;
+        unsigned RB1 = A->getLinearizedEnd() / GENX_GRF_REG_SIZ;
+        return (RB >= LB1 && RB1 >= LB);
+    };
+
+    // RAW or WAW
+    if (overlaps(SI->getDst()))
+        return true;
+
+    if (Opnd->isSrcRegRegion())
+        return false;
+
+    // WAR.
+    if (overlaps(SI->getSrc(0)))
+        return true;
+    if (SI->isSplitSend() && overlaps(SI->getSrc(1)))
+        return true;
+
+    // Do not retire this send.
+    return false;
+}
+
+// Emit a self-move to retire this send.
+static G4_INST* emitRetiringMov(IR_Builder& builder, G4_BB* BB, G4_INST* SI,
+                                INST_LIST_ITER InsertBefore)
+{
+    assert(SI && SI->isSend());
+    G4_Operand* Src0 = SI->getSrc(0);
+
+    unsigned RegNum = Src0->getLinearizedStart() / GENX_GRF_REG_SIZ;
+    G4_Declare* Dcl = builder.createTempVar(16, Type_F, Either, Any);
+    Dcl->setGRFBaseOffset(RegNum * G4_GRF_REG_NBYTES);
+    Dcl->getRegVar()->setPhyReg(builder.phyregpool.getGreg(RegNum), 0);
+
+    G4_DstRegRegion* MovDst = builder.createDstRegRegion(
+        Direct, Dcl->getRegVar(), 0, 0, 1, Type_F);
+    G4_SrcRegRegion* MovSrc = builder.createSrcRegRegion(
+        Mod_src_undef, Direct, Dcl->getRegVar(), 0, 0,
+        builder.getRegionStride1(), Type_F);
+    G4_INST* MovInst = builder.createInternalInst(
+        nullptr, G4_mov, nullptr, false, 8, MovDst, MovSrc, nullptr,
+        InstOpt_M0 | InstOpt_WriteEnable);
+    BB->instList.insert(InsertBefore, MovInst);
+    return MovInst;
+}
+
+// Use this instruction to retire live sends.
+static void retireSends(std::vector<G4_INST*>& LiveSends, G4_INST* Inst)
+{
+    if (LiveSends.empty())
+        return;
+
+    // Predicated instructions may not retire a send.
+    if (Inst->getPredicate() != nullptr && Inst->opcode() != G4_sel)
+        return;
+
+    // Collect operands for dependency checking.
+    std::vector<G4_Operand*> Opnds;
+    if (G4_DstRegRegion* Dst = Inst->getDst()) {
+        if (!Dst->isNullReg() && !Dst->isIndirect() && Dst->isGreg())
+            Opnds.push_back(Dst);
+    }
+    for (int i = 0; i < Inst->getNumSrc(); ++i) {
+        G4_Operand* Opnd = Inst->getSrc(i);
+        if (Opnd == nullptr || !Opnd->isSrcRegRegion() || Opnd->isNullReg())
+            continue;
+        G4_SrcRegRegion* Src = Opnd->asSrcRegRegion();
+        if (!Src->isIndirect() && Src->isGreg())
+            Opnds.push_back(Opnd);
+    }
+
+    // WRA, RAW or WAW dependency retires a live send.
+    bool Changed = false;
+    for (auto Opnd : Opnds) {
+        for (auto& SI : LiveSends) {
+            if (SI && retires(Opnd, SI)) {
+                SI = nullptr;
+                Changed = true;
+            }
+        }
+    }
+    // Remove nullptr values when there are changes.
+    if (Changed) {
+        auto Iter = std::remove(LiveSends.begin(), LiveSends.end(), (G4_INST*)0);
+        LiveSends.erase(Iter, LiveSends.end());
+    }
+}
+
+// Limit the number of live sends and clear all sends at the end of a block.
+void Optimizer::clearSendDependencies()
+{
+    for (auto BB : fg.BBs) {
+        // Live send instructions. This vector will only have MAX_SENDS
+        // or less instructions.
+        const unsigned MAX_SENDS = 3;
+        std::vector<G4_INST*> LiveSends;
+
+        for (auto I = BB->instList.begin(); I != BB->instList.end(); /*empty*/) {
+            auto CurI = I++;
+            G4_INST* Inst = *CurI;
+
+            // Try to retire live sends.
+            retireSends(LiveSends, Inst);
+            if (!Inst->isSend())
+                continue;
+
+            // This is a send.
+            if (LiveSends.size() >= MAX_SENDS) {
+                // OK, too many live sends. Retire the earliest live send.
+                G4_INST* SI = LiveSends.front();
+                G4_INST* MovInst = emitRetiringMov(builder, BB, SI, CurI);
+                retireSends(LiveSends, MovInst);
+                assert(LiveSends.size() < MAX_SENDS);
+            }
+
+            // If this is EOT and send queue is not full, then nothing to do.
+            // Otherwise a new send becomes live.
+            if (Inst->isEOT())
+                LiveSends.clear();
+            else
+                LiveSends.push_back(Inst);
+        }
+
+        // Retire remainig live sends in this block, if any.
+        for (auto SI : LiveSends) {
+            assert(SI && SI->isSend());
+            auto InsertBefore = BB->instList.end();
+            G4_INST* LastInst = BB->instList.back();
+            if (LastInst->isFlowControl())
+                InsertBefore = std::prev(InsertBefore);
+            emitRetiringMov(builder, BB, SI, InsertBefore);
+        }
     }
 }

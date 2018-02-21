@@ -55,7 +55,7 @@ namespace IGC
             AU.setPreservesAll();
         }
 
-        bool runOnModule(llvm::Module &M);
+        bool runOnModule(llvm::Module &M) override;
         unsigned getPSDBottleNeckThreshold(const llvm::Function &F);
 
         unsigned getPushConstantThreshold(llvm::Function* F)

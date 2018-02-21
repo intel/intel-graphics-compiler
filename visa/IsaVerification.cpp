@@ -1513,7 +1513,8 @@ static void verifyInstructionLogic(const common_isa_header& isaHeader, const ker
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
     bool pred_logic = false;
-    for (unsigned i = 0; i < inst->opnd_count; i++)
+    unsigned opend_count = inst->opnd_count;
+    for (unsigned i = 0; i < opend_count; i++)
     {
         const vector_opnd& opnd = getVectorOperand(inst, i);
         VISA_Type opnd_type = getVectorOperandType(isaHeader, header, opnd);

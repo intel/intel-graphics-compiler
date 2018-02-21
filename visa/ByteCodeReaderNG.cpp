@@ -708,6 +708,7 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
 
             opnd_count -= opnd_skip;
 
+
             bool             saturate = (((VISA_Modifier)((tag >> 3 ) & 0x7)) == MODIFIER_SAT);
             VISA_VectorOpnd*      dst = opnds[0];
             VISA_VectorOpnd*     src0 = opnds[1];
@@ -734,7 +735,7 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
 				}
                 break;
             case ISA_Inst_Logic:
-                kernelBuilder->AppendVISALogicOrShiftInst(opcode, pred, saturate, emask, esize, dst, src0, src1, src2, src3);
+                    kernelBuilder->AppendVISALogicOrShiftInst(opcode, pred, saturate, emask, esize, dst, src0, src1, src2, src3);
                 break;
             case ISA_Inst_Address:
                 kernelBuilder->AppendVISAAddrAddInst(emask, esize, dst, src0, src1);

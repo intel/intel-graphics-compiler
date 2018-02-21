@@ -881,16 +881,19 @@ void CodeGenPatternMatch::visitBinaryOperator(llvm::BinaryOperator &I)
                 MatchModifier(I);
         break;
     case Instruction::And:
-        match = MatchBoolOp(I) ||
+        match = 
+				MatchBoolOp(I) ||
                 MatchLogicAlu(I);
         break;
     case Instruction::Or:
-        match = MatchBoolOp(I) ||
+        match = 
+                MatchBoolOp(I) ||
                 MatchLogicAlu(I);
         break;
     case Instruction::Xor:
-        match = MatchLogicAlu(I);
-        break;
+		match =
+				MatchLogicAlu(I);
+		break;
     default:
         assert(0 && "unknown binary instruction");
         break;

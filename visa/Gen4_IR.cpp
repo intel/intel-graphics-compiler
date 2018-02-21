@@ -7713,8 +7713,6 @@ bool G4_INST::canSrcBeAcc(int srcId, const IR_Builder& builder) const
     }
 
     // check that src0 and dst have the same type/alignment
-    // we allow dst to be narrower than src because it is assumed that HW conformity
-    // will promote the dst later 
     auto dstEltSize = getDst()->getHorzStride() * G4_Type_Table[getDst()->getType()].byteSize;
     if (dstEltSize > G4_Type_Table[src->getType()].byteSize)
     {
@@ -7730,6 +7728,11 @@ bool G4_INST::canSrcBeAcc(int srcId, const IR_Builder& builder) const
         {
             return false;
         }
+    }
+    else if (src->getType() == Type_HF && isMixedMode())
+    {
+        // packed HF acc is not allowed in mix mode
+        return false;
     }
 
     if (IS_TYPE_FLOAT_ALL(src->getType()) ^ IS_TYPE_FLOAT_ALL(getDst()->getType()))

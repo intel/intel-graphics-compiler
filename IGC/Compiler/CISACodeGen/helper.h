@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/Analysis/AssumptionCache.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Function.h>
@@ -127,7 +128,7 @@ void getTextureAndSamplerOperands(llvm::GenIntrinsicInst *pIntr, llvm::Value*& p
 void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value* oldPtr, llvm::Value* newPtr);
 
 llvm::Value* TracePointerSource(llvm::Value* resourcePtr);
-llvm::Value* TracePointerSource(llvm::Value* resourcePtr, bool seenPhi, bool fillList, std::vector<llvm::Value*> &instList);
+llvm::Value* TracePointerSource(llvm::Value* resourcePtr, bool hasBranching, bool fillList, std::vector<llvm::Value*> &instList);
 bool GetResourcePointerInfo(llvm::Value* srcPtr, unsigned &resID, IGC::BufferType &resTy);
 
 bool isSampleLoadGather4InfoInstruction(llvm::Instruction* inst);
@@ -280,6 +281,12 @@ inline bool isInstPrecede(
     return &*II == inst;
 }
 
-bool valueIsPositive(llvm::Value* V, const llvm::DataLayout *DL);
+// CxtI is the instruction at which V is checked whether
+// it is positive or not. 
+bool valueIsPositive(
+	llvm::Value* V,
+	const llvm::DataLayout *DL,
+	llvm::AssumptionCache *AC = nullptr,
+	llvm::Instruction *CxtI = nullptr);
 
 } // namespace IGC

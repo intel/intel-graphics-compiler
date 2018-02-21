@@ -8,6 +8,7 @@
 
 include(Functions.cmake)
 
+
 #none of the values about 32/64 are being propogated down
 #and BuildSetup.cmake is not part of IGC enviroment
 #so setting it manually
@@ -328,7 +329,12 @@ if (UNIX OR WIN32)
   set_target_properties(GenX_IR_Exe PROPERTIES
           COMPILE_DEFINITIONS "${GenX_IR_Exe_DEFINITIONS}"
           FOLDER CM_JITTER_EXE)
-
+  
+  if(MSVC)
+  #set up standard defines from the common WDK path.
+  bs_set_wdk(GenX_IR_Exe)
+  endif()
+  
   install(TARGETS GenX_IR_Exe DESTINATION bin)
 
   # Copy executable
@@ -337,7 +343,6 @@ if (UNIX OR WIN32)
   endif (NOT IGC_BUILD)
 
 endif(UNIX OR WIN32)
-
 # ###############################################################
 # CISA_ld_Exe
 # ###############################################################
@@ -410,7 +415,11 @@ if (WIN32 AND NOT IGC_BUILD)
 endif(WIN32 AND NOT IGC_BUILD)
 
 if (IGC_BUILD)
-  add_library(GenX_IR ${GenX_IR_DLL_SOURCES} ${GenX_IR_DLL_UTILITY} ${GenX_IR_DLL_HEADERS})
+  add_library(GenX_IR STATIC 
+       ${GenX_IR_DLL_SOURCES} 
+       ${GenX_IR_DLL_UTILITY} 
+       ${GenX_IR_DLL_HEADERS}
+    )
   set_target_properties( GenX_IR PROPERTIES OUTPUT_NAME "igfxcmjit${TARGET_MODIFIER}")
   if(WIN32)
     target_link_libraries(GenX_IR LocalScheduler ${GCC_SECURE_LINK_FLAGS} IGA_ENC_LIB IGA_SLIB)
@@ -439,6 +448,11 @@ endif()
 
 if(NOT WIN32)
   set_target_properties( GenX_IR PROPERTIES PREFIX "")
+endif()
+
+if(MSVC)
+#set up standard defines from the common WDK path.
+bs_set_wdk(GenX_IR)
 endif()
 
 # Copy any required headers

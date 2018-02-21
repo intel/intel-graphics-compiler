@@ -34,6 +34,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #   include "API/ShaderTypes.h"
 #endif
 
+#include "ErrorCode.h"
+
 namespace GHAL3D
 {
 

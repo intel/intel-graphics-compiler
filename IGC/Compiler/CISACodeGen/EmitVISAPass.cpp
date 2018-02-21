@@ -3079,6 +3079,7 @@ void EmitPass::Alu(e_opcode opCode, const SSource sources[N], const DstModifier&
     m_encoder->Push();
 }
 
+
 void EmitPass::Select(const SSource sources[3], const DstModifier& modifier)
 {
     assert(modifier.flag == nullptr && sources[0].mod == EMOD_NONE);

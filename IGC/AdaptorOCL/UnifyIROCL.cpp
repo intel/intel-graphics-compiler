@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/SimplifyConstant.h"
 
 #include "Compiler/Optimizer/BuiltInFuncImport.h"
+#include "Compiler/Optimizer/CodeAssumption.hpp"
 #include "Compiler/Optimizer/Scalarizer.h"
 #include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ExtenstionFuncs/ExtensionArgAnalysis.hpp"
@@ -259,6 +260,11 @@ static void CommonOCLBasedPasses(
     {
         IF_DEBUG_INFO(mpm.add(new ImplicitGlobalId());)
     }
+
+	if (IGC_GET_FLAG_VALUE(CodeAssumption) == 2)
+	{
+		mpm.add(new CodeAssumption());
+	}
 
     mpm.add(new PreBIImportAnalysis());
     mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinSizeModule)));

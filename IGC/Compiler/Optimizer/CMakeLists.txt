@@ -16,6 +16,7 @@ set(IGC_BUILD__SRC__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/Scalarizer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/SetMathPrecisionForPositionOutput.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/FixFastMathFlags.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/CodeAssumption.cpp"
   )
 set(IGC_BUILD__SRC__Compiler_Optimizer
     ${IGC_BUILD__SRC__Optimizer}
@@ -36,6 +37,7 @@ set(IGC_BUILD__HDR__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/Scalarizer.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/SetMathPrecisionForPositionOutput.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/FixFastMathFlags.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/CodeAssumption.hpp"
   )
   
 

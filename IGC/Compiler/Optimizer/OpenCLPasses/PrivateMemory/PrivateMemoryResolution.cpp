@@ -522,21 +522,30 @@ static void sinkAllocas(SmallVectorImpl<AllocaInst *> &Allocas) {
       Calcluated = true;
     }
 
-    // Sort according to dominating relation on a poset. If the first
-    // element is the only minimal one, then this is a dominating use.
-    std::sort(
-        UInsts.begin(), UInsts.end(),
-        [&](Instruction *A, Instruction *B) { return DT.dominates(A, B); });
-    Instruction *DomUse = UInsts.front();
+    // Find the Nearest Common Denominator for all the uses
+    Instruction *DomUse = UInsts[0];
+    BasicBlock *DomBB = DomUse->getParent();
     for (unsigned i = 1; i < UInsts.size(); ++i) {
-      if (!DT.dominates(DomUse, UInsts[i])) {
-        DomUse = nullptr;
+      Instruction *Use = UInsts[i];
+      BasicBlock *UseBB = Use->getParent();
+      DomBB = DT.findNearestCommonDominator(DomBB, UseBB);
+      if(!DomBB) {
         break;
       }
     }
 
-    if (DomUse)
-      AI->moveBefore(DomUse);
+    if(DomBB) {
+      // If DomBB has a use in it, insert it just before the first use.
+      // Otherwise, append it to the end of the block, to reduce register pressure.
+      Instruction *InsertPt = DomBB->getTerminator();
+      for(unsigned i = 0; i < UInsts.size(); ++i) {
+        Instruction *Use = UInsts[i];
+        if(DomBB == Use->getParent() && DT.dominates(Use, InsertPt)) {
+          InsertPt = Use;
+       }
+     }
+     AI->moveBefore(InsertPt);
+    }
   }
 }
 
@@ -559,11 +568,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
         return false;
     }
 
-    if (modMD->compOpt.OptDisable)
-    {
-        sinkAllocas(allocaInsts);
-    }
-
+    sinkAllocas(allocaInsts);    
     // If there are N+1 private buffers, and M+1 threads,
     // the layout representing the private memory will look like this:
 

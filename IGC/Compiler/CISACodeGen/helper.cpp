@@ -205,7 +205,7 @@ llvm::StoreInst* cloneStore(llvm::StoreInst *Orig, llvm::Value *Val, llvm::Value
 /// Tries to trace a resource pointer (texture/sampler/buffer) back to
 /// the pointer source. Also returns a vector of all instructions in the search path
 ///
-Value* TracePointerSource(Value* resourcePtr, bool seenPhi, bool fillList, std::vector<Value*> &instList)
+Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList, std::vector<Value*> &instList)
 {
     Value* srcPtr = nullptr;
     Value* baseValue = resourcePtr;
@@ -255,10 +255,10 @@ Value* TracePointerSource(Value* resourcePtr, bool seenPhi, bool fillList, std::
         }
         else if (PHINode* inst = dyn_cast<PHINode>(baseValue))
         {
-            if (seenPhi)
+            if (hasBranching)
             {
                 // Only support one PHI in the search path for now, since we might run
-                // into a loop situation and where we encounter the same PHI and
+                // into a loop situation where we encounter the same PHI and
                 // end up in an infinite recursion
                 break;
             }
@@ -281,6 +281,25 @@ Value* TracePointerSource(Value* resourcePtr, bool seenPhi, bool fillList, std::
                 }
             }
             break;
+        }
+        else if (SelectInst *inst = dyn_cast<SelectInst>(baseValue))
+        {
+            if (hasBranching)
+            {
+                // Similar to PHI, only allow a single branching instruction to be supported for now
+                // if both select and PHI are present, or there are multiples of each, we bail
+                break;
+            }
+            // Trace both operands of the select instruction. Both have to be traced back to the same
+            // source pointer, otherwise we can't determine which one to use.
+            Value* selectSrc0 = TracePointerSource(inst->getOperand(1), true, fillList, instList);
+            Value* selectSrc1 = TracePointerSource(inst->getOperand(2), true, fillList, instList);
+            if (selectSrc0 == selectSrc1)
+            {
+                srcPtr = selectSrc0;
+                break;
+            }
+            return nullptr;
         }
         else
         {
@@ -1121,16 +1140,22 @@ bool DSDualPatchEnabled(class CodeGenContext* ctx)
 //
 //
 //
-bool valueIsPositive(Value* V, const DataLayout *DL)
+bool valueIsPositive(
+	Value* V,
+	const DataLayout *DL,
+	llvm::AssumptionCache *AC,
+	llvm::Instruction *CxtI)
 {
-    bool isKnownNegative = false;
-    bool isKnownPositive = false;
-    llvm::ComputeSignBit(
-        V, 
-        isKnownPositive, 
-        isKnownNegative, 
-        *DL);
-
+	bool isKnownNegative = false;
+	bool isKnownPositive = false;
+	llvm::ComputeSignBit(
+		V,
+		isKnownPositive,
+		isKnownNegative,
+		*DL,
+		0,
+		AC,
+		CxtI);
     return isKnownPositive;
 }
 

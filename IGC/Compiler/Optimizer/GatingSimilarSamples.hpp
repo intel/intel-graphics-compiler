@@ -58,7 +58,7 @@ namespace IGC
             initializeGatingSimilarSamplesPass(*llvm::PassRegistry::getPassRegistry());
         }
         virtual bool runOnFunction(llvm::Function &F) override;
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const
+        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
         {
             AU.addRequired<IGC::CodeGenContextWrapper>();
         }

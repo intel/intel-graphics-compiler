@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "Compiler/Optimizer/OCLBIUtils.h"
+#include "Compiler/Optimizer/CodeAssumption.hpp"
 #include "Compiler/IGCPassSupport.h"
 
 #include "Compiler/Optimizer/OpenCLPasses/StatelessToStatefull/StatelessToStatefull.hpp"
@@ -51,6 +52,7 @@ using namespace IGC::IGCMD;
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(StatelessToStatefull, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
 IGC_INITIALIZE_PASS_END(StatelessToStatefull, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 // This pass turns a global/constants address space (stateless) load/store into a statefull a load/store.
@@ -147,6 +149,8 @@ char StatelessToStatefull::ID = 0;
 StatelessToStatefull::StatelessToStatefull(bool hasBufOff)
     : FunctionPass(ID),
       m_hasBufferOffsetArg(hasBufOff),
+	  m_hasOptionalBufferOffsetArg(false),
+	  m_ACT(nullptr),
       m_pImplicitArgs(nullptr),
 	  m_pKernelArgs(nullptr),
       m_changed (false)
@@ -165,6 +169,18 @@ bool StatelessToStatefull::runOnFunction(llvm::Function &F)
     {
         return false;
     }
+
+	if (IGC_IS_FLAG_ENABLED(CodeAssumption))
+	{
+		// Use assumption cache
+		m_ACT = &getAnalysis<AssumptionCacheTracker>();
+		AssumptionCache& AC = m_ACT->getAssumptionCache(F);
+		CodeAssumption::addAssumption(&F, &AC);
+	}
+	else
+	{
+		m_ACT = nullptr;
+	}
 
 	// Caching arguments during the transformation
 	m_hasOptionalBufferOffsetArg =
@@ -310,10 +326,12 @@ bool StatelessToStatefull::getOffsetFromGEP(
 bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
     Function* F,Value* V, Value*& offset, unsigned int& argNumber)
 {
+	AssumptionCache* AC = getAC(F);
+
     PointerType* ptrType = dyn_cast<PointerType>(V->getType());
     assert(ptrType && "Expected scalar Pointer (No support to vector of pointers");
-    if (!ptrType || ptrType->getAddressSpace() != ADDRESS_SPACE_GLOBAL &&
-        ptrType->getAddressSpace() != ADDRESS_SPACE_CONSTANT)
+    if (!ptrType || ( ptrType->getAddressSpace() != ADDRESS_SPACE_GLOBAL &&
+        ptrType->getAddressSpace() != ADDRESS_SPACE_CONSTANT ) )
     {
         return false;
     }
@@ -359,7 +377,7 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
                     {
                         Value *Idx = U->get();
                         gepProducesPositivePointer &=
-                            valueIsPositive(Idx, &(F->getParent()->getDataLayout()));
+                            valueIsPositive(Idx, &(F->getParent()->getDataLayout()), AC);
                     }
                 }
 

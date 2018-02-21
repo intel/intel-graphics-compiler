@@ -56,7 +56,7 @@ public:
         initializeDiscardOnAlphaPass(*PassRegistry::getPassRegistry());
     }
 
-    void getAnalysisUsage(AnalysisUsage& AU) const
+    void getAnalysisUsage(AnalysisUsage& AU) const override
     {
         AU.setPreservesCFG();
         AU.addRequired<CodeGenContextWrapper>();
@@ -64,7 +64,7 @@ public:
     }
     
     virtual llvm::StringRef getPassName() const override { return "DiscardOnAlpha"; }
-    bool runOnFunction(Function& F);
+    bool runOnFunction(Function& F) override;
     
 private:
     CodeGenContext* m_cgCtx;

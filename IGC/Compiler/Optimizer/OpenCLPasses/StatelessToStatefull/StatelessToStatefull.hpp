@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Instruction.h>
+#include <llvm/Analysis/AssumptionCache.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC
@@ -52,6 +53,7 @@ namespace IGC
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
+			AU.addRequired<llvm::AssumptionCacheTracker>();
         }
 
         virtual llvm::StringRef getPassName() const override
@@ -108,6 +110,13 @@ namespace IGC
 		// When m_hasBufferOffsetArg is true, optional buffer offset
 		// can be on or off, which is indicated by this boolean flag.
 		bool       m_hasOptionalBufferOffsetArg;
+
+		llvm::AssumptionCacheTracker *m_ACT;
+		llvm::AssumptionCache *getAC(llvm::Function *F)
+		{
+			return (m_ACT != nullptr ? &m_ACT->getAssumptionCache(*F)
+				                     : nullptr) ;
+		}
 
         ImplicitArgs *m_pImplicitArgs;
 		KernelArgs   *m_pKernelArgs;

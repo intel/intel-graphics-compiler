@@ -1591,6 +1591,7 @@ void CEncoder::Arithmetic(ISA_Opcode opcode, CVariable* dst, CVariable* src0, CV
     }
 }
 
+
 void CEncoder::AddPair(CVariable *Lo, CVariable *Hi, CVariable *L0, CVariable *H0, CVariable *L1, CVariable *H1) {
     assert(m_encoderState.m_dstOperand.mod == EMOD_NONE && "addPair doesn't support saturate");
 
@@ -5114,6 +5115,7 @@ void CEncoder::SetVISAWaTable(WA_TABLE const& waTable)
     }
     m_WaTable.WaNoSimd16TernarySrc0Imm = waTable.WaNoSimd16TernarySrc0Imm;
     m_WaTable.Wa_1406306137 = waTable.Wa_1406306137;
+    m_WaTable.Wa_2201674230 = waTable.Wa_2201674230;
 }
 
 void CEncoder::GetRowAndColOffset(CVariable* var, unsigned int subVar, unsigned int subReg, unsigned char& rowOff, unsigned char& colOff)

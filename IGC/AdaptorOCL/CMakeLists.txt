@@ -135,6 +135,7 @@ add_library("${IGC_BUILD__PROJ__AdaptorOCL}" STATIC
 
 set_property(TARGET "${IGC_BUILD__PROJ__AdaptorOCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__AdaptorOCL}")
 
+
 igc_sg_register(
     IGC__AdaptorOCL
     "DriverInterface\\OCL"

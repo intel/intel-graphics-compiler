@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #include "AdaptorCommon/customApi.hpp"
+#include <mutex>
 
 #if defined(_WIN32 )|| defined( _WIN64 )
 #include "Windows.h"
@@ -371,40 +372,24 @@ namespace IGC
 #endif
         }
 
-        OutputFolderName IGC_DEBUG_API_CALL GetShaderOverridePath()
-        {
-            if(IGC_IS_FLAG_ENABLED(ShaderOverride))
-            {
-#   if defined(_WIN64) || defined(_WIN32)
-                return "c:\\Intel\\IGC\\ShaderOverride\\";
-#elif defined __linux__
-                return "/tmp/IntelIGC/ShaderOverride/";
-#   endif
-            }
-            return "";
-        }
-
-        OutputFolderName IGC_DEBUG_API_CALL GetShaderOutputFolder()
+        OutputFolderName IGC_DEBUG_API_CALL GetBaseIGCOutputFolder()
         {
 #if defined(IGC_DEBUG_VARIABLES)
-
-#   if defined(_WIN64) || defined(_WIN32)
-
-            static volatile bool initialized;
-            if (initialized)
+            static std::mutex m;
+            std::lock_guard<std::mutex> lck(m);
+            static std::string IGCBaseFolder;
+            if(IGCBaseFolder != "")
             {
-                return g_shaderOutputFolder.c_str();
+                return IGCBaseFolder.c_str();
             }
-
-            IGC::Debug::DumpLock();
-            initialized = true;
-            if (!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "")
+#   if defined(_WIN64) || defined(_WIN32)
+            if(!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && IGCBaseFolder == "")
 
             {
 
                 bool needMkdir = 0;
 
-                if (IGC_IS_FLAG_ENABLED(DumpLLVMIR) ||
+                if(IGC_IS_FLAG_ENABLED(DumpLLVMIR) ||
 
                     IGC_IS_FLAG_ENABLED(EnableCosDump) ||
 
@@ -448,7 +433,7 @@ namespace IGC
                 if(needMkdir)
                 {
                     std::string testFilename = std::string(dumpPath) + "\\testfile";
-                    HANDLE testFile = 
+                    HANDLE testFile =
                         CreateFileA(testFilename.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_FLAG_DELETE_ON_CLOSE, NULL);
                     if(testFile == INVALID_HANDLE_VALUE)
                     {
@@ -472,10 +457,54 @@ namespace IGC
 
                 }
 
+                IGCBaseFolder = dumpPath;
+            }
+#elif defined ANDROID
+
+            if(IGC_IS_FLAG_ENABLED(DumpToCurrentDir))
+                return "";
+            IGCBaseFolder = "/sdcard/intel/igc/";
+
+#elif defined __linux__
+            IGCBaseFolder = "/tmp/IntelIGC/";
+#endif
+            return IGCBaseFolder.c_str();
+#else
+            return "";
+#endif
+        }
+        
+        OutputFolderName IGC_DEBUG_API_CALL GetShaderOverridePath()
+        {
+            if(IGC_IS_FLAG_ENABLED(ShaderOverride))
+            {
+                static std::mutex m;
+                std::lock_guard<std::mutex> lck(m);
+                static std::string overridePath;
+                if(overridePath == "")
+                {
+                    overridePath = std::string(GetBaseIGCOutputFolder()) + "ShaderOverride/";
+                }
+                return overridePath.c_str();
+            }
+            return "";
+        }
+
+        OutputFolderName IGC_DEBUG_API_CALL GetShaderOutputFolder()
+        {
+#if defined(IGC_DEBUG_VARIABLES)
+            static std::mutex m;
+            std::lock_guard<std::mutex> lck(m);
+            if(g_shaderOutputFolder != "")
+            {
+                return g_shaderOutputFolder.c_str();
+            }
+#   if defined(_WIN64) || defined(_WIN32)
+            if (!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "")
+            {
+                char dumpPath[256];
+                sprintf_s(dumpPath, "%s", GetBaseIGCOutputFolder());
                 char appPath[MAX_PATH] = { 0 };
-
-
-
                 // check a process id and make an adequate directory for it:
 
                 if (::GetModuleFileNameA(NULL, appPath, sizeof(appPath)-1))
@@ -514,7 +543,7 @@ namespace IGC
 
 
 
-                if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY && needMkdir)
+                if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY)
 
                 {
 
@@ -525,7 +554,6 @@ namespace IGC
                 g_shaderOutputFolder = dumpPath;
 
             }
-            IGC::Debug::DumpUnlock();
 #elif defined ANDROID
 
             if (IGC_IS_FLAG_ENABLED(DumpToCurrentDir))
@@ -534,19 +562,11 @@ namespace IGC
 
 
 
-            if (!SysUtils::CreateDir("/sdcard/intel/igc/", true, IGC_IS_FLAG_DISABLED(ShaderDumpPidDisable), &g_shaderOutputFolder))
+            if (!SysUtils::CreateDir(GetBaseIGCOutputFolder(), true, IGC_IS_FLAG_DISABLED(ShaderDumpPidDisable), &g_shaderOutputFolder))
 
                 g_shaderOutputFolder = "";
 
 #elif defined __linux__
-
-            static volatile bool initialized;
-            if (initialized)
-            {
-                return g_shaderOutputFolder.c_str();
-            }
-            initialized = true;
-
             if (!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "")
             {
                 bool needMkdir = false;
@@ -566,7 +586,6 @@ namespace IGC
                     needMkdir = true;
                 }
 
-                char outputDirectory[MAX_PATH] = "/tmp/IntelIGC/";
                 char path[MAX_PATH] = { 0 };
                 bool pidEnabled = IGC_IS_FLAG_ENABLED(ShaderDumpPidDisable);
 
@@ -575,7 +594,7 @@ namespace IGC
                     iSTD::CreateAppOutputDir(
                         path,
                         MAX_PATH,
-                        outputDirectory,
+                        GetBaseIGCOutputFolder(),
                         false,
                         true,
                         pidEnabled);
@@ -586,9 +605,6 @@ namespace IGC
             }
 
 #endif
-
-
-
             return g_shaderOutputFolder.c_str();
 #else
             return "";

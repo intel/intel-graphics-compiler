@@ -278,16 +278,16 @@ int CISA_IR_Builder::CreateBuilder(
 	}
 
     builder->m_options.setTarget((mode == vISA_3D) ? VISA_3D : VISA_CM);
-    builder->m_options.setOption(vISA_isParseMode, (mode == vISA_PARSER));
+    builder->m_options.setOptionInternally(vISA_isParseMode, (mode == vISA_PARSER));
 
 	if (mode == vISA_PARSER)
 	{
-		builder->m_options.setOption(vISA_GeneratevISABInary, true);
+		builder->m_options.setOptionInternally(vISA_GeneratevISABInary, true);
 		/*
 			In parser mode we always want to dump out vISA
 			I don't feel like modifying FE, and dealing with FE/BE missmatch issues.
 		*/
-		builder->m_options.setOption(vISA_DumpvISA, true);
+		builder->m_options.setOptionInternally(vISA_DumpvISA, true);
 		/*
 			Dumping out .asm and .dat files for BOTH mod. Since they are used in
 			simulation mode. Again can be pased by FE, but don't want to deal
@@ -295,15 +295,15 @@ int CISA_IR_Builder::CreateBuilder(
 		*/
 		if (buildOption != CM_CISA_BUILDER_CISA)
 		{
-			builder->m_options.setOption(vISA_outputToFile, true);
-			builder->m_options.setOption(vISA_GenerateBinary, true);
+			builder->m_options.setOptionInternally(vISA_outputToFile, true);
+			builder->m_options.setOptionInternally(vISA_GenerateBinary, true);
 		}
 	}
 
     // emit location info always for these cases
     if (mode == vISABuilderMode::vISA_MEDIA && builder->m_options.getOption(vISA_outputToFile))
     {
-        builder->m_options.setOption(vISA_EmitLocation, true);
+        builder->m_options.setOptionInternally(vISA_EmitLocation, true);
     }
 
 	// we must wait till after the options are processed,
@@ -746,7 +746,7 @@ int CISA_IR_Builder::Compile( const char* nameInput)
         int kernelIndex = 0;
         if ( IS_BOTH_PATH )
         {
-            m_options.setOption(vISA_NumGenBinariesWillBePatched, (uint32_t) 1);
+            m_options.setOptionInternally(vISA_NumGenBinariesWillBePatched, (uint32_t) 1);
         }
         m_cisaBinary->initCisaBinary(m_kernel_count, m_function_count);
         m_cisaBinary->setMajorVersion((unsigned char)this->m_majorVersion);
@@ -1259,7 +1259,7 @@ bool CISA_IR_Builder::CISA_attr_directive(char* input_name, char* input_var, int
         {
             *pos = '\0';
         }
-        m_options.setOption(VISA_AsmFileName, asmFileName);
+        m_options.setOptionInternally(VISA_AsmFileName, asmFileName);
     }
 
     if(strcmp(input_name, "Target" ) == 0){

@@ -271,6 +271,8 @@ private:
     void linePlaneWA(G4_INST* inst);
     void fixSendSrcRegion(G4_INST* inst);
     void clearARFDependencies();
+    void clearSendDependencies();
+    void loadThreadPayload();
 
     void insertHashMovs();
     void insertDummyCompactInst();
@@ -357,6 +359,7 @@ public:
         PI_dce,
         PI_reassociateConst,
         PI_split4GRFVars,
+        PI_loadThreadPayload,
         PI_NUM_PASSES
     };
 

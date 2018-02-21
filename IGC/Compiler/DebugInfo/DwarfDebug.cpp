@@ -2007,6 +2007,11 @@ void DwarfDebug::gatherDISubprogramNodes()
 
     for (auto& F : *m_pModule->GetModule())
     {
+        if (auto diSubprogram = F.getSubprogram())
+        {
+            DISubprogramNodes.insert(diSubprogram);
+        }
+
         for (auto& bb : F)
         {
             for (auto& inst : bb)
