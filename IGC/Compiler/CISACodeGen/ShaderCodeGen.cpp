@@ -955,7 +955,7 @@ static void purgeInlineAttribute(CodeGenContext *pContext, bool NoOpt)
         MetaDataUtils *pMdUtils = pContext->getMetaDataUtils();
         for (auto &F : pContext->getModule()->getFunctionList())
         {
-            if (!isEntryFunc(pMdUtils, &F))
+            if (!isOCLKernelFunc(pMdUtils, &F))
             {
                 F.removeFnAttr(llvm::Attribute::AlwaysInline);
             }

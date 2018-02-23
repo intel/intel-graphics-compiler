@@ -36,7 +36,7 @@ namespace IGC { namespace IGCMD {
     {
 
     public:
-        static void addFunction(MetaDataUtils &mdUtils, llvm::Function *pFunc, FunctionTypeEnum type = FunctionTypeEnum::EntryFunctionType);
+        static void addFunction(MetaDataUtils &mdUtils, llvm::Function *pFunc, FunctionTypeEnum type = FunctionTypeEnum::DefaultFunctionType);
 
         // In OCL, thread group size (hint) is given by kernel attributes reqd_work_group_size_hint and work_group_size_hint.
         // Return thread group size (hint) if present; return 0 otherwise.

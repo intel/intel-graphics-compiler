@@ -80,7 +80,7 @@ bool PurgeMetaDataUtils::runOnModule(Module &M)
             return true;
         }
 
-        if (F->use_empty() && !isEntryFunc(pMdUtils, F))
+        if (isOCLUserFunc(pMdUtils, F) && F->use_empty())
         {
             F->eraseFromParent();
             return true;

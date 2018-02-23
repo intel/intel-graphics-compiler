@@ -73,10 +73,8 @@ bool FixFastMathFlags::runOnFunction(Function &F)
                 if (inst.getFastMathFlags().allowReassoc())
                 {
                     m_changed = true;
-                    FastMathFlags flags = inst.getFastMathFlags();
-                    flags.setAllowContract(true);
-                    flags.setApproxFunc();
-                    inst.setFastMathFlags(flags);
+                    inst.getFastMathFlags().setAllowContract(true);
+                    inst.getFastMathFlags().setApproxFunc();
                 }
             }
         }

@@ -1489,18 +1489,7 @@ G4_INST::MovType getMovType(G4_Type dstTy, G4_Type srcTy, G4_SrcModifier srcMod)
 
     // Treat that mov as truncation.
     if (G4_Type_Table[srcTy].byteSize > G4_Type_Table[dstTy].byteSize)
-    {
-        if(IS_SIGNED_INT(srcTy) &&
-           srcMod != Mod_src_undef &&
-           srcMod != Mod_Not)
-        {
-            return G4_INST::SuperMov;
-        }
-        else
-        {
-            return G4_INST::Trunc;
-        }
-    }
+        return G4_INST::Trunc;
 
     // Treat that mov as sign extend or zero extend based on the signedness of
     // the source type only.

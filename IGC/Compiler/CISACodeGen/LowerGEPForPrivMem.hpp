@@ -75,7 +75,7 @@ namespace IGC
             llvm::Type *pBaseType);
 
         // return true if the use of the pointer allow promotion
-        bool ValidUses(llvm::Instruction* inst, bool& IsUniform);
+        bool ValidUses(llvm::Instruction* inst);
 
         void handleAllocaInst(llvm::AllocaInst *pAlloca);
 
@@ -101,12 +101,8 @@ namespace IGC
 
         void handleLifetimeMark(llvm::IntrinsicInst *inst);
 
-        bool CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca);
-
-        /// Conservatively check if a store allow an Alloca to be uniform
-        bool IsUniformStore(llvm::StoreInst* pStore);
-        /// Check if the pointer arithmetic after the alloca is uniform
-        bool IsUniformAddress(llvm::Value* val);
+        bool CheckIfAllocaPromotable(
+            llvm::AllocaInst* pAlloca);
 
     public:
         static char ID;

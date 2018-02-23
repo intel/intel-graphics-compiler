@@ -165,7 +165,7 @@ bool StatelessToStatefull::runOnFunction(llvm::Function &F)
     // skip device enqueue tests for now to avoid tracking binding tables acorss
     // enqueued blocks.
     if((F.getParent()->getNamedMetadata("igc.device.enqueue") != nullptr) ||
-       !isEntryFunc(pMdUtils, &F))
+       !isOCLKernelFunc(pMdUtils, &F))
     {
         return false;
     }

@@ -4156,17 +4156,6 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_MAD_Scalar(llvm::
 }
 
 template<bool preserveNames, typename T, typename Inserter>
-llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreatePow(llvm::Value* src0, llvm::Value* src1)
-{
-    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
-    llvm::Function* powFunc = llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::pow, src0->getType());
-    llvm::Value* args[] = { src0, src1 };
-    llvm::Value* powres_s = this->CreateCall(powFunc, args);
-
-    return powres_s;
-}
-
-template<bool preserveNames, typename T, typename Inserter>
 inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEBC(
     llvm::Value* float_ref_value,
     llvm::Value* bias_value,

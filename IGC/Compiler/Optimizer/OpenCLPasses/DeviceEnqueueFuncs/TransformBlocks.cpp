@@ -132,10 +132,12 @@ namespace //Anonymous
         /// Return function metadata if function is kernel
         IGC::IGCMD::FunctionInfoMetaDataHandle getKernelMetadata(const llvm::Function* func)
         {
-			if (isEntryFunc(_pMdUtils, func))
-			{
-				return _pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function*>(func));
-			}
+            if (func != nullptr && _pMdUtils->findFunctionsInfoItem(const_cast<llvm::Function*>(func)) != _pMdUtils->end_FunctionsInfo())
+            {
+                IGCMD::FunctionInfoMetaDataHandle info = _pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function*>(func));
+                if (info->isTypeHasValue() && info->getType() == IGC::IGCMD::FunctionTypeEnum::OpenCLKernelFunctionType)
+                    return info;
+            }
             return IGC::IGCMD::FunctionInfoMetaDataHandle(nullptr);
         }
 
@@ -1540,7 +1542,7 @@ namespace //Anonymous
         IGC::IGCMD::FunctionInfoMetaDataHandle dispatchMd = _pMdUtils->getOrInsertFunctionsInfoItem(const_cast<llvm::Function*>(kernelFunc));
 
         //set function type for dispatch
-        dispatchMd->setType(IGC::IGCMD::FunctionTypeEnum::EntryFunctionType);
+        dispatchMd->setType(IGC::IGCMD::FunctionTypeEnum::OpenCLKernelFunctionType);
 
         for (auto& arg : kernelFunc->args())
         {
