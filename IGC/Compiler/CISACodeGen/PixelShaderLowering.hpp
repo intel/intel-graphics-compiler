@@ -35,6 +35,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGC
 {
 
+#ifdef _DEBUG
+template<typename T, size_t N>
+using smallvector = std::vector<T>;
+#else
+template<typename T, size_t N>
+using smallvector = llvm::SmallVector<T, N>;
+#endif
+
 // Generate GetPixelMask intrinsics for RTWrites, and move InitPixelMask
 // to the beginning of the entry block.  This pass should be added after
 // pre-RA scheduler & code sinking to avoid the InitPixelMask is moved again.

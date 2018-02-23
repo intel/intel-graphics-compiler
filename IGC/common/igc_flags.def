@@ -121,8 +121,6 @@ DECLARE_IGC_REGKEY(bool, DispatchOCLWGInOrder,          false, "If set, dispatch
 DECLARE_IGC_REGKEY(DWORD, CodeAssumption,               0, \
     "If set (> 0), generate llvm.assume to help certain optimizations. It is OCL only for now. \
 	 Only 1 and 2 are valid. 2 will be 1 plus additional assumption.")
-DECLARE_IGC_REGKEY(bool, EnableHoistMulInLoop, true,
-    "Hoist multiply with loop invirant out of loop, FP unsafe")
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, ShaderDebugHashCodeInKernel,   false, "Append hash code to the binary")

@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if defined(cl_khr_fp64)
 
+    #include "../ExternalLibraries/libclc/doubles.cl"
 
 #endif // defined(cl_khr_fp64)
 
@@ -72,6 +73,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cosh, float, float, 
 
 INLINE double __builtin_spirv_OpenCL_cosh_f64( double x )
 {
+        return libclc_cosh_f64(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG_LOOP( __builtin_spirv_OpenCL_cosh, double, double, f64 )

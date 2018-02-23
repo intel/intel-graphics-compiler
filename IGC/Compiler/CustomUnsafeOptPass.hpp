@@ -31,14 +31,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
-#include <llvm/Analysis/LoopInfo.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC
 {
 llvm::FunctionPass* CreateEarlyOutPatternsPass();
 llvm::FunctionPass* CreateLowerFmaPass();
-llvm::FunctionPass* CreateHoistFMulInLoopPass();
 
 class CustomUnsafeOptPass : public llvm::FunctionPass, public llvm::InstVisitor<CustomUnsafeOptPass>
 {

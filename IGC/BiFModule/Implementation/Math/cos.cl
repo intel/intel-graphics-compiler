@@ -41,6 +41,7 @@ static INLINE float __intel_cos_f32( float x, bool doFast )
     }
     else
     {
+            return libclc_cos_f32(x);
     }
 }
 
