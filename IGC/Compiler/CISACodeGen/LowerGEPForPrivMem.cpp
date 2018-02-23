@@ -317,7 +317,7 @@ void LowerGEPForPrivMem::visitAllocaInst(AllocaInst &I)
     {
             pType = pType->getStructElementType(0);
     }
-    if (!pType->isArrayTy() || I.isArrayAllocation())
+    if ((!pType->isArrayTy() && !pType->isVectorTy()) || I.isArrayAllocation())
         return;
 
     Type* pBaseType = GetBaseType(pType);
