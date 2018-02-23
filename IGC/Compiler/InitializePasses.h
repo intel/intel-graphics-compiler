@@ -48,6 +48,7 @@ void initializeConstantCoalescingPass(llvm::PassRegistry&);
 void initializeCorrectlyRoundedDivSqrtPass(llvm::PassRegistry&);
 void initializeCustomSafeOptPassPass(llvm::PassRegistry&);
 void initializeCustomUnsafeOptPassPass(llvm::PassRegistry&);
+void initializeHoistFMulInLoopPassPass(llvm::PassRegistry&);
 void initializeDeSSAPass(llvm::PassRegistry&);
 void initializeExtensionArgAnalysisPass(llvm::PassRegistry&);
 void initializeExtensionFuncsAnalysisPass(llvm::PassRegistry&);

@@ -159,7 +159,7 @@ set_target_properties(IGA_OLIB PROPERTIES
 	FOLDER                                     "IGAProjs"
   )
 
-if(MSVC)
+if(IGC_BUILD AND MSVC)
 #set up standard defines from the common WDK path.
 bs_set_wdk(IGA_OLIB)
 endif()
@@ -191,7 +191,7 @@ set_target_properties(IGA_SLIB PROPERTIES
     FOLDER                                     "IGAProjs"
   )
 
-if(MSVC)
+if(IGC_BUILD AND MSVC)
 #set up standard defines from the common WDK path.
 bs_set_wdk(IGA_SLIB)
 endif()
@@ -231,7 +231,7 @@ set_target_properties(IGA_ENC_LIB PROPERTIES
 	FOLDER                                     "IGAProjs"
   )
 
-if(MSVC)
+if(IGC_BUILD AND MSVC)
 #set up standard defines from the common WDK path.
 bs_set_wdk(IGA_ENC_LIB)
 endif()
@@ -270,7 +270,7 @@ set_property(TARGET IGA_DLL APPEND PROPERTY
       FOLDER									"IGAProjs"
   )
 
-if(MSVC)
+if(IGC_BUILD AND MSVC)
 #set up standard defines from the common WDK path.
 bs_set_wdk(IGA_DLL)
 endif()

@@ -329,8 +329,8 @@ if (UNIX OR WIN32)
   set_target_properties(GenX_IR_Exe PROPERTIES
           COMPILE_DEFINITIONS "${GenX_IR_Exe_DEFINITIONS}"
           FOLDER CM_JITTER_EXE)
-  
-  if(MSVC)
+      
+  if(IGC_BUILD AND MSVC)
   #set up standard defines from the common WDK path.
   bs_set_wdk(GenX_IR_Exe)
   endif()
@@ -450,7 +450,7 @@ if(NOT WIN32)
   set_target_properties( GenX_IR PROPERTIES PREFIX "")
 endif()
 
-if(MSVC)
+if(IGC_BUILD AND MSVC)
 #set up standard defines from the common WDK path.
 bs_set_wdk(GenX_IR)
 endif()

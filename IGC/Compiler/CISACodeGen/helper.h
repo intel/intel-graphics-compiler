@@ -63,6 +63,14 @@ namespace IGC
 class CodeGenContext;
 struct SProgramOutput;
 
+#ifdef _DEBUG
+template<typename T, size_t N>
+using smallvector = std::vector<T>;
+#else
+template<typename T, size_t N>
+using smallvector = llvm::SmallVector<T, N>;
+#endif
+
 enum e_llvmType
 {
     e_Instruction = 0,

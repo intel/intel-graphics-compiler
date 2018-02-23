@@ -4125,6 +4125,37 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDeriveRTY_Fine(llv
 }
 
 template<bool preserveNames, typename T, typename Inserter>
+llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_MAD_Scalar(llvm::Value* float_src0, llvm::Value* float_src1, llvm::Value* float_src2)
+{
+    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
+
+    {
+        // Builtin Signature: float (float, float, float)
+        assert("Type check @MAD.scalar arg: 0" && (
+            float_src0->getType() == llvm::Type::getHalfTy(module->getContext()) ||
+            float_src0->getType() == this->getFloatTy() ||
+            float_src0->getType() == this->getDoubleTy()));
+
+        assert("Type check @MAD.scalar arg: 1" && (
+            float_src1->getType() == llvm::Type::getHalfTy(module->getContext()) ||
+            float_src1->getType() == this->getFloatTy() ||
+            float_src1->getType() == this->getDoubleTy()));
+
+        assert("Type check @MAD.scalar arg: 2" && (
+            float_src2->getType() == llvm::Type::getHalfTy(module->getContext()) ||
+            float_src2->getType() == this->getFloatTy() ||
+            float_src2->getType() == this->getDoubleTy()));
+
+    }
+
+    llvm::Function* madFunc = llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::fma, float_src0->getType());
+    llvm::Value* args[] = { float_src0, float_src1, float_src2 };
+    llvm::Value* float_madres_s = this->CreateCall(madFunc, args);
+
+    return float_madres_s;
+}
+
+template<bool preserveNames, typename T, typename Inserter>
 inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEBC(
     llvm::Value* float_ref_value,
     llvm::Value* bias_value,

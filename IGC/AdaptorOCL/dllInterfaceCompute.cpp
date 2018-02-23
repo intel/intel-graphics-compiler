@@ -60,6 +60,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "inc/gtpin_IGC_interface.h"
 
+#include <sstream>
+#include <iomanip>
+
 //In case of use GT_SYSTEM_INFO in GlobalData.h from inc/umKmInc/sharedata.h
 //We have to do this temporary defines
 
@@ -561,6 +564,39 @@ bool ParseInput(
     return true;
 }
 
+// Dump shader (binary or text), to default directory.
+// Create directory if it doesn't exist.
+// Works for all OSes.
+// pExt - file name suffix (optional) and extenstion.
+void DumpShaderFile(const char *pOutputFolder, const char * pBuffer, UINT bufferSize, QWORD hash, const char * pExt )
+{
+	using namespace std;
+
+	stringstream ss;
+
+	if (pBuffer && bufferSize > 0)
+	{
+		ss << pOutputFolder;
+		ss << "OCL_"
+			<< "asm"
+			<< std::hex
+			<< std::setfill('0')
+			<< std::setw(sizeof(hash) * CHAR_BIT / 4)
+			<< hash
+			<< std::dec
+			<< std::setfill(' ')
+			<< pExt;
+
+		FILE* pFile = NULL;
+		fopen_s(&pFile, ss.str().c_str(), "wb");
+		if (pFile)
+		{
+			fwrite(pBuffer, 1, bufferSize - 1, pFile);
+			fclose(pFile);
+		}
+	}
+}
+
 bool TranslateBuild(
     const STB_TranslateInputArgs* pInputArgs,
     STB_TranslateOutputArgs* pOutputArgs,
@@ -581,6 +617,24 @@ bool TranslateBuild(
     RegisterComputeErrHandlers(*llvmContext);
 
 	ShaderHash inputShHash = ShaderHashOCL((const UINT*)pInputArgs->pInput, pInputArgs->InputSize / 4);
+
+	if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+	{
+		const char *pOutputFolder = IGC::Debug::GetShaderOutputFolder();
+		QWORD hash = inputShHash.getAsmHash();
+
+		if (inputDataFormatTemp == TB_DATA_FORMAT_LLVM_BINARY)
+		{
+			DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".bc");
+		}
+		else if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V)
+		{
+			DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".spv");
+		}
+
+		DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInternalOptions, pInputArgs->InternalOptionsSize, hash, "_IntOpts.txt");
+		DumpShaderFile(pOutputFolder, (char *)pInputArgs->pOptions, pInputArgs->OptionsSize, hash, "_Opts.txt");
+	}
 
     if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *llvmContext, inputDataFormatTemp))
     {

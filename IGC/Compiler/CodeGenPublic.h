@@ -157,6 +157,7 @@ namespace IGC
         uint m_cbIdx = 0;
 		uint m_offset = 0;
 		uint m_size = 0;
+        bool isStateless = false;
 	};
 
     struct SKernelProgram

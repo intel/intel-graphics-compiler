@@ -7729,10 +7729,15 @@ bool G4_INST::canSrcBeAcc(int srcId, const IR_Builder& builder) const
             return false;
         }
     }
-    else if (src->getType() == Type_HF && isMixedMode())
+
+    if (opcode() == G4_mad && srcId == 0)
     {
-        // packed HF acc is not allowed in mix mode
-        return false;
+        // mac's implicit acc gets its region from dst, so we have to check src and 
+        // dst have the same type
+        if (src->getType() != dst->getType())
+        {
+            return false;
+        }
     }
 
     if (IS_TYPE_FLOAT_ALL(src->getType()) ^ IS_TYPE_FLOAT_ALL(getDst()->getType()))

@@ -377,9 +377,6 @@ void CShader::AllocateConstants3DShader(uint& offset)
         AllocateConstants(offset);
         AllocateSimplePushConstants(offset);
     }
-
-    // Allocate space for Stateless constants from the constant buffer
-    AllocateStatelessConstants(offset);
 }
 
 void CShader::AllocateConstants(uint& offset)
@@ -407,28 +404,6 @@ void CShader::AllocateSimplePushConstants(uint& offset)
         }
         offset += pushInfo.simplePushInfoArr[i].size;
     }
-}
-
-void CShader::AllocateStatelessConstants(uint& offset)
-{
-    for (auto I = pushInfo.statelessLoads.begin(), E = pushInfo.statelessLoads.end(); I != E; ++I) {
-        uint stateless_offset = 0;
-
-        uint64_t address = I->first;
-        int cbSlot = address >> 32;
-        // Either the cb slot is uninitialized or it has to be same as all the other ones found.
-        assert((m_cbSlot == -1 || m_cbSlot == cbSlot) && "Stateless CB only works for 1 CB");
-        m_cbSlot = cbSlot;
-        stateless_offset = address & 0xFFFF;
-
-        int byte_size = m_argListCache[I->second]->getType()->getScalarSizeInBits() / 8;
-        CVariable* var = GetSymbol(m_argListCache[I->second]);
-        AllocateInput(var, stateless_offset + offset);
-        m_statelessCBPushedSize = std::max(m_statelessCBPushedSize, stateless_offset + byte_size);
-    }
-
-    m_statelessCBPushedSize = iSTD::Align(m_statelessCBPushedSize, SIZE_GRF);
-    offset += m_statelessCBPushedSize;
 }
 
 void CShader::AllocateNOSConstants(uint& offset)
@@ -509,6 +484,7 @@ void  CShader::CreateConstantBufferOutput(SKernelProgram *pKernelProgram)
         pKernelProgram->simplePushInfoArr[i].m_cbIdx = pushInfo.simplePushInfoArr[i].cbIdx;
         pKernelProgram->simplePushInfoArr[i].m_offset = pushInfo.simplePushInfoArr[i].offset;
         pKernelProgram->simplePushInfoArr[i].m_size = pushInfo.simplePushInfoArr[i].size;
+        pKernelProgram->simplePushInfoArr[i].isStateless = pushInfo.simplePushInfoArr[i].isStateless;
     }
 
     if (m_DriverInfo->AllowGenUpdateCB() &&

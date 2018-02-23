@@ -95,6 +95,10 @@ private:
     // FE flag.
     bool isFCComposableKernel;
 
+    // Set to true if kernel has "Entry" attribute set in VISA
+    // stream.
+    bool isFCEntryKernel;
+
     std::vector<FCCalls*> FCCallsToPatch;
     std::vector<unsigned int> FCReturnOffsetsToPatch;
 
@@ -104,6 +108,7 @@ public:
         hasFCCalls = false;
         isFCCallableKernel = false;
         isFCComposableKernel = false;
+        isFCEntryKernel = false;
     }
 
     void setHasFCCalls(bool hasFC) { hasFCCalls = hasFC; }
@@ -112,6 +117,8 @@ public:
     bool getIsCallableKernel() { return isFCCallableKernel; }
     void setFCComposableKernel(bool value) { isFCComposableKernel = value; }
     bool getFCComposableKernel() { return isFCComposableKernel; }
+    void setIsEntryKernel(bool value) { isFCEntryKernel = value; }
+    bool getIsEntryKernel() { return isFCEntryKernel; }
     std::vector<FCCalls*>& getFCCallsToPatch() { return FCCallsToPatch; }
     std::vector<unsigned int>& getFCReturnsToPatch() { return FCReturnOffsetsToPatch; }
 

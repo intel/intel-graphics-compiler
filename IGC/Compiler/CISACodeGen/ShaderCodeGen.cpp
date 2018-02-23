@@ -1105,6 +1105,8 @@ void OptimizeIR(CodeGenContext* pContext)
                     mpm.add(llvm::createLICMPass());
                 }
 
+                mpm.add(CreateHoistFMulInLoopPass());
+
                 if (IGC_IS_FLAG_ENABLED(EnableCustomLoopVersioning) &&
                     pContext->type == ShaderType::PIXEL_SHADER &&
                     pContext->m_retryManager.AllowUnroll())

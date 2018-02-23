@@ -89,6 +89,9 @@ class LiveRange final : public VarBasis
     bool isInfiniteCost;
     bool isCandidate;
     bool isPseudoNode;
+    bool isPartialDeclare;
+    bool isSplittedDeclare;
+    BankConflict bc;
     GlobalRA& gra;
 
 public:
@@ -164,6 +167,12 @@ public:
 
     bool getIsPseudoNode() const { return isPseudoNode; }
     void setIsPseudoNode() { isPseudoNode = true; }
+    bool getIsPartialDcl() const { return isPartialDeclare; }
+    void setIsPartialDcl() { isPartialDeclare = true; }
+    bool getIsSplittedDcl() const { return isSplittedDeclare; }
+    void setIsSplittedDcl(bool v) { isSplittedDeclare = v; }
+    BankConflict getBC() const { return bc;  }
+    void setBC(BankConflict c)  { bc = c; }
 };
 }
 typedef std::list<vISA::LiveRange*> LIVERANGE_LIST;

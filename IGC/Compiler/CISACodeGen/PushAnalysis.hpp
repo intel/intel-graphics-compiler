@@ -86,7 +86,7 @@ class PushAnalysis : public llvm::ModulePass
 
     // Helper function
     /// Return true if the constant is in the range which we are allowed to push
-    bool IsPushableShaderConstant(llvm::Instruction *inst, uint& bufId, uint& eltId);
+    bool IsPushableShaderConstant(llvm::Instruction *inst, uint& bufId, uint& eltId, bool &isStateless);
 
     bool GetConstantOffsetForDynamicUniformBuffer(
         uint bufferId,
@@ -98,30 +98,18 @@ class PushAnalysis : public llvm::ModulePass
 
     /// Try to push allocate space for the constant to be pushed
     unsigned int AllocatePushedConstant(
-        llvm::Instruction* load, unsigned int cbIdx, unsigned int offset, unsigned int maxSizeAllowed);
+        llvm::Instruction* load, unsigned int cbIdx, unsigned int offset, unsigned int maxSizeAllowed, bool isStateless);
 
     /// promote the load to function argument
     void PromoteLoadToSimplePush(llvm::Instruction* load, SimplePushInfo& info, unsigned int offset);
-
-    /// process stateless push for the function
-    void StatlessPushConstant();
-
-    /// Return true if the Load is a stateless.
-    bool IsStatelessCBLoad(
-        llvm::Instruction *inst,
-        llvm::GenIntrinsicInst* &pBaseAddress,
-        unsigned int& offset);
-    
-    /// Push the Stateless CB
-    void ReplaceStatelessCBLoad(
-        llvm::Instruction *inst,
-        llvm::GenIntrinsicInst* &pBaseAddress,
-        const unsigned int& offset);
 
     /// return true if the inputs are uniform
     bool AreUniformInputsBasedOnDispatchMode();
     /// return true if we are allowed to push constants
     bool CanPushConstants();
+
+    /// Return true if the Load is a stateless.
+    bool IsStatelessCBLoad(llvm::Instruction *inst, unsigned int& pBaseAddress, unsigned int& offset);
 
     /// return the maximum number of inputs pushed for this kernel
     unsigned int GetMaxNumberOfPushedInputs();

@@ -135,7 +135,7 @@ llvm::Argument* PushAnalysis::addArgumentAndMetadata(llvm::Type *pType, std::str
 
 bool PushAnalysis::IsStatelessCBLoad(
     llvm::Instruction *inst,
-    llvm::GenIntrinsicInst* &pBaseAddress,
+    unsigned int &GRFOffset,
     unsigned int& offset)
 {
     /*
@@ -148,8 +148,13 @@ bool PushAnalysis::IsStatelessCBLoad(
         %14 = inttoptr i64 %13 to <3 x float> addrspace(2)*
         %15 = load <3 x float> addrspace(2)* %14, align 16
     */
+
     if (!llvm::isa<llvm::LoadInst>(inst))
         return false;
+
+    m_PDT = &getAnalysis<PostDominatorTreeWrapperPass>(*m_pFunction).getPostDomTree();
+    m_DT = &getAnalysis<DominatorTreeWrapperPass>(*m_pFunction).getDomTree();
+    m_entryBB = &m_pFunction->getEntryBlock();
 
     // %15 = load <3 x float> addrspace(2)* %14, align 16
     llvm::LoadInst *pLoad = llvm::cast<llvm::LoadInst>(inst);
@@ -222,7 +227,7 @@ bool PushAnalysis::IsStatelessCBLoad(
     // first check if it's already picked up
     if (m_cbToLoad == runtimeval0)
     {
-        pBaseAddress = pRuntimeVal0;
+        GRFOffset = runtimeval0;
         return true;
     }
     else
@@ -237,7 +242,7 @@ bool PushAnalysis::IsStatelessCBLoad(
     {
         if (runtimeval0 * 4 == it.addressOffset && it.isStatic)
         {
-            pBaseAddress = pRuntimeVal0;
+            GRFOffset = runtimeval0;
             return true;
         }
     }
@@ -278,125 +283,13 @@ bool PushAnalysis::IsStatelessCBLoad(
         {
             if (runtimeval0 * 4 == it.addressOffset)
             {
-                pBaseAddress = pRuntimeVal0;
+                GRFOffset = runtimeval0;
                 return true;
             }
         }
     }
 
     return false;
-}
-
-void PushAnalysis::ReplaceStatelessCBLoad(
-    llvm::Instruction *inst,
-    llvm::GenIntrinsicInst* &pBaseAddress,
-    const unsigned int& offset)
-{
-    assert(llvm::isa<llvm::LoadInst>(inst) && "Expected a load instruction");
-
-    // Extract the 2 runtime values to figure out the buffer it came from
-    const llvm::GenIntrinsicInst *pRuntimeVal0 = pBaseAddress;
-
-    uint runtimeval0 = (uint)llvm::cast<llvm::ConstantInt>(pRuntimeVal0->getOperand(0))->getZExtValue();
-
-    // Current driver support allows only 1 CB. So if one cb is already loaded then only allow those loads
-    if (m_cbToLoad != (uint)-1 && m_cbToLoad != runtimeval0)
-        return;
-
-    m_cbToLoad = runtimeval0;
-
-    // We need to extract the runtimeval0 so we would need to extract it correctly.
-    uint64_t base_address = (uint64_t)runtimeval0 << 32;
-
-    uint64_t address = base_address + offset;
-
-	PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
-
-    unsigned int num_elms = 1;
-    llvm::Type *pTypeToPush = inst->getType();
-    llvm::Value *pReplacedInst = nullptr;
-    llvm::Type *pScalarTy = inst->getType();
-
-    if (inst->getType()->isVectorTy())
-    {
-        num_elms = inst->getType()->getVectorNumElements();
-        pTypeToPush = inst->getType()->getVectorElementType();
-        llvm::Type *pVecTy = llvm::VectorType::get(pTypeToPush, num_elms);
-        pReplacedInst = llvm::UndefValue::get(pVecTy);
-        pScalarTy = pVecTy->getVectorElementType();
-    }
-
-    bool replaced = false;
-    SmallVector< SmallVector<ExtractElementInst*, 1>, 4> extracts(num_elms);
-
-    bool allExtract = LoadUsedByConstExtractOnly(cast<LoadInst>(inst), extracts);
-
-    for (unsigned int i = 0; i < num_elms; ++i)
-    {
-        uint64_t final_address = address + i * (pScalarTy->getPrimitiveSizeInBits() / 8);
-        auto it = pushInfo.statelessLoads.find(final_address);
-        llvm::Value* value = nullptr;
-
-        if (it != pushInfo.statelessLoads.end() || (offset < m_pullConstantHeuristics->getPushConstantThreshold(m_pFunction) * 8))
-        {
-            // The sum of all the 4 constant buffer read lengths must be <= size of 64 units. 
-            // Each unit is of size 256-bit units. In some UMDs we program the 
-            // ConstantRegisters and Constant Buffers in the ConstantBuffer0ReadLength. And this causes
-            // shaders to crash when the read length is > 64 units. To be safer we program the total number of 
-            // GRF's used to 32 registers.
-            if (it == pushInfo.statelessLoads.end())
-            {
-                // We now put the Value as an argument to make sure its liveness starts 
-                // at the beginning of the function and then we remove the instruction
-                // We now put the Value as an argument to make sure its liveness starts 
-                // at the beginning of the function and then we remove the instruction
-                m_maxStatelessOffset = std::max(m_maxStatelessOffset, offset);
-                value = addArgumentAndMetadata(pTypeToPush,
-                    VALUE_NAME(std::string("cb_stateless_") + to_string(runtimeval0) + std::string("_")
-                    + std::string("_offset_") + to_string(offset) + std::string("_elm") + to_string(i)),
-                    WIAnalysis::UNIFORM);
-
-                if (pTypeToPush != value->getType())
-                    value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", inst);
-
-                pushInfo.statelessLoads[final_address] = m_argIndex;
-            }
-            else
-            {
-				assert((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
-                value = m_argList[it->second];
-                if (pTypeToPush != value->getType())
-                    value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", inst);
-            }
-
-            if (inst->getType()->isVectorTy())
-            {
-                if (!allExtract)
-                {
-                    pReplacedInst = llvm::InsertElementInst::Create(
-                        pReplacedInst, value, llvm::ConstantInt::get(llvm::IntegerType::get(inst->getContext(), 32), i), "", inst);
-                }
-                else
-                {
-                    for (auto II : extracts[i])
-                    {
-                        II->replaceAllUsesWith(value);
-                    }
-                }
-            }
-            else
-            {
-                pReplacedInst = value;
-            }
-
-            replaced = true;
-        }
-    }
-
-    if (replaced && !allExtract)
-    {
-        inst->replaceAllUsesWith(pReplacedInst);
-    }
 }
 
 //
@@ -532,9 +425,11 @@ bool PushAnalysis::GetConstantOffsetForDynamicUniformBuffer(
 
 /// The constant-buffer id and element id must be compile-time immediate
 /// in order to be added to thread-payload
-bool PushAnalysis::IsPushableShaderConstant(Instruction *inst, uint &bufId, uint &eltId)
+bool PushAnalysis::IsPushableShaderConstant(Instruction *inst, uint &bufIdOrGRFOffset, uint &eltId, bool &isStateless)
 {
     Value *eltPtrVal = nullptr;
+    if (!llvm::isa<llvm::LoadInst>(inst))
+        return false;
 
     if (inst->getType()->isVectorTy())
     {
@@ -549,9 +444,10 @@ bool PushAnalysis::IsPushableShaderConstant(Instruction *inst, uint &bufId, uint
     }
 
     // \todo, not support vector-load yet
-    if (IsLoadFromDirectCB(inst, bufId, eltPtrVal))
+    if (IsLoadFromDirectCB(inst, bufIdOrGRFOffset, eltPtrVal))
     {
-        if(bufId == getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->pushInfo.inlineConstantBufferSlot)
+        isStateless = false;
+        if(bufIdOrGRFOffset == getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData()->pushInfo.inlineConstantBufferSlot)
         {
             return false;
         }
@@ -566,10 +462,7 @@ bool PushAnalysis::IsPushableShaderConstant(Instruction *inst, uint &bufId, uint
             if (ConstantInt *eltIdx = dyn_cast<ConstantInt>(eltIdxVal))
             {
                 eltId = int_cast<uint>(eltIdx->getZExtValue());
-                if((eltId % 4) == 0)
-                {
-                    eltId = eltId >> 2;
-                }
+                assert((eltId % 4) == 0);
                 return true;
             }
         }
@@ -577,14 +470,19 @@ bool PushAnalysis::IsPushableShaderConstant(Instruction *inst, uint &bufId, uint
         if (m_context->m_DriverInfo.SupportsDynamicUniformBuffers() && IGC_IS_FLAG_DISABLED(DisableSimplePushWithDynamicUniformBuffers))
         {
             unsigned int relativeOffsetInBytes = 0; // offset in bytes starting from dynamic buffer offset
-            if (GetConstantOffsetForDynamicUniformBuffer(bufId, eltPtrVal, relativeOffsetInBytes))
+            if (GetConstantOffsetForDynamicUniformBuffer(bufIdOrGRFOffset, eltPtrVal, relativeOffsetInBytes))
             {
-                // Change to DWORDs
-                eltId = relativeOffsetInBytes >> 2;
+                eltId = relativeOffsetInBytes;
+                assert((eltId % 4) == 0);
                 return true;        
             }
         }
         return false;
+    }
+    else if(IsStatelessCBLoad(inst, bufIdOrGRFOffset, eltId))
+    {
+        isStateless = true;
+        return true;
     }
     return false;
 }
@@ -725,7 +623,7 @@ unsigned int PushAnalysis::GetMaxNumberOfPushedInputs()
 }
 
 unsigned int PushAnalysis::AllocatePushedConstant(
-    Instruction* load, unsigned int cbIdx, unsigned int offset, unsigned int maxSizeAllowed)
+    Instruction* load, unsigned int cbIdxOrGRFOffset, unsigned int offset, unsigned int maxSizeAllowed, bool isStateless)
 {
     unsigned int size = load->getType()->getPrimitiveSizeInBits() / 8;
     assert(isa<LoadInst>(load) && "Expected a load instruction");
@@ -737,11 +635,15 @@ unsigned int PushAnalysis::AllocatePushedConstant(
     // first check if we are already pushing from the buffer
 	unsigned int piIndex;
 	bool cbIdxFound = false;
+
+    //For stateless buffers, we store the GRFOffset into the simplePushInfoArr[piIndex].cbIdx
+    //For stateful buffers, we store the bufferId into the simplePushInfoArr[piIndex].cbIdx
+    //We traverse the array and identify which CB we're in based on either GFXOffset or bufferId
 	for (piIndex = 0; piIndex < pushInfo.simplePushBufferUsed; piIndex++)
     {
-        if(pushInfo.simplePushInfoArr[piIndex].cbIdx == cbIdx)
+        if (pushInfo.simplePushInfoArr[piIndex].cbIdx == cbIdxOrGRFOffset)
         {
-			cbIdxFound = true;
+            cbIdxFound = true;
             break;
         }
     }
@@ -757,6 +659,7 @@ unsigned int PushAnalysis::AllocatePushedConstant(
             canPromote = true;
 			pushInfo.simplePushInfoArr[piIndex].offset = newStartOffset;
 			pushInfo.simplePushInfoArr[piIndex].size = newSize;
+            pushInfo.simplePushInfoArr[piIndex].isStateless = isStateless;
         }
     }
 
@@ -777,10 +680,10 @@ unsigned int PushAnalysis::AllocatePushedConstant(
             sizeGrown = newSize;
 
 			piIndex = pushInfo.simplePushBufferUsed;
-			pushInfo.simplePushInfoArr[piIndex].cbIdx = cbIdx;
+			pushInfo.simplePushInfoArr[piIndex].cbIdx = cbIdxOrGRFOffset;
 			pushInfo.simplePushInfoArr[piIndex].offset = newStartOffset;
 			pushInfo.simplePushInfoArr[piIndex].size = newSize;
-			
+            pushInfo.simplePushInfoArr[piIndex].isStateless = isStateless;
             pushInfo.simplePushBufferUsed++;
         }
     }
@@ -830,6 +733,7 @@ void PushAnalysis::PromoteLoadToSimplePush(Instruction* load, SimplePushInfo& in
             value = addArgumentAndMetadata(pTypeToPush, VALUE_NAME("cb"), WIAnalysis::UNIFORM);
             if(pTypeToPush != value->getType())
                 value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
+
             info.simplePushLoads.insert(std::make_pair(address, m_argIndex));
         }
 
@@ -873,40 +777,13 @@ void PushAnalysis::BlockPushConstants()
     {
         for (auto i = bb->begin(), ie = bb->end(); i != ie; ++i)
         {
-            unsigned int cbId = 0;
+            unsigned int cbIdOrGRFOffset = 0;
             unsigned int offset = 0;
-            if (IsPushableShaderConstant(&(*i), cbId, offset))
+            bool isStateless = false;
+            if (IsPushableShaderConstant(&(*i), cbIdOrGRFOffset, offset, isStateless))
             {
                 // convert offset in bytes
-                offset = offset << 2;
-                sizePushed += AllocatePushedConstant(&(*i), cbId, offset, cthreshold - sizePushed);
-            }
-        }
-    }
-}
-
-
-void PushAnalysis::StatlessPushConstant()
-{
-    // skip it if we are not allowed to push or if there are no pushable pointers
-    if(IGC_IS_FLAG_DISABLED(DisableStatelessPushConstant) &&
-        m_context->getModuleMetaData()->pushInfo.pushableAddresses.size() > 0)
-    {
-        m_PDT = &getAnalysis<PostDominatorTreeWrapperPass>(*m_pFunction).getPostDomTree();
-        m_DT = &getAnalysis<DominatorTreeWrapperPass>(*m_pFunction).getDomTree();
-        m_entryBB = &m_pFunction->getEntryBlock();
-
-        // Runtime values are changed to intrinsics. So we need to do it before.
-        for(auto bb = m_pFunction->begin(), be = m_pFunction->end(); bb != be; ++bb)
-        {
-            for(auto i = bb->begin(), ie = bb->end(); i != ie; ++i)
-            {
-                llvm::SmallVector<llvm::GenIntrinsicInst*, 2> baseAddress;
-                uint offset = 0;
-
-                llvm::GenIntrinsicInst *pBaseAddress = nullptr;
-                if(IsStatelessCBLoad(&(*i), pBaseAddress, offset))
-                    ReplaceStatelessCBLoad(&(*i), pBaseAddress, offset);
+                sizePushed += AllocatePushedConstant(&(*i), cbIdOrGRFOffset, offset, cthreshold - sizePushed, isStateless);
             }
         }
     }
@@ -987,7 +864,6 @@ void PushAnalysis::ProcessFunction()
 	PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
     if (pushConstantMode == PushConstantMode::SIMPLE_PUSH)
     {
-        StatlessPushConstant();
         BlockPushConstants();
     }
 
@@ -1028,9 +904,12 @@ void PushAnalysis::ProcessFunction()
             }
             // code to push constant-buffer value into thread-payload
             uint bufId, eltId;
+            bool isStateless = false;
             if(pushConstantMode == PushConstantMode::GATHER_CONSTANT && 
-                IsPushableShaderConstant(inst, bufId, eltId))
+                IsPushableShaderConstant(inst, bufId, eltId, isStateless) && 
+                !isStateless)
             {
+                eltId = eltId >> 2;
                 if (!m_context->m_DriverInfo.Uses3DSTATE_DX9_CONSTANT() && (eltId + inst->getType()->getPrimitiveSizeInBits() / 8) >= (MaxConstantBufferIndexSize * 4))
                 {
                     // Hardware supports pushing more than 256 constants

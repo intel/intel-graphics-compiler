@@ -47,30 +47,36 @@ PhyRegUsage::PhyRegUsage(PhyRegUsageParms& p) :
     availableSubRegs(p.availableSubRegs),
     availableAddrs(p.availableAddrs),
     availableFlags(p.availableFlags),
-    gra(p.gra)
+    gra(p.gra),
+    totalGRFNum(p.totalGRF)
 {
     maxGRFCanBeUsed = p.maxGRFCanBeUsed;
     regFile = p.rFile;
 
-    totalGRFNum = p.gra.kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
-
     weakEdgeUsage = p.weakEdgeUsage;
     overlapTest = false;
 
-    memset(availableGregs, true, sizeof(bool)* totalGRFNum);
-    memset(availableSubRegs, 0xff, sizeof(uint16_t)*totalGRFNum);
-    if (weakEdgeUsage)
+    if (regFile == G4_GRF)
     {
-        memset(weakEdgeUsage, 0, sizeof(uint8_t)* totalGRFNum);
+        memset(availableGregs, true, sizeof(bool)* totalGRFNum);
+        memset(availableSubRegs, 0xff, sizeof(uint16_t)*totalGRFNum);
+        if (weakEdgeUsage)
+        {
+            memset(weakEdgeUsage, 0, sizeof(uint8_t)* totalGRFNum);
+        }
     }
-
-    auto numAddrRegs = getNumAddrRegisters();
-    for (unsigned i = 0; i < numAddrRegs; i++)
-        availableAddrs[i] = true;
-
-    auto numFlags = getNumFlagRegisters();
-    for (unsigned i = 0; i < numFlags; i++)
-        availableFlags[i] = true;
+    else if (regFile == G4_ADDRESS)
+    {
+        auto numAddrRegs = getNumAddrRegisters();
+        for (unsigned i = 0; i < numAddrRegs; i++)
+            availableAddrs[i] = true;
+    }
+    else if (regFile == G4_FLAG)
+    {
+        auto numFlags = getNumFlagRegisters();
+        for (unsigned i = 0; i < numFlags; i++)
+            availableFlags[i] = true;
+    }
 }
 
 void PhyRegUsage::markBusyForDclSplit(G4_RegFileKind kind,
@@ -1413,4 +1419,20 @@ void VarBasis::dump()
 VarBasis::VarBasis(G4_RegVar* v, const Options *options) : var(v), forbidden(NULL), calleeSaveBias(false), callerSaveBias(false), isEOTSrc(false), retIp(false), m_options(options), numForbidden(-1)
 {
     regKind = v->getDeclare()->getRegFile();
+}
+
+PhyRegUsageParms::PhyRegUsageParms(GlobalRA& g, G4_RegFileKind r, unsigned int m, unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,
+    unsigned int& bank1_s, unsigned int& bank1_e, unsigned int& bank2_s, unsigned int& bank2_e, bool doBC, bool* avaGReg,
+    uint16_t* avaSubReg, bool* avaAddrs, bool* avaFlags, uint8_t* weakEdges) : gra(g), startARFReg(startARF), startFlagReg(startFlag),
+    startGRFReg(startGRF), bank1_start(bank1_s), bank1_end(bank1_e), bank2_start(bank2_s), bank2_end(bank2_e)
+{
+    doBankConflict = doBC;
+    availableGregs = avaGReg;
+    availableSubRegs = avaSubReg;
+    availableAddrs = avaAddrs;
+    availableFlags = avaFlags;
+    weakEdgeUsage = weakEdges;
+    maxGRFCanBeUsed = m;
+    rFile = r;
+    totalGRF = gra.kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
 }

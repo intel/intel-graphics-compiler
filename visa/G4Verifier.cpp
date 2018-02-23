@@ -883,5 +883,11 @@ void G4Verifier::verifyOpcode(G4_INST* inst)
         break;
     }
 
+    if (passIndex == Optimizer::PI_regAlloc)
+    {
+        //ToDo: add more checks for psuedo inst after RA
+        assert(!inst->isPseudoLogic() && "pseudo logic inst should be lowered before RA");
+    }
+
 }
 

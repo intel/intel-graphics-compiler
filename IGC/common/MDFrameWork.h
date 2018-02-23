@@ -132,7 +132,7 @@ namespace IGC
 		unsigned int cbIdx = 0;
 		unsigned int offset = 0;
 		unsigned int size = 0;
-
+        bool isStateless = false;
 		std::map<unsigned int, int> simplePushLoads;
 	};
 
@@ -163,7 +163,6 @@ namespace IGC
 		std::map<ConstantAddress, int> constants;
 		std::map<unsigned int, SInputDesc> inputs;
 		std::map<unsigned int, int> constantReg;
-		std::map<uint64_t, int> statelessLoads;
 		std::vector<SimplePushInfo> simplePushInfoArr;
 		unsigned int simplePushBufferUsed = 0;
 

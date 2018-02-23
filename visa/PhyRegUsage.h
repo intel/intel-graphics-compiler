@@ -59,21 +59,11 @@ public:
     bool* availableAddrs;
     bool* availableFlags;
     uint8_t* weakEdgeUsage;
+    unsigned int totalGRF;
 
     PhyRegUsageParms(GlobalRA& g, G4_RegFileKind r, unsigned int m, unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,
         unsigned int& bank1_s, unsigned int& bank1_e, unsigned int& bank2_s, unsigned int& bank2_e, bool doBC, bool* avaGReg,
-        uint16_t* avaSubReg, bool* avaAddrs, bool* avaFlags, uint8_t* weakEdges) : gra(g), startARFReg(startARF), startFlagReg(startFlag),
-        startGRFReg(startGRF), bank1_start(bank1_s), bank1_end(bank1_e), bank2_start(bank2_s), bank2_end(bank2_e)
-    {
-        doBankConflict = doBC;
-        availableGregs = avaGReg;
-        availableSubRegs = avaSubReg;
-        availableAddrs = avaAddrs;
-        availableFlags = avaFlags;
-        weakEdgeUsage = weakEdges;
-        maxGRFCanBeUsed = m;
-        rFile = r;
-    }
+        uint16_t* avaSubReg, bool* avaAddrs, bool* avaFlags, uint8_t* weakEdges);
 };
 
 //

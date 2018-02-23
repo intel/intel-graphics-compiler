@@ -1263,7 +1263,7 @@ void GlobalRA::reportSpillInfo(LivenessAnalysis& liveness, GraphColor& coloring)
 
 
 LiveRange::LiveRange(G4_RegVar* v, GlobalRA& g, const Options *opt) : VarBasis(v, opt),
-degree(0), refCount(0), active(false), isInfiniteCost(false), isCandidate(true), isPseudoNode(false),
+degree(0), refCount(0), active(false), isInfiniteCost(false), isCandidate(true), isPseudoNode(false), isPartialDeclare(false), isSplittedDeclare(false), bc(BANK_CONFLICT_NONE),
 gra(g)
 {
     if (getRegKind() == G4_ADDRESS)
@@ -1538,8 +1538,8 @@ inline void Interference::filterSplitDclares(unsigned startIdx, unsigned endIdx,
 //
 void Interference::buildInterferenceWithLive(BitSet& live, unsigned i)
 {
-    bool is_partial = lrs[i]->getVar()->getDeclare()->getIsPartialDcl();
-    bool is_splitted = lrs[i]->getVar()->getDeclare()->getIsSplittedDcl();
+    bool is_partial = lrs[i]->getIsPartialDcl();
+    bool is_splitted = lrs[i]->getIsSplittedDcl();
     unsigned numDwords = 0;
     unsigned numBits = 0;
     unsigned n = 0;
@@ -1724,10 +1724,10 @@ void Interference::buildInterferenceAmongLiveIns()
         if (liveAnalysis->isLiveAtEntry(entryBB, i))
         {
             //Mark reference can not gaurantee all the varaibles are local, update here
-            //FIXME: Sure??
             if (lrs[i]->getVar()->getDeclare()->getIsSplittedDcl())
             {
                 lrs[i]->getVar()->getDeclare()->setIsSplittedDcl(false);
+                lrs[i]->setIsSplittedDcl(false);
             }
 
             for (unsigned j = i + 1; j < maxId; j++)
@@ -1918,7 +1918,7 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
         {
             lrs[id]->setRefCount(lrs[id]->getRefCount() + refCount);  // update reference count
 
-            if (inst->getEvenlySplitInst() && !lrs[id]->getVar()->getDeclare()->getIsSplittedDcl())
+            if (inst->getEvenlySplitInst() && !lrs[id]->getIsSplittedDcl())
             {
                 std::list<G4_INST*>::reverse_iterator succ = i;
                 succ--;
@@ -1970,7 +1970,7 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
                 {
                     buildInterferenceWithLive(live, id);
 
-                    if (lrs[id]->getVar()->getDeclare()->getIsSplittedDcl())
+                    if (lrs[id]->getIsSplittedDcl())
                     {
                         buildInterferenceWithSubDcl(id, (G4_Operand *)dst, live, false, true);
                     }
@@ -2051,7 +2051,7 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
             else
             {
                 buildInterferenceWithLive(live, id);
-                if (lrs[id]->getVar()->getDeclare()->getIsSplittedDcl())
+                if (lrs[id]->getIsSplittedDcl())
                 {
                     buildInterferenceWithSubDcl(id, (G4_Operand *)dst, live, false, true);
                 }
@@ -2075,7 +2075,7 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
         {
             updateLiveness(live, id, false);
 
-            if (lrs[id]->getVar()->getDeclare()->getIsSplittedDcl())
+            if (lrs[id]->getIsSplittedDcl())
             {
                 for (unsigned i = lrs[id]->getVar()->getDeclare()->getSplitVarStartID();
                     i < lrs[id]->getVar()->getDeclare()->getSplitVarStartID() + gra.getSplitVarNum(lrs[id]->getVar()->getDeclare());
@@ -2219,7 +2219,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live, G4_Declare
                     unsigned id = referencedReg->getId();
                     buildInterferenceWithLive(live, id);
                     updateLiveness(live, id, true);
-                    if (lrs[id]->getVar()->getDeclare()->getIsSplittedDcl())
+                    if (lrs[id]->getIsSplittedDcl())
                     {
                         buildInterferenceWithSubDcl(id, (G4_Operand *)src, live, true, true);
                     }
@@ -2236,7 +2236,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live, G4_Declare
                     if (inst->opcode() != G4_pseudo_lifetime_end)
                     {
                         updateLiveness(live, id, true);
-                        if (lrs[id]->getVar()->getDeclare()->getIsSplittedDcl())
+                        if (lrs[id]->getIsSplittedDcl())
                         {
                             buildInterferenceWithSubDcl(id, src, live, true, false);
                         }
@@ -5035,6 +5035,16 @@ void GraphColor::createLiveRanges(unsigned reserveSpillSize)
         {
             lrs[var->getId()]->setIsPseudoNode();
         }
+        if (dcl->getIsPartialDcl())
+        {
+            lrs[var->getId()]->setIsPartialDcl();
+        }
+        if (dcl->getIsSplittedDcl())
+        {
+            lrs[var->getId()]->setIsSplittedDcl(true);
+        }
+        lrs[var->getId()]->setBC(gra.getBankConflict(dcl));
+
         lrs[var->getId()]->allocForbidden(mem, hasStackCall, reserveSpillSize, reservedGRFNum);
         lrs[var->getId()]->setCallerSaveBias(hasStackCall);
         G4_Declare* varDcl = lrs[var->getId()]->getVar()->getDeclare();
@@ -5068,30 +5078,28 @@ void GraphColor::computeDegreeForGRF()
         unsigned degree = 0;
 
         if (!(lrs[i]->getIsPseudoNode()) &&
-            !(lrs[i]->getVar()->getDeclare()->getIsPartialDcl()))
+            !(lrs[i]->getIsPartialDcl()))
         {
             std::vector<unsigned int>& intfs = intf.getSparseIntfForVar(i);
             unsigned bankDegree = 0;
-            auto lraBC = gra.getBankConflict(lrs[i]->getVar()->getDeclare());
+            auto lraBC = lrs[i]->getBC();
             bool isOdd = (lraBC == BANK_CONFLICT_SECOND_HALF_EVEN ||
                 lraBC == BANK_CONFLICT_SECOND_HALF_ODD);
 
             for (auto it : intfs)
             {
-                if (!lrs[it]->getVar()->getDeclare()->getIsPartialDcl())
+                if (!lrs[it]->getIsPartialDcl())
                 {
                     unsigned edgeDegree = edgeWeightGRF(lrs[i], lrs[it]);
 
                     degree += edgeDegree;
 
-                    auto lrsitBC = gra.getBankConflict(lrs[it]->getVar()->getDeclare());
+                    auto lrsitBC = lrs[it]->getBC();
+                    bool isOddBC = (lrsitBC == BANK_CONFLICT_SECOND_HALF_EVEN ||
+                                              lrsitBC == BANK_CONFLICT_SECOND_HALF_ODD);
 
-                    if ((isOdd &&
-                        (lrsitBC == BANK_CONFLICT_SECOND_HALF_EVEN ||
-                            lrsitBC == BANK_CONFLICT_SECOND_HALF_ODD)) ||
-                            (!isOdd &&
-                        (lrsitBC != BANK_CONFLICT_FIRST_HALF_EVEN &&
-                            lrsitBC != BANK_CONFLICT_FIRST_HALF_ODD)))
+                    if ((isOdd && isOddBC) ||
+                        (!isOdd && !isOddBC))
                     {
                         bankDegree += edgeDegree;
                     }
@@ -5266,7 +5274,7 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
 void GraphColor::relaxNeighborDegreeGRF(LiveRange* lr)
 {
     if (!(lr->getIsPseudoNode()) &&
-        !(lr->getVar()->getDeclare()->getIsPartialDcl()))
+        !(lr->getIsPartialDcl()))
     {
         unsigned lr_id = lr->getVar()->getId();
         std::vector<unsigned int>& intfs = intf.getSparseIntfForVar(lr_id);
@@ -5276,7 +5284,7 @@ void GraphColor::relaxNeighborDegreeGRF(LiveRange* lr)
 
             if (lrs_it->getActive() &&
                 !lrs_it->getIsPseudoNode() &&
-                !(lrs_it->getVar()->getDeclare()->getIsPartialDcl()))
+                !(lrs_it->getIsPartialDcl()))
             {
                 unsigned w = edgeWeightGRF(lrs_it, lr);
 
@@ -5395,7 +5403,7 @@ void GraphColor::determineColorOrdering()
     unsigned j = 0;
     for (unsigned i = 0; i < numVar; i++)
     {
-        if (lrs[i]->getPhyReg() == nullptr && !lrs[i]->getVar()->getDeclare()->getIsPartialDcl())
+        if (lrs[i]->getPhyReg() == nullptr && !lrs[i]->getIsPartialDcl())
         {
             sorted.push_back(lrs[i]);
             j++;
@@ -5533,7 +5541,27 @@ void PhyRegUsage::updateRegUsage(LiveRange* lr, LiveRange *lrs[])
         MUST_BE_TRUE(false, ERROR_GRAPHCOLOR); // un-handled reg type
     }
 }
+/*
+void GraphColor::updateSubDcls(LiveRange* lr)
+{
+    G4_Declare *dcl = lr->getVar()->getDeclare();
+    if (!dcl->getIsSplittedDcl())
+    {
+        return;
+    }
 
+    auto dclSubDclSize = gra.getSubDclSize(dcl);
+    for (unsigned i = 0; i < dclSubDclSize; i++)
+    {
+        G4_Declare * subDcl = gra.getSubDcl(dcl, i);
+
+        LocalLiveRange* lr = gra.getLocalLR(subDcl);
+        unsigned leftBound = gra.getSubOffset(subDcl)/GENX_GRF_REG_SIZ;
+        lr->setPhyReg(builder.phyregpool.getGreg(startReg +  leftBound), 0);
+        lr->setPhyReg(regPool.getGreg(i), 0);
+    }
+}
+*/
 bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConflict, bool highInternalConflict)
 {
     if (builder.getOption(vISA_RATrace))
@@ -5586,33 +5614,34 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
     unsigned maxGRFCanBeUsed = totalGRFRegCount;
     PhyRegUsageParms parms(gra, rFile, maxGRFCanBeUsed, startARFReg, startFLAGReg, startGRFReg, bank1_start, bank1_end, bank2_start, bank2_end,
         doBankConflict, availableGregs, availableSubRegs, availableAddrs, availableFlags, weakEdgeUsage);
+    bool noIndirForceSpills = builder.getOption(vISA_NoIndirectForceSpills);
 
     // colorOrder is in reverse order (unconstrained at front)
     for (auto iter = colorOrder.rbegin(), iterEnd = colorOrder.rend(); iter != iterEnd; ++iter)
     {
         LiveRange* lr = *iter;
+        auto lrVar = lr->getVar();
 
         //
         // assign regiser to live ranges
         //
-        if (lr->getPhyReg() == NULL && !lr->getVar()->isSpilled() && !lr->getVar()->getDeclare()->getIsPartialDcl()) // no assigned register yet and not spilled
+        if (lr->getPhyReg() == NULL && !lrVar->isSpilled() && !lr->getIsPartialDcl()) // no assigned register yet and not spilled
         {
-            unsigned lr_id = lr->getVar()->getId();
+            unsigned lr_id = lrVar->getId();
             //
             // compute what registers are already assigned
             //
             PhyRegUsage regUsage(parms);
 
             std::vector<unsigned int>& intfs = intf.getSparseIntfForVar(lr_id);
-            auto weakEdgeSet = intf.getCompatibleSparseIntf(lr->getVar()->getDeclare()->getRootDeclare());
+            auto weakEdgeSet = intf.getCompatibleSparseIntf(lrVar->getDeclare()->getRootDeclare());
 
             for (auto it : intfs)
             {
                 LiveRange* lrTemp = lrs[it];
-                if (lrTemp->getPhyReg() != nullptr || lrTemp->getVar()->getDeclare()->getIsPartialDcl())
+                if (lrTemp->getPhyReg() != nullptr || lrTemp->getIsPartialDcl())
                 {
-                    G4_Declare *dcl = lrTemp->getVar()->getDeclare();
-                    if (dcl->getIsSplittedDcl())  //Only interfere with children declares
+                    if (lrTemp->getIsSplittedDcl())  //Only interfere with children declares
                     {
                         continue;
                     }
@@ -5674,10 +5703,10 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
 
 
             bool failed_alloc = false;
-            G4_Declare* dcl = lr->getVar()->getDeclare();
+            G4_Declare* dcl = lrVar->getDeclare();
 
-            if (!(builder.getOption(vISA_NoIndirectForceSpills) &&
-                liveAnalysis.isAddressSensitive(lr->getVar()->getId())) &&
+            if (!(noIndirForceSpills &&
+                liveAnalysis.isAddressSensitive(lr_id)) &&
                 forceSpill &&
                 (dcl->getRegFile() == G4_GRF || dcl->getRegFile() == G4_FLAG) &&
                 lr->getRefCount() != 0 &&
@@ -5696,7 +5725,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
             {
                 if (allocFromBanks)
                 {
-                    G4_Align align = lr->getVar()->getDeclare()->getRegVar()->getAlignment();
+                    G4_Align align = lrVar->getAlignment();
                     if (!isHybrid && oneGRFBankDivision)
                     {
                         gra.getBankAlignment(lr, align);
@@ -5708,7 +5737,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                 else
                 {
                     failed_alloc |= !regUsage.assignRegs(highInternalConflict, lr, lr->getForbidden(),
-                        lr->getVar()->getAlignment(), lr->getVar()->getSubRegAlignment(), heuristic, lr->getSpillCost());
+                        lrVar->getAlignment(), lrVar->getSubRegAlignment(), heuristic, lr->getSpillCost());
                 }
             }
 
@@ -5717,7 +5746,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
             //
             if (failed_alloc)
             {
-                G4_Declare* dcl = lr->getVar()->getDeclare();
+                G4_Declare* dcl = lrVar->getDeclare();
                 //
                 // for GRF register assignment, if we are performing round-robin (1st pass) then abort on spill
                 //
@@ -5765,6 +5794,12 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                     spilledLRs.push_back(lr);
                 }
             }
+/*
+            else if (lr->getIsSplittedDcl())
+            {
+                 //updateSubDcls(lr);
+            }
+*/
         }
 #ifdef DEBUG_VERBOSE_ON
         lr->dump();

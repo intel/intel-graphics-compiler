@@ -47,7 +47,7 @@ endif()
 
 add_library(LocalScheduler ${LocalScheduler_SOURCES} ${LocalScheduler_HEADERS})
 
-if(MSVC)
+if(IGC_BUILD AND MSVC)
 #set up standard defines from the common WDK path.
 bs_set_wdk(LocalScheduler)
 endif()

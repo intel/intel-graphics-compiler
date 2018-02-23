@@ -1128,6 +1128,11 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
             m_builder->getFCPatchInfo()->setFCComposableKernel(true);
         }
     }
+    else if (strcmp(attrName, "Entry") == 0)
+    {
+        m_builder->getFCPatchInfo()->setIsEntryKernel(true);
+        m_options->setOption(vISA_loadThreadPayload, true);
+    }
     else if (strcmp(attrName, "FESPSize") == 0 && attr->value.intVal == 64)
     {
         if (IS_GEN_BOTH_PATH)

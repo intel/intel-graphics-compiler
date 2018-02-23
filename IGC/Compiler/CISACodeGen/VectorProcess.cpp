@@ -333,7 +333,15 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         newVTy = VectorType::get(new_eTy, new_nelts);
     }
     Type *newPtrTy = PointerType::get(newVTy, PtrTy->getPointerAddressSpace());
-    Value *newPtr = Builder.CreateBitCast(Ptr, newPtrTy, "vptrcast");
+    Value* newPtr;
+    if (IntToPtrInst* i2p = dyn_cast<IntToPtrInst>(Ptr))
+    {
+        newPtr = Builder.CreateIntToPtr(i2p->getOperand(0), newPtrTy, "IntToPtr2");
+    }
+    else
+    {
+        newPtr = Builder.CreateBitCast(Ptr, newPtrTy, "vptrcast");
+    }
 
     if (LI)
     {

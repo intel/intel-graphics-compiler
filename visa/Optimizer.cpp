@@ -1032,7 +1032,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(newLocalCopyPropagation, vISA_LocalCopyProp,           TIMER_OPTIMIZER);
     INITIALIZE_PASS(sendFusion,              vISA_EnableSendFusion,        TIMER_OPTIMIZER);
     INITIALIZE_PASS(cselPeepHoleOpt,         vISA_enableCSEL,              TIMER_OPTIMIZER);
-    INITIALIZE_PASS(optimizeLogicOperation,  vISA_LocalFlagOpt,            TIMER_OPTIMIZER);
+    INITIALIZE_PASS(optimizeLogicOperation,  vISA_EnableAlways,            TIMER_OPTIMIZER);
     INITIALIZE_PASS(HWConformityChk,         vISA_EnableAlways,            TIMER_HW_CONFORMITY);
     INITIALIZE_PASS(preRA_Schedule,          vISA_preRA_Schedule,          TIMER_PRERA_SCHEDULING);
     INITIALIZE_PASS(regAlloc,                vISA_EnableAlways,            TIMER_TOTAL_RA);
@@ -4589,6 +4589,25 @@ void Optimizer::optimizeLogicOperation()
     BB_LIST_ITER ib, bend(fg.BBs.end());
     G4_Operand *dst = NULL;
     bool resetLocalIds =  false;
+    bool doLogicOpt = builder.getOption(vISA_LocalFlagOpt);
+
+    if (!doLogicOpt)
+    {
+        // we still need to expand the pseudo logic ops 
+        for (auto bb : fg.BBs)
+        {
+            for (auto I = bb->instList.begin(), E = bb->instList.end(); I != E; ++I)
+            {
+                auto inst = *I;
+                if (inst->isPseudoLogic())
+                {
+                    expandPseudoLogic(builder, bb, I);
+                }
+            }
+        }
+        return;
+    }
+
     for(ib = fg.BBs.begin(); ib != bend; ++ib)
     {
         G4_BB* bb = (*ib);
@@ -7975,6 +7994,15 @@ public:
         for (unsigned int id = 0; id < inputCount; id++)
         {
             input_info_t* input_info = kernel.fg.builder->getInputArg(id);
+            if (kernel.fg.builder->getFCPatchInfo()->getIsEntryKernel())
+            {
+              vISA::G4_Declare* dcl = input_info->dcl;
+              if (INPUT_GENERAL == input_info->getInputClass() &&
+                !(dcl->isLiveIn()))
+              {
+                break;
+              }
+            }
             if (inputEnd < (unsigned)(input_info->size + input_info->offset))
             {
                 inputEnd = input_info->size + input_info->offset;
