@@ -322,7 +322,7 @@ bool EstimateFunctionSize::onlyCalledOnce(const Function *F) {
     if (MdWrapper) {
       auto pMdUtils = MdWrapper->getMetaDataUtils();
       for (auto Caller : Node->CallerList) {
-        if (!isKernelFunc(pMdUtils, Caller)) {
+        if (!isEntryFunc(pMdUtils, Caller)) {
           return false;
         }
         if (CallerSet.count(Caller)) {

@@ -249,7 +249,7 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext *ctx, MetaDataUtils *pMdUtil
             {
                 Function *pFunc = i->first;
                 // Skip non-kernel functions.
-                if (!isOCLKernelFunc(pMdUtils, pFunc))
+                if (!isEntryFunc(pMdUtils, pFunc))
                     continue;
 
                 if (ctx->m_retryManager.kernelSet.empty() ||
@@ -312,8 +312,8 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext *ctx, MetaDataUtils *pMdUtil
             for (auto i = pMdUtils->begin_FunctionsInfo(), e = pMdUtils->end_FunctionsInfo(); i != e; ++i)
             {
                 Function *pFunc = i->first;
-                // Skip non-kernel functions.
-                if (!isKernelFunc(pMdUtils, pFunc))
+                // Skip non-entry functions.
+                if (!isEntryFunc(pMdUtils, pFunc))
                 {
                     continue;
                 }
@@ -623,8 +623,11 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         }
     }
 
-    EmitDebugInfo(finalize);
-    if (finalize)
+    if(m_currShader->ProgramOutput()->m_programBin)
+    {
+        EmitDebugInfo(finalize);
+    }
+    if(finalize)
     {
         IF_DEBUG_INFO(IDebugEmitter::Release(m_pDebugEmitter);)
     }
@@ -8309,7 +8312,7 @@ void EmitPass::emitReturn(llvm::ReturnInst* inst)
     MetaDataUtils *pMdUtils = m_currShader->GetMetaDataUtils();
 
     // return from a function (not a kernel)
-    if (!isKernelFunc(pMdUtils, F))
+    if (!isEntryFunc(pMdUtils, F))
     {
         if (m_FGA && m_FGA->useStackCall(F))
         {

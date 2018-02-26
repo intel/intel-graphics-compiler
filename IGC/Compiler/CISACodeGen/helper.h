@@ -164,39 +164,21 @@ bool IsBitCastForLifetimeMark(const llvm::Value *V);
 // isA64Ptr - Queries whether given pointer type requires 64-bit representation in vISA
 bool isA64Ptr(llvm::PointerType *PT, CodeGenContext* pContext);
 
-/// \brief Check function's type in the metadata.
-inline bool isFuncOfType(IGCMD::MetaDataUtils *pM, llvm::Function *F,
-                         IGCMD::FunctionTypeEnum FuncType)
+/// Return true if F is an entry function of a kernel or a shader.
+///    A entry function must have an entry in FunctionInfoMetaData
+///       with type EntryFunctionType;
+///    A non-entry function may have an entry, if so, that entry in
+///       FunctionInfoMetaData must have type OtherFunctionType.
+inline bool isEntryFunc(const IGCMD::MetaDataUtils *pM, const llvm::Function *CF)
 {
-    if (F != nullptr && pM->findFunctionsInfoItem(F) != pM->end_FunctionsInfo())
-    {
-        IGCMD::FunctionInfoMetaDataHandle Info = pM->getFunctionsInfoItem(F);
-        return Info->isTypeHasValue() && Info->getType() == FuncType;
-    }
-    return false;
-}
+	llvm::Function *F = const_cast<llvm::Function*>(CF);
+	if (F == nullptr || F->empty() ||
+		pM->findFunctionsInfoItem(F) == pM->end_FunctionsInfo())
+		return false;
 
-/// \brief Check whether a function is a OCL user function, aka, subroutine.
-inline bool isOCLUserFunc(IGCMD::MetaDataUtils *pM, llvm::Function *F)
-{
-    return isFuncOfType(pM, F, IGCMD::FunctionTypeEnum::OpenCLUserFunctionType);
-}
-
-/// \brief Check whether a function is a OCL kernel function.
-inline bool isOCLKernelFunc(IGCMD::MetaDataUtils *pM, llvm::Function *F)
-{
-    return isFuncOfType(pM, F, IGCMD::FunctionTypeEnum::OpenCLKernelFunctionType);
-}
-
-/// Determine whether this is a kernel function or not. Each kernel function is
-/// the group leader in its group.
-inline bool isKernelFunc(IGCMD::MetaDataUtils *pM, llvm::Function *F) {
-    // This is OCL specific. Other target should update this check.
-    if (isOCLUserFunc(pM, F))
-        return false;
-
-    // Nonempty functions are kernels, if not subroutine.
-    return !F->empty();
+	IGCMD::FunctionInfoMetaDataHandle Info = pM->getFunctionsInfoItem(F);
+	assert(Info->isTypeHasValue() && "FunctionInfoMetaData missing type!");
+	return Info->getType() == IGCMD::FunctionTypeEnum::EntryFunctionType;
 }
 
 // \brief Get next instruction, returning null if it's the last of the BB.

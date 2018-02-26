@@ -31,9 +31,9 @@ namespace IGC { namespace IGCMD {
     
     enum FunctionTypeEnum
     {
-        OpenCLKernelFunctionType,
-        OpenCLUserFunctionType,
-        DefaultFunctionType = -1
+		EntryFunctionType,  // entry func of a kernel/shader [default]
+        OtherFunctionType   // Non-entry func, such as user/builtin func
+		                    // that is called from entry func.
     };
 
     enum ResourceTypeEnum

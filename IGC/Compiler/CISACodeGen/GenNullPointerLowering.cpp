@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/CISACodeGen/GenNullPointerLowering.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -56,15 +57,13 @@ namespace {
 // purpose.
 
 class GenNullPointerLowering : public FunctionPass {
-  const CShader *Shader;
   const DataLayout *DL;
 
+public:
   static char ID;
 
-public:
-
-  GenNullPointerLowering(const CShader *Sh)
-    : FunctionPass(ID), Shader(Sh), DL(0) {}
+  GenNullPointerLowering()
+    : FunctionPass(ID), DL(0) {}
 
   virtual llvm::StringRef getPassName() const {
     return "GenNullPointer Lowering";
@@ -75,12 +74,22 @@ public:
   virtual void getAnalysisUsage(AnalysisUsage &AU) const {
     AU.setPreservesAll();
     AU.addRequired<MetaDataUtilsWrapper>();
+	AU.addRequired<CodeGenContextWrapper>();
   }
 };
+} // End of anonymous namespace
 
 char GenNullPointerLowering::ID = 0;
 
-} // End of anonymous namespace
+// Register pass to igc-opt
+#define PASS_FLAG "igc-gennullptrlowering"
+#define PASS_DESCRIPTION "Lowering null pointer for GEN"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(GenNullPointerLowering, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_END(GenNullPointerLowering, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 // Resolve null pointer (from different address spaces, even from different
 // types) to integer values. The resolved value has to be re-casted back to
@@ -137,10 +146,10 @@ Constant *GetNullPointerValue(const DataLayout *DL, Constant *C) {
 }
 
 bool GenNullPointerLowering::runOnFunction(Function &F) {
+	CodeGenContext *pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    auto funcInfoMD = pMdUtils->findFunctionsInfoItem(&F);
-    // Only handle GEP for OCL so far.
-    if (funcInfoMD == pMdUtils->end_FunctionsInfo() || funcInfoMD->second->getType() != FunctionTypeEnum::OpenCLKernelFunctionType)
+	// Only handle GEP for OCL so far.
+	if (pCtx->type != ShaderType::OPENCL_SHADER || !isEntryFunc(pMdUtils, &F))
     {
         return false;
     }
@@ -164,11 +173,11 @@ bool GenNullPointerLowering::runOnFunction(Function &F) {
         }
       }
 
-  DumpLLVMIR(Shader->GetContext(), "nullptr-lowering");
+  DumpLLVMIR(pCtx, "nullptr-lowering");
 
   return Changed;
 }
 
-FunctionPass *IGC::createGenNullPointerLowerPass(const CShader *Shader) {
-  return new GenNullPointerLowering(Shader);
+FunctionPass *IGC::createGenNullPointerLowerPass() {
+  return new GenNullPointerLowering();
 }

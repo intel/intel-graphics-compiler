@@ -379,7 +379,7 @@ bool GenXCodeGenModule::runOnModule(Module &M)
             Function *F = Node->getFunction();
             if (F != nullptr && !F->isDeclaration())
             {
-                if (isKernelFunc(pMdUtils, F))
+                if (isEntryFunc(pMdUtils, F))
                 {
                     // No calls to kernels. It should be already inlined before CodeGen.
                     assert(F->use_empty() && "kernel being called");
@@ -532,7 +532,7 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module *Mod) {
         if (F->empty())
             continue;
 
-        if (isKernelFunc(pMdUtils, F)) 
+        if (isEntryFunc(pMdUtils, F)) 
         {
             CurFG = createFunctionGroup(F);
             CurSubGrpH = F;
