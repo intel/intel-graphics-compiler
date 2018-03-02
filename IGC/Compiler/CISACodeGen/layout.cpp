@@ -67,7 +67,7 @@ IGC_INITIALIZE_PASS_END(Layout, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS
 
 char IGC::Layout::ID = 0;
 
-Layout::Layout() : FunctionPass(ID)
+Layout::Layout() : FunctionPass(ID), m_PDT(nullptr)
 {
     initializeLayoutPass(*PassRegistry::getPassRegistry());
 }
@@ -77,10 +77,12 @@ void Layout::getAnalysisUsage(llvm::AnalysisUsage &AU) const
     // Doesn't change the IR at all, it juts move the blocks so no changes in the IR
     AU.setPreservesAll();
     AU.addRequired<llvm::LoopInfoWrapperPass>();
+	AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
 }
 
 bool Layout::runOnFunction( Function& func )
 {
+	m_PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
     LoopInfo& LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     if (LI.empty())
     {
@@ -130,6 +132,82 @@ BasicBlock* Layout::getLastReturnBlock(Function &Func)
     return nullptr;
 }
 
+//
+// selectSucc: select a succ with condition SelectNoInstBlk and return it.
+//
+// This is used to select one if there are two Successors with condition
+// SelectNoInstBlk, rather than take the first one in the succ list.
+//
+// Condition SelectNoInstBlk: If SelectNoInstBlk is true, select an empty
+// block, if it is false, select non-empty block.
+//
+BasicBlock* Layout::selectSucc(
+	BasicBlock *CurrBlk,
+	bool SelectNoInstBlk,
+	const LoopInfo& LI,
+	const std::set<BasicBlock*>& VisitSet)
+{
+	SmallVector<BasicBlock *, 4> Succs;
+	for (succ_iterator SI = succ_begin(CurrBlk), SE = succ_end(CurrBlk);
+		SI != SE; ++SI)
+	{
+		BasicBlock *succ = *SI;
+		if (VisitSet.count(succ) == 0 &&
+			((SelectNoInstBlk && succ->size() <= 1) ||
+			 (!SelectNoInstBlk && succ->size() > 1)))
+		{
+			Succs.push_back(succ);
+		}
+	}
+
+	// Right now, only handle the case of two empty blocks.
+	// If it has no two empty blocks, just take the first
+	// one and return it.
+	if (Succs.size() != 2  || !SelectNoInstBlk) {
+		return Succs.empty() ? nullptr : Succs[0];
+	}
+
+	// For two empty blocks, the case we want to handle
+	// is the following:
+	//
+	//     (B0 = CurrBlk)
+	//   B0 : if (c) goto THEN  (else goto ELSE)
+	//   ELSE : goto B2
+	//   B1 : ....
+	//   B2 : ....
+	//    ......
+	//   Bn : 
+	//      (ELSE, B1, B2, ..., Bn) has END as single exit
+	//   THEN: goto END:
+	//   END :
+	//       PHI...
+	// 
+	// where ELSE and THEN are empty BBs, and END has phi in it.
+	// In this case, THEN and ELSE might have phi moves as the result
+	// DeSSA when emitting visa. For example, suppose  d0 = s0 will
+	// be emitted in THEN.  If s0 is dead after THEN, it would be good
+	// to lay out THEN right after B0 as the live-range of s0 will not
+	// be overlapped with ones in ELSE. (If s0 is live out of THEN,
+	// moving THEN right after B0 or right before END does not matter
+	// as far as liveness is concerned.).  To lay out THEN first, this
+	// function will select ELSE to return (as the algo does layout
+	// backward).
+	//
+	// For simplicity, assume those BBs are not inside loops. It could
+	// be applied to Loop later when appropriate testing is done.
+	BasicBlock *S0 = Succs[0], *S1 = Succs[1];
+	BasicBlock *SS0 = S0->getSingleSuccessor();
+	
+	if (SS0 && (SS0 != S1) && isa<PHINode>(&*SS0->begin()) &&
+		!LI.getLoopFor(S0) &&
+		m_PDT->dominates(SS0, S1))
+	{
+		return S1;
+	}
+
+	return S0;
+}
+
 void Layout::LayoutBlocks(Function &func, LoopInfo &LI)
 {
 	std::vector<llvm::BasicBlock*> visitVec;
@@ -171,7 +249,13 @@ void Layout::LayoutBlocks(Function &func, LoopInfo &LI)
 			if (blk != visitVec.back())
 				continue;
 			// push: time for DFS visit
-			PUSHSUCC(blk, SUCCANYLOOP, SUCCNOINST);
+			if (BasicBlock *aBlk = selectSucc(blk, true, LI, visitSet))
+			{
+				visitVec.push_back(aBlk);
+				visitSet.insert(aBlk);
+				continue;
+			}
+			//PUSHSUCC(blk, SUCCANYLOOP, SUCCNOINST);
 		}
 		// pop: time to move the block to the right location
 		if (blk == visitVec.back())

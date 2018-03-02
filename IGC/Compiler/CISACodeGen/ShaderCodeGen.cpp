@@ -955,7 +955,7 @@ static void purgeInlineAttribute(CodeGenContext *pContext, bool NoOpt)
         MetaDataUtils *pMdUtils = pContext->getMetaDataUtils();
         for (auto &F : pContext->getModule()->getFunctionList())
         {
-            if (!isOCLKernelFunc(pMdUtils, &F))
+            if (!isEntryFunc(pMdUtils, &F))
             {
                 F.removeFnAttr(llvm::Attribute::AlwaysInline);
             }
@@ -1104,6 +1104,8 @@ void OptimizeIR(CodeGenContext* pContext)
                 {
                     mpm.add(llvm::createLICMPass());
                 }
+
+                mpm.add(CreateHoistFMulInLoopPass());
 
                 if (IGC_IS_FLAG_ENABLED(EnableCustomLoopVersioning) &&
                     pContext->type == ShaderType::PIXEL_SHADER &&

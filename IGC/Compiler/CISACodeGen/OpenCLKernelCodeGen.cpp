@@ -1870,9 +1870,19 @@ bool COpenCLKernel::CompileThisSIMD(SIMDMode simdMode, EmitPass &EP, llvm::Funct
 
     // Next we check if there is a required sub group size specified
     MetaDataUtils* pMdUtils = EP.getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    ModuleMetaData* modMD = pCtx->getModuleMetaData();
     FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(&F);
     int simd_size = funcInfoMD->getSubGroupSize()->getSIMD_size();
-    uint32_t groupSize = IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, &F);
+    uint32_t groupSize = 0;
+    if (modMD->csInfo.maxWorkGroupSize)
+    {
+        groupSize = modMD->csInfo.maxWorkGroupSize;
+    }
+    else
+    {
+        groupSize = IGCMetaDataHelper::getThreadGroupSize(*pMdUtils, &F);
+    }
+     
     if (groupSize == 0)
     {
         groupSize = IGCMetaDataHelper::getThreadGroupSizeHint(*pMdUtils, &F);

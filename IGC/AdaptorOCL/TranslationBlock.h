@@ -185,6 +185,7 @@ struct STB_TranslateInputArgs
     void*       pTracingOptions;     // instrumentation options
     uint32_t    TracingOptionsCount; // number of instrumentation options
     void*       GTPinInput;          // input structure for GTPin requests
+    bool        CompileTimeStatisticsEnable;
 
     STB_TranslateInputArgs()
     {
@@ -197,6 +198,7 @@ struct STB_TranslateInputArgs
         pTracingOptions     = NULL;
         TracingOptionsCount = 0;
         GTPinInput          = NULL;
+        CompileTimeStatisticsEnable = false;
     }
 };
 

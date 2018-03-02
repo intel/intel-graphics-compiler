@@ -87,7 +87,7 @@ bool AggregateArgumentsAnalysis::runOnFunction(Function &F)
         return false;
     }
 
-    if (isOCLUserFunc(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), &F))
+    if (!isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), &F))
     {
         return false;
     }
@@ -213,7 +213,7 @@ ResolveAggregateArguments::ResolveAggregateArguments() : FunctionPass(ID)
 
 bool ResolveAggregateArguments::runOnFunction(Function &F)
 {
-    if (isOCLUserFunc(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), &F))
+    if (!isEntryFunc(getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils(), &F))
     {
         return false;
     }

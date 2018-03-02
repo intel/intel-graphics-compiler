@@ -168,6 +168,7 @@ function(igc_target_flag_property_add_once_config_var targetName propertyBaseNam
   endforeach()
 endfunction()
 
+
 # Macros to set the runtime to /MT under windows (statically link to runtime.
 # Suitable for multi-threaded as well)
 macro(  win_static_runtime )

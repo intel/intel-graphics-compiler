@@ -1489,7 +1489,18 @@ G4_INST::MovType getMovType(G4_Type dstTy, G4_Type srcTy, G4_SrcModifier srcMod)
 
     // Treat that mov as truncation.
     if (G4_Type_Table[srcTy].byteSize > G4_Type_Table[dstTy].byteSize)
-        return G4_INST::Trunc;
+    {
+        if(IS_SIGNED_INT(srcTy) &&
+           srcMod != Mod_src_undef &&
+           srcMod != Mod_Not)
+        {
+            return G4_INST::SuperMov;
+        }
+        else
+        {
+            return G4_INST::Trunc;
+        }
+    }
 
     // Treat that mov as sign extend or zero extend based on the signedness of
     // the source type only.
@@ -7274,6 +7285,11 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
                 continue;
             }
 
+            if (subRegOffset + w * eltSize > GENX_GRF_REG_SIZ)
+            {
+                continue;
+            }
+
             if (endOffset <= GENX_GRF_REG_SIZ ||
                 subRegOffset % (w * eltSize) == 0)
             {
@@ -7284,6 +7300,7 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
         // width >= 2 crosses GRF
         return 0;
     };
+
 
     unsigned short w = (unsigned short)getWidth(subRegOffset, eltSize);
 
@@ -7297,10 +7314,9 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
     {
         setRegion(builder.createRegionDesc(w, w, 1), true);
     }
-    else if (isAlign1Ternary)
+    else
     {
-        // binary encoding asserts on <1;1,0> region for 3-src inst, so force change it to <2;2,1>
-        setRegion(builder.createRegionDesc(2, 2, 1), true);
+        setRegion(builder.getRegionStride1(), true);
     }
 }
 

@@ -3,6 +3,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <array>
 
 namespace llvm
 {
@@ -94,6 +95,7 @@ namespace IGC
 
     struct ComputeShaderInfo
     {
+        unsigned int maxWorkGroupSize = 0;
         unsigned int waveSize = 0; // force a wave size
         std::vector<ComputeShaderSecondCompileInputInfoMD> ComputeShaderSecondCompile;
     };
@@ -163,7 +165,7 @@ namespace IGC
 		std::map<ConstantAddress, int> constants;
 		std::map<unsigned int, SInputDesc> inputs;
 		std::map<unsigned int, int> constantReg;
-		std::vector<SimplePushInfo> simplePushInfoArr;
+		std::array<SimplePushInfo, g_c_maxNumberOfBufferPushed> simplePushInfoArr;
 		unsigned int simplePushBufferUsed = 0;
 
 		std::vector<ArgDependencyInfoMD> pushAnalysisWIInfos;
@@ -196,7 +198,6 @@ namespace IGC
     //metadata for the entire module
     struct ModuleMetaData
     {
-        ModuleMetaData();
 		bool isPrecise = false;
         CompOptions compOpt;
         std::map<llvm::Function*, IGC::FunctionMetaData>   FuncMD;
@@ -215,7 +216,7 @@ namespace IGC
         ShaderData shaderData;
         bool UseBindlessImage = false;
         unsigned int privateMemoryPerWI = 0;
-        std::vector<uint64_t> m_ShaderResourceViewMcsMask;
+        std::array<uint64_t, NUM_SHADER_RESOURCE_VIEW_SIZE> m_ShaderResourceViewMcsMask;
     };
     void serialize(const IGC::ModuleMetaData &moduleMD, llvm::Module* module);
     void deserialize(IGC::ModuleMetaData &deserializedMD, const llvm::Module* module);

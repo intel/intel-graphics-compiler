@@ -193,7 +193,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
     {
         IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
         SPIRMD::KernelMetaDataHandle spirKernel = *ki;
-        fHandle->setType(IGCMD::FunctionTypeEnum::OpenCLKernelFunctionType); 
+        fHandle->setType(IGCMD::FunctionTypeEnum::EntryFunctionType); 
 
         // Handling Thread Group Size
         SPIRMD::WorkGroupDimensionsMetaDataHandle reqdWorkGroupSize = spirKernel->getRequiredWorkGroupSize();

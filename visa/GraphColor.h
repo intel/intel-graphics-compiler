@@ -94,6 +94,8 @@ class LiveRange final : public VarBasis
     BankConflict bc;
     GlobalRA& gra;
 
+    unsigned parentLRID;
+
 public:
 
     LiveRange(G4_RegVar* v, GlobalRA&, const Options *opt);
@@ -173,6 +175,8 @@ public:
     void setIsSplittedDcl(bool v) { isSplittedDeclare = v; }
     BankConflict getBC() const { return bc;  }
     void setBC(BankConflict c)  { bc = c; }
+    void setParentLRID(int id) { parentLRID = id; }
+    unsigned getParentLRID() const { return parentLRID; }
 };
 }
 typedef std::list<vISA::LiveRange*> LIVERANGE_LIST;
@@ -405,7 +409,7 @@ namespace vISA
             }
         }
 
-        bool varSplitCheckBeforeIntf(unsigned v1, unsigned v2);
+        inline bool varSplitCheckBeforeIntf(unsigned v1, unsigned v2);
 
         void checkAndSetIntf(unsigned v1, unsigned v2)
         {

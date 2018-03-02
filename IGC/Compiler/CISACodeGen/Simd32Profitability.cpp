@@ -751,6 +751,10 @@ bool Simd32ProfitabilityAnalysis::checkSimd32Profitable(CodeGenContext *ctx)
     {
         ThreadGroupSizeMetaDataHandle tgSize = funcInfoMD->second->getThreadGroupSize();
         ThreadGroupSizeMetaDataHandle tgSizeHint = funcInfoMD->second->getThreadGroupSizeHint();
+
+        if(ctx->getModuleMetaData()->csInfo.maxWorkGroupSize && ctx->getModuleMetaData()->csInfo.maxWorkGroupSize <= 16)
+            return false;
+
         if ((tgSize->hasValue() && (tgSize->getXDim() * tgSize->getYDim() * tgSize->getZDim()) <= 16) ||
             (tgSizeHint->hasValue() && (tgSizeHint->getXDim() * tgSizeHint->getYDim() * tgSizeHint->getZDim()) <= 16)) {
             return false;

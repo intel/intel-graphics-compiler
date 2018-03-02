@@ -118,9 +118,11 @@ DECLARE_IGC_REGKEY(DWORD,FoldsToConstPropThreshold,     2,     "Set the threshol
 DECLARE_IGC_REGKEY(bool, DynamicConstFoldProcessLoops,  false, "Dynamic Constant Folding: Enable finding interesting constants in loops")
 DECLARE_IGC_REGKEY(bool, DisableDynamicConstantFolding, true,  "Disable Dynamic Constant Folding")
 DECLARE_IGC_REGKEY(bool, DispatchOCLWGInOrder,          false, "If set, dispatch HW threads based on the linearized order of WI in a WG; ie, localID(lane[x])=localID(lane[x-1])+1; 1st thread's localID[lane[0])=0.")
-DECLARE_IGC_REGKEY(DWORD, CodeAssumption,               0, \
+DECLARE_IGC_REGKEY(DWORD, CodeAssumption,               1, \
     "If set (> 0), generate llvm.assume to help certain optimizations. It is OCL only for now. \
 	 Only 1 and 2 are valid. 2 will be 1 plus additional assumption.")
+DECLARE_IGC_REGKEY(bool, EnableHoistMulInLoop, true,
+    "Hoist multiply with loop invirant out of loop, FP unsafe")
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, ShaderDebugHashCodeInKernel,   false, "Append hash code to the binary")
@@ -239,6 +241,7 @@ DECLARE_IGC_REGKEY(bool, EnableDisableMidThreadPreemptionOpt,    true,  "Disable
 DECLARE_IGC_REGKEY(DWORD, MidThreadPreemptionDisableThreshold,   600, "Threshold to disable mid thread preemption")
 DECLARE_IGC_REGKEY(bool, DispatchGPGPUWalkerAlongYFirst, true, "dispatch GPGPU walker along Y first")
 DECLARE_IGC_REGKEY(bool, SetMaxPreRASchedulerRegPressureThreshold, false,  "set Max PreRA Scheduler Threshold")
+DECLARE_IGC_REGKEY(bool, LimitConstantBuffersPushed, true, "Limit max number of CBs pushed when SupportIndirectConstantBuffer is true")
 DECLARE_IGC_REGKEY(DWORD, MaxPreRASchedulerRegPressureThreshold, 60,  "Max PreRA Scheduler Threshold")
 DECLARE_IGC_REGKEY(bool, EnablePreRASampleCluster, false,  "Enabling helps cluster sample instructions with identical texture index which are ready to be scheduled, to be scheduled together")
 DECLARE_IGC_REGKEY(bool, forceSamplerHeader, false, "force sampler messages to use header")

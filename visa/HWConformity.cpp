@@ -4283,6 +4283,38 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
             {
                 canBeImm = false;
             }
+            /*
+            * Insert mov instruction if there is potential to violate the rule:
+            * "elements within a 'Width' cannot cross GRF boundaries" from
+            * EU Overview ? Registers and Register Regions ? Register Region Restrictions
+            */
+            if (src->isSrcRegRegion() && src->asSrcRegRegion()->getRegAccess() == Direct)
+            {
+                G4_SrcRegRegion* srcAsRegion = src->asSrcRegRegion();
+                RegionDesc* region = srcAsRegion->getRegion();
+                int byteSize = G4_Type_Table[srcAsRegion->getType()].byteSize;
+                unsigned offset = 0;
+
+
+                if (region->isContiguous(inst->getExecSize()) && srcAsRegion->hasFixedSubregOffset(offset))
+                {
+                    if (builder.doNotRewriteRegion() && builder.hasAlign1Ternary() && k != 2)
+                    {
+                    }
+                    else
+                    {
+                        uint32_t endOffset = offset + inst->getExecSize() * byteSize;
+                        if (endOffset > GENX_GRF_REG_SIZ &&
+                            inst->getExecSize() > 1)
+                        {
+                            if (offset + 2 * byteSize > GENX_GRF_REG_SIZ)
+                            {
+                                inst->setSrc(insertMovBefore(iter, k, src->getType(), bb), k);
+                            }
+                        } //Otherwise, region normalization may change it to <2;2,1>
+                    }
+                }
+            }
         }
     }
 
@@ -6313,7 +6345,6 @@ void HWConformity::chkHWConformity()
 #endif
 
         fixMADInst( it );
-
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif

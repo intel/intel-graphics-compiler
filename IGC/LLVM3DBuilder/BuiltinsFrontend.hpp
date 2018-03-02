@@ -215,6 +215,7 @@ public:
     llvm::Value* getHalf(float f);
     llvm::Value* getFloat(float f);
     llvm::Value* getDouble(double d);
+    llvm::Value* CreatePow(llvm::Value* src0, llvm::Value* src1);
 
     llvm::Value* Create_MAD_Scalar(
         llvm::Value* float_src0,

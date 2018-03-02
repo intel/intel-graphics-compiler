@@ -107,30 +107,38 @@ Interference::Interference(LivenessAnalysis* l, LiveRange**& lr, unsigned n, uns
 {
 }
 
-bool Interference::varSplitCheckBeforeIntf(unsigned v1, unsigned v2)
+inline bool Interference::varSplitCheckBeforeIntf(unsigned v1, unsigned v2)
 {
-    G4_Declare * d1 = lrs[v1]->getVar()->getDeclare();
-    G4_Declare * d2 = lrs[v2]->getVar()->getDeclare();
+    LiveRange * l1 = lrs[v1];
+    LiveRange * l2 = lrs[v2];
+
+    if (!l1->getIsPartialDcl() &&
+        !l2->getIsPartialDcl())
+    {
+        return false;
+    }
 
     //Don't do interference for two split declares
-    if (d1->getIsPartialDcl() &&
-        d2->getIsPartialDcl())
+    if (l1->getIsPartialDcl() &&
+        l2->getIsPartialDcl())
     {
         return true;
     }
 
+    unsigned p1 = v1;
+    unsigned p2 = v2;
     //Don't do inteference for child and parent delcares
-    if (d1->getIsPartialDcl())
+    if (l1->getIsPartialDcl())
     {
-        d1 = gra.getSplittedDeclare(d1);
+        p1 = l1->getParentLRID();
     }
 
-    if (d2->getIsPartialDcl())
+    if (l2->getIsPartialDcl())
     {
-        d2 = gra.getSplittedDeclare(d2);
+        p2 = l2->getParentLRID();
     }
 
-    if (d1 == d2)
+    if (p1 == p2)
     {
         return true;
     }
@@ -5037,6 +5045,8 @@ void GraphColor::createLiveRanges(unsigned reserveSpillSize)
         }
         if (dcl->getIsPartialDcl())
         {
+            G4_Declare * parentDcl = this->gra.getSplittedDeclare(dcl);
+            lrs[var->getId()]->setParentLRID(parentDcl->getRegVar()->getId());
             lrs[var->getId()]->setIsPartialDcl();
         }
         if (dcl->getIsSplittedDcl())
@@ -5483,11 +5493,9 @@ void PhyRegUsage::updateRegUsage(LiveRange* lr, LiveRange *lrs[])
     G4_RegVar* var = lr->getVar();
     G4_Declare* dcl = var->getDeclare();
     G4_VarBase* pr = NULL;
-    if (dcl->getIsPartialDcl())
+    if (lr->getIsPartialDcl())
     {
-        G4_Declare *splittedDcl = gra.getSplittedDeclare(dcl);
-        var = splittedDcl->getRegVar();
-        pr = lrs[var->getId()]->getPhyReg();
+        pr = lrs[lr->getParentLRID()]->getPhyReg();
     }
     else
     {
@@ -5507,7 +5515,7 @@ void PhyRegUsage::updateRegUsage(LiveRange* lr, LiveRange *lrs[])
             // 2. the size of the subdeclare must be G4_WSIZE aligned
             markBusyForDclSplit(G4_GRF,
                 ((G4_Greg*)pr)->getRegNum(),
-                (lrs[var->getId()]->getPhyRegOff() * G4_Type_Table[dcl->getElemType()].byteSize + gra.getSubOffset(dcl)) / G4_WSIZE,
+                (lrs[lr->getParentLRID()]->getPhyRegOff() * G4_Type_Table[dcl->getElemType()].byteSize + gra.getSubOffset(dcl)) / G4_WSIZE,
                 dcl->getByteSize() / G4_WSIZE,
                 dcl->getNumRows());
         }
@@ -5541,27 +5549,7 @@ void PhyRegUsage::updateRegUsage(LiveRange* lr, LiveRange *lrs[])
         MUST_BE_TRUE(false, ERROR_GRAPHCOLOR); // un-handled reg type
     }
 }
-/*
-void GraphColor::updateSubDcls(LiveRange* lr)
-{
-    G4_Declare *dcl = lr->getVar()->getDeclare();
-    if (!dcl->getIsSplittedDcl())
-    {
-        return;
-    }
 
-    auto dclSubDclSize = gra.getSubDclSize(dcl);
-    for (unsigned i = 0; i < dclSubDclSize; i++)
-    {
-        G4_Declare * subDcl = gra.getSubDcl(dcl, i);
-
-        LocalLiveRange* lr = gra.getLocalLR(subDcl);
-        unsigned leftBound = gra.getSubOffset(subDcl)/GENX_GRF_REG_SIZ;
-        lr->setPhyReg(builder.phyregpool.getGreg(startReg +  leftBound), 0);
-        lr->setPhyReg(regPool.getGreg(i), 0);
-    }
-}
-*/
 bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConflict, bool highInternalConflict)
 {
     if (builder.getOption(vISA_RATrace))
@@ -5794,12 +5782,6 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                     spilledLRs.push_back(lr);
                 }
             }
-/*
-            else if (lr->getIsSplittedDcl())
-            {
-                 //updateSubDcls(lr);
-            }
-*/
         }
 #ifdef DEBUG_VERBOSE_ON
         lr->dump();

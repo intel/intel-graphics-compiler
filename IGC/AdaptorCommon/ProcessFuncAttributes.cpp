@@ -428,7 +428,7 @@ bool ProcessBuiltinMetaData::runOnModule(Module& M)
 void ProcessBuiltinMetaData::updateBuiltinFunctionMetaData(llvm::Function* pFunc)
 {
     IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
-    fHandle->setType(IGC::IGCMD::FunctionTypeEnum::OpenCLUserFunctionType);
+    fHandle->setType(IGC::IGCMD::FunctionTypeEnum::OtherFunctionType);
     for (auto arg = pFunc->arg_begin(); arg != pFunc->arg_end(); ++arg)
     {
         std::string typeStr;

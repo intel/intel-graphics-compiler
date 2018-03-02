@@ -28,54 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string.h>
 #include <stdlib.h>
 
-/*****************************************************************************\
-Prototypes of Sku Table and Wa table initializers
-\*****************************************************************************/
-extern "C" {
-
-    void  InitBdwWaTable(
-        PWA_TABLE pWaTable,
-        PSKU_FEATURE_TABLE pSkuTable,
-        PWA_INIT_PARAM pWaParam );
-
-    void InitChvWaTable(
-        PWA_TABLE                       pWaTable,
-        PSKU_FEATURE_TABLE              pSkuTable,
-        PWA_INIT_PARAM                  pWaParam);
-
-    void  InitBxtWaTable(
-        PWA_TABLE pWaTable,
-        PSKU_FEATURE_TABLE pSkuTable,
-        PWA_INIT_PARAM pWaParam );
-
-    void  InitSklWaTable(
-        PWA_TABLE pWaTable,
-        PSKU_FEATURE_TABLE pSkuTable,
-        PWA_INIT_PARAM pWaParam );
-
-    void InitCnlWaTable(
-        PWA_TABLE pWaTable,
-        PSKU_FEATURE_TABLE pSkuTable,
-        PWA_INIT_PARAM pWaParam );
-
-    void InitKblWaTable(
-        PWA_TABLE pWaTable,
-        PSKU_FEATURE_TABLE pSkuTable,
-        PWA_INIT_PARAM pWaParam);
-
-    void InitCflWaTable(
-        PWA_TABLE pWaTable,
-        PSKU_FEATURE_TABLE pSkuTable,
-        PWA_INIT_PARAM pWaParam);
-
-    void InitGlkWaTable(
-        PWA_TABLE pWaTable,
-        PSKU_FEATURE_TABLE pSkuTable,
-        PWA_INIT_PARAM pWaParam);
-
-
-};
-
 namespace IGC
 {
 

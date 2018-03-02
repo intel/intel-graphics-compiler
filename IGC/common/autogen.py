@@ -96,7 +96,7 @@ def storeVars(line):
 
 def extractVars(line):
     vars = line.split()
-    if(line.find("std::vector") != -1 or line.find("std::map") != -1):
+    if(line.find("std::vector") != -1 or line.find("std::map") != -1 or line.find("std::array") != -1):
         structDataMembers.append(vars[len(vars)-1])
         return
     if line.find("=") != -1:

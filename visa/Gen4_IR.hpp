@@ -802,6 +802,7 @@ public:
         return false;
     }
 
+
     bool isPseudoLogic() const
     {
         return op == G4_pseudo_and || op == G4_pseudo_or || op == G4_pseudo_xor || op == G4_pseudo_not;
@@ -2031,7 +2032,10 @@ public:
         }
         return rootDcl;
     }
-
+    bool getIsOrgDeclare()
+    {
+        return (AliasDCL == NULL && !isPartialDcl);
+    }
     // like above, but also return the alias offset in bytes
     G4_Declare*    getRootDeclare(uint32_t& offset)
     {

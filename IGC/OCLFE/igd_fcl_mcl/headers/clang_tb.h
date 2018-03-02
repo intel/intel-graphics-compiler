@@ -68,6 +68,13 @@ namespace TC
     void* pModule           = nullptr;
     PFcnCCCompile pCompile  = nullptr;
     const char *pModuleName = nullptr;
+#ifndef _WIN32
+    // Due to clash of names between CPU OCL common clang and GPU common clang
+    // we rename the libcommon_clang.so. While the change is not introduced
+    // to Neo, try to load from new location and if it fails load the old name.
+    // TODO: remove this and related code when Neo switches.
+    const char *pModuleOldName = nullptr;
+#endif
 
     CCModuleStruct()
     {
@@ -81,7 +88,8 @@ namespace TC
       pModuleName = "common_clang32.dll";
 #endif
 #else
-      pModuleName = "libcommon_clang.so";
+      pModuleOldName = "libcommon_clang.so";
+      pModuleName    = "libopencl_clang.so";
 #endif
     }
   };

@@ -125,7 +125,7 @@ bool InlineLocalsResolution::runOnModule(Module &M)
     {
         Function* pFunc = &(*I);
 
-        if (pFunc->isDeclaration() || isOCLUserFunc(pMdUtils, pFunc))
+        if (pFunc->isDeclaration() || !isEntryFunc(pMdUtils, pFunc))
         {
             continue;
         }
@@ -402,8 +402,8 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
     // Ok, we've collected the information, now write it into the MD.
     for (auto iter = sizeMap.begin(), end = sizeMap.end(); iter != end; ++iter)
     {
-        // ignore OCL user functions. 
-        if (isOCLUserFunc(pMdUtils, iter->first))
+        // ignore non-entry functions. 
+        if (!isEntryFunc(pMdUtils, iter->first))
         {
             continue;
         }

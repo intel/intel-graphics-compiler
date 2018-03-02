@@ -13,12 +13,6 @@
 
 using namespace llvm;
 
-IGC::ModuleMetaData::ModuleMetaData()
-{
-    pushInfo.simplePushInfoArr.resize(g_c_maxNumberOfBufferPushed);
-    m_ShaderResourceViewMcsMask.resize(NUM_SHADER_RESOURCE_VIEW_SIZE, 0);
-}
-
 //(non-autogen)function prototypes
 MDNode* CreateNode(unsigned char i, Module* module, StringRef name);
 MDNode* CreateNode(int i, Module* module, StringRef name);
@@ -28,6 +22,8 @@ MDNode* CreateNode(float f, Module* module, StringRef name);
 MDNode* CreateNode(bool b, Module* module, StringRef name);
 template<typename val>
 MDNode* CreateNode(const std::vector<val> &vec, Module* module, StringRef name);
+template<typename val, size_t s>
+MDNode* CreateNode(const std::array<val, s> &arr, Module* module, StringRef name);
 MDNode* CreateNode(Value* val, Module* module, StringRef name);
 template<typename Key, typename Value>
 MDNode* CreateNode(const std::map < Key, Value> &FuncMD, Module* module, StringRef name);
@@ -45,6 +41,8 @@ void readNode(char* &s, MDNode* node);
 
 template<typename T>
 void readNode(std::vector<T> &vec, MDNode* node);
+template<typename T, size_t s>
+void readNode(std::array<T, s> &arr, MDNode* node);
 void readNode(Function* &funcPtr, MDNode* node);
 void readNode(GlobalVariable* &globalVar, MDNode* node);
 
@@ -163,6 +161,19 @@ MDNode* CreateNode(const std::vector<val> &vec, Module* module, StringRef name)
     return node;
 }
 
+template<typename val, size_t s>
+MDNode* CreateNode(const std::array<val, s> &vec, Module* module, StringRef name)
+{
+    std::vector<Metadata*> nodes;
+    nodes.push_back(MDString::get(module->getContext(), name));
+    for(unsigned int i = 0; i < s; i++)
+    {
+        nodes.push_back(CreateNode(vec[i], module, name.str() + "Vec[" + std::to_string(i) + "]"));
+    }
+    MDNode* node = MDNode::get(module->getContext(), nodes);
+    return node;
+}
+
 MDNode* CreateNode(Value* val, Module* module, StringRef name)
 {
     Metadata* v[] =
@@ -259,6 +270,18 @@ void readNode(std::vector<T> &vec, MDNode* node)
         T vecEle;
         readNode(vecEle, cast<MDNode>(node->getOperand(k)));
         vec.push_back(vecEle);
+    }
+    return;
+}
+
+template<typename T, size_t s>
+void readNode(std::array<T, s> &arr, MDNode* node)
+{
+    for(unsigned k = 1; k < node->getNumOperands(); k++)
+    {
+        T vecEle;
+        readNode(vecEle, cast<MDNode>(node->getOperand(k)));
+        arr[k - 1] = vecEle;
     }
     return;
 }
