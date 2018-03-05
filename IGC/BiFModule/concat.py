@@ -29,12 +29,12 @@ import os
 def concat(file1,file2,new_file):
 	f1,f2 = "",""
 	if os.path.exists(file1):
-		f1 = open(file1).read()
+		f1 = open(file1, "br").read()
 	if os.path.exists(file2):
-		f2 = open(file2).read()
+		f2 = open(file2, "br").read()
 	with open(new_file,"wb") as f_concat:
 		f_concat.write(f1+f2)
-		f_concat.write("\0")
+		f_concat.write(b"\0")
 parser = argparse.ArgumentParser()
 parser.add_argument('-top', help='top file for concat')
 parser.add_argument('-bottom', help='bottom file for concat')
