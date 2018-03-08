@@ -103,22 +103,26 @@
     "$<TARGET_FILE:CLANG_7Z_OUTPUT>"
   )
 
+  if(NOT DEFINED COMMON_CLANG_LIBRARY_NAME)
+    set(COMMON_CLANG_LIBRARY_NAME common_clang)
+  endif()
+
   if(WIN32)
-    set(COMMON_CLANG_LIB_NAME "common_clang${_cpuSuffix}${CMAKE_SHARED_LIBRARY_SUFFIX}")
-    set(COMMON_CLANG_LIB_PATH "${IGC_OPTION__OUTPUT_DIR}/${CMAKE_BUILD_TYPE}/${COMMON_CLANG_LIB_NAME}")
+    set(COMMON_CLANG_LIB_FULL_NAME "${COMMON_CLANG_LIBRARY_NAME}${_cpuSuffix}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    set(COMMON_CLANG_LIB_PATH "${COMMON_CLANG_LIBRARY_NAME}${IGC_OPTION__OUTPUT_DIR}/${CMAKE_BUILD_TYPE}/${COMMON_CLANG_LIB_FULL_NAME}")
   else()
-    set(COMMON_CLANG_LIB_NAME "libcommon_clang${CMAKE_SHARED_LIBRARY_SUFFIX}")
-    set(COMMON_CLANG_LIB_PATH "${IGC_OPTION__OUTPUT_DIR}/${COMMON_CLANG_LIB_NAME}")
+    set(COMMON_CLANG_LIB_FULL_NAME "lib${COMMON_CLANG_LIBRARY_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    set(COMMON_CLANG_LIB_PATH "${IGC_OPTION__OUTPUT_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
   endif()
   
   # Add step to preform the extraction
   add_custom_command(
     OUTPUT ${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}
-	OUTPUT ${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_NAME}
+	OUTPUT ${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_TARGET__TOOLS_CLANG_DIR}"
     COMMAND ${_extractCmd}
     COMMAND "${CMAKE_COMMAND}" -E touch_nocreate "${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}"
-	COMMAND "${CMAKE_COMMAND}" -E touch_nocreate "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_NAME}"
+	COMMAND "${CMAKE_COMMAND}" -E touch_nocreate "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}"
     DEPENDS CLANG_7Z
     COMMENT "Extracting Clang packages using: ${_extractCmd}"
   )
@@ -139,7 +143,7 @@
 
     add_dependencies(GetClang UnzipClang)
 
-    set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_NAME}")
+    set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
   else()
     # Do not use precompiled common clang.
     message(STATUS "Precompiled common clang bundle ${_clang7zLocation} does not exist. Try to compile from sources.")
@@ -164,7 +168,7 @@
       add_subdirectory(${IGC_CCLANG_HOME_DIR} ${IGC_CCLANG_BUILD_DIR})
       add_dependencies(GetClang "${CCLANG_LIB_NAME}")
 
-      set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" "${IGC_CCLANG_BUILD_DIR}/install/lib/${COMMON_CLANG_LIB_NAME}")
+      set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" "${IGC_CCLANG_BUILD_DIR}/install/lib/${COMMON_CLANG_LIB_FULL_NAME}")
     else()
       message(FATAL_ERROR "Can not compile common clang: unknown location of common clang sources")
     endif()
