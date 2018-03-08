@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/ADT/SmallVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #define MAX_ALLOCA_PROMOTE_GRF_NUM      48
@@ -398,26 +399,33 @@ void LowerGEPForPrivMem::visitAllocaInst(AllocaInst &I)
 void LowerGEPForPrivMem::HandleAllocaSources(
     Instruction* v, AllocaInst* pVecAlloca, Value* idx)
 {
+    SmallVector<Value*, 10> instructions;
     for(Value::user_iterator it = v->user_begin(), e = v->user_end(); it != e; ++it)
     {
-        if(GetElementPtrInst *pGEP = dyn_cast<GetElementPtrInst>(*it))
+        Value* inst = cast<Value>(*it);
+        instructions.push_back(inst);
+    }
+    
+    for(auto instruction : instructions)
+    {
+        if(GetElementPtrInst *pGEP = dyn_cast<GetElementPtrInst>(instruction))
         {
             handleGEPInst(pGEP, pVecAlloca, idx);
         }
-        else if(BitCastInst* bitcast = dyn_cast<BitCastInst>(*it))
+        else if(BitCastInst* bitcast = dyn_cast<BitCastInst>(instruction))
         {
             m_toBeRemovedGEP.push_back(bitcast);
             HandleAllocaSources(bitcast, pVecAlloca, idx);
         }
-        else if(StoreInst *pStore = llvm::dyn_cast<StoreInst>(*it))
+        else if(StoreInst *pStore = llvm::dyn_cast<StoreInst>(instruction))
         {
             handleStoreInst(pStore, pVecAlloca, idx);
         }
-        else if(LoadInst *pLoad = llvm::dyn_cast<LoadInst>(*it))
+        else if(LoadInst *pLoad = llvm::dyn_cast<LoadInst>(instruction))
         {
             handleLoadInst(pLoad, pVecAlloca, idx);
         }
-        else if(IntrinsicInst* inst = dyn_cast<IntrinsicInst>(*it))
+        else if(IntrinsicInst* inst = dyn_cast<IntrinsicInst>(instruction))
         {
             handleLifetimeMark(inst);
         }
