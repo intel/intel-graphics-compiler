@@ -469,41 +469,28 @@ bool preRA_Scheduler::run()
 {
     unsigned Threshold = m_options->getuInt32Option(vISA_preRA_ScheduleThreshold);
     unsigned SchedCtrl = m_options->getuInt32Option(vISA_preRA_ScheduleCtrl);
+    const char *BBName = m_options->getOptionCstr(vISA_preRA_ScheduleBlock);
+    string TargetBB(BBName == nullptr ? "" : BBName);
+
     SchedConfig config(SchedCtrl);
-
-    const char* Target = m_options->getOptionCstr(vISA_preRA_ScheduleKernel);
-    string TargetKernel(Target ? Target : "");
-    unsigned TargetBBId = m_options->getuInt32Option(vISA_preRA_ScheduleBlock);
-    unsigned BBIndex = 1;
-
-    // Skip the entire kernel, if enabled.
-    if (!TargetKernel.empty()) {
-        if (TargetKernel.compare(kernel.getName()) != 0) {
-            SCHED_DUMP(std::cerr << "Skip non-target kernel, "
-                                 << kernel.getName() << "\n");
-            return false;
-        }
-    }
-
     RegisterPressure rp(kernel, mem, rpe);
     bool Changed = false;
 
     for (auto bb : kernel.fg.BBs) {
-        // Skip non-target blocks, if enabled.
-        if (!TargetKernel.empty()) {
-            if (TargetBBId > 0 && TargetBBId != BBIndex) {
-                SCHED_DUMP(std::cerr << "Skip non-target block, "
-                                     << BBIndex << "\n");
-                BBIndex++;
-                continue;
-            }
-            BBIndex++;
-        }
-
         if (bb->instList.size() < SMALL_BLOCK_SIZE) {
             SCHED_DUMP(std::cerr << "Skip block with instructions "
                 << bb->instList.size() << "\n");
             continue;
+        }
+
+        // Skip non-target blocks, if enabled.
+        if (!TargetBB.empty()) {
+            G4_Label* L = bb->getLabel();
+            if (!L || TargetBB.compare(L->asLabel()->getLabel()) != 0) {
+                SCHED_DUMP(std::cerr << "Skip non-target block, " 
+                                     << L->asLabel()->getLabel() << "\n");
+                continue;
+            }
         }
 
         unsigned MaxPressure = rp.getPressure(bb);

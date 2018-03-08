@@ -217,6 +217,10 @@ void LocalScheduler::localScheduling()
     const Options *m_options = fg.builder->getOptions();
     LatencyTable LT(m_options);
 
+    // Check if only schedule a target block.
+    const char *BBName = m_options->getOptionCstr(vISA_postRA_ScheduleBlock);
+    string TargetBB(BBName == nullptr ? "" : BBName);
+
     for (; ib != bend; ++ib)
     {
         unsigned int instCountBefore = (uint32_t)(*ib)->instList.size();
@@ -226,6 +230,14 @@ void LocalScheduler::localScheduling()
         if (instCountBefore < SCH_THRESHOLD)
         {
             continue;
+        }
+
+        // Skip non-target blocks, if enabled.
+        if (!TargetBB.empty())
+        {
+            G4_Label* L = (*ib)->getLabel();
+            if (!L || TargetBB.compare(L->asLabel()->getLabel()) != 0)
+                continue;
         }
 
         unsigned int schedulerWindowSize = m_options->getuInt32Option(vISA_SchedulerWindowSize);

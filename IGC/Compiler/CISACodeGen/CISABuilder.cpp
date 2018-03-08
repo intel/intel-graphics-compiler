@@ -3456,15 +3456,18 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         {
             vbuilder->SetOption(vISA_preRA_ScheduleCtrl, Val);
         }
-        if (IGC_IS_FLAG_ENABLED(VISAPreSchedKernel))
-        {
-            const char* KernelName = IGC_GET_REGKEYSTRING(VISAPreSchedKernel);
-            vbuilder->SetOption(vISA_preRA_ScheduleKernel, KernelName);
-        }
-        if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedBlock))
-        {
-            vbuilder->SetOption(vISA_preRA_ScheduleBlock, Val);
-        }
+    }
+
+    if (IGC_IS_FLAG_ENABLED(VISAPreSchedBlock))
+    {
+        const char* BBName = IGC_GET_REGKEYSTRING(VISAPreSchedBlock);
+        vbuilder->SetOption(vISA_preRA_ScheduleBlock, BBName);
+    }
+
+    if (IGC_IS_FLAG_ENABLED(VISAPostSchedBlock))
+    {
+        const char* BBName = IGC_GET_REGKEYSTRING(VISAPostSchedBlock);
+        vbuilder->SetOption(vISA_postRA_ScheduleBlock, BBName);
     }
 
     if (IGC_IS_FLAG_ENABLED(FastSpill))
