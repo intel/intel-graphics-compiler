@@ -3502,6 +3502,7 @@ template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_indirectLoad(
     llvm::Value* srcBuffer,
     llvm::Value* offset,
+    llvm::Value* alignment,
     llvm::Type* returnType)
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
@@ -3513,7 +3514,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_indirectLo
         module,
         llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed,
         types);
-    return this->CreateCall2(pfuncLdPtr, srcBuffer, offset);;
+    return this->CreateCall3(pfuncLdPtr, srcBuffer, offset, alignment);
 }
 
 template<bool preserveNames, typename T, typename Inserter>
@@ -4045,6 +4046,14 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateRoundNE(llvm::Valu
     if( V->getType() == this->getDoubleTy() )
     {
         return CreateDRoundNE(V);
+    }
+    else if( V->getType() == this->getHalfTy() )
+    {
+        V = this->CreateFPExt(V, this->getFloatTy());
+        llvm::Function* roundne =
+            llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_ROUNDNE);
+        V = this->CreateCall(roundne, V);
+        return this->CreateFPTrunc(V, this->getHalfTy());
     }
     else
     {

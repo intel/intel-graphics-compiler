@@ -75,6 +75,8 @@ namespace IGC
 
 #if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
 #define IF_DEBUG_INFO(X) X
+#define IF_DEBUG_INFO_IF(C, X) if (C) { X }
 #else
 #define IF_DEBUG_INFO(X)
+#define IF_DEBUG_INFO_IF(C, X)
 #endif

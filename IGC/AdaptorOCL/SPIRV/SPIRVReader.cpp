@@ -3429,8 +3429,10 @@ static void dumpSPIRVBC(const char* fname, const char* data, unsigned int size)
 {
     FILE* fp;
     fp = fopen(fname, "wb");
-    fwrite(data, 1, size, fp);
-    fclose(fp);
+    if(fp != NULL) {
+      fwrite(data, 1, size, fp);
+      fclose(fp);
+    }
 }
 
 bool ReadSPIRV(LLVMContext &C, std::istream &IS, Module *&M,

@@ -3141,11 +3141,11 @@ bool CodeGenPatternMatch::MatchRegisterRegion(llvm::GenIntrinsicInst& I)
         {
             if (llvm::ConstantInt* simDOffSetInst = llvm::dyn_cast<llvm::ConstantInt>(binaryInst->getOperand(1)))
             {
-                subReg = int_cast<int>(cast<ConstantInt>(simDOffSetInst)->getZExtValue());
+                subReg = int_cast<int>(cast<ConstantInt>(simDOffSetInst)->getSExtValue());
 
                 //Subregister must be a number between 0 and 15 for a valid region
                 // We could support up to 31 but we need to handle reading from different SIMD16 var chunks
-                if (subReg >= 0 || subReg < 16)
+                if (subReg >= 0 && subReg < 16)
                 {
                     source = binaryInst->getOperand(0);
                 }

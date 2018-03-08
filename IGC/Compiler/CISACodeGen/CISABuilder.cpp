@@ -3456,6 +3456,15 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         {
             vbuilder->SetOption(vISA_preRA_ScheduleCtrl, Val);
         }
+        if (IGC_IS_FLAG_ENABLED(VISAPreSchedKernel))
+        {
+            const char* KernelName = IGC_GET_REGKEYSTRING(VISAPreSchedKernel);
+            vbuilder->SetOption(vISA_preRA_ScheduleKernel, KernelName);
+        }
+        if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedBlock))
+        {
+            vbuilder->SetOption(vISA_preRA_ScheduleBlock, Val);
+        }
     }
 
     if (IGC_IS_FLAG_ENABLED(FastSpill))
@@ -4091,7 +4100,7 @@ void CEncoder::Compile()
 
 #if GET_TIME_STATS
     // handle the vISA time counters differently here
-    if (context && context->m_compilerTimeStats)
+    if (context->m_compilerTimeStats)
     {
         context->m_compilerTimeStats->recordVISATimers();
     }

@@ -149,7 +149,7 @@ public:
     void emitStore3DInner(llvm::Value *pllValToStore, llvm::Value *pllDstPtr, llvm::Value *pllElmIdx);
 
     void emitLoad(llvm::LoadInst* inst);        // single load, no pattern 
-    void emitLoad3DInner(llvm::Instruction *inst, ResourceDescriptor& resource, llvm::Value *elemIdxV);
+    void emitLoad3DInner(llvm::LdRawIntrinsic *inst, ResourceDescriptor& resource, llvm::Value *elemIdxV);
 
     // when resource is dynamically indexed, load/store must use special intrinsics
     void emitLoadRawIndexed(llvm::GenIntrinsicInst* inst);

@@ -6178,7 +6178,6 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     if (liveAnalysis.livenessClass(G4_GRF))
     {
         bool hasStackCall = kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
-        rpe->run();
 
         bool willSpill = kernel.getOptions()->getTarget() == VISA_3D &&
             rpe->getMaxRP() >= kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum) + 24;
@@ -9534,6 +9533,20 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
     if (liveAnalysis.getNumSelectedVar() > 0)
     {
         RPE rpe(*this, &liveAnalysis);
+        rpe.run();
+
+        bool spillLikely = kernel.getOptions()->getTarget() == VISA_3D &&
+            rpe.getMaxRP() >= kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum) - 16;
+        if (spillLikely)
+        {
+            if (builder.getOption(vISA_RATrace))
+            {
+                std::cout << "\t--skip hybrid RA due to high pressure: " << rpe.getMaxRP() << "\n";
+            }
+            lra.undoLocalRAAssignments(false, &firstDclIter);
+            return false;
+        }
+
         GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), true, false);
 
         unsigned spillRegSize = 0;
@@ -9555,6 +9568,8 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
             coloring.addSaveRestoreCode(0);
         }
     }
+
+
     kernel.setRAType(doBankConflictReduction ? RA_Type::HYBRID_BC_RA : RA_Type::HYBRID_RA);
     return true;
 }
@@ -9722,6 +9737,7 @@ int GlobalRA::coloringRegAlloc()
             // force spill should be done only for the 1st iteration
             bool forceSpill = iterationNo > 0 ? false : builder.getOption(vISA_ForceSpills);
             RPE rpe(*this, &liveAnalysis);
+            rpe.run();
             GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), false, forceSpill);
 
             unsigned spillRegSize = 0;

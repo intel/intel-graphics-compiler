@@ -29,6 +29,8 @@ DECLARE_IGC_REGKEY(bool, EnablePreemption,              true,  "Enable generatin
 DECLARE_IGC_REGKEY(bool, EnableVISANoSchedule,          false, "Enable VISA No-Schedule")
 DECLARE_IGC_REGKEY(bool, EnableVISAPreSched,            true,  "Enable VISA Pre-RA Scheduler")
 DECLARE_IGC_REGKEY(DWORD, VISAPreSchedCtrl,             0,     "Configure Pre-RA Scheduler, default(0), logging(1), latency(2), pressure(4)")
+DECLARE_IGC_REGKEY(debugString, VISAPreSchedKernel,     0,     "The only target kernel to pre-schedule.")
+DECLARE_IGC_REGKEY(DWORD, VISAPreSchedBlock,            0,     "The target block ID to pre-schedule (starting with 1)")
 DECLARE_IGC_REGKEY(bool, ForceVISAPreSched,             false, "Force enabling of VISA Pre-RA Scheduler")
 DECLARE_IGC_REGKEY(bool, DisableCSEL,                   false, "disable csel peep-hole")
 DECLARE_IGC_REGKEY(bool, DisableFlagOpt,                false, "Disable optimization cmp with logic op")
@@ -207,7 +209,14 @@ DECLARE_IGC_REGKEY(bool, ForceDPEmulation,              false, "Force double emu
 DECLARE_IGC_REGKEY(bool, DPEmuNeedI64Emu,               true,  "Double Emulation needs I64 emulation. Unsetting it to disable I64 Emulation for testing.")
 DECLARE_IGC_REGKEY(bool, ForceSPDivEmulation,          false, "Force SP Div emulation for testing purpose")
 DECLARE_IGC_REGKEY(bool, EnableFallbackToBindless,      true,  "This key enables fallback to bindless mode on all shaders")
+DECLARE_IGC_REGKEY(bool, EnableFallbackToStateless,     true,  "This key enables fallback to stateless mode on all shaders")
 DECLARE_IGC_REGKEY(bool, DisablePromoteToDirectAS,      false, "This key disables the PromoteResourceToDirectAS pass")
+DECLARE_IGC_REGKEY(bool, EnableAdvCodeMotion,           true,  "Enable advanced code motion")
+DECLARE_IGC_REGKEY(bool, AdvCodeMotionControl,          1,     "Control bits to fine-tune advanced code motion")
+DECLARE_IGC_REGKEY(bool, EnableAdvRuntimeUnroll,        true,  "Enable advanced runtime unroll")
+DECLARE_IGC_REGKEY(bool, AdvRuntimeUnrollCount,         0,     "Advanced runtime unroll count")
+DECLARE_IGC_REGKEY(bool, EnableAdvMemOpt,               true,  "Enable advanced memory optimization")
+DECLARE_IGC_REGKEY(bool, UniformMemOptLimit,            0,     "Limit of uniform memory optimization")
 
 DECLARE_IGC_REGKEY(bool, EnableReadGTPinInput,          false, "Enables setting GTPin context flags by reading the input to the compiler adapters")
 

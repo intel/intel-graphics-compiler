@@ -40,7 +40,8 @@ namespace IGC
     public:
         static char ID;
 
-        HalfPromotion();
+		HalfPromotion();
+        HalfPromotion(bool isOCL);
 
         virtual llvm::StringRef getPassName() const override
         {
@@ -59,6 +60,7 @@ namespace IGC
         void handleGenIntrinsic(llvm::GenIntrinsicInst &I);
         void handleLLVMIntrinsic(llvm::IntrinsicInst &I);
 
+		bool m_isOCL = false;
         bool m_changed = false;
     };
 

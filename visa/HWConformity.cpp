@@ -3871,19 +3871,24 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
             return false;
         }
 
-        auto checkSingleStrideRegion = [](G4_SrcRegRegion* src, int stride, IR_Builder& builder)
+        auto checkSingleStrideRegion = [](G4_SrcRegRegion* src, int stride, uint8_t execSize, IR_Builder& builder)
         {
+            RegionDesc* srcRegion = src->getRegion();
+
             if (stride > 4)
             {
                 return false;
             }
-            else if ((src->getLeftBound() % GENX_GRF_REG_SIZ != 0) &&
-                (src->getRightBound() - src->getLeftBound() >= GENX_GRF_REG_SIZ - 1))
+            else if (srcRegion->isContiguous(execSize))
             {
                 // we have to make sure width is not being used to cross GRF, as <1;1,0> 
                 // is not a legal region for align1 ternary source (vs 1 not supported)
-                int minAlignment = G4_Type_Table[src->getType()].byteSize * stride * 2;
-                return builder.isOpndAligned(src, minAlignment);
+                // mad doesn't support <1;1,0>, the width is at least 2
+                int minAlignment = G4_Type_Table[src->getType()].byteSize * 2;
+                if ((src->getLeftBound() % GENX_GRF_REG_SIZ + minAlignment) >= GENX_GRF_REG_SIZ)
+                {
+                    return false;
+                }
             }
             return true;
         };
@@ -3906,7 +3911,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
             uint16_t stride = 0;
             if (srcRegion->isSingleStride(execSize, stride))
             {
-                return checkSingleStrideRegion(src->asSrcRegRegion(), stride, builder);
+                return checkSingleStrideRegion(src->asSrcRegRegion(), stride, execSize, builder);
             }
             // <4;4,0> and <8;8,0> are ok
             return srcRegion->vertStride == srcRegion->width &&
@@ -3921,7 +3926,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
                 uint16_t stride = 0;
                 if (srcRegion->isSingleStride(execSize, stride))
                 {
-                    return checkSingleStrideRegion(src->asSrcRegRegion(), stride, builder);
+                    return checkSingleStrideRegion(src->asSrcRegRegion(), stride, execSize, builder);
                 }
             }
             else
@@ -4057,15 +4062,20 @@ static void tryTransferSrcModifier(IR_Builder &builder, G4_INST *def,
     if (!def->hasOneUse())
         return;
 
+    auto isSIorFloat = [](G4_Type type)
+    {
+        return IS_SIGNED_INT(type) || IS_FTYPE(type);
+    };
     // Only transfer for integer types.
-    if (!IS_SIGNED_INT(src->getType()))
+    if (!isSIorFloat(src->getType()))
         return;
 
     // In case the use type is different from the def type.
     if (!def->getDst() || (def->getDst()->getType() != src->getType()))
         return;
 
-    switch (def->opcode()) {
+    switch (def->opcode()) 
+    {
     default:
         break;
 
@@ -4075,14 +4085,16 @@ static void tryTransferSrcModifier(IR_Builder &builder, G4_INST *def,
     {
         // Chances are src1 is an immediate.
         G4_Operand *defSrc1 = def->getSrc(1);
-        if (!IS_SIGNED_INT(defSrc1->getType()))
+        if (!isSIorFloat(defSrc1->getType()))
             return;
 
         if (defSrc1->isImm())
         {
             G4_Imm *val = defSrc1->asImm();
             // Mod_Minus is assumed.
-            G4_Imm *newVal = builder.createImm(-val->getInt(), val->getType());
+            G4_Imm *newVal = IS_FTYPE(val->getType()) ? 
+                builder.createImm(-(val->getFloat())) :
+                builder.createImm(-val->getInt(), val->getType());
             def->setSrc(newVal, 1);
             src->asSrcRegRegion()->setModifier(Mod_src_undef);
         }
@@ -4282,38 +4294,6 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
             if (src->isImm())
             {
                 canBeImm = false;
-            }
-            /*
-            * Insert mov instruction if there is potential to violate the rule:
-            * "elements within a 'Width' cannot cross GRF boundaries" from
-            * EU Overview ? Registers and Register Regions ? Register Region Restrictions
-            */
-            if (src->isSrcRegRegion() && src->asSrcRegRegion()->getRegAccess() == Direct)
-            {
-                G4_SrcRegRegion* srcAsRegion = src->asSrcRegRegion();
-                RegionDesc* region = srcAsRegion->getRegion();
-                int byteSize = G4_Type_Table[srcAsRegion->getType()].byteSize;
-                unsigned offset = 0;
-
-
-                if (region->isContiguous(inst->getExecSize()) && srcAsRegion->hasFixedSubregOffset(offset))
-                {
-                    if (builder.doNotRewriteRegion() && builder.hasAlign1Ternary() && k != 2)
-                    {
-                    }
-                    else
-                    {
-                        uint32_t endOffset = offset + inst->getExecSize() * byteSize;
-                        if (endOffset > GENX_GRF_REG_SIZ &&
-                            inst->getExecSize() > 1)
-                        {
-                            if (offset + 2 * byteSize > GENX_GRF_REG_SIZ)
-                            {
-                                inst->setSrc(insertMovBefore(iter, k, src->getType(), bb), k);
-                            }
-                        } //Otherwise, region normalization may change it to <2;2,1>
-                    }
-                }
             }
         }
     }
@@ -6345,6 +6325,7 @@ void HWConformity::chkHWConformity()
 #endif
 
         fixMADInst( it );
+
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif

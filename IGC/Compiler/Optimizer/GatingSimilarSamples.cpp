@@ -185,6 +185,7 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
         if (firstOp->getOpcode() == Instruction::FSub || firstOp->getOpcode() == Instruction::FAdd)
         {//i.e. (texcoord0 (+/-) something) 
             Instruction* mayBeMulInst = dyn_cast<Instruction>(firstOp->getOperand(1));
+            if(!mayBeMulInst) return false;
             //that "texcoord0 - something" might be "texcoord0 - FMul" OR it might be "tc - (0 - -FMul)"
             if (mayBeMulInst->getOpcode() == Instruction::FMul)
             {//i.e. something is FMul!
@@ -221,6 +222,7 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
         {
             //i.e. (out_texcoord0 (+/-) something) 
             Instruction* mayBeMulInst = dyn_cast<Instruction>(secondOp->getOperand(1));
+            if(!mayBeMulInst) return false;
             //that "tc - something" might be "tc - FMul" OR it might be "tc - (0 - -FMul)"
             if (mayBeMulInst->getOpcode() == Instruction::FMul)
             {//i.e. something is FMul!

@@ -304,7 +304,8 @@ Value* FixResourcePtr::CreateLoadIntrinsic(LoadInst *inst, Instruction* bufPtr, 
     Value* attr[] =
     {
         bufPtr,
-        offsetVal
+        offsetVal,
+        builder->getInt32(4)
     };
     Value* ld = builder->CreateCall(l, attr);
     if (!inst->getType()->isVectorTy())

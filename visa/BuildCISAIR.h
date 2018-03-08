@@ -123,6 +123,7 @@ public:
 
     CM_BUILDER_API void SetOption(vISAOptions option, bool val) { m_options.setOption(option, val); }
     CM_BUILDER_API void SetOption(vISAOptions option, uint32_t val) { m_options.setOption(option, val); }
+    CM_BUILDER_API void SetOption(vISAOptions option, const char *val) { m_options.setOption(option, val); }
 
     /**************END VISA BUILDER API*************************/
 

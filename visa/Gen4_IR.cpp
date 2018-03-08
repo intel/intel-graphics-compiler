@@ -7285,11 +7285,6 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
                 continue;
             }
 
-            if (subRegOffset + w * eltSize > GENX_GRF_REG_SIZ)
-            {
-                continue;
-            }
-
             if (endOffset <= GENX_GRF_REG_SIZ ||
                 subRegOffset % (w * eltSize) == 0)
             {
@@ -7300,7 +7295,6 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
         // width >= 2 crosses GRF
         return 0;
     };
-
 
     unsigned short w = (unsigned short)getWidth(subRegOffset, eltSize);
 
@@ -7314,9 +7308,10 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
     {
         setRegion(builder.createRegionDesc(w, w, 1), true);
     }
-    else
+    else if (isAlign1Ternary)
     {
-        setRegion(builder.getRegionStride1(), true);
+        // binary encoding asserts on <1;1,0> region for 3-src inst, so force change it to <2;2,1>
+        setRegion(builder.createRegionDesc(2, 2, 1), true);
     }
 }
 

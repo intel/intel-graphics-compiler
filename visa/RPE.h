@@ -62,6 +62,8 @@ namespace vISA
 
         void recomputeMaxRP();
 
+        void dump() const;
+
     private:
         Mem_Manager m;
         const GlobalRA& gra;

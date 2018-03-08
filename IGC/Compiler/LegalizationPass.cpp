@@ -186,8 +186,8 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator &I)
         Value* a = I.getOperand(0);
         Value* b = I.getOperand(1);
         Value* mulab = m_builder->CreateFMul(a, b);
-        Value* sign = m_builder->CreateFCmpOGE(mulab, m_builder->CreateNeg(mulab));
-        Value* sel = m_builder->CreateSelect(sign, b, m_builder->CreateNeg(b));
+        Value* sign = m_builder->CreateFCmpOGE(mulab, m_builder->CreateFNeg(mulab));
+        Value* sel = m_builder->CreateSelect(sign, b, m_builder->CreateFNeg(b));
         Value* selInv = m_builder->CreateFDiv(ConstantFP::get(m_builder->getFloatTy(), 1.f), sel);
         Value* div = m_builder->CreateFMul(a, selInv);
         Value* floordiv = m_builder->CreateCall(floorFunc, div);

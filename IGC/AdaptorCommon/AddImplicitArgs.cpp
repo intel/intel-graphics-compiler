@@ -192,8 +192,9 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
     Function::arg_iterator currArg = pNewFunc->arg_begin();
     std::map<void*, unsigned int> argMap;
     std::vector<std::pair<llvm::Instruction*, unsigned int>> newAddr;
-    bool fullDebugInfo = false, lineNumbersOnly = false;
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+	bool fullDebugInfo = false;
+	IF_DEBUG_INFO(bool lineNumbersOnly = false;)
+    IF_DEBUG_INFO(CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();)
     IF_DEBUG_INFO(DebugMetadataInfo::hasAnyDebugInfo(ctx, fullDebugInfo, lineNumbersOnly);)
 
     if (fullDebugInfo)
@@ -265,7 +266,7 @@ void AddImplicitArgs::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* p
             if (i != toReplace.second)
                 continue;
 
-            auto d = dyn_cast<DbgDeclareInst>(toReplace.first);
+            IF_DEBUG_INFO(auto d = dyn_cast<DbgDeclareInst>(toReplace.first);)
 
             llvm::DIBuilder Builder(*pNewFunc->getParent());
             IF_DEBUG_INFO(auto DIVar = d->getVariable();)

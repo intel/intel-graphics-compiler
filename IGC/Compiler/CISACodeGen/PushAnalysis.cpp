@@ -824,7 +824,6 @@ PushConstantMode PushAnalysis::GetPushConstantMode()
 /// and do not try to use a hybrid approach of pull and push
 void PushAnalysis::ProcessFunction()
 {
-    m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     // if it's GS, get the properties object and find out if we use instancing
     // since then payload is laid out differently.
     const bool gsInstancingUsed = m_gsProps && m_gsProps->GetProperties().Input().HasInstancing();
@@ -1305,6 +1304,9 @@ bool PushAnalysis::runOnModule(llvm::Module& M)
 {
 	MapList<Function*, Function*> funcsMapping;
 	bool retValue = false;
+
+	m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+	m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
 	for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
 	{	

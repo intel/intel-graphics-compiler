@@ -421,18 +421,18 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
-        IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create());
+		IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
         IF_DEBUG_INFO(m_pDebugEmitter->Initialize(m_currShader, m_currShader->GetContext()->m_instrTypes.hasDebugInfo);)
     }
 
-    if (m_currShader->GetContext()->m_instrTypes.hasDebugInfo)
-    {
-        IF_DEBUG_INFO(m_pDebugEmitter->ResetVISAModule());
-        IF_DEBUG_INFO(m_pDebugEmitter->setFunction(&F, isCloned));
+	if (m_currShader->GetContext()->m_instrTypes.hasDebugInfo)
+	{
+		IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->ResetVISAModule();)
+		IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->setFunction(&F, isCloned);)
     }
 
     // We only invoke EndEncodingMark() to update last VISA id.
-    IF_DEBUG_INFO(m_pDebugEmitter->EndEncodingMark();)
+	IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
 
     COMPILER_TIME_END(m_currShader->GetContext(), TIME_vISAEmitInit);
     COMPILER_TIME_START(m_currShader->GetContext(), TIME_vISAEmitLoop);
@@ -470,11 +470,11 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
         if (i != 0)
         {
-            IF_DEBUG_INFO(m_pDebugEmitter->BeginEncodingMark();)
+            IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
             // create a label
             m_encoder->Label(block.id);
             m_encoder->Push();      
-            IF_DEBUG_INFO(m_pDebugEmitter->EndEncodingMark();)
+            IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
         }
         // insert moves at the top of the block
         MovPhiDestination(block.bb);
@@ -494,9 +494,9 @@ bool EmitPass::runOnFunction(llvm::Function &F)
                 unsigned int curLineNumber = (*I).m_root->getDebugLoc().getLine();
                 if (curLineNumber != lineNo)
                 {
-                    IF_DEBUG_INFO(m_pDebugEmitter->BeginEncodingMark();)
+                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
                     m_encoder->Loc(curLineNumber);
-                    IF_DEBUG_INFO(m_pDebugEmitter->EndEncodingMark();)
+                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
                     lineNo = curLineNumber;
                 }
             }
@@ -506,9 +506,9 @@ bool EmitPass::runOnFunction(llvm::Function &F)
             assert(numInstance == 1 || numInstance == 2);
             if (slicing && !disableSlicing)
             {
-                IF_DEBUG_INFO(m_pDebugEmitter->BeginEncodingMark();)
+                IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
                 I = emitInSlice(block, I);
-                IF_DEBUG_INFO(m_pDebugEmitter->EndEncodingMark();)
+                IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
             }
 
             if (I != E)
@@ -518,13 +518,13 @@ bool EmitPass::runOnFunction(llvm::Function &F)
                 {
                     m_encoder->SetSecondHalf(false);
                     // insert constant initializations.
-                    IF_DEBUG_INFO(m_pDebugEmitter->BeginEncodingMark();)
+                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
                     InitConstant(block.bb);
-                    IF_DEBUG_INFO(m_pDebugEmitter->EndEncodingMark();)
+                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
                     // insert the de-ssa movs.
-                    IF_DEBUG_INFO(m_pDebugEmitter->BeginEncodingMark();)
+                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
                     MovPhiSources(block.bb);
-                    IF_DEBUG_INFO(m_pDebugEmitter->EndEncodingMark();)
+                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
                 }
 
                 // If slicing happens, then recalculate the number of instances.
@@ -542,19 +542,19 @@ bool EmitPass::runOnFunction(llvm::Function &F)
                 if (numInstance < 2)
                 {
                     m_encoder->SetSecondHalf(false);
-                    IF_DEBUG_INFO(m_pDebugEmitter->BeginInstruction((*I).m_root);)
+                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginInstruction((*I).m_root);)
                     (*I).m_pattern->Emit(this, init);
-                    IF_DEBUG_INFO(m_pDebugEmitter->EndInstruction((*I).m_root);)
+                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndInstruction((*I).m_root);)
                     ++I;
                 }
                 else
                 {
-                    IF_DEBUG_INFO(m_pDebugEmitter->BeginInstruction((*I).m_root);)
+                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginInstruction((*I).m_root);)
                     m_encoder->SetSecondHalf(false);
                     (*I).m_pattern->Emit(this, init);
                     m_encoder->SetSecondHalf(true);
                     (*I).m_pattern->Emit(this, init);
-                    IF_DEBUG_INFO(m_pDebugEmitter->EndInstruction((*I).m_root);)
+                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndInstruction((*I).m_root);)
                     ++I;
                 }
             }
@@ -714,7 +714,7 @@ void EmitPass::MovPhiDestination(llvm::BasicBlock* bb)
         {
             continue;
         }
-        IF_DEBUG_INFO(m_pDebugEmitter->BeginInstruction(PHI);)
+        IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginInstruction(PHI);)
         // insert a move from phi-temp to phi-dst
         CVariable* dst = m_currShader->GetSymbol(PHI);
         CVariable* src = m_currShader->GetPhiTemp(PHI);
@@ -733,7 +733,7 @@ void EmitPass::MovPhiDestination(llvm::BasicBlock* bb)
                 }
             }
         }
-        IF_DEBUG_INFO(m_pDebugEmitter->EndInstruction(PHI);)
+        IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndInstruction(PHI);)
     }
 }
 
@@ -7813,11 +7813,11 @@ void EmitPass::emitLoadRawIndexed(GenIntrinsicInst* inst)
     Value *elem_idxv = inst->getOperand(1);
 
     ResourceDescriptor resource = GetResourceVariable(buf_ptrv);
-    emitLoad3DInner(inst, resource, elem_idxv);
+    emitLoad3DInner(cast<LdRawIntrinsic>(inst), resource, elem_idxv);
     m_currShader->isMessageTargetDataCacheDataPort = true;
 }
 
-void EmitPass::emitLoad3DInner(Instruction* inst, ResourceDescriptor& resource, Value *elem_idxv)
+void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resource, Value *elem_idxv)
 {
     IGC::e_predefSurface predDefSurface = resource.m_surfaceType;
     CVariable* gOffset = m_currShader->ImmToVariable(0x0, ISA_TYPE_UD);
@@ -7872,13 +7872,9 @@ void EmitPass::emitLoad3DInner(Instruction* inst, ResourceDescriptor& resource, 
         else
         {
             bool owordAligned = false;
-            if (isa<LoadInst>(inst))
-            {
-                owordAligned = IsOWordAlignedLoad(cast<LoadInst>(inst));
-            }
             // need to clear lower two-bits for unaligned
             CVariable* visaOffset = nullptr;
-            if (owordAligned || bufType == CONSTANT_BUFFER)
+            if (bufType == CONSTANT_BUFFER)
             {
                 visaOffset = src_offset;
             }
@@ -7898,6 +7894,7 @@ void EmitPass::emitLoad3DInner(Instruction* inst, ResourceDescriptor& resource, 
                 m_encoder->And(visaOffset, m_currShader->BitCast(src_offset, ISA_TYPE_UD), masklast2bits);
                 m_encoder->Push();
             }
+            unsigned int alignment = inst->getAlignment();
             if (numElement >= 4)
             {
                 m_encoder->OWLoad(m_destination, resource, visaOffset, owordAligned, m_destination->GetSize());
@@ -7910,18 +7907,48 @@ void EmitPass::emitLoad3DInner(Instruction* inst, ResourceDescriptor& resource, 
                 
                 if (elemSize > 0)
                 {
-                    CVariable* tmp = m_currShader->GetNewVariable(4 * SIZE_DWORD / elemSize, m_destination->GetType(), EALIGN_GRF, m_destination->IsUniform());
-                    m_encoder->OWLoad(tmp, resource, visaOffset, owordAligned, tmp->GetSize());
-                    m_encoder->Push();
-
-                    // generate an extract-element
-                    for (uint i = 0; i < numElement; i++)
+                    if (alignment < SIZE_DWORD && !(src_offset->IsImmediate() && src_offset->GetImmediateValue() % SIZE_DWORD == 0))
                     {
-                        m_encoder->SetSrcSubReg(0, i);
-                        m_encoder->SetDstSubReg(i);
-                        m_encoder->SetSrcRegion(0, 0, 1, 0);
-                        m_encoder->Copy(m_destination, tmp);
+                        assert(alignment == 1 || alignment == 2);
+                        assert(src_offset->IsUniform());
+                        uint numElements = m_destination->GetSize() / alignment;
+                        VISA_Type realType = alignment == 1 ? ISA_TYPE_UB : ISA_TYPE_UW;
+                        CVariable* tmp = m_currShader->GetNewVariable(numElements * (SIZE_DWORD / alignment), realType, EALIGN_GRF, true);
+                        if (numElements > 1)
+                        {
+                            assert(numElements <= 8);
+                            CVariable* offsetVector = m_currShader->GetNewVariable(numElements, ISA_TYPE_UD, EALIGN_GRF);
+                            m_encoder->SetSimdSize(lanesToSIMDMode(numElements));
+                            m_encoder->SetNoMask();
+                            m_encoder->Add(offsetVector, src_offset, m_currShader->ImmToVariable(alignment * 0x76543210, ISA_TYPE_UV));
+                            m_encoder->Push();
+                            src_offset = offsetVector;
+                        }
+                        m_encoder->SetSimdSize(lanesToSIMDMode(numElements));
+                        m_encoder->SetNoMask();
+                        m_encoder->ByteGather(tmp, resource, src_offset, 8, alignment);
                         m_encoder->Push();
+                        CVariable* dstWordAlias = m_currShader->GetNewAlias(m_destination, realType, 0, 0, false);
+                        m_encoder->SetSimdSize(lanesToSIMDMode(numElements));
+                        m_encoder->SetNoMask();
+                        m_encoder->SetSrcRegion(0, SIZE_DWORD / alignment, 1, 0);
+                        m_encoder->Copy(dstWordAlias, tmp);
+                        m_encoder->Push();
+                    }
+                    else
+                    {
+                        CVariable* tmp = m_currShader->GetNewVariable(4 * SIZE_DWORD / elemSize, m_destination->GetType(), EALIGN_GRF, m_destination->IsUniform());
+                        m_encoder->OWLoad(tmp, resource, visaOffset, owordAligned, tmp->GetSize());
+                        m_encoder->Push();
+                        // generate an extract-element
+                        for (uint i = 0; i < numElement; i++)
+                        {
+                            m_encoder->SetSrcSubReg(0, i);
+                            m_encoder->SetDstSubReg(i);
+                            m_encoder->SetSrcRegion(0, 0, 1, 0);
+                            m_encoder->Copy(m_destination, tmp);
+                            m_encoder->Push();
+                        }
                     }
                 }
             }
@@ -7940,6 +7967,7 @@ void EmitPass::emitLoad3DInner(Instruction* inst, ResourceDescriptor& resource, 
             sizeInBits == 96 ||
             sizeInBits == 128) && "load type must be 1/2/4/8/12/16 bytes long");
         IGC::CVariable *visaOffset = BroadcastIfUniform(src_offset);
+        unsigned int alignment = inst->getAlignment();
         if (sizeInBits == 32 && resource.m_surfaceType == ESURFACE_STATELESS &&
             m_currShader->m_Platform->getWATable().WaNoA32ByteScatteredStatelessMessages)
         {
@@ -7951,7 +7979,7 @@ void EmitPass::emitLoad3DInner(Instruction* inst, ResourceDescriptor& resource, 
             m_encoder->Gather(m_destination, resource.m_resource, visaOffset, gOffset, resource.m_surfaceType, 4);
             m_encoder->Push();
         }
-        else if (sizeInBits == 32 && (bufType == CONSTANT_BUFFER || resource.m_surfaceType == ESURFACE_STATELESS))
+        else if (sizeInBits == 32 && (bufType == CONSTANT_BUFFER || resource.m_surfaceType == ESURFACE_STATELESS || alignment < 4))
         {
             // uav and resource cannot be changed to this path due to alignment issue encountered in some tests
             uint elementSize = 8;
@@ -13618,7 +13646,7 @@ void EmitPass::EmitDebugInfo(bool finalize)
     void *dbgInfo = nullptr;
     void *buffer = nullptr;
 
-    IF_DEBUG_INFO(m_pDebugEmitter->Finalize(buffer, dbgSize, finalize);)
+    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->Finalize(buffer, dbgSize, finalize);)
 
     if (dbgSize != 0)
     {
@@ -13628,7 +13656,7 @@ void EmitPass::EmitDebugInfo(bool finalize)
 
         memcpy_s(dbgInfo, dbgSize, buffer, dbgSize);
 
-        IF_DEBUG_INFO(m_pDebugEmitter->Free(buffer);)
+        IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->Free(buffer);)
 
         if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
         {

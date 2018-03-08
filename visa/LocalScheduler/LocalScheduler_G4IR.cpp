@@ -275,6 +275,7 @@ void LocalScheduler::localScheduling()
             bbInfo[i].id = (*ib)->getId();
             bbInfo[i].staticCycle = schedule.sequentialCycle;
             bbInfo[i].sendStallCycle = schedule.sendStallCycle;
+            bbInfo[i].loopNestLevel = (*ib)->getNestLevel();
         }
 
         i++;

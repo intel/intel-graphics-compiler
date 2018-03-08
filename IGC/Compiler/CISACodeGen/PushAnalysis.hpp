@@ -152,7 +152,6 @@ public:
 		}
 		m_argIndex = m_argIndex - 1;
         m_DL = &F->getParent()->getDataLayout();
-        m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
         m_pullConstantHeuristics = &getAnalysis<PullConstantHeuristics>();
         m_hsProps = getAnalysisIfAvailable<CollectHullShaderProperties>();
         m_dsProps = getAnalysisIfAvailable<CollectDomainShaderProperties>();

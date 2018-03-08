@@ -30,6 +30,7 @@
 #FloatingPointTypes = ["half","float","double"]
 #IntegerTypes = ["bool","char","short","int","long"]
 #IntrinsicsProperties = ["None","NoMem","ReadArgMem","ReadMem","ReadWriteArgMem","NoReturn","NoDuplicate", "Convergent"]
+#IntrinsicsProperties may be specified as a comma separated list (e.g., "Convergent,NoMem")
 
 # EX. "GenISA_blah": [{return_type},[arg1_type,arg2_type.....],Property]
 
@@ -82,8 +83,8 @@ Imported_Intrinsics = \
     "GenISA_storestructured4": ["void",["anyptr","int","int","float","float","float","float"],"None"],
     "GenISA_typedread": ["float4",["anyptr","int","int","int", "int"],"ReadArgMem"],
     "GenISA_typedwrite": ["void",["anyptr","int","int","int","int","float","float","float","float"],"None"],
-    "GenISA_ldraw_indexed": ["float",["anyptr","int"],"ReadArgMem"],
-    "GenISA_ldrawvector_indexed": ["anyvector",["anyptr","int"],"ReadArgMem"],
+    "GenISA_ldraw_indexed": ["float",["anyptr","int", "int"],"ReadArgMem"],
+    "GenISA_ldrawvector_indexed": ["anyvector",["anyptr","int", "int"],"ReadArgMem"],
     "GenISA_storeraw_indexed": ["void",["anyptr","int","anyfloat"],"None"],
     "GenISA_storerawvector_indexed": ["void",["anyptr","int","anyvector"],"None"],
     "GenISA_intatomicraw": ["anyint",["anyptr","int",0,"int"],"ReadWriteArgMem"],
@@ -205,7 +206,7 @@ Imported_Intrinsics = \
     "GenISA_patchInstanceId": ["int",[],"NoMem"],
     "GenISA_simdLaneId": ["short",[],"NoMem"],
     "GenISA_simdSize": ["int",[],"NoMem"],
-    "GenISA_simdShuffleDown": ["anyint",[0,0,"int"],"Convergent"],
+    "GenISA_simdShuffleDown": ["anyint",[0,0,"int"],"Convergent,NoMem"],
     "GenISA_simdBlockReadGlobal": ["anyvector",["anyptr"],"ReadMem"],
     "GenISA_simdBlockWriteGlobal": ["void",["anyptr","anyvector"],"None"],
     "GenISA_MediaBlockRead": ["anyint",["int","int","int","int","int","int"],"None"],
@@ -275,11 +276,11 @@ Imported_Intrinsics = \
     "GenISA_mul_pair": [["int","int"],["int","int","int","int"],"NoMem"],
     "GenISA_pair_to_ptr": ["anyptr",["int","int"],"NoMem"],
     "GenISA_ptr_to_pair": [["int","int"],["anyptr"],"NoMem"],
-    "GenISA_WaveBallot": ["int",["bool"],"Convergent"],
-    "GenISA_WaveShuffleIndex": ["anyint",[0,"int"],"Convergent"],
-    "GenISA_WaveAll": ["anyint",[0,"char"],"Convergent"],
-    "GenISA_WavePrefix": ["anyint",[0,"char","bool"],"Convergent"],
-    "GenISA_QuadPrefix": ["anyint",[0,"char","bool"],"Convergent"],
+    "GenISA_WaveBallot": ["int",["bool"],"Convergent,NoMem"],
+    "GenISA_WaveShuffleIndex": ["anyint",[0,"int"],"Convergent,NoMem"],
+    "GenISA_WaveAll": ["anyint",[0,"char"],"Convergent,NoMem"],
+    "GenISA_WavePrefix": ["anyint",[0,"char","bool"],"Convergent,NoMem"],
+    "GenISA_QuadPrefix": ["anyint",[0,"char","bool"],"Convergent,NoMem"],
     "GenISA_InitDiscardMask": ["bool",[],"None"],
     "GenISA_UpdateDiscardMask": ["bool",["bool","bool"],"None"],
     "GenISA_GetPixelMask": ["bool",["bool"],"None"]

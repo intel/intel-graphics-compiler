@@ -675,6 +675,7 @@ public:
     llvm::Value* create_indirectLoad(
         llvm::Value* srcBuffer,
         llvm::Value* offset,
+        llvm::Value* alignment,
         llvm::Type* returnType);
 
     llvm::Value* create_indirectStore(

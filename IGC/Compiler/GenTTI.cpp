@@ -201,8 +201,51 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, TTI::UnrollingPrefer
     }
 
     // Skip non-simple loop.
-    if (L->getNumBlocks() != 1)
-    {
+    if (L->getNumBlocks() != 1) {
+        if (IGC_IS_FLAG_ENABLED(EnableAdvRuntimeUnroll) && L->empty()) {
+          auto countNonPHI = [](BasicBlock *BB) {
+            unsigned Total = BB->size();
+            unsigned PHIs = 0;
+            for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
+              if (!isa<PHINode>(&*BI))
+                break;
+              ++PHIs;
+            }
+            return Total - PHIs;
+          };
+          auto hasLoad = [](BasicBlock *BB) {
+            for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI)
+              if (isa<LoadInst>(&*BI))
+                return true;
+            return false;
+          };
+          auto hasStore = [](BasicBlock *BB) {
+            for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI)
+              if (isa<StoreInst>(&*BI))
+                return true;
+            return false;
+          };
+          // For innermost loop, allow certain patterns.
+          unsigned Count = 0;
+          bool HasStore = false;
+          bool MayHasLoadInHeaderOnly = true;
+          for (auto BI = L->block_begin(), BE = L->block_end(); BI != BE; ++BI) {
+            Count += countNonPHI(*BI);
+            HasStore |= hasStore(*BI);
+            if (L->getHeader() != *BI)
+              MayHasLoadInHeaderOnly &= !hasLoad(*BI);
+          }
+          // Runtime unroll it.
+          if (!HasStore && MayHasLoadInHeaderOnly && Count < 100) {
+            unsigned C = IGC_GET_FLAG_VALUE(AdvRuntimeUnrollCount);
+            if (C == 0) C = 4;
+            UP.Runtime = true;
+            UP.Count = C;
+            UP.MaxCount = UP.Count;
+            // The following is only available and required from LLVM 3.7+.
+            UP.AllowExpensiveTripCount = true;
+          }
+        }
         return;
     }
 
@@ -288,7 +331,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, TTI::UnrollingPrefer
     }
 
     UP.Runtime = true;
-    UP.Count = 4;
+    UP.Count = 8;
     UP.MaxCount = UP.Count;
     // The following is only available and required from LLVM 3.7+.
     UP.AllowExpensiveTripCount = true;

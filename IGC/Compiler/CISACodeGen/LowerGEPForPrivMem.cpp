@@ -317,7 +317,7 @@ bool LowerGEPForPrivMem::ValidUses(Instruction* I, bool& IsUniform)
             if(!pStore->isSimple())
                 return false;
             llvm::Value* pValueOp = pStore->getValueOperand();
-            if(pValueOp == *use_it)
+            if(pValueOp == I)
             {
                 // GEP instruction is the stored value of the StoreInst (not supported case)
                 return false;
@@ -429,6 +429,7 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
     // Extract the Alloca size and the base Type
     Type* pType = pAlloca->getType()->getPointerElementType();
     Type* pBaseType = GetBaseType(pType);
+	assert(pBaseType);
     llvm::AllocaInst* pVecAlloca = createVectorForAlloca(pAlloca, pBaseType);
     if (!pVecAlloca)
     {

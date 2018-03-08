@@ -81,6 +81,7 @@ DECLARE_OPCODE(FMul,                             Instruction,    llvm_fmul,     
 DECLARE_OPCODE(FAdd,                             Instruction,    llvm_fadd,                  true,   true,   true,   true,  false,  false,  false  )
 DECLARE_OPCODE(FSub,                             Instruction,    llvm_fsub,                  true,   true,   true,   true,  false,  false,  false  )
 DECLARE_OPCODE(FDiv,                             Instruction,    llvm_fdiv,                  true,   true,   true,   false, false,  false,  false  )
+DECLARE_OPCODE(FRem,                             Instruction,    llvm_frem,                  false,  false,  false,  false, false,  false,  false  )
 DECLARE_OPCODE(cos,                              Intrinsic,      llvm_cos,                   true,   true,   true,   false, true,  false,  false  )
 DECLARE_OPCODE(sin,                              Intrinsic,      llvm_sin,                   true,   true,   true,   false, true,  false,  false  )
 DECLARE_OPCODE(log2,                             Intrinsic,      llvm_log,                   true,   true,   true,   false, true,  false,  false  )

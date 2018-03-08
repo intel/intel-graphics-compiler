@@ -469,6 +469,12 @@ public:
     inline Value* getResourceValue() const{
         return getOperand(0);
     }
+    inline Value* getAlignmentValue() const {
+        return getOperand(2);
+    }
+    inline unsigned int getAlignment() const {
+        return static_cast<unsigned int>(cast<ConstantInt>(getAlignmentValue())->getZExtValue());
+    }
 
     inline void setOffsetValue(Value* V){
         setOperand(1, V);

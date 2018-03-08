@@ -35,6 +35,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/HullShaderLowering.hpp"
 #include "Compiler/CISACodeGen/DomainShaderLowering.hpp"
 
+#include "Compiler/CISACodeGen/AdvCodeMotion.h"
+#include "Compiler/CISACodeGen/AdvMemOpt.h"
 #include "Compiler/CISACodeGen/Emu64OpsPass.h"
 #include "Compiler/CISACodeGen/PullConstantHeuristics.hpp"
 #include "Compiler/CISACodeGen/PushAnalysis.hpp"
@@ -434,6 +436,8 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
     // Run MemOpt
     if (!isOptDisabled &&
         ctx.m_instrTypes.hasLoadStore && ctx.m_shaderHasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt)) {
+        if (IGC_IS_FLAG_ENABLED(EnableAdvMemOpt))
+          mpm.add(createAdvMemOptPass());
         mpm.add(createMemOptPass());
         mpm.add(llvm::createInstructionCombiningPass());
     }
@@ -491,9 +495,11 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         mpm.add(createDeadCodeEliminationPass());
     }
 
-    if(!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion))
+    if (!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion))
     {
-        mpm.add(new HalfPromotion());
+        mpm.add(new HalfPromotion(!ctx.m_DriverInfo.SupportFP16BDW()));
+        mpm.add(createGVNPass());
+        mpm.add(createDeadCodeEliminationPass());
     }
 
     // Run type demotion if it's beneficial.
@@ -1025,6 +1031,7 @@ void OptimizeIR(CodeGenContext* pContext)
         mpm.add(new VerificationPass());
 #endif
         mpm.add(new llvm::TargetLibraryInfoWrapperPass(TLI));
+        initializeWIAnalysisPass(*PassRegistry::getPassRegistry());
 
         // Do inter-procedural constant propagation early.
         if (pContext->m_enableSubroutine)
@@ -1090,6 +1097,10 @@ void OptimizeIR(CodeGenContext* pContext)
 
         if( pContext->m_instrTypes.hasMultipleBB )
         {
+            if (IGC_IS_FLAG_ENABLED(EnableAdvCodeMotion)) {
+              mpm.add(llvm::createCFGSimplificationPass());
+              mpm.add(llvm::createLowerSwitchPass());
+            }
             // disable loop unroll for excessive large shaders
             if( pContext->m_instrTypes.hasLoop )
             {
@@ -1123,6 +1134,8 @@ void OptimizeIR(CodeGenContext* pContext)
                     mpm.add(new CustomLoopInfo());
                 }
                 mpm.add(llvm::createInstructionCombiningPass());
+                if (IGC_IS_FLAG_ENABLED(EnableAdvCodeMotion))
+                  mpm.add(createAdvCodeMotionPass(IGC_GET_FLAG_VALUE(AdvCodeMotionControl)));
 
                 int LoopUnrollThreshold = pContext->m_DriverInfo.GetLoopUnrollThreshold();
 

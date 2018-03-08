@@ -2028,6 +2028,14 @@ CVariable *CShader::reuseSourceVar(Instruction *UseInst, Instruction *DefInst,
             return DefVar;
         }
 
+        if (encoder.GetCISADataTypeSize(UseTy) != encoder.GetCISADataTypeSize(DefVar->GetType()))
+        {
+            // trunc/zext is needed, reuse not possible
+            // this extra check is needed because in code gen we implicitly convert all private pointers
+            // to 32-bit when LLVM assumes it's 64-bit based on DL
+            return nullptr;
+        }
+
         // TODO: allow %y = trunc i32 %x to i8
         assert(CI->isNoopCast(*m_DL));
         return GetNewAlias(DefVar, UseTy, 0, 0);

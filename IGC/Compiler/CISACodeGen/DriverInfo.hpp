@@ -220,6 +220,9 @@ public:
 
     /// Check if we have to worry about stack overflow while recursing in loop analysis
     virtual bool HasSmallStack() const { return false; }
+
+    /// Check if we support half precision on BDW
+    virtual bool SupportFP16BDW() const { return false; }
 };
 
 }//namespace IGC

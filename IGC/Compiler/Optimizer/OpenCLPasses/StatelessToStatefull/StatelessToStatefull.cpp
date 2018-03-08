@@ -636,6 +636,7 @@ void StatelessToStatefull::finalizeArgInitialValue(Function *F)
 		if (allOffsetPositive)
 		{
 			const KernelArg *offsetArg = getBufferOffsetKernelArg(kernelArg);
+            assert(offsetArg && "Missing BufferOffset arg!");
 			Value *BufferOffsetArg = const_cast<Argument *>(offsetArg->getArg());
 			BufferOffsetArg->replaceAllUsesWith(ZeroValue);
 		}

@@ -54,6 +54,19 @@ namespace vISA
         // Compute reg pressure at BB exit
         regPressureBBExit(bb);
 
+        auto updateLivenessForLLR = [this](LocalLiveRange* LLR, bool val)
+        {
+            int numRows = LLR->getTopDcl()->getNumRows();
+            int sreg;
+            G4_VarBase* preg = LLR->getPhyReg(sreg);
+            int startGRF = preg->asGreg()->getRegNum();
+            for (int i = startGRF; i < startGRF + numRows; ++i)
+            {
+                G4_Declare* GRFDcl = gra.getGRFDclForHRA(i);
+                updateLiveness(live, GRFDcl->getRegVar()->getId(), val);
+            }
+        };
+
         // Iterate in bottom-up order to analyze register usage (similar to intf graph construction)
         for (auto rInst = bb->instList.rbegin(), rEnd = bb->instList.rend(); rInst != rEnd; rInst++)
         {
@@ -61,16 +74,27 @@ namespace vISA
             auto dst = inst->getDst();
 
             rp[inst] = regPressure;
-
-            if (dst && (topdcl = dst->getTopDcl()) &&
-                topdcl->getRegVar()->isRegAllocPartaker())
+            LocalLiveRange* LLR = nullptr;
+            if (dst && (topdcl = dst->getTopDcl()))
             {
-                // Check if dst is killed
-                if (liveAnalysis->writeWholeRegion(bb, inst, dst, options) ||
-                    inst->isPseudoKill())
+                if (topdcl->getRegVar()->isRegAllocPartaker())
                 {
-                    id = topdcl->getRegVar()->getId();
-                    updateLiveness(live, id, false);
+                    // Check if dst is killed
+                    if (liveAnalysis->writeWholeRegion(bb, inst, dst, options) ||
+                        inst->isPseudoKill())
+                    {
+                        id = topdcl->getRegVar()->getId();
+                        updateLiveness(live, id, false);
+                    }
+                }
+                else if ((LLR = gra.getLocalLR(topdcl)) && LLR->getAssigned())
+                {
+                    uint32_t firstRefIdx; 
+                    if (LLR->getFirstRef(firstRefIdx) == inst || 
+                        liveAnalysis->writeWholeRegion(bb, inst, dst, options))
+                    {
+                        updateLivenessForLLR(LLR, false);
+                    }
                 }
             }
             
@@ -85,12 +109,18 @@ namespace vISA
                 if (!src->isSrcRegRegion() || !src->getTopDcl())
                     continue;
 
-                if (!src->asSrcRegRegion()->isIndirect() &&
-                    (regVar = src->getTopDcl()->getRegVar()) &&
-                    regVar->isRegAllocPartaker())
+                if (!src->asSrcRegRegion()->isIndirect())
                 {
-                    unsigned int id = regVar->getId();
-                    updateLiveness(live, id, true);
+                    if ((regVar = src->getTopDcl()->getRegVar()) &&
+                        regVar->isRegAllocPartaker())
+                    {
+                        unsigned int id = regVar->getId();
+                        updateLiveness(live, id, true);
+                    }
+                    else if ((LLR = gra.getLocalLR(src->getTopDcl())) && LLR->getAssigned())
+                    {
+                        updateLivenessForLLR(LLR, true);
+                    }
                 }
                 else if (src->asSrcRegRegion()->isIndirect())
                 {
@@ -186,6 +216,29 @@ namespace vISA
         for (auto item : rp)
         {
             maxRP = std::max(maxRP, item.second);
+        }
+    }
+
+    void RPE::dump() const
+    {
+        std::cerr << "Max pressure = " << maxRP << "\n";
+        for (auto& bb : gra.kernel.fg.BBs)
+        {
+            for (auto inst : bb->instList)
+            {
+                std::cerr << "[";
+                if (rp.count(inst))
+                {
+                    std::cerr << rp.at(inst);
+                }
+                else
+                {
+                    std::cerr << "??";
+                }
+                std::cerr << "]";
+                inst->dump();
+            }
+            std::cerr << "\n";
         }
     }
 }

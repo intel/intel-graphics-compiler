@@ -397,9 +397,8 @@ void ConstantCoalescing::ProcessBlock(
             if(elt_idx)
             {   // direct access
                 uint eltid = (uint)elt_idx->getZExtValue();
-                if((int32_t)eltid >= 0)
+                if((int32_t)eltid >= 0 && (eltid % 4) == 0)
                 {
-                    assert((eltid % 4) == 0);
                     eltid = (eltid >> 2); // bytes to dwords
                     if(wiAns->whichDepend(ldRaw) == WIAnalysis::UNIFORM)
                     {
@@ -1201,11 +1200,17 @@ Instruction *ConstantCoalescing::CreateChunkLoad(Instruction *seedi, BufChunk *c
             vty,
             ldRaw->getResourceValue()->getType(),
         };
+        Value* arguments[] =
+        {
+            ldRaw->getResourceValue(),
+            eac,
+            ldRaw->getAlignmentValue()
+        };
         Function* ldRawFn = GenISAIntrinsic::getDeclaration(
             curFunc->getParent(),
             GenISAIntrinsic::GenISA_ldrawvector_indexed,
             types);
-        chunk->chunkIO = irBuilder->CreateCall2(ldRawFn, ldRaw->getResourceValue(), eac);
+        chunk->chunkIO = irBuilder->CreateCall(ldRawFn, arguments);
     }
 
     wiAns->incUpdateDepend(chunk->chunkIO, WIAnalysis::UNIFORM);

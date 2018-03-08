@@ -816,17 +816,17 @@ public:
 
 typedef enum
 {
-	CM_CISA_BUILDER_CISA,
-	CM_CISA_BUILDER_GEN,
-	CM_CISA_BUILDER_BOTH
-}CM_VISA_BUILDER_OPTION;
+    CM_CISA_BUILDER_CISA,
+    CM_CISA_BUILDER_GEN,
+    CM_CISA_BUILDER_BOTH
+} CM_VISA_BUILDER_OPTION;
 
 class VISABuilder
 {
 public:
-	CM_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName) = 0;
+    CM_BUILDER_API virtual int AddKernel(VISAKernel *& kernel, const char* kernelName) = 0;
     CM_BUILDER_API virtual int AddFunction(VISAFunction *& function, const char* functionName) = 0;
-	CM_BUILDER_API virtual int Compile(const char * isaFileNameint) = 0;
+    CM_BUILDER_API virtual int Compile(const char * isaFileNameint) = 0;
     /// This function enables creation of internal low level IR bypassing creation of vISA IR.
     /// It MUST be enabled before AddKernel or AddFunction.
     /// Through this PATH no persistant vISA is created. All operands live ranges end at the Append*Inst API call.
@@ -836,5 +836,6 @@ public:
 
     CM_BUILDER_API virtual void SetOption(vISAOptions option, bool val) = 0;
     CM_BUILDER_API virtual void SetOption(vISAOptions option, uint32_t val) = 0;
+    CM_BUILDER_API virtual void SetOption(vISAOptions option, const char *val) = 0;
 };
 #endif

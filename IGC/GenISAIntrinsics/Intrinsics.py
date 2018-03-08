@@ -70,18 +70,24 @@ any_map = \
     "anyptr":4,
 }
 
-
-attribute_map = \
-{
-    "None":"{Attribute::NoUnwind}",
-    "NoMem":"{Attribute::NoUnwind,Attribute::ReadNone}",
-    "ReadMem":"{Attribute::NoUnwind,Attribute::ReadOnly}",
-    "ReadArgMem":"{Attribute::NoUnwind,Attribute::ReadOnly,Attribute::ArgMemOnly}",
-    "ReadWriteArgMem":"{Attribute::NoUnwind,Attribute::ArgMemOnly}",
-    "NoReturn":"{Attribute::NoUnwind,Attribute::NoReturn}",
-    "NoDuplicate":"{Attribute::NoUnwind,Attribute::NoDuplicate}",
-        "Convergent":"{Attribute::NoUnwind,Attribute::Convergent,Attribute::ReadNone}",
+attribute_map = {
+    "None":            set(["NoUnwind"]),
+    "NoMem":           set(["NoUnwind","ReadNone"]),
+    "ReadMem":         set(["NoUnwind","ReadOnly"]),
+    "ReadArgMem":      set(["NoUnwind","ReadOnly","ArgMemOnly"]),
+    "ReadWriteArgMem": set(["NoUnwind","ArgMemOnly"]),
+    "NoReturn":        set(["NoUnwind","NoReturn"]),
+    "NoDuplicate":     set(["NoUnwind","NoDuplicate"]),
+    "Convergent":      set(["NoUnwind","Convergent"]),
 }
+
+def getAttributeList(Attrs):
+    """
+    Takes a list of attribute names, calculates the union,
+    and returns a list of the the given attributes
+    """
+    s = reduce(lambda acc, v: attribute_map[v] | acc, Attrs, set())
+    return ['Attribute::'+x for x in s]
 
 Intrinsics = dict()
 parse = sys.argv
@@ -141,7 +147,7 @@ def numberofCharacterMatches(array_of_strings):
                 if len(matching) <= 1:
                     break
                 else:
-                    final_num += 1 
+                    final_num += 1
             other_array.append([final_num-7,array_of_strings[i][7:]]) #Subtract 7 because of GenISA_
     return other_array
 
@@ -163,7 +169,7 @@ def sortedIntrinsicsOnLenth():
         if i%2 == 0:
             f.write("\n")
     f.write("};\n\n")
-    
+
     #Now to write the algorithm to search
     f.write("std::string input_name(Name);\n"
             "unsigned start = 0;\n"
@@ -241,7 +247,7 @@ def createOverloadTable():
     for i in range(len(ID_array)):
         if ((i+1)%8 == 0):
             f.write(",\n  0")
-        isOverloadable = False 
+        isOverloadable = False
         genISA_Intrinsic = Intrinsics[ID_array[i]]
         for j in range(3):
             if isinstance(genISA_Intrinsic[j],list):
@@ -267,7 +273,7 @@ def addAnyTypes(value,argNum):
         return_val = hex(calculated_num).upper()[2:]
     else:
         return_val = "<" + str(calculated_num) + ">" #Can't represent in hex we will need to use long table
-    return "F" + return_val 
+    return "F" + return_val
 
 def addVectorTypes(source):
     vec_str = str()
@@ -317,16 +323,16 @@ def createTypeTable():
         dest_result = encodeTypeString(dest,type_string,anyArgs_array)
         type_string = dest_result[0]
         anyArgs_array = dest_result[1]
-        
+
         #Next we go over the Source
         source_result = encodeTypeString(source_list,type_string,anyArgs_array)
         type_string = source_result[0]
-        
+
         array_of_longs = re.findall("(?<=\<)(.*?)(?=\>)",type_string) #Search for my long values <>
         type_string = re.sub("(<)(.*?)(>)",".",type_string) #Replace long_nums for now with .
         IIT_Basic.append(["0x"+type_string[::-1],array_of_longs]) #Reverse the string before appending and add array of longs
 
-    
+
     # Now we will create the table for entries that take up more than 4 bytes
     pos_counter = 0 #Keeps track of the position in the Long Encoding table
     for i in range(len(IIT_Basic)):
@@ -399,12 +405,13 @@ def createAttributeTable():
             "    default: llvm_unreachable(\"Invalid attribute number\");\n")
 
     for i in range(len(attribute_Array)): #Building case statements
-        f.write("    case " + str(i+1) +": {\n"
-                "      const Attribute::AttrKind Atts[] = "+ attribute_map[attribute_Array[i]] +";\n"
-                "      AS[0] = AttributeSet::get(C, AttributeSet::FunctionIndex, Atts);\n"
-                "      NumAttrs = 1;\n"
-                "      break;\n"
-                "      }\n")
+        Attrs = getAttributeList([x.strip() for x in attribute_Array[i].split(',')])
+        f.write("""    case {num}: {{
+      const Attribute::AttrKind Atts[] = {{{attrs}}};
+      AS[0] = AttributeSet::get(C, AttributeSet::FunctionIndex, Atts);
+      NumAttrs = 1;
+      break;
+      }}\n""".format(num=i+1, attrs=','.join(Attrs)))
     f.write("    }\n"
             "  }\n"
             "  return AttributeSet::get(C, makeArrayRef(AS, NumAttrs));\n"

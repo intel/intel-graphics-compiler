@@ -1869,7 +1869,7 @@ G4_INST* IR_Builder::createFenceInstruction( uint8_t flushParam, bool commitEnab
     // commitEnable = true: msg length = 1, response length = 1, dst == src
     // commitEnable = false: msg length = 1, response length = 0, dst == null
     return Create_Send_Inst_For_CISA( nullptr, sendDstOpnd, sendSrcOpnd, 1, (commitEnable ? 1 : 0), 8,
-        desc, SFID_DP_DC, false, true, true, true, createImm(BTI, Type_UD), nullptr, InstOpt_NoOpt, isSendc);
+        desc, SFID_DP_DC, false, true, true, true, createImm(BTI, Type_UD), nullptr, InstOpt_WriteEnable, isSendc);
 
 }
 

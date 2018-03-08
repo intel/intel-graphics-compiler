@@ -2,6 +2,8 @@
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(IGC_BUILD__SRC__CISACodeGen_Common
+    "${CMAKE_CURRENT_SOURCE_DIR}/AdvCodeMotion.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/AdvMemOpt.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/BlockCoalescing.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/CheckInstrTypes.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/CISABuilder.cpp"
@@ -83,6 +85,8 @@ set(IGC_BUILD__SRC__Compiler_CISACodeGen
     )
 
 set(IGC_BUILD__HDR__CISACodeGen_Common
+    "${CMAKE_CURRENT_SOURCE_DIR}/AdvCodeMotion.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/AdvMemOpt.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/BlockCoalescing.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/CheckInstrTypes.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/CISABuilder.hpp"

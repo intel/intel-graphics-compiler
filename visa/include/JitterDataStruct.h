@@ -38,6 +38,7 @@ typedef struct _CM_BB_INFO {
 	int id;
 	unsigned staticCycle;
 	unsigned sendStallCycle;
+	unsigned char loopNestLevel;
 } CM_BB_INFO;
 
 typedef struct _CM_JIT_INFO {

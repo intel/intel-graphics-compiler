@@ -475,7 +475,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
             II->getParent()->getParent()->getParent(),
             GenISAIntrinsic::GenISA_ldrawvector_indexed,
             types);
-        Value* V = Builder.CreateCall2(F, newPtr, II->getOperand(1));
+        Value* V = Builder.CreateCall3(F, newPtr, II->getOperand(1), II->getOperand(2));
         V = Builder.CreateBitCast(V, Ty);
 
         II->replaceAllUsesWith(V);

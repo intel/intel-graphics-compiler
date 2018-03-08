@@ -481,6 +481,44 @@ static void compactPsInputs(
     const VecOfVec<Value*>& outVals)
 {
     unsigned nPsIn = 0;
+    unsigned nConstInterp = 0;
+
+    // count the number of constatnt interpolation attributes
+    for (unsigned i = 0; i < psIn.size(); i++)
+    {
+        IntrinVec& iv = psIn[i];
+        ConstantFP* cfp;
+        if (iv.size() > 0)
+        {
+            if ((cfp = isConstFP(outVals[i])) != nullptr)
+            {
+                continue;
+            }
+            else
+            {
+                bool isConstInterpInput = false;
+
+                for (auto inst : iv)
+                {
+                    if (isConstInterpolationInput(inst))
+                    {
+                        isConstInterpInput = true;
+                    }
+                }
+                if (inputShaderType == ShaderType::GEOMETRY_SHADER &&
+                    !psCtx->m_DriverInfo.WADisableConstInterpolationPromotion() &&
+                    isConstInterpolationOutput(outVals[i]))
+                {
+                    isConstInterpInput = true;
+                }
+
+                if (isConstInterpInput)
+                {
+                    nConstInterp++;
+                }
+            }
+        }
+    }
 
     // cleanup all constants, gather const interpolation inputs
     for (unsigned i = 0; i < psIn.size(); i++)
@@ -529,7 +567,8 @@ static void compactPsInputs(
                 Value* constInterpV = nullptr;
                 if (inputShaderType == ShaderType::GEOMETRY_SHADER &&
                     !psCtx->m_DriverInfo.WADisableConstInterpolationPromotion() &&
-                    isConstInterpolationOutput(outVals[i]))
+                    isConstInterpolationOutput(outVals[i]) &&
+                    !((nConstInterp & 0x3) == 1 &&nPsIn == nConstInterp - 1))
                 {
                     isConstInterpInput = true;
                     constInterpV = ConstantInt::get(

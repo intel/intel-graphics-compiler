@@ -136,7 +136,7 @@ void getTextureAndSamplerOperands(llvm::GenIntrinsicInst *pIntr, llvm::Value*& p
 void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value* oldPtr, llvm::Value* newPtr);
 
 llvm::Value* TracePointerSource(llvm::Value* resourcePtr);
-llvm::Value* TracePointerSource(llvm::Value* resourcePtr, bool seenPhi, bool fillList, std::vector<llvm::Value*> &instList);
+llvm::Value* TracePointerSource(llvm::Value* resourcePtr, bool hasBranching, bool fillList, std::vector<llvm::Value*> &instList);
 bool GetResourcePointerInfo(llvm::Value* srcPtr, unsigned &resID, IGC::BufferType &resTy);
 
 bool isSampleLoadGather4InfoInstruction(llvm::Instruction* inst);

@@ -215,7 +215,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
         Function *F = &(*I);
-        if (!F || F->isDeclaration())
+        if (F->isDeclaration())
         {
             if (F->getName() == "__translate_sampler_initializer")
                 F->addFnAttr(llvm::Attribute::ReadOnly);
