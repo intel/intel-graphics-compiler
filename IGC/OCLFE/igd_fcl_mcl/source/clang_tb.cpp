@@ -272,6 +272,11 @@ namespace TC
 #else
 				// Both 32 and 64 bit for non-Windows OS
 				CCModule.pModule = dlopen(CCModule.pModuleName, RTLD_NOW);
+				if (NULL == CCModule.pModule)
+				{
+					// Try to load with old name. See header file for explanation.
+					CCModule.pModule = dlopen(CCModule.pModuleOldName, RTLD_NOW);
+				}
 				if (NULL != CCModule.pModule)
 				{
 					CCModule.pCompile = (CCModuleStruct::PFcnCCCompile)dlsym(CCModule.pModule, "Compile");
