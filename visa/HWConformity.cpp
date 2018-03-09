@@ -3944,7 +3944,11 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
                     //      mad (4) r10.0<2>:hf src0 src1 r13.0<1>:f
                     //      mad (4) r10.0<1>:f  src0 src1 r13.0<2>:hf
                     // this rule is relaxed if mix mode is enabled (packed HF ok)
-                    if (builder.hasPartialMixMode() || dstExecSize == srcExecSize)
+                    if (dstExecSize == srcExecSize)
+                    {
+                        return true;
+                    }
+                    if (builder.hasPartialMixMode() && inst->isMixedMode())
                     {
                         return true;
                     }
