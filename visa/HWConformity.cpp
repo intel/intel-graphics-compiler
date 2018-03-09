@@ -3885,10 +3885,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
                 // is not a legal region for align1 ternary source (vs 1 not supported)
                 // mad doesn't support <1;1,0>, the width is at least 2
                 int minAlignment = G4_Type_Table[src->getType()].byteSize * 2;
-                if ((src->getLeftBound() % GENX_GRF_REG_SIZ + minAlignment) >= GENX_GRF_REG_SIZ)
-                {
-                    return false;
-                }
+                return builder.isOpndAligned(src, minAlignment);
             }
             return true;
         };
