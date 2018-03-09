@@ -4063,20 +4063,15 @@ static void tryTransferSrcModifier(IR_Builder &builder, G4_INST *def,
     if (!def->hasOneUse())
         return;
 
-    auto isSIorFloat = [](G4_Type type)
-    {
-        return IS_SIGNED_INT(type) || IS_FTYPE(type);
-    };
     // Only transfer for integer types.
-    if (!isSIorFloat(src->getType()))
+    if (!IS_SIGNED_INT(src->getType()))
         return;
 
     // In case the use type is different from the def type.
     if (!def->getDst() || (def->getDst()->getType() != src->getType()))
         return;
 
-    switch (def->opcode()) 
-    {
+    switch (def->opcode()) {
     default:
         break;
 
@@ -4086,16 +4081,14 @@ static void tryTransferSrcModifier(IR_Builder &builder, G4_INST *def,
     {
         // Chances are src1 is an immediate.
         G4_Operand *defSrc1 = def->getSrc(1);
-        if (!isSIorFloat(defSrc1->getType()))
+        if (!IS_SIGNED_INT(defSrc1->getType()))
             return;
 
         if (defSrc1->isImm())
         {
             G4_Imm *val = defSrc1->asImm();
             // Mod_Minus is assumed.
-            G4_Imm *newVal = IS_FTYPE(val->getType()) ? 
-                builder.createImm(-(val->getFloat())) :
-                builder.createImm(-val->getInt(), val->getType());
+            G4_Imm *newVal = builder.createImm(-val->getInt(), val->getType());
             def->setSrc(newVal, 1);
             src->asSrcRegRegion()->setModifier(Mod_src_undef);
         }

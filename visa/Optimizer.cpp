@@ -9554,7 +9554,7 @@ private:
         else
             T = getLastUser()->getDst()->getType();
 
-        return IS_FTYPE(T) ? Type_F : (IS_SIGNED_INT(T) ? Type_W : Type_UW);
+        return IS_SIGNED_INT(T) ? Type_W : Type_UW;
     }
 };
 
@@ -9754,24 +9754,16 @@ bool MadSequenceInfo::checkMadSequence()
         if (!src0 || !src1 || !src2)
             return false;
 
-        if (IS_FTYPE(src0->getType()) && IS_FTYPE(src1->getType()) &&
-            IS_FTYPE(src2->getType()))
-        {
-            // ok
-        }
-        else if ((!IS_BTYPE(src0->getType()) && !IS_WTYPE(src0->getType())) ||
+        // Only when src0 and src1 are of Byte/Word types.
+        if ((!IS_BTYPE(src0->getType()) && !IS_WTYPE(src0->getType())) ||
             (!IS_BTYPE(src1->getType()) && !IS_WTYPE(src1->getType())))
-        {
-            // Only when src0 and src1 are of Byte/Word types.
             return false;
-        }
-        else if (!IS_BTYPE(src2->getType()) && !IS_WTYPE(src2->getType()) &&
-                !IS_DTYPE(src2->getType()))
-        {
-            // Only when src2 is of Byte/Word/DWord types.
+
+        // Only when src2 is of Byte/Word/DWord types.
+        if (!IS_BTYPE(src2->getType()) && !IS_WTYPE(src2->getType()) &&
+            !IS_DTYPE(src2->getType()))
             return false;
-        }
-           
+
         // If there is a modifier for src2, or src2 is accessed somewhere
         // indirectly then we will not generate a MAC.
         if (!src2->isSrcRegRegion())
@@ -9809,7 +9801,7 @@ bool MadSequenceInfo::checkACCDependency(G4_INST *defInst, G4_INST *useInst)
     ASSERT_USER(iter != bb->instList.end(), "no instruction found?");
 
     for (++iter; (*iter) != useInst; ++iter) {
-        if ((*iter)->defAcc() || (*iter)->useAcc() || (*iter)->mayExpandToAccMacro(builder))
+        if ((*iter)->defAcc())
             return false;
     }
     return true;
@@ -9906,11 +9898,8 @@ void MadSequenceInfo::populateSrc2Def()
         return setNotSafe();
 
     // Check it right here.
-    // Only support splats or simd16 initialization.
-    if (src2Def->getExecSize() != 16 && src2Def->getExecSize() != 1)
-    {
+    if (src2Def->getExecSize() != 16)
         return setNotSafe();
-    }
 
     G4_Operand *Dst = src2Def->getDst();
     if (!Dst || builder.kernel.fg.globalOpndHT.isOpndGlobal(Dst))
@@ -9923,16 +9912,12 @@ void MadSequenceInfo::populateSrc2Def()
         !src2Def->hasOneUse())
         return setNotSafe();
 
-    if (IS_DTYPE(src2Def->getExecType()))
+    if (G4_Type_Table[src2Def->getExecType()].byteSize >= 4)
     {
         // since we use <1>:w region for our acc temp, due to alignment requirements
         // we can't allow dword source types
         return setNotSafe();
     }
-
-    // Check if there is any ACC dependency.
-    if (!checkACCDependency(src2Def, firstMad))
-        return setNotSafe();
 
     // Check restrictions on compression to ensure that changing the destination
     // type will not change the source region meaning due to instruction
@@ -9951,7 +9936,7 @@ void MadSequenceInfo::populateSrc2Def()
                     continue;
                 if (!inst->isComprInvariantSrcRegion(opnd->asSrcRegRegion(), i))
                     return false;
-                if (IS_DTYPE(opnd->getType()))
+                if (!IS_BTYPE(opnd->getType()) && !IS_WTYPE(opnd->getType()))
                     return false;
             }
             return true;
@@ -10039,7 +10024,7 @@ INST_LIST_ITER MadSequenceInfo::populateCandidates(INST_LIST_ITER iter)
     //
     // could be generated.
     G4_Type MadDstType = getLastMad()->getDst()->getType();
-    if (IS_DTYPE(MadDstType))
+    if (!IS_BTYPE(MadDstType) && !IS_WTYPE(MadDstType))
     {
         // Populate the user chain up to some predetermined level.
         const int level = 4;
@@ -10080,12 +10065,6 @@ void MadSequenceInfo::processCandidates()
         G4_DstRegRegion *accDstOpnd = builder.createDstRegRegion(
             Direct, builder.phyregpool.getAcc0Reg(), 0, 0, 1, AdjustedType);
         src2Def->setDest(accDstOpnd);
-
-        // Convert splat.
-        if (src2Def->getExecSize() == 1)
-        {
-            src2Def->setExecSize(getFirstMad()->getExecSize());
-        }
     }
 
     // update use-chain
