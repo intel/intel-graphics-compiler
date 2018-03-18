@@ -449,6 +449,8 @@ private:
     bool use64BitFEStackVars;
     bool hasNullReturnSampler = false;
 
+    int perThreadInputSize = 0;
+
 public:
     PreDefinedVars preDefVars;
     Mem_Manager&        mem;        // memory for all operands and insts
@@ -518,6 +520,9 @@ public:
     {
         return preDefVars.getPreDefinedVar(PreDefinedVarsInternal::RET);
     }
+
+    uint32_t getPerThreadInputSize() const { return perThreadInputSize; }
+    void setPerThreadInputSize(uint32_t val) { perThreadInputSize = val; }
 
     bool isOpndAligned( G4_Operand *opnd, unsigned short &offset, int align_byte );
 
@@ -1329,21 +1334,21 @@ public:
     // a new copy of "lab" is created for the new label, so
     // caller does not have to allocate memory for lab
     //
-    G4_Label* createLabel(const char* lab, VISA_Label_Kind kind)
+    G4_Label* createLabel(std::string& lab, VISA_Label_Kind kind)
     {
         // Create new lab string with name of compilation unit
         // to ensure unique label names across compilation units.
-        std::string newLab = lab;
-        if (kind != LABEL_FC) {
-            newLab += std::string("_") + kernel.getName();
+        if (getOptions()->isTargetCM() && kind != LABEL_FC) 
+        {
+            lab += std::string("_") + kernel.getName();
 #if _DEBUG
-            newLab = sanitizeString(newLab);
+            lab = sanitizeString(lab);
 #endif
         }
-        lab = newLab.c_str();
+        auto labStr = lab.c_str();
 
-        G4_Label* l = hashtable.lookupLabel(lab);
-        return (l != NULL)? l : hashtable.createLabel(lab);
+        G4_Label* l = hashtable.lookupLabel(labStr);
+        return (l != NULL)? l : hashtable.createLabel(labStr);
     }
 
     G4_Predicate* createPredicate(G4_PredState s, G4_VarBase* flag, unsigned short srOff, G4_Predicate_Control ctrl = PRED_DEFAULT)

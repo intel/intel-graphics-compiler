@@ -72,45 +72,54 @@ endif (IGC_BUILD)
 # invoked from here)
 add_subdirectory(LocalScheduler)
 
-# Locate bison and flex if we're on windows (they're included in the repository)
-# The following commands will prime the CMake cache with the local paths to the relevant executables and
-# prevent the find_package commands from looking elsewhere
-if (WIN32)
-  # Find the GNUTools path
-  # In CM_RT depo, GNUTools is in the same level with CM_jitter
-  # In gfx_Development depo, GNUTools is in media/cmrtlib/proprietary
-  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../GNUTools)
-    set(GNUTOOLS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../GNUTools)
-  elseif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../media/cmrtlib/proprietary/GNUTools)
-    set(GNUTOOLS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../media/cmrtlib/proprietary/GNUTools)
-  else ()
-    message( FATAL_ERROR "No GNUTools folder found.")
-  endif ()
-  find_program(BISON_EXECUTABLE bison.bat PATHS ${GNUTOOLS_DIR}/bin DOC "path to the bison executable")
-  find_program(FLEX_EXECUTABLE flex PATHS ${GNUTOOLS_DIR}/bin DOC "path to the flex executable")
-  #set (BISON_EXECUTABLE ${CMAKE_CURRENT_SOURCE_DIR}/../GNUTools/bin/bison)
-  #set (FLEX_EXECUTABLE ${CMAKE_CURRENT_SOURCE_DIR}/../GNUTools/bin/flex)
-  set (ENV{M4} "${GNUTOOLS_DIR}/bin/m4.exe")
-endif (WIN32)
+if(BS_USE_OSDM_BUILD_SYSTEM)
+  include(${BUILD_SYS_INC}/utils.cmake)
+  # Locate bison and flex using common bs macro
+  bs_find_flex()
+  bs_find_bison()
+  if (WIN32)
+    set(WIN_FLEX_FLAG "--wincompat")
+  endif(WIN32)
+else()
+  # Locate bison and flex if we're on windows (they're included in the repository)
+  # The following commands will prime the CMake cache with the local paths to the relevant executables and
+  # prevent the find_package commands from looking elsewhere
+  if (WIN32)
+    # Find the GNUTools path
+    # In CM_RT depo, GNUTools is in the same level with CM_jitter
+    # In gfx_Development depo, GNUTools is in media/cmrtlib/proprietary
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../GNUTools)
+      set(GNUTOOLS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../GNUTools)
+    elseif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../media/cmrtlib/proprietary/GNUTools)
+      set(GNUTOOLS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../media/cmrtlib/proprietary/GNUTools)
+    else ()
+      message( FATAL_ERROR "No GNUTools folder found.")
+    endif ()
+    find_program(BISON_EXECUTABLE bison.bat PATHS ${GNUTOOLS_DIR}/bin DOC "path to the bison executable")
+    find_program(FLEX_EXECUTABLE flex PATHS ${GNUTOOLS_DIR}/bin DOC "path to the flex executable")
+    #set (BISON_EXECUTABLE ${CMAKE_CURRENT_SOURCE_DIR}/../GNUTools/bin/bison)
+    #set (FLEX_EXECUTABLE ${CMAKE_CURRENT_SOURCE_DIR}/../GNUTools/bin/flex)
+    set (ENV{M4} "${GNUTOOLS_DIR}/bin/m4.exe")
+  endif (WIN32)
 
-# The Android definition has some issues locating an appropriate bison and flex so here we
-# explicitly set the executable variables directly to prevent find_package from failing
-if (ANDROID)
-  set (BISON_EXECUTABLE /usr/bin/bison)
-  set (FLEX_EXECUTABLE /usr/bin/flex)
-endif(ANDROID)
+  # The Android definition has some issues locating an appropriate bison and flex so here we
+  # explicitly set the executable variables directly to prevent find_package from failing
+  if (ANDROID)
+    set (BISON_EXECUTABLE /usr/bin/bison)
+    set (FLEX_EXECUTABLE /usr/bin/flex)
+  endif(ANDROID)
 
-# Here the default package support for bison and flex is invoked. This does something for Windows
-# and Linux but is effectively by-passed for Android as we've already explicitly set the bison and
-# flex executable variables for that platform
-find_package(BISON)
-find_package(FLEX)
-
+  # Here the default package support for bison and flex is invoked. This does something for Windows
+  # and Linux but is effectively by-passed for Android as we've already explicitly set the bison and
+  # flex executable variables for that platform
+  find_package(BISON)
+  find_package(FLEX)
+endif()
 # Set up the bison and flex targets. These commands will set up commands to generate the appropriate
 # source files from the input grammars. It will also set up the dependencies correctly for any
 # library or executable that uses the generated source
 BISON_TARGET(CISAParser CISA.y ${CMAKE_CURRENT_BINARY_DIR}/CISA.tab.c COMPILE_FLAGS "-vt -p CISA")
-FLEX_TARGET(CISAScanner CISA.l ${CMAKE_CURRENT_BINARY_DIR}/lex.CISA.c COMPILE_FLAGS "-PCISA")
+FLEX_TARGET(CISAScanner CISA.l ${CMAKE_CURRENT_BINARY_DIR}/lex.CISA.c COMPILE_FLAGS "-PCISA ${WIN_FLEX_FLAG}")
 ADD_FLEX_BISON_DEPENDENCY(CISAScanner CISAParser)
 
 # Set up windows mobile build flags to use dynamic multi-threaded runtime (/MD)

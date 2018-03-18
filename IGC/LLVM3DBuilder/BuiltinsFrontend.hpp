@@ -205,6 +205,7 @@ public:
     llvm::Value* CreateDeriveRTY_Fine(llvm::Value* V);
     llvm::Value* CreateSin(llvm::Value* V);
     llvm::Value* CreateCos(llvm::Value* V);
+    llvm::Value* CreateIsNan(llvm::Value *V);
     llvm::Value* CreateCtpop(llvm::Value* V);
 
     llvm::Value* CreateCPSRqstCoarseSize(

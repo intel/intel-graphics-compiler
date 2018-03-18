@@ -219,7 +219,7 @@ bool PixelShaderLowering::runOnFunction(llvm::Function &F)
 {
     m_cgCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     IGCMD::MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
+    if (!isEntryFunc(pMdUtils, &F))
     {
         return false;
     }
@@ -1080,12 +1080,14 @@ bool PixelShaderLowering::optBlendState(
         // discard if src.rgb == 1
         if (enableBlendToDiscard)
         {
-            Constant* f1 = ConstantFP::get(colorOut.color[0]->getType(), 1.0);
+            ConstantFP* f1 = cast<ConstantFP>(
+                ConstantFP::get(colorOut.color[0]->getType(), 1.0));
 
-            Value* rne1 = irb.CreateFCmpUNE(colorOut.color[0], f1);
-            Value* gne1 = irb.CreateFCmpUNE(colorOut.color[1], f1);
-            Value* bne1 = irb.CreateFCmpUNE(colorOut.color[2], f1);
-            colorOut.mask = irb.CreateOr(bne1, irb.CreateOr(rne1, gne1));
+            Value* rne1 = fcmpUNEConst(irb, colorOut.color[0], f1);
+            Value* gne1 = fcmpUNEConst(irb, colorOut.color[1], f1);
+            Value* bne1 = fcmpUNEConst(irb, colorOut.color[2], f1);
+
+            colorOut.mask = createOr(irb, bne1, createOr(irb, rne1, gne1));
             hasDiscard = true;
         }
         return hasDiscard;
@@ -1284,6 +1286,10 @@ void PixelShaderLowering::checkAndCreateNullRTWrite(
     }
 }
 
+///////////////////////////////////////////////////////////////////////
+// Lower discard intrinsics
+///////////////////////////////////////////////////////////////////////
+
 #define PASS_FLAG "igc-lower-discard"
 #define PASS_DESCRIPTION "Lower discard intrinsics"
 #define PASS_CFG_ONLY false
@@ -1299,7 +1305,7 @@ IGC_INITIALIZE_PASS_END(DiscardLowering, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_O
 
 char DiscardLowering::ID = 0;
 
-DiscardLowering::DiscardLowering(bool useless)
+DiscardLowering::DiscardLowering()
     : FunctionPass(ID)
 {
     initializeDiscardLoweringPass(*PassRegistry::getPassRegistry());

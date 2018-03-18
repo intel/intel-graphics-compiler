@@ -152,7 +152,7 @@ function(igc_target_flag_property_add_once_config_var targetName propertyBaseNam
     igc_target_flag_property_add_once("${targetName}" "${propertyBaseName}" "${${varBaseName}}")  # [WA#2] To handle ; correctly some lists must be put in string form.
   endif()
 
-  foreach(_configName ${CMAKE_CONFIGURATION_TYPES})
+  foreach(_configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
     string(REPLACE ";" "\;" _configName "${_configName}") # [WA#1] Must escape ; again if occurred in item.
     string(TOUPPER "${_configName}" _upperConfigName)
     set(_propertyName  "${propertyBaseName}_${_upperConfigName}")
@@ -756,7 +756,7 @@ function(igc_config_flag_apply_settings settingsDomainName flagsVarBaseName patt
   set(_matchedAllConfigs YES)
   set(_selectedConfigs)
   set(_selectedFlagsVarNames)
-  foreach(_configName ${CMAKE_CONFIGURATION_TYPES})
+  foreach(_configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
     string(REPLACE ";" "\;" _configName "${_configName}") # [WA#1] Must escape ; again if occurred in item.
 
     if(_matchAllConfigs OR (_negativePattern AND (NOT (_configName MATCHES "${configPattern}"))) OR ((NOT _negativePattern) AND (_configName MATCHES "${configPattern}")))
@@ -1325,12 +1325,12 @@ function(igc_custom_build_add configName copyConfigName)
   string(TOUPPER "${configName}" _configName)
   string(TOUPPER "${copyConfigName}" _copyConfigName)
 
-  set("CMAKE_CXX_FLAGS_${_configName}"           "${CMAKE_CXX_FLAGS_${_copyConfigName}}"           CACHE STRING "C++ compilder flags used during \"${configName}\" builds.")
-  set("CMAKE_C_FLAGS_${_configName}"             "${CMAKE_C_FLAGS_${_copyConfigName}}"             CACHE STRING "Flags used during \"${configName}\" builds.")
-  set("CMAKE_EXE_LINKER_FLAGS_${_configName}"    "${CMAKE_EXE_LINKER_FLAGS_${_copyConfigName}}"    CACHE STRING "Linker flags used during \"${configName}\" builds for executables.")
-  set("CMAKE_MODULE_LINKER_FLAGS_${_configName}" "${CMAKE_MODULE_LINKER_FLAGS_${_copyConfigName}}" CACHE STRING "Linker flags used during \"${configName}\" builds for modules.")
-  set("CMAKE_SHARED_LINKER_FLAGS_${_configName}" "${CMAKE_SHARED_LINKER_FLAGS_${_copyConfigName}}" CACHE STRING "Linker flags used during \"${configName}\" builds for shared libraries.")
-  set("CMAKE_STATIC_LINKER_FLAGS_${_configName}" "${CMAKE_STATIC_LINKER_FLAGS_${_copyConfigName}}" CACHE STRING "Linker flags used during \"${configName}\" builds for static libraries.")
+  set("CMAKE_CXX_FLAGS_${_configName}"           "${CMAKE_CXX_FLAGS_${_copyConfigName}}"           PARENT_SCOPE)
+  set("CMAKE_C_FLAGS_${_configName}"             "${CMAKE_C_FLAGS_${_copyConfigName}}"             PARENT_SCOPE)
+  set("CMAKE_EXE_LINKER_FLAGS_${_configName}"    "${CMAKE_EXE_LINKER_FLAGS_${_copyConfigName}}"    PARENT_SCOPE)
+  set("CMAKE_MODULE_LINKER_FLAGS_${_configName}" "${CMAKE_MODULE_LINKER_FLAGS_${_copyConfigName}}" PARENT_SCOPE)
+  set("CMAKE_SHARED_LINKER_FLAGS_${_configName}" "${CMAKE_SHARED_LINKER_FLAGS_${_copyConfigName}}" PARENT_SCOPE)
+  set("CMAKE_STATIC_LINKER_FLAGS_${_configName}" "${CMAKE_STATIC_LINKER_FLAGS_${_copyConfigName}}" PARENT_SCOPE)
   mark_as_advanced(
       "CMAKE_CXX_FLAGS_${_configName}"
       "CMAKE_C_FLAGS_${_configName}"
@@ -1690,7 +1690,7 @@ function(igc_target_exclude_from_symbol_export targetName)
   endif()
 
   if(_igc_compiler_is_gnu_or_clang)
-    foreach(_configName ${CMAKE_CONFIGURATION_TYPES})
+    foreach(_configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
       string(REPLACE ";" "\;" _configName "${_configName}") # [WA#1] Must escape ; again if occurred in item.
       string(TOUPPER "${_configName}" _upperConfigName)
 
@@ -1869,27 +1869,6 @@ endfunction()
 # ======================================================================================================
 # ==================================== BUILD CONFIGURATIONS (part 1) ===================================
 # ======================================================================================================
-# The section must be before project definition which is a point for configurations generation
-# for multi-configuration generators.
-
-# IGC project available configuration types:
-# Two standard configuration + "ReleaseInternal" and "ReleaseInternalAsserts" custom configurations.
-set(CMAKE_CONFIGURATION_TYPES
-    "Debug"
-    "ReleaseInternal"
-    "ReleaseInternalAsserts"
-    "Release"
-  )
-set(CMAKE_CONFIGURATION_TYPES ${CMAKE_CONFIGURATION_TYPES} CACHE STRING "Available build configurations." FORCE)
-# Patterns which identify debug and release configurations.
-set(IGC_BUILD__DEBUG_PATTERN   "^Debug$")
-set(IGC_BUILD__RELEASE_PATTERN "^Release$")
-set(IGC_BUILD__RELINT_PATTERN  "^ReleaseInternal$")
-
-# ======================================================================================================
-# ======================================================================================================
-# ======================================================================================================
-
 
 # Default languages: C, C++.
 project(IGC)
@@ -1897,6 +1876,54 @@ project(IGC)
 set(MAJOR_VERSION 0)
 set(MINOR_VERSION 1)
 set(PATCH_VERSION 0)
+
+# IGC project available configuration types:
+# Two standard configuration + "ReleaseInternal" and "ReleaseInternalAsserts" custom configurations.
+set(IGC_CMAKE_CONFIGURATION_TYPES
+  "Debug"
+  "ReleaseInternal"
+  "ReleaseInternalAsserts"
+  "Release"
+)
+set(IGC_CMAKE_CONFIGURATION_TYPES ${IGC_CMAKE_CONFIGURATION_TYPES} CACHE STRING "IGC available build configurations." FORCE)
+
+if(CMAKE_CONFIGURATION_TYPES)
+  # Multi-configuration generator: use CMAKE_CONFIGURATION_TYPES variable
+  set(CMAKE_CONFIGURATION_TYPES ${IGC_CMAKE_CONFIGURATION_TYPES})
+
+  if(CMAKE_BUILD_TYPE)
+    message(FATAL_ERROR "CMAKE_BUILD_TYPE variable is not allowed while using multi-configuration generator!")
+  endif()
+else()
+  # Single-configuration generator: use CMAKE_BUILD_TYPE variable
+  if(DEFINED CMAKE_BUILD_TYPE)
+    string(TOLOWER "${CMAKE_BUILD_TYPE}" _buildType)
+    string(STRIP "${_buildType}" _buildType)
+
+    if(_buildType MATCHES "^release$")
+      set(_buildType "Release")
+    elseif(_buildType MATCHES "^release[ ]*-?[ ]*internal$")
+      set(_buildType "ReleaseInternal")
+    elseif(_buildType MATCHES "^release[ ]*-?[ ]*internal[ ]*asserts")
+      set(_buildType "ReleaseInternalAsserts")
+    elseif(_buildType MATCHES "^debug$")
+      set(_buildType "Debug")
+    else()
+      set(_buildType "Debug")
+      message(WARNING "CMAKE_BUILD_TYPE: Unknown build configuration. The following configurations are available: ${IGC_CMAKE_CONFIGURATION_TYPES}.\nThe \"${_buildType}\" configuration will be used.\nThis value has meaning only for single-configuration generators (like Make). It will be ignored for MSVC/XCode.")
+    endif()
+  else()
+    set(_buildType "Debug")
+    message(WARNING "CMAKE_BUILD_TYPE: No build configuration specified. The following configurations are available: ${IGC_CMAKE_CONFIGURATION_TYPES}.\nThe \"${_buildType}\" configuration will be used.\nThis value has meaning only for single-configuration generators (like Make). It will be ignored for MSVC/XCode.")
+  endif()
+  set(CMAKE_BUILD_TYPE "${_buildType}")
+  unset(_buildType)
+endif()
+
+# Patterns which identify debug and release configurations.
+set(IGC_BUILD__DEBUG_PATTERN   "^Debug$")
+set(IGC_BUILD__RELEASE_PATTERN "^Release$")
+set(IGC_BUILD__RELINT_PATTERN  "^ReleaseInternal$")
 
 # The configuration variables used below are likely to have been most recently
 # defined by the project statement's call to the toolchain file
@@ -1992,7 +2019,7 @@ set(_autogenTarget "${CODEGEN_DIR}/MDNodeFunctions.gen")
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
   set(IGC_PYTHON "${GFX_DEVELOPMENT_DIR}/Tools/Build/scripts/deps/python27/python.exe")
 else()
-  set(IGC_PYTHON "python")
+  find_program(IGC_PYTHON NAMES "python2" "python")
 endif()
 
 add_custom_command(OUTPUT "${_autogenTarget}"
@@ -2023,40 +2050,13 @@ igc_custom_build_add("ReleaseInternalAsserts" "Release")
 
 # Populating global property with list of debug configurations (based on pattern).
 set(_debugConfigs)
-foreach(_configName ${CMAKE_CONFIGURATION_TYPES})
+foreach(_configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
   if(_configName MATCHES "${IGC_BUILD__DEBUG_PATTERN}")
     list(APPEND _debugConfigs "${_configName}")
   endif()
 endforeach()
 set_property(GLOBAL PROPERTY DEBUG_CONFIGURATIONS ${_debugConfigs})
 unset(_debugConfigs)
-
-# Expressing CMake setting for current build configuration as option and providing a way to correct it (treat as case-insensitive).
-if (NOT (MSVC OR XCODE)) # CMAKE_BUILD_TYPE is only used in single-configuration generators
-  if(DEFINED CMAKE_BUILD_TYPE)
-    string(TOLOWER "${CMAKE_BUILD_TYPE}" _buildType)
-    string(STRIP "${_buildType}" _buildType)
-
-    if(_buildType MATCHES "^release$")
-      set(_buildType "Release")
-    elseif(_buildType MATCHES "^release[ ]*-?[ ]*internal$")
-      set(_buildType "ReleaseInternal")
-    elseif(_buildType MATCHES "^release[ ]*-?[ ]*internal[ ]*asserts")
-      set(_buildType "ReleaseInternalAsserts")
-    elseif(_buildType MATCHES "^debug$")
-      set(_buildType "Debug")
-    else()
-      set(_buildType "Debug")
-      message(WARNING "CMAKE_BUILD_TYPE: Unknown build configuration. The following configurations are available: ${CMAKE_CONFIGURATION_TYPES}.\nThe \"${_buildType}\" configuration will be used.\nThis value has meaning only for single-configuration generators (like Make). It will be ignored for MSVC/XCode.")
-    endif()
-  else()
-    set(_buildType "Debug")
-    message(WARNING "CMAKE_BUILD_TYPE: No build configuration specified. The following configurations are available: ${CMAKE_CONFIGURATION_TYPES}.\nThe \"${_buildType}\" configuration will be used.\nThis value has meaning only for single-configuration generators (like Make). It will be ignored for MSVC/XCode.")
-  endif()
-  set(CMAKE_BUILD_TYPE "${_buildType}")
-  set(CMAKE_BUILD_TYPE "${_buildType}" CACHE STRING "Current build configuration (only for single-configuration generators)." FORCE)
-  unset(_buildType)
-endif()
 
 # ======================================================================================================
 # ======================================================================================================
@@ -2133,7 +2133,11 @@ mark_as_advanced(IGC_OPTION__COMPILE_LINK_ALLOW_UNSAFE_SIZE_OPT)
 # ============================================= Status =================================================
 
 message(STATUS "================================ IGC Project ================================")
-message(STATUS "Build type:  ${CMAKE_BUILD_TYPE} (for single-configuration generators)")
+if(CMAKE_CONFIGURATION_TYPES)
+    message(STATUS "Build types: ${CMAKE_CONFIGURATION_TYPES} (multi-configuration generator)")
+else()
+    message(STATUS "Build type:  ${CMAKE_BUILD_TYPE} (single-configuration generator)")
+endif()
 message(STATUS "Build tools: ${IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS}")
 message(STATUS "LLVM dir:    ${IGC_OPTION__LLVM_DUMP_DIR}")
 message(STATUS "")
@@ -3273,7 +3277,7 @@ else()
 	endif()
 endif()
 
-foreach(_configName ${CMAKE_CONFIGURATION_TYPES})
+foreach(_configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
     string(TOUPPER "${_configName}" _upperConfigName)
     set_property(TARGET "${IGC_BUILD__LLVM_PACKAGE}"
         PROPERTY "IMPORTED_LOCATION_${_upperConfigName}" "${IGC_LLVM_DIR}"
@@ -3304,7 +3308,7 @@ function(igc_llvm_include_dirs_extend dirSuffix)
     set(_dirSuffix "${dirSuffix}")
   endif()
 
-  foreach(_configName ${CMAKE_CONFIGURATION_TYPES})
+  foreach(_configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
     string(REPLACE ";" "\;" _configName "${_configName}") # [WA#1] Must escape ; again if occurred in item.
     string(TOUPPER "${_configName}" _upperConfigName)
     set(_cxxFlagsVarName "CMAKE_CXX_FLAGS_${_upperConfigName}")
@@ -3356,7 +3360,7 @@ function(igc_llvm_library_add)
     endif()
 
     set_property(TARGET "${_libName}" PROPERTY IMPORTED_LOCATION "${_libName}-NOTFOUND")
-    foreach(_configName ${CMAKE_CONFIGURATION_TYPES})
+    foreach(_configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
       string(REPLACE ";" "\;" _configName "${_configName}") # [WA#1] Must escape ; again if occurred in item.
       string(TOUPPER "${_configName}" _upperConfigName)
       set(_locPropName "IMPORTED_LOCATION_${_upperConfigName}")
@@ -3402,7 +3406,7 @@ function(igc_llvm_exe_import exeTargetName exeName)
 
   add_executable("${exeTargetName}" IMPORTED)
   set_property(TARGET "${exeTargetName}" PROPERTY IMPORTED_LOCATION "${exeTargetName}-NOTFOUND")
-  foreach(_configName ${CMAKE_CONFIGURATION_TYPES})
+  foreach(_configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
     string(REPLACE ";" "\;" _configName "${_configName}") # [WA#1] Must escape ; again if occurred in item.
     string(TOUPPER "${_configName}" _upperConfigName)
     set(_locPropName "IMPORTED_LOCATION_${_upperConfigName}")
@@ -3639,6 +3643,7 @@ if(IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
       ${IGC_BUILD__SRC__IGC__igc_lib}
       ${IGC_BUILD__HDR__IGC__igc_lib}
     )
+  bs_set_wdk(${IGC_BUILD__PROJ__igc_lib})
   set_property(TARGET "${IGC_BUILD__PROJ__igc_lib}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__igc_lib}")
   set_property(TARGET "${IGC_BUILD__PROJ__igc_lib}" PROPERTY EXCLUDE_FROM_ALL YES)
   set(IGC_BUILD__MAIN_IGC_LIB_SUFFIXES
@@ -3656,6 +3661,7 @@ if(IGC_OPTION__USCLAUNCHER_TOOL)
       ${IGC_BUILD__SRC__IGC__igc_lib}
       ${IGC_BUILD__HDR__IGC__igc_lib}
     )
+  bs_set_wdk(${IGC_BUILD__PROJ__igc_lib})
   set_property(TARGET "${IGC_BUILD__PROJ__igc_lib}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__igc_lib}")
   set_property(TARGET "${IGC_BUILD__PROJ__igc_lib}" PROPERTY EXCLUDE_FROM_ALL YES)
 
@@ -3968,7 +3974,6 @@ endif()
 ########################################################################
 
 install(TARGETS ${IGC_BUILD__PROJ__igc_dll} DESTINATION lib)
-install(TARGETS ${IGC_BUILD__PROJ__fcl_dll} DESTINATION lib)
 
 set(CPACK_GENERATOR "DEB")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "intel")

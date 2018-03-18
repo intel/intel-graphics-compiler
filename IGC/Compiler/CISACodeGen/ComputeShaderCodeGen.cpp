@@ -317,9 +317,12 @@ void CComputeShader::AllocatePayload()
     // We use predefined variables so offset has to be added for R0.
     offset += SIZE_GRF;
 
+    bool loadThreadPayload = false;
+    
+
     // for indirect threads data payload hardware doesn't allow empty per thread buffer 
     // so we allocate a dummy thread id in case no IDs are used
-    if(GetNumberOfId() == 0)
+    if (GetNumberOfId() == 0 && !loadThreadPayload)
     {
         CreateThreadIDinGroup(0);
     }
@@ -350,6 +353,12 @@ void CComputeShader::AllocatePayload()
             AllocateInput(m_pThread_ID_in_Group_Z, offset, i);
             offset += m_pThread_ID_in_Group_Z->GetSize();
         }
+    }
+
+    if (loadThreadPayload)
+    {
+        uint perThreadInputSize = offset - SIZE_GRF;
+        encoder.GetVISAKernel()->AddKernelAttribute("perThreadInputSize", sizeof(uint16_t), &perThreadInputSize);
     }
 
     // Cross-thread constant data.

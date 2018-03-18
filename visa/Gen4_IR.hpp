@@ -1013,7 +1013,7 @@ public:
 
 
     void setLocalId(int32_t lid)  { local_id = lid; }
-    int32_t  getLocalId() { return local_id; }
+    int32_t getLocalId() const { return local_id; }
 
     void setEvenlySplitInst(bool val) { evenlySplitInst = val; }
     bool getEvenlySplitInst() { return evenlySplitInst; }

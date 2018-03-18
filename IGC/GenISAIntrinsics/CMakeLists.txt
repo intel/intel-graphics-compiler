@@ -69,7 +69,14 @@ add_dependencies("${IGC_BUILD__PROJ__GenISAIntrinsics}" "${IGC_BUILD__GenISAIntr
 #set up standard defines from the common WDK path.
 if(MSVC)
     set_target_properties(${IGC_BUILD__PROJ__GenISAIntrinsics} PROPERTIES VS_PRE_DEFAULT_PROPS "${CMAKE_CURRENT_SOURCE_DIR}/../../WrkSpace/PropertySheets/igfx_env.props")
+    set_target_properties(${IGC_BUILD__PROJ__GenISAIntrinsics} PROPERTIES VS_PLATFORM_TOOLSET WindowsApplicationForDrivers10.0)
+    set_target_properties(${IGC_BUILD__PROJ__GenISAIntrinsics} PROPERTIES VS_GLOBAL_DriverTargetPlatform Universal)
+    set_target_properties(${IGC_BUILD__PROJ__GenISAIntrinsics} PROPERTIES VS_TARGET_PLATFORM_VERSION "")
+
     set_target_properties(${IGC_BUILD__GenISAIntrinsics_TABLEGEN_TARGET_NAME} PROPERTIES VS_PRE_DEFAULT_PROPS "${CMAKE_CURRENT_SOURCE_DIR}/../../WrkSpace/PropertySheets/igfx_env.props")
+    set_target_properties(${IGC_BUILD__GenISAIntrinsics_TABLEGEN_TARGET_NAME} PROPERTIES VS_PLATFORM_TOOLSET WindowsApplicationForDrivers10.0)
+    set_target_properties(${IGC_BUILD__GenISAIntrinsics_TABLEGEN_TARGET_NAME} PROPERTIES VS_GLOBAL_DriverTargetPlatform Universal)
+    set_target_properties(${IGC_BUILD__GenISAIntrinsics_TABLEGEN_TARGET_NAME} PROPERTIES VS_TARGET_PLATFORM_VERSION "")
 endif()
 
 win_static_runtime()

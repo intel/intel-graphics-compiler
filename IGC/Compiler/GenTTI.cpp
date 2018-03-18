@@ -331,7 +331,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, TTI::UnrollingPrefer
     }
 
     UP.Runtime = true;
-    UP.Count = 8;
+    UP.Count = 4;
     UP.MaxCount = UP.Count;
     // The following is only available and required from LLVM 3.7+.
     UP.AllowExpensiveTripCount = true;

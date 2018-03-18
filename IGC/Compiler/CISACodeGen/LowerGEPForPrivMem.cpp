@@ -264,7 +264,7 @@ bool LowerGEPForPrivMem::IsUniformStore(StoreInst* pStore)
         // We could improve it with dominator analysis or uniform analysis
         return false;
     }
-    if(!IsUniformAddress(pStore->getPointerOperand()))
+    if(!IsUniformAddress(pStore->getPointerOperand()) || !IsUniformAddress(pStore->getValueOperand()))
     {
         return false;
     }

@@ -79,7 +79,7 @@
   unset(_archOs)
 
   set(IGC_TARGET__TOOLS_CLANG_DIR "${IGC_OPTION__OUTPUT_DIR}/clang/${_OS_folder}${_cpuSuffix}")
-  foreach(configName ${CMAKE_CONFIGURATION_TYPES})
+  foreach(configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE} "Release")
     string(TOUPPER "${configName}" upperConfigName)
     set(locPropName "IMPORTED_LOCATION_${upperConfigName}")
     set_property(TARGET CLANG_7Z
@@ -109,10 +109,8 @@
 
   if(WIN32)
     set(COMMON_CLANG_LIB_FULL_NAME "${COMMON_CLANG_LIBRARY_NAME}${_cpuSuffix}${CMAKE_SHARED_LIBRARY_SUFFIX}")
-    set(COMMON_CLANG_LIB_PATH "${COMMON_CLANG_LIBRARY_NAME}${IGC_OPTION__OUTPUT_DIR}/${CMAKE_BUILD_TYPE}/${COMMON_CLANG_LIB_FULL_NAME}")
   else()
     set(COMMON_CLANG_LIB_FULL_NAME "lib${COMMON_CLANG_LIBRARY_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
-    set(COMMON_CLANG_LIB_PATH "${IGC_OPTION__OUTPUT_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
   endif()
   
   # Add step to preform the extraction
@@ -174,7 +172,6 @@
     endif()
   endif()
   add_dependencies(common_clang_dll GetClang)
-  install(FILES $<TARGET_FILE:common_clang_dll> DESTINATION lib)
 # End Clang section
 
 
@@ -847,6 +844,7 @@ endfunction()
 ### -include-pch OCL_64 -cl-enable-half -D__EXECUTION_MODEL_DEBUG=1 -D__OPENCL_C_VERSION__=120 -Dcl_khr_fp16 -I                     .\IGCBiFModule\PointerSize\IBiF_size_t.cl            -o .\IGCsize_t_64.bc
 
 # Other:
+#     %LLVM_AS_EXE% IGCBiFModule\shared\IGCBiF_Impl_ll.ll -o .\IBiF_Impl_ll.bc
 #     %LLVM_LINK_EXE% .\IBiF_Impl_int.bc .\IGCBiF_Impl_ll.bc -o .\OCLBiFImpl.bc
 
 
@@ -910,6 +908,7 @@ igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
     TRIPLE               spir64
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/IBiF_Impl.cl"
+                         "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/IGCBiF_Impl_ll.ll"
     FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC}
     INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_SPIRV_COMMON_INC_DIRS}
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}

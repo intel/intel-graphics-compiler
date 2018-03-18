@@ -67,7 +67,7 @@ CShader(pFunc, pProgram)
     m_HasGlobalSize         = false;
     m_disableMidThreadPreemption = false;
     m_perWIPrivateMemSize   = 0;
-    m_Context               = ctx;
+    m_Context               = const_cast<OpenCLProgramContext*>(ctx);
     m_localOffsetsMap.clear();
     m_pBtiLayout            = &(ctx->btiLayout);
     m_Platform              = &(ctx->platform);
@@ -1236,6 +1236,9 @@ void COpenCLKernel::AllocatePayload()
 {
     assert(m_Context);
 
+    bool loadThreadPayload = false;
+
+
     // SKL defaults to indirect thread payload storage.
     // BDW needs CURBE payload. Spec says:
     // "CURBE should be used for the payload when using indirect dispatch rather than indirect payload".
@@ -1244,6 +1247,10 @@ void COpenCLKernel::AllocatePayload()
        m_Context->platform.getWATable().WaDisableIndirectDataForIndirectDispatch)
     {
         m_kernelInfo.m_threadPayload.CompiledForIndirectPayloadStorage = false;
+    }
+    if (loadThreadPayload)
+    {
+        m_kernelInfo.m_threadPayload.CompiledForIndirectPayloadStorage = true;
     }
     m_kernelInfo.m_threadPayload.HasFlattenedLocalID = false;
     m_kernelInfo.m_threadPayload.HasLocalIDx = false;
@@ -1361,6 +1368,18 @@ void COpenCLKernel::AllocatePayload()
 
     if (!constantBufferEndSet && constantBufferStartSet) {
         constantBufferEnd = offset;
+    }
+
+    // ToDo: we should avoid passing all three dimensions of local id
+    if (m_kernelInfo.m_threadPayload.HasLocalIDx || 
+        m_kernelInfo.m_threadPayload.HasLocalIDy ||
+        m_kernelInfo.m_threadPayload.HasLocalIDz)
+    {    
+        if (loadThreadPayload)
+        {
+            uint perThreadInputSize = SIZE_GRF * 3 * m_numberInstance;
+            encoder.GetVISAKernel()->AddKernelAttribute("perThreadInputSize", sizeof(uint16_t), &perThreadInputSize);
+        }
     }
     
     assert(constantBufferEnd >= constantBufferStart && "Constant buffer size should be non negative!");
@@ -1688,6 +1707,23 @@ void GatherDataForDriver(OpenCLProgramContext* ctx, COpenCLKernel* pShader, CSha
     }
 }
 
+//When we compile multiple SIMD modes, push the compiled shaders in a vector in correct order
+static void CollectShaderInVec(std::vector<COpenCLKernel*>& shadersVec, COpenCLKernel* shader, DWORD simdMode)
+{
+    if (shader && shader->ProgramOutput()->m_programSize > 0)
+    {
+        if (simdMode == 32)
+        {
+            shader->m_kernelInfo.m_executionEnivronment.PerThreadSpillFillSize =
+                shader->ProgramOutput()->m_scratchSpaceUsedBySpills;
+        }
+        shader->m_kernelInfo.m_kernelProgram.simd8 = *shader->ProgramOutput();
+        shader->m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = simdMode;
+        shadersVec.push_back(shader);
+    }
+    return;
+}
+
 
 void CodeGen(OpenCLProgramContext* ctx)
 {
@@ -1749,34 +1785,47 @@ void CodeGen(OpenCLProgramContext* ctx)
         COpenCLKernel* simd32Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
         COpenCLKernel* pShader = nullptr;
 
-        //For metal compute, we want to gather kernel in all compiled SIMD modes. 
         if (ctx->m_DriverInfo.sendMultipleSIMDModes())
         {
             std::vector<COpenCLKernel*> shadersVec;
-
-            if (simd32Shader &&
-                simd32Shader->ProgramOutput()->m_programSize > 0)
+            
+            //Push the default SIMD mode shader first
+            SIMDMode defaultSIMD = ctx->getDefaultSIMDMode();
+            switch (defaultSIMD)
             {
-                simd32Shader->m_kernelInfo.m_kernelProgram.simd32 = *simd32Shader->ProgramOutput();
-                simd32Shader->m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = 32;
-                simd32Shader->m_kernelInfo.m_executionEnivronment.PerThreadSpillFillSize =
-                    simd32Shader->ProgramOutput()->m_scratchSpaceUsedBySpills;
-                shadersVec.push_back(simd32Shader);
-            }
-            if (simd16Shader &&
-                simd16Shader->ProgramOutput()->m_programSize > 0)
+            case SIMDMode::SIMD8:
             {
-                simd16Shader->m_kernelInfo.m_kernelProgram.simd16 = *simd16Shader->ProgramOutput();
-                simd16Shader->m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = 16;
-                shadersVec.push_back(simd16Shader);
+                CollectShaderInVec(shadersVec, simd8Shader, 8);
+                break;
             }
-            if (simd8Shader &&
-                simd8Shader->ProgramOutput()->m_programSize > 0) 
+            case SIMDMode::SIMD16:
             {
-                simd8Shader->m_kernelInfo.m_kernelProgram.simd8 = *simd8Shader->ProgramOutput();
-                simd8Shader->m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = 8;
-                shadersVec.push_back(simd8Shader);
+                CollectShaderInVec(shadersVec, simd16Shader, 16);
+                break;
             }
+            case SIMDMode::SIMD32:
+            {
+                CollectShaderInVec(shadersVec, simd32Shader, 32);
+                break;
+            }
+            default:
+                assert(0 && "Originally we should have compiled atleast one of the 8/16/32 modes");
+                break;
+            }
+            //Now push whatever SIMD mode was compiled but was not default 
+            if (defaultSIMD != SIMDMode::SIMD32)
+            {
+                CollectShaderInVec(shadersVec, simd32Shader, 32);
+            }
+            if (defaultSIMD != SIMDMode::SIMD16)
+            {
+                CollectShaderInVec(shadersVec, simd16Shader, 16);
+            }
+            if (defaultSIMD != SIMDMode::SIMD8)
+            {
+                CollectShaderInVec(shadersVec, simd8Shader, 8);
+            }
+            assert(shadersVec.size() <= 3);
             while (!shadersVec.empty())
             {
                 GatherDataForDriver(ctx, shadersVec[0], pKernel, pSystemThreadKernelOutput, pFunc, pMdUtils);
@@ -1785,7 +1834,7 @@ void CodeGen(OpenCLProgramContext* ctx)
         }
         else
         {
-            //For OCL, we gather the kernel binary only for 1 SIMD mode of the kernel
+            //Gther the kernel binary only for 1 SIMD mode of the kernel
             if (simd32Shader &&
                 simd32Shader->ProgramOutput()->m_programSize > 0)
             {
@@ -1838,8 +1887,20 @@ bool COpenCLKernel::hasReadWriteImage(llvm::Function &F)
 bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)
 {
     bool compileThisSIMD = CompileThisSIMD(simdMode, EP, F);
+
+    if (compileThisSIMD)
+    {
+        SIMDMode origSIMDMode = m_Context->getDefaultSIMDMode();
+        if( simdMode > origSIMDMode)
+            m_Context->setDefaultSIMDMode(simdMode);
+    }
+
     if (!compileThisSIMD)
     {
+        //if even SIMD8 fails, then we compile that. So our defaultShader will be SIMD8
+        if (simdMode == SIMDMode::SIMD8 && m_Context->getDefaultSIMDMode() == SIMDMode::BEGIN)
+            m_Context->setDefaultSIMDMode(simdMode);
+        
         CodeGenContext *pCtx = GetContext();
         // Compile multiple SIMD sizes to return to the driver unless simdWidth is forced
         return pCtx->m_DriverInfo.sendMultipleSIMDModes();
@@ -1852,17 +1913,19 @@ bool COpenCLKernel::CompileThisSIMD(SIMDMode simdMode, EmitPass &EP, llvm::Funct
     CShader* simd8Program = m_parent->GetShader(SIMDMode::SIMD8);
     CShader* simd16Program = m_parent->GetShader(SIMDMode::SIMD16);
     CShader* simd32Program = m_parent->GetShader(SIMDMode::SIMD32);
+    CodeGenContext *pCtx = GetContext();
 
     // Here we see if we have compiled a size for this shader already
     if((simd8Program && simd8Program->ProgramOutput()->m_programSize > 0) ||
         (simd16Program && simd16Program->ProgramOutput()->m_programSize > 0) || 
-        (simd32Program && simd32Program->ProgramOutput()->m_programSize > 0))
+         (simd32Program && simd32Program->ProgramOutput()->m_programSize > 0))
+        
     {
-        return false;
+        if(!pCtx->m_DriverInfo.sendMultipleSIMDModes())
+            return false;
     }
 
     // Scratch space allocated per-thread needs to be less than 2 MB.
-    CodeGenContext *pCtx = GetContext();
     if (m_ScratchSpaceSize > pCtx->m_DriverInfo.maxPerThreadScratchSpace())
     {
       return false;

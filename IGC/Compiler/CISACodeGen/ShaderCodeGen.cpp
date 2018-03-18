@@ -1234,7 +1234,7 @@ void OptimizeIR(CodeGenContext* pContext)
                 // insert early output in case sampleC returns 0
                 mpm.add(new CodeSinking(true, 128));
                 mpm.add(CreateEarlyOutPatternsPass());
-                mpm.add(createDiscardOnAlphaPass());
+                mpm.add(createBlendToDiscardPass());
             }
             if (!pContext->m_DriverInfo.WADisableCustomPass())
             {
@@ -1247,7 +1247,7 @@ void OptimizeIR(CodeGenContext* pContext)
             if(pContext->type == ShaderType::PIXEL_SHADER)
             {
                 mpm.add(CreateEarlyOutPatternsPass());
-                mpm.add(createDiscardOnAlphaPass());
+                mpm.add(createBlendToDiscardPass());
             }
 
             //single basic block

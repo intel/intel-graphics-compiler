@@ -3457,6 +3457,10 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
             vbuilder->SetOption(vISA_preRA_ScheduleCtrl, Val);
         }
     }
+    else
+    {
+        vbuilder->SetOption(vISA_preRA_Schedule, false);
+    }
 
     if (IGC_IS_FLAG_ENABLED(VISAPreSchedBlock))
     {
@@ -3748,6 +3752,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         vbuilder->SetOption(vISA_ReorderDPSendToDifferentBti, false);
     }
 
+
     vKernel = nullptr;
 
     const char* kernelName = m_program->entry->getName().data();
@@ -3830,6 +3835,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
     CEncoder::SetFloatDenormMode(vKernel, context->m_floatDenormMode16,
                                           context->m_floatDenormMode32,
                                           context->m_floatDenormMode64);
+
 }
 
 void CEncoder::SetKernelStackPointer64()

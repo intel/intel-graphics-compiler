@@ -8941,7 +8941,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         if(!A->isNullReg())
             Copy_SrcRegRegion_To_Payload( payloadFOrHF, regOff, A, execSize, instOpt );
         else
-                regOff+= offIncrement;
+            regOff += offIncrement;
 
         if( cntrls.zPresent )
         {
@@ -8950,7 +8950,7 @@ int IR_Builder::translateVISARTWrite3DInst(
 
         if( cntrls.isStencil )
         {
-            Copy_SrcRegRegion_To_Payload( payloadFOrHF, regOff, S, execSize, instOpt );
+            Copy_SrcRegRegion_To_Payload( payloadFOrHF, regOff, S, execSize, InstOpt_WriteEnable );
         }
 
         srcToUse = Create_Src_Opnd_From_Dcl(payloadUD, getRegionStride1());

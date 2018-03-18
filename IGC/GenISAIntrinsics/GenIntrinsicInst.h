@@ -94,6 +94,11 @@ public:
     static inline bool classof(const Value *V) {
         return isa<CallInst>(V) && classof(cast<CallInst>(V));
     }
+
+    uint64_t getImm64Operand(unsigned idx) {
+        assert(isa<ConstantInt>(getOperand(idx)));
+        return valueToImm64(getOperand(idx));
+    }
 };
 
 class RTWritIntrinsic : public GenIntrinsicInst {

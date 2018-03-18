@@ -31,19 +31,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IGC/LLVM3DBuilder/BuiltinsFrontend.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/InstrTypes.h"
-#include "llvm/IR/Constant.h"
-#include "llvm/IR/Dominators.h"
-#include "llvm/IR/IntrinsicInst.h"
+#include <llvm/IR/Function.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/InstrTypes.h>
+#include <llvm/IR/Constant.h>
+#include <llvm/IR/Dominators.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/ADT/ilist.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
 using namespace IGC;
-
 
 //This code must check that all the similar sample inst results are divided by the same value (= 1+loop trip count)
 //And must also check that the motion(first) sample inst result is also divided by the same value (=1+loop trip count)
@@ -105,6 +104,96 @@ static bool samplesAveragedEqually(const std::vector<Instruction*>& similarSampl
         }
         assert(texels.size() == 0 && " All texels.x/y/z were not multiplied by same float");
         texels.clear();
+    }
+    return true;
+}
+
+// detect the pattern where all sample results are added together then
+// multiply by constant
+static bool
+detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts)
+{
+    unsigned nSampleInsts = sampleInsts.size();
+    float averagingFactor = float(1.0 / (nSampleInsts + 1));
+
+    Instruction* rgb[3] = { nullptr };
+
+    for (unsigned i = 0; i < nSampleInsts; i++)
+    {
+        Instruction* sampleInst = sampleInsts[i];
+        BasicBlock::iterator II = sampleInst->getIterator();
+        for (unsigned j = 0; j < 3; j++)
+        {
+            II++;
+            ExtractElementInst* ei = dyn_cast<ExtractElementInst>(II);
+            if (!ei)
+            {
+                return false;
+            }
+            ConstantInt* ci = dyn_cast<ConstantInt>(ei->getIndexOperand());
+            if (!ci)
+            {
+                return false;
+            }
+            unsigned idx = static_cast<unsigned>(ci->getZExtValue());
+            if (idx > 2)
+            {
+                return false;
+            }
+            if (ei->getNumUses() > 1)
+            {
+                return false;
+            }
+
+            if (i == 0)
+            {
+                rgb[idx] = ei;
+            }
+            else
+            {
+                Instruction* fadd = dyn_cast<Instruction>(*ei->users().begin());
+                if (fadd == nullptr || fadd->getOpcode() != Instruction::FAdd ||
+                    fadd->getNumUses() > 1)
+                {
+                    return false;
+                }
+                if (fadd->getOperand(0) != rgb[idx] &&
+                    fadd->getOperand(1) != rgb[idx])
+                {
+                    return false;
+                }
+                rgb[idx] = fadd;
+            }
+        }
+        II++;
+        if (isa<ExtractElementInst>(II))
+        {
+            return false;
+        }
+    }
+
+    for (unsigned i = 0; i < 3; i++)
+    {
+        Instruction* fmul = dyn_cast<Instruction>(*rgb[i]->users().begin());
+        if (fmul == nullptr || fmul->getOpcode() != Instruction::FMul ||
+            fmul->getNumUses() > 1)
+        {
+            return false;
+        }
+        ConstantFP* cf;
+        if (fmul->getOperand(0) == rgb[i])
+        {
+            cf = dyn_cast<ConstantFP>(fmul->getOperand(1));
+        }
+        else
+        {
+            cf = dyn_cast<ConstantFP>(fmul->getOperand(0));
+        }
+        if (cf == nullptr ||
+            cf->getValueAPF().convertToFloat() != averagingFactor)
+        {
+            return false;
+        }
     }
     return true;
 }
@@ -294,8 +383,10 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function &F)
 
     if (!checkAndSaveSimilarSampleInsts())
         return false;
-    
-    if (!samplesAveragedEqually(similarSampleInsts))
+
+    bool pattern1 = samplesAveragedEqually(similarSampleInsts);
+    bool pattern2 = detectSampleAveragePattern2(similarSampleInsts);
+    if (!pattern1 && !pattern2)
         return false;
 
     //By now we know that all similar sample inst results are divided by the same values and added with equal weights.

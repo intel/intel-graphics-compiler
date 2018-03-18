@@ -3070,11 +3070,14 @@ protected:
         llvm::Instruction* fsum;
         llvm::PHINode* phi;
         llvm::Value* phiNonZeroValue;
+        unsigned phiNonZeroValueIdx;
         MulNode* root;
         RootNode(llvm::Instruction* _fsum, llvm::PHINode* _phi,
-            llvm::Value* nonZero, MulNode* _root)
+            llvm::Value* nonZero, unsigned idx, MulNode* _root)
             : fsum(_fsum), phi(_phi)
-            , phiNonZeroValue(nonZero), root(_root) { }
+            , phiNonZeroValue(nonZero)
+            , phiNonZeroValueIdx(idx)
+            , root(_root) { }
     };
     typedef llvm::DenseMap<llvm::Value*, MulNode*> MulToNodeMapTy;
     typedef smallvector<RootNode, 8> MulNodeVecTy;
@@ -3191,7 +3194,7 @@ protected:
         return nullptr;
     }
 
-    bool hoistMulInLoop(llvm::Loop* loop);
+    bool hoistMulInLoop(llvm::Loop* loop, bool replacePhi = true);
 
     void updateOutLoopSumUse(
         llvm::Loop* loop,
@@ -3375,31 +3378,33 @@ void HoistFMulInLoopPass::combineNode(MulNode* node,
         }
     }
 
-	// check whether the product is used by other places
-	if (!isRoot && !isLeafNode(node) && !node->replace &&
-		node->invariants.size())
-	{
-		bool skipValue = false;
-		Value* value;
-		value = node->value;
-		for (auto* UI : value->users())
-		{
-			Instruction* ui = dyn_cast<Instruction>(UI);
-			if (ui && nodeMap.find(ui) == nodeMap.end())
-			{
-				// the value is used by other places, so cannot change it
-				skipValue = true;
-				break;
-			}
-		}
+    // check whether the product is used by other places
+    if (!isRoot && !isLeafNode(node) && !node->replace &&
+        node->invariants.size())
+    {
+        bool skipValue = false;
+        Value* value;
+        value = node->value;
+        for (auto* UI : value->users())
+        {
+            Instruction* ui = dyn_cast<Instruction>(UI);
+            if (ui && (nodeMap.find(ui) == nodeMap.end() ||
+                ui->getOpcode() != Instruction::FMul))
+            {
+                // the value is used by other places or used not as multiply,
+                // we cannot change it since the results won't be correct
+                skipValue = true;
+                break;
+            }
+        }
 
-		if (skipValue)
-		{
-			node->left = node->right = nullptr;
-			node->hasInvariant = false;
-			node->invariants.clear();
-		}
-	}
+        if (skipValue)
+        {
+            node->left = node->right = nullptr;
+            node->hasInvariant = false;
+            node->invariants.clear();
+        }
+    }
 
     node->visited = true;
 }
@@ -3494,7 +3499,7 @@ void HoistFMulInLoopPass::updateOutLoopSumUse(
 }
 
 
-bool HoistFMulInLoopPass::hoistMulInLoop(Loop* loop)
+bool HoistFMulInLoopPass::hoistMulInLoop(Loop* loop, bool replacePhi)
 {
     BasicBlock* header = loop->getHeader();
     BasicBlock* body = loop->getLoopLatch();
@@ -3522,7 +3527,7 @@ bool HoistFMulInLoopPass::hoistMulInLoop(Loop* loop)
         Value* phiNonZeroValue = nullptr;
         unsigned phiNonZeroValueIdx = 0;
 
-        if (phi->getNumIncomingValues() == 2)
+        if (replacePhi && phi->getNumIncomingValues() == 2)
         {
             // handle the cases where sum is not initialized to 0 before loop,
             // we need to add the value before the loop with sum results
@@ -3629,7 +3634,8 @@ bool HoistFMulInLoopPass::hoistMulInLoop(Loop* loop)
             MulNode* root = visitFMul(loop, fmul, nodeMap);
             if (root->hasInvariant)
             {
-                roots.emplace_back(fsum, phi, phiNonZeroValue, root);
+                roots.emplace_back(fsum, phi, phiNonZeroValue,
+                    phiNonZeroValueIdx, root);
             }
             else
             {
@@ -3656,8 +3662,20 @@ bool HoistFMulInLoopPass::hoistMulInLoop(Loop* loop)
 
     for (auto& NI : roots)
     {
-        if (NI.root->hasInvariant ||
-			(isLeafNode(NI.root) && NI.root->replace))
+        // if we found values cannot be hoisted later, we need to
+        // restore the phi if it's changed
+        if (NI.root->invariants.size() == 0 &&
+            NI.phiNonZeroValue)
+        {
+            NI.phi->setIncomingValue(NI.phiNonZeroValueIdx,
+                NI.phiNonZeroValue);
+        }
+    }
+
+    for (auto& NI : roots)
+    {
+        if (NI.root->invariants.size() > 0 ||
+            (isLeafNode(NI.root) && NI.root->replace))
         {
             updateOutLoopSumUse(loop, NI.phi,
                 NI.root->invariants, NI.phiNonZeroValue);
@@ -3694,7 +3712,6 @@ bool HoistFMulInLoopPass::hoistMulInLoops()
         {
             changed |= hoistMulInLoop(SL);
         }
-
     }
     return changed;
 }

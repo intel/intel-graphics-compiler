@@ -132,7 +132,7 @@ const unsigned int DomainShaderLowering::m_maxNumOfOutput = 32;
 bool DomainShaderLowering::runOnFunction(llvm::Function &F)
 {
     MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    if (pMdUtils->findFunctionsInfoItem(&F) == pMdUtils->end_FunctionsInfo())
+    if (!isEntryFunc(pMdUtils, &F))
     {
         return false;
     }

@@ -30,7 +30,7 @@ set(IGC_BUILD__SRC__Compiler
     "${CMAKE_CURRENT_SOURCE_DIR}/CustomSafeOptPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/CustomUnsafeOptPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/CustomLoopOpt.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/DiscardOnAlpha.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/BlendToDiscard.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/PromoteResourceToDirectAS.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/GenTTI.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/FixResourcePtr.cpp"

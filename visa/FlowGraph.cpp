@@ -230,7 +230,7 @@ void FlowGraph::matchLoop(INST_LIST& instlist)
     // queue for break/continue for innermost loop that do not have their
     // JIPs assigned yet
     std::queue<G4_INST*> innerBreakCont;
-    char labelName[64];
+    std::string labelName;
 
     for (INST_LIST_ITER it = instlist.begin(); it != instlist.end(); ++it)
     {
@@ -247,7 +247,7 @@ void FlowGraph::matchLoop(INST_LIST& instlist)
             }
             numLoopNest++;
             // replace do with a new loop label
-            SNPRINTF(labelName, 64, "%s_%d", "_LOOP_START", loopLabelId++);
+            labelName = "_LOOP_START" + std::to_string(loopLabelId++);
             G4_Label* loopLabel = builder->createLabel(labelName, LABEL_BLOCK);
             loopLabel->setStartLoopLabel();
             inst->setOpcode(G4_label);
@@ -296,8 +296,7 @@ void FlowGraph::matchLoop(INST_LIST& instlist)
                     else
                     {
                         // insert label after while
-                        SNPRINTF(labelName, 64, "%s_%d", "_LOOP_BREAK", loopLabelId++);
-
+                        labelName = "_LOOP_BREAK" + std::to_string(loopLabelId++);
                         breakLabel = builder->createLabel(labelName, LABEL_BLOCK);
                         G4_INST* labelInst = createNewLabelInst(breakLabel, inst->getLineNo(), inst->getCISAOff());
                         instlist.insert(std::next(it), labelInst);
@@ -324,8 +323,7 @@ void FlowGraph::matchLoop(INST_LIST& instlist)
                     else
                     {
                         // insert label before while
-                        SNPRINTF(labelName, 64, "%s_%d", "_LOOP_CONT_", loopLabelId++);
-
+                        labelName = "_LOOP_CONT_" + std::to_string(loopLabelId++);
                         contLabel = builder->createLabel(labelName, LABEL_BLOCK);
                         G4_INST* labelInst = createNewLabelInst(contLabel, inst->getLineNo(), inst->getCISAOff());
                         instlist.insert(it, labelInst);
@@ -382,7 +380,7 @@ void FlowGraph::matchLoop(INST_LIST& instlist)
                 else
                 {
                     // insert label before else
-                    SNPRINTF(labelName, 64, "%s_%d", "_LOOP_ELSE_", loopLabelId++);
+                    labelName = "_LOOP_ELSE_" + std::to_string(loopLabelId++);
                     elseLabel = builder->createLabel(labelName, LABEL_BLOCK);
                     G4_INST* labelInst = createNewLabelInst(elseLabel, inst->getLineNo(), inst->getCISAOff());
                     instlist.insert(it, labelInst);
@@ -503,11 +501,9 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
         assert(inst->asCFInst()->getJip() == nullptr && "IF should not have a label at this point");
 
         // create if_label
-        char createdLabel[64];
-        if (builder->getIsKernel())
-            SNPRINTF(createdLabel, 64, "k%d_%s_%d", builder->getCUnitId(), "_AUTO_GENERATED_IF_LABEL_", sn);
-        else
-            SNPRINTF(createdLabel, 64, "f%d_%s_%d", builder->getCUnitId(), "_AUTO_GENERATED_IF_LABEL_", sn);
+        std::string createdLabel = (builder->getIsKernel() ? "k" : "f") + 
+            std::to_string(builder->getCUnitId()) + "_AUTO_GENERATED_IF_LABEL_" + 
+            std::to_string(sn);
         sn++;
         if_label = builder->createLabel(createdLabel, LABEL_BLOCK);
         inst->asCFInst()->setJip(if_label);
@@ -536,12 +532,9 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
                 it1++;
 
                 // add endif label to "else"
-                char createdLabel[64];
-                if (builder->getIsKernel())
-                    SNPRINTF(createdLabel, 64, "k%d_%s_%d", builder->getCUnitId(), "_AUTO_GENERATED_ELSE_LABEL_", sn);
-                else
-                    SNPRINTF(createdLabel, 64, "f%d_%s_%d", builder->getCUnitId(), "_AUTO_GENERATED_ELSE_LABEL_", sn);
-
+                std::string createdLabel = (builder->getIsKernel() ? "k" : "f") +
+                    std::to_string(builder->getCUnitId()) + "__AUTO_GENERATED_ELSE_LABEL__" +
+                    std::to_string(sn);
                 sn++;
                 else_label = builder->createLabel(createdLabel, LABEL_BLOCK);
                 inst->asCFInst()->setJip(else_label);
@@ -750,8 +743,7 @@ void FlowGraph::preprocess(INST_LIST& instlist)
 
             if (insertLabel)
             {
-                char name[20];
-                SNPRINTF(name, 20, "_BW_GOTO_JIP_%d", numGoto++);
+                std::string name = "_BW_GOTO_JIP_" + std::to_string(numGoto++);
                 G4_Label* lbl = builder->createLabel(name, LABEL_BLOCK);
                 G4_INST* lInst = createNewLabelInst(lbl, i->getLineNo(), i->getCISAOff());
                 instlist.insert(tmpIter, lInst);
@@ -827,20 +819,9 @@ void FlowGraph::NormalizeFlowGraph()
                 addPredSuccEdges(newNode, retBB);
 
                 // Create and insert label inst
-                char name[32];
-                if (builder->getIsKernel() == true)
-                {
-                    // kernel
-                    SNPRINTF(name, 32, "L_AUTO_k%d_%d", builder->getCUnitId(), newNode->getId());
-                }
-                else
-                {
-                    // function
-                    SNPRINTF(name, 32, "L_AUTO_f%d_%d", builder->getCUnitId(), newNode->getId());
-                }
-
+                std::string name = (builder->getIsKernel() ? "L_AUTO_k" : "L_AUTO_f") +
+                    std::to_string(builder->getCUnitId()) + "_" + std::to_string(newNode->getId());
                 G4_Label* lbl = builder->createLabel(name, LABEL_BLOCK);
-                //srcFileName is NULL
                 G4_INST* inst = createNewLabelInst(lbl, lInst->getLineNo(), lInst->getCISAOff());
                 newNode->instList.push_back(inst);
                 BBs.insert(++it, newNode);
@@ -1133,8 +1114,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
             if (inst->isLabel())
                 continue;
 
-            char name[32];
-            SNPRINTF(name, 32, "_AUTO_LABEL_%d", autoLabelId++);
+            std::string name = "_AUTO_LABEL_" + std::to_string(autoLabelId++);
             G4_Label *label = builder->createLabel(name, LABEL_BLOCK);
             G4_INST *labelInst = builder->createInst(
                 nullptr, G4_label, nullptr, false, UNDEFINED_EXEC_SIZE, nullptr,
@@ -1420,7 +1400,8 @@ void FlowGraph::handleExit()
             BBs.insert(iter, exitBB);
         }
 
-        G4_Label *exitLabel = builder->createLabel("__EXIT_BB", LABEL_BLOCK);
+        std::string exitBBStr("__EXIT_BB");
+        G4_Label *exitLabel = builder->createLabel(exitBBStr, LABEL_BLOCK);
         G4_INST* label = createNewLabelInst(exitLabel);
         exitBB->instList.push_back(label);
 
@@ -1731,8 +1712,7 @@ G4_BB* FlowGraph::mergeSubRoutineReturn(G4_BB* bb, G4_BB* returnAddr, BB_LIST & 
         //
         // Create a label for the newBB and insert return to new BB
         //
-        char str[64];
-        SNPRINTF(str, 64, "LABEL__%d", newBB->getId());
+        std::string str = "LABEL__" + std::to_string(newBB->getId());
         G4_Label* lab = builder->createLabel(str, LABEL_BLOCK);
         G4_INST* labelInst = createNewLabelInst(lab);
 
@@ -1843,9 +1823,8 @@ void FlowGraph::decoupleInitBlock(G4_BB* bb, FuncInfoHashTable& funcInfoHashTabl
     newInitBB->setBBType(G4_BB_INIT_TYPE);
     addPredSuccEdges(newInitBB, oldInitBB);
 
-    char str[64];
-    SNPRINTF(str, 64, "LABEL__EMPTYBB__%d", newInitBB->getId());
-    G4_Label* label = builder->createLabel(str, LABEL_BLOCK);
+    std::string blockName = "LABEL__EMPTYBB__" + std::to_string(newInitBB->getId());
+    G4_Label* label = builder->createLabel(blockName, LABEL_BLOCK);
     G4_INST* labelInst = createNewLabelInst(label);
     newInitBB->instList.push_back(labelInst);
 }
@@ -1894,8 +1873,7 @@ void FlowGraph::decoupleExitBlock(G4_BB* bb)
     newExitBB->setBBType(G4_BB_EXIT_TYPE);
     addPredSuccEdges(oldExitBB, newExitBB);
 
-    char str[64];
-    SNPRINTF(str, 64, "LABEL__EMPTYBB__%d", newExitBB->getId());
+    std::string str = "LABEL__EMPTYBB__" + std::to_string(newExitBB->getId());
     G4_Label* label = builder->createLabel(str, LABEL_BLOCK);
     G4_INST* labelInst = createNewLabelInst(label);
     newExitBB->instList.push_back(labelInst);
@@ -1950,8 +1928,7 @@ void FlowGraph::decoupleReturnBlock(G4_BB* bb)
 
     bb->setBBBeforeCall(NULL);
 
-    char str[64];
-    SNPRINTF(str, 64, "LABEL__EMPTYBB__%d", newRetBB->getId());
+    std::string str = "LABEL__EMPTYBB__" + std::to_string(newRetBB->getId());
     G4_Label* label = builder->createLabel(str, LABEL_BLOCK);
     G4_INST* labelInst = createNewLabelInst(label);
     newRetBB->instList.push_back(labelInst);
@@ -2762,15 +2739,8 @@ void FlowGraph::mergeFReturns()
         if (candidateFretBB == NULL)
         {
             G4_BB* newExit = createNewBB();
-            char str[128];
-            if (builder->getIsKernel())
-            {
-                ASSERT_USER(false, "Not expecting fret in kernel");
-            }
-            else
-            {
-                SNPRINTF(str, 128, "__MERGED_FRET_EXIT_BLOCK_f%d", builder->getCUnitId());
-            }
+            assert(!builder->getIsKernel() && "Not expecting fret in kernel");
+            std::string str = "__MERGED_FRET_EXIT_BLOCK_f" + std::to_string(builder->getCUnitId());
             dumLabel = builder->createLabel(str, LABEL_BLOCK);
             G4_INST* label = createNewLabelInst(dumLabel);
             newExit->instList.push_back(label);
@@ -2841,8 +2811,7 @@ void FlowGraph::linkDummyBB()
     {
         G4_BB *dumBB = createNewBB();
         MUST_BE_TRUE(dumBB != NULL, ERROR_FLOWGRAPH);
-        char str[128];
-        SNPRINTF(str, 128, "__AUTO_GENERATED_DUMMY_LAST_BB");
+        std::string str("__AUTO_GENERATED_DUMMY_LAST_BB");
         G4_Label *dumLabel = builder->createLabel(str, LABEL_BLOCK);
         G4_INST* label = createNewLabelInst(dumLabel);
         dumBB->instList.push_back(label);
@@ -3187,8 +3156,7 @@ G4_Label* FlowGraph::insertEndif(G4_BB* bb, unsigned char execSize, bool createL
     // endifs a new label will be created for each of them.
     if (createLabel)
     {
-        char name[32];
-        SNPRINTF(name, 32, "_AUTO_LABEL_%d", autoLabelId++);
+        std::string name = "_AUTO_LABEL_%d" + std::to_string(autoLabelId++);
         G4_Label* label = builder->createLabel(name, LABEL_BLOCK);
         endifInst->setInstLabel(label);
         return label;
@@ -3246,8 +3214,7 @@ void FlowGraph::setJIPForEndif(G4_INST* endif, G4_INST* target, G4_BB* targetBB)
 
         if (label == NULL)
         {
-            char name[32];
-            SNPRINTF(name, 32, "_AUTO_LABEL_%d", autoLabelId++);
+            std::string name = "_AUTO_LABEL_" + std::to_string(autoLabelId++);
             label = builder->createLabel(name, LABEL_BLOCK);
             target->setInstLabel(label);
         }
@@ -3742,6 +3709,7 @@ void G4_Kernel::dumpPassInternal(const char* appendix)
     MUST_BE_TRUE(appendix != NULL, ERROR_INTERNAL_ARGUMENT);
     if (!m_options->getOption(vISA_DumpPasses))  // skip dumping dot files
         return;
+
 
     char fileName[256];
     MUST_BE_TRUE(strlen(appendix) < 40, ERROR_INVALID_VISA_NAME(appendix));

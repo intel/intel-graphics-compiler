@@ -125,7 +125,7 @@ bool CoalescingEngine::runOnFunction(Function &MF) {
     MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     m_ModuleMetadata = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     m_CodeGenContext = getAnalysis<CodeGenContextWrapper> ().getCodeGenContext();
-    if (pMdUtils->findFunctionsInfoItem(&MF) == pMdUtils->end_FunctionsInfo())
+    if (!isEntryFunc(pMdUtils, &MF))
     {
         return false;
     }

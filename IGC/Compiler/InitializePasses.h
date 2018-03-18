@@ -129,7 +129,7 @@ void initializeVariableReuseAnalysisPass(llvm::PassRegistry&);
 void initializeTransformBlocksPass(llvm::PassRegistry&);
 void initializeTranslationTablePass(llvm::PassRegistry&);
 void initializeSLMConstPropPass(llvm::PassRegistry&);
-void initializeDiscardOnAlphaPass(llvm::PassRegistry&);
+void initializeBlendToDiscardPass(llvm::PassRegistry&);
 void initializeCheckInstrTypesPass(llvm::PassRegistry&);
 void initializeHalfPromotionPass(llvm::PassRegistry&);
 void initializeFixFastMathFlagsPass(llvm::PassRegistry&);

@@ -76,6 +76,43 @@ namespace llvm {
             }
             return ne0;
         }
+
+        inline Value* CreateAllValuesAreConstF(Value** values,
+            unsigned nvalues, Value* constVal)
+        {
+            if (nvalues)
+            {
+                assert(isa<ConstantFP>(constVal));
+                Value* aeq = this->CreateFCmpOEQ(values[0], constVal);
+                for (unsigned i = 1; i < nvalues; i++)
+                {
+                    aeq = this->CreateAnd(aeq,
+                        this->CreateFCmpOEQ(values[i], constVal));
+                }
+                return aeq;
+            }
+            return nullptr;
+        }
+
+        inline Value* CreateAllValuesAreZeroF(Value** values, unsigned nvalues)
+        {
+            if (nvalues)
+            {
+                return CreateAllValuesAreConstF(values, nvalues,
+                    ConstantFP::get(values[0]->getType(), 0.0));
+            }
+            return nullptr;
+        }
+
+        inline Value* CreateAllValuesAreOneF(Value** values, unsigned nvalues)
+        {
+            if (nvalues)
+            {
+                return CreateAllValuesAreConstF(values, nvalues,
+                    ConstantFP::get(values[0]->getType(), 1.0));
+            }
+            return nullptr;
+        }
     };
 
 } // end namespace llvm

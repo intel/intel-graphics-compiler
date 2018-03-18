@@ -117,7 +117,7 @@ protected:
     // to their offsets in SLM.
     std::map<llvm::Value*, unsigned int> m_localOffsetsMap;
 
-    const OpenCLProgramContext* m_Context;
+    OpenCLProgramContext* m_Context;
 
     void ClearKernelInfo();
 };

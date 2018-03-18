@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/PixelShaderCodeGen.hpp"
+#include "common/IGCIRBuilder.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/PassManager.h>
@@ -112,6 +113,41 @@ private:
         llvm::Value* src0Alpha);
     void EmitCoarseMask(llvm::Value* mask);
 
+    llvm::Value* fcmpUNEConst(llvm::IGCIRBuilder<>& irb,
+        llvm::Value* value, llvm::ConstantFP* cmpConst)
+    {
+        if (llvm::ConstantFP* cfp = llvm::dyn_cast<llvm::ConstantFP>(value))
+        {
+            if (cfp->getValueAPF().convertToDouble() ==
+                cmpConst->getValueAPF().convertToDouble())
+            {
+                return irb.getInt1(false);
+            }
+            {
+                return irb.getInt1(true);
+            }
+        }
+        else
+        {
+            return irb.CreateFCmpUNE(value, cmpConst);
+        }
+    }
+    llvm::Value* createOr(llvm::IGCIRBuilder<>& irb,
+        llvm::Value* v0, llvm::Value* v1)
+    {
+        llvm::Value* ctrue = irb.getInt1(true);
+        if (v0 == ctrue && v1 == ctrue)
+            return ctrue;
+        else
+        if (v0 == ctrue)
+            return v1;
+        else
+        if (v1 == ctrue)
+            return v0;
+        else
+            return irb.CreateOr(v0, v1);
+    }
+
     bool optBlendState(USC::BLEND_OPTIMIZATION_MODE blendOpt,
         ColorOutput& color, bool enableBlendToFill);
 
@@ -183,7 +219,7 @@ private:
 public:
     static char ID;
 
-    DiscardLowering(bool useless = true);
+    DiscardLowering();
 
     virtual bool runOnFunction(llvm::Function& F) override;
     virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override

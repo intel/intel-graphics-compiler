@@ -105,6 +105,11 @@ HullShaderLowering::HullShaderLowering() : FunctionPass(ID)
 
 bool HullShaderLowering::runOnFunction(llvm::Function &F)
 {
+	MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+	if (!isEntryFunc(pMdUtils, &F))
+	{
+		return false;
+	}
     m_headerSize = QuadEltUnit(2);
     m_hullShaderInfo = &getAnalysis<CollectHullShaderProperties>();
     // Collect Hull shader information

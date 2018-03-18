@@ -201,7 +201,7 @@ GeometryShaderLowering::GeometryShaderLowering()
 bool GeometryShaderLowering::runOnFunction(llvm::Function &function)
 {
     MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    if (pMdUtils->findFunctionsInfoItem(&function) == pMdUtils->end_FunctionsInfo())
+    if (!isEntryFunc(pMdUtils, &function))
     {
         return false;
     }

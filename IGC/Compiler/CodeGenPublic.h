@@ -1241,7 +1241,18 @@ namespace IGC
             return m_ProfilingTimerResolution;
         }
 
+        SIMDMode getDefaultSIMDMode()
+        {
+            return defaultSIMDMode;
+        }
+
+        void setDefaultSIMDMode(SIMDMode simd)
+        {
+            defaultSIMDMode = simd;
+        }
+
     private:
+        SIMDMode defaultSIMDMode = SIMDMode::BEGIN;
         llvm::DenseMap<llvm::Function*, std::string> m_hashes_per_kernel;
     };
 

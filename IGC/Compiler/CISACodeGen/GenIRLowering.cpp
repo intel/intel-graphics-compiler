@@ -486,11 +486,7 @@ bool GenIRLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
 
   // Detect if we can do intermediate pointer arithmetic in 32bits
   if (pointerMathSizeInBits == 64 && GEP->isInBounds()) {
-      if(!modMD->compOpt.GreaterThan2GBBufferRequired) {
-          pointerMathSizeInBits = 32;
-          reducePointerArith = true;
-      }
-      else if (!modMD->compOpt.GreaterThan4GBBufferRequired) {
+      if (!modMD->compOpt.GreaterThan4GBBufferRequired) {
           bool gepProducesPositivePointer = true;
 
           // prove that the offset from the base pointer will be positive.  if we cannot
@@ -508,6 +504,11 @@ bool GenIRLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
               pointerMathSizeInBits = 32;
               reducePointerArith = true;
           }
+      }
+      else if(GEP->getAddressSpace() == ADDRESS_SPACE_CONSTANT || !modMD->compOpt.GreaterThan2GBBufferRequired) 
+      {
+          pointerMathSizeInBits = 32;
+          reducePointerArith = true;
       }
   }
 

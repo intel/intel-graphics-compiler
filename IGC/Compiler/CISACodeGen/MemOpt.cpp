@@ -43,7 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
-#include "Compiler/CISACodeGen/WIAnalysis.hpp"
+
 #include "Compiler/CISACodeGen/MemOpt.h"
 
 using namespace llvm;
@@ -66,7 +66,6 @@ namespace {
     const DataLayout *DL;
     AliasAnalysis *AA;
     ScalarEvolution *SE;
-    WIAnalysis *WI;
 
     CodeGenContext *CGC;
     TargetLibraryInfo *TLI;
@@ -85,9 +84,7 @@ namespace {
   public:
     static char ID;
 
-    MemOpt() :
-        FunctionPass(ID), DL(nullptr), AA(nullptr), SE(nullptr), WI(nullptr),
-        CGC(nullptr) {
+    MemOpt() : FunctionPass(ID), DL(nullptr), AA(nullptr), SE(nullptr), CGC(nullptr) {
       initializeMemOptPass(*PassRegistry::getPassRegistry());
     }
 
@@ -101,7 +98,6 @@ namespace {
       AU.addRequired<AAResultsWrapperPass>();
       AU.addRequired<TargetLibraryInfoWrapperPass>();
       AU.addRequired<ScalarEvolutionWrapperPass>();
-      AU.addRequired<WIAnalysis>();
     }
 
     void buildProfitVectorLengths(Function &F);
@@ -320,7 +316,6 @@ IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
-IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
 IGC_INITIALIZE_PASS_END(MemOpt, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char MemOpt::ID = 0;
@@ -333,7 +328,6 @@ void MemOpt::buildProfitVectorLengths(Function &F) {
 
   // 64-bit integer
   ProfitVectorLengths[64].push_back(2);
-  ProfitVectorLengths[64].push_back(1);
 
   // 32-bit integer and Float
   ProfitVectorLengths[32].push_back(4);
@@ -364,7 +358,6 @@ bool MemOpt::runOnFunction(Function &F) {
   DL = &F.getParent()->getDataLayout();
   AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
-  WI = &getAnalysis<WIAnalysis>();
 
   CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
@@ -457,17 +450,7 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
     unsigned(DL->getTypeSizeInBits(LeadingLoadScalarType));
   if (!ProfitVectorLengths.count(TypeSizeInBits))
       return false;
-  SmallVector<unsigned, 8> profitVec;
-  bool isUniformLoad = (WI->whichDepend(LeadingLoad) == WIAnalysis::UNIFORM);
-  if (isUniformLoad) {
-    unsigned C = IGC_GET_FLAG_VALUE(UniformMemOptLimit);
-    if (C == 0) C = 8;
-    for (; C != 0; C >>= 1)
-      profitVec.push_back(C);
-  } else {
-    SmallVector<unsigned, 4>& Vec = ProfitVectorLengths[TypeSizeInBits];
-    profitVec.append(Vec.begin(), Vec.end());
-  }
+  SmallVector<unsigned, 4 >& profitVec = ProfitVectorLengths[TypeSizeInBits];
 
   unsigned LdSize = unsigned(DL->getTypeStoreSize(LeadingLoadType));
   unsigned LdScalarSize = unsigned(DL->getTypeStoreSize(LeadingLoadScalarType));
@@ -502,9 +485,6 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
   // Two edges of the region where loads are merged into.
   int64_t HighestOffset = LdSize;
   int64_t LowestOffset = 0;
-  //
-  int64_t LastToLeading = LdSize;
-  int64_t LeadingToFirst = 0;
 
   // List of instructions need dependency check.
   SmallVector<Instruction*, 8> CheckList;
@@ -595,12 +575,6 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
     if (Off == 0 && LdSize == NextLoadSize)
       break;
 
-    // To merge uniform loads, they must be consecutive.
-    if (isUniformLoad)
-      if ((Off > 0 && Off != LastToLeading) ||
-          (Off < 0 && (-Off) != (LeadingToFirst + NextLoadSize)))
-        continue;
-
     HighestOffset = MAX(Off + NextLoadSize, HighestOffset);
     LowestOffset = MIN(Off, LowestOffset);
 
@@ -622,10 +596,6 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
       break;
 
     LoadsToMerge.push_back(std::make_tuple(NextLoad, Off, MI));
-    if (Off > 0)
-      LastToLeading = Off + NextLoadSize;
-    else
-      LeadingToFirst = (-Off);
   }
 
   if (LoadsToMerge.size() < 2)
@@ -662,10 +632,10 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
   if (NumElts != MaxElts || s < 2)
     return false;
 
-  // Resize loads to be merged to the profitable length and sort them based on
-  // their offsets to the leading load.
-  LoadsToMerge.resize(s);
+  // Sort loads based on their offsets to the leading load and resize them to
+  // be merged to the profitable length.
   std::sort(LoadsToMerge.begin(), LoadsToMerge.end(), less_tuple<1>());
+  LoadsToMerge.resize(s);
 
   // Loads to be merged will be merged into the leading load. However, the
   // pointer from the first load (with the minimal offset) will be used as the
@@ -1316,7 +1286,7 @@ SymbolicPointer::getLinearExpression(Value *V, APInt &Scale, APInt &Offset,
   assert(V->getType()->isIntegerTy() && "Not an integer value");
 
   // Limit our recursion depth.
-  if (Depth == 16) {
+  if (Depth == 6) {
     Scale = 1;
     Offset = 0;
     return V;

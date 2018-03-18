@@ -1277,26 +1277,28 @@ bool Optimizer::isCopyPropProfitable(G4_INST* movInst) const
 
     // if inst is a simd16 W/HF packing, we don't want to optimize it if
     // there are >=2 simd16 mad uses, since it will slow down the mad.
-    // ToDo: we may want to extend this to all ALU insts
+    // for gen9 additionally check for simd8 mad as it doesn't support strided regions
     auto dst = movInst->getDst();
     auto src0 = movInst->getSrc(0);
-    auto hasStrideSource = movInst->getExecSize() == 16 &&
-        dst->getHorzStride() == 1 &&
+    auto hasStrideSource = dst->getHorzStride() == 1 &&
         src0->isSrcRegRegion() &&
         !(src0->asSrcRegRegion()->getRegion()->isContiguous(movInst->getExecSize()) ||
             src0->asSrcRegRegion()->getRegion()->isScalar());
 
-    auto hasNSIMD16MadUse = [](G4_INST* movInst, int N)
+    hasStrideSource &= movInst->getExecSize() == 16 || (!builder.hasAlign1Ternary() && movInst->getExecSize() == 8);
+
+    auto hasNSIMD16or8MadUse = [](G4_INST* movInst, int N, bool checkSIMD8)
     {   
-        int numSIMD16MadUses = 0;
+        int numMadUses = 0;
         for (auto iter = movInst->use_begin(), iterEnd = movInst->use_end(); iter != iterEnd; ++iter)
         {
             auto use = *iter;
             auto inst = use.first;
-            if (inst->opcode() == G4_pseudo_mad && inst->getExecSize() == 16)
+            if (inst->opcode() == G4_pseudo_mad && 
+                (inst->getExecSize() == 16 || (checkSIMD8 && inst->getExecSize() == 8)))
             {
-                ++numSIMD16MadUses;
-                if (numSIMD16MadUses == N)
+                ++numMadUses;
+                if (numMadUses == N)
                 {
                     return true;
                 }
@@ -1307,7 +1309,7 @@ bool Optimizer::isCopyPropProfitable(G4_INST* movInst) const
 
     if (hasStrideSource)
     {
-        if (hasNSIMD16MadUse(movInst, 2))
+        if (hasNSIMD16or8MadUse(movInst, 2, true))
         {
             return false;
         }
@@ -1318,7 +1320,7 @@ bool Optimizer::isCopyPropProfitable(G4_INST* movInst) const
     // copy propagating away the move results in mix mode mad which is bad for bank conflicts
     if (dst->getType() == Type_F && src0->getType() == Type_HF)
     {
-        if (hasNSIMD16MadUse(movInst, 4))
+        if (hasNSIMD16or8MadUse(movInst, 4, false))
         {
             return false;
         }
@@ -1780,7 +1782,7 @@ void Optimizer::insertInstLabels()
          {
              std::string NewUipName = instCF->getUipLabelStr();
              NewUipName += "_UIP";
-             G4_Label *label = builder.createLabel(NewUipName.c_str(), LABEL_BLOCK);
+             G4_Label *label = builder.createLabel(NewUipName, LABEL_BLOCK);
              instCF->setUip(label);
 
              G4_INST *newInst = fg.createNewLabelInst(label, inst->getLineNo(),
@@ -7982,93 +7984,6 @@ public:
 
     void Optimizer::loadThreadPayload()
     {
-        if (!builder.loadThreadPayload() || !kernel.fg.builder->getIsKernel())
-        {
-            return;
-        }
-        // load input payload from address r1.2 
-        // assumption is input start at r1
-        uint32_t startGRF = 1;
-        uint32_t inputEnd = 32;
-        uint32_t inputCount = kernel.fg.builder->getInputCount();
-        for (unsigned int id = 0; id < inputCount; id++)
-        {
-            input_info_t* input_info = kernel.fg.builder->getInputArg(id);
-            if (kernel.fg.builder->getFCPatchInfo()->getIsEntryKernel())
-            {
-              vISA::G4_Declare* dcl = input_info->dcl;
-              if (INPUT_GENERAL == input_info->getInputClass() &&
-                !(dcl->isLiveIn()))
-              {
-                break;
-              }
-            }
-            if (inputEnd < (unsigned)(input_info->size + input_info->offset))
-            {
-                inputEnd = input_info->size + input_info->offset;
-            }
-        }
-        int numGRF = ((inputEnd + 31) / 32) - startGRF;
-        std::vector<G4_INST*> instBuffer;
-
-        G4_Declare* startAddrDcl = nullptr;
-        G4_Declare* r1 = builder.createHardwiredDeclare(8, Type_UD, 1, 0);     
-        if (numGRF > 4)
-        {
-            // need to copy r1.2 elsewhere so we don't overwrite it
-            G4_Declare* r127 = builder.createHardwiredDeclare(8, Type_UD, 127, 0);
-            auto src = builder.Create_Src_Opnd_From_Dcl(r1, builder.getRegionStride1());
-            auto dst = builder.Create_Dst_Opnd_From_Dcl(r127, 1);
-            auto movInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false, 8, 
-                dst, src, nullptr, InstOpt_WriteEnable);
-            instBuffer.push_back(movInst);
-            startAddrDcl = r127;
-        }
-        else
-        {
-            startAddrDcl = r1;
-        }
-
-        auto getMsgImm = [](int numGRF)
-        {
-            uint32_t dataBlocks = numGRF == 1 ? 2 : (numGRF == 2 ? 3 : 4);
-            //A32 oword block read
-            return (1 << 25) | (numGRF << 20) | (1 << 19) | (dataBlocks << 8) | 255;
-        };
-        for (int numRemaining = numGRF, nextGRF = startGRF; numRemaining > 0; /* updated in body */)
-        {
-            int numGRFToLoad = numRemaining > 2 ? 4 : numRemaining;
-            uint32_t msgDescVal = getMsgImm(numGRFToLoad);
-            uint32_t exDescVal = G4_SendMsgDescriptor::createExtDesc(SFID_DP_DC, false, 0);
-            G4_SendMsgDescriptor* desc = builder.createSendMsgDesc(msgDescVal, exDescVal,
-                true, false, nullptr, nullptr);
-            auto sendSrc = builder.Create_Src_Opnd_From_Dcl(startAddrDcl, builder.getRegionStride1());
-            auto sendDstDcl = builder.createHardwiredDeclare(numGRFToLoad * 8, Type_UD, nextGRF, 0);
-            auto sendDst = builder.Create_Dst_Opnd_From_Dcl(sendDstDcl, 1);
-            auto sendInst = builder.createSendInst(nullptr, G4_send, 8, sendDst, sendSrc,
-                builder.createImm(exDescVal, Type_UD), builder.createImm(msgDescVal, Type_UD), InstOpt_WriteEnable, true,
-                false, desc);
-            instBuffer.push_back(sendInst);
-            numRemaining -= numGRFToLoad;
-            nextGRF += numGRFToLoad;
-        }
-
-        G4_BB* entryBB = kernel.fg.getEntryBB();
-
-        // find the first non-label inst
-        auto iter = entryBB->instList.begin();
-        for (auto iterEnd = entryBB->instList.end(); iter != iterEnd; ++iter)
-        {
-            auto inst = *iter;
-            if (!inst->isLabel())
-            {
-                break;
-            }
-        }
-        for (auto inst : instBuffer)
-        {
-            entryBB->instList.insert(iter, inst);
-        }
     }
 
     /*
@@ -9554,7 +9469,7 @@ private:
         else
             T = getLastUser()->getDst()->getType();
 
-        return IS_SIGNED_INT(T) ? Type_W : Type_UW;
+        return IS_FTYPE(T) ? Type_F : (IS_SIGNED_INT(T) ? Type_W : Type_UW);
     }
 };
 
@@ -9754,16 +9669,24 @@ bool MadSequenceInfo::checkMadSequence()
         if (!src0 || !src1 || !src2)
             return false;
 
-        // Only when src0 and src1 are of Byte/Word types.
-        if ((!IS_BTYPE(src0->getType()) && !IS_WTYPE(src0->getType())) ||
+        if (IS_FTYPE(src0->getType()) && IS_FTYPE(src1->getType()) &&
+            IS_FTYPE(src2->getType()))
+        {
+            // ok
+        }
+        else if ((!IS_BTYPE(src0->getType()) && !IS_WTYPE(src0->getType())) ||
             (!IS_BTYPE(src1->getType()) && !IS_WTYPE(src1->getType())))
+        {
+            // Only when src0 and src1 are of Byte/Word types.
             return false;
-
-        // Only when src2 is of Byte/Word/DWord types.
-        if (!IS_BTYPE(src2->getType()) && !IS_WTYPE(src2->getType()) &&
-            !IS_DTYPE(src2->getType()))
+        }
+        else if (!IS_BTYPE(src2->getType()) && !IS_WTYPE(src2->getType()) &&
+                !IS_DTYPE(src2->getType()))
+        {
+            // Only when src2 is of Byte/Word/DWord types.
             return false;
-
+        }
+           
         // If there is a modifier for src2, or src2 is accessed somewhere
         // indirectly then we will not generate a MAC.
         if (!src2->isSrcRegRegion())
@@ -9801,7 +9724,7 @@ bool MadSequenceInfo::checkACCDependency(G4_INST *defInst, G4_INST *useInst)
     ASSERT_USER(iter != bb->instList.end(), "no instruction found?");
 
     for (++iter; (*iter) != useInst; ++iter) {
-        if ((*iter)->defAcc())
+        if ((*iter)->defAcc() || (*iter)->useAcc() || (*iter)->mayExpandToAccMacro(builder))
             return false;
     }
     return true;
@@ -9898,8 +9821,11 @@ void MadSequenceInfo::populateSrc2Def()
         return setNotSafe();
 
     // Check it right here.
-    if (src2Def->getExecSize() != 16)
+    // Only support splats or simd16 initialization.
+    if (src2Def->getExecSize() != 16 && src2Def->getExecSize() != 1)
+    {
         return setNotSafe();
+    }
 
     G4_Operand *Dst = src2Def->getDst();
     if (!Dst || builder.kernel.fg.globalOpndHT.isOpndGlobal(Dst))
@@ -9912,12 +9838,16 @@ void MadSequenceInfo::populateSrc2Def()
         !src2Def->hasOneUse())
         return setNotSafe();
 
-    if (G4_Type_Table[src2Def->getExecType()].byteSize >= 4)
+    if (IS_DTYPE(src2Def->getExecType()))
     {
         // since we use <1>:w region for our acc temp, due to alignment requirements
         // we can't allow dword source types
         return setNotSafe();
     }
+
+    // Check if there is any ACC dependency.
+    if (!checkACCDependency(src2Def, firstMad))
+        return setNotSafe();
 
     // Check restrictions on compression to ensure that changing the destination
     // type will not change the source region meaning due to instruction
@@ -9936,7 +9866,7 @@ void MadSequenceInfo::populateSrc2Def()
                     continue;
                 if (!inst->isComprInvariantSrcRegion(opnd->asSrcRegRegion(), i))
                     return false;
-                if (!IS_BTYPE(opnd->getType()) && !IS_WTYPE(opnd->getType()))
+                if (IS_DTYPE(opnd->getType()))
                     return false;
             }
             return true;
@@ -10024,7 +9954,7 @@ INST_LIST_ITER MadSequenceInfo::populateCandidates(INST_LIST_ITER iter)
     //
     // could be generated.
     G4_Type MadDstType = getLastMad()->getDst()->getType();
-    if (!IS_BTYPE(MadDstType) && !IS_WTYPE(MadDstType))
+    if (IS_DTYPE(MadDstType))
     {
         // Populate the user chain up to some predetermined level.
         const int level = 4;
@@ -10065,6 +9995,12 @@ void MadSequenceInfo::processCandidates()
         G4_DstRegRegion *accDstOpnd = builder.createDstRegRegion(
             Direct, builder.phyregpool.getAcc0Reg(), 0, 0, 1, AdjustedType);
         src2Def->setDest(accDstOpnd);
+
+        // Convert splat.
+        if (src2Def->getExecSize() == 1)
+        {
+            src2Def->setExecSize(getFirstMad()->getExecSize());
+        }
     }
 
     // update use-chain

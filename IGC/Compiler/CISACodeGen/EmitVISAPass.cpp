@@ -64,8 +64,7 @@ EmitPass::EmitPass(CShaderProgram::KernelShaderMap &shaders, SIMDMode mode, bool
       m_encoder(nullptr),
       m_canAbortOnSpill(canAbortOnSpill),
       m_roundingMode(CEncoder::RoundingMode::RoundToNearestEven),
-      m_pSignature(pSignature),
-      m_pDebugEmitter(nullptr)
+      m_pSignature(pSignature)
 {
     //Before calling getAnalysisUsage() for EmitPass, the passes that it depends on need to be initialized
     initializeDominatorTreeWrapperPassPass( *PassRegistry::getPassRegistry() );
@@ -628,9 +627,10 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     {
         EmitDebugInfo(finalize);
     }
-
-    IF_DEBUG_INFO(IDebugEmitter::Release(m_pDebugEmitter);)
-    m_pDebugEmitter = nullptr;
+    if(finalize)
+    {
+        IF_DEBUG_INFO(IDebugEmitter::Release(m_pDebugEmitter);)
+    }
 
     if (destroyVISABuilder)
     {

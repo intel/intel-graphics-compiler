@@ -39,8 +39,8 @@ namespace IGC
 #define PASS_DESCRIPTION "Collect information related to vertex shader"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS true
-    IGC_INITIALIZE_PASS_BEGIN(CollectVertexShaderProperties, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-    IGC_INITIALIZE_PASS_END(CollectVertexShaderProperties, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(CollectVertexShaderProperties, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_END(CollectVertexShaderProperties, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 //undef macros to avoid redefinition warnings
 #undef PASS_FLAG
@@ -51,9 +51,12 @@ namespace IGC
 #define PASS_DESCRIPTION "Lower inputs outputs for vertex shader"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
-        IGC_INITIALIZE_PASS_BEGIN(VertexShaderLowering, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-        IGC_INITIALIZE_PASS_DEPENDENCY(CollectVertexShaderProperties)
-        IGC_INITIALIZE_PASS_END(VertexShaderLowering, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_BEGIN(VertexShaderLowering, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CollectVertexShaderProperties)
+IGC_INITIALIZE_PASS_END(VertexShaderLowering, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
 char VertexShaderLowering::ID = 0;
 
 VertexShaderLowering::VertexShaderLowering() : FunctionPass(ID)
@@ -63,6 +66,14 @@ VertexShaderLowering::VertexShaderLowering() : FunctionPass(ID)
 
 bool VertexShaderLowering::runOnFunction(llvm::Function &F)
 {
+	// VS lowering only applies to entry function. Non-entry funtions
+	// are emulation functions that do not need to be lowered!
+	MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+	if (!isEntryFunc(pMdUtils, &F))
+	{
+		return false;
+	}
+
     m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     memset(m_inputUsed, 0, sizeof(m_inputUsed));
     m_headerSize = QuadEltUnit(2);

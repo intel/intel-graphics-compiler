@@ -934,13 +934,13 @@ int VISAKernelImpl::CreateVISALabelVar(VISA_LabelOpnd *& opnd, const char* name,
         //needs to be persistent since label opnd can be used multiple times
         if (m_isKernel == false)
         {
-            char fname[MAX_OPTION_STR_LENGTH];
-            SNPRINTF( fname, MAX_OPTION_STR_LENGTH, "L_f%d_%s", m_functionId, name );
+            std::string fname = "L_f" + std::to_string(m_functionId) + "_" + name;
             opnd->g4opnd = m_builder->createLabel(fname, kind);
         }
         else
         {
-            opnd->g4opnd = m_builder->createLabel(name, kind);
+            std::string kname(name);
+            opnd->g4opnd = m_builder->createLabel(kname, kind);
         }
         if(kind == LABEL_SUBROUTINE)
         {
@@ -1064,7 +1064,8 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         !strcmp(attrName, "Target") ||
         !strcmp(attrName, "ArgSize") ||
         !strcmp(attrName, "RetValSize") ||
-        !strcmp(attrName, "FESPSize"));
+        !strcmp(attrName, "FESPSize") ||
+        !strcmp(attrName, "perThreadInputSize"));
 
     if (attr->isInt)
     {
@@ -1158,6 +1159,13 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
             {
                 m_builder->setArgSize((unsigned short)(attr->value.intVal));
             }
+        }
+    }
+    else if (strcmp(attrName, "perThreadInputSize") == 0)
+    {
+        if (IS_GEN_BOTH_PATH)
+        {
+            m_builder->setPerThreadInputSize(attr->value.intVal);
         }
     }
 

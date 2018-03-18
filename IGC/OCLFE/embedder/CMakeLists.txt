@@ -39,7 +39,7 @@ function(igc_resource_embed_file symbolFilesVarName symbolName embeddedFilePath)
   if(CMAKE_SYSTEM_NAME MATCHES "Windows")
 	set(IGC_PYTHON "${GFX_DEVELOPMENT_DIR}/Tools/Build/scripts/deps/python27/python.exe")
   else()
-	set(IGC_PYTHON "python")
+	find_program(IGC_PYTHON NAMES "python2" "python")
   endif()
 
   add_custom_command(OUTPUT "${_symbolFilePath}"

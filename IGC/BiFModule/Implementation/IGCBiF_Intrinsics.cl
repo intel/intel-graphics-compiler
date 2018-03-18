@@ -115,9 +115,6 @@ local uchar* __builtin_IB_AllocLocalMemPool(uint, uint);
 void     __builtin_IB_memfence(bool commitEnable, bool flushRW, bool flushConstant, bool flushTexture, bool flushIcache, bool isGlobal, bool invalidateL1);
 void     __builtin_IB_flush_sampler_cache(void);
 
-// Barrier
-void     __builtin_IB_thread_group_barrier(void) __attribute__((convergent));
-
 // Workitem functions
 uint     __builtin_IB_get_work_dim(void) __attribute__((const));
 uint     __builtin_IB_get_group_id(uint) __attribute__((const));

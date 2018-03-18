@@ -187,7 +187,7 @@ public:
 
     // Initialize or clear per node state so that data dependency graph
     // could be used for scheduling.
-    void reset();
+    void reset(bool ReassignNodeID = false);
 
     // Dump the DDD into a dot file.
     void dumpDagDot();
@@ -404,7 +404,7 @@ struct SchedConfig
     } while (0)
 
 static const unsigned SMALL_BLOCK_SIZE = 10;
-static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
+static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
 static const unsigned PRESSURE_REDUCTION_MIN_BENEFIT = 5;
 static const unsigned LATENCY_PRESSURE_THRESHOLD = 100;
 
@@ -467,6 +467,11 @@ preRA_Scheduler::~preRA_Scheduler() {}
 
 bool preRA_Scheduler::run()
 {
+    if (m_options->getTarget() != VISA_3D)
+    {
+        return false;
+    }
+
     unsigned Threshold = m_options->getuInt32Option(vISA_preRA_ScheduleThreshold);
     unsigned SchedCtrl = m_options->getuInt32Option(vISA_preRA_ScheduleCtrl);
     const char *BBName = m_options->getOptionCstr(vISA_preRA_ScheduleBlock);
@@ -503,7 +508,20 @@ bool preRA_Scheduler::run()
         preDDD ddd(mem, kernel, bb);
         BB_Scheduler S(kernel, ddd, rp, config);
 
-        if (MaxPressure >= Threshold && config.UseSethiUllman) {
+        auto tryRPReduction = [=]() {
+            if (!config.UseSethiUllman)
+                 return false;
+
+            // For SIMD32 kernels, use a higher threshold for rp reduction,
+            // as it may not be beneficial.
+            if (this->kernel.getSimdSize() == 32)
+                return MaxPressure >= PRESSURE_REDUCTION_THRESHOLD_SIMD32;
+
+            // For all other kernels, use the default threshold.
+            return MaxPressure >= Threshold;
+        };
+
+        if (tryRPReduction()) {
             ddd.buildGraph();
             S.scheduleBlockForPressure();
             if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ false)) {
@@ -513,7 +531,7 @@ bool preRA_Scheduler::run()
         }
 
         if (MaxPressure < LATENCY_PRESSURE_THRESHOLD && config.UseLatency) {
-            ddd.reset();
+            ddd.reset(Changed);
             S.scheduleBlockForLatency();
             if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ true)) {
                 SCHED_DUMP(rp.dump(bb, "After scheduling for latency, "));
@@ -1785,10 +1803,31 @@ void preDDD::prune()
 }
 
 // Reset states that a scheduler may overwrite.
-void preDDD::reset()
+void preDDD::reset(bool ReassignNodeID)
 {
     if (!IsDagBuilt)
         buildGraph();
+
+    // When instructcions are reordered, the node IDs may become
+    // inconsistent. This is to ensure the following internal consistency:
+    //
+    // I0     N2
+    // I1 ==> N1
+    // I2     N0
+    //
+    // SNodes = { N0, N1, N2}
+    //
+    // as IDs may be used in node comparison.
+    //
+    if (ReassignNodeID) {
+        m_BB->resetLocalId();
+        auto Cmp = [](const preNode* LHS, const preNode* RHS) {
+            return LHS->Inst->getLocalId() > RHS->Inst->getLocalId();
+        };
+        std::sort(SNodes.begin(), SNodes.end(), Cmp);
+        unsigned Id = 0;
+        for (auto N : SNodes) { N->ID = Id++; }
+    }
 
     auto isHalfN = [](G4_INST* Inst, unsigned N) -> bool {
         return Inst->isSend() &&

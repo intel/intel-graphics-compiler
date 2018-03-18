@@ -2442,6 +2442,26 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB *bb)
 
 }
 
+// get rid of source modifiers on this inst[srcPos]
+bool HWConformity::checkSrcMod(INST_LIST_ITER it, G4_BB* bb, int srcPos)
+{
+    bool changed = false;
+    G4_INST* inst = *it;
+    assert(srcPos < inst->getNumSrc() && "invalid srcPos");
+    auto src = inst->getSrc(srcPos);
+    if (src->isSrcRegRegion())
+    {
+        G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
+        if (srcRegion->getModifier() != Mod_src_undef)
+        {
+            src = insertMovBefore(it, srcPos, src->getType(), bb);
+            inst->setSrc(src, srcPos);
+            changed = true;
+        }
+    }
+    return changed;
+}
+
 // If both source operands of an MUL instruction are of dword integer type,
 // only the lower 16 bits of data elements in src0 are used.
 // The full precision multiplication results can be only produced together
@@ -2485,25 +2505,12 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
 
     if (!isDMul)
     {
-        auto checkSrcMod = [this, bb, i, inst](int srcPos)
-        {
-            assert((srcPos == 0 || srcPos == 1) && "unexpected src pos");
-            auto src = inst->getSrc(srcPos);
-            if (src->isSrcRegRegion())
-            {
-                G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
-                if (srcRegion->getModifier() != Mod_src_undef)
-                {
-                    src = insertMovBefore(i, srcPos, src->getType(), bb);
-                    inst->setSrc(src, srcPos);
-                }
-            }
-        };
 
         if (!builder.supportSrcModforMul())
         {
-            checkSrcMod(0);
-            checkSrcMod(1);
+            bool changed = checkSrcMod(i, bb, 0);
+            changed |= checkSrcMod(i, bb, 1);
+            return changed;
         }
         return false;
     }
@@ -2677,16 +2684,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
             }
 
             // set implicit source/dst for MACH
-            RegionDesc *rd = NULL;
-            unsigned short vs = 0, wd = exec_size, hs = 0;
-            if (exec_size > 1){
-                if (exec_size == 16){
-                    wd = wd / 2;
-                }
-                hs = 1;
-                vs = wd;
-            }
-            rd = builder.createRegionDesc(vs, wd, hs);
+            RegionDesc *rd = exec_size == 1 ? builder.getRegionScalar() : builder.getRegionStride1();
             G4_SrcRegRegion *acc_src_opnd = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.phyregpool.getAcc0Reg(), 0, 0, rd, tmp_type);
             next_inst->setImplAccSrc(acc_src_opnd);
             next_inst->setImplAccDst(builder.createDstRegRegion(*acc_dst_opnd));
@@ -2945,13 +2943,14 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
 {
     G4_INST *inst = *i;
     INST_LIST_ITER iter = i;
-    uint8_t exec_size = inst->getExecSize( );
+    uint8_t exec_size = inst->getExecSize();
 
     int inst_opt = inst->getOption();
 
     G4_Operand *src0 = inst->getSrc(0), *src1 = inst->getSrc(1);
 
-    if ( src0->isImm() && !src1->isImm() ){
+    if (src0->isImm() && !src1->isImm())
+    {
         inst->setSrc( src1, 0 );
         inst->setSrc( src0, 1 );
 
@@ -2959,11 +2958,10 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
         src1 = inst->getSrc(1);
     }
 
-    unsigned int instExecSize = inst->getExecSize();
-    if (instExecSize <= 8 && !builder.no64bitRegioning())
+    if (exec_size <= 8 && !builder.no64bitRegioning())
     {
         // use mul Q D D to get the upper 32-bit
-        // not that we don't do this for CHV/BXT due to the 64-bit type restrictions
+        // note that we don't do this for CHV/BXT due to the 64-bit type restrictions
         inst->setOpcode(G4_mul);
         G4_DstRegRegion *dst = inst->getDst();
         G4_Type dstType = dst->getType();
@@ -2990,7 +2988,7 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
             tmpDcl->getRegVar(),
             0,
             1,
-            instExecSize > 1 ? builder.getRegionStride2() : builder.getRegionScalar(),
+            exec_size > 1 ? builder.getRegionStride2() : builder.getRegionScalar(),
             dst->getType());
 
         ++iter;
@@ -3000,7 +2998,7 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
                 G4_mov,
                 NULL,
                 false,
-                (unsigned char) instExecSize,
+                exec_size,
                 dst,
                 tmpSrc,
                 NULL,
@@ -3024,62 +3022,20 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
         return;
     }
 
-    if(src1->isSrcRegRegion() && src1->asSrcRegRegion()->getModifier() != Mod_src_undef)
+    if (!builder.supportSrcModforMul())
     {
-        // WaAdditionalMovWhenSrc1ModOnMulMach
-        G4_Declare *src1Dcl = src1->asSrcRegRegion()->getBase()->asRegVar()->getDeclare();
-        G4_Declare *tmpDcl = builder.createTempVar(
-                                        src1Dcl->getNumElems(),
-                                        src1Dcl->getElemType(),
-                                        src1Dcl->getAlign(),
-                                        src1Dcl->getSubRegAlign(),
-                                        "TV");
-
-        G4_DstRegRegion* tmpDst = builder.createDstRegRegion(
-                                                Direct,
-                                                tmpDcl->getRegVar(),
-                                                0,
-                                                0,
-                                                1,
-                                                src1->asSrcRegRegion()->getType());
-
-        RegionDesc * src1Desc = src1->asSrcRegRegion()->getRegion();
-
-        G4_INST *tmpMov = builder.createInternalInst(
-                                            NULL,
-                                            G4_mov,
-                                            NULL,
-                                            false,
-                                            (uint8_t) src1Desc->width,
-                                            tmpDst,
-                                            src1,
-                                            NULL,
-                                            NULL,
-                                            InstOpt_WriteEnable,
-                                            inst->getLineNo(),
-                                            inst->getCISAOff(),
-                                            inst->getSrcFilename());
-        bb->instList.insert(iter, tmpMov);
-
-        RegionDesc *tmpSrcDesc = NULL;
-
-        if(src1Desc->width == 1)
-            tmpSrcDesc = builder.getRegionScalar();
-        else
-            tmpSrcDesc = builder.createRegionDesc( src1Desc->vertStride, src1Desc->width, src1Desc->horzStride );
-
-        G4_SrcRegRegion *srcTmp = builder.createSrcRegRegion(Mod_src_undef, Direct, tmpDcl->getRegVar(), 0, 0, tmpSrcDesc, src1->asSrcRegRegion()->getType());
-        src1 = srcTmp;
-        inst->setSrc(src1, 1);
-
-        //Remove def instruction(s) from mulh
-        //add them to the tmpMov
-        //remove mulh from dev instructions, add tmpMov to them
-        inst->transferDef(tmpMov, Opnd_src1, Opnd_src0);
-        tmpMov->addDefUse(inst, Opnd_src1);
+        checkSrcMod(i, bb, 0);
+        src0 = inst->getSrc(0);
     }
 
-    G4_Type tmp_type = ( IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType()) ) ? Type_UD : Type_D;
+    if (src1->isSrcRegRegion() && src1->asSrcRegRegion()->getModifier() != Mod_src_undef)
+    {
+        // src1 does not support modifiers 
+        checkSrcMod(i, bb, 1);
+        src1 = inst->getSrc(1);
+    }
+
+    G4_Type tmp_type = (IS_UNSIGNED_INT(src0->getType()) && IS_UNSIGNED_INT(src1->getType())) ? Type_UD : Type_D;
 
     assert(IS_DTYPE(src0->getType()) && "src0 must be DW type");
 
@@ -3102,13 +3058,14 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
     iter--;
     fixMulSrc1(iter, bb);
 
-    if( bb->isInSimdFlow() )
+    if (bb->isInSimdFlow())
     {
         newMul->setOptions( ( inst_opt & ~InstOpt_Masks ) | InstOpt_WriteEnable );
     }
     inst->setOpcode( G4_mach );
 
-    if (src1->isImm() && src0->getType() != src1->getType()) {
+    if (src1->isImm() && src0->getType() != src1->getType()) 
+    {
         G4_Imm *oldImm = src1->asImm();
         // Ensure src1 has the same type as src0.
         G4_Imm *newImm = builder.createImm(oldImm->getInt(), src0->getType());
@@ -3116,16 +3073,7 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
     }
 
     //set implicit src/dst for mach
-    RegionDesc *rd = NULL;
-    unsigned short vs = 0, wd = exec_size, hs = 0;
-    if( exec_size > 1 ){
-        if( exec_size == 16 ){
-            wd = wd/2;
-        }
-        hs = 1;
-        vs = wd;
-    }
-    rd = builder.createRegionDesc( vs, wd, hs );
+    RegionDesc *rd = exec_size > 1 ? builder.getRegionStride1() : builder.getRegionScalar();
     G4_SrcRegRegion *acc_src_opnd = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.phyregpool.getAcc0Reg(), 0, 0, rd, tmp_type);
     inst->setImplAccSrc( acc_src_opnd );
     inst->setImplAccDst( builder.createDstRegRegion( *acc_dst_opnd ) );

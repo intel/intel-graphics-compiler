@@ -116,7 +116,7 @@ DEF_VISA_OPTION(vISA_enableBCR, ET_BOOL, "-enableBCR",   UNUSED, false)
 //=== scheduler options ===
 DEF_VISA_OPTION(vISA_LocalScheduling,       ET_BOOL, "-noschedule",      UNUSED, true)
 DEF_VISA_OPTION(vISA_SequentialScheduling,  ET_BOOL, "-seqschedule",     UNUSED, false)
-DEF_VISA_OPTION(vISA_preRA_Schedule,        ET_BOOL, "-presched",        UNUSED, false)
+DEF_VISA_OPTION(vISA_preRA_Schedule,        ET_BOOL, "-nopresched",      UNUSED, true)
 DEF_VISA_OPTION(vISA_preRA_ScheduleCtrl,      ET_INT32, "-presched-ctrl",      "USAGE: -presched-ctrl <ctrl>\n", 4)
 DEF_VISA_OPTION(vISA_preRA_ScheduleThreshold, ET_INT32, "-presched-threshold", "USAGE: -presched-threshold <threshold>\n", 110)
 DEF_VISA_OPTION(vISA_preRA_ScheduleBlock,     ET_CSTR,  "-presched-block",     "USAGE: -presched-block <block-name>\n", NULL)

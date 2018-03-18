@@ -168,6 +168,7 @@ DECLARE_IGC_REGKEY(bool, EnableLivenessDump,            false, "Enable dumping o
 DECLARE_IGC_REGKEY(DWORD, ForceRPE,                     0,     "Force RPE (RegisterEstimator) computation if > 0. If 2, force RPE per inst.")
 DECLARE_IGC_REGKEY(DWORD, RPEDumpLevel,                 0,     "> 0 : dump info of register pressure estimate on stderr. See igc_flags.hpp level defs.")
 DECLARE_IGC_REGKEY(bool, DumpOCLPatchTokens,            false, "dump OpenCL Patch Tokens")
+DECLARE_IGC_REGKEY(bool, DebugSurfaceStateOutput,       false, "Enable dumping of surface state output when building driver.")
 
 DECLARE_IGC_GROUP("Debugging features")
 DECLARE_IGC_REGKEY(bool, InitializeUndefValueEnable,    false, "Setting this to 1/true initializes all undefs in URB payload to 0")
@@ -216,7 +217,6 @@ DECLARE_IGC_REGKEY(bool, AdvCodeMotionControl,          0,     "Control bits to 
 DECLARE_IGC_REGKEY(bool, EnableAdvRuntimeUnroll,        true,  "Enable advanced runtime unroll")
 DECLARE_IGC_REGKEY(bool, AdvRuntimeUnrollCount,         0,     "Advanced runtime unroll count")
 DECLARE_IGC_REGKEY(bool, EnableAdvMemOpt,               true,  "Enable advanced memory optimization")
-DECLARE_IGC_REGKEY(bool, UniformMemOptLimit,            0,     "Limit of uniform memory optimization")
 
 DECLARE_IGC_REGKEY(bool, EnableReadGTPinInput,          false, "Enables setting GTPin context flags by reading the input to the compiler adapters")
 
@@ -278,7 +278,7 @@ DECLARE_IGC_REGKEY(bool, DisbleLocalFences, false, "On CNL+ we need to emit loca
 DECLARE_IGC_REGKEY(bool, FastSpill, false, "fast spill code gen. This may produce worse equality code for the spilling shader")
 DECLARE_IGC_REGKEY(bool, EnableGSURBEntryPadding, true,  "Enable padding of GS URB Entry by adding extra portions of Control Data Header.")
 DECLARE_IGC_REGKEY(bool, EnableGSVtxCountMsgHalfCLSize, true,  "Enable the Vertex Count msg of half CL size, instead of 1DW size.")
-DECLARE_IGC_REGKEY(bool, EnableTEFactorsPadding, true,  "Enable padding of the TE factors.")
+DECLARE_IGC_REGKEY(bool, EnableTEFactorsPadding, false,  "Enable padding of the TE factors.")
 
 DECLARE_IGC_GROUP("Generating precompiled headers")
 DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true,

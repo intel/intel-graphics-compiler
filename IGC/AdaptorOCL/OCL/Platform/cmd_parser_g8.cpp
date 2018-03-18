@@ -35,6 +35,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "cmd_shared_enum_g8.h"
 #include "cmd_media_init_g8.h"
 
+#include "IGC/common/igc_regkeys.hpp"
+
 namespace G6HWC
 {
 
@@ -71,416 +73,418 @@ void DebugSurfaceStateCommand(
       const PLATFORM productID )
 {
 #ifdef _DEBUG
-    SSharedStateSurfaceState* p3DStateSurfaceState = 
-        (SSharedStateSurfaceState*) pLinearAddress;
-
-    if( productID.eRenderCoreFamily == IGFX_GEN7_CORE ||
-        productID.eRenderCoreFamily == IGFX_GEN7_5_CORE )
-    {
-        ICBE_DPF( GFXDBG_HARDWARE, "SURFACE_STATE = { %08x, %08x, %08x, %08x, %08x, %08x, %08X, %08X }\n",
-            p3DStateSurfaceState->DW0.Value,
-            p3DStateSurfaceState->DW1.Value,
-            p3DStateSurfaceState->DW2.Value,
-            p3DStateSurfaceState->DW3.Value,
-            p3DStateSurfaceState->DW4.Value,
-            p3DStateSurfaceState->DW5.Value,
-            p3DStateSurfaceState->DW6.Value,
-            p3DStateSurfaceState->DW7.Value );
-    }
-    else if( productID.eRenderCoreFamily == IGFX_GEN8_CORE )
-    {
-        ICBE_DPF( GFXDBG_HARDWARE, "SURFACE_STATE = { %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x }\n",
-            p3DStateSurfaceState->DW0.Value,
-            p3DStateSurfaceState->DW1.Value,
-            p3DStateSurfaceState->DW2.Value,
-            p3DStateSurfaceState->DW3.Value,
-            p3DStateSurfaceState->DW4.Value,
-            p3DStateSurfaceState->DW5.Value,
-            p3DStateSurfaceState->DW6.Value,
-            p3DStateSurfaceState->DW7.Value,
-            p3DStateSurfaceState->DW8.Value,
-            p3DStateSurfaceState->DW9.Value,
-            p3DStateSurfaceState->DW10.Value,
-            p3DStateSurfaceState->DW11.Value,
-            p3DStateSurfaceState->DW12.Value);
-    }
-    else if ( productID.eRenderCoreFamily >= IGFX_GEN9_CORE )
-    {
-        ICBE_DPF( GFXDBG_HARDWARE, "SURFACE_STATE = { %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x}\n",
-            p3DStateSurfaceState->DW0.Value,
-            p3DStateSurfaceState->DW1.Value,
-            p3DStateSurfaceState->DW2.Value,
-            p3DStateSurfaceState->DW3.Value,
-            p3DStateSurfaceState->DW4.Value,
-            p3DStateSurfaceState->DW5.Value,
-            p3DStateSurfaceState->DW6.Value,
-            p3DStateSurfaceState->DW7.Value,
-            p3DStateSurfaceState->DW8.Value,
-            p3DStateSurfaceState->DW9.Value,
-            p3DStateSurfaceState->DW10.Value,
-            p3DStateSurfaceState->DW11.Value,
-            p3DStateSurfaceState->DW12.Value,
-            p3DStateSurfaceState->DW13.Value,
-            p3DStateSurfaceState->DW14.Value,
-            p3DStateSurfaceState->DW15.Value);
-    }
-    else
-    {
-        // Unsupported platform
-        ICBE_ASSERT( 0 );
-    }
-
-    // DWORD 0
-    if( productID.eRenderCoreFamily == IGFX_GEN7_CORE ||
-        productID.eRenderCoreFamily == IGFX_GEN7_5_CORE )
-    {
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceType                     : %x\n",
-            p3DStateSurfaceState->DW0.Gen7.SurfaceType );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceArray                    : %x\n",
-            p3DStateSurfaceState->DW0.Gen7.SurfaceArray );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceFormat                   : %x\n",
-            p3DStateSurfaceState->DW0.Gen7.SurfaceFormat );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tVerticalLineStride              : %u\n",
-            p3DStateSurfaceState->DW0.Gen7.VerticalLineStride );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tVerticalLineStrideOffset        : %u\n",
-            p3DStateSurfaceState->DW0.Gen7.VerticalLineStrideOffset );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tRenderCacheReadWriteMode        : %x\n",
-            p3DStateSurfaceState->DW0.Gen7.RenderCacheReadWriteMode );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tMediaBoundaryPixelMode          : %x\n",
-            p3DStateSurfaceState->DW0.Gen7.MediaBoundaryPixelMode );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tCubeFaceEnablesNegativeX        : %x\n",
-            p3DStateSurfaceState->DW0.Gen7.CubeFaceEnablesNegativeX );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tCubeFaceEnablesPositiveX        : %x\n",
-            p3DStateSurfaceState->DW0.Gen7.CubeFaceEnablesPositiveX );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tCubeFaceEnablesNegativeY        : %x\n",
-            p3DStateSurfaceState->DW0.Gen7.CubeFaceEnablesNegativeY );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tCubeFaceEnablesPositiveY        : %x\n",
-            p3DStateSurfaceState->DW0.Gen7.CubeFaceEnablesPositiveY );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tCubeFaceEnablesNegativeZ        : %x\n",
-            p3DStateSurfaceState->DW0.Gen7.CubeFaceEnablesNegativeZ );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tCubeFaceEnablesPositiveZ        : %x\n",
-            p3DStateSurfaceState->DW0.Gen7.CubeFaceEnablesPositiveZ );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceArraySpacing             : %u\n",
-            p3DStateSurfaceState->DW0.Gen7.SurfaceArraySpacing );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tTiledSurface                    : %x\n",
-            p3DStateSurfaceState->DW0.Gen7.TiledSurface );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tTileWalk                        : %x\n",
-            p3DStateSurfaceState->DW0.Gen7.TileWalk );
-    }
-    else if( ( productID.eRenderCoreFamily >= IGFX_GEN8_CORE ) &&
-		IsPlatformValid( productID ) )
-    {
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceType                     : %x\n",
-            p3DStateSurfaceState->DW0.Gen8.SurfaceType );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceArray                    : %x\n",
-            p3DStateSurfaceState->DW0.Gen8.SurfaceArray );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceFormat                   : %x\n",
-            p3DStateSurfaceState->DW0.Gen8.SurfaceFormat );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceVerticalAlignment        : %u\n",
-            p3DStateSurfaceState->DW0.Gen8.SurfaceVerticalAlignment );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceHorizontalAlignment      : %u\n",
-            p3DStateSurfaceState->DW0.Gen8.SurfaceHorizontalAlignment );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tTileMode                        : %u\n",
-            p3DStateSurfaceState->DW0.Gen8.TileMode );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tVerticalLineStride              : %u\n",
-            p3DStateSurfaceState->DW0.Gen8.VerticalLineStride );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tVerticalLineStrideOffset        : %u\n",
-            p3DStateSurfaceState->DW0.Gen8.VerticalLineStrideOffset );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tRenderCacheReadWriteMode        : %x\n",
-            p3DStateSurfaceState->DW0.Gen8.RenderCacheReadWriteMode );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tMediaBoundaryPixelMode          : %x\n",
-            p3DStateSurfaceState->DW0.Gen8.MediaBoundaryPixelMode );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tCubeFaceEnablesNegativeX        : %x\n",
-            p3DStateSurfaceState->DW0.Gen8.CubeFaceEnablesNegativeX );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tCubeFaceEnablesPositiveX        : %x\n",
-            p3DStateSurfaceState->DW0.Gen8.CubeFaceEnablesPositiveX );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tCubeFaceEnablesNegativeY        : %x\n",
-            p3DStateSurfaceState->DW0.Gen8.CubeFaceEnablesNegativeY );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tCubeFaceEnablesPositiveY        : %x\n",
-            p3DStateSurfaceState->DW0.Gen8.CubeFaceEnablesPositiveY );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tCubeFaceEnablesNegativeZ        : %x\n",
-            p3DStateSurfaceState->DW0.Gen8.CubeFaceEnablesNegativeZ );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tCubeFaceEnablesPositiveZ        : %x\n",
-            p3DStateSurfaceState->DW0.Gen8.CubeFaceEnablesPositiveZ );
-
-        if ( productID.eRenderCoreFamily >= IGFX_GEN9_CORE )
-        {
-            ICBE_DPF( GFXDBG_HARDWARE, "\tASTCEnable                      : %x\n",
-                p3DStateSurfaceState->DW0.Gen9.ASTCEnable );
-        }
-    }
-    else
-    {
-        // Unsupported platform
-        ICBE_ASSERT( 0 );
-    }
-
-    // DWORD 1
-    if( productID.eRenderCoreFamily == IGFX_GEN7_CORE ||
-        productID.eRenderCoreFamily == IGFX_GEN7_5_CORE )
-    {
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceBaseAddress              : %x\n",
-            p3DStateSurfaceState->DW1.All.SurfaceBaseAddress );
-    }
-    else if( ( productID.eRenderCoreFamily >= IGFX_GEN8_CORE )  &&
-             IsPlatformValid( productID ) )
-    {
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceQPitch                   : %x\n",
-            p3DStateSurfaceState->DW1.Gen8.SurfaceQPitch );
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceObjectAgeControl         : %x\n",
-            p3DStateSurfaceState->DW1.Gen8.SurfaceObjectAgeControl );
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceObjectEncryptedDataEnable: %x\n",
-            p3DStateSurfaceState->DW1.Gen8.SurfaceObjectEncryptedDataEnable );
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceObjectTargetCache        : %x\n",
-            p3DStateSurfaceState->DW1.Gen8.SurfaceObjectTargetCache );
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceObjectCacheabilityControl: %x\n",
-            p3DStateSurfaceState->DW1.Gen8.SurfaceObjectCacheabilityControl );
-    }
-    else
-    {
-        // Unsupported platform
-        ICBE_ASSERT( 0 );
-    }
-
-    if( productID.eRenderCoreFamily >= IGFX_GEN7_CORE   &&
-        IsPlatformValid( productID ) )
-    {
-        // DWORD 2
-        ICBE_DPF( GFXDBG_HARDWARE, "\tHeight                          : %u\n",
-            p3DStateSurfaceState->DW2.Gen7.Height );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tWidth                           : %u\n",
-            p3DStateSurfaceState->DW2.Gen7.Width );
-
-        // DWORD 3
-        ICBE_DPF( GFXDBG_HARDWARE, "\tDepth                           : %u\n",
-            p3DStateSurfaceState->DW3.Gen7.Depth );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfacePitch                    : %u\n",
-            p3DStateSurfaceState->DW3.Gen7.SurfacePitch );
-
-        // DWORD 4
-        ICBE_DPF( GFXDBG_HARDWARE, "\tMinimumArrayElement             : %u\n",
-            p3DStateSurfaceState->DW4.Gen7.SurfaceAll.MinimumArrayElement );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfacePitch                    : %x\n",
-            p3DStateSurfaceState->DW4.Gen7.SurfaceAll.MultisampledSurfaceStorageFormat );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tMultisamplePositionPaletteIndex : %u\n",
-            p3DStateSurfaceState->DW4.Gen7.SurfaceAll.MultisamplePositionPaletteIndex );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tNumMultisamples                 : %u\n",
-            p3DStateSurfaceState->DW4.Gen7.SurfaceAll.NumMultisamples );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tRenderTargetRotation            : %x\n",
-            p3DStateSurfaceState->DW4.Gen7.SurfaceAll.RenderTargetRotation );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tRenderTargetViewExtent          : %x\n",
-            p3DStateSurfaceState->DW4.Gen7.SurfaceAll.RenderTargetViewExtent );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceStrBufMinimumArrayElement: %u\n",
-            p3DStateSurfaceState->DW4.Gen7.SurfaceStrBuf.MinimumArrayElement );
-
-        // DWORD 5
-        if( productID.eRenderCoreFamily == IGFX_GEN7_CORE ||
-            productID.eRenderCoreFamily == IGFX_GEN7_5_CORE )
-        {
-            ICBE_DPF( GFXDBG_HARDWARE, "\tMipCountLOD                     : %u\n",
-                p3DStateSurfaceState->DW5.Gen7.MipCountLOD );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceMinLOD                   : %u\n",
-                p3DStateSurfaceState->DW5.Gen7.SurfaceMinLOD );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tXOffset                         : %u\n",
-                p3DStateSurfaceState->DW5.Gen7.XOffset );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tYOffset                         : %u\n",
-                p3DStateSurfaceState->DW5.Gen7.YOffset );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceEncryptedDataEnable      : %x\n",
-                p3DStateSurfaceState->DW5.Gen7.SurfaceEncryptedDataEnable );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceGraphicsDataType         : %u\n",
-                p3DStateSurfaceState->DW5.Gen7.SurfaceGraphicsDataType );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tCacheabilityControlL3           : %x\n",
-                p3DStateSurfaceState->DW5.Gen7.CacheabilityControlL3 );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tCacheabilityControlLLC          : %x\n",
-                p3DStateSurfaceState->DW5.Gen7.CacheabilityControlLLC );
-        }
-        else if( productID.eRenderCoreFamily >= IGFX_GEN8_CORE )
-        {
-            ICBE_DPF( GFXDBG_HARDWARE, "\tMipCountLOD                     : %u\n",
-                p3DStateSurfaceState->DW5.Gen8.MipCountLOD );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceMinLOD                   : %u\n",
-                p3DStateSurfaceState->DW5.Gen8.SurfaceMinLOD );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tYOffset                         : %u\n",
-                p3DStateSurfaceState->DW5.Gen8.YOffset );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tXOffset                         : %u\n",
-                p3DStateSurfaceState->DW5.Gen8.XOffset );
-
-            if ( productID.eRenderCoreFamily >= IGFX_GEN9_CORE )
-            {
-                ICBE_DPF( GFXDBG_HARDWARE, "\tTiledResourceEnable             : %u\n",
-                    p3DStateSurfaceState->DW5.Gen9.TiledResourceEnable );
-
-                ICBE_DPF( GFXDBG_HARDWARE, "\tTiledResourceHorizontalAlignment: %u\n",
-                    p3DStateSurfaceState->DW5.Gen9.TiledResourceHorizontalAlignment );
-
-                ICBE_DPF( GFXDBG_HARDWARE, "\tTiledResourceVerticalAlignment  : %u\n",
-                    p3DStateSurfaceState->DW5.Gen9.TiledResourceVerticalAlignment );
-
-                ICBE_DPF( GFXDBG_HARDWARE, "\tMipTailStartLOD                 : %u\n",
-                    p3DStateSurfaceState->DW5.Gen9.MipTailStartLOD );
-
-                ICBE_DPF( GFXDBG_HARDWARE, "\tCoherencyType                   : %u\n",
-                    p3DStateSurfaceState->DW5.Gen9.CoherencyType );
-            }
-        }
-
-        // DWORD6
-        if( productID.eRenderCoreFamily == IGFX_GEN7_CORE ||
-            productID.eRenderCoreFamily == IGFX_GEN7_5_CORE ||
-            productID.eRenderCoreFamily == IGFX_GEN8_CORE )
-        {
-            ICBE_DPF( GFXDBG_HARDWARE, "\tMCSEnable                       : %x\n",
-                p3DStateSurfaceState->DW6.Gen7.SurfaceMCS.MCSEnable );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tMCSBaseAddress                  : %u\n",
-                p3DStateSurfaceState->DW6.Gen7.SurfaceMCS.MCSBaseAddress );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tMCSSurfacePitch                 : %u\n",
-                p3DStateSurfaceState->DW6.Gen7.SurfaceMCS.MCSSurfacePitch );
-        }
-        else if ( productID.eRenderCoreFamily >= IGFX_GEN9_CORE )
-        {
-            ICBE_DPF( GFXDBG_HARDWARE, "\tAuxiliarySurfaceMode            : %x\n",
-                p3DStateSurfaceState->DW6.Gen9.SurfaceOther.AuxiliarySurfaceMode );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tRenderTargetCompressionEnable   : %x\n",
-                p3DStateSurfaceState->DW6.Gen9.SurfaceOther.RenderTargetCompressionEnable );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tAuxiliarySurfacePitch           : %x\n",
-                p3DStateSurfaceState->DW6.Gen9.SurfaceOther.AuxiliarySurfacePitch );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tAuxilarySurfaceQPitch           : %x\n",
-                p3DStateSurfaceState->DW6.Gen9.SurfaceOther.AuxilarySurfaceQPitch );
-        }
-
-        // DWORD7
-        ICBE_DPF( GFXDBG_HARDWARE, "\tResourceMinLOD                  : %u\n",
-            p3DStateSurfaceState->DW7.Gen7.ResourceMinLOD );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tClearColorRed                   : %x\n",
-            p3DStateSurfaceState->DW7.Gen7.ClearColorRed );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tClearColorGreen                 : %x\n",
-            p3DStateSurfaceState->DW7.Gen7.ClearColorGreen );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tClearColorBlue                  : %x\n",
-            p3DStateSurfaceState->DW7.Gen7.ClearColorBlue );
-
-        ICBE_DPF( GFXDBG_HARDWARE, "\tClearColorAlpha                 : %x\n",
-            p3DStateSurfaceState->DW7.Gen7.ClearColorAlpha );
-
-        if( productID.eRenderCoreFamily >= IGFX_GEN7_5_CORE )
-        {
-            ICBE_DPF( GFXDBG_HARDWARE, "\tShaderChannelSelectAlpha        : %x\n",
-                p3DStateSurfaceState->DW7.Gen7_5.ShaderChannelSelectAlpha );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tShaderChannelSelectBlue         : %x\n",
-                p3DStateSurfaceState->DW7.Gen7_5.ShaderChannelSelectBlue );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tShaderChannelSelectGreen        : %x\n",
-                p3DStateSurfaceState->DW7.Gen7_5.ShaderChannelSelectGreen );
-
-            ICBE_DPF( GFXDBG_HARDWARE, "\tShaderChannelSelectRed          : %x\n",
-                p3DStateSurfaceState->DW7.Gen7_5.ShaderChannelSelectRed );
-        }
-
-        if( productID.eRenderCoreFamily >= IGFX_GEN8_CORE )
-        {
-            // DWORD 8
-            ICBE_DPF( GFXDBG_HARDWARE, "\tSurfaceBaseAddress              : %x\n",
-                p3DStateSurfaceState->DW8.Gen8.SurfaceBaseAddress );
-
-            // DWORD 9
-            ICBE_DPF( GFXDBG_HARDWARE, "\tSurface64bitBaseAddress         : %x\n",
-                p3DStateSurfaceState->DW9.Gen8.Surface64bitBaseAddress );
-
-            // DWORD 10
-            ICBE_DPF( GFXDBG_HARDWARE, "\tAuxiliarySurfaceBaseAddress     : %x\n",
-                p3DStateSurfaceState->DW10.Gen8.AuxiliarySurfaceBaseAddress );
-
-            // DWORD 11
-            ICBE_DPF( GFXDBG_HARDWARE, "\tAuxiliary64bitBaseAddress       : %x\n",
-                p3DStateSurfaceState->DW11.Gen8.Auxiliary64bitBaseAddress );                       
-
-            if ( productID.eRenderCoreFamily == IGFX_GEN8_CORE )
-            {
-                // DWORD 12
-                ICBE_DPF( GFXDBG_HARDWARE, "\tHierarchicalDepthClearValue     : %x\n",
-                    p3DStateSurfaceState->DW12.Gen8.HierarchicalDepthClearValue );
-            }
-            else
-            {
-                // DWORD 12
-                ICBE_DPF( GFXDBG_HARDWARE, "\tRedClearColor                   : %x\n",
-                    p3DStateSurfaceState->DW12.Gen9.RedClearColor );
-
-                // DWORD 13
-                ICBE_DPF( GFXDBG_HARDWARE, "\tGreenClearColor                 : %x\n",
-                    p3DStateSurfaceState->DW13.Gen9.GreenClearColor );
-
-                // DWORD 14
-                ICBE_DPF( GFXDBG_HARDWARE, "\tBlueClearColor                  : %x\n",
-                    p3DStateSurfaceState->DW14.Gen9.BlueClearColor );
-
-                // DWORD 15
-                ICBE_DPF( GFXDBG_HARDWARE, "\tAlphaClearColor                 : %x\n",
-                    p3DStateSurfaceState->DW15.Gen9.AlphaClearColor );
-            }
-        }        
-    }
-    else
-    {
-        // Unsupported platform
-        ICBE_ASSERT( 0 );
-    }
+	if (IGC_IS_FLAG_ENABLED(DebugSurfaceStateOutput)) {
+		SSharedStateSurfaceState* p3DStateSurfaceState =
+			(SSharedStateSurfaceState*)pLinearAddress;
+
+		if (productID.eRenderCoreFamily == IGFX_GEN7_CORE ||
+			productID.eRenderCoreFamily == IGFX_GEN7_5_CORE)
+		{
+			ICBE_DPF(GFXDBG_HARDWARE, "SURFACE_STATE = { %08x, %08x, %08x, %08x, %08x, %08x, %08X, %08X }\n",
+				p3DStateSurfaceState->DW0.Value,
+				p3DStateSurfaceState->DW1.Value,
+				p3DStateSurfaceState->DW2.Value,
+				p3DStateSurfaceState->DW3.Value,
+				p3DStateSurfaceState->DW4.Value,
+				p3DStateSurfaceState->DW5.Value,
+				p3DStateSurfaceState->DW6.Value,
+				p3DStateSurfaceState->DW7.Value);
+		}
+		else if (productID.eRenderCoreFamily == IGFX_GEN8_CORE)
+		{
+			ICBE_DPF(GFXDBG_HARDWARE, "SURFACE_STATE = { %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x }\n",
+				p3DStateSurfaceState->DW0.Value,
+				p3DStateSurfaceState->DW1.Value,
+				p3DStateSurfaceState->DW2.Value,
+				p3DStateSurfaceState->DW3.Value,
+				p3DStateSurfaceState->DW4.Value,
+				p3DStateSurfaceState->DW5.Value,
+				p3DStateSurfaceState->DW6.Value,
+				p3DStateSurfaceState->DW7.Value,
+				p3DStateSurfaceState->DW8.Value,
+				p3DStateSurfaceState->DW9.Value,
+				p3DStateSurfaceState->DW10.Value,
+				p3DStateSurfaceState->DW11.Value,
+				p3DStateSurfaceState->DW12.Value);
+		}
+		else if (productID.eRenderCoreFamily >= IGFX_GEN9_CORE)
+		{
+			ICBE_DPF(GFXDBG_HARDWARE, "SURFACE_STATE = { %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x, %08x}\n",
+				p3DStateSurfaceState->DW0.Value,
+				p3DStateSurfaceState->DW1.Value,
+				p3DStateSurfaceState->DW2.Value,
+				p3DStateSurfaceState->DW3.Value,
+				p3DStateSurfaceState->DW4.Value,
+				p3DStateSurfaceState->DW5.Value,
+				p3DStateSurfaceState->DW6.Value,
+				p3DStateSurfaceState->DW7.Value,
+				p3DStateSurfaceState->DW8.Value,
+				p3DStateSurfaceState->DW9.Value,
+				p3DStateSurfaceState->DW10.Value,
+				p3DStateSurfaceState->DW11.Value,
+				p3DStateSurfaceState->DW12.Value,
+				p3DStateSurfaceState->DW13.Value,
+				p3DStateSurfaceState->DW14.Value,
+				p3DStateSurfaceState->DW15.Value);
+		}
+		else
+		{
+			// Unsupported platform
+			ICBE_ASSERT(0);
+		}
+
+		// DWORD 0
+		if (productID.eRenderCoreFamily == IGFX_GEN7_CORE ||
+			productID.eRenderCoreFamily == IGFX_GEN7_5_CORE)
+		{
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceType                     : %x\n",
+				p3DStateSurfaceState->DW0.Gen7.SurfaceType);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceArray                    : %x\n",
+				p3DStateSurfaceState->DW0.Gen7.SurfaceArray);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceFormat                   : %x\n",
+				p3DStateSurfaceState->DW0.Gen7.SurfaceFormat);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tVerticalLineStride              : %u\n",
+				p3DStateSurfaceState->DW0.Gen7.VerticalLineStride);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tVerticalLineStrideOffset        : %u\n",
+				p3DStateSurfaceState->DW0.Gen7.VerticalLineStrideOffset);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tRenderCacheReadWriteMode        : %x\n",
+				p3DStateSurfaceState->DW0.Gen7.RenderCacheReadWriteMode);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tMediaBoundaryPixelMode          : %x\n",
+				p3DStateSurfaceState->DW0.Gen7.MediaBoundaryPixelMode);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tCubeFaceEnablesNegativeX        : %x\n",
+				p3DStateSurfaceState->DW0.Gen7.CubeFaceEnablesNegativeX);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tCubeFaceEnablesPositiveX        : %x\n",
+				p3DStateSurfaceState->DW0.Gen7.CubeFaceEnablesPositiveX);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tCubeFaceEnablesNegativeY        : %x\n",
+				p3DStateSurfaceState->DW0.Gen7.CubeFaceEnablesNegativeY);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tCubeFaceEnablesPositiveY        : %x\n",
+				p3DStateSurfaceState->DW0.Gen7.CubeFaceEnablesPositiveY);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tCubeFaceEnablesNegativeZ        : %x\n",
+				p3DStateSurfaceState->DW0.Gen7.CubeFaceEnablesNegativeZ);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tCubeFaceEnablesPositiveZ        : %x\n",
+				p3DStateSurfaceState->DW0.Gen7.CubeFaceEnablesPositiveZ);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceArraySpacing             : %u\n",
+				p3DStateSurfaceState->DW0.Gen7.SurfaceArraySpacing);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tTiledSurface                    : %x\n",
+				p3DStateSurfaceState->DW0.Gen7.TiledSurface);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tTileWalk                        : %x\n",
+				p3DStateSurfaceState->DW0.Gen7.TileWalk);
+		}
+		else if ((productID.eRenderCoreFamily >= IGFX_GEN8_CORE) &&
+			IsPlatformValid(productID))
+		{
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceType                     : %x\n",
+				p3DStateSurfaceState->DW0.Gen8.SurfaceType);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceArray                    : %x\n",
+				p3DStateSurfaceState->DW0.Gen8.SurfaceArray);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceFormat                   : %x\n",
+				p3DStateSurfaceState->DW0.Gen8.SurfaceFormat);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceVerticalAlignment        : %u\n",
+				p3DStateSurfaceState->DW0.Gen8.SurfaceVerticalAlignment);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceHorizontalAlignment      : %u\n",
+				p3DStateSurfaceState->DW0.Gen8.SurfaceHorizontalAlignment);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tTileMode                        : %u\n",
+				p3DStateSurfaceState->DW0.Gen8.TileMode);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tVerticalLineStride              : %u\n",
+				p3DStateSurfaceState->DW0.Gen8.VerticalLineStride);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tVerticalLineStrideOffset        : %u\n",
+				p3DStateSurfaceState->DW0.Gen8.VerticalLineStrideOffset);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tRenderCacheReadWriteMode        : %x\n",
+				p3DStateSurfaceState->DW0.Gen8.RenderCacheReadWriteMode);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tMediaBoundaryPixelMode          : %x\n",
+				p3DStateSurfaceState->DW0.Gen8.MediaBoundaryPixelMode);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tCubeFaceEnablesNegativeX        : %x\n",
+				p3DStateSurfaceState->DW0.Gen8.CubeFaceEnablesNegativeX);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tCubeFaceEnablesPositiveX        : %x\n",
+				p3DStateSurfaceState->DW0.Gen8.CubeFaceEnablesPositiveX);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tCubeFaceEnablesNegativeY        : %x\n",
+				p3DStateSurfaceState->DW0.Gen8.CubeFaceEnablesNegativeY);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tCubeFaceEnablesPositiveY        : %x\n",
+				p3DStateSurfaceState->DW0.Gen8.CubeFaceEnablesPositiveY);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tCubeFaceEnablesNegativeZ        : %x\n",
+				p3DStateSurfaceState->DW0.Gen8.CubeFaceEnablesNegativeZ);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tCubeFaceEnablesPositiveZ        : %x\n",
+				p3DStateSurfaceState->DW0.Gen8.CubeFaceEnablesPositiveZ);
+
+			if (productID.eRenderCoreFamily >= IGFX_GEN9_CORE)
+			{
+				ICBE_DPF(GFXDBG_HARDWARE, "\tASTCEnable                      : %x\n",
+					p3DStateSurfaceState->DW0.Gen9.ASTCEnable);
+			}
+		}
+		else
+		{
+			// Unsupported platform
+			ICBE_ASSERT(0);
+		}
+
+		// DWORD 1
+		if (productID.eRenderCoreFamily == IGFX_GEN7_CORE ||
+			productID.eRenderCoreFamily == IGFX_GEN7_5_CORE)
+		{
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceBaseAddress              : %x\n",
+				p3DStateSurfaceState->DW1.All.SurfaceBaseAddress);
+		}
+		else if ((productID.eRenderCoreFamily >= IGFX_GEN8_CORE) &&
+			IsPlatformValid(productID))
+		{
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceQPitch                   : %x\n",
+				p3DStateSurfaceState->DW1.Gen8.SurfaceQPitch);
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceObjectAgeControl         : %x\n",
+				p3DStateSurfaceState->DW1.Gen8.SurfaceObjectAgeControl);
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceObjectEncryptedDataEnable: %x\n",
+				p3DStateSurfaceState->DW1.Gen8.SurfaceObjectEncryptedDataEnable);
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceObjectTargetCache        : %x\n",
+				p3DStateSurfaceState->DW1.Gen8.SurfaceObjectTargetCache);
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceObjectCacheabilityControl: %x\n",
+				p3DStateSurfaceState->DW1.Gen8.SurfaceObjectCacheabilityControl);
+		}
+		else
+		{
+			// Unsupported platform
+			ICBE_ASSERT(0);
+		}
+
+		if (productID.eRenderCoreFamily >= IGFX_GEN7_CORE   &&
+			IsPlatformValid(productID))
+		{
+			// DWORD 2
+			ICBE_DPF(GFXDBG_HARDWARE, "\tHeight                          : %u\n",
+				p3DStateSurfaceState->DW2.Gen7.Height);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tWidth                           : %u\n",
+				p3DStateSurfaceState->DW2.Gen7.Width);
+
+			// DWORD 3
+			ICBE_DPF(GFXDBG_HARDWARE, "\tDepth                           : %u\n",
+				p3DStateSurfaceState->DW3.Gen7.Depth);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfacePitch                    : %u\n",
+				p3DStateSurfaceState->DW3.Gen7.SurfacePitch);
+
+			// DWORD 4
+			ICBE_DPF(GFXDBG_HARDWARE, "\tMinimumArrayElement             : %u\n",
+				p3DStateSurfaceState->DW4.Gen7.SurfaceAll.MinimumArrayElement);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfacePitch                    : %x\n",
+				p3DStateSurfaceState->DW4.Gen7.SurfaceAll.MultisampledSurfaceStorageFormat);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tMultisamplePositionPaletteIndex : %u\n",
+				p3DStateSurfaceState->DW4.Gen7.SurfaceAll.MultisamplePositionPaletteIndex);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tNumMultisamples                 : %u\n",
+				p3DStateSurfaceState->DW4.Gen7.SurfaceAll.NumMultisamples);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tRenderTargetRotation            : %x\n",
+				p3DStateSurfaceState->DW4.Gen7.SurfaceAll.RenderTargetRotation);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tRenderTargetViewExtent          : %x\n",
+				p3DStateSurfaceState->DW4.Gen7.SurfaceAll.RenderTargetViewExtent);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceStrBufMinimumArrayElement: %u\n",
+				p3DStateSurfaceState->DW4.Gen7.SurfaceStrBuf.MinimumArrayElement);
+
+			// DWORD 5
+			if (productID.eRenderCoreFamily == IGFX_GEN7_CORE ||
+				productID.eRenderCoreFamily == IGFX_GEN7_5_CORE)
+			{
+				ICBE_DPF(GFXDBG_HARDWARE, "\tMipCountLOD                     : %u\n",
+					p3DStateSurfaceState->DW5.Gen7.MipCountLOD);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceMinLOD                   : %u\n",
+					p3DStateSurfaceState->DW5.Gen7.SurfaceMinLOD);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tXOffset                         : %u\n",
+					p3DStateSurfaceState->DW5.Gen7.XOffset);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tYOffset                         : %u\n",
+					p3DStateSurfaceState->DW5.Gen7.YOffset);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceEncryptedDataEnable      : %x\n",
+					p3DStateSurfaceState->DW5.Gen7.SurfaceEncryptedDataEnable);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceGraphicsDataType         : %u\n",
+					p3DStateSurfaceState->DW5.Gen7.SurfaceGraphicsDataType);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tCacheabilityControlL3           : %x\n",
+					p3DStateSurfaceState->DW5.Gen7.CacheabilityControlL3);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tCacheabilityControlLLC          : %x\n",
+					p3DStateSurfaceState->DW5.Gen7.CacheabilityControlLLC);
+			}
+			else if (productID.eRenderCoreFamily >= IGFX_GEN8_CORE)
+			{
+				ICBE_DPF(GFXDBG_HARDWARE, "\tMipCountLOD                     : %u\n",
+					p3DStateSurfaceState->DW5.Gen8.MipCountLOD);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceMinLOD                   : %u\n",
+					p3DStateSurfaceState->DW5.Gen8.SurfaceMinLOD);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tYOffset                         : %u\n",
+					p3DStateSurfaceState->DW5.Gen8.YOffset);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tXOffset                         : %u\n",
+					p3DStateSurfaceState->DW5.Gen8.XOffset);
+
+				if (productID.eRenderCoreFamily >= IGFX_GEN9_CORE)
+				{
+					ICBE_DPF(GFXDBG_HARDWARE, "\tTiledResourceEnable             : %u\n",
+						p3DStateSurfaceState->DW5.Gen9.TiledResourceEnable);
+
+					ICBE_DPF(GFXDBG_HARDWARE, "\tTiledResourceHorizontalAlignment: %u\n",
+						p3DStateSurfaceState->DW5.Gen9.TiledResourceHorizontalAlignment);
+
+					ICBE_DPF(GFXDBG_HARDWARE, "\tTiledResourceVerticalAlignment  : %u\n",
+						p3DStateSurfaceState->DW5.Gen9.TiledResourceVerticalAlignment);
+
+					ICBE_DPF(GFXDBG_HARDWARE, "\tMipTailStartLOD                 : %u\n",
+						p3DStateSurfaceState->DW5.Gen9.MipTailStartLOD);
+
+					ICBE_DPF(GFXDBG_HARDWARE, "\tCoherencyType                   : %u\n",
+						p3DStateSurfaceState->DW5.Gen9.CoherencyType);
+				}
+			}
+
+			// DWORD6
+			if (productID.eRenderCoreFamily == IGFX_GEN7_CORE ||
+				productID.eRenderCoreFamily == IGFX_GEN7_5_CORE ||
+				productID.eRenderCoreFamily == IGFX_GEN8_CORE)
+			{
+				ICBE_DPF(GFXDBG_HARDWARE, "\tMCSEnable                       : %x\n",
+					p3DStateSurfaceState->DW6.Gen7.SurfaceMCS.MCSEnable);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tMCSBaseAddress                  : %u\n",
+					p3DStateSurfaceState->DW6.Gen7.SurfaceMCS.MCSBaseAddress);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tMCSSurfacePitch                 : %u\n",
+					p3DStateSurfaceState->DW6.Gen7.SurfaceMCS.MCSSurfacePitch);
+			}
+			else if (productID.eRenderCoreFamily >= IGFX_GEN9_CORE)
+			{
+				ICBE_DPF(GFXDBG_HARDWARE, "\tAuxiliarySurfaceMode            : %x\n",
+					p3DStateSurfaceState->DW6.Gen9.SurfaceOther.AuxiliarySurfaceMode);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tRenderTargetCompressionEnable   : %x\n",
+					p3DStateSurfaceState->DW6.Gen9.SurfaceOther.RenderTargetCompressionEnable);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tAuxiliarySurfacePitch           : %x\n",
+					p3DStateSurfaceState->DW6.Gen9.SurfaceOther.AuxiliarySurfacePitch);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tAuxilarySurfaceQPitch           : %x\n",
+					p3DStateSurfaceState->DW6.Gen9.SurfaceOther.AuxilarySurfaceQPitch);
+			}
+
+			// DWORD7
+			ICBE_DPF(GFXDBG_HARDWARE, "\tResourceMinLOD                  : %u\n",
+				p3DStateSurfaceState->DW7.Gen7.ResourceMinLOD);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tClearColorRed                   : %x\n",
+				p3DStateSurfaceState->DW7.Gen7.ClearColorRed);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tClearColorGreen                 : %x\n",
+				p3DStateSurfaceState->DW7.Gen7.ClearColorGreen);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tClearColorBlue                  : %x\n",
+				p3DStateSurfaceState->DW7.Gen7.ClearColorBlue);
+
+			ICBE_DPF(GFXDBG_HARDWARE, "\tClearColorAlpha                 : %x\n",
+				p3DStateSurfaceState->DW7.Gen7.ClearColorAlpha);
+
+			if (productID.eRenderCoreFamily >= IGFX_GEN7_5_CORE)
+			{
+				ICBE_DPF(GFXDBG_HARDWARE, "\tShaderChannelSelectAlpha        : %x\n",
+					p3DStateSurfaceState->DW7.Gen7_5.ShaderChannelSelectAlpha);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tShaderChannelSelectBlue         : %x\n",
+					p3DStateSurfaceState->DW7.Gen7_5.ShaderChannelSelectBlue);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tShaderChannelSelectGreen        : %x\n",
+					p3DStateSurfaceState->DW7.Gen7_5.ShaderChannelSelectGreen);
+
+				ICBE_DPF(GFXDBG_HARDWARE, "\tShaderChannelSelectRed          : %x\n",
+					p3DStateSurfaceState->DW7.Gen7_5.ShaderChannelSelectRed);
+			}
+
+			if (productID.eRenderCoreFamily >= IGFX_GEN8_CORE)
+			{
+				// DWORD 8
+				ICBE_DPF(GFXDBG_HARDWARE, "\tSurfaceBaseAddress              : %x\n",
+					p3DStateSurfaceState->DW8.Gen8.SurfaceBaseAddress);
+
+				// DWORD 9
+				ICBE_DPF(GFXDBG_HARDWARE, "\tSurface64bitBaseAddress         : %x\n",
+					p3DStateSurfaceState->DW9.Gen8.Surface64bitBaseAddress);
+
+				// DWORD 10
+				ICBE_DPF(GFXDBG_HARDWARE, "\tAuxiliarySurfaceBaseAddress     : %x\n",
+					p3DStateSurfaceState->DW10.Gen8.AuxiliarySurfaceBaseAddress);
+
+				// DWORD 11
+				ICBE_DPF(GFXDBG_HARDWARE, "\tAuxiliary64bitBaseAddress       : %x\n",
+					p3DStateSurfaceState->DW11.Gen8.Auxiliary64bitBaseAddress);
+
+				if (productID.eRenderCoreFamily == IGFX_GEN8_CORE)
+				{
+					// DWORD 12
+					ICBE_DPF(GFXDBG_HARDWARE, "\tHierarchicalDepthClearValue     : %x\n",
+						p3DStateSurfaceState->DW12.Gen8.HierarchicalDepthClearValue);
+				}
+				else
+				{
+					// DWORD 12
+					ICBE_DPF(GFXDBG_HARDWARE, "\tRedClearColor                   : %x\n",
+						p3DStateSurfaceState->DW12.Gen9.RedClearColor);
+
+					// DWORD 13
+					ICBE_DPF(GFXDBG_HARDWARE, "\tGreenClearColor                 : %x\n",
+						p3DStateSurfaceState->DW13.Gen9.GreenClearColor);
+
+					// DWORD 14
+					ICBE_DPF(GFXDBG_HARDWARE, "\tBlueClearColor                  : %x\n",
+						p3DStateSurfaceState->DW14.Gen9.BlueClearColor);
+
+					// DWORD 15
+					ICBE_DPF(GFXDBG_HARDWARE, "\tAlphaClearColor                 : %x\n",
+						p3DStateSurfaceState->DW15.Gen9.AlphaClearColor);
+				}
+			}
+		}
+		else
+		{
+			// Unsupported platform
+			ICBE_ASSERT(0);
+		}
+	}
 
 #endif
 }

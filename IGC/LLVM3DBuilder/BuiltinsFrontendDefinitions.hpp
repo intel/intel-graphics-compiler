@@ -4064,6 +4064,15 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateRoundNE(llvm::Valu
 }
 
 template<bool preserveNames, typename T, typename Inserter>
+inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateIsNan(llvm::Value* V)
+{
+    //fcmp_uno yields true if either operand is a QNAN. Since we compare the same numer with itself.
+    //If V is not NAN it will return false
+    return this->CreateFCmp(llvm::FCmpInst::FCMP_UNO, V, V);
+}
+
+
+template<bool preserveNames, typename T, typename Inserter>
 llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateCtpop(llvm::Value *V)
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
@@ -5147,4 +5156,5 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateCPSActualCo
             this->getInt32(1));
        
 }
+
 

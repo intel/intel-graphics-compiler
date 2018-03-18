@@ -203,6 +203,8 @@ namespace vISA
         void* operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
         void multiAccSubstitution(G4_BB* bb);
 
+        bool checkSrcMod(INST_LIST_ITER it, G4_BB* bb, int srcPos);
+
     public:
         HWConformity(IR_Builder& b, G4_Kernel &k, vISA::Mem_Manager& m) :
             builder(b), kernel(k), mem(m)

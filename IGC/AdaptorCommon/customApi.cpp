@@ -572,7 +572,6 @@ namespace IGC
                 bool needMkdir = false;
 
                 if (IGC_IS_FLAG_ENABLED(DumpLLVMIR) ||
-                    IGC_IS_FLAG_ENABLED(EnableDxbcDump) ||
                     IGC_IS_FLAG_ENABLED(EnableCosDump) ||
                     IGC_IS_FLAG_ENABLED(EnableVISAOutput) ||
                     IGC_IS_FLAG_ENABLED(EnableVISABinary) ||
