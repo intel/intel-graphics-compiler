@@ -377,4 +377,10 @@
         return true;
     }
 
+    bool canMadHaveSrc0Acc() const
+    {
+        return false;
+    }
+
+
     // end HW capabilities

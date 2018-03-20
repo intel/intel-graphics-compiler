@@ -4665,42 +4665,55 @@ static bool isAccCandidate(G4_INST* inst, G4_Kernel& kernel, int& lastUse, bool&
         // ToDo: may swap source here
         if (useInst->getNumSrc() == 3)
         {
-            if (opndNum != Opnd_src1)
+            switch (opndNum)
             {
-                mustBeAcc0 = true;
-                bool goodMadSrc0 = useInst->opcode() == G4_mad && opndNum == Opnd_src0;
-                if (!goodMadSrc0)
-                {
-                    return false;
-                }
-                if (useInst->getSrc(0)->getType() == Type_HF && useInst->getMaskOffset() == 16)
-                {
-                    // we must use acc1, and need to check that inst does not have an acc0 source
-                    // so that dst and src won't have different acc source
-                    if (inst->isAccSrcInst())
+                case Opnd_src1:
+                    break;  //OK
+                case Opnd_src0:
+                    if (kernel.fg.builder->canMadHaveSrc0Acc())
                     {
-                        bool hasAcc0Src = false;
-                        auto isAcc0 = [](G4_SrcRegRegion* src)
-                        {
-                            return src->getBase()->asAreg()->getArchRegType() == AREG_ACC0;
-                        };
-                        if (inst->getSrc(0)->isSrcRegRegion() && 
-                            inst->getSrc(0)->asSrcRegRegion()->getBase()->isAccReg())
-                        {
-                            hasAcc0Src = isAcc0(inst->getSrc(0)->asSrcRegRegion());
-                        }
-                        else if (inst->getSrc(1)->isSrcRegRegion() &&
-                            inst->getSrc(1)->asSrcRegRegion()->getBase()->isAccReg())
-                        {
-                            hasAcc0Src = isAcc0(inst->getSrc(1)->asSrcRegRegion());
-                        }
-                        if (hasAcc0Src)
-                        {
-                            return false;
-                        }
+                        // OK
                     }
-                }
-                madSrc0Use.push_back(useInst);
+                    else if (useInst->opcode() == G4_mad)
+                    {
+                        // we can turn this mad into a mac
+                        mustBeAcc0 = true;
+                        if (useInst->getSrc(0)->getType() == Type_HF && useInst->getMaskOffset() == 16)
+                        {
+                            // we must use acc1, and need to check that inst does not have an acc0 source
+                            // so that dst and src won't have different acc source
+                            if (inst->isAccSrcInst())
+                            {
+                                bool hasAcc0Src = false;
+                                auto isAcc0 = [](G4_SrcRegRegion* src)
+                                {
+                                    return src->getBase()->asAreg()->getArchRegType() == AREG_ACC0;
+                                };
+                                if (inst->getSrc(0)->isSrcRegRegion() &&
+                                    inst->getSrc(0)->asSrcRegRegion()->getBase()->isAccReg())
+                                {
+                                    hasAcc0Src = isAcc0(inst->getSrc(0)->asSrcRegRegion());
+                                }
+                                else if (inst->getSrc(1)->isSrcRegRegion() &&
+                                    inst->getSrc(1)->asSrcRegRegion()->getBase()->isAccReg())
+                                {
+                                    hasAcc0Src = isAcc0(inst->getSrc(1)->asSrcRegRegion());
+                                }
+                                if (hasAcc0Src)
+                                {
+                                    return false;
+                                }
+                            }
+                        }
+                        madSrc0Use.push_back(useInst);
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                    break;
+                default:
+                    return false;
             }
         }
         else if (opndNum != Opnd_src0)
@@ -4778,7 +4791,7 @@ static void replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
         G4_SrcRegRegion* oldSrc = useInst->getSrc(srcId)->asSrcRegRegion();
         G4_SrcRegRegion* accSrc = builder.createSrcRegRegion(oldSrc->getModifier(), Direct,
             accReg, (short)accNum, 0, builder.getRegionStride1(), dst->getType());
-        if (useInst->opcode() == G4_mad && srcId == 0)
+        if (useInst->opcode() == G4_mad && srcId == 0 && !builder.canMadHaveSrc0Acc())
         {
             // change mad to mac as src0 of 3-src does not support acc
             auto updateDefSrcPos = [](G4_INST* useInst, Gen4_Operand_Number origPos)
