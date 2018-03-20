@@ -124,7 +124,6 @@ namespace IGC
         void visitZExtInst(llvm::ZExtInst &I);
         void visitIntToPtr(llvm::IntToPtrInst& I);
         void visitSDiv(llvm::BinaryOperator& I);
-        void visitCallInst(llvm::CallInst& I);
     };
 
     class IGCConstProp : public llvm::FunctionPass

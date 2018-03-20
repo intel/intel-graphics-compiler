@@ -3829,11 +3829,19 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
             }
             else if (srcRegion->isContiguous(execSize))
             {
-                // we have to make sure width is not being used to cross GRF, as <1;1,0> 
-                // is not a legal region for align1 ternary source (vs 1 not supported)
-                // mad doesn't support <1;1,0>, the width is at least 2
-                int minAlignment = G4_Type_Table[src->getType()].byteSize * 2;
-                return builder.isOpndAligned(src, minAlignment);
+                // Normalize the region if it is not.
+                if (srcRegion->width != 1)
+                {
+                    src->setRegion(builder.getRegionStride1(), /*invariant*/ true);
+                }
+                if (!builder.encodeUnitStrideTernary())
+                {
+                    // we have to make sure width is not being used to cross GRF, as <1;1,0> 
+                    // is not a legal region for align1 ternary source (vs 1 not supported)
+                    // mad doesn't support <1;1,0>, the width is at least 2
+                    int minAlignment = G4_Type_Table[src->getType()].byteSize * 2;
+                    return builder.isOpndAligned(src, minAlignment);
+                }
             }
             return true;
         };
@@ -3858,9 +3866,21 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
             {
                 return checkSingleStrideRegion(src->asSrcRegRegion(), stride, execSize, builder);
             }
-            // <4;4,0> and <8;8,0> are ok
-            return srcRegion->vertStride == srcRegion->width &&
-                srcRegion->horzStride == 0 && srcRegion->width < 8 && srcRegion->width != 2;
+
+            if (builder.encodeUnitStrideTernary())
+            {
+                // <4;4,0> and <8;8,0> are ok
+                return srcRegion->vertStride == srcRegion->width &&
+                       srcRegion->horzStride == 0 &&
+                       (srcRegion->width == 4 || srcRegion->width == 8);
+            }
+            else
+            {
+                // <2;2,0>, <4;4,0> and <8;8,0> are ok
+                return srcRegion->vertStride == srcRegion->width &&
+                       srcRegion->horzStride == 0 &&
+                       srcRegion->width <= 8;
+            }
         }
         else
         {

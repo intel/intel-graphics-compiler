@@ -3124,15 +3124,7 @@ bool CodeGenPatternMatch::MatchRegisterRegion(llvm::GenIntrinsicInst& I)
     Value* source = I.getOperand(1);
     bool isMatch = false;
     int subReg = 0;
-    uint verticalStride = 0;
-    uint width = 0;
-    uint horizontalStride = 0;
-
-    //Skip ZExt Instruction as it does not impact the pattern match
-    if (auto zExtInst = llvm::dyn_cast<llvm::ZExtInst>(source))
-    {
-        source = zExtInst->getOperand(0);
-    }
+    uint verticalStride = 1; //Default value for special case  Shuffle( data, (laneID << x) + y )  when x = 0
 
     if (auto binaryInst = dyn_cast<BinaryOperator>(source))
     {
@@ -3162,66 +3154,42 @@ bool CodeGenPatternMatch::MatchRegisterRegion(llvm::GenIntrinsicInst& I)
             if (llvm::ConstantInt* simDOffSetInst = llvm::dyn_cast<llvm::ConstantInt>(binaryInst->getOperand(1)))
             {
                 uint shiftFactor = int_cast<uint>(simDOffSetInst->getZExtValue());
-                
                 //Check to make sure we dont end up with an invalid Vertical Stride.
                 //Only 1, 2, 4, 8, 16 are supported. 
                 if (shiftFactor <= 4)
                 {
-                    //<VerString;Width,HorzString>
                     verticalStride = (int)pow(2, shiftFactor);
-                    width = 1;
-                    horizontalStride = 0;
                 }
             }
-        }
-        else if (binaryInst->getOpcode() == Instruction::LShr)
-        {
-            source = binaryInst->getOperand(0);
-
-            if (llvm::ConstantInt* simDOffSetInst = llvm::dyn_cast<llvm::ConstantInt>(binaryInst->getOperand(1)))
-            {
-                uint shiftFactor = int_cast<uint>(simDOffSetInst->getZExtValue());
-
-                //Check to make sure we dont end up with an invalid Width.
-                //Only 1, 2, 4, 8, 16 are supported. 
-                if (shiftFactor <= 4)
-                {
-                    //<VerString;Width,HorzString>
-                    verticalStride = 0;
-                    width = (int)pow(2, shiftFactor);
-                    horizontalStride = 1;
-                }
-            }
-        }
-
-        if (auto zExtInst = llvm::dyn_cast<llvm::ZExtInst>(source))
-        {
-            source = zExtInst->getOperand(0);
-        }
-
-        llvm::GenIntrinsicInst* intrin = llvm::dyn_cast<llvm::GenIntrinsicInst>(source);
-
-        //Finally check for simLaneID intrisic
-        if (intrin && (intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_simdLaneId))
-        {
-            MatchRegionPattern* pattern = new (m_allocator) MatchRegionPattern();
-            pattern->source.elementOffset = subReg;
-
-            //Set Region Parameters <VerString;Width,HorzString>
-            pattern->source.region_set = true;
-            pattern->source.region[0] = verticalStride;
-            pattern->source.region[1] = width;
-            pattern->source.region[2] = horizontalStride;
-
-            pattern->source.value = data;
-            MarkAsSource(data);
-            HandleSubspanUse(data);
-            AddPattern(pattern);
-
-            isMatch = true;
         }
     }
 
+    if (auto zExtInst = llvm::dyn_cast<llvm::ZExtInst>(source))
+    {
+        source = zExtInst->getOperand(0);
+    }
+
+    llvm::GenIntrinsicInst* intrin = llvm::dyn_cast<llvm::GenIntrinsicInst>(source);
+
+    //Finally check for simLaneID intrisic
+    if (intrin && (intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_simdLaneId))
+    {
+        MatchRegionPattern* pattern = new (m_allocator) MatchRegionPattern();
+        pattern->source.elementOffset = subReg;
+
+        //Set Region Parameters <VerString;Width,HorzString>
+        pattern->source.region_set = true;
+        pattern->source.region[0] = verticalStride;
+        pattern->source.region[1] = 1;
+        pattern->source.region[2] = 0;
+
+        pattern->source.value = data;
+        MarkAsSource(data);
+        HandleSubspanUse(data);
+        AddPattern(pattern);
+
+        isMatch = true;
+    }
 
     return isMatch;
 }

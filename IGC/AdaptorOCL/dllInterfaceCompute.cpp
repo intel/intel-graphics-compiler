@@ -591,7 +591,7 @@ void DumpShaderFile(const char *pOutputFolder, const char * pBuffer, UINT buffer
 		fopen_s(&pFile, ss.str().c_str(), "wb");
 		if (pFile)
 		{
-			fwrite(pBuffer, 1, bufferSize - 1, pFile);
+			fwrite(pBuffer, 1, bufferSize, pFile);
 			fclose(pFile);
 		}
 	}

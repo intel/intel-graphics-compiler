@@ -1130,60 +1130,6 @@ void GenSpecificPattern::visitIntToPtr(llvm::IntToPtrInst& I)
     }
 }
 
-void GenSpecificPattern::visitCallInst(llvm::CallInst& I)
-{
-    if (GenIntrinsicInst* intrin = dyn_cast<llvm::GenIntrinsicInst>(&I))
-    {
-        if (intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_WaveShuffleIndex)
-        {
-            Value* source = intrin->getOperand(1);
-
-            if (auto zExtInst = dyn_cast<ZExtInst>(source))
-            {
-                source = zExtInst->getOperand(0);
-            }
-
-            if (auto binLShrInst = dyn_cast<BinaryOperator>(source))
-            {
-                if (binLShrInst->getOpcode() == Instruction::LShr)
-                {
-                    if (auto binAddInst = dyn_cast<BinaryOperator>(binLShrInst->getOperand(0)))
-                    {
-                        if (binAddInst->getOpcode() == Instruction::Add)
-                        {
-                            ConstantInt* lShrConst = dyn_cast<ConstantInt>(binLShrInst->getOperand(1));
-                            ConstantInt* addConst = dyn_cast<ConstantInt>(binAddInst->getOperand(1));
-
-                            if (lShrConst && addConst)
-                            {
-                                uint shrValue = int_cast<uint>(lShrConst->getZExtValue());
-                                uint addValue = int_cast<uint>(addConst->getZExtValue());
-
-                                //Get a mask represeting the number of lower bits that must be
-                                //Zero for the transformation to be true:
-                                // (x + y) >> z == (x >> z) + (y >> z) when (y & ((1 << z) - 1)) == 0
-                                uint lowerBitsMask = (1 << shrValue) - 1;
-
-                                if ((addValue & lowerBitsMask ) == 0)
-                                {
-                                    IRBuilder<> builder(binLShrInst);
-
-                                    uint newAddValue = addValue >> shrValue;
-
-                                    Value* lShiftRight = builder.CreateLShr(binAddInst->getOperand(0), binLShrInst->getOperand(1));
-                                    Value* addInst = builder.CreateAdd(lShiftRight, ConstantInt::get(binLShrInst->getType(), newAddValue));
-
-                                    binLShrInst->replaceAllUsesWith(addInst);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
 // Register pass to igc-opt
 #define PASS_FLAG3 "igc-const-prop"
 #define PASS_DESCRIPTION3 "Custom Const-prop Pass"
@@ -2577,3 +2523,5 @@ bool FlattenSmallSwitch::runOnFunction(Function &F)
 
 IGC_INITIALIZE_PASS_BEGIN(FlattenSmallSwitch, "flattenSmallSwitch", "flattenSmallSwitch", false, false)
 IGC_INITIALIZE_PASS_END(FlattenSmallSwitch, "flattenSmallSwitch", "flattenSmallSwitch", false, false)
+
+

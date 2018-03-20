@@ -85,6 +85,11 @@
         return getGenxPlatform() >= GENX_CNL && getOption(vISA_doAlign1Ternary);
     }
 
+    bool encodeUnitStrideTernary() const
+    {
+        return false;
+    }
+
     bool hasMacl() const
     {
         return getGenxPlatform() >= GENX_CNL;
