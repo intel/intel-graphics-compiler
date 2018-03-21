@@ -5006,7 +5006,7 @@ void HWConformity::accSubstitution(G4_BB* bb)
 {
     bb->resetLocalId();
 
-    if (getNumACC(builder) > 1)
+    if (builder.canMadHaveSrc0Acc())
     {
         multiAccSubstitution(bb);
         return;
