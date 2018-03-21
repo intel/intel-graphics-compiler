@@ -123,6 +123,9 @@ namespace vISA
         // remat'd samplers.
         std::unordered_map<G4_INST*, G4_INST*> samplerHeaderMap;
         std::unordered_set<G4_BB*> deLVNedBBs;
+        // Map BB->subroutine it belongs to
+        // BBs not present are assumed to belong to main kernel
+        std::unordered_map<G4_BB*, const FuncInfo*> BBPerSubroutine;
 
         void populateRefs();
         void populateSamplerHeaderMap();
@@ -200,6 +203,7 @@ namespace vISA
 
         unsigned int getNumRematsInLoop() { return numRematsInLoop; }
         void incNumRematsInLoop() { numRematsInLoop++; }
+        bool inSameSubroutine(G4_BB*, G4_BB*);
 
     public:
         Rematerialization(G4_Kernel& k, LivenessAnalysis& l, GraphColor& c, RPE& r) :
@@ -252,6 +256,21 @@ namespace vISA
                         {
                             loopInstsBeforeRemat++;
                         }
+                    }
+                }
+            }
+
+            // Map BBs in subroutines
+            unsigned int numFuncs = kernel.fg.getNumFuncs();
+            for (unsigned int func = 0; func != numFuncs; func++)
+            {
+                auto curFuncInfo = kernel.fg.getFunc(func);
+                if (curFuncInfo)
+                {
+                    const auto& bbList = curFuncInfo->getBBList();
+                    for (auto bb : bbList)
+                    {
+                        BBPerSubroutine.insert(std::make_pair(bb, curFuncInfo));
                     }
                 }
             }

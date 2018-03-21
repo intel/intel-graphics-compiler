@@ -800,6 +800,13 @@ public:
         return unsigned(funcInfoTable.size());
     }
 
+    FuncInfo* getFunc(unsigned int id)
+    {
+        if(id < getNumFuncs())
+            return funcInfoTable[id];
+        return nullptr;
+    }
+
     void handleReturn(std::map<std::string, G4_BB*>& map, FuncInfoHashTable& funcInfoTable);
     void linkReturnAddr(std::map<std::string, G4_BB*>& map, G4_BB* bb, G4_BB* returnAddr);
 

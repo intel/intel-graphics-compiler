@@ -206,6 +206,29 @@ namespace vISA
         }
     }
 
+    bool Rematerialization::inSameSubroutine(G4_BB* use, G4_BB* def)
+    {
+        // Return true if both BBs belong to same sub
+        auto defBBIt = BBPerSubroutine.find(def);
+        auto useBBIt = BBPerSubroutine.find(use);
+
+        // Neither BBs found in map means both are part of main kernel
+        if (defBBIt == BBPerSubroutine.end() &&
+            useBBIt == BBPerSubroutine.end())
+            return true;
+
+        if (defBBIt != BBPerSubroutine.end() &&
+            useBBIt != BBPerSubroutine.end())
+        {
+            // Both BBs part of same subroutine
+            if ((*defBBIt).second == (*useBBIt).second)
+                return true;
+        }
+
+        // BBs not part of same subroutine
+        return false;
+    }
+
     // bb1 should block defining original computation and
     // bb2 should be the block where remat is expected.
     bool Rematerialization::areInSameLoop(G4_BB* bb1, G4_BB* bb2, bool& bb1OutsideLoop)
@@ -489,6 +512,9 @@ namespace vISA
         if ((srcLexId - origOpLexId) < MIN_DEF_USE_DISTANCE)
             return false;
 
+        if (!inSameSubroutine(bb, uniqueDefBB))
+            return false;
+
 #if 0
         // idom currently not computed
 
@@ -712,6 +738,10 @@ namespace vISA
                     if (!srcOpndUniqueDef &&
                         !isSrcAvailble &&
                         !srcOpndTopDcl->isInput())
+                        return false;
+
+                    if (srcOpndUniqueDef &&
+                        !inSameSubroutine(bb, srcOpndUniqueDef->second))
                         return false;
 
                     // Check if its live in/live out to/of current BB
