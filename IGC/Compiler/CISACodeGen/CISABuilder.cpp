@@ -3718,12 +3718,12 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
     }
 
     // TODO: doReRA will eventually be depricated. Remove when OCL starts using the new gtpin interface
-    if (doReRA || context->m_EnableReRA)
+    if (doReRA || context->m_GTPinRequest.re_ra)
     {
         vbuilder->SetOption(vISA_ReRAPostSchedule, true);
     }
 
-    if (doReRA || context->m_EnableGetFreeGRFInfo)
+    if (doReRA || context->m_GTPinRequest.grf_info)
     {
         vbuilder->SetOption(vISA_GetFreeGRFInfo, true);
     }

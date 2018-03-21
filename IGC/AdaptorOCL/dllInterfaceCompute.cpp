@@ -658,14 +658,13 @@ bool TranslateBuild(
     if(IGC_IS_FLAG_ENABLED(EnableReadGTPinInput))
     {
         // Set GTPin flags
-        gtpin::igc::igc_init_t* GTPinInput = (gtpin::igc::igc_init_t*) pInputArgs->GTPinInput;
-        if(GTPinInput)
+        if(pInputArgs->GTPinInput)
         {
-            oclContext.m_EnableReRA = GTPinInput->re_ra ? true : false;
-            oclContext.m_EnableGetFreeGRFInfo = GTPinInput->grf_info ? true : false;
-            oclContext.m_EnableSrclineMapping = GTPinInput->srcline_mapping ? true : false;
+            memcpy_s(&(oclContext.m_GTPinRequest), sizeof(gtpin::igc::igc_init_t),
+                     pInputArgs->GTPinInput, sizeof(gtpin::igc::igc_init_t));
         }
     }
+
     oclContext.setModule(pKernelModule);
     if (oclContext.isSPIRV())
     {

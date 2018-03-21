@@ -2418,9 +2418,8 @@ static bool isUsedInPHINode(llvm::Instruction *I) {
 void CShader::FillGTPinRequest(SKernelProgram* pKernelProgram)
 {
     IGC::CodeGenContext* ctx = GetContext();
-    pKernelProgram->enableReRA = ctx->m_EnableReRA;
-    pKernelProgram->enableGetFreeGRFInfo = ctx->m_EnableGetFreeGRFInfo;
-    pKernelProgram->enableSrclineMapping = ctx->m_EnableSrclineMapping;
+    memcpy_s(&(pKernelProgram->m_GTPinRequest), sizeof(pKernelProgram->m_GTPinRequest),
+             &(ctx->m_GTPinRequest), sizeof(ctx->m_GTPinRequest));
 }
 
 bool CShader::CanTreatScalarSourceAsAlias(llvm::InsertElementInst *IEI) {

@@ -61,6 +61,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorOCL/TranslationBlock.h"
 
 #include "common/MDFrameWork.h"
+#include "inc/gtpin_IGC_interface.h"
 
 /************************************************************************
 This file contains the interface structure and functions to communicate
@@ -193,9 +194,7 @@ namespace IGC
         unsigned int            m_InterestingConstantsSize = 0;
         
         // GTPin requests
-        bool enableReRA;
-        bool enableGetFreeGRFInfo;
-        bool enableSrclineMapping;
+        gtpin::igc::igc_init_t m_GTPinRequest;
     };
 
     struct SPixelShaderKernelProgram : SKernelProgram
@@ -737,9 +736,7 @@ namespace IGC
         uint m_ConstantBufferUsageMask = 0;
         uint m_ConstantBufferReplaceSize = 0;
 
-        bool m_EnableReRA = false;
-        bool m_EnableGetFreeGRFInfo = false;
-        bool m_EnableSrclineMapping = false;
+        gtpin::igc::igc_init_t m_GTPinRequest;
 
     protected:
         // Objects pointed to by these pointers are owned by this class.
@@ -769,6 +766,8 @@ namespace IGC
             }
 
             m_indexableTempSize.resize(64);
+
+            memset(&m_GTPinRequest, 0, sizeof(m_GTPinRequest));
         }
 
         void initLLVMContextWrapper()
