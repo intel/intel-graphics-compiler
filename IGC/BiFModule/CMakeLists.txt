@@ -103,8 +103,14 @@
     "$<TARGET_FILE:CLANG_7Z_OUTPUT>"
   )
 
+  get_property(_clang7zLocation TARGET CLANG_7Z PROPERTY IMPORTED_LOCATION_RELEASE)  
+  
   if(NOT DEFINED COMMON_CLANG_LIBRARY_NAME)
-    set(COMMON_CLANG_LIBRARY_NAME common_clang)
+    if(EXISTS ${_clang7zLocation})
+      set(COMMON_CLANG_LIBRARY_NAME common_clang)
+    else()
+      set(COMMON_CLANG_LIBRARY_NAME opencl_clang)
+    endif()
   endif()
 
   if(WIN32)
@@ -134,7 +140,6 @@
   add_custom_target(GetClang)
   add_library(common_clang_dll UNKNOWN IMPORTED GLOBAL)
 
-  get_property(_clang7zLocation TARGET CLANG_7Z PROPERTY IMPORTED_LOCATION_RELEASE)
   if(EXISTS ${_clang7zLocation})
     # Use precompiled common clang bundle.
     message(STATUS "Use precompiled common clang from ${_clang7zLocation}")

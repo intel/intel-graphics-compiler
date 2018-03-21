@@ -65,10 +65,12 @@ class SpillManager
     void genRegMov(INST_LIST&     instList,
                    INST_LIST_ITER it,
                    G4_VarBase*    src,
+                   unsigned short sRegOff,
                    unsigned short sSubRegOff,
                    G4_VarBase*    dst,
-                   unsigned       nRegs,
-                   bool           useNoMask);
+                   unsigned short dRegOff,
+                   unsigned short dSubRegOff,
+                   unsigned       nRegs);
     G4_Declare* createNewSpillLocDeclare(G4_Declare* dcl);
     G4_Declare* createNewTempAddrDeclare(G4_Declare* dcl);
     G4_Declare* createNewTempFlagDeclare(G4_Declare* dcl);
