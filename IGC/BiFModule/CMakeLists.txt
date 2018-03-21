@@ -174,6 +174,7 @@
     endif()
   endif()
   add_dependencies(common_clang_dll GetClang)
+  install(FILES $<TARGET_FILE:common_clang_dll> DESTINATION lib)
 # End Clang section
 
 

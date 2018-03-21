@@ -3968,6 +3968,7 @@ endif()
 ########################################################################
 
 install(TARGETS ${IGC_BUILD__PROJ__igc_dll} DESTINATION lib)
+install(TARGETS ${IGC_BUILD__PROJ__fcl_dll} DESTINATION lib)
 
 set(CPACK_GENERATOR "DEB")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "intel")
