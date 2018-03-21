@@ -12178,6 +12178,23 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
     uint32_t srcEltBytes = int_cast<uint32_t>(srcEltTy->getPrimitiveSizeInBits() / 8);
     bool srcUniform = src->IsUniform();
     bool dstUniform = m_destination->IsUniform();
+    if (srcUniform && dstUniform &&
+        (dstNElts == 2 || dstNElts == 4 || dstNElts == 8) &&
+        m_destination != src &&
+        destMask == ((1U << dstNElts) - 1)/* Full mask */ &&
+        /* If alignment of source is safe to be aliased to the dst type. */
+        src->GetAlign() >= CEncoder::GetCISADataTypeAlignment(m_destination->GetType())) {
+      // TODO; Add uniform vector bitcast support. A simple copy is enough but
+      // the ideal resolution is to teach DeSSA to handle that.
+      CVariable* dst = m_destination;
+      src = m_currShader->BitCast(src, dst->GetType());
+      m_encoder->SetNoMask();
+      m_encoder->SetUniformSIMDSize(lanesToSIMDMode(dstNElts));
+      m_encoder->SetSrcRegion(0, dstNElts, dstNElts, 1);
+      m_encoder->Copy(dst, src);
+      m_encoder->Push();
+      return;
+    }
     if( srcEltBytes == dstEltBytes )
     {
         // This should not happen now, but generate code anyway.
