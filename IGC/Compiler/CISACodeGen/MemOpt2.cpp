@@ -293,9 +293,7 @@ bool MemOpt2::clusterSampler(BasicBlock *BB) {
             continue;
         switch (GII->getIntrinsicID()) {
             // TODO: Add more samplers.
-        case GenISAIntrinsic::GenISA_sample:
         case GenISAIntrinsic::GenISA_sampleptr:
-        case GenISAIntrinsic::GenISA_sampleL:
         case GenISAIntrinsic::GenISA_sampleLptr:
         case GenISAIntrinsic::GenISA_sampleBptr:
         case GenISAIntrinsic::GenISA_sampleLCptr:

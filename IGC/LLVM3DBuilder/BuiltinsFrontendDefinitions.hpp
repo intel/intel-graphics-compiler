@@ -155,26 +155,6 @@ void LLVM3DBuilder<preserveNames, T, Inserter>::Init()
 }
 
 template<bool preserveNames, typename T, typename Inserter>
-inline llvm::Function* LLVM3DBuilder<preserveNames, T, Inserter>::llvm_GenISA_resinfo() const
-{
-    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
-
-    llvm::Function* func_llvm_GenISA_resinfo = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_resinfo);
-    return func_llvm_GenISA_resinfo;
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::Function* LLVM3DBuilder<preserveNames, T, Inserter>::llvm_GenISA_sampleinfo() const
-{
-    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
-
-    llvm::Function* func_llvm_GenISA_sampleinfo = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_sampleinfo);
-    return func_llvm_GenISA_sampleinfo;
-}
-
-template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_resinfo(
     llvm::Value* int32_src_s_mip,
     llvm::Value* int32_textureIdx)
@@ -191,87 +171,6 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_resinfo(
 
     llvm::CallInst* packed_resinfo_call = this->CreateCall(func_llvm_GenISA_resinfoptr, packed_params);
     return packed_resinfo_call;
-}
-
-template<bool preserveNames, typename T, typename Inserter>
-inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_resinfo_msaa(
-    llvm::Value* float_src_s_mip,
-    llvm::Value* int32_textureIdx,
-    llvm::Value* int1_isUAV)
-{
-    //%mip_s = bitcast float %float_src_s_mip to i32
-    llvm::Value* int32_mip = this->CreateBitCast(float_src_s_mip, this->getInt32Ty(), VALUE_NAME("mip_s"));
-
-    llvm::Value * packed_params[] = {
-        int32_textureIdx,
-        int32_mip,
-        int1_isUAV
-    };
-
-    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
-
-    // %tex = call <4 x i32> @llvm.GenISA.resinfo(i32 %textureIdx, i32 %mip_s, i1 %isUAV)
-    llvm::CallInst* packed_resinfo_call = llvm::cast<llvm::CallInst>(this->CreateCall(this->llvm_GenISA_resinfo(), packed_params));
-
-    // %tex_s.chan0 = extractelement <4 x i32> %packed_resinfo_call, i32 2
-    llvm::Value* int32_info_s_ch2 = this->CreateExtractElement(packed_resinfo_call, this->m_int2);
-
-    llvm::Value * packed_sampleinfo_params[] = {
-        int32_textureIdx,
-        int1_isUAV
-    };
-
-    // Call sampleinfo intrinsic to get the number of samples.
-    // %tex = call <4 x i32> @llvm.GenISA.sample.v4f32.f32info(i32 %textureIdx, i1 int1_isUAV)
-    llvm::CallInst* packed_sampleinfo_call = llvm::cast<llvm::CallInst>(this->CreateCall(this->llvm_GenISA_sampleinfo(), packed_sampleinfo_params));
-
-    // We can not use channel 0 of sampleinfo which should contain the correct
-    // number of samples retrieved from surface state because this value in surface
-    // state must be set to 1 in case of MSAA UAV emulation due to fact that
-    // IGC does not support native MSAA UAV messages at the moment.
-    // Instead of channel 0 we can use channel 3 of sampleinfo which contains
-    // sample position palette index field retrieved from surface state.
-    // The sample position palette index field is set to log2(number of samples).
-
-    // Get sample position palette index from sampleinfo. Note that this value
-    // is incremented by one from its value in the surface state.
-    llvm::Value* int32_sampleinfo_s_chan3 = this->CreateExtractElement(packed_sampleinfo_call, this->m_int3);
-    llvm::Value* int32_paletteIndex = this->CreateSub(int32_sampleinfo_s_chan3, this->m_int1);
-
-    // Number of samples = 2 ^ "sample position palette index".
-    llvm::Value* int32_numberOfSamples = this->CreateShl(this->m_int1, int32_paletteIndex);
-
-    // Divide depth by number of samples.
-    // %depth_s = udiv i32 %src_s.chan2, %src1_s_ch0
-    llvm::Value* int32_depth = this->CreateUDiv(int32_info_s_ch2, int32_numberOfSamples, VALUE_NAME("depth_s"));
-
-    llvm::Value *resinfo = llvm::UndefValue::get(llvm::VectorType::get(llvm::Type::getInt32Ty(module->getContext()), 4));
-
-    resinfo = this->CreateInsertElement(
-        resinfo,
-        this->CreateExtractElement(packed_resinfo_call, this->m_int0),
-        this->getInt32(0),
-        "call_inst");
-
-    resinfo = this->CreateInsertElement(
-        resinfo,
-        this->CreateExtractElement(packed_resinfo_call, this->m_int1),
-        this->getInt32(1),
-        "call_inst");
-
-    resinfo = this->CreateInsertElement(
-        resinfo,
-        this->CreateExtractElement(packed_resinfo_call, this->m_int3),
-        this->getInt32(3),
-        "call_inst");
-
-    resinfo = this->CreateInsertElement(
-        resinfo,
-        int32_depth,
-        this->getInt32(2),
-        "call_inst");
-
-    return resinfo;
 }
 
 template<bool preserveNames, typename T, typename Inserter>
@@ -977,21 +876,8 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SamplePos(
     llvm::Value* int32_resourceIdx,
     llvm::Value* int32_samplerIdx)
 {
-    llvm::Value* sampleInfo = nullptr;
-    if(int32_resourceIdx->getType()->isPointerTy())
-    {
-        sampleInfo = this->Create_SampleInfo(int32_resourceIdx);
-    }
-    else
-    {
-        // support legacy intrinsic
-    llvm::Value* m_intUAV = llvm::ConstantInt::get(this->getInt1Ty(), 0);
-    llvm::Value * packed_tex_params[] = {
-        int32_resourceIdx,
-        m_intUAV
-    };
-        sampleInfo = llvm::cast<llvm::CallInst>(this->CreateCall(this->llvm_GenISA_sampleinfo(), packed_tex_params));
-    }
+    llvm::Value* sampleInfo = sampleInfo = this->Create_SampleInfo(int32_resourceIdx);
+
 
     llvm::Value* int32_texX = this->CreateExtractElement(sampleInfo, m_int0);
     llvm::Value* int32_texW = this->CreateExtractElement(sampleInfo, m_int3);

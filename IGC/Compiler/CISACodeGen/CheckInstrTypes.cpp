@@ -76,7 +76,6 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->psHasSideEffect = false;
     instrList->hasDebugInfo = false;
     instrList->hasAtomics = false;
-    instrList->hasSampleLinLoop = false;
     instrList->hasDiscard = false;
     instrList->mayHaveIndirectOperands = false;
 	instrList->numSample = 0;

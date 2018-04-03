@@ -563,6 +563,34 @@ bool GenXFunctionGroupAnalysis::rebuild(llvm::Module *Mod) {
     return true;
 }
 
+void GenXFunctionGroupAnalysis::replaceEntryFunc(Function *OF, Function *NF)
+{
+	auto groupMapIter = GroupMap.find(OF);
+	FunctionGroup *FG = groupMapIter->second;
+	GroupMap.insert(std::make_pair(NF, FG));
+	GroupMap.erase(groupMapIter);
+
+	FG->replaceGroupHead(OF, NF);
+
+	// For Entry func, SubGroupMap needs to be updated as well
+	auto SGIter = SubGroupMap.find(OF);
+	if (SGIter != SubGroupMap.end())
+	{
+		SubGroupMap.erase(SGIter);
+		SubGroupMap.insert(std::make_pair(NF, NF));
+	}
+	DenseMap<Function*, Function*>::iterator SGII, SGIE;
+	for (SGII = SubGroupMap.begin(), SGIE = SubGroupMap.end();
+		 SGII != SGIE; ++SGII)
+	{
+		Function *SGH = SGII->second;
+		if (SGH == OF)
+		{
+			SGII->second = NF;
+		}
+	}
+}
+
 void GenXFunctionGroupAnalysis::clear()
 {
     GroupMap.clear();
@@ -727,6 +755,12 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
             return InlineCost::getAlways();
 
         int FCtrl = IGC_GET_FLAG_VALUE(FunctionControl);
+
+        // do not inline instrumented functions
+        if (FCtrl != FLAG_FCALL_FORCE_INLINE &&
+            Callee->hasFnAttribute("InstrumentedFunc"))
+            return InlineCost::getNever();
+
         if (FCtrl != FLAG_FCALL_FORCE_SUBROUTINE &&
             FCtrl != FLAG_FCALL_FORCE_STACKCALL)
         {

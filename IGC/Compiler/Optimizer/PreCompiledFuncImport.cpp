@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncLibrary.cpp"
 // No Support to double emulation.
@@ -59,6 +60,8 @@ const unsigned char igcbuiltin_emu_sp_div[] = {0};
 
 using namespace llvm;
 using namespace IGC;
+using namespace IGC::IGCMD;
+
     // Register pass to igc-opt
 #define PASS_FLAG "igc-precompiled-import"
 #define PASS_DESCRIPTION "PreCompiledFuncImport"
@@ -71,11 +74,21 @@ IGC_INITIALIZE_PASS_END(PreCompiledFuncImport, PASS_FLAG, PASS_DESCRIPTION, PASS
 
 char PreCompiledFuncImport::ID = 0;
 
-PreCompiledFuncImport::PreCompiledFuncImport(uint32_t TheEmuKind) :
+PreCompiledFuncImport::PreCompiledFuncImport(
+	CodeGenContext *CGCtx, uint32_t TheEmuKind) :
     ModulePass(ID),
-    m_emuKind(TheEmuKind)
+    m_emuKind(TheEmuKind),
+	m_pCtx (CGCtx),
+	m_enableSubroutineCallForEmulation(false)
 {
     initializePreCompiledFuncImportPass(*PassRegistry::getPassRegistry());
+
+    if (isDPEmu() &&
+		(IGC_IS_FLAG_ENABLED(EnableSubroutineForEmulation) ||
+		 IGC_IS_FLAG_ENABLED(ForceSubroutineForEmulation)))
+	{
+		checkAndSetEnableSubroutine();
+	}
 }
 
 const char* PreCompiledFuncImport::m_sFunctionNames[NUM_FUNCTIONS][NUM_TYPES] =
@@ -330,6 +343,8 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
 		return false;
 	}
 
+	m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+	m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     m_pModule = &M;
     m_changed = false;
 
@@ -394,6 +409,10 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
         }
     }
 
+	bool hasNewMDEntry = false;
+	FuncNeedIA.clear();
+	NewFuncWithIA.clear();
+
     // Post processing, set those imported functions as internal linkage
     // and alwaysinline.
     for (auto II = M.begin(), IE = M.end(); II != IE; )
@@ -407,22 +426,67 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
 
         if (!origFunctions.count(Func))
         {
-            // Remove noinline attr if present.
+			// Make it internal linkage.
+			Func->setLinkage(GlobalValue::InternalLinkage);
+
+			// Need to check if it is dead after setting linkage.
+			if (Func->isDefTriviallyDead())
+			{
+				eraseFunction(&M, Func);
+				continue;
+			}
+
+            // Remove noinline/AlwaysInline attr if present.
             Func->removeFnAttr(llvm::Attribute::NoInline);
+			Func->removeFnAttr(llvm::Attribute::AlwaysInline);
 
-            // Add AlwaysInline attribute to force inlining all calls.
-            Func->addFnAttr(llvm::Attribute::AlwaysInline);
+			// Inline all conv functions. And for others, inline
+			// only those that have less than 4 uses.
+			if (m_enableSubroutineCallForEmulation &&
+				Func->hasNUsesOrMore(4) && !isDPConvFunc(Func))
+			{
+				Func->addFnAttr(llvm::Attribute::NoInline);
+			}
+			else
+			{
+				// Add AlwaysInline attribute to force inlining all calls.
+				Func->addFnAttr(llvm::Attribute::AlwaysInline);
+			}
 
-            // Make it internal linkage.
-            Func->setLinkage(GlobalValue::InternalLinkage);
-
-            // Need to check if it is dead after setting linkage.
-            if (Func->isDefTriviallyDead())
-            {
-                eraseFunction(&M, Func);
-            }
+			if (m_enableSubroutineCallForEmulation)
+			{
+				// Create an entry in metadata for this function and add
+				// implicit args for private base if needed (note that the
+				// entry func should have private base as implicit arg
+				// already. It has been added in PrivateMemoryUsageAnalysis.
+				// And emulation functions may need implicit args for private
+				// memory only, not any other implicit args). Once implicit
+				// args are added, function signature and its calls are changed
+				// accordingly.
+				addMDFuncEntryForEmulationFunc(Func);
+				hasNewMDEntry = true;
+			}
         }
     }
+
+	int sz = (int)FuncNeedIA.size();
+	if (sz > 0)
+	{
+		createFuncWithIA();
+		for (int i = 0; i < sz; ++i) {
+			replaceFunc(FuncNeedIA[i], NewFuncWithIA[i]);
+		}
+
+		// free FuncsImpArgs
+		for (auto I : FuncsImpArgs) {
+			ImplicitArgs *IA = I.second;
+			delete IA;
+		}
+		FuncsImpArgs.clear();
+	}
+
+	if (hasNewMDEntry)
+		m_pMdUtils->save(M.getContext());
 
 #if 0
     {
@@ -1116,6 +1180,10 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
             {
                 m_libModuleToBeImported[finfo.LibModID] = true;
                 m_changed = true;
+
+				// Make sure to use the default calling Convention
+				// as emulation functions uses the default!
+				I.setCallingConv(0);
                 break;
             }
         }
@@ -1198,4 +1266,301 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
         return;
     }
     return;
+}
+
+bool PreCompiledFuncImport::isDPConvFunc(Function *F) const
+{
+	StringRef FN = F->getName();
+	for (int i = 0; i < NUM_FUNCTION_IDS; ++i) {
+		if (FN.equals(m_functionInfos[i].FuncName))
+		{
+			FunctionIDs FID = (FunctionIDs)i;
+			switch (FID)
+			{
+			default:
+				break;
+			case FUNCTION_DP_TO_I32:
+			case FUNCTION_DP_TO_UI32:
+			case FUNCTION_I32_TO_DP:
+			case FUNCTION_UI32_TO_DP:
+			case FUNCTION_DP_TO_SP:
+			case FUNCTION_SP_TO_DP:
+				return true;
+			}
+			break;
+		}
+	}
+	return false;
+}
+
+bool PreCompiledFuncImport::usePrivateMemory(Function *F)
+{
+	// Assume alloca is in entry BB
+	BasicBlock *entryBB = &F->getEntryBlock();
+	for (auto II = entryBB->begin(), IE = entryBB->end(); II != IE; ++II)
+	{
+		Instruction *I = &*II;
+		if (isa<AllocaInst>(I))
+			return true;
+	}
+	return false;
+}
+
+void PreCompiledFuncImport::addMDFuncEntryForEmulationFunc(Function *F)
+{
+    FunctionInfoMetaDataHandle FH = FunctionInfoMetaDataHandle(FunctionInfoMetaData::get());
+	FH->setType(FunctionTypeEnum::OtherFunctionType);
+	for (auto arg = F->arg_begin(); arg != F->arg_end(); ++arg)
+	{
+		ArgInfoMetaDataHandle AH = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+		AH->setExplicitArgNum(arg->getArgNo());
+		FH->addArgInfoListItem(AH);
+	}
+	m_pMdUtils->setFunctionsInfoItem(F, FH);
+
+	if (!usePrivateMemory(F))
+		return;
+
+	// Add private base
+	ArgInfoMetaDataHandle arg_R0 = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+	arg_R0->setArgId(ImplicitArg::R0);
+	FH->addImplicitArgInfoListItem(arg_R0);
+	ArgInfoMetaDataHandle arg_PBase = ArgInfoMetaDataHandle(ArgInfoMetaData::get());
+	arg_PBase->setArgId(ImplicitArg::PRIVATE_BASE);
+	FH->addImplicitArgInfoListItem(arg_PBase);
+
+	FuncNeedIA.push_back(F);
+}
+
+FunctionType* PreCompiledFuncImport::getNewFuncType(
+	Function* pFunc, const ImplicitArgs* pImplicitArgs)
+{
+	// Add all explicit parameters
+	FunctionType* pFuncType = pFunc->getFunctionType();
+	std::vector<Type *> newParamTypes(pFuncType->param_begin(), pFuncType->param_end());
+
+	// Add implicit arguments parameter types
+	for (unsigned int i = 0; i < pImplicitArgs->size(); ++i)
+	{
+		newParamTypes.push_back((*pImplicitArgs)[i].getLLVMType(pFunc->getContext()));
+	}
+
+	// Create new function type with explicit and implicit parameter types
+	return FunctionType::get(pFunc->getReturnType(), newParamTypes, pFunc->isVarArg());
+}
+
+// Once the new function is created, the old function's metadata is
+// re-assigned to the new one. And thus, the old function has no
+// metadata entry anymore.
+void PreCompiledFuncImport::createFuncWithIA()
+{
+	NewFuncWithIA.clear();
+	for (int i = 0, sz = (int)FuncNeedIA.size(); i < sz; ++i)
+	{
+		Function* pFunc = FuncNeedIA[i];
+		ImplicitArgs implicitArgs(*pFunc, m_pMdUtils);
+		FunctionType *pNewFTy = getNewFuncType(pFunc, &implicitArgs);
+		Function* pNewFunc = Function::Create(pNewFTy, pFunc->getLinkage());
+		pNewFunc->copyAttributesFrom(pFunc);
+		pNewFunc->setSubprogram(pFunc->getSubprogram());
+		pFunc->setSubprogram(nullptr);
+		m_pModule->getFunctionList().insert(pFunc->getIterator(), pNewFunc);
+		pNewFunc->takeName(pFunc);
+
+		// Since we have now created the new function, splice the body of the old
+		// function right into the new function, leaving the old body of the function empty.
+		pNewFunc->getBasicBlockList().splice(pNewFunc->begin(), pFunc->getBasicBlockList());
+
+		// Loop over the argument list, transferring uses of the old arguments over to
+		// the new arguments
+		// updateNewFuncArgs(pFunc, pNewFunc, &implicitArgs);
+		Function::arg_iterator currArg = pNewFunc->arg_begin();
+		for (Function::arg_iterator I = pFunc->arg_begin(), E = pFunc->arg_end();
+			I != E; ++I, ++currArg)
+		{
+			llvm::Value* newArg = &(*currArg);
+			// Move the name and users over to the new version.
+			I->replaceAllUsesWith(newArg);
+			currArg->takeName(&(*I));
+		}
+
+		// Set name for implicit args
+		int iArgIx = 0;
+		for (Function::arg_iterator AE = pNewFunc->arg_end(); currArg != AE; ++currArg, ++iArgIx)
+		{
+			currArg->setName(implicitArgs[iArgIx].getName());
+		}
+
+		// Assign metadata for old_func to new_func
+		auto oldFuncIter = m_pMdUtils->findFunctionsInfoItem(pFunc);
+		m_pMdUtils->setFunctionsInfoItem(pNewFunc, oldFuncIter->second);
+		m_pMdUtils->eraseFunctionsInfoItem(oldFuncIter);
+
+		// Map old func to new func
+		NewFuncWithIA.push_back(pNewFunc);
+	}
+}
+
+void PreCompiledFuncImport::replaceFunc(Function* old_func, Function* new_func)
+{
+	FunctionInfoMetaDataHandle newFH = m_pMdUtils->getFunctionsInfoItem(new_func);
+	std::vector<Instruction*> list_delete;
+	for (auto U = old_func->user_begin(), UE = old_func->user_end(); U != UE; ++U)
+	{
+		std::vector<Value*> new_args;
+		CallInst *cInst = dyn_cast<CallInst>(*U);
+		if (!cInst)
+		{
+			m_pCtx->EmitError(" undefined reference to `jmp()' ");
+			return;
+		}
+		Function *parent_func = cInst->getParent()->getParent();
+		size_t numArgOperands = cInst->getNumArgOperands();
+
+		// let's prepare argument list on new call function
+		llvm::Function::arg_iterator new_arg_iter = new_func->arg_begin();
+		llvm::Function::arg_iterator new_arg_end = new_func->arg_end();
+
+		assert(new_func->arg_size() >= numArgOperands);
+
+		// basic arguments
+		for (unsigned int i = 0; i < numArgOperands; ++i, ++new_arg_iter)
+		{
+			llvm::Value* arg = cInst->getOperand(i);
+			new_args.push_back(arg);
+		}
+
+		// implicit arguments
+		ImplicitArgs *parentIA = getImplicitArgs(parent_func);
+		int cImpCount = 0;
+		while (new_arg_iter != new_arg_end)
+		{
+			ArgInfoMetaDataHandle argInfo = newFH->getImplicitArgInfoListItem(cImpCount);
+			ImplicitArg::ArgType argId = (ImplicitArg::ArgType)argInfo->getArgId();
+			Argument *iArgVal = parentIA->getArgInFunc(*parent_func, argId);
+
+			new_args.push_back(iArgVal);
+			++new_arg_iter;
+			++cImpCount;
+		}
+
+		// insert new call instruction before old one
+		CallInst *inst;
+		if (new_func->getReturnType()->isVoidTy())
+		{
+			inst = CallInst::Create(new_func, new_args, "", cInst);
+		}
+		else
+		{
+			inst = CallInst::Create(new_func, new_args, new_func->getName(), cInst);
+		}
+		inst->setCallingConv(new_func->getCallingConv());
+		inst->setDebugLoc(cInst->getDebugLoc());
+		cInst->replaceAllUsesWith(inst);
+		list_delete.push_back(cInst);
+	}
+
+	for (auto i : list_delete)
+	{
+		i->eraseFromParent();
+	}
+
+	assert(old_func->use_empty() && "old_func should have no use at this point!");
+	// Now, after changing funciton signature,
+	// and validate there are no calls to the old function we can erase it.
+	//
+	// Note that old_func's metadata has been deleted already
+	old_func->eraseFromParent();
+}
+
+ImplicitArgs* PreCompiledFuncImport::getImplicitArgs(Function *F)
+{
+	if (FuncsImpArgs.count(F) == 0)
+	{
+		ImplicitArgs *IA = new ImplicitArgs(*F, m_pMdUtils);
+		FuncsImpArgs[F] = IA;
+	}
+	return FuncsImpArgs[F];
+}
+
+
+void PreCompiledFuncImport::checkAndSetEnableSubroutine()
+{
+	// Skip if subroutine is already on.
+	if (m_pCtx->m_enableSubroutine)
+	{
+		m_enableSubroutineCallForEmulation = true;
+		return;
+	}
+	else if (IGC_IS_FLAG_ENABLED(ForceSubroutineForEmulation))
+	{
+		m_enableSubroutineCallForEmulation = true;
+		m_pCtx->m_enableSubroutine = true;
+		return;
+	}
+
+	// Only simd8 is supported for subroutine. Make sure simd8 is allowed!
+	if (m_pCtx->type == ShaderType::COMPUTE_SHADER)
+	{
+		ComputeShaderContext* ctx = static_cast<ComputeShaderContext*>(m_pCtx);
+		SIMDMode simdMode = ctx->GetLeastSIMDModeAllowed();
+		if (simdMode != SIMDMode::SIMD8)
+			return;
+	}
+
+	Module* M = m_pCtx->getModule();
+	for (auto FI = M->begin(), FE = M->end(); FI != FE; ++FI)
+	{
+		Function *F = &*FI;
+		for (auto II = inst_begin(F), IE = inst_end(F); II != IE; ++II)
+		{
+			Instruction *I = &*II;
+			switch (I->getOpcode()) {
+			default:
+				break;
+			case Instruction::FDiv:
+			case Instruction::FMul:
+			case Instruction::FAdd:
+			case Instruction::FSub:
+			case Instruction::FCmp:
+			  {
+				if (I->getOperand(0)->getType()->isDoubleTy())
+				{
+					m_enableSubroutineCallForEmulation = true;
+				}
+				break;
+			  }
+		    case Instruction::FPToSI:
+			case Instruction::FPToUI:
+			case Instruction::FPTrunc:
+				if (I->getOperand(0)->getType()->isDoubleTy())
+				{
+					m_enableSubroutineCallForEmulation = true;
+				}
+				break;
+			case Instruction::SIToFP:
+			case Instruction::UIToFP:
+			case Instruction::FPExt:
+				if (I->getType()->isDoubleTy())
+				{
+					m_enableSubroutineCallForEmulation = true;
+				}
+				break;
+			}
+
+			IntrinsicInst *IInst = dyn_cast<IntrinsicInst>(I);
+			GenIntrinsicInst *GIInst = dyn_cast<GenIntrinsicInst>(I);
+			// Handle intrinsic calls
+			if ((IInst && IInst->getIntrinsicID() == Intrinsic::sqrt) ||
+				(GIInst && GIInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sqrt))
+			{
+				m_enableSubroutineCallForEmulation = true;
+			}
+
+			if (m_enableSubroutineCallForEmulation) {
+				m_pCtx->m_enableSubroutine = true;
+				return;
+			}
+		}
+	}
 }

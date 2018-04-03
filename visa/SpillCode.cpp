@@ -139,21 +139,20 @@ G4_Declare* SpillManager::createNewTempAddrDeclare(G4_Declare* dcl, uint16_t num
 }
 
 //
-// generate a reg to reg mov inst
+// generate a reg to reg mov inst for addr/flag spill
 // mov  dst(dRegOff,dSubRegOff)<1>  src(sRegOff,sSubRegOff)<nRegs;nRegs,1>
 //
 void SpillManager::genRegMov(INST_LIST&     instList,
                              INST_LIST_ITER it,
                              G4_VarBase*    src,
-                             unsigned short sRegOff,
                              unsigned short sSubRegOff,
                              G4_VarBase*    dst,
-                             unsigned short dRegOff,
-                             unsigned short dSubRegOff,
-                             unsigned       nRegs)
+                             unsigned       nRegs,
+                             bool           useNoMask = true)
 {
     builder.instList.clear();
 
+    uint16_t dSubRegOff = 0;
     for (uint16_t i = 16; i != 0 && nRegs != 0; i >>= 1)  // 16, 8, 4, 2, 1
     {
         if (nRegs >= i)
@@ -191,7 +190,7 @@ void SpillManager::genRegMov(INST_LIST&     instList,
             G4_SrcRegRegion* s = builder.createSrcRegRegion(Mod_src_undef,
                     Direct,
                     src,
-                    sRegOff,
+                    0,
                     sSubRegOff,
                     srcRgn,
                     type);
@@ -200,16 +199,22 @@ void SpillManager::genRegMov(INST_LIST&     instList,
             //
             G4_DstRegRegion* d = builder.createDstRegRegion(Direct,
                                 dst,
-                                dRegOff,
+                                0,
                                 dSubRegOff,
-                                1,  // horzStride
+                                1,
                                 type);
 
-			G4_DstRegRegion* dstOpnd = builder.createDstRegRegion(Direct, dst, dRegOff, dSubRegOff, 1, type);
+			G4_DstRegRegion* dstOpnd = builder.createDstRegRegion(Direct, dst, 0, dSubRegOff, 1, type);
 			builder.createInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
 
+            if (execSize != kernel.getSimdSize())
+            {
+                // NoMask must be used in this case
+                useNoMask = true;
+            }
             // mov (nRegs)  a0.aOff<1>  loc(0,locOff)<4;4,1>
-            builder.createInst(NULL,G4_mov,NULL,false,(uint8_t) execSize,d,s,NULL,InstOpt_WriteEnable);
+            builder.createInst(NULL,G4_mov,NULL,false,(uint8_t) execSize,d,s,NULL,
+                useNoMask ? InstOpt_WriteEnable : InstOpt_NoOpt);
 
             sSubRegOff += i;
             dSubRegOff += i;
@@ -292,8 +297,8 @@ void SpillManager::replaceSpilledDst(INST_LIST&     instList,
                 // generate mov Tmp(0,0)<1>  SPILL_LOC_V100(0,0)
                 //
                 genRegMov(instList, it,
-                    spDcl->getRegVar(), 0, 0,
-                    tmpDcl->getRegVar(), 0, 0,
+                    spDcl->getRegVar(), 0,
+                    tmpDcl->getRegVar(),
                     tmpDcl->getNumElems());
             }
 
@@ -351,8 +356,8 @@ void SpillManager::replaceSpilledSrc(INST_LIST&     instList,
 			{
 				G4_Declare* tmpDcl = createNewTempAddrDeclare(spDcl, 1);
 				genRegMov(instList, it,
-					spDcl->getRegVar(), 0, ss->getSubRegOff(),
-					tmpDcl->getRegVar(), 0, 0,
+					spDcl->getRegVar(), ss->getSubRegOff(),
+					tmpDcl->getRegVar(),
 					2);
 
 				s = builder.createSrcRegRegion(
@@ -415,9 +420,9 @@ void SpillManager::replaceSpilledSrc(INST_LIST&     instList,
                 // generate mov Tmp(0,0)<1>  SPILL_LOC_V100(0,0)
                 //
                 genRegMov(instList, it,
-                    spDcl->getRegVar(), 0, ss->getSubRegOff(),
-                    tmpDcl->getRegVar(), 0, 0,
-                    tmpDcl->getNumElems());
+                    spDcl->getRegVar(), ss->getSubRegOff(),
+                    tmpDcl->getRegVar(),
+                    tmpDcl->getNumElems(), getGenxPlatform() == GENX_CNL ? false : true);
             }
 
             G4_SrcRegRegion rgn(*ss, tmpDcl->getRegVar()); // using tmpDcl as new base
@@ -454,8 +459,8 @@ void SpillManager::replaceSpilledPredicate(INST_LIST&     instList,
         {
             G4_Declare* tmpDcl = createNewTempFlagDeclare(flagDcl);
             genRegMov(instList, it,
-                      spDcl->getRegVar(), 0, 0,
-                      tmpDcl->getRegVar(), 0, 0,
+                      spDcl->getRegVar(), 0,
+                      tmpDcl->getRegVar(),
                       tmpDcl->getNumElems());
             G4_Predicate *new_pred = builder.createPredicate(predicate->getState(), tmpDcl->getRegVar(), 0, predicate->getControl());
             inst->setPredicate(new_pred);
@@ -501,8 +506,8 @@ void SpillManager::replaceSpilledFlagDst(G4_BB*         bb,
                 (bb->isInSimdFlow() && !inst->isWriteEnableInst()))
             {
                 genRegMov(instList, it,
-                    spDcl->getRegVar(), 0, 0,
-                    tmpDcl->getRegVar(), 0, 0,
+                    spDcl->getRegVar(), 0,
+                    tmpDcl->getRegVar(),
                     tmpDcl->getNumElems());
                 ++numFlagSpillLoad;
             }
@@ -512,8 +517,8 @@ void SpillManager::replaceSpilledFlagDst(G4_BB*         bb,
             inst->setCondMod(newCondMod);
 
             genRegMov(instList, ++it,
-                      tmpDcl->getRegVar(), 0, 0,
-                      spDcl->getRegVar(), 0, 0,
+                      tmpDcl->getRegVar(), 0,
+                      spDcl->getRegVar(),
                       tmpDcl->getNumElems());
             ++numFlagSpillStore;
         }

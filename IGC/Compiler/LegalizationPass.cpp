@@ -1233,6 +1233,53 @@ void Legalization::visitStoreInst(StoreInst &I)
         IGC::cloneStore(&I, newVal, I8PtrOp);
         I.eraseFromParent();
     }
+    else if (I.getOperand(0)->getType()->isIntegerTy())
+    {
+        m_builder->SetInsertPoint(&I);
+
+        unsigned srcWidth = I.getOperand(0)->getType()->getScalarSizeInBits();
+        if (m_DL->isLegalInteger(srcWidth)) // nothing to legalize
+            return;
+
+        // Find largest legal int size to break into vectors
+        unsigned intSize = 0;
+        for(unsigned i = m_DL->getLargestLegalIntTypeSizeInBits(); i >= 8; i >>= 1)
+        {
+            if (srcWidth % i == 0)
+            {
+                intSize = i;
+                break;
+            }
+        }
+        if (intSize == 0) // unaligned sizes not supported
+            return;
+
+        Type* legalTy = VectorType::get(Type::getIntNTy(I.getContext(), intSize), srcWidth / intSize);
+        Value* storeVal = BitCastInst::Create(Instruction::BitCast, I.getOperand(0), legalTy, "", &I);
+        Value* storePtr = I.getPointerOperand();
+
+        assert(storePtr->getType()->getPointerElementType()->isIntegerTy(srcWidth));
+
+        PointerType* ptrTy = PointerType::get(legalTy, storePtr->getType()->getPointerAddressSpace());
+        IntToPtrInst* intToPtr = dyn_cast<IntToPtrInst>(storePtr);
+
+        if (intToPtr)
+        {
+            // Direct cast int to the legal type
+            storePtr = IntToPtrInst::Create(Instruction::CastOps::IntToPtr, intToPtr->getOperand(0), ptrTy, "", &I);
+        }
+        else
+        {
+            storePtr = BitCastInst::CreatePointerCast(storePtr, ptrTy, "", &I);
+        }
+        IGC::cloneStore(&I, storeVal, storePtr);
+        I.eraseFromParent();
+
+        if (intToPtr && intToPtr->getNumUses() == 0)
+        {
+            intToPtr->eraseFromParent();
+        }
+    }
 }
 
 void Legalization::visitLoadInst(LoadInst &I)

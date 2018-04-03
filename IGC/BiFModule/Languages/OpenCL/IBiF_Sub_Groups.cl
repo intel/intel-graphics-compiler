@@ -1055,39 +1055,52 @@ void intel_sub_group_media_block_write_ui8(
 /////////////////////////////////////////////////////////////////////////////////////
 // Block Read/Write Functions
 
-#define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(FUNC_NAME, TYPE, INTERNAL_FUNC)         \
-INLINE TYPE OVERLOADABLE  FUNC_NAME( image2d_t image, int2 coord )                     \
-{                                                                                      \
-    int id = (int)__builtin_astype(image, __global void*);                             \
-    return INTERNAL_FUNC(id, coord);                                                   \
-}
+#define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(FUNC_NAME, TYPE, INTERNAL_FUNC)          \
+INLINE TYPE OVERLOADABLE  FUNC_NAME( image2d_t image, int2 coord )                      \
+{                                                                                       \
+    int id = (int)__builtin_astype(image, __global void*);                              \
+    return INTERNAL_FUNC(id, coord);                                                    \
+}                                                                                       \
+TYPE __builtin_spirv_##FUNC_NAME##_i64_v2i32(ulong image, int2 coord)                   \
+{                                                                                       \
+    return INTERNAL_FUNC(image, coord);                                                 \
+}                                                                                       
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
-#define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(FUNC_NAME, TYPE, INTERNAL_FUNC)      \
-INLINE TYPE OVERLOADABLE  FUNC_NAME( read_write image2d_t image, int2 coord )          \
-{                                                                                      \
-    int id = (int)__builtin_astype(image, __global void*);                             \
-    return INTERNAL_FUNC(id, coord);                                                   \
-}
+#define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(FUNC_NAME, TYPE, INTERNAL_FUNC)       \
+INLINE TYPE OVERLOADABLE  FUNC_NAME( read_write image2d_t image, int2 coord )           \
+{                                                                                       \
+    int id = (int)__builtin_astype(image, __global void*);                              \
+    return INTERNAL_FUNC(id, coord);                                                    \
+}                                                                                       
 #else
 #define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(FUNC_NAME, TYPE, INTERNAL_FUNC)
 #endif // SUPPORT_ACCESS_QUAL_OVERLOAD
 
-#define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(FUNC_NAME, TYPE, ELEM_TYPE,  INTERNAL_FUNC)    \
-INLINE TYPE OVERLOADABLE  FUNC_NAME( const __global ELEM_TYPE* p )                             \
-{                                                                                              \
-    return INTERNAL_FUNC((__global void *)p);                                                  \
+#define  DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(FUNC_NAME, TYPE, ELEM_TYPE, TYPE_ABBR, INTERNAL_FUNC)       \
+INLINE TYPE OVERLOADABLE  FUNC_NAME( const __global ELEM_TYPE* p )                                          \
+{                                                                                                           \
+    return INTERNAL_FUNC((__global void *)p);                                                               \
+}                                                                                                           \
+TYPE __builtin_spirv_##FUNC_NAME##_p1##TYPE_ABBR(const __global ELEM_TYPE* p)                               \
+{                                                                                                           \
+    return INTERNAL_FUNC((__global void *)p);                                                               \
 }
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
-#define  DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(FUNC_NAME, TYPE, INTERNAL_FUNC)        \
-INLINE void OVERLOADABLE FUNC_NAME( write_only image2d_t image, int2 coord, TYPE data )\
-{                                                                                      \
-    int id = (int)__builtin_astype(image, __global void*);                             \
-    INTERNAL_FUNC(id, coord, data);                                                    \
+#define  DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(FUNC_NAME, TYPE, TYPE_ABBR, INTERNAL_FUNC)   \
+INLINE void OVERLOADABLE FUNC_NAME( write_only image2d_t image, int2 coord, TYPE data )         \
+{                                                                                               \
+    int id = (int)__builtin_astype(image, __global void*);                                      \
+    INTERNAL_FUNC(id, coord, data);                                                             \
+}                                                                                               \
+TYPE __builtin_spirv_##FUNC_NAME##_i64_v2i32_##TYPE_ABBR(ulong image, int2 coord, TYPE data)    \
+{                                                                                               \
+    INTERNAL_FUNC(image, coord, data);                                                          \
 }
+
 #else
-#define  DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(FUNC_NAME, TYPE, INTERNAL_FUNC)
+#define  DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(FUNC_NAME, TYPE, TYPE_ABBR, INTERNAL_FUNC)
 #endif // SUPPORT_ACCESS_QUAL_OVERLOAD
 
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
@@ -1101,10 +1114,14 @@ INLINE void OVERLOADABLE FUNC_NAME( read_write image2d_t image, int2 coord, TYPE
 #define  DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(FUNC_NAME, TYPE, INTERNAL_FUNC)
 #endif // SUPPORT_ACCESS_QUAL_OVERLOAD
 
-#define  DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(FUNC_NAME, TYPE, ELEM_TYPE, INTERNAL_FUNC)  \
-INLINE void OVERLOADABLE  FUNC_NAME( __global ELEM_TYPE* p, TYPE data )                      \
-{                                                                                            \
-    INTERNAL_FUNC(p, data);                                                                  \
+#define  DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(FUNC_NAME, TYPE, ELEM_TYPE, PTR_TYPE, TYPE_ABBR, INTERNAL_FUNC)    \
+INLINE void OVERLOADABLE  FUNC_NAME( __global ELEM_TYPE* p, TYPE data )                                             \
+{                                                                                                                   \
+    INTERNAL_FUNC(p, data);                                                                                         \
+}                                                                                                                   \
+TYPE __builtin_spirv_##FUNC_NAME##_p1##PTR_TYPE##_##TYPE_ABBR(__global ELEM_TYPE* p, TYPE data)                     \
+{                                                                                                                   \
+    INTERNAL_FUNC(p, data);                                                                                         \
 }
 
 DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(intel_sub_group_block_read,  uint,  __builtin_IB_simd_media_block_read_1)
@@ -1117,25 +1134,25 @@ DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(intel_sub_group_block_read2, uint2, __b
 DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(intel_sub_group_block_read4, uint4, __builtin_IB_simd_media_block_read_4)
 DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(intel_sub_group_block_read8, uint8, __builtin_IB_simd_media_block_read_8)
 
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read,  uint,  uint, __builtin_IB_simd_block_read_1_global)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read2, uint2, uint, __builtin_IB_simd_block_read_2_global)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read4, uint4, uint, __builtin_IB_simd_block_read_4_global)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read8, uint8, uint, __builtin_IB_simd_block_read_8_global)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read,  uint,  uint, i32, __builtin_IB_simd_block_read_1_global)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read2, uint2, uint, i32, __builtin_IB_simd_block_read_2_global)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read4, uint4, uint, i32, __builtin_IB_simd_block_read_4_global)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read8, uint8, uint, i32, __builtin_IB_simd_block_read_8_global)
 
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write,  uint,  __builtin_IB_simd_media_block_write_1)
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write2, uint2, __builtin_IB_simd_media_block_write_2)
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write4, uint4, __builtin_IB_simd_media_block_write_4)
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write8, uint8, __builtin_IB_simd_media_block_write_8)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write,  uint,  i32,   __builtin_IB_simd_media_block_write_1)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write2, uint2, v2i32, __builtin_IB_simd_media_block_write_2)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write4, uint4, v4i32, __builtin_IB_simd_media_block_write_4)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write8, uint8, v8i32, __builtin_IB_simd_media_block_write_8)
 
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(intel_sub_group_block_write,  uint,  __builtin_IB_simd_media_block_write_1)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(intel_sub_group_block_write2, uint2, __builtin_IB_simd_media_block_write_2)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(intel_sub_group_block_write4, uint4, __builtin_IB_simd_media_block_write_4)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(intel_sub_group_block_write8, uint8, __builtin_IB_simd_media_block_write_8)
 
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write,  uint,  uint, __builtin_IB_simd_block_write_1_global)
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write2, uint2, uint, __builtin_IB_simd_block_write_2_global)
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write4, uint4, uint, __builtin_IB_simd_block_write_4_global)
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write8, uint8, uint, __builtin_IB_simd_block_write_8_global)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write,  uint,  uint, i32, i32, __builtin_IB_simd_block_write_1_global)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write2, uint2, uint, i32, v2i32, __builtin_IB_simd_block_write_2_global)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write4, uint4, uint, i32, v4i32, __builtin_IB_simd_block_write_4_global)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write8, uint8, uint, i32, v8i32, __builtin_IB_simd_block_write_8_global)
 
 DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(intel_sub_group_block_read_us,   ushort,  __builtin_IB_simd_media_block_read_1_h)
 DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(intel_sub_group_block_read_us2,  ushort2, __builtin_IB_simd_media_block_read_2_h)
@@ -1147,22 +1164,69 @@ DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(intel_sub_group_block_read_us2,  ushort
 DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(intel_sub_group_block_read_us4,  ushort4, __builtin_IB_simd_media_block_read_4_h)
 DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(intel_sub_group_block_read_us8,  ushort8, __builtin_IB_simd_media_block_read_8_h)
 
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_us,  ushort,  ushort, __builtin_IB_simd_block_read_1_global_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_us2, ushort2, ushort, __builtin_IB_simd_block_read_2_global_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_us4, ushort4, ushort, __builtin_IB_simd_block_read_4_global_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_us8, ushort8, ushort, __builtin_IB_simd_block_read_8_global_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_us,  ushort,  ushort, i16, __builtin_IB_simd_block_read_1_global_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_us2, ushort2, ushort, i16, __builtin_IB_simd_block_read_2_global_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_us4, ushort4, ushort, i16, __builtin_IB_simd_block_read_4_global_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_us8, ushort8, ushort, i16, __builtin_IB_simd_block_read_8_global_h)
 
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_us,  ushort,  __builtin_IB_simd_media_block_write_1_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_us2, ushort2, __builtin_IB_simd_media_block_write_2_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_us4, ushort4, __builtin_IB_simd_media_block_write_4_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_us8, ushort8, __builtin_IB_simd_media_block_write_8_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_us,  ushort,  i16,   __builtin_IB_simd_media_block_write_1_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_us2, ushort2, v2i16, __builtin_IB_simd_media_block_write_2_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_us4, ushort4, v4i16, __builtin_IB_simd_media_block_write_4_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_us8, ushort8, v8i16, __builtin_IB_simd_media_block_write_8_h)
 
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(intel_sub_group_block_write_us,  ushort,  __builtin_IB_simd_media_block_write_1_h)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(intel_sub_group_block_write_us2, ushort2, __builtin_IB_simd_media_block_write_2_h)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(intel_sub_group_block_write_us4, ushort4, __builtin_IB_simd_media_block_write_4_h)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(intel_sub_group_block_write_us8, ushort8, __builtin_IB_simd_media_block_write_8_h)
 
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us,  ushort,  ushort, __builtin_IB_simd_block_write_1_global_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us2, ushort2, ushort, __builtin_IB_simd_block_write_2_global_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us4, ushort4, ushort, __builtin_IB_simd_block_write_4_global_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us8, ushort8, ushort, __builtin_IB_simd_block_write_8_global_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us,  ushort,  ushort, i16, i16, __builtin_IB_simd_block_write_1_global_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us2, ushort2, ushort, i16, v2i16, __builtin_IB_simd_block_write_2_global_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us4, ushort4, ushort, i16, v4i16, __builtin_IB_simd_block_write_4_global_h)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us8, ushort8, ushort, i16, v8i16, __builtin_IB_simd_block_write_8_global_h)
+
+// SPIR-V builtins implementation for intel_subgroups
+
+// Second param is always an uint, so take only first as an argument to the macro.
+#define DEFN_SPIRV_INTEL_SUBGROUP_2PARAMS(FUNC_NAME, TYPE_ABBR, TYPE)       \
+TYPE __builtin_spirv_##FUNC_NAME##_##TYPE_ABBR##_i32(TYPE x, uint y) {      \
+    return FUNC_NAME(x,y);                                                  \
+}
+
+#define DEFN_SPIRV_INTEL_SUBGROUP_3PARAMS(FUNC_NAME, TYPE_ABBR, TYPE) \
+TYPE __builtin_spirv_##FUNC_NAME##_##TYPE_ABBR##_##TYPE_ABBR##_i32(TYPE x, TYPE y, uint z) {    \
+    return FUNC_NAME(x,y,z);                                                                    \
+}
+
+#define DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(TYPE_ABBR, TYPE)                    \
+    DEFN_SPIRV_INTEL_SUBGROUP_2PARAMS(intel_sub_group_shuffle, TYPE_ABBR, TYPE)         \
+    DEFN_SPIRV_INTEL_SUBGROUP_2PARAMS(intel_sub_group_shuffle_xor, TYPE_ABBR, TYPE)     \
+    DEFN_SPIRV_INTEL_SUBGROUP_3PARAMS(intel_sub_group_shuffle_down, TYPE_ABBR, TYPE)    \
+    DEFN_SPIRV_INTEL_SUBGROUP_3PARAMS(intel_sub_group_shuffle_up, TYPE_ABBR, TYPE)    
+
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(i32, uint)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(i8, uchar)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(i16, ushort)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(f32, float)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v2f32, float2)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v3f32, float3)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v4f32, float4)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v8f32, float8)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v16f32, float16)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v2i32, uint2)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v3i32, uint3)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v4i32, uint4)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v8i32, uint8)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v16i32, uint16)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v2i16, ushort2)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v3i16, ushort3)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v4i16, ushort4)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v8i16, ushort8)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(v16i16, ushort16)
+
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(i64, ulong)
+#if defined(cl_khr_fp16)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(f16, half)
+#endif
+#if defined(cl_khr_fp64)
+DEFN_SPIRV_INTEL_SUBGROUP_SHUFFLE_FUNCTIONS(f64, double)
+#endif

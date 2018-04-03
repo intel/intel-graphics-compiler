@@ -356,6 +356,11 @@
         return false;
     }
 
+    bool relaxedACCRestrictions2() const
+    {
+        return false;
+    }
+
     // 1 means one SIMD16 float accumulator
     uint32_t getNumACC() const
     {
@@ -380,6 +385,11 @@
     bool canMadHaveSrc0Acc() const
     {
         return false;
+    }
+
+    bool accDstforVxHSrc() const
+    {
+        return true;
     }
 
 

@@ -285,10 +285,23 @@ void EstimateFunctionSize::checkSubroutine() {
     std::size_t MaxSize = getMaxExpandedSize();
     if (MaxSize <= Threshold && !HasRecursion)
       EnableSubroutine = false;
-    else
-      // Disable retry manager when subroutine is enabled.
-      pContext->m_retryManager.Disable();
   }
+
+  // Enable subroutine if there is instrumented function
+  if (!EnableSubroutine) {
+    for (Function& F : *M) {
+      if (F.hasFnAttribute("InstrumentedFunc")) {
+        EnableSubroutine = true;
+        break;
+      }
+    }
+  }
+
+  if (EnableSubroutine) {
+    // Disable retry manager when subroutine is enabled.
+    pContext->m_retryManager.Disable();
+  }
+
   assert(!HasRecursion || EnableSubroutine);
   // Store result into the context (this decision should be immutable).
   pContext->m_enableSubroutine = EnableSubroutine;

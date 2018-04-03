@@ -64,17 +64,21 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst &I)
             case GenISAIntrinsic::GenISA_ldmsptr:
             {
                 GenIntrinsicInst* ldmcs = nullptr;
-                if(Instruction* mcsData = dyn_cast<Instruction>(I.getOperand(2)))
+                Value* mcsData = I.getOperand(1);
+                if(BitCastInst* bcast = dyn_cast<BitCastInst>(mcsData))
                 {
-                    if(BitCastInst* bcast = dyn_cast<BitCastInst>(mcsData))
-                    {
-                        mcsData = bcast;
-                    }
-                    if(ExtractElementInst* extractInst = dyn_cast<ExtractElementInst>(mcsData))
-                    {
-                        ldmcs = dyn_cast<GenIntrinsicInst>(extractInst->getOperand(0));
-                    }
+                    mcsData = bcast->getOperand(0);
                 }
+                if(ExtractElementInst* extractInst = dyn_cast<ExtractElementInst>(mcsData))
+                {
+                    mcsData = extractInst->getOperand(0);
+                }    
+                if(BitCastInst* bcast = dyn_cast<BitCastInst>(mcsData))
+                {
+                    mcsData = bcast->getOperand(0);
+                }
+                ldmcs = dyn_cast<GenIntrinsicInst>(mcsData);
+                
 
                 assert(ldmcs!=NULL);
 

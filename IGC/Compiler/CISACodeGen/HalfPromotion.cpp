@@ -57,12 +57,7 @@ IGC_INITIALIZE_PASS_END(HalfPromotion, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONL
 
 char HalfPromotion::ID = 0;
 
-HalfPromotion::HalfPromotion() : FunctionPass(ID), m_isOCL(false)
-{
-	initializeHalfPromotionPass(*PassRegistry::getPassRegistry());
-}
-
-HalfPromotion::HalfPromotion(bool isOCL) : FunctionPass(ID), m_isOCL(isOCL)
+HalfPromotion::HalfPromotion() : FunctionPass(ID)
 {
     initializeHalfPromotionPass(*PassRegistry::getPassRegistry());
 }
@@ -75,9 +70,7 @@ bool HalfPromotion::runOnFunction(Function &F)
 
 void HalfPromotion::visitCallInst(llvm::CallInst &I)
 {
-	if(m_isOCL) return;
-
-	if(llvm::isa<llvm::IntrinsicInst>(I) && I.getType()->isHalfTy())
+    if(llvm::isa<llvm::IntrinsicInst>(I) && I.getType()->isHalfTy())
     {
         handleLLVMIntrinsic(llvm::cast<IntrinsicInst>(I));
     }
@@ -89,8 +82,6 @@ void HalfPromotion::visitCallInst(llvm::CallInst &I)
 
 void IGC::HalfPromotion::handleLLVMIntrinsic(llvm::IntrinsicInst &I)
 {
-	if (m_isOCL) return;
-
     Intrinsic::ID id = I.getIntrinsicID();
     if(id == Intrinsic::cos ||
         id == Intrinsic::sin ||
@@ -129,8 +120,6 @@ void IGC::HalfPromotion::handleLLVMIntrinsic(llvm::IntrinsicInst &I)
 
 void IGC::HalfPromotion::handleGenIntrinsic(llvm::GenIntrinsicInst &I)
 {
-	if (m_isOCL) return;
-
     GenISAIntrinsic::ID id = I.getIntrinsicID();
     if(id == GenISAIntrinsic::GenISA_fsat ||
         id == GenISAIntrinsic::GenISA_sqrt ||
@@ -187,8 +176,6 @@ void HalfPromotion::visitFCmp(llvm::FCmpInst &CmpI)
 
 void HalfPromotion::visitBinaryOperator(llvm::BinaryOperator &BI)
 {
-	if (m_isOCL) return;
-
     if(BI.getType()->isHalfTy() &&
        (BI.getOpcode() == BinaryOperator::FAdd ||
         BI.getOpcode() == BinaryOperator::FSub ||
@@ -220,8 +207,6 @@ void HalfPromotion::visitBinaryOperator(llvm::BinaryOperator &BI)
 
 void HalfPromotion::visitCastInst(llvm::CastInst &CI)
 {
-	if (m_isOCL) return;
-
     if(CI.getType()->isHalfTy() &&
         (CI.getOpcode() == CastInst::UIToFP ||
          CI.getOpcode() == CastInst::SIToFP))
@@ -262,8 +247,6 @@ void HalfPromotion::visitCastInst(llvm::CastInst &CI)
 
 void HalfPromotion::visitSelectInst(llvm::SelectInst &SI)
 {
-	if (m_isOCL) return;
-
     if(SI.getTrueValue()->getType()->isHalfTy())
     {
         llvm::IGCIRBuilder<> builder(&SI);
@@ -278,8 +261,6 @@ void HalfPromotion::visitSelectInst(llvm::SelectInst &SI)
 
 void HalfPromotion::visitPHINode(llvm::PHINode &PHI)
 {
-	if (m_isOCL) return;
-
     if(!PHI.getType()->isHalfTy())
     {
         return;

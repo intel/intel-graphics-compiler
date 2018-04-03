@@ -2130,6 +2130,13 @@ endif()
 set(IGC_OPTION__COMPILE_LINK_ALLOW_UNSAFE_SIZE_OPT ON CACHE BOOL "Compile/link: Allow unsafe size optimization like --gc-sections.")
 mark_as_advanced(IGC_OPTION__COMPILE_LINK_ALLOW_UNSAFE_SIZE_OPT)
 
+# IGC install time absolute path
+if(IGC_OPTION__INSTALL_TIME_ROOT_DIR)
+    set(IGC_INSTALL_TIME_ROOT_DIR ${IGC_OPTION__INSTALL_TIME_ROOT_DIR})
+else()
+    set(IGC_INSTALL_TIME_ROOT_DIR "/usr/")
+endif()
+
 # ============================================= Status =================================================
 
 message(STATUS "================================ IGC Project ================================")
@@ -3973,14 +3980,16 @@ endif()
 # cpack to create deb package
 ########################################################################
 
-install(TARGETS ${IGC_BUILD__PROJ__igc_dll} DESTINATION lib)
+install(TARGETS ${IGC_BUILD__PROJ__igc_dll} DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}lib COMPONENT igc)
 
 set(CPACK_GENERATOR "DEB")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "intel")
 set(CPACK_PACKAGE_VERSION_MAJOR ${MAJOR_VERSION})
 set(CPACK_PACKAGE_VERSION_MINOR ${MINOR_VERSION})
 set(CPACK_PACKAGE_VERSION_PATCH ${PATCH_VERSION})
-set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS on)
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_DEB_COMPONENT_INSTALL ON)
+SET(CPACK_COMPONENTS_ALL igc)
 
 include (CPack)
 

@@ -396,20 +396,21 @@ void WIAnalysis::updateArgsDependency(llvm::Function *pF)
 
     Assumption is that the order of metadata matches the order of arguments in function.
     */
+
+	// For a subroutine, conservatively assume that all user provided arguments
+	// are random. Note that all other functions are treated as kernels.
+	// To enable subroutine for other FEs, we need to update this check.
+	bool IsSubroutine = !isEntryFunc(m_pMdUtils, pF);
+
     ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     ImplicitArgs implicitArgs(*pF, m_pMdUtils);
     unsigned implicitArgStart = (unsigned)(pF->getArgumentList().size()
         - implicitArgs.size()
-        - modMD->pushInfo.pushAnalysisWIInfos.size());
+        - (IsSubroutine ? 0 : modMD->pushInfo.pushAnalysisWIInfos.size()));
 
     llvm::Function::arg_iterator ai, ae;
     ai = pF->arg_begin();
     ae = pF->arg_end();
-
-    // For a subroutine, conservatively assume that all user provided arguments
-    // are random. Note that all other functions are treated as kernels.
-    // To enable subroutine for other FEs, we need to update this check.
-    bool IsSubroutine = !isEntryFunc(m_pMdUtils, pF);
 
     // 1. add all kernel function args as uniform, or
     //    add all subroutine function args as random
@@ -470,13 +471,16 @@ void WIAnalysis::updateArgsDependency(llvm::Function *pF)
     }
 
     // 3. add push analysis args
-    for (unsigned i = 0; i < modMD->pushInfo.pushAnalysisWIInfos.size(); ++i, ++ai)
-    {
-        assert(ai != ae);
-        WIAnalysis::WIDependancy dependency =
-            static_cast<WIDependancy>(modMD->pushInfo.pushAnalysisWIInfos[i].argDependency);
-        incUpdateDepend(&(*ai), dependency);
-    }
+	if (!IsSubroutine)
+	{
+		for (unsigned i = 0; i < modMD->pushInfo.pushAnalysisWIInfos.size(); ++i, ++ai)
+		{
+			assert(ai != ae);
+			WIAnalysis::WIDependancy dependency =
+				static_cast<WIDependancy>(modMD->pushInfo.pushAnalysisWIInfos[i].argDependency);
+			incUpdateDepend(&(*ai), dependency);
+		}
+	}
 }
 
 WIAnalysis::WIDependancy WIAnalysis::whichDepend(const Value* val)
@@ -996,9 +1000,7 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
       intrinsic_name == llvm_surfaceinfo ||
       intrinsic_name == llvm_simdSize ||
       intrinsic_name == llvm_resinfoptr ||
-      intrinsic_name == llvm_resinfo ||
       intrinsic_name == llvm_sampleinfoptr ||
-      intrinsic_name == llvm_sampleinfo ||
       intrinsic_name == llvm_ldrawvector_indexed ||
       intrinsic_name == llvm_ldraw_indexed ||
       intrinsic_name == llvm_cycleCounter ||

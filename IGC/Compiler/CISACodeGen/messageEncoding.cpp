@@ -569,40 +569,6 @@ USC::SShaderStageBTLayout* COCLBTILayout::getModifiableLayout()
     return const_cast<USC::SShaderStageBTLayout*>(m_pLayout);
 }
 
-EU_GEN6_SAMPLER_MESSAGE_TYPE GetSampleMessage(EOPCODE opCode)
-{
-    switch(opCode)
-    {
-    case llvm_lod: 
-        return EU_GEN6_SAMPLER_MESSAGE_LOD;
-    case llvm_sample: 
-        return EU_GEN6_SAMPLER_MESSAGE_SAMPLE;
-    case llvm_sample_l:
-        return EU_GEN6_SAMPLER_MESSAGE_SAMPLE_L;
-    case llvm_sample_b:
-        return EU_GEN6_SAMPLER_MESSAGE_SAMPLE_B;
-    case llvm_sample_c:
-        return EU_GEN6_SAMPLER_MESSAGE_SAMPLE_C;
-    case llvm_sample_d:
-        return EU_GEN6_SAMPLER_MESSAGE_SAMPLE_D;
-    case llvm_sample_lc:
-        return EU_GEN6_SAMPLER_MESSAGE_SAMPLE_LC;
-    case llvm_sample_bc:
-        return EU_GEN6_SAMPLER_MESSAGE_SAMPLE_BC;
-    case llvm_ld:
-        return EU_GEN6_SAMPLER_MESSAGE_LD;
-    case llvm_resinfo:
-    case llvm_resinfoptr:
-        return EU_GEN6_SAMPLER_MESSAGE_RESINFO;
-    case llvm_sampleinfo:
-    case llvm_sampleinfoptr:
-        return EU_GEN6_SAMPLER_MESSAGE_SAMPLEINFO;
-    default:
-        assert(0);
-    }
-    return EU_GEN6_SAMPLER_MESSAGE_SAMPLE;
-}
-
 EU_PIXEL_INTERPOLATOR_SIMD_MODE pixelInterpolatorSimDMode(SIMDMode simd)
 {
     if(simd==SIMDMode::SIMD8)

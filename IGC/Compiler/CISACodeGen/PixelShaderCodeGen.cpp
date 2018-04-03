@@ -743,7 +743,6 @@ namespace IGC
         pKernelProgram->outputDepth = m_HasoDepth;
         pKernelProgram->oMask = m_HasoMask;
         pKernelProgram->outputStencil = m_HasoStencil;
-        pKernelProgram->hasSampleLInLoopPS = GetContext()->m_instrTypes.hasSampleLinLoop;
 		pKernelProgram->sampleCmpToDiscardOptimizationPossible = GetContext()->m_instrTypes.sampleCmpToDiscardOptimizationPossible;
 		pKernelProgram->sampleCmpToDiscardOptimizationSlot = GetContext()->m_instrTypes.sampleCmpToDiscardOptimizationSlot;
         pKernelProgram->needPSSync = m_NeedPSSync;
@@ -1302,8 +1301,7 @@ namespace IGC
             // Single PS
             CodeGen(ctx, shaders);
             // Assuming single shader information in metadata
-            assert(pMdUtils->size_FunctionsInfo() == 1);
-            Function *pFunc = pMdUtils->begin_FunctionsInfo()->first;
+			Function *pFunc = getUniqueEntryFunc(pMdUtils);
             // gather data to send back to the driver
             shaders[pFunc]->FillProgram(&ctx->programOutput);
             COMPILER_SHADER_STATS_PRINT(shaders[pFunc]->m_shaderStats, ShaderType::PIXEL_SHADER, ctx->hash, "");

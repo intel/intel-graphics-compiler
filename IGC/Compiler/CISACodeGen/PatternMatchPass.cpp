@@ -973,27 +973,16 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I)
         case GenISAIntrinsic::GenISA_GradientYfine:
             match = MatchGradient(*CI);
             break;
-        case GenISAIntrinsic::GenISA_sample:
         case GenISAIntrinsic::GenISA_sampleptr:
-        case GenISAIntrinsic::GenISA_sampleB:
         case GenISAIntrinsic::GenISA_sampleBptr:
-        case GenISAIntrinsic::GenISA_sampleBC:
         case GenISAIntrinsic::GenISA_sampleBCptr:
-        case GenISAIntrinsic::GenISA_sampleC:
         case GenISAIntrinsic::GenISA_sampleCptr:
-        case GenISAIntrinsic::GenISA_lod:
         case GenISAIntrinsic::GenISA_lodptr:
         case GenISAIntrinsic::GenISA_sampleKillPix:
             match = MatchSampleDerivative(*CI);
             break;
         case GenISAIntrinsic::GenISA_fsat:
             match = MatchSatModifier(I);
-            break;
-
-        case GenISAIntrinsic::GenISA_RTWrite:
-            //Sampler to RT EU bypass optimization for CHV+
-            match = MatchSamplerToRT(I) ||
-                MatchSingleInstruction(I);
             break;
         case GenISAIntrinsic::GenISA_WaveShuffleIndex:
             match = MatchRegisterRegion(*CI) ||
@@ -2392,119 +2381,6 @@ bool CodeGenPatternMatch::MatchBranch(llvm::BranchInst& I)
 
 }
 
-bool CodeGenPatternMatch::MatchSamplerToRT(llvm::Instruction& I)
-{
-    struct SamplerToRT : Pattern
-    {
-        llvm::GenIntrinsicInst* inst;
-        virtual void Emit(EmitPass* pass, const DstModifier& modifier)
-        {
-            assert(modifier.sat == false && modifier.flag == nullptr);
-            pass->emitSampleToRTInstruction(inst);
-        }
-    };
-    // Supported only for CHV+
-    // Early return if the optimization is disabled or platform doesn't support it
-    //EU Bypass does not work when SVM IOMMU is enabled
-    if (IGC_IS_FLAG_ENABLED(DisableEUBypass) || !m_Platform.supportSamplerToRT() 
-        || m_Platform.WaDisableEuBypass() || m_Platform.supportFtrWddm2Svm ())
-    {
-        return false;
-    }
-
-    if(m_ctx->getModule()->getNamedMetadata("KillPixel") || 
-        m_ctx->getModule()->getNamedMetadata("coarse_phase") || 
-        m_ctx->getModule()->getNamedMetadata("pixel_phase"))
-    {
-        return false;
-    }
-
-    llvm::ExtractElementInst* redOutput = llvm::dyn_cast<ExtractElementInst>(I.getOperand(2));
-    llvm::ExtractElementInst* greenOutput = llvm::dyn_cast<ExtractElementInst>(I.getOperand(3));
-    llvm::ExtractElementInst* blueOutput = llvm::dyn_cast<ExtractElementInst>(I.getOperand(4));
-    llvm::ExtractElementInst* alphaOutput = llvm::dyn_cast<ExtractElementInst>(I.getOperand(5));
-
-    //  Check for the pattern immediately preceeded by %0 coming from a supported sample instruction
-    //  %oC0.x_ = extractelement <4 x float> %0, i32 0, !dbg !2
-    //  %oC0.y_ = extractelement <4 x float> %0, i32 1, !dbg !2
-    //  %oC0.z_ = extractelement <4 x float> %0, i32 2, !dbg !2
-    //  %oC0.w_ = extractelement <4 x float> %0, i32 3, !dbg !2
-    if(redOutput && 
-        redOutput->hasOneUse() && 
-        greenOutput && 
-        greenOutput->hasOneUse() &&  
-        blueOutput && 
-        blueOutput->hasOneUse() && 
-        alphaOutput &&
-        alphaOutput->hasOneUse())
-    {
-        //Skip if there is a swizzle on response from sampler unit
-        llvm::ConstantInt* xChannel = llvm::dyn_cast<llvm::ConstantInt>(redOutput->getOperand(1));
-        llvm::ConstantInt* yChannel = llvm::dyn_cast<llvm::ConstantInt>(greenOutput->getOperand(1));
-        llvm::ConstantInt* zChannel = llvm::dyn_cast<llvm::ConstantInt>(blueOutput->getOperand(1));
-        llvm::ConstantInt* wChannel = llvm::dyn_cast<llvm::ConstantInt>(alphaOutput->getOperand(1));
-
-        if (!(xChannel && xChannel->isZero() &&
-             yChannel && yChannel->isOne() &&
-             zChannel && zChannel->equalsInt(2) &&
-             wChannel && wChannel->equalsInt(3)))
-        {
-            return false;
-        }
-        llvm::GenIntrinsicInst* inst = llvm::dyn_cast<llvm::GenIntrinsicInst>(redOutput->getOperand(0));
-        if(inst && isa<llvm::ReturnInst>(I.getNextNode()))
-        {
-            //Check if they are from same sample instruction
-            if(blueOutput->getOperand(0) == inst   &&
-               greenOutput->getOperand(0) == inst  &&
-               alphaOutput->getOperand(0) == inst)
-            {
-                GenISAIntrinsic::ID id = inst->getIntrinsicID();
-
-                //Check for sample instruction type this optimization is supported for
-                if( id == GenISAIntrinsic::GenISA_sample ||
-                    id == GenISAIntrinsic::GenISA_sampleB ||
-                    id == GenISAIntrinsic::GenISA_sampleC ||
-                    id == GenISAIntrinsic::GenISA_sampleL ||
-                    id == GenISAIntrinsic::GenISA_sampleBC ||
-                    id == GenISAIntrinsic::GenISA_sampleLC )
-                {
-                    llvm::ConstantInt* rti = llvm::dyn_cast<llvm::ConstantInt>(I.getOperand(8));
-                    llvm::ConstantInt* hasMask = llvm::dyn_cast<llvm::ConstantInt>(I.getOperand(9));
-                    llvm::ConstantInt* hasDepth = llvm::dyn_cast<llvm::ConstantInt>(I.getOperand(10));
-                    llvm::ConstantInt* hasStencil = llvm::dyn_cast<llvm::ConstantInt>(I.getOperand(11));
-
-                    if(rti->isZero() && hasMask->isZero() && hasDepth->isZero() && hasStencil->isZero())
-                    {
-                        uint numSources = inst->getNumArgOperands();
-                        llvm::SampleIntrinsic* sampleInst = 
-                            llvm::cast<llvm::SampleIntrinsic>(redOutput->getOperand(0));
-
-                        if (!isa<ConstantInt>(sampleInst->getTextureValue()) ||
-                            !isa<ConstantInt>(sampleInst->getSamplerValue()))
-                        {
-                            return false;
-                        }
-
-                        SamplerToRT *pattern = new (m_allocator) SamplerToRT();
-                        pattern->inst = sampleInst;
-                        HandleSampleDerivative(*sampleInst);
-
-                        for(uint i =0; i<numSources;i++)
-                        {
-                            MarkAsSource(sampleInst->getOperand(i));
-                        }
-                        AddPattern(pattern);
-                        m_samplertoRenderTargetEnable = true;
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-    return false;
-}
-
 bool CodeGenPatternMatch::MatchSatModifier(llvm::Instruction& I)
 {
     struct SatPattern : Pattern
@@ -3246,24 +3122,19 @@ void CodeGenPatternMatch::HandleSampleDerivative(llvm::GenIntrinsicInst & I)
 {
     switch(I.getIntrinsicID())
     {
-    case GenISAIntrinsic::GenISA_sample:
     case GenISAIntrinsic::GenISA_sampleptr:
-    case GenISAIntrinsic::GenISA_lod:
     case GenISAIntrinsic::GenISA_lodptr:
     case GenISAIntrinsic::GenISA_sampleKillPix:
         HandleSubspanUse(I.getOperand(0));
         HandleSubspanUse(I.getOperand(1));
         HandleSubspanUse(I.getOperand(2));
         break;
-    case GenISAIntrinsic::GenISA_sampleB:
     case GenISAIntrinsic::GenISA_sampleBptr:
-    case GenISAIntrinsic::GenISA_sampleC:
     case GenISAIntrinsic::GenISA_sampleCptr:
         HandleSubspanUse(I.getOperand(1));
         HandleSubspanUse(I.getOperand(2));
         HandleSubspanUse(I.getOperand(3));
         break;
-    case GenISAIntrinsic::GenISA_sampleBC:
     case GenISAIntrinsic::GenISA_sampleBCptr:
         HandleSubspanUse(I.getOperand(2));
         HandleSubspanUse(I.getOperand(3));

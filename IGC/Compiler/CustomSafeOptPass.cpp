@@ -1944,41 +1944,6 @@ IGC_INITIALIZE_PASS_BEGIN(IGCIndirectICBPropagaion, "IGCIndirectICBPropagaion",
 IGC_INITIALIZE_PASS_END(IGCIndirectICBPropagaion, "IGCIndirectICBPropagaion",
     "IGCIndirectICBPropagaion", false, false)
 
-
-char CustomLoopInfo::ID = 0;
-
-CustomLoopInfo::CustomLoopInfo() : LoopPass(ID)
-{
-    initializeLoopInfoWrapperPassPass(*PassRegistry::getPassRegistry());
-}
-
-bool CustomLoopInfo::runOnLoop(Loop *L, LPPassManager &LPM)
-{
-    LoopInfo *LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-    auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (!LI->empty())
-    {
-        llvm::BasicBlock::InstListType::iterator I;
-        for (uint i = 0; i < L->getNumBlocks(); i++)
-        {
-            llvm::BasicBlock::InstListType &instructionList = L->getBlocks()[i]->getInstList();
-            for (I = instructionList.begin(); I != instructionList.end(); I++)
-            {
-                if (llvm::GenIntrinsicInst *CI = dyn_cast<llvm::GenIntrinsicInst>(&(*I)))
-                {
-                    if (CI->getIntrinsicID() == GenISAIntrinsic::GenISA_sampleL)
-                    {
-                        pCtx->m_instrTypes.hasSampleLinLoop = true;
-                        return false;
-                    }
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
 namespace {
 
 class GenStrengthReduction : public FunctionPass

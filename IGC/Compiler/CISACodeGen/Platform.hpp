@@ -78,7 +78,6 @@ public:
     bool needsHSBarrierIDWorkaround() const { return m_platformInfo.eRenderCoreFamily <= IGFX_GEN10_CORE; }
     bool supportBindless() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
 
-    bool needSampleLWA() const  { return m_platformInfo.eRenderCoreFamily <= IGFX_GEN10_CORE; }
     bool SupportSurfaceInfoMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
     bool SupportHDCUnormFormats() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
     bool localMemFenceSupress() const { return m_platformInfo.eRenderCoreFamily <= IGFX_GEN9_CORE ||
@@ -178,6 +177,11 @@ public:
     bool supportsSIMD16TypedRW() const
     {
         return false;
+    }
+
+    bool singleThreadBasedInstScheduling() const
+    {
+        return true;
     }
 
     bool HDCCoalesceAtomicCounterAccess() const

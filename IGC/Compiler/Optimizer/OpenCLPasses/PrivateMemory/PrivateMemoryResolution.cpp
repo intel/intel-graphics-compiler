@@ -332,25 +332,10 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module &M) const
              return false;
            }
          }
-         else if (CallInst *CI = dyn_cast<CallInst>(&I)) {
-           //
-           // Do not use scratch space if kernel has function call that will use private memory.
-           // Since the current implementation does not pass privateBase offset to callee, and
-           // callee's write to scratch space could over-write caller's private data.
-           //
-           // TODO: provide a proper solution once other problmes are resolved.
-           //
-           if (Function *callee = CI->getCalledFunction()) {
-             // No need to check m_ModAllocaInfo->getTotalPrivateMemPerWI(callee), since all
-             // the calls of a call graph will have the same PM size... Need to fix
-             if (!callee->isDeclaration())
-               return false;
-           }
-         }
        }
      }
 
-     if (m_pMdUtils->findFunctionsInfoItem(&F) == m_pMdUtils->end_FunctionsInfo())
+     if (!isEntryFunc(m_pMdUtils, &F))
        continue;
 
      //
@@ -660,7 +645,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 
         Argument* r0Arg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::R0);
         ExtractElementInst* r0_5 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"), pEntryPoint);
-        BinaryOperator* privateBase = BinaryOperator::CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFffFc00), VALUE_NAME("privateBase"), pEntryPoint);
+        BinaryOperator* privateBase = BinaryOperator::CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"), pEntryPoint);
 
         for (auto pAI : allocaInsts)
         {

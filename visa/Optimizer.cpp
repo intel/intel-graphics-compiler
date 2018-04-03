@@ -1422,6 +1422,7 @@ void Optimizer::accSubPostSchedule()
     {
         return;
     }
+
     // clean existing def use
     kernel.fg.globalOpndHT.clearHashTable();
     for (auto bb : kernel.fg.BBs)
@@ -1578,10 +1579,14 @@ int Optimizer::optimization()
 
     runPass(PI_countBankConflicts);
 
-    // Preserve copies in virtual domain if RA will be rerun later
-    if (!kernel.getOption(vISA_ReRAPostSchedule))
+    // some passes still rely on G4_Declares and their def-use even after RA,
+    // and removeRedundantMove will break them since it deletes moves solely based on GRF assignment 
+    // without maintaining def-use of G4_Declares.
+    // so when these passes are active we have to defer removeRedundMov until after the passes
+    // ToDo: study the perf impact of moving this post scheduling
+    bool preserveVirtualDefUse = kernel.getOption(vISA_ReRAPostSchedule) || builder.doAccSub();
+    if (!preserveVirtualDefUse)
     {
-        // remove any mov with the same src and dst opnds
         runPass(PI_removeRedundMov);
     }
 
@@ -1617,6 +1622,11 @@ int Optimizer::optimization()
     runPass(PI_NoDD);
 
     runPass(PI_reRAPostSchedule);
+
+    if (preserveVirtualDefUse)
+    {
+        runPass(PI_removeRedundMov);
+    }
 
     // Insert NoSrcDepSet flag to improve performance
     runPass(PI_NoSrcDepSet);

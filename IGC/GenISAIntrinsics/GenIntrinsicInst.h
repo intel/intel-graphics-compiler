@@ -235,10 +235,6 @@ public:
 
     static inline bool classof(const GenIntrinsicInst *I) {
         switch(I->getIntrinsicID()) {
-        case GenISAIntrinsic::GenISA_gather4:
-        case GenISAIntrinsic::GenISA_gather4C:
-        case GenISAIntrinsic::GenISA_gather4PO:
-        case GenISAIntrinsic::GenISA_gather4POC:
         case GenISAIntrinsic::GenISA_gather4ptr:
         case GenISAIntrinsic::GenISA_gather4Cptr:
         case GenISAIntrinsic::GenISA_gather4POptr:
@@ -257,9 +253,7 @@ class InfoIntrinsic : public GenIntrinsicInst {
 public:
     static inline bool classof(const GenIntrinsicInst *I) {
         switch (I->getIntrinsicID()) {
-        case GenISAIntrinsic::GenISA_sampleinfo:
         case GenISAIntrinsic::GenISA_sampleinfoptr:
-        case GenISAIntrinsic::GenISA_resinfo:
         case GenISAIntrinsic::GenISA_resinfoptr:
             return true;
         default: return false;
@@ -278,11 +272,8 @@ public:
 
     static inline bool classof(const GenIntrinsicInst *I) {
         switch(I->getIntrinsicID()) {
-        case GenISAIntrinsic::GenISA_ld:
         case GenISAIntrinsic::GenISA_ldptr:
-        case GenISAIntrinsic::GenISA_ldms:
         case GenISAIntrinsic::GenISA_ldmsptr:
-        case GenISAIntrinsic::GenISA_ldmcs:
         case GenISAIntrinsic::GenISA_ldmcsptr:
             return true;
         default: return false;
@@ -294,12 +285,43 @@ public:
     }
 };
 
+class LdMSIntrinsic : public SamplerLoadIntrinsic {
+public:
+    inline Value* getImmOffset(unsigned int i) 
+    { 
+        return getOperand(getNumArgOperands() - 3 + i); 
+    }
+    inline void setImmOffset(unsigned int i, Value* val) 
+    { 
+        return setOperand(getNumArgOperands() - 3 + i, val);
+    }
+    inline Value* getCoordinate(unsigned int i)
+    {
+        return getOperand(getNumArgOperands() - 8 + i);
+    }
+    inline void setCoordinate(unsigned int i, Value* val)
+    {
+        return setOperand(getNumArgOperands() - 8 + i, val);
+    }
+    static inline bool classof(const GenIntrinsicInst *I) {
+        switch(I->getIntrinsicID()) {
+        case GenISAIntrinsic::GenISA_ldmsptr:
+            return true;
+        default: return false;
+        }
+    }
+
+    static inline bool classof(const Value *V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+};
+
+
 class LdmcsInstrinsic : public SamplerLoadIntrinsic
 {
 public:
     static inline bool classof(const GenIntrinsicInst *I) {
         switch(I->getIntrinsicID()) {
-        case GenISAIntrinsic::GenISA_ldmcs:
         case GenISAIntrinsic::GenISA_ldmcsptr:
             return true;
         default: return false;
@@ -316,7 +338,6 @@ class LdmsInstrinsic : public SamplerLoadIntrinsic
 public:
     static inline bool classof(const GenIntrinsicInst *I) {
         switch(I->getIntrinsicID()) {
-        case GenISAIntrinsic::GenISA_ldms:
         case GenISAIntrinsic::GenISA_ldmsptr:
             return true;
         default: return false;
@@ -371,23 +392,20 @@ public:
 
     inline bool IsLODInst() const
     {
-        return getIntrinsicID() == GenISAIntrinsic::GenISA_lod ||
-            getIntrinsicID() == GenISAIntrinsic::GenISA_lodptr;
+        return getIntrinsicID() == GenISAIntrinsic::GenISA_lodptr;
     }
 
 
     bool ZeroLOD() const
     {
-        if(getIntrinsicID() == GenISAIntrinsic::GenISA_sampleL ||
-            getIntrinsicID() == GenISAIntrinsic::GenISA_sampleLptr)
+        if(getIntrinsicID() == GenISAIntrinsic::GenISA_sampleLptr)
         {
             if(ConstantFP* lod = dyn_cast<ConstantFP>(getOperand(0)))
             {
                 return lod->isZero();
             }
         }
-        else if(getIntrinsicID() == GenISAIntrinsic::GenISA_sampleLC ||
-            getIntrinsicID() == GenISAIntrinsic::GenISA_sampleLCptr)
+        else if(getIntrinsicID() == GenISAIntrinsic::GenISA_sampleLCptr)
         {
             if(ConstantFP* lod = dyn_cast<ConstantFP>(getOperand(1)))
             {
@@ -401,16 +419,11 @@ public:
     {
         switch(getIntrinsicID())
         {
-        case GenISAIntrinsic::GenISA_sample:
         case GenISAIntrinsic::GenISA_sampleptr:
         case GenISAIntrinsic::GenISA_sampleKillPix:
-        case GenISAIntrinsic::GenISA_sampleB:
         case GenISAIntrinsic::GenISA_sampleBptr:
-        case GenISAIntrinsic::GenISA_sampleC:
         case GenISAIntrinsic::GenISA_sampleCptr:
-        case GenISAIntrinsic::GenISA_sampleBC:
         case GenISAIntrinsic::GenISA_sampleBCptr:
-        case GenISAIntrinsic::GenISA_lod:
         case GenISAIntrinsic::GenISA_lodptr:
             return true;
         default:
@@ -422,23 +435,14 @@ public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:
     static inline bool classof(const GenIntrinsicInst *I) {
         switch(I->getIntrinsicID()) {
-        case GenISAIntrinsic::GenISA_sample:
         case GenISAIntrinsic::GenISA_sampleptr:
-        case GenISAIntrinsic::GenISA_sampleB:
         case GenISAIntrinsic::GenISA_sampleBptr:
-        case GenISAIntrinsic::GenISA_sampleC:
         case GenISAIntrinsic::GenISA_sampleCptr:
-        case GenISAIntrinsic::GenISA_sampleD:
         case GenISAIntrinsic::GenISA_sampleDptr:
-        case GenISAIntrinsic::GenISA_sampleDC:
         case GenISAIntrinsic::GenISA_sampleDCptr:
-        case GenISAIntrinsic::GenISA_sampleL:
         case GenISAIntrinsic::GenISA_sampleLptr:
-        case GenISAIntrinsic::GenISA_sampleLC:
         case GenISAIntrinsic::GenISA_sampleLCptr:
-        case GenISAIntrinsic::GenISA_sampleBC:
         case GenISAIntrinsic::GenISA_sampleBCptr:
-        case GenISAIntrinsic::GenISA_lod:
         case GenISAIntrinsic::GenISA_lodptr:
         case GenISAIntrinsic::GenISA_sampleKillPix:
             return true;

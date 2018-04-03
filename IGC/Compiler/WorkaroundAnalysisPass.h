@@ -70,7 +70,7 @@ public:
 private:
     void generateDummyLoad(llvm::DomTreeNode* pPDTRoot);
     void GatherOffsetWorkaround(llvm::SamplerGatherIntrinsic* gatherpo);
-
+    void ldmsOffsetWorkaournd(llvm::LdMSIntrinsic* ldms);
     const llvm::DataLayout   *m_pDataLayout;
     llvm::Module* m_pModule;
     CodeGenContextWrapper*    m_pCtxWrapper;

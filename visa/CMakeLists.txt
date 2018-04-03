@@ -344,7 +344,7 @@ if (UNIX OR WIN32)
   bs_set_wdk(GenX_IR_Exe)
   endif()
   
-  install(TARGETS GenX_IR_Exe DESTINATION bin)
+  install(TARGETS GenX_IR_Exe DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}bin COMPONENT igc)
 
   # Copy executable
   if (NOT IGC_BUILD)

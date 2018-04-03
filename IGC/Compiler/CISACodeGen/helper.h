@@ -189,6 +189,10 @@ inline bool isEntryFunc(const IGCMD::MetaDataUtils *pM, const llvm::Function *CF
 	return Info->getType() == IGCMD::FunctionTypeEnum::EntryFunctionType;
 }
 
+// Return a unique entry function.
+// Assert if more than one entry function exists.
+llvm::Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM);
+
 // \brief Get next instruction, returning null if it's the last of the BB.
 // This is the replacement of Instruction::getNextNode(), since getNextNode()
 // on last inst of BB will return sentinel node as instruction, which will

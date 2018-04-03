@@ -532,7 +532,7 @@ bool ParseInput(
         std::string stringErrMsg;
         llvm::StringRef options;
         if(pInputArgs->OptionsSize > 0){
-            options = llvm::StringRef(pInputArgs->pOptions, pInputArgs->OptionsSize - 1);
+            options = llvm::StringRef(pInputArgs->pOptions, pInputArgs->OptionsSize);
         }
         bool success = spv::ReadSPIRV(oclContext, IS, pKernelModule, options, stringErrMsg);
 #else

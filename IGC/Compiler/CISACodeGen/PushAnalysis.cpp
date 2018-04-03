@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Function.h"
 #include "LLVMWarningsPop.hpp"
 
+#include "Compiler/CISACodeGen/GenCodeGenModule.h"
 #include "Compiler/CISACodeGen/PushAnalysis.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/PixelShaderCodeGen.hpp"
@@ -1302,6 +1303,15 @@ FunctionType* PushAnalysis::getNewFuncType(Function* pFunc)
 
 bool PushAnalysis::runOnModule(llvm::Module& M)
 {
+	m_DL = &M.getDataLayout();
+	m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+	m_pullConstantHeuristics = &getAnalysis<PullConstantHeuristics>();
+	m_hsProps = getAnalysisIfAvailable<CollectHullShaderProperties>();
+	m_dsProps = getAnalysisIfAvailable<CollectDomainShaderProperties>();
+	m_gsProps = getAnalysisIfAvailable<CollectGeometryShaderProperties>();
+	m_vsProps = getAnalysisIfAvailable<CollectVertexShaderProperties>();
+	m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
 	MapList<Function*, Function*> funcsMapping;
 	bool retValue = false;
 
@@ -1313,7 +1323,8 @@ bool PushAnalysis::runOnModule(llvm::Module& M)
 		Function* pFunc = &(*I);
 
 		// Only handle functions defined in this module
-		if (pFunc->isDeclaration()) continue;
+		if (pFunc->isDeclaration() || !isEntryFunc(m_pMdUtils, pFunc))
+			continue;
 
 		AnalyzeFunction(pFunc);
 
@@ -1360,6 +1371,8 @@ bool PushAnalysis::runOnModule(llvm::Module& M)
 	}
 	m_pMdUtils->save(M.getContext());
 
+	GenXFunctionGroupAnalysis* FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
+
 	// Go over all changed functions
 	for (MapList<Function*, Function*>::const_iterator I = funcsMapping.begin(), E = funcsMapping.end(); I != E; ++I)
 	{
@@ -1367,6 +1380,9 @@ bool PushAnalysis::runOnModule(llvm::Module& M)
 
 		assert(pFunc->use_empty() && "Assume all user function are inlined at this point");
 
+		if (FGA) {
+			FGA->replaceEntryFunc(pFunc, I->second);
+		}
 		// Now, after changing funciton signature,
 		// and validate there are no calls to the old function we can erase it.
 		pFunc->eraseFromParent();

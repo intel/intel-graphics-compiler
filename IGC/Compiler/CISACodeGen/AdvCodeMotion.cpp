@@ -169,17 +169,20 @@ void WorkItemSetting::collect(Function *F) {
   }
 
   auto Entry = &F->getEntryBlock();
-  for (auto BI = Entry->begin(), BE = Entry->end(); BI != BE; ++BI) {
-    auto Inst = &*BI;
-    // GlobalId.X
-    if (match(Inst,
-              m_Add(m_Add(m_ZExt(m_Specific(LocalId.X)),
-                          m_Mul(m_Specific(EnqueuedLocalSize.X),
-                                m_Specific(GroupId.X))),
-                    m_Specific(GlobalOffset.X)))) {
-      GlobalId.X = Inst;
+  if (LocalId.X != nullptr && EnqueuedLocalSize.X != nullptr &&
+      GroupId.X != nullptr && GlobalOffset.X != nullptr) {
+    for (auto BI = Entry->begin(), BE = Entry->end(); BI != BE; ++BI) {
+      auto Inst = &*BI;
+      // GlobalId.X
+      if (match(Inst,
+                m_Add(m_Add(m_ZExt(m_Specific(LocalId.X)),
+                            m_Mul(m_Specific(EnqueuedLocalSize.X),
+                                  m_Specific(GroupId.X))),
+                      m_Specific(GlobalOffset.X)))) {
+        GlobalId.X = Inst;
+      }
+      // TODO: Add support of GlobalId.Y & GlobalId.Z.
     }
-    // TODO: Add support of GlobalId.Y & GlobalId.Z.
   }
   // On some clients, global size calculation is different.
   if (GlobalSize.X == nullptr && GlobalSize1.X != nullptr) {

@@ -62,6 +62,7 @@ namespace Legalizer {
 	  bool runOnFunction(Function &F) override;
 
 	  void visitInstruction(Instruction &I);
+      void legalizePhiInstruction(Instruction &I);
 	  void legalizeUnaryInstruction(Instruction &I);
 	  void legalizeBinaryOperator(Instruction &I);
       void legalizeExtractElement(Instruction &I);

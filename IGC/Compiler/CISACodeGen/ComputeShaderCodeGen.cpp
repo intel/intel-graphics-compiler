@@ -104,7 +104,6 @@ void CComputeShader::ParseShaderSpecificOpcode(llvm::Instruction* inst)
 			m_num1DAccesses++;
             break;
 		case GenISAIntrinsic::GenISA_ldptr:
-		case GenISAIntrinsic::GenISA_ld:
 			if (llvm::ConstantInt *pInt = llvm::dyn_cast<llvm::ConstantInt>(intr->getOperand(1)))
 			{
 				int index = int_cast<int>(pInt->getZExtValue());

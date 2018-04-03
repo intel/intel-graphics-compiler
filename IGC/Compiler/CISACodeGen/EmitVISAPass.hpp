@@ -210,7 +210,7 @@ public:
     void emitURBWrite(llvm::GenIntrinsicInst* inst);
     void emitURBRead(llvm::GenIntrinsicInst* inst);
     void emitSampleInstruction(llvm::SampleIntrinsic* inst);
-    void emitLdInstruction(llvm::Instruction* inst, bool isPtr);
+    void emitLdInstruction(llvm::Instruction* inst);
     void emitInfoInstruction(llvm::InfoIntrinsic* inst);
     void emitGather4Instruction(llvm::SamplerGatherIntrinsic* inst);
     void emitLdmsInstruction(llvm::Instruction* inst);
@@ -262,7 +262,6 @@ public:
     void emitAtomicStructured(llvm::Instruction* pInst);
     void emitAtomicTyped(llvm::GenIntrinsicInst* pInst);
     void emitAtomicCounter(llvm::GenIntrinsicInst* pInst);
-    void emitSampleToRTInstruction(llvm::GenIntrinsicInst* inst);
     void emitRenderTargetRead(llvm::GenIntrinsicInst* inst);
 
     void emitWorkGroupAny(llvm::GenIntrinsicInst* inst);

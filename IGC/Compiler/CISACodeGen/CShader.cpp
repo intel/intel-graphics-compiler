@@ -292,9 +292,11 @@ void CShader::CreateImplicitArgs()
     // create variables for implicit args
     ImplicitArgs implicitArgs(*entry, m_pMdUtils);
     unsigned numImplicitArgs = implicitArgs.size();
-    unsigned numPushArgs = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
-    unsigned numFuncArgs = entry->getArgumentList().size()
-        - numImplicitArgs - numPushArgs;
+
+	// Push Args are only for entry function
+	unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
+	unsigned numPushArgs = (isEntryFunc(m_pMdUtils, entry) ? numPushArgsEntry : 0);
+    unsigned numFuncArgs = entry->getArgumentList().size() - numImplicitArgs - numPushArgs;
 
     llvm::Function::arg_iterator arg = entry->arg_begin();
     for (unsigned i = 0; i < numFuncArgs; ++i, ++arg)
@@ -1804,8 +1806,6 @@ void CShader::BeginFunction(llvm::Function *F)
     rootMapping.clear();
     ccTupleMapping.clear();
     ConstantPool.clear();
-    setup.clear();
-    patchConstantSetup.clear();
 
     bool useStackCall = m_FGA->useStackCall(F);
     if (useStackCall)
@@ -1878,7 +1878,8 @@ CVariable* CShader::getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStack
     Function *F = Arg->getParent();
     ImplicitArgs implicitArgs(*F, m_pMdUtils);
     unsigned numImplicitArgs = implicitArgs.size();
-    unsigned numPushArgs = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
+	unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
+	unsigned numPushArgs = (isEntryFunc(m_pMdUtils, F) ? numPushArgsEntry : 0);
     unsigned numFuncArgs = F->getArgumentList().size() - numImplicitArgs - numPushArgs;
 
     CVariable* var = nullptr;
@@ -1909,10 +1910,17 @@ CVariable* CShader::getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStack
                    ArgType == ImplicitArg::ArgType::PRINTF_BUFFER ) )
             {
                 Function &K = *m_FGA->getSubGroupMap(F);
-                ImplicitArgs kerArgs(K, m_pMdUtils);
+				ImplicitArgs IAs(K, m_pMdUtils);
+				uint32_t nIAs = (uint32_t)IAs.size();
+				uint32_t argIx = (uint32_t)K.getArgumentList().size() - nIAs + i;
+				if (isEntryFunc(m_pMdUtils, &K)) {
+					argIx = argIx - numPushArgsEntry;
+				}
+				Function::arg_iterator arg = K.arg_begin();
+				for (uint32_t i = 0; i < argIx; ++i, ++arg);
+				Argument* kerArg = &(*arg);
 
-                // Pre-condition: all kernel arguments have been created already.
-                auto kerArg = kerArgs.getImplicitArg(K, implictArg.getArgType());
+				// Pre-condition: all kernel arguments have been created already.
                 assert(pSymMap->count(kerArg));
                 return (*pSymMap)[kerArg];
             }

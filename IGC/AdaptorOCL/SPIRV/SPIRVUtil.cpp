@@ -63,6 +63,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///
 //===----------------------------------------------------------------------===//
 
+#include "libSPIRV/SPIRVInstruction.h"
 #include "SPIRVInternal.h"
 #include "Mangler/ParameterType.h"
 
@@ -225,17 +226,53 @@ isFunctionBuiltin(llvm::Function* F) {
 }
 
 std::string
-getSPIRVBuiltinName(Op OC, std::vector<Type*> ArgTypes, std::string suffix) {
-   std::string name;
-   if (OCLSPIRVBuiltinMap::find(OC, &name)){
-       name = name + suffix;
-       decorateSPIRVBuiltin(name, ArgTypes);
-   }
-   else
-   {
-       spirv_assert(0 && "Couldn't find opcode in map!");
-   }
-   return name;
+getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, std::string suffix) {
+  std::string name = "";
+
+  if (isIntelSubgroupOpCode(OC)) {
+    std::stringstream tmpName;
+    SPIRVType *DataTy = nullptr;
+    switch (OC) {
+    case OpSubgroupBlockReadINTEL:
+    case OpSubgroupImageBlockReadINTEL:
+      tmpName << "intel_sub_group_block_read";
+      DataTy = BI->getType();
+      break;
+    case OpSubgroupBlockWriteINTEL:
+      tmpName << "intel_sub_group_block_write";
+      DataTy = BI->getOperands()[1]->getType();
+      break;
+    case OpSubgroupImageBlockWriteINTEL:
+      tmpName << "intel_sub_group_block_write";
+      DataTy = BI->getOperands()[2]->getType();
+      break;
+    default:
+      tmpName << OCLSPIRVBuiltinMap::map(OC);
+    }
+    if (DataTy) {
+      if (DataTy->getBitWidth() == 16)
+        tmpName << "_us";
+      if (DataTy->isTypeVector()) {
+        if (unsigned ComponentCount = DataTy->getVectorComponentCount())
+          tmpName << ComponentCount;
+      }
+    }
+    name = tmpName.str();
+  } 
+  else 
+  {
+    name = OCLSPIRVBuiltinMap::map(OC);
+  }
+
+  if (!name.empty()) {
+    name = name + suffix;
+    decorateSPIRVBuiltin(name, ArgTypes);
+  }
+  else
+  {
+    spirv_assert(0 && "Couldn't find opcode in map!");
+  }
+  return name;
 }
 
 CallInst *

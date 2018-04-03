@@ -179,7 +179,9 @@ void CImagesBI::prepareImageBTI()
 {
     Argument *pImg = nullptr;
     ConstantInt* imageIndex = CImagesUtils::getImageIndex(m_pParamMap, m_pCallInst, 0, pImg);
-    m_args.push_back(imageIndex); // BTI
+    unsigned int addrSpace = EncodeAS4GFXResource(*imageIndex, RESOURCE, 0);
+    Value* img = ConstantPointerNull::get(PointerType::get(pImg->getType(), addrSpace));
+    m_args.push_back(img); // BTI
 
     // prepareImageBTI() is called for standard image reads.  If there is an extension already tagged on
     // this argument then we have an inconsistent usage of the image and should fail compilation.
@@ -906,7 +908,9 @@ public:
     void prepareSamplerIndex()
     {
         ConstantInt* samplerIndex = getSamplerIndex();
-        m_args.push_back(samplerIndex); 
+        unsigned int addrSpace = EncodeAS4GFXResource(*samplerIndex, SAMPLER, 0);
+        Value* sampler = ConstantPointerNull::get(PointerType::get(samplerIndex->getType(), addrSpace));
+        m_args.push_back(sampler);
     }
 
     void prepareGradients(Dimension Dim, Value* gradX, Value* gradY)
@@ -995,11 +999,11 @@ public:
         m_args.push_back(CoordY);
         m_args.push_back(CoordZ);
         m_args.push_back(m_pFloatZero); // ai (?)
-        prepareImageBTI();
+        createGetBufferPtr();
         prepareSamplerIndex();
         prepareZeroOffsets();
-        Type* types[] = {m_pCallInst->getType(), m_pFloatType};
-        replaceGenISACallInst(GenISAIntrinsic::GenISA_sampleL, llvm::ArrayRef<llvm::Type*>(types, 2));
+        Type* types[] = {m_pCallInst->getType(), m_pFloatType, m_args[5]->getType(), m_args[6]->getType() };
+        replaceGenISACallInst(GenISAIntrinsic::GenISA_sampleLptr, types);
     }
 };
 
@@ -1027,8 +1031,8 @@ public:
         prepareImageBTI();
         prepareSamplerIndex();
         prepareZeroOffsets();
-        Type* types[] = {m_pCallInst->getType(), m_pFloatType};
-        replaceGenISACallInst(GenISAIntrinsic::GenISA_sampleD, llvm::ArrayRef<llvm::Type*>(types, 2));
+        Type* types[] = {m_pCallInst->getType(), m_pFloatType, m_args[11]->getType(), m_args[12]->getType() };
+        replaceGenISACallInst(GenISAIntrinsic::GenISA_sampleDptr, types);
     }
 };
 
@@ -1087,7 +1091,8 @@ public:
         m_args.push_back(m_pIntZero);   // LOD
         prepareImageBTI();
         prepareZeroOffsets();
-        replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmcs);
+        Type* types[] = { llvm::VectorType::get(m_pFloatType, 4), m_args[7]->getType() };
+        replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmcsptr, types);
     }
 };
 
@@ -1134,7 +1139,7 @@ public:
         m_args.push_back(m_pIntZero); // LOD
         prepareImageBTI();
         prepareZeroOffsets();
-        replaceGenISACallInst(GenISAIntrinsic::GenISA_ldms, llvm::ArrayRef<llvm::Type*>(llvm::VectorType::get(m_pFloatType, 4)));
+        replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr, { VectorType::get(m_pIntType, 4), m_args[7]->getType() });
     }
 };
 
@@ -1155,7 +1160,7 @@ public:
         m_args.push_back(m_pIntZero); // LOD
         prepareImageBTI();
         prepareZeroOffsets();
-        replaceGenISACallInst(GenISAIntrinsic::GenISA_ldms, llvm::ArrayRef<llvm::Type*>(llvm::VectorType::get(m_pIntType, 4)));
+        replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmsptr, { VectorType::get(m_pIntType, 4), m_args[7]->getType() });
     }
 };
 

@@ -190,6 +190,11 @@ inline bool isImageOpCode(Op OpCode) {
     return (OpCode >= OpImageSampleImplicitLod) && (OpCode <= OpImageWrite);
 }
 
+inline bool isIntelSubgroupOpCode(Op OpCode) {
+  unsigned OC = OpCode;
+  return OpSubgroupShuffleINTEL <= OC && OC <=OpSubgroupImageBlockWriteINTEL;
+}
+
 }
 
 #endif /* SPIRVOPCODE_HPP_ */

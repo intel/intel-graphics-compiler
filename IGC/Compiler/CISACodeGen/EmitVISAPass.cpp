@@ -297,8 +297,7 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext *ctx, MetaDataUtils *pMdUtil
             {
                 // Single PS
                 // Assuming single shader information in metadata
-                assert(pMdUtils->size_FunctionsInfo() == 1);
-                Function *pFunc = pMdUtils->begin_FunctionsInfo()->first;
+				Function *pFunc = getUniqueEntryFunc(pMdUtils);
 
                 CShaderProgram* pProgram = new CShaderProgram(ctx, pFunc);
                 m_shaders[pFunc] = pProgram;
@@ -3534,7 +3533,7 @@ void EmitPass::PackSIMD8HFRet(CVariable* dst)
     }
 }
 
-void EmitPass::emitLdInstruction(llvm::Instruction* inst, bool isPtr)
+void EmitPass::emitLdInstruction(llvm::Instruction* inst)
 {
     uint numOperands = inst->getNumOperands();
     assert(numOperands > 7 && numOperands < 10 && "Wrong number of operands");
@@ -3549,34 +3548,8 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst, bool isPtr)
     uint textureArgIdx = numOperands - 5;
 
     ResourceDescriptor resource;
-    if (isPtr)
-    {
-        Value* ptr = inst->getOperand(textureArgIdx);
-        resource = GetResourceVariable(ptr);
-    }
-    else
-    {
-        llvm::Value* texOp = inst->getOperand(textureArgIdx);
-        uint bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(0);
-        if(llvm::dyn_cast<llvm::ConstantInt>(texOp))
-        {
-            uint textureIdx = int_cast<uint>(GetImmediateVal(texOp));
-            bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(textureIdx);
-            resource.m_resource = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
-            
-            m_currShader->SetBindingTableEntryCountAndBitmap(true, bindingTableIndex);
-        }
-        else
-        {
-            //Indexable texture, when index is not an immediate value
-            CVariable* bti = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true);
-            bti = GetSymbol( texOp );
-            resource.m_resource = IndexableResourceIndex(bti, bindingTableIndex);
-            
-            m_currShader->SetBindingTableEntryCountAndBitmap(false);
-        }
-    }
-
+    Value* ptr = inst->getOperand(textureArgIdx);
+    resource = GetResourceVariable(ptr);
     uint offsetSourceIndex = numSources+1;
     CVariable* offset = ComputeSampleIntOffset(inst, offsetSourceIndex);
 
@@ -5917,34 +5890,9 @@ void EmitPass::interceptSamplePayloadCoalescing(
 }
 
 ResourceDescriptor EmitPass::GetSampleResourceHelper(SampleIntrinsic* inst)
-    {
-    ResourceDescriptor resource;
+{
     llvm::Value* texOp = inst->getTextureValue();
-    if(texOp->getType()->isPointerTy())
-    {
-        resource = GetResourceVariable(texOp);
-    }
-    else
-    {
-        uint bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(0);
-        if(llvm::dyn_cast<llvm::ConstantInt>(texOp))
-        {
-            uint textureIdx = int_cast<uint>(GetImmediateVal(texOp));
-            bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(textureIdx);
-            resource.m_resource = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
-
-            m_currShader->SetBindingTableEntryCountAndBitmap(true, bindingTableIndex);
-        }
-        else
-        {
-            //Indexable texture, when index is not an immediate value
-            CVariable* bti = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true);
-            bti = GetSymbol(texOp);
-            resource.m_resource = IndexableResourceIndex(bti, bindingTableIndex);
-
-            m_currShader->SetBindingTableEntryCountAndBitmap(false);
-        }
-    }
+    ResourceDescriptor resource = GetResourceVariable(texOp);
     return resource;
 }
 
@@ -5987,9 +5935,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     bool doIntercept = true;
     // Skip sample_d* instructions in SIMD16 and SIMD32.
     if ((m_currShader->m_SIMDSize > SIMDMode::SIMD8 &&
-        (opCode == llvm_sample_d ||
-        opCode == llvm_sample_dptr ||
-        opCode == llvm_sample_dc ||
+        (opCode == llvm_sample_dptr ||
         opCode == llvm_sample_dcptr)))
     {
         doIntercept = false;
@@ -6190,64 +6136,13 @@ void EmitPass::emitDiscard(llvm::Instruction* inst)
 void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
 {
     EOPCODE opCode = GetOpCode(inst);
-
-    bool isUAV = false;
-    if (opCode == llvm_resinfo)
-    {
-        isUAV = GetImmediateVal(inst->getOperand(2)) == 0 ? false : true;
-    }
-    else if (opCode == llvm_sampleinfo)
-    {
-        isUAV = GetImmediateVal(inst->getOperand(1)) == 0 ? false : true;
-    }
-
-    ResourceDescriptor resource;
     llvm::Value* texOp = inst->getOperand(0);
 
-    if (texOp->getType()->isPointerTy())
-    {
-        resource = GetResourceVariable(texOp);
-    }
-    else
-    {
-        uint bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(0);
-        if (llvm::dyn_cast<llvm::ConstantInt>(texOp))
-        {
-            uint textureIdx = int_cast<uint>(GetImmediateVal(texOp));
-            if ((opCode == llvm_sampleinfo || opCode == llvm_sampleinfoptr) &&
-                textureIdx == -1)
-            {
-                //read from rasterizer
-                bindingTableIndex = m_currShader->m_pBtiLayout->GetRenderTargetIndex(0);
-            }
-            else
-            {
-                if (isUAV)
-                {
-                    bindingTableIndex = m_currShader->m_pBtiLayout->GetUavIndex(textureIdx);
-                }
-                else
-                {
-                    bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(textureIdx);
-                }
-            }
-            resource.m_resource = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
-
-            m_currShader->SetBindingTableEntryCountAndBitmap(true, bindingTableIndex);
-        }
-        else
-        {
-            //Indexable texture, when index is not an immediate value
-            CVariable* bti = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true);
-            bti = GetSymbol(texOp);
-            resource.m_resource = IndexableResourceIndex(bti, bindingTableIndex);
-
-            m_currShader->SetBindingTableEntryCountAndBitmap(false);
-        }
-    }
+    ResourceDescriptor resource = GetResourceVariable(texOp);
+   
 
     CVariable* lod = nullptr;
-    if (opCode != llvm_sampleinfo && opCode != llvm_sampleinfoptr)
+    if (opCode != llvm_sampleinfoptr)
     {
         lod = GetSymbol(inst->getOperand(1));
     }
@@ -6367,20 +6262,8 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     uint numSources = numOperands - 7;
 
     Value* textureValue = inst->getTextureValue();
-    ResourceDescriptor resource;
-    if(textureValue->getType()->isPointerTy())
-    {
-        resource = GetResourceVariable(textureValue);
-    }
-    else
-    {
-        uint textureIdx = int_cast<uint>(GetImmediateVal(textureValue));
-        uint bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(textureIdx);
-        resource.m_resource = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
-
-        m_currShader->SetBindingTableEntryCountAndBitmap(true, bindingTableIndex);
-    }
-
+    ResourceDescriptor resource = GetResourceVariable(textureValue);
+    
     SamplerDescriptor sampler;
     Value* samplerValue = inst->getSamplerValue();
 
@@ -6495,20 +6378,8 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
     uint writeMask = m_currShader->GetExtractMask(inst);
     assert(writeMask!=0 && "Wrong write mask");
 
-    ResourceDescriptor resource;
     Value* texOperand = inst->getOperand(textureArgIdx);
-    if(texOperand->getType()->isPointerTy())
-    {
-        resource = GetResourceVariable(texOperand);
-    }
-    else
-    {
-        uint textureIdx = int_cast<uint>(GetImmediateVal(texOperand));
-        uint bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(textureIdx);
-        resource.m_resource = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
-
-        m_currShader->SetBindingTableEntryCountAndBitmap(true, bindingTableIndex);
-    }
+    ResourceDescriptor resource = GetResourceVariable(texOperand);
 
     uint offsetSourceIndex = numOperands-4;
     CVariable* offset = ComputeSampleIntOffset(inst, offsetSourceIndex);
@@ -7154,29 +7025,17 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_DCL_DSCntrlPtInputVec:
         emitInput(inst);
         break;
-    case GenISAIntrinsic::GenISA_ld:
-        emitLdInstruction(inst, false);
-        break;
     case GenISAIntrinsic::GenISA_ldptr:
-        emitLdInstruction(inst, true);
+        emitLdInstruction(inst);
         break;
-    case GenISAIntrinsic::GenISA_sample:
     case GenISAIntrinsic::GenISA_sampleptr:
-    case GenISAIntrinsic::GenISA_sampleB:
     case GenISAIntrinsic::GenISA_sampleBptr:
-    case GenISAIntrinsic::GenISA_sampleC:
     case GenISAIntrinsic::GenISA_sampleCptr:
-    case GenISAIntrinsic::GenISA_sampleD:
     case GenISAIntrinsic::GenISA_sampleDptr:
-    case GenISAIntrinsic::GenISA_sampleDC:
     case GenISAIntrinsic::GenISA_sampleDCptr:
-    case GenISAIntrinsic::GenISA_sampleL:
     case GenISAIntrinsic::GenISA_sampleLptr:
-    case GenISAIntrinsic::GenISA_sampleLC:
     case GenISAIntrinsic::GenISA_sampleLCptr:
-    case GenISAIntrinsic::GenISA_sampleBC:
     case GenISAIntrinsic::GenISA_sampleBCptr:
-    case GenISAIntrinsic::GenISA_lod:
     case GenISAIntrinsic::GenISA_lodptr:
     case GenISAIntrinsic::GenISA_sampleKillPix:
         emitSampleInstruction(cast<SampleIntrinsic>(inst));
@@ -7184,25 +7043,17 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_discard:
         emitDiscard(inst);
         break;
-    case GenISAIntrinsic::GenISA_resinfo:
     case GenISAIntrinsic::GenISA_resinfoptr:
-    case GenISAIntrinsic::GenISA_sampleinfo:
     case GenISAIntrinsic::GenISA_sampleinfoptr:
         emitInfoInstruction(cast<InfoIntrinsic>(inst));
         break;
-    case GenISAIntrinsic::GenISA_gather4:
     case GenISAIntrinsic::GenISA_gather4ptr:
-    case GenISAIntrinsic::GenISA_gather4C:
     case GenISAIntrinsic::GenISA_gather4Cptr:
-    case GenISAIntrinsic::GenISA_gather4PO:
     case GenISAIntrinsic::GenISA_gather4POptr:
-    case GenISAIntrinsic::GenISA_gather4POC:
     case GenISAIntrinsic::GenISA_gather4POCptr:
         emitGather4Instruction(cast<SamplerGatherIntrinsic>(inst));
         break;
-    case GenISAIntrinsic::GenISA_ldmcs:
     case GenISAIntrinsic::GenISA_ldmcsptr:
-    case GenISAIntrinsic::GenISA_ldms:
     case GenISAIntrinsic::GenISA_ldmsptr:
     case GenISAIntrinsic::GenISA_ldmsptr16bit:
         emitLdmsInstruction(inst);
@@ -8108,151 +7959,6 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
     default:
         assert(0 && "need to add code gen support for this instruction");
     }
-}
-
-void EmitPass::emitSampleToRTInstruction(llvm::GenIntrinsicInst* inst)
-{
-    //To enable EUBypass on SIMD32 we need to change order of last two sampler sends,
-    //so H1 part will have EOT enabled, and H2 won't. Spec:
-    //Slot Group Select is derived from EOT : If EOT is enabled, set to SLOTGRP_LO, otherwise SLOTGRP_HI.
-    //Hence change the order of SIMD16 instruction emitted for each slice.
-    if (m_currShader->m_dispatchSize == SIMDMode::SIMD32)
-    {
-        m_encoder->SetSecondHalf(!(m_encoder->IsSecondHalf()));
-    }
-    uint numOperands = inst->getNumOperands();
-    uint numSources = numOperands - 6;
-    uint textureArgIdx = numOperands - 6;
-    //Get sampler index in the array of operands
-    uint samplerArgIdx = numOperands - 5;
-
-    bool noMaskPayload = false;
-    GenISAIntrinsic::ID id = inst->getIntrinsicID();
-    if(id == GenISAIntrinsic::GenISA_sample ||
-       id == GenISAIntrinsic::GenISA_sampleB ||
-       id == GenISAIntrinsic::GenISA_sampleC ||
-       id == GenISAIntrinsic::GenISA_sampleBC)
-    {
-        noMaskPayload = true;
-    }
-
-    EOPCODE opCode = GetOpCode(inst);
-
-    //Check for valid number of sources from the end of the list
-    for(uint i = (numOperands - 6 - 1); i >= 1 ; i--)
-    {
-        CVariable* validSrc = GetSymbol(inst->getOperand(i));
-        if(validSrc->IsImmediate() &&
-            validSrc->GetImmediateValue() == 0)
-        {
-            numSources--;
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    //temp solution to send valid sources but having 0 as their values.
-    ValidateNumberofSources(opCode, numSources);
-
-    uint textureIdx = int_cast<uint>(GetImmediateVal(inst->getOperand(textureArgIdx)));
-    uint SamplerIdx = int_cast<uint>(GetImmediateVal(inst->getOperand(samplerArgIdx)));
-
-    SIMDMode mode = m_currShader->m_SIMDSize;
-
-    bool FP16Input = false;
-    uint8_t adjFactor = 0;
-
-
-    if (inst->getOperand(0)->getType()->getTypeID() == llvm::Type::HalfTyID)
-    {
-        FP16Input = true;
-        if (mode == SIMDMode::SIMD16)
-            adjFactor = 1;
-    }
-
-    uint messageLength = numSources * (numLanes(mode) / (SIZE_GRF >> 2)) >> adjFactor;
-    //Response Length always 0 for Sampler to RT write
-    uint responseLength = 0;
-
-    EU_SAMPLER_SIMD_MODE executionMode = samplerSimdMode(mode);
-    EU_GEN6_SAMPLER_MESSAGE_TYPE sampleMessageType = GetSampleMessage(opCode);
-    uint bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(textureIdx);
-    m_currShader->SetBindingTableEntryCountAndBitmap(true, bindingTableIndex);
-
-    // offset
-    uint offsetSourceIndex = numOperands-4;
-    CVariable* offset = ComputeSampleIntOffset(inst, offsetSourceIndex);
-
-    uint headerSize = 1; //Sampler to RT always has a header
-
-    messageLength += headerSize;
-
-    CVariable* payload = m_currShader->GetNewVariable(
-        messageLength * (SIZE_GRF >> 2),
-        ISA_TYPE_D,
-        EALIGN_GRF);
-
-    //Binding table index for render target ; Always RTI is 0
-    uint rti = m_currShader->m_pBtiLayout->GetRenderTargetIndex(0);
-    m_currShader->SetBindingTableEntryCountAndBitmap(true, rti);
-
-    CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
-
-    assert(psProgram->m_hasEOT == false);
-    if (!(m_encoder->IsSecondHalf()) || m_currShader->m_numberInstance == 1)
-    {
-        psProgram->m_hasEOT = true;
-    }
-
-    if(headerSize)
-    {
-        m_currShader->SampleHeader(payload, static_cast<unsigned int>(offset->GetImmediateValue()), 0xF, rti);
-    }
-
-    for(uint i = 0; i < numSources; i++)
-    {
-        m_encoder->SetDstSubVar(numLanes(mode) / (SIZE_GRF >> (2 - adjFactor)) * i + headerSize);
-        if(noMaskPayload)
-        {
-            m_encoder->SetNoMask();
-        }
-        //If the tex coordinates to sampler is fp16 then bitcast payload from D to HF
-        if(inst->getOperand(i)->getType()->getTypeID() == llvm::Type::HalfTyID)
-        {
-            payload = m_currShader->BitCast(payload, ISA_TYPE_HF);
-        }
-        m_encoder->Copy(payload, GetSymbol(inst->getOperand(i)));
-        m_encoder->Push();
-    }
-
-    Type* retType = inst->getType();
-    bool FP16Return = retType->getTypeID() == llvm::Type::HalfTyID ||
-        (retType->isVectorTy() &&
-        dyn_cast<VectorType>(retType)->getElementType()->getTypeID() == llvm::Type::HalfTyID);
-
-    //get message descriptor
-    uint Desc = Sampler(
-        messageLength,
-        responseLength,
-        headerSize != 0,
-        executionMode,
-        sampleMessageType,
-        SamplerIdx,
-        bindingTableIndex,
-        true,
-        FP16Input,
-        FP16Return);
-
-    //Set End of Thread
-    uint exDesc = EU_MESSAGE_TARGET_SAMPLER | psProgram->m_hasEOT << 5;
-    CVariable* messDesc = m_currShader->ImmToVariable(Desc, ISA_TYPE_UD);
-    assert(psProgram->HasDiscard() == false && "discard not supported");
-
-    //send
-    m_encoder->SendC(NULL,payload,exDesc,messDesc);
-    m_encoder->Push();
 }
 
 void EmitPass::emitPairToPtr(GenIntrinsicInst* GII) {
@@ -12183,7 +11889,9 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         m_destination != src &&
         destMask == ((1U << dstNElts) - 1)/* Full mask */ &&
         /* If alignment of source is safe to be aliased to the dst type. */
-        src->GetAlign() >= CEncoder::GetCISADataTypeAlignment(m_destination->GetType())) {
+        src->GetAlign() >= CEncoder::GetCISADataTypeAlignment(m_destination->GetType()) &&
+        /* Exclude bitcast from/to 16-bit */
+        srcEltBytes != 2 && dstEltBytes != 2) {
       // TODO; Add uniform vector bitcast support. A simple copy is enough but
       // the ideal resolution is to teach DeSSA to handle that.
       CVariable* dst = m_destination;
@@ -13835,58 +13543,39 @@ SamplerDescriptor EmitPass::GetSamplerVariable(Value* sampleOp)
 {
     SamplerDescriptor sampler;
     unsigned int samplerIdx;
+    BufferType sampType = BUFFER_TYPE_UNKNOWN;
 
-    if (sampleOp->getType()->isPointerTy())
+    if(isa<GenIntrinsicInst>(sampleOp)) // from GetBufferPtr
     {
-        BufferType sampType = BUFFER_TYPE_UNKNOWN;
-
-        if (isa<GenIntrinsicInst>(sampleOp)) // from GetBufferPtr
-        {
-            Value *bufTyVal = cast<GenIntrinsicInst>(sampleOp)->getOperand(1);
-            assert(isa<ConstantInt>(bufTyVal));
-            sampType = (BufferType)(cast<ConstantInt>(bufTyVal)->getZExtValue());
-            sampler.m_sampler = GetSymbol(sampleOp);
-            assert(sampType == SAMPLER);
-            sampler.m_samplerType = ESAMPLER_NORMAL;
-        }
-        else
-        {
-            bool isBindless;
-            bool directIdx;
-
-            sampType = DecodeAS4GFXResource(
-                sampleOp->getType()->getPointerAddressSpace(),
-                directIdx, samplerIdx);
-            isBindless = (sampType == BINDLESS_SAMPLER);
-            sampler.m_samplerType =
-                isBindless ? ESAMPLER_BINDLESS : ESAMPLER_NORMAL;
-
-            if (isBindless || !directIdx)
-            {
-                sampler.m_sampler = GetSymbol(sampleOp);
-            }
-            else
-            {
-                sampler.m_sampler = m_currShader->ImmToVariable(
-                    samplerIdx, ISA_TYPE_UD);
-            }
-        }
+        Value *bufTyVal = cast<GenIntrinsicInst>(sampleOp)->getOperand(1);
+        assert(isa<ConstantInt>(bufTyVal));
+        sampType = (BufferType)(cast<ConstantInt>(bufTyVal)->getZExtValue());
+        sampler.m_sampler = GetSymbol(sampleOp);
+        assert(sampType == SAMPLER);
+        sampler.m_samplerType = ESAMPLER_NORMAL;
     }
     else
     {
-        if (isa<ConstantInt>(sampleOp))
+        bool isBindless;
+        bool directIdx;
+
+        sampType = DecodeAS4GFXResource(
+            sampleOp->getType()->getPointerAddressSpace(),
+            directIdx, samplerIdx);
+        isBindless = (sampType == BINDLESS_SAMPLER);
+        sampler.m_samplerType =
+            isBindless ? ESAMPLER_BINDLESS : ESAMPLER_NORMAL;
+
+        if(isBindless || !directIdx)
         {
-            samplerIdx = int_cast<unsigned>(GetImmediateVal(sampleOp));
-            sampler.m_sampler = m_currShader->ImmToVariable(
-                samplerIdx, ISA_TYPE_UD);
+            sampler.m_sampler = GetSymbol(sampleOp);
         }
         else
         {
-            //Indexable sampler, when sampler index is not immediate
-            sampler.m_sampler = GetSymbol(sampleOp);
+            sampler.m_sampler = m_currShader->ImmToVariable(
+                samplerIdx, ISA_TYPE_UD);
         }
     }
-
     return sampler;
 }
 

@@ -464,7 +464,6 @@ void LoadRegistryKeys( void )
 			IGC_SET_FLAG_VALUE(DisableURBWriteMerge, true);
 			IGC_SET_FLAG_VALUE(DisableCodeHoisting, true);
 			IGC_SET_FLAG_VALUE(DisableEmptyBlockRemoval, true);
-			IGC_SET_FLAG_VALUE(DisableEUBypass, true);
 			IGC_SET_FLAG_VALUE(DisableSIMD32Slicing, true);
 			IGC_SET_FLAG_VALUE(DisableCSEL, true);
 			IGC_SET_FLAG_VALUE(DisableFlagOpt, true);

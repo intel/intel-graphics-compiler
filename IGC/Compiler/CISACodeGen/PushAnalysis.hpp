@@ -151,12 +151,6 @@ public:
 			m_argIndex++;
 		}
 		m_argIndex = m_argIndex - 1;
-        m_DL = &F->getParent()->getDataLayout();
-        m_pullConstantHeuristics = &getAnalysis<PullConstantHeuristics>();
-        m_hsProps = getAnalysisIfAvailable<CollectHullShaderProperties>();
-        m_dsProps = getAnalysisIfAvailable<CollectDomainShaderProperties>();
-        m_gsProps = getAnalysisIfAvailable<CollectGeometryShaderProperties>();
-        m_vsProps = getAnalysisIfAvailable<CollectVertexShaderProperties>();
 
         if (m_pMdUtils->findFunctionsInfoItem(F) != m_pMdUtils->end_FunctionsInfo())
         {

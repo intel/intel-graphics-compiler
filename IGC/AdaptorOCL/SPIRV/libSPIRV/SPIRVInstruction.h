@@ -70,6 +70,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVStream.h"
 #include "SPIRVValue.h"
 #include "SPIRVBasicBlock.h"
+#include "SPIRVFunction.h"
 
 #include <cassert>
 #include <cstdint>
@@ -1711,6 +1712,53 @@ public:
       SPIRV##x;
 _SPIRV_OP(SubgroupBallotKHR, true /*HasId*/, 4 /*WC*/, false /*VariWC*/)
 _SPIRV_OP(SubgroupFirstInvocationKHR, true /*HasId*/, 4 /*WC*/, false /*VariWC*/)
+#undef _SPIRV_OP
+
+class SPIRVSubgroupShuffleINTELInstBase : public SPIRVInstTemplateBase {
+protected:
+  CapVec getRequiredCapability() const override {
+    return getVec(CapabilitySubgroupShuffleINTEL);
+  }
+};
+
+#define _SPIRV_OP(x, ...) \
+  typedef SPIRVInstTemplate<SPIRVSubgroupShuffleINTELInstBase, Op##x, __VA_ARGS__> \
+      SPIRV##x;
+// Intel Subgroup Shuffle Instructions
+_SPIRV_OP(SubgroupShuffleINTEL, true, 5)
+_SPIRV_OP(SubgroupShuffleDownINTEL, true, 6)
+_SPIRV_OP(SubgroupShuffleUpINTEL, true, 6)
+_SPIRV_OP(SubgroupShuffleXorINTEL, true, 5)
+#undef _SPIRV_OP
+
+class SPIRVSubgroupBufferBlockIOINTELInstBase : public SPIRVInstTemplateBase {
+protected:
+  CapVec getRequiredCapability() const override {
+    return getVec(CapabilitySubgroupBufferBlockIOINTEL);
+  }
+};
+
+#define _SPIRV_OP(x, ...) \
+  typedef SPIRVInstTemplate<SPIRVSubgroupBufferBlockIOINTELInstBase, Op##x, __VA_ARGS__> \
+      SPIRV##x;
+// Intel Subgroup Buffer Block Read and Write Instructions
+_SPIRV_OP(SubgroupBlockReadINTEL, true, 4)
+_SPIRV_OP(SubgroupBlockWriteINTEL, false, 3)
+#undef _SPIRV_OP
+
+class SPIRVSubgroupImageBlockIOINTELInstBase : public SPIRVInstTemplateBase {
+protected:
+  CapVec getRequiredCapability() const override {
+    return getVec(CapabilitySubgroupImageBlockIOINTEL);
+  }
+};
+
+#define _SPIRV_OP(x, ...) \
+  typedef SPIRVInstTemplate<SPIRVSubgroupImageBlockIOINTELInstBase, Op##x, __VA_ARGS__> \
+      SPIRV##x;
+// Intel Subgroup Image Block Read and Write Instructions
+_SPIRV_OP(SubgroupImageBlockReadINTEL, true, 5)
+_SPIRV_OP(SubgroupImageBlockWriteINTEL, false, 4)
 #undef _SPIRV_OP
 
 SPIRVSpecConstantOp *createSpecConstantOpInst(SPIRVInstruction *Inst);

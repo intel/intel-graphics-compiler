@@ -187,7 +187,6 @@ public:
     bool MatchModifier(llvm::Instruction& I, bool SupportSrc0Mod = true);
     bool MatchSingleInstruction(llvm::Instruction& I);
     bool MatchBranch(llvm::BranchInst& I);
-    bool MatchSamplerToRT(llvm::Instruction& I);
     bool MatchShuffleBroadCast(llvm::GenIntrinsicInst& I);
     bool MatchWaveShuffleIndex(llvm::GenIntrinsicInst& I);
     bool MatchRegisterRegion(llvm::GenIntrinsicInst& I);

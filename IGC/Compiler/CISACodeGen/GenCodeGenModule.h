@@ -96,6 +96,13 @@ public:
   bool hasStackCall() {
     return (Functions.size() > 1);
   }
+
+  void replaceGroupHead(llvm::Function *OH, llvm::Function *NH) {
+	auto headSG = Functions[0];
+	llvm::AssertingVH<llvm::Function>& HVH = (*headSG)[0];
+	assert(&(*HVH) == OH && "Group's head isn't set up correctly!");
+	HVH = NH;
+  }
 };
 
 class GenXFunctionGroupAnalysis : public llvm::ImmutablePass {
@@ -129,6 +136,9 @@ public:
   /// fails to rebuild and returns true otherwise.
   ///
   bool rebuild(llvm::Module *Mod);
+
+  // Replace OF with NF in Groups and GroupMap
+  void replaceEntryFunc(llvm::Function *OF, llvm::Function *NF);
 
   /// \brief Verify if this analysis result is valid.
   bool verify();

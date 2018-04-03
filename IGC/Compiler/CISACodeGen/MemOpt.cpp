@@ -43,7 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
-
+#include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/CISACodeGen/MemOpt.h"
 
 using namespace llvm;
@@ -66,6 +66,7 @@ namespace {
     const DataLayout *DL;
     AliasAnalysis *AA;
     ScalarEvolution *SE;
+    WIAnalysis *WI;
 
     CodeGenContext *CGC;
     TargetLibraryInfo *TLI;
@@ -84,7 +85,9 @@ namespace {
   public:
     static char ID;
 
-    MemOpt() : FunctionPass(ID), DL(nullptr), AA(nullptr), SE(nullptr), CGC(nullptr) {
+    MemOpt() :
+        FunctionPass(ID), DL(nullptr), AA(nullptr), SE(nullptr), WI(nullptr),
+        CGC(nullptr) {
       initializeMemOptPass(*PassRegistry::getPassRegistry());
     }
 
@@ -98,6 +101,7 @@ namespace {
       AU.addRequired<AAResultsWrapperPass>();
       AU.addRequired<TargetLibraryInfoWrapperPass>();
       AU.addRequired<ScalarEvolutionWrapperPass>();
+      AU.addRequired<WIAnalysis>();
     }
 
     void buildProfitVectorLengths(Function &F);
@@ -316,6 +320,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
+IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
 IGC_INITIALIZE_PASS_END(MemOpt, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 char MemOpt::ID = 0;
@@ -358,6 +363,7 @@ bool MemOpt::runOnFunction(Function &F) {
   DL = &F.getParent()->getDataLayout();
   AA = &getAnalysis<AAResultsWrapperPass>().getAAResults();
   SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
+  WI = &getAnalysis<WIAnalysis>();
 
   CGC = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
@@ -450,7 +456,21 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
     unsigned(DL->getTypeSizeInBits(LeadingLoadScalarType));
   if (!ProfitVectorLengths.count(TypeSizeInBits))
       return false;
-  SmallVector<unsigned, 4 >& profitVec = ProfitVectorLengths[TypeSizeInBits];
+  SmallVector<unsigned, 8> profitVec;
+  // FIXME: Enable for OCL shader only as other clients have regressions but
+  // there's no way to trace down.
+  bool isUniformLoad = (CGC->type == ShaderType::OPENCL_SHADER) &&
+                       (WI->whichDepend(LeadingLoad) == WIAnalysis::UNIFORM);
+  if (isUniformLoad) {
+    unsigned C = IGC_GET_FLAG_VALUE(UniformMemOptLimit);
+    if (C == 0) C = 256;
+    C /= TypeSizeInBits;
+    for (; C >= 2; --C)
+      profitVec.push_back(C);
+  } else {
+    SmallVector<unsigned, 4>& Vec = ProfitVectorLengths[TypeSizeInBits];
+    profitVec.append(Vec.begin(), Vec.end());
+  }
 
   unsigned LdSize = unsigned(DL->getTypeStoreSize(LeadingLoadType));
   unsigned LdScalarSize = unsigned(DL->getTypeStoreSize(LeadingLoadScalarType));
@@ -1286,7 +1306,7 @@ SymbolicPointer::getLinearExpression(Value *V, APInt &Scale, APInt &Offset,
   assert(V->getType()->isIntegerTy() && "Not an integer value");
 
   // Limit our recursion depth.
-  if (Depth == 6) {
+  if (Depth == 16) {
     Scale = 1;
     Offset = 0;
     return V;

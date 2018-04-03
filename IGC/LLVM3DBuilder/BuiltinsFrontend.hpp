@@ -227,11 +227,6 @@ public:
         llvm::Value* int32_src_s_mip,
         llvm::Value* int32_textureIdx);
 
-    llvm::Value* Create_resinfo_msaa(
-        llvm::Value* float_src_s_mip,
-        llvm::Value* int32_textureIdx,
-        llvm::Value* int1_isUAV);
-
     llvm::Value* Create_resinfoptr_msaa(
         llvm::Value* srcBuffer,
         llvm::Value* float_src_s_mip);
@@ -846,10 +841,6 @@ private:
     llvm::Function* llvm_GenISA_ldms() const;
 
     llvm::Function* llvm_GenISA_ldmcs() const;
-
-    llvm::Function* llvm_GenISA_resinfo() const;
-
-    llvm::Function* llvm_GenISA_sampleinfo() const;
 
     llvm::Function* llvm_GenISA_sampleBC_v4f32_f32() const;
 

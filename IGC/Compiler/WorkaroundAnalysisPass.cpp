@@ -304,13 +304,12 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
         case llvm::GenISAIntrinsic::GenISA_gather4POCptr:
             GatherOffsetWorkaround(cast<SamplerGatherIntrinsic>(&I));
             break;
-        case llvm::GenISAIntrinsic::GenISA_sampleBC:
+        case GenISAIntrinsic::GenISA_ldmsptr:
+            ldmsOffsetWorkaournd(cast<LdMSIntrinsic>(&I));
+            break;
         case llvm::GenISAIntrinsic::GenISA_sampleBCptr:
-        case llvm::GenISAIntrinsic::GenISA_sampleC:
         case llvm::GenISAIntrinsic::GenISA_sampleCptr:
-        case llvm::GenISAIntrinsic::GenISA_sampleDC:
         case llvm::GenISAIntrinsic::GenISA_sampleDCptr:
-        case llvm::GenISAIntrinsic::GenISA_sampleLC:
         case llvm::GenISAIntrinsic::GenISA_sampleLCptr:
         {
             CodeGenContext* pCodeGenCtx = m_pCtxWrapper->getCodeGenContext();
@@ -396,6 +395,29 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
         default:
             break;
         }
+    }
+}
+
+void WorkaroundAnalysis::ldmsOffsetWorkaournd(LdMSIntrinsic* ldms)
+{
+    // In some cases immediate offsets are not working in hardware for ldms message
+    // to solve it we add directly the offset to the integer coordinate
+    Value* zero = m_builder->getInt32(0); 
+    if(ldms->getImmOffset(0) == zero &&
+        ldms->getImmOffset(1) == zero &&
+        ldms->getImmOffset(2) == zero)
+    {
+        return;
+    }
+    for(unsigned int i = 0; i < 2; i++)
+    {
+        m_builder->SetInsertPoint(ldms);
+        Value* coord = ldms->getCoordinate(i);
+        Value* newCoord = m_builder->CreateAdd(
+            coord, 
+            m_builder->CreateTrunc(ldms->getImmOffset(i), coord->getType()));
+        ldms->setCoordinate(i, newCoord);
+        ldms->setImmOffset(i, m_builder->getInt32(0));
     }
 }
 

@@ -141,7 +141,6 @@ namespace IGC
         bool hasGenericAddressSpacePointers;
         bool hasDebugInfo;        //<! true only if module contains debug info !llvm.dbg.cu
         bool hasAtomics;
-        bool hasSampleLinLoop;
         bool hasDiscard;
         bool mayHaveIndirectOperands;  //<! true if code may have indirect operands like r5[a0].
 		unsigned int numSample;
@@ -234,7 +233,6 @@ namespace IGC
         bool hasCoarsePixelSize;
         bool hasSampleOffset;
         bool hasZWDelta;
-        bool hasSampleLInLoopPS;
         bool posXYOffsetEnable;
         bool blendToFillEnabled;
         bool forceEarlyZ;
@@ -837,6 +835,8 @@ namespace IGC
 
         void clear()
         {
+			m_enableSubroutine = false;
+
             delete modMD;
             delete m_pMdUtils;
             modMD = nullptr;

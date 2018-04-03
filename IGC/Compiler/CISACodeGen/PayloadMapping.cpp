@@ -351,7 +351,6 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, uint &numberofSrcs)
 {
     switch(opCode)
     {
-    case llvm_sample_d:
     case llvm_sample_dptr:
         {
             switch(numberofSrcs)
@@ -370,7 +369,6 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, uint &numberofSrcs)
             }
         }
         break;
-    case llvm_sample_dc:
     case llvm_sample_dcptr:
         {
             switch(numberofSrcs)
@@ -393,11 +391,8 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, uint &numberofSrcs)
             }
         }
         break;
-    case llvm_sample_b:
     case llvm_sample_bptr:
-    case llvm_sample_c:
     case llvm_sample_cptr:
-    case llvm_sample_l:
     case llvm_sample_lptr:
         {
             switch(numberofSrcs)
@@ -408,9 +403,7 @@ void PayloadMapping::ValidateNumberofSources(EOPCODE opCode, uint &numberofSrcs)
             }
         }
         break;
-    case llvm_sample_lc:
     case llvm_sample_lcptr:
-    case llvm_sample_bc:
     case llvm_sample_bcptr:
         {
             switch(numberofSrcs)
@@ -551,8 +544,7 @@ uint PayloadMapping::GetNonAdjustedPayloadElementIndexToValueIndexMapping_sample
     // C L ...
     if (!(zeroLOD &&
           index == 0 &&
-          (IID == GenISAIntrinsic::GenISA_sampleLC ||
-          IID == GenISAIntrinsic::GenISA_sampleLCptr)))
+          IID == GenISAIntrinsic::GenISA_sampleLCptr))
     {
         index = index + startIndex;
     }

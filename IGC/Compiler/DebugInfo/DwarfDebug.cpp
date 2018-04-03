@@ -341,6 +341,9 @@ DIE *DwarfDebug::constructLexicalScopeDIE(CompileUnit *TheCU, LexicalScope *Scop
     if (Scope->isAbstractScope())
         return ScopeDIE;
 
+    if (m_pModule->isDirectElfInput)
+        return ScopeDIE;
+
     const SmallVectorImpl<InsnRange> &Ranges = Scope->getRanges();
     assert(Ranges.empty() == false && "LexicalScope does not have instruction markers!");
 

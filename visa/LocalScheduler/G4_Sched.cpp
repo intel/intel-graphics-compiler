@@ -1253,7 +1253,6 @@ unsigned LatencyQueue::calculatePriority(preNode* N)
         unsigned Latency = 0;
 
         if (Inst && !Inst->isPseudoKill() && Edge.isDataDep()) {
-            Latency = UNCOMPR_LATENCY;
             switch (Edge.getType()) {
             case RAW:
             case RAW_MEMORY:

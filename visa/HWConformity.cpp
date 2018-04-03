@@ -1900,16 +1900,7 @@ bool HWConformity::fixImplicitAcc(INST_LIST_ITER i, G4_BB* bb)
 bool HWConformity::fixAccDst( INST_LIST_ITER i, G4_BB* bb )
 {
     G4_INST *inst = *i;
-    G4_DstRegRegion *dst = inst->getDst();
-    int exec_size = inst->getExecSize( );
-    bool compressed = isCompressedInst( inst );
-    int uncompressed_exec_size = compressed ? exec_size / 2: exec_size;
-
     bool insertMov = false;
-    unsigned short dst_hs = dst->getHorzStride();
-
-    bool covers_whole_acc = ( dst_hs == 1 ) &&
-        ( ( inst->getExecSize() * dst->getExecTypeSize() ) % G4_GRF_REG_NBYTES == 0 );
 
     bool non_null_dst = ( inst->opcode() == G4_mach && inst->getDst() && !inst->getDst()->isNullReg() );
 
@@ -1958,307 +1949,7 @@ bool HWConformity::fixAccDst( INST_LIST_ITER i, G4_BB* bb )
     {
         return insertMov;
     }
-    // If the entire ACC, either acc0 or both acc0 and acc1, is not
-    // covered by the ACC definition then we need to ensure the channel
-    // corresponding to the only use's destination sub-register will
-    // contain the value.
 
-    if ( !covers_whole_acc )
-    {
-        bool need_replication;
-        bool can_replicate;
-        if( found_acc_use )
-        {
-            G4_Operand *src0 = inst->getSrc(0), *src1 = inst->getSrc(1), *src2 = inst->getSrc(2);
-
-            // Decision making - start
-
-            // If the acc_def_op has a unit exec_size while its use is not, then we
-            // can and should replicate.
-
-            if ( uncompressed_exec_size == 1 && acc_use_op->getExecSize() != 1 )
-            {
-                need_replication = true;
-                can_replicate = true;
-            }
-
-            // If the acc def use destination has a dynamic offset then
-            // it is not GenX conformant and we cannot guarantee safe
-            // replication of ACC channels.
-
-            else if ( acc_use_op_dst && acc_use_op_dst->getRegAccess() != Direct )
-            {
-                need_replication = true;
-                can_replicate = false;
-            }
-
-            // If the destination is guaranteed to be GRF aligned then we
-            // still have a chance to attempt replication if the sub-register
-            // offset is not zero. If the offset is zero then we are already
-            // GenX conformant and there is no need to replicate.
-            else
-            {
-                unsigned short offset;
-                bool opndGRFAligned = builder.isOpndAligned( acc_use_op_dst, offset, G4_GRF_REG_NBYTES );
-                if ( !acc_use_op_dst || null_use_op_dst )
-                {
-                        opndGRFAligned = true;
-                }
-                if( opndGRFAligned )
-                {
-                    // If the offset of acc def use is not zero and the offset is
-                    // a multiple of the acc def exec size.
-
-                    if (offset % G4_GRF_REG_NBYTES != 0)
-                    {
-                        need_replication = true;
-                        can_replicate = (offset % uncompressed_exec_size == 0);
-                    }
-
-                    else
-                    {
-                        need_replication = false;
-                        can_replicate = false;
-                    }
-                }
-
-                // The offset is at least guaranteed to be aligned w.r.t the
-                // destination type. This implies that if the execution size
-                // is one then we can always replicate.
-                else if (uncompressed_exec_size == 1)
-                {
-                    need_replication = true;
-                    can_replicate = true;
-                }
-                // Destination is not guaranteed to be GRF aligned and execution
-                // size is not one either.
-
-                else
-                {
-                    need_replication = true;
-                    can_replicate = false;
-                }
-            }
-
-            // Check if we can safely set the vertical stride of the
-            // destination to zero.
-
-            if (need_replication && can_replicate)
-            {
-                can_replicate =
-                    ( (!src0 || isUnitRegionRow( src0, exec_size ) ) &&
-                    (!src1 || isUnitRegionRow( src1, exec_size ) ) &&
-                    (!src2 || isUnitRegionRow( src2, exec_size ) ) )    ;
-
-                // If we replicated a mac/mach we need to match the implicit
-                // ACC source region with its definition's region as
-                // well. Make sure we can do that for a chain of mac/mach.
-
-                INST_LIST_ITER def_inst_iter = i;
-
-                while ( (*def_inst_iter)->hasImplicitAccSrc() )
-                {
-                    INST_LIST_ITER mac_acc_def_iter = def_inst_iter;
-
-                    // Find the definition for the implicit ACC source which
-                    // must be in the same basic block.
-                    bool found = false;
-
-                    for (auto def_iter = (*def_inst_iter)->def_begin();
-                        def_iter != (*def_inst_iter)->def_end();
-                        def_iter++ )
-                    {
-                        if( (*def_iter).second == Opnd_implAccSrc )
-                        {
-                            found = true;
-                            break;
-                        }
-                    }
-
-                    MUST_BE_TRUE( found, "Acc is not defined in the same BB." );
-
-                    if ( ( *mac_acc_def_iter )->getExecSize() == exec_size ) {
-                        break;
-                    }
-                    else {
-                        G4_Operand *src0 = ( *mac_acc_def_iter )->getSrc(0), *src1 = ( *mac_acc_def_iter )->getSrc(1),
-                            *src2 = ( *mac_acc_def_iter )->getSrc(2);
-                        // Check if we can replicate this mac(h) in the chain.
-                        if ( ( !src0 || isUnitRegionRow( src0, exec_size ) ) &&
-                            ( !src1 || isUnitRegionRow( src1, exec_size ) ) &&
-                            ( !src2 || isUnitRegionRow( src2, exec_size ) ) ){
-                            def_inst_iter = mac_acc_def_iter;
-                        }
-                        else {
-                            can_replicate = false;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // Decision making - end
-
-            // Handle case (1) - perform replication across ACC channels.
-            // all sources are SrcRegRegion now
-
-            if (need_replication && can_replicate)
-            {
-                int acc_replication_factor =
-                    G4_GRF_REG_NBYTES /
-                    (uncompressed_exec_size * dst->getExecTypeSize() );
-
-                exec_size *= acc_replication_factor;
-                inst->setExecSize( (unsigned char) exec_size );
-
-                if( src0 && src0->isSrcRegRegion() )
-                {
-                    RegionDesc *rd = builder.createRegionDesc( 0,
-                        src0->asSrcRegRegion()->getRegion()->width,
-                        src0->asSrcRegRegion()->getRegion()->horzStride );
-                    src0->asSrcRegRegion()->setRegion( rd );
-                }
-
-                if( src1 && src1->isSrcRegRegion() )
-                {
-                    RegionDesc *rd = builder.createRegionDesc( 0,
-                        src1->asSrcRegRegion()->getRegion()->width,
-                        src1->asSrcRegRegion()->getRegion()->horzStride );
-                    src1->asSrcRegRegion()->setRegion( rd );
-                }
-
-                if( src2 && src2->isSrcRegRegion() )
-                {
-                    RegionDesc *rd = builder.createRegionDesc( 0,
-                        src2->asSrcRegRegion()->getRegion()->width,
-                        src2->asSrcRegRegion()->getRegion()->horzStride );
-                    src2->asSrcRegRegion()->setRegion( rd );
-                }
-                // If we replicated a mac/mach we to match the implicit
-                // ACC source region with its definition's region as
-                // well.
-
-                INST_LIST_ITER def_inst_iter = i;
-
-                while ( (*def_inst_iter)->hasImplicitAccSrc() )
-                {
-                    INST_LIST_ITER mac_acc_def_iter = def_inst_iter;
-
-                    // Find the definition for the implicit ACC source which
-                    // mus be in the same basic block.
-                    bool found = false;
-                    while( mac_acc_def_iter != bb->instList.begin() )
-                    {
-                        mac_acc_def_iter--;
-                        if ( ( *mac_acc_def_iter )->getDst() &&
-                            ( *mac_acc_def_iter )->getDst()->isAccReg() )
-                        {
-                                found = true;
-                                break;
-                        }
-                    }
-
-                    MUST_BE_TRUE( found, "Acc is not defined in the same BB." );
-
-                    if ( ( *mac_acc_def_iter )->getExecSize() != exec_size)
-                    {
-                        ( *mac_acc_def_iter )->setExecSize( (unsigned char) exec_size );
-                        G4_Operand *src0 = ( *mac_acc_def_iter )->getSrc(0), *src1 = ( *mac_acc_def_iter )->getSrc(1),
-                            *src2 = ( *mac_acc_def_iter )->getSrc(2);
-
-                        if( src0 && src0->isSrcRegRegion() )
-                        {
-                            RegionDesc *rd = builder.createRegionDesc( 0,
-                                src0->asSrcRegRegion()->getRegion()->width,
-                                src0->asSrcRegRegion()->getRegion()->horzStride );
-                            src0->asSrcRegRegion()->setRegion( rd );
-                        }
-
-                        if( src1 && src1->isSrcRegRegion() )
-                        {
-                            RegionDesc *rd = builder.createRegionDesc( 0,
-                                src1->asSrcRegRegion()->getRegion()->width,
-                                src1->asSrcRegRegion()->getRegion()->horzStride );
-                            src1->asSrcRegRegion()->setRegion( rd );
-                        }
-
-                        if( src2 && src2->isSrcRegRegion() )
-                        {
-                            RegionDesc *rd = builder.createRegionDesc( 0,
-                                src2->asSrcRegRegion()->getRegion()->width,
-                                src2->asSrcRegRegion()->getRegion()->horzStride );
-                            src2->asSrcRegRegion()->setRegion( rd );
-                        }
-                    }
-                    def_inst_iter = mac_acc_def_iter;
-                }
-            }
-
-            // Handle case (2) - replace destination with an GRF boundary
-            //                   aligned temporary.
-
-            else if (need_replication && !can_replicate && acc_use_op_dst != NULL)
-            {
-                // Replace the destination of the acc use to be a temporary
-                // GRF that is aligned to GRF boundary
-
-                uint32_t inst_opt = acc_use_op->getOption();
-
-                G4_Declare *aligned_grf_dcl = builder.createTempVar(
-                    (unsigned short) (exec_size * acc_use_op_dst->getHorzStride()),
-                    acc_use_op_dst->getType(),
-                    Either,
-                    Sixteen_Word );
-
-                G4_DstRegRegion *aligned_grf_dst_opnd = builder.createDstRegRegion(
-                    Direct,
-                    aligned_grf_dcl->getRegVar(),
-                    0,
-                    0,
-                    acc_use_op_dst->getHorzStride(),
-                    acc_use_op_dst->getType());
-
-                MUST_BE_TRUE( acc_use_op->getExecSize() == exec_size, "ACC def and use instructions have different execution size." );
-
-                acc_use_op->setDest( aligned_grf_dst_opnd );
-
-                // Insert a mov instruction to the original destination.
-                unsigned short vs = aligned_grf_dst_opnd->getHorzStride();
-                RegionDesc *rd = builder.createRegionDesc((uint16_t)exec_size, vs, 1, 0);
-                G4_SrcRegRegion *mov_src_opnd = builder.createSrcRegRegion(
-                        Mod_src_undef,
-                        Direct,
-                        aligned_grf_dcl->getRegVar(),
-                        0,
-                        0,
-                        rd,
-                        aligned_grf_dcl->getElemType());
-
-                G4_INST *new_mov_inst = builder.createInternalInst(
-                    acc_use_op->getPredicate(),
-                    G4_mov,
-                    acc_use_op->getCondMod(),
-                    acc_use_op->getSaturate(),
-                    (unsigned char) exec_size,
-                    acc_use_op_dst,
-                    mov_src_opnd,
-                    NULL,
-                    inst_opt,
-                    acc_use_op->getLineNo(),
-                    acc_use_op->getCISAOff(),
-                    acc_use_op->getSrcFilename() );
-                iter++;
-                bb->instList.insert( iter, new_mov_inst );
-                if( acc_use_op_dst->getType() == Type_F )
-                {
-                    acc_use_op->setSaturate(false);
-                }
-                acc_use_op->setPredicate( NULL );
-                insertMov = true;
-            }
-        }
-    }
-    else
     {
         // it is possible that the def covers whole acc, but the dst of use inst is not aligned to GRF.
         // insert MOV for this case
@@ -2271,6 +1962,15 @@ bool HWConformity::fixAccDst( INST_LIST_ITER i, G4_BB* bb )
             insertMov = true;
             acc_use_op->setDest( insertMovAfter( iter, acc_use_op_dst, acc_use_op_dst->getType(), bb ) );
         }
+
+        if (!builder.accDstforVxHSrc())
+        {
+            if (inst->getSrc(0)->isSrcRegRegion() && inst->getSrc(0)->asSrcRegRegion()->getRegion()->isRegionWH())
+            {
+                inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb), 0);
+            }
+        }
+
     }
     return insertMov;
 }
@@ -2498,6 +2198,12 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
         srcExchanged = true;
     }
 
+    if (!builder.supportSrcModforMul())
+    {
+        checkSrcMod(i, bb, 0);
+        checkSrcMod(i, bb, 1);
+    }
+
     src0 = inst->getSrc(0);
     src1 = inst->getSrc(1);
     // Q dst needs 64-bit support regardless of src type
@@ -2505,13 +2211,6 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
 
     if (!isDMul)
     {
-
-        if (!builder.supportSrcModforMul())
-        {
-            bool changed = checkSrcMod(i, bb, 0);
-            changed |= checkSrcMod(i, bb, 1);
-            return changed;
-        }
         return false;
     }
 
@@ -4755,20 +4454,36 @@ static bool isAccCandidate(G4_INST* inst, G4_Kernel& kernel, int& lastUse, bool&
         }
     }
 
+    if (lastUseId == 0)
+    {
+        // no point using acc for a dst without local uses
+        return false;
+    }
+
     lastUse = lastUseId;
     return true;
 }
 
 // replace an inst's dst and all of its (local) uses with acc
-static void replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
+// note that this may fail due to HW restrictions on acc
+static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
 {
     G4_DstRegRegion* dst = inst->getDst();
+
+    if (!builder.relaxedACCRestrictions() && inst->getNumSrc() == 3)
+    {
+        if (inst->getSrc(0)->isAccReg() && inst->getSrc(1)->isAccReg())
+        {
+            return false;
+        }
+    }
+
     bool useAcc1 = false;  
     for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I)
     {
         auto&& use = *I;
         G4_INST* useInst = use.first;
-        if (useInst->opcode() == G4_mad && use.second == Opnd_src0)
+        if (!builder.canMadHaveSrc0Acc() && useInst->opcode() == G4_mad && use.second == Opnd_src0)
         {
             // if we are replacing mad with mac, additionally check if acc1 needs to be used
             if (useInst->getMaskOffset() == 16 && dst->getType() == Type_HF)
@@ -4837,6 +4552,8 @@ static void replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
             useInst->setSrc(accSrc, srcId);
         }
     }
+
+	return true;
 }
 
 static uint32_t getNumACC(IR_Builder& builder)

@@ -406,6 +406,15 @@ _SPIRV_OP(OpGenericCastToPtrExplicit)
 _SPIRV_OP(OpSubgroupBallotKHR)
 _SPIRV_OP(OpSubgroupFirstInvocationKHR)
 #undef _SPIRV_OP
+
+// Intel Subgroups builtins
+#define _SPIRV_OP(x, y) add(Op##y, #x);
+_SPIRV_OP(intel_sub_group_shuffle, SubgroupShuffleINTEL)
+_SPIRV_OP(intel_sub_group_shuffle_down, SubgroupShuffleDownINTEL)
+_SPIRV_OP(intel_sub_group_shuffle_up, SubgroupShuffleUpINTEL)
+_SPIRV_OP(intel_sub_group_shuffle_xor, SubgroupShuffleXorINTEL)
+#undef _SPIRV_OP
+
 }
 typedef SPIRVMap<Op, std::string, SPIRVInstruction>
   OCLSPIRVBuiltinMap;
@@ -696,7 +705,7 @@ void decorateSPIRVExtInst(std::string &S, std::vector<Type*> ArgTypes);
 bool isFunctionBuiltin(llvm::Function* F);
 
 /// Get a canonical function name for a SPIR-V op code.
-std::string getSPIRVBuiltinName(Op OC, std::vector<Type*> ArgTypes, std::string suffix);
+std::string getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, std::string suffix);
 
 /// Mutates function call instruction by changing the arguments.
 /// \param ArgMutate mutates the function arguments.

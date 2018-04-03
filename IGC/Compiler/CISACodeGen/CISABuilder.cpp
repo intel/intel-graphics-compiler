@@ -3225,59 +3225,41 @@ VISASampler3DSubOpCode CEncoder::ConvertSubOpcode(EOPCODE subOpcode, bool zeroLO
 {
     switch(subOpcode)
     {
-    case llvm_sample:
     case llvm_sampleptr:
         return VISA_3D_SAMPLE;
-    case llvm_sample_b:
     case llvm_sample_bptr:
         return VISA_3D_SAMPLE_B;
-    case llvm_sample_c:
     case llvm_sample_cptr:
         return VISA_3D_SAMPLE_C;
-    case llvm_sample_d:
     case llvm_sample_dptr:
         return VISA_3D_SAMPLE_D;
-    case llvm_sample_dc:
     case llvm_sample_dcptr:
         return VISA_3D_SAMPLE_D_C;
-    case llvm_sample_l:
     case llvm_sample_lptr:
         return zeroLOD? VISA_3D_SAMPLE_LZ : VISA_3D_SAMPLE_L;
-    case llvm_sample_lc:
     case llvm_sample_lcptr:
         return zeroLOD? VISA_3D_SAMPLE_C_LZ : VISA_3D_SAMPLE_L_C;
-    case llvm_sample_bc:
     case llvm_sample_bcptr:
         return VISA_3D_SAMPLE_B_C;
-    case llvm_ld:
     case llvm_ld_ptr:
         return zeroLOD ? VISA_3D_LD_LZ : VISA_3D_LD;
-    case llvm_resinfo:
     case llvm_resinfoptr:
         return VISA_3D_RESINFO;
-    case llvm_gather4:
     case llvm_gather4ptr:
         return VISA_3D_GATHER4;
-    case llvm_gather4C:
     case llvm_gather4Cptr:
         return VISA_3D_GATHER4_C;
-    case llvm_gather4PO:
     case llvm_gather4POptr:
         return VISA_3D_GATHER4_PO;
-    case llvm_gather4POC:
     case llvm_gather4POCptr:
         return VISA_3D_GATHER4_PO_C;
-    case llvm_sampleinfo:
     case llvm_sampleinfoptr:
         return VISA_3D_SAMPLEINFO;
-    case llvm_ldms:
     case llvm_ldmsptr:
     case llvm_ldmsptr16bit:
         return VISA_3D_LD2DMS_W;
-    case llvm_ldmcs:
     case llvm_ldmcsptr:
         return VISA_3D_LD_MSC;
-    case llvm_lod:
     case llvm_lodptr:
         return VISA_3D_LOD;
     case llvm_sample_killpix:
@@ -3444,7 +3426,10 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
     // Disable multi-threaded latencies in the vISA scheduler when not in 3D
     if (context->type == ShaderType::OPENCL_SHADER)
     {
-        vbuilder->SetOption(vISA_useMultiThreadedLatencies, false);
+        if (m_program->m_Platform->singleThreadBasedInstScheduling())
+        {
+            vbuilder->SetOption(vISA_useMultiThreadedLatencies, false);
+        }
     }
 
     if ((IGC_IS_FLAG_ENABLED(EnableVISAPreSched) &&
@@ -3456,6 +3441,11 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         {
             vbuilder->SetOption(vISA_preRA_ScheduleCtrl, Val);
         }
+		else
+		{
+			uint32_t V = m_program->m_DriverInfo->getVISAPreRASchedulerCtrl();
+			vbuilder->SetOption(vISA_preRA_ScheduleCtrl, V);
+		}
     }
     else
     {

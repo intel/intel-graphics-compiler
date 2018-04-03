@@ -166,30 +166,6 @@ namespace IGC
         llvm::TargetLibraryInfo *m_TLI;
     };
 	
-    class CustomLoopInfo : public llvm::LoopPass
-    {
-    public:
-        static char ID;
-
-        CustomLoopInfo();
-
-        ~CustomLoopInfo() {}
-
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-        {
-            AU.addRequired<llvm::LoopInfoWrapperPass>();
-            AU.addRequired<CodeGenContextWrapper>();
-            AU.setPreservesAll();
-        }
-
-        virtual bool runOnLoop(llvm::Loop *L, llvm::LPPassManager &LPM) override;
-
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "CustomLoopInfo";
-        }
-    };
-
     llvm::FunctionPass *createGenStrengthReductionPass();
     llvm::FunctionPass *createFlattenSmallSwitchPass();
 	llvm::FunctionPass *createIGCIndirectICBPropagaionPass();

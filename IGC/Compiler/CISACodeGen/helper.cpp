@@ -629,39 +629,21 @@ bool isSampleLoadGather4InfoInstruction(llvm::Instruction* inst)
     {
         switch ((cast<GenIntrinsicInst>(inst))->getIntrinsicID())
         {
-        case GenISAIntrinsic::GenISA_sample:
         case GenISAIntrinsic::GenISA_sampleptr:
-        case GenISAIntrinsic::GenISA_sampleB:
         case GenISAIntrinsic::GenISA_sampleBptr:
-        case GenISAIntrinsic::GenISA_sampleC:
         case GenISAIntrinsic::GenISA_sampleCptr:
-        case GenISAIntrinsic::GenISA_sampleD:
         case GenISAIntrinsic::GenISA_sampleDptr:
-        case GenISAIntrinsic::GenISA_sampleDC:
         case GenISAIntrinsic::GenISA_sampleDCptr:
-        case GenISAIntrinsic::GenISA_sampleL:
         case GenISAIntrinsic::GenISA_sampleLptr:
-        case GenISAIntrinsic::GenISA_sampleLC:
         case GenISAIntrinsic::GenISA_sampleLCptr:
-        case GenISAIntrinsic::GenISA_sampleBC:
         case GenISAIntrinsic::GenISA_sampleBCptr:
-        case GenISAIntrinsic::GenISA_lod:
         case GenISAIntrinsic::GenISA_lodptr:
-        case GenISAIntrinsic::GenISA_ld:
         case GenISAIntrinsic::GenISA_ldptr:
-        case GenISAIntrinsic::GenISA_ldms:
         case GenISAIntrinsic::GenISA_ldmsptr:
         case GenISAIntrinsic::GenISA_ldmsptr16bit:
-        case GenISAIntrinsic::GenISA_ldmcs:
         case GenISAIntrinsic::GenISA_ldmcsptr:
-        case GenISAIntrinsic::GenISA_sampleinfo:
         case GenISAIntrinsic::GenISA_sampleinfoptr:
-        case GenISAIntrinsic::GenISA_resinfo:
         case GenISAIntrinsic::GenISA_resinfoptr:
-        case GenISAIntrinsic::GenISA_gather4:
-        case GenISAIntrinsic::GenISA_gather4C:
-        case GenISAIntrinsic::GenISA_gather4PO:
-        case GenISAIntrinsic::GenISA_gather4POC:
         case GenISAIntrinsic::GenISA_gather4ptr:
         case GenISAIntrinsic::GenISA_gather4Cptr:
         case GenISAIntrinsic::GenISA_gather4POptr:
@@ -1120,6 +1102,31 @@ bool DSDualPatchEnabled(class CodeGenContext* ctx)
     return ctx->platform.supportDSDualPatchDispatch() &&
         ctx->platform.WaDisableDSDualPatchMode() &&
         IGC_IS_FLAG_DISABLED(DisableDSDualPatch);
+}
+
+Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM)
+{
+	Function *entryFunc = nullptr;
+	for (auto i = pM->begin_FunctionsInfo(), e = pM->end_FunctionsInfo(); i != e; ++i)
+	{
+		IGCMD::FunctionInfoMetaDataHandle Info = i->second;
+		if (Info->getType() != IGCMD::FunctionTypeEnum::EntryFunctionType)
+		{
+			continue;
+		}
+
+		const Function *F = i->first;
+		if (!entryFunc)
+		{
+			entryFunc = const_cast<Function*>(F);
+		}
+		else
+		{
+			assert(false && "Not a single entry func!");
+		}
+	}
+	assert(entryFunc && "No entry func!");
+	return entryFunc;
 }
 
 //

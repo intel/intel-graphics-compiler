@@ -153,7 +153,6 @@ void Image3dToImage2darray::visitCallInst(CallInst &CI)
         m_Changed |= createImageAnnotations(pCall, pLoad->getTextureIndex(), m_MetadataUtils, pCoord);
         break;
     }
-    case GenISAIntrinsic::GenISA_sampleL:
     case GenISAIntrinsic::GenISA_sampleLptr:
     {
         auto *pSample = cast<SampleIntrinsic>(pCall);

@@ -93,9 +93,6 @@ public:
     /// Allow send fusion (Some API have perf regressions, temp use to turn it off)
     virtual bool AllowSendFusion() const { return true; }
 
-    /// Driver implements a WA based on sample_l detection
-    virtual bool NeedSampleWorkaround() const { return false; }
-
     /// Supports more than 16 samplers
     virtual bool SupportMoreThan16Samplers() const { return false; }
 
@@ -143,6 +140,9 @@ public:
 
     /// Turn on vISA pre-RA scheduler. Not tested on all APIs
     virtual bool enableVISAPreRAScheduler() const { return false; }
+
+	/// Configure vISA pre-RA scheduler. Not tested on all APIs
+	virtual unsigned getVISAPreRASchedulerCtrl() const { return 4; }
 
     /// Make sure optimization are consistent to avoid Z-fighting issue
     virtual bool PreventZFighting() const { return false; }
@@ -220,9 +220,6 @@ public:
 
     /// Check if we have to worry about stack overflow while recursing in loop analysis
     virtual bool HasSmallStack() const { return false; }
-
-    /// Check if we support half precision on BDW
-    virtual bool SupportFP16BDW() const { return false; }
 };
 
 }//namespace IGC

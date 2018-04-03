@@ -253,7 +253,7 @@ public:
   SPIRVWord getComponentCount() const { return CompCount;}
   bool isValidIndex(SPIRVWord Index) const { return Index < CompCount;}
   CapVec getRequiredCapability() const {
-    if (CompCount >= 8)
+    if (CompCount > 8)
       return getVec(SPIRVCapabilityKind::CapabilityVector16);
     return CapVec();
   }

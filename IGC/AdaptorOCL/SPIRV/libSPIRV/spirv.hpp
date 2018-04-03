@@ -577,6 +577,9 @@ enum Capability {
     CapabilityNamedBarrier = 54,
     CapabilityNone = 1024, /* internal use only */
     CapabilitySubgroupBallotKHR = 4423,
+    CapabilitySubgroupShuffleINTEL = 5568,
+    CapabilitySubgroupBufferBlockIOINTEL = 5569,
+    CapabilitySubgroupImageBlockIOINTEL = 5570,
 };
 
 enum Op {

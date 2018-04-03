@@ -121,6 +121,9 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction &I) {
 
     //Depending on the phase of legalization pass, call appropriate function 
     if (!NonBitcastInstructionsLegalized) { // LEGALIZE ALUs first
+        if (dyn_cast<PHINode>(&I)) {
+            legalizePhiInstruction(I);  // phi nodes and all incoming values
+        }
         if (dyn_cast<UnaryInstruction>(&I)) {
             legalizeUnaryInstruction(I); // pointercast &/or load
         }
@@ -139,6 +142,60 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction &I) {
         if (dyn_cast<BitCastInst>(&I))
             cleanupBitCastInst(I);
     }
+}
+
+void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction &I)
+{
+    assert(isa<PHINode>(&I));
+
+    unsigned srcWidth = I.getType()->getScalarSizeInBits();
+    if (!I.getType()->isIntOrIntVectorTy() || isLegalInteger(srcWidth) || srcWidth == 1) // nothing to legalize
+        return;
+
+    unsigned quotient, promoteToInt;
+    promoteInt(srcWidth, quotient, promoteToInt, DL->getLargestLegalIntTypeSizeInBits());
+
+	PHINode* oldPhi = dyn_cast<PHINode>(&I);
+	Value* result;
+
+	// Make sure m_builder's insert point is unchanged once this func returns
+	IRBuilder<>::InsertPointGuard Guard(*m_builder);
+	if (quotient > 1)
+	{
+		unsigned numElements = I.getType()->isVectorTy() ? I.getType()->getVectorNumElements() : 1;
+		Type* newType = VectorType::get(Type::getIntNTy(I.getContext(), promoteToInt), quotient * numElements);
+
+		PHINode* newPhi = m_builder->CreatePHI(newType, oldPhi->getNumIncomingValues());
+		for (unsigned i = 0; i < oldPhi->getNumIncomingValues(); i++)
+		{
+			Value* incomingValue = oldPhi->getIncomingValue(i);
+
+			// bitcast each incoming value to the legal type
+			Value* newValue = BitCastInst::Create(Instruction::BitCast, incomingValue, newType, "", oldPhi->getIncomingBlock(i)->getTerminator());
+			newPhi->addIncoming(newValue, oldPhi->getIncomingBlock(i));
+		}
+		// Cast back to original type
+		m_builder->SetInsertPoint(newPhi->getParent()->getFirstNonPHI());
+		result = m_builder->CreateBitCast(newPhi, oldPhi->getType());
+	}
+	else
+	{
+		// quotient == 1 (integer promotion)
+		Type* newType = Type::getIntNTy(I.getContext(), promoteToInt);
+		PHINode* newPhi = m_builder->CreatePHI(newType, oldPhi->getNumIncomingValues());
+		for (unsigned i = 0; i < oldPhi->getNumIncomingValues(); i++)
+		{
+			Value* incomingValue = oldPhi->getIncomingValue(i);
+			m_builder->SetInsertPoint(oldPhi->getIncomingBlock(i)->getTerminator());
+			Value* newValue = m_builder->CreateZExt(incomingValue, newType);
+			newPhi->addIncoming(newValue, oldPhi->getIncomingBlock(i));
+		}
+		// Cast back to original type
+		m_builder->SetInsertPoint(newPhi->getParent()->getFirstNonPHI());
+		result = m_builder->CreateTrunc(newPhi, oldPhi->getType());
+	}
+	oldPhi->replaceAllUsesWith(result);
+	oldPhi->eraseFromParent();
 }
 
 void PeepholeTypeLegalizer::legalizeExtractElement(Instruction &I)
@@ -353,8 +410,22 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
         case Instruction::ICmp:
         {
             CmpInst* cmpInst = cast<ICmpInst>(&I);
-            NewLargeRes = m_builder->CreateICmp(cmpInst->getPredicate(), NewLargeSrc1, NewLargeSrc2);
-            NewIllegal = NewLargeRes;
+			if (cmpInst->isSigned())
+			{
+				// Must use sext [note that NewLargeSrc1/2 are zext]
+				int shiftAmt = promoteToInt - Src1width;
+				assert(shiftAmt > 0 && "Should not happen, something wrong!");
+				Value *V1 = m_builder->CreateShl(NewLargeSrc1, shiftAmt);
+				Value *PromotedSrc1 = m_builder->CreateAShr(V1, shiftAmt);
+				Value *V2 = m_builder->CreateShl(NewLargeSrc2, shiftAmt);
+				Value *PromotedSrc2 = m_builder->CreateAShr(V2, shiftAmt);
+				NewLargeRes = m_builder->CreateICmp(cmpInst->getPredicate(), PromotedSrc1, PromotedSrc2);
+			}
+			else
+			{
+				NewLargeRes = m_builder->CreateICmp(cmpInst->getPredicate(), NewLargeSrc1, NewLargeSrc2);
+			}
+			NewIllegal = NewLargeRes;
             break;
         }
         case Instruction::Select:
@@ -544,6 +615,59 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction &I) {
             {
                 assert(false && "SExt Instruction seen with illegal int type and BitWidth > 1. Legalization support missing.");
             }
+        }
+        break;
+        case Instruction::Trunc:
+        {
+            // %1 = trunc i192 %0 to i128
+            // -->
+            // %1 = bitcast i192 %0 to <3 x i64>
+            // %2 = extractelement %1, 0
+            // %3 = insertelement %undef, %2, 0
+            // %4 = extractelement %1, 1
+            // %5 = insertelement %3, %4, 1
+            // %6 = bitcast <2 x i64> %5 to i128
+            unsigned dstSize = I.getType()->getScalarSizeInBits();
+            unsigned srcSize = I.getOperand(0)->getType()->getScalarSizeInBits();
+
+            if (isLegalInteger(srcSize) && isLegalInteger(dstSize)) // nothing to legalize
+                return;
+
+            // Find the largest common denominator that's also a legal type size
+            unsigned promotedInt = 0;
+            for (unsigned i = DL->getLargestLegalIntTypeSizeInBits(); i >= 8; i >>= 1)
+            {
+                if (dstSize % i == 0 && srcSize % i == 0)
+                {
+                    promotedInt = i;
+                    break;
+                }
+            }
+
+            if(promotedInt == 0) // common denominator not found
+            {
+                return;
+            }
+
+            unsigned numSrcElements = srcSize / promotedInt;
+            unsigned numDstElements = dstSize / promotedInt;
+            Type* srcVecTy = VectorType::get(Type::getIntNTy(I.getContext(), promotedInt), numSrcElements);
+            Type* dstVecTy = VectorType::get(Type::getIntNTy(I.getContext(), promotedInt), numDstElements);
+
+            // Bitcast the illegal src type to a legal vector
+            Value* srcVec = m_builder->CreateBitCast(I.getOperand(0), srcVecTy);
+            Value* dstVec = UndefValue::get(dstVecTy);
+
+            for (unsigned i = 0; i < numDstElements; i++)
+            {
+                Value* v = m_builder->CreateExtractElement(srcVec, m_builder->getInt32(i));
+                dstVec = m_builder->CreateInsertElement(dstVec, v, m_builder->getInt32(i));
+            }
+            // Cast back to original dst type
+            Value* result = m_builder->CreateBitCast(dstVec, I.getType());
+            I.replaceAllUsesWith(result);
+            I.eraseFromParent();
+            Changed = true;
         }
         break;
         case Instruction::Store:
@@ -801,14 +925,12 @@ void PeepholeTypeLegalizer::cleanupBitCastInst(Instruction &I) {
                 I.eraseFromParent();
                 Changed = true;
             }
-
             // We may be able to remove the first bitcast
             if (prevInst->use_empty())
             {
                 prevInst->eraseFromParent();
                 Changed = true;
             }
-
             break;
         }
         /*default:

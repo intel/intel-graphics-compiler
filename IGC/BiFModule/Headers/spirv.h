@@ -7685,67 +7685,43 @@ double16 __builtin_spirv_OpenCL_shuffle2_v16f64_v16f64_v16i64(double16 v0, doubl
 #endif // defined(cl_khr_fp64)
 
 
-// TODO: how do we want to handle extensions?
 
-#if 0
 uint __builtin_spirv_intel_sub_group_shuffle_i32_i32(uint x, uint c );
 uchar __builtin_spirv_intel_sub_group_shuffle_i8_i32(uchar x, uint c );
-char __builtin_spirv_intel_sub_group_shuffle_i8_i32(char x, uint c );
 ushort __builtin_spirv_intel_sub_group_shuffle_i16_i32(ushort x, uint c );
-short __builtin_spirv_intel_sub_group_shuffle_i16_i32(short x, uint c );
 float __builtin_spirv_intel_sub_group_shuffle_f32_i32(float x, uint c );
-int __builtin_spirv_intel_sub_group_shuffle_i32_i32(int x, uint c );
 float2 __builtin_spirv_intel_sub_group_shuffle_v2f32_i32(float2 x, uint y);
 float3 __builtin_spirv_intel_sub_group_shuffle_v3f32_i32(float3 x, uint y);
 float4 __builtin_spirv_intel_sub_group_shuffle_v4f32_i32(float4 x, uint y);
 float8 __builtin_spirv_intel_sub_group_shuffle_v8f32_i32(float8 x, uint y);
 float16 __builtin_spirv_intel_sub_group_shuffle_v16f32_i32(float16 x, uint y);
-int2 __builtin_spirv_intel_sub_group_shuffle_v2i32_i32(int2 x, uint y);
-int3 __builtin_spirv_intel_sub_group_shuffle_v3i32_i32(int3 x, uint y);
-int4 __builtin_spirv_intel_sub_group_shuffle_v4i32_i32(int4 x, uint y);
-int8 __builtin_spirv_intel_sub_group_shuffle_v8i32_i32(int8 x, uint y);
-int16 __builtin_spirv_intel_sub_group_shuffle_v16i32_i32(int16 x, uint y);
 uint2 __builtin_spirv_intel_sub_group_shuffle_v2i32_i32(uint2 x, uint y);
 uint3 __builtin_spirv_intel_sub_group_shuffle_v3i32_i32(uint3 x, uint y);
 uint4 __builtin_spirv_intel_sub_group_shuffle_v4i32_i32(uint4 x, uint y);
 uint8 __builtin_spirv_intel_sub_group_shuffle_v8i32_i32(uint8 x, uint y);
 uint16 __builtin_spirv_intel_sub_group_shuffle_v16i32_i32(uint16 x, uint y);
-long __builtin_spirv_intel_sub_group_shuffle_i64_i32(long x, uint c );
 ulong __builtin_spirv_intel_sub_group_shuffle_i64_i32(ulong x, uint c );
 
 uint __builtin_spirv_intel_sub_group_shuffle_down_i32_i32_i32(uint cur, uint next, uint c );
 uchar __builtin_spirv_intel_sub_group_shuffle_down_i8_i8_i32(uchar cur, uchar next, uint c );
-char __builtin_spirv_intel_sub_group_shuffle_down_i8_i8_i32(char cur, char next, uint c );
 ushort __builtin_spirv_intel_sub_group_shuffle_down_i16_i16_i32(ushort cur, ushort next, uint c );
-short __builtin_spirv_intel_sub_group_shuffle_down_i16_i16_i32(short cur, short next, uint c );
 float __builtin_spirv_intel_sub_group_shuffle_down_f32_f32_i32(float cur, float next, uint c );
-int __builtin_spirv_intel_sub_group_shuffle_down_i32_i32_i32(int cur, int next, uint c );
 float2 __builtin_spirv_intel_sub_group_shuffle_down_v2f32_v2f32_i32(float2 x, float2 y, uint z);
 float3 __builtin_spirv_intel_sub_group_shuffle_down_v3f32_v3f32_i32(float3 x, float3 y, uint z);
 float4 __builtin_spirv_intel_sub_group_shuffle_down_v4f32_v4f32_i32(float4 x, float4 y, uint z);
 float8 __builtin_spirv_intel_sub_group_shuffle_down_v8f32_v8f32_i32(float8 x, float8 y, uint z);
 float16 __builtin_spirv_intel_sub_group_shuffle_down_v16f32_v16f32_i32(float16 x, float16 y, uint z);
-int2 __builtin_spirv_intel_sub_group_shuffle_down_v2i32_v2i32_i32(int2 x, int2 y, uint z);
-int3 __builtin_spirv_intel_sub_group_shuffle_down_v3i32_v3i32_i32(int3 x, int3 y, uint z);
-int4 __builtin_spirv_intel_sub_group_shuffle_down_v4i32_v4i32_i32(int4 x, int4 y, uint z);
-int8 __builtin_spirv_intel_sub_group_shuffle_down_v8i32_v8i32_i32(int8 x, int8 y, uint z);
-int16 __builtin_spirv_intel_sub_group_shuffle_down_v16i32_v16i32_i32(int16 x, int16 y, uint z);
 uint2 __builtin_spirv_intel_sub_group_shuffle_down_v2i32_v2i32_i32(uint2 x, uint2 y, uint z);
 uint3 __builtin_spirv_intel_sub_group_shuffle_down_v3i32_v3i32_i32(uint3 x, uint3 y, uint z);
 uint4 __builtin_spirv_intel_sub_group_shuffle_down_v4i32_v4i32_i32(uint4 x, uint4 y, uint z);
 uint8 __builtin_spirv_intel_sub_group_shuffle_down_v8i32_v8i32_i32(uint8 x, uint8 y, uint z);
 uint16 __builtin_spirv_intel_sub_group_shuffle_down_v16i32_v16i32_i32(uint16 x, uint16 y, uint z);
-long __builtin_spirv_intel_sub_group_shuffle_down_i64_i64_i32(long cur, long next, uint c );
 ulong __builtin_spirv_intel_sub_group_shuffle_down_i64_i64_i32(ulong cur, ulong next, uint c );
 
 uchar __builtin_spirv_intel_sub_group_shuffle_up_i8_i8_i32(uchar prev, uchar cur, uint c );
-char __builtin_spirv_intel_sub_group_shuffle_up_i8_i8_i32(char prev, char cur, uint c );
 ushort __builtin_spirv_intel_sub_group_shuffle_up_i16_i16_i32(ushort prev, ushort cur, uint c );
-short __builtin_spirv_intel_sub_group_shuffle_up_i16_i16_i32(short prev, short cur, uint c );
 uint __builtin_spirv_intel_sub_group_shuffle_up_i32_i32_i32(uint prev, uint cur, uint c );
 float __builtin_spirv_intel_sub_group_shuffle_up_f32_f32_i32(float prev, float cur, uint c );
-int __builtin_spirv_intel_sub_group_shuffle_up_i32_i32_i32(int prev, int cur, uint c );
-long __builtin_spirv_intel_sub_group_shuffle_up_i64_i64_i32(long prev, long cur, uint c );
 ulong __builtin_spirv_intel_sub_group_shuffle_up_i64_i64_i32(ulong prev, ulong cur, uint c );
 uint2 __builtin_spirv_intel_sub_group_shuffle_up_v2i32_v2i32_i32(uint2 x, uint2 y, uint z);
 uint3 __builtin_spirv_intel_sub_group_shuffle_up_v3i32_v3i32_i32(uint3 x, uint3 y, uint z);
@@ -7757,20 +7733,11 @@ float3 __builtin_spirv_intel_sub_group_shuffle_up_v3f32_v3f32_i32(float3 x, floa
 float4 __builtin_spirv_intel_sub_group_shuffle_up_v4f32_v4f32_i32(float4 x, float4 y, uint z);
 float8 __builtin_spirv_intel_sub_group_shuffle_up_v8f32_v8f32_i32(float8 x, float8 y, uint z);
 float16 __builtin_spirv_intel_sub_group_shuffle_up_v16f32_v16f32_i32(float16 x, float16 y, uint z);
-int2 __builtin_spirv_intel_sub_group_shuffle_up_v2i32_v2i32_i32(int2 x, int2 y, uint z);
-int3 __builtin_spirv_intel_sub_group_shuffle_up_v3i32_v3i32_i32(int3 x, int3 y, uint z);
-int4 __builtin_spirv_intel_sub_group_shuffle_up_v4i32_v4i32_i32(int4 x, int4 y, uint z);
-int8 __builtin_spirv_intel_sub_group_shuffle_up_v8i32_v8i32_i32(int8 x, int8 y, uint z);
-int16 __builtin_spirv_intel_sub_group_shuffle_up_v16i32_v16i32_i32(int16 x, int16 y, uint z);
 
 uchar __builtin_spirv_intel_sub_group_shuffle_xor_i8_i32(uchar x, uint c );
-char __builtin_spirv_intel_sub_group_shuffle_xor_i8_i32(char x, uint c );
 ushort __builtin_spirv_intel_sub_group_shuffle_xor_i16_i32(ushort x, uint c );
-short __builtin_spirv_intel_sub_group_shuffle_xor_i16_i32(short x, uint c );
 uint __builtin_spirv_intel_sub_group_shuffle_xor_i32_i32(uint x, uint c );
 float __builtin_spirv_intel_sub_group_shuffle_xor_f32_i32(float x, uint c );
-int __builtin_spirv_intel_sub_group_shuffle_xor_i32_i32(int x, uint c );
-long __builtin_spirv_intel_sub_group_shuffle_xor_i64_i32(long x, uint c );
 ulong __builtin_spirv_intel_sub_group_shuffle_xor_i64_i32(ulong x, uint c );
 uint2 __builtin_spirv_intel_sub_group_shuffle_xor_v2i32_i32(uint2 x, uint y);
 uint3 __builtin_spirv_intel_sub_group_shuffle_xor_v3i32_i32(uint3 x, uint y);
@@ -7782,11 +7749,6 @@ float3 __builtin_spirv_intel_sub_group_shuffle_xor_v3f32_i32(float3 x, uint y);
 float4 __builtin_spirv_intel_sub_group_shuffle_xor_v4f32_i32(float4 x, uint y);
 float8 __builtin_spirv_intel_sub_group_shuffle_xor_v8f32_i32(float8 x, uint y);
 float16 __builtin_spirv_intel_sub_group_shuffle_xor_v16f32_i32(float16 x, uint y);
-int2 __builtin_spirv_intel_sub_group_shuffle_xor_v2i32_i32(int2 x, uint y);
-int3 __builtin_spirv_intel_sub_group_shuffle_xor_v3i32_i32(int3 x, uint y);
-int4 __builtin_spirv_intel_sub_group_shuffle_xor_v4i32_i32(int4 x, uint y);
-int8 __builtin_spirv_intel_sub_group_shuffle_xor_v8i32_i32(int8 x, uint y);
-int16 __builtin_spirv_intel_sub_group_shuffle_xor_v16i32_i32(int16 x, uint y);
 
 #if defined(cl_khr_fp64)
 double __builtin_spirv_intel_sub_group_shuffle_f64_i32(double x, uint c );
@@ -7795,6 +7757,8 @@ double __builtin_spirv_intel_sub_group_shuffle_up_f64_f64_i32(double prev, doubl
 double __builtin_spirv_intel_sub_group_shuffle_xor_f64_i32(double x, uint c );
 #endif // defined(cl_khr_fp64)
 
+// TODO: how do we want to handle extensions?
+#if 0
 uint __builtin_spirv_intel_sub_group_half2_add_i32_i32(uint a, uint b );
 uint __builtin_spirv_intel_sub_group_half2_sub_i32_i32(uint a, uint b );
 uint __builtin_spirv_intel_sub_group_half2_mul_i32_i32(uint a, uint b );

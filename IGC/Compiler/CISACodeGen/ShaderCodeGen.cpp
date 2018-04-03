@@ -253,8 +253,9 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, const CShaderProgram::KernelS
     // moving the scheduling and sample clustering passes right before code-sinking. 
     // Need to merge the scheduling, code-sinking and clustering passes better to avoid redundancy and better optimization
     if (IGC_IS_FLAG_DISABLED(DisablePreRAScheduler) &&
-         ctx.type == ShaderType::PIXEL_SHADER &&
-         ctx.m_retryManager.AllowPreRAScheduler())
+        ctx.type == ShaderType::PIXEL_SHADER &&
+        ctx.m_retryManager.AllowPreRAScheduler() &&
+		!ctx.m_enableSubroutine)
     {
         mpm.add(createPreRASchedulerPass());
     }
@@ -391,7 +392,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
     {
         // Need to break constant expr as PreCompiledFuncImport does not handle it.
         mpm.add(new BreakConstantExpr());
-        mpm.add(new PreCompiledFuncImport(theEmuKind));
+        mpm.add(new PreCompiledFuncImport(&ctx, theEmuKind));
         mpm.add(createAlwaysInlinerLegacyPass());
 
         // Using DCE here as AlwaysInliner does not completely remove dead functions.
@@ -495,11 +496,9 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         mpm.add(createDeadCodeEliminationPass());
     }
 
-    if (!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion))
+    if(!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion))
     {
-        mpm.add(new HalfPromotion(!ctx.m_DriverInfo.SupportFP16BDW()));
-        mpm.add(createGVNPass());
-        mpm.add(createDeadCodeEliminationPass());
+        mpm.add(new HalfPromotion());
     }
 
     // Run type demotion if it's beneficial.
@@ -1097,7 +1096,8 @@ void OptimizeIR(CodeGenContext* pContext)
 
         if( pContext->m_instrTypes.hasMultipleBB )
         {
-            if (IGC_IS_FLAG_ENABLED(EnableAdvCodeMotion)) {
+            if (IGC_IS_FLAG_ENABLED(EnableAdvCodeMotion) &&
+                pContext->type == ShaderType::OPENCL_SHADER) {
               mpm.add(llvm::createCFGSimplificationPass());
               mpm.add(llvm::createLowerSwitchPass());
             }
@@ -1126,15 +1126,9 @@ void OptimizeIR(CodeGenContext* pContext)
                     mpm.add(new CustomLoopVersioning());
                 }
 
-                if (pContext->m_DriverInfo.NeedSampleWorkaround() && 
-                    pContext->type == ShaderType::PIXEL_SHADER && 
-                    pContext->platform.needSampleLWA() &&
-                    IGC_IS_FLAG_ENABLED(EnableSampleLWa))
-                {
-                    mpm.add(new CustomLoopInfo());
-                }
                 mpm.add(llvm::createInstructionCombiningPass());
-                if (IGC_IS_FLAG_ENABLED(EnableAdvCodeMotion))
+                if (IGC_IS_FLAG_ENABLED(EnableAdvCodeMotion) &&
+                    pContext->type == ShaderType::OPENCL_SHADER)
                   mpm.add(createAdvCodeMotionPass(IGC_GET_FLAG_VALUE(AdvCodeMotionControl)));
 
                 int LoopUnrollThreshold = pContext->m_DriverInfo.GetLoopUnrollThreshold();

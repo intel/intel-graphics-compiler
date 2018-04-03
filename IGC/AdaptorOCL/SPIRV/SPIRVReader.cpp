@@ -2518,7 +2518,8 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     auto OC = BV->getOpCode();
     if (isSPIRVCmpInstTransToLLVMInst(static_cast<SPIRVInstruction*>(BV))) {
       return mapValue(BV, transCmpInst(BV, BB, F));
-    } else if (OCLSPIRVBuiltinMap::find(OC)) {
+    } else if (OCLSPIRVBuiltinMap::find(OC) ||
+               isIntelSubgroupOpCode(OC)) {
        return mapValue(BV, transSPIRVBuiltinFromInst(
           static_cast<SPIRVInstruction *>(BV), BB));
     } else if (isBinaryShiftLogicalBitwiseOpCode(OC) ||
@@ -2852,7 +2853,7 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       ArgTys.insert(ArgTys.begin(), RetTy);
   }
 
-  std::string builtinName(getSPIRVBuiltinName(OC, ArgTys, suffix));
+  std::string builtinName(getSPIRVBuiltinName(OC, BI, ArgTys, suffix));
 
   if (hasReturnTypeInTypeList)
   {

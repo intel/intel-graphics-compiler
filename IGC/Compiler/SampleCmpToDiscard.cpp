@@ -90,9 +90,7 @@ bool SampleCmpToDiscard::processBlock(BasicBlock* BB)
 			Instruction* valueToFold = nullptr;
             GenISAIntrinsic::ID ID = genIntr->getIntrinsicID();
 			// only consider sample_lc
-			if (ID == GenISAIntrinsic::GenISA_sampleC ||
-                ID == GenISAIntrinsic::GenISA_sampleCptr ||
-                ID == GenISAIntrinsic::GenISA_sampleBC ||
+			if (ID == GenISAIntrinsic::GenISA_sampleCptr ||
                 ID == GenISAIntrinsic::GenISA_sampleBCptr )
 			{
 				if (genIntr->hasOneUse())

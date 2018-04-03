@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 
+#include "common/debug/Debug.hpp"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 
@@ -48,6 +49,7 @@ namespace IGC
     } LibraryModuleInfo;
 
 	enum EmuKind : uint8_t {
+		EMU_UNUSED = 0,
 		EMU_I64DIVREM = 0x1,    // bit 0: original emulation lib, mostly i64 div/rem
 		EMU_DP = 0x2,           // bit 1: IEEE-compliant double emulation (+-*/,cmp,convert,etc)
 		EMU_SP_DIV = 0x4        // bit 2: IEEE-complaint float div emulation (float)
@@ -118,7 +120,13 @@ namespace IGC
         // Pass identification, replacement for typeid
         static char ID;
 
-        PreCompiledFuncImport(uint32_t TheEmuKind = 0);
+		// For pass registration
+		PreCompiledFuncImport() :
+			ModulePass(ID),
+			m_emuKind(EMU_UNUSED)
+		{};
+
+        PreCompiledFuncImport(CodeGenContext *CGCtx, uint32_t TheEmuKind);
 
         ~PreCompiledFuncImport() {}
 
@@ -142,6 +150,8 @@ namespace IGC
         void visitFCmpInst(llvm::FCmpInst& I);
         void visitCallInst(llvm::CallInst& I);
 
+		static void checkAndSetEnableSubroutine(CodeGenContext *CGCtx);
+
     private:
         void processDivide(llvm::BinaryOperator &inst, EmulatedFunctions function);
         void processFPBinaryOperator(llvm::Instruction& I, FunctionIDs FID);
@@ -149,12 +159,34 @@ namespace IGC
         llvm::Value* createFlagValue(llvm::Function *F);
         uint32_t getFCmpMask(llvm::CmpInst::Predicate Pred);
 
+		// Metadata & implicit args (IA)
+		//   FuncNeedIA: original Functions that needs IA
+		//   NewFuncWithIA: NewFuncWithIA[i] is the new function
+		//                  of FuncNeedIA[i], with IA appended
+		//                  to the new function's argument list.
+		llvm::SmallVector<llvm::Function*, 8> FuncNeedIA;
+		llvm::SmallVector<llvm::Function*, 8> NewFuncWithIA;
+		llvm::DenseMap<llvm::Function *, ImplicitArgs *> FuncsImpArgs;
+		void addMDFuncEntryForEmulationFunc(llvm::Function *F);
+		bool usePrivateMemory(llvm::Function *F);
+		void createFuncWithIA();
+		void replaceFunc(llvm::Function* old_func, llvm::Function* new_func);
+		llvm::FunctionType* getNewFuncType(
+			llvm::Function* pFunc, const ImplicitArgs* pImplicitArgs);
+		ImplicitArgs* getImplicitArgs(llvm::Function *F);
+
         bool preProcessDouble();
         void eraseFunction(llvm::Module* M, llvm::Function *F) {
             M->getFunctionList().remove(F);
             delete F;
         }
 
+		// Check if subroutine call is needed and set it if so.
+		void checkAndSetEnableSubroutine();
+		CodeGenContext* m_pCtx;
+		bool m_enableSubroutineCallForEmulation;
+
+		IGCMD::MetaDataUtils *m_pMdUtils;
         llvm::Module *m_pModule;
 
         /// @brief  Indicates if the pass changed the processed function
@@ -167,6 +199,7 @@ namespace IGC
 		bool isDPEmu() const { return (m_emuKind & EmuKind::EMU_DP) > 0; }
 		bool isI64DivRem() const { return (m_emuKind & EmuKind::EMU_I64DIVREM) > 0; }
 		bool isSPDiv() const { return (m_emuKind & EmuKind::EMU_SP_DIV) > 0; }
+		bool isDPConvFunc(llvm::Function *F) const;
 
         bool m_libModuleToBeImported[NUM_LIBMODS];
 
