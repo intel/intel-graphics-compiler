@@ -632,8 +632,8 @@ bool TranslateBuild(
 			DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".spv");
 		}
 
-		DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInternalOptions, pInputArgs->InternalOptionsSize, hash, "_IntOpts.txt");
-		DumpShaderFile(pOutputFolder, (char *)pInputArgs->pOptions, pInputArgs->OptionsSize, hash, "_Opts.txt");
+		DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInternalOptions, pInputArgs->InternalOptionsSize, hash, "_internal_options.txt");
+		DumpShaderFile(pOutputFolder, (char *)pInputArgs->pOptions, pInputArgs->OptionsSize, hash, "_options.txt");
 	}
 
     if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *llvmContext, inputDataFormatTemp))
