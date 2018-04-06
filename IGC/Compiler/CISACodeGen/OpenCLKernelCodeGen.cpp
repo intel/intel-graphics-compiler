@@ -1716,14 +1716,21 @@ static void CollectShaderInVec(std::vector<COpenCLKernel*>& shadersVec, COpenCLK
         {
             shader->m_kernelInfo.m_executionEnivronment.PerThreadSpillFillSize =
                 shader->ProgramOutput()->m_scratchSpaceUsedBySpills;
+            shader->m_kernelInfo.m_kernelProgram.simd32 = *shader->ProgramOutput();
         }
-        shader->m_kernelInfo.m_kernelProgram.simd8 = *shader->ProgramOutput();
+        else if (simdMode == 16)
+        {
+            shader->m_kernelInfo.m_kernelProgram.simd16 = *shader->ProgramOutput();
+        }
+        else if (simdMode == 8)
+        {
+            shader->m_kernelInfo.m_kernelProgram.simd8 = *shader->ProgramOutput();
+        }   
         shader->m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = simdMode;
         shadersVec.push_back(shader);
     }
     return;
 }
-
 
 void CodeGen(OpenCLProgramContext* ctx)
 {

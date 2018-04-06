@@ -575,7 +575,14 @@ namespace vISA
                 }
                 else if (lr1_align == Even_Word && lr2_align == Even_Word)
                 {
-                    return lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
+                    if (lr1_nreg % 2 == 0 && lr2_nreg % 2 == 0)
+                    {
+                        return lr1_nreg + lr2_nreg - 2;
+                    }
+                    else
+                    {
+                        return lr1_nreg + lr2_nreg - 1 + (lr1_nreg % 2) + (lr2_nreg % 2);
+                    }
                 }
                 else
                 {
@@ -941,15 +948,6 @@ namespace vISA
             auto dclid = dcl->getDeclId();
             resize(dclid);
             vars[dclid].maskType = m;
-            if (dcl->getIsSplittedDcl())
-            {
-                auto dclSubDclSize = getSubDclSize(dcl);
-                for (unsigned i = 0; i < dclSubDclSize; i++)
-                {
-                    G4_Declare * subDcl = getSubDcl(dcl, i);
-                    setAugmentationMask(subDcl, m);
-                }
-            }
         }
 
         bool getHasNonDefaultMaskDef(G4_Declare* dcl) const

@@ -212,21 +212,6 @@ enum Float_DenormMode
     FLOAT_DENORM_RETAIN,
 };
 
-// Used to index where in the MetaData node information is stored.
- enum MetaDataSlot
-{
-    VAR_LOC = 0,            // MD slot for the LLVM Global Variable
-    VID_LOC = 1,            // MD slot for the variable's VID
-    LOC_LOC = 2,            // MD slot for Attribute/Varying/Unform location
-    USAGE_LOC = 3,          // MD slot for Usage information (Index slot for uniform)
-    INTERPOLATION_LOC = 4,  // MD slot for Interpolation mode info (CBID slot for uniform)
-    CR_LOC = 5,             // MD slot for uniform: true - CR, false - CB
-};
-
-    // Used to pack location and offset
-    const static int LOC_SHIFT = 2;
-    const static int OFF_MASK = 0x3;
-
 //
 // Type of printf argument.
 // Note: changes to this enum must be co-ordinated with Runtime.

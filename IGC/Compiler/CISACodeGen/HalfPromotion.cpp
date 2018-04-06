@@ -271,11 +271,7 @@ void HalfPromotion::visitPHINode(llvm::PHINode &PHI)
 
     for(unsigned int i = 0; i < PHI.getNumIncomingValues(); ++i)
     {
-        // For constants we do not need to set insert point.
-        if(llvm::Instruction* I = dyn_cast<llvm::Instruction>(PHI.getIncomingValue(i)))
-        {
-            builder.SetInsertPoint(I->getNextNode());
-        }
+		builder.SetInsertPoint(PHI.getIncomingBlock(i)->getTerminator());
         Value* phiFloatValue = builder.CreateFPExt(PHI.getIncomingValue(i), builder.getFloatTy());
         pNewPhi->addIncoming(phiFloatValue, PHI.getIncomingBlock(i));
     }

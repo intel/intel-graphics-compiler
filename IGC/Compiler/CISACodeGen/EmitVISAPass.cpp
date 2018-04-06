@@ -7775,6 +7775,16 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
                             m_encoder->Push();
                             src_offset = offsetVector;
                         }
+                        else if (src_offset->IsImmediate())
+                        {
+                            assert(numElements == 1);
+                            CVariable *tmpSrcOffset = m_currShader->GetNewVariable(numElements, ISA_TYPE_UD, EALIGN_GRF, true);
+                            m_encoder->SetSimdSize(lanesToSIMDMode(numElements));
+                            m_encoder->SetNoMask();
+                            m_encoder->Cast(tmpSrcOffset, src_offset);
+                            m_encoder->Push();
+                            src_offset = tmpSrcOffset;
+                        }
                         m_encoder->SetSimdSize(lanesToSIMDMode(numElements));
                         m_encoder->SetNoMask();
                         m_encoder->ByteGather(tmp, resource, src_offset, 8, alignment);

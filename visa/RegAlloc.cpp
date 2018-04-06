@@ -755,6 +755,8 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 		return;
 	}
 
+    startTimer(TIMER_LIVENESS);
+
 #ifdef DEBUG_VERBOSE_ON
 	std::vector<FuncInfo*>& fns = fg.funcInfoTable;
 #endif
@@ -898,7 +900,9 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 	// in the actual program.
 	//
 
-	if (performIPA) {
+    // IPA is currently very slow for large number of call sites, so disable it to save compile time
+	if (performIPA && fg.getNumCalls() < 1024) 
+    {
 		//
 		// Bitsets used to calcuate function summaries for inter-procedural liveness analysis.
 		//
@@ -985,10 +989,6 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 				// Required pessimistic initialization for bypass out set.
 				//
 				bypass_out[bbid].setAll();
-				//
-				// Need to count in indir set to compute correct mayuse set
-				//
-				mayuse_out[bbid] = indr_use[bbid];
 			}
 		}
 		//
@@ -1017,11 +1017,11 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 				//
 				//    bypass_out[n] =
 				//       (if type(n) == cgf_exit_block)
-				//          indir[n] + output_uses[n]
+				//          output_uses[n]
 				//       (if type(n) == call and f == callee[n])
-				//			indir[n] + (bypass[f] and bypass_in[return_node(n)]
+				//			(bypass[f] and bypass_in[return_node(n)]
 				//       (if type(n) != CALL and  type(n) != EXIT)
-				//			indr_use[n] + bypass_in[s1] + bypass_in[s2] + ...
+				//			bypass_in[s1] + bypass_in[s2] + ...
 				//             where s1 s2 ... are the successors of n
 				//    bypass_in[n]  = use[n] + (bypass_out - use_kill[n])
 				//
@@ -1052,11 +1052,11 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 				//
 				//    mayuse_out[n] =
 				//       (if type(n) == cgf_exit_block)
-				//          indir[n] + output_uses[n]
+				//          output_uses[n]
 				//       (if type(n) == call and f == callee[n])
-				//			indir[n] + mayuse[f] + (bypass[f] and mayuse_in[return_node(n)]
+				//			mayuse[f] + (bypass[f] and mayuse_in[return_node(n)]
 				//       (if type(n) != CALL and  type(n) != EXIT)
-				//			indr_use[n] + mayuse_in[s1] + mayuse_in[s2] + ...
+				//			mayuse_in[s1] + mayuse_in[s2] + ...
 				//             where s1 s2 ... are the successors of n
 				//    mayuse_in[n]  = use[n] + (mayuse_out - use_kill[n])
 				//
@@ -1121,11 +1121,11 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 				//
 				//    live_out[n] =
 				//       (if type(n) == cgf_exit_block)
-				//          indir[n] + output_uses[n]
+				//          output_uses[n]
 				//       (if type(n) == call and f == callee[n])
-				//			indir[n] + mayuse[f] + (bypass[f] and live_in[return_node(n)]
+				//			mayuse[f] + (bypass[f] and live_in[return_node(n)]
 				//       (if type(n) != CALL)
-				//			indr_use[n] + use_in[s1] + use_in[s2] + ...
+				//			use_in[s1] + use_in[s2] + ...
 				//             where s1 s2 ... are the successors of n
 				//    live_in[n]  = use[n] + (live_out - use_kill[n])
 				//
@@ -1248,6 +1248,27 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
             (selectedRF & G4_GRF || selectedRF & G4_FLAG) &&
             (numFnId > 0))
         {
+            // compute the maydef for each subroutine
+            // this is used by augmentation later
+            for (auto func : fg.sortedFuncTable)
+            {            
+                unsigned fid = func->getId();
+                if (fid == UINT_MAX)
+                {
+                    // FIXME: we should not add entry function to the topological sort vector
+                    continue;
+                }
+
+                for (auto&& bb : func->getBBList())
+                {
+                    maydef[fid] |= def_out[bb->getId()];
+                }
+                for (auto&& callee : func->getCallees())
+                {
+                    maydef[fid] |= maydef[callee->getId()];
+                }
+            }
+#if 0
             std::vector<BitSet> maydef_in(numBBId);
             std::vector<BitSet> maydef_out(numBBId);
 
@@ -1291,6 +1312,8 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
                 }
             }
 
+#endif
+
             //
             // dump vectors for debugging
             //
@@ -1304,7 +1327,9 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 		//
 		// backward flow analysis to propagate uses (locate last uses)
 		//
-		bool change = true;
+
+        bool change = true;
+
 		while (change)
 		{
 			change = false;
@@ -1312,7 +1337,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 			do
 			{
 				//
-				// use_out = indr_use + use_in(s1) + use_in(s2) + ...
+				// use_out = use_in(s1) + use_in(s2) + ...
 				// where s1 s2 ... are the successors of bb
 				// use_in  = use_gen + (use_out - use_kill)
 				//
@@ -1325,6 +1350,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 			}
 			while (rit != fg.BBs.begin());
 		}
+
 		//
 		// forward flow analysis to propagate defs (locate first defs)
 		//
@@ -1363,6 +1389,8 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 	dump_bb_vector("USE GEN", fg.BBs, use_gen);
 	dump_bb_vector("USE KILL", fg.BBs, use_kill);
 #endif
+
+    stopTimer(TIMER_LIVENESS);
 }
 
 //
@@ -1702,6 +1730,20 @@ void LivenessAnalysis::computeGenKill(G4_BB* bb,
 				{
 					use_gen.set(((G4_RegVar*)base)->getId(), true);
 				}
+
+                if ((selectedRF & G4_GRF) && src->getRegAccess() == IndirGRF)
+                {
+                    int idx = 0;
+                    G4_RegVar* grf;
+                    G4_Declare* topdcl = GetTopDclFromRegRegion(src);
+
+                    while ((grf = pointsToAnalysis.getPointsTo(topdcl->getRegVar(), idx++)) != NULL)
+                    {
+                        // grf is a variable that src potentially points to
+                        unsigned int id = grf->getId();
+                        use_gen.set(id, true);
+                    }
+                }
 			}
 			//
 			// treat the addr expr as both a use and a partial def
@@ -2312,27 +2354,24 @@ bool LivenessAnalysis::contextSensitiveBackwardDataAnalyze(
 
 	//
 	// Handle the exit block
-	// data_out[n] = indir[n] + output_uses[n]
+	// data_out[n] = output_uses[n]
 	//
 	if (bb->Succs.empty())
 	{
 		data_out[bbid]  = output_uses;
-        data_out[bbid] |= indr_use[bbid];
 		changed = false;
 	}
 	//
 	// Handle call blocks that belong to the same graph cut (inter-procedural boundaries)
-	// data_out[n] = indir[n] + mayuse[f] + (bypass[f] & data_in[return_node(n)]
+	// data_out[n] = mayuse[f] + (bypass[f] & data_in[return_node(n)]
 	// where type(n) == call and f == callee[n]
 	//
 	else if (bb->getBBType() & G4_BB_CALL_TYPE)
 	{
 		BitSet old(std::move(data_out[bbid]));
 
-		data_out[bbid] = indr_use[bbid];
-
 		FuncInfo* callee = bb->getCalleeInfo();
-		data_out[bbid] |= mayuse[callee->getId()];
+		data_out[bbid] = mayuse[callee->getId()];
 
 		BitSet prop_data(bypass[callee->getId()]);
 		prop_data &= data_in[bb->BBAfterCall()->getId()];
@@ -2342,14 +2381,14 @@ bool LivenessAnalysis::contextSensitiveBackwardDataAnalyze(
 	}
 	//
 	// Handle all other blocks acroos which we need to propagate flow information
-	// data_out = indr_use + data_in(s1) + data_in(s2) + ...
+	// data_out = data_in(s1) + data_in(s2) + ...
 	// where s1 s2 ... are the successors of bb
 	//
 	else if (!(bb->getBBType() & no_prop_types))
 	{
 		BitSet old(std::move(data_out[bbid]));
 
-		data_out[bbid] = indr_use[bbid];
+		data_out[bbid].clear();
 
 		for (BB_LIST_ITER it = bb->Succs.begin(); it != bb->Succs.end(); it++)
 		{
@@ -2461,7 +2500,7 @@ bool LivenessAnalysis::contextSensitiveForwardDataAnalyze(
 }
 
 //
-// use_out = indr_use + use_in(s1) + use_in(s2) + ... where s1 s2 ... are the successors of bb
+// use_out = use_in(s1) + use_in(s2) + ... where s1 s2 ... are the successors of bb
 // use_in  = use_gen + (use_out - use_kill)
 //
 bool LivenessAnalysis::contextFreeUseAnalyze(G4_BB* bb)
@@ -3534,12 +3573,12 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 		kernel.fg.NormalizeFlowGraph();
 	}
 
-  //FIXME: here is a temp WA
-  if (kernel.fg.subroutines.size() > 1 && 
-      kernel.fg.builder->getOptions()->getTarget() == VISA_3D)
-  {
-    kernel.getOptions()->setOption(vISAOptions::vISA_LocalRA, false);
-  }
+    //FIXME: here is a temp WA
+    if (kernel.fg.funcInfoTable.size() > 0 && 
+        kernel.fg.builder->getOptions()->getTarget() == VISA_3D)
+    {
+        kernel.getOptions()->setOption(vISAOptions::vISA_LocalRA, false);
+    }
 
 	//
 	// Mark block local variables for the whole graph prior to performing liveness analysis.

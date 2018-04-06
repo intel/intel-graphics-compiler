@@ -626,6 +626,9 @@ private:
     // vector of summaries created for each BB, needed for deallocation later
     std::vector<PhyRegSummary*> localRASummaries;
 
+    // list of all BBs ever created
+    // This list only grows and is freed when the FlowGraph is destroyed
+    std::vector<G4_BB*> BBAllocList;
 
 public:
     typedef std::pair<G4_BB*, G4_BB*> Edge;
@@ -646,18 +649,15 @@ public:
     // If you need to change the block ordering for any reason, create another data structure instead of
     // modifying this one
     BB_LIST BBs;
-
-    // list of all BBs ever created
-                                                // This list only grows and is freed when the FlowGraph
-                                                // is destroyed
-    std::vector<G4_BB*> BBAllocList;
+   
     std::list<Edge> backEdges;                  // list of all backedges (tail->head)
-    std::list<Edge> unnaturalBackEdges;         // list of all unnatural backedges
     Loop naturalLoops;
 
-    std::vector<FuncInfo*> funcInfoTable;       // the vector of function info nodes
+    std::vector<FuncInfo*> funcInfoTable;       // the vector of function info nodes. entry function is not included.
 
-	std::vector<FuncInfo *>  sortedFuncTable;   // the vector of functions sorted in topological order of the call graph
+	std::vector<FuncInfo*> sortedFuncTable;     // subroutines in reverse topographical order (leaf at top)
+                                                // kernelInfo is the last element with invalid func id
+
 	FuncInfo* kernelInfo;                       // the call info for the kernel function
 
     IR_Builder *builder;                        // needed to create new instructions (mainly labels)
@@ -671,14 +671,6 @@ public:
     G4_Declare *            pseudoVCEDcl;
 	std::vector<G4_Declare*> pseudoA0DclList;
 	std::vector<G4_Declare*> pseudoFlagDclList;
-
-    // vector of all subroutines in this CFG.  the kernel is always the first subroutine
-    // FIXME: there's another data structure funcInfoTable that is used later by RA,
-    // we should combine them into one
-    std::vector<FuncInfo*> subroutines;
-
-    // computed in markSimdBlocks()
-    std::vector<StructuredCF*> structuredSimdCF;
 
     unsigned                    callerSaveAreaOffset;
     unsigned                    calleeSaveAreaOffset;
@@ -810,7 +802,7 @@ public:
     void handleReturn(std::map<std::string, G4_BB*>& map, FuncInfoHashTable& funcInfoTable);
     void linkReturnAddr(std::map<std::string, G4_BB*>& map, G4_BB* bb, G4_BB* returnAddr);
 
-    void handleExit();
+    void handleExit(G4_BB* lastKernelBB);
     void handleWait();
 
     void preprocess(INST_LIST& instlist);
@@ -883,10 +875,7 @@ public:
     // Check if the graph is reducible
     //
     bool isReducible() { return reducible; }
-    //
-    // Get the list of back edges belonging to multiple entry loops
-    //
-    const std::list<Edge>&  getUnnaturalBackEdges() { return unnaturalBackEdges; }
+
     //
     // Remove any placeholder empty blocks that could have been inserted to aid analysis
     //
@@ -969,7 +958,7 @@ public:
     void findNaturalLoops();
 
 	void traverseFunc(FuncInfo* func, unsigned int *ptr);
-	void sortFuncs();
+	void topologicalSortCallGraph();
 	void findDominators(std::map<FuncInfo*, std::set<FuncInfo*>>& domMap);
 	unsigned int resolveVarScope(G4_Declare* dcl, FuncInfo* func);
 	void markVarScope(std::vector<G4_BB*>& BBList, FuncInfo* func);
@@ -992,6 +981,19 @@ public:
     {
         auto&& iter = bbLocalRAMap.find(bb);
         return iter != bbLocalRAMap.end() ? iter->second : nullptr;
+    }
+
+    uint32_t getNumCalls() const
+    {
+        uint32_t numCalls = 0;
+        for (auto bb : BBs)
+        {
+            if (bb->isEndWithCall())
+            {
+                ++numCalls;
+            }
+        }
+        return numCalls;
     }
 
 private:

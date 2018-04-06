@@ -283,4 +283,26 @@ bool valueIsPositive(
 	llvm::AssumptionCache *AC = nullptr,
 	llvm::Instruction *CxtI = nullptr);
 
+inline float GetThreadOccupancyPerSubslice(SIMDMode simdMode, unsigned threadGroupSize, unsigned hwThreadPerSubslice, unsigned slmSize, unsigned slmSizePerSubSlice)
+{
+    unsigned simdWidth = 8;
+
+    switch (simdMode)
+    {
+    case SIMDMode::SIMD8:   simdWidth = 8;  break;
+    case SIMDMode::SIMD16:  simdWidth = 16; break;
+    case SIMDMode::SIMD32:  simdWidth = 32; break;
+    default:
+        assert(false && "Invalid SIMD mode");
+    }
+    unsigned nThreadsPerTG = (threadGroupSize + simdWidth - 1) / simdWidth;
+
+    unsigned TGPerSubsliceNoSLM = hwThreadPerSubslice / nThreadsPerTG;
+    unsigned nTGDispatch = (slmSize == 0) ? TGPerSubsliceNoSLM : std::min(TGPerSubsliceNoSLM, slmSizePerSubSlice / slmSize);
+
+    float occupancy =
+        float(nTGDispatch * nThreadsPerTG) / float(hwThreadPerSubslice);
+    return occupancy;
+}
+
 } // namespace IGC

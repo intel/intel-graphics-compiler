@@ -55,6 +55,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../../../visa/include/visaBuilder_interface.h"
 
+#include "../../../AdaptorCommon/GTPinInterfaceUtils.hpp"
+
 #include "gtpin_igc_ocl.h"
 
 #include <algorithm>
@@ -2038,6 +2040,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         }
 
         // Patch for free GRFs
+        // TODO: To be removed!
         if (retValue.Success)
         {
             iOpenCL::SPatchGtpinFreeGRFInfo patch;
@@ -2078,6 +2081,45 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
                 freeBlock(const_cast<void*>(buffer));
             }
+        }
+    }
+    
+    // Patch for GTPin output structure
+    if (retValue.Success)
+    {
+        iOpenCL::SPatchItemHeader patch;
+        memset(&patch, 0, sizeof(patch));
+        
+        patch.Token = PATCH_TOKEN_GTPIN_INFO;
+        unsigned int size = 0;
+        const void* buffer = nullptr;
+        const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
+        if (annotations.m_executionEnivronment.CompiledSIMDSize == 8)
+        {
+            buffer = AllocGTPinDataBuffer(program, &(program->simd8), size);
+        }
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 16)
+        {
+            buffer = AllocGTPinDataBuffer(program, &(program->simd16), size);
+        }
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32)
+        {
+            buffer = AllocGTPinDataBuffer(program, &(program->simd32), size);
+        }
+        
+        if (size > 0)
+        {
+            patch.Size = sizeof(patch) + size;
+            
+            retValue = AddPatchItem(patch, membuf);
+            
+            if (!membuf.Write((const char*)buffer, size))
+            {
+                retValue.Success = false;
+                return retValue;
+            }
+            
+            freeBlock(const_cast<void*>(buffer));
         }
     }
 

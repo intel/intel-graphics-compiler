@@ -6,6 +6,12 @@
 using namespace vISA;
 using namespace std;
 
+static const unsigned SMALL_BLOCK_SIZE = 10;
+static const unsigned PRESSURE_REDUCTION_MIN_BENEFIT = 5;
+static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
+static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
+static const unsigned LATENCY_PRESSURE_THRESHOLD = 100;
+
 namespace {
 
 // Forward declaration.
@@ -403,11 +409,6 @@ struct SchedConfig
         }                  \
     } while (0)
 
-static const unsigned SMALL_BLOCK_SIZE = 10;
-static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
-static const unsigned PRESSURE_REDUCTION_MIN_BENEFIT = 5;
-static const unsigned LATENCY_PRESSURE_THRESHOLD = 100;
-
 // Scheduler on a single block.
 class BB_Scheduler {
     // The kernel this block belongs to.
@@ -455,6 +456,27 @@ private:
 
 } // namespace
 
+static unsigned getRPReductionThreshold(Options *m_options, G4_Kernel &kernel)
+{
+    unsigned NumGrfs = m_options->getuInt32Option(vISA_TotalGRFNum);
+    float Ratio = NumGrfs / 128.0f;
+
+    // For SIMD32 kernels, use a higher threshold for rp reduction,
+    // as it may not be beneficial.
+    if (kernel.getSimdSize() == 32)
+        return unsigned(PRESSURE_REDUCTION_THRESHOLD_SIMD32 * Ratio);
+
+    // For all other kernels, use the default threshold.
+    return unsigned(PRESSURE_REDUCTION_THRESHOLD * Ratio);
+}
+
+static unsigned getLatencyHidingThreshold(Options *m_options)
+{
+    unsigned NumGrfs = m_options->getuInt32Option(vISA_TotalGRFNum);
+    float Ratio = NumGrfs / 128.0f;
+    return unsigned(LATENCY_PRESSURE_THRESHOLD * Ratio);
+}
+
 preRA_Scheduler::preRA_Scheduler(G4_Kernel& k, Mem_Manager& m, RPE* rpe)
     : kernel(k)
     , mem(m)
@@ -472,7 +494,7 @@ bool preRA_Scheduler::run()
         return false;
     }
 
-    unsigned Threshold = m_options->getuInt32Option(vISA_preRA_ScheduleThreshold);
+    unsigned Threshold = getRPReductionThreshold(m_options, kernel);
     unsigned SchedCtrl = m_options->getuInt32Option(vISA_preRA_ScheduleCtrl);
     const char *BBName = m_options->getOptionCstr(vISA_preRA_ScheduleBlock);
     string TargetBB(BBName == nullptr ? "" : BBName);
@@ -530,7 +552,30 @@ bool preRA_Scheduler::run()
             }
         }
 
-        if (MaxPressure < LATENCY_PRESSURE_THRESHOLD && config.UseLatency) {
+        auto tryLatencyHiding = [=]() {
+            if (!config.UseLatency)
+                return false;
+
+            if (MaxPressure >= getLatencyHidingThreshold(m_options))
+                return false;
+
+            // simple ROI check.
+            unsigned NumOfHighLatencyInsts = 0;
+            for (auto Inst : bb->instList) {
+                if (Inst->isSend()) {
+                    if (G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc()) {
+                        if (MsgDesc->isDataPortRead() ||
+                            MsgDesc->isSampler() ||
+                            MsgDesc->isAtomicMessage())
+                            NumOfHighLatencyInsts++;
+                    }
+                }
+            }
+
+            return NumOfHighLatencyInsts >= 2;
+        };
+
+        if (tryLatencyHiding()) {
             ddd.reset(Changed);
             S.scheduleBlockForLatency();
             if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ true)) {
@@ -1146,7 +1191,6 @@ static void mergeSegments(const std::vector<unsigned>& RPtrace,
 void LatencyQueue::init()
 {
     G4_BB* BB = ddd.getBB();
-    assert(rp.getPressure(BB) < LATENCY_PRESSURE_THRESHOLD);
 
     // Scan block forward and group instructions, without causing 
     // excessive pressure increase. First collect the register
@@ -1387,9 +1431,10 @@ bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
 
     rp.recompute(getBB());
     unsigned NewRPE = rp.getPressure(getBB());
+    unsigned LatencyPressureThreshold = getLatencyHidingThreshold(kernel.getOptions());
     if (config.UseLatency && IsTopDown) {
         // For hiding latency.
-        if (NewRPE <= LATENCY_PRESSURE_THRESHOLD) {
+        if (NewRPE <= LatencyPressureThreshold) {
             SCHED_DUMP(std::cerr << "schedule committed for latency.\n\n");
             MaxRPE = NewRPE;
             return true;
@@ -1405,7 +1450,7 @@ bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
                 // in general hurts latency hidding. If not insist to compile for simd32,
                 // make rp reduction conservative.
                 //
-                if (NewRPE < LATENCY_PRESSURE_THRESHOLD) {
+                if (NewRPE < LatencyPressureThreshold) {
                     SCHED_DUMP(std::cerr << "schedule committed with reduced pressure.\n\n");
                     MaxRPE = NewRPE;
                     return true;
@@ -1559,7 +1604,6 @@ void preDDD::addNodeToGraph(preNode *N)
         assert(!Inst->getMsgDesc()->isScratchRW());
         LiveSends.push_back(N);
     }
-
 
     // No explicit dependency found, so it depends on previous barrier.
     if (N->succ_empty() && N != prevBarrier) {

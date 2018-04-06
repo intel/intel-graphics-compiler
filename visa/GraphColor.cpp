@@ -2352,6 +2352,8 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live, G4_Declare
 
 void Interference::computeInterference()
 {
+
+    startTimer(TIMER_INTERFERENCE);
     //
     // create bool vector, live, to track live ranges that are currently live
     //
@@ -2509,6 +2511,8 @@ void Interference::generateSparseIntfGraph()
         std::cout << "\t--avg # neighbors: " << std::setprecision(6) << avgNeighbor << "\n";
         std::cout << "\t--max # neighbors: " << maxNeighbor << "\n";
     }
+
+    stopTimer(TIMER_INTERFERENCE);
 }
 
 // This function can be invoked before local RA or after augmentation.
@@ -6058,6 +6062,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     bool reserveSpillReg, unsigned& spillRegSize, unsigned& indrSpillRegSize,
     RPE* rpe)
 {
+    
     bool useSplitLLRHeuristic = false;
 
     if (builder.getOption(vISA_RATrace))
@@ -6112,6 +6117,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     //    intf.interferenceVerificationForSplit();
 #endif
 
+    startTimer(TIMER_COLORING);
     //
     // compute degree and spill costs for each live range
     //
@@ -6189,6 +6195,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
             // RA may succeed even when RP is > total #GRF. We should investigate these cases and fix RPE
             assignColors(FIRST_FIT, false, false);
             //assert(requireSpillCode() && "inaccurate GRF pressure estimate");
+            stopTimer(TIMER_COLORING);
             return !requireSpillCode();
         }
 
@@ -6201,6 +6208,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
 
                 if (!success && doBankConflictReduction && isHybrid)
                 {
+                    stopTimer(TIMER_COLORING);
                     return false;
                 }
 
@@ -6242,6 +6250,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
         assignColors(FIRST_FIT, false, false);
     }
 
+    stopTimer(TIMER_COLORING);
     return (requireSpillCode() == false);
 }
 
@@ -9751,17 +9760,17 @@ int GlobalRA::coloringRegAlloc()
                     return CM_SPILL;
                 }
 
-                bool rematOff = !kernel.getOption(vISA_NoRemat) || kernel.getOption(vISA_FastSpill);
+                bool runRemat = kernel.getOptions()->getTarget() == VISA_CM ? true : 
+                    kernel.getSimdSize() < 32;
+                // -noremat takes precedence over -forceremat
+                bool rematOff = !kernel.getOption(vISA_Debug) &&
+                    (!kernel.getOption(vISA_NoRemat) || kernel.getOption(vISA_FastSpill)) &&
+                    (kernel.getOption(vISA_ForceRemat) || runRemat);
                 bool rematChange = false;
                 bool globalSplitChange = false;
-                // -noremat takes precedence over -forceremat
-                if (//false &&
-                    !rematDone &&
-                    rematOff &&
-                    !kernel.getOption(vISA_Debug) &&
-                    (kernel.getSimdSize() < 32 || 
-                     kernel.getOption(vISA_ForceRemat) || 
-                     kernel.getOptions()->getTarget() == VISA_CM))
+
+                if (!rematDone &&
+                    rematOff)
                 {
                     if (builder.getOption(vISA_RATrace))
                     {

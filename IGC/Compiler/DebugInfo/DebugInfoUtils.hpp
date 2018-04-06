@@ -81,6 +81,9 @@ public:
         llvm::DINode::DIFlags flags = llvm::DINode::FlagZero;
         // Fix debug info
         llvm::MDNode* descriptor = userFunc->getSubprogram();
+        if (!descriptor)
+            return nullptr;
+
 #if 0
         llvm::DICompileUnit* CUNode = userFunc->getSubprogram()->getUnit();
         for (unsigned int i = 0; i < CU_Nodes->getNumOperands(); i++)

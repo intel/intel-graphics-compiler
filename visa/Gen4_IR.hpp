@@ -386,7 +386,10 @@ public:
     }
     bool isDataPortRead() const { return readMsg; }
     bool isDataPortWrite() const { return writeMsg; }
-
+    bool isSampler() const
+    {
+        return getFuncId() == SFID_SAMPLER;
+    }
     bool isHDC() const
     {
         auto funcID = extDesc.layout.funcID;

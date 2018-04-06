@@ -388,7 +388,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
 		((IGC_IS_FLAG_ENABLED(ForceSPDivEmulation) ||
 		  (ctx.m_DriverInfo.NeedIEEESPDiv() && !ctx.platform.hasCorrectlyRoundedMacros()))
 	    ? EmuKind::EMU_SP_DIV : 0);
-    if (theEmuKind > 0)
+    if (theEmuKind > 0 || IGC_IS_FLAG_ENABLED(EnableTestIGCBuiltin))
     {
         // Need to break constant expr as PreCompiledFuncImport does not handle it.
         mpm.add(new BreakConstantExpr());
@@ -499,6 +499,8 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
     if(!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion))
     {
         mpm.add(new HalfPromotion());
+		mpm.add(createGVNPass());
+		mpm.add(createDeadCodeEliminationPass());
     }
 
     // Run type demotion if it's beneficial.

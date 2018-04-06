@@ -702,7 +702,7 @@ bool Simd32ProfitabilityAnalysis::isSelectBasedOnGlobalIdX(Value *V) {
     auto BB0 = PN->getIncomingBlock(0);
     auto BB1 = PN->getIncomingBlock(1);
     auto IfBB = BB0->getSinglePredecessor();
-    if (!IfBB && IfBB == BB1->getSinglePredecessor())
+    if (!IfBB || IfBB == BB1->getSinglePredecessor())
         return false;
     auto Br = dyn_cast<BranchInst>(IfBB->getTerminator());
     if (!Br || !Br->isConditional())

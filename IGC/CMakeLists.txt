@@ -2068,17 +2068,21 @@ unset(_debugConfigs)
 # ======================================================================================================
 
 if(DEFINED IGC_OPTION__LIBRARY_NAME)
-  set(_igcLibraryName "${IGC_OPTION__LIBRARY_NAME}")
+  set(IGC_LIBRARY_NAME "${IGC_OPTION__LIBRARY_NAME}")
 else()
-  set(_igcLibraryName "igc")
+  set(IGC_LIBRARY_NAME "igc")
 endif()
+set(IGC_LIBRARY_NAME ${IGC_LIBRARY_NAME} PARENT_SCOPE)
+
 #FCL
 
 if(DEFINED FCL_OPTION__LIBRARY_NAME)
-  set(_fclLibraryName "${FCL_OPTION__LIBRARY_NAME}")
+  set(FCL_LIBRARY_NAME "${FCL_OPTION__LIBRARY_NAME}")
 else()
-  set(_fclLibraryName "igdfcl")
+  set(FCL_LIBRARY_NAME "igdfcl")
 endif()
+set(FCL_LIBRARY_NAME ${FCL_LIBRARY_NAME} PARENT_SCOPE)
+
 
 set(_allowBifLink ON)
 
@@ -3684,7 +3688,7 @@ if(LLVM_ON_UNIX)
 else()
   igc_arch_get_cpu(_cpuSuffix "${IGC_OPTION__ARCHITECTURE_TARGET}")
 endif()
-set_target_properties("${IGC_BUILD__PROJ__igc_dll}" PROPERTIES OUTPUT_NAME "${_igcLibraryName}${_cpuSuffix}")
+set_target_properties("${IGC_BUILD__PROJ__igc_dll}" PROPERTIES OUTPUT_NAME "${IGC_LIBRARY_NAME}${_cpuSuffix}")
 unset(_cpuSuffix)
 
 #FCL
@@ -3693,7 +3697,7 @@ if(LLVM_ON_UNIX)
 else()
   igc_arch_get_cpu(_cpuSuffix "${IGC_OPTION__ARCHITECTURE_TARGET}")
 endif()
-set_target_properties("${IGC_BUILD__PROJ__fcl_dll}" PROPERTIES OUTPUT_NAME "${_fclLibraryName}${_cpuSuffix}")
+set_target_properties("${IGC_BUILD__PROJ__fcl_dll}" PROPERTIES OUTPUT_NAME "${FCL_LIBRARY_NAME}${_cpuSuffix}")
 unset(_cpuSuffix)
 
 # Injecting external vISA project.

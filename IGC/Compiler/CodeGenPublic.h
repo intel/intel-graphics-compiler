@@ -983,30 +983,14 @@ namespace IGC
             return hwThreadPerWorkgroup;
         }
 
+        unsigned GetSlmSizePerSubslice()
+        {
+            return 65536; // TODO: should get this from GTSysInfo instead of hardcoded value
+        }
+
         float GetThreadOccupancy(SIMDMode simdMode)
         {
-            const unsigned SLM_SIZE_PER_SUBSLICE = 65536; // TODO: should get this from GTSysInfo instead of hardcoded value
-
-            unsigned threadGroupSize = GetThreadGroupSize();
-            unsigned hwThreadPerSubslice = GetHwThreadPerWorkgroup();
-
-            unsigned simdWidth = 8;
-            switch (simdMode)
-            {
-            case SIMDMode::SIMD8:   simdWidth = 8;  break;
-            case SIMDMode::SIMD16:  simdWidth = 16; break;
-            case SIMDMode::SIMD32:  simdWidth = 32; break;
-            default:
-                assert(false && "Invalid SIMD mode");
-            }
-            unsigned nThreadsPerTG = (threadGroupSize + simdWidth - 1) / simdWidth;
-
-            unsigned TGPerSubsliceNoSLM = hwThreadPerSubslice / nThreadsPerTG;
-            unsigned nTGDispatch = (m_slmSize == 0) ? TGPerSubsliceNoSLM : std::min(TGPerSubsliceNoSLM, SLM_SIZE_PER_SUBSLICE / m_slmSize);
-
-            float occupancy =
-                float(nTGDispatch * nThreadsPerTG) / float(hwThreadPerSubslice);
-            return occupancy;
+            return GetThreadOccupancyPerSubslice(simdMode, GetThreadGroupSize(), GetHwThreadPerWorkgroup(), m_slmSize, GetSlmSizePerSubslice());
         }
 
         /** get smallest SIMD mode allowed based on thread group size */

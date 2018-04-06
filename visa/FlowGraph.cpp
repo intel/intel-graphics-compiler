@@ -868,6 +868,8 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
 
     kernelInfo = new (mem)FuncInfo(UINT_MAX, entryBB, NULL);
 
+    std::vector<G4_BB*> subroutineStartBB; // needed by handleExit()
+
     bool hasSIMDCF = false, hasNoUniformGoto = false;
     while (!instlist.empty())
     {
@@ -898,17 +900,11 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
             curr_BB->setSendInBB(true);
         }
 
-        if (i->isLabel())
+        if (i->isLabel() && i->getLabel()->isFuncLabel())
         {
-            G4_Label* label = i->getLabel();
-            if (label->isFuncLabel())
-            {
-                // exit BB is not known yet
-                FuncInfo *subroutineInfo = new (mem)FuncInfo(
-                    (unsigned int)subroutines.size(), curr_BB, NULL);
-                subroutines.push_back(subroutineInfo);
-            }
+            subroutineStartBB.push_back(curr_BB);
         }
+
         //
         // do and endif do not have predicate and jump-to label,so we treated them as non-control instruction
         // the labels around them will decides the beginning of a new BB
@@ -1123,7 +1119,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         }
     }
 
-    handleExit();
+    handleExit(subroutineStartBB.size() > 1 ? subroutineStartBB[1] : nullptr);
 
     handleReturn(labelMap, funcInfoHashTable);
     mergeReturn(labelMap, funcInfoHashTable);
@@ -1201,6 +1197,11 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
     {
         markSimdBlocks(labelMap, funcInfoHashTable);
         addSIMDEdges();
+    }
+
+    if (funcInfoTable.size() > 0)
+    {
+        topologicalSortCallGraph();
     }
 
     normalizeRegionDescriptors();
@@ -1291,7 +1292,7 @@ void FlowGraph::handleWait()
 // for case 2 and 3 an exit block will be inserted, and it will consist of a EOT send
 // plus a join if it's targeted by another goto instruction
 //
-void FlowGraph::handleExit()
+void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
 {
 
     // blocks that end with non-uniform or conditional return
@@ -1304,11 +1305,13 @@ void FlowGraph::handleExit()
         {
             continue;
         }
-        if (subroutines.size() > 1 && bb == subroutines[1]->getInitBB())
+
+        if (bb == firstSubroutineBB)
         {
-            // we've reached the start of the first non-kernel subroutine
+            // we've reached the first subroutine's entry BB, 
             break;
         }
+
         G4_INST* lastInst = bb->instList.back();
         if (lastInst->opcode() == G4_pseudo_exit)
         {
@@ -2920,6 +2923,7 @@ G4_BB *FlowGraph::findLabelBB(char *label, int &label_offset)
 void FlowGraph::markSimdBlocks(std::map<std::string, G4_BB*>& labelMap, FuncInfoHashTable &FuncInfoMap)
 {
     std::stack<StructuredCF*> ifAndLoops;
+    std::vector<StructuredCF*> structuredSimdCF;
 
     for (BB_LIST_ITER it = BBs.begin(); it != BBs.end(); ++it)
     {
@@ -5209,9 +5213,11 @@ void FlowGraph::traverseFunc(FuncInfo* func, unsigned int *ptr)
 }
 
 //
-// Sort functions in topological order
+// Sort subroutines in topological order based on DFS
+// a topological order is guaranteed as recursion is not allowed for subroutine calls
+// results are stored in sortedFuncTable in reverse topological order
 //
-void FlowGraph::sortFuncs()
+void FlowGraph::topologicalSortCallGraph()
 {
     unsigned int visitID = 1;
     traverseFunc(kernelInfo, &visitID);
@@ -5469,8 +5475,11 @@ void FlowGraph::markVarScope(std::vector<G4_BB*>& BBList, FuncInfo* func)
 //
 void FlowGraph::markScope()
 {
-    sortFuncs();
-
+    if (funcInfoTable.size() == 0)
+    {
+        // no subroutines
+        return;
+    }
     unsigned id = 1;
     std::vector<FuncInfo *>::iterator kernelIter = sortedFuncTable.end();
     kernelIter--;
@@ -5689,10 +5698,6 @@ FlowGraph::~FlowGraph()
     }
     BBAllocList.clear();
     globalOpndHT.clearHashTable();
-    for (auto funcInfo : subroutines)
-    {
-        funcInfo->~FuncInfo();
-    }
     for (auto funcInfo : funcInfoTable)
     {
         funcInfo->~FuncInfo();

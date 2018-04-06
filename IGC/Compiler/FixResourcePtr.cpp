@@ -301,11 +301,18 @@ Value* FixResourcePtr::CreateLoadIntrinsic(LoadInst *inst, Instruction* bufPtr, 
             llvm::GenISAIntrinsic::GenISA_ldraw_indexed,
             bufPtr->getType());
     }
+
+    unsigned alignment = (inst->getType()->getScalarSizeInBits() / 8);
+    if (inst->getAlignment() > 0)
+    {
+        alignment = inst->getAlignment();
+    }
+
     Value* attr[] =
     {
         bufPtr,
         offsetVal,
-        builder->getInt32(4)
+        builder->getInt32(alignment)
     };
     Value* ld = builder->CreateCall(l, attr);
     if (!inst->getType()->isVectorTy())

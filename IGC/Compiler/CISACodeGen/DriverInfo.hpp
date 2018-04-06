@@ -114,8 +114,8 @@ public:
     /// Must support FP64
     virtual bool NeedFP64() const { return false; }
 
-	/// Must support of f32 IEEE divide (also sqrt)
-	virtual bool NeedIEEESPDiv() const { return false; }
+    /// Must support of f32 IEEE divide (also sqrt)
+    virtual bool NeedIEEESPDiv() const { return false; }
 
     /// Has memcpy/memset intrinsic
     virtual bool HasMemoryIntrinsics() const { return false; }
@@ -141,8 +141,8 @@ public:
     /// Turn on vISA pre-RA scheduler. Not tested on all APIs
     virtual bool enableVISAPreRAScheduler() const { return false; }
 
-	/// Configure vISA pre-RA scheduler. Not tested on all APIs
-	virtual unsigned getVISAPreRASchedulerCtrl() const { return 4; }
+    /// Configure vISA pre-RA scheduler. Not tested on all APIs
+    virtual unsigned getVISAPreRASchedulerCtrl() const { return 4; }
 
     /// Make sure optimization are consistent to avoid Z-fighting issue
     virtual bool PreventZFighting() const { return false; }

@@ -2154,7 +2154,8 @@ bool HWConformity::checkSrcMod(INST_LIST_ITER it, G4_BB* bb, int srcPos)
         G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
         if (srcRegion->getModifier() != Mod_src_undef)
         {
-            src = insertMovBefore(it, srcPos, src->getType(), bb);
+            G4_Type type = IS_DTYPE(src->getType()) ? src->getType() : Type_D;
+            src = insertMovBefore(it, srcPos, type, bb);
             inst->setSrc(src, srcPos);
             changed = true;
         }
@@ -2198,7 +2199,10 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
         srcExchanged = true;
     }
 
-    if (!builder.supportSrcModforMul())
+    if (!builder.supportSrcModforMul() &&
+        (IS_DTYPE(src0->getType()) || IS_DTYPE(src1->getType())) &&
+        ((getTypeSize(src0->getType()) < 4) || (getTypeSize(src1->getType()) < 4)))
+
     {
         checkSrcMod(i, bb, 0);
         checkSrcMod(i, bb, 1);
@@ -2721,7 +2725,9 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
         return;
     }
 
-    if (!builder.supportSrcModforMul())
+    if (!builder.supportSrcModforMul() && 
+       (IS_DTYPE(src0->getType()) || IS_DTYPE(src1->getType())) &&
+       ((getTypeSize(src0->getType()) < 4) || (getTypeSize(src1->getType()) < 4)))
     {
         checkSrcMod(i, bb, 0);
         src0 = inst->getSrc(0);
@@ -4354,6 +4360,7 @@ static bool isAccCandidate(G4_INST* inst, G4_Kernel& kernel, int& lastUse, bool&
     // check that every use may be replaced with acc
     int lastUseId = 0;
     std::vector<G4_INST*> madSrc0Use;
+    std::vector<G4_INST*> threeSrcUses; //3src inst that use this dst
     for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I)
     {
         auto&& use = *I;
@@ -4364,6 +4371,13 @@ static bool isAccCandidate(G4_INST* inst, G4_Kernel& kernel, int& lastUse, bool&
         // ToDo: may swap source here
         if (useInst->getNumSrc() == 3)
         {
+            if (!kernel.fg.builder->relaxedACCRestrictions() && 
+                std::find(threeSrcUses.begin(), threeSrcUses.end(), useInst) != threeSrcUses.end())
+            {
+                // don't allow acc to appear twice in a 3-src inst
+                return false;
+            }
+            threeSrcUses.push_back(useInst);
             switch (opndNum)
             {
                 case Opnd_src1:
@@ -4470,14 +4484,6 @@ static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
 {
     G4_DstRegRegion* dst = inst->getDst();
 
-    if (!builder.relaxedACCRestrictions() && inst->getNumSrc() == 3)
-    {
-        if (inst->getSrc(0)->isAccReg() && inst->getSrc(1)->isAccReg())
-        {
-            return false;
-        }
-    }
-
     bool useAcc1 = false;  
     for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I)
     {
@@ -4489,7 +4495,14 @@ static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
             if (useInst->getMaskOffset() == 16 && dst->getType() == Type_HF)
             {
                 useAcc1 = true;
-                break;
+            }
+        }
+        if (!builder.relaxedACCRestrictions() && useInst->getNumSrc() == 3)
+        {
+            if (useInst->getSrc(0)->isAccReg() || useInst->getSrc(1)->isAccReg())
+            {
+                // do not allow an inst to have multiple acc source operands
+                return false;
             }
         }
     }
