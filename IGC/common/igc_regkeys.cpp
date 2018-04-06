@@ -345,24 +345,30 @@ static void ParseHashRange(std::string line, std::vector<HashRange>& ranges)
 	
 }
 
+static void declareIGCKey(std::string& line, const char* dataType, const char* regkeyName, std::vector<HashRange>& hashes, SRegKeyVariableMetaData* regKey)
+{
+    bool isSet = false;
+    debugString value = { 0 };
+    setRegkeyFromOption(line, dataType, regkeyName, &value, isSet);
+    if (isSet)
+    {
+        memcpy(regKey->m_string, value, sizeof(value));
+        regKey->hashes = hashes;
+    }
+}
+
 static void LoadDebugFlagsFromFile()
 {
     std::ifstream input(GetOptionFile());
     std::string line;
-	std::vector<HashRange> hashes;
-    while(std::getline(input, line)) {
-		ParseHashRange(line, hashes);
-#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description)     \
-    {                                                                           \
-        bool isSet = false;                                                     \
-        debugString value = { 0 };                                              \
-        setRegkeyFromOption(line,  #dataType , #regkeyName , &value , isSet );  \
-        if(isSet)                                                               \
-        {                                                                       \
-            memcpy(g_RegKeyList.regkeyName.m_string, value, sizeof(value));     \
-			g_RegKeyList.regkeyName.hashes = hashes;							\
-        }                                                                       \
-    }
+    std::vector<HashRange> hashes;
+
+    while (std::getline(input, line)) {
+        ParseHashRange(line, hashes);
+#define DECLARE_IGC_REGKEY(dataType, regkeyName, defaultValue, description)         \
+{                                                                                   \
+    declareIGCKey(line, #dataType, #regkeyName, hashes, &(g_RegKeyList.regkeyName));\
+}
 #include "igc_regkeys.def"
 #undef DECLARE_IGC_REGKEY
 
