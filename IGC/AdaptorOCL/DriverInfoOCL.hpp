@@ -72,7 +72,6 @@ namespace TC
     {
     public:
         bool SupportsStatelessToStatefullBufferTransformation() const override { return true; }
-        unsigned getVISAPreRASchedulerCtrl() const override { return 6; }
     };
 
 }//namespace TC
