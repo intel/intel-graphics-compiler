@@ -1199,9 +1199,15 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         addSIMDEdges();
     }
 
+    // patch the last BB for the kernel
     if (funcInfoTable.size() > 0)
     {
+        kernelInfo->updateExitBB(subroutineStartBB[1]->getPhysicalPred());
         topologicalSortCallGraph();
+    }
+    else
+    {
+        kernelInfo->updateExitBB(BBs.back());
     }
 
     normalizeRegionDescriptors();
@@ -4800,8 +4806,27 @@ void G4_BB::resetLocalId()
     }
 }
 
-void G4_BB::dump() const
+void G4_BB::dump(bool printCFG = false) const
 {
+    if (printCFG)
+    {
+        std::cerr << "BB" << getId() << "\n";
+        std::cerr << "Pred: ";
+        for (auto pred : Preds)
+        {
+            std::cerr << pred->getId() << " ";
+        }
+        std::cerr << "\nSucc: ";
+        for (auto succ : Succs)
+        {
+            std::cerr << succ->getId() << " ";
+        }
+        std::cerr << "\n";
+        if (getBBType())
+        {
+            std::cerr << "BB type: " << getBBType() << "\n";
+        }
+    }
     for (auto& x : instList)
         x->dump();
     std::cerr << "\n";

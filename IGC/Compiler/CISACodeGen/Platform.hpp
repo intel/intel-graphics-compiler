@@ -174,7 +174,7 @@ public:
 		// Gen10+, 3DSTATE_VF_SGVS_2
 		return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE;
 	}
-	
+
     bool supportsSIMD16TypedRW() const
     {
         return false;

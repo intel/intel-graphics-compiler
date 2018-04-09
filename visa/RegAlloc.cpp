@@ -900,9 +900,17 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 	// in the actual program.
 	//
 
+    if (performIPA && fg.builder->getOption(vISA_hierarchicaIPA))
+    {
+        hierarchicalIPA(inputDefs, outputUses);
+        stopTimer(TIMER_LIVENESS);
+        return;
+    }
+
     // IPA is currently very slow for large number of call sites, so disable it to save compile time
 	if (performIPA && fg.getNumCalls() < 1024) 
     {
+
 		//
 		// Bitsets used to calcuate function summaries for inter-procedural liveness analysis.
 		//
@@ -1249,25 +1257,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
             (numFnId > 0))
         {
             // compute the maydef for each subroutine
-            // this is used by augmentation later
-            for (auto func : fg.sortedFuncTable)
-            {            
-                unsigned fid = func->getId();
-                if (fid == UINT_MAX)
-                {
-                    // FIXME: we should not add entry function to the topological sort vector
-                    continue;
-                }
-
-                for (auto&& bb : func->getBBList())
-                {
-                    maydef[fid] |= def_out[bb->getId()];
-                }
-                for (auto&& callee : func->getCallees())
-                {
-                    maydef[fid] |= maydef[callee->getId()];
-                }
-            }
+            maydefAnalysis();
 #if 0
             std::vector<BitSet> maydef_in(numBBId);
             std::vector<BitSet> maydef_out(numBBId);
@@ -1386,12 +1376,351 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 	dump_bb_vector("DEF OUT", fg.BBs, def_out);
 	dump_bb_vector("USE IN", fg.BBs, use_in);
 	dump_bb_vector("USE OUT", fg.BBs, use_out);
-	dump_bb_vector("USE GEN", fg.BBs, use_gen);
-	dump_bb_vector("USE KILL", fg.BBs, use_kill);
 #endif
 
     stopTimer(TIMER_LIVENESS);
 }
+
+//
+// compute the maydef set for every subroutine
+// This includes recursively all the variables that are defined by the 
+// subroutine, but does not include defs in the caller
+// This means this must be called before we do fix-point on def_in/def_out
+// and destroy their original values
+// This is used by augmentation later to model all variables that may be defined by a call
+// FIXME: we should use a separate def set to represent declares defined in each BB
+//
+void LivenessAnalysis::maydefAnalysis()
+{
+    for (auto func : fg.sortedFuncTable)
+    {
+        unsigned fid = func->getId();
+        if (fid == UINT_MAX)
+        {
+            // entry kernel
+            continue;
+        }
+
+        for (auto&& bb : func->getBBList())
+        {
+            maydef[fid] |= def_out[bb->getId()];
+        }
+        for (auto&& callee : func->getCallees())
+        {
+            maydef[fid] |= maydef[callee->getId()];
+        }
+    }
+}
+
+//
+// Use analysis for this subroutine only
+// use_out[call-BB] = use_in[ret-BB]
+// use_out[exit-BB] should be initialized by the caller
+// 
+void LivenessAnalysis::useAnalysis(FuncInfo* subroutine)
+{
+    bool changed = false;
+    do
+    {
+        changed = false;
+        for (auto BI = subroutine->getBBList().rbegin(), BE = subroutine->getBBList().rend(); BI != BE; ++BI)
+        {
+            //
+            // use_out = use_in(s1) + use_in(s2) + ...
+            // where s1 s2 ... are the successors of bb
+            // use_in  = use_gen + (use_out - use_kill)
+            //
+            G4_BB* bb = *BI;
+            unsigned bbid = bb->getId();
+            if (bb->getBBType() & G4_BB_EXIT_TYPE)
+            {
+                // use_out is set by caller
+            }
+            else if (bb->getBBType() & G4_BB_CALL_TYPE)
+            {
+                use_out[bbid] |= use_in[bb->getPhysicalSucc()->getId()];
+            }
+            else
+            {
+                for (auto succ : bb->Succs)
+                {
+                    use_out[bbid] |= use_in[succ->getId()];
+                }
+            }
+
+            BitSet oldUseIn = use_in[bbid];
+
+            use_in[bbid] = use_out[bbid];
+            use_in[bbid] -= use_kill[bbid];
+            use_in[bbid] |= use_gen[bbid];
+
+            if (!(bb->getBBType() & G4_BB_INIT_TYPE) && oldUseIn != use_in[bbid])
+            {
+                changed = true;
+            }
+        }
+    } while (changed);
+}
+
+//
+// Use analysis for this subroutine only, but consider callee's arg and retval
+// 
+// use_out[call-BB] = use_in[ret-BB] + callee arg - callee retval 
+// use_out[exit-BB] is initialized by the caller to be U(use_in[ret-BB]) for all of the subroutine's callers
+// 
+void LivenessAnalysis::useAnalysisWithCallee(FuncInfo* subroutine, const std::vector<BitSet>& args, const std::vector<BitSet>& retVal)
+{
+    bool changed = false;
+    do
+    {
+        changed = false;
+        for (auto BI = subroutine->getBBList().rbegin(), BE = subroutine->getBBList().rend(); BI != BE; ++BI)
+        {
+            //
+            // use_out = use_in(s1) + use_in(s2) + ...
+            // where s1 s2 ... are the successors of bb
+            // use_in  = use_gen + (use_out - use_kill)
+            //
+            G4_BB* bb = *BI;
+            unsigned bbid = bb->getId();
+            if (bb->getBBType() & G4_BB_EXIT_TYPE)
+            {
+                // use_out is set by previous analysis
+            }
+            else if (bb->getBBType() & G4_BB_CALL_TYPE)
+            {
+                // FIXME: for CM do I need to use scoping to kill not fully defined variables here?
+                // or is that already part of use_kill for the subroutine entry BB?
+                use_out[bbid] = use_in[bb->getPhysicalSucc()->getId()];
+                auto callee = bb->getCalleeInfo();
+                use_out[bb->getId()] |= args[callee->getId()];
+                use_out[bb->getId()] -= retVal[callee->getId()];
+            }
+            else
+            {
+                for (auto succ : bb->Succs)
+                {
+                    use_out[bbid] |= use_in[succ->getId()];
+                }
+            }
+
+            BitSet oldUseIn = use_in[bbid];
+
+            use_in[bbid] = use_out[bbid];
+            use_in[bbid] -= use_kill[bbid];
+            use_in[bbid] |= use_gen[bbid];
+
+            if (!(bb->getBBType() & G4_BB_INIT_TYPE) && oldUseIn != use_in[bbid])
+            {
+                changed = true;
+            }
+        }
+    } while (changed);
+}
+
+//
+// Def analysis for each subroutine only
+// at a call site, we do
+// def_in[ret-BB] = def_out[call-BB] U def_out[callee exit-BB]
+// callee's def_in/def_out is not modified
+//
+void LivenessAnalysis::defAnalysis(FuncInfo* subroutine)
+{
+
+    //def_in[bb] = null (inputs for entry BB)
+    //def_out[bb] is initialized to all defs in the bb
+    bool changed = false;
+    do
+    {
+        changed = false;
+        for (auto&& bb : subroutine->getBBList())
+        {
+            uint32_t bbid = bb->getId();
+            BitSet oldDefIn = def_in[bbid];
+            auto phyPredBB = (bb == fg.getEntryBB()) ? nullptr : bb->getPhysicalPred();
+            if (phyPredBB && (phyPredBB->getBBType() & G4_BB_CALL_TYPE))
+            {
+                // this is the return BB
+                G4_BB* callBB = bb->getPhysicalPred();
+                G4_BB* calleeExitBB = bb->Preds.front();
+                def_in[bbid] |= def_out[callBB->getId()];
+                def_in[bbid] |= def_out[calleeExitBB->getId()];
+            }
+            else if (bb->getBBType() & G4_BB_INIT_TYPE)
+            {
+                // do nothing as we don't want to propagate caller defs yet
+            }
+            else
+            {
+                for (auto&& pred : bb->Preds)
+                {
+                    def_in[bbid] |= def_out[pred->getId()];
+                }
+            }
+            if (def_in[bbid] != oldDefIn)
+            {
+                changed = true;
+            }
+            def_out[bbid] |= def_in[bbid];
+        }
+    } while (changed); 
+}
+
+void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& kernelOutput)
+{
+
+    // algorithm sketch for live-in/live-out:
+    // In topological order :
+    //  -- Run liveness analysis on subroutine, with call-BB linked directly to ret-BB
+    //  -- live-out[callee exit-BB] |= live-in[caller ret-BB] (model retval and live-through)
+    // In reverse topological order :
+    //  -- Run liveness analysis on subroutine, with call-BB linked directly to ret-BB
+    //  -- At each call site
+    //          live-out[caller call-BB] |= live-in[callee init-BB] - live-out[callee exit-BB] (model arg)
+    //          live-out[caller call-BB] -= (live-out[callee exit-BB] - live-in[callee init-BB]) (model retval)
+
+    for (auto FI = fg.sortedFuncTable.rbegin(), FE = fg.sortedFuncTable.rend(); FI != FE; ++FI)
+    {
+        auto subroutine = *FI;
+        if (subroutine == fg.kernelInfo)
+        {
+            // entry function
+            for (auto&& bb : subroutine->getBBList())
+            {
+                if (bb->Succs.empty())
+                {
+                    // EOT BB
+                    use_out[bb->getId()] = kernelOutput;
+                }
+            }
+        }
+        useAnalysis(subroutine);
+        for (auto&& bb : subroutine->getBBList())
+        {
+            if (bb->getBBType() & G4_BB_CALL_TYPE)
+            {
+                G4_BB* retBB = bb->getPhysicalSucc();
+                G4_BB* exitBB = bb->getCalleeInfo()->getExitBB();
+                assert((exitBB->getBBType() & G4_BB_EXIT_TYPE) && 
+                    "should be a subroutine's exit BB");
+                use_out[exitBB->getId()] |= use_in[retBB->getId()];
+            }
+        }
+    }
+
+    std::vector<BitSet> args(fg.funcInfoTable.size());
+    std::vector<BitSet> retVal(fg.funcInfoTable.size());
+
+    for (auto FI = fg.sortedFuncTable.begin(), FE = fg.sortedFuncTable.end(); FI != FE; ++FI)
+    {
+        auto subroutine = *FI;
+
+        if (subroutine != fg.kernelInfo)
+        {
+            // summarize the arg/retval set of each subroutine in bottom-up order
+            // it has to be done in the loop to handle pass-through arg/retval
+            // e.g.,
+            // A calls B calls C
+            // A defines V1, B doesn't use V1, but C does
+            args[subroutine->getId()] = use_in[subroutine->getInitBB()->getId()];
+            args[subroutine->getId()] -= use_out[subroutine->getExitBB()->getId()];
+            retVal[subroutine->getId()] = use_out[subroutine->getExitBB()->getId()];
+            retVal[subroutine->getId()] -= use_in[subroutine->getInitBB()->getId()];
+        }
+        
+        if (subroutine->getCallees().size() != 0)
+        {
+            // propagate arg/retval information from callee to caller
+            useAnalysisWithCallee(subroutine, args, retVal);
+        }
+    }
+
+#ifdef DEBUG_VERBOSE_ON
+    for (auto FI = fg.sortedFuncTable.begin(), FE = fg.sortedFuncTable.end(); FI != FE; ++FI)
+    {
+        auto subroutine = *FI;
+        if (subroutine == fg.kernelInfo)
+        {
+            continue;
+        }
+        auto printVal = [](const BitSet& bs)
+        {
+            for (int i = 0, size = (int)bs.getSize(); i < size; ++i)
+            {
+                if (bs.isSet(i))
+                {
+                    std::cerr << i << " ";
+                }
+            }
+        };
+
+        std::cerr << "Subroutine " << subroutine->getId() << "\n";
+      
+        std::cerr <<"\tArgs: ";
+        printVal(args[subroutine->getId()]);
+        std::cerr << "\n";
+
+        std::cerr << "\tRetVal: ";
+        printVal(retVal[subroutine->getId()]);
+        std::cerr << "\n";
+        std::cerr << "\tLiveThrough: ";
+        BitSet liveThrough = use_in[subroutine->getInitBB()->getId()];
+        liveThrough &= use_out[subroutine->getExitBB()->getId()];
+        printVal(liveThrough);
+        std::cerr << "\n";
+    }
+#endif
+
+    maydefAnalysis();   // must be done before defAnalysis!
+
+    // algorithm sketch for def-in/def-out:
+    // In reverse topological order :
+    //  -- Run def analysis on subroutine
+    //  -- at each call site:
+    //       def_in[ret-BB] |= def_out[call-BB] U def_out[exit-BB]
+    // In topological order :
+    //  -- At each call site:
+    //       add def_out[call-BB] to all of callee's BBs
+    def_in[fg.getEntryBB()->getId()] = kernelInput;
+
+    for (auto FI = fg.sortedFuncTable.begin(), FE = fg.sortedFuncTable.end(); FI != FE; ++FI)
+    {
+        auto subroutine = *FI;
+        defAnalysis(subroutine);
+    }
+
+    // FIXME: I assume we consider all caller's defs to be callee's defs too?
+    for (auto FI = fg.sortedFuncTable.rbegin(), FE = fg.sortedFuncTable.rend(); FI != FE; ++FI)
+    {
+        auto subroutine = *FI;
+        if (subroutine->getCallees().size() == 0)
+        {
+            continue;
+        }
+        for (auto&& bb : subroutine->getBBList())
+        {
+            if (bb->getBBType() & G4_BB_CALL_TYPE)
+            {
+                auto callee = bb->getCalleeInfo();
+                for (auto&& calleeBB : callee->getBBList())
+                {
+                    def_in[calleeBB->getId()] |= def_out[bb->getId()];
+                    def_out[calleeBB->getId()] |= def_out[bb->getId()];
+                }
+            }
+        }
+    }
+
+    //
+    // dump vectors for debugging
+    //
+#ifdef DEBUG_VERBOSE_ON
+    dump_bb_vector("DEF IN", fg.BBs, def_in);
+    dump_bb_vector("DEF OUT", fg.BBs, def_out);
+    dump_bb_vector("USE IN", fg.BBs, use_in);
+    dump_bb_vector("USE OUT", fg.BBs, use_out);
+#endif
+ }
 
 //
 // determine if the dst writes the whole region of target declare
@@ -2568,13 +2897,13 @@ bool LivenessAnalysis::contextFreeDefAnalyze(G4_BB* bb)
 
 void LivenessAnalysis::dump_bb_vector(char* vname, std::list<G4_BB*>& bbs, std::vector<BitSet>& vec)
 {
-	DEBUG_VERBOSE(vname << std::endl);
-	for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end(); it++)
+	std::cerr << vname << "\n";
+	for (BB_LIST_ITER it = bbs.begin(); it != bbs.end(); it++)
 	{
 		G4_BB* bb = (*it);
-		DEBUG_VERBOSE("    BB" << bb->getId() << std::endl);
+		std::cerr << "    BB" << bb->getId() << "\n";
         const BitSet& in = vec[bb->getId()];
-		DEBUG_VERBOSE("        ");
+		std::cerr << "        ";
         for (unsigned i = 0; i < in.getSize(); i+= 10)
 		{
 			//
@@ -2582,11 +2911,11 @@ void LivenessAnalysis::dump_bb_vector(char* vname, std::list<G4_BB*>& bbs, std::
 			//
 			for (unsigned j = i; j < in.getSize() && j < i+10; j++)
 			{
-                DEBUG_VERBOSE(in.isSet(j) ? "1" : "0");
+                std::cerr << in.isSet(j) ? "1" : "0";
 			}
-			DEBUG_VERBOSE(" ");
+			std::cerr << " ";
 		}
-		DEBUG_VERBOSE(std::endl);
+		std::cerr << "\n";
 	}
 }
 
