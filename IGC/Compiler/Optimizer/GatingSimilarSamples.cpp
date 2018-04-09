@@ -81,14 +81,12 @@ static bool samplesAveragedEqually(const std::vector<Instruction*>& similarSampl
                 texels.erase(instItr->getOperand(0));
                 if (ConstantFP *CF = dyn_cast<ConstantFP>(instItr->getOperand(1)))
                 {
-                    float instFl = CF->getValueAPF().convertToFloat();
-                    if (instFl != cmpAveragingFactor)
+                    if (!CF->getType()->isFloatTy() || CF->getValueAPF().convertToFloat() != cmpAveragingFactor)
                         return false;
                 }
                 else if (ConstantFP *CF = dyn_cast<ConstantFP>(instItr->getOperand(0)))
                 {
-                    float instFl = CF->getValueAPF().convertToFloat();
-                    if (instFl != cmpAveragingFactor)
+                    if (!CF->getType()->isFloatTy() || CF->getValueAPF().convertToFloat() != cmpAveragingFactor)
                         return false;
                 }
                 else
@@ -190,6 +188,7 @@ detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts)
             cf = dyn_cast<ConstantFP>(fmul->getOperand(0));
         }
         if (cf == nullptr ||
+            !cf->getType()->isFloatTy() ||
             cf->getValueAPF().convertToFloat() != averagingFactor)
         {
             return false;
@@ -287,8 +286,7 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
                 if (!realMulInst) return false;
                 if (ConstantFP *mustBeZero = dyn_cast<ConstantFP>(mayBeMulInst->getOperand(0)))
                 {
-                    float isZero = mustBeZero->getValueAPF().convertToFloat();
-                    if (isZero != 0.0f)
+                    if (!mustBeZero->getType()->isFloatTy() || mustBeZero->getValueAPF().convertToFloat() != 0.0f)
                         return false;
                 }
                 else
@@ -324,8 +322,7 @@ bool GatingSimilarSamples::findAndSetCommonGatingValue()
                 if (!realMulInst) return false;
                 if (ConstantFP *mustBeZero = dyn_cast<ConstantFP>(mayBeMulInst->getOperand(0)))
                 {
-                    float isZero = mustBeZero->getValueAPF().convertToFloat();
-                    if (isZero != 0.0f)
+                    if (!mustBeZero->getType()->isFloatTy() || mustBeZero->getValueAPF().convertToFloat() != 0.0f)
                         return false;
                 }
                 else
