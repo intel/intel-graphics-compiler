@@ -644,8 +644,36 @@ bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator &I)
     return false;
 }
 
+void CustomSafeOptPass::visitShiftOp(llvm::BinaryOperator &I)
+{
+    if(BinaryOperator* AndOp = dyn_cast<BinaryOperator>(I.getOperand(1)))
+    {
+        if(AndOp->getOpcode() == Instruction::And)
+        {
+            if(ConstantInt* mask = dyn_cast<ConstantInt>(AndOp->getOperand(1)))
+            {
+                // shift instructions consider lowered 6 bits for qword instruction and 
+                // lower 5 bits in all other cases
+                uint64_t lowBits = I.getType()->getPrimitiveSizeInBits() <= 32 ? 5 : 6;
+                uint64_t fullMask = (1 << lowBits) - 1;
+                if((mask->getZExtValue() & fullMask) == fullMask)
+                {
+                    // We can skip the masking since HW will only consider the lower bits anyway
+                    I.setOperand(1, AndOp->getOperand(0));
+                }
+            }
+        }
+    }
+}
+
 void CustomSafeOptPass::visitBinaryOperator(BinaryOperator &I)
 {
+    if(I.getOpcode() == Instruction::Shl ||
+        I.getOpcode() == Instruction::LShr ||
+        I.getOpcode() == Instruction::AShr)
+    {
+        visitShiftOp(I);
+    }
     // move immediate value in consecutive integer adds to the last added value.
     // this can allow more chance of doing CSE and memopt.
     //    a = b + 8
