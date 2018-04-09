@@ -347,7 +347,7 @@ uint DataPortRead(
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_A64_BLOCK_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_TRANSPOSE_READ
             INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_RENDER_TARGET_READ
-            INVALID_MESSAGE_TYPE,                                           // EU_DATA_PORT_READ_MESSAGE_TYPE_SURFACE_INFO_READ
+            EU_GEN8_SAMPLER_CACHE_MESSAGE_TYPE_SURFACE_INFO,                // EU_DATA_PORT_READ_MESSAGE_TYPE_SURFACE_INFO_READ
         },
         // DATA_PORT_TARGET_CONSTANT_CACHE
         {

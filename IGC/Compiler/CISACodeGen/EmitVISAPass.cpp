@@ -297,7 +297,7 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext *ctx, MetaDataUtils *pMdUtil
             {
                 // Single PS
                 // Assuming single shader information in metadata
-				Function *pFunc = getUniqueEntryFunc(pMdUtils);
+                Function *pFunc = getUniqueEntryFunc(pMdUtils);
 
                 CShaderProgram* pProgram = new CShaderProgram(ctx, pFunc);
                 m_shaders[pFunc] = pProgram;
@@ -383,7 +383,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         m_currShader->PreAnalysisPass();
         if(!m_currShader->CompileSIMDSize(m_SimdMode, *this, F))
         {
-			return false;
+            return false;
         }
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
         m_encoder->InitEncoder(m_canAbortOnSpill);
@@ -398,7 +398,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     {
         if(!m_currShader->CompileSIMDSize(m_SimdMode, *this, F))
         {
-			return false;
+            return false;
         }
         m_currShader->BeginFunction(&F);
         if (m_FGA && m_FGA->useStackCall(&F))
@@ -419,18 +419,18 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
-		IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
+        IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
         IF_DEBUG_INFO(m_pDebugEmitter->Initialize(m_currShader, m_currShader->GetContext()->m_instrTypes.hasDebugInfo);)
     }
 
-	if (m_currShader->GetContext()->m_instrTypes.hasDebugInfo)
-	{
-		IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->ResetVISAModule();)
-		IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->setFunction(&F, isCloned);)
+    if (m_currShader->GetContext()->m_instrTypes.hasDebugInfo)
+    {
+        IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->ResetVISAModule();)
+        IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->setFunction(&F, isCloned);)
     }
 
     // We only invoke EndEncodingMark() to update last VISA id.
-	IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
+    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
 
     COMPILER_TIME_END(m_currShader->GetContext(), TIME_vISAEmitInit);
     COMPILER_TIME_START(m_currShader->GetContext(), TIME_vISAEmitLoop);
@@ -593,8 +593,8 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
-		// Cache the arguments list into a vector for faster access
-		m_currShader->CacheArgumentsList();
+        // Cache the arguments list into a vector for faster access
+        m_currShader->CacheArgumentsList();
         // Associates values pushed to CVariable
         m_currShader->MapPushedInputs();
         // Allocate the thread payload
@@ -3749,10 +3749,10 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
         {
             return false;
         }
-		if (payloadToCCTupleRelativeOffset)
-		{
-			return false;
-		}
+        if (payloadToCCTupleRelativeOffset)
+        {
+            return false;
+        }
     }
 
     assert(ccTuple);
@@ -3820,10 +3820,10 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
         }
     }
 
-	assert(dummyValPtr);
+    assert(dummyValPtr);
 
-	offset += payloadToCCTupleRelativeOffset *
-		m_CE->GetSingleElementWidth(m_currShader->m_SIMDSize, m_DL, dummyValPtr);
+    offset += payloadToCCTupleRelativeOffset *
+        m_CE->GetSingleElementWidth(m_currShader->m_SIMDSize, m_DL, dummyValPtr);
 
 
     SmallPtrSet<Value*, 8> touchedValuesSet;
@@ -5978,15 +5978,15 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
         }
     }
 
-	// the responses to the sample + killpix and feedback messages have an extra register that contains a mask.
+    // the responses to the sample + killpix and feedback messages have an extra register that contains a mask.
     bool hasMaskResponse = (writeMask & (1 << 4)) ? true : false;
 
     CVariable* dst =
-		m_destination;
+        m_destination;
     //When sampler output is 16 bit float, hardware doesnt pack the output in SIMD8 mode.
     //Hence the movs to handle this layout in SIMD8 mode
     bool simd8HFRet = 
-		isSIMD8_16bitReturn(m_destination, m_SimdMode);
+        isSIMD8_16bitReturn(m_destination, m_SimdMode);
 
     if (simd8HFRet)
     {
@@ -6004,7 +6004,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     m_encoder->Push();
 
     if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent()))
-		)
+        )
     {
         m_encoder->Copy(m_currShader->GetNULL(), m_destination);
         m_encoder->Push();
@@ -6211,6 +6211,14 @@ void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
     ResourceDescriptor resource = GetResourceVariable(inst->getOperand(0));
     ForceDMask(false);
 
+    DATA_PORT_TARGET_CACHE targetCache = DATA_PORT_TARGET_CONSTANT_CACHE;
+    EU_GEN6_MESSAGE_TARGET messageTarget = EU_GEN6_MESSAGE_TARGET_DATA_PORT_CONSTANT_CACHE;
+    if (m_currShader->m_Platform->supportSamplerCacheResinfo())
+    {
+        targetCache = DATA_PORT_TARGET_SAMPLER_CACHE;
+        messageTarget = EU_GEN6_MESSAGE_TARGET_DATA_PORT_SAMPLER_CACHE;
+    }
+
     uint messageSpecificControl = DataPortRead(
         1,
         2,
@@ -6218,12 +6226,13 @@ void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
         EU_DATA_PORT_READ_MESSAGE_TYPE_SURFACE_INFO_READ,
         0,
         false,
-        DATA_PORT_TARGET_CONSTANT_CACHE,
+        targetCache,
         resource.m_surfaceType == ESURFACE_BINDLESS ? BINDLESS_BTI : (uint)resource.m_resource->GetImmediateValue());
 
     CVariable* pMessDesc = m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_D);
+    
     CVariable* exDesc =
-        m_currShader->ImmToVariable(EU_GEN6_MESSAGE_TARGET_DATA_PORT_CONSTANT_CACHE, ISA_TYPE_D);
+        m_currShader->ImmToVariable(messageTarget, ISA_TYPE_D);
     if(resource.m_surfaceType == ESURFACE_BINDLESS)
     {
         CVariable* temp = m_currShader->GetNewVariable(resource.m_resource);
@@ -6244,7 +6253,7 @@ void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
     m_encoder->SetUniformSIMDSize(SIMDMode::SIMD8);
     m_encoder->SetNoMask();
     m_encoder->Send(m_destination, payload,
-        EU_GEN6_MESSAGE_TARGET_DATA_PORT_CONSTANT_CACHE, exDesc, pMessDesc);
+        messageTarget, exDesc, pMessDesc);
     m_encoder->Push();
 
     assert(m_destination->IsUniform());
@@ -11134,7 +11143,7 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
         {
             // move barrier id into bits 27:24 of R0.2 in the payload to match with GPGPU payload for barrier id
             // VISA assumes barrier id is found in bits 27:24 as in GPGPU payload and to avoid any IGC/VISA change
-			// this is a simple WA which needs to be applied 
+            // this is a simple WA which needs to be applied 
 
             CVariable* masklower24bit = m_currShader->ImmToVariable(0xf000000, ISA_TYPE_UD);
             m_encoder->SetSrcRegion(0, 0, 1, 0);
@@ -11148,8 +11157,8 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
         }
         else
         {
-			// If barrier - id bits match GPGPU payload
-			m_encoder->SetSrcRegion(0, 0, 1, 0);
+            // If barrier - id bits match GPGPU payload
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
             m_encoder->SetSrcSubReg(0, 2);
             m_encoder->Or(tmpVar, hsProgram->GetR0(), m_currShader->ImmToVariable(counterBits, ISA_TYPE_UD));
             m_encoder->Push();
@@ -12307,19 +12316,19 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
     {
         //uint32_t totalBytes = eltBytes * VTy->getNumElements();
         bool rightBlockSize = (totalBytes == 16 || totalBytes == 32 || totalBytes == 64 || totalBytes == 128);
-		bool useDWAligned = (resource.m_surfaceType != ESURFACE_SLM && align && align >= 4);
-		bool useOWAligned = false;
+        bool useDWAligned = (resource.m_surfaceType != ESURFACE_SLM && align && align >= 4);
+        bool useOWAligned = false;
         if (rightBlockSize && (useDWAligned || useOWAligned))
         {
             bool needTemp = (!destUniform || !m_destination->IsGRFAligned());
             CVariable *loadDest = m_destination;
 
-			if (useOWAligned)
-			{
-				// Offset needs to be in OW!
-				m_encoder->Shr(eOffset, eOffset, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
-				m_encoder->Push();
-			}
+            if (useOWAligned)
+            {
+                // Offset needs to be in OW!
+                m_encoder->Shr(eOffset, eOffset, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
+                m_encoder->Push();
+            }
             eOffset = ReAlignUniformVariable(eOffset, EALIGN_GRF);
             if (needTemp)
             {
@@ -12335,7 +12344,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
             }
             else
             {
-				assert(!useOWAligned && "SLM's pointer size must be 32 bit!");
+                assert(!useOWAligned && "SLM's pointer size must be 32 bit!");
                 // emit svm block read
                 m_encoder->OWLoadA64(loadDest, eOffset, loadDest->GetSize());
             }
@@ -12351,12 +12360,12 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
 
     // Only handle 4/8/12/16/32 bytes here. For aligned 16/32 bytes, it should've been handled
     // by oword already (except for SLM).  We have 12 bytes for load of int3 (either aligned or
-	// unaligned[vload]).
-	//
-	// Note that for simplicity, don't do it if totalBytes=32 and 64bit integer adds are needed
-	// on platform that does not support 64bit integer add.
+    // unaligned[vload]).
+    //
+    // Note that for simplicity, don't do it if totalBytes=32 and 64bit integer adds are needed
+    // on platform that does not support 64bit integer add.
     if (srcUniform && (totalBytes == 4 || totalBytes == 8 || totalBytes == 12 || totalBytes == 16 ||
-		               (totalBytes == 32 && (useA32 || !m_currShader->m_Platform->hasNo64BitInst()))))
+                       (totalBytes == 32 && (useA32 || !m_currShader->m_Platform->hasNo64BitInst()))))
     {
         bool needTemp = !destUniform ||
                         !m_destination->IsGRFAligned() ||
@@ -12417,29 +12426,29 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
             //   eOff   0   8                           // QW per lane
             // When nbelts = 3, lane 3 is not used. Since we don't have simd3,
             // use simd4 and set lane3 to lane2.
-			uint32_t incImm;
-			uint32_t incImm1;  // for activelanes=8
-			switch (activelanes) {
-			default:
-				assert(false && "ICE: something wrong happened in computing activelanes!");
-				break;
-			case 2:
-				// only can have QW in this case
-				incImm = useQW ? 0x80 : 0x40;
-				break;
-			case 3:
-				// set lane3 to be the same as lane2 (it is 8)
-				incImm = 0x8840;
-				break;
-			case 4:
-				incImm = 0xC840;
-				break;
-			case 8:
-				// Make sure incImm + incImm1 = {0  4  8  C  10   14  18  1C}
-				incImm  = 0xD951C840;
-				incImm1 = 0xFFFF0000;
-				break;
-			}
+            uint32_t incImm;
+            uint32_t incImm1;  // for activelanes=8
+            switch (activelanes) {
+            default:
+                assert(false && "ICE: something wrong happened in computing activelanes!");
+                break;
+            case 2:
+                // only can have QW in this case
+                incImm = useQW ? 0x80 : 0x40;
+                break;
+            case 3:
+                // set lane3 to be the same as lane2 (it is 8)
+                incImm = 0x8840;
+                break;
+            case 4:
+                incImm = 0xC840;
+                break;
+            case 8:
+                // Make sure incImm + incImm1 = {0  4  8  C  10   14  18  1C}
+                incImm  = 0xD951C840;
+                incImm1 = 0xFFFF0000;
+                break;
+            }
 
             CVariable* immVar = m_currShader->ImmToVariable(incImm, ISA_TYPE_UV);
             if (!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
@@ -12452,14 +12461,14 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
                 m_encoder->Push();
             }
 
-			if (activelanes == 8) {
-				CVariable* immVar1 = m_currShader->ImmToVariable(incImm1, ISA_TYPE_UV);
-				m_encoder->SetNoMask();
-				m_encoder->SetUniformSIMDSize(simdmode);
-				m_encoder->SetSrcRegion(0, 8, 8, 1);
-				m_encoder->Add(gatherOff, gatherOff, immVar1);
-				m_encoder->Push();
-			}
+            if (activelanes == 8) {
+                CVariable* immVar1 = m_currShader->ImmToVariable(incImm1, ISA_TYPE_UV);
+                m_encoder->SetNoMask();
+                m_encoder->SetUniformSIMDSize(simdmode);
+                m_encoder->SetSrcRegion(0, 8, 8, 1);
+                m_encoder->Add(gatherOff, gatherOff, immVar1);
+                m_encoder->Push();
+            }
         }
 
         m_encoder->SetNoMask();

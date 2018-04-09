@@ -133,6 +133,7 @@ public:
     bool supportFtrWddm2Svm() const { return m_SkuTable.FtrWddm2Svm != 0; }
     bool supportStructuredAsRaw() const {
         return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
+    bool supportSamplerCacheResinfo() const { return m_platformInfo.eRenderCoreFamily == IGFX_GEN8_CORE; }
 
     unsigned int getMaxVertexShaderThreads() const { return m_caps.VertexShaderThreads - 1; }
     unsigned int getMaxGeometryShaderThreads() const { return m_caps.GeometryShaderThreads - 1; }
@@ -173,7 +174,7 @@ public:
 		// Gen10+, 3DSTATE_VF_SGVS_2
 		return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE;
 	}
-
+	
     bool supportsSIMD16TypedRW() const
     {
         return false;
