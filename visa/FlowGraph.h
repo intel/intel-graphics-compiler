@@ -354,7 +354,7 @@ public:
     void     resetSubShareCode() { subShareCode = false; }
     bool     isLastInstEOT();    // to check if the last instruction in list is EOT
     G4_opcode    getLastOpcode() const;
-    unsigned getId() const         {return id;}
+    unsigned getId()               {return id;}
     void     setId(unsigned i)     {id = i;}
     unsigned getPreId()            {return preId;}
     void     setPreId(unsigned i)  {preId = i;}
@@ -451,7 +451,7 @@ public:
 	void addEOTSend(G4_INST* lastInst = NULL);
 
     /// Dump instructions into the standard error.
-    void dump(bool printCFG) const;
+    void dump() const;
     void dumpDefUse() const;
 
     // reset this BB's instruction's local id so they are [0,..#BBInst-1]

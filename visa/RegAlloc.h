@@ -493,12 +493,6 @@ public:
 
     void performScoping(BitSet* curBBGen, BitSet* curBBKill, G4_BB* curBB, BitSet* entryBBGen, BitSet* entryBBKill, G4_BB* entryBB);
 
-    void hierarchicalIPA(const BitSet& kernelInput, const BitSet& kernelOutput);
-    void useAnalysis(FuncInfo* subroutine);
-    void useAnalysisWithCallee(FuncInfo* subroutine, const std::vector<BitSet>& args, const std::vector<BitSet>& retVal);
-    void defAnalysis(FuncInfo* subroutine);
-    void maydefAnalysis();
-
     PointsToAnalysis& getPointsToAnalysis() const { return pointsToAnalysis; }
 };
 
