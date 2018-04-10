@@ -30,11 +30,9 @@ namespace IGC
 {
     void UnifyIROCL(
         OpenCLProgramContext* pContext,
-        std::unique_ptr<llvm::Module> BuiltinGenericModule,
-        std::unique_ptr<llvm::Module> BuiltinSizeModule);
+        std::unique_ptr<llvm::Module> BuiltinGenericModule);
 
     void UnifyIRSPIR(
         OpenCLProgramContext* pContext,
-        std::unique_ptr<llvm::Module> BuiltinGenericModule,
-        std::unique_ptr<llvm::Module> BuiltinSizeModule);
+        std::unique_ptr<llvm::Module> BuiltinGenericModule);
 }

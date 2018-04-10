@@ -3480,6 +3480,42 @@ if(LLVM_ON_WIN32)
     )
 endif()
 
+# Link targets/dependencies (in required link order).
+# NOTE: Since the libraries are grouped in the same link group (in GCC/CLANG),
+#       there is no longer need to order in most dependant first manner.
+set(IGC_BUILD__LLVM_LIBS_TO_LINK
+    "LLVMipo"
+    "LLVMIRReader"
+    "LLVMBitWriter"
+    "LLVMAsmParser"
+    "LLVMBitReader"
+    "LLVMLinker"
+    "LLVMCodeGen"
+    "LLVMScalarOpts"
+    "LLVMInstCombine"
+    "LLVMTransformUtils"
+    "LLVMAnalysis"
+    "LLVMTarget"
+    "LLVMObjCARCOpts"
+    "LLVMVectorize"
+    "LLVMInstrumentation"
+    "LLVMObject"
+    "LLVMMCParser"
+    "LLVMProfileData"
+    "LLVMMC"
+    "LLVMCore"
+    "LLVMSupport"
+    "LLVMDemangle"
+    )
+
+
+# In case LLVM targets have not been already created do so.
+if(NOT TARGET LLVMCore)
+    igc_llvm_library_add(${IGC_BUILD__LLVM_LIBS_TO_LINK})
+endif()
+
+
+
 # ===================================== Projects and source groups =====================================
 
 # Suffixes of main projects.
@@ -3535,6 +3571,7 @@ igc_sg_define(IGC__DriverInterface)
 # Built-in Functions (and resources).
 if(IGC_OPTION__BIF_LINK_BC)
   add_subdirectory(BiFModule)
+  add_subdirectory(ElfPackager)
 endif()
 
     add_subdirectory(OCLFE)
@@ -3615,6 +3652,8 @@ add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
     ${IGC_BUILD__HDR__IGC__fcl_dll}
     ${IGC_BUILD__RES__IGC__fcl_dll}
   )
+
+add_dependencies("${IGC_BUILD__PROJ__igc_dll}" "${IGC_BUILD__PROJ_NAME_PREFIX}ElfPackager")
   
 target_include_directories(${IGC_BUILD__PROJ__igc_dll} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_shared"
@@ -3719,14 +3758,17 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   
   if(MSVC AND IGC_OPTION__BIF_LINK_BC)
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFModule_OCL}")
+    add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__ElfPackager}")
   endif()
 endforeach()
 
 #FCL
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__LLVM_PACKAGE}")
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__BiFModule_OCL}")
+add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__ElfPackager}")
 if(IGC_OPTION__BIF_LINK_BC)
     add_dependencies("${IGC_BUILD__PROJ__BiFModule_OCL}"     "${IGC_BUILD__LLVM_PACKAGE}")
+    add_dependencies("${IGC_BUILD__PROJ__ElfPackager}"     "${IGC_BUILD__LLVM_PACKAGE}")
 endif()
 add_dependencies("${IGC_BUILD__PROJ__GenISAIntrinsics}"  "${IGC_BUILD__LLVM_PACKAGE}")
 
@@ -3740,39 +3782,6 @@ if(LLVM_ON_WIN32)
   endif()
 endif()
 
-
-# Link targets/dependencies (in required link order).
-# NOTE: Since the libraries are grouped in the same link group (in GCC/CLANG),
-#       there is no longer need to order in most dependant first manner.
-set(IGC_BUILD__LLVM_LIBS_TO_LINK
-    "LLVMipo"
-    "LLVMIRReader"
-    "LLVMBitWriter"
-    "LLVMAsmParser"
-    "LLVMBitReader"
-    "LLVMLinker"
-    "LLVMCodeGen"
-    "LLVMScalarOpts"
-    "LLVMInstCombine"
-    "LLVMTransformUtils"
-    "LLVMAnalysis"
-    "LLVMTarget"
-    "LLVMMC"
-    "LLVMCore"
-    "LLVMSupport"
-    "LLVMObjCARCOpts"
-    "LLVMVectorize"
-    "LLVMInstrumentation"
-    "LLVMObject"
-    "LLVMMCParser"
-    "LLVMDemangle"
-    )
-
-
-# In case LLVM targets have not been already created do so.
-if(NOT TARGET LLVMCore)
-    igc_llvm_library_add(${IGC_BUILD__LLVM_LIBS_TO_LINK})
-endif()
 
 foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   get_property(_targetType TARGET "${IGC_BUILD__PROJ${_libBuildSuffix}}" PROPERTY TYPE)

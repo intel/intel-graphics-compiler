@@ -159,8 +159,7 @@ namespace IGC
 
 static void CommonOCLBasedPasses(
     OpenCLProgramContext* pContext,
-    std::unique_ptr<llvm::Module> BuiltinGenericModule,
-    std::unique_ptr<llvm::Module> BuiltinSizeModule)
+    std::unique_ptr<llvm::Module> BuiltinGenericModule)
 {
     IGCPassManager mpm(pContext, "Unify");
 
@@ -195,11 +194,6 @@ static void CommonOCLBasedPasses(
     }
     pContext->getModule()->setDataLayout(dataLayout);
 	BuiltinGenericModule->setDataLayout(dataLayout);
-	if( BuiltinSizeModule )
-	{
-	    BuiltinSizeModule->setDataLayout(dataLayout);
-	}
-		
     MetaDataUtils *pMdUtils = pContext->getMetaDataUtils();
     
     //extracting OCL version major before SPIRMetadataTranslation pass deletes its metadata node
@@ -267,7 +261,7 @@ static void CommonOCLBasedPasses(
 	}
 
     mpm.add(new PreBIImportAnalysis());
-    mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule), std::move(BuiltinSizeModule)));
+    mpm.add(createBuiltInImportPass(std::move(BuiltinGenericModule)));
     mpm.add(new UndefinedReferencesPass());
 
     // Estimate maximal function size in the module and disable subroutine if not profitable.
@@ -438,16 +432,14 @@ static void CommonOCLBasedPasses(
 
 void UnifyIROCL(
     OpenCLProgramContext* pContext,
-    std::unique_ptr<llvm::Module> BuiltinGenericModule,
-    std::unique_ptr<llvm::Module> BuiltinSizeModule)
+    std::unique_ptr<llvm::Module> BuiltinGenericModule)
 {
-    CommonOCLBasedPasses(pContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
+    CommonOCLBasedPasses(pContext, std::move(BuiltinGenericModule));
 }
 
 void UnifyIRSPIR(
     OpenCLProgramContext* pContext,
-    std::unique_ptr<llvm::Module> BuiltinGenericModule,
-    std::unique_ptr<llvm::Module> BuiltinSizeModule)
+    std::unique_ptr<llvm::Module> BuiltinGenericModule)
 {
     int pointerSize = getPointerSize(*pContext->getModule());
 
@@ -456,15 +448,13 @@ void UnifyIRSPIR(
     {
         pContext->getModule()->setTargetTriple("vISA_32");
 		BuiltinGenericModule->setTargetTriple("vISA_32");
-		BuiltinSizeModule->setTargetTriple("vISA_32");
     }
     else // pointer size 64bit
     {
         pContext->getModule()->setTargetTriple("vISA_64");
 		BuiltinGenericModule->setTargetTriple("vISA_64");
-		BuiltinSizeModule->setTargetTriple("vISA_64");
     }
 
-    CommonOCLBasedPasses(pContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
+    CommonOCLBasedPasses(pContext, std::move(BuiltinGenericModule));
 }
 }

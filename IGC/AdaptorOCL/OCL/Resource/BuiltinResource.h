@@ -28,9 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Used by BuiltinResource.rc
 //
 #define OCL_BC_START                    120
-#define OCL_BC_32                       120
-#define OCL_BC_64                       121
-#define OCL_BC                          122
-#define OCL_BC_RS                       123
-#define OCL_BC_END                      124
+#define OCL_BC_ELF                      120
+#define OCL_BC_RS                       121
+#define OCL_BC_END                      122
 
