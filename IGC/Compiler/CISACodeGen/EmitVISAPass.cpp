@@ -6230,7 +6230,7 @@ void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
         resource.m_surfaceType == ESURFACE_BINDLESS ? BINDLESS_BTI : (uint)resource.m_resource->GetImmediateValue());
 
     CVariable* pMessDesc = m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_D);
-    
+
     CVariable* exDesc =
         m_currShader->ImmToVariable(messageTarget, ISA_TYPE_D);
     if(resource.m_surfaceType == ESURFACE_BINDLESS)
@@ -11143,7 +11143,7 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
         {
             // move barrier id into bits 27:24 of R0.2 in the payload to match with GPGPU payload for barrier id
             // VISA assumes barrier id is found in bits 27:24 as in GPGPU payload and to avoid any IGC/VISA change
-            // this is a simple WA which needs to be applied 
+            // this is a simple WA which needs to be applied
 
             CVariable* masklower24bit = m_currShader->ImmToVariable(0xf000000, ISA_TYPE_UD);
             m_encoder->SetSrcRegion(0, 0, 1, 0);

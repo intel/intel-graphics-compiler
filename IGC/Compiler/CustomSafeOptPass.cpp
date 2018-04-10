@@ -1168,18 +1168,19 @@ static Constant* GetConstantValue(Type* type, char* rawData)
     return nullptr;
 }
 
-bool IGCConstProp::EvalConstantAddress(llvm::Value* address, unsigned int & offset)
+bool IGCConstProp::EvalConstantAddress(Value* address, unsigned int &offset, Value* ptrSrc)
 {
-    if(isa<ConstantPointerNull>(address))
+    if((ptrSrc == nullptr && isa<ConstantPointerNull>(address)) ||
+       (ptrSrc == address))
     {
         offset = 0;
         return true;
     }
-    else if(ConstantExpr *ptrExpr = dyn_cast<ConstantExpr>(address))
+    else if (Instruction* ptrExpr = dyn_cast<Instruction>(address))
     {
         if(ptrExpr->getOpcode() == Instruction::BitCast)
         {
-            return EvalConstantAddress(ptrExpr->getOperand(0), offset);
+            return EvalConstantAddress(ptrExpr->getOperand(0), offset, ptrSrc);
         }
         if(ptrExpr->getOpcode() == Instruction::IntToPtr)
         {
@@ -1193,7 +1194,7 @@ bool IGCConstProp::EvalConstantAddress(llvm::Value* address, unsigned int & offs
         else if(ptrExpr->getOpcode() == Instruction::GetElementPtr)
         {
             offset = 0;
-            if(!EvalConstantAddress(ptrExpr->getOperand(0), offset))
+            if(!EvalConstantAddress(ptrExpr->getOperand(0), offset, ptrSrc))
             {
                 return false;
             }
@@ -1226,13 +1227,53 @@ bool IGCConstProp::EvalConstantAddress(llvm::Value* address, unsigned int & offs
     return false;
 }
 
+bool GetStatelessBufferInfo(Value* pointer, unsigned &bufferId, BufferType &bufferTy, Value* &bufferSrcPtr)
+{
+    // If the buffer info is not encoded in the address space, we can still find it by
+    // tracing the pointer to where it's created.
+    std::vector<Value*> instList;
+    Value* src = IGC::TracePointerSource(pointer, false, true, instList);
+    if(src && IGC::GetResourcePointerInfo(src, bufferId, bufferTy))
+    {
+        // find the first pointer from the list of traced instructions
+        for (int i = instList.size()-1; i >= 0; i--)
+        {
+            if (Instruction* inst = dyn_cast<Instruction>(instList[i]))
+            {
+                if (inst->getType()->isPointerTy() &&
+                    inst->getType()->getPointerAddressSpace() == cast<Instruction>(pointer)->getType()->getPointerAddressSpace())
+                {
+                    bufferSrcPtr = inst;
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 Constant *IGCConstProp::replaceShaderConstant(LoadInst *inst)
 {
     unsigned as = inst->getPointerAddressSpace();
     bool directBuf;
     unsigned bufId;
 	int size_in_bytes = 0;
-    BufferType bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufId);
+    BufferType bufType;
+    Value* pointerSrc = nullptr;
+
+    if (as == ADDRESS_SPACE_CONSTANT)
+    {
+        if (!GetStatelessBufferInfo(inst->getPointerOperand(), bufId, bufType, pointerSrc))
+        {
+            return nullptr;
+        }
+        directBuf = true;
+    }
+    else
+    {
+        bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufId);
+    }
+    
 	ModuleMetaData *modMD = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData();
     if(bufType == CONSTANT_BUFFER && 
         directBuf &&
@@ -1243,7 +1284,7 @@ Constant *IGCConstProp::replaceShaderConstant(LoadInst *inst)
         Value *ptrVal = inst->getPointerOperand();
         unsigned eltId = 0;
         size_in_bytes = inst->getType()->getPrimitiveSizeInBits() / 8;
-        if(!EvalConstantAddress(ptrVal, eltId))
+        if(!EvalConstantAddress(ptrVal, eltId, pointerSrc))
         {
             return nullptr;
         }

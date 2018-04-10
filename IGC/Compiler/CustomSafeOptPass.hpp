@@ -159,7 +159,7 @@ namespace IGC
         bool simplifyAdd(llvm::BinaryOperator *BO);
         bool simplifyGEP(llvm::GetElementPtrInst *GEP);
         // try to evaluate the address if it is constant.
-        bool EvalConstantAddress(llvm::Value* address, unsigned int & offset);
+        bool EvalConstantAddress(llvm::Value* address, unsigned int &offset, llvm::Value* ptrSrc = nullptr);
         bool m_enableMathConstProp;
         bool m_enableSimplifyGEP;
         const llvm::DataLayout *m_TD;

@@ -23,7 +23,7 @@
 
 
 #======================= end_copyright_notice ==================================
- 
+
 source_group(Headers
   FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/CLElfLib/ElfReader.h
