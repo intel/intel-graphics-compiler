@@ -3423,6 +3423,12 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
     // Set up options. This must be done before creating any variable/instructions 
     // since some of the options affect IR building.
 
+    // need to fold ret into the previous RTWrite/URBWrite/etc
+    if (context->type != ShaderType::OPENCL_SHADER && context->type != ShaderType::COMPUTE_SHADER)
+    {
+        vbuilder->SetOption(vISA_foldEOTtoPrevSend, true);
+    }
+
     // Disable multi-threaded latencies in the vISA scheduler when not in 3D
     if (context->type == ShaderType::OPENCL_SHADER)
     {

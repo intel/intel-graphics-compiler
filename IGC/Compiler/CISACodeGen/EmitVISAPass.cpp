@@ -8086,29 +8086,6 @@ void EmitPass::emitReturn(llvm::ReturnInst* inst)
         return;
     }
 
-    if (m_currShader->GetShaderType() == ShaderType::COMPUTE_SHADER ||
-        m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER)
-    {
-        // GPGPU needs an explicit EOT. For PS and other shader units the EOT has to happen with either
-        // the RT write or URB write. The rest of the messages should not encode the EOT and call this
-        // function to do the EOT. Since currently, we don't have a vISA message indicating this, hence
-        // hard-coding the EOT instructions.
-        CVariable* pEOTPayload =  m_currShader->GetNewVariable(
-            numLanes(SIMDMode::SIMD8),
-            ISA_TYPE_D,
-            IGC::EALIGN_GRF);
-
-        m_encoder->SetSimdSize(SIMDMode::SIMD8);
-        m_encoder->SetNoMask();
-        m_encoder->Copy(pEOTPayload, m_currShader->GetR0());
-        m_encoder->Push();
-
-        uint exDesc = 0x00000027;
-        CVariable* pMessDesc = m_currShader->ImmToVariable(0x02000010, ISA_TYPE_D);
-        m_encoder->SetSimdSize(SIMDMode::SIMD8);
-        m_encoder->Send(nullptr, pEOTPayload, exDesc, pMessDesc);
-        m_encoder->Push();
-    }
     if (m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER)
     {
         CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);

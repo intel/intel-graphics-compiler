@@ -1337,7 +1337,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
                     bool needsEOTSend = true;
                     // the EOT may be folded into the BB's last instruction if it's a send
                     // that supports EOT
-                    if ((builder->getOptions()->getTarget() == VISA_3D) && bb->instList.size() > 1)
+                    if (builder->getOption(vISA_foldEOTtoPrevSend) && bb->instList.size() > 1)
                     {
                         G4_INST* secondToLastInst = bb->instList.back();
                         if (secondToLastInst->canBeEOT() &&
@@ -4338,12 +4338,12 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     G4_INST* sendInst = builder->createSendInst(
         NULL,
         G4_send,
-        1,
+        8,
         sendDst,
         sendSrc,
         builder->createImm(exdesc, Type_UD),
         builder->createImm(desc, Type_UD),
-        InstOpt_NoOpt,
+        InstOpt_WriteEnable,
         true,
         true,
         NULL,
