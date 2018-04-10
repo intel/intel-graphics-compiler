@@ -175,7 +175,7 @@ void PhyRegUsage::freeGRFSubReg(unsigned regNum,
 //
 void PhyRegUsage::freeRegs(VarBasis* varBasis)
 {
-    G4_Declare* decl = varBasis->getVar()->getDeclare();
+    G4_Declare* decl = varBasis->getDcl();
     G4_RegFileKind kind = decl->getRegFile();
     MUST_BE_TRUE(varBasis->getPhyReg(),
         ERROR_UNKNOWN);
@@ -942,7 +942,7 @@ bool PhyRegUsage::assignGRFRegsFromBanks(VarBasis*	 varBasis,
     bool oneGRFBankDivision)
 {
     colorHeuristic = heuristic;
-    G4_Declare* decl = varBasis->getVar()->getDeclare();
+    G4_Declare* decl = varBasis->getDcl();
 
     //
     // if regs are allocated to intv, i is the reg number and off is the reg
@@ -1009,7 +1009,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
 {
     colorHeuristic = heuristic;
 
-    G4_Declare* decl = varBasis->getVar()->getDeclare();
+    G4_Declare* decl = varBasis->getDcl();
     G4_RegFileKind kind = decl->getRegFile();
     G4_Align bankAlign = Either;
 
@@ -1419,6 +1419,7 @@ void VarBasis::dump()
 VarBasis::VarBasis(G4_RegVar* v, const Options *options) : var(v), forbidden(NULL), calleeSaveBias(false), callerSaveBias(false), isEOTSrc(false), retIp(false), m_options(options), numForbidden(-1)
 {
     regKind = v->getDeclare()->getRegFile();
+    dcl = v->getDeclare();
 }
 
 PhyRegUsageParms::PhyRegUsageParms(GlobalRA& g, G4_RegFileKind r, unsigned int m, unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,

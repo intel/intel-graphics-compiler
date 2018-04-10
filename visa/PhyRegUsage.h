@@ -346,6 +346,7 @@ private:
 class VarBasis
 {
 	G4_RegVar* var;
+    G4_Declare* dcl;
 	G4_RegFileKind regKind;
 	bool* forbidden;
 	bool calleeSaveBias; // indicates if the var is biased to get a callee-save assignment or not
@@ -389,6 +390,7 @@ public:
         return numForbidden;
     }
 	G4_RegVar* getVar()			{return var;}
+    G4_Declare* getDcl() const { return dcl; }
 	virtual G4_VarBase* getPhyReg()		{return var->getPhyReg();}
 	virtual unsigned    getPhyRegOff()  {return var->getPhyRegOff();}
 	virtual void setPhyReg(G4_VarBase* pr, unsigned off)

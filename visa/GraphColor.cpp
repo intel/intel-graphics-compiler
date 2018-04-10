@@ -1322,7 +1322,7 @@ void LiveRange::checkForInfiniteSpillCost(INST_LIST& instList, std::list<G4_INST
     }
 
     // Check whether dst variable is a global
-    if (gra.isBlockLocal(this->getVar()->getDeclare()) == false)
+    if (gra.isBlockLocal(this->getDcl()) == false)
     {
         isCandidate = false;
         isInfiniteCost = false;
@@ -1346,7 +1346,7 @@ void LiveRange::checkForInfiniteSpillCost(INST_LIST& instList, std::list<G4_INST
     {
         G4_INST* nextInst = NULL;
         if (this->getRefCount() != 2 ||
-            (this->getRegKind() == G4_GRF && this->getVar()->getDeclare()->getAddressed() == true))
+            (this->getRegKind() == G4_GRF && this->getDcl()->getAddressed() == true))
         {
             // If a liverange has > 2 refs then it
             // cannot be a candidate.
@@ -1446,7 +1446,7 @@ void LiveRange::checkForInfiniteSpillCost(INST_LIST& instList, std::list<G4_INST
 #ifdef DEBUG_VERBOSE_ON
         if (isInfiniteCost == true)
         {
-            DEBUG_VERBOSE("Marking " << this->getVar()->getDeclare()->getName() <<
+            DEBUG_VERBOSE("Marking " << this->getDcl()->getName() <<
                 " as having infinite spill cost due to back-to-back def-use" << std::endl);
         }
 #endif
@@ -1459,7 +1459,7 @@ void LiveRange::checkForInfiniteSpillCost(INST_LIST& instList, std::list<G4_INST
 #ifdef DEBUG_VERBOSE_ON
         if (isInfiniteCost == true)
         {
-            DEBUG_VERBOSE("Unmarking " << this->getVar()->getDeclare()->getName() <<
+            DEBUG_VERBOSE("Unmarking " << this->getDcl()->getName() <<
                 " as having infinite spill cost" << std::endl);
         }
 #endif
@@ -1565,13 +1565,13 @@ void Interference::buildInterferenceWithLive(BitSet& live, unsigned i)
     unsigned end_idx = 0;
     if (is_splitted) //if current is splitted dcl, don't interference with all it's child nodes.
     {
-        start_idx = lrs[i]->getVar()->getDeclare()->getSplitVarStartID();
-        end_idx = lrs[i]->getVar()->getDeclare()->getSplitVarStartID() + gra.getSplitVarNum(lrs[i]->getVar()->getDeclare());
+        start_idx = lrs[i]->getDcl()->getSplitVarStartID();
+        end_idx = lrs[i]->getDcl()->getSplitVarStartID() + gra.getSplitVarNum(lrs[i]->getDcl());
     }
 
     if (is_partial)   //if current is partial dcl, don't interference with all other partial dcls, and it's parent dcl.
     {
-        n = gra.getSplittedDeclare(lrs[i]->getVar()->getDeclare())->getRegVar()->getId();
+        n = gra.getSplittedDeclare(lrs[i]->getDcl())->getRegVar()->getId();
         start_idx = splitStartId;
         end_idx = splitStartId + splitNum;
     }
@@ -1640,7 +1640,7 @@ void Interference::buildInterferenceWithLive(BitSet& live, unsigned i)
 void Interference::buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd, BitSet& live, bool setLive, bool setIntf)
 {
 
-    G4_Declare *dcl = lrs[lr_id]->getVar()->getDeclare();
+    G4_Declare *dcl = lrs[lr_id]->getDcl();
     auto subDclSize = gra.getSubDclSize(dcl);
     for (unsigned i = 0; i < subDclSize; i++)
     {
@@ -1668,8 +1668,8 @@ void Interference::buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd,
 
 void Interference::buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2)
 {
-    G4_Declare * d1 = lrs[v1]->getVar()->getDeclare();
-    G4_Declare * d2 = lrs[v2]->getVar()->getDeclare();
+    G4_Declare * d1 = lrs[v1]->getDcl();
+    G4_Declare * d2 = lrs[v2]->getDcl();
 
     if (d1->getIsSplittedDcl() && !d2->getIsPartialDcl())
     {
@@ -1705,9 +1705,9 @@ void Interference::addCalleeSaveBias(BitSet& live)
     for (unsigned i = 0; i < maxId; i++)
     {
         if (live.isSet(i) &&
-            !lrs[i]->getVar()->getDeclare()->getHasFileScope() &&
+            !lrs[i]->getDcl()->getHasFileScope() &&
             !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
-                lrs[i]->getVar()->getDeclare() == kernel.fg.builder->getBuiltinR0() &&
+                lrs[i]->getDcl() == kernel.fg.builder->getBuiltinR0() &&
                 kernel.fg.getIsStackCallFunc()))
         {
             lrs[i]->setCallerSaveBias(false);
@@ -1732,9 +1732,9 @@ void Interference::buildInterferenceAmongLiveIns()
         if (liveAnalysis->isLiveAtEntry(entryBB, i))
         {
             //Mark reference can not gaurantee all the varaibles are local, update here
-            if (lrs[i]->getVar()->getDeclare()->getIsSplittedDcl())
+            if (lrs[i]->getDcl()->getIsSplittedDcl())
             {
-                lrs[i]->getVar()->getDeclare()->setIsSplittedDcl(false);
+                lrs[i]->getDcl()->setIsSplittedDcl(false);
                 lrs[i]->setIsSplittedDcl(false);
             }
 
@@ -1742,9 +1742,9 @@ void Interference::buildInterferenceAmongLiveIns()
             {
                 if (liveAnalysis->isLiveAtEntry(entryBB, j))
                 {
-                    if (lrs[i]->getVar()->getDeclare()->getRegFile() == G4_INPUT &&
+                    if (lrs[i]->getDcl()->getRegFile() == G4_INPUT &&
                         lrs[i]->getVar()->getPhyReg() != NULL &&
-                        lrs[j]->getVar()->getDeclare()->getRegFile() == G4_INPUT &&
+                        lrs[j]->getDcl()->getRegFile() == G4_INPUT &&
                         lrs[j]->getVar()->getPhyReg() != NULL)
                     {
                         continue;
@@ -2070,7 +2070,7 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
         // bias all variables that are live through stack calls to get assigned the
         // callee-save registers
         //
-        if (kernel.fg.isPseudoVCADcl(lrs[id]->getVar()->getDeclare()))
+        if (kernel.fg.isPseudoVCADcl(lrs[id]->getDcl()))
         {
             addCalleeSaveBias(live);
         }
@@ -2085,8 +2085,8 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
 
             if (lrs[id]->getIsSplittedDcl())
             {
-                for (unsigned i = lrs[id]->getVar()->getDeclare()->getSplitVarStartID();
-                    i < lrs[id]->getVar()->getDeclare()->getSplitVarStartID() + gra.getSplitVarNum(lrs[id]->getVar()->getDeclare());
+                for (unsigned i = lrs[id]->getDcl()->getSplitVarStartID();
+                    i < lrs[id]->getDcl()->getSplitVarStartID() + gra.getSplitVarNum(lrs[id]->getDcl());
                     i++)
                 {
                     live.set(i, false);  //kill all childs, there may be not used childs generated due to splitting, killed also.
@@ -2587,7 +2587,7 @@ void GlobalRA::updateAlignment(unsigned char regFile, G4_Align align)
 
 void GlobalRA::getBankAlignment(LiveRange* lr, G4_Align &align)
 {
-    G4_Declare *dcl = lr->getVar()->getDeclare();
+    G4_Declare *dcl = lr->getDcl();
     if (kernel.getSimdSize() < 16)
     {
         return;
@@ -3749,7 +3749,7 @@ void Augmentation::buildLiveIntervals()
     {
         if (liveAnalysis.isLiveAtEntry(entryBB, i))
         {
-            G4_Declare* dcl = lrs[i]->getVar()->getDeclare();
+            G4_Declare* dcl = lrs[i]->getDcl();
 
             while (dcl->getAliasDeclare() != NULL)
             {
@@ -3965,7 +3965,7 @@ void Augmentation::buildLiveIntervals()
             if (liveAnalysis.isLiveAtEntry(bb, i) == true)
             {
                 // Extend ith live-interval
-                G4_Declare* dcl = lrs[i]->getVar()->getDeclare();
+                G4_Declare* dcl = lrs[i]->getDcl();
 
                 while (dcl->getAliasDeclare() != NULL)
                 {
@@ -4063,7 +4063,7 @@ void Augmentation::buildLiveIntervals()
                 if (liveAnalysis.isLiveAtEntry(startBB, i) == true &&
                     liveAnalysis.isLiveAtExit(EndBB, i) == true)
                 {
-                    G4_Declare* dcl = lrs[i]->getVar()->getDeclare();
+                    G4_Declare* dcl = lrs[i]->getDcl();
 
                     while (dcl->getAliasDeclare() != NULL)
                     {
@@ -4535,7 +4535,7 @@ void Augmentation::buildSIMDIntfAll(G4_Declare* newDcl)
         {
             if (liveAnalysis.maydef[funcId].isSet(i))
             {
-                varDcl = lrs[i]->getVar()->getDeclare();
+                varDcl = lrs[i]->getDcl();
                 buildSIMDIntfDcl(varDcl, true);
             }
         }
@@ -4974,8 +4974,8 @@ void Interference::interferenceVerificationForSplit() const
         {
             if (interfereBetween(i, j))
             {
-                if (!interfereBetween(gra.getSplittedDeclare(lrs[i]->getVar()->getDeclare())->getRegVar()->getId(), j) &&
-                    (gra.getSplittedDeclare(lrs[i]->getVar()->getDeclare()) != lrs[j]->getVar()->getDeclare()))
+                if (!interfereBetween(gra.getSplittedDeclare(lrs[i]->getDcl())->getRegVar()->getId(), j) &&
+                    (gra.getSplittedDeclare(lrs[i]->getDcl()) != lrs[j]->getDcl()))
                 {
                     std::cout << "\t";
                     lrs[j]->getVar()->emit(std::cout);
@@ -5061,7 +5061,7 @@ void GraphColor::createLiveRanges(unsigned reserveSpillSize)
 
         lrs[var->getId()]->allocForbidden(mem, hasStackCall, reserveSpillSize, reservedGRFNum);
         lrs[var->getId()]->setCallerSaveBias(hasStackCall);
-        G4_Declare* varDcl = lrs[var->getId()]->getVar()->getDeclare();
+        G4_Declare* varDcl = lrs[var->getId()]->getDcl();
         if (builder.kernel.fg.isPseudoVCADcl(varDcl))
         {
             lrs[var->getId()]->allocForbiddenCallerSave(mem, &builder.kernel);
@@ -5164,7 +5164,7 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
 
     for (unsigned i = 0; i < numVar; i++)
     {
-        G4_Declare* dcl = lrs[i]->getVar()->getDeclare();
+        G4_Declare* dcl = lrs[i]->getDcl();
 
         if (dcl->getIsPartialDcl())
         {
@@ -5233,8 +5233,8 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
                 }
                 else
                 {
-                    spillCost = 1.0f*lrs[i]->getRefCount()*lrs[i]->getRefCount()*lrs[i]->getVar()->getDeclare()->getByteSize()*
-                        (float)sqrt(lrs[i]->getVar()->getDeclare()->getByteSize())
+                    spillCost = 1.0f*lrs[i]->getRefCount()*lrs[i]->getRefCount()*lrs[i]->getDcl()->getByteSize()*
+                        (float)sqrt(lrs[i]->getDcl()->getByteSize())
                         / (float)sqrt(lrs[i]->getDegree() + 1);
                 }
             }
@@ -5457,7 +5457,7 @@ void GraphColor::determineColorOrdering()
         DEBUG_VERBOSE("\t spillCost=" << sorted[i]->getSpillCost());
         DEBUG_VERBOSE("\t degree=" << sorted[i]->getDegree());
         DEBUG_VERBOSE("\t refCnt=" << sorted[i]->getRefCount());
-        DEBUG_VERBOSE("\t size=" << sorted[i]->getVar()->getDeclare()->getByteSize());
+        DEBUG_VERBOSE("\t size=" << sorted[i]->getDcl()->getByteSize());
         DEBUG_VERBOSE(std::endl);
     }
     DEBUG_VERBOSE(std::endl);
@@ -6093,7 +6093,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
             lrs[i]->setPhyReg(lrs[i]->getVar()->getPhyReg(), lrs[i]->getVar()->getPhyRegOff());
         }
 
-        G4_Declare* dcl = lrs[i]->getVar()->getDeclare();
+        G4_Declare* dcl = lrs[i]->getDcl();
         if (!useSplitLLRHeuristic)
         {
             auto dclLR = gra.getLocalLR(dcl);
@@ -6141,7 +6141,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     //
     for (unsigned i = 0; i < numVar; i++)
     {
-        G4_Declare* dcl = lrs[i]->getVar()->getDeclare();
+        G4_Declare* dcl = lrs[i]->getDcl();
 
         if (dcl->getSubRegAlign() == Any &&
             !dcl->getIsPartialDcl())
@@ -7218,23 +7218,23 @@ void GraphColor::addCallerSaveRestoreCode()
             for (unsigned i = 0; i < numVar; i++)
             {
                 if (i != pseudoVCAId &&
-                    kernel.fg.isPseudoVCEDcl(lrs[i]->getVar()->getDeclare()) != true &&
+                    kernel.fg.isPseudoVCEDcl(lrs[i]->getDcl()) != true &&
                     intf.interfereBetween(pseudoVCAId, i) == true)
                 {
-                    if (!lrs[i]->getVar()->getDeclare()->getHasFileScope() &&
-                        !lrs[i]->getVar()->getDeclare()->getIsPreDefArg())
+                    if (!lrs[i]->getDcl()->getHasFileScope() &&
+                        !lrs[i]->getDcl()->getIsPreDefArg())
                     {
                         // NOTE: Spilled live ranges should not be caller-save.
                         MUST_BE_TRUE(lrs[i]->getPhyReg()->isGreg(), ERROR_REGALLOC);
                         unsigned startReg = lrs[i]->getPhyReg()->asGreg()->getRegNum();
-                        unsigned endReg = startReg + lrs[i]->getVar()->getDeclare()->getNumRows();
+                        unsigned endReg = startReg + lrs[i]->getDcl()->getNumRows();
                         startReg = (startReg < callerSaveNumGRF) ? startReg : callerSaveNumGRF;
                         startReg = (startReg > 0) ? startReg : 1;
                         endReg = (endReg < callerSaveNumGRF) ? endReg : callerSaveNumGRF;
                         endReg = (endReg > 0) ? endReg : 1;
                         for (unsigned j = startReg; j < endReg; j++)
                         {
-                            if (lrs[i]->getVar()->getDeclare()->getIsPreDefRet())
+                            if (lrs[i]->getDcl()->getIsPreDefRet())
                             {
                                 if (retRegs[j] == false)
                                 {
@@ -7378,7 +7378,7 @@ void GraphColor::addCalleeSaveRestoreCode()
             {
                 MUST_BE_TRUE(lrs[i]->getPhyReg()->isGreg(), ERROR_REGALLOC);
                 unsigned startReg = lrs[i]->getPhyReg()->asGreg()->getRegNum();
-                unsigned endReg = startReg + lrs[i]->getVar()->getDeclare()->getNumRows();
+                unsigned endReg = startReg + lrs[i]->getDcl()->getNumRows();
                 startReg = (startReg >= callerSaveNumGRF) ? startReg : callerSaveNumGRF;
                 startReg = (startReg < stackCallStartReg) ? startReg : stackCallStartReg;
                 endReg = (endReg >= callerSaveNumGRF) ? endReg : callerSaveNumGRF;
@@ -9582,6 +9582,7 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
     kernel.setRAType(doBankConflictReduction ? RA_Type::HYBRID_BC_RA : RA_Type::HYBRID_RA);
     return true;
 }
+
 //
 // graph coloring entry point.  returns nonzero if RA fails
 //
@@ -9791,7 +9792,7 @@ int GlobalRA::coloringRegAlloc()
                 for (auto spilled : coloring.getSpilledLiveRanges())
                 {
                     beforeSplitGRFSpillFillCount += spilled->getRefCount();
-                    auto spillDcl = spilled->getVar()->getDeclare();
+                    auto spillDcl = spilled->getDcl();
                     if (spillDcl->getIsRefInSendDcl() && spillDcl->getNumRows() > 1)
                     {
                         sendAssociatedGRFSpillFillCount += spilled->getRefCount();
@@ -9870,7 +9871,7 @@ int GlobalRA::coloringRegAlloc()
                     const LIVERANGE_LIST& spilledLRs = coloring.getSpilledLiveRanges();
                     for (auto lr : spilledLRs)
                     {
-                        spillSize += lr->getVar()->getDeclare()->getByteSize();
+                        spillSize += lr->getDcl()->getByteSize();
                     }
                     if (spillSize * 1.5 < (SCRATCH_MSG_LIMIT - builder.getOptions()->getuInt32Option(vISA_SpillMemOffset)))
                     {

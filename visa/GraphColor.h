@@ -131,7 +131,7 @@ public:
             output << '.' << reg.subRegOff << ':';
             output << G4_Type_Table[getVar ()->getDeclare()->getElemType()].str << ")";
         }
-        output << "(size = " << getVar()->getDeclare()->getByteSize() <<
+        output << "(size = " << getDcl()->getByteSize() <<
             ", spill cost = " << getSpillCost() << ", degree = " << getDegree() << ")";
     }
 

@@ -3781,9 +3781,9 @@ bool SpillManagerGMRF::handleAddrTakenSpills( G4_Kernel * kernel, PointsToAnalys
 	{
 		LiveRange* lr = (*lt);
 
-        if( lr->getVar()->getDeclare()->getAddressed() )
+        if( lr->getDcl()->getAddressed() )
         {
-            getOrCreateSpillFillDcl(lr->getVar()->getDeclare(), kernel);
+            getOrCreateSpillFillDcl(lr->getDcl(), kernel);
         }
 
 		if( lvInfo_->isAddressSensitive( lr->getVar()->getId() ) )
@@ -3805,8 +3805,8 @@ bool SpillManagerGMRF::handleAddrTakenSpills( G4_Kernel * kernel, PointsToAnalys
 	    for (LR_LIST::const_iterator lt = spilledLRs_.begin ();
 		    lt != spilledLRs_.end (); ++lt)
     	{
-	    	if( (*lt)->getVar()->getDeclare()->getAddressed() )
-		    	MUST_BE_TRUE( (*lt)->getVar()->getDeclare()->getAddrTakenSpillFill() != NULL, "Spilled addr taken does not have assigned spill/fill GRF");
+	    	if( (*lt)->getDcl()->getAddressed() )
+		    	MUST_BE_TRUE( (*lt)->getDcl()->getAddrTakenSpillFill() != NULL, "Spilled addr taken does not have assigned spill/fill GRF");
     	}
     }
 #endif
@@ -3839,8 +3839,8 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, INST_
             pointsToAnalysis.isPresentInPointsTo( var,
 			lr->getVar() ) )
 		{
-			unsigned int numrows = lr->getVar()->getDeclare()->getNumRows();
-            G4_Declare* temp = getOrCreateSpillFillDcl(lr->getVar()->getDeclare(), kernel);
+			unsigned int numrows = lr->getDcl()->getNumRows();
+            G4_Declare* temp = getOrCreateSpillFillDcl(lr->getDcl(), kernel);
 
 			if (failSafeSpill_ && 
 				temp->getRegVar()->getPhyReg() == NULL)
@@ -3853,7 +3853,7 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, INST_
             auto newInst = builder_->createInternalInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
             instList.insert(inst_it, newInst);
 
-			if( numrows > 1 || (lr->getVar()->getDeclare()->getNumElems() * lr->getVar()->getDeclare()->getElemSize() == 32) )
+			if( numrows > 1 || (lr->getDcl()->getNumElems() * lr->getDcl()->getElemSize() == 32) )
 			{
 	            if (useScratchMsg_ || useSplitSend())
 	            {
@@ -3930,7 +3930,7 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, INST_
 			{
 				// Insert spill/fill when there decl uses a single row, that too not completely
 				unsigned char curExSize = 16;
-				unsigned short numbytes = lr->getVar()->getDeclare()->getNumElems() * lr->getVar()->getDeclare()->getElemSize();
+				unsigned short numbytes = lr->getDcl()->getNumElems() * lr->getDcl()->getElemSize();
 
 				//temp->setAddressed();
 				short off = 0;
@@ -4142,7 +4142,7 @@ SpillManagerGMRF::insertSpillFillCode (
 	for (LR_LIST::const_iterator lt = spilledLRs_.begin ();
 		lt != spilledLRs_.end (); ++lt) {
 
-        G4_Declare *dcl = (*lt)->getVar()->getDeclare();
+        G4_Declare *dcl = (*lt)->getDcl();
         if (dcl->getIsSplittedDcl())
         {
             dcl->setIsSplittedDcl(false);

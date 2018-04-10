@@ -217,7 +217,7 @@ namespace vISA
 
             for (auto&& lr : coloring.getSpilledLiveRanges())
             {
-                auto dcl = lr->getVar()->getDeclare()->getRootDeclare();
+                auto dcl = lr->getDcl()->getRootDeclare();
                 if (!dcl->isSpilled())
                 {
                     spills.push_back(dcl);

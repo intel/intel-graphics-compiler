@@ -106,7 +106,7 @@ namespace vISA
                 if (bb->instList.size() > 0 && liveness.isLiveAtExit(bb, i))
                 {
                     auto lr = coloring.getLiveRanges()[i];
-                    auto dclIt = operations.find(lr->getVar()->getDeclare()->getRootDeclare());
+                    auto dclIt = operations.find(lr->getDcl()->getRootDeclare());
                     if (dclIt != operations.end())
                     {
                         (*dclIt).second.lastUseLexId = bb->instList.back()->getLexicalId();
