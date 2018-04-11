@@ -350,6 +350,46 @@ uint __builtin_spirv_OpAtomicCompareExchange_p4i32_i32_i32_i32_i32_i32( volatile
 
 #endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 
+float __builtin_spirv_OpAtomicCompareExchange_p0f32_i32_i32_i32_f32_f32( volatile __private float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator)
+{
+    float orig = *Pointer;
+
+    if( orig == Comparator )
+    {
+        *Pointer = Value;
+    }
+
+    return orig;
+}
+
+
+float __builtin_spirv_OpAtomicCompareExchange_p1f32_i32_i32_i32_f32_f32( volatile __global float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator)
+{
+    atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_f32, float, (global float*)Pointer, Scope, Equal, Value, Comparator );
+}
+
+
+float __builtin_spirv_OpAtomicCompareExchange_p3f32_i32_i32_i32_f32_f32( volatile __local float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator)
+{
+    atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_local_f32, float, (local float*)Pointer, Scope, Equal, Value, Comparator );
+}
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+float __builtin_spirv_OpAtomicCompareExchange_p4f32_i32_i32_i32_f32_f32( volatile __generic float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator)
+{
+    if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
+    {
+        atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_local_f32, float, (__local float*)Pointer, Scope, Equal, Value, Comparator );
+    }
+    else
+    {
+        atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_f32, float, (__global float*)Pointer, Scope, Equal, Value, Comparator );
+    }
+}
+
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
 uint __builtin_spirv_OpAtomicCompareExchangeWeak_p0i32_i32_i32_i32_i32_i32( volatile __private uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator)
 {
     return __builtin_spirv_OpAtomicCompareExchange_p0i32_i32_i32_i32_i32_i32( Pointer, Scope, Equal, Unequal, Value, Comparator );

@@ -3755,12 +3755,18 @@ float __builtin_spirv_OpAtomicExchange_p3f32_i32_i32_f32(volatile local float *P
 float __builtin_spirv_OpAtomicExchange_p4f32_i32_i32_f32(volatile generic float *Pointer, uint Scope, uint Semantics, float Value);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
-// TODO: We have a float overload in OpenCL C but only integer types are supported in SPIRV?
 uint __builtin_spirv_OpAtomicCompareExchange_p0i32_i32_i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator);
 uint __builtin_spirv_OpAtomicCompareExchange_p1i32_i32_i32_i32_i32_i32(volatile global uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator);
 uint __builtin_spirv_OpAtomicCompareExchange_p3i32_i32_i32_i32_i32_i32(volatile local uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator);
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 uint __builtin_spirv_OpAtomicCompareExchange_p4i32_i32_i32_i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator);
+#endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
+
+float __builtin_spirv_OpAtomicCompareExchange_p0f32_i32_i32_i32_f32_f32(volatile private float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator);
+float __builtin_spirv_OpAtomicCompareExchange_p1f32_i32_i32_i32_f32_f32(volatile global float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator);
+float __builtin_spirv_OpAtomicCompareExchange_p3f32_i32_i32_i32_f32_f32(volatile local float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator);
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+float __builtin_spirv_OpAtomicCompareExchange_p4f32_i32_i32_i32_f32_f32(volatile generic float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
 uint __builtin_spirv_OpAtomicCompareExchangeWeak_p0i32_i32_i32_i32_i32_i32(volatile private uint *Pointer, uint Scope, uint Equal, uint Unequal, uint Value, uint Comparator);
