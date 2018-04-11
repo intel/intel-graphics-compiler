@@ -1117,6 +1117,7 @@ void OptimizeIR(CodeGenContext* pContext)
                 if (pContext->m_retryManager.AllowLICM() && IGC_IS_FLAG_ENABLED(allowLICM))
                 {
                     mpm.add(llvm::createLICMPass());
+                    mpm.add(llvm::createLICMPass());
                 }
 
                 mpm.add(CreateHoistFMulInLoopPass());
