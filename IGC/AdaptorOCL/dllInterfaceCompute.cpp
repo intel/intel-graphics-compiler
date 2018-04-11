@@ -40,13 +40,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
+#include "Compiler/Optimizer/BuiltInFuncImport.h"
 
 #include "common/debug/Dump.hpp"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
 #include "common/secure_mem.h"
 
-#include "CLElfLib/ElfReader.h"
 #include "usc.h"
 
 #include "AdaptorOCL/OCL/sp/gtpin_igc_ocl.h"
@@ -692,9 +692,7 @@ bool TranslateBuild(
     do
     {
         std::unique_ptr<llvm::Module> BuiltinGenericModule = nullptr;
-        std::unique_ptr<llvm::Module> BuiltinSizeModule = nullptr;
         std::unique_ptr<llvm::MemoryBuffer> pGenericBuffer = nullptr;
-        std::unique_ptr<llvm::MemoryBuffer> pSizeTBuffer = nullptr;
 		{
 			// IGC has two BIF Modules: 
 			//            1. kernel Module (pKernelModule)
@@ -718,64 +716,25 @@ bool TranslateBuild(
 
 			// Load the builtin module -  Generic BC
 			{
-				char Resource[5] = { '-' };
-				_snprintf(Resource, sizeof(Resource), "#%d", OCL_BC);
-
-				pGenericBuffer.reset(llvm::LoadBufferFromResource(Resource, "BC"));
-				assert(pGenericBuffer && "Error loading the Generic builtin resource");
-
-				llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-					getLazyBitcodeModule(pGenericBuffer->getMemBufferRef(), toLLVMContext(oclContext));
-				if (llvm::Error EC = ModuleOrErr.takeError())
-					assert(0 && "Error lazily loading bitcode for generic builtins");
-				else
-					BuiltinGenericModule = std::move(*ModuleOrErr);
-
+                char Resource[5] = { '-' };
+                _snprintf(Resource, sizeof(Resource), "#%d", OCL_BC_ELF);
+                pGenericBuffer.reset(llvm::LoadBufferFromResource(Resource, "BIN"));
+                CLElfLib::CElfReader * pElfReader2 =
+                    CLElfLib::CElfReader::Create(pGenericBuffer->getBufferStart(), pGenericBuffer->getBufferSize());
+                auto returned_module = BIImport::Construct(*pKernelModule, pElfReader2, true);
+                BuiltinGenericModule = std::move(returned_module);
 				assert(BuiltinGenericModule &&
 					"Error loading the Generic builtin module from buffer");
 			}
-
-			// Load the builtin module -  pointer depended
-			{
-				char ResNumber[5] = { '-' };
-				switch (PtrSzInBits)
-				{
-				case 32:
-					_snprintf(ResNumber, sizeof(ResNumber), "#%d", OCL_BC_32);
-					break;
-				case 64:
-					_snprintf(ResNumber, sizeof(ResNumber), "#%d", OCL_BC_64);
-					break;
-				default:
-					assert(0 && "Unknown bitness of compiled module");
-				}
-
-				// the MemoryBuffer becomes owned by the module and does not need to be managed
-				pSizeTBuffer.reset(llvm::LoadBufferFromResource(ResNumber, "BC"));
-				assert(pSizeTBuffer && "Error loading builtin resource");
-
-				llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-					getLazyBitcodeModule(pSizeTBuffer->getMemBufferRef(), toLLVMContext(oclContext));
-				if (llvm::Error EC = ModuleOrErr.takeError())
-					assert(0 && "Error lazily loading bitcode for size_t builtins");
-				else
-					BuiltinSizeModule = std::move(*ModuleOrErr);
-
-				assert(BuiltinSizeModule
-					&& "Error loading builtin module from buffer");
-			}
-
-			BuiltinGenericModule->setDataLayout(BuiltinSizeModule->getDataLayout());
-			BuiltinGenericModule->setTargetTriple(BuiltinSizeModule->getTargetTriple());
 		}
 
         if (llvm::StringRef(oclContext.getModule()->getTargetTriple()).startswith("spir"))
         {
-            IGC::UnifyIRSPIR(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
+            IGC::UnifyIRSPIR(&oclContext, std::move(BuiltinGenericModule));
         }
         else // not SPIR
         {
-            IGC::UnifyIROCL(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
+            IGC::UnifyIROCL(&oclContext, std::move(BuiltinGenericModule));
         }
 
         if (!(oclContext.oclErrorMessage.empty()))
