@@ -40,7 +40,8 @@ void InstEncoder::checkFieldOverlaps(const Field &f)
     if (dirtyMask & fieldMask) {
         std::stringstream ss;
         ss << "instruction index " << state.instIndex <<
-            ": " << f.name <<  " overlaps with ";
+            " [PC 0x" << std::hex << state.inst->getPC() << "]: " <<
+            f.name << " overlaps with ";
         for (auto &of : state.fieldsSet) {
             if (getFieldMask(*of) & fieldMask) {
                 ss << of->name;

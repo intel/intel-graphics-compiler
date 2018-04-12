@@ -28,17 +28,30 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define FIELD(NM,OFF,LEN) {NM, OFF, LEN}
 
+#include "../../asserts.hpp"
+#include "../../api/iga_bxml_ops.hpp"
+
 #include <cstdint>
 #include <cstring>
 #include <string>
 
 namespace iga
 {
+    // a field in the binary format that gets encoded or decoded
     struct Field
     {
         const char *name;
         int offset;
         int length;
+
+        bool overlaps(const Field &f) const {
+            if (length < f.length)
+                return f.overlaps(*this);
+            // test the end points of the smaller interval within the larger
+            return (offset >= f.offset && offset < (f.offset + f.length)) ||
+                ((offset + length - 1) >= f.offset &&
+                 (offset + length - 1) < (f.offset + f.length));
+        }
     };
 
     static bool operator== (const Field &f1, const Field &f2)
@@ -88,11 +101,13 @@ namespace iga
     };
 
     enum OpIx {
-        IX_DST      = 0x10,
-        IX_SRC0     = 0x20,
-        IX_SRC1     = 0x30,
-        IX_SRC2     = 0x40,
-        IX          = 0xF, // masks table index
+        IX_DST      = 0x40, // must not overlap with other bits
+        IX_SRC0     = 0x10,
+        IX_SRC1     = 0x20,
+        IX_SRC2     = 0x30,
+        OP_IX_TYPE_MASK = 0xF0,
+
+        OP_IX_MASK  = 0x0F, // masks table index (unique across bas. and trn.)
 
         BAS      = 0x100,
         BAS_DST  = BAS | IX_DST  | 0,
@@ -105,13 +120,19 @@ namespace iga
         TER_SRC1 = TER | IX_SRC1 | 5,
         TER_SRC2 = TER | IX_SRC2 | 6
     };
-    static inline bool IsTernary(OpIx IX) { return (IX & OpIx::TER) != 0; }
-    static inline bool IsDst(OpIx IX) { return (IX & OpIx::IX_DST) != 0; }
-    static inline int ToSrcIndex(OpIx IX) { return ((IX & 0xF0)>>4) - 2; }
+    static inline bool IsTernary(OpIx IX) { return (IX & OpIx::TER) == OpIx::TER; }
+    static inline bool IsDst(OpIx IX) { return (IX & OpIx::IX_DST) == OpIx::IX_DST; }
+    static inline int ToSrcIndex(OpIx IX) {
+        IGA_ASSERT(!IsDst(IX),"ToSrcIndex(OpIx) on dst index");
+        return ((IX & 0xF0)>>4) - 1;
+    }
+    static inline int ToFieldOperandArrayIndex(OpIx IX) {
+        return (IX & OpIx::OP_IX_MASK);
+    }
 
     static ::std::string ToStringOpIx(OpIx ix)
     {
-        switch (ix & 0xF0) {
+        switch (ix & OpIx::OP_IX_TYPE_MASK) {
         case OpIx::IX_DST:  return "dst";
         case OpIx::IX_SRC0: return "src0";
         case OpIx::IX_SRC1: return "src1";
@@ -129,7 +150,7 @@ namespace iga
         const Field      **mappings;
         size_t             numMappings;
         const char       **meanings; // length is numValues
-        std::string      (*format)(uint64_t val);
+        std::string      (*format)(Op,uint64_t);
         bool               overlapsSrcImmField; // i.e. Src1Index2
 
         // sums up with width of all the fields mapped
@@ -147,7 +168,7 @@ namespace iga
 // E.g. SYM=CMP_CTRLIX_2SRC references
 //   std::string iga::pstg12::Format_CMP_CTRLIX_2SRC(uint64_t val);
 #define MAKE_COMPACTED_FIELD_G(SYM,SRC1_OVERLAP)\
-    extern std::string Format_##SYM (uint64_t val);\
+    extern std::string Format_##SYM (Op, uint64_t val);\
     \
     static_assert(sizeof(SYM ## _VALUES)/sizeof(SYM ## _VALUES[0]) == \
         sizeof(SYM ## _MEANINGS)/sizeof(SYM ## _MEANINGS[0]), \

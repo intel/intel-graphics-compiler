@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <cstdarg>
 #include <initializer_list>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -46,9 +47,8 @@ namespace iga
         std::initializer_list<std::pair<const char *,T>>;
 
     // this type is used to bail out of the parsing algorithm upon syntax error
-    class SyntaxError : std::runtime_error {
-    public:
-        const struct Loc loc;
+    struct SyntaxError : std::runtime_error {
+        const Loc loc;
         std::string message;
 
         SyntaxError(const struct Loc &l, const std::string &m) throw ()
@@ -69,16 +69,15 @@ namespace iga
     //                complicated lexemes
     //
     class Parser {
+    protected:
+        BufferedLexer                  m_lexer;
+        ErrorHandler                  &m_errorHandler;
     public:
         Parser(const std::string &inp, ErrorHandler &errHandler)
             : m_lexer(inp)
             , m_errorHandler(errHandler)
         {
         }
-
-    protected:
-        BufferedLexer                  m_lexer;
-        ErrorHandler                  &m_errorHandler;
 
         //////////////////////////////////////////////////////////////////////
         // DEBUGGING
@@ -100,6 +99,28 @@ namespace iga
         void Warning(const char *msg);
         void WarningF(const char *pat, ...);
         void WarningF(const Loc &loc, const char *pat, ...);
+
+        template <typename S>
+        void Error(const Loc &loc, const S &m1) {
+            std::stringstream ss;
+            ss << m1;
+            Fail(loc, ss.str());
+        }
+        template <typename S, typename T>
+        void Error(const Loc &loc, const S &m1, const T &m2) {
+            std::stringstream ss;
+            ss << m1;
+            ss << m2;
+            Fail(loc, ss.str());
+        }
+        template <typename S, typename T, typename U>
+        void Error(const Loc &loc, const S &m1, const T &m2, const U &m3) {
+            std::stringstream ss;
+            ss << m1;
+            ss << m2;
+            ss << m3;
+            Fail(loc, ss.str());
+        }
 
         //////////////////////////////////////////////////////////////////////
         // BASIC and GENERAL FUNCTIONS
@@ -156,12 +177,12 @@ namespace iga
         bool LookingAtIdentEq(int k, const char *eq) const;
         bool LookingAtIdentEq(const Token &tk, const char *eq) const;
         bool ConsumeIdentEq(const char *eq);
-        std::string ConsumeIdentOrFail();
+        std::string ConsumeIdentOrFail(const char *what = nullptr); // can tell what type of ident optionally; e.g. "op name"
 
         bool TokenEq(const Token &tk, const char *eq) const;
 
         template <typename T>
-        bool IdentLookup(int k, const IdentMap<T> map, T &value) const {
+        bool IdentLookup(int k, const IdentMap<T> &map, T &value) const {
             if (!LookingAt(k,IDENT)) {
                 return false;
             }
@@ -176,22 +197,22 @@ namespace iga
 
         template <typename T>
         void ConsumeIdentOneOfOrFail(
-            const IdentMap<T> map,
+            const IdentMap<T> &map,
             T &value,
-            const char *err_expecting,
-            const char *err_invalid)
+            const char *errExpecting,
+            const char *errInvalid)
         {
             if (!LookingAt(IDENT)) {
-                Fail(err_expecting);
+                Fail(errExpecting);
             }
             if (!IdentLookup(0, map, value)) {
-                Fail(err_invalid);
+                Fail(errInvalid);
             }
             Skip();
         }
 
         template <typename T>
-        bool ConsumeIdentOneOf(const IdentMap<T> map, T &value) {
+        bool ConsumeIdentOneOf(const IdentMap<T> &map, T &value) {
             if (LookingAt(IDENT) && IdentLookup(0, map, value)) {
                 Skip();
                 return true;
@@ -199,57 +220,6 @@ namespace iga
             return false;
         }
 
-/*
-        //////////////////////////////////////////////////////////////////////
-        // TODO: remove
-        template <typename T>
-        bool IdentLookup(int k,
-            const struct ident_value<T> *map,
-            T &value) const
-        {
-            if (!LookingAt(k,IDENT)) {
-                return false;
-            }
-            int i = 0;
-            while (map[i].key) {
-                if (TokenEq(Next(k), map[i].key)) {
-                    value = map[i].value;
-                    return true;
-                }
-                i++;
-            }
-            return false;
-        }
-
-        template <typename T>
-        void ConsumeIdentOneOfOrFail(
-            const struct ident_value<T> *map,
-            T &value,
-            const char *err_expecting,
-            const char *err_invalid)
-        {
-            if (!LookingAt(IDENT)) {
-                Fail(err_expecting);
-            }
-            if (!IdentLookup(0, map, value)) {
-                Fail(err_invalid);
-            }
-            Skip();
-        }
-
-        template <typename T>
-        bool ConsumeIdentOneOf(
-            const struct ident_value<T> *map,
-            T &value)
-        {
-            if (LookingAt(IDENT) && IdentLookup(0,map,value)) {
-                Skip();
-                return true;
-            }
-            return false;
-        }
-
-*/
 
         ///////////////////////////////////////////////////////////////////////////
         // NUMBERS

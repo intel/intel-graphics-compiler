@@ -59,26 +59,30 @@ namespace iga
             MemManager &m,
             void*& bits,
             uint32_t& bitsLen);
-        double getElapsedTimeUS(unsigned int idx);
+
+        size_t getNumInstructionsEncoded() const;
+
+        ///////////////////////////////////////////////////////////////////////
+        // PROFILING API FOR TESTING (must be compiled into)
+        //
+        // compile with MEASURE_COMPILATION_TIME
+        double getElapsedTimeMicros(unsigned int idx);
         int64_t getElapsedTimeTicks(unsigned int idx);
         std::string getTimerName(unsigned int idx);
-        size_t getNumInstructionsEncoded();
 
     protected:
+
+        // TODO: phase these out
         virtual void encodeKernelPreProcess(const Kernel &k);
         virtual void encodeFC(const OpSpec &os);
-        virtual bool hasImm64Src0Overlap(const OpSpec &os, Instruction& inst);
-        virtual void encodeBasicInstructionNonDest(const OpSpec&);
-        virtual bool encodeBasicInstructionNoSrcsToProcess(const Instruction& inst);
         virtual void encodeTernaryInstruction(const Instruction& inst, GED_ACCESS_MODE accessMode);
+                void encodeTernaryAlign1Instruction(const Instruction& inst);
+                void encodeTernaryAlign16Instruction(const Instruction& inst);
         virtual void encodeSendInstructionProcessSFID(const OpSpec&);
         virtual void encodeSendDirectDestination(const Operand& dst);
         virtual void encodeSendDestinationDataType(const Operand& dst);
-        virtual void encodeSendInstructionPostProcess(const Instruction& inst);
-        virtual void encodeOptionsPostProcess(const Instruction& inst);
-        void encodeOptionsThreadControl(const Instruction& inst);
+                void encodeOptionsThreadControl(const Instruction& inst);
         virtual bool isPostIncrementJmpi(const Instruction &inst) const;
-        virtual void encodeTernaryDestinationAlign1(const Instruction& inst);
 
 
     protected:
@@ -107,7 +111,12 @@ namespace iga
         void encodeTernaryDestinationAlign16(const Instruction& inst);
 
         template <SourceIndex S>
-        void encodeTernarySourceAlign1(const Instruction& inst);
+        void encodeTernarySourceAlign1(
+            const Instruction& inst,
+            GED_EXECUTION_DATA_TYPE execDataType);
+        void encodeTernaryDestinationAlign1(
+            const Instruction& inst,
+            GED_EXECUTION_DATA_TYPE execDataType);
 
         virtual void encodeTernarySrcRegionVert(SourceIndex S, Region::Vert v);
 
@@ -137,40 +146,42 @@ namespace iga
         void encodeInstruction(Instruction& inst);
         void patchJumpOffsets();
 
+        ///////////////////////////////////////////////////////////////////////
+        // BASIC INSTRUCTIONS
+        ///////////////////////////////////////////////////////////////////////
         void encodeBasicInstruction(const Instruction& inst, GED_ACCESS_MODE accessMode);
-        void encodeBranchingInstruction(const Instruction& inst);
-        void encodeBranchingInstructionSimplified(const Instruction& inst);
-
-        void encodeSendInstruction(const Instruction& inst);
-
-        void     setEncodedPC(Instruction *inst, int32_t encodePC);
-        int32_t  getEncodedPC(const Instruction *inst) const;
-
-        bool getBlockOffset(const Block *b, uint32_t &pc);
-
         void encodeBasicDestination(
             const Instruction& inst,
             const Operand& dst,
             GED_ACCESS_MODE accessMode = GED_ACCESS_MODE_Align1);
-
-        void encodeBasicControlFlowDestination(
-            const Instruction& inst,
-            const Operand& dst);
-
         template <SourceIndex S> void encodeBasicSource(
             const Instruction& inst,
             const Operand& src,
             GED_ACCESS_MODE accessMode = GED_ACCESS_MODE_Align1);
-        void encodeBasicControlFlowSource(
-            const Instruction& inst,
-            const Operand& src);
-
+        ///////////////////////////////////////////////////////////////////////
+        // BRANCH INSTRUCTIONS
+        ///////////////////////////////////////////////////////////////////////
+        void encodeBranchingInstruction(const Instruction& inst);
+        void encodeBranchingInstructionSimplified(const Instruction& inst);
+        void encodeBranchDestination(const Instruction& inst, const Operand& dst);
+        void encodeBranchSource(const Instruction& inst, const Operand& src);
+        ///////////////////////////////////////////////////////////////////////
+        // SEND INSTRUCTIONS
+        ///////////////////////////////////////////////////////////////////////
+        void encodeSendInstruction(const Instruction& inst);
         void encodeSendSource0(const Operand& src);
         void encodeSendDestination(const Instruction& inst, const Operand& dst);
-
         void encodeSendsSource0(const Operand& src);
         void encodeSendsSource1(const Operand& src);
         void encodeSendsDestination(const Operand& dst);
+
+        ///////////////////////////////////////////////////////////////////////
+        // OTHER HELPER FUNCTIONS
+        ///////////////////////////////////////////////////////////////////////
+        void     setEncodedPC(Instruction *inst, int32_t encodePC);
+        int32_t  getEncodedPC(const Instruction *inst) const;
+
+        bool getBlockOffset(const Block *b, uint32_t &pc);
 
         uint32_t         implAccToBits(int src, ImplAcc implAcc); // ChSel and SubReg
         GED_DST_CHAN_EN  implAccToChEn(ImplAcc implAcc);
@@ -182,7 +193,6 @@ namespace iga
         // platform specific queries
         bool isSpecialContextSaveAndRestore(const Operand& op) const;
         bool arePcsInQWords(const Instruction &inst) const;
-        bool hasSimplifiedBranchEncoding() const;
         bool callNeedsSrcRegion221(const Instruction &inst) const;
         bool srcIsImm(const Operand &op) const;
 
@@ -279,11 +289,9 @@ namespace iga
     template <SourceIndex S> void EncoderBase::encodeSrcRegFile(GED_REG_FILE rf) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0RegFile, rf);
-        }
-        else if (S == SourceIndex::SRC1) {
+        } else if (S == SourceIndex::SRC1) {
             GED_ENCODE(Src1RegFile, rf);
-        }
-        else {
+        } else {
             GED_ENCODE(Src2RegFile, rf);
         }
     }
@@ -291,8 +299,7 @@ namespace iga
     template <SourceIndex S> void EncoderBase::encodeSrcRegionVert(Region::Vert v) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0VertStride, IGAToGEDTranslation::lowerRegionVert(v));
-        }
-        else { // (S == SourceIndex::SRC1)
+        } else { // (S == SourceIndex::SRC1)
             GED_ENCODE(Src1VertStride, IGAToGEDTranslation::lowerRegionVert(v));
         } // S != SRC2 since ternary Align1 doesn't have bits for that
     }
@@ -300,11 +307,9 @@ namespace iga
     template <SourceIndex S> void EncoderBase::encodeSrcType(Type t) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0DataType, IGAToGEDTranslation::lowerDataType(t));
-        }
-        else if (S == SourceIndex::SRC1) {
+        } else if (S == SourceIndex::SRC1) {
             GED_ENCODE(Src1DataType, IGAToGEDTranslation::lowerDataType(t));
-        }
-        else {
+        } else {
             GED_ENCODE(Src2DataType, IGAToGEDTranslation::lowerDataType(t));
         }
     }
@@ -312,8 +317,7 @@ namespace iga
     template <SourceIndex S> void EncoderBase::encodeSrcAddrMode(GED_ADDR_MODE x) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0AddrMode, x);
-        }
-        else {
+        } else {
             GED_ENCODE(Src1AddrMode, x);
         }
     }
@@ -321,11 +325,9 @@ namespace iga
     template <SourceIndex S> void EncoderBase::encodeSrcModifier(SrcModifier x) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0SrcMod, IGAToGEDTranslation::lowerSrcMod(x));
-        }
-        else if (S == SourceIndex::SRC1) {
+        } else if (S == SourceIndex::SRC1) {
             GED_ENCODE(Src1SrcMod, IGAToGEDTranslation::lowerSrcMod(x));
-        }
-        else {
+        } else {
             GED_ENCODE(Src2SrcMod, IGAToGEDTranslation::lowerSrcMod(x));
         }
     }
@@ -333,11 +335,9 @@ namespace iga
     template <SourceIndex S> void EncoderBase::encodeSrcSubRegNum(uint32_t subReg) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0SubRegNum, subReg);
-        }
-        else if (S == SourceIndex::SRC1) {
+        } else if (S == SourceIndex::SRC1) {
             GED_ENCODE(Src1SubRegNum, subReg);
-        }
-        else {
+        } else {
             GED_ENCODE(Src2SubRegNum, subReg);
         }
     }
@@ -347,11 +347,9 @@ namespace iga
     {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0SpecialAcc, IGAToGEDTranslation::lowerSpecialAcc(a));
-        }
-        else if (S == SourceIndex::SRC1) {
+        } else if (S == SourceIndex::SRC1) {
             GED_ENCODE(Src1SpecialAcc, IGAToGEDTranslation::lowerSpecialAcc(a));
-        }
-        else {
+        } else {
             GED_ENCODE(Src2SpecialAcc, IGAToGEDTranslation::lowerSpecialAcc(a));
         }
     }
@@ -359,27 +357,23 @@ namespace iga
     template <SourceIndex S> void EncoderBase::encodeSrcRegNum(uint32_t reg) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0RegNum, reg);
-        }
-        else if (S == SourceIndex::SRC1) {
+        } else if (S == SourceIndex::SRC1) {
             GED_ENCODE(Src1RegNum, reg);
-        }
-        else {
+        } else {
             GED_ENCODE(Src2RegNum, reg);
         }
     }
     template <SourceIndex S> void EncoderBase::encodeSrcAddrImm(int32_t x) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0AddrImm, x);
-        }
-        else {
+        } else {
             GED_ENCODE(Src1AddrImm, x);
         }
     }
     template <SourceIndex S> void EncoderBase::encodeSrcAddrSubRegNum(uint32_t x) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0AddrSubRegNum, x);
-        }
-        else {
+        } else {
             GED_ENCODE(Src1AddrSubRegNum, x);
         }
     }
@@ -389,11 +383,9 @@ namespace iga
         uint32_t v = 0;
         if (rgn.getVt() == Region::Vert::VT_VxH) {
             v = 0x3;
-        }
-        else if (rgn.getVt() != Region::Vert::VT_INVALID) {
+        } else if (rgn.getVt() != Region::Vert::VT_INVALID) {
             v = static_cast<uint32_t>(rgn.v);
-        }
-        else {
+        } else {
             error(S == SourceIndex::SRC0 ?
                 "invalid region vertical stride on src0" :
                 "invalid region vertical stride on src1");
@@ -418,13 +410,11 @@ namespace iga
             GED_ENCODE(Src0VertStride, v);
             GED_ENCODE(Src0Width, w);
             GED_ENCODE(Src0HorzStride, h);
-        }
-        else if (S == SourceIndex::SRC1) {
+        } else if (S == SourceIndex::SRC1) {
             GED_ENCODE(Src1VertStride, v);
             GED_ENCODE(Src1Width, w);
             GED_ENCODE(Src1HorzStride, h);
-        }
-        else {
+        } else {
             IGA_ASSERT_FALSE("EncoderBase::encodeSrcRegion only works on src0 and src1");
         }
     }
@@ -432,24 +422,18 @@ namespace iga
     template <SourceIndex S> void EncoderBase::encodeSrcRegionWidth(Region::Width w) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0Width, IGAToGEDTranslation::lowerRegionWidth(w));
-        }
-        else { // (S == SourceIndex::SRC1)
+        } else { // (S == SourceIndex::SRC1)
             GED_ENCODE(Src1Width, IGAToGEDTranslation::lowerRegionWidth(w));
         } // S != SRC2 since ternary Align1 doesn't have bits for that
     }
 
     template <SourceIndex S>
     void EncoderBase::encodeTernaryImmVal(const ImmVal &val, Type type) {
-        if (S == SourceIndex::SRC0)
-        {
+        if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0TernaryImm, typeConvesionHelper(val, type));
-        }
-        else if (S == SourceIndex::SRC2)
-        {
+        } else if (S == SourceIndex::SRC2) {
             GED_ENCODE(Src2TernaryImm, typeConvesionHelper(val, type));
-        }
-        else
-        {
+        } else {
             error("Immediate is not supported in src1 of Ternary instruction.");
         }
     }
@@ -457,16 +441,12 @@ namespace iga
     template <SourceIndex S> void EncoderBase::encodeSrcRegionHorz(Region::Horz s) {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0HorzStride, IGAToGEDTranslation::lowerRegionHorz(s));
-        }
-        else if (S == SourceIndex::SRC1) {
+        } else if (S == SourceIndex::SRC1) {
             GED_ENCODE(Src1HorzStride, IGAToGEDTranslation::lowerRegionHorz(s));
-        }
-        else {
+        } else {
             GED_ENCODE(Src2HorzStride, IGAToGEDTranslation::lowerRegionHorz(s));
         }
     }
-
-
 } // end: namespace iga*
 
 namespace iga

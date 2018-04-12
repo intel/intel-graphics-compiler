@@ -66,8 +66,9 @@ set_property( TARGET GEDLibrary APPEND PROPERTY
     COMPILE_DEFINITIONS                        $<$<CONFIG:Debug>:GED_DEBUG>
   )
 
-if(MSVC)
-bs_set_wdk(GEDLibrary)
+if (IGC_BUILD AND MSVC)
+  #set up standard defines from the common WDK path.
+  bs_set_wdk(GEDLibrary)
 endif()
 
 # hidden visibility suppresses PLT entries from being created for GED and functions and trims the interface down to a minimal size

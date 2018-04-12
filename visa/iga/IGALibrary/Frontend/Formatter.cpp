@@ -24,14 +24,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #include "ged.h"
-#include "Formatter.hpp"
 #include "Floats.hpp"
+#include "Formatter.hpp"
 #include "IRToString.hpp"
-#include "Sends/Interface.hpp"
-#include "../Models/Models.hpp"
+#include "LdStSyntax/MessageFormatting.hpp"
+#include "../ErrorHandler.hpp"
 #include "../IR/Instruction.hpp"
 #include "../IR/Types.hpp"
-#include "../ErrorHandler.hpp"
+#include "../Models/Models.hpp"
 #include "../strings.hpp"
 #ifndef DISABLE_ENCODER_EXCEPTIONS
 #include "../Backend/GED/Decoder.hpp"
@@ -50,7 +50,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga
 {
-class FormatterBase : public BasicFormatter
+
+class Formatter : public BasicFormatter
 {
 protected:
     ErrorHandler&                errorHandler;
@@ -68,20 +69,20 @@ protected:
         }
     }
 
-    virtual void formatDstOp(const OpSpec &os, const Operand &dst);
-    virtual void formatSrcOp(
+    void formatDstOp(const OpSpec &os, const Operand &dst);
+    void formatSrcOp(
         int srcIx,
         const OpSpec &os,
         const Instruction &inst,
         SourceIndex ix);
     void formatRegister(
-        const RegName& rnm,
-        const RegRef& reg,
+        RegName rnm,
+        RegRef reg,
         bool emitSubReg = true);
-    void formatDstType(const OpSpec &os, const Type &type);
+    void formatDstType(const OpSpec &os, Type type);
 
 public:
-    FormatterBase(
+    Formatter(
         ErrorHandler& err,
         std::ostream& out,
         const FormatOpts &fopts,
@@ -127,7 +128,7 @@ public:
                 // Raw numbers for labels
                 emitDecimal(pc);
             } else {
-                FormatterBase::getDefaultLabelDefinition(o, pc);
+                Formatter::getDefaultLabelDefinition(o, pc);
             }
         }
     }
@@ -162,7 +163,7 @@ public:
         }
     }
 
-    void formatInstructionBits(const Instruction &i, const void *vbits) {
+    void formatInstructionBits(const Instruction& i, const void *vbits) {
         const uint32_t *bits = (const uint32_t *)vbits;
         o << std::hex;
         emit("/* [");
@@ -200,62 +201,76 @@ public:
             formatInstructionBits(i, bits);
         }
 
-        if (!opts.syntaxExtensions || !formatWithExperimentalSendSyntax(i)) {
-            // we didn't use the extended send syntax; use the default
-            formatNormalInstructionBody(i, bits);
+        if (opts.printLdSt && i.getOpSpec().isSendOrSendsFamily()) {
+            // try new LD/ST format
+            formatWithExperimentalSendSyntax(i, bits);
+        } else {
+            formatNormalInstructionBody(i, "", bits);
         }
 
         currInst = nullptr;
     }
 
-    // returns tue if we ca
-    bool formatWithExperimentalSendSyntax(const Instruction& i) {
-        std::string err;
-        Message m = TranslateSendToMessage(*model, i, err);
-        if (m.family == Message::Family::INVALID) {
-            return false;
+    // returns tue if we were able to format the instruction
+    void formatWithExperimentalSendSyntax(
+        const Instruction& i,
+        const void *bits)
+    {
+        auto fr = FormatLdStInstruction(*model, i);
+        if (!fr.success()) {
+            formatNormalInstructionBody(i, fr.errMessage, bits);
+            return;
         }
-
         formatMaskAndPredication(
             i.getMaskCtrl(),
             i.getPredication(),
             i.getFlagReg());
+
+        startColumn(cols.opCodeExecInfo + 12);
         emit(' ');
-        m.formatOpcode(i, *this);
+        emit(fr.opcode);
         emit(' ');
-        m.formatExecInfo(i, *this);
+        formatExecInfo(i);
+        finishColumn();
+
         emit(' ');
-        m.formatDst(model->platform, i, *this);
+        startColumn(cols.dstOp + 4);
+        emit(fr.dst);
+        finishColumn();
         emit("  ");
-        m.formatSrcs(model->platform, i, *this);
-        std::vector<const char *> extraOpts;
-        m.formatExtraInstOpts(i, extraOpts);
-        formatInstOpts(i, extraOpts);
+        startColumn(cols.srcOp);
+        emit(fr.src);
+        finishColumn();
 
-        formatEolComments(i, true);
+        formatInstOpts(i, fr.instOpts);
 
-        return true;
+        formatEolComments(i, "");
     }
 
-    void formatNormalInstructionBody(const Instruction& i, const void *bits) {
+    void formatNormalInstructionBody(
+        const Instruction& i,
+        const std::string &debugSendDecode,
+        const void *bits)
+    {
         const OpSpec &os = i.getOpSpec();
         formatMaskAndPredication(
             i.getMaskCtrl(),
             i.getPredication(),
             i.getFlagReg());
         emit(' ');
-        formatOpMnemonicExecInfo(i, os);
+        formatOpMnemonicExecInfo(i);
         emit(' ');
         formatFlagModifier(i);
 
         int nSrcs = i.getSourceCount();
+        bool hasNonEmptyInstOpts = hasInstOptTokens(i);
 
         if (os.supportsDestination()) {
             // destination ops
             emit("  ");
             formatDstOp(os, i.getDestination());
         } else {
-            if (nSrcs > 0 || !i.getInstOpts().empty()) {
+            if (nSrcs > 0 || hasNonEmptyInstOpts) {
                 // We only print this if there is something on the line following
                 // this.  Checking this prevents useless spaces at the end of line.
                 emitSpaces(cols.dstOp);
@@ -266,7 +281,7 @@ public:
         if (nSrcs == 0) {
             // no source ops, but add spacing if we have instruction options
             // thus to prevent EOL spaces
-            if (!i.getInstOpts().empty()) {
+            if (hasNonEmptyInstOpts) {
                 emitSpaces(cols.srcOp);
             }
         } else {
@@ -299,11 +314,11 @@ public:
         }
 
         // instruction options
-        std::vector<const char *> empty;
-        formatInstOpts(i, empty);
+        std::vector<const char *> emptyExtraOpts;
+        formatInstOpts(i, emptyExtraOpts);
 
         // EOL comments
-        formatEolComments(i);
+        formatEolComments(i, debugSendDecode);
     }
 private:
     void formatMaskAndPredication(
@@ -348,8 +363,22 @@ private:
         return false;
     }
 
-    void formatOpMnemonicExecInfo(const Instruction& i, const OpSpec& os) {
+    void formatExecInfo(const Instruction& i) {
+        const OpSpec& os = i.getOpSpec();
+        if (!os.hasImpicitEm()) {
+            auto es = i.getExecSize();
+            auto coff = i.getChannelOffset();
+            emit('(');
+            emit(ToSyntax(es));
+            emit(ToSyntax(coff));
+            emit(')');
+        }
+    }
+
+    void formatOpMnemonicExecInfo(const Instruction& i) {
         startColumn(cols.opCodeExecInfo);
+
+        const OpSpec& os = i.getOpSpec();
 
         if (os.isSubop() &&
             (!opts.syntaxExtensions || shortOpWouldBeAmbiguous(os)))
@@ -374,14 +403,8 @@ private:
         }
 
         emit(' ');
-        if (!os.hasImpicitEm()) {
-            auto es = i.getExecSize();
-            auto coff = i.getChannelOffset();
-            emit('(');
-            emit(ToSyntax(es));
-            emit(ToSyntax(coff));
-            emit(')');
-        }
+        formatExecInfo(i);
+
         finishColumn();
     }
 
@@ -401,6 +424,7 @@ private:
         finishColumn();
     }
 
+
     void formatDstRegion(const OpSpec &os, const Region &rgn) {
         if (os.hasImplicitDstRegion()) {
             if (os.implicitDstRegion() != rgn) {
@@ -414,7 +438,8 @@ private:
         emit('>');
     }
 
-    void formatSourceModifier(const OpSpec& os, SrcModifier sm) {
+
+    void formatSourceModifier(const OpSpec &os, SrcModifier sm) {
         if (sm != SrcModifier::NONE) {
             emit(ToSyntax(os.op, sm));
         }
@@ -422,7 +447,7 @@ private:
 
 
     void formatSourceRegion(
-        int srcIx, const OpSpec& os, const Operand& src)
+        int srcIx, const OpSpec &os, const Operand &src)
     {
         // breaks reversibiliy with:
         //  movi (8|M0)    r37.0<1>:uw   r[a0.0,64]<8;8,1>:uw  null<0;1,0>:ud
@@ -437,32 +462,26 @@ private:
         // return;
         // }
 
-        if (os.hasImplicitSrcRegionEq(srcIx, model->platform, src.getRegion())) {
+        const Region &rgn = src.getRegion();
+        if (os.hasImplicitSrcRegionEq(srcIx, model->platform, rgn) || os.isBranching()) {
             // e.g. on some platforms certain branches have an implicit <0;1,0>
             // meaning we can omit it if the IR matches
             return;
         }
 
-        // region and type are on all branching and non-send sources (and non-macros)
-        if (src.getKind() != Operand::Kind::IMMEDIATE &&
-            src.getKind() != Operand::Kind::LABEL &&
-            src.getKind() != Operand::Kind::MACRO)
-        {
-            // region e.g. <8;8,1>
-            const Region &rgn = src.getRegion();
-            if (os.isTernary()) {
-                // align1 ternary has form
-                // op (...) dst<H>  src0<v;h>  src1<v;h>  src2<h>
-                if (srcIx < 2) {
-                    formatRegionVH(rgn);
-                } else {
-                    formatRegionH(rgn);
-                }
+        // region e.g. <8;8,1>
+        if (os.isTernary()) {
+            // align1 ternary has form
+            // op (...) dst<H>  src0<v;h>  src1<v;h>  src2<h>
+            if (srcIx < 2) {
+                formatRegionVH(rgn);
             } else {
-                // all other operands use the full <v;w,h>
-                // this also handles <w,h> (VxH or Vx1 mode)
-                formatRegionVWH(rgn);
+                formatRegionH(rgn);
             }
+        } else {
+            // all other operands use the full <v;w,h>
+            // this also handles <w,h> (VxH or Vx1 mode)
+            formatRegionVWH(rgn);
         }
     }
 
@@ -472,9 +491,8 @@ private:
         const OpSpec& os,
         const Operand &op)
     {
-        //Doesn't support types
-        if (os.isBranching() && model->platformCheck6())
-        {
+        if (os.isBranching() && model->supportsSimplifiedBranches()) {
+            // doesn't support types
             return;
         }
         const Type& type = op.getType();
@@ -483,9 +501,7 @@ private:
                 op.getKind() == Operand::Kind::IMMEDIATE;
         if (os.hasImplicitSrcType(srcIx, lblArg, model->platform)) {
             auto expectedType = os.implicitSrcType(srcIx, lblArg, model->platform);
-            if (expectedType != type) {
-                // warning("src type is not binary normal form");
-            } else {
+            if (expectedType == type) {
                 return;
             }
         }
@@ -493,7 +509,7 @@ private:
     }
 
 
-    void formatRegionVWH(const Region& rgn) {
+    void formatRegionVWH(Region rgn) {
         if (rgn == Region::INVALID) {
             emit("<Region::INVALID>");
             return;
@@ -511,25 +527,25 @@ private:
     }
 
 
-    void formatRegionVH(const Region& rgn) {
+    void formatRegionVH(Region rgn) {
         emit('<');
         formatRgnVt(rgn.getVt());
         emit(';');
         if (rgn.getWi() != Region::Width::WI_INVALID) {
-            warning("on <v;h> regions w must be Region::WI_INVALID");
+            warning("on <v;h> region w must be Region::WI_INVALID");
         }
         formatRgnHz(rgn.getHz());
         emit('>');
     }
 
 
-    void formatRegionH(const Region& rgn) {
+    void formatRegionH(Region rgn) {
         emit('<');
         if (rgn.getVt() != Region::Vert::VT_INVALID) {
-            warning("on <h> regions w must be Region::VT_INVALID");
+            warning("on <h> region v must be Region::VT_INVALID");
         }
         if (rgn.getWi() != Region::Width::WI_INVALID) {
-            warning("on <h> regions w must be Region::WI_INVALID");
+            warning("on <h> region w must be Region::WI_INVALID");
         }
         formatRgnHz(rgn.getHz());
         emit('>');
@@ -548,6 +564,7 @@ private:
         finishColumn();
     }
 
+
     void EmitSendDescriptorInfo(
         Platform p,
         const OpSpec &i,
@@ -563,13 +580,21 @@ private:
         uint32_t desc,
         std::stringstream &ss);
 
-    // e.g. op (8) ... {Compacted, bw=4}
-    //                 ^^^^^^^^^^^^^^^^^
-    virtual void formatInstOpts(const Instruction &i, const std::vector<const char *> &instOpts);
-    virtual bool shouldPrintSFID(Platform p) const { return true; };
-    virtual void filterExDesc(Platform p, const OpSpec &os, uint32_t& exDesc) {}
+    // e.g. op (8) ... {Compacted}
+    //                 ^^^^^^^^^^^
+    void formatInstOpts(const Instruction &i, const std::vector<const char *> &instOpts);
+    bool hasInstOptTokens(const Instruction &i) const {
+        return !i.getInstOpts().empty();
+    }
 
-    void formatEolComments(const Instruction &i, bool suppressSendDecode = false) {
+    virtual bool shouldPrintSFID(Platform p) const { return true; };
+    void filterExDesc(Platform p, const OpSpec &os, uint32_t& exDesc) {
+    }
+
+    void formatEolComments(
+        const Instruction &i,
+        const std::string &debugSendDecode)
+    {
         std::stringstream ss;
 
         // separate all comments with a semicolon
@@ -602,8 +627,8 @@ private:
             });
         }
 
-        const char *comment = i.getComment();
-        if (comment) {
+        const std::string &comment = i.getComment();
+        if (!comment.empty()) {
             // custom comment attached to the instruction by some processor
             semiColon.insert();
             ss << comment;
@@ -615,30 +640,39 @@ private:
             if (exDesc.type == SendDescArg::IMM &&
                 desc.type == SendDescArg::IMM)
             {
-                semiColon.insert();
-                if (suppressSendDecode) {
-                    ss << "0x" << std::hex << exDesc.imm
-                        << "  0x" << desc.imm;
-                } else {
-                    if (true) {
-                        // use GED accessors to determine descriptor info
-                        EmitSendDescriptorInfoGED(
-                            model->platform,
-                            i.getOpSpec(),
-                            exDesc.imm,
-                            desc.imm,
-                            ss);
+                // send with immediate descriptors, we can decode this to
+                // something more sane in comments
+                if (opts.printLdSt) {
+                    // tried to format with ld/st syntax and ...
+                    semiColon.insert();
+                    // success, show the descriptors for debugging
+                    if (debugSendDecode.empty()) {
+                        ss << std::uppercase << std::hex <<
+                            "0x" << exDesc.imm << "  " <<
+                            "0x" << desc.imm;
                     } else {
-                        // manual descriptor decoding on our side
-                        EmitSendDescriptorInfo(
-                            model->platform,
-                            i.getOpSpec(),
-                            exDesc.imm,
-                            desc.imm,
-                            ss);
+                        ss << debugSendDecode;
                     }
+                } else {
+                    // ld/st syntax not enabled
+                    //
+                    // use GED accessors to determine descriptor info
+                    EmitSendDescriptorInfoGED(
+                        model->platform,
+                        i.getOpSpec(),
+                        exDesc.imm,
+                        desc.imm,
+                        ss);
+                    // manual descriptor decoding on our side
+                    // EmitSendDescriptorInfo(
+                    //    model->platform,
+                    //    i.getOpSpec(),
+                    //    exDesc.imm,
+                    //    desc.imm,
+                    //    ss);
                 }
-            }
+
+            } // else not a send
         }
 
         if (ss.tellp() > 0) {
@@ -710,36 +744,24 @@ private:
 }; //end: class Formatter
 
 
-void FormatterBase::formatDstType(const OpSpec &os, const Type &type)
+void Formatter::formatDstType(const OpSpec &os, Type type)
 {
-    //Doesn't support types
-    if (os.isBranching() && model->platformCheck6())
-    {
-        return;
+    if (os.isBranching() && model->supportsSimplifiedBranches()) {
+        return; // doesn't support types
     }
-    if (os.isSendOrSendsFamily() &&
-        (type == Type::INVALID || type == Type::UD))
-    {
-        // TRB: we don't print the type on send instructions unless it's
-        // not :ud, this allows us to phase out types on send operands
-        // while meaningless, apparently there is a requirement on SKL
-        // requiring the sampler to read the type from the operand.
-    }
-    else if (os.hasImplicitDstType()) {
-        if (os.implicitDstType() != type) {
-            warning("dst type is not binary normal");
+    if (os.hasImplicitDstType(opts.platform)) {
+        if (os.implicitDstType(opts.platform) != type) {
             emit(ToSyntax(type));
         } // else: it's already in in binary normal form
-    }
-    else {
+    } else {
         // type
         emit(ToSyntax(type));
     }
 }
 
-void FormatterBase::formatRegister(
-    const RegName& rnm,
-    const RegRef& reg,
+void Formatter::formatRegister(
+    RegName rnm,
+    RegRef reg,
     bool emitSubReg)
 {
     const RegInfo& ri = LookupRegInfo(opts.platform, rnm);
@@ -767,7 +789,7 @@ void FormatterBase::formatRegister(
     }
 }
 
-void FormatterBase::formatDstOp(const OpSpec &os, const Operand &dst) {
+void Formatter::formatDstOp(const OpSpec &os, const Operand &dst) {
     startColumn(os.isSendOrSendsFamily() ?
         cols.sendDstOp : cols.dstOp);
 
@@ -775,15 +797,13 @@ void FormatterBase::formatDstOp(const OpSpec &os, const Operand &dst) {
         emit("(sat)");
     }
 
-    // register
     switch (dst.getKind()) {
     case Operand::Kind::DIRECT:
     case Operand::Kind::MACRO:
         formatRegister(
             dst.getDirRegName(),
             dst.getDirRegRef(),
-            !os.isSendOrSendsFamily() &&
-            dst.getKind() != Operand::Kind::MACRO);
+            os.hasDstSubregister(opts.platform));
         if (dst.getKind() == Operand::Kind::MACRO) {
             emit(ToSyntax(dst.getImplAcc()));
         }
@@ -795,8 +815,11 @@ void FormatterBase::formatDstOp(const OpSpec &os, const Operand &dst) {
         emit("Operand::Kind::?");
     }
 
-    // region and type are on all non-send ops
-    if (dst.getKind() != Operand::Kind::MACRO) {
+    Region dstRgn = dst.getRegion();
+    if (!os.hasImplicitDstRegion() ||
+        (dstRgn != os.implicitDstRegion() && dstRgn != Region::INVALID))
+    {
+        // math dpas does not have dst regions
         formatDstRegion(os, dst.getRegion());
     }
     formatDstType(os, dst.getType());
@@ -804,7 +827,7 @@ void FormatterBase::formatDstOp(const OpSpec &os, const Operand &dst) {
     finishColumn();
 }
 
-void FormatterBase::formatSrcOp(
+void Formatter::formatSrcOp(
     int srcIx,
     const OpSpec &os,
     const Instruction &inst,
@@ -820,19 +843,23 @@ void FormatterBase::formatSrcOp(
         formatRegister(
             src.getDirRegName(),
             src.getDirRegRef(),
-            !os.isSendOrSendsFamily() && (os.op != Op::BRC || srcIx != 1));
+            os.hasSrcSubregister(srcIx, opts.platform));
+        formatSourceRegion(srcIx, os, src);
         break;
-    case Operand::Kind::MACRO:
+    case Operand::Kind::MACRO: {
         formatSourceModifier(os, src.getSrcModifier());
         formatRegister(
             src.getDirRegName(),
             src.getDirRegRef(),
             false);
         emit(ToSyntax(src.getImplAcc()));
+        formatSourceRegion(srcIx, os, src);
         break;
+    }
     case Operand::Kind::INDIRECT:
         formatSourceModifier(os, src.getSrcModifier());
         formatRegIndRef(src);
+        formatSourceRegion(srcIx, os, src);
         break;
     case Operand::Kind::IMMEDIATE:
         switch (src.getType()) {
@@ -864,24 +891,21 @@ void FormatterBase::formatSrcOp(
         case Type::HF:
             if (opts.hexFloats) {
                 emitHex(src.getImmediateValue().u16);
-            }
-            else {
+            } else {
                 FormatFloat(o, src.getImmediateValue().u16);
             }
             break;
         case Type::F:
             if (opts.hexFloats) {
                 emitHex(src.getImmediateValue().u32);
-            }
-            else {
+            } else {
                 emitFloat(src.getImmediateValue().f32);
             }
             break;
         case Type::DF:
             if (opts.hexFloats) {
                 emitHex(src.getImmediateValue().u64);
-            }
-            else {
+            } else {
                 emitFloat(src.getImmediateValue().f64);
             }
             break;
@@ -910,18 +934,22 @@ void FormatterBase::formatSrcOp(
     default: emit("???");
     }
 
-    formatSourceRegion(srcIx, os, src);
-    //on this platform control flow doesn't have types anymore
-    if (model->platformCheck1() || src.getKind() != Operand::Kind::LABEL)
+    // TODO: maybe enable branch types uniformly
+    // if (model->branchesHaveTypes()) { would enable branches on stuff like:
+    // if (..) LBL:d
+    //
+    if (!model->supportsSimplifiedBranches() ||
+        src.getKind() != Operand::Kind::LABEL)
     {
+        // on this platform control flow doesn't have types anymore
         formatSourceType(srcIx, os, src);
     }
-
     finishColumn();
 }
 
-void FormatterBase::formatInstOpts(
-    const Instruction &i, const std::vector<const char *> &extraInstOpts)
+void Formatter::formatInstOpts(
+    const Instruction &i,
+    const std::vector<const char *> &extraInstOpts)
 {
     const auto &iopts = i.getInstOpts();
 
@@ -930,26 +958,19 @@ void FormatterBase::formatInstOpts(
         return; // early out (no braces)
     }
 
-    // canonical options
     emit(" {");
     ToSyntaxNoBraces(o, iopts);
-    if (!iopts.empty() && (hasDepInfo || !extraInstOpts.empty())) {
-        emit(", ");
-    }
-    // extra options germane to such ld/st syntax:
-    // e.g. {InvalidateAfteRead}
-    for (size_t i = 0; i < extraInstOpts.size(); i++) {
-        if (i > 0) {
+    // extra options germane to such ld/st syntax
+    for (size_t opIx = 0; opIx < extraInstOpts.size(); opIx++) {
+        if (opIx > 0) {
             emit(", ");
         }
-        emit(extraInstOpts[i]);
+        emit(extraInstOpts[opIx]);
     }
+
+
     emit('}');
 }
-
-//////////////////////////////////////////////////////////////////////////
-
-typedef FormatterBase Formatter;
 
 //////////////////////////////////////////////////////////////////////////
 
@@ -1047,67 +1068,42 @@ void GetDefaultLabelName(
 ///////////////////////////////////////////////////////////////////////////////
 // Following functions generally used for testing, debugging, or
 // producing friendly diagnostics
+
 ///////////////////////////////////////////////////////////////////////////////
 // The opname should be resolved
-std::string FormatOpName(iga::Platform platform, unsigned op_enc) {
-    const iga::Model *model = iga::Model::LookupModel(platform);
-    IGA_ASSERT(model, "invalid model");
+std::string FormatOpName(const iga::Model &model, const void *bits)
+{
     std::string s;
-    const iga::OpSpec &os = model->lookupOpSpecByCode(op_enc);
-    if (os.op == iga::Op::INVALID) {
+    // TODO: use ... model->lookupOpSpecFromBits()
+    iga::OpSpecMissInfo missInfo = {0};
+    unsigned opEnc = (unsigned)iga::getBits(bits, 0, 7);
+    const iga::OpSpec &os = model.lookupOpSpecByCode(opEnc);
+    if (!os.isValid()) {
         std::stringstream ss;
-        ss << "op" << (int)op_enc << "?";
+        if (missInfo.parent) {
+            ss << missInfo.parent->fullMnemonic <<
+                ".0x" << std::hex << missInfo.opcode << "?";
+        } else {
+            ss << "OP[" << std::hex << "]" << missInfo.opcode << "?";
+        }
         s = ss.str();
     } else {
-        s = os.mnemonic;
+        s = os.fullMnemonic;
     }
+
     s += ':';
     while (s.length() < 8)
         s += ' ';
     return s;
 }
-
-
-template <typename T>
-std::string pad(size_t k, const T& t, bool left)
-{
-    std::stringstream ssc;
-    ssc << t;
-    std::string col = ssc.str();
-
-    std::stringstream ss;
-    int n = (int)k - (int)col.size();
-    if (left) {
-        for (int i = 0; i < n; i++) {
-            ss << ' ';
-        }
-    }
-    ss << col;
-    if (!left) {
-        for (int i = 0; i < n; i++) {
-            ss << ' ';
-        }
-    }
-    return ss.str();
-}
-
-
-template <typename T>
-std::string padR(size_t k, const T& t) { return pad(k, t, false); }
-
-
-template <typename T>
-std::string padL(size_t k, const T& t) { return pad(k, t, true); }
-
-
-std::string FormatOpBits(iga::Platform p, const void *bitsV)
+std::string FormatOpBits(const iga::Model &model, const void *bitsV)
 {
     const uint8_t *bits = (const uint8_t *)bitsV;
-    bool compact = (bits[3] & 0x20) != 0;
+    bool compact = ((const iga::MInst *)bits)->isCompact();
     int iLen = compact ? 8 : 16;
 
     std::stringstream ss;
-    ss << padR(12, FormatOpName(p, *bits & 0x7F));
+    ss << iga::PadR(12, FormatOpName(model, bitsV));
     for (int i = 0; i < iLen; i++) {
         if (i > 0)
             ss << ' ';
@@ -1348,7 +1344,7 @@ extern GED_SFID GED_CALLCONV GED_GetSFID(ged_ins_t* ins, GED_RETURN_VALUE* resul
 const char* SFIDEnumeration[16]
 extern const char* GED_CALLCONV GED_GetSFIDString(GED_SFID SFIDValue);
 */
-void FormatterBase::EmitSendDescriptorInfoGED(
+void Formatter::EmitSendDescriptorInfoGED(
     Platform p,
     const OpSpec &os,
     uint32_t exDesc,
@@ -1374,29 +1370,25 @@ void FormatterBase::EmitSendDescriptorInfoGED(
     GED_SFID gedSFID = GED_SFID_INVALID;
     uint32_t sfid = getSFID(exDesc);
 
-    bool printSFID = shouldPrintSFID(p);
+    if (getRetVal == GED_RETURN_VALUE_SUCCESS) {
+        gedSFID = GED_GetSFID(&gedInst, &getRetVal);
+    }
+    const char *gedsfidString = nullptr;
+    if (gedSFID != GED_SFID_INVALID) {
+        gedsfidString = GED_GetSFIDString(gedSFID);
+    }
+    ss << " ";
 
-    if (printSFID) {
-        if (getRetVal == GED_RETURN_VALUE_SUCCESS) {
-            gedSFID = GED_GetSFID(&gedInst, &getRetVal);
-        }
-        const char *gedsfidString = nullptr;
-        if (gedSFID != GED_SFID_INVALID) {
-            gedsfidString = GED_GetSFIDString(gedSFID);
-        }
-        ss << " ";
+    if (gedsfidString && gedSFID != GED_SFID_INVALID) {
+        ss << gedsfidString;
+    } else {
+        sfid = getSFID(exDesc);
 
-        if (gedsfidString && gedSFID != GED_SFID_INVALID) {
-            ss << gedsfidString;
+        const char * sfidString = getSFIDString(p, sfid);
+        if (sfidString) {
+            ss << sfidString;
         } else {
-            sfid = getSFID(exDesc);
-
-            const char * sfidString = getSFIDString(p, sfid);
-            if (sfidString) {
-                ss << sfidString;
-            } else {
-                ss << "sf:" << sfid;
-            }
+            ss << "sf:" << sfid;
         }
     }
 
@@ -1581,7 +1573,7 @@ void FormatterBase::EmitSendDescriptorInfoGED(
     return;
 }
 
-void FormatterBase::EmitSendDescriptorInfo(
+void Formatter::EmitSendDescriptorInfo(
     Platform p,
     const OpSpec &i,
     uint32_t exDesc,

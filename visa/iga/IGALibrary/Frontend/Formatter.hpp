@@ -54,6 +54,7 @@ namespace iga {
         bool              syntaxExtensions = false;
         bool              printInstDeps = true;
         bool              printInstBits = true;
+        bool              printLdSt = false;
         DepAnalysis      *liveAnalysis = nullptr;
 
         // format with default labels
@@ -122,9 +123,9 @@ namespace iga {
     // Stuff mainly for testing and debugging.
 
     // for debugging, shows the opcode and bytes
-    std::string FormatOpBits(iga::Platform p, const void *bits);
+    std::string FormatOpBits(const iga::Model &m, const void *bits);
     // decodes the op for this platform
-    std::string FormatOpName(iga::Platform p, unsigned op);
+    std::string FormatOpName(const iga::Model &m, const void *bits);
 
 
 
@@ -134,11 +135,6 @@ namespace iga {
     //////////////////////////////////////////////////////////////////////////
     // Used by other modules internal to this directory
     //////////////////////////////////////////////////////////////////////////
-
-
-
-
-
 
 
 

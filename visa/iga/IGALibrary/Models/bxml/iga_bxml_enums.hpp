@@ -31,5 +31,6 @@ namespace iga
     };
 
 
+
 }
 #endif // _IGA_BXML_TYPES_HPP

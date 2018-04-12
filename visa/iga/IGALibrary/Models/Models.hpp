@@ -1,5 +1,30 @@
-#ifndef MODELS_HPP
-#define MODELS_HPP
+/*===================== begin_copyright_notice ==================================
+
+Copyright (c) 2017 Intel Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+======================= end_copyright_notice ==================================*/
+#ifndef IGA_MODELS_HPP
+#define IGA_MODELS_HPP
 
 #include "OpSpec.hpp"
 #include "../IR/Types.hpp"
@@ -29,7 +54,7 @@ namespace iga
         }
         bool isSubRegByteOffsetValid(int regNum, int subregByte) const {
             int regBytes = reg == RegName::GRF_R ? 32 : num_bytes[regNum];
-            return subregByte > regBytes;
+            return subregByte < regBytes;
         }
 
         // int accessGranularity(int reg) const {
@@ -97,7 +122,7 @@ namespace iga
       , {"f",    RegName::ARF_F, 0x3,    Platform::GEN6, Platform::GEN6,
           2, 1, {4}}
       , {"f",    RegName::ARF_F, 0x3,    Platform::GEN7, Platform::GENNEXT,
-          2, 2, {2,2}}
+          2, 2, {4,4}}
 
       , {"ce",  RegName::ARF_CE, 0x4,   Platform::GEN7P5, Platform::GENNEXT,
           4, 0, {4}}
@@ -106,9 +131,9 @@ namespace iga
           4, 8, {4,4,4,4,4,4,4,4}}
 
       , {"sp",   RegName::ARF_SP, 0x6,   Platform::GEN7P5, Platform::GEN7P5,
-          4, 0, {4,4}}
+          4, 0, {2*4}}
       , {"sp",   RegName::ARF_SP, 0x6,   Platform::GEN8, Platform::GENNEXT,
-          4, 0, {8,8}}
+          4, 0, {2*8}}
 
       , {"sr",   RegName::ARF_SR, 0x7,   Platform::GEN6, Platform::GENNEXT,
           1, 2, {16,16}}
@@ -132,7 +157,7 @@ namespace iga
       , {"dbg", RegName::ARF_DBG, 0xF,   Platform::GEN7, Platform::GEN7P5,
           4, 1, {4}}
       , {"dbg", RegName::ARF_DBG, 0xF,   Platform::GEN8, Platform::GENNEXT,
-          4, 1, {4,4}}
+          4, 1, {8}}
     };
 
 
@@ -154,17 +179,19 @@ namespace iga
         case RegName::ARF_TDR:
             return true;
         // based on IsaAsm's implemenatation fc isn't scaled
+        case RegName::ARF_FC:
         default:
             return false;
         }
     }
-    static uint8_t SubRegToBytesOffset(
-        uint8_t offset, Type type, RegName regName)
+    static uint32_t SubRegToBytesOffset(
+        int subRegNum, RegName regName, Type type)
     {
-        return IsRegisterScaled(regName) ? offset*TypeSize(type) : offset;
+        return IsRegisterScaled(regName) ?
+            subRegNum*TypeSize(type) : subRegNum;
     }
     static uint8_t BytesOffsetToSubReg(
-        uint8_t offset, Type type, RegName regName)
+        uint32_t offset, RegName regName, Type type)
     {
         return IsRegisterScaled(regName) ? offset/TypeSize(type) : offset;
     }
@@ -172,13 +199,13 @@ namespace iga
     // TODO: make sublinear (numeric map over RegName)
     static const RegInfo &LookupRegInfo(Platform p, RegName rt)
     {
-      for (size_t k = 0; k < sizeof(registers)/sizeof(registers[0]); k++) {
-        const RegInfo &ri = registers[k];
-        if (p >= ri.plat_intrd && p <= ri.plat_last && ri.reg == rt ) {
-          return ri;
+        for (size_t k = 0; k < sizeof(registers)/sizeof(registers[0]); k++) {
+            const RegInfo &ri = registers[k];
+            if (p >= ri.plat_intrd && p <= ri.plat_last && ri.reg == rt ) {
+                return ri;
+            }
         }
-      }
-      return registers[1]; // null
+        return registers[(int)RegName::ARF_NULL];
     }
 
 
@@ -239,6 +266,19 @@ namespace iga
     };
 
 
+    // error info if we fail to resolve the OpSpec
+    // only valid if `decoodeOpSpec` returns nullptr
+    struct OpSpecMissInfo
+    {
+        const OpSpec *parent; // nullptr if at the root  (a top-level op)
+                              // otherwise if it's a group op (e.g. math.*,
+                              // this'll be that parent
+        uint64_t     opcode;  // the opcode bits we tried to lookup
+                              // for subfunctions (e.g. math.*), this'll be
+                              // the subfunction bits we were looking for
+    };
+
+
     // Corresponds to a platform model (e.g. GEN9)
     // Has methods to lookup the various operations (OpSpec's) by name
     // opcode value (7 bit encoding), and enumeration value (Op).
@@ -263,82 +303,64 @@ namespace iga
 
         const OpSpec&        lookupOpSpec(Op op) const;
         const OpSpec&        lookupOpSpecByCode(unsigned opcode) const;
-        const OpSpec&        lookupOpSpecByBits(const void *bits) const; // walk bits
+        const OpSpec&        lookupOpSpecFromBits(const void *bits, OpSpecMissInfo &missInfo) const;
         const OpSpec&        lookupGroupSubOp(Op op, unsigned fc_bits) const;
         const OpSpec*        lookupSubOpParent(const OpSpec &os) const;
-        const RegInfo*       lookupRegInfoByCode(const uint8_t encoding) const;
+        const RegInfo*       lookupArfRegInfoByCode(const uint8_t encoding) const; // given the high 4 bits (shift down)
+        const RegInfo*       lookupRegInfoByName(RegName name) const;
 
-        // TODO: add functions for this so we can make this parameterizable
-        // const FlagModifier  *lookupFlagModifier(const char *name);
 
         static const Model  *LookupModel(Platform platform);
 
-        bool platformCheck1() const
-        {
-            return true;
-        }
-        bool platformCheck2() const
-        {
-            return true;
-        }
-        bool platformCheck3() const
-        {
-            return platform >= Platform::GEN9;
-        }
-        bool platformCheck4() const
-        {
-            return platform < Platform::GEN10;
-        }
-        bool platformCheck5() const
-        {
-            return platform <= Platform::GEN10;
-        }
-        bool platformCheck6() const
+
+        bool supportsHwDeps() const
         {
             return false;
         }
-        bool platformCheck7() const
-        {
+        // send is unary (sends is binary)
+        bool supportsUnarySend() const {
+            return supportsHwDeps();
+        }
+        // sends merged with send (send is binary)
+        bool supportsUnifiedSend() const {
+            return !supportsHwDeps();
+        }
+        // registers in control flow is stored in src1 for
+        // certain instructions
+        bool supportsSrc1CtrlFlow() const {
+            return supportsUnarySend();
+        }
+
+        // the wait instruction exists
+        bool supportsWait() const { return supportsHwDeps(); }
+
+        // ImplAcc must be Align16
+        bool supportsAlign16ImplicitAcc() const {
             return platform <= Platform::GEN10;
         }
-        bool platformCheck8() const
-        {
-            return platform > Platform::GEN7P5 &&
-                   platform < Platform::GEN10;
+        // If the GED_ACCESS_MODE is supported
+        bool supportsAccessMode() const { return supportsAlign16ImplicitAcc(); }
+
+        // {NoSrcDepSet} allowed
+        bool supportNoSrcDepSet() const {
+            return platform >= Platform::GEN9 && !supportsUnifiedSend();
         }
-        bool platformCheck9() const
-        {
+        // {NoPreempt} allowed
+        bool supportsNoPreempt() const {
+            return platform >= Platform::GEN10 && !supportsUnifiedSend();
+        }
+        // implies that:
+        //  - branches don't have types
+        //  - the pc is always relative to pre-inc (even jmpi)
+        bool supportsSimplifiedBranches() const {
             return false;
         }
-        bool platformCheck10() const
-        {
-            return platform == Platform::GEN10;
-        }
 
-        bool supportsSwitch()           const { return platformCheck1(); }  
-        bool supportsDstDataType()      const { return platformCheck1(); }
-        bool supportsCompaction()       const { return platformCheck1(); }
-        bool supportsSrc1CtrlFlow()     const { return platformCheck1(); }
-        bool sendCheck2()               const { return platformCheck1(); }
-        bool supportsWaitDirect()       const { return platformCheck1(); }
-
-        bool supportsImplicitAcc()      const { return platformCheck2(); }
-        bool supportsAccessMode()       const { return platformCheck2(); }
-
-        bool supportNoSrcDepSet()       const { return platformCheck3(); }
-
-        bool supportsNoDD()             const { return platformCheck6(); }
-        bool sendCheck1()               const { return platformCheck6(); }
-
-        bool sendCheck3()               const { return platformCheck9(); }
-
-        bool supportsNoPreempt()        const { return !platformCheck4() && platformCheck1(); }
-
-        bool supportsAlign16()          const { return platformCheck7(); }  //platform <= Platform::GEN10;
-        bool supportsAlign16_2()        const { return platformCheck10(); } //platform == Platform::GEN10;
-        bool supportsNrmAlgn16AccDst()  const { return platformCheck8(); }  //platform > Platform::GEN7P5 && platform < Platform::GEN10;
-        bool needsSIMDFix()             const { return platformCheck4(); }  //platform < Platform::GEN10;
-        bool supportsAlign16MacroInst() const { return platformCheck5(); }  //platform <= Platform::GEN10;
+        bool supportsAlign16() const { return platform <= Platform::GEN10; }
+        bool supportsAlign16MacroOnly() const { return platform == Platform::GEN10; }
+        bool supportsNrmAlgn16AccDst()  const { return platform > Platform::GEN7P5 && platform < Platform::GEN10; }
+        bool supportsAlign16Ternary() const { return platform < Platform::GEN10; }
+        bool supportsAlign16MacroInst() const { return platform <= Platform::GEN10; }
     }; // class model
 } // namespace iga::*
 

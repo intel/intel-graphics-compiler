@@ -23,9 +23,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-
-#ifndef _IR_BUILDER_HANDLER_HPP_
-#define _IR_BUILDER_HANDLER_HPP_
+#ifndef _IGA_INST_BUILDER_HPP_
+#define _IGA_INST_BUILDER_HPP_
 
 #include "Kernel.hpp"
 #include "../asserts.hpp"
@@ -37,17 +36,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <set>
 #include <vector>
 
-namespace iga {
-// The parser handler is called by the parser when various productions are
-// encountered.  This allows us to separate IR construction from the actual
-// syntax processing.
+namespace iga
+{
+// The IR Builder is called by various instruction generators that build
+// full instructions from partial state.  This allows us to separate IR
+// construction from the actual syntax processing or decoding.
 //
 // This is needed since we have to save information about the operands
 // during the parse.  We can't create operands as we see them since we don't
-// have an existing Instruction * until endInstruction().   E.g. createSend
+// have an existing Instruction * until InstEnd().   E.g. createSend
 // requires us having seen exDesc and desc.  Since these follow the operands;
-// hence, we must save operand info as we go.
-struct OperandInfo {
+// hence, we must save operand info as state as we go.  This allows us to
+// treat instructions as more immutable entities rather than complex state
+// machines (via mutation) and allows us to be a little more sure that
+// Instruction values are correct states.
+//
+// A better decision would be to make the IR types mutable by at least this
+// class
+struct OperandInfo
+{
     Loc                      loc;
     Operand::Kind            kind;
 
@@ -82,8 +89,24 @@ struct OperandInfo {
             Block           *immBlock;
         };
     };
-    std::string              immLabel; // has constructor
+    std::string              immLabel; // implies a constructor for this class
     Type                     type;
+
+    void reset()
+    {
+        kind = Operand::Kind::INVALID;
+        regOpSrcMod = SrcModifier::NONE;
+        regOpName = RegName::INVALID;
+        regOpRgn = Region::INVALID;
+        regOpImplAcc = ImplAcc::INVALID;
+        regOpIndReg = REGREF_ZERO_ZERO;
+        regOpIndOff = 0;
+        immBlock = nullptr;
+        immValue.u64 = 0;
+        immValue.kind = ImmVal::UNDEF;
+        immLabel.clear();
+        type = Type::INVALID;
+    }
 };
 
 
@@ -128,6 +151,8 @@ class InstBuilder {
     SendDescArg                 m_desc;
     InstOptSet                  m_instOpts;
 
+    std::string                 m_comment;
+
     Block                      *m_currBlock;
 
     BlockMap                    m_blocks;
@@ -158,14 +183,9 @@ class InstBuilder {
 
         m_dstModifier = DstModifier::NONE;
 
-        m_dst.kind = Operand::Kind::INVALID;
-        m_dst.immBlock = nullptr;
-        m_dst.immLabel.clear();
+        m_dst.reset();
         for (auto &m_src : m_srcs) {
-            m_src.regOpSrcMod = SrcModifier::NONE;
-            m_src.kind = Operand::Kind::INVALID;
-            m_src.immBlock = nullptr;
-            m_src.immLabel.clear();
+            m_src.reset();
         }
         m_nSrcs = 0;
 
@@ -173,6 +193,8 @@ class InstBuilder {
         m_desc.imm = 0;
 
         m_instOpts.clear();
+
+        m_comment.clear();
     }
 
     Block *lookupBlock(const std::string &label) {
@@ -186,7 +208,7 @@ class InstBuilder {
         }
         return b;
     }
-    Block *lookupBlockNumeric(const Loc &loc, const int64_t absPc) {
+    Block *lookupBlockNumeric(const Loc &loc, int64_t absPc) {
         std::stringstream ss;
         ss << "." << absPc;
         Block *b = lookupBlock(ss.str());
@@ -199,9 +221,7 @@ class InstBuilder {
         return b;
     }
 
-    // splits block b at x
-    //   lbl is one of the numeric labels targeting this numeric block
-    //   (for error reporting)
+    // splits block b at location x
     // x must be within b
     // => if x extends past the end of the block, it's an error
     // => if x doesn't land on an instruction boundary, it's an error
@@ -248,6 +268,7 @@ public:
         : m_model(kernel->getModel())
         , m_errorHandler(e)
         , m_kernel(kernel)
+        , m_currBlock(nullptr)
     {
     }
 
@@ -398,7 +419,8 @@ public:
 
 
     void InstEnd(uint32_t extent) {
-        // set the full instruction length (in chars)
+        // set the full instruction length in chars (for text)
+        // or bytes (for decoding bits)
         m_loc.extent = extent;
 
         Instruction *inst = nullptr;
@@ -475,6 +497,7 @@ public:
                     m_dst.regOpName,
                     m_dst.regOpReg,
                     m_dst.regOpImplAcc,
+                    m_dst.regOpRgn.getHz(),
                     m_dst.type);
             } else { // Operand::Kind::INDIRECT
                 inst->setInidirectDestination(
@@ -505,6 +528,7 @@ public:
                     src.regOpName,
                     src.regOpReg,
                     src.regOpImplAcc,
+                    src.regOpRgn,
                     src.type);
             } else if (src.kind == Operand::Kind::INDIRECT) {
                 inst->setInidirectSource(
@@ -525,9 +549,11 @@ public:
         inst->addInstOpts(m_instOpts);
         inst->setID(m_nextId++);
         inst->setDecodePC(m_pc);
+        if (!m_comment.empty()) {
+            inst->setComment(m_comment);
+        }
         m_pc += inst->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
     }
-
 
     void InstPredication(
         const Loc &loc,
@@ -570,7 +596,10 @@ public:
 
 
     // The flag modifier (condition modifier)
-    void InstFlagModifier(const RegRef &flagReg, FlagModifier flmodf) {
+    void InstFlagModifier(
+        RegRef flagReg,
+        FlagModifier flmodf)
+    {
         m_flagModifier = flmodf;
         m_flagReg = flagReg;
     }
@@ -590,14 +619,34 @@ public:
     void InstDstOpRegDirect(
         const Loc &loc,
         const RegInfo &ri,
-        const RegRef &reg,
-        const Region::Horz &rgnHorz,
-        const Type &ty)
+        RegRef reg,
+        Region::Horz rgnHorz,
+        Type ty)
+    {
+        InstDstOpRegDirect(loc,ri.reg,reg,rgnHorz,ty);
+    }
+    void InstDstOpRegDirect(
+        const Loc &loc,
+        RegName rn,
+        int reg,
+        Region::Horz rgnHorz,
+        Type ty)
+    {
+        RegRef rr{(uint8_t)reg,0};
+        InstDstOpRegDirect(loc,rn,rr,rgnHorz,ty);
+    }
+    void InstDstOpRegDirect(
+        const Loc &loc,
+        RegName rn,
+        RegRef reg,
+        Region::Horz rgnHorz,
+        Type ty)
     {
         m_dst.kind = Operand::Kind::DIRECT;
+        m_dst.loc = loc;
 
         m_dst.regOpDstMod = m_dstModifier;
-        m_dst.regOpName = ri.reg;
+        m_dst.regOpName = rn;
         m_dst.regOpReg = reg;
         m_dst.regOpRgn.setDstHz(rgnHorz);
         m_dst.type = ty;
@@ -607,30 +656,44 @@ public:
     // e.g. r13.acc4:t
     void InstDstOpRegImplAcc(
         const Loc &loc,
-        const RegInfo &ri,
+        RegName rnm,
         int regNum,
         ImplAcc implAcc,
-        const Type &ty)
+        Region::Horz rgnH,
+        Type ty)
     {
         m_dst.kind = Operand::Kind::MACRO;
+        m_dst.loc = loc;
 
         m_dst.regOpDstMod = m_dstModifier;
-        m_dst.regOpName = ri.reg;
+        m_dst.regOpName = rnm;
         m_dst.regOpReg = {(uint8_t)regNum, 0};
-        m_dst.regOpRgn = Region::DST1;
+        m_dst.regOpRgn.setDstHz(rgnH);
         m_dst.regOpImplAcc = implAcc;
         m_dst.type = ty;
+    }
+    void InstDstOpRegImplAcc(
+        const Loc &loc,
+        const RegInfo &ri,
+        RegName rnm,
+        int regNum,
+        ImplAcc implAcc,
+        Region::Horz rgnH,
+        Type ty)
+    {
+        InstDstOpRegImplAcc(loc, ri.reg, regNum, implAcc, rgnH, ty);
     }
 
     // e.g. r[a0.4,16]<2>:t
     void InstDstOpRegIndirect(
         const Loc &loc,
-        const RegRef &addrReg,
+        RegRef addrReg,
         int addrOff,
-        const Region::Horz &rgnHorz,
-        const Type &ty)
+        Region::Horz rgnHorz,
+        Type ty)
     {
         m_dst.kind = Operand::Kind::INDIRECT;
+        m_dst.loc = loc;
 
         m_dst.regOpDstMod = m_dstModifier;
         m_dst.regOpName = RegName::GRF_R;
@@ -641,8 +704,9 @@ public:
     }
 
     // a more generic setter
-    void InstDstOp(OperandInfo opInfo) {
+    void InstDstOp(const OperandInfo &opInfo) {
         m_dst = opInfo;
+        validateOperandInfo(opInfo);
     }
 
     /////////////////////////////////////////////
@@ -654,20 +718,33 @@ public:
     void InstSrcOpRegDirect(
         int srcOpIx, // index of the current source operand
         const Loc &loc,
-        SrcModifier srcMod, // source modifiers on this operand
-        const RegInfo &ri, // the type of register
-        const RegRef &rr, // register/subregister
-        const Region &rgn, // region parameters
-        const Type &ty)
+        RegName rnm, // the type of register
+        int reg, // register/subregister
+        Region rgn, // region parameters
+        Type ty)
     {
-        m_nSrcs = m_nSrcs < srcOpIx + 1 ? srcOpIx + 1 : m_nSrcs;
-        OperandInfo &src = m_srcs[srcOpIx];
+        RegRef rr{(uint8_t)reg,0};
+        InstSrcOpRegDirect(srcOpIx, loc, SrcModifier::NONE, rnm, rr, rgn, ty);
+    }
+    void InstSrcOpRegDirect(
+        int srcOpIx, // index of the current source operand
+        const Loc &loc,
+        SrcModifier srcMod, // source modifiers on this operand
+        RegName rnm, // the type of register
+        RegRef rr, // register/subregister
+        Region rgn, // region parameters
+        Type ty)
+    {
+        OperandInfo src = m_srcs[srcOpIx]; // copy init values
+        src.loc = loc;
         src.kind = Operand::Kind::DIRECT;
         src.regOpSrcMod = srcMod;
-        src.regOpName = ri.reg;
+        src.regOpName = rnm;
         src.regOpReg = rr;
         src.regOpRgn = rgn;
         src.type = ty;
+
+        InstSrcOp(srcOpIx, src);
     }
     // Implicit accumulator
     // e.g. r13.acc4:t
@@ -675,20 +752,23 @@ public:
         int srcOpIx, // index of the current source operand
         const Loc &loc,
         SrcModifier srcMod, // source modifiers on this operand
-        const RegInfo &ri, // the type of register
+        RegName rnm, // the type of register
         int regNum,
         ImplAcc implAcc,
-        const Type &ty)
+        Region rgn,
+        Type ty)
     {
-        m_nSrcs = m_nSrcs < srcOpIx + 1 ? srcOpIx + 1 : m_nSrcs;
-        OperandInfo &src = m_srcs[srcOpIx];
+        OperandInfo src = m_srcs[srcOpIx]; // copy init values
+        src.loc = loc;
         src.kind = Operand::Kind::MACRO;
         src.regOpSrcMod = srcMod;
-        src.regOpName = ri.reg;
+        src.regOpName = rnm;
         src.regOpReg = {(uint8_t)regNum, 0};
-        src.regOpRgn = Region::INVALID;
+        src.regOpRgn = rgn;
         src.regOpImplAcc = implAcc;
         src.type = ty;
+
+        InstSrcOp(srcOpIx, src);
     }
     // Parsed a source indirect operand
     //
@@ -697,13 +777,13 @@ public:
         int srcOpIx, // index of the current source operand
         const Loc &loc,
         const SrcModifier &srcMod, // source modifiers on this operand
-        const RegRef &addrReg,
+        RegRef addrReg,
         int addrOff, // e.g. 16 in r[a0.3,16] (0 if absent)
-        const Region &rgn,
-        const Type &ty)
+        Region rgn,
+        Type ty)
     {
-        m_nSrcs = m_nSrcs < srcOpIx + 1 ? srcOpIx + 1 : m_nSrcs;
-        OperandInfo &src = m_srcs[srcOpIx];
+        OperandInfo src = m_srcs[srcOpIx]; // copy init values
+        src.loc = loc;
         src.kind = Operand::Kind::INDIRECT;
         src.regOpSrcMod = srcMod;
         src.regOpName = RegName::GRF_R;
@@ -711,6 +791,8 @@ public:
         src.regOpIndOff = (uint16_t)addrOff;
         src.regOpRgn = rgn;
         src.type = ty;
+
+        InstSrcOp(srcOpIx, src);
     }
 
 
@@ -723,13 +805,15 @@ public:
         int srcOpIx,
         const Loc &loc,
         const ImmVal &val,
-        const Type &ty)
+        Type ty)
     {
-        m_nSrcs = m_nSrcs < srcOpIx + 1 ? srcOpIx + 1 : m_nSrcs;
-        OperandInfo &src = m_srcs[srcOpIx];
+        OperandInfo src = m_srcs[srcOpIx]; // copy init values
+        src.loc = loc;
         src.kind = Operand::Kind::IMMEDIATE;
         src.immValue = val;
         src.type = ty;
+
+        InstSrcOp(srcOpIx, src);
     }
 
 
@@ -740,13 +824,15 @@ public:
         const std::string &sym,
         Type type)
     {
-        m_nSrcs = m_nSrcs < srcOpIx + 1 ? srcOpIx + 1 : m_nSrcs;
-        OperandInfo &src = m_srcs[srcOpIx];
+        OperandInfo src = m_srcs[srcOpIx]; // copy init values
+        src.loc = loc;
         src.kind = Operand::Kind::LABEL;
         src.immBlock = lookupBlock(sym);
         src.type = type;
 
         m_blocksRefed[src.immBlock] = loc;
+
+        InstSrcOp(srcOpIx, src);
     }
 
 
@@ -754,40 +840,66 @@ public:
     void InstSrcOpImmLabelRelative(
       int srcOpIx,
       const Loc &loc,
-      const int64_t relPc, // the actual PC relative to program start
+      int64_t relPc, // the actual PC relative to program start
       Type type)
     {
-      InstSrcOpImmLabelAbsolute(srcOpIx, loc, relPc + (int64_t)m_pc, type);
+        InstSrcOpImmLabelAbsolute(srcOpIx, loc, relPc + (int64_t)m_pc, type);
     }
     // calla directly calls this, everything else goes through relative
     // (see above)
     void InstSrcOpImmLabelAbsolute(
       int srcOpIx,
       const Loc &loc,
-      const int64_t absPc, // the actual PC relative to program start
+      int64_t absPc, // the actual PC relative to program start
       Type type)
     {
-      m_nSrcs = m_nSrcs < srcOpIx + 1 ? srcOpIx + 1 : m_nSrcs;
-      OperandInfo &src = m_srcs[srcOpIx];
-      src.kind = Operand::Kind::LABEL;
-      src.immBlock = lookupBlockNumeric(loc, (int64_t)absPc);
-      src.type = type;
+        OperandInfo src = m_srcs[srcOpIx]; // copy init values
+        src.loc = loc;
+        src.kind = Operand::Kind::LABEL;
+        src.immBlock = lookupBlockNumeric(loc, (int64_t)absPc);
+        src.type = type;
 
-      m_blocksRefed[src.immBlock] = loc;
+        InstSrcOp(srcOpIx, src);
+
+        m_blocksRefed[src.immBlock] = loc;
     }
 
+
     // a more generic setter
-    void InstSrcOp(int srcOpIx, OperandInfo opInfo) {
+    void InstSrcOp(int srcOpIx, const OperandInfo &opInfo) {
+        m_nSrcs = m_nSrcs < srcOpIx + 1 ? srcOpIx + 1 : m_nSrcs;
+
+        validateOperandInfo(opInfo);
         m_srcs[srcOpIx] = opInfo;
+    }
+
+    void validateOperandInfo(const OperandInfo &opInfo) {
+#ifdef _DEBUG
+        // some sanity validation
+        switch (opInfo.kind) {
+        case Operand::Kind::DIRECT:
+            break;
+        case Operand::Kind::MACRO:
+            break;
+        case Operand::Kind::INDIRECT:
+            break;
+        case Operand::Kind::IMMEDIATE:
+        case Operand::Kind::LABEL:
+            break;
+        default:
+            IGA_ASSERT_FALSE("OperandInfo::kind: invalid value");
+            break;
+        }
+#endif
     }
 
     // send descriptors
     // E.g. "send ... 0xC  a0.0"
     // (we translate  this to:  a0.0<0;1,0>:ud)
     void InstSendDescs(
-        const Loc &locDesc,
-        const SendDescArg &exDesc,
         const Loc &locExDesc,
+        const SendDescArg &exDesc,
+        const Loc &locDesc,
         const SendDescArg &desc)
     {
         m_exDesc = exDesc;
@@ -801,6 +913,12 @@ public:
         m_instOpts = instOpts;
     }
 
+
+    // sets Instruction::setComment()
+    void InstComment(std::string comment)
+    {
+        m_comment = comment;
+    }
 
 }; // class ParseHandler
 

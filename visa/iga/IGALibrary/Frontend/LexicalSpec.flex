@@ -24,10 +24,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /*
  * Contains the lexical specification for Intel Gen Assembly.
+ *
  * Build with:
  *   % flex ThisFile.flex
- * First constructed with flex 2.5.39
- * It should build without warnings.
+ * First constructed with flex 2.5.39 (you can use Cygwin if you want).
+ *         update 3/2018: flex 2.6.4
+ * *** It should build without warnings. ***
+ *   => It's nice to strip end of line whitespace on the generated files.
  */
 
 #include "Lexemes.hpp"
@@ -83,8 +86,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 \(                    return iga::Lexeme::LPAREN;
 \)                    return iga::Lexeme::RPAREN;
 
-\|                    return iga::Lexeme::PIPE;
-\&                    return iga::Lexeme::AMP;
 \$                    return iga::Lexeme::DOLLAR;
 \.                    return iga::Lexeme::DOT;
 \,                    return iga::Lexeme::COMMA;
@@ -107,15 +108,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 \-                    return iga::Lexeme::SUB;
 \<<                   return iga::Lexeme::LSH;
 \>>                   return iga::Lexeme::RSH;
+\&                    return iga::Lexeme::AMP;
+\^                    return iga::Lexeme::CIRC;
+\|                    return iga::Lexeme::PIPE;
+
+0[bB][01]+             return iga::Lexeme::INTLIT02; /* 0b1101 */
+[0-9]+                 return iga::Lexeme::INTLIT10; /* 13 */
+0[xX][0-9A-Fa-f]+      return iga::Lexeme::INTLIT16; /* 0x13 */
+
+[0-9]+\.[0-9]+([eE][-+]?[0-9]+)?  return iga::Lexeme::FLTLIT; /* 3.14 */
+[0-9]+[eE][-+]?[0-9]+  return iga::Lexeme::FLTLIT; /* 3e-9 */
 
 [_a-zA-Z][_a-zA-Z0-9]*  return iga::Lexeme::IDENT;
+[0-9]+[_a-zA-Z]+[_a-zA-Z0-9]     return iga::Lexeme::IDENT; /* enables identifier such as "128x16"; not we treat 0x13 as a hex int */
 
-0[bB][01]+             return iga::Lexeme::INTLIT02;
-[0-9]+                 return iga::Lexeme::INTLIT10;
-0[xX][0-9A-Fa-f]+      return iga::Lexeme::INTLIT16;
-
-[0-9]+\.[0-9]+([eE][-+]?[0-9]+)?  return iga::Lexeme::FLTLIT;
-[0-9]+[eE][-+]?[0-9]+  return iga::Lexeme::FLTLIT;
 
 \n                     return iga::Lexeme::NEWLINE; /* newlines are explicitly represented */
 [ \t\r]+               { inp_off += (unsigned int)yyget_leng(yyscanner); } /* whitespace */;

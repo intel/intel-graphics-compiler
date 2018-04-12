@@ -1505,10 +1505,10 @@ void GEDIns::ApplyNativeEncodingMasks()
 
         // Verify that this is a masks entry.
         GEDASSERTM(GED_MASKS_TABLE_ENTRY_TYPE_MASKS == table[tableIndex]._entryType, DecStr(table[tableIndex]._entryType));
-        for (unsigned int i = 0; i < GED_NUM_OF_NATIVE_INS_DWORDS; ++i)
+        for (unsigned int dword = 0; dword < GED_NUM_OF_NATIVE_INS_DWORDS; ++dword)
         {
-            ((uint32_t*)_nativeBytes)[i] |= ((uint32_t*)(table[tableIndex]._masks._or))[i];
-            ((uint32_t*)_nativeBytes)[i] &= ((uint32_t*)(table[tableIndex]._masks._and))[i];
+            ((uint32_t*)_nativeBytes)[dword] |= ((uint32_t*)(table[tableIndex]._masks._or))[dword];
+            ((uint32_t*)_nativeBytes)[dword] &= ((uint32_t*)(table[tableIndex]._masks._and))[dword];
         }
     }
     SetNativeEncoded();
@@ -1544,10 +1544,10 @@ void GEDIns::ApplyCompactEncodingMasks(unsigned char* compactBytes)
 
         // Verify that this is a masks entry.
         GEDASSERT(GED_MASKS_TABLE_ENTRY_TYPE_MASKS == table[tableIndex]._entryType);
-        for (unsigned int i = 0; i < GED_NUM_OF_COMPACT_INS_DWORDS; ++i)
+        for (unsigned int dword = 0; dword < GED_NUM_OF_COMPACT_INS_DWORDS; ++dword)
         {
-            ((uint32_t*)compactBytes)[i] |= ((uint32_t*)(table[tableIndex]._masks._or))[i];
-            ((uint32_t*)compactBytes)[i] &= ((uint32_t*)(table[tableIndex]._masks._and))[i];
+            ((uint32_t*)compactBytes)[dword] |= ((uint32_t*)(table[tableIndex]._masks._or))[dword];
+            ((uint32_t*)compactBytes)[dword] &= ((uint32_t*)(table[tableIndex]._masks._and))[dword];
         }
     }
     SetCompactEncoded();
@@ -1577,10 +1577,10 @@ void GEDIns::BuildNativeOrMask(unsigned char* orMask) const
 
         // Verify that this is a masks entry.
         GEDASSERTM(GED_MASKS_TABLE_ENTRY_TYPE_MASKS == table[tableIndex]._entryType, DecStr(table[tableIndex]._entryType));
-        for (unsigned int i = 0; i < GED_NUM_OF_NATIVE_INS_DWORDS; ++i)
+        for (unsigned int dword = 0; dword < GED_NUM_OF_NATIVE_INS_DWORDS; ++dword)
         {
-            ((uint32_t*)orMask)[i] |= ((uint32_t*)(table[tableIndex]._masks._or))[i];
-            ((uint32_t*)orMask)[i] &= ((uint32_t*)(table[tableIndex]._masks._and))[i];
+            ((uint32_t*)orMask)[dword] |= ((uint32_t*)(table[tableIndex]._masks._or))[dword];
+            ((uint32_t*)orMask)[dword] &= ((uint32_t*)(table[tableIndex]._masks._and))[dword];
         }
     }
 }

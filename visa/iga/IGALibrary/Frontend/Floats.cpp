@@ -271,29 +271,33 @@ void iga::FormatFloat(std::ostream &os, uint8_t x)
     FormatFloat(os, ConvertQuarterToFloatGEN(x));
 }
 
+uint32_t iga::ConvertDoubleToFloatBits(double f)
+{
+	uint64_t f64 = FloatToBits(f);
+
+	uint64_t m64 = f64 & IGA_F64_MANT_MASK;
+	uint64_t e64 = (f64 & IGA_F64_EXP_MASK) >> FloatMantissaBits<double>();
+	if (e64 == (IGA_F64_EXP_MASK >> FloatMantissaBits<double>()) && m64 != 0) {
+		// f64 NaN
+		uint32_t m32 = (uint32_t)m64 & IGA_F32_MANT_MASK;
+		m32 |= (uint32_t)((m64 & IGA_F64_SNAN_BIT) >>
+			(FloatMantissaBits<double>() - FloatMantissaBits<float>())); // preserve snan
+		if (m32 == 0) {
+			// The payload was only in the high bits which we dropped;
+			// make it non-zero so we retain NaN'ness
+			m32 = 1;
+		}
+		uint32_t s32 = (uint32_t)(f64 >> 32) & IGA_F32_SIGN_BIT;
+		return (s32 | IGA_F32_EXP_MASK | m32);
+	} else {
+		// regular conversion can deal with all the other special cases
+		return FloatToBits((float)f);
+	}
+}
 
 float iga::ConvertDoubleToFloat(double f)
 {
-    uint64_t f64 = FloatToBits(f);
-
-    uint64_t m64 = f64 & IGA_F64_MANT_MASK;
-    uint64_t e64 = (f64 & IGA_F64_EXP_MASK) >> FloatMantissaBits<double>();
-    if (e64 == (IGA_F64_EXP_MASK >> FloatMantissaBits<double>()) && m64 != 0) {
-        // f64 NaN
-        uint32_t m32 = (uint32_t)m64 & IGA_F32_MANT_MASK;
-        m32 |= (uint32_t)((m64 & IGA_F64_SNAN_BIT) >>
-            (FloatMantissaBits<double>() - FloatMantissaBits<float>())); // preserve snan
-        if (m32 == 0) {
-            // The payload was only in the high bits which we dropped;
-            // make it non-zero so we retain NaN'ness
-            m32 = 1;
-        }
-        uint32_t s32 = (uint32_t)(f64 >> 32) & IGA_F32_SIGN_BIT;
-        return FloatFromBits(s32 | IGA_F32_EXP_MASK | m32);
-    } else {
-        // regular conversion can deal with all the other special cases
-        return (float)f;
-    }
+	return FloatFromBits(ConvertDoubleToFloatBits(f));
 }
 
 // TODO: generalize this to all IEEE sizes once we're confident it works and

@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Interface.hpp"
 #include "InstEncoder.hpp"
 #include "../BitProcessor.hpp"
+#include "../../strings.hpp"
 
 #include <vector>
 
@@ -68,17 +69,16 @@ using namespace iga;
 // located (e.g. see Native/PreG12 for older encodings).
 //
 ///////////////////////////////////////////////////////////////////////////
-
 template <Platform P>
 static size_t encodeInst(
     InstEncoder &enc,
     const EncoderOpts &opts,
     int ix, // instruction's index in the output array
-    Instruction *i,
+    Instruction *inst,
     MInst *bits)
 {
-    bool mustCompact = i->hasInstOpt(InstOpt::COMPACTED);
-    bool mustntCompact = i->hasInstOpt(InstOpt::NOCOMPACT);
+    bool mustCompact = inst->hasInstOpt(InstOpt::COMPACTED);
+    bool mustntCompact = inst->hasInstOpt(InstOpt::NOCOMPACT);
 
     CompactionDebugInfo *cbdi = nullptr;
     CompactionDebugInfo mustCompactDebugInfo;
@@ -89,12 +89,12 @@ static size_t encodeInst(
     }
 
     // encode native
-    enc.encodeInstruction<P>(ix, *i, bits);
+    enc.encodeInstruction<P>(ix, *inst, bits);
 
     if (mustCompact || opts.autoCompact && !mustntCompact) {
         // attempt compaction
         InstCompactor ic(enc);
-        auto cr = ic.tryToCompact<P>(&i->getOpSpec(), *bits, bits, cbdi);
+        auto cr = ic.tryToCompact<P>(&inst->getOpSpec(), *bits, bits, cbdi);
         switch (cr) {
         case CompactionResult::CR_MISS:
         case CompactionResult::CR_NO_FORMAT:
@@ -118,9 +118,22 @@ static size_t encodeInst(
                         ss << " ";
                     }
                     ss << cIx->index.name;
-                    ss << " (0x" << std::hex << cbdi->fieldMapping[i] << ": ";
+                    uint64_t mappedValue = cbdi->fieldMapping[i];
+                    ss << " (0x" << std::hex << mappedValue << ": ";
+                    // convert the field mapping value to separated form
+                    // e.g. 00`0110`...
+                    int bIx = (int)cIx->countNumBitsMapped();
+                    for (int fIx = (int)cIx->numMappings; fIx >= 0; --fIx) {
+                        const Field *f = cIx->mappings[fIx];
+                        auto mVal = getBits(
+                            mappedValue, bIx - f->length, f->length);
+                        fmtBinary(ss, f->length, mVal);
+                        if (fIx > 0) {
+                            ss << "`";
+                        }
+                    }
                     if (cIx->format) {
-                        ss << cIx->format(cbdi->fieldMapping[i]) << ")";
+                        ss << cIx->format(inst->getOp(), cbdi->fieldMapping[i]) << ")";
                     }
                 }
                 if (len > 3) {
@@ -139,9 +152,9 @@ static size_t encodeInst(
             }
             ss << ")";
             if (opts.explicitCompactMissIsWarning) {
-                enc.warningAt(i->getLoc(), ss.str().c_str());
+                enc.warningAt(inst->getLoc(), ss.str().c_str());
             } else {
-                enc.errorAt(i->getLoc(), ss.str().c_str());
+                enc.errorAt(inst->getLoc(), ss.str().c_str());
             }
             break;
         }
@@ -236,13 +249,13 @@ static void EncodeSerial(
     ErrorHandler &eh,
     Kernel &k,
     void *&bits,
-    int &bitsLen)
+    size_t &bitsLen)
 {
     SerialEncoder<P> se(eh, opts);
     se.encodeKernel(k);
     if (!eh.hasErrors()) {
         bits = se.instBufBase;
-        bitsLen = se.instBufTotalBytes;
+        bitsLen = (size_t)se.instBufTotalBytes;
     } else {
         bits = nullptr;
         bitsLen = 0;
@@ -345,7 +358,18 @@ static void EncodeParallel(
 #endif
 }
 #endif
-
+bool iga::native::IsEncodeSupported(
+    const Model &m,
+    const EncoderOpts &opts)
+{
+    switch (m.platform)
+    {
+    case Platform::GEN10:
+    default:
+        break;
+    }
+    return false;
+}
 
 void iga::native::Encode(
     const Model &model,
@@ -353,33 +377,90 @@ void iga::native::Encode(
     ErrorHandler &eh,
     Kernel &k,
     void *&bits,
-    int &bitsLen)
+    size_t &bitsLen)
 {
     switch (model.platform)
     {
-    case Platform::GENNEXT:
-        break;
+    case Platform::GEN10:
     default:
-        eh.reportError(0, "unsupported platform for native encoder");
+        IGA_ASSERT_FALSE("platform not supported; "
+            "caller should have checked via iga::native::IsEncodeSupported");
     }
 }
+
+
+
+bool iga::native::IsDecodeSupported(
+    const Model &m,
+    const DecoderOpts &opts)
+{
+    switch (m.platform)
+    {
+    case Platform::GEN10: break;
+    default: break;
+    }
+    return false;
+}
+
+Kernel *iga::native::Decode(
+    const Model &m,
+    const DecoderOpts &dopts,
+    ErrorHandler &eh,
+    const void *bits,
+    size_t bitsLen)
+{
+    Kernel *k = nullptr;
+    switch (m.platform)
+    {
+    case Platform::GEN10:
+    default:
+        IGA_ASSERT_FALSE("invalid platform for decode; "
+            "caller should have checked via iga::native::IsDecodeSupported");
+    }
+
+/*
+    // if valid, the kernel k contains all the instructions in a single block
+    // if we are asked for symbolic labels, we do that here
+    if (k && !dopts.useNumericLabels) {
+        const BlockList &bl = k->getBlockList();
+        if (bl.empty()) {
+            return k; // empty kernel
+        }
+        IGA_ASSERT(bl.size() == 1, "expected only one block");
+
+        auto blockStarts = Block::inferBlocks(
+            eh,
+            bitsLen,
+            k->getMemManager(),
+            insts);
+        for (auto bitr : blockStarts) {
+            k->appendBlock(bitr.second);
+        }
+
+        delete k;
+        k = copy;
+    }
+*/
+
+    return k;
+}
+
 
 void iga::native::DecodeFields(
     Loc loc,
-    const Model &model,
+    const Model &m,
     const void *bits,
     FieldList &fields,
-    ErrorHandler &errHandler)
+    ErrorHandler &eh)
 {
-    switch (model.platform)
+    switch (m.platform)
     {
-    case Platform::GENNEXT:
+    case Platform::GEN10:
     default:
-        IGA_ASSERT_FALSE("invalid platform for decode");
-        break;
+        IGA_ASSERT_FALSE("invalid platform for decode; "
+            "caller should have checked via iga::native::IsDecodeSupported");
     }
 }
-
 
 CompactionResult iga::native::DebugCompaction(
     const Model &m,
@@ -397,11 +478,19 @@ CompactionResult iga::native::DebugCompaction(
         return CompactionResult::CR_SUCCESS;
     }
 
-    switch (m.platform)
-    {
-    case Platform::GENNEXT:
-    default:
+    OpSpecMissInfo missInfo;
+    const OpSpec &os = m.lookupOpSpecFromBits(inputBits, missInfo);
+    if (!os.isValid()) {
         return CompactionResult::CR_NO_FORMAT;
     }
+
+    switch (m.platform)
+    {
+    case Platform::GEN10:
+    default:
+        IGA_ASSERT_FALSE("invalid platform for decode; "
+            "caller should have checked via iga::native::IsDecodeSupported");
+    }
+    return CompactionResult::CR_NO_FORMAT;
 }
 

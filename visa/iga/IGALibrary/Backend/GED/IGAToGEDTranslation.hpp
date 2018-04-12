@@ -400,9 +400,6 @@ namespace iga
             case SrcModifier::NEG_ABS:
                 srcMod = GED_SRC_MOD_Negative_Absolute;
                 break;
-            case SrcModifier::NOT:
-                srcMod = GED_SRC_MOD_Negative;
-                break;
             default:
                 break;
             }

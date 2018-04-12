@@ -68,7 +68,6 @@ namespace iga
             , m_instID(0xFFFFFFFF)
             , m_pc(-1)
             , m_instLoc(Loc::INVALID)
-            , m_comment(nullptr)
         {
             m_pred.function = PredCtrl::NONE;
             m_pred.inverse = false;
@@ -86,48 +85,50 @@ namespace iga
         void setExecSize(ExecSize es) { m_execSize = es; }
         void setBranchCntrl(BranchCntrl bc) { m_brnch = bc; }
         void setFlagModifier(FlagModifier flagModifier) { m_flagModifier = flagModifier; }
-        void setFlagReg(const RegRef &reg) { m_flagReg = reg; }
+        void setFlagReg(RegRef reg) { m_flagReg = reg; }
         void setPredication(const Predication &predOpnd) { m_pred = predOpnd; }
         void setPC(int32_t pc){ m_pc = pc; }
 
         void setDirectDestination(
             DstModifier dstMod,
-            RegName rType,
-            const RegRef& reg,
-            const Region::Horz& rgn,
+            RegName r,
+            RegRef reg,
+            Region::Horz rgn,
             Type type);
         void setMacroDestination(
             DstModifier dstMod,
             RegName r,
-            const RegRef &reg,
+            RegRef reg,
             ImplAcc acc,
+            Region::Horz rgn,
             Type type);
         void setInidirectDestination(
             DstModifier dstMod,
-            const RegRef &addrReg,
+            RegRef addrReg,
             int16_t immOffset,
-            const Region::Horz& rgnH,
+            Region::Horz rgnH,
             Type type);
         void setDirectSource(
             SourceIndex srcIx,
             SrcModifier srcMod,
             RegName rType,
-            const RegRef& reg,
-            const Region& rgn,
+            RegRef reg,
+            Region rgn,
             Type type);
         void setInidirectSource(
             SourceIndex srcIx,
             SrcModifier srcMod,
-            const RegRef& reg,
+            RegRef reg,
             int16_t m_immOffset,
-            const Region& rgn,
+            Region rgn,
             Type type);
         void setMacroSource(
             SourceIndex srcIx,
             SrcModifier srcMod,
             RegName r,
-            const RegRef &reg,
+            RegRef reg,
             ImplAcc acc,
+            Region rgn,
             Type type);
         void setImmediateSource(
             SourceIndex srcIx,
@@ -149,7 +150,7 @@ namespace iga
         void setExtMsgDesc(const SendDescArg &msg) { m_exDesc = msg; }
         void setDecodePC(int32_t pc) { m_pc = pc; }
         void setID(int id) { m_instID = id; }
-        void setComment(const char *comment) { m_comment = comment; }
+        void setComment(std::string comment) { m_comment = comment; }
         void addInstOpt(const InstOpt &opt) { m_instOpts.add(opt); }
         void addInstOpts(const InstOptSet &opts) { m_instOpts.add(opts); }
 
@@ -207,7 +208,7 @@ namespace iga
         const Block     *getUIP() const { return m_srcs[1].getTargetBlock(); }
         int              getID() const { return m_instID; }
         int32_t          getPC() const { return m_pc; }
-        const char      *getComment() const { return m_comment; }
+        const std::string  &getComment() const { return m_comment; }
         bool             isBranching() const { return getOpSpec().isBranching(); }
 
         void             validate() const; // asserts on malformed IR
@@ -226,10 +227,7 @@ namespace iga
         Operand          m_srcs[3];
         union
         {
-            struct
-            {
-                FlagModifier        m_flagModifier; // conditional-modifier function
-            };
+            FlagModifier        m_flagModifier; // conditional-modifier function
             BranchCntrl             m_brnch; // for certain branching instructions
             struct
             {
@@ -246,10 +244,10 @@ namespace iga
                                     // separate from the PC since we
                                     // use both during assembly
 
-        // e.g. for illegal instructions (decode errors)
-        // memory is allocated by the Kernel's memory manager containing this
-        // instruction (i.e. setter maintains this memory)
-        const char      *m_comment;
+        // e.g. for illegal instruction extended info (e.g. decode errors)
+        // enables us to emit things like
+        //        illegal {Compacted} // failed to uncompact ....
+        std::string      m_comment;
     }; // class Instruction
 } // namespace iga
 #endif //_IGA_INSTRUCTION_HPP_

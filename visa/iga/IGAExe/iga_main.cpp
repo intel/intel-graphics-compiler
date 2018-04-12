@@ -1,3 +1,28 @@
+/*===================== begin_copyright_notice ==================================
+
+Copyright (c) 2017 Intel Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+======================= end_copyright_notice ==================================*/
 #include "iga_main.hpp"
 #include "opts.hpp"
 
@@ -109,9 +134,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "specifies the output file",
         "This option sets the output file.  If unset iga defaults to stdout.",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *inp, const opts::ErrorHandler &err, Opts &opts) {
-            opts.outputFile = inp;
-        });
+        baseOpts.outputFile);
 
     // TODO: maybe treat this as a fused argument -W....
     // then we allow stuff like -Wregions,types,no-scheduling
@@ -197,6 +220,13 @@ extern "C" int iga_main(int argc, const char **argv)
                 "-Xdisable-ir-checking is deprecated; use -W* options");
         });
     xGrp.defineFlag(
+        "auto-deps",
+        nullptr,
+        "IGA automatically sets instruction dependency information",
+        "",
+        opts::OptAttrs::ALLOW_UNSET,
+        baseOpts.autosetDepInfo);
+    xGrp.defineFlag(
         "autocompact",
         nullptr,
         "auto compacts unmarked instructions",
@@ -205,63 +235,16 @@ extern "C" int iga_main(int argc, const char **argv)
         "has a Compacted or NoCompact annotation, IGA respects that unless"
         "the compacted form does not exist.",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler err, Opts &baseOpts) {
-            baseOpts.autoCompact = true;
-        });
+        baseOpts.autoCompact);
     xGrp.defineFlag(
-        "no-autocompact",
+        "dcmp",
         nullptr,
-        "the inverse (default) of -Xautocompact",
-        nullptr,
-        opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler err, Opts &baseOpts) {
-            baseOpts.autoCompact = false;
-        });
-    xGrp.defineFlag(
-        "list-ops",
-        nullptr,
-        "displays all ops for the given platform",
-        nullptr,
-        opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler err, Opts &baseOpts) {
-            baseOpts.mode = Opts::Mode::XLST;
-        });
-    xGrp.defineFlag(
-        "legacy-directives",
-        nullptr,
-        "enable some IsaAsm era directives",
-        "enables .default_execution_width and .default_type directives",
+        "debug compaction",
+        "This mode debugs an instruction's compaction.  The input format is the same as -Xifs\n"
+        "See that option for more information\n",
         opts::OptAttrs::ALLOW_UNSET,
         [] (const char *, const opts::ErrorHandler &err, Opts &baseOpts) {
-            baseOpts.legacyDirectives = true;
-        });
-    xGrp.defineFlag(
-        "warn-on-compact-fail",
-        nullptr,
-        "makes compaction failure a warning instead of an error",
-        "By default we fail if we are unable to compact an instruction with "
-        "the {Compacted} option set; this allows one to make it a warning",
-        opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &err, Opts &baseOpts) {
-            baseOpts.errorOnCompactFail = false;
-        });
-    xGrp.defineFlag(
-        "auto-deps",
-        nullptr,
-        "IGA automatically sets instruction dependency information",
-        "",
-        opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &err, Opts &baseOpts) {
-            baseOpts.autosetDepInfo = true;
-        });
-    xGrp.defineFlag(
-        "native-enc",
-        nullptr,
-        "Use IGA's native encoder",
-        "",
-        opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &err, Opts &baseOpts) {
-            baseOpts.useNativeEncoder = true;
+            baseOpts.mode = Opts::Mode::XDCMP;
         });
     xGrp.defineFlag(
         "ifs",
@@ -276,18 +259,58 @@ extern "C" int iga_main(int argc, const char **argv)
         "  % iga -p=9 -Xifs foo.krn9 \"64 00 43 00  a0 0a 05 00   24 01 00 80  00 00 00 00\"\n"
         "    decodes and compares the fields\n",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &err, Opts &baseOpts) {
+        [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
             baseOpts.mode = Opts::Mode::XIFS;
         });
     xGrp.defineFlag(
-        "dcmp",
+        "ldst-syntax",
         nullptr,
-        "debug compaction",
-        "This mode debugs an instruction's compaction.  The input format is the same as -Xifs\n"
-        "See that option for more information\n",
+        "displays all ops for the given platform",
+        nullptr,
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &err, Opts &baseOpts) {
-            baseOpts.mode = Opts::Mode::XDCMP;
+        [] (const char *, const opts::ErrorHandler &, Opts &baseOpts) {
+            baseOpts.printLdSt = true;
+        });
+    xGrp.defineFlag(
+        "legacy-directives",
+        nullptr,
+        "enable some IsaAsm era directives",
+        "enables .default_execution_width and .default_type directives",
+        opts::OptAttrs::ALLOW_UNSET,
+        baseOpts.legacyDirectives);
+    xGrp.defineFlag(
+        "list-ops",
+        nullptr,
+        "displays all ops for the given platform",
+        nullptr,
+        opts::OptAttrs::ALLOW_UNSET,
+        [] (const char *cinp, const opts::ErrorHandler, Opts &baseOpts) {
+            baseOpts.mode = Opts::Mode::XLST;
+        });
+    xGrp.defineFlag(
+        "native",
+        nullptr,
+        "Use IGA's native encoder/decoder",
+        "",
+        opts::OptAttrs::ALLOW_UNSET,
+        baseOpts.useNativeEncoder);
+    xGrp.defineFlag(
+        "no-autocompact",
+        nullptr,
+        "the inverse (default) of -Xautocompact",
+        nullptr,
+        opts::OptAttrs::ALLOW_UNSET,
+        [] (const char *, const opts::ErrorHandler&, Opts &baseOpts) {
+            baseOpts.autoCompact = false;
+        });
+    xGrp.defineFlag(
+        "no-print-ldst",
+        nullptr,
+        "the inverse (default) of -Xprint-ldst",
+        nullptr,
+        opts::OptAttrs::ALLOW_UNSET,
+        [] (const char *cinp, const opts::ErrorHandler &, Opts &baseOpts) {
+            baseOpts.printLdSt = false;
         });
     xGrp.defineFlag(
         "syntax-exts",
@@ -295,9 +318,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "enables certain syntax extensions",
         "",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &err, Opts &baseOpts) {
-            baseOpts.syntaxExts = true;
-        });
+        baseOpts.syntaxExts);
     xGrp.defineFlag(
         "print-hex-floats",
         nullptr,
@@ -306,27 +327,21 @@ extern "C" int iga_main(int argc, const char **argv)
           "will parse back them bit-precise; however, if we muck that up or if you just"
           "like the consistency, this option enables that behavior.",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler err, Opts &baseOpts) {
-            baseOpts.printHexFloats = true;
-        });
+        baseOpts.printHexFloats);
     xGrp.defineFlag(
         "print-pc",
         nullptr,
         "print PC with each instruction",
         "An instruction PC will be added as a comment",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &err, Opts &baseOpts) {
-            baseOpts.printInstructionPc = true;
-        });
+        baseOpts.printInstructionPc);
     xGrp.defineFlag(
         "print-bits",
         nullptr,
         "prints bits decoded with each instruction",
         "The instruction bits are emitted with each instruction",
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *, const opts::ErrorHandler &err, Opts &baseOpts) {
-            baseOpts.printBits = true;
-        });
+        baseOpts.printBits);
     xGrp.defineFlag(
         "print-deps",
         nullptr,
@@ -334,8 +349,23 @@ extern "C" int iga_main(int argc, const char **argv)
         "IGA does not promise this to be exact at the moment. "
           "E.g. our analysis may be a local one only.",
         opts::OptAttrs::ALLOW_UNSET,
+        baseOpts.printDeps);
+    xGrp.defineFlag(
+        "print-ldst",
+        nullptr,
+        "enables load/store pseudo intructions where possible",
+        "Send instructions are emitted as load/store instructions",
+        opts::OptAttrs::ALLOW_UNSET,
+        baseOpts.printLdSt);
+    xGrp.defineFlag(
+        "warn-on-compact-fail",
+        nullptr,
+        "makes compaction failure a warning instead of an error",
+        "By default we fail if we are unable to compact an instruction with "
+        "the {Compacted} option set; this allows one to make it a warning",
+        opts::OptAttrs::ALLOW_UNSET,
         [] (const char *, const opts::ErrorHandler &err, Opts &baseOpts) {
-            baseOpts.printDeps = true;
+            baseOpts.errorOnCompactFail = false;
         });
 
     // ARGS

@@ -37,10 +37,12 @@ void Operand::setDirectDestination(
     const Region::Horz &rgnHz,
     Type type)
 {
+    m_kind = Operand::Kind::DIRECT;
+
+    m_regImplAcc = ImplAcc::INVALID;
     m_regOpDstMod = dstMod;
     m_regOpReg = reg;
     m_regOpRgn.setDstHz(rgnHz);
-    m_kind = Operand::Kind::DIRECT;
     m_regOpName = rName;
     m_type = type;
 }
@@ -51,13 +53,16 @@ void Operand::setMacroDestination(
     RegName r,
     const RegRef &reg,
     ImplAcc acc,
+    Region::Horz rgnHz,
     Type type)
 {
+    m_kind = Operand::Kind::MACRO;
+
     m_regOpDstMod = dstMod;
     m_regOpReg = reg;
     m_regImplAcc = acc;
-    m_kind = Operand::Kind::MACRO;
     m_regOpName = r;
+    m_regOpRgn.setDstHz(rgnHz);
     m_type = type;
 }
 
@@ -69,10 +74,12 @@ void Operand::setInidirectDestination(
     const Region::Horz &rgnHz,
     Type type)
 {
+    m_kind = Operand::Kind::INDIRECT;
+
+    m_regImplAcc = ImplAcc::INVALID;
     m_regOpDstMod = dstMod;
     m_regOpReg = reg;
     m_regOpRgn.setDstHz(rgnHz);
-    m_kind = Operand::Kind::INDIRECT;
     m_regOpName = RegName::GRF_R;
     m_regOpIndOff = immediateOffset;
     m_type = type;
@@ -83,6 +90,8 @@ void Operand::setImmediateSource(
     const ImmVal &val, Type type)
 {
     m_kind = Operand::Kind::IMMEDIATE;
+
+    m_regImplAcc = ImplAcc::INVALID;
     m_immValue = val;
     m_type = type;
 }
@@ -95,10 +104,12 @@ void Operand::setInidirectSource(
     const Region &rgn,
     Type type)
 {
+    m_kind = Operand::Kind::INDIRECT;
+
+    m_regImplAcc = ImplAcc::INVALID;
     m_regOpSrcMod = srcMod;
     m_regOpReg = reg;
     m_regOpRgn = rgn;
-    m_kind = Operand::Kind::INDIRECT;
     m_regOpName = RegName::GRF_R;
     m_regOpIndOff = immediateOffset;
     m_type = type;
@@ -107,18 +118,18 @@ void Operand::setInidirectSource(
 
 void Operand::setDirectSource(
     SrcModifier srcMod,
-    RegName rName,
+    RegName r,
     const RegRef &reg,
     const Region &rgn,
     Type type)
 {
     m_kind = Operand::Kind::DIRECT;
 
+    m_regImplAcc = ImplAcc::INVALID;
     m_regOpSrcMod = srcMod;
+    m_regOpName = r;
     m_regOpReg = reg;
     m_regOpRgn = rgn;
-    m_regOpName = rName;
-
     m_type = type;
 }
 
@@ -128,15 +139,16 @@ void Operand::setMacroSource(
     RegName r,
     const RegRef &reg,
     ImplAcc acc,
+    Region rgn,
     Type type)
 {
     m_kind = Operand::Kind::MACRO;
 
     m_regOpSrcMod = srcMod;
+    m_regOpName = r;
     m_regOpReg = reg;
     m_regImplAcc = acc;
-    m_regOpName = r;
-
+    m_regOpRgn = rgn;
     m_type = type;
 }
 
@@ -144,6 +156,7 @@ void Operand::setMacroSource(
 void Operand::setLabelSource(Block *blk, Type type)
 {
     m_kind = Operand::Kind::LABEL;
+
     m_lblBlock = blk;
     m_type = type;
 }
@@ -152,6 +165,7 @@ void Operand::setLabelSource(Block *blk, Type type)
 void Operand::setLabelSource(int32_t jipOrUip, Type type)
 {
     m_kind = Operand::Kind::LABEL;
+
     m_immValue = jipOrUip;
     m_type = type;
 }
@@ -200,3 +214,10 @@ const Operand Operand::SRC_REG_NULL_UD(
     R0_0,
     Region::SRC010,
     Type::UD);
+
+const Operand Operand::SRC_REG_NULL_UB(
+    SrcModifier::NONE,
+    RegName::ARF_NULL,
+    R0_0,
+    Region::SRC010,
+    Type::UB);

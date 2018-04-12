@@ -206,7 +206,7 @@ private:
         case Mod_Minus:         return iga::SrcModifier::NEG;
         case Mod_Abs:           return iga::SrcModifier::ABS;
         case Mod_Minus_Abs:     return iga::SrcModifier::NEG_ABS;
-        case Mod_Not:           return iga::SrcModifier::NOT;
+        case Mod_Not:           return iga::SrcModifier::NEG;
         case Mod_src_undef:     return iga::SrcModifier::NONE;
         default:
             assert(false && "illegal source modifier");

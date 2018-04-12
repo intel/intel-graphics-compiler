@@ -23,9 +23,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-
-#ifndef _IR_TYPES_HPP
-#define _IR_TYPES_HPP
+#ifndef IGA_IR_TYPES_HPP
+#define IGA_IR_TYPES_HPP
 
 // WARNING: the IR is subject to change without any notice.  External tools
 // should use the official interfaces in the external API.  Those interfaces
@@ -112,7 +111,6 @@ enum class SrcModifier
     ABS,
     NEG,
     NEG_ABS,
-    NOT,      // BDW+ bitwise ops
 };
 
 
@@ -177,7 +175,6 @@ static inline int TypeSizeWithDefault(Type type, int dft = 0)
     return type == Type::INVALID ? dft : TypeSize(type);
 }
 
-
 enum class FlagModifier
 {
     NONE = 0,  // no flag modification
@@ -187,15 +184,10 @@ enum class FlagModifier
     GE,        // greater than or equal
     LT,        // less than
     LE,        // less than or equal
-               // Reserved <= 7
+               // 7 is reserved
     OV = 8,    // overflow
     UN,        // unordered (NaN)
-    EO = 0xFF, // special implicit flag modifier for math.invm and math.rsqrtm
-               // [trb] from Balakumar Rajendran (Apr 2016)
-               // "The .eo means early out.  It doesn't have bits in the
-               // instruction when a macro is executed.  The flag is set
-               // for early out conditions including division by
-               // 0, infinity, etc"
+    EO = 0xFF, // early out: special implicit flag modifier for math.invm and math.rsqrtm
 };
 
 

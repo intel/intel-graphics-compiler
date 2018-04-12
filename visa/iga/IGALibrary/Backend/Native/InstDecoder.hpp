@@ -1,0 +1,696 @@
+/*===================== begin_copyright_notice ==================================
+
+Copyright (c) 2017 Intel Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+======================= end_copyright_notice ==================================*/
+#ifndef IGA_NATIVE_INSTDECODER_HPP
+#define IGA_NATIVE_INSTDECODER_HPP
+
+#include "../../Frontend/IRToString.hpp"
+#include "../../Frontend/Floats.hpp"
+#include "../../IR/InstBuilder.hpp"
+#include "../BitProcessor.hpp"
+#include "Field.hpp"
+#include "Interface.hpp"
+#include "MInst.hpp"
+
+
+#include <vector>
+#include <string>
+#include <sstream>
+#include <algorithm>
+#include <functional>
+#include <initializer_list>
+
+namespace iga
+{
+    typedef std::function<void(uint64_t bits, std::stringstream &ss)> FormatFunction;
+
+    static int nextPowerOfTwo(int v) {
+        v--;
+        v |= v >> 1;
+        v |= v >> 2;
+        v |= v >> 4;
+        v |= v >> 8;
+        v |= v >> 16;
+        v++;
+        return v;
+    }
+    static ExecSize decodeExecSizeBits(uint64_t val) {
+        switch (val) {
+        case 0: return ExecSize::SIMD1;
+        case 1: return ExecSize::SIMD2;
+        case 2: return ExecSize::SIMD4;
+        case 3: return ExecSize::SIMD8;
+        case 4: return ExecSize::SIMD16;
+        case 5: return ExecSize::SIMD32;
+        default: return ExecSize::INVALID;
+        }
+    }
+    static ChannelOffset decodeChannelOffsetBits(uint64_t val) {
+        return static_cast<ChannelOffset>(val);
+    }
+    static FlagModifier decodeFlagModifierBits(uint64_t val) {
+        FlagModifier fm;
+        switch (val) {
+        case 0: fm = FlagModifier::NONE; break;
+        case 1: fm = FlagModifier::EQ; break;
+        case 2: fm = FlagModifier::NE; break;
+        case 3: fm = FlagModifier::GT; break;
+        case 4: fm = FlagModifier::GE; break;
+        case 5: fm = FlagModifier::LT; break;
+        case 6: fm = FlagModifier::LE; break;
+            // case 7: reserved
+        case 8: fm = FlagModifier::OV; break;
+        case 9: fm = FlagModifier::UN; break;
+        default: fm = static_cast<FlagModifier>(val); break;
+        }
+        return fm;
+    }
+    static SrcModifier decodeSrcModifierBits(uint64_t sm)
+    {
+        switch (sm) {
+        case 0: return SrcModifier::NONE;
+        case 1: return SrcModifier::ABS;
+        case 2: return SrcModifier::NEG;
+        case 3: return SrcModifier::NEG_ABS;
+        default: return static_cast<SrcModifier>(sm);
+        }
+    }
+
+    //
+    // This is a generic template for instruction decoders for various GEN
+    // platforms.  Users can use this via inheritance or composition equally.
+    // This class also decodes field by field for various debugging routines.
+    // E.g. iga64 -Xifs ... decodes each field
+    //
+    // The naming convention is as follows:
+    //
+    //  T  decodeXXXX(Field fXXXX)
+    // decodes something (an XXXX) using field fXXXX and store this into the
+    // field list.  This implies that fXXXX is properly part of the format and
+    // thus will not overlap with any other field decoded.  It also might
+    // commit the field to the instruction builder.
+    //
+    //  T  peekXXXX(Field fXXXX)
+    // decoes something, but quietly (don't add it to the list of
+    // fields decoded).  E.g. we might speculatively need to look at a field
+    // that we might not want to add.
+    //
+    // TODO: template<typename P> where P is PlatformInfo
+    //       for GEN-specific stuff use this var; e.g. P.decodeBasicRegType(...)
+    struct InstDecoder
+    {
+        InstBuilder    &builder;
+        ErrorHandler   &errorHandler;
+        const Model    &model;
+        const OpSpec   &os;
+        MInst           bits;
+        MInst           uncompactedBits; // only valid if uncompacting
+        FieldList      *fields;
+        Loc             loc;
+
+        // instruction state
+        InstOptSet      instOptSet;
+
+        InstDecoder(
+            InstBuilder &_builder,
+            ErrorHandler &_errorHandler,
+            const Model &_model,
+            const OpSpec &_os,
+            MInst _bits,
+            FieldList *_fields,
+            Loc _loc)
+            :  builder(_builder)
+            , errorHandler(_errorHandler)
+            , model(_model)
+            , os(_os)
+            , bits(_bits)
+            , fields(_fields)
+            , loc(_loc)
+            , instOptSet(0)
+        {
+        }
+
+        void reportError(const char *msg) {
+            errorHandler.reportError(loc, msg);
+        }
+        void reportError(const std::string &msg) {
+            errorHandler.reportError(loc, msg);
+        }
+        void reportWarning(const std::string &msg) {
+            errorHandler.reportWarning(loc, msg);
+        }
+        void reportFieldError(const Field &f, const char *msg) {
+            std::stringstream ss;
+            ss << f.name << ": " <<  msg;
+            reportError(ss.str());
+        }
+        void reportFieldWarning(const Field &f, const char *msg) {
+            std::stringstream ss;
+            ss << f.name << ": " <<  msg;
+            reportWarning(ss.str());
+        }
+        void reportFieldErrorInvalidValue(const Field &f) {
+            std::stringstream ss;
+            reportFieldError(f, "invalid value");
+        }
+
+        ///////////////////////////////////////////
+        // PRIMITIVE FIELD ADDERS
+        void addDecodedField(const Field &f, std::string val) {
+            if (fields)
+                fields->emplace_back(f, val);
+        }
+        uint64_t decodeFragment(const Field &f) {
+            if (fields)
+                fields->emplace_back(f, "");
+            return bits.getField(f);
+        }
+        uint64_t decodeFragment(const Field &f, FormatFunction fmt) {
+            auto val = bits.getField(f);
+            if (fields) {
+                std::stringstream ss;
+                fmt(val,ss);
+                fields->emplace_back(f, ss.str());
+            }
+            return val;
+        }
+        uint64_t decodeFieldWithFunction(const Field &f, FormatFunction fmt) {
+            return decodeFragment(f, fmt);
+        }
+
+        void addFieldSubfunction(const Field &f, std::string val = "") {
+            addDecodedField(f,val);
+        }
+
+        void addReserved(int off, int len, std::string errStr = "?") {
+            Field fRSVD{"Reserved", off, len};
+            auto b = bits.getField(fRSVD);
+            addDecodedField(fRSVD, b != 0 ? errStr : "");
+        }
+        void addReserved(const Field &f) {
+            std::stringstream ss;
+            ss << "? (shadows " << f.name << ")";
+            addReserved(f.offset, f.length, ss.str().c_str());
+        }
+
+        ///////////////////////////////////////////////////////////////////////////
+        // one bit fields
+        ///////////////////////////////////////////////////////////////////////////
+        template <typename T>
+        T decodeField(
+            const Field &f,
+            T val0, const char *str0,
+            T val1, const char *str1)
+        {
+            IGA_ASSERT(f.length == 1, "field is >1 bit");
+            T val;
+            const char *str = "";
+            auto b = bits.getField(f);
+            switch (b) {
+            case 0: val = val0; str = str0; break;
+            case 1: val = val1; str = str1; break;
+            default: break; // unreachable
+            };
+            if (fields) {
+                fields->emplace_back(f, str);
+            }
+            return val;
+        }
+        bool decodeBoolField(
+            const Field &f,
+            const char *val0,
+            const char *val1)
+        {
+            return decodeField<bool>(f, false, val0, true, val1);
+        }
+
+        ///////////////////////////////////////////////////////////////////////
+        // two bit fields
+        ///////////////////////////////////////////////////////////////////////
+        template <typename T>
+        T decodeField(
+            const Field &f,
+            T val0, const char *str0,
+            T val1, const char *str1,
+            T val2, const char *str2,
+            T val3, const char *str3)
+        {
+            // IGA_ASSERT(f.length == 2, "field is not a two bits");
+            // we can have subset fields like Dst.RgnHz[0] in ternary
+            IGA_ASSERT(f.length <= 2, "field is not a two bits");
+            T val;
+            const char *str = "";
+            auto b = bits.getField(f);
+            switch (b) {
+            case 0: val = val0; str = str0; break;
+            case 1: val = val1; str = str1; break;
+            case 2: val = val2; str = str2; break;
+            case 3: val = val3; str = str3; break;
+            default: break; // unreachable
+            };
+            if (fields) {
+                fields->emplace_back(f, str);
+            }
+            return val;
+        }
+
+        ///////////////////////////////////////////////////////////////////////
+        // multi bit fields
+        ///////////////////////////////////////////////////////////////////////
+        uint64_t decodeField(
+            const Field &f,
+            FormatFunction fmt)
+        {
+            auto val = bits.getField(f);
+            if (fields)
+            {
+                std::stringstream ss;
+                fmt(val, ss);
+                fields->emplace_back(f, ss.str());
+            }
+            return val;
+        }
+
+        template <typename T>
+        T decodeField(
+            const Field &f,
+            T invalid,
+            std::initializer_list<std::pair<T,const char *>> vals)
+        {
+            IGA_ASSERT(nextPowerOfTwo((int)vals.size()) != f.length,
+                "field is wrong number of bits");
+            int i = 0;
+            T retVal = invalid;
+            const char *strVal = "?";
+            auto b = bits.getField(f);
+            for (const auto &val : vals) {
+                if (i == (int)b) {
+                    retVal = val.first;
+                    strVal = val.second;
+                    break;
+                }
+                i++;
+            }
+            if (i == vals.size() || retVal == invalid) { // didn't find it
+                retVal = invalid;
+                strVal = "?";
+                reportFieldErrorInvalidValue(f);
+            }
+
+            if (fields) {
+                fields->emplace_back(f, strVal);
+            }
+            return retVal;
+        }
+
+
+        ///////////////////////////////////////////////////////////////////////
+        // generic GEN helpers
+        ///////////////////////////////////////////////////////////////////////
+        void decodeMaskCtrl(const Field& fMASKCTRL) {
+            if (decodeBoolField(fMASKCTRL, "", "WrEn")) {
+                builder.InstNoMask(loc);
+            }
+        }
+        void decodePredication(
+            const Field& fPREDINV,
+            const Field& fPREDCTRL,
+            const Field& fFLAGREG)
+        {
+            PredCtrl predCtrl = static_cast<PredCtrl>(bits.getField(fPREDCTRL));
+            addDecodedField(fPREDCTRL, ToSyntax(predCtrl));
+            bool predInv = decodeBoolField(fPREDINV, "", "~");
+            if (predInv && predCtrl == PredCtrl::NONE) {
+                reportFieldError(fPREDINV,
+                    "PredCtrl is not set, but PredInv is set");
+            }
+            if (predCtrl != PredCtrl::NONE) {
+                RegRef flagReg = peekFlagRegRef(fFLAGREG);
+                builder.InstPredication(loc, predInv, flagReg, predCtrl);
+            }
+        }
+        void decodeBrCtl(const Field &fBRCTL) {
+            bool brCtl = decodeBoolField(fBRCTL, "", ".b");
+            builder.InstBrCtl(brCtl ? BranchCntrl::ON : BranchCntrl::OFF);
+        }
+        RegRef peekFlagRegRef(const Field &fFLAGREG) const {
+            auto val = bits.getField(fFLAGREG);
+            RegRef rr{(uint8_t)((val&0x2)>>1),(uint8_t)(val&0x1)};
+            return rr;
+        }
+        RegRef decodeFlagReg(const Field &fFLAGREG) {
+            // flag register
+            static const RegRef F0_0 = {0,0};
+            static const RegRef F0_1 = {0,1};
+            static const RegRef F1_0 = {1,0};
+            static const RegRef F1_1 = {1,1};
+
+            return
+                decodeField<RegRef>(
+                    iga::pstg12::FLAGREG,
+                    F0_0,"f0.0",
+                    F0_1,"f0.1",
+                    F1_0,"f1.0",
+                    F1_1,"f1.1");
+        }
+
+        void decodeFlagModifierField(const Field &fFLAGMOD) {
+            RegRef flagReg = peekFlagRegRef(iga::pstg12::FLAGREG);
+            FlagModifier invalidModifier = static_cast<FlagModifier>(-1);
+            FlagModifier zeroValue = FlagModifier::NONE;
+            const char *zeroString = "";
+            if (os.isMathSubFunc() && os.isMacro()) {
+                zeroValue = FlagModifier::EO;
+                zeroString = "(eo) (early out)";
+            }
+            FlagModifier flagMod = decodeField<FlagModifier>(
+                fFLAGMOD, invalidModifier, {
+                 {zeroValue, zeroString},
+                 {FlagModifier::EQ, "(eq)"},
+                 {FlagModifier::NE, "(ne)"},
+                 {FlagModifier::GT, "(gt)"},
+                 {FlagModifier::GE, "(ge)"},
+                 {FlagModifier::LT, "(lt)"},
+                 {FlagModifier::LE, "(le)"},
+                 {invalidModifier, "?"},
+                 {FlagModifier::OV, "(ov) (overflow)"},
+                 {FlagModifier::UN, "(un) (unordered)"}});
+            builder.InstFlagModifier(flagReg, flagMod);
+        }
+
+       ImmVal decodeImm32(const Field &fIMM32L, Type t) {
+            std::stringstream ss;
+            ImmVal immVal;
+            uint64_t val = bits.getField(fIMM32L);
+            //
+            // TODO: determine if ImmVal should store everything as s64
+            // otherwise I need to normalize what the GED parser and decoder
+            // a specific exmaple:
+            //  NATIVE:       0x0000000000008000
+            //  GED:          0xFFFFFFFFFFFF8000
+            //
+            // NATIVE: src0: PC[0]:
+            //   mov:        61 00 03 00 a0 45 05 01  00 00 00 00 00 80 00 80
+            //   mov (8|M0)               r1.0<1>:f     -32768:w
+            // GED takes a 64b value
+            switch (t) {
+            case Type::UW:
+                immVal = (uint16_t)val;
+                ss << std::hex << (uint16_t)val;
+                break;
+            case Type::UD:
+                immVal = (uint32_t)val;
+                ss << std::hex << "0x" << (uint32_t)val;
+                break;
+            case Type::W:
+                immVal = (int16_t)val;
+                immVal.s64 = immVal.s16;
+                ss << std::dec << (int16_t)val;
+                break;
+            case Type::D:
+                immVal = (int32_t)val;
+                immVal.s64 = immVal.s32;
+                ss << std::dec << (int32_t)val;
+                break;
+            case Type::HF:
+                immVal = (uint16_t)val;
+                immVal.kind = ImmVal::F16;
+                FormatFloat(ss, FloatFromBits((uint16_t)val));
+                break;
+            case Type::F:
+                immVal = FloatFromBits((uint32_t)val);
+                FormatFloat(ss, FloatFromBits((uint32_t)val));
+                break;
+            case Type::V:
+            case Type::UV:
+                immVal = (uint32_t)val;
+                ss << "(";
+                for (int i = 7; i >= 0; i--) {
+                    if (i < 7) ss << ',';
+                    if (t == Type::V) {
+                        ss << std::hex << getSignedBits<int64_t>((int64_t)val, i*4, 4);
+                    } else {
+                        ss << std::dec << getBits<uint64_t>(val, i*4, 4);
+                    }
+                }
+                ss << ")";
+                break;
+            case Type::VF:
+                immVal = (uint32_t)val;
+                ss << "(";
+                for (int i = 3; i >= 0; i--) {
+                    if (i < 3) ss << ',';
+                    FormatFloat(ss, (uint8_t)getBits(val, i*8, 8));
+                }
+                ss << ")";
+                break;
+                break;
+            default:
+                immVal = (uint32_t)0;
+                reportFieldError(fIMM32L, "invalid type for 32b IMM");
+                ss << "?";
+            }
+
+            addDecodedField(fIMM32L, ss.str());
+
+            return immVal;
+        }
+
+        ImmVal decodeImm64(
+            const Field &fIMM32L, const Field &fIMM32H, Type type)
+        {
+            uint64_t lo = bits.getField(fIMM32L);
+            uint64_t hi = bits.getField(fIMM32H);
+            ImmVal immVal;
+            immVal.u64 = ((hi << 32) | lo);;
+            std::stringstream ss;
+            ss << "(";
+            switch (type) {
+            case Type::DF:
+                immVal.kind = ImmVal::F64;
+                FormatFloat(ss, FloatFromBits(immVal.u64));
+                break;
+            case Type::UQ:
+                immVal.kind = ImmVal::U64;
+                ss << immVal.u64;
+                break;
+            case Type::Q:
+                immVal.kind = ImmVal::S64;
+                ss << immVal.s64;
+                break;
+            default:
+                ss << "ERROR: expected 64b type";
+                reportError("ERROR: expected 64b type");
+            }
+            ss << ")";
+            addDecodedField(iga::pstg12::BAS_SRC0_IMM32L, "LO32" + ss.str());
+            addDecodedField(iga::pstg12::BAS_SRC0_IMM32H, "HI32" + ss.str());
+            return immVal;
+        }
+
+        void decodeExecOffsetInfo(
+            const Field &fEXECSIZE, const Field &fCHANOFF)
+        {
+            ExecSize execSize = decodeExecSizeBits(bits.getField(fEXECSIZE));
+            if (execSize == ExecSize::INVALID) {
+                reportFieldErrorInvalidValue(fEXECSIZE);
+            }
+            std::stringstream ssEs;
+            ssEs << "(" << ToSyntax(execSize) << "|...)";
+            addDecodedField(iga::pstg12::EXECSIZE, ssEs.str());
+
+            ChannelOffset chOff = decodeChannelOffsetBits(bits.getField(fCHANOFF));
+            if (chOff < ChannelOffset::M0 || chOff > ChannelOffset::M28) {
+                reportFieldErrorInvalidValue(fCHANOFF);
+            }
+            std::stringstream ssCo;
+            ssCo << "(..." << ToSyntax(chOff) << ")";
+            addDecodedField(fCHANOFF, ssCo.str());
+
+            builder.InstExecInfo(loc, execSize, loc, chOff);
+        }
+
+        DstModifier decodeDstModifier() {
+            return
+                decodeField(iga::pstg12::SATURATE,
+                    DstModifier::NONE, "",
+                    DstModifier::SAT, "(sat)");
+        }
+
+        SrcModifier decodeSrcMods(const Field &fSRCMODS) {
+            return decodeField<SrcModifier>(
+                fSRCMODS,
+                SrcModifier::NONE,"",
+                SrcModifier::ABS, "(abs)",
+                SrcModifier::NEG,  os.isBitwise() ? "~" : "-",
+                SrcModifier::NEG_ABS,"-(abs)");
+        }
+        ImplAcc decodeImplAcc(const Field &fSPCACC) {
+            addReserved(fSPCACC.offset + 4, 1);
+            return decodeImplAccField(fSPCACC);
+        }
+        void decodeSubReg(
+            OpIx opIndex,
+            OperandInfo &opInfo,
+            const Field &fSUBREG)
+        {
+            std::string typeValue;
+            if (os.isDpasSubfunc()  && opIndex > OpIx::TER_SRC0) {
+                auto srb = bits.getField(fSUBREG); // ternary src's have all 5 bits
+                opInfo.regOpReg.subRegNum = BytesOffsetToSubReg(
+                    (uint8_t)srb,
+                    opInfo.regOpName,
+                    opInfo.subBytePrecision);
+                typeValue = ToSyntax(opInfo.subBytePrecision);
+            } else {
+                peekRegularSubReg(opIndex, opInfo, fSUBREG, opInfo.type);
+                typeValue = ToSyntax(opInfo.type);
+            }
+            std::stringstream ss;
+            ss << "." << (int)opInfo.regOpReg.subRegNum << typeValue;
+            addDecodedField(fSUBREG, ss.str());
+        }
+        void decodeRegularSubReg(
+            OpIx opIndex,
+            OperandInfo &opInfo,
+            const Field &fSUBREG,
+            Type type)
+        {
+            peekRegularSubReg(opIndex, opInfo, fSUBREG, type);
+            std::stringstream ss;
+            ss << "." << (int)opInfo.regOpReg.subRegNum << ToSyntax(type);
+            addDecodedField(fSUBREG, ss.str());
+        }
+        void peekRegularSubReg(
+            OpIx opIndex,
+            OperandInfo &opInfo,
+            const Field &fSUBREG,
+            Type type)
+        {
+            auto srb = (int)bits.getField(fSUBREG);
+            if (opIndex == OpIx::TER_DST) {
+                srb <<= 3; // ternary dst only stores high two bits
+            }
+            if (IsRegisterScaled(opInfo.regOpName)) {
+                auto typeSize = TypeSizeWithDefault(type,4);
+                if (srb % typeSize != 0) {
+                    std::stringstream ess;
+                    if (IsDst(opIndex)) {
+                        ess << "dst";
+                    } else {
+                        ess << "src" << ToSrcIndex(opIndex);
+                    }
+                    ess << " subregister is not divisible by type size";
+                    reportError(ess.str());
+                }
+                srb /= typeSize;
+            }
+            opInfo.regOpReg.subRegNum = (uint8_t)srb;
+        }
+
+        void decodeRegDirectFields(
+            OpIx opIndex,
+            OperandInfo &opInfo,
+            const Field &fREGFILE, // dir only
+            const Field &fSPCACC,
+            const Field &fSUBREG,
+            const Field &fREG)
+        {
+            decodeRegFields(opInfo, fREGFILE, fREG);
+            if (os.isMacro()) {
+                opInfo.kind = Operand::Kind::MACRO;
+                opInfo.regOpImplAcc = decodeImplAccField(fSPCACC);
+                addReserved(fSPCACC.offset + fSPCACC.length, 1);
+            } else {
+                opInfo.kind = Operand::Kind::DIRECT;
+                decodeSubReg(opIndex, opInfo, fSUBREG);
+                if (fSUBREG.length < 5) { // ternary has some reserved bits
+                     addReserved(fSUBREG.offset - 5 + fSUBREG.length, 5 - fSUBREG.length);
+                }
+            }
+        }
+
+        void decodeRegFields(
+            OperandInfo &opInfo,
+            const Field &fREGFILE,
+            const Field &fREG)
+        {
+            bool isGrf = decodeBoolField(fREGFILE, "ARF", "GRF");
+            std::stringstream ss;
+            auto val = bits.getField(fREG);
+            if (isGrf) {
+                opInfo.regOpName = RegName::GRF_R;
+                opInfo.regOpReg.regNum = (uint8_t)val;
+                ss << "r" << val;
+            } else {
+                const RegInfo *regInfo =
+                    model.lookupArfRegInfoByCode((val>>4) & 0xF);
+                auto regNum = val & 0xF;
+                if (!regInfo) {
+                    ss << "ARF?";
+                    opInfo.regOpName = RegName::INVALID;
+                } else {
+                    opInfo.regOpName = regInfo->reg;
+                    ss << regInfo->name;
+                }
+                if (regInfo->num_regs != 0) {
+                    ss << regNum;
+                }
+                opInfo.regOpReg.regNum = (uint8_t)regNum;
+            }
+            addDecodedField(fREG, ss.str());
+        }
+
+        ImplAcc decodeImplAccField(const Field &fSPCACC) {
+            return decodeField<ImplAcc>(fSPCACC, ImplAcc::INVALID,{
+                {ImplAcc::ACC2,".acc2"},
+                {ImplAcc::ACC3,".acc3"},
+                {ImplAcc::ACC4,".acc4"},
+                {ImplAcc::ACC5,".acc5"},
+                {ImplAcc::ACC6,".acc6"},
+                {ImplAcc::ACC7,".acc7"},
+                {ImplAcc::ACC8,".acc8"},
+                {ImplAcc::ACC9,".acc9"},
+                {ImplAcc::NOACC,".noacc"}});
+        }
+
+        bool decodeInstOpt(const Field &fINSTOPT, InstOpt opt) {
+            IGA_ASSERT(fINSTOPT.length == 1, "inst opt field is >1 bit");
+
+            std::stringstream ss;
+            bool z = bits.getField(fINSTOPT) != 0;
+            if (z) {
+                instOptSet.add(opt);
+                ss << "{" << ToSyntax(opt) << "}";
+            }
+            addDecodedField(fINSTOPT, ss.str());
+            return z;
+        }
+    }; // InstDecoder
+
+} // iga::
+
+
+#endif // IGA_NATIVE_INSTDECODER_HPP

@@ -303,6 +303,10 @@ inline AsmResult Context::assembleFromString(
     iga_status_t st =
         iga_assemble(context, &opts, text.c_str(), &bits, &bitsLen);
     if (st != IGA_SUCCESS) {
+        if (st == IGA_UNSUPPORTED_PLATFORM) {
+            std::vector<Diagnostic> errs;
+            throw AssembleError(st, "iga_assemble", errs, text);
+        }
         std::vector<Diagnostic> errs = igax::getErrors(context);
         if (st == IGA_PARSE_ERROR) {
             throw SyntaxError("iga_assemble", errs, text);
@@ -339,6 +343,10 @@ inline DisResult Context::disassembleToString(
         nullptr,
         &text);
     if (st != IGA_SUCCESS) {
+        if (st == IGA_UNSUPPORTED_PLATFORM) {
+            std::vector<Diagnostic> errs;
+            throw DisassembleError(st, "iga_disassemble", errs, bits, bitsLen);
+        }
         std::vector<Diagnostic> errs = igax::getErrors(context);
         if (st == IGA_DECODE_ERROR) {
             throw DecodeError("iga_disassemble", errs, bits, bitsLen);
@@ -354,7 +362,7 @@ inline DisResult Context::disassembleToString(
 }
 
 inline void Error::emit(std::ostream &os) const {
-    os << api << ": returned " << iga_status_to_string(status);
+    os << api << ": " << iga_status_to_string(status);
 }
 inline std::string Error::str() const {
     std::stringstream ss;
@@ -364,7 +372,7 @@ inline std::string Error::str() const {
 
 inline void AssembleError::emit(std::ostream &os) const {
     if (status != IGA_PARSE_ERROR && status != IGA_ENCODE_ERROR) {
-        os << api << ": returned " << iga_status_to_string(status) << "\n";
+        os << api << ": " << iga_status_to_string(status) << "\n";
     }
     for (auto &e : errors) {
         e.emit(os, source);
@@ -373,7 +381,7 @@ inline void AssembleError::emit(std::ostream &os) const {
 
 inline void DisassembleError::emit(std::ostream &os) const {
     if (status != IGA_DECODE_ERROR) {
-        os << api << ": returned " << iga_status_to_string(status) << "\n";
+        os << api << ": " << iga_status_to_string(status) << "\n";
     }
     for (auto &e : errors) {
         e.emit(os, "", bits, bitsLen);

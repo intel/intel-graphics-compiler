@@ -1,16 +1,15 @@
 ##############################################
 # IGA dynamic and static library generation
 
+# add GED libraries and includes
 if (CMAKE_SIZEOF_VOID_P EQUAL 4)
   set(GED_INCLUDE "../GEDLibrary/${GED_BRANCH}/build/autogen-ia32")
 else()
   set(GED_INCLUDE "../GEDLibrary/${GED_BRANCH}/build/autogen-intel64")
 endif()
-
 include_directories(${GED_INCLUDE} "../GEDLibrary/${GED_BRANCH}/Source/common")
 
-# Common library used by the shared libraries in this file (a sub directory of this directory hence
-# invoked from here)
+# Add subdirectories with all the various IGA sources
 add_subdirectory(api)
 add_subdirectory(Backend)
 add_subdirectory(Frontend)
@@ -46,9 +45,9 @@ if(IGC_BUILD)
      endforeach(arg ${foo})
 
     if(MSVC)
-        add_compile_options(/EHsc)
+      add_compile_options(/EHsc)
     else(MSVC)
-       add_compile_options(-fexceptions)
+      add_compile_options(-fexceptions)
     endif(MSVC)
 
     string(REPLACE " " ";" TEST_POP ${bar})
@@ -86,8 +85,10 @@ set(IGA_Misc
 )
 
 set(IGA_Frontend
-  ${IGA_Frontend_Formatter_Only}
+  ${IGA_Frontend_Formatter}
+  ${IGA_Frontend_Formatter_LdStSyntax}
   ${IGA_Frontend_Parser}
+  ${IGA_Frontend_Parser_LdStSyntax}
 )
 
 set(IGA_Backend_GED
@@ -95,14 +96,15 @@ set(IGA_Backend_GED
   ${IGA_Backend_GED_Decoder}
   )
 
+
 # purposly exclude iga.cpp since it must be compiled differently for .lib/.a and .so/.dll
 set(IGA_SOURCES
   ${IGA_API_Headers}
   ${IGA_Backend}
   ${IGA_Backend_GED}
   ${IGA_Backend_Native}
+  ${IGA_Backend_Native_PstG12}
   ${IGA_Frontend}
-  ${IGA_Frontend_Sends}
   ${IGA_IR}
   ${IGA_MemManager}
   ${IGA_Misc}
@@ -111,13 +113,9 @@ set(IGA_SOURCES
   ${GED_INCLUDE}/ged.h
 )
 
-
 set(FLAG "")
 
 set(IGA_DEFINITIONS _CONSOLE _LIB ${VSVERSION} ${GED_BRANCH})
-if (GED_INTERNAL_BRANCH)
-  set(IGA_DEFINITIONS ${IGA_DEFINITIONS} ${FLAG})
-endif()
 if (MSVC)
   if(IGC_OPTION__UNIVERSAL_DRIVER)
     set(IGA_LINK_FLAGS "/OPT:REF /OPT:ICF /INCREMENTAL:NO /NODEFAULTLIB:kernel32.lib")
@@ -125,17 +123,17 @@ if (MSVC)
     set(IGA_LINK_FLAGS "/OPT:REF /OPT:ICF /INCREMENTAL:NO")
   endif()
     set(IGA_COMPILER_FLAGS "/GL")
-else()
+else(MSVC)
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     add_definitions ("-Wno-logical-op-parentheses")
   endif()
   set(IGA_LINK_FLAGS "")
   set(IGA_COMPILER_FLAGS "")
-endif()
+endif(MSVC)
 
 if(UNIX)
   set(FPIC_FLAG "-fPIC")
-endif()
+endif(UNIX)
 
 if(ANDROID AND MEDIA_IGA)
   set(NDK_Libstdcxx $ENV{ANDROID_NDK}/sources/cxx-stl/llvm-libc++/libcxx)
@@ -209,8 +207,8 @@ set(IGA_SOURCES_ENCODER_ONLY
   ${IGA_API_EncoderInterface}
   ${IGA_Backend}
   ${IGA_Backend_GED_EncoderOnly}
-  ${IGA_Frontend_Formatter_Only}
-  ${IGA_Frontend_Sends}
+  ${IGA_Frontend_Formatter}
+  ${IGA_Frontend_Formatter_LdStSyntax}
   ${IGA_IR}
   ${IGA_MemManager}
 #  ${IGA_Misc}
@@ -267,7 +265,7 @@ set_property(TARGET IGA_DLL APPEND PROPERTY
     LINK_FLAGS                                  "${IGA_DLL_LINK_FLAGS}"
   )
 set_property(TARGET IGA_DLL APPEND PROPERTY
-      FOLDER									"IGAProjs"
+    FOLDER                                      "IGAProjs"
   )
 
 if(IGC_BUILD AND MSVC)
@@ -294,7 +292,6 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 source_group("API" FILES ${IGA_API_Headers} ${IGA_API_EncoderInterface} ${IGA_API})
 source_group("Backend" FILES ${IGA_Backend})
 
-
 if(WIN32)
 source_group("Backend\\GED" FILES ${IGA_Backend_GED})
 source_group("Backend\\Native" FILES ${IGA_Backend_Native})
@@ -304,18 +301,17 @@ source_group("Backend/Native" FILES ${IGA_Backend_Native})
 endif()
 
 
-source_group("Frontend" FILES ${IGA_Frontend})
+source_group("Frontend" FILES ${IGA_Frontend_Formatter} ${IGA_Frontend_Parser})
 if(WIN32)
-source_group("Frontend\\Sends" FILES ${IGA_Frontend_Sends})
+source_group("Frontend\\LdStSyntax" FILES ${IGA_Frontend_Formatter_LdStSyntax} ${IGA_Frontend_Parser_LdStSyntax})
 else()
-source_group("Frontend/Sends" FILES ${IGA_Frontend_Sends})
+source_group("Frontend/LdStSyntax" FILES ${IGA_Frontend_Formatter_LdStSyntax} ${IGA_Frontend_Parser_LdStSyntax})
 endif()
-
 
 source_group("IR" FILES ${IGA_IR})
 source_group("MemManager" FILES ${IGA_MemManager})
 source_group("Models" FILES ${IGA_Models})
-source_group("Misc" FILES ${IGA_Misc})
+source_group("Misc" FILES ${IGA_Misc} ${IGA_Timer})
 
 
 if(MEDIA_IGA)

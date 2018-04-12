@@ -23,8 +23,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#ifndef FLOATS_HPP
-#define FLOATS_HPP
+#ifndef IGA_FLOATS_HPP
+#define IGA_FLOATS_HPP
 
 #include <cstdint>
 #include <cmath> // needed for android build!
@@ -53,6 +53,7 @@ void FormatFloat(std::ostream &os, uint8_t q); // GEN's 8-bit restricted float
 // These functions exist since operations on NaN values might change the NaN
 // payload.  E.g. An sNan might convert to a qNan during a cast
 float     ConvertDoubleToFloat(double d);
+uint32_t  ConvertDoubleToFloatBits(double d);
 uint16_t  ConvertFloatToHalf(float f);
 static
 uint16_t  ConvertDoubleToHalf(double d) {
@@ -104,4 +105,4 @@ static const uint16_t IGA_F16_MANT_MASK = 0x03FF;
 static const uint16_t IGA_F16_SNAN_BIT  = 0x0200;
 } // namespace iga
 
-#endif // FLOATS_HPP
+#endif // IGA_FLOATS_HPP

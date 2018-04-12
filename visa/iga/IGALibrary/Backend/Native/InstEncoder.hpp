@@ -23,8 +23,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#ifndef IGA_BACKEND_NATIVE_ENCODER_HPP
-#define IGA_BACKEND_NATIVE_ENCODER_HPP
+#ifndef IGA_BACKEND_NATIVE_INSTENCODER_HPP
+#define IGA_BACKEND_NATIVE_INSTENCODER_HPP
 
 #include "MInst.hpp"
 #include "Field.hpp"
@@ -110,6 +110,7 @@ namespace iga
 
     // can be passed into the encoding if we want to know the result
     struct CompactionDebugInfo {
+        std::vector<Op>                      fieldOps; // the op we were trying to compact
         std::vector<const CompactedField *>  fieldMisses; // which indices missed
         std::vector<uint64_t>                fieldMapping; // what we tried to match (parallel)
     };
@@ -212,9 +213,12 @@ namespace iga
         void encode(const Field &f, Region::Width wi);
         void encode(const Field &f, Region::Horz hz);
         void encode(const Field &f, SrcModifier mods);
-        // void encodeSubreg(const Field &f, RegName reg, RegRef rr, Type ty);
         template <OpIx IX>
-        void encodeSubreg(const Field &f, RegName reg, RegRef rr, Type ty);
+        void encodeSubreg(
+            const Field &f,
+            RegName reg,
+            RegRef rr,
+            Type ty);
         void encodeReg(
             const Field &fREGFILE,
             const Field &fREG,
@@ -253,7 +257,7 @@ namespace iga
             return iga::getFieldMask<uint64_t>(f.offset, f.length);
         }
         uint64_t getFieldMaskUnshifted(const Field &f) const {
-            return iga::getFieldMaskUnshifted<uint64_t>(f.offset, f.length);
+            return iga::getFieldMaskUnshifted<uint64_t>(f.length);
         }
 
         void encodingError(const std::string &msg) {
@@ -399,7 +403,6 @@ namespace iga
         ENCODING_CASE(SrcModifier::NONE, 0);
         ENCODING_CASE(SrcModifier::ABS, 1);
         ENCODING_CASE(SrcModifier::NEG, 2);
-        ENCODING_CASE(SrcModifier::NOT, 2);
         ENCODING_CASE(SrcModifier::NEG_ABS, 3);
         default: internalErrorBadIR(f);
         }
@@ -443,14 +446,16 @@ namespace iga
         encodeFieldBits(fREG, val);
     }
 
+#undef ENCODING_CASE
+
     template <OpIx IX>
     inline void InstEncoder::encodeSubreg(
         const Field &f, RegName reg, RegRef rr, Type ty)
     {
         uint64_t val = (uint64_t)rr.subRegNum;
-        if (IsRegisterScaled(reg)) {
-            val <<= (uint64_t)LogTypeSize(ty, 2); // branches have implicit :d
-        }
+        // branches have implicit :d
+        val = ty == Type::INVALID ? 4*val :
+            SubRegToBytesOffset((int)val, reg, ty);
         if (IX == OpIx::TER_DST) {
             if (val & 0x7) {
                 // Dst.SubReg[4:3]
@@ -460,25 +465,25 @@ namespace iga
             }
             val >>= 3; // unscale
         }
-
 #ifdef _DEBUG
-        // TODO: should look up from models and regsets
-        switch (reg) {
-        case RegName::GRF_R:
-        case RegName::ARF_ACC:
-        case RegName::ARF_A:
-            if (val > 32) {
-                encodingError(f, "subregister out of bounds");
-            }
-            break;
-        // TODO: check the others (IR checker should get this!)
-        default: break;
-        }
+		// TODO: should look up from models and regsets
+		switch (reg) {
+		case RegName::GRF_R:
+		case RegName::ARF_ACC:
+		case RegName::ARF_A:
+			if (val > 32) {
+				encodingError(f, "subregister out of bounds");
+			}
+			break;
+			// TODO: check the others (IR checker should get this!)
+		default: break;
+		}
 #endif
-        encodeFieldBits(f, val);
+		encodeFieldBits(f, val);
     }
 
-#undef ENCODING_CASE
+
+
 
     class InstCompactor : public BitProcessor {
         const OpSpec *os;
@@ -545,7 +550,7 @@ namespace iga
             // we build up the don't-care mask as we assemble the
             // desired mapping
             uint64_t relevantBits = 0xFFFFFFFFFFFFFFFFull;
-            int indexOffset = 0; // offset into the compaction index
+            int indexOffset = 0; // offset into the compaction index value
             uint64_t mappedValue = 0;
             for (int i = (int)ci.numMappings - 1; i >= 0; i--) {
                 const Field *mappedField = ci.mappings[i];
@@ -585,6 +590,7 @@ namespace iga
 
         void fail(const CompactedField &ci, uint64_t mappedValue) {
             if (compactionDebugInfo) {
+                compactionDebugInfo->fieldOps.push_back(os->op);
                 compactionDebugInfo->fieldMisses.push_back(&ci);
                 compactionDebugInfo->fieldMapping.push_back(mappedValue);
             }
@@ -593,4 +599,4 @@ namespace iga
     };
 
 } // end iga::*
-#endif /* IGA_BACKEND_NATIVE_ENCODER_HPP */
+#endif /* IGA_BACKEND_NATIVE_INSTENCODER_HPP */

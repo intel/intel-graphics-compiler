@@ -24,10 +24,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-/********************************************************
- * BTS (Big Theory Statement)
- *    Tim Bauer (2017)
- *******************************************************
+
+
+/*******************************************************
  * This performs a basic liveness/DU analysis (reverse) of the register files
  * (GRF and ARF).  The RegSet abstraction tracks bytes and words touched
  * by instructions.

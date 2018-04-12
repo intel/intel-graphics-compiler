@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "KernelParser.hpp"
 #include "Lexemes.hpp"
 #include "Parser.hpp"
+#include "LdStSyntax/MessageParsing.hpp"
 #include "../IR/InstBuilder.hpp"
 #include "../IR/Types.hpp"
 #include "../strings.hpp"
@@ -54,7 +55,6 @@ static const IdentMap<FlagModifier> FLAGMODS {
     {"ze", FlagModifier::EQ},
     {"nz", FlagModifier::NE},
 };
-
 static const IdentMap<FlagModifier> FLAGMODS_LEGACY {
     {"l", FlagModifier::LT},
     {"g", FlagModifier::GT},
@@ -63,8 +63,6 @@ static const IdentMap<FlagModifier> FLAGMODS_LEGACY {
     {"u", FlagModifier::UN},
     {"z", FlagModifier::EQ},
 };
-
-
 static const IdentMap<Type> SRC_TYPES = {
     {"b",  Type::B},
     {"ub", Type::UB},
@@ -109,18 +107,742 @@ static const IdentMap<ImplAcc> IMPLACCS = {
 };
 
 
+GenParser::GenParser(
+    const Model &model,
+    InstBuilder &handler,
+    const std::string &inp,
+    ErrorHandler &eh,
+    const ParseOpts &pots)
+    : Parser(inp,eh)
+    , m_model(model)
+    , m_handler(handler)
+    , m_parseOpts(pots)
+{
+    initSymbolMaps();
+}
+// ExecInfo = '(' ExecSize EmOffNm? ')'
+//   where EmOffNm = '|' EmOff  (',' 'NM')?
+//                 | '|' 'NM'
+//         EmOff = 'M0' | 'M4' | ...
+//         ExecSize = '1' | '2' | ... | '32'
+void GenParser::ParseExecInfo(
+    ExecSize dftExecSize,
+    ExecSize &execSize,
+    ChannelOffset &chOff)
+{
+    Loc execSizeLoc = NextLoc(0);
+    Loc execOffsetLoc = NextLoc(0);
+    // we are careful here since we might have things like:
+    //    jmpi        (1*16)
+    //    jmpi (1|M0) ...
+    //    jmpi (1)    ...
+    // We resolve that by looking ahead two symbols
+    int execSizeVal = 1;
+    if (LookingAt(LPAREN) && (LookingAt(2,RPAREN) || LookingAt(2,PIPE))) {
+        Skip();
+        execSizeLoc = NextLoc();
+        ConsumeIntLitOrFail(execSizeVal, "expected SIMD width");
 
-class KernelParser : Parser {
-    const Model&                   m_model;
-    InstBuilder&                   m_handler;
+        if (Consume(PIPE)) {
+            static const IdentMap<ChannelOffset> EM_OFFS {
+                  {"M0", ChannelOffset::M0}
+                , {"M4", ChannelOffset::M4}
+                , {"M8", ChannelOffset::M8}
+                , {"M12", ChannelOffset::M12}
+                , {"M16", ChannelOffset::M16}
+                , {"M20", ChannelOffset::M20}
+                , {"M24", ChannelOffset::M24}
+                , {"M28", ChannelOffset::M28}
+            };
+            execOffsetLoc = NextLoc();
+            ConsumeIdentOneOfOrFail(
+                EM_OFFS,
+                chOff,
+                "expected ChOff",
+                "invalid ChOff");
+            //if (m_chOff % m_execSize != 0) {
+            //    Fail(execOffsetLoc,
+            //        "invalid execution mask offset for execution size");
+            //} else if (m_chOff + m_execSize > 32) {
+            //    Fail(execOffsetLoc,
+            //        "invalid execution mask offset for execution size");
+            //}
+        } else {
+            chOff = ChannelOffset::M0;
+        }
+        ConsumeOrFail(RPAREN,"expected )");
+    } else {
+        if (m_opSpec && m_opSpec->hasImpicitEm()) {
+            chOff = ChannelOffset::M0;
+            execSizeVal = 1;
+        } else if (m_parseOpts.supportLegacyDirectives) {
+            chOff = ChannelOffset::M0;
+            execSizeVal = (int)dftExecSize;
+        } else {
+            Fail("expected '(' (start of execution size info)");
+        }
+    }
 
-    const ParseOpts                m_parseOpts;
+    switch (execSizeVal) {
+    case 1: execSize = ExecSize::SIMD1; break;
+    case 2: execSize = ExecSize::SIMD2; break;
+    case 4: execSize = ExecSize::SIMD4; break;
+    case 8: execSize = ExecSize::SIMD8; break;
+    case 16: execSize = ExecSize::SIMD16; break;
+    case 32: execSize = ExecSize::SIMD32; break;
+    default: Fail("invalid SIMD width");
+    }
 
+    m_handler.InstExecInfo(
+        execSizeLoc, execSize, execOffsetLoc, chOff);
+}
+Type GenParser::ParseSendOperandTypeWithDefault(int srcIx) {
+    // sends's second parameter doesn't have a valid type
+    auto t = srcIx == 1 ? Type::INVALID : Type::UD;
+    if (srcIx < 0) {
+        if (m_opSpec->hasImplicitDstType(m_model.platform))
+            t = m_opSpec->implicitDstType(m_model.platform);
+    } else {
+        if (m_opSpec->hasImplicitSrcType(srcIx, false, m_model.platform))
+            t = m_opSpec->implicitSrcType(srcIx, false, m_model.platform);
+    }
+    if (Consume(COLON)) {
+        if (!LookingAt(IDENT)) {
+            Fail("expected a send operand type");
+        }
+        if (!IdentLookup(0, DST_TYPES, t)) {
+            Fail("unexpected operand type for send");
+        }
+        Skip();
+    }
+    return t;
+}
+bool GenParser::LookupReg(
+    const std::string &str,
+    const RegInfo*& ri,
+    int& reg)
+{
+    ri = nullptr;
+    reg = 0;
+
+    // given something like "r13", parse the "r"
+    // "cr0" -> "cr"
+    size_t len = 0;
+    while (len < str.length() && !isdigit(str[len]))
+        len++;
+    if (len == 0)
+        return false;
+    auto itr = m_regmap.find(str.substr(0,len));
+    if (itr == m_regmap.end()) {
+        return false;
+    }
+    ri = itr->second;
+    reg = 0;
+    if (ri->num_regs > 0) {
+        // if it's a numbered register like "r13" or "cr1", then
+        // parse the number part
+        size_t off = len;
+        while (off < str.size() && isdigit(str[off])) {
+            char c = str[off++];
+            reg = 10*reg + c - '0';
+        }
+        if (off < str.size()) {
+            // we have something like "r13xyz"; we don't treat this
+            // as a register, but fallback so it can be treated as an
+            // identifier (an immediate reference)
+            reg = 0;
+            ri = nullptr;
+            return false;
+        }
+        if (reg >= ri->num_regs) {
+            Warning("register is out of bounds");
+        }
+    } // else it was something like "null" or "ip"
+      // either way, we are done
+    return true;
+}
+
+bool GenParser::ConsumeReg(const RegInfo*& ri, int& reg) {
+    const Token &tk = Next();
+    if (tk.lexeme != IDENT) {
+        return false;
+    }
+    if (LookupReg(GetTokenAsString(tk), ri, reg)) {
+        Skip();
+        return true;
+    } else {
+        return false;
+    }
+}
+
+static bool isFloating(const ImmVal &v) {
+    switch (v.kind) {
+    case ImmVal::Kind::F16:
+    case ImmVal::Kind::F32:
+    case ImmVal::Kind::F64:
+        return true;
+    default:
+        return false;
+    }
+}
+static bool isSignedInt(const ImmVal &v) {
+    switch (v.kind) {
+    case ImmVal::Kind::S8:
+    case ImmVal::Kind::S16:
+    case ImmVal::Kind::S32:
+    case ImmVal::Kind::S64:
+        return true;
+    default:
+        return false;
+    }
+}
+static bool isUnsignedInt(const ImmVal &v) {
+    switch (v.kind) {
+    case ImmVal::Kind::U8:
+    case ImmVal::Kind::U16:
+    case ImmVal::Kind::U32:
+    case ImmVal::Kind::U64:
+        return true;
+    default:
+        return false;
+    }
+}
+static bool isIntegral(const ImmVal &v) {
+    return isSignedInt(v) || isUnsignedInt(v);
+}
+
+
+// expression parsing
+// &,|
+// <<,>>
+// +,-
+// *,/,%
+// -(unary neg)
+bool GenParser::TryParseConstExpr(ImmVal &v,int srcOpIx) {
+    if (parseBitwiseExpr(false, v)) {
+        if (srcOpIx >= 0) {
+            m_srcKinds[srcOpIx] = Operand::Kind::IMMEDIATE;
+        }
+        return true;
+    }
+    return false;
+}
+bool GenParser::TryParseIntConstExpr(ImmVal &v, const char *for_what) {
+    Loc loc = NextLoc();
+    bool z = TryParseConstExpr(v);
+    if (!z) {
+        return false;
+    } else if (!isIntegral(v)) {
+        std::stringstream ss;
+        if (for_what) {
+            ss << for_what << " must be a constant integer expression";
+        } else {
+            ss << "expected constant integer expression";
+        }
+        Fail(loc,ss.str());
+    }
+    return true;
+}
+
+void GenParser::ensureIntegral(const Token &t, const ImmVal &v) {
+    if (!isIntegral(v)) {
+        Fail(t.loc, "argument to operator must be integral");
+    }
+}
+void GenParser::checkNumTypes(const ImmVal &v1, const Token &op, const ImmVal &v2) {
+    if (isFloating(v1) && !isFloating(v2)) {
+        Fail(op.lexeme, "right operand to operator must be floating point"
+            " (append a .0 to force floating point)");
+    } else if (isFloating(v2) && !isFloating(v1)) {
+        Fail(op.lexeme, "left operand to operator must be floating point"
+            " (append a .0 to force floating point)");
+    }
+}
+// target must be float
+void GenParser::checkIntTypes(const ImmVal &v1, const Token &op, const ImmVal &v2) {
+    if (isFloating(v1)) {
+        Fail(op.lexeme, "left operand to operator must be integral");
+    } else if (isFloating(v2)) {
+        Fail(op.lexeme, "right operand to operator must be integral");
+    }
+}
+
+ImmVal GenParser::evalBinExpr(const ImmVal &v1, const Token &op, const ImmVal &v2) {
+    bool isF = isFloating(v1) || isFloating(v2);
+    bool isU = isUnsignedInt(v1) || isUnsignedInt(v2);
+    ImmVal result = v1;
+    switch (op.lexeme) {
+    case AMP:
+    case CIRC:
+    case PIPE:
+    case LSH:
+    case RSH:
+    case MOD:
+        // integral only operations
+        checkIntTypes(v1, op, v2);
+        switch (op.lexeme) {
+        case AMP:
+            if (isU) {
+                result.u64 &= v2.u64;
+            } else {
+                result.s64 &= v2.s64;
+            }
+            break;
+        case CIRC:
+            if (isU) {
+                result.u64 ^= v2.u64;
+            } else {
+                result.s64 ^= v2.s64;
+            }
+            break;
+        case PIPE:
+            if (isU) {
+                result.u64 |= v2.u64;
+            } else {
+                result.s64 |= v2.s64;
+            }
+            break;
+        case LSH:
+            if (isU) {
+                result.u64 <<= v2.u64;
+            } else {
+                result.s64 <<= v2.s64;
+            }
+            break;
+        case RSH:
+            if (isU) {
+                result.u64 >>= v2.u64;
+            } else {
+                result.s64 >>= v2.s64;
+            }
+            break;
+        case MOD:
+            if (isU) {
+                result.u64 %= v2.u64;
+            } else {
+                result.s64 %= v2.s64;
+            }
+            break;
+        default:
+            break;
+        }
+        break;
+    case ADD:
+    case SUB:
+    case MUL:
+    case DIV:
+        checkNumTypes(v1, op, v2);
+        switch (op.lexeme) {
+        case ADD:
+            if (isF) {
+                result.f64 += v2.f64;
+            } else if (isU) {
+                result.u64 += v2.u64;
+            } else {
+                result.s64 += v2.s64;
+            }
+            break;
+        case SUB:
+            if (isF) {
+                result.f64 -= v2.f64;
+            } else if (isU) {
+                result.u64 -= v2.u64;
+            } else {
+                result.s64 -= v2.s64;
+            }
+            break;
+        case MUL:
+            if (isF) {
+                result.f64 *= v2.f64;
+            } else if (isU) {
+                result.u64 *= v2.u64;
+            } else {
+                result.s64 *= v2.s64;
+            }
+            break;
+        case DIV:
+            if (isF) {
+                result.f64 /= v2.f64;
+            } else {
+                if (v2.u64 == 0) {
+                    Fail(op.loc, "(integral) division by zero");
+                }
+                if (isU) {
+                    result.u64 /= v2.u64;
+                } else {
+                    result.s64 /= v2.s64;
+                }
+            }
+            break;
+        default:
+            break;
+        }
+        break;
+    default:
+        break;
+    }
+    return result;
+}
+
+
+// E -> E (('&'|'|') E)*
+bool GenParser::parseBitwiseExpr(bool consumed, ImmVal &v) {
+    if (!parseShiftExpr(consumed,v)) {
+        return false;
+    }
+    while (LookingAtAnyOf(AMP, PIPE)) {
+        Token t = Next(); Skip();
+        ImmVal r;
+        parseBitwiseExpr(true, r);
+        v = evalBinExpr(v, t, r);
+    }
+    return true;
+}
+// E -> E (('<<'|'>>') E)*
+bool GenParser::parseShiftExpr(bool consumed, ImmVal &v) {
+    if (!parseAddExpr(consumed, v)) {
+        return false;
+    }
+    while (LookingAtAnyOf(LSH, RSH)) {
+        Token t = Next(); Skip();
+        ImmVal r;
+        parseAddExpr(true, r);
+        v = evalBinExpr(v, t, r);
+    }
+    return true;
+}
+// E -> E (('+'|'-') E)*
+bool GenParser::parseAddExpr(bool consumed, ImmVal &v) {
+    if (!parseMulExpr(consumed, v)) {
+        return false;
+    }
+    while (LookingAtAnyOf(ADD, SUB)) {
+        Token t = Next(); Skip();
+        ImmVal r;
+        parseMulExpr(true, r);
+        v = evalBinExpr(v, t, r);
+    }
+    return true;
+}
+
+// E -> E (('*'|'/'|'%') E)*
+bool GenParser::parseMulExpr(bool consumed, ImmVal &v) {
+    if (!parseUnExpr(consumed, v)) {
+        return false;
+    }
+    while (LookingAtAnyOf({MUL, DIV, MOD})) {
+        Token t = Next(); Skip();
+        ImmVal r;
+        parseUnExpr(true, r);
+        v = evalBinExpr(v, t, r);
+    }
+    return true;
+}
+// E -> ('-'|'~') E
+bool GenParser::parseUnExpr(bool consumed, ImmVal &v) {
+    if (!LookingAtAnyOf(SUB, TILDE)) {
+        if (!parsePrimary(consumed, v)) {
+            return false;
+        }
+    } else {
+        Token t = Next(); Skip();
+        parsePrimary(true, v);
+        switch (t.lexeme) {
+        case SUB:
+            v.Negate();
+            break;
+        case TILDE:
+            ensureIntegral(t, v);
+            v.u64 = ~v.u64;
+            break;
+        default:
+            break;
+        }
+    }
+    return true;
+}
+// special symbol (e.g. nan, inf, ...)
+// grouped expression (E)
+// literal
+bool GenParser::parsePrimary(bool consumed, ImmVal &v) {
+    Token t = Next();
+    bool isQuietNaN = false;
+    if (LookingAtIdentEq(t, "nan")) {
+        Warning("nan is deprecated, us snan(...) or qnan(...)");
+        v.kind = ImmVal::F64;
+        v.f64 = std::numeric_limits<double>::signaling_NaN();
+        Skip();
+    } else if ((isQuietNaN = LookingAtIdentEq(t, "qnan")) ||
+        LookingAtIdentEq(t, "snan"))
+    {
+        auto nanSymLoc = NextLoc();
+        Skip();
+        if (Consume(LPAREN)) {
+            auto payloadLoc = NextLoc();
+            ImmVal payload;
+            payload.u64 = 0;
+            parseBitwiseExpr(true, payload);
+            if (payload.u64 >= IGA_F64_SNAN_BIT) {
+                Fail(payloadLoc, "NaN payload overflows");
+            } else if (payload.u64 == 0 && isQuietNaN) {
+                Fail(payloadLoc, "NaN payload must be nonzero for qnan");
+            }
+            ConsumeOrFail(RPAREN, "expected )");
+            v.u64 = payload.u64 | IGA_F64_EXP_MASK;
+            if (!isQuietNaN) {
+                v.u64 |= IGA_F64_SNAN_BIT;
+            }
+        } else {
+            Warning(nanSymLoc,
+                "bare qnan and snan tokens deprecated"
+                " (pass in a valid payload)");
+            v.u64 = IGA_F64_EXP_MASK;
+            if (isQuietNaN) {
+                v.u64 |= 1; // set something non-zero in the payload
+            } else {
+                v.u64 |= IGA_F64_SNAN_BIT;
+            }
+        }
+        v.kind = ImmVal::F64;
+    } else if (LookingAtIdentEq(t, "inf")) {
+        v.f64 = std::numeric_limits<double>::infinity();
+        v.kind = ImmVal::F64;
+        Skip();
+    } else if (LookingAt(FLTLIT)) {
+        ParseFltFrom(t.loc, v.f64);
+        v.kind = ImmVal::Kind::F64;
+        Skip();
+    } else if (LookingAtAnyOf({INTLIT02,INTLIT10,INTLIT16})) {
+        // we parse as unsigned, but tag as signed for negation etc...
+        ParseIntFrom<uint64_t>(t.loc, v.u64);
+        v.kind = ImmVal::Kind::S64;
+        Skip();
+    } else if (Consume(LPAREN)) {
+        // (E)
+        parseBitwiseExpr(true, v);
+        Consume(RPAREN);
+    } else if (LookingAt(IDENT)) {
+        // TEST CASES
+        // LABEL:
+        // // jmpi  LABEL                    // passes
+        // // goto (16) (2 + LABEL) LABEL    // fails
+        // // goto (16) LABEL LABEL          // passes
+        // // join (16) LABEL                // passes
+        // // mov (1) r65:ud LABEL:ud        // fails
+        // // mov (1) r65:ud (2 + LABEL):ud  // fails (poor diagnostic)
+        if (m_opSpec && m_opSpec->isBranching()) {
+            if (consumed) {
+                //   jmpi (LABEL + 2)
+                //         ^^^^^ already consumed LPAREN
+                Fail("branching operands may not perform arithmetic on labels");
+            } else {
+                // e.g. jmpi  LABEL64
+                //            ^^^^^^
+                // This backs out so caller can cleanly treat this as
+                // a branch label cleanly
+                return false;
+            }
+        } else {
+            // non branching op
+            if (!consumed) {
+                // e.g. mov (1) r13:ud   SYMBOL
+                //                       ^^^^^^
+                // we fail here since we don't know if we should treat SYMBOL
+                // as relative or absolute
+                Fail("non-branching operations may not reference symbols");
+            } else {
+                // end of a term where FOLLOW contains IDENT
+                //   X + Y*Z  IDENT
+                //            ^
+                // this allows caller to back off and accept
+                //  X + Y*Z as the total expression with lookahead IDENT
+                return false;
+                // FIXME: mov (1) r65:ud (LABEL + 2):ud
+                //   Bad diagnostic "expected source type"
+                // Either we cannot allow IDENT in any const expr's
+                // follow set, or we must track more state through the
+                // expression parse...
+                // Maybe pass a bool, canFail around.
+                //
+                // NOTE: we could also keep a list of backpatches and
+                // apply it after the parse.  But this would require
+                // building a full expression tree and walking it after
+                // all labels have been seen.
+            }
+        }
+    } else {
+        // something else: error unless we haven't consumed anything
+        if (consumed) {
+            Fail("syntax error in constant expression");
+        }
+        return false;
+    }
+    return true;
+} // parsePrimary
+
+bool GenParser::TryParseInstOptOrDepInfo(InstOptSet &instOpts)
+{
+    return tryParseInstOptDepInfoToken(instOpts) ||
+        tryParseInstOptToken(instOpts);
+}
+
+
+bool GenParser::tryParseInstOptDepInfoToken(InstOptSet &instOpts)
+{
+    auto loc = NextLoc();
+    InstOpt newOpt;
+    if (LookingAt(IDENT)) {
+        // classic instruction option that affects instruction dependency
+        // scheduling etc...
+        if (ConsumeIdentEq("NoDDChk")) {
+            newOpt = InstOpt::NODDCHK;
+            if (!m_model.supportsHwDeps()) {
+                Fail(loc, "NoDDChk not supported on given platform");
+            }
+        } else if (ConsumeIdentEq("NoDDClr")) {
+            newOpt = InstOpt::NODDCLR;
+            if (!m_model.supportsHwDeps()) {
+                Fail(loc, "NoDDClr not supported on given platform");
+            }
+        } else if (ConsumeIdentEq("NoPreempt")) {
+            if (m_model.supportsNoPreempt()) {
+                newOpt = InstOpt::NOPREEMPT;
+            } else {
+                Fail(loc, "NoPreempt not supported on given platform");
+            }
+        } else if (ConsumeIdentEq("NoSrcDepSet")) {
+            if (m_model.supportNoSrcDepSet()) {
+                newOpt = InstOpt::NOSRCDEPSET;
+            } else {
+                Fail(loc, "NoSrcDep not supported on given platform");
+            }
+        } else if (ConsumeIdentEq("Switch")) {
+            newOpt = InstOpt::SWITCH;
+		} else {
+            return false; // unrecognized option
+        }
+        if (!instOpts.add(newOpt)) {
+            // adding the option doesn't change the set... (it's duplicate)
+            Fail(loc, "duplicate instruction options");
+        }
+    } else {
+        return false;
+    }
+    return true;
+}
+
+bool GenParser::tryParseInstOptToken(InstOptSet &instOpts) {
+    auto loc = NextLoc();
+    InstOpt newOpt;
+    if (ConsumeIdentEq("AccWrEn")) {
+        newOpt = InstOpt::ACCWREN;
+    } else if (ConsumeIdentEq("Atomic")) {
+        if (m_model.platform < Platform::GEN7) {
+            Fail(loc, "Atomic mot supported on given platform");
+        }
+        newOpt = InstOpt::ATOMIC;
+        if (instOpts.contains(InstOpt::SWITCH)) {
+            Fail(loc, "Atomic mutually exclusive with Switch");
+        } else if (instOpts.contains(InstOpt::NOPREEMPT)) {
+            Fail(loc, "Atomic mutually exclusive with NoPreempt");
+        }
+    } else if (ConsumeIdentEq("Breakpoint")) {
+        newOpt = InstOpt::BREAKPOINT;
+    } else if (ConsumeIdentEq("Compacted")) {
+        newOpt = InstOpt::COMPACTED;
+        if (instOpts.contains(InstOpt::NOCOMPACT)) {
+            Fail(loc, "Compacted mutually exclusive with "
+                "Uncompacted/NoCompact");
+        }
+    } else if (ConsumeIdentEq("EOT")) {
+        newOpt = InstOpt::EOT;
+        if (!m_opSpec->isSendOrSendsFamily()) {
+            Fail(loc, "EOT is only allowed on send instructions");
+        }
+    } else if (ConsumeIdentEq("NoCompact") ||
+        ConsumeIdentEq("Uncompacted"))
+    {
+        newOpt = InstOpt::NOCOMPACT;
+        if (instOpts.contains(InstOpt::COMPACTED)) {
+            Fail(loc, "Uncomapcted/NoCompact mutually exclusive "
+                "with Compacted");
+        }
+    } else if (ConsumeIdentEq("NoMask")) {
+        Fail(loc, "NoMask goes precedes predication as (W) for WrEn: "
+            "e.g. (W) op (..) ...   or    (W&f0.0) op (..) ..");
+    } else if (ConsumeIdentEq("H1")) {
+        Fail(loc, "H1 is obsolete; use M0 in execution offset: "
+            "e.g. op (16|M0) ...");
+    } else if (ConsumeIdentEq("H2")) {
+        Fail(loc, "H2 is obsolete; use M16 in execution offset: "
+            "e.g. op (16|M16) ...");
+    } else if (ConsumeIdentEq("Q1")) {
+        Fail(loc, "Q1 is obsolete; use M0 in execution offset: "
+            "e.g. op (8|M0) ...");
+    } else if (ConsumeIdentEq("Q2")) {
+        Fail(loc, "Q2 is obsolete; use M8 in execution offset: "
+            "e.g. op (8|M8) ...");
+    } else if (ConsumeIdentEq("Q3")) {
+        Fail(loc, "Q3 is obsolete; use M16 in execution offset: "
+            "e.g. op (8|M16) ...");
+    } else if (ConsumeIdentEq("Q4")) {
+        Fail(loc, "Q4 is obsolete; use M24 in execution offset: "
+            "e.g. op (8|M24) ...");
+    } else if (ConsumeIdentEq("N1")) {
+        Fail(loc, "N1 is obsolete; use M0 in execution offset: "
+            "e.g. op (4|M0) ...");
+    } else if (ConsumeIdentEq("N2")) {
+        Fail(loc, "N2 is obsolete; use M4 in execution offset: "
+            "e.g. op (4|M4) ...");
+    } else if (ConsumeIdentEq("N3")) {
+        Fail(loc, "N3 is obsolete; use M8 in execution offset: "
+            "e.g. op (4|M8) ...");
+    } else if (ConsumeIdentEq("N4")) {
+        Fail(loc, "N4 is obsolete; use M12 in execution offset: "
+            "e.g. op (4|M12) ...");
+    } else if (ConsumeIdentEq("N5")) {
+        Fail(loc, "N5 is obsolete; use M16 in execution offset: "
+            "e.g. op (4|M16) ...");
+    } else if (ConsumeIdentEq("N6")) {
+        Fail(loc, "N6 is obsolete; use M20 in execution offset: "
+            "e.g. op (4|M20) ...");
+    } else if (ConsumeIdentEq("N7")) {
+        Fail(loc, "N7 is obsolete; use M24 in execution offset: "
+            "e.g. op (4|M24) ...");
+    } else if (ConsumeIdentEq("N8")) {
+        Fail(loc, "N8 is obsolete; use M28 in execution offset: "
+            "e.g. op (4|M28) ...");
+    } else {
+        return false;
+    }
+
+    if (!instOpts.add(newOpt)) {
+        // adding the option doesn't change the set... (it's duplicate)
+        Fail(loc, "duplicate instruction options");
+    }
+    return true;
+}
+
+
+
+void GenParser::initSymbolMaps()
+{
+    // map the register names
+    // this maps just the non-number part.
+    // e.g. with cr0, this maps "cr"; see LookupReg()
+    for (size_t i = 0; i < sizeof(registers)/sizeof(registers[0]); i++) {
+        const RegInfo *ri = &registers[i];
+        if (ri->supportedOn(m_model.platform)) {
+            m_regmap[ri->name] = ri;
+        }
+    }
+}
+
+class KernelParser : GenParser {
     // maps mnemonics and registers for faster lookup
     std::map<std::string,const OpSpec*>   opmap;
-    std::map<std::string,const RegInfo*>  regmap;
 
-    int                            m_defaultExecutionSize;
+    ExecSize                       m_defaultExecutionSize;
     Type                           m_defaultRegisterType;
 
 public:
@@ -130,17 +852,12 @@ public:
         const std::string &inp,
         ErrorHandler &eh,
         const ParseOpts &pots)
-        : Parser(inp,eh)
-        , m_model(model)
-        , m_handler(handler)
-        , m_parseOpts(pots)
-
-        , m_defaultExecutionSize(1)
+        : GenParser(model, handler, inp, eh, pots)
+        , m_defaultExecutionSize(ExecSize::SIMD1)
         , m_defaultRegisterType(Type::INVALID)
     {
         initSymbolMaps();
     }
-
 
     void ParseListing() {
         ParseProgram();
@@ -149,15 +866,11 @@ private:
     // instruction state
     bool                  m_hasWrEn;
     Type                  m_unifType;
-    const OpSpec         *m_opSpec;
     const Token          *m_unifTypeTk;
     RegRef                m_flagReg;
-    int                   m_execSize;
-    int                   m_chOff;
+    ExecSize              m_execSize;
+    ChannelOffset         m_chOff;
 
-    // Message               m_ldStInst;
-
-    Operand::Kind         m_srcKinds[3];
     Loc                   m_srcLocs[3];
 
     void initSymbolMaps() {
@@ -196,38 +909,8 @@ private:
                 opmap[os->mnemonic] = os;
             }
         }
-        // map the register names
-        // this maps just the non-number part.
-        // e.g. with cr0, this maps "cr"; see LookupReg()
-        for (size_t i = 0; i < sizeof(registers)/sizeof(registers[0]); i++) {
-            const RegInfo *ri = &registers[i];
-            if (ri->supportedOn(m_model.platform)) {
-                regmap[ri->name] = ri;
-            }
-        }
     }
 
-    template <typename S>
-    void Error(const Loc &loc, const S &m1) {
-        std::stringstream ss;
-        ss << m1;
-        Fail(loc, ss.str());
-    }
-    template <typename S, typename T>
-    void Error(const Loc &loc, const S &m1, const T &m2) {
-        std::stringstream ss;
-        ss << m1;
-        ss << m2;
-        Fail(loc, ss.str());
-    }
-    template <typename S, typename T, typename U>
-    void Error(const Loc &loc, const S &m1, const T &m2, const U &m3) {
-        std::stringstream ss;
-        ss << m1;
-        ss << m2;
-        ss << m3;
-        Fail(loc, ss.str());
-    }
     bool isMacroOp() const {
         return m_opSpec->isMacro();
     }
@@ -271,19 +954,21 @@ private:
                 if (ConsumeIdentEq("default_execution_size")) {
                     Consume(LPAREN);
                     auto loc = NextLoc();
-                    if (!ConsumeIntLit<int>(m_defaultExecutionSize)) {
+                    int dftExecSize;
+                    if (!ConsumeIntLit<int>(dftExecSize)) {
                         Fail("expected SIMD width (integral value)");
                     }
-                    if (m_defaultExecutionSize !=  1 &&
-                        m_defaultExecutionSize !=  2 &&
-                        m_defaultExecutionSize !=  4 &&
-                        m_defaultExecutionSize !=  8 &&
-                        m_defaultExecutionSize != 16 &&
-                        m_defaultExecutionSize != 32)
+                    if (dftExecSize !=  1 &&
+                        dftExecSize !=  2 &&
+                        dftExecSize !=  4 &&
+                        dftExecSize !=  8 &&
+                        dftExecSize != 16 &&
+                        dftExecSize != 32)
                     {
                         Fail(loc, "invalid default execution size; "
                             "must be 1, 2, 4, 8, 16, 32");
                     }
+                    m_defaultExecutionSize = (ExecSize)dftExecSize;
                     Consume(RPAREN);
                     Consume(NEWLINE);
                 } else if (ConsumeIdentEq("default_register_type")) {
@@ -360,7 +1045,7 @@ private:
         try {
             // parse one instruction
             // DumpLookaheads();
-            ParseInstBody();
+            ParseInstCanThrowException();
         } catch (SyntaxError &s) {
             // we resync here and return from ParseInst
             RecoverFromSyntaxError(s);
@@ -368,16 +1053,14 @@ private:
     }
 
 
-    // Instruction = Predication? Mnemonic UniformType? EMask
+    // Instruction = RegularInst | LdStInst
+    // RegularInst = Predication? Mnemonic UniformType? EMask
     //                 ConditionModifier? Operands InstOptions?
-    //
-    void ParseInstBody() {
+    // LdStInst = ... comes from Sends/Interface.hpp ...
+    void ParseInstCanThrowException() {
         // ShowCurrentLexicalContext();
         const Loc startLoc = NextLoc();
         m_handler.InstStart(startLoc);
-
-        // reset all internal instruction state
-        // m_ldStInst.family = Message::Family::INVALID;
 
         m_flagReg = REGREF_INVALID;
         m_opSpec = nullptr;
@@ -392,8 +1075,29 @@ private:
 
         // (W&~f0) mov (8|M0) r1 r2
         //         ^
-        ParseMnemonic();
+        //
+        //         math.sqrt (8|M0) ...
+        //         ^
+        //
+        // (f0.0)  ld.sc8.x4 (8) ... surf[4][...]
+        //         ^
+        const Loc mnemonicLoc = NextLoc();
+        m_opSpec = ParseMnemonic();
+        if (m_opSpec) {
+            // looking at a regular instruction (non special-ld-st inst)
+            m_handler.InstOp(m_opSpec);
+            FinishNonLdStInstBody();
+        } else if (!ParseLdStInst(m_defaultExecutionSize, *this)) {
+            Fail(mnemonicLoc, "invalid mnemonic");
+        }
+        m_handler.InstEnd(ExtentToPrevEnd(startLoc));
+    }
 
+    // e.g.  add (8|M8) ...
+    //           ^
+    // e.g.  nop ...
+    //           ^
+    void FinishNonLdStInstBody() {
         // if (Consume(COLON)) {
         //    m_unifTypeTk = &Next(0);
         //    ConsumeIdentOneOfOrFail(
@@ -403,15 +1107,16 @@ private:
         //        "invalid uniform type");
         // }
 
-        // (W&~f0) mov (8|M0) (le)f0.0 r1 r2
+        // (W&~f0) mov (8|M0) (le)f0.0  r1:f  r2:f
         //             ^
-        ParseExecInfo();
+        ChannelOffset chOff;
+        ParseExecInfo(m_defaultExecutionSize, m_execSize, chOff); // sets m_execSize
 
         ParseFlagModOpt();
         switch (m_opSpec->format) {
         case OpSpec::NULLARY:
-            // nop
-            // illegal
+            // nop ...
+            // illegal ...
             break; // fallthrough to instruction options
         case OpSpec::BASIC_UNARY_REG:
         case OpSpec::BASIC_UNARY_REGIMM:
@@ -429,12 +1134,10 @@ private:
         case OpSpec::SYNC_UNARY:
             // implicit destination
             ParseSrcOp(0);
-            if (m_model.supportsWaitDirect() &&
+            if (m_model.supportsWait() &&
                 m_srcKinds[0] != Operand::Kind::DIRECT)
             {
-                Fail(
-                    m_srcLocs[0],
-                    "src0 must be a direct notification register");
+                Fail(m_srcLocs[0], "src0 must be a notification register");
             }
             break;
         case OpSpec::SEND_UNARY:
@@ -446,7 +1149,7 @@ private:
             ParseSendDstOp();
             ParseSendSrcOp(0, false);
             ParseSendSrcOp(1,
-                m_model.sendCheck3() &&
+                m_model.supportsUnarySend() &&
                 m_parseOpts.supportLegacyDirectives);
             ParseSendDescs();
             break;
@@ -501,10 +1204,7 @@ private:
             } else {
                 // legacy format
                 // add an explicit null operand
-                const RegInfo *ri = nullptr;
-                int reg; // discarded
-                (void)LookupReg("null", ri, reg);
-                IGA_ASSERT(ri != nullptr, "failed to lookup null register");
+                //
                 // trb: this is no longer a warning, but we still set the
                 // parameter in the IR for the time being
                 //
@@ -513,14 +1213,14 @@ private:
                 //        "deprecated syntax: register version "
                 //        "of brc takes an explicit null parameter");
                 // }
-                m_handler.InstSrcOpRegDirect(
-                    1,
-                    brcStart,
-                    SrcModifier::NONE,
-                    *ri,
-                    REGREF_ZERO_ZERO,
-                    Region::SRC010,
-                    Type::UD);
+                // m_handler.InstSrcOpRegDirect(
+                //     1,
+                //     brcStart,
+                //     SrcModifier::NONE,
+                //     RegName::ARF_NULL,
+                //     REGREF_ZERO_ZERO,
+                //     Region::SRC010,
+                //     Type::UD);
             }
             break;
         }
@@ -546,8 +1246,6 @@ private:
         {
             FailAtPrev("expected '\\n', ';', or EOF");
         }
-
-        m_handler.InstEnd(ExtentToPrevEnd(startLoc));
     }
 
 
@@ -630,63 +1328,6 @@ private:
         }
     }
 
-    bool LookupReg(
-        const std::string &str,
-        const RegInfo*& ri,
-        int& reg)
-    {
-        ri = nullptr;
-        reg = 0;
-
-        // given something like "r13", parse the "r"
-        // "cr0" -> "cr"
-        size_t len = 0;
-        while (len < str.length() && !isdigit(str[len]))
-            len++;
-        if (len == 0)
-            return false;
-        auto itr = regmap.find(str.substr(0,len));
-        if (itr == regmap.end()) {
-            return false;
-        }
-        ri = itr->second;
-        reg = 0;
-        if (ri->num_regs > 0) {
-            // if it's a numbered register like "r13" or "cr1", then
-            // parse the number part
-            size_t off = len;
-            while (off < str.size() && isdigit(str[off])) {
-                char c = str[off++];
-                reg = 10*reg + c - '0';
-            }
-            if (off < str.size()) {
-                // we have something like "r13xyz"; we don't treat this
-                // as a register, but fallback so it can be treated as an
-                // identifier (an immediate reference)
-                reg = 0;
-                ri = nullptr;
-                return false;
-            }
-            if (reg >= ri->num_regs) {
-                Warning("register is out of bounds");
-            }
-        } // else it was something like "null" or "ip"
-          // either way, we are done
-        return true;
-    }
-
-    bool ConsumeReg(const RegInfo*& ri, int& reg) {
-        const Token &tk = Next();
-        if (tk.lexeme != IDENT) {
-            return false;
-        }
-        if (LookupReg(GetTokenAsString(tk), ri, reg)) {
-            Skip();
-            return true;
-        } else {
-            return false;
-        }
-    }
 
     bool PeekReg(const RegInfo*& ri, int& reg) {
         const Token &tk = Next();
@@ -788,46 +1429,45 @@ private:
         Fail(loc, ss.str());
     }
 
-    // Mnemoninc    = Ident SubMnemonic? | Ident BrCtl | LdOp
+
+    // Mnemoninc    = Ident SubMnemonic? | Ident BrCtl
     //   SubMnemoninc = '.' [Ident]SubFunc
     //   BrCtl = '.b'
-    // TBD: LdOp = ('ld'|'ldc'|'lds'|'ldsc') ('.' Ident)*
     //
-    void ParseMnemonic() {
+    const OpSpec *ParseMnemonic() {
         const Loc mnemonicLoc = NextLoc();
-        m_opSpec = TryConsumeMmenonic();
-        if (!m_opSpec) {
-            Fail(mnemonicLoc, "invalid mnemonic");
+        const OpSpec *pOs = TryConsumeMmenonic();
+        if (!pOs) {
+            return nullptr;
         }
-        if (m_opSpec->format == OpSpec::GROUP) {
-            // e.g. math.*, sync.*, or send.*
+        if (pOs->format == OpSpec::GROUP) {
+            // e.g. math.*, sync.*, send.*, etc...
             ConsumeOrFail(DOT, "expected operation subfunction");
-            if (!LookingAt(IDENT)) {
+            if (LookingAt(IDENT)) {
+                auto sfLoc = NextLoc();
+                auto sfIdent = GetTokenAsString(Next());
+                // look up the function by the fully qualified name
+                std::stringstream ss;
+                ss << pOs->mnemonic << "." << sfIdent;
+                auto itr = opmap.find(ss.str());
+                if (itr == opmap.end()) {
+                    failWithUnexpectedSubfunction(sfLoc, sfIdent);
+                } else {
+                    // resolve to idiv etc...
+                    Skip();
+                    pOs = itr->second;
+                }
+            } else {
                 Fail("expected subfunction");
             }
-            auto sfLoc = NextLoc();
-            auto sfIdent = GetTokenAsString(Next());
-            // look up the function by the fully qualified name
-            std::stringstream ss;
-            ss << m_opSpec->mnemonic << "." << sfIdent;
-            auto itr = opmap.find(ss.str());
-            if (itr == opmap.end()) {
-                failWithUnexpectedSubfunction(sfLoc, sfIdent);
-            } else {
-                // resolve to idiv etc...
-                Skip();
-                m_opSpec = itr->second;
-            }
         }
-        m_handler.InstOp(m_opSpec);
-        // GED will reject this
-        if (!m_hasWrEn && m_opSpec->op == Op::JMPI) {
+        if (!m_hasWrEn && pOs->op == Op::JMPI) {
             Warning(mnemonicLoc,
                 "jmpi must have (W) specified (automatically adding)");
             m_handler.InstNoMask(mnemonicLoc);
         }
 
-        if (m_opSpec->supportsBranchCtrl()) {
+        if (pOs->supportsBranchCtrl()) {
             if (Consume(DOT)) {
                 if (!ConsumeIdentEq("b")) {
                     Fail("expected 'b' (branch control)");
@@ -853,93 +1493,8 @@ private:
                 Fail("unexpected . (expected execution size)");
             }
         }
-    }
 
-
-    // ExecInfo = '(' ExecSize EmOffNm? ')'
-    //   where EmOffNm = '|' EmOff  (',' 'NM')?
-    //                 | '|' 'NM'
-    //         EmOff = 'M0' | 'M4' | ...
-    //         ExecSize = '1' | '2' | ... | '32'
-    void ParseExecInfo() {
-        Loc execSizeLoc = NextLoc(0);
-        Loc execOffsetLoc = NextLoc(0);
-        // we are careful here since we might have things like:
-        //    jmpi        (1*16)
-        //    jmpi (1|M0) ...
-        //    jmpi (1)    ...
-        // We resolve that by looking ahead two symbols
-        if (LookingAt(LPAREN) && (LookingAt(2,RPAREN) || LookingAt(2,PIPE))) {
-            Skip();
-            execSizeLoc = NextLoc();
-            ConsumeIntLitOrFail(m_execSize, "expected SIMD width");
-
-            m_chOff = 0;
-            if (Consume(PIPE)) {
-                static const IdentMap<int> EM_OFFS {
-                      {"M0", 0}
-                    , {"M4", 4}
-                    , {"M8", 8}
-                    , {"M12", 12}
-                    , {"M16", 16}
-                    , {"M20", 20}
-                    , {"M24", 24}
-                    , {"M28", 28}
-                };
-                execOffsetLoc = NextLoc();
-                ConsumeIdentOneOfOrFail(
-                    EM_OFFS,
-                    m_chOff,
-                    "expected emask offset",
-                    "invalid emask offset");
-                //if (m_chOff % m_execSize != 0) {
-                //    Fail(execOffsetLoc,
-                //        "invalid execution mask offset for execution size");
-                //} else if (m_chOff + m_execSize > 32) {
-                //    Fail(execOffsetLoc,
-                //        "invalid execution mask offset for execution size");
-                //}
-            }
-            ConsumeOrFail(RPAREN,"expected )");
-        } else {
-            if (m_opSpec->hasImpicitEm()) {
-                m_chOff = 0;
-                m_execSize = 1;
-            } else if (m_parseOpts.supportLegacyDirectives) {
-                m_chOff = 0;
-                m_execSize = m_defaultExecutionSize;
-            } else {
-                Fail("expected '(' (start of execution size info)");
-            }
-        }
-
-        ExecSize execSize;
-        switch (m_execSize) {
-        case 1: execSize = ExecSize::SIMD1; break;
-        case 2: execSize = ExecSize::SIMD2; break;
-        case 4: execSize = ExecSize::SIMD4; break;
-        case 8: execSize = ExecSize::SIMD8; break;
-        case 16: execSize = ExecSize::SIMD16; break;
-        case 32: execSize = ExecSize::SIMD32; break;
-        default: Fail("invalid SIMD width");
-        }
-
-        ChannelOffset chOff;
-        switch (m_chOff) {
-        case 0: chOff = ChannelOffset::M0; break;
-        case 4: chOff = ChannelOffset::M4; break;
-        case 8: chOff = ChannelOffset::M8; break;
-        case 12: chOff = ChannelOffset::M12; break;
-
-        case 16: chOff = ChannelOffset::M16; break;
-        case 20: chOff = ChannelOffset::M20; break;
-        case 24: chOff = ChannelOffset::M24; break;
-        case 28: chOff = ChannelOffset::M28; break;
-        default: Fail(execOffsetLoc,"invalid emask");
-        }
-
-        m_handler.InstExecInfo(
-            execSizeLoc, execSize, execOffsetLoc, chOff);
+        return pOs;
     }
 
 
@@ -1052,6 +1607,7 @@ private:
         }
     }
 
+
     // r13
     // null
     // r13:w (non-standard)
@@ -1063,7 +1619,7 @@ private:
             const RegInfo *ri = NULL;
             int regNum = 0;
             if (!ConsumeReg(ri, regNum)) {
-                Fail("invalid send destination");
+                Fail("invalid send destination register");
             }
             if (!ri->isRegNumberValid(regNum)) {
                 FailF("invalid destination register number "
@@ -1071,14 +1627,14 @@ private:
                     ri->name, ri->num_regs);
             }
             if (LookingAt(LBRACK)) {
-                Fail("this form of indirect (r3[a0.0,16]) is invalid for send dst opnd; use regular form: r[a0.0,16]");
-            }
-            else
-            {
+                Fail("this form of indirect (r3[a0.0,16]) is invalid for "
+                    "send dst operand; use regular form: r[a0.0,16]");
+            } else {
                 FinishDstOpRegDirSubRegRgnTy(regStart, regStart, *ri, regNum);
             }
         }
     }
+
 
     // (sat)
     bool ParseSatOpt() {
@@ -1146,8 +1702,10 @@ private:
                 //  E.g. r12:d  ...
                 subregNum = 0;
             }
-            rgnHz = ParseDstOpRegion();
         }
+
+        // <1>
+        rgnHz = ParseDstOpRegion();
 
         // :t
         Type dty = Type::INVALID;
@@ -1161,18 +1719,18 @@ private:
         // ensure the subregister is not out of bounds
         if (dty != Type::INVALID) {
             int typeSize = TypeSize(dty);
-            if (ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize)) {
-                Warning(subregLoc, "subregister too out of bounds for data type");
+            if (!ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize)) {
+                Warning(subregLoc, "subregister out of bounds for data type");
             } else if (typeSize < ri.acc_gran) {
                 Warning(regnameLoc, "access granularity too small for data type");
             }
         }
 
         if (isMacroOp()) {
-            m_handler.InstDstOpRegImplAcc(opStart, ri, regNum, implAcc, dty);
+            m_handler.InstDstOpRegImplAcc(opStart, ri.reg, regNum, implAcc, rgnHz, dty);
         } else {
             RegRef reg = {(uint8_t)regNum, (uint8_t)subregNum};
-            m_handler.InstDstOpRegDirect(opStart, ri, reg, rgnHz, dty);
+            m_handler.InstDstOpRegDirect(opStart, ri.reg, reg, rgnHz, dty);
         }
     }
 
@@ -1314,6 +1872,9 @@ private:
             m_srcKinds[srcOpIx] = Operand::Kind::INDIRECT;
             ParseSrcOpInd(srcOpIx, m_srcLocs[srcOpIx], srcMods, 0);
             // register, symbolic immediate, label, ...
+            if (pipeAbs) {
+                ConsumeOrFailAfterPrev(PIPE, "expected |");
+            }
         } else if (ConsumeReg(regInfo, regNum)) {
             // register direct or new pre-scaled register indirect
             // r13
@@ -1347,18 +1908,31 @@ private:
             }
         } else {
             // backtrack to before any "source modifier"
-            ImmVal immVal;
             m_lexer.Reset();
+            if (pipeAbs) {
+                Skip(1);
+            }
+
             // try as constant expression
-            if (TryParseConstExpr(srcOpIx, immVal)) {
+            ImmVal immVal;
+            if (TryParseConstExpr(immVal,srcOpIx)) {
                 // does not match labels
                 m_srcKinds[srcOpIx] = Operand::Kind::IMMEDIATE;
+                if (pipeAbs) {
+                    immVal.Abs();
+                }
                 FinishSrcOpImmValue(
                     srcOpIx,
                     m_srcLocs[srcOpIx],
                     regnameTk,
                     immVal);
+                if (pipeAbs) {
+                    ConsumeOrFailAfterPrev(PIPE, "expected |");
+                }
             } else {
+                if (pipeAbs) {
+                    Fail(regnameTk.loc, "unexpected |");
+                }
                 // failed constant expression without consuming any input
                 if (LookingAt(IDENT)) {
                     // e.g. LABEL64
@@ -1382,403 +1956,6 @@ private:
                 }
             }
         }
-    }
-
-
-    // expression parsing
-    // &,|
-    // <<,>>
-    // +,-
-    // *,/,%
-    // -(unary neg)
-    bool TryParseConstExpr(int srcOpIx, ImmVal &v) {
-        if (ParseBitwiseExpr(false, v)) {
-            if (srcOpIx > 0) {
-                m_srcKinds[srcOpIx] = Operand::Kind::IMMEDIATE;
-            }
-            return true;
-        }
-        return false;
-    }
-    bool TryParseConstExpr(ImmVal &v) {
-        return TryParseConstExpr(-1,v);
-    }
-    bool TryParseIntConstExpr(ImmVal &v, const char *for_what) {
-        Loc loc = NextLoc();
-        bool z = TryParseConstExpr(-1,v);
-        if (!z) {
-            return false;
-        } else if (!isIntegral(v)) {
-            std::stringstream ss;
-            if (for_what) {
-                ss << for_what << " must be a constant integer expression";
-            } else {
-                ss << "expected constant integer expression";
-            }
-            Fail(loc,ss.str());
-        }
-        return true;
-    }
-    void EnsureIntegral(const Token &t, const ImmVal &v) {
-        if (!isIntegral(v)) {
-            Fail(t.loc, "argument to operator must be integral");
-        }
-    }
-    void CheckNumTypes(const ImmVal &v1, const Token &op, const ImmVal &v2) {
-        if (isFloating(v1) && !isFloating(v2)) {
-            Fail(op.lexeme, "right operand to operator must be floating point"
-                " (append a .0 to force floating point)");
-        } else if (isFloating(v2) && !isFloating(v1)) {
-            Fail(op.lexeme, "left operand to operator must be floating point"
-                " (append a .0 to force floating point)");
-        }
-    }
-    // target must be float
-    void CheckIntTypes(const ImmVal &v1, const Token &op, const ImmVal &v2) {
-        if (isFloating(v1)) {
-            Fail(op.lexeme, "left operand to operator must be integral");
-        } else if (isFloating(v2)) {
-            Fail(op.lexeme, "right operand to operator must be integral");
-        }
-    }
-    ImmVal EvalBinExpr(const ImmVal &v1, const Token &op, const ImmVal &v2) {
-        bool isF =isFloating(v1) || isFloating(v2);
-        bool isU = isUnsignedInt(v1) || isUnsignedInt(v2);
-        ImmVal result = v1;
-        switch (op.lexeme) {
-        case AMP:
-        case PIPE:
-        case LSH:
-        case RSH:
-        case MOD:
-            // integral only operations
-            CheckIntTypes(v1, op, v2);
-            switch (op.lexeme) {
-            case AMP:
-                if (isU) {
-                    result.u64 &= v2.u64;
-                } else {
-                    result.s64 &= v2.s64;
-                }
-                break;
-            case PIPE:
-                if (isU) {
-                    result.u64 |= v2.u64;
-                } else {
-                    result.s64 |= v2.s64;
-                }
-                break;
-            case LSH:
-                if (isU) {
-                    result.u64 <<= v2.u64;
-                } else {
-                    result.s64 <<= v2.s64;
-                }
-                break;
-            case RSH:
-                if (isU) {
-                    result.u64 >>= v2.u64;
-                } else {
-                    result.s64 >>= v2.s64;
-                }
-                break;
-            case MOD:
-                if (isU) {
-                    result.u64 %= v2.u64;
-                } else {
-                    result.s64 %= v2.s64;
-                }
-                break;
-            default:
-                break;
-            }
-            break;
-        case ADD:
-        case SUB:
-        case MUL:
-        case DIV:
-            CheckNumTypes(v1, op, v2);
-            switch (op.lexeme) {
-            case ADD:
-                if (isF) {
-                    result.f64 += v2.f64;
-                } else if (isU) {
-                    result.u64 += v2.u64;
-                } else {
-                    result.s64 += v2.s64;
-                }
-                break;
-            case SUB:
-                if (isF) {
-                    result.f64 -= v2.f64;
-                } else if (isU) {
-                    result.u64 -= v2.u64;
-                } else {
-                    result.s64 -= v2.s64;
-                }
-                break;
-            case MUL:
-                if (isF) {
-                    result.f64 *= v2.f64;
-                } else if (isU) {
-                    result.u64 *= v2.u64;
-                } else {
-                    result.s64 *= v2.s64;
-                }
-                break;
-            case DIV:
-                if (isF) {
-                    result.f64 /= v2.f64;
-                } else {
-                    if (v2.u64 == 0) {
-                        Fail(op.loc, "(integral) division by zero");
-                    }
-                    if (isU) {
-                        result.u64 /= v2.u64;
-                    } else {
-                        result.s64 /= v2.s64;
-                    }
-                }
-                break;
-            default:
-                break;
-            }
-            break;
-        default:
-            break;
-        }
-        return result;
-    }
-    bool isFloating(const ImmVal &v) {
-        switch (v.kind) {
-        case ImmVal::Kind::F16:
-        case ImmVal::Kind::F32:
-        case ImmVal::Kind::F64:
-            return true;
-        default:
-            return false;
-        }
-    }
-    bool isIntegral(const ImmVal &v) {
-        return isSignedInt(v) || isUnsignedInt(v);
-    }
-    bool isSignedInt(const ImmVal &v) {
-        switch (v.kind) {
-        case ImmVal::Kind::S8:
-        case ImmVal::Kind::S16:
-        case ImmVal::Kind::S32:
-        case ImmVal::Kind::S64:
-            return true;
-        default:
-            return false;
-        }
-    }
-    bool isUnsignedInt(const ImmVal &v) {
-        switch (v.kind) {
-        case ImmVal::Kind::U8:
-        case ImmVal::Kind::U16:
-        case ImmVal::Kind::U32:
-        case ImmVal::Kind::U64:
-            return true;
-        default:
-            return false;
-        }
-    }
-
-
-    // E -> E (('&'|'|') E)*
-    bool ParseBitwiseExpr(bool consumed, ImmVal &v) {
-        if (!ParseShiftExpr(consumed,v)) {
-            return false;
-        }
-        while (LookingAtAnyOf(AMP, PIPE)) {
-            Token t = Next(); Skip();
-            ImmVal r;
-            ParseBitwiseExpr(true, r);
-            v = EvalBinExpr(v, t, r);
-        }
-        return true;
-    }
-    // E -> E (('<<'|'>>') E)*
-    bool ParseShiftExpr(bool consumed, ImmVal &v) {
-        if (!ParseAddExpr(consumed, v)) {
-            return false;
-        }
-        while (LookingAtAnyOf(LSH, RSH)) {
-            Token t = Next(); Skip();
-            ImmVal r;
-            ParseAddExpr(true, r);
-            v = EvalBinExpr(v, t, r);
-        }
-        return true;
-    }
-    // E -> E (('+'|'-') E)*
-    bool ParseAddExpr(bool consumed, ImmVal &v) {
-        if (!ParseMulExpr(consumed, v)) {
-            return false;
-        }
-        while (LookingAtAnyOf(ADD, SUB)) {
-            Token t = Next(); Skip();
-            ImmVal r;
-            ParseMulExpr(true, r);
-            v = EvalBinExpr(v, t, r);
-        }
-        return true;
-    }
-
-    // E -> E (('*'|'/'|'%') E)*
-    bool ParseMulExpr(bool consumed, ImmVal &v) {
-        if (!ParseUnExpr(consumed, v)) {
-            return false;
-        }
-        while (LookingAtAnyOf({MUL, DIV, MOD})) {
-            Token t = Next(); Skip();
-            ImmVal r;
-            ParseUnExpr(true, r);
-            v = EvalBinExpr(v, t, r);
-        }
-        return true;
-    }
-    // E -> ('-'|'~') E
-    bool ParseUnExpr(bool consumed, ImmVal &v) {
-        if (!LookingAtAnyOf(SUB, TILDE)) {
-            if (!ParsePrimary(consumed, v)) {
-                return false;
-            }
-        } else {
-            Token t = Next(); Skip();
-            ParsePrimary(true, v);
-            switch (t.lexeme) {
-            case SUB:
-                v.Negate();
-                break;
-            case TILDE:
-                EnsureIntegral(t, v);
-                v.u64 = ~v.u64;
-                break;
-            default:
-                break;
-            }
-        }
-        return true;
-    }
-    // special symbol (e.g. nan, inf, ...)
-    // grouped expression (E)
-    // literal
-    bool ParsePrimary(bool consumed, ImmVal &v) {
-        Token t = Next();
-        bool isQuietNaN = false;
-        if (LookingAtIdentEq(t, "nan")) {
-            Warning("nan is deprecated, us snan(...) or qnan(...)");
-            v.kind = ImmVal::F64;
-            v.f64 = std::numeric_limits<double>::signaling_NaN();
-            Skip();
-        } else if ((isQuietNaN = LookingAtIdentEq(t, "qnan")) ||
-            LookingAtIdentEq(t, "snan"))
-        {
-            auto nanSymLoc = NextLoc();
-            Skip();
-            if (Consume(LPAREN)) {
-                auto payloadLoc = NextLoc();
-                ImmVal payload;
-                payload.u64 = 0;
-                ParseBitwiseExpr(true, payload);
-                if (payload.u64 >= IGA_F64_SNAN_BIT) {
-                    Fail(payloadLoc, "NaN payload overflows");
-                } else if (payload.u64 == 0 && isQuietNaN) {
-                    Fail(payloadLoc, "NaN payload must be nonzero for qnan");
-                }
-                ConsumeOrFail(RPAREN, "expected )");
-                v.u64 = payload.u64 | IGA_F64_EXP_MASK;
-                if (!isQuietNaN) {
-                    v.u64 |= IGA_F64_SNAN_BIT;
-                }
-            } else {
-                Warning(nanSymLoc,
-                    "bare qnan and snan tokens deprecated"
-                    " (pass in a valid payload)");
-                v.u64 = IGA_F64_EXP_MASK;
-                if (isQuietNaN) {
-                    v.u64 |= 1; // set something non-zero in the payload
-                } else {
-                    v.u64 |= IGA_F64_SNAN_BIT;
-                }
-            }
-            v.kind = ImmVal::F64;
-        } else if (LookingAtIdentEq(t, "inf")) {
-            v.f64 = std::numeric_limits<double>::infinity();
-            v.kind = ImmVal::F64;
-            Skip();
-        } else if (LookingAt(FLTLIT)) {
-            ParseFltFrom(t.loc, v.f64);
-            v.kind = ImmVal::Kind::F64;
-            Skip();
-        } else if (LookingAtAnyOf({INTLIT02,INTLIT10,INTLIT16})) {
-            // we parse as unsigned, but tag as signed for negation etc...
-            ParseIntFrom<uint64_t>(t.loc, v.u64);
-            v.kind = ImmVal::Kind::S64;
-            Skip();
-        } else if (Consume(LPAREN)) {
-            // (E)
-            ParseBitwiseExpr(true, v);
-            Consume(RPAREN);
-        } else if (LookingAt(IDENT)) {
-            // TEST CASES
-            // LABEL:
-            // // jmpi  LABEL                    // passes
-            // // goto (16) (2 + LABEL) LABEL    // fails
-            // // goto (16) LABEL LABEL          // passes
-            // // join (16) LABEL                // passes
-            // // mov (1) r65:ud LABEL:ud        // fails
-            // // mov (1) r65:ud (2 + LABEL):ud  // fails (poor diagnostic)
-            if (m_opSpec->isBranching()) {
-                if (consumed) {
-                    //   jmpi (LABEL + 2)
-                    //         ^^^^^ already consumed LPAREN
-                    Fail("branching operands may not perform arithmetic on labels");
-                } else {
-                    // e.g. jmpi  LABEL64
-                    //            ^^^^^^
-                    // This backs out so caller can cleanly treat this as
-                    // a branch label cleanly
-                    return false;
-                }
-            } else {
-                // non branching op
-                if (!consumed) {
-                    // e.g. mov (1) r13:ud   SYMBOL
-                    //                       ^^^^^^
-                    // we fail here since we don't know if we should treat SYMBOL
-                    // as relative or absolute
-                    Fail("non-branching operations may not reference symbols");
-                } else {
-                    // end of a term where FOLLOW contains IDENT
-                    //   X + Y*Z  IDENT
-                    //            ^
-                    // this allows caller to back off and accept
-                    //  X + Y*Z as the total expression with lookahead IDENT
-                    return false;
-                    // FIXME: mov (1) r65:ud (LABEL + 2):ud
-                    //   Bad diagnostic "expected source type"
-                    // Either we cannot allow IDENT in any const expr's
-                    // follow set, or we must track more state through the
-                    // expression parse...
-                    // Maybe pass a bool, canFail around.
-                    //
-                    // NOTE: we could also keep a list of backpatches and
-                    // apply it after the parse.  But this would require
-                    // building a full expression tree and walking it after
-                    // all labels have been seen.
-                }
-            }
-        } else {
-            // something else: error unless we haven't consumed anything
-            if (consumed) {
-                Fail("syntax error in constant expression");
-            }
-            return false;
-        }
-        return true;
     }
 
 
@@ -1810,9 +1987,10 @@ private:
     // REG ('.' INT)? SrcRgn? (':' SrcTy)?
     //    ^ HERE
     //
-    // E.g. r13.4<2>:t
-    // E.g. r13.4<0;1,0>:t
-    // E.g. r13.4<8;8,1>:t
+    // E.g. r13.4<2>:f
+    // E.g. r13.4<0;1,0>:f
+    // E.g. r13.4<8;8,1>:f
+    // E.g. r13.acc2:f
     // E.g. ce:ud
     // E.g. ip:ud
     // E.g. a0.1
@@ -1830,8 +2008,10 @@ private:
         Region rgn;
         Loc subregLoc = NextLoc(1);
         ImplAcc implAcc = ImplAcc::INVALID;
+        bool hasExplicitSubreg = false;
         if (isMacroOp()) {
             // implicit accumulator operand
+            // r13.acc2:f
             subregNum = 0;
             if (!Consume(DOT)) {
                 ConsumeIntLitOrFail(subregNum,
@@ -1843,9 +2023,13 @@ private:
                 "(e.g. .noacc, .acc2, ..., .acc9)";
             ConsumeIdentOneOfOrFail<ImplAcc>(
                 IMPLACCS, implAcc, expected, expected);
+            // region is implicitly <1;1,0>
+            rgn = Region::SRC110;
+            // below we can override it if we really really want to
         } else {
-            // regular subregister
-            bool hasExplicitSubreg = false;
+            // regular src with subregister
+            // r13.4....
+            //    ^
             if (Consume(DOT)) {
                 ConsumeIntLitOrFail(subregNum, "expected subregister");
                 hasExplicitSubreg = true;
@@ -1853,35 +2037,33 @@ private:
                 subregLoc = NextLoc(0);
                 subregNum = 0;
             }
-            // for ternary ops <V;H> or <H>
-            // for other regions <V;W,H>
-            if (m_opSpec->isTernary()) {
-                if (srcOpIx < 2) {
-                    rgn = ParseSrcOpRegionVH(srcOpIx, hasExplicitSubreg);
-                } else {
-                    rgn = ParseSrcOpRegionH(srcOpIx, hasExplicitSubreg);
-                }
+        }
+
+        // for ternary ops <V;H> or <H>
+        // for other regions <V;W,H>
+        if (m_opSpec->isTernary()) {
+            if (srcOpIx < 2) {
+                rgn = ParseSrcOpRegionVH(srcOpIx, hasExplicitSubreg);
             } else {
-                rgn = ParseSrcOpRegionVWH(ri, srcOpIx, hasExplicitSubreg);
+                rgn = ParseSrcOpRegionH(srcOpIx, hasExplicitSubreg);
             }
+        } else {
+            rgn = ParseSrcOpRegionVWH(ri, srcOpIx, hasExplicitSubreg);
         }
 
         // :t
         Type sty = Type::INVALID;
-        if (m_opSpec->isSendOrSendsFamily())
-        {
+        if (m_opSpec->isSendOrSendsFamily()) {
             sty = ParseSendOperandTypeWithDefault(srcOpIx);
-        }
-        else
-        {
+        } else {
             sty = ParseSrcOpTypeWithDefault(srcOpIx, false);
         }
 
         if (sty != Type::INVALID) {
             // ensure the subregister is not out of bounds
             int typeSize = TypeSize(sty);
-            if (ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize)) {
-                Warning(subregLoc, "sub-register out of bounds for data type");
+            if (!ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize)) {
+                Warning(subregLoc, "subregister too large for data type");
             } else if (typeSize < ri.acc_gran) {
                 Warning(regnameLoc,
                     "access granularity too small for register");
@@ -1893,9 +2075,10 @@ private:
                 srcOpIx,
                 opStart,
                 srcMod,
-                ri,
+                ri.reg,
                 regNum,
                 implAcc,
+                rgn,
                 sty);
         } else {
             RegRef reg = {
@@ -1906,7 +2089,7 @@ private:
                 srcOpIx,
                 opStart,
                 srcMod,
-                ri,
+                ri.reg,
                 reg,
                 rgn,
                 sty);
@@ -1937,9 +2120,9 @@ private:
             rgn.set(ParseRegionHorz());
             ConsumeOrFailAfterPrev(RANGLE, "expected >");
         } else if (ri.supportsRegioning()) {
-            rgn = hasExplicitSubreg || m_execSize == 1 ?
+            rgn = hasExplicitSubreg || m_execSize == ExecSize::SIMD1 ?
                 Region::SRC010 :
-                Region::SRC110; 
+                Region::SRC110;
         } else {
             rgn = Region::SRC010;
         }
@@ -1966,7 +2149,7 @@ private:
             rgn.set(ParseRegionHorz());
             ConsumeOrFailAfterPrev(RANGLE, "expected >");
         } else {
-            bool scalarAccess = hasExplicitSubreg || m_execSize == 1;
+            bool scalarAccess = hasExplicitSubreg || m_execSize == ExecSize::SIMD1;
             if (scalarAccess) {
                 rgn = Region::SRC0X0;
             } else {
@@ -2000,7 +2183,7 @@ private:
                 ParseRegionHorz());
             ConsumeOrFailAfterPrev(RANGLE, "expected >");
         } else {
-            rgn = hasExplicitSubreg || m_execSize == 1 ?
+            rgn = hasExplicitSubreg || m_execSize == ExecSize::SIMD1 ?
                 Region::SRCXX0 :
                 Region::SRCXX1;
         }
@@ -2153,6 +2336,7 @@ private:
     {
         // convert to the underlying data type
         Type sty = ParseSrcOpTypeWithoutDefault(srcOpIx, true);
+
         switch (sty) {
         case Type::B:
         case Type::UB:
@@ -2243,18 +2427,14 @@ private:
                     if (IS_NAN(val.f64) && (val.u64 & DROPPED_PAYLOAD)) {
                         Fail(opStart, "NaN payload value overflows");
                     }
-                    // uint64_t originalW64 = val.u64;
-                    float newF32 = ConvertDoubleToFloat(val.f64);
-                    // uint64_t newW64 = FloatToBits(ConvertFloatToDouble(newF32));
-                    // if (newW64 != originalW64) {
-                    //    std::stringstream ss;
-                    //    ss << "precision lost in literal conversion to fp32";
-                    //    ss << ": value narrows to " << newF32;
-                    //    Warning(opStart, ss.str().c_str());
-                    // }
-                    val = newF32; // ImmVal::(==) clears high bits of val
-                    val.kind = ImmVal::F32;
-                } // else: sty == Type::DF (nothing needed)
+					//
+					// Use a raw bitwise assignment; some compilers will clear
+					// the NaN bit by making an assignment
+					val.u64 = ConvertDoubleToFloatBits(val.f64);
+					val.kind = ImmVal::F32;
+					// the below would be wrong
+					//   val = ConvertDoubleToFloat(val.f64);
+				} // else: sty == Type::DF (nothing needed)
             }
             break;
         default:
@@ -2411,19 +2591,15 @@ private:
         int regNum;
         if (enableImplicitOperand) {
             bool isSuccess = PeekReg(regInfo, regNum);
-            if (!isSuccess || regInfo->reg == RegName::ARF_A)
-            {
-                RegInfo regInfoT;
-                regInfoT.name = "null";
-                regInfoT.reg = RegName::ARF_NULL;
-                RegRef reg = { 0, 0 };
+            if (!isSuccess || regInfo->reg == RegName::ARF_A) {
+                RegRef reg = {0, 0};
                 Region rgn = Region::SRC010;
                 Type sty = Type::INVALID;
                 m_handler.InstSrcOpRegDirect(
                     srcOpIx,
                     m_srcLocs[srcOpIx],
                     SrcModifier::NONE,
-                    regInfoT,
+                    RegName::ARF_NULL,
                     reg,
                     rgn,
                     sty);
@@ -2433,9 +2609,7 @@ private:
 
 #ifndef DISABLE_SENDx_IND_SRC_OPND
         ParseSrcOp(srcOpIx);
-#endif
-
-#ifdef DISABLE_SENDx_IND_SRC_OPND
+#else
         if (!ConsumeReg(regInfo, regNum)) {
             Fail("expected send operand");
         }
@@ -2467,42 +2641,38 @@ private:
 #endif
     }
 
-
     Type ParseDstOpTypeWithDefault() {
-        Loc loc = NextLoc();
-        bool hasImplicitType = m_opSpec->hasImplicitDstType();
-        if (hasImplicitType) {
+        if (m_opSpec->hasImplicitDstType(m_model.platform)) {
             if (!LookingAt(COLON)) {
-                return m_opSpec->implicitDstType();
+                return m_opSpec->implicitDstType(m_model.platform);
+            } else if (m_parseOpts.deprecatedSyntaxWarnings) {
+                Warning("implicit type on dst should be omitted");
             }
         }
-        Type t = ParseOpTypeWithDefault(DST_TYPES, "expected destination type");
-        if (hasImplicitType && m_parseOpts.deprecatedSyntaxWarnings) {
-            Warning(loc, "implicit type on dst should be omitted");
-        }
-        return t;
+        return ParseOpTypeWithDefault(DST_TYPES, "expected destination type");
     }
-    Type ParseSrcOpTypeWithDefault(int srcOpIx, bool lbl) {
-        if (m_opSpec->hasImplicitSrcType(srcOpIx, lbl, m_model.platform)) {
+    Type ParseSrcOpTypeWithDefault(int srcOpIx, bool immOrLbl) {
+        if (m_opSpec->hasImplicitSrcType(srcOpIx, immOrLbl, m_model.platform)) {
             if (!LookingAt(COLON)) {
-                return m_opSpec->implicitSrcType(srcOpIx, lbl, m_model.platform);
+                return m_opSpec->implicitSrcType(srcOpIx, immOrLbl, m_model.platform);
             } else if (m_parseOpts.deprecatedSyntaxWarnings) {
                 WarningF("implicit type on src should be omitted", srcOpIx);
             }
         }
         return ParseOpTypeWithDefault(SRC_TYPES, "expected source type");
     }
-    Type ParseSrcOpTypeWithoutDefault(int srcOpIx, bool lbl) {
-        if (m_opSpec->hasImplicitSrcType(srcOpIx, lbl, m_model.platform)) {
+    Type ParseSrcOpTypeWithoutDefault(int srcOpIx, bool immOrLbl) {
+        if (m_opSpec->hasImplicitSrcType(srcOpIx, immOrLbl, m_model.platform)) {
             if (!LookingAt(COLON)) {
-                return m_opSpec->implicitSrcType(srcOpIx, lbl, m_model.platform);
+                return m_opSpec->implicitSrcType(srcOpIx, immOrLbl, m_model.platform);
             } else if (m_parseOpts.deprecatedSyntaxWarnings) {
                 WarningF("implicit type on src should be omitted", srcOpIx);
             }
         }
         Type t = TryParseOpType(SRC_TYPES);
         if (t == Type::INVALID &&
-            !(m_opSpec->isBranching() && m_model.platformCheck6())) {
+            !(m_opSpec->isBranching() && !m_model.supportsSimplifiedBranches()))
+        {
             Fail("expected source type");
         }
         return t;
@@ -2516,7 +2686,7 @@ private:
                 t = m_defaultRegisterType;
             } else if (m_opSpec->isSendOrSendsFamily()) {
                 t = Type::UD;
-            } else if (m_opSpec->isBranching() && m_model.platformCheck6()) {
+            } else if (m_opSpec->isBranching() && m_model.supportsSimplifiedBranches()) {
                 // no more types for branching
                 t = Type::UD;
             }
@@ -2537,20 +2707,6 @@ private:
         }
         return type;
     }
-    Type ParseSendOperandTypeWithDefault(int srcIx) {
-        // sends's second parameter doesn't have a valid type
-        auto t = srcIx == 1 ? Type::INVALID : Type::UD;
-        if (Consume(COLON)) {
-            if (!LookingAt(IDENT)) {
-                Fail("expected a send operand type");
-            }
-            if (!IdentLookup(0, DST_TYPES, t)) {
-                Fail("unexpected operand type for send");
-            }
-            Skip();
-        }
-        return t;
-    }
 
 
     // (INTEXPR|AddrRegRef) (INTEXPR|AddrRegRef)
@@ -2562,9 +2718,7 @@ private:
         } else {
             ImmVal v;
             // constant integral expression
-            // start recursion one level under TryParseConstExpr so
-            // that we can skip the operand "src-index" initialization
-            if (!ParseBitwiseExpr(false, v)) {
+            if (!TryParseConstExpr(v)) {
                 Fail("expected extended send descriptor");
             }
             if (v.kind != ImmVal::S64 && v.kind != ImmVal::U64) {
@@ -2575,10 +2729,8 @@ private:
             exDesc.type = SendDescArg::IMM;
         }
 
-        if (LookingAt(COLON))
-        {
-            Fail(NextLoc(),
-                "Extended Message Descriptor is typeless");
+        if (LookingAt(COLON)) {
+            Fail(NextLoc(), "extended message descriptor is typeless");
         }
 
         const Loc descLoc = NextLoc();
@@ -2588,7 +2740,7 @@ private:
         } else {
             // constant integral expression
             ImmVal v;
-            if (!ParseBitwiseExpr(false, v)) {
+            if (!TryParseConstExpr(v)) {
                 Fail("expected extended send descriptor");
             }
             if (v.kind != ImmVal::S64 && v.kind != ImmVal::U64) {
@@ -2601,23 +2753,24 @@ private:
 
         m_handler.InstSendDescs(exDescLoc, exDesc, descLoc, desc);
 
-        if (LookingAt(COLON))
-        {
-            Fail(NextLoc(),
-                "Message Descriptor is typeless");
+        if (LookingAt(COLON)) {
+            Fail(NextLoc(), "Message Descriptor is typeless");
         }
     }
 
-    // ('{' IDENT (',' IDENT)* '}')?
+    // ('{' InstOptOrDepInfo (',' IDENT)* '}')?
+    // InstOptOrDepInfo = DepInfo | InstOpt
+    //   InstOpt = 'AccWrEn' | 'Atomic' | ...
+    //   DepInfo = 'NoDDChk' | 'NoDDClr' | ...
     void ParseInstOpts() {
         InstOptSet instOpts;
         instOpts.clear();
 
         if (Consume(LBRACE)) {
-            if (LookingAtAnyOf({IDENT, DOLLAR, AT}))
-                ParseInstOpt(instOpts);
+            if (!LookingAt(RBRACE))
+                ParseInstOptOrFail(instOpts); // else could be an empty list "{}"
             while (Consume(COMMA)) {
-                ParseInstOpt(instOpts);
+                ParseInstOptOrFail(instOpts);
             }
             ConsumeOrFail(RBRACE,"expected }");
         }
@@ -2625,135 +2778,13 @@ private:
         m_handler.InstOpts(instOpts);
     }
 
-    void ParseInstOpt(InstOptSet &instOpts) {
+    void ParseInstOptOrFail(InstOptSet &instOpts)
+    {
         auto loc = NextLoc();
-            if (ConsumeIdentEq("AccWrEn")) {
-                if (!instOpts.add(InstOpt::ACCWREN)) {
-                    Fail(loc, "duplicate instruction option");
-                }
-            } else if (ConsumeIdentEq("Atomic")) {
-                if (m_model.platform < Platform::GEN7) {
-                    Fail(loc, "Atomic mot supported on given platform");
-                }
-                if (!instOpts.add(InstOpt::ATOMIC)) {
-                    Fail(loc, "duplicate instruction option");
-                } else if (instOpts.contains(InstOpt::SWITCH)) {
-                    Fail(loc, "Atomic mutually exclusive with Switch");
-                } else if (instOpts.contains(InstOpt::NOPREEMPT)) {
-                    Fail(loc, "Atomic mutually exclusive with NoPreempt");
-                }
-            } else if (ConsumeIdentEq("Breakpoint")) {
-                if (!instOpts.add(InstOpt::BREAKPOINT)) {
-                    Fail(loc, "duplicate Breakpoint");
-                }
-            } else if (ConsumeIdentEq("Compacted")) {
-                if (instOpts.contains(InstOpt::NOCOMPACT)) {
-                    Fail(loc, "Compacted mutually exclusive with "
-                        "Uncompacted/NoCompact");
-                }
-                if (!instOpts.add(InstOpt::COMPACTED)) {
-                    Fail(loc, "duplicate Compacted");
-                }
-            } else if (ConsumeIdentEq("EOT")) {
-                if (!instOpts.add(InstOpt::EOT)) {
-                    Fail(loc, "duplicate instruction option");
-                } else if (!m_opSpec->isSendOrSendsFamily()) {
-                    Fail(loc, "EOT is only allowed on send instructions");
-                }
-            } else if (ConsumeIdentEq("NoCompact") ||
-                ConsumeIdentEq("Uncompacted"))
-            {
-                if (instOpts.contains(InstOpt::COMPACTED)) {
-                    Fail(loc, "Uncomapcted/NoCompact mutually exclusive "
-                        "with Compacted");
-                }
-                if (!instOpts.add(InstOpt::NOCOMPACT)) {
-                    Fail(loc, "duplicate Uncomapcted/NoCompact");
-                }
-            } else if (ConsumeIdentEq("NoDDChk")) {
-                if (!instOpts.add(InstOpt::NODDCHK)) {
-                    Fail(loc, "duplicate instruction option");
-                }
-                if (m_model.supportsNoDD()) {
-                    Fail(loc, "NoDDChk not supported on given platform");
-                }
-            } else if (ConsumeIdentEq("NoDDClr")) {
-                if (!instOpts.add(InstOpt::NODDCLR)) {
-                    Fail(loc, "duplicate instruction option");
-                }
-                if (m_model.supportsNoDD()) {
-                    Fail(loc, "NoDDClr not supported on given platform");
-                }
-            } else if (ConsumeIdentEq("NoPreempt")) {
-                if (m_model.supportsNoPreempt()) {
-                    if (!instOpts.add(InstOpt::NOPREEMPT)) {
-                        Fail(loc, "duplicate instruction option");
-                    }
-                } else {
-                    Fail(loc, "NoPreempt not supported on given platform");
-                }
-            } else if (ConsumeIdentEq("NoSrcDepSet")) {
-                if (m_model.supportNoSrcDepSet()) {
-                    if (!instOpts.add(InstOpt::NOSRCDEPSET)) {
-                        Fail(loc, "duplicate instruction option");
-                    }
-                } else {
-                    Fail(loc, "NoSrcDep not supported on given platform");
-                }
-            } else if (ConsumeIdentEq("Switch")) {
-                if (!instOpts.add(InstOpt::SWITCH)) {
-                    Fail(loc, "duplicate instruction option");
-                }
-            } else if (ConsumeIdentEq("NoMask")) {
-                Fail(loc, "NoMask goes near predication as (W) (for WrEn): "
-                    "e.g. (W) op (..) ... OR (W&f0.0) op (..) ..");
-            } else if (ConsumeIdentEq("H1")) {
-                Fail(loc, "H1 is obsolete; use M0 in execution offset: "
-                    "e.g. op (16|M0) ...");
-            } else if (ConsumeIdentEq("H2")) {
-                Fail(loc, "H2 is obsolete; use M16 in execution offset: "
-                    "e.g. op (16|M16) ...");
-            } else if (ConsumeIdentEq("Q1")) {
-                Fail(loc, "Q1 is obsolete; use M0 in execution offset: "
-                    "e.g. op (8|M0) ...");
-            } else if (ConsumeIdentEq("Q2")) {
-                Fail(loc, "Q2 is obsolete; use M8 in execution offset: "
-                    "e.g. op (8|M8) ...");
-            } else if (ConsumeIdentEq("Q3")) {
-                Fail(loc, "Q3 is obsolete; use M16 in execution offset: "
-                    "e.g. op (8|M16) ...");
-            } else if (ConsumeIdentEq("Q4")) {
-                Fail(loc, "Q4 is obsolete; use M24 in execution offset: "
-                    "e.g. op (8|M24) ...");
-            } else if (ConsumeIdentEq("N1")) {
-                Fail(loc, "N1 is obsolete; use M0 in execution offset: "
-                    "e.g. op (4|M0) ...");
-            } else if (ConsumeIdentEq("N2")) {
-                Fail(loc, "N2 is obsolete; use M4 in execution offset: "
-                    "e.g. op (4|M4) ...");
-            } else if (ConsumeIdentEq("N3")) {
-                Fail(loc, "N3 is obsolete; use M8 in execution offset: "
-                    "e.g. op (4|M8) ...");
-            } else if (ConsumeIdentEq("N4")) {
-                Fail(loc, "N4 is obsolete; use M12 in execution offset: "
-                    "e.g. op (4|M12) ...");
-            } else if (ConsumeIdentEq("N5")) {
-                Fail(loc, "N5 is obsolete; use M16 in execution offset: "
-                    "e.g. op (4|M16) ...");
-            } else if (ConsumeIdentEq("N6")) {
-                Fail(loc, "N6 is obsolete; use M20 in execution offset: "
-                    "e.g. op (4|M20) ...");
-            } else if (ConsumeIdentEq("N7")) {
-                Fail(loc, "N7 is obsolete; use M24 in execution offset: "
-                    "e.g. op (4|M24) ...");
-            } else if (ConsumeIdentEq("N8")) {
-                Fail(loc, "N8 is obsolete; use M28 in execution offset: "
-                    "e.g. op (4|M28) ...");
-            } else {
-                Fail(loc, "invalid instruction option");
-            }
+        if (!TryParseInstOptOrDepInfo(instOpts)) {
+            Fail(loc, "invalid instruction option");
+        }
     }
-
 
     // FlagRegRef = ('f0'|'f1') ('.' ('0'|'1'))?
     void ParseFlagRegRef(RegRef &freg) {
@@ -2769,8 +2800,8 @@ private:
             Fail("expected flag register");
         }
         if(LookingAtSeq(DOT,INTLIT10)) { // e.g. .1
-                                         // protects predication's use in short predication code
-                                         // (f0.any2h)
+            // protects predication's use in short predication code
+            // (f0.any2h)
             Skip();
             ConsumeIntLitOrFail(freg.subRegNum, "expected flag subregister");
         } else {

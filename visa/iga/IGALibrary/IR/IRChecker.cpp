@@ -140,10 +140,11 @@ struct SemanticChecker : LOCChecker {
             // if (op.getDirRegName() == RegName::ARF_CE) {
             //    warning("register is not writable (except in SIP)");
             // }
-            if ((m_enabled_warnings & IGA_WARNINGS_SCHED)   &&
-                !i.hasInstOpt(InstOpt::SWITCH)              &&
-                arfNeedsSwitch(op.getDirRegName())          &&
-                m_model.platformCheck1()) {
+            if ((m_enabled_warnings & IGA_WARNINGS_SCHED) &&
+                !i.hasInstOpt(InstOpt::SWITCH) &&
+                arfNeedsSwitch(op.getDirRegName()) &&
+                m_model.supportsHwDeps())
+            {
                 warning("destination register ARF access requires {Switch} ThreadCtrl");
             }
             break;

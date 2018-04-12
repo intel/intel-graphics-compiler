@@ -23,8 +23,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+#ifndef IGA_NATIVE_INTERFACE_HPP
+#define IGA_NATIVE_INTERFACE_HPP
 ////////////////////////////////////////////
 // NATIVE ENCODER USERS USE THIS INTERFACE
+#include "../DecoderOpts.hpp"
 #include "../EncoderOpts.hpp"
 #include "../../ErrorHandler.hpp"
 #include "../../IR/Kernel.hpp"
@@ -50,34 +53,41 @@ namespace iga {
 
 namespace iga {namespace native
 {
+    bool IsEncodeSupported(
+        const Model &m,
+        const EncoderOpts &opts);
     void Encode(
         const Model &m,
         const EncoderOpts &opts,
         ErrorHandler &eh,
         Kernel &k,
         void *&bits,
-        int &bitsLen);
+        size_t &bitsLen);
 
+    bool IsDecodeSupported(
+        const Model &m,
+        const DecoderOpts &opts);
+    Kernel *Decode(
+        const Model &m,
+        const DecoderOpts &dopts,
+        ErrorHandler &eh,
+        const void *bits,
+        size_t bitsLen);
+
+    // for -Xifs and -Xdcmp
     void DecodeFields(
         Loc loc,
         const Model &model,
         const void *bits,
         FieldList &fields,
         ErrorHandler &errHandler);
-
     CompactionResult DebugCompaction(
         const Model &m,
-        const void *uncompactedBits, // naative bits
+        const void *uncompactedBits, // native bits
         void *compactedOutput,       // optional param
         CompactionDebugInfo &cbdi);
 
-// void Decode(
-//    const Model &m,
-//    ErrorHandler &eh,
-//    const void *bits,
-//    int bitsLen,
-//    MemManager &mm,
-//    Kernel *&k,
-// );
 
-}} // namespace
+}} // iga::native::*
+
+#endif

@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #include "iga.h"
+#include "kv.h"
 
 #if defined(WIN32)
     #define CDECLATTRIBUTE __cdecl
@@ -287,6 +288,8 @@ typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetMessageLen)(const kv_t *kv, int32_t pc
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetDstRegion)(const kv_t *kv, int32_t pc, uint32_t *hz);
 #define IGA_KV_GET_IS_SOURCE_REGION_STR "kv_get_source_region"
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetSrcRegion)(const kv_t *kv, int32_t pc, uint32_t src_op, uint32_t *vt, uint32_t *wi, uint32_t *hz);
+#define IGA_KV_GET_SOURCE_IMMEDIATE_STR "kv_get_source_immediate"
+typedef int32_t(CDECLATTRIBUTE *pIGAKVGetSrcImmediate)(const kv_t *kv, int32_t pc, uint32_t src_op, uint64_t *imm);
 
 /*
  * A table of IGA functions

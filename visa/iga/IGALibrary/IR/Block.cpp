@@ -62,9 +62,11 @@ struct BlockInference
         int32_t pc,
         int32_t instLen,
         Instruction *inst,
-        int srcIx) {
+        int srcIx)
+    {
         Operand &src = inst->getSource(srcIx);
-        if (src.getKind() == Operand::Kind::LABEL) {
+        if (src.getKind() == Operand::Kind::LABEL)
+        {
             int32_t absolutePc = src.getImmediateValue().s32;
             if (op != Op::CALLA)
                 absolutePc += pc;
@@ -85,7 +87,8 @@ struct BlockInference
         }
     }
 
-    void run(ErrorHandler &errHandler, size_t binaryLength, InstList &insts) {
+    void run(ErrorHandler &errHandler, size_t binaryLength, InstList &insts)
+    {
         // define start block to ensure at least one block exists
         (void)getBlock(0);
 
@@ -185,7 +188,8 @@ std::map<int32_t, Block *> Block::inferBlocks(
     ErrorHandler &errHandler,
     size_t binaryLength,
     MemManager &mem,
-    InstList &insts) {
+    InstList &insts)
+{
     std::map<int32_t, Block *> blockStarts;
     BlockInference bi(blockStarts, &mem);
     bi.run(errHandler, binaryLength, insts);
@@ -218,7 +222,9 @@ std::map<int32_t, Block *> Block::inferBlocks(
     return blockStarts;
 }
 
-void Block::insertInstBefore(InstList::iterator iter,
-    Instruction *inst) {
-    m_instructions.insert(iter, inst);
+void Block::insertInstBefore(
+    InstList::iterator itr,
+    Instruction *i)
+{
+    m_instructions.insert(itr, i);
 }

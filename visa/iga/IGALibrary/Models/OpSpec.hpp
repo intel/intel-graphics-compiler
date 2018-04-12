@@ -23,25 +23,48 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-
-#ifndef OPSPEC_HPP
-#define OPSPEC_HPP
+#ifndef IGA_OPSPEC_HPP
+#define IGA_OPSPEC_HPP
 
 #include "../asserts.hpp"
-#include "../IR/Types.hpp"
 #include "../Backend/Native/Field.hpp"
+#include "../IR/Types.hpp"
 
 #include <cstddef>
 
 namespace iga
 {
+    // Determines the for a given syntactic construct is explicit, implicit,
+    // or default.  T will be something like a Type or Region or otherwise.
+    //
+    //   EXPLICIT:    means that the type must be given and it's a syntax error
+    //                if the construct is absent; the `value` field is
+    //                undefined; in formatted output, this construct must be
+    //                present
+    //
+    //   DEFAULT:     means that the syntactic construct is optional; if it's
+    //                absent in the syntax, then we silently use `value` in
+    //                the IR; in formatted output this construct will be
+    //                emitted.
+    //
+    //   IMPLICIT:    if present we use the given value with a warning,
+    //                otherwise we use `value`
+    //
+    //
+    // template <typename T>
+    // struct Syntax {
+    //     enum{EXPLICIT, DEFAULT IMPLICIT}  type;
+    //    T                                 value;
+    // };
+
     // An operation specification
     struct OpSpec {
         // The various syntaxes and formats that each instruction can support
         // The naming convention groups the instructions logically as
         //
         //   NULLARY                   => takes no operands
-        //   BASIC_{UNARY,BINARY}_*    => takes one or two operands encodes in basic format
+        //   BASIC_{UNARY,BINARY}_*    => takes one or two operands encodes
+        //                                in basic format
         //   MATH_{UNARY,BINARY}       => much like BASIC, but supports MathFC
         //   MATH_MACRO*               => math.invm and math.sqrtm
         //   TERNARY{_MACRO}           => madm
@@ -125,10 +148,6 @@ namespace iga
             // op (..) reg  reg   reg imm16
             // op (..) reg  imm16 reg reg
             TERNARY_REGIMM_REG_REGIMM = (TERNARY|HAS_DST) + 1,
-            // op (..) reg  reg   reg reg    imm
-            // op (..) reg  reg   reg imm16  imm
-            // op (..) reg  imm16 reg reg    imm
-            TERNARY_REGIMM_REG_REGIMM_IMM = (TERNARY|HAS_DST) + 1,
             // op (..) reg.acc   reg.acc  reg.acc  reg.acc
             TERNARY_MACRO_REG_REG_REG = (TERNARY|MACRO|HAS_DST) + 1,
 
@@ -237,6 +256,17 @@ namespace iga
         // For regular ops it's -1
         int            functionControlValue;
         // For both the grouping op and it's children
+
+        //
+        // some ops have fragmented subfunction offset; we store these
+        // from low subfunction bits to higher ones; invalid entries
+        // (e.g. for ops with no subfunction or with only one, use
+        //  {nullptr,0,0}
+        // E.g.  {{"SyncFC[3:0]",92,4}} has trailing zero memory to indicate
+        // only one is used
+        //
+        // should some op come along with more fragments change the size
+        // to a larger value; everything should just work.
          Field         functionControlFields[2];
 
         // returns false for reserved opcodes
@@ -257,6 +287,13 @@ namespace iga
                 return false;
             }
         }
+
+        //////////////////////////////////////////////////////////////////////
+        // DESTINATION IMPLICIT VALUES FOR SYNTAX
+        //////////////////////////////////////////////////////////////////////
+        bool hasDstSubregister(Platform p) const {
+            return !isMacro() && !isSendOrSendsFamily();
+        }
         bool hasImplicitDstRegion() const {
             Region rgn;
             return implicitDstRegion(rgn);
@@ -276,33 +313,57 @@ namespace iga
                 // call and ret have an implicit <1> as well
                 rgn = Region::DST1;
                 return true;
+            } else if (isMacro()) {
+                // e.g. madm and math.invm/sqrtm
+                rgn = Region::DST1;
+                return true;
+            } else {
+                rgn = Region::INVALID;
+                return false;
             }
-            rgn = Region::INVALID;
-            return false;
         }
 
-
-        bool hasImplicitDstType() const {
-            Type type;
-            return implicitDstTypeVal(type);
-        }
-        Type implicitDstType() const {
-            Type type;
-            bool hasType = implicitDstTypeVal(type);
-            IGA_ASSERT(hasType, "dst doesn't have implicit type");
+        //
+        Type defaultDstType(Platform p) const {
+            Type type = Type::INVALID;
+            if (isSendOrSendsFamily()) {
+                type = Type::UD;
+            }
             return type;
         }
-        bool implicitDstTypeVal(Type &type) const {
-            // TODO: pull from BXML tables
-            // if (isSendsFamily()) {
-            //    type = Type::UD;
-            //    return true;
-            // }
+        Type defaultSrcType(Platform p) const {
+            Type type = Type::INVALID;
+            if (isSendOrSendsFamily()) {
+                return defaultDstType(p);
+            }
+            return type;
+        }
+        bool hasImplicitDstType(Platform p) const {
+            Type type;
+            return implicitDstTypeVal(p, type);
+        }
+        Type implicitDstType(Platform p) const {
+            Type type;
+            (void)implicitDstTypeVal(p, type);
+            return type;
+        }
+        bool implicitDstTypeVal(Platform p, Type &type) const {
+            if (isSendFamily() && p >= Platform::GEN8) {
+                type = Type::UD;
+                return true;
+            }
             type = Type::INVALID;
             return false;
         }
 
-
+        //////////////////////////////////////////////////////////////////////
+        // SOURCE IMPLICIT VALUES FOR SYNTAX
+        //////////////////////////////////////////////////////////////////////
+        bool hasSrcSubregister(int srcOpIx, Platform p) const {
+            // send instructions and math macros (including madm) don't emit
+            // subregisters
+            return !isSendOrSendsFamily() && !isMacro();
+        }
         bool hasImplicitSrcRegionEq(int srcOpIx, Platform plt, Region rgn) const {
             auto *pImplRgn = implicitSrcRegionPtr(srcOpIx, plt);
             if (pImplRgn)
@@ -317,7 +378,8 @@ namespace iga
         Region implicitSrcRegion(int srcOpIx, Platform pltf) const {
             // TODO: this needs to work off the table from BXML
             const Region *rgn = implicitSrcRegionPtr(srcOpIx, pltf);
-            IGA_ASSERT(rgn, "src operand doesn't have implicit region");
+            if (!rgn)
+                return Region::SRC110;
             return *rgn;
         }
         const Region *implicitSrcRegionPtr(int srcOpIx, Platform pltfm) const {
@@ -326,6 +388,8 @@ namespace iga
             } else if (isSendFamily() || isSendsFamily()) {
                 // no regions on send's
                 return &Region::INVALID;
+            } else if (isMacro()) {
+                return &Region::SRC110;
             } else {
                 if (srcOpIx == 0) {
                     switch (op) {
@@ -361,17 +425,21 @@ namespace iga
 
         // an "implicit source type" is a type that should be omitted in syntax
         // if present, we simply warn the user (it can still mismatch the default)
-        bool hasImplicitSrcType(int srcOpIx, bool lbl, Platform pltfm) const {
+        bool hasImplicitSrcType(int srcOpIx, bool isImmOrLbl, Platform pltfm) const {
             Type type;
-            return implicitSrcTypeVal(srcOpIx, lbl, type, pltfm);
+            return implicitSrcTypeVal(srcOpIx, isImmOrLbl, pltfm, type);
         }
-        Type implicitSrcType(int srcOpIx, bool lbl, Platform pltfm) const {
+        Type implicitSrcType(int srcOpIx, bool isImmOrLbl, Platform pltfm) const {
             Type type;
-            bool hasType = implicitSrcTypeVal(srcOpIx, lbl, type, pltfm);
-            IGA_ASSERT(hasType, "src doesn't have implicit type");
+            (void)implicitSrcTypeVal(srcOpIx, isImmOrLbl, pltfm, type);
             return type;
         }
-        bool implicitSrcTypeVal(int srcOpIx, bool lbl, Type& type, Platform pltfm) const {
+        bool implicitSrcTypeVal(
+            int srcOpIx,
+            bool isImmOrLbl,
+            Platform pltfm,
+            Type& type) const
+        {
             // TODO: pull from BXML tables
             if (isTypedBranch()) {
                 // e.g. jmpi, call, or brc
@@ -381,7 +449,7 @@ namespace iga
                 if (op == Op::BRC) {
                     //   brc   r12.3[:d]   null[:ud]
                     //   brc   LABEL[:d]   LABEL[:d]
-                    type = srcOpIx == 0 || lbl ? Type::D : Type::UD;
+                    type = srcOpIx == 0 || isImmOrLbl ? Type::D : Type::UD;
                 } else {
                     type = Type::D;
                 }
@@ -542,4 +610,4 @@ namespace iga
     }; // struct OpSpec
 } // namespace iga::*
 
-#endif // OPSPEC_HPP
+#endif // IGA_OPSPEC_HPP

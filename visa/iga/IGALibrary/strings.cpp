@@ -25,8 +25,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "strings.hpp"
-#include <string.h>
+
+#include <cstring>
 #include <sstream>
+#include <iomanip>
 
 using namespace iga;
 
@@ -116,3 +118,33 @@ size_t iga::copyOut(char *buf, size_t bufCap, std::iostream &ios)
     buf[eot] = '\0';
     return sslen;
 }
+
+void iga::fmtBinary(std::ostream &os, int len, uint64_t val)
+{
+    for (int i = len - 1; i >= 0; i--) {
+        if (val & (1ull<<(uint64_t)i)) {
+            os << '1';
+        } else {
+            os << '0';
+        }
+    }
+}
+
+std::string iga::fmtHex(uint64_t val, int w)
+{
+    std::stringstream ss;
+    fmtHex(ss, w, val);
+    return ss.str();
+}
+
+void iga::fmtHex(std::ostream &os, int w, uint64_t val)
+{
+    std::stringstream ss;
+    if (w > 0) {
+        ss << "0x" << std::setw(w) << std::setfill('0') <<
+            std::hex << std::uppercase << val;
+    } else {
+        ss << "0x" << std::hex << std::uppercase << val;
+    }
+    os << ss.str();
+};

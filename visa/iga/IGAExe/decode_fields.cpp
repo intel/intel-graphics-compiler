@@ -250,20 +250,22 @@ static bool decodeFieldsSingle(Opts opts)
         outfile = new std::ofstream(opts.outputFile, std::ios::out);
     }
     std::ostream &os = outfile ? *outfile : std::cout;
-    bool clean =
+    iga_status_t st =
         iga::DecodeFields(
             static_cast<iga::Platform>(opts.platform),
             opts.useNativeEncoder,
             os,
             bits.data(),
             bits.size());
-
+    if (st != IGA_SUCCESS) {
+        std::cerr << "decode error: " << iga_status_to_string(st) << "\n";
+    }
     os.flush();
     if (!opts.outputFile.empty()) {
         delete outfile;
     }
 
-    return !clean;
+    return st == IGA_SUCCESS;
 }
 
 static bool decodeFieldsDiff(Opts opts)
@@ -307,7 +309,7 @@ static bool decodeFieldsDiff(Opts opts)
         outfile = new std::ofstream(opts.outputFile, std::ios::out);
     }
     std::ostream &os = outfile ? *outfile : std::cout;
-    bool clean =
+    iga_status_t st =
         iga::DiffFields(
             static_cast<iga::Platform>(opts.platform),
             opts.useNativeEncoder,
@@ -318,13 +320,16 @@ static bool decodeFieldsDiff(Opts opts)
             source1,
             bits1.data(),
             bits1.size());
+    if (st != IGA_SUCCESS) {
+        std::cerr << "decode error: " << iga_status_to_string(st) << "\n";
+    }
 
     os.flush();
     if (outfile) {
         delete outfile;
     }
 
-    return !clean;
+    return st == IGA_SUCCESS;
 }
 
 bool decodeInstructionFields(const Opts &baseOpts)
@@ -358,19 +363,22 @@ bool debugCompaction(Opts opts)
     std::ostream &os = outfile ? *outfile : std::cout;
 
     std::string warnings;
-    bool clean =
+    iga_status_t st =
         iga::DebugCompaction(
             static_cast<iga::Platform>(opts.platform),
             opts.useNativeEncoder,
             os,
             bits.data(),
             bits.size());
+    if (st != IGA_SUCCESS) {
+        std::cerr << "decode error: " << iga_status_to_string(st) << "\n";
+    }
     emitYellowText(std::cerr, warnings);
 
     if (!opts.outputFile.empty()) {
         delete outfile;
     }
 
-    return clean;
+    return st != IGA_SUCCESS;
 }
 

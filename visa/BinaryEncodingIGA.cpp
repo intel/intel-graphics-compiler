@@ -543,11 +543,13 @@ void BinaryEncodingIGA::DoAll()
                 if (igaInst->isMacro())
                 {
                     RegRef regRef = getIGARegRef(dst);
+					Region::Horz hstride = getIGAHorz(dst->getHorzStride());
                     igaInst->setMacroDestination(
                         dstModifier,
                         getIGARegName(dst),
                         regRef,
                         getIGAImplAcc(dst->getAccRegSel()),
+						hstride,
                         type);
                 }
                 else if (dst->getRegAccess() == Direct)
@@ -648,6 +650,7 @@ void BinaryEncodingIGA::DoAll()
                                 getIGARegName(srcRegion),
                                 regRef,
                                 getIGAImplAcc(srcRegion->getAccRegSel()),
+								region,
                                 type);
                         }
                         else if (srcRegion->getRegAccess() == Direct)

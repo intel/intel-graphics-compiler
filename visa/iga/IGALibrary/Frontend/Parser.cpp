@@ -200,10 +200,16 @@ namespace iga
         }
         return false;
     }
-    std::string Parser::ConsumeIdentOrFail() {
+    std::string Parser::ConsumeIdentOrFail(const char *what) {
         const Token &t = Next(0);
         if (t.lexeme != Lexeme::IDENT) {
-            Fail("expected identifier");
+            if (what == nullptr) {
+                Fail("expected identifier");
+            } else {
+                std::stringstream ss;
+                ss << "expected " << what;
+                Fail(ss.str().c_str());
+            }
         }
         std::string id = GetTokenAsString(t);
         Skip();

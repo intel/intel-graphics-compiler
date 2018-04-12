@@ -31,22 +31,31 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga
 {
+    // macros are for initializers
+    //   other users should use the functions where possible
+    // TODO: someday constexpr will make this obsolete, but we want to avoid
+    //       static constructors (initializers) in large tables
+#define BITFIELD_MASK32_UNSHIFTED(OFF,LEN) \
+    ((LEN) == 32 ? 0xFFFFFFFF : ((1<<(LEN))-1))
+#define BITFIELD_MASK32(OFF,LEN) \
+    (BITFIELD_MASK32_UNSHIFTED(OFF,LEN) << (OFF))
+
     template <typename T>
-    static T getFieldMaskUnshifted(int off, int len)
+    static T getFieldMaskUnshifted(int len)
     {
-        return len == 8*sizeof(T) ? ((T)-1) : (1ull << len) - 1;
+        return len == 8*sizeof(T) ? ((T)-1) : ((T)1 << len) - 1;
     }
     template <typename T>
     static T getFieldMask(int off, int len)
     {
-        return getFieldMaskUnshifted<T>(off, len) << (off % (8*sizeof(T)));
+        return getFieldMaskUnshifted<T>(len) << (off % (8*sizeof(T)));
     }
-    //    static uint64_t getFieldMask(int off, int len)
-//    {
-//        uint64_t mask = len == 64 ?
-//            0xFFFFFFFFFFFFFFFFull : ((1ull << len) - 1);
-//        return mask << off % 64;
-//    }
+    // static uint64_t getFieldMask(int off, int len)
+    // {
+    //     uint64_t mask = len == 64 ?
+    //         0xFFFFFFFFFFFFFFFFull : ((1ull << len) - 1);
+    //     return mask << off % 64;
+    // }
     template <typename T>
     static T getBits(T bits, int off, int len) {
         T mask = len == 8*sizeof(T) ? ((T)-1) : (1ull << len) - 1;
@@ -62,7 +71,7 @@ namespace iga
         T val = ((bits >> off) & mask);
         if (val & ((T)1 << (len - 1))) {
             // sign extend high bit if set
-            val |= ~getFieldMaskUnshifted<T>(0,len);
+            val |= ~getFieldMaskUnshifted<T>(len);
         }
         return val;
     }
@@ -101,6 +110,15 @@ namespace iga
             return false;
         }
         qws[off / 64] |= shiftedVal;
+        return true;
+    }
+
+    template <typename T>
+    static bool setBits(T &bits, int off, int len, T val) {
+        T mask = getFieldMaskUnshifted<T>(len);
+        if (val > mask)
+            return false;
+        bits = (bits & ~(mask<<off)) | (val << off);
         return true;
     }
 } // namespace iga

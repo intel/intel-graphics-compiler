@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IGAToGEDTranslation.hpp"
 #include "Encoder.hpp"
 #include "../../IR/Kernel.hpp"
+#include "../../Frontend/IRToString.hpp"
 #include "../../Models/Models.hpp"
 #include "../../Timer/Timer.hpp"
 #include <cstring>
@@ -70,16 +71,23 @@ void EncoderBase::handleGedError(
 #define DEBUG_PRINT(_printCommand)
 #endif
 
-EncoderBase::EncoderBase(const Model &model, ErrorHandler &errHandler, const EncoderOpts &opts) :
-    BitProcessor(errHandler),
-    m_model(model),
-    m_opts(opts),
-    m_mem(nullptr),
-    m_numberInstructionsEncoded(0)
+EncoderBase::EncoderBase(
+    const Model &model,
+    ErrorHandler &errHandler,
+    const EncoderOpts &opts)
+    : BitProcessor(errHandler)
+    , m_model(model)
+    , m_opts(opts)
+    , m_mem(nullptr)
+    , m_numberInstructionsEncoded(0)
 {
 }
 
-double EncoderBase::getElapsedTimeUS(unsigned int idx)
+void EncoderBase::encodeKernelPreProcess(const Kernel &k)
+{
+}
+
+double EncoderBase::getElapsedTimeMicros(unsigned int idx)
 {
     return getIGATimerUS(idx);
 }
@@ -94,13 +102,9 @@ std::string EncoderBase::getTimerName(unsigned int idx)
     return getIGATimerNames(idx);
 }
 
-size_t EncoderBase::getNumInstructionsEncoded()
+size_t EncoderBase::getNumInstructionsEncoded() const
 {
     return m_numberInstructionsEncoded;
-}
-
-void EncoderBase::encodeKernelPreProcess(const Kernel &k)
-{
 }
 
 void EncoderBase::encodeKernel(
@@ -165,8 +169,7 @@ void EncoderBase::encodeBlock(Block *blk)
     {
         setCurrInst(inst);
         encodeInstruction(*inst);
-        if (hasFatalError())
-        {
+        if (hasFatalError()) {
             return;
         }
         setEncodedPC(inst, currentPc());
@@ -262,11 +265,6 @@ void EncoderBase::encodeFC(const OpSpec &os)
     }
 }
 
-bool EncoderBase::hasImm64Src0Overlap(const OpSpec &os, Instruction& inst)
-{
-    return false;
-}
-
 void EncoderBase::encodeInstruction(Instruction& inst)
 {
     m_opcode = inst.getOp();
@@ -294,8 +292,7 @@ void EncoderBase::encodeInstruction(Instruction& inst)
 
     // Dwindling cases where we must use Align16
     // Pre-GEN10 ternary ops are all align16
-    bool isTernary =
-        m_model.platformCheck4() && os.isTernary();
+    bool isTernary = m_model.platform < Platform::GEN10 && os.isTernary();
     // BDW to SKL must use this workaround to access accumulators acc3 to acc9
     bool contextSaveRestore =
         // BDW ... SKL AND ...
@@ -310,14 +307,13 @@ void EncoderBase::encodeInstruction(Instruction& inst)
     m_encodeAlign16 = isTernary || contextSaveRestore || align16MacroInst;
     GED_ACCESS_MODE accessMode = m_encodeAlign16 ?
         GED_ACCESS_MODE_Align16 : GED_ACCESS_MODE_Align1;
-    if (m_model.supportsAccessMode())
-    {
+    if (m_model.supportsAccessMode()) {
         GED_ENCODE(AccessMode, accessMode);
     } // else GED will crash given this call (even given Align1)
 
     ExecSize execSize = inst.getExecSize();
-    if (m_model.needsSIMDFix() &&
-        os.isTernary() &&
+    if (os.isTernary() &&
+        m_model.supportsAlign16Ternary() &&
         inst.getExecSize() == ExecSize::SIMD1)
     {
         // scalar ternary workaround for Align16
@@ -345,19 +341,19 @@ void EncoderBase::encodeInstruction(Instruction& inst)
         GED_ENCODE(FlagSubRegNum, inst.getFlagReg().subRegNum);
     }
 
-    if (os.supportsPredication())
-    {
+    if (os.supportsPredication()) {
         GED_ENCODE(PredCtrl, IGAToGEDTranslation::lowerPredCtrl(pred.function));
         GED_ENCODE(PredInv, pred.inverse ? GED_PRED_INV_Invert : GED_PRED_INV_Normal);
-    }
-    else
-    {
+    } else {
         GED_ENCODE(PredCtrl, GED_PRED_CTRL_Normal);
     }
 
-    bool isImm64Src0Overlap = hasImm64Src0Overlap(os, inst);
+    bool isImm64Src0Overlap = false;
+
     if (!isImm64Src0Overlap && inst.getOpSpec().supportsFlagModifier()) {
-        GED_ENCODE(CondModifier, IGAToGEDTranslation::lowerCondModifier(inst.getFlagModifier()));
+        {
+            GED_ENCODE(CondModifier, IGAToGEDTranslation::lowerCondModifier(inst.getFlagModifier()));
+        }
     }
 
     // set AccWrEn where supported
@@ -367,7 +363,7 @@ void EncoderBase::encodeInstruction(Instruction& inst)
 
     // TODO: switch on instSpec.encoding instead
     if (os.isBranching()) {
-        if (hasSimplifiedBranchEncoding()) {
+        if (m_model.supportsSimplifiedBranches()) {
             encodeBranchingInstructionSimplified(inst);
         } else {
             encodeBranchingInstruction(inst);
@@ -381,15 +377,13 @@ void EncoderBase::encodeInstruction(Instruction& inst)
         encodeBasicInstruction(inst, accessMode);
     }
 
-    if (!hasFatalError())
-    {
+    if (!hasFatalError()) {
         encodeOptions(inst);
 
         // setup for back patching on branching ops
         if (os.isBranching()) {
-            bool src0IsLabel = inst.getSource(0).getKind() == Operand::Kind::LABEL;
-            bool src1IsLabel = inst.getSourceCount() > 1 &&
-                inst.getSource(1).getKind() == Operand::Kind::LABEL;
+            bool src0IsLabel = srcIsImm(inst.getSource(0));
+            bool src1IsLabel = inst.getSourceCount() > 1 && srcIsImm(inst.getSource(1));
             if (src0IsLabel || src1IsLabel) {
                 m_needToPatch.emplace_back(&inst, m_gedInst, m_instBuf + currentPc());
             }
@@ -397,18 +391,9 @@ void EncoderBase::encodeInstruction(Instruction& inst)
     }
 }
 
-void EncoderBase::encodeBasicInstructionNonDest(const OpSpec& os)
-{
-
-}
-
-bool EncoderBase::encodeBasicInstructionNoSrcsToProcess(const Instruction& inst)
-{
-    return false;
-}
-
 void EncoderBase::encodeBasicInstruction(
-    const Instruction& inst, GED_ACCESS_MODE accessMode)
+    const Instruction& inst,
+    GED_ACCESS_MODE accessMode)
 {
     const OpSpec& os = inst.getOpSpec();
     if (os.supportsDestination()) {
@@ -419,11 +404,6 @@ void EncoderBase::encodeBasicInstruction(
         Operand copy = inst.getSource(0);
         copy.setRegion(Region::DST1);
         encodeBasicDestination(inst, copy);
-    }
-    else encodeBasicInstructionNonDest(os);
-
-    if (encodeBasicInstructionNoSrcsToProcess(inst)) {
-        return;
     }
 
     switch (inst.getSourceCount())
@@ -436,7 +416,9 @@ void EncoderBase::encodeBasicInstruction(
     }
 }
 
-void EncoderBase::encodeTernaryDestinationAlign1(const Instruction& inst)
+void EncoderBase::encodeTernaryDestinationAlign1(
+    const Instruction& inst,
+    GED_EXECUTION_DATA_TYPE execDataType)
 {
     const Operand& dst = inst.getDestination();
 
@@ -445,24 +427,28 @@ void EncoderBase::encodeTernaryDestinationAlign1(const Instruction& inst)
     }
     GED_ENCODE(DstDataType, IGAToGEDTranslation::lowerDataType(dst.getType()));
     GED_ENCODE(DstRegFile, IGAToGEDTranslation::lowerRegFile(dst.getDirRegName()));
-
-
-    uint32_t regNum = IGAToGEDTranslation::combineARF(dst.getDirRegRef().regNum, dst.getDirRegName());
+    uint32_t regNum = IGAToGEDTranslation::combineARF(
+        dst.getDirRegRef().regNum, dst.getDirRegName());
     GED_ENCODE(DstRegNum, regNum);
 
     if (inst.isMacro()) {
         GED_ENCODE(DstSpecialAcc, IGAToGEDTranslation::lowerImplAcc(dst.getImplAcc()));
-        GED_ENCODE(DstHorzStride, 1);
+        // GED_ENCODE(DstHorzStride, 1);
     } else {
         uint32_t subRegNum = SubRegToBytesOffset(
-            dst.getDirRegRef().subRegNum, dst.getType(), dst.getDirRegName());
+            dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType());
         GED_ENCODE(DstSubRegNum, subRegNum);
-        GED_ENCODE(DstHorzStride, static_cast<int>(dst.getRegion().getHz()));
+        bool hasDstRgnHz = true;
+        if (hasDstRgnHz) {
+            GED_ENCODE(DstHorzStride, static_cast<int>(dst.getRegion().getHz()));
+        }
     }
 }
 
 template <SourceIndex S>
-void EncoderBase::encodeTernarySourceAlign1(const Instruction& inst)
+void EncoderBase::encodeTernarySourceAlign1(
+    const Instruction& inst,
+    GED_EXECUTION_DATA_TYPE execDataType)
 {
     // CNL+ align1 ternary
     if (m_model.platform < Platform::GEN10) {
@@ -470,33 +456,41 @@ void EncoderBase::encodeTernarySourceAlign1(const Instruction& inst)
         return;
     }
 
-
     const Operand& src = inst.getSource(S);
-    encodeSrcType<S>(src.getType()); // GED dependency requires type before reg file
+    Type srcType = src.getType();
+
+
+    // GED will catch any mismatch between float and int (illegal mixed mode)
+    encodeSrcType<S>(srcType); // GED dependency requires type before reg file
 
     switch (src.getKind()) {
     case Operand::Kind::DIRECT:
-    case Operand::Kind::MACRO:
+    case Operand::Kind::MACRO: {
         encodeSrcRegFile<S>(IGAToGEDTranslation::lowerRegFile(src.getDirRegName()));
 
-        //Here, we assume we are on Gen10 (otherwise, we shouldn't get here...)
+        // Here, we assume we are on Gen10 (since ternary align1)
         encodeSrcAddrMode<S>(GED_ADDR_MODE_Direct);
 
         // source modifiers
         if (inst.getOpSpec().supportsSourceModifiers()) {
             encodeSrcModifier<S>(src.getSrcModifier());
         }
+
         // regioning
-        if (src.getKind() != Operand::Kind::MACRO) {
-            if (S < SourceIndex::SRC2) {
-                // src2 only has <h>
-                encodeTernarySrcRegionVert(S, src.getRegion().getVt());
-            }
-            encodeSrcRegionHorz<S>(src.getRegion().getHz());
+        //
+        // ternary align1 puts SpcAcc into subreg, so regions may be set
+        // in all cases
+        auto rgn = src.getRegion();
+        if (S < SourceIndex::SRC2) { // src0 and src1 only has <w;h>
+            encodeTernarySrcRegionVert(S, rgn.getVt());
         }
+        // all sources have a hz stride
+        encodeSrcRegionHorz<S>(rgn.getHz());
 
         // register and subregister
-        encodeSrcRegNum<S>(IGAToGEDTranslation::combineARF(src.getDirRegRef().regNum, src.getDirRegName()));
+        auto gedRegNum = IGAToGEDTranslation::combineARF(
+            src.getDirRegRef().regNum, src.getDirRegName());
+        encodeSrcRegNum<S>(gedRegNum);
         if (inst.isMacro()) {
             fatal("src%d: implicit accumulator operands require Align16", (int)S);
             return;
@@ -506,25 +500,22 @@ void EncoderBase::encodeTernarySourceAlign1(const Instruction& inst)
                 encodeTernarySrcRegionVert(S, Region::Vert::VT_4);
             }
             encodeSrcRegionHorz<S>(Region::Horz::HZ_1);
-        }
-        else {
+        } else {
             uint32_t subRegNum = SubRegToBytesOffset(
-                src.getDirRegRef().subRegNum, src.getType(), src.getDirRegName());
+                src.getDirRegRef().subRegNum, src.getDirRegName(), src.getType());
             encodeSrcSubRegNum<S>(subRegNum);
         }
         break;
+    }
     case Operand::Kind::IMMEDIATE:
         if (S == SourceIndex::SRC1) {
             fatal("src1: immediate operand in ternary align1 must be src0 or src2");
             return;
         }
         encodeSrcRegFile<S>(GED_REG_FILE_IMM);
-        if (m_model.platformCheck4())
-        {
+        if (m_model.platform < Platform::GEN10) {
             encodeImmVal(src.getImmediateValue(), src.getType());
-        }
-        else
-        {
+        } else {
             encodeTernaryImmVal<S>(src.getImmediateValue(), src.getType());
         }
         break;
@@ -535,102 +526,47 @@ void EncoderBase::encodeTernarySourceAlign1(const Instruction& inst)
 }
 
 
-void EncoderBase::encodeTernaryInstruction(const Instruction& inst, GED_ACCESS_MODE accessMode)
+void EncoderBase::encodeTernaryInstruction(
+    const Instruction& inst,
+    GED_ACCESS_MODE accessMode)
 {
     if (accessMode == GED_ACCESS_MODE_Align1) {
-        // set ExecutionDataType (integral or floating)
-        // the operands must be part of the same type set
-        Type types[4] = {
-            inst.getSource(0).getType(),
-            inst.getSource(1).getType(),
-            inst.getSource(2).getType(),
-            inst.getDestination().getType()
-        };
-        size_t numTypes = inst.getOpSpec().supportsDestination() ? 4 : 3;
-        GED_EXECUTION_DATA_TYPE execType;
-        if (isTernaryAlign1Floating(types[0])) {
-            execType = GED_EXECUTION_DATA_TYPE_Float;
-        } else if (isTernaryAlign1Integral(types[1])) {
-            execType = GED_EXECUTION_DATA_TYPE_Integer;
-        } else {
-            fatal("src0: unsupported type for ternary align1 encoding");
-            return;
-        }
-        for (size_t i = 1; i < numTypes; i++) {
-            GED_EXECUTION_DATA_TYPE edt;
-            if (isTernaryAlign1Floating(types[0])) {
-                edt = GED_EXECUTION_DATA_TYPE_Float;
-            }
-            else if (isTernaryAlign1Integral(types[1])) {
-                edt = GED_EXECUTION_DATA_TYPE_Integer;
-            }
-            else {
-                fatal("src%d: unsupported type for ternary align1 encoding", (int)i);
-                return;
-            }
-            if (execType != edt) {
-                fatal("src%d: unsupported type combination for align1 encoding "
-                    "(must all be integral or floating)", (int)i);
-                return;
-            }
-        }
-        GED_ENCODE(ExecutionDataType, execType);
-
-        if (inst.getOpSpec().supportsDestination()) {
-            encodeTernaryDestinationAlign1(inst);
-        }
-        encodeTernarySourceAlign1<SourceIndex::SRC0>(inst);
-        encodeTernarySourceAlign1<SourceIndex::SRC1>(inst);
-        encodeTernarySourceAlign1<SourceIndex::SRC2>(inst);
-    }
-    else
-    {
-        if (inst.getOpSpec().supportsDestination()) {
-            encodeTernaryDestinationAlign16(inst);
-        }
-        encodeTernarySourceAlign16<SourceIndex::SRC0>(inst);
-        encodeTernarySourceAlign16<SourceIndex::SRC1>(inst);
-        encodeTernarySourceAlign16<SourceIndex::SRC2>(inst);
+        encodeTernaryAlign1Instruction(inst);
+    } else {
+        encodeTernaryAlign16Instruction(inst);
     }
 }
-
-void EncoderBase::encodeBranchingInstructionSimplified(const Instruction& inst)
+void EncoderBase::encodeTernaryAlign16Instruction(const Instruction& inst)
 {
-    const OpSpec& instSpec = inst.getOpSpec();
-
-    // set branch control
-    if (instSpec.supportsBranchCtrl()) {
-        GED_ENCODE(BranchCtrl, IGAToGEDTranslation::lowerBranchCntrl(inst.getBranchCtrl()));
-    }
-
-    // control flow instructions require patching later if any operand is a label
-    bool src0IsLabel = inst.getSource(0).getKind() == Operand::Kind::LABEL;
-
-    // for jmpi HW will take care of IP so don't need to encode it for dst/src0
     if (inst.getOpSpec().supportsDestination()) {
-        encodeBasicControlFlowDestination(inst, inst.getDestination());
+        encodeTernaryDestinationAlign16(inst);
+    }
+    encodeTernarySourceAlign16<SourceIndex::SRC0>(inst);
+    encodeTernarySourceAlign16<SourceIndex::SRC1>(inst);
+    encodeTernarySourceAlign16<SourceIndex::SRC2>(inst);
+}
+void EncoderBase::encodeTernaryAlign1Instruction(const Instruction& inst)
+{
+    // set ExecutionDataType (integral or floating)
+    // the operands must be part of the same type set
+    Type src0Type = inst.getSource(0).getType();
+    GED_EXECUTION_DATA_TYPE execDataType;
+    if (isTernaryAlign1Floating(src0Type)) {
+        execDataType = GED_EXECUTION_DATA_TYPE_Float;
+    } else if (isTernaryAlign1Integral(src0Type)) {
+        execDataType = GED_EXECUTION_DATA_TYPE_Integer;
     } else {
-        encodeBasicControlFlowDestination(inst, Operand::DST_REG_NULL_UD);
+        fatal("src0: unsupported type for ternary align1 encoding");
+        return;
     }
-    // regualar control flow that only accepts immediate values
-    // e.g. if, else, endif, while, cont, break, goto, join, halt
+    GED_ENCODE(ExecutionDataType, execDataType);
 
-    // encoding JIP
-    if (src0IsLabel)
-    {
-        GED_ENCODE(Src0RegFile, GED_REG_FILE_IMM);
+    if (inst.getOpSpec().supportsDestination()) {
+        encodeTernaryDestinationAlign1(inst, execDataType);
     }
-    else
-    {
-        encodeBasicControlFlowSource(inst, inst.getSource(0));
-    }
-
-    if (inst.getSourceCount() == 2) {
-        // encoding UIP always IMM except for brc with a register argument
-        if (inst.getOp() != Op::BRC || srcIsImm(inst.getSource(0))) {
-            GED_ENCODE(Src1RegFile, GED_REG_FILE_IMM);
-        }
-    }
+    encodeTernarySourceAlign1<SourceIndex::SRC0>(inst, execDataType);
+    encodeTernarySourceAlign1<SourceIndex::SRC1>(inst, execDataType);
+    encodeTernarySourceAlign1<SourceIndex::SRC2>(inst, execDataType);
 }
 
 void EncoderBase::encodeBranchingInstruction(const Instruction& inst)
@@ -639,7 +575,8 @@ void EncoderBase::encodeBranchingInstruction(const Instruction& inst)
 
     // set branch control
     if (instSpec.supportsBranchCtrl()) {
-        GED_ENCODE(BranchCtrl, IGAToGEDTranslation::lowerBranchCntrl(inst.getBranchCtrl()));
+        GED_ENCODE(BranchCtrl,
+            IGAToGEDTranslation::lowerBranchCntrl(inst.getBranchCtrl()));
     }
 
     // the destination stride is always 1 for all control flow
@@ -647,7 +584,6 @@ void EncoderBase::encodeBranchingInstruction(const Instruction& inst)
 
     // control flow instructions require patching later if any operand is a label
     bool src0IsLabel = inst.getSource(0).getKind() == Operand::Kind::LABEL;
-
 
     // break up instructions into various classes
     //   - stuff with implicit operands: jmpi
@@ -668,13 +604,10 @@ void EncoderBase::encodeBranchingInstruction(const Instruction& inst)
         encodeBasicDestination(inst, Operand::DST_REG_IP_UD);
         encodeBasicSource<SourceIndex::SRC0>(inst, Operand::SRC_REG_IP_UD);
         GED_ENCODE(Src1DataType, GED_DATA_TYPE_d);
-        if (src0IsLabel)
-        {
+        if (src0IsLabel) {
             // jmpi (1) LABEL   (encodes into Src1)
             GED_ENCODE(Src1RegFile, GED_REG_FILE_IMM);
-        }
-        else
-        {
+        } else {
             // jmpi (1) reg32   (encodes into Src1)
             encodeBasicSource<SourceIndex::SRC1>(inst, inst.getSource(0));
         }
@@ -689,27 +622,20 @@ void EncoderBase::encodeBranchingInstruction(const Instruction& inst)
         //   calla (..)   imm32
         //   ret   (...)  reg32       => encodes as ret (...) null reg
         //
-        if (m_opcode == Op::CALL || m_opcode == Op::CALLA)
-        {
+        if (m_opcode == Op::CALL || m_opcode == Op::CALLA) {
             encodeBasicDestination(inst, inst.getDestination());
-        }
-        else if (m_opcode == Op::RET)
-        {
+        } else if (m_opcode == Op::RET) {
             encodeBasicDestination(inst, Operand::DST_REG_NULL_UD);
             encodeBasicSource<SourceIndex::SRC0>(inst, inst.getSource(0));
         }
 
-        if (m_opcode == Op::CALL || m_opcode == Op::CALLA)
-        {
-            if (src0IsLabel)
-            {
+        if (m_opcode == Op::CALL || m_opcode == Op::CALLA) {
+            if (src0IsLabel) {
                 // op == CALL (since it's a label), hence we have
                 // call (..) imm32 => which uses src1
                 GED_ENCODE(Src1RegFile, GED_REG_FILE_IMM);
                 GED_ENCODE(Src1DataType, GED_DATA_TYPE_d);
-            }
-            else
-            {
+            } else {
                 // call  (..) reg32
                 // calla (..) imm32
                 encodeBasicSource<SourceIndex::SRC1>(inst, inst.getSource(0));
@@ -724,13 +650,10 @@ void EncoderBase::encodeBranchingInstruction(const Instruction& inst)
                 GED_ENCODE(Src0HorzStride, 1);
             }
         }
-    }
-    else if (m_opcode == Op::BRD || m_opcode == Op::BRC)
-    {
+    } else if (m_opcode == Op::BRD || m_opcode == Op::BRC) {
         // [brd/brc]: The ip register must be used (for example, by the assembler) as dst.
         encodeBasicDestination(inst, Operand::DST_REG_IP_D);
-        if (!src0IsLabel)
-        {
+        if (!src0IsLabel) {
             encodeBasicSource<SourceIndex::SRC0>(inst, inst.getSource(0));
         }
         GED_DATA_TYPE ty =
@@ -746,9 +669,7 @@ void EncoderBase::encodeBranchingInstruction(const Instruction& inst)
         //     encodeSrcRegion(SourceIndex::SRC0,
         //         m_inst->getOpSpec().implicitSrcRegion(0));
         // }
-    }
-    else
-    {
+    } else {
         // regular control flow that only accepts immediate values
         // e.g. if, else, endif, while, cont, break, goto, join, halt
 
@@ -780,6 +701,43 @@ void EncoderBase::encodeBranchingInstruction(const Instruction& inst)
     }
 }
 
+void EncoderBase::encodeBranchingInstructionSimplified(const Instruction& inst)
+{
+    const OpSpec& instSpec = inst.getOpSpec();
+
+    // set branch control
+    if (instSpec.supportsBranchCtrl()) {
+        GED_ENCODE(BranchCtrl, IGAToGEDTranslation::lowerBranchCntrl(inst.getBranchCtrl()));
+    }
+
+    // control flow instructions require patching later if any operand is a label
+    const Operand &src0 = inst.getSource(0);
+    bool src0IsLabel = src0.getKind() == Operand::Kind::LABEL;
+
+    // for jmpi HW will take care of IP so don't need to encode it for dst/src0
+    if (inst.getOpSpec().supportsDestination()) {
+        encodeBranchDestination(inst, inst.getDestination());
+    } else {
+        encodeBranchDestination(inst, Operand::DST_REG_NULL_UD);
+    }
+    // regualar control flow that only accepts immediate values
+    // e.g. if, else, endif, while, cont, break, goto, join, halt
+
+    // encoding JIP
+    if (src0IsLabel) {
+        GED_ENCODE(Src0RegFile, GED_REG_FILE_IMM);
+    } else {
+        encodeBranchSource(inst, inst.getSource(0));
+    }
+
+    if (inst.getSourceCount() == 2) {
+        // encoding UIP always IMM except for brc with a register argument
+        if (inst.getOp() != Op::BRC || srcIsImm(inst.getSource(0))) {
+            GED_ENCODE(Src1RegFile, GED_REG_FILE_IMM);
+        }
+    }
+}
+
 void EncoderBase::encodeSendInstructionProcessSFID(const OpSpec& os)
 {
 }
@@ -789,8 +747,7 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
     const OpSpec& os = inst.getOpSpec();
     if (os.isSendFamily()) {
         encodeSendSource0(inst.getSource(0));
-        if (m_model.sendCheck1())
-        {
+        if (m_model.supportsUnifiedSend()) {
             encodeSendsSource1(inst.getSource(1));
         }
         encodeSendDestination(inst, inst.getDestination());
@@ -802,25 +759,21 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
 
     const bool supportsExDescReg =
         os.isSendsFamily() ||
-        m_model.sendCheck1();
+        m_model.supportsUnifiedSend();
 
     encodeSendInstructionProcessSFID(os);
 
     // ex_desc
     SendDescArg extMsgDesc = inst.getExtMsgDescriptor();
-    if (extMsgDesc.type == SendDescArg::IMM)
-    {
+    if (extMsgDesc.type == SendDescArg::IMM) {
         if (supportsExDescReg) {
             GED_ENCODE(ExDescRegFile, GED_REG_FILE_IMM);
         }
-        if (m_model.sendCheck1())
-        {
-            extMsgDesc.imm = extMsgDesc.imm & ~(1 << 5);
+        if (m_model.supportsUnifiedSend()) {
+            extMsgDesc.imm = extMsgDesc.imm & ~(1 << 5); // strip out EOT
         }
         GED_ENCODE(ExMsgDesc, extMsgDesc.imm);
-    }
-    else
-    {
+    } else {
         if (!supportsExDescReg) {
             error("ex_desc register not supported on this platform for "
                 "this instruction");
@@ -834,15 +787,11 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
 
     // desc
     SendDescArg msgDesc = inst.getMsgDescriptor();
-    if (msgDesc.type == SendDescArg::IMM)
-    {
+    if (msgDesc.type == SendDescArg::IMM) {
         GED_ENCODE(DescRegFile, GED_REG_FILE_IMM);
         GED_ENCODE(MsgDesc, msgDesc.imm);
-    }
-    else
-    {
-        if (m_model.platform == Platform::GEN9)
-        {
+    } else {
+        if (m_model.platform == Platform::GEN9) {
             uint32_t msgDescriptor = 0;
             // There is a HW bug on SKL where HW will only copy bits 0-28 from the
             // address register (descriptor register) and will miss bit 30 of
@@ -865,12 +814,10 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
             if (m_model.platform == Platform::GEN9 &&
                 msgDesc.type != SendDescArg::IMM)
             {
-                if (inst.getDestination().getType() == Type::HF)
-                {
+                if (inst.getDestination().getType() == Type::HF) {
                     msgDescriptor |= (1 << 30);
                 }
-                if (inst.getSource(0).getType() == Type::HF)
-                {
+                if (inst.getSource(0).getType() == Type::HF) {
                     msgDescriptor |= (1 << 30);
                 }
             }
@@ -882,33 +829,27 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
         // only send/sendc support a register here
         uint32_t regNum = msgDesc.reg.regNum;
         regNum = IGAToGEDTranslation::combineARF(regNum, RegName::ARF_A);
-        // split send doesn't support number register yet?
-        if (m_model.sendCheck2())
-        {
+        if (m_model.supportsUnarySend()) {
             GED_ENCODE(DescRegNum, regNum);
         }
     }
-    encodeSendInstructionPostProcess(inst);
-
 } //end: encodeSendInstruction
 
-void EncoderBase::encodeSendInstructionPostProcess(const Instruction& inst)
-{
 
-}
-
-void EncoderBase::encodeBasicControlFlowDestination(
+void EncoderBase::encodeBranchDestination(
     const Instruction& inst,
     const Operand& dst)
 {
     GED_ENCODE(DstRegFile, IGAToGEDTranslation::lowerRegFile(dst.getDirRegName()));
     GED_ENCODE(DstRegNum, IGAToGEDTranslation::combineARF(dst.getDirRegRef().regNum, dst.getDirRegName()));
     GED_ENCODE(DstSubRegNum,
-        SubRegToBytesOffset(dst.getDirRegRef().subRegNum, dst.getType(), dst.getDirRegName()));
+        SubRegToBytesOffset(dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType()));
 }
 
 void EncoderBase::encodeBasicDestination(
-    const Instruction& inst, const Operand& dst, GED_ACCESS_MODE accessMode)
+    const Instruction& inst,
+    const Operand& dst,
+    GED_ACCESS_MODE accessMode)
 {
     IGA_ASSERT(accessMode != GED_ACCESS_MODE_Align16 ||
         m_model.supportsAlign16(),
@@ -919,13 +860,13 @@ void EncoderBase::encodeBasicDestination(
     {
     case Operand::Kind::DIRECT:
     case Operand::Kind::MACRO:
-    GED_ENCODE(DstAddrMode, GED_ADDR_MODE_Direct);
-    GED_ENCODE(DstDataType, IGAToGEDTranslation::lowerDataType(dst.getType()));
+        GED_ENCODE(DstAddrMode, GED_ADDR_MODE_Direct);
+        GED_ENCODE(DstDataType, IGAToGEDTranslation::lowerDataType(dst.getType()));
         if (inst.getOpSpec().supportsSaturation()) {
             GED_ENCODE(Saturate, IGAToGEDTranslation::lowerSaturate(dst.getDstModifier()));
         }
-    default:
-        break; // fallthrough
+        // VVVVV   fallthrough  VVVVV
+    default: break;
     }
 
     switch (dst.getKind())
@@ -933,7 +874,7 @@ void EncoderBase::encodeBasicDestination(
     case Operand::Kind::DIRECT:
         if (accessMode == GED_ACCESS_MODE_Align16) {
             if (dst.getRegion() != Region::DST1) {
-                fatal("dst has inconvertible region");
+                fatal("dst has inconvertible region for Align16 encoding");
                 return;
             }
             if (isSpecialContextSaveAndRestore(dst)) {
@@ -957,38 +898,44 @@ void EncoderBase::encodeBasicDestination(
                 GED_ENCODE(DstChanEn, GED_DST_CHAN_EN_xyzw);
             }
             GED_ENCODE(DstSubRegNum,
-                SubRegToBytesOffset(dst.getDirRegRef().subRegNum, dst.getType(), dst.getDirRegName()));
+                SubRegToBytesOffset(dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType()));
         } else { // Align1
             GED_ENCODE(DstRegNum, IGAToGEDTranslation::combineARF(dst.getDirRegRef().regNum, dst.getDirRegName()));
             GED_ENCODE(DstSubRegNum,
-                SubRegToBytesOffset(dst.getDirRegRef().subRegNum, dst.getType(), dst.getDirRegName()));
-            GED_ENCODE(DstHorzStride, IGAToGEDTranslation::lowerRegionHorz(dst.getRegion().getHz()));
+                SubRegToBytesOffset(dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType()));
         }
         break;
     case Operand::Kind::MACRO:
         GED_ENCODE(DstRegNum, IGAToGEDTranslation::combineARF(dst.getDirRegRef().regNum, dst.getDirRegName()));
         GED_ENCODE(DstSpecialAcc, IGAToGEDTranslation::lowerSpecialAcc(dst.getImplAcc()));
-        if (accessMode == GED_ACCESS_MODE_Align1) {
-            if (m_model.supportsImplicitAcc()) {
-                fatal("Align1 dst implicit accumulator unsupported on this platform.");
-                return;
-            }
-            GED_ENCODE(DstHorzStride, 1);
+        if (accessMode == GED_ACCESS_MODE_Align1 && m_model.supportsAlign16ImplicitAcc()) {
+            fatal("Align1 dst implicit accumulator unsupported on this platform.");
+            return;
         }
         break;
     case Operand::Kind::INDIRECT:
-        GED_ENCODE(DstAddrMode,      GED_ADDR_MODE_Indirect);
+        GED_ENCODE(DstAddrMode, GED_ADDR_MODE_Indirect);
         GED_ENCODE(DstDataType, IGAToGEDTranslation::lowerDataType(dst.getType()));
         if (inst.getOpSpec().supportsSaturation()) {
             GED_ENCODE(Saturate, IGAToGEDTranslation::lowerSaturate(dst.getDstModifier()));
         }
-        GED_ENCODE(DstAddrImm,       dst.getIndImmAddr());
+        GED_ENCODE(DstAddrImm, dst.getIndImmAddr());
         GED_ENCODE(DstAddrSubRegNum, dst.getIndAddrReg().subRegNum);
-        GED_ENCODE(DstHorzStride, static_cast<uint32_t>(dst.getRegion().getHz()));
         break;
     default:
         IGA_ASSERT_FALSE("unsupported operand kind");
         break;
+    }
+
+    if (accessMode == GED_ACCESS_MODE_Align1) {
+        auto dstRgn = dst.getRegion();
+        if (inst.getOpSpec().hasImplicitDstRegion()) {
+            auto dstRgnImpl = inst.getOpSpec().implicitDstRegion();
+            if (dstRgn != dstRgnImpl) {
+                warning("dst region should be %s", ToSyntax(dstRgnImpl).c_str());
+            }
+        }
+        GED_ENCODE(DstHorzStride, IGAToGEDTranslation::lowerRegionHorz(dstRgn.getHz()));
     }
 }
 
@@ -1009,7 +956,7 @@ static uint32_t createChSelForCtxSavRst(
 }
 
 
-void EncoderBase::encodeBasicControlFlowSource(
+void EncoderBase::encodeBranchSource(
     const Instruction& inst,
     const Operand& src)
 {
@@ -1017,7 +964,7 @@ void EncoderBase::encodeBasicControlFlowSource(
     uint32_t regNumBits = IGAToGEDTranslation::combineARF(src.getDirRegRef().regNum, src.getDirRegName());
     encodeSrcRegNum<SourceIndex::SRC0>(regNumBits);
     uint32_t subRegBits = SubRegToBytesOffset(
-        src.getDirRegRef().subRegNum, Type::D, src.getDirRegName());
+        src.getDirRegRef().subRegNum, src.getDirRegName(), Type::D);
     encodeSrcSubRegNum<SourceIndex::SRC0>(subRegBits);
 }
 
@@ -1065,14 +1012,14 @@ void EncoderBase::encodeBasicSource(
                 uint32_t regNumBits = IGAToGEDTranslation::combineARF(src.getDirRegRef().regNum, src.getDirRegName());
                 encodeSrcRegNum<S>(regNumBits);
                 uint32_t subRegBits = SubRegToBytesOffset(
-                    src.getDirRegRef().subRegNum, src.getType(), src.getDirRegName());
+                    src.getDirRegRef().subRegNum, src.getDirRegName(), src.getType());
                 encodeSrcSubRegNum<S>(subRegBits);
             }
         } else { // (src.getKind() == Operand::Kind::MACRO)
             encodeSrcRegNum<S>(src.getDirRegRef().regNum);
             encodeSrcImplAcc<S>(src.getImplAcc());
             if (accessMode == GED_ACCESS_MODE_Align16) {
-                // vertical stride has to halved for 8B types
+                // vertical stride has to be halved for 8B types
                 if (src.getType() == Type::DF) {
                     encodeSrcRegionVert<S>(Region::Vert::VT_2);
                 } else {
@@ -1132,7 +1079,7 @@ void EncoderBase::encodeBasicSource(
                     src.getRegion() != Region::SRC881 &&
                     src.getRegion() != Region::SRCFF1)
                 {
-                    fatal("unsupported align16 swizzle");
+                    fatal("unsupported region for translation to align16 encoding");
                     return;
                 }
                 // TODO: we could permit SIMD4 with .x to mean broadcast read
@@ -1149,20 +1096,15 @@ void EncoderBase::encodeBasicSource(
                 // Let's wait until we need this though.
             }
             encodeSrcChanSel<S>(chSel);
-        } else {
-            // align16
-            if (inst.getOpSpec().hasImplicitSrcRegion((int)S, m_model.platform)) {
-                // TODO: check that they have an invalid region set...
-                encodeSrcRegion<S>(inst.getOpSpec().implicitSrcRegion((int)S, m_model.platform));
-            } else {
-                encodeSrcRegion<S>(src.getRegion());
-            }
+        } else { // Align1
+            encodeSrcRegion<S>(src.getRegion());
         }
         break;
     case Operand::Kind::MACRO:
         if (accessMode == GED_ACCESS_MODE_Align1) {
-            encodeSrcRegion<S>(Region::SRC441);
-        }
+            encodeSrcRegion<S>(src.getRegion());
+        } // else {align16 macros use the regioning bits, don't clobber them}
+
         break;
     default:
         break;
@@ -1175,15 +1117,13 @@ void EncoderBase::encodeSendDirectDestination(const Operand& dst)
     GED_ENCODE(DstDataType, IGAToGEDTranslation::lowerDataType(t));
 
     //GED_ENCODE(Saturate, lowerSaturate(dst->getDstModifier()));
-    if (m_opcode != Op::SENDS && m_opcode != Op::SENDSC)
-    {
+    if (m_opcode != Op::SENDS && m_opcode != Op::SENDSC) {
         GED_ENCODE(DstHorzStride, static_cast<uint32_t>(dst.getRegion().getHz())); // not used for sends
     }
 
     GED_ENCODE(DstRegNum, dst.getDirRegRef().regNum);
-    GED_ENCODE(DstSubRegNum,
-        SubRegToBytesOffset(dst.getDirRegRef().subRegNum, dst.getType(), RegName::GRF_R));
-
+    // GED_ENCODE(DstSubRegNum,
+    //    SubRegToBytesOffset(dst.getDirRegRef().subRegNum, RegName::GRF_R, dst.getType()));
 }
 
 void EncoderBase::encodeSendDestinationDataType(const Operand& dst)
@@ -1194,9 +1134,8 @@ void EncoderBase::encodeSendDestinationDataType(const Operand& dst)
 
 void EncoderBase::encodeSendDestination(const Instruction& inst, const Operand& dst)
 {
-    if (m_model.sendCheck2())
-    {
-        switch( dst.getKind() )
+    if (m_model.supportsUnarySend()) {
+        switch (dst.getKind())
         {
         case Operand::Kind::DIRECT:
             GED_ENCODE(DstAddrMode, GED_ADDR_MODE_Direct);
@@ -1207,24 +1146,19 @@ void EncoderBase::encodeSendDestination(const Instruction& inst, const Operand& 
         default:
             fatal("dst: unsupported destination operand kind/addrMode (malformed IR)");
             return;
-            break;
         }
     }
 
-    GED_ENCODE(DstRegFile, IGAToGEDTranslation::lowerRegFile(dst.getDirRegName()));
+    GED_ENCODE(DstRegFile,
+        IGAToGEDTranslation::lowerRegFile(dst.getDirRegName()));
 
-    if( dst.getKind() ==  Operand::Kind::DIRECT )
-    {
+    if (dst.getKind() ==  Operand::Kind::DIRECT) {
         encodeSendDirectDestination(dst);
-    }
-    else if( dst.getKind() ==  Operand::Kind::INDIRECT )
-    {
+    } else if (dst.getKind() ==  Operand::Kind::INDIRECT) {
         encodeSendDestinationDataType(dst);
-        if (m_opcode != Op::SENDS && m_opcode != Op::SENDSC)
-        {
+        if (m_opcode != Op::SENDS && m_opcode != Op::SENDSC) {
             GED_ENCODE(DstHorzStride, static_cast<uint32_t>(dst.getRegion().getHz())); // not used for sends
         }
-
         GED_ENCODE(DstAddrImm, dst.getIndImmAddr());
         GED_ENCODE(DstAddrSubRegNum, dst.getIndAddrReg().subRegNum);
     }
@@ -1232,8 +1166,7 @@ void EncoderBase::encodeSendDestination(const Instruction& inst, const Operand& 
 
 void EncoderBase::encodeSendSource0(const Operand& src)
 {
-    if (m_model.sendCheck2())
-    {
+    if (m_model.supportsUnarySend()) {
         switch( src.getKind() )
         {
         case Operand::Kind::DIRECT:
@@ -1256,12 +1189,9 @@ void EncoderBase::encodeSendSource0(const Operand& src)
 
     if( src.getKind() ==  Operand::Kind::DIRECT )
     {
-        if (m_model.sendCheck1())
-        {
+        if (m_model.supportsUnifiedSend()){
             GED_ENCODE(Src0RegNum, src.getDirRegRef().regNum);
-        }
-        else
-        {
+        } else {
             GED_ENCODE(Src0DataType, IGAToGEDTranslation::lowerDataType(t));
             GED_ENCODE(Src0RegNum,    src.getDirRegRef().regNum);
             GED_ENCODE(Src0SubRegNum, src.getDirRegRef().subRegNum);
@@ -1331,7 +1261,7 @@ void EncoderBase::encodeSendsDestination(const Operand& dst)
     GED_ENCODE(DstRegNum, dst.getDirRegRef().regNum);
     //TODO: set correct regType
     GED_ENCODE(DstSubRegNum,
-        SubRegToBytesOffset(dst.getDirRegRef().subRegNum, dst.getType(), RegName::GRF_R));
+        SubRegToBytesOffset(dst.getDirRegRef().subRegNum, RegName::GRF_R, dst.getType()));
 }
 
 template <SourceIndex S>
@@ -1433,9 +1363,7 @@ void EncoderBase::encodeTernarySourceAlign16(const Instruction& inst)
         uint32_t regNum = reg.regNum;
         encodeSrcRegNum<S>(regNum);
         uint32_t subRegNum =
-            SubRegToBytesOffset(subRegNumber,
-            src.getType(),
-            src.getDirRegName());
+            SubRegToBytesOffset(subRegNumber, src.getDirRegName(), src.getType());
         encodeSrcSubRegNum<S>(subRegNum);
     } else {
         // implicit operand accumulator
@@ -1514,7 +1442,7 @@ void EncoderBase::encodeTernaryDestinationAlign16(const Instruction& inst)
         }
         GED_ENCODE(DstChanEn, chanEn);
         uint32_t subRegNum = SubRegToBytesOffset(
-            reg.subRegNum, dst.getType(), dst.getDirRegName());
+            reg.subRegNum, dst.getDirRegName(), dst.getType());
         GED_ENCODE(DstSubRegNum, subRegNum);
     }
 }
@@ -1583,10 +1511,6 @@ GED_DST_CHAN_EN EncoderBase::implAccToChEn(ImplAcc implAcc) {
     return bits;
 }
 
-void EncoderBase::encodeOptionsPostProcess(const Instruction& inst)
-{
-}
-
 void EncoderBase::encodeOptionsThreadControl(const Instruction& inst)
 {
     if (inst.hasInstOpt(InstOpt::NOPREEMPT)) {
@@ -1639,7 +1563,7 @@ void EncoderBase::encodeOptions(const Instruction& inst)
         GED_ENCODE(ThreadCtrl, GED_THREAD_CTRL_Atomic);
     }
 
-    if (inst.hasInstOpt(InstOpt::SWITCH) && m_model.supportsSwitch())
+    if (inst.hasInstOpt(InstOpt::SWITCH) && m_model.supportsHwDeps())
     {
         if (inst.getOp() == Op::NOP) {
             warning("nop doesn't support Switch option (dropping)");
@@ -1667,7 +1591,6 @@ void EncoderBase::encodeOptions(const Instruction& inst)
     {
         GED_ENCODE(NoSrcDepSet, GED_NO_SRC_DEP_SET_Normal);
     }
-    encodeOptionsPostProcess(inst);
 }
 
 
@@ -1692,18 +1615,22 @@ void EncoderBase::patchJumpOffsets()
             // skip registers
         }
 
+        uint32_t encodePC = // calla is an absolute offset
+            inst->getOp() == Op::CALLA ? 0 : getEncodedPC(inst);
+
         uint32_t jumpPC = 0;
         const Block *jipBlk = inst->getJIP();
-        if (!getBlockOffset(jipBlk, jumpPC)) {
+        if (jipBlk == nullptr) {
+            // immediate offset: we have to treat this as a relative offset
+            jumpPC = inst->getSource(0).getImmediateValue().s32 + encodePC;
+        } else if (!getBlockOffset(jipBlk, jumpPC)) {
             // For call, its target symbol may not be resolvable until in the
             // link stage when other kernels are available.
-            if (inst->getOp() != Op::CALL) {
+            if (inst->getOp() != Op::CALL && inst->getOp() != Op::CALLA) {
                 fatalAt(inst->getLoc(), "jip label invalid");
             }
         }
 
-        uint32_t encodePC =
-            inst->getOp() == Op::CALLA ? 0 : getEncodedPC(inst); // calla is an absolute offset
         int32_t jip = jumpPC - encodePC - jmpiFix;
         // JIP and UIP are in QWORDS for most ops on PreBDW
         int32_t pcUnscale = arePcsInQWords(*inst) ? 8 : 1;
@@ -1715,7 +1642,9 @@ void EncoderBase::patchJumpOffsets()
             // No need to set src1 regFile and type,
             // it will be over written by UIP
             const Block *uipBlk = inst->getUIP();
-            if (!getBlockOffset(uipBlk, jumpPC)) {
+            if (uipBlk == nullptr) {
+                jumpPC = inst->getSource(1).getImmediateValue().s32 + encodePC;
+            } else if (!getBlockOffset(uipBlk, jumpPC)) {
                 fatalAt(inst->getLoc(), "uip label invalid");
             }
             encodePC = getEncodedPC(inst);
@@ -1761,17 +1690,12 @@ bool EncoderBase::arePcsInQWords(const Instruction &inst) const
         inst.getOp() != Op::CALLA;
 }
 
-bool EncoderBase::hasSimplifiedBranchEncoding() const
-{
-    return m_model.platformCheck6();
-}
-
 bool EncoderBase::callNeedsSrcRegion221(const Instruction &inst) const
 {
     // [call]: "Restriction: The src0 regioning control must be <2;2,1>" [IVB,HSW]
     // [calla]: "Restriction: The src0 regioning control must be <2;2,1>"
     return (inst.getOp() == Op::CALL && m_model.platform < Platform::GEN8) ||
-        (inst.getOp() == Op::CALLA && m_model.platformCheck2());
+        (inst.getOp() == Op::CALLA && m_model.platform <= Platform::GEN10);
 }
 
 bool EncoderBase::srcIsImm(const Operand &op) const
@@ -1787,10 +1711,11 @@ bool EncoderBase::srcIsImm(const Operand &op) const
 
 void EncoderBase::encodeTernarySrcRegionVert(SourceIndex S, Region::Vert v) {
     if (S == SourceIndex::SRC0) {
-        GED_ENCODE(Src0VertStride, IGAToGEDTranslation::lowerTernaryRegionVert(v, m_model.platform));
-    }
-    else { // (S == SourceIndex::SRC1)
-        GED_ENCODE(Src1VertStride, IGAToGEDTranslation::lowerTernaryRegionVert(v, m_model.platform));
+        GED_ENCODE(Src0VertStride,
+            IGAToGEDTranslation::lowerTernaryRegionVert(v, m_model.platform));
+    } else { // (S == SourceIndex::SRC1)
+        GED_ENCODE(Src1VertStride,
+            IGAToGEDTranslation::lowerTernaryRegionVert(v, m_model.platform));
     } // S != SRC2 since ternary Align1 doesn't have bits for that
 }
 

@@ -42,17 +42,47 @@ namespace iga
             struct {uint64_t qws[2];};
         };
 
+        bool testBit(int off) const {
+            return getField(off,1) != 0;
+        }
         uint64_t getField(int off, int len) const {
             return getBits(&qws[0], off, len);
         }
         uint64_t getField(const Field &f) const {
             return getField(f.offset, f.length);
         }
-        // returns false if field is too small
+        // gets a fragmented field
+        uint64_t getField(const Field &fLo, const Field &fHi) const {
+            uint64_t lo = getField(fLo.offset, fLo.length);
+            uint64_t hi = getField(fHi.offset, fHi.length);
+            return ((hi<<fLo.length) | lo);
+        }
+        // gets a fragmented field from an array of fields
+        // the fields are ordered low bit to high bit
+        // we stop when we find a field with length 0
+        template <int N>
+        uint64_t getFields(const Field ff[N]) const
+        {
+            uint64_t bits = 0;
+
+            int off = 0;
+            for (int i = 0; i < N; i++) {
+                if (ff[i].length == 0) {
+                    break;
+                }
+                auto frag = getBits(qws, ff[i].offset, ff[i].length);
+                bits |= frag << off;
+                off += ff[i].length;
+            }
+
+            return bits;
+        }
+
+        // returns false if field is too small to hold the value
         bool setField(const Field &f, uint64_t val) {
             return setBits(qws, f.offset, f.length, val);
         }
-        bool isCompact() const {return getField(29, 1) != 0;}
+        bool isCompact() const {return testBit(29);}
     };
     static_assert(sizeof(MInst) == 16, "MInst must be 16 bytes");
 }

@@ -1,6 +1,7 @@
 ##################################################################
 # common to both encoders
 set(IGA_Backend
+  ${CMAKE_CURRENT_SOURCE_DIR}/DecoderOpts.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/EncoderOpts.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/BitProcessor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/BitProcessor.hpp
@@ -18,6 +19,8 @@ set(IGA_Backend_GED_EncoderOnly
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/GEDUtil.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/GEDUtil.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GED/IGAToGEDTranslation.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/GED/Interface.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/GED/Interface.hpp
  PARENT_SCOPE
 )
 
@@ -31,8 +34,11 @@ set(IGA_Backend_GED_Decoder
   PARENT_SCOPE
 )
 
+##################################################################
+# native encoder
 set(IGA_Backend_Native
   ${CMAKE_CURRENT_SOURCE_DIR}/Native/Field.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Native/InstDecoder.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Native/InstEncoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Native/InstEncoder.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Native/Interface.cpp

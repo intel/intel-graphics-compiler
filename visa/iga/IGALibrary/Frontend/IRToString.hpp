@@ -145,7 +145,6 @@ static std::string ToSymbol(SrcModifier x) {
     MAKE_CASE(SrcModifier, ABS);
     MAKE_CASE(SrcModifier, NEG);
     MAKE_CASE(SrcModifier, NEG_ABS);
-    MAKE_CASE(SrcModifier, NOT);
     MAKE_DEFAULT_CASE(SrcModifier);
     }
 }
@@ -379,18 +378,6 @@ static std::string ToSyntax(Type ot) {
 }
 
 
-static std::string ToSyntax(SrcModifier x) {
-    switch (x) {
-    case SrcModifier::NONE: return "";
-    case SrcModifier::ABS: return "(abs)";
-    case SrcModifier::NEG: return "-";
-    case SrcModifier::NEG_ABS: return "-(abs)";
-    case SrcModifier::NOT: return "~";
-    default: return MakeErrorString("SrcModifier", (int)x);
-    }
-}
-
-
 static std::string ToSyntax(MaskCtrl mc) {
     return mc == MaskCtrl::NOMASK ? "W" : "";
 }
@@ -455,14 +442,14 @@ static std::string ToSyntax(ChannelOffset es) {
 
 static std::string ToSyntax(FlagModifier fm) {
     switch (fm) {
-    case FlagModifier::NONE: return "";
+    case FlagModifier::NONE: return ""; // 0
     case FlagModifier::EQ: return "eq";
     case FlagModifier::NE: return "ne";
     case FlagModifier::LT: return "lt";
     case FlagModifier::LE: return "le";
     case FlagModifier::GE: return "ge";
     case FlagModifier::GT: return "gt";
-    case FlagModifier::OV: return "ov";
+    case FlagModifier::OV: return "ov"; // 8
     case FlagModifier::UN: return "un";
     case FlagModifier::EO: return "eo";
     default: return MakeErrorString("FlagModifier",(int)fm);
@@ -494,7 +481,6 @@ static std::string ToSyntax(Op op, SrcModifier sm) {
     switch (sm) {
     case SrcModifier::NONE: return "";
     case SrcModifier::ABS: return "(abs)";
-    case SrcModifier::NOT: return "~";
     case SrcModifier::NEG: return IsBitwise(op) ? "~" : "-";
     case SrcModifier::NEG_ABS: return "-(abs)";
     default: return MakeErrorString("SrcModifier",(int)sm);
@@ -596,7 +582,7 @@ static std::string ToSyntax(const InstOpt &i) {
 
 static void ToSyntaxNoBraces(
     std::ostream &os,
-    const InstOptSet &inst_opts)
+    const InstOptSet &instOpts)
 {
     static const InstOpt ALL_INST_OPTS[] = {
         InstOpt::ACCWREN,
@@ -618,7 +604,7 @@ static void ToSyntaxNoBraces(
         i < sizeof(ALL_INST_OPTS)/sizeof(ALL_INST_OPTS[0]);
         i++)
     {
-        if (inst_opts.contains(ALL_INST_OPTS[i])) {
+        if (instOpts.contains(ALL_INST_OPTS[i])) {
             if (first) {
                 first = false;
             } else {

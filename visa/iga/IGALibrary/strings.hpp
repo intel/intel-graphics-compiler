@@ -29,10 +29,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <cstdarg>
 #include <cstdio>
+#include <cstdint>
 #include <functional>
 #include <iostream>
 #include <ostream>
 #include <string>
+#include <sstream>
 #include <vector>
 
 #ifdef _MSC_VER
@@ -85,6 +87,13 @@ namespace iga {
     // returns the required string size
     size_t copyOut(char *buf, size_t bufCap, std::iostream &ios);
 
+    // formats a value into binary padding with 0's for a given width w
+    // e.g. fmtBinary(os,5,0xB) => emits 01011
+    void fmtBinary(std::ostream &os, int w, uint64_t val);
+    // formats to uppercase hex for a given width
+    void fmtHex(std::ostream &os, int w, uint64_t val);
+    std::string fmtHex(uint64_t val, int w);
+
     // This class simplifies formatting loops by dropping the first comma.
     // One calls insert *before* each element being formatted.
     //
@@ -110,7 +119,7 @@ namespace iga {
         }
     };
 
-    // Same as below, but admits a filter predicate which only allows a
+    // Same as below, but permits a filter predicate which only allows a
     // subset of elements (identified by that predicate).
     template <typename Container, typename Predicate, typename Formatter>
     static void intercalate(
@@ -191,6 +200,30 @@ namespace iga {
         const FormatT &formatElem)
     {
         commafyList("and", os, elems, formatElem);
+    }
+    template <typename T>
+    std::string PadR(size_t k, const T& t)
+    {
+        std::stringstream ssCol;
+        ssCol << t;
+        for (size_t i = (size_t)ssCol.tellp(); i < k; i++)
+            ssCol << ' ';
+        return ssCol.str();
+    }
+    template <typename T>
+    std::string PadL(size_t k, const T& t)
+    {
+        std::stringstream ssc;
+        ssc << t;
+        std::string col = ssc.str();
+
+        std::stringstream ss;
+        int n = (int)k - (int)col.size();
+        for (int i = 0; i < n; i++) {
+            ss << ' ';
+        }
+        ss << col;
+        return ss.str();
     }
 } // namespace iga
 

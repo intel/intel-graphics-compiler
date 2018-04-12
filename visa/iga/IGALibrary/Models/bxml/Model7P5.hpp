@@ -210,564 +210,38 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::10 */ {            Op::BFREV, "bfrev", "bfrev", 0x17, "Bit Field Reverse",
-            "The bfrev instruction component-wise reverses all the bits in src0 and stores the results in dst.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] bfrev (exec_size) dst src0\n",
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::11 */ {            Op::BRC, "brc", "brc", 0x23, "Branch Converging",
-            "The brc instruction redirects the execution forward or backward to the instruction pointed by (current IP + offset). The jump will occur if all channels are branched away.\n"
-            "\n"
-            "UIP should reference the instruction where all channels are expected to come together. JIP should reference the end of the innermost conditional block.\n"
-            "\n"
-            "\n"
-            "In GEN binary, JIP and UIP are at location src1 when immediates and at location src0 when reg64, where reg64 is accessed as paired DWord (regioning being <2;2,1>). The ip register must be used (for example, by the assembler) as dst. When offsets are immediate, src0 must be null.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] brc (exec_size) JIP UIP\n",
-            OpSpec::Format::JUMP_BINARY_BRC, {
-                //  <- D
-                {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::12 */ {            Op::BRD, "brd", "brd", 0x21, "Branch Diverging",
-            "The brd instruction redirects the execution forward or backward to the instruction pointed by (current IP + offset). The jump will occur if any channels are branched away.\n"
-            "\n"
-            "\n"
-            "In GEN binary, JIP is at location src1 when immediate and at location src0 when reg32, where reg32 is accessed as a scalar DWord. The ip register must be used (for example, by the assembler) as dst.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] brd (exec_size) JIP\n",
-            OpSpec::Format::JUMP_UNARY_REGIMM, {
-                //  <- D
-                {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::13 */ {            Op::BREAK, "break", "break", 0x28, "Break",
-            "The break instruction is used to early-out from the inner most loop, or early out from the inner most switch block.\n"
-            "\n"
-            "When used in a loop, upon execution, the break instruction terminates the loop for all execution channels enabled. If all the enabled channels hit the break instruction, jump to the instruction referenced by JIP. JIP should be the offset to the end of the inner most conditional or loop block, UIP should be the offset to the while instruction of the loop block.\n"
-            "\n"
-            "If SPF is ON, the UIP must be used to update IP; JIP is not used in this case\n"
-            "\n"
-            "\n"
-            "The following table describes the two 16-bit instruction pointer offsets. Both the JIP and UIP are signed 16-bit numbers, added to IP pre-increment. In GEN binary, JIP and UIP are at location src1 and must be of type W (signed word integer).\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] break (exec_size) JIP UIP\n",
-            OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::14 */ {            Op::CALL, "call", "call", 0x2c, "Call",
-            "The call instruction jumps to a subroutine. It can be predicated or non-predicated. If non-predicated, all enabled channels jump to the subroutine. If predicated, only the channels enabled by PMask jump to the subroutine; the rest of the channels move to the next instruction after the call instruction. If none of the channels jump into the subroutine, the call instruction is treated as a nop.\n"
-            "\n"
-            "In case of a jump, the call instruction stores the return IP onto the first DWord of the destination register and stores the CallMask in the second DWord of the destination register.\n"
-            "\n"
-            "When SPF is on, the predication control must be scalar.\n"
-            "\n"
-            "\n"
-            "The following section describes JIP, the jump offset, for DevHSW+.\n"
-            "\n"
-            "\n"
-            "JIP can be an immediate or register value. When a jump occurs, this value is added to IP pre-increment. For DevHSW+, in GEN binary, JIP is at location src1 and src0 must be null. The GRF register must be put (for example, by the assembler) at dst location.\n"
-            "\n"
-            "\n"
-            "Format: [(pred)] call (exec_size) dst JIP\n"
-            "\n"
-            "\n"
-            "Format: [(pred)] call (exec_size) dst JIP\n",
-            OpSpec::Format::JUMP_UNARY_CALL_REGIMM, {
-                // D,UD <-
-                {TYPE(Type::D)|TYPE(Type::UD),ENUM_BITSET_EMPTY_VALUE}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::15 */ {            Op::CALLA, "calla", "calla", 0x2b, "Call Absolute",
-            "The calla instruction jumps to a subroutine. It can be predicated or non-predicated. If non-predicated, all enabled channels jump to the subroutine. If predicated, only the channels enabled by PMask jump to the subroutine; the rest of the channels move to the next instruction after the calla instruction. If none of the channels jump into the subroutine, the calla instruction is treated as a nop.\n"
-            "\n"
-            "In case of a jump, the call instruction stores the return IP onto the first DWord of the destination register and stores the CallMask in the second DWord of the destination register.\n"
-            "\n"
-            "If SPF is ON, none of the PcIP are updated.\n"
-            "\n"
-            "When SPF is on, the predication control must be scalar.\n"
-            "\n"
-            "The difference between calla and call is that calla uses JIP as the IP value rather than adding it to the IP value.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] calla (exec_size) dst JIP\n",
-            OpSpec::Format::JUMP_UNARY_CALL_REGIMM, {
-                // D,UD <-
-                {TYPE(Type::D)|TYPE(Type::UD),ENUM_BITSET_EMPTY_VALUE}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::16 */ {            Op::CBIT, "cbit", "cbit", 0x4d, "Count Bits Set",
-            "The cbit instruction counts component-wise the total bits set in src0 and stores the resulting counts in dst.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] cbit (exec_size) dst src0\n",
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
-                // UD <- UB,UW,UD
-                {TYPE(Type::UD),TYPE(Type::UB)|TYPE(Type::UW)|TYPE(Type::UD)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::17 */ {            Op::CMP, "cmp", "cmp", 0x10, "Compare",
-            "The cmp instruction performs component-wise comparison of src0 and src1 and stores the results in the selected flag register and in dst. It takes component-wise subtraction of src0 and src1, evaluating the conditional code (excluding NS signal) based on the conditional modifier, and storing the conditional bits in bit-packed form in the destination flag register and all bits of dst channels. If the dst is not null, for the enabled channels, then all bits of the destination channel will contain the flag value for the channel. When the instruction operates on packed word format, one general register may store up to 16 such comparison results. In DWord format, one general register may store up to 8 results.\n"
-            "\n"
-            "A conditional modifier must be specified; the conditional modifier field cannot be 0000b. The comparison does not use the NS (NaN source) signals, as described in the Creating Conditional Flags section. Accordingly the conditional modifier should not be .u (unordered).\n"
-            "\n"
-            "For each enabled channel 0b or 1b is assigned to the appropriate flag bit and 0/all zeros or all ones (e.g, byte 0xFF, word 0xFFFF, DWord 0xFFFFFFFF) is assigned to dst.\n"
-            "\n"
-            "When any source type is floating-point, the cmp instruction obeys the rules described in the tables in the Floating Point Modes section of the Data Types chapter.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] cmp[.cmod] (exec_size) dst src0 src1\n",
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
-                // B,UB,W,UW,D,UD <- B,UB,W,UW,D,UD
-                {TYPE(Type::B)|TYPE(Type::UB)|TYPE(Type::W)|TYPE(Type::UW)|TYPE(Type::D)|TYPE(Type::UD),TYPE(Type::B)|TYPE(Type::UB)|TYPE(Type::W)|TYPE(Type::UW)|TYPE(Type::D)|TYPE(Type::UD)},
-                // F <- B,UB,W,UW,D,UD
-                {TYPE(Type::F),TYPE(Type::B)|TYPE(Type::UB)|TYPE(Type::W)|TYPE(Type::UW)|TYPE(Type::D)|TYPE(Type::UD)},
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // DF <- DF
-                {TYPE(Type::DF),TYPE(Type::DF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::18 */ {            Op::CMPN, "cmpn", "cmpn", 0x11, "Compare NaN",
-            "The cmpn instruction performs component-wise special-NaN comparison of src0 and src1 and stores the results in the selected flag register and in dst. It takes component-wise subtraction of src0 and src1, evaluating the conditional signals including NS based on the conditional modifier, and storing the conditional flag bits in bit-packed form in the destination flag register and all bits of dst channels. If the dst is not null, for the enabled channels, then all bits of the destination channel will contain the flag value for the channel. When the instruction operates on packed word format, one general register may store up to 16 such comparison results. In DWord format, one general register may store up to 8 results.\n"
-            "\n"
-            "A conditional modifier must be specified; the conditional modifier field cannot be 0000b. More information about the conditional signals used is in the Creating Conditional Flags section.\n"
-            "\n"
-            "For each enabled channel 0b or 1b is assigned to the appropriate flag bit and 0/all zeros or all ones (e.g, byte 0xFF, word 0xFFFF, DWord 0xFFFFFFFF) is assigned to dst.\n"
-            "\n"
-            "Min/Max instructions use cmpn to select the destination from the input sources (see the Min Max of Floating Point Numbers section for details).\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] cmpn[.cmod] (exec_size) dst src0 src1\n",
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
-                // B,UB,W,UW,D,UD <- B,UB,W,UW,D,UD
-                {TYPE(Type::B)|TYPE(Type::UB)|TYPE(Type::W)|TYPE(Type::UW)|TYPE(Type::D)|TYPE(Type::UD),TYPE(Type::B)|TYPE(Type::UB)|TYPE(Type::W)|TYPE(Type::UW)|TYPE(Type::D)|TYPE(Type::UD)},
-                // F <- B,UB,W,UW,D,UD
-                {TYPE(Type::F),TYPE(Type::B)|TYPE(Type::UB)|TYPE(Type::W)|TYPE(Type::UW)|TYPE(Type::D)|TYPE(Type::UD)},
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)},
-                // DF <- DF
-                {TYPE(Type::DF),TYPE(Type::DF)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::19 */ {            Op::CONT, "cont", "cont", 0x29, "Continue",
-            "The cont instruction disables execution for the subset of channels for the remainder of the current loop iteration. Channels remain disabled until right before the while instuction or right before the condition check code block for the while instruction. If all enabled channels hit this instruction, jump to the instruction referenced by JIP where execution continues.\n"
-            "\n"
-            "UIP should always reference the loop\'s associated while instruction. JIP should point to the last instruction of the inner most conditional block if the cont instruction is inside a conditional block. In case of the break instruction directly under the loop, the JIP and the UIP are the same.\n"
-            "\n"
-            "If SPF is ON, the UIP must be used to update IP; JIP is not used in this case.\n"
-            "\n"
-            "\n"
-            "The following table describes the two 16-bit instruction pointer offsets. Both the JIP and UIP are signed 16-bit numbers, added to IP pre-increment. In GEN binary, JIP and UIP are at location src1 and must be of type W (signed word integer).\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] cont (exec_size) JIP UIP\n",
-            OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::10 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::11 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::12 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::13 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::14 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::15 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::16 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::17 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::18 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::19 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::20 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::21 */ {            Op::DIM, "dim", "dim", 0xa, "Double Precision Floating Point Immediate Data Move",
-            "The dim instruction moves the 64-bit immediate value into enabled channels of dst.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] dim[.cmod] (exec_size) dst src0\n",
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
-                // DF <- F
-                {TYPE(Type::DF),TYPE(Type::F)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::22 */ {            Op::DP2, "dp2", "dp2", 0x57, "Dot Product 2",
-            "The dp2 instruction performs a two-wide dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst. This instruction is similar to dp4 except that every third and fourth element of src0 (post-source-swizzle if present) are not involved in the computation.\n"
-            "\n"
-            "The dot product of two vectors of equal length is the sum of the products of each pair of corresponding elements.\n"
-            "\n"
-            "The dp4 instruction includes all four elements of each vector in the dot product. The dp3 instruction includes the first three elements of each vector in the dot product.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] dp2[.cmod] (exec_size) dst src0 src1\n",
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::23 */ {            Op::DP3, "dp3", "dp3", 0x56, "Dot Product 3",
-            "The dp3 instruction performs a three-wide dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst. This instruction is similar to dp4 except that every fourth element of src0 (post-source-swizzle if present) is not involved in the computation.\n"
-            "\n"
-            "The dot product of two vectors of equal length is the sum of the products of each pair of corresponding elements.\n"
-            "\n"
-            "The dp4 instruction includes all four elements of each vector in the dot product. The dp2 instruction includes the first two elements of each vector in the dot product.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] dp3[.cmod] (exec_size) dst src0 src1\n",
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::24 */ {            Op::DP4, "dp4", "dp4", 0x54, "Dot Product 4",
-            "The dp4 instruction performs a four-wide dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst.\n"
-            "\n"
-            "The dot product of two vectors of equal length is the sum of the products of each pair of corresponding elements.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] dp4[.cmod] (exec_size) dst src0 src1\n",
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::21 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::22 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::23 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::24 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::25 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::26 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::27 */ {            Op::DPH, "dph", "dph", 0x55, "Dot Product Homogeneous",
-            "The dph instruction performs a four-wide homogeneous dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst. This instruction is similar to dp4 except that every fourth element of src0 (post-source-swizzle if present) is forced to 1.0f.\n"
-            "\n"
-            "Use the dp4 instruction to do a four-wide dot product that includes all elements of src0 and src1.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] dph[.cmod] (exec_size) dst src0 src1\n",
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::28 */ {            Op::ELSE, "else", "else", 0x24, "Else",
-            "The else instruction is an optional statement within an if/else/endif block of code. It restricts execution within the else/endif portion to the opposite set of channels enabled under the if/else portion. Channels which were inactive before entering the if/endif block remain inactive throughout the entire block.\n"
-            "\n"
-            "All enabled channels upon arriving at the else instruction are redirected to the matching endif. If all channels are redirected (by else or before else), a relative jump is performed to the location specified by JIP. The jump target should be the the matching endif instruction for that conditional block.\n"
-            "\n"
-            "The following table describes the 16-bit JIP. In GEN binary, JIP is at location src1 and must be of type W (signed word integer). JIP must be an immediate operand, it is a signed 16-bit number and is intended to be forward referencing. This value is added to IP pre-increment.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "else (exec_size) JIP\n",
-            OpSpec::Format::JUMP_UNARY_IMM, { }, // no type mappings
-            OpSpec::Attr::NONE,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::29 */ {            Op::ENDIF, "endif", "endif", 0x25, "End If",
-            "The endif instruction terminates an if/else/endif block of code. It restores execution to the channels that were active prior to the if/else/endif block.\n"
-            "\n"
-            "The endif instruction is also used to hop out of nested conditionals by jumping to the end of the next outer conditional block when all channels are disabled.\n"
-            "\n"
-            "\n"
-            "The following table describes the 16-bit JIP. In GEN binary, JIP is at location src1 and must be of type W (signed word integer). JIP must be an immediate operand, it is a signed 16-bit number. This value is added to IP pre-increment.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "endif JIP\n",
-            OpSpec::Format::JUMP_UNARY_IMM, { }, // no type mappings
-            OpSpec::Attr::NONE,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::30 */ {            Op::F16TO32, "f16to32", "f16to32", 0x14, "Half Precision Float to Single Precision Float",
-            "The f16to32 instruction converts the half precision float in src0 to single precision float and storing in dst.\n"
-            "\n"
-            "Because this instruction does not have a 16-bit floating-point type, the source data type must be Word (W). The destination type must be F (Float).\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] f16to32[.cmod] (exec_size) dst src0\n",
-            OpSpec::Format::BASIC_UNARY_REG, {
-                // F <- W
-                {TYPE(Type::F),TYPE(Type::W)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::31 */ {            Op::F32TO16, "f32to16", "f32to16", 0x13, "Single Precision Float to Half Precision Float",
-            "The f32to16 instruction converts the single precision float in src0 to half precision float and storing in the lower word of each channel in dst.\n"
-            "\n"
-            "Because this instruction does not have a 16-bit floating-point type, the destination data type must be Word (W).\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] f32to16[.cmod] (exec_size) dst src0\n",
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
-                // W <- F
-                {TYPE(Type::W),TYPE(Type::F)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::32 */ {            Op::FBH, "fbh", "fbh", 0x4b, "Find First Bit from MSB Side",
-            "If src0 is unsigned, the fbh instruction counts component-wise the leading zeros from src0 and stores the resulting counts in dst.\n"
-            "\n"
-            "If src0 is signed and positive, the fbh instruction counts component-wise the leading zeros from src0 and stores the resulting counts in dst.\n"
-            "\n"
-            "If src0 is signed and negative, the fbh instruction counts component-wise the leading ones from src0 and stores the resulting counts in dst.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] fbh (exec_size) dst src0\n"
-            "\n"
-            "\n"
-            "If src0 is zero, store 0xFFFFFFFF in dst.\n"
-            "\n"
-            "\n"
-            "If src0 is signed and is -1 (0xFFFFFFFF), store 0xFFFFFFFF in dst.\n",
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
-                // UD <- D,UD
-                {TYPE(Type::UD),TYPE(Type::D)|TYPE(Type::UD)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::33 */ {            Op::FBL, "fbl", "fbl", 0x4c, "Find First Bit from LSB Side",
-            "The fbl instruction counts component-wise the number of LSB 0 bits before the first 1 bit in src0, storing that number in dst.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] fbl (exec_size) dst src0\n"
-            "\n"
-            "\n"
-            "If src0 contains no 1 bits, store 0xFFFFFFFF in dst.\n",
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
-                // UD <- UD
-                {TYPE(Type::UD),TYPE(Type::UD)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::34 */ {            Op::FRC, "frc", "frc", 0x43, "Fraction",
-            "The frc instruction computes, component-wise, the truncate-to-minus-infinity fractional values of src0 and stores the results in dst. The results, in the range of [0.0, 1.0], are the fractional portion of the source data. The result is in the range [0.0, 1.0] irrespective of the rounding mode. Floating-point fraction computation follows the rules in the following tables, based on the current floating-point mode.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] frc[.cmod] (exec_size) dst src0\n",
-            OpSpec::Format::BASIC_UNARY_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::27 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::28 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::29 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::30 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::31 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::32 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::33 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::34 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::35 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::36 */ {            Op::HALT, "halt", "halt", 0x2a, "Halt",
-            "The halt instruction temporarily suspends execution for all enabled compute channels. Upon execution, the enabled channels are sent to the instruction at (IP + UIP), if all channels are enabled at HALT, jump to the instruction at (IP + JIP).\n"
-            "\n"
-            "If the halt instruction is not inside any conditional code block, the values of JIP and UIP should be the same. If the halt instruction is inside a conditional code block, the UIP should be the end of the program and the JIP should be the end of the inner most conditional code block.\n"
-            "\n"
-            "The UIP must point to a HALT Instruction.\n"
-            "\n"
-            "If SPF is ON, the UIP must be used to update IP; JIP is not used in this case.\n"
-            "\n"
-            "\n"
-            "The following table describes the two 16-bit instruction pointer offsets. Both the JIP and UIP are signed 16-bit numbers, added to IP pre-increment. In GEN binary, JIP and UIP are at location src1 and must be of type W (signed word integer).\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] halt (exec_size) JIP UIP\n",
-            OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::37 */ {            Op::IF, "if", "if", 0x22, "If",
-            "An if instruction starts an if/endif or an if/else/endif block of code. It restricts execution within the conditional block to only those channels that were enabled via the predicate control.\n"
-            "\n"
-            "Each if instruction must have a matching endif instruction and may have up to one matching else instruction before the matching endif.\n"
-            "\n"
-            "If all channels are inactive (for the if/endif or if/else/endif block), a jump is performed to the instruction referenced by JIP. This jump must be to right after the matching else instruction when present, or otherwise to the matching endif instruction of the conditional block.\n"
-            "\n"
-            "If SPF is ON, the UIP must be used to update IP; JIP is not used in this case.\n"
-            "\n"
-            "\n"
-            "The following table describes the two 16-bit instruction pointer offsets. Both the JIP and UIP are signed 16-bit numbers, added to IP pre-increment. In GEN binary, JIP and UIP are at location src1 and must be of type W (signed word integer).\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] if (exec_size) JIP UIP\n",
-            OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::38 */ {            Op::ILLEGAL, "illegal", "illegal", 0x0, "Illegal",
-            "The Illegal Opcode Exception Enable flag in cr0.1 is normally set so the normal processing of an illegal opcode is to transfer control to the System Routine.\n"
-            "\n"
-            "Instruction dispatch treats any unused 8-bit opcode (including bit 7 of the instruction, reserved for future opcode expansion) as if it is the illegal opcode.\n"
-            "\n"
-            "The illegal opcode is zero because that byte value is more likely than most to be read via a wayward instruction pointer.\n"
-            "\n"
-            "The illegal instruction is an instruction only in the same way that a NULL pointer in software is a pointer. Both are special values indicating invalid instances.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "illegal\n",
-            OpSpec::Format::NULLARY, { }, // no type mappings
-            OpSpec::Attr::NONE,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::39 */ {            Op::JMPI, "jmpi", "jmpi", 0x20, "Jump Indexed",
-            "The jmpi instruction redirects program execution to an index offset relative to the post-incremented instruction pointer. The index is a signed integer value, with positive or zero integers for forward jumps, and negative integers for backward jumps.\n"
-            "\n"
-            "Note: Unlike other flow control instructions, the offset used by jmpi is relative to the incremented instruction pointer rather than the IP value for the instruction itself.\n"
-            "\n"
-            "In GEN binary, index is at location src1. The ip register must be put (for example, by the assembler) at the dst and src0 locations.\n"
-            "\n"
-            "Predication is allowed to provide conditional jump with a scalar condition. As the execution size is 1, the first channel of PMASK (flags post prediction control and negate) is used to determine whether the jump is taken or not. If the condition is false, the jump is not taken and execution continues with the next instruction.\n"
-            "\n"
-            "\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] jmpi (1) index {NoMask}\n"
-            "\n"
-            "\n"
-            "An index of 0 does nothing, continuing execution with the next instruction.\n"
-            "\n"
-            "\n"
-            "An index of -16 (if the jmpi instruction is in native format) or -8 (if the jmpi instruction is in compact format) is an infinite loop on the jmpi instruction.\n",
-            OpSpec::Format::JUMP_UNARY_REGIMM, {
-                //  <- D
-                {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::36 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::37 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::38 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::39 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::40 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::41 */ {            Op::LINE, "line", "line", 0x59, "Line",
-            "The line instruction computes a component-wise line equation (v = p * u + q where u, v are vectors and p, q are scalars) of src0 and src1 and stores the results in dst. src1 is the input vector u. src0 provides input scalars p and q, where p is the scalar value based on the region description of src0 and q is the scalar value implied from src0 region. Specifically, q is the fourth component of the 4-tuple (128-bit aligned) that p belongs to.\n"
-            "\n"
-            "\n"
-            "Format:\n"
-            "[(pred)] line[.cmod] (exec_size) dst src0 src1\n",
-            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
-                // F <- F
-                {TYPE(Type::F),TYPE(Type::F)}
-            },
-            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
-            Op::INVALID /* groupOp */,
-            Op::INVALID /* subopsStart */,
-            0 /*subopsLength */,
-            -1 /* functionControlValue = N/A */,
-            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::41 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::42 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::43 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::44 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
@@ -993,21 +467,301 @@ namespace iga {
         /* Op::264 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::265 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::266 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::267 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::268 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::269 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::270 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::271 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::272 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::273 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::274 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::275 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::276 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::267 */ {            Op::BFREV, "bfrev", "bfrev", 0x17, "Bit Field Reverse",
+            "The bfrev instruction component-wise reverses all the bits in src0 and stores the results in dst.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] bfrev (exec_size) dst src0\n",
+            OpSpec::Format::BASIC_UNARY_REGIMM, {
+                // UD <- UD
+                {TYPE(Type::UD),TYPE(Type::UD)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::268 */ {            Op::BRC, "brc", "brc", 0x23, "Branch Converging",
+            "The brc instruction redirects the execution forward or backward to the instruction pointed by (current IP + offset). The jump will occur if all channels are branched away.\n"
+            "\n"
+            "UIP should reference the instruction where all channels are expected to come together. JIP should reference the end of the innermost conditional block.\n"
+            "\n"
+            "\n"
+            "In GEN binary, JIP and UIP are at location src1 when immediates and at location src0 when reg64, where reg64 is accessed as paired DWord (regioning being <2;2,1>). The ip register must be used (for example, by the assembler) as dst. When offsets are immediate, src0 must be null.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] brc (exec_size) JIP UIP\n",
+            OpSpec::Format::JUMP_BINARY_BRC, {
+                //  <- D
+                {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::269 */ {            Op::BRD, "brd", "brd", 0x21, "Branch Diverging",
+            "The brd instruction redirects the execution forward or backward to the instruction pointed by (current IP + offset). The jump will occur if any channels are branched away.\n"
+            "\n"
+            "\n"
+            "In GEN binary, JIP is at location src1 when immediate and at location src0 when reg32, where reg32 is accessed as a scalar DWord. The ip register must be used (for example, by the assembler) as dst.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] brd (exec_size) JIP\n",
+            OpSpec::Format::JUMP_UNARY_REGIMM, {
+                //  <- D
+                {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::270 */ {            Op::BREAK, "break", "break", 0x28, "Break",
+            "The break instruction is used to early-out from the inner most loop, or early out from the inner most switch block.\n"
+            "\n"
+            "When used in a loop, upon execution, the break instruction terminates the loop for all execution channels enabled. If all the enabled channels hit the break instruction, jump to the instruction referenced by JIP. JIP should be the offset to the end of the inner most conditional or loop block, UIP should be the offset to the while instruction of the loop block.\n"
+            "\n"
+            "If SPF is ON, the UIP must be used to update IP; JIP is not used in this case\n"
+            "\n"
+            "\n"
+            "The following table describes the two 16-bit instruction pointer offsets. Both the JIP and UIP are signed 16-bit numbers, added to IP pre-increment. In GEN binary, JIP and UIP are at location src1 and must be of type W (signed word integer).\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] break (exec_size) JIP UIP\n",
+            OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
+            OpSpec::Attr::SUPPORTS_PREDICATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::271 */ {            Op::CALL, "call", "call", 0x2c, "Call",
+            "The call instruction jumps to a subroutine. It can be predicated or non-predicated. If non-predicated, all enabled channels jump to the subroutine. If predicated, only the channels enabled by PMask jump to the subroutine; the rest of the channels move to the next instruction after the call instruction. If none of the channels jump into the subroutine, the call instruction is treated as a nop.\n"
+            "\n"
+            "In case of a jump, the call instruction stores the return IP onto the first DWord of the destination register and stores the CallMask in the second DWord of the destination register.\n"
+            "\n"
+            "When SPF is on, the predication control must be scalar.\n"
+            "\n"
+            "\n"
+            "The following section describes JIP, the jump offset, for DevHSW+.\n"
+            "\n"
+            "\n"
+            "JIP can be an immediate or register value. When a jump occurs, this value is added to IP pre-increment. For DevHSW+, in GEN binary, JIP is at location src1 and src0 must be null. The GRF register must be put (for example, by the assembler) at dst location.\n"
+            "\n"
+            "\n"
+            "Format: [(pred)] call (exec_size) dst JIP\n"
+            "\n"
+            "\n"
+            "Format: [(pred)] call (exec_size) dst JIP\n",
+            OpSpec::Format::JUMP_UNARY_CALL_REGIMM, {
+                // D,UD <-
+                {TYPE(Type::D)|TYPE(Type::UD),ENUM_BITSET_EMPTY_VALUE}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::272 */ {            Op::CALLA, "calla", "calla", 0x2b, "Call Absolute",
+            "The calla instruction jumps to a subroutine. It can be predicated or non-predicated. If non-predicated, all enabled channels jump to the subroutine. If predicated, only the channels enabled by PMask jump to the subroutine; the rest of the channels move to the next instruction after the calla instruction. If none of the channels jump into the subroutine, the calla instruction is treated as a nop.\n"
+            "\n"
+            "In case of a jump, the call instruction stores the return IP onto the first DWord of the destination register and stores the CallMask in the second DWord of the destination register.\n"
+            "\n"
+            "If SPF is ON, none of the PcIP are updated.\n"
+            "\n"
+            "When SPF is on, the predication control must be scalar.\n"
+            "\n"
+            "The difference between calla and call is that calla uses JIP as the IP value rather than adding it to the IP value.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] calla (exec_size) dst JIP\n",
+            OpSpec::Format::JUMP_UNARY_CALL_REGIMM, {
+                // D,UD <-
+                {TYPE(Type::D)|TYPE(Type::UD),ENUM_BITSET_EMPTY_VALUE}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::273 */ {            Op::CBIT, "cbit", "cbit", 0x4d, "Count Bits Set",
+            "The cbit instruction counts component-wise the total bits set in src0 and stores the resulting counts in dst.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] cbit (exec_size) dst src0\n",
+            OpSpec::Format::BASIC_UNARY_REGIMM, {
+                // UD <- UB,UW,UD
+                {TYPE(Type::UD),TYPE(Type::UB)|TYPE(Type::UW)|TYPE(Type::UD)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::274 */ {            Op::CMP, "cmp", "cmp", 0x10, "Compare",
+            "The cmp instruction performs component-wise comparison of src0 and src1 and stores the results in the selected flag register and in dst. It takes component-wise subtraction of src0 and src1, evaluating the conditional code (excluding NS signal) based on the conditional modifier, and storing the conditional bits in bit-packed form in the destination flag register and all bits of dst channels. If the dst is not null, for the enabled channels, then all bits of the destination channel will contain the flag value for the channel. When the instruction operates on packed word format, one general register may store up to 16 such comparison results. In DWord format, one general register may store up to 8 results.\n"
+            "\n"
+            "A conditional modifier must be specified; the conditional modifier field cannot be 0000b. The comparison does not use the NS (NaN source) signals, as described in the Creating Conditional Flags section. Accordingly the conditional modifier should not be .u (unordered).\n"
+            "\n"
+            "For each enabled channel 0b or 1b is assigned to the appropriate flag bit and 0/all zeros or all ones (e.g, byte 0xFF, word 0xFFFF, DWord 0xFFFFFFFF) is assigned to dst.\n"
+            "\n"
+            "When any source type is floating-point, the cmp instruction obeys the rules described in the tables in the Floating Point Modes section of the Data Types chapter.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] cmp[.cmod] (exec_size) dst src0 src1\n",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+                // B,UB,W,UW,D,UD <- B,UB,W,UW,D,UD
+                {TYPE(Type::B)|TYPE(Type::UB)|TYPE(Type::W)|TYPE(Type::UW)|TYPE(Type::D)|TYPE(Type::UD),TYPE(Type::B)|TYPE(Type::UB)|TYPE(Type::W)|TYPE(Type::UW)|TYPE(Type::D)|TYPE(Type::UD)},
+                // F <- B,UB,W,UW,D,UD
+                {TYPE(Type::F),TYPE(Type::B)|TYPE(Type::UB)|TYPE(Type::W)|TYPE(Type::UW)|TYPE(Type::D)|TYPE(Type::UD)},
+                // F <- F
+                {TYPE(Type::F),TYPE(Type::F)},
+                // DF <- DF
+                {TYPE(Type::DF),TYPE(Type::DF)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::275 */ {            Op::CMPN, "cmpn", "cmpn", 0x11, "Compare NaN",
+            "The cmpn instruction performs component-wise special-NaN comparison of src0 and src1 and stores the results in the selected flag register and in dst. It takes component-wise subtraction of src0 and src1, evaluating the conditional signals including NS based on the conditional modifier, and storing the conditional flag bits in bit-packed form in the destination flag register and all bits of dst channels. If the dst is not null, for the enabled channels, then all bits of the destination channel will contain the flag value for the channel. When the instruction operates on packed word format, one general register may store up to 16 such comparison results. In DWord format, one general register may store up to 8 results.\n"
+            "\n"
+            "A conditional modifier must be specified; the conditional modifier field cannot be 0000b. More information about the conditional signals used is in the Creating Conditional Flags section.\n"
+            "\n"
+            "For each enabled channel 0b or 1b is assigned to the appropriate flag bit and 0/all zeros or all ones (e.g, byte 0xFF, word 0xFFFF, DWord 0xFFFFFFFF) is assigned to dst.\n"
+            "\n"
+            "Min/Max instructions use cmpn to select the destination from the input sources (see the Min Max of Floating Point Numbers section for details).\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] cmpn[.cmod] (exec_size) dst src0 src1\n",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+                // B,UB,W,UW,D,UD <- B,UB,W,UW,D,UD
+                {TYPE(Type::B)|TYPE(Type::UB)|TYPE(Type::W)|TYPE(Type::UW)|TYPE(Type::D)|TYPE(Type::UD),TYPE(Type::B)|TYPE(Type::UB)|TYPE(Type::W)|TYPE(Type::UW)|TYPE(Type::D)|TYPE(Type::UD)},
+                // F <- B,UB,W,UW,D,UD
+                {TYPE(Type::F),TYPE(Type::B)|TYPE(Type::UB)|TYPE(Type::W)|TYPE(Type::UW)|TYPE(Type::D)|TYPE(Type::UD)},
+                // F <- F
+                {TYPE(Type::F),TYPE(Type::F)},
+                // DF <- DF
+                {TYPE(Type::DF),TYPE(Type::DF)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::276 */ {            Op::CONT, "cont", "cont", 0x29, "Continue",
+            "The cont instruction disables execution for the subset of channels for the remainder of the current loop iteration. Channels remain disabled until right before the while instuction or right before the condition check code block for the while instruction. If all enabled channels hit this instruction, jump to the instruction referenced by JIP where execution continues.\n"
+            "\n"
+            "UIP should always reference the loop\'s associated while instruction. JIP should point to the last instruction of the inner most conditional block if the cont instruction is inside a conditional block. In case of the break instruction directly under the loop, the JIP and the UIP are the same.\n"
+            "\n"
+            "If SPF is ON, the UIP must be used to update IP; JIP is not used in this case.\n"
+            "\n"
+            "\n"
+            "The following table describes the two 16-bit instruction pointer offsets. Both the JIP and UIP are signed 16-bit numbers, added to IP pre-increment. In GEN binary, JIP and UIP are at location src1 and must be of type W (signed word integer).\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] cont (exec_size) JIP UIP\n",
+            OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
+            OpSpec::Attr::SUPPORTS_PREDICATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
         /* Op::277 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::278 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::279 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::280 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::281 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::278 */ {            Op::DIM, "dim", "dim", 0xa, "Double Precision Floating Point Immediate Data Move",
+            "The dim instruction moves the 64-bit immediate value into enabled channels of dst.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] dim[.cmod] (exec_size) dst src0\n",
+            OpSpec::Format::BASIC_UNARY_REGIMM, {
+                // DF <- F
+                {TYPE(Type::DF),TYPE(Type::F)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::279 */ {            Op::DP2, "dp2", "dp2", 0x57, "Dot Product 2",
+            "The dp2 instruction performs a two-wide dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst. This instruction is similar to dp4 except that every third and fourth element of src0 (post-source-swizzle if present) are not involved in the computation.\n"
+            "\n"
+            "The dot product of two vectors of equal length is the sum of the products of each pair of corresponding elements.\n"
+            "\n"
+            "The dp4 instruction includes all four elements of each vector in the dot product. The dp3 instruction includes the first three elements of each vector in the dot product.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] dp2[.cmod] (exec_size) dst src0 src1\n",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+                // F <- F
+                {TYPE(Type::F),TYPE(Type::F)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::280 */ {            Op::DP3, "dp3", "dp3", 0x56, "Dot Product 3",
+            "The dp3 instruction performs a three-wide dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst. This instruction is similar to dp4 except that every fourth element of src0 (post-source-swizzle if present) is not involved in the computation.\n"
+            "\n"
+            "The dot product of two vectors of equal length is the sum of the products of each pair of corresponding elements.\n"
+            "\n"
+            "The dp4 instruction includes all four elements of each vector in the dot product. The dp2 instruction includes the first two elements of each vector in the dot product.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] dp3[.cmod] (exec_size) dst src0 src1\n",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+                // F <- F
+                {TYPE(Type::F),TYPE(Type::F)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::281 */ {            Op::DP4, "dp4", "dp4", 0x54, "Dot Product 4",
+            "The dp4 instruction performs a four-wide dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst.\n"
+            "\n"
+            "The dot product of two vectors of equal length is the sum of the products of each pair of corresponding elements.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] dp4[.cmod] (exec_size) dst src0 src1\n",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+                // F <- F
+                {TYPE(Type::F),TYPE(Type::F)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
         /* Op::282 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::283 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::284 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
@@ -1025,7 +779,282 @@ namespace iga {
         /* Op::296 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::297 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::298 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::299 */ {            Op::LRP, "lrp", "lrp", 0x5c, "Linear Interpolation",
+        /* Op::299 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::300 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::301 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::302 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::303 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::304 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::305 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::306 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::307 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::308 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::309 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::310 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::311 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::312 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::313 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::314 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::315 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::316 */ {            Op::DPH, "dph", "dph", 0x55, "Dot Product Homogeneous",
+            "The dph instruction performs a four-wide homogeneous dot product on four-tuple vector basis and storing the same scalar result per four tuple to all four channels in dst. This instruction is similar to dp4 except that every fourth element of src0 (post-source-swizzle if present) is forced to 1.0f.\n"
+            "\n"
+            "Use the dp4 instruction to do a four-wide dot product that includes all elements of src0 and src1.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] dph[.cmod] (exec_size) dst src0 src1\n",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+                // F <- F
+                {TYPE(Type::F),TYPE(Type::F)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::317 */ {            Op::ELSE, "else", "else", 0x24, "Else",
+            "The else instruction is an optional statement within an if/else/endif block of code. It restricts execution within the else/endif portion to the opposite set of channels enabled under the if/else portion. Channels which were inactive before entering the if/endif block remain inactive throughout the entire block.\n"
+            "\n"
+            "All enabled channels upon arriving at the else instruction are redirected to the matching endif. If all channels are redirected (by else or before else), a relative jump is performed to the location specified by JIP. The jump target should be the the matching endif instruction for that conditional block.\n"
+            "\n"
+            "The following table describes the 16-bit JIP. In GEN binary, JIP is at location src1 and must be of type W (signed word integer). JIP must be an immediate operand, it is a signed 16-bit number and is intended to be forward referencing. This value is added to IP pre-increment.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "else (exec_size) JIP\n",
+            OpSpec::Format::JUMP_UNARY_IMM, { }, // no type mappings
+            OpSpec::Attr::NONE,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::318 */ {            Op::ENDIF, "endif", "endif", 0x25, "End If",
+            "The endif instruction terminates an if/else/endif block of code. It restores execution to the channels that were active prior to the if/else/endif block.\n"
+            "\n"
+            "The endif instruction is also used to hop out of nested conditionals by jumping to the end of the next outer conditional block when all channels are disabled.\n"
+            "\n"
+            "\n"
+            "The following table describes the 16-bit JIP. In GEN binary, JIP is at location src1 and must be of type W (signed word integer). JIP must be an immediate operand, it is a signed 16-bit number. This value is added to IP pre-increment.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "endif JIP\n",
+            OpSpec::Format::JUMP_UNARY_IMM, { }, // no type mappings
+            OpSpec::Attr::NONE,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::319 */ {            Op::F16TO32, "f16to32", "f16to32", 0x14, "Half Precision Float to Single Precision Float",
+            "The f16to32 instruction converts the half precision float in src0 to single precision float and storing in dst.\n"
+            "\n"
+            "Because this instruction does not have a 16-bit floating-point type, the source data type must be Word (W). The destination type must be F (Float).\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] f16to32[.cmod] (exec_size) dst src0\n",
+            OpSpec::Format::BASIC_UNARY_REG, {
+                // F <- W
+                {TYPE(Type::F),TYPE(Type::W)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::320 */ {            Op::F32TO16, "f32to16", "f32to16", 0x13, "Single Precision Float to Half Precision Float",
+            "The f32to16 instruction converts the single precision float in src0 to half precision float and storing in the lower word of each channel in dst.\n"
+            "\n"
+            "Because this instruction does not have a 16-bit floating-point type, the destination data type must be Word (W).\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] f32to16[.cmod] (exec_size) dst src0\n",
+            OpSpec::Format::BASIC_UNARY_REGIMM, {
+                // W <- F
+                {TYPE(Type::W),TYPE(Type::F)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::321 */ {            Op::FBH, "fbh", "fbh", 0x4b, "Find First Bit from MSB Side",
+            "If src0 is unsigned, the fbh instruction counts component-wise the leading zeros from src0 and stores the resulting counts in dst.\n"
+            "\n"
+            "If src0 is signed and positive, the fbh instruction counts component-wise the leading zeros from src0 and stores the resulting counts in dst.\n"
+            "\n"
+            "If src0 is signed and negative, the fbh instruction counts component-wise the leading ones from src0 and stores the resulting counts in dst.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] fbh (exec_size) dst src0\n"
+            "\n"
+            "\n"
+            "If src0 is zero, store 0xFFFFFFFF in dst.\n"
+            "\n"
+            "\n"
+            "If src0 is signed and is -1 (0xFFFFFFFF), store 0xFFFFFFFF in dst.\n",
+            OpSpec::Format::BASIC_UNARY_REGIMM, {
+                // UD <- D,UD
+                {TYPE(Type::UD),TYPE(Type::D)|TYPE(Type::UD)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::322 */ {            Op::FBL, "fbl", "fbl", 0x4c, "Find First Bit from LSB Side",
+            "The fbl instruction counts component-wise the number of LSB 0 bits before the first 1 bit in src0, storing that number in dst.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] fbl (exec_size) dst src0\n"
+            "\n"
+            "\n"
+            "If src0 contains no 1 bits, store 0xFFFFFFFF in dst.\n",
+            OpSpec::Format::BASIC_UNARY_REGIMM, {
+                // UD <- UD
+                {TYPE(Type::UD),TYPE(Type::UD)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::323 */ {            Op::FRC, "frc", "frc", 0x43, "Fraction",
+            "The frc instruction computes, component-wise, the truncate-to-minus-infinity fractional values of src0 and stores the results in dst. The results, in the range of [0.0, 1.0], are the fractional portion of the source data. The result is in the range [0.0, 1.0] irrespective of the rounding mode. Floating-point fraction computation follows the rules in the following tables, based on the current floating-point mode.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] frc[.cmod] (exec_size) dst src0\n",
+            OpSpec::Format::BASIC_UNARY_REGIMM, {
+                // F <- F
+                {TYPE(Type::F),TYPE(Type::F)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SRCMODS,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::324 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::325 */ {            Op::HALT, "halt", "halt", 0x2a, "Halt",
+            "The halt instruction temporarily suspends execution for all enabled compute channels. Upon execution, the enabled channels are sent to the instruction at (IP + UIP), if all channels are enabled at HALT, jump to the instruction at (IP + JIP).\n"
+            "\n"
+            "If the halt instruction is not inside any conditional code block, the values of JIP and UIP should be the same. If the halt instruction is inside a conditional code block, the UIP should be the end of the program and the JIP should be the end of the inner most conditional code block.\n"
+            "\n"
+            "The UIP must point to a HALT Instruction.\n"
+            "\n"
+            "If SPF is ON, the UIP must be used to update IP; JIP is not used in this case.\n"
+            "\n"
+            "\n"
+            "The following table describes the two 16-bit instruction pointer offsets. Both the JIP and UIP are signed 16-bit numbers, added to IP pre-increment. In GEN binary, JIP and UIP are at location src1 and must be of type W (signed word integer).\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] halt (exec_size) JIP UIP\n",
+            OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
+            OpSpec::Attr::SUPPORTS_PREDICATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::326 */ {            Op::IF, "if", "if", 0x22, "If",
+            "An if instruction starts an if/endif or an if/else/endif block of code. It restricts execution within the conditional block to only those channels that were enabled via the predicate control.\n"
+            "\n"
+            "Each if instruction must have a matching endif instruction and may have up to one matching else instruction before the matching endif.\n"
+            "\n"
+            "If all channels are inactive (for the if/endif or if/else/endif block), a jump is performed to the instruction referenced by JIP. This jump must be to right after the matching else instruction when present, or otherwise to the matching endif instruction of the conditional block.\n"
+            "\n"
+            "If SPF is ON, the UIP must be used to update IP; JIP is not used in this case.\n"
+            "\n"
+            "\n"
+            "The following table describes the two 16-bit instruction pointer offsets. Both the JIP and UIP are signed 16-bit numbers, added to IP pre-increment. In GEN binary, JIP and UIP are at location src1 and must be of type W (signed word integer).\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] if (exec_size) JIP UIP\n",
+            OpSpec::Format::JUMP_BINARY_IMM_IMM, { }, // no type mappings
+            OpSpec::Attr::SUPPORTS_PREDICATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::327 */ {            Op::ILLEGAL, "illegal", "illegal", 0x0, "Illegal",
+            "The Illegal Opcode Exception Enable flag in cr0.1 is normally set so the normal processing of an illegal opcode is to transfer control to the System Routine.\n"
+            "\n"
+            "Instruction dispatch treats any unused 8-bit opcode (including bit 7 of the instruction, reserved for future opcode expansion) as if it is the illegal opcode.\n"
+            "\n"
+            "The illegal opcode is zero because that byte value is more likely than most to be read via a wayward instruction pointer.\n"
+            "\n"
+            "The illegal instruction is an instruction only in the same way that a NULL pointer in software is a pointer. Both are special values indicating invalid instances.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "illegal\n",
+            OpSpec::Format::NULLARY, { }, // no type mappings
+            OpSpec::Attr::NONE,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::328 */ {            Op::JMPI, "jmpi", "jmpi", 0x20, "Jump Indexed",
+            "The jmpi instruction redirects program execution to an index offset relative to the post-incremented instruction pointer. The index is a signed integer value, with positive or zero integers for forward jumps, and negative integers for backward jumps. In GEN binary, index is at location src1. The ip register must be put (for example, by the assembler) at the dst and src0 locations. Predication is allowed to provide conditional jump with a scalar condition. As the execution size is 1, the first channel of PMASK (flags post prediction control and negate) is used to determine whether the jump is taken or not. If the condition is false, the jump is not taken and execution continues with the next instruction.\n"
+            "\n"
+            "\n"
+            "Note: Unlike other flow control instructions, the offset used by jmpi is relative to the incremented instruction pointer rather than the IP value for the instruction itself.\n"
+            "\n"
+            "\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] jmpi (1) index {NoMask}\n"
+            "\n"
+            "\n"
+            "An index of 0 does nothing, continuing execution with the next instruction.\n"
+            "\n"
+            "\n"
+            "An index of -16 (if the jmpi instruction is in native format) or -8 (if the jmpi instruction is in compact format) is an infinite loop on the jmpi instruction.\n",
+            OpSpec::Format::JUMP_UNARY_REGIMM, {
+                //  <- D
+                {ENUM_BITSET_EMPTY_VALUE,TYPE(Type::D)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::329 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::330 */ {            Op::LINE, "line", "line", 0x59, "Line",
+            "The line instruction computes a component-wise line equation (v = p * u + q where u, v are vectors and p, q are scalars) of src0 and src1 and stores the results in dst. src1 is the input vector u. src0 provides input scalars p and q, where p is the scalar value based on the region description of src0 and q is the scalar value implied from src0 region. Specifically, q is the fourth component of the 4-tuple (128-bit aligned) that p belongs to.\n"
+            "\n"
+            "\n"
+            "Format:\n"
+            "[(pred)] line[.cmod] (exec_size) dst src0 src1\n",
+            OpSpec::Format::BASIC_BINARY_REG_REGIMM, {
+                // F <- F
+                {TYPE(Type::F),TYPE(Type::F)}
+            },
+            OpSpec::Attr::SUPPORTS_PREDICATION|OpSpec::Attr::SUPPORTS_FLAGMODIFIER|OpSpec::Attr::SUPPORTS_SATURATION|OpSpec::Attr::SUPPORTS_SRCMODS,
+            Op::INVALID /* groupOp */,
+            Op::INVALID /* subopsStart */,
+            0 /*subopsLength */,
+            -1 /* functionControlValue = N/A */,
+            {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
+        /* Op::331 */ {            Op::LRP, "lrp", "lrp", 0x5c, "Linear Interpolation",
             "The lrp instruction takes component-wise multiplication of src0 and src1, and adds the result to the component-wise multiplication of src2 and (1 - src0), and then stores the final results in dst.\n"
             "\n"
             "\n"
@@ -1041,7 +1070,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::300 */ {            Op::LZD, "lzd", "lzd", 0x4a, "Leading Zero Detection",
+        /* Op::332 */ {            Op::LZD, "lzd", "lzd", 0x4a, "Leading Zero Detection",
             "The lzd instruction counts component-wise the leading zeros from src0 and stores the resulting counts in dst.\n"
             "\n"
             "If src0 is zero, store 32 in dst.\n"
@@ -1059,7 +1088,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::301 */ {            Op::MAC, "mac", "mac", 0x48, "Multiply Accumulate",
+        /* Op::333 */ {            Op::MAC, "mac", "mac", 0x48, "Multiply Accumulate",
             "The mac instruction takes component-wise multiplication of src0 and src1, adds the results with the corresponding accumulator values, and then stores the final results in dst.\n"
             "\n"
             "\n"
@@ -1079,7 +1108,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::302 */ {            Op::MACH, "mach", "mach", 0x49, "Multiply Accumulate High",
+        /* Op::334 */ {            Op::MACH, "mach", "mach", 0x49, "Multiply Accumulate High",
             "The mach instruction performs DWord integer multiply-accumulate operation and outputs the high DWord (bits 63:32). For each enabled channel, this instruction multiplies the DWord in src1 with the high word of the DWord in src0, left shifts the result by 16 bits, adds it with the corresponding accumulator values, and keeps the whole 64-bit result in the accumulator. It then stores the high DWord (bits 63:32) of the results in dst.\n"
             "\n"
             "\n"
@@ -1108,7 +1137,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::303 */ {            Op::MAD, "mad", "mad", 0x5b, "Multiply Add",
+        /* Op::335 */ {            Op::MAD, "mad", "mad", 0x5b, "Multiply Add",
             "The mad instruction takes component-wise multiplication of src1 and src2, adds the results with the corresponding src0 values, and then stores the final results in dst.\n"
             "\n"
             "\n"
@@ -1129,8 +1158,8 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::304 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::305 */ {            Op::MATH, "math", "math", 0x38, "Extended Math Function",
+        /* Op::336 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::337 */ {            Op::MATH, "math", "math", 0x38, "Extended Math Function",
             "The math instruction performs extended math function on the components in src0, or src0 and src1, and write the output to the channels of dst. The type of extended math function are based on the FC[3:0] encoding in the table below.\n"
             "\n"
             "\n"
@@ -1150,7 +1179,7 @@ namespace iga {
             14 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             /* MathFC */ {{"MathFC[3:0]",24,4}} /* functionControlFields */},
-        /* Op::306 */ {            Op::MATH_COS, "cos", "math.cos", 0x38, "COS",
+        /* Op::338 */ {            Op::MATH_COS, "cos", "math.cos", 0x38, "COS",
             "Cosine function. cos(src0)\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1166,7 +1195,7 @@ namespace iga {
             0 /*subopsLength */,
             7 /* functionControlValue = MathFC::COS */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::307 */ {            Op::MATH_EXP, "exp", "math.exp", 0x38, "EXP",
+        /* Op::339 */ {            Op::MATH_EXP, "exp", "math.exp", 0x38, "EXP",
             "Exponential (E^src0)\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1182,7 +1211,7 @@ namespace iga {
             0 /*subopsLength */,
             3 /* functionControlValue = MathFC::EXP */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::308 */ {            Op::MATH_FDIV, "fdiv", "math.fdiv", 0x38, "FDIV",
+        /* Op::340 */ {            Op::MATH_FDIV, "fdiv", "math.fdiv", 0x38, "FDIV",
             "Floating-Point Divide function. src0/src1\n",
             OpSpec::Format::MATH_BINARY_REG_REGIMM, {
                 // F <- F
@@ -1198,7 +1227,7 @@ namespace iga {
             0 /*subopsLength */,
             9 /* functionControlValue = MathFC::FDIV */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::309 */ {            Op::MATH_IDIV, "idiv", "math.idiv", 0x38, "IDIV",
+        /* Op::341 */ {            Op::MATH_IDIV, "idiv", "math.idiv", 0x38, "IDIV",
             "Integer Divide with Quotient and Remainder. The quotient goes in the destination register; the remainder goes in the following register.\n",
             OpSpec::Format::MATH_BINARY_REG_REGIMM, {
                 // F <- F
@@ -1214,7 +1243,7 @@ namespace iga {
             0 /*subopsLength */,
             11 /* functionControlValue = MathFC::IDIV */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::310 */ {            Op::MATH_INV, "inv", "math.inv", 0x38, "INV",
+        /* Op::342 */ {            Op::MATH_INV, "inv", "math.inv", 0x38, "INV",
             "Reciprocal (Multiplicative Inverse): 1/src0\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1230,8 +1259,8 @@ namespace iga {
             0 /*subopsLength */,
             1 /* functionControlValue = MathFC::INV */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::311 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::312 */ {            Op::MATH_IQOT, "iqot", "math.iqot", 0x38, "IQOT",
+        /* Op::343 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::344 */ {            Op::MATH_IQOT, "iqot", "math.iqot", 0x38, "IQOT",
             "Integer Quotient only\n",
             OpSpec::Format::MATH_BINARY_REG_REGIMM, {
                 // F <- F
@@ -1247,7 +1276,7 @@ namespace iga {
             0 /*subopsLength */,
             12 /* functionControlValue = MathFC::IQOT */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::313 */ {            Op::MATH_IREM, "irem", "math.irem", 0x38, "IREM",
+        /* Op::345 */ {            Op::MATH_IREM, "irem", "math.irem", 0x38, "IREM",
             "Integer Remainder only\n",
             OpSpec::Format::MATH_BINARY_REG_REGIMM, {
                 // F <- F
@@ -1263,7 +1292,7 @@ namespace iga {
             0 /*subopsLength */,
             13 /* functionControlValue = MathFC::IREM */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::314 */ {            Op::MATH_LOG, "log", "math.log", 0x38, "LOG",
+        /* Op::346 */ {            Op::MATH_LOG, "log", "math.log", 0x38, "LOG",
             "Natural log: ln(src0)\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1279,7 +1308,7 @@ namespace iga {
             0 /*subopsLength */,
             2 /* functionControlValue = MathFC::LOG */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::315 */ {            Op::MATH_POW, "pow", "math.pow", 0x38, "POW",
+        /* Op::347 */ {            Op::MATH_POW, "pow", "math.pow", 0x38, "POW",
             "src0^src1\n",
             OpSpec::Format::MATH_BINARY_REG_REGIMM, {
                 // F <- F
@@ -1295,7 +1324,7 @@ namespace iga {
             0 /*subopsLength */,
             10 /* functionControlValue = MathFC::POW */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::316 */ {            Op::MATH_RSQT, "rsqt", "math.rsqt", 0x38, "RSQT",
+        /* Op::348 */ {            Op::MATH_RSQT, "rsqt", "math.rsqt", 0x38, "RSQT",
             "Reciprocal Square Root: 1/sqt(src)\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1311,8 +1340,8 @@ namespace iga {
             0 /*subopsLength */,
             5 /* functionControlValue = MathFC::RSQT */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::317 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::318 */ {            Op::MATH_SIN, "sin", "math.sin", 0x38, "SIN",
+        /* Op::349 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::350 */ {            Op::MATH_SIN, "sin", "math.sin", 0x38, "SIN",
             "Sine function. sin(src0)\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1328,7 +1357,7 @@ namespace iga {
             0 /*subopsLength */,
             6 /* functionControlValue = MathFC::SIN */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::319 */ {            Op::MATH_SQT, "sqt", "math.sqt", 0x38, "SQT",
+        /* Op::351 */ {            Op::MATH_SQT, "sqt", "math.sqt", 0x38, "SQT",
             "Square Root\n",
             OpSpec::Format::MATH_UNARY_REGIMM, {
                 // F <- F
@@ -1344,7 +1373,7 @@ namespace iga {
             0 /*subopsLength */,
             4 /* functionControlValue = MathFC::SQT */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::320 */ {            Op::MOV, "mov", "mov", 0x1, "Move",
+        /* Op::352 */ {            Op::MOV, "mov", "mov", 0x1, "Move",
             "The mov instruction moves the components in src0 into the channels of dst. If src0 and dst are of different types, format conversion is performed. If src0 is a scalar immediate, the immediate value is loaded into enabled channels of dst.\n"
             "\n"
             "A mov with the same source and destination type, no source modifier, and no saturation is a raw move. A packed byte destination region (B or UB type with HorzStride == 1 and ExecSize > 1) can only be written using raw move.\n"
@@ -1387,7 +1416,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::321 */ {            Op::MOVI, "movi", "movi", 0x3, "Move Indexed",
+        /* Op::353 */ {            Op::MOVI, "movi", "movi", 0x3, "Move Indexed",
             "The movi instruction performs a fast component-wise indexed move for subfields from src0 to dst. The source\n"
             "operand must be an indirectly-addressed register. All channels of the source operand share the same register\n"
             "number, which is provided by the register field of the first address subregister, with a possible immediate\n"
@@ -1458,7 +1487,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::322 */ {            Op::MUL, "mul", "mul", 0x41, "Multiply",
+        /* Op::354 */ {            Op::MUL, "mul", "mul", 0x41, "Multiply",
             "The mul instruction performs component-wise multiplication of src0 and src1 and stores the results in dst.\n"
             "\n"
             "\n"
@@ -1494,7 +1523,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::323 */ {            Op::NOP, "nop", "nop", 0x7e, "No Operation",
+        /* Op::355 */ {            Op::NOP, "nop", "nop", 0x7e, "No Operation",
             "Do nothing. The nop instruction takes an instruction dispatch but performs no operation. It can be used for assembly patching in memory, or to insert a delay in the program sequence.\n"
             "\n"
             "\n"
@@ -1507,7 +1536,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::324 */ {            Op::NOT, "not", "not", 0x4, "Logic Not",
+        /* Op::356 */ {            Op::NOT, "not", "not", 0x4, "Logic Not",
             "The not instruction performs logical NOT operation (or one\'s complement) of src0 and storing the results in dst.\n"
             "\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"
@@ -1529,7 +1558,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::325 */ {            Op::OR, "or", "or", 0x6, "Logic Or",
+        /* Op::357 */ {            Op::OR, "or", "or", 0x6, "Logic Or",
             "The or instruction performs component-wise logic OR operation between src0 and src1 and stores the results in dst.\n"
             "\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"
@@ -1551,7 +1580,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::326 */ {            Op::PLN, "pln", "pln", 0x5a, "Plane",
+        /* Op::358 */ {            Op::PLN, "pln", "pln", 0x5a, "Plane",
             "The pln instruction computes a component-wise plane equation (w = p*u+q*v+r where u/v/w are vectors and p/q/r are scalars) of src0 and src1 and stores the results in dst. src1 is the input vector u.\n"
             "\n"
             "src0 provides input scalars p, q, and r, where p is the scalar value based on the region description of src0 and q and r are the scalar values implied from the src0 region. Specifically, q is the second component and r is the fourth component of the 4-tuple (128-bit aligned) that p belongs to.\n"
@@ -1569,7 +1598,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::327 */ {            Op::RET, "ret", "ret", 0x2d, "Return",
+        /* Op::359 */ {            Op::RET, "ret", "ret", 0x2d, "Return",
             "Return execution to the code sequence that called a subroutine.\n"
             "\n"
             "The ret instruction can be predicated or non-predicated. If non-predicated, all channels jump to the return IP in the first channel of src0 and restore CallMask from the second channel of src0. If predicated, the enabled channels jump to the return IP from the first channel of src0 and the corresponding bits in the CallMask are cleared to zero; if all CallMask bits are zero after the ret instruction, then execution jumps to the return IP from the first channel of src0.\n"
@@ -1589,7 +1618,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::328 */ {            Op::RNDD, "rndd", "rndd", 0x45, "Round Down",
+        /* Op::360 */ {            Op::RNDD, "rndd", "rndd", 0x45, "Round Down",
             "The rndd instruction takes component-wise floating point downward rounding (to the integral float number closer to negative infinity) of src0 and storing the rounded integral float results in dst. This is commonly referred to as the floor() function.\n"
             "\n"
             "Each result follows the rules in the following tables based on the floating-point mode.\n"
@@ -1607,7 +1636,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::329 */ {            Op::RNDE, "rnde", "rnde", 0x46, "Round to Nearest or Even",
+        /* Op::361 */ {            Op::RNDE, "rnde", "rnde", 0x46, "Round to Nearest or Even",
             "The rnde instruction takes component-wise floating point round-to-even operation of src0 with results in two pieces - a downward rounded integral float results stored in dst and the round-to-even increments stored in the rounding increment bits. The round-to-even increment must be added to the results in dst to create the final round-to-even values to emulate the round-to-even operation, commonly known as the round() function. The final results are the one of the two integral float values that is nearer to the input values. If the neither possibility is nearer, the even alternative is chosen.\n"
             "\n"
             "Each result follows the rules in the following tables based on the floating-point mode.\n"
@@ -1625,7 +1654,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::330 */ {            Op::RNDU, "rndu", "rndu", 0x44, "Round Up",
+        /* Op::362 */ {            Op::RNDU, "rndu", "rndu", 0x44, "Round Up",
             "The rndu instruction takes component-wise floating point upward rounding (to the integral float number closer to positive infinity) of src0, commonly known as the ceiling() function.\n"
             "\n"
             "Each result follows the rules in the following tables based on the floating-point mode.\n"
@@ -1643,7 +1672,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::331 */ {            Op::RNDZ, "rndz", "rndz", 0x47, "Round to Zero",
+        /* Op::363 */ {            Op::RNDZ, "rndz", "rndz", 0x47, "Round to Zero",
             "The rndz instruction takes component-wise floating point round-to-zero operation of src0 with results in two pieces - a downward rounded integral float results stored in dst and the round-to-zero increments stored in the rounding increment bits. The round-to-zero increment must be added to the results in dst to create the final round-to-zero values to emulate the round-to-zero operation, commonly known as the truncate() function. The final results are the one of the two closest integral float values to the input values that is nearer to zero.\n"
             "\n"
             "\n"
@@ -1659,9 +1688,9 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::332 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::333 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::334 */ {            Op::SAD2, "sad2", "sad2", 0x50, "Sum of Absolute Difference 2",
+        /* Op::364 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::365 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::366 */ {            Op::SAD2, "sad2", "sad2", 0x50, "Sum of Absolute Difference 2",
             "The sad2 instruction takes source data channels from src0 and src1 in groups of 2-tuples. For each 2-tuple, it computes the sum-of-absolute-difference (SAD) between src0 and src1 and stores the scalar result in the first channel of the 2-tuple in dst.\n"
             "\n"
             "The results are also stored in the accumulator register. The destination operand and the accumulator maintain 16 bits per channel precision.\n"
@@ -1681,7 +1710,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::335 */ {            Op::SADA2, "sada2", "sada2", 0x51, "Sum of Absolute Difference Accumulate 2",
+        /* Op::367 */ {            Op::SADA2, "sada2", "sada2", 0x51, "Sum of Absolute Difference Accumulate 2",
             "The sada2 instruction takes source data channels from src0 and src1 in groups of 2-tuples. For each 2-tuple, it computes the sum-of-absolute-difference (SAD) between src0 and src1, adds the intermediate result with the accumulator value corresponding to the first channel, and stores the scalar result in the first channel of the 2-tuple in dst.\n"
             "\n"
             "The destination operand and the accumulator maintain 16 bits per channel precision. Higher precision (guide bits) stored in the accumulator allows up to 64 rounds of sada2 instructions to be issued back to back without overflowing the accumulator.\n"
@@ -1701,7 +1730,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::336 */ {            Op::SEL, "sel", "sel", 0x2, "Select",
+        /* Op::368 */ {            Op::SEL, "sel", "sel", 0x2, "Select",
             "The sel instruction selectively moves the components in src0 or src1 into the channels of dst based on the predication. On a channel by channel basis, if the channel condition is true, data in src0 is moved into dst. Otherwise, data in src1 is moved into dst.\n"
             "\n"
             "\n"
@@ -1745,7 +1774,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::337 */ {            Op::SEND, "send", "send", 0x31, "Send Message",
+        /* Op::369 */ {            Op::SEND, "send", "send", 0x31, "Send Message",
             "Send a message stored in GRF starting at <src> to a shared function identified by <ex_desc> along with control from <desc> with a GRF writeback location at <dest>.\n"
             "\n"
             "\n"
@@ -1777,7 +1806,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::338 */ {            Op::SENDC, "sendc", "sendc", 0x32, "Conditional Send Message",
+        /* Op::370 */ {            Op::SENDC, "sendc", "sendc", 0x32, "Conditional Send Message",
             "The sendc instruction has the same behavior as the send instruction except the following.\n"
             "sendc first checks the dependent threads inside the Thread Dependency Register. There are up to 8 dependent threads in the TDR register. The sendc instruction executes only when all the dependent threads in the TDR register are retired.\n"
             "Wait for dependencies in the TDR Register to clear, then send a message stored in registers starting at src to a shared function identified by exdesc along with control from desc with a general register writeback location at dst.\n"
@@ -1792,35 +1821,35 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::339 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::340 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::341 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::342 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::343 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::344 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::345 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::346 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::347 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::348 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::349 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::350 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::351 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::352 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::353 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::354 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::355 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::356 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::357 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::358 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::359 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::360 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::361 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::362 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::363 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::364 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::365 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::366 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::367 */ {            Op::SHL, "shl", "shl", 0x9, "Shift Left",
+        /* Op::371 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::372 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::373 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::374 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::375 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::376 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::377 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::378 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::379 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::380 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::381 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::382 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::383 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::384 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::385 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::386 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::387 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::388 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::389 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::390 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::391 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::392 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::393 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::394 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::395 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::396 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::397 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::398 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::399 */ {            Op::SHL, "shl", "shl", 0x9, "Shift Left",
             "Perform component-wise logical left shift of the bits in src0 by the shift count indicated in src1, storing the results in dst, inserting zero bits in the number of LSBs indicated by the shift count.\n"
             "\n"
             "Hardware detects overflow properly and uses it to perform any saturation operation on the result, as long as the shifted result is within 33 bits. Otherwise, the result is undefined.\n"
@@ -1843,7 +1872,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::368 */ {            Op::SHR, "shr", "shr", 0x8, "Shift Right",
+        /* Op::400 */ {            Op::SHR, "shr", "shr", 0x8, "Shift Right",
             "Perform component-wise logical right shift with zero insertion of the bits in src0 by the shift count indicated in src1, storing the results in dst. Insert zero bits in the number of MSBs indicated by the shift count.\n"
             "\n"
             "src0 and dst can have different types and can be signed or unsigned.\n"
@@ -1868,8 +1897,8 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::369 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::370 */ {            Op::SUBB, "subb", "subb", 0x4f, "Integer Subtraction with Borrow",
+        /* Op::401 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::402 */ {            Op::SUBB, "subb", "subb", 0x4f, "Integer Subtraction with Borrow",
             "The subb instruction performs component-wise subtraction of src0 and src1 and stores the results in dst, it also stores the borrow into acc.\n"
             "\n"
             "If the operation produces a borrow (src0 < src1), write 0x00000001 to acc, else write 0x00000000 to acc.\n"
@@ -1887,13 +1916,13 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::371 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::372 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::373 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::374 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::375 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::376 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::377 */ {            Op::WAIT, "wait", "wait", 0x30, "Wait Notification",
+        /* Op::403 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::404 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::405 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::406 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::407 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::408 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::409 */ {            Op::WAIT, "wait", "wait", 0x30, "Wait Notification",
             "The wait instruction evaluates the value of the notification count register nreg. If nreg is zero, thread execution is suspended and the thread is put in \'wait_for_notification\' state. If nreg is not zero (i.e., one or more notifications have been received), nreg is decremented by one and the thread continues executing on the next instruction. If a thread is in the \'wait_for_notification\' state, when a notification arrives, the notification count register is incremented by one. As the notification count register becomes nonzero, the thread wakes up to continue execution and at the same time the notification register is decremented by one. If only one notification arrived, the notification register value becomes zero. However, during the above mentioned time period, it is possible that more notifications may arrive, making the notification register nonzero again.\n"
             "\n"
             "When multiple notifications are received, software must use wait instructions to decrement notification count registers for each notification.\n"
@@ -1913,7 +1942,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::378 */ {            Op::WHILE, "while", "while", 0x27, "While",
+        /* Op::410 */ {            Op::WHILE, "while", "while", 0x27, "While",
             "The while instruction marks the end of a do-while block. The instruction first evaluates the loop termination condition for each channel based on the current channel enables and the predication flags specified in the instruction. If any channel has not terminated, a branch is taken to a destination address specified in the instruction, and the loop continues for those channels. Otherwise, execution continues to the next instruction.ld point to the first instruction with the do label of the do-while block of code. It should be a negative number for the backward referencing.\n"
             "\n"
             "If SPF is ON, none of the PcIP are updated.\n"
@@ -1931,7 +1960,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::379 */ {            Op::XOR, "xor", "xor", 0x7, "Logic Xor",
+        /* Op::411 */ {            Op::XOR, "xor", "xor", 0x7, "Logic Xor",
             "The xor instruction performs component-wise logic XOR operation between src0 and src1 and stores the results in dst.\n"
             "\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"

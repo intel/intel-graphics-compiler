@@ -1,3 +1,28 @@
+/*===================== begin_copyright_notice ==================================
+
+Copyright (c) 2017 Intel Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+======================= end_copyright_notice ==================================*/
 #ifndef _OPTS_HPP_
 #define _OPTS_HPP_
 
@@ -13,8 +38,8 @@
 #include "fatal.hpp"
 #include "io.hpp"
 
-#define OPTS_INVALID_SPEC(M)                     \
-    fatalExitWithMessage(                        \
+#define OPTS_INVALID_SPEC(M) \
+    fatalExitWithMessage( \
         "INTERNAL ERROR: INVALID SPEC given to " \
         "opts.hpp\n" #M)
 
@@ -264,57 +289,53 @@ struct Opt {
 
     void appendHelpMessage(
         std::ostream &os,
-        int sCw            = 0,
-        int lCw            = 0,
-        int tCw            = 0,
-        bool appendExtDesc = true) const {
+        int sCw = 0,
+        int lCw = 0,
+        int tCw = 0,
+        bool appendExtDesc = true) const
+    {
         // if column width is unspecified, then rescale it based on the
         // actual value's lengths
-        const char *groupName     = groupPrefix ? groupPrefix : "";
-        int grLen                 = (int)strlen(groupName);
-        auto autoScaleColumnWidth = [&](
-            int &cw, int baseCw, const char *colStr) {
-            if (colStr)
-                cw = maxInt(cw, maxInt(baseCw, (int)strlen(colStr) + grLen));
-            else
-                cw = baseCw;
-        };
-        autoScaleColumnWidth(sCw, 4, shortName);
-        autoScaleColumnWidth(lCw, 2, longName);
-        autoScaleColumnWidth(tCw, 8, typeName);
+        const char *groupName = groupPrefix ? groupPrefix : "";
+        int grLen = (int)strlen(groupName);
 
         if (isOpt()) {
+            // -X....               type   desc
+            //           --X....    type   desc
+            // -X....    --X....    type   desc
             if (shortName) {
-                os << std::setw(3 + sCw) << std::left
-                   << concat("  -", groupName, shortName);
+                os << "  -" << std::setw(grLen) << groupName;
+                os << std::left << std::setw(sCw) << shortName;
             } else {
-                os << std::setw(3 + sCw) << "";
+                os << "   " << std::setw(grLen) << "";
+                os << std::setw(sCw) << "";
             }
-            os << "  ";
             if (longName) {
-                os << std::setw(4 + lCw) << std::left
-                   << concat("  --", groupName, longName);
+                os << "  --" << std::setw(grLen) << groupName;
+                os << std::left << std::setw(lCw) << longName;
             } else {
-                os << std::setw(4 + lCw) << "";
+                os << "    " << std::setw(grLen) << "";
+                os << std::setw(lCw) << "";
             }
         }
+
         std::string typeNameStr = typeName ? typeName : "";
         if (isArg() && hasAttribute(ALLOW_MULTI))
             typeNameStr += (hasAttribute(ALLOW_UNSET) ? '*' : '+');
         else
             typeNameStr += ' ';
-        os << "  " << std::setw(tCw) << typeNameStr;
+        os << "  " << std::left << std::setw(tCw + 1) << typeNameStr; //+1 for + or *
         if (description)
-            os << "  " << description;
+            os << "  " << std::left << description;
         if (appendExtDesc && extendedDescription) {
-            os << std::endl;
+            os <<  "\n";
             // auto format the description (crudely for now)
             size_t col = 1, slen = strlen(extendedDescription);
             for (size_t i = 0; i < slen; i++, col++) {
                 char c = extendedDescription[i];
                 if (col > 72 && c == ' ') {
                     col = 0;
-                    os << std::endl;
+                    os << "\n";
                     while (i + 1 < slen && isspace(extendedDescription[i + 1]))
                         i++;
                     // i++ at loop end gets the last space
@@ -388,6 +409,19 @@ struct Group {
         Opt<O> temp(prefix, sNm, lNm, "", desc, extDesc, attrs | FLAG, setVal);
         members.emplace_back(temp);
     }
+    void defineFlag(
+        const char *sNm,
+        const char *lNm,
+        const char *desc,
+        const char *extDesc,
+        int attrs, // OptAttrs
+        bool &value)
+    {
+        defineFlag(sNm, lNm, desc, extDesc, attrs,
+            [&] (const char *, const ErrorHandler &, O &) {
+                value = true;
+            });
+    }
 
     void defineOpt(
         const char *sNm,
@@ -404,7 +438,6 @@ struct Group {
         Opt<O> temp(prefix, sNm, lNm, type, desc, extDesc, attrs, setVal);
         members.emplace_back(temp);
     }
-
     void defineOpt(
         const char *sNm,
         const char *lNm,
@@ -420,6 +453,20 @@ struct Group {
         Opt<O> temp(
             prefix, sNm, lNm, type, desc, extDesc, attrs, setVal, setDftVal);
         members.emplace_back(temp);
+    }
+    void defineOpt(
+        const char *sNm,
+        const char *lNm,
+        const char *type,
+        const char *desc,
+        const char *extDesc,
+        int attrs, // OptAttrs
+        std::string &stringValue)
+    {
+        define(sNm, lNm, type, desc, extDesc, attrs,
+            [&] (const char *inp, const ErrorHandler &, O &) {
+                stringValue = inp;
+            });
     }
 
     bool tryMatch(
@@ -463,20 +510,20 @@ struct Group {
 
     void appendGroupSummary(std::ostream &os) const {
         if (prefix) {
-            os << "OPTION GROUP " << prefix << std::endl;
+            os << "OPTION GROUP " << prefix << "\n";
         }
-        int sCw = 4, lCw = 8, tCw = 8;
-        for (auto &o : members) {
-            auto updateMax = [&](int cw, const char *str) {
+        int sCw = 4, lCw = 1, tCw = 1;
+        for (const auto &o : members) {
+            auto updateMax = [&] (int cw, const char *str) {
                 return str ? maxInt(cw, (int)strlen(str)) : cw;
             };
             sCw = updateMax(sCw, o.shortName);
             lCw = updateMax(lCw, o.longName);
             tCw = updateMax(tCw, o.typeName);
         }
-        for (auto &o : members) {
+        for (const auto &o : members) {
             o.appendHelpMessage(os, sCw, lCw, tCw, false);
-            os << std::endl;
+            os << "\n";
         }
     }
 };
@@ -496,10 +543,11 @@ class CmdlineSpec {
         const char *exe,
         const char *examps = "",
         bool appendHelpOpt = true)
-        : exeTitle(title),
-          exeName(exe),
-          opts(nullptr, nullptr),
-          examples(examps) {
+        : exeTitle(title)
+        , exeName(exe)
+        , opts(nullptr, nullptr)
+        , examples(examps)
+    {
         if (appendHelpOpt) {
             defineFlag(
                 "h",
@@ -520,7 +568,7 @@ class CmdlineSpec {
                 "etc."
                 "",
                 OptAttrs::ALLOW_UNSET | OptAttrs::OPT_FLAG_VAL,
-                [&](const char *inp, const ErrorHandler &err, O &) {
+                [&] (const char *inp, const ErrorHandler &err, O &) {
                     CmdlineSpec::handleHelpArgument(
                         inp,
                         err,
@@ -541,9 +589,41 @@ class CmdlineSpec {
         const char *desc,
         const char *extDesc,
         int attrs, // OptAttrs
-        Setter<O> setter) {
+        Setter<O> setter)
+    {
         opts.defineFlag(sNm, lNm, desc, extDesc, attrs, setter);
     }
+    void defineFlag(
+        const char *sNm,
+        const char *lNm,
+        const char *desc,
+        const char *extDesc,
+        int attrs, // OptAttrs
+        bool &value)
+    {
+        defineFlag(sNm, lNm, dec, extDesc, attrs,
+            [&] (const char *, const ErrorHandler &, O &) {
+                value = true;
+            });
+    }
+    /*
+    TODO: need make names std::string so I can dynamically create them
+
+    // expands a flag -foo to --foo and --no-foo
+    void defineFlagPair(
+        const char *sNm, // e.g. print-ldst
+        const char *lNm,
+        const char *desc,
+        const char *extDesc,
+        int attrs, // OptAttrs
+        bool &value)
+    {
+        defineFlag(sNm, lNm, dec, extDesc, attrs,
+            [&] (const char *, const ErrorHandler &, O &) {
+                value = true;
+            });
+    }
+    */
 
     void defineOpt(
         const char *sNm,
@@ -552,7 +632,8 @@ class CmdlineSpec {
         const char *desc,
         const char *extDesc,
         int attrs, // OptAttrs
-        Setter<O> setter) {
+        Setter<O> setter)
+    {
         opts.defineOpt(sNm, lNm, type, desc, extDesc, attrs, setter);
     }
 
@@ -564,9 +645,25 @@ class CmdlineSpec {
         const char *extDesc,
         int attrs, // OptAttrs
         Setter<O> setter,
-        DefaultSetter<O> defaultSetter) {
+        DefaultSetter<O> defaultSetter)
+    {
         opts.defineOpt(
             sNm, lNm, type, desc, extDesc, attrs, setter, defaultSetter);
+    }
+
+    void defineOpt(
+        const char *sNm,
+        const char *lNm,
+        const char *type,
+        const char *desc,
+        const char *extDesc,
+        int attrs, // OptAttrs
+        std::string &stringValue)
+    {
+        defineOpt(sNm, lNm, type, desc, extDesc, attrs,
+            [&] (const char *inp, const ErrorHandler &, O &) {
+                stringValue = inp;
+            });
     }
 
     void defineArg(
@@ -574,7 +671,8 @@ class CmdlineSpec {
         const char *desc,
         const char *extDesc,
         int attrs, // OptAttrs
-        Setter<O> setter) {
+        Setter<O> setter)
+    {
         Opt<O> temp(
             nullptr, nullptr, nullptr, type, desc, extDesc, attrs, setter);
         args.emplace_back(temp);
@@ -586,7 +684,8 @@ class CmdlineSpec {
         const char *extDesc,
         int attrs, // OptAttrs
         Setter<O> setter,
-        DefaultSetter<O> defaultSetter) {
+        DefaultSetter<O> defaultSetter)
+    {
         Opt<O> temp(
             nullptr,
             nullptr,
@@ -631,11 +730,12 @@ class CmdlineSpec {
         const Group<O> &opts,
         const std::vector<Group<O> *> &groups,
         const std::vector<Opt<O>> &args,
-        const char *examples) {
+        const char *examples)
+    {
         if (!inp || !*inp) {
             // no input given e.g. -h
             if (exeTitle)
-                std::cerr << exeTitle << std::endl;
+                std::cerr << exeTitle << "\n";
             CmdlineSpec::appendUsage(
                 std::cerr,
                 IS_STDERR_TTY,
@@ -833,38 +933,39 @@ class CmdlineSpec {
         const std::vector<Group<O> *> &groups,
         const std::vector<Opt<O>> &args,
         const char *exeName,
-        const char *examples) {
-        os << "usage: " << exeName << " OPTIONS ARGS" << std::endl;
-        os << "where OPTIONS:" << std::endl;
+        const char *examples)
+    {
+        os << "usage: " << exeName << " OPTIONS ARGS\n";
+        os << "where OPTIONS:\n";
         // autoscale all options
         opts.appendGroupSummary(os);
         int gCw = 4;
-        for (auto &g : groups) {
+        for (const auto &g : groups) {
             if (g->prefix) {
                 gCw = maxInt(gCw, (int)strlen(g->prefix) + 3);
             }
         }
-        os << std::endl;
-        for (auto &g : groups) {
+        os << "\n";
+        for (const auto &g : groups) {
             os << std::setw(3 + gCw) << std::left
                << concat("  -", g->prefix, "...");
             os << "  "; // spaces for option long names: should be lCw
-            os << "  " << g->name << " (-" << g->prefix << " for more info)"
-               << std::endl;
+            os << "  " << g->name << " (-" << g->prefix << " for more info)\n";
         }
 
-        os << "and where ARGS:" << std::endl;
+        os << "and where ARGS:\n";
         // autoscale arg type column
-        int atCw = 8;
-        for (auto &a : args) {
+        int atCw = 22;
+        for (const auto &a : args) {
             atCw = maxInt(atCw, a.typeName ? (int)strlen(a.typeName) : 0);
         }
-        for (auto &a : args) {
+        for (const auto &a : args) {
             a.appendHelpMessage(os, gCw, 0, atCw, false);
-            os << std::endl;
+            os << "\n";
         }
         if (examples) {
-            os << std::endl << "EXAMPLES: " << std::endl << examples;
+            os << "\n" << "EXAMPLES:\n"
+                << examples;
         }
     }
 }; // class CmdlineSpec

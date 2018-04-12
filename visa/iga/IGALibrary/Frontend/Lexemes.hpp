@@ -43,8 +43,6 @@ enum Lexeme {
   RPAREN, // )
 
   // separators
-  AMP,   // &
-  PIPE,  // |
   DOT,   // .
   COMMA, // ,
   SEMI,  // ;
@@ -65,13 +63,16 @@ enum Lexeme {
   EQ,   // =
 
   // operators (reserved for future arithmetic)
-  MUL, // *
-  DIV, // /
-  MOD, // %
-  ADD, // +
-  SUB, // -
-  LSH, // <<
-  RSH, // >>
+  MUL,  // *
+  DIV,  // /
+  MOD,  // %
+  ADD,  // +
+  SUB,  // -
+  LSH,  // <<
+  RSH,  // >>
+  AMP,  // &
+  CIRC, // ^  (circumflex)
+  PIPE, // |
 
   // variable lexemes
   IDENT,    // e.g. myVar

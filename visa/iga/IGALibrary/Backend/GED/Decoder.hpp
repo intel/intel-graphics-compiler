@@ -80,13 +80,7 @@ namespace iga
 
         Instruction *decodeNextInstruction(Kernel &kernel);
 
-        Instruction *decodeBasicInstruction(Kernel &kernel);
-        Instruction *decodeTernaryInstruction(Kernel &kernel);
-        Instruction *decodeBranchInstruction(Kernel &kernel);
-        Instruction *decodeBranchSimplifiedInstruction(Kernel &kernel);
-        Instruction *decodeSendInstruction(Kernel &kernel);
-        Instruction *decodeWaitInstruction(Kernel &kernel);
-
+    protected:
         GED_ACCESS_MODE    decodeAccessMode();
         MaskCtrl           decodeMaskCtrl();
         Predication        decodePredication();
@@ -111,24 +105,21 @@ namespace iga
         //   createSoureOp(inst, SourceIndex::SRC1, SourceIndex::SRC0);
         // since the first syntactic source is stored in src1's bits
         // (src0 is ip for that op)
-        void decodeDestinationBasic(Instruction *inst, GED_ACCESS_MODE a) {
-            if (a == GED_ACCESS_MODE_Align16)
-                decodeDestinationBasicAlign16(inst);
-            else
-                decodeDestinationBasicAlign1(inst);
-        }
-        void decodeDestinationBasicAlign1(Instruction *inst);
-        void decodeDestinationBasicBranch(Instruction *inst);
-        void decodeDestinationBasicAlign16(Instruction *inst);
-        void decodeDestinationTernaryAlign16(Instruction *inst);
-        void decodeSendDestination(Instruction *inst);
 
-        // destination helpers
-        DirRegOpInfo decodeDstDirRegInfo();
-        Type decodeDstType();
-        int decodeDestinationRegNumAccBitsFromChEn();
-        ImplAcc decodeDestinationImplAccFromChEn();
-    protected:
+        ///////////////////////////////////////////////////////////////////////
+        // BASIC INSTRUCTIONS
+        ///////////////////////////////////////////////////////////////////////
+        Instruction *decodeBasicInstruction(Kernel &kernel);
+        void decodeBasicUnaryInstruction(Instruction *inst, GED_ACCESS_MODE accessMode);
+
+        void decodeBasicDestination(Instruction *inst, GED_ACCESS_MODE a) {
+            if (a == GED_ACCESS_MODE_Align16)
+                decodeBasicDestinationAlign16(inst);
+            else
+                decodeBasicDestinationAlign1(inst);
+        }
+        void decodeBasicDestinationAlign16(Instruction *inst); // e.g. for math.invm and context save restore
+        void decodeBasicDestinationAlign1(Instruction *inst);
         template <SourceIndex S>
         void decodeSourceBasic(Instruction *inst, GED_ACCESS_MODE a) {
             if (a == GED_ACCESS_MODE_Align16)
@@ -155,35 +146,58 @@ namespace iga
         void decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx);
         template <SourceIndex S>
         void decodeSourceBasicAlign16(Instruction *inst, SourceIndex toSrcIx);
-        template <SourceIndex S>
-        void decodeSourceTernaryAlign16(Instruction *inst);
+
+        ///////////////////////////////////////////////////////////////////////
+        // TERNARY INSTRUCTIONS
+        ///////////////////////////////////////////////////////////////////////
+        Instruction *decodeTernaryInstruction(Kernel& kernel);
+        void decodeTernaryInstructionOperands(Kernel& kernel, Instruction *inst, GED_ACCESS_MODE accessMode);
+        // Align16
+        void decodeTernaryDestinationAlign16(Instruction *inst);
+        template <SourceIndex S> void decodeTernarySourceAlign16(Instruction *inst);
+        // Align11
+        void decodeTernaryDestinationAlign1(Instruction *inst);
+        template <SourceIndex S> void decodeTernarySourceAlign1(Instruction *inst);
+
+        ///////////////////////////////////////////////////////////////////////
+        // SEND INSTRUCTIONS
+        ///////////////////////////////////////////////////////////////////////
+        Instruction *decodeSendInstruction(Kernel &kernel);
+        void decodeSendDestination(Instruction *inst);
+        GED_ADDR_MODE decodeSendSource0AddressMode();
         void decodeSendSource0(Instruction *inst);
         void decodeSendSource1(Instruction *inst);
+        void decodeSendInstructionOptions(Instruction *inst);
 
-    protected:
-        virtual void decodeTernaryInstructionOperands(Kernel& kernel, Instruction *inst, GED_ACCESS_MODE accessMode);
-        virtual bool ternaryDstHasNoHzStride(const Instruction *) {return false;}
+        ///////////////////////////////////////////////////////////////////////
+        // BRANCH INSTRUCTIONS
+        ///////////////////////////////////////////////////////////////////////
+        Instruction *decodeBranchInstruction(Kernel &kernel);
+        Instruction *decodeBranchSimplifiedInstruction(Kernel &kernel);
+        void decodeBranchDestination(Instruction *inst);
 
-        void decodeDestinationTernaryAlign1(Instruction *inst);
-        template <SourceIndex S>
-        void decodeSourceTernaryAlign1(Instruction *inst);
+        ///////////////////////////////////////////////////////////////////////
+        // OTHER INSTRUCTIONS
+        ///////////////////////////////////////////////////////////////////////
+        Instruction *decodeWaitInstruction(Kernel &kernel);
 
-        virtual void completeTernaryInstruction(Kernel&, Instruction *) { }
-        virtual GED_ADDR_MODE       decodeAddressMode();
+        ///////////////////////////////////////////////////////////////////////
+        // OTHER HELPERS
+        ///////////////////////////////////////////////////////////////////////
+        DirRegOpInfo decodeDstDirRegInfo();
+        Type decodeDstType();
+        int decodeDestinationRegNumAccBitsFromChEn();
+        ImplAcc decodeDestinationImplAccFromChEn();
+
         virtual unsigned decodeOpGroup(Op op);
-        virtual void decodeBasicUnaryInstruction(Instruction *inst, GED_ACCESS_MODE accessMode);
-        virtual bool hasImm64Src0Overlap();
-        virtual void decodeWaitUnary(Instruction *inst, GED_ACCESS_MODE accessMode);
-        virtual GED_ADDR_MODE decodeSendSource0AddressMode();
+                bool hasImm64Src0Overlap();
+
         virtual void decodeDstDirSubRegNum(DirRegOpInfo& dri);
-        virtual void decodeDestinationBasicAlign16Check();
         virtual bool hasImplicitScalingType(Type& type, DirRegOpInfo& dri);
         virtual void decodeNextInstructionEpilog(Instruction *inst);
-        virtual void decodeSendInstructionOptions(Instruction *inst);
 
-#if defined(_DEBUG) || defined(_INTERNAL_ASSERTS)
-        virtual void align16Check();
-#endif
+                void checkIfAlign16Legal();
+
         void decodeThreadOptions(Instruction *inst, GED_THREAD_CTRL trdCntrl);
 
 
@@ -272,22 +286,7 @@ namespace iga
                 decodeSrcHorzStride<S>());
         }
 
-        template <SourceIndex S> Region decodeSrcRegionTernaryAlign1() {
-            if (S == SourceIndex::SRC2) {
-                return GEDToIGATranslation::transateGEDtoIGARegion(
-                    static_cast<uint32_t>(Region::Vert::VT_INVALID),
-                    static_cast<uint32_t>(Region::Width::WI_INVALID),
-                    decodeSrcHorzStride<S>());
-            }
-            else {
-                uint32_t v = decodeSrcVertStride<S>();
-
-                return GEDToIGATranslation::transateGEDtoIGARegion(
-                    v,
-                    static_cast<uint32_t>(Region::Width::WI_INVALID),
-                    decodeSrcHorzStride<S>());
-            }
-        }
+        template <SourceIndex S> Region decodeSrcRegionTernaryAlign1();
 
         template <SourceIndex S> ImplAcc decodeSrcImplAcc() {
             return GEDToIGATranslation::translate(decodeSrcSpecialAcc<S>());
@@ -326,7 +325,7 @@ namespace iga
         template <SourceIndex S> DirRegOpInfo decodeSrcDirRegOpInfo() {
             uint32_t regNum = decodeSrcRegNum<S>();
             uint32_t subRegNum = 0;
-            if (!(m_model.sendCheck1() && m_opSpec->isSendFamily())) {
+            if (!m_opSpec->isSendFamily()) {
                 subRegNum = decodeSrcSubRegNum<S>();
             }
 
@@ -339,7 +338,7 @@ namespace iga
             }
 
             dri.regRef.subRegNum = scalingType == Type::INVALID ?
-                0 : BytesOffsetToSubReg((uint8_t)subRegNum, scalingType, dri.regName);
+                0 : BytesOffsetToSubReg((uint8_t)subRegNum, dri.regName, scalingType);
             dri.regRef.regNum = (uint8_t)regNum;
 
             return dri;

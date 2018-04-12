@@ -24,4 +24,4 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-const char* gedVersion = "0.20 (74fdc82e)";
+const char* gedVersion = "dev (8e84a7de)";

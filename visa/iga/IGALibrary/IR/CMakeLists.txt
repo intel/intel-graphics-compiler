@@ -1,4 +1,5 @@
-set(IGA_IR
+
+set(IGA_IR_Open
   ${CMAKE_CURRENT_SOURCE_DIR}/Block.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Block.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/DUAnalysis.cpp
@@ -22,7 +23,12 @@ set(IGA_IR
   ${CMAKE_CURRENT_SOURCE_DIR}/BitSet.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Types.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Types.hpp
-  PARENT_SCOPE
 )
+set(IGA_IR_Embargoed )
 
+set(IGA_IR
+  ${IGA_IR_Open}
+  ${IGA_IR_Embargoed}
+  PARENT_SCOPE
+  )
 

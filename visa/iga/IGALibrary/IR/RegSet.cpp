@@ -91,11 +91,12 @@ bool RegSet::setSrcRegion(
     }
 
     bool changed = false;
-    size_t v = static_cast<size_t>(rgn.getVt()); // numeric form
-    size_t w = static_cast<size_t>(rgn.getWi());
-    size_t h = static_cast<size_t>(rgn.getHz());
-    if (rgn == Region::INVALID) { // e.g. jmpi
-        v = 0; w = 1; h = 0;
+    size_t v = 1, w = 1, h = 0; // e.g. old-style default regions
+    if (rgn != Region::INVALID) {
+        v = static_cast<size_t>(rgn.getVt());
+        w = static_cast<size_t>(rgn.getWi());
+        w = w == 0 ? 1 : w;
+        h = static_cast<size_t>(rgn.getHz());
     }
 
     size_t rowBase = relativeAddressOf(*rsi, rr, typeSize);

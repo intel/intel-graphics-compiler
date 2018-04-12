@@ -122,6 +122,7 @@ static FieldList decodeFieldsWithWarnings(
         std::stringstream ss;
         ss << "PC" << e.at.offset << ". " << e.message << "\n";
         emitYellowText(os, ss.str());
+        success = false;
     }
     auto findFieldsContaining =
         [&] (size_t bit_ix)
@@ -166,6 +167,7 @@ static FieldList decodeFieldsWithWarnings(
                 warningStream << fmtBitRange(bitIx, endIx - bitIx) << ": ";
                 warningStream << "PC:" << loc.offset <<
                     ": multiple fields map this range\n";
+                success = false;
             } else {
                 // insert an ERROR field here since nothing maps there
                 Field errorField{UNMAPPED_FIELD_NAME, (int)bitIx, (int)(endIx - bitIx)};
@@ -173,6 +175,7 @@ static FieldList decodeFieldsWithWarnings(
                 for (; itr != fields.end() && itr->first.offset < errorField.offset; itr++)
                     ;
                 fields.insert(itr,std::pair<Field,std::string>(errorField,""));
+                success = false;
             }
             bitIx = endIx; // sanity restarts (or some new error)
         }
@@ -215,6 +218,17 @@ static bool decodeFieldsForInst(
     bool success = true;
     FieldList fields = decodeFieldsWithWarnings(
         model, os, Loc((uint32_t)pc), mi, success);
+
+    auto fieldOverlaps =
+        [&] (const Field &f) {
+            for (const auto &fv : fields) {
+                const Field *fp = &fv.first;
+                if (fp != &f && f.overlaps(*fp))
+                    return true;
+            }
+            return false;
+        };
+
     for (const auto &fv : fields) {
         const auto &f = fv.first;
         uint64_t val = mi->getField(f);
@@ -238,10 +252,18 @@ static bool decodeFieldsForInst(
 
         // :q
         ss << std::right << std::setw(FIELD_VALUE_STR_WIDTH) << fv.second;
+
+        bool overlaps = fieldOverlaps(f);
+        if (overlaps)
+            ss << "  [FIELD OVERLAPS]";
         ss << "\n";
 
         // TODO: need to also emit warnings on overlapped fields
         if (std::string(UNMAPPED_FIELD_NAME) == f.name) {
+            success = false;
+            emitRedText(os, ss.str());
+        } else if (overlaps) {
+            success = false;
             emitRedText(os, ss.str());
         } else {
             os << ss.str();
@@ -250,7 +272,7 @@ static bool decodeFieldsForInst(
     return success;
 }
 
-bool iga::DecodeFields(
+iga_status_t iga::DecodeFields(
     Platform p,
     bool useNativeDencoder, // TODO: use this once decoder is implemented
     std::ostream &os,
@@ -259,8 +281,9 @@ bool iga::DecodeFields(
 {
     const Model *model = Model::LookupModel(p);
     if (model == nullptr) {
-        emitRedText(os, "ERROR: unknown model\n");
-        return false;
+        return IGA_UNSUPPORTED_PLATFORM;
+    } else if (!iga::native::IsDecodeSupported(*model, DecoderOpts())) {
+        return IGA_UNSUPPORTED_PLATFORM;
     }
 
     decodeFieldHeaders(os);
@@ -284,13 +307,13 @@ bool iga::DecodeFields(
         pc += iLen;
     }
 
-    return success;
+    return IGA_SUCCESS;
 }
 
 
-bool iga::DiffFields(
+iga_status_t iga::DiffFields(
     Platform p,
-    bool useNativeDencoder, // TODO: use this
+    bool useNativeDecoder,
     std::ostream &os,
     const char *source1,
     const uint8_t *bits1,
@@ -299,12 +322,31 @@ bool iga::DiffFields(
     const uint8_t *bits2,
     size_t bitsLen2)
 {
+    return DiffFieldsFromPCs(
+        p, useNativeDecoder, os,
+        source1, 0, bits1, bitsLen1,
+        source2, 0, bits2, bitsLen2);
+}
+iga_status_t iga::DiffFieldsFromPCs(
+    Platform p,
+    bool useNativeDecoder,
+    std::ostream &os,
+    const char *source1,
+    size_t pc1,
+    const uint8_t *bits1,
+    size_t bitsLen1,
+    const char *source2,
+    size_t pc2,
+    const uint8_t *bits2,
+    size_t bitsLen2)
+{
     const Model *model = Model::LookupModel(p);
-
     if (model == nullptr) {
-        emitRedText(std::cerr, "ERROR: unknown model\n");
-        return false;
+        return IGA_UNSUPPORTED_PLATFORM;
+    } else if (!iga::native::IsDecodeSupported(*model, DecoderOpts())) {
+        return IGA_UNSUPPORTED_PLATFORM;
     }
+
     if (source1 == nullptr) {
         source1 = "VALUE1";
     }
@@ -326,7 +368,6 @@ bool iga::DiffFields(
     os << "\n";
 
     bool success = true;
-    size_t pc1 = 0, pc2 = 0;
     while (pc1 < bitsLen1 || pc2 < bitsLen2) {
         auto getPc = [&] (const char *which, const uint8_t *bits, size_t bitsLen, size_t pc) {
             if (bitsLen - pc < 4) {
@@ -346,10 +387,11 @@ bool iga::DiffFields(
                          *mi2 = getPc("kernel 2", bits2, bitsLen2, pc2);
 
         // TODO: do a colored diff here (words with given separators)
+        // lex with BufferedLexer and do an LCS
         os << fmtPc(mi1, pc1) << " " <<
-            disassembleInst(p, useNativeDencoder, pc1, (const void *)mi1) << "\n";
+            disassembleInst(p, useNativeDecoder, pc1, (const void *)mi1) << "\n";
         os << fmtPc(mi2, pc2) << " " <<
-            disassembleInst(p, useNativeDencoder, pc2, (const void *)mi2) << "\n";
+            disassembleInst(p, useNativeDecoder, pc2, (const void *)mi2) << "\n";
 
         FieldList fields1;
         bool successLeft = true;
@@ -461,31 +503,7 @@ bool iga::DiffFields(
         }
     } // for all instructions in both streams (in parallel)
 
-    return success;
-}
-
-
-static std::string fmtHex(uint64_t val, int w)
-{
-    std::stringstream ss;
-    if (w > 0) {
-        ss << "0x" << std::setw(w) << std::setfill('0') <<
-            std::hex << std::uppercase << val;
-    } else {
-        ss << "0x" << std::hex << std::uppercase << val;
-    }
-    return ss.str();
-};
-
-static void emitBits(std::ostream &os, int len, uint64_t val)
-{
-    for (int i = len - 1; i >= 0; i--) {
-        if (val & (1ull<<(uint64_t)i)) {
-            os << '1';
-        } else {
-            os << '0';
-        }
-    }
+    return IGA_SUCCESS;
 }
 
 // emits output such as  "0`001`1`0`001"
@@ -507,7 +525,7 @@ static void formatCompactionFieldValue(
             const Field *mf = cf.mappings[mIx];
             bitOff -= mf->length;
             auto bs = iga::getBits(val, bitOff, mf->length);
-            emitBits(os, mf->length, bs);
+            fmtBinary(os, mf->length, bs);
         }
     }
 }
@@ -578,6 +596,7 @@ static bool listInstructionCompaction(
         }
 
         for (size_t i = 0, len = cdi.fieldMisses.size(); i < len; i++) {
+            Op op = cdi.fieldOps[i];
             const CompactedField &cf = *cdi.fieldMisses[i];
             uint64_t missedMapping = cdi.fieldMapping[i];
 
@@ -612,7 +631,7 @@ static bool listInstructionCompaction(
             formatCompactionFieldValue(os, cf, missedMapping);
             os << ": (";
             if (cf.format) {
-                os << cf.format(missedMapping);
+                os << cf.format(op,missedMapping);
             }
             os << ") is the necessary table entry\n";
 
@@ -655,11 +674,11 @@ static bool listInstructionCompaction(
                         auto closeVal = iga::getBits(closeMapping, bitOff, mf->length);
                         if (missedVal != closeVal) {
                             os << Color::RED << Intensity::BRIGHT;
-                            emitBits(os, mf->length, closeVal);
+                            fmtBinary(os, mf->length, closeVal);
                             os << Reset::RESET;
                             missingFields.push_back(mf);
                         } else {
-                            emitBits(os, mf->length, closeVal);
+                            fmtBinary(os, mf->length, closeVal);
                         }
                     }
                     os << ": ";
@@ -692,11 +711,12 @@ static bool listInstructionCompaction(
         break;
     default:
         os << "INTERNAL ERROR: " << (int)cr << "\n";
+        success = false;
     }
     return success;
 }
 
-bool iga::DebugCompaction(
+iga_status_t iga::DebugCompaction(
     Platform p,
     bool useNativeDencoder,
     std::ostream &os,
@@ -705,8 +725,9 @@ bool iga::DebugCompaction(
 {
     const Model *model = Model::LookupModel(p);
     if (model == nullptr) {
-        emitRedText(os, "ERROR: unknown model\n");
-        return false;
+        return IGA_UNSUPPORTED_PLATFORM;
+    } else if (!iga::native::IsDecodeSupported(*model, DecoderOpts())) {
+        return IGA_UNSUPPORTED_PLATFORM;
     }
 
     CompactionStats cs;
@@ -790,12 +811,12 @@ bool iga::DebugCompaction(
                 const std::pair<Mapping,MappingStats> &p2)
             {
                 return p1.second.misses.size() > p2.second.misses.size();
-            }
-            );
+            });
 
-        for (auto &ms : orderedEntries) {
+        for (const auto &ms : orderedEntries) {
             Mapping mVal = ms.first;
-            MappingStats &mStats = ms.second;
+            const MappingStats &mStats = ms.second;
+
             os << "    ";
             formatCompactionFieldValue(os, *cf, mVal); // e.g. 000`0010`0`00
             os << "  total misses:" << mStats.misses.size();
@@ -815,7 +836,8 @@ bool iga::DebugCompaction(
 
             if (cf->format) {
                 os << "  ";
-                os << cf->format(mVal);
+                Op HACK = Op::ADD; // gives - instead of ~ for bitwise, but it's the best I can do
+                os << cf->format(HACK,mVal);
             }
             os << "\n";
 
@@ -831,5 +853,5 @@ bool iga::DebugCompaction(
         }
     }
 
-    return success;
+    return IGA_SUCCESS;
 }

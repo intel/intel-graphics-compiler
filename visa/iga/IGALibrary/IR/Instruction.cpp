@@ -36,8 +36,8 @@ using namespace iga;
 void Instruction::setDirectDestination(
     DstModifier dstMod,
     RegName rType,
-    const RegRef &reg,
-    const Region::Horz &rgnH,
+    RegRef reg,
+    Region::Horz rgnH,
     Type type)
 {
     m_dst.setDirectDestination(dstMod, rType, reg, rgnH, type);
@@ -47,19 +47,20 @@ void Instruction::setDirectDestination(
 void Instruction::setMacroDestination(
     DstModifier dstMod,
     RegName rName,
-    const RegRef &reg,
+    RegRef reg,
     ImplAcc acc,
+    Region::Horz rgnHz,
     Type type)
 {
-    m_dst.setMacroDestination(dstMod, rName, reg, acc, type);
+    m_dst.setMacroDestination(dstMod, rName, reg, acc, rgnHz, type);
 }
 
 
 void Instruction::setInidirectDestination(
     DstModifier dstMod,
-    const RegRef &reg,
+    RegRef reg,
     int16_t immediateOffset,
-    const Region::Horz &rgnH,
+    Region::Horz rgnH,
     Type type)
 {
     m_dst.setInidirectDestination(dstMod, reg, immediateOffset, rgnH, type);
@@ -70,8 +71,8 @@ void Instruction::setDirectSource(
     SourceIndex srcIx,
     SrcModifier srcMod,
     RegName rType,
-    const RegRef &reg,
-    const Region &rgn,
+    RegRef reg,
+    Region rgn,
     Type type)
 {
     unsigned ix = static_cast<unsigned>(srcIx);
@@ -92,21 +93,21 @@ void Instruction::setMacroSource(
     SourceIndex srcIx,
     SrcModifier srcMod,
     RegName rName,
-    const RegRef &reg,
+    RegRef reg,
     ImplAcc acc,
+    Region rgn,
     Type type)
 {
     unsigned ix = static_cast<unsigned>(srcIx);
-    m_srcs[ix].setMacroSource(srcMod, rName, reg, acc, type);
+    m_srcs[ix].setMacroSource(srcMod, rName, reg, acc, rgn, type);
 }
-
 
 void Instruction::setInidirectSource(
     SourceIndex srcIx,
     SrcModifier srcMod,
-    const RegRef &reg,
+    RegRef reg,
     int16_t immediateOffset,
-    const Region &rgn,
+    Region rgn,
     Type type)
 {
     unsigned ix = static_cast<unsigned>(srcIx);

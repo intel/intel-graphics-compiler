@@ -34,7 +34,7 @@ namespace iga {
 class Block;
 
 class Operand {
-  public:
+public:
     enum class Kind {
         INVALID,   // an invalid or uninitialized operand
         DIRECT,    // direct register reference
@@ -97,7 +97,6 @@ class Operand {
     // the operand type (as in :f, :d, ...)
     Type getType() const { return m_type; }
 
-  public:
     // re-initializes this operand as an direct destination register operand
     void setDirectDestination(
         DstModifier dstMod,
@@ -112,6 +111,16 @@ class Operand {
         RegName rName,
         const RegRef &reg,
         ImplAcc acc,
+        Type type)
+    {
+        setMacroDestination(dstMod,rName,reg,acc,Region::Horz::HZ_1,type);
+    }
+    void setMacroDestination(
+        DstModifier dstMod,
+        RegName rName,
+        const RegRef &reg,
+        ImplAcc acc,
+        Region::Horz rgnHz,
         Type type);
     // re-initializes this operand as an indirect destination register operand
     void setInidirectDestination(
@@ -136,7 +145,18 @@ class Operand {
         SrcModifier srcMod,
         RegName rName,
         const RegRef &reg,
+        Region rgn,
         ImplAcc acc,
+        Type type)
+    {
+        setMacroSource(srcMod,rName,reg,acc,Region::SRC110,type);
+    }
+    void setMacroSource(
+        SrcModifier srcMod,
+        RegName rName,
+        const RegRef &reg,
+        ImplAcc acc,
+        Region rgn,
         Type type);
 
     // re-initializes this operand as an indirect register operand
@@ -164,11 +184,9 @@ class Operand {
                 DstModifier m_regOpDstMod;
             };
             struct { // the actual register (GRF for Operand::Kind::INDIRECT)
-                RegName m_regOpName; // r#, a#, null, ...
-                union {
-                    Region m_regOpRgn;    // <1> <8;8,1>
-                    ImplAcc m_regImplAcc; // implicit accumulator (r13.acc2)
-                };
+                RegName m_regOpName;  // r#, a#, null, ...
+                ImplAcc m_regImplAcc; // implicit accumulator (r13.acc2)
+                Region  m_regOpRgn;    // <1>, <8;8,1>
             };
             union { // direct, macro, and indirect
                 RegRef m_regOpReg; // direct operands
@@ -197,7 +215,6 @@ class Operand {
     union {
         // the operand type (e.g. :d, :f, etc...)
         Type m_type;
-
     };
 
   public:
@@ -208,6 +225,7 @@ class Operand {
     static const Operand SRC_REG_IP_UD;
     static const Operand DST_REG_NULL_UD; // e.g. while.Dst
     static const Operand SRC_REG_NULL_UD;
+    static const Operand SRC_REG_NULL_UB;
 }; // class Operand
 } // namespace iga
 #endif // _IGA_OPERAND_HPP_
