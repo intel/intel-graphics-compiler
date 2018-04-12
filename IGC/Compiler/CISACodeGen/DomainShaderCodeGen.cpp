@@ -73,9 +73,12 @@ void CDomainShader::PreCompile()
     m_pURBWriteHandleReg = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
     m_pURBReadHandleReg = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
 
-    if(m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH)
+    if (m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH)
     {
-        m_pPatchPrimitiveId = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
+        if (!m_Platform->DSPrimitiveIDPayloadPhaseCanBeSkipped() || m_hasPrimitiveIdInput)
+        {
+            m_pPatchPrimitiveId = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
+        }
     }
 }
 
@@ -195,8 +198,11 @@ void CDomainShader::AllocatePayload()
         
     if(m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH)
     {
-        AllocateInput(m_pPatchPrimitiveId, offset);
-        offset += SIZE_GRF;
+        if (!m_Platform->DSPrimitiveIDPayloadPhaseCanBeSkipped() || m_hasPrimitiveIdInput)
+        {
+            AllocateInput(m_pPatchPrimitiveId, offset);
+            offset += SIZE_GRF;
+        }
     }
 
     AllocateInput(GetSymbol(m_properties.m_UArg), offset );

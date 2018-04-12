@@ -243,6 +243,7 @@ public:
                 m_platformInfo.eRenderCoreFamily == IGFX_GEN9_CORE ||
                 m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE));
     }
+    bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const { return false; }
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const
