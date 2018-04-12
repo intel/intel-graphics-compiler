@@ -62,10 +62,15 @@ protected:
                                                              CodeType::CodeType_t outType);
 };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(FclOclDeviceCtx, 2, 1) {
+  CIF_INHERIT_CONSTRUCTOR();
+  virtual CodeType::CodeType_t GetPreferredIntermediateRepresentation();
+};
+
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(FclOclDeviceCtx, IGC::FclOclTranslationCtx);
 CIF_MARK_LATEST_VERSION(FclOclDeviceCtxLatest, FclOclDeviceCtx);
-using FclOclDeviceCtxTagOCL = FclOclDeviceCtxLatest; // Note : can tag with different version for
-                                                     //        transition periods
+using FclOclDeviceCtxTagOCL = FclOclDeviceCtx<1>; // Note : can tag with different version for
+                                                  //        transition periods
 
 }
 

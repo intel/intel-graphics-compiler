@@ -42,6 +42,10 @@ void CIF_GET_INTERFACE_CLASS(FclOclDeviceCtx, 1)::SetOclApiVersion(uint32_t oclV
     CIF_GET_PIMPL()->MiscOptions.OclApiVersion = oclVersion;
 }
 
+CodeType::CodeType_t CIF_GET_INTERFACE_CLASS(FclOclDeviceCtx, 2)::GetPreferredIntermediateRepresentation() {
+    return CodeType::llvmBc;
+}
+
 FclOclTranslationCtxBase *CIF_GET_INTERFACE_CLASS(FclOclDeviceCtx, 1)::CreateTranslationCtxImpl(CIF::Version_t ver,
                                                                                                   CodeType::CodeType_t inType,
                                                                                                   CodeType::CodeType_t outType){

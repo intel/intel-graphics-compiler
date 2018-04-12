@@ -26,9 +26,9 @@
 
 source_group(Headers
   FILES
-    ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfReader.h
-    ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfWriter.h
-    ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/CLElfTypes.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/CLElfLib/ElfReader.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/CLElfLib/ElfWriter.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/CLElfLib/CLElfTypes.h
 )
 
 add_definitions(-D_CRT_SECURE_NO_WARNINGS -DISTDLIB_UMD)
@@ -56,10 +56,10 @@ set(IGC_BUILD__SRC__ElfPackager
 
 add_executable("${IGC_BUILD__PROJ__ElfPackager}"
     ${IGC_BUILD__SRC__ElfPackager}
-    ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfWriter.cpp
-    ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfReader.cpp
-    ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfWriter.h
-    ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/ElfReader.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/CLElfLib/ElfWriter.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/CLElfLib/ElfReader.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/CLElfLib/ElfWriter.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/CLElfLib/ElfReader.h
   )
 
 set(_locPropName "IMPORTED_LOCATION_${_upperConfigName}")
@@ -95,7 +95,7 @@ target_link_libraries(${IGC_BUILD__PROJ__ElfPackager}
     ${LLVM_LIBS_FULL} ${_targetLinkLine})
 
 include_directories (
-  ${IGC_SOURCE_DIR}/AdaptorOCL/CLElfLib/
+  ${GFX_DEVELOPMENT_DIR}/Source/IGC/AdaptorOCL/CLElfLib/
 )
 
 add_custom_command(TARGET ${IGC_BUILD__PROJ__ElfPackager}
