@@ -148,6 +148,7 @@ public:
   std::set<std::string> &getSourceExtension() { return SrcExtension;}
   bool isEntryPoint(SPIRVExecutionModelKind, SPIRVId EP) const;
   const std::string &getModuleProcessed() const { return ModuleProcessed; }
+  const std::vector<SPIRVString *> &getStringVec() const { return StringVec; }
 
   // Module changing functions
   bool importBuiltinSet(const std::string &, SPIRVId *);
@@ -263,6 +264,7 @@ private:
   typedef std::vector<SPIRVId> SPIRVIdVec;
   typedef std::vector<SPIRVFunction *> SPIRVFunctionVector;
   typedef std::vector<SPIRVVariable *> SPIRVVariableVec;
+  typedef std::vector<SPIRVString *> SPIRVStringVec;
   typedef std::vector<SPIRVLine *> SPIRVLineVec;
   typedef std::vector<SPIRVDecorationGroup *> SPIRVDecGroupVec;
   typedef std::vector<SPIRVGroupDecorateGeneric *> SPIRVGroupDecVec;
@@ -278,6 +280,7 @@ private:
   SPIRVEntrySet EntryNoId;         // Entries without id
   SPIRVIdToBuiltinSetMap IdBuiltinMap;
   SPIRVIdSet NamedId;
+  SPIRVStringVec StringVec;
   SPIRVLineVec LineVec;
   SPIRVDecorateSet DecorateSet;
   SPIRVDecGroupVec DecGroupVec;
@@ -361,6 +364,9 @@ void
 SPIRVModuleImpl::layoutEntry(SPIRVEntry* E) {
   auto OC = E->getOpCode();
   switch (OC) {
+  case OpString:
+    addTo(StringVec, E);
+    break;
   case OpLine:
     addTo(LineVec, E);
     break;

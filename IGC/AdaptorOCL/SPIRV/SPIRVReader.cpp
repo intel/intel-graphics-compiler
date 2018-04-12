@@ -3021,6 +3021,35 @@ SPIRVToLLVM::decodeVecTypeHint(LLVMContext &C, unsigned code) {
     return VectorType::get(ST, VecWidth);
 }
 
+// Information of types of kernel arguments may be additionally stored in
+// 'OpString "kernel_arg_type.%kernel_name%.type1,type2,type3,..' instruction.
+// Try to find such instruction and generate metadata based on it.
+static bool transKernelArgTypeMedataFromString(
+    LLVMContext *Ctx, std::vector<llvm::Metadata*> &KernelMD, SPIRVModule *BM, Function *Kernel) {
+    std::string ArgTypePrefix =
+        std::string(SPIR_MD_KERNEL_ARG_TYPE) + "." + Kernel->getName().str() + ".";
+    auto ArgTypeStrIt = std::find_if(
+        BM->getStringVec().begin(), BM->getStringVec().end(),
+        [=](SPIRVString *S) { return S->getStr().find(ArgTypePrefix) == 0; });
+
+    if (ArgTypeStrIt == BM->getStringVec().end())
+        return false;
+
+    std::string ArgTypeStr =
+        (*ArgTypeStrIt)->getStr().substr(ArgTypePrefix.size());
+    std::vector<Metadata *> TypeMDs;
+    TypeMDs.push_back(MDString::get(*Ctx, SPIR_MD_KERNEL_ARG_TYPE));
+
+    std::string::size_type Start = 0, End = 0;
+    while ((Start = ArgTypeStr.find(',', End)) != std::string::npos) {
+        TypeMDs.push_back(MDString::get(*Ctx, ArgTypeStr.substr(End, Start - End)));
+        End = ++Start;
+    }
+
+    KernelMD.push_back(MDNode::get(*Ctx, TypeMDs));
+    return true;
+}
+
 bool
 SPIRVToLLVM::transKernelMetadata()
 {
@@ -3068,11 +3097,13 @@ SPIRVToLLVM::transKernelMetadata()
             return MDString::get(*Context, Qual);
         });
         // Generate metadata for kernel_arg_type
-        addOCLKernelArgumentMetadata(Context, KernelMD,
-            SPIR_MD_KERNEL_ARG_TYPE, BF,
-            [=](SPIRVFunctionParameter *Arg){
-            return transOCLKernelArgTypeName(Arg);
-        });
+        if (!transKernelArgTypeMedataFromString(Context, KernelMD, BM, F)) {
+            addOCLKernelArgumentMetadata(Context, KernelMD,
+                SPIR_MD_KERNEL_ARG_TYPE, BF,
+                [=](SPIRVFunctionParameter *Arg) {
+                return transOCLKernelArgTypeName(Arg);
+            });
+        }
         // Generate metadata for kernel_arg_type_qual
         addOCLKernelArgumentMetadata(Context, KernelMD,
             SPIR_MD_KERNEL_ARG_TYPE_QUAL, BF,

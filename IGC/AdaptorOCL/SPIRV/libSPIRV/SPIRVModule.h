@@ -160,6 +160,7 @@ public:
   virtual std::vector<SPIRVType *> getValueTypes(const std::vector<SPIRVId>&) const = 0;
   virtual SPIRVConstant* getLiteralAsConstant(unsigned Literal) = 0;
   virtual bool isEntryPoint(SPIRVExecutionModelKind, SPIRVId) const = 0;
+  virtual const std::vector<SPIRVString *>& getStringVec() const = 0;
 
   // Module changing functions
   virtual bool importBuiltinSet(const std::string &, SPIRVId *) = 0;
