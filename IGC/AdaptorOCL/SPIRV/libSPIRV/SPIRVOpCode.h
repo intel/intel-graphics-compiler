@@ -192,7 +192,7 @@ inline bool isImageOpCode(Op OpCode) {
 
 inline bool isIntelSubgroupOpCode(Op OpCode) {
   unsigned OC = OpCode;
-  return OpSubgroupShuffleINTEL <= OC && OC <= OpSubgroupImageMediaBlockWriteINTEL;
+  return OpSubgroupShuffleINTEL <= OC && OC <=OpSubgroupImageBlockWriteINTEL;
 }
 
 }

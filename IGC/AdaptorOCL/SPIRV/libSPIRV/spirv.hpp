@@ -580,7 +580,6 @@ enum Capability {
     CapabilitySubgroupShuffleINTEL = 5568,
     CapabilitySubgroupBufferBlockIOINTEL = 5569,
     CapabilitySubgroupImageBlockIOINTEL = 5570,
-    CapabilitySubgroupImageMediaBlockIOINTEL = 5579,
 };
 
 enum Op {

@@ -416,112 +416,641 @@ INLINE int OVERLOADABLE sub_group_any( int predicate )
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
+//
 // Media block read/write extension
+//
 
-#define DEFN_MEDIA_BLOCK_READ_RO(TYPE, TYPE_POSTFIX, TYPE_ABBR, LEN)    \
-OVERLOADABLE INLINE                                                     \
-TYPE##LEN intel_sub_group_media_block_read_##TYPE_POSTFIX##LEN(         \
-    int2 src_offset,                                                    \
-    int width,                                                          \
-    int height,                                                         \
-    read_only image2d_t image)                                          \
-{                                                                       \
-    int id = (int)__builtin_astype(image, global void*);                \
-    return __builtin_IB_media_block_read_##TYPE##LEN(                   \
-        id, src_offset, width, height);                                 \
-}                                                                       \
-TYPE##LEN __builtin_spirv_intel_sub_group_media_block_read_             \
-##TYPE_POSTFIX##LEN##_i64_v2i32_i32_i32(                                \
-    ulong image, int2 src_offset, int width, int height)                \
-{                                                                       \
-    return __builtin_IB_media_block_read_##TYPE##LEN(                   \
-        image, src_offset, width, height);                              \
-} 
+//////////// Reads ////////////
 
-#if SUPPORT_ACCESS_QUAL_OVERLOAD
-#define DEFN_MEDIA_BLOCK_READ_RW(TYPE, TYPE_POSTFIX, TYPE_ABBR, LEN)    \
-OVERLOADABLE INLINE                                                     \
-TYPE##LEN intel_sub_group_media_block_read_##TYPE_POSTFIX##LEN(         \
-    int2 src_offset,                                                    \
-    int width,                                                          \
-    int height,                                                         \
-    read_write image2d_t image)                                         \
-{                                                                       \
-    int id = (int)__builtin_astype(image, global void*);                \
-    return __builtin_IB_media_block_read_##TYPE##LEN(                   \
-        id, src_offset, width, height);                                 \
-} 
-#endif
+// uchar
 
+#define CALL(TYPE, LEN)                                  \
+    int id = (int)__builtin_astype(image, global void*); \
+    return __builtin_IB_media_block_read_##TYPE##LEN(    \
+        id, src_offset, width, height);
 
-#define DEFN_MEDIA_BLOCK_WRITE_WO(TYPE, TYPE_POSTFIX, TYPE_ABBR, LEN)   \
-OVERLOADABLE INLINE                                                     \
-void intel_sub_group_media_block_write_##TYPE_POSTFIX##LEN(             \
-    int2 src_offset,                                                    \
-    int width,                                                          \
-    int height,                                                         \
-    TYPE pixels,                                                        \
-    write_only image2d_t image)                                         \
-{                                                                       \
-    int id = (int)__builtin_astype(image, global void*);                \
-    __builtin_IB_media_block_write_##TYPE##LEN(                         \
-        id, src_offset, width, height, pixels);                         \
-}                                                                       \
-void __builtin_spirv_intel_sub_group_media_block_write_                 \
-##TYPE_POSTFIX##LEN##_i64_v2i32_i32_i32_##TYPE_ABBR(                    \
-    ulong image, int2 src_offset, int width, int height, TYPE pixels)   \
-{                                                                       \
-    __builtin_IB_media_block_write_##TYPE##LEN(                         \
-        image, src_offset, width, height, pixels);                      \
-} 
-
-#if SUPPORT_ACCESS_QUAL_OVERLOAD
-#define DEFN_MEDIA_BLOCK_WRITE_RW(TYPE, TYPE_POSTFIX, TYPE_ABBR, LEN)   \
-OVERLOADABLE INLINE                                                     \
-void intel_sub_group_media_block_write_##TYPE_POSTFIX##LEN(             \
-    int2 src_offset,                                                    \
-    int width,                                                          \
-    int height,                                                         \
-    TYPE pixels,                                                        \
-    read_write image2d_t image)                                         \
-{                                                                       \
-    int id = (int)__builtin_astype(image, global void*);                \
-    __builtin_IB_media_block_write_##TYPE##LEN(                         \
-        id, src_offset, width, height, pixels);                         \
+OVERLOADABLE INLINE
+uchar intel_sub_group_media_block_read_uc(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(uchar,)
 }
-#endif
 
+OVERLOADABLE INLINE
+uchar2 intel_sub_group_media_block_read_uc2(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(uchar, 2)
+}
 
-#define DEFN_MEDIA_BLOCK(OPERATION, TYPE, TYPE_POSTFIX, TYPE_ABBR)      \
-DEFN_MEDIA_BLOCK_##OPERATION(TYPE, TYPE_POSTFIX, TYPE_ABBR,  )          \
-DEFN_MEDIA_BLOCK_##OPERATION(TYPE, TYPE_POSTFIX, v2##TYPE_ABBR, 2)          \
-DEFN_MEDIA_BLOCK_##OPERATION(TYPE, TYPE_POSTFIX, v4##TYPE_ABBR, 4)          \
-DEFN_MEDIA_BLOCK_##OPERATION(TYPE, TYPE_POSTFIX, v8##TYPE_ABBR, 8)          \
-MEDIA_IO_HAS16( DEFN_MEDIA_BLOCK_##OPERATION(TYPE, TYPE_POSTFIX, v16##TYPE_ABBR, 16) )
+OVERLOADABLE INLINE
+uchar4 intel_sub_group_media_block_read_uc4(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(uchar, 4)
+}
 
-#define MEDIA_IO_HAS16(x) x
+OVERLOADABLE INLINE
+uchar8 intel_sub_group_media_block_read_uc8(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(uchar, 8)
+}
 
-DEFN_MEDIA_BLOCK(READ_RO,  uchar,  uc, i8)
-DEFN_MEDIA_BLOCK(READ_RO,  ushort, us, i16)
-DEFN_MEDIA_BLOCK(WRITE_WO, uchar,  uc, i8)
-DEFN_MEDIA_BLOCK(WRITE_WO, ushort, us, i16)
+OVERLOADABLE INLINE
+uchar16 intel_sub_group_media_block_read_uc16(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(uchar, 16)
+}
+
+// ushort
+
+OVERLOADABLE INLINE
+ushort intel_sub_group_media_block_read_us(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(ushort,)
+}
+
+OVERLOADABLE INLINE
+ushort2 intel_sub_group_media_block_read_us2(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(ushort, 2)
+}
+
+OVERLOADABLE INLINE
+ushort4 intel_sub_group_media_block_read_us4(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(ushort, 4)
+}
+
+OVERLOADABLE INLINE
+ushort8 intel_sub_group_media_block_read_us8(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(ushort, 8)
+}
+
+OVERLOADABLE INLINE
+ushort16 intel_sub_group_media_block_read_us16(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(ushort, 16)
+}
+
+// uint
+
+OVERLOADABLE INLINE
+uint intel_sub_group_media_block_read_ui(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(uint,)
+}
+
+OVERLOADABLE INLINE
+uint2 intel_sub_group_media_block_read_ui2(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(uint, 2)
+}
+
+OVERLOADABLE INLINE
+uint4 intel_sub_group_media_block_read_ui4(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(uint, 4)
+}
+
+OVERLOADABLE INLINE
+uint8 intel_sub_group_media_block_read_ui8(
+    int2 src_offset,
+    int width,
+    int height,
+    read_only image2d_t image)
+{
+    CALL(uint, 8)
+}
+
+// read_write variants //
+
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
-DEFN_MEDIA_BLOCK(READ_RW,  uchar,  uc, i8)
-DEFN_MEDIA_BLOCK(READ_RW,  ushort, us, i16)
-DEFN_MEDIA_BLOCK(WRITE_RW, uchar,  uc, i8)
-DEFN_MEDIA_BLOCK(WRITE_RW, ushort, us, i16)
-#endif
+OVERLOADABLE INLINE
+uchar intel_sub_group_media_block_read_uc(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(uchar,)
+}
 
-// Integer block read/writes don't have 16 element version. 
-#undef MEDIA_IO_HAS16
-#define MEDIA_IO_HAS16(x)
-DEFN_MEDIA_BLOCK(READ_RO,  uint, ui, i32)
-DEFN_MEDIA_BLOCK(WRITE_WO, uint, ui, i32)
+OVERLOADABLE INLINE
+uchar2 intel_sub_group_media_block_read_uc2(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(uchar, 2)
+}
+
+OVERLOADABLE INLINE
+uchar4 intel_sub_group_media_block_read_uc4(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(uchar, 4)
+}
+
+OVERLOADABLE INLINE
+uchar8 intel_sub_group_media_block_read_uc8(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(uchar, 8)
+}
+
+OVERLOADABLE INLINE
+uchar16 intel_sub_group_media_block_read_uc16(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(uchar, 16)
+}
+
+// ushort
+
+OVERLOADABLE INLINE
+ushort intel_sub_group_media_block_read_us(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(ushort,)
+}
+
+OVERLOADABLE INLINE
+ushort2 intel_sub_group_media_block_read_us2(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(ushort, 2)
+}
+
+OVERLOADABLE INLINE
+ushort4 intel_sub_group_media_block_read_us4(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(ushort, 4)
+}
+
+OVERLOADABLE INLINE
+ushort8 intel_sub_group_media_block_read_us8(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(ushort, 8)
+}
+
+OVERLOADABLE INLINE
+ushort16 intel_sub_group_media_block_read_us16(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(ushort, 16)
+}
+
+// uint
+
+OVERLOADABLE INLINE
+uint intel_sub_group_media_block_read_ui(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(uint,)
+}
+
+OVERLOADABLE INLINE
+uint2 intel_sub_group_media_block_read_ui2(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(uint, 2)
+}
+
+OVERLOADABLE INLINE
+uint4 intel_sub_group_media_block_read_ui4(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(uint, 4)
+}
+
+OVERLOADABLE INLINE
+uint8 intel_sub_group_media_block_read_ui8(
+    int2 src_offset,
+    int width,
+    int height,
+    read_write image2d_t image)
+{
+    CALL(uint, 8)
+}
+#endif // SUPPORT_ACCESS_QUAL_OVERLOAD
+
+#undef CALL
+
+#define CALL(TYPE, LEN)                                  \
+    int id = (int)__builtin_astype(image, global void*); \
+    __builtin_IB_media_block_write_##TYPE##LEN(   \
+        id, src_offset, width, height, pixels);
+
+//////////// Writes ////////////
+
+// uchar
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_uc(
+    int2 src_offset,
+    int width,
+    int height,
+    uchar pixels,
+    write_only image2d_t image)
+{
+    CALL(uchar,)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_uc2(
+    int2 src_offset,
+    int width,
+    int height,
+    uchar2 pixels,
+    write_only image2d_t image)
+{
+    CALL(uchar, 2)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_uc4(
+    int2 src_offset,
+    int width,
+    int height,
+    uchar4 pixels,
+    write_only image2d_t image)
+{
+    CALL(uchar, 4)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_uc8(
+    int2 src_offset,
+    int width,
+    int height,
+    uchar8 pixels,
+    write_only image2d_t image)
+{
+    CALL(uchar, 8)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_uc16(
+    int2 src_offset,
+    int width,
+    int height,
+    uchar16 pixels,
+    write_only image2d_t image)
+{
+    CALL(uchar, 16)
+}
+
+// ushort
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_us(
+    int2 src_offset,
+    int width,
+    int height,
+    ushort pixels,
+    write_only image2d_t image)
+{
+    CALL(ushort,)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_us2(
+    int2 src_offset,
+    int width,
+    int height,
+    ushort2 pixels,
+    write_only image2d_t image)
+{
+    CALL(ushort, 2)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_us4(
+    int2 src_offset,
+    int width,
+    int height,
+    ushort4 pixels,
+    write_only image2d_t image)
+{
+    CALL(ushort, 4)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_us8(
+    int2 src_offset,
+    int width,
+    int height,
+    ushort8 pixels,
+    write_only image2d_t image)
+{
+    CALL(ushort, 8)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_us16(
+    int2 src_offset,
+    int width,
+    int height,
+    ushort16 pixels,
+    write_only image2d_t image)
+{
+    CALL(ushort, 16)
+}
+
+// uint
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_ui(
+    int2 src_offset,
+    int width,
+    int height,
+    uint pixels,
+    write_only image2d_t image)
+{
+    CALL(uint,)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_ui2(
+    int2 src_offset,
+    int width,
+    int height,
+    uint2 pixels,
+    write_only image2d_t image)
+{
+    CALL(uint, 2)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_ui4(
+    int2 src_offset,
+    int width,
+    int height,
+    uint4 pixels,
+    write_only image2d_t image)
+{
+    CALL(uint, 4)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_ui8(
+    int2 src_offset,
+    int width,
+    int height,
+    uint8 pixels,
+    write_only image2d_t image)
+{
+    CALL(uint, 8)
+}
+
+// read_write variants //
+
 #if SUPPORT_ACCESS_QUAL_OVERLOAD
-DEFN_MEDIA_BLOCK(READ_RW,  uint, ui, i32)
-DEFN_MEDIA_BLOCK(WRITE_RW, uint, ui, i32)
-#endif
-#undef MEDIA_IO_HAS16
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_uc(
+    int2 src_offset,
+    int width,
+    int height,
+    uchar pixels,
+    read_write image2d_t image)
+{
+    CALL(uchar,)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_uc2(
+    int2 src_offset,
+    int width,
+    int height,
+    uchar2 pixels,
+    read_write image2d_t image)
+{
+    CALL(uchar, 2)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_uc4(
+    int2 src_offset,
+    int width,
+    int height,
+    uchar4 pixels,
+    read_write image2d_t image)
+{
+    CALL(uchar, 4)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_uc8(
+    int2 src_offset,
+    int width,
+    int height,
+    uchar8 pixels,
+    read_write image2d_t image)
+{
+    CALL(uchar, 8)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_uc16(
+    int2 src_offset,
+    int width,
+    int height,
+    uchar16 pixels,
+    read_write image2d_t image)
+{
+    CALL(uchar, 16)
+}
+
+// ushort
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_us(
+    int2 src_offset,
+    int width,
+    int height,
+    ushort pixels,
+    read_write image2d_t image)
+{
+    CALL(ushort,)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_us2(
+    int2 src_offset,
+    int width,
+    int height,
+    ushort2 pixels,
+    read_write image2d_t image)
+{
+    CALL(ushort, 2)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_us4(
+    int2 src_offset,
+    int width,
+    int height,
+    ushort4 pixels,
+    read_write image2d_t image)
+{
+    CALL(ushort, 4)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_us8(
+    int2 src_offset,
+    int width,
+    int height,
+    ushort8 pixels,
+    read_write image2d_t image)
+{
+    CALL(ushort, 8)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_us16(
+    int2 src_offset,
+    int width,
+    int height,
+    ushort16 pixels,
+    read_write image2d_t image)
+{
+    CALL(ushort, 16)
+}
+
+// uint
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_ui(
+    int2 src_offset,
+    int width,
+    int height,
+    uint pixels,
+    read_write image2d_t image)
+{
+    CALL(uint,)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_ui2(
+    int2 src_offset,
+    int width,
+    int height,
+    uint2 pixels,
+    read_write image2d_t image)
+{
+    CALL(uint, 2)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_ui4(
+    int2 src_offset,
+    int width,
+    int height,
+    uint4 pixels,
+    read_write image2d_t image)
+{
+    CALL(uint, 4)
+}
+
+OVERLOADABLE INLINE
+void intel_sub_group_media_block_write_ui8(
+    int2 src_offset,
+    int width,
+    int height,
+    uint8 pixels,
+    read_write image2d_t image)
+{
+    CALL(uint, 8)
+}
+#endif // SUPPORT_ACCESS_QUAL_OVERLOAD
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Block Read/Write Functions

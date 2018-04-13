@@ -407,15 +407,12 @@ _SPIRV_OP(OpSubgroupBallotKHR)
 _SPIRV_OP(OpSubgroupFirstInvocationKHR)
 #undef _SPIRV_OP
 
-#define _SPIRV_OP(x, y) add(Op##y, #x);
 // Intel Subgroups builtins
+#define _SPIRV_OP(x, y) add(Op##y, #x);
 _SPIRV_OP(intel_sub_group_shuffle, SubgroupShuffleINTEL)
 _SPIRV_OP(intel_sub_group_shuffle_down, SubgroupShuffleDownINTEL)
 _SPIRV_OP(intel_sub_group_shuffle_up, SubgroupShuffleUpINTEL)
 _SPIRV_OP(intel_sub_group_shuffle_xor, SubgroupShuffleXorINTEL)
-// Intel media_block_io builtins
-_SPIRV_OP(intel_sub_group_media_block_read, SubgroupImageMediaBlockReadINTEL)
-_SPIRV_OP(intel_sub_group_media_block_write, SubgroupImageMediaBlockWriteINTEL)
 #undef _SPIRV_OP
 
 }
