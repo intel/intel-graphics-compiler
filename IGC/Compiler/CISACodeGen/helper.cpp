@@ -205,7 +205,8 @@ llvm::StoreInst* cloneStore(llvm::StoreInst *Orig, llvm::Value *Val, llvm::Value
 /// Tries to trace a resource pointer (texture/sampler/buffer) back to
 /// the pointer source. Also returns a vector of all instructions in the search path
 ///
-Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList, std::vector<Value*> &instList)
+Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList, 
+    std::vector<Value*> &instList, llvm::SmallSet<PHINode*, 8>& visitedPHIs)
 {
     Value* srcPtr = nullptr;
     Value* baseValue = resourcePtr;
@@ -255,18 +256,17 @@ Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList, 
         }
         else if (PHINode* inst = dyn_cast<PHINode>(baseValue))
         {
-            if (hasBranching)
-            {
-                // Only support one PHI in the search path for now, since we might run
-                // into a loop situation where we encounter the same PHI and
-                // end up in an infinite recursion
+            if (visitedPHIs.count(inst) != 0)
+            { 
+                // stop if we've seen this phi node before
                 break;
             }
+            visitedPHIs.insert(inst);
             for(unsigned int i = 0; i < inst->getNumIncomingValues(); ++i)
             {
                 // All phi paths must be trace-able and trace back to the same source
                 Value* phiVal = inst->getIncomingValue(i);
-                Value* phiSrcPtr = TracePointerSource(phiVal, true, fillList, instList);
+                Value* phiSrcPtr = TracePointerSource(phiVal, true, fillList, instList, visitedPHIs);
                 if (phiSrcPtr == nullptr)
                 {
                     return nullptr;
@@ -286,14 +286,14 @@ Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList, 
         {
             if (hasBranching)
             {
-                // Similar to PHI, only allow a single branching instruction to be supported for now
+                // only allow a single branching instruction to be supported for now
                 // if both select and PHI are present, or there are multiples of each, we bail
                 break;
             }
             // Trace both operands of the select instruction. Both have to be traced back to the same
             // source pointer, otherwise we can't determine which one to use.
-            Value* selectSrc0 = TracePointerSource(inst->getOperand(1), true, fillList, instList);
-            Value* selectSrc1 = TracePointerSource(inst->getOperand(2), true, fillList, instList);
+            Value* selectSrc0 = TracePointerSource(inst->getOperand(1), true, fillList, instList, visitedPHIs);
+            Value* selectSrc1 = TracePointerSource(inst->getOperand(2), true, fillList, instList, visitedPHIs);
             if (selectSrc0 == selectSrc1)
             {
                 srcPtr = selectSrc0;
@@ -316,7 +316,14 @@ Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList, 
 Value* TracePointerSource(Value* resourcePtr)
 {
     std::vector<Value*> tempList; //unused
-    return TracePointerSource(resourcePtr, false, false, tempList);
+    llvm::SmallSet<PHINode*, 8> visitedPHIs;
+    return TracePointerSource(resourcePtr, false, false, tempList, visitedPHIs);
+}
+
+Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList, std::vector<Value*> &instList)
+{
+    llvm::SmallSet<PHINode*, 8> visitedPHIs;
+    return TracePointerSource(resourcePtr, hasBranching, fillList, instList, visitedPHIs);
 }
 
 static BufferAccessType getDefaultAccessType(BufferType bufTy)
