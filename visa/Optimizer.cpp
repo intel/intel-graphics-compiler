@@ -348,9 +348,6 @@ void Optimizer::assignLocForReturnAddr()
                     unsigned loc = bb->getId();
                     while (retLoc[loc] != loc)  // not root
                         loc = retLoc[loc];  // follow the link to reach the root
-                    //bb->setSubRetLoc(loc);        // loc may modified later
-                    bb->setSubShareCode();
-                    BBs[loc]->setSubShareCode();
                 }
             }
         }
@@ -1388,11 +1385,6 @@ void Optimizer::reRAPostSchedule()
         dcl->getRegVar()->forceAlign(G4_Align::Either);
     }
 
-    for (auto bb : kernel.fg.BBs)
-    {
-        bb->setSubRetLoc(UNDEFINED_VAL);
-        bb->resetSubShareCode();
-    }
     kernel.fg.clearBBLRASummaries();
 
     gtpin->setRAPass(gtPinData::RAPass::ReRAPass);

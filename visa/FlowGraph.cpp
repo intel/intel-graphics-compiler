@@ -1574,9 +1574,10 @@ void FlowGraph::linkReturnAddr(std::map<std::string, G4_BB*>& map, G4_BB* bb, G4
     //
     // check if bb contain RETURN (last inst)
     //
-    G4_INST* last = bb->instList.back();
-    if (!bb->instList.empty() && last->isReturn())
+
+    if (!bb->instList.empty() && bb->instList.back()->isReturn())
     {
+        G4_INST* last = bb->instList.back();
         //
         // check the direct recursive call here!
         //
@@ -2205,16 +2206,7 @@ void FlowGraph::AssignDFSBasedIds(G4_BB* bb, unsigned &preId, unsigned &postId, 
     // actual postid number.
     //
     bb->setRPostId(postId++);
-    //
-    // Link the blocks in RPO order and also add it to the list
-    //
-    if (rpoBBList.size() > 0)
-    {
-        bb->setNextRPOBlock(rpoBBList.front());
-    }
-    else {
-        bb->setNextRPOBlock(NULL);
-    }
+
     rpoBBList.push_front(bb);
 }
 

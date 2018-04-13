@@ -4114,13 +4114,6 @@ void Augmentation::clearIntervalInfo()
         gra.setMask(*dcl_it, nullptr);
         gra.setAugmentationMask(*dcl_it, AugmentationMasks::Undetermined);
     }
-
-    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin();
-        bb_it != kernel.fg.BBs.end();
-        bb_it++)
-    {
-        (*bb_it)->setBackEdgeTopmostDst(NULL);
-    }
 }
 
 class compareInterval

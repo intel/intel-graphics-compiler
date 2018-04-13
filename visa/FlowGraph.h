@@ -214,12 +214,7 @@ namespace vISA
 {
 class G4_BB
 {
-    //
-    // flag to tell if a subroutine shares code with others
-    // It is used when subRetLoc is not UNDEFINED_VAL (that is when
-    // the block is an entry of a subroutine).
-    //
-    bool subShareCode;
+
     //
     // basic block id
     //
@@ -257,10 +252,7 @@ class G4_BB
     // to the BB after the subroutine returns.
     //
     G4_BB* afterCall;
-    //
-    // its following block in reverse post order layout
-    //
-    G4_BB* nextRPOBlock;
+
     //
     // if the current BB ends with a CALL subroutine, then the calleeInfo points
     // to the FuncInfo node corresponding to the called function.
@@ -297,7 +289,6 @@ class G4_BB
     std::map<int, G4_BB*> BBlist;
     G4_BB * start_block;
 
-    G4_BB* backEdgeTopmostDst;
 
     // the physical pred/succ for this block (i.e., the pred/succ for this block in the BB list)
     // Note that some transformations may rearrange BB layout, so for safety it's best to recompute
@@ -322,23 +313,19 @@ public:
     BB_LIST    Succs;
 
     G4_BB(INST_LIST_NODE_ALLOCATOR& alloc, unsigned i, FlowGraph* fg) :
-        subShareCode(false), id(i), preId(0), rpostId(0),
+        id(i), preId(0), rpostId(0),
         subRetLoc(UNDEFINED_VAL), traversal(0), idom(NULL), beforeCall(NULL),
-        afterCall(NULL), nextRPOBlock(NULL), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
+        afterCall(NULL), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
         inNaturalLoop(false), loopNestLevel(0), scopeID(0), inSimdFlow(false),
         start_block(NULL), physicalPred(NULL), physicalSucc(NULL), parent(fg), 
         instList(alloc), hasSendInBB(false)
     {
-        backEdgeTopmostDst = NULL;
     }
 
     ~G4_BB()
     {
         instList.clear();
     }
-
-    G4_BB* getBackEdgeTopmostDst() { return backEdgeTopmostDst; }
-    void setBackEdgeTopmostDst( G4_BB* bb ) { backEdgeTopmostDst = bb; }
 
     void    addToBBList(int key, G4_BB* b){BBlist[key] = b;}
     void    clearBBList(){BBlist.clear();}
@@ -349,9 +336,6 @@ public:
     void setStartBlock(G4_BB * b) {start_block = b;}
     G4_BB * getStartBlock() {return start_block;}
 
-    bool     isSubShareCode()  {return subShareCode;}
-    void     setSubShareCode() {subShareCode = true;}
-    void     resetSubShareCode() { subShareCode = false; }
     bool     isLastInstEOT();    // to check if the last instruction in list is EOT
     G4_opcode    getLastOpcode() const;
     unsigned getId() const         {return id;}
@@ -374,8 +358,6 @@ public:
     G4_BB*   BBAfterCall()                    {return afterCall;}
     void     setBBBeforeCall(G4_BB* before)   {beforeCall = before;}
     void     setBBAfterCall(G4_BB* after)     {afterCall = after;}
-    G4_BB*   getNextRPOBlock()                {return nextRPOBlock;}
-    void     setNextRPOBlock(G4_BB* next)     {nextRPOBlock = next;}
     FuncInfo*  getCalleeInfo() const          {return calleeInfo;}
     void       setCalleeInfo(FuncInfo* callee){calleeInfo = callee;}
     FuncInfo*  getFuncInfo() const            {return funcInfo;}
