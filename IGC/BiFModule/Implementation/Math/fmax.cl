@@ -38,7 +38,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS( __builtin_spirv_OpenCL_fmax, float, float, f32 
 
 INLINE double __builtin_spirv_OpenCL_fmax_f64_f64( double x, double y )
 {
-    return (x >= y) ? x : y;
+    return __builtin_IB_dmax(x, y);
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS( __builtin_spirv_OpenCL_fmax, double, double, f64 )
