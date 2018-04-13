@@ -78,27 +78,43 @@ namespace vISA
         }
     };
 
-class LiveRange final : public VarBasis
+class LiveRange
 {
+    G4_RegVar* var;
+    G4_Declare* dcl;
+    G4_RegFileKind regKind;
+    bool* forbidden = nullptr;
+    int numForbidden = -1;
+
+    GlobalRA& gra;
     unsigned numRegNeeded;
-    unsigned degree;
-    unsigned refCount;
+    unsigned degree = 0;
+    unsigned refCount = 0;
+    unsigned parentLRID;
     AssignedReg reg;
     float spillCost;
-    bool active;
-    bool isInfiniteCost;
-    bool isCandidate;
-    bool isPseudoNode;
-    bool isPartialDeclare;
-    bool isSplittedDeclare;
-    BankConflict bc;
-    GlobalRA& gra;
+    BankConflict bc = BankConflict::BANK_CONFLICT_NONE;
+    
+    union {
+        uint16_t bunch = 0;
+        struct {
+            uint16_t calleeSaveBias : 1; // indicates if the var is biased to get a callee-save assignment or not
+            uint16_t callerSaveBias : 1; // indicates if the var is biased to get a caller-save assignment or not
+            uint16_t isEOTSrc : 1; //Gen7 only, Whether the liveRange is the message source of an EOT send
+            uint16_t retIp : 1;   // variable is the return ip and should not be spilled
 
-    unsigned parentLRID;
+            uint16_t active : 1;
+            uint16_t isInfiniteCost : 1;
+            uint16_t isCandidate : 1;
+            uint16_t isPseudoNode : 1;
+            uint16_t isPartialDeclare : 1;
+            uint16_t isSplittedDeclare : 1;
+        };
+    };
 
 public:
 
-    LiveRange(G4_RegVar* v, GlobalRA&, const Options *opt);
+    LiveRange(G4_RegVar* v, GlobalRA&);
 
     void* operator new(size_t sz, vISA::Mem_Manager& m){ return m.alloc(sz); }
 
@@ -115,11 +131,6 @@ public:
 
     void setActive(bool v) {active = v;}
     bool getActive() {return active;}
-
-    void dump()
-    {
-        VarBasis::dump();
-    }
 
     virtual void emit(std::ostream& output, bool symbolreg=false)
     {
@@ -149,7 +160,7 @@ public:
         return reg.phyReg;
     }
 
-    virtual unsigned getPhyRegOff()
+    unsigned getPhyRegOff()
     {
         return reg.subRegOff;
     }
@@ -161,7 +172,7 @@ public:
         reg.subRegOff = off;
     }
 
-    virtual void resetPhyReg()
+    void resetPhyReg()
     {
         reg.phyReg = NULL;
         reg.subRegOff = 0;
@@ -177,6 +188,62 @@ public:
     void setBC(BankConflict c)  { bc = c; }
     void setParentLRID(int id) { parentLRID = id; }
     unsigned getParentLRID() const { return parentLRID; }
+
+    // From VarBasis
+    public:
+        void allocForbidden(vISA::Mem_Manager& mem, bool reserveStackCallRegs, unsigned reserveSpillSize, unsigned rerservedRegNum);
+        void allocForbiddenCallerSave(vISA::Mem_Manager& mem, G4_Kernel* kernel);
+        void allocForbiddenCalleeSave(vISA::Mem_Manager& mem, G4_Kernel* kernel);
+        const bool* getForbidden() { return forbidden; }
+        void markForbidden(int reg, int numReg)
+        {
+            MUST_BE_TRUE(((int)getForbiddenVectorSize()) >= reg + numReg, "forbidden register is out of bound");
+            for (int i = reg; i < reg + numReg; ++i)
+            {
+                forbidden[i] = true;
+            }
+            numForbidden = -1;
+        }
+        int getNumForbidden()
+        {
+            if (forbidden == nullptr)
+            {
+                return 0;
+            }
+            if (numForbidden == -1)
+            {
+                numForbidden = 0;
+                for (int i = 0, size = getForbiddenVectorSize(); i < size; ++i)
+                {
+                    if (forbidden[i])
+                    {
+                        ++numForbidden;
+                    }
+                }
+            }
+            return numForbidden;
+        }
+        G4_RegVar* getVar() { return var; }
+        G4_Declare* getDcl() const { return dcl; }
+        G4_RegFileKind getRegKind() { return regKind; }
+        void dump();
+
+        void setCalleeSaveBias(bool v) { calleeSaveBias = v; }
+        bool getCalleeSaveBias() { return calleeSaveBias; }
+
+        void setCallerSaveBias(bool v) { callerSaveBias = v; }
+        bool getCallerSaveBias() { return callerSaveBias; }
+
+        void setEOTSrc() { isEOTSrc = true; }
+        bool getEOTSrc() const { return isEOTSrc; }
+
+        void setRetIp() { retIp = true; }
+        bool isRetIp() const { return retIp; }
+
+private:
+    //const Options *m_options;
+    unsigned getForbiddenVectorSize();
+    void allocForbiddenVector(vISA::Mem_Manager& mem);
 };
 }
 typedef std::list<vISA::LiveRange*> LIVERANGE_LIST;

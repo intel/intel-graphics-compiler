@@ -48,7 +48,8 @@ PhyRegUsage::PhyRegUsage(PhyRegUsageParms& p) :
     availableAddrs(p.availableAddrs),
     availableFlags(p.availableFlags),
     gra(p.gra),
-    totalGRFNum(p.totalGRF)
+    totalGRFNum(p.totalGRF),
+    lrs(p.lrs)
 {
     maxGRFCanBeUsed = p.maxGRFCanBeUsed;
     regFile = p.rFile;
@@ -173,7 +174,7 @@ void PhyRegUsage::freeGRFSubReg(unsigned regNum,
 //
 // free registers that are held by intv
 //
-void PhyRegUsage::freeRegs(VarBasis* varBasis)
+void PhyRegUsage::freeRegs(LiveRange* varBasis)
 {
     G4_Declare* decl = varBasis->getDcl();
     G4_RegFileKind kind = decl->getRegFile();
@@ -935,7 +936,7 @@ PhyRegUsage::PhyReg PhyRegUsage::findGRFSubReg(const bool forbidden[],
     return phyReg;
 }
 
-bool PhyRegUsage::assignGRFRegsFromBanks(VarBasis*	 varBasis,
+bool PhyRegUsage::assignGRFRegsFromBanks(LiveRange*	 varBasis,
     G4_Align  align,
     const bool*     forbidden,
     ColorHeuristic  heuristic,
@@ -1000,7 +1001,7 @@ bool PhyRegUsage::assignGRFRegsFromBanks(VarBasis*	 varBasis,
 // To support sub-reg alignment
 //
 bool PhyRegUsage::assignRegs(bool  highInternalConflict,
-    VarBasis*		 varBasis,
+    LiveRange*		 varBasis,
     const bool*     forbidden,
     G4_Align		 align,
     G4_SubReg_Align subAlign,
@@ -1196,13 +1197,13 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
 //
 // allocate forbidden vectors
 //
-unsigned VarBasis::getForbiddenVectorSize()
+unsigned LiveRange::getForbiddenVectorSize()
 {
     switch (regKind)
     {
     case G4_GRF:
     case G4_INPUT:
-        return m_options->getuInt32Option(vISA_TotalGRFNum);
+        return gra.kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
     case G4_ADDRESS:
         return getNumAddrRegisters();
     case G4_FLAG:
@@ -1216,7 +1217,7 @@ unsigned VarBasis::getForbiddenVectorSize()
 //
 // allocate forbidden vectors
 //
-void VarBasis::allocForbiddenVector(Mem_Manager& mem)
+void LiveRange::allocForbiddenVector(Mem_Manager& mem)
 {
     unsigned size = getForbiddenVectorSize();
 
@@ -1310,7 +1311,7 @@ void getCalleeSaveGRF(vector<unsigned int>& regNum, G4_Kernel* kernel)
 //
 // mark forbidden vectors
 //
-void VarBasis::allocForbidden(Mem_Manager& mem, bool reserveStackCallRegs, unsigned reserveSpillSize, unsigned rerservedRegNum)
+void LiveRange::allocForbidden(Mem_Manager& mem, bool reserveStackCallRegs, unsigned reserveSpillSize, unsigned rerservedRegNum)
 {
     if (forbidden == NULL)
     {
@@ -1322,7 +1323,7 @@ void VarBasis::allocForbidden(Mem_Manager& mem, bool reserveStackCallRegs, unsig
     {
         vector<unsigned int> forbiddenGRFs;
         unsigned int stackCallRegSize = getStackCallRegSize(reserveStackCallRegs);
-        getForbiddenGRFs(forbiddenGRFs, m_options, stackCallRegSize, reserveSpillSize, rerservedRegNum);
+        getForbiddenGRFs(forbiddenGRFs, gra.kernel.getOptions(), stackCallRegSize, reserveSpillSize, rerservedRegNum);
 
         for (unsigned int i = 0; i < forbiddenGRFs.size(); i++)
         {
@@ -1335,7 +1336,7 @@ void VarBasis::allocForbidden(Mem_Manager& mem, bool reserveStackCallRegs, unsig
 //
 // mark forbidden registers for caller-save pseudo var
 //
-void VarBasis::allocForbiddenCallerSave(Mem_Manager& mem, G4_Kernel* kernel)
+void LiveRange::allocForbiddenCallerSave(Mem_Manager& mem, G4_Kernel* kernel)
 {
     if (forbidden == NULL)
     {
@@ -1356,7 +1357,7 @@ void VarBasis::allocForbiddenCallerSave(Mem_Manager& mem, G4_Kernel* kernel)
 //
 // mark forbidden registers for callee-save pseudo var
 //
-void VarBasis::allocForbiddenCalleeSave(Mem_Manager& mem, G4_Kernel* kernel)
+void LiveRange::allocForbiddenCalleeSave(Mem_Manager& mem, G4_Kernel* kernel)
 {
     if (forbidden == NULL)
     {
@@ -1377,7 +1378,7 @@ void VarBasis::allocForbiddenCalleeSave(Mem_Manager& mem, G4_Kernel* kernel)
 //
 // print assigned reg info
 //
-void VarBasis::dump()
+void LiveRange::dump()
 {
     G4_Declare* decl = var->getDeclare();
     DEBUG_EMIT(this);
@@ -1416,13 +1417,7 @@ void VarBasis::dump()
     }
 }
 
-VarBasis::VarBasis(G4_RegVar* v, const Options *options) : var(v), forbidden(NULL), calleeSaveBias(false), callerSaveBias(false), isEOTSrc(false), retIp(false), m_options(options), numForbidden(-1)
-{
-    regKind = v->getDeclare()->getRegFile();
-    dcl = v->getDeclare();
-}
-
-PhyRegUsageParms::PhyRegUsageParms(GlobalRA& g, G4_RegFileKind r, unsigned int m, unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,
+PhyRegUsageParms::PhyRegUsageParms(GlobalRA& g, LiveRange* l[], G4_RegFileKind r, unsigned int m, unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,
     unsigned int& bank1_s, unsigned int& bank1_e, unsigned int& bank2_s, unsigned int& bank2_e, bool doBC, bool* avaGReg,
     uint16_t* avaSubReg, bool* avaAddrs, bool* avaFlags, uint8_t* weakEdges) : gra(g), startARFReg(startARF), startFlagReg(startFlag),
     startGRFReg(startGRF), bank1_start(bank1_s), bank1_end(bank1_e), bank2_start(bank2_s), bank2_end(bank2_e)
@@ -1436,4 +1431,5 @@ PhyRegUsageParms::PhyRegUsageParms(GlobalRA& g, G4_RegFileKind r, unsigned int m
     maxGRFCanBeUsed = m;
     rFile = r;
     totalGRF = gra.kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    lrs = l;
 }

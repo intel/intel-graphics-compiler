@@ -36,7 +36,6 @@ enum ColorHeuristic {FIRST_FIT, ROUND_ROBIN};
 // forward declares
 namespace vISA
 {
-class VarBasis;
 class LiveRange;
 class GlobalRA;
 
@@ -60,8 +59,9 @@ public:
     bool* availableFlags;
     uint8_t* weakEdgeUsage;
     unsigned int totalGRF;
+    LiveRange** lrs;
 
-    PhyRegUsageParms(GlobalRA& g, G4_RegFileKind r, unsigned int m, unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,
+    PhyRegUsageParms(GlobalRA& g, LiveRange* l[], G4_RegFileKind r, unsigned int m, unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,
         unsigned int& bank1_s, unsigned int& bank1_e, unsigned int& bank2_s, unsigned int& bank2_e, bool doBC, bool* avaGReg,
         uint16_t* avaSubReg, bool* avaAddrs, bool* avaFlags, uint8_t* weakEdges);
 };
@@ -74,6 +74,7 @@ public:
 class PhyRegUsage
 {
     GlobalRA& gra;
+    LiveRange** lrs;
 	unsigned maxGRFCanBeUsed;
 	bool *availableGregs;         	// true if the reg is available for allocation
 	uint16_t *availableSubRegs;     // each entry is a 16-bit value of the words that are free in a GRF
@@ -198,14 +199,14 @@ public:
     }
 
 	bool assignRegs(bool  isSIMD16, 
-		            VarBasis* var,
+                    LiveRange* var,
 					const bool* forbidden,
 					G4_Align  align,
 					G4_SubReg_Align subAlign,
 					ColorHeuristic colorHeuristic,
 					float			 spillCost);
 
-    bool assignGRFRegsFromBanks(VarBasis*	 varBasis,
+    bool assignGRFRegsFromBanks(LiveRange*	 varBasis,
          		             G4_Align  align,
 							 const bool*     forbidden,
 							 ColorHeuristic  heuristic,
@@ -287,7 +288,7 @@ public:
 		return nbytes/G4_WSIZE;
 	}
 
-    void updateRegUsage(LiveRange* lr, LiveRange* lrs[]);
+    void updateRegUsage(LiveRange* lr);
 
     uint16_t getSubregBitMask(uint32_t start, uint32_t num) const
     {
@@ -312,7 +313,7 @@ public:
 
 private:
 
-	void freeRegs(VarBasis* var);
+	void freeRegs(LiveRange* var);
 
 	bool findContiguousGRF(bool availRegs[],
 	 					   const bool forbidden[],
@@ -341,86 +342,6 @@ private:
 
     // find contiguous free words in a registers
     int findContiguousWords(uint16_t words, G4_SubReg_Align alignment, int numWord) const;
-};
-
-class VarBasis
-{
-	G4_RegVar* var;
-    G4_Declare* dcl;
-	G4_RegFileKind regKind;
-	bool* forbidden;
-	bool calleeSaveBias; // indicates if the var is biased to get a callee-save assignment or not
-	bool callerSaveBias; // indicates if the var is biased to get a caller-save assignment or not
-    bool isEOTSrc; //Gen7 only, Whether the liveRange is the message source of an EOT send
-    bool retIp;   // variable is the return ip and should not be spilled
-    int numForbidden;
-
-public:
-	VarBasis(G4_RegVar* v, const Options *opt);
-    void allocForbidden(vISA::Mem_Manager& mem, bool reserveStackCallRegs, unsigned reserveSpillSize, unsigned rerservedRegNum);
-    void allocForbiddenCallerSave(vISA::Mem_Manager& mem, G4_Kernel* kernel);
-    void allocForbiddenCalleeSave(vISA::Mem_Manager& mem, G4_Kernel* kernel);
-	const bool* getForbidden()        {return forbidden;}
-    void markForbidden(int reg, int numReg)
-    {
-        MUST_BE_TRUE(((int) getForbiddenVectorSize()) >= reg + numReg, "forbidden register is out of bound");
-        for (int i = reg; i < reg + numReg; ++i)
-        {
-            forbidden[i] = true;
-        }
-        numForbidden = -1;
-    }
-    int getNumForbidden()
-    {
-        if (forbidden == nullptr)
-        {
-            return 0;
-        }
-        if (numForbidden == -1)
-        {
-            numForbidden = 0;
-            for (int i = 0, size = getForbiddenVectorSize(); i < size; ++i)
-            {
-                if (forbidden[i])
-                {
-                    ++numForbidden;
-                }
-            }
-        }
-        return numForbidden;
-    }
-	G4_RegVar* getVar()			{return var;}
-    G4_Declare* getDcl() const { return dcl; }
-	virtual G4_VarBase* getPhyReg()		{return var->getPhyReg();}
-	virtual unsigned    getPhyRegOff()  {return var->getPhyRegOff();}
-	virtual void setPhyReg(G4_VarBase* pr, unsigned off)
-	{
-		var->setPhyReg(pr, off);
-	}
-	virtual void resetPhyReg() {return var->resetPhyReg();}
-	G4_RegFileKind getRegKind() {return regKind;}
-	void dump();
-	virtual void emit(std::ostream& output, bool symbolreg=false)
-	{
-		var->emit (output, symbolreg);
-	}
-
-	void setCalleeSaveBias(bool v) {calleeSaveBias = v;}
-	bool getCalleeSaveBias() {return calleeSaveBias;}
-
-	void setCallerSaveBias(bool v) {callerSaveBias = v;}
-	bool getCallerSaveBias() {return callerSaveBias;}
-
-    void setEOTSrc() { isEOTSrc = true; }
-    bool getEOTSrc() const { return isEOTSrc; }
-
-    void setRetIp() { retIp = true; }
-    bool isRetIp() const { return retIp; }
-
-private:
-    const Options *m_options;
-	unsigned getForbiddenVectorSize();
-    void allocForbiddenVector(vISA::Mem_Manager& mem);
 };
 }
 #endif // __PHYREGUSAGE_H__

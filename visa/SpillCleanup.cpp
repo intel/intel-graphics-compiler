@@ -1694,6 +1694,8 @@ void CoalesceSpillFills::spillFillCleanup()
     // Remove fill and replace occurence of FP1 with TV1
     //
 
+    std::map<unsigned int, G4_INST*> writesPerOffset;
+    std::set<G4_Declare*> defs;
     for (auto bb : kernel.fg.BBs)
     {
         auto startIt = bb->instList.begin();
@@ -1704,11 +1706,12 @@ void CoalesceSpillFills::spillFillCleanup()
         {
             auto inst = (*instIt);
 
-            std::map<unsigned int, G4_INST*> writesPerOffset;
-            std::set<G4_Declare*> defs;
             if (inst->isSend() &&
                 inst->getMsgDesc()->isScratchRead())
             {
+                writesPerOffset.clear();
+                defs.clear();
+
                 // Store offset, spill inst pair
                 unsigned int rowStart, numRows;
                 getScratchMsgInfo(inst, rowStart, numRows);

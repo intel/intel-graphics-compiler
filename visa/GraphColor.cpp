@@ -1270,10 +1270,13 @@ void GlobalRA::reportSpillInfo(LivenessAnalysis& liveness, GraphColor& coloring)
 }
 
 
-LiveRange::LiveRange(G4_RegVar* v, GlobalRA& g, const Options *opt) : VarBasis(v, opt),
-degree(0), refCount(0), active(false), isInfiniteCost(false), isCandidate(true), isPseudoNode(false), isPartialDeclare(false), isSplittedDeclare(false), bc(BANK_CONFLICT_NONE),
-gra(g)
+LiveRange::LiveRange(G4_RegVar* v, GlobalRA& g) : gra(g)
 {
+    isCandidate = true;
+    var = v;
+    dcl = v->getDeclare();
+    regKind = dcl->getRegFile();
+
     if (getRegKind() == G4_ADDRESS)
         numRegNeeded = v->getDeclare()->getNumElems() * v->getDeclare()->getElemSize() / G4_WSIZE;
     else if (getRegKind() == G4_FLAG)
@@ -5040,7 +5043,7 @@ void GraphColor::createLiveRanges(unsigned reserveSpillSize)
         {
             continue;
         }
-        lrs[var->getId()] = new (mem)LiveRange(var, this->gra, builder.getOptions());
+        lrs[var->getId()] = new (mem)LiveRange(var, this->gra);
         unsigned int reservedGRFNum = m_options->getuInt32Option(vISA_ReservedGRFNum);
 
         if (builder.kernel.fg.isPseudoDcl(dcl))
@@ -5492,10 +5495,10 @@ void GraphColor::determineColorOrdering()
     }
 }
 
-void PhyRegUsage::updateRegUsage(LiveRange* lr, LiveRange *lrs[])
+void PhyRegUsage::updateRegUsage(LiveRange* lr)
 {
     G4_RegVar* var = lr->getVar();
-    G4_Declare* dcl = var->getDeclare();
+    G4_Declare* dcl = lr->getDcl();
     G4_VarBase* pr = NULL;
     if (lr->getIsPartialDcl())
     {
@@ -5604,7 +5607,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
         rFile = G4_ADDRESS;
 
     unsigned maxGRFCanBeUsed = totalGRFRegCount;
-    PhyRegUsageParms parms(gra, rFile, maxGRFCanBeUsed, startARFReg, startFLAGReg, startGRFReg, bank1_start, bank1_end, bank2_start, bank2_end,
+    PhyRegUsageParms parms(gra, lrs, rFile, maxGRFCanBeUsed, startARFReg, startFLAGReg, startGRFReg, bank1_start, bank1_end, bank2_start, bank2_end,
         doBankConflict, availableGregs, availableSubRegs, availableAddrs, availableFlags, weakEdgeUsage);
     bool noIndirForceSpills = builder.getOption(vISA_NoIndirectForceSpills);
 
@@ -5638,7 +5641,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
                         continue;
                     }
 
-                    regUsage.updateRegUsage(lrTemp, lrs);
+                    regUsage.updateRegUsage(lrTemp);
                 }
             }
 

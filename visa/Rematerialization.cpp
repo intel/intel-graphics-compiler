@@ -48,17 +48,7 @@ namespace vISA
 
                     if (topdcl)
                     {
-                        auto defIt = operations.find(topdcl);
-                        if (defIt == operations.end())
-                        {
-                            References r;
-                            r.def.push_back(std::make_pair(inst, bb));
-                            operations.insert(std::make_pair(topdcl, r));
-                        }
-                        else
-                        {
-                            (*defIt).second.def.push_back(std::make_pair(inst, bb));
-                        }
+                        operations[topdcl].def.push_back(std::make_pair(inst, bb));
                     }
                 }
 
