@@ -5497,7 +5497,6 @@ void GraphColor::determineColorOrdering()
 
 void PhyRegUsage::updateRegUsage(LiveRange* lr)
 {
-    G4_RegVar* var = lr->getVar();
     G4_Declare* dcl = lr->getDcl();
     G4_VarBase* pr = NULL;
     if (lr->getIsPartialDcl())
