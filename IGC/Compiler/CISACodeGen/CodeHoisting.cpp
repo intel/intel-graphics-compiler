@@ -345,7 +345,7 @@ IGC_INITIALIZE_PASS_END(CodeHoisting, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY
 
             auto intrinsicInst = dyn_cast<GenIntrinsicInst>(inst);
             if (intrinsicInst != nullptr &&
-                intrinsicInst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBWrite)
+                isURBWriteIntrinsic(intrinsicInst))
             {
                 // we found a urb write instruction to try and hoist
                 // tgtInst contains the location to move the URBWrite instruction to

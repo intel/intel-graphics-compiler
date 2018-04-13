@@ -757,6 +757,16 @@ bool isSubGroupIntrinsic(const llvm::Instruction *I)
     }
 }
 
+bool isURBWriteIntrinsic(const llvm::Instruction *I)
+{
+    const GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(I);
+    if (!GII)
+        return false;
+
+    return GII->getIntrinsicID() == GenISA_URBWrite;
+  
+}
+
 bool isReadInput(llvm::Instruction *pLLVMInstr);
 
 #define DECLARE_OPCODE(instName, llvmType, name, modifiers, sat, pred, condMod, mathIntrinsic, atomicIntrinsic, regioning) \

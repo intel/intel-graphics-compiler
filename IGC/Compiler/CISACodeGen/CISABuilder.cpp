@@ -222,11 +222,11 @@ unsigned int URBChannelMask::asVISAMask() const
     // if all bits are set -> adding one creates a power of two, so x and x+1 has no common bits.
     if (((m_bitmask + 1) & m_bitmask) == 0)
     {
-        return 0xFF;
+        return (uint32_t) -1;
     }
     else
     {
-        return m_bitmask;
+        return (uint16_t) m_bitmask;
     }
 }
 
@@ -1897,7 +1897,7 @@ void CEncoder::URBWrite(
     {
         unsigned int immChannelMask = int_cast<unsigned int>(mask->GetImmediateValue());
         URBChannelMask immMask(immChannelMask);
-        if (immMask.asVISAMask() == 0xFF)
+        if (immMask.isAllSet())
         {
             V(vKernel->CreateVISANullRawOperand(channelMask));
         }

@@ -180,7 +180,7 @@ void CoalescingEngine::IncrementalCoalesce(BasicBlock* MBB)
                 if (GenIntrinsicInst* intrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(DefMI) )
                 {
                     GenISAIntrinsic::ID IID = intrinsic->getIntrinsicID();
-                    if ((IID == GenISAIntrinsic::GenISA_URBWrite && !(IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_URB))) ||
+                    if ((isURBWriteIntrinsic(intrinsic) && !(IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_URB))) ||
                         (IID == GenISAIntrinsic::GenISA_RTWrite && !(IGC_IS_FLAG_ENABLED(DisablePayloadCoalescing_RT))))
                     {
                         ProcessTuple( DefMI );
@@ -1260,7 +1260,7 @@ bool CoalescingEngine::MatchSingleInstruction(llvm::GenIntrinsicInst* inst)
     GenISAIntrinsic::ID IID = inst->getIntrinsicID();
     if (isSampleInstruction(inst) ||
         isLdInstruction(inst) ||
-        IID == GenISAIntrinsic::GenISA_URBWrite ||
+        isURBWriteIntrinsic(inst) ||
         IID == GenISAIntrinsic::GenISA_RTWrite)
     {
         uint numOperands = inst->getNumOperands();

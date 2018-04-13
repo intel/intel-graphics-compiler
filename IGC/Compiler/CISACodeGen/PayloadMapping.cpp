@@ -491,7 +491,7 @@ bool PayloadMapping::IsZeroLOD(const SampleIntrinsic *inst)
 ///
 uint PayloadMapping::GetNumPayloadElements_URBWrite(const GenIntrinsicInst *inst)
 {
-    assert( inst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBWrite );
+
     //FIXME: this was copied from EmitPass::emitURBWrite.
     //find a way to unify this, so not to cause sudden troubles if it is
     //modified there

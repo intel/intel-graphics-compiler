@@ -532,12 +532,13 @@ namespace IGC
         bool allowSimd32Slicing;
         bool allowPromotePrivateMemory;
         bool allowPreRAScheduler;
+        bool allowLargeURBWrite;
         unsigned nextState;
     } RetryState;
 
     const RetryState RetryTable[] = {
-        { true, true, true, false, true, true, 1 },
-        { false, false, true, true, false, false, 500 }
+        { true, true, true, false, true, true, true, 1 },
+        { false, false, true, true, false, false, false, 500 }
     };
 
     class RetryManager
@@ -582,6 +583,10 @@ namespace IGC
         bool AllowSimd32Slicing() {
             assert(stateId < getStateCnt());
             return RetryTable[stateId].allowSimd32Slicing;
+        }
+        bool AllowLargeURBWrite() {
+            assert(stateId < getStateCnt());
+            return RetryTable[stateId].allowLargeURBWrite;
         }
         bool IsFirstTry() {
             return (stateId == 0);

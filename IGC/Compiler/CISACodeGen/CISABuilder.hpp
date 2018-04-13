@@ -92,7 +92,7 @@ struct SAliasMapInfo {
 class URBChannelMask
 {
 public:
-    explicit URBChannelMask(unsigned int bitmask) : m_bitmask(bitmask) {assert(m_bitmask < 256); }
+    explicit URBChannelMask(unsigned int bitmask) : m_bitmask(bitmask) {}
 
     /// Returns the size of bitmask, 
     /// defined as the position of the most significant bit with value 1.
@@ -104,6 +104,12 @@ public:
     /// that means 'no channel mask'. In other cases it is the actual stored mask
     /// E.g. 1010 asVISAMask --> 1010, 111 asVISAMask --> 11111111 (full mask case)
     unsigned int asVISAMask() const;
+
+    // returns true if all channels are set (i.e., we can skip the channel mask)
+    bool isAllSet() const
+    {
+        return ((m_bitmask + 1) & m_bitmask) == 0;
+    }
 private:
     unsigned int m_bitmask;
 };

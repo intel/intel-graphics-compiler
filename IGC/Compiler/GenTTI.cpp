@@ -87,7 +87,7 @@ bool isSendMessage(GenIntrinsicInst *inst)
     if (/*ID == llvm::GenISAIntrinsic::GenISA_typedwrite ||
         ID == llvm::GenISAIntrinsic::GenISA_typedread ||*/
         ID == llvm::GenISAIntrinsic::GenISA_URBRead ||
-        ID == llvm::GenISAIntrinsic::GenISA_URBWrite ||
+        isURBWriteIntrinsic(inst) ||
         ID == llvm::GenISAIntrinsic::GenISA_ldstructured)
     {
         return true;

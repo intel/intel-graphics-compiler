@@ -79,6 +79,7 @@ public:
     virtual void getAnalysisUsage(AnalysisUsage & AU) const
     {
         AU.setPreservesCFG();
+        AU.addRequired<CodeGenContextWrapper>();
     }
 
     virtual llvm::StringRef getPassName() const { return "MergeURBWrites"; }
@@ -257,6 +258,9 @@ void MergeURBWrites::MergeInstructions()
         return;
     }
 
+    // vector of URBWrite8 in order of offsets
+    llvm::SmallVector<InstWithIndex, 16> URBWrite8;
+
     auto last = std::prev(m_writeList.end());
     for(auto ii = m_writeList.begin(); ii != m_writeList.end() && ii != last; ++ii)
     {
@@ -325,7 +329,9 @@ void MergeURBWrites::MergeInstructions()
         earlierInst->eraseFromParent(); 
         m_bbModified = true;
         ++ii; // skip the next slot since we just considered it as 'next' 
+        URBWrite8.push_back(laterInst == ii->GetInst() ? *ii : *next);
     } // for
+
 } // MergeInstructions
 
 
