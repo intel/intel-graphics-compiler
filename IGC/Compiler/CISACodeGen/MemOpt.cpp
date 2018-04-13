@@ -703,10 +703,18 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
   // and inserting is necessary to avoid tracking uses of each element in the
   // original vector load value.
   unsigned Pos = 0;
+  MDNode* mdLoadInv = nullptr;
+  bool allInvariantLoads = true;
   for (auto &I : LoadsToMerge) {
     Type *Ty = std::get<0>(I)->getType();
     Type *ScalarTy = Ty->getScalarType();
     assert(hasSameSize(ScalarTy, LeadingLoadScalarType));
+
+    mdLoadInv = std::get<0>(I)->getMetadata(LLVMContext::MD_invariant_load);
+    if (!mdLoadInv)
+    {
+        allInvariantLoads = false;
+    }
 
     Pos = unsigned((std::get<1>(I) -FirstOffset) / LdScalarSize);
 
@@ -736,6 +744,11 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
       Val = createBitOrPointerCast(Val, ScalarTy, Builder);
       std::get<0>(I)->replaceAllUsesWith(Val);
     }
+  }
+
+  if (allInvariantLoads)
+  {
+      NewLoad->setMetadata(LLVMContext::MD_invariant_load, mdLoadInv);
   }
 
   // Replace the list to be optimized with the new load.

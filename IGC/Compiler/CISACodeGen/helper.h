@@ -137,7 +137,8 @@ void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value* oldPt
 
 llvm::Value* TracePointerSource(llvm::Value* resourcePtr);
 llvm::Value* TracePointerSource(llvm::Value* resourcePtr, bool hasBranching, bool fillList, std::vector<llvm::Value*> &instList);
-bool GetResourcePointerInfo(llvm::Value* srcPtr, unsigned &resID, IGC::BufferType &resTy);
+bool GetResourcePointerInfo(llvm::Value* srcPtr, unsigned &resID,
+    IGC::BufferType &resTy, IGC::BufferAccessType& accessTy);
 
 bool isSampleLoadGather4InfoInstruction(llvm::Instruction* inst);
 bool isSampleInstruction(llvm::Instruction* inst);

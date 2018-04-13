@@ -319,8 +319,37 @@ Value* TracePointerSource(Value* resourcePtr)
     return TracePointerSource(resourcePtr, false, false, tempList);
 }
 
-bool GetResourcePointerInfo(Value* srcPtr, unsigned &resID, IGC::BufferType &resTy)
+static BufferAccessType getDefaultAccessType(BufferType bufTy)
 {
+    switch (bufTy)
+    {
+    case BufferType::CONSTANT_BUFFER:
+    case BufferType::RESOURCE:
+    case BufferType::BINDLESS_READONLY:
+    case BufferType::STATELESS_READONLY:
+    case BufferType::SAMPLER:
+        return BufferAccessType::ACCESS_READ;
+
+    case BufferType::UAV:
+    case BufferType::SLM:
+    case BufferType::POINTER:
+    case BufferType::BINDLESS:
+    case BufferType::STATELESS:
+        return BufferAccessType::ACCESS_READWRITE;
+
+    case BufferType::RENDER_TARGET:
+        return BufferAccessType::ACCESS_WRITE;
+
+    default:
+        assert(false && "Invalid buffer type");
+        return BufferAccessType::ACCESS_READWRITE;
+    }
+}
+bool GetResourcePointerInfo(Value* srcPtr, unsigned &resID,
+    IGC::BufferType &resTy, BufferAccessType& accessTy)
+{
+    accessTy = BufferAccessType::ACCESS_READWRITE;
+
     if (GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(srcPtr))
     {
         if (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr)
@@ -331,6 +360,7 @@ bool GetResourcePointerInfo(Value* srcPtr, unsigned &resID, IGC::BufferType &res
             {
                 resID = (unsigned)(cast<ConstantInt>(bufIdV)->getZExtValue());
                 resTy = (IGC::BufferType)(cast<ConstantInt>(bufTyV)->getZExtValue());
+                accessTy = getDefaultAccessType(resTy);
                 return true;
             }
         }
@@ -338,10 +368,21 @@ bool GetResourcePointerInfo(Value* srcPtr, unsigned &resID, IGC::BufferType &res
         {
             MDNode* resID_md = pIntr->getMetadata("resID");
             MDNode* resTy_md = pIntr->getMetadata("resTy");
+            MDNode* accTy_md = pIntr->getMetadata("accessTy");
+
             if (resID_md && resTy_md)
             {
                 resID = (unsigned) mdconst::dyn_extract<ConstantInt>(resID_md->getOperand(0))->getZExtValue();
                 resTy = (BufferType) mdconst::dyn_extract<ConstantInt>(resTy_md->getOperand(0))->getZExtValue();
+                if (accTy_md)
+                {
+                    accessTy = (BufferAccessType)mdconst::dyn_extract<ConstantInt>(
+                        accTy_md->getOperand(0))->getZExtValue();
+                }
+                else
+                {
+                    accessTy = getDefaultAccessType(resTy);
+                }
                 return true;
             }
         }
@@ -526,18 +567,20 @@ BufferType GetBufferType(uint addrSpace)
     return DecodeAS4GFXResource(addrSpace, directIndexing, bufId);
 }
 
-bool IsReadOnlyLoadDirectCB(llvm::Instruction *pLLVMInst, uint& cbId, llvm::Value* &eltPtrVal, BufferType& bufType)
+bool IsReadOnlyLoadDirectCB(llvm::Instruction *pLLVMInst,
+    uint& cbId, llvm::Value* &eltPtrVal, BufferType& bufType)
 {
     LoadInst *inst = dyn_cast<LoadInst>(pLLVMInst);
     if(!inst)
     {
         return false;
     }
+    bool isInvLoad = inst->getMetadata(LLVMContext::MD_invariant_load) != nullptr;
     unsigned as = inst->getPointerAddressSpace();
     bool directBuf;
     // cbId gets filled in the following call;
     bufType = IGC::DecodeAS4GFXResource(as, directBuf, cbId);
-    if((bufType == CONSTANT_BUFFER || bufType == RESOURCE) && directBuf)
+    if((bufType == CONSTANT_BUFFER || bufType == RESOURCE || isInvLoad) && directBuf)
     {
         Value *ptrVal = inst->getPointerOperand();
         // skip bitcast and find the real address computation

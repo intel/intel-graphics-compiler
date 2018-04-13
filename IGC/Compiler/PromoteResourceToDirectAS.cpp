@@ -164,6 +164,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
     }
     unsigned bufID;
     BufferType bufTy;
+    BufferAccessType accTy;
     bool canPromote = false;
 
     Value* srcPtr = IGC::TracePointerSource(resourcePtr);
@@ -174,7 +175,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
             // Trace the resource back to the GetBufferPtr/RuntimeValue instruction.
             // If we can find it, we can promote the indirect access to direct access
             // by encoding the BTI as a direct addrspace
-            if (IGC::GetResourcePointerInfo(srcPtr, bufID, bufTy))
+            if (IGC::GetResourcePointerInfo(srcPtr, bufID, bufTy, accTy))
             {
                 canPromote = true;
             }
@@ -428,7 +429,8 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
 
     unsigned bufferID;
     BufferType bufType;
-    if (!IGC::GetResourcePointerInfo(srcPtr, bufferID, bufType))
+    BufferAccessType accType;
+    if (!IGC::GetResourcePointerInfo(srcPtr, bufferID, bufType, accType))
     {
         // Can't promote if we don't know the explicit buffer ID and type
         return;

@@ -170,5 +170,6 @@ namespace IGC
     llvm::FunctionPass *createFlattenSmallSwitchPass();
 	llvm::FunctionPass *createIGCIndirectICBPropagaionPass();
     llvm::FunctionPass *createBlendToDiscardPass();
+    llvm::FunctionPass *createMarkReadOnlyLoadPass();
 
 } // namespace IGC

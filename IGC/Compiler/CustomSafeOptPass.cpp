@@ -1227,13 +1227,15 @@ bool IGCConstProp::EvalConstantAddress(Value* address, unsigned int &offset, Val
     return false;
 }
 
-bool GetStatelessBufferInfo(Value* pointer, unsigned &bufferId, BufferType &bufferTy, Value* &bufferSrcPtr)
+bool GetStatelessBufferInfo(Value* pointer, unsigned &bufferId,
+    BufferType &bufferTy, Value* &bufferSrcPtr)
 {
     // If the buffer info is not encoded in the address space, we can still find it by
     // tracing the pointer to where it's created.
     std::vector<Value*> instList;
     Value* src = IGC::TracePointerSource(pointer, false, true, instList);
-    if(src && IGC::GetResourcePointerInfo(src, bufferId, bufferTy))
+    BufferAccessType accType;
+    if(src && IGC::GetResourcePointerInfo(src, bufferId, bufferTy, accType))
     {
         // find the first pointer from the list of traced instructions
         for (int i = instList.size()-1; i >= 0; i--)

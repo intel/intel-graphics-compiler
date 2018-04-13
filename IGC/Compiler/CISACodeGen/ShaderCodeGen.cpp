@@ -1071,6 +1071,7 @@ void OptimizeIR(CodeGenContext* pContext)
         if( pContext->m_instrTypes.hasLoadStore )
         {
             mpm.add(llvm::createDeadStoreEliminationPass());
+            mpm.add(createMarkReadOnlyLoadPass());
         }
 
         mpm.add(llvm::createEarlyCSEPass());
