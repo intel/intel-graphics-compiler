@@ -1015,15 +1015,6 @@ namespace vISA
             auto dclid = dcl->getDeclId();
             resize(dclid);
             vars[dclid].maskType = m;
-            if (dcl->getIsSplittedDcl())
-            {
-                auto dclSubDclSize = getSubDclSize(dcl);
-                for (unsigned i = 0; i < dclSubDclSize; i++)
-                {
-                    G4_Declare * subDcl = getSubDcl(dcl, i);
-                    setAugmentationMask(subDcl, m);
-                }
-            }
         }
 
         bool getHasNonDefaultMaskDef(G4_Declare* dcl) const
