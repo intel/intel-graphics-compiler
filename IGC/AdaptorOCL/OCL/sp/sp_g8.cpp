@@ -2388,13 +2388,12 @@ RETVAL CGen8OpenCLStateProcessor::CombineKernelBinary(
 
 #endif
 
-#if ( defined( _DEBUG ) || defined( _INTERNAL ) || defined( _RELEASE_INTERNAL ) )
+    if (IGC_IS_FLAG_ENABLED(DumpOCLProgramInfo))
     {
         DebugKernelBinaryHeader_Gen7(
             &header, 
             m_oclStateDebugMessagePrintOut);
     }
-#endif
 
     return retValue;
 }

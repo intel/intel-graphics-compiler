@@ -81,7 +81,7 @@ void DebugPatchList(
             (const iOpenCL::SPatchItemHeader*)ptr;
 
 
-    if (IGC_IS_FLAG_ENABLED(DumpOCLPatchTokens))
+    if (IGC_IS_FLAG_ENABLED(DumpOCLProgramInfo))
     {
 
         switch( pHeader->Token )
