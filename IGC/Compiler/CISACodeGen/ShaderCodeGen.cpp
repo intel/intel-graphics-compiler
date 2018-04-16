@@ -1100,11 +1100,6 @@ void OptimizeIR(CodeGenContext* pContext)
 
         if( pContext->m_instrTypes.hasMultipleBB )
         {
-            if (IGC_IS_FLAG_ENABLED(EnableAdvCodeMotion) &&
-                pContext->type == ShaderType::OPENCL_SHADER) {
-              mpm.add(llvm::createCFGSimplificationPass());
-              mpm.add(llvm::createLowerSwitchPass());
-            }
             // disable loop unroll for excessive large shaders
             if( pContext->m_instrTypes.hasLoop )
             {
@@ -1133,7 +1128,8 @@ void OptimizeIR(CodeGenContext* pContext)
 
                 mpm.add(llvm::createInstructionCombiningPass());
                 if (IGC_IS_FLAG_ENABLED(EnableAdvCodeMotion) &&
-                    pContext->type == ShaderType::OPENCL_SHADER)
+                    pContext->type == ShaderType::OPENCL_SHADER &&
+                    !pContext->m_instrTypes.hasSwitch)
                   mpm.add(createAdvCodeMotionPass(IGC_GET_FLAG_VALUE(AdvCodeMotionControl)));
 
                 int LoopUnrollThreshold = pContext->m_DriverInfo.GetLoopUnrollThreshold();

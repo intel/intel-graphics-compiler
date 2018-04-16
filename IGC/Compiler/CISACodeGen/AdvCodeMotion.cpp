@@ -294,6 +294,10 @@ static BasicBlock *getJointBasicBlock(PostDominatorTree *PDT, BasicBlock *BB,
 
 static std::tuple<bool, BasicBlock *, BasicBlock *, BasicBlock *>
 getIfStatementBlock(PostDominatorTree *PDT, BasicBlock *IfBB) {
+  // Handle 'br' only.
+  if (!isa<BranchInst>(IfBB->getTerminator()))
+    return std::make_tuple(false, nullptr, nullptr, nullptr);
+
   auto SI = succ_begin(IfBB), SE = succ_end(IfBB);
   BasicBlock *TBB = (SI != SE) ? *SI++ : nullptr;
   BasicBlock *FBB = (SI != SE) ? *SI++ : nullptr;

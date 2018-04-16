@@ -1262,48 +1262,76 @@ BranchInfo::BranchInfo(const TerminatorInst *inst, const BasicBlock *ipd)
 {
   const BasicBlock *fork_blk = inst->getParent();
   assert(cbr == fork_blk->getTerminator() && "block terminator mismatch");
-  assert(cbr->getNumSuccessors() == 2 && "only for cbr with two successors");
 
-  std::set<BasicBlock*> f_set, t_set;
-  std::stack<BasicBlock*> work_set;
-  if (cbr->getSuccessor(0) != full_join)
-  {
-    work_set.push(cbr->getSuccessor(0));
-    while (!work_set.empty())
+  if (cbr->getNumSuccessors() != 2) {
+    std::set<const BasicBlock *> Reached;
+    for (auto SI = succ_begin(fork_blk),
+              SE = succ_end(fork_blk); SI != SE; ++SI) {
+      auto Succ = *SI;
+      if (Succ == full_join)
+        continue;
+      std::set<const BasicBlock *> Visited;
+      std::stack<const BasicBlock *> WorkSet;
+      WorkSet.push(Succ);
+      while (!WorkSet.empty()) {
+        const BasicBlock *BB = WorkSet.top();
+        WorkSet.pop();
+        Visited.insert(BB);
+        influence_region.insert(const_cast<BasicBlock *>(BB));
+        if (Reached.count(BB))
+          partial_joins.insert(const_cast<BasicBlock *>(BB));
+        for (auto I = succ_begin(BB), E = succ_end(BB); I != E; ++I) {
+          auto SBB = *I;
+          if (SBB != full_join && !Visited.count(SBB))
+            WorkSet.push(SBB);
+        }
+      }
+      // Merge Visited into Reached.
+      for (auto BB : Visited)
+        Reached.insert(BB);
+    }
+  } else {
+    std::set<BasicBlock*> f_set, t_set;
+    std::stack<BasicBlock*> work_set;
+    if (cbr->getSuccessor(0) != full_join)
     {
-      BasicBlock *cur_blk = work_set.top();
-      work_set.pop();
-      f_set.insert(cur_blk);
-      influence_region.insert(cur_blk);
-      for (succ_iterator SI = succ_begin(cur_blk), E = succ_end(cur_blk); SI != E; ++SI)
+      work_set.push(cbr->getSuccessor(0));
+      while (!work_set.empty())
       {
-        BasicBlock *succ_blk = (*SI);
-        if (succ_blk != full_join && !f_set.count(succ_blk))
+        BasicBlock *cur_blk = work_set.top();
+        work_set.pop();
+        f_set.insert(cur_blk);
+        influence_region.insert(cur_blk);
+        for (succ_iterator SI = succ_begin(cur_blk), E = succ_end(cur_blk); SI != E; ++SI)
         {
-          work_set.push(succ_blk);
+          BasicBlock *succ_blk = (*SI);
+          if (succ_blk != full_join && !f_set.count(succ_blk))
+          {
+            work_set.push(succ_blk);
+          }
         }
       }
     }
-  }
-  if (cbr->getSuccessor(1) != full_join)
-  {
-    work_set.push(cbr->getSuccessor(1));
-    while (!work_set.empty())
+    if (cbr->getSuccessor(1) != full_join)
     {
-      BasicBlock *cur_blk = work_set.top();
-      work_set.pop();
-      t_set.insert(cur_blk);
-      influence_region.insert(cur_blk);
-      if (f_set.count(cur_blk))
+      work_set.push(cbr->getSuccessor(1));
+      while (!work_set.empty())
       {
-        partial_joins.insert(cur_blk);
-      }
-      for (succ_iterator SI = succ_begin(cur_blk), E = succ_end(cur_blk); SI != E; ++SI)
-      {
-        BasicBlock *succ_blk = (*SI);
-        if (succ_blk != full_join && !t_set.count(succ_blk))
+        BasicBlock *cur_blk = work_set.top();
+        work_set.pop();
+        t_set.insert(cur_blk);
+        influence_region.insert(cur_blk);
+        if (f_set.count(cur_blk))
         {
-          work_set.push(succ_blk);
+          partial_joins.insert(cur_blk);
+        }
+        for (succ_iterator SI = succ_begin(cur_blk), E = succ_end(cur_blk); SI != E; ++SI)
+        {
+          BasicBlock *succ_blk = (*SI);
+          if (succ_blk != full_join && !t_set.count(succ_blk))
+          {
+            work_set.push(succ_blk);
+          }
         }
       }
     }
