@@ -491,6 +491,15 @@ void StatelessToStatefull::visitLoadInst(LoadInst &I)
         Instruction* pLoad = new LoadInst(pPtrToInt, "", I.isVolatile(), I.getAlignment(), I.getOrdering(), I.getSynchScope(), &I);
         pLoad->setDebugLoc(DL);
 
+        PointerType* ptrType = dyn_cast<PointerType>(ptr->getType());
+        if (ptrType && ptrType->getAddressSpace() == ADDRESS_SPACE_CONSTANT)
+        {
+            LLVMContext& context = I.getContext();
+            MDString* const metadataName = MDString::get(context, "invariant.load");
+            MDNode* node = MDNode::get(context, metadataName);
+            pLoad->setMetadata(LLVMContext::MD_invariant_load, node);
+        }
+
         I.replaceAllUsesWith(pLoad);
         I.eraseFromParent();
 
