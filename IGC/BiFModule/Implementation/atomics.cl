@@ -113,6 +113,23 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     return result;                                                              \
 }
 
+#define atomic_cmpxhg_as_float( INTRINSIC, TYPE, Pointer, Scope, Semantics, Value, Comp )\
+{                                                                               \
+    if( ( (Semantics) & ( SEMANTICS_PRE_OP_NEED_FENCE ) ) > 0 )                 \
+    {                                                                           \
+        __builtin_spirv_OpMemoryBarrier_i32_i32( (Scope), (Semantics) );        \
+    }                                                                           \
+                                                                                \
+    TYPE result = as_float(INTRINSIC( (Pointer), (Comp), (Value) ));                      \
+																				\
+    if( ( (Semantics) & ( SEMANTICS_POST_OP_NEEDS_FENCE ) ) > 0 )               \
+    {                                                                           \
+        __builtin_spirv_OpMemoryBarrier_i32_i32( (Scope), (Semantics) );        \
+    }                                                                           \
+                                                                                \
+    return result;                                                              \
+}
+
 
 // Atomic loads/stores must be implemented with an atomic operation - While our HDC has an in-order 
 // pipeline the L3$ has 2 pipelines - coherant and non-coherant.  Even when coherency is disabled atomics
@@ -362,16 +379,18 @@ float __builtin_spirv_OpAtomicCompareExchange_p0f32_i32_i32_i32_f32_f32( volatil
     return orig;
 }
 
+// Float compare-and-exchange builtins are handled as integer builtins, because OpenCL C specification says that the float atomics are
+// doing bitwise comparisons, not float comparisons
 
 float __builtin_spirv_OpAtomicCompareExchange_p1f32_i32_i32_i32_f32_f32( volatile __global float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator)
 {
-    atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_f32, float, (global float*)Pointer, Scope, Equal, Value, Comparator );
+    atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_global_i32, float, (global int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator) );
 }
 
 
 float __builtin_spirv_OpAtomicCompareExchange_p3f32_i32_i32_i32_f32_f32( volatile __local float *Pointer, uint Scope, uint Equal, uint Unequal, float Value, float Comparator)
 {
-    atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_local_f32, float, (local float*)Pointer, Scope, Equal, Value, Comparator );
+    atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_local_i32, float, (local int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator) );
 }
 
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
@@ -380,11 +399,11 @@ float __builtin_spirv_OpAtomicCompareExchange_p4f32_i32_i32_i32_f32_f32( volatil
 {
     if(__builtin_spirv_OpGenericCastToPtrExplicit_p3i8_p4i8_i32(__builtin_astype((Pointer), __generic void*), StorageWorkgroup))
     {
-        atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_local_f32, float, (__local float*)Pointer, Scope, Equal, Value, Comparator );
+        atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_local_i32, float, (__local int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator) );
     }
     else
     {
-        atomic_cmpxhg( __builtin_IB_atomic_cmpxchg_global_f32, float, (__global float*)Pointer, Scope, Equal, Value, Comparator );
+        atomic_cmpxhg_as_float( __builtin_IB_atomic_cmpxchg_global_i32, float, (__global int*)Pointer, Scope, Equal, as_uint(Value), as_uint(Comparator) );
     }
 }
 
