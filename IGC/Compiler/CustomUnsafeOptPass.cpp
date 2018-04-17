@@ -3629,7 +3629,7 @@ bool HoistFMulInLoopPass::hoistMulInLoop(Loop* loop, bool replacePhi)
             }
         }
 
-        if (fmul && loop->contains(fmul))
+        if (fmul && fmul->getNumUses() == 1)
         {
             MulNode* root = visitFMul(loop, fmul, nodeMap);
             if (root->hasInvariant)
