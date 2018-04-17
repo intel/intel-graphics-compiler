@@ -45,14 +45,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_sqrt, float, float, f32 )
 
 INLINE double __builtin_spirv_OpenCL_sqrt_f64( double x )
 {
-    if(__CorrectlyRounded)
-    {
-        return __builtin_spirv_OpenCL_sqrt_cr_f64(x);
-    }
-    else
-    {
-        return __builtin_spirv_OpenCL_native_sqrt_f64(x);
-    }
+    return __builtin_spirv_OpenCL_native_sqrt_f64(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_sqrt, double, double, f64 )
@@ -63,14 +56,7 @@ GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_sqrt, double, double, f64
 
 INLINE half __builtin_spirv_OpenCL_sqrt_f16( half x )
 {
-    if(__CorrectlyRounded)
-    {
-        return __builtin_spirv_OpenCL_sqrt_cr_f32((float)x);
-    }
-    else
-    {
-        return __builtin_spirv_OpenCL_native_sqrt_f32((float)x);
-    }
+    return __builtin_spirv_OpenCL_native_sqrt_f32((float)x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_sqrt, half, half, f16 )
