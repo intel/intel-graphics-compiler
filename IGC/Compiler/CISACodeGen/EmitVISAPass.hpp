@@ -356,7 +356,7 @@ public:
     bool isUniformStoreOCL(llvm::StoreInst *SI);
     void emitVectorBitCast(llvm::BitCastInst *BCI); 
     void emitVectorLoad(llvm::LoadInst *LI, llvm::Value* offset);
-    void emitVectorStoreOCL(llvm::StoreInst *SI);
+    void emitVectorStore(llvm::StoreInst *SI);
     void emitVectorCopy(CVariable *Dst, CVariable *Src, uint32_t nElts,
         uint32_t DstSubRegOffset = 0, uint32_t SrcSubRegOffset = 0);
     void emitCopyAll(CVariable *Dst, CVariable *Src, llvm::Type *Ty);

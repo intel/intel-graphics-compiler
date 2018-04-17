@@ -8934,15 +8934,7 @@ void EmitPass::emitStore3DInner(Value *pllValToStore, Value *pllDstPtr, Value *p
 
 void EmitPass::emitStore(StoreInst* inst)
 {
-    if(m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER ||
-        inst->getPointerAddressSpace() == ADDRESS_SPACE_GLOBAL)
-    {
-        emitVectorStoreOCL(inst);
-        }
-    else
-    {
-        emitStore3D(inst);
-    }
+    emitVectorStore(inst);
 }
 
 CVariable* EmitPass::GetSymbol(llvm::Value* v)
@@ -12626,16 +12618,20 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
     }
 }
 
-void EmitPass::emitVectorStoreOCL(StoreInst* inst)
+void EmitPass::emitVectorStore(StoreInst* inst)
 {
     Value* Ptr = inst->getPointerOperand();
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
-
+    if(ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
+    {
+        ForceDMask(false);
+    }
     // As 2/19/14, eOffset is in bytes !
     CVariable *eOffset = GetSymbol(Ptr);
-    if (resource.m_surfaceType == ESURFACE_SLM)
+    bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
+    if(useA32)
     {
         eOffset = TruncatePointer(eOffset);
     }
@@ -12663,7 +12659,6 @@ void EmitPass::emitVectorStoreOCL(StoreInst* inst)
 
     bool srcUniform = storedVar->IsUniform();
     bool dstUniform = eOffset->IsUniform();
-    bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
 
     // Handle two cases:
     //   1. less than 4 bytes: need to extend it to 4 bytes
@@ -12845,7 +12840,7 @@ void EmitPass::emitVectorStoreOCL(StoreInst* inst)
             blkBits = useA32 ? 8 : ((eltBytes >= 4 && align >= eltBytes) ? eltBytes * 8 : 8);
             nBlks = (totalBytes * 8) / blkBits;
         }
-
+        setPredicateForDiscard();
         if (useA32)
         {
             m_encoder->ByteScatter(storedVar, resource, eOffset, blkBits, nBlks);
@@ -12860,66 +12855,71 @@ void EmitPass::emitVectorStoreOCL(StoreInst* inst)
             m_encoder->SetUniformSIMDSize(simdmode);
         }
         m_encoder->Push();
-
-        return;
     }
-
-    eOffset = BroadcastIfUniform(eOffset);
-    storedVar = BroadcastIfUniform(storedVar);
-
-    VectorMessage VecMessInfo(this);
-    VecMessInfo.getInfo(Ty, align, useA32);
-
-    for( uint32_t i=0; i < VecMessInfo.numInsts; ++i )
+    else
     {
-        // raw operand, eltOff is in bytes
-        uint32_t eltOffBytes = VecMessInfo.insts[i].startByte * width;
-        uint32_t blkInBytes = VecMessInfo.insts[i].blkInBytes;
-        uint32_t numBlks = VecMessInfo.insts[i].numBlks;
-        uint32_t blkBits = 8 * blkInBytes;
-        uint32_t instTotalBytes = blkInBytes * numBlks;
-        uint32_t instElts = instTotalBytes / eltBytes;
-        uint32_t nbelts = instElts * width;
+        eOffset = BroadcastIfUniform(eOffset);
+        storedVar = BroadcastIfUniform(storedVar);
 
-        CVariable *rawAddrVar;
-        if( i > 0 )
+        VectorMessage VecMessInfo(this);
+        VecMessInfo.getInfo(Ty, align, useA32);
+
+        for(uint32_t i = 0; i < VecMessInfo.numInsts; ++i)
         {
-            // Calculate the new element offset
-            rawAddrVar = m_currShader->GetNewVariable(eOffset);
-            CVariable *ImmVar = m_currShader->ImmToVariable(VecMessInfo.insts[i].startByte, ISA_TYPE_UD);
-            if (!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
-                emitAddPairWithImm(rawAddrVar, eOffset, ImmVar);
-            } else {
-                m_encoder->Add(rawAddrVar, eOffset, ImmVar);
-                m_encoder->Push();
+            // raw operand, eltOff is in bytes
+            uint32_t eltOffBytes = VecMessInfo.insts[i].startByte * width;
+            uint32_t blkInBytes = VecMessInfo.insts[i].blkInBytes;
+            uint32_t numBlks = VecMessInfo.insts[i].numBlks;
+            uint32_t blkBits = 8 * blkInBytes;
+            uint32_t instTotalBytes = blkInBytes * numBlks;
+            uint32_t instElts = instTotalBytes / eltBytes;
+            uint32_t nbelts = instElts * width;
+
+            CVariable *rawAddrVar;
+            if(i > 0)
+            {
+                // Calculate the new element offset
+                rawAddrVar = m_currShader->GetNewVariable(eOffset);
+                CVariable *ImmVar = m_currShader->ImmToVariable(VecMessInfo.insts[i].startByte, ISA_TYPE_UD);
+                if(!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
+                    emitAddPairWithImm(rawAddrVar, eOffset, ImmVar);
+                }
+                else {
+                    m_encoder->Add(rawAddrVar, eOffset, ImmVar);
+                    m_encoder->Push();
+                }
             }
+            else
+            {
+                rawAddrVar = eOffset;
+            }
+            setPredicateForDiscard();
+            VISA_Type storedType = storedVar->GetType();
+            assert((eltOffBytes < (UINT16_MAX)) && "eltOffBytes > higher than 64k");
+            assert((nbelts < (UINT16_MAX)) && "nbelts > higher than 64k");
+            CVariable *subStoredVar = m_currShader->GetNewAlias(storedVar, storedType, (uint16_t)eltOffBytes, (uint16_t)nbelts);
+            switch(VecMessInfo.insts[i].kind) {
+            case VectorMessage::MESSAGE_A32_BYTE_SCATTERED_RW:
+                m_encoder->ByteScatter(subStoredVar, resource, rawAddrVar, blkBits, numBlks);
+                break;
+            case VectorMessage::MESSAGE_A32_UNTYPED_SURFACE_RW:
+                m_encoder->Scatter4Scaled(subStoredVar, resource, rawAddrVar);
+                break;
+            case VectorMessage::MESSAGE_A64_UNTYPED_SURFACE_RW:
+                m_encoder->Scatter4A64(subStoredVar, rawAddrVar);
+                break;
+            case VectorMessage::MESSAGE_A64_SCATTERED_RW:
+                m_encoder->ScatterA64(subStoredVar, rawAddrVar, blkBits, numBlks);
+                break;
+            default:
+                assert(false && "Internal Error: unexpected Message kind for store");
+            }
+            m_encoder->Push();
         }
-        else
-        {
-            rawAddrVar = eOffset;
-        }
-
-        VISA_Type storedType = storedVar->GetType();
-        assert((eltOffBytes < (UINT16_MAX)) && "eltOffBytes > higher than 64k");
-        assert((nbelts < (UINT16_MAX)) && "nbelts > higher than 64k");
-        CVariable *subStoredVar = m_currShader->GetNewAlias(storedVar, storedType, (uint16_t)eltOffBytes, (uint16_t)nbelts);
-        switch (VecMessInfo.insts[i].kind) {
-        case VectorMessage::MESSAGE_A32_BYTE_SCATTERED_RW:
-            m_encoder->ByteScatter(subStoredVar, resource, rawAddrVar, blkBits, numBlks);
-            break;
-        case VectorMessage::MESSAGE_A32_UNTYPED_SURFACE_RW:
-            m_encoder->Scatter4Scaled(subStoredVar, resource, rawAddrVar);
-            break;
-        case VectorMessage::MESSAGE_A64_UNTYPED_SURFACE_RW:
-            m_encoder->Scatter4A64(subStoredVar, rawAddrVar);
-            break;
-        case VectorMessage::MESSAGE_A64_SCATTERED_RW:
-            m_encoder->ScatterA64(subStoredVar, rawAddrVar, blkBits, numBlks);
-            break;
-        default:
-            assert(false && "Internal Error: unexpected Message kind for store");
-        }
-        m_encoder->Push();
+    }
+    if(ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
+    {
+        ResetVMask(false);
     }
 }
 
