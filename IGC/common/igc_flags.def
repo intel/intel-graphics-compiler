@@ -216,7 +216,7 @@ DECLARE_IGC_REGKEY(bool, EnableAdvCodeMotion,           true,  "Enable advanced 
 DECLARE_IGC_REGKEY(bool, AdvCodeMotionControl,          1,     "Control bits to fine-tune advanced code motion")
 DECLARE_IGC_REGKEY(bool, EnableAdvRuntimeUnroll,        true,  "Enable advanced runtime unroll")
 DECLARE_IGC_REGKEY(bool, AdvRuntimeUnrollCount,         0,     "Advanced runtime unroll count")
-DECLARE_IGC_REGKEY(bool, EnableAdvMemOpt,               false, "Enable advanced memory optimization")
+DECLARE_IGC_REGKEY(bool, EnableAdvMemOpt,               true,  "Enable advanced memory optimization")
 DECLARE_IGC_REGKEY(bool, UniformMemOptLimit,            0,     "Limit of uniform memory optimization in bits")
 
 DECLARE_IGC_REGKEY(bool, EnableReadGTPinInput,          false, "Enables setting GTPin context flags by reading the input to the compiler adapters")
