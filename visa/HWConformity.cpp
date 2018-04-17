@@ -2154,8 +2154,7 @@ bool HWConformity::checkSrcMod(INST_LIST_ITER it, G4_BB* bb, int srcPos)
         G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
         if (srcRegion->getModifier() != Mod_src_undef)
         {
-            G4_Type type = IS_DTYPE(src->getType()) ? src->getType() : Type_D;
-            src = insertMovBefore(it, srcPos, type, bb);
+            src = insertMovBefore(it, srcPos, src->getType(), bb);
             inst->setSrc(src, srcPos);
             changed = true;
         }
@@ -2199,10 +2198,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
         srcExchanged = true;
     }
 
-    if (!builder.supportSrcModforMul() &&
-        (IS_DTYPE(src0->getType()) || IS_DTYPE(src1->getType())) &&
-        ((getTypeSize(src0->getType()) < 4) || (getTypeSize(src1->getType()) < 4)))
-
+    if (!builder.supportSrcModforMul())
     {
         checkSrcMod(i, bb, 0);
         checkSrcMod(i, bb, 1);
@@ -2725,9 +2721,7 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
         return;
     }
 
-    if (!builder.supportSrcModforMul() && 
-       (IS_DTYPE(src0->getType()) || IS_DTYPE(src1->getType())) &&
-       ((getTypeSize(src0->getType()) < 4) || (getTypeSize(src1->getType()) < 4)))
+    if (!builder.supportSrcModforMul())
     {
         checkSrcMod(i, bb, 0);
         src0 = inst->getSrc(0);
