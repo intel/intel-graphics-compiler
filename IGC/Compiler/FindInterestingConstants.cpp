@@ -108,6 +108,11 @@ bool FindInterestingConstants::runOnFunction(Function &F)
 
 bool FindInterestingConstants::FoldsToZero(Instruction* inst, Value* use)
 {
+    if (BranchInst* brInst = dyn_cast<BranchInst>(use))
+    {
+        m_constFoldBranch = true;
+        return false;
+    }
     if (BinaryOperator *binInst = dyn_cast<BinaryOperator>(use))
     {
         if (binInst->getOpcode() == Instruction::FMul)
@@ -127,6 +132,11 @@ bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use)
 {
     // "use" instruction should have some operand(s)
     assert(use->getNumOperands() != 0);
+    if (BranchInst* brInst = dyn_cast<BranchInst>(use))
+    {
+        m_constFoldBranch = true;
+        return false;
+    }
 
     for (auto &U : use->operands())
     {
@@ -145,6 +155,9 @@ void FindInterestingConstants::FoldsToZeroPropagate(llvm::Instruction* I)
 {
     for (auto UI = I->user_begin(), UE = I->user_end(); ((UI != UE) && (m_zeroFolded < IGC_GET_FLAG_VALUE(FoldsToZeroPropThreshold))); ++UI)
     {
+        if ((m_constFoldBranch) ||
+            (m_zeroFolded >= IGC_GET_FLAG_VALUE(FoldsToZeroPropThreshold)))
+            break;
         if (Instruction* useInst = dyn_cast<Instruction>(*UI))
         {
             if (FoldsToZero(I, useInst))
@@ -161,17 +174,11 @@ void FindInterestingConstants::FoldsToConstPropagate(llvm::Instruction* I)
     // if instruction count that can be folded to zero reached threshold, dont loop through 
     for (auto UI = I->user_begin(), UE = I->user_end(); (UI != UE); ++UI)
     {
-        if (m_constFoldBranch)
-            break;
-        if (m_constFolded >= IGC_GET_FLAG_VALUE(FoldsToConstPropThreshold))
+        if ((m_constFoldBranch) ||
+            (m_constFolded >= IGC_GET_FLAG_VALUE(FoldsToConstPropThreshold)))
             break;
 
-        if (BranchInst* brInst = dyn_cast<BranchInst>(*UI))
-        {
-            m_constFoldBranch = true;
-            break;
-        }
-        else if (Instruction* useInst = dyn_cast<Instruction>(*UI))
+        if (Instruction* useInst = dyn_cast<Instruction>(*UI))
         {
             if (useInst->getParent() == I->getParent())	// TBD Do we need this
             {
@@ -292,16 +299,12 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst &I)
                 {
                     m_constFolded++;
                     FoldsToConstPropagate(useInst);
-                    if (m_constFoldBranch)
-                    {
-                        isInteresting = true;
-                        break;
-                    }
-                    if (m_constFolded >= IGC_GET_FLAG_VALUE(FoldsToConstPropThreshold))
-                    {
-                        isInteresting = true;
-                        break;
-                    }
+                }
+                // If m_constFolded is greater than threshold or some branch instruction gets simplified because of this constant
+                if ((m_constFoldBranch) || (m_constFolded >= IGC_GET_FLAG_VALUE(FoldsToConstPropThreshold)))
+                {
+                    isInteresting = true;
+                    break;
                 }
                     
                 if (FoldsToZero(&I, useInst))
@@ -310,13 +313,12 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst &I)
                     m_zeroFolded++;
 
                     FoldsToZeroPropagate(useInst);
-
-                    // If m_instFolded is greater than threshold or some branch instruction gets simplified because of this constant
-                    if (m_zeroFolded >= IGC_GET_FLAG_VALUE(FoldsToZeroPropThreshold))
-                    {
-                        isInteresting = true;
-                        break;
-                    }
+                }
+                // If m_zeroFolded is greater than threshold or some branch instruction gets simplified because of this constant
+                if ((m_constFoldBranch) || (m_zeroFolded >= IGC_GET_FLAG_VALUE(FoldsToZeroPropThreshold)))
+                {
+                    isInteresting = true;
+                    break;
                 }
             }
         }
