@@ -2154,7 +2154,8 @@ bool HWConformity::checkSrcMod(INST_LIST_ITER it, G4_BB* bb, int srcPos)
         G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
         if (srcRegion->getModifier() != Mod_src_undef)
         {
-            src = insertMovBefore(it, srcPos, src->getType(), bb);
+            G4_Type type = IS_DTYPE(src->getType()) ? src->getType() : Type_D;
+            src = insertMovBefore(it, srcPos, type, bb);
             inst->setSrc(src, srcPos);
             changed = true;
         }
@@ -2198,7 +2199,10 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
         srcExchanged = true;
     }
 
-    if (!builder.supportSrcModforMul())
+    if (!builder.supportSrcModforMul() &&
+        (IS_DTYPE(src0->getType()) || IS_DTYPE(src1->getType())) &&
+        ((getTypeSize(src0->getType()) < 4) || (getTypeSize(src1->getType()) < 4)))
+
     {
         checkSrcMod(i, bb, 0);
         checkSrcMod(i, bb, 1);
@@ -2721,7 +2725,9 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
         return;
     }
 
-    if (!builder.supportSrcModforMul())
+    if (!builder.supportSrcModforMul() && 
+       (IS_DTYPE(src0->getType()) || IS_DTYPE(src1->getType())) &&
+       ((getTypeSize(src0->getType()) < 4) || (getTypeSize(src1->getType()) < 4)))
     {
         checkSrcMod(i, bb, 0);
         src0 = inst->getSrc(0);
@@ -3306,38 +3312,46 @@ void HWConformity::fixMulSrc1( INST_LIST_ITER i, G4_BB* bb )
         uint64_t truncVal = src1->asImm()->getImm() & 0xFFFF;
         G4_Imm *new_src1 = builder.createImm(truncVal, Type_UW);
         inst->setSrc(new_src1, 1);
-        return;
-    }
-
-    assert(src1->isSrcRegRegion() && "region expected");
-    G4_SrcRegRegion *srcRegion = src1->asSrcRegRegion();
-    RegionDesc *rd = srcRegion->getRegion();
-    if (rd->horzStride >= 4)
-    {
-        G4_Operand* new_src1 = insertMovBefore(i, 1, Type_UW, bb);
-        inst->setSrc(new_src1, 1);
     }
     else
     {
-        // create a new opnd with type UW
-        unsigned short scale = G4_Type_Table[Type_D].byteSize / G4_Type_Table[Type_UW].byteSize;
-        unsigned short newHS = rd->horzStride * scale;
-        unsigned short newVS = rd->vertStride * scale;
-        RegionDesc *new_rd = builder.createRegionDesc(newVS, rd->width, newHS);
-        short subRegOff = srcRegion->getSubRegOff();
-        if (srcRegion->getRegAccess() == Direct)
+        assert(src1->isSrcRegRegion() && "region expected");
+        G4_SrcRegRegion *srcRegion = src1->asSrcRegRegion();
+        RegionDesc *rd = srcRegion->getRegion();
+        if (rd->horzStride >= 4)
         {
-            subRegOff *= scale;
+            G4_Operand* new_src1 = insertMovBefore(i, 1, Type_UW, bb);
+            inst->setSrc(new_src1, 1);
         }
-        auto new_src1 = builder.createSrcRegRegion(
-            srcRegion->getModifier(), srcRegion->getRegAccess(),
-            srcRegion->getBase(), srcRegion->getRegOff(), subRegOff, new_rd,
-            Type_UW);
-        inst->setSrc(new_src1, 1);
-        if (srcRegion->getRegAccess() != Direct)
+        else
         {
-            new_src1->setImmAddrOff(srcRegion->getAddrImm());
+            // create a new opnd with type UW
+            unsigned short scale = G4_Type_Table[Type_D].byteSize / G4_Type_Table[Type_UW].byteSize;
+            unsigned short newHS = rd->horzStride * scale;
+            unsigned short newVS = rd->vertStride * scale;
+            RegionDesc *new_rd = builder.createRegionDesc(newVS, rd->width, newHS);
+            short subRegOff = srcRegion->getSubRegOff();
+            if (srcRegion->getRegAccess() == Direct)
+            {
+                subRegOff *= scale;
+            }
+            auto new_src1 = builder.createSrcRegRegion(
+                srcRegion->getModifier(), srcRegion->getRegAccess(),
+                srcRegion->getBase(), srcRegion->getRegOff(), subRegOff, new_rd,
+                Type_UW);
+            inst->setSrc(new_src1, 1);
+            if (srcRegion->getRegAccess() != Direct)
+            {
+                new_src1->setImmAddrOff(srcRegion->getAddrImm());
+            }
         }
+    }
+
+    G4_Operand *src0 = inst->getSrc(0);
+    if (!builder.supportSrcModforMul() && IS_DTYPE(src0->getType()))
+    {
+        checkSrcMod(i, bb, 0);
+        checkSrcMod(i, bb, 1);
     }
 }
 
