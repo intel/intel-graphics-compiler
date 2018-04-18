@@ -1379,7 +1379,7 @@ static void verifyInstructionArith(const common_isa_header& isaHeader, const ker
             break;
         case ISA_MULH:
             /// U or UD only
-            REPORT_INSTRUCTION(options, dstType == ISA_TYPE_D || dstType == ISA_TYPE_UD, \
+            REPORT_INSTRUCTION(options, dstType == ISA_TYPE_D || dstType == ISA_TYPE_UD,
                 "%s only support D/UD dst type", ISA_Inst_Table[opcode].str); 
             break;
         case ISA_SAD2:
