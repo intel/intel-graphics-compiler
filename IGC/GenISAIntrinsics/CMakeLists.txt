@@ -79,6 +79,9 @@ if(MSVC)
     set_target_properties(${IGC_BUILD__GenISAIntrinsics_TABLEGEN_TARGET_NAME} PROPERTIES VS_TARGET_PLATFORM_VERSION "")
 endif()
 
+if(TARGET intrinsics_gen)
+    add_dependencies("${IGC_BUILD__PROJ__GenISAIntrinsics}" intrinsics_gen)
+endif()
 win_static_runtime()
 
 

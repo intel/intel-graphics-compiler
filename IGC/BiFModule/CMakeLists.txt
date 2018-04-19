@@ -36,7 +36,6 @@
   add_library(CLANG_7Z        UNKNOWN IMPORTED)
   add_library(CLANG_7Z_OUTPUT UNKNOWN IMPORTED)
   add_executable(IGC_TARGET__TOOLS_CLANG    IMPORTED)
-  add_executable(IGC_TARGET__TOOLS_LLVM_DIS_3_3    IMPORTED)
 
   # Detect CPU architecture
   igc_arch_get_cpu(_cpuSuffix "${IGC_OPTION__ARCHITECTURE_TARGET}")
@@ -122,11 +121,11 @@
   # Add step to preform the extraction
   add_custom_command(
     OUTPUT ${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}
-	OUTPUT ${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}
+    OUTPUT ${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_TARGET__TOOLS_CLANG_DIR}"
     COMMAND ${_extractCmd}
     COMMAND "${CMAKE_COMMAND}" -E touch_nocreate "${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}"
-	COMMAND "${CMAKE_COMMAND}" -E touch_nocreate "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}"
+    COMMAND "${CMAKE_COMMAND}" -E touch_nocreate "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}"
     DEPENDS CLANG_7Z
     COMMENT "Extracting Clang packages using: ${_extractCmd}"
   )
@@ -179,20 +178,6 @@
   add_dependencies(common_clang_dll GetClang)
 # End Clang section
 
-
-add_executable(IGC_TARGET__TOOLS_OPT   IMPORTED)
-igc_llvm_exe_import(IGC_TARGET__TOOLS_LLVM_AS   "llvm-as")
-igc_llvm_exe_import(IGC_TARGET__TOOLS_LLVM_LINK "llvm-link")
-
-igc_arch_get_os(_archOs "${IGC_OPTION__ARCHITECTURE_HOST}")
-if(_archOs MATCHES "^Windows$")
-  set_property(TARGET IGC_TARGET__TOOLS_LLVM_DIS_3_3 PROPERTY IMPORTED_LOCATION "${IGC_BUILD__GFX_OCL_DIR}/Tools/Windows/tools/bin/llvm-dis.exe")
-  set_property(TARGET IGC_TARGET__TOOLS_OPT   PROPERTY IMPORTED_LOCATION "${IGC_BUILD__GFX_OCL_DIR}/Tools/Windows/tools/bin/opt.exe")
-else()
-  set_property(TARGET IGC_TARGET__TOOLS_LLVM_DIS_3_3 PROPERTY IMPORTED_LOCATION "${IGC_BUILD__GFX_OCL_DIR}/Tools/Android/tools/bin/llvm-dis")
-  set_property(TARGET IGC_TARGET__TOOLS_OPT   PROPERTY IMPORTED_LOCATION "${IGC_BUILD__GFX_OCL_DIR}/Tools/Android/tools/bin/opt")
-endif()
-unset(_archOs)
 
 # ========================================= Helper functions ===========================================
 
@@ -698,7 +683,7 @@ function(igc_bif_build_bc)
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
         COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND IGC_TARGET__TOOLS_LLVM_AS -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_LL} "${_srcFilePath}"
+        COMMAND llvm-as -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_LL} "${_srcFilePath}"
         DEPENDS "${_srcFilePath}" ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Compiling OpenCL source: \"${_srcFileName}\""
       )
@@ -729,7 +714,7 @@ function(igc_bif_build_bc)
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
         COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND IGC_TARGET__TOOLS_LLVM_LINK -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_BC} ${_bcFiles}
+        COMMAND llvm-link -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_BC} ${_bcFiles}
         DEPENDS ${_bcFiles} ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Linking intermediate .bc into output .bc."
       )
@@ -754,8 +739,8 @@ function(igc_bif_build_bc)
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
         COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND IGC_TARGET__TOOLS_OPT -O2 -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_OPT} ${_bcFiles}
-        DEPENDS IGC_TARGET__TOOLS_OPT ${_bcFiles} ${_dependencies}
+        COMMAND opt -O2 -o "${_bcTempFilePath}" ${_options_DEFAULT} ${_options_OPT} ${_bcFiles}
+        DEPENDS ${_bcFiles} ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Optmizing output .bc."
       )
     add_custom_command(

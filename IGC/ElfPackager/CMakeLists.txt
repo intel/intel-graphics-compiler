@@ -62,37 +62,8 @@ add_executable("${IGC_BUILD__PROJ__ElfPackager}"
     ${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/CLElfLib/ElfReader.h
   )
 
-set(_locPropName "IMPORTED_LOCATION_${_upperConfigName}")
-
-get_property(_outLocation
-    TARGET "${IGC_BUILD__LLVM_PACKAGE}"
-    PROPERTY "${_locPropName}"
-)
-
-set(LIB_PATH "${_outLocation}/lib")
-unset(_outLocation)
-
-set(LLVM_LIBS ${IGC_BUILD__LLVM_LIBS_TO_LINK})
-
-foreach(loop_var ${LLVM_LIBS})
-	if(LLVM_ON_WIN32)
-	  	set(_libFileName "${loop_var}.lib")
-	else()
-        if (UFO_SYSTEM_LLVM_SHARED)
-        	set(_libFileName "lib${loop_var}.so")
-        else()
-        	set(_libFileName "lib${loop_var}.a")
-        endif()
-	endif()
-	list(APPEND LLVM_LIBS_FULL ${LIB_PATH}/${_libFileName})
-endforeach()
-
-if(LLVM_ON_UNIX)
-    list(APPEND _targetLinkLine pthread dl rt z)
-endif()
-
 target_link_libraries(${IGC_BUILD__PROJ__ElfPackager}
-    ${LLVM_LIBS_FULL} ${_targetLinkLine})
+    ${IGC_BUILD__LLVM_LIBS_TO_LINK})
 
 include_directories (
   ${GFX_DEVELOPMENT_DIR}/Source/IGC/AdaptorOCL/CLElfLib/

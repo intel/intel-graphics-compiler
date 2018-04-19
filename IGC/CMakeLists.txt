@@ -2253,7 +2253,6 @@ set(IGC_BUILD__TOOLS_7ZIP_WIN_DIR   "${IGC_BUILD__GFX_DEV_TOOLS_DIR}/Build/scrip
 set(IGC_BUILD__TOOLS_PAX_APP_DIR    "/usr")
 set(IGC_BUILD__TOOLS_7Z_LINUX_DIR "${IGC_BUILD__GFX_DEV_TOOLS_DIR}/Linux/tools/7z9.2/bin")
 
-set(IGC_BUILD__LLVM_DIR             "${IGC_OPTION__OUTPUT_DIR}/llvm")
 set(IGC_BUILD__BIF_DIR              "${IGC_OPTION__OUTPUT_DIR}/bif/${CMAKE_CFG_INTDIR}")
 set(IGC_BUILD__CTH_DIR              "${IGC_OPTION__OUTPUT_DIR}/fcl")
 
@@ -3240,201 +3239,38 @@ endif()
 
 # ==================================== LLVM package ====================================================
 
-# Adding dummy imported target for LLVM package
-set(IGC_BUILD__LLVM_PACKAGE "IGC_TARGET__LLVMPackage")
-add_library("${IGC_BUILD__LLVM_PACKAGE}" UNKNOWN IMPORTED)
-
-# Adding location for each build configuration
-set_property(TARGET "${IGC_BUILD__LLVM_PACKAGE}" PROPERTY IMPORTED_LOCATION "${IGC_BUILD__LLVM_PACKAGE}-NOTFOUND")
-
-if(IGC_OPTION__LLVM_DUMP_DIR)
-    # Use precompiled LLVM bundle.
-    set(IGC_LLVM_DIR ${IGC_OPTION__LLVM_DUMP_DIR})
-    message(STATUS " Use precompiled LLVM from ${IGC_LLVM_DIR}")
-    if(NOT EXISTS ${IGC_LLVM_DIR})
-        message(FATAL_ERROR " Location of precompiled LLVM (IGC_OPTION__LLVM_DUMP_DIR=${IGC_OPTION__LLVM_DUMP_DIR}) does not exist.")
+if(TARGET LLVMCore)
+    # LLVM targets have been already defined.
+    if(LLVM_USE_PREBUILT)
+        message(STATUS "[IGC] Using LLVM prebuilt ${LLVM_PACKAGE_VERSION}")
+        message(STATUS "[IGC] Using LLVM libraries from: ${LLVM_LIBRARY_DIR}")
+    else()
+        message(STATUS "[IGC] Using LLVM sources")
     endif()
+
+    message(STATUS "[IGC] Using LLVM includes from: ${LLVM_INCLUDE_DIRS}")
 else()
-    # Do not use precompiled LLVM. 
-	if(TARGET ${LLVM_LIB_NAME})
-        # An external LLVM target exists. Make the dependency which will trigger LLVM compilation.
-        add_dependencies(${IGC_BUILD__LLVM_PACKAGE} "${LLVM_LIB_NAME}")
+    message(STATUS "[IGC] LLVM targets are not defined. Try to use LLVM from standard known locations")
 
-	    set(IGC_LLVM_DIR ${LLVM_DIR})
-        message(STATUS " The ${LLVM_LIB_NAME} target found. Trigger LLVM compilation to ${IGC_LLVM_DIR}")
+    # Detect LLVM module location
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm_patches)
+        set(IGC_LLVM_HOME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm_patches)
+    elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm)
+        set(IGC_LLVM_HOME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm)
     else()
-        # Detect llvm patch locations
-        if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm)
-            set(IGC_LLVM_HOME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm)
-        elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm_patches)
-            set(IGC_LLVM_HOME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm_patches)
-        else()
-            message(FATAL_ERROR " Can not compile LLVM: unknown location of LLVM patches")
-        endif()
+        message(FATAL_ERROR "[IGC] Unknown location of LLVM component")
+    endif()
 
-        # Place LLVM build directory inside IGC build directory  
-        set(IGC_LLVM_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm_build)
-        if(EXISTS ${IGC_LLVM_HOME_DIR})
-	        set(LLVM_LIMITED_CONFIGURATION true)
+    if(IGC_OPTION__LLVM_DUMP_DIR)
+       set(LLVM_PREBUILT_PATH ${IGC_OPTION__LLVM_DUMP_DIR})
+       include(${IGC_LLVM_HOME_DIR}/llvm_prebuilt.cmake)
+    else()
+        message(STATUS "[IGC] LLVM compilation from ${IGC_LLVM_HOME_DIR}")
 
-            add_subdirectory(${IGC_LLVM_HOME_DIR} ${IGC_LLVM_BUILD_DIR})
-            add_dependencies(${IGC_BUILD__LLVM_PACKAGE} "${LLVM_LIB_NAME}")
-
-            set(IGC_LLVM_DIR ${LLVM_DIR})
-            message(STATUS " Trigger LLVM compilation from ${IGC_LLVM_HOME_DIR} to ${IGC_LLVM_DIR}")
-		else()
-		    message(FATAL_ERROR " Can not compile LLVM: unknown location of LLVM sources")
-		endif()
-	endif()
+        # Place LLVM build directory inside IGC build directory
+        add_subdirectory(${IGC_LLVM_HOME_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llvm/build)
+    endif()
 endif()
-
-foreach(_configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
-    string(TOUPPER "${_configName}" _upperConfigName)
-    set_property(TARGET "${IGC_BUILD__LLVM_PACKAGE}"
-        PROPERTY "IMPORTED_LOCATION_${_upperConfigName}" "${IGC_LLVM_DIR}"
-    )
-endforeach()
-
-
-# === Helper functions for LLVM build step. ===
-
-# Extends current include directories (in current scope) with LLVM-based path.
-#
-# NOTE: In CMake 2.8.4 there is no support for per-configuration include directories, but we can
-#       simulate that using per-configuration compiler flags (the includes will not be visible in usual place).
-#       In CMake 2.8.10 we can use generator expressions...
-#
-# @param dirSuffix Suffix for base path (to optionally include subdirectories).
-function(igc_llvm_include_dirs_extend dirSuffix)
-
-  if (MSVC)
-    set(_incDirOption "/I")
-  else()
-    set(_incDirOption "-I")
-  endif()
-
-  if(dirSuffix MATCHES "^[^/\\\\]")
-    set(_dirSuffix "/${dirSuffix}")
-  else()
-    set(_dirSuffix "${dirSuffix}")
-  endif()
-
-  foreach(_configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
-    string(REPLACE ";" "\;" _configName "${_configName}") # [WA#1] Must escape ; again if occurred in item.
-    string(TOUPPER "${_configName}" _upperConfigName)
-    set(_cxxFlagsVarName "CMAKE_CXX_FLAGS_${_upperConfigName}")
-    set(_cFlagsVarName   "CMAKE_C_FLAGS_${_upperConfigName}")
-    set(_locPropName     "IMPORTED_LOCATION_${_upperConfigName}")
-
-    set(_cxxFlags "${${_cxxFlagsVarName}}")
-    set(_cFlags   "${${_cFlagsVarName}}")
-    get_property(_outLocation
-        TARGET "${IGC_BUILD__LLVM_PACKAGE}"
-        PROPERTY "${_locPropName}"
-      )
-    igc_flag_add_once(_cxxFlags "${_incDirOption}${_outLocation}${_dirSuffix}")
-    igc_flag_add_once(_cFlags   "${_incDirOption}${_outLocation}${_dirSuffix}")
-    set("${_cxxFlagsVarName}" "${_cxxFlags}" PARENT_SCOPE)
-    set("${_cFlagsVarName}"   "${_cFlags}" PARENT_SCOPE)
-
-    unset(_upperConfigName)
-    unset(_cxxFlagsVarName)
-    unset(_cFlagsVarName)
-    unset(_locPropName)
-    unset(_outLocation)
-
-    unset(_cxxFlags)
-    unset(_cFlags)
-  endforeach()
-endfunction()
-
-
-# Imports LLVM static libraries.
-#
-# @param [libName [libName ...]] Names of libraries to import.
-function(igc_llvm_library_add)
-  foreach(_libName ${ARGN})
-    if(LLVM_ON_WIN32)
-      set(_libFileName "${_libName}.lib")
-    else()
-        if (UFO_SYSTEM_LLVM_SHARED)
-          set(_libFileName "lib${_libName}.so")
-        else()
-          set(_libFileName "lib${_libName}.a")
-        endif()
-    endif()
-
-    if (UFO_SYSTEM_LLVM_SHARED)
-      add_library("${_libName}" SHARED IMPORTED)
-    else()
-      add_library("${_libName}" STATIC IMPORTED)
-    endif()
-
-    set_property(TARGET "${_libName}" PROPERTY IMPORTED_LOCATION "${_libName}-NOTFOUND")
-    foreach(_configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
-      string(REPLACE ";" "\;" _configName "${_configName}") # [WA#1] Must escape ; again if occurred in item.
-      string(TOUPPER "${_configName}" _upperConfigName)
-      set(_locPropName "IMPORTED_LOCATION_${_upperConfigName}")
-
-      get_property(_outLocation
-          TARGET "${IGC_BUILD__LLVM_PACKAGE}"
-          PROPERTY "${_locPropName}"
-        )
-      set_property(TARGET "${_libName}"
-          PROPERTY "${_locPropName}" "${_outLocation}/lib/${_libFileName}"
-        )
-
-      unset(_upperConfigName)
-      unset(_locPropName)
-      unset(_outLocation)
-    endforeach()
-
-    unset(_libFileName)
-  endforeach()
-endfunction()
-
-# Imports LLVM executables for use on host (as CMake targets).
-#
-# @param exeTargetName   Target name for executable (to use in CMake).
-# @param exeName         Name of executable (without extension).
-# @param [exePathPrefix] Path prefix added before exeName (by default it is "bin").
-function(igc_llvm_exe_import exeTargetName exeName)
-
-  igc_arch_get_os(_archOs "${IGC_OPTION__ARCHITECTURE_HOST}")
-  if(_archOs MATCHES "^Windows$")
-    set(_exeFileName "${exeName}.exe")
-  else()
-    set(_exeFileName "${exeName}")
-  endif()
-
-  list(LENGTH ARGN _optArgsCount)
-  if(_optArgsCount GREATER 0)
-    list(GET ARGN 0 _exePathPrefix)
-    string(REPLACE ";" "\;" _exePathPrefix "${_exePathPrefix}") # [WA#1] Must escape ; again if occurred in item.
-  else()
-    set(_exePathPrefix "bin")
-  endif()
-
-  add_executable("${exeTargetName}" IMPORTED)
-  set_property(TARGET "${exeTargetName}" PROPERTY IMPORTED_LOCATION "${exeTargetName}-NOTFOUND")
-  foreach(_configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE})
-    string(REPLACE ";" "\;" _configName "${_configName}") # [WA#1] Must escape ; again if occurred in item.
-    string(TOUPPER "${_configName}" _upperConfigName)
-    set(_locPropName "IMPORTED_LOCATION_${_upperConfigName}")
-
-    get_property(_outLocation
-        TARGET "${IGC_BUILD__LLVM_PACKAGE}"
-        PROPERTY "${_locPropName}"
-      )
-    set_property(TARGET "${exeTargetName}"
-        PROPERTY "${_locPropName}" "${_outLocation}/${_exePathPrefix}/${_exeFileName}"
-      )
-
-    unset(_upperConfigName)
-    unset(_locPropName)
-    unset(_outLocation)
-  endforeach()
-endfunction()
 
 # ======================================== Include directories =========================================
 
@@ -3469,7 +3305,9 @@ include_directories(
       "${CIF_INCLUDE_DIR}"
   )
 
-igc_llvm_include_dirs_extend("include")
+include_directories(
+    "${LLVM_INCLUDE_DIRS}"
+)    
 
 if(LLVM_ON_WIN32)
   include_directories(
@@ -3508,11 +3346,6 @@ set(IGC_BUILD__LLVM_LIBS_TO_LINK
     "LLVMDemangle"
     )
 
-
-# In case LLVM targets have not been already created do so.
-if(NOT TARGET LLVMCore)
-    igc_llvm_library_add(${IGC_BUILD__LLVM_LIBS_TO_LINK})
-endif()
 
 
 
@@ -3752,7 +3585,6 @@ set_property(TARGET "LocalScheduler" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_L
 
 
 foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
-  add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${IGC_BUILD__LLVM_PACKAGE}")
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${IGC_BUILD__PROJ__GenISAIntrinsics}")
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${_tgtName}")
   
@@ -3763,14 +3595,8 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
 endforeach()
 
 #FCL
-add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__LLVM_PACKAGE}")
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__BiFModule_OCL}")
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__ElfPackager}")
-if(IGC_OPTION__BIF_LINK_BC)
-    add_dependencies("${IGC_BUILD__PROJ__BiFModule_OCL}"     "${IGC_BUILD__LLVM_PACKAGE}")
-    add_dependencies("${IGC_BUILD__PROJ__ElfPackager}"     "${IGC_BUILD__LLVM_PACKAGE}")
-endif()
-add_dependencies("${IGC_BUILD__PROJ__GenISAIntrinsics}"  "${IGC_BUILD__LLVM_PACKAGE}")
 
 if(LLVM_ON_WIN32)
   if(IGC_OPTION__USCLAUNCHER_TOOL)
@@ -3852,14 +3678,6 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
       "${IGC_BUILD__END_GROUP}"
     )
 
-  if(LLVM_ON_UNIX)
-    if(ANDROID)
-      list(APPEND _targetLinkLine dl log z)
-    else()
-      list(APPEND _targetLinkLine pthread dl rt z)
-    endif()
-  endif()
-
   if(_targetIsStatic)
     # Link line for projects that use IGC as static library (allows to resolve multi-circular dependencies between libraries).
     set("IGC_BUILD__LINK_LINE${_libBuildSuffix}"
@@ -3916,15 +3734,6 @@ endforeach()
       ${IGC_BUILD__LLVM_LIBS_TO_LINK}
       "${IGC_BUILD__END_GROUP}"
     )
-
-  if(LLVM_ON_UNIX)
-    if(ANDROID)
-      list(APPEND _targetLinkLine dl log z)
-    else()
-      list(APPEND _targetLinkLine pthread dl rt z)
-    endif()
-    #igc_target_exclude_from_symbol_export("${IGC_BUILD__PROJ__fcl_dll}" ${IGC_BUILD__LLVM_LIBS_TO_LINK})
-  endif()
 
   if(_targetIsStatic)
     # Link line for projects that use IGC as static library (allows to resolve multi-circular dependencies between libraries).
