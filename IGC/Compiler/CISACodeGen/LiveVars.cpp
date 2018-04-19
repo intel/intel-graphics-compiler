@@ -267,6 +267,10 @@ void LiveVars::MarkVirtRegAliveInBlock(LiveVars::LVInfo& VRInfo,
   for (pred_iterator PI = pred_begin(MBB), E = pred_end(MBB);
        PI != E; ++PI) {
     BasicBlock *PredBlk = *PI;
+    //Before pushing check if the predecessor has already been marked
+    if (VRInfo.AliveBlocks.count(PredBlk)) 
+        continue;  // We already know the block is live
+
     WorkList.push_back(PredBlk);
     Instruction *cbr = PredBlk->getTerminator();
     if (cbr && WIA->whichDepend(cbr) != WIAnalysis::UNIFORM)
@@ -276,10 +280,12 @@ void LiveVars::MarkVirtRegAliveInBlock(LiveVars::LVInfo& VRInfo,
   }
   if (hasLayoutPred && hasNonUniformBranch && VRInfo.uniform) {
     BasicBlock *simdPred = MBB->getPrevNode();
-	while (simdPred && simdPred != DefBlock) {
-	  WorkList.push_back(simdPred);
-	  simdPred = simdPred->getPrevNode();
-	}
+    while (simdPred && simdPred != DefBlock) {
+      //check if it is marked live
+      if (!VRInfo.AliveBlocks.count(simdPred))
+            WorkList.push_back(simdPred);
+      simdPred = simdPred->getPrevNode();
+    }
   }
 }
 
