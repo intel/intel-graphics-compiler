@@ -3307,7 +3307,7 @@ include_directories(
 
 include_directories(
     "${LLVM_INCLUDE_DIRS}"
-)    
+)
 
 if(LLVM_ON_WIN32)
   include_directories(

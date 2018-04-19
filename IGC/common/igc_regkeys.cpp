@@ -487,6 +487,7 @@ void LoadRegistryKeys( void )
 		{
 			IGC_SET_FLAG_VALUE(DumpLLVMIR, true);
 			IGC_SET_FLAG_VALUE(EnableCosDump, true);
+            IGC_SET_FLAG_VALUE(DumpOCLPatchTokens, true);
 			IGC_SET_FLAG_VALUE(EnableVISAOutput, true);
 			IGC_SET_FLAG_VALUE(EnableVISABinary, true);
 			IGC_SET_FLAG_VALUE(EnableVISADumpCommonISA, true);
