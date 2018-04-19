@@ -3518,6 +3518,16 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         vbuilder->SetOption(vISA_LocalBankConflictReduction, false);
     }
 
+    if (IGC_IS_FLAG_ENABLED(disableVarSplit))
+    {
+        vbuilder->SetOption(vISA_LocalDeclareSplitInGlobalRA, false);
+    }
+
+    if (IGC_IS_FLAG_ENABLED(disableRemat))
+    {
+        vbuilder->SetOption(vISA_NoRemat, true);
+    }
+
     if (ForceNonCoherentStatelessBti || IGC_IS_FLAG_ENABLED(ForceNonCoherentStatelessBTI))
     {
         vbuilder->SetOption(vISA_noncoherentStateless, true);

@@ -3034,7 +3034,7 @@ void GlobalRA::markBlockLocalVar(G4_RegVar* var, unsigned bbId)
     }
 }
 
-void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA)
+void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA, bool reDo)
 {
 	for (std::list<G4_INST*>::iterator it = bb->instList.begin(); it != bb->instList.end(); it++)
 	{
@@ -3058,7 +3058,7 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA)
                     {
                         topdcl->setIsRefInSendDcl(true);
                     }
-                    if (!doLocalRA || dst->isFlag() || dst->isAddress())
+                    if (!doLocalRA || dst->isFlag() || dst->isAddress() || reDo)
                 {
                     LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
                     unsigned int startIdx;
@@ -3122,7 +3122,7 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA)
                             topdcl->setIsRefInSendDcl(true);
                         }
 
-                        if (!doLocalRA || src->isFlag() || src->isAddress())
+                        if (!doLocalRA || src->isFlag() || src->isAddress() || reDo)
                     {
                         LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
 
@@ -3141,7 +3141,7 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA)
                 G4_RegVar* addExpVar = src->asAddrExp()->getRegVar();
 				markBlockLocalVar(addExpVar, bb->getId());
 
-                if (!doLocalRA)
+                if (!doLocalRA || reDo)
                 {
 		            G4_Declare* topdcl = addExpVar->getDeclare();
 		            while( topdcl->getAliasDeclare() != NULL)
@@ -3185,12 +3185,12 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA)
 //
 // Mark block local (temporary) variables.
 //
-void GlobalRA::markGraphBlockLocalVars()
+void GlobalRA::markGraphBlockLocalVars(bool reDo)
 {
     auto& fg = kernel.fg;
 	for (std::list<G4_BB*>::iterator it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
 	{
-        markBlockLocalVars(*it, fg.builder->mem, fg.builder->getOption(vISA_LocalRA));
+        markBlockLocalVars(*it, fg.builder->mem, fg.builder->getOption(vISA_LocalRA), reDo);
 	}
 }
 
@@ -3912,7 +3912,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 	//
 	// Mark block local variables for the whole graph prior to performing liveness analysis.
 	//
-	gra.markGraphBlockLocalVars();
+	gra.markGraphBlockLocalVars(false);
     if(!(kernel.fg.builder->getOption(vISA_LocalRA)))
     {
          gra.removeUnreferencedDcls();

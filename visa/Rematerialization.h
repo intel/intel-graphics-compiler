@@ -139,7 +139,7 @@ namespace vISA
         bool areAllDefsInBB(G4_Declare*, G4_BB*, unsigned int);
         unsigned int getLastUseLexId(G4_Declare*);
         bool checkLocalWAR(G4_INST*, G4_BB*, INST_LIST_ITER);
-
+        void updateSplitInfo(G4_INST *dstInst, int srcNum);
         void reduceNumUses(G4_Declare* dcl)
         {
             auto opIt = operations.find(dcl);

@@ -9679,6 +9679,20 @@ int GlobalRA::coloringRegAlloc()
     VarSplit splitPass(*this);
     while (iterationNo < maxRAIterations)
     {
+#ifdef DEBUG_VERBOSE_ON
+        std::cout << "\t--LOCAL VARIABLES--\n";
+        for (auto dcl : kernel.Declares)
+        {
+            LocalLiveRange* topdclLR = getLocalLR(dcl);
+  
+            if (topdclLR != nullptr &&
+                topdclLR->isLiveRangeLocal())
+            {
+                std::cout << dcl->getName() << ",\t";
+            }
+        }
+        std::cout << "\n";
+#endif    
         if (builder.getOption(vISA_RATrace))
         {
             std::cout << "--GRF RA iteration " << iterationNo << "--\n";
@@ -9779,6 +9793,11 @@ int GlobalRA::coloringRegAlloc()
                     // Re-run GRA loop only if remat caused changes to IR
                     if (remat.getChangesMade())
                     {
+                        for (auto ldcl : kernel.Declares)
+                        {
+                            resetLocalLR(ldcl);
+                        }
+                        markGraphBlockLocalVars(true);
                         rematChange = true;
                     }
                 }

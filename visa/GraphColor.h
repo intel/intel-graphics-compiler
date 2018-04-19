@@ -769,6 +769,7 @@ namespace vISA
         void saveFileScopeVar(G4_RegVar* filescopeVar, INST_LIST& instList, INST_LIST_ITER insertIt);
         void restoreFileScopeVar(G4_RegVar* filescopeVar, INST_LIST& instList, INST_LIST_ITER insertIt);
         void dumpRegisterPressure();
+        GlobalRA & getGRA() { return gra; }
     };
 
     class RAVarInfo
@@ -801,7 +802,7 @@ namespace vISA
         void updateDefSet(std::set<G4_Declare*>& defs, G4_Declare* referencedDcl);
         void detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& kernel);
         void markBlockLocalVar(G4_RegVar* var, unsigned bbId);
-        void markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA);
+        void markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA, bool reDo);
         void computePhyReg();
         void fixAlignment();
 
@@ -1015,6 +1016,15 @@ namespace vISA
             auto dclid = dcl->getDeclId();
             resize(dclid);
             vars[dclid].maskType = m;
+            if (dcl->getIsSplittedDcl())
+            {
+                auto dclSubDclSize = getSubDclSize(dcl);
+                for (unsigned i = 0; i < dclSubDclSize; i++)
+                {
+                    G4_Declare * subDcl = getSubDcl(dcl, i);
+                    setAugmentationMask(subDcl, m);
+                }
+            }
         }
 
         bool getHasNonDefaultMaskDef(G4_Declare* dcl) const
@@ -1102,7 +1112,7 @@ namespace vISA
         void addCalleeSavePseudoCode();
         void addStoreRestoreForFP();
         void setABIForStackCallFunctionCalls();
-        void markGraphBlockLocalVars();
+        void markGraphBlockLocalVars(bool reDo);
         void verifyRA(LivenessAnalysis & liveAnalysis);
 
         void insertPhyRegDecls();
