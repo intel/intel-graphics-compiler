@@ -556,10 +556,14 @@ CVariable* CHullShader::GetURBOutputHandle()
 
 OctEltUnit CHullShader::GetURBHeaderSize()
 {
-    if (m_properties.m_HasClipCullAsInput)
-        return OctEltUnit(2);
+    if (GetContext()->getModuleMetaData()->hasVertexHeader)
+    {
+		return OctEltUnit(m_properties.m_HasClipCullAsInput ? 2 : 1);
+    }
     else
-        return OctEltUnit(1);
+    {
+		return OctEltUnit(0);
+    }
 
 }
 

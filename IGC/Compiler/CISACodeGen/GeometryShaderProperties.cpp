@@ -30,6 +30,7 @@ using namespace IGC;
 GeometryShaderProperties::VertexProperties::VertexProperties()
     : m_hasClipDistances(false)
     , m_hasCullDistances(false)
+    , m_hasVertexHeader(true)
     , m_maxAttributeCount(0)
     , m_clipDistanceMask(0)
     , m_cullDistanceMask(0)
@@ -61,9 +62,14 @@ void GeometryShaderProperties::VertexProperties::CullDistanceMask(unsigned int c
     m_cullDistanceMask = cullDistanceMask;
 }
 
+void GeometryShaderProperties::VertexProperties::HasVertexHeader(bool hasVertexHeader)
+{
+    m_hasVertexHeader = hasVertexHeader;
+}
+
 OctEltUnit GeometryShaderProperties::VertexProperties::HeaderSize() const
 {
-    return OctEltUnit(HasClipDistances() || HasCullDistances() ? 2 : 1);
+    return OctEltUnit(!m_hasVertexHeader ? 0 : HasClipDistances() || HasCullDistances() ? 2 : 1);
 }
 
 QuadEltUnit GeometryShaderProperties::VertexProperties::Size() const
