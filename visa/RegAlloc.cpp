@@ -413,11 +413,7 @@ LivenessAnalysis::LivenessAnalysis(
                 }
                 else
                 {
-                    //If parent declare is marked as not splitted any more, destroy the split declares
-		            DECLARE_LIST_ITER old_it = di;
-		            di++;
-		            gra.kernel.Declares.erase( old_it );
-		            continue;
+                    assert(0 && "Found child declare without parent");
                 }
             }
 
@@ -3182,16 +3178,78 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA, b
 	}
 }
 
+void GlobalRA::resetGlobalRAStates()
+{
+    DECLARE_LIST_ITER di = kernel.Declares.begin();
+    while (di != kernel.Declares.end())
+    {
+        G4_Declare* dcl = *di;
+
+        //Reset all the local live ranges
+        resetLocalLR(dcl);
+
+        if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
+        {
+            //Remove the split declares
+            if (dcl->getIsSplittedDcl())
+            {
+                dcl->setIsSplittedDcl(false);
+                clearSubDcl(dcl);
+            }
+
+            if (dcl->getIsPartialDcl())
+            {
+                auto declSplitDcl = getSplittedDeclare(dcl);
+                assert(!declSplitDcl->getIsSplittedDcl());
+                DECLARE_LIST_ITER old_it = di;
+                di++;
+                kernel.Declares.erase(old_it);
+                continue;
+            }
+        }
+
+        //Remove the bank assignment
+        if (builder.getOption(vISA_LocalBankConflictReduction) &&
+            builder.hasBankCollision())
+        {
+            setBankConflict(dcl, BANK_CONFLICT_NONE);
+        }
+
+        di++;
+    }
+
+    return;
+}
+
 //
 // Mark block local (temporary) variables.
 //
 void GlobalRA::markGraphBlockLocalVars(bool reDo)
 {
+    //Create live ranges and record the reference info
     auto& fg = kernel.fg;
-	for (std::list<G4_BB*>::iterator it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
-	{
+    for (std::list<G4_BB*>::iterator it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
+    {
         markBlockLocalVars(*it, fg.builder->mem, fg.builder->getOption(vISA_LocalRA), reDo);
-	}
+    }
+
+    //Remove the un-referenced declares
+    removeUnreferencedDcls();
+
+#ifdef DEBUG_VERBOSE_ON
+    std::cout << "\t--LOCAL VARIABLES--\n";
+    for (auto dcl : kernel.Declares)
+    {
+        LocalLiveRange* topdclLR = getLocalLR(dcl);
+
+        if (topdclLR != nullptr &&
+            topdclLR->isLiveRangeLocal())
+        {
+            std::cout << dcl->getName() << ",\t";
+        }
+    }
+    std::cout << "\n";
+#endif    
 }
 
 //
@@ -3907,15 +3965,6 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
         kernel.fg.builder->getOptions()->getTarget() == VISA_3D)
     {
         kernel.getOptions()->setOption(vISAOptions::vISA_LocalRA, false);
-    }
-
-	//
-	// Mark block local variables for the whole graph prior to performing liveness analysis.
-	//
-	gra.markGraphBlockLocalVars(false);
-    if(!(kernel.fg.builder->getOption(vISA_LocalRA)))
-    {
-         gra.removeUnreferencedDcls();
     }
 
 	if (kernel.fg.builder->getOptions()->getTarget() == VISA_CM)

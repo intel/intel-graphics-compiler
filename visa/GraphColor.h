@@ -1114,6 +1114,7 @@ namespace vISA
         void setABIForStackCallFunctionCalls();
         void markGraphBlockLocalVars(bool reDo);
         void verifyRA(LivenessAnalysis & liveAnalysis);
+        void resetGlobalRAStates();
 
         void insertPhyRegDecls();
     };
