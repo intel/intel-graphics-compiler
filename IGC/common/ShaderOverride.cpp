@@ -144,7 +144,7 @@ void appendToShaderOverrideLogFile(std::string &binFileName, const char * messag
 {
     auto overridePath = std::string(IGC::Debug::GetShaderOverridePath());
     overridePath.append("OverrideLog.txt");
-    std::cout << overridePath << std::endl;
+    std::cout << std::endl << message << binFileName.c_str() << std::endl;
     std::ofstream os(overridePath.c_str(), std::ios::app);
     if(os.is_open())
     {
@@ -189,11 +189,6 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
 #endif	//_WIN64
 
     hModule = LoadDependency(igaName);
-    if (hModule == nullptr)
-    {
-        binOverride = false;
-        return;
-    }
 
 #else
     // linux
@@ -206,6 +201,12 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
     hModule = dlopen(igaName, RTLD_LAZY);
 #endif
 
+	if (hModule == nullptr)
+	{
+		binOverride = false;
+		appendToShaderOverrideLogFile(binFileName, "OVERRIDE FAILED DUE TO MISSING IGA LIBRARY: ");
+		return;
+	}
 
     fCreateContext = (pIGACreateContext)GetProcAddress(hModule, IGA_CREATE_CONTEXT_STR);
     fIGAGetErrors = (pIGAGetErrors)GetProcAddress(hModule, IGA_GET_ERRORS_STR);
@@ -221,6 +222,7 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
         fIGAReleaseContext == nullptr)
     {
         binOverride = false;
+		appendToShaderOverrideLogFile(binFileName, "OVERRIDE FAILED DUE TO IGA LOAD ERRORS: ");
         return;
     }
 
@@ -229,6 +231,7 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
     iga_context_options_t ctxOpts = IGA_CONTEXT_OPTIONS_INIT(GetIGAPlatform(&(context->platform)));
     if(fCreateContext(&ctxOpts, &ctx) != IGA_SUCCESS) {
         binOverride = false;
+		appendToShaderOverrideLogFile(binFileName, "OVERRIDE FAILED DUE TO IGA CONTEXT CREATION FAILURE: ");
         return;
     }
 
@@ -237,6 +240,7 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
 
     if(fIGAAssemble(ctx, &asmOpts, asmContext.c_str(), &overrideBinary, &overrideBinarySize) != IGA_SUCCESS) {
         binOverride = false;
+		appendToShaderOverrideLogFile(binFileName, "OVERRIDE FAILED DUE TO SHADER ASSEMBLY FAILURE: ");
         return;
     }
 
