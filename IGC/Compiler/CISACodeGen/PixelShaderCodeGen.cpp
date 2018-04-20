@@ -592,8 +592,6 @@ namespace IGC
         m_HasDouble = false;
         m_hasDualBlendSource = false;
         m_HasDiscard = false;
-        m_HasDiscardPixelMaskGenerated.firstHalf = false;
-        m_HasDiscardPixelMaskGenerated.secondHalf = false;
         m_IsLastPhase = false;
         m_phase = PSPHASE_LEGACY;
         m_Signature = nullptr;
@@ -815,8 +813,6 @@ namespace IGC
         if (ctx->getModule()->getNamedMetadata("KillPixel"))
         {
             m_HasDiscard = true;
-            m_HasDiscardPixelMaskGenerated.firstHalf = false;
-            m_HasDiscardPixelMaskGenerated.secondHalf = false;
         }
         m_VectorMask = m_CG->NeedVMask();
         setup.resize(4 * g_c_Max_PS_attributes, nullptr);

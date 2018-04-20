@@ -106,8 +106,6 @@ public:
     bool        IsPerSample() { return m_isPerSample || m_PerspectiveSample || m_NoPerspectiveSample; }
 
     bool        HasDiscard() { return m_HasDiscard; }
-    inline bool HasDiscardPixelMaskGenerated(bool isSecondHalf);
-    inline void SetDiscardPixelMaskGenerated(bool isSecondHalf);
     void        MarkConstantInterpolation(unsigned int index);
 
     // check whether it's the last render target write
@@ -168,10 +166,6 @@ protected:
     bool       m_HasEvalSampler = false;
 
     bool       m_HasDiscard;
-    struct {
-        bool   firstHalf;
-        bool   secondHalf;
-    }          m_HasDiscardPixelMaskGenerated;
 
     // Multi phase shader properties 
     PixelShaderPhaseType m_phase;
@@ -192,30 +186,6 @@ protected:
     unsigned int m_samplerCount;
     ShaderDispatchMode m_ShaderMode;
 };
-
-inline bool CPixelShader::HasDiscardPixelMaskGenerated(bool isSecondHalf)
-{
-    if (isSecondHalf)
-    {
-        return m_HasDiscardPixelMaskGenerated.secondHalf;
-    }
-    else
-    {
-        return m_HasDiscardPixelMaskGenerated.firstHalf;
-    }
-}
-
-inline void CPixelShader::SetDiscardPixelMaskGenerated(bool isSecondHalf)
-{
-    if (isSecondHalf)
-    {
-        m_HasDiscardPixelMaskGenerated.secondHalf = true;
-    }
-    else
-    {
-        m_HasDiscardPixelMaskGenerated.firstHalf = true;
-    }
-}
 
 }//namespace IGC
 
