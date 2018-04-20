@@ -110,7 +110,7 @@ struct IITDescriptor {
 /// getIntrinsicInfoTableEntries - Return the IIT table descriptor for the
 /// specified intrinsic into an array of IITDescriptors.
 /// 
-void getIntrinsicInfoTableEntries(ID id, SmallVectorImpl<IITDescriptor> &T);
+void getIntrinsicInfoTableEntries(ID id, SmallVectorImpl<IITDescriptor> &T, ArrayRef<Type*> Tys);
 ID lookupGenIntrinsicID(const char *Name, unsigned int Len);
 }
 }
@@ -236,7 +236,7 @@ static Type *DecodeFixedType(ArrayRef<GenISAIntrinsic::IITDescriptor> &Infos,
 
 
 static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
-                      SmallVectorImpl<GenISAIntrinsic::IITDescriptor> &OutputTable) {
+                      SmallVectorImpl<GenISAIntrinsic::IITDescriptor> &OutputTable, ArrayRef<Type*> Tys = None) {
   IIT_Info Info = IIT_Info(Infos[NextElt++]);
   unsigned StructElts = 2;
   using namespace GenISAIntrinsic;
@@ -331,7 +331,19 @@ static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
   }
   case IIT_ARG: {
     unsigned ArgInfo = (NextElt == Infos.size() ? 0 : Infos[NextElt++]);
-    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Argument, ArgInfo));
+      IITDescriptor argDesc = IITDescriptor::get(IITDescriptor::Argument, ArgInfo);
+      if (argDesc.getArgumentKind() == IITDescriptor::AK_Any) {
+          if (argDesc.getArgumentNumber() < Tys.size()) {
+              OutputTable.push_back(IITDescriptor::get(IITDescriptor::Argument, ArgInfo));
+              NextElt++;
+          }
+          else {
+              DecodeIITType(NextElt, Infos, OutputTable);
+          }
+      }
+      else {
+          OutputTable.push_back(IITDescriptor::get(IITDescriptor::Argument, ArgInfo));
+      }
     return;
   }
   case IIT_EXTEND_ARG: {
@@ -459,7 +471,7 @@ std::string GenISAIntrinsic::getName(GenISAIntrinsic::ID id, ArrayRef<Type*> Tys
 FunctionType *GenISAIntrinsic::getType(LLVMContext &Context,
                                  ID id, ArrayRef<Type*> Tys) {
   SmallVector<IITDescriptor, 8> Table;
-  getIntrinsicInfoTableEntries(id, Table);
+  getIntrinsicInfoTableEntries(id, Table, Tys);
 
   ArrayRef<IITDescriptor> TableRef = Table;
   Type *ResultTy = DecodeFixedType(TableRef, Tys, Context);
@@ -507,7 +519,7 @@ Function *GenISAIntrinsic::getDeclaration(Module *M, GenISAIntrinsic::ID id, Arr
 }
 
 void GenISAIntrinsic::getIntrinsicInfoTableEntries(GenISAIntrinsic::ID id,
-                                             SmallVectorImpl<IITDescriptor> &T){
+                                             SmallVectorImpl<IITDescriptor> &T, ArrayRef<Type*> Tys){
   // Check to see if the intrinsic's type was expressible by the table.
   unsigned TableVal = IIT_Table[id-1];
 
@@ -534,9 +546,9 @@ void GenISAIntrinsic::getIntrinsicInfoTableEntries(GenISAIntrinsic::ID id,
   }
 
   // Okay, decode the table into the output vector of IITDescriptors.
-  DecodeIITType(NextElt, IITEntries, T);
+  DecodeIITType(NextElt, IITEntries, T, Tys);
   while (NextElt != IITEntries.size() && IITEntries[NextElt] != 0)
-    DecodeIITType(NextElt, IITEntries, T);
+    DecodeIITType(NextElt, IITEntries, T, Tys);
 }
 
 GenISAIntrinsic::ID GenISAIntrinsic::getIntrinsicID(const Function *F) {

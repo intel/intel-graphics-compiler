@@ -1173,14 +1173,8 @@ void PushAnalysis::ProcessFunction()
                     {
                         while(runtimeValue->hasOneUse() &&
                             (isa<BitCastInst>(runtimeValue->user_back()) || 
-                            isa<IntToPtrInst>(runtimeValue->user_back())))
+                             isa<IntToPtrInst>(runtimeValue->user_back())))
                         {
-                            Type* type = runtimeValue->user_back()->getType();
-                            if (type->isPointerTy() && IGC::isA64Ptr(cast<PointerType>(type), m_context))
-                            {
-                                // Can't push 64bit pointer types
-                                break;
-                            }
                             runtimeValue = runtimeValue->user_back();
                         }
                         arg = addArgumentAndMetadata(
@@ -1196,17 +1190,12 @@ void PushAnalysis::ProcessFunction()
                         while(arg->getType() != runtimeValue->getType() &&
                             runtimeValue->hasOneUse() &&
                             (isa<BitCastInst>(runtimeValue->user_back()) ||
-                            isa<IntToPtrInst>(runtimeValue->user_back())))
+                             isa<IntToPtrInst>(runtimeValue->user_back())))
                         {
                             runtimeValue = runtimeValue->user_back();
                         }
                         if(arg->getType() != runtimeValue->getType())
                         {
-                            if(arg->getType()->isPointerTy())
-                            {
-                                arg = CastInst::CreateBitOrPointerCast(
-                                    arg, Type::getInt32Ty(arg->getContext()), "", cast<Instruction>(runtimeValue));
-                            }
                             arg = CastInst::CreateBitOrPointerCast(
                                 arg, runtimeValue->getType(), "", cast<Instruction>(runtimeValue));
                         }

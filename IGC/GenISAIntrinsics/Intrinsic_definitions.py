@@ -34,6 +34,8 @@
 
 # EX. "GenISA_blah": [{return_type},[arg1_type,arg2_type.....],Property]
 
+# The "any" type can be followed by a default type if a type is not explicitly specified: Ex. "any:int"
+
 # 0 - LLVMMatchType<0>
 # 1 - LLVMMatchType<1>
 # {int} - LLVMMatchType<{int}>
@@ -132,7 +134,7 @@ Imported_Intrinsics = \
     "GenISA_gather4Cptr": ["anyvector",["anyfloat",1,1,1,1,"anyptr","anyptr","int","int","int","int"],"NoMem"],
     "GenISA_gather4POptr": ["anyvector",["anyfloat",1,"int","int",1,"anyptr","anyptr","int","int","int","int"],"NoMem"],
     "GenISA_gather4POCptr": ["anyvector",["anyfloat",1,1,"int","int",1,"anyptr","anyptr","int","int","int","int"],"NoMem"],
-    "GenISA_RuntimeValue": ["float",["int"],"NoMem"],
+    "GenISA_RuntimeValue": ["any:float",["int"],"NoMem"],
     "GenISA_GetBufferPtr": ["anyptr",["int","int"],"NoMem"],
     "GenISA_DCL_inputVec": ["anyfloat",["int","int"],"NoMem"],
     "GenISA_DCL_ShaderInputVec": ["anyvector",["int","int"],"NoMem"],

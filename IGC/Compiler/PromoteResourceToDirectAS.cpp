@@ -170,15 +170,13 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
     Value* srcPtr = IGC::TracePointerSource(resourcePtr);
     if (srcPtr)
     {
-        if (isa<GenIntrinsicInst>(srcPtr))
+        // Trace the resource pointer.
+        // If we can find it, we can promote the indirect access to direct access
+        // by encoding the BTI as a direct addrspace
+        if (srcPtr->getType()->isPointerTy() &&
+            IGC::GetResourcePointerInfo(srcPtr, bufID, bufTy, accTy))
         {
-            // Trace the resource back to the GetBufferPtr/RuntimeValue instruction.
-            // If we can find it, we can promote the indirect access to direct access
-            // by encoding the BTI as a direct addrspace
-            if (IGC::GetResourcePointerInfo(srcPtr, bufID, bufTy, accTy))
-            {
-                canPromote = true;
-            }
+            canPromote = true;
         }
         else if (Argument* argPtr = dyn_cast<Argument>(srcPtr))
         {

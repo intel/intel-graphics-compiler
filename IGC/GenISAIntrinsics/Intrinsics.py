@@ -31,7 +31,7 @@ import sys
 import re
 import importlib
 
-OverloadedTypes = ["anyint","anyfloat","anyptr","anyvector"]
+OverloadedTypes = ["any","anyint","anyfloat","anyptr","anyvector"]
 VectorTypes = ["2","4","8","16"]
 DestSizes = ["","","21","22","23","24"]
 
@@ -64,6 +64,7 @@ pointerTypesi8_map = \
 
 any_map = \
 {
+    "any":0,
     "anyint":1,
     "anyfloat":2,
     "anyvector":3,
@@ -268,12 +269,20 @@ def createOverloadTable():
 
 def addAnyTypes(value,argNum):
     return_val = str()
+    default_value = str()
+    if "any:" in value:
+        default_value = value[4:] #get the default value encoded after the "any" type
+        value = "any"
     calculated_num = (argNum << 3) | any_map[value]
     if calculated_num < 16:
         return_val = hex(calculated_num).upper()[2:]
     else:
         return_val = "<" + str(calculated_num) + ">" #Can't represent in hex we will need to use long table
-    return "F" + return_val
+    return_val = "F" + return_val
+    if default_value:
+        encoded_default_value = encodeTypeString([default_value], str(), [])[0] #encode the default value
+        return_val = return_val + encoded_default_value
+    return return_val
 
 def addVectorTypes(source):
     vec_str = str()

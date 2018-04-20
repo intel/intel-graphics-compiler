@@ -218,19 +218,13 @@ Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList,
             instList.push_back(baseValue);
         }
 
-        if (GenIntrinsicInst* pintr = dyn_cast<GenIntrinsicInst>(baseValue))
+        unsigned bufId;
+        IGC::BufferType bufTy;
+		IGC::BufferAccessType accessTy;
+        if (GetResourcePointerInfo(baseValue, bufId, bufTy, accessTy))
         {
-            if (pintr->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr ||
-                pintr->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue)
-            {
-                // Source pointer instruction found
-                srcPtr = baseValue;
-                break;
-            }
-            else
-            {
-                break;
-            }
+            srcPtr = baseValue;
+            break;
         }
         else if (isa<Argument>(baseValue))
         {
@@ -245,14 +239,6 @@ Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList,
         else if (GetElementPtrInst* inst = dyn_cast<GetElementPtrInst>(baseValue))
         {
             baseValue = inst->getOperand(0);
-        }
-        else if (ExtractElementInst* inst = dyn_cast<ExtractElementInst>(baseValue))
-        {
-            baseValue = inst->getOperand(0);
-        }
-        else if (InsertElementInst* inst = dyn_cast<InsertElementInst>(baseValue))
-        {
-            baseValue = inst->getOperand(1);
         }
         else if (PHINode* inst = dyn_cast<PHINode>(baseValue))
         {
@@ -352,44 +338,43 @@ static BufferAccessType getDefaultAccessType(BufferType bufTy)
         return BufferAccessType::ACCESS_READWRITE;
     }
 }
-bool GetResourcePointerInfo(Value* srcPtr, unsigned &resID,
-    IGC::BufferType &resTy, BufferAccessType& accessTy)
+
+bool GetResourcePointerInfo(Value* srcPtr, unsigned &resID, IGC::BufferType &resTy, BufferAccessType& accessTy)
 {
     accessTy = BufferAccessType::ACCESS_READWRITE;
-
-    if (GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(srcPtr))
+    if (Instruction* inst = dyn_cast<Instruction>(srcPtr))
     {
-        if (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr)
+        // For bindless pointers with encoded metadata
+        if (inst->getType()->isPointerTy())
         {
-            Value *bufIdV = pIntr->getOperand(0);
-            Value *bufTyV = pIntr->getOperand(1);
-            if (isa<ConstantInt>(bufIdV) && isa<ConstantInt>(bufTyV))
-            {
-                resID = (unsigned)(cast<ConstantInt>(bufIdV)->getZExtValue());
-                resTy = (IGC::BufferType)(cast<ConstantInt>(bufTyV)->getZExtValue());
-                accessTy = getDefaultAccessType(resTy);
-                return true;
-            }
-        }
-        else if (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue)
-        {
-            MDNode* resID_md = pIntr->getMetadata("resID");
-            MDNode* resTy_md = pIntr->getMetadata("resTy");
-            MDNode* accTy_md = pIntr->getMetadata("accessTy");
-
+            MDNode* resID_md = inst->getMetadata("resID");
+            MDNode* resTy_md = inst->getMetadata("resTy");
+			MDNode* accTy_md = inst->getMetadata("accessTy");
             if (resID_md && resTy_md)
             {
                 resID = (unsigned) mdconst::dyn_extract<ConstantInt>(resID_md->getOperand(0))->getZExtValue();
                 resTy = (BufferType) mdconst::dyn_extract<ConstantInt>(resTy_md->getOperand(0))->getZExtValue();
-                if (accTy_md)
-                {
-                    accessTy = (BufferAccessType)mdconst::dyn_extract<ConstantInt>(
-                        accTy_md->getOperand(0))->getZExtValue();
-                }
-                else
-                {
-                    accessTy = getDefaultAccessType(resTy);
-                }
+
+				if (accTy_md)
+					accessTy = (BufferAccessType) mdconst::dyn_extract<ConstantInt>(accTy_md->getOperand(0))->getZExtValue();
+				else
+                	accessTy = getDefaultAccessType(resTy);
+                return true;
+            }
+        }
+	}
+	if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(srcPtr))
+    {
+		// For GetBufferPtr instructions with buffer info in the operands
+        if(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr)
+		{
+            Value *bufIdV = inst->getOperand(0);
+            Value *bufTyV = inst->getOperand(1);
+            if (isa<ConstantInt>(bufIdV) && isa<ConstantInt>(bufTyV))
+            {
+                resID = (unsigned)(cast<ConstantInt>(bufIdV)->getZExtValue());
+                resTy = (IGC::BufferType)(cast<ConstantInt>(bufTyV)->getZExtValue());
+				accessTy = getDefaultAccessType(resTy);
                 return true;
             }
         }
