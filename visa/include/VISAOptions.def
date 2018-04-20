@@ -112,7 +112,7 @@ DEF_VISA_OPTION(vISA_RATrace,				ET_BOOL, "-ratrace", UNUSED, false)
 DEF_VISA_OPTION(vISA_FastSpill,             ET_BOOL, "-fasterRA", UNUSED, false)
 DEF_VISA_OPTION(vISA_AbortOnSpillThreshold, ET_INT32, NULLSTR, UNUSED, 0)
 DEF_VISA_OPTION(vISA_enableBCR, ET_BOOL, "-enableBCR",   UNUSED, false)
-DEF_VISA_OPTION(vISA_hierarchicaIPA, ET_BOOL, "-fastIPA", UNUSED, false)
+DEF_VISA_OPTION(vISA_hierarchicaIPA, ET_BOOL, "-oldIPA", UNUSED, true)
 
 
 //=== scheduler options ===
