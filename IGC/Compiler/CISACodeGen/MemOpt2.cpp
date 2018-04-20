@@ -89,8 +89,6 @@ namespace {
             AU.addRequired<RegisterPressureEstimate>();
         }
 
-        bool clusterSampler(BasicBlock *BB);
-
         bool clusterMediaBlockRead(BasicBlock *BB);
 
         bool isSafeToMoveTo(Instruction *I, Instruction *Pos, const SmallVectorImpl<Instruction *> *CheckList) const;
@@ -230,8 +228,6 @@ bool MemOpt2::runOnFunction(Function &F) {
         bool LocalChanged = false;
         // Clear bookkeeping.
         Clear();
-        // Cluster samplers.
-        LocalChanged = clusterSampler(&BB);
 
         // Cluster MediaBlockReads
         LocalChanged |= clusterMediaBlockRead(&BB);
@@ -279,43 +275,6 @@ bool MemOpt2::isSafeToMoveTo(Instruction *I, Instruction *Pos, const SmallVector
         }
     }
     return true;
-}
-
-bool MemOpt2::clusterSampler(BasicBlock *BB) {
-    bool Changed = false;
-
-    Instruction *InsertPos = nullptr;
-    unsigned Count = 0;
-    Scheduled.clear();
-    for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
-        GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(BI);
-        if (!GII)
-            continue;
-        switch (GII->getIntrinsicID()) {
-            // TODO: Add more samplers.
-        case GenISAIntrinsic::GenISA_sampleptr:
-        case GenISAIntrinsic::GenISA_sampleLptr:
-        case GenISAIntrinsic::GenISA_sampleBptr:
-        case GenISAIntrinsic::GenISA_sampleLCptr:
-        {
-            if (!InsertPos)
-                InsertPos = GII;
-            // Reschedule the sampler to InsertPos
-            Count += getNumLiveOuts(GII);
-            if (Count > MaxLiveOutThreshold) {
-                Count = 0;
-                InsertPos = GII;
-            }
-            else
-                Changed |= schedule(BB, GII, InsertPos);
-            break;
-        }
-        default:
-            break;
-        }
-    }
-
-    return Changed;
 }
 
 //
