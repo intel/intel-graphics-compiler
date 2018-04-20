@@ -1136,6 +1136,10 @@ namespace IGC
                 {
                     DoReRA = true;
                 }
+                if (strstr(options, "-cl-intel-no-prera-scheduling"))
+                {
+                    IntelEnablePreRAScheduling = false;
+                }
             }
 
 
@@ -1146,6 +1150,8 @@ namespace IGC
             bool IncludeSIPKernelDebugWithLocalMemory;
             bool DoReRA;
             bool IntelHasBufferOffsetArg;
+            bool IntelEnablePreRAScheduling = true;
+
         };
 
         class Options

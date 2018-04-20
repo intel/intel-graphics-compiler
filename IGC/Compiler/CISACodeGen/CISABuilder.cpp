@@ -3442,7 +3442,15 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
          m_program->m_DriverInfo->enableVISAPreRAScheduler()) ||
         IGC_IS_FLAG_ENABLED(ForceVISAPreSched))
     {
-        vbuilder->SetOption(vISA_preRA_Schedule, true);
+        // Check if preRA scheduler is disabled from compiler options.
+        bool SchedEnable = true;
+        if (context->type == ShaderType::OPENCL_SHADER)
+        {
+            auto ClContext = static_cast<OpenCLProgramContext*>(context);
+            SchedEnable = ClContext->m_InternalOptions.IntelEnablePreRAScheduling;
+        }
+        vbuilder->SetOption(vISA_preRA_Schedule, SchedEnable);
+
         if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedCtrl))
         {
             vbuilder->SetOption(vISA_preRA_ScheduleCtrl, Val);
