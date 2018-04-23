@@ -1305,15 +1305,6 @@ void COpenCLKernel::AllocatePayload()
             constantBufferStartSet = true;
         }
 
-        assert(!constantBufferEndSet || !arg.isConstantBuf() && 
-                "Constant buffer arguments are not consecutive: arg is after the end of the constant buffer!");
-
-        if (constantBufferStartSet && !constantBufferEndSet && !arg.isConstantBuf())
-        {
-            constantBufferEnd = offset;
-            constantBufferEndSet = true;
-        }
-
         // Local IDs are non-uniform and may have two instances in SIMD32 mode
         int numAllocInstances = arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_IDS ? m_numberInstance : 1;
 
