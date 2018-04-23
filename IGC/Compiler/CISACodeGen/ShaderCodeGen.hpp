@@ -242,11 +242,10 @@ public:
     bool isMessageTargetDataCacheDataPort;
     uint m_sendStallCycle;
     uint m_staticCycle;
-    float m_stallCost = 0;
     unsigned m_spillSize = 0;
     float m_spillCost = 0;          // num weighted spill inst / total inst
 
-    std::vector<llvm::Value*> m_argListCache;
+	std::vector<llvm::Value*> m_argListCache;
 
     /// The size in byte used by igc (non-spill space). And this
     /// is the value passed to VISA so that VISA's spill, if any,

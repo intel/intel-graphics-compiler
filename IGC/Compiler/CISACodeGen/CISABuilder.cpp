@@ -4173,27 +4173,11 @@ void CEncoder::Compile()
     {
         uint sendStallCycle = 0;
         uint staticCycle = 0;
-        float stallCostLoop = 0.0;
-        
         for (uint i = 0; i < jitInfo->BBNum; i++)
         {
-            auto& bbInfo = jitInfo->BBInfo[i];
-            if (bbInfo.loopNestLevel)
-            {
-                float f = float(bbInfo.sendStallCycle) / bbInfo.staticCycle;
-                if (f > stallCostLoop)
-                {
-                    stallCostLoop = f;
-                }
-            }
             sendStallCycle += jitInfo->BBInfo[i].sendStallCycle;
             staticCycle += jitInfo->BBInfo[i].staticCycle;
         }
-
-        // if shader has loop, pick the highest stall cost within loop
-        float stallCost = float(sendStallCycle) / staticCycle;
-        m_program->m_stallCost = stallCostLoop > stallCost ?
-            stallCostLoop : stallCost;
         m_program->m_sendStallCycle = sendStallCycle;
         m_program->m_staticCycle = staticCycle;
     }

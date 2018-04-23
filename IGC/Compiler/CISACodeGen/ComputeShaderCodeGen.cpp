@@ -574,15 +574,13 @@ bool CComputeShader::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Func
         return false;
     }
 
-    if (simdMode == SIMDMode::SIMD32 && ctx->isSecondCompile)
-    {
-        return false;
-    }
-
     if (hasSimd16)  // got simd16 kernel, see whether compile simd32/simd8
     {
         if (simdMode == SIMDMode::SIMD32)
         {
+            uint sendStallCycle = simd16Program->m_sendStallCycle;
+            uint staticCycle = simd16Program->m_staticCycle;
+
             llvm::GlobalVariable* pGlobal = GetContext()->getModule()->getGlobalVariable("ThreadGroupSize_X");
             unsigned threadGroupSize_X = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
             pGlobal = GetContext()->getModule()->getGlobalVariable("ThreadGroupSize_Y");
@@ -590,7 +588,7 @@ bool CComputeShader::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Func
             pGlobal = GetContext()->getModule()->getGlobalVariable("ThreadGroupSize_Z");
             unsigned threadGroupSize_Z = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
 
-            if (simd16Program->m_stallCost > 0.18 ||
+            if ((sendStallCycle / (float)staticCycle > 0.2) ||
                 (m_Platform->AOComputeShadersSIMD32Mode() &&
                 threadGroupSize_X == 32 &&
                 threadGroupSize_Y == 32 &&
