@@ -4336,8 +4336,8 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
         builder->createImm(exdesc, Type_UD),
         builder->createImm(desc, Type_UD),
         InstOpt_WriteEnable,
-        true,
-        true,
+        /*isRead*/false,
+        /*isWrite*/true,
         NULL,
         0);
     // need to make sure builder list is empty since later phases do a splice on the entire list
