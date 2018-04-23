@@ -27,11 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Definition of integer Registry-key Values
 // (may merge this into igc_flags.def's macro)
 enum {
-    // ForcePixelShaderSIMDMode
-    FLAG_PS_SIMD_MODE_DEFAULT = 0,                 // default is SIMD8 compilation + heuristics to determine if we want to compile SIMD32/SIMD16
-    FLAG_PS_SIMD_MODE_FORCE_SIMD8 = 1,             // Force SIMD8 compilation
-    FLAG_PS_SIMD_MODE_FORCE_SIMD16 = 2,            // Force SIMD16 compilation
-    FLAG_PS_SIMD_MODE_FORCE_SIMD32 = 4,            // Force SIMD32 compilation
     // EnableVISAStructurizer
     FLAG_SCF_Disable = 0,      // UCF (goto/join)
     FLAG_SCF_Default = 1,      // SCF as much as possible
@@ -55,3 +50,4 @@ enum {
 
     FLAG_LAST_Entry
 };
+

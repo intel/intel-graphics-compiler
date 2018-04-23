@@ -750,6 +750,8 @@ namespace IGC
         IGC::IGCMD::MetaDataUtils  *m_pMdUtils = nullptr;
         IGC::ModuleMetaData *modMD = nullptr;
 
+        void initCompOptionFromRegkey();
+
     public:
         CodeGenContext(
             ShaderType          _type,      ///< shader type
@@ -796,6 +798,7 @@ namespace IGC
             module = m;
             m_pMdUtils = new IGC::IGCMD::MetaDataUtils(m);
             modMD = new IGC::ModuleMetaData();
+            initCompOptionFromRegkey();
         }
 
         // Several clients explicitly delete module without resetting module to null.
@@ -863,6 +866,11 @@ namespace IGC
             str = msg;
             this->oclErrorMessage = str;// where to get this from
             return;
+        }
+
+        CompOptions& getCompilerOption()
+        {
+            return getModuleMetaData()->compOpt;
         }
 
         virtual void resetOnRetry()

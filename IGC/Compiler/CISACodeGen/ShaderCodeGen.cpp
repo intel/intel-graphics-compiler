@@ -625,8 +625,10 @@ void PSCodeGen(PixelShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders
     AddAnalysisPasses(*ctx, shaders, PassMgr);
 
     bool useRegKeySimd = false;
-    uint32_t pixelShaderSIMDMode = IGC_GET_FLAG_VALUE(ForcePixelShaderSIMDMode);
-    bool earlyExit = IGC_IS_FLAG_DISABLED(PixelShaderDoNotAbortOnSpill) ? true : false;
+    uint32_t pixelShaderSIMDMode =
+        ctx->getCompilerOption().forcePixelShaderSIMDMode;
+    bool earlyExit =
+        ctx->getCompilerOption().pixelShaderDoNotAbortOnSpill ? false : true;
 
 
     if (pixelShaderSIMDMode & FLAG_PS_SIMD_MODE_FORCE_SIMD8)
@@ -1310,5 +1312,14 @@ void OptimizeIR(CodeGenContext* pContext)
     MEM_SNAPSHOT( IGC::SMS_AFTER_OPTIMIZER );
 }
 
+void CodeGenContext::initCompOptionFromRegkey()
+{
+    CompOptions& opt = getModuleMetaData()->compOpt;
+
+    opt.pixelShaderDoNotAbortOnSpill =
+        IGC_IS_FLAG_ENABLED(PixelShaderDoNotAbortOnSpill);
+    opt.forcePixelShaderSIMDMode =
+        IGC_GET_FLAG_VALUE(ForcePixelShaderSIMDMode);
+}
 
 }  // namespace IGC

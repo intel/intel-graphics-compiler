@@ -26,6 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "3d/common/iStdLib/types.h"
+
+#include "AdaptorCommon/API/igc.h"
 #include "common/debug/Debug.hpp"
 
 // Forward declarations

@@ -688,9 +688,13 @@ namespace IGC
         CPixelShader* pShader = nullptr;
         if (simd32Shader)
         {
+            unsigned kernelSize = simd32Shader->m_simdProgram.m_programSize;
+            bool forceSIMD32 = 
+                (this->GetContext()->getCompilerOption().forcePixelShaderSIMDMode &
+                    FLAG_PS_SIMD_MODE_FORCE_SIMD32) != 0;
+
             if ((!simd8Shader && !simd16Shader) ||
-                (simd32Shader->m_simdProgram.m_programSize > 0 &&
-                simd32Shader->m_simdProgram.m_programSize < InstCacheSize))
+                (kernelSize > 0 && (kernelSize < InstCacheSize || forceSIMD32)))
             {
                 pKernelProgram->simd32 = *simd32Shader->ProgramOutput();
                 pShader = simd32Shader;
@@ -1088,6 +1092,10 @@ namespace IGC
 
     bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)
     {
+        bool forceSIMD32 = 
+            (this->GetContext()->getCompilerOption().forcePixelShaderSIMDMode &
+                FLAG_PS_SIMD_MODE_FORCE_SIMD32) != 0;
+
         if (m_HasoStencil && simdMode != SIMDMode::SIMD8)
         {
             return false;
@@ -1120,8 +1128,7 @@ namespace IGC
        }
        if (simdMode == SIMDMode::SIMD32)
         {
-            uint32_t pixelShaderSIMDMode = IGC_GET_FLAG_VALUE(ForcePixelShaderSIMDMode);
-            if (pixelShaderSIMDMode & FLAG_PS_SIMD_MODE_FORCE_SIMD32)
+            if (forceSIMD32)
             {
                 return true;
             }
