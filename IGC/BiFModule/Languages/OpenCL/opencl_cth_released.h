@@ -3245,7 +3245,7 @@ void __attribute__((overloadable)) write_imageui(write_only image3d_t image, int
    * coord.x and coord.y are considered to be
    * unnormalized coordinates and must be in the range 0
    * ... image width of the mip-level specified by lod - 1
-   * and 0 ... image number of layers - 1   * write_imagef can only be used with image objects
+   * and 0  image number of layers - 1   * write_imagef can only be used with image objects
    * created with image_channel_data_type set to one of
    * the pre-defined packed formats or set to
    * CL_SNORM_INT8, CL_UNORM_INT8,

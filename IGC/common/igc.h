@@ -46,4 +46,3 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // to include this file only.
 
 #endif // __IGC_H
-

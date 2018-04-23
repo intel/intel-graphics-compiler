@@ -1153,9 +1153,9 @@ namespace IGC
     ///        TO -->
     ///            % 3 = call i32 @genx.GenISA.DCL.HSControlPointID()
     ///            store i32 % 3, i32* @0
-    ///            ...
+    ///            . . .
     ///            % 4 = call i32 @genx.GenISA.DCL.HSControlPointID()
-    ///            ...
+    ///            . . .
     ///            % 10 = insertelement <4 x i32> <i32 0, i32 0, i32 undef, i32 1>, i32 % 4, i32 2
     /// 
     ///        
