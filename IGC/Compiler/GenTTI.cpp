@@ -225,18 +225,27 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, TTI::UnrollingPrefer
                 return true;
             return false;
           };
+          auto hasCall = [](BasicBlock *BB) {
+            for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI)
+              if (isa<CallInst>(&*BI) &&
+                  !isa<IntrinsicInst>(&*BI) && !isa<GenIntrinsicInst>(&*BI))
+                return true;
+            return false;
+          };
           // For innermost loop, allow certain patterns.
           unsigned Count = 0;
+          bool HasCall = false;
           bool HasStore = false;
           bool MayHasLoadInHeaderOnly = true;
           for (auto BI = L->block_begin(), BE = L->block_end(); BI != BE; ++BI) {
             Count += countNonPHI(*BI);
+            HasCall |= hasCall(*BI);
             HasStore |= hasStore(*BI);
             if (L->getHeader() != *BI)
               MayHasLoadInHeaderOnly &= !hasLoad(*BI);
           }
           // Runtime unroll it.
-          if (!HasStore && MayHasLoadInHeaderOnly && Count < 100) {
+          if (!HasCall && !HasStore && MayHasLoadInHeaderOnly && Count < 100) {
             unsigned C = IGC_GET_FLAG_VALUE(AdvRuntimeUnrollCount);
             if (C == 0) C = 4;
             UP.Runtime = true;
