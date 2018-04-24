@@ -8716,6 +8716,43 @@ int IR_Builder::translateVISARTWrite3DInst(
             G4_DstRegRegion* dstPixelMaskRgn = createDstRegRegion(
                 Direct, msg->getRegVar(), 1, 14, 1, Type_UW);
 
+			// setPixelMaskRgn when WA ce0 is needed
+			auto setPixelMaskRgn = [=](G4_InstOption Option) -> void
+			{
+				G4_Declare* flagDecl = createTempFlag(1, "WAce0");
+				G4_RegVar* flagVar = flagDecl->getRegVar();
+				G4_DstRegRegion* flag = createDstRegRegion(
+					Direct, flagVar, 0, 0, 1, Type_UW);
+
+				// (W) mov (1|M0) WAce0:uw, 0
+				// cmp (16) (eq)WAce0 r0:uw r0:uw
+				// (W) mov(1|M0) dstPixelMaskRgn:uw  WAce0:uw
+				createInst(NULL, G4_mov, NULL, false, 1, flag,
+					createImm(0, Type_UW), NULL, InstOpt_WriteEnable);
+
+				G4_SrcRegRegion *r0_0 = createSrcRegRegion(
+					Mod_src_undef, Direct,
+					getRealR0()->getRegVar(), 0, 0,
+					getRegionStride1(), Type_UW);
+				G4_SrcRegRegion *r0_1 = createSrcRegRegion(
+					Mod_src_undef, Direct,
+					getRealR0()->getRegVar(), 0, 0,
+					getRegionStride1(), Type_UW);
+				G4_DstRegRegion *nullDst = createNullDst(Type_UW);
+				G4_CondMod* flagCM = createCondMod(Mod_e, flagVar, 0);
+				createInst(NULL, G4_cmp, flagCM, false, 16, nullDst,
+					r0_0, r0_1, Option);
+
+				G4_SrcRegRegion *flagSrc = createSrcRegRegion(
+					Mod_src_undef, Direct,
+					flagVar, 0, 0,
+					getRegionScalar(), Type_UW);
+
+				// move to dstPixelMaskRgn
+				createInst(NULL, G4_mov, NULL, false, 1, dstPixelMaskRgn,
+					flagSrc, NULL, InstOpt_WriteEnable);
+			};
+
             G4_SrcRegRegion *pixelMask = NULL;
             if (emask == vISA_EMASK_M5_NM || emask == vISA_EMASK_M5)
             {
@@ -8741,14 +8778,21 @@ int IR_Builder::translateVISARTWrite3DInst(
                 }
                 else
                 {
-                    G4_SrcRegRegion *ce0 = createSrcRegRegion(
-                        Mod_src_undef, Direct,
-                        phyregpool.getMask0Reg(), 0, 0,
-                        getRegionScalar(), Type_UD);
+					if (VISA_WA_CHECK(getPWaTable(), Wa_1406950495))
+					{
+						setPixelMaskRgn(InstOpt_M16);
+					}
+					else
+					{
+						G4_SrcRegRegion *ce0 = createSrcRegRegion(
+							Mod_src_undef, Direct,
+							phyregpool.getMask0Reg(), 0, 0,
+							getRegionScalar(), Type_UD);
 
-                    // shr .14<1>:uw ce0:ud 16:uw
-                    createInst(NULL, G4_shr, NULL, false, 1, dstPixelMaskRgn,
-                        ce0, createImm(16, Type_UW), InstOpt_WriteEnable);
+						// shr .14<1>:uw ce0:ud 16:uw
+						createInst(NULL, G4_shr, NULL, false, 1, dstPixelMaskRgn,
+							ce0, createImm(16, Type_UW), InstOpt_WriteEnable);
+					}
                 }
             }
             else
@@ -8758,19 +8802,29 @@ int IR_Builder::translateVISARTWrite3DInst(
                     pixelMask = createSrcRegRegion(Mod_src_undef, Direct,
                         pred->getBase()->asRegVar(), 0, 0,
                         getRegionScalar(), Type_UW);
+
+					//clearing lower 15 bits
+					createInst(NULL, G4_mov, NULL, false, 1, dstPixelMaskRgn,
+						pixelMask, NULL, InstOpt_WriteEnable);
                 }
-                else
-                {
-                    G4_SrcRegRegion *ce0 = createSrcRegRegion(
-                        Mod_src_undef, Direct,
-                        phyregpool.getMask0Reg(), 0, 0,
-                        getRegionScalar(), Type_UD);
-                    // mov .14<1>:uw ce0:ud
-                    pixelMask = ce0;
+				else
+				{
+					if (VISA_WA_CHECK(getPWaTable(), Wa_1406950495))
+					{
+						setPixelMaskRgn(InstOpt_M0);
+					}
+					else
+					{
+						G4_SrcRegRegion *ce0 = createSrcRegRegion(
+							Mod_src_undef, Direct,
+							phyregpool.getMask0Reg(), 0, 0,
+							getRegionScalar(), Type_UD);
+
+						// mov .14<1>:uw ce0:ud.  clearing lower 15 bits
+						createInst(NULL, G4_mov, NULL, false, 1, dstPixelMaskRgn,
+							ce0, NULL, InstOpt_WriteEnable);
+					}
                 }
-                //clearing lower 15 bits
-                createInst(NULL, G4_mov, NULL, false, 1, dstPixelMaskRgn,
-                    pixelMask, NULL, InstOpt_WriteEnable);
             }
 
             pred = NULL;
@@ -9298,7 +9352,7 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
     payloadHF->setAliasDeclare( payloadF, 0 );
 
     /********* Creating temp destination, since results are interleaved **************/
-    G4_DstRegRegion *dst1 = builder->createNullDst(dst->getType());;
+    G4_DstRegRegion *dst1 = builder->createNullDst(dst->getType());
     G4_Declare * originalDstDcl = nullptr;
     G4_Declare* tempDstDcl = nullptr;
     bool pixelNullMaskEnable = false;

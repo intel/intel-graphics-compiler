@@ -5148,6 +5148,7 @@ void CEncoder::SetVISAWaTable(WA_TABLE const& waTable)
     m_WaTable.WaNoSimd16TernarySrc0Imm = waTable.WaNoSimd16TernarySrc0Imm;
     m_WaTable.Wa_1406306137 = waTable.Wa_1406306137;
     m_WaTable.Wa_2201674230 = waTable.Wa_2201674230;
+	m_WaTable.Wa_1406950495 = waTable.Wa_1406950495;
 }
 
 void CEncoder::GetRowAndColOffset(CVariable* var, unsigned int subVar, unsigned int subReg, unsigned char& rowOff, unsigned char& colOff)

@@ -189,6 +189,12 @@ typedef struct _VISA_WA_TABLE
     "Limit the number of live sends to work-around HW hang bug.",
     VISA_WA_BUG_TYPE_HANG)
 
+	VISA_WA_DECLARE(
+    Wa_1406950495,
+    "Do not read ce0 to work-around HW bug.",
+    VISA_WA_BUG_TYPE_HANG)
+	
+
     _VISA_WA_TABLE()
     {
         VISA_WA_INIT(WaHeaderRequiredOnSimd16Sample16bit)
@@ -217,6 +223,7 @@ typedef struct _VISA_WA_TABLE
         VISA_WA_INIT(WaNoSimd16TernarySrc0Imm)
         VISA_WA_INIT(Wa_1406306137)
         VISA_WA_INIT(Wa_2201674230)
+		VISA_WA_INIT(Wa_1406950495)
     }
 } VISA_WA_TABLE, *PVISA_WA_TABLE;
 

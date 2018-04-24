@@ -129,6 +129,8 @@ namespace vISA
         uint32_t getFuncCtrlWithSimd16(G4_SendMsgDescriptor* Desc);
         void simplifyMsg(INST_LIST_ITER SendIter);
 
+		bool WAce0Read;
+
 
     public:
         SendFusion(FlowGraph* aCFG, Mem_Manager* aMMgr)
@@ -137,8 +139,10 @@ namespace vISA
               Builder(aCFG->builder),
               CurrBB(nullptr),
               DMaskUD(nullptr),
-              FlagDefPerBB(nullptr)
+              FlagDefPerBB(nullptr),
+			  WAce0Read(false)
         {
+			WAce0Read = VISA_WA_CHECK(Builder->getPWaTable(), Wa_1406950495) ;
             initDMaskModInfo();
         }
 
@@ -955,17 +959,68 @@ void SendFusion::createFlagPerBB(INST_LIST* InsertList, INST_LIST_ITER InsertBef
     G4_VarBase* FlagPerBB = flagDecl->getRegVar();
     RegionDesc* scalar = Builder->getRegionScalar();
 
-    // (W) and (|M0) tmp<1>:ud ce0.0<0;1,0>:ud DMaskUD:ud
+
     G4_Declare* tmpDecl = Builder->createTempVar(1, Type_UD, Either, Any, "Flag");
-    G4_SrcRegRegion *ce0Src = Builder->createSrcRegRegion(
-        Mod_src_undef, Direct, Builder->phyregpool.getMask0Reg(), 0, 0, scalar, Type_UD);
-    G4_SrcRegRegion *dmaskSrc = Builder->createSrcRegRegion(
-        Mod_src_undef, Direct, DMaskUD, 0, 0, scalar, Type_UD);
-    G4_DstRegRegion* tmpDst = Builder->createDstRegRegion(
-        Direct, tmpDecl->getRegVar(), 0, 0, 1, Type_UD);
-    G4_INST* Inst0 = Builder->createInternalInst(
-        NULL, G4_and, NULL, false, 1, tmpDst, ce0Src, dmaskSrc, InstOpt_WriteEnable);
-    InsertList->insert(InsertBeforePos, Inst0);
+	G4_INST* Inst0;
+	if (WAce0Read)
+	{
+		// (W) mov (1|M0) WAce0:uw, 0
+		// cmp (16|M0) (eq)WAce0 r0:uw r0:uw
+		// (W) mov(1|M0) tmpDst1  WAce0:uw
+		G4_Declare* flagDecl = Builder->createTempFlag(1, "WAce0");
+		G4_RegVar* flagVar = flagDecl->getRegVar();
+		G4_DstRegRegion* flag = Builder->createDstRegRegion(
+			Direct, flagVar, 0, 0, 1, Type_UW);
+
+		// (W) mov (1|M0) WAce0:uw, 0
+		// cmp (16|M5) (eq)WAce0 r0:uw r0:uw
+		// (W) mov(1|M0) dstPixelMaskRgn:uw  WAce0:uw
+		G4_INST* I0 = Builder->createInternalInst(NULL, G4_mov, NULL, false, 1, flag,
+			Builder->createImm(0, Type_UW), NULL, InstOpt_WriteEnable);
+		InsertList->insert(InsertBeforePos, I0);
+
+		G4_SrcRegRegion *r0_0 = Builder->createSrcRegRegion(
+			Mod_src_undef, Direct,
+			Builder->getRealR0()->getRegVar(), 0, 0,
+			Builder->getRegionStride1(), Type_UW);
+		G4_SrcRegRegion *r0_1 = Builder->createSrcRegRegion(
+			Mod_src_undef, Direct,
+			Builder->getRealR0()->getRegVar(), 0, 0,
+			Builder->getRegionStride1(), Type_UW);
+		G4_CondMod* flagCM = Builder->createCondMod(Mod_e, flagVar, 0);
+		G4_DstRegRegion *nullDst = Builder->createNullDst(Type_UW);
+		// Hard-coded simd8 here!
+		G4_INST* I1 = Builder->createInternalInst(NULL, G4_cmp, flagCM, false, 8,
+			nullDst, r0_0, r0_1, InstOpt_M0);
+		InsertList->insert(InsertBeforePos, I1);
+
+		G4_SrcRegRegion *flagSrc = Builder->createSrcRegRegion(
+			Mod_src_undef, Direct,
+			flagVar, 0, 0,
+			Builder->getRegionScalar(), Type_UW);
+		G4_DstRegRegion* tmpDst1 = Builder->createDstRegRegion(
+			Direct, tmpDecl->getRegVar(), 0, 0, 1, Type_UW);
+		Inst0 = Builder->createInternalInst(NULL, G4_mov, NULL, false, 1, tmpDst1,
+			flagSrc, NULL, InstOpt_WriteEnable);
+		InsertList->insert(InsertBeforePos, Inst0);
+
+		// update DefUse
+		I1->addDefUse(Inst0, Opnd_src0);
+		I0->addDefUse(Inst0, Opnd_src0);
+	}
+	else
+	{
+		// (W) and (|M0) tmp<1>:ud ce0.0<0;1,0>:ud DMaskUD:ud
+		G4_SrcRegRegion *ce0Src = Builder->createSrcRegRegion(
+			Mod_src_undef, Direct, Builder->phyregpool.getMask0Reg(), 0, 0, scalar, Type_UD);
+		G4_SrcRegRegion *dmaskSrc = Builder->createSrcRegRegion(
+			Mod_src_undef, Direct, DMaskUD, 0, 0, scalar, Type_UD);
+		G4_DstRegRegion* tmpDst = Builder->createDstRegRegion(
+			Direct, tmpDecl->getRegVar(), 0, 0, 1, Type_UD);
+		Inst0 = Builder->createInternalInst(
+			NULL, G4_and, NULL, false, 1, tmpDst, ce0Src, dmaskSrc, InstOpt_WriteEnable);
+		InsertList->insert(InsertBeforePos, Inst0);
+	}
 
     //  Duplicate 8-bit mask to the next 8 bits
     //  (W) mov (2|M0) tmp:ub tmp.0<0;1,0>:ub
@@ -1043,7 +1098,8 @@ void SendFusion::doFusion(
 
     if (!isWrtEnable)
     {
-        if (DMaskUD == nullptr)
+		// No need to read DMask if WAceRead is true
+        if (!WAce0Read && DMaskUD == nullptr)
         {
             // First time, let's save dispatch mask in the entry BB and
             // use it for all Channel enable calcuation in the entire shader.
