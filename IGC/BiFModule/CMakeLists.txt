@@ -176,6 +176,9 @@
     endif()
   endif()
   add_dependencies(common_clang_dll GetClang)
+
+  install(FILES $<TARGET_FILE:common_clang_dll> DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}lib COMPONENT igc-opencl)
+
 # End Clang section
 
 
