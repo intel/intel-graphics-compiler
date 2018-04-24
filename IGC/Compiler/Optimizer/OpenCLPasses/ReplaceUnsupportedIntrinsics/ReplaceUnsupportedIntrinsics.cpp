@@ -231,7 +231,6 @@ Value *ReplaceUnsupportedIntrinsics::replicateScalar(
     return Res;
 }
 
-
 // A help functions to generate vector load or stores for efficient
 // memory operations.
 //
@@ -368,7 +367,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(MemCpyInst* MC)
     IRBuilder<> Builder(MC);
 
     ConstantInt *CI = dyn_cast<ConstantInt>(LPCount);
-    if(CI)
+    if(CI && Align >= 4)
     {
         uint32_t Count = (uint32_t)CI->getZExtValue();
 
@@ -535,7 +534,8 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(MemMoveInst* MM)
     B.SetInsertPoint(BBFalse);
     B.CreateBr(Post);
 
-    if (auto *CI = dyn_cast<ConstantInt>(LPCount))
+    auto *CI = dyn_cast<ConstantInt>(LPCount);
+    if (CI && Align >= 4)
     {
         uint32_t Count = (uint32_t)CI->getZExtValue();
 
@@ -665,7 +665,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(MemSetInst* MS)
     IRBuilder<> Builder(MS);
 
     ConstantInt *CI = dyn_cast<ConstantInt>(LPCount);
-    if(CI)
+    if(CI && Align >= 4)
     {
         uint32_t Count = (uint32_t)CI->getZExtValue();
 

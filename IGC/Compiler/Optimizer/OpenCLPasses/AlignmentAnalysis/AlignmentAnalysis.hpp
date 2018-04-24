@@ -88,6 +88,9 @@ namespace IGC
         unsigned int visitZExtInst(llvm::ZExtInst &I);
         unsigned int visitSExtInst(llvm::SExtInst &I);
         unsigned int visitCallInst(llvm::CallInst &I);
+        unsigned int visitMemSetInst(llvm::MemSetInst &I);
+        unsigned int visitMemCpyInst(llvm::MemCpyInst &I);
+        unsigned int visitMemMoveInst(llvm::MemMoveInst &I);
 
     protected:
         /// @breif Evaluates the alignment of I based on its operands.

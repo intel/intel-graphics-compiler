@@ -112,7 +112,18 @@ bool AlignmentAnalysis::processInstruction(llvm::Instruction* I)
     
     // Compute the instruction's alignment 
     // using the alignment of the arguments.
-    unsigned int newAlign = visit(I);
+    unsigned int newAlign = 0;
+    if (I->getType()->isPointerTy())
+    {
+        // If a pointer is specifically given an 'align' field in the MD, use it.
+        MDNode* alignmentMD = I->getMetadata("align");
+        if (alignmentMD)
+            newAlign = (unsigned) mdconst::dyn_extract<ConstantInt>(alignmentMD->getOperand(0))->getZExtValue();
+    }
+    if (!newAlign)
+    {
+        newAlign = visit(I);
+    }
 
     // The new alignment may not be better than the current one,
     // since we're only allowed to go in one direction in the lattice.
@@ -388,6 +399,33 @@ unsigned int AlignmentAnalysis::visitCallInst(CallInst &I)
         return MinimumAlignment; 
     }
 
+    return MinimumAlignment;
+}
+
+unsigned int AlignmentAnalysis::visitMemSetInst(MemSetInst &I)
+{
+    // Set the align attribute of the memset according to the detected
+    // alignment of its operand.
+    unsigned alignment = iSTD::Max(I.getAlignment(), getAlignValue(I.getRawDest()));
+    I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
+    return MinimumAlignment;
+}
+
+unsigned int AlignmentAnalysis::visitMemCpyInst(MemCpyInst &I)
+{
+    // Set the align attribute of the memcpy based on the minimum alignment of its source and dest fields
+    unsigned alignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
+    alignment = iSTD::Max(I.getAlignment(), alignment);
+    I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
+    return MinimumAlignment;
+}
+
+unsigned int AlignmentAnalysis::visitMemMoveInst(MemMoveInst &I)
+{
+    // Set the align attribute of the memmove based on the minimum alignment of its source and dest fields
+    unsigned alignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
+    alignment = iSTD::Max(I.getAlignment(), alignment);
+    I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
     return MinimumAlignment;
 }
 
