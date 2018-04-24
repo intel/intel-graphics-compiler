@@ -270,6 +270,12 @@ void PreRAScheduler::clearDDG()
     readyNodeHoldQueue.clear();
     instructionOrderSortedReadyQueue.clear();
 
+    for (auto nodeBegin = m_pInstToNodeMap.begin(), nodeEnd = m_pInstToNodeMap.end();
+        nodeBegin != nodeEnd;
+        nodeBegin++)
+    {
+        delete nodeBegin->second;
+    }
 
     m_pInstToNodeMap.clear();
 }
@@ -605,7 +611,7 @@ void PreRAScheduler::buildBasicBlockDDG(
         auto currInstFound = m_pInstToNodeMap.find(m_pLVA->ValueIds[BI]);
         if (currInstFound == m_pInstToNodeMap.end())
         {
-            currInstNode = new (Allocator)Node();
+            currInstNode = new Node();
             currInstNode->instruction = BI;
             currInstNode->numPredecessors = 0;
             currInstNode->nodeDelay = 0; // do not associate latency with the instruction yet. Wait to see the instruction's users
