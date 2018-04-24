@@ -215,7 +215,6 @@ namespace IGC
         std::map<llvm::GlobalVariable*, int> inlineProgramScopeOffsets;
         ShaderData shaderData;
         bool UseBindlessImage = false;
-		bool hasVertexHeader = true;
         unsigned int privateMemoryPerWI = 0;
         std::array<uint64_t, NUM_SHADER_RESOURCE_VIEW_SIZE> m_ShaderResourceViewMcsMask;
     };

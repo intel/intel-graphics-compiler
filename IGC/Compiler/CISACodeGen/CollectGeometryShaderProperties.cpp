@@ -57,8 +57,6 @@ CollectGeometryShaderProperties::CollectGeometryShaderProperties()
 void CollectGeometryShaderProperties::gatherInformation(Function &F)
 {
     ExtractGlobalVariables(F);
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    m_gsProps.Input().PerVertex().HasVertexHeader(ctx->getModuleMetaData()->hasVertexHeader);
     visit(F);
 }
 

@@ -50,15 +50,8 @@ namespace IGC
 
 OctEltUnit CVertexShader::GetURBHeaderSize() const
 {
-    if (GetContext()->getModuleMetaData()->hasVertexHeader)
-    {
-		OctEltUnit headerSize = m_properties.m_hasClipDistance ? OctEltUnit(2) : OctEltUnit(1);
-		return headerSize;
-    }
-    else
-    {
-		return OctEltUnit(0);
-    }
+    OctEltUnit headerSize = m_properties.m_hasClipDistance ? OctEltUnit(2) : OctEltUnit(1);
+    return headerSize;
 }
 
 void CVertexShader::AllocatePayload()

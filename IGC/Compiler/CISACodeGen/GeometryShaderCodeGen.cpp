@@ -438,11 +438,6 @@ void CGeometryShader::AddPrologue()
         encoder.Shr(m_pInstanceID, m_pURBWriteHandleReg, ImmToVariable(27, ISA_TYPE_UD));
         encoder.Push();
     }
-	// The 'include vertex handles' field must be set if the vertex URB entry read length is 0.
-	if (m_properties.Input().PerVertex().Size().Count() == 0)
-	{
-		GetURBReadHandlesReg();
-	}
 }
 
 void CGeometryShader::SetShaderSpecificHelper(EmitPass* emitPass)

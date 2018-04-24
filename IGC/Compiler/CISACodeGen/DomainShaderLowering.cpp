@@ -321,21 +321,14 @@ void DomainShaderLowering::LowerIntrinsicInputOutput(Function& F)
 void DomainShaderLowering::CalculateVertexHeaderSize(Function& F)
 {
     IGC::CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (context->getModuleMetaData()->hasVertexHeader)
+    if (context->m_DriverInfo.HasFixedURBHeaderSize())
     {
-		if (context->m_DriverInfo.HasFixedURBHeaderSize())
-		{
-			m_headerSize = QuadEltUnit(4);
-			m_dsPropsPass->DeclareClipDistance();
-		}
-		else
-		{
-			m_headerSize = QuadEltUnit(2);
-		}
+        m_headerSize = QuadEltUnit(4);
+        m_dsPropsPass->DeclareClipDistance();
     }
     else
     {
-		m_headerSize = QuadEltUnit(0);
+        m_headerSize = QuadEltUnit(2);
     }
 
     for (auto I = F.begin(), E = F.end(); I != E; ++I)
