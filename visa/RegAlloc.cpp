@@ -3030,18 +3030,18 @@ void GlobalRA::markBlockLocalVar(G4_RegVar* var, unsigned bbId)
     }
 }
 
-void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem)
+void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA, bool reDo)
 {
     for (std::list<G4_INST*>::iterator it = bb->begin(); it != bb->end(); it++)
     {
         G4_INST* inst = *it;
 
-        // Track direct dst references.
+		// Track direct dst references.
 
-        G4_DstRegRegion* dst = inst->getDst();
+		G4_DstRegRegion* dst = inst->getDst();
 
-        if (dst != NULL)
-        {
+		if (dst != NULL)
+		{
             G4_DstRegRegion* dstRgn = dst->asDstRegRegion();
 
             if (dstRgn->getBase()->isRegVar()) {
@@ -3054,29 +3054,7 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem)
                     {
                         topdcl->setIsRefInSendDcl(true);
                     }
-                    LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
-                    unsigned int startIdx;
-                    if (lr->getFirstRef(startIdx) == NULL)
-                    {
-                        lr->setFirstRef(inst, 0);
-                    }
-                    lr->recordRef(bb);
-                    recordRef(topdcl);
-                }
-            }
-        }
-
-        G4_CondMod* condMod = inst->getCondMod();
-
-        if (condMod != NULL &&
-            condMod->getBase() != NULL)
-        {
-            if (condMod->getBase() && condMod->getBase()->isRegVar())
-            {
-                markBlockLocalVar(condMod->getBase()->asRegVar(), bb->getId());
-
-                G4_Declare* topdcl = condMod->getBase()->asRegVar()->getDeclare();
-                if (topdcl)
+                    if (!doLocalRA || dst->isFlag() || dst->isAddress() || reDo)
                 {
                     LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
                     unsigned int startIdx;
@@ -3088,26 +3066,51 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem)
                     recordRef(topdcl);
                 }
             }
+		}
         }
 
-        // Track direct src references.
+        G4_CondMod* condMod = inst->getCondMod();
 
-        for (unsigned j = 0; j < G4_MAX_SRCS; j++)
+        if( condMod != NULL &&
+            condMod->getBase() != NULL )
         {
-            G4_Operand* src = inst->getSrc(j);
-
-            if (src == NULL)
+            if( condMod->getBase() && condMod->getBase()->isRegVar() )
             {
-                // Do nothing.
+                markBlockLocalVar( condMod->getBase()->asRegVar(), bb->getId() );
+
+                G4_Declare* topdcl = condMod->getBase()->asRegVar()->getDeclare();
+                if (topdcl)
+                {
+                    LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
+				    unsigned int startIdx;
+				    if( lr->getFirstRef( startIdx ) == NULL )
+				    {
+				        lr->setFirstRef( inst, 0 );
+                    }
+                    lr->recordRef( bb );
+                    recordRef(topdcl);
+                }
             }
-            else if (src->isSrcRegRegion() && src->asSrcRegRegion()->getBase()->isRegVar())
-            {
-                G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
+        }
 
-                if (srcRgn->getBase()->isRegVar()) {
-                    markBlockLocalVar(src->asSrcRegRegion()->getBase()->asRegVar(), bb->getId());
+		// Track direct src references.
 
-                    G4_Declare* topdcl = GetTopDclFromRegRegion(src);
+		for (unsigned j = 0; j < G4_MAX_SRCS; j++)
+		{
+			G4_Operand* src = inst->getSrc(j);
+
+			if (src == NULL)
+			{
+				// Do nothing.
+			}
+			else if (src->isSrcRegRegion() && src->asSrcRegRegion()->getBase()->isRegVar())
+			{
+				G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
+
+				if (srcRgn->getBase()->isRegVar()) {
+					markBlockLocalVar(src->asSrcRegRegion()->getBase()->asRegVar(), bb->getId());
+
+                    G4_Declare* topdcl = GetTopDclFromRegRegion( src );
                     if (topdcl)
                     {
                         if (inst->isSend())
@@ -3115,58 +3118,64 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem)
                             topdcl->setIsRefInSendDcl(true);
                         }
 
+                        if (!doLocalRA || src->isFlag() || src->isAddress() || reDo)
+                    {
                         LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
 
-                        lr->recordRef(bb);
+                        lr->recordRef( bb );
                         recordRef(topdcl);
-                        if (inst->isEOT())
-                        {
-                            lr->markEOT();
+                            if (inst->isEOT())
+                            {
+                                lr->markEOT();
+                            }
                         }
                     }
                 }
-            }
-            else if (src->isAddrExp())
-            {
+			}
+			else if (src->isAddrExp())
+			{
                 G4_RegVar* addExpVar = src->asAddrExp()->getRegVar();
-                markBlockLocalVar(addExpVar, bb->getId());
+				markBlockLocalVar(addExpVar, bb->getId());
 
-                G4_Declare* topdcl = addExpVar->getDeclare();
-                while (topdcl->getAliasDeclare() != NULL)
-                    topdcl = topdcl->getAliasDeclare();
-                MUST_BE_TRUE(topdcl != NULL, "Top dcl was null for addr exp opnd");
+                if (!doLocalRA || reDo)
+                {
+		            G4_Declare* topdcl = addExpVar->getDeclare();
+		            while( topdcl->getAliasDeclare() != NULL)
+			            topdcl = topdcl->getAliasDeclare();
+		            MUST_BE_TRUE( topdcl != NULL, "Top dcl was null for addr exp opnd");
 
-                LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
-                lr->recordRef(bb);
-                lr->markIndirectRef();
-                recordRef(topdcl);
-            }
-        }
+                    LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
+                    lr->recordRef(bb);
+                    lr->markIndirectRef();
+                    recordRef(topdcl);
+                }
+			}
+		}
 
         G4_Operand* pred = inst->getPredicate();
 
-        if (pred != NULL)
+        if( pred != NULL )
         {
-            if (pred->getBase() && pred->getBase()->isRegVar())
+            if( pred->getBase() && pred->getBase()->isRegVar() )
             {
-                markBlockLocalVar(pred->getBase()->asRegVar(), bb->getId());
+                markBlockLocalVar( pred->getBase()->asRegVar(), bb->getId() );
                 G4_Declare* topdcl = pred->getBase()->asRegVar()->getDeclare();
                 if (topdcl)
                 {
                     LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
-                    lr->recordRef(bb);
+                    lr->recordRef( bb );
                     recordRef(topdcl);
                 }
             }
         }
 
-        // Track all indirect references.
-        const REGVAR_VECTOR* grfVecPtr = pointsToAnalysis.getIndrUseVectorPtrForBB(bb->getId());
-        for (unsigned i = 0; i < grfVecPtr->size(); i++)
-        {
-            markBlockLocalVar((*grfVecPtr)[i], bb->getId());
-        }
-    }
+		// Track all indirect references.
+		const REGVAR_VECTOR* grfVecPtr = pointsToAnalysis.getIndrUseVectorPtrForBB( bb->getId() );
+		for( unsigned i = 0; i < grfVecPtr->size(); i++ )
+		{
+			markBlockLocalVar((*grfVecPtr)[i], bb->getId());
+		}
+	}
 }
 
 void GlobalRA::resetGlobalRAStates()
@@ -3215,13 +3224,13 @@ void GlobalRA::resetGlobalRAStates()
 //
 // Mark block local (temporary) variables.
 //
-void GlobalRA::markGraphBlockLocalVars()
+void GlobalRA::markGraphBlockLocalVars(bool reDo)
 {
     //Create live ranges and record the reference info
     auto& fg = kernel.fg;
     for (std::list<G4_BB*>::iterator it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
     {
-        markBlockLocalVars(*it, fg.builder->mem);
+        markBlockLocalVars(*it, fg.builder->mem, fg.builder->getOption(vISA_LocalRA), reDo);
     }
 
     //Remove the un-referenced declares

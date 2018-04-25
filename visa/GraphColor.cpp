@@ -9687,7 +9687,7 @@ int GlobalRA::coloringRegAlloc()
         resetGlobalRAStates();
 
         //Identify the local variables to speedup following analysis
-        markGraphBlockLocalVars();
+        markGraphBlockLocalVars(true);
         
         //Do variable splitting in each iteration
         if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
