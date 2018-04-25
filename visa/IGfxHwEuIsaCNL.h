@@ -512,7 +512,7 @@ typedef struct tagEU_INSTRUCTION_CONTROLS_A {
 
             /*****************************************************************************\
             Destination Dependency Control. This field selectively disables destination dependency check and clear for this instruction.
-            When it is set to 00, normal destination dependency control is performed for the instruction  hardware checks for destination hazards to ensure data integrity. Specifically, destination register dependency check is conducted before the instruction is made ready for execution. After the instruction is executed, the destination register scoreboard will be cleared when the destination operands retire.
+            When it is set to 00, normal destination dependency control is performed for the instruction  - hardware checks for destination hazards to ensure data integrity. Specifically, destination register dependency check is conducted before the instruction is made ready for execution. After the instruction is executed, the destination register scoreboard will be cleared when the destination operands retire.
             When bit 10 is set (NoDDClr), the destination register scoreboard will NOT be cleared when the destination operands retire.  When bit 11 is set (NoDDChk), hardware does not check for destination register dependency before the instruction is made ready for execution.  NoDDClr and NoDDChk are not mutual exclusive.
             When this field is not all-zero, hardware does not protect against destination hazards for the instruction.  This is typically used to assemble data in a fine grained fashion (e.g. matrix-vector compute with dot-product instructions), where the data integrity is guaranteed by software based on the intended usage of instruction sequences.
             \*****************************************************************************/
@@ -527,7 +527,7 @@ typedef struct tagEU_INSTRUCTION_CONTROLS_A {
             BYTE Nibctrl                      : BITFIELD_BIT(        3); // NIBCTRL
 
             /*****************************************************************************\
-             Quarter Control. This field provides explicit control for ARF selection.
+             - Quarter Control. This field provides explicit control for ARF selection.
             This field combined with NibCtrl and ExecSize determines which channels are used for the ARF registers.
             \*****************************************************************************/
             BYTE Qtrctrl                      : BITFIELD_RANGE(  4,  5); // QTRCTRL
@@ -562,7 +562,7 @@ typedef struct tagEU_INSTRUCTION_CONTROLS_A {
 
             /*****************************************************************************\
             This field, together with PredCtrl, enables and controls the generation of the predication mask for the instruction.  When it is set, the predication uses the inverse of the predication bits generated according to setting of Predicate Control. In other BYTEs, effect of PredInv happens after PredCtrl.
-            This field is ignored by hardware if Predicate Control is set to 0000  there is no predication.
+            This field is ignored by hardware if Predicate Control is set to 0000  - there is no predication.
             PMask is the final predication mask produced by the effects of both fields.
             \*****************************************************************************/
             BYTE Predinv                      : BITFIELD_BIT(       12); // PREDINV
@@ -747,7 +747,7 @@ typedef struct tagEU_INSTRUCTION_CONTROLS {
             /*****************************************************************************\
             Enables or disables destination saturation.
             When it is set, output values to the destination register are saturated. The saturation operation depends on the destination data type. Saturation is the operation that converts any value outside the saturation target range for the data type to the closest value in the target range.
-            For a floating-point destination type, the saturation target range is [0.0, 1.0]. For a floating-point NaN, there is no closest value; any NaN saturates to 0.0. Note that enabling Saturate overrides all of the NaN propagation behaviors described for various numeric instructions. Any floating-point number greater than 1.0, including +INF, saturates to 1.0. Any negative floating-point number, including -INF, saturates to 0.0. Any floating-point number in the range 0.0 to 1.0 is not changed by saturation.
+            For a floating-point destination type, the saturation target range is [0.0, 1.0]. For a floating-point NaN, there is no  -closest value -; any NaN saturates to 0.0. Note that enabling Saturate overrides all of the NaN propagation behaviors described for various numeric instructions. Any floating-point number greater than 1.0, including +INF, saturates to 1.0. Any negative floating-point number, including -INF, saturates to 0.0. Any floating-point number in the range 0.0 to 1.0 is not changed by saturation.
             For an integer destination type, the maximum range for that type is the saturation target range. For example, the saturation range for B (Signed Byte Integer) is [-128, 127].
             When Saturate is clear, destination values are not saturated. For example, a wrapped result (modulo) is output to the destination for an overflowed integer value. See the Numeric Data Typessection for information about data types and their ranges.
             \*****************************************************************************/
@@ -1175,7 +1175,7 @@ typedef struct tagEU_INSTRUCTION_OPERAND_CONTROLS {
             DWORD DestinationRegisterFile             : BITFIELD_RANGE(  3,  4); // REGFILE
 
             /*****************************************************************************\
-            This field specifies the numeric data type of the destination operand dst. The bits of the destination operand are interpreted as the identified numeric data type, rather than coerced into a type implied by the operator. For a send instruction, this field applies to the CurrDst  the current destination operand.
+            This field specifies the numeric data type of the destination operand dst. The bits of the destination operand are interpreted as the identified numeric data type, rather than coerced into a type implied by the operator. For a send instruction, this field applies to the CurrDst  - the current destination operand.
             \*****************************************************************************/
             DWORD DestinationDataType                 : BITFIELD_RANGE(  5,  8); // DSTTYPE
             DWORD Src0Regfile                         : BITFIELD_RANGE(  9, 10); // REGFILE
@@ -2998,7 +2998,7 @@ typedef union tagEU_INSTRUCTION_BASIC_THREE_SRC {
         DWORD DestinationDataType                                 : BITFIELD_RANGE( 46, 48); // DESTINATION_DATA_TYPE
 
         ///*****************************************************************************\
-        //Four channel enables are defined for controlling which channels are written into the destination region. These channel mask bits are applied in a modulo-four manner to all ExecSize channels. There is 1-bit Channel Enable for each channel within the group of 4. If the bit is cleared, the write for the corresponding channel is disabled. If the bit is set, the write is enabled. Mnemonics for the bit being set for the group of 4 are x, y, z, and w, respectively, where x corresponds to Channel 0 in the group and w corresponds to channel 3 in the group
+        //Four channel enables are defined for controlling which channels are written into the destination region. These channel mask bits are applied in a modulo-four manner to all ExecSize channels. There is 1-bit Channel Enable for each channel within the group of 4. If the bit is cleared, the write for the corresponding channel is disabled. If the bit is set, the write is enabled. Mnemonics for the bit being set for the group of 4 are  -x -,  -y -,  -z -, and  -w -, respectively, where  -x - corresponds to Channel 0 in the group and  -w - corresponds to channel 3 in the group
         //\*****************************************************************************/
         DWORD DestinationChannelEnable                            : BITFIELD_RANGE( 49, 52); // ChanEn[4]
         DWORD DestinationSubregisterNumber                        : BITFIELD_RANGE( 53, 55); //
@@ -4621,7 +4621,7 @@ typedef union tagEU_INSTRUCTION_MATH {
 
         /*****************************************************************************\
         Destination Dependency Control. This field selectively disables destination dependency check and clear for this instruction.
-        When it is set to 00, normal destination dependency control is performed for the instruction  hardware checks for destination hazards to ensure data integrity. Specifically, destination register dependency check is conducted before the instruction is made ready for execution. After the instruction is executed, the destination register scoreboard will be cleared when the destination operands retire.
+        When it is set to 00, normal destination dependency control is performed for the instruction  - hardware checks for destination hazards to ensure data integrity. Specifically, destination register dependency check is conducted before the instruction is made ready for execution. After the instruction is executed, the destination register scoreboard will be cleared when the destination operands retire.
         When bit 10 is set (NoDDClr), the destination register scoreboard will NOT be cleared when the destination operands retire.  When bit 11 is set (NoDDChk), hardware does not check for destination register dependency before the instruction is made ready for execution.  NoDDClr and NoDDChk are not mutual exclusive.
         When this field is not all-zero, hardware does not protect against destination hazards for the instruction.  This is typically used to assemble data in a fine grained fashion (e.g. matrix-vector compute with dot-product instructions), where the data integrity is guaranteed by software based on the intended usage of instruction sequences.
         \*****************************************************************************/
@@ -4636,7 +4636,7 @@ typedef union tagEU_INSTRUCTION_MATH {
         DWORD ControlsA_Nibctrl                                     : BITFIELD_BIT(        3); // NIBCTRL
 
         /*****************************************************************************\
-         Quarter Control. This field provides explicit control for ARF selection.
+         - Quarter Control. This field provides explicit control for ARF selection.
         This field combined with NibCtrl and ExecSize determines which channels are used for the ARF registers.
         \*****************************************************************************/
         DWORD ControlsA_Qtrctrl                                     : BITFIELD_RANGE(  4,  5); // QTRCTRL
@@ -4685,7 +4685,7 @@ typedef union tagEU_INSTRUCTION_MATH {
 
         /*****************************************************************************\
         This field, together with PredCtrl, enables and controls the generation of the predication mask for the instruction.  When it is set, the predication uses the inverse of the predication bits generated according to setting of Predicate Control. In other words, effect of PredInv happens after PredCtrl.
-        This field is ignored by hardware if Predicate Control is set to 0000  there is no predication.
+        This field is ignored by hardware if Predicate Control is set to 0000  - there is no predication.
         PMask is the final predication mask produced by the effects of both fields.
         \*****************************************************************************/
         QWORD ControlsA_Predinv            : BITFIELD_BIT(       12); // PREDINV
@@ -4708,7 +4708,7 @@ typedef union tagEU_INSTRUCTION_MATH {
         /*****************************************************************************\
         Enables or disables destination saturation.
         When it is set, output values to the destination register are saturated. The saturation operation depends on the destination data type. Saturation is the operation that converts any value outside the saturation target range for the data type to the closest value in the target range.
-        For a floating-point destination type, the saturation target range is [0.0, 1.0]. For a floating-point NaN, there is no closest value; any NaN saturates to 0.0. Note that enabling Saturate overrides all of the NaN propagation behaviors described for various numeric instructions. Any floating-point number greater than 1.0, including +INF, saturates to 1.0. Any negative floating-point number, including -INF, saturates to 0.0. Any floating-point number in the range 0.0 to 1.0 is not changed by saturation.
+        For a floating-point destination type, the saturation target range is [0.0, 1.0]. For a floating-point NaN, there is no  -closest value -; any NaN saturates to 0.0. Note that enabling Saturate overrides all of the NaN propagation behaviors described for various numeric instructions. Any floating-point number greater than 1.0, including +INF, saturates to 1.0. Any negative floating-point number, including -INF, saturates to 0.0. Any floating-point number in the range 0.0 to 1.0 is not changed by saturation.
         For an integer destination type, the maximum range for that type is the saturation target range. For example, the saturation range for B (Signed Byte Integer) is [-128, 127].
         When Saturate is clear, destination values are not saturated. For example, a wrapped result (modulo) is output to the destination for an overflowed integer value. See the Numeric Data Typessection for information about data types and their ranges.
         \*****************************************************************************/
@@ -5177,7 +5177,7 @@ typedef union tagEU_INSTRUCTION_SEND {
 
         /*****************************************************************************\
         Destination Dependency Control. This field selectively disables destination dependency check and clear for this instruction.
-        When it is set to 00, normal destination dependency control is performed for the instruction  hardware checks for destination hazards to ensure data integrity. Specifically, destination register dependency check is conducted before the instruction is made ready for execution. After the instruction is executed, the destination register scoreboard will be cleared when the destination operands retire.
+        When it is set to 00, normal destination dependency control is performed for the instruction  - hardware checks for destination hazards to ensure data integrity. Specifically, destination register dependency check is conducted before the instruction is made ready for execution. After the instruction is executed, the destination register scoreboard will be cleared when the destination operands retire.
         When bit 10 is set (NoDDClr), the destination register scoreboard will NOT be cleared when the destination operands retire.  When bit 11 is set (NoDDChk), hardware does not check for destination register dependency before the instruction is made ready for execution.  NoDDClr and NoDDChk are not mutual exclusive.
         When this field is not all-zero, hardware does not protect against destination hazards for the instruction.  This is typically used to assemble data in a fine grained fashion (e.g. matrix-vector compute with dot-product instructions), where the data integrity is guaranteed by software based on the intended usage of instruction sequences.
         \*****************************************************************************/
@@ -5192,7 +5192,7 @@ typedef union tagEU_INSTRUCTION_SEND {
         DWORD ControlsA_Nibctrl            : BITFIELD_BIT(        3); // NIBCTRL
 
         /*****************************************************************************\
-         Quarter Control. This field provides explicit control for ARF selection.
+         - Quarter Control. This field provides explicit control for ARF selection.
         This field combined with NibCtrl and ExecSize determines which channels are used for the ARF registers.
         \*****************************************************************************/
         DWORD ControlsA_Qtrctrl            : BITFIELD_RANGE(  4,  5); // QTRCTRL
@@ -5249,7 +5249,7 @@ typedef union tagEU_INSTRUCTION_SEND {
 
         /*****************************************************************************\
         This field, together with PredCtrl, enables and controls the generation of the predication mask for the instruction.  When it is set, the predication uses the inverse of the predication bits generated according to setting of Predicate Control. In other words, effect of PredInv happens after PredCtrl.
-        This field is ignored by hardware if Predicate Control is set to 0000  there is no predication.
+        This field is ignored by hardware if Predicate Control is set to 0000  - there is no predication.
         PMask is the final predication mask produced by the effects of both fields.
         \*****************************************************************************/
         QWORD ControlsA_Predinv            : BITFIELD_BIT(       12); // PREDINV
@@ -5270,7 +5270,7 @@ typedef union tagEU_INSTRUCTION_SEND {
         /*****************************************************************************\
         Enables or disables destination saturation.
         When it is set, output values to the destination register are saturated. The saturation operation depends on the destination data type. Saturation is the operation that converts any value outside the saturation target range for the data type to the closest value in the target range.
-        For a floating-point destination type, the saturation target range is [0.0, 1.0]. For a floating-point NaN, there is no closest value; any NaN saturates to 0.0. Note that enabling Saturate overrides all of the NaN propagation behaviors described for various numeric instructions. Any floating-point number greater than 1.0, including +INF, saturates to 1.0. Any negative floating-point number, including -INF, saturates to 0.0. Any floating-point number in the range 0.0 to 1.0 is not changed by saturation.
+        For a floating-point destination type, the saturation target range is [0.0, 1.0]. For a floating-point NaN, there is no  -closest value -; any NaN saturates to 0.0. Note that enabling Saturate overrides all of the NaN propagation behaviors described for various numeric instructions. Any floating-point number greater than 1.0, including +INF, saturates to 1.0. Any negative floating-point number, including -INF, saturates to 0.0. Any floating-point number in the range 0.0 to 1.0 is not changed by saturation.
         For an integer destination type, the maximum range for that type is the saturation target range. For example, the saturation range for B (Signed Byte Integer) is [-128, 127].
         When Saturate is clear, destination values are not saturated. For example, a wrapped result (modulo) is output to the destination for an overflowed integer value. See the Numeric Data Typessection for information about data types and their ranges.
         \*****************************************************************************/
@@ -5650,7 +5650,7 @@ typedef union tagEU_INSTRUCTION_SENDS {
 
         /*****************************************************************************\
         Destination Dependency Control. This field selectively disables destination dependency check and clear for this instruction.
-        When it is set to 00, normal destination dependency control is performed for the instruction  hardware checks for destination hazards to ensure data integrity. Specifically, destination register dependency check is conducted before the instruction is made ready for execution. After the instruction is executed, the destination register scoreboard will be cleared when the destination operands retire.
+        When it is set to 00, normal destination dependency control is performed for the instruction  - hardware checks for destination hazards to ensure data integrity. Specifically, destination register dependency check is conducted before the instruction is made ready for execution. After the instruction is executed, the destination register scoreboard will be cleared when the destination operands retire.
         When bit 10 is set (NoDDClr), the destination register scoreboard will NOT be cleared when the destination operands retire.  When bit 11 is set (NoDDChk), hardware does not check for destination register dependency before the instruction is made ready for execution.  NoDDClr and NoDDChk are not mutual exclusive.
         When this field is not all-zero, hardware does not protect against destination hazards for the instruction.  This is typically used to assemble data in a fine grained fashion (e.g. matrix-vector compute with dot-product instructions), where the data integrity is guaranteed by software based on the intended usage of instruction sequences.
         \*****************************************************************************/
@@ -5665,7 +5665,7 @@ typedef union tagEU_INSTRUCTION_SENDS {
         DWORD ControlsA_Nibctrl                   : BITFIELD_BIT(        3); // NIBCTRL
 
         /*****************************************************************************\
-         Quarter Control. This field provides explicit control for ARF selection.
+         - Quarter Control. This field provides explicit control for ARF selection.
         This field combined with NibCtrl and ExecSize determines which channels are used for the ARF registers.
         \*****************************************************************************/
         DWORD ControlsA_Qtrctrl                   : BITFIELD_RANGE(  4,  5); // QTRCTRL
@@ -5730,7 +5730,7 @@ typedef union tagEU_INSTRUCTION_SENDS {
 
         /*****************************************************************************\
         This field, together with PredCtrl, enables and controls the generation of the predication mask for the instruction.  When it is set, the predication uses the inverse of the predication bits generated according to setting of Predicate Control. In other words, effect of PredInv happens after PredCtrl.
-        This field is ignored by hardware if Predicate Control is set to 0000  there is no predication.
+        This field is ignored by hardware if Predicate Control is set to 0000  - there is no predication.
         PMask is the final predication mask produced by the effects of both fields.
         \*****************************************************************************/
         QWORD ControlsA_Predinv            : BITFIELD_BIT(       12); // PREDINV
@@ -5750,7 +5750,7 @@ typedef union tagEU_INSTRUCTION_SENDS {
         /*****************************************************************************\
         Enables or disables destination saturation.
         When it is set, output values to the destination register are saturated. The saturation operation depends on the destination data type. Saturation is the operation that converts any value outside the saturation target range for the data type to the closest value in the target range.
-        For a floating-point destination type, the saturation target range is [0.0, 1.0]. For a floating-point NaN, there is no closest value; any NaN saturates to 0.0. Note that enabling Saturate overrides all of the NaN propagation behaviors described for various numeric instructions. Any floating-point number greater than 1.0, including +INF, saturates to 1.0. Any negative floating-point number, including -INF, saturates to 0.0. Any floating-point number in the range 0.0 to 1.0 is not changed by saturation.
+        For a floating-point destination type, the saturation target range is [0.0, 1.0]. For a floating-point NaN, there is no  -closest value -; any NaN saturates to 0.0. Note that enabling Saturate overrides all of the NaN propagation behaviors described for various numeric instructions. Any floating-point number greater than 1.0, including +INF, saturates to 1.0. Any negative floating-point number, including -INF, saturates to 0.0. Any floating-point number in the range 0.0 to 1.0 is not changed by saturation.
         For an integer destination type, the maximum range for that type is the saturation target range. For example, the saturation range for B (Signed Byte Integer) is [-128, 127].
         When Saturate is clear, destination values are not saturated. For example, a wrapped result (modulo) is output to the destination for an overflowed integer value. See the Numeric Data Typessection for information about data types and their ranges.
         \*****************************************************************************/
