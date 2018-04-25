@@ -347,6 +347,10 @@ public:
         return (*iter).second[index];
     }
 
+    // Find bool values that will be emitted as uniform variables.
+    // Otherwise they will be expanded to the SIMD size, by default.
+    void gatherUniformBools(llvm::Function *F);
+
 private:
     // Return DefInst's CVariable if it could be reused for UseInst, and return
     // nullptr otherwise.
@@ -358,6 +362,11 @@ private:
     // CVariable from its source operand.
     CVariable *GetSymbolFromSource(llvm::Instruction *UseInst,
                                    e_alignment preferredAlign);
+
+    bool canEmitAsUniformBool(const llvm::Value *Val) const
+    {
+        return UniformBools.count(Val) > 0;
+    }
 
 protected:
     CShaderProgram* m_parent;
@@ -398,6 +407,10 @@ protected:
     // keep a map when we generate accurate mask for vector value
     // in order to reduce register usage
     llvm::DenseMap<llvm::Value*, uint32_t> extractMasks;
+
+    // The set of boolean values stored as predicates of a single element.
+    // Otherwise, they are expanded to the SIMD size.
+    llvm::DenseSet<const llvm::Value*> UniformBools;
 
     CEncoder encoder;
     std::vector<CVariable*> setup;
