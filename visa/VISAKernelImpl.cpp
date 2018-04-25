@@ -160,12 +160,12 @@ void replaceFCOpcodes(IR_Builder& builder)
     {
         G4_BB* bb = (*bb_it);
 
-        if(bb->instList.size() > 0)
+        if(bb->size() > 0)
         {
             // pseudo_fc_call/ret would always be last
             // instruction in BB so only look at back
             // of instlist.
-            G4_INST* lastInstInBB = bb->instList.back();
+            G4_INST* lastInstInBB = bb->back();
 
             if(lastInstInBB->opcode() == G4_pseudo_fc_call)
             {
@@ -231,7 +231,7 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
         {
             for (auto bb : m_kernel->fg.BBs)
             {
-                for (auto inst : bb->instList)
+                for (auto inst : *bb)
                 {
                     if (inst->isLabel())
                     {
@@ -316,7 +316,7 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
 
         for (auto bb : m_kernel->fg.BBs)
         {
-            for (auto inst : bb->instList)
+            for (auto inst : *bb)
             {
                 if (inst->getBinInst())
                     inst->setGenOffset(inst->getBinInst()->GetGenOffset());
@@ -8418,8 +8418,8 @@ void VISAKernelImpl::computeFCInfo(BinaryEncodingBase* binEncodingInstance)
     {
         G4_BB* bb = (*bb_it);
 
-        INST_LIST_ITER inst_end = bb->instList.end();
-        for(INST_LIST_ITER inst_it = bb->instList.begin();
+        INST_LIST_ITER inst_end = bb->end();
+        for(INST_LIST_ITER inst_it = bb->begin();
             inst_it != inst_end;
             inst_it++)
         {
@@ -8491,8 +8491,8 @@ void VISAKernelImpl::computeFCInfo() {
         bb_it++) {
         G4_BB* bb = (*bb_it);
 
-        INST_LIST_ITER inst_end = bb->instList.end();
-        for (INST_LIST_ITER inst_it = bb->instList.begin();
+        INST_LIST_ITER inst_end = bb->end();
+        for (INST_LIST_ITER inst_it = bb->begin();
             inst_it != inst_end;
             inst_it++) {
             G4_INST* inst = (*inst_it);
@@ -8623,7 +8623,7 @@ void VISAKernelImpl::computeAllRelocs(unsigned int& numRelocs, BasicRelocEntry*&
 
     for (auto bbs : getKernel()->fg.BBs)
     {
-        for (auto insts : bbs->instList)
+        for (auto insts : *bbs)
         {
             for (auto i = 0; i < insts->getNumSrc(); i++)
             {

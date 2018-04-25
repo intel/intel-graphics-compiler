@@ -2839,9 +2839,9 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
         /**
          * Traverse the instruction lists
          */
-        INST_LIST_ITER ii, iend(bb->instList.end());
+        INST_LIST_ITER ii, iend(bb->end());
         //indirectJump = false;
-        for (ii = bb->instList.begin(); ii != iend; ++ii)
+        for (ii = bb->begin(); ii != iend; ++ii)
         {
             /* do detailed encoding here */
             G4_INST *inst = *ii;

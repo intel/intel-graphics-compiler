@@ -298,11 +298,69 @@ class G4_BB
 
     FlowGraph* parent;
 
-public:
-    INST_LIST    instList;
+    INST_LIST instList;
 
-    INST_LIST_ITER  begin() { return instList.begin(); }
-    INST_LIST_ITER end() { return instList.end(); }
+public:
+
+    // forwarding functions to this BB's instList
+    INST_LIST_ITER begin() noexcept { return instList.begin(); }
+    INST_LIST_ITER end() noexcept { return instList.end(); }
+    INST_LIST::reverse_iterator rbegin() noexcept { return instList.rbegin(); }
+    INST_LIST::reverse_iterator rend() noexcept { return instList.rend(); }
+    INST_LIST& getInstList() { return instList; }
+    INST_LIST_ITER insert(INST_LIST::const_iterator iter, G4_INST* inst)
+    {
+        return instList.insert(iter, inst);
+    }
+    template <class InputIt>
+    INST_LIST_ITER insert(INST_LIST::const_iterator iter, InputIt first, InputIt last)
+    {
+        return instList.insert(iter, first, last);
+    }
+    INST_LIST_ITER erase(INST_LIST::const_iterator iter)
+    {
+        return instList.erase(iter);
+    }
+    INST_LIST_ITER erase(INST_LIST::const_iterator first, INST_LIST::const_iterator last)
+    {
+        return instList.erase(first, last);
+    }
+    void remove(G4_INST* inst) { instList.remove(inst); }
+    void clear() { instList.clear(); }
+    void pop_back() { instList.pop_back(); }
+    void pop_front() { instList.pop_front(); }
+    void push_back(G4_INST* inst) { instList.push_back(inst); }
+    void push_front(G4_INST* inst) { instList.push_front(inst); }
+    size_t size() const { return instList.size(); }
+    bool empty() const { return instList.empty(); }
+    G4_INST* front() { return instList.front(); }
+    G4_INST* back() { return instList.back(); }
+    void splice(INST_LIST::const_iterator pos, INST_LIST& other)
+    {
+        instList.splice(pos, other);
+    }
+    void splice(INST_LIST::const_iterator pos, G4_BB* otherBB)
+    {
+        instList.splice(pos, otherBB->getInstList());
+    }
+    void splice(INST_LIST::const_iterator pos, INST_LIST& other, INST_LIST::const_iterator it)
+    {
+        instList.splice(pos, other, it);
+    }
+    void splice(INST_LIST::const_iterator pos, G4_BB* otherBB, INST_LIST::const_iterator it)
+    {
+        instList.splice(pos, otherBB->getInstList(), it);
+    }
+    void splice(INST_LIST::const_iterator pos, INST_LIST& other, 
+        INST_LIST::const_iterator first, INST_LIST::const_iterator last)
+    {
+        instList.splice(pos, other, first, last);
+    }
+    void splice(INST_LIST::const_iterator pos, G4_BB* otherBB,
+        INST_LIST::const_iterator first, INST_LIST::const_iterator last)
+    {
+        instList.splice(pos, otherBB->getInstList(), first, last);
+    }
 
     //
     // Important invariant: fall-through BB must be at the front of Succs.
@@ -909,8 +967,9 @@ public:
             G4_BB* curBB = *bb_it;
             G4_INST* last_inst = NULL;
 
-            if( curBB->instList.size() > 0 ) {
-                last_inst = curBB->instList.back();
+            if (!curBB->empty()) 
+            {
+                last_inst = curBB->back();
 
                 if( last_inst->opcode() == G4_pseudo_fret ) {
                     if( uniqueReturnBlock == NULL ) {

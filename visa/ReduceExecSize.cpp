@@ -101,10 +101,10 @@ uint8_t HWConformity::checkMinExecSize( G4_opcode op )
 
 void HWConformity::fixOpndTypeAlign( G4_BB* bb )
 {
-    INST_LIST_ITER i = bb->instList.begin();
+    INST_LIST_ITER i = bb->begin();
     INST_LIST_ITER next_iter = i;
 
-    for ( auto iEnd = bb->instList.end(); i != iEnd; i = next_iter )
+    for ( auto iEnd = bb->end(); i != iEnd; i = next_iter )
     {
         G4_INST *inst = *i;
         G4_opcode opcode = inst->opcode();
@@ -354,10 +354,10 @@ void HWConformity::fixInstExecSize( BB_LIST_ITER it )
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
 
-    INST_LIST_ITER i = bb->instList.begin();
+    INST_LIST_ITER i = bb->begin();
     INST_LIST_ITER next_iter = i;
 
-    for ( ; i != bb->instList.end(); i = next_iter )
+    for ( ; i != bb->end(); i = next_iter )
     {
         next_iter++;
         G4_INST *inst = *i;
@@ -869,7 +869,7 @@ bool HWConformity::reduceExecSize( INST_LIST_ITER iter, G4_BB* bb )
             }
             else
             {
-                insertMovAfter( iter, scale, bb->instList );
+                insertMovAfter( iter, scale, bb );
                 if( builder.getOption(vISA_OptReport) )
                 {
                     INST_LIST_ITER tmpIter = iter;
@@ -983,7 +983,7 @@ void HWConformity::splitSIMD32Inst( INST_LIST_ITER iter, G4_BB* bb )
             newInst->setDest( newDst );
             newInst->setPredicate( newPredOpnd );
             newInst->setCondMod( newCondMod );
-            bb->instList.insert( iter, newInst );
+            bb->insert( iter, newInst );
         }
         else
         {
@@ -1112,7 +1112,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
             // update def-use chain
             inst->copyDefsTo(newInst, true);
             inst->copyDefsTo(newInst, true);
-            bb->instList.insert(iter, newInst);
+            bb->insert(iter, newInst);
             continue;
         }
 
@@ -1213,7 +1213,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
             newInst->setDest( newDst );
             newInst->setPredicate((G4_Predicate *)builder.duplicateOperand(inst->getPredicate()));
             newInst->setCondMod((G4_CondMod *)builder.duplicateOperand(inst->getCondMod()) );
-            bb->instList.insert( iter, newInst );
+            bb->insert( iter, newInst );
             newInstIter = iter;
             newInstIter--;
         }
@@ -1415,7 +1415,7 @@ void HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
             newInst->setPredicate( (G4_Predicate*)builder.duplicateOperand(newPred) );
             newInst->setCondMod( (G4_CondMod*)builder.duplicateOperand(newCond) );
             newInst->setEvenlySplitInst(true);
-            bb->instList.insert( iter, newInst );
+            bb->insert( iter, newInst );
         }
         else
         {
@@ -1633,7 +1633,7 @@ void HWConformity::moveSrcToGRF( INST_LIST_ITER it, uint32_t srcNum, uint16_t nu
         newInst->setOptionOn( InstOpt_WriteEnable );
     }
     // insert instruction and maintain def-use chain
-    bb->instList.insert( it, newInst );
+    bb->insert( it, newInst );
     inst->transferDef( newInst, Gen4_Operand_Number(srcNum + 1), Opnd_src0 );
     newInst->addDefUse(inst, Gen4_Operand_Number(srcNum + 1));
 
@@ -1688,7 +1688,7 @@ void HWConformity::saveDst( INST_LIST_ITER& it, uint8_t stride, G4_BB *bb )
     {
         newInst->setOptions( ( inst->getOption() & ~InstOpt_Masks ) | InstOpt_WriteEnable );
     }
-    bb->instList.insert( it, newInst );
+    bb->insert( it, newInst );
     inst->setDest( (G4_DstRegRegion *)builder.duplicateOperand( tmpDstOpnd ) );
 }
 
@@ -1717,7 +1717,7 @@ void HWConformity::restoreDst( INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_
     }
     INST_LIST_ITER iter = it;
     iter++;
-    bb->instList.insert( iter, newInst );
+    bb->insert( iter, newInst );
 
     // how about def-use?
     inst->transferUse(newInst);
@@ -1730,7 +1730,7 @@ void HWConformity::restoreDst( INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_
  *  where esize is "inst"'s execution size and insert it after "inst"
  *  dst of inst is replaced with the tmp dst using the same type
  */
-void HWConformity::insertMovAfter( INST_LIST_ITER& it, uint16_t stride, INST_LIST& instList )
+void HWConformity::insertMovAfter( INST_LIST_ITER& it, uint16_t stride, G4_BB* bb )
 {
     G4_INST* inst = *it;
     G4_DstRegRegion *dst = inst->getDst();
@@ -1762,7 +1762,7 @@ void HWConformity::insertMovAfter( INST_LIST_ITER& it, uint16_t stride, INST_LIS
 
     INST_LIST_ITER iter = it;
     iter++;
-    instList.insert( iter, newInst );
+    bb->insert( iter, newInst );
     // change dst of inst
     inst->setDest( tmpDstOpnd );
 

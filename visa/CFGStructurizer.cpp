@@ -474,7 +474,7 @@ void dumpbbbase(G4_BB *bb)
 {
     if (dump_level == 0)
     {
-        for (INST_LIST_ITER it = bb->instList.begin(), ie = bb->instList.end();
+        for (INST_LIST_ITER it = bb->begin(), ie = bb->end();
             it != ie; ++it)
         {
             G4_INST* inst = *it;
@@ -1146,14 +1146,14 @@ void CFGStructurizer::deletePST(ANodeHG *nodehg)
 // Return goto inst if bb has one, null otherwise.
 G4_INST* CFGStructurizer::getGotoInst(G4_BB *bb)
 {
-    G4_INST *inst = bb->instList.size() > 0 ? bb->instList.back() : nullptr;
+    G4_INST *inst = bb->size() > 0 ? bb->back() : nullptr;
     return (inst && inst->opcode() == G4_goto) ? inst : nullptr;
 }
 
 // Return either jmpi inst if bb has one, null otherwise.
 G4_INST* CFGStructurizer::getJmpiInst(G4_BB *bb)
 {
-    G4_INST *inst = bb->instList.size() > 0 ? bb->instList.back() : nullptr;
+    G4_INST *inst = bb->size() > 0 ? bb->back() : nullptr;
     return (inst && inst->opcode() == G4_jmpi) ? inst : nullptr;
 }
 
@@ -1257,7 +1257,7 @@ void CFGStructurizer::bb_oinsert(BB_LIST &bblist, G4_BB *bb)
 // inst, the CG for this goto will be the first one in cgs.
 bool CFGStructurizer::getCGBegin(G4_BB *bb, CGList &cgs)
 {
-    if (bb->instList.size() == 0)
+    if (bb->size() == 0)
     {
         return false;
     }
@@ -1747,7 +1747,7 @@ ANodeHG *CFGStructurizer::finalizeHG(ANodeHG *node)
         }
     }
     G4_BB *begin = node->getBeginBB();
-    G4_INST *gotoInst = begin->instList.back();
+    G4_INST *gotoInst = begin->back();
     if (endNode->succs.size() > 0 && endNode->succs.back() == entryNode)
     {
         node->setType(AN_DO_WHILE);
@@ -1890,7 +1890,7 @@ ANodeBB* CFGStructurizer::addLandingBB(
                     if (bb == insertAfterBB)
                     {
                         // remove goto
-                        bb->instList.pop_back();
+                        bb->pop_back();
                     }
                     else
                     {
@@ -1909,7 +1909,7 @@ ANodeBB* CFGStructurizer::addLandingBB(
                         if (bb == insertAfterBB)
                         {
                             // remove jmpi
-                            bb->instList.pop_back();
+                            bb->pop_back();
                         }
                         else
                         {
@@ -1939,8 +1939,8 @@ ANodeBB* CFGStructurizer::addLandingBB(
 
     if (insertAfterBB->getPhysicalSucc() != exitBB)
     {
-        G4_INST *lastInst = insertAfterBB->instList.empty()
-            ? nullptr : insertAfterBB->instList.back();
+        G4_INST *lastInst = insertAfterBB->empty()
+            ? nullptr : insertAfterBB->back();
         G4_INST *gotoInst;
         if (lastInst)
         {
@@ -1953,7 +1953,7 @@ ANodeBB* CFGStructurizer::addLandingBB(
             gotoInst = CFG->builder->createInternalCFInst(
                 NULL, G4_goto, 1, NULL, targetLabel, InstOpt_NoOpt);
         }
-        newBB->instList.push_back(gotoInst);
+        newBB->push_back(gotoInst);
     }
     newBB->Succs.push_back(exitBB);
     exitBB->Preds.push_back(newBB);
@@ -2076,8 +2076,8 @@ ANode* CFGStructurizer::addSplitBBAtEnd(G4_BB *splitBB)
     G4_INST *gotoInst = getGotoInst(splitBB);
     if (gotoInst)
     {
-        splitBB->instList.pop_back();
-        newBB->instList.push_back(gotoInst);
+        splitBB->pop_back();
+        newBB->push_back(gotoInst);
     }
 
     // insert it into BBs
@@ -2839,18 +2839,18 @@ G4_BB *CFGStructurizer::createBBWithLabel()
     G4_Label* lab = CFG->builder->createLabel(str, LABEL_BLOCK);
     G4_INST *labelInst = CFG->builder->createInternalInst(
         NULL, G4_label, NULL, false, UNDEFINED_EXEC_SIZE, NULL, lab, NULL, 0);
-    newBB->instList.push_front(labelInst);
+    newBB->push_front(labelInst);
     return newBB;
 }
 
 // Insert an inst at the begin after a label instruction.
 void CFGStructurizer::insertAtBegin(G4_BB* aBB, G4_INST *anInst)
 {
-    INST_LIST_ITER I = aBB->instList.begin();
+    INST_LIST_ITER I = aBB->begin();
     MUST_BE_TRUE((*I)->opcode() == G4_label,
                  "The 1st inst of BB must be a label inst");
     ++I;
-    aBB->instList.insert(I, anInst);
+    aBB->insert(I, anInst);
 }
 
 void CFGStructurizer::setJoinJIP(G4_BB* joinBB, G4_BB* jipBB)
@@ -2984,9 +2984,9 @@ void CFGStructurizer::convertChildren(ANodeHG *nodehg, G4_BB *nextJoinBB)
         }
 
 #if 0
-        if (nd->getType() == AN_BB && begin->instList.size() > 0)
+        if (nd->getType() == AN_BB && begin->size() > 0)
         {
-            G4_INST *gotoInst = begin->instList.back();
+            G4_INST *gotoInst = begin->back();
             MUST_BE_TRUE(false, "Backward goto should have ben processed");
             if (gotoInst->opcode() == G4_goto && gotoInst->isBackward())
             {
@@ -3068,7 +3068,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
     // nextJoinLabel is used to set JIP for endif instruction
     G4_Label *nextJoinLabel = nextJoinBB ? nextJoinBB->getLabel() : nullptr;
     G4_BB *begin = node->getBeginBB();
-    G4_INST *gotoInst = begin->instList.back();
+    G4_INST *gotoInst = begin->back();
     uint8_t execSize = gotoInst->getExecSize();
     execSize = execSize > 1 ? execSize : kernelExecSize;
     ANList::iterator II = node->children.begin();
@@ -3157,7 +3157,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
             return;
         }
 
-        G4_INST* lastInst = end->instList.empty() ? nullptr : end->instList.back();
+        G4_INST* lastInst = end->empty() ? nullptr : end->back();
         G4_INST* endifInst;
         if (lastInst)
         {
@@ -3179,8 +3179,8 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         G4_INST* ifInst = CFG->builder->createInternalCFInst(
             pred, G4_if, execSize, endifLabel, endifLabel, InstOpt_NoOpt,
             gotoInst->getLineNo(), gotoInst->getCISAOff(), gotoInst->getSrcFilename());
-        begin->instList.pop_back();
-        begin->instList.push_back(ifInst);
+        begin->pop_back();
+        begin->push_back(ifInst);
 
         if (thenNode->isHammock())
         {
@@ -3216,7 +3216,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
     {
         ANode *elseNode = *(++II); // children[2];
         G4_BB *thenLastBB = thenNode->getEndBB();
-        G4_INST *thenLastInst = thenLastBB->instList.back();
+        G4_INST *thenLastInst = thenLastBB->back();
 
         // May have the case in which thenLastInst isn't goto
         //  if (uniformCond)
@@ -3269,7 +3269,7 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         // Add endif instruction into exit BB, else into the beginning
         // BB of else part,  and replace goto in the begin BB with if
         // instruction.
-        G4_INST *lastInst = end->instList.empty() ? nullptr : end->instList.back();
+        G4_INST *lastInst = end->empty() ? nullptr : end->back();
         G4_INST* endifInst;
         if (lastInst)
         {
@@ -3294,8 +3294,8 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
         G4_INST* ifInst = CFG->builder->createInternalCFInst(
             pred, G4_if, execSize, elseLabel, endifLabel, InstOpt_NoOpt,
             gotoInst->getLineNo(), gotoInst->getCISAOff(), gotoInst->getSrcFilename());
-        begin->instList.pop_back();
-        begin->instList.push_back(ifInst);
+        begin->pop_back();
+        begin->push_back(ifInst);
 
         // else instruction: jip = uip = endif
         G4_BB *newThenLastBB = thenLastBB;
@@ -3310,15 +3310,15 @@ void CFGStructurizer::convertIf(ANodeHG *node, G4_BB *nextJoinBB)
 
             newThenLastBB = ndbb->getBeginBB();
         }
-        G4_INST *thenGoto = newThenLastBB->instList.back();
+        G4_INST *thenGoto = newThenLastBB->back();
         G4_INST* elseInst = CFG->builder->createInternalCFInst(
             NULL, G4_else, execSize, endifLabel, endifLabel, InstOpt_NoOpt,
             thenGoto->getLineNo(), thenGoto->getCISAOff(), thenGoto->getSrcFilename());
         if (thenGoto->opcode() == G4_goto)
         {
-            newThenLastBB->instList.pop_back();
+            newThenLastBB->pop_back();
         }
-        newThenLastBB->instList.push_back(elseInst);
+        newThenLastBB->push_back(elseInst);
 
         (void)convertPST(thenNode, node->getHasBreak() ? newThenLastBB : nullptr);
 
@@ -3347,7 +3347,7 @@ void CFGStructurizer::convertDoWhile(ANodeHG *node, G4_BB *nextJoinBB)
 //#endif
 
     G4_BB *end = node->getEndBB();
-    G4_INST *gotoInst = end->instList.back();
+    G4_INST *gotoInst = end->back();
     uint8_t execSize = gotoInst->getExecSize();
     execSize = execSize > 1 ? execSize : kernelExecSize;
     G4_BB *head = node->getBeginBB();
@@ -3397,8 +3397,8 @@ void CFGStructurizer::convertDoWhile(ANodeHG *node, G4_BB *nextJoinBB)
         G4_INST *whileInst = CFG->builder->createInternalCFInst(
             gotoInst->getPredicate(), G4_while, execSize, doLabel, doLabel, InstOpt_NoOpt,
             gotoInst->getLineNo(), gotoInst->getCISAOff(), gotoInst->getSrcFilename());
-        end->instList.pop_back();
-        end->instList.push_back(whileInst);
+        end->pop_back();
+        end->push_back(whileInst);
 
         convertChildren(node, node->getHasBreak() ? end : nullptr);
     }
@@ -3424,7 +3424,7 @@ void CFGStructurizer::convertDoWhile(ANodeHG *node, G4_BB *nextJoinBB)
 
 void CFGStructurizer::generateGotoJoin(G4_BB *gotoBB, G4_BB *jibBB, G4_BB *joinBB)
 {
-    G4_INST *gotoInst = gotoBB->instList.back();
+    G4_INST *gotoInst = gotoBB->back();
     MUST_BE_TRUE(gotoInst && gotoInst->opcode() == G4_goto,
                  "gotoBB should have goto instruction");
     G4_Label *nextJoinLabel = jibBB ? jibBB->getLabel() : nullptr;
@@ -3464,9 +3464,9 @@ void CFGStructurizer::generateGotoJoin(G4_BB *gotoBB, G4_BB *jibBB, G4_BB *joinB
                 CFG->builder->createImm(0, Type_UW), NULL,
                 InstOpt_WriteEnable, gotoInst->getLineNo(),
                 gotoInst->getCISAOff(), gotoInst->getSrcFilename());
-            INST_LIST_ITER iter = gotoBB->instList.end();
+            INST_LIST_ITER iter = gotoBB->end();
             iter--;
-            gotoBB->instList.insert(iter, predInst);
+            gotoBB->insert(iter, predInst);
 
             pred = CFG->builder->createPredicate(
                 PredState_Plus,
@@ -3565,10 +3565,10 @@ void CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
                 lab, whilebb->getLabel(), InstOpt_NoOpt,
                 gotoInst->getLineNo(), gotoInst->getCISAOff(),
                 gotoInst->getSrcFilename());
-            beginbb->instList.pop_back();
-            beginbb->instList.push_back(ifInst);
-            beginbb->instList.push_back(breakInst);
-            beginbb->instList.push_back(endifInst);
+            beginbb->pop_back();
+            beginbb->push_back(ifInst);
+            beginbb->push_back(breakInst);
+            beginbb->push_back(endifInst);
 
             return;
         }
@@ -3579,8 +3579,8 @@ void CFGStructurizer::convertGoto(ANodeBB *node, G4_BB *nextJoinBB)
             innerBlock->getLabel(), whilebb->getLabel(), InstOpt_NoOpt,
             gotoInst->getLineNo(), gotoInst->getCISAOff(),
             gotoInst->getSrcFilename());
-        beginbb->instList.pop_back();
-        beginbb->instList.push_back(breakInst);
+        beginbb->pop_back();
+        beginbb->push_back(breakInst);
         return;
     }
 

@@ -153,7 +153,7 @@ namespace vISA
                 {
                     for (auto ref : (*opIt).second.def)
                     {
-                        ref.second->instList.remove(ref.first);
+                        ref.second->remove(ref.first);
                     }
                     (*opIt).second.def.clear();
                 }
@@ -250,7 +250,7 @@ namespace vISA
                 bool bbInLoop = (bbsInLoop.find(bb) != bbsInLoop.end());
                 if (bbInLoop)
                 {
-                    for (auto& inst : bb->instList)
+                    for (auto& inst : *bb)
                     {
                         if (!inst->isLabel() && !inst->isPseudoKill())
                         {

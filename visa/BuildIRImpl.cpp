@@ -1533,7 +1533,7 @@ void IR_Builder::initBuiltinSLMSpillAddr(int perThreadSLMSize)
 
     G4_BB* entryBB =kernel.fg.getEntryBB();
     assert(entryBB != nullptr && "CFG is not yet created");
-    auto insertIter = std::find_if(entryBB->instList.begin(), entryBB->instList.end(), [](G4_INST* inst) { return !inst->isLabel(); });
+    auto insertIter = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
     std::vector<G4_INST*> instBuffer;
 
     // compute per-thread SLM start and add it to entry BB
@@ -1664,5 +1664,5 @@ void IR_Builder::initBuiltinSLMSpillAddr(int perThreadSLMSize)
         G4_DstRegRegion* addDst = Create_Dst_Opnd_From_Dcl(builtinSLMSpillAddr, 1);
         instBuffer.push_back(createInst(nullptr, G4_add, nullptr, false, 16, addDst, addSrc0, addSrc1, InstOpt_WriteEnable));
     }
-    entryBB->instList.insert(insertIter, instBuffer.begin(), instBuffer.end());
+    entryBB->insert(insertIter, instBuffer.begin(), instBuffer.end());
 }

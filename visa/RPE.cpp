@@ -68,7 +68,7 @@ namespace vISA
         };
 
         // Iterate in bottom-up order to analyze register usage (similar to intf graph construction)
-        for (auto rInst = bb->instList.rbegin(), rEnd = bb->instList.rend(); rInst != rEnd; rInst++)
+        for (auto rInst = bb->rbegin(), rEnd = bb->rend(); rInst != rEnd; rInst++)
         {
             auto inst = (*rInst);
             auto dst = inst->getDst();
@@ -224,7 +224,7 @@ namespace vISA
         std::cerr << "Max pressure = " << maxRP << "\n";
         for (auto& bb : gra.kernel.fg.BBs)
         {
-            for (auto inst : bb->instList)
+            for (auto inst : *bb)
             {
                 std::cerr << "[";
                 if (rp.count(inst))

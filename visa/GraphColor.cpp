@@ -943,8 +943,8 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb, unsigned int &threeSou
         GRFRatio = ((float)(numRegLRA - SECOND_HALF_BANK_START_GRF)) / SECOND_HALF_BANK_START_GRF;
     }
 
-    for (std::list<G4_INST*>::reverse_iterator i = bb->instList.rbegin();
-        i != bb->instList.rend();
+    for (std::list<G4_INST*>::reverse_iterator i = bb->rbegin();
+        i != bb->rend();
         i++)
     {
         G4_INST* inst = (*i);
@@ -970,12 +970,12 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb, unsigned int &threeSou
         }
     }
 
-    if ((float)threeSourceInstNum / bb->instList.size() > 0.1)
+    if ((float)threeSourceInstNum / bb->size() > 0.1)
     {
         if (!gra.kernel.fg.builder->lowHighBundle())
         {
-            for (std::list<G4_INST*>::iterator i = bb->instList.begin();
-                i != bb->instList.end();
+            for (std::list<G4_INST*>::iterator i = bb->begin();
+                i != bb->end();
                 i++)
             {
                 G4_INST* inst = (*i);
@@ -998,7 +998,7 @@ bool compareBBLoopLevel(G4_BB* bb1, G4_BB* bb2)
     }
     else if (bb1->getNestLevel() == bb2->getNestLevel())
     {
-        return bb1->instList.size() > bb2->instList.size();
+        return bb1->size() > bb2->size();
     }
 
     return false;
@@ -1044,7 +1044,7 @@ bool BankConflictPass::setupBankConflictsForKernel(G4_Kernel& kernel, bool doLoc
 
         if (threeSourceInstNum)
         {
-            instNum = (uint32_t)bb->instList.size() * loopNestLevel * BANK_CONFLICT_HEURISTIC_LOOP_ITERATION;
+            instNum = (uint32_t)bb->size() * loopNestLevel * BANK_CONFLICT_HEURISTIC_LOOP_ITERATION;
             threeSourceInstNum = threeSourceInstNum * loopNestLevel * BANK_CONFLICT_HEURISTIC_LOOP_ITERATION;
             sendInstNum = sendInstNum * loopNestLevel * BANK_CONFLICT_HEURISTIC_LOOP_ITERATION;
             conflicts = conflicts * loopNestLevel * BANK_CONFLICT_HEURISTIC_LOOP_ITERATION;
@@ -1291,7 +1291,7 @@ LiveRange::LiveRange(G4_RegVar* v, GlobalRA& g) : gra(g)
     }
 }
 
-void LiveRange::checkForInfiniteSpillCost(INST_LIST& instList, std::list<G4_INST*>::reverse_iterator& it)
+void LiveRange::checkForInfiniteSpillCost(G4_BB* bb, std::list<G4_INST*>::reverse_iterator& it)
 {
     // G4_INST at *it defines liverange object (this ptr)
     // If next instruction of iterator uses same liverange then
@@ -1344,7 +1344,7 @@ void LiveRange::checkForInfiniteSpillCost(INST_LIST& instList, std::list<G4_INST
 
     // isCandidate is set to true only for first definition ever seen.
     // If more than 1 def if found this gets set to false.
-    const std::list<G4_INST*>::reverse_iterator rbegin = instList.rbegin();
+    const std::list<G4_INST*>::reverse_iterator rbegin = bb->rbegin();
     if (this->isCandidate == true && it != rbegin)
     {
         G4_INST* nextInst = NULL;
@@ -2098,7 +2098,7 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
         }
 
         // Indirect defs are actually uses of address reg
-        lrs[id]->checkForInfiniteSpillCost(bb->instList, i);
+        lrs[id]->checkForInfiniteSpillCost(bb, i);
     }
     else if (dst->isIndirect() && liveAnalysis->livenessClass(G4_GRF))
     {
@@ -2127,8 +2127,8 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live, G4_Declare
     unsigned refCount = GlobalRA::getRefCount(kernel.getOption(vISA_ConsiderLoopInfoInRA) ?
         bb->getNestLevel() : 0);
 
-    for (std::list<G4_INST*>::reverse_iterator i = bb->instList.rbegin();
-        i != bb->instList.rend();
+    for (std::list<G4_INST*>::reverse_iterator i = bb->rbegin();
+        i != bb->rend();
         i++)
     {
         G4_INST* inst = (*i);
@@ -2146,7 +2146,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live, G4_Declare
         if (inst->opcode() == G4_pseudo_fcall &&
             liveAnalysis->livenessClass(G4_GRF))
         {
-            G4_FCALL* fcall = kernel.fg.builder->getFcallInfo(bb->instList.back());
+            G4_FCALL* fcall = kernel.fg.builder->getFcallInfo(bb->back());
             MUST_BE_TRUE(fcall != NULL, "fcall info not found");
             uint16_t retSize = fcall->getRetSize();
             uint16_t argSize = fcall->getArgSize();
@@ -2319,7 +2319,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live, G4_Declare
                         updateLiveness(live, id, false);
                     }
 
-                    lrs[id]->checkForInfiniteSpillCost(bb->instList, i);
+                    lrs[id]->checkForInfiniteSpillCost(bb, i);
                 }
             }
             else
@@ -2348,7 +2348,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live, G4_Declare
         // Update debug info intervals based on live set
         if (builder.getOption(vISA_GenerateDebugInfo))
         {
-            updateDebugInfo(kernel, inst, *liveAnalysis, lrs, live, &state, inst == bb->instList.front());
+            updateDebugInfo(kernel, inst, *liveAnalysis, lrs, live, &state, inst == bb->front());
         }
     }
 }
@@ -3366,7 +3366,7 @@ bool Augmentation::markNonDefaultMaskDef()
 
     for (auto bb : kernel.fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             inst->setLexicalId(id++);
 
@@ -3422,7 +3422,7 @@ G4_BB* Augmentation::getTopmostBBDst(G4_BB* src, G4_BB* end, G4_BB* origSrc, uns
     // are found then recursively invoke itself with dst
     // of back-edge. Any path that reaches BB "end"
     // will not be propagated forward.
-    unsigned int topLexId = src->instList.front()->getLexicalId();
+    unsigned int topLexId = src->front()->getLexicalId();
     G4_BB* topmostBB = src;
 
     if (src != end)
@@ -3448,7 +3448,7 @@ G4_BB* Augmentation::getTopmostBBDst(G4_BB* src, G4_BB* end, G4_BB* origSrc, uns
 
             if (recursiveTopMostBB != NULL)
             {
-                unsigned int recursiveTopMostBBLexId = recursiveTopMostBB->instList.front()->getLexicalId();
+                unsigned int recursiveTopMostBBLexId = recursiveTopMostBB->front()->getLexicalId();
 
                 if (recursiveTopMostBBLexId < topLexId)
                 {
@@ -3628,8 +3628,8 @@ static int calculateBankConflictsInBB(G4_BB* bb, int &even_odd_num, int &low_hig
 {
     int conflict_num = 0;
 
-    for (std::list<G4_INST*>::reverse_iterator i = bb->instList.rbegin();
-        i != bb->instList.rend();
+    for (std::list<G4_INST*>::reverse_iterator i = bb->rbegin();
+        i != bb->rend();
         i++)
     {
         bool hasSrc0 = false;
@@ -3728,11 +3728,11 @@ static int calculateBankConflicts(G4_Kernel& kernel)
         {
             if (SIMD16)
             {
-                printf("SIMD16, BB: %d,  Even_odd: %d, low_high: %d, Conflicts: %d, Three: %d, Insts: %d,  kernel: %s\n", curBB->getId(), even_odd_num, low_high_num, conflict_num, threeSourceNum, curBB->instList.size(), kernel.getName());
+                printf("SIMD16, BB: %d,  Even_odd: %d, low_high: %d, Conflicts: %d, Three: %d, Insts: %d,  kernel: %s\n", curBB->getId(), even_odd_num, low_high_num, conflict_num, threeSourceNum, curBB->size(), kernel.getName());
             }
             else
             {
-                printf("SIMD8, BB: %d,  Even_odd: %d, low_high: %d, Conflicts: %d, Three: %d, Insts: %d,  kernel: %s\n", curBB->getId(), even_odd_num, low_high_num, conflict_num, threeSourceNum, curBB->instList.size(), kernel.getName());
+                printf("SIMD8, BB: %d,  Even_odd: %d, low_high: %d, Conflicts: %d, Three: %d, Insts: %d,  kernel: %s\n", curBB->getId(), even_odd_num, low_high_num, conflict_num, threeSourceNum, curBB->size(), kernel.getName());
             }
         }
     }
@@ -3759,7 +3759,7 @@ void Augmentation::buildLiveIntervals()
                 dcl = dcl->getAliasDeclare();
             }
 
-            updateStartInterval(dcl, entryBB->instList.front());
+            updateStartInterval(dcl, entryBB->front());
         }
     }
 
@@ -3771,8 +3771,8 @@ void Augmentation::buildLiveIntervals()
     {
         G4_BB* curBB = (*bb_it);
 
-        for (INST_LIST_ITER inst_it = curBB->instList.begin();
-            inst_it != curBB->instList.end();
+        for (INST_LIST_ITER inst_it = curBB->begin();
+            inst_it != curBB->end();
             inst_it++)
         {
             G4_INST* inst = (*inst_it);
@@ -4020,7 +4020,7 @@ void Augmentation::buildLiveIntervals()
             }
             for (auto exitBB : SCCSucc)
             {
-                extendVarLiveness(exitBB, headBB->instList.front());
+                extendVarLiveness(exitBB, headBB->front());
             }
         }
     }
@@ -4030,7 +4030,7 @@ void Augmentation::buildLiveIntervals()
         for (auto&& iter : kernel.fg.naturalLoops)
         {
             auto&& backEdge = iter.first;
-            G4_INST* startInst = (backEdge.second)->instList.front();
+            G4_INST* startInst = (backEdge.second)->front();
             const std::set<G4_BB*>& loopBody = iter.second;
 
             for (auto block : loopBody)
@@ -4077,7 +4077,7 @@ void Augmentation::buildLiveIntervals()
                     unsigned int oldEnd = dcl->getEndInterval()->getLexicalId();
 #endif
 
-                    updateEndInterval(dcl, EndBB->instList.back());
+                    updateEndInterval(dcl, EndBB->back());
 
 #ifdef DEBUG_VREBOSE_ON
                     if (oldEnd < dcl->getEndInterval()->getLexicalId())
@@ -4717,8 +4717,8 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
     DEBUG_VERBOSE("BB" << bb->getId() << std::endl);
 #endif
 
-    for (INST_LIST_RITER rit = bb->instList.rbegin();
-        rit != bb->instList.rend();
+    for (INST_LIST_RITER rit = bb->rbegin();
+        rit != bb->rend();
         rit++)
     {
         bool update = false;
@@ -5902,7 +5902,7 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
         G4_BB* curBB = (*bb_it);
 
         // Iterate over all insts
-        for (INST_LIST_ITER inst_it = curBB->instList.begin(); inst_it != curBB->instList.end(); ++inst_it)
+        for (INST_LIST_ITER inst_it = curBB->begin(); inst_it != curBB->end(); ++inst_it)
         {
             unsigned currentSpillRegSize = 0;
             unsigned currentIndrSpillRegSize = 0;
@@ -6280,7 +6280,7 @@ void GraphColor::cleanupRedundantARFFillCode()
     {
         clearSpillAddrLocSignature();
 
-        for (std::list<G4_INST*>::iterator i = (*it)->instList.begin(); i != (*it)->instList.end();)
+        for (std::list<G4_INST*>::iterator i = (*it)->begin(); i != (*it)->end();)
         {
             G4_INST* inst = (*i);
 
@@ -6318,7 +6318,7 @@ void GraphColor::cleanupRedundantARFFillCode()
 
                         if (redundantAddrFill(dst, srcRgn, inst->getExecSize())) {
                             std::list<G4_INST*>::iterator j = i++;
-                            (*it)->instList.erase(j);
+                            (*it)->erase(j);
                             continue;
                         }
                         else {
@@ -6489,7 +6489,7 @@ G4_Imm* GlobalRA::createMsgDesc(unsigned owordSize, bool writeType, bool isSplit
 //
 void GraphColor::saveSubRegs(
     unsigned startReg, unsigned startSubReg, unsigned size, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-    unsigned frameOffset, INST_LIST& instList, INST_LIST_ITER insertIt)
+    unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt)
 {
     //
     // mov (8) r126<1>:d r0<8;8,1>:d
@@ -6501,7 +6501,7 @@ void GraphColor::saveSubRegs(
             Mod_src_undef, Direct, builder.getBuiltinR0()->getRegVar(), 0, 0, rDesc, Type_UD);
         G4_INST* hdrInitInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8, dst, src,
             NULL, InstOpt_WriteEnable);
-        instList.insert(insertIt, hdrInitInst);
+        bb->insert(insertIt, hdrInitInst);
     }
     //
     // add (1) r126<1>:d FP<0;1,0>:d offset
@@ -6524,7 +6524,7 @@ void GraphColor::saveSubRegs(
             hdrSetInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1, dst, src0,
                 NULL, InstOpt_WriteEnable);
         }
-        instList.insert(insertIt, hdrSetInst);
+        bb->insert(insertIt, hdrSetInst);
     }
     //
     // mov (size) r127<1>:b startReg.startSubReg<size;size,1>:b
@@ -6539,7 +6539,7 @@ void GraphColor::saveSubRegs(
             Mod_src_undef, Direct, srcDcl->getRegVar(), 0, 0, rDesc, Type_UB);
         G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false, (uint8_t)size,
             dst, src, NULL, InstOpt_WriteEnable);
-        instList.insert(insertIt, movInst);
+        bb->insert(insertIt, movInst);
     }
     //
     //  send (8) null<1>:uw r126 0xa desc:ud
@@ -6559,7 +6559,7 @@ void GraphColor::saveSubRegs(
         //Options::isaBinaryInput = restoreVal;
         INST_LIST_ITER sendIt = builder.instList.end();
         --sendIt;
-        instList.insert(insertIt, *sendIt);
+        bb->insert(insertIt, *sendIt);
     }
 }
 
@@ -6568,7 +6568,7 @@ void GraphColor::saveSubRegs(
 //
 void GraphColor::saveRegs(
     unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-    unsigned frameOwordOffset, INST_LIST& instList, INST_LIST_ITER insertIt)
+    unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt)
 {
     if (getGenxPlatform() >= GENX_SKL)
     {
@@ -6584,7 +6584,7 @@ void GraphColor::saveRegs(
                 0, builder.rgnpool.createRegion(8, 8, 1), Type_UD);
             G4_INST* mov = builder.createInternalInst(NULL, G4_mov, NULL, false, 8, dstRgn, srcRgn, NULL, InstOpt_WriteEnable);
 
-            instList.insert(insertIt, mov);
+            bb->insert(insertIt, mov);
 
             G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
             G4_Operand* src0 = NULL;
@@ -6605,7 +6605,7 @@ void GraphColor::saveRegs(
             G4_INST* hdrSetInst = builder.createInternalInst(NULL, op, NULL, false, 1,
                 dst, src0, src1, InstOpt_WriteEnable);
 
-            instList.insert(insertIt, hdrSetInst);
+            bb->insert(insertIt, hdrSetInst);
 
             G4_DstRegRegion * postDst = builder.createNullDst((execSize > 8) ? Type_UW : Type_UD);
             auto sendSrc1 = builder.createSrcRegRegion(Mod_src_undef, Direct, scratchRegDcl->getRegVar(),
@@ -6624,31 +6624,31 @@ void GraphColor::saveRegs(
             G4_INST* sendsInst = builder.createSplitSendInst(NULL, G4_sends, execSize, postDst, sendSrc1, sendSrc2, descImm, InstOpt_WriteEnable, desc, NULL);
             sendsInst->setCISAOff(UNMAPPABLE_VISA_INDEX);
 
-            instList.insert(insertIt, sendsInst);
+            bb->insert(insertIt, sendsInst);
 
             builder.instList.clear();
 
         }
         else if (owordSize > 8)
         {
-            saveRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, instList, insertIt);
-            saveRegs(startReg + 4, owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, instList, insertIt);
+            saveRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+            saveRegs(startReg + 4, owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt);
         }
         //
         // Split into chunks of sizes 4 and remaining owords.
         //
         else if (owordSize > 4)
         {
-            saveRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, instList, insertIt);
-            saveRegs(startReg + 2, owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, instList, insertIt);
+            saveRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+            saveRegs(startReg + 2, owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt);
         }
         //
         // Split into chunks of sizes 2 and remaining owords.
         //
         else if (owordSize > 2)
         {
-            saveRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, instList, insertIt);
-            saveRegs(startReg + 1, owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, instList, insertIt);
+            saveRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+            saveRegs(startReg + 1, owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt);
         }
         else
         {
@@ -6671,7 +6671,7 @@ void GraphColor::saveRegs(
         G4_DstRegRegion* dstOpnd = builder.createDstRegRegion(Direct, msgDcl->getRegVar(), 0, 0, 1, Type_UD);
         G4_INST* killInst = builder.createInternalInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd,
             NULL, NULL, 0);
-        instList.insert(insertIt, killInst);
+        bb->insert(insertIt, killInst);
 
         //
         // mov (8) r126.0<1>:d r[startReg-1]<8;8,1>:d
@@ -6684,7 +6684,7 @@ void GraphColor::saveRegs(
                 Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0, rDesc, Type_UD);
             G4_INST* saveHdrInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8,
                 dst, src, NULL, InstOpt_WriteEnable);
-            instList.insert(insertIt, saveHdrInst);
+            bb->insert(insertIt, saveHdrInst);
         }
         //
         // mov (8) r[startReg-1]<1>:d r0<8;8,1>:d
@@ -6697,7 +6697,7 @@ void GraphColor::saveRegs(
                 Mod_src_undef, Direct, builder.getBuiltinR0()->getRegVar(), 0, 0, rDesc, Type_UD);
             G4_INST* hdrInitInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8,
                 dst, src, NULL, InstOpt_WriteEnable);
-            instList.insert(insertIt, hdrInitInst);
+            bb->insert(insertIt, hdrInitInst);
         }
         //
         // add (1) r[startReg-1, 2]<1>:d FP<0;1,0>:d offset
@@ -6723,7 +6723,7 @@ void GraphColor::saveRegs(
             }
             G4_INST* hdrSetInst = builder.createInternalInst(NULL, op, NULL, false, 1,
                 dst, src0, src1, InstOpt_WriteEnable);
-            instList.insert(insertIt, hdrSetInst);
+            bb->insert(insertIt, hdrSetInst);
         }
         //
         //  send (16) null<1>:uw r[startReg] 0xa desc:ud
@@ -6742,7 +6742,7 @@ void GraphColor::saveRegs(
             //Options::isaBinaryInput = restoreVal;
             INST_LIST_ITER sendIt = builder.instList.end();
             --sendIt;
-            instList.insert(insertIt, *sendIt);
+            bb->insert(insertIt, *sendIt);
         }
         //
         // mov (8) [startReg-1]<1>:d r126.0<8;8,1>:d
@@ -6755,7 +6755,7 @@ void GraphColor::saveRegs(
                 Mod_src_undef, Direct, scratchRegDcl->getRegVar(), 0, 0, rDesc, Type_UD);
             G4_INST* restoreHdrInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8,
                 dst, src, NULL, InstOpt_WriteEnable);
-            instList.insert(insertIt, restoreHdrInst);
+            bb->insert(insertIt, restoreHdrInst);
         }
 
         builder.instList.clear();
@@ -6765,24 +6765,24 @@ void GraphColor::saveRegs(
     //
     else if (owordSize > 8)
     {
-        saveRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, instList, insertIt);
-        saveRegs(startReg + 4, owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, instList, insertIt);
+        saveRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+        saveRegs(startReg + 4, owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt);
     }
     //
     // Split into chunks of sizes 4 and remaining owords.
     //
     else if (owordSize > 4)
     {
-        saveRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, instList, insertIt);
-        saveRegs(startReg + 2, owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, instList, insertIt);
+        saveRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+        saveRegs(startReg + 2, owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt);
     }
     //
     // Split into chunks of sizes 2 and remaining owords.
     //
     else if (owordSize > 2)
     {
-        saveRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, instList, insertIt);
-        saveRegs(startReg + 1, owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, instList, insertIt);
+        saveRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+        saveRegs(startReg + 1, owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt);
     }
     else
     {
@@ -6795,7 +6795,7 @@ void GraphColor::saveRegs(
 //
 void GraphColor::saveActiveRegs(
     std::vector<bool>& saveRegs, unsigned startReg, unsigned frameOffset,
-    INST_LIST& instList, INST_LIST_ITER insertIt)
+    G4_BB* bb, INST_LIST_ITER insertIt)
 {
     G4_Declare* scratchRegDcl = builder.kernel.fg.scratchRegDcl;
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
@@ -6810,7 +6810,7 @@ void GraphColor::saveActiveRegs(
             unsigned endPos = startPos + 1;
             for (; endPos < saveRegs.size() && saveRegs[endPos] == true; endPos++);
             unsigned owordSize = (endPos - startPos) * 2;
-            this->saveRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, instList, insertIt);
+            this->saveRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, bb, insertIt);
             frameOwordPos += owordSize;
             startPos = endPos;
         }
@@ -6822,7 +6822,7 @@ void GraphColor::saveActiveRegs(
 //
 void GraphColor::restoreSubRegs(
     unsigned startReg, unsigned startSubReg, unsigned size, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-    unsigned frameOffset, INST_LIST& instList, INST_LIST_ITER insertIt)
+    unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt)
 {
     //
     // mov (8) r127<1>:d r0<8;8,1>:d
@@ -6834,7 +6834,7 @@ void GraphColor::restoreSubRegs(
             Mod_src_undef, Direct, builder.getBuiltinR0()->getRegVar(), 0, 0, rDesc, Type_UD);
         G4_INST* hdrInitInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8,
             dst, src, NULL, InstOpt_WriteEnable);
-        instList.insert(insertIt, hdrInitInst);
+        bb->insert(insertIt, hdrInitInst);
     }
     //
     // add (1) r127<1>:d FP<0;1,0>:d offset
@@ -6858,7 +6858,7 @@ void GraphColor::restoreSubRegs(
             hdrSetInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
                 dst, src0, NULL, InstOpt_WriteEnable);
         }
-        instList.insert(insertIt, hdrSetInst);
+        bb->insert(insertIt, hdrSetInst);
     }
     //
     //  send (16) r126<1>:uw r127 0xa desc:ud
@@ -6879,7 +6879,7 @@ void GraphColor::restoreSubRegs(
         //Options::isaBinaryInput = restoreVal;
         INST_LIST_ITER sendIt = builder.instList.end();
         --sendIt;
-        instList.insert(insertIt, *sendIt);
+        bb->insert(insertIt, *sendIt);
     }
     //
     // mov (size) startReg.startSubReg<1>:b r126<1;1,1>:b
@@ -6894,7 +6894,7 @@ void GraphColor::restoreSubRegs(
             Mod_src_undef, Direct, scratchRegDcl->getRegVar(), 0, 0, rDesc, Type_UB);
         G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false, (uint8_t)size,
             dst, src, NULL, InstOpt_WriteEnable);
-        instList.insert(insertIt, movInst);
+        bb->insert(insertIt, movInst);
     }
 }
 
@@ -6903,7 +6903,7 @@ void GraphColor::restoreSubRegs(
 //
 void GraphColor::restoreRegs(
     unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-    unsigned frameOwordOffset, INST_LIST& instList, INST_LIST_ITER insertIt)
+    unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt)
 {
     //
     // Process chunks of size 8, 4, 2 and 1.
@@ -6920,7 +6920,7 @@ void GraphColor::restoreRegs(
                 Mod_src_undef, Direct, builder.getRealR0()->getRegVar(), 0, 0, rDesc, Type_UD);
             G4_INST* hdrInitInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8,
                 dst, src, NULL, InstOpt_WriteEnable);
-            instList.insert(insertIt, hdrInitInst);
+            bb->insert(insertIt, hdrInitInst);
         }
         //
         // add (1) r126<1>:d FP<0;1,0>:d offset
@@ -6946,7 +6946,7 @@ void GraphColor::restoreRegs(
             }
             G4_INST* hdrSetInst = builder.createInternalInst(NULL, op, NULL, false, 1,
                 dst, src0, src1, InstOpt_WriteEnable);
-            instList.insert(insertIt, hdrSetInst);
+            bb->insert(insertIt, hdrSetInst);
         }
 
         //
@@ -6972,7 +6972,7 @@ void GraphColor::restoreRegs(
             //Options::isaBinaryInput = restoreVal;
             INST_LIST_ITER sendIt = builder.instList.end();
             --sendIt;
-            instList.insert(insertIt, *sendIt);
+            bb->insert(insertIt, *sendIt);
         }
 
         builder.instList.clear();
@@ -6982,24 +6982,24 @@ void GraphColor::restoreRegs(
     //
     else if (owordSize > 8)
     {
-        restoreRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, instList, insertIt);
-        restoreRegs(startReg + 4, owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, instList, insertIt);
+        restoreRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+        restoreRegs(startReg + 4, owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt);
     }
     //
     // Split into chunks of sizes 4 and remaining owords.
     //
     else if (owordSize > 4)
     {
-        restoreRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, instList, insertIt);
-        restoreRegs(startReg + 2, owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, instList, insertIt);
+        restoreRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+        restoreRegs(startReg + 2, owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt);
     }
     //
     // Split into chunks of sizes 2 and remaining owords.
     //
     else if (owordSize > 2)
     {
-        restoreRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, instList, insertIt);
-        restoreRegs(startReg + 1, owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, instList, insertIt);
+        restoreRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
+        restoreRegs(startReg + 1, owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt);
     }
     else
     {
@@ -7012,7 +7012,7 @@ void GraphColor::restoreRegs(
 //
 void GraphColor::restoreActiveRegs(
     std::vector<bool>& restoreRegs, unsigned startReg, unsigned frameOffset,
-    INST_LIST& instList, INST_LIST_ITER insertIt)
+    G4_BB* bb, INST_LIST_ITER insertIt)
 {
     G4_Declare* scratchRegDcl = builder.kernel.fg.scratchRegDcl;
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
@@ -7027,7 +7027,7 @@ void GraphColor::restoreActiveRegs(
             unsigned endPos = startPos + 1;
             for (; endPos < restoreRegs.size() && restoreRegs[endPos] == true; endPos++);
             unsigned owordSize = (endPos - startPos) * 2;
-            this->restoreRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, instList, insertIt);
+            this->restoreRegs(startPos + startReg, owordSize, scratchRegDcl, framePtr, frameOwordPos, bb, insertIt);
             frameOwordPos += owordSize;
             startPos = endPos;
         }
@@ -7136,7 +7136,7 @@ void GraphColor::OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::v
 //
 // Generate the save code for the i/p filescope var.
 //
-void GraphColor::saveFileScopeVar(G4_RegVar* filescopeVar, INST_LIST& instList, INST_LIST_ITER insertIt)
+void GraphColor::saveFileScopeVar(G4_RegVar* filescopeVar, G4_BB* bb, INST_LIST_ITER insertIt)
 {
     unsigned owordSize = 8 * sizeof(short);
     G4_Declare* scratchRegDcl = builder.kernel.fg.scratchRegDcl;
@@ -7150,19 +7150,19 @@ void GraphColor::saveFileScopeVar(G4_RegVar* filescopeVar, INST_LIST& instList, 
     if (size < G4_GRF_REG_NBYTES)
     {
         unsigned startSubReg = filescopeVar->getPhyRegOff() * filescopeVar->getDeclare()->getElemSize();
-        saveSubRegs(startReg, startSubReg, size, scratchRegDcl, NULL, frameOwordPos, instList, insertIt);
+        saveSubRegs(startReg, startSubReg, size, scratchRegDcl, NULL, frameOwordPos, bb, insertIt);
     }
     else
     {
         MUST_BE_TRUE(size % owordSize == 0, ERROR_REGALLOC);
-        saveRegs(startReg, (size / owordSize), scratchRegDcl, NULL, frameOwordPos, instList, insertIt);
+        saveRegs(startReg, (size / owordSize), scratchRegDcl, NULL, frameOwordPos, bb, insertIt);
     }
 }
 
 //
 // Generate the restore code for the i/p filescope var.
 //
-void GraphColor::restoreFileScopeVar(G4_RegVar* filescopeVar, INST_LIST& instList, INST_LIST_ITER insertIt)
+void GraphColor::restoreFileScopeVar(G4_RegVar* filescopeVar, G4_BB* bb, INST_LIST_ITER insertIt)
 {
     unsigned owordSize = 8 * sizeof(short);
     G4_Declare* scratchRegDcl = builder.kernel.fg.scratchRegDcl;
@@ -7176,12 +7176,12 @@ void GraphColor::restoreFileScopeVar(G4_RegVar* filescopeVar, INST_LIST& instLis
     if (size < G4_GRF_REG_NBYTES)
     {
         unsigned startSubReg = filescopeVar->getPhyRegOff() * filescopeVar->getDeclare()->getElemSize();
-        restoreSubRegs(startReg, startSubReg, size, scratchRegDcl, NULL, frameOwordPos, instList, insertIt);
+        restoreSubRegs(startReg, startSubReg, size, scratchRegDcl, NULL, frameOwordPos, bb, insertIt);
     }
     else
     {
         MUST_BE_TRUE(size % owordSize == 0, ERROR_REGALLOC);
-        restoreRegs(startReg, (size / owordSize), scratchRegDcl, NULL, frameOwordPos, instList, insertIt);
+        restoreRegs(startReg, (size / owordSize), scratchRegDcl, NULL, frameOwordPos, bb, insertIt);
     }
 }
 
@@ -7204,7 +7204,7 @@ void GraphColor::addCallerSaveRestoreCode()
             std::vector<bool> callerSaveRegs(callerSaveNumGRF, false);
             std::vector<bool> retRegs(callerSaveNumGRF, false);
             unsigned callerSaveRegCount = 0;
-            G4_INST* callInst = (*it)->instList.back();
+            G4_INST* callInst = (*it)->back();
             /*callInst->getDst()->getTopDcl()->getRegVar()->setPhyReg(regPool.getGreg(1), 0);*/
             unsigned pseudoVCAId = callInst->asCFInst()->getAssocPseudoVCA()->getId();
             ASSERT_USER((*it)->Succs.size() == 1, "fcall basic block cannot have more than 1 successor");
@@ -7256,22 +7256,22 @@ void GraphColor::addCallerSaveRestoreCode()
                 vit++)
                 callerSaveRegsWritten += ((*vit) ? 1 : 0);
 
-            INST_LIST_ITER insertSaveIt = (*it)->instList.end();
+            INST_LIST_ITER insertSaveIt = (*it)->end();
             --insertSaveIt, --insertSaveIt;
             MUST_BE_TRUE((*insertSaveIt)->opcode() == G4_pseudo_caller_save, ERROR_REGALLOC);
             INST_LIST_ITER rmIt = insertSaveIt;
-            if (insertSaveIt == (*it)->instList.begin())
+            if (insertSaveIt == (*it)->begin())
             {
-                insertSaveIt = (*it)->instList.end();
+                insertSaveIt = (*it)->end();
             }
 
-            if (insertSaveIt != (*it)->instList.end())
+            if (insertSaveIt != (*it)->end())
             {
                 ++insertSaveIt;
             }
             else
             {
-                insertSaveIt = (*it)->instList.begin();
+                insertSaveIt = (*it)->begin();
             }
             if (callerSaveRegCount > 0)
             {
@@ -7279,26 +7279,26 @@ void GraphColor::addCallerSaveRestoreCode()
                 {
                     builder.kernel.getKernelDebugInfo()->clearOldInstList();
                     builder.kernel.getKernelDebugInfo()->setOldInstList
-                    ((*it)->instList);
+                    ((*it));
                 }
 
                 MUST_BE_TRUE(requireCallerSaveRestoreCode, ERROR_REGALLOC);
                 saveActiveRegs(callerSaveRegs, 0, builder.kernel.fg.callerSaveAreaOffset,
-                    (*it)->instList, insertSaveIt);
+                    (*it), insertSaveIt);
 
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
                     auto deltaInstList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
-                    ((*it)->instList);
-                    auto fcallInst = (*it)->instList.back();
+                    ((*it));
+                    auto fcallInst = (*it)->back();
                     for (auto it : deltaInstList)
                     {
                         builder.kernel.getKernelDebugInfo()->addCallerSaveInst(fcallInst, it);
                     }
                 }
             }
-            (*it)->instList.erase(rmIt);
-            INST_LIST_ITER insertRestIt = afterFCallBB->instList.begin();
+            (*it)->erase(rmIt);
+            INST_LIST_ITER insertRestIt = afterFCallBB->begin();
             for (; (*insertRestIt)->opcode() != G4_pseudo_caller_restore; ++insertRestIt);
             if (callerSaveRegCount > 0)
             {
@@ -7306,17 +7306,17 @@ void GraphColor::addCallerSaveRestoreCode()
                 {
                     builder.kernel.getKernelDebugInfo()->clearOldInstList();
                     builder.kernel.getKernelDebugInfo()->setOldInstList
-                    (afterFCallBB->instList);
+                    (afterFCallBB);
                 }
 
                 restoreActiveRegs(callerSaveRegs, 0, builder.kernel.fg.callerSaveAreaOffset,
-                    afterFCallBB->instList, insertRestIt);
+                    afterFCallBB, insertRestIt);
 
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
                     auto deltaInsts = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
-                    (afterFCallBB->instList);
-                    auto fcallInst = (*it)->instList.back();
+                    (afterFCallBB);
+                    auto fcallInst = (*it)->back();
                     for (auto it : deltaInsts)
                     {
                         builder.kernel.getKernelDebugInfo()->addCallerRestoreInst
@@ -7324,7 +7324,7 @@ void GraphColor::addCallerSaveRestoreCode()
                     }
                 }
             }
-            afterFCallBB->instList.erase(insertRestIt);
+            afterFCallBB->erase(insertRestIt);
 
             //builder.kernel.fg.paramOverflowAreaOffset = builder.kernel.fg.callerSaveAreaOffset + callerSaveRegsWritten * 2;
             if (maxCallerSaveSize < (builder.kernel.fg.callerSaveAreaOffset + callerSaveRegsWritten * 2))
@@ -7336,7 +7336,7 @@ void GraphColor::addCallerSaveRestoreCode()
                 getOptReportStream(optreport, m_options);
                 optreport << "Caller save size: " << callerSaveRegCount * 32 <<
                     " bytes for fcall at cisa id " <<
-                    (*it)->instList.back()->getCISAOff() << std::endl;
+                    (*it)->back()->getCISAOff() << std::endl;
                 closeOptReportStream(optreport);
             }
         }
@@ -7397,7 +7397,7 @@ void GraphColor::addCalleeSaveRestoreCode()
         vit++)
         calleeSaveRegsWritten += ((*vit) ? 1 : 0);
 
-    INST_LIST_ITER insertSaveIt = builder.kernel.fg.getEntryBB()->instList.end();
+    INST_LIST_ITER insertSaveIt = builder.kernel.fg.getEntryBB()->end();
     for (--insertSaveIt; (*insertSaveIt)->opcode() != G4_pseudo_callee_save; --insertSaveIt);
     if (calleeSaveRegCount > 0)
     {
@@ -7407,26 +7407,26 @@ void GraphColor::addCalleeSaveRestoreCode()
             // instructions that get inserted.
             builder.kernel.getKernelDebugInfo()->clearOldInstList();
             builder.kernel.getKernelDebugInfo()->setOldInstList
-            (builder.kernel.fg.getEntryBB()->instList);
+            (builder.kernel.fg.getEntryBB());
         }
         MUST_BE_TRUE(requireCalleeSaveRestoreCode, ERROR_REGALLOC);
         saveActiveRegs(calleeSaveRegs, callerSaveNumGRF, builder.kernel.fg.calleeSaveAreaOffset,
-            builder.kernel.fg.getEntryBB()->instList, insertSaveIt);
+            builder.kernel.fg.getEntryBB(), insertSaveIt);
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {
             // Delta of oldInstList and current instList are all
             // callee save instructions.
             auto instList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
-            (builder.kernel.fg.getEntryBB()->instList);
+            (builder.kernel.fg.getEntryBB());
             for (auto inst : instList)
             {
                 builder.kernel.getKernelDebugInfo()->addCalleeSaveInst(inst);
             }
         }
     }
-    builder.kernel.fg.getEntryBB()->instList.erase(insertSaveIt);
-    INST_LIST_ITER insertRestIt = builder.kernel.fg.getUniqueReturnBlock()->instList.end();
+    builder.kernel.fg.getEntryBB()->erase(insertSaveIt);
+    INST_LIST_ITER insertRestIt = builder.kernel.fg.getUniqueReturnBlock()->end();
     for (--insertRestIt; (*insertRestIt)->opcode() != G4_pseudo_callee_restore; --insertRestIt);
     INST_LIST_ITER eraseIt = insertRestIt++;
     if (calleeSaveRegCount > 0)
@@ -7437,23 +7437,23 @@ void GraphColor::addCalleeSaveRestoreCode()
             // instructions that get inserted.
             builder.kernel.getKernelDebugInfo()->clearOldInstList();
             builder.kernel.getKernelDebugInfo()->setOldInstList
-            (builder.kernel.fg.getUniqueReturnBlock()->instList);
+            (builder.kernel.fg.getUniqueReturnBlock());
         }
 
         restoreActiveRegs(calleeSaveRegs, callerSaveNumGRF, builder.kernel.fg.calleeSaveAreaOffset,
-            builder.kernel.fg.getUniqueReturnBlock()->instList, insertRestIt);
+            builder.kernel.fg.getUniqueReturnBlock(), insertRestIt);
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {
             auto instList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
-            (builder.kernel.fg.getUniqueReturnBlock()->instList);
+            (builder.kernel.fg.getUniqueReturnBlock());
             for (auto inst : instList)
             {
                 builder.kernel.getKernelDebugInfo()->addCalleeRestoreInst(inst);
             }
         }
     }
-    builder.kernel.fg.getUniqueReturnBlock()->instList.erase(eraseIt);
+    builder.kernel.fg.getUniqueReturnBlock()->erase(eraseIt);
 
     builder.kernel.fg.callerSaveAreaOffset =
         MAX(
@@ -7498,27 +7498,27 @@ void GraphColor::addFileScopeSaveRestoreCode()
                 MUST_BE_TRUE(fileScopeVar->getPhyReg()->isGreg(), ERROR_REGALLOC);
 
                 // Insert filescope save code just before caller_save op
-                INST_LIST_ITER insertSaveIt = (*it)->instList.begin();
+                INST_LIST_ITER insertSaveIt = (*it)->begin();
                 for (; (*insertSaveIt)->opcode() != G4_pseudo_caller_save; insertSaveIt++)
                     ; // empty body
                 MUST_BE_TRUE((*insertSaveIt)->opcode() == G4_pseudo_caller_save, "caller_save opcode not found before fcall");
-                if ((*it)->instList.size() == 2)
-                    insertSaveIt = (*it)->instList.begin();
+                if ((*it)->size() == 2)
+                    insertSaveIt = (*it)->begin();
 
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
                     builder.kernel.getKernelDebugInfo()->clearOldInstList();
                     builder.kernel.getKernelDebugInfo()->setOldInstList
-                    ((*it)->instList);
+                    ((*it));
                 }
 
-                saveFileScopeVar(fileScopeVar, (*it)->instList, insertSaveIt);
+                saveFileScopeVar(fileScopeVar, (*it), insertSaveIt);
 
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
                     auto deltaInstList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
-                    ((*it)->instList);
-                    auto fcallInst = (*it)->instList.back();
+                    ((*it));
+                    auto fcallInst = (*it)->back();
                     for (auto it : deltaInstList)
                     {
                         builder.kernel.getKernelDebugInfo()->addCallerSaveInst(fcallInst, it);
@@ -7527,12 +7527,12 @@ void GraphColor::addFileScopeSaveRestoreCode()
 
                 ASSERT_USER((*it)->Succs.size() == 1, "fcall basic block cannot have more than 1 successor");
                 G4_BB* afterFCallBB = (*it)->Succs.front();
-                INST_LIST_ITER insertRestIt = afterFCallBB->instList.begin();
+                INST_LIST_ITER insertRestIt = afterFCallBB->begin();
                 for (; (*insertRestIt)->opcode() != G4_pseudo_caller_restore; ++insertRestIt)
                     ; // empty body
                 MUST_BE_TRUE((*insertRestIt)->opcode() == G4_pseudo_caller_restore, "caller_restore opcode not found before fcall");
-                if (afterFCallBB->instList.size() == 1)
-                    insertRestIt = afterFCallBB->instList.end();
+                if (afterFCallBB->size() == 1)
+                    insertRestIt = afterFCallBB->end();
                 else
                     ++insertRestIt;
 
@@ -7540,17 +7540,17 @@ void GraphColor::addFileScopeSaveRestoreCode()
                 {
                     builder.kernel.getKernelDebugInfo()->clearOldInstList();
                     builder.kernel.getKernelDebugInfo()->setOldInstList
-                    (afterFCallBB->instList);
+                    (afterFCallBB);
                 }
 
                 restoreFileScopeVar(
-                    fileScopeVar, afterFCallBB->instList, insertRestIt);
+                    fileScopeVar, afterFCallBB, insertRestIt);
 
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
                     auto deltaInstList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
-                    (afterFCallBB->instList);
-                    auto fcallInst = (*it)->instList.back();
+                    (afterFCallBB);
+                    auto fcallInst = (*it)->back();
                     for (auto it : deltaInstList)
                     {
                         builder.kernel.getKernelDebugInfo()->addCallerSaveInst(fcallInst, it);
@@ -7577,20 +7577,20 @@ void GraphColor::addFileScopeSaveRestoreCode()
             if (liveAnalysis.isLiveAtExit(builder.kernel.fg.getEntryBB(), fileScopeVar->getId()))
             {
                 // Load globals at funcion entry only if atleast one path does not kill it
-                INST_LIST_ITER insertRestIt = builder.kernel.fg.getEntryBB()->instList.end();
+                INST_LIST_ITER insertRestIt = builder.kernel.fg.getEntryBB()->end();
                 for (--insertRestIt; (*insertRestIt)->opcode() != G4_pseudo_callee_save;
                     --insertRestIt);
-                if (builder.kernel.fg.getEntryBB()->instList.back()->opcode() == G4_pseudo_callee_save)
-                    insertRestIt = builder.kernel.fg.getEntryBB()->instList.end();
+                if (builder.kernel.fg.getEntryBB()->back()->opcode() == G4_pseudo_callee_save)
+                    insertRestIt = builder.kernel.fg.getEntryBB()->end();
                 else
                     ++insertRestIt;
-                restoreFileScopeVar(fileScopeVar, builder.kernel.fg.getEntryBB()->instList, insertRestIt);
+                restoreFileScopeVar(fileScopeVar, builder.kernel.fg.getEntryBB(), insertRestIt);
             }
-            INST_LIST_ITER insertSaveIt = builder.kernel.fg.getUniqueReturnBlock()->instList.end();
+            INST_LIST_ITER insertSaveIt = builder.kernel.fg.getUniqueReturnBlock()->end();
             for (--insertSaveIt; (*insertSaveIt)->opcode() != G4_pseudo_callee_restore; --insertSaveIt);
-            if (builder.kernel.fg.getUniqueReturnBlock()->instList.front()->opcode() == G4_pseudo_callee_restore)
-                insertSaveIt = builder.kernel.fg.getUniqueReturnBlock()->instList.begin();
-            saveFileScopeVar(fileScopeVar, builder.kernel.fg.getUniqueReturnBlock()->instList, insertSaveIt);
+            if (builder.kernel.fg.getUniqueReturnBlock()->front()->opcode() == G4_pseudo_callee_restore)
+                insertSaveIt = builder.kernel.fg.getUniqueReturnBlock()->begin();
+            saveFileScopeVar(fileScopeVar, builder.kernel.fg.getUniqueReturnBlock(), insertSaveIt);
         }
     }
     builder.instList.clear();
@@ -7605,8 +7605,8 @@ void GraphColor::addGenxMainStackSetupCode()
     G4_Declare* framePtr = builder.kernel.fg.framePtrDcl;
     G4_Declare* stackPtr = builder.kernel.fg.stackPtrDcl;
 
-    INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->instList.begin();
-    for (; insertIt != builder.kernel.fg.getEntryBB()->instList.end() && (*insertIt)->isLabel();
+    INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->begin();
+    for (; insertIt != builder.kernel.fg.getEntryBB()->end() && (*insertIt)->isLabel();
         ++insertIt)
         ; // empty body
     //
@@ -7617,7 +7617,7 @@ void GraphColor::addGenxMainStackSetupCode()
         G4_Imm * src = builder.createImm(0, Type_UD);
         G4_INST* fpInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
             dst, src, NULL, InstOpt_WriteEnable);
-        insertIt = builder.kernel.fg.getEntryBB()->instList.insert(insertIt, fpInst);
+        insertIt = builder.kernel.fg.getEntryBB()->insert(insertIt, fpInst);
 
         if (builder.kernel.getOption(vISA_GenerateDebugInfo))
         {
@@ -7634,7 +7634,7 @@ void GraphColor::addGenxMainStackSetupCode()
         G4_Imm * src = builder.createImm(frameSize, Type_UD);
         G4_INST* spIncInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
             dst, src, NULL, InstOpt_WriteEnable);
-        builder.kernel.fg.getEntryBB()->instList.insert(++insertIt, spIncInst);
+        builder.kernel.fg.getEntryBB()->insert(++insertIt, spIncInst);
     }
     builder.instList.clear();
 
@@ -7661,18 +7661,18 @@ void GraphColor::addCalleeStackSetupCode()
     if (frameSize == 0)
     {
         // Remove pseudo_store/restore_be_fp because a new frame is not needed
-        INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->instList.begin();
-        for (; insertIt != builder.kernel.fg.getEntryBB()->instList.end() && (*insertIt)->opcode() != G4_pseudo_store_be_fp;
+        INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->begin();
+        for (; insertIt != builder.kernel.fg.getEntryBB()->end() && (*insertIt)->opcode() != G4_pseudo_store_be_fp;
             ++insertIt)
         {   /* void */
         };
-        builder.kernel.fg.getEntryBB()->instList.erase(insertIt);
+        builder.kernel.fg.getEntryBB()->erase(insertIt);
 
-        insertIt = builder.kernel.fg.getUniqueReturnBlock()->instList.end();
+        insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
         for (--insertIt; (*insertIt)->opcode() != G4_pseudo_restore_be_fp; --insertIt)
         {   /* void */
         };
-        builder.kernel.fg.getUniqueReturnBlock()->instList.erase(insertIt);
+        builder.kernel.fg.getUniqueReturnBlock()->erase(insertIt);
 
         return;
     }
@@ -7693,10 +7693,10 @@ void GraphColor::addCalleeStackSetupCode()
         auto addInst = builder.createInternalInst(NULL, G4_add, NULL, false, 1,
             dst, src0, src1, InstOpt_WriteEnable);
         G4_BB* entryBB = builder.kernel.fg.getEntryBB();
-        auto insertIt = std::find_if(entryBB->instList.begin(), entryBB->instList.end(),
+        auto insertIt = std::find_if(entryBB->begin(), entryBB->end(),
             [](G4_INST* inst) { return inst->opcode() == G4_pseudo_store_be_fp; });
 
-        MUST_BE_TRUE(insertIt != entryBB->instList.end(), "Can't find pseudo_store_be_fp");
+        MUST_BE_TRUE(insertIt != entryBB->end(), "Can't find pseudo_store_be_fp");
         // Convert pseudo_store_be_fp to mov
         (*insertIt)->setOpcode(G4_mov);
         (*insertIt)->setOptionOn(InstOpt_WriteEnable);
@@ -7710,8 +7710,8 @@ void GraphColor::addCalleeStackSetupCode()
         }
 
         insertIt++;
-        entryBB->instList.insert(insertIt, createBEFP);
-        entryBB->instList.insert(insertIt, addInst);
+        entryBB->insert(insertIt, createBEFP);
+        entryBB->insert(insertIt, addInst);
     }
     //
     // BE_SP = BE_FP
@@ -7724,7 +7724,7 @@ void GraphColor::addCalleeStackSetupCode()
             Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, rDesc, Type_UD);
         G4_INST* spRestore = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
             sp_dst, fp_src, NULL, InstOpt_WriteEnable);
-        INST_LIST_ITER insertIt = builder.kernel.fg.getUniqueReturnBlock()->instList.end();
+        INST_LIST_ITER insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
         for (--insertIt; (*insertIt)->opcode() != G4_pseudo_restore_be_fp; --insertIt);
         // Convert pseudo_restore_be_fp to mov
         (*insertIt)->setOpcode(G4_mov);
@@ -7735,7 +7735,7 @@ void GraphColor::addCalleeStackSetupCode()
             builder.kernel.getKernelDebugInfo()->setCallerSPRestoreInst(spRestore);
             builder.kernel.getKernelDebugInfo()->setCallerBEFPRestoreInst(callerFPRestore);
         }
-        builder.kernel.fg.getUniqueReturnBlock()->instList.insert(insertIt, spRestore);
+        builder.kernel.fg.getUniqueReturnBlock()->insert(insertIt, spRestore);
     }
     builder.instList.clear();
 
@@ -7766,7 +7766,7 @@ void GraphColor::addA0SaveRestoreCode()
         if (bb->isEndWithFCall())
         {
             G4_BB* succ = bb->Succs.front();
-            G4_RegVar* assocPseudoA0 = bb->instList.back()->asCFInst()->getAssocPseudoA0Save();
+            G4_RegVar* assocPseudoA0 = bb->back()->asCFInst()->getAssocPseudoA0Save();
 
             if (assocPseudoA0->getPhyReg() == NULL)
             {
@@ -7785,11 +7785,11 @@ void GraphColor::addA0SaveRestoreCode()
                         Mod_src_undef, Direct, regPool.getAddrReg(), 0, 0, rDesc, Type_UW);
                     G4_INST* saveInst = builder.createInternalInst(NULL, G4_mov, NULL, false, numA0Elements,
                         dst, src, NULL, 0);
-                    INST_LIST_ITER insertIt = bb->instList.end();
+                    INST_LIST_ITER insertIt = bb->end();
                     --insertIt;
                     MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_fcall, ERROR_REGALLOC);
                     for (--insertIt; (*insertIt)->opcode() == G4_pseudo_caller_save_a0; --insertIt);
-                    bb->instList.insert(insertIt, saveInst);
+                    bb->insert(insertIt, saveInst);
                 }
 
                 {
@@ -7802,32 +7802,32 @@ void GraphColor::addA0SaveRestoreCode()
                         Mod_src_undef, Direct, savedDcl->getRegVar(), 0, 0, rDesc, Type_UW);
                     G4_INST* restoreInst = builder.createInternalInst(NULL, G4_mov, NULL, false, numA0Elements,
                         dst, src, NULL, 0);
-                    INST_LIST_ITER insertIt = succ->instList.begin();
+                    INST_LIST_ITER insertIt = succ->begin();
                     while ((*insertIt)->opcode() != G4_pseudo_caller_restore_a0)
                     {
                         ++insertIt;
                     }
-                    succ->instList.insert(insertIt, restoreInst);
+                    succ->insert(insertIt, restoreInst);
                 }
             }
 
             //Remove pseudo ops
             {
-                INST_LIST_ITER insertIt = bb->instList.end();
+                INST_LIST_ITER insertIt = bb->end();
                 --insertIt;
                 MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_fcall, ERROR_REGALLOC);
                 for (--insertIt; (*insertIt)->opcode() != G4_pseudo_caller_save_a0; --insertIt)
                     ; // empty body
                 MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_caller_save_a0, "Could not find pseudo caller save a0");
-                bb->instList.erase(insertIt);
+                bb->erase(insertIt);
             }
 
             {
-                INST_LIST_ITER insertIt = succ->instList.begin();
+                INST_LIST_ITER insertIt = succ->begin();
                 for (; (*insertIt)->opcode() != G4_pseudo_caller_restore_a0; ++insertIt)
                     ; // empty body
                 MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_caller_restore_a0, "Could not find pseudo caller restore a0");
-                succ->instList.erase(insertIt);
+                succ->erase(insertIt);
             }
 
         }
@@ -7856,7 +7856,7 @@ void GraphColor::addFlagSaveRestoreCode()
         if (bb->isEndWithFCall())
         {
             G4_BB* succ = bb->Succs.front();
-            G4_RegVar* assocPseudoFlag = bb->instList.back()->asCFInst()->getAssocPseudoFlagSave();
+            G4_RegVar* assocPseudoFlag = bb->back()->asCFInst()->getAssocPseudoFlagSave();
 
             if (assocPseudoFlag->getPhyReg() == NULL)
             {
@@ -7875,11 +7875,11 @@ void GraphColor::addFlagSaveRestoreCode()
                         builder.getRegionScalar(), Type_UD);
                     G4_INST* saveInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
                         dst, src, NULL, InstOpt_WriteEnable);
-                    INST_LIST_ITER insertIt = bb->instList.end();
+                    INST_LIST_ITER insertIt = bb->end();
                     --insertIt;
                     MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_fcall, ERROR_REGALLOC);
                     for (--insertIt; (*insertIt)->opcode() == G4_pseudo_caller_save_flag; --insertIt);
-                    bb->instList.insert(insertIt, saveInst);
+                    bb->insert(insertIt, saveInst);
                 }
 
                 {
@@ -7892,9 +7892,9 @@ void GraphColor::addFlagSaveRestoreCode()
                         Mod_src_undef, Direct, savedDcl1->getRegVar(), 0, 0, rDesc, Type_UD);
                     G4_INST* restoreInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
                         dst, src, NULL, InstOpt_WriteEnable);
-                    INST_LIST_ITER insertIt = succ->instList.begin();
+                    INST_LIST_ITER insertIt = succ->begin();
                     for (; (*insertIt)->opcode() != G4_pseudo_caller_restore_flag; ++insertIt);
-                    succ->instList.insert(insertIt, restoreInst);
+                    succ->insert(insertIt, restoreInst);
                 }
 
                 {
@@ -7910,11 +7910,11 @@ void GraphColor::addFlagSaveRestoreCode()
                             builder.getRegionScalar(), Type_UD);
                         G4_INST* saveInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
                             dst, src, NULL, InstOpt_WriteEnable);
-                        INST_LIST_ITER insertIt = bb->instList.end();
+                        INST_LIST_ITER insertIt = bb->end();
                         --insertIt;
                         MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_fcall, ERROR_REGALLOC);
                         for (--insertIt; (*insertIt)->opcode() == G4_pseudo_caller_save_flag; --insertIt);
-                        bb->instList.insert(insertIt, saveInst);
+                        bb->insert(insertIt, saveInst);
                     }
 
                     {
@@ -7927,9 +7927,9 @@ void GraphColor::addFlagSaveRestoreCode()
                             Mod_src_undef, Direct, savedDcl2->getRegVar(), 0, 0, rDesc, Type_UD);
                         G4_INST* restoreInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
                             dst, src, NULL, InstOpt_WriteEnable);
-                        INST_LIST_ITER insertIt = succ->instList.begin();
+                        INST_LIST_ITER insertIt = succ->begin();
                         for (; (*insertIt)->opcode() != G4_pseudo_caller_restore_flag; ++insertIt);
-                        succ->instList.insert(insertIt, restoreInst);
+                        succ->insert(insertIt, restoreInst);
                     }
                 }
 
@@ -7937,21 +7937,21 @@ void GraphColor::addFlagSaveRestoreCode()
 
             //Remove pseudo ops
             {
-                INST_LIST_ITER insertIt = bb->instList.end();
+                INST_LIST_ITER insertIt = bb->end();
                 --insertIt;
                 MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_fcall, ERROR_REGALLOC);
                 for (--insertIt; (*insertIt)->opcode() != G4_pseudo_caller_save_flag; --insertIt)
                     ; // empty body
                 MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_caller_save_flag, "Could not find pseudo caller save flag");
-                bb->instList.erase(insertIt);
+                bb->erase(insertIt);
             }
 
             {
-                INST_LIST_ITER insertIt = succ->instList.begin();
+                INST_LIST_ITER insertIt = succ->begin();
                 for (; (*insertIt)->opcode() != G4_pseudo_caller_restore_flag; ++insertIt)
                     ; // empty body
                 MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_caller_restore_flag, "Could not find pseudo caller restore flag");
-                succ->instList.erase(insertIt);
+                succ->erase(insertIt);
             }
 
         }
@@ -8021,21 +8021,21 @@ void GlobalRA::addCallerSavePseudoCode()
             G4_INST* saveInst = builder.createInternalInst(
                 NULL, G4_pseudo_caller_save_a0, NULL, false, 1,
                 dst, NULL, NULL, InstOpt_WriteEnable);
-            INST_LIST_ITER callBBIt = bb->instList.end();
-            bb->instList.insert(--callBBIt, saveInst);
+            INST_LIST_ITER callBBIt = bb->end();
+            bb->insert(--callBBIt, saveInst);
 
             ASSERT_USER(bb->Succs.size() == 1, "fcall basic block cannot have more than 1 successor node");
 
             G4_BB* retBB = bb->Succs.front();
             RegionDesc* rd = builder.getRegionScalar();
             G4_Operand* src = builder.createSrcRegRegion(Mod_src_undef, Direct, pseudoA0Dcl->getRegVar(), 0, 0, rd, Type_UW);
-            INST_LIST_ITER retBBIt = retBB->instList.begin();
-            for (; retBBIt != retBB->instList.end() && (*retBBIt)->isLabel(); ++retBBIt);
+            INST_LIST_ITER retBBIt = retBB->begin();
+            for (; retBBIt != retBB->end() && (*retBBIt)->isLabel(); ++retBBIt);
             G4_INST* restoreInst =
                 builder.createInternalInst(
                     NULL, G4_pseudo_caller_restore_a0, NULL, false, 1,
                     NULL, src, NULL, InstOpt_WriteEnable);
-            retBB->instList.insert(retBBIt, restoreInst);
+            retBB->insert(retBBIt, restoreInst);
         }
 
         if (bb->isEndWithFCall())
@@ -8047,21 +8047,21 @@ void GlobalRA::addCallerSavePseudoCode()
             G4_INST* saveInst = builder.createInternalInst(
                 NULL, G4_pseudo_caller_save_flag, NULL, false, 1,
                 dst, NULL, NULL, InstOpt_WriteEnable);
-            INST_LIST_ITER callBBIt = bb->instList.end();
-            bb->instList.insert(--callBBIt, saveInst);
+            INST_LIST_ITER callBBIt = bb->end();
+            bb->insert(--callBBIt, saveInst);
 
             ASSERT_USER(bb->Succs.size() == 1, "fcall basic block cannot have more than 1 successor node");
 
             G4_BB* retBB = bb->Succs.front();
             RegionDesc* rd = builder.getRegionScalar();
             G4_Operand* src = builder.createSrcRegRegion(Mod_src_undef, Direct, pseudoFlagDcl->getRegVar(), 0, 0, rd, Type_UW);
-            INST_LIST_ITER retBBIt = retBB->instList.begin();
-            for (; retBBIt != retBB->instList.end() && (*retBBIt)->isLabel(); ++retBBIt);
+            INST_LIST_ITER retBBIt = retBB->begin();
+            for (; retBBIt != retBB->end() && (*retBBIt)->isLabel(); ++retBBIt);
             G4_INST* restoreInst =
                 builder.createInternalInst(
                     NULL, G4_pseudo_caller_restore_flag, NULL, false, 1,
                     NULL, src, NULL, InstOpt_WriteEnable);
-            retBB->instList.insert(retBBIt, restoreInst);
+            retBB->insert(retBBIt, restoreInst);
         }
 
         if (bb->isEndWithFCall())
@@ -8073,10 +8073,10 @@ void GlobalRA::addCallerSavePseudoCode()
             G4_INST* saveInst = builder.createInternalInst(
                 NULL, G4_pseudo_caller_save, NULL, false, 1,
                 dst, NULL, NULL, InstOpt_WriteEnable);
-            INST_LIST_ITER callBBIt = bb->instList.end();
-            bb->instList.insert(--callBBIt, saveInst);
+            INST_LIST_ITER callBBIt = bb->end();
+            bb->insert(--callBBIt, saveInst);
 
-            G4_FCALL* fcall = builder.getFcallInfo(bb->instList.back());
+            G4_FCALL* fcall = builder.getFcallInfo(bb->back());
             MUST_BE_TRUE(fcall != NULL, "fcall info not found");
             uint16_t retSize = fcall->getRetSize();
             if (retSize > 0)
@@ -8092,13 +8092,13 @@ void GlobalRA::addCallerSavePseudoCode()
             G4_BB* retBB = bb->Succs.front();
             RegionDesc* rd = builder.getRegionScalar();
             G4_Operand* src = builder.createSrcRegRegion(Mod_src_undef, Direct, pseudoVCADcl->getRegVar(), 0, 0, rd, Type_UD);
-            INST_LIST_ITER retBBIt = retBB->instList.begin();
-            for (; retBBIt != retBB->instList.end() && (*retBBIt)->isLabel(); ++retBBIt);
+            INST_LIST_ITER retBBIt = retBB->begin();
+            for (; retBBIt != retBB->end() && (*retBBIt)->isLabel(); ++retBBIt);
             G4_INST* restoreInst =
                 builder.createInternalInst(
                     NULL, G4_pseudo_caller_restore, NULL, false, 1,
                     NULL, src, NULL, InstOpt_WriteEnable);
-            retBB->instList.insert(retBBIt, restoreInst);
+            retBB->insert(retBBIt, restoreInst);
         }
     }
     builder.instList.clear();
@@ -8117,12 +8117,12 @@ void GlobalRA::addCalleeSavePseudoCode()
     G4_INST* saveInst = builder.createInternalInst(
         NULL, G4_pseudo_callee_save, NULL, false, 1, dst,
         NULL, NULL, InstOpt_WriteEnable);
-    INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->instList.begin();
-    for (; insertIt != builder.kernel.fg.getEntryBB()->instList.end() && (*insertIt)->isLabel();
+    INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->begin();
+    for (; insertIt != builder.kernel.fg.getEntryBB()->end() && (*insertIt)->isLabel();
         ++insertIt)
     {   /*  void */
     };
-    builder.kernel.fg.getEntryBB()->instList.insert(insertIt, saveInst);
+    builder.kernel.fg.getEntryBB()->insert(insertIt, saveInst);
 
     G4_BB* exitBB = builder.kernel.fg.getUniqueReturnBlock();
     RegionDesc* rDesc = builder.getRegionScalar();
@@ -8132,10 +8132,10 @@ void GlobalRA::addCalleeSavePseudoCode()
         builder.createInternalInst(
             NULL, G4_pseudo_callee_restore, NULL, false, 1, NULL,
             src, NULL, InstOpt_WriteEnable);
-    INST_LIST_ITER exitBBIt = exitBB->instList.end();
+    INST_LIST_ITER exitBBIt = exitBB->end();
     --exitBBIt;
     MUST_BE_TRUE((*exitBBIt)->isFReturn(), ERROR_REGALLOC);
-    exitBB->instList.insert(exitBBIt, restoreInst);
+    exitBB->insert(exitBBIt, restoreInst);
     builder.instList.clear();
 }
 
@@ -8168,18 +8168,18 @@ void GlobalRA::addStoreRestoreForFP()
         gtpin->markInst(restoreInst);
     }
 
-    INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->instList.begin();
-    for (; insertIt != builder.kernel.fg.getEntryBB()->instList.end() && (*insertIt)->isLabel();
+    INST_LIST_ITER insertIt = builder.kernel.fg.getEntryBB()->begin();
+    for (; insertIt != builder.kernel.fg.getEntryBB()->end() && (*insertIt)->isLabel();
         ++insertIt)
     {   /*  void */
     };
-    builder.kernel.fg.getEntryBB()->instList.insert(insertIt, storeInst);
+    builder.kernel.fg.getEntryBB()->insert(insertIt, storeInst);
 
-    insertIt = builder.kernel.fg.getUniqueReturnBlock()->instList.end();
+    insertIt = builder.kernel.fg.getUniqueReturnBlock()->end();
     for (--insertIt; (*insertIt)->isFReturn() == false; --insertIt)
     {   /*  void */
     };
-    builder.kernel.fg.getUniqueReturnBlock()->instList.insert(insertIt, restoreInst);
+    builder.kernel.fg.getUniqueReturnBlock()->insert(insertIt, restoreInst);
 }
 
 void GlobalRA::reportUndefinedUses(LivenessAnalysis& liveAnalysis, G4_BB* bb, G4_INST* inst, G4_Declare* referencedDcl, std::set<G4_Declare*>& defs, std::ofstream& optreport, Gen4_Operand_Number opndNum)
@@ -8284,8 +8284,8 @@ void GlobalRA::detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& ke
         std::set<G4_Declare*>::iterator defs_it;
         G4_Declare* referencedDcl = NULL;
 
-        for (INST_LIST_ITER inst_it = bb->instList.begin();
-            inst_it != bb->instList.end();
+        for (INST_LIST_ITER inst_it = bb->begin();
+            inst_it != bb->end();
             inst_it++)
         {
             G4_INST* inst = (*inst_it);
@@ -8357,8 +8357,8 @@ void GlobalRA::detectNeverDefinedUses()
     {
         G4_BB* bb = (*bb_it);
 
-        for (INST_LIST_ITER inst_it = bb->instList.begin();
-            inst_it != bb->instList.end();
+        for (INST_LIST_ITER inst_it = bb->begin();
+            inst_it != bb->end();
             inst_it++)
         {
             G4_INST* inst = (*inst_it);
@@ -8688,7 +8688,7 @@ void VarSplit::createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<
     return;
 }
 
-void VarSplit::insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Operand *dstOpnd, INST_LIST &instList, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList)
+void VarSplit::insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Operand *dstOpnd, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList)
 {
     G4_INST *inst = (*instIter);
     INST_LIST_ITER iter = instIter;
@@ -8709,14 +8709,14 @@ void VarSplit::insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Ope
             G4_INST* splitInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
                 (unsigned char)subDcl->getTotalElems(), dst, src, nullptr, maskFlag,
                 inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
-            instList.insert(iter, splitInst);
+            bb->insert(iter, splitInst);
         }
     }
 
     return;
 }
 
-void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int index, G4_Operand *srcOpnd, int pos, INST_LIST &instList, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList)
+void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int index, G4_Operand *srcOpnd, int pos, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList)
 {
     G4_INST *inst = (*instIter);
 
@@ -8763,7 +8763,7 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
                 G4_INST* movInst = kernel.fg.builder->createInternalInst(nullptr, G4_mov, nullptr, false,
                     (unsigned char)subDcl->getTotalElems(), dst, src, nullptr, InstOpt_WriteEnable,
                     inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
-                instList.insert(instIter, movInst);
+                bb->insert(instIter, movInst);
             }
         }
         G4_SrcRegRegion* newSrc = kernel.fg.builder->Create_Src_Opnd_From_Dcl(newDcl, oldSrc->getRegion());
@@ -8833,7 +8833,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
     {
         G4_BB *bb = (*it);
 
-        for (INST_LIST_ITER it = bb->instList.begin(); it != bb->instList.end(); ++it, ++instIndex)
+        for (INST_LIST_ITER it = bb->begin(); it != bb->end(); ++it, ++instIndex)
         {
             G4_INST* inst = (*it);
             G4_DstRegRegion* dst = inst->getDst();
@@ -8871,7 +8871,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
     instIndex = 0;
     for (auto bb : kernel.fg.BBs)
     {
-        for (INST_LIST_ITER it = bb->instList.begin(); it != bb->instList.end(); ++it, ++instIndex)
+        for (INST_LIST_ITER it = bb->begin(); it != bb->end(); ++it, ++instIndex)
         {
 
             G4_INST* inst = (*it);
@@ -8991,12 +8991,12 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
 
             if (opnd->isDstRegRegion())
             {
-                insertMovesToTemp(builder, topDcl, opnd, bb->instList, instIter, splitDclList);
+                insertMovesToTemp(builder, topDcl, opnd, bb, instIter, splitDclList);
             }
 
             if (opnd->isSrcRegRegion())
             {
-                insertMovesFromTemp(kernel, topDcl, srcIndex, opnd, pos, bb->instList, instIter, splitDclList);
+                insertMovesFromTemp(kernel, topDcl, srcIndex, opnd, pos, bb, instIter, splitDclList);
             }
 
             srcIndex++;
@@ -9018,7 +9018,7 @@ void VarSplit::localSplit(IR_Builder& builder,
     //
     // Iterate instruction in BB from back to front
     //
-    for (INST_LIST::reverse_iterator rit = bb->instList.rbegin(); rit != bb->instList.rend(); ++rit)
+    for (INST_LIST::reverse_iterator rit = bb->rbegin(); rit != bb->rend(); ++rit)
     {
         G4_INST* i = (*rit);
         G4_Operand* dst = i->getDst();
@@ -9687,7 +9687,7 @@ int GlobalRA::coloringRegAlloc()
         resetGlobalRAStates();
 
         //Identify the local variables to speedup following analysis
-        markGraphBlockLocalVars(true);
+        markGraphBlockLocalVars();
         
         //Do variable splitting in each iteration
         if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
@@ -9802,7 +9802,7 @@ int GlobalRA::coloringRegAlloc()
                 int instNum = 0;
                 for (auto bb : kernel.fg.BBs)
                 {
-                    instNum += (int)bb->instList.size();
+                    instNum += (int)bb->size();
                 }
 
                 if (iterationNo == 0 &&                             //Only works when first iteration of Global RA failed.
@@ -10951,7 +10951,7 @@ bool FlagSpillCleanup::flagScratchDefineUse(G4_BB*             bb,
             {
                 if (IS_SPILL_KILL_CANDIDATE(preScratchAccess))
                 {
-                    bb->instList.erase(preScratchAccess->inst_it);
+                    bb->erase(preScratchAccess->inst_it);
                     preScratchAccess->instKilled = true;
                     clean_num_profile->spill_clean_num[0]++;
                     scratchTraceList->erase(it); //The previous one is not candidate for reuse
@@ -11098,7 +11098,7 @@ void FlagSpillCleanup::regFillClean(IR_Builder&        builder,
                         {
                             if (replaceWithPreDcl(builder, scratchAccess, preScratchAccess, regKind))
                             {
-                                bb->instList.erase(scratchAccess->inst_it);
+                                bb->erase(scratchAccess->inst_it);
                                 scratchAccess->instKilled = true;
                                 scratchAccess->preScratchAccess->useCount--;
                                 clean_num_profile->fill_clean_num[0]++;
@@ -11112,7 +11112,7 @@ void FlagSpillCleanup::regFillClean(IR_Builder&        builder,
                     {
                         if (replaceWithPreDcl(builder, scratchAccess, preScratchAccess, regKind))
                         {
-                            bb->instList.erase(scratchAccess->inst_it);
+                            bb->erase(scratchAccess->inst_it);
                             scratchAccess->instKilled = true;
                             scratchAccess->preScratchAccess->useCount--;
                             clean_num_profile->fill_clean_num[0]++;
@@ -11157,7 +11157,7 @@ void FlagSpillCleanup::regSpillClean(IR_Builder&        builder,
                 scratchAccess->evicted &&
                 scratchAccess->useCount == 0)
             {
-                bb->instList.erase(scratchAccess->inst_it);
+                bb->erase(scratchAccess->inst_it);
                 scratchAccess->instKilled = true;
                 clean_num_profile->spill_clean_num[0]++;
 #ifdef _DEBUG
@@ -11194,15 +11194,15 @@ void FlagSpillCleanup::spillFillCodeCleanFlag(IR_Builder&        builder,
     {
         G4_BB* bb = (*it);
 
-        INST_LIST_ITER inst_it = bb->instList.begin();
-        INST_LIST_RITER inst_rit = bb->instList.rbegin();
+        INST_LIST_ITER inst_it = bb->begin();
+        INST_LIST_RITER inst_rit = bb->rbegin();
 
         scratchTraceList.clear();
         candidateList.clear();
         freeScratchAccess(&scratchAccessList);
 
         //Top down scan within BB
-        while (inst_it != bb->instList.end())
+        while (inst_it != bb->end())
         {
             INST_LIST_ITER inst_it_next = inst_it;
             inst_it_next++;
@@ -11298,7 +11298,7 @@ void GlobalRA::computePhyReg()
     auto& fg = kernel.fg;
     for (auto bb : fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             if (inst->isPseudoKill() ||
                 inst->isLifeTimeEnd() ||
@@ -11359,7 +11359,7 @@ void GraphColor::dumpRegisterPressure()
             std::cerr << succ->getId() << ",";
         }
         std::cerr << ")\n";
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             uint32_t pressure = rpe.getRegisterPressure(inst);
             if (pressure > max)
@@ -11391,7 +11391,7 @@ void GlobalRA::fixAlignment()
 {
     for (auto BB : kernel.fg.BBs)
     {
-        for (auto inst : BB->instList)
+        for (auto inst : *BB)
         {
             G4_DstRegRegion* dst = inst->getDst();
             if (dst && dst->getTopDcl())

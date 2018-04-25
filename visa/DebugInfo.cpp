@@ -524,7 +524,7 @@ void KernelDebugInfo::computeMissingVISAIds()
 
     for (auto bb : getKernel().fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             if (inst->getCISAOff() != UNMAPPABLE_VISA_INDEX &&
                 (unsigned int)inst->getCISAOff() > maxCISAId)
@@ -538,7 +538,7 @@ void KernelDebugInfo::computeMissingVISAIds()
 
     for (auto bb : getKernel().fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             if (inst->getCISAOff() != UNMAPPABLE_VISA_INDEX)
             {
@@ -576,7 +576,7 @@ void KernelDebugInfo::generateGenISAToVISAIndex()
     // all instructions will be present in the vector.
     for (auto bb : kernel->fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             if (inst->getGenOffset() == -1)
                 continue;
@@ -656,8 +656,8 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
             break;
         }
 
-        for(INST_LIST_ITER inst_it = bb->instList.begin();
-            inst_it != bb->instList.end();
+        for(INST_LIST_ITER inst_it = bb->begin();
+            inst_it != bb->end();
             inst_it++)
         {
             G4_INST* inst = (*inst_it);
@@ -1059,9 +1059,9 @@ void emitDataSubroutines(VISAKernelImpl* visaKernel, T& t)
     for (auto bb : kernel->fg.BBs)
     {
         if (bb != kernel->fg.BBs.front() &&
-            bb->instList.size() > 0 &&
-            bb->instList.front()->isLabel() &&
-            bb->instList.front()->getLabel()->isFuncLabel())
+            bb->size() > 0 &&
+            bb->front()->isLabel() &&
+            bb->front()->getLabel()->isFuncLabel())
         {
             // This is required for kernels because callees are
             // stitched together in its flowgraph and BBs of
@@ -1071,7 +1071,7 @@ void emitDataSubroutines(VISAKernelImpl* visaKernel, T& t)
         }
 
         if (bb->isEndWithCall() &&
-            !kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bb->instList.back()))
+            !kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bb->back()))
         {
             uniqueSubs.insert(std::make_pair(bb->Succs.front(), false));
         }
@@ -1100,9 +1100,9 @@ void emitDataSubroutines(VISAKernelImpl* visaKernel, T& t)
                 G4_BB* calleeBB = bb->Succs.front();
                 while (firstInst == NULL && calleeBB != NULL)
                 {
-                    if (calleeBB->instList.size() > 0)
+                    if (calleeBB->size() > 0)
                     {
-                        firstInst = calleeBB->instList.front();
+                        firstInst = calleeBB->front();
                         start = firstInst->getCISAOff();
                         subLabel = firstInst->getSrc(0)->asLabel();
                     }
@@ -1111,9 +1111,9 @@ void emitDataSubroutines(VISAKernelImpl* visaKernel, T& t)
                 calleeBB = bb->BBAfterCall()->Preds.front();
                 while (lastInst == NULL && calleeBB != NULL)
                 {
-                    if (calleeBB->instList.size() > 0)
+                    if (calleeBB->size() > 0)
                     {
-                        lastInst = calleeBB->instList.back();
+                        lastInst = calleeBB->back();
                         end = lastInst->getCISAOff();
                         MUST_BE_TRUE(lastInst->isReturn(), "Expecting to see G4_return as last inst in sub-routine");
                         retval = lastInst->getSrc(0)->asSrcRegRegion()->getBase()->asRegVar()->getDeclare()->getRootDeclare();
@@ -1292,10 +1292,10 @@ void emitDataCallerSave(VISAKernelImpl* visaKernel, T& t)
     // Compute total caller save entries to emit
     for (auto bbs : kernel->fg.BBs)
     {
-        if (kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bbs->instList.back()))
+        if (kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bbs->back()))
         {
-            auto& callerSaveInsts = kernel->getKernelDebugInfo()->getCallerSaveInsts(bbs->instList.back());
-            auto& callerRestoreInsts = kernel->getKernelDebugInfo()->getCallerRestoreInsts(bbs->instList.back());
+            auto& callerSaveInsts = kernel->getKernelDebugInfo()->getCallerSaveInsts(bbs->back());
+            auto& callerRestoreInsts = kernel->getKernelDebugInfo()->getCallerRestoreInsts(bbs->back());
 
             SaveRestoreManager mgr(visaKernel);
             for (auto callerSave : callerSaveInsts)
@@ -1329,10 +1329,10 @@ void emitDataCallerSave(VISAKernelImpl* visaKernel, T& t)
     {
         for (auto bbs : kernel->fg.BBs)
         {
-            if (kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bbs->instList.back()))
+            if (kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bbs->back()))
             {
-                auto& callerSaveInsts = kernel->getKernelDebugInfo()->getCallerSaveInsts(bbs->instList.back());
-                auto& callerRestoreInsts = kernel->getKernelDebugInfo()->getCallerRestoreInsts(bbs->instList.back());
+                auto& callerSaveInsts = kernel->getKernelDebugInfo()->getCallerSaveInsts(bbs->back());
+                auto& callerRestoreInsts = kernel->getKernelDebugInfo()->getCallerRestoreInsts(bbs->back());
 
                 SaveRestoreManager mgr(visaKernel);
                 for (auto callerSave : callerSaveInsts)
@@ -1666,8 +1666,8 @@ void KernelDebugInfo::updateRelocOffset()
         bbIt++)
     {
         G4_BB* bb = (*bbIt);
-        INST_LIST_ITER instItEnd = bb->instList.end();
-        for(auto instIt = bb->instList.begin();
+        INST_LIST_ITER instItEnd = bb->end();
+        for(auto instIt = bb->begin();
             instIt != instItEnd;
             instIt++)
         {
@@ -1732,8 +1732,8 @@ void resetGenOffsets(G4_Kernel& kernel)
     {
         G4_BB* bb = (*bbIt);
 
-        auto instItEnd = bb->instList.end();
-        for(auto instIt = bb->instList.begin();
+        auto instItEnd = bb->end();
+        for(auto instIt = bb->begin();
             instIt != instItEnd;
             instIt++)
         {
@@ -1954,7 +1954,7 @@ void KernelDebugInfo::updateCallStackLiveIntervals()
 
         for (auto bbs : getKernel().fg.BBs)
         {
-            for (auto insts : bbs->instList)
+            for (auto insts : *bbs)
             {
                 if (insts->getGenOffset() != UNDEFINED_GEN_OFFSET)
                 {
@@ -2107,9 +2107,10 @@ bool KernelDebugInfo::isFcallWithSaveRestore(G4_INST* inst)
 
 // Compute extra instructions in insts over oldInsts list and
 // return a new list.
-INST_LIST KernelDebugInfo::getDeltaInstructions(INST_LIST& insts)
+INST_LIST KernelDebugInfo::getDeltaInstructions(G4_BB* bb)
 {
-    INST_LIST deltaInsts = insts;
+    INST_LIST deltaInsts;
+    std::copy(bb->begin(), bb->end(), deltaInsts.begin());
 
     for (auto oldInstsIt : oldInsts)
     {
@@ -2357,9 +2358,9 @@ void emitSubRoutineInfo(VISAKernelImpl* visaKernel)
             G4_BB* calleeBB = bb->Succs.front();
             while (firstInst == NULL && calleeBB != NULL)
             {
-                if (calleeBB->instList.size() > 0)
+                if (calleeBB->size() > 0)
                 {
-                    firstInst = calleeBB->instList.front();
+                    firstInst = calleeBB->front();
                     start = firstInst->getCISAOff();
                     subLabel = firstInst->getSrc(0)->asLabel();
                 }
@@ -2368,9 +2369,9 @@ void emitSubRoutineInfo(VISAKernelImpl* visaKernel)
             calleeBB = bb->BBAfterCall()->Preds.front();
             while (lastInst == NULL && calleeBB != NULL)
             {
-                if (calleeBB->instList.size() > 0)
+                if (calleeBB->size() > 0)
                 {
-                    lastInst = calleeBB->instList.back();
+                    lastInst = calleeBB->back();
                     end = lastInst->getCISAOff();
                     MUST_BE_TRUE(lastInst->isReturn(), "Expecting to see G4_return as last inst in sub-routine");
                     retval = lastInst->getSrc(0)->asSrcRegRegion()->getBase()->asRegVar()->getDeclare()->getRootDeclare();
@@ -2450,13 +2451,13 @@ void emitCallerSaveInfo(VISAKernelImpl* visaKernel)
 
     for (auto bbs : kernel->fg.BBs)
     {
-        if (kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bbs->instList.back()))
+        if (kernel->getKernelDebugInfo()->isFcallWithSaveRestore(bbs->back()))
         {
-            auto& callerSaveInsts = kernel->getKernelDebugInfo()->getCallerSaveInsts(bbs->instList.back());
-            auto& callerRestoreInsts = kernel->getKernelDebugInfo()->getCallerRestoreInsts(bbs->instList.back());
+            auto& callerSaveInsts = kernel->getKernelDebugInfo()->getCallerSaveInsts(bbs->back());
+            auto& callerRestoreInsts = kernel->getKernelDebugInfo()->getCallerRestoreInsts(bbs->back());
 
             std::cerr << "Caller save for ";
-            bbs->instList.back()->emit(std::cerr);
+            bbs->back()->emit(std::cerr);
             std::cerr << "\n";
 
             SaveRestoreManager mgr(visaKernel);
@@ -2506,7 +2507,7 @@ void dumpCFG(VISAKernelImpl* visaKernel)
 
     for (auto bbs : kernel->fg.BBs)
     {
-        for (auto insts : bbs->instList)
+        for (auto insts : *bbs)
         {
             if (insts->getGenOffset() != UNDEFINED_GEN_OFFSET)
             {

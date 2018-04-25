@@ -62,7 +62,7 @@ class SpillManager
     // The number of flag spill load inserted.
     unsigned numFlagSpillLoad;
 
-    void genRegMov(INST_LIST&     instList,
+    void genRegMov(G4_BB* bb,
                    INST_LIST_ITER it,
                    G4_VarBase*    src,
                    unsigned short sSubRegOff,
@@ -73,24 +73,23 @@ class SpillManager
     G4_Declare* createNewTempAddrDeclare(G4_Declare* dcl);
     G4_Declare* createNewTempFlagDeclare(G4_Declare* dcl);
     G4_Declare* createNewTempAddrDeclare(G4_Declare* dcl, uint16_t num_reg);
-    void replaceSpilledDst(INST_LIST& instList,
+    void replaceSpilledDst(G4_BB* bb,
                            INST_LIST_ITER it, // where new insts will be inserted
                            G4_INST*       inst,
 						   PointsToAnalysis& pointsToAnalysis,
                            G4_Operand ** operands_analyzed,
                            G4_Declare ** declares_created);
-    void replaceSpilledSrc(INST_LIST&     instList,
+    void replaceSpilledSrc(G4_BB* bb,
                            INST_LIST_ITER it, // where new insts will be inserted
                            G4_INST*       inst,
                            unsigned       i,
 						   PointsToAnalysis& pointsToAnalysis,
                            G4_Operand ** operands_analyzed,
                            G4_Declare ** declares_created);
-    void replaceSpilledPredicate(INST_LIST& instList,
+    void replaceSpilledPredicate(G4_BB* bb,
                            INST_LIST_ITER it,
                            G4_INST*       inst);
     void replaceSpilledFlagDst(G4_BB*     bb,
-                           INST_LIST&     instList,
                            INST_LIST_ITER it,
                            G4_INST*       inst);
 

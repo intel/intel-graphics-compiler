@@ -33,7 +33,7 @@ namespace vISA
         unsigned int id = 0;
         for (auto bb : kernel.fg.BBs)
         {
-            for (auto inst : bb->instList)
+            for (auto inst : *bb)
             {
                 inst->setLexicalId(id++);
 
@@ -93,13 +93,13 @@ namespace vISA
             // Update lastUseLexId based on BB live-out set
             for (unsigned int i = 0; i < liveness.getNumSelectedVar(); i++)
             {
-                if (bb->instList.size() > 0 && liveness.isLiveAtExit(bb, i))
+                if (bb->size() > 0 && liveness.isLiveAtExit(bb, i))
                 {
                     auto lr = coloring.getLiveRanges()[i];
                     auto dclIt = operations.find(lr->getDcl()->getRootDeclare());
                     if (dclIt != operations.end())
                     {
-                        (*dclIt).second.lastUseLexId = bb->instList.back()->getLexicalId();
+                        (*dclIt).second.lastUseLexId = bb->back()->getLexicalId();
                     }
                 }
             }
@@ -116,7 +116,7 @@ namespace vISA
         for (auto bb : kernel.fg.BBs)
         {
             G4_INST* samplerHeaderMov = nullptr;
-            for (auto inst : bb->instList)
+            for (auto inst : *bb)
             {
                 if (inst->getDst() &&
                     inst->getDst()->getTopDcl() == samplerHeader)
@@ -163,8 +163,8 @@ namespace vISA
         if (!samplerHeader)
             return;
 
-        for (auto instIt = bb->instList.begin();
-            instIt != bb->instList.end();
+        for (auto instIt = bb->begin();
+            instIt != bb->end();
             )
         {
             auto inst = (*instIt);
@@ -186,7 +186,7 @@ namespace vISA
                     dupOp->setCISAOff(samplerHeaderMov->getCISAOff());
                     dupOp->setLineNo(samplerHeaderMov->getLineNo());
 
-                    bb->instList.insert(instIt, dupOp);
+                    bb->insert(instIt, dupOp);
                     dupOp->setCISAOff(samplerHeaderMov->getCISAOff());
                     dupOp->setLineNo(samplerHeaderMov->getLineNo());
                 }
@@ -321,12 +321,12 @@ namespace vISA
         {
             std::list<G4_INST*> lastMov;
 
-            INST_LIST_ITER toErase = bb->instList.end();
+            INST_LIST_ITER toErase = bb->end();
 
             if (deLVNedBBs.find(bb) == deLVNedBBs.end())
                 continue;
 
-            for (auto instIt = bb->instList.begin(), instItEnd = bb->instList.end();
+            for (auto instIt = bb->begin(), instItEnd = bb->end();
                 instIt != instItEnd;
                 )
             {
@@ -336,7 +336,7 @@ namespace vISA
                     inst->getMsgDesc()->getFuncId() == CISA_SHARED_FUNCTION_ID::SFID_SAMPLER &&
                     inst->getMsgDesc()->isHeaderPresent())
                 {
-                    toErase = bb->instList.end();
+                    toErase = bb->end();
                 }
 
                 if (inst->isMov() && inst->getDst() && inst->getExecSize() == 1)
@@ -346,10 +346,10 @@ namespace vISA
 
                     if (dstTopDcl == samplerHeader)
                     {
-                        if (toErase != bb->instList.end())
+                        if (toErase != bb->end())
                         {
                             lastMov.remove(*toErase);
-                            bb->instList.erase(toErase);
+                            bb->erase(toErase);
                             toErase = instIt;
                         }
 
@@ -367,8 +367,8 @@ namespace vISA
 #if 0
                                 printf("Removing sampler header mov at $%d\n", inst->getCISAOff());
 #endif
-                                instIt = bb->instList.erase(instIt);
-                                toErase = bb->instList.end();
+                                instIt = bb->erase(instIt);
+                                toErase = bb->end();
                                 continue;
                             }
                         }
@@ -382,15 +382,15 @@ namespace vISA
                 instIt++;
             }
 
-            if (toErase != bb->instList.end())
-                bb->instList.erase(toErase);
+            if (toErase != bb->end())
+                bb->erase(toErase);
         }
     }
 
     bool Rematerialization::checkLocalWAR(G4_INST* defInst, G4_BB* bb, INST_LIST_ITER useIter)
     {
         INST_LIST_ITER currIter = useIter;
-        while (currIter != bb->instList.begin())
+        while (currIter != bb->begin())
         {
             currIter--;
             auto currInst = *currIter;
@@ -979,7 +979,7 @@ namespace vISA
 
         for (auto bb : kernel.fg.BBs)
         {
-            for (auto inst : bb->instList)
+            for (auto inst : *bb)
             {
                 if (inst->isSplitSend() &&
                     inst->getMsgDesc() &&
@@ -1010,8 +1010,8 @@ namespace vISA
             // can reuse them.
             // <Unique def, <Remat'd def, Lexical id of last ref>>
             std::map<const Reference*, std::pair<G4_INST*, unsigned int>> rematValues;
-            for (auto instIt = bb->instList.begin();
-                instIt != bb->instList.end();
+            for (auto instIt = bb->begin();
+                instIt != bb->end();
                 instIt++)
             {
                 auto inst = (*instIt);
@@ -1095,7 +1095,7 @@ namespace vISA
                                 rematSrc = rematerialize(src->asSrcRegRegion(), bb, uniqueDef, newInsts, cacheInst);
                                 while (!newInsts.empty())
                                 {
-                                    bb->instList.insert(instIt, newInsts.front());
+                                    bb->insert(instIt, newInsts.front());
                                     newInsts.pop_front();
                                 }
 

@@ -142,7 +142,7 @@ G4_Declare* SpillManager::createNewTempAddrDeclare(G4_Declare* dcl, uint16_t num
 // generate a reg to reg mov inst for addr/flag spill
 // mov  dst(dRegOff,dSubRegOff)<1>  src(sRegOff,sSubRegOff)<nRegs;nRegs,1>
 //
-void SpillManager::genRegMov(INST_LIST&     instList,
+void SpillManager::genRegMov(G4_BB* bb,
                              INST_LIST_ITER it,
                              G4_VarBase*    src,
                              unsigned short sSubRegOff,
@@ -227,12 +227,12 @@ void SpillManager::genRegMov(INST_LIST&     instList,
     //
     // insert newly created insts from builder to instList
     //
-    instList.splice(it,builder.instList);
+    bb->splice(it,builder.instList);
 }
 //
 // check if dst is spilled & insert spill code
 //
-void SpillManager::replaceSpilledDst(INST_LIST&     instList,
+void SpillManager::replaceSpilledDst(G4_BB* bb,
                                      INST_LIST_ITER it, // where new insts will be inserted
                                      G4_INST*       inst,
 									 PointsToAnalysis& pointsToAnalysis,
@@ -296,7 +296,7 @@ void SpillManager::replaceSpilledDst(INST_LIST&     instList,
                 //
                 // generate mov Tmp(0,0)<1>  SPILL_LOC_V100(0,0)
                 //
-                genRegMov(instList, it,
+                genRegMov(bb, it,
                     spDcl->getRegVar(), 0,
                     tmpDcl->getRegVar(),
                     tmpDcl->getNumElems());
@@ -325,7 +325,7 @@ void SpillManager::replaceSpilledDst(INST_LIST&     instList,
 //
 // check if src is spilled and insert spill code to load spilled value
 //
-void SpillManager::replaceSpilledSrc(INST_LIST&     instList,
+void SpillManager::replaceSpilledSrc(G4_BB* bb,
                                      INST_LIST_ITER it, // where new insts will be inserted
                                      G4_INST*       inst,
                                      unsigned       i,
@@ -355,7 +355,7 @@ void SpillManager::replaceSpilledSrc(INST_LIST&     instList,
 			if (inst->isSplitSend() && i == 3)
 			{
 				G4_Declare* tmpDcl = createNewTempAddrDeclare(spDcl, 1);
-				genRegMov(instList, it,
+				genRegMov(bb, it,
 					spDcl->getRegVar(), ss->getSubRegOff(),
 					tmpDcl->getRegVar(),
 					2);
@@ -419,7 +419,7 @@ void SpillManager::replaceSpilledSrc(INST_LIST&     instList,
                 //
                 // generate mov Tmp(0,0)<1>  SPILL_LOC_V100(0,0)
                 //
-                genRegMov(instList, it,
+                genRegMov(bb, it,
                     spDcl->getRegVar(), ss->getSubRegOff(),
                     tmpDcl->getRegVar(),
                     tmpDcl->getNumElems(), getGenxPlatform() == GENX_CNL ? false : true);
@@ -442,7 +442,7 @@ void SpillManager::replaceSpilledSrc(INST_LIST&     instList,
 //
 // check if predicate is spilled & insert fill code
 //
-void SpillManager::replaceSpilledPredicate(INST_LIST&     instList,
+void SpillManager::replaceSpilledPredicate(G4_BB* bb,
                                            INST_LIST_ITER it, // where new insts will be inserted
                                            G4_INST*       inst)
 {
@@ -458,7 +458,7 @@ void SpillManager::replaceSpilledPredicate(INST_LIST&     instList,
         if (spDcl != NULL)
         {
             G4_Declare* tmpDcl = createNewTempFlagDeclare(flagDcl);
-            genRegMov(instList, it,
+            genRegMov(bb, it,
                       spDcl->getRegVar(), 0,
                       tmpDcl->getRegVar(),
                       tmpDcl->getNumElems());
@@ -472,7 +472,6 @@ void SpillManager::replaceSpilledPredicate(INST_LIST&     instList,
 // check if flag dst is spilled and insert spill code
 //
 void SpillManager::replaceSpilledFlagDst(G4_BB*         bb,
-                                         INST_LIST&     instList,
                                          INST_LIST_ITER it, // where new insts will be inserted
                                          G4_INST*       inst)
 {
@@ -505,7 +504,7 @@ void SpillManager::replaceSpilledFlagDst(G4_BB*         bb,
             if (flagDcl->getNumberFlagElements() > inst->getExecSize() ||
                 (bb->isInSimdFlow() && !inst->isWriteEnableInst()))
             {
-                genRegMov(instList, it,
+                genRegMov(bb, it,
                     spDcl->getRegVar(), 0,
                     tmpDcl->getRegVar(),
                     tmpDcl->getNumElems());
@@ -516,7 +515,7 @@ void SpillManager::replaceSpilledFlagDst(G4_BB*         bb,
 
             inst->setCondMod(newCondMod);
 
-            genRegMov(instList, ++it,
+            genRegMov(bb, ++it,
                       tmpDcl->getRegVar(), 0,
                       spDcl->getRegVar(),
                       tmpDcl->getNumElems());
@@ -595,9 +594,11 @@ void SpillManager::insertSpillCode()
 
 		// In one iteration remove all spilled lifetime.start/end
 		// ops.
-		bb->instList.remove_if(isSpillCandidateForLifetimeOpRemoval);
+        bb->erase(
+            std::remove_if(bb->begin(), bb->end(), isSpillCandidateForLifetimeOpRemoval),
+            bb->end());
 
-	    for (INST_LIST_ITER inst_it = bb->instList.begin(); inst_it != bb->instList.end();)
+	    for (INST_LIST_ITER inst_it = bb->begin(); inst_it != bb->end();)
 		{
 		    G4_INST* inst = *inst_it;
 
@@ -607,17 +608,17 @@ void SpillManager::insertSpillCode()
             // insert spill inst for spilled srcs
 	        for (unsigned i = 0; i < G4_MAX_SRCS; i++)
 	        {
-		        replaceSpilledSrc(bb->instList, inst_it, inst, i, pointsToAnalysis, operands_analyzed, declares_created);
+		        replaceSpilledSrc(bb, inst_it, inst, i, pointsToAnalysis, operands_analyzed, declares_created);
             }
             // insert spill inst for spilled dst
-            replaceSpilledDst(bb->instList, inst_it, inst, pointsToAnalysis, operands_analyzed, declares_created);
+            replaceSpilledDst(bb, inst_it, inst, pointsToAnalysis, operands_analyzed, declares_created);
 
             //
             // Process predicate
             //
             G4_Predicate* predicate = inst->getPredicate();
             if(predicate != NULL) {
-                replaceSpilledPredicate(bb->instList, inst_it, inst);
+                replaceSpilledPredicate(bb, inst_it, inst);
             }
 
             //
@@ -626,7 +627,7 @@ void SpillManager::insertSpillCode()
             G4_CondMod* mod = inst->getCondMod();
             if( mod != NULL &&
                 mod->getBase() != NULL ) {
-                replaceSpilledFlagDst(bb, bb->instList, inst_it, inst);
+                replaceSpilledFlagDst(bb, inst_it, inst);
             }
             inst_it++;
         }

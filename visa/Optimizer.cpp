@@ -155,7 +155,7 @@ unsigned Optimizer::determineReturnAddrLoc(unsigned entryId, unsigned* retLoc, G
     else
     {
         retLoc[bb->getId()] = entryId;
-        G4_INST* lastInst = bb->instList.size()==0 ? NULL : bb->instList.back();
+        G4_INST* lastInst = bb->size()==0 ? NULL : bb->back();
 
         if (lastInst && lastInst->isReturn())
         {
@@ -204,7 +204,7 @@ bool Optimizer::isSubRetLocConflict(G4_BB *bb, std::vector<unsigned> &usedLoc, u
         return false;
     bb->markTraversed(fg.getTraversalNum());
 
-    G4_INST* lastInst = bb->instList.size()==0 ? NULL : bb->instList.back();
+    G4_INST* lastInst = bb->size()==0 ? NULL : bb->back();
     if (lastInst && lastInst->isReturn())
     {
         if (lastInst->getPredicate() == NULL)
@@ -282,7 +282,7 @@ void Optimizer::assignLocForReturnAddr()
         }
 
 #ifdef _DEBUG
-        G4_INST *last = bb->instList.empty() ? NULL : bb->instList.back();
+        G4_INST *last = bb->empty() ? NULL : bb->back();
         MUST_BE_TRUE(last, ERROR_FLOWGRAPH);
 #endif
 
@@ -358,7 +358,7 @@ void Optimizer::assignLocForReturnAddr()
         for (std::list<G4_BB*>::iterator it = caller.begin(); it != caller.end(); it++)
         {
             G4_BB *bb = *it;
-            G4_INST *last = bb->instList.empty() ? NULL : bb->instList.back();
+            G4_INST *last = bb->empty() ? NULL : bb->back();
             MUST_BE_TRUE(last, ERROR_FLOWGRAPH);
 
             unsigned fallThroughId = bb->fallThroughBB() == NULL ? UNDEFINED_VAL : bb->fallThroughBB()->getId();
@@ -441,7 +441,7 @@ void Optimizer::assignLocForReturnAddr()
                 //
                 G4_BB *bb = *it;
 #ifdef _DEBUG
-                G4_INST *last = bb->instList.empty() ? NULL : bb->instList.back();
+                G4_INST *last = bb->empty() ? NULL : bb->back();
                 MUST_BE_TRUE(last, ERROR_FLOWGRAPH);
 #endif
                 G4_BB *subBB = bb->getCalleeInfo()->getInitBB();
@@ -459,9 +459,9 @@ void Optimizer::assignLocForReturnAddr()
                 G4_BB* bb = BBs[i];
                 if (bb->getSubRetLoc() != UNDEFINED_VAL)
                 {
-                    if (!bb->instList.empty() && bb->instList.front()->isLabel())
+                    if (!bb->empty() && bb->front()->isLabel())
                     {
-                        DEBUG_VERBOSE(((G4_Label*)bb->instList.front()->getSrc(0))->getLabel()
+                        DEBUG_VERBOSE(((G4_Label*)bb->front()->getSrc(0))->getLabel()
                             << " assigned location " << bb->getSubRetLoc() << std::endl);
                     }
                 }
@@ -504,7 +504,7 @@ void  Optimizer::insertCallReturnVar()
     for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end(); it++)
     {
         G4_BB *bb = *it;
-        G4_INST *last = bb->instList.empty() ? NULL : bb->instList.back();
+        G4_INST *last = bb->empty() ? NULL : bb->back();
         if (last)
         {
             if (last->isCall())
@@ -531,7 +531,7 @@ void  Optimizer::insertSaveAddr(G4_BB* bb)
         ERROR_FLOWGRAPH); // must have a assigned loc
 
 
-    G4_INST *last = bb->instList.back();
+    G4_INST *last = bb->back();
     MUST_BE_TRUE1(last->isCall(), last->getLineNo(),
         ERROR_FLOWGRAPH);
     if (last->getDst() == NULL)
@@ -549,7 +549,7 @@ void  Optimizer::insertRestoreAddr(G4_BB* bb)
 {
     MUST_BE_TRUE(bb != NULL, ERROR_INTERNAL_ARGUMENT);
 
-    G4_INST *last = bb->instList.back();
+    G4_INST *last = bb->back();
     MUST_BE_TRUE1(last->isReturn(), last->getLineNo(),
         ERROR_FLOWGRAPH);
     if (last->getSrc(0) == NULL)
@@ -601,15 +601,15 @@ void Optimizer::insertFallThroughJump()
         {
             // do not remove a jmpi if it's the target of an indirect jmp
             // this makes the code more readable
-            if (!(*next)->instList.empty() && (*next)->instList.front()->isLabel() &&
-                !bb->instList.empty() && bb->instList.back()->opcode() == G4_jmpi &&
-                bb->instList.back()->getPredicate() == NULL &&
-                !bb->instList.back()->isIndirectJmpTarget() ) {
-                    if ((*next)->instList.front()->getSrc(0) == bb->instList.back()->getSrc(0))
+            if (!(*next)->empty() && (*next)->front()->isLabel() &&
+                !bb->empty() && bb->back()->opcode() == G4_jmpi &&
+                bb->back()->getPredicate() == NULL &&
+                !bb->back()->isIndirectJmpTarget() ) {
+                    if ((*next)->front()->getSrc(0) == bb->back()->getSrc(0))
                     {
-                        std::list<G4_INST*>::iterator it = bb->instList.end();
+                        std::list<G4_INST*>::iterator it = bb->end();
                         it--;
-                        bb->instList.erase(it);
+                        bb->erase(it);
                     }
             }
         }
@@ -625,7 +625,7 @@ void Optimizer::chkRegBoundary()
     for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end();it++)
     {
         G4_BB* bb = *it;
-        for (INST_LIST_ITER i = bb->instList.begin(); i != bb->instList.end(); i++)
+        for (INST_LIST_ITER i = bb->begin(); i != bb->end(); i++)
         {
             G4_INST *inst = *i;
             if (!chkOpndBoundary(inst, inst->getDst())) {
@@ -704,8 +704,8 @@ void Optimizer::countBankConflicts()
     {
         G4_BB* curBB = (*bb_it);
 
-        for(INST_LIST_ITER inst_it = curBB->instList.begin();
-            inst_it != curBB->instList.end();
+        for(INST_LIST_ITER inst_it = curBB->begin();
+            inst_it != curBB->end();
             inst_it++)
         {
             G4_INST* curInst = (*inst_it);
@@ -864,17 +864,17 @@ void Optimizer::insertDummyCompactInst()
         1, dst, src, nullptr, InstOpt_WriteEnable);
 
     auto bb = fg.getEntryBB();
-    for (auto it = bb->instList.begin(), ie = bb->instList.end(); it != ie; ++it)
+    for (auto it = bb->begin(), ie = bb->end(); it != ie; ++it)
     {
         if ((*it)->opcode() != G4_label)
         {
-            bb->instList.insert(it, movInst);
+            bb->insert(it, movInst);
             return;
         }
     }
 
     // The entry block is empty or only contains a label.
-    bb->instList.push_back(movInst);
+    bb->push_back(movInst);
 }
 
 void Optimizer::insertHashMovs()
@@ -892,8 +892,8 @@ void Optimizer::insertHashMovs()
     {
         G4_BB* bb = (*bb_it);
 
-        for(INST_LIST_ITER inst_it = bb->instList.begin();
-            inst_it != bb->instList.end();
+        for(INST_LIST_ITER inst_it = bb->begin();
+            inst_it != bb->end();
             inst_it++)
         {
             G4_INST* inst = (*inst_it);
@@ -930,8 +930,8 @@ void Optimizer::insertHashMovs()
                     NULL,
                     InstOpt_WriteEnable);
 
-                bb->instList.push_back(lo);
-                bb->instList.push_back(hi);
+                bb->push_back(lo);
+                bb->push_back(hi);
                 break;
             }
         }
@@ -969,9 +969,11 @@ void Optimizer::removeLifetimeOps()
         bbs != fg.BBs.end();
         bbs++ )
     {
-        (*bbs)->instList.remove_if(isLifetimeOpRemovalCandidate);
-
-        (*bbs)->instList.remove_if(isPseudoUse);
+        G4_BB* bb = *bbs;        
+        bb->erase(
+            std::remove_if(bb->begin(), bb->end(),
+            [](G4_INST* inst) { return inst->isPseudoKill() || inst->isLifeTimeEnd() || inst->isPseudoUse(); }),
+            bb->end());
     }
 }
 
@@ -1085,7 +1087,7 @@ void replaceAllSpilledRegions(G4_Kernel& kernel, G4_Declare* oldDcl, G4_Declare*
     // existing operands is disallowed.
     for (auto bb : kernel.fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             auto dst = inst->getDst();
             if (dst &&
@@ -1176,7 +1178,7 @@ void computeGlobalFreeGRFs(G4_Kernel& kernel)
 
     for (auto bb : kernel.fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             auto dst = inst->getDst();
             if (dst &&
@@ -1343,7 +1345,7 @@ void Optimizer::reRAPostSchedule()
     std::set<G4_Declare*> threeSrcDcl;
     for (auto bb : kernel.fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             if (inst->isMovAddr() &&
                 inst->getDst()->getTopDcl()->getRegFile() == G4_RegFileKind::G4_GRF)
@@ -1419,7 +1421,7 @@ void Optimizer::accSubPostSchedule()
     kernel.fg.globalOpndHT.clearHashTable();
     for (auto bb : kernel.fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             inst->clearDef();
             inst->clearUse();
@@ -1709,8 +1711,8 @@ void Optimizer::insertInstLabels()
     for( BB_LIST_CITER iter = fg.BBs.cbegin(), bend = fg.BBs.cend(); iter != bend; ++iter )
     {
         G4_BB* bb = *iter;
-        INST_LIST_ITER iter2 = bb->instList.begin();
-        INST_LIST_ITER iend  = bb->instList.end();
+        INST_LIST_ITER iter2 = bb->begin();
+        INST_LIST_ITER iend  = bb->end();
         while( iter2 != iend )
         {
             INST_LIST_ITER currIter = iter2;
@@ -1720,7 +1722,7 @@ void Optimizer::insertInstLabels()
             if( inst->getInstLabel() != NULL )
             {
                 G4_INST* labelInst = fg.createNewLabelInst( inst->getInstLabel(), inst->getLineNo(), inst->getCISAOff() );
-                bb->instList.insert( currIter, labelInst );
+                bb->insert( currIter, labelInst );
             }
         }
     }
@@ -1729,10 +1731,10 @@ void Optimizer::insertInstLabels()
     for(auto iter = fg.BBs.begin(), iend = fg.BBs.end(); iter != iend; ++iter)
     {
         G4_BB *bb = *iter;
-        if (bb->instList.empty())
+        if (bb->empty())
             continue;
 
-        G4_INST *inst = bb->instList.back();
+        G4_INST *inst = bb->back();
         G4_opcode opc = inst->opcode();
         if (opc != G4_cont && opc != G4_break)
             continue;
@@ -1753,8 +1755,8 @@ void Optimizer::insertInstLabels()
              {
                  G4_BB * succBB = (*iter);
                  if (succBB->getPhysicalPred() &&
-                     (!succBB->getPhysicalPred()->instList.empty()) &&
-                     (succBB->getPhysicalPred()->instList.back()->opcode() == G4_while))
+                     (!succBB->getPhysicalPred()->empty()) &&
+                     (succBB->getPhysicalPred()->back()->opcode() == G4_while))
                  {
                      whileBB = succBB->getPhysicalPred();
                      break;
@@ -1764,8 +1766,8 @@ void Optimizer::insertInstLabels()
          }
 
          if (whileBB == nullptr ||
-             whileBB->instList.empty() ||
-             whileBB->instList.back()->opcode() != G4_while)
+             whileBB->empty() ||
+             whileBB->back()->opcode() != G4_while)
          {
              ASSERT_USER(false, "can not find while BB");
              continue;
@@ -1774,7 +1776,7 @@ void Optimizer::insertInstLabels()
          // If while instruction is following the label, then no need
          // to insert a new uip label, just use the existing one.
          G4_InstCF *instCF = inst->asCFInst();
-         auto whileIter = std::prev(whileBB->instList.end());
+         auto whileIter = std::prev(whileBB->end());
          G4_INST *prevInst = *std::prev(whileIter);
          if (prevInst->isLabel())
          {
@@ -1790,7 +1792,7 @@ void Optimizer::insertInstLabels()
              G4_INST *newInst = fg.createNewLabelInst(label, inst->getLineNo(),
                                                       inst->getCISAOff());
 
-             whileBB->instList.insert(whileIter, newInst);
+             whileBB->insert(whileIter, newInst);
          }
     }
 }
@@ -1907,7 +1909,7 @@ void Optimizer::FoldAddrImmediate()
     for(ib = fg.BBs.begin(); ib != bend; ++ib)
     {
         G4_BB* bb = (*ib);
-        INST_LIST_ITER ii, iend(bb->instList.end());
+        INST_LIST_ITER ii, iend(bb->end());
         // reset address offset info
         for(unsigned i = 0; i < getNumAddrRegisters(); i++)
         {
@@ -1918,7 +1920,7 @@ void Optimizer::FoldAddrImmediate()
             addrRegInfo[i].canUseImmed = false;
             addrRegInfo[i].usedImmed = false;
         }
-        for (ii = bb->instList.begin(); ii != iend; ii++)
+        for (ii = bb->begin(); ii != iend; ii++)
         {
             G4_INST *inst = *ii;
             if(inst->isDead())
@@ -2130,13 +2132,13 @@ void Optimizer::FoldAddrImmediate()
             reverseOffsetProp( addrRegInfo, i, 0, iend, iend );
         }
         // remove the ADD instructions that marked as dead
-        for(ii = bb->instList.begin(); ii != bb->instList.end();)
+        for(ii = bb->begin(); ii != bb->end();)
         {
             G4_INST *inst = *ii;
             INST_LIST_ITER curr = ii++;
             if( inst->isDead() )
             {
-                bb->instList.erase(curr);
+                bb->erase(curr);
             }
         }
     }
@@ -2284,8 +2286,8 @@ static bool canSink(G4_BB *bb, INST_LIST_RITER revIter, INST_LIST_RITER other)
     // Both 'other' and 'it' are reverse iterators, and sinking is through
     // forward iterators. The fisrt base should not be decremented by 1,
     // otherwise, the instruction will be inserted before not after.
-    bb->instList.insert(other.base(), defInst);
-    bb->instList.erase(--it.base());
+    bb->insert(other.base(), defInst);
+    bb->erase(--it.base());
 
     return true;
 }
@@ -2635,7 +2637,7 @@ void Optimizer::newLocalDefHoisting()
     unsigned numDefHoisted = 0;
     for (auto bb : fg.BBs)
     {
-        for (auto I = bb->instList.rbegin(); I != bb->instList.rend(); /* empty */)
+        for (auto I = bb->rbegin(); I != bb->rend(); /* empty */)
         {
             if (canHoist(fg, bb, I))
             {
@@ -2649,7 +2651,7 @@ void Optimizer::newLocalDefHoisting()
                 // element next to the one that the reverse_iterator is currently
                 // pointing to (a reverse_iterator has always an offset of -1
                 // with respect to its base iterator).
-                I = INST_LIST::reverse_iterator(bb->instList.erase(--I.base()));
+                I = INST_LIST::reverse_iterator(bb->erase(--I.base()));
             }
             else
             {
@@ -2872,7 +2874,7 @@ void Optimizer::reassociateConst()
 {
     for (auto BB : fg.BBs)
     {
-        for (auto iter = BB->instList.begin(), iterEnd = BB->instList.end(); iter != iterEnd; ++iter)
+        for (auto iter = BB->begin(), iterEnd = BB->end(); iter != iterEnd; ++iter)
         {
             G4_INST* inst = *iter;
             if (inst->opcode() != G4_add && inst->opcode() != G4_mul)
@@ -2975,7 +2977,8 @@ void Optimizer::reassociateConst()
                 }
             }
         }
-        BB->instList.remove_if([](G4_INST* inst) { return inst->isDead(); });
+        BB->erase(std::remove_if(BB->begin(), BB->end(), [](G4_INST* inst) { return inst->isDead(); }),
+            BB->end());
     }
 
 }
@@ -3115,7 +3118,7 @@ static void hoistUseInst(G4_BB *bb, G4_INST *inst , INST_LIST_ITER forwardIter, 
     {
         forwardIter--;
         INST_LIST_ITER backwardIter = forwardIter;
-        INST_LIST_ITER instListEnd = bb->instList.end();
+        INST_LIST_ITER instListEnd = bb->end();
         while( backwardIter != instListEnd &&
                *backwardIter != useInst )
         {
@@ -3142,8 +3145,8 @@ static void hoistUseInst(G4_BB *bb, G4_INST *inst , INST_LIST_ITER forwardIter, 
         {
             // hoisting
             backwardIter++;
-            bb->instList.insert( backwardIter, useInst );
-            bb->instList.erase( useInstIter );
+            bb->insert( backwardIter, useInst );
+            bb->erase( useInstIter );
         }
     }
     else
@@ -3251,7 +3254,7 @@ void Optimizer::newLocalCopyPropagation()
 
         bb->resetLocalId();
 
-        INST_LIST_ITER ii = bb->instList.begin(), iend(bb->instList.end());
+        INST_LIST_ITER ii = bb->begin(), iend(bb->end());
         while (ii != iend)
         {
             G4_INST *inst = *ii;
@@ -3350,7 +3353,7 @@ void Optimizer::newLocalCopyPropagation()
 
                 INST_LIST_ITER forwardIter = ii;
                 forwardIter++;
-                INST_LIST_ITER instListEnd = bb->instList.end();
+                INST_LIST_ITER instListEnd = bb->end();
 
                 while (!def_use_in_between &&
                        forwardIter != instListEnd &&
@@ -3591,7 +3594,7 @@ void Optimizer::newLocalCopyPropagation()
 
             INST_LIST_ITER tmp = ii;
             ii++;
-            bb->instList.erase(tmp);
+            bb->erase(tmp);
         }
     }
 }
@@ -3614,12 +3617,12 @@ void Optimizer::cselPeepHoleOpt()
         INST_LIST_ITER ii;
         INST_LIST_ITER nextIter;
         INST_LIST_ITER iiEnd;
-        if( ( bb->instList.begin() == bb->instList.end() ) ){
+        if( ( bb->begin() == bb->end() ) ){
             continue;
         }
 
-        ii = bb->instList.begin();
-        iiEnd = bb->instList.end();
+        ii = bb->begin();
+        iiEnd = bb->end();
 
         if (ii == iiEnd)
         {
@@ -3866,7 +3869,7 @@ void Optimizer::cselPeepHoleOpt()
                 }
                 ASSERT_USER(inst->useEmpty(), "all predicate uses are removed.");
                 inst->removeAllDefs();
-                bb->instList.erase( ii );
+                bb->erase( ii );
             }
 
 
@@ -3895,7 +3898,7 @@ static void expandPseudoLogic(IR_Builder& builder,
         "inst must be either pseudo_and/or/xor/not");
     INST_LIST_ITER newIter = iter;
 
-    bool isFirstInst = iter == bb->instList.begin();
+    bool isFirstInst = iter == bb->begin();
     if (!isFirstInst)
     {
         --iter;
@@ -3986,7 +3989,7 @@ static void expandPseudoLogic(IR_Builder& builder,
                                                          inst->getCISAOff(),
                                                          inst->getSrcFilename());
                 inst->transferDef(newSel, opNum, Gen4_Operand_Number::Opnd_pred);
-                bb->instList.insert(newIter, newSel);
+                bb->insert(newIter, newSel);
                 SI = newSel;
                 RegionDesc *rd = (tmpSize == 1) ? builder.getRegionScalar() : builder.getRegionStride1();
                 return builder.Create_Src_Opnd_From_Dcl(newDcl, rd);
@@ -4057,14 +4060,14 @@ static void expandPseudoLogic(IR_Builder& builder,
             Sel1->addDefUse(newLogicOp, Gen4_Operand_Number::Opnd_src1);
         }
         inst->transferUse(newLogicOp);
-        bb->instList.insert(newIter, newLogicOp);
-        bb->instList.erase(newIter);
+        bb->insert(newIter, newLogicOp);
+        bb->erase(newIter);
     }
 
     // iter either points to the start or the first expanded instruction.  Caller will advance it to the previous instruction
     if (isFirstInst)
     {
-        iter = bb->instList.begin();
+        iter = bb->begin();
     }
     else
     {
@@ -4166,7 +4169,7 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
        return false;
     }
 
-    auto cmpIter = std::find(iter, bb->instList.end(), cmpInst);
+    auto cmpIter = std::find(iter, bb->end(), cmpInst);
 
     auto isSupportedCondMod = [](G4_CondModifier mod) 
     {
@@ -4293,7 +4296,7 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
         cmpInst->removeUseOfInst();
         if (!sinkInst)
         {
-            bb->instList.erase(cmpIter);
+            bb->erase(cmpIter);
         }
         else
         {
@@ -4303,7 +4306,7 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
             //        and <- next
             std::iter_swap(iter, cmpIter);
             auto nextii = std::next(iter);
-            bb->instList.erase(iter);
+            bb->erase(iter);
             iter = nextii;
         }
         return true;
@@ -4446,7 +4449,7 @@ bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_
     // check if cmpInst can be legally moved right before selInst;
     // if it cannot, we cannot fold cmp to sel!.
     INST_LIST_ITER cmpInst_II = selInst_II;
-    while (cmpInst_II != BB->instList.begin())
+    while (cmpInst_II != BB->begin())
     {
         cmpInst_II--;
         if (*cmpInst_II == cmpInst)
@@ -4456,7 +4459,7 @@ bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_
     }
 
     // No local def (possible?)
-    if (cmpInst_II == BB->instList.begin())
+    if (cmpInst_II == BB->begin())
     {
         return false;
     }
@@ -4484,7 +4487,7 @@ bool Optimizer::foldCmpSel(G4_BB *BB, G4_INST *selInst, INST_LIST_ITER &selInst_
     selInst->removeDefUse(Opnd_pred);
     cmpInst->transferUse(selInst, true);
     cmpInst->removeUseOfInst();
-    BB->instList.erase(cmpInst_II);
+    BB->erase(cmpInst_II);
     return true;
 }
 
@@ -4564,7 +4567,7 @@ bool Optimizer::foldPseudoNot(G4_BB* bb, INST_LIST_ITER& iter)
         }
         notInst->removeAllDefs();
         notInst->removeAllUses();
-        bb->instList.erase(iter);
+        bb->erase(iter);
         return true;
     }
     return false;
@@ -4622,7 +4625,7 @@ void Optimizer::optimizeLogicOperation()
         // we still need to expand the pseudo logic ops 
         for (auto bb : fg.BBs)
         {
-            for (auto I = bb->instList.begin(), E = bb->instList.end(); I != E; ++I)
+            for (auto I = bb->begin(), E = bb->end(); I != E; ++I)
             {
                 auto inst = *I;
                 if (inst->isPseudoLogic())
@@ -4638,11 +4641,11 @@ void Optimizer::optimizeLogicOperation()
     {
         G4_BB* bb = (*ib);
         INST_LIST_ITER ii;
-        if( ( bb->instList.begin() == bb->instList.end() ) ){
+        if( ( bb->begin() == bb->end() ) ){
             continue;
         }
         resetLocalIds =  false;
-        ii = bb->instList.end();
+        ii = bb->end();
         do
         {
             ii--;
@@ -4659,7 +4662,7 @@ void Optimizer::optimizeLogicOperation()
 
             INST_LIST_ITER next_iter = ii, pred_iter = ii;
             next_iter++;
-            if( ii != bb->instList.begin() )
+            if( ii != bb->begin() )
             {
                 pred_iter--;
             }
@@ -4771,14 +4774,14 @@ void Optimizer::optimizeLogicOperation()
                 inst->getExecSize() == 1 &&
                 inst->getSrc(0)->isImm() &&
                 inst->getDst()->isFlag() &&
-                next_iter != bb->instList.end() &&
+                next_iter != bb->end() &&
                 (*next_iter)->opcode() == G4_mov )
             {
                 // case 4
                 G4_INST *next_inst = *next_iter;
                 if (createSmov(bb, inst, next_inst))
                 {
-                    bb->instList.erase(ii);
+                    bb->erase(ii);
                     ii = next_iter;
                 }
                 continue;
@@ -4789,7 +4792,7 @@ void Optimizer::optimizeLogicOperation()
             else if( inst->getPredicate() == NULL &&
                 ( G4_Inst_Table[op].instType == InstTypeLogic ||
                 inst->canSupportCondMod(builder) ) &&
-                next_iter != bb->instList.end() )
+                next_iter != bb->end() )
             {
                 // FIXME: why this condition?
                 if (op == G4_pseudo_mad && inst->getExecSize()==1)
@@ -4816,7 +4819,7 @@ void Optimizer::optimizeLogicOperation()
                 }
             }
         }
-        while( ii != bb->instList.begin() );
+        while( ii != bb->begin() );
     }
 }
 
@@ -5129,7 +5132,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
     INST_LIST_ITER new_iter = ii;
     ++ii;
-    bb->instList.erase(new_iter);
+    bb->erase(new_iter);
     return true;
 }
 
@@ -5211,7 +5214,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             inst->getLineNo(),
             inst->getCISAOff(),
             inst->getSrcFilename() );
-        bb->instList.insert( pos, mov_mrf );
+        bb->insert( pos, mov_mrf );
 
         // maintain def-use.
         //
@@ -5611,7 +5614,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             std::vector<std::vector<G4_INST*>> instLookUpTable;
             std::vector<G4_INST*> instVector;
-            for (auto iter = bb->instList.begin(), iterEnd = bb->instList.end();
+            for (auto iter = bb->begin(), iterEnd = bb->end();
                 iter != iterEnd; ++iter)
             {
                 G4_INST *inst = *iter;
@@ -5659,13 +5662,15 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     instVector.clear();
                 }
             }
-            bb->instList.remove_if([](G4_INST* inst) { return inst->isDead(); });
+            bb->erase(
+                std::remove_if(bb->begin(), bb->end(), [](G4_INST* inst) { return inst->isDead(); }),
+                bb->end());
         }
 
         for (auto bb : fg.BBs)
         {
             InstValues values(4);
-            for (auto iter = bb->instList.begin(), iterEnd = bb->instList.end();
+            for (auto iter = bb->begin(), iterEnd = bb->end();
                 iter != iterEnd;)
             {
                 G4_INST* inst = *iter;
@@ -5696,7 +5701,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                                 builder.getRegionScalar(), Type_UD);
                             useInst->setSrc(newExDesc, 3);
                         }
-                        iter = bb->instList.erase(iter);
+                        iter = bb->erase(iter);
                         continue;
                     }
                     else
@@ -6117,14 +6122,14 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         for(ib = fg.BBs.begin(); ib != bend; ++ib)
         {
             G4_BB* bb = (*ib);
-            ii = bb->instList.begin();
-            INST_LIST_ITER iend = bb->instList.end();
+            ii = bb->begin();
+            INST_LIST_ITER iend = bb->end();
             for (; ii != iend;ii++ )
             {
                 inst = *ii;
                 if (inst->opcode() != G4_label)
                 {
-                    bb->instList.insert( ii, andInst );
+                    bb->insert( ii, andInst );
                     return;
                 }
             }
@@ -6431,9 +6436,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 
             msgList.push_front(newItem);
             G4_BB* bb = (*ib);
-            INST_LIST_ITER ii = bb->instList.begin();
-            INST_LIST_ITER iend = bb->instList.end();
-            ic_before += bb->instList.size();
+            INST_LIST_ITER ii = bb->begin();
+            INST_LIST_ITER iend = bb->end();
+            ic_before += bb->size();
 
             DEFA0 myA0;
             myA0.curr      = NULL;
@@ -6475,18 +6480,18 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             }
 
             // Dead code elimination
-            for(ii = bb->instList.begin(); ii != bb->instList.end();)
+            for(ii = bb->begin(); ii != bb->end();)
             {
                 G4_INST *inst = *ii;
                 INST_LIST_ITER curr = ii++;
                 if( inst->isDead() )
                 {
                     inst->removeUseOfInst();
-                    bb->instList.erase(curr);
+                    bb->erase(curr);
                 }
             }
 
-            ic_after += bb->instList.size();
+            ic_after += bb->size();
         }
 
         messageHeaderReport(ic_before, ic_after, kernel);
@@ -6535,10 +6540,10 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
     // associated instruction.
     void Optimizer::addSwitchOptionToBB(G4_BB* bb, bool isSubroutine)
     {
-        auto instIter = bb->instList.begin();
+        auto instIter = bb->begin();
         if (isSubroutine)
         {
-            for (auto instEnd = bb->instList.end(); instIter != instEnd; ++instIter)
+            for (auto instEnd = bb->end(); instIter != instEnd; ++instIter)
             {
                 G4_INST* bbInst = *instIter;
                 if (bbInst->isLabel())
@@ -6552,7 +6557,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             }
         }
 
-        if (instIter != bb->instList.end() && ((*instIter)->getOption() & InstOpt_Switch))
+        if (instIter != bb->end() && ((*instIter)->getOption() & InstOpt_Switch))
         {
             // this BB is already processed, skip
             return;
@@ -6563,7 +6568,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         G4_SrcRegRegion* movSrc = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionScalar());
         G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1, movDst, movSrc, NULL, InstOpt_WriteEnable);
         movInst->setOptionOn(InstOpt_Switch);
-        bb->instList.insert(instIter, movInst);
+        bb->insert(instIter, movInst);
     }
 
     void Optimizer::linePlaneWA(G4_INST* inst)
@@ -6619,7 +6624,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 		    bool unusedFlagLocal[2]; // f0 and f1
 		    unusedFlagLocal[0] = unusedFlagLocal[1] = false;
 
-			for (auto inst : bb->instList)
+			for (auto inst : *bb)
 			{
 				// check predicate source
 				if (inst->getPredicate())
@@ -6693,14 +6698,14 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             for (auto bb : fg.BBs)
             {
-                if (bb->instList.size() == 0)
+                if (bb->size() == 0)
                 {
                     return;
                 }
-                G4_INST* inst = bb->instList.back();
+                G4_INST* inst = bb->back();
                 if (inst->isEOT())
                 {
-                    auto instIter = bb->instList.end();
+                    auto instIter = bb->end();
                     --instIter;
                     if (unusedFlag[0])
                     {
@@ -6709,7 +6714,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                             builder.getRegionScalar(), Type_UD);
                         G4_DstRegRegion* nullDst = builder.createNullDst(Type_UD);
                         G4_INST* inst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1, nullDst, flagSrc, NULL, InstOpt_WriteEnable);
-                        bb->instList.insert(instIter, inst);
+                        bb->insert(instIter, inst);
                     }
                     if (unusedFlag[1])
                     {
@@ -6718,7 +6723,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                             builder.getRegionScalar(), Type_UD);
                         G4_DstRegRegion* nullDst = builder.createNullDst(Type_UD);
                         G4_INST* inst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1, nullDst, flagSrc, NULL, InstOpt_WriteEnable);
-                        bb->instList.insert(instIter, inst);
+                        bb->insert(instIter, inst);
                     }
                 }
             }
@@ -6779,9 +6784,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         for(ib = fg.BBs.begin(); ib != bend; ++ib)
         {
             G4_BB* bb = (*ib);
-            INST_LIST_ITER ii = bb->instList.begin();
+            INST_LIST_ITER ii = bb->begin();
 
-            while (ii != bb->instList.end())
+            while (ii != bb->end())
             {
                 G4_INST *inst = *ii;
 
@@ -6796,7 +6801,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     G4_DstRegRegion* movDst = builder.Create_Dst_Opnd_From_Dcl(fenceDcl, 1);
                     G4_SrcRegRegion* movSrc = builder.Create_Src_Opnd_From_Dcl(fenceDcl, builder.createRegionDesc(8,8,1));
                     G4_INST* movInst = builder.createInternalInst( NULL, G4_mov, NULL, false, 8, movDst, movSrc, NULL, InstOpt_WriteEnable);
-                    bb->instList.insert(nextIter, movInst);
+                    bb->insert(nextIter, movInst);
                 }
 
                 if (inst->isCall() || inst->isFCall())
@@ -6852,7 +6857,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                 {
                     INST_LIST_ITER nextIter = ii;
                     nextIter++;
-                    if (nextIter == bb->instList.end())
+                    if (nextIter == bb->end())
                     {
                         break;
                     }
@@ -6862,7 +6867,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     {
                         // insert a nop
                         G4_INST *nopInst = builder.createInternalInst(NULL, G4_nop, NULL, false, 1, NULL, NULL, NULL, inst->getOption());
-                        bb->instList.insert(nextIter, nopInst);
+                        bb->insert(nextIter, nopInst);
                     }
                 }
 
@@ -6908,7 +6913,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     G4_Imm* src = builder.createImm(0, Type_UW);
                     G4_INST* movInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
                         8, tdrDst, src, nullptr, InstOpt_WriteEnable | InstOpt_Switch);
-                    bb->instList.insert(ii, movInst);
+                    bb->insert(ii, movInst);
                 }
 
 
@@ -6920,7 +6925,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         builder.phyregpool.getN0Reg(), 0, 0, 1, Type_UD);
                     auto movInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false, 1, n0Dst,
                         builder.createImm(0, Type_UD), nullptr, InstOpt_WriteEnable | InstOpt_Switch);
-                    bb->instList.insert(ii, movInst);
+                    bb->insert(ii, movInst);
                 }
 
                 linePlaneWA(inst);
@@ -7424,7 +7429,7 @@ public:
             bucketVec[i].setIndex((int)i);
         }
 #endif
-        IDvecInit(bb->instList.size());
+        IDvecInit(bb->size());
     };
 
     ~NSDS(void) {
@@ -7436,7 +7441,7 @@ public:
         getBucketDescrs(fromInstr, FromInstrBuckets);
 
         bool foundFrom = false;
-        for (auto instr : bb->instList) {
+        for (auto instr : *bb) {
             if (instr != fromInstr && !foundFrom) {
                 continue;
             }
@@ -7552,7 +7557,7 @@ public:
         #endif
         for (auto bb : fg.BBs) {
             NSDS nsds(builder.getOptions(), bb);
-            for (auto instr : bb->instList) {
+            for (auto instr : *bb) {
                 if (instr->isLabel()) {
                     continue;
                 }
@@ -7634,7 +7639,7 @@ public:
     {
         for (auto bb : fg.BBs)
         {
-            for (auto inst : bb->instList)
+            for (auto inst : *bb)
             {
                 if (inst->isCall() || inst->isReturn())
                 {
@@ -7741,7 +7746,7 @@ public:
 
         G4_BB* bb = kernel.fg.getEntryBB();
         // iter points to the first non-label inst
-        auto iter = bb->instList.begin(), bbEnd = bb->instList.end();
+        auto iter = bb->begin(), bbEnd = bb->end();
         while (iter != bbEnd)
         {
             if (!(*iter)->isLabel())
@@ -7790,7 +7795,7 @@ public:
             G4_INST* sendInst = kernel.fg.builder->createSplitSendInst(
                 nullptr, G4_sends, 16, dstOpnd, headerOpnd, srcOpnd,
                 kernel.fg.builder->createImm(msgDescImm, Type_UD), InstOpt_WriteEnable, desc, nullptr, 0);
-            bb->instList.insert(iter, sendInst);
+            bb->insert(iter, sendInst);
         }
     }
 
@@ -7799,7 +7804,7 @@ public:
         builder.getJitInfo()->usesBarrier = false;
         for (auto bb : fg.BBs)
         {
-            for (auto inst : bb->instList)
+            for (auto inst : *bb)
             {
                 if (inst->isSend() && inst->getMsgDesc()->isBarrierMsg())
                 {
@@ -7870,14 +7875,14 @@ public:
         for (ib = kernel.fg.BBs.begin(); ib != bend; ++ib)
         {
             G4_BB* bb = (*ib);
-            ii = bb->instList.begin();
-            INST_LIST_ITER iend = bb->instList.end();
+            ii = bb->begin();
+            INST_LIST_ITER iend = bb->end();
             for (; ii != iend; ii++)
             {
                 inst = *ii;
                 if (inst->opcode() != G4_label)
                 {
-                    bb->instList.insert(ii, movInst);
+                    bb->insert(ii, movInst);
                     return;
                 }
             }
@@ -7914,7 +7919,7 @@ public:
         G4_BB* bb = kernel.fg.getEntryBB();
 
         // iter points to the first non-label inst
-        auto iter = bb->instList.begin(), bbEnd = bb->instList.end();
+        auto iter = bb->begin(), bbEnd = bb->end();
         while (iter != bbEnd)
         {
             if (!(*iter)->isLabel())
@@ -7932,7 +7937,7 @@ public:
             G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, tempDcl->getRegVar(), 0, 0, 1, Type_UD);
             G4_Imm * src0 = builder.createImm(0, Type_UD);
             G4_INST* initInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 16, dst, src0, NULL, InstOpt_WriteEnable);
-            bb->instList.insert(iter, initInst);
+            bb->insert(iter, initInst);
         }
 
         //init last register if bulk of GRFs was odd
@@ -7943,7 +7948,7 @@ public:
             G4_Imm * src0 = builder.createImm(0, Type_UD);
             G4_INST* spIncInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8, dst, src0, NULL, InstOpt_WriteEnable);
             G4_BB* bb = kernel.fg.getEntryBB();
-            bb->instList.insert(iter, spIncInst);
+            bb->insert(iter, spIncInst);
         }
 
         //inits remainder GRF
@@ -7962,7 +7967,7 @@ public:
                 G4_SrcRegRegion *src0 = builder.createSrcRegRegion(Mod_src_undef, Direct, tempDclSrc->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UB);
 
                 G4_INST* initInst = builder.createInternalInst(NULL, G4_mov, NULL, false, (uint8_t)exec_size, dst, src0, NULL, InstOpt_WriteEnable);
-                bb->instList.insert(iter, initInst);
+                bb->insert(iter, initInst);
             }
             //caluclates bytes that remain to be initialized
             remainder_bytes = remainder_bytes % exec_size;
@@ -7979,7 +7984,7 @@ public:
                 tempPredVar, builder.createImm(0, Type_UW), NULL,
                 InstOpt_WriteEnable, 0, 0, 0);
             bb = kernel.fg.getEntryBB();
-            bb->instList.insert(iter, predInst);
+            bb->insert(iter, predInst);
         }
 
         {
@@ -7990,7 +7995,7 @@ public:
                 tempPredVar, builder.createImm(0, Type_UW), NULL,
                 InstOpt_WriteEnable, 0, 0, 0);
             bb = kernel.fg.getEntryBB();
-            bb->instList.insert(iter, predInst);
+            bb->insert(iter, predInst);
         }
 
         {
@@ -8001,7 +8006,7 @@ public:
                 tempAddrVar, builder.createImm(0, Type_UW), NULL,
                 InstOpt_WriteEnable, 0, 0, 0);
             bb = kernel.fg.getEntryBB();
-            bb->instList.insert(iter, addrInst);
+            bb->insert(iter, addrInst);
         }
 
     }
@@ -8178,7 +8183,7 @@ public:
 
             bb->resetLocalId();
 
-            INST_LIST_ITER ii = bb->instList.begin(), iend(bb->instList.end());
+            INST_LIST_ITER ii = bb->begin(), iend(bb->end());
             while ( ii != iend )
             {
                 G4_INST *inst = *ii;
@@ -8757,7 +8762,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
             instToDelete->transferDef( newInst, opndPos, opndPos );
         }
 
-        iter = bb->instList.erase(iter);
+        iter = bb->erase(iter);
     }
 
 #ifdef DEBUG_VERBOSE_ON
@@ -9266,7 +9271,7 @@ void Optimizer::recomputeBound(std::unordered_set<G4_Declare*>& declares)
 
     for (auto bb : fg.BBs)
     {
-        for (auto ii = bb->instList.begin(), iiEnd = bb->instList.end(); ii != iiEnd; ++ii)
+        for (auto ii = bb->begin(), iiEnd = bb->end(); ii != iiEnd; ++ii)
         {
             G4_INST* inst = *ii;
             if (inst->getDst() != NULL)
@@ -9338,7 +9343,7 @@ void Optimizer::mergeScalarInst()
     for (G4_BB* bb : fg.BBs)
     {
         std::vector<BUNDLE_INFO*> bundles;
-        INST_LIST_ITER ii = bb->instList.begin(), iiEnd = bb->instList.end();
+        INST_LIST_ITER ii = bb->begin(), iiEnd = bb->end();
         while (ii != iiEnd)
         {
             G4_INST *inst = *ii;
@@ -9347,7 +9352,7 @@ void Optimizer::mergeScalarInst()
             if (nextIter != iiEnd && isMergeCandidate(inst, builder, bb->isInSimdFlow()))
             {
                 BUNDLE_INFO* bundle = new (mergeManager) BUNDLE_INFO(bb, ii, bundleSizeLimit);
-                findInstructionToMerge(bundle, nextIter, bb->instList.end(), builder, bb->isInSimdFlow());
+                findInstructionToMerge(bundle, nextIter, bb->end(), builder, bb->isInSimdFlow());
                 if (bundle->size > 1)
                 {
                     bundles.push_back(bundle);
@@ -9744,8 +9749,8 @@ bool MadSequenceInfo::checkMadSequence()
 
 bool MadSequenceInfo::checkACCDependency(G4_INST *defInst, G4_INST *useInst)
 {
-    auto iter = std::find(bb->instList.begin(), bb->instList.end(), defInst);
-    ASSERT_USER(iter != bb->instList.end(), "no instruction found?");
+    auto iter = std::find(bb->begin(), bb->end(), defInst);
+    ASSERT_USER(iter != bb->end(), "no instruction found?");
 
     for (++iter; (*iter) != useInst; ++iter) {
         if ((*iter)->defAcc() || (*iter)->useAcc() || (*iter)->mayExpandToAccMacro(builder))
@@ -9953,14 +9958,14 @@ void MadSequenceInfo::populateUserChain(G4_INST *defInst, int level)
 INST_LIST_ITER MadSequenceInfo::populateCandidates(INST_LIST_ITER iter)
 {
     // Find the first pseudo-mad instruction.
-    iter = std::find_if(iter, bb->instList.end(), isMad);
+    iter = std::find_if(iter, bb->end(), isMad);
 
     // No mad found
-    if (iter == bb->instList.end())
+    if (iter == bb->end())
         return iter;
 
     // Find the first non-mad instruction following this sequence.
-    auto end = std::find_if_not(iter, bb->instList.end(), isMad);
+    auto end = std::find_if_not(iter, bb->end(), isMad);
 
     ASSERT_USER(iter != end, "out of sync");
     appendMad(iter, end);
@@ -10092,7 +10097,7 @@ void MadSequenceInfo::processCandidates()
 static bool preprocessMadInBlock(IR_Builder &builder, G4_BB *bb)
 {
     bool hasMad = false;
-    for (auto inst : bb->instList)
+    for (auto inst : *bb)
     {
         if (isMad(inst))
         {
@@ -10135,8 +10140,8 @@ void Optimizer::lowerMadSequence()
         // Object to gather information for ACC optimization.
         MadSequenceInfo madInfo(builder, bb);
 
-        auto iter = bb->instList.begin();
-        while (iter != bb->instList.end())
+        auto iter = bb->begin();
+        while (iter != bb->end())
         {
             // Returns an iterator to the next non-mad instruction after the mad
             // sequence. It is safe to insert/delete instructions before it.
@@ -10272,7 +10277,7 @@ void Optimizer::splitVariables()
 
     for (G4_BB *bb : fg.BBs)
     {
-        for (G4_INST *inst : bb->instList)
+        for (G4_INST *inst : *bb)
         {
             // Only for variables defined by non-send instructions.
             if (inst->opcode() == G4_label || inst->isSend())
@@ -10469,7 +10474,7 @@ void Optimizer::split4GRFVars()
     // first pass is to make sure the validity of all split candidates
     for (auto bb : kernel.fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             auto removeCandidate = [&varToSplit](G4_Declare* dcl)
             {
@@ -10545,7 +10550,7 @@ void Optimizer::split4GRFVars()
     // second pass actually does the replacement
     for (auto bb : kernel.fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             bool changed = false;
             auto dst = inst->getDst();
@@ -10607,7 +10612,7 @@ void Optimizer::changeMoveType()
 
     for (auto bb : fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
 
             if (inst->opcode() != G4_mov)
@@ -11090,7 +11095,7 @@ void Optimizer::NoDD(void) {
         std::vector<BucketDescrWrapper> prevBDWs;
         // G4_INST *prevInstr = nullptr;
         // BucketDescrWrapper prevBDW;
-        for (auto currInstr : bb->instList) {
+        for (auto currInstr : *bb) {
             if (currInstr->isLabel()) {
                 continue;
             }
@@ -11166,14 +11171,16 @@ static bool isDeadInst(FlowGraph& fg, G4_INST* Inst)
 void Optimizer::dce()
 {
     for (auto bb : fg.BBs) {
-        for (auto I = bb->instList.rbegin(), E = bb->instList.rend(); I != E; ++I) {
+        for (auto I = bb->rbegin(), E = bb->rend(); I != E; ++I) {
             G4_INST* Inst = *I;
             if (isDeadInst(fg, Inst)) {
                 Inst->removeAllDefs();
                 Inst->markDead();
             }
         }
-        bb->instList.remove_if([](G4_INST* Inst) { return Inst->isDead(); });
+        bb->erase(
+            std::remove_if(bb->begin(), bb->end(), [](G4_INST* Inst) { return Inst->isDead(); }),
+            bb->end());
     }
 }
 
@@ -11228,7 +11235,7 @@ static G4_INST* emitRetiringMov(IR_Builder& builder, G4_BB* BB, G4_INST* SI,
     G4_INST* MovInst = builder.createInternalInst(
         nullptr, G4_mov, nullptr, false, 8, MovDst, MovSrc, nullptr,
         InstOpt_M0 | InstOpt_WriteEnable);
-    BB->instList.insert(InsertBefore, MovInst);
+    BB->insert(InsertBefore, MovInst);
     return MovInst;
 }
 
@@ -11283,7 +11290,7 @@ void Optimizer::clearSendDependencies()
         const unsigned MAX_SENDS = 3;
         std::vector<G4_INST*> LiveSends;
 
-        for (auto I = BB->instList.begin(); I != BB->instList.end(); /*empty*/) {
+        for (auto I = BB->begin(); I != BB->end(); /*empty*/) {
             auto CurI = I++;
             G4_INST* Inst = *CurI;
 
@@ -11312,8 +11319,8 @@ void Optimizer::clearSendDependencies()
         // Retire remainig live sends in this block, if any.
         for (auto SI : LiveSends) {
             assert(SI && SI->isSend());
-            auto InsertBefore = BB->instList.end();
-            G4_INST* LastInst = BB->instList.back();
+            auto InsertBefore = BB->end();
+            G4_INST* LastInst = BB->back();
             if (LastInst->isFlowControl())
                 InsertBefore = std::prev(InsertBefore);
             emitRetiringMov(builder, BB, SI, InsertBefore);

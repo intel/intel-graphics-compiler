@@ -66,7 +66,7 @@ void BinaryEncodingIGA::FixInst()
 {
     for (auto bb : kernel.fg.BBs)
     {
-        for (auto iter = bb->instList.begin(); iter != bb->instList.end();)
+        for (auto iter = bb->begin(); iter != bb->end();)
         {
             G4_INST* inst = *iter;
             if (inst->isIntrinsic())
@@ -74,7 +74,7 @@ void BinaryEncodingIGA::FixInst()
                 // WA for simulation:  remove any intrinsics that should be lowered before binary encoding
                 MUST_BE_TRUE(inst->asIntrinsicInst()->getLoweredByPhase() == Phase::BinaryEncoding,
                     "Unexpected intrinsics in binary encoding");
-                iter = bb->instList.erase(iter);
+                iter = bb->erase(iter);
             }
             else
             {
@@ -403,7 +403,7 @@ void BinaryEncodingIGA::DoAll()
     {
         for (auto bb : bbList)
         {
-            for (auto inst : bb->instList)
+            for (auto inst : *bb)
             {
                 return inst->isLabel();
             }
@@ -422,7 +422,7 @@ void BinaryEncodingIGA::DoAll()
     iga::Block *bbNew = nullptr;
     for (auto bb : this->kernel.fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             bbNew = nullptr;
             if (inst->isLabel())

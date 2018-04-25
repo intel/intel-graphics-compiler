@@ -128,7 +128,7 @@ namespace vISA
         void moveSrcToGRF(INST_LIST_ITER it, uint32_t srcNum, uint16_t numGRF, G4_BB *bb);
         void saveDst(INST_LIST_ITER& it, uint8_t stride, G4_BB *bb);
         void restoreDst(INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_BB *bb);
-        void insertMovAfter(INST_LIST_ITER& it, uint16_t stride, INST_LIST& instList);
+        void insertMovAfter(INST_LIST_ITER& it, uint16_t stride, G4_BB* bb);
         void removeBadSrc(INST_LIST_ITER& it, G4_BB *bb, bool crossGRFDst, bool oneGRFSrc[3], bool badTwoGRFSrc[3]);
         G4_DstRegRegion* createSubDstOperand(G4_DstRegRegion* dst, uint16_t start, uint8_t size);
         G4_SrcRegRegion* createSubSrcOperand(G4_SrcRegRegion* src, uint16_t start, uint8_t size, uint16_t newVs, uint16_t newWd);

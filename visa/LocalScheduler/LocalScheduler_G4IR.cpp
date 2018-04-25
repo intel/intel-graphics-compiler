@@ -73,14 +73,14 @@ void LocalScheduler::isolateBarrierBBs()
         // If number of instructions are < SCH_THRESHOLD then
         // no need to split inst list since it wont be
         // scheduled anyway
-        if (curBB->instList.size() <= SCH_THRESHOLD)
+        if (curBB->size() <= SCH_THRESHOLD)
         {
             continue;
         }
 
         bool isFirstInst = true;
-        for (INST_LIST_ITER inst_it = curBB->instList.begin();
-            inst_it != curBB->instList.end();
+        for (INST_LIST_ITER inst_it = curBB->begin();
+            inst_it != curBB->end();
             inst_it++, isFirstInst = false)
         {
             G4_INST* curInst = (*inst_it);
@@ -113,10 +113,10 @@ void LocalScheduler::isolateBarrierBBs()
                 if (isFirstInst == false)
                 {
                     // Move barrier inst to its BB's instList
-                    barrierInstBB->instList.splice(barrierInstBB->instList.begin(), curBB->instList, inst_it);
+                    barrierInstBB->splice(barrierInstBB->begin(), curBB, inst_it);
                 }
 
-                if (nextInst_it != curBB->instList.end())
+                if (nextInst_it != curBB->end())
                 {
                     BB_LIST_ITER nextBB_it = bb_it;
                     nextBB_it++;
@@ -130,7 +130,7 @@ void LocalScheduler::isolateBarrierBBs()
                     fg.BBs.insert(nextBB_it, postBarrierInstBB);
 
                     // Move remaining instructions to post barrier BB
-                    postBarrierInstBB->instList.splice(postBarrierInstBB->instList.begin(), curBB->instList, nextInst_it, curBB->instList.end());
+                    postBarrierInstBB->splice(postBarrierInstBB->begin(), curBB, nextInst_it, curBB->end());
 
                     if (isFirstInst == false)
                     {
@@ -223,7 +223,7 @@ void LocalScheduler::localScheduling()
 
     for (; ib != bend; ++ib)
     {
-        unsigned int instCountBefore = (uint32_t)(*ib)->instList.size();
+        unsigned int instCountBefore = (uint32_t)(*ib)->size();
         // mem pool for each BB
         Mem_Manager bbMem(4096);
 
@@ -250,18 +250,17 @@ void LocalScheduler::localScheduling()
             unsigned int count = 0;
             std::vector<G4_BB*> sections;
 
-            for (INST_LIST_ITER inst_it = (*ib)->instList.begin();
+            for (INST_LIST_ITER inst_it = (*ib)->begin();
                 ;
                 inst_it++)
             {
                 if (count == schedulerWindowSize ||
-                    inst_it == (*ib)->instList.end())
+                    inst_it == (*ib)->end())
                 {
                     G4_BB* tempBB = fg.createNewBB(false);
                     sections.push_back(tempBB);
-                    tempBB->instList.splice(tempBB->instList.begin(),
-                        (*ib)->instList,
-                        (*ib)->instList.begin(), inst_it);
+                    tempBB->splice(tempBB->begin(),
+                        (*ib), (*ib)->begin(), inst_it);
                     G4_BB_Schedule schedule(fg.getKernel(), bbMem, tempBB, buildDDD, listSch,
                         totalCycle, m_options, LT);
 
@@ -269,7 +268,7 @@ void LocalScheduler::localScheduling()
                 }
                 count++;
 
-                if (inst_it == (*ib)->instList.end())
+                if (inst_it == (*ib)->end())
                 {
                     break;
                 }
@@ -277,7 +276,7 @@ void LocalScheduler::localScheduling()
 
             for (unsigned int i = 0; i < sections.size(); i++)
             {
-                (*ib)->instList.splice((*ib)->instList.end(), sections[i]->instList, sections[i]->instList.begin(), sections[i]->instList.end());
+                (*ib)->splice((*ib)->end(), sections[i], sections[i]->begin(), sections[i]->end());
             }
         }
         else
@@ -428,7 +427,7 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
     // Find the label if there is
     std::list<std::string> labelList;
     bool firstNonLabelInst = true;
-    for (INST_LIST_ITER i = bb->instList.begin(); i != bb->instList.end(); ++i)
+    for (INST_LIST_ITER i = bb->begin(); i != bb->end(); ++i)
     {
         G4_INST* inst = *i;
         MUST_BE_TRUE(inst != NULL, ERROR_UNKNOWN);
@@ -443,11 +442,11 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
 
     // Update the listing of the basic block with the reordered code.
     size_t scheduleSize = scheduledNodes.size();
-    size_t bbInstsSize = bb->instList.size();
+    size_t bbInstsSize = bb->size();
     MUST_BE_TRUE(scheduleSize == bbInstsSize - ddd.numOfPairs,
         "Size of inst list is different before/after scheduling");
 
-    INST_LIST_ITER inst_it = bb->instList.begin();
+    INST_LIST_ITER inst_it = bb->begin();
     Node * prevNode = NULL;
     unsigned int HWThreadsPerEU
         = m_options->getuInt32Option(vISA_HWThreadNumberPerEU);
@@ -1004,15 +1003,14 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
     OTHER_ARF_BUCKET = SCRATCH_SEND_BUCKET + 1;
     TOTAL_BUCKETS = OTHER_ARF_BUCKET + 1;
 
-    INST_LIST& instList = bb->instList;
     LiveBuckets LB(this, GRF_BUCKET, TOTAL_BUCKETS);
 
     // Building the graph in reverse relative to the original instruction
     // order, to naturally take care of the liveness of operands.
-    std::list<G4_INST*>::reverse_iterator iInst(instList.rbegin()), iInstEnd(instList.rend());
+    std::list<G4_INST*>::reverse_iterator iInst(bb->rbegin()), iInstEnd(bb->rend());
     std::vector<BucketDescr> BDvec;
 
-    for (int nodeId = (int)(instList.size() - 1); iInst != iInstEnd; ++iInst, nodeId--)
+    for (int nodeId = (int)(bb->size() - 1); iInst != iInstEnd; ++iInst, nodeId--)
     {
         Node *node = nullptr;
         // If we have a pair of instructions to be mapped on a single DAG node:
@@ -1384,7 +1382,7 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
     // Go through the instructions in BB and find all possible pairs of typedWrites.
     G4_INST *foundFirst = nullptr, *foundSecond = nullptr;
     G4_INST *foundThird = nullptr, *foundFourth = nullptr;
-    for (G4_INST *inst : bb->instList) {
+    for (G4_INST *inst : *bb) {
         // {0,1}
         if (!foundFirst && isTypedWritePart(inst, 0)) {
             foundFirst = inst;
@@ -1413,7 +1411,7 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
     };
 
     G4_INST* leadingURB = nullptr;
-    for (G4_INST *inst : bb->instList) 
+    for (G4_INST *inst : *bb) 
     {
         if (!leadingURB && isLeadingURBWrite(inst))
         {

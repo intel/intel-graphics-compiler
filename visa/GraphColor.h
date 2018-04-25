@@ -153,7 +153,7 @@ public:
     void setSpillCost(float cost) {spillCost = cost;}
 
     bool getIsInfiniteSpillCost() { return isInfiniteCost; }
-    void checkForInfiniteSpillCost(INST_LIST& instList, std::list<G4_INST*>::reverse_iterator& it);
+    void checkForInfiniteSpillCost(G4_BB* bb, std::list<G4_INST*>::reverse_iterator& it);
 
     G4_VarBase* getPhyReg()
     {
@@ -748,26 +748,26 @@ namespace vISA
         void addCalleeStackSetupCode();
         void saveSubRegs(
             unsigned startReg, unsigned startSubReg, unsigned size, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-            unsigned frameOffset, INST_LIST& instList, INST_LIST_ITER insertIt);
+            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
         void saveRegs(
             unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-            unsigned frameOffset, INST_LIST& instList, INST_LIST_ITER insertIt);
+            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
         void saveActiveRegs(
             std::vector<bool>& saveRegs, unsigned startReg,
-            unsigned frameOffset, INST_LIST& instList, INST_LIST_ITER insertIt);
+            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
         void restoreSubRegs(
             unsigned startReg, unsigned startSubReg, unsigned size, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-            unsigned frameOffset, INST_LIST& instList, INST_LIST_ITER insertIt);
+            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
         void restoreRegs(
             unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-            unsigned frameOffset, INST_LIST& instList, INST_LIST_ITER insertIt);
+            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
         void restoreActiveRegs(
             std::vector<bool>& restoreRegs, unsigned startReg,
-            unsigned frameOffset, INST_LIST& instList, INST_LIST_ITER insertIt);
+            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
         void OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs);
         void OptimizeActiveRegsFootprint(std::vector<bool>& saveRegs, std::vector<bool>& retRegs);
-        void saveFileScopeVar(G4_RegVar* filescopeVar, INST_LIST& instList, INST_LIST_ITER insertIt);
-        void restoreFileScopeVar(G4_RegVar* filescopeVar, INST_LIST& instList, INST_LIST_ITER insertIt);
+        void saveFileScopeVar(G4_RegVar* filescopeVar, G4_BB* bb, INST_LIST_ITER insertIt);
+        void restoreFileScopeVar(G4_RegVar* filescopeVar, G4_BB* bb, INST_LIST_ITER insertIt);
         void dumpRegisterPressure();
         GlobalRA & getGRA() { return gra; }
     };
@@ -802,7 +802,7 @@ namespace vISA
         void updateDefSet(std::set<G4_Declare*>& defs, G4_Declare* referencedDcl);
         void detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& kernel);
         void markBlockLocalVar(G4_RegVar* var, unsigned bbId);
-        void markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA, bool reDo);
+        void markBlockLocalVars(G4_BB* bb, Mem_Manager& mem);
         void computePhyReg();
         void fixAlignment();
 
@@ -1112,7 +1112,7 @@ namespace vISA
         void addCalleeSavePseudoCode();
         void addStoreRestoreForFP();
         void setABIForStackCallFunctionCalls();
-        void markGraphBlockLocalVars(bool reDo);
+        void markGraphBlockLocalVars();
         void verifyRA(LivenessAnalysis & liveAnalysis);
         void resetGlobalRAStates();
 
@@ -1134,8 +1134,8 @@ namespace vISA
         void rangeListSpliting(VAR_RANGE_LIST *rangeList, G4_Operand *opnd, std::stack<VarRange*> *toDelete);
         static void getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize);
         void createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<G4_Declare*> &splitDclList);
-        void insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Operand *dstOpnd, INST_LIST &instList, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList);
-        void insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int index, G4_Operand *srcOpnd, int pos, INST_LIST &instList, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList);
+        void insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Operand *dstOpnd, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList);
+        void insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int index, G4_Operand *srcOpnd, int pos, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList);
 
     public:
         bool didLocalSplit = false;

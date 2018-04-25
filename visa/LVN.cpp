@@ -1541,7 +1541,7 @@ void LVN::populateDuTable(INST_LIST_ITER inst_it)
     ActiveDefMMap activeDefs;
     G4_INST* startInst = (*inst_it);
     G4_Operand* startInstDst = startInst->getDst();
-    INST_LIST_ITER lastInstIt = bb->instList.end();
+    INST_LIST_ITER lastInstIt = bb->end();
     unsigned int numEdgesAdded = 0;
 
     // Clear du/ud chains of all instructions in BB
@@ -1768,7 +1768,7 @@ bool LVN::isRedundantMovToSelf(LVNItemInfo* lvnItem, G4_INST* inst)
 void LVN::doLVN()
 {
     bb->resetLocalId();
-    for (INST_LIST_ITER inst_it = bb->instList.begin(), inst_end_it = bb->instList.end();
+    for (INST_LIST_ITER inst_it = bb->begin(), inst_end_it = bb->end();
         inst_it != inst_end_it;
         inst_it++)
     {
@@ -1880,7 +1880,7 @@ void LVN::doLVN()
                         {
                             INST_LIST_ITER prev_it = inst_it;
                             inst_it--;
-                            bb->instList.erase(prev_it);
+                            bb->erase(prev_it);
 
                             numInstsRemoved++;
                             continue;
@@ -1913,7 +1913,7 @@ void LVN::doLVN()
                 {
                     INST_LIST_ITER prev_it = inst_it;
                     inst_it--;
-                    bb->instList.erase(prev_it);
+                    bb->erase(prev_it);
 
                     numInstsRemoved++;
                     continue;

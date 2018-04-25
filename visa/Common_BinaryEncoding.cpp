@@ -98,8 +98,8 @@ void EncodingHelper::dumpOptReport(int totalInst,
 
 bool BinaryEncodingBase::isBBBinInstEmpty(G4_BB *bb)
 {
-    INST_LIST_ITER ii, iend(bb->instList.end());
-    for (ii = bb->instList.begin(); ii != iend; ++ii)
+    INST_LIST_ITER ii, iend(bb->end());
+    for (ii = bb->begin(); ii != iend; ++ii)
     {
         G4_INST *inst = *ii;
         if (inst->getBinInst() != NULL)
@@ -110,8 +110,8 @@ bool BinaryEncodingBase::isBBBinInstEmpty(G4_BB *bb)
 
 G4_INST *BinaryEncodingBase::getFirstNonLabelInst(G4_BB *bb)
 {
-    INST_LIST_ITER ii, iend(bb->instList.end());
-    for (ii = bb->instList.begin(); ii != iend; ++ii)
+    INST_LIST_ITER ii, iend(bb->end());
+    for (ii = bb->begin(); ii != iend; ++ii)
     {
         G4_INST *inst = *ii;
         if (inst->opcode() != G4_label)
@@ -276,7 +276,7 @@ void BinaryEncodingBase::FixInst()
     bool align1Ternary = kernel.fg.builder->hasAlign1Ternary();
     for (auto bb : kernel.fg.BBs)
     {
-        for (auto iter = bb->instList.begin(); iter != bb->instList.end();)
+        for (auto iter = bb->begin(); iter != bb->end();)
         {
             G4_INST* inst = *iter;
             if (inst->isIntrinsic())
@@ -284,7 +284,7 @@ void BinaryEncodingBase::FixInst()
                 // remove any intrinsics that should be lowered before binary encoding
                 MUST_BE_TRUE(inst->asIntrinsicInst()->getLoweredByPhase() == Phase::BinaryEncoding,
                     "Unexpected intrinsics in binary encoding");
-                iter = bb->instList.erase(iter);
+                iter = bb->erase(iter);
             }
             else
             {

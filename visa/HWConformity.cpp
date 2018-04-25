@@ -195,7 +195,7 @@ G4_DstRegRegion* HWConformity::insertMovAfter( INST_LIST_ITER& it, G4_DstRegRegi
     G4_INST* newInst = builder.createInternalInst( pred, G4_mov, NULL, inst->getSaturate(),
         exec_size, dst, srcRegion, NULL, new_option, inst->getLineNo(), inst->getCISAOff(),
         inst->getSrcFilename() );
-    bb->instList.insert( iter, newInst );
+    bb->insert( iter, newInst );
 
     // update propagation info
     maintainDU4TempMov( inst, newInst );
@@ -257,7 +257,7 @@ void HWConformity::broadcast(
          execSize, dst, src, NULL, instMask,
          inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename() );
 
-     bb->instList.insert(it, newInst);
+     bb->insert(it, newInst);
 
      RegionDesc* srcRegion = builder.getRegionStride1();
      G4_SrcRegRegion* newSrc = builder.Create_Src_Opnd_From_Dcl(dcl, srcRegion);
@@ -296,7 +296,7 @@ G4_SrcRegRegion* HWConformity::insertCopyBefore(INST_LIST_ITER it, uint32_t srcN
         newExecSize, dst, origSrc, nullptr, InstOpt_WriteEnable,
         inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
 
-    bb->instList.insert(it, movInst);
+    bb->insert(it, movInst);
     G4_SrcRegRegion* newSrc = builder.createSrcRegRegion(modifier, Direct, dcl->getRegVar(),
         0, 0, newExecSize == 1 ? builder.getRegionScalar() : builder.getRegionStride1(),
         dcl->getElemType());
@@ -391,7 +391,7 @@ G4_Operand* HWConformity::insertMovBefore(
     G4_INST* newInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
         newExecSize, dstRegion, builder.duplicateOperand(src), nullptr, newInstEMask,
         inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename() );
-    bb->instList.insert( it, newInst );
+    bb->insert( it, newInst );
     inst->transferDef( newInst, Gen4_Operand_Number(srcNum + 1), Opnd_src0 );
     newInst->addDefUse(inst, Gen4_Operand_Number(srcNum + 1));
 
@@ -948,7 +948,7 @@ bool HWConformity::fixLine(INST_LIST_ITER it, G4_BB *bb)
             {
                 newInst->setOptions((newInst->getOption() & ~InstOpt_Masks) | InstOpt_WriteEnable);
             }
-            bb->instList.insert(it, newInst);
+            bb->insert(it, newInst);
             inst->setSrc(new_src0_opnd, 0);
             return true;
         }
@@ -2034,7 +2034,7 @@ void HWConformity::generateMacl(INST_LIST_ITER it, G4_BB* bb)
     if (mulInst->getExecSize() == 16)
     {
         auto startIter = it; 
-        bool isFirstInst = startIter == bb->instList.begin();
+        bool isFirstInst = startIter == bb->begin();
         if (!isFirstInst)
         {
             --startIter;
@@ -2130,7 +2130,7 @@ void HWConformity::doGenerateMacl(INST_LIST_ITER it, G4_BB *bb)
     mulInst->addDefUse(machInst, Opnd_implAccSrc);
 
     INST_LIST_ITER machIter = it;
-    machIter = bb->instList.insert(++machIter, machInst);
+    machIter = bb->insert(++machIter, machInst);
 
     if (!IS_DTYPE(origDst->getType()) || origDst->getHorzStride() != 1 ||
         !builder.isOpndAligned(origDst, 32))
@@ -2336,7 +2336,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
     inst->setSaturate(false);
 
     // see if we can combine this mul with a mulh following it
-    if (next_i != bb->instList.end())
+    if (next_i != bb->end())
     {
         G4_INST *next_inst = *next_i;
 
@@ -2399,7 +2399,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
 
             INST_LIST_ITER iter = next_i;
             iter++;
-            bb->instList.insert(iter, newMov);
+            bb->insert(iter, newMov);
 
             next_inst->addDefUse(newMov, Opnd_src0);
 
@@ -2418,7 +2418,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
                 newMov->setDest(new_next_dst);
                 if (new_next_dst != dst && sat_mod)
                 {
-                    MUST_BE_TRUE(iter != bb->instList.end() && (*iter)->opcode() == G4_mov,
+                    MUST_BE_TRUE(iter != bb->end() && (*iter)->opcode() == G4_mov,
                         "Next instruciton should be the MOV generated for consistent Dst and ACC source region.");
                     (*iter)->setSaturate(false);
                 }
@@ -2481,7 +2481,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
 
     INST_LIST_ITER iter = i;
     iter++;
-    bb->instList.insert(iter, newInst);
+    bb->insert(iter, newInst);
 
     inst->setPredicate(NULL);
 
@@ -2527,7 +2527,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
             builder.Create_Dst_Opnd_From_Dcl(low32BitDcl, 1),
             builder.createSrcRegRegion(*acc_src_opnd), NULL, inst_opt,
             inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
-        bb->instList.insert(iter, movInst);
+        bb->insert(iter, movInst);
 
         G4_DstRegRegion* origDst = dst;
         bool needsExtraMov = origDst->getHorzStride() > 1 || condmod != NULL || sat_mod;
@@ -2542,14 +2542,14 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
             builder.Create_Dst_Opnd_From_Dcl(dstAlias, 2),
             builder.Create_Src_Opnd_From_Dcl(low32BitDcl, builder.getRegionStride1()),
             NULL, inst_opt);
-        bb->instList.insert(iter, lowMove);
+        bb->insert(iter, lowMove);
 
         MUST_BE_TRUE(high32BitDcl != NULL, "mach dst must not be null");
         G4_INST* highMove = builder.createInternalInst(pred, G4_mov, NULL, false, exec_size,
             builder.createDstRegRegion(Direct, dstAlias->getRegVar(), 0, 1, 2, dstAlias->getElemType()),
             builder.Create_Src_Opnd_From_Dcl(high32BitDcl, builder.getRegionStride1()),
             NULL, inst_opt);
-        bb->instList.insert(iter, highMove);
+        bb->insert(iter, highMove);
 
         if (needsExtraMov)
         {
@@ -2560,7 +2560,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
                 dst,
                 builder.Create_Src_Opnd_From_Dcl(dstAliasAsQ, builder.getRegionStride1()),
                 NULL, inst_opt);
-            bb->instList.insert(iter, moveInst);
+            bb->insert(iter, moveInst);
         }
 
         return true;
@@ -2581,7 +2581,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
         newInst->transferUse(movInst);
         newInst->addDefUse(movInst, Opnd_src0);
 
-        bb->instList.insert(iter, movInst);
+        bb->insert(iter, movInst);
         last_iter = iter;
         last_iter--;
         if (extra_mov)
@@ -2613,7 +2613,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
             builder.createSrcRegRegion(*acc_src_opnd), NULL, InstOpt_NoOpt,
             inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
 
-        bb->instList.insert(iter, movInst);
+        bb->insert(iter, movInst);
 
         last_iter = iter;
         last_iter--;
@@ -2626,7 +2626,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
         newInst->transferUse(newInst2);
         newInst->addDefUse(movInst, Opnd_src0);
         movInst->addDefUse(newInst2, Opnd_src0);
-        bb->instList.insert(iter, newInst2);
+        bb->insert(iter, newInst2);
         iter++;
     }
 
@@ -2711,7 +2711,7 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
                 inst->getCISAOff(),
                 inst->getSrcFilename());
 
-        bb->instList.insert(iter, tmpMov);
+        bb->insert(iter, tmpMov);
         //it will decrement back to mov
         i = iter;
 
@@ -2755,7 +2755,7 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
         acc_dst_opnd, builder.duplicateOperand(src0), builder.duplicateOperand(src1), inst_opt,
         inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
 
-    bb->instList.insert(iter, newMul);
+    bb->insert(iter, newMul);
     inst->copyDefsTo(newMul, false);
     newMul->addDefUse(inst, Opnd_implAccSrc);
 
@@ -2856,7 +2856,7 @@ void HWConformity::copyDwords(G4_Declare* dst,
     G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false, (uint8_t) numDwords, dstOpnd, srcOpnd,
         NULL, InstOpt_WriteEnable);
 
-    INST_LIST_ITER movPos = bb->instList.insert(iter, movInst);
+    INST_LIST_ITER movPos = bb->insert(iter, movInst);
 
     if (numDwords == 16 &&
         ((dstOffset % GENX_GRF_REG_SIZ) != 0 || (srcOffset % GENX_GRF_REG_SIZ) != 0))
@@ -2916,7 +2916,7 @@ void HWConformity::copyDwordsIndirect(G4_Declare* dst,
     G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false, (uint8_t)numDwords, dstOpnd, newSrc,
         NULL, InstOpt_WriteEnable);
 
-    bb->instList.insert(iter, movInst);
+    bb->insert(iter, movInst);
 }
 
 // copy numRegs GRFs from src[srcOffset] to dst[dstOffset]
@@ -3089,7 +3089,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                     G4_DstRegRegion* tmpDst = builder.Create_Dst_Opnd_From_Dcl(tmp, multFactor);
                     G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false,
                         inst->getExecSize(), tmpDst, src, NULL, inst->getOption());
-                    bb->instList.insert(iter, movInst);
+                    bb->insert(iter, movInst);
                     uint16_t width = exSize;
                     if (width * 8 > GENX_GRF_REG_SIZ)
                     {
@@ -3386,21 +3386,21 @@ void HWConformity::splitDWMULInst( INST_LIST_ITER &start, INST_LIST_ITER &end, G
         G4_INST *expand_sec_half_op = *curr_iter;
         iter++;
 
-        bb->instList.insert( last_iter, expand_sec_half_op );
+        bb->insert( last_iter, expand_sec_half_op );
         if( curr_iter == start )
         {
             start--;
         }
-        bb->instList.erase( curr_iter );
+        bb->erase( curr_iter );
     }
     // handle the last inst
     if( iter == end )
     {
         evenlySplitInst( iter, bb );
         G4_INST *expand_sec_half_op = *iter;
-        bb->instList.insert( last_iter, expand_sec_half_op );
+        bb->insert( last_iter, expand_sec_half_op );
         end--;
-        bb->instList.erase( iter );
+        bb->erase( iter );
     }
 }
 
@@ -3840,13 +3840,13 @@ bool HWConformity::isFpMadPreferred(G4_BB *bb, INST_LIST_ITER iter)
     };
 
     auto next_iter = std::next(iter);
-    if (next_iter != bb->instList.end())
+    if (next_iter != bb->end())
     {
         G4_INST *next_inst = *next_iter;
         if (equal_mad_dst(next_inst, dst))
             return false;
     }
-    if (iter != bb->instList.begin())
+    if (iter != bb->begin())
     {
         auto prev_iter = std::prev(iter);
         G4_INST *prev_inst = *prev_iter;
@@ -4093,9 +4093,9 @@ void HWConformity::fixMADInst( BB_LIST_ITER it )
     bool doAlign1Mad = builder.hasAlign1Ternary();
 
     bb->resetLocalId();
-    INST_LIST_ITER i = bb->instList.begin();
+    INST_LIST_ITER i = bb->begin();
 
-    for (auto iterEnd = bb->instList.end(); i != iterEnd; ++i )
+    for (auto iterEnd = bb->end(); i != iterEnd; ++i )
     {
 
         G4_INST *inst = *i;
@@ -4285,10 +4285,10 @@ void HWConformity::fixMADInst( BB_LIST_ITER it )
                         if (movDist > 0)
                         {
                             mov_iter++;
-                            bb->instList.insert(mov_iter, inst);
+                            bb->insert(mov_iter, inst);
                             INST_LIST_ITER tmpIter = i;
                             i--;
-                            bb->instList.erase(tmpIter);
+                            bb->erase(tmpIter);
                         }
                     }
                 }
@@ -4595,7 +4595,7 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
     std::vector<AccInterval*> intervals;
 
     //build intervals for potential acc candidates as well as pre-existing acc uses from mac/mach/addc/etc
-    for (auto instIter = bb->instList.begin(), instEnd = bb->instList.end(); instIter != instEnd; ++instIter)
+    for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd; ++instIter)
     {
         G4_INST* inst = *instIter;
         if (inst->defAcc())
@@ -4603,7 +4603,7 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
             // we should only have single def/use acc at this point, so any use would kill the def
             auto iter = instIter;
             auto useIter = std::find_if(++iter, instEnd, [](G4_INST* inst) { return inst->useAcc(); });
-            int lastUseId = useIter == instEnd ? bb->instList.back()->getLocalId() : (*useIter)->getLocalId();
+            int lastUseId = useIter == instEnd ? bb->back()->getLocalId() : (*useIter)->getLocalId();
             AccInterval *newInterval = new AccInterval(inst, lastUseId, true);
             intervals.push_back(newInterval);
         }
@@ -4750,7 +4750,7 @@ void HWConformity::accSubstitution(G4_BB* bb)
         return;
     }
 
-    for (auto instIter = bb->instList.begin(), instEnd = bb->instList.end(); instIter != instEnd; ++instIter)
+    for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd; ++instIter)
     {
         bool canDoAccSub = true;
         G4_INST* inst = *instIter;
@@ -4959,8 +4959,8 @@ bool HWConformity::convertMAD2MAC( INST_LIST_ITER iter, std::vector<G4_INST*> &m
                 if( movDist > 0 )
                 {
                     movTarget++;
-                    bb->instList.insert( movTarget, useInst );
-                    bb->instList.erase( useIter );
+                    bb->insert( movTarget, useInst );
+                    bb->erase( useIter );
                 }
                 uint32_t dstStrideSize = G4_Type_Table[useInst->getDst()->getType()].byteSize * useInst->getDst()->getHorzStride();
                 uint32_t useTypeSize = G4_Type_Table[Type_UW].byteSize;
@@ -4970,7 +4970,7 @@ bool HWConformity::convertMAD2MAC( INST_LIST_ITER iter, std::vector<G4_INST*> &m
                     movTarget--;
                     insertMovAfter( movTarget,
                         (uint16_t)( useTypeSize / G4_Type_Table[useInst->getDst()->getType()].byteSize ),
-                        bb->instList );
+                        bb );
                 }
 
                 newType = getAccType( newType );
@@ -5021,7 +5021,7 @@ bool HWConformity::convertMAD2MAC( INST_LIST_ITER iter, std::vector<G4_INST*> &m
             (curInst->getDst()->getExecTypeSize() / accTypeSize) > 4)
         {
             // ToDo: store the iter in madInst?
-            auto instIter = std::find(bb->instList.begin(), bb->instList.end(), curInst);
+            auto instIter = std::find(bb->begin(), bb->end(), curInst);
             auto newDst = insertMovAfter(instIter, curInst->getDst(), curInst->getDst()->getType(), bb, Sixteen_Word);
             curInst->setDest(newDst);
         }
@@ -5189,7 +5189,7 @@ void HWConformity::convertMAD2MulAdd( INST_LIST_ITER iter, G4_BB *bb )
         inst->getCISAOff(),
         inst->getSrcFilename() );
 
-    auto addIter = bb->instList.insert( tIter, addOp );
+    auto addIter = bb->insert( tIter, addOp );
 
     // predicate/condmod/saturate, if they exist, are propagated to the add instruction
     inst->setSaturate( false );
@@ -5224,8 +5224,8 @@ void HWConformity::fixSADA2Inst( BB_LIST_ITER it )
 {
     G4_BB* bb = *it;
 
-    INST_LIST_ITER i = bb->instList.begin();
-    while (i != bb->instList.end())
+    INST_LIST_ITER i = bb->begin();
+    while (i != bb->end())
     {
 
         G4_INST *inst = *i;
@@ -5378,8 +5378,8 @@ void HWConformity::fixSADA2Inst( BB_LIST_ITER it )
             inst->setImplAccSrc( accSrcOpnd );
 
             ++newSada2Iter;
-            bb->instList.insert( newSada2Iter, inst );
-            i = bb->instList.erase(i);
+            bb->insert( newSada2Iter, inst );
+            i = bb->erase(i);
 
             // maintain def-use
 
@@ -5454,7 +5454,7 @@ void HWConformity::fixSADA2Inst( BB_LIST_ITER it )
 
             INST_LIST_ITER addLoc = i;
             ++addLoc;
-            bb->instList.insert( addLoc, addInst );
+            bb->insert( addLoc, addInst );
 
             // FIXME: redundant?
             inst->addDefUse(addInst, Opnd_src0);
@@ -5483,7 +5483,7 @@ void HWConformity::fixSendInst(BB_LIST_ITER it)
 {
     G4_BB* bb = *it;
 
-    for (INST_LIST_ITER i = bb->instList.begin(); i != bb->instList.end(); i++)
+    for (INST_LIST_ITER i = bb->begin(); i != bb->end(); i++)
     {
 
         G4_INST *inst = *i;
@@ -5568,7 +5568,7 @@ void HWConformity::fixSendInst(BB_LIST_ITER it)
                     8, dst, src, NULL, InstOpt_WriteEnable,
                     inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
 
-                bb->instList.insert(i, newInst);
+                bb->insert(i, newInst);
                 inst->transferDef(newInst, Opnd_src0, Opnd_src0);
                 newInst->addDefUse(inst, Opnd_src0);
             }
@@ -5608,7 +5608,7 @@ void HWConformity::fixSendInst(BB_LIST_ITER it)
                         8, dst, src, NULL, InstOpt_WriteEnable,
                         inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
 
-                    bb->instList.insert(i, newInst);
+                    bb->insert(i, newInst);
                     inst->transferDef(newInst, Opnd_src1, Opnd_src1);
                     newInst->addDefUse(inst, Opnd_src1);
                 }
@@ -5698,7 +5698,7 @@ void HWConformity::fixSelCsel(INST_LIST_ITER it, G4_BB* bb)
 void HWConformity::conformBB( BB_LIST_ITER it)
 {
     G4_BB *bb = *it;
-    INST_LIST_ITER i = bb->instList.begin(), iEnd = bb->instList.end();
+    INST_LIST_ITER i = bb->begin(), iEnd = bb->end();
     INST_LIST_ITER next_iter = i;
     for ( ; i != iEnd; i = next_iter )
     {
@@ -5954,7 +5954,7 @@ void HWConformity::conformBB( BB_LIST_ITER it)
 bool HWConformity::fixAddcSubb(G4_BB* bb)
 {
     bool changed = false;
-    for (auto iter = bb->instList.begin(), iterEnd = bb->instList.end();
+    for (auto iter = bb->begin(), iterEnd = bb->end();
         iter != iterEnd; ++iter)
     {
         G4_INST* inst = *iter;
@@ -5994,8 +5994,8 @@ bool HWConformity::fixAddcSubb(G4_BB* bb)
                 // before the second half of the addc/subb, which is pointed by iter
                 --movIter;
                 G4_INST* mov1 = *movIter;
-                bb->instList.erase(movIter);
-                bb->instList.insert(iter, mov1);
+                bb->erase(movIter);
+                bb->insert(iter, mov1);
 
                 changed = true;
             }
@@ -6325,13 +6325,13 @@ bool HWConformity::splitInstListForByteDst( INST_LIST_ITER it, G4_BB *bb, uint16
                 {
                     break;
                 }
-            }while( new_iter != bb->instList.begin() );
+            }while( new_iter != bb->begin() );
 
-            MUST_BE_TRUE( new_iter != bb->instList.end(), "Cannot find predicate definition function in BB." );
+            MUST_BE_TRUE( new_iter != bb->end(), "Cannot find predicate definition function in BB." );
             new_iter++;
             G4_INST *secondHalfOp = splitInstWithByteDst( expand_op );
             MUST_BE_TRUE( secondHalfOp, "Error in spliting instruction." );
-            bb->instList.insert( new_iter, secondHalfOp );
+            bb->insert( new_iter, secondHalfOp );
         }
     }
 
@@ -6776,7 +6776,7 @@ void HWConformity::fixDataLayout( )
 
     for (auto &bb : kernel.fg.BBs)
     {
-        for (auto &inst : bb->instList)
+        for (auto &inst : *bb)
         {
             if (G4_Inst_Table[inst->opcode()].n_dst == 1)
             {
@@ -6825,7 +6825,7 @@ void HWConformity::fixDataLayout( )
 
         for (auto &bb : kernel.fg.BBs)
         {
-            for (auto &inst : bb->instList)
+            for (auto &inst : *bb)
             {
                 if (G4_Inst_Table[inst->opcode()].n_dst == 1)
                 {
@@ -6923,7 +6923,7 @@ static void expandPlaneMacro(IR_Builder& builder, INST_LIST_ITER it, G4_BB* bb, 
         builder.Create_Dst_Opnd_From_Dcl(tmpVal, 1);
     G4_INST* madInst = builder.createInternalInst(nullptr, G4_mad, nullptr, false, 8, accDst,
         srcR, u, srcP, options);
-    bb->instList.insert(it, madInst);
+    bb->insert(it, madInst);
 
     G4_Predicate* pred = inst->getPredicate() ? builder.duplicateOperand(inst->getPredicate()) : nullptr;
     G4_CondMod* condMod = inst->getCondMod() ? builder.duplicateOperand(inst->getCondMod()) : nullptr;
@@ -6934,7 +6934,7 @@ static void expandPlaneMacro(IR_Builder& builder, INST_LIST_ITER it, G4_BB* bb, 
         dst->getRegOff() + (secondHalf ? 1 : 0), dst->getSubRegOff(), dst->getHorzStride(), dst->getType());
     G4_INST* secondMadInst = builder.createInternalInst(pred, G4_mad, condMod, inst->getSaturate(), 8, newDst,
         accSrc, v, srcQ, options);
-    bb->instList.insert(it, secondMadInst);
+    bb->insert(it, secondMadInst);
 }
 
 // Replace plane with a macro sequence:
@@ -6975,7 +6975,7 @@ void HWConformity::expandPlaneInst(INST_LIST_ITER it, G4_BB* bb)
         expandPlaneMacro(builder, it, bb, true);
     }
 
-    it = bb->instList.erase(it);
+    it = bb->erase(it);
 }
 
 // plane does not support pln with non-packed dst.
@@ -7039,7 +7039,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
             G4_INST* newInst = builder.createInternalInst(NULL, G4_mov,
                 NULL, false, 4, dstRgn, srcRgn, NULL, 0);
 
-            bb->instList.insert(it, newInst);
+            bb->insert(it, newInst);
 
             rd = builder.getRegionScalar();
             G4_SrcRegRegion* newSrcRgn = builder.createSrcRegRegion(
@@ -7097,7 +7097,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
                 G4_INST* newInst = builder.createInternalInst(NULL, G4_mov,
                     NULL, false, 16, dstRgn, srcRgn, NULL, 0);
 
-                bb->instList.insert(it, newInst);
+                bb->insert(it, newInst);
 
                 if (i == 0)
                 {
@@ -7172,14 +7172,14 @@ void HWConformity::fixImm64 ( INST_LIST_ITER i,
                 1, dstRegion, lowImm, NULL, InstOpt_WriteEnable,
                 inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename() );
 
-            bb->instList.insert(i, lowMovInst);
+            bb->insert(i, lowMovInst);
 
             G4_DstRegRegion *dstRegionNext = builder.Create_Dst_Opnd_From_Dcl(dcl, 1);
             G4_INST *highMovInst = builder.createInternalInst( NULL, G4_mov, NULL, false,
                 1, dstRegionNext, highImm, NULL, InstOpt_WriteEnable,
                 inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename() );
             dstRegionNext->setSubRegOff(1);
-            bb->instList.insert(i, highMovInst);
+            bb->insert(i, highMovInst);
 
             inst->transferDef(lowMovInst, Gen4_Operand_Number(j + 1), Opnd_src0);
             lowMovInst->addDefUse(inst, Gen4_Operand_Number(j + 1));
@@ -7280,7 +7280,7 @@ void HWConformity::helperGenerateTempDst(
 
     ++instIter;
     //inserting mov after fixed instruction
-    bb->instList.insert( instIter, movInst );
+    bb->insert( instIter, movInst );
 
     /*
     Need to remove dst from uses list of mulh, and add them to movInst useList
@@ -7324,7 +7324,7 @@ void HWConformity::helperGenerateTempDst(
 void HWConformity::fixMixedHFInst( BB_LIST_ITER it )
 {
     G4_BB* bb = *it;
-    for (auto instIter = bb->instList.begin(); instIter != bb->instList.end(); ++instIter)
+    for (auto instIter = bb->begin(); instIter != bb->end(); ++instIter)
     {
         G4_INST *inst = *instIter;
 

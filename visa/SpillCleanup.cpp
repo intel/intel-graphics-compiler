@@ -151,7 +151,7 @@ void CoalesceSpillFills::copyToOldFills(G4_DstRegRegion* coalescedFillDst, std::
                 movDst, src, nullptr, InstOpt_WriteEnable);
             copy->setCISAOff(srcCISAOff);
 
-            bb->instList.insert(f, copy);
+            bb->insert(f, copy);
 
             numGRFs -= simdSize == 8 ? 1 : 2;
             rowOff += simdSize == 8 ? 1 : 2;
@@ -230,10 +230,10 @@ void CoalesceSpillFills::coalesceSpills(std::list<INST_LIST_ITER>& coalesceableS
 
     for (auto spill : coalesceableSpills)
     {
-        bb->instList.erase(spill);
+        bb->erase(spill);
     }
     coalesceableSpills.clear();
-    auto copyIt = bb->instList.insert(f, coalescedSpillSrc->getInst());
+    auto copyIt = bb->insert(f, coalescedSpillSrc->getInst());
 }
 
 void CoalesceSpillFills::coalesceFills(std::list<INST_LIST_ITER>& coalesceableFills, unsigned int min,
@@ -294,16 +294,16 @@ void CoalesceSpillFills::coalesceFills(std::list<INST_LIST_ITER>& coalesceableFi
         {
             f++;
         }
-        bb->instList.erase(fill);
+        bb->erase(fill);
     }
 
     coalesceableFills.clear();
-    auto copyIt = bb->instList.insert(f, coalescedFillDst->getInst());
+    auto copyIt = bb->insert(f, coalescedFillDst->getInst());
 
     // Insert pseudo kill for coalesced range
     auto pseudoKill = kernel.fg.builder->createInternalInst(nullptr, G4_pseudo_kill, nullptr,
         false, 1, kernel.fg.builder->createDstRegRegion(*coalescedFillDst), nullptr, nullptr, 0);
-    bb->instList.insert(copyIt, pseudoKill);
+    bb->insert(copyIt, pseudoKill);
 
     //    copyToOldFills(coalescedFillDst, indFills, f, bb, srcCISAOff);
 }
@@ -800,7 +800,7 @@ INST_LIST_ITER CoalesceSpillFills::analyzeFillCoalescing(std::list<INST_LIST_ITE
     last++;
 #if 0
     G4_INST* lastInst = nullptr;
-    if (last != bb->instList.end())
+    if (last != bb->end())
         lastInst = (*last);
 #endif
     if (instList.size() < 2)
@@ -1009,7 +1009,7 @@ void CoalesceSpillFills::insertKill(G4_BB* bb, INST_LIST_ITER instIt, std::set<G
                     entry->second.first->getRegVar(), 0, 0, 1, Type_UD);
                 auto kill = kernel.fg.builder->createInternalInst(nullptr,
                     G4_pseudo_kill, nullptr, false, 1, killDst, nullptr, nullptr, 0);
-                bb->instList.insert(instIt, kill);
+                bb->insert(instIt, kill);
                 coalescedRangeKills.insert(entry->second.first);
             }
         }
@@ -1046,10 +1046,10 @@ void CoalesceSpillFills::fills()
     // a bunch of them. Insert movs as required.
     for (auto bb : kernel.fg.BBs)
     {
-        auto endIter = bb->instList.end();
+        auto endIter = bb->end();
         std::list<INST_LIST_ITER> fillsToCoalesce;
         std::list<INST_LIST_ITER> spills;
-        INST_LIST_ITER startIter = bb->instList.begin();
+        INST_LIST_ITER startIter = bb->begin();
         unsigned int w = 0;
         for (auto instIter = startIter;
             instIter != endIter;)
@@ -1093,7 +1093,7 @@ void CoalesceSpillFills::fills()
                 w = (cWindowSize - w > 3) ? cWindowSize - 3 : w;
             }
 
-            if (w == cWindowSize || inst == bb->instList.back())
+            if (w == cWindowSize || inst == bb->back())
             {
                 if (fillsToCoalesce.size() > 1)
                 {
@@ -1103,7 +1103,7 @@ void CoalesceSpillFills::fills()
                 {
                     startIter = instIter;
                 }
-                else if (inst == bb->instList.back())
+                else if (inst == bb->back())
                 {
                     break;
                 }
@@ -1124,8 +1124,8 @@ void CoalesceSpillFills::fills()
         }
 
         // One pass to replace old fills with coalesced dcl
-        for (auto instIt = bb->instList.begin();
-            instIt != bb->instList.end();
+        for (auto instIt = bb->begin();
+            instIt != bb->end();
             )
         {
             auto inst = (*instIt);
@@ -1133,7 +1133,7 @@ void CoalesceSpillFills::fills()
             if (inst->isPseudoKill() &&
                 replaceMap.find(inst->getDst()->getTopDcl()) != replaceMap.end())
             {
-                instIt = bb->instList.erase(instIt);
+                instIt = bb->erase(instIt);
                 continue;
             }
 
@@ -1152,7 +1152,7 @@ void CoalesceSpillFills::populateSendDstDcl()
     // Otherwise register pressure increases significantly.
     for (auto bb : kernel.fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             if (inst->isSend() &&
                 inst->getDst())
@@ -1187,9 +1187,9 @@ void CoalesceSpillFills::spills()
     // a bunch of them. Insert movs as required.
     for (auto bb : kernel.fg.BBs)
     {
-        auto endIter = bb->instList.end();
+        auto endIter = bb->end();
         std::list<INST_LIST_ITER> spillsToCoalesce;
-        INST_LIST_ITER startIter = bb->instList.begin();
+        INST_LIST_ITER startIter = bb->begin();
         unsigned int w = 0;
         for (auto instIter = startIter;
             instIter != endIter;)
@@ -1230,7 +1230,7 @@ void CoalesceSpillFills::spills()
 #endif
                                 // Delete earlier spill since its made redundant
                                 // by current spill.
-                                bb->instList.erase(*coalIt);
+                                bb->erase(*coalIt);
                             }
 
                             coalIt = spillsToCoalesce.erase(coalIt);
@@ -1282,7 +1282,7 @@ void CoalesceSpillFills::spills()
                 }
             }
 
-            if (w == cWindowSize || inst == bb->instList.back() ||
+            if (w == cWindowSize || inst == bb->back() ||
                 earlyCoalesce)
             {
                 if (spillsToCoalesce.size() > 1)
@@ -1293,7 +1293,7 @@ void CoalesceSpillFills::spills()
                 {
                     startIter = instIter;
                 }
-                else if (inst == bb->instList.back())
+                else if (inst == bb->back())
                 {
                     break;
                 }
@@ -1313,8 +1313,8 @@ void CoalesceSpillFills::spills()
 
         std::set<G4_Declare*> coalescedRangeKills;
         // One pass to replace old fills with coalesced dcl
-        for (auto instIt = bb->instList.begin();
-            instIt != bb->instList.end();
+        for (auto instIt = bb->begin();
+            instIt != bb->end();
             )
         {
             auto inst = (*instIt);
@@ -1322,7 +1322,7 @@ void CoalesceSpillFills::spills()
             if (inst->isPseudoKill() &&
                 replaceMap.find(inst->getDst()->getTopDcl()) != replaceMap.end())
             {
-                instIt = bb->instList.erase(instIt);
+                instIt = bb->erase(instIt);
                 continue;
             }
 
@@ -1350,8 +1350,8 @@ void CoalesceSpillFills::fixSendsSrcOverlap()
     //
     for (auto bb : kernel.fg.BBs)
     {
-        for (auto instIt = bb->instList.begin();
-            instIt != bb->instList.end();
+        for (auto instIt = bb->begin();
+            instIt != bb->end();
             instIt++)
         {
             auto inst = (*instIt);
@@ -1398,7 +1398,7 @@ void CoalesceSpillFills::fixSendsSrcOverlap()
                         G4_INST* copyInst = kernel.fg.builder->createInternalInst(nullptr,
                             G4_mov, nullptr, false, 8, dstRgn, srcRgn, nullptr, InstOpt_WriteEnable);
                         copyInst->setCISAOff(inst->getCISAOff());
-                        bb->instList.insert(instIt, copyInst);
+                        bb->insert(instIt, copyInst);
                         elems -= 8;
                         row++;
                     }
@@ -1451,7 +1451,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
         // Although there is a raw mov before scratch write,
         // it has to be preserved for correctness.
         std::set<G4_Declare*> sendDst;
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             if (inst->isSend() &&
                 inst->getDst() &&
@@ -1463,7 +1463,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
             }
         }
 
-        for (auto instIt = bb->instList.begin(), endIt = bb->instList.end();
+        for (auto instIt = bb->begin(), endIt = bb->end();
             instIt != endIt;
             instIt++)
         {
@@ -1486,7 +1486,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
                 G4_Declare* srcDcl = nullptr;
                 std::map<unsigned int, unsigned int> dstSrcRowMapping;
                 std::list<MovLoc> copies;
-                while (tmpIt != bb->instList.begin())
+                while (tmpIt != bb->begin())
                 {
                     auto pInst = (*tmpIt);
 
@@ -1625,7 +1625,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
     // Update number of uses of each dcl
     for (auto bb : kernel.fg.BBs)
     {
-        for (auto instIt = bb->instList.begin(), endIt = bb->instList.end();
+        for (auto instIt = bb->begin(), endIt = bb->end();
             instIt != endIt; instIt++)
         {
             auto inst = (*instIt);
@@ -1673,7 +1673,7 @@ void CoalesceSpillFills::removeRedundantSplitMovs()
 #if 0
                 printf("\tFound %s occurence at $%d\n", (*iter)->opcode() == G4_mov ? "mov" : "pseudokill", (*iter)->getCISAOff());
 #endif
-                bb->instList.erase(iter);
+                bb->erase(iter);
             }
         }
     }
@@ -1698,8 +1698,8 @@ void CoalesceSpillFills::spillFillCleanup()
     std::set<G4_Declare*> defs;
     for (auto bb : kernel.fg.BBs)
     {
-        auto startIt = bb->instList.begin();
-        auto endIt = bb->instList.end();
+        auto startIt = bb->begin();
+        auto endIt = bb->end();
         for (auto instIt = startIt;
             instIt != endIt;
             instIt++)
@@ -1822,7 +1822,7 @@ void CoalesceSpillFills::spillFillCleanup()
 
                     G4_INST* mov = kernel.fg.builder->createInternalInst(nullptr, G4_mov, nullptr, false, (unsigned char)execSize,
                         nDst, nSrc, nullptr, InstOpt_WriteEnable);
-                    bb->instList.insert(instIt, mov);
+                    bb->insert(instIt, mov);
                     mov->setCISAOff(inst->getCISAOff());
 
                     row += execSize / 8;
@@ -1830,7 +1830,7 @@ void CoalesceSpillFills::spillFillCleanup()
 
                 auto tempIt = instIt;
                 tempIt--;
-                bb->instList.erase(instIt);
+                bb->erase(instIt);
                 instIt = tempIt;
             }
         }
@@ -1848,12 +1848,12 @@ void CoalesceSpillFills::removeRedundantWrites()
     // 2. Writes in program without any fill from that slot throughout
     for (auto bb : kernel.fg.BBs)
     {
-        auto endIt = bb->instList.end();
+        auto endIt = bb->end();
         endIt--;
         // Store spill slots that are written in to alongwith emask used
         std::map<unsigned int, unsigned int> scratchOffToMask;
         for (auto instIt = endIt;
-            instIt != bb->instList.begin();
+            instIt != bb->begin();
             instIt--)
         {
             auto inst = (*instIt);
@@ -1902,7 +1902,7 @@ void CoalesceSpillFills::removeRedundantWrites()
 #if 0
                         printf("Removing redundant successive write at $%d\n", inst->getCISAOff());
 #endif
-                        instIt = bb->instList.erase(instIt);
+                        instIt = bb->erase(instIt);
                     }
                     else
                     {
@@ -1919,8 +1919,8 @@ void CoalesceSpillFills::removeRedundantWrites()
 
     for (auto bb : kernel.fg.BBs)
     {
-        auto endIt = bb->instList.end();
-        for (auto instIt = bb->instList.begin();
+        auto endIt = bb->end();
+        for (auto instIt = bb->begin();
             instIt != endIt;
             instIt++)
         {
@@ -2039,7 +2039,7 @@ void CoalesceSpillFills::removeRedundantWrites()
 #if 0
         printf("Removing redundant scratch access at CISA $%d\n", removeSp.first->getCISAOff());
 #endif
-        bb->instList.erase(removeSp.second.first);
+        bb->erase(removeSp.second.first);
     }
 }
 
@@ -2062,7 +2062,7 @@ void CoalesceSpillFills::dumpKernel()
 {
     for (auto bb : kernel.fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             inst->emit(std::cerr);
             std::cerr << "\t$" << inst->getCISAOff() << ", #" << rpe.getRegisterPressure(inst) << "\n";
@@ -2078,7 +2078,7 @@ void CoalesceSpillFills::dumpKernel(unsigned int v1, unsigned int v2)
         if (end)
             break;
 
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             if (canEnd &&
                 inst->getCISAOff() > (int)v2)

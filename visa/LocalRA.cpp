@@ -97,14 +97,14 @@ bool LocalRA::hasBackEdge()
     for (auto curBB : kernel.fg.BBs)
     {
 
-        MUST_BE_TRUE(curBB->instList.size() > 0 || curBB->Succs.size() > 1,
+        MUST_BE_TRUE(curBB->size() > 0 || curBB->Succs.size() > 1,
             "Error in detecting back-edge: Basic block found with no inst list and multiple successors.");
 
-        if (curBB->instList.size() > 0)
+        if (curBB->size() > 0)
         {
             for (auto succ : curBB->Succs)
             {
-                MUST_BE_TRUE(succ->instList.size() > 0,
+                MUST_BE_TRUE(succ->size() > 0,
                     "Error in detecting back-edge: Destination basic block of a jmp has no instructions.");
                 if (curBB->getId() >= succ->getId())
                 {
@@ -238,7 +238,7 @@ void LocalRA::preLocalRAAnalysis()
             int maxSendReg = 0;
             for (auto bb : kernel.fg.BBs)
             {
-                for (auto inst : bb->instList)
+                for (auto inst : *bb)
                 {
                     if (inst->isSend() || inst->isSplitSend())
                     {
@@ -396,7 +396,7 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doBankConflictReduction, bool 
 #endif
 
         LinearScan ra(gra, builder, liveIntervals, inputIntervals, pregManager, localPregs, mem, summary, numRegLRA, globalLRSize, doRoundRobin, doBankConflictReduction, highInternalConflict, doSplitLLR, kernel.getSimdSize());
-        ra.run(curBB->instList, builder, LLRUseMap);
+        ra.run(curBB, builder, LLRUseMap);
 
 #ifdef DEBUG_VERBOSE_ON
         COUT_ERROR << "BB" << curBB->getId() << std::endl;
@@ -646,8 +646,8 @@ void LocalRA::removeUnrequiredLifetimeOps()
         bb_it++)
     {
         G4_BB* bb = (*bb_it);
-
-        bb->instList.remove_if(isLifetimeCandidateOpCandidateForRemoval(this->gra));
+        bb->erase(std::remove_if(bb->begin(), bb->end(), isLifetimeCandidateOpCandidateForRemoval(this->gra)),
+            bb->end());
     }
 }
 
@@ -753,9 +753,9 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
                     {
                         G4_BB* bb = (*rit);
 
-                        if (bb->instList.size() > 0)
+                        if (bb->size() > 0)
                         {
-                            end = bb->instList.back()->getCISAOff();
+                            end = bb->back()->getCISAOff();
                             break;
                         }
                     }
@@ -881,9 +881,9 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
                 {
                     G4_BB* bb = (*rit);
 
-                    if (bb->instList.size() > 0)
+                    if (bb->size() > 0)
                     {
-                        end = bb->instList.back()->getCISAOff();
+                        end = bb->back()->getCISAOff();
                         break;
                     }
                 }
@@ -1268,8 +1268,8 @@ void LocalRA::setLexicalID()
     {
         G4_BB* bb = (*bb_it);
 
-        for (INST_LIST_ITER inst_it = bb->instList.begin();
-            inst_it != bb->instList.end();
+        for (INST_LIST_ITER inst_it = bb->begin();
+            inst_it != bb->end();
             inst_it++)
         {
             G4_INST* curInst = (*inst_it);
@@ -1291,7 +1291,7 @@ void LocalRA::markReferences(unsigned int& numRowsEOT,
 
 
         // Iterate over all insts
-        for (INST_LIST_ITER inst_it = curBB->instList.begin(); inst_it != curBB->instList.end(); ++inst_it)
+        for (INST_LIST_ITER inst_it = curBB->begin(); inst_it != curBB->end(); ++inst_it)
         {
             G4_INST* curInst = (*inst_it);
 
@@ -1335,8 +1335,8 @@ void LocalRA::calculateInputIntervals()
     {
         G4_BB* bb = (*bb_it);
 
-        for (INST_LIST_RITER inst_it = bb->instList.rbegin();
-            inst_it != bb->instList.rend();
+        for (INST_LIST_RITER inst_it = bb->rbegin();
+            inst_it != bb->rend();
             inst_it++)
         {
             G4_INST* curInst = (*inst_it);
@@ -1500,8 +1500,8 @@ void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& li
     int idx = 0;
     bool brk = false;
 
-    for (INST_LIST_ITER inst_it = bb->instList.begin();
-        inst_it != bb->instList.end() && !brk;
+    for (INST_LIST_ITER inst_it = bb->begin();
+        inst_it != bb->end() && !brk;
         inst_it++, idx += 2)
     {
         G4_INST* curInst = (*inst_it);
@@ -2408,7 +2408,7 @@ void PhyRegsManager::freeRegs(int regnum, int subregnum, int numwords, int instI
 // ********* LinearScan class implementation *********
 
 // Linear scan implementation
-void LinearScan::run(INST_LIST& instList, IR_Builder& builder, LLR_USE_MAP& LLRUseMap)
+void LinearScan::run(G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap)
 {
     unsigned int idx = 0;
     bool allocateRegResult = false;
@@ -2434,7 +2434,7 @@ void LinearScan::run(INST_LIST& instList, IR_Builder& builder, LLR_USE_MAP& LLRU
         }
         else
         {
-            allocateRegResult = allocateRegs(lr, instList, builder, LLRUseMap);
+            allocateRegResult = allocateRegs(lr, bb, builder, LLRUseMap);
         }
 
         if (allocateRegResult)
@@ -2604,7 +2604,7 @@ void LinearScan::expireInputRanges(unsigned int global_idx, unsigned int local_i
 // a currently active range or the range passed as parameter. The range
 // that has larger size and is longer is the spill candidate.
 // Return true if free registers found, false if range is to be spilled
-bool LinearScan::allocateRegs(LocalLiveRange* lr, INST_LIST& instList, IR_Builder& builder, LLR_USE_MAP& LLRUseMap)
+bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap)
 {
     int regnum, subregnum;
     unsigned int localRABound = 0;
@@ -2783,7 +2783,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, INST_LIST& instList, IR_Builde
                                     G4_INST* splitInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
                                         (unsigned char)oldDcl->getTotalElems() > 16 ? 16 : (unsigned char)oldDcl->getTotalElems(), dst, src, nullptr, InstOpt_WriteEnable,
                                         last_use_inst->getLineNo(), last_use_inst->getCISAOff(), last_use_inst->getSrcFilename());
-                                    instList.insert(iter, splitInst);
+                                    bb->insert(iter, splitInst);
 
                                     unsigned int idx = 0;
                                     gra.getLocalLR(oldDcl)->setLastRef(splitInst, idx);
@@ -2799,7 +2799,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, INST_LIST& instList, IR_Builde
                                         G4_INST* splitInst2 = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
                                             16, dst, src, nullptr, InstOpt_WriteEnable,
                                             last_use_inst->getLineNo(), last_use_inst->getCISAOff(), last_use_inst->getSrcFilename());
-                                        instList.insert(iter, splitInst2);
+                                        bb->insert(iter, splitInst2);
                                     }
 
                                     char* newDclName = builder.getNameString(builder.mem, 16, "copy_%s", oldDcl->getName());
@@ -2817,7 +2817,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, INST_LIST& instList, IR_Builde
                                     G4_INST* movInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
                                         (unsigned char)splitDcl->getTotalElems() > 16 ? 16 : (unsigned char)splitDcl->getTotalElems(), dst, src, nullptr, InstOpt_WriteEnable,
                                         useInst->getLineNo(), useInst->getCISAOff(), useInst->getSrcFilename());
-                                    instList.insert(iter, movInst);
+                                    bb->insert(iter, movInst);
 
                                     splitLR->setLastRef(movInst, idx);
                                     G4_INST* old_last_use = activeLR->getLastRef(idx);
@@ -2833,7 +2833,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, INST_LIST& instList, IR_Builde
                                         G4_INST* movInst2 = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
                                             16, dst, src, nullptr, InstOpt_WriteEnable,
                                             useInst->getLineNo(), useInst->getCISAOff(), useInst->getSrcFilename());
-                                        instList.insert(iter, movInst2);
+                                        bb->insert(iter, movInst2);
                                     }
 
                                     unsigned int pos = usePoint.second;
@@ -2865,7 +2865,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, INST_LIST& instList, IR_Builde
                     }
 
                     // Try again
-                    return allocateRegs(lr, instList, builder, LLRUseMap);
+                    return allocateRegs(lr, bb, builder, LLRUseMap);
                 }
             }
         }

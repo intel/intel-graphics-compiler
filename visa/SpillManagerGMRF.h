@@ -157,7 +157,8 @@ private:
 
 	bool handleAddrTakenSpills( G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis );
 	void insertAddrTakenSpillFill( G4_Kernel * kernel, PointsToAnalysis& pointsToAnalysis );
-	void insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, INST_LIST& instList, INST_LIST::iterator inst_it, G4_Operand* opnd, PointsToAnalysis& pointsToAnalysis, bool spill, unsigned int bbid );
+	void insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB* bb, INST_LIST::iterator inst_it, 
+        G4_Operand* opnd, PointsToAnalysis& pointsToAnalysis, bool spill, unsigned int bbid);
 	void prunePointsTo( G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis );
 
 	void
@@ -773,21 +774,21 @@ private:
 	insertSpillRangeCode (
 		G4_DstRegRegion *   spilledRegion,
 		INST_LIST::iterator spilledInstIter,
-		INST_LIST &         instList
+		G4_BB* bb
 	);
 
 	INST_LIST::iterator
 	insertFillMRFRangeCode (
 		G4_SrcRegRegion *   filledRegion,
 		INST_LIST::iterator filledInstIter,
-		INST_LIST &         instList
+		G4_BB* bb
 	);
 
 	INST_LIST::iterator
 	insertFillGRFRangeCode (
 		G4_SrcRegRegion *   filledRegion,
 		INST_LIST::iterator filledInstIter,
-		INST_LIST &         instList
+		G4_BB* bb
 	);
 
 	void *

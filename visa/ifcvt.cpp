@@ -168,10 +168,10 @@ namespace {
                    G4_BB * /* if */, G4_BB * /* else */, G4_BB * /* tail */>
         getInnermostIfBlock(G4_BB *BB) const {
             // Such BB should already be recognized as structural IF statement.
-            if (BB->instList.empty())
+            if (BB->empty())
                 return std::make_tuple(nullptr, nullptr, nullptr, nullptr);
 
-            G4_INST *last = BB->instList.back();
+            G4_INST *last = BB->back();
 
             // Skip if there's 'NoMask' on that (possible) conditional branch.
             if (last->getMaskOption() & InstOpt_WriteEnable)
@@ -335,9 +335,9 @@ namespace {
         bool isFlagClearingFollowedByGoto(G4_INST *I, G4_BB *BB) const {
             // Skip if it's not the second to the last instruction, which
             // should be a 'goto' with predicate.
-            if (BB->instList.size() <= 1)
+            if (BB->size() <= 1)
                 return false;
-            auto iter = BB->instList.rbegin();
+            auto iter = BB->rbegin();
             G4_INST *last = *iter++;
             if (I != *iter)
                 return false;
@@ -379,37 +379,37 @@ namespace {
             bool isGoto = (ifInst->opcode() == G4_goto);
             unsigned sum = 0;
 
-            for (auto *I : BB->instList) {
+            for (auto *I : *BB) {
                 G4_opcode op = I->opcode();
                 // Ignore G4_label
                 if (op == G4_label) {
-                    ASSERT_USER(I == BB->instList.front(),
+                    ASSERT_USER(I == BB->front(),
                                 "'label' should be the first instruction!");
                     continue;
                 }
                 // Ignore G4_else
                 if (isGoto) {
                     if (op == G4_join) {
-                        ASSERT_USER(BB->instList.size() > 1 &&
-                                    I == (*++BB->instList.begin()),
+                        ASSERT_USER(BB->size() > 1 &&
+                                    I == (*++BB->begin()),
                                     "'join' should be the second instruction!");
                         continue;
                     }
                     if (op == G4_goto) {
-                        ASSERT_USER(I == BB->instList.back(),
+                        ASSERT_USER(I == BB->back(),
                                     "'goto' should be the last instruction!");
                         continue;
                     }
                     if (isFlagClearingFollowedByGoto(I, BB)) {
-                        ASSERT_USER(BB->instList.size() > 1 &&
-                                    I == (*++BB->instList.rbegin()),
+                        ASSERT_USER(BB->size() > 1 &&
+                                    I == (*++BB->rbegin()),
                                     "flag clearing should be the second to last"
                                     " instruction!");
                         continue;
                     }
                 } else {
                     if (op == G4_else) {
-                        ASSERT_USER(I == BB->instList.back(),
+                        ASSERT_USER(I == BB->back(),
                                     "'else' should be the last instruction!");
                         continue;
                     }
@@ -451,7 +451,7 @@ namespace {
 
         /// markEmptyBB - Mark the given BB as empty.
         void markEmptyBB(IR_Builder *IRB, G4_BB *BB) const {
-            ASSERT_USER(BB->instList.empty(),
+            ASSERT_USER(BB->empty(),
                         "BB to be marked empty is not empty!");
 
             std::string id = "LABEL__EMPTYBB__" + toString(BB->getId());
@@ -460,7 +460,7 @@ namespace {
                 IRB->createInst(nullptr, G4_label, nullptr, false,
                                 UNDEFINED_EXEC_SIZE, nullptr,
                                 label, nullptr, 0);
-            BB->instList.push_back(inst);
+            BB->push_back(inst);
         }
 
         void fullConvert(IfConvertible &);
@@ -542,7 +542,7 @@ void IfConverter::fullConvert(IfConvertible &IC) {
     G4_BB *s0 = IC.succIf;
     G4_BB *s1 = IC.succElse;
 
-    INST_LIST_ITER pos = std::prev(head->instList.end());
+    INST_LIST_ITER pos = std::prev(head->end());
     G4_opcode op = (*pos)->opcode();
     ASSERT_USER(op == G4_if || op == G4_goto,
                 "Convertible if is not started with 'if' or 'goto'!");
@@ -551,9 +551,8 @@ void IfConverter::fullConvert(IfConvertible &IC) {
     // forward goto's behavior is platform dependent
     bool needReversePredicateForGoto = (isGoto && fg.builder->gotoJumpOnTrue());
     // Merge predicated 'if' into header.
-    INST_LIST *ilist = &s0->instList;
-    for (/* EMPTY */; !ilist->empty(); ilist->pop_front()) {
-        auto I = ilist->front();
+    for (/* EMPTY */; !s0->empty(); s0->pop_front()) {
+        auto I = s0->front();
         G4_opcode op = I->opcode();
         if (op == G4_label)
             continue;
@@ -579,16 +578,15 @@ void IfConverter::fullConvert(IfConvertible &IC) {
                 I->setPredicate(fg.builder->createPredicate(pred));
             }
         }
-        head->instList.insert(pos, I);
+        head->insert(pos, I);
     }
     markEmptyBB(fg.builder, s0);
     // Merge predicated 'else' into header.
     if (s1) {
         // Reverse the flag controling whether the predicate needs reversing.
         needReversePredicateForGoto = !needReversePredicateForGoto;
-        INST_LIST *ilist = &s1->instList;
-        for (/* EMPTY */; !ilist->empty(); ilist->pop_front()) {
-            auto I = ilist->front();
+        for (/* EMPTY */; !s1->empty(); s1->pop_front()) {
+            auto I = s1->front();
             G4_opcode op = I->opcode();
             if (op == G4_label)
                 continue;
@@ -607,28 +605,28 @@ void IfConverter::fullConvert(IfConvertible &IC) {
                     I->setPredicate(fg.builder->createPredicate(pred));
                 }
             }
-            head->instList.insert(pos, I);
+            head->insert(pos, I);
         }
         markEmptyBB(fg.builder, s1);
     }
 
     // Remove 'if' instruction in head.
-    head->instList.erase(pos);
+    head->erase(pos);
 
     // Skip tail merging if tail has other incoming edge(s).
     if (tail->Preds.size() != 2)
         return;
 
     // Remove 'label' and 'endif'/'join' instructions in tail.
-    ASSERT_USER(tail->instList.front()->opcode() == G4_label,
+    ASSERT_USER(tail->front()->opcode() == G4_label,
                 "BB is not started with 'label'!");
-    tail->instList.pop_front();
-    ASSERT_USER(tail->instList.front()->opcode() == G4_endif ||
-                tail->instList.front()->opcode() == G4_join,
+    tail->pop_front();
+    ASSERT_USER(tail->front()->opcode() == G4_endif ||
+                tail->front()->opcode() == G4_join,
                 "Convertible if is not ended with 'endif'!");
-    tail->instList.pop_front();
+    tail->pop_front();
     // Merge head and tail to get more code scheduling chance.
-    head->instList.splice(head->instList.end(), tail->instList);
+    head->splice(head->end(), tail);
     markEmptyBB(fg.builder, tail);
 }
 

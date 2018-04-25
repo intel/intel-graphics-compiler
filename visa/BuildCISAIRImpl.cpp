@@ -422,10 +422,10 @@ void saveFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
     {
         G4_BB* curBB = (*bb_it);
 
-        if( curBB->instList.size() > 0 && curBB->isEndWithFCall() )
+        if( curBB->size() > 0 && curBB->isEndWithFCall() )
         {
             // Save state for this fcall
-            G4_INST* fcallInst = curBB->instList.back();
+            G4_INST* fcallInst = curBB->back();
 
             fcallState currFCallState;
 
@@ -457,15 +457,15 @@ void restoreFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
     {
         G4_BB* curBB = (*bb_it);
 
-        if( curBB->instList.size() > 0 &&
-            curBB->instList.back()->isCall() )
+        if( curBB->size() > 0 &&
+            curBB->back()->isCall() )
         {
             // Check whether this call is a convert from fcall
             for( savedFCallStatesIter state_it = start;
                 state_it != end;
                 state_it++ )
             {
-                if( (*state_it).second.fcallInst == curBB->instList.back() )
+                if( (*state_it).second.fcallInst == curBB->back() )
                 {
                     // Found a call to replace with fcall and ret with fret
 
@@ -474,7 +474,7 @@ void restoreFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
 
                     G4_BB* retbbToConvert = retBlock->Preds.back();
 
-                    G4_INST* retToReplace = retbbToConvert->instList.back();
+                    G4_INST* retToReplace = retbbToConvert->back();
 
                     retToReplace->setOpcode( G4_pseudo_fret );
                     retToReplace->setDest(NULL);
@@ -482,7 +482,7 @@ void restoreFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
                     kernel->fg.removePredSuccEdges(retbbToConvert, retBlock);
 
                     // Now restore call operands
-                    G4_INST* instToReplace = curBB->instList.back();
+                    G4_INST* instToReplace = curBB->back();
 
                     auto& state = (*state_it).second;
                     instToReplace->setSrc(state.opnd0, 0);
@@ -627,10 +627,10 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*> comp
     {
         G4_BB* cur = (*it);
 
-        if( cur->instList.size() > 0 && cur->isEndWithFCall() )
+        if( cur->size() > 0 && cur->isEndWithFCall() )
         {
             // Setup successor/predecessor
-            G4_INST* fcall = cur->instList.back();
+            G4_INST* fcall = cur->back();
             int calleeIndex = fcall->asCFInst()->getCalleeIndex();
             G4_Kernel* callee = Get_Resolved_Compilation_Unit( header, compilation_units, calleeIndex );
             G4_BB* retBlock = cur->Succs.front();
@@ -645,7 +645,7 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*> comp
             kernel->fg.addPredSuccEdges( cur, callee->fg.getEntryBB() );
             kernel->fg.addPredSuccEdges( callee->fg.getUniqueReturnBlock(), retBlock );
 
-            G4_INST* calleeLabel = callee->fg.getEntryBB()->instList.front();
+            G4_INST* calleeLabel = callee->fg.getEntryBB()->front();
             ASSERT_USER( calleeLabel->isLabel() == true, "Entry inst is not label");
 
             // ret/e-mask
@@ -664,9 +664,9 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*> comp
     {
         G4_BB* cur = (*it);
 
-        if( cur->instList.size() > 0 && cur->isEndWithFRet() )
+        if( cur->size() > 0 && cur->isEndWithFRet() )
         {
-            G4_INST* fret = cur->instList.back();
+            G4_INST* fret = cur->back();
             ASSERT_USER( fret->opcode() == G4_pseudo_fret, "Expecting to see pseudo_fret");
             fret->setOpcode( G4_return );
             fret->setDest( kernel->fg.builder->createNullDst(Type_UD) );

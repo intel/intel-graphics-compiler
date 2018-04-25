@@ -2440,8 +2440,8 @@ void BinaryEncodingCNL::DoAll()
         /**
          * Traverse the instruction lists
          */
-        INST_LIST_ITER ii, iend(bb->instList.end());
-        for (ii = bb->instList.begin(); ii != iend; ++ii)
+        INST_LIST_ITER ii, iend(bb->end());
+        for (ii = bb->begin(); ii != iend; ++ii)
         {
             /* do detailed encoding here */
             G4_INST *inst = *ii;

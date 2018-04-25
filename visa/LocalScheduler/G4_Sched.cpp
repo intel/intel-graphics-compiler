@@ -332,7 +332,8 @@ struct RegisterPressure
     unsigned getPressure(G4_BB* bb, std::vector<G4_INST*>* Insts = nullptr)
     {
         unsigned Max = 0;
-        for (auto Inst : bb->instList) {
+        for (auto Inst : *bb) 
+        {
             if (Inst->isPseudoKill())
                 continue;
             unsigned Pressure = rpe->getRegisterPressure(Inst);
@@ -354,7 +355,7 @@ struct RegisterPressure
     {
         unsigned Max = 0;
         std::vector<G4_INST *> Insts;
-        for (auto Inst : bb->instList) {
+        for (auto Inst : *bb) {
             if (Inst->isPseudoKill()) {
                 std::cerr << "[---] ";
                 Inst->dump();
@@ -504,9 +505,9 @@ bool preRA_Scheduler::run()
     bool Changed = false;
 
     for (auto bb : kernel.fg.BBs) {
-        if (bb->instList.size() < SMALL_BLOCK_SIZE) {
+        if (bb->size() < SMALL_BLOCK_SIZE) {
             SCHED_DUMP(std::cerr << "Skip block with instructions "
-                << bb->instList.size() << "\n");
+                << bb->size() << "\n");
             continue;
         }
 
@@ -561,7 +562,7 @@ bool preRA_Scheduler::run()
 
             // simple ROI check.
             unsigned NumOfHighLatencyInsts = 0;
-            for (auto Inst : bb->instList) {
+            for (auto Inst : *bb) {
                 if (Inst->isSend()) {
                     if (G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc()) {
                         if (MsgDesc->isDataPortRead() ||
@@ -591,7 +592,7 @@ bool preRA_Scheduler::run()
 bool BB_Scheduler::verifyScheduling()
 {
     std::set<G4_INST*> Insts;
-    for (auto Inst : getBB()->instList)
+    for (auto Inst : *(getBB()))
         Insts.insert(Inst);
 
     for (auto Inst : schedule) {
@@ -1196,8 +1197,8 @@ void LatencyQueue::init()
     // excessive pressure increase. First collect the register
     // pressure trace in this block.
     std::vector<unsigned> RPtrace;
-    RPtrace.reserve(BB->instList.size());
-    for (auto Inst : BB->instList) {
+    RPtrace.reserve(BB->size());
+    for (auto Inst : *BB) {
         // Ignore pseudo-kills as they often introduce inaccurate rp bumps.
         if (Inst->isPseudoKill()) {
             unsigned prevRP = RPtrace.empty() ? 0 : RPtrace.back();
@@ -1227,7 +1228,7 @@ void LatencyQueue::init()
 
     if (Max.size() <= 1 || Min.size() <= 1) {
         // Simple case, there is only a single group.
-        for (auto Inst : BB->instList)
+        for (auto Inst : *BB)
             GroupInfo[Inst] = 0;
     } else {
         // Multiple high/low pressure segments. We merge consective segments
@@ -1245,7 +1246,7 @@ void LatencyQueue::init()
         // Iterate segments and assign a group id to each insstruction.
         unsigned i = 0;
         unsigned j = 0;
-        for (auto Inst : BB->instList) {
+        for (auto Inst : *BB) {
             if (j >= Segments.size()) {
                 GroupInfo[Inst] = j;
             } else if (i < Segments[j]) {
@@ -1401,7 +1402,7 @@ bool LatencyQueue::compare(preNode* N1, preNode* N2)
 // Commit this scheduling if it is better.
 bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
 {
-    INST_LIST& CurInsts = getBB()->instList;
+    INST_LIST& CurInsts = getBB()->getInstList();
     if (schedule.size() != CurInsts.size()) {
         SCHED_DUMP(std::cerr << "schedule reverted due to mischeduling.\n\n");
         return false;
@@ -1537,11 +1538,10 @@ void preDDD::buildGraph()
     // Starts with the exit node.
     addNodeToGraph(&ExitNode);
 
-    INST_LIST& Insts = m_BB->instList;
-    unsigned NumOfInsts = (unsigned)Insts.size();
+    unsigned NumOfInsts = (unsigned)m_BB->size();
     SNodes.reserve(NumOfInsts);
 
-    auto I = Insts.rbegin(), E = Insts.rend();
+    auto I = m_BB->rbegin(), E = m_BB->rend();
     for (unsigned i = 0; I != E; ++I) {
         preNode* N = new (mem) preNode(*I, i++);
         SNodes.push_back(N);

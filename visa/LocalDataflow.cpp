@@ -536,8 +536,7 @@ void FlowGraph::localDataFlowAnalysis()
 {
     for (auto BB : BBs) {
         LocalLivenessInfo LLI(BB->isInSimdFlow());
-        auto& Insts = BB->instList;
-        for (auto I = Insts.rbegin(), E = Insts.rend(); I != E; ++I) {
+        for (auto I = BB->rbegin(), E = BB->rend(); I != E; ++I) {
             G4_INST* Inst = *I;
             G4_opcode Op = Inst->opcode();
             if (Op == G4_opcode::G4_return || Op == G4_opcode::G4_label)
@@ -563,7 +562,7 @@ void FlowGraph::localDataFlowAnalysis()
         // reaching definition based analysis. It is better for
         // optimizations not to rely on this order.
         BB->resetLocalId();
-        for (auto Inst : Insts) {
+        for (auto Inst : *BB) {
             if (Inst->use_size() > 1) {
                 using Ty = std::pair<vISA::G4_INST *, Gen4_Operand_Number>;
                 auto Cmp = [](const Ty &lhs, const Ty &rhs) -> bool {

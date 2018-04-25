@@ -461,7 +461,7 @@ private:
     void expireInputRanges( unsigned int, unsigned int, unsigned int );
 	void expireAllActive();
     bool allocateRegsFromBanks( LocalLiveRange* );
-    bool allocateRegs(LocalLiveRange*, INST_LIST& instList, IR_Builder& builder, LLR_USE_MAP& LLRUseMap);
+    bool allocateRegs(LocalLiveRange*, G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap);
 	void freeAllocedRegs( LocalLiveRange*, bool);
 	void updateActiveList( LocalLiveRange* );
 	void updateBitset( LocalLiveRange* );
@@ -539,7 +539,7 @@ public:
         pregManager.getAvaialableRegs()->setBank2AvailableRegNum(bank2AvailableRegNum);
 	}
 
-    void run( INST_LIST& instList, IR_Builder& builder, LLR_USE_MAP& LLRUseMap );
+    void run(G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap );
 
 };
 

@@ -3424,7 +3424,7 @@ INST_LIST::iterator
 SpillManagerGMRF::insertSpillRangeCode (
 	G4_DstRegRegion *   spilledRegion,
 	INST_LIST::iterator spilledInstIter,
-	INST_LIST &         instList
+	G4_BB* bb
 )
 {
 	unsigned char execSize = (*spilledInstIter)->getExecSize ();
@@ -3455,7 +3455,7 @@ SpillManagerGMRF::insertSpillRangeCode (
 			spilledRegion->getRegOff());
 
 		INST_LIST::iterator insertPos = sendOutIter;
-		instList.splice (insertPos, builder_->instList);
+        bb->splice (insertPos, builder_->instList);
 
 		sendOutSpilledRegVarPortions (
 			spillRangeDcl, mRangeDcl, 0, spillRangeDcl->getNumRows (),
@@ -3593,13 +3593,13 @@ SpillManagerGMRF::insertSpillRangeCode (
 	INST_LIST::iterator nextIter = spilledInstIter;
 	++nextIter;
 
-	instList.splice (insertPos, builder_->instList);
+	bb->splice (insertPos, builder_->instList);
 
     if (optimizeSplitLLR && spillSendInst && spillSendInst->isSplitSend())
     {
         // delete the move and spill the source instead. Note that we can't do this if split send 
         // is not enabled, as payload contains header 
-        instList.erase(spilledInstIter);
+        bb->erase(spilledInstIter);
         unsigned int pos = 1;
         spillSendInst->setSrc(inst->getSrc(0), pos);
     }
@@ -3609,7 +3609,7 @@ SpillManagerGMRF::insertSpillRangeCode (
         G4_DstRegRegion* dstOpnd = builder_->createDstRegRegion(Direct, replacementRangeDcl->getRegVar(), 0, 0, 1, Type_UD);
         auto newInst = builder_->createInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
         newInst->setCISAOff(curInst->getCISAOff());
-        instList.splice(pseudoKillPos, builder_->instList);
+        bb->splice(pseudoKillPos, builder_->instList);
     }
 
 	return nextIter;
@@ -3621,7 +3621,7 @@ INST_LIST::iterator
 SpillManagerGMRF::insertFillGRFRangeCode (
 	G4_SrcRegRegion *   filledRegion,
 	INST_LIST::iterator filledInstIter,
-	INST_LIST &         instList
+	G4_BB* bb
 )
 {
 	unsigned  execSize = (*filledInstIter)->getExecSize ();
@@ -3681,7 +3681,7 @@ SpillManagerGMRF::insertFillGRFRangeCode (
 	replaceFilledRange (fillRangeDcl, filledRegion, *filledInstIter);
 	INST_LIST::iterator insertPos = filledInstIter;
 
-	instList.splice (insertPos, builder_->instList);
+	bb->splice (insertPos, builder_->instList);
     if (optimizeSplitLLR)
     {
         INST_LIST::iterator nextIter = filledInstIter;
@@ -3689,7 +3689,7 @@ SpillManagerGMRF::insertFillGRFRangeCode (
         nextIter++;
         prevIter--;
         prevIter--;
-        instList.erase(filledInstIter);
+        bb->erase(filledInstIter);
         fillSendInst->setDest(dstRegion);
         G4_INST* prevInst = (*prevIter);
         if (prevInst->opcode() == G4_pseudo_kill &&
@@ -3711,7 +3711,7 @@ INST_LIST::iterator
 SpillManagerGMRF::insertFillMRFRangeCode (
 	G4_SrcRegRegion *   filledRegion,
 	INST_LIST::iterator filledInstIter,
-	INST_LIST &         instList
+	G4_BB* bb
 )
 {
 	G4_INST * sendInst = *filledInstIter;
@@ -3737,7 +3737,7 @@ SpillManagerGMRF::insertFillMRFRangeCode (
 	replaceFilledRange(fillMRFRangeDcl, filledRegion, *filledInstIter);
 	INST_LIST::iterator insertPos = filledInstIter;
 
-	instList.splice(insertPos, builder_->instList);
+	bb->splice(insertPos, builder_->instList);
 
 	// Return the next instruction
 
@@ -3815,7 +3815,8 @@ bool SpillManagerGMRF::handleAddrTakenSpills( G4_Kernel * kernel, PointsToAnalys
 }
 
 // Insert spill and fill code for indirect GRF accesses
-void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, INST_LIST& instList, INST_LIST::iterator inst_it, G4_Operand* opnd, PointsToAnalysis& pointsToAnalysis, bool spill, unsigned int bbid )
+void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB* bb, 
+    INST_LIST::iterator inst_it, G4_Operand* opnd, PointsToAnalysis& pointsToAnalysis, bool spill, unsigned int bbid)
 {
     curInst = (*inst_it);
 	INST_LIST::iterator next_inst_it = ++inst_it;
@@ -3851,7 +3852,7 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, INST_
 
             G4_DstRegRegion* dstOpnd = builder_->createDstRegRegion(Direct, temp->getRegVar(), 0, 0, 1, Type_UD);
             auto newInst = builder_->createInternalInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
-            instList.insert(inst_it, newInst);
+            bb->insert(inst_it, newInst);
 
 			if( numrows > 1 || (lr->getDcl()->getNumElems() * lr->getDcl()->getElemSize() == 32) )
 			{
@@ -3866,7 +3867,7 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, INST_
 	                    fillMRFRangeDcl, mRangeDcl, 0,
 	                    temp->getNumRows(), 0);
 
-	                instList.splice(inst_it, builder_->instList);
+	                bb->splice(inst_it, builder_->instList);
 
 	                if (spill)
 	                {
@@ -3874,7 +3875,7 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, INST_
 	                        temp, mRangeDcl, 0, temp->getNumRows(),
 							0);
 
-	                    instList.splice(next_inst_it, builder_->instList);
+	                    bb->splice(next_inst_it, builder_->instList);
 	                }
 	            }
 	            else
@@ -3896,7 +3897,7 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, INST_
 						inst = kernel->fg.builder->createInternalInst( NULL, G4_mov, NULL, false, curExSize,
 								dstRex, srcRex, NULL, InstOpt_WriteEnable, curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename() );
 
-						instList.insert( inst_it, inst );
+						bb->insert( inst_it, inst );
 
 						if( spill )
 						{
@@ -3908,7 +3909,7 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, INST_
 							inst = kernel->fg.builder->createInternalInst( NULL, G4_mov, NULL, false, curExSize,
 									dstRex, srcRex, NULL, InstOpt_WriteEnable, curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename() );
 
-							instList.insert( next_inst_it, inst );
+							bb->insert( next_inst_it, inst );
 						}
 
 						// If 2 rows were processed then increment induction var suitably
@@ -3968,7 +3969,7 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, INST_
 					inst = kernel->fg.builder->createInternalInst( NULL, G4_mov, NULL, false, curExSize,
 							dstRex, srcRex, NULL, InstOpt_WriteEnable, curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename() );
 
-					instList.insert( inst_it, inst );
+					bb->insert( inst_it, inst );
 
 					if( spill )
 					{
@@ -3980,7 +3981,7 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, INST_
 						inst = kernel->fg.builder->createInternalInst( NULL, G4_mov, NULL, false, curExSize,
 								dstRex, srcRex, NULL, InstOpt_WriteEnable, curInst->getLineNo(), curInst->getCISAOff(), curInst->getSrcFilename() );
 
-						instList.insert( next_inst_it, inst );
+						bb->insert( next_inst_it, inst );
 					}
 
 					off += curExSize;
@@ -4004,7 +4005,7 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, INST_
 
                 G4_INST* pseudoUseInst = kernel->fg.builder->createInternalIntrinsicInst(nullptr, Intrinsic::Use, 1, nullptr, pseudoUseSrc, nullptr, nullptr, InstOpt_NoOpt);
 
-                instList.insert(next_inst_it, pseudoUseInst);
+                bb->insert(next_inst_it, pseudoUseInst);
             }
 
 		}
@@ -4020,8 +4021,8 @@ void SpillManagerGMRF::insertAddrTakenSpillFill( G4_Kernel* kernel, PointsToAnal
 	{
 		G4_BB* bb = (*bb_it);
 
-		for( INST_LIST_ITER inst_it = bb->instList.begin();
-			inst_it != bb->instList.end();
+		for( INST_LIST_ITER inst_it = bb->begin();
+			inst_it != bb->end();
 			inst_it++ )
 		{
 			G4_INST* curInst = (*inst_it);
@@ -4036,7 +4037,7 @@ void SpillManagerGMRF::insertAddrTakenSpillFill( G4_Kernel* kernel, PointsToAnal
 
 			if( dst && dst->getRegAccess() == IndirGRF )
 			{
-				insertAddrTakenSpillAndFillCode( kernel, bb->instList, inst_it, dst, pointsToAnalysis, true, bb->getId() );
+				insertAddrTakenSpillAndFillCode( kernel, bb, inst_it, dst, pointsToAnalysis, true, bb->getId() );
 			}
 
 			for( int i = 0; i < G4_MAX_SRCS; i++ )
@@ -4045,7 +4046,7 @@ void SpillManagerGMRF::insertAddrTakenSpillFill( G4_Kernel* kernel, PointsToAnal
 
 				if( src && src->isSrcRegRegion() && src->asSrcRegRegion()->getRegAccess() == IndirGRF )
 				{
-					insertAddrTakenSpillAndFillCode( kernel, bb->instList, inst_it, src, pointsToAnalysis, false, bb->getId() );
+					insertAddrTakenSpillAndFillCode( kernel, bb, inst_it, src, pointsToAnalysis, false, bb->getId() );
 				}
 			}
 		}
@@ -4062,8 +4063,8 @@ void SpillManagerGMRF::prunePointsTo( G4_Kernel* kernel, PointsToAnalysis& point
 	{
 		G4_BB* bb = (*bb_it);
 
-		for( INST_LIST_ITER inst_it = bb->instList.begin();
-			inst_it != bb->instList.end();
+		for( INST_LIST_ITER inst_it = bb->begin();
+			inst_it != bb->end();
 			inst_it++ )
 		{
 			G4_INST* curInst = (*inst_it);
@@ -4196,9 +4197,9 @@ SpillManagerGMRF::insertSpillFillCode (
 	{
 		inSIMDCFContext_ = (*it)->isInSimdFlow();
 		bbId_ = (*it)->getId();
-		INST_LIST::iterator jt = (*it)->instList.begin ();
+		INST_LIST::iterator jt = (*it)->begin ();
 
-		while (jt != (*it)->instList.end ()) {
+		while (jt != (*it)->end ()) {
 			INST_LIST::iterator kt = jt;
 			++kt;
 			G4_INST * inst = *jt;
@@ -4227,14 +4228,14 @@ SpillManagerGMRF::insertSpillFillCode (
                     {
 						if(inst->isPseudoKill())
 						{
-							(*it)->instList.erase(jt);
+							(*it)->erase(jt);
 							jt = kt;
 							continue;
 						}
 
 						insertSpillRangeCode (
 							inst->getDst ()->asDstRegRegion (),	jt,
-							(*it)->instList);
+							(*it));
 					}
 					else
                     {
@@ -4262,20 +4263,18 @@ SpillManagerGMRF::insertSpillFillCode (
 					{
 						if(inst->isLifeTimeEnd())
 						{
-							(*it)->instList.erase(jt);
+							(*it)->erase(jt);
 							break;
 						}
 						if ((inst->isSend() && i == 0) ||
                             (inst->isSplitSend() && i == 1)) {
                             // treat it as MRF since we may need to spill >2 GRFs
 							insertFillMRFRangeCode (
-								inst->getSrc (i)->asSrcRegRegion (), jt,
-								(*it)->instList);
+								inst->getSrc (i)->asSrcRegRegion (), jt, (*it));
 						}
 						else if (getRFType (regVar) == G4_GRF)
 							insertFillGRFRangeCode (
-								inst->getSrc (i)->asSrcRegRegion (), jt,
-								(*it)->instList);
+								inst->getSrc (i)->asSrcRegRegion (), jt, (*it));
 						else
 							assert (0);
 					}
@@ -4403,9 +4402,9 @@ SpillManagerGMRF::fixSpillFillCode (
 
 	for( BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end(); it++ )
 	{
-		INST_LIST::iterator jt = (*it)->instList.begin ();
+		INST_LIST::iterator jt = (*it)->begin ();
 
-		while( jt != (*it)->instList.end () )
+		while( jt != (*it)->end () )
         {
 			INST_LIST::iterator kt = jt;
 			++kt;
@@ -4443,7 +4442,7 @@ SpillManagerGMRF::fixSpillFillCode (
 
 					    G4_INST * movInst = builder_->createInternalInst( NULL, G4_mov, NULL, false, REG_DWORD_SIZE,
                             mHeaderInputDstRegion, inputPayload, NULL, InstOpt_WriteEnable, inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename() );
-                        (*it)->instList.insert( jt, movInst );
+                        (*it)->insert( jt, movInst );
 
                         curDst = createMHeaderInputDstRegion (mRangeDcl->getRegVar ());
 
@@ -4464,7 +4463,7 @@ SpillManagerGMRF::fixSpillFillCode (
 
                     G4_INST* mov_inst = builder_->createInternalInst (NULL, G4_mov, NULL, false, SCALAR_EXEC_SIZE, mHeaderOffsetDstRegion,
                         offsetImm, NULL, InstOpt_WriteEnable, inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
-                    (*it)->instList.insert( jt, mov_inst );
+                    (*it)->insert( jt, mov_inst );
 
 		            unsigned segmentByteSize = inst->getMsgDesc()->ResponseLength() * REG_BYTE_SIZE;
 		            unsigned responseLength = cdiv (segmentByteSize, REG_BYTE_SIZE);
@@ -4507,7 +4506,7 @@ SpillManagerGMRF::fixSpillFillCode (
 
                     G4_INST* mov_inst = builder_->createInternalInst (NULL, G4_mov, NULL, false, SCALAR_EXEC_SIZE, mHeaderOffsetDstRegion,
                         offsetImm, NULL, InstOpt_WriteEnable, inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
-                    (*it)->instList.insert( jt, mov_inst );
+                    (*it)->insert( jt, mov_inst );
 
 		            unsigned segmentByteSize = (inst->getMsgDesc()->MessageLength() - SCRATCH_PAYLOAD_HEADER_MAX_HEIGHT) * REG_BYTE_SIZE;
 		            unsigned writePayloadCount = cdiv (segmentByteSize, REG_BYTE_SIZE);

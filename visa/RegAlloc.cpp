@@ -136,7 +136,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
     for (BB_LIST_ITER it = fg.BBs.begin(), itend = fg.BBs.end(); it != itend; ++it)
 	{
 		G4_BB* bb = (*it);
-		for (INST_LIST_ITER iter = bb->instList.begin(), iterEnd = bb->instList.end(); iter != iterEnd; ++iter)
+		for (INST_LIST_ITER iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd; ++iter)
 		{
             G4_INST* inst = (*iter);
             for (int i = 0; i < G4_MAX_SRCS; i++)
@@ -154,7 +154,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
 	for (BB_LIST_ITER it = fg.BBs.begin(), itend = fg.BBs.end(); it != itend; ++it)
 	{
 		G4_BB* bb = (*it);
-		for (INST_LIST_ITER iter = bb->instList.begin(), iterEnd = bb->instList.end(); iter != iterEnd; ++iter)
+		for (INST_LIST_ITER iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd; ++iter)
 		{
 			G4_INST* inst = (*iter);
 
@@ -316,7 +316,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
     for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
     {
         G4_BB* bb = (*it);
-        for (INST_LIST_ITER iter = bb->instList.begin(); iter != bb->instList.end(); ++iter)
+        for (INST_LIST_ITER iter = bb->begin(); iter != bb->end(); ++iter)
         {
             G4_INST* inst = (*iter);
             G4_DstRegRegion* dst = inst->getDst();
@@ -590,8 +590,8 @@ void LivenessAnalysis::updateKillSetForDcl(G4_Declare* dcl, BitSet* curBBGen, Bi
 void LivenessAnalysis::performScoping(BitSet* curBBGen, BitSet* curBBKill, G4_BB* curBB, BitSet* entryBBGen, BitSet* entryBBKill, G4_BB* entryBB)
 {
 	unsigned scopeID = curBB->getScopeID();
-    for( INST_LIST_ITER it = curBB->instList.begin();
-        it != curBB->instList.end();
+    for( INST_LIST_ITER it = curBB->begin();
+        it != curBB->end();
         it++ )
     {
         G4_INST* inst = (*it);
@@ -668,7 +668,7 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
     // Update row usage of each dcl in largeDefs
     for (auto bb : gra.kernel.fg.BBs)
     {
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             auto dst = inst->getDst();
             if (!dst)
@@ -1963,7 +1963,7 @@ void LivenessAnalysis::computeGenKill(G4_BB* bb,
 		G4_Declare* arg = fg.builder->getStackCallArg();
 		G4_Declare* ret = fg.builder->getStackCallRet();
 
-		G4_FCALL* fcall = fg.builder->getFcallInfo(bb->instList.back());
+		G4_FCALL* fcall = fg.builder->getFcallInfo(bb->back());
 		MUST_BE_TRUE(fcall != NULL, "fcall info not found");
 
 		// arg var is a use and a kill at each fcall
@@ -1981,7 +1981,7 @@ void LivenessAnalysis::computeGenKill(G4_BB* bb,
 		}
 	}
 
-	for (INST_LIST::reverse_iterator rit = bb->instList.rbegin(); rit != bb->instList.rend(); ++rit)
+	for (INST_LIST::reverse_iterator rit = bb->rbegin(); rit != bb->rend(); ++rit)
 	{
 		G4_INST* i = (*rit);
 		G4_DstRegRegion* dst = i->getDst();
@@ -2169,7 +2169,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
         G4_Declare* arg = fg.builder->getStackCallArg();
         G4_Declare* ret = fg.builder->getStackCallRet();
 
-        G4_FCALL* fcall = fg.builder->getFcallInfo(bb->instList.back());
+        G4_FCALL* fcall = fg.builder->getFcallInfo(bb->back());
         MUST_BE_TRUE(fcall != NULL, "fcall info not found");
 
         if (arg->getByteSize() != 0)
@@ -2193,7 +2193,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
         }
     }
 
-	for (INST_LIST::reverse_iterator rit = bb->instList.rbegin(); rit != bb->instList.rend(); ++rit)
+	for (INST_LIST::reverse_iterator rit = bb->rbegin(); rit != bb->rend(); ++rit)
 	{
 		G4_INST* i = (*rit);
         G4_DstRegRegion* dst = i->getDst();
@@ -2241,7 +2241,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     }
 
 					toDelete.push(newBitSet);
-					pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->instList.rbegin() );
+					pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin() );
 					footprints[id] = newBitSet;
 					dstfootprint = newBitSet;
 					if( gra.isBlockLocal(topdcl) &&
@@ -2433,7 +2433,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                         BitSet* newBitSet;
                         newBitSet = new (m) BitSet( bitsetSize, false );
                         toDelete.push(newBitSet);
-                        pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->instList.rbegin() );
+                        pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin() );
 						footprints[id] = newBitSet;
                         dstfootprint = newBitSet;
 
@@ -2493,7 +2493,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
 					BitSet* newBitSet;
                     newBitSet = new (m) BitSet( bitsetSize, false );
                     toDelete.push(newBitSet);
-                    pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->instList.rbegin() );
+                    pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin() );
 					footprints[id] = newBitSet;
                     srcfootprint = newBitSet;
                     if( gra.isBlockLocal(topdcl) )
@@ -2541,7 +2541,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     bool foundKill = false;
                     INST_LIST::reverse_iterator nextIt = rit; 
                     ++nextIt;
-                    if (nextIt != bb->instList.rend())
+                    if (nextIt != bb->rend())
                     {
                         G4_INST* nextInst = (*nextIt);
                         if (nextInst->opcode() == G4_pseudo_kill)
@@ -2630,7 +2630,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
     //
     for( auto&& pseudoKill : pseudoKills )
     {
-		if (pseudoKill.second != bb->instList.rbegin())
+		if (pseudoKill.second != bb->rbegin())
         {
 			INST_LIST_ITER iterToInsert = pseudoKill.second.base();
             do
@@ -2640,7 +2640,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
             while( (*iterToInsert)->isPseudoKill() );
 			G4_DstRegRegion* dstOpnd = fg.builder->createDstRegRegion(Direct, pseudoKill.first, 0, 0, 1, Type_UD);
             G4_INST* killInst = fg.builder->createInternalInst( NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0 );
-            bb->instList.insert( iterToInsert, killInst );
+            bb->insert( iterToInsert, killInst );
         }
     }
 
@@ -3030,18 +3030,18 @@ void GlobalRA::markBlockLocalVar(G4_RegVar* var, unsigned bbId)
     }
 }
 
-void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA, bool reDo)
+void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem)
 {
-	for (std::list<G4_INST*>::iterator it = bb->instList.begin(); it != bb->instList.end(); it++)
-	{
-		G4_INST* inst = *it;
+    for (std::list<G4_INST*>::iterator it = bb->begin(); it != bb->end(); it++)
+    {
+        G4_INST* inst = *it;
 
-		// Track direct dst references.
+        // Track direct dst references.
 
-		G4_DstRegRegion* dst = inst->getDst();
+        G4_DstRegRegion* dst = inst->getDst();
 
-		if (dst != NULL)
-		{
+        if (dst != NULL)
+        {
             G4_DstRegRegion* dstRgn = dst->asDstRegRegion();
 
             if (dstRgn->getBase()->isRegVar()) {
@@ -3054,7 +3054,29 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA, b
                     {
                         topdcl->setIsRefInSendDcl(true);
                     }
-                    if (!doLocalRA || dst->isFlag() || dst->isAddress() || reDo)
+                    LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
+                    unsigned int startIdx;
+                    if (lr->getFirstRef(startIdx) == NULL)
+                    {
+                        lr->setFirstRef(inst, 0);
+                    }
+                    lr->recordRef(bb);
+                    recordRef(topdcl);
+                }
+            }
+        }
+
+        G4_CondMod* condMod = inst->getCondMod();
+
+        if (condMod != NULL &&
+            condMod->getBase() != NULL)
+        {
+            if (condMod->getBase() && condMod->getBase()->isRegVar())
+            {
+                markBlockLocalVar(condMod->getBase()->asRegVar(), bb->getId());
+
+                G4_Declare* topdcl = condMod->getBase()->asRegVar()->getDeclare();
+                if (topdcl)
                 {
                     LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
                     unsigned int startIdx;
@@ -3066,51 +3088,26 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA, b
                     recordRef(topdcl);
                 }
             }
-		}
         }
 
-        G4_CondMod* condMod = inst->getCondMod();
+        // Track direct src references.
 
-        if( condMod != NULL &&
-            condMod->getBase() != NULL )
+        for (unsigned j = 0; j < G4_MAX_SRCS; j++)
         {
-            if( condMod->getBase() && condMod->getBase()->isRegVar() )
+            G4_Operand* src = inst->getSrc(j);
+
+            if (src == NULL)
             {
-                markBlockLocalVar( condMod->getBase()->asRegVar(), bb->getId() );
-
-                G4_Declare* topdcl = condMod->getBase()->asRegVar()->getDeclare();
-                if (topdcl)
-                {
-                    LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
-				    unsigned int startIdx;
-				    if( lr->getFirstRef( startIdx ) == NULL )
-				    {
-				        lr->setFirstRef( inst, 0 );
-                    }
-                    lr->recordRef( bb );
-                    recordRef(topdcl);
-                }
+                // Do nothing.
             }
-        }
+            else if (src->isSrcRegRegion() && src->asSrcRegRegion()->getBase()->isRegVar())
+            {
+                G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
 
-		// Track direct src references.
+                if (srcRgn->getBase()->isRegVar()) {
+                    markBlockLocalVar(src->asSrcRegRegion()->getBase()->asRegVar(), bb->getId());
 
-		for (unsigned j = 0; j < G4_MAX_SRCS; j++)
-		{
-			G4_Operand* src = inst->getSrc(j);
-
-			if (src == NULL)
-			{
-				// Do nothing.
-			}
-			else if (src->isSrcRegRegion() && src->asSrcRegRegion()->getBase()->isRegVar())
-			{
-				G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
-
-				if (srcRgn->getBase()->isRegVar()) {
-					markBlockLocalVar(src->asSrcRegRegion()->getBase()->asRegVar(), bb->getId());
-
-                    G4_Declare* topdcl = GetTopDclFromRegRegion( src );
+                    G4_Declare* topdcl = GetTopDclFromRegRegion(src);
                     if (topdcl)
                     {
                         if (inst->isSend())
@@ -3118,64 +3115,58 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA, b
                             topdcl->setIsRefInSendDcl(true);
                         }
 
-                        if (!doLocalRA || src->isFlag() || src->isAddress() || reDo)
-                    {
                         LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
 
-                        lr->recordRef( bb );
+                        lr->recordRef(bb);
                         recordRef(topdcl);
-                            if (inst->isEOT())
-                            {
-                                lr->markEOT();
-                            }
+                        if (inst->isEOT())
+                        {
+                            lr->markEOT();
                         }
                     }
                 }
-			}
-			else if (src->isAddrExp())
-			{
+            }
+            else if (src->isAddrExp())
+            {
                 G4_RegVar* addExpVar = src->asAddrExp()->getRegVar();
-				markBlockLocalVar(addExpVar, bb->getId());
+                markBlockLocalVar(addExpVar, bb->getId());
 
-                if (!doLocalRA || reDo)
-                {
-		            G4_Declare* topdcl = addExpVar->getDeclare();
-		            while( topdcl->getAliasDeclare() != NULL)
-			            topdcl = topdcl->getAliasDeclare();
-		            MUST_BE_TRUE( topdcl != NULL, "Top dcl was null for addr exp opnd");
+                G4_Declare* topdcl = addExpVar->getDeclare();
+                while (topdcl->getAliasDeclare() != NULL)
+                    topdcl = topdcl->getAliasDeclare();
+                MUST_BE_TRUE(topdcl != NULL, "Top dcl was null for addr exp opnd");
 
-                    LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
-                    lr->recordRef(bb);
-                    lr->markIndirectRef();
-                    recordRef(topdcl);
-                }
-			}
-		}
+                LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
+                lr->recordRef(bb);
+                lr->markIndirectRef();
+                recordRef(topdcl);
+            }
+        }
 
         G4_Operand* pred = inst->getPredicate();
 
-        if( pred != NULL )
+        if (pred != NULL)
         {
-            if( pred->getBase() && pred->getBase()->isRegVar() )
+            if (pred->getBase() && pred->getBase()->isRegVar())
             {
-                markBlockLocalVar( pred->getBase()->asRegVar(), bb->getId() );
+                markBlockLocalVar(pred->getBase()->asRegVar(), bb->getId());
                 G4_Declare* topdcl = pred->getBase()->asRegVar()->getDeclare();
                 if (topdcl)
                 {
                     LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
-                    lr->recordRef( bb );
+                    lr->recordRef(bb);
                     recordRef(topdcl);
                 }
             }
         }
 
-		// Track all indirect references.
-		const REGVAR_VECTOR* grfVecPtr = pointsToAnalysis.getIndrUseVectorPtrForBB( bb->getId() );
-		for( unsigned i = 0; i < grfVecPtr->size(); i++ )
-		{
-			markBlockLocalVar((*grfVecPtr)[i], bb->getId());
-		}
-	}
+        // Track all indirect references.
+        const REGVAR_VECTOR* grfVecPtr = pointsToAnalysis.getIndrUseVectorPtrForBB(bb->getId());
+        for (unsigned i = 0; i < grfVecPtr->size(); i++)
+        {
+            markBlockLocalVar((*grfVecPtr)[i], bb->getId());
+        }
+    }
 }
 
 void GlobalRA::resetGlobalRAStates()
@@ -3224,13 +3215,13 @@ void GlobalRA::resetGlobalRAStates()
 //
 // Mark block local (temporary) variables.
 //
-void GlobalRA::markGraphBlockLocalVars(bool reDo)
+void GlobalRA::markGraphBlockLocalVars()
 {
     //Create live ranges and record the reference info
     auto& fg = kernel.fg;
     for (std::list<G4_BB*>::iterator it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
     {
-        markBlockLocalVars(*it, fg.builder->mem, fg.builder->getOption(vISA_LocalRA), reDo);
+        markBlockLocalVars(*it, fg.builder->mem);
     }
 
     //Remove the un-referenced declares
@@ -3275,7 +3266,7 @@ void GlobalRA::setABIForStackCallFunctionCalls()
                 kernel.fg.builder->getIsKernel() ? "FCALL_RET_LOC_k_%d" : "FCALL_RET_LOC_f%d_%d", 
                 kernel.fg.builder->getCUnitId(), call_id++);
 
-			G4_INST* fcall = bb->instList.back();
+			G4_INST* fcall = bb->back();
 			G4_Declare* r1_dst = kernel.fg.builder->createDeclareNoLookup(n, G4_GRF, 8, 1, Type_UD);
 			r1_dst->getRegVar()->setPhyReg(regPool.getGreg(1), 0);
             G4_DstRegRegion* dstRgn = kernel.fg.builder->createDstRegRegion(Direct, r1_dst->getRegVar(), 0, 0, 1, Type_UD);
@@ -3287,7 +3278,7 @@ void GlobalRA::setABIForStackCallFunctionCalls()
             char* n = kernel.fg.builder->getNameString(kernel.fg.mem, 25,
                 kernel.fg.builder->getIsKernel() ? "FRET_RET_LOC_k_%d" : "FRET_RET_LOC_f%d_%d",
                 kernel.fg.builder->getCUnitId(), ret_id++);
-			G4_INST* fret = bb->instList.back();
+			G4_INST* fret = bb->back();
 			RegionDesc* rd = kernel.fg.builder->createRegionDesc(2, 2, 1);
 			G4_Declare* r1_src = kernel.fg.builder->createDeclareNoLookup(n, G4_INPUT, 8, 1, Type_UD);
 			r1_src->setIsFretLoc();
@@ -3315,7 +3306,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
         G4_BB * bb = *it;
 
         // Verify PREG assignment
-        for (auto inst : bb->instList)
+        for (auto inst : *bb)
         {
             G4_DstRegRegion* dst = inst->getDst();
             if (dst != NULL &&
@@ -3459,7 +3450,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
             }
         }
 
-        for (INST_LIST::reverse_iterator rit = bb->instList.rbegin(); rit != bb->instList.rend(); ++rit)
+        for (INST_LIST::reverse_iterator rit = bb->rbegin(); rit != bb->rend(); ++rit)
         {
             G4_INST* inst = (*rit);
 
@@ -3692,7 +3683,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                     {
                                         idMismatch = true;
                                     }
-                                    if (succ == bb->instList.rend() ||
+                                    if (succ == bb->rend() ||
                                         (*succ)->opcode() != G4_pseudo_kill ||
                                         (*succ)->getDst() == NULL ||
                                         idMismatch)
@@ -3770,7 +3761,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                                         {
                                             idMismatch = true;
                                         }
-                                        if (succ == bb->instList.rbegin() ||
+                                        if (succ == bb->rbegin() ||
                                             (*succ)->opcode() != G4_pseudo_kill ||
                                             (*succ)->getDst() == NULL ||
                                             idMismatch)

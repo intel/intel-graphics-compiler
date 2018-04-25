@@ -114,16 +114,16 @@ namespace vISA
         }
 
         void initDMaskModInfo();
-        void createDMask(INST_LIST* InsertList, INST_LIST_ITER InsertBeforePos);
-        void createFlagPerBB(INST_LIST* InsertList, INST_LIST_ITER InsertBeforePos);
+        void createDMask(G4_BB* bb, INST_LIST_ITER InsertBeforePos);
+        void createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos);
 
         void packPayload(
             G4_INST* FusedSend, G4_INST* Send0, G4_INST* Send1,
-            INST_LIST& InsertList, INST_LIST_ITER InsertBeforePos);
+            G4_BB* bb, INST_LIST_ITER InsertBeforePos);
 
         void unpackPayload(
             G4_INST* FusedSend, G4_INST* Send0, G4_INST* Send1,
-            INST_LIST& InsertList, INST_LIST_ITER InsertBeforePos);
+            G4_BB* bb, INST_LIST_ITER InsertBeforePos);
 
         G4_VarBase* getVarBase(G4_VarBase* RegVar, G4_Type Ty);
         uint32_t getFuncCtrlWithSimd16(G4_SendMsgDescriptor* Desc);
@@ -469,11 +469,11 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
         addI->removeAllDefs();
         if (addI == *I1st)
         {
-            CurrBB->instList.erase(I1st);
+            CurrBB->erase(I1st);
         }
         else
         {
-            CurrBB->instList.remove(addI);
+            CurrBB->remove(addI);
         }
     }
     if (movI->useEmpty())
@@ -481,11 +481,11 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
         movI->removeAllDefs();
         if (movI == *I2nd)
         {
-            CurrBB->instList.erase(I2nd);
+            CurrBB->erase(I2nd);
         }
         else
         {
-            CurrBB->instList.remove(movI); 
+            CurrBB->remove(movI); 
         }
     }
 
@@ -634,7 +634,7 @@ void SendFusion::doSink(
 			if (tmp == Inst) {
 				INST_LIST_ITER tmpIT = IT;
 				++IT;
-				CurrBB->instList.erase(tmpIT);
+				CurrBB->erase(tmpIT);
 
 				++j;
 				if (j == numToBeSinked)
@@ -652,7 +652,7 @@ void SendFusion::doSink(
 
 		for (int i = 1; i < numToBeSinked; ++i)
 		{
-			CurrBB->instList.insert(InsertBeforePos, InstToBeSinked[i]);
+			CurrBB->insert(InsertBeforePos, InstToBeSinked[i]);
 		}
 	}
 }
@@ -677,7 +677,7 @@ void SendFusion::doHoist(
 			if (tmp == Inst) {
 				INST_LIST_ITER tmpIT = IT;
 				++IT;
-				CurrBB->instList.erase(tmpIT);
+				CurrBB->erase(tmpIT);
 
 				--j;
 				if (j == 0)
@@ -695,7 +695,7 @@ void SendFusion::doHoist(
 
 		for (int i = numToBeHoisted - 1; i > 0; --i)
 		{
-			CurrBB->instList.insert(InsertBeforePos, InstToBeHoisted[i]);
+			CurrBB->insert(InsertBeforePos, InstToBeHoisted[i]);
 		}
 	}
 }
@@ -721,7 +721,7 @@ void SendFusion::doHoist(
 //
 void SendFusion::packPayload(
     G4_INST* FusedSend, G4_INST* Send0, G4_INST* Send1,
-    INST_LIST& InsertList, INST_LIST_ITER InsertBeforePos)
+    G4_BB* bb, INST_LIST_ITER InsertBeforePos)
 {
     // Both Send0 and Send1 have the same MsgDesc.
 	unsigned char ExecSize = Send0->getExecSize();
@@ -774,7 +774,7 @@ void SendFusion::packPayload(
                 Direct, Dst, 2 * i, 0, 1, Ty);
             G4_INST* Inst0 = Builder->createInternalInst(
                 NULL, G4_mov, NULL, false, ExecSize, D, S, nullptr, option);
-            InsertList.insert(InsertBeforePos, Inst0);
+            bb->insert(InsertBeforePos, Inst0);
 
             // copy Src1 to Dst
             S = Builder->createSrcRegRegion(
@@ -786,7 +786,7 @@ void SendFusion::packPayload(
 				1, Ty);
             G4_INST* Inst1 = Builder->createInternalInst(
                 NULL, G4_mov, NULL, false, ExecSize, D, S, nullptr, option);
-            InsertList.insert(InsertBeforePos, Inst1);
+            bb->insert(InsertBeforePos, Inst1);
 
             // Update DefUse
             Inst0->addDefUse(FusedSend, opn);
@@ -815,7 +815,7 @@ void SendFusion::packPayload(
 //
 void SendFusion::unpackPayload(
     G4_INST* FusedSend, G4_INST* Send0, G4_INST* Send1,
-    INST_LIST& InsertList, INST_LIST_ITER InsertBeforePos)
+    G4_BB* bb, INST_LIST_ITER InsertBeforePos)
 {
     G4_Type Ty = FusedSend->getDst()->getType();
     assert(G4_Type_Table[Ty].byteSize == 4 && "Unexpected Type!");
@@ -851,7 +851,7 @@ void SendFusion::unpackPayload(
             Direct, Dst0, Off0 + i, 0, 1, Ty);
         G4_INST* Inst0 = Builder->createInternalInst(
             NULL, G4_mov, NULL, false, ExecSize, D, S, nullptr, option);
-        InsertList.insert(InsertBeforePos, Inst0);
+        bb->insert(InsertBeforePos, Inst0);
 
         // Update DefUse
         FusedSend->addDefUse(Inst0, Opnd_src0);
@@ -869,7 +869,7 @@ void SendFusion::unpackPayload(
         D = Builder->createDstRegRegion(Direct, Dst1, Off1 + i, 0, 1, Ty);
         G4_INST* Inst1 = Builder->createInternalInst(
             NULL, G4_mov, NULL, false, ExecSize, D, S, nullptr, option);
-        InsertList.insert(InsertBeforePos, Inst1);
+        bb->insert(InsertBeforePos, Inst1);
 
         // Update DefUse
         FusedSend->addDefUse(Inst1, Opnd_src0);
@@ -882,7 +882,7 @@ void SendFusion::initDMaskModInfo()
     for (BB_LIST_ITER BI = CFG->BBs.begin(), BE = CFG->BBs.end(); BI != BE; ++BI)
     {
         G4_BB* BB = *BI;
-        for (INST_LIST_ITER II = BB->instList.begin(), IE = BB->instList.end(); II != IE; ++II)
+        for (INST_LIST_ITER II = BB->begin(), IE = BB->end(); II != IE; ++II)
         {
             G4_INST* inst = *II;
             G4_DstRegRegion* dst = inst->getDst();
@@ -904,7 +904,7 @@ void SendFusion::initDMaskModInfo()
 // each shader/kernel) for the later use. We have to do (sr0.2 & ce0) for each
 // BB as ce0 reflects the channel enable under control flow, and each BB might
 // have different value of ce0.
-void SendFusion::createDMask(INST_LIST* InsertList, INST_LIST_ITER InsertBeforePos)
+void SendFusion::createDMask(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
 {
     // (W) mov (1|M0) r10.0<1>:ud sr0.2.0<0;1,0>:ud
     G4_Declare* dmaskDecl = Builder->createTempVar(1, Type_UD, Either, Any, "DMask");
@@ -915,7 +915,7 @@ void SendFusion::createDMask(INST_LIST* InsertList, INST_LIST_ITER InsertBeforeP
         Direct, dmaskDecl->getRegVar(), 0, 0, 1, Type_UD);
     G4_INST* Inst = Builder->createInternalInst(
         NULL, G4_mov, NULL, false, 1, Dst, Src, NULL, InstOpt_WriteEnable);
-    InsertList->insert(InsertBeforePos, Inst);
+    bb->insert(InsertBeforePos, Inst);
 
     // update DefUse info
     CFG->globalOpndHT.addGlobalOpnd(Dst);
@@ -928,7 +928,7 @@ void SendFusion::createDMask(INST_LIST* InsertList, INST_LIST_ITER InsertBeforeP
     {
         G4_BB* BB = II->first;
         G4_INST* inst = II->second;
-        INST_LIST_ITER InsertPos = std::find(BB->instList.begin(), BB->instList.end(), inst);
+        INST_LIST_ITER InsertPos = std::find(BB->begin(), BB->end(), inst);
         ++InsertPos;
 
         G4_SrcRegRegion* S = Builder->createSrcRegRegion(
@@ -937,7 +937,7 @@ void SendFusion::createDMask(INST_LIST* InsertList, INST_LIST_ITER InsertBeforeP
             Direct, dmaskDecl->getRegVar(), 0, 0, 1, Type_UD);
         G4_INST* Inst = Builder->createInternalInst(
             NULL, G4_mov, NULL, false, 1, D, S, NULL, InstOpt_WriteEnable);
-        BB->instList.insert(InsertPos, Inst);
+        BB->insert(InsertPos, Inst);
     }
 }
 
@@ -952,7 +952,7 @@ void SendFusion::createDMask(INST_LIST* InsertList, INST_LIST_ITER InsertBeforeP
 // right before the location of first send fusion, not in the begining of BB
 // (as BB might have sr0 modifying instruction before those send instructions).
 //
-void SendFusion::createFlagPerBB(INST_LIST* InsertList, INST_LIST_ITER InsertBeforePos)
+void SendFusion::createFlagPerBB(G4_BB* bb, INST_LIST_ITER InsertBeforePos)
 {
     // FlagPerBB is saved for use later.
     G4_Declare* flagDecl = Builder->createTempFlag(1, "FlagPerBB");
@@ -977,7 +977,7 @@ void SendFusion::createFlagPerBB(INST_LIST* InsertList, INST_LIST_ITER InsertBef
 		// (W) mov(1|M0) dstPixelMaskRgn:uw  WAce0:uw
 		G4_INST* I0 = Builder->createInternalInst(NULL, G4_mov, NULL, false, 1, flag,
 			Builder->createImm(0, Type_UW), NULL, InstOpt_WriteEnable);
-		InsertList->insert(InsertBeforePos, I0);
+		bb->insert(InsertBeforePos, I0);
 
 		G4_SrcRegRegion *r0_0 = Builder->createSrcRegRegion(
 			Mod_src_undef, Direct,
@@ -992,7 +992,7 @@ void SendFusion::createFlagPerBB(INST_LIST* InsertList, INST_LIST_ITER InsertBef
 		// Hard-coded simd8 here!
 		G4_INST* I1 = Builder->createInternalInst(NULL, G4_cmp, flagCM, false, 8,
 			nullDst, r0_0, r0_1, InstOpt_M0);
-		InsertList->insert(InsertBeforePos, I1);
+		bb->insert(InsertBeforePos, I1);
 
 		G4_SrcRegRegion *flagSrc = Builder->createSrcRegRegion(
 			Mod_src_undef, Direct,
@@ -1002,7 +1002,7 @@ void SendFusion::createFlagPerBB(INST_LIST* InsertList, INST_LIST_ITER InsertBef
 			Direct, tmpDecl->getRegVar(), 0, 0, 1, Type_UW);
 		Inst0 = Builder->createInternalInst(NULL, G4_mov, NULL, false, 1, tmpDst1,
 			flagSrc, NULL, InstOpt_WriteEnable);
-		InsertList->insert(InsertBeforePos, Inst0);
+		bb->insert(InsertBeforePos, Inst0);
 
 		// update DefUse
 		I1->addDefUse(Inst0, Opnd_src0);
@@ -1019,7 +1019,7 @@ void SendFusion::createFlagPerBB(INST_LIST* InsertList, INST_LIST_ITER InsertBef
 			Direct, tmpDecl->getRegVar(), 0, 0, 1, Type_UD);
 		Inst0 = Builder->createInternalInst(
 			NULL, G4_and, NULL, false, 1, tmpDst, ce0Src, dmaskSrc, InstOpt_WriteEnable);
-		InsertList->insert(InsertBeforePos, Inst0);
+		bb->insert(InsertBeforePos, Inst0);
 	}
 
     //  Duplicate 8-bit mask to the next 8 bits
@@ -1032,7 +1032,7 @@ void SendFusion::createFlagPerBB(INST_LIST* InsertList, INST_LIST_ITER InsertBef
         Direct, tmpUBDecl->getRegVar(), 0, 0, 1, Type_UB);
     G4_INST* Inst1 = Builder->createInternalInst(
         NULL, G4_mov, NULL, false, 2, D, S, nullptr, InstOpt_WriteEnable);
-    InsertList->insert(InsertBeforePos, Inst1);
+    bb->insert(InsertBeforePos, Inst1);
 
     // update DefUse
     Inst0->addDefUse(Inst1, Opnd_src0);
@@ -1046,7 +1046,7 @@ void SendFusion::createFlagPerBB(INST_LIST* InsertList, INST_LIST_ITER InsertBef
         Direct, FlagPerBB, 0, 0, 1, Type_UW);
     FlagDefPerBB = Builder->createInternalInst(
         NULL, G4_mov, NULL, false, 1, flag, Src, nullptr, InstOpt_WriteEnable);
-    InsertList->insert(InsertBeforePos, FlagDefPerBB);
+    bb->insert(InsertBeforePos, FlagDefPerBB);
 
     // update DefUse
     Inst1->addDefUse(FlagDefPerBB, Opnd_src0);
@@ -1106,20 +1106,20 @@ void SendFusion::doFusion(
             // Note that if dispatch mask is modified in the shader, the DMaskUD
             // will need to be saved right after each modification.
             G4_BB* entryBB = CFG->getEntryBB();
-            INST_LIST_ITER beforePos = entryBB->instList.begin();
+            INST_LIST_ITER beforePos = entryBB->begin();
 
             // Skip the label if present (only first inst can be label).
-            if (beforePos != entryBB->instList.end() &&
+            if (beforePos != entryBB->end() &&
                 (*beforePos)->isLabel())
             {
                 ++beforePos;
             }
-            createDMask(&(entryBB->instList), beforePos);
+            createDMask(entryBB, beforePos);
         }
 
         if (FlagDefPerBB == nullptr)
         {
-            createFlagPerBB(&(CurrBB->instList), InsertBeforePos);
+            createFlagPerBB(CurrBB, InsertBeforePos);
         }
     }
 
@@ -1220,7 +1220,7 @@ void SendFusion::doFusion(
 		{   // move depInst first if doing hoisting
 			doHoist(IT0, IT1, InsertBeforePos);
 		}
-		CurrBB->instList.insert(InsertBeforePos, sendInst);
+		CurrBB->insert(InsertBeforePos, sendInst);
 
         // Update DefUse
         if (Pred)
@@ -1231,7 +1231,7 @@ void SendFusion::doFusion(
         I1->transferDef(sendInst, Opnd_src0, Opnd_src1);
 
         // Unpack the result
-        unpackPayload(sendInst, I0, I1, CurrBB->instList, InsertBeforePos);
+        unpackPayload(sendInst, I0, I1, CurrBB, InsertBeforePos);
 
 		if (IsSink) {
 			// sink dep instructions
@@ -1239,8 +1239,8 @@ void SendFusion::doFusion(
 		}
 
         // Delete I0 and I1 and updating defuse info
-        CurrBB->instList.erase(IT0);
-        CurrBB->instList.erase(IT1);
+        CurrBB->erase(IT0);
+        CurrBB->erase(IT1);
         return;
     }
 
@@ -1299,19 +1299,19 @@ void SendFusion::doFusion(
 
     // For messages we handle here, payloads are packing/unpacking
 	// in an interleaving way.
-    packPayload(sendInst, I0, I1, CurrBB->instList, InsertBeforePos);
+    packPayload(sendInst, I0, I1, CurrBB, InsertBeforePos);
 
     // Update DefUse
     if (Pred) {
         FlagDefPerBB->addDefUse(sendInst, Opnd_pred);
     }
 
-    CurrBB->instList.insert(InsertBeforePos, sendInst);
+    CurrBB->insert(InsertBeforePos, sendInst);
 
     if (rspLen > 0)
     {
         // Unpack the result
-        unpackPayload(sendInst, I0, I1, CurrBB->instList, InsertBeforePos);
+        unpackPayload(sendInst, I0, I1, CurrBB, InsertBeforePos);
     }
 
 	if (IsSink) {
@@ -1324,8 +1324,8 @@ void SendFusion::doFusion(
     I0->removeAllDefs();
     I1->removeAllUses();
     I1->removeAllDefs();
-    CurrBB->instList.erase(IT0);
-    CurrBB->instList.erase(IT1);
+    CurrBB->erase(IT0);
+    CurrBB->erase(IT1);
 }
 
 
@@ -1339,8 +1339,8 @@ bool SendFusion::run(G4_BB* BB)
     // Found two candidate sends:
     //    1. next to each (no other sends in between), and
     //    2. both have the same message descriptor.
-    INST_LIST_ITER II0 = CurrBB->instList.begin();
-    INST_LIST_ITER IE = CurrBB->instList.end();
+    INST_LIST_ITER II0 = CurrBB->begin();
+    INST_LIST_ITER IE = CurrBB->end();
     while (II0 != IE)
     {
         // Find out two send instructions (inst0 and inst1) that are next

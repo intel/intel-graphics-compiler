@@ -266,9 +266,9 @@ public:
     std::vector<G4_INST*>& getCalleeSaveInsts();
     std::vector<G4_INST*>& getCalleeRestoreInsts();
 
-    void setOldInstList(INST_LIST& insts) { oldInsts = insts; }
+    void setOldInstList(G4_BB* bb) { oldInsts.clear(); std::copy(bb->begin(), bb->end(), oldInsts.begin()); }
     void clearOldInstList() { oldInsts.clear(); }
-    INST_LIST getDeltaInstructions(INST_LIST& insts);
+    INST_LIST getDeltaInstructions(G4_BB* bb);
 
     void resetRelocOffset() { reloc_offset = 0; }
     void updateMapping(std::list<G4_BB*>& stackCallEntryBBs);
