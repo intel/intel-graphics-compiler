@@ -67,7 +67,11 @@ namespace IGC
         void visitFDiv(llvm::BinaryOperator &I);
 
     private:
-       
+        /// @brief  if the given function is a sqrt function, replace the declaration with a correctly rounded version.
+        /// @param  F - the function.
+        /// @return true if the function was changed.
+        static bool processDeclaration(llvm::Function &F);
+
         static llvm::Value *emitIEEEDivide(llvm::BinaryOperator *I, llvm::Value *Op0, llvm::Value *Op1);
 
         /// @brief  Indicates if the pass changed the processed function

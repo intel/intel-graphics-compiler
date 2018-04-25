@@ -80,9 +80,41 @@ bool CorrectlyRoundedDivSqrt::runOnModule(Module &M)
 
     for( Function &F : M )
     {
-        visit(F);
+        if( F.isDeclaration() )
+        {
+            if (!m_hasHalfTy)
+                m_changed |= processDeclaration(F);
+        }
+        else
+        {
+            visit(F);
+        }
     }
     return m_changed;
+}
+
+bool CorrectlyRoundedDivSqrt::processDeclaration(Function &F)
+{
+    StringRef name = F.getName();
+    if( name.startswith("_Z4sqrt") )
+    {
+        std::string newName = name.str();
+        newName[2] = '7';
+        newName.insert(7, "_cr");
+        F.setName(newName);
+        return true;
+    }
+    else if (name.startswith("__builtin_spirv_OpenCL_sqrt_") &&
+             !name.startswith("__builtin_spirv_OpenCL_sqrt_cr"))
+    {
+        std::string newName = name.str();
+        newName.insert(28, "cr_");
+        F.setName(newName);
+        return true;
+    }
+
+    // not sqrt function
+    return false;
 }
 
 Value *CorrectlyRoundedDivSqrt::emitIEEEDivide(BinaryOperator *I, Value *Op0, Value *Op1)

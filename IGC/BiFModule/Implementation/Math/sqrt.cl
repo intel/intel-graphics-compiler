@@ -29,14 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 INLINE float __builtin_spirv_OpenCL_sqrt_f32( float x )
 {
-    if(__CorrectlyRounded)
-    {
-        return __builtin_spirv_OpenCL_sqrt_cr_f32(x);
-    }
-    else
-    {
-        return __builtin_spirv_OpenCL_native_sqrt_f32(x);
-    }
+    return __builtin_spirv_OpenCL_native_sqrt_f32(x);
 }
 
 GENERATE_VECTOR_FUNCTIONS_1ARG( __builtin_spirv_OpenCL_sqrt, float, float, f32 )

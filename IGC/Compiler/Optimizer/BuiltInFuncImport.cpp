@@ -255,14 +255,14 @@ bool BIImport::runOnModule(Module &M)
         return false;
     }
 
-
+    
     for (auto &F : M)
     {
         if (F.isDeclaration())
         {
             auto FuncName = F.getName();
             std::string NewFuncName = "";
-
+           
             std::string ReplaceStr = FuncName.slice(2, FuncName.size()).str();
             if (MangleStr.find(ReplaceStr) != MangleStr.end())
             {
@@ -272,7 +272,7 @@ bool BIImport::runOnModule(Module &M)
             {
                 NewFuncName = updateSPIRmangleName(FuncName, MangleSubst);
             }
-            else
+            else 
             {
                 NewFuncName = FuncName;
             }

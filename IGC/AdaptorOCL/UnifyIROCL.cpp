@@ -199,7 +199,7 @@ static void CommonOCLBasedPasses(
 	{
 	    BuiltinSizeModule->setDataLayout(dataLayout);
 	}
-
+		
     MetaDataUtils *pMdUtils = pContext->getMetaDataUtils();
     
     //extracting OCL version major before SPIRMetadataTranslation pass deletes its metadata node
