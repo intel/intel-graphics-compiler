@@ -639,7 +639,9 @@ void CoalescingEngine::CreateTuple(
             //This must have been a value that is copied to payload multiple times.
             //OR: The new CCtuple has been isolated, and this is the element that
             //belongs to other tuple.
-            ccTuple->ResizeBounds(i);
+            //Since this value belongs to another tuple, we should not increase the 
+            //current tuple's size, no?
+            //ccTuple->ResizeBounds(i);
         }
     } // loop over arguments
 
