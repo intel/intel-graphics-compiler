@@ -99,7 +99,6 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
     rootMapping.clear();
     ccTupleMapping.clear();
     ConstantPool.clear();
-    UniformBools.clear();
     setup.clear();
     patchConstantSetup.clear();
     encoder.SetProgram(this);
@@ -1101,10 +1100,13 @@ uint CShader::GetNbElementAndMask(llvm::Value* value, uint32_t& mask)
         break;
     case llvm::Type::IntegerTyID:
         bSize = llvm::cast<llvm::IntegerType>(type)->getBitWidth();
-        nbElement = GetIsUniform(value) ? 1 : numLanes(m_SIMDSize);
-        if (bSize==1 && !canEmitAsUniformBool(value))
+        if(bSize==1)
         {
             nbElement = numLanes(m_SIMDSize);
+        }
+        else
+        {
+            nbElement = GetIsUniform(value) ? 1 : numLanes(m_SIMDSize);
         }
         break;
     case llvm::Type::VectorTyID:
@@ -1804,7 +1806,6 @@ void CShader::BeginFunction(llvm::Function *F)
     rootMapping.clear();
     ccTupleMapping.clear();
     ConstantPool.clear();
-    UniformBools.clear();
 
     bool useStackCall = m_FGA->useStackCall(F);
     if (useStackCall)
@@ -1832,6 +1833,7 @@ void CShader::BeginFunction(llvm::Function *F)
             }
         }
     }
+
 }
 
 /// This method is used to create the vISA variable for function F's formal return value 
@@ -2111,80 +2113,6 @@ CVariable *CShader::GetSymbolFromSource(Instruction *UseInst,
     //
     // No source for reuse.
     return nullptr;
-}
-
-// Check bool values that can be emitted as a single element predicate.
-void CShader::gatherUniformBools(llvm::Function *F)
-{
-    UniformBools.clear();
-
-    for (auto &BB : F->getBasicBlockList()) {
-        for (auto &Inst : BB.getInstList()) {
-            // Only starts from select instruction for now.
-            // It is more complicate for uses in terminators.
-            if (SelectInst *SI = dyn_cast<SelectInst>(&Inst)) {
-                Value *Cond = SI->getCondition();
-                if (!GetIsUniform(SI) ||
-                    !Cond->getType()->isIntegerTy(1) ||
-                    !Cond->hasOneUse() ||
-                    SI->getType()->isIntegerTy(1))
-                    continue;
-                assert(GetIsUniform(Cond));
-
-                // All users of bool values.
-                DenseSet<Value*> Vals;
-                Vals.insert(SI);
-
-                // Grow the list of bool values to be checked.
-                std::vector<Value *> ValList;
-                ValList.push_back(Cond);
-
-                bool IsLegal = true;
-                while (!ValList.empty()) {
-                    Value *V = ValList.back();
-                    ValList.pop_back();
-                    assert(GetIsUniform(V) && V->getType()->isIntegerTy(1));
-
-                    // Check uses.
-                    for (auto UI = V->user_begin(), UE = V->user_end(); UI != UE; ++UI) {
-                        Value *U = *UI;
-                        if (!Vals.count(U))
-                            goto FAIL;
-                    }
-
-                    // Check defs.
-                    Vals.insert(V);
-                    if (auto CI = dyn_cast<CmpInst>(V)) {
-                        assert(GetIsUniform(CI->getOperand(0)));
-                        assert(GetIsUniform(CI->getOperand(1)));
-                        if (CI->getOperand(0)->getType()->getScalarSizeInBits() == 1)
-                            goto FAIL;
-                        continue;
-                    } else if (auto BI = dyn_cast<BinaryOperator>(V)) {
-                        assert(GetIsUniform(BI->getOperand(0)));
-                        assert(GetIsUniform(BI->getOperand(1)));
-                        if (isa<Instruction>(BI->getOperand(0)))
-                            ValList.push_back(BI->getOperand(0));
-                        if (isa<Instruction>(BI->getOperand(1)))
-                            ValList.push_back(BI->getOperand(1));
-                        continue;
-                    }
-
-                FAIL:
-                    IsLegal = false;
-                    break;
-                }
-
-                // Populate all boolean values if legal.
-                if (IsLegal) {
-                    for (auto V : Vals) {
-                        if (V->getType()->isIntegerTy(1))
-                            UniformBools.insert(V);
-                    }
-                }
-            }
-        }
-    }
 }
 
 CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
@@ -2720,12 +2648,9 @@ CVariable* CShader::GetNewVector(llvm::Value* value, e_alignment preferredAlign)
             align = CEncoder::GetCISADataTypeAlignment(type);
     }
     uint16_t numberOfInstance = m_numberInstance;
-    if (uniform)
+    if(uniform && type != ISA_TYPE_BOOL)
     {
-        if (type != ISA_TYPE_BOOL || canEmitAsUniformBool(value))
-        {
-            numberOfInstance = 1;
-        }
+        numberOfInstance = 1;
     }
     if (mask)
     {

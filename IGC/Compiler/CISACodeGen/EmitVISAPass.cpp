@@ -416,7 +416,6 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     auto VRA = &getAnalysis<VariableReuseAnalysis>();
     m_currShader->SetVariableReuseAnalysis(VRA);
     VRA->BeginFunction(&F, numLanes(m_SimdMode));
-    m_currShader->gatherUniformBools(&F);
 
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
