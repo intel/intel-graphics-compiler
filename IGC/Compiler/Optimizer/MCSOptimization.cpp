@@ -180,7 +180,17 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
 			for (auto BitcastUses = EEI->user_begin(); BitcastUses != EEI->user_end(); BitcastUses++)
 			{
 				Instruction* ldmsInst = dyn_cast<Instruction>(*BitcastUses);
-				useBlocks.insert(ldmsInst->getParent());
+                if (ldmsInst)
+                {
+                    if (ConstantInt* CI = dyn_cast<ConstantInt>(ldmsInst->getOperand(0)))
+                    {
+                        useBlocks.insert(ldmsInst->getParent());
+                    }
+                    else
+                    {
+                        return;
+                    }
+                }
 			}
 
 			//iterate over useBlocks.
