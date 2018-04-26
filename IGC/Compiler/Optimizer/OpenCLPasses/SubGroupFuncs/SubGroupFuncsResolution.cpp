@@ -51,6 +51,7 @@ char SubGroupFuncsResolution::ID = 0;
 const llvm::StringRef SubGroupFuncsResolution::GET_MAX_SUB_GROUP_SIZE       = "__builtin_IB_get_simd_size";
 const llvm::StringRef SubGroupFuncsResolution::GET_SUB_GROUP_LOCAL_ID       = "__builtin_IB_get_simd_id";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE            = "__builtin_IB_simd_shuffle";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US			= "__builtin_IB_simd_shuffle_us";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F          = "__builtin_IB_simd_shuffle_f";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H          = "__builtin_IB_simd_shuffle_h";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN       = "__builtin_IB_simd_shuffle_down";
@@ -412,7 +413,8 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
         CI.replaceAllUsesWith( simdLaneId );
         CI.eraseFromParent();
     }
-    else if ( funcName.equals(SubGroupFuncsResolution::SUB_GROUP_SHUFFLE )    ||
+    else if ( funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE )    ||
+			  funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US ) ||
               funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F ) ||
               funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H ) )
     {

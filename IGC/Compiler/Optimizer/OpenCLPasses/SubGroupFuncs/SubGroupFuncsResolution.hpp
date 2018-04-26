@@ -89,6 +89,7 @@ namespace IGC
         static const llvm::StringRef GET_MAX_SUB_GROUP_SIZE;
         static const llvm::StringRef GET_SUB_GROUP_LOCAL_ID;
         static const llvm::StringRef SUB_GROUP_SHUFFLE;
+		static const llvm::StringRef SUB_GROUP_SHUFFLE_US;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_F;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_H;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_DOWN;

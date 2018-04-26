@@ -454,6 +454,7 @@ __private void* __builtin_IB_to_private(void*);
 int     __builtin_IB_get_simd_size( void );
 int     __builtin_IB_get_simd_id( void );
 int     __builtin_IB_simd_shuffle( int, int );
+ushort  __builtin_IB_simd_shuffle_us( ushort, uint );
 float 	__builtin_IB_simd_shuffle_f( float, uint );
 half 	__builtin_IB_simd_shuffle_h( half, uint );
 uint    __builtin_IB_simd_shuffle_down( uint, uint, uint );

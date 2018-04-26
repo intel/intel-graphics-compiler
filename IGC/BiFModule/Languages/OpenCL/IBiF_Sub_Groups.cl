@@ -93,10 +93,17 @@ INLINE void OVERLOADABLE sub_group_barrier( cl_mem_fence_flags flags, memory_sco
 }
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
+#ifdef cl_khr_fp16
+INLINE half OVERLOADABLE intel_sub_group_shuffle( half x, uint c )
+{
+    return __builtin_IB_simd_shuffle_h( x, c );
+}
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, half, half, uint )
+#endif // cl_khr_fp16
 
 INLINE ushort OVERLOADABLE intel_sub_group_shuffle( ushort x, uint c )
 {
-    return as_ushort( __builtin_IB_simd_shuffle_h( as_half(x), c ) );
+    return __builtin_IB_simd_shuffle_us( x, c );
 }
 
 INLINE short OVERLOADABLE intel_sub_group_shuffle( short x, uint c )
@@ -223,42 +230,9 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, int, int, uint 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, uint, uint, uint )
 
 #ifdef cl_khr_fp16
-#define SHUFFLE_AS_INTEGER_1_1(FNAME)\
-  INLINE half OVERLOADABLE FNAME( half x, uint c )\
-  {\
-      return as_half( FNAME( as_ushort(x), c ) );\
-  }
 
-#define SHUFFLE_AS_INTEGER_1_2(FNAME)\
-  INLINE half2 OVERLOADABLE FNAME( half2 x, uint c )\
-  {\
-      return as_half2( FNAME( as_uint(x), c ) );\
-  }
-
-#define SHUFFLE_AS_INTEGER_1_4(FNAME)\
-  INLINE half4 OVERLOADABLE FNAME( half4 x, uint c )\
-  {\
-      return as_half4( FNAME( as_uint2(x), c ) );\
-  }
-
-#define SHUFFLE_AS_INTEGER_1_8(FNAME)\
-  INLINE half8 OVERLOADABLE FNAME( half8 x, uint c )\
-  {\
-      return as_half8( FNAME( as_uint4(x), c ) );\
-  }
-
-#define SHUFFLE_AS_INTEGER_1_16(FNAME)\
-  INLINE half16 OVERLOADABLE FNAME( half16 x, uint c )\
-  {\
-      return as_half16( FNAME( as_uint8(x), c ) );\
-  }
-
-#define OVERLOAD_AS_INTEGERS_1(FNAME)\
-  SHUFFLE_AS_INTEGER_1_1(FNAME)\
-  SHUFFLE_AS_INTEGER_1_2(FNAME)\
-  SHUFFLE_AS_INTEGER_1_4(FNAME)\
-  SHUFFLE_AS_INTEGER_1_8(FNAME)\
-  SHUFFLE_AS_INTEGER_1_16(FNAME)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(half)
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, half, half, uint )
 
 #define SHUFFLE_AS_INTEGER_2_1(FNAME)\
   INLINE half OVERLOADABLE FNAME( half x, half y, uint c )\
@@ -297,17 +271,8 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, uint, uint, uin
   SHUFFLE_AS_INTEGER_2_8(FNAME)\
   SHUFFLE_AS_INTEGER_2_16(FNAME)
 
-OVERLOAD_AS_INTEGERS_1(intel_sub_group_shuffle)
 OVERLOAD_AS_INTEGERS_2(intel_sub_group_shuffle_down)
 OVERLOAD_AS_INTEGERS_2(intel_sub_group_shuffle_up)
-OVERLOAD_AS_INTEGERS_1(intel_sub_group_shuffle_xor)
-
-#undef OVERLOAD_AS_INTEGERS_1
-#undef SHUFFLE_AS_INTEGER_1_1
-#undef SHUFFLE_AS_INTEGER_1_2
-#undef SHUFFLE_AS_INTEGER_1_4
-#undef SHUFFLE_AS_INTEGER_1_8
-#undef SHUFFLE_AS_INTEGER_1_16
 
 #undef OVERLOAD_AS_INTEGERS_2
 #undef SHUFFLE_AS_INTEGER_2_1
@@ -315,14 +280,6 @@ OVERLOAD_AS_INTEGERS_1(intel_sub_group_shuffle_xor)
 #undef SHUFFLE_AS_INTEGER_2_4
 #undef SHUFFLE_AS_INTEGER_2_8
 #undef SHUFFLE_AS_INTEGER_2_16
-
-#if defined(_metal_simdgroups)
-// half3 implementation for shuffle (as ushort)
-INLINE half3 OVERLOADABLE intel_sub_group_shuffle( half3 x, uint c )
-{
-    return as_half3( intel_sub_group_shuffle( as_ushort3(x), c ) );
-}
-#endif
 
 #endif // cl_khr_fp16
 
