@@ -779,6 +779,28 @@ namespace vISA
         return true;
     }
 
+    void Rematerialization::updateSplitInfo(G4_INST *dstInst, int srcNum)
+    {
+        for (int i = 0; i < srcNum; i++)
+        {
+            G4_Operand *opnd = dstInst->getSrc(i);
+            if (opnd && opnd->isSrcRegRegion())
+            {
+                G4_SrcRegRegion* srcRgn = opnd->asSrcRegRegion();
+                if (srcRgn)
+                {
+                    G4_Declare* dcl = srcRgn->getTopDcl();
+
+                    if (dcl && dcl->getIsSplittedDcl())
+                    {
+                        dcl->setIsSplittedDcl(false);
+                        coloring.getGRA().clearSubDcl(dcl);
+                    }
+                }
+            }
+        }
+    }
+
     G4_SrcRegRegion* Rematerialization::rematerialize(G4_SrcRegRegion* src, G4_BB* bb, const Reference* uniqueDef, std::list<G4_INST*>& newInst, G4_INST*& cacheInst)
     {
         // op1 (8) A   B   C
@@ -831,6 +853,7 @@ namespace vISA
                     kernel.fg.builder->duplicateOperand(dstInst->getSrc(1)), kernel.fg.builder->duplicateOperand(dstInst->getSrc(2)),
                     dstInst->getOption());
             }
+            updateSplitInfo(dstInst, 3);
 
             dupOp->setLineNo(dstInst->getLineNo());
             dupOp->setCISAOff(dstInst->getCISAOff());
@@ -872,6 +895,7 @@ namespace vISA
                     prevHeaderMov->getOption());
                 dupOp->setCISAOff(prevHeaderMov->getCISAOff());
                 dupOp->setLineNo(prevHeaderMov->getLineNo());
+                updateSplitInfo(dstInst, 3);
                 newInst.push_back(dupOp);
             }
 
@@ -894,6 +918,7 @@ namespace vISA
                 kernel.fg.builder->duplicateOperand(dstInst->getSrc(1))->asSrcRegRegion(),
                 kernel.fg.builder->duplicateOperand(dstInst->getMsgDescOperand()), dstInst->getOption(),
                 newMsgDesc, kernel.fg.builder->duplicateOperand(dstInst->getSrc(3)), dstInst->getLineNo());
+            updateSplitInfo(dstInst, 4);
             dupOp->setLineNo(dstInst->getLineNo());
             dupOp->setCISAOff(dstInst->getCISAOff());
 
