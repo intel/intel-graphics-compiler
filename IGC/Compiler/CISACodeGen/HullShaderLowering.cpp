@@ -46,6 +46,7 @@ public:
         AU.setPreservesCFG();
         AU.addRequired<MetaDataUtilsWrapper>();
         AU.addRequired<CollectHullShaderProperties>();
+        AU.addRequired<CodeGenContextWrapper>();
     }
 
 private:
@@ -126,6 +127,8 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
     SmallVector<Instruction*, 10> instructionToRemove;
 
     IRBuilder<> builder(F.getContext());    
+
+    IGC::CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     for(auto BI = F.begin(), BE = F.end(); BI != BE; BI++)
     {
@@ -231,6 +234,7 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
 
                 // Apply URB padding for TE factors.
                 if (IGC_IS_FLAG_ENABLED(EnableTEFactorsPadding) &&
+                    ctx->platform.applyTEFactorsPadding() &&
                     ((IID == GenISAIntrinsic::GenISA_OuterScalarTessFactors) ||
                      (IID == GenISAIntrinsic::GenISA_InnerScalarTessFactors) ||
                      (IID == GenISAIntrinsic::GenISA_ScalarTessFactors)))
