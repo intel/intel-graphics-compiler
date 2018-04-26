@@ -1141,9 +1141,7 @@ bool LVN::addValue(G4_INST* inst)
         G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
         if (!srcRgn->getBase() ||
             !srcRgn->getBase()->isRegVar() ||
-            (!srcRgn->getBase()->asRegVar()->getDeclare()->useGRF() && !srcRgn->isIndirect()) ||
-            (isNonUniformSrcRegion(srcRgn) &&
-            !isSpecialRegion(srcRgn->getRegion(), stride)))
+            (!srcRgn->getBase()->asRegVar()->getDeclare()->useGRF() && !srcRgn->isIndirect()))
         {
             return false;
         }
