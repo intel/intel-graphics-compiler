@@ -475,4 +475,3 @@ set(headers_to_copy
   include/visa_igc_common_header.h
   include/JitterDataStruct.h
 )
-
