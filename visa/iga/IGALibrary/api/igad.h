@@ -172,23 +172,27 @@ typedef iga_status_t(CDECLATTRIBUTE *pIGAOpspecEnumerate)(
     size_t *ops_arr_len);
 #define IGA_OPSPEC_MNEMONIC_STR "iga_opspec_mnemonic"
 typedef iga_status_t(CDECLATTRIBUTE * pIGAOpspecMnemonic)(
-    const iga_opspec_t op,
+    iga_opspec_t op,
     char *mnemonic,
     size_t *mnemonic_len);
 #define IGA_OPSPEC_NAME_STR "iga_opspec_name"
 typedef iga_status_t(CDECLATTRIBUTE * pIGAOpspecName)(
-    const iga_opspec_t op,
+    iga_opspec_t op,
     char *name,
     size_t *name_len);
 #define IGA_OPSPEC_DESCRIPTION_STR "iga_opspec_description"
 typedef iga_status_t(CDECLATTRIBUTE * pIGAOpspecDescription)(
-    const iga_opspec_t op,
+    iga_opspec_t op,
     char *desc,
     size_t *desc_len);
 #define IGA_OPSPEC_OP_STR "iga_opspec_op"
 typedef iga_status_t(CDECLATTRIBUTE * pIGAOpspecOp)(
     iga_opspec_t op,
     uint32_t *opcode);
+#define IGA_OPSPEC_PARENT_OP_STR "iga_opspec_parent_op"
+typedef iga_status_t(CDECLATTRIBUTE * pIGAOpspecParentOp)(
+    iga_opspec_t op,
+    uint32_t *parent_op);
 
 
 
@@ -320,6 +324,7 @@ typedef struct
     pIGAOpspecName                      iga_opspec_name;
     pIGAOpspecDescription               iga_opspec_description;
     pIGAOpspecOp                        iga_opspec_op;
+    pIGAOpspecParentOp                  iga_opspec_parent_op;
 } iga_functions_t;
 
 /*
@@ -329,7 +334,6 @@ typedef struct
  *   IGA_SUCCESS on success
  *   IGA_INVALID if the parameter is nullptr
  */
-
 #endif
 IGA_API iga_status_t  iga_get_interface(iga_functions_t *);
 

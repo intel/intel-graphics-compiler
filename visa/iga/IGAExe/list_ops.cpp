@@ -25,19 +25,38 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #include "iga_main.hpp"
 
+#include <sstream>
+
+
+static void opFullMnemonic(const igax::OpSpec &os,std::stringstream &ss)
+{
+    auto par = os.parent();
+    if (par.op() != iga::Op::INVALID) {
+        opFullMnemonic(par, ss);
+        ss << '.';
+    }
+    ss << os.menmonic();
+}
+static std::string opFullMnemonic(const igax::OpSpec &os)
+{
+    std::stringstream ss;
+    opFullMnemonic(os, ss);
+    return ss.str();
+}
 
 bool listOps(const Opts &opts, const std::string &opmn)
 {
     bool hasError = false;
-    auto ops = igax::OpSpec::enumerate(static_cast<igax::Platform>(opts.platform));
+    auto ops = igax::OpSpec::enumerate(
+        static_cast<igax::Platform>(opts.platform));
     std::stringstream ss;
     if (opmn.empty()) {
         // list a table of all ops
         // build header
-        ss << std::setw(8) << std::left << "Mnemonic" << "  " << "Op" << "\n";
-        for (auto &op : ops) {
-            ss << std::setw(8) << std::left <<
-                op.menmonic() << "  " << op.name() << "\n";
+        ss << std::setw(12) << std::left << "Mnemonic" << "  " << "Op" << "\n";
+        for (const auto &op : ops) {
+            ss << std::setw(12) << std::left <<
+                opFullMnemonic(op) << "  " << op.name() << "\n";
         }
     } else {
         bool prefixSearch = opmn[opmn.size() - 1] == '*';

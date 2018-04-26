@@ -637,7 +637,7 @@ IGA_API iga_status_t iga_diagnostic_get_text_extent(
  * An opaque type representing an operation (instruction) type.
  * Can be efficiently copied and passed by value.
  */
-typedef struct opspec* iga_opspec_t;
+typedef const struct opspec* iga_opspec_t;
 
 /*
  * Enumerates the opcodes for a given platform.
@@ -671,17 +671,19 @@ IGA_API iga_status_t iga_opspec_enumerate(
 
 /*
  * Looks up an opspec based on an iga::Op value.
- *   'gen'          : gen plaform
- *   'op'           : the operation value to lookup; this is an iga::Op
- *   'os'           : the output value
+ *   'gen'          gen plaform
+ *   'op'           the operation value to lookup; this is an iga::Op;
+ *                  an invalid op will succeed but return Op::INVALID
+ *   'os'           the output value
  *
  * RETURNS:
  *  IGA_SUCCESS           upon success
- *  IGA_INVALID_ARG       if an argument invalid (invalid GEN or op or null os)
+ *  IGA_INVALID_ARG       if an argument is invalid
+ *                        (invalid GEN or op or null os)
  */
 IGA_API iga_status_t iga_opspec_from_op(
     iga_gen_t gen,
-    /* iga::Op */ uint32_t op,
+    /* iga::Op */ uint32_t op_enum,
     iga_opspec_t *os);
 
 
@@ -691,7 +693,7 @@ IGA_API iga_status_t iga_opspec_from_op(
  *
  * RETURNS:
  *  IGA_SUCCESS           upon success
- *  IGA_INVALID_ARG       if a gen argument invalid
+ *  IGA_INVALID_ARG       if given an invalid argument
  */
 IGA_API iga_status_t iga_opspec_mnemonic(
     const iga_opspec_t op,
@@ -722,7 +724,7 @@ IGA_API iga_status_t iga_opspec_name(
  *  IGA_INVALID_ARG       if a gen argument invalid
  */
 IGA_API iga_status_t iga_opspec_description(
-    const iga_opspec_t op,
+    iga_opspec_t op,
     char *desc,
     size_t *desc_len);
 
@@ -750,6 +752,23 @@ IGA_API iga_status_t iga_opspec_op(
 IGA_API iga_status_t iga_opspec_op_encoding(
     iga_opspec_t op,
     uint32_t *opcode);
+
+
+/*
+ * Returns the parent operation for a given op.  The value returned is the
+ * op enumerate element, not it's encoding.
+ *
+ * If an operation is root-level (has no parent), this assigns NULL
+ * to the output (but returns IGA_SUCCESS).
+ *
+ * RETURNS:
+ *  IGA_SUCCESS           upon success
+ *  IGA_INVALID_ARG       if a gen argument invalid
+ */
+IGA_API iga_status_t iga_opspec_parent_op(
+    iga_opspec_t op,
+    uint32_t *parent_op);
+
 
 #ifdef __cplusplus
 }

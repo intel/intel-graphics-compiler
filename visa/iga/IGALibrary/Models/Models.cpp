@@ -231,7 +231,10 @@ const OpSpec& Model::lookupOpSpecFromBits(
 {
     const static Field FOPCODE{nullptr,0,7};
     const MInst *mi = (const MInst *)bits;
-    const OpSpec *os = &lookupOpSpecByCode((unsigned)mi->getField(FOPCODE));
+    auto opc = mi->getField(FOPCODE);
+    missInfo.parent = nullptr;
+    missInfo.opcode = opc;
+    const OpSpec *os = &lookupOpSpecByCode((unsigned)opc);
     if (mi->isCompact()) {
         if (!os->isGroup()) {
             return *os;

@@ -135,11 +135,12 @@ public:
 
             if (d.at.col != 0 && d.at.line != 0) {
                 // col and line
-                iga_diagnostic_t temp = {d.at.line, d.at.col, d.at.offset, d.at.extent, str};
+                iga_diagnostic_t temp = {
+                    d.at.line, d.at.col, (uint32_t)d.at.offset, d.at.extent, str};
                 api_ds.push_back(temp);
             } else {
                 // pc (offset is in bytes)
-                iga_diagnostic_t temp = {0, 0, d.at.offset, d.at.extent, str};
+                iga_diagnostic_t temp = {0, 0, (uint32_t)d.at.offset, d.at.extent, str};
                 api_ds.push_back(temp);
             }
         }
@@ -947,7 +948,7 @@ iga_status_t iga_opspec_enumerate(
 
 iga_status_t iga_opspec_from_op(
     iga_gen_t gen,
-    uint32_t opcode,
+    uint32_t op_enum,
     iga_opspec_t *op)
 {
     RETURN_INVALID_ARG_ON_NULL(op);
@@ -955,7 +956,7 @@ iga_status_t iga_opspec_from_op(
     if (!m) {
         return IGA_UNSUPPORTED_PLATFORM;
     }
-    const OpSpec *os = &m->lookupOpSpec(static_cast<iga::Op>(opcode));
+    const OpSpec *os = &m->lookupOpSpec(static_cast<iga::Op>(op_enum));
     *op = opspec_to_handle(os);
     return IGA_SUCCESS;
 }
@@ -968,6 +969,7 @@ iga_status_t iga_opspec_mnemonic(
 {
     RETURN_INVALID_ARG_ON_NULL(op);
     RETURN_INVALID_ARG_ON_NULL(mnemonic_len);
+
     IGA_COPY_OUT_STR(mnemonic, mnemonic_len, opspec_from_handle(op)->mnemonic);
     return IGA_SUCCESS;
 }
@@ -980,6 +982,7 @@ iga_status_t iga_opspec_name(
 {
     RETURN_INVALID_ARG_ON_NULL(op);
     RETURN_INVALID_ARG_ON_NULL(name_len);
+
     IGA_COPY_OUT_STR(name, name_len, opspec_from_handle(op)->name);
     return IGA_SUCCESS;
 }
@@ -992,9 +995,11 @@ iga_status_t iga_opspec_description(
 {
     RETURN_INVALID_ARG_ON_NULL(op);
     RETURN_INVALID_ARG_ON_NULL(desc_len);
+
     IGA_COPY_OUT_STR(desc, desc_len, opspec_from_handle(op)->description);
     return IGA_SUCCESS;
 }
+
 
 iga_status_t iga_opspec_op(
     iga_opspec_t op,
@@ -1002,6 +1007,7 @@ iga_status_t iga_opspec_op(
 {
     RETURN_INVALID_ARG_ON_NULL(op);
     RETURN_INVALID_ARG_ON_NULL(opcode);
+
     *opcode = static_cast<uint32_t>(opspec_from_handle(op)->op);
     return IGA_SUCCESS;
 }
@@ -1013,10 +1019,29 @@ iga_status_t iga_opspec_op_encoding(
 {
     RETURN_INVALID_ARG_ON_NULL(op);
     RETURN_INVALID_ARG_ON_NULL(opcode);
+
     *opcode = static_cast<uint32_t>(opspec_from_handle(op)->code);
     return IGA_SUCCESS;
 }
 
+
+iga_status_t iga_opspec_parent_op(
+    iga_opspec_t op,
+    uint32_t *parent_op)
+{
+    RETURN_INVALID_ARG_ON_NULL(op);
+    RETURN_INVALID_ARG_ON_NULL(parent_op);
+
+    const OpSpec *os = opspec_from_handle(op);
+    *parent_op = static_cast<uint32_t>(os->groupOp);
+
+    return IGA_SUCCESS;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// RETURNS ALL THE FUNCTIONS IN A TABLE
+///////////////////////////////////////////////////////////////////////////////
 
 iga_status_t  iga_get_interface(iga_functions_t *funcs)
 {
@@ -1046,6 +1071,7 @@ iga_status_t  iga_get_interface(iga_functions_t *funcs)
     funcs->iga_opspec_name = &iga_opspec_name;
     funcs->iga_opspec_description = &iga_opspec_description;
     funcs->iga_opspec_op = &iga_opspec_op;
+    funcs->iga_opspec_parent_op = &iga_opspec_parent_op;
 
     return IGA_SUCCESS;
 }

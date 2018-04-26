@@ -54,7 +54,8 @@ public:
         const RegRef &reg,
         const Region::Horz &rgnHz,
         Type type)
-        : m_lblBlock(nullptr) {
+        : m_lblBlock(nullptr)
+    {
         setDirectDestination(dstMod, rType, reg, rgnHz, type);
     }
 
@@ -65,7 +66,8 @@ public:
         const RegRef &reg,
         const Region &rgn,
         Type type)
-        : m_lblBlock(nullptr) {
+        : m_lblBlock(nullptr)
+    {
         setDirectSource(srcMod, rType, reg, rgn, type);
     }
 

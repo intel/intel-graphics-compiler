@@ -30,12 +30,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // should use the official interfaces in the external API.  Those interfaces
 // are tested between releases and maintained even with changes to the IR.
 
+#include "../ErrorHandler.hpp"
 #include "../MemManager/MemManager.hpp"
 #include "../MemManager/StdArenaAllocator.hpp"
-#include "../ErrorHandler.hpp"
 #include "../Models/Models.hpp"
-#include "Instruction.hpp"
 #include "Block.hpp"
+#include "Instruction.hpp"
 
 #include <list>
 
@@ -48,7 +48,8 @@ namespace iga {
     public:
         Kernel(const Model &model);
         virtual ~Kernel();
-        //disabling copy constructor to prevent problems with shallow copy and memManager
+        // disabling copy constructor to prevent problems with
+        // shallow copy and mem manager
         Kernel(const Kernel &) = delete;
         Kernel& operator=(const Kernel&) = delete;
 

@@ -23,16 +23,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+#ifndef IGA_BLOCK_HPP
+#define IGA_BLOCK_HPP
 
-#ifndef BLOCK_HPP
-#define BLOCK_HPP
-// WARNING: the IR is subject to change without any notice.  External tools
-// should use the official interfaces in the external API.  Those interfaces
-// are tested between releases and maintained even with changes to the IR.
-
-#include "Instruction.hpp"
+// WARNING: this internal IR is subject to change without any notice.
+// External tools should use the official interfaces in the external
+// API (IGA/api).  Those interfaces are tested between releases and maintained
+// even with changes to the internal IR (within reason).
 #include "../MemManager/MemManager.hpp"
+#include "../MemManager/StdArenaAllocator.hpp"
 #include "../ErrorHandler.hpp"
+#include "Instruction.hpp"
 
 #include <map>
 #include <list>
@@ -51,7 +52,14 @@ namespace iga
             , m_id(pc)
         {
         }
-        ~Block() {}
+        ~Block() {
+            // Destruct Instructions. The memory allocated for Instrucsion will be de-allocated by
+            // Allocator, while we need to explicit call ~Instruction() to avoid memory leak on
+            // std members in Instruction
+            for (auto* inst : m_instructions) {
+                inst->~Instruction();
+            }
+        }
 
         void operator delete(void *, MemManager* m) { }
         void *operator new(size_t sz, MemManager* m) { return m->alloc(sz); }
@@ -60,11 +68,8 @@ namespace iga
             m_instructions.push_back(inst);
         }
 
-        // TODO: deprecate
-        int32_t            getOffset() const { return getPC(); }
-        void               setOffset(int32_t pc) { setPC(pc); }
-        int32_t            getPC() const { return m_offset; }
-        void               setPC(int32_t pc) { m_offset = pc; }
+        PC                 getPC() const { return m_offset; }
+        void               setPC(PC pc) { m_offset = pc; }
         Loc                getLoc() const { return m_loc; }
         void               setLoc(const Loc &loc) { m_loc = loc; }
         void               setID(int id) { m_id = id; }

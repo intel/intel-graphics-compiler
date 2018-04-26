@@ -49,7 +49,7 @@ namespace iga {
 
 struct Token {
     Lexeme lexeme;
-    struct Loc loc;
+    Loc    loc;
 
     Token() : lexeme(Lexeme::LEXICAL_ERROR) { }
     Token(
@@ -67,7 +67,7 @@ static void WriteTokenContext(
     const struct Loc &loc,
     std::ostream &os)
 {
-    if (loc.offset >= inp.size()) {
+    if (loc.offset >= (PC)inp.size()) {
         os << "<<EOF>>" << std::endl;
     } else if (loc.line > 0) {
         size_t k = loc.offset - loc.col + 1;

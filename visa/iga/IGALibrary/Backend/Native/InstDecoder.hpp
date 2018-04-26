@@ -648,15 +648,15 @@ namespace iga
                 const RegInfo *regInfo =
                     model.lookupArfRegInfoByCode((val>>4) & 0xF);
                 auto regNum = val & 0xF;
-                if (!regInfo) {
+                if (regInfo == nullptr) {
                     ss << "ARF?";
                     opInfo.regOpName = RegName::INVALID;
                 } else {
                     opInfo.regOpName = regInfo->reg;
                     ss << regInfo->name;
-                }
-                if (regInfo->num_regs != 0) {
-                    ss << regNum;
+                    if (regInfo->num_regs != 0) {
+                        ss << regNum;
+                    }
                 }
                 opInfo.regOpReg.regNum = (uint8_t)regNum;
             }

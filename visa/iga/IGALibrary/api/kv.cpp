@@ -69,7 +69,7 @@ public:
 
         int32_t pc = 0;
         for (iga::Block *b : m_kernel->getBlockList()) {
-            m_blockToPcMap[b->getOffset()] = b;
+            m_blockToPcMap[b->getPC()] = b;
             for (iga::Instruction *inst : b->getInstList()) {
                 pc = inst->getPC();
                 m_instsByPc[pc] = inst;
@@ -228,7 +228,7 @@ uint32_t kv_get_inst_targets(
         const Operand &op = inst->getSource(SourceIndex::SRC0);
         if (op.getKind() == Operand::Kind::LABEL) {
             if (pcs)
-                pcs[nSrcs] = inst->getJIP()->getOffset();
+                pcs[nSrcs] = inst->getJIP()->getPC();
             nSrcs++;
         }
     }
@@ -237,7 +237,7 @@ uint32_t kv_get_inst_targets(
         const Operand &op = inst->getSource(SourceIndex::SRC1);
         if (op.getKind() == Operand::Kind::LABEL) {
             if (pcs)
-                pcs[nSrcs] = inst->getUIP()->getOffset();
+                pcs[nSrcs] = inst->getUIP()->getPC();
             nSrcs++;
         }
     }

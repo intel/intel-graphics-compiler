@@ -531,7 +531,6 @@ static void formatCompactionFieldValue(
 }
 
 
-typedef size_t PC;
 typedef int64_t Mapping;
 typedef std::pair<PC,int> PCStats;
 struct MappingStats
@@ -602,7 +601,7 @@ static bool listInstructionCompaction(
 
             auto &mms = cmpStats.fieldMisses[&cf];
             MappingStats &ms = mms[missedMapping];
-            ms.misses.push_back(PCStats(pc,(int)cdi.fieldMisses.size()));
+            ms.misses.push_back(PCStats((PC)pc,(int)cdi.fieldMisses.size()));
 
             // emit the field that missed
             os << Color::WHITE << Intensity::BRIGHT <<

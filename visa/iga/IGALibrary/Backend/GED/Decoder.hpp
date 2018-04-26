@@ -332,14 +332,15 @@ namespace iga
             DirRegOpInfo dri;
             dri.regName = decodeSourceRegName<S>(regNum);
             Type scalingType;
-            if (!hasImplicitScalingType(scalingType, dri))
-            {
+            if (!hasImplicitScalingType(scalingType, dri)) {
                 scalingType = dri.type = decodeSrcType<S>();
             }
+            if (scalingType == Type::INVALID)
+                scalingType = m_opSpec->isBranching() ? Type::D : Type::UB;
 
-            dri.regRef.subRegNum = scalingType == Type::INVALID ?
-                0 : BytesOffsetToSubReg((uint8_t)subRegNum, dri.regName, scalingType);
+            dri.regRef.subRegNum = BytesOffsetToSubReg((uint8_t)subRegNum, dri.regName, scalingType);
             dri.regRef.regNum = (uint8_t)regNum;
+
 
             return dri;
         }

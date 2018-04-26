@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _IGAX_HPP
 
 #include "iga.h"
+#include "iga_bxml_ops.hpp"
 
 #include <exception>
 #include <iomanip>
@@ -210,12 +211,15 @@ struct DecodeError : DisassembleError {
 //
 // Lists information about ops for a given platform
 class OpSpec {
-    iga_opspec_t m_op;
+    Platform         m_platform;
+    iga_opspec_t     m_op;
 public:
-    OpSpec(iga_opspec_t op) : m_op(op) { }
+    OpSpec(Platform p, iga_opspec_t op) : m_platform(p), m_op(op) { }
+    iga::Op op() const;
     std::string menmonic() const;
     std::string name() const;
     std::string description() const;
+    OpSpec parent() const;
 
     // enumerates all the operations for a given platform
     static std::vector<OpSpec> enumerate(Platform p);
@@ -473,9 +477,22 @@ inline std::vector<OpSpec> OpSpec::enumerate(Platform p)
         arrPtr = (iga_opspec_t *)alloca(arrLen * sizeof(iga_opspec_t));
         IGA_CHECKED_CALL(iga_opspec_enumerate, (iga_gen_t)p, arrPtr, &arrLen);
     }
-    std::vector<OpSpec> vec(arrPtr, arrPtr + arrLen);
+    std::vector<OpSpec> vec;
+    vec.reserve(arrLen);
+    for (size_t i = 0; i < arrLen; i++) {
+        vec.emplace_back(p, arrPtr[i]);
+    }
     return vec;
 }
+
+inline iga::Op OpSpec::op() const
+{
+    uint32_t iga_op;
+    IGA_CHECKED_CALL(iga_opspec_op, m_op, &iga_op);
+    return static_cast<iga::Op>(iga_op);
+}
+
+
 #define IGA_OPSPEC_STRING_GETTER(API, INITSIZE) { \
         char _staticBuf[INITSIZE]; \
         char *strPtr = &_staticBuf[0]; \
@@ -494,6 +511,17 @@ IGA_OPSPEC_STRING_GETTER(iga_opspec_name, 32);
 inline std::string OpSpec::description() const
 IGA_OPSPEC_STRING_GETTER(iga_opspec_description, 128);
 
+inline OpSpec OpSpec::parent() const
+{
+    uint32_t op_enum;
+    iga_opspec_t par_op;
+    IGA_CHECKED_CALL(iga_opspec_parent_op, m_op, &op_enum);
+    IGA_CHECKED_CALL(iga_opspec_from_op,
+        static_cast<iga_gen_t>(m_platform),
+        op_enum,
+        &par_op);
+    return OpSpec(m_platform, par_op);
+}
 
 #undef IGA_OPSPEC_STRING_GETTER
 

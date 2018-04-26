@@ -601,7 +601,7 @@ class CmdlineSpec {
         int attrs, // OptAttrs
         bool &value)
     {
-        defineFlag(sNm, lNm, dec, extDesc, attrs,
+        defineFlag(sNm, lNm, desc, extDesc, attrs,
             [&] (const char *, const ErrorHandler &, O &) {
                 value = true;
             });

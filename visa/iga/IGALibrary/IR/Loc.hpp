@@ -24,8 +24,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef _IGA_LOC
-#define _IGA_LOC
+#ifndef IGA_LOC
+#define IGA_LOC
 // WARNING: the IR is subject to change without any notice.  External tools
 // should use the official interfaces in the external API.  Those interfaces
 // are tested between releases and maintained even with changes to the IR.
@@ -33,19 +33,21 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 
 namespace iga {
+typedef int32_t   PC;
 
-// a source location
+// a source location (can also be binary for things like decoding)
 struct Loc {
+    // int      file; // an optional file index
+    PC       offset; // file offset or binary offset (PC)
     uint32_t line;
     uint32_t col;
-    uint32_t offset; // file offset
     uint32_t extent; // length (in characters/bytes)
 
     Loc() {}
-    Loc(uint32_t pc)
-        : line(0)
+    Loc(PC pc)
+        : offset(pc)
+        , line(0)
         , col(0)
-        , offset(pc)
         , extent(0)
     {
     }
@@ -55,22 +57,16 @@ struct Loc {
         uint32_t len)
         : line(ln)
         , col(cl)
-        , offset(off)
+        , offset((PC)off)
         , extent(len)
     {
     }
 
 
-    bool isValid() const {
-        return line != INVALID.line && col != INVALID.col;
-    }
+    bool isValid() const {return line != INVALID.line && col != INVALID.col;}
     // tells if the offset value is a PC or text offset
-    bool isBinary() const {
-        return line == 0 && col == 0;
-    }
-    bool isText() const {
-        return !isBinary();
-    }
+    bool isBinary() const {return line == 0 && col == 0;}
+    bool isText() const {return !isBinary();}
 
     // bool operator==(const Loc &rhs) const {
     //    return this->line == rhs.line &&

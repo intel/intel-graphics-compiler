@@ -85,15 +85,16 @@ struct Predication
     bool      inverse; // TODO: enum
 
     Predication() : function(PredCtrl::NONE), inverse(false) { }
-    Predication(PredCtrl ctnrl, bool inv) : function(ctnrl), inverse(inv) { }
+    Predication(PredCtrl ctrl, bool inv) : function(ctrl), inverse(inv) { }
 };
 
 
-enum class BranchCntrl
+enum class BranchCtrl
 {
     OFF,
     ON,
 };
+typedef BranchCtrl BranchCntrl; // for backwards compatibility
 
 static inline int ExecSizeToInt(ExecSize es)
 {

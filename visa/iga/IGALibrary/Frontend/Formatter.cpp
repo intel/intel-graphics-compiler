@@ -142,7 +142,7 @@ public:
 
         for (const Block *b : k.getBlockList()) {
             if (!opts.numericLabels) {
-                formatLabel(b->getOffset());
+                formatLabel(b->getPC());
                 emit(':');
                 newline();
             }
@@ -928,7 +928,7 @@ void Formatter::formatSrcOp(
     case Operand::Kind::LABEL: {
         const Block *b = src.getTargetBlock();
         formatLabel(b ?
-            b->getOffset() : src.getImmediateValue().s32);
+            b->getPC() : src.getImmediateValue().s32);
         break;
     }
     default: emit("???");

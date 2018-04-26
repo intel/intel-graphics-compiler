@@ -218,10 +218,10 @@ struct SerialEncoder : BitProcessor
             uint8_t *instBufCurr = instBufBase;
             int instIx = 0;
             for (auto blk : k.getBlockList()) {
-                blk->setOffset((int32_t)(instBufCurr - instBufBase));
+                blk->setPC((PC)(instBufCurr - instBufBase));
                 for (auto i : blk->getInstList()) {
                     encodedInsts.push_back((MInst *)instBufCurr);
-                    i->setPC((int32_t)(instBufCurr - instBufBase));
+                    i->setPC((PC)(instBufCurr - instBufBase));
                     size_t iLen = encodeInst<P>(
                         instEncoder,
                         opts,

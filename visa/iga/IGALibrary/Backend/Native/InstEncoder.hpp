@@ -183,9 +183,9 @@ namespace iga
             state = bp.state;
             setCurrInst(bp.state.inst);
             if (bp.type == Backpatch::ABS) {
-                encode(bp.field, bp.target->getOffset());
+                encode(bp.field, bp.target->getPC());
             } else {
-                encode(bp.field, bp.target->getOffset() - bp.state.inst->getPC());
+                encode(bp.field, bp.target->getPC() - bp.state.inst->getPC());
             }
         }
 

@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // are tested between releases and maintained even with changes to the IR.
 
 #include "../MemManager/MemManager.hpp"
-#include "../MemManager/StdArenaAllocator.hpp"
 
 #include "../Models/Models.hpp"
 #include "Operand.hpp"
@@ -51,28 +50,41 @@ namespace iga
         SRC2,
     };
 
-    // represents a GEN Instruction of some sort
+    // represents a GEN instruction
     class Instruction
     {
     public:
         Instruction(
-            const OpSpec &opSpec,
+            int id,
+            PC pc,
+            Loc loc,
+            const OpSpec &os)
+            : Instruction(os, ExecSize::INVALID, ChannelOffset::M0, MaskCtrl::NORMAL)
+        {
+            setID(id);
+            setLoc(loc);
+            setPC(pc);
+        }
+
+        // TODO: phase this constructor out
+        Instruction(
+            const OpSpec &os,
             ExecSize execSize,
             ChannelOffset chOff,
-            MaskCtrl ectrl)
-            : m_opSpec(opSpec)
-            , m_maskCtrl(ectrl)
+            MaskCtrl mc)
+            : m_opSpec(os)
+            , m_maskCtrl(mc)
+            , m_pred(PredCtrl::NONE,false)
+            , m_flagReg(REGREF_ZERO_ZERO)
             , m_execSize(execSize)
             , m_chOff(chOff)
             , m_flagModifier(FlagModifier::NONE)
-            , m_instID(0xFFFFFFFF)
-            , m_pc(-1)
+            , m_instId(0xFFFFFFFF)
+            , m_pc(0)
             , m_instLoc(Loc::INVALID)
         {
-            m_pred.function = PredCtrl::NONE;
-            m_pred.inverse = false;
-            m_flagReg = REGREF_ZERO_ZERO;
         }
+
 
         // for placement allocation
         void operator delete(void *foo, MemManager* m) { }
@@ -82,12 +94,15 @@ namespace iga
         // operations that set instruction state
         //
         void setLoc(const Loc &loc) { m_instLoc = loc; }
+        void setPC(int32_t pc) { m_pc = pc; }
+        void setID(int id) { m_instId = id; }
+        void setMaskCtrl(MaskCtrl mc) { m_maskCtrl = mc; }
         void setExecSize(ExecSize es) { m_execSize = es; }
-        void setBranchCntrl(BranchCntrl bc) { m_brnch = bc; }
+        void setChannelOffset(ChannelOffset co) { m_chOff = co; }
+        void setBranchCtrl(BranchCntrl bc) { m_brnch = bc; }
         void setFlagModifier(FlagModifier flagModifier) { m_flagModifier = flagModifier; }
         void setFlagReg(RegRef reg) { m_flagReg = reg; }
         void setPredication(const Predication &predOpnd) { m_pred = predOpnd; }
-        void setPC(int32_t pc){ m_pc = pc; }
 
         void setDirectDestination(
             DstModifier dstMod,
@@ -148,18 +163,20 @@ namespace iga
 
         void setMsgDesc(const SendDescArg &msg) { m_desc = msg; }
         void setExtMsgDesc(const SendDescArg &msg) { m_exDesc = msg; }
-        void setDecodePC(int32_t pc) { m_pc = pc; }
-        void setID(int id) { m_instID = id; }
-        void setComment(std::string comment) { m_comment = comment; }
+
         void addInstOpt(const InstOpt &opt) { m_instOpts.add(opt); }
         void addInstOpts(const InstOptSet &opts) { m_instOpts.add(opts); }
+
+        // associates an optional comment with instruction
+        void setComment(std::string comment) { m_comment = comment; }
 
         ///////////////////////////////////////////////////////////////////////
         // operations that get instruction state
         //
-
         // the source or binary location
-        const Loc         &getLoc()            const { return m_instLoc; }
+        const Loc        &getLoc() const { return m_instLoc; }
+        int               getID() const { return m_instId; }
+        PC                getPC() const { return m_pc; }
 
         // returns the instruction op specification
         const OpSpec      &getOpSpec()         const { return m_opSpec; }
@@ -187,11 +204,11 @@ namespace iga
         const RegRef&      getFlagReg()        const { return m_flagReg; }
 
         const Operand&     getDestination()    const { return m_dst; }
-        Operand&           getDestination()          { return m_dst; }
+              Operand&     getDestination()          { return m_dst; }
         const Operand&     getSource(size_t srcNum) const { return m_srcs[srcNum]; }
-        Operand&           getSource(size_t srcNum)       { return m_srcs[srcNum]; }
+              Operand&     getSource(size_t srcNum)       { return m_srcs[srcNum]; }
         const Operand&     getSource(SourceIndex srcNum) const { return m_srcs[(int)srcNum]; }
-        Operand&           getSource(SourceIndex srcNum)       { return m_srcs[(int)srcNum]; }
+              Operand&     getSource(SourceIndex srcNum)       { return m_srcs[(int)srcNum]; }
 
         unsigned           getSourceCount() const{ // BRC is a weird duck, everyone else is cool
             return getOp() != Op::BRC ? getOpSpec().getSourceCount() : getSourceCountBrc();
@@ -204,10 +221,8 @@ namespace iga
         bool               hasInstOpt(InstOpt opt) const { return m_instOpts.contains(opt); }
         void               removeInstOpt(InstOpt opt) { m_instOpts.remove(opt); }
 
-        const Block     *getJIP() const { return m_srcs[0].getTargetBlock(); }
-        const Block     *getUIP() const { return m_srcs[1].getTargetBlock(); }
-        int              getID() const { return m_instID; }
-        int32_t          getPC() const { return m_pc; }
+        const Block       *getJIP() const { return m_srcs[0].getTargetBlock(); }
+        const Block       *getUIP() const { return m_srcs[1].getTargetBlock(); }
         const std::string  &getComment() const { return m_comment; }
         bool             isBranching() const { return getOpSpec().isBranching(); }
 
@@ -237,7 +252,7 @@ namespace iga
         };
         InstOptSet       m_instOpts; // miscellaneous instruction attributes
 
-        int              m_instID; // unique id for this instruction (unique in the kernel)
+        int              m_instId; // unique id for this instruction (unique in the kernel)
 
         int32_t          m_pc; // the encode/decode PC for this instruction
         Loc              m_instLoc; // source location info we keep this

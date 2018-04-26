@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace iga;
 
+
 struct BlockInference
 {
     std::map<int32_t, Block *> &blockStarts;

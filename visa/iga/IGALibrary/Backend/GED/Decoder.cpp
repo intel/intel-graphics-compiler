@@ -131,7 +131,7 @@ Kernel *DecoderBase::decodeKernel(
 
     if (numericLabels) {
         Block *block = kernel->createBlock();
-        block->setOffset(0);
+        block->setPC(0);
         for (Instruction *inst : insts) {
             block->appendInstruction(inst);
         }
@@ -261,9 +261,9 @@ void DecoderBase::decodeInstructions(
                 }
             }
         }
-        inst->setDecodePC(currentPc());
+        inst->setPC(currentPc());
         inst->setID(nextId++);
-        insts.push_back(inst);
+        insts.emplace_back(inst);
         inst->setLoc(currentPc());
 #if _DEBUG
         if (!errorHandler().hasErrors()) {
@@ -1477,13 +1477,13 @@ void DecoderBase::decodeDstDirSubRegNum(DirRegOpInfo& dri)
     if (m_opSpec->isMacro() || m_opSpec->isSendOrSendsFamily()) {
         dri.regRef.subRegNum = 0;
     } else {
-        Type scaleType = dri.type;
-        if (scaleType == Type::INVALID && m_opSpec->isBranching())
-            scaleType = Type::D;
+        Type scalingType = dri.type;
+        if (scalingType == Type::INVALID)
+            scalingType = m_opSpec->isBranching() ? Type::D : Type::UB;
 
         GED_DECODE_RAW(uint32_t, subRegNum, DstSubRegNum);
         dri.regRef.subRegNum =
-            BytesOffsetToSubReg((uint8_t)subRegNum, dri.regName, scaleType);
+            BytesOffsetToSubReg((uint8_t)subRegNum, dri.regName, scalingType);
     }
 }
 

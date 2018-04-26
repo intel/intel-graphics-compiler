@@ -215,7 +215,7 @@ class InstBuilder {
         if (m_blocksNumericTargets.find(b) == m_blocksNumericTargets.end()) {
             // this constitutes a "definition"
             m_blocksNumericTargets[b] = loc;
-            b->setOffset((int32_t)absPc);
+            b->setPC((int32_t)absPc);
             m_blocksDefd.insert(b);
         }
         return b;
@@ -230,10 +230,10 @@ class InstBuilder {
         IGA_ASSERT(xis.empty(), "numeric target should be an empty block");
 
         InstList &bis = b->getInstList();
-        int32_t pc = b->getOffset();
+        int32_t pc = b->getPC();
 
         for (auto bisIter = bis.begin(); bisIter != bis.end(); ++bisIter) {
-            if (x->getOffset() == pc) {
+            if (x->getPC() == pc) {
                 // found the split location
                 // copy the tail
                 xis.insert(xis.begin(), bisIter, bis.end());
@@ -246,7 +246,7 @@ class InstBuilder {
                     x->setLoc(xis.front()->getLoc());
                 }
                 return;
-            } else if (x->getOffset() < pc) {
+            } else if (x->getPC() < pc) {
                 // we passed over it (doesn't land on an instruction boundary)
                 m_errorHandler.reportError(xReferrerLoc,
                     "numeric label targets the middle of an instruction");
@@ -256,7 +256,7 @@ class InstBuilder {
                 pc += (*bisIter)->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
             }
         } // for block instructions
-        if (x->getOffset() > pc) {
+        if (x->getPC() > pc) {
             // out of bounds (past end of kernel)
             m_errorHandler.reportError(xReferrerLoc,
                 "numeric label targets past the end of the kernel");
@@ -334,28 +334,28 @@ public:
             itr++)
         {
             Block *x = itr->first;
-            if (x->getOffset() < 0) {
+            if (x->getPC() < 0) {
                 m_errorHandler.reportError(itr->second,
                     "points to before beginning of kernel listing");
                 continue;
             }
 
             // walk through the blocks and find the insertion point for x
-            // invariant: x->getOffset() < b->getOffset()
+            // invariant: x->getPC() < b->getPC()
             //   base case: from above
             //   inductive case: from below (see the 'continue' path)
             for (size_t i = 0; i < m_blockDefinitionOrder.size(); i++) {
                 Block *b = m_blockDefinitionOrder[i];
-                if (x->getOffset() == b->getOffset()) {
+                if (x->getPC() == b->getPC()) {
                     // can insert this block just above current block
                     // without any splitting needed
                     m_blockDefinitionOrder.insert(
                         m_blockDefinitionOrder.begin() + i, x);
-                } else { // x->getOffset() > b->getOffset()
+                } else { // x->getPC() > b->getPC()
                     if (i < m_blockDefinitionOrder.size() - 1) {
                         // not at the end, look at successor
                         Block *c = m_blockDefinitionOrder[i + 1];
-                        if (x->getOffset() >= c->getOffset()) {
+                        if (x->getPC() >= c->getPC()) {
                             // need to iterate to next block
                             continue;
                         }
@@ -397,7 +397,7 @@ public:
         }
         m_currBlock = lookupBlock(label);
         m_currBlock->setLoc(lblLoc);
-        m_currBlock->setOffset(m_pc);
+        m_currBlock->setPC(m_pc);
 
         m_blocksDefd.insert(m_currBlock);
         m_blockDefinitionOrder.push_back(m_currBlock);
@@ -548,7 +548,7 @@ public:
         } // for
         inst->addInstOpts(m_instOpts);
         inst->setID(m_nextId++);
-        inst->setDecodePC(m_pc);
+        inst->setPC(m_pc);
         if (!m_comment.empty()) {
             inst->setComment(m_comment);
         }

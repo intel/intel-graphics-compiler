@@ -36,9 +36,10 @@ Kernel::Kernel(const Model &model)
 
 Kernel::~Kernel()
 {
-    //Since in a kernel blocks were allocated using memory pool when Kernel was freed
-    //Memory pool was deleted and destructors for Blcoks were never called.
-    //This means InstList Memory Pool was never deleted
+    // Since in a kernel blocks are allocated using the memory pool,
+    // when the Kernel was freed, the memory pool was deleted and destructors
+    // for Blocks are never called.  This means the InstList's memory pool
+    // was never deleted and we need to do it here.
     for (auto bb : m_blocks)
     {
         bb->~Block();
@@ -104,7 +105,7 @@ Instruction *Kernel::createBranchInstruction(
         chOff,
         ectr);
 
-    inst->setBranchCntrl(brnch);
+    inst->setBranchCtrl(brnch);
     inst->setPredication(predOpnd);
     inst->setFlagReg(flagReg);
 

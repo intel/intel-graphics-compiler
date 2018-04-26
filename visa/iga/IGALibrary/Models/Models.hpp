@@ -193,7 +193,9 @@ namespace iga
     static uint8_t BytesOffsetToSubReg(
         uint32_t offset, RegName regName, Type type)
     {
-        return IsRegisterScaled(regName) ? offset/TypeSize(type) : offset;
+        return IsRegisterScaled(regName) && type != Type::INVALID ?
+            offset/TypeSize(type) :
+            offset;
     }
 
     // TODO: make sublinear (numeric map over RegName)
