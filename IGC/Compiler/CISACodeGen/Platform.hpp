@@ -244,6 +244,8 @@ public:
                 m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE));
     }
     bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const { return false; }
+    bool HSUsesHWBarriers() const { return false; }
+    bool applyTEFactorsPadding() const { return false; }
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const

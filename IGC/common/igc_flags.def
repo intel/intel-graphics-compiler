@@ -263,6 +263,7 @@ DECLARE_IGC_REGKEY(bool, PixelShaderDoNotAbortOnSpill, false,  "Do not abort on 
 DECLARE_IGC_REGKEY(DWORD, ForcePixelShaderSIMDMode,  0, "Setting it to values def in igc_flags.hpp will force SIMD mode compilation for pixel shaders. Note that only SIMD8 is compiled unless other ForcePixelShaderSIMD* are also selected")
 DECLARE_IGC_REGKEY(bool, SkipTREarlyExitCheck, false, "Skip SIMD16 early exit check in ShaderCodeGen")
 DECLARE_IGC_REGKEY(bool, EnableTCSHWBarriers, false,  "Enable TCS pass with HW barriers support. Default TCS pass is TCS pass with multiple continuation functions.")
+DECLARE_IGC_REGKEY(bool, ForceMCFBarriers, false,  "Force TCS pass with MCF (SW) barriers support. Default TCS pass is TCS pass with multiple continuation functions.")
 DECLARE_IGC_REGKEY(bool, EnableAccSub, true, "Enable accumulator substitution")
 DECLARE_IGC_REGKEY(DWORD, NumGeneralAcc, 0, "set the number [1-8] of general acc for accumulator substitution. 0 means using the platform-default value")
 DECLARE_IGC_REGKEY(bool, ForceSWCoalescingOfAtomicCounter, false, "Force software coalescing of atomic counter")
@@ -279,7 +280,7 @@ DECLARE_IGC_REGKEY(bool, DisbleLocalFences, false, "On CNL+ we need to emit loca
 DECLARE_IGC_REGKEY(bool, FastSpill, false, "fast spill code gen. This may produce worse equality code for the spilling shader")
 DECLARE_IGC_REGKEY(bool, EnableGSURBEntryPadding, true,  "Enable padding of GS URB Entry by adding extra portions of Control Data Header.")
 DECLARE_IGC_REGKEY(bool, EnableGSVtxCountMsgHalfCLSize, true,  "Enable the Vertex Count msg of half CL size, instead of 1DW size.")
-DECLARE_IGC_REGKEY(bool, EnableTEFactorsPadding, false,  "Enable padding of the TE factors.")
+DECLARE_IGC_REGKEY(bool, EnableTEFactorsPadding, true,  "Enable padding of the TE factors.")
 DECLARE_IGC_REGKEY(bool, EnableSubroutineForEmulation,  true,  "Enable subroutine call support when emulation(double) is on.")
 DECLARE_IGC_REGKEY(bool, ForceSubroutineForEmulation,   false,  "Force subroutine call for emulation functions if emulation(double) is on.")
 
