@@ -87,6 +87,7 @@ struct PointerArgumentAnnotation : KernelArgumentAnnotation
     DWORD  LocationIndex;
     DWORD  LocationCount;
     bool   IsEmulationArgument;
+	bool   IsBindlessAccess;
 
     static bool compare( const PointerArgumentAnnotation* a, const PointerArgumentAnnotation* b )
     {

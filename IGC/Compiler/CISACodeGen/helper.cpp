@@ -201,6 +201,92 @@ llvm::StoreInst* cloneStore(llvm::StoreInst *Orig, llvm::Value *Val, llvm::Value
     return SI;
 }
 
+// Create a ldraw from a load instruction
+Value* CreateLoadRawIntrinsic(LoadInst *inst, Instruction* bufPtr, Value *offsetVal)
+{
+	Module* module = inst->getParent()->getParent()->getParent();
+	Function* func = nullptr;
+	IRBuilder<> builder(inst);
+
+	if (inst->getType()->isVectorTy())
+	{
+		llvm::Type* tys[2];
+		tys[0] = inst->getType();
+		tys[1] = bufPtr->getType();
+		func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed, tys);
+	}
+	else
+	{
+		func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_ldraw_indexed, bufPtr->getType());
+	}
+
+	unsigned alignment = (inst->getType()->getScalarSizeInBits() / 8);
+	if (inst->getAlignment() > 0)
+	{
+		alignment = inst->getAlignment();
+	}
+
+	Value* attr[] =
+	{
+		bufPtr,
+		offsetVal,
+		builder.getInt32(alignment)
+	};
+	Value* ld = builder.CreateCall(func, attr);
+	if (!inst->getType()->isVectorTy())
+	{
+		if (!inst->getType()->isFloatTy())
+		{
+			Value *bitcast = dyn_cast<Instruction>(builder.CreateBitCast(ld, inst->getType()));
+			ld = bitcast;
+		}
+	}
+	return ld;
+}
+
+// Creates a storeraw from a store instruction
+Value* CreateStoreRawIntrinsic(StoreInst *inst, Instruction* bufPtr, Value* offsetVal)
+{
+	Module* module = inst->getParent()->getParent()->getParent();
+	Function* func = nullptr;
+	IRBuilder<> builder(inst);
+	Value *storeVal = inst->getValueOperand();
+	if (storeVal->getType()->isVectorTy())
+	{
+		llvm::Type* tys[2];
+		tys[0] = bufPtr->getType();
+		tys[1] = inst->getValueOperand()->getType();
+		func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_storerawvector_indexed, tys);
+	}
+	else
+	{
+		llvm::Type* dataType = storeVal->getType();
+
+		assert(dataType->getPrimitiveSizeInBits() == 16 || dataType->getPrimitiveSizeInBits() == 32);
+
+		if (!dataType->isFloatingPointTy())
+		{
+			storeVal = builder.CreateBitCast(
+				storeVal,
+				dataType->getPrimitiveSizeInBits() == 32 ? builder.getFloatTy() : builder.getHalfTy());
+		}
+
+		llvm::Type* types[2] = {
+			bufPtr->getType(),
+			storeVal->getType() };
+
+		func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_storeraw_indexed, types);
+	}
+	Value* attr[] =
+	{
+		bufPtr,
+		offsetVal,
+		storeVal
+	};
+	Value* st = builder.CreateCall(func, attr);
+	return st;
+}
+
 ///
 /// Tries to trace a resource pointer (texture/sampler/buffer) back to
 /// the pointer source. Also returns a vector of all instructions in the search path

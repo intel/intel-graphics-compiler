@@ -62,6 +62,7 @@ namespace IGC
     private:
         void PromoteSamplerTextureToDirectAS(llvm::GenIntrinsicInst *&pIntr, llvm::Value* resourcePtr);
         void PromoteBufferToDirectAS(llvm::Instruction* inst, llvm::Value* resourcePtr);
+		void PromoteStatelessToBindlessBuffers(llvm::Instruction* inst, llvm::Value* resourcePtr);
 
         CodeGenContext* m_pCodeGenContext;
         IGCMD::MetaDataUtils*  m_pMdUtils;

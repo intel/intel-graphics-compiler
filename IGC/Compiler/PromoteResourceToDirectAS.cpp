@@ -587,6 +587,77 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
     }
 }
 
+void PromoteResourceToDirectAS::PromoteStatelessToBindlessBuffers(Instruction* inst, Value* resourcePtr)
+{
+	IGCIRBuilder<> builder(inst);
+
+	unsigned addrSpace = resourcePtr->getType()->getPointerAddressSpace();
+
+	if (addrSpace != 1 && addrSpace != 2)
+	{
+		// Only try to promote stateless buffer pointers ( as(1) or as(2) )
+		return;
+	}
+
+	if (!isa<LoadInst>(inst) && !isa<StoreInst>(inst))
+	{
+		// Do we need to support other instructions besides load/store?
+		return;
+	}
+
+	std::vector<Value*> instructionList;
+	Value* srcPtr = IGC::TracePointerSource(resourcePtr, false, true, instructionList);
+
+	if (!srcPtr ||
+		!srcPtr->getType()->isPointerTy() ||
+		!isa<Argument>(srcPtr))
+	{
+		// Cannot trace the resource pointer back to it's source, cannot promote
+		return;
+	}
+
+	// Get the offset into the bindless buffer
+	Value* bufferOffset = builder.getInt32(0);
+	if (Argument* argPtr = dyn_cast<Argument>(srcPtr))
+	{
+		// Replace use with a null pointer
+		Constant* nullPtr = ConstantPointerNull::get(cast<PointerType>(srcPtr->getType()));
+		assert(instructionList.back() == srcPtr);
+		Value* user = instructionList.size() > 1 ? instructionList[instructionList.size() - 2] : nullptr;
+
+		if (user)
+		{
+			// Replace the pointer used within this trace path with a null pointer
+			cast<User>(user)->replaceUsesOfWith(srcPtr, nullPtr);
+			bufferOffset = builder.CreatePtrToInt(resourcePtr, builder.getInt32Ty());
+		}
+
+		IGCMD::ResourceAllocMetaDataHandle resAllocMD = m_pMdUtils->getFunctionsInfoItem(inst->getParent()->getParent())->getResourceAlloc();
+		IGCMD::ArgAllocMetaDataHandle argInfo = resAllocMD->getArgAllocsItem(argPtr->getArgNo());
+		if (argInfo->getType() == IGCMD::ResourceTypeEnum::UAVResourceType)
+		{
+			// Update metadata to show bindless resource type
+			argInfo->setType(IGCMD::ResourceTypeEnum::BindlessUAVResourceType);
+		}
+	}
+
+	// Get the base bindless pointer
+	unsigned bindlessAS = IGC::EncodeAS4GFXResource(*UndefValue::get(builder.getInt32Ty()), IGC::BINDLESS, 0);
+	Value* basePointer = builder.CreateAddrSpaceCast(srcPtr, PointerType::get(srcPtr->getType()->getPointerElementType(), bindlessAS));
+
+	if (LoadInst* load = dyn_cast<LoadInst>(inst))
+	{
+		Value* ldraw = IGC::CreateLoadRawIntrinsic(load, cast<Instruction>(basePointer), bufferOffset);
+		load->replaceAllUsesWith(ldraw);
+		load->eraseFromParent();
+	}
+	else if (StoreInst* store = dyn_cast<StoreInst>(inst))
+	{
+		IGC::CreateStoreRawIntrinsic(store, cast<Instruction>(basePointer), bufferOffset);
+		store->eraseFromParent();
+	}
+}
+
 void PromoteResourceToDirectAS::visitInstruction(Instruction &I)
 {
     bool resourceAccessed = false;
@@ -615,7 +686,17 @@ void PromoteResourceToDirectAS::visitInstruction(Instruction &I)
 
         if (bufptr && bufptr->getType()->isPointerTy())
         {
-            PromoteBufferToDirectAS(&I, bufptr);
+			if (m_pCodeGenContext->type == ShaderType::OPENCL_SHADER)
+			{
+				if (static_cast<OpenCLProgramContext*>(m_pCodeGenContext)->m_InternalOptions.PromoteStatelessToBindless)
+				{
+					PromoteStatelessToBindlessBuffers(&I, bufptr);
+				}
+			}
+			else
+			{
+				PromoteBufferToDirectAS(&I, bufptr);
+			}
             resourceAccessed = true;
         }
     }

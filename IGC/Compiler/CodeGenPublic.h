@@ -1148,6 +1148,10 @@ namespace IGC
                 {
                     IntelEnablePreRAScheduling = false;
                 }
+				if (strstr(options, "-cl-intel-use-bindless-buffers"))
+				{
+					PromoteStatelessToBindless = true;
+				}
             }
 
 
@@ -1159,6 +1163,7 @@ namespace IGC
             bool DoReRA;
             bool IntelHasBufferOffsetArg;
             bool IntelEnablePreRAScheduling = true;
+			bool PromoteStatelessToBindless = false;
 
         };
 

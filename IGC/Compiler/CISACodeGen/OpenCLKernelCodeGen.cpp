@@ -679,11 +679,22 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
     
             iOpenCL::PointerArgumentAnnotation *ptrAnnotation = new iOpenCL::PointerArgumentAnnotation();
 
+			IGCMD::ArgAllocMetaDataHandle argInfo = funcInfoMD->getResourceAlloc()->getArgAllocsItem(argNo);
+			if (argInfo->getType() == IGCMD::ResourceTypeEnum::BindlessUAVResourceType)
+			{
+				ptrAnnotation->IsStateless = false;
+				ptrAnnotation->IsBindlessAccess = true;
+			}
+			else
+			{
+				ptrAnnotation->IsStateless = true;
+				ptrAnnotation->IsBindlessAccess = false;
+			}
+
             ptrAnnotation->AddressSpace         = addressSpace;
             ptrAnnotation->AnnotationSize       = sizeof(ptrAnnotation);
             ptrAnnotation->ArgumentNumber       = argNo;
             ptrAnnotation->BindingTableIndex    = getBTI(resInfo);
-            ptrAnnotation->IsStateless          = true;
             ptrAnnotation->PayloadPosition      = payloadPosition;
             ptrAnnotation->PayloadSizeInBytes   = kernelArg->getAllocateSize();
             ptrAnnotation->LocationIndex        = kernelArg->getLocationIndex();
