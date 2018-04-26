@@ -2254,6 +2254,8 @@ set(IGC_BUILD__TOOLS_PAX_APP_DIR    "/usr")
 set(IGC_BUILD__TOOLS_7Z_LINUX_DIR "${IGC_BUILD__GFX_DEV_TOOLS_DIR}/Linux/tools/7z9.2/bin")
 
 set(IGC_BUILD__BIF_DIR              "${IGC_OPTION__OUTPUT_DIR}/bif/${CMAKE_CFG_INTDIR}")
+set(IGC_BUILD__TOOLS_OUTPUT_DIR     "${IGC_OPTION__OUTPUT_DIR}/Tools")
+set(IGC_BUILD__UNIT_TEST_OUTPUT_DIR "${IGC_OPTION__OUTPUT_DIR}/UnitTests")
 set(IGC_BUILD__CTH_DIR              "${IGC_OPTION__OUTPUT_DIR}/fcl")
 
 # =========================================== Command-line Tools =======================================
@@ -3779,6 +3781,14 @@ if(IGC_OPTION__USCLAUNCHER_TOOL)
     add_subdirectory("${IGC_BUILD__TOOLS_USCLAUNCHER_DIR}" usclauncher)
   endif()
 endif()
+
+    if(MSVC)
+        add_custom_command( TARGET ${IGC_BUILD__PROJ__igc_dll}
+                            POST_BUILD
+                            COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:${IGC_BUILD__PROJ__igc_dll}>" "$<TARGET_FILE_DIR:${IGC_BUILD__PROJ__igc_opt}>"
+                            COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>" "$<TARGET_FILE_DIR:${IGC_BUILD__PROJ__igc_opt}>"
+        )
+    endif()
 
 # ======================================================================================================
 # ======================================================================================================

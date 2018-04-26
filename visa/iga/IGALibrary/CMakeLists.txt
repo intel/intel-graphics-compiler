@@ -1,4 +1,5 @@
 ##############################################
+##############################################
 # IGA dynamic and static library generation
 
 # add GED libraries and includes
@@ -271,6 +272,12 @@ set_property(TARGET IGA_DLL APPEND PROPERTY
 if(IGC_BUILD AND MSVC)
 #set up standard defines from the common WDK path.
 bs_set_wdk(IGA_DLL)
+
+add_custom_command( TARGET IGA_DLL
+                    POST_BUILD
+                    COMMAND "${CMAKE_COMMAND}" -E copy $<TARGET_FILE:IGA_DLL> $<TARGET_FILE_DIR:GenX_IR_Exe>
+                    COMMAND "${CMAKE_COMMAND}" -E copy $<TARGET_PDB_FILE:IGA_DLL> $<TARGET_FILE_DIR:GenX_IR_Exe>
+)
 endif()
 
 # Hidden visibility suppresses PLT entries from being created for GED

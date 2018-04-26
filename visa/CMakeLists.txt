@@ -318,7 +318,11 @@ if (UNIX OR WIN32)
     ${GenX_IR_EXE_lex_yacc}
     )
 
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${IGC_BUILD__TOOLS_OUTPUT_DIR})
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${IGC_BUILD__TOOLS_OUTPUT_DIR})
   setup_executable(GenX_IR_Exe "${GenX_IR_EXE_All_Sources}" FALSE "GenX_IR")
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "")
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "")
   add_dependencies(GenX_IR_Exe check_headers)
 
   source_group("Utility Files" FILES ${GenX_IR_EXE_UTILITY} )

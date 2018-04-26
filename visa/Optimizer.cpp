@@ -1070,6 +1070,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(reassociateConst,        vISA_reassociate,             TIMER_OPTIMIZER);
     INITIALIZE_PASS(split4GRFVars,           vISA_split4GRFVar,            TIMER_OPTIMIZER);
     INITIALIZE_PASS(loadThreadPayload,       vISA_loadThreadPayload,       TIMER_MISC_OPTS);
+    INITIALIZE_PASS(insertFenceBeforeEOT,    vISA_EnableAlways,            TIMER_MISC_OPTS);
 
     // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -1557,6 +1558,8 @@ int Optimizer::optimization()
     runPass(PI_LVN);
 
     runPass(PI_split4GRFVars);
+
+    runPass(PI_insertFenceBeforeEOT);
 
     // PreRA scheduling
     runPass(PI_preRA_Schedule);
@@ -7991,6 +7994,30 @@ public:
 
     void Optimizer::loadThreadPayload()
     {
+    }
+
+    // some platforms require a memory fence before the end of thread 
+    void Optimizer::insertFenceBeforeEOT()
+    {
+        if (!builder.needFenceBeforeEOT())
+        {
+            return;
+        }
+        // ToDo: check if the kernel has any global writes at all
+        for (auto bb : kernel.fg.BBs)
+        {
+            if (bb->isLastInstEOT())
+            {
+                G4_INST* eotInst = bb->back();
+                if (eotInst->getMsgDesc()->getFuncId() == SFID_SPAWNER)
+                {
+                    auto iter = std::prev(bb->end());
+                    auto fenceInst = builder.createFenceInstruction(0, true, true, false);
+                    bb->insert(iter, fenceInst);
+                    builder.instList.clear();
+                }
+            }
+        }
     }
 
     /*

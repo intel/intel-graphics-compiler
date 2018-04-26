@@ -392,5 +392,11 @@
         return true;
     }
 
+    bool needFenceBeforeEOT() const
+    {
+        return false;
+    }
+
+
 
     // end HW capabilities
