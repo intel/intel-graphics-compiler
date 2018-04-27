@@ -4143,7 +4143,13 @@ SpillManagerGMRF::insertSpillFillCode (
 	for (LR_LIST::const_iterator lt = spilledLRs_.begin ();
 		lt != spilledLRs_.end (); ++lt) {
 
-        // Ignore request to spill/fill the spill/fill ranges
+        G4_Declare *dcl = (*lt)->getDcl();
+        if (dcl->getIsSplittedDcl())
+        {
+            dcl->setIsSplittedDcl(false);
+            gra.clearSubDcl(dcl);
+        }
+		// Ignore request to spill/fill the spill/fill ranges
 		// as it does not help the allocator.
 		if (shouldSpillRegister ((*lt)->getVar ()) == false)
         {

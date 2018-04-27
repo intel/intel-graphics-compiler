@@ -54,7 +54,7 @@ DECLARE_IGC_REGKEY(DWORD,disableIGASyntax,              false, "Disables GEN isa
 DECLARE_IGC_REGKEY(DWORD,disableCompaction,             false, "Disables compaction.")
 DECLARE_IGC_REGKEY(DWORD,TotalGRFNum,                   0,     "Total GRF used for register allocation.")
 DECLARE_IGC_REGKEY(bool, ExpandPlane,                   0,     "Enable pln to mad macro expansion.")
-DECLARE_IGC_REGKEY(bool, EnableBCR,              false,  "Enable bank conflict reduction.")
+DECLARE_IGC_REGKEY(bool, EnableBCR,                     false,  "Enable bank conflict reduction.")
 DECLARE_IGC_REGKEY(bool, GlobalSendVarSplit, false, "Enable global send variable splitting when we are about to spill")
 DECLARE_IGC_REGKEY(DWORD,EnableSendFusion,              1,     "Enable(!=0)/disable(0)/force(2) send fusion. Valid for simd8 shader/kernel only.")
 
@@ -263,6 +263,7 @@ DECLARE_IGC_REGKEY(bool, PixelShaderDoNotAbortOnSpill, false,  "Do not abort on 
 DECLARE_IGC_REGKEY(DWORD, ForcePixelShaderSIMDMode,  0, "Setting it to values def in igc_flags.hpp will force SIMD mode compilation for pixel shaders. Note that only SIMD8 is compiled unless other ForcePixelShaderSIMD* are also selected")
 DECLARE_IGC_REGKEY(bool, SkipTREarlyExitCheck, false, "Skip SIMD16 early exit check in ShaderCodeGen")
 DECLARE_IGC_REGKEY(bool, EnableTCSHWBarriers, false,  "Enable TCS pass with HW barriers support. Default TCS pass is TCS pass with multiple continuation functions.")
+DECLARE_IGC_REGKEY(bool, ForceMCFBarriers, false,  "Force TCS pass with MCF (SW) barriers support. Default TCS pass is TCS pass with multiple continuation functions.")
 DECLARE_IGC_REGKEY(bool, EnableAccSub, true, "Enable accumulator substitution")
 DECLARE_IGC_REGKEY(DWORD, NumGeneralAcc, 0, "set the number [1-8] of general acc for accumulator substitution. 0 means using the platform-default value")
 DECLARE_IGC_REGKEY(bool, ForceSWCoalescingOfAtomicCounter, false, "Force software coalescing of atomic counter")

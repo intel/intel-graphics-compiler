@@ -802,7 +802,7 @@ namespace vISA
         void updateDefSet(std::set<G4_Declare*>& defs, G4_Declare* referencedDcl);
         void detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& kernel);
         void markBlockLocalVar(G4_RegVar* var, unsigned bbId);
-        void markBlockLocalVars(G4_BB* bb, Mem_Manager& mem);
+        void markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA, bool reDo);
         void computePhyReg();
         void fixAlignment();
 
@@ -1112,9 +1112,8 @@ namespace vISA
         void addCalleeSavePseudoCode();
         void addStoreRestoreForFP();
         void setABIForStackCallFunctionCalls();
-        void markGraphBlockLocalVars();
+        void markGraphBlockLocalVars(bool reDo);
         void verifyRA(LivenessAnalysis & liveAnalysis);
-        void resetGlobalRAStates();
 
         void insertPhyRegDecls();
     };

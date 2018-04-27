@@ -413,7 +413,11 @@ LivenessAnalysis::LivenessAnalysis(
                 }
                 else
                 {
-                    assert(0 && "Found child declare without parent");
+                    //If parent declare is marked as not splitted any more, destroy the split declares
+		            DECLARE_LIST_ITER old_it = di;
+		            di++;
+		            gra.kernel.Declares.erase( old_it );
+		            continue;
                 }
             }
 
@@ -3030,7 +3034,7 @@ void GlobalRA::markBlockLocalVar(G4_RegVar* var, unsigned bbId)
     }
 }
 
-void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem)
+void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA, bool reDo)
 {
     for (std::list<G4_INST*>::iterator it = bb->begin(); it != bb->end(); it++)
     {
@@ -3054,6 +3058,8 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem)
                     {
                         topdcl->setIsRefInSendDcl(true);
                     }
+                    if (!doLocalRA || dst->isFlag() || dst->isAddress() || reDo)
+                {
                     LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
                     unsigned int startIdx;
                     if (lr->getFirstRef(startIdx) == NULL)
@@ -3062,6 +3068,7 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem)
                     }
                     lr->recordRef(bb);
                     recordRef(topdcl);
+                }
             }
 		}
         }
@@ -3115,6 +3122,8 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem)
                             topdcl->setIsRefInSendDcl(true);
                         }
 
+                        if (!doLocalRA || src->isFlag() || src->isAddress() || reDo)
+                    {
                         LocalLiveRange* lr = GetOrCreateLocalLiveRange(topdcl, mem);
 
                         lr->recordRef( bb );
@@ -3124,6 +3133,7 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem)
                                 lr->markEOT();
                             }
                         }
+                    }
                 }
 			}
 			else if (src->isAddrExp())
@@ -3131,6 +3141,8 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem)
                 G4_RegVar* addExpVar = src->asAddrExp()->getRegVar();
 				markBlockLocalVar(addExpVar, bb->getId());
 
+                if (!doLocalRA || reDo)
+                {
 		            G4_Declare* topdcl = addExpVar->getDeclare();
 		            while( topdcl->getAliasDeclare() != NULL)
 			            topdcl = topdcl->getAliasDeclare();
@@ -3140,6 +3152,7 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem)
                     lr->recordRef(bb);
                     lr->markIndirectRef();
                     recordRef(topdcl);
+                }
 			}
 		}
 
@@ -3169,78 +3182,16 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem)
 	}
 }
 
-void GlobalRA::resetGlobalRAStates()
-{
-    DECLARE_LIST_ITER di = kernel.Declares.begin();
-    while (di != kernel.Declares.end())
-    {
-        G4_Declare* dcl = *di;
-
-        //Reset all the local live ranges
-        resetLocalLR(dcl);
-
-        if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
-        {
-            //Remove the split declares
-            if (dcl->getIsSplittedDcl())
-            {
-                dcl->setIsSplittedDcl(false);
-                clearSubDcl(dcl);
-            }
-
-            if (dcl->getIsPartialDcl())
-            {
-                auto declSplitDcl = getSplittedDeclare(dcl);
-                assert(!declSplitDcl->getIsSplittedDcl());
-                DECLARE_LIST_ITER old_it = di;
-                di++;
-                kernel.Declares.erase(old_it);
-                continue;
-            }
-        }
-
-        //Remove the bank assignment
-        if (builder.getOption(vISA_LocalBankConflictReduction) &&
-            builder.hasBankCollision())
-        {
-            setBankConflict(dcl, BANK_CONFLICT_NONE);
-        }
-
-        di++;
-    }
-
-    return;
-}
-
 //
 // Mark block local (temporary) variables.
 //
-void GlobalRA::markGraphBlockLocalVars()
+void GlobalRA::markGraphBlockLocalVars(bool reDo)
 {
-    //Create live ranges and record the reference info
     auto& fg = kernel.fg;
-    for (std::list<G4_BB*>::iterator it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
-    {
-        markBlockLocalVars(*it, fg.builder->mem);
-    }
-
-    //Remove the un-referenced declares
-    removeUnreferencedDcls();
-
-#ifdef DEBUG_VERBOSE_ON
-    std::cout << "\t--LOCAL VARIABLES--\n";
-    for (auto dcl : kernel.Declares)
-    {
-        LocalLiveRange* topdclLR = getLocalLR(dcl);
-
-        if (topdclLR != nullptr &&
-            topdclLR->isLiveRangeLocal())
-        {
-            std::cout << dcl->getName() << ",\t";
-        }
-    }
-    std::cout << "\n";
-#endif    
+	for (std::list<G4_BB*>::iterator it = fg.BBs.begin(); it != fg.BBs.end(); ++it)
+	{
+        markBlockLocalVars(*it, fg.builder->mem, fg.builder->getOption(vISA_LocalRA), reDo);
+	}
 }
 
 //
@@ -3960,9 +3911,12 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 
 	//
 	// Mark block local variables for the whole graph prior to performing liveness analysis.
-	// Is required for flag/address register allocation
 	//
-	gra.markGraphBlockLocalVars();
+	gra.markGraphBlockLocalVars(false);
+    if(!(kernel.fg.builder->getOption(vISA_LocalRA)))
+    {
+         gra.removeUnreferencedDcls();
+    }
 
 	if (kernel.fg.builder->getOptions()->getTarget() == VISA_CM)
 	{
