@@ -305,7 +305,7 @@ struct RegisterPressure
         p2a->doPointsToAnalysis(kernel.fg);
         gra = new GlobalRA(kernel, kernel.fg.builder->phyregpool, *p2a);
         liveness = new LivenessAnalysis(*gra, G4_GRF | G4_ADDRESS | G4_INPUT | G4_FLAG,
-                                        /*doIPA*/ true, /*verifyRA*/ false);
+            kernel.fg.builder->getOption(vISA_IPA) && kernel.fg.performIPA(), /*verifyRA*/ false);
         liveness->computeLiveness(true);
         rpe = new RPE(*gra, liveness);
         rpe->run();
