@@ -844,12 +844,22 @@ void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &kernels
     AddLegalizationPasses(*ctx, kernels, Passes);
 
     AddAnalysisPasses(*ctx, kernels, Passes);
-
-    // The order in which we call AddCodeGenPasses matters, please to not change order
-    AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 32));
-    AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 16));
-    AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
-
+    //Below orders vary based on the usage models. In case of multiple SIMD mode
+    //We want to start from lower to high if we want to build all simd modes
+    //However the default mechanism which is handled by else condition tries to find
+    //the best SIMD mode. In that case we must start from higher simd width.
+    if(ctx->m_DriverInfo.sendMultipleSIMDModes()) {
+        // If Multiple SIMD mode is enabled start with lower SIMD mode first.
+        // Idea here is if a give SIMD mode spill all SIMD modes above that will definetly fail.
+        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
+        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 16));
+        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 32));
+    } else {
+        // The order in which we call AddCodeGenPasses matters, please to not change order
+        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 32));
+        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 16));
+        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
+    }
     Passes.run(*(ctx->getModule()));
     COMPILER_TIME_END(ctx, TIME_CodeGen);
     DumpLLVMIR(ctx, "codegen");
@@ -1100,7 +1110,7 @@ void OptimizeIR(CodeGenContext* pContext)
         mpm.add(llvm::createInstructionCombiningPass());
         mpm.add(llvm::createDeadCodeEliminationPass());       // this should be done both before/after constant propagation
 
-        if( pContext->m_instrTypes.hasMultipleBB )
+		if( pContext->m_instrTypes.hasMultipleBB )
         {
             // disable loop unroll for excessive large shaders
             if( pContext->m_instrTypes.hasLoop )

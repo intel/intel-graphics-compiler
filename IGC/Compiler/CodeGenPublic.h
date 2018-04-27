@@ -608,6 +608,12 @@ namespace IGC
         /// the set of OCL kernels that need to recompile
         std::set<std::string> kernelSet;
 
+        void ClearSpillParams() {
+            kernelSet.clear();
+            lastSpillSize = 0;
+            numInstructions = 0;
+        }
+
         // save entry for given SIMD mode, to avoid recompile for next retry.
         void SaveSIMDEntry(SIMDMode simdMode, CShader* shader)
         {

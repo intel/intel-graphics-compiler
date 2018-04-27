@@ -1747,6 +1747,9 @@ void CodeGen(OpenCLProgramContext* ctx)
     MetaDataUtils *pMdUtils = ctx->getMetaDataUtils();
     CShaderProgram::KernelShaderMap kernels;
 
+    //Clear spill parameters of retry manager in the very begining of code gen
+	ctx->m_retryManager.ClearSpillParams();
+
     CodeGen(ctx, kernels);
 
     USC::SSystemThreadKernelOutput* pSystemThreadKernelOutput = nullptr;
@@ -1783,7 +1786,6 @@ void CodeGen(OpenCLProgramContext* ctx)
         }
     }
 
-    ctx->m_retryManager.kernelSet.clear();
     // gather data to send back to the driver
     for (auto k : kernels)
     {
@@ -1896,23 +1898,64 @@ bool COpenCLKernel::hasReadWriteImage(llvm::Function &F)
 bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)
 {
     bool compileThisSIMD = CompileThisSIMD(simdMode, EP, F);
+    SIMDMode origSIMDMode = m_Context->getDefaultSIMDMode();
 
+    //if compilation SIMD mode is true then we are guaranteed to compile this mode.
+    //Hence set the default compile SIMD mode to the new SIMD configuration
+    //Note: This mode is now the default, if compileThisSIMD is false, then we 
+    //will try to compile it if multiple simd mode is enabled but we will not set 
+    //it as a default mode. That is why this check has to happen immediately and 
+    //cannot be moved.
     if (compileThisSIMD)
     {
-        SIMDMode origSIMDMode = m_Context->getDefaultSIMDMode();
-        if( simdMode > origSIMDMode)
+        if (simdMode > origSIMDMode)
             m_Context->setDefaultSIMDMode(simdMode);
     }
 
+    //Even if compile SIMD mode fails we want to check if multiple SIMD mode is enabled
     if (!compileThisSIMD)
     {
         //if even SIMD8 fails, then we compile that. So our defaultShader will be SIMD8
         if (simdMode == SIMDMode::SIMD8 && m_Context->getDefaultSIMDMode() == SIMDMode::BEGIN)
             m_Context->setDefaultSIMDMode(simdMode);
-        
-        CodeGenContext *pCtx = GetContext();
-        // Compile multiple SIMD sizes to return to the driver unless simdWidth is forced
-        return pCtx->m_DriverInfo.sendMultipleSIMDModes();
+
+        if(m_Context->m_DriverInfo.sendMultipleSIMDModes()) {
+            compileThisSIMD = true; //in this case continue to compile unless below condition is observed
+        }
+    }
+    
+    //check if we want to proceed further based on whether any existing shader has spilled
+    //we also want to make sure there is another retry that will be attempted
+    //Note for this check to work the order must he ascending. Becuase in descending
+    //order that is simd32 -> simd16--> simd8 we still have chance that one of hte lower
+    //simd modes will compile.
+    if (compileThisSIMD && m_Context->m_DriverInfo.sendMultipleSIMDModes()) {
+        //Here are some of the assumptions
+        //1. if m_Context->m_DriverInfo.sendMultipleSIMDModes() is true that means the order is always ascending.
+        //   This will be cleaned up as a separate interface in CodeGen for compute path.
+        //2. origSIMDMode will always have a valid value 8, 16 or 32
+        //3. For SIMD8 VISA always returns a shader, and if it has spill GetLastSpillSize will be set
+        //4. For SIM16 if ForceOCLSIMDWidth is set to 16  then VISA will compile without abort, hence
+        //   we need to evaluate LastSpillSize
+        if(origSIMDMode  ==  SIMDMode::SIMD8 && m_Context->m_retryManager.GetLastSpillSize())
+        {
+            //if any one of these are set, we need to try compiling SIMD
+           if ((simdMode == SIMDMode::SIMD32 && IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 32) ||
+               (simdMode == SIMDMode::SIMD16 && IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 16))
+           {
+               compileThisSIMD = false;
+           }
+        }
+        else if(simdMode == SIMDMode::SIMD32 && IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 32) {
+            //SIMD32 if not forced must see if SIMD16 has been generated without force or without spill
+            if((!m_parent->GetShader(SIMDMode::SIMD16) && IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 16) ||
+               (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) == 16 && m_Context->m_retryManager.GetLastSpillSize()))
+           {
+                compileThisSIMD = false;
+           }
+        }
+        if(!compileThisSIMD)
+            m_Context->setDefaultSIMDMode(origSIMDMode);
     }
     return compileThisSIMD;
 }
