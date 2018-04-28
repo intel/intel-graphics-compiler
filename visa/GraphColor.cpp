@@ -9679,26 +9679,18 @@ int GlobalRA::coloringRegAlloc()
     VarSplit splitPass(*this);
     while (iterationNo < maxRAIterations)
     {
-#ifdef DEBUG_VERBOSE_ON
-        std::cout << "\t--LOCAL VARIABLES--\n";
-        for (auto dcl : kernel.Declares)
-        {
-            LocalLiveRange* topdclLR = getLocalLR(dcl);
-  
-            if (topdclLR != nullptr &&
-                topdclLR->isLiveRangeLocal())
-            {
-                std::cout << dcl->getName() << ",\t";
-            }
-        }
-        std::cout << "\n";
-#endif    
         if (builder.getOption(vISA_RATrace))
         {
             std::cout << "--GRF RA iteration " << iterationNo << "--\n";
         }
-        if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA) &&
-            splitPass.didLocalSplit == false)
+
+        resetGlobalRAStates();
+
+        //Identify the local variables to speedup following analysis
+        markGraphBlockLocalVars(false);
+        
+        //Do variable splitting in each iteration
+        if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
         {
             if (builder.getOption(vISA_RATrace))
             {
@@ -9711,7 +9703,16 @@ int GlobalRA::coloringRegAlloc()
                     splitPass.localSplit(builder, bb);
                 }
             }
-            splitPass.didLocalSplit = true;
+        }
+
+        if (builder.getOption(vISA_LocalBankConflictReduction) &&
+            builder.hasBankCollision())
+        {
+            bool reduceBCInRR = false;
+            bool reduceBCInTAandFF = false;
+
+            reduceBCInRR = bc.setupBankConflictsForKernel(kernel, true, reduceBCInTAandFF, SECOND_HALF_BANK_START_GRF * 2, highInternalConflict);
+            doBankConflictReduction = reduceBCInRR && reduceBCInTAandFF;
         }
 
         bool allowAddrTaken = builder.getOption(vISA_FastSpill) ||
@@ -9728,16 +9729,6 @@ int GlobalRA::coloringRegAlloc()
                 std::cout << "\t--enable failSafe RA\n";
             }
             reserveSpillReg = true;
-        }
-
-        if (builder.getOption(vISA_LocalBankConflictReduction) &&
-            builder.hasBankCollision())
-        {
-            bool reduceBCInRR = false;
-            bool reduceBCInTAandFF = false;
-
-            reduceBCInRR = bc.setupBankConflictsForKernel(kernel, true, reduceBCInTAandFF, SECOND_HALF_BANK_START_GRF * 2, highInternalConflict);
-            doBankConflictReduction = reduceBCInRR && reduceBCInTAandFF;
         }
 
         LivenessAnalysis liveAnalysis(*this,
@@ -9793,11 +9784,6 @@ int GlobalRA::coloringRegAlloc()
                     // Re-run GRA loop only if remat caused changes to IR
                     if (remat.getChangesMade())
                     {
-                        for (auto ldcl : kernel.Declares)
-                        {
-                            resetLocalLR(ldcl);
-                        }
-                        markGraphBlockLocalVars(true);
                         rematChange = true;
                     }
                 }
