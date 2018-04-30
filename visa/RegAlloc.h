@@ -393,7 +393,6 @@ struct VarRangeListPackage
 
 class LivenessAnalysis
 {
-	bool performIPA;           // perform inter-procedural liveness analysis
 	unsigned numVarId;         // the var count
 	unsigned numSplitVar;      // the split var count
 	unsigned numSplitStartID;      // the split var count
@@ -468,7 +467,8 @@ public:
     std::vector<BitSet> indr_use;
     std::vector<BitSet> maydef;
 
-	LivenessAnalysis(GlobalRA& gra, unsigned char kind, bool doIPA, bool verifyRA);
+    LivenessAnalysis(GlobalRA& gra, uint8_t kind);
+	LivenessAnalysis(GlobalRA& gra, unsigned char kind, bool verifyRA);
 	~LivenessAnalysis();
 	void computeLiveness(bool computePseudoKill);
 	bool isLiveAtEntry(G4_BB* bb, unsigned var_id) const;
@@ -477,7 +477,7 @@ public:
 	{
         return addr_taken.isSet( num );
 	}
-	bool livenessClass(G4_RegFileKind regKind)
+	bool livenessClass(G4_RegFileKind regKind) const
 	{
 		return (selectedRF & regKind) != 0;
 	}
@@ -500,6 +500,12 @@ public:
     void maydefAnalysis();
 
     PointsToAnalysis& getPointsToAnalysis() const { return pointsToAnalysis; }
+
+    bool performIPA() const
+    {
+        return fg.builder->getOption(vISA_IPA) && livenessClass(G4_GRF) && 
+            fg.getNumCalls() > 0;
+    }
 };
 
 //

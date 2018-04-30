@@ -369,11 +369,16 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
 }
 
 LivenessAnalysis::LivenessAnalysis(
+    GlobalRA& g,
+    uint8_t kind) : LivenessAnalysis(g, kind, false)
+{
+}
+
+LivenessAnalysis::LivenessAnalysis(
         GlobalRA& g,
         unsigned char kind,
-		bool doIPA,
         bool verifyRA) :
-        performIPA(doIPA), numVarId(0), numSplitVar(0), numSplitStartID(0), numUnassignedVarId(0), numAddrId(0), selectedRF(kind), m(4096),
+        numVarId(0), numSplitVar(0), numSplitStartID(0), numUnassignedVarId(0), numAddrId(0), selectedRF(kind), m(4096),
 		fg(g.kernel.fg), pointsToAnalysis(g.pointsToAnalysis), gra(g)
 {
 	//
@@ -896,7 +901,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 	// in the actual program.
 	//
 
-    if (performIPA && fg.builder->getOption(vISA_hierarchicaIPA))
+    if (performIPA() && fg.builder->getOption(vISA_hierarchicaIPA))
     {
         hierarchicalIPA(inputDefs, outputUses);
         stopTimer(TIMER_LIVENESS);
@@ -904,7 +909,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
     }
 
     // IPA is currently very slow for large number of call sites, so disable it to save compile time
-	if (performIPA && fg.getNumCalls() < 1024) 
+	if (performIPA() && fg.getNumCalls() < 1024) 
     {
 
 		//
@@ -3999,8 +4004,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     if (builder.getOption(vISA_VerifyRA))
     {
         LivenessAnalysis liveAnalysis(gra,
-            G4_GRF | G4_INPUT,
-            builder.getOption(vISA_IPA) && kernel.fg.performIPA(), true);
+            G4_GRF | G4_INPUT, true);
         liveAnalysis.computeLiveness(false);
 
         gra.verifyRA(liveAnalysis);

@@ -9256,7 +9256,7 @@ void GlobalRA::addrRegAlloc()
         //
         // choose reg vars whose reg file kind is ARF
         //
-        LivenessAnalysis liveAnalysis(*this, G4_ADDRESS, false, false);
+        LivenessAnalysis liveAnalysis(*this, G4_ADDRESS);
         liveAnalysis.computeLiveness(iterationNo == 0);
 
         //
@@ -9336,7 +9336,7 @@ void GlobalRA::flagRegAlloc()
         //
         // choose reg vars whose reg file kind is FLAG
         //
-        LivenessAnalysis liveAnalysis(*this, G4_FLAG, false, false);
+        LivenessAnalysis liveAnalysis(*this, G4_FLAG);
         liveAnalysis.computeLiveness(iterationNo == 0);
 
         //
@@ -9529,9 +9529,7 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
     {
         std::cout << "--hybrid RA--\n";
     }
-    LivenessAnalysis liveAnalysis(*this,
-        G4_GRF | G4_INPUT,
-        builder.getOption(vISA_IPA) && kernel.fg.performIPA(), false);
+    LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
     liveAnalysis.computeLiveness(true);
 
     if (liveAnalysis.getNumSelectedVar() > 0)
@@ -9731,9 +9729,7 @@ int GlobalRA::coloringRegAlloc()
             reserveSpillReg = true;
         }
 
-        LivenessAnalysis liveAnalysis(*this,
-            G4_GRF | G4_INPUT,
-            builder.getOption(vISA_IPA) && kernel.fg.performIPA(), false);
+        LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
         liveAnalysis.computeLiveness(iterationNo == 0);
 
 #ifdef DEBUG_VERBOSE_ON
