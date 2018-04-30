@@ -349,11 +349,20 @@ namespace iga
     }
 
     inline void InstEncoder::encode(const Field &f, ImplAcc acc) {
+        uint64_t val = 0;
         switch (acc) {
-        case ImplAcc::INVALID: break;
-        default:
-            encodeFieldBits(f, static_cast<uint64_t>(acc));
+        ENCODING_CASE(ImplAcc::ACC2, 0x0);
+        ENCODING_CASE(ImplAcc::ACC3, 0x1);
+        ENCODING_CASE(ImplAcc::ACC4, 0x2);
+        ENCODING_CASE(ImplAcc::ACC5, 0x3);
+        ENCODING_CASE(ImplAcc::ACC6, 0x4);
+        ENCODING_CASE(ImplAcc::ACC7, 0x5);
+        ENCODING_CASE(ImplAcc::ACC8, 0x6);
+        ENCODING_CASE(ImplAcc::ACC9, 0x7);
+        ENCODING_CASE(ImplAcc::NOACC, 0x8);
+        default: internalErrorBadIR(f);
         }
+        encodeFieldBits(f, val);
     }
 
     inline void InstEncoder::encode(const Field &f, Region::Vert vt) {

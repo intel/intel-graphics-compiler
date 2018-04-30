@@ -318,14 +318,14 @@ int32_t kv_get_opgroup(const kv_t *kv, int32_t pc)
     case Op::ENDIF: return (int32_t)kv_opgroup_t::KV_OPGROUP_ENDIF;
     case Op::ELSE:  return (int32_t)kv_opgroup_t::KV_OPGROUP_ELSE;
     case Op::WHILE: return (int32_t)kv_opgroup_t::KV_OPGROUP_WHILE;
-    case Op::SEND:
-    case Op::SENDS:
-    case Op::SENDC:
-    case Op::SENDSC:
-        if (inst->hasInstOpt(InstOpt::EOT)) {
+    default:
+        if (inst->getOpSpec().isSendOrSendsFamily() &&
+            inst->hasInstOpt(InstOpt::EOT))
+        {
             return (int32_t)kv_opgroup_t::KV_OPGROUP_SEND_EOT;
+        } else {
+            return (int32_t)kv_opgroup_t::KV_OPGROUP_OTHER;
         }
-    default: return (int32_t)kv_opgroup_t::KV_OPGROUP_OTHER;
     }
 }
 

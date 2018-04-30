@@ -34,7 +34,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Models/Models.hpp"
 #include "../strings.hpp"
 #ifndef DISABLE_ENCODER_EXCEPTIONS
-#include "../Backend/GED/Decoder.hpp"
+#include "../Backend/GED/Interface.hpp"
+#include "../Backend/Native/Interface.hpp"
 #endif
 #include "../Backend/GED/IGAToGEDTranslation.hpp"
 #include "../Backend/Native/MInst.hpp"
@@ -819,7 +820,7 @@ void Formatter::formatDstOp(const OpSpec &os, const Operand &dst) {
     if (!os.hasImplicitDstRegion() ||
         (dstRgn != os.implicitDstRegion() && dstRgn != Region::INVALID))
     {
-        // math dpas does not have dst regions
+        // some instructions don't have dst regions
         formatDstRegion(os, dst.getRegion());
     }
     formatDstType(os, dst.getType());
@@ -1014,13 +1015,22 @@ void FormatInstruction(
     std::ostream &o,
     const FormatOpts &opts,
     size_t startPc,
-    const void *bits)
+    const void *bits,
+    bool useNativeDecoder)
 {
     const iga::Model *model =
         iga::Model::LookupModel(static_cast<iga::Platform>(opts.platform));
-    iga::Decoder dec(*model, e);
-    iga::Kernel *k = dec.decodeKernelNumeric(bits,
-        ((const MInst *)bits)->isCompact() ? 8 : 16);
+
+    size_t instLen = ((const MInst *)bits)->isCompact() ? 8 : 16;
+
+    DecoderOpts dopts;
+    dopts.useNumericLabels = true;
+    iga::Kernel *k = nullptr;
+    if (useNativeDecoder && iga::native::IsDecodeSupported(*model, dopts)) {
+        k = iga::native::Decode(*model, dopts, e, bits, instLen);
+    } else {
+        k = iga::ged::Decode(*model, dopts, e, bits, instLen);
+    }
     if (e.hasErrors()) {
         for (const auto &err : e.getErrors()) {
             o << err.message << "\n";

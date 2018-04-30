@@ -369,15 +369,18 @@ namespace iga
 
             return
                 decodeField<RegRef>(
-                    iga::pstg12::FLAGREG,
+                    fFLAGREG,
                     F0_0,"f0.0",
                     F0_1,"f0.1",
                     F1_0,"f1.0",
                     F1_1,"f1.1");
         }
 
-        void decodeFlagModifierField(const Field &fFLAGMOD) {
-            RegRef flagReg = peekFlagRegRef(iga::pstg12::FLAGREG);
+        void decodeFlagModifierField(
+            const Field &fFLAGMOD,
+            const Field &fFLAGREG)
+        {
+            RegRef flagReg = peekFlagRegRef(fFLAGREG);
             FlagModifier invalidModifier = static_cast<FlagModifier>(-1);
             FlagModifier zeroValue = FlagModifier::NONE;
             const char *zeroString = "";
@@ -505,13 +508,14 @@ namespace iga
                 reportError("ERROR: expected 64b type");
             }
             ss << ")";
-            addDecodedField(iga::pstg12::BAS_SRC0_IMM32L, "LO32" + ss.str());
-            addDecodedField(iga::pstg12::BAS_SRC0_IMM32H, "HI32" + ss.str());
+            addDecodedField(fIMM32L, "LO32" + ss.str());
+            addDecodedField(fIMM32H, "HI32" + ss.str());
             return immVal;
         }
 
         void decodeExecOffsetInfo(
-            const Field &fEXECSIZE, const Field &fCHANOFF)
+            const Field &fEXECSIZE,
+            const Field &fCHANOFF)
         {
             ExecSize execSize = decodeExecSizeBits(bits.getField(fEXECSIZE));
             if (execSize == ExecSize::INVALID) {
@@ -519,7 +523,7 @@ namespace iga
             }
             std::stringstream ssEs;
             ssEs << "(" << ToSyntax(execSize) << "|...)";
-            addDecodedField(iga::pstg12::EXECSIZE, ssEs.str());
+            addDecodedField(fEXECSIZE, ssEs.str());
 
             ChannelOffset chOff = decodeChannelOffsetBits(bits.getField(fCHANOFF));
             if (chOff < ChannelOffset::M0 || chOff > ChannelOffset::M28) {
@@ -532,9 +536,9 @@ namespace iga
             builder.InstExecInfo(loc, execSize, loc, chOff);
         }
 
-        DstModifier decodeDstModifier() {
+        DstModifier decodeDstModifier(const Field &fSATURATE) {
             return
-                decodeField(iga::pstg12::SATURATE,
+                decodeField(fSATURATE,
                     DstModifier::NONE, "",
                     DstModifier::SAT, "(sat)");
         }
@@ -557,57 +561,47 @@ namespace iga
             const Field &fSUBREG)
         {
             std::string typeValue;
-            if (os.isDpasSubfunc()  && opIndex > OpIx::TER_SRC0) {
-                auto srb = bits.getField(fSUBREG); // ternary src's have all 5 bits
-                opInfo.regOpReg.subRegNum = BytesOffsetToSubReg(
-                    (uint8_t)srb,
-                    opInfo.regOpName,
-                    opInfo.subBytePrecision);
-                typeValue = ToSyntax(opInfo.subBytePrecision);
-            } else {
-                peekRegularSubReg(opIndex, opInfo, fSUBREG, opInfo.type);
-                typeValue = ToSyntax(opInfo.type);
-            }
-            std::stringstream ss;
-            ss << "." << (int)opInfo.regOpReg.subRegNum << typeValue;
-            addDecodedField(fSUBREG, ss.str());
+            decodeSubRegWithType(
+                opIndex, opInfo, fSUBREG, opInfo.type, ToSyntax(opInfo.type));
         }
-        void decodeRegularSubReg(
+        // e.g. for subregisters without proper types
+        void decodeSubRegWithImplicitType(
             OpIx opIndex,
             OperandInfo &opInfo,
             const Field &fSUBREG,
-            Type type)
+            Type t)
         {
-            peekRegularSubReg(opIndex, opInfo, fSUBREG, type);
-            std::stringstream ss;
-            ss << "." << (int)opInfo.regOpReg.subRegNum << ToSyntax(type);
-            addDecodedField(fSUBREG, ss.str());
+            std::string typeValue;
+            decodeSubRegWithType(opIndex, opInfo, fSUBREG, t, "");
         }
-        void peekRegularSubReg(
+        void decodeSubRegWithType(
             OpIx opIndex,
             OperandInfo &opInfo,
             const Field &fSUBREG,
-            Type type)
+            Type type,
+            std::string typeSyntax)
         {
             auto srb = (int)bits.getField(fSUBREG);
             if (opIndex == OpIx::TER_DST) {
                 srb <<= 3; // ternary dst only stores high two bits
             }
-            if (IsRegisterScaled(opInfo.regOpName)) {
-                auto typeSize = TypeSizeWithDefault(type,4);
-                if (srb % typeSize != 0) {
-                    std::stringstream ess;
-                    if (IsDst(opIndex)) {
-                        ess << "dst";
-                    } else {
-                        ess << "src" << ToSrcIndex(opIndex);
-                    }
-                    ess << " subregister is not divisible by type size";
-                    reportError(ess.str());
+            auto scaled = BytesOffsetToSubReg(srb, opInfo.regOpName, type);
+            auto unscaled = SubRegToBytesOffset((int)scaled, opInfo.regOpName, type);
+            if (unscaled != srb) {
+                std::stringstream ess;
+                if (IsDst(opIndex)) {
+                    ess << "dst";
+                } else {
+                    ess << "src" << ToSrcIndex(opIndex);
                 }
-                srb /= typeSize;
+                ess << " subregister offset is misaligned for type size";
+                reportError(ess.str());
             }
-            opInfo.regOpReg.subRegNum = (uint8_t)srb;
+            opInfo.regOpReg.subRegNum = scaled;
+
+            std::stringstream ss;
+            ss << "." << (int)opInfo.regOpReg.subRegNum << typeSyntax;
+            addDecodedField(fSUBREG, ss.str());
         }
 
         void decodeRegDirectFields(
@@ -627,7 +621,9 @@ namespace iga
                 opInfo.kind = Operand::Kind::DIRECT;
                 decodeSubReg(opIndex, opInfo, fSUBREG);
                 if (fSUBREG.length < 5) { // ternary has some reserved bits
-                     addReserved(fSUBREG.offset - 5 + fSUBREG.length, 5 - fSUBREG.length);
+                     addReserved(
+                         fSUBREG.offset - 5 + fSUBREG.length,
+                         5 - fSUBREG.length);
                 }
             }
         }
@@ -665,15 +661,15 @@ namespace iga
 
         ImplAcc decodeImplAccField(const Field &fSPCACC) {
             return decodeField<ImplAcc>(fSPCACC, ImplAcc::INVALID,{
-                {ImplAcc::ACC2,".acc2"},
-                {ImplAcc::ACC3,".acc3"},
-                {ImplAcc::ACC4,".acc4"},
-                {ImplAcc::ACC5,".acc5"},
-                {ImplAcc::ACC6,".acc6"},
-                {ImplAcc::ACC7,".acc7"},
-                {ImplAcc::ACC8,".acc8"},
-                {ImplAcc::ACC9,".acc9"},
-                {ImplAcc::NOACC,".noacc"}});
+                {ImplAcc::ACC2,".sacc2"},
+                {ImplAcc::ACC3,".sacc3"},
+                {ImplAcc::ACC4,".sacc4"},
+                {ImplAcc::ACC5,".sacc5"},
+                {ImplAcc::ACC6,".sacc6"},
+                {ImplAcc::ACC7,".sacc7"},
+                {ImplAcc::ACC8,".sacc8"},
+                {ImplAcc::ACC9,".sacc9"},
+                {ImplAcc::NOACC,".nosacc"}});
         }
 
         bool decodeInstOpt(const Field &fINSTOPT, InstOpt opt) {

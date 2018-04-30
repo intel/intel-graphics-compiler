@@ -107,7 +107,8 @@ namespace iga {
         std::ostream &o,
         const FormatOpts &opts,
         size_t startPc,
-        const void *bits);
+        const void *bits,
+        bool useNativeDecoder = false);
     void FormatInstruction(
         ErrorHandler &e,
         std::ostream &o,

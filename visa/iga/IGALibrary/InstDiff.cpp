@@ -45,7 +45,7 @@ using namespace iga;
 
 static std::string disassembleInst(
     Platform platform,
-    bool useNativeDencoder,
+    bool useNativeDecoder,
     size_t fromPc,
     const void *bits)
 {
@@ -55,7 +55,8 @@ static std::string disassembleInst(
     fopts.numericLabels = true;
     // fopts.hexFloats = opts.printHexFloats;
     fopts.hexFloats = false;
-    FormatInstruction(eh, ss, fopts, fromPc, bits);
+
+    FormatInstruction(eh, ss, fopts, fromPc, bits, useNativeDecoder);
 
     return ss.str();
 }
@@ -206,13 +207,13 @@ static void decodeFieldHeaders(std::ostream &os)
 }
 
 static bool decodeFieldsForInst(
-    bool useNativeDencoder,
+    bool useNativeDecoder,
     std::ostream &os,
     size_t pc,
     const Model &model,
     const MInst *mi)
 {
-    auto syntax = disassembleInst(model.platform, useNativeDencoder, pc, (const void *)mi);
+    auto syntax = disassembleInst(model.platform, useNativeDecoder, pc, (const void *)mi);
     os << fmtPc(mi, pc) << " " <<  syntax << "\n";
     os.flush();
     bool success = true;
@@ -274,7 +275,7 @@ static bool decodeFieldsForInst(
 
 iga_status_t iga::DecodeFields(
     Platform p,
-    bool useNativeDencoder, // TODO: use this once decoder is implemented
+    bool useNativeDecoder, // TODO: use this once decoder is implemented
     std::ostream &os,
     const uint8_t *bits,
     size_t bitsLen)
@@ -302,7 +303,7 @@ iga_status_t iga::DecodeFields(
             break;
         }
 
-        success &= decodeFieldsForInst(useNativeDencoder, os, pc, *model, mi);
+        success &= decodeFieldsForInst(useNativeDecoder, os, pc, *model, mi);
 
         pc += iLen;
     }
@@ -717,7 +718,7 @@ static bool listInstructionCompaction(
 
 iga_status_t iga::DebugCompaction(
     Platform p,
-    bool useNativeDencoder,
+    bool useNativeDecoder,
     std::ostream &os,
     const uint8_t *bits,
     size_t bitsLen)
@@ -746,11 +747,11 @@ iga_status_t iga::DebugCompaction(
         }
 
         os << "============================================================\n";
-        auto syntax = disassembleInst(p, useNativeDencoder, pc, (const void *)mi);
+        auto syntax = disassembleInst(p, useNativeDecoder, pc, (const void *)mi);
         os << fmtPc(mi, pc) << " " <<  syntax << "\n";
         os.flush();
         success &= listInstructionCompaction(
-            useNativeDencoder, os, cs, *model, pc, mi);
+            useNativeDecoder, os, cs, *model, pc, mi);
         pc += iLen;
     }
     os << "\n";
@@ -846,7 +847,7 @@ iga_status_t iga::DebugCompaction(
                 PC pc = missExample.first;
                 int totalMissesForThisPc = missExample.second;
                 os << "        misses " << totalMissesForThisPc << ": "
-                    << disassembleInst(p, useNativeDencoder, pc, bits+pc)
+                    << disassembleInst(p, useNativeDecoder, pc, bits+pc)
                     << "\n";
             }
         }

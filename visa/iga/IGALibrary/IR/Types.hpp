@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include <cstdint>
+#include <tuple>
 
 #include "../EnumBitset.hpp"
 #include "../Models/bxml/iga_bxml_enums.hpp"
@@ -137,6 +138,79 @@ enum class ImplAcc
 };
 
 
+// how much to shift <right,left> to get to from byte offset
+// to subregister offset
+//   I.e. subReg = (byteOff << left) >> right;
+// this allows us to scale a subregister byte offset up OR down
+static inline std::tuple<int,int> TypeSizeShiftsOffsetToSubreg(Type type)
+{
+    int shl = 0, shr = 0; // by default no scaling
+
+    switch (type) {
+    // 1-byte types
+    case Type::UB:
+    case Type::B:
+        break;
+    // 2-byte types
+    case Type::UW:
+    case Type::W:
+    case Type::HF:
+        shr = 1;
+        break;
+    // 4-byte types
+    case Type::UD:
+    case Type::D:
+    case Type::F:
+    case Type::NF: // NF regions the same as F
+        shr = 2;
+        break;
+    case Type::UQ:
+    case Type::Q:
+    case Type::DF:
+        shr = 3;
+        break;
+    default: // invalid types
+        break;
+    }
+    return std::make_tuple(shl,shr);
+}
+// static inline bool TypeIsSubByte(Type t) {
+//    return std::get<1>(TypeSizeShiftsOffsetToSubreg(t)) > 0;
+// }
+
+// Returns the type size ***in bits****
+//
+// e.g. Type::UD == 32
+static inline int TypeSizeInBits(Type t)
+{
+    auto ti = TypeSizeShiftsOffsetToSubreg(t);
+    return (8 << std::get<1>(ti)) >> std::get<0>(ti);
+}
+static inline int TypeSizeInBitsWithDefault(Type type, int dft = 0)
+{
+    return type == Type::INVALID ? dft : TypeSizeInBits(type);
+}
+static inline bool TypeIs64b(Type t)
+{
+    return TypeSizeInBitsWithDefault(t,0) == 64;
+}
+static bool TypeIsFloating(Type t)
+{
+    switch (t)
+    {
+    case Type::F:
+    case Type::HF:
+    case Type::DF:
+    case Type::VF:
+    case Type::NF:
+        return true;
+    default:
+        return false;
+    }
+}
+
+///////////////////////////////////////////////////////////////////
+// DEPRECATED
 static inline int LogTypeSize(Type type, int dft = -1)
 {
     switch (type)
@@ -167,14 +241,20 @@ static inline int LogTypeSize(Type type, int dft = -1)
         return dft;
     }
 }
+///////////////////////////////////////////////////////////////////
+// DEPRECATED
 static inline int TypeSize(Type type)
 {
     return 1 << LogTypeSize(type);
 }
+///////////////////////////////////////////////////////////////////
+// DEPRECATED
 static inline int TypeSizeWithDefault(Type type, int dft = 0)
 {
     return type == Type::INVALID ? dft : TypeSize(type);
 }
+
+
 
 enum class FlagModifier
 {

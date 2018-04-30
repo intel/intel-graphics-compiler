@@ -28,13 +28,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "BufferedLexer.hpp"
 #include "../ErrorHandler.hpp"
-// FIXME: needed for for ident_value<T> (want to make this agnostic IGA GEN IR types)
 #include "../Models/Models.hpp"
 #include "../IR/Loc.hpp"
 
 
 #include <cstdarg>
 #include <initializer_list>
+#include <ostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -63,10 +63,12 @@ namespace iga
     ///////////////////////////////////////////////////////////////////////////
     // Recursive descent parser.
     // The nomaclaure for method names is roughly:
-    //   Looking****  peeks at the token, doesn't consume
-    //   Consume****  consume next token if some criteria is true
-    //   Parse******  generally corresponds to a non-terminal or some
-    //                complicated lexemes
+    //   Looking****      peeks at the token, doesn't consume
+    //   Looking**From    peeks relative to the lexer's current offset
+    //   Consume****      consume next token if some criteria is true
+    //   Parse******      generally corresponds to a non-terminal or some
+    //                    complicated lexemes
+    //
     //
     class Parser {
     protected:
@@ -81,9 +83,11 @@ namespace iga
 
         //////////////////////////////////////////////////////////////////////
         // DEBUGGING
-        void DumpLookaheads(int n = 1) const {m_lexer.DumpLookaheads(n); }
-        void ShowCurrentLexicalContext() {ShowCurrentLexicalContext(NextLoc());}
-        void ShowCurrentLexicalContext(const Loc &loc) const;
+        // void DumpLookaheads(int n = 1) const {m_lexer.DumpLookaheads(n); }
+        void ShowCurrentLexicalContext(std::ostream &os) const {
+            ShowCurrentLexicalContext(os,NextLoc());
+        }
+        void ShowCurrentLexicalContext(std::ostream &os,const Loc &loc) const;
 
         //////////////////////////////////////////////////////////////////////
         // ERRORS and WARNINGS
@@ -136,27 +140,25 @@ namespace iga
 
         bool Skip(int k = 1) {return m_lexer.Skip(k);}
 
-        // be sure nothing else fits before you use this
         std::string GetTokenAsString(const Token &token) const;
 
         //////////////////////////////////////////////////////////////////////
         // QUERYING (non-destructive lookahead)
-        bool LookingAt(Lexeme lxm) const {return LookingAt(0,lxm);}
-        bool LookingAt(int k, Lexeme lxm) const;
+        bool LookingAt(Lexeme lxm) const {return LookingAtFrom(0,lxm);}
+        bool LookingAtFrom(int k, Lexeme lxm) const;
 
         bool LookingAtSeq(Lexeme lxm0, Lexeme lxm1) const {return LookingAtSeq({lxm0,lxm1});}
         bool LookingAtSeq(std::initializer_list<Lexeme> lxms) const;
 
         bool LookingAtAnyOf(Lexeme lxm0, Lexeme lxm1) const {return LookingAtAnyOf({lxm0,lxm1}); }
         bool LookingAtAnyOf(std::initializer_list<Lexeme> lxms) const;
-        bool LookingAtAnyOf(int i, std::initializer_list<Lexeme> lxms) const;
+        bool LookingAtAnyOfFrom(int i, std::initializer_list<Lexeme> lxms) const;
 
         bool LookingAtPrefix(const char *pfx) const;
 
         //////////////////////////////////////////////////////////////////////
         // CONSUMPTION (destructive lookahead)
-        bool Consume(Lexeme lxm) {return Consume(0, lxm);}
-        bool Consume(int k, Lexeme lxm) {return m_lexer.Consume(lxm,k);}
+        bool Consume(Lexeme lxm) {return m_lexer.Consume(lxm);}
         void ConsumeOrFail(Lexeme lxm, const char *msg);
         // same as above, but the error location chosen is the end of the
         // previous token; i.e. the suffix is screwed up
@@ -182,8 +184,8 @@ namespace iga
         bool TokenEq(const Token &tk, const char *eq) const;
 
         template <typename T>
-        bool IdentLookup(int k, const IdentMap<T> &map, T &value) const {
-            if (!LookingAt(k,IDENT)) {
+        bool IdentLookupFrom(int k, const IdentMap<T> &map, T &value) const {
+            if (!LookingAtFrom(k,IDENT)) {
                 return false;
             }
             for (const std::pair<const char *,T> &p : map) {
@@ -205,7 +207,7 @@ namespace iga
             if (!LookingAt(IDENT)) {
                 Fail(errExpecting);
             }
-            if (!IdentLookup(0, map, value)) {
+            if (!IdentLookupFrom(0, map, value)) {
                 Fail(errInvalid);
             }
             Skip();
@@ -213,7 +215,7 @@ namespace iga
 
         template <typename T>
         bool ConsumeIdentOneOf(const IdentMap<T> &map, T &value) {
-            if (LookingAt(IDENT) && IdentLookup(0, map, value)) {
+            if (LookingAt(IDENT) && IdentLookupFrom(0, map, value)) {
                 Skip();
                 return true;
             }

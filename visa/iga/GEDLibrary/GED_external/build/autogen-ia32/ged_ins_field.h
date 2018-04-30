@@ -246,8 +246,8 @@ typedef enum
      * Channel Enable. Four channel enables are defined for controlling which channels will be written into the destination region.
      * These channel mask bits are applied in a modulo-four manner to all ExecSize channels. There is 1-bit Channel Enable for each
      * channel within the group of 4. If the bit is cleared, the write for the corresponding channel is disabled. If the bit is set,
-     * the write is enabled. Mnemonic for the bit being set for the group of 4 is "x", "y", "z", and "w",
-     * respectively, where "x" corresponds to Channel 0 in the group and "w" corresponds to channel 3 in the group.
+     * the write is enabled. Mnemonic for the bit being set for the group of 4 is "x", "y", "z", and "w", respectively, where "x"
+     * corresponds to Channel 0 in the group and "w" corresponds to channel 3 in the group.
      * 
      * For a send instruction, this field applies to the CurrDst.
      * 
@@ -321,8 +321,8 @@ typedef enum
     /*!
      * Channel Select. This field controls the channel swizzle for the first source operand (src0). The normally sequential channel
      * assignment can be altered by explicitly identifying neighboring data elements for each channel. Out of the 8-bit field, 2 bits
-     * are assigned for each channel within the group of 4. ChanSel[1:0], [3.2], [5.4] and [7,6] are for channel 0 ("x"), 1
-     * ("y"), 2 ("z"), and 3 ("w") in the group, respectively.
+     * are assigned for each channel within the group of 4. ChanSel[1:0], [3.2], [5.4] and [7,6] are for channel 0 ("x"), 1 ("y"), 2
+     * ("z"), and 3 ("w") in the group, respectively.
      * 
      * @par     Models:     all
      */
@@ -437,8 +437,8 @@ typedef enum
     /*!
      * Channel Select. This field controls the channel swizzle for the second source operand (src1). The normally sequential channel
      * assignment can be altered by explicitly identifying neighboring data elements for each channel. Out of the 8-bit field, 2 bits
-     * are assigned for each channel within the group of 4. ChanSel[1:0], [3.2], [5.4] and [7,6] are for channel 0 ("x"), 1
-     * ("y"), 2 ("z"), and 3 ("w") in the group, respectively.
+     * are assigned for each channel within the group of 4. ChanSel[1:0], [3.2], [5.4] and [7,6] are for channel 0 ("x"), 1 ("y"), 2
+     * ("z"), and 3 ("w") in the group, respectively.
      * 
      * @par     Models:     all
      */
@@ -586,8 +586,8 @@ typedef enum
     /*!
      * Channel Select. This field controls the channel swizzle for the third source operand (src2). The normally sequential channel
      * assignment can be altered by explicitly identifying neighboring data elements for each channel. Out of the 8-bit field, 2 bits
-     * are assigned for each channel within the group of 4. ChanSel[1:0], [3.2], [5.4] and [7,6] are for channel 0 ("x"), 1
-     * ("y"), 2 ("z"), and 3 ("w") in the group, respectively.
+     * are assigned for each channel within the group of 4. ChanSel[1:0], [3.2], [5.4] and [7,6] are for channel 0 ("x"), 1 ("y"), 2
+     * ("z"), and 3 ("w") in the group, respectively.
      * 
      * @par     Models:     all
      */

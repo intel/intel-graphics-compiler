@@ -16,7 +16,7 @@ set(IGA_API_HeadersOpen
 
 set(IGA_API_Headers
   ${IGA_API_HeadersOpen}
-  ${IGA_API_HeadersEmbargoed}
+  ${IGA_API_HeadersExtended}
   PARENT_SCOPE
   )
 

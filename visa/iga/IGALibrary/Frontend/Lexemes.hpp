@@ -23,12 +23,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#ifndef _LEXEMES_HPP_
-#define _LEXEMES_HPP_
+#ifndef _IGA_LEXEMES_HPP_
+#define _IGA_LEXEMES_HPP_
 
 namespace iga {
 
-enum Lexeme {
+enum Lexeme
+{
   LEXICAL_ERROR = 0, // Windows GDI #define's "ERROR"
   NEWLINE,
 

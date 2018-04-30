@@ -42,10 +42,10 @@ namespace iga
     //////////////////////////////////////////////////////////////////////
     // DEBUGGING
     //
-    void Parser::ShowCurrentLexicalContext(const Loc &loc) const {
-        std::stringstream ss;
-        WriteTokenContext(m_lexer.GetSource(), loc, ss);
-        DEBUG_TRACE(ss.str().c_str());
+    void Parser::ShowCurrentLexicalContext(
+        std::ostream &os, const Loc &loc) const
+    {
+        WriteTokenContext(m_lexer.GetSource(), loc, os);
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -122,14 +122,14 @@ namespace iga
 
     //////////////////////////////////////////////////////////////////////
     // QUERYING (non-destructive lookahead)
-    bool Parser::LookingAt(int k, Lexeme lxm) const {
-        return m_lexer.LookingAt(lxm,k);
+    bool Parser::LookingAtFrom(int k, Lexeme lxm) const {
+        return m_lexer.LookingAtFrom(k, lxm);
     }
 
     bool Parser::LookingAtSeq(std::initializer_list<Lexeme> lxms) const {
         int i = 0;
         for (Lexeme lxm : lxms) {
-            if (!LookingAt(i++, lxm)) {
+            if (!LookingAtFrom(i++, lxm)) {
                 return false;
             }
         }
@@ -137,15 +137,15 @@ namespace iga
     }
 
     bool Parser::LookingAtAnyOf(std::initializer_list<Lexeme> lxms) const {
-        return LookingAtAnyOf(0, lxms);
+        return LookingAtAnyOfFrom(0, lxms);
     }
 
-    bool Parser::LookingAtAnyOf(int i, std::initializer_list<Lexeme> lxms)
+    bool Parser::LookingAtAnyOfFrom(int i, std::initializer_list<Lexeme> lxms)
         const
     {
         int off = 0;
         for (Lexeme lxm : lxms) {
-            if (LookingAt(off + i, lxm)) {
+            if (LookingAtFrom(off + i, lxm)) {
                 return true;
             }
         }

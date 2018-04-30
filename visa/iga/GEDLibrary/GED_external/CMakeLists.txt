@@ -66,11 +66,6 @@ set_property( TARGET GEDLibrary APPEND PROPERTY
     COMPILE_DEFINITIONS                        $<$<CONFIG:Debug>:GED_DEBUG>
   )
 
-if (IGC_BUILD AND MSVC)
-  #set up standard defines from the common WDK path.
-  bs_set_wdk(GEDLibrary)
-endif()
-
 # hidden visibility suppresses PLT entries from being created for GED and functions and trims the interface down to a minimal size
 #Was manifested when IGA was used in GT-PIN which also uses GED. IGA ended up using GED library linked with GT-PIN not IGA one
 #https://gcc.gnu.org/wiki/Visibility

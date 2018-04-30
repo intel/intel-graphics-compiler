@@ -26,13 +26,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _BUFFEREDLEXER_H
 #define _BUFFEREDLEXER_H
 
-#include "Lexemes.hpp"
-#include "../IR/Loc.hpp"
 #include "../asserts.hpp"
+#include "../IR/Loc.hpp"
+#include "Lexemes.hpp"
 
-#include <string>
-#include <sstream>
 #include <iostream>
+#include <ostream>
+#include <sstream>
+#include <string>
 #include <vector>
 
 // #define DUMP_LEXEMES
@@ -182,11 +183,11 @@ public:
         }
     }
 
-    void DumpLookaheads(int n = 1) const {
-        DEBUG_TRACE("LEXER: Next %d lookaheads are:\n", n);
+    void DumpLookaheads(std::ostream &os, int n = 1) const {
+        os << "LEXER: Next " << n << " lookaheads are:\n";
         for (int i = 0; i < n; i++) {
             const Token &tk = Next(i);
-            DEBUG_TRACE(GetTokenString(tk, m_input).c_str());
+            os << "  " << GetTokenString(tk, m_input).c_str() << "\n";
             if (tk.lexeme == Lexeme::END_OF_FILE) {
                 break;
             }
@@ -208,16 +209,18 @@ public:
 #endif
         return true;
     }
-
-    bool Consume(Lexeme lx, int i = 0) {
-        if (LookingAt(lx,i)) {
+    bool Consume(Lexeme lxm) {
+        if (LookingAt(lxm)) {
             (void)Skip(1);
             return true;
         }
         return false;
     }
 
-    bool LookingAt(Lexeme lx, int i = 0) const {
+    bool LookingAt(Lexeme lxm) const {
+        return LookingAtFrom(0,lxm);
+    }
+    bool LookingAtFrom(int i, Lexeme lx) const {
         return Next(i).lexeme == lx;
     }
 

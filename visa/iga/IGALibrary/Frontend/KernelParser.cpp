@@ -138,7 +138,7 @@ void GenParser::ParseExecInfo(
     //    jmpi (1)    ...
     // We resolve that by looking ahead two symbols
     int execSizeVal = 1;
-    if (LookingAt(LPAREN) && (LookingAt(2,RPAREN) || LookingAt(2,PIPE))) {
+    if (LookingAt(LPAREN) && (LookingAtFrom(2,RPAREN) || LookingAtFrom(2,PIPE))) {
         Skip();
         execSizeLoc = NextLoc();
         ConsumeIntLitOrFail(execSizeVal, "expected SIMD width");
@@ -210,7 +210,7 @@ Type GenParser::ParseSendOperandTypeWithDefault(int srcIx) {
         if (!LookingAt(IDENT)) {
             Fail("expected a send operand type");
         }
-        if (!IdentLookup(0, DST_TYPES, t)) {
+        if (!IdentLookupFrom(0, DST_TYPES, t)) {
             Fail("unexpected operand type for send");
         }
         Skip();
@@ -838,7 +838,9 @@ void GenParser::initSymbolMaps()
     }
 }
 
-class KernelParser : GenParser {
+
+class KernelParser : GenParser
+{
     // maps mnemonics and registers for faster lookup
     std::map<std::string,const OpSpec*>   opmap;
 
@@ -1430,8 +1432,14 @@ private:
     }
 
 
-    // Mnemoninc    = Ident SubMnemonic? | Ident BrCtl
-    //   SubMnemoninc = '.' [Ident]SubFunc
+    //
+    // Mnemoninc
+    //     = Ident SubMnemonic?
+    //     | Ident BrCtl
+    //   SubMnemoninc
+    //     = '.' Ident
+    //     | '.' HEX_INT | '.' DEC_INT
+    //
     //   BrCtl = '.b'
     //
     const OpSpec *ParseMnemonic() {
@@ -1441,25 +1449,8 @@ private:
             return nullptr;
         }
         if (pOs->format == OpSpec::GROUP) {
-            // e.g. math.*, sync.*, send.*, etc...
-            ConsumeOrFail(DOT, "expected operation subfunction");
-            if (LookingAt(IDENT)) {
-                auto sfLoc = NextLoc();
-                auto sfIdent = GetTokenAsString(Next());
-                // look up the function by the fully qualified name
-                std::stringstream ss;
-                ss << pOs->mnemonic << "." << sfIdent;
-                auto itr = opmap.find(ss.str());
-                if (itr == opmap.end()) {
-                    failWithUnexpectedSubfunction(sfLoc, sfIdent);
-                } else {
-                    // resolve to idiv etc...
-                    Skip();
-                    pOs = itr->second;
-                }
-            } else {
-                Fail("expected subfunction");
-            }
+            // e.g. math.*, send.*, etc...
+            pOs = ParseSubOp(pOs);
         }
         if (!m_hasWrEn && pOs->op == Op::JMPI) {
             Warning(mnemonicLoc,
@@ -1483,8 +1474,8 @@ private:
                 Fail("saturation flag goes on destination operand: "
                     "e.g. op (..) (sat)dst ...");
             } else if (
-                IdentLookup(1, FLAGMODS, fm) ||
-                IdentLookup(1, FLAGMODS_LEGACY, fm))
+                IdentLookupFrom(1, FLAGMODS, fm) ||
+                IdentLookupFrom(1, FLAGMODS_LEGACY, fm))
             {
                 Fail("conditional modifier follows execution mask "
                     "info: e.g. op (16|M0)  (le)f0.0 ...");
@@ -1495,6 +1486,52 @@ private:
         }
 
         return pOs;
+    }
+
+    //   SubMnemoninc
+    //     = '.' Ident
+    //     | '.' HEX_INT | '.' DEC_INT
+    //
+    // E.g.
+    //    math.inv
+    //    math.1
+    //    math.0x1
+    const OpSpec* ParseSubOp(const OpSpec *pParent)
+    {
+        const OpSpec *pOp = nullptr;
+        ConsumeOrFail(DOT, "expected operation subfunction");
+
+        auto sfLoc = NextLoc();
+        if (LookingAt(IDENT)) {
+            auto sfIdent = GetTokenAsString(Next());
+            // look up the function by the fully qualified name
+            std::stringstream ss;
+            ss << pParent->mnemonic << "." << sfIdent;
+            auto itr = opmap.find(ss.str());
+            if (itr == opmap.end()) {
+                failWithUnexpectedSubfunction(sfLoc, sfIdent);
+            } else {
+                // resolve to idiv etc...
+                Skip();
+                pOp = itr->second;
+                if (pOp->format == OpSpec::GROUP) {
+                    return ParseSubOp(pOp);
+                }
+            }
+        } else if (LookingAtAnyOf(INTLIT10,INTLIT16)) {
+            // e.g. math.0x1
+            unsigned sfVal;
+            ParseIntFrom<unsigned>(NextLoc(), sfVal);
+            Skip(1);
+            pOp = &m_model.lookupGroupSubOp(pParent->op, sfVal);
+            if (!pOp->isValid()) {
+                Fail(sfLoc, "subfunction is out of bounds");
+            }
+		} else {
+            Fail(sfLoc, "invalid subfunction");
+        }
+
+        return pOp;
     }
 
 
@@ -1532,9 +1569,9 @@ private:
         if (!LookingAt(LPAREN)) {
             return false;
         }
-        if (!IdentLookup(1, FLAGMODS, flagMod)) {
+        if (!IdentLookupFrom(1, FLAGMODS, flagMod)) {
             Loc loc = NextLoc(1);
-            if (!IdentLookup(1, FLAGMODS_LEGACY, flagMod)) {
+            if (!IdentLookupFrom(1, FLAGMODS_LEGACY, flagMod)) {
                 return false;
             } else if (m_parseOpts.deprecatedSyntaxWarnings) {
                 // deprecated syntax
@@ -1649,8 +1686,7 @@ private:
             "expected implicit accumulator operand "
             "(e.g. .noacc, .acc2, ..., .acc9)";
         ConsumeOrFail(DOT, expected);
-        ConsumeIdentOneOfOrFail<ImplAcc>(
-            IMPLACCS, implAcc, expected, expected);
+        ConsumeIdentOneOfOrFail<ImplAcc>(IMPLACCS, implAcc, expected, expected);
         return implAcc;
     }
 
@@ -2559,7 +2595,7 @@ private:
     SrcModifier ParseSrcModifierOpt(bool &pipeAbs) {
         if (!m_opSpec->supportsSourceModifiers()) {
             if (LookingAt(SUB) &&
-                LookingAtAnyOf(1, {INTLIT02, INTLIT10, INTLIT16}))
+                LookingAtAnyOfFrom(1, {INTLIT02, INTLIT10, INTLIT16}))
             {
                 // e.g. jmpi (...) -16:d
                 //                 ^ we will convert the literal
@@ -2702,7 +2738,7 @@ private:
             return Type::INVALID;
         }
         Type type = Type::INVALID;
-        if (IdentLookup(1, types, type)) {
+        if (IdentLookupFrom(1, types, type)) {
             Skip(2);
         }
         return type;

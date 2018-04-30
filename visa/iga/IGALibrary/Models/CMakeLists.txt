@@ -9,10 +9,10 @@ set(IGA_ModelsOpen
   ${CMAKE_CURRENT_SOURCE_DIR}/bxml/Model10.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/bxml/iga_bxml_enums.hpp
 )
-set(IGA_ModelsEmbargoed )
+set(IGA_ModelsExteneded )
 
 set(IGA_Models
   ${IGA_ModelsOpen}
-  ${IGA_ModelsEmbargoed}
+  ${IGA_ModelsExteneded}
   PARENT_SCOPE
 )

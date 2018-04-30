@@ -80,7 +80,7 @@ private:
     inline static bool HandleNonEnumEncodingRestrictions(const ged_ins_field_entry_t* dataEntry, NumType& val);
 
     template<typename NumType>
-    static bool HandleNonEnumEncodingRestriction(GEDFORASSERT(const ged_ins_field_entry_t* dataEntry) COMMA
+    static bool HandleNonEnumEncodingRestriction(const ged_ins_field_entry_t* dataEntry,
                                                  const ged_field_restriction_t* restriction, NumType& val);
 
 private:
@@ -319,14 +319,14 @@ bool GEDRestrictionsHandler::HandleNonEnumEncodingRestrictions(const ged_ins_fie
     for (unsigned int i = 0; i < 2; ++i)
     {
         if (NULL == dataEntry->_restrictions[i]) return true;
-        if (!HandleNonEnumEncodingRestriction(GEDFORASSERT(dataEntry) COMMA dataEntry->_restrictions[i], val)) return false;
+        if (!HandleNonEnumEncodingRestriction(dataEntry, dataEntry->_restrictions[i], val)) return false;
     }
     return true;
 }
 
 
 template<typename NumType>
-bool GEDRestrictionsHandler::HandleNonEnumEncodingRestriction(GEDFORASSERT(const ged_ins_field_entry_t* dataEntry) COMMA
+bool GEDRestrictionsHandler::HandleNonEnumEncodingRestriction(const ged_ins_field_entry_t* dataEntry,
                                                               const ged_field_restriction_t* restriction, NumType& val)
 {
     GEDASSERT(NULL != restriction);
@@ -334,16 +334,16 @@ bool GEDRestrictionsHandler::HandleNonEnumEncodingRestriction(GEDFORASSERT(const
     switch (restriction->_restrictionType)
     {
     case GED_FIELD_RESTRICTIONS_TYPE_VALUE:
-        GEDASSERT(CheckMaxValue(val, dataEntry->_bitSize));
+        if (!CheckMaxValue(val, dataEntry->_bitSize)) return false; // TODO: This was an assert, should switch back for optimization?
         return VerifyValueRestriction(val, restriction->_value);
     case GED_FIELD_RESTRICTIONS_TYPE_RANGE:
-        GEDASSERT(CheckMaxValue(val, dataEntry->_bitSize));
+        if (!CheckMaxValue(val, dataEntry->_bitSize)) return false; // TODO: This was an assert, should switch back for optimization?
         return VerifyRangeRestriction(val, restriction->_range);
     case GED_FIELD_RESTRICTIONS_TYPE_MASK:
-        GEDASSERT(CheckMaxValue(val, dataEntry->_bitSize));
+        if (!CheckMaxValue(val, dataEntry->_bitSize)) return false; // TODO: This was an assert, should switch back for optimization?
         return VerifyMaskRestriction(val, restriction->_mask);
     case GED_FIELD_RESTRICTIONS_TYPE_PADDING:
-        GEDASSERT(CheckMaxValue(val, dataEntry->_bitSize)); // TODO: This should probably be checked always, not as an assertion.
+        if (!CheckMaxValue(val, dataEntry->_bitSize)) return false;
         return ((NumType)(restriction->_padding._value) == ((NumType)(restriction->_padding._mask) & val));
     case GED_FIELD_RESTRICTIONS_TYPE_FIELD_TYPE:
         GEDASSERT(GED_QWORD_BITS >= restriction->_fieldType._attr._bits);

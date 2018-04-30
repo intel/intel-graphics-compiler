@@ -24,11 +24,11 @@ set(IGA_IR_Open
   ${CMAKE_CURRENT_SOURCE_DIR}/Types.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Types.hpp
 )
-set(IGA_IR_Embargoed )
+set(IGA_IR_Extended )
 
 set(IGA_IR
   ${IGA_IR_Open}
-  ${IGA_IR_Embargoed}
+  ${IGA_IR_Extended}
   PARENT_SCOPE
   )
 
