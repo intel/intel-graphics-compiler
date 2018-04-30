@@ -5542,7 +5542,7 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
             {
                 m_encoder->SetNoMask();
                 m_encoder->SetSimdSize(SIMDMode::SIMD1);
-                m_encoder->Cast(pixelEnable, m_currShader->GetCE0());
+                m_encoder->Cast(pixelEnable, GetExecutionMask());
                 m_encoder->Push();
             }
 
@@ -6078,25 +6078,10 @@ void EmitPass::emitUpdateDiscardMask(llvm::GenIntrinsicInst* inst)
 
     if (ConstantInt* ci = dyn_cast<ConstantInt>(inst->getArgOperand(1)))
     {
-        // if it's discard(true), then OR with ce0
-        if (m_encoder->IsSecondHalf())
-        {
-            return;
-        }
-
         if (ci->getZExtValue() == 1)
         {
-            maskp = m_currShader->GetNewVariable(
-                numLanes(m_currShader->m_dispatchSize),
-                ISA_TYPE_BOOL, EALIGN_BYTE);
-
-            m_encoder->SetNoMask();
-            m_encoder->SetP(maskp, m_currShader->GetCE0());
-            m_encoder->Push();
-
-            m_encoder->SetNoMask();
-            m_encoder->SetSimdSize(m_currShader->m_dispatchSize);
-            m_encoder->Or(discardMask, discardMask, maskp);
+            CVariable* dummyVar = m_currShader->GetNewVariable(1, ISA_TYPE_UW, EALIGN_WORD, true);
+            m_encoder->Cmp(EPREDICATE_EQ, discardMask, dummyVar, dummyVar);
             m_encoder->Push();
         }
         else
@@ -9285,23 +9270,28 @@ CVariable* EmitPass::BroadcastIfUniform(CVariable* pVar)
 }
 
 CVariable* EmitPass::GetExecutionMask()
-{
-    CVariable *eMask = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true);
-    CVariable *dMask = m_currShader->GetSR0();
-    if (m_pattern->NeedVMask())
-    {
-        // use vmask
-        m_encoder->SetSrcSubReg(0, 3);
-    }
-    else
-    {
-        // use dmask
-        m_encoder->SetSrcSubReg(0, 2);
-    }
+{   
+    bool isSecondHalf = m_encoder->IsSecondHalf();
+    m_encoder->SetSecondHalf(false);
+    CVariable* flag = m_currShader->ImmToVariable(0, ISA_TYPE_BOOL);
 
-    m_encoder->And(eMask, dMask, m_currShader->GetCE0());
+    CVariable* dummyVar = m_currShader->GetNewVariable(1, ISA_TYPE_UW, EALIGN_WORD, true);
+    m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
     m_encoder->Push();
 
+    if(m_currShader->m_dispatchSize > SIMDMode::SIMD16)
+    {
+        m_encoder->SetSecondHalf(true);
+        m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
+        m_encoder->Push();
+    }
+    m_encoder->SetSecondHalf(isSecondHalf);
+
+    VISA_Type maskType = m_currShader->m_dispatchSize > SIMDMode::SIMD16 ? ISA_TYPE_UD : ISA_TYPE_UW;
+    CVariable* eMask = m_currShader->GetNewVariable(1, maskType, EALIGN_DWORD, true);
+    m_encoder->SetNoMask();
+    m_encoder->Cast(eMask, flag);
+    m_encoder->Push();
     return eMask;
 }
 
@@ -13728,7 +13718,7 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
 
     // (W)     mov (1|M0) r0.0<1>:ud sr0.2.0<0;1,0>:ud 
     // (W)     and (1|M0)   r0.0<1>:ud r0.0<0;1,0>:ud ce0.0<0;1,0>:ud
-    m_encoder->Copy(destination, GetExecutionMask());
+    m_encoder->Cast(destination, GetExecutionMask());
     m_encoder->Push();
 
     if (!uniform_active_lane)
