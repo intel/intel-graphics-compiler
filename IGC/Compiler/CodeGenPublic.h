@@ -805,6 +805,7 @@ namespace IGC
             m_pMdUtils = new IGC::IGCMD::MetaDataUtils(m);
             modMD = new IGC::ModuleMetaData();
             initCompOptionFromRegkey();
+
         }
 
         // Several clients explicitly delete module without resetting module to null.
@@ -878,6 +879,7 @@ namespace IGC
         {
             return getModuleMetaData()->compOpt;
         }
+
 
         virtual void resetOnRetry()
         {
@@ -1118,6 +1120,12 @@ namespace IGC
                     return;
 
                 const char *options = pInputArgs->pInternalOptions;
+
+                if (strstr(options, "-cl-replace-global-offsets-by-zero"))
+                {
+                    replaceGlobalOffsetsByZero = true;
+                }
+
                 if (strstr(options, "-cl-kernel-debug-enable"))
                 {
                     KernelDebugEnable = true;
@@ -1168,8 +1176,10 @@ namespace IGC
             bool IncludeSIPKernelDebugWithLocalMemory;
             bool DoReRA;
             bool IntelHasBufferOffsetArg;
+            bool replaceGlobalOffsetsByZero = false;
             bool IntelEnablePreRAScheduling = true;
 			bool PromoteStatelessToBindless = false;
+
 
         };
 
@@ -1282,7 +1292,7 @@ namespace IGC
     void ConstantFolder(char* bitcode, uint bitcodeSize, void* CBptr[15], uint* pNewCB);
 
     void LinkOptIR(CodeGenContext* ctxs[]);
-    
+
     inline llvm::LLVMContext* toLLVMContext(CodeGenContext* p) {
         return p->getLLVMContext();
     }
