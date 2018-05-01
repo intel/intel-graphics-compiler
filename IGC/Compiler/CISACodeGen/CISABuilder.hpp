@@ -334,6 +334,7 @@ public:
     inline void SetSimdSize(SIMDMode size);
     inline void SetUniformSIMDSize(SIMDMode size);
     inline void SetSubSpanDestination(bool subspan);
+    inline bool IsSubSpanDestination();
     inline void SetSecondHalf(bool secondHalf);
     inline bool IsSecondHalf();
 
@@ -816,6 +817,11 @@ inline void CEncoder::SetSecondHalf(bool secondHalf)
 inline bool CEncoder::IsSecondHalf()
 {
     return m_encoderState.m_secondHalf;
+}
+
+inline bool CEncoder::IsSubSpanDestination()
+{
+    return m_encoderState.m_SubSpanDestination;
 }
 
 VISA_Modifier ConvertModifierToVisaType(e_modifier modifier);
