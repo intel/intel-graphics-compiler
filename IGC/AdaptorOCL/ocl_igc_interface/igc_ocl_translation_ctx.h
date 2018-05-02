@@ -66,10 +66,34 @@ protected:
                                                   uint32_t tracingOptionsCount);
 };
 
+CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclTranslationCtx, 2, 1) {
+  CIF_INHERIT_CONSTRUCTOR();
+
+  template <typename OclTranslationOutputInterface = OclTranslationOutputTagOCL>
+  CIF::RAII::UPtr_t<OclTranslationOutputInterface> Translate(CIF::Builtins::BufferSimple *src,
+                                                             CIF::Builtins::BufferSimple *options,
+                                                             CIF::Builtins::BufferSimple *internalOptions,
+                                                             CIF::Builtins::BufferSimple *tracingOptions,
+                                                             uint32_t tracingOptionsCount,
+                                                             void *gtPinInput) {
+      auto p = TranslateImpl(OclTranslationOutputInterface::GetVersion(), src, options, internalOptions, tracingOptions, tracingOptionsCount, gtPinInput);
+      return CIF::RAII::Pack<OclTranslationOutputInterface>(p);
+  }
+
+protected:
+  virtual OclTranslationOutputBase *TranslateImpl(CIF::Version_t outVersion,
+                                                  CIF::Builtins::BufferSimple *src,
+                                                  CIF::Builtins::BufferSimple *options,
+                                                  CIF::Builtins::BufferSimple *internalOptions,
+                                                  CIF::Builtins::BufferSimple *tracingOptions,
+                                                  uint32_t tracingOptionsCount,
+                                                  void *gtPinInput);
+};
+
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(IgcOclTranslationCtx, IGC::OclTranslationOutput, CIF::Builtins::Buffer);
 CIF_MARK_LATEST_VERSION(IgcOclTranslationCtxLatest, IgcOclTranslationCtx);
-using IgcOclTranslationCtxTagOCL = IgcOclTranslationCtxLatest; // Note : can tag with different version for
-                                                               //        transition periods
+using IgcOclTranslationCtxTagOCL = IgcOclTranslationCtx<1>; // Note : can tag with different version for
+                                                            //        transition periods
 
 }
 

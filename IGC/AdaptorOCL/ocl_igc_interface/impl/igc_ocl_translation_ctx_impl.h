@@ -112,7 +112,8 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
                                         CIF::Builtins::BufferSimple *options,
                                         CIF::Builtins::BufferSimple *internalOptions,
                                         CIF::Builtins::BufferSimple *tracingOptions,
-                                        uint32_t tracingOptionsCount
+                                        uint32_t tracingOptionsCount,
+                                        void *gtPinInput
                                         ) const{
         // Create interface for return data
         auto outputInterface = CIF::RAII::UPtr(CIF::InterfaceCreator<OclTranslationOutput>::CreateInterfaceVer(outVersion, this->outType));
@@ -137,6 +138,7 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
             inputArgs.pTracingOptions = tracingOptions->GetMemoryRawWriteable();
         }
         inputArgs.TracingOptionsCount = tracingOptionsCount;
+        inputArgs.GTPinInput = gtPinInput;
      
         IGC::CPlatform igcPlatform = this->globalState.GetIgcCPlatform();
         CIF::Sanity::NotNullOrAbort(this->globalState.GetPlatformImpl());
