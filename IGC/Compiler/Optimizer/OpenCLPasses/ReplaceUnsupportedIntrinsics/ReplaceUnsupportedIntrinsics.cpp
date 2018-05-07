@@ -367,7 +367,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(MemCpyInst* MC)
     IRBuilder<> Builder(MC);
 
     ConstantInt *CI = dyn_cast<ConstantInt>(LPCount);
-    if(CI && Align >= 4)
+    if(CI)
     {
         uint32_t Count = (uint32_t)CI->getZExtValue();
 
@@ -535,7 +535,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(MemMoveInst* MM)
     B.CreateBr(Post);
 
     auto *CI = dyn_cast<ConstantInt>(LPCount);
-    if (CI && Align >= 4)
+    if (CI)
     {
         uint32_t Count = (uint32_t)CI->getZExtValue();
 
@@ -665,7 +665,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(MemSetInst* MS)
     IRBuilder<> Builder(MS);
 
     ConstantInt *CI = dyn_cast<ConstantInt>(LPCount);
-    if(CI && Align >= 4)
+    if(CI)
     {
         uint32_t Count = (uint32_t)CI->getZExtValue();
 
