@@ -39,7 +39,6 @@ class CPlatform
     WA_TABLE m_WaTable;
     SKU_FEATURE_TABLE m_SkuTable;
     GT_SYSTEM_INFO      m_GTSystemInfo;
-	SUscAilInfo         m_UscAilInfo;
 
 public:
     CPlatform(PLATFORM platform) { 
@@ -50,23 +49,6 @@ public:
 
     WA_TABLE const& getWATable() const { return m_WaTable;}
     SKU_FEATURE_TABLE const& getSkuTable() const { return m_SkuTable; }
-
-	void setUSCAilInfo(const SUscAilInfo AilInfo)
-	{
-		m_UscAilInfo.EnableWaCheckResourceFormatForNFSRivals 
-			= AilInfo.EnableWaCheckResourceFormatForNFSRivals;
-		m_UscAilInfo.WaDisableUnsafeArithmeticOperationRefactoring
-			= AilInfo.WaDisableUnsafeArithmeticOperationRefactoring;
-		m_UscAilInfo.WaTrigFuncRangeReduction
-			= AilInfo.WaTrigFuncRangeReduction;
-        m_UscAilInfo.WaHiddenIndexableTempSlot
-            = AilInfo.WaHiddenIndexableTempSlot;
-	}
-
-	SUscAilInfo getUscAilInfo() const
-	{
-		return m_UscAilInfo;
-	}
 
     bool hasPackedVertexAttr() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
     bool hasScaledMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
