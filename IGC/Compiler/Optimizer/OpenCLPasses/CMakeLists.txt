@@ -29,12 +29,15 @@ add_subdirectory(ClampLoopUnroll)
 add_subdirectory(Image3dToImage2darray)
 
 
+#
+#
+
 set(IGC_BUILD__SRC__OpenCLPasses
     "${CMAKE_CURRENT_SOURCE_DIR}/KernelArgs.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/BreakdownIntrinsic.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/KernelFunctionCloning.cpp"
   )
-set(IGC_BUILD__SRC__Optimizer_OpenCLPasses
+set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses}
     ${IGC_BUILD__SRC__OpenCLPasses_AddressSpaceAliasAnalysis}
     ${IGC_BUILD__SRC__OpenCLPasses_AggregateArguments}
@@ -64,6 +67,11 @@ set(IGC_BUILD__SRC__Optimizer_OpenCLPasses
     ${IGC_BUILD__SRC__OpenCLPasses_WIFuncs}
     ${IGC_BUILD__SRC__OpenCLPasses_ClampLoopUnroll}
     ${IGC_BUILD__SRC__OpenCLPasses_Image3dToImage2darray}
+  )
+
+
+set(IGC_BUILD__SRC__Optimizer_OpenCLPasses
+    ${IGC_BUILD__SRC__Optimizer_OpenCLPasses_All}
     PARENT_SCOPE
   )
 
@@ -72,7 +80,7 @@ set(IGC_BUILD__HDR__OpenCLPasses
     "${CMAKE_CURRENT_SOURCE_DIR}/BreakdownIntrinsic.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/KernelFunctionCloning.h"
   )
-set(IGC_BUILD__HDR__Optimizer_OpenCLPasses
+set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses}
     ${IGC_BUILD__HDR__OpenCLPasses_AddressSpaceAliasAnalysis}
     ${IGC_BUILD__HDR__OpenCLPasses_AggregateArguments}
@@ -102,7 +110,44 @@ set(IGC_BUILD__HDR__Optimizer_OpenCLPasses
     ${IGC_BUILD__HDR__OpenCLPasses_WIFuncs}
     ${IGC_BUILD__HDR__OpenCLPasses_ClampLoopUnroll}
     ${IGC_BUILD__HDR__OpenCLPasses_Image3dToImage2darray}
+  )
+
+
+set(IGC_BUILD__HDR__Optimizer_OpenCLPasses
+    ${IGC_BUILD__HDR__Optimizer_OpenCLPasses_All}
     PARENT_SCOPE
+  )
+
+
+set(IGC_BUILD_Compiler_OpenCLPasses_Groups
+    Compiler__OpenCLPasses_AddressSpaceAliasAnalysis
+    Compiler__OpenCLPasses_AggregateArguments
+    Compiler__OpenCLPasses_AlignmentAnalysis
+    Compiler__OpenCLPasses_Atomics
+    Compiler__OpenCLPasses_BIFTransforms
+    Compiler__OpenCLPasses_BreakConstantExpr
+    Compiler__OpenCLPasses_CorrectlyRoundedDivSqrt
+    Compiler__OpenCLPasses_DebuggerSupport
+    Compiler__OpenCLPasses_DeviceEnqueueFuncs
+    Compiler__OpenCLPasses_ExtenstionFuncs
+    Compiler__OpenCLPasses_GenericAddressResolution
+    Compiler__OpenCLPasses_GenericAddressSpaceStaticResolution
+    Compiler__OpenCLPasses_ImageFuncs
+    Compiler__OpenCLPasses_LocalBuffers
+    Compiler__OpenCLPasses_LowerLocalMemPool
+    Compiler__OpenCLPasses_OpenCLPrintf
+    Compiler__OpenCLPasses_PrivateMemory
+    Compiler__OpenCLPasses_ProgramScopeConstants
+    Compiler__OpenCLPasses_ReplaceUnsupportedIntrinsics
+    Compiler__OpenCLPasses_SetFastMathFlags
+    Compiler__OpenCLPasses_SubGroupFuncs
+    Compiler__OpenCLPasses_StatelessToStatefull
+    Compiler__OpenCLPasses_UndefinedReferences
+    Compiler__OpenCLPasses_VolatileWorkaround
+    Compiler__OpenCLPasses_WGFuncs
+    Compiler__OpenCLPasses_WIFuncs
+    Compiler__OpenCLPasses_ClampLoopUnroll
+    Compiler__OpenCLPasses_Image3dToImage2darray
   )
 
 
@@ -110,34 +155,7 @@ igc_sg_register(
     Compiler__Optimizer_OpenCLPasses
     "OpenCLPasses"
     GROUPS
-      Compiler__OpenCLPasses_AddressSpaceAliasAnalysis
-      Compiler__OpenCLPasses_AggregateArguments
-      Compiler__OpenCLPasses_AlignmentAnalysis
-      Compiler__OpenCLPasses_Atomics
-      Compiler__OpenCLPasses_BIFTransforms
-      Compiler__OpenCLPasses_BreakConstantExpr
-      Compiler__OpenCLPasses_CorrectlyRoundedDivSqrt
-      Compiler__OpenCLPasses_DebuggerSupport
-      Compiler__OpenCLPasses_DeviceEnqueueFuncs
-      Compiler__OpenCLPasses_ExtenstionFuncs
-      Compiler__OpenCLPasses_GenericAddressResolution
-      Compiler__OpenCLPasses_GenericAddressSpaceStaticResolution
-      Compiler__OpenCLPasses_ImageFuncs
-      Compiler__OpenCLPasses_LocalBuffers
-      Compiler__OpenCLPasses_LowerLocalMemPool
-      Compiler__OpenCLPasses_OpenCLPrintf
-      Compiler__OpenCLPasses_PrivateMemory
-      Compiler__OpenCLPasses_ProgramScopeConstants
-      Compiler__OpenCLPasses_ReplaceUnsupportedIntrinsics
-      Compiler__OpenCLPasses_SetFastMathFlags
-      Compiler__OpenCLPasses_SubGroupFuncs
-      Compiler__OpenCLPasses_StatelessToStatefull
-      Compiler__OpenCLPasses_UndefinedReferences
-      Compiler__OpenCLPasses_VolatileWorkaround
-      Compiler__OpenCLPasses_WGFuncs
-      Compiler__OpenCLPasses_WIFuncs
-      Compiler__OpenCLPasses_ClampLoopUnroll
-      Compiler__OpenCLPasses_Image3dToImage2darray
+      ${IGC_BUILD_Compiler_OpenCLPasses_Groups}
     FILES
       ${IGC_BUILD__SRC__OpenCLPasses}
       ${IGC_BUILD__HDR__OpenCLPasses}

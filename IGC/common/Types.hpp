@@ -39,6 +39,7 @@ namespace USC
     struct ShaderD3D;
 }
 
+
 class AsmHash
 {
 public:
@@ -100,6 +101,8 @@ enum class SIMDMode : unsigned char
     END,
     BEGIN = 0
 };
+
+
 
 inline uint16_t numLanes(SIMDMode width)
 {

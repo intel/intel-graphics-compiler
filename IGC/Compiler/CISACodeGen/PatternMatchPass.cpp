@@ -986,7 +986,7 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I)
 {
     bool match = false;
     using namespace GenISAIntrinsic;
-    if(GenIntrinsicInst *CI = llvm::dyn_cast<GenIntrinsicInst>(&I) )
+	if (GenIntrinsicInst *CI = llvm::dyn_cast<GenIntrinsicInst>(&I))
     {
         switch(CI->getIntrinsicID())
         {
