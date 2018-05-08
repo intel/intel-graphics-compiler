@@ -1597,6 +1597,7 @@ void LivenessAnalysis::defAnalysis(FuncInfo* subroutine)
 void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& kernelOutput)
 {
 
+    assert (fg.sortedFuncTable.size() > 0 && "topological sort must already be performed");
     std::vector<BitSet> args(fg.funcInfoTable.size());
     std::vector<BitSet> retVal(fg.funcInfoTable.size());
 
