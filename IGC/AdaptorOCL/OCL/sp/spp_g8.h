@@ -27,23 +27,35 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "../util/BinaryStream.h"
+#include <llvm/ADT/MapVector.h>
+#include <llvm/IR/Function.h>
 #include "usc.h"
 #include "sp_g8.h"
 
 namespace IGC
 {
     class OpenCLProgramContext;
+    class CShaderProgram;
 };
 
 namespace iOpenCL
 {
 
+struct KernelData
+{
+    const IGC::SOpenCLKernelInfo* pKernelInfo = nullptr;
+    Util::BinaryStream* kernelBinary = nullptr;
+    Util::BinaryStream* kernelDebugData = nullptr;
+};
+
 class CGen8OpenCLProgram : DisallowCopy
 {
 public:
-    CGen8OpenCLProgram(PLATFORM platform, const IGC::OpenCLProgramContext &context);
+    CGen8OpenCLProgram(PLATFORM platform, IGC::OpenCLProgramContext &context);
 
     ~CGen8OpenCLProgram();
+
+    void ClearKernelOutput();
 
     RETVAL GetProgramBinary(
         Util::BinaryStream& programBinary,
@@ -51,30 +63,22 @@ public:
 
     RETVAL GetProgramDebugData(Util::BinaryStream& programDebugData);
 
-    void AddKernelBinary(
-        const char*  rawIsaBinary,
-        unsigned int rawIsaBinarySize,
-        const IGC::SOpenCLKernelInfo& kernelInfo,
-        const IGC::SOpenCLProgramInfo& programInfo,
-        const IGC::CBTILayout& layout,
-        USC::SSystemThreadKernelOutput* pSystemThreadKernelOutput,
-        unsigned int unpaddedBinarySize);
+    void CreateKernelBinaries();
 
     void CreateProgramScopePatchStream(const IGC::SOpenCLProgramInfo& programInfo);
 
-    void AddKernelDebugData(
-        const char*  rawDebugDataVISA,
-        unsigned int rawDebugDataVISASize,
-        const char*  rawDebugDataGenISA,
-        unsigned int rawDebugDataGenISASize,
-        const std::string& kernelName);
+    // Used to track the kernel info from CodeGen
+    llvm::MapVector<llvm::Function*, IGC::CShaderProgram*> m_KernelShaderMap;
+    USC::SSystemThreadKernelOutput* m_pSystemThreadKernelOutput = nullptr;
+
+    // Used to store per-kernel binary streams and kernelInfo
+    std::vector<KernelData> m_KernelBinaries;
 
 private:
     CGen8OpenCLStateProcessor m_StateProcessor;
-    std::vector<Util::BinaryStream*> m_KernelBinaries;
     Util::BinaryStream* m_ProgramScopePatchStream;
-    std::vector<Util::BinaryStream*> m_KernelDebugDataList;
     PLATFORM  m_Platform;
+    IGC::OpenCLProgramContext* m_pContext;
 };
 
 
