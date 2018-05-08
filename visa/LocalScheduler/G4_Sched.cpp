@@ -12,6 +12,8 @@ static const unsigned PRESSURE_REDUCTION_MIN_BENEFIT = 5;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
 static const unsigned LATENCY_PRESSURE_THRESHOLD = 100;
+static const unsigned LATENCY_PRESSURE_THRESHOLD_AGGRESSIVE = 120;
+static const unsigned LATENCY_PRESSURE_THRESHOLD_COMMIT = 105;
 
 namespace {
 
@@ -444,14 +446,14 @@ public:
 
     // Run list scheduling.
     void scheduleBlockForPressure() { SethiUllmanScheduling(); }
-    void scheduleBlockForLatency() { LatencyScheduling(); }
+    void scheduleBlockForLatency(unsigned RPLimit) { LatencyScheduling(RPLimit); }
 
     // Commit this scheduling if it reduces register pressure.
     bool commitIfBeneficial(unsigned &MaxRPE, bool IsTopDown);
 
 private:
     void SethiUllmanScheduling();
-    void LatencyScheduling();
+    void LatencyScheduling(unsigned RPLimit);
     bool verifyScheduling();
 };
 
@@ -471,11 +473,28 @@ static unsigned getRPReductionThreshold(Options *m_options, G4_Kernel &kernel)
     return unsigned(PRESSURE_REDUCTION_THRESHOLD * Ratio);
 }
 
+// The safe RPE bound to divide block into groups.
 static unsigned getLatencyHidingThreshold(Options *m_options)
 {
     unsigned NumGrfs = m_options->getuInt32Option(vISA_TotalGRFNum);
     float Ratio = NumGrfs / 128.0f;
     return unsigned(LATENCY_PRESSURE_THRESHOLD * Ratio);
+}
+
+// The aggressive RPE bound to divide block into groups.
+static unsigned getLatencyHidingThresholdAggressive(Options *m_options)
+{
+    unsigned NumGrfs = m_options->getuInt32Option(vISA_TotalGRFNum);
+    float Ratio = NumGrfs / 128.0f;
+    return unsigned(LATENCY_PRESSURE_THRESHOLD_AGGRESSIVE * Ratio);
+}
+
+// The RPE bound to commit a scheduling.
+static unsigned getLatencyHidingThresholdCommit(Options *m_options)
+{
+    unsigned NumGrfs = m_options->getuInt32Option(vISA_TotalGRFNum);
+    float Ratio = NumGrfs / 128.0f;
+    return unsigned(LATENCY_PRESSURE_THRESHOLD_COMMIT * Ratio);
 }
 
 preRA_Scheduler::preRA_Scheduler(G4_Kernel& k, Mem_Manager& m, RPE* rpe)
@@ -577,11 +596,24 @@ bool preRA_Scheduler::run()
         };
 
         if (tryLatencyHiding()) {
+            // Try aggressive latency schedule first.
+            unsigned RPLimit = getLatencyHidingThresholdAggressive(m_options);
             ddd.reset(Changed);
-            S.scheduleBlockForLatency();
+            S.scheduleBlockForLatency(RPLimit);
             if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ true)) {
-                SCHED_DUMP(rp.dump(bb, "After scheduling for latency, "));
+                SCHED_DUMP(rp.dump(bb, "After aggressive scheduling for latency, "));
                 Changed = true;
+            } else {
+                // Try a less aggressive latency scheduler otherwise.
+                // In this case, the group size is determined by
+                // a smaller RPLimit.
+                ddd.reset(false);
+                RPLimit = getLatencyHidingThreshold(m_options);
+                S.scheduleBlockForLatency(RPLimit);
+                if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ true)) {
+                    SCHED_DUMP(rp.dump(bb, "After scheduling for latency, "));
+                    Changed = true;
+                }
             }
         }
     }
@@ -1043,9 +1075,13 @@ class LatencyQueue : public QueueBase {
     // group will be scheduled for latency.
     std::map<G4_INST *, unsigned> GroupInfo;
 
+    // The pressure limit to build groups.
+    unsigned PressureLimit;
+
 public:
-    LatencyQueue(preDDD& ddd, RegisterPressure& rp, SchedConfig config)
+    LatencyQueue(preDDD& ddd, RegisterPressure& rp, SchedConfig config, unsigned RPLimit)
         : QueueBase(ddd, rp, config)
+        , PressureLimit(RPLimit)
     {
         init();
     }
@@ -1082,10 +1118,10 @@ private:
 
 // Scheduling block to hide latency (top down).
 //
-void BB_Scheduler::LatencyScheduling()
+void BB_Scheduler::LatencyScheduling(unsigned RPLimit)
 {
     schedule.clear();
-    LatencyQueue Q(ddd, rp, config);
+    LatencyQueue Q(ddd, rp, config, RPLimit);
     Q.push(ddd.getEntryNode());
 
     while (!Q.empty()) {
@@ -1111,7 +1147,8 @@ void BB_Scheduler::LatencyScheduling()
 static void mergeSegments(const std::vector<unsigned>& RPtrace,
                           const std::vector<unsigned>& Max,
                           const std::vector<unsigned>& Min,
-                          std::vector<unsigned>& Segments)
+                          std::vector<unsigned>& Segments,
+                          unsigned RPLimit)
 {
     unsigned n = std::min<unsigned>((unsigned)Max.size(), (unsigned)Min.size());
     assert(n >= 2);
@@ -1132,7 +1169,7 @@ static void mergeSegments(const std::vector<unsigned>& RPtrace,
             unsigned Hi2 = RPtrace[Max[i - 1]];
             unsigned Lo2 = RPtrace[Min[i]];
 
-            if ((Hi2 - Lo + Hi) <= LATENCY_PRESSURE_THRESHOLD) {
+            if ((Hi2 - Lo + Hi) <= RPLimit) {
                 Hi = Hi2 - Lo + Hi;
                 Lo = Lo2;
             } else {
@@ -1147,7 +1184,7 @@ static void mergeSegments(const std::vector<unsigned>& RPtrace,
         // otherwise it is the end pressure.
         unsigned Hi2 = (Min.back() > Max.back()) ? RPtrace.back()
                                                  : RPtrace[Max.back()];
-        if ((Hi2 - Lo + Hi) > LATENCY_PRESSURE_THRESHOLD)
+        if ((Hi2 - Lo + Hi) > RPLimit)
             Segments.push_back(Min.back());
         return;
     }
@@ -1170,7 +1207,7 @@ static void mergeSegments(const std::vector<unsigned>& RPtrace,
         unsigned Lo2 = RPtrace[Min[i]];
 
         // Merge two segments
-        if ((Hi2 - Lo + Hi) <= LATENCY_PRESSURE_THRESHOLD) {
+        if ((Hi2 - Lo + Hi) <= RPLimit) {
             Hi = Hi2 - Lo + Hi;
             Lo = Lo2;
         } else {
@@ -1185,7 +1222,7 @@ static void mergeSegments(const std::vector<unsigned>& RPtrace,
     // otherwise it is the end pressure.
     unsigned Hi2 = (Min.back() > Max.back()) ? RPtrace.back()
                                              : RPtrace[Max.back()];
-    if ((Hi2 - Lo + Hi) > LATENCY_PRESSURE_THRESHOLD)
+    if ((Hi2 - Lo + Hi) > RPLimit)
         Segments.push_back(Min.back());
 }
 
@@ -1241,7 +1278,7 @@ void LatencyQueue::init()
         // and starts a new group.
         //
         std::vector<unsigned> Segments;
-        mergeSegments(RPtrace, Max, Min, Segments);
+        mergeSegments(RPtrace, Max, Min, Segments, PressureLimit);
 
         // Iterate segments and assign a group id to each insstruction.
         unsigned i = 0;
@@ -1432,10 +1469,10 @@ bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
 
     rp.recompute(getBB());
     unsigned NewRPE = rp.getPressure(getBB());
-    unsigned LatencyPressureThreshold = getLatencyHidingThreshold(kernel.getOptions());
+    unsigned LatencyPressureThresholdCommit = getLatencyHidingThresholdCommit(kernel.getOptions());
     if (config.UseLatency && IsTopDown) {
         // For hiding latency.
-        if (NewRPE <= LatencyPressureThreshold) {
+        if (NewRPE <= LatencyPressureThresholdCommit) {
             SCHED_DUMP(std::cerr << "schedule committed for latency.\n\n");
             MaxRPE = NewRPE;
             return true;
@@ -1451,7 +1488,7 @@ bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
                 // in general hurts latency hidding. If not insist to compile for simd32,
                 // make rp reduction conservative.
                 //
-                if (NewRPE < LatencyPressureThreshold) {
+                if (NewRPE < LatencyPressureThresholdCommit) {
                     SCHED_DUMP(std::cerr << "schedule committed with reduced pressure.\n\n");
                     MaxRPE = NewRPE;
                     return true;
