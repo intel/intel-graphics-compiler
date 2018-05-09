@@ -823,9 +823,6 @@ bool TranslateBuild(
         }
     } while (retry);
 
-    // Create the binary streams for each compiled kernel
-    oclContext.m_programOutput.CreateKernelBinaries();
-
     unsigned int pointerSizeInBytes = (PtrSzInBits == 64) ? 8 : 4; 
 
     // Prepare and set program binary

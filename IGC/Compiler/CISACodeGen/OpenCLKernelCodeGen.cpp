@@ -1659,7 +1659,9 @@ void CollectProgramInfo(OpenCLProgramContext* ctx)
     }
 }
 
-void GatherDataForDriver(OpenCLProgramContext* ctx, COpenCLKernel* pShader, CShaderProgram *pKernel, Function* pFunc, MetaDataUtils *pMdUtils)
+void GatherDataForDriver(OpenCLProgramContext* ctx, COpenCLKernel* pShader, CShaderProgram *pKernel,
+    USC::SSystemThreadKernelOutput* pSystemThreadKernelOutput, Function* pFunc,
+    MetaDataUtils *pMdUtils)
 {
     assert(pShader != nullptr);
     pShader->FillKernel();
@@ -1683,9 +1685,23 @@ void GatherDataForDriver(OpenCLProgramContext* ctx, COpenCLKernel* pShader, CSha
         ctx->m_retryManager.IsLastTry() ||
         fullDebugInfo)
     {
+        ctx->m_programOutput.AddKernelBinary((const char*)pOutput->m_programBin,
+            pOutput->m_programSize,
+            pShader->m_kernelInfo,
+            ctx->m_programInfo,
+            ctx->btiLayout,
+            pSystemThreadKernelOutput,
+            pOutput->m_unpaddedProgramSize);
+
         COMPILER_SHADER_STATS_PRINT(pKernel->m_shaderStats, ShaderType::OPENCL_SHADER, ctx->hash, ctx->GetStr(pFunc));
         COMPILER_SHADER_STATS_SUM(ctx->m_sumShaderStats, pKernel->m_shaderStats, ShaderType::OPENCL_SHADER);
         COMPILER_SHADER_STATS_DEL(pKernel->m_shaderStats);
+
+        ctx->m_programOutput.AddKernelDebugData((const char*)pOutput->m_debugDataVISA,
+            pOutput->m_debugDataVISASize,
+            (const char*)pOutput->m_debugDataGenISA,
+            pOutput->m_debugDataGenISASize,
+            pShader->m_kernelInfo.m_kernelName);
     }
     else
     {
@@ -1693,7 +1709,8 @@ void GatherDataForDriver(OpenCLProgramContext* ctx, COpenCLKernel* pShader, CSha
     }
 }
 
-static bool SetKernelProgram(COpenCLKernel* shader, DWORD simdMode)
+//When we compile multiple SIMD modes, push the compiled shaders in a vector in correct order
+static void CollectShaderInVec(std::vector<COpenCLKernel*>& shadersVec, COpenCLKernel* shader, DWORD simdMode)
 {
     if (shader && shader->ProgramOutput()->m_programSize > 0)
     {
@@ -1712,9 +1729,9 @@ static bool SetKernelProgram(COpenCLKernel* shader, DWORD simdMode)
             shader->m_kernelInfo.m_kernelProgram.simd8 = *shader->ProgramOutput();
         }   
         shader->m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = simdMode;
-        return true;
+        shadersVec.push_back(shader);
     }
-    return false;
+    return;
 }
 
 void CodeGen(OpenCLProgramContext* ctx)
@@ -1728,14 +1745,14 @@ void CodeGen(OpenCLProgramContext* ctx)
     }
 
     MetaDataUtils *pMdUtils = ctx->getMetaDataUtils();
+    CShaderProgram::KernelShaderMap kernels;
 
     //Clear spill parameters of retry manager in the very begining of code gen
 	ctx->m_retryManager.ClearSpillParams();
 
-    // Clear the saved kernel outputs for each try
-    ctx->m_programOutput.ClearKernelOutput();
+    CodeGen(ctx, kernels);
 
-    CodeGen(ctx, ctx->m_programOutput.m_KernelShaderMap);
+    USC::SSystemThreadKernelOutput* pSystemThreadKernelOutput = nullptr;
 
     {
         const auto options = ctx->m_InternalOptions;
@@ -1765,40 +1782,99 @@ void CodeGen(OpenCLProgramContext* ctx)
             SIP::CSystemThread::CreateSystemThreadKernel(
                 ctx->platform,
                 (USC::SYSTEM_THREAD_MODE)systemThreadMode,
-                ctx->m_programOutput.m_pSystemThreadKernelOutput);
+                pSystemThreadKernelOutput);
         }
     }
 
     // gather data to send back to the driver
-    for (auto k : ctx->m_programOutput.m_KernelShaderMap)
+    for (auto k : kernels)
     {
         Function* pFunc = k.first;
         CShaderProgram *pKernel = static_cast<CShaderProgram*>(k.second);
         COpenCLKernel* simd8Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
         COpenCLKernel* simd16Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
         COpenCLKernel* simd32Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
+        COpenCLKernel* pShader = nullptr;
 
         if (ctx->m_DriverInfo.sendMultipleSIMDModes())
         {
-            //Gather the kernel binary for each compiled kernel
-            if (SetKernelProgram(simd32Shader, 32))
-                GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils);
-            if (SetKernelProgram(simd16Shader, 16))
-                GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils);
-            if (SetKernelProgram(simd8Shader, 8))
-                GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils);
+            std::vector<COpenCLKernel*> shadersVec;
+            
+            //Push the default SIMD mode shader first
+            SIMDMode defaultSIMD = ctx->getDefaultSIMDMode();
+            switch (defaultSIMD)
+            {
+            case SIMDMode::SIMD8:
+            {
+                CollectShaderInVec(shadersVec, simd8Shader, 8);
+                break;
+            }
+            case SIMDMode::SIMD16:
+            {
+                CollectShaderInVec(shadersVec, simd16Shader, 16);
+                break;
+            }
+            case SIMDMode::SIMD32:
+            {
+                CollectShaderInVec(shadersVec, simd32Shader, 32);
+                break;
+            }
+            default:
+                assert(0 && "Originally we should have compiled atleast one of the 8/16/32 modes");
+                break;
+            }
+            //Now push whatever SIMD mode was compiled but was not default 
+            if (defaultSIMD != SIMDMode::SIMD32)
+            {
+                CollectShaderInVec(shadersVec, simd32Shader, 32);
+            }
+            if (defaultSIMD != SIMDMode::SIMD16)
+            {
+                CollectShaderInVec(shadersVec, simd16Shader, 16);
+            }
+            if (defaultSIMD != SIMDMode::SIMD8)
+            {
+                CollectShaderInVec(shadersVec, simd8Shader, 8);
+            }
+            assert(shadersVec.size() <= 3);
+            while (!shadersVec.empty())
+            {
+                GatherDataForDriver(ctx, shadersVec[0], pKernel, pSystemThreadKernelOutput, pFunc, pMdUtils);
+                shadersVec.erase(shadersVec.begin());
+            }
         }
         else
         {
-            //Gather the kernel binary only for 1 SIMD mode of the kernel
-            if (SetKernelProgram(simd32Shader, 32))
-                GatherDataForDriver(ctx, simd32Shader, pKernel, pFunc, pMdUtils);
-            else if (SetKernelProgram(simd16Shader, 16))
-                GatherDataForDriver(ctx, simd16Shader, pKernel, pFunc, pMdUtils);
-            else if (SetKernelProgram(simd8Shader, 8))
-                GatherDataForDriver(ctx, simd8Shader, pKernel, pFunc, pMdUtils);
+            //Gther the kernel binary only for 1 SIMD mode of the kernel
+            if (simd32Shader &&
+                simd32Shader->ProgramOutput()->m_programSize > 0)
+            {
+                pShader = simd32Shader;
+                pShader->m_kernelInfo.m_kernelProgram.simd32 = *simd32Shader->ProgramOutput();
+                pShader->m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = 32;
+                pShader->m_kernelInfo.m_executionEnivronment.PerThreadSpillFillSize =
+                    pShader->ProgramOutput()->m_scratchSpaceUsedBySpills;
+            }
+            else if (simd16Shader &&
+                simd16Shader->ProgramOutput()->m_programSize > 0)
+            {
+                pShader = simd16Shader;
+                pShader->m_kernelInfo.m_kernelProgram.simd16 = *simd16Shader->ProgramOutput();
+                pShader->m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = 16;
+            }
+            else if (simd8Shader &&
+                simd8Shader->ProgramOutput()->m_programSize > 0) 
+            {
+                pShader = simd8Shader;
+                pShader->m_kernelInfo.m_kernelProgram.simd8 = *simd8Shader->ProgramOutput();
+                pShader->m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = 8;
+            }
+            GatherDataForDriver(ctx, pShader, pKernel, pSystemThreadKernelOutput, pFunc, pMdUtils);
         }
+        delete pKernel;
     }
+
+    delete pSystemThreadKernelOutput;
 }
 
 bool COpenCLKernel::hasReadWriteImage(llvm::Function &F)
