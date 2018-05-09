@@ -382,6 +382,11 @@
         return true;
     }
 
+    bool doMultiAccSub() const
+    {
+        return false;
+    }
+
     bool canMadHaveSrc0Acc() const
     {
         return false;
