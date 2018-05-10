@@ -28,40 +28,48 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../../../Compiler/CodeGenPublic.h"
 #include "program_debug_data.h"
+#include "../../../common/Types.hpp"
+#include "../../../Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
 
 namespace iOpenCL
 {
 
 extern RETVAL g_cInitRetValue;
 
-CGen8OpenCLProgram::CGen8OpenCLProgram(PLATFORM platform, const IGC::OpenCLProgramContext &context) :
+CGen8OpenCLProgram::CGen8OpenCLProgram(PLATFORM platform, IGC::OpenCLProgramContext &context) :
     m_StateProcessor( platform, context ),
-    m_Platform( platform )
+    m_Platform( platform ),
+    m_pContext( &context )
 {
     m_ProgramScopePatchStream = new Util::BinaryStream();
 }
 
 CGen8OpenCLProgram::~CGen8OpenCLProgram()
 {
-    while( m_KernelBinaries.empty() == false )
-    {
-        Util::BinaryStream* stream = m_KernelBinaries.back();
-
-        delete stream;
-
-        m_KernelBinaries.pop_back();
-    }
-
     delete m_ProgramScopePatchStream;
 
-    while( m_KernelDebugDataList.empty() == false )
+    for (auto data : m_KernelBinaries)
     {
-        Util::BinaryStream* stream = m_KernelDebugDataList.back();
-
-        delete stream;
-
-        m_KernelDebugDataList.pop_back();
+        delete data.kernelBinary;
+        delete data.kernelDebugData;
     }
+
+    ClearKernelOutput();
+}
+
+void CGen8OpenCLProgram::ClearKernelOutput()
+{
+    // Should be called by CodeGen on each try to clear
+    // the KernelShaderMap and the SystemThreadKernelOutput
+    for (auto k : m_KernelShaderMap)
+    {
+        IGC::CShaderProgram* kernel = k.second;
+        delete kernel;
+    }
+    m_KernelShaderMap.clear();
+
+    delete m_pSystemThreadKernelOutput;
+    m_pSystemThreadKernelOutput = nullptr;
 }
 
 RETVAL CGen8OpenCLProgram::GetProgramBinary(
@@ -91,10 +99,9 @@ RETVAL CGen8OpenCLProgram::GetProgramBinary(
 
     programBinary.Write( *m_ProgramScopePatchStream );
 
-    for( auto i = m_KernelBinaries.begin(); i != m_KernelBinaries.end(); ++i )
+    for( auto data : m_KernelBinaries )
     {
-        Util::BinaryStream* kernelBinary = *i;
-        programBinary.Write( *kernelBinary );
+        programBinary.Write( *(data.kernelBinary) );
     }
 
     return retValue;
@@ -104,7 +111,16 @@ RETVAL CGen8OpenCLProgram::GetProgramDebugData(Util::BinaryStream& programDebugD
 {
     RETVAL retValue = g_cInitRetValue;
 
-    if( !m_KernelDebugDataList.empty() )
+    unsigned numDebugBinaries = 0;
+    for (auto data : m_KernelBinaries)
+    {
+        if (data.kernelDebugData && data.kernelDebugData->Size() > 0)
+        {
+            numDebugBinaries++;
+        }
+    }
+
+    if( numDebugBinaries )
     {
         iOpenCL::SProgramDebugDataHeaderIGC header;
 
@@ -113,72 +129,121 @@ RETVAL CGen8OpenCLProgram::GetProgramDebugData(Util::BinaryStream& programDebugD
         header.Magic = iOpenCL::MAGIC_CL;
         header.Version = iOpenCL::CURRENT_ICBE_VERSION;
         header.Device = m_Platform.eRenderCoreFamily;
-        header.NumberOfKernels = m_KernelDebugDataList.size();
+        header.NumberOfKernels = numDebugBinaries;
         header.SteppingId = m_Platform.usRevId;
-
 
         programDebugData.Write( header );
 
-        for( auto i = m_KernelDebugDataList.begin(); i != m_KernelDebugDataList.end(); ++i )
+        for (auto data : m_KernelBinaries)
         {
-            Util::BinaryStream* kernelDebugData = *i;
-            programDebugData.Write( *kernelDebugData );
+            if (data.kernelDebugData && data.kernelDebugData->Size() > 0)
+            {
+                programDebugData.Write( *(data.kernelDebugData) );
+            }
         }
     }
 
     return retValue;
 }
 
-void CGen8OpenCLProgram::AddKernelBinary(
-        const char*  rawIsaBinary,
-        unsigned int rawIsaBinarySize,
-        const IGC::SOpenCLKernelInfo& kernelInfo,
-        const IGC::SOpenCLProgramInfo& programInfo,
-        const IGC::CBTILayout& layout,
-        USC::SSystemThreadKernelOutput* pSystemThreadKernelOutput,
-        unsigned int unpaddedBinarySize )
+void CGen8OpenCLProgram::CreateKernelBinaries()
 {
-    Util::BinaryStream* kernelHeap = new Util::BinaryStream();
+    auto isValidShader = [&](IGC::COpenCLKernel* shader)->bool
+    {
+        return (shader && shader->ProgramOutput()->m_programSize > 0);
+    };
 
-    m_StateProcessor.CreateKernelBinary(
-        rawIsaBinary,
-        rawIsaBinarySize,
-        kernelInfo,
-        programInfo,
-        layout,
-        *kernelHeap,
-        pSystemThreadKernelOutput,
-        unpaddedBinarySize);
+    for (auto k : m_KernelShaderMap)
+    {
+        IGC::CShaderProgram *pKernel = static_cast<IGC::CShaderProgram*>(k.second);
+        IGC::COpenCLKernel* simd8Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
+        IGC::COpenCLKernel* simd16Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
+        IGC::COpenCLKernel* simd32Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
 
-    m_KernelBinaries.push_back( kernelHeap );
+        // Determine how many simd modes we have per kernel
+        std::vector<IGC::COpenCLKernel*> kernelVec;
+        if (m_pContext->m_DriverInfo.sendMultipleSIMDModes())
+        {
+            SIMDMode defaultSIMD = m_pContext->getDefaultSIMDMode();
+            switch (defaultSIMD)
+            {
+                case SIMDMode::SIMD32:
+                    if (isValidShader(simd32Shader))
+                        kernelVec.push_back(simd32Shader);
+                    break;
+                case SIMDMode::SIMD16:
+                    if (isValidShader(simd16Shader))
+                        kernelVec.push_back(simd16Shader);
+                    break;
+                case SIMDMode::SIMD8:
+                    if (isValidShader(simd8Shader))
+                        kernelVec.push_back(simd8Shader);
+                    break;
+                default:
+                    assert(0 && "SIMD must be 32/16/8");
+            }
+
+            // Push remaining simd modes
+            if (defaultSIMD != SIMDMode::SIMD32 && isValidShader(simd32Shader))
+                kernelVec.push_back(simd32Shader);
+            if (defaultSIMD != SIMDMode::SIMD16 && isValidShader(simd16Shader))
+                kernelVec.push_back(simd16Shader);
+            if (defaultSIMD != SIMDMode::SIMD8 && isValidShader(simd8Shader))
+                kernelVec.push_back(simd8Shader);
+        }
+        else
+        {
+            if (isValidShader(simd32Shader))
+                kernelVec.push_back(simd32Shader);
+            else if (isValidShader(simd16Shader))
+                kernelVec.push_back(simd16Shader);
+            else if (isValidShader(simd8Shader))
+                kernelVec.push_back(simd8Shader);
+        }
+
+        for (auto kernel : kernelVec)
+        {
+            IGC::SProgramOutput* pOutput = kernel->ProgramOutput();
+
+            // Create the kernel binary streams
+            KernelData data;
+            data.pKernelInfo = &(kernel->m_kernelInfo);
+            data.kernelBinary = new Util::BinaryStream();
+
+            m_StateProcessor.CreateKernelBinary(
+                (const char*)pOutput->m_programBin,
+                pOutput->m_programSize,
+                kernel->m_kernelInfo,
+                m_pContext->m_programInfo,
+                m_pContext->btiLayout,
+                *(data.kernelBinary),
+                m_pSystemThreadKernelOutput,
+                pOutput->m_unpaddedProgramSize);
+
+            assert(data.kernelBinary && data.kernelBinary->Size() > 0);
+
+            // Create the debug data binary streams
+            if (pOutput->m_debugDataVISASize > 0 && pOutput->m_debugDataGenISASize > 0)
+            {
+                data.kernelDebugData = new Util::BinaryStream();
+
+                m_StateProcessor.CreateKernelDebugData(
+                    (const char*)pOutput->m_debugDataVISA,
+                    pOutput->m_debugDataVISASize,
+                    (const char*)pOutput->m_debugDataGenISA,
+                    pOutput->m_debugDataGenISASize,
+                    kernel->m_kernelInfo.m_kernelName,
+                    *(data.kernelDebugData));
+            }
+
+            m_KernelBinaries.push_back(data);
+        }
+    }
 }
 
 void CGen8OpenCLProgram::CreateProgramScopePatchStream(const IGC::SOpenCLProgramInfo& annotations)
 {
     m_StateProcessor.CreateProgramScopePatchStream(annotations, *m_ProgramScopePatchStream);
-}
-
-void CGen8OpenCLProgram::AddKernelDebugData(
-    const char*  rawDebugDataVISA,
-    unsigned int rawDebugDataVISASize,
-    const char*  rawDebugDataGenISA,
-    unsigned int rawDebugDataGenISASize,
-    const std::string& kernelName)
-{
-    if( rawDebugDataVISASize > 0 && rawDebugDataGenISASize > 0 )
-    {
-        Util::BinaryStream* kernelDebugData = new Util::BinaryStream();
-
-        m_StateProcessor.CreateKernelDebugData(
-            rawDebugDataVISA,
-            rawDebugDataVISASize,
-            rawDebugDataGenISA,
-            rawDebugDataGenISASize,
-            kernelName,
-            *kernelDebugData);
-
-        m_KernelDebugDataList.push_back( kernelDebugData );
-    }
 }
 
 }
