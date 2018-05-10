@@ -89,9 +89,8 @@ IGC_INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 IGC_INITIALIZE_PASS_END(CodeSinking, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
-CodeSinking::CodeSinking(bool generalSinking, unsigned pressureThreshold) : FunctionPass(ID) {
+CodeSinking::CodeSinking(bool generalSinking) : FunctionPass(ID) {
     generalCodeSinking = generalSinking;
-    registerPressureThreshold = pressureThreshold;
     initializeCodeSinkingPass(*PassRegistry::getPassRegistry());
 }
 
@@ -335,6 +334,9 @@ bool CodeSinking::ProcessBlock(BasicBlock &blk)
 {
     if (blk.empty())
         return false;
+
+    CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    uint32_t registerPressureThreshold = ctx->getNumGRFPerThread();
 
     uint pressure0 = 0;
     if (generalCodeSinking && registerPressureThreshold)

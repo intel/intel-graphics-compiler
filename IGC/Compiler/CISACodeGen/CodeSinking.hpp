@@ -52,7 +52,7 @@ class CodeSinking : public llvm::FunctionPass {
 public:
     static char ID; // Pass identification
 
-    CodeSinking(bool generalSinking = false, unsigned pressureThreshold = 0);
+    CodeSinking(bool generalSinking = false);
     
     virtual bool runOnFunction(llvm::Function &F) override;
 
@@ -93,7 +93,6 @@ private:
     unsigned numGradientMovedOutBB;
 
     bool generalCodeSinking;
-    unsigned registerPressureThreshold;
     // diagnosis variable: int numChanges;
 };
 

@@ -270,7 +270,7 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, const CShaderProgram::KernelS
     // only limited code-sinking to several shader-type
     // vs input has the URB-reuse issue to be resolved. 
     // Also need to understand the performance benefit better.
-    mpm.add(new CodeSinking(true, 128));
+    mpm.add(new CodeSinking(true));
 
     if (ctx.type == ShaderType::PIXEL_SHADER)
         mpm.add(new PixelShaderAddMask());
@@ -1074,7 +1074,7 @@ void OptimizeIR(CodeGenContext* pContext)
 
         if (pContext->m_DriverInfo.CodeSinkingBeforeCFGSimplification())
         {
-            mpm.add(new CodeSinking(true, 128));
+            mpm.add(new CodeSinking(true));
         }
         mpm.add(llvm::createCFGSimplificationPass());
 
@@ -1243,7 +1243,7 @@ void OptimizeIR(CodeGenContext* pContext)
             if(pContext->type == ShaderType::PIXEL_SHADER)
             {
                 // insert early output in case sampleC returns 0
-                mpm.add(new CodeSinking(true, 128));
+                mpm.add(new CodeSinking(true));
                 mpm.add(CreateEarlyOutPatternsPass());
                 mpm.add(createBlendToDiscardPass());
             }

@@ -3661,10 +3661,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         vbuilder->SetOption(vISA_ReservedGRFNum, IGC_GET_FLAG_VALUE(ReservedRegisterNum));
     }
 
-    if (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0)
-    {
-        vbuilder->SetOption(vISA_TotalGRFNum, IGC_GET_FLAG_VALUE(TotalGRFNum));
-    }
+    vbuilder->SetOption(vISA_TotalGRFNum, context->getNumGRFPerThread());
 
     if (IGC_IS_FLAG_ENABLED(SystemThreadEnable))
     {

@@ -884,6 +884,15 @@ namespace IGC
             m_tempCount = 0;
         }
 
+        virtual uint32_t getNumGRFPerThread() const
+        {
+            if (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0)
+            {
+                return IGC_GET_FLAG_VALUE(TotalGRFNum);
+            }
+            return 128;
+        }
+
     };
 
     class VertexShaderContext : public CodeGenContext
@@ -1269,6 +1278,11 @@ namespace IGC
         void setDefaultSIMDMode(SIMDMode simd)
         {
             defaultSIMDMode = simd;
+        }
+
+        uint32_t getNumGRFPerThread() const
+        {
+            return CodeGenContext::getNumGRFPerThread();
         }
 
     private:

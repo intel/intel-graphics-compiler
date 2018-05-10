@@ -146,6 +146,10 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
     unsigned int allocaSize = extractAllocaSize(pAlloca);
     unsigned int allowedAllocaSizeInBytes = MAX_ALLOCA_PROMOTE_GRF_NUM * 4;
 
+    // scale alloc size based on the number of GRFs we have
+    float grfRatio = m_ctx->getNumGRFPerThread() / 128.0f;
+    allowedAllocaSizeInBytes = (uint32_t) (allowedAllocaSizeInBytes * grfRatio);
+
     if (m_ctx->type == ShaderType::COMPUTE_SHADER)
     {
         ComputeShaderContext* ctx = static_cast<ComputeShaderContext*>(m_ctx);
@@ -210,8 +214,12 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
             {
                 m_pBBPressure[BB] = m_pRegisterPressureEstimate->getRegisterPressure(BB);
             }
+
+            // scale alloc size based on the number of GRFs we have
+            float grfRatio = m_ctx->getNumGRFPerThread() / 128.0f;
+            uint32_t maxGRFPressure = (uint32_t) (grfRatio * MAX_PRESSURE_GRF_NUM * 4);
  
-            if (allocaSize + m_pBBPressure[BB] > MAX_PRESSURE_GRF_NUM*4)
+            if (allocaSize + m_pBBPressure[BB] > maxGRFPressure)
             {
                 return false;
             }

@@ -58,13 +58,6 @@ class VariableReuseAnalysis : public llvm::FunctionPass {
 public:
   static char ID;
 
-  /// The threshold for GRF pressure.
-  ///
-  /// - RPE is not accurate, e.g. fragmentation, alignment are ignored.
-  /// - when WIAnalysis is not available, all values are treated as non-uniform.
-  ///
-  static const unsigned GRFPressureThreshold = 128;
-
   VariableReuseAnalysis();
   ~VariableReuseAnalysis() {}
 
@@ -73,6 +66,7 @@ public:
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     // AU.addRequired<RegisterEstimator>();
     AU.setPreservesAll();
+    AU.addRequired<CodeGenContextWrapper>();
   }
 
   llvm::StringRef getPassName() const override {
@@ -130,11 +124,12 @@ private:
   void BeginBlock(llvm::BasicBlock *BB) {
     assert(m_SimdSize != 0);
     if (m_RPE) {
-      uint32_t BBPresure = m_RPE->getMaxLiveGRFAtBB(BB, m_SimdSize);
-      if (BBPresure <= GRFPressureThreshold)
-        m_IsBlockPressureLow = Status::True;
-      else
-        m_IsBlockPressureLow = Status::False;
+        CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        uint32_t BBPresure = m_RPE->getMaxLiveGRFAtBB(BB, m_SimdSize);
+        if (BBPresure <= context->getNumGRFPerThread())
+            m_IsBlockPressureLow = Status::True;
+        else
+            m_IsBlockPressureLow = Status::False;
     }
   }
 
