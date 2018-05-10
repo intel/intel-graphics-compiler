@@ -81,7 +81,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/UndefinedReferences/UndefinedReferencesPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/StatelessToStatefull/StatelessToStatefull.hpp"
 #include "Compiler/Optimizer/MCSOptimization.hpp"
-#include "Compiler/Optimizer/RectListOptimizationPass.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 
@@ -1302,9 +1301,6 @@ void OptimizeIR(CodeGenContext* pContext)
         mpm.add(llvm::createDeadCodeEliminationPass());
 
         mpm.add(CreateMCSOptimization());
-
-        if(pContext->type == ShaderType::GEOMETRY_SHADER)
-            mpm.add(createRectListOptimizationPass());
 
         mpm.add(CreateGatingSimilarSamples());
 

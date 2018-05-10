@@ -118,8 +118,6 @@ DECLARE_IGC_REGKEY(DWORD,FoldsToZeroPropThreshold,      2,     "Set the threshol
 DECLARE_IGC_REGKEY(DWORD,FoldsToConstPropThreshold,     2,     "Set the threshold for finding interesting constant. This is for the number of instructions that gets folded to constant when propagating a dynamic constant value")
 DECLARE_IGC_REGKEY(bool, DynamicConstFoldProcessLoops,  false, "Dynamic Constant Folding: Enable finding interesting constants in loops")
 DECLARE_IGC_REGKEY(bool, DisableDynamicConstantFolding, true,  "Disable Dynamic Constant Folding")
-DECLARE_IGC_REGKEY(bool, DisableRectListOpt,            false, "Disable Rect List optimization")
-
 DECLARE_IGC_REGKEY(bool, DispatchOCLWGInOrder,          false, "If set, dispatch HW threads based on the linearized order of WI in a WG; ie, localID(lane[x])=localID(lane[x-1])+1; 1st thread's localID[lane[0])=0.")
 DECLARE_IGC_REGKEY(DWORD, CodeAssumption,               1, \
     "If set (> 0), generate llvm.assume to help certain optimizations. It is OCL only for now. \
