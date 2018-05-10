@@ -7303,6 +7303,7 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
     }
 }
 
+
 void resetRightBound( G4_Operand* opnd )
 {
     if( opnd != NULL )

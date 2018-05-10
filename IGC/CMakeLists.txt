@@ -2240,6 +2240,8 @@ set(IGC_BUILD__GFX_OCL_DIR          "${IGC_SOURCE_DIR}/../../Source_OCL")
 
 set(IGC_BUILD__COMMON_DIR           "${IGC_BUILD__GFX_DEV_SRC_DIR}/Common")
 set(IGC_BUILD__3D_COMMON_DIR        "${IGC_BUILD__GFX_DEV_SRC_DIR}/3d/common")
+
+
 set(IGC_BUILD__INC_DIR              "${IGC_BUILD__GFX_DEV_SRC_DIR}/inc")
 set(IGC_BUILD__COMMON_COMPILER_DIR  "${IGC_BUILD__GFX_DEV_SRC_DIR}/inc/common/Compiler")
 set(IGC_BUILD__VISA_DIR             "${IGC_BUILD__GFX_DEV_SRC_DIR}/visa")
@@ -3316,7 +3318,6 @@ if(LLVM_ON_WIN32)
       "${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d9/api"
       "${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d9"
       "${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/API"
-
     )
 endif()
 
@@ -3392,6 +3393,7 @@ if(LLVM_ON_WIN32
   igc_sg_define(IGC__AdaptorOCL)
 
 endif()
+
 
 
 if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
