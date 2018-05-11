@@ -72,17 +72,6 @@ int CatchAssert( int reportType, char *userMessage, int *retVal )
     return true; // we always want to abort, return false pops up a window
 }
 
-//#define OptimizationsOff
-
-#ifdef OptimizationsOff
-#pragma optimize( "", off )
-#endif
-
-    extern void CMADLLThreadAttach();
-    extern void CMADLLProcessAttach();
-    extern void CMADLLThreadDetach();
-    extern void CMADLLProcessDetach();
-
 BOOL WINAPI DllMain(
     _In_  HINSTANCE hinstDLL,
     _In_  DWORD fdwReason,
@@ -106,28 +95,20 @@ BOOL WINAPI DllMain(
     }
     switch (fdwReason) {
     case DLL_PROCESS_DETACH:
-        CMADLLProcessDetach();
         llvm_shutdown();
         break;
         
     case DLL_PROCESS_ATTACH:
-        CMADLLProcessAttach();
         break;
 
     case DLL_THREAD_DETACH:
-        CMADLLThreadDetach();
         break;
 
     case DLL_THREAD_ATTACH:
-        CMADLLThreadAttach();
         break;
     }
     return TRUE;
 }
-#endif
-
-#ifdef OptimizationsOff
-#pragma optimize( "", on )
 #endif
 
 namespace IGC

@@ -377,6 +377,8 @@ bool BIImport::runOnModule(Module &M)
     InitializeBIFlags(M);
     removeFunctionBitcasts(M);
 
+    std::vector<Instruction*> InstToRemove;
+
     //temporary work around for sampler types and pipes
     for (auto &func : M)
     {
@@ -396,10 +398,15 @@ bool BIImport::runOnModule(Module &M)
                     else
                         newV = builder.CreateBitOrPointerCast(CI->getOperand(0), CI->getType());
                     CI->replaceAllUsesWith(newV);
-                    CI->eraseFromParent();
+                    InstToRemove.push_back(CI);
                 }
             }
         }
+    }
+
+    for (auto I : InstToRemove)
+    {
+        I->eraseFromParent();
     }
 
     return true;
