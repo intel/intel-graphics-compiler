@@ -401,14 +401,20 @@ void StatelessToStatefull::visitCallInst(CallInst &I)
 {
 	if (auto Inst = dyn_cast<GenIntrinsicInst>(&I))
 	{
-		if (Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockReadGlobal ||
-			Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockWriteGlobal)
+		if (Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead ||
+			Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockWrite)
 		{
 			Module *M = Inst->getParent()->getParent()->getParent();
 			Function* F = Inst->getParent()->getParent();
 			const DebugLoc &DL = Inst->getDebugLoc();
 			Type* int32Ty = Type::getInt32Ty(M->getContext());
 			Value* ptr = Inst->getOperand(0);
+			PointerType* ptrTy = dyn_cast<PointerType>(ptr->getType());
+			// If not global/constant, skip.
+			if (ptrTy->getPointerAddressSpace() != ADDRESS_SPACE_GLOBAL &&
+				ptrTy->getPointerAddressSpace() != ADDRESS_SPACE_CONSTANT) {
+				return;
+			}
 
 			Value* offset = nullptr;
 			unsigned int baseArgNumber = 0;
@@ -423,13 +429,13 @@ void StatelessToStatefull::visitCallInst(CallInst &I)
 				unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV, 0);
                 setPointerSizeTo32bit(addrSpace, I.getParent()->getParent()->getParent());
 
-				if (Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockReadGlobal)
+				if (Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead)
 				{
 					PointerType* pTy = PointerType::get(Inst->getType(), addrSpace);
 					Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", Inst);
 					Function    * simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
 						M,
-						GenISAIntrinsic::GenISA_simdBlockReadGlobal,
+						GenISAIntrinsic::GenISA_simdBlockRead,
 						{Inst->getType(),pTy});
 					Instruction * simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, {pPtrToInt}, "", Inst);
 					simdMediaBlockRead->setDebugLoc(DL);
@@ -445,7 +451,7 @@ void StatelessToStatefull::visitCallInst(CallInst &I)
 					args.push_back(Inst->getOperand(1));
 					Function    * simdMediaBlockWriteFunc = GenISAIntrinsic::getDeclaration(
 						M,
-						GenISAIntrinsic::GenISA_simdBlockWriteGlobal,
+						GenISAIntrinsic::GenISA_simdBlockWrite,
 						{pTy,Inst->getOperand(1)->getType()});
 					Instruction * simdMediaBlockWrite = CallInst::Create(simdMediaBlockWriteFunc, args, "", Inst);
 					simdMediaBlockWrite->setDebugLoc(DL);

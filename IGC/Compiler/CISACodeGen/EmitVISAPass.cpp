@@ -4573,7 +4573,7 @@ void EmitPass::emitSimdShuffleDown( llvm::Instruction* inst )
     m_encoder->Push();
 }
 
-void EmitPass::emitSimdBlockWriteGlobal( llvm::Instruction* inst )
+void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst )
 {
     Value* llPtr    = inst->getOperand( 0 );
     Value* dataPtr  = inst->getOperand( 1 );
@@ -4759,13 +4759,19 @@ void EmitPass::emitSimdBlockWriteGlobal( llvm::Instruction* inst )
     }
 }
 
-void EmitPass::emitSimdBlockReadGlobal( llvm::Instruction* inst )
+void EmitPass::emitSimdBlockRead( llvm::Instruction* inst )
 {
     Value* llPtr          = inst->getOperand( 0 );
     PointerType* ptrType  = cast<PointerType>( llPtr->getType() );
     ResourceDescriptor resource = GetResourceVariable(llPtr);
+
+	// If it is SLM, use OW-aligned OW address. The byte address (default)
+	// must be right-shifted by 4 bits to be OW address!
+	bool isToSLM = (ptrType->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL);
+
     if(isA64Ptr(ptrType, m_currShader->GetContext()))
     {
+		assert(!isToSLM && "SLM's ptr size should be 32!");
         CVariable* src        = GetSymbol( llPtr );
 
         Type* Ty            = inst->getType();
@@ -4870,7 +4876,13 @@ void EmitPass::emitSimdBlockReadGlobal( llvm::Instruction* inst )
             ISA_TYPE_UD,
             EALIGN_DWORD );
 
-        m_encoder->Copy( pTempVar, src );
+		if (isToSLM) {
+			// It is OW-aligned OW address
+			m_encoder->Shr(pTempVar, src, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
+		}
+		else {
+			m_encoder->Copy(pTempVar, src);
+		}
         m_encoder->Push();
 
         uint32_t dstSubReg      = 0;
@@ -4904,15 +4916,16 @@ void EmitPass::emitSimdBlockReadGlobal( llvm::Instruction* inst )
             }
             m_encoder->SetDstSubVar( dstSubReg );
             dstSubReg = dstSubReg+4;
-            m_encoder->OWLoad( m_destination, resource, pTempVar, false, bytesToRead );
+            m_encoder->OWLoad( m_destination, resource, pTempVar, isToSLM, bytesToRead );
             m_encoder->Push();
 
             if ( bytesRemaining )
             {
+				uint32_t offset = (isToSLM ? bytesToRead / 16 : bytesToRead);
                 m_encoder->SetSimdSize( SIMDMode::SIMD1 );
                 m_encoder->SetNoMask();
                 m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-                m_encoder->Add( pTempVar, pTempVar,  m_currShader->ImmToVariable(  bytesToRead, ISA_TYPE_UD ) );
+                m_encoder->Add( pTempVar, pTempVar,  m_currShader->ImmToVariable(  offset, ISA_TYPE_UD ) );
                 m_encoder->Push();
             }
         }
@@ -6880,11 +6893,11 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_simdShuffleDown:
         emitSimdShuffleDown(inst);
         break;
-    case GenISAIntrinsic::GenISA_simdBlockReadGlobal:
-        emitSimdBlockReadGlobal(inst);
+    case GenISAIntrinsic::GenISA_simdBlockRead:
+        emitSimdBlockRead(inst);
         break;
-    case GenISAIntrinsic::GenISA_simdBlockWriteGlobal:
-        emitSimdBlockWriteGlobal(inst);
+    case GenISAIntrinsic::GenISA_simdBlockWrite:
+        emitSimdBlockWrite(inst);
         break;
     case GenISAIntrinsic::GenISA_MediaBlockRead:
         emitMediaBlockIO(inst, true);

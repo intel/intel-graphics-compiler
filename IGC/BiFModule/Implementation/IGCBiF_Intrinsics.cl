@@ -460,6 +460,7 @@ half 	__builtin_IB_simd_shuffle_h( half, uint );
 uint    __builtin_IB_simd_shuffle_down( uint, uint, uint );
 ushort  __builtin_IB_simd_shuffle_down_us( ushort, ushort, uint );
 
+// Block read : global address space
 uint    __builtin_IB_simd_block_read_1_global( const __global uint* );
 uint2   __builtin_IB_simd_block_read_2_global( const __global uint* );
 uint4   __builtin_IB_simd_block_read_4_global( const __global uint* );

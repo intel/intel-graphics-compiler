@@ -43,6 +43,7 @@ using namespace IGC;
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(SubGroupFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(SubGroupFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
@@ -122,6 +123,8 @@ SubGroupFuncsResolution::SubGroupFuncsResolution(void) : FunctionPass( ID )
 
 bool SubGroupFuncsResolution::runOnFunction( Function &F )
 {
+	m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
     m_argIndexMap.clear();
     m_instsToDelete.clear();
     m_changed = false;
@@ -236,23 +239,29 @@ void SubGroupFuncsResolution::mediaBlockWrite(llvm::CallInst &CI)
     CI.eraseFromParent();
 }
 
-void SubGroupFuncsResolution::simdBlockReadGlobal(llvm::CallInst &CI)
+void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst &CI)
 {
     // Creates intrinsics that will be lowered in the CodeGen and will handle the simd_block_read
     LLVMContext& C = CI.getCalledFunction()->getContext();
+	Value* Ptr = CI.getArgOperand(0);
+	PointerType* PtrTy = dyn_cast<PointerType>(Ptr->getType());
+	assert(PtrTy && "simdBlockRead has non-pointer type!");
     SmallVector<Value*, 1> args;
-    args.push_back(CI.getArgOperand(0));
+    args.push_back(Ptr);
     SmallVector<Type*, 2>  types; 
     types.push_back(nullptr); types.push_back(nullptr);
-    GenISAIntrinsic::ID  genIntrinID = GenISAIntrinsic::GenISA_simdBlockReadGlobal;
+    GenISAIntrinsic::ID  genIntrinID = GenISAIntrinsic::GenISA_simdBlockRead;
+	ADDRESS_SPACE AS = (ADDRESS_SPACE)PtrTy->getAddressSpace();
+	bool supportLocal = false;
+	assert((AS != ADDRESS_SPACE_LOCAL || supportLocal) && "BlockReadLocal not supported!");
 
     if (CI.getType()->getScalarType()->getScalarSizeInBits() == 16)
     {
-        types[1] = Type::getInt16PtrTy(C, ADDRESS_SPACE_GLOBAL);
+        types[1] = Type::getInt16PtrTy(C, AS);
     }
     else
     {
-        types[1] = (Type::getInt32PtrTy(C, ADDRESS_SPACE_GLOBAL));
+        types[1] = (Type::getInt32PtrTy(C, AS));
     }
 
     // Check if the only use of CI is conversion to float. If so, use float version of intrinsic and remove the cast instruction.
@@ -267,30 +276,36 @@ void SubGroupFuncsResolution::simdBlockReadGlobal(llvm::CallInst &CI)
     {
         BitCastInst * bitCast = cast<BitCastInst>(use);
         types[0] = bitCast->getType();
-        Function    * simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
+        Function    * simdBlockReadFunc = GenISAIntrinsic::getDeclaration(
                                                     CI.getCalledFunction()->getParent(),
                                                     genIntrinID,
                                                     types);
-        Instruction * simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, args, "", &CI);
-        use->replaceAllUsesWith(simdMediaBlockRead);
+        Instruction * simdBlockRead = CallInst::Create(simdBlockReadFunc, args, "", &CI);
+        use->replaceAllUsesWith(simdBlockRead);
         m_instsToDelete.push_back(bitCast);
         m_instsToDelete.push_back(&CI);
     }
     else {
         types[0] = CI.getType();
-        Function    * simdMediaBlockReadFunc = GenISAIntrinsic::getDeclaration(
+        Function    * simdBlockReadFunc = GenISAIntrinsic::getDeclaration(
                                                    CI.getCalledFunction()->getParent(),
                                                    genIntrinID,
                                                    types);
-        Instruction * simdMediaBlockRead = CallInst::Create(simdMediaBlockReadFunc, args, "", &CI);
-        CI.replaceAllUsesWith(simdMediaBlockRead);
+        Instruction * simdBlockRead = CallInst::Create(simdBlockReadFunc, args, "", &CI);
+        CI.replaceAllUsesWith(simdBlockRead);
         CI.eraseFromParent();
     }
 }
 
-void SubGroupFuncsResolution::simdBlockWriteGlobal(llvm::CallInst &CI)
+void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst &CI)
 {
     LLVMContext& C = CI.getCalledFunction()->getContext();
+	Value* Ptr = CI.getArgOperand(0);
+	PointerType* PtrTy = dyn_cast<PointerType>(Ptr->getType());
+	assert(PtrTy && "simdBlockWrite has non-pointer type!");
+	ADDRESS_SPACE AS = (ADDRESS_SPACE)PtrTy->getAddressSpace();
+	bool supportLocal = false;
+	assert((AS != ADDRESS_SPACE_LOCAL || supportLocal) && "BlockWriteLocal not supported!");
 
     SmallVector<Value*, 2> args;
     SmallVector<Type*, 2>  types;
@@ -301,19 +316,19 @@ void SubGroupFuncsResolution::simdBlockWriteGlobal(llvm::CallInst &CI)
 
     if (dataArg->getType()->getScalarType()->getScalarSizeInBits() == 16)
     {
-        types.push_back(Type::getInt16PtrTy(C, ADDRESS_SPACE_GLOBAL));
+        types.push_back(Type::getInt16PtrTy(C, AS));
     }
     else
     {
-        types.push_back(Type::getInt32PtrTy(C, ADDRESS_SPACE_GLOBAL));
+        types.push_back(Type::getInt32PtrTy(C, AS));
     }
 
     types.push_back(dataArg->getType());
-    Function*    simdBlockWrite1GlobalFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(), 
-                                                                             GenISAIntrinsic::GenISA_simdBlockWriteGlobal, types);
-    Instruction* simdBlockWrite1Global = CallInst::Create(simdBlockWrite1GlobalFunc, args, "", &CI);
+    Function*    simdBlockWriteFunc = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(), 
+                                                                      GenISAIntrinsic::GenISA_simdBlockWrite, types);
+    Instruction* simdBlockWrite = CallInst::Create(simdBlockWriteFunc, args, "", &CI);
 
-    CI.replaceAllUsesWith(simdBlockWrite1Global);
+    CI.replaceAllUsesWith(simdBlockWrite);
     CI.eraseFromParent();
 }
 
@@ -460,21 +475,21 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_H ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_H ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_16_GBL_H ) )
-    {
-        simdBlockReadGlobal(CI);
-    }
-    else if ( funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_H ) )
-    {
-        simdBlockWriteGlobal(CI);
-    }
+	{
+		simdBlockRead(CI);
+	}
+	else if ( funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL ) ||
+		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL ) ||
+		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL ) ||
+		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL ) ||
+		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_H ) ||
+		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_H ) ||
+		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_H ) ||
+		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_H ) ||
+		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_H ) )
+	{
+		simdBlockWrite(CI);
+	}
     else if ( funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1 ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2 ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4 ) ||

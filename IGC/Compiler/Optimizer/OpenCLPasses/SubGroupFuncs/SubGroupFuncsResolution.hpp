@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #pragma once
+#include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include <llvm/IR/DataLayout.h>
 #include "Compiler/Optimizer/OCLBIUtils.h"
@@ -76,8 +77,8 @@ namespace IGC
         void mediaBlockRead(llvm::CallInst &CI);
         void mediaBlockWrite(llvm::CallInst &CI);
 
-        void simdBlockReadGlobal(llvm::CallInst &CI);
-        void simdBlockWriteGlobal(llvm::CallInst &CI);
+        void simdBlockRead(llvm::CallInst &CI);
+        void simdBlockWrite(llvm::CallInst &CI);
 
         void pushMediaBlockArgs(llvm::SmallVector<llvm::Value*, 5> &args, llvm::CallInst &CI );
 
@@ -166,6 +167,8 @@ namespace IGC
 
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;
+
+		CodeGenContext* m_pCtx;
 
         /// @brief examine metadata for intel_reqd_sub_group_size
         int32_t GetSIMDSize(llvm::Function *F);

@@ -267,8 +267,8 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, TTI::UnrollingPrefer
       for (auto I = BB->begin(), E = BB->end(); I != E; ++I)
         if (auto GII = dyn_cast<GenIntrinsicInst>(I))
           switch (GII->getIntrinsicID()) {
-          case GenISAIntrinsic::GenISA_simdBlockReadGlobal:
-          case GenISAIntrinsic::GenISA_simdBlockWriteGlobal:
+          case GenISAIntrinsic::GenISA_simdBlockRead:
+          case GenISAIntrinsic::GenISA_simdBlockWrite:
             return true;
           default:
             break;

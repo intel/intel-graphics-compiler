@@ -816,8 +816,8 @@ bool isSubGroupIntrinsic(const llvm::Instruction *I)
     {
     case GenISAIntrinsic::GenISA_WaveShuffleIndex:
     case GenISAIntrinsic::GenISA_simdShuffleDown:
-    case GenISAIntrinsic::GenISA_simdBlockReadGlobal:
-    case GenISAIntrinsic::GenISA_simdBlockWriteGlobal:
+    case GenISAIntrinsic::GenISA_simdBlockRead:
+    case GenISAIntrinsic::GenISA_simdBlockWrite:
     case GenISAIntrinsic::GenISA_simdMediaBlockRead:
     case GenISAIntrinsic::GenISA_simdMediaBlockWrite:
     case GenISAIntrinsic::GenISA_MediaBlockWrite:
