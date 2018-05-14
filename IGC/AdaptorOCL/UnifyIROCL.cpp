@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/ResolveGAS.h"
 #include "Compiler/CISACodeGen/ResolvePredefinedConstant.h"
 #include "Compiler/CISACodeGen/SimplifyConstant.h"
+#include "Compiler/CISACodeGen/FoldKnownWorkGroupSizes.h"
 
 #include "Compiler/Optimizer/BuiltInFuncImport.h"
 #include "Compiler/Optimizer/CodeAssumption.hpp"
@@ -210,6 +211,9 @@ static void CommonOCLBasedPasses(
     assert((pContext->type == ShaderType::OPENCL_SHADER) && "Trying to use OCL common passes on non-OCL context");
     bool shouldForceCR = static_cast<OpenCLProgramContext*>(pContext)->m_Options.CorrectlyRoundedSqrt;
 
+    pContext->getModuleMetaData()->compOpt.replaceGlobalOffsetsByZero =
+        static_cast<OpenCLProgramContext*>(pContext)->m_InternalOptions.replaceGlobalOffsetsByZero;
+
     pContext->getModuleMetaData()->compOpt.SubgroupIndependentForwardProgressRequired =
         (static_cast<OpenCLProgramContext*>(pContext)->m_Options.NoSubgroupIFP == false);
 
@@ -325,6 +329,9 @@ static void CommonOCLBasedPasses(
         // Note : this pass is disabled in OCL for now
         // mpm.add(new IGILGenericAddressStaticResolution(false));
     }
+
+
+    mpm.add(CreateFoldKnownWorkGroupSizes());
 
     // Run the AlignmentAnalysis pass before the passes which add implicit arguments, to ensure we do not lose load/store alignment information.
     // For example, ProgramScopeConstantResolution will relocate the buffer's base to an i8* typed pointer.

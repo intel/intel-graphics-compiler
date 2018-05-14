@@ -91,6 +91,7 @@ namespace IGC
         bool GreaterThan4GBBufferRequired               = true;
         bool PushConstantsEnable                        = true;
         bool HasBufferOffsetArg                         = false;
+        bool replaceGlobalOffsetsByZero                 = false;
         unsigned forcePixelShaderSIMDMode               = 0;
         bool pixelShaderDoNotAbortOnSpill               = false;
     };
