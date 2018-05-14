@@ -97,10 +97,10 @@ set(IGC_BUILD__PROJ__BiFLib_OCL       "${IGC_BUILD__PROJ_NAME_PREFIX}BiFLibOcl")
 set(IGC_BUILD__PROJ__BiFLib_OCL       "${IGC_BUILD__PROJ__BiFLib_OCL}" PARENT_SCOPE)
 set(IGC_BUILD__PROJ_LABEL__BiFLib_OCL "BiFLib-OCL")
 
-add_library("${IGC_BUILD__PROJ__BiFLib_OCL}" STATIC
-    ${_oclResSymbolFiles}
-  )
-set_property(TARGET "${IGC_BUILD__PROJ__BiFLib_OCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__BiFLib_OCL}")
+#add_library("${IGC_BUILD__PROJ__BiFLib_OCL}" STATIC
+#    ${_oclResSymbolFiles}
+#  )
+#set_property(TARGET "${IGC_BUILD__PROJ__BiFLib_OCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__BiFLib_OCL}")
 
 # ============================================================================
 # ============================================================================

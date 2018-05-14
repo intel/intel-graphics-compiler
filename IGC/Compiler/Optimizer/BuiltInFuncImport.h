@@ -32,8 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
-#include "AdaptorOCL/CLElfLib/ElfReader.h"
-
 #include <vector>
 #include <set>
 #include <queue>
@@ -52,7 +50,8 @@ namespace IGC
         static char ID;
 
         /// @brief Constructor
-        BIImport(std::unique_ptr<llvm::Module> pGenericModule = nullptr);
+        BIImport(std::unique_ptr<llvm::Module> pGenericModule = nullptr,
+            std::unique_ptr<llvm::Module> pSizeModule = nullptr);
 
         /// @brief analyses used
         virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
@@ -72,9 +71,6 @@ namespace IGC
         /// @param M The destination module.
         bool runOnModule(llvm::Module &M) override;
 
-        static void supportOldManglingSchemes(llvm::Module &M);
-		static std::unique_ptr<llvm::Module> Construct(llvm::Module &M, CLElfLib::CElfReader * pElfReader, bool hasSizet);
-        std::unique_ptr<llvm::Module> Construct2(llvm::Module &M);
     protected:
         /// @brief Get all the functions called by given function.
         /// @param [IN] pFunc The given function.
@@ -91,20 +87,18 @@ namespace IGC
 
         /// @brief  Search through all builtin modules for the specified function.
         /// @param  funcName - name of func to search for.
-        static llvm::Function *GetBuiltinFunction(llvm::StringRef funcName, llvm::Module* GenericModule);
-
-		/// @brief  Read elf Header file that is constructed by Build Packager and write to a DenseMap.
-		static void WriteElfHeaderToMap(llvm::DenseMap<llvm::StringRef, int> &Map, char* pData, size_t dataSize);
+        llvm::Function *GetBuiltinFunction(llvm::StringRef funcName) const;
 
     protected:
         /// Builtin module - contains the source function definition to import
-		std::unique_ptr<llvm::Module> m_GenericModule;
+        std::unique_ptr<llvm::Module> m_GenericModule;
+        std::unique_ptr<llvm::Module> m_SizeModule;
     };
 
 } // namespace IGC
 
 extern "C" llvm::ModulePass *createBuiltInImportPass(
-    std::unique_ptr<llvm::Module> pGenericModule);
+    std::unique_ptr<llvm::Module> pGenericModule, std::unique_ptr<llvm::Module> pSizeModule);
 
 namespace IGC
 {

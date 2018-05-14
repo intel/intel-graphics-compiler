@@ -37,15 +37,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Transforms/Utils/ValueMapper.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <llvm/Support/Error.h>
-#include <llvm/Bitcode/BitcodeReader.h>
 #include "common/LLVMWarningsPop.hpp"
-#include <unordered_set>
+
 #include <unordered_map>
 
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
-using namespace CLElfLib;
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-builtin-import"
@@ -59,9 +57,10 @@ IGC_INITIALIZE_PASS_END(BIImport, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PA
 
 char BIImport::ID = 0;
 
-BIImport::BIImport(std::unique_ptr<Module> pGenericModule) :
+BIImport::BIImport(std::unique_ptr<Module> pGenericModule, std::unique_ptr<Module> pSizeModule) :
     ModulePass(ID),
-    m_GenericModule(std::move(pGenericModule))
+    m_GenericModule(std::move(pGenericModule)),
+    m_SizeModule(std::move(pSizeModule))
 {
     initializeBIImportPass(*PassRegistry::getPassRegistry());
 }
@@ -177,6 +176,24 @@ static std::unordered_map<std::string, std::string> MangleStr =
         "52intel_sub_group_avc_sic_evaluate_with_dual_reference14ocl_image2d_roS_S_11ocl_sampler33intel_sub_group_avc_sic_payload_t" }
 };
 
+Function *BIImport::GetBuiltinFunction(llvm::StringRef funcName) const
+{
+    Function *pFunc = nullptr;
+    if ((pFunc = m_GenericModule->getFunction(funcName)) && !pFunc->isDeclaration())
+        return pFunc;
+    // If the generic and size modules are linked before hand, don't
+    // look in the size module because it doesn't exist.
+    else if (m_SizeModule && (pFunc = m_SizeModule->getFunction(funcName)) && !pFunc->isDeclaration())
+        return pFunc;
+
+    return nullptr;
+}
+
+static bool materialized_use_empty(const Value *v)
+{
+    return v->materialized_use_begin() == v->use_end();
+}
+
 static bool isMangledImageFn(StringRef FName, const MangleSubstTy &MangleSubst)
 {
     bool UpdateMangle = std::any_of(MangleSubst.begin(), MangleSubst.end(),
@@ -231,15 +248,21 @@ static std::string updateSPIRmangleName38_to_40(StringRef FuncName, char letter)
     return new38FuncName;
 }
 
-void IGC::BIImport::supportOldManglingSchemes(Module &M)
+bool BIImport::runOnModule(Module &M)
 {
+    if (m_GenericModule == nullptr)
+    {
+        return false;
+    }
+
+    
     for (auto &F : M)
     {
         if (F.isDeclaration())
         {
             auto FuncName = F.getName();
             std::string NewFuncName = "";
-
+           
             std::string ReplaceStr = FuncName.slice(2, FuncName.size()).str();
             if (MangleStr.find(ReplaceStr) != MangleStr.end())
             {
@@ -249,7 +272,7 @@ void IGC::BIImport::supportOldManglingSchemes(Module &M)
             {
                 NewFuncName = updateSPIRmangleName(FuncName, MangleSubst);
             }
-            else
+            else 
             {
                 NewFuncName = FuncName;
             }
@@ -266,66 +289,6 @@ void IGC::BIImport::supportOldManglingSchemes(Module &M)
             F.setName(NewFuncName);
         }
     }
-}
-
-Function *BIImport::GetBuiltinFunction(llvm::StringRef funcName, llvm::Module* GenericModule)
-{
-    Function *pFunc = nullptr;
-    if ((pFunc = GenericModule->getFunction(funcName)) && !pFunc->isDeclaration())
-        return pFunc;
-    return nullptr;
-}
-
-static bool materialized_use_empty(const Value *v)
-{
-    return v->materialized_use_begin() == v->use_end();
-}
-
-void BIImport::WriteElfHeaderToMap(DenseMap<StringRef, int> &Map, char* pData, size_t dataSize)
-{
-    //Data from pData is layed out as follows.....
-    //First two bytes are the string size 
-    //Next byte is the start of the function name
-    //Last two bytes are the index of function in the elf file
-
-    auto pData2 = (unsigned char*)pData;
-    for (uint i = 0; i < dataSize;)
-    {
-        unsigned short str_size = (unsigned short)pData2[i] | ((unsigned short)pData2[i + 1] << 8);
-        StringRef key(&pData[i + 2], str_size);
-        unsigned short func_index = (unsigned short)pData2[i + 2 + str_size] | ((unsigned short)pData2[i + 3 + str_size] << 8);
-        Map[key] = func_index;
-        i += (4 + str_size);
-    }
-
-}
-
-std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReader * pElfReader, bool hasSizet)
-{
-    char *pData = NULL;
-    size_t dataSize = 0;
-    StringRef line = "";
-    std::string num_line = "";
-    DenseMap<StringRef, int> Map(32768);
-    pElfReader->GetSectionData(1, pData, dataSize);
-    WriteElfHeaderToMap(Map, pData, dataSize);
-    if (hasSizet)
-    {
-        char *pData_sizet = NULL;
-        size_t dataSize_sizet = 0;
-        if (M.getDataLayout().getPointerSizeInBits() == 32)
-        {
-            pElfReader->GetSectionData(2, pData_sizet, dataSize_sizet);
-        }
-        else
-        {
-            pElfReader->GetSectionData(3, pData_sizet, dataSize_sizet);
-        }
-        WriteElfHeaderToMap(Map, pData_sizet, dataSize_sizet);
-    }
-
-    unsigned numOfHeaders = pElfReader->GetElfHeader()->NumSectionHeaderEntries;
-    std::vector<std::unique_ptr<llvm::Module>> elf_index(numOfHeaders);
 
     std::function<void(Function*)> Explore = [&](Function *pRoot) -> void
     {
@@ -338,35 +301,9 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReade
             if (pCallee->isDeclaration())
             {
                 auto funcName = pCallee->getName();
-                if (funcName.str() == "__enqueue_kernel_basic" ||
-                    funcName.str() == "__enqueue_kernel_vaargs" ||
-                    funcName.str() == "__enqueue_kernel_events_vaargs" ||
-                    funcName.str() == "_Z14enqueue_kernel")
-                {
-                    funcName = StringRef("enqueue_IB_kernel");
-                }
-                int SectionIndex = Map[funcName];
-                if (SectionIndex == 0 || pCallee->isIntrinsic()) continue;
-                if (elf_index[SectionIndex] == NULL)
-                {
-                    char *pData_Func = NULL;
-                    size_t SectionSize = 0;
-                    pElfReader->GetSectionData(SectionIndex, pData_Func, SectionSize);
-                    std::unique_ptr<MemoryBuffer> OutputBuffer =
-                        MemoryBuffer::getMemBufferCopy(
-                            StringRef(pData_Func, SectionSize));
-                    llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-                        getOwningLazyBitcodeModule(std::move(OutputBuffer), M.getContext());
-                    if (llvm::Error EC = ModuleOrErr.takeError())
-                    {
-                        assert(0 && "Error linking generic builtin module");
-                    }
-                    elf_index[SectionIndex] = (std::move(*ModuleOrErr));
-                }
-                auto Generic = elf_index[SectionIndex].get();
-                Function* pSrcFunc = GetBuiltinFunction(funcName, Generic);
+                Function* pSrcFunc = GetBuiltinFunction(funcName);
+                if (!pSrcFunc) continue;
                 pFunc = pSrcFunc;
-                if (!pFunc) continue;
             }
             else
             {
@@ -390,8 +327,6 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReade
         }
     };
 
-    supportOldManglingSchemes(M);
-
     for (auto &func : M)
     {
         Explore(&func);
@@ -413,144 +348,30 @@ std::unique_ptr<llvm::Module> BIImport::Construct(Module &M, CLElfLib::CElfReade
         }
     };
 
-    std::unique_ptr<llvm::Module> BIM(new Module("BIF", M.getContext()));
-    Linker ld(*BIM);
+    CleanUnused(m_GenericModule.get());
+    Linker ld(M);
 
-    for (auto &setIterator : elf_index)
+    if (Error err = m_GenericModule->materializeAll()) {
+        assert(0 && "materializeAll failed for generic builtin module");
+    }
+
+    if (ld.linkInModule(std::move(m_GenericModule)))
     {
-        if (setIterator == NULL)
-        {
-            continue;
-        }
-        CleanUnused(setIterator.get());
+        assert(0 && "Error linking generic builtin module");
+    }
 
-        if (Error err = setIterator->materializeAll())
+    if (m_SizeModule)
+    {
+        CleanUnused(m_SizeModule.get());
+        if (Error err = m_SizeModule->materializeAll())
         {
             assert(0 && "materializeAll failed for size_t builtin module");
         }
 
-        if (ld.linkInModule(std::move(setIterator), Linker::OverrideFromSrc))
+        if (ld.linkInModule(std::move(m_SizeModule)))
         {
-            assert(0 && "Error linking generic builtin module");
+            assert(0 && "Error linking size_t builtin module");
         }
-    }
-
-    //1)Go through Globals in cleaned BIM
-    //2)Check if Global has a user
-    //3)link all of the Globals with a user to BIM
-
-    auto &Globals = BIM->getGlobalList();
-    for (auto &global_iterator : Globals)
-    {
-        if (!global_iterator.hasInitializer() && !global_iterator.use_empty())
-        {
-            int SectionIndex = Map[global_iterator.getName()];
-            if (SectionIndex == 0) continue;
-            char *pData_Func = NULL;
-            size_t SectionSize = 0;
-            pElfReader->GetSectionData(SectionIndex, pData_Func, SectionSize);
-            std::unique_ptr<MemoryBuffer> OutputBuffer =
-                MemoryBuffer::getMemBufferCopy(
-                    StringRef(pData_Func, SectionSize));
-            llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-                getOwningLazyBitcodeModule(std::move(OutputBuffer), M.getContext());
-            if (llvm::Error EC = ModuleOrErr.takeError())
-            {
-                assert(0 && "Error when LazyLoading global module");
-            }
-            if (ld.linkInModule(std::move(*ModuleOrErr)))
-            {
-                assert(0 && "Error linking generic builtin module");
-            }
-        }
-    }
-
-    return BIM;
-}
-
-std::unique_ptr<llvm::Module> BIImport::Construct2(Module &M)
-{
-    std::function<void(Function*)> Explore = [&](Function *pRoot) -> void
-    {
-        TFunctionsVec calledFuncs;
-        GetCalledFunctions(pRoot, calledFuncs);
-
-        for (auto *pCallee : calledFuncs)
-        {
-            Function *pFunc = nullptr;
-            if (pCallee->isDeclaration())
-            {
-                auto funcName = pCallee->getName();
-                if (!((pFunc = m_GenericModule->getFunction(funcName)) && !pFunc->isDeclaration()))
-                    continue;
-            }
-            else
-            {
-                pFunc = pCallee;
-            }
-
-            if (pFunc->isMaterializable())
-            {
-                if (Error Err = pFunc->materialize()) {
-                    std::string Msg;
-                    handleAllErrors(std::move(Err), [&](ErrorInfoBase &EIB) {
-                        errs() << "===> Materialize Failure: " << EIB.message().c_str() << '\n';
-                    });
-                    assert(0 && "Failed to materialize Global Variables");
-                }
-                else {
-                    pFunc->addAttribute(AttributeSet::FunctionIndex, llvm::Attribute::Builtin);
-                    Explore(pFunc);
-                }
-            }
-        }
-    };
-
-    for (auto &func : M)
-    {
-        Explore(&func);
-    }
-
-    // nuke the unused functions so we can materializeAll() quickly
-    auto CleanUnused = [](Module *Module)
-    {
-        for (auto I = Module->begin(), E = Module->end(); I != E; )
-        {
-            auto *F = &(*I++);
-            if (F->isDeclaration() || F->isMaterializable())
-            {
-                if (materialized_use_empty(F))
-                {
-                    F->eraseFromParent();
-                }
-            }
-        }
-    };
-
-    Linker ld(*m_GenericModule);
-    CleanUnused(m_GenericModule.get());
-
-    if (llvm::Error EC = m_GenericModule->materializeAll())
-    {
-        assert(0 && "Error when LazyLoading global module");
-    }
-
-    return std::move(m_GenericModule);
-}
-
-bool BIImport::runOnModule(Module &M)
-{
-    if (m_GenericModule == nullptr)
-    {
-        return false;
-    }
-
-
-    Linker lk(M);
-
-    if (lk.linkInModule(std::move(m_GenericModule)))
-    {
-        assert(0 && "Error linking generic builtin module");
     }
 
     InitializeBIFlags(M);
@@ -720,12 +541,11 @@ void BIImport::InitializeBIFlags(Module &M)
         gv->setInitializer(ConstantInt::get(Type::getInt32Ty(M.getContext()), value));
     };
 
-    bool shouldForceCR = static_cast<OpenCLProgramContext*>(pCtx)->m_Options.CorrectlyRoundedSqrt;
     bool isFlushDenormToZero =
         ((pCtx->m_floatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
             MD.compOpt.DenormsAreZero);
     initializeVarWithValue("__FlushDenormals", isFlushDenormToZero ? 1 : 0);
-    initializeVarWithValue("__CorrectlyRounded", MD.compOpt.CorrectlyRoundedDivSqrt || shouldForceCR ? 1 : 0);
+
     initializeVarWithValue("__DashGSpecified", MD.compOpt.DashGSpecified ? 1 : 0);
     initializeVarWithValue("__FastRelaxedMath", MD.compOpt.RelaxedBuiltins ? 1 : 0);
     initializeVarWithValue("__UseNative64BitSubgroupBuiltin",
@@ -754,9 +574,9 @@ void BIImport::InitializeBIFlags(Module &M)
 }
 
 extern "C" llvm::ModulePass *createBuiltInImportPass(
-    std::unique_ptr<Module> pGenericModule)
+    std::unique_ptr<Module> pGenericModule, std::unique_ptr<Module> pSizeModule)
 {
-    return new BIImport(std::move(pGenericModule));
+    return new BIImport(std::move(pGenericModule), std::move(pSizeModule));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
