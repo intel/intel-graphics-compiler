@@ -328,6 +328,8 @@ namespace IGC
         bool StaticOutput;
 
         DWORD m_AccessedBySampleC[4];
+
+        bool m_bCanEnableRectList;
     };
 
     struct SComputeShaderKernelProgram : SKernelProgram
