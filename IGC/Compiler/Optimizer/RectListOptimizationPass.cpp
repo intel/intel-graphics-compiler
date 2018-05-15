@@ -174,7 +174,6 @@ bool RectListOptimizationPass::scanAndInserOutputGSList(Function &F) {
                     // We are taking a conservative estimate here to handle a simple case
                     // We expect the emits to be of constant count ranging from 0-3
                     if (!CI || 
-                        (unsigned int)CI->getZExtValue() < 0 || 
                         (unsigned int)CI->getZExtValue() >= m_NUM_OUTPUT_VERT_FOR_RECTLIST) {
 
                         foundValidMapping = false;
