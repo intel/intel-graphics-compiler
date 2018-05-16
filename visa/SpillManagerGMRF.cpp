@@ -3440,7 +3440,8 @@ SpillManagerGMRF::insertSpillRangeCode (
 	// offset to the spill range and create the instructions to load the
 	// save the spill range to spill memory.
 
-	if ((*spilledInstIter)->isSend ()) {
+	if ((*spilledInstIter)->isSend ()
+		) {
 		INST_LIST::iterator sendOutIter = spilledInstIter;
 		assert (getRFType (spilledRegion) == G4_GRF);
 		G4_Declare * spillRangeDcl =

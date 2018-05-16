@@ -1300,12 +1300,33 @@ void DDD::moveDeps(Node *fromNode, Node *toNode)
 
 
 // Return TRUE if there is no dependence chain connecting
-// firstNode->mov->secondNode
+// firstNode->...->secondNode
 // That would result in a dependence cycle after pairing.
-static bool canAvoidDepCycles(Node *firstNode, Node *secondNode) {
-    // Check if the movs before the second node depend on firstNode
-    for (const Edge &predE : secondNode->preds) {
-        if (immDepBetween(firstNode, predE.getNode())) {
+// Note that firstNode->secondNode is ok if there are no instructions in between
+static bool canAvoidDepCycles(Node *firstNode, Node *secondNode, bool isFirstLevel) 
+{
+
+    // assumption is firstNode is close to secondNode so this will be fast
+    // and we don't need to cache intermediate nodes
+    for (const Edge& succE : firstNode->succs)
+    {
+        auto&& node = succE.getNode();
+        if (node == secondNode)
+        {
+            if (isFirstLevel)
+            {
+                continue;
+            }
+            return false;
+        }
+
+        if (node->getInstructions()->back()->getLocalId() > secondNode->getInstructions()->back()->getLocalId())
+        {
+            // stop if we've reached beyond the second node
+            continue;
+        }
+        if (!canAvoidDepCycles(node, secondNode, false))
+        {
             return false;
         }
     }
@@ -1461,7 +1482,7 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
         assert(secondNode->getInstructions()->size() == 1);
         assert(*firstNode->getInstructions()->begin() == firstInstr);
         assert(*secondNode->getInstructions()->begin() == secondInstr);
-        if (canAvoidDepCycles(firstNode, secondNode))
+        if (canAvoidDepCycles(firstNode, secondNode, true))
         {
             // A. move the deps of seconde node to the first.
             moveDeps(secondNode, firstNode);
