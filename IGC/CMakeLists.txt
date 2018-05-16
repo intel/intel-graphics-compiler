@@ -181,13 +181,11 @@ macro(  win_static_runtime )
       CMAKE_C_FLAGS_MINSIZEREL
       CMAKE_C_FLAGS_RELEASE
       CMAKE_C_FLAGS_RELEASEINTERNAL
-      CMAKE_C_FLAGS_RELEASEINTERNALASSERTS
       CMAKE_C_FLAGS_RELWITHDEBINFO
       CMAKE_CXX_FLAGS_DEBUG
       CMAKE_CXX_FLAGS_MINSIZEREL
       CMAKE_CXX_FLAGS_RELEASE
       CMAKE_CXX_FLAGS_RELEASEINTERNAL
-      CMAKE_CXX_FLAGS_RELEASEINTERNALASSERTS
       CMAKE_CXX_FLAGS_RELWITHDEBINFO
     )
     foreach(configuration ${configurations})
@@ -209,13 +207,11 @@ macro(  win_dynamic_runtime )
       CMAKE_C_FLAGS_MINSIZEREL
       CMAKE_C_FLAGS_RELEASE
       CMAKE_C_FLAGS_RELEASEINTERNAL
-      CMAKE_C_FLAGS_RELEASEINTERNALASSERTS
       CMAKE_C_FLAGS_RELWITHDEBINFO
       CMAKE_CXX_FLAGS_DEBUG
       CMAKE_CXX_FLAGS_MINSIZEREL
       CMAKE_CXX_FLAGS_RELEASE
       CMAKE_CXX_FLAGS_RELEASEINTERNAL
-      CMAKE_CXX_FLAGS_RELEASEINTERNALASSERTS
       CMAKE_CXX_FLAGS_RELWITHDEBINFO
     )
     foreach(configuration ${configurations})
@@ -1878,11 +1874,10 @@ set(MINOR_VERSION 1)
 set(PATCH_VERSION 0)
 
 # IGC project available configuration types:
-# Two standard configuration + "ReleaseInternal" and "ReleaseInternalAsserts" custom configurations.
+# One standard configuration + "ReleaseInternal" custom configurations.
 set(IGC_CMAKE_CONFIGURATION_TYPES
   "Debug"
   "ReleaseInternal"
-  "ReleaseInternalAsserts"
   "Release"
 )
 set(IGC_CMAKE_CONFIGURATION_TYPES ${IGC_CMAKE_CONFIGURATION_TYPES} CACHE STRING "IGC available build configurations." FORCE)
@@ -1904,8 +1899,6 @@ else()
       set(_buildType "Release")
     elseif(_buildType MATCHES "^release[ ]*-?[ ]*internal$")
       set(_buildType "ReleaseInternal")
-    elseif(_buildType MATCHES "^release[ ]*-?[ ]*internal[ ]*asserts")
-      set(_buildType "ReleaseInternalAsserts")
     elseif(_buildType MATCHES "^debug$")
       set(_buildType "Debug")
     else()
@@ -2044,9 +2037,8 @@ set_property(TARGET "${_tgtName}"
 # The section must be after project definition and its supported languages because otherwise
 # used variables are not available yet.
 
-# Setting flags for custom "ReleaseInternal" and "ReleaseInternalAsserts" configurations.
+# Setting flags for custom "ReleaseInternal" configurations.
 igc_custom_build_add("ReleaseInternal"       "Release")
-igc_custom_build_add("ReleaseInternalAsserts" "Release")
 
 # Populating global property with list of debug configurations (based on pattern).
 set(_debugConfigs)
@@ -2710,14 +2702,6 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
         OptimizeSpeed
         ControlFlowGuard
     )
-  igc_config_flag_apply_settings(
-      CompilerOptions
-      "${_compilerFlagName}"
-      PATTERN "ReleaseInternalAsserts"
-      SET
-        RtMultiThreadedStaticDebug
-        UnreferencedVariable
-    )
 	
 	
   # Adding needed settings specific to MSVC.
@@ -3066,12 +3050,11 @@ endif()
 # +  _CRT_SECURE_NO_WARNINGS
 # +  _DEBUG                   if cfg:Debug
 # +  _IGC_
-# +  _INTERNAL                if cfg:ReleaseInternal || cfg:ReleaseInternalAsserts
-# +  _INTERNAL_ASSERTS        if cfg:ReleaseInternalAsserts
+# +  _INTERNAL                if cfg:ReleaseInternal 
 # *  _LIB                     if build:static library
 # +  _SCL_SECURE_NO_WARNINGS
 # +* DEBUG                    if cfg:Debug
-# +* DLL_CPP                  if cfg:ReleaseInternal || cfg:ReleaseInternalAsserts && build:shared library
+# +* DLL_CPP                  if cfg:ReleaseInternal && build:shared library
 # +  DLL_MODE                 if visa
 # M  GHAL3D_SHADERDUMP_ENABLE if IGCStandalone
 # +  GHAL3D=USC
@@ -3079,9 +3062,9 @@ endif()
 # +* INSIDE_PLUGIN
 # M  iSTD=USC_iSTD            if IGCStanalone
 # +  ISTDLIB_UMD              ?
-# +  NDEBUG                   if !cfg:Debug (&& !cfg:ReleaseInternalAsserts)?
+# +  NDEBUG                   if !cfg:Debug 
 # +  NOMINMAX
-# M* RIIGC                    if IGCStanalone && cfg:ReleaseInternalAsserts
+# M* RIIGC                    if IGCStanalone
 # +  USC_DXX                  if cfg:Debug
 # +  USC_EXPORTS
 # +  VER_H                    if !platform:Windows
@@ -3183,11 +3166,16 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_DEBUG
 
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELEASEINTERNAL
     _INTERNAL
-    NDEBUG
     DLL_CPP
     ENABLE_REGISTRY_READ
   )
-  
+
+if(NOT _ASSERTBUILD)
+set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELEASEINTERNAL
+   NDEBUG
+  )
+endif()
+
 if(NOT ANDROID)
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_DEBUG
     CL_KHR_FP64_EXT
@@ -3199,10 +3187,11 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
   CL_KHR_FP64_EXT
 )
 endif()
-  
 
 #NOTE: CMake defines some of compile definitions in compiler flags. We have to make sure that
-#      NDEBUG is not one of them (for this configuration to work).
+#      NDEBUG is not one of them when assert build flag is set
+
+if(_ASSERTBUILD)
 if(MSVC)
   set(_flagToRemove "/D[ ]*NDEBUG")
 elseif(_igc_compiler_is_gnu_or_clang)
@@ -3210,15 +3199,10 @@ elseif(_igc_compiler_is_gnu_or_clang)
 endif()
 igc_flag_remove_re(CMAKE_C_FLAGS                          "${_flagToRemove}")
 igc_flag_remove_re(CMAKE_CXX_FLAGS                        "${_flagToRemove}")
-igc_flag_remove_re(CMAKE_C_FLAGS_RELEASEINTERNALASSERTS   "${_flagToRemove}")
-igc_flag_remove_re(CMAKE_CXX_FLAGS_RELEASEINTERNALASSERTS "${_flagToRemove}")
+igc_flag_remove_re(CMAKE_C_FLAGS_RELEASEINTERNAL   "${_flagToRemove}")
+igc_flag_remove_re(CMAKE_CXX_FLAGS_RELEASEINTERNAL "${_flagToRemove}")
 unset(_flagToRemove)
-
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELEASEINTERNALASSERTS
-    _INTERNAL
-    _INTERNAL_ASSERTS
-    DLL_CPP
-  )
+endif()
 
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS_RELEASE
     NDEBUG
