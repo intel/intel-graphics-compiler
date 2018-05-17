@@ -611,6 +611,7 @@ namespace IGC
         std::set<std::string> kernelSet;
 
         void ClearSpillParams() {
+            kernelSet.clear();
             lastSpillSize = 0;
             numInstructions = 0;
         }
