@@ -67,6 +67,8 @@ protected:
 };
 
 CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclTranslationCtx, 2, 1) {
+  using IgcOclTranslationCtx<1>::TranslateImpl;
+
   CIF_INHERIT_CONSTRUCTOR();
 
   template <typename OclTranslationOutputInterface = OclTranslationOutputTagOCL>
