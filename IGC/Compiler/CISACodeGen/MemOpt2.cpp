@@ -282,10 +282,13 @@ bool MemOpt2::isSafeToMoveTo(Instruction *I, Instruction *Pos, const SmallVector
 }
 
 bool MemOpt2::clusterSampler(BasicBlock *BB) {
+    const unsigned CLUSTER_SAMPLER_THRESHOLD = 5;
+
     bool Changed = false;
 
     Instruction *InsertPos = nullptr;
     unsigned Count = 0;
+    unsigned numSched = 0;
     Scheduled.clear();
     for (auto BI = BB->begin(), BE = BB->end(); BI != BE; ++BI) {
         GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(BI);
@@ -302,12 +305,17 @@ bool MemOpt2::clusterSampler(BasicBlock *BB) {
                 InsertPos = GII;
             // Reschedule the sampler to InsertPos
             Count += getNumLiveOuts(GII);
-            if (Count > MaxLiveOutThreshold) {
+            if (Count > MaxLiveOutThreshold ||
+                numSched >= CLUSTER_SAMPLER_THRESHOLD) {
                 Count = 0;
                 InsertPos = GII;
+                numSched = 0;
             }
             else
+            {
                 Changed |= schedule(BB, GII, InsertPos);
+                numSched++;
+            }
             break;
         }
         default:
