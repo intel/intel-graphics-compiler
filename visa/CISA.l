@@ -897,7 +897,13 @@ GenPrecision str2Precision(char *str, int str_len)
             case '4' : return GenPrecision::U4;
             case '8' : return GenPrecision::U8;
             }
-        }
+        } else if (c0 == 'b') {
+		    c1 = tolower(c1);
+			if (c1 == 'f') {
+			   // Ignore precision
+			   return GenPrecision::INVALID;
+			}
+		}
     }
 
     YY_FATAL_ERROR("Invalid Gen Precision");

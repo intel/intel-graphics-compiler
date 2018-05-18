@@ -1410,6 +1410,7 @@ static void verifyInstructionArith(const common_isa_header& isaHeader, const ker
                            src.getOperandClass() == OPERAND_IMMEDIATE,
                            "source in arithmetic instruction must be general, indirect, or immediate");
 
+
         if (srcType == ISA_TYPE_DF)
         {
             if (opcode != ISA_MUL && opcode != ISA_ADD && opcode != ISA_MAD && opcode != ISA_DIV &&
