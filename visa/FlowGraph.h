@@ -303,10 +303,10 @@ class G4_BB
 public:
 
     // forwarding functions to this BB's instList
-    INST_LIST_ITER begin() noexcept { return instList.begin(); }
-    INST_LIST_ITER end() noexcept { return instList.end(); }
-    INST_LIST::reverse_iterator rbegin() noexcept { return instList.rbegin(); }
-    INST_LIST::reverse_iterator rend() noexcept { return instList.rend(); }
+    INST_LIST_ITER begin() { return instList.begin(); }
+    INST_LIST_ITER end() { return instList.end(); }
+    INST_LIST::reverse_iterator rbegin() { return instList.rbegin(); }
+    INST_LIST::reverse_iterator rend() { return instList.rend(); }
     INST_LIST& getInstList() { return instList; }
     INST_LIST_ITER insert(INST_LIST::const_iterator iter, G4_INST* inst)
     {
