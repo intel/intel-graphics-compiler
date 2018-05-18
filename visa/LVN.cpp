@@ -1135,7 +1135,6 @@ bool LVN::addValue(G4_INST* inst)
         return true;
     }
 
-    uint16_t stride = 0;
     if (src->isSrcRegRegion())
     {
         G4_SrcRegRegion* srcRgn = src->asSrcRegRegion();
