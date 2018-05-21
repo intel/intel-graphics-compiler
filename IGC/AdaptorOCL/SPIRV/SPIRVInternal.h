@@ -418,6 +418,146 @@ _SPIRV_OP(intel_sub_group_media_block_read, SubgroupImageMediaBlockReadINTEL)
 _SPIRV_OP(intel_sub_group_media_block_write, SubgroupImageMediaBlockWriteINTEL)
 #undef _SPIRV_OP
 
+// VME
+#define _SPIRV_OP(x) add(x, #x);
+_SPIRV_OP(OpVmeImageINTEL)
+#undef _SPIRV_OP
+
+#define _SPIRV_OP(x,y) \
+  add(OpSubgroupAvc##y##INTEL, "intel_sub_group_avc_"#x);
+// Initialization phase functions
+_SPIRV_OP(ime_initialize, ImeInitialize)
+_SPIRV_OP(fme_initialize, FmeInitialize)
+_SPIRV_OP(bme_initialize, BmeInitialize)
+_SPIRV_OP(sic_initialize, SicInitialize)
+
+// Result and payload types conversion functions
+_SPIRV_OP(mce_convert_to_ime_payload, MceConvertToImePayload)
+_SPIRV_OP(mce_convert_to_ime_result, MceConvertToImeResult)
+_SPIRV_OP(mce_convert_to_ref_payload, MceConvertToRefPayload)
+_SPIRV_OP(mce_convert_to_ref_result, MceConvertToRefResult)
+_SPIRV_OP(mce_convert_to_sic_payload, MceConvertToSicPayload)
+_SPIRV_OP(mce_convert_to_sic_result, MceConvertToSicResult)
+_SPIRV_OP(ime_convert_to_mce_payload, ImeConvertToMcePayload)
+_SPIRV_OP(ime_convert_to_mce_result, ImeConvertToMceResult)
+_SPIRV_OP(ref_convert_to_mce_payload, RefConvertToMcePayload)
+_SPIRV_OP(ref_convert_to_mce_result, RefConvertToMceResult)
+_SPIRV_OP(sic_convert_to_mce_payload, SicConvertToMcePayload)
+_SPIRV_OP(sic_convert_to_mce_result, SicConvertToMceResult)
+#undef _SPIRV_OP
+
+// MCE instructions
+#define _SPIRV_OP(x,y) \
+  add(OpSubgroupAvcMce##y##INTEL, "intel_sub_group_avc_mce_"#x);
+_SPIRV_OP(get_default_inter_base_multi_reference_penalty, GetDefaultInterBaseMultiReferencePenalty)
+_SPIRV_OP(set_inter_base_multi_reference_penalty, SetInterBaseMultiReferencePenalty)
+_SPIRV_OP(get_default_inter_shape_penalty, GetDefaultInterShapePenalty)
+_SPIRV_OP(set_inter_shape_penalty, SetInterShapePenalty)
+_SPIRV_OP(get_default_inter_direction_penalty, GetDefaultInterDirectionPenalty)
+_SPIRV_OP(set_inter_direction_penalty, SetInterDirectionPenalty)
+_SPIRV_OP(get_default_intra_luma_shape_penalty, GetDefaultIntraLumaShapePenalty)
+_SPIRV_OP(get_default_inter_motion_vector_cost_table, GetDefaultInterMotionVectorCostTable)
+_SPIRV_OP(get_default_high_penalty_cost_table, GetDefaultHighPenaltyCostTable)
+_SPIRV_OP(get_default_medium_penalty_cost_table, GetDefaultMediumPenaltyCostTable)
+_SPIRV_OP(get_default_low_penalty_cost_table, GetDefaultLowPenaltyCostTable)
+_SPIRV_OP(set_motion_vector_cost_function, SetMotionVectorCostFunction)
+_SPIRV_OP(get_default_intra_luma_mode_penalty, GetDefaultIntraLumaModePenalty)
+_SPIRV_OP(get_default_non_dc_luma_intra_penalty, GetDefaultNonDcLumaIntraPenalty)
+_SPIRV_OP(get_default_intra_chroma_mode_base_penalty, GetDefaultIntraChromaModeBasePenalty)
+_SPIRV_OP(set_ac_only_haar, SetAcOnlyHaar)
+_SPIRV_OP(set_source_interlaced_field_polarity, SetSourceInterlacedFieldPolarity)
+_SPIRV_OP(set_single_reference_interlaced_field_polarity, SetSingleReferenceInterlacedFieldPolarity)
+_SPIRV_OP(set_dual_reference_interlaced_field_polarities, SetDualReferenceInterlacedFieldPolarities)
+_SPIRV_OP(get_motion_vectors, GetMotionVectors)
+_SPIRV_OP(get_inter_distortions, GetInterDistortions)
+_SPIRV_OP(get_best_inter_distortion, GetBestInterDistortions)
+_SPIRV_OP(get_inter_major_shape, GetInterMajorShape)
+_SPIRV_OP(get_inter_minor_shapes, GetInterMinorShape)
+_SPIRV_OP(get_inter_directions, GetInterDirections)
+_SPIRV_OP(get_inter_motion_vector_count, GetInterMotionVectorCount)
+_SPIRV_OP(get_inter_reference_ids, GetInterReferenceIds)
+_SPIRV_OP(get_inter_reference_interlaced_field_polarities, GetInterReferenceInterlacedFieldPolarities)
+#undef _SPIRV_OP
+
+// IME instructions
+#define _SPIRV_OP(x,y) \
+  add(OpSubgroupAvcIme##y##INTEL, "intel_sub_group_avc_ime_"#x);
+_SPIRV_OP(set_single_reference, SetSingleReference)
+_SPIRV_OP(set_dual_reference, SetDualReference)
+_SPIRV_OP(ref_window_size, RefWindowSize)
+_SPIRV_OP(adjust_ref_offset, AdjustRefOffset)
+_SPIRV_OP(set_max_motion_vector_count, SetMaxMotionVectorCount)
+_SPIRV_OP(set_unidirectional_mix_disable, SetUnidirectionalMixDisable)
+_SPIRV_OP(set_early_search_termination_threshold, SetEarlySearchTerminationThreshold)
+_SPIRV_OP(set_weighted_sad, SetWeightedSad)
+_SPIRV_OP(evaluate_with_single_reference, EvaluateWithSingleReference)
+_SPIRV_OP(evaluate_with_dual_reference, EvaluateWithDualReference)
+_SPIRV_OP(evaluate_with_single_reference_streamin, EvaluateWithSingleReferenceStreamin)
+_SPIRV_OP(evaluate_with_dual_reference_streamin, EvaluateWithDualReferenceStreamin)
+_SPIRV_OP(evaluate_with_single_reference_streamout, EvaluateWithSingleReferenceStreamout)
+_SPIRV_OP(evaluate_with_dual_reference_streamout, EvaluateWithDualReferenceStreamout)
+_SPIRV_OP(evaluate_with_single_reference_streaminout, EvaluateWithSingleReferenceStreaminout)
+_SPIRV_OP(evaluate_with_dual_reference_streaminout, EvaluateWithDualReferenceStreaminout)
+_SPIRV_OP(get_single_reference_streamin, GetSingleReferenceStreamin)
+_SPIRV_OP(get_dual_reference_streamin, GetDualReferenceStreamin)
+_SPIRV_OP(strip_single_reference_streamout, StripSingleReferenceStreamout)
+_SPIRV_OP(strip_dual_reference_streamout, StripDualReferenceStreamout)
+_SPIRV_OP(get_border_reached, GetBorderReached)
+_SPIRV_OP(get_truncated_search_indication, GetTruncatedSearchIndication)
+_SPIRV_OP(get_unidirectional_early_search_termination, GetUnidirectionalEarlySearchTermination)
+_SPIRV_OP(get_weighting_pattern_minimum_motion_vector, GetWeightingPatternMinimumMotionVector)
+_SPIRV_OP(get_weighting_pattern_minimum_distortion, GetWeightingPatternMinimumDistortion)
+#undef _SPIRV_OP
+
+#define _SPIRV_OP(x,y) \
+  add(OpSubgroupAvcImeGetStreamout##y##INTEL, \
+      "intel_sub_group_avc_ime_get_streamout_major_shape_"#x);
+_SPIRV_OP(motion_vectors, SingleReferenceMajorShapeMotionVectors)
+_SPIRV_OP(distortions, SingleReferenceMajorShapeDistortions)
+_SPIRV_OP(reference_ids, SingleReferenceMajorShapeReferenceIds)
+_SPIRV_OP(motion_vectors, DualReferenceMajorShapeMotionVectors)
+_SPIRV_OP(distortions, DualReferenceMajorShapeDistortions)
+_SPIRV_OP(reference_ids, DualReferenceMajorShapeReferenceIds)
+#undef _SPIRV_OP
+
+// REF instructions
+#define _SPIRV_OP(x,y) \
+  add(OpSubgroupAvcRef##y##INTEL, "intel_sub_group_avc_ref_"#x);
+_SPIRV_OP(set_bidirectional_mix_disable, SetBidirectionalMixDisable)
+_SPIRV_OP(set_bilinear_filter_enable, SetBilinearFilterEnable)
+_SPIRV_OP(evaluate_with_single_reference, EvaluateWithSingleReference)
+_SPIRV_OP(evaluate_with_dual_reference, EvaluateWithDualReference)
+_SPIRV_OP(evaluate_with_multi_reference, EvaluateWithMultiReference)
+_SPIRV_OP(evaluate_with_multi_reference_interlaced, EvaluateWithMultiReferenceInterlaced)
+#undef _SPIRV_OP
+
+// SIC instructions
+#define _SPIRV_OP(x,y) \
+  add(OpSubgroupAvcSic##y##INTEL, "intel_sub_group_avc_sic_"#x);
+_SPIRV_OP(configure_skc, ConfigureSkc)
+_SPIRV_OP(configure_ipe_luma, ConfigureIpeLuma)
+_SPIRV_OP(configure_ipe_luma_chroma, ConfigureIpeLumaChroma)
+_SPIRV_OP(get_motion_vector_mask, GetMotionVectorMask)
+_SPIRV_OP(set_intra_luma_shape_penalty, SetIntraLumaShapePenalty)
+_SPIRV_OP(set_intra_luma_mode_cost_function, SetIntraLumaModeCostFunction)
+_SPIRV_OP(set_intra_chroma_mode_cost_function, SetIntraChromaModeCostFunction)
+_SPIRV_OP(set_skc_bilinear_filter_enable, SetBilinearFilterEnable)
+_SPIRV_OP(set_skc_forward_transform_enable, SetSkcForwardTransformEnable)
+_SPIRV_OP(set_block_based_raw_skip_sad, SetBlockBasedRawSkipSad)
+_SPIRV_OP(evaluate_ipe, EvaluateIpe)
+_SPIRV_OP(evaluate_with_single_reference, EvaluateWithSingleReference)
+_SPIRV_OP(evaluate_with_dual_reference, EvaluateWithDualReference)
+_SPIRV_OP(evaluate_with_multi_reference, EvaluateWithMultiReference)
+_SPIRV_OP(evaluate_with_multi_reference_interlaced, EvaluateWithMultiReferenceInterlaced)
+_SPIRV_OP(get_ipe_luma_shape, GetIpeLumaShape)
+_SPIRV_OP(get_best_ipe_luma_distortion, GetBestIpeLumaDistortion)
+_SPIRV_OP(get_best_ipe_chroma_distortion, GetBestIpeChromaDistortion)
+_SPIRV_OP(get_packed_ipe_luma_modes, GetPackedIpeLumaModes)
+_SPIRV_OP(get_ipe_chroma_mode, GetIpeChromaMode)
+_SPIRV_OP(get_packed_skc_luma_count_threshold, GetPackedSkcLumaCountThreshold)
+_SPIRV_OP(get_packed_skc_luma_sum_threshold, GetPackedSkcLumaSumThreshold)
+_SPIRV_OP(get_inter_raw_sads, GetInterRawSads)
+#undef _SPIRV_OP
 }
 typedef SPIRVMap<Op, std::string, SPIRVInstruction>
   OCLSPIRVBuiltinMap;

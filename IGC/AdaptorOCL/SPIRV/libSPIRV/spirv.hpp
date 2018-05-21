@@ -581,6 +581,9 @@ enum Capability {
     CapabilitySubgroupBufferBlockIOINTEL = 5569,
     CapabilitySubgroupImageBlockIOINTEL = 5570,
     CapabilitySubgroupImageMediaBlockIOINTEL = 5579,
+    CapabilitySubgroupAvcMotionEstimationINTEL = 5696,
+    CapabilitySubgroupAvcMotionEstimationIntraINTEL = 5697,
+    CapabilitySubgroupAvcMotionEstimationChromaINTEL = 5698,
 };
 
 enum Op {

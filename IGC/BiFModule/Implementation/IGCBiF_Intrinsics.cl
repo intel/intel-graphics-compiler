@@ -409,17 +409,17 @@ uint __builtin_IB_vme_mb_block_type() __attribute__((const));
 uint __builtin_IB_vme_subpixel_mode() __attribute__((const));
 uint __builtin_IB_vme_sad_adjust_mode() __attribute__((const));
 uint __builtin_IB_vme_search_path_type() __attribute__((const));
-void __builtin_IB_vme_send_ime(GRFHandle res, GRFHandle universalInputMsg, GRFHandle imeMsg, __read_only image2d_t srcImg, __read_only image2d_t refImg, uint ref0Coord, uint ref1Coord, uint costCenter);
-void __builtin_IB_vme_send_fbr(GRFHandle res, GRFHandle universalInputMsg, GRFHandle fbrMsg, __read_only image2d_t srcImg, __read_only image2d_t refImg, uint interMbMode, uint subMbShape, uint subMbPredMode);
-void __builtin_IB_vme_send_sic(GRFHandle res, GRFHandle universalInputMsg, GRFHandle sicMsg, __read_only image2d_t srcImg, __read_only image2d_t refImg0, __read_only image2d_t refImg1);
+void __builtin_IB_vme_send_ime(GRFHandle res, GRFHandle universalInputMsg, GRFHandle imeMsg, long srcImg, long refImg, uint ref0Coord, uint ref1Coord, uint costCenter);
+void __builtin_IB_vme_send_fbr(GRFHandle res, GRFHandle universalInputMsg, GRFHandle fbrMsg, long srcImg, long refImg, uint interMbMode, uint subMbShape, uint subMbPredMode);
+void __builtin_IB_vme_send_sic(GRFHandle res, GRFHandle universalInputMsg, GRFHandle sicMsg, long srcImg, long refImg0, long refImg1);
 
-uint4 __builtin_IB_vme_send_ime_new_uint4_uint8(uint8 inputMsg, __read_only image2d_t srcImg, __read_only image2d_t fwdRefImg, __read_only image2d_t bwdRefImg, sampler_t accelerator, uint streamMode);
-uint8 __builtin_IB_vme_send_ime_new_uint8_uint8(uint8 inputMsg, __read_only image2d_t srcImg, __read_only image2d_t fwdRefImg, __read_only image2d_t bwdRefImg, sampler_t accelerator, uint streamMode);
-uint4 __builtin_IB_vme_send_ime_new_uint4_uint4(uint4 inputMsg, __read_only image2d_t srcImg, __read_only image2d_t fwdRefImg, __read_only image2d_t bwdRefImg, sampler_t accelerator, uint streamMode);
-uint8 __builtin_IB_vme_send_ime_new_uint8_uint4(uint4 inputMsg, __read_only image2d_t srcImg, __read_only image2d_t fwdRefImg, __read_only image2d_t bwdRefImg, sampler_t accelerator, uint streamMode);
+uint4 __builtin_IB_vme_send_ime_new_uint4_uint8(uint8 inputMsg, long srcImg, long fwdRefImg, long bwdRefImg, long accelerator, uint streamMode);
+uint8 __builtin_IB_vme_send_ime_new_uint8_uint8(uint8 inputMsg, long srcImg, long fwdRefImg, long bwdRefImg, long accelerator, uint streamMode);
+uint4 __builtin_IB_vme_send_ime_new_uint4_uint4(uint4 inputMsg, long srcImg, long fwdRefImg, long bwdRefImg, long accelerator, uint streamMode);
+uint8 __builtin_IB_vme_send_ime_new_uint8_uint4(uint4 inputMsg, long srcImg, long fwdRefImg, long bwdRefImg, long accelerator, uint streamMode);
 
-uint4 __builtin_IB_vme_send_fbr_new(uint4 inputMsg, __read_only image2d_t srcImg, __read_only image2d_t fwdRefImg, __read_only image2d_t bwdRefImg, sampler_t accelerator);
-uint4 __builtin_IB_vme_send_sic_new(uint4 inputMsg, __read_only image2d_t srcImg, __read_only image2d_t fwdRefImg, __read_only image2d_t bwdRefImg, sampler_t accelerator);
+uint4 __builtin_IB_vme_send_fbr_new(uint4 inputMsg, long srcImg, long fwdRefImg, long bwdRefImg, long accelerator);
+uint4 __builtin_IB_vme_send_sic_new(uint4 inputMsg, long srcImg, long fwdRefImg, long bwdRefImg, long accelerator);
 
 uint  __builtin_IB_get_image_bti(uint img);
 
@@ -491,7 +491,7 @@ ushort2  __builtin_IB_simd_media_block_read_2_h( int, int2 );
 ushort4  __builtin_IB_simd_media_block_read_4_h( int, int2 );
 ushort8  __builtin_IB_simd_media_block_read_8_h( int, int2 );
 
-void    __builtin_IB_media_block_rectangle_read( read_only image2d_t image, int2 coords, int blockWidth, int blockHeight, GRFHandle destination );
+void    __builtin_IB_media_block_rectangle_read( long image, int2 coords, int blockWidth, int blockHeight, GRFHandle destination );
 
 void    __builtin_IB_simd_media_block_write_1( int, int2, uint );
 void    __builtin_IB_simd_media_block_write_2( int, int2, uint2 );

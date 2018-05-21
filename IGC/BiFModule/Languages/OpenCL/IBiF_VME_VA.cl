@@ -261,7 +261,9 @@ INLINE void OVERLOADABLE intel_work_group_vme_mb_query(
    GRFHandle imeMsg = __builtin_IB_create_message_phases(2);
    create_ime_message(imeMsg);
    GRFHandle zeroCenter = __builtin_IB_create_message_phases(1);
-   __builtin_IB_vme_send_ime(res, universalInputMsg, imeMsg, srcImage, refImage, as_uint(ref0Coord), as_uint(ref1Coord), zeroCenter);
+   long srcImageInt = (long) __builtin_astype(srcImage, void*);
+   long refImageInt = (long) __builtin_astype(refImage, void*);
+   __builtin_IB_vme_send_ime(res, universalInputMsg, imeMsg, srcImageInt, refImageInt, as_uint(ref0Coord), as_uint(ref1Coord), zeroCenter);
 
    if (__builtin_IB_vme_subpixel_mode() != SAMPLER_VME_SUBPIXEL_MODE_INTEGER) {
        GRFHandle fbrMsg = __builtin_IB_create_message_phases(4);
@@ -276,7 +278,7 @@ INLINE void OVERLOADABLE intel_work_group_vme_mb_query(
        uint subMbShape         = W06Bytes[1];
        // No support for FBRSubPredModeVar yet, create new zeroed var
        uint subMbPredMode     = 0;
-       __builtin_IB_vme_send_fbr(res, universalInputMsg, fbrMsg, srcImage, refImage, interMbMode, subMbShape, subMbPredMode);
+       __builtin_IB_vme_send_fbr(res, universalInputMsg, fbrMsg, srcImageInt, refImageInt, interMbMode, subMbShape, subMbPredMode);
    }
 
    __local uint* tmpDst = dst + __builtin_IB_simd_lane_id();
@@ -414,10 +416,13 @@ INLINE void OVERLOADABLE DoMultiQuery(
     GRFHandle MVMin  = __builtin_IB_create_message_phases_no_init(4);
     GRFHandle SADMin = __builtin_IB_create_message_phases_no_init(1);
     GRFHandle result = __builtin_IB_create_message_phases(RETURN_MESSAGE_NUM_GRFS);
+    long srcImgInt = (long)__builtin_astype(srcImg, void*);
+    long refImgInt = (long)__builtin_astype(refImg, void*);
+
     // i = 0
     {
         ushort2 ref0Coord = CostCoord + as_ushort2(dw01_refOffset);
-        __builtin_IB_vme_send_ime(result, VMEUniversal, VMESearchPath, srcImg, refImg, as_uint(ref0Coord), dw01_refOffset, CostCenter);
+        __builtin_IB_vme_send_ime(result, VMEUniversal, VMESearchPath, srcImgInt, refImgInt, as_uint(ref0Coord), dw01_refOffset, CostCenter);
         __builtin_IB_extract_mv_and_sad(MVMin, SADMin, result, __builtin_IB_vme_mb_block_type());
     }
     for (int i=1; i < MaxPredMVs; i++)
@@ -427,7 +432,7 @@ INLINE void OVERLOADABLE DoMultiQuery(
             ushort2 vRefCoord = as_ushort2(sub_group_broadcast(as_uint(convert_short2(predMV)), i));
             ushort2 ref0Coord = vRefCoord + as_ushort2(dw01_refOffset);
 
-            __builtin_IB_vme_send_ime(result, VMEUniversal, VMESearchPath, srcImg, refImg, as_uint(ref0Coord), dw01_refOffset, CostCenter);
+            __builtin_IB_vme_send_ime(result, VMEUniversal, VMESearchPath, srcImgInt, refImgInt, as_uint(ref0Coord), dw01_refOffset, CostCenter);
 
             GRFHandle MVCurr  = __builtin_IB_create_message_phases_no_init(4);
             GRFHandle SADCurr = __builtin_IB_create_message_phases_no_init(1);
@@ -451,7 +456,7 @@ INLINE void OVERLOADABLE DoMultiQuery(
         uint subMbShape         = W06Bytes[1];
         // No support for FBRSubPredModeVar yet, create new zeroed var
         uint subMbPredMode      = 0;
-        __builtin_IB_vme_send_fbr(result, VMEUniversal, MVMin, srcImg, refImg, interMbMode, subMbShape, subMbPredMode);
+        __builtin_IB_vme_send_fbr(result, VMEUniversal, MVMin, srcImgInt, refImgInt, interMbMode, subMbShape, subMbPredMode);
     }
     else
     {
@@ -556,8 +561,9 @@ static GRFHandle create_universal_input_sic_message(bool is16x16, ushort edgeMas
 static INLINE GRFHandle ReadPixels(read_only image2d_t intraSrcImage, int2 coord, int width, int height)
 {
     // allocate a block of 64 bytes to store the read data into.
+    long intraSrcImageInt = (long)__builtin_astype(intraSrcImage, void*);
     GRFHandle dst = __builtin_IB_create_message_phases((width * height) / (NUM_DWORD_IN_GRF * 4));
-    __builtin_IB_media_block_rectangle_read(intraSrcImage, coord, width, height, dst);
+    __builtin_IB_media_block_rectangle_read(intraSrcImageInt, coord, width, height, dst);
 
     return dst;
 }
@@ -662,6 +668,10 @@ static INLINE void DoMultiCheck(
     GRFHandle sicInput     = __builtin_IB_create_message_phases(INPUT_MESSAGE_SIC_NUM_GRFS);
 
     GRFHandle result       = __builtin_IB_create_message_phases(RETURN_MESSAGE_NUM_GRFS);
+
+    long srcImageInt = (long)__builtin_astype(srcImage, void*);
+    long refImage0Int = (long)__builtin_astype(refImage0, void*);
+    long refImage1Int = (long)__builtin_astype(refImage1, void*);
 
     // Set the Intra Compute Type (M1.1, bits 9:8).
     // Initially disable and turn it on if we need to do intra prediction.
@@ -773,7 +783,7 @@ static INLINE void DoMultiCheck(
             // combine the universal and sic inputs into one big 8 GRF payload and fire
             // off to the CRE.  Result will contain information about distortion values
             // and intra prediction modes.
-            __builtin_IB_vme_send_sic(result, universalMsg, sicInput, srcImage, refImage0, refImage1);
+            __builtin_IB_vme_send_sic(result, universalMsg, sicInput, srcImageInt, refImage0Int, refImage1Int);
 
             // load results into SLM
 
@@ -812,7 +822,7 @@ static INLINE void DoMultiCheck(
                 i,
                 sicInput);
 
-            __builtin_IB_vme_send_sic(result, universalMsg, sicInput, srcImage, refImage0, refImage1);
+            __builtin_IB_vme_send_sic(result, universalMsg, sicInput, srcImageInt, refImage0Int, refImage1Int);
 
             // load results into SLM
             // Store W5.0 - 8 DWORDs (1 reg) containing distortion values.

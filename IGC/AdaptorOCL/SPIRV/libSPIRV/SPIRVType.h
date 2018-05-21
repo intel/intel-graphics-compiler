@@ -113,6 +113,7 @@ public:
   bool isTypeFloat(unsigned Bits = 0) const;
   bool isTypeImage() const;
   bool isTypeSampledImage() const;
+  bool isTypeVmeImageINTEL() const;
   bool isTypeOCLImage() const;
   bool isTypePipe()const;
   bool isTypeInt(unsigned Bits = 0) const;
@@ -647,6 +648,114 @@ isType(const T1 *Ty, unsigned Bits = 0) {
     return Is;
   return static_cast<const T2*>(Ty)->getBitWidth() == Bits;
 }
+
+// SPV_INTEL_device_side_avc_motion_estimation extension types
+class SPIRVTypeVmeImageINTEL : public SPIRVType {
+public:
+    const static Op OC = OpTypeVmeImageINTEL;
+    const static SPIRVWord FixedWC = 3;
+    SPIRVTypeVmeImageINTEL(
+        SPIRVModule *M, SPIRVId TheId, SPIRVTypeImage *TheImgTy)
+        : SPIRVType(M, FixedWC, OC, TheId), ImgTy(TheImgTy) {
+        validate();
+    }
+
+    SPIRVTypeVmeImageINTEL() : SPIRVType(OC), ImgTy(nullptr) {}
+
+    const SPIRVTypeImage *getImageType() const { return ImgTy; }
+    void setImageType(SPIRVTypeImage *TheImgTy) { ImgTy = TheImgTy; }
+
+    virtual std::vector<SPIRVEntry*> getNonLiteralOperands() const {
+        return std::vector<SPIRVEntry*>(1, ImgTy);
+    }
+
+    CapVec getRequiredCapability() const {
+        return getVec(CapabilitySubgroupAvcMotionEstimationINTEL);
+    }
+
+protected:
+    SPIRVTypeImage * ImgTy;
+    _SPIRV_DEF_DEC2(Id, ImgTy)
+
+        void validate()const {
+        assert(OpCode == OC);
+        assert(WordCount == FixedWC);
+        assert(ImgTy && ImgTy->isTypeImage());
+    }
+};
+
+class SPIRVTypeSubgroupINTEL;
+template<> inline void
+SPIRVMap<std::string, Op, SPIRVTypeSubgroupINTEL>::init() {
+#define _SPIRV_OP(x,y) \
+  add("opencl.intel_sub_group_avc_"#x, OpTypeAvc##y##INTEL);
+_SPIRV_OP(mce_payload_t, McePayload)
+_SPIRV_OP(mce_result_t, MceResult)
+_SPIRV_OP(sic_payload_t, SicPayload)
+_SPIRV_OP(sic_result_t, SicResult)
+_SPIRV_OP(ime_result_single_reference_streamout_t, ImeResultSingleReferenceStreamout)
+_SPIRV_OP(ime_result_dual_reference_streamout_t, ImeResultDualReferenceStreamout)
+_SPIRV_OP(ime_single_reference_streamin_t, ImeSingleReferenceStreamin)
+_SPIRV_OP(ime_dual_reference_streamin_t, ImeDualReferenceStreamin)
+_SPIRV_OP(ime_payload_t, ImePayload)
+_SPIRV_OP(ime_result_t, ImeResult)
+_SPIRV_OP(ref_payload_t, RefPayload)
+_SPIRV_OP(ref_result_t, RefResult);
+#undef _SPIRV_OP
+}
+typedef SPIRVMap<std::string, Op, SPIRVTypeSubgroupINTEL>
+OCLSubgroupINTELTypeOpCodeMap;
+
+class SPIRVTypeSubgroupAvcINTEL : public SPIRVType {
+public:
+    // Complete constructor
+    SPIRVTypeSubgroupAvcINTEL(Op TheOpCode, SPIRVModule *M, SPIRVId TheId)
+        : SPIRVType(M, 2, TheOpCode, TheId) {
+        validate();
+    }
+
+    // Incomplete constructor
+    SPIRVTypeSubgroupAvcINTEL(Op TheOpCode)
+        : SPIRVType(TheOpCode), Opn(SPIRVID_INVALID) {}
+
+    CapVec getRequiredCapability() const {
+        return getVec(CapabilitySubgroupAvcMotionEstimationINTEL);
+    }
+
+    SPIRVValue *getOperand() { return getValue(Opn); }
+
+protected:
+    _SPIRV_DEF_DEC1(Id)
+        void validate() const { SPIRVEntry::validate(); }
+    SPIRVId Opn;
+};
+
+template<Op TheOpCode>
+class SPIRVSubgroupAvcINTELType : public SPIRVTypeSubgroupAvcINTEL {
+public:
+    // Complete constructor
+    SPIRVSubgroupAvcINTELType(SPIRVModule *M, SPIRVId TheId)
+        : SPIRVTypeSubgroupAvcINTEL(TheOpCode, M, TheId) {}
+
+    // Incomplete constructor
+    SPIRVSubgroupAvcINTELType() : SPIRVTypeSubgroupAvcINTEL(TheOpCode) {}
+};
+
+#define _SPIRV_OP(x) \
+  typedef SPIRVSubgroupAvcINTELType<OpType##x##INTEL> SPIRVType##x##INTEL;
+_SPIRV_OP(AvcMcePayload)
+_SPIRV_OP(AvcImePayload)
+_SPIRV_OP(AvcRefPayload)
+_SPIRV_OP(AvcSicPayload)
+_SPIRV_OP(AvcMceResult)
+_SPIRV_OP(AvcImeResult)
+_SPIRV_OP(AvcImeResultSingleReferenceStreamout)
+_SPIRV_OP(AvcImeResultDualReferenceStreamout)
+_SPIRV_OP(AvcImeSingleReferenceStreamin)
+_SPIRV_OP(AvcImeDualReferenceStreamin)
+_SPIRV_OP(AvcRefResult)
+_SPIRV_OP(AvcSicResult)
+#undef _SPIRV_OP
 
 }
 #endif // SPIRVTYPE_HPP_

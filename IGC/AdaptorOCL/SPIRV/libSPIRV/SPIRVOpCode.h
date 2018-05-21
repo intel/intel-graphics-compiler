@@ -169,9 +169,46 @@ inline bool hasGroupOperation(Op OpCode) {
   return OpGroupIAdd <= OC && OC <= OpGroupSMax;
 }
 
+inline bool isSubgroupAvcINTELTypeOpCode(Op OpCode) {
+  unsigned OC = OpCode;
+  return OpTypeAvcImePayloadINTEL <= OC && OC <= OpTypeAvcSicResultINTEL;
+}
+
+inline unsigned getSubgroupAvcINTELTypeVectorWidth(Op Opcode) {
+  assert(isSubgroupAvcINTELTypeOpCode(Opcode));
+
+  switch (Opcode) {
+  case OpTypeAvcImeResultSingleReferenceStreamoutINTEL:
+  case OpTypeAvcImeResultDualReferenceStreamoutINTEL:
+    return 8;
+
+  case OpTypeAvcImePayloadINTEL:
+  case OpTypeAvcRefPayloadINTEL:
+  case OpTypeAvcSicPayloadINTEL:
+  case OpTypeAvcMcePayloadINTEL:
+  case OpTypeAvcMceResultINTEL:
+  case OpTypeAvcImeResultINTEL:
+  case OpTypeAvcRefResultINTEL:
+  case OpTypeAvcSicResultINTEL:
+    return 4;
+
+  case OpTypeAvcImeDualReferenceStreaminINTEL:
+    return 2;
+
+  case OpTypeAvcImeSingleReferenceStreaminINTEL:
+    // Scalar.
+    return 1;
+
+  default:
+    assert(0 && "Unknown VME Opcode!");
+    return 0;
+  }
+}
+
 inline bool isTypeOpCode(Op OpCode) {
   unsigned OC = OpCode;
-  return OpTypeVoid <= OC && OC <= OpTypePipe;
+  return (OpTypeVoid <= OC && OC <= OpTypePipe) ||
+    isSubgroupAvcINTELTypeOpCode(OpCode) || OC == OpTypeVmeImageINTEL;
 }
 
 inline bool isConstantOpCode(Op OpCode) {

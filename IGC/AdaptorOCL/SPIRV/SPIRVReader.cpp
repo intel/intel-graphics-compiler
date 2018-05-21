@@ -1246,14 +1246,15 @@ SPIRVToLLVM::transType(SPIRVType *T) {
       PT.push_back(transType(FT->getParameterType(I)));
     return mapType(T, FunctionType::get(RT, PT, false));
     }
-  case OpTypeImage: {
+  case OpTypeImage:{
    return mapType(T, getOrCreateOpaquePtrType(M,
           transOCLImageTypeName(static_cast<SPIRVTypeImage *>(T))));
   }
   case OpTypeSampler:
      //ulong __builtin_spirv_OpTypeSampler
      return mapType(T, Type::getInt64Ty(*Context));
-  case OpTypeSampledImage: {
+  case OpTypeSampledImage: 
+  case OpTypeVmeImageINTEL: {
      //ulong3 __builtin_spirv_OpSampledImage
      return mapType(T, VectorType::get(Type::getInt64Ty(*Context), 3));
   }
@@ -1285,6 +1286,19 @@ SPIRVToLLVM::transType(SPIRVType *T) {
         pST = pST ? pST : StructType::create(*Context, name);
 
         return mapType(T, PointerType::get(pST, getOCLOpaqueTypeAddrSpace(OC)));
+    }
+    else if (isSubgroupAvcINTELTypeOpCode(OC)) {
+        StructType* avcType = nullptr;
+        std::string typeName = OCLSubgroupINTELTypeOpCodeMap::rmap(T->getOpCode());
+        unsigned vectorWidth = getSubgroupAvcINTELTypeVectorWidth(OC);
+        if (vectorWidth == 1) {
+          avcType = StructType::create({ Type::getInt32Ty(*Context) }, typeName);
+        }
+        else {
+            spirv_assert(vectorWidth > 1);
+            avcType = StructType::create({ VectorType::get(Type::getInt32Ty(*Context), vectorWidth) }, typeName);
+        }
+        return mapType(T, avcType);
     }
     llvm_unreachable("Not implemented");
     }
@@ -2618,10 +2632,16 @@ SPIRVToLLVM::transFunction(SPIRVFunction *BF) {
 
 uint64_t SPIRVToLLVM::calcImageType(const SPIRVValue *ImageVal)
 {
-
-    const SPIRVTypeImage* TI = ImageVal->getType()->isTypeSampledImage() ?
-        static_cast<SPIRVTypeSampledImage*>(ImageVal->getType())->getImageType() :
-        static_cast<SPIRVTypeImage*>(ImageVal->getType());
+  const SPIRVTypeImage* TI = nullptr;
+  if (ImageVal->getType()->isTypeSampledImage()) {
+    TI = static_cast<SPIRVTypeSampledImage*>(ImageVal->getType())->getImageType();
+  }
+  else if (ImageVal->getType()->isTypeVmeImageINTEL()) {
+    TI = static_cast<SPIRVTypeVmeImageINTEL*>(ImageVal->getType())->getImageType();
+  }
+  else {
+    TI = static_cast<SPIRVTypeImage*>(ImageVal->getType());
+  }
 
     const auto &Desc = TI->getDescriptor();
     uint64_t ImageType = 0;
@@ -2657,6 +2677,7 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
       switch (OC)
       {
       case OpSampledImage:
+      case OpVmeImageINTEL:
       case OpImageRead:
       case OpImageWrite:
       case OpImageQuerySize:

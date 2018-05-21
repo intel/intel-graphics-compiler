@@ -1778,6 +1778,153 @@ _SPIRV_OP(SubgroupImageMediaBlockReadINTEL, true, 7)
 _SPIRV_OP(SubgroupImageMediaBlockWriteINTEL, false, 6)
 #undef _SPIRV_OP
 
+class SPIRVSubgroupAVCIntelInstBase : public SPIRVInstTemplateBase {
+protected:
+    CapVec getRequiredCapability() const override {
+        return getVec(CapabilitySubgroupAvcMotionEstimationINTEL);
+    }
+};
+
+// Intel Subgroup AVC Motion Estimation Instructions
+typedef SPIRVInstTemplate<
+    SPIRVSubgroupAVCIntelInstBase, OpVmeImageINTEL, true, 5> SPIRVVmeImageINTEL;
+
+#define _SPIRV_OP(x, ...) \
+  typedef SPIRVInstTemplate<SPIRVSubgroupAVCIntelInstBase, \
+    OpSubgroupAvc##x##INTEL, __VA_ARGS__> SPIRVSubgroupAvc##x##INTEL;
+_SPIRV_OP(MceGetDefaultInterBaseMultiReferencePenalty, true, 5)
+_SPIRV_OP(MceSetInterBaseMultiReferencePenalty, true, 5)
+_SPIRV_OP(MceGetDefaultInterShapePenalty, true, 5)
+_SPIRV_OP(MceSetInterShapePenalty, true, 5)
+_SPIRV_OP(MceGetDefaultInterDirectionPenalty, true, 5)
+_SPIRV_OP(MceSetInterDirectionPenalty, true, 5)
+_SPIRV_OP(MceGetDefaultInterMotionVectorCostTable, true, 5)
+_SPIRV_OP(MceGetDefaultHighPenaltyCostTable, true, 3)
+_SPIRV_OP(MceGetDefaultMediumPenaltyCostTable, true, 3)
+_SPIRV_OP(MceGetDefaultLowPenaltyCostTable, true, 3)
+_SPIRV_OP(MceSetMotionVectorCostFunction, true, 7)
+_SPIRV_OP(MceSetAcOnlyHaar, true, 4)
+_SPIRV_OP(MceSetSourceInterlacedFieldPolarity, true, 5)
+_SPIRV_OP(MceSetSingleReferenceInterlacedFieldPolarity, true, 5)
+_SPIRV_OP(MceSetDualReferenceInterlacedFieldPolarities, true, 6)
+_SPIRV_OP(MceConvertToImePayload, true, 4)
+_SPIRV_OP(MceConvertToImeResult, true, 4)
+_SPIRV_OP(MceConvertToRefPayload, true, 4)
+_SPIRV_OP(MceConvertToRefResult, true, 4)
+_SPIRV_OP(MceConvertToSicPayload, true, 4)
+_SPIRV_OP(MceConvertToSicResult, true, 4)
+_SPIRV_OP(MceGetMotionVectors, true, 4)
+_SPIRV_OP(MceGetInterDistortions, true, 4)
+_SPIRV_OP(MceGetBestInterDistortions, true, 4)
+_SPIRV_OP(MceGetInterMajorShape, true, 4)
+_SPIRV_OP(MceGetInterMinorShape, true, 4)
+_SPIRV_OP(MceGetInterDirections, true, 4)
+_SPIRV_OP(MceGetInterMotionVectorCount, true, 4)
+_SPIRV_OP(MceGetInterReferenceIds, true, 4)
+_SPIRV_OP(MceGetInterReferenceInterlacedFieldPolarities, true, 6)
+_SPIRV_OP(ImeInitialize, true, 6)
+_SPIRV_OP(ImeSetSingleReference, true, 6)
+_SPIRV_OP(ImeSetDualReference, true, 7)
+_SPIRV_OP(ImeRefWindowSize, true, 5)
+_SPIRV_OP(ImeAdjustRefOffset, true, 7)
+_SPIRV_OP(ImeConvertToMcePayload, true, 4)
+_SPIRV_OP(ImeSetMaxMotionVectorCount, true, 5)
+_SPIRV_OP(ImeSetUnidirectionalMixDisable, true, 4)
+_SPIRV_OP(ImeSetEarlySearchTerminationThreshold, true, 5)
+_SPIRV_OP(ImeSetWeightedSad, true, 5)
+_SPIRV_OP(ImeEvaluateWithSingleReference, true, 6)
+_SPIRV_OP(ImeEvaluateWithDualReference, true, 7)
+_SPIRV_OP(ImeEvaluateWithSingleReferenceStreamin, true, 7)
+_SPIRV_OP(ImeEvaluateWithDualReferenceStreamin, true, 8)
+_SPIRV_OP(ImeEvaluateWithSingleReferenceStreamout, true, 6)
+_SPIRV_OP(ImeEvaluateWithDualReferenceStreamout, true, 7)
+_SPIRV_OP(ImeEvaluateWithSingleReferenceStreaminout, true, 7)
+_SPIRV_OP(ImeEvaluateWithDualReferenceStreaminout, true, 8)
+_SPIRV_OP(ImeConvertToMceResult, true, 4)
+_SPIRV_OP(ImeGetSingleReferenceStreamin, true, 4)
+_SPIRV_OP(ImeGetDualReferenceStreamin, true, 4)
+_SPIRV_OP(ImeStripSingleReferenceStreamout, true, 4)
+_SPIRV_OP(ImeStripDualReferenceStreamout, true, 4)
+_SPIRV_OP(ImeGetStreamoutSingleReferenceMajorShapeMotionVectors, true, 5)
+_SPIRV_OP(ImeGetStreamoutSingleReferenceMajorShapeDistortions, true, 5)
+_SPIRV_OP(ImeGetStreamoutSingleReferenceMajorShapeReferenceIds, true, 5)
+_SPIRV_OP(ImeGetStreamoutDualReferenceMajorShapeMotionVectors, true, 6)
+_SPIRV_OP(ImeGetStreamoutDualReferenceMajorShapeDistortions, true, 6)
+_SPIRV_OP(ImeGetStreamoutDualReferenceMajorShapeReferenceIds, true, 6)
+_SPIRV_OP(ImeGetBorderReached, true, 5)
+_SPIRV_OP(ImeGetTruncatedSearchIndication, true, 4)
+_SPIRV_OP(ImeGetUnidirectionalEarlySearchTermination, true, 4)
+_SPIRV_OP(ImeGetWeightingPatternMinimumMotionVector, true, 4)
+_SPIRV_OP(ImeGetWeightingPatternMinimumDistortion, true, 4)
+_SPIRV_OP(FmeInitialize, true, 10)
+_SPIRV_OP(BmeInitialize, true, 11)
+_SPIRV_OP(RefConvertToMcePayload, true, 4)
+_SPIRV_OP(RefSetBidirectionalMixDisable, true, 4)
+_SPIRV_OP(RefSetBilinearFilterEnable, true, 4)
+_SPIRV_OP(RefEvaluateWithSingleReference, true, 6)
+_SPIRV_OP(RefEvaluateWithDualReference, true, 7)
+_SPIRV_OP(RefEvaluateWithMultiReference, true, 6)
+_SPIRV_OP(RefEvaluateWithMultiReferenceInterlaced, true, 7)
+_SPIRV_OP(RefConvertToMceResult, true, 4)
+_SPIRV_OP(SicInitialize, true, 4)
+_SPIRV_OP(SicConfigureSkc, true, 9)
+_SPIRV_OP(SicGetMotionVectorMask, true, 5)
+_SPIRV_OP(SicConvertToMcePayload, true, 4)
+_SPIRV_OP(SicSetIntraLumaShapePenalty, true, 5)
+_SPIRV_OP(SicSetBilinearFilterEnable, true, 4)
+_SPIRV_OP(SicSetSkcForwardTransformEnable, true, 5)
+_SPIRV_OP(SicSetBlockBasedRawSkipSad, true, 5)
+_SPIRV_OP(SicEvaluateWithSingleReference, true, 6)
+_SPIRV_OP(SicEvaluateWithDualReference, true, 7)
+_SPIRV_OP(SicEvaluateWithMultiReference, true, 6)
+_SPIRV_OP(SicEvaluateWithMultiReferenceInterlaced, true, 7)
+_SPIRV_OP(SicConvertToMceResult, true, 4)
+_SPIRV_OP(SicGetInterRawSads, true, 4)
+#undef _SPIRV_OP
+
+class SPIRVSubgroupAVCIntelInstBaseIntra : public SPIRVInstTemplateBase {
+protected:
+    CapVec getRequiredCapability() const override {
+        return getVec(CapabilitySubgroupAvcMotionEstimationIntraINTEL);
+    }
+};
+
+// Intel Subgroup AVC Motion Estimation Intra Instructions
+#define _SPIRV_OP(x, ...) \
+  typedef SPIRVInstTemplate<SPIRVSubgroupAVCIntelInstBaseIntra, \
+    OpSubgroupAvc##x##INTEL, __VA_ARGS__> SPIRVSubgroupAvc##x##INTEL;
+_SPIRV_OP(MceGetDefaultIntraLumaShapePenalty, true, 5)
+_SPIRV_OP(MceGetDefaultIntraLumaModePenalty, true, 5)
+_SPIRV_OP(MceGetDefaultNonDcLumaIntraPenalty, true, 3)
+_SPIRV_OP(SicConfigureIpeLuma, true, 11)
+_SPIRV_OP(SicSetIntraLumaModeCostFunction, true, 7)
+_SPIRV_OP(SicEvaluateIpe, true, 5)
+_SPIRV_OP(SicGetIpeLumaShape, true, 4)
+_SPIRV_OP(SicGetBestIpeLumaDistortion, true, 4)
+_SPIRV_OP(SicGetPackedIpeLumaModes, true, 4)
+_SPIRV_OP(SicGetPackedSkcLumaCountThreshold, true, 4)
+_SPIRV_OP(SicGetPackedSkcLumaSumThreshold, true, 4)
+#undef _SPIRV_OP
+
+class SPIRVSubgroupAVCIntelInstBaseChroma : public SPIRVInstTemplateBase {
+protected:
+    CapVec getRequiredCapability() const override {
+        return getVec(CapabilitySubgroupAvcMotionEstimationChromaINTEL);
+    }
+};
+
+// Intel Subgroup AVC Motion Estimation Chroma Instructions
+#define _SPIRV_OP(x, ...) \
+  typedef SPIRVInstTemplate<SPIRVSubgroupAVCIntelInstBaseChroma, \
+    OpSubgroupAvc##x##INTEL, __VA_ARGS__> SPIRVSubgroupAvc##x##INTEL;
+_SPIRV_OP(MceGetDefaultIntraChromaModeBasePenalty, true, 3)
+_SPIRV_OP(SicConfigureIpeLumaChroma, true, 14)
+_SPIRV_OP(SicSetIntraChromaModeCostFunction, true, 5)
+_SPIRV_OP(SicGetBestIpeChromaDistortion, true, 4)
+_SPIRV_OP(SicGetIpeChromaMode, true, 4)
+#undef _SPIRV_OP
+
+
 SPIRVSpecConstantOp *createSpecConstantOpInst(SPIRVInstruction *Inst);
 SPIRVInstruction *createInstFromSpecConstantOp(SPIRVSpecConstantOp *C);
 }

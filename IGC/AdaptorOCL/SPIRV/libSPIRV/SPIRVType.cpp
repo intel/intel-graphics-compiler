@@ -223,9 +223,14 @@ SPIRVType::isTypeImage()const {
   return OpCode == OpTypeImage;
 }
 
-bool 
+bool
 SPIRVType::isTypeSampledImage() const {
-    return OpCode == OpTypeSampledImage;
+  return OpCode == OpTypeSampledImage;
+}
+
+bool
+SPIRVType::isTypeVmeImageINTEL() const {
+  return OpCode == OpTypeVmeImageINTEL;
 }
 
 bool

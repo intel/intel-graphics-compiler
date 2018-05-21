@@ -53,19 +53,19 @@ enum {
 
 // Helper overloads
 
-static INLINE OVERLOADABLE uint4 intel_vme_send_ime_new_uint4(uint4 payload, read_only image2d_t src_image, read_only image2d_t fwd_ref_image, read_only image2d_t bwd_ref_image, sampler_t vme_accelerator, enum STREAM_MODE mode)
+static INLINE OVERLOADABLE uint4 intel_vme_send_ime_new_uint4(uint4 payload, long src_image, long fwd_ref_image, long bwd_ref_image, long vme_accelerator, enum STREAM_MODE mode)
 {
     return __builtin_IB_vme_send_ime_new_uint4_uint4(payload, src_image, fwd_ref_image, bwd_ref_image, vme_accelerator, mode);
 }
-static INLINE OVERLOADABLE uint4 intel_vme_send_ime_new_uint4(uint8 payload, read_only image2d_t src_image, read_only image2d_t fwd_ref_image, read_only image2d_t bwd_ref_image, sampler_t vme_accelerator, enum STREAM_MODE mode)
+static INLINE OVERLOADABLE uint4 intel_vme_send_ime_new_uint4(uint8 payload, long src_image, long fwd_ref_image, long bwd_ref_image, long vme_accelerator, enum STREAM_MODE mode)
 {
     return __builtin_IB_vme_send_ime_new_uint4_uint8(payload, src_image, fwd_ref_image, bwd_ref_image, vme_accelerator, mode);
 }
-static INLINE OVERLOADABLE uint8 intel_vme_send_ime_new_uint8(uint4 payload, read_only image2d_t src_image, read_only image2d_t fwd_ref_image, read_only image2d_t bwd_ref_image, sampler_t vme_accelerator, enum STREAM_MODE mode)
+static INLINE OVERLOADABLE uint8 intel_vme_send_ime_new_uint8(uint4 payload, long src_image, long fwd_ref_image, long bwd_ref_image, long vme_accelerator, enum STREAM_MODE mode)
 {
     return __builtin_IB_vme_send_ime_new_uint8_uint4(payload, src_image, fwd_ref_image, bwd_ref_image, vme_accelerator, mode);
 }
-static INLINE OVERLOADABLE uint8 intel_vme_send_ime_new_uint8(uint8 payload, read_only image2d_t src_image, read_only image2d_t fwd_ref_image, read_only image2d_t bwd_ref_image, sampler_t vme_accelerator, enum STREAM_MODE mode)
+static INLINE OVERLOADABLE uint8 intel_vme_send_ime_new_uint8(uint8 payload, long src_image, long fwd_ref_image, long bwd_ref_image, long vme_accelerator, enum STREAM_MODE mode)
 {
     return __builtin_IB_vme_send_ime_new_uint8_uint8(payload, src_image, fwd_ref_image, bwd_ref_image, vme_accelerator, mode);
 }
@@ -395,13 +395,13 @@ static INLINE OVERLOADABLE uint8 intel_simd_set_message_phase_uw(uint8 messagePh
 
 static INLINE uint
 __calc_dual_ref_id_dword(
-    read_only image2d_t src_image,
-    read_only image2d_t fwd_ref_image,
-    read_only image2d_t bwd_ref_image)
+    long src_image,
+    long fwd_ref_image,
+    long bwd_ref_image)
 {
-    uint srcBTI = __builtin_IB_get_image_bti((uint)__builtin_astype(src_image, void*));
-    uint fwdBTI = __builtin_IB_get_image_bti((uint)__builtin_astype(fwd_ref_image, void*));
-    uint bwdBTI = __builtin_IB_get_image_bti((uint)__builtin_astype(bwd_ref_image, void*));
+    uint srcBTI = __builtin_IB_get_image_bti(src_image);
+    uint fwdBTI = __builtin_IB_get_image_bti(fwd_ref_image);
+    uint bwdBTI = __builtin_IB_get_image_bti(bwd_ref_image);
 
     uint imm0 = (fwdBTI - srcBTI - 1) >> 1;
     uint imm1 = (bwdBTI - srcBTI - 1) >> 1;
@@ -415,11 +415,11 @@ __calc_dual_ref_id_dword(
 
 static INLINE uint
 __calc_single_ref_id_dword(
-    read_only image2d_t src_image,
-    read_only image2d_t fwd_ref_image)
+    long src_image,
+    long fwd_ref_image)
 {
-    uint srcBTI = __builtin_IB_get_image_bti((uint)__builtin_astype(src_image, void*));
-    uint fwdBTI = __builtin_IB_get_image_bti((uint)__builtin_astype(fwd_ref_image, void*));
+    uint srcBTI = __builtin_IB_get_image_bti(src_image);
+    uint fwdBTI = __builtin_IB_get_image_bti(fwd_ref_image);
 
     uint imm = (fwdBTI - srcBTI - 1) >> 1;
 
@@ -432,8 +432,8 @@ __calc_single_ref_id_dword(
 
 static INLINE uint4 OVERLOADABLE
 intel_sub_group_payload_set_single_ref_id(
-    read_only image2d_t src_image,
-    read_only image2d_t fwd_ref_image,
+    long src_image,
+    long fwd_ref_image,
     uint4 payload )
 {
     uint imm = __calc_single_ref_id_dword(src_image, fwd_ref_image);
@@ -442,8 +442,8 @@ intel_sub_group_payload_set_single_ref_id(
 
 static INLINE uint8 OVERLOADABLE
 intel_sub_group_payload_set_single_ref_id(
-    read_only image2d_t src_image,
-    read_only image2d_t fwd_ref_image,
+    long src_image,
+    long fwd_ref_image,
     uint8 payload )
 {
     uint imm = __calc_single_ref_id_dword(src_image, fwd_ref_image);
@@ -452,9 +452,9 @@ intel_sub_group_payload_set_single_ref_id(
 
 static INLINE uint4 OVERLOADABLE
 intel_sub_group_payload_set_dual_ref_id(
-    read_only image2d_t src_image,
-    read_only image2d_t fwd_ref_image,
-    read_only image2d_t bwd_ref_image,
+    long src_image,
+    long fwd_ref_image,
+    long bwd_ref_image,
     uint4 payload )
 {
     uint imm = __calc_dual_ref_id_dword(src_image, fwd_ref_image, bwd_ref_image);
@@ -463,9 +463,9 @@ intel_sub_group_payload_set_dual_ref_id(
 
 static INLINE uint8 OVERLOADABLE
 intel_sub_group_payload_set_dual_ref_id(
-    read_only image2d_t src_image,
-    read_only image2d_t fwd_ref_image,
-    read_only image2d_t bwd_ref_image,
+    long src_image,
+    long fwd_ref_image,
+    long bwd_ref_image,
     uint8 payload )
 {
     uint imm = __calc_dual_ref_id_dword(src_image, fwd_ref_image, bwd_ref_image);
@@ -508,12 +508,34 @@ intel_sub_group_payload_set_ref_id_raw(
     return intel_set_message_phase_dw(payload, 1, 6, packed_ref_ids);
 }
 
+
+typedef ulong3 VMEImage_t;
+
+INLINE ulong getVMEImage( VMEImage_t VMEImage )
+{
+    return VMEImage.x;
+}
+INLINE ulong getVMEImageType( VMEImage_t VMEImage )
+{
+    return VMEImage.y;
+}
+INLINE ulong getVMESampler( VMEImage_t VMEImage )
+{
+    return VMEImage.z;
+}
+
+VMEImage_t __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(ulong image, ulong imageType, ulong sampler) 
+{
+  VMEImage_t vme_image = { image, imageType, sampler }; 
+  return vme_image; 
+}
+
+
 // end helper overloads
 
 /////////////////////// User visible functions ///////////////////////
 
-INLINE uint2  OVERLOADABLE
-intel_sub_group_avc_mce_get_default_high_penalty_cost_table(void)
+uint2 __builtin_spirv_intel_sub_group_avc_mce_get_default_high_penalty_cost_table( ) 
 {
     uint2 costTable;
     costTable.s0 = 0x4E483D1D;
@@ -522,7 +544,12 @@ intel_sub_group_avc_mce_get_default_high_penalty_cost_table(void)
 }
 
 INLINE uint2  OVERLOADABLE
-intel_sub_group_avc_mce_get_default_medium_penalty_cost_table(void)
+intel_sub_group_avc_mce_get_default_high_penalty_cost_table(void)
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_get_default_high_penalty_cost_table();
+}
+
+uint2 __builtin_spirv_intel_sub_group_avc_mce_get_default_medium_penalty_cost_table( ) 
 {
    uint2 costTable;
    costTable.s0 = 0x2B1D1A05;
@@ -531,12 +558,23 @@ intel_sub_group_avc_mce_get_default_medium_penalty_cost_table(void)
 }
 
 INLINE uint2  OVERLOADABLE
-intel_sub_group_avc_mce_get_default_low_penalty_cost_table(void)
+intel_sub_group_avc_mce_get_default_medium_penalty_cost_table(void)
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_get_default_medium_penalty_cost_table();
+}
+
+uint2 __builtin_spirv_intel_sub_group_avc_mce_get_default_low_penalty_cost_table( ) 
 {
    uint2 costTable;
    costTable.s0 = 0x09050401;
    costTable.s1 = 0x0F0E0C0A;
    return costTable;
+}
+
+INLINE uint2  OVERLOADABLE
+intel_sub_group_avc_mce_get_default_low_penalty_cost_table(void)
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_get_default_low_penalty_cost_table();
 }
 
 /*****************************************************************************\
@@ -553,12 +591,11 @@ Description:
     - set NonSkipZMVAdded (M1.7 :5)
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
-intel_sub_group_avc_mce_set_motion_vector_cost_function(
-      ulong packed_cost_center_delta,
-      uint2 packed_cost_table,
-      uchar cost_precision,
-      intel_sub_group_avc_mce_payload_t payload )
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_motion_vector_cost_function_i64_v2i32_i8_intel_sub_group_avc_mce_payload_t(
+    ulong packed_cost_center_delta,
+    uint2 packed_cost_table,
+    uchar cost_precision,
+    intel_sub_group_avc_mce_payload_t payload ) 
 {
   uint4 handle = payload.x;
 
@@ -587,10 +624,19 @@ intel_sub_group_avc_mce_set_motion_vector_cost_function(
   return result;
 }
 
-INLINE uint2 OVERLOADABLE
-intel_sub_group_avc_mce_get_default_inter_motion_vector_cost_table(
+INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
+intel_sub_group_avc_mce_set_motion_vector_cost_function(
+      ulong packed_cost_center_delta,
+      uint2 packed_cost_table,
+      uchar cost_precision,
+      intel_sub_group_avc_mce_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_set_motion_vector_cost_function_i64_v2i32_i8_intel_sub_group_avc_mce_payload_t(packed_cost_center_delta, packed_cost_table, cost_precision, payload);
+}
+
+uint2 __builtin_spirv_intel_sub_group_avc_mce_get_default_inter_motion_vector_cost_table_i8_i8(
     uchar slice_type,
-    uchar qp )
+    uchar qp ) 
 {
     uint2 penalty = 0;
     if( slice_type ==  CLK_AVC_ME_SLICE_TYPE_PRED_INTEL )
@@ -641,6 +687,14 @@ intel_sub_group_avc_mce_get_default_inter_motion_vector_cost_table(
     return penalty;
 }
 
+INLINE uint2 OVERLOADABLE
+intel_sub_group_avc_mce_get_default_inter_motion_vector_cost_table(
+    uchar slice_type,
+    uchar qp )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_get_default_inter_motion_vector_cost_table_i8_i8(slice_type, qp);
+}
+
 /*****************************************************************************\
 
 Description:
@@ -648,9 +702,8 @@ Description:
     - set AConlyHAAR M1.7[21:21]
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
-intel_sub_group_avc_mce_set_ac_only_haar(
-      intel_sub_group_avc_mce_payload_t payload )
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_ac_only_haar_intel_sub_group_avc_mce_payload_t(
+    intel_sub_group_avc_mce_payload_t payload ) 
 {
     uint4 handle = payload.x;
 
@@ -661,6 +714,13 @@ intel_sub_group_avc_mce_set_ac_only_haar(
     return result;
 }
 
+INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
+intel_sub_group_avc_mce_set_ac_only_haar(
+      intel_sub_group_avc_mce_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_set_ac_only_haar_intel_sub_group_avc_mce_payload_t(payload);
+}
+
 /*****************************************************************************\
 
 Description:
@@ -669,10 +729,9 @@ Description:
     - Set SrcFieldPolarity (M1.7 : 19)
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
-intel_sub_group_avc_mce_set_source_interlaced_field_polarity(
-     uchar  src_field_polarity,
-     intel_sub_group_avc_mce_payload_t payload )
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_source_interlaced_field_polarity_i8_intel_sub_group_avc_mce_payload_t(
+    uchar src_field_polarity,
+    intel_sub_group_avc_mce_payload_t payload ) 
 {
     uint4 handle = payload.x;
 
@@ -689,6 +748,14 @@ intel_sub_group_avc_mce_set_source_interlaced_field_polarity(
     return npayload;
 }
 
+INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
+intel_sub_group_avc_mce_set_source_interlaced_field_polarity(
+     uchar  src_field_polarity,
+     intel_sub_group_avc_mce_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_set_source_interlaced_field_polarity_i8_intel_sub_group_avc_mce_payload_t(src_field_polarity, payload);
+}
+
 /*****************************************************************************\
 
 Description:
@@ -697,10 +764,9 @@ Description:
     - set RefIdpolarity (M1.1 :15:8)
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
-intel_sub_group_avc_mce_set_single_reference_interlaced_field_polarity(
-     uchar  ref_field_polarity,
-     intel_sub_group_avc_mce_payload_t payload )
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_single_reference_interlaced_field_polarity_i8_intel_sub_group_avc_mce_payload_t(
+    uchar ref_field_polarity,
+    intel_sub_group_avc_mce_payload_t payload ) 
 {
     ref_field_polarity |= ( ref_field_polarity << 1 );
     ref_field_polarity |= ( ref_field_polarity << 2 );
@@ -714,10 +780,17 @@ intel_sub_group_avc_mce_set_single_reference_interlaced_field_polarity(
 }
 
 INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
-intel_sub_group_avc_mce_set_dual_reference_interlaced_field_polarities(
-     uchar  fwd_ref_field_polarity,
-     uchar  bwd_ref_field_polarity,
+intel_sub_group_avc_mce_set_single_reference_interlaced_field_polarity(
+     uchar  ref_field_polarity,
      intel_sub_group_avc_mce_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_set_single_reference_interlaced_field_polarity_i8_intel_sub_group_avc_mce_payload_t(ref_field_polarity, payload);
+}
+
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_dual_reference_interlaced_field_polarities_i8_i8_intel_sub_group_avc_mce_payload_t(
+    uchar fwd_ref_field_polarity,
+    uchar bwd_ref_field_polarity,
+    intel_sub_group_avc_mce_payload_t payload ) 
 {
     fwd_ref_field_polarity |= ( fwd_ref_field_polarity << 1 );
     fwd_ref_field_polarity |= ( fwd_ref_field_polarity << 2 );
@@ -735,18 +808,33 @@ intel_sub_group_avc_mce_set_dual_reference_interlaced_field_polarities(
     return npayload;
 }
 
+INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
+intel_sub_group_avc_mce_set_dual_reference_interlaced_field_polarities(
+     uchar  fwd_ref_field_polarity,
+     uchar  bwd_ref_field_polarity,
+     intel_sub_group_avc_mce_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_set_dual_reference_interlaced_field_polarities_i8_i8_intel_sub_group_avc_mce_payload_t(fwd_ref_field_polarity, bwd_ref_field_polarity, payload);
+}
+
 /*****************************************************************************\
 
 Description:
     Get the motion vectors (W1 W2 W3 W4) from IME result payload.
 
 \*****************************************************************************/
+ulong __builtin_spirv_intel_sub_group_avc_mce_get_motion_vectors_intel_sub_group_avc_mce_result_t(
+    intel_sub_group_avc_mce_result_t result ) 
+{
+    const ulong MVb = intel_simd_get_message_phase_uq(result.x, 1, 4);
+    return MVb;
+}
+
 INLINE ulong OVERLOADABLE
 intel_sub_group_avc_mce_get_motion_vectors(
     intel_sub_group_avc_mce_result_t  result )
 {
-    const ulong MVb = intel_simd_get_message_phase_uq(result.x, 1, 4);
-    return MVb;
+    return __builtin_spirv_intel_sub_group_avc_mce_get_motion_vectors_intel_sub_group_avc_mce_result_t(result);
 }
 
 /*****************************************************************************\
@@ -755,11 +843,17 @@ Description:
     Get the inter distortions (W5) from IME result payload.
 
 \*****************************************************************************/
+ushort __builtin_spirv_intel_sub_group_avc_mce_get_inter_distortions_intel_sub_group_avc_mce_result_t(
+    intel_sub_group_avc_mce_result_t result ) 
+{
+    return intel_simd_get_message_phase_uw(result.x, 5, 1);
+}
+
 INLINE ushort OVERLOADABLE
 intel_sub_group_avc_mce_get_inter_distortions(
     intel_sub_group_avc_mce_result_t  result )
 {
-    return intel_simd_get_message_phase_uw(result.x, 5, 1);
+    return __builtin_spirv_intel_sub_group_avc_mce_get_inter_distortions_intel_sub_group_avc_mce_result_t(result);
 }
 
 /*****************************************************************************\
@@ -768,11 +862,17 @@ Description:
     Get the inter best distortion W0.2[15:0] from IME result payload.
 
 \*****************************************************************************/
+ushort __builtin_spirv_intel_sub_group_avc_mce_get_best_inter_distortion_intel_sub_group_avc_mce_result_t(
+    intel_sub_group_avc_mce_result_t result ) 
+{
+    return intel_get_message_phase_uw(result.x, 0, 2*2);
+}
+
 INLINE ushort OVERLOADABLE
 intel_sub_group_avc_mce_get_best_inter_distortion(
     intel_sub_group_avc_mce_result_t  result )
 {
-    return intel_get_message_phase_uw(result.x, 0, 2*2);
+    return __builtin_spirv_intel_sub_group_avc_mce_get_best_inter_distortion_intel_sub_group_avc_mce_result_t(result);
 }
 
 /*****************************************************************************\
@@ -781,12 +881,18 @@ Description:
     Get the inter major shape W0.0[1:0]) from IME result payload.
 
 \*****************************************************************************/
+uchar __builtin_spirv_intel_sub_group_avc_mce_get_inter_major_shape_intel_sub_group_avc_mce_result_t(
+    intel_sub_group_avc_mce_result_t result ) 
+{
+    const uchar InterMbMode = intel_get_message_phase_ub(result.x, 0, 0) & 0x3;
+    return InterMbMode;
+}
+
 INLINE uchar OVERLOADABLE
 intel_sub_group_avc_mce_get_inter_major_shape(
     intel_sub_group_avc_mce_result_t  result )
 {
-    const uchar InterMbMode = intel_get_message_phase_ub(result.x, 0, 0) & 0x3;
-    return InterMbMode;
+    return __builtin_spirv_intel_sub_group_avc_mce_get_inter_major_shape_intel_sub_group_avc_mce_result_t(result);
 }
 
 /*****************************************************************************\
@@ -795,12 +901,18 @@ Description:
     Get the inter major shape W0.6[15:8] from IME result payload.
 
 \*****************************************************************************/
+uchar __builtin_spirv_intel_sub_group_avc_mce_get_inter_minor_shapes_intel_sub_group_avc_mce_result_t(
+    intel_sub_group_avc_mce_result_t result ) 
+{
+    const uchar SubMbShape = intel_get_message_phase_ub(result.x, 0, 6*4+1);
+    return SubMbShape;
+}
+
 INLINE uchar OVERLOADABLE
 intel_sub_group_avc_mce_get_inter_minor_shapes(
     intel_sub_group_avc_mce_result_t  result )
 {
-    const uchar SubMbShape = intel_get_message_phase_ub(result.x, 0, 6*4+1);
-    return SubMbShape;
+    return __builtin_spirv_intel_sub_group_avc_mce_get_inter_minor_shapes_intel_sub_group_avc_mce_result_t(result);
 }
 
 /*****************************************************************************\
@@ -809,12 +921,18 @@ Description:
     Get the inter major shape W0.6[23:16] from IME result payload.
 
 \*****************************************************************************/
+uchar __builtin_spirv_intel_sub_group_avc_mce_get_inter_directions_intel_sub_group_avc_mce_result_t(
+    intel_sub_group_avc_mce_result_t result ) 
+{
+    const uchar SubMbPredMode = intel_get_message_phase_ub(result.x, 0, 6*4+2);
+    return SubMbPredMode;
+}
+
 INLINE uchar OVERLOADABLE
 intel_sub_group_avc_mce_get_inter_directions(
     intel_sub_group_avc_mce_result_t  result )
 {
-    const uchar SubMbPredMode = intel_get_message_phase_ub(result.x, 0, 6*4+2);
-    return SubMbPredMode;
+    return __builtin_spirv_intel_sub_group_avc_mce_get_inter_directions_intel_sub_group_avc_mce_result_t(result);
 }
 
 /*****************************************************************************\
@@ -823,19 +941,24 @@ Description:
     Get the count of motion vectors (W0.0 :28:24) from MCE result payload.
 
 \*****************************************************************************/
-INLINE uchar OVERLOADABLE
-intel_sub_group_avc_mce_get_inter_motion_vector_count(
-    intel_sub_group_avc_mce_result_t  result )
+uchar __builtin_spirv_intel_sub_group_avc_mce_get_inter_motion_vector_count_intel_sub_group_avc_mce_result_t(
+    intel_sub_group_avc_mce_result_t result ) 
 {
     return intel_get_message_phase_ub(result.x, 0, 0*4+3) & 0x1F;
 }
 
+INLINE uchar OVERLOADABLE
+intel_sub_group_avc_mce_get_inter_motion_vector_count(
+    intel_sub_group_avc_mce_result_t  result )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_get_inter_motion_vector_count_intel_sub_group_avc_mce_result_t(result);
+}
+
 // ... IME functions ...
 
-INLINE ushort2 OVERLOADABLE
-intel_sub_group_ime_ref_window_size(
-  uchar search_window_config,
-  char  dual_ref )
+ushort2 __builtin_spirv_intel_sub_group_ime_ref_window_size_i8_i8(
+    uchar search_window_config,
+    char dual_ref ) 
 {
     ushort2 ref_window_size = 0;
 
@@ -870,12 +993,19 @@ intel_sub_group_ime_ref_window_size(
     return ref_window_size;
 }
 
-INLINE short2 OVERLOADABLE
-intel_sub_group_avc_ime_adjust_ref_offset(
-   short2  ref_offset,
-   ushort2 src_coord_us,
-   ushort2 ref_window_size_us,
-   ushort2 frame_size_us )
+INLINE ushort2 OVERLOADABLE
+intel_sub_group_ime_ref_window_size(
+  uchar search_window_config,
+  char  dual_ref )
+{
+    return __builtin_spirv_intel_sub_group_ime_ref_window_size_i8_i8(search_window_config, dual_ref);
+}
+
+short2 __builtin_spirv_intel_sub_group_avc_ime_adjust_ref_offset_v2i16_v2i16_v2i16_v2i16(
+    short2 ref_offset,
+    ushort2 src_coord_us,
+    ushort2 ref_window_size_us,
+    ushort2 frame_size_us ) 
 {
     short2 src_coord = as_short2( src_coord_us );
     short2 ref_window_size = as_short2( ref_window_size_us );
@@ -901,6 +1031,16 @@ intel_sub_group_avc_ime_adjust_ref_offset(
     return ref_offset;
 }
 
+INLINE short2 OVERLOADABLE
+intel_sub_group_avc_ime_adjust_ref_offset(
+   short2  ref_offset,
+   ushort2 src_coord_us,
+   ushort2 ref_window_size_us,
+   ushort2 frame_size_us )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_adjust_ref_offset_v2i16_v2i16_v2i16_v2i16(ref_offset, src_coord_us, ref_window_size_us, frame_size_us);
+}
+
 /*****************************************************************************\
 
 Initialize IME payload M0:
@@ -910,11 +1050,10 @@ Initialize IME payload M0:
 - set InterSAD M0.3[21:20]
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
-intel_sub_group_avc_ime_initialize(
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_initialize_v2i16_i8_i8(
     ushort2 src_coord,
     uchar partition_mask,
-    uchar sad_adjustment )
+    uchar sad_adjustment ) 
 {
     // Create and initialize IME payload
     uint4 payload = __builtin_IB_create_message_phases_uint4(UNIVERSAL_INPUT_MESSAGE_NUM_GRFS+4);
@@ -928,6 +1067,15 @@ intel_sub_group_avc_ime_initialize(
 
     intel_sub_group_avc_ime_payload_t result = { payload };
     return result;
+}
+
+INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
+intel_sub_group_avc_ime_initialize(
+    ushort2 src_coord,
+    uchar partition_mask,
+    uchar sad_adjustment )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_initialize_v2i16_i8_i8(src_coord, partition_mask, sad_adjustment);
 }
 
 /*****************************************************************************\
@@ -945,13 +1093,12 @@ Description:
     - set SearchCtrl M0.3[10:8]
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
-avc_ime_set_reference(
-   short2 fwd_ref_offset,
-   short2 bwd_ref_offset,
-   uchar  search_window_config,
-   bool   multiRef,
-   intel_sub_group_avc_ime_payload_t payload )
+intel_sub_group_avc_ime_payload_t __builtin_spirv_avc_ime_set_reference_v2i16_v2i16_i8_bool_intel_sub_group_avc_ime_payload_t(
+    short2 fwd_ref_offset,
+    short2 bwd_ref_offset,
+    uchar search_window_config,
+    bool multiRef,
+    intel_sub_group_avc_ime_payload_t payload ) 
 {
     uint4 handle = payload.x;
 
@@ -1196,12 +1343,40 @@ avc_ime_set_reference(
 }
 
 INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
+avc_ime_set_reference(
+   short2 fwd_ref_offset,
+   short2 bwd_ref_offset,
+   uchar  search_window_config,
+   bool   multiRef,
+   intel_sub_group_avc_ime_payload_t payload )
+{
+    return __builtin_spirv_avc_ime_set_reference_v2i16_v2i16_i8_bool_intel_sub_group_avc_ime_payload_t(fwd_ref_offset, bwd_ref_offset, search_window_config, multiRef, payload);
+}
+
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_single_reference_v2i16_i8_intel_sub_group_avc_ime_payload_t(
+    short2 ref_offset,
+    uchar search_window_config,
+    intel_sub_group_avc_ime_payload_t payload ) 
+{
+    return avc_ime_set_reference(ref_offset, (short2)(0), search_window_config, false, payload);
+}
+
+INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
 intel_sub_group_avc_ime_set_single_reference(
     short2 ref_offset,
     uchar  search_window_config,
     intel_sub_group_avc_ime_payload_t payload )
 {
-    return avc_ime_set_reference(ref_offset, (short2)(0), search_window_config, false, payload);
+    return __builtin_spirv_intel_sub_group_avc_ime_set_single_reference_v2i16_i8_intel_sub_group_avc_ime_payload_t(ref_offset, search_window_config, payload);
+}
+
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_dual_reference_v2i16_v2i16_i8_intel_sub_group_avc_ime_payload_t(
+    short2 fwd_ref_offset,
+    short2 bwd_ref_offset,
+    uchar search_window_config,
+    intel_sub_group_avc_ime_payload_t payload ) 
+{
+    return avc_ime_set_reference(fwd_ref_offset, bwd_ref_offset, search_window_config, true, payload);
 }
 
 INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
@@ -1211,7 +1386,7 @@ intel_sub_group_avc_ime_set_dual_reference(
    uchar  search_window_config,
    intel_sub_group_avc_ime_payload_t payload )
 {
-    return avc_ime_set_reference(fwd_ref_offset, bwd_ref_offset, search_window_config, true, payload);
+    return __builtin_spirv_intel_sub_group_avc_ime_set_dual_reference_v2i16_v2i16_i8_intel_sub_group_avc_ime_payload_t(fwd_ref_offset, bwd_ref_offset, search_window_config, payload);
 }
 
 /*****************************************************************************\
@@ -1220,10 +1395,9 @@ Description:
     set MaxNumMVs (M1.1 :5:0)
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
-intel_sub_group_avc_ime_set_max_motion_vector_count(
-    uchar  max_motion_vector_count,
-    intel_sub_group_avc_ime_payload_t payload )
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_max_motion_vector_count_i8_intel_sub_group_avc_ime_payload_t(
+    uchar max_motion_vector_count,
+    intel_sub_group_avc_ime_payload_t payload ) 
 {
     uchar curr = intel_get_message_phase_ub(payload.x, 1, 1*4);
     curr &= ~0x3F;
@@ -1233,11 +1407,33 @@ intel_sub_group_avc_ime_set_max_motion_vector_count(
     return payload;
 }
 
+INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
+intel_sub_group_avc_ime_set_max_motion_vector_count(
+    uchar  max_motion_vector_count,
+    intel_sub_group_avc_ime_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_set_max_motion_vector_count_i8_intel_sub_group_avc_ime_payload_t(max_motion_vector_count, payload);
+}
+
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_ime_convert_to_mce_payload_intel_sub_group_avc_ime_payload_t(
+    intel_sub_group_avc_ime_payload_t payload ) 
+{
+    intel_sub_group_avc_mce_payload_t wrap;
+    wrap.x = payload.x;
+    return wrap;
+}
+
 INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
 intel_sub_group_avc_ime_convert_to_mce_payload(
       intel_sub_group_avc_ime_payload_t payload )
 {
-    intel_sub_group_avc_mce_payload_t wrap;
+    return __builtin_spirv_intel_sub_group_avc_ime_convert_to_mce_payload_intel_sub_group_avc_ime_payload_t(payload);
+}
+
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_mce_convert_to_ime_payload_intel_sub_group_avc_mce_payload_t(
+    intel_sub_group_avc_mce_payload_t payload ) 
+{
+    intel_sub_group_avc_ime_payload_t wrap;
     wrap.x = payload.x;
     return wrap;
 }
@@ -1246,9 +1442,7 @@ INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
 intel_sub_group_avc_mce_convert_to_ime_payload(
       intel_sub_group_avc_mce_payload_t payload )
 {
-    intel_sub_group_avc_ime_payload_t wrap;
-    wrap.x = payload.x;
-    return wrap;
+    return __builtin_spirv_intel_sub_group_avc_mce_convert_to_ime_payload_intel_sub_group_avc_mce_payload_t(payload);
 }
 
 /*****************************************************************************\
@@ -1261,6 +1455,24 @@ Description:
   Outputs: 7 phases
 
 \*****************************************************************************/
+intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_dual_reference_v3i64_v3i64_v3i64_intel_sub_group_avc_ime_payload_t(
+    VMEImage_t src_image_vme,
+    VMEImage_t fwd_ref_image_vme,
+    VMEImage_t bwd_ref_image_vme,
+    intel_sub_group_avc_ime_payload_t payload ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long fwd_ref_image = getVMEImage(fwd_ref_image_vme);
+    long bwd_ref_image = getVMEImage(bwd_ref_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
+    payload.x = intel_sub_group_payload_set_dual_ref_id(src_image, fwd_ref_image, bwd_ref_image, payload.x);
+    uint4 res = intel_vme_send_ime_new_uint4(payload.x, src_image, fwd_ref_image, bwd_ref_image, vme_accelerator, VME_STREAM_DISABLE);
+
+    intel_sub_group_avc_ime_result_t result = { res };
+    return result;
+}
+
 INLINE intel_sub_group_avc_ime_result_t OVERLOADABLE
 intel_sub_group_avc_ime_evaluate_with_dual_reference(
       read_only image2d_t src_image,
@@ -1269,8 +1481,28 @@ intel_sub_group_avc_ime_evaluate_with_dual_reference(
       sampler_t vme_accelerator,
       intel_sub_group_avc_ime_payload_t payload )
 {
-    payload.x = intel_sub_group_payload_set_dual_ref_id(src_image, fwd_ref_image, bwd_ref_image, payload.x);
-    uint4 res = intel_vme_send_ime_new_uint4(payload.x, src_image, fwd_ref_image, bwd_ref_image, vme_accelerator, VME_STREAM_DISABLE);
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long fwd_ref_image_id = (long)__builtin_astype(fwd_ref_image, void*);
+    long bwd_ref_image_id = (long)__builtin_astype(bwd_ref_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+    VMEImage_t fwd_ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(fwd_ref_image_id, 0, vme_accelerator_id);
+    VMEImage_t bwd_ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(bwd_ref_image_id, 0, vme_accelerator_id);
+
+    return __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_dual_reference_v3i64_v3i64_v3i64_intel_sub_group_avc_ime_payload_t(src_image_vme, fwd_ref_image_vme, bwd_ref_image_vme, payload);
+}
+
+intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_single_reference_v3i64_v3i64_intel_sub_group_avc_ime_payload_t(
+    VMEImage_t src_image_vme,
+    VMEImage_t ref_image_vme,
+    intel_sub_group_avc_ime_payload_t payload ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long ref_image = getVMEImage(ref_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
+    payload.x = intel_sub_group_payload_set_single_ref_id(src_image, ref_image, payload.x);
+    uint4 res = intel_vme_send_ime_new_uint4(payload.x, src_image, ref_image, ref_image, vme_accelerator, VME_STREAM_DISABLE);
 
     intel_sub_group_avc_ime_result_t result = { res };
     return result;
@@ -1283,10 +1515,28 @@ intel_sub_group_avc_ime_evaluate_with_single_reference(
       sampler_t vme_accelerator,
       intel_sub_group_avc_ime_payload_t payload )
 {
-    payload.x = intel_sub_group_payload_set_single_ref_id(src_image, ref_image, payload.x);
-    uint4 res = intel_vme_send_ime_new_uint4(payload.x, src_image, ref_image, ref_image, vme_accelerator, VME_STREAM_DISABLE);
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long ref_image_id = (long)__builtin_astype(ref_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+    VMEImage_t ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(ref_image_id, 0, vme_accelerator_id);
 
-    intel_sub_group_avc_ime_result_t result = { res };
+    return __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_single_reference_v3i64_v3i64_intel_sub_group_avc_ime_payload_t(src_image_vme, ref_image_vme, payload);
+}
+
+intel_sub_group_avc_ime_result_single_reference_streamout_t __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_single_reference_streamout_v3i64_v3i64_intel_sub_group_avc_ime_payload_t(
+    VMEImage_t src_image_vme,
+    VMEImage_t ref_image_vme,
+    intel_sub_group_avc_ime_payload_t payload ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long ref_image = getVMEImage(ref_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
+    payload.x = intel_sub_group_payload_set_single_ref_id(src_image, ref_image, payload.x);
+    uint8 res = intel_vme_send_ime_new_uint8(payload.x, src_image, ref_image, ref_image, vme_accelerator, VME_STREAM_OUT);
+
+    intel_sub_group_avc_ime_result_single_reference_streamout_t result = { res };
     return result;
 }
 
@@ -1297,10 +1547,30 @@ intel_sub_group_avc_ime_evaluate_with_single_reference_streamout(
       sampler_t vme_accelerator,
       intel_sub_group_avc_ime_payload_t payload )
 {
-    payload.x = intel_sub_group_payload_set_single_ref_id(src_image, ref_image, payload.x);
-    uint8 res = intel_vme_send_ime_new_uint8(payload.x, src_image, ref_image, ref_image, vme_accelerator, VME_STREAM_OUT);
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long ref_image_id = (long)__builtin_astype(ref_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+    VMEImage_t ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(ref_image_id, 0, vme_accelerator_id);
 
-    intel_sub_group_avc_ime_result_single_reference_streamout_t result = { res };
+    return __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_single_reference_streamout_v3i64_v3i64_intel_sub_group_avc_ime_payload_t(src_image_vme, ref_image_vme, payload);
+}
+
+intel_sub_group_avc_ime_result_dual_reference_streamout_t __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_dual_reference_streamout_v3i64_v3i64_v3i64_intel_sub_group_avc_ime_payload_t(
+    VMEImage_t src_image_vme,
+    VMEImage_t fwd_ref_image_vme,
+    VMEImage_t bwd_ref_image_vme,
+    intel_sub_group_avc_ime_payload_t payload ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long fwd_ref_image = getVMEImage(fwd_ref_image_vme);
+    long bwd_ref_image = getVMEImage(bwd_ref_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
+    payload.x = intel_sub_group_payload_set_dual_ref_id(src_image, fwd_ref_image, bwd_ref_image, payload.x);
+    uint8 res = intel_vme_send_ime_new_uint8(payload.x, src_image, fwd_ref_image, bwd_ref_image, vme_accelerator, VME_STREAM_OUT);
+
+    intel_sub_group_avc_ime_result_dual_reference_streamout_t result = { res };
     return result;
 }
 
@@ -1312,21 +1582,27 @@ intel_sub_group_avc_ime_evaluate_with_dual_reference_streamout(
       sampler_t vme_accelerator,
       intel_sub_group_avc_ime_payload_t payload )
 {
-    payload.x = intel_sub_group_payload_set_dual_ref_id(src_image, fwd_ref_image, bwd_ref_image, payload.x);
-    uint8 res = intel_vme_send_ime_new_uint8(payload.x, src_image, fwd_ref_image, bwd_ref_image, vme_accelerator, VME_STREAM_OUT);
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long fwd_ref_image_id = (long)__builtin_astype(fwd_ref_image, void*);
+    long bwd_ref_image_id = (long)__builtin_astype(bwd_ref_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+    VMEImage_t fwd_ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(fwd_ref_image_id, 0, vme_accelerator_id);
+    VMEImage_t bwd_ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(bwd_ref_image_id, 0, vme_accelerator_id);
 
-    intel_sub_group_avc_ime_result_dual_reference_streamout_t result = { res };
-    return result;
+    return __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_dual_reference_streamout_v3i64_v3i64_v3i64_intel_sub_group_avc_ime_payload_t(src_image_vme, fwd_ref_image_vme, bwd_ref_image_vme, payload);
 }
 
-intel_sub_group_avc_ime_result_t OVERLOADABLE
-intel_sub_group_avc_ime_evaluate_with_single_reference_streamin(
-      read_only image2d_t src_image,
-      read_only image2d_t ref_image,
-      sampler_t vme_accelerator,
-      intel_sub_group_avc_ime_payload_t payload,
-      intel_sub_group_avc_ime_single_reference_streamin_t streamin )
+intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_single_reference_streamin_v3i64_v3i64_intel_sub_group_avc_ime_payload_t_intel_sub_group_avc_ime_single_reference_streamin_t(
+    VMEImage_t src_image_vme,
+    VMEImage_t ref_image_vme,
+    intel_sub_group_avc_ime_payload_t payload,
+    intel_sub_group_avc_ime_single_reference_streamin_t streamin ) 
 {
+    long src_image = getVMEImage(src_image_vme);
+    long ref_image = getVMEImage(ref_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
     uint4 handle = payload.x;
     // Copy streamin to payload IME2 and IME3
     handle = intel_set_message_phase(handle, UNIVERSAL_INPUT_MESSAGE_NUM_GRFS+2, intel_get_message_phase(streamin.x, 0));
@@ -1340,14 +1616,34 @@ intel_sub_group_avc_ime_evaluate_with_single_reference_streamin(
 }
 
 intel_sub_group_avc_ime_result_t OVERLOADABLE
-intel_sub_group_avc_ime_evaluate_with_dual_reference_streamin(
+intel_sub_group_avc_ime_evaluate_with_single_reference_streamin(
       read_only image2d_t src_image,
-      read_only image2d_t fwd_ref_image,
-      read_only image2d_t bwd_ref_image,
+      read_only image2d_t ref_image,
       sampler_t vme_accelerator,
       intel_sub_group_avc_ime_payload_t payload,
-      intel_sub_group_avc_ime_dual_reference_streamin_t streamin )
+      intel_sub_group_avc_ime_single_reference_streamin_t streamin )
 {
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long ref_image_id = (long)__builtin_astype(ref_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+    VMEImage_t ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(ref_image_id, 0, vme_accelerator_id);
+
+    return __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_single_reference_streamin_v3i64_v3i64_intel_sub_group_avc_ime_payload_t_intel_sub_group_avc_ime_single_reference_streamin_t(src_image_vme, ref_image_vme, payload, streamin);
+}
+
+intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_dual_reference_streamin_v3i64_v3i64_v3i64_intel_sub_group_avc_ime_payload_t_intel_sub_group_avc_ime_dual_reference_streamin_t(
+    VMEImage_t src_image_vme,
+    VMEImage_t fwd_ref_image_vme,
+    VMEImage_t bwd_ref_image_vme,
+    intel_sub_group_avc_ime_payload_t payload,
+    intel_sub_group_avc_ime_dual_reference_streamin_t streamin ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long fwd_ref_image = getVMEImage(fwd_ref_image_vme);
+    long bwd_ref_image = getVMEImage(bwd_ref_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
     uint8 newPayload = __builtin_IB_create_message_phases_no_init_uint8(16);
 
     for (int i=0; i < UNIVERSAL_INPUT_MESSAGE_NUM_GRFS+2; i++)
@@ -1368,14 +1664,36 @@ intel_sub_group_avc_ime_evaluate_with_dual_reference_streamin(
     return result;
 }
 
-INLINE intel_sub_group_avc_ime_result_single_reference_streamout_t OVERLOADABLE
-intel_sub_group_avc_ime_evaluate_with_single_reference_streaminout(
+intel_sub_group_avc_ime_result_t OVERLOADABLE
+intel_sub_group_avc_ime_evaluate_with_dual_reference_streamin(
       read_only image2d_t src_image,
-      read_only image2d_t ref_image,
+      read_only image2d_t fwd_ref_image,
+      read_only image2d_t bwd_ref_image,
       sampler_t vme_accelerator,
       intel_sub_group_avc_ime_payload_t payload,
-      intel_sub_group_avc_ime_single_reference_streamin_t streamin )
+      intel_sub_group_avc_ime_dual_reference_streamin_t streamin )
 {
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long fwd_ref_image_id = (long)__builtin_astype(fwd_ref_image, void*);
+    long bwd_ref_image_id = (long)__builtin_astype(bwd_ref_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+    VMEImage_t fwd_ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(fwd_ref_image_id, 0, vme_accelerator_id);
+    VMEImage_t bwd_ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(bwd_ref_image_id, 0, vme_accelerator_id);
+
+    return __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_dual_reference_streamin_v3i64_v3i64_v3i64_intel_sub_group_avc_ime_payload_t_intel_sub_group_avc_ime_dual_reference_streamin_t(src_image_vme, fwd_ref_image_vme, bwd_ref_image_vme, payload, streamin);
+}
+
+intel_sub_group_avc_ime_result_single_reference_streamout_t __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_single_reference_streaminout_v3i64_v3i64_intel_sub_group_avc_ime_payload_t_intel_sub_group_avc_ime_single_reference_streamin_t(
+    VMEImage_t src_image_vme,
+    VMEImage_t ref_image_vme,
+    intel_sub_group_avc_ime_payload_t payload,
+    intel_sub_group_avc_ime_single_reference_streamin_t streamin ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long ref_image = getVMEImage(ref_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
     uint4 handle = payload.x;
     // Copy streamin to payload IME2 and IME3
     handle = intel_set_message_phase(handle, UNIVERSAL_INPUT_MESSAGE_NUM_GRFS+2, intel_get_message_phase(streamin.x, 0));
@@ -1388,15 +1706,35 @@ intel_sub_group_avc_ime_evaluate_with_single_reference_streaminout(
     return result;
 }
 
-INLINE intel_sub_group_avc_ime_result_dual_reference_streamout_t OVERLOADABLE
-intel_sub_group_avc_ime_evaluate_with_dual_reference_streaminout(
+INLINE intel_sub_group_avc_ime_result_single_reference_streamout_t OVERLOADABLE
+intel_sub_group_avc_ime_evaluate_with_single_reference_streaminout(
       read_only image2d_t src_image,
-      read_only image2d_t fwd_ref_image,
-      read_only image2d_t bwd_ref_image,
+      read_only image2d_t ref_image,
       sampler_t vme_accelerator,
       intel_sub_group_avc_ime_payload_t payload,
-      intel_sub_group_avc_ime_dual_reference_streamin_t streamin )
+      intel_sub_group_avc_ime_single_reference_streamin_t streamin )
 {
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long ref_image_id = (long)__builtin_astype(ref_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+    VMEImage_t ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(ref_image_id, 0, vme_accelerator_id);
+
+    return __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_single_reference_streaminout_v3i64_v3i64_intel_sub_group_avc_ime_payload_t_intel_sub_group_avc_ime_single_reference_streamin_t(src_image_vme, ref_image_vme, payload, streamin);
+}
+
+intel_sub_group_avc_ime_result_dual_reference_streamout_t __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_dual_reference_streaminout_v3i64_v3i64_v3i64_intel_sub_group_avc_ime_payload_t_intel_sub_group_avc_ime_dual_reference_streamin_t(
+    VMEImage_t src_image_vme,
+    VMEImage_t fwd_ref_image_vme,
+    VMEImage_t bwd_ref_image_vme,
+    intel_sub_group_avc_ime_payload_t payload,
+    intel_sub_group_avc_ime_dual_reference_streamin_t streamin ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long fwd_ref_image = getVMEImage(fwd_ref_image_vme);
+    long bwd_ref_image = getVMEImage(bwd_ref_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
     uint8 newPayload = __builtin_IB_create_message_phases_no_init_uint8(16);
 
     for (int i=0; i < UNIVERSAL_INPUT_MESSAGE_NUM_GRFS+2; i++)
@@ -1418,9 +1756,28 @@ intel_sub_group_avc_ime_evaluate_with_dual_reference_streaminout(
     return result;
 }
 
-INLINE intel_sub_group_avc_ime_single_reference_streamin_t OVERLOADABLE
-intel_sub_group_avc_ime_get_single_reference_streamin(
-   intel_sub_group_avc_ime_result_single_reference_streamout_t result )
+INLINE intel_sub_group_avc_ime_result_dual_reference_streamout_t OVERLOADABLE
+intel_sub_group_avc_ime_evaluate_with_dual_reference_streaminout(
+      read_only image2d_t src_image,
+      read_only image2d_t fwd_ref_image,
+      read_only image2d_t bwd_ref_image,
+      sampler_t vme_accelerator,
+      intel_sub_group_avc_ime_payload_t payload,
+      intel_sub_group_avc_ime_dual_reference_streamin_t streamin )
+{
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long fwd_ref_image_id = (long)__builtin_astype(fwd_ref_image, void*);
+    long bwd_ref_image_id = (long)__builtin_astype(bwd_ref_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+    VMEImage_t fwd_ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(fwd_ref_image_id, 0, vme_accelerator_id);
+    VMEImage_t bwd_ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(bwd_ref_image_id, 0, vme_accelerator_id);
+
+    return __builtin_spirv_intel_sub_group_avc_ime_evaluate_with_dual_reference_streaminout_v3i64_v3i64_v3i64_intel_sub_group_avc_ime_payload_t_intel_sub_group_avc_ime_dual_reference_streamin_t(src_image_vme, fwd_ref_image_vme, bwd_ref_image_vme, payload, streamin);
+}
+
+intel_sub_group_avc_ime_single_reference_streamin_t __builtin_spirv_intel_sub_group_avc_ime_get_single_reference_streamin_intel_sub_group_avc_ime_result_single_reference_streamout_t(
+    intel_sub_group_avc_ime_result_single_reference_streamout_t result ) 
 {
     uint handle = __builtin_IB_create_message_phases_no_init(2);
     // Copy IME2 from result W7
@@ -1432,9 +1789,15 @@ intel_sub_group_avc_ime_get_single_reference_streamin(
     return nresult;
 }
 
-INLINE intel_sub_group_avc_ime_dual_reference_streamin_t OVERLOADABLE
-intel_sub_group_avc_ime_get_dual_reference_streamin(
-   intel_sub_group_avc_ime_result_dual_reference_streamout_t result )
+INLINE intel_sub_group_avc_ime_single_reference_streamin_t OVERLOADABLE
+intel_sub_group_avc_ime_get_single_reference_streamin(
+   intel_sub_group_avc_ime_result_single_reference_streamout_t result )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_get_single_reference_streamin_intel_sub_group_avc_ime_result_single_reference_streamout_t(result);
+}
+
+intel_sub_group_avc_ime_dual_reference_streamin_t __builtin_spirv_intel_sub_group_avc_ime_get_dual_reference_streamin_intel_sub_group_avc_ime_result_dual_reference_streamout_t(
+    intel_sub_group_avc_ime_result_dual_reference_streamout_t result ) 
 {
     uint2 handle  = __builtin_IB_create_message_phases_no_init_uint2(4);
     // Copy IME2~IME5 from result W7~W10
@@ -1446,11 +1809,37 @@ intel_sub_group_avc_ime_get_dual_reference_streamin(
     return nresult;
 }
 
+INLINE intel_sub_group_avc_ime_dual_reference_streamin_t OVERLOADABLE
+intel_sub_group_avc_ime_get_dual_reference_streamin(
+   intel_sub_group_avc_ime_result_dual_reference_streamout_t result )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_get_dual_reference_streamin_intel_sub_group_avc_ime_result_dual_reference_streamout_t(result);
+}
+
+intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_ime_strip_single_reference_streamout_intel_sub_group_avc_ime_result_single_reference_streamout_t(
+    intel_sub_group_avc_ime_result_single_reference_streamout_t result ) 
+{
+    uint4 res = __builtin_IB_create_message_phases_no_init_uint4(RETURN_MESSAGE_NUM_GRFS+1);
+
+    for (int i = 0; i < RETURN_MESSAGE_NUM_GRFS; i++) {
+        res = intel_set_message_phase(res, i, intel_get_message_phase(result.x, i));
+    }
+
+    intel_sub_group_avc_ime_result_t nresult = { res };
+    return nresult;
+}
+
 INLINE intel_sub_group_avc_ime_result_t OVERLOADABLE
 intel_sub_group_avc_ime_strip_single_reference_streamout(
     intel_sub_group_avc_ime_result_single_reference_streamout_t result )
 {
-    uint4 res = __builtin_IB_create_message_phases_no_init_uint4(RETURN_MESSAGE_NUM_GRFS+1);
+    return __builtin_spirv_intel_sub_group_avc_ime_strip_single_reference_streamout_intel_sub_group_avc_ime_result_single_reference_streamout_t(result);
+}
+
+intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_ime_strip_dual_reference_streamout_intel_sub_group_avc_ime_result_dual_reference_streamout_t(
+    intel_sub_group_avc_ime_result_dual_reference_streamout_t result ) 
+{
+    uint4 res = __builtin_IB_create_message_phases_no_init_uint4(RETURN_MESSAGE_NUM_GRFS + 1);
 
     for (int i = 0; i < RETURN_MESSAGE_NUM_GRFS; i++) {
         res = intel_set_message_phase(res, i, intel_get_message_phase(result.x, i));
@@ -1464,14 +1853,7 @@ INLINE intel_sub_group_avc_ime_result_t OVERLOADABLE
 intel_sub_group_avc_ime_strip_dual_reference_streamout(
     intel_sub_group_avc_ime_result_dual_reference_streamout_t result )
 {
-    uint4 res = __builtin_IB_create_message_phases_no_init_uint4(RETURN_MESSAGE_NUM_GRFS + 1);
-
-    for (int i = 0; i < RETURN_MESSAGE_NUM_GRFS; i++) {
-        res = intel_set_message_phase(res, i, intel_get_message_phase(result.x, i));
-    }
-
-    intel_sub_group_avc_ime_result_t nresult = { res };
-    return nresult;
+    return __builtin_spirv_intel_sub_group_avc_ime_strip_dual_reference_streamout_intel_sub_group_avc_ime_result_dual_reference_streamout_t(result);
 }
 
 /*****************************************************************************\
@@ -1481,11 +1863,10 @@ Description:
     direction.
 
 \*****************************************************************************/
-INLINE uint OVERLOADABLE
-intel_sub_group_avc_ime_get_streamout_major_shape_motion_vectors(
+uint __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_motion_vectors_intel_sub_group_avc_ime_result_dual_reference_streamout_t_i8_i8(
     intel_sub_group_avc_ime_result_dual_reference_streamout_t result,
     uchar shape,
-    uchar direction )
+    uchar direction ) 
 {
     uint retValue = 0;
     // IME Streamout follows the same format as the IME Streamin message phases (IME2-IME5).
@@ -1518,12 +1899,28 @@ intel_sub_group_avc_ime_get_streamout_major_shape_motion_vectors(
 
 INLINE uint OVERLOADABLE
 intel_sub_group_avc_ime_get_streamout_major_shape_motion_vectors(
+    intel_sub_group_avc_ime_result_dual_reference_streamout_t result,
+    uchar shape,
+    uchar direction )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_motion_vectors_intel_sub_group_avc_ime_result_dual_reference_streamout_t_i8_i8(result, shape, direction);
+}
+
+uint __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_motion_vectors_intel_sub_group_avc_ime_result_single_reference_streamout_t_i8(
     intel_sub_group_avc_ime_result_single_reference_streamout_t result,
-    uchar major_shape )
+    uchar major_shape ) 
 {
     intel_sub_group_avc_ime_result_dual_reference_streamout_t nresult;
     nresult.x = result.x;
     return intel_sub_group_avc_ime_get_streamout_major_shape_motion_vectors(nresult, major_shape, CLK_AVC_ME_MAJOR_FORWARD_INTEL);
+}
+
+INLINE uint OVERLOADABLE
+intel_sub_group_avc_ime_get_streamout_major_shape_motion_vectors(
+    intel_sub_group_avc_ime_result_single_reference_streamout_t result,
+    uchar major_shape )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_motion_vectors_intel_sub_group_avc_ime_result_single_reference_streamout_t_i8(result, major_shape);
 }
 
 /*****************************************************************************\
@@ -1533,11 +1930,10 @@ Description:
     direction.
 
 \*****************************************************************************/
-INLINE ushort OVERLOADABLE
-intel_sub_group_avc_ime_get_streamout_major_shape_distortions(
+ushort __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_distortions_intel_sub_group_avc_ime_result_dual_reference_streamout_t_i8_i8(
     intel_sub_group_avc_ime_result_dual_reference_streamout_t result,
     uchar shape,
-    uchar direction )
+    uchar direction ) 
 {
     ushort retValue = 0;
     // IME Streamout follows the same format as the IME Streamin message phases (IME2-IME5).
@@ -1571,19 +1967,49 @@ intel_sub_group_avc_ime_get_streamout_major_shape_distortions(
 
 INLINE ushort OVERLOADABLE
 intel_sub_group_avc_ime_get_streamout_major_shape_distortions(
+    intel_sub_group_avc_ime_result_dual_reference_streamout_t result,
+    uchar shape,
+    uchar direction )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_distortions_intel_sub_group_avc_ime_result_dual_reference_streamout_t_i8_i8(result, shape, direction);
+}
+
+ushort __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_distortions_intel_sub_group_avc_ime_result_single_reference_streamout_t_i8(
     intel_sub_group_avc_ime_result_single_reference_streamout_t result,
-    uchar major_shape )
+    uchar major_shape ) 
 {
     intel_sub_group_avc_ime_result_dual_reference_streamout_t nresult;
     nresult.x = result.x;
     return intel_sub_group_avc_ime_get_streamout_major_shape_distortions(nresult, major_shape, 0);
 }
 
+INLINE ushort OVERLOADABLE
+intel_sub_group_avc_ime_get_streamout_major_shape_distortions(
+    intel_sub_group_avc_ime_result_single_reference_streamout_t result,
+    uchar major_shape )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_distortions_intel_sub_group_avc_ime_result_single_reference_streamout_t_i8(result, major_shape);
+}
+
+intel_sub_group_avc_mce_result_t __builtin_spirv_intel_sub_group_avc_ime_convert_to_mce_result_intel_sub_group_avc_ime_result_t(
+    intel_sub_group_avc_ime_result_t result ) 
+{
+    intel_sub_group_avc_mce_result_t wrap;
+    wrap.x = result.x;
+    return wrap;
+}
+
 INLINE intel_sub_group_avc_mce_result_t OVERLOADABLE
 intel_sub_group_avc_ime_convert_to_mce_result(
       intel_sub_group_avc_ime_result_t  result )
 {
-    intel_sub_group_avc_mce_result_t wrap;
+    return __builtin_spirv_intel_sub_group_avc_ime_convert_to_mce_result_intel_sub_group_avc_ime_result_t(result);
+}
+
+intel_sub_group_avc_ime_result_t __builtin_spirv_intel_sub_group_avc_mce_convert_to_ime_result_intel_sub_group_avc_mce_result_t(
+    intel_sub_group_avc_mce_result_t result ) 
+{
+    intel_sub_group_avc_ime_result_t wrap;
     wrap.x = result.x;
     return wrap;
 }
@@ -1592,9 +2018,7 @@ INLINE intel_sub_group_avc_ime_result_t OVERLOADABLE
 intel_sub_group_avc_mce_convert_to_ime_result(
       intel_sub_group_avc_mce_result_t  result )
 {
-    intel_sub_group_avc_ime_result_t wrap;
-    wrap.x = result.x;
-    return wrap;
+    return __builtin_spirv_intel_sub_group_avc_mce_convert_to_ime_result_intel_sub_group_avc_mce_result_t(result);
 }
 
 /*****************************************************************************\
@@ -1603,9 +2027,8 @@ Description:
     - set UniMixDis M1.1[28:28]
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
-intel_sub_group_avc_ime_set_unidirectional_mix_disable(
-    intel_sub_group_avc_ime_payload_t payload )
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_unidirectional_mix_disable_intel_sub_group_avc_ime_payload_t(
+    intel_sub_group_avc_ime_payload_t payload ) 
 {
     uint4 handle = payload.x;
     const uint UniMixDis = intel_get_message_phase_dw(handle, 1, 1) | (1<<28);
@@ -1615,6 +2038,13 @@ intel_sub_group_avc_ime_set_unidirectional_mix_disable(
     return result;
 }
 
+INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
+intel_sub_group_avc_ime_set_unidirectional_mix_disable(
+    intel_sub_group_avc_ime_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_set_unidirectional_mix_disable_intel_sub_group_avc_ime_payload_t(payload);
+}
+
 /*****************************************************************************\
 
 Description:
@@ -1622,10 +2052,9 @@ Description:
     - set EarlyIMESTop (M1.0 : 31:24)
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
-intel_sub_group_avc_ime_set_early_search_termination_threshold(
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_early_search_termination_threshold_i8_intel_sub_group_avc_ime_payload_t(
     uchar threshold,
-    intel_sub_group_avc_ime_payload_t payload )
+    intel_sub_group_avc_ime_payload_t payload ) 
 {
     uchar newval = intel_get_message_phase_ub(payload.x, 1, 0*4) | (1 << 5);
     payload.x    = intel_set_message_phase_ub(payload.x, 1, 0*4, newval);
@@ -1635,11 +2064,26 @@ intel_sub_group_avc_ime_set_early_search_termination_threshold(
 }
 
 INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
+intel_sub_group_avc_ime_set_early_search_termination_threshold(
+    uchar threshold,
+    intel_sub_group_avc_ime_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_set_early_search_termination_threshold_i8_intel_sub_group_avc_ime_payload_t(threshold, payload);
+}
+
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_early_unidirectional_search_termination_threshold_i8_intel_sub_group_avc_ime_payload_t(
+    uchar threshold,
+    intel_sub_group_avc_ime_payload_t payload ) 
+{
+    return intel_sub_group_avc_ime_set_early_search_termination_threshold(threshold, payload);
+}
+
+INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
 intel_sub_group_avc_ime_set_early_unidirectional_search_termination_threshold(
     uchar threshold,
     intel_sub_group_avc_ime_payload_t payload )
 {
-    return intel_sub_group_avc_ime_set_early_search_termination_threshold(threshold, payload);
+    return __builtin_spirv_intel_sub_group_avc_ime_set_early_unidirectional_search_termination_threshold_i8_intel_sub_group_avc_ime_payload_t(threshold, payload);
 }
 
 /*****************************************************************************\
@@ -1648,11 +2092,17 @@ Description:
     Get the early termination indication (W0.6 :24) from IME result payload.
 
 \*****************************************************************************/
+uchar __builtin_spirv_intel_sub_group_avc_ime_get_unidirectional_early_search_termination_intel_sub_group_avc_ime_result_t(
+    intel_sub_group_avc_ime_result_t result ) 
+{
+    return intel_get_message_phase_ub(result.x, 0, 6*4+3) & 0x1;
+}
+
 INLINE uchar OVERLOADABLE
 intel_sub_group_avc_ime_get_unidirectional_early_search_termination(
     intel_sub_group_avc_ime_result_t  result )
 {
-    return intel_get_message_phase_ub(result.x, 0, 6*4+3) & 0x1;
+    return __builtin_spirv_intel_sub_group_avc_ime_get_unidirectional_early_search_termination_intel_sub_group_avc_ime_result_t(result);
 }
 
 /*****************************************************************************\
@@ -1661,11 +2111,17 @@ Description:
     Get the truncated search indication (W0.6 :25) from IME result payload.
 
 \*****************************************************************************/
+uchar __builtin_spirv_intel_sub_group_avc_ime_get_truncated_search_indication_intel_sub_group_avc_ime_result_t(
+    intel_sub_group_avc_ime_result_t result ) 
+{
+    return (intel_get_message_phase_ub(result.x, 0, 6*4+3) & (0x1 << 1)) >> 1;
+}
+
 INLINE uchar OVERLOADABLE
 intel_sub_group_avc_ime_get_truncated_search_indication(
     intel_sub_group_avc_ime_result_t result )
 {
-    return (intel_get_message_phase_ub(result.x, 0, 6*4+3) & (0x1 << 1)) >> 1;
+    return __builtin_spirv_intel_sub_group_avc_ime_get_truncated_search_indication_intel_sub_group_avc_ime_result_t(result);
 }
 
 /*****************************************************************************\
@@ -1675,10 +2131,9 @@ Description:
     - set Weighted SAD Control M1.3[31:0]
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
-intel_sub_group_avc_ime_set_weighted_sad(
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_weighted_sad_i32_intel_sub_group_avc_ime_payload_t(
     uint packed_sad_weights,
-    intel_sub_group_avc_ime_payload_t payload )
+    intel_sub_group_avc_ime_payload_t payload ) 
 {
     uint4 handle = payload.x;
     // Set WeightedSADHAAR M1.7[20:20]
@@ -1692,17 +2147,31 @@ intel_sub_group_avc_ime_set_weighted_sad(
     return result;
 }
 
+INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
+intel_sub_group_avc_ime_set_weighted_sad(
+    uint packed_sad_weights,
+    intel_sub_group_avc_ime_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_set_weighted_sad_i32_intel_sub_group_avc_ime_payload_t(packed_sad_weights, payload);
+}
+
 /*****************************************************************************\
 
 Description:
     Get the motion vector 0 W1.0 [31:0] from IME result payload.
 
 \*****************************************************************************/
+uint __builtin_spirv_intel_sub_group_avc_ime_get_weighting_pattern_minimum_motion_vector_intel_sub_group_avc_ime_result_t(
+    intel_sub_group_avc_ime_result_t result ) 
+{
+    return intel_get_message_phase_dw(result.x, 1, 0);
+}
+
 INLINE uint OVERLOADABLE
 intel_sub_group_avc_ime_get_weighting_pattern_minimum_motion_vector(
     intel_sub_group_avc_ime_result_t  result )
 {
-    return intel_get_message_phase_dw(result.x, 1, 0);
+    return __builtin_spirv_intel_sub_group_avc_ime_get_weighting_pattern_minimum_motion_vector_intel_sub_group_avc_ime_result_t(result);
 }
 
 /*****************************************************************************\
@@ -1711,11 +2180,17 @@ Description:
     Get the inter border reached W5.0[15:0] from IME result payload.
 
 \*****************************************************************************/
+ushort __builtin_spirv_intel_sub_group_avc_ime_get_weighting_pattern_minimum_distortion_intel_sub_group_avc_ime_result_t(
+    intel_sub_group_avc_ime_result_t result ) 
+{
+    return intel_get_message_phase_uw(result.x, 5, 0);
+}
+
 INLINE ushort OVERLOADABLE
 intel_sub_group_avc_ime_get_weighting_pattern_minimum_distortion(
     intel_sub_group_avc_ime_result_t  result )
 {
-    return intel_get_message_phase_uw(result.x, 5, 0);
+    return __builtin_spirv_intel_sub_group_avc_ime_get_weighting_pattern_minimum_distortion_intel_sub_group_avc_ime_result_t(result);
 }
 
 /*****************************************************************************\
@@ -1724,10 +2199,9 @@ Description:
     Get the inter border reached W0.1 from IME result payload.
 
 \*****************************************************************************/
-INLINE uchar OVERLOADABLE
-intel_sub_group_avc_ime_get_border_reached(
+uchar __builtin_spirv_intel_sub_group_avc_ime_get_border_reached_i8_intel_sub_group_avc_ime_result_t(
     uchar frame_select,
-    intel_sub_group_avc_ime_result_t  result )
+    intel_sub_group_avc_ime_result_t result ) 
 {
     uchar boarder_reached = intel_get_message_phase_ub(result.x, 0, 1*4);
 
@@ -1746,6 +2220,14 @@ intel_sub_group_avc_ime_get_border_reached(
     return boarder_reached;
 }
 
+INLINE uchar OVERLOADABLE
+intel_sub_group_avc_ime_get_border_reached(
+    uchar frame_select,
+    intel_sub_group_avc_ime_result_t  result )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_get_border_reached_i8_intel_sub_group_avc_ime_result_t(frame_select, result);
+}
+
 // ... REF functions ...
 
 /*****************************************************************************\
@@ -1762,8 +2244,7 @@ intel_sub_group_avc_ime_get_border_reached(
         - set BiWeight (M1.1 :21:16) for BME
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
-avc_me_initialize(
+intel_sub_group_avc_ref_payload_t __builtin_spirv_avc_me_initialize_v2i16_i64_i8_i8_i8_i8_i8_i8_bool(
     ushort2 src_coord,
     ulong motion_vectors,
     uchar major_shape,
@@ -1772,7 +2253,7 @@ avc_me_initialize(
     uchar pixel_resolution,
     uchar bidirectional_weight,
     uchar sad_adjustment,
-    bool  is_bme )
+    bool is_bme ) 
 {
     uint4 payload = __builtin_IB_create_message_phases_uint4(UNIVERSAL_INPUT_MESSAGE_NUM_GRFS+INPUT_MESSAGE_SIC_NUM_GRFS);
 
@@ -1811,6 +2292,36 @@ avc_me_initialize(
 }
 
 INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
+avc_me_initialize(
+    ushort2 src_coord,
+    ulong motion_vectors,
+    uchar major_shape,
+    uchar minor_shapes,
+    uchar directions,
+    uchar pixel_resolution,
+    uchar bidirectional_weight,
+    uchar sad_adjustment,
+    bool  is_bme )
+{
+    return __builtin_spirv_avc_me_initialize_v2i16_i64_i8_i8_i8_i8_i8_i8_bool(src_coord, motion_vectors, major_shape, minor_shapes, directions, pixel_resolution, bidirectional_weight, sad_adjustment, is_bme);
+}
+
+intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_bme_initialize_v2i16_i64_i8_i8_i8_i8_i8_i8(
+    ushort2 src_coord,
+    ulong motion_vectors,
+    uchar major_shape,
+    uchar minor_shapes,
+    uchar directions,
+    uchar pixel_resolution,
+    uchar bidirectional_weight,
+    uchar sad_adjustment ) 
+{
+    return avc_me_initialize(src_coord, motion_vectors, major_shape,
+                             minor_shapes, directions, pixel_resolution,
+                             bidirectional_weight, sad_adjustment, true);
+}
+
+INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
 intel_sub_group_avc_bme_initialize(
     ushort2 src_coord,
     ulong motion_vectors,
@@ -1821,9 +2332,21 @@ intel_sub_group_avc_bme_initialize(
     uchar bidirectional_weight,
     uchar sad_adjustment )
 {
+    return __builtin_spirv_intel_sub_group_avc_bme_initialize_v2i16_i64_i8_i8_i8_i8_i8_i8(src_coord, motion_vectors, major_shape, minor_shapes, directions, pixel_resolution, bidirectional_weight, sad_adjustment);
+}
+
+intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_fme_initialize_v2i16_i64_i8_i8_i8_i8_i8(
+    ushort2 src_coord,
+    ulong motion_vectors,
+    uchar major_shape,
+    uchar minor_shapes,
+    uchar directions,
+    uchar pixel_resolution,
+    uchar sad_adjustment ) 
+{
     return avc_me_initialize(src_coord, motion_vectors, major_shape,
                              minor_shapes, directions, pixel_resolution,
-                             bidirectional_weight, sad_adjustment, true);
+                             0, sad_adjustment, false);
 }
 
 INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
@@ -1836,16 +2359,28 @@ intel_sub_group_avc_fme_initialize(
     uchar pixel_resolution,
     uchar sad_adjustment )
 {
-    return avc_me_initialize(src_coord, motion_vectors, major_shape,
-                             minor_shapes, directions, pixel_resolution,
-                             0, sad_adjustment, false);
+    return __builtin_spirv_intel_sub_group_avc_fme_initialize_v2i16_i64_i8_i8_i8_i8_i8(src_coord, motion_vectors, major_shape, minor_shapes, directions, pixel_resolution, sad_adjustment);
+}
+
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_ref_convert_to_mce_payload_intel_sub_group_avc_ref_payload_t(
+    intel_sub_group_avc_ref_payload_t payload ) 
+{
+    intel_sub_group_avc_mce_payload_t wrap;
+    wrap.x = payload.x;
+    return wrap;
 }
 
 INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
 intel_sub_group_avc_ref_convert_to_mce_payload(
       intel_sub_group_avc_ref_payload_t payload )
 {
-    intel_sub_group_avc_mce_payload_t wrap;
+    return __builtin_spirv_intel_sub_group_avc_ref_convert_to_mce_payload_intel_sub_group_avc_ref_payload_t(payload);
+}
+
+intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_mce_convert_to_ref_payload_intel_sub_group_avc_mce_payload_t(
+    intel_sub_group_avc_mce_payload_t payload ) 
+{
+    intel_sub_group_avc_ref_payload_t wrap;
     wrap.x = payload.x;
     return wrap;
 }
@@ -1854,9 +2389,7 @@ INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
 intel_sub_group_avc_mce_convert_to_ref_payload(
       intel_sub_group_avc_mce_payload_t payload )
 {
-    intel_sub_group_avc_ref_payload_t wrap;
-    wrap.x = payload.x;
-    return wrap;
+    return __builtin_spirv_intel_sub_group_avc_mce_convert_to_ref_payload_intel_sub_group_avc_mce_payload_t(payload);
 }
 
 /*****************************************************************************\
@@ -1865,9 +2398,8 @@ Description:
     - set BiMixDis M1.0[2:2]
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
-intel_sub_group_avc_ref_set_bidirectional_mix_disable(
-    intel_sub_group_avc_ref_payload_t payload )
+intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_bidirectional_mix_disable_intel_sub_group_avc_ref_payload_t(
+    intel_sub_group_avc_ref_payload_t payload ) 
 {
     uint4 handle = payload.x;
     const uint BiMixDis = intel_get_message_phase_dw(handle, 1, 0) | (1<<2);
@@ -1877,15 +2409,21 @@ intel_sub_group_avc_ref_set_bidirectional_mix_disable(
     return result;
 }
 
+INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
+intel_sub_group_avc_ref_set_bidirectional_mix_disable(
+    intel_sub_group_avc_ref_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ref_set_bidirectional_mix_disable_intel_sub_group_avc_ref_payload_t(payload);
+}
+
 /*****************************************************************************\
 
 Description:
     - set BilinearEnable M1.7[18:18]
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
-intel_sub_group_avc_ref_set_bilinear_filter_enable(
-      intel_sub_group_avc_ref_payload_t payload )
+intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_bilinear_filter_enable_intel_sub_group_avc_ref_payload_t(
+    intel_sub_group_avc_ref_payload_t payload ) 
 {
     uint4 handle = payload.x;
     const uint BilinearEnable = intel_get_message_phase_dw(handle, 1, 7) | (1<<18);
@@ -1895,6 +2433,13 @@ intel_sub_group_avc_ref_set_bilinear_filter_enable(
     return result;
 }
 
+INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
+intel_sub_group_avc_ref_set_bilinear_filter_enable(
+      intel_sub_group_avc_ref_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ref_set_bilinear_filter_enable_intel_sub_group_avc_ref_payload_t(payload);
+}
+
 /*****************************************************************************\
 
     Evalulate a single reference REF operation.
@@ -1902,6 +2447,24 @@ intel_sub_group_avc_ref_set_bilinear_filter_enable(
     (W0 W1 W2 W3 W4 W5 W6 W7) = (M0 M1 M2 M3 M4 M5) REF_EVALUATE_MULTI_REF ( (M0 M1) (M2 M3) (M4 M5) (M6 M7) )
 
 \*****************************************************************************/
+intel_sub_group_avc_ref_result_t __builtin_spirv_intel_sub_group_avc_ref_evaluate_with_dual_reference_v3i64_v3i64_v3i64_intel_sub_group_avc_ref_payload_t(
+    VMEImage_t src_image_vme,
+    VMEImage_t fwd_ref_image_vme,
+    VMEImage_t bwd_ref_image_vme,
+    intel_sub_group_avc_ref_payload_t payload ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long fwd_ref_image = getVMEImage(fwd_ref_image_vme);
+    long bwd_ref_image = getVMEImage(bwd_ref_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
+    payload.x = intel_sub_group_payload_set_dual_ref_id(src_image, fwd_ref_image, bwd_ref_image, payload.x);
+    uint4 res = __builtin_IB_vme_send_fbr_new(payload.x, src_image, fwd_ref_image, bwd_ref_image, vme_accelerator);
+
+    intel_sub_group_avc_ref_result_t result = { res };
+    return result;
+}
+
 INLINE intel_sub_group_avc_ref_result_t OVERLOADABLE
 intel_sub_group_avc_ref_evaluate_with_dual_reference(
       read_only image2d_t src_image,
@@ -1910,8 +2473,28 @@ intel_sub_group_avc_ref_evaluate_with_dual_reference(
       sampler_t vme_accelerator,
       intel_sub_group_avc_ref_payload_t payload )
 {
-    payload.x = intel_sub_group_payload_set_dual_ref_id(src_image, fwd_ref_image, bwd_ref_image, payload.x);
-    uint4 res = __builtin_IB_vme_send_fbr_new(payload.x, src_image, fwd_ref_image, bwd_ref_image, vme_accelerator);
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long fwd_ref_image_id = (long)__builtin_astype(fwd_ref_image, void*);
+    long bwd_ref_image_id = (long)__builtin_astype(bwd_ref_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+    VMEImage_t fwd_ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(fwd_ref_image_id, 0, vme_accelerator_id);
+    VMEImage_t bwd_ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(bwd_ref_image_id, 0, vme_accelerator_id);
+
+    return __builtin_spirv_intel_sub_group_avc_ref_evaluate_with_dual_reference_v3i64_v3i64_v3i64_intel_sub_group_avc_ref_payload_t(src_image_vme, fwd_ref_image_vme, bwd_ref_image_vme, payload);
+}
+
+intel_sub_group_avc_ref_result_t __builtin_spirv_intel_sub_group_avc_ref_evaluate_with_single_reference_v3i64_v3i64_intel_sub_group_avc_ref_payload_t(
+    VMEImage_t src_image_vme,
+    VMEImage_t ref_image_vme,
+    intel_sub_group_avc_ref_payload_t payload ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long ref_image = getVMEImage(ref_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
+    payload.x = intel_sub_group_payload_set_single_ref_id(src_image, ref_image, payload.x);
+    uint4 res = __builtin_IB_vme_send_fbr_new(payload.x, src_image, ref_image, ref_image, vme_accelerator);
 
     intel_sub_group_avc_ref_result_t result = { res };
     return result;
@@ -1924,18 +2507,34 @@ intel_sub_group_avc_ref_evaluate_with_single_reference(
       sampler_t vme_accelerator,
       intel_sub_group_avc_ref_payload_t payload )
 {
-    payload.x = intel_sub_group_payload_set_single_ref_id(src_image, ref_image, payload.x);
-    uint4 res = __builtin_IB_vme_send_fbr_new(payload.x, src_image, ref_image, ref_image, vme_accelerator);
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long ref_image_id = (long)__builtin_astype(ref_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+    VMEImage_t ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(ref_image_id, 0, vme_accelerator_id);
 
-    intel_sub_group_avc_ref_result_t result = { res };
-    return result;
+    return __builtin_spirv_intel_sub_group_avc_ref_evaluate_with_single_reference_v3i64_v3i64_intel_sub_group_avc_ref_payload_t(src_image_vme, ref_image_vme, payload);
+}
+
+intel_sub_group_avc_mce_result_t __builtin_spirv_intel_sub_group_avc_ref_convert_to_mce_result_intel_sub_group_avc_ref_result_t(
+    intel_sub_group_avc_ref_result_t result ) 
+{
+    intel_sub_group_avc_mce_result_t wrap;
+    wrap.x = result.x;
+    return wrap;
 }
 
 INLINE intel_sub_group_avc_mce_result_t OVERLOADABLE
 intel_sub_group_avc_ref_convert_to_mce_result(
       intel_sub_group_avc_ref_result_t result )
 {
-    intel_sub_group_avc_mce_result_t wrap;
+    return __builtin_spirv_intel_sub_group_avc_ref_convert_to_mce_result_intel_sub_group_avc_ref_result_t(result);
+}
+
+intel_sub_group_avc_ref_result_t __builtin_spirv_intel_sub_group_avc_mce_convert_to_ref_result_intel_sub_group_avc_mce_result_t(
+    intel_sub_group_avc_mce_result_t result ) 
+{
+    intel_sub_group_avc_ref_result_t wrap;
     wrap.x = result.x;
     return wrap;
 }
@@ -1944,9 +2543,7 @@ INLINE intel_sub_group_avc_ref_result_t OVERLOADABLE
 intel_sub_group_avc_mce_convert_to_ref_result(
       intel_sub_group_avc_mce_result_t result )
 {
-    intel_sub_group_avc_ref_result_t wrap;
-    wrap.x = result.x;
-    return wrap;
+    return __builtin_spirv_intel_sub_group_avc_mce_convert_to_ref_result_intel_sub_group_avc_mce_result_t(result);
 }
 
 // ... SIC functions ...
@@ -1958,9 +2555,8 @@ Description:
         - set SrcX M0.2[15:0] and SrcY M0.2[31:16]
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_initialize(
-    ushort2 src_coord )
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_initialize_v2i16(
+    ushort2 src_coord ) 
 {
     // Create and initialize SIC payload
     uint4 payload = __builtin_IB_create_message_phases_uint4(UNIVERSAL_INPUT_MESSAGE_NUM_GRFS+INPUT_MESSAGE_SIC_NUM_GRFS);
@@ -1972,10 +2568,16 @@ intel_sub_group_avc_sic_initialize(
     return npayload;
 }
 
-INLINE uint OVERLOADABLE
-intel_sub_group_avc_sic_get_motion_vector_mask(
-  uint skip_block_partition_type,
-  uchar direction )
+INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
+intel_sub_group_avc_sic_initialize(
+    ushort2 src_coord )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_initialize_v2i16(src_coord);
+}
+
+uint __builtin_spirv_intel_sub_group_avc_sic_get_motion_vector_mask_i32_i8(
+    uint skip_block_partition_type,
+    uchar direction ) 
 {
     uint mask =
         ( skip_block_partition_type == CLK_AVC_ME_SKIP_BLOCK_PARTITION_16x16_INTEL ) ?
@@ -1983,6 +2585,14 @@ intel_sub_group_avc_sic_get_motion_vector_mask(
             direction + 0x55;
     mask = ( mask << 24 );
     return mask;
+}
+
+INLINE uint OVERLOADABLE
+intel_sub_group_avc_sic_get_motion_vector_mask(
+  uint skip_block_partition_type,
+  uchar direction )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_get_motion_vector_mask_i32_i8(skip_block_partition_type, direction);
 }
 
 /*****************************************************************************\
@@ -1998,14 +2608,13 @@ Description:
         - set IntraComputeType (M5.1 :9:8)
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_configure_skc(
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_configure_skc_i32_i32_i64_i8_i8_intel_sub_group_avc_sic_payload_t(
     uint skip_block_partition_type,
     uint skip_motion_vector_mask,
     ulong motion_vectors,
     uchar bidirectional_weight,
     uchar skip_sad_adjustment,
-    intel_sub_group_avc_sic_payload_t payload )
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
     uint4 handle = payload.x;
 
@@ -2036,6 +2645,18 @@ intel_sub_group_avc_sic_configure_skc(
     return result;
 }
 
+INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
+intel_sub_group_avc_sic_configure_skc(
+    uint skip_block_partition_type,
+    uint skip_motion_vector_mask,
+    ulong motion_vectors,
+    uchar bidirectional_weight,
+    uchar skip_sad_adjustment,
+    intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_configure_skc_i32_i32_i64_i8_i8_intel_sub_group_avc_sic_payload_t(skip_block_partition_type, skip_motion_vector_mask, motion_vectors, bidirectional_weight, skip_sad_adjustment, payload);
+}
+
 /*****************************************************************************\
 
 Description:
@@ -2052,8 +2673,7 @@ Description:
         - set IntraSAD (M0.3 :23:22)
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_configure_ipe(
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_configure_ipe_i8_i8_i8_i8_i8_i8_i8_intel_sub_group_avc_sic_payload_t(
     uchar luma_intra_partition_mask,
     uchar intra_neighbour_availabilty,
     uchar left_edge_pixels,
@@ -2061,7 +2681,7 @@ intel_sub_group_avc_sic_configure_ipe(
     uchar upper_edge_pixels,
     uchar upper_right_edge_pixels,
     uchar intra_sad_adjustment,
-    intel_sub_group_avc_sic_payload_t sic_payload)
+    intel_sub_group_avc_sic_payload_t sic_payload ) 
 {
     uint4 payload = sic_payload.x;
 
@@ -2094,6 +2714,20 @@ intel_sub_group_avc_sic_configure_ipe(
     return result;
 }
 
+INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
+intel_sub_group_avc_sic_configure_ipe(
+    uchar luma_intra_partition_mask,
+    uchar intra_neighbour_availabilty,
+    uchar left_edge_pixels,
+    uchar left_upper_edge_pixel,
+    uchar upper_edge_pixels,
+    uchar upper_right_edge_pixels,
+    uchar intra_sad_adjustment,
+    intel_sub_group_avc_sic_payload_t sic_payload)
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_configure_ipe_i8_i8_i8_i8_i8_i8_i8_intel_sub_group_avc_sic_payload_t(luma_intra_partition_mask, intra_neighbour_availabilty, left_edge_pixels, left_upper_edge_pixel, upper_edge_pixels, upper_right_edge_pixels, intra_sad_adjustment, sic_payload);
+}
+
 /*****************************************************************************\
 
 Description:
@@ -2110,19 +2744,18 @@ Description:
         - set IntraSAD (M0.3 :23:22)
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_configure_ipe(
-    uchar  luma_intra_partition_mask,
-    uchar  intra_neighbour_availabilty,
-    uchar  left_edge_luma_pixels,
-    uchar  left_upper_edge_luma_pixel,
-    uchar  upper_edge_luma_pixels,
-    uchar  upper_right_edge_luma_pixels,
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_configure_ipe_i8_i8_i8_i8_i8_i8_i16_i16_i16_i8_intel_sub_group_avc_sic_payload_t(
+    uchar luma_intra_partition_mask,
+    uchar intra_neighbour_availabilty,
+    uchar left_edge_luma_pixels,
+    uchar left_upper_edge_luma_pixel,
+    uchar upper_edge_luma_pixels,
+    uchar upper_right_edge_luma_pixels,
     ushort left_edge_chroma_pixels,
     ushort upper_left_corner_chroma_pixel,
     ushort upper_edge_chroma_pixels,
     uchar intra_sad_adjustment,
-    intel_sub_group_avc_sic_payload_t sic_payload )
+    intel_sub_group_avc_sic_payload_t sic_payload ) 
 {
     uint4 payload = sic_payload.x;
 
@@ -2164,11 +2797,42 @@ intel_sub_group_avc_sic_configure_ipe(
     return result;
 }
 
+INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
+intel_sub_group_avc_sic_configure_ipe(
+    uchar  luma_intra_partition_mask,
+    uchar  intra_neighbour_availabilty,
+    uchar  left_edge_luma_pixels,
+    uchar  left_upper_edge_luma_pixel,
+    uchar  upper_edge_luma_pixels,
+    uchar  upper_right_edge_luma_pixels,
+    ushort left_edge_chroma_pixels,
+    ushort upper_left_corner_chroma_pixel,
+    ushort upper_edge_chroma_pixels,
+    uchar intra_sad_adjustment,
+    intel_sub_group_avc_sic_payload_t sic_payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_configure_ipe_i8_i8_i8_i8_i8_i8_i16_i16_i16_i8_intel_sub_group_avc_sic_payload_t(luma_intra_partition_mask, intra_neighbour_availabilty, left_edge_luma_pixels, left_upper_edge_luma_pixel, upper_edge_luma_pixels, upper_right_edge_luma_pixels, left_edge_chroma_pixels, upper_left_corner_chroma_pixel, upper_edge_chroma_pixels, intra_sad_adjustment, sic_payload);
+}
+
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_sic_convert_to_mce_payload_intel_sub_group_avc_sic_payload_t(
+    intel_sub_group_avc_sic_payload_t payload ) 
+{
+    intel_sub_group_avc_mce_payload_t wrap;
+    wrap.x = payload.x;
+    return wrap;
+}
+
 INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
 intel_sub_group_avc_sic_convert_to_mce_payload(
       intel_sub_group_avc_sic_payload_t payload )
 {
-    intel_sub_group_avc_mce_payload_t wrap;
+    return __builtin_spirv_intel_sub_group_avc_sic_convert_to_mce_payload_intel_sub_group_avc_sic_payload_t(payload);
+}
+
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_mce_convert_to_sic_payload_intel_sub_group_avc_mce_payload_t(
+    intel_sub_group_avc_mce_payload_t payload ) 
+{
+    intel_sub_group_avc_sic_payload_t wrap;
     wrap.x = payload.x;
     return wrap;
 }
@@ -2177,9 +2841,7 @@ INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
 intel_sub_group_avc_mce_convert_to_sic_payload(
       intel_sub_group_avc_mce_payload_t payload )
 {
-    intel_sub_group_avc_sic_payload_t wrap;
-    wrap.x = payload.x;
-    return wrap;
+    return __builtin_spirv_intel_sub_group_avc_mce_convert_to_sic_payload_intel_sub_group_avc_mce_payload_t(payload);
 }
 
 /*****************************************************************************\
@@ -2188,9 +2850,8 @@ Description:
     - set BilinearEnable M1.7[18:18]
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_skc_bilinear_filter_enable(
-      intel_sub_group_avc_sic_payload_t payload )
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_skc_bilinear_filter_enable_intel_sub_group_avc_sic_payload_t(
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
     uint4 handle = payload.x;
     const uint BilinearEnable = intel_get_message_phase_dw(handle, 1, 7) | (1<<18);
@@ -2200,16 +2861,22 @@ intel_sub_group_avc_sic_set_skc_bilinear_filter_enable(
     return result;
 }
 
+INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
+intel_sub_group_avc_sic_set_skc_bilinear_filter_enable(
+      intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_skc_bilinear_filter_enable_intel_sub_group_avc_sic_payload_t(payload);
+}
+
 /*****************************************************************************\
 Description:
     - set FTEnable: M0.3[17:17]
     - set SIC Forward Transform Coeff Threshold Matrix[0] (M2.6, M2.7)
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_skc_forward_transform_enable(
-      ulong  packed_sad_coefficients,
-      intel_sub_group_avc_sic_payload_t payload )
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_skc_forward_transform_enable_i64_intel_sub_group_avc_sic_payload_t(
+    ulong packed_sad_coefficients,
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
     uint4 handle = payload.x;
     // Set FTEnable: M0.3[17:17]
@@ -2224,16 +2891,23 @@ intel_sub_group_avc_sic_set_skc_forward_transform_enable(
     return result;
 }
 
+INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
+intel_sub_group_avc_sic_set_skc_forward_transform_enable(
+      ulong  packed_sad_coefficients,
+      intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_skc_forward_transform_enable_i64_intel_sub_group_avc_sic_payload_t(packed_sad_coefficients, payload);
+}
+
 /*****************************************************************************\
 Description:
     - set BlockBasedSkipEnabled (M0.3 :19)
     - set T8x8FlagForInterEn (M1.0 : 7)
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_block_based_raw_skip_sad(
-      uchar block_based_skip_block_type,
-      intel_sub_group_avc_sic_payload_t payload )
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_block_based_raw_skip_sad_i8_intel_sub_group_avc_sic_payload_t(
+    uchar block_based_skip_block_type,
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
     uint dw = intel_get_message_phase_dw(payload.x, 0, 3) | (0x1 << 19);
     payload.x = intel_set_message_phase_dw(payload.x, 0, 3, dw);
@@ -2246,13 +2920,51 @@ intel_sub_group_avc_sic_set_block_based_raw_skip_sad(
     return payload;
 }
 
+INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
+intel_sub_group_avc_sic_set_block_based_raw_skip_sad(
+      uchar block_based_skip_block_type,
+      intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_block_based_raw_skip_sad_i8_intel_sub_group_avc_sic_payload_t(block_based_skip_block_type, payload);
+}
+
+intel_sub_group_avc_sic_result_t __builtin_spirv_intel_sub_group_avc_sic_evaluate_ipe_v3i64_intel_sub_group_avc_sic_payload_t(
+    VMEImage_t src_image_vme,
+    intel_sub_group_avc_sic_payload_t payload ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
+    uint4 res = __builtin_IB_vme_send_sic_new(payload.x, src_image, src_image, src_image, vme_accelerator);
+
+    intel_sub_group_avc_sic_result_t result = { res };
+    return result;
+}
+
 INLINE intel_sub_group_avc_sic_result_t OVERLOADABLE
 intel_sub_group_avc_sic_evaluate_ipe(
       read_only image2d_t src_image,
       sampler_t vme_accelerator,
       intel_sub_group_avc_sic_payload_t payload )
 {
-    uint4 res = __builtin_IB_vme_send_sic_new(payload.x, src_image, src_image, src_image, vme_accelerator);
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+
+    return __builtin_spirv_intel_sub_group_avc_sic_evaluate_ipe_v3i64_intel_sub_group_avc_sic_payload_t(src_image_vme, payload);
+}
+
+intel_sub_group_avc_sic_result_t __builtin_spirv_intel_sub_group_avc_sic_evaluate_with_single_reference_v3i64_v3i64_intel_sub_group_avc_sic_payload_t(
+    VMEImage_t src_image_vme,
+    VMEImage_t ref_image_vme,
+    intel_sub_group_avc_sic_payload_t payload ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long ref_image = getVMEImage(ref_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
+    payload.x = intel_sub_group_payload_set_single_ref_id(src_image, ref_image, payload.x);
+    uint4 res = __builtin_IB_vme_send_sic_new(payload.x, src_image, ref_image, ref_image, vme_accelerator);
 
     intel_sub_group_avc_sic_result_t result = { res };
     return result;
@@ -2265,8 +2977,28 @@ intel_sub_group_avc_sic_evaluate_with_single_reference(
       sampler_t vme_accelerator,
       intel_sub_group_avc_sic_payload_t payload )
 {
-    payload.x = intel_sub_group_payload_set_single_ref_id(src_image, ref_image, payload.x);
-    uint4 res = __builtin_IB_vme_send_sic_new(payload.x, src_image, ref_image, ref_image, vme_accelerator);
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long ref_image_id = (long)__builtin_astype(ref_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+    VMEImage_t ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(ref_image_id, 0, vme_accelerator_id);
+
+    return __builtin_spirv_intel_sub_group_avc_sic_evaluate_with_single_reference_v3i64_v3i64_intel_sub_group_avc_sic_payload_t(src_image_vme, ref_image_vme, payload);
+}
+
+intel_sub_group_avc_sic_result_t __builtin_spirv_intel_sub_group_avc_sic_evaluate_with_dual_reference_v3i64_v3i64_v3i64_intel_sub_group_avc_sic_payload_t(
+    VMEImage_t src_image_vme,
+    VMEImage_t fwd_ref_image_vme,
+    VMEImage_t bwd_ref_image_vme,
+    intel_sub_group_avc_sic_payload_t payload ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long fwd_ref_image = getVMEImage(fwd_ref_image_vme);
+    long bwd_ref_image = getVMEImage(bwd_ref_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
+    payload.x = intel_sub_group_payload_set_dual_ref_id(src_image, fwd_ref_image, bwd_ref_image, payload.x);
+    uint4 res = __builtin_IB_vme_send_sic_new(payload.x, src_image, fwd_ref_image, bwd_ref_image, vme_accelerator);
 
     intel_sub_group_avc_sic_result_t result = { res };
     return result;
@@ -2280,18 +3012,36 @@ intel_sub_group_avc_sic_evaluate_with_dual_reference(
       sampler_t vme_accelerator,
       intel_sub_group_avc_sic_payload_t payload )
 {
-    payload.x = intel_sub_group_payload_set_dual_ref_id(src_image, fwd_ref_image, bwd_ref_image, payload.x);
-    uint4 res = __builtin_IB_vme_send_sic_new(payload.x, src_image, fwd_ref_image, bwd_ref_image, vme_accelerator);
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long fwd_ref_image_id = (long)__builtin_astype(fwd_ref_image, void*);
+    long bwd_ref_image_id = (long)__builtin_astype(bwd_ref_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+    VMEImage_t fwd_ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(fwd_ref_image_id, 0, vme_accelerator_id);
+    VMEImage_t bwd_ref_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(bwd_ref_image_id, 0, vme_accelerator_id);
 
-    intel_sub_group_avc_sic_result_t result = { res };
-    return result;
+    return __builtin_spirv_intel_sub_group_avc_sic_evaluate_with_dual_reference_v3i64_v3i64_v3i64_intel_sub_group_avc_sic_payload_t(src_image_vme, fwd_ref_image_vme, bwd_ref_image_vme, payload);
+}
+
+intel_sub_group_avc_mce_result_t __builtin_spirv_intel_sub_group_avc_sic_convert_to_mce_result_intel_sub_group_avc_sic_result_t(
+    intel_sub_group_avc_sic_result_t result ) 
+{
+    intel_sub_group_avc_mce_result_t wrap;
+    wrap.x = result.x;
+    return wrap;
 }
 
 INLINE intel_sub_group_avc_mce_result_t OVERLOADABLE
 intel_sub_group_avc_sic_convert_to_mce_result(
       intel_sub_group_avc_sic_result_t result )
 {
-    intel_sub_group_avc_mce_result_t wrap;
+    return __builtin_spirv_intel_sub_group_avc_sic_convert_to_mce_result_intel_sub_group_avc_sic_result_t(result);
+}
+
+intel_sub_group_avc_sic_result_t __builtin_spirv_intel_sub_group_avc_mce_convert_to_sic_result_intel_sub_group_avc_mce_result_t(
+    intel_sub_group_avc_mce_result_t result ) 
+{
+    intel_sub_group_avc_sic_result_t wrap;
     wrap.x = result.x;
     return wrap;
 }
@@ -2300,9 +3050,7 @@ INLINE intel_sub_group_avc_sic_result_t OVERLOADABLE
 intel_sub_group_avc_mce_convert_to_sic_result(
       intel_sub_group_avc_mce_result_t result )
 {
-    intel_sub_group_avc_sic_result_t wrap;
-    wrap.x = result.x;
-    return wrap;
+    return __builtin_spirv_intel_sub_group_avc_mce_convert_to_sic_result_intel_sub_group_avc_mce_result_t(result);
 }
 
 /*****************************************************************************\
@@ -2311,12 +3059,18 @@ Description:
     Get the intra luma shape W0.0[5:4] from SIC result payload.
 
 \*****************************************************************************/
+uchar __builtin_spirv_intel_sub_group_avc_sic_get_ipe_luma_shape_intel_sub_group_avc_sic_result_t(
+    intel_sub_group_avc_sic_result_t result ) 
+{
+    const uchar IntraMbMode = intel_get_message_phase_ub(result.x, 0, 0);
+    return (IntraMbMode >> 4) & 0x3;
+}
+
 INLINE uchar OVERLOADABLE
 intel_sub_group_avc_sic_get_ipe_luma_shape(
       intel_sub_group_avc_sic_result_t result )
 {
-    const uchar IntraMbMode = intel_get_message_phase_ub(result.x, 0, 0);
-    return (IntraMbMode >> 4) & 0x3;
+    return __builtin_spirv_intel_sub_group_avc_sic_get_ipe_luma_shape_intel_sub_group_avc_sic_result_t(result);
 }
 
 /*****************************************************************************\
@@ -2325,11 +3079,17 @@ Description:
     Get the intra luma distortion W0.3[15:0] from SIC result payload.
 
 \*****************************************************************************/
+ushort __builtin_spirv_intel_sub_group_avc_sic_get_best_ipe_luma_distortion_intel_sub_group_avc_sic_result_t(
+    intel_sub_group_avc_sic_result_t result ) 
+{
+    return intel_get_message_phase_uw(result.x, 0, 3*2);
+}
+
 INLINE ushort OVERLOADABLE
 intel_sub_group_avc_sic_get_best_ipe_luma_distortion(
       intel_sub_group_avc_sic_result_t result )
 {
-    return intel_get_message_phase_uw(result.x, 0, 3*2);
+    return __builtin_spirv_intel_sub_group_avc_sic_get_best_ipe_luma_distortion_intel_sub_group_avc_sic_result_t(result);
 }
 
 /*****************************************************************************\
@@ -2338,11 +3098,17 @@ Description:
     Get the intra chroma distortion (W0.3 :31:16) from SIC result payload.
 
 \*****************************************************************************/
+ushort __builtin_spirv_intel_sub_group_avc_sic_get_best_ipe_chroma_distortion_intel_sub_group_avc_sic_result_t(
+    intel_sub_group_avc_sic_result_t result ) 
+{
+    return intel_get_message_phase_uw(result.x, 0, 3*2+1);
+}
+
 INLINE ushort OVERLOADABLE
 intel_sub_group_avc_sic_get_best_ipe_chroma_distortion(
       intel_sub_group_avc_sic_result_t result )
 {
-    return intel_get_message_phase_uw(result.x, 0, 3*2+1);
+    return __builtin_spirv_intel_sub_group_avc_sic_get_best_ipe_chroma_distortion_intel_sub_group_avc_sic_result_t(result);
 }
 
 /*****************************************************************************\
@@ -2351,11 +3117,17 @@ Description:
     Get the intra packed luma mode (W0.4-W0.5) from SIC result payload.
 
 \*****************************************************************************/
+ulong __builtin_spirv_intel_sub_group_avc_sic_get_packed_ipe_luma_modes_intel_sub_group_avc_sic_result_t(
+    intel_sub_group_avc_sic_result_t result ) 
+{
+    return intel_get_message_phase_uq(result.x, 0, 4/2);
+}
+
 INLINE ulong OVERLOADABLE
 intel_sub_group_avc_sic_get_packed_ipe_luma_modes(
       intel_sub_group_avc_sic_result_t result )
 {
-    return intel_get_message_phase_uq(result.x, 0, 4/2);
+    return __builtin_spirv_intel_sub_group_avc_sic_get_packed_ipe_luma_modes_intel_sub_group_avc_sic_result_t(result);
 }
 
 /*****************************************************************************\
@@ -2364,12 +3136,18 @@ Description:
     Get the intra luma mode W0.6[1:0] from SIC result payload.
 
 \*****************************************************************************/
+uchar __builtin_spirv_intel_sub_group_avc_sic_get_ipe_chroma_mode_intel_sub_group_avc_sic_result_t(
+    intel_sub_group_avc_sic_result_t result ) 
+{
+    const uchar MbIntraStruct = intel_get_message_phase_ub(result.x, 0, 6*4);
+    return (MbIntraStruct & 0x3);
+}
+
 INLINE uchar OVERLOADABLE
 intel_sub_group_avc_sic_get_ipe_chroma_mode(
       intel_sub_group_avc_sic_result_t result )
 {
-    const uchar MbIntraStruct = intel_get_message_phase_ub(result.x, 0, 6*4);
-    return (MbIntraStruct & 0x3);
+    return __builtin_spirv_intel_sub_group_avc_sic_get_ipe_chroma_mode_intel_sub_group_avc_sic_result_t(result);
 }
 
 /*****************************************************************************\
@@ -2378,11 +3156,17 @@ Description:
     Get the skc luma nzc W6.1 from SIC result payload.
 
 \*****************************************************************************/
+uint __builtin_spirv_intel_sub_group_avc_sic_get_packed_skc_luma_count_threshold_intel_sub_group_avc_sic_result_t(
+    intel_sub_group_avc_sic_result_t result ) 
+{
+    return intel_get_message_phase_dw(result.x, 6, 1);
+}
+
 INLINE uint OVERLOADABLE
 intel_sub_group_avc_sic_get_packed_skc_luma_count_threshold(
       intel_sub_group_avc_sic_result_t result )
 {
-    return intel_get_message_phase_dw(result.x, 6, 1);
+    return __builtin_spirv_intel_sub_group_avc_sic_get_packed_skc_luma_count_threshold_intel_sub_group_avc_sic_result_t(result);
 }
 
 /*****************************************************************************\
@@ -2391,11 +3175,17 @@ Description:
     Get the skc luma coeff mag clip sum (W6.2-W6.3) from SIC result payload.
 
 \*****************************************************************************/
+ulong __builtin_spirv_intel_sub_group_avc_sic_get_packed_skc_luma_sum_threshold_intel_sub_group_avc_sic_result_t(
+    intel_sub_group_avc_sic_result_t result ) 
+{
+    return intel_get_message_phase_uq(result.x, 6, 2/2);
+}
+
 INLINE ulong OVERLOADABLE
 intel_sub_group_avc_sic_get_packed_skc_luma_sum_threshold(
       intel_sub_group_avc_sic_result_t result )
 {
-    return intel_get_message_phase_uq(result.x, 6, 2/2);
+    return __builtin_spirv_intel_sub_group_avc_sic_get_packed_skc_luma_sum_threshold_intel_sub_group_avc_sic_result_t(result);
 }
 
 /*****************************************************************************\
@@ -2404,21 +3194,26 @@ Description:
     Get the raw skip distortion (W0.2 :31:16) from SIC result payload.
 
 \*****************************************************************************/
-INLINE ushort OVERLOADABLE
-intel_sub_group_avc_sic_get_inter_raw_sads(
-      intel_sub_group_avc_sic_result_t result )
+ushort __builtin_spirv_intel_sub_group_avc_sic_get_inter_raw_sads_intel_sub_group_avc_sic_result_t(
+    intel_sub_group_avc_sic_result_t result ) 
 {
     return intel_get_message_phase_uw(result.x, 0, 2*2+1);
 }
 
+INLINE ushort OVERLOADABLE
+intel_sub_group_avc_sic_get_inter_raw_sads(
+      intel_sub_group_avc_sic_result_t result )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_get_inter_raw_sads_intel_sub_group_avc_sic_result_t(result);
+}
+
 // ... Common function wrappers ...
 
-INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
-intel_sub_group_avc_ime_set_motion_vector_cost_function(
-      ulong packed_cost_center_delta,
-      uint2 packed_cost_table,
-      uchar cost_precision,
-      intel_sub_group_avc_ime_payload_t payload )
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_motion_vector_cost_function_i64_v2i32_i8_intel_sub_group_avc_ime_payload_t(
+    ulong packed_cost_center_delta,
+    uint2 packed_cost_table,
+    uchar cost_precision,
+    intel_sub_group_avc_ime_payload_t payload ) 
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ime_convert_to_mce_payload( payload );
@@ -2431,12 +3226,21 @@ intel_sub_group_avc_ime_set_motion_vector_cost_function(
       return intel_sub_group_avc_mce_convert_to_ime_payload( mpayload );
 }
 
-INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
-intel_sub_group_avc_ref_set_motion_vector_cost_function(
+INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
+intel_sub_group_avc_ime_set_motion_vector_cost_function(
       ulong packed_cost_center_delta,
       uint2 packed_cost_table,
       uchar cost_precision,
-      intel_sub_group_avc_ref_payload_t payload )
+      intel_sub_group_avc_ime_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_set_motion_vector_cost_function_i64_v2i32_i8_intel_sub_group_avc_ime_payload_t(packed_cost_center_delta, packed_cost_table, cost_precision, payload);
+}
+
+intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_motion_vector_cost_function_i64_v2i32_i8_intel_sub_group_avc_ref_payload_t(
+    ulong packed_cost_center_delta,
+    uint2 packed_cost_table,
+    uchar cost_precision,
+    intel_sub_group_avc_ref_payload_t payload ) 
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -2449,12 +3253,21 @@ intel_sub_group_avc_ref_set_motion_vector_cost_function(
       return intel_sub_group_avc_mce_convert_to_ref_payload( mpayload );
 }
 
-INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_motion_vector_cost_function(
+INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
+intel_sub_group_avc_ref_set_motion_vector_cost_function(
       ulong packed_cost_center_delta,
       uint2 packed_cost_table,
       uchar cost_precision,
-      intel_sub_group_avc_sic_payload_t payload )
+      intel_sub_group_avc_ref_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ref_set_motion_vector_cost_function_i64_v2i32_i8_intel_sub_group_avc_ref_payload_t(packed_cost_center_delta, packed_cost_table, cost_precision, payload);
+}
+
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_motion_vector_cost_function_i64_v2i32_i8_intel_sub_group_avc_sic_payload_t(
+    ulong packed_cost_center_delta,
+    uint2 packed_cost_table,
+    uchar cost_precision,
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -2467,9 +3280,18 @@ intel_sub_group_avc_sic_set_motion_vector_cost_function(
       return intel_sub_group_avc_mce_convert_to_sic_payload( mpayload );
 }
 
-INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
-intel_sub_group_avc_ime_set_ac_only_haar(
-    intel_sub_group_avc_ime_payload_t payload )
+INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
+intel_sub_group_avc_sic_set_motion_vector_cost_function(
+      ulong packed_cost_center_delta,
+      uint2 packed_cost_table,
+      uchar cost_precision,
+      intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_motion_vector_cost_function_i64_v2i32_i8_intel_sub_group_avc_sic_payload_t(packed_cost_center_delta, packed_cost_table, cost_precision, payload);
+}
+
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_ac_only_haar_intel_sub_group_avc_ime_payload_t(
+    intel_sub_group_avc_ime_payload_t payload ) 
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ime_convert_to_mce_payload( payload );
@@ -2478,9 +3300,15 @@ intel_sub_group_avc_ime_set_ac_only_haar(
     return intel_sub_group_avc_mce_convert_to_ime_payload( mpayload );
 }
 
-INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
-intel_sub_group_avc_ref_set_ac_only_haar(
-    intel_sub_group_avc_ref_payload_t payload )
+INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
+intel_sub_group_avc_ime_set_ac_only_haar(
+    intel_sub_group_avc_ime_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_set_ac_only_haar_intel_sub_group_avc_ime_payload_t(payload);
+}
+
+intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_ac_only_haar_intel_sub_group_avc_ref_payload_t(
+    intel_sub_group_avc_ref_payload_t payload ) 
 {
   intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -2489,9 +3317,15 @@ intel_sub_group_avc_ref_set_ac_only_haar(
     return intel_sub_group_avc_mce_convert_to_ref_payload( mpayload );
 }
 
-INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_ac_only_haar(
-    intel_sub_group_avc_sic_payload_t payload )
+INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
+intel_sub_group_avc_ref_set_ac_only_haar(
+    intel_sub_group_avc_ref_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ref_set_ac_only_haar_intel_sub_group_avc_ref_payload_t(payload);
+}
+
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_ac_only_haar_intel_sub_group_avc_sic_payload_t(
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -2500,12 +3334,33 @@ intel_sub_group_avc_sic_set_ac_only_haar(
     return intel_sub_group_avc_mce_convert_to_sic_payload( mpayload );
 }
 
+INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
+intel_sub_group_avc_sic_set_ac_only_haar(
+    intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_ac_only_haar_intel_sub_group_avc_sic_payload_t(payload);
+}
+
+ulong __builtin_spirv_intel_sub_group_avc_ime_get_motion_vectors_intel_sub_group_avc_ime_result_t(
+    intel_sub_group_avc_ime_result_t result ) 
+{
+    intel_sub_group_avc_mce_result_t mresult =
+      intel_sub_group_avc_ime_convert_to_mce_result( result );
+    return intel_sub_group_avc_mce_get_motion_vectors( mresult );
+}
+
 INLINE ulong OVERLOADABLE
 intel_sub_group_avc_ime_get_motion_vectors(
     intel_sub_group_avc_ime_result_t result )
 {
+    return __builtin_spirv_intel_sub_group_avc_ime_get_motion_vectors_intel_sub_group_avc_ime_result_t(result);
+}
+
+ulong __builtin_spirv_intel_sub_group_avc_ref_get_motion_vectors_intel_sub_group_avc_ref_result_t(
+    intel_sub_group_avc_ref_result_t result ) 
+{
     intel_sub_group_avc_mce_result_t mresult =
-      intel_sub_group_avc_ime_convert_to_mce_result( result );
+      intel_sub_group_avc_ref_convert_to_mce_result( result );
     return intel_sub_group_avc_mce_get_motion_vectors( mresult );
 }
 
@@ -2513,17 +3368,29 @@ INLINE ulong OVERLOADABLE
 intel_sub_group_avc_ref_get_motion_vectors(
     intel_sub_group_avc_ref_result_t result )
 {
+    return __builtin_spirv_intel_sub_group_avc_ref_get_motion_vectors_intel_sub_group_avc_ref_result_t(result);
+}
+
+ushort __builtin_spirv_intel_sub_group_avc_ime_get_inter_distortions_intel_sub_group_avc_ime_result_t(
+    intel_sub_group_avc_ime_result_t result ) 
+{
     intel_sub_group_avc_mce_result_t mresult =
-      intel_sub_group_avc_ref_convert_to_mce_result( result );
-    return intel_sub_group_avc_mce_get_motion_vectors( mresult );
+      intel_sub_group_avc_ime_convert_to_mce_result( result );
+    return intel_sub_group_avc_mce_get_inter_distortions( mresult );
 }
 
 INLINE ushort OVERLOADABLE
 intel_sub_group_avc_ime_get_inter_distortions(
     intel_sub_group_avc_ime_result_t result )
 {
+    return __builtin_spirv_intel_sub_group_avc_ime_get_inter_distortions_intel_sub_group_avc_ime_result_t(result);
+}
+
+ushort __builtin_spirv_intel_sub_group_avc_ref_get_inter_distortions_intel_sub_group_avc_ref_result_t(
+    intel_sub_group_avc_ref_result_t result ) 
+{
     intel_sub_group_avc_mce_result_t mresult =
-      intel_sub_group_avc_ime_convert_to_mce_result( result );
+      intel_sub_group_avc_ref_convert_to_mce_result( result );
     return intel_sub_group_avc_mce_get_inter_distortions( mresult );
 }
 
@@ -2531,14 +3398,11 @@ INLINE ushort OVERLOADABLE
 intel_sub_group_avc_ref_get_inter_distortions(
     intel_sub_group_avc_ref_result_t result )
 {
-    intel_sub_group_avc_mce_result_t mresult =
-      intel_sub_group_avc_ref_convert_to_mce_result( result );
-    return intel_sub_group_avc_mce_get_inter_distortions( mresult );
+    return __builtin_spirv_intel_sub_group_avc_ref_get_inter_distortions_intel_sub_group_avc_ref_result_t(result);
 }
 
-INLINE ushort OVERLOADABLE
-intel_sub_group_avc_sic_get_inter_distortions(
-    intel_sub_group_avc_sic_result_t result )
+ushort __builtin_spirv_intel_sub_group_avc_sic_get_inter_distortions_intel_sub_group_avc_sic_result_t(
+    intel_sub_group_avc_sic_result_t result ) 
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_sic_convert_to_mce_result( result );
@@ -2546,8 +3410,14 @@ intel_sub_group_avc_sic_get_inter_distortions(
 }
 
 INLINE ushort OVERLOADABLE
-intel_sub_group_avc_ime_get_best_inter_distortion(
-    intel_sub_group_avc_ime_result_t result )
+intel_sub_group_avc_sic_get_inter_distortions(
+    intel_sub_group_avc_sic_result_t result )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_get_inter_distortions_intel_sub_group_avc_sic_result_t(result);
+}
+
+ushort __builtin_spirv_intel_sub_group_avc_ime_get_best_inter_distortion_intel_sub_group_avc_ime_result_t(
+    intel_sub_group_avc_ime_result_t result ) 
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ime_convert_to_mce_result( result );
@@ -2555,20 +3425,47 @@ intel_sub_group_avc_ime_get_best_inter_distortion(
 }
 
 INLINE ushort OVERLOADABLE
-intel_sub_group_avc_ref_get_best_inter_distortion(
-    intel_sub_group_avc_ref_result_t result )
+intel_sub_group_avc_ime_get_best_inter_distortion(
+    intel_sub_group_avc_ime_result_t result )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_get_best_inter_distortion_intel_sub_group_avc_ime_result_t(result);
+}
+
+ushort __builtin_spirv_intel_sub_group_avc_ref_get_best_inter_distortion_intel_sub_group_avc_ref_result_t(
+    intel_sub_group_avc_ref_result_t result ) 
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ref_convert_to_mce_result( result );
     return intel_sub_group_avc_mce_get_best_inter_distortion( mresult );
 }
 
+INLINE ushort OVERLOADABLE
+intel_sub_group_avc_ref_get_best_inter_distortion(
+    intel_sub_group_avc_ref_result_t result )
+{
+    return __builtin_spirv_intel_sub_group_avc_ref_get_best_inter_distortion_intel_sub_group_avc_ref_result_t(result);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_ime_get_inter_major_shape_intel_sub_group_avc_ime_result_t(
+    intel_sub_group_avc_ime_result_t result ) 
+{
+    intel_sub_group_avc_mce_result_t mresult =
+      intel_sub_group_avc_ime_convert_to_mce_result( result );
+    return intel_sub_group_avc_mce_get_inter_major_shape( mresult );
+}
+
 INLINE uchar OVERLOADABLE
 intel_sub_group_avc_ime_get_inter_major_shape(
     intel_sub_group_avc_ime_result_t  result )
 {
+    return __builtin_spirv_intel_sub_group_avc_ime_get_inter_major_shape_intel_sub_group_avc_ime_result_t(result);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_ref_get_inter_major_shape_intel_sub_group_avc_ref_result_t(
+    intel_sub_group_avc_ref_result_t result ) 
+{
     intel_sub_group_avc_mce_result_t mresult =
-      intel_sub_group_avc_ime_convert_to_mce_result( result );
+      intel_sub_group_avc_ref_convert_to_mce_result( result );
     return intel_sub_group_avc_mce_get_inter_major_shape( mresult );
 }
 
@@ -2576,17 +3473,29 @@ INLINE uchar OVERLOADABLE
 intel_sub_group_avc_ref_get_inter_major_shape(
     intel_sub_group_avc_ref_result_t  result )
 {
+    return __builtin_spirv_intel_sub_group_avc_ref_get_inter_major_shape_intel_sub_group_avc_ref_result_t(result);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_ime_get_inter_minor_shapes_intel_sub_group_avc_ime_result_t(
+    intel_sub_group_avc_ime_result_t result ) 
+{
     intel_sub_group_avc_mce_result_t mresult =
-      intel_sub_group_avc_ref_convert_to_mce_result( result );
-    return intel_sub_group_avc_mce_get_inter_major_shape( mresult );
+      intel_sub_group_avc_ime_convert_to_mce_result( result );
+    return intel_sub_group_avc_mce_get_inter_minor_shapes( mresult );
 }
 
 INLINE uchar OVERLOADABLE
 intel_sub_group_avc_ime_get_inter_minor_shapes(
     intel_sub_group_avc_ime_result_t result )
 {
+    return __builtin_spirv_intel_sub_group_avc_ime_get_inter_minor_shapes_intel_sub_group_avc_ime_result_t(result);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_ref_get_inter_minor_shapes_intel_sub_group_avc_ref_result_t(
+    intel_sub_group_avc_ref_result_t result ) 
+{
     intel_sub_group_avc_mce_result_t mresult =
-      intel_sub_group_avc_ime_convert_to_mce_result( result );
+      intel_sub_group_avc_ref_convert_to_mce_result( result );
     return intel_sub_group_avc_mce_get_inter_minor_shapes( mresult );
 }
 
@@ -2594,17 +3503,29 @@ INLINE uchar OVERLOADABLE
 intel_sub_group_avc_ref_get_inter_minor_shapes(
     intel_sub_group_avc_ref_result_t result )
 {
+    return __builtin_spirv_intel_sub_group_avc_ref_get_inter_minor_shapes_intel_sub_group_avc_ref_result_t(result);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_ime_get_inter_directions_intel_sub_group_avc_ime_result_t(
+    intel_sub_group_avc_ime_result_t result ) 
+{
     intel_sub_group_avc_mce_result_t mresult =
-      intel_sub_group_avc_ref_convert_to_mce_result( result );
-    return intel_sub_group_avc_mce_get_inter_minor_shapes( mresult );
+      intel_sub_group_avc_ime_convert_to_mce_result( result );
+    return intel_sub_group_avc_mce_get_inter_directions( mresult );
 }
 
 INLINE uchar OVERLOADABLE
 intel_sub_group_avc_ime_get_inter_directions(
     intel_sub_group_avc_ime_result_t result )
 {
+    return __builtin_spirv_intel_sub_group_avc_ime_get_inter_directions_intel_sub_group_avc_ime_result_t(result);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_ref_get_inter_directions_intel_sub_group_avc_ref_result_t(
+    intel_sub_group_avc_ref_result_t result ) 
+{
     intel_sub_group_avc_mce_result_t mresult =
-      intel_sub_group_avc_ime_convert_to_mce_result( result );
+      intel_sub_group_avc_ref_convert_to_mce_result( result );
     return intel_sub_group_avc_mce_get_inter_directions( mresult );
 }
 
@@ -2612,14 +3533,11 @@ INLINE uchar OVERLOADABLE
 intel_sub_group_avc_ref_get_inter_directions(
     intel_sub_group_avc_ref_result_t result )
 {
-    intel_sub_group_avc_mce_result_t mresult =
-      intel_sub_group_avc_ref_convert_to_mce_result( result );
-    return intel_sub_group_avc_mce_get_inter_directions( mresult );
+    return __builtin_spirv_intel_sub_group_avc_ref_get_inter_directions_intel_sub_group_avc_ref_result_t(result);
 }
 
-INLINE uchar OVERLOADABLE
-intel_sub_group_avc_ime_get_inter_motion_vector_count(
-    intel_sub_group_avc_ime_result_t  result )
+uchar __builtin_spirv_intel_sub_group_avc_ime_get_inter_motion_vector_count_intel_sub_group_avc_ime_result_t(
+    intel_sub_group_avc_ime_result_t result ) 
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ime_convert_to_mce_result( result );
@@ -2627,8 +3545,14 @@ intel_sub_group_avc_ime_get_inter_motion_vector_count(
 }
 
 INLINE uchar OVERLOADABLE
-intel_sub_group_avc_ref_get_inter_motion_vector_count(
-    intel_sub_group_avc_ref_result_t  result )
+intel_sub_group_avc_ime_get_inter_motion_vector_count(
+    intel_sub_group_avc_ime_result_t  result )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_get_inter_motion_vector_count_intel_sub_group_avc_ime_result_t(result);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_ref_get_inter_motion_vector_count_intel_sub_group_avc_ref_result_t(
+    intel_sub_group_avc_ref_result_t result ) 
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ref_convert_to_mce_result( result );
@@ -2636,9 +3560,15 @@ intel_sub_group_avc_ref_get_inter_motion_vector_count(
 }
 
 INLINE uchar OVERLOADABLE
-intel_sub_group_avc_mce_get_default_inter_base_multi_reference_penalty(
+intel_sub_group_avc_ref_get_inter_motion_vector_count(
+    intel_sub_group_avc_ref_result_t  result )
+{
+    return __builtin_spirv_intel_sub_group_avc_ref_get_inter_motion_vector_count_intel_sub_group_avc_ref_result_t(result);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_mce_get_default_inter_base_multi_reference_penalty_i8_i8(
     uchar slice_type,
-    uchar qp )
+    uchar qp ) 
 {
     uchar penalty = 0;
     if( slice_type ==  CLK_AVC_ME_SLICE_TYPE_PRED_INTEL ||
@@ -2658,6 +3588,14 @@ intel_sub_group_avc_mce_get_default_inter_base_multi_reference_penalty(
     return penalty;
 }
 
+INLINE uchar OVERLOADABLE
+intel_sub_group_avc_mce_get_default_inter_base_multi_reference_penalty(
+    uchar slice_type,
+    uchar qp )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_get_default_inter_base_multi_reference_penalty_i8_i8(slice_type, qp);
+}
+
 /*****************************************************************************\
 
 Description:
@@ -2669,10 +3607,9 @@ Description:
 
 \*****************************************************************************/
 
-INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
-intel_sub_group_avc_mce_set_inter_base_multi_reference_penalty(
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_inter_base_multi_reference_penalty_i8_intel_sub_group_avc_mce_payload_t(
     uchar reference_base_penalty,
-    intel_sub_group_avc_mce_payload_t payload )
+    intel_sub_group_avc_mce_payload_t payload ) 
 {
     uint4 handle = payload.x;
 
@@ -2687,10 +3624,17 @@ intel_sub_group_avc_mce_set_inter_base_multi_reference_penalty(
     return result;
 }
 
-INLINE ulong OVERLOADABLE
-intel_sub_group_avc_mce_get_default_inter_shape_penalty(
+INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
+intel_sub_group_avc_mce_set_inter_base_multi_reference_penalty(
+    uchar reference_base_penalty,
+    intel_sub_group_avc_mce_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_set_inter_base_multi_reference_penalty_i8_intel_sub_group_avc_mce_payload_t(reference_base_penalty, payload);
+}
+
+ulong __builtin_spirv_intel_sub_group_avc_mce_get_default_inter_shape_penalty_i8_i8(
     uchar slice_type,
-    uchar qp )
+    uchar qp ) 
 {
     ulong packed_penalty = 0;
 
@@ -2719,6 +3663,14 @@ intel_sub_group_avc_mce_get_default_inter_shape_penalty(
     return packed_penalty;
 }
 
+INLINE ulong OVERLOADABLE
+intel_sub_group_avc_mce_get_default_inter_shape_penalty(
+    uchar slice_type,
+    uchar qp )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_get_default_inter_shape_penalty_i8_i8(slice_type, qp);
+}
+
 /*****************************************************************************\
 
 Description:
@@ -2728,10 +3680,9 @@ Description:
     - set NonSkipZModeAdded (M1.7 :6)
 
 \*****************************************************************************/
-INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
-intel_sub_group_avc_mce_set_inter_shape_penalty(
-     ulong packed_shape_penalty,
-     intel_sub_group_avc_mce_payload_t payload )
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_inter_shape_penalty_i64_intel_sub_group_avc_mce_payload_t(
+    ulong packed_shape_penalty,
+    intel_sub_group_avc_mce_payload_t payload ) 
 {
     uint4 handle = payload.x;
 
@@ -2747,10 +3698,17 @@ intel_sub_group_avc_mce_set_inter_shape_penalty(
     return result;
 }
 
-INLINE uchar OVERLOADABLE
-intel_sub_group_avc_mce_get_default_inter_direction_penalty(
+INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
+intel_sub_group_avc_mce_set_inter_shape_penalty(
+     ulong packed_shape_penalty,
+     intel_sub_group_avc_mce_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_set_inter_shape_penalty_i64_intel_sub_group_avc_mce_payload_t(packed_shape_penalty, payload);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_mce_get_default_inter_direction_penalty_i8_i8(
     uchar slice_type,
-    uchar qp )
+    uchar qp ) 
 {
     uchar penalty = 0;
     if( slice_type ==  CLK_AVC_ME_SLICE_TYPE_BPRED_INTEL ) {
@@ -2769,6 +3727,14 @@ intel_sub_group_avc_mce_get_default_inter_direction_penalty(
     return penalty;
 }
 
+INLINE uchar OVERLOADABLE
+intel_sub_group_avc_mce_get_default_inter_direction_penalty(
+    uchar slice_type,
+    uchar qp )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_get_default_inter_direction_penalty_i8_i8(slice_type, qp);
+}
+
 /*****************************************************************************\
 
 Description:
@@ -2779,10 +3745,9 @@ Description:
 
 \*****************************************************************************/
 
-INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
-intel_sub_group_avc_mce_set_inter_direction_penalty(
-     uchar direction_cost,
-     intel_sub_group_avc_mce_payload_t payload )
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_inter_direction_penalty_i8_intel_sub_group_avc_mce_payload_t(
+    uchar direction_cost,
+    intel_sub_group_avc_mce_payload_t payload ) 
 {
     uint4 handle = payload.x;
 
@@ -2797,10 +3762,17 @@ intel_sub_group_avc_mce_set_inter_direction_penalty(
     return result;
 }
 
-INLINE uint OVERLOADABLE
-intel_sub_group_avc_mce_get_default_intra_luma_shape_penalty(
+INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
+intel_sub_group_avc_mce_set_inter_direction_penalty(
+     uchar direction_cost,
+     intel_sub_group_avc_mce_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_set_inter_direction_penalty_i8_intel_sub_group_avc_mce_payload_t(direction_cost, payload);
+}
+
+uint __builtin_spirv_intel_sub_group_avc_mce_get_default_intra_luma_shape_penalty_i8_i8(
     uchar slice_type,
-    uchar qp )
+    uchar qp ) 
 {
     uint packed_penalty = 0;
 
@@ -2835,6 +3807,14 @@ intel_sub_group_avc_mce_get_default_intra_luma_shape_penalty(
     return packed_penalty;
 }
 
+INLINE uint OVERLOADABLE
+intel_sub_group_avc_mce_get_default_intra_luma_shape_penalty(
+    uchar slice_type,
+    uchar qp )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_get_default_intra_luma_shape_penalty_i8_i8(slice_type, qp);
+}
+
 /*****************************************************************************\
 
 Description:
@@ -2844,10 +3824,9 @@ Description:
 
 \*****************************************************************************/
 
-INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
-intel_sub_group_avc_mce_set_intra_luma_shape_penalty(
-     uint packed_shape_cost,
-     intel_sub_group_avc_mce_payload_t payload )
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_intra_luma_shape_penalty_i32_intel_sub_group_avc_mce_payload_t(
+    uint packed_shape_cost,
+    intel_sub_group_avc_mce_payload_t payload ) 
 {
     uint4 handle = payload.x;
 
@@ -2863,10 +3842,17 @@ intel_sub_group_avc_mce_set_intra_luma_shape_penalty(
     return result;
 }
 
-INLINE uchar OVERLOADABLE
-intel_sub_group_avc_mce_get_default_intra_luma_mode_penalty(
+INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
+intel_sub_group_avc_mce_set_intra_luma_shape_penalty(
+     uint packed_shape_cost,
+     intel_sub_group_avc_mce_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_set_intra_luma_shape_penalty_i32_intel_sub_group_avc_mce_payload_t(packed_shape_cost, payload);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_mce_get_default_intra_luma_mode_penalty_i8_i8(
     uchar slice_type,
-    uchar qp )
+    uchar qp ) 
 {
     uchar penalty = 0;
     if( slice_type == CLK_AVC_ME_SLICE_TYPE_PRED_INTEL ||
@@ -2892,8 +3878,15 @@ intel_sub_group_avc_mce_get_default_intra_luma_mode_penalty(
     return penalty;
 }
 
-INLINE uint OVERLOADABLE
-intel_sub_group_avc_mce_get_default_non_dc_luma_intra_penalty( void )
+INLINE uchar OVERLOADABLE
+intel_sub_group_avc_mce_get_default_intra_luma_mode_penalty(
+    uchar slice_type,
+    uchar qp )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_get_default_intra_luma_mode_penalty_i8_i8(slice_type, qp);
+}
+
+uint __builtin_spirv_intel_sub_group_avc_mce_get_default_non_dc_luma_intra_penalty( ) 
 {
     union {
         struct {
@@ -2911,6 +3904,12 @@ intel_sub_group_avc_mce_get_default_non_dc_luma_intra_penalty( void )
     return packed_penalty.y;
 }
 
+INLINE uint OVERLOADABLE
+intel_sub_group_avc_mce_get_default_non_dc_luma_intra_penalty( void )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_get_default_non_dc_luma_intra_penalty();
+}
+
 /*****************************************************************************\
 
 Description:
@@ -2922,12 +3921,11 @@ Description:
 
 \*****************************************************************************/
 
-INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
-intel_sub_group_avc_mce_set_intra_luma_mode_cost_function(
-     uchar luma_mode_penalty,
-     uint luma_packed_neighbor_modes,
-     uint luma_packed_non_dc_penalty,
-     intel_sub_group_avc_mce_payload_t payload )
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_intra_luma_mode_cost_function_i8_i32_i32_intel_sub_group_avc_mce_payload_t(
+    uchar luma_mode_penalty,
+    uint luma_packed_neighbor_modes,
+    uint luma_packed_non_dc_penalty,
+    intel_sub_group_avc_mce_payload_t payload ) 
 {
     uint4 handle = payload.x;
 
@@ -2944,10 +3942,25 @@ intel_sub_group_avc_mce_set_intra_luma_mode_cost_function(
     return result;
 }
 
+INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
+intel_sub_group_avc_mce_set_intra_luma_mode_cost_function(
+     uchar luma_mode_penalty,
+     uint luma_packed_neighbor_modes,
+     uint luma_packed_non_dc_penalty,
+     intel_sub_group_avc_mce_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_set_intra_luma_mode_cost_function_i8_i32_i32_intel_sub_group_avc_mce_payload_t(luma_mode_penalty, luma_packed_neighbor_modes, luma_packed_non_dc_penalty, payload);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_mce_get_default_intra_chroma_mode_base_penalty( ) 
+{
+    return 0;
+}
+
 INLINE uchar OVERLOADABLE
 intel_sub_group_avc_mce_get_default_intra_chroma_mode_base_penalty( void )
 {
-    return 0;
+    return __builtin_spirv_intel_sub_group_avc_mce_get_default_intra_chroma_mode_base_penalty();
 }
 
 /*****************************************************************************\
@@ -2959,10 +3972,9 @@ Description:
 
 \*****************************************************************************/
 
-INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
-intel_sub_group_avc_mce_set_intra_chroma_mode_cost_function(
-     uchar chroma_mode_base_penalty,
-     intel_sub_group_avc_mce_payload_t payload )
+intel_sub_group_avc_mce_payload_t __builtin_spirv_intel_sub_group_avc_mce_set_intra_chroma_mode_cost_function_i8_intel_sub_group_avc_mce_payload_t(
+    uchar chroma_mode_base_penalty,
+    intel_sub_group_avc_mce_payload_t payload ) 
 {
     uint4 handle = payload.x;
 
@@ -2973,6 +3985,14 @@ intel_sub_group_avc_mce_set_intra_chroma_mode_cost_function(
     return result;
 }
 
+INLINE intel_sub_group_avc_mce_payload_t OVERLOADABLE
+intel_sub_group_avc_mce_set_intra_chroma_mode_cost_function(
+     uchar chroma_mode_base_penalty,
+     intel_sub_group_avc_mce_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_set_intra_chroma_mode_cost_function_i8_intel_sub_group_avc_mce_payload_t(chroma_mode_base_penalty, payload);
+}
+
 /*****************************************************************************\
 
 Description:
@@ -2980,18 +4000,23 @@ Description:
 
 \*****************************************************************************/
 
-INLINE uint OVERLOADABLE
-intel_sub_group_avc_mce_get_inter_reference_ids(
-    intel_sub_group_avc_mce_result_t result)
+uint __builtin_spirv_intel_sub_group_avc_mce_get_inter_reference_ids_intel_sub_group_avc_mce_result_t(
+    intel_sub_group_avc_mce_result_t result ) 
 {
     return intel_get_message_phase_dw(result.x, 6, 0);
 }
 
-INLINE uchar OVERLOADABLE
-intel_sub_group_avc_mce_get_inter_reference_interlaced_field_polarities(
+INLINE uint OVERLOADABLE
+intel_sub_group_avc_mce_get_inter_reference_ids(
+    intel_sub_group_avc_mce_result_t result)
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_get_inter_reference_ids_intel_sub_group_avc_mce_result_t(result);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_mce_get_inter_reference_interlaced_field_polarities_i32_i32_intel_sub_group_avc_mce_result_t(
     uint packed_reference_ids,
-    uint  packed_reference_parameter_field_polarities,
-    intel_sub_group_avc_mce_result_t  result )
+    uint packed_reference_parameter_field_polarities,
+    intel_sub_group_avc_mce_result_t result ) 
 {
     uchar fwd_polarity = 0;
 
@@ -3018,16 +4043,45 @@ intel_sub_group_avc_mce_get_inter_reference_interlaced_field_polarities(
     return field_polarities;
 }
 
-INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
-intel_sub_group_avc_ime_set_inter_base_multi_reference_penalty(
+INLINE uchar OVERLOADABLE
+intel_sub_group_avc_mce_get_inter_reference_interlaced_field_polarities(
+    uint packed_reference_ids,
+    uint  packed_reference_parameter_field_polarities,
+    intel_sub_group_avc_mce_result_t  result )
+{
+    return __builtin_spirv_intel_sub_group_avc_mce_get_inter_reference_interlaced_field_polarities_i32_i32_intel_sub_group_avc_mce_result_t(packed_reference_ids, packed_reference_parameter_field_polarities, result);
+}
+
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_inter_base_multi_reference_penalty_i8_intel_sub_group_avc_ime_payload_t(
     uchar reference_base_penalty,
-    intel_sub_group_avc_ime_payload_t payload )
+    intel_sub_group_avc_ime_payload_t payload ) 
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ime_convert_to_mce_payload( payload );
     mpayload =
       intel_sub_group_avc_mce_set_inter_base_multi_reference_penalty(
           reference_base_penalty,
+          mpayload );
+    return intel_sub_group_avc_mce_convert_to_ime_payload( mpayload );
+}
+
+INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
+intel_sub_group_avc_ime_set_inter_base_multi_reference_penalty(
+    uchar reference_base_penalty,
+    intel_sub_group_avc_ime_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_set_inter_base_multi_reference_penalty_i8_intel_sub_group_avc_ime_payload_t(reference_base_penalty, payload);
+}
+
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_inter_shape_penalty_i64_intel_sub_group_avc_ime_payload_t(
+    ulong packed_shape_cost,
+    intel_sub_group_avc_ime_payload_t payload ) 
+{
+    intel_sub_group_avc_mce_payload_t mpayload =
+        intel_sub_group_avc_ime_convert_to_mce_payload( payload );
+    mpayload =
+      intel_sub_group_avc_mce_set_inter_shape_penalty(
+          packed_shape_cost,
           mpayload );
     return intel_sub_group_avc_mce_convert_to_ime_payload( mpayload );
 }
@@ -3037,19 +4091,12 @@ intel_sub_group_avc_ime_set_inter_shape_penalty(
      ulong packed_shape_cost,
      intel_sub_group_avc_ime_payload_t payload )
 {
-    intel_sub_group_avc_mce_payload_t mpayload =
-        intel_sub_group_avc_ime_convert_to_mce_payload( payload );
-    mpayload =
-      intel_sub_group_avc_mce_set_inter_shape_penalty(
-          packed_shape_cost,
-          mpayload );
-    return intel_sub_group_avc_mce_convert_to_ime_payload( mpayload );
+    return __builtin_spirv_intel_sub_group_avc_ime_set_inter_shape_penalty_i64_intel_sub_group_avc_ime_payload_t(packed_shape_cost, payload);
 }
 
-INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
-intel_sub_group_avc_ime_set_inter_direction_penalty(
-     uchar direction_cost,
-     intel_sub_group_avc_ime_payload_t payload )
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_inter_direction_penalty_i8_intel_sub_group_avc_ime_payload_t(
+    uchar direction_cost,
+    intel_sub_group_avc_ime_payload_t payload ) 
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ime_convert_to_mce_payload( payload );
@@ -3060,19 +4107,32 @@ intel_sub_group_avc_ime_set_inter_direction_penalty(
     return intel_sub_group_avc_mce_convert_to_ime_payload( mpayload );
 }
 
-INLINE uint OVERLOADABLE
-intel_sub_group_avc_ime_get_inter_reference_ids(
-    intel_sub_group_avc_ime_result_t  result )
+INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
+intel_sub_group_avc_ime_set_inter_direction_penalty(
+     uchar direction_cost,
+     intel_sub_group_avc_ime_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_set_inter_direction_penalty_i8_intel_sub_group_avc_ime_payload_t(direction_cost, payload);
+}
+
+uint __builtin_spirv_intel_sub_group_avc_ime_get_inter_reference_ids_intel_sub_group_avc_ime_result_t(
+    intel_sub_group_avc_ime_result_t result ) 
 {
     intel_sub_group_avc_mce_result_t mresult =
       intel_sub_group_avc_ime_convert_to_mce_result( result );
     return intel_sub_group_avc_mce_get_inter_reference_ids( mresult );
 }
 
-INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
-intel_sub_group_avc_ref_set_inter_base_multi_reference_penalty(
+INLINE uint OVERLOADABLE
+intel_sub_group_avc_ime_get_inter_reference_ids(
+    intel_sub_group_avc_ime_result_t  result )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_get_inter_reference_ids_intel_sub_group_avc_ime_result_t(result);
+}
+
+intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_inter_base_multi_reference_penalty_i8_intel_sub_group_avc_ref_payload_t(
     uchar reference_base_penalty,
-    intel_sub_group_avc_ref_payload_t payload )
+    intel_sub_group_avc_ref_payload_t payload ) 
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -3084,9 +4144,16 @@ intel_sub_group_avc_ref_set_inter_base_multi_reference_penalty(
 }
 
 INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
-intel_sub_group_avc_ref_set_inter_shape_penalty(
-     ulong packed_shape_cost,
-     intel_sub_group_avc_ref_payload_t payload )
+intel_sub_group_avc_ref_set_inter_base_multi_reference_penalty(
+    uchar reference_base_penalty,
+    intel_sub_group_avc_ref_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ref_set_inter_base_multi_reference_penalty_i8_intel_sub_group_avc_ref_payload_t(reference_base_penalty, payload);
+}
+
+intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_inter_shape_penalty_i64_intel_sub_group_avc_ref_payload_t(
+    ulong packed_shape_cost,
+    intel_sub_group_avc_ref_payload_t payload ) 
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -3098,9 +4165,16 @@ intel_sub_group_avc_ref_set_inter_shape_penalty(
 }
 
 INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
-intel_sub_group_avc_ref_set_inter_direction_penalty(
-     uchar direction_cost,
+intel_sub_group_avc_ref_set_inter_shape_penalty(
+     ulong packed_shape_cost,
      intel_sub_group_avc_ref_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ref_set_inter_shape_penalty_i64_intel_sub_group_avc_ref_payload_t(packed_shape_cost, payload);
+}
+
+intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_inter_direction_penalty_i8_intel_sub_group_avc_ref_payload_t(
+    uchar direction_cost,
+    intel_sub_group_avc_ref_payload_t payload ) 
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -3111,6 +4185,31 @@ intel_sub_group_avc_ref_set_inter_direction_penalty(
     return intel_sub_group_avc_mce_convert_to_ref_payload( mpayload );
 }
 
+INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
+intel_sub_group_avc_ref_set_inter_direction_penalty(
+     uchar direction_cost,
+     intel_sub_group_avc_ref_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ref_set_inter_direction_penalty_i8_intel_sub_group_avc_ref_payload_t(direction_cost, payload);
+}
+
+intel_sub_group_avc_ref_result_t __builtin_spirv_intel_sub_group_avc_ref_evaluate_with_multi_reference_v3i64_i32_intel_sub_group_avc_ref_payload_t(
+    VMEImage_t src_image_vme,
+    uint packed_reference_ids,
+    intel_sub_group_avc_ref_payload_t payload ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
+    uint4 handle = payload.x;
+    handle = intel_set_message_phase_dw(handle, 1, 6, packed_reference_ids);
+
+    uint4 res = __builtin_IB_vme_send_fbr_new(handle, src_image, src_image, src_image, vme_accelerator);
+
+    intel_sub_group_avc_ref_result_t result = { res };
+    return result;
+}
+
 INLINE intel_sub_group_avc_ref_result_t OVERLOADABLE
 intel_sub_group_avc_ref_evaluate_with_multi_reference(
       read_only image2d_t src_image,
@@ -3118,8 +4217,29 @@ intel_sub_group_avc_ref_evaluate_with_multi_reference(
       sampler_t vme_accelerator,
       intel_sub_group_avc_ref_payload_t payload )
 {
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+
+    return __builtin_spirv_intel_sub_group_avc_ref_evaluate_with_multi_reference_v3i64_i32_intel_sub_group_avc_ref_payload_t(src_image_vme, packed_reference_ids, payload);
+}
+
+intel_sub_group_avc_ref_result_t __builtin_spirv_intel_sub_group_avc_ref_evaluate_with_multi_reference_v3i64_i32_i8_intel_sub_group_avc_ref_payload_t(
+    VMEImage_t src_image_vme,
+    uint packed_reference_ids,
+    uchar packed_reference_field_polarities,
+    intel_sub_group_avc_ref_payload_t payload ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
     uint4 handle = payload.x;
-    handle = intel_set_message_phase_dw(handle, 1, 6, packed_reference_ids);
+    handle = intel_sub_group_payload_set_ref_id_raw(
+        packed_reference_ids,
+        handle);
+    handle = intel_sub_group_payload_set_ref_id_polarities_raw(
+        packed_reference_field_polarities,
+        handle);
 
     uint4 res = __builtin_IB_vme_send_fbr_new(handle, src_image, src_image, src_image, vme_accelerator);
 
@@ -3135,27 +4255,36 @@ intel_sub_group_avc_ref_evaluate_with_multi_reference(
       sampler_t vme_accelerator,
       intel_sub_group_avc_ref_payload_t payload )
 {
-    uint4 handle = payload.x;
-    handle = intel_sub_group_payload_set_ref_id_raw(
-        packed_reference_ids,
-        handle);
-    handle = intel_sub_group_payload_set_ref_id_polarities_raw(
-        packed_reference_field_polarities,
-        handle);
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
 
-    uint4 res = __builtin_IB_vme_send_fbr_new(handle, src_image, src_image, src_image, vme_accelerator);
+    return __builtin_spirv_intel_sub_group_avc_ref_evaluate_with_multi_reference_v3i64_i32_i8_intel_sub_group_avc_ref_payload_t(src_image_vme, packed_reference_ids, packed_reference_field_polarities, payload);
+}
 
-    intel_sub_group_avc_ref_result_t result = { res };
-    return result;
+uint __builtin_spirv_intel_sub_group_avc_ref_get_inter_reference_ids_intel_sub_group_avc_ref_result_t(
+    intel_sub_group_avc_ref_result_t result ) 
+{
+    intel_sub_group_avc_mce_result_t mresult =
+      intel_sub_group_avc_ref_convert_to_mce_result( result );
+    return intel_sub_group_avc_mce_get_inter_reference_ids( mresult );
 }
 
 INLINE uint OVERLOADABLE
 intel_sub_group_avc_ref_get_inter_reference_ids(
     intel_sub_group_avc_ref_result_t  result )
 {
+    return __builtin_spirv_intel_sub_group_avc_ref_get_inter_reference_ids_intel_sub_group_avc_ref_result_t(result);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_ime_get_inter_reference_interlaced_field_polarities_i32_i32_intel_sub_group_avc_ime_result_t(
+    uint packed_reference_ids,
+    uint packed_reference_parameter_field_polarities,
+    intel_sub_group_avc_ime_result_t result ) 
+{
     intel_sub_group_avc_mce_result_t mresult =
-      intel_sub_group_avc_ref_convert_to_mce_result( result );
-    return intel_sub_group_avc_mce_get_inter_reference_ids( mresult );
+      intel_sub_group_avc_ime_convert_to_mce_result( result );
+    return intel_sub_group_avc_mce_get_inter_reference_interlaced_field_polarities( packed_reference_ids, packed_reference_parameter_field_polarities, mresult );
 }
 
 INLINE uchar OVERLOADABLE
@@ -3164,8 +4293,16 @@ intel_sub_group_avc_ime_get_inter_reference_interlaced_field_polarities(
     uint  packed_reference_parameter_field_polarities,
     intel_sub_group_avc_ime_result_t  result )
 {
+    return __builtin_spirv_intel_sub_group_avc_ime_get_inter_reference_interlaced_field_polarities_i32_i32_intel_sub_group_avc_ime_result_t(packed_reference_ids, packed_reference_parameter_field_polarities, result);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_ref_get_inter_reference_interlaced_field_polarities_i32_i32_intel_sub_group_avc_ref_result_t(
+    uint packed_reference_ids,
+    uint packed_reference_parameter_field_polarities,
+    intel_sub_group_avc_ref_result_t result ) 
+{
     intel_sub_group_avc_mce_result_t mresult =
-      intel_sub_group_avc_ime_convert_to_mce_result( result );
+      intel_sub_group_avc_ref_convert_to_mce_result( result );
     return intel_sub_group_avc_mce_get_inter_reference_interlaced_field_polarities( packed_reference_ids, packed_reference_parameter_field_polarities, mresult );
 }
 
@@ -3175,15 +4312,12 @@ intel_sub_group_avc_ref_get_inter_reference_interlaced_field_polarities(
     uint packed_reference_parameter_field_polarities,
     intel_sub_group_avc_ref_result_t  result )
 {
-    intel_sub_group_avc_mce_result_t mresult =
-      intel_sub_group_avc_ref_convert_to_mce_result( result );
-    return intel_sub_group_avc_mce_get_inter_reference_interlaced_field_polarities( packed_reference_ids, packed_reference_parameter_field_polarities, mresult );
+    return __builtin_spirv_intel_sub_group_avc_ref_get_inter_reference_interlaced_field_polarities_i32_i32_intel_sub_group_avc_ref_result_t(packed_reference_ids, packed_reference_parameter_field_polarities, result);
 }
 
-INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_inter_base_multi_reference_penalty(
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_inter_base_multi_reference_penalty_i8_intel_sub_group_avc_sic_payload_t(
     uchar reference_base_penalty,
-    intel_sub_group_avc_sic_payload_t payload )
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -3195,9 +4329,16 @@ intel_sub_group_avc_sic_set_inter_base_multi_reference_penalty(
 }
 
 INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_inter_shape_penalty(
-     ulong packed_shape_cost,
-     intel_sub_group_avc_sic_payload_t payload )
+intel_sub_group_avc_sic_set_inter_base_multi_reference_penalty(
+    uchar reference_base_penalty,
+    intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_inter_base_multi_reference_penalty_i8_intel_sub_group_avc_sic_payload_t(reference_base_penalty, payload);
+}
+
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_inter_shape_penalty_i64_intel_sub_group_avc_sic_payload_t(
+    ulong packed_shape_cost,
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -3209,9 +4350,16 @@ intel_sub_group_avc_sic_set_inter_shape_penalty(
 }
 
 INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_inter_direction_penalty(
-     uchar direction_cost,
+intel_sub_group_avc_sic_set_inter_shape_penalty(
+     ulong packed_shape_cost,
      intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_inter_shape_penalty_i64_intel_sub_group_avc_sic_payload_t(packed_shape_cost, payload);
+}
+
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_inter_direction_penalty_i8_intel_sub_group_avc_sic_payload_t(
+    uchar direction_cost,
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -3223,9 +4371,16 @@ intel_sub_group_avc_sic_set_inter_direction_penalty(
 }
 
 INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_intra_luma_shape_penalty(
-     uint packed_shape_cost,
+intel_sub_group_avc_sic_set_inter_direction_penalty(
+     uchar direction_cost,
      intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_inter_direction_penalty_i8_intel_sub_group_avc_sic_payload_t(direction_cost, payload);
+}
+
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_intra_luma_shape_penalty_i32_intel_sub_group_avc_sic_payload_t(
+    uint packed_shape_cost,
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -3237,11 +4392,18 @@ intel_sub_group_avc_sic_set_intra_luma_shape_penalty(
 }
 
 INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_intra_luma_mode_cost_function(
-     uchar luma_mode_penalty,
-     uint luma_packed_neighbor_modes,
-     uint luma_packed_non_dc_penalty,
+intel_sub_group_avc_sic_set_intra_luma_shape_penalty(
+     uint packed_shape_cost,
      intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_intra_luma_shape_penalty_i32_intel_sub_group_avc_sic_payload_t(packed_shape_cost, payload);
+}
+
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_intra_luma_mode_cost_function_i8_i32_i32_intel_sub_group_avc_sic_payload_t(
+    uchar luma_mode_penalty,
+    uint luma_packed_neighbor_modes,
+    uint luma_packed_non_dc_penalty,
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -3255,9 +4417,18 @@ intel_sub_group_avc_sic_set_intra_luma_mode_cost_function(
 }
 
 INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_intra_chroma_mode_cost_function(
-     uchar chroma_mode_penalty,
+intel_sub_group_avc_sic_set_intra_luma_mode_cost_function(
+     uchar luma_mode_penalty,
+     uint luma_packed_neighbor_modes,
+     uint luma_packed_non_dc_penalty,
      intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_intra_luma_mode_cost_function_i8_i32_i32_intel_sub_group_avc_sic_payload_t(luma_mode_penalty, luma_packed_neighbor_modes, luma_packed_non_dc_penalty, payload);
+}
+
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_intra_chroma_mode_cost_function_i8_intel_sub_group_avc_sic_payload_t(
+    uchar chroma_mode_penalty,
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
     intel_sub_group_avc_mce_payload_t mpayload =
         intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -3268,12 +4439,19 @@ intel_sub_group_avc_sic_set_intra_chroma_mode_cost_function(
     return intel_sub_group_avc_mce_convert_to_sic_payload( mpayload );
 }
 
+INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
+intel_sub_group_avc_sic_set_intra_chroma_mode_cost_function(
+     uchar chroma_mode_penalty,
+     intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_intra_chroma_mode_cost_function_i8_intel_sub_group_avc_sic_payload_t(chroma_mode_penalty, payload);
+}
+
 ////
 
-INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
-intel_sub_group_avc_ime_set_source_interlaced_field_polarity(
-     uchar  src_field_polarity,
-     intel_sub_group_avc_ime_payload_t payload )
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_source_interlaced_field_polarity_i8_intel_sub_group_avc_ime_payload_t(
+    uchar src_field_polarity,
+    intel_sub_group_avc_ime_payload_t payload ) 
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ime_convert_to_mce_payload( payload );
@@ -3282,6 +4460,27 @@ intel_sub_group_avc_ime_set_source_interlaced_field_polarity(
             src_field_polarity,
             mpayload );
       return intel_sub_group_avc_mce_convert_to_ime_payload( mpayload );
+}
+
+INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
+intel_sub_group_avc_ime_set_source_interlaced_field_polarity(
+     uchar  src_field_polarity,
+     intel_sub_group_avc_ime_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_set_source_interlaced_field_polarity_i8_intel_sub_group_avc_ime_payload_t(src_field_polarity, payload);
+}
+
+intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_source_interlaced_field_polarity_i8_intel_sub_group_avc_ref_payload_t(
+    uchar src_field_polarity,
+    intel_sub_group_avc_ref_payload_t payload ) 
+{
+      intel_sub_group_avc_mce_payload_t mpayload =
+          intel_sub_group_avc_ref_convert_to_mce_payload( payload );
+      mpayload =
+        intel_sub_group_avc_mce_set_source_interlaced_field_polarity(
+            src_field_polarity,
+            mpayload );
+      return intel_sub_group_avc_mce_convert_to_ref_payload( mpayload );
 }
 
 INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
@@ -3289,19 +4488,12 @@ intel_sub_group_avc_ref_set_source_interlaced_field_polarity(
      uchar  src_field_polarity,
      intel_sub_group_avc_ref_payload_t payload )
 {
-      intel_sub_group_avc_mce_payload_t mpayload =
-          intel_sub_group_avc_ref_convert_to_mce_payload( payload );
-      mpayload =
-        intel_sub_group_avc_mce_set_source_interlaced_field_polarity(
-            src_field_polarity,
-            mpayload );
-      return intel_sub_group_avc_mce_convert_to_ref_payload( mpayload );
+    return __builtin_spirv_intel_sub_group_avc_ref_set_source_interlaced_field_polarity_i8_intel_sub_group_avc_ref_payload_t(src_field_polarity, payload);
 }
 
-INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_source_interlaced_field_polarity(
-     uchar  src_field_polarity,
-     intel_sub_group_avc_sic_payload_t payload )
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_source_interlaced_field_polarity_i8_intel_sub_group_avc_sic_payload_t(
+    uchar src_field_polarity,
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -3312,10 +4504,17 @@ intel_sub_group_avc_sic_set_source_interlaced_field_polarity(
       return intel_sub_group_avc_mce_convert_to_sic_payload( mpayload );
 }
 
-INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
-intel_sub_group_avc_ime_set_single_reference_interlaced_field_polarity(
-     uchar  ref_field_polarity,
-     intel_sub_group_avc_ime_payload_t payload )
+INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
+intel_sub_group_avc_sic_set_source_interlaced_field_polarity(
+     uchar  src_field_polarity,
+     intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_source_interlaced_field_polarity_i8_intel_sub_group_avc_sic_payload_t(src_field_polarity, payload);
+}
+
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_single_reference_interlaced_field_polarity_i8_intel_sub_group_avc_ime_payload_t(
+    uchar ref_field_polarity,
+    intel_sub_group_avc_ime_payload_t payload ) 
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ime_convert_to_mce_payload( payload );
@@ -3326,10 +4525,17 @@ intel_sub_group_avc_ime_set_single_reference_interlaced_field_polarity(
       return intel_sub_group_avc_mce_convert_to_ime_payload( mpayload );
 }
 
-INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
-intel_sub_group_avc_ref_set_single_reference_interlaced_field_polarity(
+INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
+intel_sub_group_avc_ime_set_single_reference_interlaced_field_polarity(
      uchar  ref_field_polarity,
-     intel_sub_group_avc_ref_payload_t payload )
+     intel_sub_group_avc_ime_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_set_single_reference_interlaced_field_polarity_i8_intel_sub_group_avc_ime_payload_t(ref_field_polarity, payload);
+}
+
+intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_single_reference_interlaced_field_polarity_i8_intel_sub_group_avc_ref_payload_t(
+    uchar ref_field_polarity,
+    intel_sub_group_avc_ref_payload_t payload ) 
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -3340,10 +4546,17 @@ intel_sub_group_avc_ref_set_single_reference_interlaced_field_polarity(
       return intel_sub_group_avc_mce_convert_to_ref_payload( mpayload );
 }
 
-INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_single_reference_interlaced_field_polarity(
+INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
+intel_sub_group_avc_ref_set_single_reference_interlaced_field_polarity(
      uchar  ref_field_polarity,
-     intel_sub_group_avc_sic_payload_t payload )
+     intel_sub_group_avc_ref_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ref_set_single_reference_interlaced_field_polarity_i8_intel_sub_group_avc_ref_payload_t(ref_field_polarity, payload);
+}
+
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_single_reference_interlaced_field_polarity_i8_intel_sub_group_avc_sic_payload_t(
+    uchar ref_field_polarity,
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -3352,6 +4565,28 @@ intel_sub_group_avc_sic_set_single_reference_interlaced_field_polarity(
             ref_field_polarity,
             mpayload );
       return intel_sub_group_avc_mce_convert_to_sic_payload( mpayload );
+}
+
+INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
+intel_sub_group_avc_sic_set_single_reference_interlaced_field_polarity(
+     uchar  ref_field_polarity,
+     intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_single_reference_interlaced_field_polarity_i8_intel_sub_group_avc_sic_payload_t(ref_field_polarity, payload);
+}
+
+intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_dual_reference_interlaced_field_polarities_i8_i8_intel_sub_group_avc_ime_payload_t(
+    uchar fwd_ref_field_polarity,
+    uchar bwd_ref_field_polarity,
+    intel_sub_group_avc_ime_payload_t payload ) 
+{
+      intel_sub_group_avc_mce_payload_t mpayload =
+          intel_sub_group_avc_ime_convert_to_mce_payload( payload );
+      mpayload =
+        intel_sub_group_avc_mce_set_dual_reference_interlaced_field_polarities(
+            fwd_ref_field_polarity, bwd_ref_field_polarity,
+            mpayload );
+      return intel_sub_group_avc_mce_convert_to_ime_payload( mpayload );
 }
 
 INLINE intel_sub_group_avc_ime_payload_t OVERLOADABLE
@@ -3360,20 +4595,13 @@ intel_sub_group_avc_ime_set_dual_reference_interlaced_field_polarities(
      uchar  bwd_ref_field_polarity,
      intel_sub_group_avc_ime_payload_t payload )
 {
-      intel_sub_group_avc_mce_payload_t mpayload =
-          intel_sub_group_avc_ime_convert_to_mce_payload( payload );
-      mpayload =
-        intel_sub_group_avc_mce_set_dual_reference_interlaced_field_polarities(
-            fwd_ref_field_polarity, bwd_ref_field_polarity,
-            mpayload );
-      return intel_sub_group_avc_mce_convert_to_ime_payload( mpayload );
+    return __builtin_spirv_intel_sub_group_avc_ime_set_dual_reference_interlaced_field_polarities_i8_i8_intel_sub_group_avc_ime_payload_t(fwd_ref_field_polarity, bwd_ref_field_polarity, payload);
 }
 
-INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
-intel_sub_group_avc_ref_set_dual_reference_interlaced_field_polarities(
-     uchar  fwd_ref_field_polarity,
-     uchar  bwd_ref_field_polarity,
-     intel_sub_group_avc_ref_payload_t payload )
+intel_sub_group_avc_ref_payload_t __builtin_spirv_intel_sub_group_avc_ref_set_dual_reference_interlaced_field_polarities_i8_i8_intel_sub_group_avc_ref_payload_t(
+    uchar fwd_ref_field_polarity,
+    uchar bwd_ref_field_polarity,
+    intel_sub_group_avc_ref_payload_t payload ) 
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_ref_convert_to_mce_payload( payload );
@@ -3384,11 +4612,19 @@ intel_sub_group_avc_ref_set_dual_reference_interlaced_field_polarities(
       return intel_sub_group_avc_mce_convert_to_ref_payload( mpayload );
 }
 
-INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
-intel_sub_group_avc_sic_set_dual_reference_interlaced_field_polarities(
+INLINE intel_sub_group_avc_ref_payload_t OVERLOADABLE
+intel_sub_group_avc_ref_set_dual_reference_interlaced_field_polarities(
      uchar  fwd_ref_field_polarity,
      uchar  bwd_ref_field_polarity,
-     intel_sub_group_avc_sic_payload_t payload )
+     intel_sub_group_avc_ref_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ref_set_dual_reference_interlaced_field_polarities_i8_i8_intel_sub_group_avc_ref_payload_t(fwd_ref_field_polarity, bwd_ref_field_polarity, payload);
+}
+
+intel_sub_group_avc_sic_payload_t __builtin_spirv_intel_sub_group_avc_sic_set_dual_reference_interlaced_field_polarities_i8_i8_intel_sub_group_avc_sic_payload_t(
+    uchar fwd_ref_field_polarity,
+    uchar bwd_ref_field_polarity,
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
       intel_sub_group_avc_mce_payload_t mpayload =
           intel_sub_group_avc_sic_convert_to_mce_payload( payload );
@@ -3399,15 +4635,25 @@ intel_sub_group_avc_sic_set_dual_reference_interlaced_field_polarities(
       return intel_sub_group_avc_mce_convert_to_sic_payload( mpayload );
 }
 
+INLINE intel_sub_group_avc_sic_payload_t OVERLOADABLE
+intel_sub_group_avc_sic_set_dual_reference_interlaced_field_polarities(
+     uchar  fwd_ref_field_polarity,
+     uchar  bwd_ref_field_polarity,
+     intel_sub_group_avc_sic_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_sic_set_dual_reference_interlaced_field_polarities_i8_i8_intel_sub_group_avc_sic_payload_t(fwd_ref_field_polarity, bwd_ref_field_polarity, payload);
+}
+
 ////
 
-INLINE intel_sub_group_avc_sic_result_t OVERLOADABLE
-intel_sub_group_avc_sic_evaluate_with_multi_reference(
-      read_only image2d_t src_image,
-      uint packed_reference_ids,
-      sampler_t vme_accelerator,
-      intel_sub_group_avc_sic_payload_t payload )
+intel_sub_group_avc_sic_result_t __builtin_spirv_intel_sub_group_avc_sic_evaluate_with_multi_reference_v3i64_i32_intel_sub_group_avc_sic_payload_t(
+    VMEImage_t src_image_vme,
+    uint packed_reference_ids,
+    intel_sub_group_avc_sic_payload_t payload ) 
 {
+    long src_image = getVMEImage(src_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
     uint4 handle = payload.x;
     handle = intel_set_message_phase_dw(handle, 1, 6, packed_reference_ids);
 
@@ -3421,10 +4667,25 @@ INLINE intel_sub_group_avc_sic_result_t OVERLOADABLE
 intel_sub_group_avc_sic_evaluate_with_multi_reference(
       read_only image2d_t src_image,
       uint packed_reference_ids,
-      uchar packed_reference_field_polarities,
       sampler_t vme_accelerator,
       intel_sub_group_avc_sic_payload_t payload )
 {
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+
+    return __builtin_spirv_intel_sub_group_avc_sic_evaluate_with_multi_reference_v3i64_i32_intel_sub_group_avc_sic_payload_t(src_image_vme, packed_reference_ids, payload);
+}
+
+intel_sub_group_avc_sic_result_t __builtin_spirv_intel_sub_group_avc_sic_evaluate_with_multi_reference_v3i64_i32_i8_intel_sub_group_avc_sic_payload_t(
+    VMEImage_t src_image_vme,
+    uint packed_reference_ids,
+    uchar packed_reference_field_polarities,
+    intel_sub_group_avc_sic_payload_t payload ) 
+{
+    long src_image = getVMEImage(src_image_vme);
+    long vme_accelerator = getVMESampler(src_image_vme);
+
     uint4 handle = payload.x;
 
     handle = intel_sub_group_payload_set_ref_id_raw(
@@ -3440,11 +4701,25 @@ intel_sub_group_avc_sic_evaluate_with_multi_reference(
     return result;
 }
 
-INLINE uchar OVERLOADABLE
-intel_sub_group_avc_ime_get_streamout_major_shape_reference_ids(
+INLINE intel_sub_group_avc_sic_result_t OVERLOADABLE
+intel_sub_group_avc_sic_evaluate_with_multi_reference(
+      read_only image2d_t src_image,
+      uint packed_reference_ids,
+      uchar packed_reference_field_polarities,
+      sampler_t vme_accelerator,
+      intel_sub_group_avc_sic_payload_t payload )
+{
+    long src_image_id = (long)__builtin_astype(src_image, void*);
+    long vme_accelerator_id = (long)__builtin_astype(vme_accelerator, void*);
+    VMEImage_t src_image_vme = __builtin_spirv_OpVmeImageINTEL_i64_i64_i64(src_image_id, 0, vme_accelerator_id);
+
+    return __builtin_spirv_intel_sub_group_avc_sic_evaluate_with_multi_reference_v3i64_i32_i8_intel_sub_group_avc_sic_payload_t(src_image_vme, packed_reference_ids, packed_reference_field_polarities, payload);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_reference_ids_intel_sub_group_avc_ime_result_dual_reference_streamout_t_i8_i8(
     intel_sub_group_avc_ime_result_dual_reference_streamout_t result,
     uchar major_shape,
-    uchar direction)
+    uchar direction ) 
 {
     uchar retValue = 0;
     // IME Streamout follows the same format as the IME Streamin message phases (IME2-IME5).
@@ -3498,8 +4773,16 @@ intel_sub_group_avc_ime_get_streamout_major_shape_reference_ids(
 
 INLINE uchar OVERLOADABLE
 intel_sub_group_avc_ime_get_streamout_major_shape_reference_ids(
+    intel_sub_group_avc_ime_result_dual_reference_streamout_t result,
+    uchar major_shape,
+    uchar direction)
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_reference_ids_intel_sub_group_avc_ime_result_dual_reference_streamout_t_i8_i8(result, major_shape, direction);
+}
+
+uchar __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_reference_ids_intel_sub_group_avc_ime_result_single_reference_streamout_t_i8(
     intel_sub_group_avc_ime_result_single_reference_streamout_t result,
-    uchar major_shape )
+    uchar major_shape ) 
 {
     intel_sub_group_avc_ime_result_dual_reference_streamout_t nresult;
     nresult.x = result.x;
@@ -3508,6 +4791,14 @@ intel_sub_group_avc_ime_get_streamout_major_shape_reference_ids(
         nresult,
         major_shape,
         CLK_AVC_ME_MAJOR_FORWARD_INTEL);
+}
+
+INLINE uchar OVERLOADABLE
+intel_sub_group_avc_ime_get_streamout_major_shape_reference_ids(
+    intel_sub_group_avc_ime_result_single_reference_streamout_t result,
+    uchar major_shape )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_get_streamout_major_shape_reference_ids_intel_sub_group_avc_ime_result_single_reference_streamout_t_i8(result, major_shape);
 }
 
 
