@@ -1271,32 +1271,25 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                 patch.Token = iOpenCL::PATCH_TOKEN_SAMPLER_KERNEL_ARGUMENT;
                 patch.Size = sizeof( patch );
                 patch.ArgumentNumber = samplerAnnotation->ArgumentNumber;
-                patch.Offset = context.Dynamic.SamplerOffset[samplerAnnotation->SamplerTableIndex];
+                patch.Offset = samplerAnnotation->IsBindlessAccess ? samplerAnnotation->PayloadPosition : context.Dynamic.SamplerOffset[samplerAnnotation->SamplerTableIndex];
                 patch.LocationIndex = samplerAnnotation->LocationIndex;
                 patch.LocationIndex2 = samplerAnnotation->LocationCount;
                 patch.Type = samplerAnnotation->SamplerType;
+				patch.needBindlessHandle = samplerAnnotation->IsBindlessAccess;
                 patch.IsEmulationArgument = samplerAnnotation->IsEmulationArgument;
+
+                if(samplerAnnotation->IsBindlessAccess)
+                {
+                    dataParameterStreamSize = std::max(
+                        dataParameterStreamSize,
+                        samplerAnnotation->PayloadPosition + 8);
+                }
 
                 if( retValue.Success )
                 {
                     retValue = AddPatchItem(
                         patch,
                         membuf );
-                }
-                if(samplerAnnotation->IsBindlessAccess)
-                {
-                    // for bindless send a second patch token
-                    patch.Offset = samplerAnnotation->PayloadPosition;
-                    patch.needBindlessHandle = true;
-                    dataParameterStreamSize = std::max(
-                        dataParameterStreamSize,
-                        samplerAnnotation->PayloadPosition + 8);
-                    if(retValue.Success)
-                    {
-                        retValue = AddPatchItem(
-                            patch,
-                            membuf);
-                    }
                 }
             }
         }
@@ -1359,12 +1352,20 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.Token = iOpenCL::PATCH_TOKEN_IMAGE_MEMORY_OBJECT_KERNEL_ARGUMENT;
             patch.Size = sizeof( patch );
             patch.ArgumentNumber = imageInput->ArgumentNumber;
-			patch.Offset = context.Surface.SurfaceOffset[bti];
+			patch.Offset = imageInput->IsBindlessAccess ? imageInput->PayloadPosition : context.Surface.SurfaceOffset[bti];
             patch.Type =  imageInput->ImageType;
             patch.Writeable = imageInput->Writeable;
             patch.LocationIndex = imageInput->LocationIndex;
             patch.LocationIndex2 = imageInput->LocationCount;
+			patch.needBindlessHandle = imageInput->IsBindlessAccess;
             patch.IsEmulationArgument = imageInput->IsEmulationArgument;
+
+            if(imageInput->IsBindlessAccess)
+            {
+                dataParameterStreamSize = std::max(
+                    dataParameterStreamSize,
+                    imageInput->PayloadPosition + 8);
+            }
 
             patch.Transformable = transformable &&
                 (imageInput->AccessedByIntCoords && !imageInput->AccessedByFloatCoords &&
@@ -1376,22 +1377,6 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                     patch,
                     membuf );
             }
-
-            if(imageInput->IsBindlessAccess)
-            {
-                patch.Offset = imageInput->PayloadPosition;
-                patch.needBindlessHandle = true;
-                dataParameterStreamSize = std::max(
-                    dataParameterStreamSize,
-                    imageInput->PayloadPosition + 8);
-                if(retValue.Success)
-                {
-                    retValue = AddPatchItem(
-                        patch,
-                        membuf);
-                }
-            }
-
         }
     }
 
