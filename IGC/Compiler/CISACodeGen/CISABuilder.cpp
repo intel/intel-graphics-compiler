@@ -3528,7 +3528,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
 
     if (IGC_IS_FLAG_ENABLED(disableVarSplit))
     {
-        vbuilder->SetOption(vISA_LocalDeclareSplitInGlobalRA, false);
+        vbuilder->SetOption(vISA_VariableSplitInGlobalRA, false);
     }
 
     if (IGC_IS_FLAG_ENABLED(disableRemat))
@@ -3726,9 +3726,9 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         vbuilder->SetOption(vISA_EnableNoDD, true);
     }
 
-    if (IGC_IS_FLAG_ENABLED(GlobalSendVarSplit))
+    if (IGC_IS_FLAG_ENABLED(disableGlobalVarSplit))
     {
-        vbuilder->SetOption(vISA_GlobalSendVarSplit, true);
+        vbuilder->SetOption(vISA_GlobalVarSplit, false);
     }
 
     // TODO: doReRA will eventually be depricated. Remove when OCL starts using the new gtpin interface

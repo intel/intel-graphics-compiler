@@ -246,6 +246,7 @@ DECLARE_IGC_REGKEY(bool, EnableIntelFast,               false, "Enable intel fas
 DECLARE_IGC_REGKEY(bool, disableUnormTypedReadWA,       false, "disable software conversion for UNORM surface")
 DECLARE_IGC_REGKEY(bool, forceGlobalRA,                 false, "force global register allocator")
 DECLARE_IGC_REGKEY(bool, disableVarSplit,               false, "disable variable splitting")
+DECLARE_IGC_REGKEY(bool, disableGlobalVarSplit,         false, "disable global variable splitting")
 DECLARE_IGC_REGKEY(bool, disableRemat,                  false, "disable re-materialization")
 DECLARE_IGC_REGKEY(bool, EnableDisableMidThreadPreemptionOpt,    true,  "Disable mid thread preemption")
 DECLARE_IGC_REGKEY(DWORD, MidThreadPreemptionDisableThreshold,   600, "Threshold to disable mid thread preemption")
