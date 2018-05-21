@@ -465,8 +465,13 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
     unsigned C = IGC_GET_FLAG_VALUE(UniformMemOptLimit);
     if (C == 0) C = 256;
     C /= TypeSizeInBits;
-    for (; C >= 2; --C)
+    for (; C >= 2; --C) {
+      unsigned Bytes = C * (TypeSizeInBits / 8);
+      // Skip sizes which is not supported, so far, in the code emitter.
+      if (Bytes != 4 && Bytes != 8 && Bytes != 12 && Bytes != 16 && Bytes != 32)
+        continue;
       profitVec.push_back(C);
+    }
   } else {
     SmallVector<unsigned, 4>& Vec = ProfitVectorLengths[TypeSizeInBits];
     profitVec.append(Vec.begin(), Vec.end());
