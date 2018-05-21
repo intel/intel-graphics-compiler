@@ -3604,7 +3604,6 @@ void Optimizer::newLocalCopyPropagation()
 
 void Optimizer::cselPeepHoleOpt()
 {
-
     if (!builder.hasCondModForTernary())
     {
         return;
@@ -3907,28 +3906,49 @@ static void expandPseudoLogic(IR_Builder& builder,
         --iter;
     }
 
-    if (inst->isWriteEnableInst() &&
-        (inst->getMaskOffset() == 0 || inst->getMaskOffset() == 16) &&
-        // we can't do this for simd8 inst in simd16 kernels as it will overwrite upper flag bits
-        (inst->getExecSize() > 8 || inst->getExecSize() == builder.kernel.getSimdSize()))
+    auto canFoldOnSIMD1 = [=, &builder]()
+    {
+        if (inst->isWriteEnableInst() &&
+            (inst->getMaskOffset() == 0 || inst->getMaskOffset() == 16) &&
+            // we can't do this for simd8 inst in simd16 kernels as it will overwrite upper flag bits
+            (inst->getExecSize() > 8 || inst->getExecSize() == builder.kernel.getSimdSize()))
+        {
+            return true;
+        }
+
+        // Dst operand has a single flag element.
+        if (inst->isWriteEnableInst() && inst->getMaskOffset() == 0 && inst->getExecSize() == 1)
+        {
+            G4_Operand *Dst = inst->getDst();
+            if (Dst && Dst->getTopDcl() != nullptr)
+            {
+                G4_Declare *Dcl = Dst->getTopDcl();
+                if (Dcl->getNumberFlagElements() == 1)
+                    return true;
+            }
+        }
+
+        return false;
+    };
+
+    if (canFoldOnSIMD1())
     {
         G4_opcode newOpcode = G4_illegal;
-
-		if (inst->getMaskOffset() == 16)
-		{
-			MUST_BE_TRUE(inst->getExecSize() == 16, "Only support simd16 pseudo-logic instructions");
-			// we have to use the upper flag bits (.1) instead
-			MUST_BE_TRUE(inst->getSrc(0)->isSrcRegRegion() && inst->getSrc(0)->isFlag(),
-				"expect src0 to be flag");
-			inst->getSrc(0)->asSrcRegRegion()->setSubRegOff(1);
-			if (inst->getSrc(1) != nullptr)
-			{
-				MUST_BE_TRUE(inst->getSrc(1)->isSrcRegRegion() && inst->getSrc(1)->isFlag(),
-					"expect src1 to be flag");
-				inst->getSrc(1)->asSrcRegRegion()->setSubRegOff(1);
-			}
-			inst->getDst()->setSubRegOff(1);
-		}
+        if (inst->getMaskOffset() == 16)
+        {
+            MUST_BE_TRUE(inst->getExecSize() == 16, "Only support simd16 pseudo-logic instructions");
+            // we have to use the upper flag bits (.1) instead
+            MUST_BE_TRUE(inst->getSrc(0)->isSrcRegRegion() && inst->getSrc(0)->isFlag(),
+                "expect src0 to be flag");
+            inst->getSrc(0)->asSrcRegRegion()->setSubRegOff(1);
+            if (inst->getSrc(1) != nullptr)
+            {
+                MUST_BE_TRUE(inst->getSrc(1)->isSrcRegRegion() && inst->getSrc(1)->isFlag(),
+                    "expect src1 to be flag");
+                inst->getSrc(1)->asSrcRegRegion()->setSubRegOff(1);
+            }
+            inst->getDst()->setSubRegOff(1);
+        }
 
         switch (inst->opcode())
         {
@@ -3973,7 +3993,8 @@ static void expandPseudoLogic(IR_Builder& builder,
                 inst->transferDef(newSel, opNum, Gen4_Operand_Number::Opnd_pred);
                 bb->insert(newIter, newSel);
                 SI = newSel;
-                return builder.Create_Src_Opnd_From_Dcl(newDcl, builder.getRegionStride1());
+                RegionDesc *rd = (tmpSize == 1) ? builder.getRegionScalar() : builder.getRegionStride1();
+                return builder.Create_Src_Opnd_From_Dcl(newDcl, rd);
             }
             return Opnd;
         };
@@ -4148,6 +4169,18 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
     if (!canFold)
     {
        return false;
+    }
+
+    // floating point cmp may flush denorms to zero, but mov may not.
+    //
+    // mov(1|M0) (lt)f0.0 r6.2<1>:f r123.2<0;1,0>:f
+    // may not be the same as
+    // mov(1|M0)          r6.2<1>:f r123.2<0;1,0>:f
+    // cmp(1|M0) (lt)f0.0 null<1>:f 6.2<0;1,0>:f 0x0:f
+    // for denorm inputs.
+    if (inst->opcode() == G4_mov && IS_TYPE_FLOAT_ALL(cmpInst->getSrc(0)->getType()))
+    {
+        return false;
     }
 
     auto cmpIter = std::find(iter, bb->end(), cmpInst);
