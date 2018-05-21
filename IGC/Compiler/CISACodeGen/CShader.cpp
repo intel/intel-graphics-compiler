@@ -1100,10 +1100,13 @@ uint CShader::GetNbElementAndMask(llvm::Value* value, uint32_t& mask)
         break;
     case llvm::Type::IntegerTyID:
         bSize = llvm::cast<llvm::IntegerType>(type)->getBitWidth();
-        nbElement = GetIsUniform(value) ? 1 : numLanes(m_SIMDSize);
-        if (bSize==1 && !m_CG->canEmitAsUniformBool(value))
+        if(bSize==1)
         {
             nbElement = numLanes(m_SIMDSize);
+        }
+        else
+        {
+            nbElement = GetIsUniform(value) ? 1 : numLanes(m_SIMDSize);
         }
         break;
     case llvm::Type::VectorTyID:
@@ -2645,12 +2648,9 @@ CVariable* CShader::GetNewVector(llvm::Value* value, e_alignment preferredAlign)
             align = CEncoder::GetCISADataTypeAlignment(type);
     }
     uint16_t numberOfInstance = m_numberInstance;
-    if (uniform)
+    if(uniform && type != ISA_TYPE_BOOL)
     {
-        if (type != ISA_TYPE_BOOL || m_CG->canEmitAsUniformBool(value))
-        {
-            numberOfInstance = 1;
-        }
+        numberOfInstance = 1;
     }
     if (mask)
     {

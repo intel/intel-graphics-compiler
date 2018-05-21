@@ -104,8 +104,7 @@ bool CodeGenPatternMatch::runOnFunction(llvm::Function &F)
     m_blockMap.clear();
     ConstantPlacement.clear();
     PairOutputMap.clear();
-    UniformBools.clear();
-
+    
     delete[] m_blocks;
     m_blocks = nullptr;
     
@@ -206,73 +205,6 @@ void CodeGenPatternMatch::AddToConstantPool(llvm::BasicBlock *UseBlock,
     ConstantPlacement[C] = LCA;
 }
 
-// Check bool values that can be emitted as a single element predicate.
-void CodeGenPatternMatch::gatherUniformBools(Value *Val)
-{
-    if (!isUniform(Val) || Val->getType()->getScalarType()->isIntegerTy(1))
-        return;
-
-    // Only starts from select instruction for now.
-    // It is more complicate for uses in terminators.
-    if (SelectInst* SI = dyn_cast<SelectInst>(Val)) {
-        Value* Cond = SI->getCondition();
-        if (Cond->getType()->isVectorTy() || !Cond->hasOneUse())
-            return;
-
-        // All users of bool values.
-        DenseSet<Value*> Vals;
-        Vals.insert(SI);
-
-        // Grow the list of bool values to be checked.
-        std::vector<Value*> ValList;
-        ValList.push_back(Cond);
-
-        bool IsLegal = true;
-        while (!ValList.empty()) {
-            Value* V = ValList.back();
-            ValList.pop_back();
-            assert(isUniform(V) && V->getType()->isIntegerTy(1));
-
-            // Check uses.
-            for (auto UI = V->user_begin(), UE = V->user_end(); UI != UE; ++UI) {
-                Value* U = *UI;
-                if (!Vals.count(U))
-                    goto FAIL;
-            }
-
-            // Check defs.
-            Vals.insert(V);
-            if (auto CI = dyn_cast<CmpInst>(V)) {
-                assert(isUniform(CI->getOperand(0)));
-                assert(isUniform(CI->getOperand(1)));
-                if (CI->getOperand(0)->getType()->getScalarSizeInBits() == 1)
-                    goto FAIL;
-                continue;
-            } else if (auto BI = dyn_cast<BinaryOperator>(V)) {
-                assert(isUniform(BI->getOperand(0)));
-                assert(isUniform(BI->getOperand(1)));
-                if (isa<Instruction>(BI->getOperand(0)))
-                    ValList.push_back(BI->getOperand(0));
-                if (isa<Instruction>(BI->getOperand(1)))
-                    ValList.push_back(BI->getOperand(1));
-                continue;
-            }
-
-        FAIL:
-            IsLegal = false;
-            break;
-        }
-
-        // Populate all boolean values if legal.
-        if (IsLegal) {
-            for (auto V : Vals) {
-                if (V->getType()->isIntegerTy(1))
-                    UniformBools.insert(V);
-            }
-        }
-    }
-}
-
 void CodeGenPatternMatch::CodeGenBlock(llvm::BasicBlock* bb)
 {
     llvm::BasicBlock::InstListType &instructionList = bb->getInstList();
@@ -293,7 +225,6 @@ void CodeGenPatternMatch::CodeGenBlock(llvm::BasicBlock* bb)
             if(pattern)
             {
                 block->m_dags.push_back(SDAG(pattern, m_root));
-                gatherUniformBools(m_root);
             }
         }
     }
@@ -2492,10 +2423,6 @@ bool CodeGenPatternMatch::MatchSatModifier(llvm::Instruction& I)
             satPattern->pattern = nullptr;
             satPattern->source = GetSource(source, true, false);
             match = true;
-        }
-        if (isUniform(&I) && source->hasOneUse())
-        {
-            gatherUniformBools(source);
         }
         AddPattern(satPattern);
     }

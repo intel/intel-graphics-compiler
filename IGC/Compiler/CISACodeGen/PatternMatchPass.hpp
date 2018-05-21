@@ -245,17 +245,6 @@ public:
     // Place a constant Val into the constant pool. This constant should be
     // available in basic block UseBlock.
     void AddToConstantPool(llvm::BasicBlock *UseBlock, llvm::Value *Val);
-
-    bool canEmitAsUniformBool(const llvm::Value* Val) const
-    {
-        return UniformBools.count(Val) > 0;
-    }
-
-    bool isUniform(const llvm::Value* V) const
-    {
-        return m_WI && (m_WI->whichDepend(V) == WIAnalysis::UNIFORM);
-    };
-
 public:
     llvm::DenseSet<llvm::Instruction*>       m_usedInstructions;
     bool                  m_rootIsSubspanUse;
@@ -291,13 +280,6 @@ private:
     LiveVars*             m_LivenessInfo;  
     PositionDepAnalysis*  m_PosDep;
     llvm::BumpPtrAllocator m_allocator;
-    // The set of boolean values stored as predicates of a single element.
-    // Otherwise, they are expanded to the SIMD size.
-    llvm::DenseSet<const llvm::Value*> UniformBools;
-
-    // Find bool values that will be emitted as uniform variables.
-    // Otherwise they will be expanded to the SIMD size, by default.
-    void gatherUniformBools(llvm::Value *Val);
 };
 
 //helper

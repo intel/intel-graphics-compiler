@@ -830,19 +830,9 @@ Common_ISA_Exec_Size CEncoder::GetAluExecSize(CVariable* dst) const
             simdSize = m_encoderState.m_uniformSIMDSize;
         }
     }
-    else if (dst && dst->IsUniform())
+    else if (dst && dst->IsUniform() && dst->GetVarType() != EVARTYPE_PREDICATE)
     {
-        if (dst->GetVarType() == EVARTYPE_PREDICATE)
-        {
-            if (dst->GetNumberElement() == 1)
-            {
-                simdSize = m_encoderState.m_uniformSIMDSize;
-            }
-        }
-        else
-        {
-            simdSize = m_encoderState.m_uniformSIMDSize;
-        }
+        simdSize = m_encoderState.m_uniformSIMDSize;
     }
 
     return visaExecSize(simdSize);
