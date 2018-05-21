@@ -85,14 +85,12 @@ public:
 
 
     /// For some client APIs (e.g. vulkan) compiler is free to assume that
-    /// resources bound to two different bindings points never alias. 
-    /// Note: For Vulkan, in cases when two resources do alias, shader author
-    /// has to explicitly synchronize memory accesses to these resources 
-    /// either by using memory barriers or by decorating variables as 
-    /// "coherent".
+    /// resources bound to two different bindings points never alias unless a
+    /// resource is explicitly marked as being aliased.
+    assert(CGC.getModuleMetaData());
     if (AS1 > ADDRESS_SPACE_NUM_ADDRESSES &&
         AS2 > ADDRESS_SPACE_NUM_ADDRESSES &&
-        CGC.m_DriverInfo.StatefullResouresNotAliased())
+        CGC.getModuleMetaData()->statefullResourcesNotAliased)
     {
         bool isDirectAccess[2] = { false, false };
         unsigned resourceIndex[2] = { 0, 0 };

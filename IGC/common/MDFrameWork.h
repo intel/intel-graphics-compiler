@@ -219,6 +219,11 @@ namespace IGC
         std::map<llvm::GlobalVariable*, int> inlineProgramScopeOffsets;
         ShaderData shaderData;
         bool UseBindlessImage = false;
+
+        // When true compiler can assume that resources bound to two different
+        // bindings do not alias.
+        bool statefullResourcesNotAliased = false; 
+
         unsigned int privateMemoryPerWI = 0;
         std::array<uint64_t, NUM_SHADER_RESOURCE_VIEW_SIZE> m_ShaderResourceViewMcsMask;
     };

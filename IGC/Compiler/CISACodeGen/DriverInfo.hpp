@@ -50,9 +50,6 @@ public:
     /// Driver supports dynamic uniform buffers.
     virtual bool SupportsDynamicUniformBuffers() const { return false; }
 
-    /// Compiler can assume that resources bound to two different bindings do not alias.
-    virtual bool StatefullResouresNotAliased() const { return false; }
-
     /// Is any special metadata translation required
     virtual bool NeedsMetadataTranslation() const { return false; }
 
