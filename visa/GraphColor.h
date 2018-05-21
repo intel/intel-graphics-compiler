@@ -112,7 +112,6 @@ class LiveRange
         };
     };
 
-
 public:
 
     LiveRange(G4_RegVar* v, GlobalRA&);
@@ -302,8 +301,8 @@ namespace vISA
         void updateEndIntervalForSubDcl(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
         void updateStartInterval(G4_Declare* dcl, G4_INST* curInst);
         void updateEndInterval(G4_Declare* dcl, G4_INST* curInst);
-        void updateStartIntervalWithSub(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
-        void updateEndIntervalWithSub(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
+        void updateStartIntervalForLocal(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
+        void updateEndIntervalForLocal(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd);
         void buildLiveIntervals();
         void clearIntervalInfo();
         void sortLiveIntervals();
@@ -502,7 +501,6 @@ namespace vISA
         void buildInterferenceWithLive(BitSet& live, unsigned i);
         void buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd, BitSet& live, bool setLive, bool setIntf);
         void buildInterferenceWithAllSubDcl(unsigned v1, unsigned v2);
-        void buildInterferenceWithAllDcl(unsigned lr_id,  BitSet& live, bool setLive, bool setIntf);
 
         void markInterferenceForSend(G4_BB* bb, G4_INST* inst, G4_DstRegRegion* dst);
 
@@ -523,7 +521,7 @@ namespace vISA
 
         unsigned totalGRFRegCount; // .reg_count_total
         unsigned numVar;
-        unsigned splitStartID;
+        unsigned numSplitStartID;
         unsigned numSplitVar;
         unsigned *spAddrRegSig;
         Interference intf;
@@ -712,7 +710,7 @@ namespace vISA
         void relaxNeighborDegreeGRF(LiveRange* lr);
         void relaxNeighborDegreeARF(LiveRange* lr);
         bool assignColors(ColorHeuristic heuristicGRF, bool doBankConflict, bool highInternalConflict);
-        void paritalInteferenceCheck();
+
         void clearSpillAddrLocSignature()
         {
             memset(spAddrRegSig, 0, getNumAddrRegisters() * sizeof(unsigned));
@@ -789,9 +787,6 @@ namespace vISA
         AugmentationMasks maskType = AugmentationMasks::Undetermined;
         std::vector<G4_Declare*> subDclList;
         unsigned int subOff = 0;
-        unsigned int rightBound = 0;
-        unsigned int subDclBytes = 0;
-        G4_Declare *dcl = nullptr;
     };
 
     class GlobalRA
@@ -1082,56 +1077,6 @@ namespace vISA
             vars[dclid].subOff = offset;
         }
 
-        unsigned int getSubDclBytes(G4_Declare* dcl)
-        {
-            auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
-            {
-                return defaultValues.subDclBytes;
-            }
-            return vars[dclid].subDclBytes;
-        }
-
-        void setSubDclBytes(G4_Declare* dcl, unsigned int subDclBytes)
-        {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].subDclBytes = subDclBytes;
-        }
-
-        void setDcl(G4_Declare* dcl)
-        {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].dcl = dcl;
-        }
-
-        G4_Declare * getDcl(unsigned dclid)
-        {
-            if (dclid >= vars.size())
-            {
-                return nullptr;
-            }
-            return vars[dclid].dcl;
-        }
-
-        unsigned int getSubRightBound(G4_Declare* dcl)
-        {
-            auto dclid = dcl->getDeclId();
-            if (dclid >= vars.size())
-            {
-                return defaultValues.rightBound;
-            }
-            return vars[dclid].rightBound;
-        }
-
-        void setSubRightBound(G4_Declare* dcl, unsigned int offset)
-        {
-            auto dclid = dcl->getDeclId();
-            resize(dclid);
-            vars[dclid].rightBound = offset;
-        }
-
         G4_Align getBankAlign(G4_Declare*);
         bool areAllDefsNoMask(G4_Declare*);
         void removeUnreferencedDcls();
@@ -1184,19 +1129,21 @@ namespace vISA
     private:
         G4_Kernel& kernel;
         GlobalRA& gra;
-        std::map<unsigned, VarRangeListPackage> varRanges;
-        std::stack<VarRange*> toDelete;
 
         VarRange* splitVarRange(VarRange *src1, VarRange *src2, std::stack<VarRange*> *toDelete);
         void rangeListSpliting(VAR_RANGE_LIST *rangeList, G4_Operand *opnd, std::stack<VarRange*> *toDelete);
-        bool rangeAlign(G4_Declare *topDcl, VAR_RANGE_LIST *rangeList, unsigned &align);
-        static void getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight);
-        void splitRange(G4_Declare *topdcl, G4_Operand *opnd);
+        static void getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize);
+        void createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<G4_Declare*> &splitDclList);
+        void insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Operand *dstOpnd, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList);
+        void insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int index, G4_Operand *srcOpnd, int pos, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList);
 
     public:
-        bool didVariableSplit = false;
+        bool didLocalSplit = false;
+        bool didGlobalSplit = false;
 
-        void variableSplit(IR_Builder& builder, G4_Kernel &kernel);
+        void localSplit(IR_Builder& builder, G4_BB* bb);
+        void globalSplit(IR_Builder& builder, G4_Kernel &kernel);
+        bool canDoGlobalSplit(IR_Builder& builder, G4_Kernel &kernel, uint32_t instNum, uint32_t spillRefCount, uint32_t sendSpillRefCount);
 
         VarSplit(GlobalRA& g) : kernel(g.kernel), gra(g)
         {

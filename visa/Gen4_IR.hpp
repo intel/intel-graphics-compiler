@@ -1817,7 +1817,6 @@ class G4_Declare
     uint16_t isExDesc : 1;
     uint16_t capableOfReuse : 1;
     uint16_t isSplittedDcl : 1;
-    uint16_t isGlobalSplittedDcl : 1;
     uint16_t isPartialDcl : 1;
     uint16_t refInSend : 1;
 
@@ -1858,7 +1857,7 @@ public:
                G4_Type        ty,
                std::vector<G4_Declare*>& dcllist) :
       name(n), regFile(k), numElements(numElems), elemType(ty), addressed(false),
-      hasFileScope(false), isSplittedDcl(false), isGlobalSplittedDcl(false), isPartialDcl(false),
+      hasFileScope(false), isSplittedDcl(false), isPartialDcl(false),
       offsetFromBase(-1), liveIn(false), liveOut(false), noWidening(false), refInSend(false)
     {
         //
@@ -2107,9 +2106,6 @@ public:
 
     void setIsSplittedDcl(bool b) { isSplittedDcl = b; }
     bool getIsSplittedDcl() { return isSplittedDcl; }
-
-    void setIsGlobalSplittedDcl(bool b) { isGlobalSplittedDcl = b; }
-    bool getIsGlobalSplittedDcl() { return isGlobalSplittedDcl; }
 
     void setIsPartialDcl(bool b) { isPartialDcl = b; }
     bool getIsPartialDcl() { return isPartialDcl; }

@@ -1642,54 +1642,27 @@ void Interference::buildInterferenceWithLive(BitSet& live, unsigned i)
 
 void Interference::buildInterferenceWithSubDcl(unsigned lr_id, G4_Operand *opnd, BitSet& live, bool setLive, bool setIntf)
 {
-    G4_Declare *dcl = lrs[lr_id]->getVar()->getDeclare();
-    unsigned leftBound = opnd->getLeftBound();
-    unsigned rightBound = opnd->getRightBound();
-    unsigned rangeSize = gra.getSubDclBytes(dcl);
 
-    assert(rangeSize != 0);
-    
-    //FIXME, there is no guarantee that the rangeSize is the average size
-    unsigned startIdx = leftBound / rangeSize;
-    unsigned endIdx = rightBound / rangeSize;
-
-    for (unsigned i = startIdx; i <= endIdx; i++)
-    {
-        G4_Declare * subDcl = gra.getSubDcl(dcl, i);
-
-        int subID = subDcl->getRegVar()->getId();
-
-        if (setIntf)
-        {
-            buildInterferenceWithLive(live, subID);
-        }
-        if (setLive)
-        {
-            live.set(subID, true);
-        }
-    }
-
-    return;
-}
-
-void Interference::buildInterferenceWithAllDcl(unsigned lr_id,  BitSet& live, bool setLive, bool setIntf)
-{
-    G4_Declare *dcl = lrs[lr_id]->getVar()->getDeclare();
+    G4_Declare *dcl = lrs[lr_id]->getDcl();
     auto subDclSize = gra.getSubDclSize(dcl);
-    
     for (unsigned i = 0; i < subDclSize; i++)
     {
         G4_Declare * subDcl = gra.getSubDcl(dcl, i);
-        int subID = subDcl->getRegVar()->getId();
-        
-        if (setIntf)
-        {
-            buildInterferenceWithLive(live, subID);
-        }
 
-        if (setLive)
+        unsigned leftBound = gra.getSubOffset(subDcl);
+        unsigned rightBound = leftBound + subDcl->getByteSize() - 1;
+        if (!(opnd->getRightBound() < leftBound || rightBound < opnd->getLeftBound()))
         {
-            live.set(subID, true);
+            int subID = subDcl->getRegVar()->getId();
+
+            if (setIntf)
+            {
+                buildInterferenceWithLive(live, subID);
+            }
+            if (setLive)
+            {
+                live.set(subID, true);
+            }
         }
     }
 
@@ -1888,7 +1861,7 @@ void Interference::markInterferenceForSend(G4_BB* bb,
                                 if (!varSplitCheckBeforeIntf(dstId, k))
                                 {
                                     checkAndSetIntf(dstId, k);
-                                    //No variable split in local RA
+                                    buildInterferenceWithAllSubDcl(dstId, k);
                                 }
                             }
                         }
@@ -2010,7 +1983,6 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
 
                     if (lrs[id]->getIsSplittedDcl())
                     {
-                        //Inteference with all sub declares if there are
                         buildInterferenceWithSubDcl(id, (G4_Operand *)dst, live, false, true);
                     }
                 }
@@ -2056,7 +2028,6 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
                                     {
                                         checkAndSetIntf(dst->getBase()->asRegVar()->getId(),
                                             src->asSrcRegRegion()->getBase()->asRegVar()->getId());
-                                        buildInterferenceWithAllSubDcl(dst->getBase()->asRegVar()->getId(), src->asSrcRegRegion()->getBase()->asRegVar()->getId());
                                     }
 
                                 }
@@ -2074,7 +2045,6 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
                                     {
                                         checkAndSetIntf(dst->getBase()->asRegVar()->getId(),
                                             src->asSrcRegRegion()->getBase()->asRegVar()->getId());
-                                        buildInterferenceWithAllSubDcl(dst->getBase()->asRegVar()->getId(), src->asSrcRegRegion()->getBase()->asRegVar()->getId());
                                     }
                                 }
                             }
@@ -2115,8 +2085,7 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
             inst->isPseudoKill())
         {
             updateLiveness(live, id, false);
-            
-            //Kill all sub declares if there are
+
             if (lrs[id]->getIsSplittedDcl())
             {
                 for (unsigned i = lrs[id]->getDcl()->getSplitVarStartID();
@@ -2146,12 +2115,6 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
             if (var->isRegAllocPartaker())
             {
                 buildInterferenceWithLive(live, var->getId());
-                
-                //Inteference with all sub declares if there are
-                if(var->getDeclare()->getIsSplittedDcl())
-                {
-                    buildInterferenceWithAllDcl(var->getId(), live, false, true);
-                }
             }
         }
     }
@@ -2269,7 +2232,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live, G4_Declare
                     updateLiveness(live, id, true);
                     if (lrs[id]->getIsSplittedDcl())
                     {
-                        buildInterferenceWithAllDcl(id,  live, true, true);
+                        buildInterferenceWithSubDcl(id, (G4_Operand *)src, live, true, true);
                     }
                 }
             }
@@ -2321,10 +2284,6 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live, G4_Declare
                         if (var->isRegAllocPartaker())
                         {
                             updateLiveness(live, var->getId(), true);
-                            if(var->getDeclare()->getIsSplittedDcl())
-                            {
-                                buildInterferenceWithAllDcl(var->getId(),  live, true, false);
-                            }
                         }
                     }
                 }
@@ -3523,10 +3482,7 @@ void Augmentation::updateStartIntervalForSubDcl(G4_Declare* dcl, G4_INST* curIns
 
         unsigned leftBound = gra.getSubOffset(subDcl);
         unsigned rightBound = leftBound + subDcl->getByteSize() - 1;
-
-        //Opnd == nullptr means do it for all sub declares
-        if (opnd == nullptr ||
-        	!(opnd->getRightBound() < leftBound || rightBound < opnd->getLeftBound()))
+        if (!(opnd->getRightBound() < leftBound || rightBound < opnd->getLeftBound()))
         {
             auto subDclStartInterval = gra.getStartInterval(subDcl);
             if (subDclStartInterval == NULL ||
@@ -3556,10 +3512,7 @@ void Augmentation::updateEndIntervalForSubDcl(G4_Declare* dcl, G4_INST* curInst,
 
         unsigned leftBound = gra.getSubOffset(subDcl);
         unsigned rightBound = leftBound + subDcl->getByteSize() - 1;
-
-        //Opnd == nullptr means do it for all sub declares
-        if (opnd == nullptr ||
-        	!(opnd->getRightBound() < leftBound || rightBound < opnd->getLeftBound()))
+        if (!(opnd->getRightBound() < leftBound || rightBound < opnd->getLeftBound()))
         {
             auto subDclEndInterval = gra.getEndInterval(subDcl);
             if (subDclEndInterval == NULL ||
@@ -3597,27 +3550,6 @@ void Augmentation::updateStartInterval(G4_Declare* dcl, G4_INST* curInst)
     }
 }
 
-void Augmentation::updateStartIntervalWithSub(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd)
-{
-    auto dclStartInterval = gra.getStartInterval(dcl);
-    if (dclStartInterval == NULL ||
-        (dclStartInterval->getLexicalId() > curInst->getLexicalId()))
-    {
-        gra.setStartInterval(dcl, curInst);
-    }
-
-    auto dclEndInterval = gra.getEndInterval(dcl);
-    if (dclEndInterval == NULL ||
-        (dclEndInterval->getLexicalId() < curInst->getLexicalId()))
-    {
-        gra.setEndInterval(dcl, curInst);
-    }
-    if (dcl->getIsSplittedDcl())
-    {
-        updateStartIntervalForSubDcl(dcl, curInst, opnd);
-    }
-}
-
 void Augmentation::updateEndInterval(G4_Declare* dcl, G4_INST* curInst)
 {
     auto dclEndInterval = gra.getEndInterval(dcl);
@@ -3635,28 +3567,25 @@ void Augmentation::updateEndInterval(G4_Declare* dcl, G4_INST* curInst)
     }
 }
 
-
-void Augmentation::updateEndIntervalWithSub(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd)
+void Augmentation::updateStartIntervalForLocal(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd)
 {
-    auto dclEndInterval = gra.getEndInterval(dcl);
-    if (dclEndInterval == NULL ||
-        (dclEndInterval->getLexicalId() < curInst->getLexicalId()))
+    updateStartInterval(dcl, curInst);
+    if (dcl->getIsSplittedDcl())
     {
-        gra.setEndInterval(dcl, curInst);
+        updateStartIntervalForSubDcl(dcl, curInst, opnd);
     }
+}
 
-    auto dclStartInterval = gra.getStartInterval(dcl);
-    if (dclStartInterval == NULL ||
-        (dclStartInterval->getLexicalId() > curInst->getLexicalId()))
-    {
-        gra.setStartInterval(dcl, curInst);
-    }
+void Augmentation::updateEndIntervalForLocal(G4_Declare* dcl, G4_INST* curInst, G4_Operand *opnd)
+{
+    updateEndInterval(dcl, curInst);
     if (dcl->getIsSplittedDcl())
     {
         updateEndIntervalForSubDcl(dcl, curInst, opnd);
     }
-
 }
+
+
 
 void GlobalRA::printLiveIntervals()
 {
@@ -3879,9 +3808,17 @@ void Augmentation::buildLiveIntervals()
                 // Destination
                 G4_Declare* defdcl = GetTopDclFromRegRegion(dst);
 
-                if (dst->getBase()->isRegAllocPartaker() && defdcl)
+                if (dst->getBase()->isRegAllocPartaker())
                 {
-                     updateStartIntervalWithSub(defdcl, inst, dst);
+                    if (defdcl &&
+                        gra.getLocalLR(defdcl))
+                    {
+                        updateStartIntervalForLocal(defdcl, inst, dst);
+                    }
+                    else
+                    {
+                        updateStartInterval(defdcl, inst);
+                    }
                 }
                 else if (liveAnalysis.livenessClass(G4_GRF))
                 {
@@ -3893,7 +3830,7 @@ void Augmentation::buildLiveIntervals()
                         defdclLR->getAssigned() == true &&
                         !defdclLR->isEOT())
                     {
-                        updateStartIntervalWithSub(defdcl, inst, dst);
+                        updateStartInterval(defdcl, inst);
                     }
                 }
             }
@@ -3911,7 +3848,7 @@ void Augmentation::buildLiveIntervals()
                     defdcl = defdcl->getAliasDeclare();
                 }
 
-                updateEndIntervalWithSub(defdcl, inst, nullptr);
+                updateEndInterval(defdcl, inst);
             }
 
             if (liveAnalysis.livenessClass(G4_FLAG))
@@ -3948,7 +3885,14 @@ void Augmentation::buildLiveIntervals()
 
                     if (srcRegion->getBase()->isRegAllocPartaker())
                     {
-                        updateEndIntervalWithSub(usedcl, inst, src);
+                        if (gra.getLocalLR(usedcl))
+                        {
+                            updateEndIntervalForLocal(usedcl, inst, src);
+                        }
+                        else
+                        {
+                            updateEndInterval(usedcl, inst);
+                        }
                     }
                     else if (liveAnalysis.livenessClass(G4_GRF))
                     {
@@ -3958,7 +3902,7 @@ void Augmentation::buildLiveIntervals()
                             usedclLR->getAssigned() == true &&
                             !usedclLR->isEOT())
                         {
-                            updateEndIntervalWithSub(usedcl, inst, src);
+                            updateEndInterval(usedcl, inst);
                         }
                     }
                 }
@@ -3975,7 +3919,7 @@ void Augmentation::buildLiveIntervals()
                     {
                         if (pointsToVar->isRegAllocPartaker())
                         {
-                            updateEndIntervalWithSub(pointsToVar->getDeclare()->getRootDeclare(), inst, nullptr);
+                            updateEndInterval(pointsToVar->getDeclare()->getRootDeclare(), inst);
                         }
                     }
                 }
@@ -3991,7 +3935,7 @@ void Augmentation::buildLiveIntervals()
                         usedcl = usedcl->getAliasDeclare();
                     }
 
-                    updateEndIntervalWithSub(usedcl, inst, nullptr);
+                    updateEndInterval(usedcl, inst);
                 }
             }
 
@@ -5060,8 +5004,8 @@ void Interference::dumpInterference() const
 }
 
 GraphColor::GraphColor(LivenessAnalysis& live, unsigned totalGRF, bool hybrid, bool forceSpill_) :
-    gra(live.gra), isHybrid(hybrid), totalGRFRegCount(totalGRF), numVar(live.getNumSelectedVar()), splitStartID(live.getSplitStartID()), numSplitVar(live.getNumSplitVar()),
-    intf(&live, lrs, live.getNumSelectedVar(), live.getSplitStartID(), live.getNumSplitVar(), gra), regPool(gra.regPool),
+    gra(live.gra), isHybrid(hybrid), totalGRFRegCount(totalGRF), numVar(live.getNumSelectedVar()), numSplitStartID(live.getNumSplitStartID()), numSplitVar(live.getNumSplitVar()),
+    intf(&live, lrs, live.getNumSelectedVar(), live.getNumSplitStartID(), live.getNumSplitVar(), gra), regPool(gra.regPool),
     builder(gra.builder), lrs(NULL), requireCallerSaveRestoreCode(false), requireCalleeSaveRestoreCode(false),
     requireA0CallerSaveRestoreCode(false), requireFlagCallerSaveRestoreCode(false), forceSpill(forceSpill_), mem(GRAPH_COLOR_MEM_SIZE),
     liveAnalysis(live), kernel(gra.kernel)
@@ -5605,56 +5549,6 @@ void PhyRegUsage::updateRegUsage(LiveRange* lr)
     }
 }
 
-#ifdef DEBUG_VERBOSE_ON
-void GraphColor::paritalInteferenceCheck()
-{
-    for (auto iter = colorOrder.rbegin(), iterEnd = colorOrder.rend(); iter != iterEnd; ++iter)
-    {
-        LiveRange* lr = *iter;
-        auto lrVar = lr->getVar();
-        
-        if (lr->getPhyReg() == NULL && !lrVar->isSpilled() && !lr->getIsPartialDcl()) // no assigned register yet and not spilled
-        {
-            unsigned lr_id = lrVar->getId();
-            G4_Declare* dcl = lrVar->getDeclare();
-            COUT_ERROR << dcl->getName() << "::" << endl;
-
-            std::vector<unsigned int>& intfs = intf.getSparseIntfForVar(lr_id);
-            G4_Declare* topDcl = nullptr;
-            int subDclNum = 0;
-            for (auto it : intfs)
-            {
-                LiveRange* lrTemp = lrs[it];
-                G4_Declare * curDcl = lrTemp->getVar()->getDeclare();
-                G4_Declare * parentDcl = nullptr;
-
-                if (curDcl->getIsPartialDcl())
-                {
-                    parentDcl = gra.getSplittedDeclare(curDcl);
-                    if (topDcl == nullptr)
-                    {
-                        topDcl = parentDcl;
-                    }
-                    if (parentDcl != topDcl)
-                    {
-                        if (subDclNum != gra.getSplitVarNum(topDcl))
-                        {
-                            COUT_ERROR << ": PARTIAL";
-                        }
-                        topDcl = parentDcl;
-                        subDclNum = 0;
-                        COUT_ERROR << endl;
-                    }
-                    COUT_ERROR << ", " << curDcl->getName();
-                    subDclNum++;
-                }
-            }
-            COUT_ERROR << endl;
-        }
-    }
-}
-#endif
-
 bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConflict, bool highInternalConflict)
 {
     if (builder.getOption(vISA_RATrace))
@@ -5709,10 +5603,6 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
         doBankConflict, availableGregs, availableSubRegs, availableAddrs, availableFlags, weakEdgeUsage);
     bool noIndirForceSpills = builder.getOption(vISA_NoIndirectForceSpills);
 
-#ifdef DEBUG_VERBOSE_ON
-    paritalInteferenceCheck();
-#endif
-
     // colorOrder is in reverse order (unconstrained at front)
     for (auto iter = colorOrder.rbegin(), iterEnd = colorOrder.rend(); iter != iterEnd; ++iter)
     {
@@ -5736,14 +5626,13 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
             for (auto it : intfs)
             {
                 LiveRange* lrTemp = lrs[it];
-
-                if (lrTemp->getIsSplittedDcl())  //Only interfere with children declares
-                {
-                    continue;
-                }
-
                 if (lrTemp->getPhyReg() != nullptr || lrTemp->getIsPartialDcl())
                 {
+                    if (lrTemp->getIsSplittedDcl())  //Only interfere with children declares
+                    {
+                        continue;
+                    }
+
                     regUsage.updateRegUsage(lrTemp);
                 }
             }
@@ -5798,6 +5687,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
             }
 
             ColorHeuristic heuristic = colorHeuristicGRF;
+
 
             bool failed_alloc = false;
             G4_Declare* dcl = lrVar->getDeclare();
@@ -5897,6 +5787,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
         COUT_ERROR << std::endl;
 #endif
     }
+
     // record RA type
     if (liveAnalysis.livenessClass(G4_GRF))
     {
@@ -6281,7 +6172,6 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
             }
         }
     }
-
     //
     // assign registers for GRFs/MRFs, GRFs are first attempted to be assigned using round-robin and if it fails
     // then we retry using a first-fit heuristic; for MRFs we always use the round-robin heuristic
@@ -8645,8 +8535,6 @@ VarRange* VarSplit::splitVarRange(VarRange *src1,
     unsigned int left1, left2;
     unsigned int right1, right2;
     VarRange * new_var_range = NULL;
-    bool occupied1 = src1->occupied;
-    bool occupied2 = src2->occupied;
 
     ASSERT_USER(!(src1->leftBound == src2->leftBound && src1->rightBound == src2->rightBound), "Same ranges can not be spiltted");
 
@@ -8662,16 +8550,8 @@ VarRange* VarSplit::splitVarRange(VarRange *src1,
     left2 = MIN(src1->rightBound, src2->rightBound); //right
     right2 = MAX(src1->rightBound, src2->rightBound);
 
-    //src2 is occupied
     if (left1 == right1) //Same left
     {
-        src1->occupied = occupied2; //The left one will always be occupied
-        if (src1->rightBound > src2->rightBound)
-        {
-            //The right one is the new one
-            src2->occupied = occupied1; //keep original one
-        } //else keep occupied2
-
         src1->leftBound = left1;
         src1->rightBound = left2;
 
@@ -8680,31 +8560,13 @@ VarRange* VarSplit::splitVarRange(VarRange *src1,
     }
     else if (left2 == right2)  //Same right
     {
-        src2->occupied = occupied2;
-        if (src1->leftBound > src2->leftBound)
-        {
-            //the left is the new one
-            src1->occupied = occupied2;
-        } // else keep occupied1
-
         src1->leftBound = left1;
         src1->rightBound = right1 - 1;
-
         src2->leftBound = right1;
         src2->rightBound = right2;
     }
     else  //No same boundary
     {
-        if (src1->leftBound > src2->leftBound)
-        {
-            src1->occupied = occupied2;
-        } //else keep original
-
-        if (src1->rightBound > src2->rightBound)
-        {
-            src2->occupied = occupied1;
-        } //else occupied
-
         src1->leftBound = left1;           //Left one: in list already
         src1->rightBound = right1 - 1;
 
@@ -8714,7 +8576,6 @@ VarRange* VarSplit::splitVarRange(VarRange *src1,
         new_var_range = new VarRange;
         new_var_range->leftBound = right1; //Middle one: need add one range object
         new_var_range->rightBound = left2;
-        new_var_range->occupied = occupied2;
         toDelete->push(new_var_range);
     }
 
@@ -8730,27 +8591,23 @@ void VarSplit::rangeListSpliting(VAR_RANGE_LIST *rangeList, G4_Operand *opnd, st
     VarRange *range = new VarRange;
     range->leftBound = opnd->getLeftBound();
     range->rightBound = opnd->getRightBound();
-    range->occupied = true;
-
     toDelete->push(range);
 
     VAR_RANGE_LIST_ITER it = rangeList->begin();
 
     //The ranges in the list are ordered from low to high
-    //What about cover mulitple sub ranges? 
     while (it != rangeList->end())
     {
         if ((*it)->leftBound == range->leftBound &&
             ((*it)->rightBound == range->rightBound))
         {
             //Same range exists in the list already
-            (*it)->occupied = true;
             return;
         }
 
         if ((*it)->leftBound > range->rightBound)
         {
-            //The range item in the list is in the right of current range, insert it before the postion.
+            //The range item in the list is on the right of current range, insert it before the postion.
             //Since the whole range is inserted first, all the ranges should be continous.
             ASSERT_USER((*it)->leftBound - range->rightBound == 1, "none continous spliting happened\n");
             rangeList->insert(it, range);
@@ -8776,18 +8633,13 @@ void VarSplit::rangeListSpliting(VAR_RANGE_LIST *rangeList, G4_Operand *opnd, st
     return;
 }
 
-void VarSplit::getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight)
+void VarSplit::getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize)
 {
-    int numElements = numberElements;
-    if (numElements == 0)
-    {
-        numElements++;
-    }
     dclWidth = 1, dclHeight = 1;
-    int totalByteSize = numElements * G4_Type_Table[type].byteSize;
+    totalByteSize = numberElements * G4_Type_Table[type].byteSize;
     if (totalByteSize <= G4_GRF_REG_NBYTES)
     {
-        dclWidth = (uint16_t)numElements;
+        dclWidth = (uint16_t)numberElements;
     }
     else {
         // here we assume that the start point of the var is the beginning of a GRF?
@@ -8800,126 +8652,188 @@ void VarSplit::getHeightWidth(G4_Type type, unsigned int numberElements, unsigne
     }
 }
 
-//Align all the ranges to the same size to speed up the query
-bool VarSplit::rangeAlign(G4_Declare *topDcl, VAR_RANGE_LIST *rangeList, unsigned &align)
+
+void VarSplit::createSubDcls(G4_Kernel& kernel, G4_Declare* oldDcl, std::vector<G4_Declare*> &splitDclList)
 {
-    unsigned maxOccupiedSize = 0;
-    unsigned occupiedCount = 0;
-    unsigned occupiedBytes = 0;
-    bool hasUnOccupied = false;
-    bool evenAligned = true;
-    unsigned totalSize = topDcl->getByteSize();
-
-    if (totalSize % G4_GRF_REG_SIZE) //Not half GRF aligned
+    if (oldDcl->getByteSize() <= G4_GRF_REG_NBYTES || oldDcl->getByteSize() % G4_GRF_REG_NBYTES)
     {
-        return false;
+        return;
     }
 
-    for (VAR_RANGE_LIST_ITER vt = rangeList->begin(); vt != rangeList->end(); vt++)
+    int splitVarSize = kernel.getSimdSize() == 8 ? 1 : 2;
+    for (unsigned int i = 0; i < oldDcl->getByteSize() / G4_GRF_REG_NBYTES; i += splitVarSize)
     {
-        unsigned byteSize = ((*vt)->rightBound - (*vt)->leftBound) + 1;
-        unsigned occupied = (*vt)->occupied;
+        G4_Declare* splitDcl = NULL;
+        unsigned leftBound = i * G4_GRF_REG_NBYTES;
+        unsigned rightBound = (i + splitVarSize) * G4_GRF_REG_NBYTES - 1;
+        unsigned short dclWidth = 0;
+        unsigned short dclHeight = 0;
+        int dclTotalSize = 0;
 
-        if (occupied)
+        getHeightWidth(oldDcl->getElemType(), (rightBound - leftBound + 1) / oldDcl->getElemSize(), dclWidth, dclHeight, dclTotalSize);
+        char* splitDclName = kernel.fg.builder->getNameString(kernel.fg.builder->mem, 16, "split_%d_%s", i, oldDcl->getName());
+        splitDcl = kernel.fg.builder->createDeclareNoLookup(splitDclName, G4_GRF, dclWidth, dclHeight, oldDcl->getElemType());
+        gra.setSubOffset(splitDcl, leftBound);
+        splitDcl->setAlign(oldDcl->getAlign());
+        splitDcl->setSubRegAlign(oldDcl->getSubRegAlign());
+        unsigned nElementSize = (rightBound - leftBound + 1) / oldDcl->getElemSize();
+        if ((rightBound - leftBound + 1) % oldDcl->getElemSize())
         {
-            if (maxOccupiedSize && byteSize != maxOccupiedSize)
+            nElementSize++;
+        }
+        splitDcl->setTotalElems(nElementSize);
+        splitDclList.push_back(splitDcl);
+    }
+
+    return;
+}
+
+void VarSplit::insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Operand *dstOpnd, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList)
+{
+    G4_INST *inst = (*instIter);
+    INST_LIST_ITER iter = instIter;
+    iter++;
+
+    for (size_t i = 0; i < splitDclList.size(); i++)
+    {
+        G4_Declare * subDcl = splitDclList[i];
+        unsigned leftBound = gra.getSubOffset(subDcl);
+        unsigned rightBound = leftBound + subDcl->getByteSize() - 1;
+
+        if (!(dstOpnd->getRightBound() < leftBound || rightBound < dstOpnd->getLeftBound()))
+        {
+            unsigned maskFlag = (inst->getOption() & 0xFFF010C);
+            G4_DstRegRegion* dst = builder.Create_Dst_Opnd_From_Dcl(subDcl, 1);
+            G4_SrcRegRegion* src = builder.Create_Src_Opnd_From_Dcl(oldDcl, builder.getRegionStride1());
+            src->setRegOff((gra.getSubOffset(subDcl)) / G4_GRF_REG_NBYTES);
+            G4_INST* splitInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
+                (unsigned char)subDcl->getTotalElems(), dst, src, nullptr, maskFlag,
+                inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
+            bb->insert(iter, splitInst);
+        }
+    }
+
+    return;
+}
+
+void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int index, G4_Operand *srcOpnd, int pos, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList)
+{
+    G4_INST *inst = (*instIter);
+
+    int sizeInGRF = (srcOpnd->getRightBound() - srcOpnd->getLeftBound() + G4_GRF_REG_NBYTES - 1) /
+        G4_GRF_REG_NBYTES;
+    int splitSize = kernel.getSimdSize() == 8 ? 1 : 2;
+    if (sizeInGRF != splitSize)
+    {
+        unsigned short dclWidth = 0;
+        unsigned short dclHeight = 0;
+        int dclTotalSize = 0;
+        G4_SrcRegRegion* oldSrc = srcOpnd->asSrcRegRegion();
+        getHeightWidth(oldSrc->getType(), (srcOpnd->getRightBound() - srcOpnd->getLeftBound() + 1) / oldSrc->getElemSize(), dclWidth, dclHeight, dclTotalSize);
+        char* newDclName = kernel.fg.builder->getNameString(kernel.fg.builder->mem, 16, "copy_%d_%s", index, oldDcl->getName());
+        G4_Declare * newDcl = kernel.fg.builder->createDeclareNoLookup(newDclName, G4_GRF, dclWidth, dclHeight, oldSrc->getType());
+        newDcl->setAlign(oldDcl->getAlign());
+        newDcl->setSubRegAlign(oldDcl->getSubRegAlign());
+        unsigned newLeftBound = 0;
+
+        for (size_t i = 0; i < splitDclList.size(); i++)
+        {
+            G4_Declare * subDcl = splitDclList[i];
+            unsigned leftBound = gra.getSubOffset(subDcl);
+            unsigned rightBound = leftBound + subDcl->getByteSize() - 1;
+
+            if (!(srcOpnd->getRightBound() < leftBound || rightBound < srcOpnd->getLeftBound()))
             {
-                evenAligned = false;
+
+                G4_DstRegRegion* dst = kernel.fg.builder->createDstRegRegion(Direct,
+                    newDcl->getRegVar(),
+                    newLeftBound / G4_GRF_REG_NBYTES,
+                    0,
+                    1,
+                    oldSrc->getType());
+                newLeftBound += subDcl->getByteSize();
+                G4_SrcRegRegion* src = kernel.fg.builder->createSrcRegRegion(
+                    Mod_src_undef,
+                    Direct,
+                    subDcl->getRegVar(),
+                    0,
+                    0,
+                    kernel.fg.builder->getRegionStride1(),
+                    oldSrc->getType());
+                G4_INST* movInst = kernel.fg.builder->createInternalInst(nullptr, G4_mov, nullptr, false,
+                    (unsigned char)subDcl->getTotalElems(), dst, src, nullptr, InstOpt_WriteEnable,
+                    inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
+                bb->insert(instIter, movInst);
             }
-            maxOccupiedSize = maxOccupiedSize < byteSize ? byteSize : maxOccupiedSize;
-            occupiedCount++;
-            occupiedBytes += byteSize;
         }
-        else
+        G4_SrcRegRegion* newSrc = kernel.fg.builder->Create_Src_Opnd_From_Dcl(newDcl, oldSrc->getRegion());
+        newSrc->setRegOff(0);
+        newSrc->setSubRegOff(oldSrc->getSubRegOff());
+        newSrc->setModifier(oldSrc->getModifier());
+        inst->setSrc(newSrc, pos);
+    }
+    else
+    {
+        for (size_t i = 0; i < splitDclList.size(); i++)
         {
-            hasUnOccupied = true;
+            G4_Declare * subDcl = splitDclList[i];
+            unsigned leftBound = gra.getSubOffset(subDcl);
+            unsigned rightBound = leftBound + subDcl->getByteSize() - 1;
+
+            if (!(srcOpnd->getRightBound() < leftBound || rightBound < srcOpnd->getLeftBound()))
+            {
+                G4_SrcRegRegion* oldSrc = srcOpnd->asSrcRegRegion();
+                G4_SrcRegRegion* newSrc = kernel.fg.builder->createSrcRegRegion(oldSrc->getModifier(),
+                    Direct,
+                    subDcl->getRegVar(),
+                    0,
+                    oldSrc->getSubRegOff(),
+                    oldSrc->getRegion(),
+                    oldSrc->getType());
+                inst->setSrc(newSrc, pos);
+                break;
+            }
         }
     }
 
-    unsigned align2 = G4_WSIZE;
-    while (align2 < maxOccupiedSize)
-    {
-        align2 *= 2;
-    }
+    return;
+}
 
-    //Not aligned well, return false
-    if (totalSize % align2 != 0 ||
-        totalSize / align2 < 2)
+bool VarSplit::canDoGlobalSplit(IR_Builder& builder, G4_Kernel &kernel, uint32_t instNum, uint32_t spillRefCount, uint32_t sendSpillRefCount)
+{
+    if (builder.getOption(vISA_GlobalSendVarSplit))
     {
-        return false;
-    }
-
-    //Perfect aligned
-    if (evenAligned &&
-        align2 == maxOccupiedSize &&
-        (align2 < totalSize) && 
-        (totalSize / align2 == occupiedCount))
-    {
-        align = align2;
         return true;
     }
 
-    //Re-partition the ranges
-    unsigned align2Count = 0;
-    for (VAR_RANGE_LIST_ITER vt = rangeList->begin(); vt != rangeList->end(); vt++, align2Count++)
+    if (!builder.getOption(vISA_Debug) &&               //Not work in debug mode
+        kernel.getOptions()->getTarget() == VISA_3D &&      //Only works for 3D/OCL/OGL
+        kernel.getSimdSize() < 16 &&                        //Only works for simd8, FIXME:can work for SIMD16 also
+        sendSpillRefCount &&              //There is spills/fills are due to the interference with send related varaibles.
+        (float)spillRefCount / sendSpillRefCount < 2.0 && //Most spilled varaibles interference with splittable send instructions.
+        (float)instNum / sendSpillRefCount < 20.0) //The percentage of the spill instructions is high enough.
     {
-        unsigned alignLeftBound = align2Count * align2;
-        unsigned alignRightBound = (align2Count + 1) * align2 - 1;
-        if (align2Count < totalSize / align2)
-        {
-            (*vt)->leftBound = alignLeftBound;
-            (*vt)->rightBound = alignRightBound;
-            (*vt)->occupied = true;
-        }
-        else
-        {
-            (*vt)->occupied = false;
-        }
+        return true;
     }
 
-    //In case there are still register space not in range list
-    while (align2Count < totalSize / align2)
-    {
-        VarRange * new_var_range = new VarRange;
-        new_var_range->leftBound = align2Count * align2;
-        new_var_range->rightBound = (align2Count + 1) * align2 - 1;
-        new_var_range->occupied = true;
-        toDelete.push(new_var_range);
-        varRanges[topDcl->getDeclId()].list.push_back(new_var_range);
-        align2Count++;
-    }
-
-    align = align2;
-    return true;
+    return false;
 }
 
-void VarSplit::splitRange(G4_Declare *topdcl, G4_Operand *opnd)
+void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
 {
-    std::map<unsigned, VarRangeListPackage>::iterator varRangesIt;
-    varRangesIt = varRanges.find(topdcl->getDeclId());
-    if (varRangesIt == varRanges.end())
-    {
-        VarRange* new_range = new VarRange;
-        new_range->leftBound = 0;
-        new_range->rightBound = topdcl->getByteSize() - 1;
-        new_range->occupied = false;
-        toDelete.push(new_range);
-        gra.setDcl(topdcl);
-        varRanges[topdcl->getDeclId()].list.push_back(new_range);
-    }
-    if ((opnd->getRightBound() - opnd->getLeftBound()) != (topdcl->getByteSize() - 1))
-    {
-        rangeListSpliting(&(varRanges[topdcl->getDeclId()].list), opnd, &toDelete);
-    }
-}
+    typedef std::list<std::tuple<G4_BB*, G4_Operand*, int, unsigned, INST_LIST_ITER>> SPLIT_OPERANDS;
+    typedef std::list<std::tuple<G4_BB*, G4_Operand*, int, unsigned, INST_LIST_ITER>>::iterator SPLIT_OPERANDS_ITER;
+    typedef std::map<G4_RegVar*, SPLIT_OPERANDS> SPLIT_DECL_OPERANDS;
+    typedef std::map<G4_RegVar*, SPLIT_OPERANDS>::iterator SPLIT_DECL_OPERANDS_ITER;
 
-void VarSplit::variableSplit(IR_Builder& builder, G4_Kernel &kernel)
-{
+    SPLIT_DECL_OPERANDS splitDcls;
+    unsigned int instIndex = 0;
+    int splitSize = kernel.getSimdSize() == 8 ? 1 : 2;
     for (BB_LIST_ITER it = kernel.fg.BBs.begin(); it != kernel.fg.BBs.end(); ++it)
     {
         G4_BB *bb = (*it);
 
-        for (INST_LIST_ITER it = bb->begin(); it != bb->end(); ++it)
+        for (INST_LIST_ITER it = bb->begin(); it != bb->end(); ++it, ++instIndex)
         {
             G4_INST* inst = (*it);
             G4_DstRegRegion* dst = inst->getDst();
@@ -8929,21 +8843,47 @@ void VarSplit::variableSplit(IR_Builder& builder, G4_Kernel &kernel)
                 continue;
             }
 
-            //Handle destiantion variable
-            G4_DstRegRegion* dstrgn = dst;
-            if (dstrgn)
+            //
+            // process send destination operand
+            //
+            if (inst->isSend() &&
+                inst->getMsgDesc()->ResponseLength() > splitSize &&
+                inst->isDirectSplittableSend())
             {
+                G4_DstRegRegion* dstrgn = dst;
                 G4_Declare* topdcl = GetTopDclFromRegRegion(dstrgn);
+
                 if (topdcl &&
-                	!topdcl->getHasFileScope() && 
-                    (topdcl->getIsRefInSendDcl()) &&  //We only handle the variables used in send. May extend it in future
-                    topdcl->getRegFile() != G4_INPUT)
+                    dstrgn->getRegAccess() == Direct &&
+                    !topdcl->getAddressed() &&
+                    topdcl->getRegFile() != G4_INPUT &&
+                    (dstrgn->getRightBound() - dstrgn->getLeftBound() + 1) == topdcl->getByteSize() &&
+                    (dstrgn->getRightBound() - dstrgn->getLeftBound()) > G4_GRF_REG_NBYTES)
                 {
-                    splitRange(topdcl, dstrgn);
+                    //The tuple<G4_BB*, G4_Operand*, int pos, unsigned instIndex, INST_LIST_ITER>,
+                    //these info are tuning and split operand/instruction generation
+                    splitDcls[topdcl->getRegVar()].push_front(make_tuple(bb, dst, 0, instIndex, it));
                 }
             }
+        }
+    }
 
+    instIndex = 0;
+    for (auto bb : kernel.fg.BBs)
+    {
+        for (INST_LIST_ITER it = bb->begin(); it != bb->end(); ++it, ++instIndex)
+        {
+
+            G4_INST* inst = (*it);
+
+            if (inst->opcode() == G4_pseudo_lifetime_end || inst->opcode() == G4_pseudo_kill)
+            {
+                continue;
+            }
+
+            //
             // process each source operand
+            //
             for (unsigned j = 0; j < G4_MAX_SRCS; j++)
             {
                 G4_Operand* src = inst->getSrc(j);
@@ -8952,29 +8892,233 @@ void VarSplit::variableSplit(IR_Builder& builder, G4_Kernel &kernel)
                 {
                     continue;
                 }
+
                 if (src->isSrcRegRegion())
                 {
                     G4_Declare* topdcl = GetTopDclFromRegRegion(src);
 
                     if (topdcl &&
-                    	!topdcl->getHasFileScope() && 
-                        (topdcl->getIsRefInSendDcl()) &&
-                        topdcl->getRegFile() != G4_INPUT)
+                        topdcl->getRegFile() != G4_INPUT &&
+                        !topdcl->getAddressed() &&
+                        splitDcls.find(topdcl->getRegVar()) != splitDcls.end() &&
+                        ((src->asSrcRegRegion()->getRightBound() - src->asSrcRegRegion()->getLeftBound() + 1) < topdcl->getByteSize()) &&
+                        src->asSrcRegRegion()->getRegAccess() == Direct)  //We don't split the indirect access
                     {
-                        splitRange(topdcl, src);
+                        splitDcls[topdcl->getRegVar()].push_back(make_tuple(bb, src, j, instIndex, it));
                     }
                 }
             }
         }
     }
 
-    //Filter out the varaibles without partial usage
-    std::map<unsigned, VarRangeListPackage>::iterator it = varRanges.begin();
+    for (SPLIT_DECL_OPERANDS_ITER it = splitDcls.begin();
+        it != splitDcls.end();)
+    {
+        unsigned srcIndex = 0xFFFFFFFF;
+        unsigned dstIndex = 0;
+        SPLIT_DECL_OPERANDS_ITER succIt = it;
+        succIt++;
+        G4_Declare * topDcl = (*it).first->getDeclare();
+        if (topDcl->getByteSize() <= G4_GRF_REG_NBYTES * 2)
+        {
+            splitDcls.erase(it);
+            it = succIt;
+            continue;
+        }
+
+        bool hasSrcOpearnd = false;
+        for (SPLIT_OPERANDS_ITER vt = (*it).second.begin(); vt != (*it).second.end(); vt++)
+        {
+            G4_BB *bb = nullptr;
+            G4_Operand *opnd = nullptr;
+            INST_LIST_ITER instIter;
+            int pos = 0;
+            unsigned iIndex = 0;
+
+            std::tie(bb, opnd, pos, iIndex, instIter) = (*vt);
+
+            if (opnd == nullptr)
+            {
+                continue;
+            }
+
+            if (opnd->isDstRegRegion())
+            {
+                dstIndex = std::max(dstIndex, iIndex);
+            }
+
+            if (opnd->isSrcRegRegion())
+            {
+                srcIndex = std::min(srcIndex, iIndex);
+                hasSrcOpearnd = true;
+            }
+        }
+
+        if (!hasSrcOpearnd || (dstIndex > srcIndex &&
+            dstIndex - srcIndex < (*it).second.size() + 1))
+        {
+            splitDcls.erase(it);
+            it = succIt;
+            continue;
+        }
+
+        it++;
+    }
+
+    for (SPLIT_DECL_OPERANDS_ITER it = splitDcls.begin();
+        it != splitDcls.end();
+        it++)
+    {
+        G4_Declare * topDcl = (*it).first->getDeclare();
+        std::vector<G4_Declare*> splitDclList;
+        splitDclList.clear();
+
+        createSubDcls(kernel, topDcl, splitDclList);
+        int srcIndex = 0;
+        for (SPLIT_OPERANDS_ITER vt = (*it).second.begin(); vt != (*it).second.end(); vt++)
+        {
+            G4_BB *bb = nullptr;
+            G4_Operand *opnd = nullptr;
+            INST_LIST_ITER instIter;
+            int pos = 0;
+            unsigned instIndex = 0;
+            std::tie(bb, opnd, pos, instIndex, instIter) = (*vt);
+
+            if (opnd == nullptr)
+            {
+                continue;
+            }
+
+            if (opnd->isDstRegRegion())
+            {
+                insertMovesToTemp(builder, topDcl, opnd, bb, instIter, splitDclList);
+            }
+
+            if (opnd->isSrcRegRegion())
+            {
+                insertMovesFromTemp(kernel, topDcl, srcIndex, opnd, pos, bb, instIter, splitDclList);
+            }
+
+            srcIndex++;
+        }
+    }
+
+    return;
+}
+
+void VarSplit::localSplit(IR_Builder& builder,
+    G4_BB* bb)
+{
+    std::map<G4_RegVar*, std::vector<std::pair<G4_Operand*, INST_LIST_ITER>>> localRanges;
+    std::map<G4_RegVar*, std::vector<std::pair<G4_Operand*, INST_LIST_ITER>>>::iterator localRangesIt;
+    std::map<G4_RegVar*, VarRangeListPackage> varRanges;
+    std::map<G4_RegVar*, VarRangeListPackage>::iterator varRangesIt;
+    std::stack<VarRange*> toDelete;
+
+    //
+    // Iterate instruction in BB from back to front
+    //
+    for (INST_LIST::reverse_iterator rit = bb->rbegin(); rit != bb->rend(); ++rit)
+    {
+        G4_INST* i = (*rit);
+        G4_Operand* dst = i->getDst();
+
+        if (i->opcode() == G4_pseudo_lifetime_end || i->opcode() == G4_pseudo_kill)
+        {
+            continue;
+        }
+
+        //
+        // process destination operand
+        //
+        if (dst != NULL)
+        {
+            G4_DstRegRegion* dstrgn = (G4_DstRegRegion*)dst;
+
+            //It's RA candidate
+            G4_Declare* topdcl = GetTopDclFromRegRegion(dstrgn);
+
+            LocalLiveRange* topdclLR = nullptr;
+            //Local only
+            if ((topdcl &&
+                (topdclLR = gra.getLocalLR(topdcl)) &&
+                topdcl->getIsRefInSendDcl() &&
+                topdclLR->isLiveRangeLocal()) &&
+                topdcl->getRegFile() != G4_INPUT)
+            {
+                varRangesIt = varRanges.find(topdcl->getRegVar());
+                INST_LIST_ITER iterToInsert = rit.base();
+                iterToInsert--; //Point to the iterator of current instruction
+                if (varRangesIt == varRanges.end())
+                {
+                    VarRange* new_range = new VarRange;
+                    new_range->leftBound = 0;
+                    new_range->rightBound = topdcl->getByteSize() - 1;
+                    toDelete.push(new_range);
+                    varRanges[topdcl->getRegVar()].list.push_back(new_range);
+                }
+                else
+                {
+                    rangeListSpliting(&(varRanges[topdcl->getRegVar()].list), dstrgn, &toDelete);
+                }
+
+                localRanges[topdcl->getRegVar()].push_back(pair<G4_Operand*, INST_LIST_ITER>(dst, iterToInsert));  //Ordered from back to front.
+            }
+        }
+
+        //
+        // process each source operand
+        //
+        for (unsigned j = 0; j < G4_MAX_SRCS; j++)
+        {
+            G4_Operand* src = i->getSrc(j);
+
+            if (src == NULL)
+            {
+                continue;
+            }
+
+            //Local only
+            if (src->isSrcRegRegion())
+            {
+                G4_Declare* topdcl = GetTopDclFromRegRegion(src);
+                LocalLiveRange* topdclLR = nullptr;
+
+                if (topdcl &&
+                    (topdclLR = gra.getLocalLR(topdcl)) &&
+                    topdcl->getIsRefInSendDcl() &&
+                    topdclLR->isLiveRangeLocal() &&
+                    topdcl->getRegFile() != G4_INPUT)
+                {
+                    G4_VarBase* base = (topdcl != NULL ? topdcl->getRegVar() : src->asSrcRegRegion()->getBase());
+
+                    INST_LIST_ITER iterToInsert = rit.base();
+                    iterToInsert--;
+
+                    varRangesIt = varRanges.find(base->asRegVar());
+                    if (varRangesIt == varRanges.end())
+                    {
+                        VarRange* new_range = new VarRange;
+                        new_range->leftBound = 0;
+                        new_range->rightBound = topdcl->getByteSize() - 1;
+                        toDelete.push(new_range);
+                        varRanges[topdcl->getRegVar()].list.push_back(new_range);
+                    }
+
+                    rangeListSpliting(&(varRanges[topdcl->getRegVar()].list), src, &toDelete);
+
+                    localRanges[topdcl->getRegVar()].push_back(pair<G4_Operand*, INST_LIST_ITER>(src, iterToInsert));  //Ordered from back to front.
+                }
+            }
+        }
+    }
+
+    //Clean the varaibles without no partial usage, or whose partial live range is too short
+    std::map<G4_RegVar*, VarRangeListPackage>::iterator it = varRanges.begin();
     while (it != varRanges.end())
     {
-        std::map<unsigned, VarRangeListPackage>::iterator succ_it = it;
+        std::map<G4_RegVar*, VarRangeListPackage>::iterator succ_it = it;
         succ_it++;
-        G4_Declare *topDcl = gra.getDcl((*it).first);
 
         //No partial
         if ((*it).second.list.size() <= 1)
@@ -8984,118 +9128,109 @@ void VarSplit::variableSplit(IR_Builder& builder, G4_Kernel &kernel)
             continue;
         }
 
-        //Too small
-        if (topDcl->getByteSize() <= G4_GRF_REG_NBYTES)
+        //If total GRF size divides partial number is less than 16 bytes (half GRF), remove it
+        if (((*(*it).second.list.rbegin())->rightBound - (*(*it).second.list.begin())->leftBound) / (*it).second.list.size() < G4_GRF_REG_SIZE * 2 / 2)
         {
             varRanges.erase(it);
             it = succ_it;
             continue;
         }
 
-        unsigned subBytes = 0;
-        if (!rangeAlign(topDcl, &((*it).second.list), subBytes))
+        G4_Declare * topDcl = (*it).first->getDeclare();
+        bool aligned = true;
+        for (VAR_RANGE_LIST_ITER vt = (*it).second.list.begin(); vt != (*it).second.list.end(); vt++)
+        {
+            unsigned leftBound = (*vt)->leftBound;
+            unsigned rightBound = (*vt)->rightBound;
+            int elementSize = topDcl->getElemSize() > G4_WSIZE ? topDcl->getElemSize() : G4_WSIZE;
+            unsigned short elemsNum = (rightBound - leftBound + 1) / elementSize;
+
+            if (!elemsNum)
+            {
+                aligned = false;
+                break;
+            }
+
+            //TODO: we can merge serveral unaligned sub declares into one aligned.  Such as [0-1], [2-63]  --> [0-63]
+            if (leftBound % G4_GRF_REG_SIZE || (rightBound + 1) % G4_GRF_REG_SIZE)
+            {
+                aligned = false;
+                break;
+            }
+        }
+
+        if (!aligned)
         {
             varRanges.erase(it);
             it = succ_it;
             continue;
         }
 
-        assert(subBytes != 0);
-        if (subBytes < G4_GRF_REG_SIZE)  //Half GRF is the smallest range to handle
-        {
-            varRanges.erase(it);
-            it = succ_it;
-            continue;
-        }
-
-        gra.setSubDclBytes(topDcl, subBytes);
 
         it = succ_it;
     }
 
-    int globalSplitVarNum = 0;
-    for (std::map<unsigned, VarRangeListPackage>::iterator it = varRanges.begin();
+    int splitid = 0;
+    for (std::map<G4_RegVar*, VarRangeListPackage>::iterator it = varRanges.begin();
         it != varRanges.end();
         it++)
     {
-        G4_Declare *topDcl = gra.getDcl((*it).first);
+        G4_Declare * topDcl = (*it).first->getDeclare();
         const char * dclName = topDcl->getName();
-        LocalLiveRange* localLR = nullptr;
-        localLR = gra.getLocalLR(topDcl);
-        bool isLocal = localLR && localLR->isLiveRangeLocal();
-        
+
         topDcl->setIsSplittedDcl(true);
-        if (!isLocal)
-        {
-            topDcl->setIsGlobalSplittedDcl(true);
-            globalSplitVarNum++;
-            if (!builder.getOption(vISA_GlobalVarSplit))  //Disable global variable splitting
-            {
-                continue;
-            }
-        }
-#ifdef DEBUG_VERBOSE_ON
-        std::cout << "==> Parent Declare: " << topDcl->getName() << std::endl;
-#endif
 
         // Vertical split: varaible split
         unsigned splitVarNum = 0;
         unsigned pre_rightBound = 0;
-        unsigned last_rightBound = 0;
         for (VAR_RANGE_LIST_ITER vt = (*it).second.list.begin(); vt != (*it).second.list.end(); vt++)
         {
-            if (!(*vt)->occupied)
+            unsigned leftBound = (*vt)->leftBound;
+            unsigned rightBound = (*vt)->rightBound;
+            int elementSize = topDcl->getElemSize() > G4_WSIZE ? topDcl->getElemSize() : G4_WSIZE;
+            unsigned short elemsNum = (rightBound - leftBound + 1) / elementSize;
+
+            if (!elemsNum)
             {
-                assert((last_rightBound + 1 == topDcl->getByteSize()) && "Not all ranges got split variable");
+                assert(0);
+                pre_rightBound = rightBound;
                 continue;
             }
 
-            unsigned leftBound = (*vt)->leftBound;
-            unsigned rightBound = (*vt)->rightBound;
-            last_rightBound = rightBound;
             if (leftBound && pre_rightBound + 1 != leftBound)
             {
-                assert(0 && "Not contingioues ranges found");
+                assert(0);
             }
             pre_rightBound = rightBound;
 
-            char* name = nullptr;
-            if (isLocal)
-            {
-                name = builder.getNameString(builder.mem, strlen(dclName) + 16, "LS_%s_%d_%d", dclName, leftBound, rightBound);
-            }
-            else
-            {
-                name = builder.getNameString(builder.mem, strlen(dclName) + 16, "GS_%s_%d_%d", dclName, leftBound, rightBound);
-            }
-
+            char* name = builder.getNameString(builder.mem, strlen(dclName) + 16, "%s_%d_%d_%d", dclName, splitid, leftBound, rightBound);
             unsigned short dclWidth = 0;
             unsigned short dclHeight = 0;
-            getHeightWidth(Type_UB, rightBound - leftBound + 1, dclWidth, dclHeight);
+            int dclTotalSize = 0;
 
-            G4_Declare* partialDcl = builder.createDeclareNoLookup(name, G4_GRF, dclWidth, dclHeight, Type_UB);
+            getHeightWidth(topDcl->getElemType(), (rightBound - leftBound + 1) / topDcl->getElemSize(), dclWidth, dclHeight, dclTotalSize);
+            G4_Declare* partialDcl = builder.createDeclareNoLookup(name, G4_GRF, dclWidth, dclHeight, topDcl->getElemType());
             gra.setSubOffset(partialDcl, leftBound);
-            gra.setSubRightBound(partialDcl, rightBound);
             partialDcl->setIsPartialDcl(true);
             gra.setSplittedDeclare(partialDcl, topDcl);
-            unsigned nElementSize = (rightBound - leftBound + 1);
+            unsigned nElementSize = (rightBound - leftBound + 1) / topDcl->getElemSize();
+            if ((rightBound - leftBound + 1) % topDcl->getElemSize())
+            {
+                nElementSize++;
+            }
             partialDcl->setTotalElems(nElementSize);
             gra.addSubDcl(topDcl, partialDcl);
             splitVarNum++;
 #ifdef DEBUG_VERBOSE_ON
-            std::cout << "====> Sub Declare: " << name << std::endl;
+            std::cout << "==> Sub Declare: " << splitid << "::" << name << std::endl;
 #endif
+            splitid++;
         }
-       
         if (splitVarNum)
         {
-            assert((last_rightBound + 1 == topDcl->getByteSize()) && "Not all ranges got split variable");
             gra.setSplitVarNum(topDcl, splitVarNum);
         }
     }
-
-    kernel.setSplitVarNum(varRanges.size());
-    kernel.setGlobalSplitVarNum(globalSplitVarNum);
 
     while (toDelete.size() > 0)
     {
@@ -9534,9 +9669,12 @@ int GlobalRA::coloringRegAlloc()
     uint32_t scratchOffset = 0;
 
     uint32_t GRFSpillFillCount = 0;
+    uint32_t beforeSplitGRFSpillFillCount = 0;
+    uint32_t sendAssociatedGRFSpillFillCount = 0;
     unsigned failSafeRAIteration = builder.getOption(vISA_FastSpill) ? 1 : FAIL_SAFE_RA_LIMIT;
 
     bool rematDone = false;
+    VarSplit splitPass(*this);
     while (iterationNo < maxRAIterations)
     {
         if (builder.getOption(vISA_RATrace))
@@ -9550,14 +9688,19 @@ int GlobalRA::coloringRegAlloc()
         markGraphBlockLocalVars(false);
         
         //Do variable splitting in each iteration
-        if (builder.getOption(vISA_VariableSplitInGlobalRA))
+        if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
         {
             if (builder.getOption(vISA_RATrace))
             {
-                std::cout << "\t--variable split the ones used in send--\n";
+                std::cout << "\t--split local send--\n";
             }
-            VarSplit splitPass(*this);
-            splitPass.variableSplit(builder, kernel);
+            for (auto bb : kernel.fg.BBs)
+            {
+                if (bb->isSendInBB())
+                {
+                    splitPass.localSplit(builder, bb);
+                }
+            }
         }
 
         if (builder.getOption(vISA_LocalBankConflictReduction) &&
@@ -9620,6 +9763,8 @@ int GlobalRA::coloringRegAlloc()
                 bool rematOff = !kernel.getOption(vISA_Debug) &&
                     (!kernel.getOption(vISA_NoRemat) || kernel.getOption(vISA_FastSpill)) &&
                     (kernel.getOption(vISA_ForceRemat) || runRemat);
+                bool rematChange = false;
+                bool globalSplitChange = false;
 
                 if (!rematDone &&
                     rematOff)
@@ -9635,7 +9780,18 @@ int GlobalRA::coloringRegAlloc()
                     // Re-run GRA loop only if remat caused changes to IR
                     if (remat.getChangesMade())
                     {
-                        continue;
+                        rematChange = true;
+                    }
+                }
+
+                //Calculate the spill caused by send to decide if global splitting is required or not
+                for (auto spilled : coloring.getSpilledLiveRanges())
+                {
+                    beforeSplitGRFSpillFillCount += spilled->getRefCount();
+                    auto spillDcl = spilled->getDcl();
+                    if (spillDcl->getIsRefInSendDcl() && spillDcl->getNumRows() > 1)
+                    {
+                        sendAssociatedGRFSpillFillCount += spilled->getRefCount();
                     }
                 }
 
@@ -9643,6 +9799,25 @@ int GlobalRA::coloringRegAlloc()
                 for (auto bb : kernel.fg.BBs)
                 {
                     instNum += (int)bb->size();
+                }
+
+                if (iterationNo == 0 &&                             //Only works when first iteration of Global RA failed.
+                    !splitPass.didGlobalSplit &&                      //Do only one time.
+                    splitPass.canDoGlobalSplit(builder, kernel, instNum, beforeSplitGRFSpillFillCount, sendAssociatedGRFSpillFillCount))
+                {
+                    if (builder.getOption(vISA_RATrace))
+                    {
+                        std::cout << "\t--global send split\n";
+                    }
+                    splitPass.globalSplit(builder, kernel);
+                    splitPass.didGlobalSplit = true;
+                    globalSplitChange = true;
+                }
+
+                if (iterationNo == 0 &&
+                    (rematChange || globalSplitChange))
+                {
+                    continue;
                 }
 
                 //Calculate the spill caused by send to decide if global splitting is required or not
@@ -9861,7 +10036,7 @@ int GlobalRA::coloringRegAlloc()
         jitInfo->numGRFSpillFill = GRFSpillFillCount;
     }
 
-    if (builder.getOption(vISA_VariableSplitInGlobalRA))
+    if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
     {
         removeSplitDecl();
     }
