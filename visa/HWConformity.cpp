@@ -4352,32 +4352,6 @@ struct AccInterval
         int dist = lastUse - inst->getLocalId();
         return std::pow((double) inst->use_size(), 3) / dist;
     }
-
-    // see if this interval needs both halves of the acc
-    bool needBothAcc() const
-    {
-        switch (inst->getDst()->getType())
-        {
-        case Type_F:
-            return inst->getExecSize() == 16;
-        case Type_HF:
-            return false;
-        default:
-            return true;
-        }
-    }
-
-    void dump()
-    {
-        std::cerr << "Interval: [" << inst->getLocalId() << ", " << lastUse << "]\n";
-        std::cerr << "\t";
-        inst->dump();
-        if (assignedAcc != -1)
-        {
-            std::cerr << "\tAssigned to Acc" << assignedAcc << "\n"; 
-        }
-        std::cerr << "\n";
-    }
 };
 
 // returns true if the inst is a candidate for acc substitution
@@ -4517,29 +4491,8 @@ static bool isAccCandidate(G4_INST* inst, G4_Kernel& kernel, int& lastUse, bool&
 static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
 {
     G4_DstRegRegion* dst = inst->getDst();
-    bool useAcc1 = (accNum & 0x1) != 0;
-    accNum = accNum / 2;
 
-    if (!builder.relaxedACCRestrictions())
-    {
-        auto myAcc = useAcc1 ? AREG_ACC1 : AREG_ACC0;
-        // check that dst and src do not have different accumulator
-        for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
-        {
-            if (inst->getSrc(i)->isAccReg())
-            {
-                auto base = inst->getSrc(i)->asSrcRegRegion()->getBase();
-                if (base->isPhyAreg())
-                {
-                    if (base->asAreg()->getArchRegType() != myAcc)
-                    {
-                        return false;
-                    }
-                }
-            }
-        }
-    }
-
+    bool useAcc1 = false;  
     for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I)
     {
         auto&& use = *I;
@@ -4635,110 +4588,6 @@ static uint32_t getNumACC(IR_Builder& builder)
     return builder.getNumACC();
 }
 
-struct AccAssignment
-{
-    std::vector<bool> freeAccs;
-    std::list<AccInterval*> activeIntervals;
-
-    AccAssignment(int numGeneralAcc)
-    {
-        freeAccs.resize(numGeneralAcc * 2, true);
-    }
-
-    // expire all intervals that end before the given interval
-    void expireIntervals(AccInterval* interval)
-    {
-        for (auto iter = activeIntervals.begin(), iterEnd = activeIntervals.end(); iter != iterEnd;)
-        {
-            AccInterval* active = *iter;
-            if (active->lastUse <= interval->inst->getLocalId())
-            {
-                assert(!freeAccs[active->assignedAcc] && "active interval's acc should not be free");
-                freeAccs[active->assignedAcc] = true;
-                if (active->needBothAcc())
-                {
-                    assert(!freeAccs[active->assignedAcc + 1] && "active interval's acc should not be free");
-                    freeAccs[active->assignedAcc + 1] = true;
-                }
-                iter = activeIntervals.erase(iter);
-            }
-            else
-            {
-                ++iter;
-            }
-        }
-    }
-
-    // spill interval that is assigned to accID and remove it from active list
-    void spillInterval(int accID)
-    {
-        auto acc0Iter = std::find_if(activeIntervals.begin(), activeIntervals.end(),
-            [accID](AccInterval* interval) { return interval->assignedAcc == accID; });
-        assert(acc0Iter != activeIntervals.end() && "expect to find interval with acc0");
-        auto spillInterval = *acc0Iter;
-        assert(!spillInterval->isPreAssigned && "overlapping pre-assigned acc0");
-        spillInterval->assignedAcc = -1;
-        activeIntervals.erase(acc0Iter);
-        freeAccs[accID] = true;
-        if (spillInterval->needBothAcc())
-        {
-            assert(accID % 2 == 0 && "accID must be even-aligned in this case");
-            freeAccs[accID+1] = true;
-        }
-    }
-
-    // pre-assigned intervals (e.g., mach, addc) must use acc0 (and acc1 depending on inst type/size)
-    // we have to spill active intervals that occupy acc0/acc1.
-    // the pre-assigned interavl is also pushed to active list
-    void handlePreAssignedInterval(AccInterval* interval)
-    {
-        if (!freeAccs[0])
-        {
-            spillInterval(0);
-        }
-        freeAccs[0] = false;
-
-        if (interval->needBothAcc())
-        {
-            if (!freeAccs[1])
-            {
-                spillInterval(1);
-            }
-            freeAccs[1] = false;
-        }
-
-        activeIntervals.push_back(interval);
-    }
-
-    // pick a free acc for this interval
-    // returns true if a free acc is found, false otherwise
-    bool assignAcc(AccInterval* interval)
-    {
-        if (interval->isPreAssigned)
-        {
-            handlePreAssignedInterval(interval);
-            return true;
-        }
-
-        int step = interval->needBothAcc() ? 2 : 1;
-        for (int i = 0, end = interval->mustBeAcc0 ? 1 : (int)freeAccs.size(); i < end; i += step)
-        {
-            if (freeAccs[i] && (!interval->needBothAcc() || freeAccs[i+1]))
-            {
-                interval->assignedAcc = i;
-                freeAccs[i] = false;
-                if (interval->needBothAcc())
-                {
-                    freeAccs[i+1] = false;
-                }
-                activeIntervals.push_back(interval);
-                return true;
-            }
-        }
-        return false;
-    }
-};
-
 void HWConformity::multiAccSubstitution(G4_BB* bb)
 {
     int numGeneralAcc = getNumACC(builder);
@@ -4773,53 +4622,92 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
     }
 
     //modified linear scan to assign free accs to intervals
-    AccAssignment accAssign(numGeneralAcc);
-
+    std::vector<bool> freeAccs;
+    freeAccs.resize(numGeneralAcc, true);
+    std::list<AccInterval*> activeIntervals;
     for (auto interval : intervals)
     {
         // expire intervals
-        accAssign.expireIntervals(interval);
-
-        // assign interval
-        accAssign.assignAcc(interval);
-
-        // ToDo: add spill code handling later
-#if 0
-        if (!foundFreeAcc)
+        for (auto iter = activeIntervals.begin(), iterEnd = activeIntervals.end(); iter != iterEnd;)
         {
-            // check if we should spill one of the active intervals
-            auto spillCostCmp = [interval](AccInterval* intv1, AccInterval* intv2)
+            AccInterval* active = *iter;
+            if (active->lastUse <= interval->inst->getLocalId())
             {
-                if (!interval->mustBeAcc0)
-                {
-                    return intv1->getSpillCost() < intv2->getSpillCost();
-                }
-
-                // different compr function if interval must use acc0
-                if (intv1->assignedAcc == 0 && intv2->assignedAcc == 0)
-                {
-                    return intv1->getSpillCost() < intv2->getSpillCost();
-                }
-                else if (intv1->assignedAcc == 0)
-                {
-                    return true;
-                }
-                return false;
-            };
-            auto spillIter = std::min_element(activeIntervals.begin(), activeIntervals.end(),
-                spillCostCmp);
-            auto spillCandidate = *spillIter;
-            if (interval->getSpillCost() > spillCandidate->getSpillCost() &&
-                !spillCandidate->isPreAssigned &&
-                !(interval->mustBeAcc0 && spillCandidate->assignedAcc != 0))
+                assert(!freeAccs[active->assignedAcc] && "active interval's acc should not be free");
+                freeAccs[active->assignedAcc] = true;
+                iter = activeIntervals.erase(iter);
+            }
+            else
             {
-                interval->assignedAcc = spillCandidate->assignedAcc;
-                spillCandidate->assignedAcc = -1;
-                activeIntervals.erase(spillIter);
-                activeIntervals.push_back(interval);
+                ++iter;
             }
         }
-#endif
+
+        // assign interval/spill acc0 interval
+        if (interval->isPreAssigned)
+        {
+            if (!freeAccs[0])
+            {
+                //spill active interval that is using acc0, if it exists
+                auto acc0Iter = std::find_if(activeIntervals.begin(), activeIntervals.end(),
+                    [](AccInterval* interval) { return interval->assignedAcc == 0; });
+                assert(acc0Iter != activeIntervals.end() && "expect to find interval with acc0");
+                assert(!(*acc0Iter)->isPreAssigned && "overlapping pre-assigned acc0");
+                (*acc0Iter)->assignedAcc = -1;
+                activeIntervals.erase(acc0Iter);
+            }
+            freeAccs[0] = false;
+            activeIntervals.push_back(interval);
+        }
+        else
+        {
+            bool foundFreeAcc = false;
+            for (int i = 0, end = interval->mustBeAcc0 ? 1 : (int)freeAccs.size(); i < end; ++i)
+            {
+                if (freeAccs[i])
+                {
+                    interval->assignedAcc = i;
+                    freeAccs[i] = false;
+                    activeIntervals.push_back(interval);
+                    foundFreeAcc = true;
+                    break;
+                }
+            }
+            if (!foundFreeAcc)
+            {
+                // check if we should spill one of the active intervals
+                auto spillCostCmp = [interval](AccInterval* intv1, AccInterval* intv2) 
+                { 
+                    if (!interval->mustBeAcc0)
+                    {
+                        return intv1->getSpillCost() < intv2->getSpillCost();
+                    }
+
+                    // different compr function if interval must use acc0
+                    if (intv1->assignedAcc == 0 && intv2->assignedAcc == 0)
+                    {
+                        return intv1->getSpillCost() < intv2->getSpillCost();
+                    }
+                    else if (intv1->assignedAcc == 0)
+                    {
+                        return true;
+                    }
+                    return false; 
+                };
+                auto spillIter = std::min_element(activeIntervals.begin(), activeIntervals.end(),
+                    spillCostCmp);
+                auto spillCandidate = *spillIter;
+                if (interval->getSpillCost() > spillCandidate->getSpillCost() &&
+                    !spillCandidate->isPreAssigned && 
+                    !(interval->mustBeAcc0 && spillCandidate->assignedAcc != 0))
+                {
+                    interval->assignedAcc = spillCandidate->assignedAcc;
+                    spillCandidate->assignedAcc = -1;
+                    activeIntervals.erase(spillIter);
+                    activeIntervals.push_back(interval);
+                }
+            }
+        }
     }
 
     for (auto interval : intervals)
@@ -4827,7 +4715,7 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
         if (!interval->isPreAssigned && interval->assignedAcc != -1)
         {
             G4_INST* inst = interval->inst;
-            replaceDstWithAcc(inst, interval->assignedAcc, builder);
+            replaceDstWithAcc(inst, interval->assignedAcc * 2, builder);
 
             numAccSubDef++;
             numAccSubUse += (int)inst->use_size();
