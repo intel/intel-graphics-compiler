@@ -243,25 +243,25 @@ public:
 
       switch (enc)
       {
-      case OpDebugTypeBasic::Encodings::enc_boolean:
+      case SPIRVDebug::EncodingTag::Boolean:
           encoding = dwarf::DW_ATE_boolean;
           break;
-      case OpDebugTypeBasic::Encodings::enc_address:
+      case SPIRVDebug::EncodingTag::Address:
           encoding = dwarf::DW_ATE_address;
           break;
-      case OpDebugTypeBasic::Encodings::enc_float:
+      case SPIRVDebug::EncodingTag::Float:
           encoding = dwarf::DW_ATE_float;
           break;
-      case OpDebugTypeBasic::Encodings::enc_signed:
+      case SPIRVDebug::EncodingTag::Signed:
           encoding = dwarf::DW_ATE_signed;
           break;
-      case OpDebugTypeBasic::Encodings::enc_unsigned:
+      case SPIRVDebug::EncodingTag::Unsigned:
           encoding = dwarf::DW_ATE_unsigned;
           break;
-      case OpDebugTypeBasic::Encodings::enc_signedchar:
+      case SPIRVDebug::EncodingTag::SignedChar:
           encoding = dwarf::DW_ATE_signed_char;
           break;
-      case OpDebugTypeBasic::enc_unsignedchar:
+      case SPIRVDebug::EncodingTag::UnsignedChar:
           encoding = dwarf::DW_ATE_unsigned_char;
           break;
       default:
@@ -331,7 +331,7 @@ public:
       auto size = vectorType.getNumComponents();
       auto type = createType(BM->get<SPIRVExtInst>(vectorType.getBaseType()));
 
-      auto sr = Builder.getOrCreateSubrange(0, size - 1);
+      auto sr = Builder.getOrCreateSubrange(0, size);
       auto mds = llvm::makeArrayRef(llvm::cast<llvm::Metadata>(sr));
       llvm::DINodeArray subscripts = llvm::MDTuple::get(M->getContext(), mds);
 

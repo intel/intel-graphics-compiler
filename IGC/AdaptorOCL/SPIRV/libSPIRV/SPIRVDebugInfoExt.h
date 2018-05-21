@@ -77,9 +77,11 @@ namespace spv {
             Value = 29,
             Operation = 30,
             Expression = 31,
-            ImportedEntity = 32,
-            Source = 33,
-            InstCount = 34
+            MacroDef = 32,
+            MacroUndef = 33,
+            ImportedEntity = 34,
+            Source = 35,
+            InstCount = 36
         };
 
         enum Flag {
@@ -99,18 +101,17 @@ namespace spv {
             FlagIsLValueReference = 1 << 11,
             FlagIsRValueReference = 1 << 12,
             FlagIsOptimized = 1 << 13,
-            FlagIsEnumClass = 1 << 14,
         };
 
         enum EncodingTag {
             Unspecified = 0,
             Address = 1,
             Boolean = 2,
-            Float = 4, // 3?
-            Signed = 5,
-            SignedChar = 6,
-            Unsigned = 7,
-            UnsignedChar = 8
+            Float = 3,
+            Signed = 4,
+            SignedChar = 5,
+            Unsigned = 6,
+            UnsignedChar = 7
         };
 
         enum CompositeTypeTag {
@@ -123,7 +124,7 @@ namespace spv {
             ConstType = 0,
             VolatileType = 1,
             RestrictType = 2,
-            AtomicType = 3  // To be added to the spec
+            AtomicType = 3
         };
 
         enum ExpressionOpCode {
@@ -136,10 +137,10 @@ namespace spv {
             Xderef = 6,
             StackValue = 7,
             Constu = 8,
-            Fragment = 9 // To be added to the spec
+            Fragment = 9
         };
 
-        enum ImportedEntityTag {  // To be added to the spec
+        enum ImportedEntityTag {
             ImportedModule = 0,
             ImportedDeclaration = 1,
         };
@@ -214,7 +215,7 @@ namespace spv {
 
             namespace TypeFunction {
                 enum {
-                    FlagsIdx = 0, // To be added to the spec
+                    FlagsIdx = 0,
                     ReturnTypeIdx = 1,
                     FirstParameterIdx = 2,
                     MinOperandCount = 2
@@ -244,7 +245,7 @@ namespace spv {
                     LineIdx = 3,
                     ColumnIdx = 4,
                     ParentIdx = 5,
-                    LinkageNameIdx = 6, // To be added to the spec
+                    LinkageNameIdx = 6,
                     SizeIdx = 7,
                     FlagsIdx = 8,
                     FirstMemberIdx = 9,
@@ -310,24 +311,22 @@ namespace spv {
             namespace TemplateTemplateParameter {
                 enum {
                     NameIdx = 0,
-                    TypeIdx = 1, // To be added to the spec
-                    TemplateNameIdx = 2,
-                    SourceIdx = 3,
-                    LineIdx = 4,
-                    ColumnIdx = 5,
-                    OperandCount = 5
+                    TemplateNameIdx = 1,
+                    SourceIdx = 2,
+                    LineIdx = 3,
+                    ColumnIdx = 4,
+                    OperandCount = 4
                 };
             }
 
             namespace TemplateParameterPack {
                 enum {
                     NameIdx = 0,
-                    TypeIdx = 1, // To be added to the spec
-                    SourceIdx = 2,
-                    LineIdx = 3,
-                    ColumnIdx = 4,
-                    FirstParameterIdx = 5,
-                    MinOperandCount = 5
+                    SourceIdx = 1,
+                    LineIdx = 2,
+                    ColumnIdx = 3,
+                    FirstParameterIdx = 4,
+                    MinOperandCount = 4
                 };
             }
 
@@ -427,7 +426,7 @@ namespace spv {
                     LineIdx = 3,
                     ColumnIdx = 4,
                     ParentIdx = 5,
-                    FlagsIdx = 6, // To be added to the spec
+                    FlagsIdx = 6,
                     ArgNumberIdx = 7,
                     MinOperandCount = 7
                 };
@@ -477,15 +476,16 @@ namespace spv {
                     { Fragment,   3 }
                 };
             }
-            namespace ImportedEntity { // To be added to the spec
+            namespace ImportedEntity {
                 enum {
                     NameIdx = 0,
                     TagIdx = 1,
-                    EntityIdx = 2,
-                    LineIdx = 3,
-                    ColumnIdx = 4,
-                    ParentIdx = 5,
-                    OperandCount = 6
+                    SourceIdx = 3,
+                    EntityIdx = 4,
+                    LineIdx = 5,
+                    ColumnIdx = 6,
+                    ParentIdx = 7,
+                    OperandCount = 8
                 };
             }
 
@@ -628,19 +628,8 @@ namespace spv {
     public:
         OpDebugTypeBasic(SPIRVExtInst* extInst) : OpDebugInfoBase(extInst) {}
         SPIRVString* getName() { return str(SPIRVDebug::Operand::TypeBasic::NameIdx); }
-        SPIRVId getSize() { return arg<SPIRVId>(SPIRVDebug::Operand::TypeBasic::SizeIdx); }
-        enum Encodings
-        {
-            enc_unspecified = 0,
-            enc_address = 1,
-            enc_boolean = 2,
-            enc_float = 4,
-            enc_signed = 5,
-            enc_signedchar = 6,
-            enc_unsigned = 7,
-            enc_unsignedchar = 8
-        };
-        Encodings getEncoding() { return arg<Encodings>(SPIRVDebug::Operand::TypeBasic::EncodingIdx); }
+        uint64_t getSize() { return const_val(SPIRVDebug::Operand::TypeBasic::SizeIdx); }
+        SPIRVDebug::EncodingTag getEncoding() { return arg<SPIRVDebug::EncodingTag>(SPIRVDebug::Operand::TypeBasic::EncodingIdx); }
     };
 
     class OpDebugPtrType : OpDebugInfoBase
