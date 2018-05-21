@@ -1259,51 +1259,6 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
         {
             // compute the maydef for each subroutine
             maydefAnalysis();
-#if 0
-            std::vector<BitSet> maydef_in(numBBId);
-            std::vector<BitSet> maydef_out(numBBId);
-
-            for (unsigned i = 0; i < numBBId; i++)
-            {
-                maydef_in[i] = BitSet(numVarId, false);
-                maydef_out[i] = def_out[i];
-            }
-
-            for (unsigned i = 0; i < numFnId; i++)
-            {
-                unsigned fid = fg.funcInfoTable[i]->getId();
-                unsigned eid = fg.funcInfoTable[i]->getExitBB()->getId();
-                maydef[fid] = maydef_out[eid];
-            }
-
-            bool change = true;
-
-            while (change)
-            {
-                change = false;
-                for (BB_LIST::iterator it = fg.BBs.begin(); it != fg.BBs.end(); it++)
-                {
-                    //
-                    // maydef_in[n] =
-                    //    (if type(n) == cgf_entry_block)
-                    //        input_defs[n]
-                    //    (if type(n) == return and f == callee[n])
-                    //        maydef[f] + maydef_out[call_node(n)]
-                    //           where type(n) == return and f == callee[n]
-                    //    (if type(n) != RETURN and  type(n) != INIT)
-                    //	      maydef_out[p1] + maydef_out[p2] + ...
-                    //           where p1 p2 ... are the predecessors of n
-                    //
-                    if (contextSensitiveForwardDataAnalyze(
-                        (*it), maydef_in, maydef_out, maydef, inputDefs, &maydef, G4_BB_INIT_TYPE))
-                    {
-                        change = true;
-                    }
-
-                }
-            }
-
-#endif
 
             //
             // dump vectors for debugging
@@ -1369,14 +1324,89 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 		}
 	}
 
+#if 0
+    // debug code to compare old v. new IPA
+    {
+        std::vector<G4_Declare*> idToDecl;
+        idToDecl.resize(numVarId);
+        for (auto dcl : fg.getKernel()->Declares)
+        {
+            auto id = dcl->getRegVar()->getId();
+            if (id < numVarId)
+            {
+                idToDecl[id] = dcl;
+            }
+        }
+
+        fg.getKernel()->emit_asm(std::cerr, true, nullptr, 0);
+
+        auto printLive = [this, &idToDecl](int id)
+        {
+            std::cerr << "Liveness for " << idToDecl[id]->getName() << "\n";
+            std::cerr << "Use In: ";
+            for (int i = 0; i < (int) useInCopy.size(); ++i)
+            {
+                if (useInCopy[i].isSet(id))
+                {
+                    std::cerr << "BB" << i << " ";
+                }
+            }
+            std::cerr << "\n";
+            std::cerr << "Use Out: ";
+            for (int i = 0; i < (int) useOutCopy.size(); ++i)
+            {
+                if (useOutCopy[i].isSet(id))
+                {
+                    std::cerr << "BB" << i << " ";
+                }
+            }
+            std::cerr << "\n";
+        };
+
+        auto printSetDiff = [&idToDecl, this](const std::vector<BitSet>& set1, 
+            const std::vector<BitSet>& set2)
+        {
+            for (int i = 0, size = (int) set1.size(); i < size; ++i)
+            {
+                bool printBB = true;
+                for (int j = 0; j < (int)numVarId; ++j)
+                {
+                    if (set1[i].isSet(j) ^ set2[i].isSet(j))
+                    {
+                        if (printBB)
+                        {
+                            std::cerr << "BB" << i << ": ";
+                            printBB = false;
+                        }
+                        std::cerr << idToDecl[j]->getName() << "(" << j << "):" <<
+                            (set1[i].isSet(j) ? 1 : 0) << " ";
+                    }
+                }
+                if (!printBB)
+                {
+                    std::cerr << "\n";
+                }
+            }
+        };
+
+        std::cerr << "use-in comparison:\n";
+        printSetDiff(use_in, useInCopy);
+
+        std::cerr << "use-out comparison:\n";
+        printSetDiff(use_out, useOutCopy);
+    }
+#endif
+
 	//
 	// dump vectors for debugging
 	//
-#ifdef DEBUG_VERBOSE_ON
-	dump_bb_vector("DEF IN", fg.BBs, def_in);
-	dump_bb_vector("DEF OUT", fg.BBs, def_out);
-	dump_bb_vector("USE IN", fg.BBs, use_in);
-	dump_bb_vector("USE OUT", fg.BBs, use_out);
+#if 0
+    {
+        dump_bb_vector("DEF IN", fg.BBs, def_in);
+        dump_bb_vector("DEF OUT", fg.BBs, def_out);
+        dump_bb_vector("USE IN", fg.BBs, use_in);
+        dump_bb_vector("USE OUT", fg.BBs, use_out);
+    }
 #endif
 
     stopTimer(TIMER_LIVENESS);
@@ -1464,12 +1494,11 @@ void LivenessAnalysis::useAnalysis(FuncInfo* subroutine)
 }
 
 //
-// Use analysis for this subroutine only, but consider callee's arg and retval
+// Use analysis for this subroutine only, considering both arg/retval of its callees
+// use_out[call-BB] = (use_in[ret-BB] | arg[callee]) - retval[callee] 
 // 
-// use_out[call-BB] = use_in[ret-BB] + callee arg - callee retval 
-// use_out[exit-BB] is initialized by the caller to be U(use_in[ret-BB]) for all of the subroutine's callers
-// 
-void LivenessAnalysis::useAnalysisWithCallee(FuncInfo* subroutine, const std::vector<BitSet>& args, const std::vector<BitSet>& retVal)
+void LivenessAnalysis::useAnalysisWithArgRetVal(FuncInfo* subroutine, 
+    const std::vector<BitSet>& args, const std::vector<BitSet>& retVal)
 {
     bool changed = false;
     do
@@ -1490,12 +1519,10 @@ void LivenessAnalysis::useAnalysisWithCallee(FuncInfo* subroutine, const std::ve
             }
             else if (bb->getBBType() & G4_BB_CALL_TYPE)
             {
-                // FIXME: for CM do I need to use scoping to kill not fully defined variables here?
-                // or is that already part of use_kill for the subroutine entry BB?
                 use_out[bbid] = use_in[bb->getPhysicalSucc()->getId()];
                 auto callee = bb->getCalleeInfo();
-                use_out[bb->getId()] |= args[callee->getId()];
-                use_out[bb->getId()] -= retVal[callee->getId()];
+                use_out[bbid] |= args[callee->getId()];
+                use_out[bbid] -= retVal[callee->getId()];
             }
             else
             {
@@ -1570,105 +1597,144 @@ void LivenessAnalysis::defAnalysis(FuncInfo* subroutine)
 void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& kernelOutput)
 {
 
-    // algorithm sketch for live-in/live-out:
-    // In topological order :
-    //  -- Run liveness analysis on subroutine, with call-BB linked directly to ret-BB
-    //  -- live-out[callee exit-BB] |= live-in[caller ret-BB] (model retval and live-through)
-    // In reverse topological order :
-    //  -- Run liveness analysis on subroutine, with call-BB linked directly to ret-BB
-    //  -- At each call site
-    //          live-out[caller call-BB] |= live-in[callee init-BB] - live-out[callee exit-BB] (model arg)
-    //          live-out[caller call-BB] -= (live-out[callee exit-BB] - live-in[callee init-BB]) (model retval)
+    std::vector<BitSet> args(fg.funcInfoTable.size());
+    std::vector<BitSet> retVal(fg.funcInfoTable.size());
 
+    auto initKernelLiveOut = [this, &kernelOutput]()
+    {
+        for (auto&& bb : fg.kernelInfo->getBBList())
+        {
+            if (bb->Succs.empty())
+            {
+                // EOT BB
+                use_out[bb->getId()] = kernelOutput;
+            }
+        }
+    };
+    // reset all live-in/out sets except for the kernel live-out
+    auto clearLiveSets = [this]()
+    {
+        for (auto subroutine : fg.sortedFuncTable)
+        {
+            for (auto bb : subroutine->getBBList())
+            {
+                use_in[bb->getId()].clear();
+                use_out[bb->getId()].clear();
+            }
+        }
+    };
+
+    // top-down traversal to compute retval for each subroutine
+    // retval[s] = live_out[s] - live_in[s], 
+    // where live_out[s] is the union of the live-in of the ret BB at each call site (hence top-down traversal). 
+    // this is not entirely accurate since we may have pass-through retVals
+    // (e.g., A call B call C, C's retVal is pass-through in B and used in A, which
+    //  means it won't be killed in B if we do top-down)
+    // But for now let's trade some loss of accuracy to save one more round of fix-point
+    initKernelLiveOut();
     for (auto FI = fg.sortedFuncTable.rbegin(), FE = fg.sortedFuncTable.rend(); FI != FE; ++FI)
     {
         auto subroutine = *FI;
-        if (subroutine == fg.kernelInfo)
-        {
-            // entry function
-            for (auto&& bb : subroutine->getBBList())
-            {
-                if (bb->Succs.empty())
-                {
-                    // EOT BB
-                    use_out[bb->getId()] = kernelOutput;
-                }
-            }
-        }
         useAnalysis(subroutine);
+        if (subroutine != fg.kernelInfo)
+        {
+            retVal[subroutine->getId()] = use_out[subroutine->getExitBB()->getId()];
+            retVal[subroutine->getId()] -= use_in[subroutine->getInitBB()->getId()];
+        } 
         for (auto&& bb : subroutine->getBBList())
         {
             if (bb->getBBType() & G4_BB_CALL_TYPE)
             {
                 G4_BB* retBB = bb->getPhysicalSucc();
                 G4_BB* exitBB = bb->getCalleeInfo()->getExitBB();
-                assert((exitBB->getBBType() & G4_BB_EXIT_TYPE) && 
+                assert((exitBB->getBBType() & G4_BB_EXIT_TYPE) &&
                     "should be a subroutine's exit BB");
                 use_out[exitBB->getId()] |= use_in[retBB->getId()];
             }
         }
     }
 
-    std::vector<BitSet> args(fg.funcInfoTable.size());
-    std::vector<BitSet> retVal(fg.funcInfoTable.size());
-
-    for (auto FI = fg.sortedFuncTable.begin(), FE = fg.sortedFuncTable.end(); FI != FE; ++FI)
+    // bottom-up traversal to compute arg for each subroutine
+    // arg[s] = live-in[s], except retval of its callees are excluded as by definition they will not be live-in
+    // The live-out of each subroutine is initialized to null so that 
+    // args are limited to variables actually used in this subroutine (and its callees)
+    clearLiveSets();
+    initKernelLiveOut();
+    for (auto FI = fg.sortedFuncTable.begin(), FE = fg.sortedFuncTable.end(); 
+        FI != FE; ++FI)
     {
         auto subroutine = *FI;
-
+        useAnalysisWithArgRetVal(subroutine, args, retVal);
         if (subroutine != fg.kernelInfo)
         {
-            // summarize the arg/retval set of each subroutine in bottom-up order
-            // it has to be done in the loop to handle pass-through arg/retval
-            // e.g.,
-            // A calls B calls C
-            // A defines V1, B doesn't use V1, but C does
             args[subroutine->getId()] = use_in[subroutine->getInitBB()->getId()];
             args[subroutine->getId()] -= use_out[subroutine->getExitBB()->getId()];
-            retVal[subroutine->getId()] = use_out[subroutine->getExitBB()->getId()];
-            retVal[subroutine->getId()] -= use_in[subroutine->getInitBB()->getId()];
-        }
-        
-        if (subroutine->getCallees().size() != 0)
-        {
-            // propagate arg/retval information from callee to caller
-            useAnalysisWithCallee(subroutine, args, retVal);
         }
     }
 
-#ifdef DEBUG_VERBOSE_ON
+    // the real deal -- top-down traversal taking arg/retval/live-through all into consideration
+    // again top-down traversal is needed to compute the live-out of each subroutine.
+    clearLiveSets();
+    initKernelLiveOut();
+    for (auto FI = fg.sortedFuncTable.rbegin(), FE = fg.sortedFuncTable.rend(); FI != FE; ++FI)
+    {
+        auto subroutine = *FI;
+        useAnalysisWithArgRetVal(subroutine, args, retVal);
+        for (auto&& bb : subroutine->getBBList())
+        {
+            if (bb->getBBType() & G4_BB_CALL_TYPE)
+            {
+                G4_BB* retBB = bb->getPhysicalSucc();
+                G4_BB* exitBB = bb->getCalleeInfo()->getExitBB();
+                assert((exitBB->getBBType() & G4_BB_EXIT_TYPE) &&
+                    "should be a subroutine's exit BB");
+                use_out[exitBB->getId()] |= use_in[retBB->getId()];
+            }
+        }
+    }
+
+#if 0
+    std::vector<G4_Declare*> idToDecl;
+    idToDecl.resize(numVarId);
+    for (auto dcl : fg.getKernel()->Declares)
+    {
+        auto id = dcl->getRegVar()->getId();
+        if (id < numVarId)
+        {
+            idToDecl[id] = dcl;
+        }
+    }
     for (auto FI = fg.sortedFuncTable.begin(), FE = fg.sortedFuncTable.end(); FI != FE; ++FI)
     {
         auto subroutine = *FI;
-        if (subroutine == fg.kernelInfo)
-        {
-            continue;
-        }
-        auto printVal = [](const BitSet& bs)
+        auto printVal = [&idToDecl](const BitSet& bs)
         {
             for (int i = 0, size = (int)bs.getSize(); i < size; ++i)
             {
                 if (bs.isSet(i))
                 {
-                    std::cerr << i << " ";
+                    std::cerr << idToDecl[i]->getName() << "(" << i << ") ";
                 }
             }
         };
 
-        std::cerr << "Subroutine " << subroutine->getId() << "\n";
+        subroutine->dump();
       
-        std::cerr <<"\tArgs: ";
-        printVal(args[subroutine->getId()]);
-        std::cerr << "\n";
+        if (subroutine != fg.kernelInfo)
+        {
+            std::cerr << "\tArgs: ";
+            printVal(args[subroutine->getId()]);
+            std::cerr << "\n";
 
-        std::cerr << "\tRetVal: ";
-        printVal(retVal[subroutine->getId()]);
-        std::cerr << "\n";
-        std::cerr << "\tLiveThrough: ";
-        BitSet liveThrough = use_in[subroutine->getInitBB()->getId()];
-        liveThrough &= use_out[subroutine->getExitBB()->getId()];
-        printVal(liveThrough);
-        std::cerr << "\n";
+            std::cerr << "\tRetVal: ";
+            printVal(retVal[subroutine->getId()]);
+            std::cerr << "\n";
+            std::cerr << "\tLiveThrough: ";
+            BitSet liveThrough = use_in[subroutine->getInitBB()->getId()];
+            liveThrough &= use_out[subroutine->getExitBB()->getId()];
+            printVal(liveThrough);
+            std::cerr << "\n";
+        }
     }
 #endif
 
@@ -1715,11 +1781,11 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
     //
     // dump vectors for debugging
     //
-#ifdef DEBUG_VERBOSE_ON
-    dump_bb_vector("DEF IN", fg.BBs, def_in);
-    dump_bb_vector("DEF OUT", fg.BBs, def_out);
-    dump_bb_vector("USE IN", fg.BBs, use_in);
-    dump_bb_vector("USE OUT", fg.BBs, use_out);
+#if 0
+        dump_bb_vector("DEF IN", fg.BBs, def_in);
+        dump_bb_vector("DEF OUT", fg.BBs, def_out);
+        dump_bb_vector("USE IN", fg.BBs, use_in);
+        dump_bb_vector("USE OUT", fg.BBs, use_out);
 #endif
  }
 

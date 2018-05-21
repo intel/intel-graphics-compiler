@@ -184,6 +184,8 @@ public:
 	{
 		postID = id;
 	}
+
+    void dump() const;
 };
 }
 

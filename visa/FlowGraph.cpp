@@ -5927,3 +5927,20 @@ void SCCAnalysis::findSCC(SCCNode* node)
         SCCs.push_back(newSCC);
     }
 }
+
+void FuncInfo::dump() const
+{
+    std::cerr << "subroutine " << getId() << "(" << getInitBB()->front()->getLabelStr() << ")\n";
+    std::cerr << "\tentryBB=" << getInitBB()->getId() << ", exitBB=" << getExitBB()->getId() << "\n";
+    std::cerr << "\tCallees: ";
+    for (auto callee : callees)
+    {
+        std::cerr << callee->getId() << " ";
+    }
+    std::cerr << "\n\tBB list: ";
+    for (auto bb : BBList)
+    {
+        std::cerr << bb->getId() << " ";
+    }
+    std::cerr << "\n";
+}
