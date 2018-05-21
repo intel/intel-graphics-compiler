@@ -7,6 +7,7 @@ using namespace vISA;
 using namespace std;
 
 static const unsigned SMALL_BLOCK_SIZE = 10;
+static const unsigned LARGE_BLOCK_SIZE = 25000;
 static const unsigned PRESSURE_REDUCTION_MIN_BENEFIT = 5;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD = 110;
 static const unsigned PRESSURE_REDUCTION_THRESHOLD_SIMD32 = 120;
@@ -504,7 +505,7 @@ bool preRA_Scheduler::run()
     bool Changed = false;
 
     for (auto bb : kernel.fg.BBs) {
-        if (bb->size() < SMALL_BLOCK_SIZE) {
+        if (bb->size() < SMALL_BLOCK_SIZE || bb->size() > LARGE_BLOCK_SIZE) {
             SCHED_DUMP(std::cerr << "Skip block with instructions "
                 << bb->size() << "\n");
             continue;
