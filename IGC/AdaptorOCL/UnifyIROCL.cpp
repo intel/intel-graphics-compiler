@@ -218,6 +218,9 @@ static void CommonOCLBasedPasses(
     pContext->getModuleMetaData()->compOpt.SubgroupIndependentForwardProgressRequired =
         (static_cast<OpenCLProgramContext*>(pContext)->m_Options.NoSubgroupIFP == false);
 
+    pContext->getModuleMetaData()->compOpt.GreaterThan2GBBufferRequired =
+        !static_cast<OpenCLProgramContext*>(pContext)->m_InternalOptions.Use32BitPtrArith;
+
     pContext->getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired =
         static_cast<OpenCLProgramContext*>(pContext)->m_InternalOptions.IntelGreaterThan4GBBufferRequired;
 

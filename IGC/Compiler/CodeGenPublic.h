@@ -1111,6 +1111,7 @@ namespace IGC
                 IncludeSIPCSR(false),
                 IncludeSIPKernelDebug(false),
                 IntelGreaterThan4GBBufferRequired(false),
+                Use32BitPtrArith(false),
                 IncludeSIPKernelDebugWithLocalMemory(false),
                 DoReRA(false),
                 IntelHasBufferOffsetArg(false)
@@ -1147,6 +1148,11 @@ namespace IGC
                     IncludeSIPKernelDebugWithLocalMemory = true;
                 }
 
+                if (strstr(options, "-cl-intel-use-32bit-ptr-arith"))
+                {
+                    Use32BitPtrArith = true;
+                }
+
                 if (strstr(options, "-cl-intel-greater-than-4GB-buffer-required"))
                 {
                     IntelGreaterThan4GBBufferRequired = true;
@@ -1175,6 +1181,7 @@ namespace IGC
             bool IncludeSIPCSR;
             bool IncludeSIPKernelDebug;
             bool IntelGreaterThan4GBBufferRequired;
+            bool Use32BitPtrArith = false;
             bool IncludeSIPKernelDebugWithLocalMemory;
             bool DoReRA;
             bool IntelHasBufferOffsetArg;
