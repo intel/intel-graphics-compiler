@@ -674,7 +674,7 @@ CompileUnit *DwarfDebug::constructCompileUnit(DICompileUnit* DIUnit)
     // GD-215:
     // Add API and version
     auto lang = m_pModule->GetModule()->getNamedMetadata("igc.input.ir");
-    if (lang)
+    if (lang && lang->getNumOperands() > 0)
     {
         auto mdNode = lang->getOperand(0);
         if (mdNode &&
