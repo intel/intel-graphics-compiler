@@ -460,6 +460,7 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
   // FIXME: Enable for OCL shader only as other clients have regressions but
   // there's no way to trace down.
   bool isUniformLoad = (CGC->type == ShaderType::OPENCL_SHADER) &&
+                       (LeadingLoad->getPointerAddressSpace() != ADDRESS_SPACE_CONSTANT) &&
                        (WI->whichDepend(LeadingLoad) == WIAnalysis::UNIFORM);
   if (isUniformLoad) {
     unsigned C = IGC_GET_FLAG_VALUE(UniformMemOptLimit);
