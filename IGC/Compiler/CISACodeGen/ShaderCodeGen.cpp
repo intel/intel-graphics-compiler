@@ -349,7 +349,9 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         mpm.add(llvm::createLoopDeletionPass());
         mpm.add(llvm::createBreakCriticalEdgesPass());
         mpm.add(llvm::createLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
-        int LoopUnrollThreshold = ctx.m_DriverInfo.GetLoopUnrollThreshold();
+        mpm.add(llvm::createLowerSwitchPass());
+
+		int LoopUnrollThreshold = ctx.m_DriverInfo.GetLoopUnrollThreshold();
 
         if (LoopUnrollThreshold > 0 && ctx.m_retryManager.AllowUnroll() &&
             (ctx.m_tempCount < 64))

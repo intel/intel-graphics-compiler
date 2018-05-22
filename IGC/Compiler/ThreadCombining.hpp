@@ -51,8 +51,8 @@ namespace IGC
     public:
         ThreadCombining()
             : ModulePass(ID)
-            , m_barrier(nullptr)
             , m_kernel(nullptr)
+            , m_SLMUsed(false)
         {
             initializeThreadCombiningPass(*llvm::PassRegistry::getPassRegistry());
         }
@@ -74,26 +74,32 @@ namespace IGC
             AU.addRequired<MetaDataUtilsWrapper>();
         }
 
-        llvm::Instruction* m_barrier;
         llvm::Function* m_kernel;
+        bool m_SLMUsed;
+        std::vector<llvm::Instruction*> m_barriers;
         std::set<llvm::Instruction*> m_aliveAcrossBarrier;
         std::set<llvm::Instruction*> m_instructionsToMove;
+        std::map<llvm::Instruction*, std::set<llvm::Instruction*>> m_LiveRegistersPerBarrier;
         static char ID;
 
         bool isBarrier(llvm::Instruction &I) const;
         bool isSLMUsed(llvm::Instruction* I) const;
         unsigned int GetthreadGroupSize(llvm::Module &M, dim dimension);
         void SetthreadGroupSize(llvm::Module &M, llvm::Constant* size, dim dimension);
-        void createLoopKernel(
+        void CreateLoopKernel(
             llvm::Module& M,
             unsigned int newSizeX,
             unsigned int newSizeY,
             unsigned int threadGroupSize_X,
             unsigned int threadGroupSize_Y,
-            unsigned int divideX,
-            unsigned int divideY,
             llvm::Function* newFunc,
             llvm::IRBuilder<> builder);
+
+        void CreateNewKernel(llvm::Module& M,
+            llvm::IRBuilder<> builder,
+            llvm::Function* newFunc);
+
         bool canDoOptimization(llvm::Function* m_kernel, llvm::Module& M);
+        void FindRegistersAliveAcrossBarriers(llvm::Function* m_kernel, llvm::Module& M);
     };
 }

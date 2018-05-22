@@ -26,8 +26,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "ThreadCombining.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include "common/LLVMWarningsPop.hpp"
 #include "common/LLVMUtils.h"
-
 
 char IGC::ThreadCombining::ID = 0;
 
@@ -62,23 +64,21 @@ bool ThreadCombining::isSLMUsed(llvm::Instruction* I) const
 {
     bool ptrType = false;
     uint addrSpace = 0;
-    if (llvm::isa<llvm::LoadInst>(I) || llvm::isa<llvm::StoreInst>(I))
+
+    if (llvm::isa<llvm::LoadInst>(I))
     {
-        if (llvm::isa<llvm::LoadInst>(I))
+        LoadInst* inst = dyn_cast<LoadInst>(I);
+        if (inst->getPointerOperand())
         {
-            LoadInst* inst = dyn_cast<LoadInst>(I);
-            if (inst->getPointerOperand())
-            {
-                addrSpace = inst->getPointerAddressSpace();
-            }
+            addrSpace = inst->getPointerAddressSpace();
         }
-        else
+    }
+    else if (llvm::isa<llvm::StoreInst>(I))
+    {
+        StoreInst* inst = dyn_cast<StoreInst>(I);
+        if (inst->getPointerOperand())
         {
-            StoreInst* inst = dyn_cast<StoreInst>(I);
-            if (inst->getPointerOperand())
-            {
-                addrSpace = inst->getPointerAddressSpace();
-            }
+            addrSpace = inst->getPointerAddressSpace();
         }
     }
 
@@ -138,460 +138,434 @@ void ThreadCombining::SetthreadGroupSize(llvm::Module &M, llvm::Constant* size, 
     pGlobal->setInitializer(size);
 }
 
-void ThreadCombining::createLoopKernel(
+/// \brief Create a kernel that will loop over the modified kernel 
+/// LoopCount = (threadGroupSize_X / newGroupSizeX) * (threadGroupSize_Y / newGroupSizeY) *(numBarriers + 1)
+
+void ThreadCombining::CreateLoopKernel(
     llvm::Module& M,
-    unsigned int newSizeX,
-    unsigned int newSizeY,
+    unsigned int newGroupSizeX,
+    unsigned int newGroupSizeY,
     unsigned int threadGroupSize_X,
     unsigned int threadGroupSize_Y,
-    unsigned int divideX,
-    unsigned int divideY,
     Function* newFunc,
     llvm::IRBuilder<> builder)
 {
+    unsigned int numLoopsX = threadGroupSize_X / newGroupSizeX;
+    unsigned int numLoopsY = threadGroupSize_Y / newGroupSizeY;
+    unsigned int numBarriers = m_barriers.size();
+
     BasicBlock* mainEntry = BasicBlock::Create(M.getContext(), "", m_kernel);
-    BasicBlock* outerLoopEntry1 = BasicBlock::Create(M.getContext(), "", m_kernel);
-    BasicBlock* InnerLoop1 = BasicBlock::Create(M.getContext(), "", m_kernel);
-    BasicBlock* condCall1 = BasicBlock::Create(M.getContext(), "", m_kernel);
-    BasicBlock* AfterCall1 = BasicBlock::Create(M.getContext(), "", m_kernel);
-    BasicBlock* outerLoopExit1 = BasicBlock::Create(M.getContext(), "", m_kernel);
-    BasicBlock* exit1 = BasicBlock::Create(M.getContext(), "", m_kernel);
-    BasicBlock* outerLoopEntry2 = BasicBlock::Create(M.getContext(), "", m_kernel);
-    BasicBlock* InnerLoop2 = BasicBlock::Create(M.getContext(), "", m_kernel);
-    BasicBlock* condCall2 = BasicBlock::Create(M.getContext(), "", m_kernel);
-    BasicBlock* AfterCall2 = BasicBlock::Create(M.getContext(), "", m_kernel);
-    BasicBlock* outerLoopExit2 = BasicBlock::Create(M.getContext(), "", m_kernel);
-    BasicBlock* exit2 = BasicBlock::Create(M.getContext(), "", m_kernel);
+    BasicBlock* BarrierLoopEntry = BasicBlock::Create(M.getContext(), "", m_kernel);
+    BasicBlock* XLoopEntry = BasicBlock::Create(M.getContext(), "", m_kernel);
+    BasicBlock* YLoopEntry = BasicBlock::Create(M.getContext(), "", m_kernel);
+    BasicBlock* innerYLoop = BasicBlock::Create(M.getContext(), "", m_kernel);
+    BasicBlock* exitXLoop = BasicBlock::Create(M.getContext(), "", m_kernel);
+    BasicBlock* barrier = BasicBlock::Create(M.getContext(), "", m_kernel);
+    BasicBlock* exitBarrierLoop = BasicBlock::Create(M.getContext(), "", m_kernel);
 
-    //In the first block which is main entry block
-    //Create alloca s for the 2 loop iterators in the main entry block
-    //Create alloca for vector of size = iterIMax * IterJMax for each live register
-    //Read the thread ids
-    //Initialize the outer loop iterator to 0
-    //Branch to outer loop
+    auto barrierIterator = m_LiveRegistersPerBarrier.begin();
+    
+    // mainEntry
     builder.SetInsertPoint(mainEntry);
-    Value* IterI = builder.CreateAlloca(builder.getInt32Ty());
-    Value* IterJ = builder.CreateAlloca(builder.getInt32Ty());
-
-    //Total size is number of iterations in the 2 for loops
+    Value* iterBarriers = builder.CreateAlloca(builder.getInt32Ty(), 0, "iterBarriers");
+    Value* iterX = builder.CreateAlloca(builder.getInt32Ty(), 0, "iterX");
+    Value* iterY = builder.CreateAlloca(builder.getInt32Ty(), 0, "iterY");
+    
+    // This is a map of the live register and the register to store it
     std::map<llvm::Instruction*, Value*> regToAllocaMap;
-    unsigned int totalSize = divideX * divideY;
-    for (auto it : m_aliveAcrossBarrier)
+    unsigned int totalSize = numLoopsX * numLoopsY;
+
+    // Create a vector that stores the live registers per iteration
+    // size of the vector will be the total number of iterations
+    for (auto& liveInst : m_aliveAcrossBarrier)
     {
-        llvm::Instruction* aliveInst = dyn_cast<Instruction>(it);
+        llvm::Instruction* aliveInst = dyn_cast<Instruction>(liveInst);
         llvm::VectorType* pVecType = llvm::VectorType::get(aliveInst->getType(), totalSize);
         llvm::Value* inst = builder.CreateAlloca(pVecType);
         regToAllocaMap[aliveInst] = inst;
     }
 
+    // Read threadIDX and threadIDY
     Function* ThreadIDFN = GenISAIntrinsic::getDeclaration(&M, GenISAIntrinsic::GenISA_DCL_SystemValue, builder.getFloatTy());
-    Value* ThreadIDX = builder.CreateCall(ThreadIDFN, builder.getInt32(THREAD_ID_IN_GROUP_X));
-    Value* ThreadIDY = builder.CreateCall(ThreadIDFN, builder.getInt32(THREAD_ID_IN_GROUP_Y));
-    ThreadIDX = builder.CreateBitCast(ThreadIDX, builder.getInt32Ty());
-    ThreadIDY = builder.CreateBitCast(ThreadIDY, builder.getInt32Ty());
-    builder.CreateStore(builder.getInt32(0), IterI);
-    builder.CreateBr(outerLoopEntry1);
+    Value* threadIDX = builder.CreateCall(ThreadIDFN, builder.getInt32(THREAD_ID_IN_GROUP_X));
+    Value* threadIDY = builder.CreateCall(ThreadIDFN, builder.getInt32(THREAD_ID_IN_GROUP_Y));
+    threadIDX = builder.CreateBitCast(threadIDX, builder.getInt32Ty());
+    threadIDY = builder.CreateBitCast(threadIDY, builder.getInt32Ty());
+    builder.CreateBr(BarrierLoopEntry);
+    
+    // BarrierLoopEntry:
+    builder.SetInsertPoint(BarrierLoopEntry);
+    builder.CreateStore(builder.getInt32(0), iterBarriers);    
+    builder.CreateBr(XLoopEntry);
 
-    //label OuterloopEntry1:
-    //In the outer loop, initialize inner loop iterator to 0
-    //Branch to inner loop
-    builder.SetInsertPoint(outerLoopEntry1);
-    builder.CreateStore(builder.getInt32(0), IterJ);
-    builder.CreateBr(InnerLoop1);
+    // XLoopEntry:
+    builder.SetInsertPoint(XLoopEntry);
+    Value* BarrierNum = builder.CreateLoad(iterBarriers);
+    BarrierNum = builder.CreateBitCast(BarrierNum, builder.getInt32Ty());
+    builder.CreateStore(builder.getInt32(0), iterX);
+    builder.CreateBr(YLoopEntry);
 
-    //In the inner loop, calculate the modified thread ids
-    //label InnerLoop:
-    //modifiedThreadIDX = threadIDX + i * new group size X
-    //modifiedThreadIDY = threadIDY + j * new group size Y
-    //if (condCall1)
-    //    (modifiedThreadIDX < originalGroupSizeX) &&  (modifiedThreadIDY < originalGroupSizeY)
-    //then 
-    //  execute newfunc to execute first section before barrier in orig kernel
-    //else (AfterCall1)
-    //  j = j+1
-    //  if
-    //     j < (originalthreadgroupsizeY / modifiedthreadgroupsizeY)
-    //  then
-    //     goto Innerloop1
-    //  else
-    //     i = i+1 (OuterLoopEntry1)
-    //     if 
-    //        i < (originalthreadgroupsizeX / modifiedthreadgroupsizeX)
-    //     then 
-    //        goto outerLoopEntry1
-    //     else
-    //        Execute barrier instruction
-    //Then re-initialize outer loop iter i  to 0 and 
-    //repeat the same for executing second part, section after the barrier
+    // YLoopEntry:
+    builder.SetInsertPoint(YLoopEntry);
+    Value* X = builder.CreateLoad(iterX);
+    Value* correctedIdX = builder.CreateAdd(threadIDX, builder.CreateMul(X, builder.getInt32(newGroupSizeX)));
+    builder.CreateStore(builder.getInt32(0), iterY);
+    builder.CreateBr(innerYLoop);
 
-    builder.SetInsertPoint(InnerLoop1);
-    Value* X = builder.CreateLoad(IterI);
-    Value* Y = builder.CreateLoad(IterJ);
-    Value* correctedIDx = builder.CreateAdd(ThreadIDX, builder.CreateMul(X, builder.getInt32(newSizeX)));
-    Value* correctedIDy = builder.CreateAdd(ThreadIDY, builder.CreateMul(Y, builder.getInt32(newSizeY)));
-    Value* condX = builder.CreateICmp(CmpInst::ICMP_ULT, correctedIDx, builder.getInt32(threadGroupSize_X));
-    Value* condY = builder.CreateICmp(CmpInst::ICMP_ULT, correctedIDy, builder.getInt32(threadGroupSize_Y));
-    Value* condTh = builder.CreateAnd(condX, condY);
-    builder.CreateCondBr(condTh, condCall1, AfterCall1);
-    //builder.CreateBr(condCall1);
+    // innerYLoop:
+    // In the inner loop, calculate the modified thread ids
+    // label InnerLoop:
+    // correctedIdX = threadIDX + iterX * newGroupSizeX
+    // correctedIdY = threadIDY + iterY * newGroupSizeY
+    // executeKernel(correctedIdX, correctedIdY, barrierNum, liveregisterargs)
 
-    builder.SetInsertPoint(condCall1);
+    builder.SetInsertPoint(innerYLoop);
+    Value* Y = builder.CreateLoad(iterY);
+    Value* correctedIdY = builder.CreateAdd(threadIDY, builder.CreateMul(Y, builder.getInt32(newGroupSizeY)));
     std::vector<llvm::Value*> callArgs;
-    callArgs.push_back(correctedIDx);
-    callArgs.push_back(correctedIDy);
-    callArgs.push_back(builder.getInt1(false));
-    for (auto it : m_aliveAcrossBarrier)
+    callArgs.push_back(correctedIdX);
+    callArgs.push_back(correctedIdY);
+    callArgs.push_back(BarrierNum);
+
+    for (auto& it : m_aliveAcrossBarrier)
     {
-        //index = (iterI * (old/New wG threadGroupSize_Y)) + iterJ
         llvm::Instruction* aliveInst = dyn_cast<Instruction>(it);
-        Value* rowMul = builder.CreateMul(X, builder.getInt32(divideY));
+        Value* rowMul = builder.CreateMul(X, builder.getInt32(numLoopsY));
         Value* index = builder.CreateAdd(rowMul, Y);
         Value* indexes[] = { builder.getInt32(0), index };
         Value* gepPtr = builder.CreateGEP(regToAllocaMap[aliveInst], indexes);
-        callArgs.push_back(gepPtr);
+        callArgs.push_back(gepPtr);        
     }
+
     builder.CreateCall(newFunc, callArgs);
-    builder.CreateBr(AfterCall1);
-
-    builder.SetInsertPoint(AfterCall1);
     Y = builder.CreateAdd(Y, builder.getInt32(1));
-    builder.CreateStore(Y, IterJ);
-    Value* cond = builder.CreateICmp(CmpInst::ICMP_ULT, Y, builder.getInt32(divideY));
-    builder.CreateCondBr(cond, InnerLoop1, outerLoopExit1);
+    builder.CreateStore(Y, iterY);
+    Value* cond = builder.CreateICmp(CmpInst::ICMP_ULT, Y, builder.getInt32(numLoopsY));
+    builder.CreateCondBr(cond, innerYLoop, exitXLoop);
 
-    builder.SetInsertPoint(outerLoopExit1);
+    // exitXloop
+    builder.SetInsertPoint(exitXLoop);
     X = builder.CreateAdd(X, builder.getInt32(1));
-    builder.CreateStore(X, IterI);
-    cond = builder.CreateICmp(CmpInst::ICMP_ULT, X, builder.getInt32(divideX));
-    builder.CreateCondBr(cond, outerLoopEntry1, exit1);
+    builder.CreateStore(X, iterX);
+    cond = builder.CreateICmp(CmpInst::ICMP_ULT, X, builder.getInt32(numLoopsX));
+    builder.CreateCondBr(cond, YLoopEntry, barrier);
 
-    builder.SetInsertPoint(exit1);
+    // barrier
+    builder.SetInsertPoint(barrier);
     Function* barrierFn = GenISAIntrinsic::getDeclaration(&M, GenISAIntrinsic::GenISA_threadgroupbarrier);
     builder.CreateCall(barrierFn);
-    builder.CreateStore(builder.getInt32(0), IterI);
-    builder.CreateBr(outerLoopEntry2);
 
-    builder.SetInsertPoint(outerLoopEntry2);
-    builder.CreateStore(builder.getInt32(0), IterJ);
-    builder.CreateBr(InnerLoop2);
-
-    builder.SetInsertPoint(InnerLoop2);
-    X = builder.CreateLoad(IterI);
-    Y = builder.CreateLoad(IterJ);
-    correctedIDx = builder.CreateAdd(ThreadIDX, builder.CreateMul(X, builder.getInt32(newSizeX)));
-    correctedIDy = builder.CreateAdd(ThreadIDY, builder.CreateMul(Y, builder.getInt32(newSizeY)));
-    condX = builder.CreateICmp(CmpInst::ICMP_ULT, correctedIDx, builder.getInt32(threadGroupSize_X));
-    condY = builder.CreateICmp(CmpInst::ICMP_ULT, correctedIDy, builder.getInt32(threadGroupSize_Y));
-    condTh = builder.CreateAnd(condX, condY);
-    builder.CreateCondBr(condTh, condCall2, AfterCall2);
-    //builder.CreateBr(condCall2);
-
-    builder.SetInsertPoint(condCall2);
-    std::vector<llvm::Value*> callArgs2;
-    callArgs2.push_back(correctedIDx);
-    callArgs2.push_back(correctedIDy);
-    callArgs2.push_back(builder.getInt1(true));
-    for (auto it : m_aliveAcrossBarrier)
-    {
-        //index = (iterI * (old/New WG threadGroupSize_Y)) + iterJ
-        llvm::Instruction* aliveInst = dyn_cast<Instruction>(it);
-        Value* rowMul = builder.CreateMul(X, builder.getInt32(divideY));
-        Value* index = builder.CreateAdd(rowMul, Y);
-        Value* indexes[] = { builder.getInt32(0), index };
-        Value* gepPtr = builder.CreateGEP(regToAllocaMap[aliveInst], indexes);
-        callArgs2.push_back(gepPtr);
-    }
-    builder.CreateCall(newFunc, callArgs2);
-    builder.CreateBr(AfterCall2);
-
-    builder.SetInsertPoint(AfterCall2);
-    Y = builder.CreateAdd(Y, builder.getInt32(1));
-    builder.CreateStore(Y, IterJ);
-    cond = builder.CreateICmp(CmpInst::ICMP_ULT, Y, builder.getInt32(divideY));
-    builder.CreateCondBr(cond, InnerLoop2, outerLoopExit2);
-
-    builder.SetInsertPoint(outerLoopExit2);
-    X = builder.CreateAdd(X, builder.getInt32(1));
-    builder.CreateStore(X, IterI);
-    cond = builder.CreateICmp(CmpInst::ICMP_ULT, X, builder.getInt32(divideX));
-    builder.CreateCondBr(cond, outerLoopEntry2, exit2);
-
-    builder.SetInsertPoint(exit2);
+    Value* barriernum = builder.CreateLoad(iterBarriers);
+    barriernum = builder.CreateAdd(barriernum, builder.getInt32(1));
+    builder.CreateStore(barriernum, iterBarriers);
+    Value* conditionBarrier = builder.CreateICmp(CmpInst::ICMP_ULE, barriernum, builder.getInt32(numBarriers));
+    builder.CreateCondBr(conditionBarrier, XLoopEntry, exitBarrierLoop);
+    
+    // exitBarrierLoop:
+    builder.SetInsertPoint(exitBarrierLoop);
     builder.CreateRetVoid();
 }
 
-bool ThreadCombining::canDoOptimization(Function* m_kernel, llvm::Module& M)
+void ThreadCombining::FindRegistersAliveAcrossBarriers(llvm::Function* m_kernel, llvm::Module& M)
 {
-
-    bool slmUsed = false;
-    bool barrierPresent = false;
-    bool multipleBarier = false;
     DominatorTreeWrapperPass* DT = &getAnalysis<DominatorTreeWrapperPass>(*m_kernel);
-    PostDominatorTree* PDT = &getAnalysis<PostDominatorTreeWrapperPass>(*m_kernel).getPostDomTree();
-    //Find if there is one or more barriers
+
     for (auto BI = m_kernel->begin(); BI != m_kernel->end(); ++BI)
     {
-        for (auto II = BI->begin(); II != BI->end(); ++II)
+        for (auto II = BI->begin(); II != BI->end(); II++)
         {
             Instruction* inst = &(*II);
             if (isSLMUsed(inst))
             {
-                slmUsed = true;
+                m_SLMUsed = true;
             }
             if (isBarrier(*inst))
             {
-                if (barrierPresent)
-                {
-                    multipleBarier = true;
-                    break;
-                }
-                barrierPresent = true;
-                m_barrier = inst;
-                continue;
+                m_barriers.push_back(inst);
+                std::set<llvm::Instruction*> empty;
+                m_LiveRegistersPerBarrier.insert(std::pair<llvm::Instruction*, std::set<llvm::Instruction*>>(inst, empty));
             }
 
-            //find all active live registers across barrier
-            //def should be an instruction and shouldnt be dominated by barrier
-            //use should be dominated by barrier
-            if (m_barrier)
+            for (auto barrierInst = m_barriers.begin(); barrierInst != m_barriers.end(); ++barrierInst)
             {
                 for (unsigned int i = 0; i < inst->getNumOperands(); ++i)
                 {
-                    if (Instruction* I = dyn_cast<Instruction>(inst->getOperand(i)))
+                    if (Instruction* I = dyn_cast<Instruction>(inst->getOperand(i))) // If the last barrier does not dominate the instruction then we need to store and restore
                     {
-                        if (!DT->getDomTree().dominates(m_barrier, I))
+                        if (!DT->getDomTree().dominates(*barrierInst, I))
                         {
-                            bool cannotMove = true;
+                            // Optimization: check if the live register can be moved to the entry block,
+                            // this way we skip the store and restore across barriers
+                            bool canMoveInstructionToEntryBlock = false;
                             if (!I->mayReadOrWriteMemory())
                             {
-                                cannotMove = false;
+                                canMoveInstructionToEntryBlock = true;
+
                                 for (unsigned int j = 0; j < I->getNumOperands(); j++)
                                 {
                                     if (isa<Instruction>(I->getOperand(j)))
                                     {
-                                        cannotMove = true;
+                                        canMoveInstructionToEntryBlock = false;
                                         break;
                                     }
                                 }
                                 //optimization to reduce the number of live registers crossing barrier
                                 //Move them later in the entry block of new function
-                                if (cannotMove == false)
+                                if (canMoveInstructionToEntryBlock)
                                 {
                                     m_instructionsToMove.insert(I);
                                 }
-                            }
-                            if (cannotMove)
+                            }                          
+                            if (!canMoveInstructionToEntryBlock)
                             {
+                                m_LiveRegistersPerBarrier[*barrierInst].insert(I); // Insert the instruction as one that has to be stored and then restored
                                 m_aliveAcrossBarrier.insert(I);
-                            }
+                            }                            
                         }
                     }
                 }
             }
         }
     }
+}
 
-    unsigned int threadGroupSize_X = GetthreadGroupSize(M, ThreadGroupSize_X);
-    unsigned int threadGroupSize_Y = GetthreadGroupSize(M, ThreadGroupSize_Y);
-    unsigned int threadGroupSize_Z = GetthreadGroupSize(M, ThreadGroupSize_Z);
+bool ThreadCombining::canDoOptimization(Function* m_kernel, llvm::Module& M)
+{
+	PostDominatorTree* PDT = &getAnalysis<PostDominatorTreeWrapperPass>(*m_kernel).getPostDomTree();
 
-    unsigned int noSoftwareThreads = threadGroupSize_X * threadGroupSize_Y * threadGroupSize_Z;
+    FindRegistersAliveAcrossBarriers(m_kernel, M);
 
-    //No optimization if there is no barrier - there might not be an impact
+	// Check if any of the barriers are within control flow
+    bool anyBarrierWithinControlFlow = false;
+    for (auto& barrier : m_barriers)
+    {
+        if (!PDT->dominates(barrier->getParent(), &m_kernel->getEntryBlock()))
+        {
+            anyBarrierWithinControlFlow = true;
+        }
+    }
+
     //No optimization if no SLM used - number of dispatchable thread groups is limited by SLM space, only then we have perf issue
     //No optimization if thread group size Z is not equal to 1 - keep for simpler cases
-    //No optimization if there are multiple barriers present - keep it simple for now - TODO
-    //No optimization if no of software threads are lesser - not needed in such smaller work groups (TODO) - hard coded to 128 now
     //No optimization if barrier is within control flow - to keep it simple for now else gets complex
-    //No optimization if new size is greater than orig thread group size along any dimension
-    if (threadGroupSize_Z != 1 ||
-        !slmUsed || 
-        !barrierPresent ||
-        multipleBarier ||
-        noSoftwareThreads < 128 ||
-        !PDT->dominates(m_barrier->getParent(), &m_kernel->getEntryBlock()))
+	unsigned int threadGroupSize_X = GetthreadGroupSize(M, ThreadGroupSize_X);
+	unsigned int threadGroupSize_Y = GetthreadGroupSize(M, ThreadGroupSize_Y);
+	unsigned int threadGroupSize_Z = GetthreadGroupSize(M, ThreadGroupSize_Z);
+
+    if (threadGroupSize_X == 1 ||
+		threadGroupSize_Y == 1 ||
+		threadGroupSize_Z != 1 ||
+        !m_SLMUsed || 
+        anyBarrierWithinControlFlow)
     {
-        return false;
+		return false;
     }
+
     return true;
 }
 
-bool ThreadCombining::runOnModule(llvm::Module& M)
-{
-    llvm::IRBuilder<>  builder(M.getContext());
-    CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    auto m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+/// Create a New Kernel and do the following
+/// -> Copy all instructions from the old kernel to the new Kernel
+/// -> Do the following for each barrier
+///    -> Add stores to all the registers that are alive across the barrier right 
+///       before the barrier
+///    -> Add loads to all the live registers right after the barrier
+///    -> Replace the barrier with a return instruction
+/// -> Add a new entry block with a jump table to jump to the basic block to start execution based on the function argument 
+///    provided by the loop kernel  
 
-    m_kernel = m_pMdUtils->begin_FunctionsInfo()->first;
+void ThreadCombining::CreateNewKernel(llvm::Module& M,
+                                      llvm::IRBuilder<> builder,
+                                      llvm::Function* newFunc)
+{
+
     DominatorTreeWrapperPass* DT = &getAnalysis<DominatorTreeWrapperPass>(*m_kernel);
 
-    //analyse if optimization can be done
-    if (!canDoOptimization(m_kernel, M))
+    // Move all instructions from the the old kernel to the new function
+    newFunc->getBasicBlockList().splice(newFunc->begin(), m_kernel->getBasicBlockList(), m_kernel->begin(), m_kernel->end());
+
+    // Check if there is at least one barrier
+    if (!m_barriers.empty())
     {
-        return false;
-    }
+        // On every invocation of the kernel we pass a barrier number that indexes a vector of Basic block
+        // address to jump to. This vector contains the address of the entry block and the address of every
+        // BB following a barrier instruction
 
-    //If all conditions meet then do the optimization
+        std::vector<llvm::BasicBlock* > gotoAddresses;
+        gotoAddresses.push_back(&newFunc->getEntryBlock());
 
-    unsigned int threadGroupSize_X = GetthreadGroupSize(M, ThreadGroupSize_X);
-    unsigned int threadGroupSize_Y = GetthreadGroupSize(M, ThreadGroupSize_Y);
+        auto firstBarrier = m_barriers.begin();
+        builder.SetInsertPoint(*firstBarrier);
+        auto argIter = newFunc->arg_begin();
+        argIter++; argIter++; argIter++; // argIter now points to the first live register in m_aliveAcrossBarrier
 
-    ComputeShaderContext* csCtx = static_cast<ComputeShaderContext*>(context);
-    unsigned int newSizeX = threadGroupSize_X;
-    unsigned int newSizeY = threadGroupSize_Y;
-
-    //If SIMD32 required then break it down
-    if( (newSizeX * newSizeY) > (csCtx->GetHwThreadPerWorkgroup() * 16) )
-    {
-        newSizeX = threadGroupSize_X / 2;
-        newSizeY = threadGroupSize_Y / 2;
-    }
-
-    //Override with reg key values if set
-    if(IGC_IS_FLAG_ENABLED(EnableForceGroupSize))
-    {
-        newSizeX = IGC_GET_FLAG_VALUE(ForceGroupSizeX);
-        newSizeY = IGC_GET_FLAG_VALUE(ForceGroupSizeY);
-    }
-
-    if ((newSizeX >= threadGroupSize_X && newSizeY >= threadGroupSize_Y) ||
-        newSizeX == 0 ||
-        newSizeY == 0 || 
-        threadGroupSize_X % newSizeX != 0 ||
-        threadGroupSize_Y % newSizeY != 0)
-    {
-        //optimization doesn't get applied if thread group sizes are same or bigger
-        return false;
-    }
-
-    unsigned int divideX = threadGroupSize_X / newSizeX;
-    //if (threadGroupSize_X % newSizeX != 0)
-    //{
-    //    divideX++;
-    //}
-    unsigned int divideY = threadGroupSize_Y / newSizeY;
-    //if (threadGroupSize_Y % newSizeY != 0)
-    //{
-    //    divideY++;
-    //}
-
-    SetthreadGroupSize(M, builder.getInt32(newSizeX), ThreadGroupSize_X);
-    SetthreadGroupSize(M, builder.getInt32(newSizeY), ThreadGroupSize_Y);
-
-    //Create a new function with function arguments, New threadIDX, threadIDY, 
-    //a bool variable to indicate if it is kernel section before barrier or after 
-    //and all the live variables
-    std::vector<llvm::Type*> callArgTypes;
-    callArgTypes.push_back(builder.getInt32Ty());
-    callArgTypes.push_back(builder.getInt32Ty());
-    callArgTypes.push_back(builder.getInt1Ty());
-
-    for (auto it : m_aliveAcrossBarrier)
-    {
-        llvm::Instruction* aliveInst = dyn_cast<Instruction>(it);
-        PointerType *PtrTy = PointerType::get(aliveInst->getType(), 0);
-        callArgTypes.push_back(PtrTy);
-    }
-
-    Function* newFunc =
-        Function::Create(FunctionType::get(builder.getVoidTy(), callArgTypes, false),
-        llvm::GlobalValue::InternalLinkage,
-        "newKernel",
-        &M);
-    newFunc->addFnAttr(llvm::Attribute::AlwaysInline);
-    newFunc->getBasicBlockList().splice(newFunc->begin(), m_kernel->getBasicBlockList());
-    
-    //Create Loads for all live registers just after the barrier
-    //Replace all the uses in this section with that of loads
-    builder.SetInsertPoint(m_barrier->getNextNode());
-    auto argIter = newFunc->arg_begin();
-    argIter++; argIter++; argIter++;
-    for (auto it : m_aliveAcrossBarrier)
-    {
-        Value* loadLiveReg = builder.CreateLoad(&(*argIter++));
-
-        SmallVector<Instruction*, 10> usesToReplace;
-        for (auto use_it = it->use_begin();
-            use_it != it->use_end();
-            use_it++)
+        // Add stores for all registers that are live across the first barrier right before the
+        // first barrier
+        for (auto& aliveInst : m_aliveAcrossBarrier)
         {
-            Instruction *useInst = dyn_cast<Instruction>(use_it->getUser());
-
-            //if barrier dominates use then replace all the live registers with this new load register
-            if (DT->getDomTree().dominates(m_barrier, useInst))
+            if (DT->getDomTree().dominates(aliveInst, *firstBarrier))
             {
-                usesToReplace.push_back(useInst);
+                builder.CreateStore(aliveInst, &(*argIter));
+            }
+            argIter++;
+        }
+        
+        auto lastBarrier = --(m_barriers.end());
+
+        // Enter this loop when there are two or more barriers
+        // In this loop, stores and loads of live registers are added
+        // before and after the barrier instructions.
+        for (auto it = firstBarrier; it != lastBarrier; ++it)
+        {
+            auto barIter = it;
+            llvm::Instruction* currentBarrier = *barIter;
+            llvm::Instruction* nextBarrier = *(++barIter);
+            // Store all the live registers right before the next barrier
+            builder.SetInsertPoint(nextBarrier);
+            auto argIter = newFunc->arg_begin();
+            argIter++; argIter++; argIter++;
+
+            for (auto& aliveInst : m_aliveAcrossBarrier)
+            {
+                 // m_LiveRegistersPerBarrier stores for each barrier, all the registers that are alive across that
+                // barrier. We check if a register is alive across the nextBarrier and store all of those values in
+                // a vector that is passed back to the calling function so that we can retrieve it when we execute
+                // the code after nextBarrier
+                if (m_LiveRegistersPerBarrier[nextBarrier].find(aliveInst) != m_LiveRegistersPerBarrier[nextBarrier].end())
+                {
+                    builder.CreateStore(aliveInst, &(*argIter));
+                }
+                argIter++;
+            }
+
+            // Add loads of all the live registers right after the currentBarrier instruction
+            // change the uses of that register to the new value 
+            llvm::Instruction* pointToInsert = currentBarrier->getNextNode();
+            builder.SetInsertPoint(pointToInsert);
+            argIter = newFunc->arg_begin();
+            argIter++; argIter++; argIter++;
+
+            for (auto& it : m_aliveAcrossBarrier)
+            {
+                llvm::Instruction* inst = dyn_cast<llvm::Instruction>(it);
+                // Add loads for all registers that are alive across the CurrentBarrier and replace all the uses of that
+                // register between the current and next barrier with the new load
+                if (m_LiveRegistersPerBarrier[currentBarrier].find(inst) != m_LiveRegistersPerBarrier[currentBarrier].end())
+                {
+                    Value* loadLiveReg = builder.CreateLoad(&(*argIter));
+                    SmallVector<Instruction*, 10> usesToReplace;
+                    for (auto use_it = it->use_begin();
+                        use_it != it->use_end();
+                        use_it++)
+                    {
+                        Instruction *useInst = dyn_cast<Instruction>(use_it->getUser());
+
+                        // Check if the use instruction lies between the current barrier and the next
+                        if (DT->getDomTree().dominates(currentBarrier, useInst) &&
+                            !DT->getDomTree().dominates(nextBarrier, useInst))
+                        {
+                            usesToReplace.push_back(useInst);
+                        }
+                    }
+
+                    for (auto it2 : usesToReplace)
+                    {
+                        it2->replaceUsesOfWith(inst, loadLiveReg);
+                    }
+                }
+                argIter++; // if the register is not live across the currentBarrier, don't add the load, proceed to next register
             }
         }
-        for (auto it2 : usesToReplace)
+
+        // add loads after the last barrier instruction in the kernel 
+        builder.SetInsertPoint((*lastBarrier)->getNextNode());
+        argIter = newFunc->arg_begin();
+        argIter++; argIter++; argIter++;
+
+        for (auto& it2 : m_aliveAcrossBarrier)
         {
-            it2->replaceUsesOfWith(it, loadLiveReg);
+            llvm::Instruction* inst = dyn_cast<llvm::Instruction>(it2);
+
+            if (m_LiveRegistersPerBarrier[*lastBarrier].find(inst) != m_LiveRegistersPerBarrier[*lastBarrier].end())
+            {
+                Value* loadLiveReg = builder.CreateLoad(&(*argIter));
+                SmallVector<Instruction*, 10> usesToReplace;
+                for (auto use_it = it2->use_begin();
+                    use_it != it2->use_end();
+                    use_it++)
+                {
+                    Instruction *useInst = dyn_cast<Instruction>(use_it->getUser());
+
+                    if (DT->getDomTree().dominates(*lastBarrier, useInst))
+                    {
+                        usesToReplace.push_back(useInst);
+                    }
+                }
+
+                for (auto it2 : usesToReplace)
+                {
+                    it2->replaceUsesOfWith(inst, loadLiveReg);
+                }
+            }
+            argIter++;
+        }
+
+        // Replace all the barrier instructions with return instructions
+        for (auto& barrier : m_barriers)
+        {
+            BasicBlock* oldBasicBlock = barrier->getParent();
+            BasicBlock* NewBasicBlock = oldBasicBlock->splitBasicBlock(barrier);
+            gotoAddresses.push_back(NewBasicBlock);
+            TerminatorInst* oldTermInst = oldBasicBlock->getTerminator();
+            TerminatorInst* newTermInst = ReturnInst::Create(M.getContext());
+            llvm::ReplaceInstWithInst(oldTermInst, newTermInst);
+        }
+
+        // Remove barrier instructions from the new kernel
+        for (auto barrier : m_barriers)
+        {
+            barrier->eraseFromParent();
+        }
+
+        // Create a Jump table to branch to the required BB based on the barriernum
+        // argument
+        BasicBlock* oldEntry = &newFunc->getEntryBlock();
+        BasicBlock* newEntry = BasicBlock::Create(M.getContext(), "new_entry", newFunc, oldEntry);
+
+        builder.SetInsertPoint(newEntry);
+        argIter = newFunc->arg_begin();
+        argIter++; argIter++;
+        unsigned int numBarriers = m_barriers.size();
+        llvm::Value* barriernum = &(*argIter);
+        Value* barrierVal = builder.CreateBitCast(barriernum, builder.getInt32Ty());
+        llvm::SwitchInst* pSwitchInst = builder.CreateSwitch(barrierVal, gotoAddresses[0], numBarriers);
+
+        for (unsigned int i = 0; i <= numBarriers; i++)
+        {
+            llvm::ConstantInt* caseClause = builder.getInt32(i);
+            pSwitchInst->addCase(caseClause, gotoAddresses[i]);
         }
     }
 
-    //Create stores for all the live registers just before the barrier instruction
-    builder.SetInsertPoint(m_barrier);
-    argIter = newFunc->arg_begin();
-    argIter++; argIter++; argIter++;
-    for (auto it : m_aliveAcrossBarrier)
+    // Move the live registers marked as safe to move to the new entry block
+    BasicBlock* newEntry = &newFunc->getEntryBlock();
+
+    for (auto& instruction : m_instructionsToMove)
     {
-        llvm::Instruction* aliveInst = dyn_cast<Instruction>(it);
-        builder.CreateStore(aliveInst, &(*argIter++));
+        Instruction* instructionToMove = dyn_cast<Instruction>(instruction);
+        instructionToMove->moveBefore(&*((newEntry->getInstList().begin())));
     }
 
-    // split the barrier block into two
-    BasicBlock* afterBarrier = BasicBlock::Create(M.getContext(), "", newFunc);
-    BasicBlock* barrierBlock = m_barrier->getParent();
-    barrierBlock->replaceSuccessorsPhiUsesWith(afterBarrier);
-    builder.SetInsertPoint(m_barrier);
-    builder.CreateRetVoid();
-
-    afterBarrier->getInstList().splice(
-        afterBarrier->begin(),
-        barrierBlock->getInstList(),
-        m_barrier->getIterator(),
-        barrierBlock->getInstList().end());
-    m_barrier->eraseFromParent();
-
+    // Replace all the threadIDs in the new kernel with the modified id from the function arguments
     auto it = newFunc->arg_begin();
     Value* IDx = &(*it++);
     Value* IDy = &(*it++);
-    Value* afterBarrierSection = &(*it++);
 
-    // split the entry block into two
-    BasicBlock* oldEntry = &newFunc->getEntryBlock();
-    BasicBlock* newEntry = BasicBlock::Create(M.getContext(), "", newFunc, oldEntry);
-
-    builder.SetInsertPoint(newEntry);
-    builder.CreateCondBr(afterBarrierSection, afterBarrier, oldEntry);
-
-    //Move all instructions in m_instructionsToMove to newEntry block
-    for (auto iter : m_instructionsToMove)
+    for (auto& BI : *newFunc)
     {
-        Instruction* instToMove = dyn_cast<Instruction>(iter);
-        instToMove->moveBefore(&*((newEntry->getInstList().begin())));
-    }
-    //Move all allocas from oldentry to newEntry block
-    {
-        std::set<llvm::Instruction*> allocaInstrToMov;
-        for (auto BI = oldEntry->begin(); BI != oldEntry->end();)
+        for (auto& inst : BI)
         {
-            Instruction* inst = &(*BI++);
-            if(llvm::isa<llvm::AllocaInst>(inst))
-            {
-                inst->moveBefore(&*((newEntry->getInstList().begin())));
-				allocaInstrToMov.insert(inst);
-            }
-        }
-    }
-  
-    //Replace all the threadIDs in the new kernel with the function arguments
-    for (auto BI = newFunc->begin(); BI != newFunc->end(); ++BI)
-    {
-        for (auto II = BI->begin(); II != BI->end(); ++II)
-        {
-            Instruction* inst = &(*II);
-            if (GenIntrinsicInst* b = dyn_cast<GenIntrinsicInst>(inst))
+            if (GenIntrinsicInst* b = dyn_cast<GenIntrinsicInst>(&inst))
             {
                 if (b->getIntrinsicID() == GenISAIntrinsic::GenISA_DCL_SystemValue)
                 {
@@ -611,27 +585,134 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
             }
         }
     }
+}
+
+bool ThreadCombining::runOnModule(llvm::Module& M)
+{
+    llvm::IRBuilder<>  builder(M.getContext());
+    CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    ComputeShaderContext* csCtx = static_cast<ComputeShaderContext*>(context);
+    auto m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+
+    m_kernel = m_pMdUtils->begin_FunctionsInfo()->first;
+
+	if (!canDoOptimization(m_kernel, M))
+    {
+        return false;
+    }
+
+    unsigned int threadGroupSize_X = GetthreadGroupSize(M, ThreadGroupSize_X);
+    unsigned int threadGroupSize_Y = GetthreadGroupSize(M, ThreadGroupSize_Y);
+
+    static const int SIMD16_NUM_TEMPREG_THRESHOLD = 92; // This is a heuristic from experiments (same as the value in ShaderCodeGen),
+														// if number of temp registers is
+														// greater than this number then, likely that SIMD16 will spill and we should
+														// chose SIMD 8
+
+    unsigned int minTGSizeHeuristic;					// This value tells us what is the minimum acceptable threadgroup size
+														// to make sure that we are not too aggressive with thread combining.
+														// Current Heurstic is to have no less than 8 H/W threads per WG.
+	
+
+	SIMDMode simdMode = csCtx->GetLeastSIMDModeAllowed();
+	// If SIMD8 is legal then, heuristics are SIMD8 selection if spill is expected, otherwise based on
+	// simd16 selection
+	if (simdMode == SIMDMode::SIMD8)
+	{
+		if (csCtx->m_tempCount > SIMD16_NUM_TEMPREG_THRESHOLD)
+		{
+			simdMode = SIMDMode::SIMD8;
+			minTGSizeHeuristic = 64; // => 8 h/w threads per WG
+		}
+		else
+		{
+			simdMode = SIMDMode::SIMD16;
+			minTGSizeHeuristic = 128; // => 8 h/w threads per WG
+		}
+	}
+
+    float currentThreadOccupancy = csCtx->GetThreadOccupancy(simdMode);
+    unsigned x = (threadGroupSize_X % 2 == 0) ? threadGroupSize_X / 2 : threadGroupSize_X;
+    unsigned y = (threadGroupSize_Y % 2 == 0) ? threadGroupSize_Y / 2 : threadGroupSize_Y;
+    float newThreadOccupancy = GetThreadOccupancyPerSubslice(simdMode, x*y, csCtx->GetHwThreadPerWorkgroup(), csCtx->m_slmSize, csCtx->GetSlmSizePerSubslice());
+
+    unsigned int newSizeX = threadGroupSize_X;
+    unsigned int newSizeY = threadGroupSize_Y;
+	// Heuristic for Threadcombining based on EU Occupancy, if EU occupancy increases with the new 
+	// size then combine threads, otherwise skip it
+	if (IGC_IS_FLAG_ENABLED(EnableForceGroupSize))
+	{
+		newSizeX = IGC_GET_FLAG_VALUE(ForceGroupSizeX);
+		newSizeY = IGC_GET_FLAG_VALUE(ForceGroupSizeY);
+	}
+    else if (x*y >= minTGSizeHeuristic && newThreadOccupancy > currentThreadOccupancy)
+    {
+		newSizeX = x;
+		newSizeY = y;
+        currentThreadOccupancy = newThreadOccupancy;
+        x = (x % 2 == 0) ? x / 2 : x;
+        y = (y % 2 == 0) ? y / 2 : y;
+        newThreadOccupancy = GetThreadOccupancyPerSubslice(simdMode, x*y, csCtx->GetHwThreadPerWorkgroup(), csCtx->m_slmSize, csCtx->GetSlmSizePerSubslice());
+        if (x*y >= minTGSizeHeuristic && newThreadOccupancy > currentThreadOccupancy)
+        {
+            newSizeX = x;
+            newSizeY = y;
+        }
+    }
+    else
+    {
+        return false;
+    }
+
+    assert(newSizeX <= threadGroupSize_X);
+    assert(newSizeY <= threadGroupSize_Y);
+
+    SetthreadGroupSize(M, builder.getInt32(newSizeX), ThreadGroupSize_X);
+    SetthreadGroupSize(M, builder.getInt32(newSizeY), ThreadGroupSize_Y);
+
+    // Create a new function with function arguments, New threadIDX, threadIDY, 
+    // a bool variable to indicate if it is kernel section before last barrier or after 
+    // last barrier and all the live variables
+
+    std::vector<llvm::Type*> callArgTypes;
+    callArgTypes.push_back(builder.getInt32Ty()); // ThreadX
+    callArgTypes.push_back(builder.getInt32Ty()); // ThreadY
+    callArgTypes.push_back(builder.getInt32Ty()); // BarrierNum
+
+    // The function takes as argument all the registers that are alive across barriers
+    for (auto& it : m_aliveAcrossBarrier)
+    {
+        llvm::Instruction* aliveInst = dyn_cast<Instruction>(it);
+        PointerType *PtrTy = PointerType::get(aliveInst->getType(), 0);
+        callArgTypes.push_back(PtrTy);
+    }
+
+    // Create a new function from the original kernel
+    llvm::Function* newFunc =
+        Function::Create(FunctionType::get(builder.getVoidTy(), callArgTypes, false),
+            llvm::GlobalValue::InternalLinkage,
+            "newKernel",
+            &M);
+    newFunc->addFnAttr(llvm::Attribute::AlwaysInline);
+    // Fills in the instructions 
+    CreateNewKernel(M, builder, newFunc);  
 
     // Instead of running the origkernel by one logical thread 1 time, hence threadgroupSizeX * threadGroupSizeY logical threads each run sepearetly
     // optimization is to run in one logical thread (threadGroupSize_X / newSizeX)  * (threadGroupSize_Y / newSizeY) times
     // and hence lesser no of logical threads which maps to lesser number of hardware threads
 
-    // for(i = 0 to threadGroupSize_X / newSizeX)
-    //    for(j = 0 to threadGroupSize_Y / newSizeY)
-    //        Run kernel first part
-    // sync instruction
-    // for(i = 0 to threadGroupSize_X / newSizeX)
-    //    for(j = 0 to threadGroupSize_Y / newSizeY)
-    //        Run kernel second part
+    // for(i = 0 to numBarriers)
+    //  for(j = 0 to threadGroupSize_X / newSizeX)
+    //   for(k = 0 to threadGroupSize_Y / newSizeY)
+    //        Run portion of kernel after Barrier[i]
+    //  sync instruction
 
-    createLoopKernel(
+    CreateLoopKernel(
         M,
         newSizeX,
         newSizeY,
         threadGroupSize_X,
         threadGroupSize_Y,
-        divideX,
-        divideY,
         newFunc,
         builder);
 
