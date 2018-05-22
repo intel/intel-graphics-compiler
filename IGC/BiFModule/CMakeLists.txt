@@ -139,7 +139,7 @@
   add_custom_target(GetClang)
   add_library(common_clang_dll UNKNOWN IMPORTED GLOBAL)
 
-  if(EXISTS ${_clang7zLocation})
+  if(EXISTS ${_clang7zLocation} AND NOT EXISTS ${CCLANG_SRC})
     # Use precompiled common clang bundle.
     message(STATUS "Use precompiled common clang from ${_clang7zLocation}")
 
@@ -148,13 +148,17 @@
     set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
   else()
     # Do not use precompiled common clang.
-    message(STATUS "Precompiled common clang bundle ${_clang7zLocation} does not exist. Try to compile from sources.")
+    message(STATUS "Precompiled common clang bundle ${_clang7zLocation} does not exist or CCLANG_SRC is setup. Try to compile from sources.")
     # if not specified from outside
     # try to use common clang component from one of fixed locations
     if(NOT IGC_CCLANG_HOME_DIR)
       set(IGC_CCLANG_HOME_DIR ${IGC_BUILD__GFX_DEV_SRC_DIR}/external/common_clang)
       if(NOT EXISTS ${IGC_CCLANG_HOME_DIR})
         set(IGC_CCLANG_HOME_DIR ${IGC_BUILD__GFX_DEV_SRC_DIR}/../common_clang)
+      endif(NOT EXISTS ${IGC_CCLANG_HOME_DIR})
+      if(EXISTS ${CCLANG_SRC})
+        set(IGC_CCLANG_HOME_DIR ${CCLANG_SRC})
+		message(STATUS "Setup common clang source path from buildplan argument")
       endif(NOT EXISTS ${IGC_CCLANG_HOME_DIR})
     endif(NOT IGC_CCLANG_HOME_DIR)
     get_filename_component(IGC_CCLANG_HOME_DIR "${IGC_CCLANG_HOME_DIR}" ABSOLUTE)
