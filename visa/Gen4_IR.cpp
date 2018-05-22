@@ -3777,22 +3777,10 @@ uint8_t G4_SrcRegRegion::getMaxExecSize(int pos, uint8_t maxExSize, bool allowCr
     }
     else if (acc != Direct)
     {
-        if (getGenxPlatform() >= GENX_SKL && (desc->vertStride != desc->width * desc->horzStride))
-        {
-            // this operand should be split as
-            // op (wd) r[a0.0, 0]<hs; 1, 0>
-            // op (wd) r[a0.0, vs*typeSize]<hs; 1, 0>
-            vs = desc->horzStride;
-            wd = 1;
-            return (uint8_t)desc->width;
-        }
-        else
-        {
-            // assume this operand is kosher (i.e., does not cross GRF) as the vISA spec requires it
-            vs = desc->vertStride;
-            wd = desc->width;
-            return roundDownPow2(maxExSize);
-        }
+        // assume this operand is kosher (i.e., does not cross GRF) as the vISA spec requires it
+        vs = desc->vertStride;
+        wd = desc->width;
+        return roundDownPow2(maxExSize);
     }
 
     // align16 operands
@@ -7314,7 +7302,6 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
         setRegion(builder.createRegionDesc(2, 2, 1), true);
     }
 }
-
 
 void resetRightBound( G4_Operand* opnd )
 {
