@@ -316,10 +316,11 @@ bool HWConformity::checkSrcCrossGRF( INST_LIST_ITER& iter, G4_BB* bb )
 
             if (widthCrossingGRF)
             {
-                if (vs == wd * hs || exSize == wd)
+                uint16_t stride = 0;
+                if (srcRegion->isSingleStride(exSize, stride))
                 {
                     // replace <v;w,h> with <h;1,0>
-                    src->setRegion(builder.createRegionDesc( hs, 1, 0 ));
+                    src->setRegion(builder.createRegionDesc(stride, 1, 0), true);
                 }
                 else
                 {
