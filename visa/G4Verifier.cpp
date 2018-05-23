@@ -72,6 +72,7 @@ void G4Verifier::verify()
        for (auto I = bb->begin(), E = bb->end(); I != E; ++I)
        {
            G4_INST *inst = *I;
+           assert(bb == inst->getParent() && "incorrect inst to parent BB link");
            verifyInst(inst);
        }
     }

@@ -627,6 +627,7 @@ public:
 class G4_InstMath;
 class G4_InstCF;
 class G4_InstIntrinsic;
+class G4_BB;
 
 
 class G4_INST
@@ -693,6 +694,8 @@ protected:
     // make it private so only the IR_Builder can create new instructions
     void *operator new(size_t sz, Mem_Manager& m){ return m.alloc(sz); }
     int global_id;
+
+    G4_BB* parent = nullptr;
 
 
 public:
@@ -1221,7 +1224,7 @@ public:
         return (option & InstOpt_NoSrcDepSet) != 0;
     }
     bool isMixedMode() const;
-    bool canSupportCondMod(const IR_Builder& builder) const;
+    bool canSupportCondMod() const;
     bool canSwapSource() const;
     bool canSupportSaturate() const;
 
@@ -1246,6 +1249,10 @@ public:
 
     bool canDstBeAcc(const IR_Builder& builder) const;
     bool canSrcBeAcc(int srcId, const IR_Builder& builder) const;
+
+    G4_BB* getParent() const { return parent; }
+    void setParent(G4_BB* bb) { parent = bb; }
+    void clearParent() { parent = nullptr; }
 
 private:
     bool detectComprInst() const;

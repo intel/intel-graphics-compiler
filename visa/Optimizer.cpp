@@ -4805,7 +4805,7 @@ void Optimizer::optimizeLogicOperation()
             //The sel instruction uses any conditional modifier internally and does not update the flag register if a conditional modifier is used.
             else if( inst->getPredicate() == NULL &&
                 ( G4_Inst_Table[op].instType == InstTypeLogic ||
-                inst->canSupportCondMod(builder) ) &&
+                inst->canSupportCondMod()) &&
                 next_iter != bb->end() )
             {
                 // FIXME: why this condition?
