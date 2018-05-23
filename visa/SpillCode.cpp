@@ -422,7 +422,7 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
                 genRegMov(bb, it,
                     spDcl->getRegVar(), ss->getSubRegOff(),
                     tmpDcl->getRegVar(),
-                    tmpDcl->getNumElems(), getGenxPlatform() == GENX_CNL ? false : true);
+                    tmpDcl->getNumElems(), getGenxPlatform() >= GENX_CNL ? false : true);
             }
 
             G4_SrcRegRegion rgn(*ss, tmpDcl->getRegVar()); // using tmpDcl as new base
