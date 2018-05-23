@@ -8719,14 +8719,18 @@ int IR_Builder::translateVISARTWrite3DInst(
 			// setPixelMaskRgn when WA ce0 is needed
 			auto setPixelMaskRgn = [=](G4_InstOption Option) -> void
 			{
-				G4_Declare* flagDecl = createTempFlag(1, "WAce0");
+				G4_Declare* flagDecl = createTempFlag(2, "WAce0");
 				G4_RegVar* flagVar = flagDecl->getRegVar();
 				G4_DstRegRegion* flag = createDstRegRegion(
-					Direct, flagVar, 0, 0, 1, Type_UW);
+					Direct, flagVar, 0,
+					Option == InstOpt_M16 ? 1 : 0,
+					1, Type_UW);
 
-				// (W) mov (1|M0) WAce0:uw, 0
-				// cmp (16) (eq)WAce0 r0:uw r0:uw
-				// (W) mov(1|M0) dstPixelMaskRgn:uw  WAce0:uw
+				// (1) (W) mov (1|M0) WAce0.[0|1]:uw, 0
+				//         M0 : WAce0.0; M16 : WAce0.1
+				// (2)     cmp (16|[M0|M16]) (eq)WAce0.0 r0:uw r0:uw
+				// (3) (W) mov(1|M0) dstPixelMaskRgn:uw  WAce0.[0|1]:uw
+				//         M0 : WAce0.0; M16 : WAce0.1
 				createInst(NULL, G4_mov, NULL, false, 1, flag,
 					createImm(0, Type_UW), NULL, InstOpt_WriteEnable);
 
@@ -8745,7 +8749,8 @@ int IR_Builder::translateVISARTWrite3DInst(
 
 				G4_SrcRegRegion *flagSrc = createSrcRegRegion(
 					Mod_src_undef, Direct,
-					flagVar, 0, 0,
+					flagVar, 0,
+					Option == InstOpt_M16 ? 1 : 0,
 					getRegionScalar(), Type_UW);
 
 				// move to dstPixelMaskRgn
