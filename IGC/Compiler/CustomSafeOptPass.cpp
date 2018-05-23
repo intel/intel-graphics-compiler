@@ -1314,15 +1314,16 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst)
     if (inst)
     {
         llvm::Type * type = inst->getType();
-        if (GenIntrinsicInst *genIntr = dyn_cast<GenIntrinsicInst>(inst))
+        if (CallInst *genIntr = dyn_cast<CallInst>(inst))
         {
             // used for GenISA_sqrt and GenISA_rsq
             ConstantFP *C0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+            EOPCODE igcop = GetOpCode(genIntr);
 
             // special case of gen-intrinsic
-            switch (genIntr->getIntrinsicID())
+            switch (igcop)
             {
-            case GenISAIntrinsic::GenISA_sqrt:
+            case llvm_sqrt:
                 if (C0)
                 {
                     auto APF = C0->getValueAPF();
@@ -1334,7 +1335,7 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst)
                     }
                 }
                 break;
-            case GenISAIntrinsic::GenISA_rsq:
+            case llvm_rsq:
                 if (C0)
                 {
                     auto APF = C0->getValueAPF();
@@ -1346,7 +1347,7 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst)
                     }
                 }
                 break;
-            case GenISAIntrinsic::GenISA_max:
+            case llvm_max:
                 {
                     ConstantFP *CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
                     ConstantFP *CFP1 = dyn_cast<ConstantFP>(inst->getOperand(1));
@@ -1358,7 +1359,7 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst)
                     }
                 }
                 break;
-            case GenISAIntrinsic::GenISA_min:
+            case llvm_min:
                 {
                     ConstantFP *CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
                     ConstantFP *CFP1 = dyn_cast<ConstantFP>(inst->getOperand(1));
@@ -1370,7 +1371,7 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst)
                     }
                 }
                 break;
-            case GenISAIntrinsic::GenISA_fsat:
+            case llvm_fsat:
             {
                 ConstantFP *CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
                 if(CFP0)

@@ -3515,7 +3515,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateFMax(llvm::Value *
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Function* fmax =
-        llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_max, LHS->getType());
+        llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::maxnum, LHS->getType());
     return this->CreateCall2(fmax, LHS, RHS);
 }
 
@@ -3525,7 +3525,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateFMin(llvm::Value *
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
     llvm::Function* fmin =
-        llvm::GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_min, LHS->getType());
+        llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::minnum, LHS->getType());
     return this->CreateCall2(fmin, LHS, RHS);
 }
 

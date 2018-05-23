@@ -1480,7 +1480,6 @@ public:
     }
 };
 
-
 template <typename T>
 std::unique_ptr<T> initImageClass(CImagesBI::ParamMap* paramMap, CImagesBI::InlineMap* inlineMap, 
                                 int* nextSampler, CImagesBI::Dimension dim)
@@ -1624,9 +1623,9 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_native_exp2h"]  = CSimpleIntrinMapping::create(Intrinsic::exp2);
     m_CommandMap["__builtin_IB_native_log2f"]  = CSimpleIntrinMapping::create(Intrinsic::log2);
     m_CommandMap["__builtin_IB_native_log2h"]  = CSimpleIntrinMapping::create(Intrinsic::log2);
-    m_CommandMap["__builtin_IB_native_sqrtf"]  = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_sqrt);
-    m_CommandMap["__builtin_IB_native_sqrth"]  = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_sqrt);
-    m_CommandMap["__builtin_IB_native_sqrtd"]  = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_sqrt);
+    m_CommandMap["__builtin_IB_native_sqrtf"]  = CSimpleIntrinMapping::create(Intrinsic::sqrt);
+    m_CommandMap["__builtin_IB_native_sqrth"]  = CSimpleIntrinMapping::create(Intrinsic::sqrt);
+    m_CommandMap["__builtin_IB_native_sqrtd"]  = CSimpleIntrinMapping::create(Intrinsic::sqrt);
     m_CommandMap["__builtin_IB_popcount_1u32"] = CSimpleIntrinMapping::create(Intrinsic::ctpop);
     m_CommandMap["__builtin_IB_popcount_1u16"] = CSimpleIntrinMapping::create(Intrinsic::ctpop);
     m_CommandMap["__builtin_IB_popcount_1u8"]  = CSimpleIntrinMapping::create(Intrinsic::ctpop);
@@ -1634,12 +1633,12 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_fma"]           = CSimpleIntrinMapping::create(Intrinsic::fma);
     m_CommandMap["__builtin_IB_fmah"]          = CSimpleIntrinMapping::create(Intrinsic::fma);
     m_CommandMap["__builtin_IB_bfrev"]         = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_bfrev, false);
-    m_CommandMap["__builtin_IB_fmax"]          = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_max);
-    m_CommandMap["__builtin_IB_fmin"]          = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_min);
-    m_CommandMap["__builtin_IB_HMAX"]          = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_max);
-    m_CommandMap["__builtin_IB_HMIN"]          = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_min);
-    m_CommandMap[ "__builtin_IB_dmin" ]        = CSimpleIntrinMapping::create( GenISAIntrinsic::GenISA_min );
-    m_CommandMap[ "__builtin_IB_dmax" ]        = CSimpleIntrinMapping::create( GenISAIntrinsic::GenISA_max );
+    m_CommandMap["__builtin_IB_fmax"]          = CSimpleIntrinMapping::create(Intrinsic::maxnum);
+    m_CommandMap["__builtin_IB_fmin"]          = CSimpleIntrinMapping::create(Intrinsic::minnum);
+    m_CommandMap["__builtin_IB_HMAX"]          = CSimpleIntrinMapping::create(Intrinsic::maxnum);
+    m_CommandMap["__builtin_IB_HMIN"]          = CSimpleIntrinMapping::create(Intrinsic::minnum);
+    m_CommandMap["__builtin_IB_dmin"]          = CSimpleIntrinMapping::create(Intrinsic::minnum);
+    m_CommandMap["__builtin_IB_dmax"]          = CSimpleIntrinMapping::create(Intrinsic::maxnum);
 
     //Sync built-ins
     m_CommandMap["__builtin_IB_thread_group_barrier"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_threadgroupbarrier, false);

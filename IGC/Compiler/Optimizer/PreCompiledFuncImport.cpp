@@ -245,15 +245,12 @@ bool PreCompiledFuncImport::preProcessDouble()
                 GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(CallI);
                 if (resTy->isDoubleTy() &&
                     ((II && (II->getIntrinsicID() == Intrinsic::maxnum ||
-                             II->getIntrinsicID() == Intrinsic::minnum)) ||
-                     (GII && (GII->getIntrinsicID() == GenISAIntrinsic::GenISA_max ||
-                              GII->getIntrinsicID() == GenISAIntrinsic::GenISA_min))))
+                             II->getIntrinsicID() == Intrinsic::minnum))))
                 {
                     // max and min on double operands
                     Value* Oprd0 = CallI->getOperand(0);
                     Value* Oprd1 = CallI->getOperand(1);
-                    bool isMax = (II && II->getIntrinsicID() == Intrinsic::maxnum) ||
-                                 (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_max);
+                    bool isMax = (II && II->getIntrinsicID() == Intrinsic::maxnum);
                     Instruction* res = nullptr;
                     if (hasNoNaN)
                     {
@@ -1216,8 +1213,7 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
 	}
 
     if (resTy->isDoubleTy() &&
-        ((II && II->getIntrinsicID() == Intrinsic::sqrt) ||
-         (GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_sqrt)))
+        (II && II->getIntrinsicID() == Intrinsic::sqrt))
     {
         Function *newFunc = getOrCreateFunction(FUNCTION_DP_SQRT);
         Function *CurrFunc = I.getParent()->getParent();
@@ -1549,10 +1545,8 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
 			}
 
 			IntrinsicInst *IInst = dyn_cast<IntrinsicInst>(I);
-			GenIntrinsicInst *GIInst = dyn_cast<GenIntrinsicInst>(I);
 			// Handle intrinsic calls
-			if ((IInst && IInst->getIntrinsicID() == Intrinsic::sqrt) ||
-				(GIInst && GIInst->getIntrinsicID() == GenISAIntrinsic::GenISA_sqrt))
+			if ((IInst && IInst->getIntrinsicID() == Intrinsic::sqrt))
 			{
 				m_enableSubroutineCallForEmulation = true;
 			}

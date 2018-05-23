@@ -171,9 +171,6 @@ static bool IsKnownNotSNaN(Value *V, unsigned Depth = 0) {
     case Instruction::Call:
         if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(I)) {
             switch (GII->getIntrinsicID()) {
-            case GenISAIntrinsic::GenISA_min:
-            case GenISAIntrinsic::GenISA_max:
-            case GenISAIntrinsic::GenISA_sqrt:
             case GenISAIntrinsic::GenISA_rsq:
                 return true;
             default:
@@ -198,6 +195,8 @@ static bool IsKnownNotSNaN(Value *V, unsigned Depth = 0) {
             case Intrinsic::nearbyint:
             case Intrinsic::fma:
             case Intrinsic::fmuladd:
+            case Intrinsic::maxnum:
+            case Intrinsic::minnum:
                 // TODO: Do we need to add various conversions to FP?
                 // NOTE: fabs since it may be folded as a source modifier.
                 // TODO: Revisit fabs later after unsafe math mode is
@@ -226,81 +225,6 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
     {
         switch (intr->getIntrinsicID())
         {
-        case GenISAIntrinsic::GenISA_min:
-        case GenISAIntrinsic::GenISA_max:
-        {
-            CodeGenContext *pCtx = m_pCtxWrapper->getCodeGenContext();
-            if(pCtx->m_DriverInfo.SupportsIEEEMinMax())
-            {
-                // OCL's fmax/fmin maps to GEN's max/min in non-IEEE mode.
-                // By default, gen uses non-IEEE mode.  But, in BDW and SKL
-                // prior to C step, IEEE mode is used if denorm bit is set.
-                // If there are no sNaN as inputs to fmax/fmin,  IEEE mode
-                // is the same as non-IEEE mode;  if there are sNaN,  non-IEEE
-                // mode is NOT the same as IEEE mode. But non-IEEE mode is the
-                // same as the following
-                //     non-IEEE_fmax(x, y) =
-                //           x1 = IEEE_fmin(x, qNaN), y1 = IEEE_fmin(y, qNaN)
-                //             (or fadd(x, -0.0); y1 = fadd(y, -0.0);)
-                //           IEEE_fmax(x1, y1)
-                // SKL C+ has IEEE minmax bit in Control Register(CR), so far we
-                // don't set it (meaning non-ieee mode).
-                //
-                // Therefore, if fmax/fmin is in IEEE mode, we need to workaround
-                // that by converting sNAN to qNAN if one of operands is sNAN but
-                // needing to preserve the original value if it's not sNAN.
-                //
-                // There are more than one ways to achieve that:
-                //  - X + 0.0
-                //    It's the simplest one. However, it cannot preserver -0.0
-                //    as -0.0 + 0.0 = 0.0. It also has other issues depending
-                //    on rounding mode. We could enhance it by adding -0.0 if X
-                //    is negative. But that
-                //    introduces additional overhead.
-                //
-                //  The following two are both good candidates with single
-                //  instruction overhead only:
-                //
-                //  - x * 1.0
-                //  - FMIN(x, qNAN) or FMAX(x, qNAN)
-                //
-                //    According to PRM, both of them should aways give x or
-                //    qNAN.
-                //
-                // We choose FMIN to prevent other optimizations kicking in.
-                //
-
-                // Note that m_enableFMaxFMinPlusZero is used here for GEN9 only; if it
-                // is set,  it means that IEEE-mode min/max is used if denorm bit is set.
-                Type *Ty = intr->getType();
-                ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-                bool minmaxModeSetByDenormBit =
-                    (!pCtx->platform.hasIEEEMinmaxBit() || m_enableFMaxFMinPlusZero || EnableFMaxFMinPlusZero);
-                bool hasNaNs = !modMD->compOpt.FiniteMathOnly;
-                if (hasNaNs &&  minmaxModeSetByDenormBit &&
-                    ((Ty->isFloatTy() && (pCtx->m_floatDenormMode32 == FLOAT_DENORM_RETAIN)) ||
-                     (Ty->isDoubleTy() && (pCtx->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)) ||
-                     (Ty->isHalfTy() && (pCtx->m_floatDenormMode16 == FLOAT_DENORM_RETAIN))))
-                {
-                    m_builder->SetInsertPoint(&I);
-
-                    GenISAIntrinsic::ID IID = GenISAIntrinsic::GenISA_min;
-                    Function *IFunc =
-                      GenISAIntrinsic::getDeclaration(I.getParent()->getParent()->getParent(),
-                                                      IID, I.getType());
-                    Value *QNaN = getQNaN(I.getType());
-
-                    Value* src0 = I.getOperand(0);
-                    if (!IsKnownNotSNaN(src0))
-                        I.setArgOperand(0, m_builder->CreateCall2(IFunc, src0, QNaN));
-
-                    Value* src1 = I.getOperand(1);
-                    if (!IsKnownNotSNaN(src1))
-                        I.setArgOperand(1, m_builder->CreateCall2(IFunc, src1, QNaN));
-                }
-            }
-        }
-            break;
         case llvm::GenISAIntrinsic::GenISA_gather4POCptr:
             GatherOffsetWorkaround(cast<SamplerGatherIntrinsic>(&I));
             break;
@@ -392,6 +316,91 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
             }
         }
         break;
+        default:
+            break;
+        }
+    }
+    else
+    if (const IntrinsicInst* intr = dyn_cast<IntrinsicInst>(&I))
+    {
+        switch (intr->getIntrinsicID())
+        {
+        case Intrinsic::maxnum:
+        case Intrinsic::minnum:
+        {
+            CodeGenContext *pCtx = m_pCtxWrapper->getCodeGenContext();
+            if (pCtx->m_DriverInfo.SupportsIEEEMinMax())
+            {
+                // OCL's fmax/fmin maps to GEN's max/min in non-IEEE mode.
+                // By default, gen uses non-IEEE mode.  But, in BDW and SKL
+                // prior to C step, IEEE mode is used if denorm bit is set.
+                // If there are no sNaN as inputs to fmax/fmin,  IEEE mode
+                // is the same as non-IEEE mode;  if there are sNaN,  non-IEEE
+                // mode is NOT the same as IEEE mode. But non-IEEE mode is the
+                // same as the following
+                //     non-IEEE_fmax(x, y) =
+                //           x1 = IEEE_fmin(x, qNaN), y1 = IEEE_fmin(y, qNaN)
+                //             (or fadd(x, -0.0); y1 = fadd(y, -0.0);)
+                //           IEEE_fmax(x1, y1)
+                // SKL C+ has IEEE minmax bit in Control Register(CR), so far we
+                // don't set it (meaning non-ieee mode).
+                //
+                // Therefore, if fmax/fmin is in IEEE mode, we need to workaround
+                // that by converting sNAN to qNAN if one of operands is sNAN but
+                // needing to preserve the original value if it's not sNAN.
+                //
+                // There are more than one ways to achieve that:
+                //  - X + 0.0
+                //    It's the simplest one. However, it cannot preserver -0.0
+                //    as -0.0 + 0.0 = 0.0. It also has other issues depending
+                //    on rounding mode. We could enhance it by adding -0.0 if X
+                //    is negative. But that
+                //    introduces additional overhead.
+                //
+                //  The following two are both good candidates with single
+                //  instruction overhead only:
+                //
+                //  - x * 1.0
+                //  - FMIN(x, qNAN) or FMAX(x, qNAN)
+                //
+                //    According to PRM, both of them should aways give x or
+                //    qNAN.
+                //
+                // We choose FMIN to prevent other optimizations kicking in.
+                //
+
+                // Note that m_enableFMaxFMinPlusZero is used here for GEN9 only; if it
+                // is set,  it means that IEEE-mode min/max is used if denorm bit is set.
+                Type *Ty = intr->getType();
+                ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+                bool minmaxModeSetByDenormBit =
+                    (!pCtx->platform.hasIEEEMinmaxBit() || m_enableFMaxFMinPlusZero || EnableFMaxFMinPlusZero);
+                bool hasNaNs = !modMD->compOpt.FiniteMathOnly;
+                if (hasNaNs &&  minmaxModeSetByDenormBit &&
+                    ((Ty->isFloatTy() && (pCtx->m_floatDenormMode32 == FLOAT_DENORM_RETAIN)) ||
+                    (Ty->isDoubleTy() && (pCtx->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)) ||
+                        (Ty->isHalfTy() && (pCtx->m_floatDenormMode16 == FLOAT_DENORM_RETAIN))))
+                {
+                    m_builder->SetInsertPoint(&I);
+
+                    Intrinsic::ID IID = Intrinsic::minnum;
+                    Function *IFunc =
+                        Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(),
+                            IID, I.getType());
+                    Value *QNaN = getQNaN(I.getType());
+
+                    Value* src0 = I.getOperand(0);
+                    if (!IsKnownNotSNaN(src0))
+                        I.setArgOperand(0, m_builder->CreateCall2(IFunc, src0, QNaN));
+
+                    Value* src1 = I.getOperand(1);
+                    if (!IsKnownNotSNaN(src1))
+                        I.setArgOperand(1, m_builder->CreateCall2(IFunc, src1, QNaN));
+                }
+            }
+            break;
+        }
+
         default:
             break;
         }

@@ -88,6 +88,8 @@ IGC_IR_LLVM_INTRINSIC(umul_with_overflow)
 IGC_IR_LLVM_INTRINSIC(smul_with_overflow)
 IGC_IR_LLVM_INTRINSIC(assume)
 IGC_IR_LLVM_INTRINSIC(bswap)
+IGC_IR_LLVM_INTRINSIC(maxnum)
+IGC_IR_LLVM_INTRINSIC(minnum)
 
 // LLVM instructions allowed in IGC IR
 //------------------------------------

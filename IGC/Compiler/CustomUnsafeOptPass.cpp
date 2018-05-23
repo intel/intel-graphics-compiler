@@ -2450,25 +2450,26 @@ bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, co
 
 		return FoldedVals.count(OtherOp) != 0;
 	}
-	else if (auto *GII = dyn_cast<GenIntrinsicInst>(use))
-	{
-		// if x == 0
-		switch (GII->getIntrinsicID())
-		{
-		// max(0, x) or max(x, 0) == 0
-		case GenISAIntrinsic::GenISA_max:
-			return isZero(GII->getArgOperand(0)) ||
-				   isZero(GII->getArgOperand(1));
-		case GenISAIntrinsic::GenISA_min:
-			return geZero(GII->getArgOperand(0)) ||
-				   geZero(GII->getArgOperand(1));
-		// Useful in matching dp3_sat for Dragon Age
-		case GenISAIntrinsic::GenISA_fsat:
-			return true;
-		default:
-			return false;
-		}
-	}
+    else if (auto* CI = dyn_cast<CallInst>(use))
+    {
+        // if x == 0
+        switch (GetOpCode(CI))
+        {
+        // max(0, x) or min(x, 0) == 0
+        case llvm_max:
+            return isZero(CI->getArgOperand(0)) ||
+                isZero(CI->getArgOperand(1));
+        case llvm_min:
+            return geZero(CI->getArgOperand(0)) ||
+                geZero(CI->getArgOperand(1));
+
+        // Useful in matching dp3_sat
+        case llvm_fsat:
+            return true;
+        default:
+            return false;
+        }
+    }
 
     return false;
 }
@@ -2769,18 +2770,19 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
 				Root = moveToDef(SI, Values);
 				foldFromAdd(Values, Root);
 			}
-			else if (auto *GII = dyn_cast<GenIntrinsicInst>(&II))
+			else if (GetOpCode(&II) == llvm_max)
+            {
+                auto* CI = dyn_cast<CallInst>(&II);
+                OptCandidate = DPMaxPatternEnable &&
+                    DotProductSourceMatch(CI) && canOptimizeDotProduct(Values, &II);
+                // Lower the ratio threshold for this case
+                FoldThreshold = 9;
+                RatioNeeded = 3;
+            }
+            else if (auto *GII = dyn_cast<GenIntrinsicInst>(&II))
 			{
 				switch (GII->getIntrinsicID())
 				{
-				case GenISAIntrinsic::GenISA_max:
-					OptCandidate = DPMaxPatternEnable &&
-						DotProductSourceMatch(GII) && canOptimizeDotProduct(Values, &II);
-					// Lower the ratio threshold for this case
-					FoldThreshold = 9;
-					RatioNeeded = 3;
-					break;
-
 				case GenISAIntrinsic::GenISA_fsat:
 					OptCandidate = DPFSatPatternEnable &&
 						DotProductSourceMatch(GII) && canOptimizeDotProduct(Values, &II);
