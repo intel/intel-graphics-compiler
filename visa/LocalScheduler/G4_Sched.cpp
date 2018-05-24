@@ -379,11 +379,6 @@ struct RegisterPressure
         }
         std::cerr << "\n\n";
     }
-    private:
-        // Private copy ctor, assignment operator to prevent shallow copy that
-        // could lead to double free.
-        RegisterPressure(const RegisterPressure& other) : kernel(other.kernel), mem(other.mem) {}
-        RegisterPressure& operator=(RegisterPressure& other) {}
 };
 
 struct SchedConfig
