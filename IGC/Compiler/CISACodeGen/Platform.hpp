@@ -322,6 +322,11 @@ public:
         return m_WaTable.Wa_220856683 != 0;
     }
 
+    bool WaForceDSToWriteURB() const
+    {
+        return m_WaTable.Wa_1805992985 != 0;
+    }
+
     const SCompilerHwCaps& GetCaps(){return m_caps;}
 };
 

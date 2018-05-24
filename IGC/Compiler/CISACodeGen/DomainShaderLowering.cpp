@@ -158,11 +158,15 @@ void DomainShaderLowering::LowerIntrinsicInputOutput(Function& F)
     uint m_pMaxPatchConstantSignatureDeclarations = int_cast<uint>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
 
     std::vector<llvm::Instruction*> offsetInst(m_maxNumOfOutput + m_headerSize.Count(), nullptr);
-
+    BasicBlock* retBlock = nullptr;
     for(auto BI = F.begin(), BE = F.end(); BI != BE; ++BI)
     {
         for (auto II = BI->begin(), IE = BI->end(); II != IE; ++II)
         {
+            if(isa<ReturnInst>(BI->getTerminator()))
+            {
+                retBlock = &(*BI);
+            }
             if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(II))
             {
                 GenISAIntrinsic::ID IID = inst->getIntrinsicID();
@@ -269,7 +273,28 @@ void DomainShaderLowering::LowerIntrinsicInputOutput(Function& F)
             }
         }
     }
-
+    Value* undef = llvm::UndefValue::get(Type::getFloatTy(F.getContext()));
+    if(getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.WaForceDSToWriteURB())
+    {
+        // In case shader doesn't write in t eh URB header we force a dummy write to avoid HW hang
+        if(offsetInst[0] == nullptr && offsetInst[1] == nullptr)
+        {
+            Value* data[8] =
+            {
+                undef,
+                undef,
+                undef,
+                undef,
+                undef,
+                undef,
+                undef,
+                undef,
+            };
+            // write 32bytes of random data in the vertex header
+            Value* offset = ConstantInt::get(Type::getInt32Ty(m_pModule->getContext()), 0);
+            AddURBWrite(offset, 0xFF, data, retBlock->getTerminator());
+        }
+    }
     //URB padding to 32Byte offsets
     for (unsigned int i = 0; i < m_maxNumOfOutput + m_headerSize.Count(); i++)
     {
@@ -291,7 +316,6 @@ void DomainShaderLowering::LowerIntrinsicInputOutput(Function& F)
                 }
                 else
                 {
-                    Value* undef = llvm::UndefValue::get(Type::getFloatTy(F.getContext()));
 
                     Value* data[8] =
                     {
