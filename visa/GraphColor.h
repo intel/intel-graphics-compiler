@@ -789,8 +789,64 @@ namespace vISA
         unsigned int subOff = 0;
     };
 
+    class VerifyAugmentation
+    {
+    private:
+        G4_Kernel* kernel = nullptr;
+        GlobalRA* gra = nullptr;
+        std::vector<G4_Declare*> sortedLiveRanges;
+        std::unordered_map<G4_Declare*, std::tuple<LiveRange*, AugmentationMasks, G4_INST*, G4_INST*>> masks;
+        LiveRange** lrs = nullptr;
+        unsigned int numVars = 0;
+        const Interference* intf = nullptr;
+        std::unordered_map<G4_Declare*, LiveRange*> DclLRMap;
+        std::unordered_map<G4_BB*, std::string> bbLabels;
+        std::vector<std::tuple<G4_BB*, unsigned int, unsigned int>> BBLexId;
+
+        const char* getStr(AugmentationMasks a)
+        {
+            if (a == AugmentationMasks::Default16Bit)
+                return "Default16Bit";
+            else if (a == AugmentationMasks::Default32Bit)
+                return "Default32Bit";
+            else if (a == AugmentationMasks::Default64Bit)
+                return "Default64Bit";
+            else if (a == AugmentationMasks::NonDefault)
+                return "NonDefault";
+            else if (a == AugmentationMasks::Undetermined)
+                return "Undetermined";
+
+            return "-----";
+        };
+        void labelBBs();
+        void populateBBLexId();
+        bool interfereBetween(G4_Declare*, G4_Declare*);
+
+    public:
+        void verify();
+        void reset()
+        {
+            sortedLiveRanges.clear();
+            masks.clear();
+            kernel = nullptr;
+            lrs = nullptr;
+            gra = nullptr;
+            numVars = 0;
+            intf = nullptr;
+            DclLRMap.clear();
+            bbLabels.clear();
+            BBLexId.clear();
+        }
+        void loadAugData(std::vector<G4_Declare*>& s, LiveRange** l, unsigned int n, Interference* i, GlobalRA& g);
+        void dump(const char* dclName);
+        bool isClobbered(LiveRange* lr, std::string& msg);
+    };
+
     class GlobalRA
     {
+    public:
+        VerifyAugmentation *verifyAugmentation = nullptr;
+
     private:
         template <class REGION_TYPE> static unsigned getRegionDisp(REGION_TYPE * region);
         unsigned getRegionByteSize(G4_DstRegRegion * region, unsigned execSize);
@@ -1086,6 +1142,17 @@ namespace vISA
             pointsToAnalysis(p2a)
         {
             vars.resize(k.Declares.size());
+
+            if (kernel.getOptions()->getOption(vISA_VerifyAugmentation))
+            {
+                verifyAugmentation = new VerifyAugmentation();
+            }
+        }
+
+        ~GlobalRA()
+        {
+            if (verifyAugmentation)
+                delete verifyAugmentation;
         }
 
         void emitFGWithLiveness(LivenessAnalysis& liveAnalysis);

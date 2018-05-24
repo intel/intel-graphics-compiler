@@ -4663,6 +4663,11 @@ void Augmentation::augmentIntfGraph()
         // Sort live-intervals based on their start
         sortLiveIntervals();
 
+        if (gra.verifyAugmentation)
+        {
+            gra.verifyAugmentation->loadAugData(sortedIntervals, lrs, intf.liveAnalysis->getNumSelectedVar(), &intf, gra);
+        }
+
         if (kernel.fg.builder->getOption(vISA_GenerateDebugInfo))
         {
             // Following is done to prevent passing GlobalRA to debug info function
@@ -9569,6 +9574,13 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
         {
             coloring.addSaveRestoreCode(0);
         }
+
+        if (verifyAugmentation)
+        {
+            assignRegForAliasDcl();
+            computePhyReg();
+            verifyAugmentation->verify();
+        }
     }
 
 
@@ -9968,6 +9980,13 @@ int GlobalRA::coloringRegAlloc()
                         assert(0);
                         break;
                     }
+                }
+
+                if (verifyAugmentation)
+                {
+                    assignRegForAliasDcl();
+                    computePhyReg();
+                    verifyAugmentation->verify();
                 }
 
                 break; // done
@@ -11489,6 +11508,566 @@ void GlobalRA::fixAlignment()
                     }
                 }
             }
+        }
+    }
+}
+
+void VerifyAugmentation::dump(const char* dclName)
+{
+    std::string dclStr = dclName;
+    for (auto& m : masks)
+    {
+        std::string first = m.first->getName();
+        if (first == dclStr)
+        {
+            printf("%s, %d, %s\n", dclName, m.first->getRegVar()->getId(), getStr(std::get<1>(m.second)));
+        }
+    }
+}
+
+void VerifyAugmentation::labelBBs()
+{
+    std::string prev = "X:";
+    unsigned int id = 0;
+    for (auto bb : kernel->fg.BBs)
+    {
+        if (bbLabels.find(bb) == bbLabels.end())
+            bbLabels[bb] = prev;
+        else
+            prev = bbLabels[bb];
+
+        if (bb->back()->opcode() == G4_opcode::G4_if)
+        {
+            auto TBB = bb->Succs.front();
+            auto FBB = bb->Succs.back();
+
+            bool hasEndif = false;
+            for (auto inst : *FBB)
+            {
+                if (inst->opcode() == G4_opcode::G4_endif)
+                {
+                    hasEndif = true;
+                    break;
+                }
+            }
+
+            bbLabels[TBB] = prev + "T" + std::to_string(id) + ":";
+
+            if (!hasEndif)
+            {
+                // else
+                bbLabels[FBB] = prev + "F" + std::to_string(id) + ":";
+            }
+            else
+            {
+                // endif block
+                bbLabels[FBB] = prev;
+            }
+
+            prev = prev + "T" + std::to_string(id) + ":";
+
+            id++;
+        }
+        else if (bb->back()->opcode() == G4_opcode::G4_else)
+        {
+            auto succBB = bb->Succs.front();
+            auto lbl = prev;
+            lbl.pop_back();
+            while (lbl.back() != ':')
+            {
+                lbl.pop_back();
+            }
+
+            bbLabels[succBB] = lbl;
+        }
+        else if (bb->back()->opcode() == G4_opcode::G4_endif)
+        {
+
+        }
+    }
+
+#if 1
+    for (auto bb : kernel->fg.BBs)
+    {
+        printf("BB%d -> %s\n", bb->getId(), bbLabels[bb].data());
+    }
+#endif
+}
+
+bool VerifyAugmentation::interfereBetween(G4_Declare* dcl1, G4_Declare* dcl2)
+{
+    bool interferes = true;
+    unsigned int v1 = dcl1->getRegVar()->getId();
+    unsigned int v2 = dcl2->getRegVar()->getId();
+    bool v1Partaker = dcl1->getRegVar()->isRegAllocPartaker();
+    bool v2Partaker = dcl2->getRegVar()->isRegAllocPartaker();
+
+    if (v1Partaker && v2Partaker)
+    {
+        auto interferes = intf->interfereBetween(v1, v2);
+        if (!interferes)
+        {
+            if (dcl1->getIsPartialDcl())
+            {
+                interferes |= intf->interfereBetween(gra->getSplittedDeclare(dcl1)->getRegVar()->getId(), v2);
+                if (dcl2->getIsPartialDcl())
+                {
+                    interferes |= intf->interfereBetween(v1,
+                        gra->getSplittedDeclare(dcl2)->getRegVar()->getId());
+                    interferes |= intf->interfereBetween(gra->getSplittedDeclare(dcl1)->getRegVar()->getId(),
+                        gra->getSplittedDeclare(dcl2)->getRegVar()->getId());
+                }
+            }
+            else if (dcl2->getIsPartialDcl())
+            {
+                interferes |= intf->interfereBetween(v1, gra->getSplittedDeclare(dcl2)->getRegVar()->getId());
+            }
+        }
+        return interferes;
+    }
+    else if (!v1Partaker && v2Partaker)
+    {
+        // v1 is assigned by LRA
+        unsigned int startGRF = dcl1->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+        unsigned int numGRFs = dcl1->getNumRows();
+
+        for (unsigned int grf = startGRF; grf != (startGRF + numGRFs); grf++)
+        {
+            for (unsigned int var = 0; var != numVars; var++)
+            {
+                if (lrs[var] &&
+                    lrs[var]->getPhyReg() == kernel->fg.builder->phyregpool.getGreg(grf) &&
+                    std::string(lrs[var]->getVar()->getName()) == "r" + std::to_string(grf))
+                {
+                    if (!intf->interfereBetween(var, v2))
+                    {
+                        std::cerr << dcl1->getName() << "'s LRA assignment " << grf << " doesnt interfere with " << dcl2->getName() << std::endl;
+                        interferes = false;
+                    }
+                }
+            }
+        }
+    }
+    else if (v1Partaker && !v2Partaker)
+    {
+        return interfereBetween(dcl2, dcl1);
+    }
+    else if (!v1Partaker && !v2Partaker)
+    {
+        // both assigned by LRA
+        if (dcl1->getRegFile() == G4_RegFileKind::G4_GRF && dcl2->getRegFile() == G4_RegFileKind::G4_GRF)
+        {
+            auto lr1 = gra->getLocalLR(dcl1);
+            auto lr2 = gra->getLocalLR(dcl2);
+
+            if (lr1->getAssigned() && lr2->getAssigned())
+            {
+                auto preg1Start = dcl1->getGRFBaseOffset();
+                auto preg2Start = dcl2->getGRFBaseOffset();
+                auto preg1End = preg1Start + dcl1->getByteSize();
+                auto preg2End = preg2Start + dcl2->getByteSize();
+
+                if (preg2Start >= preg1Start && preg2Start < preg1End)
+                {
+                    return false;
+                }
+                else if (preg1Start >= preg2Start && preg1Start < preg2End)
+                {
+                    return false;
+                }
+            }
+        }
+
+        interferes = true;
+    }
+
+    return interferes;
+}
+
+void VerifyAugmentation::verify()
+{
+    std::cerr << "Start verification for kernel: " << kernel->getOptions()->getOptionCstr(VISA_AsmFileName) << std::endl;
+
+    for (auto dcl : kernel->Declares)
+    {
+        if (dcl->getIsSplittedDcl())
+        {
+            auto& tup = masks[dcl];
+            std::cerr << dcl->getName() << "(" << getStr(std::get<1>(tup)) << ") is split" << std::endl;
+            for (unsigned int i = 0; i != gra->getSubDclSize(dcl); i++)
+            {
+                auto& tupSub = masks[gra->getSubDcl(dcl, i)];
+                std::cerr << "\t" << gra->getSubDcl(dcl, i)->getName() << " (" << getStr(std::get<1>(tupSub)) << ")" << std::endl;
+            }
+        }
+    }
+
+    std::cerr << std::endl << std::endl << std::endl;
+
+    auto overlapDcl = [](G4_Declare* dcl1, G4_Declare* dcl2)
+    {
+        if (dcl1->getRegFile() == G4_RegFileKind::G4_GRF && dcl2->getRegFile() == G4_RegFileKind::G4_GRF)
+        {
+            auto preg1Start = dcl1->getGRFBaseOffset();
+            auto preg2Start = dcl2->getGRFBaseOffset();
+            auto preg1End = preg1Start + dcl1->getByteSize();
+            auto preg2End = preg2Start + dcl2->getByteSize();
+
+            if (preg2Start >= preg1Start && preg2Start < preg1End)
+            {
+                return true;
+            }
+            else if (preg1Start >= preg2Start && preg1Start < preg2End)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    auto overlap = [](LiveRange* p1, LiveRange* p2)
+    {
+        if (!p1 || !p2)
+            return false;
+
+        auto grf1 = p1->getPhyReg();
+        auto grf2 = p2->getPhyReg();
+
+        if (!grf1 || !grf2)
+            return false;
+
+        if (!grf1->isGreg() || !grf2->isGreg())
+            return false;
+
+        unsigned startp1 = grf1->asGreg()->getRegNum() * G4_GRF_REG_NBYTES + (p1->getPhyRegOff() * p1->getDcl()->getElemSize());
+        unsigned int startp2 = grf2->asGreg()->getRegNum() * G4_GRF_REG_NBYTES + (p2->getPhyRegOff()*p2->getDcl()->getElemSize());
+        unsigned int endp1 = startp1 + p1->getVar()->getDeclare()->getByteSize();
+        unsigned int endp2 = startp2 + p2->getVar()->getDeclare()->getByteSize();
+
+        if (startp1 > startp2 && startp1 < endp2)
+            return true;
+        if (startp2 > startp1 && startp2 < endp1)
+            return true;
+
+        return false;
+    };
+
+    std::list<G4_Declare*> active;
+    for (auto dcl : sortedLiveRanges)
+    {
+        auto& tup = masks[dcl];
+        unsigned int startIdx = std::get<2>(tup)->getLexicalId();
+        auto dclMask = std::get<1>(tup);
+
+        for (auto it = active.begin(); it != active.end();)
+        {
+            auto activeDcl = (*it);
+            auto& tupActive = masks[activeDcl];
+            if (startIdx >= std::get<3>(tupActive)->getLexicalId())
+            {
+                it = active.erase(it);
+                continue;
+            }
+            it++;
+        }
+
+        for (auto activeDcl : active)
+        {
+            auto& tupActive = masks[activeDcl];
+            auto aDclMask = std::get<1>(tupActive);
+
+            if (dclMask != aDclMask)
+            {
+                bool interfere = interfereBetween(activeDcl, dcl);
+
+                if (!interfere)
+                {
+                    std::cerr << dcl->getRegVar()->getName() << "(" << getStr(dclMask) << ") and " << activeDcl->getRegVar()->getName() << "(" <<
+                        getStr(aDclMask) << ") are overlapping with incompatible emask but not masked as interfering" << std::endl;
+                }
+
+                if (overlapDcl(activeDcl, dcl))
+                {
+                    if (!interfere)
+                    {
+                        std::cerr << dcl->getRegVar()->getName() << "(" << getStr(dclMask) << ") and " << activeDcl->getName() << "(" <<
+                            getStr(aDclMask) << ") use overlapping physical assignments but not marked as interfering" << std::endl;
+                    }
+                }
+            }
+        }
+
+        active.push_back(dcl);
+    }
+
+    std::cerr << "End verification for kenel: " << kernel->getOptions()->getOptionCstr(VISA_AsmFileName) << std::endl << std::endl << std::endl;
+
+    return;
+
+#if 0
+    // Following is useful for debugging when test has only if-else-endif constructs
+    labelBBs();
+    populateBBLexId();
+    std::string msg;
+    for (auto dcl : sortedLiveRanges)
+    {
+        auto lr = DclLRMap[dcl];
+        if (lr->getPhyReg() && isClobbered(lr, msg))
+        {
+            printf("%s clobbered:\n\t%s\n\n", dcl->getName(), msg.data());
+        }
+    }
+#endif
+}
+
+void VerifyAugmentation::populateBBLexId()
+{
+    for (auto bb : kernel->fg.BBs)
+    {
+        if (bb->size() > 0)
+            BBLexId.push_back(std::make_tuple(bb, bb->front()->getLexicalId(), bb->back()->getLexicalId()));
+    }
+}
+
+bool VerifyAugmentation::isClobbered(LiveRange* lr, std::string& msg)
+{
+    msg.clear();
+
+    auto& tup = masks[lr->getDcl()];
+
+    auto startLexId = std::get<2>(tup)->getLexicalId();
+    auto endLexId = std::get<3>(tup)->getLexicalId();
+
+    std::vector<std::pair<G4_INST*, G4_BB*>> insts;
+    std::vector<std::tuple<INST_LIST_ITER, G4_BB*>> defs;
+    std::vector<std::tuple<INST_LIST_ITER, G4_BB*>> uses;
+
+    for (auto bb : kernel->fg.BBs)
+    {
+        if (bb->size() == 0)
+            continue;
+
+        if (bb->back()->getLexicalId() > endLexId && bb->front()->getLexicalId() > endLexId)
+            continue;
+
+        if (bb->back()->getLexicalId() < startLexId && bb->front()->getLexicalId() < startLexId)
+            continue;
+
+        // lr is active in current bb
+        for (auto instIt = bb->begin(); instIt != bb->end(); instIt++)
+        {
+            auto inst = (*instIt);
+            if (inst->isPseudoKill())
+                continue;
+
+            if (inst->getLexicalId() > startLexId && inst->getLexicalId() <= endLexId)
+            {
+                insts.push_back(std::make_pair(inst, bb));
+                auto dst = inst->getDst();
+                if (dst &&
+                    dst->isDstRegRegion())
+                {
+                    auto topdcl = dst->asDstRegRegion()->getTopDcl();
+                    if (topdcl == lr->getDcl())
+                        defs.push_back(std::make_tuple(instIt, bb));
+                }
+
+                for (unsigned int i = 0; i != G4_MAX_SRCS; i++)
+                {
+                    auto src = inst->getSrc(i);
+                    if (src && src->isSrcRegRegion())
+                    {
+                        auto topdcl = src->asSrcRegRegion()->getTopDcl();
+                        if (topdcl == lr->getDcl())
+                            uses.push_back(std::make_tuple(instIt, bb));
+                    }
+                }
+            }
+        }
+    }
+
+    for (auto& use : uses)
+    {
+        auto& useStr = bbLabels[std::get<1>(use)];
+        auto inst = *std::get<0>(use);
+        MUST_BE_TRUE(useStr.size() > 0, "empty string found");
+        std::list<std::tuple<G4_INST*, G4_BB*>> rd;
+
+        for (unsigned int i = 0; i != G4_MAX_SRCS; i++)
+        {
+            auto src = inst->getSrc(i);
+            if (src && src->isSrcRegRegion() && src->asSrcRegRegion()->getTopDcl() == lr->getDcl())
+            {
+                unsigned int lb = 0, rb = 0;
+                lb = lr->getPhyReg()->asGreg()->getRegNum() * G4_GRF_REG_NBYTES + (lr->getPhyRegOff()*lr->getDcl()->getElemSize());
+                lb += src->getLeftBound();
+                rb = lb + src->getRightBound() - src->getLeftBound();
+
+                for (auto& otherInsts : insts)
+                {
+                    if (otherInsts.first->getLexicalId() > inst->getLexicalId())
+                        break;
+
+                    auto oiDst = otherInsts.first->getDst();
+                    auto oiBB = otherInsts.second;
+                    if (oiDst && oiDst->isDstRegRegion() && oiDst->getTopDcl())
+                    {
+                        unsigned int oilb = 0, oirb = 0;
+                        auto oiLR = DclLRMap[oiDst->getTopDcl()];
+                        if (oiLR && !oiLR->getPhyReg())
+                            continue;
+
+                        oilb = oiLR->getPhyReg()->asGreg()->getRegNum()*G4_GRF_REG_NBYTES +
+                            (oiLR->getPhyRegOff()*oiLR->getDcl()->getElemSize());
+                        oilb += oiDst->getLeftBound();
+                        oirb = oilb + oiDst->getRightBound() - oiDst->getLeftBound();
+
+                        if (oilb <= (unsigned int)rb && oirb >= (unsigned int)lb)
+                        {
+                            rd.push_back(std::make_tuple(otherInsts.first, oiBB));
+                        }
+                    }
+                }
+            }
+        }
+
+        auto isComplementary = [](std::string& cur, std::string& other)
+        {
+            if (cur.size() < other.size())
+                return false;
+
+            if (cur.substr(0, other.size() - 1) == other.substr(0, other.size() - 1))
+            {
+                char lastAlphabet = cur.at(other.size() - 1);
+                if (lastAlphabet == 'T' && other.back() == 'F')
+                    return true;
+                if (lastAlphabet == 'F' && other.back() == 'T')
+                    return true;
+            }
+
+            return false;
+        };
+
+        auto isSameEM = [](G4_INST* inst1, G4_INST* inst2)
+        {
+            if (inst1->getMaskOption() == inst2->getMaskOption() &&
+                inst1->getMaskOffset() == inst2->getMaskOffset())
+                return true;
+            return false;
+        };
+
+        if (rd.size() > 0)
+        {
+            printf("Current use str = %s for inst:\t", useStr.data());
+            inst->emit(std::cerr);
+            printf("\t$%d\n", inst->getCISAOff());
+        }
+        // process all reaching defs
+        for (auto rid = rd.begin(); rid != rd.end(); )
+        {
+            auto& reachingDef = (*rid);
+
+            auto& str = bbLabels[std::get<1>(reachingDef)];
+
+            // skip rd if it is from complementary branch
+            if (isComplementary(str, useStr) && isSameEM(inst, std::get<0>(reachingDef)))
+            {
+#if 0
+                printf("\tFollowing in complementary branch %s, removed:\t", str.data());
+                std::get<0>(reachingDef)->emit(std::cerr);
+                printf("\t$%d\n", std::get<0>(reachingDef)->getCISAOff());
+#endif
+                rid = rd.erase(rid);
+                continue;
+            }
+            rid++;
+        }
+
+        // keep rd that appears last in its BB
+        for (auto rid = rd.begin(); rid != rd.end();)
+        {
+            auto ridBB = std::get<1>(*rid);
+            for (auto rid1 = rd.begin(); rid1 != rd.end(); )
+            {
+                if (*rid == *rid1)
+                {
+                    rid1++;
+                    continue;
+                }
+
+                auto rid1BB = std::get<1>(*rid1);
+                if (ridBB == rid1BB &&
+                    std::get<0>(*rid)->getLexicalId() > std::get<0>(*rid1)->getLexicalId())
+                {
+#if 0
+                    printf("\tErasing inst at $%d due to later def at $%d\n", std::get<0>(*rid1)->getLexicalId(),
+                        std::get<0>(*rid)->getLexicalId());
+#endif
+                    rid1 = rd.erase(rid1);
+                    continue;
+                }
+                rid1++;
+            }
+
+            if (rid != rd.end())
+                rid++;
+        }
+
+        if (rd.size() > 0)
+        {
+            bool printed = false;
+            // display left overs in rd from different dcl
+            for (auto& reachingDef : rd)
+            {
+                if (std::get<0>(reachingDef)->getDst()->getTopDcl() == lr->getDcl()->getRootDeclare())
+                    continue;
+
+                if (inst->getCISAOff() == std::get<0>(reachingDef)->getCISAOff())
+                    continue;
+
+                if (!printed)
+                {
+                    printf("\tLeft-over rd:\n");
+                    printed = true;
+                }
+                printf("\t");
+                std::get<0>(reachingDef)->emit(std::cerr);
+                printf("\t$%d\n", std::get<0>(reachingDef)->getCISAOff());
+            }
+        }
+    }
+
+    return false;
+}
+
+void VerifyAugmentation::loadAugData(std::vector<G4_Declare*>& s, LiveRange** l, unsigned int n, Interference* i, GlobalRA& g)
+{
+    reset();
+    sortedLiveRanges = s;
+    gra = &g;
+    kernel = &gra->kernel;
+    lrs = l;
+    numVars = n;
+    intf = i;
+
+    for (unsigned int i = 0; i != numVars; i++)
+    {
+        DclLRMap[lrs[i]->getDcl()] = lrs[i];
+    }
+    for (auto dcl : kernel->Declares)
+    {
+        if (dcl->getRegFile() == G4_RegFileKind::G4_GRF ||
+            dcl->getRegFile() == G4_RegFileKind::G4_INPUT)
+        {
+            LiveRange* lr = nullptr;
+            auto it = DclLRMap.find(dcl);
+            if (it != DclLRMap.end())
+            {
+                lr = (*it).second;
+            }
+            auto start = gra->getStartInterval(dcl);
+            auto end = gra->getEndInterval(dcl);
+            masks[dcl] = std::make_tuple(lr, gra->getAugmentationMask(dcl), start, end);
         }
     }
 }
