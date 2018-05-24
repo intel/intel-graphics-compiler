@@ -119,6 +119,10 @@ struct SBasicBlock
 
 class CodeGenPatternMatch : public llvm::FunctionPass, public llvm::InstVisitor<CodeGenPatternMatch>
 {
+private:
+    CodeGenPatternMatch(CodeGenPatternMatch&) = delete;
+    CodeGenPatternMatch& operator =(CodeGenPatternMatch&) = delete;
+
 public:
     
     CodeGenPatternMatch();

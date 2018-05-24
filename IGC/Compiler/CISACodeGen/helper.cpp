@@ -305,8 +305,8 @@ Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList,
         }
 
         unsigned bufId;
-        IGC::BufferType bufTy;
-		IGC::BufferAccessType accessTy;
+        IGC::BufferType bufTy = BUFFER_TYPE_UNKNOWN;
+        IGC::BufferAccessType accessTy = BUFFER_ACCESS_TYPE_UNKNOWN;
         if (GetResourcePointerInfo(baseValue, bufId, bufTy, accessTy))
         {
             srcPtr = baseValue;

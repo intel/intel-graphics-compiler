@@ -782,6 +782,9 @@ namespace IGC
             memset(&m_GTPinRequest, 0, sizeof(m_GTPinRequest));
         }
 
+        CodeGenContext(CodeGenContext&) = delete;
+        CodeGenContext& operator =(CodeGenContext&) = delete;
+
         void initLLVMContextWrapper()
         {
             llvmCtxWrapper = new LLVMContextWrapper();

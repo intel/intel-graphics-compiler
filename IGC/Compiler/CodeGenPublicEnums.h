@@ -108,10 +108,11 @@ enum BufferType : short
 
 enum BufferAccessType : short
 {
-    ACCESS_READ,
+    ACCESS_READ = 0,
     ACCESS_WRITE,
     ACCESS_READWRITE,
-    ACCESS_SAMPLE
+    ACCESS_SAMPLE,
+    BUFFER_ACCESS_TYPE_UNKNOWN = 15,
 };
 
 enum ADDRESS_SPACE : unsigned int
