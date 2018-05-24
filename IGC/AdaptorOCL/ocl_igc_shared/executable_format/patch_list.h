@@ -34,7 +34,7 @@ Abstract:   Contains common patch structure definitions
 namespace iOpenCL
 {
 
-const uint32_t CURRENT_ICBE_VERSION = 1050;
+const uint32_t CURRENT_ICBE_VERSION = 1051;
 
 const uint32_t MAGIC_CL = 0x494E5443;      // 'I', 'N', 'T', 'C'
 const uint32_t INVALID_INDEX = 0xFFFFFFFF;
@@ -371,10 +371,12 @@ struct SPatchImageMemoryObjectKernelArgument :
     uint32_t  Transformable;
     uint32_t  needBindlessHandle;
     uint32_t  IsEmulationArgument;
+
+    uint32_t  btiOffset;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert( sizeof( SPatchImageMemoryObjectKernelArgument ) == ( 36 + sizeof( SPatchItemHeader ) ) , "The size of SPatchImageMemoryObjectKernelArgument is not what is expected" );
+static_assert( sizeof( SPatchImageMemoryObjectKernelArgument ) == ( 40 + sizeof( SPatchItemHeader ) ) , "The size of SPatchImageMemoryObjectKernelArgument is not what is expected" );
 
 /*****************************************************************************\
 STRUCT: SPatchConstantMemoryObjectKernelArgument
@@ -406,10 +408,11 @@ struct SPatchSamplerKernelArgument :
     uint32_t   needBindlessHandle;
     uint32_t   TextureMask;
     uint32_t   IsEmulationArgument;
+    uint32_t   btiOffset;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert( sizeof( SPatchSamplerKernelArgument ) == ( 32 + sizeof( SPatchItemHeader ) ) , "The size of SPatchSamplerKernelArgument is not what is expected" );
+static_assert( sizeof( SPatchSamplerKernelArgument ) == ( 36 + sizeof( SPatchItemHeader ) ) , "The size of SPatchSamplerKernelArgument is not what is expected" );
 
 /*****************************************************************************\
 STRUCT: SPatchDataParameterBuffer

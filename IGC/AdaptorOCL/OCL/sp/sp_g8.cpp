@@ -1272,6 +1272,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                 patch.Size = sizeof( patch );
                 patch.ArgumentNumber = samplerAnnotation->ArgumentNumber;
                 patch.Offset = samplerAnnotation->IsBindlessAccess ? samplerAnnotation->PayloadPosition : context.Dynamic.SamplerOffset[samplerAnnotation->SamplerTableIndex];
+                patch.btiOffset = context.Dynamic.SamplerOffset[samplerAnnotation->SamplerTableIndex];
                 patch.LocationIndex = samplerAnnotation->LocationIndex;
                 patch.LocationIndex2 = samplerAnnotation->LocationCount;
                 patch.Type = samplerAnnotation->SamplerType;
@@ -1353,6 +1354,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.Size = sizeof( patch );
             patch.ArgumentNumber = imageInput->ArgumentNumber;
 			patch.Offset = imageInput->IsBindlessAccess ? imageInput->PayloadPosition : context.Surface.SurfaceOffset[bti];
+            patch.btiOffset = context.Surface.SurfaceOffset[bti];
             patch.Type =  imageInput->ImageType;
             patch.Writeable = imageInput->Writeable;
             patch.LocationIndex = imageInput->LocationIndex;

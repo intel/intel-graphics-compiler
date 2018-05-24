@@ -203,6 +203,9 @@ void DebugPatchList(
                 ICBE_DPF(GFXDBG_HARDWARE,
                     "\tIsEmulationArgument = %s\n",
                     pPatchItem->IsEmulationArgument ? "true" : "false");
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tbtiOffset = %d\n",
+                    pPatchItem->btiOffset);
             }
             break;
 
@@ -341,6 +344,9 @@ void DebugPatchList(
                 ICBE_DPF(GFXDBG_HARDWARE,
                     "\tIsEmulationArgument = %s\n",
                     pPatchItem->IsEmulationArgument ? "true" : "false");
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tbtiOffset = %d\n",
+                    pPatchItem->btiOffset);
             }
             break;
 
