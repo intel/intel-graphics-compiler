@@ -172,9 +172,6 @@ private:
     void moveRTWritesToReturnBlock(
         const ColorOutputArray& colors);
 
-    llvm::PHINode* createPhiForRTWrite(llvm::Value* val,
-        smallvector<llvm::BasicBlock*, 8>& predBB, llvm::BasicBlock* toBB);
-
     void checkAndCreateNullRTWrite(
         llvm::Value* oMask, llvm::Value* depth, llvm::Value* stencil);
 
@@ -183,13 +180,13 @@ private:
         return (colors.size() == 2 && m_dualSrcBlendEnabled);
     }
 
+    llvm::BasicBlock* m_ReturnBlock;
     llvm::Module* m_module;
     llvm::PostDominatorTree* PDT;
     IGC::ModuleMetaData *m_modMD;
     CodeGenContext* m_cgCtx;
 
-    llvm::BasicBlock* m_ReturnBlock;
-    llvm::BasicBlock* m_outputBlock;
+    llvm::BasicBlock* m_earlyRet;
 
     bool SkipSrc0Alpha;
     bool m_dualSrcBlendEnabled;
