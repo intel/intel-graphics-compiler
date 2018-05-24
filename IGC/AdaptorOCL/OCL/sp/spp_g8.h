@@ -29,11 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../util/BinaryStream.h"
 #include "usc.h"
 #include "sp_g8.h"
-
-#include "common/LLVMWarningsPush.hpp"
-#include <llvm/ADT/MapVector.h>
-#include <llvm/IR/Function.h>
-#include "common/LLVMWarningsPop.hpp"
+#include <map>
 
 namespace IGC
 {
@@ -58,8 +54,6 @@ public:
 
     ~CGen8OpenCLProgram();
 
-    void ClearKernelOutput();
-
     RETVAL GetProgramBinary(
         Util::BinaryStream& programBinary,
         unsigned int pointerSizeInBytes );
@@ -71,7 +65,7 @@ public:
     void CreateProgramScopePatchStream(const IGC::SOpenCLProgramInfo& programInfo);
 
     // Used to track the kernel info from CodeGen
-    llvm::MapVector<llvm::Function*, IGC::CShaderProgram*> m_KernelShaderMap;
+    std::map<std::string, IGC::CShaderProgram*> m_KernelShaderMap;
     USC::SSystemThreadKernelOutput* m_pSystemThreadKernelOutput = nullptr;
 
     // Used to store per-kernel binary streams and kernelInfo

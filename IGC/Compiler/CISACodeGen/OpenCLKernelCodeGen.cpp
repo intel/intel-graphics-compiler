@@ -1732,11 +1732,10 @@ void CodeGen(OpenCLProgramContext* ctx)
     //Clear spill parameters of retry manager in the very begining of code gen
 	ctx->m_retryManager.ClearSpillParams();
 
-    // Clear the saved kernel outputs for each try
-    ctx->m_programOutput.ClearKernelOutput();
+    CShaderProgram::KernelShaderMap shaders;
+    CodeGen(ctx, shaders);
 
-    CodeGen(ctx, ctx->m_programOutput.m_KernelShaderMap);
-
+    if (ctx->m_programOutput.m_pSystemThreadKernelOutput == nullptr)
     {
         const auto options = ctx->m_InternalOptions;
         if (options.IncludeSIPCSR         ||
@@ -1769,14 +1768,26 @@ void CodeGen(OpenCLProgramContext* ctx)
         }
     }
 
+    ctx->m_retryManager.kernelSet.clear();
+
     // gather data to send back to the driver
-    for (auto k : ctx->m_programOutput.m_KernelShaderMap)
+    for (auto k : shaders)
     {
         Function* pFunc = k.first;
         CShaderProgram *pKernel = static_cast<CShaderProgram*>(k.second);
         COpenCLKernel* simd8Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
         COpenCLKernel* simd16Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
         COpenCLKernel* simd32Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
+
+        std::string kernelName = pFunc->getName().str();
+        if (ctx->m_programOutput.m_KernelShaderMap.find(kernelName) != ctx->m_programOutput.m_KernelShaderMap.end())
+        {
+            // Delete the old program created in previous try
+            delete ctx->m_programOutput.m_KernelShaderMap[kernelName];
+        }
+
+        // Save the shader program to the state processer to be handled later
+        ctx->m_programOutput.m_KernelShaderMap[kernelName] = pKernel;
 
         if (ctx->m_DriverInfo.sendMultipleSIMDModes())
         {

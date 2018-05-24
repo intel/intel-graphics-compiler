@@ -54,13 +54,6 @@ CGen8OpenCLProgram::~CGen8OpenCLProgram()
         delete data.kernelDebugData;
     }
 
-    ClearKernelOutput();
-}
-
-void CGen8OpenCLProgram::ClearKernelOutput()
-{
-    // Should be called by CodeGen on each try to clear
-    // the KernelShaderMap and the SystemThreadKernelOutput
     for (auto k : m_KernelShaderMap)
     {
         IGC::CShaderProgram* kernel = k.second;
