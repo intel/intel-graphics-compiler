@@ -1193,10 +1193,7 @@ void OptimizeIR(CodeGenContext* pContext)
                   mpm.add(createReassociatePass());
               }
 
-              if (IGC_IS_FLAG_ENABLED(EnableGVN))
-              {
-                  mpm.add(llvm::createGVNPass());
-              }
+              mpm.add(llvm::createGVNPass());
               mpm.add(createGenOptLegalizer());
             }
 
