@@ -60,6 +60,9 @@ public:
     void *EmitBinary(uint32_t& binarySize);
 
 private:
+    BinaryEncodingIGA(const BinaryEncodingIGA& other) : mem(other.mem), kernel(other.kernel) {}
+    BinaryEncodingIGA& operator=(const BinaryEncodingIGA& other) {}
+
     iga::Instruction *encodeMathInstruction(G4_INST *inst);
     iga::Instruction *encodeBranchInstruction(G4_INST *inst);
     iga::Instruction *encodeTernaryInstruction(G4_INST *inst);
