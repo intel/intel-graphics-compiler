@@ -470,12 +470,11 @@ void HWConformity::fixPackedSource(INST_LIST_ITER it, G4_BB *bb, G4_Type extype)
  * fixMathInst() checks the following:
  * The math instruction can only use GRF registers as source(s) and destination.
  * The math instruction does not support indirect addressing modes.
- * When Align1 mode is used,  source horizontal stride must be 1 with the exception of scalar sources and destination horizontal stride must be always 1.
+ * source horizontal stride must be 1 with the exception of scalar sources and destination horizontal stride must be always 1.
  * Source and destination offset must be the same, except the case of scalar source
- * DW and UD is the only source format supported for INT DIV, float32 is the only source format supported for all the other functions.
+ * DW and UD is the only source format supported for INT DIV, FP16/FP32 is the only source format supported for all the other functions.
  * Mixed DW and UD sources are not allowed for the INT DIV function.
  * For single source math function, <src1> must be programmed as ARF-NULL register.
- * The FDIV function is not supported in ALT_MODE.
  */
 bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb)
 {
@@ -781,7 +780,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
                     break;
                 }
                 default:
-                    break; // Prevent gcc warning
+                    break;
                 }
             }
             else
@@ -1150,17 +1149,16 @@ void HWConformity::fixOpnds( INST_LIST_ITER it, G4_BB *bb, G4_Type& exType )
         }
     }
 
-    if( inst->isComprInst() )
+    // at this point only src0 may be VxH
+    // VxH regioning and conditional modifiers may not co-exist
+    if (getGenxPlatform() >= GENX_CNL)
     {
-        // check if there is indirect scalar or repeat region
-        for( int i = 0; i < G4_Inst_Table[inst->opcode()].n_srcs; i++ )
+        src0 = inst->getSrc(0);
+        if (src0 && src0->isSrcRegRegion() && src0->asSrcRegRegion()->getRegion()->isRegionWH())
         {
-            G4_Operand *src = inst->getSrc(i);
-            if( src && src->isSrcRegRegion() &&
-                src->asSrcRegRegion()->getRegAccess() != Direct &&
-                ( src->asSrcRegRegion()->isScalar() || src->asSrcRegRegion()->getRegion()->isRepeatRegion( inst->getExecSize() ) ) )
+            if (inst->getCondMod())
             {
-                inst->setSrc(insertMovBefore(it, i, src->getType(), bb), i);
+                inst->setSrc(insertMovBefore(it, 0, src0->getType(), bb), 0);
             }
         }
     }
@@ -1635,10 +1633,6 @@ bool HWConformity::fixDstAlignment( INST_LIST_ITER i, G4_BB* bb, G4_Type extype,
  * then determines which of the operands to spill into temporary GRFs so
  * as to limit total number of distinct sub-registers used by the instruction
  * to 8. This is a requirement imposed by the CM register allocator.
- *
- * NOTES:
- *    1. 3-src instructions do not support indirect oeprands.
- *    2. SIMD16 is not allowed when indirect operands are present.
  */
 
 bool HWConformity::fixIndirectOpnd( INST_LIST_ITER i, G4_BB *bb )
