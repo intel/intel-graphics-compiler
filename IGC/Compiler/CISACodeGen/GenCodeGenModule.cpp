@@ -567,8 +567,8 @@ void GenXFunctionGroupAnalysis::replaceEntryFunc(Function *OF, Function *NF)
 {
 	auto groupMapIter = GroupMap.find(OF);
 	FunctionGroup *FG = groupMapIter->second;
-	GroupMap.insert(std::make_pair(NF, FG));
 	GroupMap.erase(groupMapIter);
+    GroupMap.insert(std::make_pair(NF, FG));
 
 	FG->replaceGroupHead(OF, NF);
 
