@@ -54,19 +54,11 @@ CGen8OpenCLProgram::~CGen8OpenCLProgram()
         delete data.kernelDebugData;
     }
 
-    ClearKernelOutput();
-}
-
-void CGen8OpenCLProgram::ClearKernelOutput()
-{
-    // Should be called by CodeGen on each try to clear
-    // the KernelShaderMap and the SystemThreadKernelOutput
-    for (auto k : m_KernelShaderMap)
+    for (auto p : m_ShaderProgramList)
     {
-        IGC::CShaderProgram* kernel = k.second;
-        delete kernel;
+        delete p;
     }
-    m_KernelShaderMap.clear();
+    m_ShaderProgramList.clear();
 
     delete m_pSystemThreadKernelOutput;
     m_pSystemThreadKernelOutput = nullptr;
@@ -153,9 +145,8 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
         return (shader && shader->ProgramOutput()->m_programSize > 0);
     };
 
-    for (auto k : m_KernelShaderMap)
+    for (auto pKernel : m_ShaderProgramList)
     {
-        IGC::CShaderProgram *pKernel = static_cast<IGC::CShaderProgram*>(k.second);
         IGC::COpenCLKernel* simd8Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
         IGC::COpenCLKernel* simd16Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
         IGC::COpenCLKernel* simd32Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));

@@ -1683,6 +1683,12 @@ void GatherDataForDriver(OpenCLProgramContext* ctx, COpenCLKernel* pShader, CSha
         ctx->m_retryManager.IsLastTry() ||
         fullDebugInfo)
     {
+        // Save the shader program to the state processor to be handled later
+        if (ctx->m_programOutput.m_ShaderProgramList.size() == 0 ||
+            ctx->m_programOutput.m_ShaderProgramList.back() != pKernel)
+        {
+            ctx->m_programOutput.m_ShaderProgramList.push_back(pKernel);
+        }
         COMPILER_SHADER_STATS_PRINT(pKernel->m_shaderStats, ShaderType::OPENCL_SHADER, ctx->hash, ctx->GetStr(pFunc));
         COMPILER_SHADER_STATS_SUM(ctx->m_sumShaderStats, pKernel->m_shaderStats, ShaderType::OPENCL_SHADER);
         COMPILER_SHADER_STATS_DEL(pKernel->m_shaderStats);
@@ -1732,11 +1738,10 @@ void CodeGen(OpenCLProgramContext* ctx)
     //Clear spill parameters of retry manager in the very begining of code gen
 	ctx->m_retryManager.ClearSpillParams();
 
-    // Clear the saved kernel outputs for each try
-    ctx->m_programOutput.ClearKernelOutput();
+    CShaderProgram::KernelShaderMap shaders;
+    CodeGen(ctx, shaders);
 
-    CodeGen(ctx, ctx->m_programOutput.m_KernelShaderMap);
-
+    if (ctx->m_programOutput.m_pSystemThreadKernelOutput == nullptr)
     {
         const auto options = ctx->m_InternalOptions;
         if (options.IncludeSIPCSR         ||
@@ -1769,8 +1774,10 @@ void CodeGen(OpenCLProgramContext* ctx)
         }
     }
 
+    ctx->m_retryManager.kernelSet.clear();
+
     // gather data to send back to the driver
-    for (auto k : ctx->m_programOutput.m_KernelShaderMap)
+    for (auto k : shaders)
     {
         Function* pFunc = k.first;
         CShaderProgram *pKernel = static_cast<CShaderProgram*>(k.second);
