@@ -4518,7 +4518,7 @@ static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
 {
     G4_DstRegRegion* dst = inst->getDst();
     bool useAcc1 = (accNum & 0x1) != 0;
-    accNum = accNum / 2;
+    accNum &= ~0x1;
 
     if (!builder.relaxedACCRestrictions())
     {
@@ -4856,7 +4856,7 @@ void HWConformity::accSubstitution(G4_BB* bb)
 {
     bb->resetLocalId();
 
-    if (builder.canMadHaveSrc0Acc())
+    if (builder.doMultiAccSub())
     {
         multiAccSubstitution(bb);
         return;
