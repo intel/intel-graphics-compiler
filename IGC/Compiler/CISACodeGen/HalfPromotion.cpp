@@ -92,9 +92,7 @@ void IGC::HalfPromotion::handleLLVMIntrinsic(llvm::IntrinsicInst &I)
         id == Intrinsic::ceil ||
         id == Intrinsic::fabs ||
         id == Intrinsic::pow ||
-        id == Intrinsic::fma ||
-        id == Intrinsic::maxnum ||
-        id == Intrinsic::minnum)
+        id == Intrinsic::fma)
     {
         Module* M = I.getParent()->getParent()->getParent();
         llvm::IGCIRBuilder<> builder(&I);
@@ -107,15 +105,8 @@ void IGC::HalfPromotion::handleLLVMIntrinsic(llvm::IntrinsicInst &I)
 
         for(unsigned i = 0; i < I.getNumArgOperands(); ++i)
         {
-            if (I.getOperand(i)->getType()->isHalfTy())
-            {
-                Value* op = builder.CreateFPExt(I.getOperand(i), builder.getFloatTy());
-                arguments.push_back(op);
-            }
-            else
-            {
-                arguments.push_back(I.getOperand(i));
-            }
+            Value* op = builder.CreateFPExt(I.getOperand(i), builder.getFloatTy());
+            arguments.push_back(op);
         }
 
         Value* f32Val = builder.CreateCall(
@@ -131,9 +122,12 @@ void IGC::HalfPromotion::handleGenIntrinsic(llvm::GenIntrinsicInst &I)
 {
     GenISAIntrinsic::ID id = I.getIntrinsicID();
     if(id == GenISAIntrinsic::GenISA_fsat ||
+        id == GenISAIntrinsic::GenISA_sqrt ||
         id == GenISAIntrinsic::GenISA_rsq ||
         id == GenISAIntrinsic::GenISA_GradientX ||
         id == GenISAIntrinsic::GenISA_GradientY ||
+        id == GenISAIntrinsic::GenISA_min ||
+        id == GenISAIntrinsic::GenISA_max ||
         id == GenISAIntrinsic::GenISA_WaveShuffleIndex)
     {
         Module* M = I.getParent()->getParent()->getParent();

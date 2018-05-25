@@ -1303,6 +1303,8 @@ void CoalescingEngine::visitCallInst(llvm::CallInst &I)
         case GenISAIntrinsic::GenISA_ROUNDNE:
         case GenISAIntrinsic::GenISA_imulH:
         case GenISAIntrinsic::GenISA_umulH:
+        case GenISAIntrinsic::GenISA_min:
+        case GenISAIntrinsic::GenISA_max:
         case GenISAIntrinsic::GenISA_uaddc:
         case GenISAIntrinsic::GenISA_usubb:
         case GenISAIntrinsic::GenISA_bfrev:
@@ -1344,8 +1346,6 @@ void CoalescingEngine::visitCallInst(llvm::CallInst &I)
         case Intrinsic::floor:
         case Intrinsic::ceil:
         case Intrinsic::trunc:
-        case Intrinsic::maxnum:
-        case Intrinsic::minnum:
             break;
         case Intrinsic::exp2:
             break;

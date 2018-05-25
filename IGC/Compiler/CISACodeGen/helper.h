@@ -95,7 +95,7 @@ enum EOPCODE
 #include "opCode.h"
 #undef DECLARE_OPCODE
 
-EOPCODE GetOpCode(const llvm::Instruction* inst);
+EOPCODE GetOpCode(llvm::Instruction* inst);
 bool SupportsModifier(llvm::Instruction* inst);
 bool SupportsSaturate(llvm::Instruction* inst);
 bool SupportsPredicate(llvm::Instruction* inst);

@@ -7183,6 +7183,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_PHASE_INPUT:
         emitPhaseInput(inst);
         break;
+    case GenISAIntrinsic::GenISA_sqrt:
+        emitSqrt(inst);
+        break;
     case GenISAIntrinsic::GenISA_ldrawvector_indexed:
     case GenISAIntrinsic::GenISA_ldraw_indexed:
         emitLoadRawIndexed(inst);
@@ -7303,11 +7306,6 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
     case Intrinsic::bswap:
         emitLLVMbswap(inst);
         break;
-
-    case Intrinsic::sqrt:
-        emitSqrt(inst);
-        break;
-
     default:
         inst->print(IGC::Debug::ods());
         assert(0 && "unknown intrinsic");

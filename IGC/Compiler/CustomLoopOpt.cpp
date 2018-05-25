@@ -33,7 +33,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMUtils.h"
 
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CustomLoopOpt.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
@@ -178,20 +177,21 @@ bool CustomLoopVersioning::detectLoop(Loop* loop,
     Instruction* i0 = body->getFirstNonPHI();
     Instruction* i1 = GetNextInstruction(i0);
 
-    CallInst* imax = dyn_cast<CallInst>(i0);
-    CallInst* imin = i1 ? dyn_cast<CallInst>(i1) : nullptr;
+    GenIntrinsicInst* imax = dyn_cast<GenIntrinsicInst>(i0);
+    GenIntrinsicInst* imin = i1 ? dyn_cast<GenIntrinsicInst>(i1) : nullptr;
 
-    if (!(imax && GetOpCode(imax) == llvm_max &&
-          imin && GetOpCode(imin) == llvm_min))
+    if (!(imax && imax->getIntrinsicID() == GenISAIntrinsic::GenISA_max &&
+          imin && imin->getIntrinsicID() == GenISAIntrinsic::GenISA_min))
     {
         return false;
     }
 
-    CallInst* interval_x = dyn_cast<CallInst>(imax->getArgOperand(0));
-    CallInst* interval_y = dyn_cast<CallInst>(imin->getArgOperand(0));
+    GenIntrinsicInst* interval_x = dyn_cast<GenIntrinsicInst>(
+        imax->getArgOperand(0), GenISAIntrinsic::GenISA_max);
+    GenIntrinsicInst* interval_y = dyn_cast<GenIntrinsicInst>(
+        imin->getArgOperand(0), GenISAIntrinsic::GenISA_min);
 
-    if (!(interval_x && GetOpCode(interval_x) == llvm_max) ||
-        !(interval_y && GetOpCode(interval_y) == llvm_min))
+    if (!interval_x || !interval_y)
     {
         return false;
     }

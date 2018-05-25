@@ -1228,9 +1228,13 @@ void COpenCLKernel::ParseShaderSpecificOpcode( llvm::Instruction* inst )
     case Instruction::Call:
         if(inst->getType()->isDoubleTy())
         {
-            if (GetOpCode(inst) == llvm_sqrt)
+            if(GenIntrinsicInst* I = dyn_cast<GenIntrinsicInst>(inst))
             {
-                SetDisableMidthreadPreemption();
+                GenISAIntrinsic::ID id = I->getIntrinsicID();
+                if(id == GenISAIntrinsic::GenISA_sqrt)
+                {
+                     SetDisableMidthreadPreemption();
+                }
             }
         }
         break;

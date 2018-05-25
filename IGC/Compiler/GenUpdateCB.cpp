@@ -144,10 +144,20 @@ bool GenUpdateCB::updateCbAllowedInst(Instruction* inst)
         case llvm_floor:
         case llvm_ceil:
         case llvm_fabs:
-        case llvm_max:
-        case llvm_min:
-        case llvm_rsq:
-        case llvm_fsat:
+            return true;
+        default:
+            return false;
+        }
+    }
+    else if (GenIntrinsicInst *genIntr = dyn_cast<GenIntrinsicInst>(inst))
+    {
+        switch (genIntr->getIntrinsicID())
+        {
+        case GenISAIntrinsic::GenISA_max:
+        case GenISAIntrinsic::GenISA_min:
+        case GenISAIntrinsic::GenISA_rsq:
+        case GenISAIntrinsic::GenISA_sqrt:
+        case GenISAIntrinsic::GenISA_fsat:
             return true;
         default:
             return false;
@@ -242,30 +252,39 @@ void GenUpdateCB::InsertInstTree(Instruction *inst, Instruction *pos)
                 Intrinsic::fabs,
                 llvm::ArrayRef<llvm::Type*>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
             break;
-        case llvm_max:
-            pfunc = llvm::Intrinsic::getDeclaration(m_ConstantBufferReplaceShaderPatterns,
-                Intrinsic::maxnum,
-                llvm::ArrayRef<llvm::Type*>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
-            break;
-        case llvm_min:
-            pfunc = llvm::Intrinsic::getDeclaration(m_ConstantBufferReplaceShaderPatterns,
-                Intrinsic::minnum,
-                llvm::ArrayRef<llvm::Type*>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
-            break;
-        case llvm_rsq:
-            pfunc = llvm::GenISAIntrinsic::getDeclaration(m_ConstantBufferReplaceShaderPatterns,
-                GenISAIntrinsic::GenISA_rsq,
-                llvm::ArrayRef<llvm::Type*>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
-            break;
-        case llvm_fsat:
-            pfunc = llvm::GenISAIntrinsic::getDeclaration(m_ConstantBufferReplaceShaderPatterns,
-                GenISAIntrinsic::GenISA_fsat,
-                llvm::ArrayRef<llvm::Type*>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
-            break;
         default:
             assert(0 && "Intrinsic not supported");
         }
         callI->setCalledFunction(pfunc);
+    }
+    else if (GenIntrinsicInst *genIntr = dyn_cast<GenIntrinsicInst>(inst))
+    {
+        switch (genIntr->getIntrinsicID())
+        {
+        case GenISAIntrinsic::GenISA_max:
+            pfunc = llvm::GenISAIntrinsic::getDeclaration(m_ConstantBufferReplaceShaderPatterns,
+                GenISAIntrinsic::GenISA_max,
+                llvm::ArrayRef<llvm::Type*>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
+        case GenISAIntrinsic::GenISA_min:
+            pfunc = llvm::GenISAIntrinsic::getDeclaration(m_ConstantBufferReplaceShaderPatterns,
+                GenISAIntrinsic::GenISA_min,
+                llvm::ArrayRef<llvm::Type*>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
+        case GenISAIntrinsic::GenISA_rsq:
+            pfunc = llvm::GenISAIntrinsic::getDeclaration(m_ConstantBufferReplaceShaderPatterns,
+                GenISAIntrinsic::GenISA_rsq,
+                llvm::ArrayRef<llvm::Type*>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
+        case GenISAIntrinsic::GenISA_sqrt:
+            pfunc = llvm::GenISAIntrinsic::getDeclaration(m_ConstantBufferReplaceShaderPatterns,
+                GenISAIntrinsic::GenISA_sqrt,
+                llvm::ArrayRef<llvm::Type*>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
+        case GenISAIntrinsic::GenISA_fsat:
+            pfunc = llvm::GenISAIntrinsic::getDeclaration(m_ConstantBufferReplaceShaderPatterns,
+                GenISAIntrinsic::GenISA_fsat,
+                llvm::ArrayRef<llvm::Type*>(Type::getFloatTy(m_ConstantBufferReplaceShaderPatterns->getContext())));
+        default:
+            assert(0 && "GenISAIntrinsic not supported");
+        }
+        genIntr->setCalledFunction(pfunc);
     }
 }
 
@@ -574,18 +593,30 @@ namespace IGC
                         ftod1.u = lookupValue(inst->getOperand(1), CalculatedValue);
                         ftodTemp.f = powf(ftod0.f, ftod1.f);
                         break;
-                    case llvm_max:
+                    default:
+                        assert(0);
+                        break;
+                    }
+                }
+                else if (GenIntrinsicInst *genIntr = dyn_cast<GenIntrinsicInst>(inst))
+                {
+                    switch (genIntr->getIntrinsicID())
+                    {
+                    case GenISAIntrinsic::GenISA_max:
                         ftod1.u = lookupValue(inst->getOperand(1), CalculatedValue);
                         ftodTemp.f = std::max(ftod0.f, ftod1.f);
                         break;
-                    case llvm_min:
+                    case GenISAIntrinsic::GenISA_min:
                         ftod1.u = lookupValue(inst->getOperand(1), CalculatedValue);
                         ftodTemp.f = std::min(ftod0.f, ftod1.f);
                         break;
-                    case llvm_rsq:
+                    case GenISAIntrinsic::GenISA_rsq:
                         ftodTemp.f = 1.0f / sqrt(ftod0.f);
                         break;
-                    case llvm_fsat:
+                    case GenISAIntrinsic::GenISA_sqrt:
+                        ftodTemp.f = sqrt(ftod0.f);
+                        break;
+                    case GenISAIntrinsic::GenISA_fsat:
                         ftodTemp.f = ftod0.f > 1.0f ? 1.0f : ftod0.f;
                         ftodTemp.f = ftodTemp.f < 0.0f ? 0.0f : ftod0.f;
                         break;

@@ -338,13 +338,13 @@ struct ClampWithConstants_match {
 
     template<typename OpTy>
     bool match(OpTy *V) {
-        CallInst *GII = dyn_cast<CallInst>(V);
+        GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(V);
         if (!GII)
             return false;
 
-        EOPCODE op = GetOpCode(GII);
-
-        if (op != llvm_max && op != llvm_min)
+        GenISAIntrinsic::ID GIID = GII->getIntrinsicID();
+        if (GIID != GenISAIntrinsic::GenISA_max &&
+            GIID != GenISAIntrinsic::GenISA_min)
             return false;
 
         Value *X = GII->getOperand(0);
@@ -360,9 +360,11 @@ struct ClampWithConstants_match {
         if (!GII2)
             return false;
 
-        EOPCODE op2 = GetOpCode(GII2);
-        if (!(op == llvm_min && op2 == llvm_max) &&
-            !(op == llvm_max && op2 == llvm_min))
+        GenISAIntrinsic::ID GIID2 = GII2->getIntrinsicID();
+        if (!(GIID == GenISAIntrinsic::GenISA_min &&
+              GIID2 == GenISAIntrinsic::GenISA_max) &&
+            !(GIID == GenISAIntrinsic::GenISA_max &&
+              GIID2 == GenISAIntrinsic::GenISA_min))
             return false;
 
         X = GII2->getOperand(0);
@@ -377,8 +379,8 @@ struct ClampWithConstants_match {
         if (!Op.match(X))
             return false;
 
-        CMin = (op2 == llvm_min) ? C0 : C1;
-        CMax = (op2 == llvm_min) ? C1 : C0;
+        CMin = (GIID2 == GenISAIntrinsic::GenISA_min) ? C0 : C1;
+        CMax = (GIID2 == GenISAIntrinsic::GenISA_min) ? C1 : C0;
         return true;
     }
 };
@@ -988,6 +990,11 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I)
     {
         switch(CI->getIntrinsicID())
         {
+        case GenISAIntrinsic::GenISA_min:
+        case GenISAIntrinsic::GenISA_max:
+            match = MatchSatModifier(I) ||
+                MatchModifier(I);
+            break;
         case GenISAIntrinsic::GenISA_ROUNDNE:
         case GenISAIntrinsic::GenISA_imulH:
         case GenISAIntrinsic::GenISA_umulH:
@@ -1111,11 +1118,6 @@ void CodeGenPatternMatch::visitIntrinsicInst(llvm::IntrinsicInst &I)
         break;
     case Intrinsic::fma:
         match = MatchFMA(I);
-        break;
-    case Intrinsic::maxnum:
-    case Intrinsic::minnum:
-        match = MatchSatModifier(I) ||
-            MatchModifier(I);
         break;
     default:
         match = MatchSingleInstruction(I);
@@ -2855,6 +2857,16 @@ bool CodeGenPatternMatch::MatchRsqrt(llvm::BinaryOperator& I)
                     }
                 }
             }
+            // OCL needs to emit a special sqrt because the LLVM intrinsic has undefined
+            // behavior for negative numbers.
+            else if (llvm::GenIntrinsicInst* sqrt = dyn_cast<GenIntrinsicInst>(I.getOperand(1)))
+            {
+                if (sqrt->getIntrinsicID() == GenISAIntrinsic::GenISA_sqrt)
+                {
+                    source = sqrt->getOperand(0);
+                    found = true;
+                }
+            }
         }
     }
     if(found)
@@ -3463,19 +3475,20 @@ inline bool isMinOrMax(llvm::Value* inst, llvm::Value*& source0, llvm::Value*& s
 {
     bool found = false;
     llvm::Instruction* max = llvm::dyn_cast<llvm::Instruction>(inst);
-    if (!max)
-        return false;
-
-    EOPCODE op = GetOpCode(max);
-    if (op == llvm_min || op == llvm_max)
+    if(GenIntrinsicInst* intrMinMax = dyn_cast<GenIntrinsicInst>(inst))
     {
-        source0 = max->getOperand(0);
-        source1 = max->getOperand(1);
-        isUnsigned = false;
-        isMin = (op == llvm_min);
-        return true;
+        GenISAIntrinsic::ID IID = intrMinMax->getIntrinsicID();
+        if(IID == GenISAIntrinsic::GenISA_max ||
+            IID == GenISAIntrinsic::GenISA_min)
+        {
+            source0 = intrMinMax->getOperand(0);
+            source1 = intrMinMax->getOperand(1);
+            isUnsigned = false;
+            isMin = (IID == GenISAIntrinsic::GenISA_min);
+            return true;
+        }
     }
-    else if(op == llvm_select)
+    else if(max && GetOpCode(max)==llvm_select)
     {
         if (llvm::CmpInst *cmp = llvm::dyn_cast<llvm::CmpInst>(max->getOperand(0)))
         {

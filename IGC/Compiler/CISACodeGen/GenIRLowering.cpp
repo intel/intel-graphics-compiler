@@ -90,10 +90,10 @@ private:
 
   Value *rearrangeAdd(Value *, Loop *) const;
 
-  bool combineFMaxFMin(CallInst *GII, BasicBlock::iterator &BBI) const;
+  bool combineFMaxFMin(GenIntrinsicInst *GII, BasicBlock::iterator &BBI) const;
   bool combineSelectInst(SelectInst *Sel, BasicBlock::iterator &BBI) const;
 
-  bool constantFoldFMaxFMin(CallInst *GII,
+  bool constantFoldFMaxFMin(GenIntrinsicInst *GII,
                             BasicBlock::iterator &BBI) const;
 };
 
@@ -198,12 +198,13 @@ template <typename Op_t, typename ConstTy> struct ClampWithConstants_match {
       : Op(OpMatch), CMin(Min), CMax(Max) {}
 
   template <typename OpTy> bool match(OpTy *V) {
-    CallInst *GII = dyn_cast<CallInst>(V);
+    GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(V);
     if (!GII)
       return false;
 
-    EOPCODE GIID = GetOpCode(GII);
-    if (GIID != llvm_max && GIID != llvm_min)
+    GenISAIntrinsic::ID GIID = GII->getIntrinsicID();
+    if (GIID != GenISAIntrinsic::GenISA_max &&
+        GIID != GenISAIntrinsic::GenISA_min)
       return false;
 
     Value *X = GII->getOperand(0);
@@ -215,13 +216,15 @@ template <typename Op_t, typename ConstTy> struct ClampWithConstants_match {
     if (!C0)
       return false;
 
-    CallInst *GII2 = dyn_cast<CallInst>(X);
+    GenIntrinsicInst *GII2 = dyn_cast<GenIntrinsicInst>(X);
     if (!GII2)
       return false;
 
-    EOPCODE GIID2 = GetOpCode(GII2);
-    if (!(GIID == llvm_min && GIID2 == llvm_max) &&
-        !(GIID == llvm_max && GIID2 == llvm_min))
+    GenISAIntrinsic::ID GIID2 = GII2->getIntrinsicID();
+    if (!(GIID == GenISAIntrinsic::GenISA_min &&
+          GIID2 == GenISAIntrinsic::GenISA_max) &&
+        !(GIID == GenISAIntrinsic::GenISA_max &&
+          GIID2 == GenISAIntrinsic::GenISA_min))
       return false;
 
     X = GII2->getOperand(0);
@@ -236,8 +239,8 @@ template <typename Op_t, typename ConstTy> struct ClampWithConstants_match {
     if (!Op.match(X))
       return false;
 
-    CMin = (GIID2 == llvm_min) ? C0 : C1;
-    CMax = (GIID2 == llvm_min) ? C1 : C0;
+    CMin = (GIID2 == GenISAIntrinsic::GenISA_min) ? C0 : C1;
+    CMax = (GIID2 == GenISAIntrinsic::GenISA_min) ? C1 : C0;
     return true;
   }
 };
@@ -283,10 +286,10 @@ bool GenIRLowering::runOnFunction(Function &F) {
       default: // By default, DO NOTHING
         break;
       case Instruction::Call:
-        if (CallInst *GII = dyn_cast<CallInst>(Inst)) {
-          switch (GetOpCode(GII)) {
-          case llvm_max:
-          case llvm_min:
+        if (GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(Inst)) {
+          switch (GII->getIntrinsicID()) {
+          case GenISAIntrinsic::GenISA_max:
+          case GenISAIntrinsic::GenISA_min:
             Changed |= combineFMaxFMin(GII, BI);
             break;
           default:
@@ -721,11 +724,12 @@ bool GenIRLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
   return true;
 }
 
-bool GenIRLowering::constantFoldFMaxFMin(CallInst *GII,
+bool GenIRLowering::constantFoldFMaxFMin(GenIntrinsicInst *GII,
                                          BasicBlock::iterator &BBI) const {
   // Constant fold fmax/fmin only.
-  EOPCODE GIID = GetOpCode(GII);
-  if (GIID != llvm_max && GIID != llvm_min)
+  GenISAIntrinsic::ID GIID = GII->getIntrinsicID();
+  if (GIID != GenISAIntrinsic::GenISA_max &&
+      GIID != GenISAIntrinsic::GenISA_min)
     return false;
 
   // Skip fmax/fmin with non-constant operand.
@@ -738,7 +742,7 @@ bool GenIRLowering::constantFoldFMaxFMin(CallInst *GII,
   const APFloat &A = CFP0->getValueAPF();
   const APFloat &B = CFP1->getValueAPF();
   APFloat Result =
-      (GIID == llvm_min) ? minnum(A, B) : maxnum(A, B);
+      (GIID == GenISAIntrinsic::GenISA_min) ? minnum(A, B) : maxnum(A, B);
   Constant *C = ConstantFP::get(GII->getContext(), Result);
 
   GII->replaceAllUsesWith(C);
@@ -747,7 +751,7 @@ bool GenIRLowering::constantFoldFMaxFMin(CallInst *GII,
   return true;
 }
 
-bool GenIRLowering::combineFMaxFMin(CallInst *GII,
+bool GenIRLowering::combineFMaxFMin(GenIntrinsicInst *GII,
                                     BasicBlock::iterator &BBI) const {
   using namespace llvm::PatternMatch; // Scoped namespace using.
 
@@ -829,9 +833,9 @@ bool GenIRLowering::combineSelectInst(SelectInst *Sel,
       return false;
   }
 
-  Intrinsic::ID IID =
-      IsMax ? Intrinsic::maxnum : Intrinsic::minnum;
-  Function *IFunc = Intrinsic::getDeclaration(
+  GenISAIntrinsic::ID IID =
+      IsMax ? GenISAIntrinsic::GenISA_max : GenISAIntrinsic::GenISA_min;
+  Function *IFunc = GenISAIntrinsic::getDeclaration(
       Sel->getParent()->getParent()->getParent(), IID, LHS->getType());
 
   Instruction *I = Builder->CreateCall2(IFunc, LHS, RHS);
