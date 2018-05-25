@@ -140,17 +140,13 @@ bool PushAnalysis::IsStatelessCBLoad(
     unsigned int& offset)
 {
     /*
-        %8 = call float @genx.GenISA.RuntimeValue(i32 2)
-        %9 = call float @genx.GenISA.RuntimeValue(i32 3)
-        %10 = insertelement <2 x float> undef, float %8, i32 0
-        %11 = insertelement <2 x float> %10, float %9, i32 1
-        %12 = bitcast <2 x float> %11 to i64
+        %12 = call i64 @genx.GenISA.RuntimeValue(i32 2)
         %13 = add i64 %12, 16
         %14 = inttoptr i64 %13 to <3 x float> addrspace(2)*
         %15 = load <3 x float> addrspace(2)* %14, align 16
     */
 
-    if (!llvm::isa<llvm::LoadInst>(inst))
+    if(!llvm::isa<llvm::LoadInst>(inst))
         return false;
 
     m_PDT = &getAnalysis<PostDominatorTreeWrapperPass>(*m_pFunction).getPostDomTree();
@@ -160,83 +156,46 @@ bool PushAnalysis::IsStatelessCBLoad(
     // %15 = load <3 x float> addrspace(2)* %14, align 16
     llvm::LoadInst *pLoad = llvm::cast<llvm::LoadInst>(inst);
     uint address_space = pLoad->getPointerAddressSpace();
-    if (address_space != ADDRESS_SPACE_CONSTANT)
+    if(address_space != ADDRESS_SPACE_CONSTANT)
         return false;
 
-    // % 14 = inttoptr i64 % 13 to <3 x float> addrspace(2)*
-    llvm::IntToPtrInst *pAddress = llvm::dyn_cast<llvm::IntToPtrInst>(pLoad->getOperand(pLoad->getPointerOperandIndex()));
-    if (pAddress == nullptr)
-        return false;
+    Value* pAddress = pLoad->getOperand(pLoad->getPointerOperandIndex());
+    // skip casts
+    if(isa<IntToPtrInst>(pAddress) || isa<PtrToIntInst>(pAddress) || isa<BitCastInst>(pAddress))
+    {
+        pAddress = cast<Instruction>(pAddress)->getOperand(0);
+    }
 
+    offset = 0;
     // % 13 = add i64 % 12, 16
     // This add might or might not be present necessarily.
-    llvm::Instruction *pAdd = llvm::dyn_cast<llvm::Instruction>(pAddress->getOperand(0));
-    llvm::Instruction *pBitcast = nullptr;
-    llvm::ConstantInt *pConst = nullptr;
-
-    if (pAdd != nullptr && pAdd->getOpcode() == llvm::Instruction::Add)
+    if(BinaryOperator* pAdd = dyn_cast<BinaryOperator>(pAddress))
     {
-        pBitcast = llvm::dyn_cast<llvm::BitCastInst>(pAdd->getOperand(0));
-        pConst = llvm::dyn_cast<llvm::ConstantInt>(pAdd->getOperand(1));
+        if(pAdd->getOpcode() == llvm::Instruction::Add)
+        {
+            ConstantInt* pConst = dyn_cast<llvm::ConstantInt>(pAdd->getOperand(1));
+            if(!pConst)
+                return false;
 
-        if (!pBitcast || !pConst)
-            return false;
-
-        offset = (uint)pConst->getZExtValue();
-    }
-    else
-    {
-        pBitcast = llvm::dyn_cast<llvm::BitCastInst>(pAddress->getOperand(0));
-        if (!pBitcast)
-            return false;
-
-        offset = 0;
+            pAddress = pAdd->getOperand(0);
+            offset = (uint)pConst->getZExtValue();
+        }
     }
 
-    if (pBitcast == nullptr)
+    // skip casts
+    if(isa<IntToPtrInst>(pAddress) || isa<PtrToIntInst>(pAddress) || isa<BitCastInst>(pAddress))
+    {
+        pAddress = cast<Instruction>(pAddress)->getOperand(0);
+    }
+
+    llvm::GenIntrinsicInst *pRuntimeVal = llvm::dyn_cast<llvm::GenIntrinsicInst>(pAddress);
+
+    if (pRuntimeVal == nullptr || 
+        pRuntimeVal->getIntrinsicID() != llvm::GenISAIntrinsic::GenISA_RuntimeValue)
         return false;
 
-    // % 12 = bitcast <2 x float> % 11 to i64
-    llvm::InsertElementInst *pInsert1 = llvm::dyn_cast<llvm::InsertElementInst>(pBitcast->getOperand(0));
-    if (pInsert1 == nullptr)
-        return false;
-
-    // %10 = insertelement <2 x float> undef, float %8, i32 0
-    // %11 = insertelement <2 x float> % 10, float %9, i32 1
-    llvm::VectorType *pVecTy = llvm::VectorType::get(llvm::Type::getFloatTy(inst->getContext()), 2);
-    if (!pVecTy || pInsert1->getType() != pVecTy)
-        return false;
-
-    llvm::InsertElementInst *pInsert0 = llvm::dyn_cast<llvm::InsertElementInst>(pInsert1->getOperand(0));
-    if (pInsert0 == nullptr)
-        return false;
-
-    llvm::GenIntrinsicInst *pRuntimeVal1 = llvm::dyn_cast<llvm::GenIntrinsicInst>(pInsert1->getOperand(1));
-    llvm::GenIntrinsicInst *pRuntimeVal0 = llvm::dyn_cast<llvm::GenIntrinsicInst>(pInsert0->getOperand(1));
-
-    if (pRuntimeVal0 == nullptr || pRuntimeVal1 == nullptr)
-        return false;
-
-    if (pRuntimeVal0->getIntrinsicID() != llvm::GenISAIntrinsic::GenISA_RuntimeValue ||
-        pRuntimeVal1->getIntrinsicID() != llvm::GenISAIntrinsic::GenISA_RuntimeValue)
-        return false;
-
-    uint runtimeval0 = (uint)llvm::cast<llvm::ConstantInt>(pRuntimeVal0->getOperand(0))->getZExtValue();
-
+    uint runtimeval0 = (uint)llvm::cast<llvm::ConstantInt>(pRuntimeVal->getOperand(0))->getZExtValue();
     PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
-
-    // first check if it's already picked up
-    if (m_cbToLoad == runtimeval0)
-    {
-        GRFOffset = runtimeval0;
-        return true;
-    }
-    else
-    if (m_cbToLoad != (uint)-1)
-    {
-        // another cb is pickup and we only can do 1 cb
-        return false;
-    }
 
     // then check for static root descriptor so that we can do push safely
     for (auto it : pushInfo.pushableAddresses)
