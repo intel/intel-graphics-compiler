@@ -239,6 +239,7 @@ bool PixelShaderLowering::runOnFunction(llvm::Function &F)
         ReturnInst::Create(F.getContext(), &(*F.begin()));
         m_ReturnBlock = &(*F.begin());
     }
+    m_outputBlock = nullptr;
 
     m_module = F.getParent();
     ColorOutputArray colors;
@@ -334,7 +335,9 @@ void PixelShaderLowering::FindIntrinsicOutput(
                     uavPixelSync = true;
                 }
                 else if(IID == GenISAIntrinsic::GenISA_OUTPUT)
-                { 
+                {
+                    m_outputBlock = inst->getParent();
+
                     uint outputType  = (uint) llvm::cast<llvm::ConstantInt>(inst->getOperand(4))->getZExtValue();
                     assert(outputType == SHADER_OUTPUT_TYPE_DEFAULT ||
                         outputType == SHADER_OUTPUT_TYPE_DEPTHOUT   ||
@@ -1258,6 +1261,23 @@ void PixelShaderLowering::moveRTWritesToReturnBlock(
     }
 }
 
+PHINode* PixelShaderLowering::createPhiForRTWrite(Value* val,
+    smallvector<BasicBlock*, 8>& predBB, BasicBlock* toBB)
+{
+    PHINode* phi = PHINode::Create(
+        val->getType(), predBB.size(), "", &(*toBB->begin()));
+    for (auto* BB : predBB)
+    {
+        Value* inVal;
+        if (BB == m_outputBlock)
+            inVal = val;
+        else
+            inVal = UndefValue::get(val->getType());
+        phi->addIncoming(inVal, BB);
+    }
+    return phi;
+}
+
 // create a null surface write in return block if there's no one
 void PixelShaderLowering::checkAndCreateNullRTWrite(
     Value* oMask, Value* depth, Value* stencil)
@@ -1282,6 +1302,28 @@ void PixelShaderLowering::checkAndCreateNullRTWrite(
         color.RTindex = -1;
         color.blendStateIndex = nullptr;
 
+        smallvector<BasicBlock*, 8> predBB;
+
+        for (auto PI = pred_begin(m_ReturnBlock), PE = pred_end(m_ReturnBlock);
+            PI != PE; ++PI)
+        {
+            predBB.push_back(*PI);
+        }
+        if (predBB.size() > 1)
+        {
+            if (oMask)
+            {
+                oMask = createPhiForRTWrite(oMask, predBB, m_ReturnBlock);
+            }
+            if (depth)
+            {
+                depth = createPhiForRTWrite(depth, predBB, m_ReturnBlock);
+            }
+            if (stencil)
+            {
+                stencil = createPhiForRTWrite(stencil, predBB, m_ReturnBlock);
+            }
+        }
         addRTWrite(
             m_ReturnBlock,
             undef,
