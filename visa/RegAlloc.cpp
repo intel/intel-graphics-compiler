@@ -378,7 +378,7 @@ LivenessAnalysis::LivenessAnalysis(
         GlobalRA& g,
         unsigned char kind,
         bool verifyRA) :
-        numVarId(0), numSplitVar(0), numSplitStartID(0), numUnassignedVarId(0), numAddrId(0), selectedRF(kind), m(4096),
+        numVarId(0), numSplitVar(0), splitStartID(0), numUnassignedVarId(0), numAddrId(0), selectedRF(kind), m(4096),
 		fg(g.kernel.fg), pointsToAnalysis(g.pointsToAnalysis), gra(g)
 {
 	//
@@ -400,14 +400,15 @@ LivenessAnalysis::LivenessAnalysis(
             {
                 decl->setSplitVarStartID(0);
             }
+ 
             if (decl->getIsPartialDcl())
             {
                 auto declSplitDcl = gra.getSplittedDeclare(decl);
                 if (declSplitDcl->getIsSplittedDcl())
                 {
-	                if (numSplitStartID == 0)
+	                if (splitStartID == 0)
 	                {
-	                    numSplitStartID = numVarId;
+	                    splitStartID = numVarId;
 	                }
 	                
 	                if (declSplitDcl->getSplitVarStartID() == 0)
@@ -451,6 +452,12 @@ LivenessAnalysis::LivenessAnalysis(
 		}
         di++;
 	}
+
+#ifdef DEBUG_VERBOSE_ON
+            std::cout << "==> VarNum: " << numVarId << std::endl;
+            std::cout << "==> SplitStart: " << splitStartID << std::endl;
+            std::cout << "==> SplitVarNum: " << numSplitVar << std::endl;
+#endif
 
 	// For Alias Dcl
 	for (DECLARE_LIST_ITER di = gra.kernel.Declares.begin(); di != gra.kernel.Declares.end(); ++di)
@@ -2012,6 +2019,85 @@ void LivenessAnalysis::footprintSrc( G4_INST* i,
 	}
 }
 
+
+void LivenessAnalysis::updateGenKillForAllSubDcls(G4_Declare *dcl, BitSet& use_kill, BitSet& use_gen, bool genOnly)
+{
+
+    auto subDclSize = gra.getSubDclSize(dcl);
+    for (unsigned i = 0; i < subDclSize; i++)
+    {
+        G4_Declare * subDcl = gra.getSubDcl(dcl, i);
+        unsigned id = subDcl->getRegVar()->getId();
+        if (genOnly)
+        {
+            use_gen.set(id, true);
+        }
+        else
+        {
+            use_kill.set(id, true);
+            use_gen.set(id, false);
+        }
+    }
+}
+
+void LivenessAnalysis::updateGenKillForSubDcls(G4_Declare *dcl, G4_Operand* opnd, BitSet& use_kill, BitSet& use_gen, bool genOnly)
+{
+    unsigned leftBound = opnd->getLeftBound();
+    unsigned rightBound = opnd->getRightBound();
+    unsigned rangeSize = gra.getSubDclBytes(dcl);
+
+    assert(rangeSize != 0);
+    unsigned startIdx = leftBound / rangeSize;
+    unsigned endIdx = rightBound / rangeSize;
+
+    for (unsigned i = startIdx; i <= endIdx; i++)
+    {
+        G4_Declare * subDcl = gra.getSubDcl(dcl, i);
+        int subID = subDcl->getRegVar()->getId();
+
+        if (genOnly)
+        {
+            use_gen.set(subID, true);
+        }
+        else
+        {
+            use_kill.set(subID, true);
+            use_gen.set(subID, false);
+        }
+    }
+}
+
+void LivenessAnalysis::updateDefOutForAllSubDcls(G4_Declare *dcl, BitSet& def_out)
+{
+
+    auto subDclSize = gra.getSubDclSize(dcl);
+    for (unsigned i = 0; i < subDclSize; i++)
+    {
+        G4_Declare * subDcl = gra.getSubDcl(dcl, i);
+        unsigned id = subDcl->getRegVar()->getId();
+        def_out.set(id, true);
+    }
+}
+
+void LivenessAnalysis::updateDefOutForSubDcls(G4_Declare *dcl, G4_Operand* opnd, BitSet& def_out)
+{
+    unsigned leftBound = opnd->getLeftBound();
+    unsigned rightBound = opnd->getRightBound();
+    unsigned rangeSize = gra.getSubDclBytes(dcl);
+
+    assert(rangeSize != 0);
+    unsigned startIdx = leftBound / rangeSize;
+    unsigned endIdx = rightBound / rangeSize;
+
+    for (unsigned i = startIdx; i <= endIdx; i++)
+    {
+        G4_Declare * subDcl = gra.getSubDcl(dcl, i);
+        int subID = subDcl->getRegVar()->getId();
+
+        def_out.set(subID, true);
+    }
+}
+
 void LivenessAnalysis::computeGenKill(G4_BB* bb,
 	BitSet& def_out,
 	BitSet& use_in,
@@ -2077,6 +2163,10 @@ void LivenessAnalysis::computeGenKill(G4_BB* bb,
 					// Mark kill, reset gen
 					use_kill.set(id, true);
 					use_gen.set(id, false);
+                    if (topdcl->getIsGlobalSplittedDcl())
+                    {
+                        updateGenKillForAllSubDcls(topdcl, use_kill, use_gen, false);
+                    }
 
 					continue;
 				}
@@ -2084,7 +2174,12 @@ void LivenessAnalysis::computeGenKill(G4_BB* bb,
 				if (dstrgn->getRegAccess() == Direct)
 				{
 					def_out.set(id, true);
-					//
+                    if (topdcl->getIsGlobalSplittedDcl())
+                    {
+                        updateDefOutForSubDcls(topdcl, dstrgn, def_out);
+                    }
+
+                    //
 					// if the inst writes the whole region the var declared, we set use_kill
 					// so that use of var will not pass through (i.e., var's interval starts
 					// at this instruction.
@@ -2093,16 +2188,28 @@ void LivenessAnalysis::computeGenKill(G4_BB* bb,
 					{
 						use_kill.set(id, true);
 						use_gen.set(id, false);
-					}
+                        if (topdcl->getIsGlobalSplittedDcl())
+                        {
+                            updateGenKillForAllSubDcls(topdcl, use_kill, use_gen, false);
+                        }
+                    }
 					else
 					{
 						use_gen.set(id, true);
+                        if (topdcl->getIsGlobalSplittedDcl())
+                        {
+                            updateGenKillForSubDcls(topdcl, dstrgn, use_kill, use_gen, false);
+                        }
 					}
 				}
 				else
 				{
-					use_gen.set(id, true);
-				}
+                    if (topdcl->getIsGlobalSplittedDcl())
+                    {
+                        updateGenKillForAllSubDcls(topdcl, use_kill, use_gen, true);
+                    }
+                    use_gen.set(id, true);
+                }
 			}
 		}
 
@@ -2126,7 +2233,11 @@ void LivenessAnalysis::computeGenKill(G4_BB* bb,
 				if (base->isRegAllocPartaker())
 				{
 					use_gen.set(((G4_RegVar*)base)->getId(), true);
-				}
+                    if (topdcl->getIsGlobalSplittedDcl())
+                    {
+                        updateGenKillForSubDcls(topdcl, src->asSrcRegRegion(), use_kill, use_gen, true);
+                    }
+                }
 
                 if ((selectedRF & G4_GRF) && src->getRegAccess() == IndirGRF)
                 {
@@ -2139,6 +2250,10 @@ void LivenessAnalysis::computeGenKill(G4_BB* bb,
                         // grf is a variable that src potentially points to
                         unsigned int id = grf->getId();
                         use_gen.set(id, true);
+                        if (topdcl->getIsGlobalSplittedDcl())
+                        {
+                            updateGenKillForAllSubDcls(topdcl, use_kill, use_gen, true);
+                        }
                     }
                 }
 			}
@@ -2150,9 +2265,17 @@ void LivenessAnalysis::computeGenKill(G4_BB* bb,
 				((G4_AddrExp*)src)->getRegVar()->isSpilled() == false)
 			{
 				unsigned srcId = ((G4_AddrExp*)src)->getRegVar()->getId();
+                G4_Declare* topdcl = ((G4_AddrExp*)src)->getRegVar()->getDeclare();
+                topdcl = topdcl->getRootDeclare();
+
 				use_gen.set(srcId, true);
 				def_out.set(srcId, true);
-			}
+                if (topdcl->getIsGlobalSplittedDcl())
+                {
+                    updateGenKillForAllSubDcls(topdcl, use_kill, use_gen, true);
+                    updateDefOutForAllSubDcls(topdcl, def_out);
+                }
+            }
 		}
 
 		//
@@ -2290,7 +2413,10 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
 					// Mark kill, reset gen
 					use_kill.set(id, true);
 					use_gen.set(id, false);
-
+                    if (topdcl->getIsGlobalSplittedDcl())
+                    {
+                        updateGenKillForAllSubDcls(topdcl, use_kill, use_gen, false);
+                    }
 					continue;
 				}
 
@@ -2340,6 +2466,10 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
 				if (dstrgn->getRegAccess() == Direct)
 				{
                     def_out.set( id, true );
+                    if (topdcl->getIsGlobalSplittedDcl())
+                    {
+                        updateDefOutForSubDcls(topdcl, dstrgn, def_out);
+                    }
 					//
 					// if the inst writes the whole region the var declared, we set use_kill
 					// so that use of var will not pass through (i.e., var's interval starts
@@ -2349,20 +2479,30 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
 					{
 						use_kill.set( id, true );
 						use_gen.set( id, false );
-
                         dstfootprint->setAll();
+                        if (topdcl->getIsGlobalSplittedDcl())
+                        {
+                            updateGenKillForAllSubDcls(topdcl, use_kill, use_gen, false);
+                        }
 					}
 					else
 					{
                         footprintDst( bb, i, dstrgn, dstfootprint,  gra.isBlockLocal(topdcl) );
-
 						use_gen.set( id, true );
-					}
+                        if (topdcl->getIsGlobalSplittedDcl())
+                        {
+                            updateGenKillForSubDcls(topdcl, dstrgn, use_kill, use_gen, true);
+                        }
+                    }
 				}
 				else
 				{
 					use_gen.set( id, true );
-				}
+                    if (topdcl->getIsGlobalSplittedDcl())
+                    {
+                        updateGenKillForSubDcls(topdcl, dstrgn, use_kill, use_gen, true);
+                    }
+                }
 			}
             else if ((selectedRF & G4_GRF) && dst->isIndirect())
             {
@@ -2376,7 +2516,12 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                 {
                     if (var->isRegAllocPartaker())
                     {
+                        G4_Declare *varDcl = var->getDeclare();
                         use_gen.set(var->getId(), true);
+                        if (varDcl->getIsGlobalSplittedDcl())
+                        {
+                            updateGenKillForAllSubDcls(varDcl, use_kill, use_gen, true);
+                        }
                     }
                 }
             }
@@ -2437,6 +2582,10 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     }
 
 					use_gen.set( ((G4_RegVar*)base)->getId(), true );
+                    if (topdcl->getIsGlobalSplittedDcl())
+                    {
+                        updateGenKillForSubDcls(topdcl, src->asSrcRegRegion(), use_kill, use_gen, true);
+                    }
 				}
 
                 if( (selectedRF & G4_GRF) && src->getRegAccess() == IndirGRF )
@@ -2452,8 +2601,14 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                         // assume entire grf is sourced
                         // Also add grf to the gen set as it may be potentially used
 						unsigned int id = grf->getId();
+                        G4_Declare *pDcl = grf->getDeclare();
                         use_gen.set(id, true);
-						srcfootprint = footprints[id];
+                        if (pDcl->getIsGlobalSplittedDcl())
+                        {
+                            updateGenKillForAllSubDcls(pDcl, use_kill, use_gen, true);
+                        }
+
+                        srcfootprint = footprints[id];
 
 						if (srcfootprint != NULL)
                         {
@@ -2473,9 +2628,17 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                      ((G4_AddrExp*)src)->getRegVar()->isSpilled() == false)
 			{
 				unsigned srcId = ((G4_AddrExp*)src)->getRegVar()->getId();
+                G4_Declare* topdcl = ((G4_AddrExp*)src)->getRegVar()->getDeclare();
+                topdcl = topdcl->getRootDeclare();
+
 				use_gen.set( srcId, true );
 				def_out.set( srcId, true );
-			}
+                if (topdcl->getIsGlobalSplittedDcl())
+                {
+                    updateGenKillForAllSubDcls(topdcl, use_kill, use_gen, true);
+                    updateDefOutForAllSubDcls(topdcl, def_out);
+                }
+            }
         }
 
         //
@@ -2624,7 +2787,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                                 nextDst->isDstRegRegion() &&
                                 nextDst->getBase()->isRegAllocPartaker() &&
                                 topdcl == GetTopDclFromRegRegion(nextDst))
-                {
+                            {
                                 foundKill = true;
                             }
                         }
@@ -2634,6 +2797,11 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                     // All bytes of dst written at this point, so this is a good place to insert
                     // pseudo kill inst
 					pseudoKills.push_back(std::pair<G4_RegVar*, INST_LIST_RITER>(topdcl->getRegVar(), rit));
+                    }
+
+                    if (topdcl->getIsGlobalSplittedDcl())
+                    {
+                        updateGenKillForAllSubDcls(topdcl, use_kill, use_gen, false);
                     }
 
                     // Reset gen
@@ -3259,12 +3427,13 @@ void GlobalRA::resetGlobalRAStates()
         //Reset all the local live ranges
         resetLocalLR(dcl);
 
-        if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
+        if (builder.getOption(vISA_VariableSplitInGlobalRA))
         {
             //Remove the split declares
             if (dcl->getIsSplittedDcl())
             {
                 dcl->setIsSplittedDcl(false);
+                dcl->setIsGlobalSplittedDcl(false);
                 clearSubDcl(dcl);
             }
 

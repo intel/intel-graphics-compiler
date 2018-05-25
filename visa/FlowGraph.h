@@ -1185,6 +1185,10 @@ class G4_Kernel
     uint32_t bank_ok_num;
     uint32_t bank_bad_num;
 
+    uint32_t splitVarNum;
+    uint32_t globalSplitVarNum;
+    
+
     unsigned int callerSaveLastGRF;
 
 public:
@@ -1201,7 +1205,8 @@ public:
               tokenInstructionCount(0), tokenReuseCount(0), AWTokenReuseCount(0),
               ARTokenReuseCount(0), AATokenReuseCount(0), mathInstCount(0), syncInstCount(0),mathReuseCount(0),
               ARSyncInstCount(0), AWSyncInstCount(0),
-              bank_good_num(0), bank_ok_num(0), bank_bad_num(0)
+              bank_good_num(0), bank_ok_num(0), bank_bad_num(0),
+              splitVarNum(0), globalSplitVarNum(0)
     {
         ASSERT_USER(
             major < COMMON_ISA_MAJOR_VER ||
@@ -1276,6 +1281,12 @@ public:
 
     void setBankBadNum(int num) {bank_bad_num = num; }
     uint32_t getBankBadNum() {return bank_bad_num; }
+
+    void setSplitVarNum(int num) {splitVarNum= num; }
+    uint32_t getSplitVarNum() {return splitVarNum; }
+
+    void setGlobalSplitVarNum(int num) {globalSplitVarNum = num; }
+    uint32_t getGlobalSplitVarNum() {return globalSplitVarNum; }
     
     void setKernelID(uint64_t ID) { kernelID = ID; }
     uint64_t getKernelID() const { return kernelID; }
