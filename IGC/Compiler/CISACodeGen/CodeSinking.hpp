@@ -94,41 +94,6 @@ private:
 
     bool generalCodeSinking;
     // diagnosis variable: int numChanges;
-
-    // try to hoist phi nodes with congruent incoming values
-    typedef std::pair<llvm::Instruction*, llvm::Instruction*> InstPair;
-    typedef smallvector<llvm::Instruction*, 4> InstVec;
-
-    void appendIfNotExist(InstVec& dst, llvm::Instruction* inst)
-    {
-        if (std::find(dst.begin(), dst.end(), inst) == dst.end())
-        {
-            dst.push_back(inst);
-        }
-    }
-    void appendIfNotExist(InstVec& dst, InstVec& src)
-    {
-        for (auto* I : src)
-        {
-            appendIfNotExist(dst, I);
-        }
-    }
-
-    // check if two values are congruent (derived from same values), and
-    // record all intermediate results in vector.
-    bool checkCongruent(const InstPair& values,
-        InstVec& src0Chain, InstVec& src1Chain, InstVec& leaves,
-        unsigned depth);
-
-    void sortInsts(InstVec& iv);
-
-    /**
-     * Detech phi with congruent incoming values, and try to hoist them to
-     * dominator.  In some cases, GVN may leave code like this and increase
-     * register pressure.
-     */
-    bool hoistCongruentPhi(llvm::PHINode* phi);
-    bool hoistCongruentPhi(llvm::Function& F);
 };
 
 }
