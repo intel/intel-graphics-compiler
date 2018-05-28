@@ -312,13 +312,11 @@ public:
     INST_LIST& getInstList() { return instList; }
     INST_LIST_ITER insert(INST_LIST::const_iterator iter, G4_INST* inst)
     {
-        inst->setParent(this);
         return instList.insert(iter, inst);
     }
     template <class InputIt>
     INST_LIST_ITER insert(INST_LIST::const_iterator iter, InputIt first, InputIt last)
     {
-        std::for_each(first, last, [this](G4_INST* inst) { inst->setParent(this); });
         return instList.insert(iter, first, last);
     }
     INST_LIST_ITER erase(INST_LIST::const_iterator iter)
@@ -330,48 +328,39 @@ public:
         return instList.erase(first, last);
     }
     void remove(G4_INST* inst) { instList.remove(inst); }
-    void clear() 
-    { 
-        instList.clear();
-    }
+    void clear() { instList.clear(); }
     void pop_back() { instList.pop_back(); }
     void pop_front() { instList.pop_front(); }
-    void push_back(G4_INST* inst) { inst->setParent(this); instList.push_back(inst); }
-    void push_front(G4_INST* inst) { inst->setParent(this); instList.push_front(inst); }
+    void push_back(G4_INST* inst) { instList.push_back(inst); }
+    void push_front(G4_INST* inst) { instList.push_front(inst); }
     size_t size() const { return instList.size(); }
     bool empty() const { return instList.empty(); }
     G4_INST* front() { return instList.front(); }
     G4_INST* back() { return instList.back(); }
     void splice(INST_LIST::const_iterator pos, INST_LIST& other)
     {
-        std::for_each(other.begin(), other.end(), [this](G4_INST* inst) { inst->setParent(this); });
         instList.splice(pos, other);
     }
     void splice(INST_LIST::const_iterator pos, G4_BB* otherBB)
     {
-        std::for_each(otherBB->begin(), otherBB->end(), [this](G4_INST* inst) { inst->setParent(this); });
         instList.splice(pos, otherBB->getInstList());
     }
     void splice(INST_LIST::const_iterator pos, INST_LIST& other, INST_LIST::const_iterator it)
     {
-        std::for_each(it, other.cend(), [this](G4_INST* inst) { inst->setParent(this); });
         instList.splice(pos, other, it);
     }
     void splice(INST_LIST::const_iterator pos, G4_BB* otherBB, INST_LIST::const_iterator it)
     {
-        std::for_each(it, otherBB->instList.cend(), [this](G4_INST* inst) { inst->setParent(this); });
         instList.splice(pos, otherBB->getInstList(), it);
     }
     void splice(INST_LIST::const_iterator pos, INST_LIST& other, 
         INST_LIST::const_iterator first, INST_LIST::const_iterator last)
     {
-        std::for_each(first, last, [this](G4_INST* inst) { inst->setParent(this); });
         instList.splice(pos, other, first, last);
     }
     void splice(INST_LIST::const_iterator pos, G4_BB* otherBB,
         INST_LIST::const_iterator first, INST_LIST::const_iterator last)
     {
-        std::for_each(first, last, [this](G4_INST* inst) { inst->setParent(this); });
         instList.splice(pos, otherBB->getInstList(), first, last);
     }
 
@@ -509,8 +498,6 @@ public:
 
     // reset this BB's instruction's local id so they are [0,..#BBInst-1]
     void resetLocalId();
-
-    FlowGraph* getParent() const { return parent; }
 };
 }
 

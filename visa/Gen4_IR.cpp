@@ -7089,9 +7089,9 @@ bool G4_INST::canSupportSaturate() const
     return true;
 }
 
-bool G4_INST::canSupportCondMod() const
+bool G4_INST::canSupportCondMod(const IR_Builder& builder) const
 {
-    if (!getParent()->getParent()->builder->hasCondModForTernary() && getNumSrc() == 3)
+    if (!builder.hasCondModForTernary() && getNumSrc() == 3)
     {
         return false;
     }

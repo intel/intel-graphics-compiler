@@ -4316,7 +4316,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     {
         movInst->setLocation(lastInst->getLocation());
     }
-    push_back(movInst);
+    instList.push_back(movInst);
 
     int exdesc = (0x1 << 5) + SFID_SPAWNER;
     // response len = 0, msg len = 1
@@ -4345,7 +4345,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     // createSendInst incorrectly sets its cisa offset to the last value of the counter.
     sendInst->setCISAOff(movInst->getCISAOff());
     sendInst->setLocation(movInst->getLocation());
-    push_back(sendInst);
+    instList.push_back(sendInst);
 }
 
 void G4_BB::emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it)
