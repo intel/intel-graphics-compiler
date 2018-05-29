@@ -378,7 +378,6 @@ struct VarRange
 {
     unsigned int leftBound;
     unsigned int rightBound;
-    bool occupied;
 };
 
 typedef std::vector<VarRange* >   VAR_RANGE_LIST;
@@ -395,8 +394,8 @@ struct VarRangeListPackage
 class LivenessAnalysis
 {
 	unsigned numVarId;         // the var count
-	unsigned numSplitVar;      // the count of sub declares
-	unsigned splitStartID;      // the var ID of first sub declare
+	unsigned numSplitVar;      // the split var count
+	unsigned numSplitStartID;      // the split var count
     unsigned numUnassignedVarId;         // the unassigned var count
     unsigned numAddrId;     // the addr count
 	unsigned numBBId;          // the block count
@@ -447,10 +446,6 @@ class LivenessAnalysis
         G4_BB* entryBB, unsigned scopeID);
     void footprintDst(G4_BB* bb, G4_INST* i, G4_Operand* opnd, BitSet* dstfootprint, bool isLocal);
     void footprintSrc(G4_INST* i, G4_Operand *opnd, BitSet* srcfootprint);
-    void updateGenKillForAllSubDcls(G4_Declare *dcl, BitSet& use_kill, BitSet& use_gen, bool genOnly);
-    void updateGenKillForSubDcls(G4_Declare *dcl, G4_Operand* opnd, BitSet& use_kill, BitSet& use_gen, bool genOnly);
-    void updateDefOutForAllSubDcls(G4_Declare *dcl, BitSet& def_out);
-    void updateDefOutForSubDcls(G4_Declare *dcl, G4_Operand* opnd, BitSet& def_out);
     void detectNeverDefinedVarRows();
 
 public:
@@ -488,7 +483,7 @@ public:
 	}
 	unsigned getNumSelectedVar() const {return numVarId;}
     unsigned getNumSplitVar() const {return numSplitVar;}
-    unsigned getSplitStartID() const {return splitStartID;}
+    unsigned getNumSplitStartID() const {return numSplitStartID;}
     unsigned getNumUnassignedVar() const {return numUnassignedVarId;}
 	void dump() const;
 
