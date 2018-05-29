@@ -1031,9 +1031,3 @@ set_property(TARGET "${IGC_BUILD__PROJ__BiFModule_OCL}" PROPERTY PROJECT_LABEL "
 # ======================================================================================================
 # ======================================================================================================
 # ======================================================================================================
-
-if(LLVM_ON_UNIX)
-  add_subdirectory(linux)
-  #NOTE: Transfer names of projects to parent scope.
-  set(IGC_BUILD__PROJ__BiFLib_OCL "${IGC_BUILD__PROJ__BiFLib_OCL}" PARENT_SCOPE)
-endif()
