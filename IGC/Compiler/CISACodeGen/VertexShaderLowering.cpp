@@ -432,14 +432,21 @@ unsigned int VertexShaderLowering::GetURBOffset(ShaderOutputType type, Value* at
 
 void VertexShaderLowering::CalculateVertexHeaderSize(Function& F)
 {
-    if (m_context->m_DriverInfo.HasFixedURBHeaderSize())
+    if (m_context->getModuleMetaData()->hasVertexHeader)
     {
-        m_headerSize = QuadEltUnit(4);
-        m_vsPropsPass->DeclareClipDistance();
+        if (m_context->m_DriverInfo.HasFixedURBHeaderSize())
+        {
+            m_headerSize = QuadEltUnit(4);
+            m_vsPropsPass->DeclareClipDistance();
+        }
+        else
+        {
+            m_headerSize = QuadEltUnit(2);
+        }
     }
     else
     {
-        m_headerSize = QuadEltUnit(2); 
+        m_headerSize = QuadEltUnit(0);
     }
 
     for (auto I = F.begin(), E = F.end(); I != E; ++I)

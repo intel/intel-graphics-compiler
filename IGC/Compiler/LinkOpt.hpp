@@ -151,6 +151,7 @@ public:
         VecOfIntrinVec outInsts;
         VecOfIntrinVec pcOut;   // patch const outputs
         VecOfIntrinVec pcIn;    // patch const inputs
+        VecOfIntrinVec inNonDefaultInsts;
 
         // track the output attrs used as own input (via HSOutputCntrlPtInputVec)
         std::map<unsigned, std::vector<llvm::GenIntrinsicInst*> > outIn;
@@ -165,6 +166,7 @@ public:
             std::list<llvm::GenIntrinsicInst*> > > inInsts;
         VecOfIntrinVec outInsts;
         VecOfIntrinVec pcIn;
+        VecOfIntrinVec outNonDefaultInsts;
     } ds;
 
     // gs inputs & outputs
@@ -174,6 +176,7 @@ public:
     struct {
         VecOfIntrinVec inInsts;
         VecOfIntrinVec outInsts;
+        VecOfIntrinVec inNonDefaultInsts;
     } gs;
 
     // ps inputs
@@ -269,6 +272,20 @@ public:
         ivecAppend(ds.outInsts, inst, index);
     }
 
+    inline void addDSOutputNonDefault(
+        llvm::GenIntrinsicInst* inst,
+        unsigned index)
+    {
+        ivecAppend(ds.outNonDefaultInsts, inst, index);
+    }
+
+    inline void addGSInputNonDefault(
+        llvm::GenIntrinsicInst* inst,
+        unsigned index)
+    {
+        ivecAppend(gs.inNonDefaultInsts, inst, index);
+    }
+
     inline void addGSInput(
         llvm::GenIntrinsicInst* inst,
         unsigned elemIdx)
@@ -328,6 +345,7 @@ public:
     static const int DSCTRLPTINPUT_CPID_ARG = 0;
     static const int DSCTRLPTINPUT_ATTR_ARG = 1;
     static const int DSPATCHCONSTINPUT_ATTR_ARG = 0;
+	static const int GSSVINPUT_USAGE_ARG = 1;
 
     ShaderIOAnalysis(
         IGC::LinkOptContext* ctx,
@@ -377,7 +395,8 @@ protected:
         llvm::GenIntrinsicInst* inst);
     void addHSPatchConstInputDecl(
         llvm::GenIntrinsicInst* inst);
-
+    void addGSSVInputDecl(
+        llvm::GenIntrinsicInst* inst);
     void addGSInputDecl(
         llvm::GenIntrinsicInst* inst);
 

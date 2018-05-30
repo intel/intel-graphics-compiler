@@ -1311,7 +1311,7 @@ namespace IGC
     void UnifyIROGL(CodeGenContext* ctx);
     void ConstantFolder(char* bitcode, uint bitcodeSize, void* CBptr[15], uint* pNewCB);
 
-    void LinkOptIR(CodeGenContext* ctxs[]);
+    void LinkOptIR(CodeGenContext* ctxs[], bool usesStreamOutput);
 
     inline llvm::LLVMContext* toLLVMContext(CodeGenContext* p) {
         return p->getLLVMContext();

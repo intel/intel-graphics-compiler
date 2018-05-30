@@ -53,7 +53,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <sstream>
 #include <atomic>
-
+#include <map>
 #include <stdarg.h>
 
 using namespace llvm;
@@ -249,6 +249,26 @@ void ShaderIOAnalysis::addOutputDecl(GenIntrinsicInst* inst)
             assert(false && "Unknow shader type for OUTPUT intrinsic");
         }
     }
+    else if (otype == SHADER_OUTPUT_TYPE_POSITION ||
+        otype == SHADER_OUTPUT_TYPE_CLIPDISTANCE_LO ||
+        otype == SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI ||
+        otype == SHADER_OUTPUT_TYPE_VIEWPORT_ARRAY_INDEX ||
+        otype == SHADER_OUTPUT_TYPE_RENDER_TARGET_ARRAY_INDEX ||
+		otype == SHADER_OUTPUT_TYPE_POINTWIDTH)
+    {
+        switch (m_shaderType)
+        {
+        case ShaderType::VERTEX_SHADER:
+            getContext()->addVSOutputNonDefault(inst, otype);
+            break;
+
+        case ShaderType::DOMAIN_SHADER:
+            getContext()->addDSOutputNonDefault(inst, otype);
+            break;
+        default:
+            break;
+        }
+    }
 }
 
 void ShaderIOAnalysis::addVSInputDecl(GenIntrinsicInst* inst)
@@ -265,6 +285,13 @@ void ShaderIOAnalysis::addHSInputDecl(GenIntrinsicInst* inst)
 
     uint elemIdx = getImmValueU32(inst->getOperand(HSGSINPUT_ATTR_ARG));
     getContext()->addHSInput(inst, elemIdx);
+}
+
+void ShaderIOAnalysis::addGSSVInputDecl(GenIntrinsicInst* inst)
+{
+    assert(m_shaderType == ShaderType::GEOMETRY_SHADER);
+    uint usage = getImmValueU32(inst->getOperand(GSSVINPUT_USAGE_ARG));
+    getContext()->addGSInputNonDefault(inst, usage);
 }
 
 void ShaderIOAnalysis::addGSInputDecl(GenIntrinsicInst* inst)
@@ -364,6 +391,10 @@ void ShaderIOAnalysis::onGenIntrinsic(GenIntrinsicInst* inst)
             addDSPatchConstInputDecl(inst);
         break;
 
+    case GenISAIntrinsic::GenISA_DCL_GSsystemValue:
+        if (doInput())
+            addGSSVInputDecl(inst);
+        break;
 
     case GenISAIntrinsic::GenISA_DCL_GSinputVec:
         if (doInput())
@@ -786,8 +817,11 @@ static bool linkOptVsDsGsToPs(
         }
     }
 
-    // compact PS input attrs (moving towards index 0)
-    compactPsInputs(psCtx, psIdxMap, outShaderType, psIn, outVals);
+    if (psCtx)
+    {
+        // compact PS input attrs (moving towards index 0)
+        compactPsInputs(psCtx, psIdxMap, outShaderType, psIn, outVals);
+    }
 
     // whether we have output values removed, so that we can do DCR again
     // to remove operations producing them
@@ -947,14 +981,34 @@ static bool linkOptHsToDs(LinkOptContext* linkCtx)
     return hsOutRemoved;
 }
 
+const static std::multimap<unsigned int, unsigned int> outputTypeToUsage =
+{
+    { SHADER_OUTPUT_TYPE_POSITION, POSITION_X },
+    { SHADER_OUTPUT_TYPE_POSITION, POSITION_Y },
+    { SHADER_OUTPUT_TYPE_POSITION, POSITION_Z },
+    { SHADER_OUTPUT_TYPE_POSITION, POSITION_W },
+    { SHADER_OUTPUT_TYPE_CLIPDISTANCE_LO, CLIP_DISTANCE_X },
+    { SHADER_OUTPUT_TYPE_CLIPDISTANCE_LO, CLIP_DISTANCE_Y },
+    { SHADER_OUTPUT_TYPE_CLIPDISTANCE_LO, CLIP_DISTANCE_Z },
+    { SHADER_OUTPUT_TYPE_CLIPDISTANCE_LO, CLIP_DISTANCE_W },
+    { SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI, CLIP_DISTANCE_X },
+    { SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI, CLIP_DISTANCE_Y },
+    { SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI, CLIP_DISTANCE_Z },
+    { SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI, CLIP_DISTANCE_W },
+    { SHADER_OUTPUT_TYPE_RENDER_TARGET_ARRAY_INDEX, RENDER_TARGET_ARRAY_INDEX },
+    { SHADER_OUTPUT_TYPE_POINTWIDTH, POINT_WIDTH }
+};
+
 // link opt between VecOfIntrinVec outputs & VecOfIntrinVec inputs
 // VS -> HS or GS
 // DS -> GS
 static void linkOptVovToVov(LinkOptContext* linkCtx,
     CodeGenContext* outCtx,
     VecOfIntrinVec& outInsts,
+    VecOfIntrinVec& outNonDefaultInsts,
     CodeGenContext* inCtx,
-    VecOfIntrinVec& inInsts)
+    VecOfIntrinVec& inInsts,
+    VecOfIntrinVec& inNonDefaultInsts)
 {
     unsigned nDead = 0;
     for (unsigned i = 0; i < inInsts.size(); i++)
@@ -993,6 +1047,32 @@ static void linkOptVovToVov(LinkOptContext* linkCtx,
             assert(outInsts[i].size() == 1);
             outInsts[i][0]->eraseFromParent();
         }
+    }
+    unsigned outputClipCullDistances = (SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI < outNonDefaultInsts.size() ? 1 : 0) +
+        (SHADER_OUTPUT_TYPE_CLIPDISTANCE_LO < outNonDefaultInsts.size() ? 1 : 0);
+    for (unsigned i = 0; i < outNonDefaultInsts.size(); i++)
+    {
+        if (!outNonDefaultInsts[i].empty())
+        {
+            auto inputUsages = outputTypeToUsage.equal_range(ShaderOutputType(i));
+            if (all_of(inputUsages.first, inputUsages.second,
+                [&inNonDefaultInsts](const std::pair<const unsigned int, unsigned int>& iter)
+                    { return iter.second >= inNonDefaultInsts.size() || inNonDefaultInsts[iter.second].empty(); }))
+            {
+                assert(outNonDefaultInsts[i].size() == 1);
+                outNonDefaultInsts[i][0]->eraseFromParent();
+                if (ShaderOutputType(i) == SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI ||
+                    ShaderOutputType(i) == SHADER_OUTPUT_TYPE_CLIPDISTANCE_LO)
+                {
+                    outputClipCullDistances--;
+                }
+            }
+        }
+    }
+    GlobalVariable* shaderInputClipCullDistances = inCtx->getModule()->getGlobalVariable("ShaderHasClipCullInput");
+    if (outputClipCullDistances == 0 && shaderInputClipCullDistances)
+    {
+        shaderInputClipCullDistances->eraseFromParent();
     }
 }
 
@@ -1072,13 +1152,20 @@ static ShaderType ltoToPS(LinkOptContext* ltoCtx)
     runPasses(prePsCtx,
         new ShaderIOAnalysis(ltoCtx, prevType, s_doOut),
         nullptr);
-    runPasses(psCtx,
-        new ShaderIOAnalysis(ltoCtx, s_psType, s_doIn),
-        nullptr);
+    if (psCtx)
+    {
+        runPasses(psCtx,
+            new ShaderIOAnalysis(ltoCtx, s_psType, s_doIn),
+            nullptr);
+    }
 
     if (!ltoCtx->m_abortLTO)
     {
-        LTODumpLLVMIR(psCtx, "beLTOI"); LTODumpLLVMIR(prePsCtx, "beLTOO");
+        if (psCtx)
+        {
+            LTODumpLLVMIR(psCtx, "beLTOI");
+        }
+        LTODumpLLVMIR(prePsCtx, "beLTOO");
         if (linkOptVsDsGsToPs(ltoCtx, prevType, prePsCtx, *prePsOuts))
         {
             // Outputs were removed from preStage, so DCR make sense in such case.
@@ -1086,7 +1173,11 @@ static ShaderType ltoToPS(LinkOptContext* ltoCtx)
                 createDeadCodeEliminationPass(),
                 nullptr);
         }
-        LTODumpLLVMIR(psCtx, "afLTOI"); LTODumpLLVMIR(prePsCtx, "afLTOO");
+        if (psCtx)
+        {
+            LTODumpLLVMIR(psCtx, "afLTOI");
+        }
+        LTODumpLLVMIR(prePsCtx, "afLTOO");
     }
 
     return prevType;
@@ -1099,6 +1190,7 @@ static ShaderType ltoToGs(LinkOptContext* ltoCtx)
     CodeGenContext* vsCtx = ltoCtx->getVS();
     CodeGenContext* preGsCtx;
     VecOfIntrinVec* preGsOuts;
+    VecOfIntrinVec* preGsNonDefaultOuts;
     ShaderType prevType;
 
     if (dsCtx != nullptr)
@@ -1107,6 +1199,7 @@ static ShaderType ltoToGs(LinkOptContext* ltoCtx)
         prevType = s_dsType;
         preGsCtx = dsCtx;
         preGsOuts = &ltoCtx->ds.outInsts;
+        preGsNonDefaultOuts = &ltoCtx->ds.outNonDefaultInsts;
     }
     else
     {
@@ -1114,6 +1207,7 @@ static ShaderType ltoToGs(LinkOptContext* ltoCtx)
         prevType = s_vsType;
         preGsCtx = vsCtx;
         preGsOuts = &ltoCtx->vs.outInsts;
+        preGsNonDefaultOuts = &ltoCtx->vs.outNonDefaultInsts;
     }
 
     ltoCtx->m_abortLTO = false;
@@ -1129,8 +1223,8 @@ static ShaderType ltoToGs(LinkOptContext* ltoCtx)
     {
         LTODumpLLVMIR(gsCtx, "beLTOI");    LTODumpLLVMIR(preGsCtx, "beLTOO");
         linkOptVovToVov(ltoCtx,
-            preGsCtx, *preGsOuts,
-            gsCtx, ltoCtx->gs.inInsts);
+            preGsCtx, *preGsOuts, *preGsNonDefaultOuts,
+            gsCtx, ltoCtx->gs.inInsts, ltoCtx->gs.inNonDefaultInsts);
         LTODumpLLVMIR(gsCtx, "afLTOI");   LTODumpLLVMIR(preGsCtx, "afLTOO");
     }
 
@@ -1188,15 +1282,15 @@ static ShaderType ltoToHs(LinkOptContext* ltoCtx)
     {
         LTODumpLLVMIR(hsCtx, "beLTOI");    LTODumpLLVMIR(vsCtx, "beLTOO");
         linkOptVovToVov(ltoCtx,
-            vsCtx, ltoCtx->vs.outInsts,
-            hsCtx, ltoCtx->hs.inInsts);
+            vsCtx, ltoCtx->vs.outInsts, ltoCtx->vs.outNonDefaultInsts,
+            hsCtx, ltoCtx->hs.inInsts, ltoCtx->hs.inNonDefaultInsts);
         LTODumpLLVMIR(hsCtx, "afLTOI");   LTODumpLLVMIR(vsCtx, "afLTOO");
     }
 
     return prevType;
 }
 
-void LinkOptIR(CodeGenContext* ctxs[])
+void LinkOptIR(CodeGenContext* ctxs[], bool usesStreamOutput)
 {
     if (!IGC_IS_FLAG_ENABLED(EnableLTO))
     {
@@ -1228,7 +1322,25 @@ void LinkOptIR(CodeGenContext* ctxs[])
 
     ShaderType prevType;
 
-    prevType = ltoToPS(ltoCtx);
+    if (usesStreamOutput)
+    {
+        if (gsCtx != nullptr)
+        {
+            prevType = s_gsType;
+        }
+        else if (dsCtx != nullptr)
+        {
+            prevType = s_dsType;
+        }
+        else
+        {
+            prevType = s_vsType;
+        }
+    }
+    else
+    {
+        prevType = ltoToPS(ltoCtx);
+    }
 
     while (prevType != ShaderType::VERTEX_SHADER)
     {

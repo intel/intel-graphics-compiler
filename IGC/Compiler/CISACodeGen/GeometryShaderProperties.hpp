@@ -55,6 +55,8 @@ namespace IGC
             /// Sets the bitmask corresponding to which cull distances are in use.
             /// Least significant bit means cull distance #0 is in use, etc.
             void CullDistanceMask(unsigned int cullDistanceMask);
+            // Sets whether or not a vertex header entry is expected to be in the URB.
+            void HasVertexHeader(bool hasVertexHeader);
 
             // ---- getters
             /// Returns true if the shader declares output registers with clip distance semantics.
@@ -79,6 +81,7 @@ namespace IGC
         private:
             bool m_hasClipDistances;
             bool m_hasCullDistances;
+            bool m_hasVertexHeader;
             int m_maxAttributeCount;
             unsigned int m_clipDistanceMask;
             unsigned int m_cullDistanceMask;
