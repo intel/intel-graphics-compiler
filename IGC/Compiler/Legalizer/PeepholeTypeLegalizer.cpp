@@ -116,7 +116,6 @@ void PeepholeTypeLegalizer::visitInstruction(Instruction &I) {
         !dyn_cast<ExtractElementInst>(&I))
         return; // Legalization for int types only or for extractelements
 
-    IRBuilder<>::InsertPointGuard Guard(*m_builder);
     m_builder->SetInsertPoint(&I);
 
     //Depending on the phase of legalization pass, call appropriate function 
@@ -158,8 +157,6 @@ void PeepholeTypeLegalizer::legalizePhiInstruction(Instruction &I)
 	PHINode* oldPhi = dyn_cast<PHINode>(&I);
 	Value* result;
 
-	// Make sure m_builder's insert point is unchanged once this func returns
-	IRBuilder<>::InsertPointGuard Guard(*m_builder);
 	if (quotient > 1)
 	{
 		unsigned numElements = I.getType()->isVectorTy() ? I.getType()->getVectorNumElements() : 1;
@@ -260,7 +257,6 @@ void PeepholeTypeLegalizer::legalizeExtractElement(Instruction &I)
             auto bitwidth = Index->getType()->getIntegerBitWidth();
             if (!isLegalInteger(bitwidth) || bitwidth == 64)
             {
-                IRBuilder<>::InsertPointGuard Guard(*m_builder);
                 m_builder->SetInsertPoint(&I);
 
                 Value* operand1 = NULL;
@@ -483,9 +479,6 @@ void PeepholeTypeLegalizer::legalizeUnaryInstruction(Instruction &I) {
             if (!I.getType()->isVectorTy() && I.getType()->isPointerTy()) {
                 if (isLegalInteger(DL->getPointerTypeSizeInBits(I.getType())) || DL->getPointerTypeSizeInBits(I.getType()) == 1)
                     return;
-
-                /*IRBuilder<>::InsertPointGuard Guard(*m_builder);
-                m_builder->SetInsertPoint(&I);*/
 
                 unsigned quotient, promoteToInt, Src1width = DL->getPointerTypeSizeInBits(I.getType());
                 promoteInt(Src1width, quotient, promoteToInt, 8);// byte level addressing
