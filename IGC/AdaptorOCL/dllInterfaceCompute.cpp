@@ -717,22 +717,39 @@ bool TranslateBuild(
 			// used in M0.
 
 			// Load the builtin module -  Generic BC
+			// Load the builtin module -  Generic BC
 			{
 				char Resource[5] = { '-' };
 				_snprintf(Resource, sizeof(Resource), "#%d", OCL_BC);
 
 				pGenericBuffer.reset(llvm::LoadBufferFromResource(Resource, "BC"));
-				assert(pGenericBuffer && "Error loading the Generic builtin resource");
 
-				llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-					getLazyBitcodeModule(pGenericBuffer->getMemBufferRef(), toLLVMContext(oclContext));
-				if (llvm::Error EC = ModuleOrErr.takeError())
-					assert(0 && "Error lazily loading bitcode for generic builtins");
-				else
-					BuiltinGenericModule = std::move(*ModuleOrErr);
+                if (pGenericBuffer == NULL) 
+                {
+                    SetErrorMessage("Error loading the Generic builtin resource", *pOutputArgs);
+                    return false;
+                }
 
-				assert(BuiltinGenericModule &&
-					"Error loading the Generic builtin module from buffer");
+                llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
+                    getLazyBitcodeModule(pGenericBuffer->getMemBufferRef(), toLLVMContext(oclContext));
+                
+                if (llvm::Error EC = ModuleOrErr.takeError()) 
+                {
+                    std::string error_str = "Error lazily loading bitcode for generic builtins,"
+                                            "is bitcode the right version and correctly formed?";
+                    SetErrorMessage(error_str, *pOutputArgs);
+                    return false;
+                }
+                else
+                {
+                    BuiltinGenericModule = std::move(*ModuleOrErr);
+                }
+
+                if (BuiltinGenericModule == NULL)
+                {
+                    SetErrorMessage("Error loading the Generic builtin module from buffer", *pOutputArgs);
+                    return false;
+                }
 			}
 
 			// Load the builtin module -  pointer depended
