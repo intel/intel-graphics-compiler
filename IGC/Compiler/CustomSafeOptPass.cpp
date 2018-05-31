@@ -1314,78 +1314,77 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst)
     if (inst)
     {
         llvm::Type * type = inst->getType();
-        if (GenIntrinsicInst *genIntr = dyn_cast<GenIntrinsicInst>(inst))
-        {
-            // used for GenISA_sqrt and GenISA_rsq
-            ConstantFP *C0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+        // used for GenISA_sqrt and GenISA_rsq
+        ConstantFP *C0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+        EOPCODE igcop = GetOpCode(inst);
 
-            // special case of gen-intrinsic
-            switch (genIntr->getIntrinsicID())
+        // special case of gen-intrinsic
+        switch (igcop)
+        {
+        case llvm_sqrt:
+            if (C0)
             {
-            case GenISAIntrinsic::GenISA_sqrt:
-                if (C0)
+                auto APF = C0->getValueAPF();
+                double C0value = type->isFloatTy() ? APF.convertToFloat() :
+                    APF.convertToDouble();
+                if (C0value > 0.0)
                 {
-                    auto APF = C0->getValueAPF();
-                    double C0value = type->isFloatTy() ? APF.convertToFloat() :
-                        APF.convertToDouble();
-                    if (C0value > 0.0)
-                    {
-                        C = ConstantFP::get(type, sqrt(C0value));
-                    }
-                }
-                break;
-            case GenISAIntrinsic::GenISA_rsq:
-                if (C0)
-                {
-                    auto APF = C0->getValueAPF();
-                    double C0value = type->isFloatTy() ? APF.convertToFloat() :
-                        APF.convertToDouble();
-                    if (C0value > 0.0)
-                    {
-                        C = ConstantFP::get(type, 1. / sqrt(C0value));
-                    }
-                }
-                break;
-            case GenISAIntrinsic::GenISA_max:
-                {
-                    ConstantFP *CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
-                    ConstantFP *CFP1 = dyn_cast<ConstantFP>(inst->getOperand(1));
-                    if (CFP0 && CFP1)
-                    {
-                        const APFloat &A = CFP0->getValueAPF();
-                        const APFloat &B = CFP1->getValueAPF();
-                        C = ConstantFP::get(inst->getContext(), maxnum(A, B));
-                    }
-                }
-                break;
-            case GenISAIntrinsic::GenISA_min:
-                {
-                    ConstantFP *CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
-                    ConstantFP *CFP1 = dyn_cast<ConstantFP>(inst->getOperand(1));
-                    if (CFP0 && CFP1)
-                    {
-                        const APFloat &A = CFP0->getValueAPF();
-                        const APFloat &B = CFP1->getValueAPF();
-                        C = ConstantFP::get(inst->getContext(), minnum(A, B));
-                    }
-                }
-                break;
-            case GenISAIntrinsic::GenISA_fsat:
-            {
-                ConstantFP *CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
-                if(CFP0)
-                {
-                    const APFloat &A = CFP0->getValueAPF();
-                    const APFloat &zero = cast<ConstantFP>(ConstantFP::get(type, 0.))->getValueAPF();
-                    const APFloat &One = cast<ConstantFP>(ConstantFP::get(type, 1. ))->getValueAPF();
-                    C = ConstantFP::get(inst->getContext(), minnum(One, maxnum(zero, A)));
+                    C = ConstantFP::get(type, sqrt(C0value));
                 }
             }
-            default:
-                break;
+            break;
+        case llvm_rsq:
+            if (C0)
+            {
+                auto APF = C0->getValueAPF();
+                double C0value = type->isFloatTy() ? APF.convertToFloat() :
+                    APF.convertToDouble();
+                if (C0value > 0.0)
+                {
+                    C = ConstantFP::get(type, 1. / sqrt(C0value));
+                }
+            }
+            break;
+        case llvm_max:
+        {
+            ConstantFP *CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+            ConstantFP *CFP1 = dyn_cast<ConstantFP>(inst->getOperand(1));
+            if (CFP0 && CFP1)
+            {
+                const APFloat &A = CFP0->getValueAPF();
+                const APFloat &B = CFP1->getValueAPF();
+                C = ConstantFP::get(inst->getContext(), maxnum(A, B));
             }
         }
-        else if (m_enableMathConstProp && type->isFloatTy())
+        break;
+        case llvm_min:
+        {
+            ConstantFP *CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+            ConstantFP *CFP1 = dyn_cast<ConstantFP>(inst->getOperand(1));
+            if (CFP0 && CFP1)
+            {
+                const APFloat &A = CFP0->getValueAPF();
+                const APFloat &B = CFP1->getValueAPF();
+                C = ConstantFP::get(inst->getContext(), minnum(A, B));
+            }
+        }
+        break;
+        case llvm_fsat:
+        {
+            ConstantFP *CFP0 = dyn_cast<ConstantFP>(inst->getOperand(0));
+            if (CFP0)
+            {
+                const APFloat &A = CFP0->getValueAPF();
+                const APFloat &zero = cast<ConstantFP>(ConstantFP::get(type, 0.))->getValueAPF();
+                const APFloat &One = cast<ConstantFP>(ConstantFP::get(type, 1.))->getValueAPF();
+                C = ConstantFP::get(inst->getContext(), minnum(One, maxnum(zero, A)));
+            }
+        }
+        default:
+            break;
+        }
+
+        if (m_enableMathConstProp && type->isFloatTy())
         {
             float C0value = 0;
             float C1value = 0;
@@ -1395,7 +1394,7 @@ Constant *IGCConstProp::ConstantFoldCallInstruction(CallInst *inst)
             {
                 C0value = C0->getValueAPF().convertToFloat();
 
-                switch (GetOpCode(cast<CallInst>(inst)))
+                switch (igcop)
                 {
                 case llvm_cos:
                     C = ConstantFP::get(type, cosf(C0value));

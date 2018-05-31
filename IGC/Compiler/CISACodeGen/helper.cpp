@@ -623,14 +623,14 @@ void getTextureAndSamplerOperands(llvm::GenIntrinsicInst *pIntr, llvm::Value*& p
     }
 }
 
-EOPCODE GetOpCode(llvm::Instruction* inst)
+EOPCODE GetOpCode(const llvm::Instruction* inst)
 {
-    if(GenIntrinsicInst *CI = dyn_cast<GenIntrinsicInst>( inst ))
+    if(const GenIntrinsicInst *CI = dyn_cast<GenIntrinsicInst>( inst ))
     {
         unsigned ID = CI->getIntrinsicID();
         return (EOPCODE)(OPCODE(ID,e_Intrinsic));
     }
-    else if(llvm::IntrinsicInst *CI = llvm::dyn_cast<llvm::IntrinsicInst>( inst ))
+    else if(const IntrinsicInst *CI = llvm::dyn_cast<llvm::IntrinsicInst>( inst ))
     {
         unsigned ID = CI->getIntrinsicID();
         return (EOPCODE)(OPCODE(ID,e_Intrinsic));
