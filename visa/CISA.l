@@ -329,6 +329,12 @@ fence_local {
 			   return FENCE_LOCAL_OP;
 }
 
+fence_sw {
+			   TRACE("\n** fence SW INST ");
+			   CISAlval.opcode = str2opcode("fence");
+			   return FENCE_SW_OP;
+}
+
 yield {
                TRACE("\n** yield INST ");
                CISAlval.opcode = str2opcode(yytext);

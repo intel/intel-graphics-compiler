@@ -817,17 +817,26 @@ static string printInstructionCommon(const common_isa_header& isaHeader, const k
         {
             uint8_t mask = getPrimitiveOperand<uint8_t>(inst, i);
 
-#define BTI_MASK 0x20 // bit 5
-            sstr << ((mask & BTI_MASK) ? "_local" : "_global");
-            if (mask != 0)
+            const int SWFenceMask = 0x80;
+            if (mask & SWFenceMask)
             {
-                sstr << ".";
-                if (mask & 1) sstr << "E";
-                if (mask & (1 << 1)) sstr << "I";
-                if (mask & (1 << 2)) sstr << "S";
-                if (mask & (1 << 3)) sstr << "C";
-                if (mask & (1 << 4)) sstr << "R";
-                if (mask & (1 << 6)) sstr << "L1";
+                sstr << "_sw";
+            }
+            else
+            {
+
+#define BTI_MASK 0x20 // bit 5
+                sstr << ((mask & BTI_MASK) ? "_local" : "_global");
+                if (mask != 0)
+                {
+                    sstr << ".";
+                    if (mask & 1) sstr << "E";
+                    if (mask & (1 << 1)) sstr << "I";
+                    if (mask & (1 << 2)) sstr << "S";
+                    if (mask & (1 << 3)) sstr << "C";
+                    if (mask & (1 << 4)) sstr << "R";
+                    if (mask & (1 << 6)) sstr << "L1";
+                }
             }
         }
         else if (opcode == ISA_WAIT)

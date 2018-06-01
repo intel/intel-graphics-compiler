@@ -404,6 +404,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <opcode> WAIT_OP
 %token <opcode> FENCE_GLOBAL_OP
 %token <opcode> FENCE_LOCAL_OP
+%token <opcode> FENCE_SW_OP
 %token <opcode> YIELD_OP
 %token <sample3DOp> SAMPLE_3D_OP
 %token <sample3DOp> LOAD_3D_OP
@@ -1391,6 +1392,10 @@ NO_OPND_INST: CACHE_FLUSH_OP
 			  {
 				    pCisaBuilder->CISA_create_fence_instruction($1, $2 | 0x20);
 			  }
+              | FENCE_SW_OP
+              {
+                    pCisaBuilder->CISA_create_fence_instruction($1, 0x80);
+              }
 
 
 
