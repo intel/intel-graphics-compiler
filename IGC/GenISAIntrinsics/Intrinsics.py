@@ -162,14 +162,21 @@ def sortedIntrinsicsOnLenth():
 
     f = open(outputFile,"a")
     f.write("// Sorted by length table\n"
-            "#ifdef GET_FUNCTION_RECOGNIZER\n"
-            "static const std::vector<std::pair<unsigned,std::pair<std::string,GenISAIntrinsic::ID>>> LengthTable = {\n")
+            "#ifdef GET_FUNCTION_RECOGNIZER\n\n"
+            "struct IntrinsicEntry\n"
+            "{\n"
+            "   unsigned num;\n"
+            "   GenISAIntrinsic::ID id;\n"
+            "   const char* str;\n};\n\n"
+            "static const std::array<IntrinsicEntry,"+str(len(final_array))+"> LengthTable = {{\n")
     for i in range(len(final_array)):
         #Go through and write each element
-        f.write("{ "+str(final_array[i][0])+",{\""+str(final_array[i][1][0])+"\","+ str(final_array[i][1][1])+"}}, ")
+        f.write("{ "+str(final_array[i][0])+", "+str(final_array[i][1][1])+", \""+str(final_array[i][1][0])+"\"}")
+        if i != len(final_array) - 1:
+            f.write(", ")
         if i%2 == 0:
             f.write("\n")
-    f.write("};\n\n")
+    f.write("}};\n\n")
 
     #Now to write the algorithm to search
     f.write("std::string input_name(Name);\n"
@@ -193,16 +200,16 @@ def sortedIntrinsicsOnLenth():
             "            break;\n"
             "        }\n"
             "        counter++;\n"
-            "        letter = LengthTable[cur_pos].second.first[i];\n"
+            "        letter = LengthTable[cur_pos].str[i];\n"
             "        if (letter == input_letter)\n"
             "        {\n"
-            "            if (LengthTable[cur_pos].first == i)\n"
-            "                return LengthTable[cur_pos].second.second;\n"
+            "            if (LengthTable[cur_pos].num == i)\n"
+            "                return LengthTable[cur_pos].id;\n"
             "            bump = true;\n"
             "            break;\n"
             "        }\n"
             "        else if (input_letter == '\\0' && letter == '@')\n"
-            "            return LengthTable[cur_pos].second.second;\n"
+            "            return LengthTable[cur_pos].id;\n"
             "        else if (input_letter == '.' && letter == '_')\n"
             "            break;\n"
             "        else if (input_letter == '.' && letter == '@')\n"
@@ -210,9 +217,9 @@ def sortedIntrinsicsOnLenth():
             "            unsigned original_cur_pos = cur_pos;\n"
             "            while (1)\n"
             "            {\n"
-            "                if (cur_pos >= initial_size || LengthTable[cur_pos].first < i)\n"
-            "                    return LengthTable[original_cur_pos].second.second;\n"
-            "                if (LengthTable[cur_pos].second.first[i] == '_')\n"
+            "                if (cur_pos >= initial_size || LengthTable[cur_pos].num < i)\n"
+            "                    return LengthTable[original_cur_pos].id;\n"
+            "                if (LengthTable[cur_pos].str[i] == '_')\n"
             "                    break;\n"
             "                cur_pos += 1;\n"
             "            }\n"
