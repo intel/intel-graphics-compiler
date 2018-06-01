@@ -238,6 +238,8 @@ bool CodeSinking::runOnFunction(Function &F)
     LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
     DL = &F.getParent()->getDataLayout();
 
+    bool changed = hoistCongruentPhi(F);
+
     bool madeChange, everMadeChange = false;
     totalGradientMoved = 0;
     // diagnosis code: numChanges = 0;
@@ -269,7 +271,7 @@ bool CodeSinking::runOnFunction(Function &F)
     //F.viewCFG();
     // } end of diagnosis if 
     // diagnosis code: sinkCounter++;
-    return everMadeChange;
+    return everMadeChange || changed;
 }
 
 static uint EstimateLiveOutPressure(BasicBlock *blk, const DataLayout *DL)
@@ -698,6 +700,346 @@ bool CodeSinking::LocalSink(BasicBlock *blk)
         }
     }
     return madeChange;
+}
+
+///////////////////////////////////////////////////////////////////////////
+bool CodeSinking::checkCongruent(const InstPair& values,
+    InstVec& src0Chain, InstVec& src1Chain, InstVec& leaves, unsigned depth)
+{
+    Instruction* src0 = values.first;
+    Instruction* src1 = values.second;
+
+    if (depth > 32 ||
+        src0->getOpcode() != src1->getOpcode() ||
+        src0->getNumOperands() != src1->getNumOperands() ||
+        src0->getType() != src1->getType() ||
+        isa<PHINode>(src0) ||
+        !(src0->getNumOperands() == 1 ||
+          src0->getNumOperands() == 2))
+        return false;
+
+    if (CallInst* call0 = dyn_cast<CallInst>(src0))
+    {
+        CallInst* call1 = dyn_cast<CallInst>(src1);
+        assert(call1 != nullptr);
+        if (call0->getCalledFunction() != call1->getCalledFunction() ||
+            !call0->getCalledFunction()->doesNotReadMemory() ||
+            call0->isConvergent())
+        {
+            return false;
+        }
+    }
+    else
+    if (LoadInst* ld0 = dyn_cast<LoadInst>(src0))
+    {
+        LoadInst* ld1 = dyn_cast<LoadInst>(src1);
+        assert(ld1 != nullptr);
+        if (ld0->getPointerAddressSpace() != ld1->getPointerAddressSpace())
+        {
+            return false;
+        }
+        unsigned as = ld0->getPointerAddressSpace();
+        unsigned bufId;
+        bool directBuf;
+        BufferType bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufId);
+        if (bufType != CONSTANT_BUFFER)
+        {
+            return false;
+        }
+    }
+
+    bool equals = true;
+    InstVec tSrc0Chain;
+    InstVec tSrc1Chain;
+    InstVec tmpVec;
+
+    unsigned nopnds = src0->getNumOperands();
+
+    if (nopnds == 2 && src0->getOperand(0) == src0->getOperand(1))
+    {
+        if (src1->getOperand(0) == src1->getOperand(1))
+        {
+            nopnds = 1;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    for (unsigned i = 0; i < nopnds; i++)
+    {
+        Value *v0, *v1;
+        Instruction *iv0, *iv1;
+        v0 = src0->getOperand(i);
+        v1 = src1->getOperand(i);
+        iv0 = dyn_cast<Instruction>(v0);
+        iv1 = dyn_cast<Instruction>(v1);
+
+        if (v0 == v1)
+        {
+            if (iv0)
+            {
+                if (DT->dominates(iv0->getParent(), src0->getParent()) &&
+                    DT->dominates(iv0->getParent(), src1->getParent()))
+                {
+                    appendIfNotExist(tmpVec, iv0);
+                    continue;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            if (!(isa<Argument>(v0) || isa<Constant>(v0) || isa<GlobalValue>(v0)))
+            {
+                return false;
+            }
+            continue;
+        }
+        if (iv0 && iv0->getParent() == src0->getParent() &&
+            iv1 && iv1->getParent() == src1->getParent())
+        {
+            appendIfNotExist(tSrc0Chain, iv0);
+            appendIfNotExist(tSrc1Chain, iv1);
+            if (!checkCongruent(std::make_pair(iv0, iv1),
+                    tSrc0Chain, tSrc1Chain, tmpVec, depth+1))
+            {
+                equals = false;
+                break;
+            }
+        }
+        else
+        {
+            equals = false;
+            break;
+        }
+    }
+    if (equals)
+    {
+        appendIfNotExist(leaves, tmpVec);
+        appendIfNotExist(src0Chain, src0);
+        appendIfNotExist(src0Chain, tSrc0Chain);
+        appendIfNotExist(src1Chain, src1);
+        appendIfNotExist(src1Chain, tSrc1Chain);
+        return equals;
+    }
+
+    if (!src0->isCommutative() ||
+        (src0->isCommutative() && src0->getOperand(0) == src0->getOperand(1)))
+        return equals;
+
+    equals = true;
+    tmpVec.clear();
+    tSrc0Chain.clear();
+    tSrc1Chain.clear();
+    for (unsigned i = 0; i < src0->getNumOperands(); i++)
+    {
+        Value *v0, *v1;
+        Instruction *iv0, *iv1;
+        v0 = src0->getOperand(i);
+        v1 = src1->getOperand(1-i);
+        iv0 = dyn_cast<Instruction>(v0);
+        iv1 = dyn_cast<Instruction>(v1);
+
+        if (v0 == v1)
+        {
+            if (iv0)
+            {
+                if (DT->dominates(iv0->getParent(), src0->getParent()) &&
+                    DT->dominates(iv0->getParent(), src1->getParent()))
+                {
+                    appendIfNotExist(tmpVec, iv0);
+                    continue;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            if (!(isa<Argument>(v0) || isa<Constant>(v0) || isa<GlobalValue>(v0)))
+            {
+                return false;
+            }
+            continue;
+        }
+
+        if (iv0 && iv0->getParent() == src0->getParent() &&
+            iv1 && iv1->getParent() == src1->getParent())
+        {
+            appendIfNotExist(tSrc0Chain, iv0);
+            appendIfNotExist(tSrc1Chain, iv1);
+            if (!checkCongruent(std::make_pair(iv0, iv1),
+                    tSrc0Chain, tSrc1Chain, leaves, depth+1))
+            {
+                equals = false;
+                break;
+            }
+        }
+        else
+        {
+            equals = false;
+            break;
+        }
+    }
+    if (equals)
+    {
+        appendIfNotExist(leaves, tmpVec);
+        appendIfNotExist(src0Chain, src0);
+        appendIfNotExist(src0Chain, tSrc0Chain);
+        appendIfNotExist(src1Chain, src1);
+        appendIfNotExist(src1Chain, tSrc1Chain);
+    }
+    return equals;
+}
+
+void CodeSinking::sortInsts(InstVec& iv)
+{
+    bool swapped = true;
+    int j = 0;
+    while (swapped)
+    {
+        swapped = false;
+        j++;
+        for (unsigned i = 0; i < iv.size() - j; i++)
+        {
+            if (isInstPrecede(iv[i], iv[i + 1]))
+            {
+                auto tmp = iv[i];
+                iv[i] = iv[i + 1];
+                iv[i + 1] = tmp;
+                swapped = true;
+            }
+        }
+    }
+}
+
+bool CodeSinking::hoistCongruentPhi(PHINode* phi)
+{
+    if (phi->getNumIncomingValues() != 2)
+        return false;
+
+    bool changed = false;
+    InstVec leaves;
+    InstVec src0Chain;
+    InstVec src1Chain;
+
+    Instruction *src0, *src1;
+    src0 = dyn_cast<Instruction>(phi->getIncomingValue(0));
+    src1 = dyn_cast<Instruction>(phi->getIncomingValue(1));
+    if (src0 && src1 && src0 != src1)
+    {
+        if (checkCongruent(std::make_pair(src0, src1),
+                src0Chain, src1Chain, leaves, 0))
+        {
+            BasicBlock* predBB = nullptr;
+            Instruction* insertPos = nullptr;
+            bool apply = true;
+
+            if (leaves.size() == 0)
+            {
+                if (DT->dominates(src0, phi->getParent()))
+                {
+                    phi->replaceAllUsesWith(src0);
+                    return true;
+                }
+                else
+                if (DT->dominates(src1, phi->getParent()))
+                {
+                    phi->replaceAllUsesWith(src1);
+                    return true;
+                }
+                else
+                {
+                    predBB = DT->findNearestCommonDominator(
+                        src0->getParent(), src1->getParent());
+                    insertPos = predBB->getTerminator()->getPrevNode();
+                }
+            }
+            else
+            {
+                for (auto* I : leaves)
+                {
+                    if (!predBB)
+                    {
+                        predBB = I->getParent();
+                        insertPos = I;
+                    }
+                    else
+                    if (predBB != I->getParent() ||
+                        !DT->dominates(predBB, src0->getParent()) ||
+                        !DT->dominates(predBB, src1->getParent()))
+                    {
+                        apply = false;
+                        break;
+                    }
+                    else
+                    if (!isInstPrecede(I, insertPos))
+                    {
+                        insertPos = I;
+                    }
+                }
+                if (isa<PHINode>(insertPos))
+                {
+                    insertPos = predBB->getFirstNonPHI()->getPrevNode();
+                }
+            }
+
+            if (apply)
+            {
+                assert(src0Chain.size() == src1Chain.size());
+
+                sortInsts(src0Chain);
+                sortInsts(src1Chain);
+                for (unsigned i = src0Chain.size(); i > 0; i--)
+                {
+                    Instruction* I = src0Chain[i - 1];
+                    Instruction* ni = I->clone();
+                    ni->insertAfter(insertPos);
+                    ni->setName(ni->getName() + ".hoist");
+                    insertPos = ni;
+                    I->replaceAllUsesWith(ni);
+                    src1Chain[i - 1]->replaceAllUsesWith(ni);
+
+                    if (i == 1)
+                    {
+                        // replace phi also
+                        phi->replaceAllUsesWith(ni);
+                    }
+                }
+                changed = true;
+            }
+        }
+    }
+    return changed;
+}
+
+bool CodeSinking::hoistCongruentPhi(Function& F)
+{
+    bool changed = false;
+    for (auto& BB : F)
+    {
+        for (auto II = BB.begin(), IE = BB.end(); II != IE; )
+        {
+            PHINode* phi = dyn_cast<PHINode>(II);
+
+            if (!phi)
+                break;
+
+            if (hoistCongruentPhi(phi))
+            {
+                changed = true;
+                II = phi->eraseFromParent();
+            }
+            else
+            {
+                ++II;
+            }
+        }
+    }
+    return changed;
 }
 
 char CodeSinking::ID = 0;
