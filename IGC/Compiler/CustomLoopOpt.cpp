@@ -157,8 +157,8 @@ bool CustomLoopVersioning::runOnFunction(Function& F)
 //   br i1 %cond, label %break_cont, label %after_loop
 //
 // loop_body:
-//   %206 = call float @genx.GenISA.max.f32(float %loop_range_x, float %t)
-//   %207 = call float @genx.GenISA.min.f32(float %loop_range_y, float %nextT)
+//   %206 = call float @llvm.maxnum.f32(float %loop_range_x, float %t)
+//   %207 = call float @llvm.minnum.f32(float %loop_range_y, float %nextT)
 //   ...
 //   %258 = load float, float addrspace(65538)* ...
 //   %res_s588 = fmul float %nextT, %258
@@ -308,8 +308,8 @@ void CustomLoopVersioning::rewriteLoopSeg1(Loop* loop,
     Instruction* i0 = body->getFirstNonPHI();
     Instruction* i1 = GetNextInstruction(i0);
 
-    GenIntrinsicInst* imax = cast<GenIntrinsicInst>(i0);
-    GenIntrinsicInst* imin = cast<GenIntrinsicInst>(i1);
+    IntrinsicInst* imax = cast<IntrinsicInst>(i0);
+    IntrinsicInst* imin = cast<IntrinsicInst>(i1);
     assert(imax && imin);
 
     imax->replaceAllUsesWith(interval_x);
@@ -422,13 +422,13 @@ void CustomLoopVersioning::rewriteLoopSeg2(Loop* loop,
     Instruction* i0 = body->getFirstNonPHI();
     Instruction* i1 = GetNextInstruction(i0);
 
-    GenIntrinsicInst* imax = cast<GenIntrinsicInst>(i0);
-    GenIntrinsicInst* imin = cast<GenIntrinsicInst>(i1);
+    IntrinsicInst* imax = cast<IntrinsicInst>(i0);
+    IntrinsicInst* imin = cast<IntrinsicInst>(i1);
     assert(imax && imin);
 
     // find
-    //   %206 = call float @genx.GenISA.max.f32()
-    //   %207 = call float @genx.GenISA.min.f32()
+    //   %206 = call float @llvm.maxnum.f32()
+    //   %207 = call float @llvm.minnum.f32()
     //   %209 = fdiv float 1.000000e+00, % 206
     //   %210 = fmul float %207, % 209
     Instruction* fmul = nullptr;
@@ -475,8 +475,8 @@ void CustomLoopVersioning::rewriteLoopSeg3(BasicBlock* bb,
     Instruction* i0 = bb->getFirstNonPHI();
     Instruction* i1 = GetNextInstruction(i0);
 
-    GenIntrinsicInst* imax = cast<GenIntrinsicInst>(i0);
-    GenIntrinsicInst* imin = cast<GenIntrinsicInst>(i1);
+    IntrinsicInst* imax = cast<IntrinsicInst>(i0);
+    IntrinsicInst* imin = cast<IntrinsicInst>(i1);
     assert(imax && imin);
 
     imax->replaceAllUsesWith(imax->getArgOperand(1));
