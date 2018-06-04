@@ -2382,70 +2382,71 @@ bool CodeGenPatternMatch::MatchBranch(llvm::BranchInst& I)
         bool isDiscardBranch = false;
         virtual void Emit(EmitPass* pass, const DstModifier& modifier)
         {
-            if (isDiscardBranch)
+            if(isDiscardBranch)
             {
-                pass->emitDiscardBranch(inst, &cond);
+                pass->emitDiscardBranch(inst, cond);
             }
             else
             {
-                pass->emitBranch(inst, &cond, predMode);
+                pass->emitBranch(inst, cond, predMode);
             }
         }
     };
+    CondBrInstPattern* pattern = new (m_allocator) CondBrInstPattern();
+    pattern->inst = &I;
 
-    if (I.isUnconditional())
+    if(!I.isUnconditional())
     {
-        return MatchSingleInstruction(I);
-    }
-    else
-    {
-        CondBrInstPattern* pattern = new (m_allocator) CondBrInstPattern();
-        pattern->inst = &I;
-
         Value* cond = I.getCondition();
         ICmpInst* icmp = dyn_cast<ICmpInst>(cond);
         bool predMatched = false;
 
-        if (GenIntrinsicInst* intrin = dyn_cast<GenIntrinsicInst>(cond,
+        if(GenIntrinsicInst* intrin = dyn_cast<GenIntrinsicInst>(cond,
             GenISAIntrinsic::GenISA_UpdateDiscardMask))
         {
             pattern->isDiscardBranch = true;
         }
-        else
-        if (icmp && cond->hasOneUse())
+        else if(icmp)
         {
             GenIntrinsicInst* intrin = dyn_cast<GenIntrinsicInst>(
                 icmp->getOperand(0), GenISAIntrinsic::GenISA_WaveBallot);
             ConstantInt* constCmp = dyn_cast<ConstantInt>(icmp->getOperand(1));
 
-            if (intrin && constCmp)
+            if(intrin && constCmp)
             {
-                if (icmp->getPredicate() == ICmpInst::ICMP_NE &&
-                    constCmp->getZExtValue() == 0)
+                if(icmp->getPredicate() == ICmpInst::ICMP_NE || icmp->getPredicate() == ICmpInst::ICMP_EQ)
                 {
-                    pattern->predMode = EPRED_ANY;
-                    pattern->cond = GetSource(intrin->getArgOperand(0), false, false);
-                    predMatched = true;
-                }
-                else
-                if (icmp->getPredicate() == ICmpInst::ICMP_EQ &&
-                    constCmp->isMinusOne())
-                {
-                    pattern->predMode = EPRED_ALL;
-                    pattern->cond = GetSource(intrin->getArgOperand(0), false, false);
-                    predMatched = true;
+                    if(constCmp->isZero())
+                    {
+                        pattern->predMode = EPRED_ANY;
+                        pattern->cond = GetSource(intrin->getArgOperand(0), false, false);
+                        if(icmp->getPredicate() == ICmpInst::ICMP_EQ)
+                        {
+                            pattern->cond.mod = EMOD_NOT;
+                        }
+                        predMatched = true;
+                    }
+                    else if(constCmp->isMinusOne())
+                    {
+                        pattern->predMode = EPRED_ALL;
+                        pattern->cond = GetSource(intrin->getArgOperand(0), false, false);
+                        if(icmp->getPredicate() == ICmpInst::ICMP_NE)
+                        {
+                            pattern->cond.mod = EMOD_NOT;
+                        }
+                        predMatched = true;
+                    }
                 }
             }
         }
 
-        if (!predMatched)
+        if(!predMatched)
         {
             pattern->cond = GetSource(I.getCondition(), false, false);
         }
-        AddPattern(pattern);
-        return true;
     }
-
+    AddPattern(pattern);
+    return true;
 }
 
 bool CodeGenPatternMatch::MatchSatModifier(llvm::Instruction& I)

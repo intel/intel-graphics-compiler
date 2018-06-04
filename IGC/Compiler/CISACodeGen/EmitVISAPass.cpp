@@ -7970,9 +7970,6 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
     case Instruction::ExtractElement:
         emitExtract(cast<ExtractElementInst>(inst));
         break;
-    case Instruction::Br:
-        emitBranch(cast<BranchInst>(inst), nullptr, EPRED_NORMAL);
-        break;
     case Instruction::Unreachable:
         break;
     default:
@@ -9071,23 +9068,13 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
     }
 }
 
-void EmitPass::emitBranch(
-    llvm::BranchInst* branch,
-    const SSource* cond,
-    e_predMode predMode)
+void EmitPass::emitBranch(llvm::BranchInst* branch, const SSource& cond, e_predMode predMode)
 {
     llvm::BasicBlock* next = m_blockCoalescing->SkipEmptyBasicBlock(branch->getParent()->getNextNode());
     if(branch->isConditional())
     {
-        CVariable* flag;
-        if (cond)
-        {
-            flag = GetSrcVariable(*cond);
-        }
-        else
-        {
-            flag = m_currShader->GetSymbol(branch->getCondition());
-        }
+        CVariable* flag = GetSrcVariable(cond);
+        bool inversePred = cond.mod == EMOD_NOT;;
         // if it is not a fallthrough
         BasicBlock* succ0 = m_blockCoalescing->FollowEmptyBlock(branch->getSuccessor(0));
         BasicBlock* succ1 = m_blockCoalescing->FollowEmptyBlock(branch->getSuccessor(1));
@@ -9095,6 +9082,7 @@ void EmitPass::emitBranch(
         uint label1 = m_pattern->GetBlockId(succ1);
 
         m_encoder->SetPredicateMode(predMode);
+        m_encoder->SetInversePredicate(inversePred);
 
         if(next == NULL || (next != succ0 && next != succ1))
         {
@@ -9143,7 +9131,7 @@ void EmitPass::emitBranch(
             {
                 if(condTarget != label0)
                 {
-                    m_encoder->SetInversePredicate(true);
+                    m_encoder->SetInversePredicate(!inversePred);
                 }
                 m_encoder->Jump(flag, condTarget);
                 m_encoder->Push();
@@ -9163,7 +9151,7 @@ void EmitPass::emitBranch(
         {
             assert(next == succ0 && "next should be succ0");
 
-            m_encoder->SetInversePredicate(true);
+            m_encoder->SetInversePredicate(!inversePred);
             m_encoder->Jump(flag, label1);
             m_encoder->Push();
         }
@@ -9181,7 +9169,7 @@ void EmitPass::emitBranch(
 }
 
 void EmitPass::emitDiscardBranch(
-    BranchInst* branch, const SSource* cond)
+    BranchInst* branch, const SSource& cond)
 {
     if (m_pattern->NeedVMask())
     {

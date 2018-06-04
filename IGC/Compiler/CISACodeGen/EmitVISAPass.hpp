@@ -280,9 +280,8 @@ public:
     void emitPtrToInt(llvm::PtrToIntInst* p2iCst);
     void emitIntToPtr(llvm::IntToPtrInst* i2pCst);
     void emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast);
-    void emitBranch(llvm::BranchInst* br, const SSource* cond,
-        e_predMode predMode);
-    void emitDiscardBranch(llvm::BranchInst* br, const SSource* cond);
+    void emitBranch(llvm::BranchInst* br, const SSource& cond, e_predMode predMode);
+    void emitDiscardBranch(llvm::BranchInst* br, const SSource& cond);
     void emitAluNoModifier(llvm::GenIntrinsicInst* inst);
     
     void emitSGV(llvm::SGVIntrinsic* inst);
