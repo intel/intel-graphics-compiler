@@ -858,8 +858,8 @@ void Optimizer::insertDummyCompactInst()
     // Insert mov (1) r0 r0 at the beginning of this kernel.
     G4_Declare *dcl = builder.getBuiltinR0();
     auto src = builder.createSrcRegRegion(Mod_src_undef, Direct,
-        dcl->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UD);
-    auto dst = builder.createDstRegRegion(Direct, dcl->getRegVar(), 0, 0, 1, Type_UD);
+        dcl->getRegVar(), 0, 0, builder.getRegionScalar(), Type_F);
+    auto dst = builder.createDstRegRegion(Direct, dcl->getRegVar(), 0, 0, 1, Type_F);
     G4_INST *movInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false,
         1, dst, src, nullptr, InstOpt_WriteEnable);
 
