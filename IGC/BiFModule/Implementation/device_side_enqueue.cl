@@ -46,10 +46,16 @@ uint __builtin_spirv_OpEnqueueMarker_i64_i32_p4i64_p4i64(Queue_t Queue, uint Num
   return __intel_enqueue_marker_impl(Queue, NumEvents, WaitEvents, RetEvent);
 }
 
-uint __builtin_spirv_OpGetKernelWorkGroupSize_p0func_p0i8_i32_i32(void (^Invoke)(int), private uchar *Param, uint ParamSize, uint ParamAlign)
-{
-  return __builtin_IB_get_max_workgroup_size();
+#define DEFN_GET_KERNEL_WORK_GROUP_SIZE(ADDRSPACE_NUMBER, ADDRSPACE_NAME)                                                                                                \
+uint __builtin_spirv_OpGetKernelWorkGroupSize_p0func_p##ADDRSPACE_NUMBER##i8_i32_i32(void (^Invoke)(int), ADDRSPACE_NAME uchar *Param, uint ParamSize, uint ParamAlign)  \
+{                                                                                                                                                                        \
+  return __builtin_IB_get_max_workgroup_size();                                                                                                                          \
 }
+DEFN_GET_KERNEL_WORK_GROUP_SIZE(0, private)
+DEFN_GET_KERNEL_WORK_GROUP_SIZE(1, global)
+DEFN_GET_KERNEL_WORK_GROUP_SIZE(2, constant)
+DEFN_GET_KERNEL_WORK_GROUP_SIZE(3, local)
+DEFN_GET_KERNEL_WORK_GROUP_SIZE(4, generic)
 
 int OVERLOADABLE IGIL_RetainEvent( clk_event_t in_event );
 void __builtin_spirv_OpRetainEvent_i64(ClkEvent_t Event)
