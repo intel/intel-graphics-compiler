@@ -58,6 +58,7 @@ public:
     }
 
     bool        HasSLM() const { return m_hasSLM; }
+    bool        HasFullDispatchMask();
 
 protected:
     /// Size of a thread group (X x Y x Z) provided by the front-end.

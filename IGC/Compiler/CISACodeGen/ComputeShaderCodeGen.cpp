@@ -541,6 +541,15 @@ void CComputeShader::AddPrologue()
 {
 }
 
+bool CComputeShader::HasFullDispatchMask()
+{
+    if(GetThreadGroupSize() % numLanes(m_dispatchSize) == 0)
+    {
+        return true;
+    }
+    return false;
+}
+
 // CS codegen passes is added with below order:
 //   simd16, simd32, simd8
 bool CComputeShader::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)

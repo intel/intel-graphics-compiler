@@ -406,6 +406,7 @@ public:
     void emitPlnInterpolation(CVariable* bary, unsigned int delatIndex);
 
     CVariable* GetExecutionMask();
+    CVariable* GetDispatchMask();
     CVariable* UniformCopy(CVariable *var);
     CVariable* UniformCopy(CVariable *var, CVariable*& LaneOffset);
     // generate loop header to process sample instruction with varying resource/sampler

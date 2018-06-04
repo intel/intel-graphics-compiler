@@ -13712,13 +13712,21 @@ void EmitPass::emitMulAdd16(Instruction* I, const SSource Sources[2], const DstM
     m_encoder->Push();
 }
 
+CVariable* EmitPass::GetDispatchMask()
+{
+    return m_currShader->GetNewAlias(
+        m_currShader->GetSR0(),
+        ISA_TYPE_UD,
+        (m_pattern->NeedVMask() ? 3 : 2) * SIZE_DWORD,
+        1);
+}
+
 void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
 {
     CVariable *destination = m_destination;
     if (!m_destination->IsUniform())
     {
-        CVariable *pDst = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true);
-        destination = pDst;
+        destination = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true);
     }
 
     bool uniform_active_lane = false;
@@ -13728,35 +13736,43 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
             uniform_active_lane = true;
     }
 
-    /*
-    (W)     mov (1|M0) r0.0<1>:ud sr0.2.0<0;1,0>:ud 
-    (W)     and (1|M0)   r0.0<1>:ud r0.0<0;1,0>:ud ce0.0<0;1,0>:ud
-    (W)     and (1|M0)   r1.0<1>:ud r0.0<0;1,0>:ud f0.0<0;1,0>:uw
-    */
-
-    // (W)     mov (1|M0) r0.0<1>:ud sr0.2.0<0;1,0>:ud 
-    // (W)     and (1|M0)   r0.0<1>:ud r0.0<0;1,0>:ud ce0.0<0;1,0>:ud
-    m_encoder->Cast(destination, GetExecutionMask());
-    m_encoder->Push();
-
-    if (!uniform_active_lane)
+    
+    if(!m_currShader->InsideDivergentCF(inst))
     {
-        // (W)     and (1|M0)   r1.0:ud r0.0<0;1;0>:ud f0.0:uw
         CVariable *f0 = GetSymbol(inst->getOperand(0));
-        CVariable* vf0 = m_currShader->GetNewVariable(
-            1, ISA_TYPE_UD, EALIGN_GRF, true);
-        m_encoder->SetSimdSize(SIMDMode::SIMD1);
-        m_encoder->SetNoMask();
-        m_encoder->BoolToInt(vf0, f0);
-        m_encoder->Push();
+        m_encoder->BoolToInt(destination, f0);
+        if(!m_currShader->HasFullDispatchMask())
+        {
+            m_encoder->And(destination, GetDispatchMask(), destination);
+        }
+    }
+    else
+    {
+        CVariable* exeMask = GetExecutionMask();
+        if(!uniform_active_lane)
+        {
+            // (W)     and (1|M0)   r1.0:ud r0.0<0;1;0>:ud f0.0:uw
+            CVariable *f0 = GetSymbol(inst->getOperand(0));
+            CVariable* vf0 = m_currShader->GetNewVariable(
+                1, ISA_TYPE_UD, EALIGN_GRF, true);
+            m_encoder->SetSimdSize(SIMDMode::SIMD1);
+            m_encoder->SetNoMask();
+            m_encoder->BoolToInt(vf0, f0);
+            m_encoder->Push();
 
-        m_encoder->SetSimdSize(SIMDMode::SIMD1);
-        m_encoder->SetNoMask();
-        m_encoder->And(destination, destination, vf0);
-        m_encoder->Push();
+            m_encoder->SetSimdSize(SIMDMode::SIMD1);
+            m_encoder->SetNoMask();
+            m_encoder->And(destination, exeMask, vf0);
+            m_encoder->Push();
+        }
+        else
+        {
+            m_encoder->Cast(destination, exeMask);
+            m_encoder->Push();
+        }
     }
 
-    if (!m_destination->IsUniform())
+    if (destination != m_destination)
     {
         m_encoder->Copy(m_destination, destination);
         m_encoder->Push();

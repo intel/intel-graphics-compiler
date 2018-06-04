@@ -1557,6 +1557,19 @@ void COpenCLKernel::RecomputeBTLayout()
     layout->maxBTsize = index;
 }
 
+bool COpenCLKernel::HasFullDispatchMask()
+{
+    unsigned int groupSize = IGCMetaDataHelper::getThreadGroupSize(*m_pMdUtils, entry);
+    if(groupSize != 0)
+    {
+        if(groupSize % numLanes(m_dispatchSize) == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 unsigned int COpenCLKernel::getBTI(SOpenCLKernelInfo::SResourceInfo& resInfo)
 {
     switch (resInfo.Type)

@@ -62,6 +62,8 @@ public:
     // Set m_HasGlobalSize to true if TID functions were found
     void SetHasGlobalSize();
 
+    bool HasFullDispatchMask();
+
     // Returns the immediate value mapped to GlobalVariable c.
     // (GlobalVariables represent the pointer to the global,
     // which is a compile-time constant)
