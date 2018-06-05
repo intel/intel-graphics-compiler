@@ -11185,17 +11185,15 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
         }
     }
 
-    if (EmitFence)
-    {
-        m_encoder->Fence(CommitEnable,
+    m_encoder->Fence(CommitEnable,
             L3_Flush_RW_Data,
             L3_Flush_Constant_Data,
             L3_Flush_Texture_Data,
             L3_Flush_Instructions,
             Global_Mem_Fence,
-            L1_Invalidate);
-        m_encoder->Push();
-    }
+            L1_Invalidate,
+            !EmitFence);
+    m_encoder->Push();
 }
 
 void EmitPass::emitMemoryFence()
@@ -11206,6 +11204,7 @@ void EmitPass::emitMemoryFence()
         false,
         false,
         true,
+        false,
         false);
     m_encoder->Push();
 }

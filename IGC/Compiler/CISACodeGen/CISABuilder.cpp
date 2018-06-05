@@ -2459,7 +2459,8 @@ void CEncoder::Fence(bool CommitEnable,
     bool L3_Flush_Texture_Data,
     bool L3_Flush_Instructions,
     bool Global_Mem_Fence,
-    bool L1_Flush_Constant_Data)
+    bool L1_Flush_Constant_Data,
+    bool SWFence) // if true no ISA is emitted and the instruction is a pure code barrier
 {
     // Only a single bit set here is a valid configuration
     assert( L3_Flush_Instructions +
@@ -2473,6 +2474,7 @@ void CEncoder::Fence(bool CommitEnable,
         ( L3_Flush_RW_Data << 4 ) |
         ( (!Global_Mem_Fence) << 5 ) | // bit 5: 1 -- local, 0 -- global
         ( L1_Flush_Constant_Data << 6 ) | 
+        ( SWFence << 7 ) |
         ( CommitEnable << 0 );
 
     V(vKernel->AppendVISASyncInst(ISA_FENCE, int_cast<unsigned char>(fenceFlags)));

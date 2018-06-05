@@ -194,7 +194,8 @@ public:
                 bool L3_Flush_Texture_Data, 
                 bool L3_Flush_Instructions,
                 bool Global_Mem_Fence,
-                bool L1_Flush);
+                bool L1_Flush,
+                bool SWFence);
     void FlushSamplerCache();
     void EndOfThread();
     void OWLoadA64(CVariable* dst, CVariable* offset, uint dstSize, uint dstOffset = 0);
