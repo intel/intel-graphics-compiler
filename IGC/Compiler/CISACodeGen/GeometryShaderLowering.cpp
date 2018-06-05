@@ -37,7 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/InitializePasses.h"
 
-
 /***********************************************************************************
 This file will lower GS input intrinsics to URBRead instructions.
 It will also lower higher-level GS output intrinsics (OUTPUTGS, GsCutControlHeader)
@@ -107,7 +106,7 @@ private:
 
     /// Adds URB writes that set the content of vertex headers to zero.
     /// TODO: This may not be required.
-    void AddVertexURBHeaders(llvm::Function &function);
+    void AddVertexURBHeaders(llvm::Function &function, std::vector<llvm::Instruction*> &offsetInst);
 
     /// Returns URB offset at which attribute with the given 'usage' and 'attributeIndex'
     /// needs to be written.
@@ -260,6 +259,13 @@ bool GeometryShaderLowering::runOnFunction(llvm::Function &function)
         } // for
     } // for
 
+    // need to add instructions clearing vertex headers 
+    // TODO: looks like this could be done more efficiently 
+    if(pCtx->m_DriverInfo.NeedClearVertexHeader())
+    {
+        AddVertexURBHeaders(function, offsetInst);
+    }
+
     //URB Padding to 32 byte offset only when both vertex index and attribute index
     //are always directly accessed else will bail out from this optimization
     if (urbPadding)
@@ -273,7 +279,6 @@ bool GeometryShaderLowering::runOnFunction(llvm::Function &function)
             {
                 Value* offset = ConstantInt::get(
                     Type::getInt32Ty(function.getContext()), i - 1);
-
                 AddURBWrite(offset, 0xF, data, offsetInst[i]);
             }
         }
@@ -285,12 +290,6 @@ bool GeometryShaderLowering::runOnFunction(llvm::Function &function)
         inst->eraseFromParent();
     }
 
-    // need to add instructions clearing vertex headers 
-    // TODO: looks like this could be done more efficiently 
-    if(pCtx->m_DriverInfo.NeedClearVertexHeader())
-    {
-        AddVertexURBHeaders(function);
-    }
     return true;
 }
 
@@ -549,6 +548,7 @@ void GeometryShaderLowering::AddURBRead(
         }
         inst->replaceAllUsesWith(vec);
     }
+
 }
 
 void GeometryShaderLowering::AddSGVURBRead(
@@ -792,7 +792,9 @@ void GeometryShaderLowering::LowerControlHeader(llvm::Instruction* inst)
     m_instructionToRemove.push_back(inst);
 }
 
-void GeometryShaderLowering::AddVertexURBHeaders(llvm::Function &function)
+void GeometryShaderLowering::AddVertexURBHeaders(
+    llvm::Function &function, 
+    std::vector<llvm::Instruction*> &offsetInst)
 {
     if(m_gsProps->GetProperties().Output().PerVertex().HeaderSize().Count() == 0)
     {
@@ -814,6 +816,7 @@ void GeometryShaderLowering::AddVertexURBHeaders(llvm::Function &function)
         Value* offsetVal = ConstantInt::get(
             Type::getInt32Ty(m_pModule->getContext()),
             offset.Count());
+        offsetInst[offset.Count()]=&(*firstInstr);
         AddURBWrite(offsetVal, (1<<writeSize)-1, zeros, &(*firstInstr));
     }
 }
