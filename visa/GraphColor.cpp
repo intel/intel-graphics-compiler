@@ -4943,14 +4943,13 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
         bool isAddrSensitive = liveAnalysis->isAddressSensitive(i);
         bool assigned = (lrs[i]->getVar()->getPhyReg() != NULL);
 
-        // If a range is
-        // a. Both live-in and live-out OR
-        // b. Address taken AND (live-in or live-out or killed)
+        // If a range is Address taken AND (live-in or live-out or killed)
         // mark it to interfere with all physical registers used by local RA
-        if (!assigned && ((isLiveIn && isLiveOut) || (isAddrSensitive && (isLiveIn || isLiveOut || isKilled))))
+        // FIXME: need to check if this is actually needed 
+        if (!assigned && (isAddrSensitive && (isLiveIn || isLiveOut || isKilled)))
         {
             // Make it to interfere with all physical registers used in the BB
-            for (unsigned int j = 0; j < kernel.getNumRegTotal(); j++)
+            for (uint32_t j = 0, numReg = kernel.getNumRegTotal(); j < numReg; j++)
             {
                 if (LRASummary->isGRFBusy(j))
                 {
