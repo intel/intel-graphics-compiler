@@ -122,6 +122,7 @@ public:
     llvm::raw_ostream& operator<< ( T const& val ) const
     {
         stream() << val;
+        return stream();
     }
 
     static bool isBinaryDump(DumpType type);
