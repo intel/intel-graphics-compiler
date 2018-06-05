@@ -349,7 +349,8 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, TTI::UnrollingPrefer
 
 unsigned GenIntrinsicsTTIImpl::getCallCost(const Function *F, ArrayRef<const Value *> Arguments) {
     IGC::CodeGenContext *CGC = this->ctx;
-    if (!CGC->enableFunctionCall() && !GenISAIntrinsic::isIntrinsic(F)) {
+    if (!CGC->enableFunctionCall() && !GenISAIntrinsic::isIntrinsic(F) &&
+        !F->isIntrinsic()) {
         // If subroutine call is not enabled but we have function call. They
         // are not inlined. e.g. due to two-phase inlining. Return function
         // size instead of to avoid under-estimating the cost of function call.
