@@ -3627,11 +3627,11 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     else
     {
         needPacking = m_SimdMode == SIMDMode::SIMD8 &&
-            m_destination->GetType() == ISA_TYPE_HF &&
+            (m_destination->GetType() == ISA_TYPE_HF || m_destination->GetType() == ISA_TYPE_W || m_destination->GetType() == ISA_TYPE_UW) &&
             !m_destination->isUnpacked();
         if(needPacking)
         {
-            dst = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, dst->IsUniform());
+            dst = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 2, m_destination->GetType(), EALIGN_GRF, dst->IsUniform());
         }
     }
 
