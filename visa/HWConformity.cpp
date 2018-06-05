@@ -780,6 +780,7 @@ void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
                     break;
                 }
                 default:
+                    SwapOpnd = true;
                     break;
                 }
             }
