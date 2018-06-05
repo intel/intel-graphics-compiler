@@ -139,7 +139,7 @@
   add_custom_target(GetClang)
   add_library(common_clang_dll UNKNOWN IMPORTED GLOBAL)
 
-  if(EXISTS ${_clang7zLocation} AND NOT EXISTS ${CCLANG_SRC})
+  if(EXISTS ${_clang7zLocation})
     # Use precompiled common clang bundle.
     message(STATUS "Use precompiled common clang from ${_clang7zLocation}")
 
@@ -148,7 +148,7 @@
     set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
   else()
     # Do not use precompiled common clang.
-    message(STATUS "Precompiled common clang bundle ${_clang7zLocation} does not exist or CCLANG_SRC is setup. Try to compile from sources.")
+    message(STATUS "Precompiled common clang bundle ${_clang7zLocation} does not exist. Try to compile from sources.")
     # if not specified from outside
     # try to use common clang component from one of fixed locations
     if(NOT IGC_CCLANG_HOME_DIR)
@@ -181,7 +181,7 @@
   endif()
   add_dependencies(common_clang_dll GetClang)
 
-  install(FILES $<TARGET_FILE:common_clang_dll> DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}lib COMPONENT igc-opencl)
+  install(FILES $<TARGET_FILE:common_clang_dll> DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib COMPONENT igc-opencl)
 
 # End Clang section
 

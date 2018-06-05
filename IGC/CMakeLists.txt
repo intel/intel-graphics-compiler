@@ -1869,9 +1869,15 @@ endfunction()
 # Default languages: C, C++.
 project(IGC)
 
-set(MAJOR_VERSION 0)
-set(MINOR_VERSION 1)
-set(PATCH_VERSION 0)
+if(NOT DEFINED MAJOR_VERSION)
+  set(MAJOR_VERSION 0)
+endif()
+if(NOT DEFINED MINOR_VERSION)
+  set(MINOR_VERSION 1)
+endif()
+if(NOT DEFINED PATCH_VERSION)
+  set(PATCH_VERSION 0)
+endif()
 
 # IGC project available configuration types:
 # One standard configuration + "ReleaseInternal" custom configurations.
@@ -2010,7 +2016,7 @@ set(_autogenTarget "${CODEGEN_DIR}/MDNodeFunctions.gen")
 
 
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-  set(IGC_PYTHON "${GFX_DEVELOPMENT_DIR}/Tools/Build/scripts/deps/python27/python.exe")
+  set(IGC_PYTHON "${BS_DIR_MIGRATION_BINARIES}/build-tools/python2-win32/python.exe")
 else()
   find_program(IGC_PYTHON NAMES "python2" "python")
 endif()
@@ -2128,9 +2134,9 @@ mark_as_advanced(IGC_OPTION__COMPILE_LINK_ALLOW_UNSAFE_SIZE_OPT)
 
 # IGC install time absolute path
 if(IGC_OPTION__INSTALL_TIME_ROOT_DIR)
-    set(IGC_INSTALL_TIME_ROOT_DIR ${IGC_OPTION__INSTALL_TIME_ROOT_DIR})
+    get_filename_component(IGC_INSTALL_TIME_ROOT_DIR ${IGC_OPTION__INSTALL_TIME_ROOT_DIR} ABSOLUTE)
 else()
-    set(IGC_INSTALL_TIME_ROOT_DIR "/usr/")
+    set(IGC_INSTALL_TIME_ROOT_DIR "/usr")
 endif()
 
 # ============================================= Status =================================================
@@ -2243,7 +2249,7 @@ set(IGC_BUILD__TOOLS_IST_DIR        "${IGC_BUILD__GFX_DEV_TOOLS_DIR}/IST")
 set(IGC_BUILD__TOOLS_USCLAUNCHER_DIR "${GFX_DEVELOPMENT_DIR}/Test/usc/src")
 
 
-set(IGC_BUILD__TOOLS_7ZIP_WIN_DIR   "${BS_DIR_MIGRATION_BINARIES}/build-tools/7zip-win32")
+set(IGC_BUILD__TOOLS_7ZIP_WIN_DIR   "${BS_DIR_MIGRATION_BINARIES}/build-tools/7zip-win64")
 set(IGC_BUILD__TOOLS_PAX_APP_DIR    "/usr")
 set(IGC_BUILD__TOOLS_7Z_LINUX_DIR "${IGC_BUILD__GFX_DEV_TOOLS_DIR}/Linux/tools/7z9.2/bin")
 
@@ -3798,22 +3804,36 @@ endif()
 # cpack to create deb package
 ########################################################################
 
-install(TARGETS ${IGC_BUILD__PROJ__igc_dll} DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}lib COMPONENT igc-core)
-install(TARGETS ${IGC_BUILD__PROJ__fcl_dll} DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}lib COMPONENT igc-opencl)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/igc.opencl.h.in ${IGC_BUILD__IGC_BIN_DIR}/igc.opencl.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/igc-opencl.pc.in ${IGC_BUILD__IGC_BIN_DIR}/igc-opencl.pc @ONLY)
+
+install(TARGETS ${IGC_BUILD__PROJ__igc_dll} DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib COMPONENT igc-core)
+install(TARGETS ${IGC_BUILD__PROJ__fcl_dll} DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib COMPONENT igc-opencl)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/include/igc COMPONENT igc-opencl-devel
+    FILES_MATCHING PATTERN "*.h" PATTERN "CLElfLib" EXCLUDE)
+install(FILES ${IGC_BUILD__IGC_BIN_DIR}/igc-opencl.pc DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib/pkgconfig COMPONENT igc-opencl-devel)
+install(FILES ${IGC_BUILD__IGC_BIN_DIR}/igc.opencl.h DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/include/igc COMPONENT igc-opencl-devel)
 
 set(CPACK_GENERATOR "DEB")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "intel")
 set(CPACK_PACKAGE_NAME "IGC")
-set(CPACK_PACKAGE_ARCHITECTURE "x86_64")
+set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
 set(CPACK_PACKAGE_VERSION_MAJOR ${MAJOR_VERSION})
 set(CPACK_PACKAGE_VERSION_MINOR ${MINOR_VERSION})
 set(CPACK_PACKAGE_VERSION_PATCH ${PATCH_VERSION})
+set(CPACK_PACKAGE_INSTALL_DIRECTORY ${IGC_INSTALL_TIME_ROOT_DIR})
+set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "Intel(R) Graphics Compiler for OpenCL(TM)")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEB_COMPONENT_INSTALL ON)
-set(CPACK_DEBIAN_IGC-CORE_FILE_NAME "intel-igc-core-${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}.${CPACK_PACKAGE_ARCHITECTURE}.deb")
-set(CPACK_DEBIAN_IGC-MEDIA_FILE_NAME "intel-igc-media-${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}.${CPACK_PACKAGE_ARCHITECTURE}.deb")
+set(CPACK_DEBIAN_IGC-CORE_FILE_NAME "intel-igc-core_${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}_${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}.deb")
+set(CPACK_DEBIAN_IGC-MEDIA_FILE_NAME "intel-igc-media_${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}_${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}.deb")
+set(CPACK_DEBIAN_IGC-MEDIA_PACKAGE_DEPENDS "igc-igc-core")
+set(CPACK_DEBIAN_IGC-OPENCL_FILE_NAME "intel-igc-opencl_${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}_${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}.deb")
+set(CPACK_DEBIAN_IGC-OPENCL_PACKAGE_DEPENDS "igc-igc-core")
+set(CPACK_DEBIAN_IGC-OPENCL-DEVEL_FILE_NAME "intel-igc-opencl-devel_${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}_${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}.deb")
+set(CPACK_DEBIAN_IGC-OPENCL-DEVEL_PACKAGE_DEPENDS "igc-igc-opencl")
 
-SET(CPACK_COMPONENTS_ALL igc-core igc-media)
+set(CPACK_COMPONENTS_ALL igc-core igc-media igc-opencl igc-opencl-devel)
 
 include (CPack)
 

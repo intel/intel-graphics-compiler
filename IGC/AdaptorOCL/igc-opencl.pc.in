@@ -1,0 +1,10 @@
+prefix=@IGC_INSTALL_TIME_ROOT_DIR@
+exec_prefix=${prefix}
+includedir=${prefix}/include/igc
+libdir=${exec_prefix}/lib
+
+Name: igc-opencl
+Description: Intel(R) Graphics Compiler for OpenCL(TM)
+Version: @MAJOR_VERSION@.@MINOR_VERSION@.@PATCH_VERSION@
+Cflags: -I${includedir} -I${includedir}/cif -I${includedir}/ocl_igc_shared/executable_format -I${includedir}/ocl_igc_shared/device_enqueue
+Libs:
