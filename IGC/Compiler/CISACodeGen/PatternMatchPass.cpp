@@ -356,7 +356,7 @@ struct ClampWithConstants_match {
         if (!C0)
             return false;
 
-        GenIntrinsicInst *GII2 = dyn_cast<GenIntrinsicInst>(X);
+        CallInst *GII2 = dyn_cast<CallInst>(X);
         if (!GII2)
             return false;
 
