@@ -4063,11 +4063,13 @@ void __builtin_spirv_OpGroupWaitEvents_i32_i32_p4i64(uint Execution, uint NumEve
 
 bool __builtin_spirv_OpGroupAll_i32_i1(uint Execution, bool Predicate);
 bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate);
+uchar __builtin_spirv_OpGroupBroadcast_i32_i8_v3i32(uint Execution, uchar Value, uint3 LocalId);
 ushort __builtin_spirv_OpGroupBroadcast_i32_i16_v3i32(uint Execution, ushort Value, uint3 LocalId);
 uint __builtin_spirv_OpGroupBroadcast_i32_i32_v3i32(uint Execution, uint Value, uint3 LocalId);
 ulong __builtin_spirv_OpGroupBroadcast_i32_i64_v3i32(uint Execution, ulong Value, uint3 LocalId);
 half __builtin_spirv_OpGroupBroadcast_i32_f16_v3i32(uint Execution, half Value, uint3 LocalId);
 float __builtin_spirv_OpGroupBroadcast_i32_f32_v3i32(uint Execution, float Value, uint3 LocalId);
+uchar __builtin_spirv_OpGroupBroadcast_i32_i8_v3i64(uint Execution, uchar Value, ulong3 LocalId);
 ushort __builtin_spirv_OpGroupBroadcast_i32_i16_v3i64(uint Execution, ushort Value, ulong3 LocalId);
 uint __builtin_spirv_OpGroupBroadcast_i32_i32_v3i64(uint Execution, uint Value, ulong3 LocalId);
 ulong __builtin_spirv_OpGroupBroadcast_i32_i64_v3i64(uint Execution, ulong Value, ulong3 LocalId);
@@ -4098,6 +4100,7 @@ double __builtin_spirv_OpGroupBroadcast_i32_f64_v3i64(uint Execution, double Val
 double __builtin_spirv_OpGroupBroadcast_i32_f64_i64(uint Execution, double Value, ulong LocalId);
 #endif // defined(cl_khr_fp64)
 
+uchar  __builtin_spirv_OpGroupIAdd_i32_i32_i8(uint Execution, uint Operation, uchar X);
 ushort __builtin_spirv_OpGroupIAdd_i32_i32_i16(uint Execution, uint Operation, ushort X);
 uint   __builtin_spirv_OpGroupIAdd_i32_i32_i32(uint Execution, uint Operation, uint X);
 ulong  __builtin_spirv_OpGroupIAdd_i32_i32_i64(uint Execution, uint Operation, ulong X);
@@ -4108,6 +4111,7 @@ float  __builtin_spirv_OpGroupFAdd_i32_i32_f32(uint Execution, uint Operation, f
 double __builtin_spirv_OpGroupFAdd_i32_i32_f64(uint Execution, uint Operation, double X);
 #endif // defined(cl_khr_fp64)
 
+uchar  __builtin_spirv_OpGroupUMin_i32_i32_i8(uint Execution, uint Operation, uchar X);
 ushort __builtin_spirv_OpGroupUMin_i32_i32_i16(uint Execution, uint Operation, ushort X);
 uint   __builtin_spirv_OpGroupUMin_i32_i32_i32(uint Execution, uint Operation, uint X);
 ulong  __builtin_spirv_OpGroupUMin_i32_i32_i64(uint Execution, uint Operation, ulong X);
@@ -4118,6 +4122,7 @@ float  __builtin_spirv_OpGroupFMin_i32_i32_f32(uint Execution, uint Operation, f
 double __builtin_spirv_OpGroupFMin_i32_i32_f64(uint Execution, uint Operation, double X);
 #endif // defined(cl_khr_fp64)
 
+char   __builtin_spirv_OpGroupSMin_i32_i32_i8(uint Execution, uint Operation, char X);
 short  __builtin_spirv_OpGroupSMin_i32_i32_i16(uint Execution, uint Operation, short X);
 int    __builtin_spirv_OpGroupSMin_i32_i32_i32(uint Execution, uint Operation, int X);
 long   __builtin_spirv_OpGroupSMin_i32_i32_i64(uint Execution, uint Operation, long X);
@@ -4128,10 +4133,12 @@ float  __builtin_spirv_OpGroupFMax_i32_i32_f32(uint Execution, uint Operation, f
 double __builtin_spirv_OpGroupFMax_i32_i32_f64(uint Execution, uint Operation, double X);
 #endif // defined(cl_khr_fp64)
 
+uchar  __builtin_spirv_OpGroupUMax_i32_i32_i8(uint Execution, uint Operation, uchar X);
 ushort __builtin_spirv_OpGroupUMax_i32_i32_i16(uint Execution, uint Operation, ushort X);
 uint   __builtin_spirv_OpGroupUMax_i32_i32_i32(uint Execution, uint Operation, uint X);
 ulong  __builtin_spirv_OpGroupUMax_i32_i32_i64(uint Execution, uint Operation, ulong X);
 
+char  __builtin_spirv_OpGroupSMax_i32_i32_i8(uint Execution, uint Operation, char X);
 short __builtin_spirv_OpGroupSMax_i32_i32_i16(uint Execution, uint Operation, short X);
 int   __builtin_spirv_OpGroupSMax_i32_i32_i32(uint Execution, uint Operation, int X);
 long  __builtin_spirv_OpGroupSMax_i32_i32_i64(uint Execution, uint Operation, long X);

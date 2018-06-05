@@ -4363,6 +4363,7 @@ void EmitPass::emitSimdShuffle( llvm::Instruction* inst )
         int shtAmt;
         switch (m_encoder->GetCISADataTypeSize(m_destination->GetType()))
         {
+            case 1:  shtAmt = 0; break;
             case 2:  shtAmt = 1; break;
             case 4:  shtAmt = 2; break;
             case 8:  shtAmt = 3; break;
@@ -4594,6 +4595,9 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst )
         if (dataPtr->getType()->getScalarSizeInBits() == 16) {
             totalBytes /= 2;
         }
+        else if (dataPtr->getType()->getScalarSizeInBits() == 8) {
+            totalBytes /= 4;
+        }
         uint32_t bytesRemaining = totalBytes;
 
         uint32_t srcOffset   = 0;
@@ -4676,6 +4680,9 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst )
         uint32_t totalBytes     = nbElements * ( ( m_SimdMode == SIMDMode::SIMD8 ) ? 1 : 2 ) * bytesPerReg;
         if (dataPtr->getType()->getScalarSizeInBits() == 16) {
             totalBytes /= 2;
+        }
+        else if (dataPtr->getType()->getScalarSizeInBits() == 8) {
+            totalBytes /= 4;
         }
         uint32_t bytesRemaining = totalBytes;
 
@@ -4783,6 +4790,9 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst )
         if (inst->getType()->getScalarSizeInBits() == 16) {
             totalBytes /= 2;
         }
+        else if (inst->getType()->getScalarSizeInBits() == 8) {
+            totalBytes /= 4;
+        }
 
         uint32_t bytesRemaining = totalBytes;
         uint32_t dstSubReg      = 0;
@@ -4859,6 +4869,9 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst )
         uint32_t totalBytes     = nbElements * ( ( m_SimdMode == SIMDMode::SIMD8 ) ? 1 : 2 ) * bytesPerReg;
         if (inst->getType()->getScalarSizeInBits() == 16) {
             totalBytes /= 2;
+        }
+        else if (inst->getType()->getScalarSizeInBits() == 8) {
+            totalBytes /= 4;
         }
 
         // Emits below instructions generating one or more OWORD block read instructions:
@@ -5110,7 +5123,9 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
     uint32_t blockWidth  = 0;
     uint32_t blockHeight = nbElements;
 
-    bool  fp16 = inst->getType()->getScalarType()->getScalarSizeInBits() == 16;
+    const uint32_t scalarSizeInBits = inst->getType()->getScalarType()->getScalarSizeInBits();
+    bool  fp16 = scalarSizeInBits == 16;
+    bool  fp8 = scalarSizeInBits == 8;
 
     if ( isImageTypeUAV )
     {
@@ -5128,14 +5143,38 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
     switch ( m_SimdMode )
     {
     case SIMDMode::SIMD8:
-        blockWidth = fp16 ? 16 : 32;
+        if (fp8)
+        {
+            blockWidth = 8;
+        }
+        else if (fp16)
+        {
+            blockWidth = 16;
+        }
+        else
+        {
+            blockWidth = 32;
+        }
         numPasses = 1;
         break;
 
     case SIMDMode::SIMD16:
         // 2 x SIMD8
-        numPasses  = fp16 ? 1 : 2;
-        blockWidth = 32;
+        if (fp8)
+        {
+            blockWidth = 16;
+            numPasses = 1;
+        }
+        else if (fp16)
+        {
+            blockWidth = 32;
+            numPasses = 1;
+        }
+        else
+        {
+            blockWidth = 32;
+            numPasses = 2;
+        }
         break;
     default:
         assert( 0 && "Wrong SIMD width" );
@@ -5294,7 +5333,9 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
     uint32_t blockHeight       = nbElements;
     uint32_t bindingTableIndex = 0;
 
-    bool  fp16 = dataPtr->getType()->getScalarType()->getScalarSizeInBits() == 16;
+    const uint32_t scalarSizeInBits = dataPtr->getType()->getScalarType()->getScalarSizeInBits();
+    bool  fp16 = scalarSizeInBits == 16;
+    bool  fp8 = scalarSizeInBits == 8;
 
     if ( isImageTypeUAV )
     {
@@ -5312,13 +5353,37 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
     switch (m_SimdMode)
     {
     case SIMDMode::SIMD8:
-        blockWidth = fp16 ? 16 : 32;
+        if (fp8)
+        {
+            blockWidth = 8;
+        }
+        else if (fp16)
+        {
+            blockWidth = 16;
+        }
+        else
+        {
+            blockWidth = 32;
+        }
         numPasses = 1;
         break;
 
     case SIMDMode::SIMD16:
-        numPasses = fp16 ? 1 : 2;
-        blockWidth = 32;
+        if (fp8)
+        {
+            blockWidth = 16;
+            numPasses = 1;
+        }
+        else if (fp16)
+        {
+            blockWidth = 32;
+            numPasses = 1;
+        }
+        else
+        {
+            blockWidth = 32;
+            numPasses = 2;
+        }
         break;
     default:
         assert(0 && "Wrong SIMD width");

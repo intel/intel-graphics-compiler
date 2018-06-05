@@ -457,8 +457,10 @@ int     __builtin_IB_simd_shuffle( int, int );
 ushort  __builtin_IB_simd_shuffle_us( ushort, uint );
 float 	__builtin_IB_simd_shuffle_f( float, uint );
 half 	__builtin_IB_simd_shuffle_h( half, uint );
+char    __builtin_IB_simd_shuffle_b( char, uint );
 uint    __builtin_IB_simd_shuffle_down( uint, uint, uint );
 ushort  __builtin_IB_simd_shuffle_down_us( ushort, ushort, uint );
+uchar  __builtin_IB_simd_shuffle_down_uc( uchar, uchar, uint );
 
 // Block read : global address space
 uint    __builtin_IB_simd_block_read_1_global( const __global uint* );
@@ -471,6 +473,11 @@ ushort2   __builtin_IB_simd_block_read_2_global_h( const __global ushort* );
 ushort4   __builtin_IB_simd_block_read_4_global_h( const __global ushort* );
 ushort8   __builtin_IB_simd_block_read_8_global_h( const __global ushort* );
 
+uchar    __builtin_IB_simd_block_read_1_global_b( const __global uchar* );
+uchar2   __builtin_IB_simd_block_read_2_global_b( const __global uchar* );
+uchar4   __builtin_IB_simd_block_read_4_global_b( const __global uchar* );
+uchar8   __builtin_IB_simd_block_read_8_global_b( const __global uchar* );
+
 void    __builtin_IB_simd_block_write_1_global( __global uint*, uint );
 void    __builtin_IB_simd_block_write_2_global( __global uint*, uint2 );
 void    __builtin_IB_simd_block_write_4_global( __global uint*, uint4 );
@@ -481,6 +488,11 @@ void    __builtin_IB_simd_block_write_2_global_h( __global ushort*, ushort2 );
 void    __builtin_IB_simd_block_write_4_global_h( __global ushort*, ushort4 );
 void    __builtin_IB_simd_block_write_8_global_h( __global ushort*, ushort8 );
 
+void    __builtin_IB_simd_block_write_1_global_b( __global uchar*, uchar );
+void    __builtin_IB_simd_block_write_2_global_b( __global uchar*, uchar2 );
+void    __builtin_IB_simd_block_write_4_global_b( __global uchar*, uchar4 );
+void    __builtin_IB_simd_block_write_8_global_b( __global uchar*, uchar8 );
+
 uint    __builtin_IB_simd_media_block_read_1( int, int2 );
 uint2   __builtin_IB_simd_media_block_read_2( int, int2 );
 uint4   __builtin_IB_simd_media_block_read_4( int, int2 );
@@ -490,6 +502,11 @@ ushort   __builtin_IB_simd_media_block_read_1_h( int, int2 );
 ushort2  __builtin_IB_simd_media_block_read_2_h( int, int2 );
 ushort4  __builtin_IB_simd_media_block_read_4_h( int, int2 );
 ushort8  __builtin_IB_simd_media_block_read_8_h( int, int2 );
+
+uchar   __builtin_IB_simd_media_block_read_1_b( int, int2 );
+uchar2  __builtin_IB_simd_media_block_read_2_b( int, int2 );
+uchar4  __builtin_IB_simd_media_block_read_4_b( int, int2 );
+uchar8  __builtin_IB_simd_media_block_read_8_b( int, int2 );
 
 void    __builtin_IB_media_block_rectangle_read( long image, int2 coords, int blockWidth, int blockHeight, GRFHandle destination );
 
@@ -502,6 +519,11 @@ void    __builtin_IB_simd_media_block_write_1_h( int, int2, ushort );
 void    __builtin_IB_simd_media_block_write_2_h( int, int2, ushort2 );
 void    __builtin_IB_simd_media_block_write_4_h( int, int2, ushort4 );
 void    __builtin_IB_simd_media_block_write_8_h( int, int2, ushort8 );
+
+void    __builtin_IB_simd_media_block_write_1_b( int, int2, uchar );
+void    __builtin_IB_simd_media_block_write_2_b( int, int2, uchar2 );
+void    __builtin_IB_simd_media_block_write_4_b( int, int2, uchar4 );
+void    __builtin_IB_simd_media_block_write_8_b( int, int2, uchar8 );
 
 uchar   __builtin_IB_media_block_read_uchar(int image, int2 offset, int width, int height);
 uchar2  __builtin_IB_media_block_read_uchar2(int image, int2 offset, int width, int height);

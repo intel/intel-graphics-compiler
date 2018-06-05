@@ -6188,6 +6188,129 @@ void    __attribute__((overloadable)) intel_sub_group_block_write_us4( __global 
 void    __attribute__((overloadable)) intel_sub_group_block_write_us8( __global ushort* p, ushort8 data );
 
 #endif // cl_intel_subgroups_short
+#ifdef cl_intel_subgroups_char
+char    __attribute__((overloadable)) intel_sub_group_broadcast(char  x, uint sub_group_local_id);
+char2   __attribute__((overloadable)) intel_sub_group_broadcast(char2 x, uint sub_group_local_id);
+char3   __attribute__((overloadable)) intel_sub_group_broadcast(char3 x, uint sub_group_local_id);
+char4   __attribute__((overloadable)) intel_sub_group_broadcast(char4 x, uint sub_group_local_id);
+char8   __attribute__((overloadable)) intel_sub_group_broadcast(char8 x, uint sub_group_local_id);
+
+uchar   __attribute__((overloadable)) intel_sub_group_broadcast(uchar  x, uint sub_group_local_id);
+uchar2  __attribute__((overloadable)) intel_sub_group_broadcast(uchar2 x, uint sub_group_local_id);
+uchar3  __attribute__((overloadable)) intel_sub_group_broadcast(uchar3 x, uint sub_group_local_id);
+uchar4  __attribute__((overloadable)) intel_sub_group_broadcast(uchar4 x, uint sub_group_local_id);
+uchar8  __attribute__((overloadable)) intel_sub_group_broadcast(uchar8 x, uint sub_group_local_id);
+
+char    __attribute__((overloadable)) intel_sub_group_shuffle(char   x, uint c);
+char2   __attribute__((overloadable)) intel_sub_group_shuffle(char2  x, uint c);
+char3   __attribute__((overloadable)) intel_sub_group_shuffle(char3  x, uint c);
+char4   __attribute__((overloadable)) intel_sub_group_shuffle(char4  x, uint c);
+char8   __attribute__((overloadable)) intel_sub_group_shuffle(char8  x, uint c);
+char16  __attribute__((overloadable)) intel_sub_group_shuffle(char16 x, uint c);
+
+uchar   __attribute__((overloadable)) intel_sub_group_shuffle(uchar   x, uint c);
+uchar2  __attribute__((overloadable)) intel_sub_group_shuffle(uchar2  x, uint c);
+uchar3  __attribute__((overloadable)) intel_sub_group_shuffle(uchar3  x, uint c);
+uchar4  __attribute__((overloadable)) intel_sub_group_shuffle(uchar4  x, uint c);
+uchar8  __attribute__((overloadable)) intel_sub_group_shuffle(uchar8  x, uint c);
+uchar16 __attribute__((overloadable)) intel_sub_group_shuffle(uchar16 x, uint c);
+
+char    __attribute__((overloadable)) intel_sub_group_shuffle_down(char   cur, char   next, uint c);
+char2   __attribute__((overloadable)) intel_sub_group_shuffle_down(char2  cur, char2  next, uint c);
+char3   __attribute__((overloadable)) intel_sub_group_shuffle_down(char3  cur, char3  next, uint c);
+char4   __attribute__((overloadable)) intel_sub_group_shuffle_down(char4  cur, char4  next, uint c);
+char8   __attribute__((overloadable)) intel_sub_group_shuffle_down(char8  cur, char8  next, uint c);
+char16  __attribute__((overloadable)) intel_sub_group_shuffle_down(char16 cur, char16 next, uint c);
+
+uchar   __attribute__((overloadable)) intel_sub_group_shuffle_down(uchar   cur, uchar   next, uint c);
+uchar2  __attribute__((overloadable)) intel_sub_group_shuffle_down(uchar2  cur, uchar2  next, uint c);
+uchar3  __attribute__((overloadable)) intel_sub_group_shuffle_down(uchar3  cur, uchar3  next, uint c);
+uchar4  __attribute__((overloadable)) intel_sub_group_shuffle_down(uchar4  cur, uchar4  next, uint c);
+uchar8  __attribute__((overloadable)) intel_sub_group_shuffle_down(uchar8  cur, uchar8  next, uint c);
+uchar16 __attribute__((overloadable)) intel_sub_group_shuffle_down(uchar16 cur, uchar16 next, uint c);
+
+char    __attribute__((overloadable)) intel_sub_group_shuffle_up(char   cur, char   next, uint c);
+char2   __attribute__((overloadable)) intel_sub_group_shuffle_up(char2  cur, char2  next, uint c);
+char3   __attribute__((overloadable)) intel_sub_group_shuffle_up(char3  cur, char3  next, uint c);
+char4   __attribute__((overloadable)) intel_sub_group_shuffle_up(char4  cur, char4  next, uint c);
+char8   __attribute__((overloadable)) intel_sub_group_shuffle_up(char8  cur, char8  next, uint c);
+char16  __attribute__((overloadable)) intel_sub_group_shuffle_up(char16 cur, char16 next, uint c);
+
+uchar   __attribute__((overloadable)) intel_sub_group_shuffle_up(uchar   cur, uchar   next, uint c);
+uchar2  __attribute__((overloadable)) intel_sub_group_shuffle_up(uchar2  cur, uchar2  next, uint c);
+uchar3  __attribute__((overloadable)) intel_sub_group_shuffle_up(uchar3  cur, uchar3  next, uint c);
+uchar4  __attribute__((overloadable)) intel_sub_group_shuffle_up(uchar4  cur, uchar4  next, uint c);
+uchar8  __attribute__((overloadable)) intel_sub_group_shuffle_up(uchar8  cur, uchar8  next, uint c);
+uchar16 __attribute__((overloadable)) intel_sub_group_shuffle_up(uchar16 cur, uchar16 next, uint c);
+
+char    __attribute__((overloadable)) intel_sub_group_shuffle_xor(char   x, uint c);
+char2   __attribute__((overloadable)) intel_sub_group_shuffle_xor(char2  x, uint c);
+char3   __attribute__((overloadable)) intel_sub_group_shuffle_xor(char3  x, uint c);
+char4   __attribute__((overloadable)) intel_sub_group_shuffle_xor(char4  x, uint c);
+char8   __attribute__((overloadable)) intel_sub_group_shuffle_xor(char8  x, uint c);
+char16  __attribute__((overloadable)) intel_sub_group_shuffle_xor(char16 x, uint c);
+
+uchar   __attribute__((overloadable)) intel_sub_group_shuffle_xor(uchar   x, uint c);
+uchar2  __attribute__((overloadable)) intel_sub_group_shuffle_xor(uchar2  x, uint c);
+uchar3  __attribute__((overloadable)) intel_sub_group_shuffle_xor(uchar3  x, uint c);
+uchar4  __attribute__((overloadable)) intel_sub_group_shuffle_xor(uchar4  x, uint c);
+uchar8  __attribute__((overloadable)) intel_sub_group_shuffle_xor(uchar8  x, uint c);
+uchar16 __attribute__((overloadable)) intel_sub_group_shuffle_xor(uchar16 x, uint c);
+
+char    __attribute__((overloadable)) intel_sub_group_reduce_add(char   x);
+uchar   __attribute__((overloadable)) intel_sub_group_reduce_add(uchar  x);
+char    __attribute__((overloadable)) intel_sub_group_reduce_min(char   x);
+uchar   __attribute__((overloadable)) intel_sub_group_reduce_min(uchar  x);
+char    __attribute__((overloadable)) intel_sub_group_reduce_max(char   x);
+uchar   __attribute__((overloadable)) intel_sub_group_reduce_max(uchar  x);
+
+char    __attribute__((overloadable)) intel_sub_group_scan_exclusive_add(char   x);
+uchar   __attribute__((overloadable)) intel_sub_group_scan_exclusive_add(uchar  x);
+char    __attribute__((overloadable)) intel_sub_group_scan_exclusive_min(char   x);
+uchar   __attribute__((overloadable)) intel_sub_group_scan_exclusive_min(uchar  x);
+char    __attribute__((overloadable)) intel_sub_group_scan_exclusive_max(char   x);
+uchar   __attribute__((overloadable)) intel_sub_group_scan_exclusive_max(uchar  x);
+
+char    __attribute__((overloadable)) intel_sub_group_scan_inclusive_add(char   x);
+uchar   __attribute__((overloadable)) intel_sub_group_scan_inclusive_add(uchar  x);
+char    __attribute__((overloadable)) intel_sub_group_scan_inclusive_min(char   x);
+uchar   __attribute__((overloadable)) intel_sub_group_scan_inclusive_min(uchar  x);
+char    __attribute__((overloadable)) intel_sub_group_scan_inclusive_max(char   x);
+uchar   __attribute__((overloadable)) intel_sub_group_scan_inclusive_max(uchar  x);
+
+uchar   __attribute__((overloadable)) intel_sub_group_block_read_uc(read_only image2d_t image, int2 coord);
+uchar2  __attribute__((overloadable)) intel_sub_group_block_read_uc2(read_only image2d_t image, int2 coord);
+uchar4  __attribute__((overloadable)) intel_sub_group_block_read_uc4(read_only image2d_t image, int2 coord);
+uchar8  __attribute__((overloadable)) intel_sub_group_block_read_uc8(read_only image2d_t image, int2 coord);
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+uchar   __attribute__((overloadable)) intel_sub_group_block_read_uc(read_write image2d_t image, int2 coord);
+uchar2  __attribute__((overloadable)) intel_sub_group_block_read_uc2(read_write image2d_t image, int2 coord);
+uchar4  __attribute__((overloadable)) intel_sub_group_block_read_uc4(read_write image2d_t image, int2 coord);
+uchar8  __attribute__((overloadable)) intel_sub_group_block_read_uc8(read_write image2d_t image, int2 coord);
+
+void    __attribute__((overloadable)) intel_sub_group_block_write_uc(read_write image2d_t image, int2 coord, uchar  data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_uc2(read_write image2d_t image, int2 coord, uchar2 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_uc4(read_write image2d_t image, int2 coord, uchar4 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_uc8(read_write image2d_t image, int2 coord, uchar8 data);
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+uchar    __attribute__((overloadable)) intel_sub_group_block_read_uc(const __global uchar* p);
+uchar2   __attribute__((overloadable)) intel_sub_group_block_read_uc2(const __global uchar* p);
+uchar4   __attribute__((overloadable)) intel_sub_group_block_read_uc4(const __global uchar* p);
+uchar8   __attribute__((overloadable)) intel_sub_group_block_read_uc8(const __global uchar* p);
+
+void    __attribute__((overloadable)) intel_sub_group_block_write_uc(write_only image2d_t image, int2 coord, uchar  data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_uc2(write_only image2d_t image, int2 coord, uchar2 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_uc4(write_only image2d_t image, int2 coord, uchar4 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_uc8(write_only image2d_t image, int2 coord, uchar8 data);
+
+void    __attribute__((overloadable)) intel_sub_group_block_write_uc(__global uchar* p, uchar  data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_uc2(__global uchar* p, uchar2 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_uc4(__global uchar* p, uchar4 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_uc8(__global uchar* p, uchar8 data);
+
+#endif // cl_intel_subgroups_char
 
 #ifdef cl_intel_media_block_io
 

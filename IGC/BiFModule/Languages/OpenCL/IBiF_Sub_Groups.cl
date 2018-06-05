@@ -111,6 +111,18 @@ INLINE short OVERLOADABLE intel_sub_group_shuffle( short x, uint c )
     return as_short( intel_sub_group_shuffle( as_ushort(x), c ) );
 }
 
+#ifdef cl_intel_subgroups_char
+INLINE uchar OVERLOADABLE intel_sub_group_shuffle( uchar x, uint c )
+{
+    return as_uchar( __builtin_IB_simd_shuffle_b( as_char(x), c ) );
+}
+
+INLINE char OVERLOADABLE intel_sub_group_shuffle( char x, uint c )
+{
+    return as_char( intel_sub_group_shuffle( as_uchar(x), c ) );
+}
+#endif // cl_intel_subgroups_char
+
 INLINE float OVERLOADABLE intel_sub_group_shuffle( float x, uint c )
 {
     return __builtin_IB_simd_shuffle_f( x, c );
@@ -127,6 +139,10 @@ INLINE int OVERLOADABLE intel_sub_group_shuffle( int x, uint c )
 }
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, float, float, uint )
+#ifdef cl_intel_subgroups_char
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, char, char, uint )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, uchar, uchar, uint )
+#endif // cl_intel_subgroups_char
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, short, short, uint )
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, ushort, ushort, uint )
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, int, int, uint )
@@ -164,6 +180,18 @@ INLINE short OVERLOADABLE intel_sub_group_shuffle_down( short cur, short next, u
     return as_short( intel_sub_group_shuffle_down( as_ushort(cur), as_ushort(next), c ) );
 }
 
+#ifdef cl_intel_subgroups_char
+INLINE uchar OVERLOADABLE intel_sub_group_shuffle_down( uchar cur, uchar next, uint c )
+{
+    return __builtin_IB_simd_shuffle_down_uc( cur, next, c );
+}
+
+INLINE char OVERLOADABLE intel_sub_group_shuffle_down( char cur, char next, uint c )
+{
+    return as_char( intel_sub_group_shuffle_down( as_uchar(cur), as_uchar(next), c ) );
+}
+#endif // cl_intel_subgroups_char
+
 INLINE float OVERLOADABLE intel_sub_group_shuffle_down( float cur, float next, uint c )
 {
     return as_float( intel_sub_group_shuffle_down( as_uint(cur), as_uint(next), c ) );
@@ -172,6 +200,10 @@ INLINE float OVERLOADABLE intel_sub_group_shuffle_down( float cur, float next, u
 GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, float, float, uint )
 GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, short, short, uint )
 GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, ushort, ushort, uint )
+#ifdef cl_intel_subgroups_char
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, char, char, uint )
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, uchar, uchar, uint )
+#endif // cl_intel_subgroups_char
 GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, int, int, uint )
 GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_down, uint, uint, uint )
 
@@ -193,6 +225,10 @@ INLINE TYPE OVERLOADABLE  intel_sub_group_shuffle_up( TYPE prev, TYPE cur, uint 
     return intel_sub_group_shuffle_down( prev, cur, c );                                      \
 }
 
+#ifdef cl_intel_subgroups_char
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(uchar)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(char)
+#endif // cl_intel_subgroups_char
 DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(ushort)
 DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(short)
 DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(uint)
@@ -202,6 +238,10 @@ DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(ulong)
 DEFN_INTEL_SUB_GROUP_SHUFFLE_UP(long)
 
 GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, float, float, uint )
+#ifdef cl_intel_subgroups_char
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, char, char, uint )
+GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, uchar, uchar, uint )
+#endif // cl_intel_subgroups_char
 GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, short, short, uint )
 GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, ushort, ushort, uint )
 GENERATE_VECTOR_FUNCTIONS_3ARGS_VVS( intel_sub_group_shuffle_up, int, int, uint )
@@ -215,6 +255,10 @@ INLINE TYPE OVERLOADABLE  intel_sub_group_shuffle_xor( TYPE x, uint c )         
     return intel_sub_group_shuffle( x, c );                                     \
 }
 
+#ifdef cl_intel_subgroups_char
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(uchar)
+DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(char)
+#endif // cl_intel_subgroups_char
 DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(ushort)
 DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(short)
 DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(uint)
@@ -224,6 +268,10 @@ DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(ulong)
 DEFN_INTEL_SUB_GROUP_SHUFFLE_XOR(long)
 
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, float, float, uint )
+#ifdef cl_intel_subgroups_char
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, char, char, uint )
+GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, uchar, uchar, uint )
+#endif // cl_intel_subgroups_char
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, short, short, uint )
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, ushort, ushort, uint )
 GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle_xor, int, int, uint )
@@ -351,11 +399,19 @@ DEFN_SUB_GROUP_BROADCAST(half,   f16)
 DEFN_SUB_GROUP_BROADCAST(double, f64)
 #endif // cl_khr_fp64
 
+#ifdef cl_intel_subgroups_char
+DEFN_SUB_GROUP_BROADCAST(char,   i8)
+#endif // cl_intel_subgroups_char
+
 #if defined(cl_intel_subgroups_short)
 DEFN_INTEL_SUB_GROUP_BROADCAST(short,  i16)
 DEFN_INTEL_SUB_GROUP_BROADCAST(ushort, i16)
 #endif // cl_intel_subgroups_short
 
+#ifdef cl_intel_subgroups_char
+DEFN_INTEL_SUB_GROUP_BROADCAST(char,  i8)
+DEFN_INTEL_SUB_GROUP_BROADCAST(uchar, i8)
+#endif // cl_intel_subgroups_char
 
 INLINE int OVERLOADABLE sub_group_all( int predicate )
 {
@@ -611,6 +667,38 @@ DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us,  ushort,
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us2, ushort2, ushort, i16, v2i16, __builtin_IB_simd_block_write_2_global_h)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us4, ushort4, ushort, i16, v4i16, __builtin_IB_simd_block_write_4_global_h)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us8, ushort8, ushort, i16, v8i16, __builtin_IB_simd_block_write_8_global_h)
+
+#ifdef cl_intel_subgroups_char
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(intel_sub_group_block_read_uc,   uchar,  __builtin_IB_simd_media_block_read_1_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(intel_sub_group_block_read_uc2,  uchar2, __builtin_IB_simd_media_block_read_2_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(intel_sub_group_block_read_uc4,  uchar4, __builtin_IB_simd_media_block_read_4_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(intel_sub_group_block_read_uc8,  uchar8, __builtin_IB_simd_media_block_read_8_b)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(intel_sub_group_block_read_uc,   uchar,  __builtin_IB_simd_media_block_read_1_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(intel_sub_group_block_read_uc2,  uchar2, __builtin_IB_simd_media_block_read_2_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(intel_sub_group_block_read_uc4,  uchar4, __builtin_IB_simd_media_block_read_4_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE_RW(intel_sub_group_block_read_uc8,  uchar8, __builtin_IB_simd_media_block_read_8_b)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_uc,  uchar,  uchar, i8, __builtin_IB_simd_block_read_1_global_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_uc2, uchar2, uchar, i8, __builtin_IB_simd_block_read_2_global_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_uc4, uchar4, uchar, i8, __builtin_IB_simd_block_read_4_global_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_uc8, uchar8, uchar, i8, __builtin_IB_simd_block_read_8_global_b)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_uc,  uchar,  i8, __builtin_IB_simd_media_block_write_1_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_uc2, uchar2, v2i8, __builtin_IB_simd_media_block_write_2_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_uc4, uchar4, v4i8, __builtin_IB_simd_media_block_write_4_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_uc8, uchar8, v8i8, __builtin_IB_simd_media_block_write_8_b)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(intel_sub_group_block_write_uc,  uchar,  __builtin_IB_simd_media_block_write_1_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(intel_sub_group_block_write_uc2, uchar2, __builtin_IB_simd_media_block_write_2_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(intel_sub_group_block_write_uc4, uchar4, __builtin_IB_simd_media_block_write_4_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_RW(intel_sub_group_block_write_uc8, uchar8, __builtin_IB_simd_media_block_write_8_b)
+
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_uc,  uchar,  uchar, i8, i8, __builtin_IB_simd_block_write_1_global_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_uc2, uchar2, uchar, i8, v2i8, __builtin_IB_simd_block_write_2_global_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_uc4, uchar4, uchar, i8, v4i8, __builtin_IB_simd_block_write_4_global_b)
+DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_uc8, uchar8, uchar, i8, v8i8, __builtin_IB_simd_block_write_8_global_b)
+#endif // cl_intel_subgroups_char
 
 // SPIR-V builtins implementation for intel_subgroups
 

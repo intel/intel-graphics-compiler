@@ -725,144 +725,150 @@ namespace TC
 		}
 	}
 
-	/*****************************************************************************\
+  /*****************************************************************************\
 
-	Function:
-	CClangTranslationBlock::TranslateClang
+  Function:
+  CClangTranslationBlock::TranslateClang
 
-	Description:
-	Translates from CL to LL/BC
+  Description:
+  Translates from CL to LL/BC
 
-	Input:
+  Input:
 
-	Output:
+  Output:
 
-	\*****************************************************************************/
-	bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs* pInputArgs,
-		STB_TranslateOutputArgs* pOutputArgs, std::string& exceptString, const char* pInternalOptions)
-	{
-		// additional clang options
-		std::string optionsEx = pInputArgs->optionsEx;
-		std::string options = pInputArgs->options;
-		optionsEx.append(" -disable-llvm-optzns -fblocks -I. -D__ENABLE_GENERIC__=1");
+  \*****************************************************************************/
+  bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs* pInputArgs,
+    STB_TranslateOutputArgs* pOutputArgs, std::string& exceptString, const char* pInternalOptions)
+  {
+    // additional clang options
+    std::string optionsEx = pInputArgs->optionsEx;
+    std::string options = pInputArgs->options;
+    optionsEx.append(" -disable-llvm-optzns -fblocks -I. -D__ENABLE_GENERIC__=1");
 
-		switch (m_OutputFormat)
-		{
-		case TB_DATA_FORMAT_LLVM_TEXT:
-			optionsEx += " -emit-llvm";
-			break;
-		case TB_DATA_FORMAT_LLVM_BINARY:
-			optionsEx += " -emit-llvm-bc";
-			break;
-		default:
-			break;
-		}
+    switch (m_OutputFormat)
+    {
+    case TB_DATA_FORMAT_LLVM_TEXT:
+      optionsEx += " -emit-llvm";
+      break;
+    case TB_DATA_FORMAT_LLVM_BINARY:
+      optionsEx += " -emit-llvm-bc";
+      break;
+    default:
+      break;
+    }
 
-        if (options.find("-triple") == std::string::npos){
-            // if target triple not explicitly set
-            if (pInputArgs->b32bit)
-            {
-                optionsEx += " -D__32bit__=1";
-                options += " -triple spir";
-            }
-            else
-            {
-                options += " -triple spir64";
-            }
-        }
+    if (options.find("-triple") == std::string::npos) {
+      // if target triple not explicitly set
+      if (pInputArgs->b32bit)
+      {
+        optionsEx += " -D__32bit__=1";
+        options += " -triple spir";
+      }
+      else
+      {
+        options += " -triple spir64";
+      }
+    }
 
-        if (options.find("-gline-tables-only") != std::string::npos)
+    if (options.find("-gline-tables-only") != std::string::npos)
+    {
+      optionsEx += " -debug-info-kind=line-tables-only -dwarf-version=4";
+    }
+
+    std::string extensionsFromInternalOptions = GetListOfExtensionsFromInternalOptions(pInternalOptions);
+    std::string extensions;
+
+    // if extensions list is passed in via internal options, it will override the default ones.
+    if (extensionsFromInternalOptions.size() != 0)
+    {
+      extensions = extensionsFromInternalOptions;
+      optionsEx += " " + extensionsFromInternalOptions;
+    }
+    else
+    {
+      extensions = FormatExtensionsString(m_Extensions);
+      optionsEx += " " + extensions;
+    }
+
+    // get additional -D flags from internal options
+    optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
+
+    if (extensions.find("cl_intel_subgroups_short") != std::string::npos)
+    {
+      optionsEx += " -Dcl_intel_subgroups_short";
+    }
+    const char* cl_intel_subgroups_char_name = "cl_intel_subgroups_char";
+    if (optionsEx.find(cl_intel_subgroups_char_name) != std::string::npos) {
+      // Experimental implementation of subgroups_char extension. 
+      // If user added it to build option, add it to extension list.
+      extensions = extensions + ",+" + cl_intel_subgroups_char_name;
+    }
+    if (extensions.find("cl_intel_media_block_io") != std::string::npos)
+    {
+      optionsEx += " -Dcl_intel_media_block_io";
+    }
+    if (extensions.find("cl_intel_device_side_avc_motion_estimation") != std::string::npos)
+    {
+      optionsEx += " -Dcl_intel_device_side_avc_motion_estimation";
+    }
+
+    optionsEx += " -D__IMAGE_SUPPORT__ -D__ENDIAN_LITTLE__";
+
+    IOCLFEBinaryResult *pResultPtr = NULL;
+    int res = m_CCModule.pCompile(pInputArgs->pszProgramSource,
+      (const char**)pInputArgs->inputHeaders.data(),
+      (unsigned int)pInputArgs->inputHeaders.size(),
+      (const char**)pInputArgs->inputHeadersNames.data(),
+      NULL,
+      0,
+      options.c_str(),
+      optionsEx.c_str(),
+      pInputArgs->oclVersion.c_str(),
+      &pResultPtr);
+
+    Utils::FillOutputArgs(pResultPtr, pOutputArgs, exceptString);
+    if (!exceptString.empty()) // str != "" => there was an exception. skip further code and return. 
+    {
+      return false;
+    }
+
+    // if -dump-opt-llvm is enabled dump the llvm output to the file
+    size_t dumpOptPosition = options.find("-dump-opt-llvm");
+    if ((0 == res) && dumpOptPosition != std::string::npos)
+    {
+      std::string dumpFileName;
+      std::istringstream iss(options.substr(dumpOptPosition));
+      iss >> dumpFileName;
+      size_t equalSignPosition = dumpFileName.find('=');
+      if (equalSignPosition != std::string::npos)
+      {
+        dumpFileName = dumpFileName.substr(equalSignPosition + 1);
+        // dump the archive
+        FILE* file = fopen(dumpFileName.c_str(), "wb");
+        if (file != NULL)
         {
-            optionsEx += " -debug-info-kind=line-tables-only -dwarf-version=4";
+          fwrite(pOutputArgs->pOutput, pOutputArgs->OutputSize, 1, file);
+          fclose(file);
         }
-
-        std::string extensionsFromInternalOptions = GetListOfExtensionsFromInternalOptions(pInternalOptions);
-        std::string extensions;
-
-        // if extensions list is passed in via internal options, it will override the default ones.
-        if(extensionsFromInternalOptions.size() != 0)
-        {
-            extensions = extensionsFromInternalOptions;
-            optionsEx += " " + extensionsFromInternalOptions;
-        }
-        else
-        {
-            extensions = FormatExtensionsString(m_Extensions);
-            optionsEx += " " + extensions;
-        }
-
-        // get additional -D flags from internal options
-        optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
-
-		if (extensions.find("cl_intel_subgroups_short") != std::string::npos)
-		{
-			optionsEx += " -Dcl_intel_subgroups_short";
-		}
-        if (extensions.find("cl_intel_media_block_io") != std::string::npos)
-        {
-            optionsEx += " -Dcl_intel_media_block_io";
-        }
-        if (extensions.find("cl_intel_device_side_avc_motion_estimation") != std::string::npos)
-        {
-            optionsEx += " -Dcl_intel_device_side_avc_motion_estimation";
-        }
-
-		optionsEx += " -D__IMAGE_SUPPORT__ -D__ENDIAN_LITTLE__";
-
-		IOCLFEBinaryResult *pResultPtr = NULL;
-		int res = m_CCModule.pCompile(pInputArgs->pszProgramSource,
-			(const char**)pInputArgs->inputHeaders.data(),
-			(unsigned int)pInputArgs->inputHeaders.size(),
-			(const char**)pInputArgs->inputHeadersNames.data(),
-			NULL,
-			0,
-			options.c_str(),
-			optionsEx.c_str(),
-			pInputArgs->oclVersion.c_str(),
-			&pResultPtr);
-
-		Utils::FillOutputArgs(pResultPtr, pOutputArgs, exceptString);
-		if (!exceptString.empty()) // str != "" => there was an exception. skip further code and return. 
-		{
-			return false;
-		}
-
-		// if -dump-opt-llvm is enabled dump the llvm output to the file
-		size_t dumpOptPosition = options.find("-dump-opt-llvm");
-		if ((0 == res) && dumpOptPosition != std::string::npos)
-		{
-			std::string dumpFileName;
-			std::istringstream iss(options.substr(dumpOptPosition));
-			iss >> dumpFileName;
-			size_t equalSignPosition = dumpFileName.find('=');
-			if (equalSignPosition != std::string::npos)
-			{
-				dumpFileName = dumpFileName.substr(equalSignPosition + 1);
-				// dump the archive
-				FILE* file = fopen(dumpFileName.c_str(), "wb");
-				if (file != NULL)
-				{
-					fwrite(pOutputArgs->pOutput, pOutputArgs->OutputSize, 1, file);
-					fclose(file);
-				}
-			}
-			else
-			{
-				std::string errorString = "\nWarning: File name not specified with the -dump-opt-llvm option.\n";
+      }
+      else
+      {
+        std::string errorString = "\nWarning: File name not specified with the -dump-opt-llvm option.\n";
 #ifdef LLVM_ON_WIN32
-				pOutputArgs->pErrorString = _strdup(errorString.c_str());
+        pOutputArgs->pErrorString = _strdup(errorString.c_str());
 #else
-				pOutputArgs->pErrorString = strdup(errorString.c_str());
+        pOutputArgs->pErrorString = strdup(errorString.c_str());
 #endif
-				pOutputArgs->ErrorStringSize = errorString.length() + 1;
-			}
-		}
+        pOutputArgs->ErrorStringSize = errorString.length() + 1;
+      }
+    }
 
-		//pResult.release();
-		pResultPtr->Release();
+    //pResult.release();
+    pResultPtr->Release();
 
-		return (0 == res);
-	}
+    return (0 == res);
+  }
 
 	/*****************************************************************************\
 

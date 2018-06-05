@@ -55,8 +55,10 @@ const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE            = "_
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US			= "__builtin_IB_simd_shuffle_us";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F          = "__builtin_IB_simd_shuffle_f";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H          = "__builtin_IB_simd_shuffle_h";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B          = "__builtin_IB_simd_shuffle_b";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN       = "__builtin_IB_simd_shuffle_down";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_US    = "__builtin_IB_simd_shuffle_down_us";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_UC    = "__builtin_IB_simd_shuffle_down_uc";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL        = "__builtin_IB_simd_block_read_1_global";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL        = "__builtin_IB_simd_block_read_2_global";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL        = "__builtin_IB_simd_block_read_4_global";
@@ -66,6 +68,13 @@ const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_H      = "_
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_H      = "__builtin_IB_simd_block_read_4_global_h";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_H      = "__builtin_IB_simd_block_read_8_global_h";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_16_GBL_H     = "__builtin_IB_simd_block_read_16_global_h";
+
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_B = "__builtin_IB_simd_block_read_1_global_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_B = "__builtin_IB_simd_block_read_2_global_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_B = "__builtin_IB_simd_block_read_4_global_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_B = "__builtin_IB_simd_block_read_8_global_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_READ_16_GBL_B = "__builtin_IB_simd_block_read_16_global_b";
+
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL       = "__builtin_IB_simd_block_write_1_global";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL       = "__builtin_IB_simd_block_write_2_global";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL       = "__builtin_IB_simd_block_write_4_global";
@@ -75,6 +84,13 @@ const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_H     = "_
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_H     = "__builtin_IB_simd_block_write_4_global_h";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_H     = "__builtin_IB_simd_block_write_8_global_h";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_H    = "__builtin_IB_simd_block_write_16_global_h";
+
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_B = "__builtin_IB_simd_block_write_1_global_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_B = "__builtin_IB_simd_block_write_2_global_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_B = "__builtin_IB_simd_block_write_4_global_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_B = "__builtin_IB_simd_block_write_8_global_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_B = "__builtin_IB_simd_block_write_16_global_b";
+
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1      = "__builtin_IB_simd_media_block_read_1";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2      = "__builtin_IB_simd_media_block_read_2";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4      = "__builtin_IB_simd_media_block_read_4";
@@ -84,6 +100,13 @@ const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_H    = "_
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_H    = "__builtin_IB_simd_media_block_read_4_h";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_H    = "__builtin_IB_simd_media_block_read_8_h";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_16_H   = "__builtin_IB_simd_media_block_read_16_h";
+
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_B = "__builtin_IB_simd_media_block_read_1_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_B = "__builtin_IB_simd_media_block_read_2_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_B = "__builtin_IB_simd_media_block_read_4_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_B = "__builtin_IB_simd_media_block_read_8_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_16_B = "__builtin_IB_simd_media_block_read_16_b";
+
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1     = "__builtin_IB_simd_media_block_write_1";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2     = "__builtin_IB_simd_media_block_write_2";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4     = "__builtin_IB_simd_media_block_write_4";
@@ -93,6 +116,12 @@ const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_H   = "_
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_H   = "__builtin_IB_simd_media_block_write_4_h";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_H   = "__builtin_IB_simd_media_block_write_8_h";
 const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_16_H  = "__builtin_IB_simd_media_block_write_16_h";
+
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_B = "__builtin_IB_simd_media_block_write_1_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_B = "__builtin_IB_simd_media_block_write_2_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_B = "__builtin_IB_simd_media_block_write_4_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_B = "__builtin_IB_simd_media_block_write_8_b";
+const llvm::StringRef SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_16_B = "__builtin_IB_simd_media_block_write_16_b";
 
 const llvm::StringRef SubGroupFuncsResolution::MEDIA_BLOCK_READ             = "__builtin_IB_media_block_read";
 const llvm::StringRef SubGroupFuncsResolution::MEDIA_BLOCK_WRITE            = "__builtin_IB_media_block_write";
@@ -255,13 +284,19 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst &CI)
 	bool supportLocal = false;
 	assert((AS != ADDRESS_SPACE_LOCAL || supportLocal) && "BlockReadLocal not supported!");
 
-    if (CI.getType()->getScalarType()->getScalarSizeInBits() == 16)
+    switch (CI.getType()->getScalarType()->getScalarSizeInBits())
     {
+    case 8:
+        types[1] = Type::getInt8PtrTy(C, AS);
+        break;
+    case 16:
         types[1] = Type::getInt16PtrTy(C, AS);
-    }
-    else
-    {
+    default:
+        assert("unrecognized bit width!");
+        //assert but continue code failsafe using default 32
+    case 32:
         types[1] = (Type::getInt32PtrTy(C, AS));
+        break;
     }
 
     // Check if the only use of CI is conversion to float. If so, use float version of intrinsic and remove the cast instruction.
@@ -314,13 +349,20 @@ void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst &CI)
     args.push_back(CI.getArgOperand(0));
     args.push_back(dataArg);
 
-    if (dataArg->getType()->getScalarType()->getScalarSizeInBits() == 16)
+    switch (dataArg->getType()->getScalarType()->getScalarSizeInBits())
     {
+    case 8:
+        types.push_back(Type::getInt8PtrTy(C, AS));
+        break;
+    case 16:
         types.push_back(Type::getInt16PtrTy(C, AS));
-    }
-    else
-    {
+        break;
+    default:
+        assert("unrecognized bit width!");
+        //assert but continue code failsafe using default 32
+    case 32:
         types.push_back(Type::getInt32PtrTy(C, AS));
+        break;
     }
 
     types.push_back(dataArg->getType());
@@ -431,7 +473,8 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
     else if ( funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE )    ||
 			  funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US ) ||
               funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F ) ||
-              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H ) )
+              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H ) ||
+              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B ) )
     {
         CheckSIMDSize(CI, "Shuffle not supported in SIMD32");
 
@@ -448,7 +491,8 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
         CI.eraseFromParent();
     }
     else if ( funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN ) || 
-              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_US ) )
+              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_US ) ||
+              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_UC ) )
     {
         CheckSIMDSize(CI, "Shuffle Down not supported in SIMD32");
 
@@ -470,11 +514,16 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_16_GBL_H ) )
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_16_GBL_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_1_GBL_H) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_2_GBL_H) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_4_GBL_H) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_8_GBL_H) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_READ_16_GBL_H))
 	{
 		simdBlockRead(CI);
 	}
@@ -482,11 +531,16 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
 		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL ) ||
 		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL ) ||
 		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL ) ||
-		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_H ) ||
-		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_H ) ||
-		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_H ) ||
-		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_H ) ||
-		      funcName.equals(SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_H ) )
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_1_GBL_H ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_2_GBL_H ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_4_GBL_H ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_8_GBL_H ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_BLOCK_WRITE_16_GBL_H ) )
 	{
 		simdBlockWrite(CI);
 	}
@@ -494,11 +548,16 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
               funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2 ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4 ) ||
               funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8 ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_16_H ) )
+              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_16_B ) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_1_H) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_2_H) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_4_H) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_8_H) ||
+              funcName.equals( SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_READ_16_H) )
     {
         CheckSIMDSize(CI, "SIMD Media Block Read not supported in SIMD32");
         mediaBlockRead(CI);
@@ -507,10 +566,15 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
               funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2 ) ||
               funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4 ) ||
               funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8 ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_H ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_H ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_H ) ||
-              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_H ) ||
+              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_B ) ||
+              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_B ) ||
+              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_B ) ||
+              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_B ) ||
+              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_16_B) ||
+              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_1_H) ||
+              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_2_H) ||
+              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_4_H) ||
+              funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_8_H) ||
               funcName.equals(SubGroupFuncsResolution::SIMD_MEDIA_BLOCK_WRITE_16_H) )
     {
         CheckSIMDSize(CI, "SIMD Media Block Write not supported in SIMD32");
