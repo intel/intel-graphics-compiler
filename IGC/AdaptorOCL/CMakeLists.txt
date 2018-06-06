@@ -10,6 +10,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
       "${CMAKE_CURRENT_SOURCE_DIR}/Upgrader/Upgrader.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/Upgrader/BitcodeReader.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.cpp"
+      "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.cpp"
     )
 if(IGC_BUILD__SPIRV_ENABLED)
   list(APPEND IGC_BUILD__SRC__AdaptorOCL
@@ -107,6 +108,7 @@ set(IGC_BUILD__HDR__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/OCL/CommandStream/SurfaceTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/DriverInfoOCL.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.h"
 
     #"${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/API/USC_d3d10.h"
     #"${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/usc_d3d10_umd.h"

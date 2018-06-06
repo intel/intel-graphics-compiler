@@ -89,6 +89,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/InitializePasses.h"
 #include "Compiler/MetaDataApi/SpirMetaDataApi.h"
 #include "Compiler/Optimizer/FixFastMathFlags.hpp"
+#include "MoveStaticAllocas.h"
 
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
@@ -247,6 +248,8 @@ static void CommonOCLBasedPasses(
     mpm.add(new CodeGenContextWrapper(pContext));
 
     mpm.add(new ClampLoopUnroll(256));
+
+    mpm.add(new MoveStaticAllocas());
 
     // Skip this pass if OCL version < 2.0
     if (!(OCLMajor < 2))
