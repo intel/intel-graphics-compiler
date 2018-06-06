@@ -49,7 +49,7 @@ enum DepType
     DEPTYPE_MAX
 };
 
-DepType getDepSend(G4_INST *curInst, G4_INST *liveInst, const Options *m_options);
+DepType getDepSend(G4_INST *curInst, G4_INST *liveInst, const Options *m_options, bool BTIIsRestrict);
 
 DepType getDepScratchSend(G4_INST *curInst, G4_INST *liveInst);
 

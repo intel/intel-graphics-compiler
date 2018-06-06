@@ -172,12 +172,15 @@ class preDDD {
     // This auxiliary vector is built while processing one node.
     std::vector<std::pair<preNode*, Gen4_Operand_Number>> NewLiveOps;
 
+    bool BTIIsRestrict;
+
 public:
     preDDD(Mem_Manager& m, G4_Kernel& kernel, G4_BB* BB)
         : mem(m)
         , kernel(kernel)
         , m_BB(BB)
     {
+        BTIIsRestrict = getOptions()->getOption(vISA_ReorderDPSendToDifferentBti);
     }
     ~preDDD();
 
@@ -1813,7 +1816,7 @@ void preDDD::processSend(preNode* curNode)
     assert(!Inst->getMsgDesc()->isScratchRW() && "not expected");
     for (auto Iter = LiveSends.begin(); Iter != LiveSends.end(); /*empty*/) {
         preNode* liveN = *Iter;
-        DepType Dep = getDepSend(Inst, liveN->getInst(), getOptions());
+        DepType Dep = getDepSend(Inst, liveN->getInst(), getOptions(), BTIIsRestrict);
         if (Dep != DepType::NODEP) {
             addEdge(curNode, liveN, Dep);
             // Check if this kills current live send. If yes, remove it.

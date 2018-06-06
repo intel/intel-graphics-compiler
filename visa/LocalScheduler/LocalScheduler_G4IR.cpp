@@ -1010,6 +1010,8 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
     std::list<G4_INST*>::reverse_iterator iInst(bb->rbegin()), iInstEnd(bb->rend());
     std::vector<BucketDescr> BDvec;
 
+    bool BTIIsRestrict = m_options->getOption(vISA_ReorderDPSendToDifferentBti);
+
     for (int nodeId = (int)(bb->size() - 1); iInst != iInstEnd; ++iInst, nodeId--)
     {
         Node *node = nullptr;
@@ -1104,7 +1106,7 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
                         dep = getDepForOpnd(curOpnd, liveOpnd);
                         curKillsBucket = false;
                     } else if (curBucket == SEND_BUCKET) {
-                        dep = getDepSend(curInst, liveInst, m_options);
+                        dep = getDepSend(curInst, liveInst, m_options, BTIIsRestrict);
                         hasOverlap = (dep != NODEP);
                         curKillsBucket = false;
                         curKillsLive = (dep == WAW_MEMORY || dep == RAW_MEMORY);
@@ -1545,16 +1547,14 @@ void DDD::createAddEdge(Node* pred, Node* succ, DepType d)
 
     // No edge with the same successor exists. Append this edge.
     uint32_t edgeLatency = getEdgeLatency(pred, d);
-    Edge newEdge = Edge(succ, d, edgeLatency);
-    pred->succs.emplace_back(newEdge);
+    pred->succs.emplace_back(succ, d, edgeLatency);
 
     // Set the node priority
-    setPriority(pred, newEdge);
+    setPriority(pred, pred->succs.back());
     // Count SUCC's predecessors (used to tell when SUCC is ready to issue)
     succ->predsNotScheduled++;
 
-    Edge newPredEdge = Edge(pred, d, edgeLatency);
-    succ->preds.emplace_back(newPredEdge);
+    succ->preds.emplace_back(pred, d, edgeLatency);
 
     return;
 }

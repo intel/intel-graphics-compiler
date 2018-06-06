@@ -32,8 +32,8 @@ using namespace vISA;
 enum retDepType { RET_RAW = 1, RET_WAW, RET_WAR };
 
 // Checks for memory interferences created with the "send" instruction for data port.
-static DepType DoMemoryInterfereSend(G4_INST *send1, G4_INST *send2, retDepType depT,
-                                     const Options *m_options)
+static DepType DoMemoryInterfereSend(G4_INST *send1, G4_INST *send2, retDepType depT, const Options *m_options,
+                                     bool BTIIsRestrict)
 {
     // If either instruction is not a send then there cannot be a memory interference.
     if (!send1 || !send2 || !send1->isSend() || !send2->isSend())
@@ -92,8 +92,7 @@ static DepType DoMemoryInterfereSend(G4_INST *send1, G4_INST *send2, retDepType 
                     unsigned int bti1 = (unsigned int)msgDesc1->asImm()->getInt() & MSG_DESC_BTI_MASK;
                     unsigned int bti2 = (unsigned int)msgDesc2->asImm()->getInt() & MSG_DESC_BTI_MASK;
                     auto isBTS = [](uint32_t bti) { return bti < RESERVED_BTI_START; };
-                    if (m_options->getOption(vISA_ReorderDPSendToDifferentBti) && 
-                        isBTS(bti1) && isBTS(bti2) && bti1 != bti2)
+                    if (BTIIsRestrict && isBTS(bti1) && isBTS(bti2) && bti1 != bti2)
                     {
                         // different BTI means no conflict for DP messages
                         return NODEP;
@@ -212,11 +211,12 @@ static DepType DoMemoryInterfereScratchSend(G4_INST *send1, G4_INST *send2, retD
     }
 }
 
-DepType vISA::getDepSend(G4_INST *curInst, G4_INST *liveInst, const Options *m_options)
+DepType vISA::getDepSend(G4_INST *curInst, G4_INST *liveInst, const Options *m_options, 
+    bool BTIIsRestrict)
 {
     for (auto RDEP : { RET_RAW, RET_WAR, RET_WAW })
     {
-        DepType dep = DoMemoryInterfereSend(curInst, liveInst, RDEP, m_options);
+        DepType dep = DoMemoryInterfereSend(curInst, liveInst, RDEP, m_options, BTIIsRestrict);
         if (dep != NODEP)
             return dep;
     }
