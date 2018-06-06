@@ -3533,6 +3533,7 @@ void EmitPass::PackSIMD8HFRet(CVariable* dst)
     }
 }
 
+
 void EmitPass::emitLdInstruction(llvm::Instruction* inst)
 {
     uint numOperands = inst->getNumOperands();
@@ -3616,22 +3617,24 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     bool needPacking = false;
     CVariable* dst = m_destination;
     SIMDMode simdSize = m_currShader->m_SIMDSize;
-    if(dst->IsUniform())
     {
-        simdSize = SIMDMode::SIMD8;
-        unsigned short numberOfElement = dst->GetNumberElement() * 8;
-        numberOfElement =
-            m_destination->GetType() == ISA_TYPE_HF ? numberOfElement * 2 : numberOfElement;
-        dst = m_currShader->GetNewVariable(numberOfElement, dst->GetType(), EALIGN_GRF, dst->IsUniform());
-    }
-    else
-    {
-        needPacking = m_SimdMode == SIMDMode::SIMD8 &&
-            (m_destination->GetType() == ISA_TYPE_HF || m_destination->GetType() == ISA_TYPE_W || m_destination->GetType() == ISA_TYPE_UW) &&
-            !m_destination->isUnpacked();
-        if(needPacking)
+        if (dst->IsUniform())
         {
-            dst = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 2, m_destination->GetType(), EALIGN_GRF, dst->IsUniform());
+            simdSize = SIMDMode::SIMD8;
+            unsigned short numberOfElement = dst->GetNumberElement() * 8;
+            numberOfElement =
+                m_destination->GetType() == ISA_TYPE_HF ? numberOfElement * 2 : numberOfElement;
+            dst = m_currShader->GetNewVariable(numberOfElement, dst->GetType(), EALIGN_GRF, dst->IsUniform());
+        }
+        else
+        {
+            needPacking = m_SimdMode == SIMDMode::SIMD8 &&
+                (m_destination->GetType() == ISA_TYPE_HF || m_destination->GetType() == ISA_TYPE_W || m_destination->GetType() == ISA_TYPE_UW) &&
+                !m_destination->isUnpacked();
+            if (needPacking)
+            {
+                dst = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 2, m_destination->GetType(), EALIGN_GRF, dst->IsUniform());
+            }
         }
     }
 
@@ -3655,38 +3658,40 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     }
     ResourceLoop(needLoop, flag, label);
 
-    if(feedbackEnable)
     {
-        CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
-        uint subvar = numLanes(simdSize) / (SIZE_GRF >> 2) * 4;
-        m_encoder->SetSrcSubVar(0, subvar);
-        m_encoder->SetSrcRegion(0, 0, 1, 0);
-        CVariable* newdestination = m_currShader->BitCast(dst, ISA_TYPE_UD);
-        m_encoder->SetP(flag, newdestination);
-        m_encoder->Push();
-
-        CVariable* pred = m_currShader->ImmToVariable(0xFFFFFFFF, dst->GetType());
-        CVariable* zero = m_currShader->ImmToVariable(0x0, dst->GetType());
-        m_encoder->SetDstSubVar(subvar);
-        m_encoder->Select(flag, dst, pred, zero);
-        m_encoder->Push();
-    }
-
-    if(m_destination->IsUniform())
-    {
-        for(unsigned int i = 0; i < m_destination->GetNumberElement(); i++)
+        if (feedbackEnable)
         {
+            CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
+            uint subvar = numLanes(simdSize) / (SIZE_GRF >> 2) * 4;
+            m_encoder->SetSrcSubVar(0, subvar);
             m_encoder->SetSrcRegion(0, 0, 1, 0);
-            m_encoder->SetSrcSubVar(0, i);
-            m_encoder->SetDstSubReg(i);
-            m_encoder->Copy(m_destination, dst);
+            CVariable* newdestination = m_currShader->BitCast(dst, ISA_TYPE_UD);
+            m_encoder->SetP(flag, newdestination);
+            m_encoder->Push();
+
+            CVariable* pred = m_currShader->ImmToVariable(0xFFFFFFFF, dst->GetType());
+            CVariable* zero = m_currShader->ImmToVariable(0x0, dst->GetType());
+            m_encoder->SetDstSubVar(subvar);
+            m_encoder->Select(flag, dst, pred, zero);
             m_encoder->Push();
         }
-    }
 
-    if (needPacking)
-    {
-        PackSIMD8HFRet(dst);
+        if (m_destination->IsUniform())
+        {
+            for (unsigned int i = 0; i < m_destination->GetNumberElement(); i++)
+            {
+                m_encoder->SetSrcRegion(0, 0, 1, 0);
+                m_encoder->SetSrcSubVar(0, i);
+                m_encoder->SetDstSubReg(i);
+                m_encoder->Copy(m_destination, dst);
+                m_encoder->Push();
+            }
+        }
+
+        if (needPacking)
+        {
+            PackSIMD8HFRet(dst);
+        }
     }
 }
 
@@ -6059,12 +6064,10 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
 	// the responses to the sample + killpix and feedback messages have an extra register that contains a mask.
     bool hasMaskResponse = (writeMask & (1 << 4)) ? true : false;
 
-    CVariable* dst =
-		m_destination;
+    CVariable* dst = m_destination;
     //When sampler output is 16 bit float, hardware doesnt pack the output in SIMD8 mode.
     //Hence the movs to handle this layout in SIMD8 mode
-    bool simd8HFRet = 
-		isSIMD8_16bitReturn(m_destination, m_SimdMode);
+    bool simd8HFRet = isSIMD8_16bitReturn(m_destination, m_SimdMode);
 
     if (simd8HFRet)
     {
@@ -6081,8 +6084,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
         zeroLOD, cpsEnable, hasMaskResponse, !sampler.m_sampler->IsUniform());
     m_encoder->Push();
 
-    if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent()))
-		)
+    if (m_currShader->hasReadWriteImage(*(inst->getParent()->getParent())))
     {
         m_encoder->Copy(m_currShader->GetNULL(), m_destination);
         m_encoder->Push();
@@ -6091,30 +6093,32 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     }
     ResourceLoop(needLoop, flag, label);
 
-    if (simd8HFRet)
     {
-        PackSIMD8HFRet(dst);
-    }
+        if (simd8HFRet)
+        {
+            PackSIMD8HFRet(dst);
+        }
 
-    if(hasMaskResponse)
-    {
-        CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
-        uint subvar = numLanes(m_currShader->m_SIMDSize) / (SIZE_GRF >> 2) * 4;
-        m_encoder->SetSrcSubVar(0, subvar);
-        m_encoder->SetSrcRegion(0, 0, 1, 0);
-        CVariable* newdestination = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
-        m_encoder->SetP(flag, newdestination);
-        m_encoder->Push();
+        if (hasMaskResponse)
+        {
+            CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
+            uint subvar = numLanes(m_currShader->m_SIMDSize) / (SIZE_GRF >> 2) * 4;
+            m_encoder->SetSrcSubVar(0, subvar);
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            CVariable* newdestination = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
+            m_encoder->SetP(flag, newdestination);
+            m_encoder->Push();
 
-        // Use integer types for select in case driver uses alt mode  
-        // (0xFFFFFFFF is a NaN value, so the result is always 0).
-        VISA_Type dstIntType = GetUnsignedIntegerType(m_destination->GetType());
-        CVariable* pred = m_currShader->ImmToVariable(0xFFFFFFFF, dstIntType);
-        CVariable* zero = m_currShader->ImmToVariable(0x0, dstIntType);
-        CVariable* dstAlias = m_currShader->GetNewAlias(m_destination, dstIntType, 0, m_destination->GetNumberElement());
-        m_encoder->SetDstSubVar(subvar);
-        m_encoder->Select(flag, dstAlias, pred, zero );
-        m_encoder->Push();
+            // Use integer types for select in case driver uses alt mode  
+            // (0xFFFFFFFF is a NaN value, so the result is always 0).
+            VISA_Type dstIntType = GetUnsignedIntegerType(m_destination->GetType());
+            CVariable* pred = m_currShader->ImmToVariable(0xFFFFFFFF, dstIntType);
+            CVariable* zero = m_currShader->ImmToVariable(0x0, dstIntType);
+            CVariable* dstAlias = m_currShader->GetNewAlias(m_destination, dstIntType, 0, m_destination->GetNumberElement());
+            m_encoder->SetDstSubVar(subvar);
+            m_encoder->Select(flag, dstAlias, pred, zero);
+            m_encoder->Push();
+        }
     }
 }
 
@@ -6403,27 +6407,29 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     }
     ResourceLoop(needLoop, flag, label);
 
-    if (simd8HFRet)
     {
-        PackSIMD8HFRet(dst);
-    }
+        if (simd8HFRet)
+        {
+            PackSIMD8HFRet(dst);
+        }
 
 
-    if(feedbackEnable)
-    {
-        CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
-        uint subvar = numLanes(m_currShader->m_SIMDSize) / (SIZE_GRF >> 2) * 4;
-        m_encoder->SetSrcSubVar(0, subvar);
-        m_encoder->SetSrcRegion(0, 0, 1, 0);
-        CVariable* newdestination = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
-        m_encoder->SetP(flag, newdestination);
-        m_encoder->Push();
+        if (feedbackEnable)
+        {
+            CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
+            uint subvar = numLanes(m_currShader->m_SIMDSize) / (SIZE_GRF >> 2) * 4;
+            m_encoder->SetSrcSubVar(0, subvar);
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            CVariable* newdestination = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
+            m_encoder->SetP(flag, newdestination);
+            m_encoder->Push();
 
-        CVariable* pred = m_currShader->ImmToVariable(0xFFFFFFFF, m_destination->GetType());
-        CVariable* zero = m_currShader->ImmToVariable(0x0, m_destination->GetType());
-        m_encoder->SetDstSubVar(subvar);
-        m_encoder->Select(flag, m_destination, pred, zero );
-        m_encoder->Push();
+            CVariable* pred = m_currShader->ImmToVariable(0xFFFFFFFF, m_destination->GetType());
+            CVariable* zero = m_currShader->ImmToVariable(0x0, m_destination->GetType());
+            m_encoder->SetDstSubVar(subvar);
+            m_encoder->Select(flag, m_destination, pred, zero);
+            m_encoder->Push();
+        }
     }
 }
 
