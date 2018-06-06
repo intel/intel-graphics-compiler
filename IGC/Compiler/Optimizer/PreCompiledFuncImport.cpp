@@ -988,7 +988,8 @@ void PreCompiledFuncImport::visitCastInst(llvm::CastInst& I)
     if (opc == Instruction::FPToSI || opc == Instruction::FPToUI)
     {
         Constant* COne = ConstantInt::get(intTy, 1);
-        args.push_back(COne);   // round mode = RZ
+		Constant* RZ = ConstantInt::get(intTy, 3);
+        args.push_back(RZ);     // round mode = RZ
         args.push_back(COne);   // flush denorm
         args.push_back(createFlagValue(CurrFunc));  // FP flags, ignored
     }
