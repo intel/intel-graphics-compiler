@@ -203,6 +203,8 @@ class Optimizer
 
     void ifCvt();
 
+    void ifCvtFCCall();
+
     void reRAPostSchedule();
 
     void dce();
@@ -346,6 +348,7 @@ public:
         PI_lowerMadSequence,
         PI_LVN,
         PI_ifCvt,
+        PI_ifCvtFCCall,
         PI_normalizeRegion,            // always
         PI_dumpPayload,
         PI_checkBarrierUsage,          // always

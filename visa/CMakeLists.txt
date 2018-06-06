@@ -185,6 +185,7 @@ set(GenX_Common_Sources
   G4Verifier.cpp
   LVN.cpp
   ifcvt.cpp
+  ifcvt-fccall.cpp
   PreDefinedVars.cpp
   SpillCleanup.cpp
   PatchInfoWriter.cpp

@@ -55,6 +55,7 @@ DEF_VISA_OPTION(vISA_ChangeMoveType,        ET_BOOL, "-ALTMode",         UNUSED,
 DEF_VISA_OPTION(vISA_accSubstitution,       ET_BOOL, "-noAccSub",          UNUSED, true)
 DEF_VISA_OPTION(vISA_doAccSubAfterSchedule, ET_BOOL, "-accSubPostSchedule",	UNUSED, true)
 DEF_VISA_OPTION(vISA_ifCvt,                 ET_BOOL, "-noifcvt",     UNUSED, true)
+DEF_VISA_OPTION(vISA_ifCvtFCCall,           ET_BOOL, "-noifcvtfccall", UNUSED, true)
 DEF_VISA_OPTION(vISA_LVN,                   ET_BOOL, "-nolvn",       UNUSED, true)
 // only affects acc substitution for now
 DEF_VISA_OPTION(vISA_numGeneralAcc,         ET_INT32, "-numGeneralAcc", "USAGE: -numGeneralAcc <accNum>\n", 0)
