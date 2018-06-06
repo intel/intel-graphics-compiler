@@ -223,6 +223,16 @@ void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
         VISA_WA_ENABLE(m_pWaTable, WaDisableSendSrcDstOverlap);
     }
 
+    if (platform == GENX_SKL || platform == GENX_BXT)
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaResetN0BeforeGatewayMessage);
+    }
+
+    if (platform == GENX_CNL)
+    {
+        VISA_WA_ENABLE(m_pWaTable, WaClearTDRRegBeforeEOTForNonPS);
+    }
+
     if (platform >= GENX_CNL)
     {
         VISA_WA_ENABLE(m_pWaTable, WaDisableSendSrcDstOverlap);
