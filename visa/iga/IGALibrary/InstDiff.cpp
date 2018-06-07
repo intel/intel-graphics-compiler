@@ -75,9 +75,7 @@ static std::string fmtPc(const MInst *mi, size_t pc)
 }
 static std::string fmtHexValue(uint64_t val)
 {
-    std::stringstream ss;
-    ss << "0x" << std::hex << val;
-    return ss.str();
+    return fmtHex(val);
 }
 static std::string fmtBitRange(size_t off, size_t len)
 {
@@ -333,11 +331,11 @@ iga_status_t iga::DiffFieldsFromPCs(
     bool useNativeDecoder,
     std::ostream &os,
     const char *source1,
-    size_t pc1,
+    size_t startPc1,
     const uint8_t *bits1,
     size_t bitsLen1,
     const char *source2,
-    size_t pc2,
+    size_t startPc2,
     const uint8_t *bits2,
     size_t bitsLen2)
 {
@@ -369,8 +367,12 @@ iga_status_t iga::DiffFieldsFromPCs(
     os << "\n";
 
     bool success = true;
-    while (pc1 < bitsLen1 || pc2 < bitsLen2) {
-        auto getPc = [&] (const char *which, const uint8_t *bits, size_t bitsLen, size_t pc) {
+    size_t pc1 = startPc1, pc2 = startPc2;
+
+    while (pc1 - startPc1 < bitsLen1 || pc2 - startPc2 < bitsLen2) {
+        auto getPc = [&] (
+            const char *which, const uint8_t *bits, size_t bitsLen, size_t pc)
+        {
             if (bitsLen - pc < 4) {
                 std::stringstream ss;
                 ss << which << ": extra padding at end of kernel";
@@ -384,8 +386,8 @@ iga_status_t iga::DiffFieldsFromPCs(
             }
             return mi;
         };
-        const iga::MInst *mi1 = getPc("kernel 1", bits1, bitsLen1, pc1),
-                         *mi2 = getPc("kernel 2", bits2, bitsLen2, pc2);
+        const iga::MInst *mi1 = getPc("kernel 1", bits1, bitsLen1, pc1 - startPc1),
+                         *mi2 = getPc("kernel 2", bits2, bitsLen2, pc2 - startPc2);
 
         // TODO: do a colored diff here (words with given separators)
         // lex with BufferedLexer and do an LCS
@@ -435,12 +437,6 @@ iga_status_t iga::DiffFieldsFromPCs(
             uint64_t val2 = mi2 ? mi2->getField(*f) : 0;
             std::string valStr2 = findStr(fields2);
 
-            auto fmtHexValue = [](uint64_t val) {
-                std::stringstream ss;
-                ss << "0x" << std::hex << val;
-                return ss.str();
-            };
-
             std::string diffToken = "  ";
             if (inList1 && inList2) {
                 if (val1 != val2) {
@@ -472,7 +468,8 @@ iga_status_t iga::DiffFieldsFromPCs(
             // bit value
             auto fmtElem = [&](bool inList, uint64_t val, const std::string &str) {
                 if (inList) {
-                    os << std::right << std::setw(FIELD_VALUE_INT_WIDTH) << fmtHexValue(val);
+                    os << std::right << std::setw(FIELD_VALUE_INT_WIDTH) <<
+                        fmtHex(val);
                 } else {
                     os << std::right << std::setw(FIELD_VALUE_INT_WIDTH) << " ";
                 }
@@ -526,7 +523,7 @@ static void formatCompactionFieldValue(
             const Field *mf = cf.mappings[mIx];
             bitOff -= mf->length;
             auto bs = iga::getBits(val, bitOff, mf->length);
-            fmtBinary(os, mf->length, bs);
+            fmtBinary(os, bs, mf->length);
         }
     }
 }
@@ -674,11 +671,11 @@ static bool listInstructionCompaction(
                         auto closeVal = iga::getBits(closeMapping, bitOff, mf->length);
                         if (missedVal != closeVal) {
                             os << Color::RED << Intensity::BRIGHT;
-                            fmtBinary(os, mf->length, closeVal);
+                            fmtBinary(os, closeVal, mf->length);
                             os << Reset::RESET;
                             missingFields.push_back(mf);
                         } else {
-                            fmtBinary(os, mf->length, closeVal);
+                            fmtBinary(os, closeVal, mf->length);
                         }
                     }
                     os << ": ";

@@ -24,14 +24,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #include "Floats.hpp"
-#include <iomanip>
-#include <sstream>
-#include <stdint.h>
-#include <iostream>
-#include <stdlib.h>
-#include <cmath> // needed for android build!
-#include <limits>
+#include "../strings.hpp"
 
+#include <cmath> // needed for android build!
+#include <cstdlib>
+#include <cstdint>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <sstream>
+
+using namespace iga;
 
 // Big Theory Statement (BTS): on NaN's in IGA
 //
@@ -85,27 +88,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //                                                       ^ 0x800000
 //
 //   * "qnan(0x400000):f" is legal, but just means snan(0).  This is because
-//      the parser parses the value as 64b and then converts it to 32 when it
+//      the parser parses the value as 64b and then converts it to 32b when it
 //      sees the :f.  The payload fits while parsing, but conversion cannot
 //      tell that we were dealing with qnan
 //
 // NOTE: we distinguish between 'qnan' and 'snan' instead of just using 'nan'
 //       with the whole payload since we parse as 64b and only narrow once
 //       we see the type
-
-
-// A number is exact if we can parse it back to it's original value
-// assumes the number is correct
-//
-// We parse floats as 64b literals and cast down.  So we use strtod for all
-// floating point types and cast down.
-template <typename T>
-static bool isExact(std::string str, T x)
-{
-    // we always parse as a double since the parser will do the same
-    double y = strtod(str.c_str(), nullptr);
-    return ((T)y == x);
-}
 
 template <typename F> int FloatMantissaBits();
 template <typename F> int FloatExponentBits();
@@ -147,8 +136,20 @@ void FormatFloatImplNaN(std::ostream &os, I bits)
     }
     os << "(";
     I lowerPayload = bits & (SNAN_BIT - 1); // lower bits of mantissa
-    os << "0x" << std::hex << std::uppercase << lowerPayload << std::dec;
+    fmtHex(os, (uint64_t)lowerPayload);
     os << ")";
+}
+
+// Checks if a floating point number will reparse exactly as formatted.
+//
+// We parse floats as 64b literals and cast down.  So we use strtod for all
+// floating point types and cast down.
+template <typename T>
+static bool willReparseExactly(T x, std::string str)
+{
+    // we always parse as a double since the parser will do the same
+    double y = strtod(str.c_str(), nullptr);
+    return ((T)y == x);
 }
 
 // Formats a float in decimal or scientific format if it will not lose
@@ -184,7 +185,7 @@ static bool TryFormatFloatImplNonHex(std::ostream &os, F x)
         std::stringstream ss;
         ss.unsetf(std::ios_base::floatfield);
         ss << x;
-        if (isExact(ss.str(), x)) {
+        if (willReparseExactly(x, ss.str())) {
             auto str = ss.str();
             os << str;
             if (str.find('.') == std::string::npos &&
@@ -196,9 +197,11 @@ static bool TryFormatFloatImplNonHex(std::ostream &os, F x)
                 //
                 //  e.g. given "-0.0f", if we were to format that
                 // as "-0:f" (which MSVCRT does), then it parses as
-                // "0" since this is the negation of the S64 int 0 (during parse)
+                // "0" since this is the negation the S64 value 0 (during parse)
                 //
-                // NOTE: we have to ensure default doesn't use exponential
+                // NOTE: we also have to ensure that we aren't using an
+                // exponential (scientific) form already.
+                //
                 // e.g. 1e-007 should not convert to 1e-007.0
                 os << ".0";
             }
@@ -208,12 +211,12 @@ static bool TryFormatFloatImplNonHex(std::ostream &os, F x)
         // try as scientific
         ss.str(std::string()); // reset
         ss << std::scientific << x;
-        if (isExact(ss.str(), x)) {
+        if (willReparseExactly(x, ss.str())) {
             os << ss.str();
             return true;
         }
 
-        // TODO: IFDEF this given a newer enough compiler
+        // TODO: IFDEF this given a new enough compiler
         // (must parse too)
         // e.g. 0x1.47ae147ae147bp-7 (need to parse first)
         //   NOTE: parsing should use >>
@@ -229,7 +232,7 @@ static bool TryFormatFloatImplNonHex(std::ostream &os, F x)
 template <typename F>
 static void FormatFloatAsHex(std::ostream &os, F f)
 {
-    os << "0x" << std::hex << std::uppercase << iga::FloatToBits(f) << std::dec;
+    fmtHex(os, (uint64_t)iga::FloatToBits(f));
 }
 
 void iga::FormatFloat(std::ostream &os, float x)
@@ -249,7 +252,7 @@ void iga::FormatFloat(std::ostream &os, double x)
 void iga::FormatFloat(std::ostream &os, uint16_t w16)
 {
 #if 0
-    os << "0x" << std::hex << std::uppercase << f16 << std::dec;
+    fmtHex(os, (uint64_t)w16);
 #else
     float f32 = ConvertHalfToFloat(w16);
     if (IS_NAN(f32)) {
@@ -266,8 +269,6 @@ void iga::FormatFloat(std::ostream &os, uint16_t w16)
 
 void iga::FormatFloat(std::ostream &os, uint8_t x)
 {
-    // TODO: implement the above
-    // os << "0x" << std::hex << std::uppercase << (unsigned)x << std::dec;
     FormatFloat(os, ConvertQuarterToFloatGEN(x));
 }
 

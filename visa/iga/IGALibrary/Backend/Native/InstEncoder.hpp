@@ -41,7 +41,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 //
 #ifdef _DEBUG
-#define VALIDATE_BITS
+// IGA_VALIDATE_BITS adds extra structures and code to ensure that each bit
+// the instruction encoded gets written at most once.  This can catch
+// accidental field overlaps quite effectively.
+//
+// The neceessary assumption follows that encoders must not get lazy or sloppy
+// and just clobber bits.  Set it once only.
+#define IGA_VALIDATE_BITS
 #endif
 
 
@@ -56,7 +62,7 @@ namespace iga
     {
         int                            instIndex;
         const Instruction             *inst;
-#ifdef VALIDATE_BITS
+#ifdef IGA_VALIDATE_BITS
         // All the bit fields set by some field during this instruction encoding
         // e.g. if a field with bits [127:96] is set to 00000000....0001b
         // this bit mask will contain 1111....111b's for that field
@@ -71,14 +77,14 @@ namespace iga
         InstEncoderState(
               int _instIndex
             , const Instruction *_inst
-#ifdef VALIDATE_BITS
+#ifdef IGA_VALIDATE_BITS
             , const MInst &_dirty
             , const std::vector<const Field*> &_fieldsSet
 #endif
             )
             : instIndex(_instIndex)
             , inst(_inst)
-#ifdef VALIDATE_BITS
+#ifdef IGA_VALIDATE_BITS
             , dirty(_dirty)
             , fieldsSet(_fieldsSet)
 #endif
@@ -208,7 +214,7 @@ namespace iga
         void encode(const Field &f, bool val) { encodeFieldBits(f, val ? 1 : 0); }
         void encode(const Field &f, const Model &model, const OpSpec &os);
         void encode(const Field &f, ExecSize es);
-        void encode(const Field &f, ImplAcc acc);
+        void encode(const Field &f, MathMacroExt acc);
         void encode(const Field &f, Region::Vert vt);
         void encode(const Field &f, Region::Width wi);
         void encode(const Field &f, Region::Horz hz);
@@ -308,7 +314,9 @@ namespace iga
     }; // end class InstEncoder
 
 
-    inline void InstEncoder::encode(const Field &f, const Model &model, const OpSpec &os) {
+    inline void InstEncoder::encode(
+        const Field &f, const Model &model, const OpSpec &os)
+    {
         if (!os.isValid()) {
             encodingError(f, "invalid opcode");
         }
@@ -323,7 +331,7 @@ namespace iga
                 i++)
             {
                 if (parOp->functionControlFields[i].length == 0) {
-                    break; // single element
+                    break; // previous fragment was last
                 }
                 uint64_t fragMask = getFieldMaskUnshifted(parOp->functionControlFields[i]);
                 encode(parOp->functionControlFields[i], fcValue & fragMask);
@@ -348,18 +356,20 @@ namespace iga
         encodeFieldBits(f, val);
     }
 
-    inline void InstEncoder::encode(const Field &f, ImplAcc acc) {
+    // encodes this as an math macro operand reference (e.g. r12.mme2)
+    // *not* as an explicit operand (for context save and restore)
+    inline void InstEncoder::encode(const Field &f, MathMacroExt mme) {
         uint64_t val = 0;
-        switch (acc) {
-        ENCODING_CASE(ImplAcc::ACC2, 0x0);
-        ENCODING_CASE(ImplAcc::ACC3, 0x1);
-        ENCODING_CASE(ImplAcc::ACC4, 0x2);
-        ENCODING_CASE(ImplAcc::ACC5, 0x3);
-        ENCODING_CASE(ImplAcc::ACC6, 0x4);
-        ENCODING_CASE(ImplAcc::ACC7, 0x5);
-        ENCODING_CASE(ImplAcc::ACC8, 0x6);
-        ENCODING_CASE(ImplAcc::ACC9, 0x7);
-        ENCODING_CASE(ImplAcc::NOACC, 0x8);
+        switch (mme) {
+        ENCODING_CASE(MathMacroExt::MME0, 0x0);
+        ENCODING_CASE(MathMacroExt::MME1, 0x1);
+        ENCODING_CASE(MathMacroExt::MME2, 0x2);
+        ENCODING_CASE(MathMacroExt::MME3, 0x3);
+        ENCODING_CASE(MathMacroExt::MME4, 0x4);
+        ENCODING_CASE(MathMacroExt::MME5, 0x5);
+        ENCODING_CASE(MathMacroExt::MME6, 0x6);
+        ENCODING_CASE(MathMacroExt::MME7, 0x7);
+        ENCODING_CASE(MathMacroExt::NOMME, 0x8);
         default: internalErrorBadIR(f);
         }
         encodeFieldBits(f, val);
@@ -429,6 +439,7 @@ namespace iga
         ENCODING_CASE(RegName::ARF_NULL, 0);
         ENCODING_CASE(RegName::ARF_A,    1);
         ENCODING_CASE(RegName::ARF_ACC,  2);
+        ENCODING_CASE(RegName::ARF_MME,  2);
         ENCODING_CASE(RegName::ARF_F,    3);
         ENCODING_CASE(RegName::ARF_CE,   4);
         ENCODING_CASE(RegName::ARF_MSG,  5);
@@ -474,8 +485,6 @@ namespace iga
             }
             val >>= 3; // unscale
         }
-#ifdef _DEBUG
-		// TODO: should look up from models and regsets
 		switch (reg) {
 		case RegName::GRF_R:
 		case RegName::ARF_ACC:
@@ -484,14 +493,11 @@ namespace iga
 				encodingError(f, "subregister out of bounds");
 			}
 			break;
-			// TODO: check the others (IR checker should get this!)
+    		// TODO: should look up from models and regsets and use that data
 		default: break;
 		}
-#endif
 		encodeFieldBits(f, val);
     }
-
-
 
 
     class InstCompactor : public BitProcessor {

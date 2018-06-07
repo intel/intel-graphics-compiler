@@ -127,7 +127,7 @@ static size_t encodeInst(
                         const Field *f = cIx->mappings[fIx];
                         auto mVal = getBits(
                             mappedValue, bIx - f->length, f->length);
-                        fmtBinary(ss, f->length, mVal);
+                        fmtBinary(ss, mVal, f->length);
                         if (fIx > 0) {
                             ss << "`";
                         }

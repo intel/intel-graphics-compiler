@@ -51,7 +51,9 @@ namespace iga
         static const RegSetInfo *ALL[];
     };
 
-    // schema for register files TODO: merge this with RegInfo in Models.hpp
+    // TODO: merge this with RegInfo in Models.hpp
+    //
+    // schema for register files 
     // NOTE: I have to replicate all the constants as scalars (not struct elements)
     // because the compiler refuses to accept that they are constant. :(
     //
@@ -64,8 +66,11 @@ const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, STA
 
     RS_CREATE_SET(GRF_R,     "r", 256, 32, 0);
     RS_CREATE_SET(ARF_A,    "a0",   1, 32, RS_NEXT(GRF_R));
-    RS_CREATE_SET(ARF_ACC, "acc",  10, 32, RS_NEXT(ARF_A));
-    RS_CREATE_SET(ARF_F,     "f",   2,  4, RS_NEXT(ARF_ACC));
+    RS_CREATE_SET(ARF_ACC, "acc",   4, 32, RS_NEXT(ARF_A));
+    // MMR: technically only a couple bits each, 
+    // but treat as full registers just for simplicity
+    RS_CREATE_SET(ARF_MME, "mme",   8, 32, RS_NEXT(ARF_ACC));
+    RS_CREATE_SET(ARF_F,     "f",   2,  4, RS_NEXT(ARF_MME));
     RS_CREATE_SET(ARF_CR,   "cr",   3,  4, RS_NEXT(ARF_F));
     RS_CREATE_SET(ARF_SR,   "sr",   3,  4, RS_NEXT(ARF_CR));
     RS_CREATE_SET(ARF_IP,   "ip",   1,  4, RS_NEXT(ARF_SR));
@@ -88,9 +93,10 @@ const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, STA
         default: return nullptr;
         }
     }
-    static size_t relativeAddressOf(const RegSetInfo &rsi, RegRef rr, size_t tySz)
+    static size_t relativeAddressOf(
+        const RegSetInfo &rsi, RegRef rr, size_t tySzBits)
     {
-        return rsi.bytesPerRegister*rr.regNum + rr.subRegNum*tySz;
+        return rsi.bytesPerRegister*rr.regNum + rr.subRegNum*tySzBits/8;
     }
 
     // A register set represent all the storage in the register files
@@ -126,13 +132,13 @@ const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, STA
             RegRef rr,
             Region r,
             size_t execSize,
-            size_t typeSize);
+            size_t typeSizeBits);
         bool setSrcRegion(
             RegName rn,
             RegRef rr,
             Region r,
             size_t execSize,
-            size_t typeSize);
+            size_t typeSizeBits);
 
         bool        empty() const { return bits.empty(); }
         void        reset() { bits.reset(); }

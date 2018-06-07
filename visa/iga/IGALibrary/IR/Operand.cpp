@@ -39,7 +39,7 @@ void Operand::setDirectDestination(
 {
     m_kind = Operand::Kind::DIRECT;
 
-    m_regImplAcc = ImplAcc::INVALID;
+    m_regMathMacro = MathMacroExt::INVALID;
     m_regOpDstMod = dstMod;
     m_regOpReg = reg;
     m_regOpRgn.setDstHz(rgnHz);
@@ -52,7 +52,7 @@ void Operand::setMacroDestination(
     DstModifier dstMod,
     RegName r,
     const RegRef &reg,
-    ImplAcc acc,
+    MathMacroExt mme,
     Region::Horz rgnHz,
     Type type)
 {
@@ -60,7 +60,7 @@ void Operand::setMacroDestination(
 
     m_regOpDstMod = dstMod;
     m_regOpReg = reg;
-    m_regImplAcc = acc;
+    m_regMathMacro = mme;
     m_regOpName = r;
     m_regOpRgn.setDstHz(rgnHz);
     m_type = type;
@@ -76,7 +76,7 @@ void Operand::setInidirectDestination(
 {
     m_kind = Operand::Kind::INDIRECT;
 
-    m_regImplAcc = ImplAcc::INVALID;
+    m_regMathMacro = MathMacroExt::INVALID;
     m_regOpDstMod = dstMod;
     m_regOpReg = reg;
     m_regOpRgn.setDstHz(rgnHz);
@@ -91,7 +91,7 @@ void Operand::setImmediateSource(
 {
     m_kind = Operand::Kind::IMMEDIATE;
 
-    m_regImplAcc = ImplAcc::INVALID;
+    m_regMathMacro = MathMacroExt::INVALID;
     m_immValue = val;
     m_type = type;
 }
@@ -106,7 +106,7 @@ void Operand::setInidirectSource(
 {
     m_kind = Operand::Kind::INDIRECT;
 
-    m_regImplAcc = ImplAcc::INVALID;
+    m_regMathMacro = MathMacroExt::INVALID;
     m_regOpSrcMod = srcMod;
     m_regOpReg = reg;
     m_regOpRgn = rgn;
@@ -125,7 +125,7 @@ void Operand::setDirectSource(
 {
     m_kind = Operand::Kind::DIRECT;
 
-    m_regImplAcc = ImplAcc::INVALID;
+    m_regMathMacro = MathMacroExt::INVALID;
     m_regOpSrcMod = srcMod;
     m_regOpName = r;
     m_regOpReg = reg;
@@ -138,7 +138,7 @@ void Operand::setMacroSource(
     SrcModifier srcMod,
     RegName r,
     const RegRef &reg,
-    ImplAcc acc,
+    MathMacroExt acc,
     Region rgn,
     Type type)
 {
@@ -147,7 +147,7 @@ void Operand::setMacroSource(
     m_regOpSrcMod = srcMod;
     m_regOpName = r;
     m_regOpReg = reg;
-    m_regImplAcc = acc;
+    m_regMathMacro = acc;
     m_regOpRgn = rgn;
     m_type = type;
 }

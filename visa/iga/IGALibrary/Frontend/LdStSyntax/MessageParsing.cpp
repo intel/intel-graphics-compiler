@@ -50,7 +50,7 @@ static RegRange parseRegRange(GenParser &p)
     if (!p.LookupReg(regStr, ri, rr.regStart)) {
         p.Fail("invalid register range");
     }
-    rr.regName = ri->reg;
+    rr.regName = ri->regName;
 
     if (!p.Consume(SUB)) {
         rr.length = 1;

@@ -161,6 +161,7 @@ private:
         }
     }
 
+
     iga::PredCtrl getIGAPredCtrl(G4_Predicate_Control g4PredCntrl) const
     {
         switch (g4PredCntrl)
@@ -284,22 +285,22 @@ private:
         }
         return igaRegion;
     }
-    iga::ImplAcc getIGAImplAcc(G4_AccRegSel accSel) const
+    iga::MathMacroExt getIGAImplAcc(G4_AccRegSel accSel) const
     {
         switch (accSel)
         {
-        case ACC2:      return iga::ImplAcc::ACC2;
-        case ACC3:      return iga::ImplAcc::ACC3;
-        case ACC4:      return iga::ImplAcc::ACC4;
-        case ACC5:      return iga::ImplAcc::ACC5;
-        case ACC6:      return iga::ImplAcc::ACC6;
-        case ACC7:      return iga::ImplAcc::ACC7;
-        case ACC8:      return iga::ImplAcc::ACC8;
-        case ACC9:      return iga::ImplAcc::ACC9;
-        case NOACC:     return iga::ImplAcc::NOACC;
+        case ACC2:      return iga::MathMacroExt::MME0;
+        case ACC3:      return iga::MathMacroExt::MME1;
+        case ACC4:      return iga::MathMacroExt::MME2;
+        case ACC5:      return iga::MathMacroExt::MME3;
+        case ACC6:      return iga::MathMacroExt::MME4;
+        case ACC7:      return iga::MathMacroExt::MME5;
+        case ACC8:      return iga::MathMacroExt::MME6;
+        case ACC9:      return iga::MathMacroExt::MME7;
+        case NOACC:     return iga::MathMacroExt::NOMME;
         default:
-            assert(false && "illegal acc channel select");
-            return iga::ImplAcc::INVALID;
+            assert(false && "illegal acc (mme) channel select");
+            return iga::MathMacroExt::INVALID;
         }
     }
     iga::ImmVal::Kind getIGAImmType(G4_Type type)
@@ -512,8 +513,6 @@ private:
 
     void *m_kernelBuffer;
     uint32_t m_kernelBufferSize;
-
-
 };
 
 #endif //_BINARYENCODINGIGA_H_

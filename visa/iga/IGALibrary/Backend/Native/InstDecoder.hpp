@@ -29,18 +29,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Frontend/IRToString.hpp"
 #include "../../Frontend/Floats.hpp"
 #include "../../IR/InstBuilder.hpp"
+#include "../../strings.hpp"
 #include "../BitProcessor.hpp"
 #include "Field.hpp"
 #include "Interface.hpp"
 #include "MInst.hpp"
 
-
-#include <vector>
-#include <string>
-#include <sstream>
 #include <algorithm>
 #include <functional>
 #include <initializer_list>
+#include <iomanip>
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace iga
 {
@@ -551,9 +552,9 @@ namespace iga
                 SrcModifier::NEG,  os.isBitwise() ? "~" : "-",
                 SrcModifier::NEG_ABS,"-(abs)");
         }
-        ImplAcc decodeImplAcc(const Field &fSPCACC) {
+        MathMacroExt decodeMathMacroReg(const Field &fSPCACC) {
             addReserved(fSPCACC.offset + 4, 1);
-            return decodeImplAccField(fSPCACC);
+            return decodeMathMacroRegField(fSPCACC);
         }
         void decodeSubReg(
             OpIx opIndex,
@@ -615,7 +616,7 @@ namespace iga
             decodeRegFields(opInfo, fREGFILE, fREG);
             if (os.isMacro()) {
                 opInfo.kind = Operand::Kind::MACRO;
-                opInfo.regOpImplAcc = decodeImplAccField(fSPCACC);
+                opInfo.regOpMathMacroExtReg = decodeMathMacroRegField(fSPCACC);
                 addReserved(fSPCACC.offset + fSPCACC.length, 1);
             } else {
                 opInfo.kind = Operand::Kind::DIRECT;
@@ -642,34 +643,54 @@ namespace iga
                 ss << "r" << val;
             } else {
                 const RegInfo *regInfo =
-                    model.lookupArfRegInfoByCode((val>>4) & 0xF);
-                auto regNum = val & 0xF;
+                    model.lookupArfRegInfoByRegNum((uint8_t)val);
                 if (regInfo == nullptr) {
                     ss << "ARF?";
-                    opInfo.regOpName = RegName::INVALID;
+                    std::stringstream ssErr;
+                    ssErr << "invalid ARF Reg (" << fmtHex(val,2) << ")";
+                    reportFieldError(fREG,  ssErr.str().c_str());
                 } else {
-                    opInfo.regOpName = regInfo->reg;
-                    ss << regInfo->name;
-                    if (regInfo->num_regs != 0) {
-                        ss << regNum;
+                    opInfo.regOpName = regInfo->regName;
+                    ss << regInfo->syntax;
+                    int arfReg = 0;
+                    if(val > 0xFF || !regInfo->decode((uint8_t)val, arfReg)) {
+                        ss << arfReg << "?";
+                        std::stringstream ssErr;
+                        ssErr << regInfo->syntax << arfReg << " is out of bounds";
+                        reportFieldError(fREG, ssErr.str().c_str());
+                    } else {
+                        if (regInfo->hasRegNum()) {
+                            ss << arfReg;
+                        }
+                        opInfo.regOpReg.regNum = (int)arfReg;
+                        if (regInfo->regNumBase > 0) {
+                            // if the register covers to another, let's tell
+                            // them which
+                            uint8_t coverRegBits = (uint8_t)val & 0xF0;
+                            const RegInfo *coverRegInfo =
+                                model.lookupArfRegInfoByRegNum(coverRegBits);
+                            if (coverRegInfo) {
+                                ss << " (" <<
+                                    coverRegInfo->syntax << (val & 0xF) << ")";
+                            }
+                        }
                     }
                 }
-                opInfo.regOpReg.regNum = (uint8_t)regNum;
             }
             addDecodedField(fREG, ss.str());
         }
 
-        ImplAcc decodeImplAccField(const Field &fSPCACC) {
-            return decodeField<ImplAcc>(fSPCACC, ImplAcc::INVALID,{
-                {ImplAcc::ACC2,".sacc2"},
-                {ImplAcc::ACC3,".sacc3"},
-                {ImplAcc::ACC4,".sacc4"},
-                {ImplAcc::ACC5,".sacc5"},
-                {ImplAcc::ACC6,".sacc6"},
-                {ImplAcc::ACC7,".sacc7"},
-                {ImplAcc::ACC8,".sacc8"},
-                {ImplAcc::ACC9,".sacc9"},
-                {ImplAcc::NOACC,".nosacc"}});
+        MathMacroExt decodeMathMacroRegField(const Field &fSPCACC) {
+            return decodeField<MathMacroExt>(fSPCACC, MathMacroExt::INVALID,{
+                {MathMacroExt::MME0,".mme0"},
+                {MathMacroExt::MME1,".mme1"},
+                {MathMacroExt::MME2,".mme2"},
+                {MathMacroExt::MME3,".mme3"},
+                {MathMacroExt::MME4,".mme4"},
+                {MathMacroExt::MME5,".mme5"},
+                {MathMacroExt::MME6,".mme6"},
+                {MathMacroExt::MME7,".mme7"},
+                {MathMacroExt::NOMME,".nomme"}});
         }
 
         bool decodeInstOpt(const Field &fINSTOPT, InstOpt opt) {

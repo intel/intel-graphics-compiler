@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _IGA_TYPES_EXT_HPP
 
 #include "iga_bxml_ops.hpp"
+#include "iga_bxml_enums.hpp"
 
 
 namespace iga
@@ -36,7 +37,16 @@ namespace iga
         INVALID = 0, //        ENCODING
         ARF_NULL,  // null      0000b
         ARF_A,     // a#        0001b
-        ARF_ACC,   // acc# ...  0010b
+        ARF_ACC,   // acc# ...  0010b with RegNum[3:0] = 0..1 for acc0-acc1
+        // Math Macro Exponent (or Extended).
+        //
+        // Holds a 2b part of the exponent for IEEE-accurate math sequences
+        // using madm and math.{invm,rsqrtm}
+        // Formerly known as acc2-acc9.  Still encodes the same.
+        // sometimes called "Special Accumulators"
+        // formerly called acc2-acc9 used in madm and
+        ARF_MME,   // mme# ...  0010b with RegNum[3:0] = 2..9 for mme0-mme7
+
         ARF_F,     // f#        0011b
         ARF_CE,    // ce        0100b
         ARF_MSG,   // msg#      0101b
@@ -56,6 +66,7 @@ namespace iga
     enum class Type
     {
         INVALID,
+
 
         UB,
         B,
@@ -88,10 +99,8 @@ namespace iga
 
     enum class SFMessageType
     {
-        NO_MESS    = -4, // no message types on the given SFID
-        NON_IMM    = -3, // non-immediate
-        ERR        = -2, // error the parameters
-        INVALID    = -1,
+        INVALID = -1,
+
         MSD0R_HWB,
         MSD0W_HWB,
         MT0R_OWB,
@@ -157,26 +166,6 @@ namespace iga
         MT1A_A64_UF4x2,
     };
 
-    enum class SFID
-    {
-        ERR     = -3,
-        NON_IMM = -2,
-        INVALID = -1,
-        NULL_   =  0,  // the null shared function
-        SMPL    =  2,  // sampler; Note: Pre-SKL sampler also maps here as well
-        GTWY    =  3,  // gateway
-        DC2     =  4,  // data cache 2 (HDC)
-        RC      =  5,  // render cache (HDC)
-        URB     =  6,  // URB (HDC)
-        TS      =  7,  // thread spawner
-        VME     =  8,  // VME FF's (sampler)
-        DCRO    =  9,  // data cache read only (HDC) ...
-        DC0     =  10, // data cache 2 (HDC)
-        PIXI    =  11, // pixel interpolater (sampler)
-        DC1     =  12, // data cache 1 (HDC)
-        CRE     =  13, // check and refinement engine
-    };
-
     enum class ExecSize
     {
         INVALID = 0,
@@ -205,6 +194,58 @@ namespace iga
     {
         NORMAL,
         NOMASK,
+    };
+
+    enum class FlagModifier
+    {
+        NONE = 0,  // no flag modification
+        EQ,        // equal (zero)
+        NE,        // not-equal (not-zer)
+        GT,        // greater than
+        GE,        // greater than or equal
+        LT,        // less than
+        LE,        // less than or equal
+                   // Reserved <= 7
+        OV = 8,    // overflow
+        UN,        // unordered (NaN)
+        EO = 0xFF, // special implicit flag modifier for math.invm and math.rsqrtm
+                   // [trb] from Balakumar Rajendran (Apr 2016)
+                   // "The .eo means early out.  It doesn't have bits in the
+                   // instruction when a macro is executed.  The flag is set
+                   // for early out conditions including division by
+                   // 0, infinity, etc"
+    };
+
+    enum class SrcModifier
+    {
+        NONE,
+        ABS,
+        NEG,
+        NEG_ABS,
+    };
+
+    enum class DstModifier
+    {
+        NONE,
+        SAT,
+    };
+
+    enum class PredCtrl
+    {
+        NONE, // predication is off
+        SEQ,  // no explicit function; e.g. f0.0
+        ANYV, // .anyv; e.g. "f0.0.anyv"
+        ALLV,
+        ANY2H,
+        ALL2H,
+        ANY4H,
+        ALL4H,
+        ANY8H,
+        ALL8H,
+        ANY16H,
+        ALL16H,
+        ANY32H,
+        ALL32H
     };
 }
 #endif

@@ -336,7 +336,7 @@ uint32_t kv_get_send_descs(
     if (!kv || !ex_desc || !desc)
         return 0;
     const Instruction *inst = ((KernelViewImpl *)kv)->getInstruction(pc);
-    if (!inst || !inst->getOpSpec().isSendOrSendsFamily() || inst->getOp() == Op::ILLEGAL) {
+    if (!inst || !inst->getOpSpec().isSendOrSendsFamily()) {
         *ex_desc = *desc = KV_INVALID_SEND_DESC;
         return 0;
     }
@@ -357,7 +357,7 @@ uint32_t kv_get_send_descs(
     return n;
 }
 
-/******************** KernelView analysis APIs ********************************/
+/******************** KernelView analysis APIs *******************************/
 const Instruction *getInstruction(const kv_t *kv, int32_t pc)
 {
     if (!kv) {
@@ -367,48 +367,63 @@ const Instruction *getInstruction(const kv_t *kv, int32_t pc)
     return inst;
 }
 
-int32_t kv_get_message_type(const kv_t *kv, int32_t pc)
+kv_status_t kv_get_message_type(
+    const kv_t *kv, int32_t pc, int32_t *message_type_enum)
 {
-    if (!kv) {
-        return static_cast<int32_t>(SFMessageType::INVALID);
+    if (!kv || !message_type_enum) {
+        return kv_status_t::KV_INVALID_ARGUMENT;
     }
 
-    const Instruction *inst = getInstruction(kv, pc);
-    if (!inst || !inst->getOpSpec().isSendOrSendsFamily()) {
-        return static_cast<int32_t>(SFMessageType::INVALID);
-    }
-
-    auto exDesc = inst->getExtMsgDescriptor();
-    auto desc = inst->getMsgDescriptor();
-
-    if (exDesc.type != SendDescArg::IMM || desc.type != SendDescArg::IMM)
-        return static_cast<int32_t>(SFMessageType::NON_IMM);
-
-    Platform p = ((KernelViewImpl *)kv)->m_model.platform;
-
-    SFMessageType msgType = getMessageType(p, inst->getOpSpec(), exDesc.imm, desc.imm);
-
-    return static_cast<int32_t>(msgType);
-}
-
-int32_t kv_get_message_sfid(const kv_t *kv, int32_t pc)
-{
     const Instruction *inst = getInstruction(kv, pc);
     if (!inst) {
-        return static_cast<int32_t>(SFID::ERR);
+        return kv_status_t::KV_INVALID_PC;
+    } else if (!inst || !inst->getOpSpec().isSendOrSendsFamily()) {
+        return kv_status_t::KV_NON_SEND_INSTRUCTION;
     }
 
     auto exDesc = inst->getExtMsgDescriptor();
     auto desc = inst->getMsgDescriptor();
 
+    // NOTE: we could probably get the message just from desc
     if (exDesc.type != SendDescArg::IMM || desc.type != SendDescArg::IMM)
-        return static_cast<int32_t>(SFID::NON_IMM);
+        return kv_status_t::KV_DESCRIPTOR_INDIRECT;
 
     Platform p = ((KernelViewImpl *)kv)->m_model.platform;
+    SFMessageType msgType =
+        getMessageType(p, inst->getOpSpec(), exDesc.imm, desc.imm);
+    *message_type_enum = static_cast<int32_t>(msgType);
 
-    SFID sfid = getSFID(p, inst->getOpSpec(), exDesc.imm, desc.imm);
+    if (msgType == SFMessageType::INVALID)
+        return kv_status_t::KV_DESCRIPTOR_INVALID;
 
-    return static_cast<int32_t>(sfid);
+    return kv_status_t::KV_SUCCESS;
+}
+
+kv_status_t kv_get_message_sfid(const kv_t *kv, int32_t pc, int32_t *sfid_enum)
+{
+    if (!kv || !sfid_enum) {
+        return kv_status_t::KV_INVALID_ARGUMENT;
+    }
+
+    const Instruction *inst = getInstruction(kv, pc);
+    if (!inst) {
+        return kv_status_t::KV_INVALID_PC;
+    } else if (!inst || !inst->getOpSpec().isSendOrSendsFamily()) {
+        return kv_status_t::KV_NON_SEND_INSTRUCTION;
+    }
+
+    auto exDesc = inst->getExtMsgDescriptor();
+    if (exDesc.type != SendDescArg::IMM)
+        return kv_status_t::KV_DESCRIPTOR_INDIRECT;
+
+    Platform p = ((KernelViewImpl *)kv)->m_model.platform;
+    SFID sfid = getSFID(p, inst->getOpSpec(), exDesc.imm, 0);
+    *sfid_enum = static_cast<int32_t>(sfid);
+
+    if (sfid == SFID::INVALID)
+        return kv_status_t::KV_DESCRIPTOR_INVALID;
+
+    return kv_status_t::KV_SUCCESS;
 }
 
 uint32_t kv_get_message_len(
@@ -487,9 +502,7 @@ int32_t kv_get_has_destination(const kv_t *kv, int32_t pc)
     const OpSpec& instSpec = inst->getOpSpec();
     return instSpec.supportsDestination() ? 1 : 0;
 }
-/*
-* This function returns destination Register row
-*/
+
 int32_t kv_get_destination_register(const kv_t *kv, int32_t pc)
 {
     if (!kv) {
@@ -509,9 +522,6 @@ int32_t kv_get_destination_register(const kv_t *kv, int32_t pc)
     return dst.getDirRegRef().regNum;
 }
 
-/*
-* This function returns destination subRegister
-*/
 int32_t kv_get_destination_sub_register(const kv_t *kv, int32_t pc)
 {
     if (!kv) {
@@ -533,10 +543,6 @@ int32_t kv_get_destination_sub_register(const kv_t *kv, int32_t pc)
     return dst.getDirRegRef().subRegNum;
 }
 
-/*
-* This function returns destination data type
-* i.e. F, HF, INT, etc
-*/
 uint32_t kv_get_destination_data_type(const kv_t *kv, int32_t pc)
 {
     if (!kv) {
@@ -549,10 +555,6 @@ uint32_t kv_get_destination_data_type(const kv_t *kv, int32_t pc)
     return (int32_t)inst->getDestination().getType();
 }
 
-/*
-* This function returns destination register type
-* i.e. GRF, various ARF registers
-*/
 uint32_t kv_get_destination_register_type(const kv_t *kv, int32_t pc)
 {
     if (!kv) {
@@ -565,10 +567,6 @@ uint32_t kv_get_destination_register_type(const kv_t *kv, int32_t pc)
     return static_cast<uint32_t>(inst->getDestination().getDirRegName());
 }
 
-/*
-* This function returns destination register KIND
-* DIRECT, INDIRECT, IMM, etc
-*/
 uint32_t kv_get_destination_register_kind(const kv_t *kv, int32_t pc)
 {
     if (!kv) {
@@ -581,9 +579,6 @@ uint32_t kv_get_destination_register_kind(const kv_t *kv, int32_t pc)
     return (uint32_t)inst->getDestination().getKind();
 }
 
-/*
-* This function returns source register line number for a given source.
-*/
 int32_t kv_get_source_register(const kv_t *kv, int32_t pc, uint32_t sourceNumber)
 {
     if (!kv) {
@@ -600,9 +595,6 @@ int32_t kv_get_source_register(const kv_t *kv, int32_t pc, uint32_t sourceNumber
     return (int32_t)src.getDirRegRef().regNum;
 }
 
-/*
-* This function returns source subRegister for a given source.
-*/
 int32_t kv_get_source_sub_register(const kv_t *kv, int32_t pc, uint32_t sourceNumber)
 {
     if (!kv) {
@@ -621,10 +613,6 @@ int32_t kv_get_source_sub_register(const kv_t *kv, int32_t pc, uint32_t sourceNu
     return (int32_t)src.getDirRegRef().subRegNum;
 }
 
-/*
-* This function returns source data type for a given source
-* i.e. F, HF, INT, etc
-*/
 uint32_t kv_get_source_data_type(const kv_t *kv, int32_t pc, uint32_t sourceNumber)
 {
     if (!kv) {
@@ -641,10 +629,6 @@ uint32_t kv_get_source_data_type(const kv_t *kv, int32_t pc, uint32_t sourceNumb
     return static_cast<uint32_t>(src.getType());
 }
 
-/*
-* This function returns source register type for a given source.
-* i.e. GRF, various ARF registers
-*/
 uint32_t kv_get_source_register_type(const kv_t *kv, int32_t pc, uint32_t sourceNumber)
 {
     if (!kv) {
@@ -661,10 +645,6 @@ uint32_t kv_get_source_register_type(const kv_t *kv, int32_t pc, uint32_t source
     return static_cast<uint32_t>(src.getDirRegName());
 }
 
-/*
-* This function returns source register KIND for a given source
-* DIRECT, INDIRECT, IMM, INDIR etc
-*/
 uint32_t kv_get_source_register_kind(const kv_t *kv, int32_t pc, uint32_t sourceNumber)
 {
     if (!kv) {
@@ -677,9 +657,6 @@ uint32_t kv_get_source_register_kind(const kv_t *kv, int32_t pc, uint32_t source
     return static_cast<uint32_t>(inst->getSource((uint8_t)sourceNumber).getKind());
 }
 
-/*
-* Returns whether source is a vector.
-*/
 int32_t kv_is_source_vector(const kv_t *kv, int32_t pc, uint32_t sourceNumber)
 {
     if (!kv) {
@@ -729,11 +706,6 @@ uint32_t kv_get_mask_control(const kv_t *kv, int32_t pc)
     return (uint32_t)inst->getMaskCtrl();
 }
 
-/*
-* This function returns 0 if instruction's destination operand horizontal stride (DstRgnHz) is succesfully determined.
-* Otherwise returns -1.
-* DstRgnHz is returned by *hz parameter, as numeric numeric value (e.g. 1,2,4).
-*/
 int32_t kv_get_destination_region(const kv_t *kv, int32_t pc, uint32_t *hz)
 {
     uint32_t DstRgnHz = static_cast<uint32_t>(Region::Horz::HZ_INVALID);
@@ -752,11 +724,6 @@ int32_t kv_get_destination_region(const kv_t *kv, int32_t pc, uint32_t *hz)
     return 0;
 }
 
-/*
-* This function returns 0 if any of instruction's src operand region components (Src RgnVt, RgnWi, RgnHz) are succesfully determined.
-* Otherwise returns -1.
-* Vt, Wi and Hz are returned by *vt, *wi and *hz parameter, as numeric numeric values (e.g. 1,2,4).
-*/
 int32_t kv_get_source_region(const kv_t *kv, int32_t pc, uint32_t src_op, uint32_t *vt, uint32_t *wi, uint32_t *hz)
 {
     uint32_t SrcRgnVt = static_cast<uint32_t>(Region::Vert::VT_INVALID);
@@ -796,10 +763,6 @@ int32_t kv_get_source_region(const kv_t *kv, int32_t pc, uint32_t src_op, uint32
     return 0;
 }
 
-/*
-* This function returns 0 if the source is an immediate and sets the 64bits immediate value in imm
-* otherwise it returns -1
-*/
 int32_t kv_get_source_immediate(const kv_t *kv, int32_t pc, uint32_t src_op, uint64_t *imm)
 {
     if(!kv) {
@@ -815,4 +778,131 @@ int32_t kv_get_source_immediate(const kv_t *kv, int32_t pc, uint32_t src_op, uin
     }
     *imm = src.getImmediateValue().u64;
     return 0;
+}
+
+/*
+* This function returns flag modifier for the instruction
+* EQ, NE, etc...
+*/
+uint32_t kv_get_flag_modifier(const kv_t *kv, int32_t pc)
+{
+    if(!kv) {
+        return static_cast<uint32_t>(FlagModifier::NONE);
+    }
+    const Instruction *inst = getInstruction(kv, pc);
+    if(!inst || inst->getOp() == Op::ILLEGAL) {
+        return static_cast<uint32_t>(FlagModifier::NONE);
+    }
+    return (uint32_t)inst->getFlagModifier();
+}
+
+/*
+* This function returns source modifier for the operand
+* can be ABS, NEG, NEG_ABS, NONE
+*/
+uint32_t kv_get_source_modifier(const kv_t *kv, int32_t pc, uint32_t src_op)
+{
+    if(!kv) {
+        return static_cast<uint32_t>(SrcModifier::NONE);
+    }
+    const Instruction *inst = getInstruction(kv, pc);
+
+    if(!inst || inst->getOp() == Op::ILLEGAL) {
+        return static_cast<uint32_t>(SrcModifier::NONE);
+    }
+    if(!inst || src_op >= inst->getSourceCount()) {
+        return static_cast<uint32_t>(SrcModifier::NONE);
+    }
+    const auto &src = inst->getSource((size_t)src_op);
+    if(src.getKind() == Operand::Kind::IMMEDIATE){
+        return static_cast<uint32_t>(SrcModifier::NONE);
+    }
+
+    return (uint32_t)src.getSrcModifier();
+}
+
+/*
+* This function returns the destination modifier for a given instruction
+* can be NONE or SAT
+*/
+uint32_t kv_get_destination_modifier(const kv_t *kv, int32_t pc)
+{
+    if(!kv) {
+        return static_cast<uint32_t>(DstModifier::NONE);
+    }
+    const Instruction *inst = getInstruction(kv, pc);
+
+    if(!inst || inst->getOp() == Op::ILLEGAL) {
+        return static_cast<uint32_t>(DstModifier::NONE);
+    }
+
+    const Operand &dst = inst->getDestination();
+
+    return (uint32_t)dst.getDstModifier();
+}
+
+/*
+* This function returns the flag register used by instruction
+*/
+int32_t kv_get_flag_register(const kv_t *kv, int32_t pc)
+{
+    if(!kv) {
+        return -1;
+    }
+    const Instruction *inst = getInstruction(kv, pc);
+
+    if(!inst || inst->getOp() == Op::ILLEGAL) {
+        return -1;
+    }
+
+    return (int32_t)inst->getFlagReg().regNum;
+}
+
+/*
+* This function returns the flag sub-register used by instruction
+*/
+int32_t kv_get_flag_sub_register(const kv_t *kv, int32_t pc)
+{
+    if(!kv) {
+        return -1;
+    }
+    const Instruction *inst = getInstruction(kv, pc);
+    if(!inst || inst->getOp() == Op::ILLEGAL)
+    {
+        return -1;
+    }
+
+    return (int32_t)inst->getFlagReg().subRegNum;
+}
+
+/*
+* This function returns the predicate function for a given instruction
+*/
+uint32_t kv_get_predicate(const kv_t *kv, int32_t pc)
+{
+    if(!kv) {
+        return static_cast<uint32_t>(PredCtrl::NONE);
+    }
+    const Instruction *inst = getInstruction(kv, pc);
+    if(!inst || inst->getOp() == Op::ILLEGAL)
+    {
+        return static_cast<uint32_t>(PredCtrl::NONE);
+    }
+    return (uint32_t)inst->getPredication().function;
+}
+
+/*
+* This function returns if inverse predicate is set
+*/
+uint32_t kv_get_is_inverse_predicate(const kv_t *kv, int32_t pc)
+{
+    if(!kv) {
+        return 0;
+    }
+    const Instruction *inst = getInstruction(kv, pc);
+    if(!inst || inst->getOp() == Op::ILLEGAL)
+    {
+        return 0;
+    }
+    return (uint32_t)inst->getPredication().inverse;
 }

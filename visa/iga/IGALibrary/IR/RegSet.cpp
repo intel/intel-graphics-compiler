@@ -56,7 +56,7 @@ bool RegSet::setDstRegion(
     RegRef rr,
     Region rgn,
     size_t execSize,
-    size_t typeSize)
+    size_t typeSizeBits)
 {
     const RegSetInfo *rsi = RegSetInfo::lookup(rn);
     if (!rsi) {
@@ -68,11 +68,11 @@ bool RegSet::setDstRegion(
         hz = 1;
     }
 
-    size_t baseAddr = relativeAddressOf(*rsi, rr, typeSize);
+    size_t baseAddr = relativeAddressOf(*rsi, rr, typeSizeBits/8);
     bool added = false;
     for (size_t ch = 0; ch < execSize; ch++) {
-        size_t offset = ch*hz*typeSize;
-        added |= add(*rsi, baseAddr + offset, typeSize);
+        size_t offset = ch*hz*typeSizeBits/8;
+        added |= add(*rsi, baseAddr + offset, typeSizeBits/8);
     }
     return added;
 }
@@ -83,7 +83,7 @@ bool RegSet::setSrcRegion(
     RegRef rr,
     Region rgn,
     size_t execSize,
-    size_t typeSize)
+    size_t typeSizeBits)
 {
     const RegSetInfo *rsi = RegSetInfo::lookup(rn);
     if (!rsi) {
@@ -99,16 +99,16 @@ bool RegSet::setSrcRegion(
         h = static_cast<size_t>(rgn.getHz());
     }
 
-    size_t rowBase = relativeAddressOf(*rsi, rr, typeSize);
+    size_t rowBase = relativeAddressOf(*rsi, rr, typeSizeBits);
     size_t rows = execSize / w;
     rows = (rows != 0) ? rows : 1;
     for (size_t y = 0; y < rows; y++) {
         size_t offset = rowBase;
         for (size_t x = 0; x < w; x++) {
-            changed |= add(*rsi, offset, typeSize);
-            offset += h * typeSize;
+            changed |= add(*rsi, offset, typeSizeBits/8);
+            offset += h * typeSizeBits/8;
         }
-        rowBase += v * typeSize;
+        rowBase += v * typeSizeBits/8;
     }
     return changed;
 }
@@ -165,7 +165,7 @@ bool RegSet::addSourceInputs(const Instruction &i, RegSet &rs)
     {
         const Operand &op = i.getSource(srcIx);
         auto tType = op.getType();
-        auto typeSize = TypeSizeWithDefault(tType, 4);
+        auto typeSizeBits = TypeSizeInBitsWithDefault(tType,32);
 
         // possibly need to fixup the region
         Region rgn = op.getRegion();
@@ -235,14 +235,15 @@ bool RegSet::addSourceInputs(const Instruction &i, RegSet &rs)
                         if (desc.type == SendDescArg::IMM) {
                             nregs = (desc.imm >> 25) & 0xF; // desc[28:25]
                         } else {
-                            nregs = 31; // since we don't know the length must be conservative
+                            // since we don't know the length must be conservative
+                            nregs = op.getDirRegName() == RegName::GRF_R ? 31 : 0;
                         }
                     } else {
                         auto ex_desc = i.getExtMsgDescriptor();
                         if (ex_desc.type == SendDescArg::IMM) {
                             nregs = ((ex_desc.imm >> 6) & 0xF);
                         } else {
-                            // indirect register usage, assume 1 if not null
+                            // indirect register usage, assume worst if not the null reg
                             nregs = op.getDirRegName() == RegName::GRF_R ? 31 : 0;
                         }
                     }
@@ -260,7 +261,7 @@ bool RegSet::addSourceInputs(const Instruction &i, RegSet &rs)
                     op.getDirRegRef(),
                     rgn,
                     execSize,
-                    typeSize);
+                    typeSizeBits);
             }
             break;
         case Operand::Kind::MACRO: {
@@ -270,20 +271,18 @@ bool RegSet::addSourceInputs(const Instruction &i, RegSet &rs)
                 op.getDirRegRef(),
                 rgn,
                 execSize,
-                typeSize);
-            auto implAcc = op.getImplAcc();
-            if (implAcc != ImplAcc::NOACC && implAcc != ImplAcc::INVALID) {
-                int tVal = static_cast<int>(op.getImplAcc()) -
-                    static_cast<int>(ImplAcc::ACC2) + 2;
-                RegRef rr = {
-                    static_cast<uint8_t>(tVal),
-                    0};
+                typeSizeBits);
+            auto mme = op.getMathMacroExt();
+            if (mme != MathMacroExt::NOMME && mme != MathMacroExt::INVALID) {
+                int mmeRegNum = static_cast<int>(op.getMathMacroExt()) -
+                    static_cast<int>(MathMacroExt::MME0);
+                RegRef rr{static_cast<uint8_t>(mmeRegNum),0};
                 rs.setSrcRegion(
                     RegName::ARF_ACC,
                     rr,
                     Region::SRC110,
                     execSize,
-                    typeSize);
+                    typeSizeBits);
             }
             break;
         }
@@ -348,10 +347,10 @@ bool RegSet::addDestinationOutputs(const Instruction &i, RegSet &rs)
     int execSize = static_cast<int>(i.getExecSize());
     auto op = i.getDestination();
     auto tType = op.getType();
-    auto typeSize = TypeSizeWithDefault(tType, 4);
+    auto typeSizeBits = TypeSizeInBitsWithDefault(tType, 32);
 
     if (i.hasInstOpt(InstOpt::ACCWREN) /* || i.getDestination().getDirRegName() == RegName::ARF_ACC*/) { // AccWrEn
-        auto elemsPerAccReg = RS_ARF_ACC.bytesPerRegister / typeSize; // e.g. 8 subreg elems for :f
+        auto elemsPerAccReg = 8*RS_ARF_ACC.bytesPerRegister / typeSizeBits; // e.g. 8 subreg elems for :f
         RegRef ar = {
             (uint8_t)(execOff / elemsPerAccReg),
             (uint8_t)(execOff % elemsPerAccReg)
@@ -361,7 +360,7 @@ bool RegSet::addDestinationOutputs(const Instruction &i, RegSet &rs)
             ar,
             Region::DST1,
             execSize,
-            typeSize);
+            typeSizeBits/8);
     }
     Region rgn = op.getRegion();
     switch (op.getKind()) {
@@ -393,7 +392,7 @@ bool RegSet::addDestinationOutputs(const Instruction &i, RegSet &rs)
                 op.getDirRegRef(),
                 op.getRegion(),
                 execSize,
-                typeSize);
+                typeSizeBits/8);
         }
         break;
     case Operand::Kind::MACRO: {
@@ -404,20 +403,18 @@ bool RegSet::addDestinationOutputs(const Instruction &i, RegSet &rs)
             op.getDirRegRef(),
             Region::DST1,
             execSize,
-            typeSize);
-        auto implAcc = op.getImplAcc();
-        if (implAcc != ImplAcc::NOACC && implAcc != ImplAcc::INVALID) {
-            // and the accumultator
-            int tVal = static_cast<int>(implAcc)-
-                static_cast<int>(ImplAcc::ACC2) + 2;
-            RegRef accReg = {
-                static_cast<uint8_t>(tVal), 0};
+            typeSizeBits/8);
+        auto MathMacroReg = op.getMathMacroExt();
+        if (MathMacroReg != MathMacroExt::NOMME && MathMacroReg != MathMacroExt::INVALID) {
+            // and the math macro register
+            int mmeRegNum = static_cast<int>(MathMacroReg) - static_cast<int>(MathMacroExt::MME0);
+            RegRef mmeRegRef = {static_cast<uint8_t>(mmeRegNum), 0};
             added |= rs.setDstRegion(
-                RegName::ARF_ACC,
-                accReg,
+                RegName::ARF_MME,
+                mmeRegRef,
                 Region::DST1,
                 execSize,
-                typeSize);
+                typeSizeBits/8);
         }
         break;
     }

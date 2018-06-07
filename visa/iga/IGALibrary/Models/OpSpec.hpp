@@ -200,7 +200,7 @@ namespace iga
         // various miscellaneous attributes about the operation
         enum Attr {
             NONE = 0,
-            IS_BITWISE = 1, // and, asr, or, not, shl, shr, xor
+            IS_BITWISE = 1, 
             IS_SELECT = IS_BITWISE << 1, // sel (not csel)
             // TODO: SUPPORTS_ACCWREN (needs to be placed in BXML)
             SUPPORTS_BRCTL = IS_SELECT << 1,
@@ -256,7 +256,6 @@ namespace iga
         // For regular ops it's -1
         int            functionControlValue;
         // For both the grouping op and it's children
-
         //
         // some ops have fragmented subfunction offset; we store these
         // from low subfunction bits to higher ones; invalid entries

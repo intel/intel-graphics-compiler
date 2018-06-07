@@ -648,9 +648,9 @@ private:
                     semiColon.insert();
                     // success, show the descriptors for debugging
                     if (debugSendDecode.empty()) {
-                        ss << std::uppercase << std::hex <<
-                            "0x" << exDesc.imm << "  " <<
-                            "0x" << desc.imm;
+                        fmtHex(ss, exDesc.imm);
+                        ss << "  ";
+                        fmtHex(ss, desc.imm);
                     } else {
                         ss << debugSendDecode;
                     }
@@ -765,26 +765,27 @@ void Formatter::formatRegister(
     RegRef reg,
     bool emitSubReg)
 {
-    const RegInfo& ri = LookupRegInfo(opts.platform, rnm);
-    emit(ri.name);
+    const Model *m = Model::LookupModel(opts.platform);
+    const RegInfo *ri = m->lookupRegInfoByRegName(rnm);
+    if (ri == nullptr) {
+        emit("INVALID");
+        return;
+    }
+    emit(ri->syntax);
     if (rnm == RegName::ARF_NULL && reg.subRegNum == 0) {
+        // just "null", note: null4 would be bad IR,
+        // so we'd continue so they get that output
         return;
     }
 
-    if (reg.regNum != 0 || ri.num_regs != 0) {
+    if (reg.regNum != 0 || ri->hasRegNum()) {
         emit((int)reg.regNum); // cast to force integral printing (not char)
     }
-    // show the subreg if
-    //  - it's non-zero
-    //  - it's a nonsend
-    //  - the register chosen has subregisters
-    //
-    if (emitSubReg ||
-        reg.subRegNum != 0 ||
-        (rnm != RegName::GRF_R &&
-            ri.num_regs >= reg.subRegNum &&
-            ri.num_bytes[reg.subRegNum] > 0))
-    {
+    // show the subreg if:
+    //  - caller demands it (e.g. it's a nonsend) AND
+    //       the register chosen has subregisters (e.g. not ce and null)
+    //  - OR it's non-zero (either bad IR or something's there)
+    if (emitSubReg && ri->hasSubregs() || reg.subRegNum != 0) {
         emit('.');
         emit((int)reg.subRegNum);
     }
@@ -806,7 +807,7 @@ void Formatter::formatDstOp(const OpSpec &os, const Operand &dst) {
             dst.getDirRegRef(),
             os.hasDstSubregister(opts.platform));
         if (dst.getKind() == Operand::Kind::MACRO) {
-            emit(ToSyntax(dst.getImplAcc()));
+            emit(ToSyntax(dst.getMathMacroExt()));
         }
         break;
     case Operand::Kind::INDIRECT:
@@ -853,7 +854,7 @@ void Formatter::formatSrcOp(
             src.getDirRegName(),
             src.getDirRegRef(),
             false);
-        emit(ToSyntax(src.getImplAcc()));
+        emit(ToSyntax(src.getMathMacroExt()));
         formatSourceRegion(srcIx, os, src);
         break;
     }
@@ -935,18 +936,13 @@ void Formatter::formatSrcOp(
     default: emit("???");
     }
 
-    // TODO: maybe enable branch types uniformly
-    // if (model->branchesHaveTypes()) { would enable branches on stuff like:
-    // if (..) LBL:d
-    //
     if (!model->supportsSimplifiedBranches() ||
         src.getKind() != Operand::Kind::LABEL)
     {
-        // on this platform control flow doesn't have types anymore
         formatSourceType(srcIx, os, src);
     }
     finishColumn();
-}
+} // end formatSrcOp()
 
 void Formatter::formatInstOpts(
     const Instruction &i,
@@ -969,11 +965,12 @@ void Formatter::formatInstOpts(
         emit(extraInstOpts[opIx]);
     }
 
-
     emit('}');
-}
+} // end formatInstOpts
 
-//////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+//
+// Public interfaces into the kernel
 
 void FormatKernel(
     ErrorHandler& e,
@@ -1572,10 +1569,10 @@ void Formatter::EmitSendDescriptorInfoGED(
             // 255 - A32_A64 Specifies a A32 or A64 Stateless access that is locally coherent (coherent within a thread group)
             // 253 - A32_A64_NC Specifies a A32 or A64 Stateless access that is non-coherent (coherent within a thread).
             else if (surf == 255 || surf == 253)
-                ss << "0x" << std::hex << getStatelessAddress(exDesc);
+                fmtHex(ss, getStatelessAddress(exDesc));
             // Bindless Surface Base address bits 25:6 in extMsgDes[12:31]
             else if (surf == 252)
-                ss << "0x" << std::hex << getBindlessSurfaceBaseAddress(exDesc);
+                fmtHex(ss, getBindlessSurfaceBaseAddress(exDesc));
             else
                 ss << "#" << surf;
         }
@@ -1715,7 +1712,7 @@ void Formatter::EmitSendDescriptorInfo(
         if (surf == 254)
             ss << "SLM";
         else if (surf == 255 || surf == 253)
-            ss << "0x" << std::hex << getBitField(exDesc, 16, 16);
+            fmtHex(ss, getBitField(exDesc, 16, 16));
         else
             ss << "#" << surf;
     }

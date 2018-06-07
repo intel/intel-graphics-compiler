@@ -283,9 +283,9 @@ typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetChannelOffset)(const kv_t *kv, int32_t
 #define IGA_KV_GET_MASK_CONTROL_STR "kv_get_mask_control"
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetMaskControl)(const kv_t *kv, int32_t pc);
 #define IGA_KV_GET_MESSAGE_TYPE_STR "kv_get_message_type"
-typedef int32_t(CDECLATTRIBUTE *pIGAKVGetMessageType)(const kv_t *kv, int32_t pc);
+typedef kv_status_t(CDECLATTRIBUTE *pIGAKVGetMessageType)(const kv_t *kv, int32_t pc, int32_t *message_type_enum);
 #define IGA_KV_GET_MESSAGE_SFID_STR "kv_get_message_sfid"
-typedef int32_t(CDECLATTRIBUTE *pIGAKVGetMessageSFID)(const kv_t *kv, int32_t pc);
+typedef kv_status_t(CDECLATTRIBUTE *pIGAKVGetMessageSFID)(const kv_t *kv, int32_t pc, int32_t *sfid_enum);
 #define IGA_KV_GET_MESSAGE_LEN_STR "kv_get_message_len"
 typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetMessageLen)(const kv_t *kv, int32_t pc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen);
 #define IGA_KV_GET_IS_DESTINATION_REGION_STR "kv_get_destination_region"
@@ -294,6 +294,21 @@ typedef int32_t(CDECLATTRIBUTE *pIGAKVGetDstRegion)(const kv_t *kv, int32_t pc, 
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetSrcRegion)(const kv_t *kv, int32_t pc, uint32_t src_op, uint32_t *vt, uint32_t *wi, uint32_t *hz);
 #define IGA_KV_GET_SOURCE_IMMEDIATE_STR "kv_get_source_immediate"
 typedef int32_t(CDECLATTRIBUTE *pIGAKVGetSrcImmediate)(const kv_t *kv, int32_t pc, uint32_t src_op, uint64_t *imm);
+#define IGA_KV_GET_FLAG_MODIFIER_STR "kv_get_flag_modifier"
+typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetFlagModifier)(const kv_t *kv, int32_t pc);
+#define IGA_KV_GET_SOURCE_MODIFIER_STR "kv_get_source_modifier"
+typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetSrcModifier)(const kv_t *kv, int32_t pc, uint32_t src_op);
+#define IGA_KV_GET_DESTINATION_MODIFIER_STR "kv_get_destination_modifier"
+typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetDstModifier)(const kv_t *kv, int32_t pc);
+#define IGA_KV_GET_FLAG_REGISTER_STR "kv_get_flag_register"
+typedef int32_t(CDECLATTRIBUTE *pIGAKVGetFlagReg)(const kv_t *kv, int32_t pc);
+#define IGA_KV_GET_FLAG_SUB_REGISTER_STR "kv_get_flag_sub_register"
+typedef int32_t(CDECLATTRIBUTE *pIGAKVGetFlagSubReg)(const kv_t *kv, int32_t pc);
+#define IGA_KV_GET_PREDICATE "kv_get_predicate"
+typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetPredicate)(const kv_t *kv, int32_t pc);
+#define IGA_KV_GET_IS_INVERSE_PREDICATE "kv_get_is_inverse_predicate"
+typedef uint32_t(CDECLATTRIBUTE *pIGAKVGetIsInversePred)(const kv_t *kv, int32_t pc);
+
 
 /*
  * A table of IGA functions
@@ -376,4 +391,12 @@ typedef struct
     pIGAKVGetMessageLen        kv_get_message_len;
     pIGAKVGetDstRegion         kv_get_destination_region;
     pIGAKVGetSrcRegion         kv_get_source_region;
+    pIGAKVGetSrcImmediate      kv_get_source_immediate;
+    pIGAKVGetFlagModifier      kv_get_flag_modifier;
+    pIGAKVGetSrcModifier       kv_get_source_modifier;
+    pIGAKVGetDstModifier       kv_get_destination_modifier;
+    pIGAKVGetFlagReg           kv_get_flag_reg;
+    pIGAKVGetFlagSubReg        kv_get_flag_subreg;
+    pIGAKVGetPredicate         kv_get_predicate;
+    pIGAKVGetIsInversePred     kv_get_inverse_predicate;
 } kv_functions_t;

@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _IGA_GED_TO_IGA_TRANSLATION_H_
 #define _IGA_GED_TO_IGA_TRANSLATION_H_
 
+#include "ged.h"
 #include "../../IR/Types.hpp"
 
 namespace iga
@@ -370,20 +371,20 @@ namespace iga
         }
 
 
-        static ImplAcc translate(GED_SPECIAL_ACC acc)
+        static MathMacroExt translate(GED_SPECIAL_ACC acc)
         {
             switch (acc)
             {
-            case GED_SPECIAL_ACC_acc2: return ImplAcc::ACC2;
-            case GED_SPECIAL_ACC_acc3: return ImplAcc::ACC3;
-            case GED_SPECIAL_ACC_acc4: return ImplAcc::ACC4;
-            case GED_SPECIAL_ACC_acc5: return ImplAcc::ACC5;
-            case GED_SPECIAL_ACC_acc6: return ImplAcc::ACC6;
-            case GED_SPECIAL_ACC_acc7: return ImplAcc::ACC7;
-            case GED_SPECIAL_ACC_acc8: return ImplAcc::ACC8;
-            case GED_SPECIAL_ACC_acc9: return ImplAcc::ACC9;
-            case GED_SPECIAL_ACC_noacc: return ImplAcc::NOACC;
-            default: return ImplAcc::INVALID;
+            case GED_SPECIAL_ACC_acc2: return MathMacroExt::MME0;
+            case GED_SPECIAL_ACC_acc3: return MathMacroExt::MME1;
+            case GED_SPECIAL_ACC_acc4: return MathMacroExt::MME2;
+            case GED_SPECIAL_ACC_acc5: return MathMacroExt::MME3;
+            case GED_SPECIAL_ACC_acc6: return MathMacroExt::MME4;
+            case GED_SPECIAL_ACC_acc7: return MathMacroExt::MME5;
+            case GED_SPECIAL_ACC_acc8: return MathMacroExt::MME6;
+            case GED_SPECIAL_ACC_acc9: return MathMacroExt::MME7;
+            case GED_SPECIAL_ACC_noacc: return MathMacroExt::NOMME;
+            default: return MathMacroExt::INVALID;
             }
         }
 
@@ -697,67 +698,6 @@ namespace iga
         {
             return inv == GED_PRED_INV_Invert;
         }
-
-
-        static RegName translate(GED_ARCH_REG archType)
-        {
-            RegName regName;
-
-            switch (archType)
-            {
-            case GED_ARCH_REG_null:
-                regName = RegName::ARF_NULL;
-                break;
-            case GED_ARCH_REG_a0:
-                regName = RegName::ARF_A;
-                break;
-            case GED_ARCH_REG_acc:
-                regName = RegName::ARF_ACC;
-                break;
-            case GED_ARCH_REG_f:
-                regName = RegName::ARF_F;
-                break;
-            case GED_ARCH_REG_ce:
-                regName = RegName::ARF_CE;
-                break;
-            case GED_ARCH_REG_msg:
-                regName = RegName::ARF_MSG;
-                break;
-            case GED_ARCH_REG_sp:
-                regName = RegName::ARF_SP;
-                break;
-            case GED_ARCH_REG_sr0:
-                regName = RegName::ARF_SR;
-                break;
-            case GED_ARCH_REG_cr0:
-                regName = RegName::ARF_CR;
-                break;
-            case GED_ARCH_REG_n0:
-                regName = RegName::ARF_N;
-                break;
-            case GED_ARCH_REG_ip:
-                regName = RegName::ARF_IP;
-                break;
-            case GED_ARCH_REG_tdr:
-                regName = RegName::ARF_TDR;
-                break;
-            case GED_ARCH_REG_tm0:
-                regName = RegName::ARF_TM;
-                break;
-            case GED_ARCH_REG_fc:
-                regName = RegName::ARF_FC;
-                break;
-            case GED_ARCH_REG_dbg0:
-                regName = RegName::ARF_DBG;
-                break;
-            case GED_ARCH_REG_INVALID:
-            default:
-                regName = RegName::INVALID;
-                break;
-            }
-            return regName;
-        }
-
 
         static Region::Vert translateRgnV(uint32_t stride)
         {
