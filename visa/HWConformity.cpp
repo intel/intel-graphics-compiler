@@ -1835,139 +1835,54 @@ bool HWConformity::fixDstType( INST_LIST_ITER i, G4_BB *bb, G4_Type extype )
 }
 
 
-// If an accumulator is an explicit source operand, its register region must match that of the 
-// destination register with the exception(s) described below.
-// When OWords of accumulators are accessed, the source and destination OWords may be different
-bool HWConformity::fixAccSrc(INST_LIST_ITER iter, G4_BB* bb)
+// If an accumulator is a source operand, its register region must match that of the 
+// destination register (which means GRF-aligned since we always GRF-align Acc)
+// also check for restrictions on explicit acc dst
+bool HWConformity::fixAcc(INST_LIST_ITER iter, G4_BB* bb)
 {
     G4_INST *inst = *iter;
-    bool AccExplictUse = false;
 
-    for (int i = 0; i < inst->getNumSrc(); ++i)
+    bool changed = false;
+    auto dst = inst->getDst();
+    if ((dst != NULL && dst->isAccReg()) || inst->opcode() == G4_mach)
     {
-        G4_Operand* src = inst->getSrc(i);
-        if (src && src->isAccReg())
-        {
-            AccExplictUse = true;
-            break;
-        }
-    }
-
-    if (AccExplictUse &&
-        inst->getDst() &&
-        inst->getDst()->getBase() &&
-        inst->getDst()->getBase()->isRegVar())
-    {
-        int alignByte = 16;
-        if (!builder.isOpndAligned(inst->getDst(), alignByte))
-        {
-            G4_DstRegRegion *new_dst = insertMovAfter(iter, inst->getDst(), inst->getDst()->getType(), bb);
-            G4_Declare* tmpDstDcl = new_dst->getTopDcl();
-            G4_SubReg_Align subAlign = Eight_Word;
-            tmpDstDcl->setSubRegAlign(subAlign);
-            inst->setDest(new_dst);
-            return true;
-        }
-    }
-
-    return false;
-}
-
-// check for implicit acc region rules
-// -- implicit acc should have same subreg offset dst (currently always 0)
-// this should be done when creating the instruction with implicit acc source,
-// but the code for generating mac is just way too complicated..
-bool HWConformity::fixImplicitAcc(INST_LIST_ITER i, G4_BB* bb)
-{
-    G4_INST *inst = *i;
-    if (inst->hasImplicitAccSrc())
-    {
-        G4_DstRegRegion* dst = inst->getDst();
-        if (!builder.isOpndAligned(dst, GENX_GRF_REG_SIZ))
-        {
-            inst->setDest(insertMovAfter(i, dst, dst->getType(), bb, Sixteen_Word));
-            return true;
-        }
-    }
-    return false;
-}
-
-bool HWConformity::fixAccDst( INST_LIST_ITER i, G4_BB* bb )
-{
-    G4_INST *inst = *i;
-    bool insertMov = false;
-
-    bool non_null_dst = ( inst->opcode() == G4_mach && inst->getDst() && !inst->getDst()->isNullReg() );
-
-    // Locate the only use corresponding to the ACC definition in
-    // the same basic block.
-    bool found_acc_use = false;
-    INST_LIST_ITER iter = i;
-    G4_INST *acc_use_op = NULL;
-    iter++;
-    for (auto useIter = inst->use_begin(); useIter != inst->use_end(); useIter++)
-    {
-        if( (*useIter).second == Opnd_pred || (*useIter).second == Opnd_dst )
-        {
-            continue;
-        }
-        if( (*useIter).second == Opnd_implAccSrc )
-        {
-            acc_use_op = (*useIter).first;
-            found_acc_use = true;
-            break;
-        }
-        G4_Operand *use = (*useIter).first->getSrc( (*useIter).second - 1 );
-        if( use && use->isAccReg() )
-        {
-            acc_use_op = (*useIter).first;
-            found_acc_use = true;
-            break;
-        }
-    }
-
-    MUST_BE_TRUE( found_acc_use || non_null_dst, "Defined ACC is not used in the same BB." );
-    if( !found_acc_use )
-    {
-        return insertMov;
-    }
-
-    // get iterator of acc use inst
-    while( (*iter) != acc_use_op )
-    {
-        iter++;
-    }
-
-    G4_DstRegRegion *acc_use_op_dst = acc_use_op->getDst();
-    bool null_use_op_dst = acc_use_op->hasNULLDst();
-    if( acc_use_op->opcode() == G4_mach && null_use_op_dst )
-    {
-        return insertMov;
-    }
-
-    {
-        // it is possible that the def covers whole acc, but the dst of use inst is not aligned to GRF.
-        // insert MOV for this case
-        if( !builder.isOpndAligned( acc_use_op_dst, G4_GRF_REG_NBYTES ) )
-        {
-            while( *iter != acc_use_op )
-            {
-                iter++;
-            }
-            insertMov = true;
-            acc_use_op->setDest( insertMovAfter( iter, acc_use_op_dst, acc_use_op_dst->getType(), bb ) );
-        }
-
         if (!builder.accDstforVxHSrc())
         {
             if (inst->getSrc(0)->isSrcRegRegion() && inst->getSrc(0)->asSrcRegRegion()->getRegion()->isRegionWH())
             {
-                inst->setSrc(insertMovBefore(i, 0, inst->getSrc(0)->getType(), bb), 0);
+                inst->setSrc(insertMovBefore(iter, 0, inst->getSrc(0)->getType(), bb), 0);
+                changed = true;
             }
         }
-
     }
-    return insertMov;
+
+    bool useAcc = inst->hasImplicitAccSrc();
+    if (!useAcc)
+    {
+        for (int i = 0; i < inst->getNumSrc(); ++i)
+        {
+            G4_Operand* src = inst->getSrc(i);
+            if (src && src->isAccReg())
+            {
+                useAcc = true;
+                break;
+            }
+        }
+    }
+
+    if (useAcc && 
+        dst &&
+        dst->getBase() &&
+        dst->getBase()->isRegVar())
+    {
+        if (!builder.isOpndAligned(dst, GENX_GRF_REG_SIZ))
+        {
+            inst->setDest(insertMovAfter(iter, dst, dst->getType(), bb, Sixteen_Word));
+            changed = true;
+        }
+    }
+
+    return changed;
 }
 
 /*
@@ -5959,27 +5874,10 @@ void HWConformity::conformBB( BB_LIST_ITER it)
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
-        if (fixImplicitAcc(i, bb))
+        if (fixAcc(i, bb))
         {
             next_iter = i;
             next_iter++;
-        }
-
-        if (fixAccSrc(i, bb))
-        {
-            next_iter = i;
-            next_iter++;
-        }
-
-        /* HW check #13: check acc source */
-        if ( (dst != NULL && dst->isAccReg()) || opcode == G4_mach )
-        {
-            if( fixAccDst( i, bb ) )
-            {
-                // TODO: we should fix inst with ACC src separately?
-                next_iter = i;
-                next_iter++;
-            }
         }
 
         {
@@ -6249,55 +6147,14 @@ bool HWConformity::hasBadRegion( G4_INST *inst )
     }
     return badRegion;
 }
-// check if we can split an inst
+
 bool HWConformity::canSplitInst( G4_INST *inst, G4_INST *use_op )
 {
     if( ( inst->getPredicate() && inst->getExecSize() < 16 ) || hasBadRegion( inst ) )
         return false;
 
-    bool condModIsUsed = false;
-
-    // make sure cond mod is only used by use_op
     G4_CondMod *condMod = inst->getCondMod();
-    if( condMod )
-    {
-        for (auto use_iter = inst->use_begin(); use_iter != inst->use_end(); use_iter++)
-        {
-            if( (*use_iter).first == use_op )
-            {
-                if( (*use_iter).second != Opnd_pred )
-                {
-                    condModIsUsed = true;
-                    break;
-                }
-                continue;
-            }
-             G4_CmpRelation rel = Rel_disjoint;
-             if( (*use_iter).second == Opnd_pred )
-             {
-                 rel = condMod->compareOperand( (*use_iter).first->getPredicate() );
-             }
-             else if( (*use_iter).second == Opnd_dst )
-             {
-                 G4_Operand *use = (*use_iter).first->getDst();
-                 if( use->isFlag() )
-                     rel = condMod->compareOperand( use );
-             }
-             else
-             {
-                 G4_Operand *use = (*use_iter).first->getSrc( (*use_iter).second - 1 );
-                 if( use->isFlag() )
-                     rel = condMod->compareOperand( use );
-             }
-
-             if( rel != Rel_disjoint )
-             {
-                 condModIsUsed = true;
-                 break;
-             }
-        }
-    }
-    if( condModIsUsed )
+    if (condMod)
     {
         return false;
     }

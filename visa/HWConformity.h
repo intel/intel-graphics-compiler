@@ -105,9 +105,7 @@ namespace vISA
         bool fixDstAlignment(INST_LIST_ITER i, G4_BB *bb, G4_Type extype, unsigned int dst_elsize);
         bool fixDstAlignmentWithVectorImm(INST_LIST_ITER i, G4_BB *bb);
         bool fixDstType(INST_LIST_ITER i, G4_BB *bb, G4_Type extype);
-        bool fixAccDst(INST_LIST_ITER i, G4_BB* bb);
-        bool fixAccSrc(INST_LIST_ITER i, G4_BB* bb);
-        bool fixImplicitAcc(INST_LIST_ITER i, G4_BB* bb);
+        bool fixAcc(INST_LIST_ITER i, G4_BB* bb);
         void fixDstHstride(INST_LIST_ITER i, int extypesize);
         void fixMADInst(BB_LIST_ITER it);
         void fixSrcRegion(G4_INST *inst);
