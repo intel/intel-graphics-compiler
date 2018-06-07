@@ -2012,7 +2012,7 @@ void DwarfDebug::gatherDISubprogramNodes()
     {
         if (auto diSubprogram = F.getSubprogram())
         {
-            DISubprogramNodes.insert(diSubprogram);
+            addUniqueDISP(diSubprogram);
         }
 
         for (auto& bb : F)
@@ -2027,7 +2027,7 @@ void DwarfDebug::gatherDISubprogramNodes()
                         dyn_cast_or_null<llvm::DISubprogram>(scope))
                     {
                         auto DISP = dyn_cast_or_null<llvm::DISubprogram>(scope);
-                        DISubprogramNodes.insert(DISP);
+                        addUniqueDISP(DISP);
                         DISPToFunction.insert(std::make_pair(DISP, &F));
                     }
 
@@ -2035,7 +2035,7 @@ void DwarfDebug::gatherDISubprogramNodes()
                     if (iat &&
                         dyn_cast_or_null<llvm::DISubprogram>(iat))
                     {
-                        DISubprogramNodes.insert(dyn_cast_or_null<llvm::DISubprogram>(iat));
+                        addUniqueDISP(dyn_cast_or_null<llvm::DISubprogram>(iat));
                     }
 
                 }

@@ -549,10 +549,26 @@ namespace IGC
         llvm::MCSymbol *getStringPoolEntry(llvm::StringRef Str);
 
         //Following added during LLVM 4.0 upgrade
+
+        // Add DISubprogram node only if it isnt already present.
+        // Not using std::set as we need to preserve order of
+        // insertion and iteration.
+        // Return true if insertion successful, false if entry
+        // already exists.
+        bool addUniqueDISP(llvm::DISubprogram* sp)
+        {
+            auto it = std::find(DISubprogramNodes.begin(), DISubprogramNodes.end(), sp);
+            if (it == DISubprogramNodes.end())
+            {
+                DISubprogramNodes.push_back(sp);
+                return true;
+            }
+            return false;
+        }
     private:
         // Store all DISubprogram nodes from LLVM IR as they are no longer available
         // in DICompileUnit
-        std::set<llvm::DISubprogram*> DISubprogramNodes;
+        std::vector<llvm::DISubprogram*> DISubprogramNodes;
         std::map<llvm::DISubprogram*, const llvm::Function*> DISPToFunction;
 
         void gatherDISubprogramNodes();
