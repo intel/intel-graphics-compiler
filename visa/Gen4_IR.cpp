@@ -798,69 +798,49 @@ uint16_t G4_INST::getMaskOffset()
     }
 }
 
+//
+// remove all references to this inst in other inst's use_list
+// this is used when we want to delete this instruction
 void G4_INST::removeAllDefs()
 {
-    while (!defInstList.empty())
+    for (auto&& item : defInstList)
     {
-        auto&& item = defInstList.front();
-        defInstList.pop_front();
-
         G4_INST *def = item.first;
-        for (auto I = def->use_begin(); I != def->use_end(); /*empty*/)
-        {
-            if (I->first == this && I->second == item.second)
-            {
-                I = def->useInstList.erase(I);
-            }
-            else
-            {
-                ++I;
-            }
-        }
+        def->useInstList.remove_if(
+            [&](USE_DEF_NODE node) { return node.first == this; });
     }
+    defInstList.clear();
 }
 
 void G4_INST::removeAllUses()
 {
-    while (!useInstList.empty())
+    for (auto&& item : useInstList)
     {
-        auto&& item = useInstList.front();
-        useInstList.pop_front();
-
         G4_INST *user = item.first;
-        for (auto I = user->def_begin(); I != user->def_end(); /*empty*/)
-        {
-            if (I->first == this && I->second == item.second)
-            {
-                I = user->defInstList.erase(I);
-            }
-            else
-            {
-                ++I;
-            }
-        }
+        user->defInstList.remove_if(
+            [&](USE_DEF_NODE node) { return node.first == this; });
     }
+    useInstList.clear();
 }
 
+//
+// remove def/use for opndNum, which must be a source 
+// (i.e., not Opnd_dst/Opnd_condMod/Opnd_implAccDst)
 void G4_INST::removeDefUse( Gen4_Operand_Number opndNum )
 {
     DEF_EDGE_LIST_ITER iter = this->defInstList.begin();
-    while( iter != this->defInstList.end() )
+    while (iter != this->defInstList.end())
     {
         if( (*iter).second == opndNum )
         {
-            USE_EDGE_LIST_ITER iter1 = (*iter).first->useInstList.begin();
-            while( iter1 != (*iter).first->useInstList.end() ){
-                if( (*iter1).first == this && (*iter1).second == opndNum ){
-                    USE_EDGE_LIST_ITER curr_iter1 = iter1++;
-                    (*iter).first->useInstList.erase( curr_iter1 );
-                }else{
-                    ++iter1;
-                }
-            }
+            auto defInst = (*iter).first;
+            defInst->useInstList.remove_if(
+                [&](USE_DEF_NODE node) { return node.first == this && node.second == opndNum; });
             DEF_EDGE_LIST_ITER curr_iter = iter++;
-            this->defInstList.erase( curr_iter );
-        }else{
+            this->defInstList.erase(curr_iter);
+        }
+        else
+        {
             ++iter;
         }
     }
@@ -869,13 +849,8 @@ void G4_INST::removeDefUse( Gen4_Operand_Number opndNum )
 USE_EDGE_LIST_ITER G4_INST::eraseUse(USE_EDGE_LIST_ITER iter)
 {
     G4_INST *useInst = iter->first;
-    for (auto I = useInst->def_begin(); I != useInst->def_end(); /*empty*/)
-    {
-        if (I->first == this && I->second == iter->second)
-            I = useInst->defInstList.erase(I);
-        else
-            ++I;
-    }
+    useInst->defInstList.remove_if(
+        [&](USE_DEF_NODE node) { return node.first == this && node.second == iter->second; });
     return useInstList.erase(iter);
 }
 
@@ -886,22 +861,19 @@ void G4_INST::transferDef( G4_INST *inst2, Gen4_Operand_Number opndNum1, Gen4_Op
     DEF_EDGE_LIST_ITER iter = this->defInstList.begin();
     while( iter != this->defInstList.end() )
     {
+        auto defInst = (*iter).first;
         if( (*iter).second == opndNum1 )
         {
-            inst2->defInstList.push_back( std::pair<G4_INST*, Gen4_Operand_Number>((*iter).first, opndNum2) );
-            USE_EDGE_LIST_ITER iter1 = (*iter).first->useInstList.begin();
-            while( iter1 != (*iter).first->useInstList.end() ){
-                if( (*iter1).second == opndNum1 && (*iter1).first == this ){
-                    USE_EDGE_LIST_ITER curr_iter1 = iter1++;
-                    (*iter).first->useInstList.erase( curr_iter1 );
-                    (*iter).first->useInstList.push_back( std::pair<G4_INST*, Gen4_Operand_Number>(inst2, opndNum2) );
-                }else{
-                    ++iter1;
-                }
-            }
+            // gcc 5.0 doesn't like emplace_back for some reason
+            inst2->defInstList.push_back(USE_DEF_NODE(defInst, opndNum2));
+            defInst->useInstList.remove_if(
+                [&](USE_DEF_NODE node) { return node.second == opndNum1 && node.first == this; });
+            defInst->useInstList.push_back(USE_DEF_NODE(inst2, opndNum2));
             DEF_EDGE_LIST_ITER curr_iter = iter++;
             this->defInstList.erase( curr_iter );
-        }else{
+        }
+        else
+        {
             ++iter;
         }
     }
@@ -1028,64 +1000,23 @@ void G4_INST::transferUse( G4_INST *inst2, bool keepExisting)
 
     if (!keepExisting)
     {
-        for (auto iter = inst2->useInstList.begin(), iterEnd = inst2->useInstList.end();
-            iter != iterEnd;
-            ++iter)
-        {
-            G4_INST* useInst = (*iter).first;
-            auto defIter = useInst->defInstList.begin(), defIterEnd = useInst->defInstList.end();
-            while (defIter != defIterEnd)
-            {
-                G4_INST* defInst = (*iter).first;
-                if (defInst == inst2)
-                {
-                    defIter = useInst->defInstList.erase(defIter);
-                }
-                else
-                {
-                    ++defIter;
-                }
-            }
-        }
-        inst2->useInstList.clear();
+        inst2->removeAllUses();
     }
-
-    USE_EDGE_LIST_ITER tmp_iter2 = this->useInstList.begin();
-    while( tmp_iter2 != this->useInstList.end() )
-    {
-        inst2->useInstList.push_back(*tmp_iter2);
-        DEF_EDGE_LIST_ITER tmp_iter1 = (*tmp_iter2).first->defInstList.begin();
-        while( tmp_iter1 != (*tmp_iter2).first->defInstList.end() ){
-            if( (*tmp_iter1).first == this ){
-                (*tmp_iter2).first->defInstList.push_back( std::pair<G4_INST*, Gen4_Operand_Number>(inst2, (*tmp_iter1).second) );
-                DEF_EDGE_LIST_ITER curr_iter = tmp_iter1++;
-                (*tmp_iter2).first->defInstList.erase( curr_iter );
-
-            }else{
-                ++tmp_iter1;
-            }
-        }
-        tmp_iter2++;
-    }
-    this->useInstList.clear();
+    
+    copyUsesTo(inst2, false);
+    removeAllUses();
 }
 
-void G4_INST::removeUseOfInst( )
+//
+// remove all references of this inst in other inst's def list
+// this is used when we want to delete this instruction
+void G4_INST::removeUseOfInst()
 {
-    for (auto iter = defInstList.begin(); iter != defInstList.end(); ++iter)
+    for (auto&& node : defInstList)
     {
-        auto iter1 = (*iter).first->useInstList.begin();
-        while (iter1 != (*iter).first->useInstList.end()){
-            if ((*iter1).first == this)
-            {
-                USE_EDGE_LIST_ITER curr_iter1 = iter1++;
-                (*iter).first->useInstList.erase(curr_iter1);
-            }
-            else
-            {
-                ++iter1;
-            }
-        }
+        auto defInst = node.first;
+        defInst->useInstList.remove_if(
+            [&](USE_DEF_NODE node) { return node.first == this;});
     }
 }
 

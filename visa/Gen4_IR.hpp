@@ -216,12 +216,13 @@ typedef std::list<vISA::G4_INST*, INST_LIST_NODE_ALLOCATOR>           INST_LIST;
 typedef std::list<vISA::G4_INST*, INST_LIST_NODE_ALLOCATOR>::iterator INST_LIST_ITER;
 typedef std::list<vISA::G4_INST*, INST_LIST_NODE_ALLOCATOR>::reverse_iterator INST_LIST_RITER;
 
-typedef vISA::std_arena_based_allocator<std::pair<vISA::G4_INST*, Gen4_Operand_Number>> USE_DEF_ALLOCATOR;
+typedef std::pair<vISA::G4_INST*, Gen4_Operand_Number> USE_DEF_NODE;
+typedef vISA::std_arena_based_allocator<USE_DEF_NODE> USE_DEF_ALLOCATOR;
 
-typedef std::list<std::pair<vISA::G4_INST*, Gen4_Operand_Number>, USE_DEF_ALLOCATOR > USE_EDGE_LIST;
-typedef std::list<std::pair<vISA::G4_INST*, Gen4_Operand_Number>, USE_DEF_ALLOCATOR >::iterator USE_EDGE_LIST_ITER;
-typedef std::list<std::pair<vISA::G4_INST*, Gen4_Operand_Number>, USE_DEF_ALLOCATOR > DEF_EDGE_LIST;
-typedef std::list<std::pair<vISA::G4_INST*, Gen4_Operand_Number>, USE_DEF_ALLOCATOR >::iterator DEF_EDGE_LIST_ITER;
+typedef std::list<USE_DEF_NODE, USE_DEF_ALLOCATOR > USE_EDGE_LIST;
+typedef std::list<USE_DEF_NODE, USE_DEF_ALLOCATOR >::iterator USE_EDGE_LIST_ITER;
+typedef std::list<USE_DEF_NODE, USE_DEF_ALLOCATOR > DEF_EDGE_LIST;
+typedef std::list<USE_DEF_NODE, USE_DEF_ALLOCATOR >::iterator DEF_EDGE_LIST_ITER;
 
 namespace vISA
 {
