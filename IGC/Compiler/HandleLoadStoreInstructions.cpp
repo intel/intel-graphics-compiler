@@ -101,7 +101,7 @@ void HandleLoadStoreInstructions::visitLoadInst(llvm::LoadInst &I)
                 }
                 else
                 {
-                    assert(false);
+                    byteOffset = builder.CreatePtrToInt(ptrv, builder.getInt32Ty());
                 }
             }
 
