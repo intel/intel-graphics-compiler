@@ -4189,7 +4189,6 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
 
         int suppressRegs[3];
         int lastRegs[3];
-        int lastDst = -1;
         for (int i = 0; i < 3; i++)
         {
             suppressRegs[i] = -1;
@@ -4264,7 +4263,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
                 kView.getInstSyntax(pc, stringBuffer, 512, labelerLambda, (void*)&lambdaArg);
                 pc += kView.getInstSize(pc);
 
-                (*itBB)->emitBasicInstructionIga(stringBuffer, output, itInst, suppressRegs, lastRegs, lastDst);
+                (*itBB)->emitBasicInstructionIga(stringBuffer, output, itInst, suppressRegs, lastRegs);
             }
         }
     }
@@ -4722,7 +4721,7 @@ static void emitInstId(std::ostream& output, int srcLine, int vISAId, int genId)
     }
 }
 
-void G4_BB::emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST_LIST_ITER &it, int *suppressRegs, int *lastRegs, int &lastDst)
+void G4_BB::emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST_LIST_ITER &it, int *suppressRegs, int *lastRegs)
 {
     G4_INST* inst = *it;
 

@@ -448,7 +448,7 @@ public:
     void emit(std::ostream& output);
     void emitInstruction(std::ostream& output, INST_LIST_ITER &it);
     void emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it);
-    void emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST_LIST_ITER &it, int *suppressRegs, int *lastRegs, int &lastDst);
+    void emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST_LIST_ITER &it, int *suppressRegs, int *lastRegs);
     void emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it);
     void emitBankConflict(std::ostream& output, G4_INST *inst);
 
