@@ -127,6 +127,7 @@ namespace vISA
 class LVN
 {
 private:
+    std::map<G4_INST*, UseList> defUse;
     G4_BB* bb;
     FlowGraph& fg;
     LvnTable lvnTable;

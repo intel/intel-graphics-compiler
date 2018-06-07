@@ -164,16 +164,11 @@ bool LVN::getDstData(int64_t srcImm, G4_Type srcType, int64_t& dstImm, G4_Type d
 bool LVN::getAllUses(G4_INST* def, UseList& uses)
 {
     bool defFound = false;
-    for (auto use_it = def->use_begin();
-        use_it != def->use_end();
-        use_it++)
+    auto it = defUse.find(def);
+    if (it != defUse.end())
     {
-        auto&& curUse = (*use_it);
-        UseInfo useData;
-        useData.first = curUse.first;
-        useData.second = curUse.second;
-        uses.push_back(useData);
         defFound = true;
+        uses = (*it).second;
     }
 
     return defFound;
@@ -1512,7 +1507,19 @@ void LVN::addUse(G4_DstRegRegion* dst, G4_INST* use, unsigned int srcIndex)
         srcPos = Opnd_src2;
     }
 
-    dst->getInst()->addDefUse(use, srcPos);
+    UseInfo useInst = { use, srcPos };
+    auto it = defUse.find(dst->getInst());
+
+    if (it == defUse.end())
+    {
+        UseList uses = { useInst };
+
+        defUse.insert(std::make_pair(dst->getInst(), uses));
+    }
+    else
+    {
+        (*it).second.push_back(useInst);
+    }
 }
 
 void LVN::removeAddrTaken(G4_AddrExp* opnd)
@@ -1540,17 +1547,6 @@ void LVN::populateDuTable(INST_LIST_ITER inst_it)
     G4_Operand* startInstDst = startInst->getDst();
     INST_LIST_ITER lastInstIt = bb->end();
     unsigned int numEdgesAdded = 0;
-
-    // Clear du/ud chains of all instructions in BB
-    for (auto it = inst_it;
-        it != lastInstIt;
-        it++)
-    {
-        G4_INST* inst = (*it);
-
-        inst->clearDef();
-        inst->clearUse();
-    }
 
     while (inst_it != lastInstIt)
     {
