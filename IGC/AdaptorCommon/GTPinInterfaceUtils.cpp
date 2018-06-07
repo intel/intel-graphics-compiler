@@ -65,7 +65,7 @@ void* AllocGTPinDataBuffer(const IGC::SKernelProgram* program, const IGC::SProgr
         }
 
         // Allocate the buffer
-        buffer = (char*)malloc(allocSize);
+        buffer = (char*)IGC::aligned_malloc(allocSize, sizeof(QWORD));
     }
 
     // Update the gtpin return status
