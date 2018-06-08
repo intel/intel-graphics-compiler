@@ -626,7 +626,6 @@ void BinaryEncodingIGA::DoAll()
                         if (!opSpec->isSendOrSendsFamily())
                         {
                             type = getIGAType(src->getType());
-                            
                         }
                         else if (i == 0 &&
                             getGenxPlatform() >= GENX_SKL   &&
@@ -834,3 +833,4 @@ void *BinaryEncodingIGA::EmitBinary(uint32_t& binarySize)
 
     return m_kernelBuffer;
 }
+

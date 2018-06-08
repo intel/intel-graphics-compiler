@@ -48,22 +48,22 @@ void Instruction::setMacroDestination(
     DstModifier dstMod,
     RegName rName,
     RegRef reg,
-    MathMacroExt mme,
+    ImplAcc acc,
     Region::Horz rgnHz,
     Type type)
 {
-    m_dst.setMacroDestination(dstMod, rName, reg, mme, rgnHz, type);
+    m_dst.setMacroDestination(dstMod, rName, reg, acc, rgnHz, type);
 }
 
 
 void Instruction::setInidirectDestination(
     DstModifier dstMod,
     RegRef reg,
-    int16_t addrImmOff,
+    int16_t immediateOffset,
     Region::Horz rgnH,
     Type type)
 {
-    m_dst.setInidirectDestination(dstMod, reg, addrImmOff, rgnH, type);
+    m_dst.setInidirectDestination(dstMod, reg, immediateOffset, rgnH, type);
 }
 
 
@@ -94,7 +94,7 @@ void Instruction::setMacroSource(
     SrcModifier srcMod,
     RegName rName,
     RegRef reg,
-    MathMacroExt acc,
+    ImplAcc acc,
     Region rgn,
     Type type)
 {

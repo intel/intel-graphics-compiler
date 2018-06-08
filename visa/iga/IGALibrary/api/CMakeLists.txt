@@ -7,7 +7,6 @@ set(IGA_API_HeadersOpen
   ${CMAKE_CURRENT_SOURCE_DIR}/iga.h
   ${CMAKE_CURRENT_SOURCE_DIR}/iga.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/iga_bxml_ops.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/iga_bxml_enums.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/iga_types_ext.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/igad.h
   ${CMAKE_CURRENT_SOURCE_DIR}/igax.hpp

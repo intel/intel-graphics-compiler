@@ -30,7 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ErrorHandler.hpp"
 #include "../IR/DUAnalysis.hpp"
 #include "../IR/Kernel.hpp"
-#include "../strings.hpp"
 
 #include <iomanip>
 #include <ostream>
@@ -168,7 +167,7 @@ namespace iga {
             size_t actualWidth = end - currColStart;
             if (actualWidth <= currColLen) {
                 // we underflowed; we have space left;
-                // if there is debt, we can cover some of it
+                // if there is debt we can cover some of it
                 size_t padding = currColLen - actualWidth;
                 if (currColDebt > 0) {
                     size_t correction = std::min<size_t>(currColDebt, padding);
@@ -229,7 +228,13 @@ namespace iga {
 
         template <typename T>
         void emitHex(const T &t, int w = 0) {
-            fmtHex(o, (uint64_t)t);
+            if (w == 0) {
+                o << "0x" << std::hex <<
+                    std::uppercase << t << std::dec;
+            } else {
+                o << "0x" << std::setw(w) << std::setfill('0') << std::hex <<
+                    std::uppercase << t << std::dec;
+            }
 #ifdef TRACE_EMIT
             std::cerr << "0x" << std::hex << t << std::dec;
             std::cerr.flush();

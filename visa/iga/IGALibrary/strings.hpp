@@ -88,25 +88,11 @@ namespace iga {
     size_t copyOut(char *buf, size_t bufCap, std::iostream &ios);
 
     // formats a value into binary padding with 0's for a given width w
-    // (the value of 0 auto computes the minimal width)
-    // without affecting os's stream state
-    //   e.g. fmtBinaryDigits(os,0xB,5) => emits 01011
-    //   e.g. fmtBinaryDigits(os,0xB,0) => emits  1011
-    void fmtBinaryDigits(std::ostream &os, uint64_t val, int w = 0);
-    // same as fmtBinaryDigits, but prefixes an additional "0b"
-    // is careful to not muck up os's state
-    // w doesn't count the 0b prefix as part of the width
-    // e.g. fmtBinary(os,0xB,0) -> 0b1101
-    void fmtBinary(std::ostream &os, uint64_t val, int w = 0);
-    //
+    // e.g. fmtBinary(os,5,0xB) => emits 01011
+    void fmtBinary(std::ostream &os, int w, uint64_t val);
     // formats to uppercase hex for a given width
-    // without affecting os's stream state
-    void fmtHexDigits(std::ostream &os, uint64_t val, int w = 0);
-    // same as fmtHexDigits, but prefixes an 0x
-    // does not change os's stream state
-    void fmtHex(std::ostream &os, uint64_t val, int w = 0);
-    // a helper that returns a string version
-    std::string fmtHex(uint64_t val, int w = 0);
+    void fmtHex(std::ostream &os, int w, uint64_t val);
+    std::string fmtHex(uint64_t val, int w);
 
     // This class simplifies formatting loops by dropping the first comma.
     // One calls insert *before* each element being formatted.

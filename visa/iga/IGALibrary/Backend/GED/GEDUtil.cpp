@@ -27,8 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GEDToIGATranslation.hpp"
 #include "GEDUtil.hpp"
 
-#include "../../bits.hpp"
-
 using namespace iga;
 
 static const GED_RETURN_VALUE constructPartialGEDSendInstruction(
@@ -57,11 +55,15 @@ static const GED_RETURN_VALUE constructPartialGEDSendInstruction(
     return status;
 }
 
+static uint32_t getBitField(uint32_t value, int ix, int len) {
+    // shift is only well-defined for values <32, use 0xFFFFFFFF
+    uint32_t mask = len >= 32 ? 0xFFFFFFFF : (1 << (uint32_t)len) - 1;
+    return (value >> (ix % 32)) & mask;
+}
 
+static uint32_t getSplitSendMsgLength(uint32_t exDesc) { return getBitField(exDesc, 6, 4); }
 
-iga::SFID iga::getSFID(
-    Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc)
-{
+iga::SFID iga::getSFID(Platform p, OpSpec os, uint32_t exDesc, uint32_t desc) {
 
     GED_MODEL gedP = IGAToGEDTranslation::lowerPlatform(p);
     GED_OPCODE gedOp = GED_OPCODE_INVALID;
@@ -88,9 +90,7 @@ iga::SFID iga::getSFID(
     return GEDToIGATranslation::translate(gedSFID);
 }
 
-iga::SFMessageType iga::getMessageType(
-    Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc)
-{
+iga::SFMessageType iga::getMessageType(Platform p, OpSpec os, uint32_t exDesc, uint32_t desc) {
 
     int sfid = static_cast<int>(getSFID(p, os, exDesc, desc));
     GED_SFID gedSFID = IGAToGEDTranslation::lowerSendTFID(sfid, p);
@@ -99,6 +99,7 @@ iga::SFMessageType iga::getMessageType(
     GED_MESSAGE_TYPE msgType = GED_MESSAGE_TYPE_INVALID;
     GED_MODEL gedP = IGAToGEDTranslation::lowerPlatform(p);
 
+    bool not_supported = false;
     if (gedSFID != GED_SFID_INVALID && gedSFID != GED_SFID_NULL) {
         switch (gedSFID)
         {
@@ -106,6 +107,7 @@ iga::SFMessageType iga::getMessageType(
             msgType = GED_GetMessageTypeDP_SAMPLER(desc, gedP, &getRetVal);
             break;
         case GED_SFID_GATEWAY:    ///< all
+            not_supported = true;
             break;
         case GED_SFID_DP_DC2:     ///< GEN10, GEN9
             msgType = GED_GetMessageTypeDP_DC2(desc, gedP, &getRetVal);
@@ -114,10 +116,13 @@ iga::SFMessageType iga::getMessageType(
             msgType = GED_GetMessageTypeDP_RC(desc, gedP, &getRetVal);
             break;
         case GED_SFID_URB:        ///< all
+            not_supported = true;
             break;
         case GED_SFID_SPAWNER:    ///< all
+            not_supported = true;
             break;
         case GED_SFID_VME:        ///< all
+            not_supported = true;
             break;
         case GED_SFID_DP_DCRO:    ///< GEN10, GEN9
             msgType = GED_GetMessageTypeDP_DCRO(desc, gedP, &getRetVal);
@@ -138,11 +143,13 @@ iga::SFMessageType iga::getMessageType(
             }
             break;
         case GED_SFID_PI:         ///< all
+            not_supported = true;
             break;
         case GED_SFID_DP_DC1:     ///< GEN10, GEN7.5, GEN8, GEN8.1, GEN9
             msgType = GED_GetMessageTypeDP_DC1(desc, gedP, &getRetVal);
             break;
         case GED_SFID_CRE:        ///< GEN10, GEN7.5, GEN8, GEN8.1, GEN9
+            not_supported = true;
             break;
         case GED_SFID_DP_SAMPLER: ///< GEN7, GEN7.5, GEN8, GEN8.1
             msgType = GED_GetMessageTypeDP_SAMPLER(desc, gedP, &getRetVal);
@@ -155,25 +162,20 @@ iga::SFMessageType iga::getMessageType(
         }
     }
 
+    if (not_supported)
+        return static_cast<SFMessageType>(-4);
 
     if (msgType == GED_MESSAGE_TYPE_INVALID ||
         getRetVal != GED_RETURN_VALUE_SUCCESS)
     {
-        return SFMessageType::INVALID;
-    } else {
-        return GEDToIGATranslation::translate(msgType);
+        return GEDToIGATranslation::translate(GED_MESSAGE_TYPE_INVALID);
     }
+    else return GEDToIGATranslation::translate(msgType);
 
 }
 
-
-static uint32_t getSplitSendMsgLength(uint32_t exDesc) {
-    return getBits<uint32_t>(exDesc, 6, 4);
-}
-
-uint32_t iga::getMessageLengths(
-    Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc,
-    uint32_t* mLen, uint32_t* emLen, uint32_t* rLen)
+uint32_t iga::getMessageLengths(Platform p, OpSpec os, uint32_t exDesc,
+    uint32_t desc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen)
 {
     GED_MODEL gedP = IGAToGEDTranslation::lowerPlatform(p);
     GED_OPCODE gedOp = GED_OPCODE_INVALID;

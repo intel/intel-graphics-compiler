@@ -8,19 +8,11 @@ class KernelEncoder
     uint32_t binarySize = 0;
     iga::Kernel* kernel = nullptr;
     bool autoCompact = false;
-    bool nocompactFirstEightInst = false;
 
 public:
-    // @param compact: auto compact instructions if applicable
-    // @param noCompactFisrtEightInst: Force NOCOMPACT the first 8 instructions in this encoding unit
-    //     The first eight instructions must be in the same bb
-    //     This can be set simulataneously with compact. The first 8 instructions will not be cmopacted
-    //     even if it is compactable
-    KernelEncoder(iga::Kernel* k, bool compact, bool noCompactFirstEightInst = false)
+    KernelEncoder(iga::Kernel* k, bool compact)
         : kernel(k)
-        , autoCompact(compact)
-        , nocompactFirstEightInst(noCompactFirstEightInst)
-    { }
+        , autoCompact(compact) { }
 
     iga_status_t encode();
     void* getBinary() const { return buf; }

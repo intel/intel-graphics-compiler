@@ -42,8 +42,6 @@ const char* gedReturnValueStrings[GED_RETURN_VALUE_SIZE] =
     "GED_RETURN_VALUE_FILE_READ_FAILED",
     "GED_RETURN_VALUE_INVALID_OPERAND",
     "GED_RETURN_VALUE_BAD_COMPACT_ENCODING",
-    "GED_RETURN_VALUE_INVALID_MODEL",
-    "GED_RETURN_VALUE_BUFFER_TOO_SHORT",
 };
 
 
@@ -61,8 +59,6 @@ const char* gedReturnValuePadding[GED_RETURN_VALUE_SIZE] =
     "    ",
     "     ",
     "",
-    "       ",
-    "    ",
 };
 
 const char* GEDInsTypeStr = "GED_INS_TYPE";

@@ -121,39 +121,5 @@ namespace iga
         bits = (bits & ~(mask<<off)) | (val << off);
         return true;
     }
-
-    // finds the high bit index set
-    // returns -1 given 0 (i.e. if no bits set)
-    //
-    // STL really needs this
-    // gcc has __builtin_clzll, but let's ignore the #ifdef nonsense
-    static int findLeadingOne(uint64_t v) {
-        static const uint64_t MASKS[] {
-            0xFFFFFFFF00000000ull,
-            0xFFFF0000,
-            0xFF00,
-            0xF0,
-            0xC,
-            0x2
-        };
-
-        // checks the top 32 (add 32 if it's there), also shift the bottom
-        // check the top 16 of that result
-        // ...
-        // the mask could also be generated, but we expect it to unroll
-        int index = 0;
-        for (int i = 0, offset = 32;
-            i < sizeof(MASKS)/sizeof(MASKS[0]);
-            i++, offset>>=1)
-        {
-            if (v & MASKS[i]) {
-                v >>= offset;
-                index += offset;
-            }
-        }
-
-        return index;
-    }
-
 } // namespace iga
 #endif /* IGA_BITS_HPP */

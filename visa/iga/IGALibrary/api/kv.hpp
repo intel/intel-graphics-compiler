@@ -27,7 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGA_KV_HPP
 
 #include "kv.h"
-#include "iga_types_ext.hpp"
 
 // This convenience class wraps the pure C interface.
 // Typical use involves something such as following.
@@ -158,22 +157,22 @@ public:
     // returns JIP or 0 if JIP is not valid.
 
 
-    // If JIP is invalid or a register KV_INVALID_PC_VALUE is returned
+    // If JIP is invalid or a register KV_INVALID_PC is returned
     int32_t getInstJIP(int32_t pc) const {
         int32_t tpcs[KV_MAX_TARGETS_PER_INSTRUCTION];
         if (getInstTargets(pc, &tpcs[0]) < 1) {
-            return KV_INVALID_PC_VALUE;
+            return KV_INVALID_PC;
         } else {
             return tpcs[0];
         }
     }
 
 
-    // If UIP is invalid KV_INVALID_PC_VALUE is returned
+    // If UIP is invalid KV_INVALID_PC is returned
     int32_t getInstUIP(int32_t pc) const {
         int32_t tpcs[KV_MAX_TARGETS_PER_INSTRUCTION];
         if (getInstTargets(pc, &tpcs[0]) < 2) {
-            return KV_INVALID_PC_VALUE;
+            return KV_INVALID_PC;
         } else {
             return tpcs[1];
         }
@@ -262,49 +261,45 @@ public:
 
     // Returns the send descriptors for send messages
     // (See kv_get_send_descs)
-    uint32_t getSendDescs(int32_t pc, uint32_t *ex_desc, uint32_t *desc) const {
+    uint32_t getSendDescs(
+        int32_t pc, uint32_t *ex_desc, uint32_t *desc) const
+    {
         return kv_get_send_descs(m_kv, pc, ex_desc, desc);
     }
 
-    /*************************Analysis APIs **********************************/
+    /*************************Analyze APIs**************************************/
 
-    // Returns the number of expicit sources this instruction has.
-    int32_t getNumberOfSources(int32_t pc) const {
+    // Returns number of expicit sources this instruction has.
+    int32_t getNumberOfSources(int32_t pc)
+    {
         return kv_get_number_sources(m_kv, pc);
     }
 
-    // Fetches the message type for send/sends instructions.
-    //
-    // Returns:
-    //   KV_SUCCESS on success (and assigned sfmt)
-    //   KV_DESCRIPTOR_INDIRECT if called on a send with a register desriptor
-    //   KV_DESCRIPTOR_INVALID if called on a send unrecognized descriptor
-    //   KV_INVALID_PC if called on a non-instruction address
-    //   KV_NON_SEND_INSTRUCTION if called on a non-send instruction
-    kv_status_t getMessageType(int32_t pc, iga::SFMessageType &sfmt) const;
+    // Returns message type for send/sends instructions.
+    // Returns invalid message type otherwise
+    iga::SFMessageType getMessageType(int32_t pc)
+    {
+        return static_cast<iga::SFMessageType>(kv_get_message_type(m_kv, pc));
+    }
 
-    // Fetches the message SFID for send/sends instructions.
-    //
-    // Returns:
-    //   KV_SUCCESS on success (and assigned sfmt)
-    //   KV_DESCRIPTOR_INDIRECT if called on a send with a register desriptor
-    //   KV_DESCRIPTOR_INVALID if called on a send unrecognized descriptor
-    //   KV_INVALID_PC if called on a non-instruction address
-    //   KV_NON_SEND_INSTRUCTION if called on a non-send instruction
-     kv_status_t getMessageSFID(int32_t pc, iga::SFID &sfid) const;
+    // Returns message SFID for send/sends instructions.
+    // Returns invalid message SFID otherwise
+    iga::SFID getMessageSFID(int32_t pc)
+    {
+        return static_cast<iga::SFID>(kv_get_message_sfid(m_kv, pc));
+    }
 
     // Returns message, extended message, and response lengths in units of registers.
-    // The count of lengths successfully set is returned.
-    // If any of the parameters is NULL, it returns 0.
-    // Invalid lengths are set to KV_INVALID_LEN.
-    uint32_t getMessageLen(
-        int32_t pc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen) const
+    // The count of lengths successfully set is returned. If any of the parameters is NULL,
+    // it returns 0. Invalid lengths are set to KV_INVALID_LEN.
+    uint32_t getMessageLen(int32_t pc, uint32_t* mLen, uint32_t* emLen, uint32_t* rLen)
     {
         return kv_get_message_len(m_kv, pc, mLen, emLen, rLen);
     }
 
-    // Returns execution size of the instruction
-    iga::ExecSize getExecutionSize(int32_t pc) const {
+    //Returns execution size of the instruction
+    iga::ExecSize getExecutionSize(int32_t pc)
+    {
         return static_cast<iga::ExecSize>(kv_get_execution_size(m_kv, pc));
     }
 
@@ -314,26 +309,31 @@ public:
     // N.B.: the opcode is not the same as the 7-bit value encoded in the
     // actual encoding, but maps to the enumeration value of the underlying
     // iga::Op.
-    iga::Op getOpcode(int32_t pc) const {
+    iga::Op getOpcode(int32_t pc)
+    {
         return static_cast<iga::Op>(kv_get_opcode(m_kv, pc));
     }
 
     // Returns the Execution Mask Offset for the given PC
-    iga::ChannelOffset getChannelOffset(int32_t pc) const {
+    iga::ChannelOffset getChannelOffset(int32_t pc)
+    {
         return static_cast<iga::ChannelOffset>(kv_get_channel_offset(m_kv, pc));
     }
 
     // Returns Mask Control
-    iga::MaskCtrl getMaskCtrl(int32_t pc) const {
+    iga::MaskCtrl getMaskCtrl(int32_t pc)
+    {
         return static_cast<iga::MaskCtrl>(kv_get_mask_control(m_kv, pc));
     }
 
-    int32_t getHasDestination(int32_t pc) const {
+    int32_t getHasDestination(int32_t pc)
+    {
         return kv_get_has_destination(m_kv, pc);
     }
     // Returns Register Number Row of destination register.
     // i.e for r23.5 returns 23
-    int32_t getDstRegNumber(int32_t pc) const {
+    int32_t getDstRegNumber(int32_t pc)
+    {
         return kv_get_destination_register(m_kv, pc);
     }
 
@@ -342,57 +342,66 @@ public:
     // So r32.5:f is 5*sizeof(:f) = 20 bytes into the 32-byte register.
     //
     // i.e. for r32.5 returns 5
-    int32_t getDstSubRegNumber(int32_t pc) const {
+    int32_t getDstSubRegNumber(int32_t pc)
+    {
         return kv_get_destination_sub_register(m_kv, pc);
     }
 
     // Returns destination data Type
     // i.e. F, HF, INT, UINT, etc
-    iga::Type getDstDataType(int32_t pc) const {
+    iga::Type getDstDataType(int32_t pc)
+    {
         return static_cast<iga::Type>(kv_get_destination_data_type(m_kv, pc));
     }
 
     // Returns destination register Type
     // i.e. GRF, NULL, ACC, etc
-    iga::RegName getDstRegType(int32_t pc) const {
+    iga::RegName getDstRegType(int32_t pc)
+    {
         return static_cast<iga::RegName>(kv_get_destination_register_type(m_kv, pc));
     }
 
     // Returns destination Kind
     // i.e. DIRECT, INDIRECT, IMM
-    iga::Kind getDstRegKind(int32_t pc) const {
+    iga::Kind getDstRegKind(int32_t pc)
+    {
         return static_cast<iga::Kind>(kv_get_destination_register_kind(m_kv, pc));
     }
 
     // Returns Register Number Row of source register.
     // valid range [0,127]
     // i.e for r23.5 returns 23
-    int32_t getSrcRegNumber(int32_t pc, uint32_t sourceNumber) const {
+    int32_t getSrcRegNumber(int32_t pc, uint32_t sourceNumber)
+    {
         return kv_get_source_register(m_kv, pc, sourceNumber);
     }
 
     // Returns sub register number in a register row.
     // valid range [0, 31]
     // i.e. for r32.5 returns 5
-    int32_t getSrcSubRegNumber(int32_t pc, uint32_t sourceNumber) const {
+    int32_t getSrcSubRegNumber(int32_t pc, uint32_t sourceNumber)
+    {
         return kv_get_source_sub_register(m_kv, pc, sourceNumber);
     }
 
     // Returns source data Type
     // i.e. F, HF, INT, UINT, etc
-    iga::Type getSrcDataType(int32_t pc, uint32_t sourceNumber) const {
+    iga::Type getSrcDataType(int32_t pc, uint32_t sourceNumber)
+    {
         return static_cast<iga::Type>(kv_get_source_data_type(m_kv, pc, sourceNumber));
     }
 
     // Returns source register Type
     // i.e. GRF, NULL, ACC, etc
-    iga::RegName getSrcRegType(int32_t pc, uint32_t sourceNumber) const {
+    iga::RegName getSrcRegType(int32_t pc, uint32_t sourceNumber)
+    {
         return static_cast<iga::RegName>(kv_get_source_register_type(m_kv, pc, sourceNumber));
     }
 
     // Returns source Kind
     // i.e. DIRECT, INDIRECT, IMM
-    iga::Kind getSrcRegKind(int32_t pc, uint32_t sourceNumber) const {
+    iga::Kind getSrcRegKind(int32_t pc, uint32_t sourceNumber)
+    {
         return static_cast<iga::Kind>(kv_get_source_register_kind(m_kv, pc, sourceNumber));
     }
 
@@ -400,36 +409,31 @@ public:
     // -1 - ERROR
     // 0  - FALSE
     // 1  - TRUE
-    int32_t getIsSrcVector(int32_t pc, uint32_t sourceNumber) const {
+    int32_t getIsSrcVector(int32_t pc, uint32_t sourceNumber)
+    {
         return kv_is_source_vector(m_kv, pc, sourceNumber);
     }
 
-    // Returns 0 if instruction's destination operand horizontal stride
-    // (DstRgnHz) is succesfully returned.
+    // Returns 0 if instruction's destination operand horizontal stride (DstRgnHz) is succesfully determined.
     // Otherwise returns -1.
     // DstRgnHz is returned by *hz parameter, as numeric numeric value (e.g. 1,2,4).
-    int32_t getDstRegion(int32_t pc, uint32_t *hz) const {
+    int32_t getDstRegion(int32_t pc, uint32_t *hz)
+    {
         return kv_get_destination_region(m_kv, pc, hz);
     }
 
-    // Returns 0 if any of instruction's src operand region components
-    // (Src RgnVt, RgnWi, RgnHz) are succesfully determined.
+    // Returns 0 if any of instruction's src operand region components (Src RgnVt, RgnWi, RgnHz) are succesfully determined.
     // Otherwise returns -1.
-    //
-    // Vt, Wi and Hz are returned by *vt, *wi and *hz parameter,
-    // as numeric numeric values (e.g. 1,2,4).
-    int32_t getSrcRegion(
-        int32_t pc, uint32_t src_op, uint32_t *vt, uint32_t *wi, uint32_t *hz) const
+    // Vt, Wi and Hz are returned by *vt, *wi and *hz parameter, as numeric numeric values (e.g. 1,2,4).
+    int32_t getSrcRegion(int32_t pc, uint32_t src_op, uint32_t *vt, uint32_t *wi, uint32_t *hz)
     {
         return kv_get_source_region(m_kv, pc, src_op, vt, wi, hz);
     }
 
     // Returns 0 if the source is an immediate and sets the 64b immediate value in imm
-    // otherwise it returns -1.
-    //
+    // otherwise it returns -1. 
     // 16b and 32b immediate will stored in the lower bits of imm.
-    int32_t getSrcImmediate(
-        const kv_t *kv, int32_t pc, uint32_t src_op, uint64_t *imm) const
+    int32_t getSrcImmediate(const kv_t *kv, int32_t pc, uint32_t src_op, uint64_t *imm)
     {
         return kv_get_source_immediate(m_kv, pc, src_op, imm);
     }
@@ -437,30 +441,7 @@ public:
 private:
     // disable value assignment
     KernelView(const KernelView &) { }
-    KernelView& operator = (const KernelView&) {return *this;}
+    KernelView& operator = (const KernelView&) { return *this; }
 };
-
-
-inline kv_status_t KernelView::getMessageType(
-    int32_t pc, iga::SFMessageType &sfmt) const
-{
-    if (m_disasm_status != IGA_SUCCESS)
-        return kv_status_t::KV_DECODE_ERROR;
-    int32_t val = 0;
-    kv_status_t s = kv_get_message_type(m_kv, pc, &val);
-    sfmt = static_cast<iga::SFMessageType>(val);
-    return s;
-}
-
-inline kv_status_t KernelView::getMessageSFID(
-    int32_t pc, iga::SFID &sfid) const
-{
-    if (m_disasm_status != IGA_SUCCESS)
-        return kv_status_t::KV_DECODE_ERROR;
-    int32_t val = 0;
-    kv_status_t s = kv_get_message_sfid(m_kv, pc, &val);
-    sfid = static_cast<iga::SFID>(val);
-    return s;
-}
 
 #endif

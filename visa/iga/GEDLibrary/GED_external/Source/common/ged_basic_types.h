@@ -54,29 +54,6 @@ extern const char* BoolTypeStr;
 # define GED_INLINE inline
 #endif
 
-// Support switch-case fall-through attribute
-#if !defined(__has_cpp_attribute)
-# define GED_FALLTHROUGH
-#elif defined(__clang__)
-# if __has_cpp_attribute(fallthrough)
-#  define GED_FALLTHROUGH [[fallthrough]]
-# elif __has_cpp_attribute(clang::fallthrough)
-#  define GED_FALLTHROUGH [[clang::fallthrough]]
-# else
-#  define GED_FALLTHROUGH
-# endif
-#elif defined(__GNUG__)
-# if __has_cpp_attribute(fallthrough)
-#  define GED_FALLTHROUGH [[fallthrough]]
-# elif __has_cpp_attribute(gnu::fallthrough)
-#  define GED_FALLTHROUGH [[gnu::fallthrough]]
-# else
-#  define GED_FALLTHROUGH
-# endif
-#else
-# define GED_FALLTHROUGH
-#endif
-
 extern const char* InlineStr;
 
 #endif // GED_BASIC_TYPES_H

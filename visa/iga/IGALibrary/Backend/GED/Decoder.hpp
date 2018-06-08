@@ -23,13 +23,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#ifndef _IGA_BACKEND_GED_DECODER_HPP_
-#define _IGA_BACKEND_GED_DECODER_HPP_
+#ifndef _IGA_DECODER_H_
+#define _IGA_DECODER_H_
 
-#include "DecoderCommon.hpp"
-#include "GEDBitProcessor.hpp"
-#include "GEDToIGATranslation.hpp"
+
+#include "../BitProcessor.hpp"
+#include "../../IR/Kernel.hpp"
+#include "../../IR/Instruction.hpp"
+#include "../../Models/Models.hpp"
 #include "ged.h"
+#include "GEDToIGATranslation.hpp"
+#include "DecoderCommon.hpp"
+
+#include <cstdint>
 
 namespace iga
 {
@@ -44,7 +50,7 @@ namespace iga
         Type      type;
     };
 
-    class DecoderBase : public GEDBitProcessor
+    class DecoderBase : public BitProcessor
     {
     public:
         // Constructs a new decoder with an error handler and an empty kernel
@@ -178,18 +184,10 @@ namespace iga
         ///////////////////////////////////////////////////////////////////////
         // OTHER HELPERS
         ///////////////////////////////////////////////////////////////////////
-        void decodeReg(
-            int opIx, // dst => opIx<0
-            GED_REG_FILE regFile,
-            uint32_t regNumBits,
-            RegName &regName,
-            RegRef &regRef);
-
-
         DirRegOpInfo decodeDstDirRegInfo();
         Type decodeDstType();
         int decodeDestinationRegNumAccBitsFromChEn();
-        MathMacroExt decodeDestinationMathMacroRegFromChEn();
+        ImplAcc decodeDestinationImplAccFromChEn();
 
         virtual unsigned decodeOpGroup(Op op);
                 bool hasImm64Src0Overlap();
@@ -198,9 +196,53 @@ namespace iga
         virtual bool hasImplicitScalingType(Type& type, DirRegOpInfo& dri);
         virtual void decodeNextInstructionEpilog(Instruction *inst);
 
+                void checkIfAlign16Legal();
+
         void decodeThreadOptions(Instruction *inst, GED_THREAD_CTRL trdCntrl);
 
-        template <SourceIndex S> ImmVal decodeTernarySrcImmVal(Type t);
+
+        static void setTypeHelper(Type t, ImmVal &val)
+        {
+            switch (t) {
+            case Type::B: val.kind = ImmVal::Kind::S8; break;
+            case Type::UB: val.kind = ImmVal::Kind::U8; break;
+            case Type::W: val.kind = ImmVal::Kind::S16; break;
+            case Type::UW: val.kind = ImmVal::Kind::U16; break;
+            case Type::D: val.kind = ImmVal::Kind::S32; break;
+            case Type::UD: val.kind = ImmVal::Kind::U32; break;
+            case Type::Q: val.kind = ImmVal::Kind::S64; break;
+            case Type::UQ: val.kind = ImmVal::Kind::U64; break;
+            case Type::HF: val.kind = ImmVal::Kind::F16; break;
+            case Type::F: val.kind = ImmVal::Kind::F32; break;
+            case Type::DF: val.kind = ImmVal::Kind::F64; break;
+                // fallthrough for the packed vector kinds
+            case Type::V:
+            case Type::UV:
+            case Type::VF:
+                val.kind = ImmVal::Kind::U32;
+                break;
+            default:
+                break;
+            }
+        }
+
+        template <SourceIndex S>
+        ImmVal decodeTernarySrcImmVal(Type t) {
+            ImmVal val;
+            val.kind = ImmVal::Kind::UNDEF;
+            memset(&val, 0, sizeof(val)); // zero value in case GED only sets bottom bits
+
+            if (S == SourceIndex::SRC0) {
+                GED_DECODE_RAW_TO(Src0TernaryImm, val.u64);
+            } else if (S == SourceIndex::SRC2) {
+                GED_DECODE_RAW_TO(Src2TernaryImm, val.u64);
+            } else {
+                error("immediate is not supported for src1 ternary instruction.");
+            }
+
+            setTypeHelper(t, val);
+            return val;
+        }
 
         // various GED source accessors
         //some definitions created in Decoder.cpp using macros
@@ -228,10 +270,10 @@ namespace iga
         ImmVal                                    decodeSrcImmVal(Type type);
 
         // register direct and indirect fields
-        // yeah, the naming convention dictates this name
-        //   (on for Src vs Dst) and one for the field name SrcMod
-        template <SourceIndex S> GED_SRC_MOD      decodeSrcSrcMod();
+        template <SourceIndex S> GED_SRC_MOD      decodeSrcSrcMod(); // yeah, the naming convention dictates this name
 
+
+                                 RegName          decodeDestinationRegName(uint32_t &regNum);
 
         template <SourceIndex S> Type decodeSrcType() {
             return GEDToIGATranslation::translate(decodeSrcDataType<S>());
@@ -246,7 +288,7 @@ namespace iga
 
         template <SourceIndex S> Region decodeSrcRegionTernaryAlign1();
 
-        template <SourceIndex S> MathMacroExt decodeSrcMathMacroReg() {
+        template <SourceIndex S> ImplAcc decodeSrcImplAcc() {
             return GEDToIGATranslation::translate(decodeSrcSpecialAcc<S>());
         }
         template <SourceIndex S> SrcModifier decodeSrcModifier() {
@@ -256,35 +298,49 @@ namespace iga
             return SrcModifier::NONE;
         }
 
-        // decodes regname, regnum, and subreg num (if applicable)
-        // does *not* scale the subreg num
-        template <SourceIndex S> RegName decodeSourceReg(RegRef &regRef) {
-            uint32_t regNumBits = decodeSrcRegNum<S>();
-            RegName regName = RegName::INVALID;
+
+
+        template <SourceIndex S>
+        RegName decodeSourceRegName(uint32_t &regNum)
+        {
             GED_REG_FILE regFile = decodeSrcRegFile<S>();
-            decodeReg((int)S, regFile, regNumBits, regName, regRef);
-            if (!m_opSpec->isSendOrSendsFamily() && !m_opSpec->isMacro()) {
-                regRef.subRegNum = (uint8_t)decodeSrcSubRegNum<S>();
-            } else {
-                regRef.subRegNum = 0;
+            RegName regName = RegName::GRF_R;
+            if (regFile == GED_REG_FILE_ARF) {
+                GED_RETURN_VALUE status;
+                regName = GEDToIGATranslation::translate(
+                    GED_GetArchReg(regNum, m_gedModel, &status));
+                if (status != GED_RETURN_VALUE_SUCCESS) {
+                    error("invalid arch register on src%d", (int)S);
+                }
+                // ARF splits the register number into high and low bits
+                // the top bits are the reg name, the bottom are the number
+                regNum &= 0xF;
+            }
+            else if (regFile != GED_REG_FILE_GRF) {
+                error("invalid reg file on src%d", (int)S);
             }
             return regName;
         }
 
         template <SourceIndex S> DirRegOpInfo decodeSrcDirRegOpInfo() {
-            DirRegOpInfo dri;
-            dri.regName = decodeSourceReg<S>(dri.regRef);
+            uint32_t regNum = decodeSrcRegNum<S>();
+            uint32_t subRegNum = 0;
+            if (!m_opSpec->isSendFamily()) {
+                subRegNum = decodeSrcSubRegNum<S>();
+            }
 
-            Type scalingType = Type::INVALID;
+            DirRegOpInfo dri;
+            dri.regName = decodeSourceRegName<S>(regNum);
+            Type scalingType;
             if (!hasImplicitScalingType(scalingType, dri)) {
                 scalingType = dri.type = decodeSrcType<S>();
             }
-            if (scalingType == Type::INVALID) {
+            if (scalingType == Type::INVALID)
                 scalingType = m_opSpec->isBranching() ? Type::D : Type::UB;
-            }
 
-            dri.regRef.subRegNum = BytesOffsetToSubReg(
-                dri.regRef.subRegNum, dri.regName, scalingType);
+            dri.regRef.subRegNum = BytesOffsetToSubReg((uint8_t)subRegNum, dri.regName, scalingType);
+            dri.regRef.regNum = (uint8_t)regNum;
+
 
             return dri;
         }
@@ -308,6 +364,8 @@ namespace iga
 
         void decodeOptions(Instruction *inst);
     protected:
+        // instance-level state
+        const Model&                  m_model;
         GED_MODEL                     m_gedModel;
 
         // decode-level state (valid below decodeKernel variants)

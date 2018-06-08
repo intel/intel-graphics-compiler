@@ -279,7 +279,6 @@ public:
         EncoderOpts eopts(
             (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_COMPACT) != 0,
             (aopts.encoder_opts & IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL) == 0,
-            false, // noCompactFirstEightInst
             (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_DEPENDENCIES) != 0);
         if ((aopts.encoder_opts & IGA_ENCODER_OPT_USE_NATIVE) == 0) {
             if (!iga::ged::IsEncodeSupported(m_model, eopts)) {

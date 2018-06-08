@@ -26,11 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef _IGA_ENCODER_COMMON_H_
 #define _IGA_ENCODER_COMMON_H_
 
-#include "ged.h"
-
-namespace iga
-{
-// IGA encoder common macros
+//IGA encoder common macros
 
 // #define GED_TRACE_SETTERS
 //
@@ -67,11 +63,7 @@ static const bool gedDebugPrint = false;
 static const bool print_ged_debug = true;
 #else
 static const bool print_ged_debug = false;
-static GED_RETURN_VALUE GED_PrintFieldBitLocation(
-    const ged_ins_t* ins, const GED_INS_FIELD field)
-{
-    return GED_RETURN_VALUE_SUCCESS;
-}
+static GED_RETURN_VALUE GED_PrintFieldBitLocation(const ged_ins_t* ins, const GED_INS_FIELD field) { return GED_RETURN_VALUE_SUCCESS; };
 #endif
 
 
@@ -92,5 +84,5 @@ static GED_RETURN_VALUE GED_PrintFieldBitLocation(
         } \
     } while(0)
 
-} // iga::
+
 #endif //_IGA_ENCODER_COMMON_H_

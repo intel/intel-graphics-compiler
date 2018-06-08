@@ -1,4 +1,5 @@
 ##############################################
+##############################################
 # IGA dynamic and static library generation
 
 # add GED libraries and includes
@@ -113,6 +114,8 @@ set(IGA_SOURCES
   ${GED_INCLUDE}/ged.h
 )
 
+set(FLAG "")
+
 set(IGA_DEFINITIONS _CONSOLE _LIB ${VSVERSION} ${GED_BRANCH})
 if (MSVC)
   if(IGC_OPTION__UNIVERSAL_DRIVER)
@@ -152,6 +155,7 @@ set_target_properties(IGA_OLIB PROPERTIES
     COMPILE_DEFINITIONS                        "${IGA_DEFINITIONS}"
     COMPILER_FLAGS                             "${IGA_COMPILER_FLAGS}"
     LINK_FLAGS                                 "${IGA_LINK_FLAGS}"
+	FOLDER                                     "IGAProjs"
   )
 
 if(IGC_BUILD AND MSVC)
@@ -171,6 +175,8 @@ if(MSVC)
   set(IGA_SLIB_LINK_FLAGS "${IGA_SLIB_LINK_FLAGS} /LTCG")
 endif()
 set(IGA_SLIB_DEFINITIONS ${IGA_DEFINITIONS} IGA_BUILDING_LIB)
+
+
 
 # The Windows DLL also produces an import library whose name conflicts with
 # this static library.  Hence, we must call this something other than the
@@ -221,6 +227,7 @@ set_target_properties(IGA_ENC_LIB PROPERTIES
     COMPILE_DEFINITIONS                        "${IGA_ENC_LIB_DEFINITIONS}"
     COMPILER_FLAGS                             "${IGA_COMPILER_FLAGS}"
     LINK_FLAGS                                 "${IGA_LINK_FLAGS}"
+	FOLDER                                     "IGAProjs"
   )
 
 if(IGC_BUILD AND MSVC)
@@ -265,6 +272,12 @@ set_property(TARGET IGA_DLL APPEND PROPERTY
 if(IGC_BUILD AND MSVC)
 #set up standard defines from the common WDK path.
 bs_set_wdk(IGA_DLL)
+
+add_custom_command( TARGET IGA_DLL
+                    POST_BUILD
+                    COMMAND "${CMAKE_COMMAND}" -E copy $<TARGET_FILE:IGA_DLL> $<TARGET_FILE_DIR:GenX_IR_Exe>
+                    COMMAND "${CMAKE_COMMAND}" -E copy $<TARGET_PDB_FILE:IGA_DLL> $<TARGET_FILE_DIR:GenX_IR_Exe>
+)
 endif()
 
 # Hidden visibility suppresses PLT entries from being created for GED
@@ -327,7 +340,7 @@ endif(ANDROID AND MEDIA_IGA)
 # target_link_libraries(IGA PRIVATE GEDLibrary)
 
 INSTALL(TARGETS IGA_DLL
-    RUNTIME DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}.   COMPONENT igc
-    LIBRARY DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}lib COMPONENT igc
-    ARCHIVE DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}.   COMPONENT igc
+    RUNTIME DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/.   COMPONENT igc-core
+    LIBRARY DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib COMPONENT igc-core
+    ARCHIVE DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/.   COMPONENT igc-core
 )

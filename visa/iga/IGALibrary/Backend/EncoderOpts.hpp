@@ -32,21 +32,13 @@ namespace iga
         bool autoCompact;
         bool explicitCompactMissIsWarning;
         bool ignoreNoCompactFormFound;
-        // noCompactFirstEightInst: Force NOCOMPACT the first 8 instructions in this encoding unit
-        // The first eight instructions will be set to NOCOMPACT during encodeKernelPreProcess
-        // The first eight instructions must be in the same bb
-        bool noCompactFirstEightInst;
         bool autoDepSet;
-        
         EncoderOpts(
             bool _autoCompact = false,
             bool _explicitCompactMissIsWarning = false,
-            bool _noCompactFirstEightInst = false,
-            bool _autoDepSet = false
-            )
+            bool _autoDepSet = false)
         : autoCompact(_autoCompact)
         , explicitCompactMissIsWarning(_explicitCompactMissIsWarning)
-        , noCompactFirstEightInst(_noCompactFirstEightInst)
         , autoDepSet(_autoDepSet)
         { }
     };

@@ -260,10 +260,10 @@ struct SemanticChecker : LOCChecker {
         //  op (...)  dst.#<H> ... src.#<V;W,H>
         if (src.getKind() != Operand::Kind::DIRECT)
             return; // TODO: check indirect someday too
-        int dstTypeSz = TypeSizeInBitsWithDefault(dst.getType(), 0) / 8, // to bytes
-            srcTypeSz = TypeSizeInBitsWithDefault(src.getType(), 0) / 8; // to bytes
+        int dstTypeSz = iga::TypeSizeWithDefault(dst.getType(), 0),
+            srcTypeSz = iga::TypeSizeWithDefault(src.getType(), 0);
         if (dstTypeSz == 0 || srcTypeSz == 0)
-            return; // e.g. Type::INVALID or a sub-byte type
+            return; // e.g. Type::INVALID
         if (dst.getRegion().getHz() == Region::Horz::HZ_INVALID)
             return; // e.g. if the dst has no region
         if (!src.getRegion().isVWH())
@@ -452,7 +452,7 @@ struct SanityChecker {
         case Operand::Kind::MACRO:
             IGA_ASSERT(m_inst->isMacro(), "instruction is not macro");
             IGA_ASSERT(
-                op.getMathMacroExt() != MathMacroExt::INVALID,
+                op.getImplAcc() != ImplAcc::INVALID,
                 "invalid accumulator for macro");
             break;
         default:
@@ -471,7 +471,7 @@ struct SanityChecker {
         case Operand::Kind::MACRO:
             IGA_ASSERT(m_inst->isMacro(), "instruction is not macro");
             IGA_ASSERT(
-                op.getMathMacroExt() != MathMacroExt::INVALID,
+                op.getImplAcc() != ImplAcc::INVALID,
                 "invalid accumulator for macro");
             break;
         case Operand::Kind::IMMEDIATE:

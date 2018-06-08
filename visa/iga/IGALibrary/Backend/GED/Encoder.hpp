@@ -23,29 +23,30 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#ifndef _IGA_BACKEND_GED_ENCODER_H_
-#define _IGA_BACKEND_GED_ENCODER_H_
+#ifndef _IGA_ENCODER_H_
+#define _IGA_ENCODER_H_
 
-#include "EncoderCommon.hpp"
-#include "GEDBitProcessor.hpp"
-#include "IGAToGEDTranslation.hpp"
 #include "../EncoderOpts.hpp"
+#include "../BitProcessor.hpp"
 #include "../../IR/Instruction.hpp"
 #include "../../IR/Block.hpp"
 #include "../../IR/Kernel.hpp"
 #include "../../ErrorHandler.hpp"
 #include "../../Timer/Timer.hpp"
+#include "ged.h"
 
 #include <list>
 #include <map>
+#include "IGAToGEDTranslation.hpp"
 
+#include "EncoderCommon.hpp"
 
 
 namespace iga
 {
     typedef list<Block *, std_arena_based_allocator<Block*>> BlockList;
 
-    class EncoderBase : protected GEDBitProcessor
+    class EncoderBase : protected BitProcessor
     {
     public:
         EncoderBase(
@@ -72,8 +73,7 @@ namespace iga
     protected:
 
         // TODO: phase these out
-                void encodeKernelPreProcess(const Kernel &k);
-        virtual void doEncodeKernelPreProcess(const Kernel &k);
+        virtual void encodeKernelPreProcess(const Kernel &k);
         virtual void encodeFC(const OpSpec &os);
         virtual void encodeTernaryInstruction(const Instruction& inst, GED_ACCESS_MODE accessMode);
                 void encodeTernaryAlign1Instruction(const Instruction& inst);
@@ -82,10 +82,10 @@ namespace iga
         virtual void encodeSendDirectDestination(const Operand& dst);
         virtual void encodeSendDestinationDataType(const Operand& dst);
                 void encodeOptionsThreadControl(const Instruction& inst);
+        virtual bool isPostIncrementJmpi(const Instruction &inst) const;
+
 
     protected:
-        void encodeDstReg(RegName regName, uint8_t regNum); // just the regnum
-
         void encodeImmVal(const ImmVal &val, Type type);
 
         template <SourceIndex S> void encodeSrcRegFile(GED_REG_FILE rf);
@@ -95,19 +95,16 @@ namespace iga
         template <SourceIndex S> void encodeSrcModifier(SrcModifier x);
         template <SourceIndex S> void encodeSrcSubRegNum(uint32_t subReg);
 
-        template <SourceIndex S> void encodeSrcMathMacroReg(MathMacroExt a);
+        template <SourceIndex S>
+        void encodeSrcImplAcc(ImplAcc a);
 
-        template <SourceIndex S> void encodeSrcReg(RegName regName, uint8_t regNum);
-        template <SourceIndex S> void encodeSrcAddrImm(int32_t addrImm);
-        template <SourceIndex S> void encodeSrcAddrSubRegNum(uint32_t addrSubReg);
+        template <SourceIndex S> void encodeSrcRegNum(uint32_t reg);
+        template <SourceIndex S> void encodeSrcAddrImm(int32_t x);
+        template <SourceIndex S> void encodeSrcAddrSubRegNum(uint32_t x);
         template <SourceIndex S> void encodeSrcRegion(const Region& r);
         template <SourceIndex S> void encodeSrcRegionWidth(Region::Width w);
         template <SourceIndex S> void encodeSrcRepCtrl(GED_REP_CTRL rep);
-        template <SourceIndex S> void encodeSrcChanSel(
-            GED_SWIZZLE chSelX,
-            GED_SWIZZLE chSelY,
-            GED_SWIZZLE chSelZ,
-            GED_SWIZZLE chSelW);
+        template <SourceIndex S> void encodeSrcChanSel(uint32_t chSel);
 
         template <SourceIndex S>
         void encodeTernarySourceAlign16(const Instruction& inst);
@@ -132,6 +129,7 @@ namespace iga
         void handleGedError(int line, const char *setter, GED_RETURN_VALUE status);
 
         // state that is valid over instance life
+        const Model&                              m_model;
         struct EncoderOpts                        m_opts;
 
         // state that is valid over encodeInst()
@@ -185,24 +183,18 @@ namespace iga
 
         bool getBlockOffset(const Block *b, uint32_t &pc);
 
-        // handles encoding ARF registers as well as the easy GRF case
-        // caller actually pulls the trigger and encodes the bits, but this
-        // call can raise the encoding error
-        uint32_t         translateRegNum(int opIx, RegName reg, uint8_t regNum);
-        uint32_t         mathMacroRegToBits(int src, MathMacroExt mme); // ChSel and SubReg
-        GED_DST_CHAN_EN  mathMacroRegToChEn(MathMacroExt mme);
+        uint32_t         implAccToBits(int src, ImplAcc implAcc); // ChSel and SubReg
+        GED_DST_CHAN_EN  implAccToChEn(ImplAcc implAcc);
 
         void applyGedWorkarounds(const Kernel &k, size_t bitsLen);
         void encodeOptions(const Instruction& inst);
 
-        //////////////////////////////////////////////////////////////////////
-        // platform specific queries *but sometimes need the instruction too)
-        //
-        // GEN7p5 implicitly scales PC offsets by QW except for a few instructions
-        bool arePcsInQWords(const OpSpec &os) const;
-        // Older GENs need a <2;2,1> on the src operand.
-        // Later GENs ignore the region completely
+        /////////////////////////////////////////////////////////////
+        // platform specific queries
+        bool isSpecialContextSaveAndRestore(const Operand& op) const;
+        bool arePcsInQWords(const Instruction &inst) const;
         bool callNeedsSrcRegion221(const Instruction &inst) const;
+        bool srcIsImm(const Operand &op) const;
 
         /////////////////////////////////////////////////////////////
         // state valid over encodeKernel()
@@ -351,7 +343,7 @@ namespace iga
     }
 
     template <SourceIndex S>
-    void EncoderBase::encodeSrcMathMacroReg(MathMacroExt a)
+    void EncoderBase::encodeSrcImplAcc(ImplAcc a)
     {
         if (S == SourceIndex::SRC0) {
             GED_ENCODE(Src0SpecialAcc, IGAToGEDTranslation::lowerSpecialAcc(a));
@@ -361,43 +353,28 @@ namespace iga
             GED_ENCODE(Src2SpecialAcc, IGAToGEDTranslation::lowerSpecialAcc(a));
         }
     }
-    template <SourceIndex S> void EncoderBase::encodeSrcReg(
-        RegName regName,
-        uint8_t regNum)
-    {
-        uint32_t regBits;
-        if (regName == RegName::GRF_R) {
-            regBits = regNum; // GRF fast path
-        } else { // ARF slower path
-            const RegInfo *ri = m_model.lookupRegInfoByRegName(regName);
-            if (!ri) {
-                error("src%d: unexpected register on this platform", (int)S);
-            } else {
-                ri->encode((int)regNum,regNum);
-                regBits = regNum; // widen for GED
-            }
-        }
-        if (S == SourceIndex::SRC0) {
-            GED_ENCODE(Src0RegNum, regBits);
-        } else if (S == SourceIndex::SRC1) {
-            GED_ENCODE(Src1RegNum, regBits);
-        } else {
-            GED_ENCODE(Src2RegNum, regBits);
-        }
-    }
 
-    template <SourceIndex S> void EncoderBase::encodeSrcAddrImm(int32_t addrImm) {
+    template <SourceIndex S> void EncoderBase::encodeSrcRegNum(uint32_t reg) {
         if (S == SourceIndex::SRC0) {
-            GED_ENCODE(Src0AddrImm, addrImm);
+            GED_ENCODE(Src0RegNum, reg);
+        } else if (S == SourceIndex::SRC1) {
+            GED_ENCODE(Src1RegNum, reg);
         } else {
-            GED_ENCODE(Src1AddrImm, addrImm);
+            GED_ENCODE(Src2RegNum, reg);
         }
     }
-    template <SourceIndex S> void EncoderBase::encodeSrcAddrSubRegNum(uint32_t addrSubReg) {
+    template <SourceIndex S> void EncoderBase::encodeSrcAddrImm(int32_t x) {
         if (S == SourceIndex::SRC0) {
-            GED_ENCODE(Src0AddrSubRegNum, addrSubReg);
+            GED_ENCODE(Src0AddrImm, x);
         } else {
-            GED_ENCODE(Src1AddrSubRegNum, addrSubReg);
+            GED_ENCODE(Src1AddrImm, x);
+        }
+    }
+    template <SourceIndex S> void EncoderBase::encodeSrcAddrSubRegNum(uint32_t x) {
+        if (S == SourceIndex::SRC0) {
+            GED_ENCODE(Src0AddrSubRegNum, x);
+        } else {
+            GED_ENCODE(Src1AddrSubRegNum, x);
         }
     }
     template <SourceIndex S>

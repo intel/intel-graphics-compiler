@@ -69,9 +69,9 @@ struct OperandInfo
             };
             struct // the actual register (GRF for Operand::Kind::INDIRECT)
             {
-                RegName        regOpName;    // e.g. r#, a#, null, ...
-                Region         regOpRgn;     // e.g. <1>, <8;8,1>
-                MathMacroExt   regOpMathMacroExtReg; // e.g. math macro spc acc
+                RegName      regOpName;    // e.g. r#, a#, null, ...
+                Region       regOpRgn;     // e.g. <1>, <8;8,1>
+                ImplAcc      regOpImplAcc; // e.g. implicit accumulator
             };
             union // direct vs. indirect
             {
@@ -98,7 +98,7 @@ struct OperandInfo
         regOpSrcMod = SrcModifier::NONE;
         regOpName = RegName::INVALID;
         regOpRgn = Region::INVALID;
-        regOpMathMacroExtReg = MathMacroExt::INVALID;
+        regOpImplAcc = ImplAcc::INVALID;
         regOpIndReg = REGREF_ZERO_ZERO;
         regOpIndOff = 0;
         immBlock = nullptr;
@@ -496,7 +496,7 @@ public:
                     m_dstModifier,
                     m_dst.regOpName,
                     m_dst.regOpReg,
-                    m_dst.regOpMathMacroExtReg,
+                    m_dst.regOpImplAcc,
                     m_dst.regOpRgn.getHz(),
                     m_dst.type);
             } else { // Operand::Kind::INDIRECT
@@ -527,7 +527,7 @@ public:
                     src.regOpSrcMod,
                     src.regOpName,
                     src.regOpReg,
-                    src.regOpMathMacroExtReg,
+                    src.regOpImplAcc,
                     src.regOpRgn,
                     src.type);
             } else if (src.kind == Operand::Kind::INDIRECT) {
@@ -623,7 +623,7 @@ public:
         Region::Horz rgnHorz,
         Type ty)
     {
-        InstDstOpRegDirect(loc,ri.regName,reg,rgnHorz,ty);
+        InstDstOpRegDirect(loc,ri.reg,reg,rgnHorz,ty);
     }
     void InstDstOpRegDirect(
         const Loc &loc,
@@ -651,14 +651,14 @@ public:
         m_dst.regOpRgn.setDstHz(rgnHorz);
         m_dst.type = ty;
     }
-    // math macro register access (implicit accumulator)
+    // implicit accumulator access
     //
     // e.g. r13.acc4:t
-    void InstDstOpRegMathMacroExtReg(
+    void InstDstOpRegImplAcc(
         const Loc &loc,
         RegName rnm,
         int regNum,
-        MathMacroExt mme,
+        ImplAcc implAcc,
         Region::Horz rgnH,
         Type ty)
     {
@@ -669,19 +669,19 @@ public:
         m_dst.regOpName = rnm;
         m_dst.regOpReg = {(uint8_t)regNum, 0};
         m_dst.regOpRgn.setDstHz(rgnH);
-        m_dst.regOpMathMacroExtReg = mme;
+        m_dst.regOpImplAcc = implAcc;
         m_dst.type = ty;
     }
-    void InstDstOpRegMathMacroExtReg(
+    void InstDstOpRegImplAcc(
         const Loc &loc,
         const RegInfo &ri,
         RegName rnm,
         int regNum,
-        MathMacroExt mme,
+        ImplAcc implAcc,
         Region::Horz rgnH,
         Type ty)
     {
-        InstDstOpRegMathMacroExtReg(loc, ri.regName, regNum, mme, rgnH, ty);
+        InstDstOpRegImplAcc(loc, ri.reg, regNum, implAcc, rgnH, ty);
     }
 
     // e.g. r[a0.4,16]<2>:t
@@ -746,16 +746,15 @@ public:
 
         InstSrcOp(srcOpIx, src);
     }
-    // math macro register access
-    //
+    // Implicit accumulator
     // e.g. r13.acc4:t
-    void InstSrcOpRegMathMacroExtReg(
+    void InstSrcOpRegImplAcc(
         int srcOpIx, // index of the current source operand
         const Loc &loc,
         SrcModifier srcMod, // source modifiers on this operand
         RegName rnm, // the type of register
         int regNum,
-        MathMacroExt MathMacroExt,
+        ImplAcc implAcc,
         Region rgn,
         Type ty)
     {
@@ -766,12 +765,12 @@ public:
         src.regOpName = rnm;
         src.regOpReg = {(uint8_t)regNum, 0};
         src.regOpRgn = rgn;
-        src.regOpMathMacroExtReg = MathMacroExt;
+        src.regOpImplAcc = implAcc;
         src.type = ty;
 
         InstSrcOp(srcOpIx, src);
     }
-    // parsed a source indirect operand
+    // Parsed a source indirect operand
     //
     // e.g. "r[a0.4,16]<1,0>:f"
     void InstSrcOpRegIndirect(

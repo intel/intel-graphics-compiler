@@ -26,9 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef IGA_MODELS_HPP
 #define IGA_MODELS_HPP
 
+#include "OpSpec.hpp"
 #include "../IR/Types.hpp"
 #include "../asserts.hpp"
-#include "OpSpec.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -36,89 +36,49 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace iga
 {
     struct RegInfo {
-        // the register name corresponding to this platform
-        RegName     regName;
-        // the lexical identifier for this register
-        const char *syntax;
-        // a description of this register
-        // e.g. "State Register"
-        const char *desc;
+        const char *name; // TODO: rename to "syntax";
+        RegName     reg; // should be "name"
+        // const char *desc; // e.g. "State Register"
+        uint32_t    encoding; // bits [7:4] in register number, reg num is [3:0] except for sp, which uses only bit[3]
+        Platform    plat_intrd; // platforms where this is valid
+        Platform    plat_last;  // platforms where this is valid
+        int         acc_gran; // access granularity (in bytes)
+        int         num_regs;   // number of registers (0 means no reg. number)
+        int         num_bytes[16]; // number of bytes in each reg
 
-        // For GRF this is nothing.
-        // For ARF this is RegNum[7:4].
-        // The value is unshifted.  I.e. only 4 bits.
-        //
-        // RegNum[3:0] usually holds the register number itself for
-        // the particular ARF.  E.g. acc1 has 0001b there.
-        // The exception is mme, which maps to acc2-9 on some platforms and
-        // other accumulators elsewhere.
-        uint32_t    regNum7_4;
-        // The amount to add to the register number given to set
-        // RegNum[3:0].  For most this will be 0, but a MMR will be offset
-        // within the ACC space (since they are shared)
-        int         regNumBase;
 
-        // platform where this was first introduced
-        Platform    platIntrd;
-        // platform where this was last used
-        Platform    platLast;
-        // access granularity (in bytes)
-        int         accGran;
-
-        // number of registers
-        // Zero 0 means no reg. number and the register has only 1
-        // e.g. "ce" instead of "ce0"
-        int         numRegs;
-        // The number of bytes in each subregister
-        // Certain registers are kind of wonky and have uneven sized registers
-        int         numBytesPerReg[16];
-
+        // TODO: add attributes
+        //   (readable/writeable)
         bool isRegNumberValid(int reg) const {
-            // wonky because null and sp have "0" registers (meaning 1 implied)
-            // so reg==0 is alway valid for everyone
-            return reg == 0 ||
-                    // otherwise: one of several registers
-                    (reg >= 0 && reg < numRegs);
+            return num_regs == 0 || reg < num_regs;
         }
         bool isSubRegByteOffsetValid(int regNum, int subregByte) const {
-            int regBytes = regName == RegName::GRF_R ? 32 :
-                numBytesPerReg[regNum];
+            int regBytes = reg == RegName::GRF_R ? 32 : num_bytes[regNum];
             return subregByte < regBytes;
         }
 
+        // int accessGranularity(int reg) const {
+        // }
         bool supportsRegioning() const {
             // needs to be more liberal than before
             // context save and restore seems to region some of the
             // non-regionable registers
-            return regName == RegName::ARF_NULL || hasSubregs();
-        }
-        bool supportedOn(Platform p) const {
-            return platIntrd <= p && p <= platLast;
-        }
-        bool hasRegNum() const {
-            return numRegs > 0; // e.g. "cr0" or "r13" VS "ce" or "null"
-        }
-        bool hasSubregs() const {
-            switch (regName) {
+            switch (reg) {
             case RegName::ARF_IP:
             case RegName::ARF_CE:
-            case RegName::ARF_NULL:
                 return false;
             default:
                 return true;
             }
         }
 
-        bool encode(int reg, uint8_t &regNumBits) const;
-        bool decode(uint8_t regNumBits, int &reg) const;
-    }; // RegInfo
-
-    // returns the table for all platforms.
-    // Most users should try and use one of the Model::lookupXXX methods
-    const RegInfo *GetRegisterSpecificationTable(int &len);
-
+        bool supportedOn(Platform p) const {
+            return plat_intrd <= p && p <= plat_last;
+        }
+    };
     // See IRChecker.cpp / checkDst (these ARFs need {Switch})
     static bool arfNeedsSwitch(RegName rn) {
+
         // ARFs without a scoreboard need {Switch} before the write
         //  Registers with scoreboard and no switch required -
         //    Accumulator/address register/flag register/notify register
@@ -141,6 +101,66 @@ namespace iga
         }
     }
 
+
+    // TODO: define PlatformSet and move into Models
+    static const struct RegInfo registers[] = {
+        {"r", RegName::GRF_R, 0xFFFFFFFF, Platform::GEN6, Platform::GENNEXT,
+        1, 128, {0}} // handle subreg components specially
+      , {"null", RegName::ARF_NULL, 0x0, Platform::GEN6, Platform::GENNEXT,
+          0,  0, {32}}
+
+      , {"a",   RegName::ARF_A, 0x1,    Platform::GEN6, Platform::GEN7P5,
+          2,  1, {16}}
+      , {"a",   RegName::ARF_A, 0x1,    Platform::GEN8, Platform::GENNEXT,
+          2,  1, {32}}
+
+      , {"acc",  RegName::ARF_ACC, 0x2,  Platform::GEN6, Platform::GEN7P5,
+          4,  2, {32,32}}
+      , {"acc",  RegName::ARF_ACC, 0x2,  Platform::GEN8, Platform::GENNEXT,
+          2, 10, {32,32,32,32,32,32,32,32,32,32}}
+
+      , {"f",    RegName::ARF_F, 0x3,    Platform::GEN6, Platform::GEN6,
+          2, 1, {4}}
+      , {"f",    RegName::ARF_F, 0x3,    Platform::GEN7, Platform::GENNEXT,
+          2, 2, {4,4}}
+
+      , {"ce",  RegName::ARF_CE, 0x4,   Platform::GEN7P5, Platform::GENNEXT,
+          4, 0, {4}}
+
+      , {"msg",  RegName::ARF_MSG, 0x5,  Platform::GEN8, Platform::GENNEXT,
+          4, 8, {4,4,4,4,4,4,4,4}}
+
+      , {"sp",   RegName::ARF_SP, 0x6,   Platform::GEN7P5, Platform::GEN7P5,
+          4, 0, {2*4}}
+      , {"sp",   RegName::ARF_SP, 0x6,   Platform::GEN8, Platform::GENNEXT,
+          4, 0, {2*8}}
+
+      , {"sr",   RegName::ARF_SR, 0x7,   Platform::GEN6, Platform::GENNEXT,
+          1, 2, {16,16}}
+      , {"cr",   RegName::ARF_CR, 0x8,   Platform::GEN6, Platform::GENNEXT,
+          4, 1, {4*3}}
+      , {"n",   RegName::ARF_N, 0x9,     Platform::GEN6, Platform::GENNEXT,
+          4, 1, {4*3}}
+      , {"ip",  RegName::ARF_IP, 0xA,    Platform::GEN6, Platform::GENNEXT,
+          4, 0, {4}}
+      , {"tdr", RegName::ARF_TDR, 0xB,   Platform::GEN6, Platform::GENNEXT,
+          2, 1, {16}}
+
+      , {"tm", RegName::ARF_TM, 0xC,    Platform::GEN7, Platform::GEN8LP,
+          4, 1, {4*4}}
+      , {"tm", RegName::ARF_TM, 0xC,    Platform::GEN9, Platform::GEN9P5,
+          4, 1, {4*4}}
+      , {"tm", RegName::ARF_TM, 0xC,    Platform::GEN10, Platform::GENNEXT,
+          4, 1, {5*4}}
+      , {"fc",  RegName::ARF_FC, 0xD,   Platform::GEN7P5, Platform::GENNEXT,
+          4, 5, {4*32,4*1,4*1,4*4,4*1}}
+      , {"dbg", RegName::ARF_DBG, 0xF,   Platform::GEN7, Platform::GEN7P5,
+          4, 1, {4}}
+      , {"dbg", RegName::ARF_DBG, 0xF,   Platform::GEN8, Platform::GENNEXT,
+          4, 1, {8}}
+    };
+
+
     static uint8_t IsRegisterScaled(RegName regName)
     {
         switch (regName)
@@ -149,7 +169,6 @@ namespace iga
         case RegName::ARF_NULL:
         case RegName::ARF_A:
         case RegName::ARF_ACC:
-        case RegName::ARF_MME:
         case RegName::ARF_TM:
         case RegName::ARF_CR:
         case RegName::ARF_SP:
@@ -159,30 +178,36 @@ namespace iga
         case RegName::ARF_SR:
         case RegName::ARF_TDR:
             return true;
+        // based on IsaAsm's implemenatation fc isn't scaled
         case RegName::ARF_FC:
         default:
             return false;
         }
     }
-
-    static uint8_t BytesOffsetToSubReg(
-        uint32_t offset, RegName regName, Type type)
-    {
-        if (!IsRegisterScaled(regName) || type == Type::INVALID) {
-            return offset;
-        }
-        auto tsh = TypeSizeShiftsOffsetToSubreg(type);
-        return (uint8_t)((offset << std::get<0>(tsh)) >> std::get<1>(tsh));
-    }
     static uint32_t SubRegToBytesOffset(
         int subRegNum, RegName regName, Type type)
     {
-        if (!IsRegisterScaled(regName) || type == Type::INVALID) {
-            return subRegNum;
+        return IsRegisterScaled(regName) ?
+            subRegNum*TypeSize(type) : subRegNum;
+    }
+    static uint8_t BytesOffsetToSubReg(
+        uint32_t offset, RegName regName, Type type)
+    {
+        return IsRegisterScaled(regName) && type != Type::INVALID ?
+            offset/TypeSize(type) :
+            offset;
+    }
+
+    // TODO: make sublinear (numeric map over RegName)
+    static const RegInfo &LookupRegInfo(Platform p, RegName rt)
+    {
+        for (size_t k = 0; k < sizeof(registers)/sizeof(registers[0]); k++) {
+            const RegInfo &ri = registers[k];
+            if (p >= ri.plat_intrd && p <= ri.plat_last && ri.reg == rt ) {
+                return ri;
+            }
         }
-        auto tsh = TypeSizeShiftsOffsetToSubreg(type);
-        // NOTE: flipped tuple access (1 <-> 0) since we are unscaling
-        return (subRegNum << std::get<1>(tsh)) >> std::get<0>(tsh);
+        return registers[(int)RegName::ARF_NULL];
     }
 
 
@@ -276,14 +301,15 @@ namespace iga
          *   }
          */
         OpSpecTableWalker ops() const { return OpSpecTableWalker(opsArray); }
+        bool encodeReg(RegName rn, int reg, uint8_t &outputBits) const;
 
         const OpSpec&        lookupOpSpec(Op op) const;
         const OpSpec&        lookupOpSpecByCode(unsigned opcode) const;
         const OpSpec&        lookupOpSpecFromBits(const void *bits, OpSpecMissInfo &missInfo) const;
-        const OpSpec&        lookupGroupSubOp(Op op, unsigned fcBits) const;
+        const OpSpec&        lookupGroupSubOp(Op op, unsigned fc_bits) const;
         const OpSpec*        lookupSubOpParent(const OpSpec &os) const;
-        const RegInfo*       lookupArfRegInfoByRegNum(uint8_t regNum7_0) const;
-        const RegInfo*       lookupRegInfoByRegName(RegName name) const;
+        const RegInfo*       lookupArfRegInfoByCode(const uint8_t encoding) const; // given the high 4 bits (shift down)
+        const RegInfo*       lookupRegInfoByName(RegName name) const;
 
 
         static const Model  *LookupModel(Platform platform);
@@ -334,6 +360,7 @@ namespace iga
 
         bool supportsAlign16() const { return platform <= Platform::GEN10; }
         bool supportsAlign16MacroOnly() const { return platform == Platform::GEN10; }
+        bool supportsNrmAlgn16AccDst()  const { return platform > Platform::GEN7P5 && platform < Platform::GEN10; }
         bool supportsAlign16Ternary() const { return platform < Platform::GEN10; }
         bool supportsAlign16MacroInst() const { return platform <= Platform::GEN10; }
     }; // class model
