@@ -228,6 +228,15 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         // Add AlwaysInline attribute to force inlining all calls.
         F->addFnAttr(llvm::Attribute::AlwaysInline);
 
+        // Go through call sites and remove NoInline atrributes.
+        for (auto I : F->users()) {
+            if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
+                if (callInst->hasFnAttr(llvm::Attribute::NoInline)) {
+                    callInst->removeAttribute(llvm::AttributeSet::FunctionIndex, llvm::Attribute::NoInline);
+                }
+            }
+        }
+
         // set function attributes according to build options so
         // inliner doesn't conservatively turn off unsafe optimizations
         // when inlining BIFs (see mergeAttributesForInlining() in inliner).
