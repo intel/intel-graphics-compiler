@@ -4459,6 +4459,11 @@ static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
             // if we are replacing mad with mac, additionally check if acc1 needs to be used
             if (useInst->getMaskOffset() == 16 && dst->getType() == Type_HF)
             {
+                if (builder.doMultiAccSub())
+                {
+                    // this is not legal since acc1 may be taken by another interval already
+                    return false;
+                }
                 useAcc1 = true;
             }
         }
@@ -4746,8 +4751,9 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
             inst->emit(std::cout);
             std::cout << "[" << inst->getLocalId() << "]\n";
             std::cout << "Uses:\n";
-            for (auto&& use : inst->useInstList)
+            for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I)
             {
+                auto&& use = *I;
                 std::cout << "\t";
                 use.first->emit(std::cout);
                 std::cout << "[" << use.first->getLocalId() << "]\n";
