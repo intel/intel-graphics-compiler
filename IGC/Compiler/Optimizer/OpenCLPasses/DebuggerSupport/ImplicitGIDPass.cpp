@@ -126,7 +126,7 @@ void ImplicitGlobalId::runOnBasicBlock(unsigned i, Instruction *pAlloca, Instruc
         {
             name = "grid";
         }
-        Twine instName = Twine(name) + Twine(i) + Twine("_i64");
+        std::string instName = name + std::to_string(i) + "_i64";
         Value *zext_gid = B.CreateZExt(id_at_dim, int64Type, instName);
 
         id_at_dim = zext_gid;
