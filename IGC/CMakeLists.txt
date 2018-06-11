@@ -48,6 +48,10 @@ endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+if(POLICY CMP0058)
+    cmake_policy(SET CMP0058 NEW)
+endif()
+
 
 
 # ======================================================================================================

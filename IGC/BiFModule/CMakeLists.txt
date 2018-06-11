@@ -85,10 +85,10 @@
         PROPERTY "${locPropName}" "${IGC_BUILD__GFX_DEV_SRC_DIR}/Clang/Prebuilt/${_OS_folder}/Release/${_cpuSuffix}/clang.7z"
     )
     set_property(TARGET CLANG_7Z_OUTPUT
-        PROPERTY "${locPropName}" "${IGC_OPTION__OUTPUT_DIR}/clang/${_OS_folder}${_cpuSuffix}"
+        PROPERTY "${locPropName}" "${IGC_TARGET__TOOLS_CLANG_DIR}"
     )
     set_property(TARGET IGC_TARGET__TOOLS_CLANG
-        PROPERTY "${locPropName}" "${IGC_OPTION__OUTPUT_DIR}/clang/${_OS_folder}${_cpuSuffix}/clang${CMAKE_EXECUTABLE_SUFFIX}"
+        PROPERTY "${locPropName}" "${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}"
     )
     unset(locPropName)
   endforeach()
@@ -131,7 +131,7 @@
   )
 
   add_custom_target(UnzipClang
-    DEPENDS ${IGC_OPTION__OUTPUT_DIR}/clang/${_OS_folder}${_cpuSuffix}/clang${CMAKE_EXECUTABLE_SUFFIX}
+    DEPENDS ${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}
   )
 
   set_property(TARGET UnzipClang PROPERTY PROJECT_LABEL UnzipClang)
@@ -800,6 +800,10 @@ endfunction()
 # ======================================== Precompiled headers =========================================
 
 set(IGC_BUILD__BIF_OCL_PCH_SRC "${IGC_TARGET__TOOLS_CLANG_DIR}/opencl-c.h")
+add_custom_command(
+    OUTPUT ${IGC_BUILD__BIF_OCL_PCH_SRC}
+    DEPENDS GetClang
+)
 
 set(IGC_BUILD__BIF_RS_PCH_SRC "${IGC_OPTION__BIF_SRC_RS_DIR}/rs_pch.h")
 set(IGC_BUILD__BIF_RS_PCH32   "${IGC_BUILD__BIF_DIR}/rs32.pch")
