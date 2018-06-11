@@ -331,7 +331,7 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
                 }
                 if (externCycle == cycle) {
                     ofile << "[" << (*nodeIT)->nodeID << "]";
-                    const std::vector<G4_INST *> *instrs
+                    const std::deque<G4_INST *> *instrs
                         = (*nodeIT)->getInstructions();
                     if (instrs->empty()) {
                         ofile << "I" << 0;
@@ -442,9 +442,7 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
 
     // Update the listing of the basic block with the reordered code.
     size_t scheduleSize = scheduledNodes.size();
-    size_t bbInstsSize = bb->size();
-    MUST_BE_TRUE(scheduleSize == bbInstsSize - ddd.numOfPairs,
-        "Size of inst list is different before/after scheduling");
+    size_t scheduleInstSize = 0;
 
     INST_LIST_ITER inst_it = bb->begin();
     Node * prevNode = NULL;
@@ -454,7 +452,7 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
         Node *currNode = scheduledNodes[i];
         for (G4_INST *inst : *currNode->getInstructions()) {
             (*inst_it) = inst;
-
+            scheduleInstSize++;
             if (prevNode && !prevNode->isLabel()) {
                 int32_t stallCycle = (int32_t)currNode->schedTime
                     - (int32_t)prevNode->schedTime;
@@ -473,6 +471,11 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
             inst_it++;
         }
     }
+
+    size_t bbInstsSize = bb->size();
+    MUST_BE_TRUE(scheduleInstSize == bbInstsSize,
+        "Size of inst list is different before/after scheduling");
+    
 }
 
 bool Node::isTransitiveDep(Node* edgeDst)
@@ -704,37 +707,42 @@ static inline bool hasIndirection(G4_Operand *opnd, Gen4_Operand_Number opndNum)
 // return all bucket descriptors that the physical register can map
 // to. This requires taking in to account exec size, data
 // type, and whether inst is a send
-bool DDD::getBucketDescrs(G4_INST* inst, std::vector<BucketDescr>& BDvec)
+bool DDD::getBucketDescrs(Node *node, std::vector<BucketDescr>& BDvec)
 {
     bool hasIndir = false;
 
-    // Iterate over all operands and create buckets.
-    for (Gen4_Operand_Number opndNum
-        : {Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3,
-        Opnd_pred, Opnd_condMod, Opnd_implAccSrc, Opnd_implAccDst}) {
-        G4_Operand *opnd = inst->getOperand(opndNum);
-        // Skip if no operand or the operand is not touched by the instruction
-        if (!opnd || !opnd->getBase()) {
-            continue;
-        }
-        // FIXME: This is to emulate the original code. Not sure if it is OK
-        if (opndNum == Opnd_src3 && inst->isSplitSend()) {
-            getBucketsForOperand(inst, Opnd_src2, opnd, BDvec);
-        } else {
-            getBucketsForOperand(inst, opndNum, opnd, BDvec);
-        }
-        // Check if this operand is an indirect access
-        hasIndir |= hasIndirection(opnd, opndNum);
+    for (G4_INST *inst : node->instVec) 
+    {
+	    // Iterate over all operands and create buckets.
+	    for (Gen4_Operand_Number opndNum
+	        : {Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3,
+	        Opnd_pred, Opnd_condMod, Opnd_implAccSrc, Opnd_implAccDst}) {
+	        G4_Operand *opnd = inst->getOperand(opndNum);
+	        // Skip if no operand or the operand is not touched by the instruction
+	        if (!opnd || !opnd->getBase()) {
+	            continue;
+	        }
+	        // FIXME: This is to emulate the original code. Not sure if it is OK
+	        if (opndNum == Opnd_src3 && inst->isSplitSend()) {
+	            getBucketsForOperand(inst, Opnd_src2, opnd, BDvec);
+	        } else {
+	            getBucketsForOperand(inst, opndNum, opnd, BDvec);
+	        }
+	        // Check if this operand is an indirect access
+	        hasIndir |= hasIndirection(opnd, opndNum);
+	    }
+
+	    // Sends need an additional bucket
+	    if (inst->isSend()) {
+	        if (inst->getMsgDesc()->isScratchRW()) {
+	            BDvec.push_back(BucketDescr(SCRATCH_SEND_BUCKET, Mask(), Opnd_dst));
+	        } else {
+	            BDvec.push_back(BucketDescr(SEND_BUCKET, Mask(), Opnd_dst));
+	        }
+	    }
     }
 
-    // Sends need an additional bucket
-    if (inst->isSend()) {
-        if (inst->getMsgDesc()->isScratchRW()) {
-            BDvec.push_back(BucketDescr(SCRATCH_SEND_BUCKET, Mask(), Opnd_dst));
-        } else {
-            BDvec.push_back(BucketDescr(SEND_BUCKET, Mask(), Opnd_dst));
-        }
-    }
+
     return hasIndir;
 }
 
@@ -973,6 +981,7 @@ static DepType getDepForOpnd(Gen4_Operand_Number cur,
     }
 }
 
+
 // Construct data dependencey DAG. The function constructs
 // DAG using a bucket-based algorithm. The idea is to setup
 // as many buckets as there are GRFs (and ARFs). Then when
@@ -1023,8 +1032,10 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
         G4_INST *curInst = *node->getInstructions()->begin();
         bool hasIndir = false;
         BDvec.clear();
+        
+
         // Get buckets for all physical registers assigned in curInst
-        hasIndir = getBucketDescrs(curInst, BDvec);
+        hasIndir = getBucketDescrs(node, BDvec);
         if (hasIndir)
         {
             // If inst has indirect src/dst then treat it
@@ -1090,7 +1101,6 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
                     Gen4_Operand_Number liveOpnd = liveBN->opndNum;
                     Mask &liveMask = liveBN->mask;
 
-                    assert(curLiveNode->getInstructions()->size() == 1);
                     G4_INST *liveInst = *curLiveNode->getInstructions()->begin();
                     // Kill type 2: When the current destination region covers
                     //              the live node's region completely.
@@ -1622,7 +1632,7 @@ void DDD::dumpDagDot(G4_BB *bb)
             ofile << G4_Inst_Table[inst->opcode()].str << ", ";
         }
         ofile << "[" << node->nodeID << "]";
-        const std::vector<G4_INST *> *instrs = node->getInstructions();
+        const std::deque<G4_INST *> *instrs = node->getInstructions();
         if (instrs->empty()) {
             ofile << "I" << 0;
         } else {
@@ -2034,6 +2044,7 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT)
     // This is a prefetch read only depending on the terminator.
     // We pessimistically assume that it will be used right after the branch.
     G4_INST *inst = *node->getInstructions()->begin();
+    uint32_t nodeSize = node->getInstructions()->size();
     if (depT == DepType::CONTROL_FLOW_BARRIER && inst->isSend())
     {
         G4_SendMsgDescriptor *msgDesc = inst->getMsgDesc();
@@ -2091,7 +2102,7 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT)
         }
         else
         {
-            latency = IVB_PIPELINE_LENGTH;
+            latency = IVB_PIPELINE_LENGTH + nodeSize/2;
         }
         break;
 
@@ -2235,7 +2246,7 @@ Node::Node(uint32_t id, G4_INST *inst, Edge_Allocator& depEdgeAllocator,
     schedTime = UINT_MAX;
     instVec.push_back(inst);
     wSubreg = NO_SUBREG;
-    uint16_t occupancy_old = calculateOccupancy(inst);
+    uint16_t occupancy_old = instVec.size() * calculateOccupancy(inst);
     // uint16_t occupancy_new = LT.getLatency(inst).getOccupancyOnly();
     // assert(occupancy_new == occupancy_old);
     occupancy = occupancy_old;
