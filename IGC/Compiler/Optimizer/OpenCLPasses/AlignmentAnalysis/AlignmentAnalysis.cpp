@@ -202,7 +202,7 @@ void AlignmentAnalysis::SetInstAlignment(llvm::Instruction &I)
     }
     else if(isa<StoreInst>(I))
     {
-        SetInstAlignment(cast<LoadInst>(I));
+        SetInstAlignment(cast<StoreInst>(I));
     }
     if(isa<MemSetInst>(I))
     {
