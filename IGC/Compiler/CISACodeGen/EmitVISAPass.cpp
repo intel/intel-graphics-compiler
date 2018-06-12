@@ -13798,6 +13798,12 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
     if(!m_currShader->InsideDivergentCF(inst))
     {
         CVariable *f0 = GetSymbol(inst->getOperand(0));
+        
+        if(m_currShader->m_dispatchSize == SIMDMode::SIMD8 && m_currShader->HasFullDispatchMask())
+        {
+            // for SIMD8 make sure the higher 8 bits of the flag are not copied
+            destination = m_currShader->GetNewVariable(1, ISA_TYPE_UB, EALIGN_BYTE, true);
+        }
         m_encoder->BoolToInt(destination, f0);
         if(!m_currShader->HasFullDispatchMask())
         {
@@ -13832,7 +13838,7 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
 
     if (destination != m_destination)
     {
-        m_encoder->Copy(m_destination, destination);
+        m_encoder->Cast(m_destination, destination);
         m_encoder->Push();
     }
 }
