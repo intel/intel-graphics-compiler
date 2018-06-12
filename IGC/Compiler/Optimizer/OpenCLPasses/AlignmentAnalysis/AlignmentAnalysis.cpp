@@ -102,6 +102,11 @@ bool AlignmentAnalysis::runOnFunction(Function &F)
         }
     }
 
+    // in a second step change the alignment for instructions which have improved
+    for(llvm::inst_iterator inst = inst_begin(F), instEnd = inst_end(F); inst != instEnd; ++inst)
+    {
+        SetInstAlignment(*inst);
+    }
     return true;
 }
 
@@ -189,24 +194,42 @@ unsigned int AlignmentAnalysis::visitPHINode(PHINode &I)
     return newAlign;
 }
 
-unsigned int AlignmentAnalysis::visitLoadInst(LoadInst &I)
+void AlignmentAnalysis::SetInstAlignment(llvm::Instruction &I)
+{
+    if(isa<LoadInst>(I))
+    {
+        SetInstAlignment(cast<LoadInst>(I));
+    }
+    else if(isa<StoreInst>(I))
+    {
+        SetInstAlignment(cast<LoadInst>(I));
+    }
+    if(isa<MemSetInst>(I))
+    {
+        SetInstAlignment(cast<MemSetInst>(I));
+    }
+    if(isa<MemCpyInst>(I))
+    {
+        SetInstAlignment(cast<MemCpyInst>(I));
+    }
+    if(isa<MemMoveInst>(I))
+    {
+        SetInstAlignment(cast<MemMoveInst>(I));
+    }
+}
+
+void AlignmentAnalysis::SetInstAlignment(LoadInst &I)
 {
     // Set the align attribute of the load according to the detected
     // alignment of its operand.
     I.setAlignment(iSTD::Max(I.getAlignment(), getAlignValue(I.getPointerOperand())));
-
-    // We don't know anything about loaded values.
-    return MinimumAlignment;
 }
 
-unsigned int AlignmentAnalysis::visitStoreInst(StoreInst &I)
+void AlignmentAnalysis::SetInstAlignment(StoreInst &I)
 {
     // Set the align attribute of the store according to the detected
     // alignment of its operand.
     I.setAlignment(iSTD::Max(I.getAlignment(), getAlignValue(I.getPointerOperand())));
-
-    // Stores don't have any users, so it doesn't matter what we return.
-    return MinimumAlignment;
 }
 
 unsigned int AlignmentAnalysis::visitAdd(BinaryOperator &I)
@@ -402,31 +425,28 @@ unsigned int AlignmentAnalysis::visitCallInst(CallInst &I)
     return MinimumAlignment;
 }
 
-unsigned int AlignmentAnalysis::visitMemSetInst(MemSetInst &I)
+void AlignmentAnalysis::SetInstAlignment(MemSetInst &I)
 {
     // Set the align attribute of the memset according to the detected
     // alignment of its operand.
     unsigned alignment = iSTD::Max(I.getAlignment(), getAlignValue(I.getRawDest()));
     I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
-    return MinimumAlignment;
 }
 
-unsigned int AlignmentAnalysis::visitMemCpyInst(MemCpyInst &I)
+void AlignmentAnalysis::SetInstAlignment(MemCpyInst &I)
 {
     // Set the align attribute of the memcpy based on the minimum alignment of its source and dest fields
     unsigned alignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
     alignment = iSTD::Max(I.getAlignment(), alignment);
     I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
-    return MinimumAlignment;
 }
 
-unsigned int AlignmentAnalysis::visitMemMoveInst(MemMoveInst &I)
+void AlignmentAnalysis::SetInstAlignment(MemMoveInst &I)
 {
     // Set the align attribute of the memmove based on the minimum alignment of its source and dest fields
     unsigned alignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
     alignment = iSTD::Max(I.getAlignment(), alignment);
     I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
-    return MinimumAlignment;
 }
 
 unsigned int AlignmentAnalysis::getAlignValue(Value *V) const

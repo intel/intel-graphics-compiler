@@ -78,8 +78,6 @@ namespace IGC
         unsigned int visitGetElementPtrInst(llvm::GetElementPtrInst &I);
         unsigned int visitPHINode(llvm::PHINode &I);
         unsigned int visitBitCastInst(llvm::BitCastInst &I);
-        unsigned int visitLoadInst(llvm::LoadInst &I);
-        unsigned int visitStoreInst(llvm::StoreInst &I);
         unsigned int visitAdd(llvm::BinaryOperator &I);
         unsigned int visitMul(llvm::BinaryOperator &I);
         unsigned int visitShl(llvm::BinaryOperator &I);
@@ -88,9 +86,13 @@ namespace IGC
         unsigned int visitZExtInst(llvm::ZExtInst &I);
         unsigned int visitSExtInst(llvm::SExtInst &I);
         unsigned int visitCallInst(llvm::CallInst &I);
-        unsigned int visitMemSetInst(llvm::MemSetInst &I);
-        unsigned int visitMemCpyInst(llvm::MemCpyInst &I);
-        unsigned int visitMemMoveInst(llvm::MemMoveInst &I);
+
+        void SetInstAlignment(llvm::Instruction &I);
+        void SetInstAlignment(llvm::LoadInst &I);
+        void SetInstAlignment(llvm::StoreInst &I);
+        void SetInstAlignment(llvm::MemSetInst &I);
+        void SetInstAlignment(llvm::MemCpyInst &I);
+        void SetInstAlignment(llvm::MemMoveInst &I);
 
     protected:
         /// @breif Evaluates the alignment of I based on its operands.
