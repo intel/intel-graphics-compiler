@@ -34,11 +34,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "common/LLVMWarningsPop.hpp"
-#include "iStdLib/utility.h"
 
 #include "secure_mem.h"
 #include "secure_string.h"
-#include "AdaptorCommon/customApi.hpp"
 
 #include <sstream>
 #include <stdlib.h>
@@ -49,6 +47,34 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGC_DEBUG_VARIABLES
 #endif
 
+
+#if defined(IGC_DEBUG_VARIABLES)
+#include "common/Types.hpp"
+#include "common/igc_regkeys.hpp"
+#include "AdaptorCommon/customApi.hpp"
+#include "3d/common/iStdLib/utility.h"
+#include <mutex>
+
+namespace IGC
+{
+	namespace Debug
+	{
+
+		static std::mutex stream_mutex;
+
+		void DumpLock()
+		{
+			stream_mutex.lock();
+		}
+
+		void DumpUnlock()
+		{
+			stream_mutex.unlock();
+		}
+
+	}
+}
+#endif
 
 #ifndef WIN32
 #include <dlfcn.h>
@@ -262,6 +288,13 @@ namespace TC
 				}
 #endif
 			}
+
+#if defined(IGC_DEBUG_VARIABLES)
+			if (success)
+			{
+				LoadRegistryKeys();
+			}
+#endif
 
 			if (!success)
 			{
@@ -544,7 +577,7 @@ namespace TC
 		const SElf64SectionHeader* pSectionHeader = pElfReader->GetSectionHeader(1);
 		if (NULL == pSectionHeader)
 		{
-            assert("pSectionHeader cannot be NULL");
+			llvm::report_fatal_error("pSectionHeader cannot be NULL");
 		}
 		if (pSectionHeader->Type == SH_TYPE_OPENCL_SOURCE)
 		{
@@ -876,11 +909,7 @@ namespace TC
 		{
 			const SElf64SectionHeader* pSectionHeader = pElfReader->GetSectionHeader(i);
 			assert(pSectionHeader != NULL);
-            if(pSectionHeader == NULL)
-            {
-                SetErrorString("No section header", pOutputArgs);
-                return false;
-            }
+			if (pSectionHeader == NULL)  llvm::report_fatal_error("No section header");
 
 			if ((pSectionHeader->Type == SH_TYPE_OPENCL_LLVM_ARCHIVE) ||
 				(pSectionHeader->Type == SH_TYPE_OPENCL_LLVM_BINARY))
@@ -936,8 +965,7 @@ namespace TC
 
 		if (!pElfReader.get())
 		{
-			SetErrorString("CElfReader::Create returned NULL\n", pOutputArgs);
-            return false;
+			llvm::report_fatal_error("CElfReader::Create returned NULL\n");
 		}
 
 		if (!pElfReader->IsValidElf64(pInputArgs->pInput, pInputArgs->InputSize))
@@ -1033,20 +1061,19 @@ namespace TC
 			bool successTC = TranslateClang(&args, pOutputArgs, exceptString, pInputArgs->pInternalOptions);
 
 #if defined(IGC_DEBUG_VARIABLES)
-			//if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-            if(0)
-            {
+			if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+			{
 
-                // Works for all OSes. Creates dir if necessary.
-                const char *pOutputFolder = "";// IGC::Debug::GetShaderOutputFolder();
-                stringstream ss;
-                char* pBuffer = (char *)pInputArgs->pInput;
-                UINT  bufferSize = pInputArgs->InputSize;
+				// Works for all OSes. Creates dir if necessary.
+				const char *pOutputFolder = IGC::Debug::GetShaderOutputFolder();
+				stringstream ss;
+				char* pBuffer = (char *)pInputArgs->pInput;
+				UINT  bufferSize = pInputArgs->InputSize;
 
-                // Create hash based on cclang binary output (currently llvm binary; later also spirv).
-                // Hash computed in fcl needs to be same as the one computed in igc.
-                // This is to ensure easy matching .cl files dumped in fcl with .ll/.dat/.asm/... files dumoed in igc.
-                QWORD hash = iSTD::Hash(reinterpret_cast<const DWORD *>(pOutputArgs->pOutput), (DWORD)(pOutputArgs->OutputSize) / 4);
+				// Create hash based on cclang binary output (currently llvm binary; later also spirv).
+				// Hash computed in fcl needs to be same as the one computed in igc.
+				// This is to ensure easy matching .cl files dumped in fcl with .ll/.dat/.asm/... files dumoed in igc.
+				QWORD hash = iSTD::Hash(reinterpret_cast<const DWORD *>(pOutputArgs->pOutput), int_cast<DWORD>(pOutputArgs->OutputSize) / 4);
 
 				ss << pOutputFolder;
 				ss << "OCL_"

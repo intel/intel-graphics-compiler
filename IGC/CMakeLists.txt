@@ -3733,12 +3733,7 @@ endforeach()
       "${IGC_BUILD__END_GROUP}"
     )
 
-
-list(REMOVE_ITEM _targetLinkLine
-    IGC_BUILD__LLVM_LIBS_TO_LINK
-	)
-
-if(_targetIsStatic)
+  if(_targetIsStatic)
     # Link line for projects that use IGC as static library (allows to resolve multi-circular dependencies between libraries).
     set("IGC_BUILD__LINK_LINE__fcl_dll"
         ${_targetLinkLine}
