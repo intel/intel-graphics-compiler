@@ -33,21 +33,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/Analysis/PostDominators.h>
 #include <llvm/ADT/SmallSet.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "common/IGCIRBuilder.h"
 
 namespace IGC
 {
-class WorkaroundAnalysis : public llvm::FunctionPass, public llvm::InstVisitor<WorkaroundAnalysis>
+class WorkaroundAnalysis : public llvm::FunctionPass,
+    public llvm::InstVisitor<WorkaroundAnalysis>
 {
     llvm::IGCIRBuilder<> *m_builder;
-    bool m_enableFMaxFMinPlusZero;
 public:
     static char ID;
 
-    WorkaroundAnalysis(bool enableFMaxFMinPlusZero = false);
+    WorkaroundAnalysis();
 
     ~WorkaroundAnalysis() {}
 
@@ -60,7 +59,6 @@ public:
 
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
     {
-        AU.addRequired<llvm::PostDominatorTreeWrapperPass>();
         AU.addRequired<MetaDataUtilsWrapper>();
         AU.addRequired<CodeGenContextWrapper>();
     }
@@ -68,12 +66,38 @@ public:
     void visitCallInst(llvm::CallInst &I);
 
 private:
-    void generateDummyLoad(llvm::DomTreeNode* pPDTRoot);
     void GatherOffsetWorkaround(llvm::SamplerGatherIntrinsic* gatherpo);
     void ldmsOffsetWorkaournd(llvm::LdMSIntrinsic* ldms);
     const llvm::DataLayout   *m_pDataLayout;
     llvm::Module* m_pModule;
     CodeGenContextWrapper*    m_pCtxWrapper;
+};
+
+class WAFMinFMax : public llvm::FunctionPass,
+    public llvm::InstVisitor<WAFMinFMax>
+{
+public:
+    static char ID;
+    WAFMinFMax();
+    virtual ~WAFMinFMax() { }
+
+    bool runOnFunction(llvm::Function& F) override;
+
+    llvm::StringRef getPassName() const override
+    {
+        return "WAFMinFMax";
+    }
+    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+    {
+        AU.addRequired<MetaDataUtilsWrapper>();
+        AU.addRequired<CodeGenContextWrapper>();
+    }
+
+    void visitCallInst(llvm::CallInst& I);
+
+private:
+    llvm::IGCIRBuilder<> *m_builder;
+    CodeGenContext* m_ctx;
 };
 
 } // namespace IGC

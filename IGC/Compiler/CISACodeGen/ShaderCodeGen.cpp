@@ -479,7 +479,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
 
     // Create Gen IR lowering
     mpm.add(createGenIRLowerPass());
-    mpm.add(new WorkaroundAnalysis(ctx.platform.WaOCLEnableFMaxFMinPlusZero()));
+    mpm.add(new WorkaroundAnalysis());
     if (!isOptDisabled)
     {
         // Optimize lower-level IR
@@ -499,11 +499,13 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         mpm.add(createDeadCodeEliminationPass());
     }
 
+    mpm.add(new WAFMinFMax());
+
     if(!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion))
     {
         mpm.add(new HalfPromotion());
-		mpm.add(createGVNPass());
-		mpm.add(createDeadCodeEliminationPass());
+        mpm.add(createGVNPass());
+        mpm.add(createDeadCodeEliminationPass());
     }
 
     // Run type demotion if it's beneficial.

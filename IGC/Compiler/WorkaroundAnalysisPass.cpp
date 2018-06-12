@@ -55,7 +55,12 @@ static cl::opt<bool> EnableFMaxFMinPlusZero(
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(WorkaroundAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(WorkaroundAnalysis, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+#undef PASS_ANALYSIS
+#undef PASS_CFG_ONLY
+#undef PASS_DESCRIPTION
+#undef PASS_FLAG
 
 char WorkaroundAnalysis::ID = 0;
 
@@ -78,8 +83,8 @@ int GetSampleCResourceIdx(llvm::CallInst &I)
     return textLocation;
 }
 
-WorkaroundAnalysis::WorkaroundAnalysis(bool enableFMaxFMinPlusZero)
-    : FunctionPass(ID), m_enableFMaxFMinPlusZero(enableFMaxFMinPlusZero)
+WorkaroundAnalysis::WorkaroundAnalysis()
+    : FunctionPass(ID)
 {
     initializeWorkaroundAnalysisPass(*PassRegistry::getPassRegistry());
 }
@@ -320,91 +325,6 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
             break;
         }
     }
-    else
-    if (const IntrinsicInst* intr = dyn_cast<IntrinsicInst>(&I))
-    {
-        switch (intr->getIntrinsicID())
-        {
-        case Intrinsic::maxnum:
-        case Intrinsic::minnum:
-        {
-            CodeGenContext *pCtx = m_pCtxWrapper->getCodeGenContext();
-            if (pCtx->m_DriverInfo.SupportsIEEEMinMax())
-            {
-                // OCL's fmax/fmin maps to GEN's max/min in non-IEEE mode.
-                // By default, gen uses non-IEEE mode.  But, in BDW and SKL
-                // prior to C step, IEEE mode is used if denorm bit is set.
-                // If there are no sNaN as inputs to fmax/fmin,  IEEE mode
-                // is the same as non-IEEE mode;  if there are sNaN,  non-IEEE
-                // mode is NOT the same as IEEE mode. But non-IEEE mode is the
-                // same as the following
-                //     non-IEEE_fmax(x, y) =
-                //           x1 = IEEE_fmin(x, qNaN), y1 = IEEE_fmin(y, qNaN)
-                //             (or fadd(x, -0.0); y1 = fadd(y, -0.0);)
-                //           IEEE_fmax(x1, y1)
-                // SKL C+ has IEEE minmax bit in Control Register(CR), so far we
-                // don't set it (meaning non-ieee mode).
-                //
-                // Therefore, if fmax/fmin is in IEEE mode, we need to workaround
-                // that by converting sNAN to qNAN if one of operands is sNAN but
-                // needing to preserve the original value if it's not sNAN.
-                //
-                // There are more than one ways to achieve that:
-                //  - X + 0.0
-                //    It's the simplest one. However, it cannot preserver -0.0
-                //    as -0.0 + 0.0 = 0.0. It also has other issues depending
-                //    on rounding mode. We could enhance it by adding -0.0 if X
-                //    is negative. But that
-                //    introduces additional overhead.
-                //
-                //  The following two are both good candidates with single
-                //  instruction overhead only:
-                //
-                //  - x * 1.0
-                //  - FMIN(x, qNAN) or FMAX(x, qNAN)
-                //
-                //    According to PRM, both of them should aways give x or
-                //    qNAN.
-                //
-                // We choose FMIN to prevent other optimizations kicking in.
-                //
-
-                // Note that m_enableFMaxFMinPlusZero is used here for GEN9 only; if it
-                // is set,  it means that IEEE-mode min/max is used if denorm bit is set.
-                Type *Ty = intr->getType();
-                ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-                bool minmaxModeSetByDenormBit =
-                    (!pCtx->platform.hasIEEEMinmaxBit() || m_enableFMaxFMinPlusZero || EnableFMaxFMinPlusZero);
-                bool hasNaNs = !modMD->compOpt.FiniteMathOnly;
-                if (hasNaNs &&  minmaxModeSetByDenormBit &&
-                    ((Ty->isFloatTy() && (pCtx->m_floatDenormMode32 == FLOAT_DENORM_RETAIN)) ||
-                    (Ty->isDoubleTy() && (pCtx->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)) ||
-                        (Ty->isHalfTy() && (pCtx->m_floatDenormMode16 == FLOAT_DENORM_RETAIN))))
-                {
-                    m_builder->SetInsertPoint(&I);
-
-                    Intrinsic::ID IID = Intrinsic::minnum;
-                    Function *IFunc =
-                        Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(),
-                            IID, I.getType());
-                    Value *QNaN = getQNaN(I.getType());
-
-                    Value* src0 = I.getOperand(0);
-                    if (!IsKnownNotSNaN(src0))
-                        I.setArgOperand(0, m_builder->CreateCall2(IFunc, src0, QNaN));
-
-                    Value* src1 = I.getOperand(1);
-                    if (!IsKnownNotSNaN(src1))
-                        I.setArgOperand(1, m_builder->CreateCall2(IFunc, src1, QNaN));
-                }
-            }
-            break;
-        }
-
-        default:
-            break;
-        }
-    }
 }
 
 void WorkaroundAnalysis::ldmsOffsetWorkaournd(LdMSIntrinsic* ldms)
@@ -496,3 +416,120 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
     gatherpoc->replaceAllUsesWith(gather4c);
     gatherpoc->eraseFromParent();
 }
+
+
+#define PASS_FLAG "igc-wa-fminmax"
+#define PASS_DESCRIPTION "Workaround fmax/fmin"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(WAFMinFMax, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+IGC_INITIALIZE_PASS_END(WAFMinFMax, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+char WAFMinFMax::ID = 0;
+
+WAFMinFMax::WAFMinFMax()
+    : FunctionPass(ID)
+{
+    initializeWAFMinFMaxPass(*PassRegistry::getPassRegistry());
+}
+
+bool WAFMinFMax::runOnFunction(Function& F)
+{
+    m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    llvm::IGCIRBuilder<> builder(F.getContext());
+    m_builder = &builder;
+    visit(F);
+    return true;
+}
+
+void WAFMinFMax::visitCallInst(CallInst &I)
+{
+    if (const IntrinsicInst* intr = dyn_cast<IntrinsicInst>(&I))
+    {
+        switch (intr->getIntrinsicID())
+        {
+        case Intrinsic::maxnum:
+        case Intrinsic::minnum:
+        {
+            if (m_ctx->m_DriverInfo.SupportsIEEEMinMax())
+            {
+                // OCL's fmax/fmin maps to GEN's max/min in non-IEEE mode.
+                // By default, gen uses non-IEEE mode.  But, in BDW and SKL
+                // prior to C step, IEEE mode is used if denorm bit is set.
+                // If there are no sNaN as inputs to fmax/fmin,  IEEE mode
+                // is the same as non-IEEE mode;  if there are sNaN,  non-IEEE
+                // mode is NOT the same as IEEE mode. But non-IEEE mode is the
+                // same as the following
+                //     non-IEEE_fmax(x, y) =
+                //           x1 = IEEE_fmin(x, qNaN), y1 = IEEE_fmin(y, qNaN)
+                //             (or fadd(x, -0.0); y1 = fadd(y, -0.0);)
+                //           IEEE_fmax(x1, y1)
+                // SKL C+ has IEEE minmax bit in Control Register(CR), so far we
+                // don't set it (meaning non-ieee mode).
+                //
+                // Therefore, if fmax/fmin is in IEEE mode, we need to workaround
+                // that by converting sNAN to qNAN if one of operands is sNAN but
+                // needing to preserve the original value if it's not sNAN.
+                //
+                // There are more than one ways to achieve that:
+                //  - X + 0.0
+                //    It's the simplest one. However, it cannot preserver -0.0
+                //    as -0.0 + 0.0 = 0.0. It also has other issues depending
+                //    on rounding mode. We could enhance it by adding -0.0 if X
+                //    is negative. But that
+                //    introduces additional overhead.
+                //
+                //  The following two are both good candidates with single
+                //  instruction overhead only:
+                //
+                //  - x * 1.0
+                //  - FMIN(x, qNAN) or FMAX(x, qNAN)
+                //
+                //    According to PRM, both of them should aways give x or
+                //    qNAN.
+                //
+                // We choose FMIN to prevent other optimizations kicking in.
+                //
+
+                // Note that m_enableFMaxFMinPlusZero is used here for GEN9 only; if it
+                // is set,  it means that IEEE-mode min/max is used if denorm bit is set.
+                Type *Ty = intr->getType();
+                ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+                bool minmaxModeSetByDenormBit =
+                    (!m_ctx->platform.hasIEEEMinmaxBit() ||
+                        m_ctx->platform.WaOCLEnableFMaxFMinPlusZero() ||
+                        EnableFMaxFMinPlusZero);
+                bool hasNaNs = !modMD->compOpt.FiniteMathOnly;
+                if (hasNaNs && minmaxModeSetByDenormBit &&
+                    ((Ty->isFloatTy() && (m_ctx->m_floatDenormMode32 == FLOAT_DENORM_RETAIN)) ||
+                    (Ty->isDoubleTy() && (m_ctx->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)) ||
+                        (Ty->isHalfTy() && (m_ctx->m_floatDenormMode16 == FLOAT_DENORM_RETAIN))))
+                {
+                    m_builder->SetInsertPoint(&I);
+
+                    Intrinsic::ID IID = Intrinsic::minnum;
+                    Function *IFunc =
+                        Intrinsic::getDeclaration(I.getParent()->getParent()->getParent(),
+                            IID, I.getType());
+                    Value *QNaN = getQNaN(I.getType());
+
+                    Value* src0 = I.getOperand(0);
+                    if (!IsKnownNotSNaN(src0))
+                        I.setArgOperand(0, m_builder->CreateCall2(IFunc, src0, QNaN));
+
+                    Value* src1 = I.getOperand(1);
+                    if (!IsKnownNotSNaN(src1))
+                        I.setArgOperand(1, m_builder->CreateCall2(IFunc, src1, QNaN));
+                }
+            }
+            break;
+        }
+
+        default:
+            break;
+        }
+    }
+}
