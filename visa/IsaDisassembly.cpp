@@ -2482,6 +2482,7 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
             sstr << printOperand(isaHeader, header, inst, i++, opt);
             break;
         }
+
         default:
         {
             ASSERT_USER(false, "Unimplemented or Illegal DataPort Opcode.");

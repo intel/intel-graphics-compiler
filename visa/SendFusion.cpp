@@ -174,12 +174,6 @@ uint32_t SendFusion::getFuncCtrlWithSimd16(G4_SendMsgDescriptor* Desc)
             // bit 8 : SM2
             FC = ((FC & ~0x100) | (MDC_SM2_SIMD16 << 0x8));
             break;
-
-        case DC_UNTYPED_SURFACE_READ:
-        case DC_UNTYPED_SURFACE_WRITE:
-            // bit13-12: SM3
-            FC = ((FC & ~0x3000) | (MDC_SM3_SIMD16 << 12));
-            break;
         }
     }
     else if (funcID == SFID_DP_DC1)
@@ -331,8 +325,6 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
         case DC_DWORD_SCATTERED_WRITE:
         case DC_BYTE_SCATTERED_READ:
         case DC_BYTE_SCATTERED_WRITE:
-        case DC_UNTYPED_SURFACE_READ:
-        case DC_UNTYPED_SURFACE_WRITE:
             return true;
         }
     }

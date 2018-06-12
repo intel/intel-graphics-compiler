@@ -2876,10 +2876,10 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
             verifyRawOperandType(isaHeader, header, inst, dst, typeFn, error_list, options);
             break;
         }
-        case ISA_3D_TYPED_ATOMIC:
-            // no verification for now
+        case ISA_3D_TYPED_ATOMIC:    
         case ISA_3D_RT_WRITE:
         {
+            // no verification for now
             break;
         }
         default: REPORT_INSTRUCTION(options,false, "Illegal dataport Instruction Opcode: %d, %s.", opcode, ISA_Inst_Table[opcode].str);

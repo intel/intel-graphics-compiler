@@ -446,7 +446,8 @@ bool hasPredicate(ISA_Opcode op)
                 op == ISA_RAW_SENDS || op == ISA_3D_SAMPLE ||
                 op == ISA_3D_LOAD || op == ISA_3D_GATHER4 ||
                 op == ISA_3D_RT_WRITE || op == ISA_3D_URB_WRITE ||
-                op == ISA_3D_TYPED_ATOMIC);
+                op == ISA_3D_TYPED_ATOMIC
+                );
     case ISA_Inst_Flow:
         return !(op == ISA_SUBROUTINE || op == ISA_LABEL || op == ISA_SWITCHJMP);
     case ISA_Inst_SIMD_Flow:

@@ -136,6 +136,14 @@ static bool IsNoMask(Common_VISA_EMask_Ctrl eMask) {
     }
 }
 
+static uint32_t buildDescForScatter(uint32_t msgType, Common_ISA_SVM_Block_Num numBlocks, MDC_SM2 simdMode)
+{
+    uint32_t MD = (msgType & 0x1F) << 14;
+    MD |= numBlocks << 10;
+    MD |= simdMode << 8;
+    return MD;
+}
+
 int IR_Builder::translateVISAAddrInst(ISA_Opcode opcode, Common_ISA_Exec_Size executionSize,
                                       Common_VISA_EMask_Ctrl emask, G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd)
 {
