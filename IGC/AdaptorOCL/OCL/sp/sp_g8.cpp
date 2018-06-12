@@ -1509,7 +1509,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         {
             PointerArgumentAnnotation* ptrArg = *i;
 
-            if( ptrArg->IsStateless == true )
+            if( ptrArg->IsStateless == true || ptrArg->IsBindlessAccess)
             {
                 if( ptrArg->AddressSpace == KERNEL_ARGUMENT_ADDRESS_SPACE_GLOBAL )
                 {                    
