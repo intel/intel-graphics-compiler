@@ -862,7 +862,14 @@ namespace //Anonymous
             for (unsigned i = localSizesStartArgNum; i < argsNum; i++)
             {
                 auto arg = _call.getArgOperand(i);
-                if (!arg->getType()->isIntegerTy()) report_fatal_error("OpEnqueueKernel signature does not match");
+                if (!arg->getType()->isIntegerTy(64) && !arg->getType()->isIntegerTy(32)) 
+                    report_fatal_error("OpEnqueueKernel signature does not match");
+
+                if (arg->getType()->isIntegerTy(64))
+                {
+                    Type* int32Ty = Type::getInt32Ty(_call.getParent()->getContext());
+                    arg = CastInst::CreateTruncOrBitCast(arg, int32Ty, "", &_call);
+                }
                 _local_sizes.push_back(arg);
             }
         }
