@@ -80,6 +80,7 @@ class CodeGenContextWrapper;
 class DeSSA : public llvm::FunctionPass {
   public:
     static char ID; // Pass identification, replacement for typeid
+
     DeSSA();
     virtual void getAnalysisUsage(llvm::AnalysisUsage& AU) const override {
       AU.setPreservesAll();
@@ -119,6 +120,10 @@ class DeSSA : public llvm::FunctionPass {
       return (WIA->whichDepend(v) == WIAnalysis::UNIFORM);
     }
 
+	void getAllValuesInCongruentClass(
+		llvm::Value* V,
+		llvm::SmallVector<llvm::Value*, 8>& ValsInCC);
+
     /// print - print partitions in human readable form
     virtual void print(llvm::raw_ostream &OS, const llvm::Module* = 0) const override;
 
@@ -151,6 +156,8 @@ class DeSSA : public llvm::FunctionPass {
       Node *getLeader();
 
       llvm::PointerIntPair<Node*, 2> parent;
+	  // double-linked circular list. All values are in the same congruent class
+	  // except those that have been isolated.
       Node *next;
       Node *prev;
       llvm::Value *value;
@@ -170,13 +177,6 @@ class DeSSA : public llvm::FunctionPass {
     /// r1's congruence class prior to the union. This is actually relied upon
     /// in the copy insertion code.
     void MapUnionRegs(llvm::MapVector<llvm::Value*, Node*> &map, llvm::Value *, llvm::Value *);
-
-    void addReg(llvm::Value* Val, e_alignment Align) {
-        MapAddReg(RegNodeMap, Val, Align);
-    }
-    void unionRegs(llvm::Value* Val1, llvm::Value* Val2) {
-        MapUnionRegs(RegNodeMap, Val1, Val2);
-    }
 
     /// Get the union-root of a register. The root is 0 if the register has been
     /// isolated.
@@ -244,6 +244,14 @@ public:
     // - step 3, detect interferences of every phi-union, a set of insert-elements are associated
     //           with a single-node in phi-union. When being isolated, they are isolated together
     llvm::MapVector<llvm::Value*, llvm::Value*> InsEltMap;
+
+	void addReg(llvm::Value* Val, e_alignment Align) {
+		MapAddReg(RegNodeMap, Val, Align);
+	}
+	void unionRegs(llvm::Value* Val1, llvm::Value* Val2) {
+		MapUnionRegs(RegNodeMap, Val1, Val2);
+	}
+
     private:
     void CoalesceInsertElementsForBasicBlock(llvm::BasicBlock *blk);
 

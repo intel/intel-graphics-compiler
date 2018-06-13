@@ -661,6 +661,36 @@ void LiveVars::Calculate(Function* mf, WIAnalysis* wia)
     }
 }
 
+bool LiveVars::hasInterference(llvm::Value* V0, llvm::Value* V1)
+{
+	// Skip Constant
+	if (isa<Constant>(V0) || isa<Constant>(V1)) {
+		return false;
+	}
+
+	Instruction *I0 = dyn_cast<Instruction>(V0);
+	Instruction *I1 = dyn_cast<Instruction>(V1);
+	if (!I0 && !I1) {
+		return true;
+	}
+
+	if (!I0) {
+		// V0 must be argument. Use the first inst in Entry
+		I0 = MF->getEntryBlock().getFirstNonPHIOrDbg();
+	}
+	if (!I1) {
+		// V1 must be argument. Use the first inst in Entry
+		I1 = MF->getEntryBlock().getFirstNonPHIOrDbg();
+	}
+
+	if (isLiveAt(V0, I1) || isLiveAt(V1, I0)) {
+		return true;
+	}
+
+	return false;
+}
+
+
 IGC_INITIALIZE_PASS_BEGIN(LiveVarsAnalysis, "LiveVarsAnalysis", "LiveVarsAnalysis", false, true)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
 IGC_INITIALIZE_PASS_END(LiveVarsAnalysis, "LiveVarsAnalysis", "LiveVarsAnalysis", false, true)

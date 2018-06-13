@@ -375,10 +375,14 @@ void DeSSA::MapUnionRegs(MapVector<Value*, Node*> &Map, Value* Val1, Value* Val2
 
   if (NewLeader) {
     assert(Leadee && "Leadee is expected when a new leader is present!");
+	// As of 6/2018, this links will be actually used.
+	// Link the circular list of Leadee right before NewLeader
+	Node *Leadee_next = Leadee->next;
+	Node *NewLeader_prev = NewLeader->prev;
     Leadee->next = NewLeader;
-    Leadee->prev = NewLeader->prev;
-    NewLeader->prev->next = Leadee;
-    NewLeader->prev = Leadee;
+	NewLeader->prev = Leadee;
+	NewLeader_prev->next = Leadee_next;
+	Leadee_next->prev = NewLeader_prev;
   }
 }
 
@@ -768,5 +772,38 @@ Value* DeSSA::getRootValue(Value* Val, e_alignment *pAlign) const
         return (PhiRootVal ? PhiRootVal : InsEltRoot);
     }
     return getRegRoot(Val, pAlign);
+}
+
+void DeSSA::getAllValuesInCongruentClass(
+	Value* V,
+	SmallVector<Value*, 8>& ValsInCC)
+{
+	ValsInCC.push_back(V);
+	if (getRootValue(V) == nullptr) {
+		return;
+	}
+
+	// Handle InsertElement specially. Note that only rootValue from
+	// a sequence of insertElement is in congruent class. The RootValue
+	// has its liveness modified to cover all InsertElements that are
+	// grouped together.
+	Value* rootV = getInsEltRoot(V);
+	auto RI = RegNodeMap.find(rootV);
+	if (RI != RegNodeMap.end()) {
+		Node* First = RI->second;
+		Node* N = First->next;
+		do {
+			if (N->parent.getInt() &
+				(Node::kPHIIsolatedFlag | Node::kRegisterIsolatedFlag)) {
+				continue;
+			}
+			if (V != N->value) {
+				// No duplicate Value in ValsInCC
+				ValsInCC.push_back(N->value);
+			}
+			N = N->next;
+		} while (N != First);
+	}
+	return;
 }
 

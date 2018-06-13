@@ -24,8 +24,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #pragma once
+#include "Compiler/CISACodeGen/WIAnalysis.hpp"
+#include "Compiler/CISACodeGen/PatternMatchPass.hpp"
+#include "Compiler/CISACodeGen/DeSSA.hpp"
+
 
 #include "common/LLVMWarningsPush.hpp"
+#include "llvm/ADT/DenseMap.h"
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/InstIterator.h>
+#include <llvm/IR/InstVisitor.h>
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -33,6 +42,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 
 namespace IGC {
+
+struct SSubVector
+{
+	// BaseVector is a vector type. It denotes a sub-vector
+	// of BaseVector starting at StartElementOffset.
+	llvm::Value* BaseVector;
+	short  StartElementOffset;
+};
 
 /// RPE based analysis for querying variable reuse status.
 ///
@@ -54,18 +71,26 @@ namespace IGC {
 /// (1) RPE(x) >= Threshold for any x between DInst and UInst (inclusive), or
 /// (2) RPE(x) >= Threshold for any use x of UInst.
 ///
-class VariableReuseAnalysis : public llvm::FunctionPass {
+class VariableReuseAnalysis : public llvm::FunctionPass,
+	                          public llvm::InstVisitor<VariableReuseAnalysis>
+{
 public:
   static char ID;
 
   VariableReuseAnalysis();
   ~VariableReuseAnalysis() {}
 
+  typedef llvm::DenseMap<llvm::Value*, SSubVector> ValueAliasMapTy;
+
   virtual bool runOnFunction(llvm::Function &F) override;
 
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     // AU.addRequired<RegisterEstimator>();
     AU.setPreservesAll();
+	AU.addRequired<WIAnalysis>();
+	AU.addRequired<LiveVarsAnalysis>();
+	AU.addRequired<CodeGenPatternMatch>();
+	AU.addRequired<DeSSA>();
     AU.addRequired<CodeGenContextWrapper>();
   }
 
@@ -112,11 +137,26 @@ public:
   bool checkDefInst(llvm::Instruction *DInst, llvm::Instruction *UInst,
                     LiveVars *LV);
 
+  bool isLocalValue(llvm::Value* V);
+ 
+  bool hasInterference(llvm::Value* V0, llvm::Value* V1);
+
+  // Visitor
+  void visitCallInst(llvm::CallInst& I);
+
+
+  // Collect aliases from subVector to base vector. The map's key is
+  // assumed to be an independent value (not in any congruent class)
+  // originally. Of course, after aliasing, it must be in a congruent
+  // class.
+  ValueAliasMapTy m_ValueAliasMap;
+
 private:
   void reset() {
     m_SimdSize = 0;
     m_IsFunctionPressureLow = Status::Undef;
     m_IsBlockPressureLow = Status::Undef;
+	m_ValueAliasMap.clear();
   }
 
   // Initialize per-block states. In particular, check if the entire block has a
@@ -135,6 +175,16 @@ private:
 
   // Cleanup per-block states.
   void EndBlock() { m_IsBlockPressureLow = Status::Undef; }
+
+  void visitLiveInstructions(llvm::Function* F);
+
+  void postProcessing();
+
+  CodeGenContext* m_pCtx;
+  WIAnalysis* m_WIA;
+  LiveVars* m_LV;
+  DeSSA* m_DeSSA;
+  CodeGenPatternMatch* m_PatternMatch;
 
   // The register pressure estimator (optional).
   RegisterEstimator *m_RPE;

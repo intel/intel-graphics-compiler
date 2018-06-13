@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "VariableReuseAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 using namespace llvm;
 using namespace IGC;
@@ -35,6 +36,11 @@ char VariableReuseAnalysis::ID = 0;
 IGC_INITIALIZE_PASS_BEGIN(VariableReuseAnalysis, "VariableReuseAnalysis",
                           "VariableReuseAnalysis", false, true)
 // IGC_INITIALIZE_PASS_DEPENDENCY(RegisterEstimator)
+IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(LiveVarsAnalysis)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenPatternMatch)
+IGC_INITIALIZE_PASS_DEPENDENCY(DeSSA)
+IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(VariableReuseAnalysis, "VariableReuseAnalysis",
                         "VariableReuseAnalysis", false, true)
 
@@ -43,18 +49,35 @@ llvm::FunctionPass *IGC::createVariableReuseAnalysisPass() {
 }
 
 VariableReuseAnalysis::VariableReuseAnalysis()
-    : FunctionPass(ID), m_RPE(nullptr), m_SimdSize(0),
-      m_IsFunctionPressureLow(Status::Undef),
+    : FunctionPass(ID),
+	  m_WIA(nullptr), m_LV(nullptr), m_DeSSA(nullptr), m_PatternMatch(nullptr),
+	  m_pCtx(nullptr), m_RPE(nullptr), m_SimdSize(0),
+	  m_IsFunctionPressureLow(Status::Undef),
       m_IsBlockPressureLow(Status::Undef) {
   initializeVariableReuseAnalysisPass(*PassRegistry::getPassRegistry());
 }
 
-bool VariableReuseAnalysis::runOnFunction(Function &F) {
+bool VariableReuseAnalysis::runOnFunction(Function &F)
+{
+  m_WIA = &(getAnalysis<WIAnalysis>());
+  if (IGC_IS_FLAG_DISABLED(DisableDeSSA))
+  {
+	m_DeSSA = &getAnalysis<DeSSA>();
+  }
+  m_LV = &(getAnalysis<LiveVarsAnalysis>().getLiveVars());
+  m_PatternMatch = &getAnalysis<CodeGenPatternMatch>();
+  m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
   // FIXME: enable RPE.
   // m_RPE = &getAnalysis<RegisterEstimator>();
 
   // Nothing but cleanup data from previous runs.
   reset();
+
+  visitLiveInstructions(&F);
+
+  postProcessing();
+
   return false;
 }
 
@@ -144,3 +167,117 @@ bool VariableReuseAnalysis::checkDefInst(Instruction *DefInst,
   const unsigned FarDefDistance = getMaxReuseDistance(m_SimdSize);
   return UseLoc <= DefLoc + FarDefDistance;
 }
+
+void VariableReuseAnalysis::visitLiveInstructions(Function* F)
+{
+	for (auto II = inst_begin(F), IE = inst_end(F); II != IE; ++II) {
+		Instruction& I = *II;
+		if (!m_PatternMatch->NeedInstruction(I))
+			continue;
+		visit(I);
+	}
+}
+
+void VariableReuseAnalysis::postProcessing()
+{
+	//  m_ValueAliasMap's entry is a pair <aliaser, aliasee>, where
+	//  aliaser is the key and aliasee is the value of the entry.
+	// 
+	// Normalizing alias map so that the following will be handled:
+	//  1) alias chain relation
+	//        a0 alias_to b0
+	//        b0 alias_to b1
+	//     Change to
+	//        a0 alias_to b1
+	//        b0 alias_to b1
+	//    This make sure that any map value will not be a map key
+	//  2) circular alias relation
+	//     It might be possible to generate a circular alias relation like:
+	//        a0 alias_to b0
+	//        b0 alias_to b1
+	//        b1 alias_to a0
+	//     Change to the following by removing one of alias pair.
+	//        a0 alias_to b1
+	//        b0 alias_to b1
+	//
+	int sz = (int)m_ValueAliasMap.size();
+	auto NI = m_ValueAliasMap.begin();
+	auto IE = m_ValueAliasMap.end();
+	for (auto II = NI; II != IE; II = NI)
+	{
+		++NI;
+		SSubVector& SV = II->second;
+		Value* aliasee = SV.BaseVector;
+		int off = SV.StartElementOffset;
+
+		// Using k for checking circular alias relation.
+		// With map's size = sz, it can do max looping of (sz -1)
+		// trip count without revisiting an entry twice. If the loop
+		// revisit an entry, it must have a circular alias relation.
+		int k = 0;
+		while (m_ValueAliasMap.count(aliasee) > 0 && k < sz)
+		{
+			++k;
+			SSubVector& tSV = m_ValueAliasMap[aliasee];
+			off += tSV.StartElementOffset;
+			aliasee = tSV.BaseVector;
+		}
+		if (k == sz)
+		{
+			// circular alias relation
+			m_ValueAliasMap.erase(II);
+			--sz;
+			continue;
+		}
+		SV.BaseVector = aliasee;
+		SV.StartElementOffset = off;
+	}
+}
+
+void VariableReuseAnalysis::visitCallInst(CallInst& I)
+{
+	if (GenIntrinsicInst *CI = llvm::dyn_cast<GenIntrinsicInst>(&I))
+	{
+		switch (CI->getIntrinsicID()) {
+		default:
+			break;
+		}
+	}
+}
+
+bool VariableReuseAnalysis::isLocalValue(Value* V)
+{
+	Instruction* I = dyn_cast<Instruction>(V);
+	if (!I)
+		return false;
+	BasicBlock* BB = I->getParent();
+	return !m_LV->isLiveIn(I, *BB) && !m_LV->isLiveOut(I, *BB);
+}
+
+// Return true if V0 and V1's live ranges overlap, return false otherwise.
+bool VariableReuseAnalysis::hasInterference(Value* V0, Value* V1)
+{
+	// Handle the following case only:
+	//   1) V0 is local and not in any congruent class.
+	//   2) V1's congruent class does not interfere with V0
+
+	if (!isLocalValue(V0) || (m_DeSSA && m_DeSSA->getRootValue(V0))) {
+		// Give up if V0 is not a local instruction, or
+	    // V0 is in any congruent class with other values
+		return true;
+	}
+
+	SmallVector<Value*, 8> V1cc;  // V1's congruent class
+	if (m_DeSSA)
+		m_DeSSA->getAllValuesInCongruentClass(V1, V1cc);
+	else
+		V1cc.push_back(V1);
+	for (int i = 0, sz = (int)V1cc.size(); i < sz; ++i)
+	{
+		Value* val = V1cc[i];
+		if (m_LV->hasInterference(V0, val))
+			return true;
+	}
+
+	return false;
+}

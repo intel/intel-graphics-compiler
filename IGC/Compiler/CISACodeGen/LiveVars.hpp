@@ -225,6 +225,9 @@ public:
   /// passed through one.
   bool isLiveOut(llvm::Value *LV, const llvm::BasicBlock &MBB);
 
+  /// If two values' live ranges overlap, return true.
+  bool hasInterference(llvm::Value* V0, llvm::Value* V1);
+
   /// print - Convert to human readable form
   void print(llvm::raw_ostream &OS, const llvm::Module* = nullptr) const;
 
