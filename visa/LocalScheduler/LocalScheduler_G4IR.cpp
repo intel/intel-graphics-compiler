@@ -331,7 +331,7 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
                 }
                 if (externCycle == cycle) {
                     ofile << "[" << (*nodeIT)->nodeID << "]";
-                    const std::vector<G4_INST *> *instrs
+                    const std::list<G4_INST *> *instrs
                         = (*nodeIT)->getInstructions();
                     if (instrs->empty()) {
                         ofile << "I" << 0;
@@ -1622,7 +1622,7 @@ void DDD::dumpDagDot(G4_BB *bb)
             ofile << G4_Inst_Table[inst->opcode()].str << ", ";
         }
         ofile << "[" << node->nodeID << "]";
-        const std::vector<G4_INST *> *instrs = node->getInstructions();
+        const std::list<G4_INST *> *instrs = node->getInstructions();
         if (instrs->empty()) {
             ofile << "I" << 0;
         } else {
@@ -1725,8 +1725,8 @@ struct earlyCmp {
 #if (defined(_DEBUG) || defined(_INTERNAL))
         if (sequentialSched)
         {
-            return ((*n1->getInstructions())[0]->getLocalId()
-                > (*n2->getInstructions())[0]->getLocalId());
+            return ((*n1->getInstructions()).front()->getLocalId()
+                > (*n2->getInstructions()).front()->getLocalId());
         }
 #endif
         return n1->getEarliest() > n2->getEarliest();
@@ -1748,8 +1748,8 @@ struct criticalCmp
         // with the lowermost number.
         if (sequentialSched)
         {
-            return ((*n1->getInstructions())[0]->getLocalId()
-                > (*n2->getInstructions())[0]->getLocalId());
+            return ((*n1->getInstructions()).front()->getLocalId()
+                > (*n2->getInstructions()).front()->getLocalId());
         }
 #endif
         // Critical Path Heuristic
@@ -1764,8 +1764,8 @@ struct criticalCmp
         else
         {
             // 1. Favor sends over non-sends
-            bool n1_isSend = (*n1->getInstructions())[0]->isSend();
-            bool n2_isSend = (*n2->getInstructions())[0]->isSend();
+            bool n1_isSend = (*n1->getInstructions()).front()->isSend();
+            bool n2_isSend = (*n2->getInstructions()).front()->isSend();
             if (n1_isSend != n2_isSend)
             {
                 return n1_isSend < n2_isSend;
@@ -1782,8 +1782,8 @@ struct criticalCmp
             //    NOTE: This is new.
             else
             {
-                return (*n1->getInstructions())[0]->getLocalId()
-            > (*n2->getInstructions())[0]->getLocalId();
+                return (*n1->getInstructions()).front()->getLocalId()
+            > (*n2->getInstructions()).front()->getLocalId();
             }
         }
     }
@@ -2122,7 +2122,7 @@ uint32_t DDD::getEdgeLatency_new(Node *node, DepType depT) {
     {
     case RAW:
     case RAW_MEMORY: {
-        G4_INST *inst = (*node->getInstructions())[0];
+        G4_INST *inst = (*node->getInstructions()).front();
         latency = LT.getLatency(inst).getSumOldStyle();
         break;
     }
