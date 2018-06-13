@@ -5390,6 +5390,12 @@ void HWConformity::fixSADA2Inst( BB_LIST_ITER it )
                 1,
                 src2->getType());
             src2Dst->setDest( accDstOpnd );
+            if (src2Dst->getExecSize() == 1)
+            {
+                // This can happen for the first sada2 instruction if src2 is scalar
+                // expand its execution size so that acc is fully defined
+                src2Dst->setExecSize(inst->getExecSize());
+            }
 
             // create an implicit acc parameter for sada2
             inst->setOpcode( G4_sada2 );
