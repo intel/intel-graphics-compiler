@@ -2849,11 +2849,8 @@ bool CodeGenPatternMatch::MatchRsqrt(llvm::BinaryOperator& I)
             {
                 if (sqrt->getIntrinsicID() == Intrinsic::sqrt)
                 {
-                    if (sqrt->hasOneUse())
-                    {
-                        source = sqrt->getOperand(0);
-                        found = true;
-                    }
+                    source = sqrt->getOperand(0);
+                    found = true;
                 }
             }
         }
