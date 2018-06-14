@@ -6898,7 +6898,7 @@ static void expandPlaneMacro(IR_Builder& builder, INST_LIST_ITER it, G4_BB* bb, 
         builder.createDstRegRegion(Direct, builder.phyregpool.getAcc0Reg(), 0, 0, 1, Type_NF) :
         builder.Create_Dst_Opnd_From_Dcl(tmpVal, 1);
     G4_INST* madInst = builder.createInternalInst(nullptr, G4_mad, nullptr, false, 8, accDst,
-        srcR, u, srcP, options);
+        srcR, u, srcP, options | InstOpt_WriteEnable);
     bb->insert(it, madInst);
 
     G4_Predicate* pred = inst->getPredicate() ? builder.duplicateOperand(inst->getPredicate()) : nullptr;
