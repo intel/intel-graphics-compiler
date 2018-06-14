@@ -970,7 +970,8 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB *bb)
     bool has_float = false;
     bool has_int = false;
 
-    if (inst->isSend())
+    bool toSkip = (inst->isSend());
+    if (toSkip)
     {
         return false;
     }
