@@ -86,7 +86,7 @@ class Node
     unsigned nodeID;
 
     // LIR instruction pointer
-    std::list<G4_INST *> instVec;
+    std::vector<G4_INST *> instVec;
 
     // Longest distance to the end of the DAG.
     int priority;
@@ -152,7 +152,7 @@ public:
         }
     }
     void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
-    const std::list<G4_INST *> *getInstructions() const { return &instVec; }
+    const std::vector<G4_INST *> *getInstructions() const { return &instVec; }
     DepType isBarrier() const { return barrier; }
     void MarkAsUnresolvedIndirAddressBarrier() {
       barrier = INDIRECT_ADDR_BARRIER;
@@ -282,6 +282,7 @@ public:
     uint32_t numOfPairs;
     void pairTypedWriteOrURBWriteNodes(G4_BB *bb);
 
+
     DDD(Mem_Manager &m, G4_BB *bb, const Options *options,
         const LatencyTable &lt, G4_Kernel *k);
     ~DDD()
@@ -313,7 +314,7 @@ public:
                               G4_Operand *opnd,
                               std::vector<BucketDescr> &buckets);
     // Returns true if instruction has any indirect operands (dst or src)
-    bool getBucketDescrs(G4_INST *inst, std::vector<BucketDescr> &bucketDescrs);
+    bool getBucketDescrs(Node *inst, std::vector<BucketDescr> &bucketDescrs);
 
     const Options *m_options;
 
