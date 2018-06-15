@@ -282,6 +282,7 @@ public:
     inline void IEEEDivide(CVariable* dst, CVariable* src0, CVariable* src1);
     void AddPair(CVariable *Lo, CVariable *Hi, CVariable *L0, CVariable *H0, CVariable *L1, CVariable *H1);
     void SubPair(CVariable *Lo, CVariable *Hi, CVariable *L0, CVariable *H0, CVariable *L1, CVariable *H1);
+    inline void dp4a(CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2);
     // VME
     void SendVmeIme(
         CVariable* bindingTableIndex,
@@ -784,6 +785,9 @@ inline void CEncoder::IEEEDivide(CVariable* dst, CVariable* src0, CVariable* src
     Arithmetic(ISA_DIVM, dst, src0, src1);
 }
 
+inline void CEncoder::dp4a(CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2) {
+    Arithmetic(ISA_DP4A, dst, src0, src1, src2);
+}
 
 inline void CEncoder::SetNoMask()
 {

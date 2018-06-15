@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define SIWA_TRUE               0x00000001    // force enable 
 #define SIWA_FALSE              0x00000000    // force disable
+#define FUTURE_PROJECT          2147483647    // INT_MAX
 
 #define BXT_REV_ID_A0           SI_REV_ID(0,2)
 #define BXT_REV_ID_B0           SI_REV_ID(3,3)
@@ -247,11 +248,47 @@ void InitGlkWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
+void InitGlvWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
 void InitGwlWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
 void InitCnlWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitIclHwWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitIclSwWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitIclLpHwWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitIclLpSwWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitLkfHwWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitLkfSwWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitJslHwWaTable(
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitJslSwWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
@@ -276,6 +313,11 @@ void InitBxtHASWaTable(
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
 void InitGlkHASWaTable(
+        PHW_DEVICE_EXTENSION            pKchContext,
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitGlvHASWaTable(
         PHW_DEVICE_EXTENSION            pKchContext,
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
@@ -305,6 +347,26 @@ void InitCnlHASWaTable(
         PWA_TABLE                       pWaTable,
         PSKU_FEATURE_TABLE              pSkuTable,
         PWA_INIT_PARAM                  pWaParam);
+void InitIclHASWaTable(
+        PHW_DEVICE_EXTENSION            pKchContext,
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitIclLpHASWaTable(
+        PHW_DEVICE_EXTENSION            pKchContext,
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitLkfHASWaTable(
+        PHW_DEVICE_EXTENSION            pKchContext,
+        PWA_TABLE                       pWaTable,
+        PSKU_FEATURE_TABLE              pSkuTable,
+        PWA_INIT_PARAM                  pWaParam);
+void InitJslHASWaTable(
+        PHW_DEVICE_EXTENSION                pKchContext,
+        PWA_TABLE                           pWaTable,
+        PSKU_FEATURE_TABLE                  pSkuTable,
+        PWA_INIT_PARAM                      pWaParam);
 #endif // #if defined(__KCH)
 
 #endif // #ifndef __WA_DEF_H__

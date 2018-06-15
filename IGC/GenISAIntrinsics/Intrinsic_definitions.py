@@ -264,5 +264,9 @@ Imported_Intrinsics = \
     "GenISA_QuadPrefix": ["anyint",[0,"char","bool"],"Convergent,NoMem"],
     "GenISA_InitDiscardMask": ["bool",[],"None"],
     "GenISA_UpdateDiscardMask": ["bool",["bool","bool"],"None"],
-    "GenISA_GetPixelMask": ["bool",["bool"],"None"]
+    "GenISA_GetPixelMask": ["bool",["bool"],"None"],
+    "GenISA_dp4a_ss": ["int",["int","int","int"],"NoMem"],
+    "GenISA_dp4a_uu": ["int",["int","int","int"],"NoMem"],
+    "GenISA_dp4a_su": ["int",["int","int","int"],"NoMem"],
+    "GenISA_dp4a_us": ["int",["int","int","int"],"NoMem"]
 }

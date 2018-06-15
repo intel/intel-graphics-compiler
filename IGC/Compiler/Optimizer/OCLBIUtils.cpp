@@ -1809,6 +1809,11 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
 
     m_CommandMap[StringRef( "__builtin_IB_samplepos")] = CSamplePos::create();
 
+    // `dp4a` built-ins
+    m_CommandMap["__builtin_IB_dp4a_ss"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_ss, false);
+    m_CommandMap["__builtin_IB_dp4a_uu"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_uu, false);
+    m_CommandMap["__builtin_IB_dp4a_su"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_su, false);
+    m_CommandMap["__builtin_IB_dp4a_us"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_dp4a_us, false);
 
     m_KnownBuiltins = {
         //resolved later in GenericAddressDynamicResolution pass:

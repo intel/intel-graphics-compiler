@@ -56,6 +56,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/SIPKernels/Gen9SIPCSRDebugLocal.h"
 #include "common/SIPKernels/Gen9SIPDebug.h"
 #include "common/SIPKernels/Gen9SIPDebugBindless.h"
+#include "common/SIPKernels/Gen9GLVSIPCSR.h"
+#include "common/SIPKernels/Gen11HPSIPCSR.h"
+#include "common/SIPKernels/Gen11SIPCSR.h"
+#include "common/SIPKernels/Gen11LKFSIPCSR.h"
 
 
 namespace SIP 
@@ -74,6 +78,10 @@ namespace SIP
 
         GEN9_BXT_SIP_CSR,
         GEN9_SIP_CSR_DEBUG_LOCAL,
+        GEN9_GLV_SIP_CSR,
+        GEN11_SIP_CSR,
+        GEN11_HP_SIP_CSR,
+        GEN11_LKF_SIP_CSR,
         GEN_SIP_MAX_INDEX
     };
 

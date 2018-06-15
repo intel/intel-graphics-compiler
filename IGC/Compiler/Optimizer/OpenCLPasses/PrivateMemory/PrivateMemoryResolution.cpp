@@ -836,6 +836,18 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
     ExtractElementInst* r0_5 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"), pEntryPoint);
     ConstantInt *FFTIDMask = ConstantInt::get(typeInt32, Ctx.platform.getFFTIDBitMask());
     BinaryOperator* threadId = BinaryOperator::CreateAnd(r0_5, FFTIDMask, VALUE_NAME("threadId"), pEntryPoint);
+    if (Ctx.platform.supportTwoStackTSG() && IGC_IS_FLAG_ENABLED(EnableGen11TwoStackTSG))
+    {
+        // Gen11 , 2 - stack configuration : (FFTID[9:0] << 1) | FFSID[0]) * scratch_size
+        BinaryOperator* shlThreadID = BinaryOperator::CreateShl(threadId, ConstantInt::get(typeInt32, 1), VALUE_NAME("shlThreadID"), pEntryPoint);
+        
+        // FFSID - r0.0 bit 16
+        ExtractElementInst* r0_0 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 0), VALUE_NAME("r0.0"), pEntryPoint);
+        BinaryOperator* FFSIDbit = BinaryOperator::CreateLShr(r0_0, ConstantInt::get(typeInt32, 16), VALUE_NAME("FFSIDbit"), pEntryPoint);
+        BinaryOperator* FFSID = BinaryOperator::CreateAnd(FFSIDbit, ConstantInt::get(typeInt32, 1), VALUE_NAME("FFSID"), pEntryPoint);
+
+        threadId = BinaryOperator::CreateOr(FFSID, shlThreadID, VALUE_NAME("threadId"), pEntryPoint);
+    }
     Instruction *perThreadOffset = BinaryOperator::CreateMul(threadId, totalPrivateMemPerThread, VALUE_NAME("perThreadOffset"), pEntryPoint);
 
     for (auto pAI : allocaInsts)

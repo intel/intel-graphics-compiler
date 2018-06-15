@@ -69,7 +69,8 @@ typedef enum
     GEN_ISA_TYPE_GEN7p5 = 3,
     GEN_ISA_TYPE_GEN8 = 4,
     GEN_ISA_TYPE_GEN9 = 5,
-    GEN_ISA_TYPE_GEN10 = 6
+    GEN_ISA_TYPE_GEN10 = 6,
+    GEN_ISA_TYPE_GEN11 = 7
 }   GEN_ISA_TYPE;
 
 typedef enum 

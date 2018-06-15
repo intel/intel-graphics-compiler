@@ -541,7 +541,7 @@ bool VectorProcess::runOnFunction(Function& F)
     for( inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I )
     {
         Instruction* inst = &*I;
-        if( isa<LoadInst>(inst) || isa<StoreInst>(inst) )
+        if (isa<LoadInst>(inst) || isa<StoreInst>(inst))
         {
             m_WorkList.push_back(inst);
         }
@@ -694,11 +694,13 @@ void VectorMessage::getInfo(Type *Ty, uint32_t Align, bool useA32,
                 ? A64_SCATTERED_MAX_BYTES_8DW_SIMD8
                 : A64_SCATTERED_MAX_BYTES_4DW);
 
+        bool allowQWMessage = !useA32 && eltSize == 8 && Align >= 8U;
+
         defaultDataType = (eltSize == 8) ? ISA_TYPE_UQ : ISA_TYPE_UD;
 
         //To make sure that send returns the correct layout for vector.
         assert((eltSize == 4 ||                              // common
-                (!useA32 && eltSize == 8 && Align >= 8U)) && // A64, QW
+                allowQWMessage) && // A64, QW
                "Internal Error: mismatch layout for vector");
     }
 

@@ -366,6 +366,7 @@ public:
     void emitRsq(llvm::Instruction *inst);
 
     void emitLLVMbswap(llvm::IntrinsicInst* inst);
+    void emitDP4A(llvm::GenIntrinsicInst *GII);
     // Debug Built-Ins
     void emitStateRegID(uint64_t and_imm, uint64_t shr_imm);
 

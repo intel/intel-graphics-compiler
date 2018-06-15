@@ -897,6 +897,16 @@ namespace IGC
             return 128;
         }
 
+        bool isPOSH() const
+        {
+            return this->getModule()->getModuleFlag(
+                "IGC::PositionOnlyVertexShader") != nullptr;
+        }
+        void setPOSH()
+        {
+            this->getModule()->addModuleFlag(llvm::Module::Error,
+                "IGC::PositionOnlyVertexShader", 1);
+        }
     };
 
     class VertexShaderContext : public CodeGenContext

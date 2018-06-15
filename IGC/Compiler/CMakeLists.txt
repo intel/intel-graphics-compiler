@@ -57,6 +57,15 @@ set(IGC_BUILD__SRC__Compiler
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ikbl_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/icfl_wa.c"
     "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iglk_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iglv_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iicl_hw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iicl_sw_wa.c"
+	"${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iicl_lp_hw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/iicl_lp_sw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ilkf_hw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ilkf_sw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ijsl_hw_wa.c"
+    "${IGC_BUILD__GFX_DEV_SRC_DIR}/skuwa/ijsl_sw_wa.c"
     ${IGC_BUILD__SRC__Compiler_CISACodeGen}
     ${IGC_BUILD__SRC__Compiler_DebugInfo}
     ${IGC_BUILD__SRC__Compiler_Legalizer}

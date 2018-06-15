@@ -200,6 +200,14 @@ void populateSIPKernelInfo(std::map< unsigned char, std::pair<void*, unsigned in
     SIPKernelInfo[GEN9_BXT_SIP_CSR] = std::make_pair((void*)&Gen9BXTSIPCSR, sizeof(Gen9BXTSIPCSR));
 
     SIPKernelInfo[GEN9_SIP_CSR_DEBUG_LOCAL] = std::make_pair((void*)&Gen9SIPCSRDebugLocal, sizeof(Gen9SIPCSRDebugLocal));
+
+    SIPKernelInfo[GEN9_GLV_SIP_CSR] = std::make_pair((void*)&Gen9GLVSIPCSR, sizeof(Gen9GLVSIPCSR));
+
+    SIPKernelInfo[GEN11_SIP_CSR] = std::make_pair((void*)&Gen11SIPCSR, sizeof(Gen11SIPCSR));
+
+    SIPKernelInfo[GEN11_HP_SIP_CSR] = std::make_pair((void*)&Gen11HPSIPCSR, sizeof(Gen11HPSIPCSR));
+
+    SIPKernelInfo[GEN11_LKF_SIP_CSR] = std::make_pair((void*)&Gen11LKFSIPCSR, sizeof(Gen11LKFSIPCSR));
 }
 
 CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
@@ -237,6 +245,10 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
                 /*Special SIP for 2x6 from HW team with 64KB offset*/
                 SIPIndex = GEN9_BXT_SIP_CSR;
             }
+            else if (platform.getPlatformInfo().eProductFamily == IGFX_GLENVIEW)
+            {
+                SIPIndex = GEN9_GLV_SIP_CSR;
+            }
             else
             {
                 SIPIndex = GEN9_SIP_CSR;
@@ -269,6 +281,42 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         else if (mode == SYSTEM_THREAD_MODE_CSR)
         {
             SIPIndex = GEN10_SIP_CSR;
+        }
+        else if (mode == (SYSTEM_THREAD_MODE_CSR | SYSTEM_THREAD_MODE_DEBUG))
+        {
+            SIPIndex = GEN10_SIP_CSR_DEBUG;
+        }
+        break;
+    }
+    case IGFX_GEN11_CORE:
+    {
+        if (bindlessMode)
+        {
+            if (mode == SYSTEM_THREAD_MODE_DEBUG)
+            {
+                SIPIndex = GEN10_SIP_DEBUG_BINDLESS;
+            }
+            //Add the rest later for bindless mode for preemption
+        }
+        else if (mode == SYSTEM_THREAD_MODE_DEBUG)
+        {
+            SIPIndex = GEN10_SIP_DEBUG;
+        }
+        else if (mode == SYSTEM_THREAD_MODE_CSR)
+        {
+            if (platform.getPlatformInfo().eProductFamily == IGFX_ICELAKE_LP)
+            {
+                SIPIndex = GEN11_SIP_CSR;
+            }
+            if (platform.getPlatformInfo().eProductFamily == IGFX_ICELAKE)
+            {
+                SIPIndex = GEN11_HP_SIP_CSR;
+            }
+            if ((platform.getPlatformInfo().eProductFamily == IGFX_LAKEFIELD) ||
+                (platform.getPlatformInfo().eProductFamily == IGFX_JASPERLAKE))
+            {
+                SIPIndex = GEN11_LKF_SIP_CSR;
+            }
         }
         else if (mode == (SYSTEM_THREAD_MODE_CSR | SYSTEM_THREAD_MODE_DEBUG))
         {

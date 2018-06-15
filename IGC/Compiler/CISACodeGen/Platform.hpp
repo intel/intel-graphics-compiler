@@ -175,6 +175,55 @@ public:
 		return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE;
 	}
 
+    bool hasPSDBottleneck() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE; }
+
+    bool supportsHardwareResourceStreamer() const
+    {
+        return m_platformInfo.eRenderCoreFamily < IGFX_GEN11_CORE;
+    }
+    bool AOComputeShadersSIMD32Mode() const
+    {
+        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
+    }
+    unsigned int getHullShaderThreadInstanceIdBitFieldPosition() const
+    {
+        // HS thread receives instance ID in R0.2 bits 22:16 for Gen10+ and bits 23:17 for older Gens
+        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE) ? 16 : 17;
+    }
+    bool supportsBinaryAtomicCounterMessage() const
+    {
+        return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE;
+    }
+    bool supportSLMBlockMessage() const
+    {
+        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
+    }
+    bool supportRotateInstruction() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE; }
+    bool supportLRPInstruction() const { return m_platformInfo.eRenderCoreFamily < IGFX_GEN11_CORE; }
+    bool support16bitMSAAPayload() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE; }
+    bool supportTwoStackTSG() const
+    {
+        //Will need check for specific skus where TwoStackTSG is enabled
+        //Not all skus have it enabled
+        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
+    }
+    bool enableBlendToDiscardAndFill() const
+    {
+        return (m_platformInfo.eRenderCoreFamily < IGFX_GEN11_CORE);
+    }
+    bool HSUsesHWBarriers() const
+    {
+        // HS HW barriers work correctly since ICL platform.
+        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
+    }
+    bool applyTEFactorsPadding() const
+    {
+        return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE;
+    }
+    bool enableVertexReorderingPhase2() const
+    {
+        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE);
+    }
     bool supportsSIMD16TypedRW() const
     {
         return false;
@@ -190,30 +239,19 @@ public:
         return IGC_IS_FLAG_DISABLED(ForceSWCoalescingOfAtomicCounter);
     }
 
-    bool hasPSDBottleneck() const { return false; }
-
-    bool supportsHardwareResourceStreamer() const
-    {
-        return true;
-    }
-    bool AOComputeShadersSIMD32Mode() const
-    {
-        return false;
-    }
-    unsigned int getHullShaderThreadInstanceIdBitFieldPosition() const
-    {
-        // HS thread receives instance ID in R0.2 bits 22:16 for Gen10+
-        return 17;
-    }
-
     //all the platforms which do not support 64 bit operations (int64 and double)
     bool hasNo64BitInst() const {
-        return false;
+        return m_platformInfo.eProductFamily == IGFX_GLENVIEW ||
+            m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
+            m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
+            m_platformInfo.eProductFamily == IGFX_JASPERLAKE;
     }
 
     //all the platforms which have correctly rounded macros (INVM, RSQRTM, MADM)
     bool hasCorrectlyRoundedMacros() const {
-        return true;
+        return m_platformInfo.eProductFamily != IGFX_GLENVIEW &&
+            m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
+            m_platformInfo.eProductFamily != IGFX_LAKEFIELD;
     }
 
     //all the platforms which do not support 64 bit operations and 
@@ -222,17 +260,23 @@ public:
     //Emulating it improves performance on some benchmarks and 
     //won't have impact on the overall performance.
     bool need64BitEmulation() const {
-        return m_platformInfo.eProductFamily == IGFX_GEMINILAKE ||
-            m_platformInfo.eProductFamily == IGFX_BROXTON;
+        return (m_platformInfo.eProductFamily == IGFX_GEMINILAKE ||
+            m_platformInfo.eProductFamily == IGFX_BROXTON ||
+            m_platformInfo.eProductFamily == IGFX_GLENVIEW ||
+            m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
+            m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
+            m_platformInfo.eProductFamily == IGFX_JASPERLAKE);
     }
 
     //all the platforms which do not support 64 bit float operations
     bool supportFP64() const {
-        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN7_CORE);
+        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN7_CORE &&
+            m_platformInfo.eProductFamily != IGFX_GLENVIEW &&
+            m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
+            m_platformInfo.eProductFamily != IGFX_LAKEFIELD &&
+            m_platformInfo.eProductFamily != IGFX_JASPERLAKE);
     }
-    bool supportLRPInstruction() const { return true; }
     bool has8DWA64ScatteredMessage() const { return true; }
-    bool enableBlendToDiscardAndFill() const { return true; }
     bool useOnlyEightPatchDispatchHS() const { return false; }
     bool supports256GRFPerThread() const { return false; }
     bool hasFDIV() const { return true; }
@@ -244,8 +288,6 @@ public:
                 m_platformInfo.eRenderCoreFamily == IGFX_GEN10_CORE));
     }
     bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const { return false; }
-    bool HSUsesHWBarriers() const { return false; }
-    bool applyTEFactorsPadding() const { return false; }
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const

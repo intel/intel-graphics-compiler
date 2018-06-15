@@ -631,6 +631,13 @@ DumpName GetDumpNameObj(IGC::CShader* pProgram, const char* ext)
         IGC::CPixelShader* psProgram = static_cast<IGC::CPixelShader*>(pProgram);
         dumpName = dumpName.PSPhase(psProgram->GetPhase());
     }
+    else if (pProgram->GetShaderType() == ShaderType::VERTEX_SHADER)
+    {
+        if (context->getModule()->getModuleFlag("IGC::PositionOnlyVertexShader"))
+        {
+            dumpName = dumpName.PostFix("posh");
+        }
+    }
     dumpName = dumpName.DispatchMode(pProgram->m_ShaderDispatchMode);
     dumpName = dumpName.SIMDSize(pProgram->m_dispatchSize).Extension(ext);
     return dumpName;

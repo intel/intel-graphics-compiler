@@ -68,6 +68,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/MergeURBWrites.hpp"
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
+#include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
@@ -943,6 +944,10 @@ void unify_opt_PreProcess(CodeGenContext* pContext)
     IGCPassManager mpm(pContext, "OPTPre");
     mpm.add(new CheckInstrTypes(&(pContext->m_instrTypes)));
 
+    if (pContext->isPOSH())
+    {
+        mpm.add(createRemoveNonPositionOutputPass());
+    }
 
     mpm.run(*pContext->getModule());
 

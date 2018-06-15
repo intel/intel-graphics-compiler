@@ -532,4 +532,4 @@ void WAFMinFMax::visitCallInst(CallInst &I)
             break;
         }
     }
-}
+}

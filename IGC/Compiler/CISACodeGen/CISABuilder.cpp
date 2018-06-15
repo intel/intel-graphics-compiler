@@ -2691,6 +2691,19 @@ TARGET_PLATFORM GetVISAPlatform(const CPlatform* platform)
         {
             return GENX_SKL;
         }
+    case IGFX_GEN10_CORE:
+        return GENX_CNL;
+    case IGFX_GEN11_CORE:
+        if (platform->getPlatformInfo().eProductFamily == IGFX_ICELAKE_LP ||
+            platform->getPlatformInfo().eProductFamily == IGFX_LAKEFIELD ||
+            platform->getPlatformInfo().eProductFamily == IGFX_JASPERLAKE)
+        {
+            return GENX_ICLLP;
+        }
+        else
+        {
+            return GENX_ICL;
+        }
     default:
         assert(0 && "unsupported platform");
         break;
@@ -2959,6 +2972,8 @@ void CEncoder::GenericAlu(e_opcode opcode, CVariable* dst, CVariable* src0, CVar
     case ISA_OR:
     case ISA_SHL:
     case ISA_SHR:
+    case ISA_ROL:
+    case ISA_ROR:
     case ISA_XOR:
         LogicOp(visaOpcode, dst, src0, src1, src2);
         break;
@@ -5148,8 +5163,8 @@ void CEncoder::SetVISAWaTable(WA_TABLE const& waTable)
     }
 
     if (m_program->m_Platform->supportFtrWddm2Svm() ||
-        m_program->m_Platform->GetPlatformFamily() == IGFX_GEN10_CORE
-        )
+        m_program->m_Platform->GetPlatformFamily() == IGFX_GEN10_CORE ||
+        m_program->m_Platform->GetPlatformFamily() == IGFX_GEN11_CORE)
     {
         // no send src/dst overlap when page fault is enabled
         m_WaTable.WaDisableSendSrcDstOverlap = true;

@@ -203,6 +203,7 @@ public:
     bool MatchPow(llvm::IntrinsicInst& I); 
     bool MatchCondModifier(llvm::CmpInst& I);
     bool MatchBoolOp(llvm::BinaryOperator& I);
+    bool MatchRotate(llvm::Instruction& I);
     bool MatchLogicAlu(llvm::BinaryOperator& I);
     bool MatchRsqrt(llvm::BinaryOperator& I); 
     bool MatchLoadStorePointer(llvm::Instruction& I, llvm::Value& ptrVal);

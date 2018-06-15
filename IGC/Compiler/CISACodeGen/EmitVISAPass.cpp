@@ -7238,6 +7238,12 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_GetPixelMask:
         emitGetPixelMask(inst);
         break;
+    case GenISAIntrinsic::GenISA_dp4a_ss:
+    case GenISAIntrinsic::GenISA_dp4a_uu:
+    case GenISAIntrinsic::GenISA_dp4a_su:
+    case GenISAIntrinsic::GenISA_dp4a_us:
+        emitDP4A(inst);
+        break;
     case GenISAIntrinsic::GenISA_evaluateSampler:
         // nothing to do
         break;
@@ -13908,6 +13914,31 @@ void EmitPass::emitWaveAll(llvm::GenIntrinsicInst* inst)
     GetReductionOp(op, inst->getOperand(0)->getType(), identity, opCode, type);
     CVariable *dst = m_destination;
     emitReductionAll(opCode, identity, type, false, src, dst);
+}
+
+void EmitPass::emitDP4A(GenIntrinsicInst* GII) {
+    GenISAIntrinsic::ID GIID = GII->getIntrinsicID();
+    CVariable* dst = m_destination;
+    CVariable* src0 = GetSymbol(GII->getOperand(0));
+    CVariable* src1 = GetSymbol(GII->getOperand(1));
+    CVariable* src2 = GetSymbol(GII->getOperand(2));
+    // Set correct signedness of src1.
+    if (GIID == GenISAIntrinsic::GenISA_dp4a_ss ||
+        GIID == GenISAIntrinsic::GenISA_dp4a_su)
+        src1 = m_currShader->BitCast(src1, ISA_TYPE_D);
+    if (GIID == GenISAIntrinsic::GenISA_dp4a_uu ||
+        GIID == GenISAIntrinsic::GenISA_dp4a_us)
+        src1 = m_currShader->BitCast(src1, ISA_TYPE_UD);
+    // Set correct signedness of src2.
+    if (GIID == GenISAIntrinsic::GenISA_dp4a_ss ||
+        GIID == GenISAIntrinsic::GenISA_dp4a_us)
+        src2 = m_currShader->BitCast(src2, ISA_TYPE_D);
+    if (GIID == GenISAIntrinsic::GenISA_dp4a_uu ||
+        GIID == GenISAIntrinsic::GenISA_dp4a_su)
+        src2 = m_currShader->BitCast(src2, ISA_TYPE_UD);
+    // Emit dp4a.
+    m_encoder->dp4a(dst, src0, src1, src2);
+    m_encoder->Push();
 }
 
 
