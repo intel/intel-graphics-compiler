@@ -4595,14 +4595,9 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst )
         VectorType* VTy     = dyn_cast< VectorType >( Ty );
         uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
 
-        uint32_t bytesPerReg    = 32;
-        uint32_t totalBytes     = nbElements * ( ( m_SimdMode == SIMDMode::SIMD8 ) ? 1 : 2 ) * bytesPerReg;
-        if (dataPtr->getType()->getScalarSizeInBits() == 16) {
-            totalBytes /= 2;
-        }
-        else if (dataPtr->getType()->getScalarSizeInBits() == 8) {
-            totalBytes /= 4;
-        }
+        uint32_t typeSizeInBytes = dataPtr->getType()->getScalarSizeInBits() / 8;
+        uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes( m_SimdMode );
+
         uint32_t bytesRemaining = totalBytes;
 
         uint32_t srcOffset   = 0;
@@ -4681,14 +4676,9 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst )
         VectorType* VTy     = dyn_cast< VectorType >( Ty );
         uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
 
-        uint32_t bytesPerReg    = 32;
-        uint32_t totalBytes     = nbElements * ( ( m_SimdMode == SIMDMode::SIMD8 ) ? 1 : 2 ) * bytesPerReg;
-        if (dataPtr->getType()->getScalarSizeInBits() == 16) {
-            totalBytes /= 2;
-        }
-        else if (dataPtr->getType()->getScalarSizeInBits() == 8) {
-            totalBytes /= 4;
-        }
+        uint32_t typeSizeInBytes = dataPtr->getType()->getScalarSizeInBits() / 8;
+        uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes( m_SimdMode );
+
         uint32_t bytesRemaining = totalBytes;
 
         // Emits instructions generating one or more OWORD block write instructions
@@ -4790,14 +4780,8 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst )
         VectorType* VTy     = dyn_cast< VectorType >( Ty );
         uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
 
-        uint32_t bytesPerReg = 32;
-        uint32_t totalBytes  = nbElements * ( ( m_SimdMode == SIMDMode::SIMD8 ) ? 1 : 2 ) * bytesPerReg;
-        if (inst->getType()->getScalarSizeInBits() == 16) {
-            totalBytes /= 2;
-        }
-        else if (inst->getType()->getScalarSizeInBits() == 8) {
-            totalBytes /= 4;
-        }
+        uint32_t typeSizeInBytes = inst->getType()->getScalarSizeInBits() / 8;
+        uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
 
         uint32_t bytesRemaining = totalBytes;
         uint32_t dstSubReg      = 0;
@@ -4868,16 +4852,10 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst )
         CVariable* src        = GetSymbol( llPtr );
         Type* Ty            = inst->getType();
         VectorType* VTy     = dyn_cast< VectorType >( Ty );
-        uint32_t nbElements = VTy? int_cast<uint32_t>(VTy->getNumElements()) : 1;
+        uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
 
-        uint32_t bytesPerReg    = 32;
-        uint32_t totalBytes     = nbElements * ( ( m_SimdMode == SIMDMode::SIMD8 ) ? 1 : 2 ) * bytesPerReg;
-        if (inst->getType()->getScalarSizeInBits() == 16) {
-            totalBytes /= 2;
-        }
-        else if (inst->getType()->getScalarSizeInBits() == 8) {
-            totalBytes /= 4;
-        }
+        uint32_t typeSizeInBytes = inst->getType()->getScalarSizeInBits() / 8;
+        uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
 
         // Emits below instructions generating one or more OWORD block read instructions:
         // mov (1)   r20.0<1>:ud r5.1<0;1,0>:ud {Align1, Q1, NoMask, Compacted}
@@ -5120,6 +5098,9 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
     Value* xOffset = inst->getOperand( 1 );
     Value* yOffset = inst->getOperand( 2 );
 
+    uint32_t typeSizeInBytes = inst->getType()->getScalarType()->getScalarSizeInBits() / 8;
+    uint32_t totalWidth = typeSizeInBytes * numLanes(m_SimdMode);
+
     uint32_t   pass              = 0;
     uint32_t   numPasses         = 0;
     uint32_t   bindingTableIndex = 0;
@@ -5127,10 +5108,6 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
     uint32_t dstSubReg   = 0;
     uint32_t blockWidth  = 0;
     uint32_t blockHeight = nbElements;
-
-    const uint32_t scalarSizeInBits = inst->getType()->getScalarType()->getScalarSizeInBits();
-    bool  fp16 = scalarSizeInBits == 16;
-    bool  fp8 = scalarSizeInBits == 8;
 
     if ( isImageTypeUAV )
     {
@@ -5145,54 +5122,27 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
 
     CVariable* srcbti = m_currShader->ImmToVariable( bindingTableIndex, ISA_TYPE_UD );
 
-    switch ( m_SimdMode )
+    if (totalWidth < 32)
     {
-    case SIMDMode::SIMD8:
-        if (fp8)
-        {
-            blockWidth = 8;
-        }
-        else if (fp16)
-        {
-            blockWidth = 16;
-        }
-        else
-        {
-            blockWidth = 32;
-        }
         numPasses = 1;
-        break;
-
-    case SIMDMode::SIMD16:
-        // 2 x SIMD8
-        if (fp8)
-        {
-            blockWidth = 16;
-            numPasses = 1;
-        }
-        else if (fp16)
-        {
-            blockWidth = 32;
-            numPasses = 1;
-        }
-        else
-        {
-            blockWidth = 32;
-            numPasses = 2;
-        }
-        break;
-    default:
-        assert( 0 && "Wrong SIMD width" );
-        break;
+        blockWidth = totalWidth;
+    }
+    else
+    {
+        assert(totalWidth % 32 == 0 && "Total width must be divisible by 32!");
+        numPasses = totalWidth / 32;
+        blockWidth = 32;
     }
 
     CVariable* pTempVar0 = nullptr;
     CVariable* pTempVar  = nullptr;
 
+    uint32_t blockRegSize = numPasses * blockHeight * numLanes(SIMDMode::SIMD8);
+
     CVariable* pTempDest = m_currShader->GetNewVariable(
-        ( 2*blockHeight ) *numLanes( SIMDMode::SIMD8 ),
+        blockRegSize,
         m_destination->GetType(),
-        EALIGN_DWORD );
+        EALIGN_GRF );
 
     CVariable* xVar = GetSymbol( xOffset );
     CVariable* yVar = GetSymbol( yOffset );
@@ -5212,52 +5162,37 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
 
     for ( pass = 0; pass < numPasses; pass++ )
     {
-        if ( pass == 0 )
-        {
-            m_encoder->SetSimdSize( SIMDMode::SIMD1 );
-            m_encoder->SetNoMask();
-            m_encoder->SetSrcRegion( 0, 0, 1, 0 );
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
 
+        if (pass == 0) 
+        {
             pTempVar0 = m_currShader->GetNewVariable(
-                numLanes( m_SimdMode ),
+                numLanes(m_SimdMode),
                 ISA_TYPE_UD,
-                EALIGN_DWORD );
+                EALIGN_DWORD);
 
-            m_encoder->Copy( pTempVar0, xVar );
-            m_encoder->Push();
-
-            m_encoder->SetSimdSize( SIMDMode::SIMD1 );
-            m_encoder->SetNoMask();
-            m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-
-            pTempVar = m_currShader->GetNewVariable(
-                numLanes( m_SimdMode ),
-                ISA_TYPE_UD,
-                EALIGN_DWORD );
-
-            m_encoder->Copy( pTempVar, yVar );
-            m_encoder->Push();
+            m_encoder->Copy(pTempVar0, xVar);
         }
-        if ( pass == 1 )
+        else 
         {
-            m_encoder->SetSimdSize( SIMDMode::SIMD1 );
-            m_encoder->SetNoMask();
-            m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-            m_encoder->Add( pTempVar0, pTempVar0, m_currShader->ImmToVariable( 32, ISA_TYPE_UD ) );
-            m_encoder->Push();
+            m_encoder->Add(pTempVar0, pTempVar0, m_currShader->ImmToVariable(32, ISA_TYPE_UD));
             dstSubReg = dstSubReg + blockHeight;
-
-            m_encoder->SetSimdSize( SIMDMode::SIMD1 );
-            m_encoder->SetNoMask();
-            m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-            pTempVar = m_currShader->GetNewVariable(
-                numLanes( m_SimdMode ),
-                ISA_TYPE_UD,
-                EALIGN_DWORD );
-
-            m_encoder->Copy( pTempVar, yVar );
-            m_encoder->Push();
         }
+        m_encoder->Push();
+
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+
+        pTempVar = m_currShader->GetNewVariable(
+            numLanes(m_SimdMode),
+            ISA_TYPE_UD,
+            EALIGN_DWORD);
+
+        m_encoder->Copy(pTempVar, yVar);
+        m_encoder->Push();
 
         m_encoder->SetDstSubVar(dstSubReg);
 
@@ -5295,19 +5230,15 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
 
         for ( uint32_t i = 0; i < blockHeight; i++ )
         {
-            m_encoder->SetSimdSize( SIMDMode::SIMD8 );
-            m_encoder->SetMask(EMASK_Q1);
-            m_encoder->SetSrcSubVar( 0, i );
-            m_encoder->SetDstSubVar( dstSubReg++ );
-            m_encoder->Copy( m_destination, pTempDest );
-            m_encoder->Push();
-
-            m_encoder->SetSimdSize(SIMDMode::SIMD8);
-            m_encoder->SetMask(EMASK_Q2);
-            m_encoder->SetSrcSubVar(0, i + blockHeight);
-            m_encoder->SetDstSubVar(dstSubReg++);
-            m_encoder->Copy(m_destination, pTempDest);
-            m_encoder->Push();
+            for (uint32_t pass = 0; pass < numPasses; pass++)
+            {
+                m_encoder->SetSimdSize(typeSizeInBytes == 8 ? SIMDMode::SIMD4 : SIMDMode::SIMD8);
+                m_encoder->SetNoMask();
+                m_encoder->SetSrcSubVar(0, i + (blockHeight * pass));
+                m_encoder->SetDstSubVar(dstSubReg++);
+                m_encoder->Copy(m_destination, pTempDest);
+                m_encoder->Push();
+            }
         }
     }
 }
@@ -5331,16 +5262,15 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
     CVariable *data = GetSymbol(dataPtr);
     data            = BroadcastIfUniform( data );
 
+    uint32_t typeSizeInBytes = dataPtr->getType()->getScalarType()->getScalarSizeInBits() / 8;
+    uint32_t totalWidth = typeSizeInBytes * numLanes(m_SimdMode);
+
     uint32_t   pass      = 0;
     uint32_t   numPasses = 0;
 
     uint32_t blockWidth        = 0;
     uint32_t blockHeight       = nbElements;
     uint32_t bindingTableIndex = 0;
-
-    const uint32_t scalarSizeInBits = dataPtr->getType()->getScalarType()->getScalarSizeInBits();
-    bool  fp16 = scalarSizeInBits == 16;
-    bool  fp8 = scalarSizeInBits == 8;
 
     if ( isImageTypeUAV )
     {
@@ -5355,44 +5285,16 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
 
     CVariable* srcbti = m_currShader->ImmToVariable( bindingTableIndex, ISA_TYPE_UD );
 
-    switch (m_SimdMode)
+    if (totalWidth < 32)
     {
-    case SIMDMode::SIMD8:
-        if (fp8)
-        {
-            blockWidth = 8;
-        }
-        else if (fp16)
-        {
-            blockWidth = 16;
-        }
-        else
-        {
-            blockWidth = 32;
-        }
         numPasses = 1;
-        break;
-
-    case SIMDMode::SIMD16:
-        if (fp8)
-        {
-            blockWidth = 16;
-            numPasses = 1;
-        }
-        else if (fp16)
-        {
-            blockWidth = 32;
-            numPasses = 1;
-        }
-        else
-        {
-            blockWidth = 32;
-            numPasses = 2;
-        }
-        break;
-    default:
-        assert(0 && "Wrong SIMD width");
-        break;
+        blockWidth = totalWidth;
+    }
+    else
+    {
+        assert(totalWidth % 32 == 0 && "Total width must be divisible by 32!");
+        numPasses = totalWidth / 32;
+        blockWidth = 32;
     }
 
     CVariable* pTempVar0 = nullptr;
@@ -5402,12 +5304,8 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
 
     for ( pass = 0; pass < numPasses; pass++ )
     {
-        uint32_t srcSubVar = 0;
+        uint32_t srcSubVar = pass;
         uint32_t dstSubVar = 0;
-        if ( pass == 1 )
-        {
-            srcSubVar = 1;
-        }
 
         CVariable* tempdst = m_currShader->GetNewVariable(
             ( nbElements * numLanes( SIMDMode::SIMD8 ) ),
@@ -5423,15 +5321,11 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
         {
             for ( uint i = 0; i < nbElements; ++i )
             {
-                m_encoder->SetMask( EMASK_Q1 );
-                if ( pass == 1 )
-                {
-                    m_encoder->SetMask( EMASK_Q2 );
-                }
-                m_encoder->SetSimdSize( SIMDMode::SIMD8 );
+                m_encoder->SetSimdSize(typeSizeInBytes == 8 ? SIMDMode::SIMD4 : SIMDMode::SIMD8);
+                m_encoder->SetNoMask();
                 m_encoder->SetSrcSubVar( 0, srcSubVar );
                 m_encoder->SetDstSubVar( dstSubVar++ );
-                srcSubVar = srcSubVar + 2;
+                srcSubVar = srcSubVar + numPasses;
                 m_encoder->Copy( tempdst, data );
                 m_encoder->Push();
             }
@@ -5478,8 +5372,7 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
             m_encoder->Cast( pTempVar, yVar );
             m_encoder->Push();
         }
-
-        if ( pass == 1 )
+        else
         {
             m_encoder->SetSimdSize( SIMDMode::SIMD1 );
             m_encoder->SetNoMask();

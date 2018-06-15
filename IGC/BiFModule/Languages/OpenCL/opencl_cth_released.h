@@ -6312,6 +6312,41 @@ void    __attribute__((overloadable)) intel_sub_group_block_write_uc8(__global u
 
 #endif // cl_intel_subgroups_char
 
+
+#ifdef cl_intel_subgroups_long
+ulong   __attribute__((overloadable)) intel_sub_group_block_read_ul(read_only image2d_t image, int2 coord);
+ulong2  __attribute__((overloadable)) intel_sub_group_block_read_ul2(read_only image2d_t image, int2 coord);
+ulong4  __attribute__((overloadable)) intel_sub_group_block_read_ul4(read_only image2d_t image, int2 coord);
+ulong8  __attribute__((overloadable)) intel_sub_group_block_read_ul8(read_only image2d_t image, int2 coord);
+
+#if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+ulong   __attribute__((overloadable)) intel_sub_group_block_read_ul(read_write image2d_t image, int2 coord);
+ulong2  __attribute__((overloadable)) intel_sub_group_block_read_ul2(read_write image2d_t image, int2 coord);
+ulong4  __attribute__((overloadable)) intel_sub_group_block_read_ul4(read_write image2d_t image, int2 coord);
+ulong8  __attribute__((overloadable)) intel_sub_group_block_read_ul8(read_write image2d_t image, int2 coord);
+
+void    __attribute__((overloadable)) intel_sub_group_block_write_ul(read_write image2d_t image, int2 coord, ulong  data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_ul2(read_write image2d_t image, int2 coord, ulong2 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_ul4(read_write image2d_t image, int2 coord, ulong4 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_ul8(read_write image2d_t image, int2 coord, ulong8 data);
+#endif // (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
+
+ulong    __attribute__((overloadable)) intel_sub_group_block_read_ul(const __global ulong* p);
+ulong2   __attribute__((overloadable)) intel_sub_group_block_read_ul2(const __global ulong* p);
+ulong4   __attribute__((overloadable)) intel_sub_group_block_read_ul4(const __global ulong* p);
+ulong8   __attribute__((overloadable)) intel_sub_group_block_read_ul8(const __global ulong* p);
+
+void    __attribute__((overloadable)) intel_sub_group_block_write_ul(write_only image2d_t image, int2 coord, ulong  data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_ul2(write_only image2d_t image, int2 coord, ulong2 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_ul4(write_only image2d_t image, int2 coord, ulong4 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_ul8(write_only image2d_t image, int2 coord, ulong8 data);
+
+void    __attribute__((overloadable)) intel_sub_group_block_write_ul(__global ulong* p, ulong  data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_ul2(__global ulong* p, ulong2 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_ul4(__global ulong* p, ulong4 data);
+void    __attribute__((overloadable)) intel_sub_group_block_write_ul8(__global ulong* p, ulong8 data);
+
+#endif // cl_intel_subgroups_long
 #ifdef cl_intel_media_block_io
 
 // Media Block read/write extension

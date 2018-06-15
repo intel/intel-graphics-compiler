@@ -97,6 +97,7 @@ namespace IGC
         static const llvm::StringRef SUB_GROUP_SHUFFLE_DOWN;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_DOWN_US;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_DOWN_UC;
+        
         static const llvm::StringRef SIMD_BLOCK_READ_1_GBL;
         static const llvm::StringRef SIMD_BLOCK_READ_2_GBL;
         static const llvm::StringRef SIMD_BLOCK_READ_4_GBL;
@@ -106,13 +107,16 @@ namespace IGC
         static const llvm::StringRef SIMD_BLOCK_READ_4_GBL_H;
         static const llvm::StringRef SIMD_BLOCK_READ_8_GBL_H;
         static const llvm::StringRef SIMD_BLOCK_READ_16_GBL_H;
-
         static const llvm::StringRef SIMD_BLOCK_READ_1_GBL_B;
         static const llvm::StringRef SIMD_BLOCK_READ_2_GBL_B;
         static const llvm::StringRef SIMD_BLOCK_READ_4_GBL_B;
         static const llvm::StringRef SIMD_BLOCK_READ_8_GBL_B;
         static const llvm::StringRef SIMD_BLOCK_READ_16_GBL_B;
-
+        static const llvm::StringRef SIMD_BLOCK_READ_1_GBL_L;
+        static const llvm::StringRef SIMD_BLOCK_READ_2_GBL_L;
+        static const llvm::StringRef SIMD_BLOCK_READ_4_GBL_L;
+        static const llvm::StringRef SIMD_BLOCK_READ_8_GBL_L;
+        
         static const llvm::StringRef SIMD_BLOCK_WRITE_1_GBL;
         static const llvm::StringRef SIMD_BLOCK_WRITE_2_GBL;
         static const llvm::StringRef SIMD_BLOCK_WRITE_4_GBL;
@@ -122,12 +126,15 @@ namespace IGC
         static const llvm::StringRef SIMD_BLOCK_WRITE_4_GBL_H;
         static const llvm::StringRef SIMD_BLOCK_WRITE_8_GBL_H;
         static const llvm::StringRef SIMD_BLOCK_WRITE_16_GBL_H;
-
         static const llvm::StringRef SIMD_BLOCK_WRITE_1_GBL_B;
         static const llvm::StringRef SIMD_BLOCK_WRITE_2_GBL_B;
         static const llvm::StringRef SIMD_BLOCK_WRITE_4_GBL_B;
         static const llvm::StringRef SIMD_BLOCK_WRITE_8_GBL_B;
         static const llvm::StringRef SIMD_BLOCK_WRITE_16_GBL_B;
+        static const llvm::StringRef SIMD_BLOCK_WRITE_1_GBL_L;
+        static const llvm::StringRef SIMD_BLOCK_WRITE_2_GBL_L;
+        static const llvm::StringRef SIMD_BLOCK_WRITE_4_GBL_L;
+        static const llvm::StringRef SIMD_BLOCK_WRITE_8_GBL_L;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_1;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_2;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_4;
@@ -137,12 +144,15 @@ namespace IGC
         static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_4_H;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_8_H;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_16_H;
-
         static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_1_B;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_2_B;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_4_B;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_8_B;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_16_B;
+        static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_1_L;
+        static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_2_L;
+        static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_4_L;
+        static const llvm::StringRef SIMD_MEDIA_BLOCK_READ_8_L;
 
         static const llvm::StringRef SIMD_MEDIA_BLOCK_WRITE_1;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_WRITE_2;
@@ -153,7 +163,10 @@ namespace IGC
         static const llvm::StringRef SIMD_MEDIA_BLOCK_WRITE_4_H;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_WRITE_8_H;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_WRITE_16_H;
-
+        static const llvm::StringRef SIMD_MEDIA_BLOCK_WRITE_1_L;
+        static const llvm::StringRef SIMD_MEDIA_BLOCK_WRITE_2_L;
+        static const llvm::StringRef SIMD_MEDIA_BLOCK_WRITE_4_L;
+        static const llvm::StringRef SIMD_MEDIA_BLOCK_WRITE_8_L;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_WRITE_1_B;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_WRITE_2_B;
         static const llvm::StringRef SIMD_MEDIA_BLOCK_WRITE_4_B;

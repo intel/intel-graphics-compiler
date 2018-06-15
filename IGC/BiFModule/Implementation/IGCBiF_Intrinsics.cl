@@ -478,6 +478,11 @@ uchar2   __builtin_IB_simd_block_read_2_global_b( const __global uchar* );
 uchar4   __builtin_IB_simd_block_read_4_global_b( const __global uchar* );
 uchar8   __builtin_IB_simd_block_read_8_global_b( const __global uchar* );
 
+ulong    __builtin_IB_simd_block_read_1_global_l( const __global ulong* );
+ulong2   __builtin_IB_simd_block_read_2_global_l( const __global ulong* );
+ulong4   __builtin_IB_simd_block_read_4_global_l( const __global ulong* );
+ulong8   __builtin_IB_simd_block_read_8_global_l( const __global ulong* );
+
 void    __builtin_IB_simd_block_write_1_global( __global uint*, uint );
 void    __builtin_IB_simd_block_write_2_global( __global uint*, uint2 );
 void    __builtin_IB_simd_block_write_4_global( __global uint*, uint4 );
@@ -487,6 +492,11 @@ void    __builtin_IB_simd_block_write_1_global_h( __global ushort*, ushort );
 void    __builtin_IB_simd_block_write_2_global_h( __global ushort*, ushort2 );
 void    __builtin_IB_simd_block_write_4_global_h( __global ushort*, ushort4 );
 void    __builtin_IB_simd_block_write_8_global_h( __global ushort*, ushort8 );
+
+void    __builtin_IB_simd_block_write_1_global_l( __global ulong*, ulong );
+void    __builtin_IB_simd_block_write_2_global_l( __global ulong*, ulong2 );
+void    __builtin_IB_simd_block_write_4_global_l( __global ulong*, ulong4 );
+void    __builtin_IB_simd_block_write_8_global_l( __global ulong*, ulong8 );
 
 void    __builtin_IB_simd_block_write_1_global_b( __global uchar*, uchar );
 void    __builtin_IB_simd_block_write_2_global_b( __global uchar*, uchar2 );
@@ -508,6 +518,11 @@ uchar2  __builtin_IB_simd_media_block_read_2_b( int, int2 );
 uchar4  __builtin_IB_simd_media_block_read_4_b( int, int2 );
 uchar8  __builtin_IB_simd_media_block_read_8_b( int, int2 );
 
+ulong   __builtin_IB_simd_media_block_read_1_l( int, int2 );
+ulong2  __builtin_IB_simd_media_block_read_2_l( int, int2 );
+ulong4  __builtin_IB_simd_media_block_read_4_l( int, int2 );
+ulong8  __builtin_IB_simd_media_block_read_8_l( int, int2 );
+
 void    __builtin_IB_media_block_rectangle_read( long image, int2 coords, int blockWidth, int blockHeight, GRFHandle destination );
 
 void    __builtin_IB_simd_media_block_write_1( int, int2, uint );
@@ -524,6 +539,11 @@ void    __builtin_IB_simd_media_block_write_1_b( int, int2, uchar );
 void    __builtin_IB_simd_media_block_write_2_b( int, int2, uchar2 );
 void    __builtin_IB_simd_media_block_write_4_b( int, int2, uchar4 );
 void    __builtin_IB_simd_media_block_write_8_b( int, int2, uchar8 );
+
+void    __builtin_IB_simd_media_block_write_1_l( int, int2, ulong );
+void    __builtin_IB_simd_media_block_write_2_l( int, int2, ulong2 );
+void    __builtin_IB_simd_media_block_write_4_l( int, int2, ulong4 );
+void    __builtin_IB_simd_media_block_write_8_l( int, int2, ulong8 );
 
 uchar   __builtin_IB_media_block_read_uchar(int image, int2 offset, int width, int height);
 uchar2  __builtin_IB_media_block_read_uchar2(int image, int2 offset, int width, int height);
@@ -542,6 +562,11 @@ uint2  __builtin_IB_media_block_read_uint2(int image, int2 offset, int width, in
 uint4  __builtin_IB_media_block_read_uint4(int image, int2 offset, int width, int height);
 uint8  __builtin_IB_media_block_read_uint8(int image, int2 offset, int width, int height);
 
+ulong   __builtin_IB_media_block_read_ulong(int image, int2 offset, int width, int height);
+ulong2  __builtin_IB_media_block_read_ulong2(int image, int2 offset, int width, int height);
+ulong4  __builtin_IB_media_block_read_ulong4(int image, int2 offset, int width, int height);
+ulong8  __builtin_IB_media_block_read_ulong8(int image, int2 offset, int width, int height);
+
 void __builtin_IB_media_block_write_uchar(int image, int2 offset, int width, int height, uchar pixels);
 void __builtin_IB_media_block_write_uchar2(int image, int2 offset, int width, int height, uchar2 pixels);
 void __builtin_IB_media_block_write_uchar4(int image, int2 offset, int width, int height, uchar4 pixels);
@@ -558,6 +583,11 @@ void __builtin_IB_media_block_write_uint(int image, int2 offset, int width, int 
 void __builtin_IB_media_block_write_uint2(int image, int2 offset, int width, int height, uint2 pixels);
 void __builtin_IB_media_block_write_uint4(int image, int2 offset, int width, int height, uint4 pixels);
 void __builtin_IB_media_block_write_uint8(int image, int2 offset, int width, int height, uint8 pixels);
+
+void __builtin_IB_media_block_write_ulong(int image, int2 offset, int width, int height, ulong pixels);
+void __builtin_IB_media_block_write_ulong2(int image, int2 offset, int width, int height, ulong2 pixels);
+void __builtin_IB_media_block_write_ulong4(int image, int2 offset, int width, int height, ulong4 pixels);
+void __builtin_IB_media_block_write_ulong8(int image, int2 offset, int width, int height, ulong8 pixels);
 
 
 short __builtin_IB_sub_group_reduce_OpGroupIAdd_i16(short x) __attribute__((const));

@@ -804,6 +804,12 @@ namespace TC
       // If user added it to build option, add it to extension list.
       extensions = extensions + ",+" + cl_intel_subgroups_char_name;
     }
+    const char* cl_intel_subgroups_long_name = "cl_intel_subgroups_long";
+    if (optionsEx.find(cl_intel_subgroups_long_name) != std::string::npos) {
+      // Experimental implementation of subgroups_long extension. 
+      // If user added it to build option, add it to extension list.
+      extensions = extensions + ",+" + cl_intel_subgroups_long_name;
+    }
     if (extensions.find("cl_intel_media_block_io") != std::string::npos)
     {
       optionsEx += " -Dcl_intel_media_block_io";
