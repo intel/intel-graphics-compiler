@@ -158,7 +158,7 @@ int Get_PreDefined_Surf_Index( int index );
 
 inline bool isShiftOp(ISA_Opcode op)
 {
-    return op == ISA_SHL || op == ISA_SHR || op == ISA_ASR;
+    return op == ISA_SHL || op == ISA_SHR || op == ISA_ASR || op == ISA_ROL || op == ISA_ROR;
 }
 
 

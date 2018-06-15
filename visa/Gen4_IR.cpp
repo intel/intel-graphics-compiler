@@ -7011,6 +7011,9 @@ bool G4_INST::canSupportSaturate() const
     case G4_not:
     case G4_or:
     case G4_xor:
+    case G4_rol:
+    case G4_ror:
+    case G4_dp4a:
     case G4_smov:
         return false;
     default:
@@ -7065,6 +7068,7 @@ bool G4_INST::canSupportCondMod(const IR_Builder& builder) const
 		(op == G4_dp3) ||
 		(op == G4_dp4) ||
 		(op == G4_dph) ||
+		(op == G4_dp4a) ||
 		(op == G4_line) ||
 		(op == G4_lrp) ||
 		(op == G4_lzd) ||
@@ -7572,6 +7576,8 @@ bool G4_INST::canDstBeAcc(const IR_Builder& builder) const
     case G4_mad:
     case G4_csel:
         return builder.canMadHaveAcc();
+    case G4_dp4a:
+        return builder.relaxedACCRestrictions2();
     default:
         return false;
     }
@@ -7711,6 +7717,8 @@ bool G4_INST::canSrcBeAcc(int srcId, const IR_Builder& builder) const
         return src->getModifier() == Mod_src_undef;
     case G4_pln:
         return builder.doPlane() && src->getModifier() == Mod_src_undef;
+    case G4_dp4a:
+        return builder.relaxedACCRestrictions2();
     default:
         return false;
     }

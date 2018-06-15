@@ -48,6 +48,13 @@ static Platform getIGAInternalPlatform(TARGET_PLATFORM genxPlatform)
     case GENX_BXT:
         platform = Platform::GEN9;
         break;
+    case GENX_CNL:
+        platform = Platform::GEN10;
+        break;
+    case GENX_ICL:
+    case GENX_ICLLP:
+        platform = Platform::GEN11;
+        break;
     default:
         break;
     }
@@ -127,6 +134,12 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
         break;
     case G4_asr:
         igaOp = iga::Op::ASR;
+        break;
+    case G4_ror:
+        igaOp = iga::Op::ROR;
+        break;
+    case G4_rol:
+        igaOp = iga::Op::ROL;
         break;
     case G4_cmp:
         igaOp = iga::Op::CMP;
@@ -284,6 +297,9 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
         break;
     case G4_dp2:
         igaOp = iga::Op::DP2;
+        break;
+    case G4_dp4a:
+        igaOp = iga::Op::DP4A;
         break;
     case G4_line:
         igaOp = iga::Op::LINE;

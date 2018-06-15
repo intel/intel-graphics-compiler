@@ -155,6 +155,8 @@ extern const char* steppingNames[];
 // -- "SKL" --> GENX_SKL
 // -- "BXT" --> GENX_BXT
 // -- "CNL" --> GENX_CNL
+// -- "ICL" --> GENX_ICL
+// -- "ICLLP" --> GENX_ICLLP
 extern "C" int SetPlatform(const char* s);
 extern "C" int SetVisaPlatform(TARGET_PLATFORM vPlatform);
 
@@ -168,6 +170,8 @@ extern "C" TARGET_PLATFORM getGenxPlatform( void );
 // 5 SKL
 // 6 BXT
 // 7 CNL
+// 8 ICL
+// 10 ICLLP
 // Not linearized for backward compatibility.
 extern "C" int getGenxPlatformEncoding();
 

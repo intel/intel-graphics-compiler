@@ -3964,6 +3964,10 @@ static iga_gen_t getIGAPlatform()
     case GENX_CNL:
         platform = IGA_GEN10;
         break;
+    case GENX_ICL:
+    case GENX_ICLLP:
+        platform = IGA_GEN11;
+        break;
     default:
         break;
     }

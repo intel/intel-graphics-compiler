@@ -178,6 +178,12 @@ and|or|xor|shl|shr|asr {
 			   return BINARY_LOGIC_OP;
 		   }
 
+rol|ror {
+			   TRACE("\n** Binary Logic INST ");
+			   CISAlval.opcode = str2opcode(yytext);
+			   return BINARY_LOGIC_OP;
+		   }
+
 
 addc|subb {
 			   TRACE("\n** MATH INST ");

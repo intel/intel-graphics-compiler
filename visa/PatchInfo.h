@@ -60,6 +60,10 @@ enum {
   PP_CHV    = 5,  ///< CherryView
   PP_SKL    = 6,  ///< Skylake
   PP_BXT    = 7,  ///< Broxton
+  PP_GLV    = 8,  ///< GlenView
+  PP_CNL    = 9,  ///< CannonLake
+  PP_ICL    = 10, ///< IceLake
+  PP_ICLLP  = 11, ///< IceLake LP
 };
 
 /// Patch info header.
@@ -85,6 +89,10 @@ struct PInfoHdr {
     case PP_CHV:
     case PP_SKL:
     case PP_BXT:
+    case PP_GLV:
+    case PP_CNL:
+    case PP_ICL:
+    case PP_ICLLP:
       return true;
     default: break;
     }

@@ -1378,6 +1378,7 @@ static void verifyInstructionArith(const common_isa_header& isaHeader, const ker
             REPORT_INSTRUCTION(options,dstType == ISA_TYPE_UD, "lzd only supports UD type");
             break;
         case ISA_MULH:
+        case ISA_DP4A:
             /// U or UD only
             REPORT_INSTRUCTION(options, dstType == ISA_TYPE_D || dstType == ISA_TYPE_UD,
                 "%s only support D/UD dst type", ISA_Inst_Table[opcode].str); 
@@ -1486,6 +1487,9 @@ static void verifyInstructionArith(const common_isa_header& isaHeader, const ker
                 REPORT_INSTRUCTION(options,srcType == ISA_TYPE_UD, "%s src0 and src1 only supports single UD type", ISA_Inst_Table[opcode].str);
                 break;
             }
+            case ISA_DP4A:
+                REPORT_INSTRUCTION(options,srcType == ISA_TYPE_D || srcType == ISA_TYPE_UD, "%s src0 and src1 only supports single UD type", ISA_Inst_Table[opcode].str);
+                break;
             default:
                  break; // Prevent gcc warning
         }
@@ -1527,6 +1531,20 @@ static void verifyInstructionLogic(const common_isa_header& isaHeader, const ker
                          "Operand type of logic operantion for predicate operands should all be BOOL "
                          "(ie if one operand is BOOL they all have to be BOOL).");
 
+        if (opcode == ISA_ROR || opcode == ISA_ROL)
+        {
+            switch (opnd_type)
+            {
+            case ISA_TYPE_B:
+            case ISA_TYPE_UB:
+            case ISA_TYPE_UQ:
+            case ISA_TYPE_Q:
+                REPORT_INSTRUCTION(options, false,
+                    "ror/rol does not support i8/i64 types");
+            default:
+                break;
+            }
+        }
 
         switch (opnd_type)
         {

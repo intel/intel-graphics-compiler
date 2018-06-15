@@ -80,6 +80,8 @@ typedef uint64_t QWORD;
 #pragma pack(push, 1)
 #include "IGfxHwEuIsaCNL.h"
 
+#include "IGfxHwEuIsaICL.h"
+
 
 /// \brief Class encapsulating encoding machinery using new auto-generated headers
 ///
@@ -352,6 +354,45 @@ public:
         }
         else
         {
+            switch (regType)
+            {    //BXML bug Line 851: bitrange 5-8, should be: 37-40
+            case Type_UD:
+                opnds.SetDestinationDataType(G11HDL::DSTTYPE_UD);
+                break;
+            case Type_D:
+                opnds.SetDestinationDataType(G11HDL::DSTTYPE_D);
+                break;
+            case Type_UW:
+                opnds.SetDestinationDataType(G11HDL::DSTTYPE_UW);
+                break;
+            case Type_W:
+                opnds.SetDestinationDataType(G11HDL::DSTTYPE_W);
+                break;
+            case Type_UB:
+                opnds.SetDestinationDataType(G11HDL::DSTTYPE_UB);
+                break;
+            case Type_B:
+                opnds.SetDestinationDataType(G11HDL::DSTTYPE_B);
+                break;
+            case Type_DF:
+                opnds.SetDestinationDataType(G11HDL::DSTTYPE_DF);
+                break;
+            case Type_F:
+                opnds.SetDestinationDataType(G11HDL::DSTTYPE_F);
+                break;
+            case Type_UQ:
+                opnds.SetDestinationDataType(G11HDL::DSTTYPE_UQ);
+                break;
+            case Type_Q:
+                opnds.SetDestinationDataType(G11HDL::DSTTYPE_Q);
+                break;
+            case Type_HF:
+                opnds.SetDestinationDataType(G11HDL::DSTTYPE_HF);
+                break;
+            default:
+                MUST_BE_TRUE(false, "Encoding error: destination type unknown");
+                break;
+            }
         }
 	}
 

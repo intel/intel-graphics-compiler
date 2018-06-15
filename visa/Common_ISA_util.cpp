@@ -120,6 +120,8 @@ G4_opcode Get_G4_Opcode_From_Common_ISA_Opcode( ISA_Opcode opcode )
             return G4_dp4;
         case ISA_DPH:
             return G4_dph;
+        case ISA_DP4A:
+            return G4_dp4a;
         case ISA_EXP:
             return G4_math;
         case ISA_FRC:
@@ -178,6 +180,10 @@ G4_opcode Get_G4_Opcode_From_Common_ISA_Opcode( ISA_Opcode opcode )
             return G4_shr;
         case ISA_ASR:
             return G4_asr;
+        case ISA_ROL:
+            return G4_rol;
+        case ISA_ROR:
+            return G4_ror;
         case ISA_BFE:
             return G4_bfe;
         case ISA_BFI:

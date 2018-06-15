@@ -246,6 +246,24 @@ void CISA_IR_Builder::InitVisaWaTable(TARGET_PLATFORM platform, Stepping step)
         VISA_WA_ENABLE(m_pWaTable, WaNoSimd16TernarySrc0Imm);
     }
 
+    // WA for future platforms
+    if (platform == GENX_ICLLP || platform == GENX_ICL)
+    {
+        VISA_WA_ENABLE(m_pWaTable, Wa_1406306137);
+    }
+    if (platform == GENX_ICLLP  && (step == Step_A || step == Step_B))
+    {
+        VISA_WA_ENABLE(m_pWaTable, Wa_2201674230);
+    }
+    switch (platform)
+    {
+        case GENX_ICLLP:
+        case GENX_ICL:
+            VISA_WA_ENABLE(m_pWaTable, Wa_1406950495);
+            break;
+        default:
+            break;
+    }
 }
 
 // note that this will break if we have more than one builder active,
@@ -723,6 +741,9 @@ void CISA_IR_Builder::emitFCPatchFile()
         case GENX_CHV:    return cm::patch::PP_CHV;
         case GENX_SKL:    return cm::patch::PP_SKL;
         case GENX_BXT:    return cm::patch::PP_BXT;
+        case GENX_CNL:    return cm::patch::PP_CNL;
+        case GENX_ICL:    return cm::patch::PP_ICL;
+        case GENX_ICLLP:  return cm::patch::PP_ICLLP;
         default:
           break;
         }

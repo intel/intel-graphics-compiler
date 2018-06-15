@@ -1462,6 +1462,49 @@ bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB* bb)
     return false;
 }
 
+bool HWConformity::fixRotate(INST_LIST_ITER i, G4_BB* bb)
+{
+
+    // rotate requires src0 and dst to have the same datatype precision
+    // It also does not support *B/*Q types, but that should be enforced at the vISA level
+    // returns true if new instruction is inserted
+    bool changed = false;
+    G4_INST* inst = *i;
+    if (inst->opcode() != G4_rol && inst->opcode() != G4_ror)
+    {
+        return false;
+    }
+    G4_DstRegRegion* dst = inst->getDst();
+    G4_SrcRegRegion* src = inst->getSrc(0)->asSrcRegRegion();
+
+    MUST_BE_TRUE(IS_WTYPE(dst->getType()) || IS_DTYPE(dst->getType()), "dst type must be *W or *D");
+    MUST_BE_TRUE(IS_WTYPE(src->getType()) || IS_DTYPE(src->getType()), "src type must be *W or *D");
+    if (G4_Type_Table[dst->getType()].byteSize != G4_Type_Table[src->getType()].byteSize)
+    {
+        // keep exec type same and change dst to be same type as src
+        inst->setDest(insertMovAfter(i, dst, src->getType(), bb));
+        changed = true;
+    }
+
+    if (dst->getType() == Type_W)
+    {
+        dst->setType(Type_UW);
+    }
+    else if (dst->getType() == Type_D)
+    {
+        dst->setType(Type_UD);
+    }
+
+    if (src->getType() == Type_W)
+    {
+        src->setType(Type_UW);
+    }
+    else if (src->getType() == Type_D)
+    {
+        src->setType(Type_UD);
+    }
+    return changed;
+}
 
 bool HWConformity::fixDstAlignment( INST_LIST_ITER i, G4_BB* bb, G4_Type extype, unsigned int dst_elsize )
 {
@@ -5927,6 +5970,7 @@ void HWConformity::conformBB( BB_LIST_ITER it)
         }
 
         fixLine(i, bb);
+        fixRotate(i, bb);
 
         // CHV/BXT specific checks for 64b datatypes
         fix64bInst( i, bb);

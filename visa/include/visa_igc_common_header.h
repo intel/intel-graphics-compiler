@@ -381,7 +381,10 @@ typedef enum {
     ISA_DWORD_ATOMIC       = 0x7D,
     ISA_SQRTM              = 0x7E,
     ISA_DIVM               = 0x7F,
-    ISA_NUM_OPCODE = 0x80,
+    ISA_ROL                = 0x80,
+    ISA_ROR                = 0x81,
+    ISA_DP4A               = 0x82,
+    ISA_NUM_OPCODE = 0x83,
     ISA_OPCODE_ENUM_SIZE   = 0xff
 } ISA_Opcode;
 
@@ -458,6 +461,8 @@ typedef enum {
     GENX_SKL,
     GENX_BXT,
     GENX_CNL,
+    GENX_ICL,
+    GENX_ICLLP,
     ALL
 } TARGET_PLATFORM;
 

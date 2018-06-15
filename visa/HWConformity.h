@@ -150,7 +150,7 @@ namespace vISA
         bool fixAddcSubb(G4_BB* bb);
         void fixDataLayout();
         bool fixMov(INST_LIST_ITER i, G4_BB* bb);
-
+        bool fixRotate(INST_LIST_ITER i, G4_BB* bb);
 
         void helperGenerateTempDst(
             G4_BB *bb,

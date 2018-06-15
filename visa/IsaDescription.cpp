@@ -165,6 +165,9 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_DWORD_ATOMIC,       ISA_Inst_Data_Port,  "dword_atomic",        6, 1 },
     { ISA_SQRTM,              ISA_Inst_Arith,      "sqrtm",               1, 1 },
     { ISA_DIVM,               ISA_Inst_Arith,      "divm",                2, 1 },
+    { ISA_ROL,                ISA_Inst_Logic,      "rol",                 2, 1 },
+    { ISA_ROR,                ISA_Inst_Logic,      "ror",                 2, 1 },
+    { ISA_DP4A,               ISA_Inst_Arith,      "dp4a",                3, 1 },
 };
 
 
@@ -1665,6 +1668,40 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         { OPND_VECTOR_DST_G_I, TYPE_FLOAT, SAT_FLOAT_ONLY },
         { OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, 0 },
         { OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, 0 },
+    },
+    },
+
+    /// 128 (0x80)
+    { GENX_ICL, ISA_ROL, ISA_Inst_Logic, "rol", 5, SAME_DATA_TYPE,
+    {
+        { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
+        { OPND_PRED, ISA_TYPE_UW, 0 },
+        { OPND_VECTOR_DST_G_I, ISA_TYPE_W|ISA_TYPE_UW|ISA_TYPE_D|ISA_TYPE_UD, 0 },
+        { OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },
+        { OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },
+    },
+    },
+
+    /// 129 (0x81)
+    { GENX_ICL, ISA_ROR, ISA_Inst_Logic, "ror", 5, SAME_DATA_TYPE,
+    {
+        { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
+        { OPND_PRED, ISA_TYPE_UW, 0 },
+        { OPND_VECTOR_DST_G_I, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },
+        { OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },
+        { OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_W | ISA_TYPE_UW | ISA_TYPE_D | ISA_TYPE_UD, 0 },
+    },
+    },
+
+    /// 130 (0x82)
+    { GENX_ICL, ISA_DP4A, ISA_Inst_Arith, "dp4a", 6, SAME_DATA_TYPE,
+    {
+        { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
+        { OPND_PRED, ISA_TYPE_UW, 0 },
+        { OPND_VECTOR_DST_G_I, ISA_TYPE_D | ISA_TYPE_UD, 0 },
+        { OPND_VECTOR_SRC_G_I, ISA_TYPE_D | ISA_TYPE_UD, 0 },
+        { OPND_VECTOR_SRC_G_I, ISA_TYPE_D | ISA_TYPE_UD, 0 },
+        { OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_D | ISA_TYPE_UD, 0 },
     },
     },
 

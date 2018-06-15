@@ -46,6 +46,8 @@ const char* platformString[ALL] =
     "SKL",
     "BXT",
     "CNL",
+    "ICL",
+    "ICLLP",
 };
 
 #define CM_SUCCESS                                  0
@@ -81,6 +83,16 @@ int SetPlatform( const char * str ) {
         visaPlatform = GENX_CNL;
         retVal = CM_SUCCESS;
     }
+    else if (platform == "ICL" || platform == "gen11")
+    {
+        visaPlatform = GENX_ICL;
+        retVal = CM_SUCCESS;
+    }
+    else if (platform == "ICLLP" || platform == "gen11lp")
+    {
+        visaPlatform = GENX_ICLLP;
+        retVal = CM_SUCCESS;
+    }
 
     return retVal;
 }
@@ -105,6 +117,8 @@ TARGET_PLATFORM getGenxPlatform( void )
 // 5 SKL
 // 6 BXT
 // 7 CNL
+// 8 ICL
+// 10 ICLLP
 // Note that encoding is not linearized.
 int getGenxPlatformEncoding()
 {

@@ -1,5 +1,5 @@
 #pragma once
-    // HW Capabilities for open source branch (currently Gen9 and below)
+    // HW Capabilities
     // this are part of IR_Builder class and include in Build_IR.h
 
     enum class PlatformGen
@@ -7,7 +7,8 @@
         GEN_UNKNOWN = 0,
         GEN8 = 8,
         GEN9 = 9,
-        GEN10 = 10
+        GEN10 = 10,
+	    GEN11 = 11
     };
 
     PlatformGen getPlatformGeneration(TARGET_PLATFORM platform) const 
@@ -22,6 +23,9 @@
             return PlatformGen::GEN9;
           case GENX_CNL:
             return PlatformGen::GEN10;
+          case GENX_ICL:
+		  case GENX_ICLLP:
+		    return PlatformGen::GEN11;
           default:
             assert(false && "unsupported platform");
             return PlatformGen::GEN_UNKNOWN;
@@ -30,7 +34,9 @@
 
     bool hasMixMode() const
     {
-        return (getGenxPlatform() > GENX_BDW && !getOption(vISA_DisableMixMode));
+        return getOption(vISA_ForceMixMode) ||
+            (getGenxPlatform() > GENX_BDW && 
+            getPlatformGeneration(getGenxPlatform()) != PlatformGen::GEN11 && !getOption(vISA_DisableMixMode));
     }
 
     bool canDoSLMSpill() const
@@ -42,12 +48,12 @@
     bool forceSamplerHeader() const
     {
         return m_options->getOption(vISA_forceSamplerHeader) ||
-            m_options->getOption(vISA_enablePreemption);
+            (getGenxPlatform() < GENX_ICL && m_options->getOption(vISA_enablePreemption));
     }
 
     bool needsNoPreemptR2ForSend() const 
     {
-        return false;
+        return getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN11;
     }
 
     bool noDDAllowedPlatform() const
@@ -62,17 +68,17 @@
 
     bool no64bitType() const
     {
-        return false;
+        return getGenxPlatform() == GENX_ICLLP;
     }
 
     bool doPlane() const
     {
-        return !getOption(vISA_expandPlane);
+        return getGenxPlatform() < GENX_ICL && !getOption(vISA_expandPlane);
     }
 
     bool favorFloatMov() const
     {
-        return false;
+        return getGenxPlatform() >= GENX_ICL;
     }
 
     bool noScalarJmp() const
@@ -107,17 +113,18 @@
 
     bool noSrc2Regioning() const
     {
-        return false;
+        return getGenxPlatform() >= GENX_ICL;
     }
 
     bool no64bitRegioning() const
     {
-        return getGenxPlatform() == GENX_CHV || getGenxPlatform() == GENX_BXT;
+        return getGenxPlatform() == GENX_CHV || getGenxPlatform() == GENX_BXT ||
+               getGenxPlatform() == GENX_ICLLP;
     }
 
     bool noSrc1Byte() const
     {
-        return getOption(vISA_noSrc1Byte);
+        return getOption(vISA_noSrc1Byte) || getGenxPlatform() >= GENX_ICL;
     }
 
     bool needsFenceCommitEnable() const
@@ -134,7 +141,7 @@
 
     bool hasIEEEDivSqrt() const
     {
-        return true;
+        return getGenxPlatform() < GENX_ICL;
     }
 
     bool gotoJumpOnTrue() const
@@ -146,10 +153,10 @@
     {
         return getGenxPlatform() < GENX_CNL;
     }
-
+ 
     bool hasSLMFence() const
     {
-        return false;
+        return getGenxPlatform() >= GENX_ICL;
     }
 
     bool GRFAlign() const
@@ -164,7 +171,7 @@
 
     bool oneGRFBankDivision() const
     {
-        return true;
+        return getGenxPlatform() != GENX_ICL;
     }
 
     bool lowHighBundle() const
@@ -184,17 +191,17 @@
 
     bool useNewR0Format() const
     {
-        return false;
+        return getGenxPlatform() >= GENX_ICL;
     }
 
     int getPredMaskEnableBit() const
     {
-        return 30;
+        return getGenxPlatform() < GENX_ICL ? 30 : 23;
     }
 
     int getBarrierIDMask() const
     {
-        return 0x8F000000;
+        return getGenxPlatform() < GENX_ICL ? 0x8F000000 : 0x7F000000;
     }
 
     uint32_t getMaxSendMessageLength() const
@@ -234,7 +241,7 @@
 
     bool hasHeaderlessMRTWrite() const
     {
-        return false;
+        return getGenxPlatform() >= GENX_ICLLP;
     }
 
     bool hasDotProductInst() const
@@ -244,12 +251,12 @@
 
     bool hasLRP() const
     {
-        return true;
+        return getGenxPlatform() < GENX_ICL;
     }
 
     bool hasMadm() const
     {
-        return true;
+        return getGenxPlatform() != GENX_ICLLP;
     }
 
     int getBarrierMask(bool enableBarrierInstCounterBits) const
@@ -259,10 +266,15 @@
             //pre-SKL: and (8) H0.0:ud r0.2:ud 0x0F000000 (r0.2, bit 24-27)
             return enableBarrierInstCounterBits ? 0x0F00FE00 : 0x0F000000;
         }
-        else
+        else if (getGenxPlatform() < GENX_ICL)
         {
             //SKL+: and (8) H0.0:ud r0.2:ud 0x8F000000 (r0.2, bit24-27, bit31)
             return enableBarrierInstCounterBits ? 0x8F00FE00 : 0x8F000000;
+        }
+        else
+        {
+            //else: and (8) H0.0:ud r0.2:ud 0x7F000000 (r0.2, bit24-30)
+            return enableBarrierInstCounterBits ? 0x7F00FF00 : 0x7F000000;
         }
     }
 
@@ -278,7 +290,7 @@
 
     bool hasFdivPowWA() const
     {
-        return true;
+        return getGenxPlatform() < GENX_ICL;
     }
 
     bool hasCondModForTernary() const
@@ -303,14 +315,14 @@
     }
 
     bool doAccSub() const
-    {
-        return false;
-    }
+	{
+		return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN11;
+	}
 
     bool hasNFType() const
-    {
-        return false;
-    }
+	{
+		return getGenxPlatform() >= GENX_ICL;
+	}
 
     void getSSIDBits(uint32_t& width, uint32_t& start) const
     {
@@ -327,14 +339,15 @@
     }
 
     bool encodeAccRegSelAsAlign1() const
-    {
-        return false;
-    }
+	{
+		return getGenxPlatform() >= GENX_ICL;
+	}
 
     bool fuseTypedWrites() const
-    {
-        return getOption(vISA_FuseTypedWrites);
-    }
+	{
+		return getOption(vISA_FuseTypedWrites) || 
+			getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN11;
+	}
 
     bool hasSIMD16TypedRW() const
     {
