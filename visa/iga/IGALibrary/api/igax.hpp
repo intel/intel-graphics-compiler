@@ -52,6 +52,8 @@ enum Platform {
     , GEN9          = IGA_GEN9
     , GEN9LP        = IGA_GEN9lp
     , GEN9P5        = IGA_GEN9p5
+    , GEN10         = IGA_GEN10
+    , GEN11         = IGA_GEN11
 };
 
 struct Diagnostic {

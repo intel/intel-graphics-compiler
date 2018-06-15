@@ -148,5 +148,19 @@ extern const ged_disassembly_token_t DisassemblyTokensTable107[7];
 extern const ged_disassembly_token_t DisassemblyTokensTable108[7];
 extern const ged_disassembly_token_t DisassemblyTokensTable109[12];
 extern const ged_disassembly_token_t DisassemblyTokensTable110[7];
+extern const ged_disassembly_token_t DisassemblyTokensTable111[7];
+extern const ged_disassembly_token_t DisassemblyTokensTable112[4];
+extern const ged_disassembly_token_t DisassemblyTokensTable113[7];
+extern const ged_disassembly_token_t DisassemblyTokensTable114[4];
+extern const ged_disassembly_token_t DisassemblyTokensTable115[8];
+extern const ged_disassembly_token_t DisassemblyTokensTable116[4];
+extern const ged_disassembly_token_t DisassemblyTokensTable117[4];
+extern const ged_disassembly_token_t DisassemblyTokensTable118[7];
+extern const ged_disassembly_token_t DisassemblyTokensTable119[5];
+extern const ged_disassembly_token_t DisassemblyTokensTable120[2];
+extern const ged_disassembly_token_t DisassemblyTokensTable121[2];
+extern const ged_disassembly_token_t DisassemblyTokensTable122[7];
+extern const ged_disassembly_token_t DisassemblyTokensTable123[6];
+extern const ged_disassembly_token_t DisassemblyTokensTable124[6];
 #endif // GED_DISASSEMBLY
 #endif // GED_DISASSEMBLY_TOKEN_TABLES_H

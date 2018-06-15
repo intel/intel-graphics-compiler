@@ -24,14 +24,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #include "Floats.hpp"
-#include <iomanip>
-#include <sstream>
-#include <stdint.h>
-#include <iostream>
-#include <stdlib.h>
-#include <cmath> // needed for android build!
-#include <limits>
+#include "../strings.hpp"
 
+#include <cmath> // needed for android build!
+#include <cstdlib>
+#include <cstdint>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <sstream>
+
+using namespace iga;
 
 // Big Theory Statement (BTS): on NaN's in IGA
 //
@@ -40,10 +43,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // class as the characteristic value when they want a NaN value.
 // For example, the sign bit can be anything.
 //
-// E.g. for 32-bit IEEE 754 we have (C.f. section 6.2.1)
+// NOTE: we distinguish between 'qnan' and 'snan' instead of just using 'nan'
+//       with the whole payload since we parse as 64b and only narrow once
+//       we see the type; we considered nan( HEXLIT ) and just letting the
+//       user sort the meaning of the mantissa out, but this gets mess when
+//       widening literals during parse or narrowing them during formatting
+//
+// E.g. for 32-bit IEEE 754 we have (C.f. section 6.2.1 of the spec)
 //   s eeeeeeee mmm`mmmm`mmmm`mmmm`mmmm`mmmm
 // (where the s and the m's can be anything such that at least one 'm' is
 // non-zero; all 0's would imply infinity)
+// NOTE: this all generalizes for half and double precision float encodings
 //
 // SNAN: "snan" (signaling NaN) is:
 //   s 11111111 0xx`xxxx`xxxx`xxxx`xxxx`xxxx
@@ -52,60 +62,42 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 // QNAN: IEEE754 says that qnan (quiet NaN) is
 //   s 11111111 1xx`xxxx`xxxx`xxxx`xxxx`xxxx
-//              ^ leading bit is 1
+//              ^ leading bit of mantiss is 1; the rest of the payload
+//                can be zeros since this bit is set
 //
 // IGA supports the following syntax (from examples)
 //     NaNLit ::= '-'? ('snan'|'qnan') '(' HEXLIT ')'
 // Examples:
 //   * "-snan(0xA):f" parses as
 //         s eeeeeeee mmm`mmmm`mmmm`mmmm`mmmm`mmmm
-//         1 11111111 100`0000`0000`0000`0000`1010
+//         1 11111111 000`0000`0000`0000`0000`1010
 //         ^ negative ^ snan                  ^^^^ 0xA payload
-//           sign bit
-//           respected
+//           sign bit is respected
 //
 //   * "qnan(0x1B):f" parses as
 //         s eeeeeeee mmm`mmmm`mmmm`mmmm`mmmm`mmmm
-//         1 11111111 000`0000`0000`0000`0001`1011
+//         1 11111111 100`0000`0000`0000`0001`1011
 //         ^ positive ^ qnan                ^^^^^^ 0x1B
 //
-//   * "qnan(0x0):f" would be a parse error since the mantissa must not be 0
+//   * "snan(0x0):f" would be a parse error since the mantissa must not be 0
 //         s eeeeeeee mmm`mmmm`mmmm`mmmm`mmmm`mmmm
 //         1 11111111 000`0000`0000`0000`0000`0000
-//         ^ positive ^ qnan^^^^^^^^^^^^^^^^^^^^^^^ at least one bit must be 0
+//         ^ positive ^ snan^^^^^^^^^^^^^^^^^^^^^^^ at least one bit must be 0
 //
-//   * "qnan(0x00800000):f" illegal: payload value too large for bitfield
+//   * "snan(0x00800000):f" illegal: payload value too large for bitfield
 //         s eeeeeeee mmm`mmmm`mmmm`mmmm`mmmm`mmmm
 //         1 11111111 000`0000`0000`0000`0000`0000
 //                  ^ high bit of payload overflows to here
 //
-//   * "qnan(0x00800000):df" payload fits since df has 53 bits
+//   * "snan(0x00800000):df" payload fits since df has 53 bits
 //         s eeeeeeeeeee m`mmmm`mmmm`mmmm`mmmm`mmmm`mmmm`mmmm`mmmm`mmmm`mmmm`mmmm`mmmm
 //         1 11111111111 0`0000`0000`0000`0000`0000`0000`1000`0000`0000`0000`0000`0000
 //                                                       ^ 0x800000
 //
-//   * "qnan(0x400000):f" is legal, but just means snan(0).  This is because
-//      the parser parses the value as 64b and then converts it to 32 when it
+//   * "snan(0x400000):f" is legal, but just means qnan(0).  This is because
+//      the parser parses the value as 64b and then converts it to 32b when it
 //      sees the :f.  The payload fits while parsing, but conversion cannot
 //      tell that we were dealing with qnan
-//
-// NOTE: we distinguish between 'qnan' and 'snan' instead of just using 'nan'
-//       with the whole payload since we parse as 64b and only narrow once
-//       we see the type
-
-
-// A number is exact if we can parse it back to it's original value
-// assumes the number is correct
-//
-// We parse floats as 64b literals and cast down.  So we use strtod for all
-// floating point types and cast down.
-template <typename T>
-static bool isExact(std::string str, T x)
-{
-    // we always parse as a double since the parser will do the same
-    double y = strtod(str.c_str(), nullptr);
-    return ((T)y == x);
-}
 
 template <typename F> int FloatMantissaBits();
 template <typename F> int FloatExponentBits();
@@ -137,18 +129,30 @@ void FormatFloatImplNaN(std::ostream &os, I bits)
     if (bits & SIGN_BIT) {
         os << '-';
     }
-    // split the payload into the sNaN bit (high bit of the mantissa)
-    // and the lower bits
-    const I SNAN_BIT = (I)1 << (MANT_LEN - 1);
-    if (bits & SNAN_BIT) {
-        os << "snan";
-    } else {
+    // split the payload into the quiet/signaling bit
+    // (high bit of the mantissa) and the lower bits
+    const I QNAN_BIT = (I)1 << (MANT_LEN - 1);
+    if (bits & QNAN_BIT) {
         os << "qnan";
+    } else {
+        os << "snan";
     }
     os << "(";
-    I lowerPayload = bits & (SNAN_BIT - 1); // lower bits of mantissa
-    os << "0x" << std::hex << std::uppercase << lowerPayload << std::dec;
+    I lowerPayload = bits & (QNAN_BIT - 1); // lower bits of mantissa
+    fmtHex(os, (uint64_t)lowerPayload);
     os << ")";
+}
+
+// Checks if a floating point number will reparse exactly as formatted.
+//
+// We parse floats as 64b literals and cast down.  So we use strtod for all
+// floating point types and cast down.
+template <typename T>
+static bool willReparseExactly(T x, std::string str)
+{
+    // we always parse as a double since the parser will do the same
+    double y = strtod(str.c_str(), nullptr);
+    return ((T)y == x);
 }
 
 // Formats a float in decimal or scientific format if it will not lose
@@ -184,7 +188,7 @@ static bool TryFormatFloatImplNonHex(std::ostream &os, F x)
         std::stringstream ss;
         ss.unsetf(std::ios_base::floatfield);
         ss << x;
-        if (isExact(ss.str(), x)) {
+        if (willReparseExactly(x, ss.str())) {
             auto str = ss.str();
             os << str;
             if (str.find('.') == std::string::npos &&
@@ -196,9 +200,11 @@ static bool TryFormatFloatImplNonHex(std::ostream &os, F x)
                 //
                 //  e.g. given "-0.0f", if we were to format that
                 // as "-0:f" (which MSVCRT does), then it parses as
-                // "0" since this is the negation of the S64 int 0 (during parse)
+                // "0" since this is the negation the S64 value 0 (during parse)
                 //
-                // NOTE: we have to ensure default doesn't use exponential
+                // NOTE: we also have to ensure that we aren't using an
+                // exponential (scientific) form already.
+                //
                 // e.g. 1e-007 should not convert to 1e-007.0
                 os << ".0";
             }
@@ -208,12 +214,12 @@ static bool TryFormatFloatImplNonHex(std::ostream &os, F x)
         // try as scientific
         ss.str(std::string()); // reset
         ss << std::scientific << x;
-        if (isExact(ss.str(), x)) {
+        if (willReparseExactly(x, ss.str())) {
             os << ss.str();
             return true;
         }
 
-        // TODO: IFDEF this given a newer enough compiler
+        // TODO: IFDEF this given a new enough compiler
         // (must parse too)
         // e.g. 0x1.47ae147ae147bp-7 (need to parse first)
         //   NOTE: parsing should use >>
@@ -229,7 +235,7 @@ static bool TryFormatFloatImplNonHex(std::ostream &os, F x)
 template <typename F>
 static void FormatFloatAsHex(std::ostream &os, F f)
 {
-    os << "0x" << std::hex << std::uppercase << iga::FloatToBits(f) << std::dec;
+    fmtHex(os, (uint64_t)iga::FloatToBits(f));
 }
 
 void iga::FormatFloat(std::ostream &os, float x)
@@ -249,7 +255,7 @@ void iga::FormatFloat(std::ostream &os, double x)
 void iga::FormatFloat(std::ostream &os, uint16_t w16)
 {
 #if 0
-    os << "0x" << std::hex << std::uppercase << f16 << std::dec;
+    fmtHex(os, (uint64_t)w16);
 #else
     float f32 = ConvertHalfToFloat(w16);
     if (IS_NAN(f32)) {
@@ -266,8 +272,6 @@ void iga::FormatFloat(std::ostream &os, uint16_t w16)
 
 void iga::FormatFloat(std::ostream &os, uint8_t x)
 {
-    // TODO: implement the above
-    // os << "0x" << std::hex << std::uppercase << (unsigned)x << std::dec;
     FormatFloat(os, ConvertQuarterToFloatGEN(x));
 }
 
@@ -280,7 +284,7 @@ uint32_t iga::ConvertDoubleToFloatBits(double f)
 	if (e64 == (IGA_F64_EXP_MASK >> FloatMantissaBits<double>()) && m64 != 0) {
 		// f64 NaN
 		uint32_t m32 = (uint32_t)m64 & IGA_F32_MANT_MASK;
-		m32 |= (uint32_t)((m64 & IGA_F64_SNAN_BIT) >>
+		m32 |= (uint32_t)((m64 & IGA_F64_QNAN_BIT) >>
 			(FloatMantissaBits<double>() - FloatMantissaBits<float>())); // preserve snan
 		if (m32 == 0) {
 			// The payload was only in the high bits which we dropped;
@@ -319,7 +323,7 @@ uint16_t  iga::ConvertFloatToHalf(float f)
         if (m32 != 0) {
             // preserve the bottom 9 bits of the NaN payload and
             // shift the signaling bit (high bit) down as bit 10
-            m16 |= (IGA_F32_SNAN_BIT & f32) >>
+            m16 |= (IGA_F32_QNAN_BIT & f32) >>
                 (FloatMantissaBits<float>() - FloatMantissaBits<uint16_t>());
             // s eeeeeeee mmmmmmmmmmmmmmmmmmmmmm
             //            |            |||||||||
@@ -349,7 +353,7 @@ uint16_t  iga::ConvertFloatToHalf(float f)
         //
         // set leading bit past leading mantissa bit (low exponent bit)
         // (hidden one)
-        m32 |= (IGA_F32_SNAN_BIT << 1);
+        m32 |= (IGA_F32_QNAN_BIT << 1);
         // repeatedly increment the f32 exponent and divide the denorm
         // mantissa until the exponent reachs a non-zero value
         for (; e32 <= 127 - 15; m32 >>= 1, e32++)
@@ -444,7 +448,7 @@ float iga::ConvertHalfToFloat(uint16_t u16)
         if (m16 == 0) { // Infinity
             m32 = 0;
         } else { // NaN:  m16!=0 && e16==0x1F
-            m32 = (u16 & IGA_F16_SNAN_BIT) << MANTISSA_DIFFERENCE; // preserve sNaN bit
+            m32 = (u16 & IGA_F16_QNAN_BIT) << MANTISSA_DIFFERENCE; // preserve sNaN bit
             m32 |= (IGA_F16_MANT_MASK >> 1) & m16;
             if (m32 == 0) {
                 m32 = 1; // ensure still NaN
@@ -461,7 +465,7 @@ double iga::ConvertFloatToDouble(float f)
         uint32_t f32 = FloatToBits(f);
 
         uint64_t m64;
-        m64 = (uint64_t)(f32 & IGA_F32_SNAN_BIT) <<
+        m64 = (uint64_t)(f32 & IGA_F32_QNAN_BIT) <<
             (FloatMantissaBits<double>() - FloatMantissaBits<float>()); // keep the sNaN bit
         m64 |= (IGA_F32_MANT_MASK >> 1) & f32; // keep the non sNaN part
                                                // lower part of the payload

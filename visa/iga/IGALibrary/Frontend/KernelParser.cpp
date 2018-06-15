@@ -79,6 +79,19 @@ static const IdentMap<Type> SRC_TYPES = {
     {"uv", Type::UV},
     {"vf", Type::VF},
     {"nf", Type::NF},
+    ///////////////////////////////////////////
+    // non-standard names
+    {"u8", Type::UB},
+    {"u16", Type::UW},
+    {"u32", Type::UD},
+    {"u64", Type::UQ},
+    {"s8", Type::B},
+    {"s16", Type::W},
+    {"s32", Type::D},
+    {"s64", Type::Q},
+    {"f16", Type::HF},
+    {"f32", Type::F},
+    {"f64", Type::DF},
 };
 static const IdentMap<Type> DST_TYPES = {
     {"b",  Type::B},
@@ -93,19 +106,42 @@ static const IdentMap<Type> DST_TYPES = {
     {"f",  Type::F},
     {"df", Type::DF},
     {"nf", Type::NF},
+    ///////////////////////////////////////////
+    // non-standard names
+    {"u8", Type::UB},
+    {"u16", Type::UW},
+    {"u32", Type::UD},
+    {"u64", Type::UQ},
+    {"s8", Type::B},
+    {"s16", Type::W},
+    {"s32", Type::D},
+    {"s64", Type::Q},
+    {"f16", Type::HF},
+    {"f32", Type::F},
+    {"f64", Type::DF},
 };
-static const IdentMap<ImplAcc> IMPLACCS = {
-    {"acc2", ImplAcc::ACC2},
-    {"acc3", ImplAcc::ACC3},
-    {"acc4", ImplAcc::ACC4},
-    {"acc5", ImplAcc::ACC5},
-    {"acc6", ImplAcc::ACC6},
-    {"acc7", ImplAcc::ACC7},
-    {"acc8", ImplAcc::ACC8},
-    {"acc9", ImplAcc::ACC9},
-    {"noacc", ImplAcc::NOACC},
+static const IdentMap<MathMacroExt> MATHMACROREGS = {
+    {"mme0", MathMacroExt::MME0},
+    {"mme1", MathMacroExt::MME1},
+    {"mme2", MathMacroExt::MME2},
+    {"mme3", MathMacroExt::MME3},
+    {"mme4", MathMacroExt::MME4},
+    {"mme5", MathMacroExt::MME5},
+    {"mme6", MathMacroExt::MME6},
+    {"mme7", MathMacroExt::MME7},
+    {"nomme", MathMacroExt::NOMME},
 };
-
+static const IdentMap<MathMacroExt> MATHMACROREGS_OLDSTYLE = {
+    {"acc2", MathMacroExt::MME0},
+    {"acc3", MathMacroExt::MME1},
+    {"acc4", MathMacroExt::MME2},
+    {"acc5", MathMacroExt::MME3},
+    {"acc6", MathMacroExt::MME4},
+    {"acc7", MathMacroExt::MME5},
+    {"acc8", MathMacroExt::MME6},
+    {"acc9", MathMacroExt::MME7},
+    {"noacc", MathMacroExt::NOMME},
+};
 
 GenParser::GenParser(
     const Model &model,
@@ -217,6 +253,7 @@ Type GenParser::ParseSendOperandTypeWithDefault(int srcIx) {
     }
     return t;
 }
+
 bool GenParser::LookupReg(
     const std::string &str,
     const RegInfo*& ri,
@@ -238,7 +275,7 @@ bool GenParser::LookupReg(
     }
     ri = itr->second;
     reg = 0;
-    if (ri->num_regs > 0) {
+    if (ri->numRegs > 0) {
         // if it's a numbered register like "r13" or "cr1", then
         // parse the number part
         size_t off = len;
@@ -254,20 +291,48 @@ bool GenParser::LookupReg(
             ri = nullptr;
             return false;
         }
-        if (reg >= ri->num_regs) {
-            Warning("register is out of bounds");
-        }
     } // else it was something like "null" or "ip"
       // either way, we are done
     return true;
 }
 
-bool GenParser::ConsumeReg(const RegInfo*& ri, int& reg) {
+bool GenParser::PeekReg(const RegInfo*& regInfo, int& regNum) {
+    const Token &tk = Next();
+    if (tk.lexeme != IDENT) {
+        return false;
+    } else if (LookupReg(GetTokenAsString(tk), regInfo, regNum)) {
+        // helpful translation that permits acc2-acc9 and translates them
+        // to mme0-7 with a warning (or whatever they map to on the given
+        // platform
+        if (regInfo->regName == RegName::ARF_ACC && regNum >= regInfo->numRegs) {
+            const RegInfo *mme = m_model.lookupRegInfoByRegName(RegName::ARF_MME);
+            IGA_ASSERT(mme != nullptr, "unable to find MMR on this platform");
+            if (mme) {
+                // switch acc to mme
+                regInfo = mme;
+                // adjust the reg num (e.g. acc2 -> mme0 on GEN8)
+                regNum -= mme->regNumBase;
+                WarningF(tk.loc,"old-style access to mme via acc"
+                    " (use mme%d for acc%d)",
+                    regNum,
+                    regNum + mme->regNumBase);
+            }
+        }
+        if (!regInfo->isRegNumberValid(regNum)) {
+            Warning(tk.loc,"register number out of bounds");
+        }
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool GenParser::ConsumeReg(const RegInfo*& regInfo, int& regNum) {
     const Token &tk = Next();
     if (tk.lexeme != IDENT) {
         return false;
     }
-    if (LookupReg(GetTokenAsString(tk), ri, reg)) {
+    if (PeekReg(regInfo, regNum)) {
         Skip();
         return true;
     } else {
@@ -582,15 +647,19 @@ bool GenParser::parsePrimary(bool consumed, ImmVal &v) {
             ImmVal payload;
             payload.u64 = 0;
             parseBitwiseExpr(true, payload);
-            if (payload.u64 >= IGA_F64_SNAN_BIT) {
+            if (payload.u64 >= IGA_F64_QNAN_BIT) {
                 Fail(payloadLoc, "NaN payload overflows");
-            } else if (payload.u64 == 0 && isQuietNaN) {
-                Fail(payloadLoc, "NaN payload must be nonzero for qnan");
+            } else if (payload.u64 == 0 && !isQuietNaN) {
+                // signaling NaN has a 0 in the high mantissa, so we must
+                // ensure that at least one bit in the mantissa is set
+                // otherwise the entire mantissa is 0's and the pattern
+                // would be an "infinity" pattern, not a NaN
+                Fail(payloadLoc, "NaN payload must be nonzero for snan");
             }
             ConsumeOrFail(RPAREN, "expected )");
             v.u64 = payload.u64 | IGA_F64_EXP_MASK;
-            if (!isQuietNaN) {
-                v.u64 |= IGA_F64_SNAN_BIT;
+            if (isQuietNaN) {
+                v.u64 |= IGA_F64_QNAN_BIT;
             }
         } else {
             Warning(nanSymLoc,
@@ -598,9 +667,10 @@ bool GenParser::parsePrimary(bool consumed, ImmVal &v) {
                 " (pass in a valid payload)");
             v.u64 = IGA_F64_EXP_MASK;
             if (isQuietNaN) {
-                v.u64 |= 1; // set something non-zero in the payload
+                v.u64 |= IGA_F64_QNAN_BIT; // the quiet bit suffices
             } else {
-                v.u64 |= IGA_F64_SNAN_BIT;
+                v.u64 |= 1; // set something other than the quiet bit
+                            // non-zero in the payload
             }
         }
         v.kind = ImmVal::F64;
@@ -830,10 +900,12 @@ void GenParser::initSymbolMaps()
     // map the register names
     // this maps just the non-number part.
     // e.g. with cr0, this maps "cr"; see LookupReg()
-    for (size_t i = 0; i < sizeof(registers)/sizeof(registers[0]); i++) {
-        const RegInfo *ri = &registers[i];
+    int tableLen;
+    const RegInfo *table = GetRegisterSpecificationTable(tableLen);
+    for (int i = 0; i < tableLen; i++) {
+        const RegInfo *ri = table + i;
         if (ri->supportedOn(m_model.platform)) {
-            m_regmap[ri->name] = ri;
+            m_regmap[ri->syntax] = ri;
         }
     }
 }
@@ -1330,15 +1402,6 @@ private:
         }
     }
 
-
-    bool PeekReg(const RegInfo*& ri, int& reg) {
-        const Token &tk = Next();
-        if (tk.lexeme != IDENT) {
-            return false;
-        }
-        return LookupReg(GetTokenAsString(tk), ri, reg);
-    }
-
 #if 0
     // returns the number of characters off
     size_t similarityR(
@@ -1626,20 +1689,21 @@ private:
         if (ConsumeIdentEq("r")) {
             ParseDstOpRegInd(opStart, 0);
         } else {
-            const RegInfo *ri;
+            const RegInfo *regInfo;
             int regNum;
-            if (!ConsumeReg(ri, regNum)) {
+            if (!ConsumeReg(regInfo, regNum)) {
                 Fail("invalid destination register");
             }
-            if (!ri->isRegNumberValid(regNum)) {
+            if (regInfo && !regInfo->isRegNumberValid(regNum)) {
                 FailF("invalid destination register number "
                     "(%s only has %d registers on this platform)",
-                    ri->name, ri->num_regs);
+                    regInfo->syntax, regInfo->numRegs);
             }
             if (LookingAt(LBRACK)) {
                 ParseDstOpRegInd(opStart, regNum * 32);
             } else {
-                FinishDstOpRegDirSubRegRgnTy(opStart, regStart, *ri, regNum);
+                FinishDstOpRegDirSubRegRgnTy(
+                    opStart, regStart, *regInfo, regNum);
             }
         }
     }
@@ -1661,7 +1725,7 @@ private:
             if (!ri->isRegNumberValid(regNum)) {
                 FailF("invalid destination register number "
                     "(%s only has %d registers on this platform)",
-                    ri->name, ri->num_regs);
+                    ri->syntax, ri->numRegs);
             }
             if (LookingAt(LBRACK)) {
                 Fail("this form of indirect (r3[a0.0,16]) is invalid for "
@@ -1680,14 +1744,30 @@ private:
     }
 
 
-    ImplAcc ParseImplAcc() {
-        ImplAcc implAcc = ImplAcc::NOACC;
-        const char *expected =
-            "expected implicit accumulator operand "
-            "(e.g. .noacc, .acc2, ..., .acc9)";
-        ConsumeOrFail(DOT, expected);
-        ConsumeIdentOneOfOrFail<ImplAcc>(IMPLACCS, implAcc, expected, expected);
-        return implAcc;
+    // .mme2 or .nomme
+    MathMacroExt ParseMathMacroReg() {
+        auto loc = NextLoc();
+        MathMacroExt mme = MathMacroExt::INVALID;
+        const char *EXPECTED =
+            "expected math macro register "
+            "(e.g. .mme0, ..., .mme7, or .nomme)";
+        ConsumeOrFail(DOT, EXPECTED);
+        if (ConsumeIdentOneOf<MathMacroExt>(MATHMACROREGS, mme)) {
+            return mme;
+        }
+        // determine if we support the old-style
+        bool supportOldStyleAcc2ToAcc7 = true;
+        if (supportOldStyleAcc2ToAcc7) {
+            if (ConsumeIdentOneOf<MathMacroExt>(MATHMACROREGS_OLDSTYLE, mme)) {
+                // warn?
+                Warning(loc, "old-style math macro register (use mme)");
+                return mme;
+            }
+        }
+
+        // favor the new error message
+        Fail(loc, EXPECTED);
+        return mme;
     }
 
 
@@ -1709,7 +1789,7 @@ private:
         // <1>
         Region::Horz rgnHz = Region::Horz::HZ_1;
 
-        ImplAcc implAcc = ImplAcc::INVALID;
+        MathMacroExt mmeReg = MathMacroExt::INVALID;
         if (m_opSpec->isSendOrSendsFamily() && Consume(DOT)) {
             ConsumeIntLitOrFail(subregNum, "expected subregister");
             // whine about them using a subregister on a send operand
@@ -1727,7 +1807,7 @@ private:
             rgnHz = ParseDstOpRegion();
         } else if (isMacroOp()) {
             // implicit accumulator operand
-            implAcc = ParseImplAcc();
+            mmeReg = ParseMathMacroReg();
         } else {
             // non-send with subregister.
             // regular subregister
@@ -1754,19 +1834,20 @@ private:
 
         // ensure the subregister is not out of bounds
         if (dty != Type::INVALID) {
-            int typeSize = TypeSize(dty);
+            int typeSize = TypeSizeInBits(dty)/8;
             if (!ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize)) {
                 Warning(subregLoc, "subregister out of bounds for data type");
-            } else if (typeSize < ri.acc_gran) {
+            } else if (typeSize < ri.accGran) {
                 Warning(regnameLoc, "access granularity too small for data type");
             }
         }
 
         if (isMacroOp()) {
-            m_handler.InstDstOpRegImplAcc(opStart, ri.reg, regNum, implAcc, rgnHz, dty);
+            m_handler.InstDstOpRegMathMacroExtReg(
+                opStart, ri.regName, regNum, mmeReg, rgnHz, dty);
         } else {
-            RegRef reg = {(uint8_t)regNum, (uint8_t)subregNum};
-            m_handler.InstDstOpRegDirect(opStart, ri.reg, reg, rgnHz, dty);
+            m_handler.InstDstOpRegDirect(
+                opStart, ri.regName, MakeRegRef(regNum, subregNum), rgnHz, dty);
         }
     }
 
@@ -1860,7 +1941,7 @@ private:
         if (!ConsumeReg(ri, regNum)) {
             return false;
         }
-        if (ri->reg != RegName::ARF_A && regNum != 0) {
+        if (ri->regName != RegName::ARF_A && regNum != 0) {
             Fail("expected a0");
         }
         if (!Consume(DOT)) {
@@ -1915,7 +1996,7 @@ private:
             // register direct or new pre-scaled register indirect
             // r13
             //   or
-            // r13[a0.0,4] => r[a0.0, 13*32 + 4]
+            // r13[a0.0,4] translates to r[a0.0, 13*sizeof(GRF) + 4]
             if (LookingAt(LBRACK)) {
                 if (!regInfo->supportsRegioning()) {
                     Fail("this doesn't support regioning");
@@ -2043,22 +2124,13 @@ private:
         int subregNum;
         Region rgn;
         Loc subregLoc = NextLoc(1);
-        ImplAcc implAcc = ImplAcc::INVALID;
+        MathMacroExt mme = MathMacroExt::INVALID;
         bool hasExplicitSubreg = false;
         if (isMacroOp()) {
             // implicit accumulator operand
             // r13.acc2:f
             subregNum = 0;
-            if (!Consume(DOT)) {
-                ConsumeIntLitOrFail(subregNum,
-                    "expected implicit accumulator operand "
-                    "(e.g. .noacc, .acc2, ..., .acc9)");
-            }
-            const char *expected =
-                "expected implicit accumulator operand "
-                "(e.g. .noacc, .acc2, ..., .acc9)";
-            ConsumeIdentOneOfOrFail<ImplAcc>(
-                IMPLACCS, implAcc, expected, expected);
+            mme = ParseMathMacroReg();
             // region is implicitly <1;1,0>
             rgn = Region::SRC110;
             // below we can override it if we really really want to
@@ -2097,36 +2169,35 @@ private:
 
         if (sty != Type::INVALID) {
             // ensure the subregister is not out of bounds
-            int typeSize = TypeSize(sty);
-            if (!ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize)) {
-                Warning(subregLoc, "subregister too large for data type");
-            } else if (typeSize < ri.acc_gran) {
-                Warning(regnameLoc,
-                    "access granularity too small for register");
+            int typeSize = TypeSizeInBits(sty)/8;
+            if (ri.isRegNumberValid(regNum) &&
+                !ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize))
+            {
+                // don't add an extra error if the parent register is
+                // already out of bounds
+                Warning(subregLoc, "subregister out of bounds");
+            } else if (typeSize < ri.accGran) {
+                Warning(regnameLoc, "register access granularity too small type");
             }
         }
 
         if (isMacroOp()) {
-            m_handler.InstSrcOpRegImplAcc(
+            m_handler.InstSrcOpRegMathMacroExtReg(
                 srcOpIx,
                 opStart,
                 srcMod,
-                ri.reg,
+                ri.regName,
                 regNum,
-                implAcc,
+                mme,
                 rgn,
                 sty);
         } else {
-            RegRef reg = {
-                static_cast<uint8_t>(regNum),
-                static_cast<uint8_t>(subregNum)
-            };
             m_handler.InstSrcOpRegDirect(
                 srcOpIx,
                 opStart,
                 srcMod,
-                ri.reg,
-                reg,
+                ri.regName,
+                MakeRegRef(regNum,subregNum),
                 rgn,
                 sty);
         }
@@ -2137,9 +2208,9 @@ private:
     Region ParseSrcOpRegionVWH(
         const RegInfo &ri, int srcOpIx, bool hasExplicitSubreg)
     {
-        if (m_opSpec->hasImplicitSrcRegion(srcOpIx, m_model.platform)) {
+        if (m_opSpec->hasImplicitSrcRegion(srcOpIx, m_model.platform, m_execSize)) {
             if (!LookingAt(LANGLE)) {
-                return m_opSpec->implicitSrcRegion(srcOpIx, m_model.platform);
+                return m_opSpec->implicitSrcRegion(srcOpIx, m_model.platform, m_execSize);
             } else {
                 WarningF("%s.Src%d region should be implicit",
                     m_opSpec->mnemonic,
@@ -2156,6 +2227,7 @@ private:
             rgn.set(ParseRegionHorz());
             ConsumeOrFailAfterPrev(RANGLE, "expected >");
         } else if (ri.supportsRegioning()) {
+            // N.B. <1;1,0> won't coissue on PreGEN11
             rgn = hasExplicitSubreg || m_execSize == ExecSize::SIMD1 ?
                 Region::SRC010 :
                 Region::SRC110;
@@ -2168,9 +2240,9 @@ private:
     // '<' INT ';' INT '>'   (CNL Align1 ternary)
     Region ParseSrcOpRegionVH(int srcOpIx, bool hasExplicitSubreg)
     {
-        if (m_opSpec->hasImplicitSrcRegion(srcOpIx, m_model.platform)) {
+        if (m_opSpec->hasImplicitSrcRegion(srcOpIx, m_model.platform, m_execSize)) {
             if (!LookingAt(LANGLE)) {
-                return m_opSpec->implicitSrcRegion(srcOpIx, m_model.platform);
+                return m_opSpec->implicitSrcRegion(srcOpIx, m_model.platform, m_execSize);
             } else if (m_parseOpts.deprecatedSyntaxWarnings) {
                 WarningF("%s.Src%d region should be implicit",
                     m_opSpec->mnemonic,
@@ -2200,9 +2272,9 @@ private:
     // '<' INT '>'   (CNL Align1 ternary src2)
     Region ParseSrcOpRegionH(int srcOpIx, bool hasExplicitSubreg)
     {
-        if (m_opSpec->hasImplicitSrcRegion(srcOpIx, m_model.platform)) {
+        if (m_opSpec->hasImplicitSrcRegion(srcOpIx, m_model.platform, m_execSize)) {
             if (!LookingAt(LANGLE)) {
-                return m_opSpec->implicitSrcRegion(srcOpIx, m_model.platform);
+                return m_opSpec->implicitSrcRegion(srcOpIx, m_model.platform, m_execSize);
             } else if (m_parseOpts.deprecatedSyntaxWarnings) {
                 WarningF("%s.Src%d region should be implicit",
                     m_opSpec->mnemonic,
@@ -2230,9 +2302,12 @@ private:
     // '<' INT ',' INT '>'             (VxH mode)
     // '<' INT ';' INT ',' INT '>'
     Region ParseSrcOpRegionInd(int srcOpIx) {
-        if (m_opSpec->hasImplicitSrcRegion(srcOpIx, m_model.platform)) {
+        if (m_opSpec->hasImplicitSrcRegion(
+            srcOpIx, m_model.platform, m_execSize))
+        {
             if (!LookingAt(LANGLE)) {
-                return m_opSpec->implicitSrcRegion(srcOpIx, m_model.platform);
+                return m_opSpec->implicitSrcRegion(
+                    srcOpIx, m_model.platform, m_execSize);
             } else if (m_parseOpts.deprecatedSyntaxWarnings) {
                 WarningF("%s.Src%d region should be implicit",
                     m_opSpec->mnemonic,
@@ -2627,18 +2702,15 @@ private:
         int regNum;
         if (enableImplicitOperand) {
             bool isSuccess = PeekReg(regInfo, regNum);
-            if (!isSuccess || regInfo->reg == RegName::ARF_A) {
-                RegRef reg = {0, 0};
-                Region rgn = Region::SRC010;
-                Type sty = Type::INVALID;
+            if (!isSuccess || regInfo->regName == RegName::ARF_A) {
                 m_handler.InstSrcOpRegDirect(
                     srcOpIx,
                     m_srcLocs[srcOpIx],
                     SrcModifier::NONE,
                     RegName::ARF_NULL,
-                    reg,
-                    rgn,
-                    sty);
+                    REGREF_ZERO_ZERO,
+                    Region::SRC010,
+                    Type::INVALID);
                 return;
             }
         }
@@ -2841,6 +2913,7 @@ private:
             Skip();
             ConsumeIntLitOrFail(freg.subRegNum, "expected flag subregister");
         } else {
+            // e.g. f0.any2h (treat as f0.0.any2h)
             freg.subRegNum = 0;
         }
     }

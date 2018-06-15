@@ -62,4 +62,8 @@ extern const ged_compact_mapping_entry_t MappingTable22[102];
 extern const ged_compact_mapping_entry_t MappingTable23[102];
 extern const ged_compact_mapping_entry_t MappingTable24[102];
 extern const ged_compact_mapping_entry_t MappingTable25[102];
+extern const ged_compact_mapping_entry_t MappingTable26[102];
+extern const ged_compact_mapping_entry_t MappingTable27[102];
+extern const ged_compact_mapping_entry_t MappingTable28[102];
+extern const ged_compact_mapping_entry_t MappingTable29[102];
 #endif // GED_MAPPING_TABLES_H

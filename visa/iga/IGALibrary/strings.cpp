@@ -24,8 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "bits.hpp"
 #include "strings.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <sstream>
 #include <iomanip>
@@ -119,9 +121,15 @@ size_t iga::copyOut(char *buf, size_t bufCap, std::iostream &ios)
     return sslen;
 }
 
-void iga::fmtBinary(std::ostream &os, int len, uint64_t val)
+void iga::fmtBinaryDigits(std::ostream &os, uint64_t val, int w)
 {
-    for (int i = len - 1; i >= 0; i--) {
+    if (w == 0) {
+        // STL really needs this
+        // gcc has __builtin_clzll, but let's ignore the #ifdef nonsense
+        w = std::max<int>(1,findLeadingOne(val) + 1);
+    }
+
+    for (int i = w - 1; i >= 0; i--) {
         if (val & (1ull<<(uint64_t)i)) {
             os << '1';
         } else {
@@ -129,22 +137,31 @@ void iga::fmtBinary(std::ostream &os, int len, uint64_t val)
         }
     }
 }
-
-std::string iga::fmtHex(uint64_t val, int w)
+void iga::fmtBinary(std::ostream &os, uint64_t val, int w)
 {
-    std::stringstream ss;
-    fmtHex(ss, w, val);
-    return ss.str();
+    os << "0b";
+    fmtBinaryDigits(os, val, w);
 }
 
-void iga::fmtHex(std::ostream &os, int w, uint64_t val)
+void iga::fmtHexDigits(std::ostream &os, uint64_t val, int w)
 {
     std::stringstream ss;
     if (w > 0) {
-        ss << "0x" << std::setw(w) << std::setfill('0') <<
+        ss << std::setw(w) << std::setfill('0') <<
             std::hex << std::uppercase << val;
     } else {
-        ss << "0x" << std::hex << std::uppercase << val;
+        ss << std::hex << std::uppercase << val;
     }
     os << ss.str();
-};
+}
+void iga::fmtHex(std::ostream &os, uint64_t val, int w)
+{
+    os << "0x";
+    fmtHexDigits(os, val, w);
+}
+std::string iga::fmtHex(uint64_t val, int w)
+{
+    std::stringstream ss;
+    fmtHex(ss, val, w);
+    return ss.str();
+}

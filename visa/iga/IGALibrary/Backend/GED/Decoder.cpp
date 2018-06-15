@@ -58,11 +58,35 @@ DEFINE_GED_SOURCE_ACCESSORS_012(GED_REP_CTRL, RepCtrl)
 DEFINE_GED_SOURCE_ACCESSORS_012(GED_SRC_MOD, SrcMod)
 DEFINE_GED_SOURCE_ACCESSORS_012(uint32_t, HorzStride)
 
-static Region macroDefaultSourceRegion(
-    int srcOpIx, const OpSpec &os, Platform p)
+static void setImmValKind(Type t, ImmVal &val)
 {
-    if (os.hasImplicitSrcRegion(srcOpIx, p)) {
-        return os.implicitSrcRegion(srcOpIx, p);
+    switch (t) {
+    case Type::B:  val.kind = ImmVal::Kind::S8; break;
+    case Type::UB: val.kind = ImmVal::Kind::U8; break;
+    case Type::W:  val.kind = ImmVal::Kind::S16; break;
+    case Type::UW: val.kind = ImmVal::Kind::U16; break;
+    case Type::D:  val.kind = ImmVal::Kind::S32; break;
+    case Type::UD: val.kind = ImmVal::Kind::U32; break;
+    case Type::Q:  val.kind = ImmVal::Kind::S64; break;
+    case Type::UQ: val.kind = ImmVal::Kind::U64; break;
+    case Type::HF: val.kind = ImmVal::Kind::F16; break;
+    case Type::F:  val.kind = ImmVal::Kind::F32; break;
+    case Type::DF: val.kind = ImmVal::Kind::F64; break;
+    case Type::V: // fallthrough for the packed vector types
+    case Type::UV:
+    case Type::VF:
+        val.kind = ImmVal::Kind::U32;
+        break;
+    default:
+        break;
+    }
+}
+
+static Region macroDefaultSourceRegion(
+    int srcOpIx, const OpSpec &os, Platform p, ExecSize execSize)
+{
+    if (os.hasImplicitSrcRegion(srcOpIx, p, execSize)) {
+        return os.implicitSrcRegion(srcOpIx, p, execSize);
     } else if (srcOpIx == 2) {
         return Region::SRCXX1;
     } else {
@@ -74,8 +98,7 @@ static Region macroDefaultSourceRegion(
 
 
 DecoderBase::DecoderBase(const Model &model, ErrorHandler &errHandler) :
-    BitProcessor(errHandler),
-    m_model(model),
+    GEDBitProcessor(model,errHandler),
     m_kernel(nullptr),
     m_gedModel(IGAToGEDTranslation::lowerPlatform(model.platform)),
     m_opSpec(nullptr)
@@ -351,6 +374,8 @@ Instruction *DecoderBase::decodeNextInstruction(Kernel &kernel)
     return inst;
 }
 
+// only indicates that the hazard for a 64b imm overlapping with flagmod
+// exists, caller still has to check that src0 is an imm
 bool DecoderBase::hasImm64Src0Overlap()
 {
     bool imm64Src0Overlap = false;
@@ -363,9 +388,7 @@ bool DecoderBase::hasImm64Src0Overlap()
 
 Instruction *DecoderBase::decodeBasicInstruction(Kernel &kernel)
 {
-    bool imm64Src0Overlap = hasImm64Src0Overlap();
-
-    FlagRegInfo fri = decodeFlagRegInfo(imm64Src0Overlap);
+    FlagRegInfo fri = decodeFlagRegInfo(hasImm64Src0Overlap());
     Instruction *inst = kernel.createBasicInstruction(
             *m_opSpec,
             fri.pred,
@@ -434,29 +457,23 @@ void DecoderBase::decodeBasicDestinationAlign16(Instruction *inst)
     case GED_ADDR_MODE_Direct: {
         DirRegOpInfo dri = decodeDstDirRegInfo();
         if (inst->isMacro()) {
-            // implicit operand accumulator destination (bits in subreg)
-            // implicit accumulator is in ChEn
-            ImplAcc implAcc = decodeDestinationImplAccFromChEn();
+            MathMacroExt MathMacroReg = decodeDestinationMathMacroRegFromChEn();
             inst->setMacroDestination(dstMod,
-                dri.regName, dri.regRef, implAcc, Region::Horz::HZ_1, type);
+                dri.regName, dri.regRef, MathMacroReg, Region::Horz::HZ_1, type);
         } else {
             // normal Align16 destination
             uint32_t hStride = 1;
             GED_DECODE_RAW(GED_DST_CHAN_EN, chEn, DstChanEn);
-            if (m_model.supportsNrmAlgn16AccDst() &&
-                dri.regRef.regNum == 2 &&
-                dri.regName == RegName::ARF_ACC)
+            if (dri.regName == RegName::ARF_MME &&
+                isAlign16MathMacroRegisterCsrPlatform())
             {
-                // special access to acc3-acc9 via ChEn encoding
+                // special access to acc2-acc9 via ChEn encoding
                 // (for context save and restore)
                 dri.regRef.regNum = (uint8_t)decodeDestinationRegNumAccBitsFromChEn();
-                if (dri.regRef.regNum < 3 || dri.regRef.regNum > 9) {
-                    error("invalid context save/restore high acc accesss");
-                }
             } else if (chEn == GED_DST_CHAN_EN_xyzw) {
                 hStride = 1;
             } else {
-                fatal("unsupported Align16 Dst.ChEn; only <1> (.xyzw) supported");
+                fatal("dst: unsupported Align16 ChEn; only <1> (.xyzw) supported");
             }
 
             GED_DECODE_RAW(uint32_t, subRegNum, DstSubRegNum);
@@ -521,9 +538,9 @@ void DecoderBase::decodeBasicDestinationAlign1(Instruction *inst) {
 
         DirRegOpInfo dri = decodeDstDirRegInfo();
         if (inst->isMacro()) {
-            GED_DECODE(ImplAcc, GED_SPECIAL_ACC, implAcc, DstSpecialAcc);
+            GED_DECODE(MathMacroExt, GED_SPECIAL_ACC, mme, DstSpecialAcc);
             inst->setMacroDestination(
-                dstMod, dri.regName, dri.regRef, implAcc, rgnHzDec, type);
+                dstMod, dri.regName, dri.regRef, mme, rgnHzDec, type);
         } else {
             // normal Align1 destination
             // it's a normal Align1 destination
@@ -597,8 +614,7 @@ void DecoderBase::decodeTernaryInstructionOperands(
 
 void DecoderBase::decodeTernaryDestinationAlign16(Instruction *inst)
 {
-    GED_DECODE_RAW(uint32_t, regNum, DstRegNum);
-    GED_DECODE_RAW(uint32_t, subRegNumBytes, DstSubRegNum);
+    GED_DECODE_RAW(uint32_t, regNumBits, DstRegNum);
     DstModifier dstMod = DstModifier::NONE;
     if (m_opSpec->supportsSaturation()) {
         GED_DECODE_RAW(GED_SATURATE, mod, Saturate);
@@ -608,20 +624,14 @@ void DecoderBase::decodeTernaryDestinationAlign16(Instruction *inst)
     GED_DECODE_RAW(GED_REG_FILE, regFile, DstRegFile);
     GED_DECODE_RAW(GED_DST_CHAN_EN, chEn, DstChanEn);
 
-    RegName regName = RegName::GRF_R;
-    if (regFile == GED_REG_FILE_ARF) {
-        GED_RETURN_VALUE status;
-        regName = GEDToIGATranslation::translate(
-            GED_GetArchReg(regNum, m_gedModel, &status));
-        regNum = regNum & 0xF; //clearing arch bits
-        if (status != GED_RETURN_VALUE_SUCCESS) {
-            error("invalid arch register destination");
-        }
-    }
+    RegName regName = RegName::INVALID;
+    RegRef regRef{0,0};
+    decodeReg(-1, regFile, regNumBits, regName, regRef);
+
     if (inst->isMacro()) {
-        ImplAcc implAcc = decodeDestinationImplAccFromChEn();
-        RegRef rr = {(uint8_t)regNum, 0};
-        inst->setMacroDestination(dstMod, regName, rr, implAcc, Region::Horz::HZ_1, type);
+        MathMacroExt MathMacroReg = decodeDestinationMathMacroRegFromChEn();
+        inst->setMacroDestination(
+            dstMod, regName, regRef, MathMacroReg, Region::Horz::HZ_1, type);
     } else {
         // We have to translate Align16 ternary instructions to equivalent
         // Align1 where posssible.  The goal of these translations is to
@@ -714,16 +724,14 @@ void DecoderBase::decodeTernaryDestinationAlign16(Instruction *inst)
             break;
         }
 
+        GED_DECODE_RAW(uint32_t, subRegNumBytes, DstSubRegNum);
         uint8_t subRegNumber = type == Type::INVALID ?
             0 : BytesOffsetToSubReg((uint8_t)subRegNumBytes, regName, type);
-        RegRef reg = {
-            (uint8_t)regNum,
-            (uint8_t)(subRegNumber + subregOffAlign16Elems)
-        };
+        regRef.subRegNum = (uint8_t)(subRegNumber + subregOffAlign16Elems);
         inst->setDirectDestination(
             dstMod,
             regName,
-            reg,
+            regRef,
             Region::Horz::HZ_1,
             type);
     }
@@ -733,8 +741,6 @@ template <SourceIndex S>
 void DecoderBase::decodeTernarySourceAlign16(Instruction *inst)
 {
     bool isMacro = inst->isMacro(); // madm or math.invm or math.rsqrt
-
-    checkIfAlign16Legal();
 
     if (!isMacro && m_model.supportsAlign16MacroOnly()) {
         warning("src%d: converting Align16 to Align1 "
@@ -762,16 +768,16 @@ void DecoderBase::decodeTernarySourceAlign16(Instruction *inst)
     Type type = GEDToIGATranslation::translate(gedType);
 
     if (isMacro) {
-        ImplAcc implAcc = decodeSrcImplAcc<S>();
+        MathMacroExt MathMacroReg = decodeSrcMathMacroReg<S>();
         RegRef rr = {(uint8_t)regNum, 0};
         Region macroDftSrcRgn = macroDefaultSourceRegion(
-            (int)S, inst->getOpSpec(), m_model.platform);
+            (int)S, inst->getOpSpec(), m_model.platform, inst->getExecSize());
         inst->setMacroSource(
             S,
             srcMod,
             RegName::GRF_R,
             rr,
-            implAcc,
+            MathMacroReg,
             macroDftSrcRgn,
             type);
     } else {
@@ -795,7 +801,7 @@ void DecoderBase::decodeTernarySourceAlign16(Instruction *inst)
                 swizzle[2] == GED_SWIZZLE_z && swizzle[3] == GED_SWIZZLE_w);
 
             bool invalidSwizzle = false;
-            if (TypeSize(type) == 8) {
+            if (TypeIs64b(type)) {
                 invalidSwizzle = !isFullSwizzle && !isXYSwizzle && !isYZSwizzle;
             } else {
                 invalidSwizzle = !isFullSwizzle;
@@ -843,59 +849,40 @@ static bool ternaryDstOmitsHzStride(const OpSpec &os) {
 
 void DecoderBase::decodeTernaryDestinationAlign1(Instruction *inst)
 {
-    GED_DECODE_RAW(uint32_t, regNum, DstRegNum);
+    const OpSpec &os = inst->getOpSpec();
+
     DstModifier dstMod = DstModifier::NONE;
-    if (inst->getOpSpec().supportsSaturation()) {
+    if (os.supportsSaturation()) {
         GED_DECODE_RAW(GED_SATURATE, mod, Saturate);
         dstMod = GEDToIGATranslation::translate(mod);
     }
-    GED_DECODE(Type, GED_DATA_TYPE, type, DstDataType);
-    GED_DECODE_RAW(GED_REG_FILE, regFile, DstRegFile);
 
-    RegName regName = RegName::GRF_R;
-    if (regFile == GED_REG_FILE_ARF) {
-        GED_RETURN_VALUE status;
-        regName = GEDToIGATranslation::translate(
-            GED_GetArchReg(regNum, m_gedModel, &status));
-        if (status != GED_RETURN_VALUE_SUCCESS) {
-            error("invalid arch register destination");
-        }
-        regNum = regNum & 0xF; // clear arch reg name bits
-    }
+    DirRegOpInfo dri = decodeDstDirRegInfo();
 
     if (inst->isMacro()) {
-        GED_DECODE(ImplAcc, GED_SPECIAL_ACC, implAcc, DstSpecialAcc);
-        RegRef reg = {(uint8_t)regNum, 0};
-        inst->setMacroDestination(dstMod, regName, reg, implAcc, Region::Horz::HZ_1, type);
+        GED_DECODE(MathMacroExt, GED_SPECIAL_ACC, mme, DstSpecialAcc);
+        inst->setMacroDestination(
+            dstMod, dri.regName, dri.regRef, mme, Region::Horz::HZ_1, dri.type);
     } else {
-        GED_DECODE_RAW(uint32_t, subRegNum, DstSubRegNum);
-        int subReg = type == Type::INVALID ?
-            0 : BytesOffsetToSubReg((uint8_t)subRegNum, regName, type);
-        RegRef reg = {
-            (uint8_t)regNum,
-            (uint8_t)subReg
-        };
-
         if (ternaryDstOmitsHzStride(inst->getOpSpec())) {
-            if (subReg != 0) {
+            if (dri.regRef.subRegNum != 0) {
                 error("Invalid subreg number (expected 0)");
             }
-            const OpSpec &os = inst->getOpSpec();
             Region::Horz dftRgnHz = os.hasImplicitDstRegion() ?
                 os.implicitDstRegion().getHz() : Region::Horz::HZ_1;
             inst->setDirectDestination(dstMod,
-                regName,
-                reg,
+                dri.regName,
+                dri.regRef,
                 dftRgnHz,
-                type);
+                dri.type);
         } else {
             GED_DECODE_RAW(uint32_t, hStride, DstHorzStride);
 
             inst->setDirectDestination(dstMod,
-                regName,
-                reg,
+                dri.regName,
+                dri.regRef,
                 GEDToIGATranslation::translateRgnH(hStride),
-                type);
+                dri.type);
         }
     }
 }
@@ -943,17 +930,16 @@ void DecoderBase::decodeTernarySourceAlign1(Instruction *inst)
             if (m_model.supportsAlign16ImplicitAcc()) {
                 fatal("src%d: macro instructions must be Align16 for this platform.", (int)S);
             }
-            uint32_t regNum = decodeSrcRegNum<S>();
-            RegName rName = decodeSourceRegName<S>(regNum);
-            RegRef rr = {(uint8_t)regNum, 0};
+            RegRef regRef{0,0};
+            RegName regName = decodeSourceReg<S>(regRef);
             Region macroDftSrcRgn = macroDefaultSourceRegion(
-                (int)S, inst->getOpSpec(), m_model.platform);
+                (int)S, inst->getOpSpec(), m_model.platform, inst->getExecSize());
             inst->setMacroSource(
                 S,
                 decodeSrcModifier<S>(),
-                rName,
-                rr,
-                decodeSrcImplAcc<S>(),
+                regName,
+                regRef,
+                decodeSrcMathMacroReg<S>(),
                 macroDftSrcRgn,
                 decodeSrcType<S>());
         } else {
@@ -1042,6 +1028,10 @@ void DecoderBase::decodeSendDestination(Instruction *inst)
     GED_DECODE_RAW(GED_REG_FILE, regFile, DstRegFile);
     GED_ADDR_MODE addrMode = GED_ADDR_MODE_Direct;
 
+    if (m_model.platform <= Platform::GEN11) {
+        GED_DECODE_RAW_TO(DstAddrMode, addrMode);
+    }
+
     if (addrMode == GED_ADDR_MODE_Indirect) {
         if( regFile == GED_REG_FILE_GRF ) {
             decodeBasicDestination(inst, accessMode);
@@ -1068,6 +1058,9 @@ void DecoderBase::decodeSendDestination(Instruction *inst)
 GED_ADDR_MODE DecoderBase::decodeSendSource0AddressMode()
 {
     GED_ADDR_MODE addrMode = GED_ADDR_MODE_Direct;
+    if (m_model.platform <= Platform::GEN11) {
+        addrMode = decodeSrcAddrMode<SourceIndex::SRC0>();
+    }
     return addrMode;
 }
 
@@ -1083,11 +1076,15 @@ void DecoderBase::decodeSendSource0(Instruction *inst)
     } else {
         DirRegOpInfo dri = decodeSrcDirRegOpInfo<SourceIndex::SRC0>();
 
-        dri.regRef.subRegNum = 0; // high bits of ExDesc in send will overlap subreg, clear it
-
-        Region rgn = inst->getOpSpec().implicitSrcRegion(0, m_model.platform);
+        Region rgn = inst->getOpSpec().implicitSrcRegion(
+            0,
+            m_model.platform,
+            inst->getExecSize());
         bool hasSrcRgnEncoding = inst->getOpSpec().isSendFamily()
             && m_model.platform < Platform::GEN9;
+
+        hasSrcRgnEncoding &= m_model.platform <= Platform::GEN11;
+
         if (hasSrcRgnEncoding) {
             // these bits are implicitly set by GED on SKL, and they disallow access
             rgn = decodeSrcRegionVWH<SourceIndex::SRC0>();
@@ -1106,18 +1103,16 @@ void DecoderBase::decodeSendSource0(Instruction *inst)
 
 void DecoderBase::decodeSendSource1(Instruction *inst)
 {
-    GED_DECODE_RAW(uint32_t, regNum, Src1RegNum);
-
-    RegName regName = decodeSourceRegName<SourceIndex::SRC1>(regNum);
-    RegRef rr = {(uint8_t)regNum, 0};
+    RegRef regRef;
+    RegName regName = decodeSourceReg<SourceIndex::SRC1>(regRef);
     const OpSpec &os = inst->getOpSpec();
-    Region rgn = os.implicitSrcRegion(1, m_model.platform);
+    Region rgn = os.implicitSrcRegion(1, m_model.platform, inst->getExecSize());
     Type implSrcType = os.implicitSrcType(1, false, m_model.platform);
     inst->setDirectSource(
         SourceIndex::SRC1,
         SrcModifier::NONE,
         regName,
-        rr,
+        regRef,
         rgn,
         implSrcType);
 }
@@ -1279,7 +1274,8 @@ Instruction *DecoderBase::decodeBranchSimplifiedInstruction(Kernel& kernel)
 
     GED_DECODE_RAW(GED_REG_FILE, regFile, Src0RegFile);
     if (regFile != GED_REG_FILE_IMM) {
-        Region rgn = m_opSpec->implicitSrcRegion(0, m_model.platform);
+        Region rgn =
+            m_opSpec->implicitSrcRegion(0, m_model.platform, inst->getExecSize());
         DirRegOpInfo opInfo = decodeSrcDirRegOpInfo<SourceIndex::SRC0>();
         inst->setDirectSource(
             SourceIndex::SRC0,
@@ -1428,47 +1424,55 @@ int32_t DecoderBase::decodeUip() {
 
 int DecoderBase::decodeDestinationRegNumAccBitsFromChEn()
 {
-    // this is used by implicit accumulator access and for the
-    // context save and restore access to acc3-9 [BDW,...)
+    // this is used by the math macro register (implicit accumulator access)
+    // and for context save and restore access to those registers
     GED_DECODE_RAW(GED_DST_CHAN_EN, chEn, DstChanEn);
     switch (chEn) {
-    case GED_DST_CHAN_EN_None: return 2; // 0000b => acc2
-    case GED_DST_CHAN_EN_x:    return 3; // 0001b => acc3
-    case GED_DST_CHAN_EN_y:    return 4; // 0010b => acc4
-    case GED_DST_CHAN_EN_xy:   return 5; // 0011b => acc5
-    case GED_DST_CHAN_EN_z:    return 6; // 0100b => acc6
-    case GED_DST_CHAN_EN_xz:   return 7; // 0101b => acc7
-    case GED_DST_CHAN_EN_yz:   return 8; // 0110b => acc8
-    case GED_DST_CHAN_EN_xyz:  return 9; // 0111b => acc9
+    case GED_DST_CHAN_EN_None: return 0; // 0000b => mme0 (acc2)
+    case GED_DST_CHAN_EN_x:    return 1; // 0001b => mme1 (acc3)
+    case GED_DST_CHAN_EN_y:    return 2; // 0010b => mme2 (acc4)
+    case GED_DST_CHAN_EN_xy:   return 3; // 0011b => mme3 (acc5)
+    case GED_DST_CHAN_EN_z:    return 4; // 0100b => mme4 (acc6)
+    case GED_DST_CHAN_EN_xz:   return 5; // 0101b => mme5 (acc7)
+    case GED_DST_CHAN_EN_yz:   return 6; // 0110b => mme6 (acc8)
+    case GED_DST_CHAN_EN_xyz:  return 7; // 0111b => mme7 (acc9)
+    //
+    // every thing else unreachable because this is an explicit operand
+    // not an implicit math macro acc reference
+    //
     case GED_DST_CHAN_EN_w:    return 0; // 1000b => noacc
+    //
     // HACK: for context save and restore, acc9 encodes as .xyzw
-    // implicit operand accumulators use (.w) and hit the case above
-    case GED_DST_CHAN_EN_xyzw: return 9;
+    // I think this is because of
+    //   mov(8) acc2:ud r103:ud        {NoMask, Align16}   //acc9
+    //              ^.xyzw implied
+    // Seems like it should just be .xyz
+    case GED_DST_CHAN_EN_xyzw: return 7; // 1111b => mme7 (acc9)
     default:
-        error("invalid dst accumulator reference (in ChEn)");
+        error("dst: invalid math macro register (from ChEn)");
         return -1;
     }
 }
 
 
-ImplAcc DecoderBase::decodeDestinationImplAccFromChEn()
+MathMacroExt DecoderBase::decodeDestinationMathMacroRegFromChEn()
 {
-    // this is used by implicit accumulator access and for the
-    // context save and restore access to acc3-9 [BDW,...)
+    // this is used by the math macro register (implicit accumulator) access
+    // and for context save and restore access to those registers
     GED_DECODE_RAW(GED_DST_CHAN_EN, chEn, DstChanEn);
     switch (chEn) {
-    case GED_DST_CHAN_EN_None: return ImplAcc::ACC2; // 0000b => acc2
-    case GED_DST_CHAN_EN_x:    return ImplAcc::ACC3; // 0001b => acc3
-    case GED_DST_CHAN_EN_y:    return ImplAcc::ACC4; // 0010b => acc4
-    case GED_DST_CHAN_EN_xy:   return ImplAcc::ACC5; // 0011b => acc5
-    case GED_DST_CHAN_EN_z:    return ImplAcc::ACC6; // 0100b => acc6
-    case GED_DST_CHAN_EN_xz:   return ImplAcc::ACC7; // 0101b => acc7
-    case GED_DST_CHAN_EN_yz:   return ImplAcc::ACC8; // 0110b => acc8
-    case GED_DST_CHAN_EN_xyz:  return ImplAcc::ACC9; // 0111b => acc9
-    case GED_DST_CHAN_EN_w:    return ImplAcc::NOACC; // 1000b => noacc
+    case GED_DST_CHAN_EN_None: return MathMacroExt::MME0; // 0000b => mme0 (acc2)
+    case GED_DST_CHAN_EN_x:    return MathMacroExt::MME1; // 0001b => mme1 (acc3)
+    case GED_DST_CHAN_EN_y:    return MathMacroExt::MME2; // 0010b => mme2 (acc4)
+    case GED_DST_CHAN_EN_xy:   return MathMacroExt::MME3; // 0011b => mme3 (acc5)
+    case GED_DST_CHAN_EN_z:    return MathMacroExt::MME4; // 0100b => mme4 (acc6)
+    case GED_DST_CHAN_EN_xz:   return MathMacroExt::MME5; // 0101b => mme5 (acc7)
+    case GED_DST_CHAN_EN_yz:   return MathMacroExt::MME6; // 0110b => mme6 (acc8)
+    case GED_DST_CHAN_EN_xyz:  return MathMacroExt::MME7; // 0111b => mme7 (acc9)
+    case GED_DST_CHAN_EN_w:    return MathMacroExt::NOMME; // 1000b => nomme (noacc)
     default:
         error("invalid dst implicit accumulator reference (in ChEn)");
-        return ImplAcc::INVALID;
+        return MathMacroExt::INVALID;
     }
 }
 
@@ -1487,6 +1491,40 @@ void DecoderBase::decodeDstDirSubRegNum(DirRegOpInfo& dri)
     }
 }
 
+void DecoderBase::decodeReg(
+    int opIx,
+    GED_REG_FILE regFile,
+    uint32_t regNumBits,
+    RegName &regName,
+    RegRef &regRef) // works for src or dst
+{
+    const char *opName =
+        opIx == 0 ? "src0" :
+        opIx == 1 ? "src1" :
+        opIx == 2 ? "src2" :
+        "dst";
+    if (regFile == GED_REG_FILE_GRF) {
+        regName = RegName::GRF_R;
+        regRef.regNum = (uint8_t)regNumBits;
+    } else if (regFile == GED_REG_FILE_ARF) { // ARF
+        regName = RegName::INVALID;
+        int arfRegNum = 0;
+        const RegInfo *ri = m_model.lookupArfRegInfoByRegNum(regNumBits);
+        if (ri == nullptr) {
+            error("%s: 0x%02X: invalid arf register", opName, regNumBits);
+        } else {
+            regName = ri->regName;
+            if (!ri->decode(regNumBits, arfRegNum)) {
+                error("%s: %s%d: invalid register number ",
+                    opName, ri->syntax, arfRegNum);
+            }
+        }
+        regRef.regNum = (uint8_t)arfRegNum;
+    } else { // e.g. 10b
+        error("%s: invalid register file", opName);
+    }
+}
+
 DirRegOpInfo DecoderBase::decodeDstDirRegInfo() {
     DirRegOpInfo dri;
     dri.type = m_opSpec->implicitDstType(m_model.platform);
@@ -1495,42 +1533,18 @@ DirRegOpInfo DecoderBase::decodeDstDirRegInfo() {
         dri.type = decodeDstType();
     }
 
-    GED_DECODE_RAW(uint32_t, regNum, DstRegNum);
-    dri.regName = decodeDestinationRegName(regNum);
-    dri.regRef.regNum = (uint8_t)regNum;
+    GED_DECODE_RAW(GED_REG_FILE, gedRegFile, DstRegFile);
+    GED_DECODE_RAW(uint32_t, regNumBits, DstRegNum);
+    decodeReg(-1,gedRegFile,regNumBits,dri.regName,dri.regRef);
     decodeDstDirSubRegNum(dri);
 
     return dri;
 }
 
-
 Type DecoderBase::decodeDstType() {
     GED_DECODE(Type, GED_DATA_TYPE, t, DstDataType);
     return t;
 }
-
-
-template <SourceIndex S>
-uint8_t DecoderBase::decodeSrcCtxSvRstAccBitsToRegNum()
-{
-    uint32_t chanSel = decodeSrcChanSel<S>();
-    // the .xy of the swizzle are the only part that seem to matter here
-    // the .--zw  part doesn't seem to matter ChanSel[3:0]
-    // NOTE: if it does turn out to matter, then IsaAsm will extend replicate
-    // e.g. r12.xy encodes as r12.xyyy
-    switch (chanSel & 0x0F) {
-    case 0: return 2;
-    case 1: return 3;
-    case 2: return 4;
-    case 3: return 5;
-    case 4: return 6;
-    case 5: return 7;
-    case 6: return 8;
-    case 7: return 9;
-    default: return 0xFF;
-    }
-}
-
 
 bool DecoderBase::hasImplicitScalingType(Type& type, DirRegOpInfo& dri)
 {
@@ -1543,9 +1557,10 @@ ImmVal DecoderBase::decodeSrcImmVal(Type t) {
     memset(&val, 0, sizeof(val)); // zero value in case GED only sets bottom bits
 
     GED_DECODE_RAW_TO(Imm, val.u64);
-    setTypeHelper(t, val);
+    setImmValKind(t, val);
     return val;
 }
+
 template <SourceIndex S>
 void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx)
 {
@@ -1560,9 +1575,13 @@ void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx
         addrMode = decodeSrcAddrMode<S>();
 
         SrcModifier srcMod = decodeSrcModifier<S>();
+        // region (implicit accumulator if Align16 and <GEN11)
         Region implRgn = Region::INVALID;
-        if (inst->getOpSpec().hasImplicitSrcRegion(toSrcIx, m_model.platform)) {
-            implRgn = inst->getOpSpec().implicitSrcRegion(toSrcIx, m_model.platform);
+        if (inst->getOpSpec().hasImplicitSrcRegion(
+                toSrcIx, m_model.platform, inst->getExecSize()))
+        {
+            implRgn = inst->getOpSpec().implicitSrcRegion(
+                toSrcIx, m_model.platform, inst->getExecSize());
         }
         Region decRgn = Region::INVALID;
         if (!m_opSpec->isSendOrSendsFamily()) {
@@ -1571,7 +1590,10 @@ void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx
             decRgn = implRgn;
         }
         // ensure the region matches any implicit region rules
-        if (!m_opSpec->isSendOrSendsFamily() && inst->getOpSpec().hasImplicitSrcRegion(toSrcIx, m_model.platform)) {
+        if (!m_opSpec->isSendOrSendsFamily() &&
+            inst->getOpSpec().hasImplicitSrcRegion(
+                toSrcIx, m_model.platform, inst->getExecSize()))
+        {
             if (implRgn != decRgn) {
                 warning("src%d.Rgn should have %s for binary normal form" ,
                     (int)S,
@@ -1581,15 +1603,15 @@ void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx
 
         if (addrMode == GED_ADDR_MODE_Direct) {
             if (inst->isMacro()) {
+                // GEN11 macros are stored in the subregister
                 if (m_model.supportsAlign16()) {
                     fatal("src%d: macro instructions must be Align16 for this platform.", (int)S);
                 }
-                ImplAcc implAcc = decodeSrcImplAcc<S>();
-                uint32_t regNum = decodeSrcRegNum<S>();
-                RegName regName = decodeSourceRegName<S>(regNum);
-                RegRef rr = {(uint8_t)regNum,0};
+                MathMacroExt mme = decodeSrcMathMacroReg<S>();
+                RegRef regRef{0,0};
+                RegName regName = decodeSourceReg<S>(regRef);
                 inst->setMacroSource(
-                    toSrcIx, srcMod, regName, rr, implAcc, decRgn, decodeSrcType<S>());
+                    toSrcIx, srcMod, regName, regRef, mme, decRgn, decodeSrcType<S>());
             } else {
                 // normal access
                 DirRegOpInfo opInfo = decodeSrcDirRegOpInfo<S>();
@@ -1618,16 +1640,11 @@ void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx
     }
 }
 
-void DecoderBase::checkIfAlign16Legal()
-{
-}
-
 
 template <SourceIndex S>
-void DecoderBase::decodeSourceBasicAlign16(Instruction *inst, SourceIndex toSrcIx)
+void DecoderBase::decodeSourceBasicAlign16(
+    Instruction *inst, SourceIndex toSrcIx)
 {
-    checkIfAlign16Legal();
-
     GED_REG_FILE regFile = decodeSrcRegFile<S>();
     if (regFile == GED_REG_FILE_IMM) {
         // immediate operand
@@ -1640,26 +1657,30 @@ void DecoderBase::decodeSourceBasicAlign16(Instruction *inst, SourceIndex toSrcI
         // reg and subreg (if direct)
         GED_ADDR_MODE addrMode = decodeSrcAddrMode<S>();
 
-        // special context save/restore access to acc3-acc9
+        // special context save/restore access to acc2-acc9
         uint32_t vs = decodeSrcVertStride<S>();
 
         if (addrMode == GED_ADDR_MODE_Direct) {
             DirRegOpInfo opInfo = decodeSrcDirRegOpInfo<S>();
-            if (inst->isMacro()) { // implicit operand accumulator (macro inst)
+            if (inst->isMacro()) { // math macro operand (macro inst)
                 if (!((vs == 2 && opInfo.type == Type::DF) ||
                     (vs == 4 && opInfo.type != Type::DF)))
                 {
                     fatal("src%d: inconvertible align16 operand", (int)S);
                 }
-                ImplAcc implAcc = decodeSrcImplAcc<S>();
+                // <GEN11 macros are stored in swizzle bits
+                MathMacroExt MathMacroReg = decodeSrcMathMacroReg<S>();
                 Region macroDftSrcRgn = macroDefaultSourceRegion(
-                    (int)S, inst->getOpSpec(), m_model.platform);
+                    (int)S,
+                    inst->getOpSpec(),
+                    m_model.platform,
+                    inst->getExecSize());
                 inst->setMacroSource(
                     toSrcIx,
                     srcMod,
                     opInfo.regName,
                     opInfo.regRef,
-                    implAcc,
+                    MathMacroReg,
                     macroDftSrcRgn,
                     opInfo.type);
             } else {
@@ -1667,14 +1688,30 @@ void DecoderBase::decodeSourceBasicAlign16(Instruction *inst, SourceIndex toSrcI
                     fatal("src%d: inconvertible align16 operand", (int)S);
                 }
                 Region rgn = Region::SRC110;
-                if (opInfo.regName == RegName::ARF_ACC && opInfo.regRef.regNum == 2 &&
-                    m_model.platform >= Platform::GEN8 && m_model.platform <= Platform::GEN9)
+                if (opInfo.regName == RegName::ARF_MME &&
+                    isAlign16MathMacroRegisterCsrPlatform())
                 {
-                    // context save and restore of acc2-9 hack
-                    opInfo.regRef.regNum = decodeSrcCtxSvRstAccBitsToRegNum<S>();
+                    // GEN8-9: context save and restore of acc3-9 hack
+                    // (remember acc2 is Align1 and misses this path)
+                    // So if we are here, it'll look like we just
+                    // decoded "mme0" (acc2), but really we need to consult
+                    // ChSel for the real mme# (acc#+2).
+                    uint32_t chanSel = decodeSrcChanSel<S>() & 0xF;
+                    // We do have to strip off the top bits of ChSel since
+                    // it's really only ChSel[3:0].
+                    //
+                    // the ChSel[3:0] value is taken as interpreted as the
+                    // mme register (e.g. we used to map 0 to 2 for acc2)
+                    // mme's start at 0 (mme0 is acc2).
+                    opInfo.regRef.regNum = (uint8_t)chanSel;
                     opInfo.regRef.subRegNum = 0;
+                    // In GEN10, this all gets cleaned up and acc3 really is
+                    //   RegName[7:4] = 0101b ("acc")
+                    //   RegName[3:0] = 0011b ("3")
+                    // (Which we map back to mme1.)  Moreover, that'll be
+                    // Align1 code and this path won't be hit.
                 } else {
-                    // conversion of an Align16
+                    // conversion of some other Align16 (e.g math macros)
                     if (isChanSelPacked<S>()) {
                         fatal("src%d: inconvertible align16 operand", (int)S);
                     }
@@ -1685,7 +1722,7 @@ void DecoderBase::decodeSourceBasicAlign16(Instruction *inst, SourceIndex toSrcI
         } else if (addrMode == GED_ADDR_MODE_Indirect) {
             uint32_t vs = decodeSrcVertStride<S>();
             if (!isChanSelPacked<S>() && vs == 4) {
-                fatal("inconvertible align16 operand");
+                fatal("src%d: inconvertible align16 operand", (int)S);
             }
             int32_t subRegNum = decodeSrcAddrSubRegNum<S>();
             int32_t addrImm = decodeSrcAddrImm<S>();
@@ -1695,34 +1732,12 @@ void DecoderBase::decodeSourceBasicAlign16(Instruction *inst, SourceIndex toSrcI
                 addrImm, Region::SRC110, decodeSrcType<S>());
         } else {
              // == GED_ADDR_MODE_INVALID
-            fatal("invalid addressing mode in src%d", (int)S);
+            fatal("src%d: invalid addressing mode", (int)S);
         }
     } else { // GED_REG_FILE_INVALID
         fatal("invalid register file in src%d", (int)S);
     }
 }
-
-RegName DecoderBase::decodeDestinationRegName(uint32_t &regNum)
-{
-    RegName regName = RegName::INVALID;
-    GED_DECODE_RAW(GED_REG_FILE, gedRegFile, DstRegFile);
-    if (gedRegFile == GED_REG_FILE_GRF) {
-        regName = RegName::GRF_R;
-    } else if (gedRegFile == GED_REG_FILE_ARF) {
-        GED_RETURN_VALUE status;
-        regName = GEDToIGATranslation::translate(GED_GetArchReg(regNum, m_gedModel, &status));
-        if (status != GED_RETURN_VALUE_SUCCESS) {
-            error("invalid arch register on dst");
-        }
-        regNum &= 0xF; // top bits are regname (e.g. acc in acc1)
-        // bottom bits are reg num (1 in acc1)
-    } else {
-        // IMM or reserved
-        error("invalid reg file on dst");
-    }
-    return regName;
-}
-
 
 
 void DecoderBase::decodeChSelToSwizzle(uint32_t chanSel, GED_SWIZZLE swizzle[4])
@@ -1748,7 +1763,8 @@ void DecoderBase::decodeChSelToSwizzle(uint32_t chanSel, GED_SWIZZLE swizzle[4])
 }
 
 template <SourceIndex S>
-bool DecoderBase::isChanSelPacked() {
+bool DecoderBase::isChanSelPacked()
+{
     uint32_t chanSel = decodeSrcChanSel<S>();
     GED_SWIZZLE swizzle[4];
     decodeChSelToSwizzle(chanSel, swizzle);
@@ -1772,6 +1788,26 @@ void DecoderBase::decodeThreadOptions(Instruction *inst, GED_THREAD_CTRL trdCntr
         default:
             break;
     }
+}
+
+template <SourceIndex S> ImmVal
+DecoderBase::decodeTernarySrcImmVal(Type t)
+{
+    ImmVal val;
+    val.kind = ImmVal::Kind::UNDEF;
+    memset(&val, 0, sizeof(val)); // zero value in case GED only sets bottom bits
+
+    if (S == SourceIndex::SRC0) {
+        GED_DECODE_RAW_TO(Src0TernaryImm, val.u64);
+    } else if (S == SourceIndex::SRC2) {
+        GED_DECODE_RAW_TO(Src2TernaryImm, val.u64);
+    } else {
+        error("src1: immediate supported here on ternary instruction.");
+    }
+
+    setImmValKind(t, val);
+
+    return val;
 }
 
 void DecoderBase::decodeOptions(Instruction *inst)

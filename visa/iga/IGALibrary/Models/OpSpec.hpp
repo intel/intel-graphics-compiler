@@ -200,7 +200,7 @@ namespace iga
         // various miscellaneous attributes about the operation
         enum Attr {
             NONE = 0,
-            IS_BITWISE = 1, // and, asr, or, not, shl, shr, xor
+            IS_BITWISE = 1, // and, asr, or, ror, rol, not, shl, shr, xor
             IS_SELECT = IS_BITWISE << 1, // sel (not csel)
             // TODO: SUPPORTS_ACCWREN (needs to be placed in BXML)
             SUPPORTS_BRCTL = IS_SELECT << 1,
@@ -256,7 +256,6 @@ namespace iga
         // For regular ops it's -1
         int            functionControlValue;
         // For both the grouping op and it's children
-
         //
         // some ops have fragmented subfunction offset; we store these
         // from low subfunction bits to higher ones; invalid entries
@@ -364,32 +363,54 @@ namespace iga
             // subregisters
             return !isSendOrSendsFamily() && !isMacro();
         }
-        bool hasImplicitSrcRegionEq(int srcOpIx, Platform plt, Region rgn) const {
-            auto *pImplRgn = implicitSrcRegionPtr(srcOpIx, plt);
+        bool hasImplicitSrcRegionEq(
+            int srcOpIx,
+            Platform plt,
+            ExecSize es,
+            Region rgn) const
+        {
+            auto *pImplRgn = implicitSrcRegionPtr(srcOpIx, plt, es);
             if (pImplRgn)
                 return *pImplRgn == rgn;
             return false;
         }
-        bool hasImplicitSrcRegion(int srcOpIx, Platform plt) const {
-            return implicitSrcRegionPtr(srcOpIx, plt) != nullptr;
+        bool hasImplicitSrcRegion(
+            int srcOpIx,
+            Platform plt,
+            ExecSize es) const
+        {
+            return implicitSrcRegionPtr(srcOpIx, plt, es) != nullptr;
         }
         // The source index here corresponds to syntactic position,
         // not encoding position
-        Region implicitSrcRegion(int srcOpIx, Platform pltf) const {
+        Region implicitSrcRegion(
+            int srcOpIx, Platform pltf, ExecSize es) const
+        {
             // TODO: this needs to work off the table from BXML
-            const Region *rgn = implicitSrcRegionPtr(srcOpIx, pltf);
+            const Region *rgn = implicitSrcRegionPtr(srcOpIx, pltf, es);
             if (!rgn)
                 return Region::SRC110;
             return *rgn;
         }
-        const Region *implicitSrcRegionPtr(int srcOpIx, Platform pltfm) const {
+        const Region *implicitSrcRegionPtr(
+            int srcOpIx, Platform pltfm, ExecSize execSize) const
+        {
             if (isSendFamily()) {
                 return &Region::SRC010;
             } else if (isSendFamily() || isSendsFamily()) {
                 // no regions on send's
                 return &Region::INVALID;
             } else if (isMacro()) {
-                return &Region::SRC110;
+                if (isTernary()) {
+                    // ternary macro: e.g. madm
+                    if (srcOpIx == 2)
+                        return &Region::SRCXX1;
+                    else
+                        return &Region::SRC2X1;
+                }
+                else {
+                    return &Region::SRC221;
+                }
             } else {
                 if (srcOpIx == 0) {
                     switch (op) {

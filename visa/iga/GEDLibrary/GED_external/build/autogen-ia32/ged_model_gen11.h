@@ -30,23 +30,33 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  * This file was automagically crafted by GED's model parser.
  */
 
-#include "ged_enum_tables.h"
-#include "ged_enum_interpreters.h"
-const ged_unsigned_table_t EnumInterpretersTable0[3] =
+
+#ifndef GED_MODEL_GEN11__H
+#define GED_MODEL_GEN11__H
+
+#include "common/ged_ins_decoding_table.h"
+#include "common/ged_compact_mapping_table.h"
+
+namespace GEN11
 {
-    unsignedTable15, // 0
-    unsignedTable18, // 1
-    unsignedTable20 // 2
-}; // EnumInterpretersTable0[]
-const ged_unsigned_table_t EnumInterpretersTable1[3] =
-{
-    unsignedTable16, // 0
-    unsignedTable19, // 1
-    unsignedTable20 // 2
-}; // EnumInterpretersTable1[]
-const ged_unsigned_table_t EnumInterpretersTable2[3] =
-{
-    unsignedTable17, // 0
-    unsignedTable19, // 1
-    unsignedTable20 // 2
-}; // EnumInterpretersTable2[]
+
+/*!
+ * This table maps every possible opcode value (even for non-existing opcodes) to its respective top level decoding, encoding
+ * restrictions and mapping tables (where applicable). Tables that are not supported in this model (either no compaction, or opcodes
+ * which are not supported at all) are mapped to NULL pointers.
+ */
+extern OpcodeTables Opcodes[128];
+
+#if GED_DISASSEMBLY
+
+/*!
+ * Get the top level disassembly table for the given instruction.
+ * 
+ * @param[in]       opcode The instruction's opcode.
+ * 
+ * @return      The requested disassembly table if the instruction is supported, NULL otherwise.
+ */
+extern const ged_disassembly_table_t GetDisassemblyTable(/* GED_OPCODE */ uint32_t opcode);
+#endif // GED_DISASSEMBLY
+} // namespace GEN11
+#endif // GED_MODEL_GEN11__H

@@ -143,7 +143,7 @@ const char* CondModifierEnumeration[10] =
     "u", // 8
     NULL // 9
 }; // CondModifierEnumeration[]
-const char* DataTypeEnumeration[15] =
+const char* DataTypeEnumeration[16] =
 {
     "ud", // 0
     "d", // 1
@@ -159,7 +159,8 @@ const char* DataTypeEnumeration[15] =
     "uv", // 11
     "vf", // 12
     "v", // 13
-    NULL // 14
+    "nf", // 14
+    NULL // 15
 }; // DataTypeEnumeration[]
 const char* DebugCtrlEnumeration[3] =
 {
@@ -395,7 +396,7 @@ const char* NoSrcDepSetEnumeration[3] =
     "NoSrcDepSet", // 1
     NULL // 2
 }; // NoSrcDepSetEnumeration[]
-const char* OpcodeEnumeration[72] =
+const char* OpcodeEnumeration[75] =
 {
     "illegal", // 0
     "mov", // 1
@@ -465,10 +466,13 @@ const char* OpcodeEnumeration[72] =
     "lrp", // 65
     "madm", // 66
     "nop", // 67
-    "f32to16", // 68
-    "f16to32", // 69
-    "dim", // 70
-    NULL // 71
+    "ror", // 68
+    "rol", // 69
+    "dp4a", // 70
+    "f32to16", // 71
+    "f16to32", // 72
+    "dim", // 73
+    NULL // 74
 }; // OpcodeEnumeration[]
 const char* PredCtrlEnumeration[19] =
 {

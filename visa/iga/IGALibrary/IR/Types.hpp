@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <tuple>
 
 #include "../EnumBitset.hpp"
-#include "../Models/bxml/iga_bxml_enums.hpp"
+#include "../api/iga_bxml_enums.hpp"
 #include "../api/iga_types_ext.hpp"
 
 namespace iga
@@ -56,29 +56,11 @@ enum class Platform
     GEN9LP      = IGA_GEN_VER_ORDINAL( 9, 1),
     GEN9P5      = IGA_GEN_VER_ORDINAL( 9, 5),
     GEN10       = IGA_GEN_VER_ORDINAL(10, 0),
-    GENNEXT     = IGA_GEN_VER_ORDINAL(10, 0)
+    GEN11       = IGA_GEN_VER_ORDINAL(11, 0),
+    GENNEXT     = IGA_GEN_VER_ORDINAL(12, 0)
 
 #undef IGA_GEN_VER_ORDINAL
 };
-
-enum class PredCtrl
-{
-    NONE, // predication is off
-    SEQ,  // no explicit function; e.g. f0.0
-    ANYV, // .anyv; e.g. "f0.0.anyv"
-    ALLV,
-    ANY2H,
-    ALL2H,
-    ANY4H,
-    ALL4H,
-    ANY8H,
-    ALL8H,
-    ANY16H,
-    ALL16H,
-    ANY32H,
-    ALL32H
-};
-
 
 struct Predication
 {
@@ -106,35 +88,21 @@ static inline ExecSize ExecSizeFromInt(int es)
     return static_cast<ExecSize>(es);
 }
 
-
-enum class SrcModifier
-{
-    NONE,
-    ABS,
-    NEG,
-    NEG_ABS,
-};
-
-
-enum class DstModifier
-{
-    NONE,
-    SAT,
-};
-
-// for implicit accumulator access (madm, math.invm, and math.rsqrtm)
-enum class ImplAcc
+// for math macro register access (madm, math.invm, and math.rsqrtm)
+// e.g.  madm (8) r13.mme2:f  r14:mme7:f  r16:nomme ...
+//                    ^^^^        ^^^^        ^^^^^
+enum class MathMacroExt
 {
     INVALID,
-    ACC2,  // encodes as 0000b
-    ACC3,  // encodes as 0001b
-    ACC4,  // encodes as 0010b
-    ACC5,  // encodes as 0011b
-    ACC6,  // encodes as 0100b
-    ACC7,  // encodes as 0101b
-    ACC8,  // encodes as 0110b
-    ACC9,  // encodes as 0111b
-    NOACC, // encodes as 1000b
+    MME0,    // encodes as 0000b
+    MME1,    // encodes as 0001b
+    MME2,    // encodes as 0010b
+    MME3,    // encodes as 0011b
+    MME4,    // encodes as 0100b
+    MME5,    // encodes as 0101b
+    MME6,    // encodes as 0110b
+    MME7,    // encodes as 0111b
+    NOMME,   // encodes as 1000b
 };
 
 
@@ -174,12 +142,7 @@ static inline std::tuple<int,int> TypeSizeShiftsOffsetToSubreg(Type type)
     }
     return std::make_tuple(shl,shr);
 }
-// static inline bool TypeIsSubByte(Type t) {
-//    return std::get<1>(TypeSizeShiftsOffsetToSubreg(t)) > 0;
-// }
 
-// Returns the type size ***in bits****
-//
 // e.g. Type::UD == 32
 static inline int TypeSizeInBits(Type t)
 {
@@ -208,69 +171,9 @@ static bool TypeIsFloating(Type t)
         return false;
     }
 }
-
-///////////////////////////////////////////////////////////////////
-// DEPRECATED
-static inline int LogTypeSize(Type type, int dft = -1)
-{
-    switch (type)
-    {
-    case Type::DF:
-    case Type::Q:
-    case Type::UQ:
-        return 3;
-    case Type::UD:
-    case Type::D:
-    case Type::F:
-    case Type::NF: // Darrin said the :nf accumulators region the same as :f
-    case Type::V:
-    case Type::VF:
-    case Type::UV:
-        return 2;
-    case Type::UW:
-    case Type::W:
-    case Type::HF:
-        return 1;
-    case Type::UB:
-    case Type::B:
-        return 0;
-    default:
-        if (dft < 0) {
-            IGA_ASSERT_FALSE("TypeSize() on INVALID type");
-        }
-        return dft;
-    }
-}
-///////////////////////////////////////////////////////////////////
-// DEPRECATED
-static inline int TypeSize(Type type)
-{
-    return 1 << LogTypeSize(type);
-}
-///////////////////////////////////////////////////////////////////
-// DEPRECATED
-static inline int TypeSizeWithDefault(Type type, int dft = 0)
-{
-    return type == Type::INVALID ? dft : TypeSize(type);
-}
-
-
-
-enum class FlagModifier
-{
-    NONE = 0,  // no flag modification
-    EQ,        // equal (zero)
-    NE,        // not-equal (not-zer)
-    GT,        // greater than
-    GE,        // greater than or equal
-    LT,        // less than
-    LE,        // less than or equal
-               // 7 is reserved
-    OV = 8,    // overflow
-    UN,        // unordered (NaN)
-    EO = 0xFF, // early out: special implicit flag modifier for math.invm and math.rsqrtm
-};
-
+// static inline bool TypeIsSubByte(Type t) {
+//    return std::get<1>(TypeSizeShiftsOffsetToSubreg(t)) > 0;
+// }
 
 struct Region {
     enum class Vert {
@@ -402,8 +305,10 @@ struct RegRef {
     bool operator!=(const RegRef &rr) const {
         return !(*this == rr);
     }
-
 };
+static inline RegRef MakeRegRef(int r, int sr = 0) {
+    return {(uint8_t)r,(uint8_t)sr};
+}
 
 static const RegRef REGREF_INVALID = {0xFF,0xFF};
 static const RegRef REGREF_ZERO_ZERO = {0,0};

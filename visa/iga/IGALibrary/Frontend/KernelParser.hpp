@@ -87,8 +87,13 @@ namespace iga {
             ExecSize &execSize,
             ChannelOffset &chOff);
         Type ParseSendOperandTypeWithDefault(int srcIx);
-        bool LookupReg(const std::string &str, const RegInfo *&ri, int &reg);
-        bool ConsumeReg(const RegInfo *&ri, int &reg);
+
+        bool LookupReg(
+            const std::string &str,
+            const RegInfo *&regInfo,
+            int &regNum);
+        bool PeekReg(const RegInfo*& regInfo, int& regNum);
+        bool ConsumeReg(const RegInfo *&regInfo, int &regNum);
 
         // expression parsing
         // &,|

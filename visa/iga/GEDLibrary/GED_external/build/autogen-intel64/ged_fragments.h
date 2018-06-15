@@ -59,4 +59,5 @@ extern const ged_ins_field_position_fragment_t FragmentsTable20[2];
 extern const ged_ins_field_position_fragment_t FragmentsTable21[2];
 extern const ged_ins_field_position_fragment_t FragmentsTable22[4];
 extern const ged_ins_field_position_fragment_t FragmentsTable23[2];
+extern const ged_ins_field_position_fragment_t FragmentsTable24[2];
 #endif // GED_FRAGMENTS_H

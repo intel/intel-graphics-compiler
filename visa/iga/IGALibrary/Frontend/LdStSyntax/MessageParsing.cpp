@@ -50,7 +50,7 @@ static RegRange parseRegRange(GenParser &p)
     if (!p.LookupReg(regStr, ri, rr.regStart)) {
         p.Fail("invalid register range");
     }
-    rr.regName = ri->reg;
+    rr.regName = ri->regName;
 
     if (!p.Consume(SUB)) {
         rr.length = 1;
@@ -379,8 +379,8 @@ static void encodeDescriptors(
         dstHz = opSpec->implicitDstRegion().getHz();
     }
     Region s0rgn = Region::INVALID;
-    if (opSpec->hasImplicitSrcRegion(0, model.platform)) {
-        s0rgn = opSpec->implicitSrcRegion(0, model.platform);
+    if (opSpec->hasImplicitSrcRegion(0, model.platform, execSize)) {
+        s0rgn = opSpec->implicitSrcRegion(0, model.platform, execSize);
     }
     Type s0Ty = Type::INVALID;
     if (opSpec->hasImplicitSrcType(0,false,model.platform)) {

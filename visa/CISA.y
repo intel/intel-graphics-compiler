@@ -1082,7 +1082,7 @@ StrbufScaledInstruction: Predicate STRBUF_SCALED_OP SAMPLER_CHANNEL ExecSize VAR
         {
             pCisaBuilder->CISA_create_strbuf_scaled_instruction($2, $1.cisa_gen_opnd, $4.emask, $4.exec_size, ChannelMask::createFromAPI($3), $5, $6.cisa_gen_opnd, $7.cisa_gen_opnd, $8.cisa_gen_opnd, CISAlineno);
         };
-
+            
 //                                 1                 2   3      4   5      6   7                        8        9                      
 ScatterScaledInstruction : Predicate SCATTER_SCALED_OP '.' NUMBER ExecSize VAR VecSrcOperand_G_I_IMM RawOperand RawOperand
         {

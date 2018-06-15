@@ -105,6 +105,7 @@ typedef enum {
   , IGA_GEN9lp    = GEN_VER(9,1)
   , IGA_GEN9p5    = GEN_VER(9,5)
   , IGA_GEN10     = GEN_VER(10,0)
+  , IGA_GEN11     = GEN_VER(11,0)
 } iga_gen_t;
 
 
@@ -407,7 +408,7 @@ IGA_API  iga_status_t  iga_context_disassemble(
     const char *(*fmt_label_name)(int32_t, void *),
     void *fmt_label_ctx,
     char **kernel_text);
-/* deprecated API covers to iga_contex* */
+/* deprecated API covers to iga_context_* */
 IGA_API  iga_status_t  iga_disassemble(
     iga_context_t ctx,
     const iga_disassemble_options_t *opts,

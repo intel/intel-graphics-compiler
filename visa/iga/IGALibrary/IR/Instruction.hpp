@@ -114,13 +114,13 @@ namespace iga
             DstModifier dstMod,
             RegName r,
             RegRef reg,
-            ImplAcc acc,
+            MathMacroExt mme,
             Region::Horz rgn,
             Type type);
         void setInidirectDestination(
             DstModifier dstMod,
             RegRef addrReg,
-            int16_t immOffset,
+            int16_t addrImmOff,
             Region::Horz rgnH,
             Type type);
         void setDirectSource(
@@ -142,7 +142,7 @@ namespace iga
             SrcModifier srcMod,
             RegName r,
             RegRef reg,
-            ImplAcc acc,
+            MathMacroExt acc,
             Region rgn,
             Type type);
         void setImmediateSource(
@@ -163,7 +163,6 @@ namespace iga
 
         void setMsgDesc(const SendDescArg &msg) { m_desc = msg; }
         void setExtMsgDesc(const SendDescArg &msg) { m_exDesc = msg; }
-
         void addInstOpt(const InstOpt &opt) { m_instOpts.add(opt); }
         void addInstOpts(const InstOptSet &opts) { m_instOpts.add(opts); }
 

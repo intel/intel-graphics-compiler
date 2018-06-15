@@ -31,27 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace iga
 {
-
-    enum ArchRegFile
-    {                                          // (ARF Registers -- Overview):
-        ARCH_REG_FILE_NULL = 0x00,  // 0000 null    Null register
-        ARCH_REG_FILE_A = 0x01,  // 0001 a0.#    Address register
-        ARCH_REG_FILE_ACC = 0x02,  // 0010 acc#    Accumulator register
-        ARCH_REG_FILE_F = 0x03,  // 0011 f0.#    Flag register [DevSNB]
-                                 // 0011 f#.#    Flag register [DevIVB+]
-                                 ARCH_REG_FILE_MASK = 0x04,  // 0100 ce#     Channel Enable register [DevHSW+]
-                                 ARCH_REG_FILE_STACK = 0x05,  // 0110 msg#        reserved
-                                 ARCH_REG_FILE_STACK_DEPTH = 0x06,  // 0110 sp      Stack Pointer Register DevHSW+
-                                 ARCH_REG_FILE_STATE_REG = 0x07,  // 0111 sr0.#   State register
-                                 ARCH_REG_FILE_CNTL_REG = 0x08,  // 1000 cr0.#   Control register
-                                 ARCH_REG_FILE_NCNT_REG = 0x09,  // 1001 n#      Notification count register
-                                 ARCH_REG_FILE_IP = 0x0A,  // 1010 ip      Instruction pointer register
-                                 ARCH_REG_FILE_TDR_REG = 0x0B,  // 1011 tdr     Thread dependency register
-                                 ARCH_REG_FILE_PERF_REG = 0x0C,  // 1100 tm0     TimeStamp register [DevIVB+]
-                                 ARCH_REG_FILE_FC_REG = 0x0D,  // 1101 fc#.#   Flow Control register[DevHSW+]
-                                 ARCH_REG_FILE_DBG_REG = 0x0F   // 1111 dbg0    Debug only [DevIVB+]
-    };
-
     class _IGAToGEDTranslation
     {
     public:
@@ -62,6 +41,15 @@ namespace iga
             {
             case Op::ILLEGAL:
                 op = GED_OPCODE_illegal;
+                break;
+            case Op::ROR:
+                op = GED_OPCODE_ror;
+                break;
+            case Op::ROL:
+                op = GED_OPCODE_rol;
+                break;
+            case Op::DP4A:
+                op = GED_OPCODE_dp4a;
                 break;
             case Op::MOV:
                 op = GED_OPCODE_mov;
@@ -320,6 +308,9 @@ namespace iga
             case Platform::GEN10:
                 pltf = GED_MODEL_GEN_10;
                 break;
+            case Platform::GEN11:
+                pltf = GED_MODEL_GEN_11;
+
             default:
                 break;
             }
@@ -407,66 +398,6 @@ namespace iga
             return srcMod;
         }
 
-        static uint32_t combineARF(uint32_t regNum, RegName regT)
-        {
-            switch (regT)
-            {
-            case iga::RegName::ARF_NULL:
-                regNum |= (ARCH_REG_FILE_NULL << 4);
-                break;
-            case iga::RegName::ARF_A:
-                regNum |= (ARCH_REG_FILE_A << 4);
-                break;
-            case iga::RegName::ARF_ACC:
-                regNum |= (ARCH_REG_FILE_ACC << 4);
-                break;
-            case iga::RegName::ARF_F:
-                regNum |= (ARCH_REG_FILE_F << 4);
-                break;
-            case iga::RegName::ARF_CE:
-                regNum |= (ARCH_REG_FILE_MASK << 4);
-                break;
-            case iga::RegName::ARF_MSG:
-                regNum |= (ARCH_REG_FILE_STACK << 4);
-                break;
-            case iga::RegName::ARF_SP:
-                regNum |= (ARCH_REG_FILE_STACK_DEPTH << 4);
-                break;
-            case iga::RegName::ARF_SR:
-                regNum |= (ARCH_REG_FILE_STATE_REG << 4);
-                break;
-            case iga::RegName::ARF_CR:
-                regNum |= (ARCH_REG_FILE_CNTL_REG << 4);
-                break;
-            case iga::RegName::ARF_N:
-                regNum |= (ARCH_REG_FILE_NCNT_REG << 4);
-                break;
-            case iga::RegName::ARF_IP:
-                regNum |= (ARCH_REG_FILE_IP << 4);
-                break;
-            case iga::RegName::ARF_TDR:
-                regNum |= (ARCH_REG_FILE_TDR_REG << 4);
-                break;
-            case iga::RegName::ARF_TM:
-                regNum |= (ARCH_REG_FILE_PERF_REG << 4);
-                break;
-            case iga::RegName::ARF_FC:
-                regNum |= (ARCH_REG_FILE_FC_REG << 4);
-                break;
-            case iga::RegName::ARF_DBG:
-                regNum |= (ARCH_REG_FILE_DBG_REG << 4);
-                break;
-            case iga::RegName::GRF_R:
-                break;
-            case iga::RegName::INVALID:
-                IGA_ASSERT_FALSE("invalid arch register in encoding");
-                break;
-            default:
-                break;
-            }
-            return regNum;
-        }
-
 
         static GED_SFID lowerSendTFID(uint32_t id, Platform platform)
         {
@@ -483,12 +414,9 @@ namespace iga
                 tfid = GED_SFID_GATEWAY;
                 break;
             case 4:
-                if (platform < Platform::GEN9)
-                {
+                if (platform < Platform::GEN9) {
                     tfid = GED_SFID_DP_SAMPLER;
-                }
-                else
-                {
+                } else {
                     tfid = GED_SFID_DP_DC2;
                 }
                 break;
@@ -505,12 +433,9 @@ namespace iga
                 tfid = GED_SFID_VME;
                 break;
             case 9:
-                if (platform < Platform::GEN9)
-                {
+                if (platform < Platform::GEN9) {
                     tfid = GED_SFID_DP_CC;
-                }
-                else
-                {
+                } else {
                     tfid = GED_SFID_DP_DCRO;
                 }
                 break;
@@ -602,6 +527,9 @@ namespace iga
             case Type::HF:
                 dataType = GED_DATA_TYPE_hf;
                 break;
+            case Type::NF:
+                dataType = GED_DATA_TYPE_nf;
+                break;
             default:
                 break;
             }
@@ -609,24 +537,22 @@ namespace iga
         }
 
 
-        static GED_SPECIAL_ACC lowerSpecialAcc(ImplAcc acc)
+        static GED_SPECIAL_ACC lowerSpecialAcc(MathMacroExt acc)
         {
             switch (acc)
             {
-            case ImplAcc::ACC2: return GED_SPECIAL_ACC_acc2;
-            case ImplAcc::ACC3: return GED_SPECIAL_ACC_acc3;
-            case ImplAcc::ACC4: return GED_SPECIAL_ACC_acc4;
-            case ImplAcc::ACC5: return GED_SPECIAL_ACC_acc5;
-            case ImplAcc::ACC6: return GED_SPECIAL_ACC_acc6;
-            case ImplAcc::ACC7: return GED_SPECIAL_ACC_acc7;
-            case ImplAcc::ACC8: return GED_SPECIAL_ACC_acc8;
-            case ImplAcc::ACC9: return GED_SPECIAL_ACC_acc9;
-            case ImplAcc::NOACC: return GED_SPECIAL_ACC_noacc;
+            case MathMacroExt::MME0: return GED_SPECIAL_ACC_acc2;
+            case MathMacroExt::MME1: return GED_SPECIAL_ACC_acc3;
+            case MathMacroExt::MME2: return GED_SPECIAL_ACC_acc4;
+            case MathMacroExt::MME3: return GED_SPECIAL_ACC_acc5;
+            case MathMacroExt::MME4: return GED_SPECIAL_ACC_acc6;
+            case MathMacroExt::MME5: return GED_SPECIAL_ACC_acc7;
+            case MathMacroExt::MME6: return GED_SPECIAL_ACC_acc8;
+            case MathMacroExt::MME7: return GED_SPECIAL_ACC_acc9;
+            case MathMacroExt::NOMME: return GED_SPECIAL_ACC_noacc;
             default: return GED_SPECIAL_ACC_INVALID;
             }
         }
-
-
 
 
         static GED_CHANNEL_OFFSET lowerQtrCtrl(ChannelOffset ectrl)
@@ -634,32 +560,15 @@ namespace iga
             GED_CHANNEL_OFFSET gedCtrl = GED_CHANNEL_OFFSET_INVALID;
             switch (ectrl)
             {
-            case iga::ChannelOffset::M0:
-                gedCtrl = GED_CHANNEL_OFFSET_M0;
-                break;
-            case iga::ChannelOffset::M4:
-                gedCtrl = GED_CHANNEL_OFFSET_M4;
-                break;
-            case iga::ChannelOffset::M8:
-                gedCtrl = GED_CHANNEL_OFFSET_M8;
-                break;
-            case iga::ChannelOffset::M12:
-                gedCtrl = GED_CHANNEL_OFFSET_M12;
-                break;
-            case iga::ChannelOffset::M16:
-                gedCtrl = GED_CHANNEL_OFFSET_M16;
-                break;
-            case iga::ChannelOffset::M20:
-                gedCtrl = GED_CHANNEL_OFFSET_M20;
-                break;
-            case iga::ChannelOffset::M24:
-                gedCtrl = GED_CHANNEL_OFFSET_M24;
-                break;
-            case iga::ChannelOffset::M28:
-                gedCtrl = GED_CHANNEL_OFFSET_M28;
-                break;
-            default:
-                break;
+            case iga::ChannelOffset::M0: gedCtrl = GED_CHANNEL_OFFSET_M0; break;
+            case iga::ChannelOffset::M4: gedCtrl = GED_CHANNEL_OFFSET_M4; break;
+            case iga::ChannelOffset::M8: gedCtrl = GED_CHANNEL_OFFSET_M8; break;
+            case iga::ChannelOffset::M12: gedCtrl = GED_CHANNEL_OFFSET_M12; break;
+            case iga::ChannelOffset::M16: gedCtrl = GED_CHANNEL_OFFSET_M16; break;
+            case iga::ChannelOffset::M20: gedCtrl = GED_CHANNEL_OFFSET_M20; break;
+            case iga::ChannelOffset::M24: gedCtrl = GED_CHANNEL_OFFSET_M24; break;
+            case iga::ChannelOffset::M28: gedCtrl = GED_CHANNEL_OFFSET_M28; break;
+            default: break;
             }
             return gedCtrl;
         }
@@ -878,18 +787,19 @@ namespace iga
             return (type == RegName::GRF_R) ? GED_REG_FILE_GRF : GED_REG_FILE_ARF;
         }
 
-        static GED_SPECIAL_ACC lowerImplAcc(ImplAcc implAcc)
+        static GED_SPECIAL_ACC lowerMathMacroReg(MathMacroExt MathMacroReg)
         {
-            switch (implAcc) {
-            case ImplAcc::ACC2: return GED_SPECIAL_ACC_acc2;
-            case ImplAcc::ACC3: return GED_SPECIAL_ACC_acc3;
-            case ImplAcc::ACC4: return GED_SPECIAL_ACC_acc4;
-            case ImplAcc::ACC5: return GED_SPECIAL_ACC_acc5;
-            case ImplAcc::ACC6: return GED_SPECIAL_ACC_acc6;
-            case ImplAcc::ACC7: return GED_SPECIAL_ACC_acc7;
-            case ImplAcc::ACC8: return GED_SPECIAL_ACC_acc8;
-            case ImplAcc::ACC9: return GED_SPECIAL_ACC_acc9;
-            case ImplAcc::NOACC: return GED_SPECIAL_ACC_noacc;
+            // NOTE: GED puts special accumulators as acc2 to acc9
+            switch (MathMacroReg) {
+            case MathMacroExt::MME0: return GED_SPECIAL_ACC_acc2;
+            case MathMacroExt::MME1: return GED_SPECIAL_ACC_acc3;
+            case MathMacroExt::MME2: return GED_SPECIAL_ACC_acc4;
+            case MathMacroExt::MME3: return GED_SPECIAL_ACC_acc5;
+            case MathMacroExt::MME4: return GED_SPECIAL_ACC_acc6;
+            case MathMacroExt::MME5: return GED_SPECIAL_ACC_acc7;
+            case MathMacroExt::MME6: return GED_SPECIAL_ACC_acc8;
+            case MathMacroExt::MME7: return GED_SPECIAL_ACC_acc9;
+            case MathMacroExt::NOMME: return GED_SPECIAL_ACC_noacc;
             default: return GED_SPECIAL_ACC_INVALID;
             }
             return GED_SPECIAL_ACC_INVALID;

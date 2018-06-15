@@ -130,12 +130,38 @@ const ged_unsigned_enum_value_t* unsignedTable8[4] =
 }; // unsignedTable8[]
 const ged_unsigned_enum_value_t* unsignedTable9[4] =
 {
+    &unsignedVar6, // 0
+    NULL, // 1
+    NULL, // 2
+    NULL // 3
+}; // unsignedTable9[]
+const ged_unsigned_enum_value_t* unsignedTable10[16] =
+{
+    &unsignedVar6, // 0
+    NULL, // 1
+    NULL, // 2
+    NULL, // 3
+    NULL, // 4
+    NULL, // 5
+    NULL, // 6
+    NULL, // 7
+    NULL, // 8
+    NULL, // 9
+    NULL, // 10
+    NULL, // 11
+    NULL, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL // 15
+}; // unsignedTable10[]
+const ged_unsigned_enum_value_t* unsignedTable11[4] =
+{
     NULL, // 0
     &unsignedVar0, // 1
     NULL, // 2
     NULL // 3
-}; // unsignedTable9[]
-const ged_unsigned_enum_value_t* unsignedTable10[8] =
+}; // unsignedTable11[]
+const ged_unsigned_enum_value_t* unsignedTable12[8] =
 {
     NULL, // 0
     &unsignedVar1, // 1
@@ -145,8 +171,8 @@ const ged_unsigned_enum_value_t* unsignedTable10[8] =
     NULL, // 5
     NULL, // 6
     NULL // 7
-}; // unsignedTable10[]
-const ged_unsigned_enum_value_t* unsignedTable11[16] =
+}; // unsignedTable12[]
+const ged_unsigned_enum_value_t* unsignedTable13[16] =
 {
     NULL, // 0
     NULL, // 1
@@ -164,8 +190,8 @@ const ged_unsigned_enum_value_t* unsignedTable11[16] =
     NULL, // 13
     NULL, // 14
     NULL // 15
-}; // unsignedTable11[]
-const ged_unsigned_enum_value_t* unsignedTable12[16] =
+}; // unsignedTable13[]
+const ged_unsigned_enum_value_t* unsignedTable14[16] =
 {
     &unsignedVar6, // 0
     &unsignedVar0, // 1
@@ -183,8 +209,8 @@ const ged_unsigned_enum_value_t* unsignedTable12[16] =
     NULL, // 13
     NULL, // 14
     &unsignedVar7 // 15
-}; // unsignedTable12[]
-const ged_unsigned_enum_value_t* unsignedTable13[14] =
+}; // unsignedTable14[]
+const ged_unsigned_enum_value_t* unsignedTable15[15] =
 {
     &unsignedVar2, // 0
     &unsignedVar2, // 1
@@ -199,9 +225,10 @@ const ged_unsigned_enum_value_t* unsignedTable13[14] =
     NULL, // 10
     &unsignedVar2, // 11
     &unsignedVar2, // 12
-    &unsignedVar2 // 13
-}; // unsignedTable13[]
-const ged_unsigned_enum_value_t* unsignedTable14[14] =
+    &unsignedVar2, // 13
+    NULL // 14
+}; // unsignedTable15[]
+const ged_unsigned_enum_value_t* unsignedTable16[15] =
 {
     &unsignedVar2, // 0
     &unsignedVar2, // 1
@@ -216,9 +243,28 @@ const ged_unsigned_enum_value_t* unsignedTable14[14] =
     &unsignedVar1, // 10
     &unsignedVar2, // 11
     &unsignedVar2, // 12
-    &unsignedVar2 // 13
-}; // unsignedTable14[]
-const ged_unsigned_enum_value_t* unsignedTable15[14] =
+    &unsignedVar2, // 13
+    NULL // 14
+}; // unsignedTable16[]
+const ged_unsigned_enum_value_t* unsignedTable17[15] =
+{
+    &unsignedVar2, // 0
+    &unsignedVar2, // 1
+    &unsignedVar1, // 2
+    &unsignedVar1, // 3
+    &unsignedVar0, // 4
+    &unsignedVar0, // 5
+    &unsignedVar3, // 6
+    &unsignedVar2, // 7
+    &unsignedVar3, // 8
+    &unsignedVar3, // 9
+    &unsignedVar1, // 10
+    &unsignedVar2, // 11
+    &unsignedVar2, // 12
+    &unsignedVar2, // 13
+    &unsignedVar2 // 14
+}; // unsignedTable17[]
+const ged_unsigned_enum_value_t* unsignedTable18[15] =
 {
     &unsignedVar6, // 0
     &unsignedVar6, // 1
@@ -233,9 +279,10 @@ const ged_unsigned_enum_value_t* unsignedTable15[14] =
     NULL, // 10
     &unsignedVar6, // 11
     &unsignedVar6, // 12
-    &unsignedVar6 // 13
-}; // unsignedTable15[]
-const ged_unsigned_enum_value_t* unsignedTable16[14] =
+    &unsignedVar6, // 13
+    NULL // 14
+}; // unsignedTable18[]
+const ged_unsigned_enum_value_t* unsignedTable19[15] =
 {
     &unsignedVar6, // 0
     &unsignedVar6, // 1
@@ -250,9 +297,10 @@ const ged_unsigned_enum_value_t* unsignedTable16[14] =
     &unsignedVar0, // 10
     &unsignedVar6, // 11
     &unsignedVar6, // 12
-    &unsignedVar6 // 13
-}; // unsignedTable16[]
-const ged_unsigned_enum_value_t* unsignedTable17[14] =
+    &unsignedVar6, // 13
+    NULL // 14
+}; // unsignedTable19[]
+const ged_unsigned_enum_value_t* unsignedTable20[14] =
 {
     &unsignedVar6, // 0
     &unsignedVar0, // 1
@@ -268,7 +316,7 @@ const ged_unsigned_enum_value_t* unsignedTable17[14] =
     &unsignedVar6, // 11
     &unsignedVar6, // 12
     &unsignedVar6 // 13
-}; // unsignedTable17[]
+}; // unsignedTable20[]
 static GED_ACCESS_MODE AccessModeVar0 = (GED_ACCESS_MODE)0;
 static GED_ACCESS_MODE AccessModeVar1 = (GED_ACCESS_MODE)1;
 const GED_ACCESS_MODE* AccessModeTable0[2] =
@@ -534,6 +582,7 @@ static GED_DATA_TYPE DataTypeVar10 = (GED_DATA_TYPE)10;
 static GED_DATA_TYPE DataTypeVar11 = (GED_DATA_TYPE)11;
 static GED_DATA_TYPE DataTypeVar12 = (GED_DATA_TYPE)12;
 static GED_DATA_TYPE DataTypeVar13 = (GED_DATA_TYPE)13;
+static GED_DATA_TYPE DataTypeVar14 = (GED_DATA_TYPE)14;
 const GED_DATA_TYPE* DataTypeTable0[16] =
 {
     &DataTypeVar0, // 0
@@ -667,7 +716,75 @@ const GED_DATA_TYPE* DataTypeTable8[8] =
     NULL, // 6
     NULL // 7
 }; // DataTypeTable8[]
-const GED_DATA_TYPE* DataTypeTable9[8] =
+const GED_DATA_TYPE* DataTypeTable9[16] =
+{
+    &DataTypeVar0, // 0
+    &DataTypeVar1, // 1
+    &DataTypeVar2, // 2
+    &DataTypeVar3, // 3
+    &DataTypeVar4, // 4
+    &DataTypeVar5, // 5
+    &DataTypeVar8, // 6
+    &DataTypeVar9, // 7
+    &DataTypeVar10, // 8
+    &DataTypeVar7, // 9
+    &DataTypeVar6, // 10
+    &DataTypeVar14, // 11
+    NULL, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL // 15
+}; // DataTypeTable9[]
+const GED_DATA_TYPE* DataTypeTable10[16] =
+{
+    &DataTypeVar0, // 0
+    &DataTypeVar1, // 1
+    &DataTypeVar2, // 2
+    &DataTypeVar3, // 3
+    &DataTypeVar11, // 4
+    &DataTypeVar13, // 5
+    NULL, // 6
+    NULL, // 7
+    &DataTypeVar10, // 8
+    &DataTypeVar7, // 9
+    NULL, // 10
+    &DataTypeVar12, // 11
+    NULL, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL // 15
+}; // DataTypeTable10[]
+const GED_DATA_TYPE* DataTypeTable11[16] =
+{
+    &DataTypeVar0, // 0
+    &DataTypeVar1, // 1
+    &DataTypeVar2, // 2
+    &DataTypeVar3, // 3
+    &DataTypeVar11, // 4
+    &DataTypeVar13, // 5
+    &DataTypeVar8, // 6
+    &DataTypeVar9, // 7
+    &DataTypeVar10, // 8
+    &DataTypeVar7, // 9
+    &DataTypeVar6, // 10
+    &DataTypeVar12, // 11
+    NULL, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL // 15
+}; // DataTypeTable11[]
+const GED_DATA_TYPE* DataTypeTable12[8] =
+{
+    &DataTypeVar10, // 0
+    &DataTypeVar7, // 1
+    &DataTypeVar6, // 2
+    &DataTypeVar14, // 3
+    NULL, // 4
+    NULL, // 5
+    NULL, // 6
+    NULL // 7
+}; // DataTypeTable12[]
+const GED_DATA_TYPE* DataTypeTable13[8] =
 {
     &DataTypeVar0, // 0
     &DataTypeVar1, // 1
@@ -677,8 +794,8 @@ const GED_DATA_TYPE* DataTypeTable9[8] =
     &DataTypeVar5, // 5
     &DataTypeVar6, // 6
     &DataTypeVar7 // 7
-}; // DataTypeTable9[]
-const GED_DATA_TYPE* DataTypeTable10[8] =
+}; // DataTypeTable13[]
+const GED_DATA_TYPE* DataTypeTable14[8] =
 {
     &DataTypeVar0, // 0
     NULL, // 1
@@ -688,8 +805,8 @@ const GED_DATA_TYPE* DataTypeTable10[8] =
     NULL, // 5
     NULL, // 6
     NULL // 7
-}; // DataTypeTable10[]
-const GED_DATA_TYPE* DataTypeTable11[8] =
+}; // DataTypeTable14[]
+const GED_DATA_TYPE* DataTypeTable15[8] =
 {
     NULL, // 0
     &DataTypeVar1, // 1
@@ -699,8 +816,8 @@ const GED_DATA_TYPE* DataTypeTable11[8] =
     NULL, // 5
     NULL, // 6
     NULL // 7
-}; // DataTypeTable11[]
-const GED_DATA_TYPE* DataTypeTable12[8] =
+}; // DataTypeTable15[]
+const GED_DATA_TYPE* DataTypeTable16[8] =
 {
     &DataTypeVar0, // 0
     &DataTypeVar1, // 1
@@ -710,14 +827,14 @@ const GED_DATA_TYPE* DataTypeTable12[8] =
     &DataTypeVar12, // 5
     &DataTypeVar13, // 6
     &DataTypeVar7 // 7
-}; // DataTypeTable12[]
-const GED_DATA_TYPE* DataTypeTable13[4] =
+}; // DataTypeTable16[]
+const GED_DATA_TYPE* DataTypeTable17[4] =
 {
     &DataTypeVar7, // 0
     &DataTypeVar1, // 1
     &DataTypeVar0, // 2
     &DataTypeVar6 // 3
-}; // DataTypeTable13[]
+}; // DataTypeTable17[]
 static GED_DEBUG_CTRL DebugCtrlVar0 = (GED_DEBUG_CTRL)0;
 static GED_DEBUG_CTRL DebugCtrlVar1 = (GED_DEBUG_CTRL)1;
 const GED_DEBUG_CTRL* DebugCtrlTable0[2] =
@@ -1430,6 +1547,9 @@ static GED_OPCODE OpcodeVar67 = (GED_OPCODE)67;
 static GED_OPCODE OpcodeVar68 = (GED_OPCODE)68;
 static GED_OPCODE OpcodeVar69 = (GED_OPCODE)69;
 static GED_OPCODE OpcodeVar70 = (GED_OPCODE)70;
+static GED_OPCODE OpcodeVar71 = (GED_OPCODE)71;
+static GED_OPCODE OpcodeVar72 = (GED_OPCODE)72;
+static GED_OPCODE OpcodeVar73 = (GED_OPCODE)73;
 const GED_OPCODE* OpcodeTable0[128] =
 {
     &OpcodeVar0, // 0
@@ -1573,6 +1693,137 @@ const GED_OPCODE* OpcodeTable1[128] =
     &OpcodeVar7, // 7
     &OpcodeVar8, // 8
     &OpcodeVar9, // 9
+    &OpcodeVar10, // 10
+    NULL, // 11
+    &OpcodeVar11, // 12
+    NULL, // 13
+    &OpcodeVar68, // 14
+    &OpcodeVar69, // 15
+    &OpcodeVar12, // 16
+    &OpcodeVar13, // 17
+    &OpcodeVar14, // 18
+    NULL, // 19
+    NULL, // 20
+    NULL, // 21
+    NULL, // 22
+    &OpcodeVar15, // 23
+    &OpcodeVar16, // 24
+    &OpcodeVar17, // 25
+    &OpcodeVar18, // 26
+    NULL, // 27
+    NULL, // 28
+    NULL, // 29
+    NULL, // 30
+    NULL, // 31
+    &OpcodeVar19, // 32
+    &OpcodeVar20, // 33
+    &OpcodeVar21, // 34
+    &OpcodeVar22, // 35
+    &OpcodeVar23, // 36
+    &OpcodeVar24, // 37
+    NULL, // 38
+    &OpcodeVar25, // 39
+    &OpcodeVar26, // 40
+    &OpcodeVar27, // 41
+    &OpcodeVar28, // 42
+    &OpcodeVar29, // 43
+    &OpcodeVar30, // 44
+    &OpcodeVar31, // 45
+    &OpcodeVar32, // 46
+    &OpcodeVar33, // 47
+    &OpcodeVar34, // 48
+    &OpcodeVar35, // 49
+    &OpcodeVar36, // 50
+    &OpcodeVar37, // 51
+    &OpcodeVar38, // 52
+    NULL, // 53
+    NULL, // 54
+    NULL, // 55
+    &OpcodeVar39, // 56
+    NULL, // 57
+    NULL, // 58
+    NULL, // 59
+    NULL, // 60
+    NULL, // 61
+    NULL, // 62
+    NULL, // 63
+    &OpcodeVar40, // 64
+    &OpcodeVar41, // 65
+    &OpcodeVar42, // 66
+    &OpcodeVar43, // 67
+    &OpcodeVar44, // 68
+    &OpcodeVar45, // 69
+    &OpcodeVar46, // 70
+    &OpcodeVar47, // 71
+    &OpcodeVar48, // 72
+    &OpcodeVar49, // 73
+    &OpcodeVar50, // 74
+    &OpcodeVar51, // 75
+    &OpcodeVar52, // 76
+    &OpcodeVar53, // 77
+    &OpcodeVar54, // 78
+    &OpcodeVar55, // 79
+    &OpcodeVar56, // 80
+    &OpcodeVar57, // 81
+    NULL, // 82
+    NULL, // 83
+    NULL, // 84
+    NULL, // 85
+    NULL, // 86
+    NULL, // 87
+    &OpcodeVar70, // 88
+    NULL, // 89
+    NULL, // 90
+    &OpcodeVar64, // 91
+    NULL, // 92
+    &OpcodeVar66, // 93
+    NULL, // 94
+    NULL, // 95
+    NULL, // 96
+    NULL, // 97
+    NULL, // 98
+    NULL, // 99
+    NULL, // 100
+    NULL, // 101
+    NULL, // 102
+    NULL, // 103
+    NULL, // 104
+    NULL, // 105
+    NULL, // 106
+    NULL, // 107
+    NULL, // 108
+    NULL, // 109
+    NULL, // 110
+    NULL, // 111
+    NULL, // 112
+    NULL, // 113
+    NULL, // 114
+    NULL, // 115
+    NULL, // 116
+    NULL, // 117
+    NULL, // 118
+    NULL, // 119
+    NULL, // 120
+    NULL, // 121
+    NULL, // 122
+    NULL, // 123
+    NULL, // 124
+    NULL, // 125
+    &OpcodeVar67, // 126
+    NULL // 127
+}; // OpcodeTable1[]
+const GED_OPCODE* OpcodeTable2[128] =
+{
+    &OpcodeVar0, // 0
+    &OpcodeVar1, // 1
+    &OpcodeVar2, // 2
+    &OpcodeVar3, // 3
+    &OpcodeVar4, // 4
+    &OpcodeVar5, // 5
+    &OpcodeVar6, // 6
+    &OpcodeVar7, // 7
+    &OpcodeVar8, // 8
+    &OpcodeVar9, // 9
     NULL, // 10
     NULL, // 11
     &OpcodeVar11, // 12
@@ -1582,8 +1833,8 @@ const GED_OPCODE* OpcodeTable1[128] =
     &OpcodeVar12, // 16
     &OpcodeVar13, // 17
     &OpcodeVar14, // 18
-    &OpcodeVar68, // 19
-    &OpcodeVar69, // 20
+    &OpcodeVar71, // 19
+    &OpcodeVar72, // 20
     NULL, // 21
     NULL, // 22
     &OpcodeVar15, // 23
@@ -1691,8 +1942,8 @@ const GED_OPCODE* OpcodeTable1[128] =
     NULL, // 125
     &OpcodeVar67, // 126
     NULL // 127
-}; // OpcodeTable1[]
-const GED_OPCODE* OpcodeTable2[128] =
+}; // OpcodeTable2[]
+const GED_OPCODE* OpcodeTable3[128] =
 {
     &OpcodeVar0, // 0
     &OpcodeVar1, // 1
@@ -1704,7 +1955,7 @@ const GED_OPCODE* OpcodeTable2[128] =
     &OpcodeVar7, // 7
     &OpcodeVar8, // 8
     &OpcodeVar9, // 9
-    &OpcodeVar70, // 10
+    &OpcodeVar73, // 10
     NULL, // 11
     &OpcodeVar11, // 12
     NULL, // 13
@@ -1713,8 +1964,8 @@ const GED_OPCODE* OpcodeTable2[128] =
     &OpcodeVar12, // 16
     &OpcodeVar13, // 17
     &OpcodeVar14, // 18
-    &OpcodeVar68, // 19
-    &OpcodeVar69, // 20
+    &OpcodeVar71, // 19
+    &OpcodeVar72, // 20
     NULL, // 21
     NULL, // 22
     &OpcodeVar15, // 23
@@ -1822,8 +2073,8 @@ const GED_OPCODE* OpcodeTable2[128] =
     NULL, // 125
     &OpcodeVar67, // 126
     NULL // 127
-}; // OpcodeTable2[]
-const GED_OPCODE* OpcodeTable3[128] =
+}; // OpcodeTable3[]
+const GED_OPCODE* OpcodeTable4[128] =
 {
     &OpcodeVar0, // 0
     &OpcodeVar1, // 1
@@ -1953,7 +2204,7 @@ const GED_OPCODE* OpcodeTable3[128] =
     NULL, // 125
     &OpcodeVar67, // 126
     NULL // 127
-}; // OpcodeTable3[]
+}; // OpcodeTable4[]
 static GED_PRED_CTRL PredCtrlVar0 = (GED_PRED_CTRL)0;
 static GED_PRED_CTRL PredCtrlVar1 = (GED_PRED_CTRL)1;
 static GED_PRED_CTRL PredCtrlVar2 = (GED_PRED_CTRL)2;

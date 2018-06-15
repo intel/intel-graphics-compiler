@@ -110,6 +110,12 @@ typedef enum
      * Supported CPUs: cnl
      */
     GED_MODEL_GEN_10,
+
+    /*!
+     * GEN Version: 11
+     * Supported CPUs: icl
+     */
+    GED_MODEL_GEN_11,
     GED_MODEL_INVALID
 } GED_MODEL;
 

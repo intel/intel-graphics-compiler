@@ -94,15 +94,15 @@ static uint16_t FloatFromBits(uint16_t f) {return f;}
 static const uint64_t IGA_F64_SIGN_BIT  = 0x8000000000000000ull;
 static const uint64_t IGA_F64_EXP_MASK  = 0x7FF0000000000000ull;
 static const uint64_t IGA_F64_MANT_MASK = 0x000FFFFFFFFFFFFFull;
-static const uint64_t IGA_F64_SNAN_BIT  = 0x0008000000000000ull;
+static const uint64_t IGA_F64_QNAN_BIT  = 0x0008000000000000ull;
 static const uint32_t IGA_F32_SIGN_BIT  = 0x80000000;
 static const uint32_t IGA_F32_EXP_MASK  = 0x7F800000;
 static const uint32_t IGA_F32_MANT_MASK = 0x007FFFFF;
-static const uint32_t IGA_F32_SNAN_BIT  = 0x00400000;
+static const uint32_t IGA_F32_QNAN_BIT  = 0x00400000;
 static const uint16_t IGA_F16_SIGN_BIT  = 0x8000;
 static const uint16_t IGA_F16_EXP_MASK  = 0x7C00;
 static const uint16_t IGA_F16_MANT_MASK = 0x03FF;
-static const uint16_t IGA_F16_SNAN_BIT  = 0x0200;
+static const uint16_t IGA_F16_QNAN_BIT  = 0x0200;
 } // namespace iga
 
 #endif // IGA_FLOATS_HPP

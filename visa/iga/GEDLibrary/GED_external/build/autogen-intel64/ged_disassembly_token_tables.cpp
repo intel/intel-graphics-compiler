@@ -896,4 +896,119 @@ const ged_disassembly_token_t DisassemblyTokensTable110[7] =
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      'w' }, // 5
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      'n' } // 6
 }; // DisassemblyTokensTable110[]
+const ged_disassembly_token_t DisassemblyTokensTable111[7] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0Width }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ',' }, // 1
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0HorzStride }, // 2
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '>' }, // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ':' }, // 4
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0DataType }, // 5
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ' ' } // 6
+}; // DisassemblyTokensTable111[]
+const ged_disassembly_token_t DisassemblyTokensTable112[4] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1Width }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ',' }, // 1
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1HorzStride }, // 2
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '>' } // 3
+}; // DisassemblyTokensTable112[]
+const ged_disassembly_token_t DisassemblyTokensTable113[7] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_ExecMaskOffsetCtrl }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_ThreadCtrl }, // 1
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DepCtrl }, // 2
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_MaskCtrl }, // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DebugCtrl }, // 4
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_AccWrCtrl }, // 5
+    { GED_DISASSEMBLY_TOKEN_TYPE_COMPACTED, 0 } // 6
+}; // DisassemblyTokensTable113[]
+const ged_disassembly_token_t DisassemblyTokensTable114[4] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0Width }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ',' }, // 1
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0HorzStride }, // 2
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '>' } // 3
+}; // DisassemblyTokensTable114[]
+const ged_disassembly_token_t DisassemblyTokensTable115[8] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '<' }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1VertStride }, // 1
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ';' }, // 2
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1HorzStride }, // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '>' }, // 4
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ':' }, // 5
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1DataType }, // 6
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ' ' } // 7
+}; // DisassemblyTokensTable115[]
+const ged_disassembly_token_t DisassemblyTokensTable116[4] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0RegFile }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0RegNum }, // 1
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 2
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0SpecialAcc } // 3
+}; // DisassemblyTokensTable116[]
+const ged_disassembly_token_t DisassemblyTokensTable117[4] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1RegFile }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1RegNum }, // 1
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 2
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1SpecialAcc } // 3
+}; // DisassemblyTokensTable117[]
+const ged_disassembly_token_t DisassemblyTokensTable118[7] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2RegFile }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2RegNum }, // 1
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 2
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2SpecialAcc }, // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '<' }, // 4
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2HorzStride }, // 5
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '>' } // 6
+}; // DisassemblyTokensTable118[]
+const ged_disassembly_token_t DisassemblyTokensTable119[5] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_ExecMaskOffsetCtrl }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_MaskCtrl }, // 1
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DebugCtrl }, // 2
+    { GED_DISASSEMBLY_TOKEN_TYPE_COMPACTED, 0 }, // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_EOT } // 4
+}; // DisassemblyTokensTable119[]
+const ged_disassembly_token_t DisassemblyTokensTable120[2] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0VertStride }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ';' } // 1
+}; // DisassemblyTokensTable120[]
+const ged_disassembly_token_t DisassemblyTokensTable121[2] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1VertStride }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ';' } // 1
+}; // DisassemblyTokensTable121[]
+const ged_disassembly_token_t DisassemblyTokensTable122[7] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1Width }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ',' }, // 1
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1HorzStride }, // 2
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '>' }, // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ':' }, // 4
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1DataType }, // 5
+    { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ' ' } // 6
+}; // DisassemblyTokensTable122[]
+const ged_disassembly_token_t DisassemblyTokensTable123[6] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_ThreadCtrl }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DepCtrl }, // 1
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_MaskCtrl }, // 2
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DebugCtrl }, // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_AccWrCtrl }, // 4
+    { GED_DISASSEMBLY_TOKEN_TYPE_COMPACTED, 0 } // 5
+}; // DisassemblyTokensTable123[]
+const ged_disassembly_token_t DisassemblyTokensTable124[6] =
+{
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_ExecMaskOffsetCtrl }, // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_ThreadCtrl }, // 1
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DepCtrl }, // 2
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_MaskCtrl }, // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DebugCtrl }, // 4
+    { GED_DISASSEMBLY_TOKEN_TYPE_COMPACTED, 0 } // 5
+}; // DisassemblyTokensTable124[]
 #endif // GED_DISASSEMBLY

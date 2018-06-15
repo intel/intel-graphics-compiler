@@ -34,13 +34,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ged_enum_interpreters.h"
 const ged_unsigned_table_t EnumInterpretersTable0[3] =
 {
-    unsignedTable13, // 0
-    unsignedTable15, // 1
-    unsignedTable17 // 2
+    unsignedTable15, // 0
+    unsignedTable18, // 1
+    unsignedTable20 // 2
 }; // EnumInterpretersTable0[]
 const ged_unsigned_table_t EnumInterpretersTable1[3] =
 {
-    unsignedTable14, // 0
-    unsignedTable16, // 1
-    unsignedTable17 // 2
+    unsignedTable16, // 0
+    unsignedTable19, // 1
+    unsignedTable20 // 2
 }; // EnumInterpretersTable1[]
+const ged_unsigned_table_t EnumInterpretersTable2[3] =
+{
+    unsignedTable17, // 0
+    unsignedTable19, // 1
+    unsignedTable20 // 2
+}; // EnumInterpretersTable2[]

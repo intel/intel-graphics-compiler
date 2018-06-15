@@ -65,18 +65,13 @@ void EncoderBase::handleGedError(
         line, setter, gedReturnValueToString(status), setter);
 }
 
-#if 0
-#define DEBUG_PRINT(_printCommand){ _printCommand; }
-#else
-#define DEBUG_PRINT(_printCommand)
-#endif
+
 
 EncoderBase::EncoderBase(
     const Model &model,
     ErrorHandler &errHandler,
     const EncoderOpts &opts)
-    : BitProcessor(errHandler)
-    , m_model(model)
+    : GEDBitProcessor(model, errHandler)
     , m_opts(opts)
     , m_mem(nullptr)
     , m_numberInstructionsEncoded(0)
@@ -84,6 +79,27 @@ EncoderBase::EncoderBase(
 }
 
 void EncoderBase::encodeKernelPreProcess(const Kernel &k)
+{
+    if (m_opts.noCompactFirstEightInst) {
+        // set the first 8 instructions to NOCOMPACT
+        // The first 8 instructions must be in the same block when this option is enabled 
+        if (!k.getBlockList().empty()) {
+            Block* first_blk = *k.getBlockList().begin();
+            size_t counter = 0;
+            for (auto inst : first_blk->getInstList()) {
+                inst->addInstOpt(InstOpt::NOCOMPACT);
+                counter++;
+                if (counter > 7)
+                    break;
+            }
+            IGA_ASSERT(counter == 8, "noCompactFirstEightInst: Less than 8 instructions in the first block");
+        }
+    }
+
+    doEncodeKernelPreProcess(k);
+}
+
+void EncoderBase::doEncodeKernelPreProcess(const Kernel &k)
 {
 }
 
@@ -116,7 +132,6 @@ void EncoderBase::encodeKernel(
 #ifndef DISABLE_ENCODER_EXCEPTIONS
     try {
 #endif
-
         initIGATimer();
         setIGAKernelName("test");
         IGA_ASSERT(k.getModel().platform == m_model.platform,
@@ -138,8 +153,7 @@ void EncoderBase::encodeKernel(
             START_ENCODER_TIMER()
             encodeBlock(blk);
             STOP_ENCODER_TIMER();
-            if (hasFatalError())
-            {
+            if (hasFatalError()) {
                 return;
             }
         }
@@ -165,8 +179,7 @@ void EncoderBase::encodeKernel(
 void EncoderBase::encodeBlock(Block *blk)
 {
     m_blockToOffsetMap[blk] = currentPc();
-    for (const auto inst : blk->getInstList())
-    {
+    for (const auto inst : blk->getInstList()) {
         setCurrInst(inst);
         encodeInstruction(*inst);
         if (hasFatalError()) {
@@ -209,7 +222,6 @@ void EncoderBase::encodeBlock(Block *blk)
 
         advancePc(iLen);
     }
-    DEBUG_PRINT(std::cout << "Encoding finished." << std::endl);
 }
 
 bool EncoderBase::getBlockOffset(const Block *b, uint32_t &pc)
@@ -249,14 +261,6 @@ int32_t EncoderBase::getEncodedPC(const Instruction *inst) const
 #endif
 }
 
-static inline bool isOperandHighAcc(const Operand &op)
-{
-    return
-        op.getKind() == Operand::Kind::DIRECT &&
-        op.getDirRegRef().regNum > 2 &&
-        op.getDirRegName() == RegName::ARF_ACC;
-}
-
 void EncoderBase::encodeFC(const OpSpec &os)
 {
     if (os.isMathSubFunc()) {
@@ -268,8 +272,6 @@ void EncoderBase::encodeFC(const OpSpec &os)
 void EncoderBase::encodeInstruction(Instruction& inst)
 {
     m_opcode = inst.getOp();
-    DEBUG_PRINT(std::cout <<
-        InstTable[static_cast<int>(m_opcode)].str << ":" << inst->getID() << std::endl);
 
     GED_RETURN_VALUE status = GED_InitEmptyIns(
         IGAToGEDTranslation::lowerPlatform(m_model.platform),
@@ -293,18 +295,12 @@ void EncoderBase::encodeInstruction(Instruction& inst)
     // Dwindling cases where we must use Align16
     // Pre-GEN10 ternary ops are all align16
     bool isTernary = m_model.platform < Platform::GEN10 && os.isTernary();
-    // BDW to SKL must use this workaround to access accumulators acc3 to acc9
-    bool contextSaveRestore =
-        // BDW ... SKL AND ...
-        m_model.platform >= Platform::GEN8 && m_model.platform <= Platform::GEN9 &&
-         // (is high acc in dst OR ...
-         (os.supportsDestination() && isOperandHighAcc(inst.getDestination()) ||
-         //  is high acc in src0)
-         inst.getSourceCount() > 0 && isOperandHighAcc(inst.getSource(0)));
-         // mind the parentheses
+    bool contextSaveRestoreNeedsAlign16 =
+        isAlign16MathMacroRegisterCsrOperand(inst.getDestination()) ||
+        isAlign16MathMacroRegisterCsrOperand(inst.getSource(0));
     // IEEE macro instructions (math.invm and math.rsqrtm)
     bool align16MacroInst = m_model.supportsAlign16MacroInst() && inst.isMacro();
-    m_encodeAlign16 = isTernary || contextSaveRestore || align16MacroInst;
+    m_encodeAlign16 = isTernary || contextSaveRestoreNeedsAlign16 || align16MacroInst;
     GED_ACCESS_MODE accessMode = m_encodeAlign16 ?
         GED_ACCESS_MODE_Align16 : GED_ACCESS_MODE_Align1;
     if (m_model.supportsAccessMode()) {
@@ -361,7 +357,6 @@ void EncoderBase::encodeInstruction(Instruction& inst)
         GED_ENCODE(AccWrCtrl, GED_ACC_WR_CTRL_AccWrEn);
     }
 
-    // TODO: switch on instSpec.encoding instead
     if (os.isBranching()) {
         if (m_model.supportsSimplifiedBranches()) {
             encodeBranchingInstructionSimplified(inst);
@@ -382,8 +377,8 @@ void EncoderBase::encodeInstruction(Instruction& inst)
 
         // setup for back patching on branching ops
         if (os.isBranching()) {
-            bool src0IsLabel = srcIsImm(inst.getSource(0));
-            bool src1IsLabel = inst.getSourceCount() > 1 && srcIsImm(inst.getSource(1));
+            bool src0IsLabel = inst.getSource(0).isImm();
+            bool src1IsLabel = inst.getSourceCount() > 1 && inst.getSource(1).isImm();
             if (src0IsLabel || src1IsLabel) {
                 m_needToPatch.emplace_back(&inst, m_gedInst, m_instBuf + currentPc());
             }
@@ -427,12 +422,10 @@ void EncoderBase::encodeTernaryDestinationAlign1(
     }
     GED_ENCODE(DstDataType, IGAToGEDTranslation::lowerDataType(dst.getType()));
     GED_ENCODE(DstRegFile, IGAToGEDTranslation::lowerRegFile(dst.getDirRegName()));
-    uint32_t regNum = IGAToGEDTranslation::combineARF(
-        dst.getDirRegRef().regNum, dst.getDirRegName());
-    GED_ENCODE(DstRegNum, regNum);
+    encodeDstReg(dst.getDirRegName(), dst.getDirRegRef().regNum);
 
     if (inst.isMacro()) {
-        GED_ENCODE(DstSpecialAcc, IGAToGEDTranslation::lowerImplAcc(dst.getImplAcc()));
+        GED_ENCODE(DstSpecialAcc, IGAToGEDTranslation::lowerMathMacroReg(dst.getMathMacroExt()));
         // GED_ENCODE(DstHorzStride, 1);
     } else {
         uint32_t subRegNum = SubRegToBytesOffset(
@@ -468,8 +461,9 @@ void EncoderBase::encodeTernarySourceAlign1(
     case Operand::Kind::MACRO: {
         encodeSrcRegFile<S>(IGAToGEDTranslation::lowerRegFile(src.getDirRegName()));
 
-        // Here, we assume we are on Gen10 (since ternary align1)
-        encodeSrcAddrMode<S>(GED_ADDR_MODE_Direct);
+        if (m_model.platform <= Platform::GEN11) {
+            encodeSrcAddrMode<S>(GED_ADDR_MODE_Direct);
+        }
 
         // source modifiers
         if (inst.getOpSpec().supportsSourceModifiers()) {
@@ -488,18 +482,18 @@ void EncoderBase::encodeTernarySourceAlign1(
         encodeSrcRegionHorz<S>(rgn.getHz());
 
         // register and subregister
-        auto gedRegNum = IGAToGEDTranslation::combineARF(
-            src.getDirRegRef().regNum, src.getDirRegName());
-        encodeSrcRegNum<S>(gedRegNum);
+        encodeSrcReg<S>(src.getDirRegName(), src.getDirRegRef().regNum);
         if (inst.isMacro()) {
-            fatal("src%d: implicit accumulator operands require Align16", (int)S);
-            return;
-
-            encodeSrcImplAcc<S>(src.getImplAcc());
+            if (m_model.platform < Platform::GEN11) {
+                fatal("src%d: math macro operands require Align16", (int)S);
+                return;
+            }
+            encodeSrcMathMacroReg<S>(src.getMathMacroExt());
             if (S != SourceIndex::SRC2) {
                 encodeTernarySrcRegionVert(S, Region::Vert::VT_4);
             }
             encodeSrcRegionHorz<S>(Region::Horz::HZ_1);
+
         } else {
             uint32_t subRegNum = SubRegToBytesOffset(
                 src.getDirRegRef().subRegNum, src.getDirRegName(), src.getType());
@@ -732,7 +726,7 @@ void EncoderBase::encodeBranchingInstructionSimplified(const Instruction& inst)
 
     if (inst.getSourceCount() == 2) {
         // encoding UIP always IMM except for brc with a register argument
-        if (inst.getOp() != Op::BRC || srcIsImm(inst.getSource(0))) {
+        if (inst.getOp() != Op::BRC || inst.getSource(0).isImm()) {
             GED_ENCODE(Src1RegFile, GED_REG_FILE_IMM);
         }
     }
@@ -746,15 +740,15 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
 {
     const OpSpec& os = inst.getOpSpec();
     if (os.isSendFamily()) {
+        encodeSendDestination(inst, inst.getDestination());
         encodeSendSource0(inst.getSource(0));
         if (m_model.supportsUnifiedSend()) {
             encodeSendsSource1(inst.getSource(1));
         }
-        encodeSendDestination(inst, inst.getDestination());
     } else if (os.isSendsFamily()) {
+        encodeSendDestination(inst, inst.getDestination());
         encodeSendsSource0(inst.getSource(0));
         encodeSendsSource1(inst.getSource(1));
-        encodeSendDestination(inst, inst.getDestination());
     }
 
     const bool supportsExDescReg =
@@ -824,13 +818,15 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
             GED_ENCODE(DescRegFile, GED_REG_FILE_IMM);
             GED_ENCODE(MsgDesc, msgDescriptor);
         }
-        //Underneath GED API converts this to SetSelReg32Desc for sends
+        // underneath GED API converts this to SetSelReg32Desc for sends
         GED_ENCODE(DescRegFile, GED_REG_FILE_ARF);
         // only send/sendc support a register here
-        uint32_t regNum = msgDesc.reg.regNum;
-        regNum = IGAToGEDTranslation::combineARF(regNum, RegName::ARF_A);
         if (m_model.supportsUnarySend()) {
-            GED_ENCODE(DescRegNum, regNum);
+            uint8_t regNumBits;
+            const RegInfo *ri = m_model.lookupRegInfoByRegName(RegName::ARF_A);
+            IGA_ASSERT(ri, "failed to find a0 register");
+            ri->encode((int)msgDesc.reg.regNum,regNumBits);
+            GED_ENCODE(DescRegNum, regNumBits);
         }
     }
 } //end: encodeSendInstruction
@@ -840,10 +836,14 @@ void EncoderBase::encodeBranchDestination(
     const Instruction& inst,
     const Operand& dst)
 {
-    GED_ENCODE(DstRegFile, IGAToGEDTranslation::lowerRegFile(dst.getDirRegName()));
-    GED_ENCODE(DstRegNum, IGAToGEDTranslation::combineARF(dst.getDirRegRef().regNum, dst.getDirRegName()));
+    GED_ENCODE(DstRegFile,
+        IGAToGEDTranslation::lowerRegFile(dst.getDirRegName()));
+    encodeDstReg(dst.getDirRegName(), dst.getDirRegRef().regNum);
     GED_ENCODE(DstSubRegNum,
-        SubRegToBytesOffset(dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType()));
+        SubRegToBytesOffset(
+            dst.getDirRegRef().subRegNum,
+            dst.getDirRegName(),
+            dst.getType()));
 }
 
 void EncoderBase::encodeBasicDestination(
@@ -855,15 +855,18 @@ void EncoderBase::encodeBasicDestination(
         m_model.supportsAlign16(),
         "Align16 not supported on this platform.");
 
-    GED_ENCODE(DstRegFile, IGAToGEDTranslation::lowerRegFile(dst.getDirRegName()));
+    GED_ENCODE(DstRegFile,
+        IGAToGEDTranslation::lowerRegFile(dst.getDirRegName()));
     switch (dst.getKind())
     {
     case Operand::Kind::DIRECT:
     case Operand::Kind::MACRO:
         GED_ENCODE(DstAddrMode, GED_ADDR_MODE_Direct);
-        GED_ENCODE(DstDataType, IGAToGEDTranslation::lowerDataType(dst.getType()));
+        GED_ENCODE(DstDataType,
+            IGAToGEDTranslation::lowerDataType(dst.getType()));
         if (inst.getOpSpec().supportsSaturation()) {
-            GED_ENCODE(Saturate, IGAToGEDTranslation::lowerSaturate(dst.getDstModifier()));
+            GED_ENCODE(Saturate,
+                IGAToGEDTranslation::lowerSaturate(dst.getDstModifier()));
         }
         // VVVVV   fallthrough  VVVVV
     default: break;
@@ -877,39 +880,48 @@ void EncoderBase::encodeBasicDestination(
                 fatal("dst has inconvertible region for Align16 encoding");
                 return;
             }
-            if (isSpecialContextSaveAndRestore(dst)) {
+            if (isAlign16MathMacroRegisterCsrOperand(dst)) {
                 // acc2.XXXX on BDW .. SKL is context save and restore
-                GED_ENCODE(DstRegNum, IGAToGEDTranslation::combineARF(2, RegName::ARF_ACC));
+                // This is really mme0
+                encodeDstReg(RegName::ARF_MME, 0);
+                // on GEN8 and GEN9 all encode as acc2, but the mux varies
+                // to distinguish which acc it really is.
                 GED_DST_CHAN_EN chEn;
                 switch (dst.getDirRegRef().regNum) {
-                case 3: chEn = GED_DST_CHAN_EN_x;    break; // acc3 -> acc2.x (0001b)
-                case 4: chEn = GED_DST_CHAN_EN_y;    break; // acc3 -> acc2.y (0010b)
-                case 5: chEn = GED_DST_CHAN_EN_xy;   break;
-                case 6: chEn = GED_DST_CHAN_EN_z;    break;
-                case 7: chEn = GED_DST_CHAN_EN_xz;   break;
-                case 8: chEn = GED_DST_CHAN_EN_yz;   break;
-                case 9: chEn = GED_DST_CHAN_EN_xyzw; break; // acc9 -> acc.xyzw
+                /// case 0: ... acc2 actually uses Align1!
+                // old-style for acc2 would be:
+                // mov(8) r113:ud acc2:ud  {NoMask} //acc2
+                //
+                // acc3-9 are Align16
+                case 1: chEn = GED_DST_CHAN_EN_x;    break; // mme0/acc3 -> acc2.x (0001b)
+                case 2: chEn = GED_DST_CHAN_EN_y;    break; // mme1/acc4 -> acc2.y (0010b)
+                case 3: chEn = GED_DST_CHAN_EN_xy;   break;
+                case 4: chEn = GED_DST_CHAN_EN_z;    break;
+                case 5: chEn = GED_DST_CHAN_EN_xz;   break;
+                case 6: chEn = GED_DST_CHAN_EN_yz;   break;
+                case 7: chEn = GED_DST_CHAN_EN_xyzw; break; // mme7/acc9 -> acc2.xyzw (0111b)
                 default: IGA_ASSERT_FALSE("unreachable");
                 }
                 GED_ENCODE(DstChanEn, chEn);
             } else {
-                // normal align16 destination (e.g. src might be context save op)
-                GED_ENCODE(DstRegNum, IGAToGEDTranslation::combineARF(dst.getDirRegRef().regNum, dst.getDirRegName()));
+                // normal align16 destination (this still might be a
+                // CSR work around op if the src is "acc2")
+                encodeDstReg(dst.getDirRegName(), dst.getDirRegRef().regNum);
                 GED_ENCODE(DstChanEn, GED_DST_CHAN_EN_xyzw);
             }
             GED_ENCODE(DstSubRegNum,
                 SubRegToBytesOffset(dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType()));
         } else { // Align1
-            GED_ENCODE(DstRegNum, IGAToGEDTranslation::combineARF(dst.getDirRegRef().regNum, dst.getDirRegName()));
+            encodeDstReg(dst.getDirRegName(), dst.getDirRegRef().regNum);
             GED_ENCODE(DstSubRegNum,
                 SubRegToBytesOffset(dst.getDirRegRef().subRegNum, dst.getDirRegName(), dst.getType()));
         }
         break;
     case Operand::Kind::MACRO:
-        GED_ENCODE(DstRegNum, IGAToGEDTranslation::combineARF(dst.getDirRegRef().regNum, dst.getDirRegName()));
-        GED_ENCODE(DstSpecialAcc, IGAToGEDTranslation::lowerSpecialAcc(dst.getImplAcc()));
+        encodeDstReg(dst.getDirRegName(), dst.getDirRegRef().regNum);
+        GED_ENCODE(DstSpecialAcc, IGAToGEDTranslation::lowerSpecialAcc(dst.getMathMacroExt()));
         if (accessMode == GED_ACCESS_MODE_Align1 && m_model.supportsAlign16ImplicitAcc()) {
-            fatal("Align1 dst implicit accumulator unsupported on this platform.");
+            fatal("Align1 dst math macro unsupported on this platform.");
             return;
         }
         break;
@@ -939,20 +951,15 @@ void EncoderBase::encodeBasicDestination(
     }
 }
 
-static uint32_t createChSelFor(
-    GED_SWIZZLE x, GED_SWIZZLE y, GED_SWIZZLE z, GED_SWIZZLE w)
-{
-    uint32_t chanSel = x;
-    chanSel |= y << 2;
-    chanSel |= z << 4;
-    chanSel |= w << 6;
-    return chanSel;
-}
-static uint32_t createChSelForCtxSavRst(
-    GED_SWIZZLE x, GED_SWIZZLE y)
+static void createChSelForCtxSavRst(
+    GED_SWIZZLE *chSel,
+    GED_SWIZZLE x,
+    GED_SWIZZLE y)
 {
     // following IsaAsm rules here
-    return ::createChSelFor(x, y, y, y);
+    // reg.ab expands to reg.abbb
+    chSel[0] = x;
+    chSel[1] = chSel[2] = chSel[3] = y;
 }
 
 
@@ -961,8 +968,7 @@ void EncoderBase::encodeBranchSource(
     const Operand& src)
 {
     encodeSrcRegFile<SourceIndex::SRC0>(IGAToGEDTranslation::lowerRegFile(src.getDirRegName()));
-    uint32_t regNumBits = IGAToGEDTranslation::combineARF(src.getDirRegRef().regNum, src.getDirRegName());
-    encodeSrcRegNum<SourceIndex::SRC0>(regNumBits);
+    encodeSrcReg<SourceIndex::SRC0>(src.getDirRegName(),src.getDirRegRef().regNum);
     uint32_t subRegBits = SubRegToBytesOffset(
         src.getDirRegRef().subRegNum, src.getDirRegName(), Type::D);
     encodeSrcSubRegNum<SourceIndex::SRC0>(subRegBits);
@@ -974,12 +980,12 @@ void EncoderBase::encodeBasicSource(
     const Operand& src,
     GED_ACCESS_MODE accessMode)
 {
-    // I think this must precede setting the type
+    // setting the reg file must precede  must precede setting the type in GED
     switch (src.getKind()) {
     case Operand::Kind::DIRECT:
     case Operand::Kind::MACRO:
     case Operand::Kind::INDIRECT:
-            encodeSrcRegFile<S>(IGAToGEDTranslation::lowerRegFile(src.getDirRegName()));
+        encodeSrcRegFile<S>(IGAToGEDTranslation::lowerRegFile(src.getDirRegName()));
         if (inst.getOpSpec().supportsSourceModifiers()) {
             encodeSrcModifier<S>(src.getSrcModifier());
         } else if (src.getSrcModifier() != SrcModifier::NONE) {
@@ -988,7 +994,7 @@ void EncoderBase::encodeBasicSource(
         }
         break;
     case Operand::Kind::IMMEDIATE:
-            encodeSrcRegFile<S>(GED_REG_FILE_IMM);
+        encodeSrcRegFile<S>(GED_REG_FILE_IMM);
         break;
     default:
         break;
@@ -996,28 +1002,25 @@ void EncoderBase::encodeBasicSource(
 
     encodeSrcType<S>(src.getType());
 
-    // BDW..SKL context save and restore of acc3...acc9
-    bool specialContextSaveRestore = isSpecialContextSaveAndRestore(src);
-
     switch (src.getKind()) {
     case Operand::Kind::DIRECT:
     case Operand::Kind::MACRO: {
         encodeSrcAddrMode<S>(GED_ADDR_MODE_Direct);
         if (src.getKind() == Operand::Kind::DIRECT) {
-            if (specialContextSaveRestore) {
+            if (isAlign16MathMacroRegisterCsrOperand(src)) {
+                // BDW..SKL context save and restore of acc3...acc9
                 // encode as acc2.####, ChSel will be changed in regioning code
-                uint32_t regNumBits = IGAToGEDTranslation::combineARF(2, RegName::ARF_ACC);
-                encodeSrcRegNum<S>(regNumBits);
+                // recall acc2 is remapped to mme0
+                encodeSrcReg<S>(RegName::ARF_MME, 0);
             } else {
-                uint32_t regNumBits = IGAToGEDTranslation::combineARF(src.getDirRegRef().regNum, src.getDirRegName());
-                encodeSrcRegNum<S>(regNumBits);
+                encodeSrcReg<S>(src.getDirRegName(), src.getDirRegRef().regNum);
                 uint32_t subRegBits = SubRegToBytesOffset(
                     src.getDirRegRef().subRegNum, src.getDirRegName(), src.getType());
                 encodeSrcSubRegNum<S>(subRegBits);
             }
         } else { // (src.getKind() == Operand::Kind::MACRO)
-            encodeSrcRegNum<S>(src.getDirRegRef().regNum);
-            encodeSrcImplAcc<S>(src.getImplAcc());
+            encodeSrcReg<S>(RegName::GRF_R,src.getDirRegRef().regNum);
+            encodeSrcMathMacroReg<S>(src.getMathMacroExt());
             if (accessMode == GED_ACCESS_MODE_Align16) {
                 // vertical stride has to be halved for 8B types
                 if (src.getType() == Type::DF) {
@@ -1052,39 +1055,49 @@ void EncoderBase::encodeBasicSource(
             // r13.0<4>.xyzw is the only supported ChEn
             //      ^^^
             encodeSrcRegionVert<S>(Region::Vert::VT_4);
-            static const GED_SWIZZLE
-                    X = GED_SWIZZLE_x,
-                    Y = GED_SWIZZLE_y,
-                    Z = GED_SWIZZLE_z,
-                    W = GED_SWIZZLE_w;
-            uint32_t chSel = 0;
-            if (specialContextSaveRestore) {
-                // context save and restore workaround
+            GED_SWIZZLE chSel[4] =
+                {GED_SWIZZLE_x, GED_SWIZZLE_y, GED_SWIZZLE_z, GED_SWIZZLE_w};
+            if (isAlign16MathMacroRegisterCsrOperand(src)) {
+                // context save and restore workaround on GEN8 and GEN9
                 switch (src.getDirRegRef().regNum) {
-                case 3: chSel = createChSelForCtxSavRst(Y,X); break; // acc2.yx = acc3
-                case 4: chSel = createChSelForCtxSavRst(Z,X); break; // acc2.zx = acc4
-                case 5: chSel = createChSelForCtxSavRst(W,X); break; // acc2.wx = acc5
-                case 6: chSel = createChSelForCtxSavRst(X,Y); break; // acc2.xy = acc6
-                case 7: chSel = createChSelForCtxSavRst(Y,Y); break; // acc2.yy = acc7
-                case 8: chSel = createChSelForCtxSavRst(Z,Y); break; // acc2.zy = acc8
-                case 9: chSel = createChSelForCtxSavRst(W,Y); break; // acc2.wy = acc9
+                case 1: // acc2.yx = mme1 (acc3)
+                    createChSelForCtxSavRst(chSel, GED_SWIZZLE_y, GED_SWIZZLE_x);
+                    break;
+                case 2: // acc2.zx = mme2 (acc4)
+                    createChSelForCtxSavRst(chSel, GED_SWIZZLE_z, GED_SWIZZLE_x);
+                    break;
+                case 3: // acc2.wx = mme3 (acc5)
+                    createChSelForCtxSavRst(chSel, GED_SWIZZLE_w, GED_SWIZZLE_x);
+                    break;
+                case 4: // acc2.xy = mme4 (acc6)
+                    createChSelForCtxSavRst(chSel, GED_SWIZZLE_x, GED_SWIZZLE_y);
+                    break;
+                case 5: // acc2.yy = mme5 (acc7)
+                    createChSelForCtxSavRst(chSel, GED_SWIZZLE_y, GED_SWIZZLE_y);
+                    break;
+                case 6: // acc2.zy = mme6 (acc8)
+                    createChSelForCtxSavRst(chSel, GED_SWIZZLE_z, GED_SWIZZLE_y);
+                    break;
+                case 7: // acc2.wy = mme7 (acc9)
+                    createChSelForCtxSavRst(chSel, GED_SWIZZLE_w, GED_SWIZZLE_y);
+                    break;
                 }
             } else {
                 // normal Align16 that we are converting to Align1
                 if (src.getRegion() != Region::SRC110 &&
                     // supports legacy bits that may use <K;K,1> for "block"
-                    // access; this allows us to assemble/reassemble same bits
+                    // access; this allows us to assemble/reassemble similar bits
                     src.getRegion() != Region::SRC221 &&
                     src.getRegion() != Region::SRC441 &&
                     src.getRegion() != Region::SRC881 &&
                     src.getRegion() != Region::SRCFF1)
                 {
-                    fatal("unsupported region for translation to align16 encoding");
+                    fatal("src%d: unsupported region for translation to align16 encoding", (int)S);
                     return;
                 }
                 // TODO: we could permit SIMD4 with .x to mean broadcast read
                 // of subreg 0, but I don't think any SIP code uses this.
-                chSel = createChSelFor(X,Y,Z,W);
+                //
                 // NOTE: technically we could convert
                 // r13.0<0>.xxxx to r13.0<0;1,0>
                 // r13.0<0>.yyyy to r13.1<0;1,0>
@@ -1095,7 +1108,7 @@ void EncoderBase::encodeBasicSource(
                 //
                 // Let's wait until we need this though.
             }
-            encodeSrcChanSel<S>(chSel);
+            encodeSrcChanSel<S>(chSel[0], chSel[1], chSel[2], chSel[3]);
         } else { // Align1
             encodeSrcRegion<S>(src.getRegion());
         }
@@ -1132,7 +1145,8 @@ void EncoderBase::encodeSendDestinationDataType(const Operand& dst)
     GED_ENCODE(DstDataType, IGAToGEDTranslation::lowerDataType(t));
 }
 
-void EncoderBase::encodeSendDestination(const Instruction& inst, const Operand& dst)
+void EncoderBase::encodeSendDestination(
+    const Instruction& inst, const Operand& dst)
 {
     if (m_model.supportsUnarySend()) {
         switch (dst.getKind())
@@ -1308,22 +1322,16 @@ void EncoderBase::encodeTernarySourceAlign16(const Instruction& inst)
                 rgn == Region::SRC4X1 ||
                 rgn == Region::SRC2X1) {
                 encodeSrcRepCtrl<S>(GED_REP_CTRL_NoRep);
-                encodeSrcChanSel<S>(IGAToGEDTranslation::createChanSel(GED_SWIZZLE_x, GED_SWIZZLE_y, GED_SWIZZLE_z, GED_SWIZZLE_w));
+                encodeSrcChanSel<S>(GED_SWIZZLE_x, GED_SWIZZLE_y, GED_SWIZZLE_z, GED_SWIZZLE_w);
             } else if (rgn == Region::SRC0X0) {
-                if (src.getType() == Type::DF)
-                {
-                    if (reg.subRegNum % 2 == 0)
-                    {
-                        encodeSrcChanSel<S>(IGAToGEDTranslation::createChanSel(GED_SWIZZLE_x, GED_SWIZZLE_y, GED_SWIZZLE_x, GED_SWIZZLE_y));
-                    }
-                    else
-                    {
-                        encodeSrcChanSel<S>(IGAToGEDTranslation::createChanSel(GED_SWIZZLE_z, GED_SWIZZLE_w, GED_SWIZZLE_z, GED_SWIZZLE_w));
+                if (src.getType() == Type::DF) {
+                    if (reg.subRegNum % 2 == 0) {
+                        encodeSrcChanSel<S>(GED_SWIZZLE_x, GED_SWIZZLE_y, GED_SWIZZLE_x, GED_SWIZZLE_y);
+                    } else {
+                        encodeSrcChanSel<S>(GED_SWIZZLE_z, GED_SWIZZLE_w, GED_SWIZZLE_z, GED_SWIZZLE_w);
                         subRegNumber -= 1;
                     }
-                }
-                else
-                {
+                } else {
                     encodeSrcRepCtrl<S>(GED_REP_CTRL_Rep);
                 }
             } else {
@@ -1333,27 +1341,21 @@ void EncoderBase::encodeTernarySourceAlign16(const Instruction& inst)
         } else {
             if (rgn == Region::SRCXX1) {
                 encodeSrcRepCtrl<S>(GED_REP_CTRL_NoRep);
-                encodeSrcChanSel<S>(IGAToGEDTranslation::createChanSel(GED_SWIZZLE_x, GED_SWIZZLE_y, GED_SWIZZLE_z, GED_SWIZZLE_w));
+                encodeSrcChanSel<S>(GED_SWIZZLE_x, GED_SWIZZLE_y, GED_SWIZZLE_z, GED_SWIZZLE_w);
             } else if (rgn == Region::SRCXX0) {
-                if (src.getType() == Type::DF)
-                {
-                    if (src.getDirRegRef().subRegNum % 2 == 0)
-                    {
-                        encodeSrcChanSel<S>(IGAToGEDTranslation::createChanSel(GED_SWIZZLE_x, GED_SWIZZLE_y, GED_SWIZZLE_x, GED_SWIZZLE_y));
-                    }
-                    else
-                    {
-                        encodeSrcChanSel<S>(IGAToGEDTranslation::createChanSel(GED_SWIZZLE_z, GED_SWIZZLE_w, GED_SWIZZLE_z, GED_SWIZZLE_w));
+                if (src.getType() == Type::DF) {
+                    if (src.getDirRegRef().subRegNum % 2 == 0) {
+                        encodeSrcChanSel<S>(GED_SWIZZLE_x, GED_SWIZZLE_y, GED_SWIZZLE_x, GED_SWIZZLE_y);
+                    } else {
+                        encodeSrcChanSel<S>(GED_SWIZZLE_z, GED_SWIZZLE_w, GED_SWIZZLE_z, GED_SWIZZLE_w);
                         subRegNumber -= 1;
                     }
-                }
-                else
-                {
+                } else {
                     encodeSrcRepCtrl<S>(GED_REP_CTRL_Rep);
                 }
             }
             else if (rgn == Region::SRC0X0 && src.getType() == Type::DF) {
-                encodeSrcChanSel<S>(IGAToGEDTranslation::createChanSel(GED_SWIZZLE_x, GED_SWIZZLE_y, GED_SWIZZLE_x, GED_SWIZZLE_y));
+                encodeSrcChanSel<S>(GED_SWIZZLE_x, GED_SWIZZLE_y, GED_SWIZZLE_x, GED_SWIZZLE_y);
             }
             else {
                 fatal("src%d: unsupported region for Align16 encoding", (int)S);
@@ -1361,15 +1363,15 @@ void EncoderBase::encodeTernarySourceAlign16(const Instruction& inst)
             }
         }
         uint32_t regNum = reg.regNum;
-        encodeSrcRegNum<S>(regNum);
+        encodeSrcReg<S>(RegName::GRF_R,regNum);
         uint32_t subRegNum =
             SubRegToBytesOffset(subRegNumber, src.getDirRegName(), src.getType());
         encodeSrcSubRegNum<S>(subRegNum);
     } else {
         // implicit operand accumulator
         // e.g. madm (4) ... -r14.acc3
-        encodeSrcRegNum<S>(src.getDirRegRef().regNum);
-        encodeSrcImplAcc<S>(src.getImplAcc());
+        encodeSrcReg<S>(RegName::GRF_R,src.getDirRegRef().regNum);
+        encodeSrcMathMacroReg<S>(src.getMathMacroExt());
     }
 }
 
@@ -1377,7 +1379,8 @@ void EncoderBase::encodeTernaryDestinationAlign16(const Instruction& inst)
 {
     const Operand& dst = inst.getDestination();
     if (inst.getOpSpec().supportsSaturation()) {
-        GED_ENCODE(Saturate, IGAToGEDTranslation::lowerSaturate(dst.getDstModifier()));
+        GED_ENCODE(Saturate,
+            IGAToGEDTranslation::lowerSaturate(dst.getDstModifier()));
     }
     GED_ENCODE(DstDataType, IGAToGEDTranslation::lowerDataType(dst.getType()));
     if (dst.getDirRegName() != RegName::GRF_R) {
@@ -1391,7 +1394,7 @@ void EncoderBase::encodeTernaryDestinationAlign16(const Instruction& inst)
     GED_ENCODE(DstRegNum, regNum);
     if (inst.isMacro()) {
         // macro only
-        GED_DST_CHAN_EN chanEn = implAccToChEn(dst.getImplAcc());
+        GED_DST_CHAN_EN chanEn = mathMacroRegToChEn(dst.getMathMacroExt());
         GED_ENCODE(DstChanEn, chanEn);
     } else {
         // Align16 instruction (we must convert from Align1)
@@ -1447,6 +1450,14 @@ void EncoderBase::encodeTernaryDestinationAlign16(const Instruction& inst)
     }
 }
 
+void EncoderBase::encodeDstReg(RegName regName, uint8_t regNum)
+{
+    // encodes ARF or GRF
+    uint32_t gedBits = translateRegNum(-1,regName,regNum);
+    GED_ENCODE(DstRegNum, gedBits);
+}
+
+
 void EncoderBase::encodeImmVal(const ImmVal &val, Type type) {
     GED_ENCODE(Imm, typeConvesionHelper(val, type));
 }
@@ -1462,51 +1473,83 @@ void EncoderBase::encodeSrcRepCtrl(GED_REP_CTRL rep)
         GED_ENCODE(Src2RepCtrl, rep);
     }
 }
-template <SourceIndex S> void EncoderBase::encodeSrcChanSel(uint32_t chSel) {
+
+template <SourceIndex S> void EncoderBase::encodeSrcChanSel(
+    GED_SWIZZLE chSelX,
+    GED_SWIZZLE chSelY,
+    GED_SWIZZLE chSelZ,
+    GED_SWIZZLE chSelW)
+{
+    uint32_t chSelBits =
+        IGAToGEDTranslation::createChanSel(chSelX, chSelY, chSelZ, chSelW);
     if (S == SourceIndex::SRC0) {
-        GED_ENCODE(Src0ChanSel, chSel);
+        GED_ENCODE(Src0ChanSel, chSelBits);
     } else if (S == SourceIndex::SRC1) {
-        GED_ENCODE(Src1ChanSel, chSel);
+        GED_ENCODE(Src1ChanSel, chSelBits);
     } else {
-        GED_ENCODE(Src2ChanSel, chSel);
+        GED_ENCODE(Src2ChanSel, chSelBits);
     }
 }
-uint32_t EncoderBase::implAccToBits(int src, ImplAcc implAcc) {
+
+uint32_t EncoderBase::translateRegNum(
+    int opIx, RegName regName, uint8_t regNum)
+{
+    uint8_t regNumBits = 0;
+
+    const char *whichOp =
+        opIx == 0 ? "src0" :
+            opIx == 1 ? "src1" :
+            opIx == 2 ? "src2" :
+            "dst";
+
+    const RegInfo *ri = m_model.lookupRegInfoByRegName(regName);
+    if (ri == nullptr) {
+        error("%s: invalid register name for this platform", whichOp);
+    } else if (!ri->isRegNumberValid((int)regNum)) {
+        error("%s: %s%d number out of range", whichOp, ri->syntax, regNum);
+    } else {
+        ri->encode((int)regNum,regNumBits);
+    }
+    return regNumBits; // widen for GED
+}
+
+uint32_t EncoderBase::mathMacroRegToBits(int src, MathMacroExt implAcc) {
     uint32_t bits = 8; // NOACC
     switch (implAcc) {
-    case ImplAcc::ACC2:  bits = 0; break; // 0000b
-    case ImplAcc::ACC3:  bits = 1; break;
-    case ImplAcc::ACC4:  bits = 2; break;
-    case ImplAcc::ACC5:  bits = 3; break;
-    case ImplAcc::ACC6:  bits = 4; break;
-    case ImplAcc::ACC7:  bits = 5; break;
-    case ImplAcc::ACC8:  bits = 6; break;
-    case ImplAcc::ACC9:  bits = 7; break;
-    case ImplAcc::NOACC: bits = 8; break; // 8000b
+    /// or 00000000b (GEN11)
+    case MathMacroExt::MME0:  bits = 0; break; // 0000b
+    case MathMacroExt::MME1:  bits = 1; break;
+    case MathMacroExt::MME2:  bits = 2; break;
+    case MathMacroExt::MME3:  bits = 3; break;
+    case MathMacroExt::MME4:  bits = 4; break;
+    case MathMacroExt::MME5:  bits = 5; break;
+    case MathMacroExt::MME6:  bits = 6; break;
+    case MathMacroExt::MME7:  bits = 7; break;
+    /// or 00008000b (GEN11)
+    case MathMacroExt::NOMME: bits = 8; break; // 1000b
     default:
         if (src < 0) {
-            fatal("dst operand has invalid implicit accumulator");
-            return bits;
+            fatal("dst operand has invalid math macro register");
         } else {
-            fatal("src%d operand has invalid implicit accumulator", src);
-            return bits;
+            fatal("src%d operand has invalid math macro register", src);
         }
+        return bits;
     }
     return bits;
 }
-GED_DST_CHAN_EN EncoderBase::implAccToChEn(ImplAcc implAcc) {
+GED_DST_CHAN_EN EncoderBase::mathMacroRegToChEn(MathMacroExt implAcc) {
     GED_DST_CHAN_EN bits = GED_DST_CHAN_EN_w; // NOACC
     switch (implAcc) {
-    case ImplAcc::ACC2:   bits = GED_DST_CHAN_EN_None; break; // 0000b
-    case ImplAcc::ACC3:   bits = GED_DST_CHAN_EN_x;    break;
-    case ImplAcc::ACC4:   bits = GED_DST_CHAN_EN_y;    break;
-    case ImplAcc::ACC5:   bits = GED_DST_CHAN_EN_xy;   break;
-    case ImplAcc::ACC6:   bits = GED_DST_CHAN_EN_z;    break; // 0100b
-    case ImplAcc::ACC7:   bits = GED_DST_CHAN_EN_xz;   break;
-    case ImplAcc::ACC8:   bits = GED_DST_CHAN_EN_yz;   break;
-    case ImplAcc::ACC9:   bits = GED_DST_CHAN_EN_xyz;  break;
-    case ImplAcc::NOACC:  bits = GED_DST_CHAN_EN_w;    break; // 1000b
-    default: fatal("dst operand has invalid implicit accumulator");
+    case MathMacroExt::MME0:   bits = GED_DST_CHAN_EN_None; break; // 0000b
+    case MathMacroExt::MME1:   bits = GED_DST_CHAN_EN_x;    break;
+    case MathMacroExt::MME2:   bits = GED_DST_CHAN_EN_y;    break;
+    case MathMacroExt::MME3:   bits = GED_DST_CHAN_EN_xy;   break;
+    case MathMacroExt::MME4:   bits = GED_DST_CHAN_EN_z;    break; // 0100b
+    case MathMacroExt::MME5:   bits = GED_DST_CHAN_EN_xz;   break;
+    case MathMacroExt::MME6:   bits = GED_DST_CHAN_EN_yz;   break;
+    case MathMacroExt::MME7:   bits = GED_DST_CHAN_EN_xyz;  break;
+    case MathMacroExt::NOMME:  bits = GED_DST_CHAN_EN_w;    break; // 1000b
+    default: fatal("operand has invalid math macro register");
     }
     return bits;
 }
@@ -1603,13 +1646,15 @@ void EncoderBase::patchJumpOffsets()
             inst->getOpSpec().isBranching(),
             "patching non-control flow instruction");
 
-        uint32_t jmpiFix = 0;
-        // in that platform jmpi is in line with others and is pre-increment
-        if (isPostIncrementJmpi(*inst))
-        {
+        // on some platforms jmpi os post-increment
+        uint32_t jmpiExtraOffset = 0;
+        bool isPostIncrementJmpi =
+            inst->getOp() == Op::JMPI && !m_model.supportsSimplifiedBranches();
+        if (isPostIncrementJmpi) {
             // jmpi is relative to the incremented PC, hence we must add
-            // the size of the instruction here.
-            jmpiFix = inst->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
+            // the size of the instruction here.  jmpi probably will never
+            // compact, but we'll be careful here
+            jmpiExtraOffset = inst->hasInstOpt(InstOpt::COMPACTED) ? 8 : 16;
             IGA_ASSERT(inst->getSource(0).getKind() == Operand::Kind::LABEL,
                 "patching non label op");
             // skip registers
@@ -1631,13 +1676,13 @@ void EncoderBase::patchJumpOffsets()
             }
         }
 
-        int32_t jip = jumpPC - encodePC - jmpiFix;
+        int32_t jip = jumpPC - encodePC - jmpiExtraOffset;
         // JIP and UIP are in QWORDS for most ops on PreBDW
-        int32_t pcUnscale = arePcsInQWords(*inst) ? 8 : 1;
+        int32_t pcUnscale = arePcsInQWords(inst->getOpSpec()) ? 8 : 1;
         GED_ENCODE_TO(JIP, jip/pcUnscale, &jp.gedInst);
 
         if (inst->getSourceCount() == 2 &&
-            (inst->getOp() != Op::BRC || srcIsImm(inst->getSource(1))))
+            (inst->getOp() != Op::BRC || inst->getSource(1).isImm()))
         {
             // No need to set src1 regFile and type,
             // it will be over written by UIP
@@ -1667,27 +1712,15 @@ void EncoderBase::patchJumpOffsets()
     }
 }
 
-bool EncoderBase::isSpecialContextSaveAndRestore(const Operand& op) const
-{
-    return m_model.platform >= Platform::GEN8 &&
-        m_model.platform <= Platform::GEN9 &&
-        op.getDirRegRef().regNum > 2 &&
-        op.getDirRegName() == RegName::ARF_ACC;
-}
 
-bool EncoderBase::isPostIncrementJmpi(const Instruction &inst) const
-{
-    return inst.getOp() == Op::JMPI;
-}
-
-bool EncoderBase::arePcsInQWords(const Instruction &inst) const
+bool EncoderBase::arePcsInQWords(const OpSpec &os) const
 {
     // everything is in bytes except:
     // HSW calla, call, and jmpi
     return m_model.platform < Platform::GEN8 &&
-        inst.getOp() != Op::JMPI &&
-        inst.getOp() != Op::CALL &&
-        inst.getOp() != Op::CALLA;
+        os.op != Op::JMPI &&
+        os.op != Op::CALL &&
+        os.op != Op::CALLA;
 }
 
 bool EncoderBase::callNeedsSrcRegion221(const Instruction &inst) const
@@ -1698,16 +1731,6 @@ bool EncoderBase::callNeedsSrcRegion221(const Instruction &inst) const
         (inst.getOp() == Op::CALLA && m_model.platform <= Platform::GEN10);
 }
 
-bool EncoderBase::srcIsImm(const Operand &op) const
-{
-    switch (op.getKind()) {
-    case Operand::Kind::IMMEDIATE:
-    case Operand::Kind::LABEL:
-        return true;
-    default:
-        return false;
-    }
-}
 
 void EncoderBase::encodeTernarySrcRegionVert(SourceIndex S, Region::Vert v) {
     if (S == SourceIndex::SRC0) {

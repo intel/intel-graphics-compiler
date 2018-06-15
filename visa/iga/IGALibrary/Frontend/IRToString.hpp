@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define _IGA_IRTYPES_TO_STRING_HPP
 
 #include "../IR/Types.hpp"
+#include "../strings.hpp"
 
 #include <string>
 #include <sstream>
@@ -54,6 +55,8 @@ static std::string ToSymbol(Platform x) {
     MAKE_CASE(Platform, GEN9);
     MAKE_CASE(Platform, GEN9LP);
     MAKE_CASE(Platform, GEN9P5);
+    MAKE_CASE(Platform, GEN10);
+    MAKE_CASE(Platform, GEN11);
     MAKE_CASE(Platform, GENNEXT);
     MAKE_DEFAULT_CASE(Platform);
     }
@@ -165,6 +168,7 @@ static std::string ToSymbol(RegName x) {
     MAKE_CASE(RegName, ARF_NULL);
     MAKE_CASE(RegName, ARF_A);
     MAKE_CASE(RegName, ARF_ACC);
+    MAKE_CASE(RegName, ARF_MME);
     MAKE_CASE(RegName, ARF_F);
     MAKE_CASE(RegName, ARF_CE);
     MAKE_CASE(RegName, ARF_MSG);
@@ -183,19 +187,19 @@ static std::string ToSymbol(RegName x) {
 }
 
 
-static std::string ToSymbol(ImplAcc x) {
+static std::string ToSymbol(MathMacroExt x) {
     switch (x) {
-    MAKE_CASE(ImplAcc, INVALID);
-    MAKE_CASE(ImplAcc, ACC2);
-    MAKE_CASE(ImplAcc, ACC3);
-    MAKE_CASE(ImplAcc, ACC4);
-    MAKE_CASE(ImplAcc, ACC5);
-    MAKE_CASE(ImplAcc, ACC6);
-    MAKE_CASE(ImplAcc, ACC7);
-    MAKE_CASE(ImplAcc, ACC8);
-    MAKE_CASE(ImplAcc, ACC9);
-    MAKE_CASE(ImplAcc, NOACC);
-    MAKE_DEFAULT_CASE(ImplAcc);
+    MAKE_CASE(MathMacroExt, INVALID);
+    MAKE_CASE(MathMacroExt, MME0);
+    MAKE_CASE(MathMacroExt, MME1);
+    MAKE_CASE(MathMacroExt, MME2);
+    MAKE_CASE(MathMacroExt, MME3);
+    MAKE_CASE(MathMacroExt, MME4);
+    MAKE_CASE(MathMacroExt, MME5);
+    MAKE_CASE(MathMacroExt, MME6);
+    MAKE_CASE(MathMacroExt, MME7);
+    MAKE_CASE(MathMacroExt, NOMME);
+    MAKE_DEFAULT_CASE(MathMacroExt);
     }
 }
 
@@ -221,6 +225,7 @@ static std::string ToSymbol(Type x) {
     MAKE_CASE(Type, UV);
     MAKE_CASE(Type, V);
     MAKE_CASE(Type, VF);
+
 
     MAKE_DEFAULT_CASE(Type);
     }
@@ -345,7 +350,7 @@ static std::string ToSymbol(const SendDescArg& x) {
     if (x.type == SendDescArg::IMM) {
         ss << ToSymbol(x.reg);
     } else {
-        ss << std::hex << "0x" << x.imm;
+        fmtHex(ss, x.imm);
     }
     ss << "}";
     return ss.str();
@@ -371,6 +376,7 @@ static std::string ToSyntax(Type ot) {
     case Type::NF: return ":nf";
     case Type::HF: return ":hf";
     case Type::DF: return ":df";
+
 
     case Type::INVALID: return ":Type::INVALID";
     default: return MakeErrorString("Type", (int)ot);
@@ -493,6 +499,7 @@ static std::string ToSyntax(RegName regName) {
     case RegName::ARF_NULL:  return "null";  // null
     case RegName::ARF_A:     return "a";
     case RegName::ARF_ACC:   return "acc";
+    case RegName::ARF_MME:   return "mme";
     case RegName::ARF_F:     return "f";
     case RegName::ARF_CE:    return "ce";
     case RegName::ARF_MSG:   return "msg";
@@ -511,19 +518,19 @@ static std::string ToSyntax(RegName regName) {
 }
 
 
-static std::string ToSyntax(ImplAcc implAcc) {
-    switch (implAcc) {
-    case ImplAcc::ACC2:  return ".acc2";
-    case ImplAcc::ACC3:  return ".acc3";
-    case ImplAcc::ACC4:  return ".acc4";
-    case ImplAcc::ACC5:  return ".acc5";
-    case ImplAcc::ACC6:  return ".acc6";
-    case ImplAcc::ACC7:  return ".acc7";
-    case ImplAcc::ACC8:  return ".acc8";
-    case ImplAcc::ACC9:  return ".acc9";
-    case ImplAcc::NOACC:  return ".noacc";
-    case ImplAcc::INVALID: return "ImplAcc::INVALID";
-    default: return MakeErrorString("ImplAcc",(int)implAcc);
+static std::string ToSyntax(MathMacroExt MathMacroReg) {
+    switch (MathMacroReg) {
+    case MathMacroExt::MME0:  return ".mme0";
+    case MathMacroExt::MME1:  return ".mme1";
+    case MathMacroExt::MME2:  return ".mme2";
+    case MathMacroExt::MME3:  return ".mme3";
+    case MathMacroExt::MME4:  return ".mme4";
+    case MathMacroExt::MME5:  return ".mme5";
+    case MathMacroExt::MME6:  return ".mme6";
+    case MathMacroExt::MME7:  return ".mme7";
+    case MathMacroExt::NOMME:  return ".nomme";
+    case MathMacroExt::INVALID: return "MathMacroExt::INVALID";
+    default: return MakeErrorString("MathMacroExt",(int)MathMacroReg);
     }
 }
 

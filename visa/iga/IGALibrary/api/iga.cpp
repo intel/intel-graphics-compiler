@@ -86,6 +86,7 @@ iga::Platform ToPlatform(iga_gen_t gen)
     case IGA_GEN9lp:    p = iga::Platform::GEN9LP;    break;
     case IGA_GEN9p5:    p = iga::Platform::GEN9P5;    break;
     case IGA_GEN10:     p = iga::Platform::GEN10;     break;
+    case IGA_GEN11:     p = iga::Platform::GEN11;     break;
     default:            p = iga::Platform::INVALID;   break;
     }
     return p;
@@ -279,6 +280,7 @@ public:
         EncoderOpts eopts(
             (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_COMPACT) != 0,
             (aopts.encoder_opts & IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL) == 0,
+            false, // noCompactFirstEightInst
             (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_DEPENDENCIES) != 0);
         if ((aopts.encoder_opts & IGA_ENCODER_OPT_USE_NATIVE) == 0) {
             if (!iga::ged::IsEncodeSupported(m_model, eopts)) {

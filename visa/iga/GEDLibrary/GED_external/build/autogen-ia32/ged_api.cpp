@@ -46,29 +46,32 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ged_model_gen8_1.h"
 #include "ged_model_gen9.h"
 #include "ged_model_gen10.h"
-ModelData ModelsArray[6] =
+#include "ged_model_gen11.h"
+ModelData ModelsArray[7] =
 {
-    { GEN7::Opcodes, "7", 102, (const ged_field_enum_table_t)OpcodeTable1, 29, PositionInterpreterTable0, 3, EnumInterpretersTable0, 0, NULL }, // 0
-    { GEN7_5::Opcodes, "7.5", 102, (const ged_field_enum_table_t)OpcodeTable2, 30, PositionInterpreterTable1, 3, EnumInterpretersTable0, 0, NULL }, // 1
-    { GEN8::Opcodes, "8", 102, (const ged_field_enum_table_t)OpcodeTable3, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 2
-    { GEN8_1::Opcodes, "8.1", 102, (const ged_field_enum_table_t)OpcodeTable3, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 3
+    { GEN7::Opcodes, "7", 102, (const ged_field_enum_table_t)OpcodeTable2, 29, PositionInterpreterTable0, 3, EnumInterpretersTable0, 0, NULL }, // 0
+    { GEN7_5::Opcodes, "7.5", 102, (const ged_field_enum_table_t)OpcodeTable3, 30, PositionInterpreterTable1, 3, EnumInterpretersTable0, 0, NULL }, // 1
+    { GEN8::Opcodes, "8", 102, (const ged_field_enum_table_t)OpcodeTable4, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 2
+    { GEN8_1::Opcodes, "8.1", 102, (const ged_field_enum_table_t)OpcodeTable4, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 3
     { GEN9::Opcodes, "9", 102, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable3, 3, EnumInterpretersTable1, 0, NULL }, // 4
-    { GEN10::Opcodes, "10", 102, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable4, 3, EnumInterpretersTable1, 0, NULL } // 5
+    { GEN10::Opcodes, "10", 102, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable4, 3, EnumInterpretersTable1, 0, NULL }, // 5
+    { GEN11::Opcodes, "11", 102, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable5, 3, EnumInterpretersTable2, 0, NULL } // 6
 }; // ModelsArray[]
 
 #if GED_DISASSEMBLY
-ModelDisassemblyData ModelsDisassemblyArray[6] =
+ModelDisassemblyData ModelsDisassemblyArray[7] =
 {
     { GEN7::GetDisassemblyTable }, // 0
     { GEN7_5::GetDisassemblyTable }, // 1
     { GEN8::GetDisassemblyTable }, // 2
     { GEN8_1::GetDisassemblyTable }, // 3
     { GEN9::GetDisassemblyTable }, // 4
-    { GEN10::GetDisassemblyTable } // 5
+    { GEN10::GetDisassemblyTable }, // 5
+    { GEN11::GetDisassemblyTable } // 6
 }; // ModelsDisassemblyArray[]
 #endif // GED_DISASSEMBLY
-const unsigned int numOfSupportedModels = 6;
-const char* modelNames[6] = { "gen7", "gen7_5", "gen8", "gen8_1", "gen9", "gen10" };
+const unsigned int numOfSupportedModels = 7;
+const char* modelNames[7] = { "gen7", "gen7_5", "gen8", "gen8_1", "gen9", "gen10", "gen11" };
 
 /*!
  * Get the GED_MODEL Id for the given model name.
@@ -86,6 +89,7 @@ bool GetModelByName(const string& name, /* GED_MODEL */ unsigned int& model)
     else if ("gen8_1" == name) model = GED_MODEL_GEN_8_1;
     else if ("gen9" == name) model = GED_MODEL_GEN_9;
     else if ("gen10" == name) model = GED_MODEL_GEN_10;
+    else if ("gen11" == name) model = GED_MODEL_GEN_11;
     else return false;
     return true;
 }

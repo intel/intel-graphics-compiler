@@ -74,7 +74,19 @@ public:
     // describes if the operand is direct (Operand::Kind::DIRECT),
     // indirect (Operand::Kind::INDIRECT) or immediate
     // (Operand::Kind::IMMEDIATE)
-    Kind getKind() const { return m_kind; }
+    Kind getKind() const {return m_kind;}
+    // both labels and true immediates are considered immediates
+    // for encoding and decoding sake
+    bool isImm() const {
+        switch (getKind()) {
+        case Operand::Kind::IMMEDIATE:
+        case Operand::Kind::LABEL:
+            return true;
+        default:
+            return false;
+        }
+    }
+
 
     DstModifier getDstModifier() const { return m_regOpDstMod; }
     SrcModifier getSrcModifier() const { return m_regOpSrcMod; }
@@ -89,7 +101,7 @@ public:
 
     // Applies to Operand::Kind::DIRECT and Operand::Kind::INDIRECT
     Region getRegion() const { return m_regOpRgn; }
-    ImplAcc getImplAcc() const { return m_regImplAcc; }
+    MathMacroExt getMathMacroExt() const { return m_regMathMacro; }
     // Defined if the value is immediate
     const ImmVal getImmediateValue() const { return m_immValue; }
     // if this operand corresponds to a label, this is the target block
@@ -107,12 +119,12 @@ public:
         const Region::Horz &rgnHz,
         Type type);
     // re-initializes this operand as a destination register operand using
-    // an implicit accumulator access
+    // a math macro register access
     void setMacroDestination(
         DstModifier dstMod,
         RegName rName,
         const RegRef &reg,
-        ImplAcc acc,
+        MathMacroExt acc,
         Type type)
     {
         setMacroDestination(dstMod,rName,reg,acc,Region::Horz::HZ_1,type);
@@ -121,7 +133,7 @@ public:
         DstModifier dstMod,
         RegName rName,
         const RegRef &reg,
-        ImplAcc acc,
+        MathMacroExt acc,
         Region::Horz rgnHz,
         Type type);
     // re-initializes this operand as an indirect destination register operand
@@ -142,22 +154,22 @@ public:
         const Region &rgn,
         Type type);
     // re-initializes this operand as a source register operand using
-    // an implicit accumulator access
+    // an math macro register access
     void setMacroSource(
         SrcModifier srcMod,
         RegName rName,
         const RegRef &reg,
         Region rgn,
-        ImplAcc acc,
+        MathMacroExt mme,
         Type type)
     {
-        setMacroSource(srcMod,rName,reg,acc,Region::SRC110,type);
+        setMacroSource(srcMod,rName,reg,mme,Region::SRC110,type);
     }
     void setMacroSource(
         SrcModifier srcMod,
         RegName rName,
         const RegRef &reg,
-        ImplAcc acc,
+        MathMacroExt mme,
         Region rgn,
         Type type);
 
@@ -165,7 +177,7 @@ public:
     void setInidirectSource(
         SrcModifier srcMod,
         const RegRef &reg,
-        int16_t immediateOffset,
+        int16_t addrImmOff,
         const Region &rgn,
         Type type);
     // re-initializes this operand as an immediate branch target
@@ -187,7 +199,7 @@ public:
             };
             struct { // the actual register (GRF for Operand::Kind::INDIRECT)
                 RegName m_regOpName;  // r#, a#, null, ...
-                ImplAcc m_regImplAcc; // implicit accumulator (r13.acc2)
+                MathMacroExt m_regMathMacro; // implicit accumulator (r13.mme5)
                 Region  m_regOpRgn;    // <1>, <8;8,1>
             };
             union { // direct, macro, and indirect
@@ -214,10 +226,8 @@ public:
         };
     };
 
-    union {
-        // the operand type (e.g. :d, :f, etc...)
-        Type m_type;
-    };
+    // the operand type (e.g. :d, :f, etc...)
+    Type m_type;
 
   public:
     // useful constants (reusable operands to streamline codegen)

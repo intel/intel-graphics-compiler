@@ -23,7 +23,11 @@ add_subdirectory(build/autogen-${PLATFORM_TARGET})
 
 # Set up windows mobile build flags to use dynamic multi-threaded runtime (/MD)
 # Set up windows(other) build flags to use static multi-threaded runtime (/MT)
+if( WIN32 AND ("${BUILD_WINDOWS_MOBILE}" STREQUAL "TRUE") OR (IGC_OPTION__WINDOWS_MOBILE AND LINK_DLL_IGA) )
+      win_dynamic_runtime()
+else(WIN32 AND ("${BUILD_WINDOWS_MOBILE}" STREQUAL "TRUE") OR (IGC_OPTION__WINDOWS_MOBILE AND LINK_DLL_IGA))
 win_static_runtime()
+endif(WIN32 AND ("${BUILD_WINDOWS_MOBILE}" STREQUAL "TRUE") OR (IGC_OPTION__WINDOWS_MOBILE AND LINK_DLL_IGA))
 
 set(GED_files
   ${GED_xcoder_cpp}

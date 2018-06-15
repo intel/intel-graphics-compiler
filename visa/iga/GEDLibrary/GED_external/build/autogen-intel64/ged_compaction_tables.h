@@ -44,6 +44,7 @@ extern const ged_compaction_table_entry_t CompactionTable5[32];
 extern const ged_compaction_table_entry_t CompactionTable6[4];
 extern const ged_compaction_table_entry_t CompactionTable7[4];
 extern const ged_compaction_table_entry_t CompactionTable8[32];
-extern const ged_compaction_table_entry_t CompactionTable9[4];
+extern const ged_compaction_table_entry_t CompactionTable9[32];
 extern const ged_compaction_table_entry_t CompactionTable10[4];
+extern const ged_compaction_table_entry_t CompactionTable11[4];
 #endif // GED_COMPACTION_TABLES_H
