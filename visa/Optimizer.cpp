@@ -33,7 +33,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include "LVN.h"
 #include "ifcvt.h"
-#include "ifcvt-fccall.h"
 #include <random>
 #include <chrono>
 #include "FlowGraph.h"
@@ -1056,7 +1055,6 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(lowerMadSequence,        vISA_EnableMACOpt,            TIMER_OPTIMIZER);
     INITIALIZE_PASS(LVN,                     vISA_LVN,                     TIMER_OPTIMIZER);
     INITIALIZE_PASS(ifCvt,                   vISA_ifCvt,                   TIMER_OPTIMIZER);
-    INITIALIZE_PASS(ifCvtFCCall,             vISA_ifCvtFCCall,             TIMER_OPTIMIZER);
     INITIALIZE_PASS(dumpPayload,             vISA_dumpPayload,             TIMER_MISC_OPTS);
     INITIALIZE_PASS(normalizeRegion,         vISA_EnableAlways,            TIMER_MISC_OPTS);
     INITIALIZE_PASS(checkBarrierUsage,       vISA_EnableAlways,            TIMER_MISC_OPTS);
@@ -1523,9 +1521,6 @@ int Optimizer::optimization()
     // remove redundant message headers.
     runPass(PI_cleanMessageHeader);
 
-    // Run FCCall if-conversion to convert conditional fccalls into predicated
-    // one.
-    runPass(PI_ifCvtFCCall);
 
     runPass(PI_sendFusion);
 
@@ -10207,10 +10202,7 @@ void Optimizer::ifCvt()
     runIfCvt(fg);
 }
 
-void Optimizer::ifCvtFCCall()
-{
-    runIfCvtFCCall(fg);
-}
+
 
 namespace {
 

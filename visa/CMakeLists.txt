@@ -153,7 +153,7 @@ include_directories(${Jitter_inc_dirs})
 set_source_files_properties( CISA.tab.c lex.CISA.c PROPERTIES LANGUAGE CXX )
 
 # Set up some common source files used in all the projects so they only need to be defined once
-set(GenX_Common_Sources
+set(GenX_Common_Sources_External
   BinaryCISAEmission.cpp
   BinaryEncoding.cpp
   Common_BinaryEncoding.cpp
@@ -185,13 +185,16 @@ set(GenX_Common_Sources
   G4Verifier.cpp
   LVN.cpp
   ifcvt.cpp
-  ifcvt-fccall.cpp
   PreDefinedVars.cpp
   SpillCleanup.cpp
-  PatchInfoWriter.cpp
   Rematerialization.cpp
   RPE.cpp
 )
+
+set(GenX_Common_Sources
+    ${GenX_Common_Sources_External}
+)
+
 set(GenX_CISA_dis_Common_Sources
   Common_ISA_framework.cpp
   Common_ISA_util.cpp

@@ -49,8 +49,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FlowGraph.h"
 #include "BuildIR.h"
 #include "DebugInfo.h"
-#include "PatchInfo.h"
-#include "PatchInfoWriter.h"
 
 using namespace std;
 using namespace vISA;
@@ -715,48 +713,6 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*> comp
     }
 }
 
-void CISA_IR_Builder::emitFCPatchFile()
-{
-  for(auto K = m_kernels.begin(), E = m_kernels.end(); K != E; K++) {
-    VISAKernelImpl *Kernel = *K;
-    IR_Builder *Builder = Kernel->getIRBuilder();
-
-    if (Builder) {
-      std::string PInfoFPath =
-        std::string(Builder->kernel.getName()) + ".fcpatch";
-      std::ofstream OFS(PInfoFPath, std::ios::binary | std::ios::out);
-
-      const char *KernelName = Builder->kernel.getName();
-      std::vector<std::tuple<unsigned, const char *>> Rels;
-      auto &Calls = Builder->getFCPatchInfo()->getFCCallsToPatch();
-      for (auto &C : Calls) {
-        unsigned Offset = C->callOffset * 16; // Change it back to byte offset.
-        Rels.push_back(std::make_tuple(Offset, C->calleeLabelString));
-      }
-
-
-      auto getPatchInfoPlatform = []() -> unsigned {
-        switch (getGenxPlatform()) {
-        case GENX_BDW:    return cm::patch::PP_BDW;
-        case GENX_CHV:    return cm::patch::PP_CHV;
-        case GENX_SKL:    return cm::patch::PP_SKL;
-        case GENX_BXT:    return cm::patch::PP_BXT;
-        case GENX_CNL:    return cm::patch::PP_CNL;
-        case GENX_ICL:    return cm::patch::PP_ICL;
-        case GENX_ICLLP:  return cm::patch::PP_ICLLP;
-        default:
-          break;
-        }
-        return cm::patch::PP_NONE;
-      };
-
-      writePatchInfo(OFS, getPatchInfoPlatform(), KernelName,
-                     Kernel->isFCCallerKernel(), Kernel->isFCCallableKernel(),
-                     Rels
-                     );
-    }
-  }
-}
 
 // default size of the kernel mem manager in bytes
 #define KERNEL_MEM_SIZE    (4*1024*1024)
@@ -907,7 +863,6 @@ int CISA_IR_Builder::Compile( const char* nameInput)
             saveFCallState( function->getKernel(), savedFCallState );
         }
 
-        bool FCPatchNeeded = false;
         for( std::list<VISAKernelImpl*>::iterator kernel_it = kernels.begin();
             kernel_it != kernels.end();
             kernel_it++ )
@@ -953,18 +908,8 @@ int CISA_IR_Builder::Compile( const char* nameInput)
 
             restoreFCallState( kernel->getKernel(), savedFCallState );
 
-            if(kernel->isFCCallableKernel() ||
-                kernel->isFCCallerKernel() ||
-                kernel->isFCComposableKernel()) 
-            {
-                FCPatchNeeded = true;
-            }
         }
 
-        // Emit out FC patch file
-        if (FCPatchNeeded == true) {
-            emitFCPatchFile();
-        }
     }
 
 	if (IS_VISA_BOTH_PATH && m_options.getOption(vISA_DumpvISA))
