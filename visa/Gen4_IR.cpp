@@ -7469,9 +7469,26 @@ void G4_Declare::prepareForRealloc(G4_Kernel* kernel)
 
 bool G4_INST::mayExpandToAccMacro(const IR_Builder& builder) const
 {
-    bool isDMul = opcode() == G4_mul &&
-        (IS_QTYPE(getDst()->getType()) || (IS_DTYPE(getSrc(0)->getType()) && IS_DTYPE(getSrc(1)->getType())));
-    return opcode() == G4_mach || opcode() == G4_mulh || isDMul || (opcode() == G4_pln && !builder.doPlane());
+    auto isDMul = [](const G4_INST *Inst) {
+        return Inst->opcode() == G4_mul && (IS_QTYPE(Inst->getDst()->getType()) ||
+                                            (IS_DTYPE(Inst->getSrc(0)->getType()) &&
+                                             IS_DTYPE(Inst->getSrc(1)->getType())));
+    };
+
+    auto mayBeMAC = [&](const G4_INST *Inst) {
+       if (Inst->opcode() != G4_pseudo_mad)
+           return false;
+       if (IS_TYPE_FLOAT_ALL(Inst->getDst()->getType()) &&
+           builder.getOption(vISA_forceFPMAD))
+           return false;
+       return true;
+    };
+
+    return opcode() == G4_mach ||
+           opcode() == G4_mulh ||
+           isDMul(this) ||
+           mayBeMAC(this) ||
+           (opcode() == G4_pln && !builder.doPlane());
 }
 
 // returns true if dst may be replaced by an explicit acc
