@@ -438,9 +438,11 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
 			Func->removeFnAttr(llvm::Attribute::AlwaysInline);
 
 			// Inline all conv functions. And for others, inline
-			// only those that have less than 4 uses.
+			// only those that have less than 4 uses. If ForceSubroutine
+            // is set, do not inline any of them.
 			if (m_enableSubroutineCallForEmulation &&
-				Func->hasNUsesOrMore(4) && !isDPConvFunc(Func))
+                (IGC_IS_FLAG_ENABLED(ForceSubroutineForEmulation) ||
+				 (Func->hasNUsesOrMore(4) && !isDPConvFunc(Func))))
 			{
 				Func->addFnAttr(llvm::Attribute::NoInline);
 			}
@@ -1235,6 +1237,30 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
         return;
     }
 
+    // llvm.fma.f64
+    if (resTy->isDoubleTy() && II && II->getIntrinsicID() == Intrinsic::fma)
+    {
+        Function *newFunc = getOrCreateFunction(FUNCTION_DP_FMA);
+        Function *CurrFunc = I.getParent()->getParent();
+        Value* args[7];
+        args[0] = I.getOperand(0);
+        args[1] = I.getOperand(1);
+        args[2] = I.getOperand(2);
+        args[3] = ConstantInt::get(intTy, 0); // RN
+        args[4] = ConstantInt::get(intTy, 1); // flush to zero
+        args[5] = args[4];                    // flush denorm
+        args[6] = createFlagValue(CurrFunc);  // FP Flag, ignored
+
+        Instruction* newVal = CallInst::Create(newFunc, args, I.getName(), &I);
+        newVal->setDebugLoc(I.getDebugLoc());
+
+        I.replaceAllUsesWith(newVal);
+        I.eraseFromParent();
+
+        m_changed = true;
+        return;
+    }
+
     // llvm.fabs.f64
     if (resTy->isDoubleTy() && II && II->getIntrinsicID() == Intrinsic::fabs)
     {
@@ -1547,10 +1573,17 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
 
 			IntrinsicInst *IInst = dyn_cast<IntrinsicInst>(I);
 			// Handle intrinsic calls
-			if ((IInst && IInst->getIntrinsicID() == Intrinsic::sqrt))
+			if (IInst && IInst->getIntrinsicID() == Intrinsic::sqrt)
 			{
 				m_enableSubroutineCallForEmulation = true;
 			}
+            else if (IInst && IInst->getIntrinsicID() == Intrinsic::fma)
+            {
+                if (I->getType()->isDoubleTy())
+                {
+                    m_enableSubroutineCallForEmulation = true;
+                }
+            }
 
 			if (m_enableSubroutineCallForEmulation) {
 				m_pCtx->m_enableSubroutine = true;
