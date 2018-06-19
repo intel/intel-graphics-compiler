@@ -3395,6 +3395,10 @@ if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
   igc_sg_define(IGC__VulkanFrontend)
 endif()
 
+if(IGC_BUILD__SPIRV_ENABLED)
+  add_subdirectory(AdaptorOCL/SPIRV/SPIRV-Tools)
+endif()
+
 add_subdirectory(Compiler)
 add_subdirectory(DriverInterface)
 igc_sg_define(IGC__DriverInterface)
@@ -3641,6 +3645,12 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   list(APPEND _targetLinkLine
       "${IGC_BUILD__PROJ__AdaptorOGL}"
   )
+
+  if(IGC_BUILD__SPIRV_ENABLED)
+    list(APPEND _targetLinkLine
+      "${IGC_BUILD__PROJ__SPIRV-Tools}"
+    )
+  endif()
     
   if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
     list(APPEND _targetLinkLine

@@ -56,6 +56,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include "AdaptorOCL/SPIRV/SPIRVconsum.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "AdaptorOCL/SPIRV/SPIRV-Tools/include/spirv-tools/libspirv.h"
 #endif
 
 #include "inc/gtpin_IGC_interface.h"
@@ -597,6 +598,40 @@ void DumpShaderFile(const char *pOutputFolder, const char * pBuffer, UINT buffer
 	}
 }
 
+#if defined(IGC_SPIRV_ENABLED)
+// Disasseble SPIRV binary file using SPIRV-Tools library
+spv_result_t DisassembleSPIRV(
+	spv_text* output,
+	spv_diagnostic* diag,
+	const char* inputBinary,
+	const UINT inputSize,
+	spv_target_env target_env,
+	uint32_t options =
+		SPV_BINARY_TO_TEXT_OPTION_FRIENDLY_NAMES |
+		SPV_BINARY_TO_TEXT_OPTION_INDENT |
+		SPV_BINARY_TO_TEXT_OPTION_SHOW_BYTE_OFFSET)
+{
+
+	spv_context context = spvContextCreate(target_env);
+
+	// Disassemble to &text.
+	// SPIRV binary files are all aligned to 4 bytes,
+	// so we can safely pass it into the function.
+	spv_result_t result = 
+	spvBinaryToText(
+		context,
+		reinterpret_cast<const uint32_t*>(inputBinary),
+		inputSize/4,
+		options,
+		output,
+		diag
+	);
+	spvContextDestroy(context);
+
+	return result;
+}
+#endif
+
 bool TranslateBuild(
     const STB_TranslateInputArgs* pInputArgs,
     STB_TranslateOutputArgs* pOutputArgs,
@@ -630,6 +665,21 @@ bool TranslateBuild(
 		else if (inputDataFormatTemp == TB_DATA_FORMAT_SPIR_V)
 		{
 			DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInput, pInputArgs->InputSize, hash, ".spv");
+
+			#if defined(IGC_SPIRV_ENABLED)
+			spv_text spirv_text = nullptr;
+			spv_diagnostic diag = nullptr;
+			spv_result_t result = DisassembleSPIRV(&spirv_text, &diag, pInputArgs->pInput, pInputArgs->InputSize, SPV_ENV_UNIVERSAL_1_3);
+			if (result == SPV_SUCCESS) {
+				DumpShaderFile(pOutputFolder, spirv_text->str, spirv_text->length, hash, ".spvasm");
+				spvTextDestroy(spirv_text);
+			}
+			else {
+				printf("warning: There was an error during disassebling SPIRV binary. Error message:\n> ");
+				spvDiagnosticPrint(diag);
+				spvDiagnosticDestroy(diag);
+			}
+			#endif
 		}
 
 		DumpShaderFile(pOutputFolder, (char *)pInputArgs->pInternalOptions, pInputArgs->InternalOptionsSize, hash, "_internal_options.txt");
