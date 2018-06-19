@@ -2903,17 +2903,15 @@ void SPIRVToLLVM::addNamedBarrierArray()
 {
   llvm::SmallVector<Type*, 3> NamedBarrierArray(3, Type::getInt32Ty(*Context));
   Type *bufType = ArrayType::get(StructType::create(*Context, NamedBarrierArray, "struct.__namedBarrier"), uint64_t(8));
-  Twine globalName = Twine("NamedBarrierArray");
-  Twine globalName2 = Twine("NamedBarrierID");
   m_NamedBarrierVar = new GlobalVariable(*M, bufType, false,
       GlobalVariable::InternalLinkage, ConstantAggregateZero::get(bufType),
-      globalName, nullptr,
+      "NamedBarrierArray", nullptr,
       GlobalVariable::ThreadLocalMode::NotThreadLocal,
       SPIRAS_Local);
   m_named_barrier_id = new GlobalVariable(*M, Type::getInt32Ty(*Context), false,
       GlobalVariable::InternalLinkage, 
       ConstantInt::get(Type::getInt32Ty(*Context), 0),
-      globalName2, nullptr,
+      "NamedBarrierID", nullptr,
       GlobalVariable::ThreadLocalMode::NotThreadLocal,
       SPIRAS_Local);
 }

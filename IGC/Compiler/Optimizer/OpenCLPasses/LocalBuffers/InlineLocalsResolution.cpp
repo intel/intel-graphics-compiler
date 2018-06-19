@@ -265,11 +265,11 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
         {
 
             Type *bufType = ArrayType::get(Type::getInt8Ty(M.getContext()), uint64_t(maxBytesOnModule));
-            Twine globalName = Twine("GenSLM") + Twine(".LocalMemPoolOnGetMemPoolPtr");
 
             m_pGV = new GlobalVariable(M, bufType, false,
                 GlobalVariable::ExternalLinkage, ConstantAggregateZero::get(bufType),
-                globalName, nullptr,
+                "GenSLM.LocalMemPoolOnGetMemPoolPtr",
+				nullptr,
                 GlobalVariable::ThreadLocalMode::NotThreadLocal,
                 ADDRESS_SPACE_LOCAL);
 

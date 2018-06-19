@@ -126,8 +126,7 @@ void ImplicitGlobalId::runOnBasicBlock(unsigned i, Instruction *pAlloca, Instruc
         {
             name = "grid";
         }
-        std::string instName = name + std::to_string(i) + "_i64";
-        Value *zext_gid = B.CreateZExt(id_at_dim, int64Type, instName);
+        Value *zext_gid = B.CreateZExt(id_at_dim, int64Type, Twine(name) + Twine(i) + Twine("_i64"));
 
         id_at_dim = zext_gid;
     }
@@ -156,11 +155,10 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
     {
         // Create implicit local variables to hold the gids
         //
-        Twine gid_name = Twine("__ocl_dbg_gid") + Twine(i);
         gid_alloca[i] = new AllocaInst(
-            IntegerType::getInt64Ty(*m_pContext), 0, gid_name, insert_before);
+            IntegerType::getInt64Ty(*m_pContext), 0, Twine("__ocl_dbg_gid") + Twine(i), insert_before);
 
-        llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, StringRef(gid_name.str()), nullptr,
+        llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, gid_alloca[i]->getName(), nullptr,
             1, gid_di_type);
 
         m_pDIB->insertDeclare(gid_alloca[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
@@ -174,11 +172,10 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
     {
         // Create implicit local variables to hold the gids
         //
-        Twine lid_name = Twine("__ocl_dbg_lid") + Twine(i);
         lid_alloca[i] = new AllocaInst(
-            IntegerType::getInt64Ty(*m_pContext), 0, lid_name, insert_before);
+            IntegerType::getInt64Ty(*m_pContext), 0, Twine("__ocl_dbg_lid") + Twine(i), insert_before);
 
-        llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, StringRef(lid_name.str()), nullptr,
+        llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, lid_alloca[i]->getName(), nullptr,
             1, lid_di_type);
 
         m_pDIB->insertDeclare(lid_alloca[i], var, m_pDIB->createExpression(NewDIExpr), loc.get() , insert_before);
@@ -192,11 +189,10 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
     {
         // Create implicit local variables to hold the work item ids
         //
-        Twine grid_name = Twine("__ocl_dbg_grid") + Twine(i);
         grid_alloca[i] = new AllocaInst(
-            IntegerType::getInt64Ty(*m_pContext), 0, grid_name, insert_before);
+            IntegerType::getInt64Ty(*m_pContext), 0, Twine("__ocl_dbg_grid") + Twine(i), insert_before);
 
-        llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, StringRef(grid_name.str()), nullptr, 1, grid_di_type);
+        llvm::DILocalVariable* var = m_pDIB->createAutoVariable(scope, grid_alloca[i]->getName(), nullptr, 1, grid_di_type);
 
         m_pDIB->insertDeclare(grid_alloca[i], var, m_pDIB->createExpression(NewDIExpr), loc.get(), insert_before);
         runOnBasicBlock(i, grid_alloca[i], insert_before, GlobalOrLocal::WorkItem);
