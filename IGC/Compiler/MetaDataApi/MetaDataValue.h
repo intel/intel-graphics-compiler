@@ -254,23 +254,29 @@ public:
         return llvm::MDNode::get(context,args);
     }
 
-    bool operator=(llvm::Value *pNode)
+    NamedMetaDataValue &operator=(llvm::Value *pNode)
     {
         m_pNode = pNode;
         m_id = getIdNode(pNode);
         m_value = getValueNode(pNode);
+
+        return *this;
     }
 
-    bool operator=(const char* name)
+    NamedMetaDataValue &operator=(const char* name)
     {
         m_pNode = NULL;
         m_id = name;
+
+        return *this;
     }
 
-    bool operator=(std::string name)
+    NamedMetaDataValue &operator=(std::string name)
     {
         m_pNode = NULL;
         m_id = name.c_str();
+
+        return *this;
     }
 
 private:
