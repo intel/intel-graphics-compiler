@@ -159,17 +159,6 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
         allowedAllocaSizeInBytes = allowedAllocaSizeInBytes / d;
     }
 
-    // if alloca size exceeds alloc size threshold, return false
-    if (allocaSize > allowedAllocaSizeInBytes)
-    {
-        return false;
-    }
-    // if no live range info
-    if (!m_pRegisterPressureEstimate->isAvailable())
-    {
-        return true;
-    }
-
     bool isUniformAlloca = true;
     bool allocaCandidate = ValidUses(pAlloca, isUniformAlloca);
     if(!allocaCandidate)
@@ -182,6 +171,23 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
         // as they will be allocated as uniform array
         allocaSize = iSTD::Round(allocaSize, 8) / 8;
     }
+
+    if(allocaSize <= IGC_GET_FLAG_VALUE(ByPassAllocaSizeHeuristic))
+    {
+        return true;
+    }
+
+    // if alloca size exceeds alloc size threshold, return false
+    if (allocaSize > allowedAllocaSizeInBytes)
+    {
+        return false;
+    }
+    // if no live range info
+    if (!m_pRegisterPressureEstimate->isAvailable())
+    {
+        return true;
+    }
+
     // get all the basic blocks that contain the uses of the alloca
     // then estimate how much changing this alloca to register adds to the pressure at that block.
     unsigned int assignedNumber = 0;
@@ -293,6 +299,15 @@ static Type* GetBaseType(Type* pType)
     while(pType->isArrayTy())
     {
         pType = pType->getArrayElementType();
+    }
+
+    if(pType->isStructTy())
+    {
+        int num_elements = pType->getStructNumElements();
+        if(num_elements > 1)
+            return nullptr;
+
+        pType = pType->getStructElementType(0);
     }
 
     Type* pBaseType = nullptr;
@@ -484,7 +499,7 @@ void LowerGEPForPrivMem::handleGEPInst(
     // Formula: index = (%1 x 3 + %2) x 2
     //
     IRBuilder<> IRB(pGEP);
-    Value *pScalarizedIdx = idx;
+    Value *pScalarizedIdx = IRB.getInt32(0);
     Type* T = pGEP->getPointerOperandType()->getPointerElementType();
     for (unsigned i = 0, e = pGEP->getNumIndices(); i < e; ++i)
     {
@@ -509,6 +524,7 @@ void LowerGEPForPrivMem::handleGEPInst(
         pScalarizedIdx = IRB.CreateNUWAdd(pScalarizedIdx, GepOpnd);
         pScalarizedIdx = IRB.CreateNUWMul(pScalarizedIdx, IRB.getInt32(arr_sz));
     }
+    pScalarizedIdx = IRB.CreateNUWAdd(pScalarizedIdx, idx);
     HandleAllocaSources(pGEP, pVecAlloca, pScalarizedIdx);
 }
 

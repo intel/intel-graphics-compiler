@@ -289,6 +289,7 @@ DECLARE_IGC_REGKEY(bool, EnableGSVtxCountMsgHalfCLSize, true,  "Enable the Verte
 DECLARE_IGC_REGKEY(bool, EnableTEFactorsPadding, true,  "Enable padding of the TE factors.")
 DECLARE_IGC_REGKEY(bool, EnableSubroutineForEmulation,  true,  "Enable subroutine call support when emulation(double) is on. Heuristic decides which use subroutine calls.")
 DECLARE_IGC_REGKEY(bool, ForceSubroutineForEmulation,   false,  "Force subroutine call for all emulation functions if emulation(double) is on.")
+DECLARE_IGC_REGKEY(int, ByPassAllocaSizeHeuristic,   0,  "Force some Alloca to pass the pressure heuristic until the given size")
 
 DECLARE_IGC_GROUP("Generating precompiled headers")
 DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true,
