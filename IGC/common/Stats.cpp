@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm> 
 #include <iomanip>
 #include <sstream>
+#include <iostream>
 
 #if GET_TIME_STATS
 // Functions exposed by VISA lib API
@@ -72,17 +73,27 @@ int ShaderStats::getShaderStats( SHADER_STATS_ITEMS compileInterval )
 
 void ShaderStats::printSumShaderStats()
 {
-    const char *outputFile = "c:\\Intel\\shaderStatSum.csv";
-    bool fileExist = 0;
+    std::string outputFile = IGC::Debug::GetShaderOutputFolder() + std::string("\\SQM\\")+"shaderStatSum.csv";
+    std::string sqm_out = IGC::Debug::GetShaderOutputFolder() + std::string("\\SQM\\") + "sqmStats.txt";
+    bool fileExist = 0, fileExist_sqm=0;
 
-    FILE* fp = fopen(outputFile, "r");
+    FILE* fp = fopen(outputFile.c_str(), "r");
     if( fp )
     {
         fileExist = 1;
         fclose(fp);
     }
 
-    FILE* fileName = fopen(outputFile, "a");
+    FILE* fileName = fopen(outputFile.c_str(), "a");
+
+    FILE* fp_sqm = fopen(sqm_out.c_str(), "r");
+    if (fp_sqm)
+    {
+        fileExist_sqm = 1;
+        fclose(fp_sqm);
+    }
+
+    FILE* fileName_sqm = fopen(sqm_out.c_str(), "a");
 
     if( !fileExist && fileName )
     {
@@ -111,151 +122,172 @@ void ShaderStats::printSumShaderStats()
     bool printToConsole = true;
     if (printToConsole && m_totalShaderCount!=0)
     {
+        fprintf(fileName_sqm, "\n%d %s shaders\n", m_totalShaderCount, ShaderTypeString[(int)m_shaderType]);
         printf("\n%d %s shaders\n", m_totalShaderCount, ShaderTypeString[(int)m_shaderType]);
         if( m_CompileShaderStats[STATS_ISA_INST_COUNT] != 0 )
         {
+            fprintf(fileName_sqm, "total SIMD8  isa count = %d\n", m_CompileShaderStats[STATS_ISA_INST_COUNT]);
             printf("total SIMD8  isa count = %d\n", m_CompileShaderStats[STATS_ISA_INST_COUNT] );
         }
         if( m_CompileShaderStats[STATS_ISA_INST_COUNT_SIMD16] != 0 )
         {
+            fprintf(fileName_sqm, "total SIMD16 isa count = %d\n", m_CompileShaderStats[STATS_ISA_INST_COUNT_SIMD16]);
             printf("total SIMD16 isa count = %d\n", m_CompileShaderStats[STATS_ISA_INST_COUNT_SIMD16] );
         }
         if( m_CompileShaderStats[STATS_ISA_INST_COUNT_SIMD32] != 0 )
         {
+            fprintf(fileName_sqm, "total SIMD32 isa count = %d\n", m_CompileShaderStats[STATS_ISA_INST_COUNT_SIMD32]);
             printf("total SIMD32 isa count = %d\n", m_CompileShaderStats[STATS_ISA_INST_COUNT_SIMD32] );
         }
         if (m_CompileShaderStats[STATS_ISA_SPILL8] != 0)
         {
+            fprintf(fileName_sqm, "total SIMD8 spill count = %d\n", m_CompileShaderStats[STATS_ISA_SPILL8]);
             printf("total SIMD8 spill count = %d\n", m_CompileShaderStats[STATS_ISA_SPILL8]);
         }
         if (m_CompileShaderStats[STATS_ISA_SPILL16] != 0)
         {
+            fprintf(fileName_sqm, "total SIMD16 spill count = %d\n", m_CompileShaderStats[STATS_ISA_SPILL16]);
             printf("total SIMD16 spill count = %d\n", m_CompileShaderStats[STATS_ISA_SPILL16]);
         }
         if (m_CompileShaderStats[STATS_ISA_SPILL32] != 0)
         {
+            fprintf(fileName_sqm,"total SIMD32 spill count = %d\n", m_CompileShaderStats[STATS_ISA_SPILL32]);
             printf("total SIMD32 spill count = %d\n", m_CompileShaderStats[STATS_ISA_SPILL32]);
         }
+        fprintf(fileName_sqm, "total SIMD8  shaders = %d\n", m_TotalSimd8);
+        fprintf(fileName_sqm, "total SIMD16 shaders = %d\n", m_TotalSimd16);
+        fprintf(fileName_sqm, "total SIMD32 shaders = %d\n", m_TotalSimd32);
         printf("total SIMD8  shaders = %d\n", m_TotalSimd8);
         printf("total SIMD16 shaders = %d\n", m_TotalSimd16);
         printf("total SIMD32 shaders = %d\n", m_TotalSimd32);
     }
+    fclose(fileName);
 }
 
 void ShaderStats::printShaderStats( ShaderHash hash, ShaderType shaderType, const std::string &postFix)
 {
-	const std::string outputFilePath = std::string("c:\\Intel\\") + IGC::Debug::GetShaderCorpusName() + "ShaderStats.csv";
-	const char *outputFile = outputFilePath.c_str();
+    const std::string outputFilePath = IGC::Debug::GetShaderOutputFolder() + std::string("\\SQM\\") + IGC::Debug::GetShaderCorpusName() + "ShaderStats.csv";
+    const char *outputFile = outputFilePath.c_str();
 
-	bool fileExist = 0;
+    bool fileExist = 0;
 
-	FILE* fp = fopen(outputFile, "r");
-	if (fp)
-	{
-		fileExist = 1;
-		fclose(fp);
-	}
+    FILE* fp = fopen(outputFile, "r");
+    if (fp)
+    {
+        fileExist = 1;
+        fclose(fp);
+    }
 
-	FILE* fileName = fopen(outputFile, "a");
+    FILE* fileName = fopen(outputFile, "a");
 
-	if (!fileExist)
-	{
-		fprintf(fileName, "shader,");
-		for (int i = 0; i<STATS_MAX_SHADER_STATS_ITEMS; i++)
-		{
-			fprintf(fileName, "%s,", g_cShaderStatItems[i]);
-		}
-		fprintf(fileName, "\n");
-	}
+    if (!fileExist)
+    {
+        fprintf(fileName, "shader,");
+        for (int i = 0; i<STATS_MAX_SHADER_STATS_ITEMS; i++)
+        {
+            fprintf(fileName, "%s,", g_cShaderStatItems[i]);
+        }
+        fprintf(fileName, "\n");
+    }
 
-	std::string asmFileName;
-	if (shaderType == ShaderType::OPENCL_SHADER)
-	{
-		asmFileName =
-			IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
-			.Type(shaderType)
-			.Hash(hash)
-			.PostFix(postFix)
-			.Extension("asm")
-			.str();
-		if (asmFileName.find_last_of("\\") != std::string::npos)
-		{
-			asmFileName = asmFileName.substr(asmFileName.find_last_of("\\") + 1, asmFileName.size());
-		}
-	}
-	else
-	{
-		asmFileName =
-			IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
-			.Type(shaderType)
-			.Hash(hash)
-			.Extension("asm")
-			.str();
-		if (asmFileName.find_last_of("\\") != std::string::npos)
-		{
-			asmFileName = asmFileName.substr(asmFileName.find_last_of("\\") + 1, asmFileName.size());
-		}
-	}
+    std::string asmFileName;
+    if (shaderType == ShaderType::OPENCL_SHADER)
+    {
+        asmFileName =
+            IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
+            .Type(shaderType)
+            .Hash(hash)
+            .PostFix(postFix)
+            .Extension("asm")
+            .str();
+        if (asmFileName.find_last_of("\\") != std::string::npos)
+        {
+            asmFileName = asmFileName.substr(asmFileName.find_last_of("\\") + 1, asmFileName.size());
+        }
+    }
+    else
+    {
+        asmFileName =
+            IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
+            .Type(shaderType)
+            .Hash(hash)
+            .Extension("asm")
+            .str();
+        if (asmFileName.find_last_of("\\") != std::string::npos)
+        {
+            asmFileName = asmFileName.substr(asmFileName.find_last_of("\\") + 1, asmFileName.size());
+        }
+    }
 
-	fprintf(fileName, "%s,", asmFileName.c_str());
-	for (int i = 0; i<STATS_MAX_SHADER_STATS_ITEMS; i++)
-	{
-		fprintf(fileName, "%d,", m_CompileShaderStats[i]);
-	}
+    fprintf(fileName, "%s,", asmFileName.c_str());
+    for (int i = 0; i<STATS_MAX_SHADER_STATS_ITEMS; i++)
+    {
+        fprintf(fileName, "%d,", m_CompileShaderStats[i]);
+    }
 
-	fprintf(fileName, "\n");
-	fclose(fileName);
+    fprintf(fileName, "\n");
+    fclose(fileName);
 }
 
 void ShaderStats::printOpcodeStats(ShaderHash hash, ShaderType shaderType, const std::string &postFix)
 {
-	const std::string opcodeFilePath = std::string("c:\\Intel\\") + IGC::Debug::GetShaderCorpusName() + "OpcodeShaderStats.csv";
-	const char *opcodeFile = opcodeFilePath.c_str();
+    /*const std::string opcodeFilePath = IGC::Debug::GetShaderOutputFolder() + std::string("\\SQM\\") + IGC::Debug::GetShaderCorpusName() + "OpcodeShaderStats.csv";
+    const char *opcodeFile = opcodeFilePath.c_str();
 
-	const std::string targetUnitFilePath = std::string("c:\\Intel\\") + IGC::Debug::GetShaderCorpusName() + "TargetUnitShaderStats.csv";
-	const char *targetUnitFile = targetUnitFilePath.c_str();
+    const std::string targetUnitFilePath = IGC::Debug::GetShaderOutputFolder() + std::string("\\SQM\\") + IGC::Debug::GetShaderCorpusName() + "TargetUnitShaderStats.csv";
+    const char *targetUnitFile = targetUnitFilePath.c_str();
 
-	FILE* opcodeFileName = fopen(opcodeFile, "a");
-	FILE* targetUnitFileName = fopen(targetUnitFile, "a");
+    const std::string listFilePath = IGC::Debug::GetShaderOutputFolder() + std::string("\\SQM\\") + IGC::Debug::GetShaderCorpusName() + "ShadersList.txt";
+    const char *listUnitFile = listFilePath.c_str();
 
-	std::string asmFileName;
-	if (shaderType == ShaderType::OPENCL_SHADER)
-	{
-		asmFileName =
-			IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
-			.Type(shaderType)
-			.Hash(hash)
-			.PostFix(postFix)
-			.Extension("asm")
-			.str();
-		if (asmFileName.find_last_of("\\") != std::string::npos)
-		{
-			asmFileName = asmFileName.substr(asmFileName.find_last_of("\\") + 1, asmFileName.size());
-		}
-	}
-	else
-	{
-		asmFileName =
-			IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
-			.Type(shaderType)
-			.Hash(hash)
-			.Extension("asm")
-			.str();
-		if (asmFileName.find_last_of("\\") != std::string::npos)
-		{
-			asmFileName = asmFileName.substr(asmFileName.find_last_of("\\") + 1, asmFileName.size());
-		}
-	}
+    FILE* opcodeFileName = fopen(opcodeFile, "a");
+    FILE* targetUnitFileName = fopen(targetUnitFile, "a");
+    FILE* listUnitFileName = fopen(listUnitFile, "a");
 
-	fprintf(opcodeFileName, "%s,", asmFileName.c_str());
-	fclose(opcodeFileName);
+    std::string asmFileName;
+    if (shaderType == ShaderType::OPENCL_SHADER)
+    {
+        asmFileName =
+            IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
+            .Type(shaderType)
+            .Hash(hash)
+            .PostFix(postFix)
+            .Extension("asm")
+            .str();
+        if (asmFileName.find_last_of("\\") != std::string::npos)
+        {
+            asmFileName = asmFileName.substr(asmFileName.find_last_of("\\") + 1, asmFileName.size());
+        }
+    }
+    else
+    {
+        asmFileName =
+            IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
+            .Type(shaderType)
+            .Hash(hash)
+            .Extension("asm")
+            .str();
+        if (asmFileName.find_last_of("\\") != std::string::npos)
+        {
+            asmFileName = asmFileName.substr(asmFileName.find_last_of("\\") + 1, asmFileName.size());
+        }
+    }
 
-	fprintf(targetUnitFileName, "%s,", asmFileName.c_str());
-	fclose(targetUnitFileName);
+    
+    fprintf(opcodeFileName, "%s","");
+    fclose(opcodeFileName);
+
+    fprintf(targetUnitFileName, "%s","");
+    fclose(targetUnitFileName);
+
+    fprintf(listUnitFileName, "%s\n", asmFileName.c_str());
+    fclose(listUnitFileName);
+    ?*/
 }
 
 void ShaderStats::parseIsaShader( ShaderHash hash, ShaderType shaderType, SIMDMode simd )
 {
+    
     std::string line, instStr;
 
     std::string asmFileName =
@@ -664,7 +696,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
 
     if( !fileExist && fileName )
     {
-		fprintf(fileName, "Frequency,%ju\n\n", frequency );
+        fprintf(fileName, "Frequency,%ju\n\n", frequency );
         fprintf(fileName, "corpus name,shader count,");
         for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
         {
@@ -685,7 +717,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
         {
             if( !skipTimer( i ) )
             {
-				fprintf(fileName, "%jd,", getCompileTime(static_cast<COMPILE_TIME_INTERVALS>(i)) );
+                fprintf(fileName, "%jd,", getCompileTime(static_cast<COMPILE_TIME_INTERVALS>(i)) );
             }
         }
         fprintf(fileName, "\n");
@@ -713,7 +745,7 @@ void TimeStats::printSumTimeCSV(const char* outputFile) const
             fprintf(fileName, "hit,," );
             for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
             {
-				fprintf(fileName, "%ju,", m_hitCount[i] );
+                fprintf(fileName, "%ju,", m_hitCount[i] );
             }
             fprintf(fileName, "\n");
         }
@@ -825,7 +857,7 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
 
     if( !fileExist )
     {
-		fprintf(fileName, "Frequency:%ju,", frequency );
+        fprintf(fileName, "Frequency:%ju,", frequency );
         for (int i=0;i<MAX_COMPILE_TIME_INTERVALS;i++)
         {
             if( !skipTimer(i) )
@@ -842,7 +874,7 @@ void TimeStats::printTimeCSV( std::string const& corpusName ) const
         if( !skipTimer(i) )
         {
             const COMPILE_TIME_INTERVALS interval = static_cast<COMPILE_TIME_INTERVALS>(i);
-			fprintf(fileName, "%jd,", getCompileTime( interval ) );
+            fprintf(fileName, "%jd,", getCompileTime( interval ) );
         }
     }
 
@@ -1302,12 +1334,12 @@ void CMemoryReport::DumpSummaryStats()
             m_SummaryDump[ i ].sort();
         }    
 
-		fprintf(csvSummary, "%s,max,", IGC::Debug::GetShaderCorpusName());
-		for (int i = 0; i < SMSUM_NumAllocations; i++)
-		{
-			fprintf(csvSummary, "%d,", m_SummaryDump[i].back());
-		}
-		fprintf(csvSummary, "%s\n", ShaderTypeText());
+        fprintf(csvSummary, "%s,max,", IGC::Debug::GetShaderCorpusName());
+        for (int i = 0; i < SMSUM_NumAllocations; i++)
+        {
+            fprintf(csvSummary, "%d,", m_SummaryDump[i].back());
+        }
+        fprintf(csvSummary, "%s\n", ShaderTypeText());
 
         fprintf( csvSummary, "%s,max,", IGC::Debug::GetShaderCorpusName() );
         for( int i = 0; i < SMSUM_NumAllocations; i++ )
