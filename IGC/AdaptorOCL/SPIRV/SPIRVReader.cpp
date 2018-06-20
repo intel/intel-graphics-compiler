@@ -895,11 +895,11 @@ public:
   /// need to be post-processed to return the struct through sret argument.
   bool postProcessOCLBuiltinReturnStruct(Function *F);
 
-  /// \brief Post-process OpenCL builtin functions having array argument.
+  /// \brief Post-process OpenCL builtin functions having aggregate argument.
   ///
-  /// These functions are translated to functions with array type argument
+  /// These functions are translated to functions with aggregate type argument
   /// first, then post-processed to have pointer arguments.
-  bool postProcessOCLBuiltinWithArrayArguments(Function *F);
+  bool postProcessOCLBuiltinWithAggregateArguments(Function *F);
 
   typedef DenseMap<SPIRVType *, Type *> SPIRVToLLVMTypeMap;
   typedef DenseMap<SPIRVValue *, Value *> SPIRVToLLVMValueMap;
@@ -1583,17 +1583,17 @@ SPIRVToLLVM::postProcessOCL() {
   for (auto structFunc : structFuncs)
     postProcessOCLBuiltinReturnStruct(structFunc);
 
-  std::vector<Function*> arrFuncs;
+  std::vector<Function*> aggrFuncs;
   for (auto& F : M->functions())
   {
       if (isFunctionBuiltin(&F)
-          && std::any_of(F.arg_begin(), F.arg_end(), [](Argument& arg) { return arg.getType()->isArrayTy(); }) )
+          && std::any_of(F.arg_begin(), F.arg_end(), [](Argument& arg) { return arg.getType()->isAggregateType(); }) )
           {
-              arrFuncs.push_back(&F);
+              aggrFuncs.push_back(&F);
           }
   }
-  for (auto arrFunc : arrFuncs)
-      postProcessOCLBuiltinWithArrayArguments(arrFunc);
+  for (auto aggrFunc : aggrFuncs)
+      postProcessOCLBuiltinWithAggregateArguments(aggrFunc);
 
   //Adjust ndrange_t type
   auto ndrangeTy = M->getTypeByName("struct.ndrange_t");
@@ -1632,13 +1632,13 @@ SPIRVToLLVM::postProcessOCLBuiltinReturnStruct(Function *F) {
 
   for (auto I = F->user_begin(), E = F->user_end(); I != E;) {
     if (auto CI = dyn_cast<CallInst>(*I++)) {
-      assert(CI->hasOneUse());
-      auto ST = dyn_cast<StoreInst>(*(CI->user_begin()));
       auto Args = getArguments(CI);
-      Args.insert(Args.begin(), StripAddrspaceCast(ST->getPointerOperand()));
-      auto NewCI = CallInst::Create(newF, Args, CI->getName(), CI);
+      auto Alloca = new AllocaInst(CI->getType(), "", CI);
+      Args.insert(Args.begin(), Alloca);
+      auto NewCI = CallInst::Create(newF, Args, "", CI);
       NewCI->setCallingConv(CI->getCallingConv());
-      ST->eraseFromParent();
+      auto Load = new LoadInst(Alloca,"",CI);
+      CI->replaceAllUsesWith(Load);
       CI->eraseFromParent();
     }
   }
@@ -1648,7 +1648,7 @@ SPIRVToLLVM::postProcessOCLBuiltinReturnStruct(Function *F) {
 }
 
 bool
-SPIRVToLLVM::postProcessOCLBuiltinWithArrayArguments(Function* F) {
+SPIRVToLLVM::postProcessOCLBuiltinWithAggregateArguments(Function* F) {
   auto Name = F->getName();
   auto Attrs = F->getAttributes();
   auto DL = M->getDataLayout();
@@ -1658,7 +1658,7 @@ SPIRVToLLVM::postProcessOCLBuiltinWithArrayArguments(Function* F) {
     auto FBegin = CI->getParent()->getParent()->begin()->getFirstInsertionPt();
     for (auto &I:Args) {
       auto T = I->getType();
-      if (!T->isArrayTy())
+      if (!T->isAggregateType())
         continue;
       
       if (auto constVal = dyn_cast<Constant>(I)) {
@@ -1672,9 +1672,15 @@ SPIRVToLLVM::postProcessOCLBuiltinWithArrayArguments(Function* F) {
       IRBuilder<> builder(CI);
       auto size = DL.getTypeAllocSize(T);
       builder.CreateMemCpy(Alloca, I, size, ptrSize);
-      I = ptrSize > 4
+      if (T->isArrayTy()) {
+        I = ptrSize > 4
           ? builder.CreateConstInBoundsGEP2_64(Alloca, 0, 0)
           : builder.CreateConstInBoundsGEP2_32(nullptr, Alloca, 0, 0);
+      } else if (T->isStructTy()) {
+        I = Alloca;
+      } else {
+        llvm_unreachable("Unknown aggregate type!");
+      }
     }
     return Name;
   }, false, &Attrs);

@@ -301,7 +301,7 @@ mutateCallInst(Module *M, CallInst *CI,
 
   auto Args = getArguments(CI);
   auto NewName = ArgMutate(CI, Args);
-  StringRef InstName;
+  std::string InstName;
   if (!CI->getType()->isVoidTy() && CI->hasName()) {
     InstName = CI->getName();
     CI->setName(InstName + ".old");
