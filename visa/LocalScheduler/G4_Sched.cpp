@@ -1356,11 +1356,19 @@ bool LatencyQueue::compare(preNode* N1, preNode* N2)
     assert(N1->getID() != N2->getID());
     assert(N1->getInst() && N2->getInst());
 
+    auto Cmp = [](const preEdge &E1, const preEdge &E2) {
+        return E1.getNode()->getID() < E2.getNode()->getID();
+    };
+
     G4_INST* Inst1 = N1->getInst();
     if (Inst1->isPseudoKill()) {
         // Direction is top-down, we compare the underlying nodes.
         assert(!N1->succ_empty());
-        preNode *N1F = N1->Succs.front().getNode();
+
+        // Find the underlying node with highest ID.
+        auto &Max = *std::max_element(N1->Succs.begin(), N1->Succs.end(), Cmp);
+        preNode *N1F = Max.getNode();
+
         // If the underlying node is not ready yet, then this pseudo-kill
         // shall not be scheduled ahead of N2.
         if (N1F->NumPredsLeft > 1)
@@ -1372,7 +1380,11 @@ bool LatencyQueue::compare(preNode* N1, preNode* N2)
     if (Inst2->isPseudoKill()) {
         // Direction is top-down, we compare the underlying nodes.
         assert(!N2->succ_empty());
-        preNode *N2F = N2->Succs.front().getNode();
+
+        // Find the underlying node with highest ID.
+        auto &Max = *std::max_element(N2->Succs.begin(), N2->Succs.end(), Cmp);
+        preNode *N2F = Max.getNode();
+
         // If the underlying node is not ready yet, then this pseudo-kill
         // shall not be scheduled ahead of N1.
         if (N2F->NumPredsLeft > 1)
