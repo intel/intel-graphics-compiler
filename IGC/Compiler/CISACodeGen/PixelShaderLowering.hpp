@@ -77,6 +77,11 @@ public:
         AU.addRequired<CodeGenContextWrapper>();
     }
 
+    virtual llvm::StringRef getPassName() const override
+    {
+        return "PixelShaderLowering";
+    }
+
     static char         ID;
 
 private:

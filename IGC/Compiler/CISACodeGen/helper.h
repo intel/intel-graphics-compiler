@@ -219,8 +219,7 @@ inline bool RTWriteHasSource0Alpha(
     const llvm::RTWritIntrinsic* rtWrite,
     ModuleMetaData* md)
 {
-    return !md->psInfo.SkipSrc0Alpha &&
-        rtWrite->getRTIndexImm() > 0;
+    return !llvm::isa<llvm::UndefValue>(rtWrite->getSource0Alpha());
 }
 inline bool DoesRTWriteSrc0AlphaBelongToHomogeneousPart(
     const llvm::RTWritIntrinsic* rtWrite,

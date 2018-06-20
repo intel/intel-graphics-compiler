@@ -349,6 +349,10 @@ void PixelShaderLowering::FindIntrinsicOutput(
                         uint RTIndex = (uint) llvm::cast<llvm::ConstantInt>(inst->getOperand(5))->getZExtValue();
 
                         unsigned mask = 0;
+                        if(RTIndex == 0)
+                        {
+                            src0Alpha = inst->getOperand(3);
+                        }
                         // if any of the color channel is undef, initialize it
                         // to 0 for color compression perf.
                         for (int i = 0; i < 4; i++)
@@ -374,11 +378,6 @@ void PixelShaderLowering::FindIntrinsicOutput(
                             }
                         }
                         m_modMD->psInfo.colorOutputMask[RTIndex] = mask;
-
-                        if(RTIndex == 0)
-                        {
-                            src0Alpha = inst->getOperand(3);
-                        }
                         ColorOutput data;
                         data.RTindex = RTIndex;
                         data.color[0] = inst->getOperand(0);
@@ -516,7 +515,7 @@ CallInst* PixelShaderLowering::addRTWrite(
     Value* a = color.color[3];
 
     //True if src0Alpha exists and renderTargetBlendingDisabled is false
-    bool needsSrc0Alpha = ((src0Alpha && color.RTindex > 0) && (!SkipSrc0Alpha));
+    bool needsSrc0Alpha = ((src0Alpha && color.RTindex > 0) && (!SkipSrc0Alpha) && src0Alpha != color.color[3]);
     bool src0AlphaIsHF = (needsSrc0Alpha && isa<FPExtInst>(src0Alpha)) || !needsSrc0Alpha;
 
     if (m_cgCtx->platform.supportFP16()  &&
