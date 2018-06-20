@@ -1850,7 +1850,7 @@ G4_INST* IR_Builder::createFenceInstruction( uint8_t flushParam, bool commitEnab
 #define L1_FLUSH_MASK 0x40
 
     const int SWFenceMask = 0x80;
-    bool SWFenceOnly = flushParam & SWFenceMask;
+    bool SWFenceOnly = (flushParam & SWFenceMask) != 0;
     if (SWFenceOnly)
     {
         return createIntrinsicInst(nullptr, Intrinsic::MemFence, 1, nullptr, nullptr, nullptr, nullptr,
