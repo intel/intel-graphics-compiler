@@ -7553,6 +7553,11 @@ bool G4_INST::canDstBeAcc(const IR_Builder& builder) const
         return false;
     }
 
+    if (getSaturate() && IS_INT(dst->getType()))
+    {
+        return false;
+    }
+
     if (!builder.relaxedACCRestrictions())
     {
         if (dst->getType() == Type_HF && isMixedMode())
