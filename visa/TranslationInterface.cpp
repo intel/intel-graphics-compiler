@@ -1555,11 +1555,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     if (IsSrc0Moved)
     {
         // expand scale src0 to vector src
-        G4_DstRegRegion tdst_src0(Direct, t6->getRegVar(), 0, 0, 1, Type_DF);
-        dst0 = createDstRegRegion(tdst_src0);
+        dst0 = Create_Dst_Opnd_From_Dcl(t6, 1);
         // mov (element_size) t6_dst_src0_opnd, src0RR {Q1/H1}
-        inst = createInst(NULL, G4_mov, NULL, false, element_size, dst0, src0RR, NULL, instOpt, line_no);
-        
+        inst = createInst(NULL, G4_mov, NULL, false, element_size, dst0, src0RR, NULL, instOpt, line_no);   
     }
 
     // cr0.0 register
@@ -1626,7 +1624,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
 
         // source of inst.
         G4_SrcRegRegion fsrc0_math(Mod_src_undef, Direct, src0RR->getBase(), src0RR->asSrcRegRegion()->getRegOff() + regIndex, 0, rdAlign16, Type_DF);
-        G4_SrcRegRegion tsrc6_math(Mod_src_undef, Direct, t6->getRegVar(), src0RR->asSrcRegRegion()->getRegOff() + regIndex, 0, rdAlign16, Type_DF);
+      
 
         // src : 6, 7, 8, 9, 10, 11
         G4_SrcRegRegion fsrc0(Mod_src_undef, Direct, src0RR->getBase(), src0RR->asSrcRegRegion()->getRegOff() + regIndex, 0, srcRegionDesc, Type_DF);
@@ -1659,12 +1657,12 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
         // or (1) cr0.0<0;1,0>:ud cr0.0<0;1,0>:ud 0x40:ud {NoMask}
         inst = createInst(NULL, G4_or, NULL, false, 1, dst0, src0, immData, InstOpt_WriteEnable, line_no);
         
-
         // math.e0.f0.0 (4) r7.acc2 r6.noacc NULL 0xf {Align16, N1/N2}
         dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(ACC2);
         if (IsSrc0Moved)
         {
-            src0 = createSrcRegRegion(tsrc6_math);
+            // use t6, but need to adjust the offset since unlike the orig source t6 is zero-based.
+            src0 = createSrcRegRegion(Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, rdAlign16, Type_DF);
         }
         else
         {

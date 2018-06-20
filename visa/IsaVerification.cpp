@@ -1325,7 +1325,7 @@ static void verifyInstructionArith(const common_isa_header& isaHeader, const ker
             opcode != ISA_INV && opcode != ISA_SQRTM && opcode != ISA_DIVM)
         {
             REPORT_INSTRUCTION(options, false,
-                "Only mul/add/mad/div/inv/sqrt are allowed to use double precision floating point operands.");
+                "Only mul/add/mad/div/divm/sqrtm are allowed to use double precision floating point operands.");
         }
     }
 
