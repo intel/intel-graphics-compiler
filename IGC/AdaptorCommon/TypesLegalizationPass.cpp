@@ -241,6 +241,12 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
 		  break;
 	  }
   }
+  else if ((isa<Argument>(val) || isa<CallInst>(val)) &&
+    val->getType()->isStructTy()) { 
+    // Handle struct arguments and structs returned by function calls.
+    IRBuilder<> builder(ip);
+    return builder.CreateExtractValue(val, indices);
+  }
 
   // What other kind of instruction can we have here?
   assert( !"Unresolved instruction!" );
