@@ -1819,6 +1819,13 @@ void CodeGen(OpenCLProgramContext* ctx)
 
 bool COpenCLKernel::hasReadWriteImage(llvm::Function &F)
 {
+    if (!isEntryFunc(m_pMdUtils, &F))
+    {
+        // Ignore read/write flags for subroutines for now.
+        // TODO: get access types for subroutines without using kernel args
+        return false;
+    }
+
     KernelArgs kernelArgs(F, m_DL, m_pMdUtils);
     for (auto KA : kernelArgs)
     {

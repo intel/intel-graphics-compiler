@@ -756,9 +756,9 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
 
         int FCtrl = IGC_GET_FLAG_VALUE(FunctionControl);
 
-        // do not inline instrumented functions
+        // do not inline user subroutines
         if (FCtrl != FLAG_FCALL_FORCE_INLINE &&
-            Callee->hasFnAttribute("InstrumentedFunc"))
+            Callee->hasFnAttribute("UserSubroutine"))
             return InlineCost::getNever();
 
         if (FCtrl != FLAG_FCALL_FORCE_SUBROUTINE &&

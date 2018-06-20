@@ -181,22 +181,28 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
         else if (Argument* argPtr = dyn_cast<Argument>(srcPtr))
         {
             // Source comes from kernel arguments
-            assert(m_pCodeGenContext->type == ShaderType::OPENCL_SHADER);
-
-            IGCMD::ResourceAllocMetaDataHandle resAllocMD = m_pMdUtils->getFunctionsInfoItem(pIntr->getParent()->getParent())->getResourceAlloc();
-            IGCMD::ArgAllocMetaDataHandle argInfo = resAllocMD->getArgAllocsItem(argPtr->getArgNo());
-
-            if (argInfo->getType() == IGCMD::ResourceTypeEnum::BindlessUAVResourceType)
+            // We only promote if the argument comes from the entry function.
+            // Default to bindless if sampler called from subroutine.
+            Function* function = argPtr->getParent();
+            if (isEntryFunc(m_pMdUtils, function))
             {
-                bufID = (unsigned) argInfo->getIndex();
-                bufTy = BufferType::UAV;
-                canPromote = true;
-            }
-            else if (argInfo->getType() == IGCMD::ResourceTypeEnum::BindlessSamplerResourceType)
-            {
-                bufID = (unsigned) argInfo->getIndex();
-                bufTy = BufferType::SAMPLER;
-                canPromote = true;
+                assert(m_pCodeGenContext->type == ShaderType::OPENCL_SHADER);
+
+                IGCMD::ResourceAllocMetaDataHandle resAllocMD = m_pMdUtils->getFunctionsInfoItem(function)->getResourceAlloc();
+                IGCMD::ArgAllocMetaDataHandle argInfo = resAllocMD->getArgAllocsItem(argPtr->getArgNo());
+
+                if (argInfo->getType() == IGCMD::ResourceTypeEnum::BindlessUAVResourceType)
+                {
+                    bufID = (unsigned) argInfo->getIndex();
+                    bufTy = BufferType::UAV;
+                    canPromote = true;
+                }
+                else if (argInfo->getType() == IGCMD::ResourceTypeEnum::BindlessSamplerResourceType)
+                {
+                    bufID = (unsigned) argInfo->getIndex();
+                    bufTy = BufferType::SAMPLER;
+                    canPromote = true;
+                }
             }
         }
     }

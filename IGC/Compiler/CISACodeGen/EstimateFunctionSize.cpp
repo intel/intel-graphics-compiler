@@ -287,10 +287,10 @@ void EstimateFunctionSize::checkSubroutine() {
       EnableSubroutine = false;
   }
 
-  // Enable subroutine if there is instrumented function
+  // Enable subroutine if function has the "UserSubroutine" attribute
   if (!EnableSubroutine) {
     for (Function& F : *M) {
-      if (F.hasFnAttribute("InstrumentedFunc")) {
+      if (F.hasFnAttribute("UserSubroutine")) {
         EnableSubroutine = true;
         break;
       }

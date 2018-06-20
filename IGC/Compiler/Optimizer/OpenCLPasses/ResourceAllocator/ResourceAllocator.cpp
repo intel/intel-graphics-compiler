@@ -70,12 +70,11 @@ bool ResourceAllocator::runOnModule(Module &M)
     // FunctionsInfo contains kernels only.
     for( auto i = pMdUtils->begin_FunctionsInfo(), e = pMdUtils->end_FunctionsInfo(); i != e; ++i )
     {
-        // Bypass instrumented functions. Instrumented functions should not have Sampler or Image arguments
-        // so it is fine to bypass them here. Otherwise the instrumented function will failed in 
-        // getOpenCLArgAccessQualifiersItem that try to get non-existed info from FunctionInfoMetaData
-        if (i->first->hasFnAttribute("InstrumentedFunc"))
+        Function* func = i->first;
+        // Bypass subroutines. Resources only need to be allocated once for the kernel functions
+        if (func->hasFnAttribute("UserSubroutine"))
             continue;
-        runOnFunction(*(i->first));
+        runOnFunction(*func);
     }
 
     return true;
