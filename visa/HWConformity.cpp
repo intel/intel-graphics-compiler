@@ -1825,59 +1825,6 @@ bool HWConformity::fixIndirectOpnd( INST_LIST_ITER i, G4_BB *bb )
     }
     return spill_dst;
 }
-/*
- *     Two rules are checked here:
- * (1) When source(s) is/are of float type, destination must be of float
- *     type also. The exception is MOV instruction which can be used
- *     for explicit type conversion between float and integer.
- *
- * (2) For Gen6, only the following instructions can have
- *     interger sources and float destination:
- *     MOV, ADD, MUL, MAC, MAD, LINE
- */
-bool HWConformity::fixDstType( INST_LIST_ITER i, G4_BB *bb, G4_Type extype )
-{
-    G4_INST *inst = *i;
-    G4_DstRegRegion *dst = inst->getDst();
-
-    if (!dst)
-    {
-        return false;
-    }
-
-    if( inst->hasNULLDst() ){
-        if( inst->opcode() != G4_mov && IS_FTYPE( extype ) && !IS_FTYPE( dst->getType() ) ){
-            // change type and stride of NULL dst
-            G4_DstRegRegion *null_dst_opnd = builder.createNullDst( Type_F );
-            inst->setDest( null_dst_opnd );
-        }
-    }
-    else if( (
-                (inst->opcode() != G4_mov && !inst->isSend())   &&
-                (IS_FTYPE( extype ) || IS_HFTYPE(extype))       &&
-                !(IS_FTYPE(dst->getType()) || IS_HFTYPE(dst->getType()))
-             )                                                              ||
-             (
-                IS_FTYPE(dst->getType())                        &&
-                //assumes checks for platform were already done for HF
-                !(IS_FTYPE(extype) || IS_HFTYPE(extype))       &&
-                !Opcode_int_src_float_dst_OK( inst->opcode() )
-             )
-          )
-    {
-            G4_DstRegRegion *new_dst = insertMovAfter(i, dst, extype, bb);
-            // TODO: since cmp amd cmpn have no dst, we do not handle cmp/cmpn dst during MOV inst insertion.
-            inst->setDest( new_dst );
-            if( dst != new_dst &&
-                ( IS_FTYPE(dst->getType()) || IS_DFTYPE(dst->getType()) ) )
-            {
-                inst->setSaturate( false );
-            }
-            return true;
-    }
-    return false;
-}
-
 
 // If an accumulator is a source operand, its register region must match that of the 
 // destination register (which means GRF-aligned since we always GRF-align Acc)
@@ -5825,10 +5772,6 @@ void HWConformity::conformBB( BB_LIST_ITER it)
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
 
-         /* HW Check #2
-         * First check sources for math instructions.
-         * math only uses GRFs as operands and sub register number should be the same
-         */
         if (inst->isMath())
         {
             if( fixMathInst( i, bb ) )
@@ -5844,7 +5787,7 @@ void HWConformity::conformBB( BB_LIST_ITER it)
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
-        /* HW Check #3 */
+
         if( inst->opcode() == G4_mul )
         {
             if( fixMULInst( i, bb ) )
@@ -5859,7 +5802,7 @@ void HWConformity::conformBB( BB_LIST_ITER it)
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
-        /* HW Check #3a */
+
         if( inst->opcode() == G4_mulh )
         {
             fixMULHInst( i, bb );
@@ -5902,30 +5845,6 @@ void HWConformity::conformBB( BB_LIST_ITER it)
             fixCompareInst( i, bb, extype, dst_elsize );
         }
         dst = inst->getDst();
-#ifdef _DEBUG
-        verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
-#endif
-        {
-            int extypesize;
-            G4_Type extype = inst->getOpExecType( extypesize );
-            /*
-            * HW check #11: check destination type.
-            *
-            * (*) When source(s) is/are of float type, destination must be of float
-            *     type also. The exception is MOV instruction which can be used
-            *     for explicit type conversion between float and integer.
-            */
-            if (dst != NULL &&
-                ( ( opcode != G4_mov && IS_FTYPE( extype ) && !IS_FTYPE( dst->getType() ) ) ||
-                ( IS_FTYPE(dst->getType()) && !IS_FTYPE(extype) && !Opcode_int_src_float_dst_OK( opcode ) ) ) )
-            {
-                if(fixDstType( i, bb, extype ))
-                {
-                    next_iter = i;
-                    next_iter++;
-                }
-            }
-        }
 
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
@@ -5936,6 +5855,10 @@ void HWConformity::conformBB( BB_LIST_ITER it)
             next_iter++;
         }
 
+#ifdef _DEBUG
+        verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
+#endif
+
         {
             dst = inst->getDst();
             G4_Type extype = inst->getExecType2();
@@ -5945,10 +5868,7 @@ void HWConformity::conformBB( BB_LIST_ITER it)
             {
                 dst_elsize = G4_Type_Table[dst->getType()].byteSize;
             }
-#ifdef _DEBUG
-            verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
-#endif
-            /* HW check #15 : DST HS */
+
             if (dst                         &&
                 inst->getExecSize() == 1    &&
                 dst_elsize < extypesize     &&
@@ -6090,7 +6010,6 @@ void HWConformity::chkHWConformity()
 
     for (BB_LIST_ITER it = kernel.fg.BBs.begin(); it != kernel.fg.BBs.end();it++)
     {
-        // hw conformity #1
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
@@ -6147,10 +6066,6 @@ void HWConformity::chkHWConformity()
 #endif
 
         conformBB(it);
-
-#ifdef _DEBUG
-        verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
-#endif
 
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
