@@ -251,7 +251,7 @@ bool PixelShaderLowering::runOnFunction(llvm::Function &F)
     // src0Alphas need not be sent when renderTargetBlending metadata is disabled
     // this means alpha to coverage and alpha test is disabled
     // this also means the render target blending is disabled
-    SkipSrc0Alpha = m_modMD->psInfo.SkipSrc0Alpha;
+    SkipSrc0Alpha = m_modMD->psInfo.SkipSrc0Alpha || IGC_IS_FLAG_ENABLED(ForceDisableSrc0Alpha);
 
     // Check whether the coarse pixel shader is present. Dual source blending cannot be used with CPS.
     bool isCoarsePixelShader = (m_module->getNamedMetadata("coarse_phase") != nullptr);
