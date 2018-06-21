@@ -415,6 +415,9 @@
         return false;
     }
 
-
+    bool favorFpMad() const
+    {
+        return true;
+    }
 
     // end HW capabilities

@@ -3906,7 +3906,7 @@ bool HWConformity::generateFPMad(G4_BB* bb, INST_LIST_ITER iter)
     // -- if src region is not scalar, its subregister must be 16 byte aligned
 
     // do not force fma for CM since it doesn't have precision requirements
-    bool preferFpMad = builder.getOption(vISA_forceFPMAD) && builder.getOptions()->getTarget() != VISA_CM;
+    bool preferFpMad = builder.getOption(vISA_forceFPMAD) || builder.favorFpMad();
     if (!preferFpMad)
     {
         preferFpMad = isFpMadPreferred(bb, iter);
