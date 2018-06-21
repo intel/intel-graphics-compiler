@@ -5572,6 +5572,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
     bool oneGRFBankDivision = gra.kernel.fg.builder->oneGRFBankDivision();
     bool allocFromBanks = liveAnalysis.livenessClass(G4_GRF) && builder.lowHighBundle() &&
         !builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum) &&
+        totalGRFNum == 128 &&
         doBankConflict &&
         ((oneGRFBankDivision && gra.kernel.getSimdSize() >= 16) || (!oneGRFBankDivision && highInternalConflict));
 
