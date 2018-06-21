@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #include "MoveStaticAllocas.h"
 
 #include "common/LLVMWarningsPush.hpp"

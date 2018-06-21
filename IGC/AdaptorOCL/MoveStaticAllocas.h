@@ -22,7 +22,8 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-======================= end_copyright_notice ==================================*/#pragma once
+======================= end_copyright_notice ==================================*/
+#pragma once
 #include "Compiler/CISACodeGen/helper.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"

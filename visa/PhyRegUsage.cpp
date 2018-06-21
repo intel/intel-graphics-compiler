@@ -1432,4 +1432,4 @@ PhyRegUsageParms::PhyRegUsageParms(GlobalRA& g, LiveRange* l[], G4_RegFileKind r
     rFile = r;
     totalGRF = gra.kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
     lrs = l;
-}
+}
