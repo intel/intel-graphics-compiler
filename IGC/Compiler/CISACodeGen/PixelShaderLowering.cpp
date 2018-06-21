@@ -349,10 +349,6 @@ void PixelShaderLowering::FindIntrinsicOutput(
                         uint RTIndex = (uint) llvm::cast<llvm::ConstantInt>(inst->getOperand(5))->getZExtValue();
 
                         unsigned mask = 0;
-                        if(RTIndex == 0)
-                        {
-                            src0Alpha = inst->getOperand(3);
-                        }
                         // if any of the color channel is undef, initialize it
                         // to 0 for color compression perf.
                         for (int i = 0; i < 4; i++)
@@ -376,6 +372,10 @@ void PixelShaderLowering::FindIntrinsicOutput(
                             {
                                 mask |= 1 << i;
                             }
+                        }
+                        if(RTIndex == 0)
+                        {
+                            src0Alpha = inst->getOperand(3);
                         }
                         m_modMD->psInfo.colorOutputMask[RTIndex] = mask;
                         ColorOutput data;
