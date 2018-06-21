@@ -351,7 +351,7 @@ GENERATE_VECTOR_FUNCTIONS_2ARGS_VS( intel_sub_group_shuffle, uchar, uchar, uint 
 
 INLINE double OVERLOADABLE intel_sub_group_shuffle( double x, uint c )
 {
-    return as_double( intel_sub_group_shuffle( as_uint2(x), c ) );
+    return __builtin_IB_simd_shuffle_df( x, c );
 }
 
 INLINE double OVERLOADABLE intel_sub_group_shuffle_down( double cur, double next, uint c )

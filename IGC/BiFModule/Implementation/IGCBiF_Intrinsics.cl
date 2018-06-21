@@ -458,6 +458,7 @@ ushort  __builtin_IB_simd_shuffle_us( ushort, uint );
 float 	__builtin_IB_simd_shuffle_f( float, uint );
 half 	__builtin_IB_simd_shuffle_h( half, uint );
 char    __builtin_IB_simd_shuffle_b( char, uint );
+double  __builtin_IB_simd_shuffle_df(double, uint);
 uint    __builtin_IB_simd_shuffle_down( uint, uint, uint );
 ushort  __builtin_IB_simd_shuffle_down_us( ushort, ushort, uint );
 uchar  __builtin_IB_simd_shuffle_down_uc( uchar, uchar, uint );

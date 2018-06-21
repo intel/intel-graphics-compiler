@@ -56,6 +56,7 @@ const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US			= "__built
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F          = "__builtin_IB_simd_shuffle_f";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H          = "__builtin_IB_simd_shuffle_h";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B          = "__builtin_IB_simd_shuffle_b";
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DF         = "__builtin_IB_simd_shuffle_df";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN       = "__builtin_IB_simd_shuffle_down";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_US    = "__builtin_IB_simd_shuffle_down_us";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DOWN_UC    = "__builtin_IB_simd_shuffle_down_uc";
@@ -501,7 +502,9 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
 			  funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_US ) ||
               funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_F ) ||
               funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_H ) ||
-              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B ) )
+              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_B ) || 
+              funcName.equals( SubGroupFuncsResolution::SUB_GROUP_SHUFFLE_DF )
+              )
     {
         CheckSIMDSize(CI, "Shuffle not supported in SIMD32");
 

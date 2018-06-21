@@ -94,6 +94,7 @@ namespace IGC
         static const llvm::StringRef SUB_GROUP_SHUFFLE_F;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_H;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_B;
+        static const llvm::StringRef SUB_GROUP_SHUFFLE_DF;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_DOWN;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_DOWN_US;
         static const llvm::StringRef SUB_GROUP_SHUFFLE_DOWN_UC;
