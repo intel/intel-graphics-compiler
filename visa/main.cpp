@@ -256,6 +256,17 @@ DLL_EXPORT int JITCompileWithRelocation(const char* kernelName,
         kernel->GetGenReloc(outputRelocs, numOutputRelocs);
     }
 
+    // Return free GRF info
+    kernel->GetFreeGRFInfo(tempJitInfo->freeGRFInfo, tempJitInfo->freeGRFInfoSize);
+    if (tempJitInfo->freeGRFInfoSize > 0)
+    {
+        // Do this so caller can invoke freeBlock() function to release memory
+        void* buf = allocCodeBlock(tempJitInfo->freeGRFInfoSize);
+        memcpy_s(buf, tempJitInfo->freeGRFInfoSize, tempJitInfo->freeGRFInfo, tempJitInfo->freeGRFInfoSize);
+        free(tempJitInfo->freeGRFInfo);
+        tempJitInfo->freeGRFInfo = buf;
+    }
+
     if (jitInfo != NULL && tempJitInfo != NULL)
         memcpy_s(jitInfo, sizeof(FINALIZER_INFO), tempJitInfo, sizeof(FINALIZER_INFO));
 
