@@ -403,7 +403,6 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
     // Generate pairs of TypedWrites
     bool doMessageFuse = (k->fg.builder->fuseTypedWrites() && k->getSimdSize() >= 16) ||
         k->fg.builder->fuseURBMessage();
-
     if (doMessageFuse) 
     {
         ddd.pairTypedWriteOrURBWriteNodes(bb);
@@ -1413,57 +1412,55 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
     //                                     instrPairs[B] = A
     instrPairVec_t instrPairs;
     // Go through the instructions in BB and find all possible pairs of typedWrites.
-    Node *foundFirst = nullptr, *foundSecond = nullptr;
-    Node *foundThird = nullptr, *foundFourth = nullptr;
-
-    for (auto it = allNodes.rbegin(), ite = allNodes.rend(); it != ite; ++it)
-    {
-        Node *node = *it;
-        G4_INST *inst = (*node->getInstructions())[0];
+    G4_INST *foundFirst = nullptr, *foundSecond = nullptr;
+    G4_INST *foundThird = nullptr, *foundFourth = nullptr;
+    for (G4_INST *inst : *bb) {
         // {0,1}
         if (!foundFirst && isTypedWritePart(inst, 0)) {
-            foundFirst = node;
+            foundFirst = inst;
         }
         if (foundFirst  && isTypedWritePart(inst, 1)) {
-            foundSecond = node;
+            foundSecond = inst;
             instrPairs.emplace_back(DDD::instrPair_t(foundFirst, foundSecond));
             foundFirst = nullptr;
             foundSecond = nullptr;
         }
         // {2,3}
         if (!foundThird && isTypedWritePart(inst, 2)) {
-            foundThird = node;
+            foundThird = inst;
         }
         if (foundThird && isTypedWritePart(inst, 3)) {
-            foundFourth = node;
+            foundFourth = inst;
             instrPairs.emplace_back(DDD::instrPair_t(foundThird, foundFourth));
             foundThird = nullptr;
             foundFourth = nullptr;
         }
     }
 
-    
-    Node* leadingURB = nullptr;
-    for (auto it = allNodes.rbegin(), ite = allNodes.rend(); it != ite; ++it)
+    auto getNode = [this](G4_INST* inst)
     {
-        Node *node = *it;
-        G4_INST *inst = (*node->getInstructions())[0];
+        return  allNodes[allNodes.size() - 1 - inst->getLocalId()];
+    };
+
+    G4_INST* leadingURB = nullptr;
+    for (G4_INST *inst : *bb) 
+    {
         if (!leadingURB && isLeadingURBWrite(inst))
         {
-            leadingURB = node;
+            leadingURB = inst;
         }
         else if (leadingURB)
         {
             if (inst->isSend() && inst->getMsgDesc()->getFuncId() == SFID_URB)
             { 
-                if (canFuseURB(inst, (*leadingURB->getInstructions())[0]))
+                if (canFuseURB(inst, leadingURB))
                 {
-                    instrPairs.emplace_back(DDD::instrPair_t(leadingURB, node));
+                    instrPairs.emplace_back(DDD::instrPair_t(leadingURB, inst));
                     leadingURB = nullptr;
                 }
                 else 
                 {
-                    leadingURB = isLeadingURBWrite(inst) ? node : nullptr;
+                    leadingURB = isLeadingURBWrite(inst) ? inst : nullptr;
                 }
             }
             else
@@ -1471,8 +1468,8 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
                 // stop if this instruction depends on leadingURB
                 // it's a conservative way to avoid cycles in the DAG when 
                 // fusing two URB sends (e.g., second URB's payload share register with first)
-                Node *leadingURBNode = leadingURB;
-                Node *curNode = node;
+                Node *leadingURBNode = getNode(leadingURB);
+                Node *curNode = getNode(inst);
                 for (auto&& succ : leadingURBNode->succs)
                 {
                     if (succ.getNode() == curNode)
@@ -1486,11 +1483,12 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
 
     // 2. Join nodes that need pairing
     uint32_t cntPairs = 0;
+    size_t ANS = allNodes.size();
     for (auto&& pair : instrPairs) {
-        Node *firstNode = pair.first;
-        Node *secondNode = pair.second;
-        G4_INST *firstInstr = (*firstNode->getInstructions())[0];
-        G4_INST *secondInstr = (*secondNode->getInstructions())[0];
+        G4_INST *firstInstr = pair.first;
+        G4_INST *secondInstr = pair.second;
+        Node *firstNode = allNodes[ANS - 1 - firstInstr->getLocalId()];
+        Node *secondNode = allNodes[ANS - 1 - secondInstr->getLocalId()];
         assert(firstNode->getInstructions()->size() == 1);
         assert(secondNode->getInstructions()->size() == 1);
         assert(*firstNode->getInstructions()->begin() == firstInstr);

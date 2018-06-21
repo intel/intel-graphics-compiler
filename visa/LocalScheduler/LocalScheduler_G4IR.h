@@ -274,7 +274,7 @@ class DDD {
     G4_Kernel* kernel;
 
 public:
-    typedef std::pair<Node *, Node *> instrPair_t;
+    typedef std::pair<G4_INST *, G4_INST *> instrPair_t;
     typedef std::vector<instrPair_t> instrPairVec_t;
     NODE_LIST Nodes, Roots;
     NODE_VECT pstOrder, originalOrder;
