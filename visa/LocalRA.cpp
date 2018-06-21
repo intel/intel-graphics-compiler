@@ -1736,7 +1736,8 @@ void LocalRA::printLocalLiveIntervalDistribution(unsigned int numScalars,
 bool LocalRA::countLiveIntervals()
 {
     int globalRows = 0;
-    uint32_t localRows = 0;
+    int numGRF = kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+
     for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
         dcl_it != kernel.Declares.end();
         dcl_it++)
@@ -1754,27 +1755,16 @@ bool LocalRA::countLiveIntervals()
             {
                 globalRows += dcl->getNumRows();
             }
-            else if (curDclLR->isLiveRangeLocal())
-            {
-                localRows += dcl->getNumRows();
-            }
         }
     }
 
-    if (globalRows <= NUM_PREGS_FOR_UNIQUE_ASSIGN)
+    if (globalRows >= numGRF)
     {
-        globalLRSize = globalRows;
+        return false;
     }
     else
     {
-        if (localRows < (numRegLRA - NUM_PREGS_FOR_UNIQUE_ASSIGN))
-        {
-            globalLRSize = NUM_PREGS_FOR_UNIQUE_ASSIGN;
-        }
-        else
-        {
-            return false;
-        }
+        globalLRSize = globalRows;
     }
 
     return true;

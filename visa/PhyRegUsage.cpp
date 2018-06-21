@@ -379,7 +379,7 @@ bool PhyRegUsage::findContiguousGRFFromBanks(G4_Declare *dcl,
         align = gra.getBankAlign(dcl);
     }
 
-    ASSERT_USER(bank1_end < 128 && bank1_start < 128 && bank2_start < 128 && bank2_end < 128,
+    ASSERT_USER(bank1_end < totalGRFNum && bank1_start < totalGRFNum && bank2_start < totalGRFNum && bank2_end < totalGRFNum,
         "Wrong bank boundaries value");
 
     if (colorHeuristic == ROUND_ROBIN)
@@ -1032,7 +1032,6 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
             BankConflict varBasisBC = gra.getBankConflict(varBasis->getVar()->asRegVar()->getDeclare());
 
             if (!builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum) &&
-                totalGRFNum == 128 &&
                 honorBankBias &&
                 varBasisBC != BANK_CONFLICT_NONE)
             {
@@ -1091,7 +1090,6 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
             BankConflict varBasisBC = gra.getBankConflict(varBasis->getVar()->asRegVar()->getDeclare());
 
             if (!builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum) &&
-                totalGRFNum == 128 &&
                 honorBankBias &&
                 varBasisBC != BANK_CONFLICT_NONE)
             {
