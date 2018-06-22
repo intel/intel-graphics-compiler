@@ -955,17 +955,18 @@ bool CodeSinking::hoistCongruentPhi(PHINode* phi)
                 {
                     predBB = DT->findNearestCommonDominator(
                         src0->getParent(), src1->getParent());
-                    insertPos = predBB->getTerminator()->getPrevNode();
+                    insertPos = predBB->getTerminator();
                 }
             }
             else
             {
+                Instruction* last;
                 for (auto* I : leaves)
                 {
                     if (!predBB)
                     {
                         predBB = I->getParent();
-                        insertPos = I;
+                        last = I;
                     }
                     else
                     if (predBB != I->getParent() ||
@@ -976,14 +977,18 @@ bool CodeSinking::hoistCongruentPhi(PHINode* phi)
                         break;
                     }
                     else
-                    if (!isInstPrecede(I, insertPos))
+                    if (!isInstPrecede(I, last))
                     {
-                        insertPos = I;
+                        last = I;
                     }
                 }
-                if (isa<PHINode>(insertPos))
+                if (isa<PHINode>(last))
                 {
-                    insertPos = predBB->getFirstNonPHI()->getPrevNode();
+                    insertPos = predBB->getFirstNonPHI();
+                }
+                else
+                {
+                    insertPos = last->getNextNode();
                 }
             }
 
@@ -997,9 +1002,8 @@ bool CodeSinking::hoistCongruentPhi(PHINode* phi)
                 {
                     Instruction* I = src0Chain[i - 1];
                     Instruction* ni = I->clone();
-                    ni->insertAfter(insertPos);
+                    ni->insertBefore(insertPos);
                     ni->setName(ni->getName() + ".hoist");
-                    insertPos = ni;
                     I->replaceAllUsesWith(ni);
                     src1Chain[i - 1]->replaceAllUsesWith(ni);
 
