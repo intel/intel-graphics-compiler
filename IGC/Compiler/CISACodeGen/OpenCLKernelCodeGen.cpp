@@ -1211,6 +1211,29 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
         // Do nothing
         break;
     }
+
+    // DATA_PARAMETER_BUFFER_STATEFUL
+    //   ( SPatchDataParameterBuffer for this token only uses one field: ArgumentNumber )
+    //   Used to indicate that all memory references via a gobal/constant ptr argument are
+    //   converted to stateful (by StatelessToStateful optimization). Thus, the ptr itself
+    //   is no longer referenced at all.
+    //
+    if (IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull) &&
+        IGC_IS_FLAG_ENABLED(EnableStatefulToken) &&
+        arg->use_empty() &&
+        (type == KernelArg::ArgType::PTR_GLOBAL ||
+         type == KernelArg::ArgType::PTR_CONSTANT))
+    {
+        iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation();
+
+        constInput->AnnotationSize = sizeof(constInput);
+        constInput->ConstantType = iOpenCL::DATA_PARAMETER_BUFFER_STATEFUL;
+        constInput->Offset = 0;
+        constInput->PayloadPosition = payloadPosition;
+        constInput->PayloadSizeInBytes = iOpenCL::DATA_PARAMETER_DATA_SIZE;
+        constInput->ArgumentNumber = kernelArg->getAssociatedArgNo(); // used only for this token.
+        m_kernelInfo.m_constantInputAnnotation.push_back(constInput);
+    }
 }
 
 void COpenCLKernel::ParseShaderSpecificOpcode( llvm::Instruction* inst )

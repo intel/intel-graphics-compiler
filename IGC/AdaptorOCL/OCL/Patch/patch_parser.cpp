@@ -518,6 +518,10 @@ void DebugPatchList(
                         ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                             "\tType = BUFFER_OFFSET\n");
                         break;
+                    case iOpenCL::DATA_PARAMETER_BUFFER_STATEFUL:
+                        ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                            "\tType = BUFFER_STATEFUL\n");
+                        break;
                     default:
                         ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                             "\tType = UNKNOWN_TYPE\n" );
