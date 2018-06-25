@@ -609,7 +609,7 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
 														// greater than this number then, likely that SIMD16 will spill and we should
 														// chose SIMD 8
 
-    unsigned int minTGSizeHeuristic;					// This value tells us what is the minimum acceptable threadgroup size
+    unsigned int minTGSizeHeuristic = 128;				// This value tells us what is the minimum acceptable threadgroup size
 														// to make sure that we are not too aggressive with thread combining.
 														// Current Heurstic is to have no less than 8 H/W threads per WG.
 	
@@ -627,7 +627,6 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
 		else
 		{
 			simdMode = SIMDMode::SIMD16;
-			minTGSizeHeuristic = 128; // => 8 h/w threads per WG
 		}
 	}
 

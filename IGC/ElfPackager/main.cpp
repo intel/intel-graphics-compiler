@@ -313,6 +313,7 @@ int main(int argc, char *argv[])
                 {
                     findUsers(Users2);
                 }
+				return;
             }
         };
 

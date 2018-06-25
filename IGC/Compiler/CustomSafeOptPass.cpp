@@ -1246,8 +1246,8 @@ bool GetStatelessBufferInfo(Value* pointer, unsigned &bufferId,
 Constant *IGCConstProp::replaceShaderConstant(LoadInst *inst)
 {
     unsigned as = inst->getPointerAddressSpace();
-    bool directBuf;
-    unsigned bufId;
+    bool directBuf = false;
+    unsigned bufId = 0;
 	int size_in_bytes = 0;
     BufferType bufType;
     Value* pointerSrc = nullptr;

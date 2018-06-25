@@ -115,8 +115,8 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
             if (textureArgValue->getType()->isPointerTy())
             {
                 uint addrSpace = textureArgValue->getType()->getPointerAddressSpace();
-                uint bufferIndex;
-                bool directIdx;
+                uint bufferIndex = 0;
+                bool directIdx = false;
                 DecodeAS4GFXResource(addrSpace, directIdx, bufferIndex);
                 textureIndex = bufferIndex;
             }

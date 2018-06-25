@@ -68,7 +68,7 @@ bool CustomLoopVersioning::isCBLoad(Value* val, unsigned& bufId, unsigned& offse
         return false;
 
     unsigned as = ld->getPointerAddressSpace();
-    bool directBuf;
+    bool directBuf = false;
     BufferType bufType = DecodeAS4GFXResource(as, directBuf, bufId);
     if (!(bufType == CONSTANT_BUFFER && directBuf))
         return false;

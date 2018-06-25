@@ -256,8 +256,8 @@ SymExpr* SymbolicEvaluation::getSymExpr(Value* V)
         return VSI->symExpr;
     }
 
-    int64_t coeff;
-    SymExpr* expr;
+    int64_t coeff = 0;
+    SymExpr* expr = nullptr;
     getSymExprOrConstant(V, expr, coeff);
 
     if (expr == nullptr)
@@ -831,7 +831,7 @@ bool SLMConstProp::perform_PATTERN_REPEAT_WITH_STRIDE (
         }
         else {
             // Only do it if it is based on the same base expression
-            int64_t diff;
+            int64_t diff = 0;
             if (!m_SymEval.isOffByConstant(basePtr, aSE, diff))
             {
                 mayAccessPattern = true;
@@ -888,7 +888,7 @@ bool SLMConstProp::analyzeConstantStores()
     SymExpr* basePtr = nullptr;
     for (int i=0; i < nStores; ++i)
     {
-        int64_t diff;
+        int64_t diff = 0;
         StoreInst* SI = m_storeInsts[i];
         Value* ptrAddr = SI->getPointerOperand();
         Value* storedVal = SI->getValueOperand();
