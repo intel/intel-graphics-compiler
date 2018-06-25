@@ -82,6 +82,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/SPIRMetaDataTranslation.h"
+#include "Compiler/Optimizer/OpenCLPasses/ErrorCheckPass.h"
 #include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
@@ -246,6 +247,8 @@ static void CommonOCLBasedPasses(
 
     mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
     mpm.add(new CodeGenContextWrapper(pContext));
+
+    mpm.add(new ErrorCheck());
 
     mpm.add(new ClampLoopUnroll(256));
 

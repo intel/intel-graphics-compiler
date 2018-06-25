@@ -36,6 +36,7 @@ set(IGC_BUILD__SRC__OpenCLPasses
     "${CMAKE_CURRENT_SOURCE_DIR}/KernelArgs.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/BreakdownIntrinsic.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/KernelFunctionCloning.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ErrorCheckPass.cpp"
   )
 set(IGC_BUILD__SRC__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__SRC__OpenCLPasses}
@@ -79,6 +80,7 @@ set(IGC_BUILD__HDR__OpenCLPasses
     "${CMAKE_CURRENT_SOURCE_DIR}/KernelArgs.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/BreakdownIntrinsic.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/KernelFunctionCloning.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ErrorCheckPass.h"
   )
 set(IGC_BUILD__HDR__Optimizer_OpenCLPasses_All
     ${IGC_BUILD__HDR__OpenCLPasses}
