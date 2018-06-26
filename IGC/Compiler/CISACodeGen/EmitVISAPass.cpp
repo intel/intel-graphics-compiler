@@ -446,12 +446,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     IGC::Debug::Dump* llvmtoVISADump = nullptr;
     if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
     {
-        auto name =
-            IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
-            .Type(m_currShader->GetShaderType())
-            .Hash(ctx->hash)
-            .SIMDSize(m_SimdMode)
-            .Extension("visa.ll");
+        auto name = IGC::Debug::GetDumpNameObj(m_currShader, "visa.ll");
         llvmtoVISADump = new IGC::Debug::Dump(name, IGC::Debug::DumpType::PASS_IR_TEXT);
         llvmtoVISADump->stream() << F.getName() << "{\n\n";
     }
