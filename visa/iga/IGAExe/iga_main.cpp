@@ -121,6 +121,10 @@ extern "C" int iga_main(int argc, const char **argv)
                 p = IGA_GEN9p5;
             }  else if (inp == "CNL" || inp == "GEN10" || inp == "10") {
                 p = IGA_GEN10;
+            } else if (
+                inp == "ICL" || inp == "CNLH" || inp == "GEN11" ||
+                inp == "11") {
+                p = IGA_GEN11;
             } else {
                 err("invalid platform option");
             }
