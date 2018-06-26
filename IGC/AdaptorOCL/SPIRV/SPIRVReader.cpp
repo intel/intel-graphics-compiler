@@ -3163,19 +3163,16 @@ SPIRVToLLVM::transKernelMetadata()
             return transOCLKernelArgTypeName(Arg);
         });
         // Generate metadata for kernel_arg_name
-        if (BM->getCompileFlag().find("-cl-kernel-arg-info") !=
-            std::string::npos) {
-            bool ArgHasName = true;
-            BF->foreachArgument([&](SPIRVFunctionParameter *Arg){
-                ArgHasName &= !Arg->getName().empty();
-            });
-            if (ArgHasName)
-                addOCLKernelArgumentMetadata(Context, KernelMD,
+        bool ArgHasName = true;
+        BF->foreachArgument([&](SPIRVFunctionParameter *Arg) {
+            ArgHasName &= !Arg->getName().empty();
+        });
+        if (ArgHasName)
+            addOCLKernelArgumentMetadata(Context, KernelMD,
                 SPIR_MD_KERNEL_ARG_NAME, BF,
-                [=](SPIRVFunctionParameter *Arg){
-                return MDString::get(*Context, Arg->getName());
-            });
-        }
+                [=](SPIRVFunctionParameter *Arg) {
+            return MDString::get(*Context, Arg->getName());
+        });
         // Generate metadata for reqd_work_group_size
         if (auto EM = BF->getExecutionMode(ExecutionModeLocalSize)) {
             KernelMD.push_back(getMDNodeStringIntVec(Context,
