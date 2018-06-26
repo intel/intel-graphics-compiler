@@ -240,7 +240,7 @@ public:
 }
 #define NUM_WORDS_PER_GRF 16
 #define SECOND_HALF_BANK_START_GRF 64
-
+#define RR_HEURISTIC  0.66
 enum
 {
 	WORD_FREE = 0,
