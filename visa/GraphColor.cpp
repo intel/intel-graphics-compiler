@@ -9497,41 +9497,30 @@ void GlobalRA::assignRegForAliasDcl()
 
 void GlobalRA::removeSplitDecl()
 {
-    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-        dcl_it != kernel.Declares.end();)
+    for (auto dcl : kernel.Declares)
     {
-        G4_Declare* dcl = (*dcl_it);
-
         if (getSubDclSize(dcl))
         {
             clearSubDcl(dcl);
             dcl->setIsSplittedDcl(false);
-            dcl_it++;
-        }
-        else if (dcl->getIsPartialDcl())
-        {
-            DECLARE_LIST_ITER old_it = dcl_it;
-            dcl_it++;
-
-            kernel.Declares.erase(old_it);
-        }
-        else
-        {
-            dcl_it++;
         }
     }
 
-    return;
+    kernel.Declares.erase(std::remove_if(kernel.Declares.begin(), kernel.Declares.end(), 
+        [](G4_Declare* dcl) { return dcl->getIsPartialDcl(); }), kernel.Declares.end());
 }
 
 // FIXME: doBankConflictReduction and highInternalConflict are computed by local RA
 //        they should be moved to some common code
-bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict, DECLARE_LIST_ITER firstDclIter, LocalRA& lra)
+bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict, LocalRA& lra)
 {
     if (builder.getOption(vISA_RATrace))
     {
         std::cout << "--hybrid RA--\n";
     }
+    uint32_t numOrigDcl = (uint32_t) kernel.Declares.size();
+    insertPhyRegDecls(); 
+
     LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
     liveAnalysis.computeLiveness(true);
 
@@ -9548,7 +9537,8 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
             {
                 std::cout << "\t--skip hybrid RA due to high pressure: " << rpe.getMaxRP() << "\n";
             }
-            lra.undoLocalRAAssignments(false, &firstDclIter);
+            kernel.Declares.resize(numOrigDcl);
+            lra.undoLocalRAAssignments(false);
             return false;
         }
 
@@ -9561,8 +9551,9 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
         {
             if (!kernel.getOption(vISA_Debug))
             {
-                // Keep LRA results when -debug is passed
-                lra.undoLocalRAAssignments(false, &firstDclIter);
+                // Why?? Keep LRA results when -debug is passed 
+                kernel.Declares.resize(numOrigDcl);
+                lra.undoLocalRAAssignments(false);
             }
             return false;
         }
@@ -9639,7 +9630,6 @@ int GlobalRA::coloringRegAlloc()
     bool doBankConflictReduction = false;
     bool highInternalConflict = false;
 
-    DECLARE_LIST_ITER firstDclIter = kernel.Declares.begin();
     if (builder.getOption(vISA_LocalRA) && !isReRAPass())
     {
         startTimer(TIMER_LOCAL_RA);
@@ -9650,8 +9640,7 @@ int GlobalRA::coloringRegAlloc()
         if (!success)
         {
             startTimer(TIMER_HYBRID_RA);
-            insertPhyRegDecls(); // insert pseudo decls for physical registers to front of dcllist
-            success = hybridRA(doBankConflictReduction, highInternalConflict, firstDclIter, lra);
+            success = hybridRA(doBankConflictReduction, highInternalConflict, lra);
             stopTimer(TIMER_HYBRID_RA);
         }
         if (success)
@@ -11287,7 +11276,7 @@ void GlobalRA::insertPhyRegDecls()
         if (grfUsed[i] == true)
         {
             char* dclName = builder.getNameString(builder.mem, 10, "r%d", i);
-            G4_Declare* phyRegDcl = builder.createDeclareNoLookup(dclName, G4_GRF, 8, 1, Type_D, Regular, NULL, NULL, 0, true);
+            G4_Declare* phyRegDcl = builder.createDeclareNoLookup(dclName, G4_GRF, 8, 1, Type_D, Regular, NULL, NULL, 0);
             G4_Greg* phyReg = builder.phyregpool.getGreg(i);
             phyRegDcl->getRegVar()->setPhyReg(phyReg, 0);
             GRFDclsForHRA[i] = phyRegDcl;

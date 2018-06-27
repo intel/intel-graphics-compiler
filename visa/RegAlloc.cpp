@@ -3251,11 +3251,21 @@ void GlobalRA::markBlockLocalVars(G4_BB* bb, Mem_Manager& mem, bool doLocalRA)
 
 void GlobalRA::resetGlobalRAStates()
 {
-    DECLARE_LIST_ITER di = kernel.Declares.begin();
-    while (di != kernel.Declares.end())
+    if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
     {
-        G4_Declare* dcl = *di;
+        // remove partial decls
+        auto isPartialDcl = [](G4_Declare* dcl)
+        {
+            return dcl->getIsPartialDcl();
+        };
 
+        kernel.Declares.erase(
+            std::remove_if(kernel.Declares.begin(), kernel.Declares.end(), isPartialDcl),
+            kernel.Declares.end());
+    }
+
+    for (auto dcl : kernel.Declares)
+    {
         //Reset all the local live ranges
         resetLocalLR(dcl);
 
@@ -3267,16 +3277,6 @@ void GlobalRA::resetGlobalRAStates()
                 dcl->setIsSplittedDcl(false);
                 clearSubDcl(dcl);
             }
-
-            if (dcl->getIsPartialDcl())
-            {
-                auto declSplitDcl = getSplittedDeclare(dcl);
-                assert(!declSplitDcl->getIsSplittedDcl());
-                DECLARE_LIST_ITER old_it = di;
-                di++;
-                kernel.Declares.erase(old_it);
-                continue;
-            }
         }
 
         //Remove the bank assignment
@@ -3285,8 +3285,6 @@ void GlobalRA::resetGlobalRAStates()
         {
             setBankConflict(dcl, BANK_CONFLICT_NONE);
         }
-
-        di++;
     }
 
     return;

@@ -446,7 +446,7 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doBankConflictReduction, bool 
 
     if (needGlobalRA && doRoundRobin)
     {
-        undoLocalRAAssignments(true, nullptr);
+        undoLocalRAAssignments(true);
     }
 
     if (needGlobalRA == false && builder.getOption(vISA_OptReport))
@@ -922,29 +922,18 @@ void GlobalRA::removeUnreferencedDcls()
         }
     }
 
-    for (auto dcl_it = kernel.Declares.begin();
-        dcl_it != kernel.Declares.end();)
+    auto isUnrefDcl = [this](G4_Declare* dcl) 
     {
-        G4_Declare* dcl = (*dcl_it);
-
-        if ((dcl->getRegFile() == G4_GRF || dcl->getRegFile() == G4_INPUT) &&
+        return (dcl->getRegFile() == G4_GRF || dcl->getRegFile() == G4_INPUT) &&
             getNumRefs(dcl) == 0 &&
             dcl->getRegVar()->isPhyRegAssigned() == false &&
             !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
-                dcl == kernel.fg.builder->getBuiltinR0()))
-        {
-            DECLARE_LIST_ITER old_it = dcl_it;
-#ifdef DEBUG_VERBOSE_ON
-            DEBUG_VERBOSE("Removed unreferenced dcl " << (*old_it)->getName() << std::endl);
-#endif
+                dcl == kernel.fg.builder->getBuiltinR0());
+    };
 
-            dcl_it = kernel.Declares.erase(old_it);
-        }
-        else
-        {
-            dcl_it++;
-        }
-    }
+    kernel.Declares.erase(
+        std::remove_if(kernel.Declares.begin(), kernel.Declares.end(), isUnrefDcl),
+        kernel.Declares.end());
 }
 
 bool LocalRA::unassignedRangeFound()
@@ -1063,7 +1052,7 @@ unsigned int LocalRA::convertSubRegOffToWords(G4_Declare* dcl, int subregnum)
     return subregnuminwords;
 }
 
-void LocalRA::undoLocalRAAssignments(bool clearInterval, DECLARE_LIST_ITER* firstRealDclIter)
+void LocalRA::undoLocalRAAssignments(bool clearInterval)
 {
     if (kernel.getOption(vISA_OptReport))
     {
@@ -1071,11 +1060,6 @@ void LocalRA::undoLocalRAAssignments(bool clearInterval, DECLARE_LIST_ITER* firs
         getOptReportStream(optreport, kernel.getOptions());
         optreport << "Undoing local RA assignments" << std::endl;
         closeOptReportStream(optreport);
-    }
-
-    if (firstRealDclIter)
-    {
-        kernel.Declares.erase(kernel.Declares.begin(), *firstRealDclIter);
     }
 
     // Undo all assignments made by local RA
@@ -1106,12 +1090,6 @@ void LocalRA::undoLocalRAAssignments(bool clearInterval, DECLARE_LIST_ITER* firs
                     lr->setLastRef(NULL, 0);
                 }
             }
-        }
-
-        bool hybridRAUndo = firstRealDclIter != nullptr;
-        if (hybridRAUndo)
-        {
-            gra.setBankConflict(dcl, BANK_CONFLICT_NONE);
         }
     }
 

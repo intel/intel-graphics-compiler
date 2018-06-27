@@ -1171,7 +1171,7 @@ namespace vISA
         G4_Imm* createMsgDesc(unsigned owordSize, bool writeType, bool isSplitSend);
         void addrRegAlloc();
         void flagRegAlloc();
-        bool hybridRA(bool doBankConflictReduction, bool highInternalConflict, DECLARE_LIST_ITER firstDclIter, LocalRA& lra);
+        bool hybridRA(bool doBankConflictReduction, bool highInternalConflict, LocalRA& lra);
         void assignRegForAliasDcl();
         void removeSplitDecl();
         int coloringRegAlloc();

@@ -117,7 +117,7 @@ namespace vISA
 
         LocalRA(G4_Kernel&, bool&, BankConflictPass&, GlobalRA&);
         bool localRA(bool& doRoundRobin, bool& doBankConflict);
-        void undoLocalRAAssignments(bool clearInterval, DECLARE_LIST_ITER* firstRealDclIter);
+        void undoLocalRAAssignments(bool clearInterval);
     };
 
 class LocalLiveRange

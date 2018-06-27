@@ -831,8 +831,7 @@ public:
         DeclareType kind = Regular,
         G4_RegVar *    base = NULL,
         G4_Operand *   repRegion = NULL,
-        unsigned       execSize = 0,
-        bool           pushFront = false)
+        unsigned       execSize = 0)
     {
         if (regFile == G4_FLAG)
         {
@@ -841,14 +840,9 @@ public:
 
         G4_Declare* dcl = dclpool.createDeclare(name, regFile, n_elems,
             n_rows, ty, kind, base, repRegion, execSize);
-        if (!pushFront)
-        {
-            kernel.Declares.push_back(dcl);
-        }
-        else
-        {
-            kernel.Declares.push_front(dcl);
-        }
+
+        kernel.Declares.push_back(dcl);
+
         ++num_general_dcl;
         return dcl;
     }

@@ -2172,8 +2172,8 @@ public:
     void prepareForRealloc(G4_Kernel*);
 };
 }
-typedef std::list<vISA::G4_Declare*, vISA::std_arena_based_allocator<vISA::G4_Declare*>> DECLARE_LIST;
-typedef std::list<vISA::G4_Declare*, vISA::std_arena_based_allocator<vISA::G4_Declare*>>::iterator DECLARE_LIST_ITER;
+typedef std::vector<vISA::G4_Declare*> DECLARE_LIST;
+typedef std::vector<vISA::G4_Declare*>::iterator DECLARE_LIST_ITER;
 
 namespace vISA
 {
