@@ -65,6 +65,7 @@ public:
 
     {
         iga::Decoder decoder(*Model::LookupModel(platf), m_errHandler);
+        IGA_ASSERT(Model::LookupModel(platf) != nullptr, "Unsupported platform");
         m_kernel = decoder.decodeKernelBlocks(bytes, bytesLength);
 
         int32_t pc = 0;

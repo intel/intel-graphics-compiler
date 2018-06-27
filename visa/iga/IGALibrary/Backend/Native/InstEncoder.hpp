@@ -324,6 +324,7 @@ namespace iga
         if (os.isSubop()) {
             int fcValue = os.functionControlValue;
             const OpSpec *parOp = model.lookupSubOpParent(os);
+            IGA_ASSERT(parOp != nullptr, "cannot find SubOpParent");
             IGA_ASSERT(parOp->functionControlFields[0].length >= 0,
                 "cannot find subop fields");
             for (int i = 0;

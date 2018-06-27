@@ -760,7 +760,7 @@ bool GenParser::TryParseInstOptOrDepInfo(InstOptSet &instOpts)
 bool GenParser::tryParseInstOptDepInfoToken(InstOptSet &instOpts)
 {
     auto loc = NextLoc();
-    InstOpt newOpt;
+    InstOpt newOpt = InstOpt::ACCWREN;
     if (LookingAt(IDENT)) {
         // classic instruction option that affects instruction dependency
         // scheduling etc...
@@ -803,7 +803,7 @@ bool GenParser::tryParseInstOptDepInfoToken(InstOptSet &instOpts)
 
 bool GenParser::tryParseInstOptToken(InstOptSet &instOpts) {
     auto loc = NextLoc();
-    InstOpt newOpt;
+    InstOpt newOpt = InstOpt::ACCWREN;
     if (ConsumeIdentEq("AccWrEn")) {
         newOpt = InstOpt::ACCWREN;
     } else if (ConsumeIdentEq("Atomic")) {

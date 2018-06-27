@@ -625,7 +625,8 @@ bool iga::ParseLdStInst(ExecSize dftExecSize, GenParser &p)
         return false;
     }
 
-    bool conditional, unary;
+    bool conditional = false;
+    bool unary = false;
     auto ldStfx = ldSt.substr(2);
     if (ldStfx == "") {
         conditional = false;

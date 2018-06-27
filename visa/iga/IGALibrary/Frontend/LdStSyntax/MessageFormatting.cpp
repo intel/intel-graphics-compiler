@@ -48,7 +48,7 @@ static const MFormat *findFormat(
             sfid == mf.sfid &&
             (desc & mf.opcodeMask) == mf.opcodeValue;
     };
-    size_t mLen;
+    size_t mLen = 0;
     const MFormat *mArr = GetMFormatTable(mLen);
     const MFormat *format = nullptr;
     for (size_t mIx = 0; mIx < mLen; mIx++) {
