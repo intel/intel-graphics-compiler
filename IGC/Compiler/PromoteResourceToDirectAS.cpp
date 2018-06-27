@@ -622,20 +622,55 @@ void PromoteResourceToDirectAS::PromoteStatelessToBindlessBuffers(Instruction* i
 		return;
 	}
 
-	// Get the offset into the bindless buffer
+	// Calculate the buffer offset value, and fix the instructions in the trace path if needed
 	Value* bufferOffset = builder.getInt32(0);
 	if (Argument* argPtr = dyn_cast<Argument>(srcPtr))
 	{
-		// Replace use with a null pointer
 		Constant* nullPtr = ConstantPointerNull::get(cast<PointerType>(srcPtr->getType()));
-		assert(instructionList.back() == srcPtr);
-		Value* user = instructionList.size() > 1 ? instructionList[instructionList.size() - 2] : nullptr;
 
-		if (user)
+		// The last instruction should be the argument
+		assert(instructionList.back() == srcPtr);
+		instructionList.pop_back();
+
+		int numInstsInPath = (int) instructionList.size();
+
+		// Check the list of instructions in the trace path. If there are any with multiple uses, we
+		// want to clone all the instructions in the trace path so we don't interfere with the other users.
+		bool needClonePath = false;
+		for (int instIndex = numInstsInPath - 1; instIndex >= 0; instIndex--)
 		{
-			// Replace the pointer used within this trace path with a null pointer
-			cast<User>(user)->replaceUsesOfWith(srcPtr, nullPtr);
-			bufferOffset = builder.CreatePtrToInt(resourcePtr, builder.getInt32Ty());
+			Instruction* nextInst = cast<Instruction>(instructionList[instIndex]);
+			if (nextInst->getNumUses() > 1)
+			{
+				needClonePath = true;
+				break;
+			}
+		}
+
+		if (needClonePath)
+		{
+			// Clone each instruction in the trace path
+			Value* replacementValue = srcPtr;
+			Value* newValue = nullPtr;
+			for (int instIndex = numInstsInPath - 1; instIndex >= 0; instIndex--)
+			{
+				Instruction* nextInst = cast<Instruction>(instructionList[instIndex]);
+				Instruction* cloneInst = nextInst->clone();
+				cloneInst->insertAfter(nextInst);
+				cloneInst->replaceUsesOfWith(replacementValue, newValue);
+				replacementValue = nextInst;
+				newValue = cloneInst;
+			}
+			bufferOffset = builder.CreatePtrToInt(newValue, builder.getInt32Ty());
+		}
+		else
+		{
+			// If there is only one user, we just directly replace the pointer with a null
+			if (numInstsInPath > 0)
+			{
+				cast<Instruction>(instructionList[numInstsInPath - 1])->replaceUsesOfWith(srcPtr, nullPtr);
+				bufferOffset = builder.CreatePtrToInt(resourcePtr, builder.getInt32Ty());
+			}
 		}
 
 		IGCMD::ResourceAllocMetaDataHandle resAllocMD = m_pMdUtils->getFunctionsInfoItem(inst->getParent()->getParent())->getResourceAlloc();
