@@ -68,6 +68,7 @@ protected:
 
 CIF_DEFINE_INTERFACE_VER_WITH_COMPATIBILITY(IgcOclTranslationCtx, 2, 1) {
   using IgcOclTranslationCtx<1>::TranslateImpl;
+  using IgcOclTranslationCtx<1>::Translate;
 
   CIF_INHERIT_CONSTRUCTOR();
 
@@ -94,8 +95,8 @@ protected:
 
 CIF_GENERATE_VERSIONS_LIST_AND_DECLARE_INTERFACE_DEPENDENCIES(IgcOclTranslationCtx, IGC::OclTranslationOutput, CIF::Builtins::Buffer);
 CIF_MARK_LATEST_VERSION(IgcOclTranslationCtxLatest, IgcOclTranslationCtx);
-using IgcOclTranslationCtxTagOCL = IgcOclTranslationCtx<1>; // Note : can tag with different version for
-                                                            //        transition periods
+using IgcOclTranslationCtxTagOCL = IgcOclTranslationCtxLatest; // Note : can tag with different version for
+                                                               //        transition periods
 
 }
 
