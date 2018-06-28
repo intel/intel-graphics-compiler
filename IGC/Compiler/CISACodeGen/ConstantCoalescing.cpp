@@ -1642,7 +1642,7 @@ Value* ConstantCoalescing::GetSamplerAlignedAddress(Value* addr)
 
             if (constant > 4 && constant < 32)
             {
-                elementIndex = irBuilder->CreateShl(elementIndex, irBuilder->getInt32(constant - 4));
+                elementIndex = irBuilder->CreateShl(elementIndex, ConstantInt::get(elementIndex->getType(), (constant - 4)));
                 wiAns->incUpdateDepend(elementIndex, WIAnalysis::RANDOM);
             }
         }
@@ -1652,7 +1652,7 @@ Value* ConstantCoalescing::GetSamplerAlignedAddress(Value* addr)
 
             if (constant != 16)
             {
-                elementIndex = irBuilder->CreateMul(elementIndex, irBuilder->getInt32(constant / 16));
+                elementIndex = irBuilder->CreateMul(elementIndex, ConstantInt::get(elementIndex->getType(), (constant / 16)));
                 wiAns->incUpdateDepend(elementIndex, WIAnalysis::RANDOM);
 
             }
@@ -1662,12 +1662,12 @@ Value* ConstantCoalescing::GetSamplerAlignedAddress(Value* addr)
             assert(inst->getOpcode() == Instruction::And);
             assert((constant & 0xf) == 0);
 
-            elementIndex = irBuilder->CreateLShr(elementIndex, irBuilder->getInt32(4));
+            elementIndex = irBuilder->CreateLShr(elementIndex, ConstantInt::get(elementIndex->getType(), 4));
             wiAns->incUpdateDepend(elementIndex, WIAnalysis::RANDOM);
 
             if (constant != 0xFFFFFFF0)
             {
-                elementIndex = irBuilder->CreateAnd(elementIndex, irBuilder->getInt32((constant >> 4)));
+                elementIndex = irBuilder->CreateAnd(elementIndex, ConstantInt::get(elementIndex->getType(), (constant >> 4)));
                 wiAns->incUpdateDepend(elementIndex, WIAnalysis::RANDOM);
             }
         }
@@ -1688,7 +1688,7 @@ Value* ConstantCoalescing::GetSamplerAlignedAddress(Value* addr)
         uint offset = int_cast<uint>(constant->getZExtValue());
         assert((offset % 16) == 0);
 
-        elementIndex = irBuilder->getInt32(offset / 16);
+        elementIndex = ConstantInt::get(constant->getType(), (offset / 16));
     }
 
     return elementIndex;
@@ -1711,7 +1711,7 @@ void ConstantCoalescing::ScatterToSampler( Instruction *load,
         // it is possible that ishl is uniform, yet load is non-uniform due to the use location of load
         if (elementIndex != ishl->getOperand(0))
         {
-            Value* newVal = irBuilder->CreateShl(elementIndex, irBuilder->getInt32(4));
+            Value* newVal = irBuilder->CreateShl(elementIndex, ConstantInt::get(elementIndex->getType(), 4));
             wiAns->incUpdateDepend(newVal, ishlDep);
             ishl->replaceAllUsesWith(newVal);
         }
@@ -1720,9 +1720,9 @@ void ConstantCoalescing::ScatterToSampler( Instruction *load,
             // quick fix for a special case: elementIndex is uniform and ishl is not uniform.
             // If we use ishl-src0 (elementIndx) directly at cf-join point by this transform,
             // we can change the uniformness of elementIndex
-            elementIndex = irBuilder->CreateShl(elementIndex, irBuilder->getInt32(0));
+            elementIndex = irBuilder->CreateShl(elementIndex, ConstantInt::get(elementIndex->getType(), 0));
             wiAns->incUpdateDepend(elementIndex, ishlDep);
-            Value* newVal = irBuilder->CreateShl(elementIndex, irBuilder->getInt32(4));
+            Value* newVal = irBuilder->CreateShl(elementIndex, ConstantInt::get(elementIndex->getType(), 4));
             wiAns->incUpdateDepend(newVal, ishlDep);
             ishl->replaceAllUsesWith(newVal);
         }
@@ -1754,10 +1754,15 @@ void ConstantCoalescing::ScatterToSampler( Instruction *load,
             cov_chunk->chunkSize = 4;
             if(eltid>=4)
             {
-                elementIndex = irBuilder->CreateAdd(elementIndex, irBuilder->getInt32(eltid/4));
+                elementIndex = irBuilder->CreateAdd(elementIndex, ConstantInt::get(elementIndex->getType(), (eltid/4)));
                 wiAns->incUpdateDepend( elementIndex, WIAnalysis::RANDOM );
             }
-            elementIndex = irBuilder->CreateAnd(elementIndex, irBuilder->getInt32(0x0FFFFFFF));
+            if (elementIndex->getType()->getIntegerBitWidth() >= 32)
+            {
+                elementIndex = irBuilder->CreateAnd(elementIndex, ConstantInt::get(elementIndex->getType(), 0x0FFFFFFF));
+                wiAns->incUpdateDepend(elementIndex, WIAnalysis::RANDOM);
+            }
+            elementIndex = irBuilder->CreateZExtOrTrunc(elementIndex, irBuilder->getInt32Ty());
             wiAns->incUpdateDepend(elementIndex, WIAnalysis::RANDOM);
             ld = CreateSamplerLoad(elementIndex, addrSpace);
             cov_chunk->chunkIO = ld;

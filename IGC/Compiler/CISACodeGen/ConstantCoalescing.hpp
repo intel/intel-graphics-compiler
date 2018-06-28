@@ -186,6 +186,16 @@ private:
             return val;
         }
 
+        Value *CreateZExtOrTrunc(Value *V, Type *DestTy, const Twine &Name = "") {
+            Value *val = IRBuilder<>::CreateZExtOrTrunc(V, DestTy, Name);
+            if (val != V)
+            {
+                m_TT->RegisterNewValueAndAssignID(val);
+            }
+            return val;
+        }
+
+
         Value *CreateExtractElement(Value *Vec, Value *Idx,
             const Twine &Name = "") {
             Value *val = IGCIRBuilder<>::CreateExtractElement(Vec, Idx, Name);
