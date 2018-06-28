@@ -421,7 +421,7 @@ void BankConflictPass::setupEvenOddBankConflictsForDecls(G4_Declare * dcl_1, G4_
 // 2. reference number is used to decide which to be assigned first
 // 3. When conflict detected, bank can be updated according to the reference count.
 //
-void BankConflictPass::setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegNum, int &bank2RegNum, float GRFRatio, unsigned int &internalConflict)
+void BankConflictPass::setupBankConflictsWithLowHighBundles(G4_INST* inst, int &bank1RegNum, int &bank2RegNum, float GRFRatio, unsigned int &internalConflict)
 {
     BankConflict srcBC[3];
     unsigned int regNum[3];
@@ -790,7 +790,7 @@ void BankConflictPass::setupBankForSrc0(G4_INST* inst, G4_INST* prevInst)
     return;
 }
 
-void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
+void BankConflictPass::setupBankConflictsWithDistributedBundles(G4_INST* inst)
 {
     BankConflict srcBC[3];
     unsigned int regNum[3];
@@ -866,7 +866,7 @@ void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
 
     //No bank assigned to src operands,
     //assign the two delcares into different bundles/banks.
-    if (simd8SrcNum <= 1)  //All simd16, do even align
+    if (simd8SrcNum <= 1 && gra.kernel.fg.builder->oneGRFBankDivision())  //All simd16, do even align
     {
         for (int i = 0; i < 3; i++)
         {
@@ -953,11 +953,11 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb, unsigned int &threeSou
             threeSourceInstNum++;
             if (gra.kernel.fg.builder->lowHighBundle())
             {
-                setupBankConflictsOneGRFOld(inst, bank1RegNum, bank2RegNum, GRFRatio, internalConflict);
+                setupBankConflictsWithLowHighBundles(inst, bank1RegNum, bank2RegNum, GRFRatio, internalConflict);
             }
             else
             {
-                setupBankConflictsforTwoGRFs(inst);
+                setupBankConflictsWithDistributedBundles(inst);
             }
         }
         if (inst->isSend() && !inst->isEOT())

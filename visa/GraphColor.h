@@ -57,8 +57,8 @@ namespace vISA
             BankConflict &srcBC1, BankConflict &srcBC2, int &bank1RegNum, int &bank2RegNum, float GRFRatio, bool oneGRFBank);
         void setupEvenOddBankConflictsForDecls(G4_Declare * dcl_1, G4_Declare * dcl_2, unsigned int offset1, unsigned int offset2,
             BankConflict &srcBC1, BankConflict &srcBC2);
-        void setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegNum, int &bank2RegNum, float GRFRatio, unsigned int &internalConflict);
-        void setupBankConflictsforTwoGRFs(G4_INST* inst);
+        void setupBankConflictsWithLowHighBundles(G4_INST* inst, int &bank1RegNum, int &bank2RegNum, float GRFRatio, unsigned int &internalConflict);
+        void setupBankConflictsWithDistributedBundles(G4_INST* inst);
         void setupBankConflictsForBB(G4_BB* bb, unsigned int &threeSourceInstNum, unsigned int &sendInstNum, unsigned int numRegLRA,
             unsigned int & internalConflict);
         bool hasInternalConflict3Srcs(BankConflict *srcBC);
