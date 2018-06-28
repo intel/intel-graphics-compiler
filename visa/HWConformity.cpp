@@ -4458,15 +4458,28 @@ static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
                 useAcc1 = true;
             }
         }
-        if (!builder.relaxedACCRestrictions() && useInst->getNumSrc() == 3)
+
+        if (!builder.relaxedACCRestrictions())
         {
-            if (useInst->getSrc(0)->isAccReg() || useInst->getSrc(1)->isAccReg())
+            // do not allow an inst to have multiple acc source operands
+            if (useInst->getNumSrc() == 3)
             {
-                // do not allow an inst to have multiple acc source operands
+                if (useInst->getSrc(0)->isAccReg() || useInst->getSrc(1)->isAccReg())
+                {
+                    
+                    return false;
+                }
+            }
+            else if (useInst->opcode() == G4_mac)
+            {
+                // this can happen if we have to convert mad into mac (some platforms don't allow
+                // src0 acc for mad), and the mad's src1 is also an acc candidate.
                 return false;
             }
         }
     }
+
+    // at this point acc substitution must succeed
 
     G4_Areg* accReg = useAcc1 ? builder.phyregpool.getAcc1Reg() : builder.phyregpool.getAcc0Reg(); 
     G4_DstRegRegion* accDst = builder.createDstRegRegion(Direct, accReg,
