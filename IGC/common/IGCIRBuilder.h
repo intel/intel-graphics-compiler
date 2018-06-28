@@ -113,6 +113,46 @@ namespace llvm {
             }
             return nullptr;
         }
+
+        inline Value* CreateExtractElementOrPropagate(Value* vec, Value* idx, const Twine& name = "")
+        {
+            if(vec == nullptr || idx == nullptr) return nullptr;
+            Value* srcVec = vec;
+
+            // Traverse ir that created source vector, looking for 
+            // insertelement with the index we are interested in
+            while(auto* IE = dyn_cast<InsertElementInst>(srcVec))
+            {
+                Value* srcVal = IE->getOperand(1);
+                Value* srcIdx = IE->getOperand(2);
+
+                if(srcIdx == idx)
+                {
+                    return srcVal;
+                }
+                else
+                {
+                    // If index isn't constant we cannot iterate further, since
+                    // we don't know which element was replaced in just visited
+                    // insertelement.
+                    if(!isa<ConstantInt>(idx))
+                    {
+                        break;
+                   }
+                    // This is not the instruction we are looking for.
+                    // Get it's source and iterate further.
+                    srcVec = IE->getOperand(0);
+                }
+            }
+            
+            // We cannot find value to propagate propagate, add extractelement
+            return this->CreateExtractElement(vec, idx, name);
+        }
+
+        inline Value* CreateExtractElementOrPropagate(Value* vec, uint64_t idx, const Twine& name = "")
+        {
+            return CreateExtractElementOrPropagate(vec, this->getInt64(idx), name);
+        }
     };
 
 } // end namespace llvm
