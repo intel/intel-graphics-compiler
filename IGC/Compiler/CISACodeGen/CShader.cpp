@@ -1909,12 +1909,13 @@ CVariable* CShader::getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStack
                 Function &K = *m_FGA->getSubGroupMap(F);
 				ImplicitArgs IAs(K, m_pMdUtils);
 				uint32_t nIAs = (uint32_t)IAs.size();
-				uint32_t argIx = (uint32_t)K.getArgumentList().size() - nIAs + i;
+                uint32_t iArgIx = IAs.getArgIndex(ArgType);
+				uint32_t argIx = (uint32_t)K.getArgumentList().size() - nIAs + iArgIx;
 				if (isEntryFunc(m_pMdUtils, &K)) {
 					argIx = argIx - numPushArgsEntry;
 				}
 				Function::arg_iterator arg = K.arg_begin();
-				for (uint32_t i = 0; i < argIx; ++i, ++arg);
+				for (uint32_t j = 0; j < argIx; ++j, ++arg);
 				Argument* kerArg = &(*arg);
 
 				// Pre-condition: all kernel arguments have been created already.
