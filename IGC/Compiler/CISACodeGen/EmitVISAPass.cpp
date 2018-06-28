@@ -83,6 +83,13 @@ EmitPass::~EmitPass()
 {
 }
 
+static bool isSIMD8_16bitReturn(CVariable* dst, SIMDMode simdMode)
+{
+    return simdMode == SIMDMode::SIMD8 &&
+        CEncoder::GetCISADataTypeSize(dst->GetType()) == 2 &&
+        !dst->isUnpacked();
+}
+
 static bool DefReachUseWithinLevel(llvm::Value *def, const llvm::Instruction *use, uint level)
 {
     if (level == 0 || !def || !use)
@@ -3617,15 +3624,12 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
         {
             simdSize = SIMDMode::SIMD8;
             unsigned short numberOfElement = dst->GetNumberElement() * 8;
-            numberOfElement =
-                m_destination->GetType() == ISA_TYPE_HF ? numberOfElement * 2 : numberOfElement;
+            numberOfElement = CEncoder::GetCISADataTypeSize(dst->GetType()) == 2 ? numberOfElement * 2 : numberOfElement;
             dst = m_currShader->GetNewVariable(numberOfElement, dst->GetType(), EALIGN_GRF, dst->IsUniform());
         }
         else
         {
-            needPacking = m_SimdMode == SIMDMode::SIMD8 &&
-                (m_destination->GetType() == ISA_TYPE_HF || m_destination->GetType() == ISA_TYPE_W || m_destination->GetType() == ISA_TYPE_UW) &&
-                !m_destination->isUnpacked();
+            needPacking = isSIMD8_16bitReturn(m_destination, m_SimdMode);
             if (needPacking)
             {
                 dst = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 2, m_destination->GetType(), EALIGN_GRF, dst->IsUniform());
@@ -5865,13 +5869,6 @@ ResourceDescriptor EmitPass::GetSampleResourceHelper(SampleIntrinsic* inst)
     llvm::Value* texOp = inst->getTextureValue();
     ResourceDescriptor resource = GetResourceVariable(texOp);
     return resource;
-}
-
-static bool isSIMD8_16bitReturn(CVariable* dst, SIMDMode simdMode)
-{
-    return simdMode == SIMDMode::SIMD8 &&
-        CEncoder::GetCISADataTypeSize(dst->GetType()) == 2 &&
-        !dst->isUnpacked();
 }
 
 void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
