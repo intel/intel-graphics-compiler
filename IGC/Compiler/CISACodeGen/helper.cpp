@@ -205,20 +205,13 @@ llvm::StoreInst* cloneStore(llvm::StoreInst *Orig, llvm::Value *Val, llvm::Value
 Value* CreateLoadRawIntrinsic(LoadInst *inst, Instruction* bufPtr, Value *offsetVal)
 {
 	Module* module = inst->getParent()->getParent()->getParent();
-	Function* func = nullptr;
-	IRBuilder<> builder(inst);
+    Function* func = nullptr;
+    IRBuilder<> builder(inst);
 
-	if (inst->getType()->isVectorTy())
-	{
-		llvm::Type* tys[2];
-		tys[0] = inst->getType();
-		tys[1] = bufPtr->getType();
-		func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed, tys);
-	}
-	else
-	{
-		func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_ldraw_indexed, bufPtr->getType());
-	}
+    llvm::Type* tys[2];
+    tys[0] = inst->getType();
+    tys[1] = bufPtr->getType();
+    func = GenISAIntrinsic::getDeclaration(module, inst->getType()->isVectorTy() ? llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed : llvm::GenISAIntrinsic::GenISA_ldraw_indexed, tys);
 
 	unsigned alignment = (inst->getType()->getScalarSizeInBits() / 8);
 	if (inst->getAlignment() > 0)

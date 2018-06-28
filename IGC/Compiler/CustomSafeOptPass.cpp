@@ -1829,20 +1829,14 @@ bool IGCConstProp::runOnFunction(Function &F)
 								llvm::GenISAIntrinsic::GenISA_storeraw_indexed,
                                 types);
 						}
-						else if (ID == GenISAIntrinsic::GenISA_ldrawvector_indexed)
+						else if (ID == GenISAIntrinsic::GenISA_ldrawvector_indexed || ID == GenISAIntrinsic::GenISA_ldraw_indexed)
 						{
 							llvm::Type* tys[2];
 							tys[0] = genIntr->getType();
 							tys[1] = genIntr->getOperand(0)->getType();
 							GenISAIntrinsic::getDeclaration(F.getParent(),
-								llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed,
+								ID,
 								tys);
-						}
-						else if (ID == GenISAIntrinsic::GenISA_ldraw_indexed)
-						{
-							GenISAIntrinsic::getDeclaration(F.getParent(),
-								llvm::GenISAIntrinsic::GenISA_ldraw_indexed,
-								genIntr->getOperand(0)->getType());
 						}
 					}
 				}

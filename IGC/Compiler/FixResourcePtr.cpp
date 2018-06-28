@@ -286,21 +286,12 @@ Value* FixResourcePtr::CreateLoadIntrinsic(LoadInst *inst, Instruction* bufPtr, 
 {
     Function *l;
     builder->SetInsertPoint(inst);
-    if (inst->getType()->isVectorTy())
-    {
-        llvm::Type* tys[2];
-        tys[0] = inst->getType();
-        tys[1] = bufPtr->getType();
-        l = GenISAIntrinsic::getDeclaration(curFunc->getParent(),
-            llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed,
-            tys);
-    }
-    else
-    {
-        l = GenISAIntrinsic::getDeclaration(curFunc->getParent(),
-            llvm::GenISAIntrinsic::GenISA_ldraw_indexed,
-            bufPtr->getType());
-    }
+    llvm::Type* tys[2];
+    tys[0] = inst->getType();
+    tys[1] = bufPtr->getType();
+    l = GenISAIntrinsic::getDeclaration(curFunc->getParent(),
+        inst->getType()->isVectorTy() ? llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed : llvm::GenISAIntrinsic::GenISA_ldraw_indexed,
+        tys);
 
     unsigned alignment = (inst->getType()->getScalarSizeInBits() / 8);
     if (inst->getAlignment() > 0)
