@@ -257,11 +257,6 @@ bool VariableReuseAnalysis::isLocalValue(Value* V)
 // Return true if V0 and V1's live ranges overlap, return false otherwise.
 bool VariableReuseAnalysis::hasInterference(Value* V0, Value* V1)
 {
-    // Only handle the case that at least one of V0 and V1 are local
-    if (!isLocalValue(V0) && !isLocalValue(V1)) {
-        return true;
-    }
-
     SmallVector<Value*, 8> V0cc;  // V0's congruent class
     SmallVector<Value*, 8> V1cc;  // V1's congruent class
     if (m_DeSSA) {
