@@ -1306,6 +1306,28 @@ llvm::Constant* CShader::findCommonConstant(llvm::Constant *C, uint elts, uint c
             mostUsedValue = iter->first;
             mostUsedCount = iter->second;
         }
+        else if (mostUsedCount > 1 && iter->second == mostUsedCount)
+        {
+            // we have a tie, pick the earlier const to avoid run-to-run inconsistency 
+            // due to different DenseMap iterator order
+            auto findPos = [=](Constant* eltC) -> int
+            {
+                for (uint32_t i = currentEmitElts; i < currentEmitElts + elts; i++)
+                {
+                    if (eltC == C->getAggregateElement(i))
+                    {
+                        return (int) i;
+                    }
+                }
+                // should not reach here
+                return -1;
+            };
+            if (findPos(iter->first) < findPos(mostUsedValue))
+            { 
+                mostUsedValue = iter->first;
+                mostUsedCount = iter->second;
+            }
+        }
     }
 
     constMap.clear();
