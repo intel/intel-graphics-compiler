@@ -117,7 +117,7 @@ bool CodeAssumption::runOnModule(Module& M)
 }
 
 
-/// APIS used directly (static functions)
+/// APIs used directly (static functions)
 
 // Check if a loop induction variable is always positive.
 // If so, add assumption for that (LLVM value tracking does
