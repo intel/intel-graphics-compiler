@@ -1837,9 +1837,9 @@ bool HWConformity::fixAcc(INST_LIST_ITER iter, G4_BB* bb)
     auto dst = inst->getDst();
     if ((dst != NULL && dst->isAccReg()) || inst->opcode() == G4_mach)
     {
-        if (!builder.accDstforVxHSrc())
+        if (!builder.accDstforIndirectSrc())
         {
-            if (inst->getSrc(0)->isSrcRegRegion() && inst->getSrc(0)->asSrcRegRegion()->getRegion()->isRegionWH())
+            if (inst->getSrc(0)->isSrcRegRegion() && inst->getSrc(0)->asSrcRegRegion()->getRegAccess() == IndirGRF)
             {
                 inst->setSrc(insertMovBefore(iter, 0, inst->getSrc(0)->getType(), bb), 0);
                 changed = true;

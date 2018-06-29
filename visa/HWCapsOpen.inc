@@ -405,7 +405,7 @@
         return false;
     }
 
-    bool accDstforVxHSrc() const
+    bool accDstforIndirectSrc() const
     {
         return true;
     }

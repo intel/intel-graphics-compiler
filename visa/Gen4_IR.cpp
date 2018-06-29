@@ -7516,11 +7516,11 @@ bool G4_INST::canDstBeAcc(const IR_Builder& builder) const
         return false;
     }
 
-    // src0 may not have Vx1 or VxH regioning
-    if (getSrc(0) && getSrc(0)->isSrcRegRegion())
+    // src0 may not have indirect regioning
+    if (!builder.accDstforIndirectSrc() && getSrc(0) && getSrc(0)->isSrcRegRegion())
     {
         auto src0Region = getSrc(0)->asSrcRegRegion();
-        if (src0Region->getRegAccess() == IndirGRF && src0Region->getRegion()->isRegionWH())
+        if (src0Region->getRegAccess() == IndirGRF)
         {
             return false;
         }
