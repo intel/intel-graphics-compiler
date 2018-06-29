@@ -219,12 +219,6 @@ bool FindInterestingConstants::getConstantAddress(llvm::LoadInst &I, unsigned &b
                 if (!eltIdx)
                     return false;
                 eltId = int_cast<unsigned>(eltIdx->getZExtValue());
-
-                // Bail out if not dword aligned
-                if ((eltId % 4) != 0)
-                    return false;
-
-                eltId = eltId >> 2;
             }
             else
             {
@@ -238,12 +232,6 @@ bool FindInterestingConstants::getConstantAddress(llvm::LoadInst &I, unsigned &b
             if (!eltIdx)
                 return false;
             eltId = int_cast<unsigned>(eltIdx->getZExtValue());
-
-            // Bail out if not dword aligned
-            if ((eltId % 4) != 0)
-                return false;
-
-            eltId = eltId >> 2;
         }
         else
         {

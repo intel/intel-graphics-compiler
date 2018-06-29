@@ -1243,12 +1243,45 @@ bool GetStatelessBufferInfo(Value* pointer, unsigned &bufferId,
     return false;
 }
 
+Constant* IGCConstProp::ReplaceFromDynConstants(unsigned bufId, unsigned eltId, unsigned int size_in_bytes, Type* type)
+{
+    ConstantAddress cl;
+    char * pConstVal;
+    cl.bufId = bufId;
+    cl.eltId = eltId;
+    cl.size = size_in_bytes;
+
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    ModuleMetaData *modMD = ctx->getModuleMetaData();
+
+    auto it = modMD->inlineDynConstants.find(cl);
+    if ((it != modMD->inlineDynConstants.end()) && (it->first.size == cl.size))
+    {
+        if (it->second.size() >= size_in_bytes)
+        {
+            // This constant is
+            //          found in the Dynamic inline constants list, and
+            //          sizes match (find only looking for bufId and eltId, so need to look for size explicitly)
+            if (!(type->isVectorTy()))
+            {
+                // Handling for base types (Integer/FloatingPoint)
+                pConstVal = &(it->second[0]);
+                return GetConstantValue(type, pConstVal);
+            }
+        }
+    }
+    return nullptr;
+}
+
 Constant *IGCConstProp::replaceShaderConstant(LoadInst *inst)
 {
     unsigned as = inst->getPointerAddressSpace();
     bool directBuf = false;
     unsigned bufId = 0;
-	int size_in_bytes = 0;
+    unsigned int size_in_bytes = 0;
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    ModuleMetaData *modMD = ctx->getModuleMetaData();
+
     BufferType bufType;
     Value* pointerSrc = nullptr;
 
@@ -1265,12 +1298,8 @@ Constant *IGCConstProp::replaceShaderConstant(LoadInst *inst)
         bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufId);
     }
     
-	ModuleMetaData *modMD = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData();
     if(bufType == CONSTANT_BUFFER && 
-        directBuf &&
-        modMD && 
-        modMD->immConstant.data.size() && 
-        bufId == modMD->pushInfo.inlineConstantBufferSlot)
+        directBuf && modMD) 
     {
         Value *ptrVal = inst->getPointerOperand();
         unsigned eltId = 0;
@@ -1282,26 +1311,34 @@ Constant *IGCConstProp::replaceShaderConstant(LoadInst *inst)
 
         if(size_in_bytes)
         {
-            char *offset = &(modMD->immConstant.data[0]);
-            if(inst->getType()->isVectorTy())
+            if (modMD->immConstant.data.size() &&
+                (bufId == modMD->pushInfo.inlineConstantBufferSlot))
             {
-                Type *srcEltTy = inst->getType()->getVectorElementType();
-                uint32_t srcNElts = inst->getType()->getVectorNumElements();
-                uint32_t eltSize_in_bytes = srcEltTy->getPrimitiveSizeInBits() / 8;
-                IRBuilder<> builder(inst);
-                Value *vectorValue = UndefValue::get(inst->getType());
-                for(uint i = 0; i < srcNElts; i++)
+                char *offset = &(modMD->immConstant.data[0]);
+                if (inst->getType()->isVectorTy())
                 {
-                    vectorValue = builder.CreateInsertElement(
-                        vectorValue,
-                        GetConstantValue(srcEltTy, offset + eltId + (i*eltSize_in_bytes)),
-                        builder.getInt32(i));
+                    Type *srcEltTy = inst->getType()->getVectorElementType();
+                    uint32_t srcNElts = inst->getType()->getVectorNumElements();
+                    uint32_t eltSize_in_bytes = srcEltTy->getPrimitiveSizeInBits() / 8;
+                    IRBuilder<> builder(inst);
+                    Value *vectorValue = UndefValue::get(inst->getType());
+                    for (uint i = 0; i < srcNElts; i++)
+                    {
+                        vectorValue = builder.CreateInsertElement(
+                            vectorValue,
+                            GetConstantValue(srcEltTy, offset + eltId + (i*eltSize_in_bytes)),
+                            builder.getInt32(i));
+                    }
+                    return dyn_cast<Constant>(vectorValue);
                 }
-                return dyn_cast<Constant>(vectorValue);
+                else
+                {
+                    return GetConstantValue(inst->getType(), offset + eltId);
+                }
             }
-            else
+            else if ((!IGC_IS_FLAG_ENABLED(DisableDynamicConstantFolding)) && (modMD->inlineDynConstants.size() > 0))
             {
-                return GetConstantValue(inst->getType(), offset + eltId);
+                return ReplaceFromDynConstants(bufId, eltId, size_in_bytes, inst->getType());
             }
         }
     }
@@ -1921,7 +1958,7 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F)
                         {
                             m_builder.SetInsertPoint(inst);
 
-                            int size_in_bytes = inst->getType()->getPrimitiveSizeInBits() / 8;
+                            unsigned int size_in_bytes = inst->getType()->getPrimitiveSizeInBits() / 8;
                             if (size_in_bytes)
                             {
                                 Value* ICBbuffer = UndefValue::get(VectorType::get(inst->getType(), maxImmConstantSizePushed / size_in_bytes));
