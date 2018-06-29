@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CISACodeGen/RegisterPressureEstimate.hpp"
+#include "Compiler/CISACodeGen/WIAnalysis.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -60,6 +61,7 @@ namespace IGC
             AU.addRequired<RegisterPressureEstimate>();
             AU.addRequired<MetaDataUtilsWrapper>();
             AU.addRequired<CodeGenContextWrapper>();
+            AU.addRequired<WIAnalysis>();
             AU.setPreservesCFG();
         }
 
@@ -75,7 +77,7 @@ namespace IGC
             llvm::Type *pBaseType);
 
         // return true if the use of the pointer allow promotion
-        bool ValidUses(llvm::Instruction* inst, bool& IsUniform);
+        bool ValidUses(llvm::Instruction* inst);
 
         void handleAllocaInst(llvm::AllocaInst *pAlloca);
 
@@ -105,9 +107,6 @@ namespace IGC
 
         /// Conservatively check if a store allow an Alloca to be uniform
         bool IsUniformStore(llvm::StoreInst* pStore);
-        /// Check if the pointer arithmetic after the alloca is uniform
-        bool IsUniformAddress(llvm::Value* val);
-
     public:
         static char ID;
 

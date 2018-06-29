@@ -159,12 +159,12 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
         allowedAllocaSizeInBytes = allowedAllocaSizeInBytes / d;
     }
 
-    bool isUniformAlloca = true;
-    bool allocaCandidate = ValidUses(pAlloca, isUniformAlloca);
+    bool allocaCandidate = ValidUses(pAlloca);
     if(!allocaCandidate)
     {
         return false;
     }
+    bool isUniformAlloca = getAnalysis<WIAnalysis>().whichDepend(pAlloca) == WIAnalysis::UNIFORM;
     if(isUniformAlloca)
     {
         // Heuristic: for uniform alloca we divide the size by 8 to adjust the pressure
@@ -241,50 +241,6 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
     return true;
 }
 
-bool LowerGEPForPrivMem::IsUniformAddress(Value* val)
-{
-    if(isa<Constant>(val))
-    {
-        return true;
-    }
-    else if(isa<AllocaInst>(val))
-    {
-        // once we found the alloca that mean all the calculation was uniform
-        return true;
-    }
-    else if(BitCastInst* bitcast = dyn_cast<BitCastInst>(val))
-    {
-        return IsUniformAddress(bitcast->getOperand(0));
-    }
-    else if(GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(val))
-    {
-        for(unsigned int i = 0; i < gep->getNumOperands(); i++)
-        {
-            if(!IsUniformAddress(gep->getOperand(i)))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-    return false;
-}
-
-bool LowerGEPForPrivMem::IsUniformStore(StoreInst* pStore)
-{
-    if(pStore->getParent() != &pStore->getParent()->getParent()->getEntryBlock())
-    {
-        // Conservative logic, only consider the entry block for now
-        // We could improve it with dominator analysis or uniform analysis
-        return false;
-    }
-    if(!IsUniformAddress(pStore->getPointerOperand()) || !IsUniformAddress(pStore->getValueOperand()))
-    {
-        return false;
-    }
-    return true;
-}
-
 static Type* GetBaseType(Type* pType)
 {
     if(pType->isStructTy())
@@ -322,13 +278,13 @@ static Type* GetBaseType(Type* pType)
     return pBaseType;
 }
 
-bool LowerGEPForPrivMem::ValidUses(Instruction* I, bool& IsUniform)
+bool LowerGEPForPrivMem::ValidUses(Instruction* I)
 {
     for(Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
     {
         if(GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(*use_it))
         {
-            if(ValidUses(gep, IsUniform))
+            if(ValidUses(gep))
                 continue;
         }
         if(llvm::LoadInst* pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
@@ -346,7 +302,6 @@ bool LowerGEPForPrivMem::ValidUses(Instruction* I, bool& IsUniform)
                 // GEP instruction is the stored value of the StoreInst (not supported case)
                 return false;
             }
-            IsUniform &= IsUniformStore(pStore);
         }
         else if(llvm::BitCastInst *pBitCast = llvm::dyn_cast<llvm::BitCastInst>(*use_it))
         {
@@ -360,7 +315,7 @@ bool LowerGEPForPrivMem::ValidUses(Instruction* I, bool& IsUniform)
                 baseT->getPrimitiveSizeInBits() != 0 &&
                 baseT->getPrimitiveSizeInBits() == sourceType->getPrimitiveSizeInBits() )
             {
-                if(ValidUses(pBitCast, IsUniform))
+                if(ValidUses(pBitCast))
                     continue;
             }
             else if(IsBitCastForLifetimeMark(pBitCast))
