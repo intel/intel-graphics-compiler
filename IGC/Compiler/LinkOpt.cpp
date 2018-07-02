@@ -1141,11 +1141,15 @@ static ShaderType ltoToPS(LinkOptContext* ltoCtx)
         prevType = s_dsType;
         prePsOuts = &ltoCtx->ds.outInsts;
     }
-    else
+    else if(vsCtx != nullptr)
     {
         prePsCtx = vsCtx;
         prevType = s_vsType;
         prePsOuts = &ltoCtx->vs.outInsts;
+    }
+    else
+    {
+        return s_vsType;
     }
 
     ltoCtx->m_abortLTO = false;
