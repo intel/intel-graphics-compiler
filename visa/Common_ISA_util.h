@@ -69,7 +69,7 @@ extern G4_opcode Get_Pseudo_Opcode(ISA_Opcode op);
 extern Common_VISA_EMask_Ctrl Get_Next_EMask(Common_VISA_EMask_Ctrl currEMask, int execSize);
 extern unsigned int Get_Gen4_Emask( Common_VISA_EMask_Ctrl cisa_emask, int exec_size );
 extern Common_ISA_Operand_Class CISA_Opnd_Class( vector_opnd opnd );
-extern unsigned Get_Atomic_Op(CMAtomicOperations op);
+extern unsigned Get_Atomic_Op(VISAAtomicOps op);
 extern uint16_t Get_Common_ISA_Type_Size(VISA_Type type);
 
 extern int Get_Size_Attribute_Info(attribute_info_t * attr);

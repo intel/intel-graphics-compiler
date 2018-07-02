@@ -718,26 +718,26 @@ extern const char* CISAAtomicOpNames[];
 
 typedef enum {
     // integer operations
-    GEN7_ATOMIC_CMPWR_2W                = 0x0,  // AOP_CMPWR_2W
-    GEN7_ATOMIC_AND                     = 0x1,  // AOP_AND
-    GEN7_ATOMIC_OR                      = 0x2,  // AOP_OR
-    GEN7_ATOMIC_XOR                     = 0x3,  // AOP_XOR
-    GEN7_ATOMIC_MOV                     = 0x4,  // AOP_MOV
-    GEN7_ATOMIC_INC                     = 0x5,  // AOP_INC
-    GEN7_ATOMIC_DEC                     = 0x6,  // AOP_DEC
-    GEN7_ATOMIC_ADD                     = 0x7,  // AOP_ADD
-    GEN7_ATOMIC_SUB                     = 0x8,  // AOP_SUB
-    GEN7_ATOMIC_REVSUB                  = 0x9,  // AOP_REVSUB
-    GEN7_ATOMIC_IMAX                    = 0xa,  // AOP_IMAX
-    GEN7_ATOMIC_IMIN                    = 0xb,  // AOP_IMIN
-    GEN7_ATOMIC_UMAX                    = 0xc,  // AOP_UMAX
-    GEN7_ATOMIC_UMIN                    = 0xd,  // AOP_UMIN
-    GEN7_ATOMIC_CMPWR                   = 0xe,  // AOP_CMPWR
-    GEN7_ATOMIC_PREDEC                  = 0xf,  // AOP_PREDEC
+    GEN_ATOMIC_CMPWR_2W                = 0x0,  // AOP_CMPWR_2W
+    GEN_ATOMIC_AND                     = 0x1,  // AOP_AND
+    GEN_ATOMIC_OR                      = 0x2,  // AOP_OR
+    GEN_ATOMIC_XOR                     = 0x3,  // AOP_XOR
+    GEN_ATOMIC_MOV                     = 0x4,  // AOP_MOV
+    GEN_ATOMIC_INC                     = 0x5,  // AOP_INC
+    GEN_ATOMIC_DEC                     = 0x6,  // AOP_DEC
+    GEN_ATOMIC_ADD                     = 0x7,  // AOP_ADD
+    GEN_ATOMIC_SUB                     = 0x8,  // AOP_SUB
+    GEN_ATOMIC_REVSUB                  = 0x9,  // AOP_REVSUB
+    GEN_ATOMIC_IMAX                    = 0xa,  // AOP_IMAX
+    GEN_ATOMIC_IMIN                    = 0xb,  // AOP_IMIN
+    GEN_ATOMIC_UMAX                    = 0xc,  // AOP_UMAX
+    GEN_ATOMIC_UMIN                    = 0xd,  // AOP_UMIN
+    GEN_ATOMIC_CMPWR                   = 0xe,  // AOP_CMPWR
+    GEN_ATOMIC_PREDEC                  = 0xf,  // AOP_PREDEC
     // float operations
-    GEN7_ATOMIC_FMAX                    = 0x1,  // FOP_FMAX
-    GEN7_ATOMIC_FMIN                    = 0x2,  // FOP_FMIN
-    GEN7_ATOMIC_FCMPWR                  = 0x3,  // FOP_FCMPWR
+    GEN_ATOMIC_FMAX                    = 0x1,  // FOP_FMAX
+    GEN_ATOMIC_FMIN                    = 0x2,  // FOP_FMIN
+    GEN_ATOMIC_FCMPWR                  = 0x3,  // FOP_FCMPWR
     //
     GEN7_ATOMIC_UNDEF                   = 0xFF
 } Gen7CISAAtomicOpType;

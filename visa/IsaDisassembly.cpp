@@ -624,7 +624,7 @@ string printPredicate(uint8_t opcode, uint16_t predOpnd)
 
 static void printAtomicSubOpc(stringstream &sstr, uint8_t value)
 {
-    CMAtomicOperations op = static_cast<CMAtomicOperations>(value & 0x1F);
+    VISAAtomicOps op = static_cast<VISAAtomicOps>(value & 0x1F);
     sstr << "." << CISAAtomicOpNames[op];
 
     bool is16Bit = (value >> 5) == 1;
@@ -2254,8 +2254,8 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
         {
             uint8_t num_elts = 0;
 
-            CMAtomicOperations op
-                = static_cast<CMAtomicOperations>(getPrimitiveOperand<uint8_t>(inst, i++));
+            VISAAtomicOps op
+                = static_cast<VISAAtomicOps>(getPrimitiveOperand<uint8_t>(inst, i++));
 
             /// TODO: Need platform information for this to work.
             sstr << "." << CISAAtomicOpNames[op];

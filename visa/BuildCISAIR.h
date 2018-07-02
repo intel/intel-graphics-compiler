@@ -318,7 +318,7 @@ public:
     bool CISA_create_svm_atomic_instruction(VISA_opnd* pred,
                                             Common_VISA_EMask_Ctrl emask,
                                             unsigned   exec_size,
-                                            CMAtomicOperations op,
+                                            VISAAtomicOps op,
                                             bool is16Bit,
                                             VISA_opnd* addresses,
                                             VISA_opnd* src0,
@@ -493,7 +493,7 @@ public:
                                                int line_no);
 
     bool CISA_create_atomic_instruction (ISA_Opcode opcode,
-        CMAtomicOperations sub_op,
+        VISAAtomicOps sub_op,
         bool is16Bit,
         Common_VISA_EMask_Ctrl emask,
         unsigned execSize,
@@ -506,7 +506,7 @@ public:
         int line_no);
 
     bool CISA_create_dword_atomic_instruction(VISA_opnd *pred,
-                                              CMAtomicOperations subOpc,
+                                              VISAAtomicOps subOpc,
                                               bool is16Bit,
                                               Common_VISA_EMask_Ctrl eMask,
                                               unsigned execSize,
@@ -518,7 +518,7 @@ public:
                                               int lineNo);
 
     bool CISA_create_typed_atomic_instruction(VISA_opnd *pred,
-        CMAtomicOperations subOpc,
+        VISAAtomicOps subOpc,
         bool is16Bit,
         Common_VISA_EMask_Ctrl eMask,
         unsigned execSize,

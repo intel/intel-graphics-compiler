@@ -85,7 +85,7 @@ typedef enum {
     ATOMIC_FMIN                    = 0x11,
     ATOMIC_FCMPWR                  = 0x12,
     ATOMIC_UNDEF
-} CMAtomicOperations;
+} VISAAtomicOps;
 
 /*
  * Various enumerations representing the binary encoding definitions for the common ISA

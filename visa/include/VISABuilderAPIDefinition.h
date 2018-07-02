@@ -346,7 +346,7 @@ public:
     /// AppendVISASurfAccessDWordAtomicInst -- append a dword atomic write instruction to this kernel
     /// globalOffset and elementOffset are both in unit of dword
     CM_BUILDER_API virtual int AppendVISASurfAccessDwordAtomicInst(
-        CMAtomicOperations subOp, bool is16Bit, Common_VISA_EMask_Ctrl emask,
+        VISAAtomicOps subOp, bool is16Bit, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, VISA_StateOpndHandle *surface,
         VISA_VectorOpnd *globalOffset, VISA_RawOpnd *elementOffset,
         VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_RawOpnd *dst) = 0;
@@ -354,7 +354,7 @@ public:
     /// AppendVISASurfAccessDWordAtomicInst -- append a dword atomic write instruction to this kernel
     /// NOTE: offsets are both in unit of BYTE!
     CM_BUILDER_API virtual int AppendVISASurfAccessDwordAtomicInst(
-        VISA_PredOpnd *pred, CMAtomicOperations subOpc, bool is16Bit,
+        VISA_PredOpnd *pred, VISAAtomicOps subOpc, bool is16Bit,
         Common_VISA_EMask_Ctrl eMask, Common_ISA_Exec_Size execSize,
         VISA_StateOpndHandle *surface, VISA_RawOpnd *offsets,
         VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_RawOpnd *dst) = 0;
@@ -474,7 +474,7 @@ public:
     CM_BUILDER_API virtual int
     AppendVISASvmAtomicInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
                             Common_ISA_Exec_Size executionSize,
-                            CMAtomicOperations op, bool is16Bit,
+                            VISAAtomicOps op, bool is16Bit,
                             VISA_RawOpnd *addresses, VISA_RawOpnd *src0,
                             VISA_RawOpnd *src1, VISA_RawOpnd *dst) = 0;
 
@@ -728,7 +728,7 @@ public:
                                                     VISA_RawOpnd *URBHandle, VISA_RawOpnd *perSLotOffset, VISA_RawOpnd *vertexData) = 0;
 
     CM_BUILDER_API virtual int AppendVISA3dTypedAtomic(
-        CMAtomicOperations subOp, bool is16Bit, VISA_PredOpnd *pred,
+        VISAAtomicOps subOp, bool is16Bit, VISA_PredOpnd *pred,
         Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize,
         VISA_StateOpndHandle *surface, VISA_RawOpnd *u, VISA_RawOpnd *v,
         VISA_RawOpnd *r, VISA_RawOpnd *lod, VISA_RawOpnd *src0,

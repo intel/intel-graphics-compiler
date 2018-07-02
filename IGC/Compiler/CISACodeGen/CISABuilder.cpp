@@ -72,7 +72,7 @@ Common_ISA_Exec_Size getExecSize(SIMDMode width)
     return EXEC_SIZE_ILLEGAL;
 }
 
-CMAtomicOperations convertAtomicOpEnumToVisa(AtomicOp op)
+VISAAtomicOps convertAtomicOpEnumToVisa(AtomicOp op)
 {
     switch(op)
     {
@@ -4914,7 +4914,7 @@ void CEncoder::AtomicRawA64(AtomicOp atomic_op,
         std::swap(src0, src1);
     }
 
-    CMAtomicOperations atomicOpcode = convertAtomicOpEnumToVisa(atomic_op);
+    VISAAtomicOps atomicOpcode = convertAtomicOpEnumToVisa(atomic_op);
 
     if (m_encoderState.m_simdSize == SIMDMode::SIMD16) {
         // Split SIMD16 atomic ops into two SIMD8 ones.

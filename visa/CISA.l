@@ -54,7 +54,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 VISA_Type str2type(char *str, int str_len);
 Common_ISA_Cond_Mod str2cond(char *str);
-CMAtomicOperations str2atomic_opcode(char *op_str);
+VISAAtomicOps str2atomic_opcode(char *op_str);
 ISA_Opcode str2opcode(char* op_str);
 GenPrecision str2Precision(char *str, int str_len);
 VISASampler3DSubOpCode str2SampleOpcode(char* str);
@@ -988,11 +988,11 @@ VISASampler3DSubOpCode str2SampleOpcode(char* str)
 	return VISA_3D_TOTAL_NUM_OPS;
 }
 
-CMAtomicOperations str2atomic_opcode(char *op_str)
+VISAAtomicOps str2atomic_opcode(char *op_str)
 {
 	for (unsigned i = 0; i < ATOMIC_UNDEF; ++i)
 	    if (strcmp(CISAAtomicOpNames[i], op_str) == 0)
-	        return static_cast<CMAtomicOperations>(i);
+	        return static_cast<VISAAtomicOps>(i);
 
 	YY_FATAL_ERROR("Invalid Atomic OpCode");
 

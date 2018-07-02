@@ -230,7 +230,7 @@ VISA_RawOpnd* rawOperandArray[16];
     VISA_Align       CISA_align;
     VISA_Align       align;
 
-    CMAtomicOperations     atomic_op;
+    VISAAtomicOps     atomic_op;
 	VISASampler3DSubOpCode sample3DOp;
 
     MEDIA_LD_mod           media_mode;

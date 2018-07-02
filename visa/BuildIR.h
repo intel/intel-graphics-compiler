@@ -1846,7 +1846,7 @@ public:
                         G4_SrcRegRegion* srcOpnd );
 
     int translateVISADwordAtomicInst(
-                        CMAtomicOperations op,
+                        VISAAtomicOps op,
                         bool is16Bit,
                         Common_VISA_EMask_Ctrl emask,
                         Common_ISA_Exec_Size executionSize,
@@ -1857,7 +1857,7 @@ public:
                         G4_SrcRegRegion* src1Opnd,
                         G4_DstRegRegion* dstOpnd);
 
-    int translateVISADwordAtomicInst(CMAtomicOperations subOpc,
+    int translateVISADwordAtomicInst(VISAAtomicOps subOpc,
                                      bool is16Bit,
                                      G4_Predicate *pred,
                                      Common_ISA_Exec_Size execSize,
@@ -1869,7 +1869,7 @@ public:
                                      G4_DstRegRegion* dst);
 
     int translateVISATypedAtomicInst(
-        CMAtomicOperations atomicOp,
+        VISAAtomicOps atomicOp,
         bool is16Bit,
         G4_Predicate           *pred,
         Common_VISA_EMask_Ctrl emask,
@@ -2269,7 +2269,7 @@ public:
         G4_SrcRegRegion* src);
 
     int translateVISASVMAtomicInst(
-        CMAtomicOperations op,
+        VISAAtomicOps op,
         bool is16Bit,
         Common_ISA_Exec_Size executionSize,
         Common_VISA_EMask_Ctrl emask,

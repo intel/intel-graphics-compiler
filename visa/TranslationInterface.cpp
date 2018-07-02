@@ -4263,7 +4263,7 @@ int IR_Builder::translateVISAScatter4Inst(
 *
 */
 int IR_Builder::translateVISADwordAtomicInst(
-    CMAtomicOperations atomicOp,
+    VISAAtomicOps atomicOp,
     bool is16Bit,
     Common_VISA_EMask_Ctrl emask,
     Common_ISA_Exec_Size executionSize,
@@ -4514,12 +4514,13 @@ BuildMH1_A32_PSM(IR_Builder *IRB, G4_Declare *header) {
         InstOpt_WriteEnable);
 }
 
-static bool IsFloatAtomicOps(CMAtomicOperations op) {
-    return (op == ATOMIC_FMAX || op == ATOMIC_FMIN || op == ATOMIC_FCMPWR);
+static bool IsFloatAtomicOps(VISAAtomicOps op) 
+{
+    return op == ATOMIC_FMAX || op == ATOMIC_FMIN || op == ATOMIC_FCMPWR;
 }
 
 // This version takes byte offsets and predicates
-int IR_Builder::translateVISADwordAtomicInst(CMAtomicOperations atomicOp,
+int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
                                              bool is16Bit,
                                              G4_Predicate *pred,
                                              Common_ISA_Exec_Size execSize,
@@ -5166,7 +5167,7 @@ int IR_Builder::translateVISAScatter4TypedInst(G4_Predicate           *pred,
 }
 
 int IR_Builder::translateVISATypedAtomicInst(
-    CMAtomicOperations atomicOp,
+    VISAAtomicOps atomicOp,
     bool is16Bit,
     G4_Predicate           *pred,
     Common_VISA_EMask_Ctrl emask,
@@ -10553,7 +10554,6 @@ static void FillSVMAtomicMsgDesc(bool is16Bit, bool isFloatOp, uint32_t &msgDesc
     {
         if (isFloatOp)
         {
-            MUST_BE_TRUE(getGenxPlatform() >= GENX_SKL, "FP atomics are supported for SKL+");
             msgDesc |= DC1_A64_UNTYPED_FLOAT_ATOMIC << 14;
         }
         else
@@ -10564,7 +10564,7 @@ static void FillSVMAtomicMsgDesc(bool is16Bit, bool isFloatOp, uint32_t &msgDesc
 }
 
 int IR_Builder::translateVISASVMAtomicInst(
-    CMAtomicOperations atomicOp,
+    VISAAtomicOps atomicOp,
     bool is16Bit,
     Common_ISA_Exec_Size execSize,
     Common_VISA_EMask_Ctrl emask,

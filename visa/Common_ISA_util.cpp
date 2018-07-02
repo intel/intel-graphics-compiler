@@ -989,29 +989,29 @@ Common_ISA_Operand_Class CISA_Opnd_Class( vector_opnd opnd )
     return (Common_ISA_Operand_Class)(opnd.tag & 0x7);
 }
 
-unsigned Get_Atomic_Op(CMAtomicOperations op) {
+unsigned Get_Atomic_Op(VISAAtomicOps op) {
 
     switch (op) {
     default:
-        ASSERT_USER(false, "CISA error: Invalid CmAtomicOpType for DWord atomic write.");
+        ASSERT_USER(false, "CISA error: Invalid vISA atomic op for DWord atomic write.");
         break;
-    case ATOMIC_ADD:        return GEN7_ATOMIC_ADD;
-    case ATOMIC_SUB:        return GEN7_ATOMIC_SUB;
-    case ATOMIC_INC:        return GEN7_ATOMIC_INC;
-    case ATOMIC_DEC:        return GEN7_ATOMIC_DEC;
-    case ATOMIC_MIN:        return GEN7_ATOMIC_UMIN;
-    case ATOMIC_MAX:        return GEN7_ATOMIC_UMAX;
-    case ATOMIC_XCHG:       return GEN7_ATOMIC_MOV;
-    case ATOMIC_CMPXCHG:    return GEN7_ATOMIC_CMPWR;
-    case ATOMIC_AND:        return GEN7_ATOMIC_AND;
-    case ATOMIC_OR:         return GEN7_ATOMIC_OR;
-    case ATOMIC_XOR:        return GEN7_ATOMIC_XOR;
-    case ATOMIC_IMIN:       return GEN7_ATOMIC_IMIN;
-    case ATOMIC_IMAX:       return GEN7_ATOMIC_IMAX;
-    case ATOMIC_PREDEC:     return GEN7_ATOMIC_PREDEC;
-    case ATOMIC_FMIN:       return GEN7_ATOMIC_FMIN;
-    case ATOMIC_FMAX:       return GEN7_ATOMIC_FMAX;
-    case ATOMIC_FCMPWR:     return GEN7_ATOMIC_FCMPWR;
+    case ATOMIC_ADD:        return GEN_ATOMIC_ADD;
+    case ATOMIC_SUB:        return GEN_ATOMIC_SUB;
+    case ATOMIC_INC:        return GEN_ATOMIC_INC;
+    case ATOMIC_DEC:        return GEN_ATOMIC_DEC;
+    case ATOMIC_MIN:        return GEN_ATOMIC_UMIN;
+    case ATOMIC_MAX:        return GEN_ATOMIC_UMAX;
+    case ATOMIC_XCHG:       return GEN_ATOMIC_MOV;
+    case ATOMIC_CMPXCHG:    return GEN_ATOMIC_CMPWR;
+    case ATOMIC_AND:        return GEN_ATOMIC_AND;
+    case ATOMIC_OR:         return GEN_ATOMIC_OR;
+    case ATOMIC_XOR:        return GEN_ATOMIC_XOR;
+    case ATOMIC_IMIN:       return GEN_ATOMIC_IMIN;
+    case ATOMIC_IMAX:       return GEN_ATOMIC_IMAX;
+    case ATOMIC_PREDEC:     return GEN_ATOMIC_PREDEC;
+    case ATOMIC_FMIN:       return GEN_ATOMIC_FMIN;
+    case ATOMIC_FMAX:       return GEN_ATOMIC_FMAX;
+    case ATOMIC_FCMPWR:     return GEN_ATOMIC_FCMPWR;
     }
     return ~0U;
 }

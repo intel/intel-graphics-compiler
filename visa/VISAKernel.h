@@ -376,13 +376,13 @@ public:
     CM_BUILDER_API int AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned char labelCount, VISA_LabelOpnd **labels);
 
     CM_BUILDER_API int AppendVISASurfAccessDwordAtomicInst(
-        CMAtomicOperations subOp, bool is16Bit, Common_VISA_EMask_Ctrl emask,
+        VISAAtomicOps subOp, bool is16Bit, Common_VISA_EMask_Ctrl emask,
         Common_ISA_Exec_Size executionSize, VISA_StateOpndHandle *surface,
         VISA_VectorOpnd *globalOffset, VISA_RawOpnd *elementOffset,
         VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_RawOpnd *dst);
 
     CM_BUILDER_API int AppendVISASurfAccessDwordAtomicInst(
-        VISA_PredOpnd *pred, CMAtomicOperations subOpc, bool is16Bit,
+        VISA_PredOpnd *pred, VISAAtomicOps subOpc, bool is16Bit,
         Common_VISA_EMask_Ctrl eMask, Common_ISA_Exec_Size execSize,
         VISA_StateOpndHandle *surface, VISA_RawOpnd *offsets,
         VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_RawOpnd *dst);
@@ -458,7 +458,7 @@ public:
     CM_BUILDER_API int
     AppendVISASvmAtomicInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
                             Common_ISA_Exec_Size executionSize,
-                            CMAtomicOperations op, bool is16Bit,
+                            VISAAtomicOps op, bool is16Bit,
                             VISA_RawOpnd *addresses, VISA_RawOpnd *src0,
                             VISA_RawOpnd *src1, VISA_RawOpnd *dst);
 
@@ -653,7 +653,7 @@ public:
         VISA_RawOpnd *perSLotOffset, VISA_RawOpnd *vertexData);
 
     CM_BUILDER_API int AppendVISA3dTypedAtomic(
-        CMAtomicOperations subOp, bool is16Bit, VISA_PredOpnd *pred,
+        VISAAtomicOps subOp, bool is16Bit, VISA_PredOpnd *pred,
         Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize,
         VISA_StateOpndHandle *surface, VISA_RawOpnd *u, VISA_RawOpnd *v,
         VISA_RawOpnd *r, VISA_RawOpnd *lod, VISA_RawOpnd *src0,

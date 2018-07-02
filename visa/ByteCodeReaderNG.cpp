@@ -803,12 +803,12 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
 
 /// Read a byte which encodes the atomic opcode and a flag indicating whether
 /// this is a 16bit atomic operation.
-std::tuple<CMAtomicOperations, bool> getAtomicOpAnd16BitTag(unsigned &bytePos,
+std::tuple<VISAAtomicOps, bool> getAtomicOpAnd16BitTag(unsigned &bytePos,
                                                             const char *buf)
 {
     // bits 0-4 atomic op and bit 5 for is-16-bit tag
     uint8_t data = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-    CMAtomicOperations op = static_cast<CMAtomicOperations>(data & 0x1F);
+    VISAAtomicOps op = static_cast<VISAAtomicOps>(data & 0x1F);
     bool is16Bit = (data >> 5 == 1);
     return std::tie(op, is16Bit);
 }
@@ -912,8 +912,8 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
     case ISA_SCATTER_ATOMIC:
         {
             Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-            CMAtomicOperations op =
-                static_cast<CMAtomicOperations>(
+            VISAAtomicOps op =
+                static_cast<VISAAtomicOps>(
                     readPrimitiveOperandNG<uint8_t>(bytePos, buf));
             uint8_t num_elts = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
             uint8_t  surface = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
@@ -1135,7 +1135,7 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
         break;
     }
     case ISA_DWORD_ATOMIC: {
-        CMAtomicOperations subOpc;
+        VISAAtomicOps subOpc;
         bool is16Bit;
         std::tie(subOpc, is16Bit) = getAtomicOpAnd16BitTag(bytePos, buf);
 
@@ -1160,7 +1160,7 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
         break;
     }
     case ISA_3D_TYPED_ATOMIC: {
-        CMAtomicOperations subOpc;
+        VISAAtomicOps subOpc;
         bool is16Bit;
         std::tie(subOpc, is16Bit) = getAtomicOpAnd16BitTag(bytePos, buf);
 
@@ -1561,7 +1561,7 @@ static void readInstructionSVM(unsigned& bytePos, const char* buf, ISA_Opcode op
             readExecSizeNG(bytePos, buf, esize, emask, container);
             VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
 
-            CMAtomicOperations op;
+            VISAAtomicOps op;
             bool is16Bit;
             std::tie(op, is16Bit) = getAtomicOpAnd16BitTag(bytePos, buf);
 

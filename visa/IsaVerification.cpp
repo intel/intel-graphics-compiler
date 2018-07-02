@@ -2613,7 +2613,7 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
              verifyRawOperandType(isaHeader, header, inst, elementOffset, isUDType, error_list, options);
 
              // Check remaining raw operands.
-             CMAtomicOperations opKind = static_cast<CMAtomicOperations>(op);
+             VISAAtomicOps opKind = static_cast<VISAAtomicOps>(op);
              auto typeFn = [](VISA_Type type) { return type == ISA_TYPE_UD || type == ISA_TYPE_D; };
 
              // Check src0:
@@ -2801,7 +2801,7 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
         case ISA_DWORD_ATOMIC:
         {
             unsigned subOpc = getPrimitiveOperand<uint8_t>(inst, i++);
-            auto subOp = static_cast<CMAtomicOperations>(subOpc & 0x1F);
+            auto subOp = static_cast<VISAAtomicOps>(subOpc & 0x1F);
             switch (subOp) {
             default:
                 REPORT_INSTRUCTION(options, false, "Invalid DWORD ATOMIC sub op.");
@@ -2832,7 +2832,7 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
             verifyRawOperandType(isaHeader, header, inst, offsets, isUDType, error_list, options);
 
             // Check remaining raw operands.
-            CMAtomicOperations subOpKind = static_cast<CMAtomicOperations>(subOpc);
+            VISAAtomicOps subOpKind = static_cast<VISAAtomicOps>(subOpc);
             bool (*typeFn)(VISA_Type) = 0;
             switch (subOpKind) {
             default:

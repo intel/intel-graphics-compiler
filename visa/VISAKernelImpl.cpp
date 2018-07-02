@@ -3504,7 +3504,7 @@ int VISAKernelImpl::AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned c
 }
 
 int VISAKernelImpl::AppendVISASurfAccessDwordAtomicInst(
-    CMAtomicOperations subOp, bool is16Bit, Common_VISA_EMask_Ctrl emask,
+    VISAAtomicOps subOp, bool is16Bit, Common_VISA_EMask_Ctrl emask,
     Common_ISA_Exec_Size executionSize, VISA_StateOpndHandle *surface,
     VISA_VectorOpnd *globalOffset, VISA_RawOpnd *elementOffset,
     VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_RawOpnd *dst)
@@ -3572,7 +3572,7 @@ int VISAKernelImpl::AppendVISASurfAccessDwordAtomicInst(
 }
 
 int VISAKernelImpl::AppendVISASurfAccessDwordAtomicInst(VISA_PredOpnd           *pred,
-                                                        CMAtomicOperations      subOpc,
+                                                        VISAAtomicOps      subOpc,
                                                         bool                    is16Bit,
                                                         Common_VISA_EMask_Ctrl  eMask,
                                                         Common_ISA_Exec_Size    execSize,
@@ -4373,7 +4373,7 @@ int VISAKernelImpl::AppendVISASvmScatterInst(VISA_PredOpnd *pred,
 int VISAKernelImpl::AppendVISASvmAtomicInst(VISA_PredOpnd *pred,
                                             Common_VISA_EMask_Ctrl emask,
                                             Common_ISA_Exec_Size executionSize,
-                                            CMAtomicOperations op,
+                                            VISAAtomicOps op,
                                             bool is16Bit,
                                             VISA_RawOpnd* address,
                                             VISA_RawOpnd* src0,
@@ -4393,7 +4393,7 @@ int VISAKernelImpl::AppendVISASvmAtomicInst(VISA_PredOpnd *pred,
         CreateGenRawDstOperand(dst);
         G4_Predicate * g4Pred = (pred != NULL) ? (G4_Predicate *)pred->g4opnd : NULL;
         status = m_builder->translateVISASVMAtomicInst(
-            static_cast<CMAtomicOperations>(op), is16Bit, executionSize, emask,
+            static_cast<VISAAtomicOps>(op), is16Bit, executionSize, emask,
             g4Pred, (G4_SrcRegRegion *)address->g4opnd,
             (G4_SrcRegRegion *)src0->g4opnd, (G4_SrcRegRegion *)src1->g4opnd,
             (G4_DstRegRegion *)dst->g4opnd);
@@ -5937,7 +5937,7 @@ int VISAKernelImpl::AppendVISA3dURBWrite(VISA_PredOpnd *pred, Common_VISA_EMask_
 }
 
 int VISAKernelImpl::AppendVISA3dTypedAtomic(
-    CMAtomicOperations subOp, bool is16Bit, VISA_PredOpnd *pred,
+    VISAAtomicOps subOp, bool is16Bit, VISA_PredOpnd *pred,
     Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize,
     VISA_StateOpndHandle *surface, VISA_RawOpnd *u, VISA_RawOpnd *v,
     VISA_RawOpnd *r, VISA_RawOpnd *lod, VISA_RawOpnd *src0, VISA_RawOpnd *src1,
