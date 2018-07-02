@@ -266,6 +266,7 @@ void Optimizer::assignLocForReturnAddr()
         unsigned i = (*it)->getId();
         retLoc[i] = UNDEFINED_VAL;
         BBs[i] = (*it);                                                     // BBs are sorted by ID
+        (*it)->setSubRetLoc(UNDEFINED_VAL);
     }
 
     //
