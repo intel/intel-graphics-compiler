@@ -133,7 +133,8 @@ bool CodeSinking::AllUsesDominatedByBlock(Instruction *inst,
 bool CodeSinking::FindLowestSinkTarget( Instruction *inst,
                                         BasicBlock* &tgtBlk,
                                         SmallPtrSetImpl<Instruction*> &usesInBlk,
-                                        bool& outerLoop)
+                                        bool& outerLoop,
+                                        bool doLoopSink)
 {
     usesInBlk.clear();
     tgtBlk = 0x0;
@@ -176,8 +177,10 @@ bool CodeSinking::FindLowestSinkTarget( Instruction *inst,
         Loop *tgtLoop = LI->getLoopFor(tgtBlk);
         EOPCODE intrinsic_name = GetOpCode(inst);
         // sink the pln instructions in the loop to reduce pressure
-        if(intrinsic_name == llvm_input ||
-           !tgtLoop || tgtLoop->contains(curLoop))
+        // Sink instruction outside of loop into the loop if doLoopSink is true.
+        if (intrinsic_name == llvm_input ||
+            (!tgtLoop || tgtLoop->contains(curLoop)) ||
+            (doLoopSink && tgtLoop && (!curLoop || curLoop->contains(tgtLoop))))
         {
             for (Value::user_iterator I = inst->user_begin(), E = inst->user_end(); I != E; ++I) 
             {
@@ -233,6 +236,12 @@ bool CodeSinking::runOnFunction(Function &F)
         return false;
     }
 
+    // Keep track of fat BB. Might need to reverse LICM if
+    // the fat BB is inside loop and there are a lot of 
+    // loop-invariant insts that have been moved out of the loop.
+    m_fatBBPressure = 0;
+    m_fatBB = nullptr;
+
     DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
     PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
     LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
@@ -266,6 +275,7 @@ bool CodeSinking::runOnFunction(Function &F)
     localBlkSet.clear();
     localInstSet.clear();
     ctx->m_numGradientSinked = totalGradientMoved;
+
 
     // diagnosis code: printf("%d:%d:%x\n", sinkCounter, sinkLimit, ctx->hash.getAsmHash());
     //F.viewCFG();
@@ -345,6 +355,12 @@ bool CodeSinking::ProcessBlock(BasicBlock &blk)
     {
         // estimate live-out register pressure for this blk
         pressure0 = EstimateLiveOutPressure(&blk, DL);
+
+        // Track the highest-pressure BB within a loop
+        if (pressure0 > m_fatBBPressure && LI->getLoopFor(&blk)) {
+            m_fatBBPressure = pressure0;
+            m_fatBB = &blk;
+        }
     }
 
     bool madeChange = false;
@@ -382,7 +398,7 @@ bool CodeSinking::ProcessBlock(BasicBlock &blk)
             prevLoca = inst;
             // diagnosis code: if (numChanges >= sinkLimit)
             // diagnosis code:    continue;
-            if (SinkInstruction(inst, stores))
+            if (SinkInstruction(inst, stores, false))
             {
                 madeChange = true;
                 movedInsts.push_back(inst);
@@ -577,14 +593,19 @@ bool CodeSinking::isSafeToMove(Instruction *inst
 
 /// SinkInstruction - Determine whether it is safe to sink the specified machine
 /// instruction out of its current block into a successor.
-bool CodeSinking::SinkInstruction(Instruction *inst
-                                  , SmallPtrSetImpl<Instruction *> &Stores)
+bool CodeSinking::SinkInstruction(
+    Instruction *inst,
+    SmallPtrSetImpl<Instruction *> &Stores,
+    bool ForceToReducePressure)
 {
     // Check if it's safe to move the instruction.
     bool hasAliasConcern;
     bool reducePressure;
     if (!isSafeToMove(inst, reducePressure, hasAliasConcern, Stores/*, AA*/))
         return false;
+    if (ForceToReducePressure) {
+        reducePressure = true;
+    }
 
     // SuccToSinkTo - This is the successor to sink this instruction to, once we
     // decide.
@@ -595,7 +616,7 @@ bool CodeSinking::SinkInstruction(Instruction *inst
         // find the lowest common dominator of all uses
         BasicBlock *tgtBlk = 0x0;
         bool outerLoop;
-        if (FindLowestSinkTarget(inst, tgtBlk, usesInBlk, outerLoop))
+        if (FindLowestSinkTarget(inst, tgtBlk, usesInBlk, outerLoop, ForceToReducePressure))
         {
             // heuristic, avoid code-motion that does not reduce execution frequency but may increase register usage
             if (reducePressure || 
@@ -1043,6 +1064,263 @@ bool CodeSinking::hoistCongruentPhi(Function& F)
             }
         }
     }
+    return changed;
+}
+
+bool CodeSinking::loopSink(BasicBlock* BBWithPressure)
+{
+    // Sink loop invariants back into the loop body if register
+    // pressure can be reduced.
+
+    Loop* L = LI->getLoopFor(BBWithPressure);
+    if (!L)
+        return false;
+
+    BasicBlock *Preheader = L->getLoopPreheader();
+    if (!Preheader)
+        return false;
+
+    // Find LIs in preheader that would definitely reduce
+    // register pressure after moving those LIs inside the loop
+    SmallPtrSet<Instruction *, 16> stores;
+    SmallVector<Instruction*, 64> sinkCandidates;
+    bool changed = false;
+
+    // Moving LI back to the loop. Here we only consider to move LIs into
+    // the single BB (BBWithPressure).
+    //
+    // Go over instructions in reverse order and sink the noOp instructions
+    // on-the-fly first, so that their dependent instructions can be added
+    // into candidate lists for further sinking.
+    for (auto II = Preheader->rbegin(), IE = Preheader->rend(); II != IE;)
+    {
+        Instruction *I = &*II++;
+
+        if (I->mayWriteToMemory()) {
+            stores.insert(I);
+        }
+        if (!canLoopSink(I, L, BBWithPressure))
+            continue;
+
+        // Sink noOp instruction.
+        if (isNoOpInst(I)) {
+            if (SinkInstruction(I, stores, true)) {
+                changed = true;
+            }
+            continue;
+        }
+
+        sinkCandidates.push_back(I);
+    }
+
+    bool t = LoopSinkInstructions(sinkCandidates, L);
+    changed |= t;
+
+    // Invoke LocalSink() to move def to its first use
+    // (Currently, it should be no opt as LoopSink only
+    // sinks singleUse instructions, which should be done
+    // completely within sinkInstruction.
+    if (localBlkSet.size() > 0)
+    {
+        for (auto BI = localBlkSet.begin(), BE = localBlkSet.end(); BI != BE; BI++)
+        {
+            BasicBlock *BB = *BI;
+            bool t = LocalSink(BB);
+            changed |= t;
+        }
+        localBlkSet.clear();
+        localInstSet.clear();
+    }
+
+    return changed;
+}
+
+bool CodeSinking::canLoopSink(Instruction *I, Loop* L, BasicBlock* FatBB)
+{
+    // Limit sinking for the following case for now.
+    if (!isNoOpInst(I) && !isa<BinaryOperator>(I))
+        return false;
+
+    if (!I->hasOneUse())
+        return false;
+    Instruction *UserInst = I->user_back();
+    if (!L->contains(UserInst))
+        return false;
+    return true;
+};
+
+bool CodeSinking::isNoOpInst(Instruction* I)
+{
+    if (isa<CastInst>(I)) {
+        VectorType* dVTy = dyn_cast<VectorType>(I->getType());
+        VectorType* sVTy = dyn_cast<VectorType>(I->getOperand(0)->getType());
+        int d_nelts = dVTy ? (int)dVTy->getNumElements() : 1;
+        int s_nelts = sVTy ? (int)sVTy->getArrayNumElements() : 1;
+        if (d_nelts != s_nelts) {
+            // Vector relayout bitcast.
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
+
+bool CodeSinking::LoopSinkInstructions(
+    SmallVector<Instruction*, 64> sinkCandidates,
+    Loop* L)
+{
+    auto IsUsedInLoop = [](Value* V, Loop* L) -> bool {
+        if (isa<Constant>(V)) {
+            // Ignore constant
+            return false;
+        }
+        for (auto UI : V->users()) {
+            if (Instruction* User = dyn_cast<Instruction>(UI))
+            {
+                if (L->contains(User))
+                    return true;
+            }
+        }
+        return false;
+    };
+
+    auto IsSameSet = [](SmallPtrSet <Value*, 4>& S0, SmallPtrSet <Value*, 4>& S1)-> bool {
+        if (S0.size() == S1.size()) {
+            for (auto I : S1) {
+                Value* V = I;
+                if (!S0.count(V)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    };
+
+    // For each candidate like the following:
+    //   preheader:
+    //            x = add y, z
+    //   loop:
+    //         ...
+    //      BB: 
+    //           = x
+    //
+    // Afer sinking, x changes from global to local, and thus reduce pressure.
+    // But y and z could change to global to local (if y and z are local).
+    // Thus, we reduce pressure by 1 (x), but increase by the number of its
+    // operands (y and z). If there are more candidates share the same operands, 
+    // we will reduce the pressure.  For example:
+    //   preheader:
+    //        x0 = add y, 10
+    //        x1 = add y, 20
+    //        x2 = add y, 100
+    //        x3 = add y, 150
+    //   loop:
+    //         = x0
+    //         = x1
+    //         = x2
+    //         = x3
+    //
+    // After sinking x0-x3 into loop, we make x0-x3 be local and make y be global,
+    // which results in 3 (4 - 1) pressure reduction.
+    //
+    // Here we group all candidates based on its operands and select ones that definitely
+    // reduce the pressure.
+    //
+    struct OperandUseGroup {
+        SmallPtrSet <Value*, 4> Operands;
+        SmallVector<Instruction*, 16> Users;
+    };
+    OperandUseGroup* allGroups = new OperandUseGroup[sinkCandidates.size()];
+    SmallVector<OperandUseGroup*, 16> InstUseInfo;
+    for (uint32_t i = 0, e = (uint32_t)sinkCandidates.size(); i < e; ++i)
+    {
+        Instruction* I = sinkCandidates[i];
+        SmallPtrSet<Value*, 4> theUses;
+        for (Use& U : I->operands())
+        {
+            Value* V = U;
+            if (isa<Constant>(V) || IsUsedInLoop(V, L))
+                continue;
+
+            theUses.insert(V);
+        }
+        // If this set of uses have been referenced by other instructions,
+        // put this inst in the same group. Note that we don't union sets
+        // that intersect each other.
+        uint32_t j, je = (uint32_t)InstUseInfo.size();
+        for (j = 0; j < je; ++j)
+        {
+            OperandUseGroup* OUG = InstUseInfo[j];
+            if (IsSameSet(OUG->Operands, theUses)) {
+                OUG->Users.push_back(I);
+                break;
+            }
+        }
+
+
+        if (j == je) {
+            // No match found, create the new one.
+            OperandUseGroup& OUG = allGroups[i];
+            OUG.Operands = theUses;
+            OUG.Users.push_back(I);
+            InstUseInfo.push_back(&OUG);
+        }
+    }
+
+    bool changed = false;
+    // Just a placeholder, all LIs considered here are ALUs.
+    SmallPtrSet<Instruction *, 16> stores;
+    const int PresureReductionThreshold = 10;
+    bool keepLooping;
+    uint32_t N = (uint32_t)InstUseInfo.size();
+    do {
+        keepLooping = false;
+        for (uint32_t i = 0; i < N; ++i)
+        {
+            OperandUseGroup* OUG = InstUseInfo[i];
+            if (!OUG)
+                continue;
+
+            int sz1 = (int)OUG->Users.size();
+            int save = sz1 - (int)(OUG->Operands.size());
+            if (save >= PresureReductionThreshold)
+            {
+                // Sink
+                bool t = false;
+                for (int j = 0; j < sz1; ++j)
+                {
+                    Instruction* I = OUG->Users[j];
+                    bool t1 = SinkInstruction(I, stores, true);
+                    t |= t1;
+                }
+                if (t) {
+                    changed = true;
+                    keepLooping = true;
+
+                    // Since those operands become global already, remove
+                    // them from the sets in the vector.
+                    for (uint32_t k = 0; k < N; ++k)
+                    {
+                        OperandUseGroup* OUG1 = InstUseInfo[k];
+                        if (k == i || !OUG1)
+                            continue;
+
+                        for (auto I : OUG->Operands) {
+                            Value* V = I;
+                            OUG1->Operands.erase(V);
+                        }
+                    }
+                }
+
+                // Just set it to nullptr (erasing it would be more expensive).
+                InstUseInfo[i] = nullptr;
+            }
+        }
+    } while (keepLooping);
+
+    delete[] allGroups;
+
     return changed;
 }
 

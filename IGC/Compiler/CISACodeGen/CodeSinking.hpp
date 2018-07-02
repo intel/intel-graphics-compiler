@@ -69,13 +69,15 @@ public:
 private:
     bool ProcessBlock(llvm::BasicBlock &blk);
     bool SinkInstruction(llvm::Instruction *I,
-        llvm::SmallPtrSetImpl<llvm::Instruction*> &Stores);
+        llvm::SmallPtrSetImpl<llvm::Instruction*> &Stores,
+        bool ForceToReducePressure);
     bool AllUsesDominatedByBlock(llvm::Instruction *inst,
         llvm::BasicBlock *blk,
         llvm::SmallPtrSetImpl<llvm::Instruction*> &usesInBlk) const;
     bool FindLowestSinkTarget(llvm::Instruction *inst,
         llvm::BasicBlock* &blk,
-        llvm::SmallPtrSetImpl<llvm::Instruction*> &usesInBlk, bool &outerLoop);
+        llvm::SmallPtrSetImpl<llvm::Instruction*> &usesInBlk, bool &outerLoop,
+        bool doLoopSink);
     bool isSafeToMove(llvm::Instruction *inst,
         bool &reducePressure, bool &hasAliasConcern,
         llvm::SmallPtrSetImpl<llvm::Instruction*> &Stores);
@@ -94,6 +96,11 @@ private:
 
     bool generalCodeSinking;
     // diagnosis variable: int numChanges;
+
+	// fat BB is the BB with the largest register pressure
+    // Currently, used it for BB inside a loop only.
+	llvm::BasicBlock *m_fatBB;
+	uint32_t m_fatBBPressure;
 
     // try to hoist phi nodes with congruent incoming values
     typedef std::pair<llvm::Instruction*, llvm::Instruction*> InstPair;
@@ -129,6 +136,13 @@ private:
      */
     bool hoistCongruentPhi(llvm::PHINode* phi);
     bool hoistCongruentPhi(llvm::Function& F);
+
+    // Move LI back into loops
+	bool loopSink(llvm::BasicBlock* BBWithPressure);
+    bool canLoopSink(llvm::Instruction *I, llvm::Loop *L, llvm::BasicBlock *BB);
+    bool isNoOpInst(llvm::Instruction *I);
+    bool LoopSinkInstructions(
+        llvm::SmallVector<llvm::Instruction*, 64> sinkCandidates, llvm::Loop* L);
 };
 
 }
