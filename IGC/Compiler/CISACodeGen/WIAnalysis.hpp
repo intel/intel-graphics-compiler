@@ -184,6 +184,10 @@ public:
     void dump() const;
 
 private:
+    struct AllocaDep
+    {
+        std::vector<const llvm::StoreInst*> stores;
+    };
     /*! \name Dependency Calculation Functions
      *  \{ */
     /// @brief Calculate the dependency type for the instruction
@@ -245,6 +249,8 @@ private:
     /// @brief return true if all the source operands are defined outside the region
     bool isRegionInvariant(const llvm::Instruction* inst, BranchInfo *brInfo, unsigned level);
 
+    /// @brief update dependency structure for Alloca
+    bool TrackAllocaDep(const llvm::Value* I, AllocaDep& dep);
     /// @brief  LLVM Interface
     /// @param AU Analysis
     /// WIAnalysis requires dominator and post dominator analysis
@@ -288,6 +294,11 @@ private:
     llvm::Function *m_func;
     llvm::PostDominatorTree *PDT;
     IGC::IGCMD::MetaDataUtils *m_pMdUtils;
+
+    // Allow access to all the store into an alloca if we were able to track it
+    llvm::DenseMap<const llvm::AllocaInst*, AllocaDep> m_allocaDepMap;
+    // reverse map to allow to know what alloca to update when store changes
+    llvm::DenseMap<const llvm::StoreInst*, const llvm::AllocaInst*> m_storeDepMap;
 
     IGC::TranslationTable *m_pTT;
     IGC::FastValueMap<WIAnalysis::WIDependancy, FastValueMapAttributeInfo<WIBaseClass::WIDependancy>> m_depMap;

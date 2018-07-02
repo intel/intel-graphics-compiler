@@ -424,6 +424,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
             ctx.m_instrTypes.hasNonPrimitiveAlloca &&
             ctx.m_retryManager.AllowPromotePrivateMemory())
         {
+            mpm.add(llvm::createBreakCriticalEdgesPass());
             mpm.add(new LowerGEPForPrivMem());
         }
         mpm.add(createPromoteMemoryToRegisterPass());

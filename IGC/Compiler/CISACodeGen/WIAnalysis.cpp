@@ -610,7 +610,7 @@ void WIAnalysis::calculate_dep(const Value* val)
   else if (isa<InsertValueInst>(inst))                                        dep = calculate_dep_simple(inst); 
   else if (const PHINode *Phi = dyn_cast<PHINode>(inst))                      dep = calculate_dep(Phi); 
   else if (isa<ShuffleVectorInst>(inst))                                      dep = calculate_dep_simple(inst); 
-  else if (isa<StoreInst>(inst))                                              dep = RANDOM; // calculate_dep_simple(inst);
+  else if (isa<StoreInst>(inst))                                              dep = calculate_dep_simple(inst);
   else if (const TerminatorInst *TI = dyn_cast<TerminatorInst>(inst))         dep = calculate_dep(TI);
   else if (const SelectInst *SI = dyn_cast<SelectInst>(inst))                 dep = calculate_dep(SI);
   else if (const AllocaInst *AI = dyn_cast<AllocaInst>(inst))                 dep = calculate_dep(AI);
@@ -810,7 +810,14 @@ void WIAnalysis::updateDepMap(const Instruction *inst, WIAnalysis::WIDependancy 
   {
     m_pChangedNew->push_back(*it);
   }
-
+  if(const StoreInst* st = dyn_cast<StoreInst>(inst))
+  {
+      auto it = m_storeDepMap.find(st);
+      if(it != m_storeDepMap.end())
+      {
+          m_pChangedNew->push_back(it->second);
+      }
+  }
   // accumulate work-list for backward adjustment
   if (dep == RANDOM)
   {
@@ -1204,9 +1211,100 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const SelectInst* inst)
   return WIAnalysis::RANDOM;
 }
 
+bool WIAnalysis::TrackAllocaDep(const Value* I, AllocaDep& dep)
+{
+    for(Value::const_user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
+    {
+        if(const GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(*use_it))
+        {
+            if(TrackAllocaDep(gep, dep))
+                continue;
+        }
+        if(const llvm::LoadInst* pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
+        {
+            if(!pLoad->isSimple())
+                return false;
+        }
+        else if(const llvm::StoreInst* pStore = llvm::dyn_cast<llvm::StoreInst>(*use_it))
+        {
+            if(!pStore->isSimple())
+                return false;
+            const llvm::Value* pValueOp = pStore->getValueOperand();
+            if(pValueOp == I)
+            {
+                // GEP instruction is the stored value of the StoreInst (not supported case)
+                return false;
+            }
+            dep.stores.push_back(pStore);
+        }
+        else if(const llvm::BitCastInst *pBitCast = llvm::dyn_cast<llvm::BitCastInst>(*use_it))
+        {
+            if(TrackAllocaDep(pBitCast, dep))
+            {
+                continue;
+            }
+            // Not a candidate.
+            return false;
+        }
+        else if(const IntrinsicInst* intr = dyn_cast<IntrinsicInst>(*use_it))
+        {
+            llvm::Intrinsic::ID  IID = intr->getIntrinsicID();
+            if(IID == llvm::Intrinsic::lifetime_start ||
+                IID == llvm::Intrinsic::lifetime_end)
+            {
+                continue;
+            }
+            return false;
+        }
+        else
+        {
+            // This is some other instruction. Right now we don't want to handle these
+            return false;
+        }
+    }
+    return true;
+}
+
+
 WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const AllocaInst* inst)
 {
-  return WIAnalysis::RANDOM;
+
+    if(!hasDependency(inst))
+    {
+        AllocaDep dep;
+        if(TrackAllocaDep(inst, dep))
+        {
+            m_allocaDepMap.insert(std::make_pair(inst, dep));
+            for(auto it : dep.stores)
+            {
+                m_storeDepMap.insert(std::make_pair(&(*it), inst));
+            }
+        }
+    }
+    auto depIt = m_allocaDepMap.find(inst);
+    if(depIt == m_allocaDepMap.end())
+    {
+        // If we haven't been able to track the dependency of the alloca make it random
+        return WIAnalysis::RANDOM;
+    }
+    // otherwise assume the alloca is uniform by default
+    WIDependancy dep = WIAnalysis::UNIFORM;
+    for(auto it : depIt->second.stores)
+    {
+        if(hasDependency(&(*it)))
+        {
+            WIAnalysis::WIDependancy dep2 = getDependency(&(*it));
+            if(dep2 != WIAnalysis::UNIFORM)
+            {
+                return WIAnalysis::RANDOM;
+            }
+            if(insideDivergentCF(&(*it)))
+            {
+                return WIAnalysis::RANDOM;
+            }
+        }
+    }
+    return dep;
 }
 
 WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CastInst* inst)
