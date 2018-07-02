@@ -176,7 +176,7 @@ namespace {
           bool DirectIndex;
           unsigned BufID;
           BufferType BufTy = DecodeAS4GFXResource(AS, DirectIndex, BufID);
-          if (BufTy == CONSTANT_BUFFER && CGC->m_DriverInfo.UsesTypedConstantBuffers())
+          if (BufTy == CONSTANT_BUFFER)
             return true;
         }
         return false;
