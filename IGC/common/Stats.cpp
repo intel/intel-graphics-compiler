@@ -191,22 +191,7 @@ void ShaderStats::printShaderStats( ShaderHash hash, ShaderType shaderType, cons
     }
 
     std::string asmFileName;
-    if (shaderType == ShaderType::OPENCL_SHADER)
-    {
-        asmFileName =
-            IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
-            .Type(shaderType)
-            .Hash(hash)
-            .PostFix(postFix)
-            .Extension("asm")
-            .str();
-        if (asmFileName.find_last_of("\\") != std::string::npos)
-        {
-            asmFileName = asmFileName.substr(asmFileName.find_last_of("\\") + 1, asmFileName.size());
-        }
-    }
-    else
-    {
+    
         asmFileName =
             IGC::Debug::DumpName(IGC::Debug::GetShaderOutputName())
             .Type(shaderType)
@@ -217,7 +202,7 @@ void ShaderStats::printShaderStats( ShaderHash hash, ShaderType shaderType, cons
         {
             asmFileName = asmFileName.substr(asmFileName.find_last_of("\\") + 1, asmFileName.size());
         }
-    }
+    
 
     fprintf(fileName, "%s,", asmFileName.c_str());
     for (int i = 0; i<STATS_MAX_SHADER_STATS_ITEMS; i++)
