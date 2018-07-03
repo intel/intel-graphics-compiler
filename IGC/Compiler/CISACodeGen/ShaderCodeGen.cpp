@@ -426,6 +426,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         {
             mpm.add(llvm::createBreakCriticalEdgesPass());
             mpm.add(new LowerGEPForPrivMem());
+            mpm.add(llvm::createCFGSimplificationPass());
         }
         mpm.add(createPromoteMemoryToRegisterPass());
     }
