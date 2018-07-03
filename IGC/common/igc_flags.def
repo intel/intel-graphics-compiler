@@ -146,7 +146,6 @@ DECLARE_IGC_REGKEY(bool, EnableSIPOverride,             false, "This key forces 
 DECLARE_IGC_REGKEY(debugString, SIPOverrideFilePath,    0,     "This key when enabled with EnableSIPOverride load of SIP from a specified path.")
 DECLARE_IGC_REGKEY(bool, DumpPayloadToScratch,          false, "Setting this to 1/true dumps thread payload to scartch space. Used for  workloads which doesnt use scartch space for other purposes")
 DECLARE_IGC_REGKEY(DWORD, DebugInternalSwitch,          0,     "Code pass selection, debug only")
-DECLARE_IGC_REGKEY(bool, DisableCustomMemAllocator,     false, "This disables custom memory allocator.")
 DECLARE_IGC_REGKEY(bool, SToSProducesPositivePointer,   false, "This key is for StatelessToStatefull optimization if the  user knows the pointer offset is postive to the kernel argument.")
 DECLARE_IGC_REGKEY(bool, EnableSupportBufferOffset,     false, "[Temporary]For StatelessToStatefull optimization [OCL], support implicit buffer offset argument (same as -cl-intel-has-buffer-offset-arg).")
 DECLARE_IGC_REGKEY(bool, EnableOptionalBufferOffset,    true,  "[Temporary]For StatelessToStatefull optimization [OCL], if true, make buffer offset optional. Valid only if buffer offset is supported.")
