@@ -105,6 +105,7 @@ bool IsMathIntrinsic(EOPCODE opcode);
 bool IsAtomicIntrinsic(EOPCODE opcode);
 bool IsGradientIntrinsic(EOPCODE opcode);
 bool IsSubGroupIntrinsicWithSimd32Implementation(EOPCODE opcode);
+bool UsesTypedConstantBuffer(CodeGenContext* pContext);
 
 bool ComputesGradient(llvm::Instruction* inst);
 

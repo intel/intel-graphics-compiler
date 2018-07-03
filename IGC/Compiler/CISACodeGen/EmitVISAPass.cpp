@@ -7822,8 +7822,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
         else if (sizeInBits >= 32)
         {
             // constant-buffer cannot go this way due to driver surface-state setting to RGBA-F32
-            if (m_currShader->m_DriverInfo->UsesTypedConstantBuffers())
-                assert(bufType != CONSTANT_BUFFER);
+            assert(!UsesTypedConstantBuffer(m_currShader->GetContext()) || bufType != CONSTANT_BUFFER);
 
             m_encoder->Gather4ScaledNd(m_destination, resource, visaOffset, sizeInBits/32);
             m_encoder->Push();
@@ -12425,7 +12424,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
     // some driver describe constant buffer as typed which forces us to use byte scatter message
     bool forceByteScatteredRW =
         bufType == CONSTANT_BUFFER &&
-        m_currShader->m_DriverInfo->UsesTypedConstantBuffers();
+        UsesTypedConstantBuffer(m_currShader->GetContext());
 
     VectorMessage VecMessInfo(this);
     VecMessInfo.getInfo(Ty, align, useA32, forceByteScatteredRW);

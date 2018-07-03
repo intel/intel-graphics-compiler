@@ -99,6 +99,22 @@ unsigned EncodeAS4GFXResource(
     temp.bits.indirect = 1;
     return temp.u32Val;
 }
+
+bool UsesTypedConstantBuffer(CodeGenContext* pContext)
+{
+    if(pContext->m_DriverInfo.UsesTypedConstantBuffers3D() &&
+        pContext->type != ShaderType::COMPUTE_SHADER)
+    {
+        return true;
+    }
+    if(pContext->m_DriverInfo.UsesTypedConstantBuffersGPGPU() &&
+        pContext->type == ShaderType::COMPUTE_SHADER)
+    {
+        return true;
+    }
+    return false;
+}
+
 ///
 /// if you want resource-dimension, use GetBufferDimension()
 ///

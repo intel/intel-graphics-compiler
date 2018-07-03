@@ -535,7 +535,7 @@ void ConstantCoalescing::ProcessBlock(
 #ifdef SUPPORT_GATHER4
                             MergeScatterLoad(inst, nullptr, bufid, elt_idxv, eltid, 1, indcb_gathers);
 #else
-                            if (m_ctx->m_DriverInfo.UsesTypedConstantBuffers() && 
+                            if (UsesTypedConstantBuffer(m_ctx) &&
                                 bufType == CONSTANT_BUFFER &&
                                 !inst->getType()->isVectorTy())
                                 ScatterToSampler(inst, nullptr, addrSpace, elt_idxv, eltid, indcb_gathers);
