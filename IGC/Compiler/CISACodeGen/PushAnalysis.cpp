@@ -422,8 +422,10 @@ bool PushAnalysis::IsPushableShaderConstant(Instruction *inst, uint &bufIdOrGRFO
             if (ConstantInt *eltIdx = dyn_cast<ConstantInt>(eltIdxVal))
             {
                 eltId = int_cast<uint>(eltIdx->getZExtValue());
-                assert((eltId % 4) == 0);
-                return true;
+                if((eltId % 4) == 0)
+                {
+                    return true;
+                }
             }
         }
 
@@ -433,8 +435,10 @@ bool PushAnalysis::IsPushableShaderConstant(Instruction *inst, uint &bufIdOrGRFO
             if (GetConstantOffsetForDynamicUniformBuffer(bufIdOrGRFOffset, eltPtrVal, relativeOffsetInBytes))
             {
                 eltId = relativeOffsetInBytes;
-                assert((eltId % 4) == 0);
-                return true;        
+                if((eltId % 4) == 0)
+                {
+                    return true;
+                }
             }
         }
         return false;

@@ -511,9 +511,8 @@ void ConstantCoalescing::ProcessBlock(
                     uint eltid = (uint)elt_idx->getZExtValue();
                     // TODO: Disabling constant coalescing when we see that the offset to the constant buffer is negtive
                     // As we handle all negative offsets as uint and some arithmetic operations do not work well. Needs more detailed fix
-                    if ((int32_t)eltid >= 0)
+                    if ((int32_t)eltid >= 0 && eltid % 4 == 0)
                     {
-                        assert((eltid % 4) == 0);
                         eltid = (eltid >> 2); // bytes to dwords
                         MergeUniformLoad(inst, nullptr, addrSpace, nullptr, eltid, maxEltPlus, dircb_owloads);
                     }
@@ -524,9 +523,8 @@ void ConstantCoalescing::ProcessBlock(
                     elt_idxv = SimpleBaseOffset(elt_idxv, eltid);
                     // TODO: Disabling constant coalescing when we see that the offset to the constant buffer is negtive
                     // As we handle all negative offsets as uint and some arithmetic operations do not work well. Needs more detailed fix
-                    if ((int32_t)eltid >= 0)
+                    if ((int32_t)eltid >= 0 && (eltid % 4) == 0)
                     {
-                        assert((eltid % 4) == 0);
                         eltid = (eltid >> 2); // bytes to dwords
                         if (wiAns->whichDepend(inst) == WIAnalysis::UNIFORM)
                         {   // uniform
