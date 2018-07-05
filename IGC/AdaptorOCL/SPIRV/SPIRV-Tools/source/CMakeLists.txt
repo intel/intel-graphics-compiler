@@ -358,6 +358,10 @@ target_include_directories(${SPIRV_TOOLS}
   PRIVATE ${SPIRV_HEADER_INCLUDE_DIR}
   )
 
+if(MSVC)
+    bs_set_wdk(${SPIRV_TOOLS})
+endif()
+
 # Commented out to put SPIRV-Tools directly into IGC folder
 #set_property(TARGET ${SPIRV_TOOLS} PROPERTY FOLDER "SPIRV-Tools libraries")
 #spvtools_check_symbol_exports(${SPIRV_TOOLS})
