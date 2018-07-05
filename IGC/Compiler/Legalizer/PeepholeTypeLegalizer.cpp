@@ -337,8 +337,7 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
         Value *NewLargeResVecForm = UndefValue::get(llvm::VectorType::get(llvm::Type::getIntNTy(I.getContext(), promoteToInt), quotient));
         
         bool instSupported = true;
-        unsigned Idx = 0;
-        while (++Idx < quotient)
+        for (unsigned Idx = 0; Idx < quotient; Idx++)
         {
             Value *NewInst = NULL;
             switch (I.getOpcode()) {
@@ -354,6 +353,22 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
                 NewInst = m_builder->CreateXor(m_builder->CreateExtractElement(NewLargeSrc1VecForm, Idx),
                     m_builder->CreateExtractElement(NewLargeSrc2VecForm, Idx));
                 break;
+            case Instruction::LShr:
+            {
+                if (auto val = dyn_cast<ConstantInt>(Src2)) {
+                    unsigned offset = (unsigned) val->getSExtValue() / promoteToInt;
+                    unsigned elementToMove = Idx + offset;
+
+                    if (elementToMove < quotient)
+                        NewInst = m_builder->CreateExtractElement(NewLargeSrc1VecForm, elementToMove);
+                    else
+                        NewInst = ConstantInt::get(IntegerType::get(I.getContext(), promoteToInt), 0, true);
+                } else {
+                    instSupported = false;
+                    assert(false && "Shift by amount is not a constant.");
+                }
+                break;
+            }
             case Instruction::Add:
                 instSupported = false;
                 assert(false && "Add Instruction seen with 'large' illegal int type. Legalization support missing.");
@@ -371,7 +386,7 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
                 assert(false);
             }
             if (instSupported)
-                m_builder->CreateInsertElement(NewLargeResVecForm, NewInst, Idx);
+                NewLargeResVecForm = m_builder->CreateInsertElement(NewLargeResVecForm, NewInst, Idx);
             else
                 break;
         }
@@ -430,6 +445,8 @@ void PeepholeTypeLegalizer::legalizeBinaryOperator(Instruction &I) {
             NewLargeRes = m_builder->CreateSelect(selectInst->getCondition(), NewLargeSrc1, NewLargeSrc2);
             break;
         }
+        case Instruction::LShr:
+            NewLargeRes = m_builder->CreateLShr(NewLargeSrc1, NewLargeSrc2);
         default:
             printf("Binary Instruction seen with illegal int type. Legalization support missing. Inst opcode:%d", I.getOpcode());
             assert(false);
