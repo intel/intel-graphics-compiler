@@ -584,7 +584,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorExtractCommonMultiplier(BinaryOpera
                     }
                     if (patternFound)
                     {
-                        Instruction *newResult = BinaryOperator::CreateFMul(commonMultiplier, previousRoot, "");
+                        Instruction *newResult = copyIRFlags(BinaryOperator::CreateFMul(commonMultiplier, previousRoot, ""), &I);
                         newResult->insertAfter(previousRoot);
                         previousRoot->replaceAllUsesWith(newResult);
                         newResult->setOperand(1, previousRoot);
@@ -636,7 +636,7 @@ bool CustomUnsafeOptPass::visitBinaryOperatorToFmad(BinaryOperator &I)
         return false;
     }
 
-    Value *op0 = BinaryOperator::CreateFMul(addInst->getOperand(0), C1, "", &I);
+    Value *op0 = copyIRFlags(BinaryOperator::CreateFMul(addInst->getOperand(0), C1, "", &I), &I);
 
     APFloat C0Float = C0->getValueAPF();
     C0Float.multiply(C1->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
@@ -730,11 +730,11 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulToFmad(BinaryOperator &I)
             {
                 op1 = I.getOperand(xIndex);
             }
-            op2 = BinaryOperator::CreateFMul(I.getOperand(xIndex), FsubOrFaddInst->getOperand(1), "", &I);
+            op2 = copyIRFlags(BinaryOperator::CreateFMul(I.getOperand(xIndex), FsubOrFaddInst->getOperand(1), "", &I), &I);
         }
         else
         {
-            op1 = BinaryOperator::CreateFMul(I.getOperand(xIndex), FsubOrFaddInst->getOperand(0), "", &I);
+            op1 = copyIRFlags(BinaryOperator::CreateFMul(I.getOperand(xIndex), FsubOrFaddInst->getOperand(0), "", &I), &I);
             if (Cx)
             {
                 ConstantFP *C1 = dyn_cast<ConstantFP>(FsubOrFaddInst->getOperand(1));
@@ -810,12 +810,12 @@ bool CustomUnsafeOptPass::visitBinaryOperatorDivAddDiv(BinaryOperator &I)
         isFDiv(I.getOperand(1), numerator1, denumerator1) &&
         denumerator0 != denumerator1)
     {
-        Value *mul0 = BinaryOperator::CreateFMul(numerator0, denumerator1, "", &I);
-        Value *mul1 = BinaryOperator::CreateFMul(numerator1, denumerator0, "", &I);
-        Value *mul2 = BinaryOperator::CreateFMul(denumerator0, denumerator1, "", &I);
-        Value *mul2inv = BinaryOperator::CreateFDiv(ConstantFP::get(mul2->getType(), 1.0), mul2, "", &I);
-        Value *add_mul0_mul1 = BinaryOperator::CreateFAdd(mul0, mul1, "", &I);
-        I.replaceAllUsesWith(BinaryOperator::CreateFMul(add_mul0_mul1, mul2inv, "", &I));
+        Value *mul0 = copyIRFlags(BinaryOperator::CreateFMul(numerator0, denumerator1, "", &I), &I);
+        Value *mul1 = copyIRFlags(BinaryOperator::CreateFMul(numerator1, denumerator0, "", &I), &I);
+        Value *mul2 = copyIRFlags(BinaryOperator::CreateFMul(denumerator0, denumerator1, "", &I), &I);
+        Value *mul2inv = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(mul2->getType(), 1.0), mul2, "", &I), &I);
+        Value *add_mul0_mul1 = copyIRFlags(BinaryOperator::CreateFAdd(mul0, mul1, "", &I), &I);
+        I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFMul(add_mul0_mul1, mul2inv, "", &I), &I));
         return true;
     }
     return false;
@@ -1379,7 +1379,7 @@ bool CustomUnsafeOptPass::visitExchangeCB(llvm::BinaryOperator &I)
         return false;
 
     // perform the change
-    Value *CBsum = BinaryOperator::CreateFAdd(inst0->getOperand(cbIndex0), inst1->getOperand(cbIndex1), "", &I);
+    Value *CBsum = copyIRFlags(BinaryOperator::CreateFAdd(inst0->getOperand(cbIndex0), inst1->getOperand(cbIndex1), "", &I), &I);
     I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFMul(inst0->getOperand(1 - cbIndex0), CBsum, "", &I), &I));
     
     return true;
@@ -1647,7 +1647,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator &I)
                             {
                                 if (!(fp0 && fp0->isExactlyValue(1.0)))
                                 {
-                                    Value *invOp = BinaryOperator::CreateFDiv(ConstantFP::get(opType, 1.0), op1, "", &I);
+                                    Value *invOp = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(opType, 1.0), op1, "", &I), &I);
                                     I.replaceAllUsesWith(
                                         copyIRFlags(BinaryOperator::CreateFMul(op0, invOp, "", &I), &I));
                                     patternFound = true;
@@ -2023,14 +2023,14 @@ void CustomUnsafeOptPass::strengthReducePow(
     IntrinsicInst* intrin, Value* exponent)
 {
     Value* src = intrin->getOperand(0);
-
+    IRBuilder<> irb(intrin);
+    irb.setFastMathFlags(intrin->getFastMathFlags());
     if (exponent == ConstantFP::get(exponent->getType(), 0.5))
     {
         // pow(x, 0.5) -> sqrt(x)
         llvm::Function* sqrtIntr = llvm::Intrinsic::getDeclaration(
             m_ctx->getModule(), Intrinsic::sqrt, src->getType());
-        llvm::CallInst* sqrt = llvm::IntrinsicInst::Create(
-            sqrtIntr, src, "", intrin);
+        llvm::CallInst* sqrt = irb.CreateCall(sqrtIntr, src);
         intrin->replaceAllUsesWith(sqrt);
         intrin->eraseFromParent();
     }
@@ -2044,7 +2044,7 @@ void CustomUnsafeOptPass::strengthReducePow(
     if (exponent == ConstantFP::get(exponent->getType(), 2.0))
     {
         // pow(x, 2.0) -> x * x
-        Value* x2 = BinaryOperator::CreateFMul(src, src, "", intrin);
+        Value* x2 = irb.CreateFMul(src, src);
         intrin->replaceAllUsesWith(x2);
         intrin->eraseFromParent();
     }
@@ -2052,8 +2052,8 @@ void CustomUnsafeOptPass::strengthReducePow(
     if (exponent == ConstantFP::get(exponent->getType(), 3.0))
     {
         // pow(x, 3.0) -> x * x * x
-        Value* x2 = BinaryOperator::CreateFMul(src, src, "", intrin);
-        Value* x3 = BinaryOperator::CreateFMul(x2, src, "", intrin);
+        Value* x2 = irb.CreateFMul(src, src); 
+        Value* x3 = irb.CreateFMul(x2, src); 
         intrin->replaceAllUsesWith(x3);
         intrin->eraseFromParent();
     }
@@ -2061,8 +2061,8 @@ void CustomUnsafeOptPass::strengthReducePow(
     if (exponent == ConstantFP::get(exponent->getType(), 4.0))
     {
         // pow(x, 4.0) -> (x*x) * (x*x)
-        Value* x2 = BinaryOperator::CreateFMul(src, src, "", intrin);
-        Value* x4 = BinaryOperator::CreateFMul(x2, x2, "", intrin);
+        Value* x2 = irb.CreateFMul(src, src); 
+        Value* x4 = irb.CreateFMul(x2, x2);
         intrin->replaceAllUsesWith(x4);
         intrin->eraseFromParent();
     }
@@ -2070,9 +2070,9 @@ void CustomUnsafeOptPass::strengthReducePow(
     if (exponent == ConstantFP::get(exponent->getType(), 5.0))
     {
         // pow(x, 5.0) -> (x*x) * (x*x) * x
-        Value* x2 = BinaryOperator::CreateFMul(src, src, "", intrin);
-        Value* x4 = BinaryOperator::CreateFMul(x2, x2, "", intrin);
-        Value* x5 = BinaryOperator::CreateFMul(x4, src, "", intrin);
+        Value* x2 = irb.CreateFMul(src, src);
+        Value* x4 = irb.CreateFMul(x2, x2);
+        Value* x5 = irb.CreateFMul(x4, src);
         intrin->replaceAllUsesWith(x5);
         intrin->eraseFromParent();
     }
@@ -2080,9 +2080,9 @@ void CustomUnsafeOptPass::strengthReducePow(
     if (exponent == ConstantFP::get(exponent->getType(), 6.0))
     {
         // pow(x, 6.0) -> (x*x) * (x*x) * (x*x)
-        Value* x2 = BinaryOperator::CreateFMul(src, src, "", intrin);
-        Value* x4 = BinaryOperator::CreateFMul(x2, x2, "", intrin);
-        Value* x6 = BinaryOperator::CreateFMul(x4, x2, "", intrin);
+        Value* x2 = irb.CreateFMul(src, src); 
+        Value* x4 = irb.CreateFMul(x2, x2); 
+        Value* x6 = irb.CreateFMul(x4, x2); 
         intrin->replaceAllUsesWith(x6);
         intrin->eraseFromParent();
     }
@@ -2090,9 +2090,9 @@ void CustomUnsafeOptPass::strengthReducePow(
     if (exponent == ConstantFP::get(exponent->getType(), 8.0))
     {
         // pow(x, 8.0) -> ((x*x) * (x*x)) * ((x*x) * (x*x))
-        Value* x2 = BinaryOperator::CreateFMul(src, src, "", intrin);
-        Value* x4 = BinaryOperator::CreateFMul(x2, x2, "", intrin);
-        Value* x8 = BinaryOperator::CreateFMul(x4, x4, "", intrin);
+        Value* x2 = irb.CreateFMul(src, src);
+        Value* x4 = irb.CreateFMul(x2, x2); 
+        Value* x8 = irb.CreateFMul(x4, x4);
         intrin->replaceAllUsesWith(x8);
         intrin->eraseFromParent();
     }
@@ -2104,9 +2104,9 @@ void CustomUnsafeOptPass::strengthReducePow(
             m_ctx->getModule(), Intrinsic::log2, src->getType());
         Function* expf = Intrinsic::getDeclaration(
             m_ctx->getModule(), Intrinsic::exp2, src->getType());
-        CallInst* logv = IntrinsicInst::Create(logf, src, "", intrin);
-        Value* mulv = BinaryOperator::CreateFMul(logv, exponent, "", intrin);
-        CallInst* expv = IntrinsicInst::Create(expf, mulv, "", intrin);
+        CallInst* logv = irb.CreateCall(logf, src);
+        Value* mulv = irb.CreateFMul(logv, exponent);
+        CallInst* expv = irb.CreateCall(expf, mulv);
         intrin->replaceAllUsesWith(expv);
         intrin->eraseFromParent();
     }
@@ -2242,6 +2242,7 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function &F)
                         // t3n = t2n + t1 // new L0
                         // t3  = t2 - E   // L0
                         IRBuilder<> Builder(L0);
+                        Builder.setFastMathFlags(L0->getFastMathFlags());
                         Value *E = L0->getOperand(1);
                         auto OpKind = BinaryOperator::BinaryOps(L0->getOpcode());
                         Value *NewInst = Builder.CreateBinOp(OpKind, T0, E, Inst->getName());
@@ -2272,6 +2273,7 @@ void CustomUnsafeOptPass::reassociateMulAdd(Function &F)
                         // t5  = t4 - G   // L1
                         Instruction *L1 = L0->user_back();
                         IRBuilder<> Builder(L1);
+                        Builder.setFastMathFlags(L1->getFastMathFlags());
                         Value *T2 = L0->getOperand(1);
                         Value *G = L1->getOperand(1);
 
@@ -3014,6 +3016,7 @@ bool LowerFma::runOnFunction(Function& F)
             {
                 changed = true;
                 IRBuilder<> irb(fmad);
+                irb.setFastMathFlags(fmad->getFastMathFlags());
                 Value* v = irb.CreateFMul(fmad->getArgOperand(0),
                     fmad->getArgOperand(1));
                 v = irb.CreateFAdd(v, fmad->getArgOperand(2));
@@ -3066,6 +3069,7 @@ protected:
         smallvector<llvm::Value*, 4> invariants;
         bool hasInvariant = false;
         bool visited = false;
+        FastMathFlags FMF;
     };
 
     struct RootNode {
@@ -3202,7 +3206,8 @@ protected:
         llvm::Loop* loop,
         llvm::Instruction* fsum,
         const smallvector<llvm::Value*, 4>& invariants,
-        llvm::Value* nonZero);
+        llvm::Value* nonZero,
+        const FastMathFlags& FMF);
 };
 
 char HoistFMulInLoopPass::ID = 0;
@@ -3266,8 +3271,8 @@ HoistFMulInLoopPass::MulNode* HoistFMulInLoopPass::visitFMul(
         ret = (*MI).second;
         return ret;
     }
-
     ret = addToNodeTree(fmul, nodeMap);
+    ret->FMF = fmul->getFastMathFlags();
 
     for (int i = 0; i < 2; i++)
     {
@@ -3283,6 +3288,7 @@ HoistFMulInLoopPass::MulNode* HoistFMulInLoopPass::visitFMul(
         else
         {
             MulNode* leaf = addToNodeTree(src, nodeMap);
+            leaf->FMF = fmul->getFastMathFlags();
             leaf->hasInvariant = loop->isLoopInvariant(src);
             *pp = leaf;
         }
@@ -3416,7 +3422,8 @@ void HoistFMulInLoopPass::combineNode(MulNode* node,
 void HoistFMulInLoopPass::updateOutLoopSumUse(
     Loop* loop, Instruction* fsum,
     const smallvector<llvm::Value*, 4>& invariants,
-    Value* nonZero)
+    Value* nonZero,
+    const FastMathFlags& FMF)
 {
     SmallPtrSet<BasicBlock*, 4> bbSet;
 
@@ -3456,6 +3463,7 @@ void HoistFMulInLoopPass::updateOutLoopSumUse(
             insertPoint = inst;
         }
         irb.SetInsertPoint(insertPoint);
+        irb.setFastMathFlags(FMF);
 
         Value* mulSrc = nullptr;
 
@@ -3680,9 +3688,9 @@ bool HoistFMulInLoopPass::hoistMulInLoop(Loop* loop, bool replacePhi)
             (isLeafNode(NI.root) && NI.root->replace))
         {
             updateOutLoopSumUse(loop, NI.phi,
-                NI.root->invariants, NI.phiNonZeroValue);
+                NI.root->invariants, NI.phiNonZeroValue, NI.root->FMF);
             updateOutLoopSumUse(loop, NI.fsum,
-                NI.root->invariants, NI.phiNonZeroValue);
+                NI.root->invariants, NI.phiNonZeroValue, NI.root->FMF);
         }
     }
 

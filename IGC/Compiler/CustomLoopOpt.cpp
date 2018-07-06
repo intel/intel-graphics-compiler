@@ -382,6 +382,7 @@ void CustomLoopVersioning::hoistSeg2Invariant(Loop* loop,
             intrin->getIntrinsicID() == Intrinsic::exp2)
         {
             IRBuilder<> irb(preHdr->getFirstNonPHI());
+            irb.setFastMathFlags(fmul_log2->getFastMathFlags());
 
             Function* flog =
                 Intrinsic::getDeclaration(m_function->getParent(),
@@ -415,8 +416,9 @@ void CustomLoopVersioning::rewriteLoopSeg2(Loop* loop,
     FCmpInst* fcmp = dyn_cast<FCmpInst>(br->getCondition());
     assert(fcmp && fcmp->getOperand(1) == interval_y);
 
-    Value* v = BinaryOperator::Create(Instruction::FDiv,
+    Instruction* v = BinaryOperator::Create(Instruction::FDiv,
         interval_y, cbLoad, "", fcmp);
+    v->setFast(true);
     fcmp->setOperand(1, v);
 
     Instruction* i0 = body->getFirstNonPHI();
@@ -588,7 +590,9 @@ bool CustomLoopVersioning::processLoop(Loop* loop)
     preHdr->getTerminator()->eraseFromParent();
 
     IRBuilder<> irb(preHdr);
-
+    FastMathFlags FMF;
+    FMF.setFast();
+    irb.setFastMathFlags(FMF);
     Value* cond0 = irb.CreateFCmpOGT(
         var_CBLoad_preHdr, ConstantFP::get(irb.getFloatTy(), 1.0));
 
