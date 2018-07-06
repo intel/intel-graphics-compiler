@@ -535,8 +535,8 @@ _SPIRV_OP(evaluate_with_multi_reference_interlaced, EvaluateWithMultiReferenceIn
 #define _SPIRV_OP(x,y) \
   add(OpSubgroupAvcSic##y##INTEL, "intel_sub_group_avc_sic_"#x);
 _SPIRV_OP(configure_skc, ConfigureSkc)
-_SPIRV_OP(configure_ipe_luma, ConfigureIpeLuma)
-_SPIRV_OP(configure_ipe_luma_chroma, ConfigureIpeLumaChroma)
+_SPIRV_OP(configure_ipe, ConfigureIpeLuma)
+_SPIRV_OP(configure_ipe, ConfigureIpeLumaChroma)
 _SPIRV_OP(get_motion_vector_mask, GetMotionVectorMask)
 _SPIRV_OP(set_intra_luma_shape_penalty, SetIntraLumaShapePenalty)
 _SPIRV_OP(set_intra_luma_mode_cost_function, SetIntraLumaModeCostFunction)
