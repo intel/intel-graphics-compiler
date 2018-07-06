@@ -148,6 +148,7 @@ uint      __builtin_IB_eu_id(void) __attribute__((const));
 uint      __builtin_IB_eu_thread_id(void) __attribute__((const));
 void      __builtin_IB_profile_snapshot(int point_type,int point_index) __attribute__((const));
 void      __builtin_IB_profile_aggregated(int point_type,int point_index) __attribute__((const));
+void      __builtin_IB_eu_thread_pause(uint value);
 
 // int -> float operations
 float __builtin_IB_itof_rtn(int);

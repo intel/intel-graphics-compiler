@@ -198,7 +198,8 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock &blk, SDAG &sdag, bool &s
                 id == GenISAIntrinsic::GenISA_vaCentroid ||
                 id == GenISAIntrinsic::GenISA_vaBoolSum ||
                 id == GenISAIntrinsic::GenISA_vaBoolCentroid ||
-                id == GenISAIntrinsic::GenISA_MediaBlockWrite)
+                id == GenISAIntrinsic::GenISA_MediaBlockWrite ||
+                id == GenISAIntrinsic::GenISA_eu_thread_pause)
             {
                 numInstance = 1;
                 slicing = false;
@@ -7197,6 +7198,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_eu_thread_id:
         emitStateRegID(0x00000007, 0x00000000);
         break;
+    case GenISAIntrinsic::GenISA_eu_thread_pause:
+        emitThreadPause(inst);
+        break;
     case GenISAIntrinsic::GenISA_pair_to_ptr:
         emitPairToPtr(inst);
         break;
@@ -13668,6 +13672,22 @@ CVariable* EmitPass::GetDispatchMask()
         (m_pattern->NeedVMask() ? 3 : 2) * SIZE_DWORD,
         1);
 }
+
+void EmitPass::emitThreadPause(llvm::GenIntrinsicInst* inst)
+{
+    CVariable* TSC_reg = m_currShader->GetTSC();
+    uint64_t var = GetImmediateVal(inst->getOperand(0));
+    if (var >= 32)
+        var = 0x03E0;
+    else if (var <= 4)
+        var = 0x0080;
+    else
+        var = var << 5;
+    m_encoder->Or(m_destination, TSC_reg, m_currShader->ImmToVariable(var, ISA_TYPE_UD));
+    m_encoder->Copy(TSC_reg, m_destination);
+    m_encoder->Push();
+}
+
 
 void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
 {

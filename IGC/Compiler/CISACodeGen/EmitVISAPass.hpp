@@ -369,6 +369,7 @@ public:
     void emitDP4A(llvm::GenIntrinsicInst *GII);
     // Debug Built-Ins
     void emitStateRegID(uint64_t and_imm, uint64_t shr_imm);
+    void emitThreadPause(llvm::GenIntrinsicInst* inst);
 
     void MovPhiDestination(llvm::BasicBlock* bb);
     void MovPhiSources(llvm::BasicBlock* bb);

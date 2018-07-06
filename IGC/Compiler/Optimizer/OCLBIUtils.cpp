@@ -1610,6 +1610,7 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_subslice_id"]         = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_subslice_id, false);
     m_CommandMap["__builtin_IB_eu_id"]               = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_eu_id, false);
     m_CommandMap["__builtin_IB_eu_thread_id"]        = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_eu_thread_id, false);
+    m_CommandMap["__builtin_IB_eu_thread_pause"]     = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_eu_thread_pause, false);
 #endif
     //math Built-ins
     m_CommandMap["__builtin_IB_frnd_pi"]       = CSimpleIntrinMapping::create(Intrinsic::ceil);

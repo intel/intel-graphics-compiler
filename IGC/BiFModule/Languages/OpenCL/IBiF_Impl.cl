@@ -818,3 +818,9 @@ uint OVERLOADABLE intel_get_eu_thread_id( void )
 {
     return __builtin_IB_eu_thread_id();
 }
+
+__attribute__((always_inline))
+void OVERLOADABLE intel_get_eu_thread_pause( uint value )
+{
+    __builtin_IB_eu_thread_pause(value);
+}
