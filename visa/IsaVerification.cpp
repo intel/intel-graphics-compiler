@@ -2522,11 +2522,9 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
                                     (9  <= block_width && block_width <= 16 && block_height <= 16)  ||
                                     (17 <= block_width && block_width <= 32 && block_height <=  8)  ||
                                     (33 <= block_width && block_width <= 64 && block_height <=  4)) &&
-                                   !(block_width % 4                                             )  &&
                                     (block_width * block_height <= 256                           ),
                                     "MEDIA_ST only supports objects that fit into a single dataport "
                                     "transaction where block width <= 64 bytes and size <= 256 bytes. "
-                                    "Also, block width must be dword aligned. "
                                     "Block width: %d. Block height: %d", block_width, block_height);
              }
              else if (ISA_TRANSPOSE_LD == opcode)
