@@ -305,11 +305,30 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, const CShaderProgram::KernelS
     mpm.add(new Layout());
 }
 
+static void UpdateInstTypeHint(CodeGenContext& ctx)
+{
+    // WA: save original values as preRA heuristic is based on those
+    // we need to fix the preRA pass heuristic or get rid of preRA pass altogether
+    unsigned int numBB = ctx.m_instrTypes.numBB;
+    unsigned int numSample = ctx.m_instrTypes.numSample;
+    unsigned int numInsts = ctx.m_instrTypes.numInsts;
+    IGCPassManager mpm(&ctx, "UpdateOptPre");
+    mpm.add(new CheckInstrTypes(&(ctx.m_instrTypes)));
+    mpm.run(*ctx.getModule());
+    ctx.m_instrTypes.numBB = numBB;
+    ctx.m_instrTypes.numSample = numSample;
+    ctx.m_instrTypes.numInsts = numInsts;
+    ctx.m_instrTypes.hasLoadStore = true;
+}
+
 // forward declaration.
 llvm::ModulePass *createPruneUnusedArgumentsPass();
 
 inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::KernelShaderMap& shaders, IGCPassManager& mpm)
 {
+    // update type of instructions to know what passes are needed.
+    UpdateInstTypeHint(ctx);
+
     MetaDataUtils *pMdUtils = ctx.getMetaDataUtils();
     bool isOptDisabled = ctx.getModuleMetaData()->compOpt.OptDisable;
     bool fastCompile = ctx.getModuleMetaData()->compOpt.FastCompilation;
