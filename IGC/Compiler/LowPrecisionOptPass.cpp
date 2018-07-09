@@ -303,6 +303,8 @@ bool LowPrecisionOpt::propagateSamplerType(llvm::GenIntrinsicInst &I)
     for (auto use = I.user_begin(); use != I.user_end(); ++use)
     {
         ExtractElementInst*  extractElt = cast<ExtractElementInst>(*use);
+        m_builder->SetInsertPoint(extractElt);
+
         Value* extractUse = *extractElt->user_begin();
         Value* newExtract = m_builder->CreateExtractElement(newCall, extractElt->getIndexOperand());
         if (extractUse->getType()->isFloatingPointTy())
