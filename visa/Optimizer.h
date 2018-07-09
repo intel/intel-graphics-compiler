@@ -131,15 +131,6 @@ class Optimizer
 
     vISA::Mem_Manager& mem;
 
-    // map ret location to declare for call/ret
-    std::map<uint32_t, G4_Declare*> retDecls;
-
-    void  createOptReport(std::ofstream& optReportHandle);
-    void  insertCallReturnVar();
-    void  insertSaveAddr(G4_BB* bb);
-    void  insertRestoreAddr(G4_BB* bb);
-    unsigned determineReturnAddrLoc(unsigned entryId, unsigned* retLoc, G4_BB* bb);
-    bool isSubRetLocConflict(G4_BB *bb, std::vector<unsigned> &usedLoc, unsigned stackTop);
     //
     // optimization phases
     //
@@ -155,7 +146,6 @@ class Optimizer
     void optimizeLogicOperation();
     void cselPeepHoleOpt();
     void regAlloc();
-    void assignLocForReturnAddr();
     void insertFallThroughJump();
     void chkRegBoundary();
     bool chkOpndBoundary(G4_INST *inst, G4_Operand *opnd);
@@ -208,31 +198,6 @@ class Optimizer
     void reRAPostSchedule();
 
     void dce();
-
-    G4_Declare* getRetDecl(uint32_t retLoc)
-    {
-        auto result = retDecls.find(retLoc);
-        if (result != retDecls.end())
-        {
-            return result->second;
-        }
-
-        char* name = builder.getNameString(mem, 24, "RET__loc%d", retLoc);
-        G4_Declare* dcl = builder.createDeclareNoLookup(name, G4_GRF, 2, 1, Type_UD);
-
-        if (VISA_WA_CHECK(builder.getPWaTable(), WaSIMD16SIMD32CallDstAlign))
-        {
-            dcl->setSubRegAlign(Sixteen_Word);
-        }
-        else
-        {
-            // call destination must still be QWord aligned
-            dcl->setSubRegAlign(Four_Word);
-        }
-
-        retDecls[retLoc] = dcl;
-        return dcl;
-    }
 
     void accSubPostSchedule();
 

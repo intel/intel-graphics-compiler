@@ -869,6 +869,10 @@ namespace vISA
         // note only GRFs that are used by LRA get a declare
         std::vector<G4_Declare*> GRFDclsForHRA;
 
+        std::unordered_map<G4_BB*, unsigned int> subretloc;
+        // map ret location to declare for call/ret
+        std::map<uint32_t, G4_Declare*> retDecls;
+
         void resize(unsigned int id)
         {
             if (id >= vars.size())
@@ -881,6 +885,48 @@ namespace vISA
         PhyRegPool& regPool;
         PointsToAnalysis& pointsToAnalysis;
         FCALL_RET_MAP fcallRetMap;
+
+        unsigned int getSubRetLoc(G4_BB* bb)
+        {
+            auto it = subretloc.find(bb);
+            if (it == subretloc.end())
+                return UNDEFINED_VAL;
+            return (*it).second;
+        }
+
+        void setSubRetLoc(G4_BB* bb, unsigned int s) { subretloc[bb] = s; }
+
+        bool isSubRetLocConflict(G4_BB *bb, std::vector<unsigned> &usedLoc, unsigned stackTop);
+        void assignLocForReturnAddr();
+        unsigned determineReturnAddrLoc(unsigned entryId, unsigned* retLoc, G4_BB* bb);
+        void insertCallReturnVar();
+        void insertSaveAddr(G4_BB*);
+        void insertRestoreAddr(G4_BB*);
+
+        G4_Declare* getRetDecl(uint32_t retLoc)
+        {
+            auto result = retDecls.find(retLoc);
+            if (result != retDecls.end())
+            {
+                return result->second;
+            }
+
+            char* name = builder.getNameString(kernel.fg.mem, 24, "RET__loc%d", retLoc);
+            G4_Declare* dcl = builder.createDeclareNoLookup(name, G4_GRF, 2, 1, Type_UD);
+
+            if (VISA_WA_CHECK(builder.getPWaTable(), WaSIMD16SIMD32CallDstAlign))
+            {
+                dcl->setSubRegAlign(Sixteen_Word);
+            }
+            else
+            {
+                // call destination must still be QWord aligned
+                dcl->setSubRegAlign(Four_Word);
+            }
+
+            retDecls[retLoc] = dcl;
+            return dcl;
+        }
 
         // RA specific fields
         G4_Declare* getGRFDclForHRA(int GRFNum) const { return GRFDclsForHRA[GRFNum]; }

@@ -230,12 +230,6 @@ class G4_BB
     //
     unsigned rpostId;
     //
-    // the location id for saving the return address of a subroutine call
-    // set to UNDEFINED_VAL if the block is not the entry of a subroutine.
-    // register allocation will assign a reg to hold the return addr later
-    //
-    unsigned subRetLoc;
-    //
     // traversal is for traversing control flow graph (to indicate the
     // block is visited)
     //
@@ -374,7 +368,7 @@ public:
 
     G4_BB(INST_LIST_NODE_ALLOCATOR& alloc, unsigned i, FlowGraph* fg) :
         id(i), preId(0), rpostId(0),
-        subRetLoc(UNDEFINED_VAL), traversal(0), idom(NULL), beforeCall(NULL),
+        traversal(0), idom(NULL), beforeCall(NULL),
         afterCall(NULL), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
         inNaturalLoop(false), loopNestLevel(0), scopeID(0), inSimdFlow(false),
         start_block(NULL), physicalPred(NULL), physicalSucc(NULL), parent(fg), 
@@ -409,8 +403,6 @@ public:
     void     removeSuccEdge(G4_BB* succ);
     void     removePredEdge(G4_BB* pred);
     void     writeBBId(std::ostream& cout)    {cout << "BB" << id;}
-    unsigned getSubRetLoc()                      {return subRetLoc;}
-    void     setSubRetLoc(unsigned n)          {subRetLoc = n;}
     G4_BB*   fallThroughBB();
     G4_BB*   getIDom()                        {return idom;}
     void     setIDom(G4_BB* dom)              {idom = dom;}

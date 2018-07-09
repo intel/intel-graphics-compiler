@@ -4010,6 +4010,11 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
     pointsToAnalysis.doPointsToAnalysis(kernel.fg);
 
     GlobalRA gra(kernel, regPool, pointsToAnalysis);
+    //
+    // insert pseudo save/restore return address so that reg alloc
+    // can assign registers to hold the return addresses
+    //
+    gra.assignLocForReturnAddr();
 
 	if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
 	{
