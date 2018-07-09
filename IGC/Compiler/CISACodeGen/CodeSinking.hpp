@@ -97,10 +97,10 @@ private:
     bool generalCodeSinking;
     // diagnosis variable: int numChanges;
 
-	// fat BB is the BB with the largest register pressure
+    // fat BB is the BB with the largest register pressure
     // Currently, used it for BB inside a loop only.
-	llvm::BasicBlock *m_fatBB;
-	uint32_t m_fatBBPressure;
+    llvm::BasicBlock *m_fatBB;
+    uint32_t m_fatBBPressure;
 
     // try to hoist phi nodes with congruent incoming values
     typedef std::pair<llvm::Instruction*, llvm::Instruction*> InstPair;
@@ -138,7 +138,7 @@ private:
     bool hoistCongruentPhi(llvm::Function& F);
 
     // Move LI back into loops
-	bool loopSink(llvm::BasicBlock* BBWithPressure);
+    bool loopSink(llvm::BasicBlock* BBWithPressure);
     bool canLoopSink(llvm::Instruction *I, llvm::Loop *L, llvm::BasicBlock *BB);
     bool isNoOpInst(llvm::Instruction *I);
     bool LoopSinkInstructions(
