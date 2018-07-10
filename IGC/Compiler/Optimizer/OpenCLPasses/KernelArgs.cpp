@@ -996,13 +996,14 @@ bool KernelArgs::const_iterator::operator!=(const const_iterator& iterator)
     return (m_major != iterator.m_major) || (m_minor != iterator.m_minor); 
 }
 
-KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* pMdUtils, KernelArgsOrder::InputType layout, bool useBindlessImage)
+KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* pMdUtils, KernelArgsOrder::InputType layout, ModuleMetaData* moduleMD)
     : m_KernelArgsOrder( layout ), 
       m_args( m_KernelArgsOrder )
 {
     ImplicitArgs implicitArgs(F, pMdUtils);
     const unsigned int numImplicitArgs = implicitArgs.size();
-    const unsigned int numExplicitArgs = F.getArgumentList().size() - numImplicitArgs;
+    const unsigned int numRuntimeValue = moduleMD ? moduleMD->pushInfo.constantReg.size() : 0;
+    const unsigned int numExplicitArgs = F.getArgumentList().size() - numImplicitArgs - numRuntimeValue;
     llvm::Function::const_arg_iterator funcArg = F.arg_begin();
     
     FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function*>(&F));
@@ -1010,7 +1011,7 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
     for (int i = 0, e = numExplicitArgs; i < e; ++i, ++funcArg)
     {
         bool needAllocation = false;
-        if (useBindlessImage)
+        if (moduleMD && moduleMD->UseBindlessImage)
         {
             // Check for bindless images which require allocation
             ResourceAllocMetaDataHandle resAllocMD = funcInfoMD->getResourceAlloc();

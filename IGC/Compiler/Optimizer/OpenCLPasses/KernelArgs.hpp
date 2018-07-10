@@ -451,7 +451,7 @@ namespace IGC
         /// @param  DL          The DataLayout
         /// @param  pMdUtils    The Metadata Utils instance for accessing metadata information
         /// @param  layout      One of the predefined payload layout types
-        KernelArgs(const llvm::Function& F, const llvm::DataLayout* DL, IGCMD::MetaDataUtils* pMdUtils, KernelArgsOrder::InputType layout = KernelArgsOrder::InputType::INDEPENDENT, bool useBindlessImage = false);
+        KernelArgs(const llvm::Function& F, const llvm::DataLayout* DL, IGCMD::MetaDataUtils* pMdUtils, KernelArgsOrder::InputType layout = KernelArgsOrder::InputType::INDEPENDENT, ModuleMetaData* moduleMD = nullptr);
 
         /// @brief  Returns a constant iterator to the beginning of the kernel arguments
         /// @return A constant iterator to the beginning of the kernel arguments

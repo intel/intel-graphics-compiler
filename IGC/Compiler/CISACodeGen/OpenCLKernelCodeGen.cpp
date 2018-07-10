@@ -1320,7 +1320,7 @@ void COpenCLKernel::AllocatePayload()
             KernelArgsOrder::InputType::INDIRECT :
             KernelArgsOrder::InputType::CURBE;
 
-    KernelArgs kernelArgs(*entry, m_DL, m_pMdUtils, layout, m_ModuleMetadata->UseBindlessImage);
+    KernelArgs kernelArgs(*entry, m_DL, m_pMdUtils, layout, m_ModuleMetadata);
 
     for (KernelArgs::const_iterator i = kernelArgs.begin(), e = kernelArgs.end(); i != e; ++i) {
         KernelArg arg = *i;
@@ -1331,6 +1331,7 @@ void COpenCLKernel::AllocatePayload()
 			                arg.getArg()->use_empty());
 
         if (!constantBufferStartSet && arg.isConstantBuf()) {
+            AllocateNOSConstants(offset);
             constantBufferStart = offset;
             constantBufferStartSet = true;
         }
@@ -1849,7 +1850,7 @@ bool COpenCLKernel::hasReadWriteImage(llvm::Function &F)
         return false;
     }
 
-    KernelArgs kernelArgs(F, m_DL, m_pMdUtils);
+    KernelArgs kernelArgs(F, m_DL, m_pMdUtils, KernelArgsOrder::InputType::INDEPENDENT, m_ModuleMetadata);
     for (auto KA : kernelArgs)
     {
         // RenderScript annotation sets "read_write" qualifier 
