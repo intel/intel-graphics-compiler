@@ -99,6 +99,22 @@ STATISTIC(Stat_FcmpRemoved,  "Number of insts removed in FCmp Opt");
 STATISTIC(Stat_FloatRemoved,  "Number of insts removed in Float Opt");
 STATISTIC(Stat_DiscardRemoved,  "Number of insts removed in Discard Opt");
 
+static bool allowUnsafeMathOpt(CodeGenContext* ctx, llvm::BinaryOperator& op)
+{
+    // always allow unsafe opt if instruction has the flag
+    if(llvm::isa<llvm::FPMathOperator>(op) && op.getFastMathFlags().isFast())
+    {
+        return true;
+    }
+
+    // then checking compiler options in metadata
+    if(ctx->getModuleMetaData()->compOpt.FastRelaxedMath)
+    {
+        return true;
+    }
+    return false;
+}
+
 CustomUnsafeOptPass::CustomUnsafeOptPass()
     : FunctionPass(ID),
       m_disableReorderingOpt(0),
@@ -1392,7 +1408,7 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator &I)
         return;
     }
 
-    if (allowUnsafeMathOpt(I))
+    if (allowUnsafeMathOpt(m_ctx, I))
     {
         Value*	op0 = I.getOperand(0);
         Value*	op1 = I.getOperand(1);
@@ -3241,10 +3257,8 @@ HoistFMulInLoopPass::HoistFMulInLoopPass()
 bool HoistFMulInLoopPass::runOnFunction(Function& F)
 {
     m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     if (!IGC_IS_FLAG_ENABLED(EnableHoistMulInLoop) ||
-        !modMD->compOpt.FastRelaxedMath ||
         m_ctx->type == ShaderType::VERTEX_SHADER)
     {
         return false;
@@ -3592,7 +3606,7 @@ bool HoistFMulInLoopPass::hoistMulInLoop(Loop* loop, bool replacePhi)
             else
             {
                 fsum = dyn_cast<BinaryOperator>(v);
-                if (!fsum || fsum->getOpcode() != Instruction::FAdd)
+                if (!fsum || !allowUnsafeMathOpt(m_ctx, *fsum) || fsum->getOpcode() != Instruction::FAdd)
                 {
                     break;
                 }
@@ -3632,7 +3646,7 @@ bool HoistFMulInLoopPass::hoistMulInLoop(Loop* loop, bool replacePhi)
                     }
                 }
 
-                if (addsrc && addsrc->getOpcode() == Instruction::FMul)
+                if (addsrc && addsrc->getOpcode() == Instruction::FMul && allowUnsafeMathOpt(m_ctx, *addsrc))
                 {
                     fmul = addsrc;
                 }

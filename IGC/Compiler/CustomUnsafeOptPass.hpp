@@ -103,22 +103,6 @@ private:
         return newOp;
     }
 
-    inline bool allowUnsafeMathOpt(llvm::BinaryOperator& op)
-    {
-        // always allow unsafe opt if instruction has the flag
-        if (llvm::isa<llvm::FPMathOperator>(op) && op.getFastMathFlags().isFast())
-        {
-            return true;
-        }
-
-        // then checking compiler options in metadata
-        if (m_ctx->getModuleMetaData()->compOpt.FastRelaxedMath)
-        {
-            return true;
-        }
-        return false;
-    }
-
     void reassociateMulAdd(llvm::Function &F);
 
     void strengthReducePow(llvm::IntrinsicInst* intrin,
