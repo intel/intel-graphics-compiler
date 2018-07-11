@@ -782,12 +782,10 @@ void BIImport::InitializeBIFlags(Module &M)
         gv->setInitializer(ConstantInt::get(Type::getInt32Ty(M.getContext()), value));
     };
 
-    bool shouldForceCR = static_cast<OpenCLProgramContext*>(pCtx)->m_Options.CorrectlyRoundedSqrt;
     bool isFlushDenormToZero =
         ((pCtx->m_floatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ||
             MD.compOpt.DenormsAreZero);
     initializeVarWithValue("__FlushDenormals", isFlushDenormToZero ? 1 : 0);
-    initializeVarWithValue("__CorrectlyRounded", MD.compOpt.CorrectlyRoundedDivSqrt || shouldForceCR ? 1 : 0);
     initializeVarWithValue("__DashGSpecified", MD.compOpt.DashGSpecified ? 1 : 0);
     initializeVarWithValue("__FastRelaxedMath", MD.compOpt.RelaxedBuiltins ? 1 : 0);
     initializeVarWithValue("__UseNative64BitSubgroupBuiltin",
