@@ -1269,6 +1269,39 @@ Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM)
 	return entryFunc;
 }
 
+// If true, the codegen will not emit instruction for this instruction.
+bool isNoOpInst(Instruction* I, CodeGenContext* Ctx)
+{
+    if (isa<BitCastInst>(I) ||
+        isa<IntToPtrInst>(I) ||
+        isa<PtrToIntInst>(I))
+    {
+        Type* dTy = I->getType();
+        Type* sTy = I->getOperand(0)->getType();
+        PointerType *dPTy = dyn_cast<PointerType>(dTy);
+        PointerType *sPTy = dyn_cast<PointerType>(sTy);
+        uint32_t dBits = dPTy ? Ctx->getRegisterPointerSizeInBits(dPTy->getAddressSpace())
+                              : dTy->getPrimitiveSizeInBits();
+        uint32_t sBits = sPTy ? Ctx->getRegisterPointerSizeInBits(sPTy->getAddressSpace())
+                              : sTy->getPrimitiveSizeInBits();
+        if (dBits == 0 || sBits == 0 || dBits != sBits) {
+            // Not primitive type or not equal in size (inttoptr, etc)
+            return false;
+        }
+
+        VectorType* dVTy = dyn_cast<VectorType>(dTy);
+        VectorType* sVTy = dyn_cast<VectorType>(sTy);
+        int d_nelts = dVTy ? (int)dVTy->getNumElements() : 1;
+        int s_nelts = sVTy ? (int)sVTy->getArrayNumElements() : 1;
+        if (d_nelts != s_nelts) {
+            // Vector relayout bitcast.
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
+
 //
 // Given a value, check if it is likely a positive number.
 //

@@ -282,6 +282,10 @@ inline bool isInstPrecede(
     return &*II == inst;
 }
 
+// If true, the codegen will not emit any code for this instruction
+// (So dst and src are aliased to each other.)
+bool isNoOpInst(llvm::Instruction* I, CodeGenContext* Ctx);
+
 // CxtI is the instruction at which V is checked whether
 // it is positive or not. 
 bool valueIsPositive(

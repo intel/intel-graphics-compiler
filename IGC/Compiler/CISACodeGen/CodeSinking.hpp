@@ -49,6 +49,7 @@ class CodeSinking : public llvm::FunctionPass {
     llvm::PostDominatorTree *PDT;
     llvm::LoopInfo *LI;
     const llvm::DataLayout *DL;  // to estimate register pressure
+    CodeGenContext* CTX;
 public:
     static char ID; // Pass identification
 
@@ -140,7 +141,6 @@ private:
     // Move LI back into loops
     bool loopSink(llvm::BasicBlock* BBWithPressure);
     bool canLoopSink(llvm::Instruction *I, llvm::Loop *L, llvm::BasicBlock *BB);
-    bool isNoOpInst(llvm::Instruction *I);
     bool LoopSinkInstructions(
         llvm::SmallVector<llvm::Instruction*, 64> sinkCandidates, llvm::Loop* L);
 };

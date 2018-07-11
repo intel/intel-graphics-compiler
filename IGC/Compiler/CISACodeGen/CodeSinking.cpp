@@ -219,14 +219,14 @@ static unsigned numInsts(const Function &F)
 
 bool CodeSinking::runOnFunction(Function &F)
 {
-    CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    CTX = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     // only limited code-sinking to several shader-type
     // vs input has the URB-reuse issue to be resolved. 
     // Also need to understand the performance benefit better.
-    if(ctx->type != ShaderType::PIXEL_SHADER &&
-        ctx->type != ShaderType::DOMAIN_SHADER &&
-        ctx->type != ShaderType::OPENCL_SHADER &&
-        ctx->type != ShaderType::COMPUTE_SHADER)
+    if(CTX->type != ShaderType::PIXEL_SHADER &&
+       CTX->type != ShaderType::DOMAIN_SHADER &&
+       CTX->type != ShaderType::OPENCL_SHADER &&
+       CTX->type != ShaderType::COMPUTE_SHADER)
     {
         return false;
     }
@@ -274,10 +274,10 @@ bool CodeSinking::runOnFunction(Function &F)
     }
     localBlkSet.clear();
     localInstSet.clear();
-    ctx->m_numGradientSinked = totalGradientMoved;
+    CTX->m_numGradientSinked = totalGradientMoved;
 
 
-    // diagnosis code: printf("%d:%d:%x\n", sinkCounter, sinkLimit, ctx->hash.getAsmHash());
+    // diagnosis code: printf("%d:%d:%x\n", sinkCounter, sinkLimit, CTX->hash.getAsmHash());
     //F.viewCFG();
     // } end of diagnosis if 
     // diagnosis code: sinkCounter++;
@@ -347,8 +347,7 @@ bool CodeSinking::ProcessBlock(BasicBlock &blk)
     if (blk.empty())
         return false;
 
-    CodeGenContext *ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    uint32_t registerPressureThreshold = ctx->getNumGRFPerThread();
+    uint32_t registerPressureThreshold = CTX->getNumGRFPerThread();
 
     uint pressure0 = 0;
     if (generalCodeSinking && registerPressureThreshold)
@@ -1103,7 +1102,7 @@ bool CodeSinking::loopSink(BasicBlock* BBWithPressure)
             continue;
 
         // Sink noOp instruction.
-        if (isNoOpInst(I)) {
+        if (isNoOpInst(I, CTX)) {
             if (SinkInstruction(I, stores, true)) {
                 changed = true;
             }
@@ -1138,7 +1137,7 @@ bool CodeSinking::loopSink(BasicBlock* BBWithPressure)
 bool CodeSinking::canLoopSink(Instruction *I, Loop* L, BasicBlock* FatBB)
 {
     // Limit sinking for the following case for now.
-    if (!isNoOpInst(I) && !isa<BinaryOperator>(I))
+    if (!isNoOpInst(I, CTX) && !isa<BinaryOperator>(I))
         return false;
 
     if (!I->hasOneUse())
@@ -1148,22 +1147,6 @@ bool CodeSinking::canLoopSink(Instruction *I, Loop* L, BasicBlock* FatBB)
         return false;
     return true;
 };
-
-bool CodeSinking::isNoOpInst(Instruction* I)
-{
-    if (isa<CastInst>(I)) {
-        VectorType* dVTy = dyn_cast<VectorType>(I->getType());
-        VectorType* sVTy = dyn_cast<VectorType>(I->getOperand(0)->getType());
-        int d_nelts = dVTy ? (int)dVTy->getNumElements() : 1;
-        int s_nelts = sVTy ? (int)sVTy->getArrayNumElements() : 1;
-        if (d_nelts != s_nelts) {
-            // Vector relayout bitcast.
-            return false;
-        }
-        return true;
-    }
-    return false;
-}
 
 bool CodeSinking::LoopSinkInstructions(
     SmallVector<Instruction*, 64> sinkCandidates,
