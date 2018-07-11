@@ -2275,7 +2275,7 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
         }
     }
 
-	if (IGC_IS_FLAG_ENABLED(EnableVariableReuse))
+	if (IGC_IS_FLAG_ENABLED(EnableVariableAlias))
 	{
 		if (m_VRA->m_ValueAliasMap.count(value))
 		{

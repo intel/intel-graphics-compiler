@@ -246,6 +246,7 @@ DECLARE_IGC_REGKEY(bool, EnableConstantPromotion,       true, "Enable global con
 DECLARE_IGC_REGKEY(DWORD, ConstantPromotionSize,        2, "Threshold in number of GRFs")
 DECLARE_IGC_REGKEY(DWORD, ConstantPromotionCmpSelSize,  4, "Array size threshold for cmp-sel transform")
 DECLARE_IGC_REGKEY(bool, EnableVariableReuse,           true, "Enable local variable reuse")
+DECLARE_IGC_REGKEY(bool, EnableVariableAlias,           true, "Enable variable aliases (part of VariableReuse Pass, but separate functionality)")
 DECLARE_IGC_REGKEY(DWORD, VariableReuseByteSize,        64, "The byte size threshold for variable reuse")
 DECLARE_IGC_REGKEY(bool, EnableGather4cpoWA,            true, "Enable WA transforming gather4cpo into gather4c")
 DECLARE_IGC_REGKEY(bool, EnableIntelFast,               false, "Enable intel fast, experimental flag.")
