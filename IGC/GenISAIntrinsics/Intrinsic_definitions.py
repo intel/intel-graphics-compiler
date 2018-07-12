@@ -220,6 +220,7 @@ Imported_Intrinsics = \
     "GenISA_slice_id": ["int",[],"NoMem"],
     "GenISA_subslice_id": ["int",[],"NoMem"],
     "GenISA_eu_id": ["int",[],"NoMem"],
+    "GenISA_getSR0" : ["int", ["int"], "None"],
     "GenISA_eu_thread_id": ["int",[],"NoMem"],
     "GenISA_eu_thread_pause": ["void",["int"],"None"],
     "GenISA_setMessagePhaseX_legacy": ["void",["int","int","int","anyint"],"None"],

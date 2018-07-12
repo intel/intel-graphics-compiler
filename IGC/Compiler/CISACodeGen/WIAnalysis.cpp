@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
+#include "GenISAIntrinsics/GenIntrinsicInst.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/CFG.h>
@@ -1066,6 +1067,16 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
     if (intrinsic_name == llvm_waveBallot || intrinsic_name == llvm_waveAll)
     {
         return WIAnalysis::UNIFORM;
+    }
+
+    if (const GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(inst))
+    {
+        switch (GII->getIntrinsicID()) {
+        default:
+            break;
+        case GenISAIntrinsic::GenISA_getSR0:
+            return WIAnalysis::UNIFORM;
+        }
     }
     
     // Iterate over all input dependencies. If all are uniform - propagate it.

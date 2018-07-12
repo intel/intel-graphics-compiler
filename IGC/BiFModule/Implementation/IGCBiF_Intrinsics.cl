@@ -134,7 +134,7 @@ half      __builtin_IB_ftoh_rtz(float)  __attribute__((const));
 #if defined(cl_khr_fp64)
 #endif // defined(cl_khr_fp64)
 
-// Debug Built-In Functions
+// Debug/Testing Built-In Functions
 uint2     __builtin_IB_read_cycle_counter(void) __attribute__((const));
 void      __builtin_IB_source_value(uint reg);
 uint      __builtin_IB_set_dbg_register(uint dgb0_0);
@@ -145,6 +145,7 @@ uint      __builtin_IB_hw_thread_id(void) __attribute__((const));
 uint      __builtin_IB_slice_id(void) __attribute__((const));
 uint      __builtin_IB_subslice_id(void) __attribute__((const));
 uint      __builtin_IB_eu_id(void) __attribute__((const));
+uint      __builtin_IB_get_sr0(uint DWNumber); // DWNumber=0|1|2|3
 uint      __builtin_IB_eu_thread_id(void) __attribute__((const));
 void      __builtin_IB_profile_snapshot(int point_type,int point_index) __attribute__((const));
 void      __builtin_IB_profile_aggregated(int point_type,int point_index) __attribute__((const));

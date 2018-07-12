@@ -7195,6 +7195,13 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             emitStateRegID(0x000000F0, 0x00000004);
         break;
     }
+    case GenISAIntrinsic::GenISA_getSR0: {
+        m_encoder->SetNoMask();
+        m_encoder->SetSrcSubReg(0, static_cast<uint16_t>(GetImmediateVal(inst->getOperand(0))));
+        m_encoder->Copy(m_destination, m_currShader->GetSR0());
+        m_encoder->Push();
+        break;
+    }
     case GenISAIntrinsic::GenISA_eu_thread_id:
         emitStateRegID(0x00000007, 0x00000000);
         break;
