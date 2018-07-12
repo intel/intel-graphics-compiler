@@ -111,6 +111,28 @@ TARGET_PLATFORM getGenxPlatform( void )
     return visaPlatform;
 }
 
+PlatformGen getPlatformGeneration(TARGET_PLATFORM platform)
+{
+    switch (platform)
+    {
+    case GENX_BDW:
+    case GENX_CHV:
+        return PlatformGen::GEN8;
+    case GENX_SKL:
+    case GENX_BXT:
+        return PlatformGen::GEN9;
+    case GENX_CNL:
+        return PlatformGen::GEN10;
+    case GENX_ICL:
+    case GENX_ICLLP:
+        return PlatformGen::GEN11;
+    default:
+        assert(false && "unsupported platform");
+        return PlatformGen::GEN_UNKNOWN;
+    }
+}
+
+
 // The encoding of gen platform defined in vISA spec:
 // 3 BDW
 // 4 CHV

@@ -2,36 +2,6 @@
     // HW Capabilities
     // this are part of IR_Builder class and include in Build_IR.h
 
-    enum class PlatformGen
-    {
-        GEN_UNKNOWN = 0,
-        GEN8 = 8,
-        GEN9 = 9,
-        GEN10 = 10,
-	    GEN11 = 11
-    };
-
-    PlatformGen getPlatformGeneration(TARGET_PLATFORM platform) const 
-    {
-      switch (platform)
-      {
-          case GENX_BDW:
-          case GENX_CHV:
-            return PlatformGen::GEN8;
-          case GENX_SKL:
-          case GENX_BXT:
-            return PlatformGen::GEN9;
-          case GENX_CNL:
-            return PlatformGen::GEN10;
-          case GENX_ICL:
-		  case GENX_ICLLP:
-		    return PlatformGen::GEN11;
-          default:
-            assert(false && "unsupported platform");
-            return PlatformGen::GEN_UNKNOWN;
-        }
-    }
-
     bool hasMixMode() const
     {
         return getOption(vISA_ForceMixMode) ||

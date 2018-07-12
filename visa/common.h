@@ -164,6 +164,18 @@ extern "C" int SetVisaPlatform(TARGET_PLATFORM vPlatform);
 // returns the HW platform for this jitter invocation
 extern "C" TARGET_PLATFORM getGenxPlatform( void );
 
+enum class PlatformGen
+{
+    GEN_UNKNOWN = 0,
+    GEN8 = 8,
+    GEN9 = 9,
+    GEN10 = 10,
+    GEN11 = 11,
+};
+
+// return the platform generation that can be used for comparison
+PlatformGen getPlatformGeneration(TARGET_PLATFORM platform);
+
 // The encoding of gen platform defined in vISA spec:
 // 3 BDW
 // 4 CHV
