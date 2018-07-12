@@ -340,24 +340,34 @@ Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList,
             if (visitedPHIs.count(inst) != 0)
             { 
                 // stop if we've seen this phi node before
-                break;
+				return baseValue;
             }
             visitedPHIs.insert(inst);
             for(unsigned int i = 0; i < inst->getNumIncomingValues(); ++i)
             {
                 // All phi paths must be trace-able and trace back to the same source
                 Value* phiVal = inst->getIncomingValue(i);
-                Value* phiSrcPtr = TracePointerSource(phiVal, true, fillList, instList, visitedPHIs);
+				std::vector<Value*> splitList;
+                Value* phiSrcPtr = TracePointerSource(phiVal, true, fillList, splitList, visitedPHIs);
                 if (phiSrcPtr == nullptr)
                 {
+					// Incoming value not trace-able, bail out.
                     return nullptr;
                 }
-                else if (srcPtr == nullptr)
-                {
-                    srcPtr = phiSrcPtr;
-                }
+				else if (isa<PHINode>(phiSrcPtr) && phiSrcPtr == baseValue)
+				{
+					// Found a loop in one of the phi paths. We can still trace as long as all the other paths match
+					continue;
+				}
+				else if (srcPtr == nullptr)
+				{
+					// Found a path to the source pointer. We only save the instructions used in this path
+					srcPtr = phiSrcPtr;
+					instList.insert(instList.end(), splitList.begin(), splitList.end());
+				}
                 else if (srcPtr != phiSrcPtr)
                 {
+					// The source pointers have diverged. Bail out.
                     return nullptr;
                 }
             }
@@ -374,8 +384,8 @@ Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList,
             // Trace both operands of the select instruction. Both have to be traced back to the same
             // source pointer, otherwise we can't determine which one to use.
             Value* selectSrc0 = TracePointerSource(inst->getOperand(1), true, fillList, instList, visitedPHIs);
-            Value* selectSrc1 = TracePointerSource(inst->getOperand(2), true, fillList, instList, visitedPHIs);
-            if (selectSrc0 == selectSrc1)
+            Value* selectSrc1 = TracePointerSource(inst->getOperand(2), true, false, instList, visitedPHIs);
+            if (selectSrc0 && selectSrc1 && selectSrc0 == selectSrc1)
             {
                 srcPtr = selectSrc0;
                 break;
