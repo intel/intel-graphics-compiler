@@ -242,14 +242,7 @@ Value* CreateLoadRawIntrinsic(LoadInst *inst, Instruction* bufPtr, Value *offset
 		builder.getInt32(alignment)
 	};
 	Value* ld = builder.CreateCall(func, attr);
-	if (!inst->getType()->isVectorTy())
-	{
-		if (!inst->getType()->isFloatTy())
-		{
-			Value *bitcast = dyn_cast<Instruction>(builder.CreateBitCast(ld, inst->getType()));
-			ld = bitcast;
-		}
-	}
+	assert(ld->getType() == inst->getType());
 	return ld;
 }
 
@@ -270,15 +263,7 @@ Value* CreateStoreRawIntrinsic(StoreInst *inst, Instruction* bufPtr, Value* offs
 	else
 	{
 		llvm::Type* dataType = storeVal->getType();
-
 		assert(dataType->getPrimitiveSizeInBits() == 16 || dataType->getPrimitiveSizeInBits() == 32);
-
-		if (!dataType->isFloatingPointTy())
-		{
-			storeVal = builder.CreateBitCast(
-				storeVal,
-				dataType->getPrimitiveSizeInBits() == 32 ? builder.getFloatTy() : builder.getHalfTy());
-		}
 
 		llvm::Type* types[2] = {
 			bufPtr->getType(),

@@ -684,7 +684,8 @@ void PromoteResourceToDirectAS::PromoteStatelessToBindlessBuffers(Instruction* i
 
 	// Get the base bindless pointer
 	unsigned bindlessAS = IGC::EncodeAS4GFXResource(*UndefValue::get(builder.getInt32Ty()), IGC::BINDLESS, 0);
-	Value* basePointer = builder.CreateAddrSpaceCast(srcPtr, PointerType::get(srcPtr->getType()->getPointerElementType(), bindlessAS));
+	PointerType* basePointerType = PointerType::get(resourcePtr->getType()->getPointerElementType(), bindlessAS);
+	Value* basePointer = builder.CreatePointerCast(srcPtr, basePointerType);
 
 	if (LoadInst* load = dyn_cast<LoadInst>(inst))
 	{
