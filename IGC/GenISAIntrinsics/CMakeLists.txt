@@ -49,7 +49,7 @@ set(_intrinsicScript "${IGC_SOURCE_DIR}/GenISAIntrinsics/Intrinsics.py")
 set(_fileOutput "${IGC_OPTION__OUTPUT_DIR}/IntrinsicGenISA.gen")
 
     add_custom_command(OUTPUT "${_fileOutput}"
-        COMMAND "${IGC_PYTHON}"
+        COMMAND "${PYTHON_EXECUTABLE}"
         ARGS ${_intrinsicScript} "Intrinsic_definitions.py" ${_fileOutput}
         DEPENDS "${_intrinsicScript}"
         COMMENT "Running Intrinsics.py (updated generated file only if changes were detected)."

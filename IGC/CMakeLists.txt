@@ -2020,13 +2020,13 @@ set(_autogenTarget "${CODEGEN_DIR}/MDNodeFunctions.gen")
 
 
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-  set(IGC_PYTHON "${BS_DIR_MIGRATION_BINARIES}/build-tools/python2-win32/python.exe")
+  set(PYTHON_EXECUTABLE "${BS_DIR_MIGRATION_BINARIES}/build-tools/python2-win32/python.exe")
 else()
-  find_program(IGC_PYTHON NAMES "python2" "python")
+  find_program(PYTHON_EXECUTABLE NAMES "python2" "python")
 endif()
 
 add_custom_command(OUTPUT "${_autogenTarget}"
-                       COMMAND "${IGC_PYTHON}"
+                       COMMAND "${PYTHON_EXECUTABLE}"
                        ARGS ${_autogenScript} ${_autogenSource} ${_autogenTarget}
                        MAIN_DEPENDENCY ${_autogenSource}
                        DEPENDS ${_autogenScript} ${_autogenSource}
