@@ -318,8 +318,13 @@ void LiveVars::HandleVirtRegUse(Value *VL, BasicBlock *MBB,
   //   scan all the kills in order to replace the right one.
   if (ScanAllKills) {
       for (unsigned i = 0, e = VRInfo.Kills.size(); i != e; ++i) {
-          if (VRInfo.Kills[i]->getParent() == MBB){
-              VRInfo.Kills[i] = MI;
+          if (VRInfo.Kills[i]->getParent() == MBB) {
+              Instruction* killInst = VRInfo.Kills[i];
+              assert(DistanceMap.count(killInst) && DistanceMap.count(MI) &&
+                     "DistanceMap not set up yet.");
+              if (DistanceMap[killInst] < DistanceMap[MI]) {
+                  VRInfo.Kills[i] = MI;
+              }
               return;
           }
       }
@@ -413,6 +418,20 @@ void LiveVars::HandleVirtRegDef(Instruction* MI)
         VRInfo.Kills.push_back(MI);
 }
 
+void LiveVars::initDistance(Function& F)
+{
+    DistanceMap.clear();
+
+    for (auto &BB : F)
+    {
+        unsigned Dist = 0;
+        for (auto &II : BB) {
+            Instruction *MI = &II;
+            DistanceMap.insert(std::make_pair(MI, Dist++));
+        }
+    }
+}
+
 void LiveVars::ComputeLiveness(Function* mf, WIAnalysis* wia)
 {
   releaseMemory();
@@ -420,6 +439,10 @@ void LiveVars::ComputeLiveness(Function* mf, WIAnalysis* wia)
   WIA = wia;
 
   preAllocMemory(*MF);
+
+  // First, set up DistanceMap
+  // save distance map
+  initDistance(*MF);
 
   analyzePHINodes(*mf);
   BasicBlock *Entry = &(*MF->begin());
@@ -446,14 +469,6 @@ void LiveVars::ComputeLiveness(Function* mf, WIAnalysis* wia)
           cast<Instruction>(DefV)->getParent() : NULL;
         MarkVirtRegAliveInBlock(getLVInfo(DefV), DefBlk, MBB);
       }
-    }
-    
-    // save distance map
-    unsigned Dist = 0;
-    for (BasicBlock::iterator I = MBB->begin(), E = MBB->end();
-        I != E; ++I) {
-      Instruction *MI = &(*I);
-      DistanceMap.insert(std::make_pair(MI, Dist++));
     }
   }
 }
@@ -582,6 +597,8 @@ void LiveVars::Calculate(Function* mf, WIAnalysis* wia)
 
     preAllocMemory(*MF);
 
+    initDistance(*MF);
+
     analyzePHINodes(*mf);
 
     BasicBlock *Entry = &(*MF->begin());
@@ -594,12 +611,10 @@ void LiveVars::Calculate(Function* mf, WIAnalysis* wia)
         BasicBlock *MBB = *DFI;
 
         // Loop over all of the instructions, processing them.
-        unsigned Dist = 0;
         for (BasicBlock::iterator I = MBB->begin(), E = MBB->end();
              I != E; ++I)
         {
             Instruction *MI = &(*I);
-            DistanceMap.insert(std::make_pair(MI, Dist++));
 
             // Unless it is a PHI node.  In this case, ONLY process the DEF, not any
             // of the uses.  They will be handled in other basic blocks.

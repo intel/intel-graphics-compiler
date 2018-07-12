@@ -176,6 +176,9 @@ private:   // Intermediate data structures
   /// is coming from.
   void analyzePHINodes(const llvm::Function &MF);
 
+  /// Initialize DistanceMap
+  void initDistance(llvm::Function& F);
+
 public:
 
   /// Can be called to release memory when the object won't be used anymore.
