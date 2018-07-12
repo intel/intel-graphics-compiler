@@ -203,8 +203,9 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
 
     assert(
         (LI || SI || 
-            (II && II->getIntrinsicID() ==
-                GenISAIntrinsic::GenISA_ldrawvector_indexed))
+            (II &&
+             (II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
+              II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed)))
          && "Inst should be either load or store");
 
     Value *Ptr;
@@ -232,9 +233,13 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     {
         Ty = SI->getOperand(0)->getType();
     }
-    else
+    else if(II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed)
     {
         Ty = II->getType();
+    }
+    else
+    {
+        Ty = II->getArgOperand(2)->getType();
     }
 
     VectorType *VTy = dyn_cast<VectorType>(Ty);
@@ -463,7 +468,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
                                           SI->isVolatile());
         SI->eraseFromParent();
     }
-    else
+    else if(II->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed)
     {
         Type* types[] =
         {
@@ -479,6 +484,22 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
         V = Builder.CreateBitCast(V, Ty);
 
         II->replaceAllUsesWith(V);
+        II->eraseFromParent();
+    }
+    else
+    {
+        Type* types[] =
+        {
+            newPtrTy,
+            newVTy
+        };
+
+        Function* F = GenISAIntrinsic::getDeclaration(
+            II->getParent()->getParent()->getParent(),
+            GenISAIntrinsic::GenISA_storerawvector_indexed,
+            types);
+        Value* V = Builder.CreateBitCast(II->getOperand(2), newVTy);
+        Builder.CreateCall3(F, newPtr, II->getOperand(1), V);
         II->eraseFromParent();
     }
     return true;
@@ -548,8 +569,8 @@ bool VectorProcess::runOnFunction(Function& F)
         else
         if (GenIntrinsicInst* intrin = dyn_cast<GenIntrinsicInst>(inst))
         {
-            if (intrin->getIntrinsicID() ==
-                GenISAIntrinsic::GenISA_ldrawvector_indexed)
+            if (intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_ldrawvector_indexed ||
+                intrin->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed)
             {
                 m_WorkList.push_back(inst);
             }
