@@ -4226,9 +4226,15 @@ void Optimizer::optimizeLogicOperation()
             G4_opcode op = inst->opcode();
             dst = inst->getDst();
             bool nullDst = inst->hasNULLDst();
+            G4_Declare *dcl = nullptr;
+            if (dst)
+            {
+                dcl = dst->getTopDcl();
+            }
+
             if ((!Opcode_can_use_cond_mod(op) && !Opcode_define_cond_mod(op) &&
                  !inst->isPseudoLogic()) ||
-                !dst || nullDst)
+                !dst || nullDst || (dcl && dcl->isOutput()))
             {
               continue;
             }
