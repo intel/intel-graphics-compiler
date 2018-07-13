@@ -432,7 +432,8 @@ namespace IGC
                 // Make sure we can write in the dump folder as the app may be sandboxed
                 if(needMkdir)
                 {
-                    std::string testFilename = std::string(dumpPath) + "\\testfile";
+                    int tmp_id = _getpid();
+                    std::string testFilename = std::string(dumpPath) + "testfile" + std::to_string(tmp_id);
                     HANDLE testFile =
                         CreateFileA(testFilename.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_FLAG_DELETE_ON_CLOSE, NULL);
                     if(testFile == INVALID_HANDLE_VALUE)
