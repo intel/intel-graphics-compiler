@@ -1287,7 +1287,7 @@ bool isNoOpInst(Instruction* I, CodeGenContext* Ctx)
         VectorType* dVTy = dyn_cast<VectorType>(dTy);
         VectorType* sVTy = dyn_cast<VectorType>(sTy);
         int d_nelts = dVTy ? (int)dVTy->getNumElements() : 1;
-        int s_nelts = sVTy ? (int)sVTy->getArrayNumElements() : 1;
+        int s_nelts = sVTy ? (int)sVTy->getNumElements() : 1;
         if (d_nelts != s_nelts) {
             // Vector relayout bitcast.
             return false;
