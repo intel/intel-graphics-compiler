@@ -70,6 +70,7 @@ DECLARE_IGC_REGKEY(bool, DisablePayloadCoalescing_Sample, false, "Setting this t
 DECLARE_IGC_REGKEY(bool, DisablePayloadCoalescing_URB,  false, "Setting this to 1/true adds a compiler switch to disable payload coalescing optimization for URB writes only")
 DECLARE_IGC_REGKEY(bool, DisableUniformAnalysis,        false, "Setting this to 1/true adds a compiler switch to disable uniform_analysis")
 DECLARE_IGC_REGKEY(DWORD, DisablePushConstant,           0, "Bit mask to disable push constant per shader stages. bit0 = All, Bit 1 = VS, Bit 2 = HS, Bit 3 = DS, Bit 4 = GS, Bit 5 = PS")
+DECLARE_IGC_REGKEY(DWORD, DisableAttributePush,          0, "Bit mask to disable push Attribute per shader stages. bit0 = All, Bit 1 = VS, Bit 2 = HS, Bit 3 = DS, Bit 4 = GS")
 DECLARE_IGC_REGKEY(bool, DisableSimplePushWithDynamicUniformBuffers, false,"Disable Simple Push Constants Optimization for dynamic uniform buffers.")
 DECLARE_IGC_REGKEY(bool, DisableStatelessPushConstant,  false, "Setting this to 1/true adds a compiler switch to disable push_consts for stateless constant buffer")
 DECLARE_IGC_REGKEY(int, forcePushConstantMode,  0, "set the push constant mode, 0 is default, 1 is simple push, 2 is gather constant")

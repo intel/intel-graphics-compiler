@@ -561,6 +561,13 @@ bool PushAnalysis::CanPushConstants()
 
 unsigned int PushAnalysis::GetMaxNumberOfPushedInputs()
 {
+
+    if (IGC_GET_FLAG_VALUE(DisableAttributePush) & 0x1 ||
+        IGC_GET_FLAG_VALUE(DisableAttributePush) & static_cast<unsigned int>(m_context->type))
+    {
+        return 0;
+    }
+
     switch(m_context->type)
     {
     case ShaderType::VERTEX_SHADER:
