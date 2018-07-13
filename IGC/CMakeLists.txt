@@ -3390,13 +3390,13 @@ endif()
 
 
 
+if(IGC_BUILD__SPIRV_ENABLED)
+  add_subdirectory(AdaptorOCL/SPIRV/SPIRV-Tools)
+endif()
+
 if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
   add_subdirectory(VulkanFrontend)
   igc_sg_define(IGC__VulkanFrontend)
-endif()
-
-if(IGC_BUILD__SPIRV_ENABLED)
-  add_subdirectory(AdaptorOCL/SPIRV/SPIRV-Tools)
 endif()
 
 add_subdirectory(Compiler)
