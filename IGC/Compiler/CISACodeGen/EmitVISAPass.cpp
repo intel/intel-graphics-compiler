@@ -12268,7 +12268,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
             eOffset = ReAlignUniformVariable(eOffset, EALIGN_GRF);
             if (needTemp)
             {
-                loadDest = m_currShader->GetNewVariable(m_destination->GetNumberElement(),
+                loadDest = m_currShader->GetNewVariable(int_cast<uint16_t>(VTy->getNumElements()),
                                                         m_destination->GetType(),
                                                         EALIGN_GRF,
                                                         true);
