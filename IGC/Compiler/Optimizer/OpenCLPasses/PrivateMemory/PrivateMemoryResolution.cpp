@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/GenCodeGenModule.h"
+#include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/DataLayout.h"
@@ -40,6 +41,68 @@ using namespace llvm;
 using namespace IGC;
 
 namespace IGC {
+
+class ModuleAllocaInfo;
+/// @brief  PrivateMemoryResolution pass used for resolving private memory alloca instructions.
+///         This is done by resolving the alloca instructions.
+///         This pass depends on the PrivateMemoryUsageAnalysis and
+///         AddImplicitArgs passes running before it.
+
+class PrivateMemoryResolution : public llvm::ModulePass
+{
+public:
+    // Pass identification, replacement for typeid
+    static char ID;
+
+    /// @brief  Constructor
+    PrivateMemoryResolution();
+
+    /// @brief  Destructor
+    ~PrivateMemoryResolution() {}
+
+    /// @brief  Provides name of pass
+    virtual llvm::StringRef getPassName() const override
+    {
+        return "PrivateMemoryResolution";
+    }
+
+    /// @brief  Adds the analysis required by this pass
+    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
+
+    /// @brief  Finds all alloca instructions, replaces them with by an llvm sequences.
+    ///         and creates for each function a metadata that represents the total
+    ///         amount of private memory needed by each work item.
+    /// @param  M The Module to process.
+    bool runOnModule(llvm::Module &M) override;
+
+    /// @brief  Resolve collected alloca instructions.
+    /// @return true if there were resolved alloca, false otherwise.
+    bool resolveAllocaInstuctions(bool stackCall);
+
+    /// Initialize setup like UseScratchSpacePrivateMemory.
+    bool safeToUseScratchSpace(llvm::Module &M) const;
+
+private:
+    struct arrayIndex
+    {
+        llvm::GetElementPtrInst* gep;
+        unsigned int operandIndex;
+    };
+    
+    /// @brief  The module level alloca information
+    ModuleAllocaInfo *m_ModAllocaInfo;
+
+    /// @brief - Metadata API 
+    IGCMD::MetaDataUtils *m_pMdUtils;
+
+    /// @brief - Current processed function
+    llvm::Function *m_currFunction;
+};
+
+ModulePass* CreatePrivateMemoryResolution()
+{
+    return new PrivateMemoryResolution();
+}
 
 /// \brief Analyze alloca instructions and determine the size and offset of
 /// each alloca and the total amount of private memory needed by each kernel.
@@ -534,6 +597,68 @@ static void sinkAllocas(SmallVectorImpl<AllocaInst *> &Allocas) {
   }
 }
 
+class TransposeHelperPrivateMem : public TransposeHelper
+{
+public:
+    Value * simdSize;
+    Value*  base;
+    TransposeHelperPrivateMem(Value* b, Value* size) { simdSize = size; base = b; }
+    void handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx)
+    {
+        assert(pLoad->isSimple());
+        IRBuilder<> IRB(pLoad);
+        Value* eltSize = IRB.getInt32(pLoad->getType()->getScalarSizeInBits() / 8);
+        Value* stride = IRB.CreateMul(simdSize, eltSize);
+        Value* address = IRB.CreateMul(pScalarizedIdx, stride);
+        address = IRB.CreateAdd(address, base);
+        Type* scalarptrTy = pLoad->getPointerOperand()->getType()->getScalarType();
+        if(pLoad->getType()->isVectorTy())
+        {
+            Value* vec = UndefValue::get(pLoad->getType());
+            for(unsigned i = 0, e = pLoad->getType()->getVectorNumElements(); i < e; ++i)
+            {
+                Value* ptr = IRB.CreateIntToPtr(address, scalarptrTy);
+                Value* v = IRB.CreateLoad(ptr);
+                vec = IRB.CreateInsertElement(vec, v, IRB.getInt32(i));
+                address = IRB.CreateAdd(address, eltSize);
+            }
+            pLoad->replaceAllUsesWith(vec);
+            pLoad->eraseFromParent();
+        }
+        else
+        {
+            Value* ptr = IRB.CreateIntToPtr(address, scalarptrTy);
+            pLoad->setOperand(0, ptr);
+        }
+    }
+    void handleStoreInst(StoreInst *pStore, Value *pScalarizedIdx)
+    {
+        assert(pStore->isSimple());
+        IRBuilder<> IRB(pStore);
+        Value* eltSize = IRB.getInt32(pStore->getValueOperand()->getType()->getScalarSizeInBits() / 8);
+        Value* stride = IRB.CreateMul(simdSize, eltSize);
+        Value* address = IRB.CreateMul(pScalarizedIdx, stride);
+        address = IRB.CreateAdd(address, base);
+        Type* scalaPtrrTy = pStore->getPointerOperand()->getType()->getScalarType();
+        if(pStore->getValueOperand()->getType()->isVectorTy())
+        {
+            Value* vec = pStore->getValueOperand();
+            for(unsigned i = 0, e = pStore->getType()->getVectorNumElements(); i < e; ++i)
+            {
+                Value* ptr = IRB.CreateIntToPtr(address, scalaPtrrTy);
+                IRB.CreateStore(IRB.CreateExtractElement(vec, IRB.getInt32(i)), ptr);
+                address = IRB.CreateAdd(address, eltSize);
+            }
+            pStore->eraseFromParent();
+        }
+        else
+        {
+            Value* ptr = IRB.CreateIntToPtr(address, scalaPtrrTy);
+            pStore->setOperand(1, ptr);
+        }
+    }
+};
+
 bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 {
     // It is possible that there is no alloca instruction in the caller but there
@@ -666,60 +791,11 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
             // Get buffer information from the analysis
             unsigned int scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
             
-            // Transpose the memory layout so it is more effecient for cache access. 
-            // Cases to be handled here need to skip memopt to avoid merging load/store.
-            bool TransposeMemLayout = false;
+            // If we can use SOA layout transpose the memory
             Type* pTypeOfAccessedObject = nullptr;
+            bool TransposeMemLayout = CanUseSOALayout(pAI, pTypeOfAccessedObject) &&                
+                Ctx.m_DriverInfo.SupportTransposeLayoutForPrivateMemory(); // remove this check in next step
 
-            if (Ctx.m_DriverInfo.SupportTransposeLayoutForPrivateMemory())
-            {
-                TransposeMemLayout = true;
-
-                for (auto pGEP = pAI->user_begin(); 
-                    (pGEP != pAI->user_end() && TransposeMemLayout); 
-                    ++pGEP)
-                {
-                    GetElementPtrInst *GEPinst = dyn_cast<GetElementPtrInst>(*pGEP);
-                    if (GEPinst)
-                    {
-                        if (!llvm::dyn_cast<llvm::StoreInst>(*(GEPinst->user_begin())) &&
-                            !llvm::dyn_cast<llvm::LoadInst>(*(GEPinst->user_begin())))
-                        {
-                            TransposeMemLayout = false;
-                        }
-
-                        if (pTypeOfAccessedObject == nullptr)
-                        {
-                            // This is the first GEP - remember the type of accessed object.
-                            pTypeOfAccessedObject = GEPinst->getType()->getPointerElementType();
-                        }
-                        else if (pTypeOfAccessedObject != GEPinst->getType()->getPointerElementType())
-                        {
-                            // Memory layout transposition is only possible when
-                            // all accessed objects are of the same type.
-                            TransposeMemLayout = false;
-                        }
-                    }
-                    else
-                    {
-                        TransposeMemLayout = false;
-                    }
-                }
-
-                if (TransposeMemLayout)
-                {
-                    llvm::Type* pBaseType = pAI->getType()->getPointerElementType();
-                    while (pBaseType->isArrayTy())
-                    {
-                        pBaseType = pBaseType->getArrayElementType();
-                    }
-                    if (pBaseType->isStructTy())
-                    {
-                        // This is a structure, do not transpose!
-                        TransposeMemLayout = false;
-                    }
-                }
-            }
             unsigned int bufferSize = 0;
             if (TransposeMemLayout)
             {
@@ -772,30 +848,9 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 
             if (TransposeMemLayout)
             {
-                for (auto pGEP = pAI->user_begin(); pGEP != pAI->user_end(); pGEP++)
-                {
-                    GetElementPtrInst *GEPinst = dyn_cast<GetElementPtrInst>(*pGEP);
-                    if (GEPinst)
-                    {
-                        if (llvm::dyn_cast<llvm::StoreInst>(*(GEPinst->user_begin())) ||
-                            llvm::dyn_cast<llvm::LoadInst>(*(GEPinst->user_begin())))
-                        {   
-                            builder.SetInsertPoint(GEPinst);
-                            for (uint i = 1; i < GEPinst->getNumOperands(); ++i)
-                            {
-                                llvm::Value* gepOp = GEPinst->getOperand(i);
-                                llvm::Value* width = builder.CreateZExtOrTrunc(simdSize, gepOp->getType());
-                                
-                                Value* newIndex = builder.CreateMul(width, gepOp, "");
-                                GEPinst->setOperand(i, newIndex);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        assert(0);
-                    }
-                }
+                TransposeHelperPrivateMem helper(threadOffset, simdSize);
+                Value* Idx = builder.getInt32(0);
+                helper.HandleAllocaSources(pAI, Idx);
             }
 
             // Replace all uses of original alloca with the bitcast
