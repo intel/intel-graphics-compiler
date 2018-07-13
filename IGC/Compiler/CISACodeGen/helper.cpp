@@ -1264,13 +1264,18 @@ Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM)
 	return entryFunc;
 }
 
-// If true, the codegen will not emit instruction for this instruction.
+// If true, the codegen will likely not emit instruction for this instruction.
 bool isNoOpInst(Instruction* I, CodeGenContext* Ctx)
 {
     if (isa<BitCastInst>(I) ||
         isa<IntToPtrInst>(I) ||
         isa<PtrToIntInst>(I))
     {
+        // Don't bother with constant operands
+        if (isa<Constant>(I->getOperand(0))) {
+            return false;
+        }
+
         Type* dTy = I->getType();
         Type* sTy = I->getOperand(0)->getType();
         PointerType *dPTy = dyn_cast<PointerType>(dTy);
