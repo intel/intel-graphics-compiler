@@ -1575,7 +1575,10 @@ void PreCompiledFuncImport::checkAndSetEnableSubroutine()
 			// Handle intrinsic calls
 			if (IInst && IInst->getIntrinsicID() == Intrinsic::sqrt)
 			{
-				m_enableSubroutineCallForEmulation = true;
+                if (I->getType()->isDoubleTy())
+                {
+                    m_enableSubroutineCallForEmulation = true;
+                }
 			}
             else if (IInst && IInst->getIntrinsicID() == Intrinsic::fma)
             {
