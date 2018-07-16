@@ -2211,32 +2211,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live, G4_Declare
             {
                 continue;
             }
-            if (src->isAddrExp() && src->asAddrExp()->isRegAllocPartaker())
-            {
-                // NOTE:
-                // We could discount uses through the address-of operator because these will
-                // be put in the live-out sets by liveness analysis anyway but its important
-                // to treat address taken as a def in order to add intereference edges between
-                // overlapping address-taken live ranges(because def's through register-indirect
-                // are otherwise ignored).
-                G4_RegVar* referencedReg = ((G4_AddrExp*)src)->getRegVar();
-                if (referencedReg->isSpilled() == false)
-                {
-                    // In case addr-taken vars are spilled, their
-                    // reference in addr_add still remains although
-                    // they will not be present in gen/live-in/live-out
-                    // sets. We mark intf for them only if they
-                    // are not spilled.
-                    unsigned id = referencedReg->getId();
-                    buildInterferenceWithLive(live, id);
-                    updateLiveness(live, id, true);
-                    if (lrs[id]->getIsSplittedDcl())
-                    {
-                        buildInterferenceWithSubDcl(id, (G4_Operand *)src, live, true, true);
-                    }
-                }
-            }
-            else if (src->isSrcRegRegion())
+            if (src->isSrcRegRegion())
             {
                 G4_SrcRegRegion *srcRegion = src->asSrcRegRegion();
                 if (srcRegion->getBase()->isRegAllocPartaker())
@@ -4891,13 +4866,6 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
                     auto id = src->asSrcRegRegion()->getBase()->asRegVar()->getId();
                     updateLiveness(live, id, true);
                 }
-            }
-            else if (src && src->isAddrExp() && src->asAddrExp()->isRegAllocPartaker())
-            {
-                if (live.isSet(src->asAddrExp()->getRegVar()->getId()) == false)
-                    update = true;
-
-                live.set(src->asAddrExp()->getRegVar()->getId(), true);
             }
         }
 
