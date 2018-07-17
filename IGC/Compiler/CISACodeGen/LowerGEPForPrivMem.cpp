@@ -214,8 +214,8 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
 
         allowedAllocaSizeInBytes = allowedAllocaSizeInBytes / d;
     }
-    std::vector<Type*> accessType;
-    if(!CanUseSOALayout(pAlloca, accessType))
+    Type* baseType = nullptr;
+    if(!CanUseSOALayout(pAlloca, baseType))
     {
         return false;
     }
@@ -321,45 +321,35 @@ static Type* GetBaseType(Type* pType)
 
         pType = pType->getStructElementType(0);
     }
-
-    Type* pBaseType = nullptr;
-    if(pType->isVectorTy())
-    {
-        pBaseType = pType->getContainedType(0);
-    }
-    else
-    {
-        pBaseType = pType;
-    }
-    return pBaseType;
+    return pType;
 }
 
-static bool CheckUsesForSOAAlyout(Instruction* I, std::vector<Type*>& accessType)
+static bool CheckUsesForSOAAlyout(Instruction* I, bool& vectorSOA)
 {
     for(Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
     {
         if(GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(*use_it))
         {
-            if(CheckUsesForSOAAlyout(gep, accessType))
+            if(CheckUsesForSOAAlyout(gep, vectorSOA))
                 continue;
         }
         if(llvm::LoadInst* pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
         {
+            vectorSOA &= pLoad->getType()->isVectorTy();
             if(!pLoad->isSimple())
                 return false;
-            accessType.push_back(pLoad->getPointerOperand()->getType()->getPointerElementType());
         }
         else if(llvm::StoreInst* pStore = llvm::dyn_cast<llvm::StoreInst>(*use_it))
         {
             if(!pStore->isSimple())
                 return false;
             llvm::Value* pValueOp = pStore->getValueOperand();
+            vectorSOA &= pStore->getValueOperand()->getType()->isVectorTy();
             if(pValueOp == I)
             {
                 // GEP instruction is the stored value of the StoreInst (not supported case)
                 return false;
             }
-            accessType.push_back(pStore->getPointerOperand()->getType()->getPointerElementType());
         }
         else if(llvm::BitCastInst *pBitCast = llvm::dyn_cast<llvm::BitCastInst>(*use_it))
         {
@@ -370,10 +360,11 @@ static bool CheckUsesForSOAAlyout(Instruction* I, std::vector<Type*>& accessType
                 continue;
             }
             else if(baseT != nullptr &&
-                baseT->getPrimitiveSizeInBits() != 0 &&
-                baseT->getPrimitiveSizeInBits() == sourceType->getPrimitiveSizeInBits())
+                baseT->getScalarSizeInBits() != 0 &&
+                baseT->getScalarSizeInBits() == sourceType->getScalarSizeInBits())
             {
-                if(CheckUsesForSOAAlyout(pBitCast, accessType))
+                vectorSOA &= baseT->getPrimitiveSizeInBits() == sourceType->getPrimitiveSizeInBits();
+                if(CheckUsesForSOAAlyout(pBitCast, vectorSOA))
                     continue;
             }
             else if(IsBitCastForLifetimeMark(pBitCast))
@@ -403,7 +394,7 @@ static bool CheckUsesForSOAAlyout(Instruction* I, std::vector<Type*>& accessType
 }
 
 
-bool IGC::CanUseSOALayout(AllocaInst* I, std::vector<Type*>& accessType)
+bool IGC::CanUseSOALayout(AllocaInst* I, Type*& base)
 {
     // Don't even look at non-array allocas.
     // (extractAllocaDim can not handle them anyway, causing a crash)
@@ -415,13 +406,19 @@ bool IGC::CanUseSOALayout(AllocaInst* I, std::vector<Type*>& accessType)
     if((!pType->isArrayTy() && !pType->isVectorTy()) || I->isArrayAllocation())
         return false;
 
-    Type* base = GetBaseType(pType);
+    base = GetBaseType(pType);
     if(base == nullptr)
         return false;
     // only handle case with a simple base type
-    if(!(base->isFloatingPointTy() || base->isIntegerTy()))
+    if(!(base->getScalarType()->isFloatingPointTy() || base->getScalarType()->isIntegerTy()))
         return false;
-    return CheckUsesForSOAAlyout(I, accessType);
+    bool vectorSOA = true;
+    bool useSOA = CheckUsesForSOAAlyout(I, vectorSOA);
+    if(!vectorSOA)
+    {
+        base = base->getScalarType();
+    }
+    return useSOA;
 }
 
 void LowerGEPForPrivMem::visitAllocaInst(AllocaInst &I)
@@ -488,7 +485,7 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
 {
     // Extract the Alloca size and the base Type
     Type* pType = pAlloca->getType()->getPointerElementType();
-    Type* pBaseType = GetBaseType(pType);
+    Type* pBaseType = GetBaseType(pType)->getScalarType();
 	assert(pBaseType);
     llvm::AllocaInst* pVecAlloca = createVectorForAlloca(pAlloca, pBaseType);
     if (!pVecAlloca)

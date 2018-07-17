@@ -46,7 +46,7 @@ llvm::FunctionPass *createPromotePrivateArrayToReg();
 /// Array can be stored in SOA form
 /// Helper allowing function to detect if an array can stored in SOA form
 /// It is true
-bool CanUseSOALayout(llvm::AllocaInst* inst, std::vector<llvm::Type*>& accessType);
+bool CanUseSOALayout(llvm::AllocaInst* inst, llvm::Type*& baseType);
 
 class TransposeHelper
 {

@@ -603,12 +603,12 @@ public:
     Value * simdSize;
     Value*  base;
     unsigned int elementSize;
-    bool scalarizeIO;
-    TransposeHelperPrivateMem(Value* b, Value* size, unsigned int eltSize, bool scalarize, bool vectorType) : TransposeHelper(vectorType) {
+    bool vectorIO;
+    TransposeHelperPrivateMem(Value* b, Value* size, unsigned int eltSize, bool vectorType) : TransposeHelper(vectorType) {
         simdSize = size; 
         base = b; 
         elementSize = eltSize;
-        scalarizeIO = scalarize;
+        vectorIO = vectorType;
     }
     void handleLoadInst(LoadInst *pLoad, Value *pScalarizedIdx)
     {
@@ -623,7 +623,7 @@ public:
         Value* address = IRB.CreateMul(pScalarizedIdx, stride);
         address = IRB.CreateAdd(base, address);
         IRB.SetInsertPoint(pLoad);
-        if(scalarizeIO && pLoad->getType()->isVectorTy())
+        if(!vectorIO && pLoad->getType()->isVectorTy())
         {
             Type* scalarType = pLoad->getPointerOperand()->getType()->getPointerElementType()->getScalarType();
             Type* scalarptrTy = PointerType::get(scalarType, pLoad->getPointerAddressSpace());
@@ -634,7 +634,7 @@ public:
                 Value* ptr = IRB.CreateIntToPtr(address, scalarptrTy);
                 Value* v = IRB.CreateLoad(ptr);
                 vec = IRB.CreateInsertElement(vec, v, IRB.getInt32(i));
-                address = IRB.CreateAdd(address, eltSize);
+                address = IRB.CreateAdd(address, stride);
             }
             pLoad->replaceAllUsesWith(vec);
             pLoad->eraseFromParent();
@@ -658,7 +658,7 @@ public:
         Value* address = IRB.CreateMul(pScalarizedIdx, stride);
         address = IRB.CreateAdd(base, address);
         IRB.SetInsertPoint(pStore);
-        if(scalarizeIO && pStore->getValueOperand()->getType()->isVectorTy())
+        if(!vectorIO && pStore->getValueOperand()->getType()->isVectorTy())
         {
             Type* scalarType = pStore->getPointerOperand()->getType()->getPointerElementType()->getScalarType();
             Type* scalarptrTy = PointerType::get(scalarType, pStore->getPointerAddressSpace());
@@ -668,7 +668,7 @@ public:
             {
                 Value* ptr = IRB.CreateIntToPtr(address, scalarptrTy);
                 IRB.CreateStore(IRB.CreateExtractElement(vec, IRB.getInt32(i)), ptr);
-                address = IRB.CreateAdd(address, eltSize);
+                address = IRB.CreateAdd(address, stride);
             }
             pStore->eraseFromParent();
         }
@@ -813,30 +813,13 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
             unsigned int scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
             
             // If we can use SOA layout transpose the memory
-            std::vector<Type*> accessType;
-            bool TransposeMemLayout = CanUseSOALayout(pAI, accessType) &&
-                Ctx.m_DriverInfo.SupportTransposeLayoutForPrivateMemory(); // remove this check in next step
             Type* pTypeOfAccessedObject = nullptr;
+            bool TransposeMemLayout = CanUseSOALayout(pAI, pTypeOfAccessedObject) &&
+                Ctx.m_DriverInfo.SupportTransposeLayoutForPrivateMemory(); // remove this check in next step
 
             unsigned int bufferSize = 0;
-            bool scalarize = false;
             if (TransposeMemLayout)
-            {
-                assert(accessType.size() > 0);
-                pTypeOfAccessedObject = accessType[0];
-                for(auto it : accessType)
-                {
-                    if(it->getPrimitiveSizeInBits() != pTypeOfAccessedObject->getPrimitiveSizeInBits())
-                    {
-                        // in case we have different type size fall back to scalar load/store
-                        // can be improved to a common denominator
-                        pTypeOfAccessedObject = pTypeOfAccessedObject->getScalarType();
-                        scalarize = true;
-                        break;
-                    }
-                }
-
-             
+            {           
                 auto DL = &m_currFunction->getParent()->getDataLayout();
                 bufferSize = (unsigned)DL->getTypeAllocSize(pTypeOfAccessedObject);
 
@@ -881,7 +864,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 
             if (TransposeMemLayout)
             {
-                TransposeHelperPrivateMem helper(threadOffset, simdSize, bufferSize, scalarize, pTypeOfAccessedObject->isVectorTy());
+                TransposeHelperPrivateMem helper(threadOffset, simdSize, bufferSize, pTypeOfAccessedObject->isVectorTy());
                 Value* Idx = builder.getInt32(0);
                 helper.HandleAllocaSources(pAI, Idx);
                 helper.EraseDeadCode();
