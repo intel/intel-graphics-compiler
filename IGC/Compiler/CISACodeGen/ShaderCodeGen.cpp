@@ -443,9 +443,9 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
             ctx.m_instrTypes.hasNonPrimitiveAlloca &&
             ctx.m_retryManager.AllowPromotePrivateMemory())
         {
-            mpm.add(llvm::createBreakCriticalEdgesPass());
-            mpm.add(new LowerGEPForPrivMem());
-            mpm.add(llvm::createCFGSimplificationPass());
+            mpm.add(createBreakCriticalEdgesPass());
+            mpm.add(createPromotePrivateArrayToReg());
+            mpm.add(createCFGSimplificationPass());
         }
         mpm.add(createPromoteMemoryToRegisterPass());
     }
@@ -457,7 +457,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
     }
 
     // Resolving private memory allocas
-    mpm.add(new PrivateMemoryResolution());
+    mpm.add(CreatePrivateMemoryResolution());
 
     // Run MemOpt
     if (!isOptDisabled &&

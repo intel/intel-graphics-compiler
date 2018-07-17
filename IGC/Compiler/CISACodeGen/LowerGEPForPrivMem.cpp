@@ -24,6 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "Compiler/CodeGenContextWrapper.hpp"
+#include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CISACodeGen/RegisterPressureEstimate.hpp"
+#include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "common/LLVMUtils.h"
 
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
@@ -43,6 +47,67 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
+
+namespace IGC {
+/// @brief  LowerGEPForPrivMem pass is used for lowering the allocas identified while visiting the alloca instructions
+///         and then inserting insert/extract elements instead of load stores. This allows us
+///         to store the data in registers instead of propagating it to scratch space.
+class LowerGEPForPrivMem : public llvm::FunctionPass, public llvm::InstVisitor<LowerGEPForPrivMem>
+{
+public:
+    LowerGEPForPrivMem();
+
+    ~LowerGEPForPrivMem() {}
+
+    virtual llvm::StringRef getPassName() const override
+    {
+        return "LowerGEPForPrivMem";
+    }
+
+    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+    {
+        AU.addRequired<RegisterPressureEstimate>();
+        AU.addRequired<MetaDataUtilsWrapper>();
+        AU.addRequired<CodeGenContextWrapper>();
+        AU.addRequired<WIAnalysis>();
+        AU.setPreservesCFG();
+    }
+
+    virtual bool runOnFunction(llvm::Function &F) override;
+
+    void visitAllocaInst(llvm::AllocaInst &I);
+
+    unsigned int extractAllocaSize(llvm::AllocaInst* pAlloca);
+
+private:
+    llvm::AllocaInst* createVectorForAlloca(
+        llvm::AllocaInst *pAlloca,
+        llvm::Type *pBaseType);
+    void handleAllocaInst(llvm::AllocaInst *pAlloca);
+
+    bool CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca);
+
+    /// Conservatively check if a store allow an Alloca to be uniform
+    bool IsUniformStore(llvm::StoreInst* pStore);
+public:
+    static char ID;
+
+private:
+    const llvm::DataLayout                              *m_pDL;
+    CodeGenContext                                      *m_ctx;
+    std::vector<llvm::AllocaInst*>                       m_allocasToPrivMem;
+    RegisterPressureEstimate*                            m_pRegisterPressureEstimate;
+    llvm::Function                                      *m_pFunc;
+
+    /// Keep track of each BB affected by promoting MemtoReg and the current pressure at that block
+    llvm::DenseMap<llvm::BasicBlock *, unsigned>         m_pBBPressure;
+};
+
+FunctionPass *createPromotePrivateArrayToReg()
+{
+    return new LowerGEPForPrivMem();
+}
+}
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-priv-mem-to-reg"
@@ -94,28 +159,10 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function &F)
 
     visit(F);
 
-    m_toBeRemovedGEP.clear();
-    m_toBeRemovedLoadStore.clear();
-
     std::vector<llvm::AllocaInst*> &allocaToHande = m_allocasToPrivMem;
     for (auto pAlloca : allocaToHande)
     {
         handleAllocaInst(pAlloca);
-    }
-
-    // Delete handled Alloca, GEP, Store and Load instructions
-    // First remove load/store instructions
-    for (auto pInst : m_toBeRemovedLoadStore)
-    {
-        assert(pInst->use_empty() && "Instruction still has usage");
-        pInst->eraseFromParent();
-    }
-
-    // Second remove GEP instructions
-    for (auto pInst = m_toBeRemovedGEP.rbegin(); pInst != m_toBeRemovedGEP.rend(); ++pInst)
-    {
-        assert((*pInst)->use_empty() && "Instruction still has usage");
-        (*pInst)->eraseFromParent();
     }
 
     // Last remove alloca instructions
@@ -131,6 +178,15 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function &F)
         DumpLLVMIR(m_ctx, "AfterLowerGEP");
     // IR changed only if we had alloca instruction to optimize
     return !allocaToHande.empty();
+}
+
+void TransposeHelper::EraseDeadCode()
+{
+    for(auto pInst = m_toBeRemovedGEP.rbegin(); pInst != m_toBeRemovedGEP.rend(); ++pInst)
+    {
+        assert((*pInst)->use_empty() && "Instruction still has usage");
+        (*pInst)->eraseFromParent();
+    }
 }
 
 unsigned int LowerGEPForPrivMem::extractAllocaSize(llvm::AllocaInst* pAlloca)
@@ -158,9 +214,8 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
 
         allowedAllocaSizeInBytes = allowedAllocaSizeInBytes / d;
     }
-
-    bool allocaCandidate = ValidUses(pAlloca);
-    if(!allocaCandidate)
+    std::vector<Type*> accessType;
+    if(!CanUseSOALayout(pAlloca, accessType))
     {
         return false;
     }
@@ -279,19 +334,20 @@ static Type* GetBaseType(Type* pType)
     return pBaseType;
 }
 
-bool LowerGEPForPrivMem::ValidUses(Instruction* I)
+static bool CheckUsesForSOAAlyout(Instruction* I, std::vector<Type*>& accessType)
 {
     for(Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
     {
         if(GetElementPtrInst* gep = dyn_cast<GetElementPtrInst>(*use_it))
         {
-            if(ValidUses(gep))
+            if(CheckUsesForSOAAlyout(gep, accessType))
                 continue;
         }
         if(llvm::LoadInst* pLoad = llvm::dyn_cast<llvm::LoadInst>(*use_it))
         {
             if(!pLoad->isSimple())
                 return false;
+            accessType.push_back(pLoad->getPointerOperand()->getType()->getPointerElementType());
         }
         else if(llvm::StoreInst* pStore = llvm::dyn_cast<llvm::StoreInst>(*use_it))
         {
@@ -303,6 +359,7 @@ bool LowerGEPForPrivMem::ValidUses(Instruction* I)
                 // GEP instruction is the stored value of the StoreInst (not supported case)
                 return false;
             }
+            accessType.push_back(pStore->getPointerOperand()->getType()->getPointerElementType());
         }
         else if(llvm::BitCastInst *pBitCast = llvm::dyn_cast<llvm::BitCastInst>(*use_it))
         {
@@ -314,9 +371,9 @@ bool LowerGEPForPrivMem::ValidUses(Instruction* I)
             }
             else if(baseT != nullptr &&
                 baseT->getPrimitiveSizeInBits() != 0 &&
-                baseT->getPrimitiveSizeInBits() == sourceType->getPrimitiveSizeInBits() )
+                baseT->getPrimitiveSizeInBits() == sourceType->getPrimitiveSizeInBits())
             {
-                if(ValidUses(pBitCast))
+                if(CheckUsesForSOAAlyout(pBitCast, accessType))
                     continue;
             }
             else if(IsBitCastForLifetimeMark(pBitCast))
@@ -345,28 +402,32 @@ bool LowerGEPForPrivMem::ValidUses(Instruction* I)
     return true;
 }
 
-void LowerGEPForPrivMem::visitAllocaInst(AllocaInst &I)
+
+bool IGC::CanUseSOALayout(AllocaInst* I, std::vector<Type*>& accessType)
 {
     // Don't even look at non-array allocas.
     // (extractAllocaDim can not handle them anyway, causing a crash)
-    llvm::Type* pType = I.getType()->getPointerElementType();
-    if (pType->isStructTy() && pType->getStructNumElements() == 1)
+    llvm::Type* pType = I->getType()->getPointerElementType();
+    if(pType->isStructTy() && pType->getStructNumElements() == 1)
     {
-            pType = pType->getStructElementType(0);
+        pType = pType->getStructElementType(0);
     }
-    if ((!pType->isArrayTy() && !pType->isVectorTy()) || I.isArrayAllocation())
-        return;
+    if((!pType->isArrayTy() && !pType->isVectorTy()) || I->isArrayAllocation())
+        return false;
 
-    Type* pBaseType = GetBaseType(pType);
-    if(pBaseType == nullptr)
-        return;
+    Type* base = GetBaseType(pType);
+    if(base == nullptr)
+        return false;
     // only handle case with a simple base type
-    if(!(pBaseType->isFloatingPointTy() || pBaseType->isIntegerTy()))
-        return;
+    if(!(base->isFloatingPointTy() || base->isIntegerTy()))
+        return false;
+    return CheckUsesForSOAAlyout(I, accessType);
+}
 
+void LowerGEPForPrivMem::visitAllocaInst(AllocaInst &I)
+{
     // Alloca should always be private memory
     assert(I.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE);
-
     if (!CheckIfAllocaPromotable(&I))
     {
         // alloca size extends remain per-lane-reg space
@@ -375,8 +436,7 @@ void LowerGEPForPrivMem::visitAllocaInst(AllocaInst &I)
     m_allocasToPrivMem.push_back(&I);
 }
 
-void LowerGEPForPrivMem::HandleAllocaSources(
-    Instruction* v, AllocaInst* pVecAlloca, Value* idx)
+void TransposeHelper::HandleAllocaSources(Instruction* v, Value* idx)
 {
     SmallVector<Value*, 10> instructions;
     for(Value::user_iterator it = v->user_begin(), e = v->user_end(); it != e; ++it)
@@ -389,20 +449,20 @@ void LowerGEPForPrivMem::HandleAllocaSources(
     {
         if(GetElementPtrInst *pGEP = dyn_cast<GetElementPtrInst>(instruction))
         {
-            handleGEPInst(pGEP, pVecAlloca, idx);
+            handleGEPInst(pGEP, idx);
         }
         else if(BitCastInst* bitcast = dyn_cast<BitCastInst>(instruction))
         {
             m_toBeRemovedGEP.push_back(bitcast);
-            HandleAllocaSources(bitcast, pVecAlloca, idx);
+            HandleAllocaSources(bitcast, idx);
         }
         else if(StoreInst *pStore = llvm::dyn_cast<StoreInst>(instruction))
         {
-            handleStoreInst(pStore, pVecAlloca, idx);
+            handleStoreInst(pStore, idx);
         }
         else if(LoadInst *pLoad = llvm::dyn_cast<LoadInst>(instruction))
         {
-            handleLoadInst(pLoad, pVecAlloca, idx);
+            handleLoadInst(pLoad, idx);
         }
         else if(IntrinsicInst* inst = dyn_cast<IntrinsicInst>(instruction))
         {
@@ -410,6 +470,19 @@ void LowerGEPForPrivMem::HandleAllocaSources(
         }
     }
 }
+
+class TransposeHelperPromote : public TransposeHelper
+{
+public:
+    void handleLoadInst(
+        LoadInst *pLoad,
+        Value *pScalarizedIdx);
+    void handleStoreInst(
+        StoreInst *pStore,
+        Value *pScalarizedIdx);
+    AllocaInst *pVecAlloca;
+    TransposeHelperPromote(AllocaInst* pAI) : TransposeHelper(false) { pVecAlloca = pAI; }
+};
 
 void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
 {
@@ -425,19 +498,20 @@ void LowerGEPForPrivMem::handleAllocaInst(llvm::AllocaInst* pAlloca)
     
     IRBuilder<> IRB(pVecAlloca);
     Value* idx = IRB.getInt32(0);
-    HandleAllocaSources(pAlloca, pVecAlloca, idx);
+    TransposeHelperPromote helper(pVecAlloca);
+    helper.HandleAllocaSources(pAlloca, idx);
+    helper.EraseDeadCode();
 }
 
-void LowerGEPForPrivMem::handleLifetimeMark(IntrinsicInst *inst)
+void TransposeHelper::handleLifetimeMark(IntrinsicInst *inst)
 {
     assert(inst->getIntrinsicID() == llvm::Intrinsic::lifetime_start ||
         inst->getIntrinsicID() == llvm::Intrinsic::lifetime_end);
     inst->eraseFromParent();
 }
 
-void LowerGEPForPrivMem::handleGEPInst(
+void TransposeHelper::handleGEPInst(
     llvm::GetElementPtrInst *pGEP,
-    llvm::AllocaInst* pVecAlloca,
     llvm::Value* idx)
 {
     assert(static_cast<ADDRESS_SPACE>(pGEP->getPointerAddressSpace()) == ADDRESS_SPACE_PRIVATE);
@@ -473,7 +547,15 @@ void LowerGEPForPrivMem::handleGEPInst(
         }
         else if(T->isVectorTy())
         {
-            arr_sz = T->getVectorNumElements();
+            // based on whether we want the index in number of element or number of vector
+            if(m_vectorIndex)
+            {
+                arr_sz = 1;
+            }
+            else
+            {
+                arr_sz = T->getVectorNumElements();
+            }
             T = T->getVectorElementType();
         }
 
@@ -481,7 +563,7 @@ void LowerGEPForPrivMem::handleGEPInst(
         pScalarizedIdx = IRB.CreateNUWMul(pScalarizedIdx, IRB.getInt32(arr_sz));
     }
     pScalarizedIdx = IRB.CreateNUWAdd(pScalarizedIdx, idx);
-    HandleAllocaSources(pGEP, pVecAlloca, pScalarizedIdx);
+    HandleAllocaSources(pGEP, pScalarizedIdx);
 }
 
 // Load N elements from a vector alloca, Idx, ... Idx + N - 1. Return a scalar
@@ -522,13 +604,10 @@ static Value *loadEltsFromVecAlloca(
     return Result;
 }
 
-void LowerGEPForPrivMem::handleLoadInst(
-    llvm::LoadInst *pLoad,
-    llvm::AllocaInst *pVecAlloca,
-    llvm::Value *pScalarizedIdx)
+void TransposeHelperPromote::handleLoadInst(
+    LoadInst *pLoad,
+    Value *pScalarizedIdx)
 {
-    // Add Load instruction to remove list
-    m_toBeRemovedLoadStore.push_back(pLoad);
     assert(pLoad->isSimple());
     IRBuilder<> IRB(pLoad);
     unsigned N = pLoad->getType()->isVectorTy()
@@ -536,15 +615,14 @@ void LowerGEPForPrivMem::handleLoadInst(
                      : 1;
     Value *Val = loadEltsFromVecAlloca(N, pVecAlloca, pScalarizedIdx, IRB, pLoad->getType()->getScalarType());
     pLoad->replaceAllUsesWith(Val);
+    pLoad->eraseFromParent();
 }
 
-void LowerGEPForPrivMem::handleStoreInst(
+void TransposeHelperPromote::handleStoreInst(
     llvm::StoreInst *pStore,
-    llvm::AllocaInst *pVecAlloca,
     llvm::Value *pScalarizedIdx)
 {
     // Add Store instruction to remove list
-    m_toBeRemovedLoadStore.push_back(pStore);
     assert(pStore->isSimple());
 
     IRBuilder<> IRB(pStore);
@@ -577,4 +655,5 @@ void LowerGEPForPrivMem::handleStoreInst(
         pIns = IRB.CreateInsertElement(pLoadVecAlloca, pStoreVal, pScalarizedIdx);
     }
     IRB.CreateStore(pIns, pVecAlloca);
+    pStore->eraseFromParent();
 }
