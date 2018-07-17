@@ -2113,6 +2113,38 @@ CVariable *CShader::GetSymbolFromSource(Instruction *UseInst,
     return nullptr;
 }
 
+unsigned int CShader::EvaluateSIMDConstExpr(Value* C)
+{
+    if(BinaryOperator* op = dyn_cast<BinaryOperator>(C))
+    {
+        switch(op->getOpcode())
+        {
+        case Instruction::Add:
+            return EvaluateSIMDConstExpr(op->getOperand(0)) + EvaluateSIMDConstExpr(op->getOperand(1));
+        case Instruction::Mul:
+            return EvaluateSIMDConstExpr(op->getOperand(0)) * EvaluateSIMDConstExpr(op->getOperand(1));
+        case Instruction::Shl:
+            return EvaluateSIMDConstExpr(op->getOperand(0)) << EvaluateSIMDConstExpr(op->getOperand(1));
+        default:
+            break;
+        }
+    }
+    if(llvm::GenIntrinsicInst *genInst = dyn_cast<GenIntrinsicInst>(C))
+    {
+        if(genInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdSize)
+        {
+            return numLanes(m_dispatchSize);
+
+        }
+    }
+    if(ConstantInt* constValue = dyn_cast<ConstantInt>(C))
+    {
+        return (unsigned int)constValue->getZExtValue();
+    }
+    assert(0 &&"unknow SIMD constant expression");
+    return 0;
+}
+
 CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
 {
     CVariable* var = nullptr;
@@ -2140,11 +2172,11 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
         return var;
     }
 
-    if (llvm::GenIntrinsicInst *genInst = dyn_cast<GenIntrinsicInst>(value))
+    else if(Instruction *inst = dyn_cast<Instruction>(value))
     {
-        if (genInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdSize)
+        if(m_CG->SIMDConstExpr(inst))
         {
-            return ImmToVariable(numLanes(m_dispatchSize), ISA_TYPE_D);
+            return ImmToVariable(EvaluateSIMDConstExpr(inst), ISA_TYPE_D);
         }
     }
 

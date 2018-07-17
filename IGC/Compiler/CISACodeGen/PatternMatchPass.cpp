@@ -172,6 +172,56 @@ inline bool IsDbgInst(llvm::Instruction& inst)
     return false;
 }
 
+bool CodeGenPatternMatch::IsConstOrSimdConstExpr(Value* C)
+{
+    if(isa<ConstantInt>(C))
+    {
+        return true;
+    }
+    if(Instruction* inst = dyn_cast<Instruction>(C))
+    {
+        return SIMDConstExpr(inst);
+    }
+    return false;
+}
+
+// this function need to be in sync with CShader::EvaluateSIMDConstExpr on what can be supported
+bool CodeGenPatternMatch::SIMDConstExpr(Instruction* C)
+{
+    auto it = m_IsSIMDConstExpr.find(C);
+    if(it != m_IsSIMDConstExpr.end())
+    {
+        return it->second;
+    }
+    bool isConstExpr = false;
+    if(BinaryOperator* op = dyn_cast<BinaryOperator>(C))
+    {
+        switch(op->getOpcode())
+        {
+        case Instruction::Add:
+            isConstExpr = IsConstOrSimdConstExpr(op->getOperand(0)) && IsConstOrSimdConstExpr(op->getOperand(1));
+            break;
+        case Instruction::Mul:
+            isConstExpr = IsConstOrSimdConstExpr(op->getOperand(0)) && IsConstOrSimdConstExpr(op->getOperand(1));
+            break;
+        case Instruction::Shl:
+            isConstExpr = IsConstOrSimdConstExpr(op->getOperand(0)) && IsConstOrSimdConstExpr(op->getOperand(1));
+            break;
+        default:
+            break;
+        }
+    }
+    else if(llvm::GenIntrinsicInst *genInst = dyn_cast<GenIntrinsicInst>(C))
+    {
+        if(genInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdSize)
+        {
+            isConstExpr = true;
+        }
+    }
+    m_IsSIMDConstExpr.insert(std::make_pair(C, isConstExpr));
+    return isConstExpr;
+}
+
 bool CodeGenPatternMatch::NeedInstruction(llvm::Instruction& I)
 {
     if(HasPhiUse(I) || HasSideEffect(I) || IsDbgInst(I) ||
@@ -1500,6 +1550,11 @@ SSource CodeGenPatternMatch::GetSource(llvm::Value* value, e_modifier mod, bool 
 void CodeGenPatternMatch::MarkAsSource(llvm::Value* v)
 {
     // update liveness of the sources
+    if(IsConstOrSimdConstExpr(v))
+    {
+        // skip constant
+        return;
+    }
     if(isa<Instruction>(v) || isa<Argument>(v))
     {
         m_LivenessInfo->HandleVirtRegUse(v, m_root->getParent(), m_root);

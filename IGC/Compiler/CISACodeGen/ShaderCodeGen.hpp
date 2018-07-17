@@ -279,6 +279,8 @@ public:
         return ConstantPool.lookup(C);
     }
 
+    unsigned int EvaluateSIMDConstExpr(llvm::Value* C);
+
     /// Initialize per function status.
     void BeginFunction(llvm::Function *F);
     /// This method is used to create the vISA variable for function F's formal return value 

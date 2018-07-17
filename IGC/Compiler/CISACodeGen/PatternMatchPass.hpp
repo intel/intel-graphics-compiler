@@ -246,6 +246,8 @@ public:
 
     //helper function
     bool NeedInstruction(llvm::Instruction& I);
+    bool SIMDConstExpr(llvm::Instruction* v);
+    bool IsConstOrSimdConstExpr(llvm::Value* C);
 
     // Place a constant Val into the constant pool. This constant should be
     // available in basic block UseBlock.
@@ -269,6 +271,7 @@ public:
     std::map<llvm::BasicBlock*,SBasicBlock*> m_blockMap;
     SBasicBlock*          m_blocks;
     uint                  m_numBlocks;
+    llvm::DenseMap<llvm::Instruction*, bool> m_IsSIMDConstExpr;
 
     // Where we put the constant initialization.
     llvm::MapVector<llvm::Constant *, llvm::BasicBlock *> ConstantPlacement;

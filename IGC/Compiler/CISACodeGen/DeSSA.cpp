@@ -264,10 +264,8 @@ bool DeSSA::runOnFunction(Function &MF) {
 
         Instruction *DefMI = dyn_cast<Instruction>(SrcVal);
         if (DefMI) {
-          if (llvm::GenIntrinsicInst *GenInst = dyn_cast<GenIntrinsicInst>(DefMI)) {
-            if (GenInst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdSize) {
+          if (CG->SIMDConstExpr(DefMI)) {
               continue;  // special case, simdSize becomes a constant in vISA
-            }
           }
           addReg(SrcVal, SrcAlign);
           PHISrcDefs[DefMI->getParent()].push_back(DefMI);
