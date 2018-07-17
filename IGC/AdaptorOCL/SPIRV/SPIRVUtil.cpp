@@ -69,6 +69,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/StringExtras.h"
+#include "llvm/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
 
 namespace spv{
@@ -296,8 +297,8 @@ getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, st
 
 CallInst *
 mutateCallInst(Module *M, CallInst *CI,
-    std::function<std::string (CallInst *, std::vector<Value *> &)>ArgMutate,
-    bool Mangle, AttributeSet *Attrs, bool TakeFuncName) {
+  std::function<std::string(CallInst *, std::vector<Value *> &)>ArgMutate,
+  bool Mangle, AttributeSet *Attrs, bool TakeFuncName) {
 
   auto Args = getArguments(CI);
   auto NewName = ArgMutate(CI, Args);
@@ -306,8 +307,42 @@ mutateCallInst(Module *M, CallInst *CI,
     InstName = CI->getName();
     CI->setName(InstName + ".old");
   }
+
   auto NewCI = addCallInst(M, NewName, CI->getType(), Args, Attrs, CI, Mangle,
-      InstName, TakeFuncName);
+    InstName, TakeFuncName);
+
+  Function* OldF = CI->getCalledFunction();
+  Function* NewF = NewCI->getCalledFunction();
+  if (!OldF->isDeclaration() &&
+    NewF->isDeclaration()) {
+    // This means that we need to clone the old function into new one.
+    // It is needed because when Clang is compiling to llvm-bc it does the same thing.
+    // If we want to link with such modules, we need to make the behaviour similar.
+    assert(OldF->getNumOperands() == NewF->getNumOperands());
+    ValueToValueMapTy VMap;
+    llvm::SmallVector<llvm::ReturnInst*, 8> Returns;
+    BasicBlock* EntryBB = BasicBlock::Create(M->getContext(), "", NewF);
+    IRBuilder<> builder(EntryBB);
+
+    for (auto OldArgIt = OldF->arg_begin(), NewArgIt = NewF->arg_begin(); OldArgIt != OldF->arg_end(); ++OldArgIt, ++NewArgIt) {
+      NewArgIt->setName(OldArgIt->getName());
+      if (OldArgIt->getType() == NewArgIt->getType()) {
+        VMap[&*OldArgIt] = &*NewArgIt;
+      }
+      else {
+        assert(NewArgIt->getType()->isPointerTy());
+        LoadInst* Load = builder.CreateLoad(&*NewArgIt);
+        VMap[&*OldArgIt] = Load;
+      }
+    }
+
+    CloneFunctionInto(NewF, OldF, VMap, true, Returns);
+
+    // Merge the basic block with Load instruction with the original entry basic block.
+    BasicBlock* ClonedEntryBB = cast<BasicBlock>(VMap[&*OldF->begin()]);
+    builder.CreateBr(ClonedEntryBB);
+  }
+
   CI->replaceAllUsesWith(NewCI);
   CI->dropAllReferences();
   CI->removeFromParent();

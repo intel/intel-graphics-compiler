@@ -72,6 +72,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/IntrinsicInst.h>
 #include "libSPIRV/SPIRVDebugInfoExt.h"
 #include <llvm/Support/Dwarf.h>
+#include "llvm/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include <iostream>
@@ -893,13 +894,13 @@ public:
   /// Some OpenCL builtin functions are translated to SPIR-V instructions with
   /// struct type result, e.g. NDRange creation functions. Such functions
   /// need to be post-processed to return the struct through sret argument.
-  bool postProcessOCLBuiltinReturnStruct(Function *F);
+  bool postProcessFunctionsReturnStruct(Function *F);
 
   /// \brief Post-process OpenCL builtin functions having aggregate argument.
   ///
   /// These functions are translated to functions with aggregate type argument
   /// first, then post-processed to have pointer arguments.
-  bool postProcessOCLBuiltinWithAggregateArguments(Function *F);
+  bool postProcessFunctionsWithAggregateArguments(Function *F);
 
   typedef DenseMap<SPIRVType *, Type *> SPIRVToLLVMTypeMap;
   typedef DenseMap<SPIRVValue *, Value *> SPIRVToLLVMValueMap;
@@ -1558,7 +1559,7 @@ SPIRVToLLVM::postProcessOCL() {
   std::vector <Function*> structFuncs;
   for (auto& F : M->functions())
   {
-      if (isFunctionBuiltin(&F) && F.getReturnType()->isStructTy())
+      if (F.getReturnType()->isStructTy())
       {
           structFuncs.push_back(&F);
       }
@@ -1581,19 +1582,18 @@ SPIRVToLLVM::postProcessOCL() {
       }
   }
   for (auto structFunc : structFuncs)
-    postProcessOCLBuiltinReturnStruct(structFunc);
+    postProcessFunctionsReturnStruct(structFunc);
 
   std::vector<Function*> aggrFuncs;
   for (auto& F : M->functions())
   {
-      if (isFunctionBuiltin(&F)
-          && std::any_of(F.arg_begin(), F.arg_end(), [](Argument& arg) { return arg.getType()->isAggregateType(); }) )
+      if (std::any_of(F.arg_begin(), F.arg_end(), [](Argument& arg) { return arg.getType()->isAggregateType(); }) )
           {
               aggrFuncs.push_back(&F);
           }
   }
   for (auto aggrFunc : aggrFuncs)
-      postProcessOCLBuiltinWithAggregateArguments(aggrFunc);
+      postProcessFunctionsWithAggregateArguments(aggrFunc);
 
   //Adjust ndrange_t type
   auto ndrangeTy = M->getTypeByName("struct.ndrange_t");
@@ -1614,9 +1614,9 @@ static Value* StripAddrspaceCast(Value *pVal)
 }
 
 bool
-SPIRVToLLVM::postProcessOCLBuiltinReturnStruct(Function *F) {
+SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
   
-  if (!isFunctionBuiltin(F) || !F->getReturnType()->isStructTy())
+  if (!F->getReturnType()->isStructTy())
     return false;
 
   std::string Name = F->getName();
@@ -1627,15 +1627,39 @@ SPIRVToLLVM::postProcessOCLBuiltinReturnStruct(Function *F) {
   ArgTys.insert(ArgTys.begin(), PointerType::get(F->getReturnType(),
       SPIRAS_Private));
   auto newFType = FunctionType::get(Type::getVoidTy(*Context), ArgTys, false);
-  auto newF = cast<Function>(M->getOrInsertFunction(Name,  newFType));
-  newF->setCallingConv(F->getCallingConv());
+  auto NewF = cast<Function>(M->getOrInsertFunction(Name,  newFType));
+  NewF->setCallingConv(F->getCallingConv());
+
+  if (!F->isDeclaration()) {
+      ValueToValueMapTy VMap;
+      llvm::SmallVector<llvm::ReturnInst*, 8> Returns;
+      auto OldArgIt = F->arg_begin();
+      auto NewArgIt = NewF->arg_begin();
+      ++NewArgIt; // Skip first argument that we added.
+      for (; OldArgIt != F->arg_end(); ++OldArgIt, ++NewArgIt) {
+          NewArgIt->setName(OldArgIt->getName());
+          VMap[&*OldArgIt] = &*NewArgIt;
+      }
+      CloneFunctionInto(NewF, F, VMap, true, Returns);
+      auto DL = M->getDataLayout();
+      const auto ptrSize = DL.getPointerSize();
+
+      for (auto RetInst : Returns) {
+          Value* ReturnedValPtr = cast<LoadInst>(RetInst->getReturnValue())->getPointerOperand();
+          IRBuilder<> builder(RetInst);
+          auto size = DL.getTypeAllocSize(RetInst->getReturnValue()->getType());
+          builder.CreateMemCpy(&*NewF->arg_begin(), ReturnedValPtr, size, ptrSize);
+          builder.CreateRetVoid();
+          RetInst->eraseFromParent();
+      }
+  }
 
   for (auto I = F->user_begin(), E = F->user_end(); I != E;) {
     if (auto CI = dyn_cast<CallInst>(*I++)) {
       auto Args = getArguments(CI);
       auto Alloca = new AllocaInst(CI->getType(), "", CI);
       Args.insert(Args.begin(), Alloca);
-      auto NewCI = CallInst::Create(newF, Args, "", CI);
+      auto NewCI = CallInst::Create(NewF, Args, "", CI);
       NewCI->setCallingConv(CI->getCallingConv());
       auto Load = new LoadInst(Alloca,"",CI);
       CI->replaceAllUsesWith(Load);
@@ -1648,7 +1672,7 @@ SPIRVToLLVM::postProcessOCLBuiltinReturnStruct(Function *F) {
 }
 
 bool
-SPIRVToLLVM::postProcessOCLBuiltinWithAggregateArguments(Function* F) {
+SPIRVToLLVM::postProcessFunctionsWithAggregateArguments(Function* F) {
   auto Name = F->getName();
   auto Attrs = F->getAttributes();
   auto DL = M->getDataLayout();
@@ -2649,17 +2673,17 @@ uint64_t SPIRVToLLVM::calcImageType(const SPIRVValue *ImageVal)
     TI = static_cast<SPIRVTypeImage*>(ImageVal->getType());
   }
 
-    const auto &Desc = TI->getDescriptor();
-    uint64_t ImageType = 0;
+  const auto &Desc = TI->getDescriptor();
+  uint64_t ImageType = 0;
 
-    ImageType |= ((uint64_t)Desc.Dim                 & 0x7) << 59;
-    ImageType |= ((uint64_t)Desc.Depth               & 0x1) << 58;
-    ImageType |= ((uint64_t)Desc.Arrayed             & 0x1) << 57;
-    ImageType |= ((uint64_t)Desc.MS                  & 0x1) << 56;
-    ImageType |= ((uint64_t)Desc.Sampled             & 0x3) << 62;
-    ImageType |= ((uint64_t)TI->getAccessQualifier() & 0x3) << 54;
+  ImageType |= ((uint64_t)Desc.Dim                 & 0x7) << 59;
+  ImageType |= ((uint64_t)Desc.Depth               & 0x1) << 58;
+  ImageType |= ((uint64_t)Desc.Arrayed             & 0x1) << 57;
+  ImageType |= ((uint64_t)Desc.MS                  & 0x1) << 56;
+  ImageType |= ((uint64_t)Desc.Sampled             & 0x3) << 62;
+  ImageType |= ((uint64_t)TI->getAccessQualifier() & 0x3) << 54;
 
-    return ImageType;
+  return ImageType;
 }
 
 Instruction *
