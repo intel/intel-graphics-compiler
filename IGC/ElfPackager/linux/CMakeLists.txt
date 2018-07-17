@@ -62,12 +62,6 @@ function(igc_resource_embed_file symbolFilesVarName symbolName embeddedFilePath)
     set(_dependency "${embeddedFilePath}")
   endif()
 
-  if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-	set(PYTHON_EXECUTABLE "${GFX_DEVELOPMENT_DIR}/Tools/Build/scripts/deps/python27/python.exe")
-  else()
-	find_program(PYTHON_EXECUTABLE NAMES "python2" "python")
-  endif()
-
   add_custom_command(OUTPUT "${_symbolFilePath}"
 							COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__BIF_EMBEDDER_DIR}"
 							COMMAND "${PYTHON_EXECUTABLE}"

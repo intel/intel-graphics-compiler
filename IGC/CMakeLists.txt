@@ -2020,7 +2020,7 @@ set(_autogenTarget "${CODEGEN_DIR}/MDNodeFunctions.gen")
 
 
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
-  set(PYTHON_EXECUTABLE "${BS_DIR_MIGRATION_BINARIES}/build-tools/python2-win32/python.exe")
+  find_program(PYTHON_EXECUTABLE NAMES python.exe PATHS "${BS_DIR_MIGRATION_BINARIES}/build-tools/python2-win32" NO_DEFAULT_PATH)
 else()
   find_program(PYTHON_EXECUTABLE NAMES "python2" "python")
 endif()
