@@ -182,9 +182,7 @@ namespace {
         return false;
       }
 
-      // Need to skip private pointers if tranposing on private memory is
-      // turned on.
-      return CGC->m_DriverInfo.SupportTransposeLayoutForPrivateMemory();
+      return false;
     }
 
     /// Skip irrelevant instructions.
