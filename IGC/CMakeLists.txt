@@ -3509,12 +3509,12 @@ set_property(TARGET "${IGC_BUILD__PROJ__fcl_dll}" PROPERTY PROJECT_LABEL "${IGC_
 
 #Set Universal properties if this is universal build
 if(IGC_OPTION__UNIVERSAL_DRIVER)
-    set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_PRE_DEFAULT_PROPS ${IGC_BUILD__GFX_DEV_SRC_DIR}/WrkSpace/PropertySheets/igfx_env.props)
+    bs_set_wdk(${IGC_BUILD__PROJ__igc_dll})
     set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_PLATFORM_TOOLSET WindowsApplicationForDrivers10.0)
     set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_GLOBAL_DriverTargetPlatform Universal)
     set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_TARGET_PLATFORM_VERSION "")
 
-    set_target_properties(${IGC_BUILD__PROJ__fcl_dll} PROPERTIES VS_PRE_DEFAULT_PROPS ${IGC_BUILD__GFX_DEV_SRC_DIR}/WrkSpace/PropertySheets/igfx_env.props)
+    bs_set_wdk(${IGC_BUILD__PROJ__fcl_dll})
     set_target_properties(${IGC_BUILD__PROJ__fcl_dll} PROPERTIES VS_PLATFORM_TOOLSET WindowsApplicationForDrivers10.0)
     set_target_properties(${IGC_BUILD__PROJ__fcl_dll} PROPERTIES VS_GLOBAL_DriverTargetPlatform Universal)
     set_target_properties(${IGC_BUILD__PROJ__fcl_dll} PROPERTIES VS_TARGET_PLATFORM_VERSION "")
