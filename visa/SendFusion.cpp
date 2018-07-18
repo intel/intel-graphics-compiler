@@ -1366,12 +1366,10 @@ bool SendFusion::run(G4_BB* BB)
             }
 
             ++II1;
-            G4_DstRegRegion* Dst = tmp->getDst();
-            if (tmp->isSend() || tmp->isFence() ||
-                (tmp->isOptBarrier() && Dst && Dst->isAreg() && Dst->isSrReg()))
+            if (tmp->isSend() || tmp->isFence() || tmp->isOptBarrier())
             {
                 // Don't try to fusion two sends that are separated
-                // by other memory instructions.             
+                // by other memory/barrier instructions.             
                 break;
             }
         }
