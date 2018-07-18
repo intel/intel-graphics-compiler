@@ -1298,6 +1298,23 @@ unsigned LatencyQueue::calculatePriority(preNode* N)
     if (CurPriority > 0)
         return CurPriority;
 
+    // Check if an edge is setting a0 operand for a send.
+    auto isHeaderOnAddr = [](preNode *N, preEdge &E)
+    {
+        // Check if N is writing to address.
+        G4_INST *Inst = N->getInst();
+        if (!Inst || !Inst->getDst() || !Inst->getDst()->isAddress())
+            return false;
+
+        // Check if this use is on send.
+        preNode *T = E.getNode();
+        if (T->getInst() && T->getInst()->isSend())
+            return true;
+
+        // By default.
+        return false;
+    };
+
     unsigned Priority = 0;
     for (auto I = N->succ_begin(), E = N->succ_end(); I != E; ++I) {
         // Recurse on the successors.
@@ -1308,6 +1325,11 @@ unsigned LatencyQueue::calculatePriority(preNode* N)
         if (Inst && !Inst->isPseudoKill() && Edge.isDataDep()) {
             switch (Edge.getType()) {
             case RAW:
+                // By setting Latency to 0, this moves address initializations
+                // close to sends.
+                if (isHeaderOnAddr(N, Edge))
+                   break;
+                // fall through
             case RAW_MEMORY:
             case WAW:
                 if (Inst->isSend()) {
