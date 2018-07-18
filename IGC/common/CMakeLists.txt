@@ -54,7 +54,6 @@ set(IGC_BUILD__HDR__common
 if(LLVM_ON_WIN32)
   set(IGC_BUILD__HDR_Win__common
       "${CMAKE_CURRENT_SOURCE_DIR}/SystemThread.h"
-      "${CMAKE_CURRENT_SOURCE_DIR}/SystemThreadRegs.h"
     )
 endif()
 
