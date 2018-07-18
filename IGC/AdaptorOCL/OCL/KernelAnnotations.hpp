@@ -291,6 +291,7 @@ struct ExecutionEnivronment
     bool   SubgroupIndependentForwardProgressRequired = false;
     bool   CompiledForGreaterThan4GBBuffers           = false;
     DWORD  FixedWorkgroupSize[3];
+    DWORD  NumGRFRequired;
 };
 
 struct KernelTypeProgramBinaryInfo

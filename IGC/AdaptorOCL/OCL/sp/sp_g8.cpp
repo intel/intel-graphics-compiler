@@ -1956,6 +1956,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
         patch.CompiledForGreaterThan4GBBuffers = annotations.m_executionEnivronment.CompiledForGreaterThan4GBBuffers;
 
+        patch.NumGRFRequired = annotations.m_executionEnivronment.NumGRFRequired;
+
         retValue = AddPatchItem(
             patch,
             membuf );

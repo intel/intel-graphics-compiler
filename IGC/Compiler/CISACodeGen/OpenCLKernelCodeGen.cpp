@@ -1212,6 +1212,9 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
         break;
     }
 
+    // todo: get it from per-kernel data.
+    m_kernelInfo.m_executionEnivronment.NumGRFRequired = m_Context->getNumGRFPerThread();
+
     // DATA_PARAMETER_BUFFER_STATEFUL
     //   ( SPatchDataParameterBuffer for this token only uses one field: ArgumentNumber )
     //   Used to indicate that all memory references via a gobal/constant ptr argument are

@@ -202,10 +202,11 @@ struct SPatchExecutionEnvironment :
     uint32_t    IsFinalizer;
     uint32_t    SubgroupIndependentForwardProgressRequired;
     uint32_t    CompiledForGreaterThan4GBBuffers;
+    uint32_t    NumGRFRequired;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert( sizeof( SPatchExecutionEnvironment ) == ( 76 + sizeof( SPatchItemHeader ) ) , "The size of SPatchExecutionEnvironment is not what is expected" );
+static_assert(sizeof(SPatchExecutionEnvironment) == (80 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
 
 /*****************************************************************************\
 STRUCT: SPatchString
