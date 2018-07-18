@@ -675,7 +675,10 @@ namespace IGC
         LLVMContextWrapper& operator =(LLVMContextWrapper&) = delete;
 
     public:
-        LLVMContextWrapper() {}
+        LLVMContextWrapper() 
+        {
+            CreateResourceDimensionTypes(*this);
+        }
         /// ref count the LLVMContext as now CodeGenContext owns it
         unsigned int refCount = 0;
         /// IntrinsicIDCache - Cache of intrinsic pointer to numeric ID mappings
@@ -895,7 +898,7 @@ namespace IGC
                 return IGC_GET_FLAG_VALUE(TotalGRFNum);
             }
             return 128;
-        }
+        }               
 
         bool isPOSH() const
         {

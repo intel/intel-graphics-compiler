@@ -67,7 +67,13 @@ static Value* GetResource(Module* m, IRBuilder<>& builder, Value* i)
     unsigned int addrSpace = IGC::EncodeAS4GFXResource(*i, IGC::RESOURCE, 0);
     PointerType* ptrT = PointerType::get(i->getType(), addrSpace);
     Value* img = nullptr;
-    if(isa<ConstantInt>(i))
+
+    if (i->getType() != builder.getInt32Ty())
+    {
+        // do not make any pointer conversion
+        img = i;
+    }
+    else if(isa<ConstantInt>(i))
     {
         img = ConstantPointerNull::get(ptrT);
     }
