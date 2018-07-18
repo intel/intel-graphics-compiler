@@ -4497,7 +4497,7 @@ void EmitPass::emitSimdShuffleDown( llvm::Instruction* inst )
     m_encoder->Copy( pCombinedData, pNextData );
     m_encoder->Push();
 
-    if (pDelta->IsImmediate())
+    if (pDelta->IsImmediate() && pDelta->GetImmediateValue() <= numLanes(m_SimdMode))
     {
         bool split = (m_SimdMode == SIMDMode::SIMD16 && m_destination->GetElemSize() == 4);
         uint offset = int_cast<uint>(pDelta->GetImmediateValue());
