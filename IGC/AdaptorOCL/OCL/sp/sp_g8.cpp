@@ -34,6 +34,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Platform/cmd_media_init_g8.h"
 #include "../Platform/cmd_parser_g8.h"
 
+#include "common/SystemThreadRegs.h"
+
 #include "common/allocator.h"
 #include "common/igc_regkeys.hpp"
 #include "common/Stats.hpp"
@@ -1416,7 +1418,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         patch.Size = sizeof(patch);
         patch.Offset = context.Surface.SurfaceOffset[bti];
         patch.BTI = bti;
-        patch.PerThreadSystemThreadSurfaceSize = (unsigned int)0x1800;// SIP::cGen8SIPThreadScratchSize;
+        patch.PerThreadSystemThreadSurfaceSize = SIP::cGen8SIPThreadScratchSize;
 
         retValue = AddPatchItem(
             patch,
