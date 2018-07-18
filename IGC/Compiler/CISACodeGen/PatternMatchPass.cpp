@@ -224,6 +224,10 @@ bool CodeGenPatternMatch::SIMDConstExpr(Instruction* C)
 
 bool CodeGenPatternMatch::NeedInstruction(llvm::Instruction& I)
 {
+    if(SIMDConstExpr(&I))
+    {
+        return false;
+    }
     if(HasPhiUse(I) || HasSideEffect(I) || IsDbgInst(I) ||
        (m_usedInstructions.find(&I) != m_usedInstructions.end()))
     {
