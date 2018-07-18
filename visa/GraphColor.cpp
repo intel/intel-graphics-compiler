@@ -2480,10 +2480,14 @@ void Interference::generateSparseIntfGraph()
     {
         uint32_t numNeighbor = 0;
         uint32_t maxNeighbor = 0;
-        for (auto intf : sparseIntf)
+        for (int i = 0, numVar = (int) sparseIntf.size(); i < numVar; ++i)
         {
-            numNeighbor += (uint32_t)intf.size();
-            maxNeighbor = std::max(maxNeighbor, (uint32_t)intf.size());
+            if (lrs[i]->getPhyReg() == nullptr)
+            {
+                auto intf = sparseIntf[i];
+                numNeighbor += (uint32_t)intf.size();
+                maxNeighbor = std::max(maxNeighbor, (uint32_t)intf.size());
+            }
         }
         float avgNeighbor = ((float)numNeighbor) / sparseIntf.size();
         std::cout << "\t--avg # neighbors: " << std::setprecision(6) << avgNeighbor << "\n";
@@ -5402,8 +5406,7 @@ void GraphColor::determineColorOrdering()
     {
         LiveRange* lr = sorted[i];
         unsigned availColor = numColor;
-        if (lr->getRegKind() == G4_GRF)
-            availColor = numColor - lr->getNumForbidden();
+        availColor = numColor - lr->getNumForbidden();
 
         if (lr->getDegree() + lr->getNumRegNeeded() <= availColor)
         {

@@ -355,10 +355,13 @@ void SpillManager::replaceSpilledSrc(G4_BB* bb,
 			if (inst->isSplitSend() && i == 3)
 			{
 				G4_Declare* tmpDcl = createNewTempAddrDeclare(spDcl, 1);
-				genRegMov(bb, it,
-					spDcl->getRegVar(), ss->getSubRegOff(),
-					tmpDcl->getRegVar(),
-					2);
+                tmpDcl->setSubRegAlign(Four_Word);
+                // (W) mov (1) tmpDcl<1>:ud spDcl<0;1,0>:ud
+                auto movSrc = builder.Create_Src_Opnd_From_Dcl(spDcl, builder.getRegionScalar());
+                auto movDst = builder.Create_Dst_Opnd_From_Dcl(tmpDcl, 1);
+                G4_INST* movInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false, 1, movDst,
+                    movSrc, nullptr, InstOpt_WriteEnable);
+                bb->insert(it, movInst);
 
 				s = builder.createSrcRegRegion(
 					Mod_src_undef,

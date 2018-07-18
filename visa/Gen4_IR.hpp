@@ -2098,7 +2098,7 @@ public:
     G4_Declare* getSpilledDeclare()  {return spillDCL;}
 
     void  setNewTempAddrFlag() {isTempAddr = true;}
-    bool  isNewTempAddr()      {return isTempAddr;}
+    bool  isNewTempAddr() const     {return isTempAddr;}
 
     unsigned getDeclId() { return decl_id; }
 
