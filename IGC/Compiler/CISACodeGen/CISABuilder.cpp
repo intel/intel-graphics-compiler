@@ -3744,6 +3744,10 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
             vbuilder->SetOption(vISA_numGeneralAcc, numAcc);
         }
     }
+    else
+    {
+        vbuilder->SetOption(vISA_accSubstitution, false);
+    }
 
     if (IGC_IS_FLAG_ENABLED(EnableNoDD))
     {
