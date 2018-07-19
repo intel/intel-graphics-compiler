@@ -13,11 +13,13 @@
 #include "../version.hpp"
 
 // external dependencies
+#include <algorithm>
 #include <cstring>
 #include <map>
 #include <vector>
 #include <ostream>
 #include <sstream>
+#include <tuple>
 
 
 using namespace iga;
@@ -57,7 +59,7 @@ using namespace iga;
 // option has a sensible default.
 
 
-const char *iga_status_to_string(const iga_status_t st) {
+const char *iga_status_to_string(iga_status_t st) {
     switch (st) {
     case IGA_SUCCESS:              return "succeeded";
     case IGA_ERROR:                return "unknown error";
@@ -74,23 +76,67 @@ const char *iga_status_to_string(const iga_status_t st) {
     }
 }
 
+typedef std::tuple<iga_gen_t, iga::Platform, const char *> PlatformTupleTy;
+static PlatformTupleTy ALL_PLATFORMS[]
+{
+    PlatformTupleTy(IGA_GEN7,iga::Platform::GEN7,"7"),
+    PlatformTupleTy(IGA_GEN7p5,iga::Platform::GEN7P5,"7p5"),
+    PlatformTupleTy(IGA_GEN8,iga::Platform::GEN8,"8"),
+    PlatformTupleTy(IGA_GEN8lp,iga::Platform::GEN8LP,"8lp"),
+    PlatformTupleTy(IGA_GEN9,iga::Platform::GEN9,"9"),
+    PlatformTupleTy(IGA_GEN9lp,iga::Platform::GEN9LP,"9lp"),
+    PlatformTupleTy(IGA_GEN9p5,iga::Platform::GEN9P5,"9p5"),
+    PlatformTupleTy(IGA_GEN10,iga::Platform::GEN10,"10"),
+    PlatformTupleTy(IGA_GEN11,iga::Platform::GEN11,"11"),
+};
+
+// conversion to an internal platform
 iga::Platform ToPlatform(iga_gen_t gen)
 {
-    iga::Platform p = iga::Platform::INVALID;
-    switch (gen) {
-    case IGA_GEN7:      p = iga::Platform::GEN7;      break;
-    case IGA_GEN7p5:    p = iga::Platform::GEN7P5;    break;
-    case IGA_GEN8:      p = iga::Platform::GEN8;      break;
-    case IGA_GEN8lp:    p = iga::Platform::GEN8LP;    break;
-    case IGA_GEN9:      p = iga::Platform::GEN9;      break;
-    case IGA_GEN9lp:    p = iga::Platform::GEN9LP;    break;
-    case IGA_GEN9p5:    p = iga::Platform::GEN9P5;    break;
-    case IGA_GEN10:     p = iga::Platform::GEN10;     break;
-    case IGA_GEN11:     p = iga::Platform::GEN11;     break;
-    default:            p = iga::Platform::INVALID;   break;
-    }
-    return p;
+    for (const auto &p : ALL_PLATFORMS)
+        if (std::get<0>(p) == gen)
+          return std::get<1>(p);
+    return iga::Platform::INVALID;
 }
+
+iga_status_t iga_platforms_list(
+  size_t gens_length_bytes,
+  iga_gen_t *gens,
+  size_t *gens_length_bytes_required)
+{
+    if (gens_length_bytes != 0 && gens == nullptr)
+        return IGA_INVALID_ARG;
+
+    const size_t MAX_SPACE_NEEDED =
+      sizeof(ALL_PLATFORMS)/sizeof(ALL_PLATFORMS[0])*sizeof(iga_gen_t);
+    if (gens_length_bytes_required)
+        *gens_length_bytes_required = MAX_SPACE_NEEDED;
+    if (gens) {
+        for (size_t i = 0;
+            i < std::min(gens_length_bytes,MAX_SPACE_NEEDED)/sizeof(iga_gen_t);
+            i++)
+        {
+            gens[i] = std::get<0>(ALL_PLATFORMS[i]);
+        }
+    }
+    return IGA_SUCCESS;
+}
+iga_status_t iga_platform_symbol_suffix(
+    iga_gen_t gen,
+    const char **suffix)
+{
+    if (suffix == nullptr)
+        return IGA_INVALID_ARG;
+    for (const auto &p : ALL_PLATFORMS) {
+        if (gen == std::get<0>(p)) {
+            *suffix = std::get<2>(p);
+            return IGA_SUCCESS;
+        }
+    }
+    *suffix = nullptr;
+    return IGA_INVALID_ARG;
+}
+
 
 class IGAContext {
 private:
@@ -228,10 +274,7 @@ public:
             aopts.encoder_opts |= IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL;
             used_legacy_fields = true;
         }
-        if (aopts._reserved1) { // used to be error_on_compact_fail
-            aopts.encoder_opts |= IGA_ENCODER_OPT_AUTO_DEPENDENCIES;
-            used_legacy_fields = true;
-        }
+
         if (used_legacy_fields) {
             errHandler.reportWarning(Loc(1,1,0,0),
                 "iga_assemble call uses deprecated options "
@@ -278,10 +321,10 @@ public:
         }
         size_t bitsLen = 0;
         EncoderOpts eopts(
-            (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_COMPACT) != 0,
-            (aopts.encoder_opts & IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL) == 0,
-            false, // noCompactFirstEightInst
-            (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_DEPENDENCIES) != 0);
+              (aopts.encoder_opts & IGA_ENCODER_OPT_AUTO_COMPACT) != 0
+            , (aopts.encoder_opts & IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL) == 0
+            , false // noCompactFirstEightInst
+          );
         if ((aopts.encoder_opts & IGA_ENCODER_OPT_USE_NATIVE) == 0) {
             if (!iga::ged::IsEncodeSupported(m_model, eopts)) {
                 delete kernel;
@@ -569,7 +612,8 @@ public:
 
 const char *iga_version_string()
 {
-    return IGA_VERSION_STRING " (" __DATE__ ")";
+#define IGA_EXTERNAL_INTERNAL "int"
+    return IGA_VERSION_STRING "-" IGA_EXTERNAL_INTERNAL " (" __DATE__ ")";
 }
 
 

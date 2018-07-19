@@ -53,7 +53,7 @@ namespace iga
 
     // TODO: merge this with RegInfo in Models.hpp
     //
-    // schema for register files 
+    // schema for register files
     // NOTE: I have to replicate all the constants as scalars (not struct elements)
     // because the compiler refuses to accept that they are constant. :(
     //
@@ -67,7 +67,7 @@ const static RegSetInfo RS_ ## REGSYM = {RegName::REGSYM, REGSYN, REGS, BPR, STA
     RS_CREATE_SET(GRF_R,     "r", 256, 32, 0);
     RS_CREATE_SET(ARF_A,    "a0",   1, 32, RS_NEXT(GRF_R));
     RS_CREATE_SET(ARF_ACC, "acc",   4, 32, RS_NEXT(ARF_A));
-    // MMR: technically only a couple bits each, 
+    // MMR: technically only a couple bits each,
     // but treat as full registers just for simplicity
     RS_CREATE_SET(ARF_MME, "mme",   8, 32, RS_NEXT(ARF_ACC));
     RS_CREATE_SET(ARF_F,     "f",   2,  4, RS_NEXT(ARF_MME));

@@ -82,7 +82,7 @@ void EncoderBase::encodeKernelPreProcess(const Kernel &k)
 {
     if (m_opts.noCompactFirstEightInst) {
         // set the first 8 instructions to NOCOMPACT
-        // The first 8 instructions must be in the same block when this option is enabled 
+        // The first 8 instructions must be in the same block when this option is enabled
         if (!k.getBlockList().empty()) {
             Block* first_blk = *k.getBlockList().begin();
             size_t counter = 0;

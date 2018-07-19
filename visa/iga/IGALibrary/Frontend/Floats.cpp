@@ -41,19 +41,22 @@ using namespace iga;
 // NaN is an equivalence class of floating point values.  Different
 // libraries, runtimes, and hardware use different elements of the
 // class as the characteristic value when they want a NaN value.
-// For example, the sign bit can be anything.
+// For instance, the sign bit can be anything and the mantissa payload
+// bits can be anything except for the leading mantissa bit (which
+// distinguishes a qnan from an snan).
 //
 // NOTE: we distinguish between 'qnan' and 'snan' instead of just using 'nan'
 //       with the whole payload since we parse as 64b and only narrow once
-//       we see the type; we considered nan( HEXLIT ) and just letting the
-//       user sort the meaning of the mantissa out, but this gets mess when
-//       widening literals during parse or narrowing them during formatting
+//       we see the type; we considered 'nan' '(' HEXLIT ')' and just letting
+//       the user sort the meaning of the mantissa out, but this gets messy
+//       when widening literals during parse or narrowing them during
+//       formatting.
 //
-// E.g. for 32-bit IEEE 754 we have (C.f. section 6.2.1 of the spec)
+// Without loss of generality (this generalizes to all IEEE sizes),
+// the 32-bit IEEE 754 (C.f. section 6.2.1 of the spec) we have
 //   s eeeeeeee mmm`mmmm`mmmm`mmmm`mmmm`mmmm
 // (where the s and the m's can be anything such that at least one 'm' is
 // non-zero; all 0's would imply infinity)
-// NOTE: this all generalizes for half and double precision float encodings
 //
 // SNAN: "snan" (signaling NaN) is:
 //   s 11111111 0xx`xxxx`xxxx`xxxx`xxxx`xxxx
@@ -63,10 +66,11 @@ using namespace iga;
 // QNAN: IEEE754 says that qnan (quiet NaN) is
 //   s 11111111 1xx`xxxx`xxxx`xxxx`xxxx`xxxx
 //              ^ leading bit of mantiss is 1; the rest of the payload
-//                can be zeros since this bit is set
+//                can be zeros since the top mantissa bit is set
 //
 // IGA supports the following syntax (from examples)
 //     NaNLit ::= '-'? ('snan'|'qnan') '(' HEXLIT ')'
+//
 // Examples:
 //   * "-snan(0xA):f" parses as
 //         s eeeeeeee mmm`mmmm`mmmm`mmmm`mmmm`mmmm
@@ -277,31 +281,31 @@ void iga::FormatFloat(std::ostream &os, uint8_t x)
 
 uint32_t iga::ConvertDoubleToFloatBits(double f)
 {
-	uint64_t f64 = FloatToBits(f);
+    uint64_t f64 = FloatToBits(f);
 
-	uint64_t m64 = f64 & IGA_F64_MANT_MASK;
-	uint64_t e64 = (f64 & IGA_F64_EXP_MASK) >> FloatMantissaBits<double>();
-	if (e64 == (IGA_F64_EXP_MASK >> FloatMantissaBits<double>()) && m64 != 0) {
-		// f64 NaN
-		uint32_t m32 = (uint32_t)m64 & IGA_F32_MANT_MASK;
-		m32 |= (uint32_t)((m64 & IGA_F64_QNAN_BIT) >>
-			(FloatMantissaBits<double>() - FloatMantissaBits<float>())); // preserve snan
-		if (m32 == 0) {
-			// The payload was only in the high bits which we dropped;
-			// make it non-zero so we retain NaN'ness
-			m32 = 1;
-		}
-		uint32_t s32 = (uint32_t)(f64 >> 32) & IGA_F32_SIGN_BIT;
-		return (s32 | IGA_F32_EXP_MASK | m32);
-	} else {
-		// regular conversion can deal with all the other special cases
-		return FloatToBits((float)f);
-	}
+    uint64_t m64 = f64 & IGA_F64_MANT_MASK;
+    uint64_t e64 = (f64 & IGA_F64_EXP_MASK) >> FloatMantissaBits<double>();
+    if (e64 == (IGA_F64_EXP_MASK >> FloatMantissaBits<double>()) && m64 != 0) {
+        // f64 NaN
+        uint32_t m32 = (uint32_t)m64 & IGA_F32_MANT_MASK;
+        m32 |= (uint32_t)((m64 & IGA_F64_QNAN_BIT) >>
+            (FloatMantissaBits<double>() - FloatMantissaBits<float>())); // preserve snan
+        if (m32 == 0) {
+            // The payload was only in the high bits which we dropped;
+            // make it non-zero so we retain NaN'ness
+            m32 = 1;
+        }
+        uint32_t s32 = (uint32_t)(f64 >> 32) & IGA_F32_SIGN_BIT;
+        return (s32 | IGA_F32_EXP_MASK | m32);
+    } else {
+        // regular conversion can deal with all the other special cases
+        return FloatToBits((float)f);
+    }
 }
 
 float iga::ConvertDoubleToFloat(double f)
 {
-	return FloatFromBits(ConvertDoubleToFloatBits(f));
+    return FloatFromBits(ConvertDoubleToFloatBits(f));
 }
 
 // TODO: generalize this to all IEEE sizes once we're confident it works and
@@ -481,173 +485,3 @@ double iga::ConvertFloatToDouble(float f)
 }
 
 
-
-#if 0
-
-// Quantize a float value by reducing the number of mantissa
-// (not fractional) bits using round to nearest even (bankers rounding)
-//
-// NOTE: this is drawn from the Simulator
-static float QuantizeMantissaRoundEven(float f, uint32_t mantissa)
-{
-    union {
-        unsigned u;
-        float f;
-    } uf, one, one_plus_lsb;
-    uf.f = f;
-
-    if ((uf.u & 0x7f800000) != 0x7f800000) {
-        // Only if not infinity or NaN
-
-        // Least significant bit of rounded value
-        bool lsb = (mantissa <= 24) && ((uf.u >> (24 - mantissa)) & 1);
-        // Next bit (corresponds to half the truncated remainder)
-        bool half = (mantissa <= 23) && ((uf.u >> (23 - mantissa)) & 1);
-        // Remaining bits after that one
-        bool remainder = (mantissa < 23) &&
-            (uf.u & ~(0xffffffff << (23 - mantissa)));
-
-        // Truncate mantissa bits
-        uf.u &= 0xffffffff << ((mantissa < 24) ? (24 - mantissa) : 0);
-        // Round if needed
-        if ((mantissa < 24) && half && (remainder || lsb)) {
-            // Round by adding the differences between two numbers that
-            // have the same exponent and the appropriate LSB bit set.
-            one.u = (uf.u & 0xff800000);
-            one_plus_lsb.u = one.u | (1 << (24 - mantissa));
-            uf.f += one_plus_lsb.f - one.f;
-        }
-    }
-
-    return uf.f;
-}
-
-
-// NOTE: this is based on some code taken from the simulator,
-//
-// I've modified parts of it slightly
-uint16_t  ConvertFloatToHalf(float f)
-{
-    union {
-        unsigned u;
-        float f;
-    } uf;
-    uint32_t sign, exp16, mant16;       // The 16-bit fields
-    uint32_t exp, mant;                 // The larger 32-bit fields
-
-    uf.f = QuantizeMantissaRoundEven(f, 11);
-
-    // Extract the sign, exponent, and mantissa
-    sign = (uf.u & 0x80000000) >> 31;
-    exp =  (uf.u & 0x7F800000) >> 23;
-    mant =  uf.u & 0x007FFFFF;
-
-    // Check for out of range
-    if ((exp == 0xFF) && (mant != 0)) {
-        // Not a Number (NaN)
-        exp16 = 0x1F;
-        // mant16 = (mant | 0x00400000) >> 13;
-        // ORing will do sNan->qNan conversion
-        //
-        // TRB: want to maintain the same pattern NaN payload reduction
-        // rules.
-    } else if (exp > (0x70 + 0x1E)) {
-        // Too big to represent -> Infinite
-        exp16 = 0x1F;
-        mant16 = 0;
-    } else if ((exp <= 0x70) && (exp >= 0x66)) {
-        // Denorm
-        mant |= 0x00800000;
-        for ( ; exp <= 0x70; mant >>= 1, exp++)
-            ;
-        exp16 = 0;
-        mant16 = mant >> 13;
-    } else if (exp < 0x66) {
-        // Too small to represent -> Zero
-        exp16 = 0;
-        mant16 = 0;
-    } else {
-        // A representable number
-        // Convert it to 16-bit format
-        exp16 = exp - 0x70;
-        mant16 = mant >> 13;
-
-        // Deal with rounding now - RNE only for now
-        uint32_t RoundBits = mant & 0x7FFF;      // ToDo: Why does it work this way?
-        if (RoundBits == 0x4000) {      // ToDo: Why does it work this way?
-                                        // Special case for round to nearest even - ToDo:
-            mant16++;   // Don't understand, but this gets incremented in simulator
-        } else if ((RoundBits & 0x1000) != 0) {
-            mant16 |= 0x400;            // Stick the implied one back in place
-            mant16++;                   // Round up - hope it didn't overflow
-            if ((mant16 & 0x800) != 0) {
-                // It overflowed, adjust it
-                exp16++;                // It's bigger
-                mant16 >>= 1;           // Keep the extra bit
-            }
-            mant16 &= 0x3FF;            // Go back to the bits we'll use
-        }
-    }
-}
-
-
-// F16TO32 - Half Precision Float to Single Precision Float
-void ThreadContext::IE_F16TO32(uint32_t *pSrc0, float *pDst, EUCondBits *pCC, bool MovType)
-{
-    union {
-        unsigned u;
-        float f;
-    } uf;
-    unsigned sign, exp16, mant16;   // The 16-bit fields
-    unsigned exp, mant;             // The larger 32-bit fields
-
-                                    // Put the F16 number into a local variable where we can extract the bits
-    uf.u = *pSrc0;
-
-    // Extract the sign, exponent, and mantissa
-    sign =  (uf.u & 0x8000) >> 15;
-    exp16 = (uf.u & 0x7C00) >> 10;
-    mant16 = uf.u & 0x03FF;
-
-    // Convert it to 32-bit format
-    if ((exp16 > 0) && (exp16 < 0x1F)) { // Regular number
-        exp = exp16 + 0x70;
-        mant = mant16 << 13;
-    }
-    else if ((exp16 == 0) && (mant16 != 0)) { // Denorm
-                                              // Shift up until the hidden one position gets a bit set in it
-        for (exp = 0x71; (mant16 & 0x400) == 0; mant16 <<= 1, exp--)
-            ;
-        mant = (mant16 << 13) & 0x007FFFFF;
-    }
-    else if (exp16 == 0) {  // Zero
-        exp = 0;
-        mant = 0;
-    }
-    else if (mant16 != 0) {             // NaN
-        exp = 0xFF;
-        // mantissa is mant16 with 0-padding to the right
-        if (MovType)
-        {
-            mant = (mant16) << 13;//keep the sNan for raw mov
-        }
-        else
-        {
-            mant = (mant16 | 0x200) << 13; // ORing will do sNan->qNan conversion
-        }
-    }
-    else {  // Must be infinity
-        exp = 0xFF;
-        mant = 0;
-    }
-
-    uf.u = (sign << 31) | (exp << 23) | mant;
-
-    *pDst = uf.f;
-    if (pCC != NULL)
-    {
-        pCC->ZR_bit = (*pDst == 0.0);
-        pCC->SN_bit = (*pDst < 0.0);
-    }
-} // End of IE_F16TO32
-#endif

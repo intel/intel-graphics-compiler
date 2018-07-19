@@ -37,7 +37,7 @@ namespace iga
         // The first eight instructions must be in the same bb
         bool noCompactFirstEightInst;
         bool autoDepSet;
-        
+
         EncoderOpts(
             bool _autoCompact = false,
             bool _explicitCompactMissIsWarning = false,

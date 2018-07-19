@@ -42,6 +42,7 @@ namespace iga
 {
     typedef std::list<
        iga::Instruction*, std_arena_based_allocator<iga::Instruction*> > InstList;
+    typedef InstList::iterator InstListIterator;
 
     class Block
     {

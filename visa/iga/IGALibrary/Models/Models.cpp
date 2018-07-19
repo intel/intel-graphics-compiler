@@ -56,7 +56,7 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
     IGA_REGISTER_SPEC_UNIFORM(RegName::ARF_A, "a", "Index",
         0x1, 0,
         2,
-		1, (32)),
+        1, (32)),
 
     IGA_REGISTER_SPEC_UNIFORM(
         RegName::ARF_ACC, "acc", "Accumulator",
@@ -383,16 +383,16 @@ const OpSpec& Model::lookupOpSpecFromBits(
         } else {
             const CompactedField **compactedFields = nullptr;
             size_t numCompactedFields = 0;
-			(void)compactedFields;
-			(void)numCompactedFields;
-			if (compactedFields)
-				return LookupOpSpecSubfunctionByBitsCompacted(
-					*this, mi, missInfo, compactedFields, numCompactedFields, os);
+            (void)compactedFields;
+            (void)numCompactedFields;
+            if (compactedFields)
+              return LookupOpSpecSubfunctionByBitsCompacted(
+                  *this, mi, missInfo, compactedFields, numCompactedFields, os);
 
-			compactedFields = nullptr;
-            IGA_ASSERT_FALSE("no compaction tables on this platform (yet)");
-            return *os;
-        }
+            compactedFields = nullptr;
+                  IGA_ASSERT_FALSE("no compaction tables on this platform (yet)");
+                  return *os;
+        } // else(!os->isGroup())
     } else {
         return LookupOpSpecByBitsNative(*this, mi, missInfo, os);
     }

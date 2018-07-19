@@ -82,7 +82,8 @@ typedef enum {
  *
  * RETURNS: IGA_SUCCESS
  */
-IGA_API const char *iga_status_to_string(const iga_status_t st);
+IGA_API const char *iga_status_to_string(iga_status_t st);
+
 
 /*
 * Returns a NUL-terminated version string corresponding to the version of
@@ -107,6 +108,46 @@ typedef enum {
   , IGA_GEN10     = GEN_VER(10,0)
   , IGA_GEN11     = GEN_VER(11,0)
 } iga_gen_t;
+
+
+/*
+ * Returns a list of the platforms enumeration values supported by this
+ * implementation of IGA into a user-provided buffer.  The buffer parameter
+ * maybe omitted.
+ *
+ * PARAMETERS:
+ *  gens_length_bytes            the length of the gens buffer in bytes;
+ *                               can be 0 if gens is NULL
+ *  gens                         the user-provided buffer (can be NULL);
+ *                               if non-NULL, the output will contain the list
+ *                               of iga_gen_t platforms that this IGA supports
+ *  gens_length_bytes_required   the required length
+ *
+ * RETURNS:
+ *   IGA_INVALID_ARGUMENT  if gens_length_bytes != 0 && gens == nullptr
+ *   IGA_SUCCESS           otherwise
+ */
+IGA_API iga_status_t iga_platforms_list(
+  size_t gens_length_bytes,
+  iga_gen_t *gens,
+  size_t *gens_length_bytes_required);
+/*
+ * Returns the platform suffix name of a given platform.
+ *
+ * PARAMETERS:
+ *  gen                   the platform to query
+ *  suffix                an output parameter assigned the result;
+ *                        NULL is assigned if the 'gen' passed in is invalid
+ *                        or unsupported
+ *
+ * RETURNS:
+ *   IGA_INVALID_ARGUMENT  if symbol is NULL or 'gen' is invalid or not
+ *                         supported by this platform
+ *   IGA_SUCCESS           otherwise
+ */
+IGA_API iga_status_t iga_platform_symbol_suffix(
+    iga_gen_t gen,
+    const char **suffix);
 
 
 /*
@@ -200,8 +241,6 @@ static_assert(sizeof(iga_assemble_options_t) == 6*4,
  *    op (...) ... {Uncompacted} // will not attempt to compact
  */
 #define IGA_ENCODER_OPT_AUTO_COMPACT            0x00000001u
-/* auto set instruction dependencies */
-#define IGA_ENCODER_OPT_AUTO_DEPENDENCIES       0x00000002u
 /* treat failure to compact an instruction with a {Compacted} annotation
 * as a hard error rather than just raising a warning */
 #define IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL   0x00000004u
@@ -243,15 +282,6 @@ static_assert(sizeof(iga_assemble_options_t) == 6*4,
       sizeof(iga_assemble_options_t), \
       IGA_WARNINGS_DEFAULT, \
       (IGA_ENCODER_OPT_ERROR_ON_COMPACT_FAIL), \
-      0, /* syntax_opts = NONE */ \
-      0, /* reserved */ \
-      0  /* reserved */ \
-    }
-#define IGA_ASSEMBLE_OPTIONS_INIT_COMPACTION_WARNING() \
-    { \
-      sizeof(iga_assemble_options_t), \
-      IGA_WARNINGS_DEFAULT, \
-      (IGA_ENCODER_OPT_AUTO_COMPACT | IGA_ENCODER_OPT_AUTO_DEPENDENCIES), \
       0, /* syntax_opts = NONE */ \
       0, /* reserved */ \
       0  /* reserved */ \
