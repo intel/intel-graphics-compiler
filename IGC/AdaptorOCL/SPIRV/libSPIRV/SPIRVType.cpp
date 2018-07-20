@@ -234,6 +234,11 @@ SPIRVType::isTypeVmeImageINTEL() const {
 }
 
 bool
+SPIRVType::isTypeSubgroupAvcINTEL() const {
+    return isSubgroupAvcINTELTypeOpCode(OpCode);
+}
+
+bool
 SPIRVType::isTypeStruct() const {
   return OpCode == OpTypeStruct;
 }

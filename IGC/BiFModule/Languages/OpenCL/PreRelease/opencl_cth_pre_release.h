@@ -284,6 +284,7 @@ typedef struct
 } intel_sub_group_avc_sic_result_t;
 
 // ... Common VME operations ...
+#pragma OPENCL EXTENSION cl_intel_device_side_avc_motion_estimation : enable
 
 intel_sub_group_avc_mce_payload_t __attribute__((overloadable))
 intel_sub_group_avc_mce_set_motion_vector_cost_function(

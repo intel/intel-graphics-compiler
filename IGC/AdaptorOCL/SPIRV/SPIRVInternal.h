@@ -528,7 +528,7 @@ _SPIRV_OP(set_bilinear_filter_enable, SetBilinearFilterEnable)
 _SPIRV_OP(evaluate_with_single_reference, EvaluateWithSingleReference)
 _SPIRV_OP(evaluate_with_dual_reference, EvaluateWithDualReference)
 _SPIRV_OP(evaluate_with_multi_reference, EvaluateWithMultiReference)
-_SPIRV_OP(evaluate_with_multi_reference_interlaced, EvaluateWithMultiReferenceInterlaced)
+_SPIRV_OP(evaluate_with_multi_reference, EvaluateWithMultiReferenceInterlaced)
 #undef _SPIRV_OP
 
 // SIC instructions
@@ -548,7 +548,7 @@ _SPIRV_OP(evaluate_ipe, EvaluateIpe)
 _SPIRV_OP(evaluate_with_single_reference, EvaluateWithSingleReference)
 _SPIRV_OP(evaluate_with_dual_reference, EvaluateWithDualReference)
 _SPIRV_OP(evaluate_with_multi_reference, EvaluateWithMultiReference)
-_SPIRV_OP(evaluate_with_multi_reference_interlaced, EvaluateWithMultiReferenceInterlaced)
+_SPIRV_OP(evaluate_with_multi_reference, EvaluateWithMultiReferenceInterlaced)
 _SPIRV_OP(get_ipe_luma_shape, GetIpeLumaShape)
 _SPIRV_OP(get_best_ipe_luma_distortion, GetBestIpeLumaDistortion)
 _SPIRV_OP(get_best_ipe_chroma_distortion, GetBestIpeChromaDistortion)

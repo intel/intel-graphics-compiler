@@ -993,6 +993,16 @@ ushort2 __builtin_spirv_intel_sub_group_ime_ref_window_size_i8_i8(
     return ref_window_size;
 }
 
+// There is a bug in the specification:
+// intel_sub_group_ime_ref_window_size is used instead of intel_sub_group_avc_ime_ref_window_size.
+// Add this alias, to support fixed version as well.
+ushort2 __builtin_spirv_intel_sub_group_avc_ime_ref_window_size_i8_i8(
+    uchar search_window_config,
+    char dual_ref ) 
+{
+    return __builtin_spirv_intel_sub_group_ime_ref_window_size_i8_i8(search_window_config, dual_ref);
+}
+
 INLINE ushort2 OVERLOADABLE
 intel_sub_group_ime_ref_window_size(
   uchar search_window_config,
@@ -2070,6 +2080,19 @@ intel_sub_group_avc_ime_set_early_search_termination_threshold(
 {
     return __builtin_spirv_intel_sub_group_avc_ime_set_early_search_termination_threshold_i8_intel_sub_group_avc_ime_payload_t(threshold, payload);
 }
+
+// Note: This function is not present in the VME specification, but our tests use it.
+// TODO: a ticket to validation team has been submitted to remove the calls in tests. Remove this function when it is fixed.
+// As Clang's spir-v generator doesn't recognize this function, it passses the call "as is". 
+// VME types are built-in in Clang 5.0, so the mangling changed from 4.0 version. Below mangled definiton is to workaround the mangling change for this function.
+INLINE intel_sub_group_avc_ime_payload_t 
+_Z77intel_sub_group_avc_ime_set_early_unidirectional_search_termination_thresholdh37ocl_intel_sub_group_avc_ime_payload_t(
+    uchar threshold,
+    intel_sub_group_avc_ime_payload_t payload )
+{
+    return __builtin_spirv_intel_sub_group_avc_ime_set_early_search_termination_threshold_i8_intel_sub_group_avc_ime_payload_t(threshold, payload);
+}
+
 
 intel_sub_group_avc_ime_payload_t __builtin_spirv_intel_sub_group_avc_ime_set_early_unidirectional_search_termination_threshold_i8_intel_sub_group_avc_ime_payload_t(
     uchar threshold,

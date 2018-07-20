@@ -114,6 +114,7 @@ public:
   bool isTypeImage() const;
   bool isTypeSampledImage() const;
   bool isTypeVmeImageINTEL() const;
+  bool isTypeSubgroupAvcINTEL() const;
   bool isTypeOCLImage() const;
   bool isTypePipe()const;
   bool isTypeInt(unsigned Bits = 0) const;

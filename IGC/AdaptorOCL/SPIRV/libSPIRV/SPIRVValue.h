@@ -270,7 +270,8 @@ protected:
             Type->isTypeEvent() ||
             Type->isTypePointer() ||
             Type->isTypeReserveId() ||
-            Type->isTypeDeviceEvent()) &&
+            Type->isTypeDeviceEvent() || 
+            Type->isTypeSubgroupAvcINTEL()) &&
             "Invalid type");
     }
 };
