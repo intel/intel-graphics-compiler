@@ -146,8 +146,6 @@ int CBinaryCISAEmitter::Emit(VISAKernelImpl * cisa_kernel, unsigned int& binaryS
 
     for(int i = 0; i < kernelInfo->attribute_count; i++)
     {
-        if (strcmp(kernelInfo->strings[kernelInfo->attributes[i].nameIndex], "AsmName") == 0)
-            continue;
         this->emitAttributeInfo(cisa_kernel, &kernelInfo->attributes[i]);
     }
 

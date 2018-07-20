@@ -2657,8 +2657,6 @@ extern string printKernelHeader(const common_isa_header& isaHeader, const kernel
     bool isTargetSet = false;
     for (unsigned i = 0; i < header->attribute_count; i++)
     {
-        if (strcmp(header->strings[header->attributes[i].nameIndex], "AsmName") == 0)
-            continue;
         sstr << endl << printAttribute(&header->attributes[i], header, true);
         if(strcmp(header->strings[header->attributes[i].nameIndex], "Target") == 0)
         {
