@@ -999,7 +999,8 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
   // handle 3D specific intrinsics
   EOPCODE intrinsic_name = GetOpCode((Instruction*)(inst));
   if(IsMathIntrinsic(intrinsic_name) ||
-      intrinsic_name == llvm_input || intrinsic_name == llvm_sgv ||
+      intrinsic_name == llvm_input || 
+      intrinsic_name == llvm_sgv ||
       intrinsic_name == llvm_shaderinputvec ||
       intrinsic_name == llvm_getbufferptr ||
       intrinsic_name == llvm_runtimeValue ||
@@ -1021,7 +1022,8 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
       intrinsic_name == llvm_ptr_to_pair ||
       intrinsic_name == llvm_pair_to_ptr ||
       intrinsic_name == llvm_waveBallot ||
-      intrinsic_name == llvm_waveAll)
+      intrinsic_name == llvm_waveAll ||
+      intrinsic_name == llvm_fma)
   {
     if (intrinsic_name == llvm_input ||
         intrinsic_name == llvm_shaderinputvec)
