@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/ADT/SetVector.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Dominators.h>
@@ -77,7 +78,7 @@ namespace IGC
         llvm::Function* m_kernel;
         bool m_SLMUsed;
         std::vector<llvm::Instruction*> m_barriers;
-        std::set<llvm::Instruction*> m_aliveAcrossBarrier;
+        llvm::SetVector<llvm::Instruction*> m_aliveAcrossBarrier;
         std::set<llvm::Instruction*> m_instructionsToMove;
         std::map<llvm::Instruction*, std::set<llvm::Instruction*>> m_LiveRegistersPerBarrier;
         static char ID;

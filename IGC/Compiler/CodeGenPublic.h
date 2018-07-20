@@ -600,6 +600,7 @@ namespace IGC
                 (stateId < getStateCnt() &&
                 RetryTable[stateId].nextState >= getStateCnt()));
         }
+        unsigned GetRetryId() const { return stateId; }
 
         void Enable() { enabled = true; }
         void Disable() { enabled = false; }

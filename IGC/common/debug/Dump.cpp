@@ -96,6 +96,13 @@ DumpName DumpName::PSPhase(PixelShaderPhaseType phase) const
     return copy;
 }
 
+DumpName DumpName::Retry(unsigned retryId) const
+{
+    DumpName copy(*this);
+    copy.m_retryId = retryId;
+    return copy;
+}
+
 DumpName DumpName::Extension(std::string const& extension) const
 {
     assert(
@@ -270,6 +277,13 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         ss << (underscore ? "_" : "")
             << m_pass->m_name;
         underscore = true;
+    }
+    if (m_retryId.hasValue())
+    {
+        if (m_retryId.getValue())
+        {
+            ss << "_" << m_retryId.getValue();
+        }
     }
     if(m_simdWidth.hasValue())
     {

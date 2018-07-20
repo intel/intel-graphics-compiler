@@ -85,6 +85,7 @@ void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
             .Hash(pContext->hash)
             .Type(pContext->type)
             .Pass(dumpName)
+            .Retry(pContext->m_retryManager.GetRetryId())
             .Extension("ll");
         DumpLLVMIRText(
             pContext->getModule(),

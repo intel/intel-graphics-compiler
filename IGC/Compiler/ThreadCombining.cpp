@@ -596,7 +596,7 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
 
     m_kernel = m_pMdUtils->begin_FunctionsInfo()->first;
 
-	if (!canDoOptimization(m_kernel, M))
+    if (!canDoOptimization(m_kernel, M))
     {
         return false;
     }
@@ -604,31 +604,31 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
     unsigned int threadGroupSize_X = GetthreadGroupSize(M, ThreadGroupSize_X);
     unsigned int threadGroupSize_Y = GetthreadGroupSize(M, ThreadGroupSize_Y);
 
-    static const int SIMD16_NUM_TEMPREG_THRESHOLD = 92; // This is a heuristic from experiments (same as the value in ShaderCodeGen),
-														// if number of temp registers is
-														// greater than this number then, likely that SIMD16 will spill and we should
-														// chose SIMD 8
+    // This is a heuristic from experiments (same as the value in ShaderCodeGen),
+    // if number of temp registers is greater than this number then, likely
+    // that SIMD16 will spill and we should chose SIMD 8
+    static const int SIMD16_NUM_TEMPREG_THRESHOLD = 92;
 
-    unsigned int minTGSizeHeuristic = 128;				// This value tells us what is the minimum acceptable threadgroup size
-														// to make sure that we are not too aggressive with thread combining.
-														// Current Heurstic is to have no less than 8 H/W threads per WG.
-	
+    // This value tells us what is the minimum acceptable threadgroup size
+    // to make sure that we are not too aggressive with thread combining.
+    // Current Heurstic is to have no less than 8 H/W threads per WG.
+    unsigned int minTGSizeHeuristic = 128;
 
-	SIMDMode simdMode = csCtx->GetLeastSIMDModeAllowed();
-	// If SIMD8 is legal then, heuristics are SIMD8 selection if spill is expected, otherwise based on
-	// simd16 selection
-	if (simdMode == SIMDMode::SIMD8)
-	{
-		if (csCtx->m_tempCount > SIMD16_NUM_TEMPREG_THRESHOLD)
-		{
-			simdMode = SIMDMode::SIMD8;
-			minTGSizeHeuristic = 64; // => 8 h/w threads per WG
-		}
-		else
-		{
-			simdMode = SIMDMode::SIMD16;
-		}
-	}
+    SIMDMode simdMode = csCtx->GetLeastSIMDModeAllowed();
+    // If SIMD8 is legal then, heuristics are SIMD8 selection if spill is
+    // expected, otherwise based on simd16 selection
+    if (simdMode == SIMDMode::SIMD8)
+    {
+        if (csCtx->m_tempCount > SIMD16_NUM_TEMPREG_THRESHOLD)
+        {
+            simdMode = SIMDMode::SIMD8;
+            minTGSizeHeuristic = 64; // => 8 h/w threads per WG
+        }
+        else
+        {
+            simdMode = SIMDMode::SIMD16;
+        }
+    }
 
     float currentThreadOccupancy = csCtx->GetThreadOccupancy(simdMode);
     unsigned x = (threadGroupSize_X % 2 == 0) ? threadGroupSize_X / 2 : threadGroupSize_X;
@@ -717,6 +717,5 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
 
     context->m_threadCombiningOptDone = true;
 
-    DumpLLVMIR(context, "comb");
     return true;
 }

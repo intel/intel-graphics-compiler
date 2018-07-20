@@ -82,6 +82,7 @@ public:
     DumpName PostFix(std::string const& postfixStr) const;
     DumpName Pass(std::string const& name, llvm::Optional<uint32_t> index = llvm::Optional<uint32_t>()) const;
     DumpName PSPhase(PixelShaderPhaseType phase) const;
+    DumpName Retry(unsigned retryId) const;
     std::string str() const;
     std::string overridePath() const;
     std::string RelativePath() const;
@@ -105,6 +106,7 @@ private:
     llvm::Optional<ShaderHash>          m_hash;
     llvm::Optional<std::string>         m_postfixStr;
     llvm::Optional<CPassDescriptor>     m_pass;
+    llvm::Optional<unsigned>            m_retryId;
 };
 
 /// return the name of the file to dump
