@@ -73,7 +73,7 @@ namespace vISA
             auto inst = (*rInst);
             auto dst = inst->getDst();
 
-            rp[inst] = regPressure;
+            rp[inst] = (uint32_t) regPressure;
             LocalLiveRange* LLR = nullptr;
             if (dst && (topdcl = dst->getTopDcl()))
             {
@@ -172,7 +172,7 @@ namespace vISA
             }
         }
 
-        regPressure += numScalars / 8;
+        regPressure += numScalars / 8.0;
     }
 
     void RPE::updateLiveness(BitSet& live, uint32_t id, bool val)
@@ -186,10 +186,10 @@ namespace vISA
     void RPE::updateRegisterPressure(unsigned int before, unsigned int after, unsigned int id)
     {
         auto change = before^after;
-        if(change &&
-            vars[id]->getDeclare()->getNumElems() > 1)
+        if (change)
         {
-            auto delta = vars[id]->getDeclare()->getNumRows();
+            double delta = vars[id]->getDeclare()->getByteSize() < 32 ? 
+                vars[id]->getDeclare()->getByteSize() / 32.0 : (double) vars[id]->getDeclare()->getNumRows();
             if (before & change)
             {
                 if (regPressure < delta)
@@ -206,7 +206,7 @@ namespace vISA
                 regPressure += delta;
             }
         }
-        maxRP = std::max(maxRP, regPressure);
+        maxRP = std::max(maxRP, (uint32_t) regPressure);
     }
 
     void RPE::recomputeMaxRP()
