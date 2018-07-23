@@ -91,10 +91,11 @@ using namespace IGC;
 namespace
 {
     // AbstractLoadInst and AbstractStoreInst abstract away the differences 
-    // between ldraw and Load and between storeraw and Store. 
-    // The offset used to create a new load/store is in units of the type of
-    // the loaded/stored value(if the type is scalar) or the element type of
-    // the loaded/stored value(if the type is a vector).
+    // between ldraw and Load and between storeraw and Store.
+    // Note on usage: The Value* passed as the ptr paramter to the Create method
+    // should be either the result of the getPointerOperand() method or the 
+    // CreateConstScalarGEP() method. Do not attempt to do arithmetic 
+    // (or pointer arithmetic) on these values.
     class AbstractLoadInst
     {
         Instruction* const m_inst;
@@ -106,34 +107,9 @@ namespace
         {
             return cast<LoadInst>(m_inst);
         }
-
         LdRawIntrinsic* getLdRaw() const
         {
             return cast<LdRawIntrinsic>(m_inst);
-        }
-
-        Instruction* Create(Type* returnType, Value* ptr, Value* offset, unsigned int alignment, bool isVolatile)
-        {
-            if (isa<LoadInst>(m_inst))
-            {
-                Type* ePtrType = PointerType::get(returnType->getScalarType(), ptr->getType()->getPointerAddressSpace());
-                ptr = m_builder.CreateBitCast(ptr, ePtrType);
-                Value* offsetPtr = m_builder.CreateGEP(ptr, offset);
-                Type* newPtrType = PointerType::get(returnType, ptr->getType()->getPointerAddressSpace());
-                offsetPtr = m_builder.CreateBitCast(offsetPtr, newPtrType);
-                return m_builder.CreateAlignedLoad(offsetPtr, alignment, isVolatile);
-            }
-            else
-            {
-                LdRawIntrinsic* ldraw = getLdRaw();
-                offset = m_builder.CreateMul(offset, m_builder.getInt32(returnType->getScalarSizeInBits() / 8));
-                offset = m_builder.CreateAdd(offset, ldraw->getOffsetValue());
-                Type* types[2] = { returnType , ptr->getType() };
-                Value* args[3] = { ptr, offset, m_builder.getInt32(alignment) };
-                Function* newLdRawFunction =
-                    GenISAIntrinsic::getDeclaration(ldraw->getModule(), ldraw->getIntrinsicID(), types);
-                return m_builder.CreateCall(newLdRawFunction, args);
-            }
         }
     public:
         Instruction* getInst() const
@@ -154,11 +130,43 @@ namespace
         }
         Instruction* Create(Type* returnType)
         {
-            return Create(returnType, getPointerOperand(), m_builder.getInt32(0), getAlignment(), getIsVolatile());
+            return Create(returnType, getPointerOperand(), getAlignment(), getIsVolatile());
         }
-        Instruction* Create(Type* returnType, Value* ptr, uint32_t offset, unsigned int alignment, bool isVolatile)
+        Instruction* Create(Type* returnType, Value* ptr, unsigned int alignment, bool isVolatile)
         {
-            return Create(returnType, ptr, m_builder.getInt32(offset), alignment, isVolatile);
+            if (isa<LoadInst>(m_inst))
+            {
+                Type* newPtrType = PointerType::get(returnType, ptr->getType()->getPointerAddressSpace());
+                ptr = m_builder.CreateBitCast(ptr, newPtrType);
+                return m_builder.CreateAlignedLoad(ptr, alignment, isVolatile);
+            }
+            else
+            {
+                LdRawIntrinsic* ldraw = getLdRaw();
+                bool hasComputedOffset = ptr != ldraw->getResourceValue();
+                Value* offsetVal = hasComputedOffset ? ptr : ldraw->getOffsetValue();
+                ptr = ldraw->getResourceValue();
+                Type* types[2] = { returnType , ptr->getType() };
+                Value* args[3] = { ptr, offsetVal, m_builder.getInt32(alignment) };
+                Function* newLdRawFunction =
+                    GenISAIntrinsic::getDeclaration(ldraw->getModule(), ldraw->getIntrinsicID(), types);
+                return m_builder.CreateCall(newLdRawFunction, args);
+            }
+        }
+        // Emulates a GEP on a pointer of the scalar type of returnType.
+        Value* CreateConstScalarGEP(Type* returnType, Value* ptr, uint32_t offset)
+        {
+            if (isa<LoadInst>(m_inst))
+            {
+                Type* ePtrType = PointerType::get(returnType->getScalarType(), ptr->getType()->getPointerAddressSpace());
+                ptr = m_builder.CreateBitCast(ptr, ePtrType);
+                return m_builder.CreateConstGEP1_32(ptr, offset);
+            }
+            else
+            {
+                Value* offsetInBytes = m_builder.getInt32(offset * returnType->getScalarSizeInBits() / 8);
+                return m_builder.CreateAdd(offsetInBytes, getLdRaw()->getOffsetValue());
+            }
         }
         static Optional<AbstractLoadInst> get(llvm::Value* value)
         {
@@ -192,34 +200,9 @@ namespace
         {
             return cast<StoreInst>(m_inst);
         }
-
         GenIntrinsicInst* getStoreRaw() const
         {
             return cast<GenIntrinsicInst>(m_inst);
-        }
-
-        Instruction* Create(Value* storedValue, Value* ptr, Value* offset, unsigned int alignment, bool isVolatile)
-        {
-            Type* newType = storedValue->getType();
-            if (isa<StoreInst>(m_inst))
-            {
-                Type* ePtrType = PointerType::get(newType->getScalarType(), ptr->getType()->getPointerAddressSpace());
-                ptr = m_builder.CreateBitCast(ptr, ePtrType);
-                Value* offsetPtr = m_builder.CreateGEP(ptr, offset);
-                Type* newPtrType = PointerType::get(newType, ptr->getType()->getPointerAddressSpace());
-                offsetPtr = m_builder.CreateBitCast(offsetPtr, newPtrType);
-                return m_builder.CreateAlignedStore(storedValue, offsetPtr, alignment, isVolatile);
-            }
-            else
-            {
-                offset = m_builder.CreateMul(offset, m_builder.getInt32(newType->getScalarSizeInBits() / 8));
-                offset = m_builder.CreateAdd(offset, getStoreRaw()->getArgOperand(1));
-                Type* types[2] = { ptr->getType(), newType };
-                Value* args[3] = { ptr, offset, storedValue };
-                Function* newStoreRawFunction =
-                    GenISAIntrinsic::getDeclaration(getStoreRaw()->getModule(), getStoreRaw()->getIntrinsicID(), types);
-                return m_builder.CreateCall(newStoreRawFunction, args);
-            }
         }
     public:
         Instruction * getInst() const
@@ -242,13 +225,45 @@ namespace
         {
             return isa<StoreInst>(m_inst) ? getStore()->isVolatile() : false;
         }
+        Instruction* Create(Value* storedValue, Value* ptr, unsigned int alignment, bool isVolatile)
+        {
+            Type* newType = storedValue->getType();
+            if (isa<StoreInst>(m_inst))
+            {
+                Type* newPtrType = PointerType::get(newType, ptr->getType()->getPointerAddressSpace());
+                ptr = m_builder.CreateBitCast(ptr, newPtrType);
+                return m_builder.CreateAlignedStore(storedValue, ptr, alignment, isVolatile);
+            }
+            else
+            {
+                bool hasComputedOffset = ptr != getPointerOperand();
+                Value* offset = hasComputedOffset ? ptr : getStoreRaw()->getArgOperand(1);
+                ptr = getPointerOperand();
+                Type* types[2] = { ptr->getType(), newType };
+                Value* args[3] = { ptr, offset, storedValue };
+                Function* newStoreRawFunction =
+                    GenISAIntrinsic::getDeclaration(getStoreRaw()->getModule(), getStoreRaw()->getIntrinsicID(), types);
+                return m_builder.CreateCall(newStoreRawFunction, args);
+            }
+        }
         Instruction* Create(Value* storedValue)
         {
-            return Create(storedValue, getPointerOperand(), m_builder.getInt32(0), getAlignment(), getIsVolatile());
+            return Create(storedValue, getPointerOperand(), getAlignment(), getIsVolatile());
         }
-        Instruction* Create(Value* storedValue, Value* ptr, uint32_t offset, unsigned int alignment, bool isVolatile)
+        // Emulates a GEP on a pointer of the scalar type of storedType.
+        Value* CreateConstScalarGEP(Type* storedType, Value* ptr, uint32_t offset)
         {
-            return Create(storedValue, ptr, m_builder.getInt32(offset), alignment, isVolatile);
+            if (isa<StoreInst>(m_inst))
+            {
+                Type* ePtrType = PointerType::get(storedType->getScalarType(), ptr->getType()->getPointerAddressSpace());
+                ptr = m_builder.CreateBitCast(ptr, ePtrType);
+                return m_builder.CreateConstGEP1_32(ptr, offset);
+            }
+            else
+            {
+                Value* offsetInBytes = m_builder.getInt32(offset * storedType->getScalarSizeInBits() / 8);
+                return m_builder.CreateAdd(offsetInBytes, getStoreRaw()->getArgOperand(1));
+            }
         }
         static Optional<AbstractStoreInst> get(llvm::Value* value)
         {
@@ -616,7 +631,8 @@ bool VectorPreProcess::splitStore(AbstractStoreInst& ASI, V2SMap& vecToSubVec)
         for (uint32_t j = 0; j < tycnts[i]; ++j)
         {
             uint32_t vAlign = (uint32_t)MinAlign(Align, eOffset * EBytes);
-            Instruction* newST = ASI.Create(svals[subIdx], Addr, eOffset, vAlign, IsVolatile);
+            Value* offsetAddr = ASI.CreateConstScalarGEP(svals[subIdx]->getType(), Addr, eOffset);
+            Instruction* newST = ASI.Create(svals[subIdx], offsetAddr, vAlign, IsVolatile);
             eOffset += (VTy1 ? int_cast<uint32_t>(VTy1->getNumElements()) : 1);
             ++subIdx;
 
@@ -687,7 +703,8 @@ bool VectorPreProcess::splitLoad(AbstractLoadInst& ALI, V2SMap& vecToSubVec)
         for (uint32_t j = 0; j < tycnts[i]; ++j)
         {
             uint32_t vAlign = (uint32_t)MinAlign(Align, eOffset * EBytes);
-            Instruction* I = ALI.Create(tys[i], Addr, eOffset, vAlign, IsVolatile);
+            Value* offsetAddr = ALI.CreateConstScalarGEP(tys[i], Addr, eOffset);
+            Instruction* I = ALI.Create(tys[i], offsetAddr, vAlign, IsVolatile);
             eOffset += (VTy1 ? int_cast<uint32_t>(VTy1->getNumElements()) : 1);
 
             svals.push_back(I);
@@ -813,12 +830,13 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction *Inst)
             {
                 // One 2-element vector load + one scalar load
                 Type *newVTy = VectorType::get(eTy, 2);
+                Value* offsetAddr = ALI->CreateConstScalarGEP(eTy, ALI->getPointerOperand(), 2);
                 Value* V2 = ALI->Create(newVTy);
                 Elt0 = Builder.CreateExtractElement(V2, Builder.getInt32(0), "elt0");
                 Elt1 = Builder.CreateExtractElement(V2, Builder.getInt32(1), "elt1");
 
                 uint32_t newAlign = (uint32_t)MinAlign(ALI->getAlignment(), 2 * etyBytes);
-                Elt2 = ALI->Create(eTy, ALI->getPointerOperand(), 2, newAlign, ALI->getIsVolatile());
+                Elt2 = ALI->Create(eTy, offsetAddr, newAlign, ALI->getIsVolatile());
             }
 
             // A little optimization here 
@@ -861,6 +879,7 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction *Inst)
             // Split 3-element into 2-element + 1 scalar
             Type *newVTy = VectorType::get(eTy, 2);
             Value *StoredVal = ASI->getValueOperand();
+            Value* offsetAddr = ASI->CreateConstScalarGEP(StoredVal->getType(), Ptr, 2);
             InsertElementInst *IEInsts[3];
             for (int i = 0; i < 3; ++i)
             {
@@ -889,7 +908,7 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction *Inst)
                 // If IEInsts[2] is undefined, skip scalar store.
                 if (IEInsts[2] != nullptr)
                 {
-                    (void)ASI->Create(IEInsts[2]->getOperand(1), Ptr, 2, newAlign, ASI->getIsVolatile());
+                    (void)ASI->Create(IEInsts[2]->getOperand(1), offsetAddr, newAlign, ASI->getIsVolatile());
                 }
                 ASI->getInst()->eraseFromParent();
 
@@ -928,7 +947,7 @@ bool VectorPreProcess::splitVector3LoadStore(Instruction *Inst)
                     Builder.getInt32(0));
                 V = Builder.CreateInsertElement(V, Elt1, Builder.getInt32(1));
                 ASI->Create(V);
-                ASI->Create(Elt2, Ptr, 2, newAlign, ASI->getIsVolatile());
+                ASI->Create(Elt2, offsetAddr, newAlign, ASI->getIsVolatile());
                 ASI->getInst()->eraseFromParent();
             }
         }
