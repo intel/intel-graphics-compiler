@@ -2214,14 +2214,14 @@ void LivenessAnalysis::computeGenKill(G4_BB* bb,
 }
 
 void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
-									 BitSet& def_out,
-									 BitSet& use_in,
-									 BitSet& use_gen,
-									 BitSet& use_kill)
+                                                   BitSet& def_out,
+                                                   BitSet& use_in,
+                                                   BitSet& use_gen,
+                                                   BitSet& use_kill)
 {
-	std::vector<BitSet*> footprints;
-	footprints.resize(numVarId, 0);
-	std::vector<std::pair<G4_RegVar*, INST_LIST_RITER>> pseudoKills;
+    std::vector<BitSet*> footprints;
+    footprints.resize(numVarId, 0);
+    std::vector<std::pair<G4_Declare*, INST_LIST_RITER>> pseudoKills;
     std::stack<BitSet*> toDelete;
 
     //
@@ -2265,45 +2265,45 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
         }
     }
 
-	for (INST_LIST::reverse_iterator rit = bb->rbegin(); rit != bb->rend(); ++rit)
-	{
-		G4_INST* i = (*rit);
+    for (INST_LIST::reverse_iterator rit = bb->rbegin(); rit != bb->rend(); ++rit)
+    {
+        G4_INST* i = (*rit);
         G4_DstRegRegion* dst = i->getDst();
 
-		if(i->opcode() == G4_pseudo_lifetime_end)
-		{
-			continue;
-		}
+        if (i->opcode() == G4_pseudo_lifetime_end)
+        {
+            continue;
+        }
 
-		if (dst != NULL)
-		{
-			G4_DstRegRegion* dstrgn = dst;
+        if (dst != NULL)
+        {
+            G4_DstRegRegion* dstrgn = dst;
             BitSet* dstfootprint = NULL;
 
-			if (dstrgn->getBase()->isRegAllocPartaker())
-			{
-                G4_Declare* topdcl = GetTopDclFromRegRegion( dstrgn );
+            if (dstrgn->getBase()->isRegAllocPartaker())
+            {
+                G4_Declare* topdcl = GetTopDclFromRegRegion(dstrgn);
                 unsigned id = topdcl->getRegVar()->getId();
 
-				if(i->opcode() == G4_pseudo_kill)
-				{
-					// Mark kill, reset gen
-					use_kill.set(id, true);
-					use_gen.set(id, false);
-
-					continue;
-				}
-
-				dstfootprint = footprints[id];
-
-				if (dstfootprint == NULL)
+                if (i->opcode() == G4_pseudo_kill)
                 {
-					// Write for dst was not seen before, so insert in to map
-					// bitsetSize is in bytes
-					unsigned int bitsetSize = (dstrgn->isFlag()) ? topdcl->getNumberFlagElements() : topdcl->getByteSize();
+                    // Mark kill, reset gen
+                    use_kill.set(id, true);
+                    use_gen.set(id, false);
 
-					BitSet* newBitSet;
-					newBitSet = new (m) BitSet( bitsetSize, false );
+                    continue;
+                }
+
+                dstfootprint = footprints[id];
+
+                if (dstfootprint == NULL)
+                {
+                    // Write for dst was not seen before, so insert in to map
+                    // bitsetSize is in bytes
+                    unsigned int bitsetSize = (dstrgn->isFlag()) ? topdcl->getNumberFlagElements() : topdcl->getByteSize();
+
+                    BitSet* newBitSet;
+                    newBitSet = new (m) BitSet(bitsetSize, false);
 
                     auto it = neverDefinedRows.find(topdcl);
                     if (it != neverDefinedRows.end())
@@ -2312,58 +2312,58 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                         *newBitSet |= *it->second;
                     }
 
-					toDelete.push(newBitSet);
-					pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin() );
-					footprints[id] = newBitSet;
-					dstfootprint = newBitSet;
-					if( gra.isBlockLocal(topdcl) &&
-						topdcl->getAddressed() == false &&
-						dstrgn->getRegAccess() == Direct )
-					{
-						// Local live ranges are never live-out of the only
-						// basic block they are defined. So in top-down order
-						// the first lexical definition is a kill irrespective
-						// of the footprint. In cases when local live-range
-						// def and use have h-stride != 1, the footprint at this
-						// lexically first definition will not have all bits set.
-						// This prevents that def to be seen as a kill. A simple
-						// solution to this is to set all bits when initializing
-						// the bitvector while iterating in bottom-up order. As
-						// we traverse further up uses will reset bits and defs
-						// will set bits. So when we encounter the lexically first
-						// def, we will be guaranteed to find all bits set, thus
-						// interpreting that def as a kill.
-						dstfootprint->setAll();
-					}
-				}
+                    toDelete.push(newBitSet);
+                    pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin());
+                    footprints[id] = newBitSet;
+                    dstfootprint = newBitSet;
+                    if (gra.isBlockLocal(topdcl) &&
+                        topdcl->getAddressed() == false &&
+                        dstrgn->getRegAccess() == Direct)
+                    {
+                        // Local live ranges are never live-out of the only
+                        // basic block they are defined. So in top-down order
+                        // the first lexical definition is a kill irrespective
+                        // of the footprint. In cases when local live-range
+                        // def and use have h-stride != 1, the footprint at this
+                        // lexically first definition will not have all bits set.
+                        // This prevents that def to be seen as a kill. A simple
+                        // solution to this is to set all bits when initializing
+                        // the bitvector while iterating in bottom-up order. As
+                        // we traverse further up uses will reset bits and defs
+                        // will set bits. So when we encounter the lexically first
+                        // def, we will be guaranteed to find all bits set, thus
+                        // interpreting that def as a kill.
+                        dstfootprint->setAll();
+                    }
+                }
 
-				if (dstrgn->getRegAccess() == Direct)
-				{
-                    def_out.set( id, true );
-					//
-					// if the inst writes the whole region the var declared, we set use_kill
-					// so that use of var will not pass through (i.e., var's interval starts
-					// at this instruction.
-					//
-					if (writeWholeRegion(bb, i, dstrgn, fg.builder->getOptions()))
-					{
-						use_kill.set( id, true );
-						use_gen.set( id, false );
+                if (dstrgn->getRegAccess() == Direct)
+                {
+                    def_out.set(id, true);
+                    //
+                    // if the inst writes the whole region the var declared, we set use_kill
+                    // so that use of var will not pass through (i.e., var's interval starts
+                    // at this instruction.
+                    //
+                    if (writeWholeRegion(bb, i, dstrgn, fg.builder->getOptions()))
+                    {
+                        use_kill.set(id, true);
+                        use_gen.set(id, false);
 
                         dstfootprint->setAll();
-					}
-					else
-					{
-                        footprintDst( bb, i, dstrgn, dstfootprint,  gra.isBlockLocal(topdcl) );
+                    }
+                    else
+                    {
+                        footprintDst(bb, i, dstrgn, dstfootprint, gra.isBlockLocal(topdcl));
 
-						use_gen.set( id, true );
-					}
-				}
-				else
-				{
-					use_gen.set( id, true );
-				}
-			}
+                        use_gen.set(id, true);
+                    }
+                }
+                else
+                {
+                    use_gen.set(id, true);
+                }
+            }
             else if ((selectedRF & G4_GRF) && dst->isIndirect())
             {
                 // conservatively add each variable potentially accessed by dst to gen
@@ -2383,38 +2383,38 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
         }
 
         //
-		// process each source operand
-		//
-		for (unsigned j = 0; j < G4_MAX_SRCS; j++)
-		{
-			G4_Operand* src = i->getSrc(j);
+        // process each source operand
+        //
+        for (unsigned j = 0; j < G4_MAX_SRCS; j++)
+        {
+            G4_Operand* src = i->getSrc(j);
             BitSet* srcfootprint = NULL;
 
-			if (src == NULL)
-			{
-				continue;
-			}
-			if (src->isSrcRegRegion())
-			{
-                G4_Declare* topdcl = GetTopDclFromRegRegion( src );
+            if (src == NULL)
+            {
+                continue;
+            }
+            if (src->isSrcRegRegion())
+            {
+                G4_Declare* topdcl = GetTopDclFromRegRegion(src);
                 G4_VarBase* base = (topdcl != NULL ? topdcl->getRegVar() :
                     src->asSrcRegRegion()->getBase());
 
-				if (base->isRegAllocPartaker())
-				{
-					unsigned id = topdcl->getRegVar()->getId();
-					srcfootprint = footprints[id];
+                if (base->isRegAllocPartaker())
+                {
+                    unsigned id = topdcl->getRegVar()->getId();
+                    srcfootprint = footprints[id];
 
-					if (srcfootprint != NULL)
-					{
-                        footprintSrc( i, src->asSrcRegRegion(), srcfootprint );
+                    if (srcfootprint != NULL)
+                    {
+                        footprintSrc(i, src->asSrcRegRegion(), srcfootprint);
                     }
                     else
                     {
                         unsigned int bitsetSize = (src->asSrcRegRegion()->isFlag()) ? topdcl->getNumberFlagElements() : topdcl->getByteSize();
 
                         BitSet* newBitSet;
-                        newBitSet = new (m) BitSet( bitsetSize, false );
+                        newBitSet = new (m) BitSet(bitsetSize, false);
 
                         auto it = neverDefinedRows.find(topdcl);
                         if (it != neverDefinedRows.end())
@@ -2424,119 +2424,119 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                         }
 
                         toDelete.push(newBitSet);
-						footprints[id] = newBitSet;
+                        footprints[id] = newBitSet;
                         srcfootprint = newBitSet;
-                        if( gra.isBlockLocal(topdcl) &&
+                        if (gra.isBlockLocal(topdcl) &&
                             topdcl->getAddressed() == false &&
                             (topdcl->getRegFile() == G4_ADDRESS ||
-                             src->asSrcRegRegion()->getRegAccess() == Direct) )
+                                src->asSrcRegRegion()->getRegAccess() == Direct))
                         {
                             srcfootprint->setAll();
                         }
-                        footprintSrc( i, src->asSrcRegRegion(), srcfootprint );
+                        footprintSrc(i, src->asSrcRegRegion(), srcfootprint);
                     }
 
-					use_gen.set( ((G4_RegVar*)base)->getId(), true );
-				}
+                    use_gen.set(((G4_RegVar*)base)->getId(), true);
+                }
 
-                if( (selectedRF & G4_GRF) && src->getRegAccess() == IndirGRF )
+                if ((selectedRF & G4_GRF) && src->getRegAccess() == IndirGRF)
                 {
                     int idx = 0;
                     G4_RegVar* grf;
-                    G4_Declare* topdcl = GetTopDclFromRegRegion( src );
+                    G4_Declare* topdcl = GetTopDclFromRegRegion(src);
 
-                    while( (grf = pointsToAnalysis.getPointsTo( topdcl->getRegVar(), idx++ )) != NULL )
+                    while ((grf = pointsToAnalysis.getPointsTo(topdcl->getRegVar(), idx++)) != NULL)
                     {
                         // grf is a variable that src potentially points to
                         // since we dont know exactly which part of grf is sourced
                         // assume entire grf is sourced
                         // Also add grf to the gen set as it may be potentially used
-						unsigned int id = grf->getId();
+                        unsigned int id = grf->getId();
                         use_gen.set(id, true);
-						srcfootprint = footprints[id];
+                        srcfootprint = footprints[id];
 
-						if (srcfootprint != NULL)
+                        if (srcfootprint != NULL)
                         {
                             srcfootprint->clear();
 
                             DEBUG_VERBOSE("Found potential indirect use of " << grf->getDeclare()->getName() <<
-                                " so resetting its footprint" << std::endl );
+                                " so resetting its footprint" << std::endl);
                         }
                     }
                 }
-			}
-			//
-			// treat the addr expr as both a use and a partial def
-			//
-			else if (src->isAddrExp() && // (&BLK)
-					 ((G4_AddrExp*)src)->getRegVar()->isRegAllocPartaker() &&
-                     ((G4_AddrExp*)src)->getRegVar()->isSpilled() == false)
-			{
-				unsigned srcId = ((G4_AddrExp*)src)->getRegVar()->getId();
-				use_gen.set( srcId, true );
-				def_out.set( srcId, true );
-			}
+            }
+            //
+            // treat the addr expr as both a use and a partial def
+            //
+            else if (src->isAddrExp() &&
+                ((G4_AddrExp*)src)->getRegVar()->isRegAllocPartaker() &&
+                ((G4_AddrExp*)src)->getRegVar()->isSpilled() == false)
+            {
+                unsigned srcId = ((G4_AddrExp*)src)->getRegVar()->getId();
+                use_gen.set(srcId, true);
+                def_out.set(srcId, true);
+            }
         }
 
         //
         // Process condMod
         //
         G4_CondMod* mod = i->getCondMod();
-        if(mod != NULL) {
+        if (mod != NULL) {
             G4_VarBase *flagReg = mod->getBase();
-            if( flagReg != NULL )
+            if (flagReg != NULL)
             {
-			    if (flagReg->asRegVar()->isRegAllocPartaker())
-			    {
+                if (flagReg->asRegVar()->isRegAllocPartaker())
+                {
                     BitSet* dstfootprint = NULL;
 
                     G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
                     MUST_BE_TRUE(topdcl->getAliasDeclare() == NULL, "Invalid alias flag decl.");
                     unsigned id = topdcl->getRegVar()->getId();
 
-					dstfootprint = footprints[id];
+                    dstfootprint = footprints[id];
 
-					if (dstfootprint == NULL)
+                    if (dstfootprint == NULL)
                     {
                         // Write for dst was not seen before, so insert in to map
                         // bitsetSize is in bits for flag
                         unsigned int bitsetSize = topdcl->getNumberFlagElements();
 
                         BitSet* newBitSet;
-                        newBitSet = new (m) BitSet( bitsetSize, false );
+                        newBitSet = new (m) BitSet(bitsetSize, false);
                         toDelete.push(newBitSet);
-                        pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin() );
-						footprints[id] = newBitSet;
+                        pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin());
+                        footprints[id] = newBitSet;
                         dstfootprint = newBitSet;
 
-                        if( gra.isBlockLocal(topdcl) )
+                        if (gra.isBlockLocal(topdcl))
                         {
                             dstfootprint->setAll();
                         }
                     }
 
-                    def_out.set( id, true );
+                    def_out.set(id, true);
 
-				    if (writeWholeRegion(bb, i, flagReg, fg.builder->getOptions()))
-				    {
-					    use_kill.set( id, true );
-					    use_gen.set( id, false );
+                    if (writeWholeRegion(bb, i, flagReg, fg.builder->getOptions()))
+                    {
+                        use_kill.set(id, true);
+                        use_gen.set(id, false);
 
                         dstfootprint->setAll();
-				    }
-				    else
-				    {
-                        footprintDst( bb, i, mod, dstfootprint, gra.isBlockLocal(topdcl) );
-					    use_gen.set( id, true );
-				    }
-			    }
+                    }
+                    else
+                    {
+                        footprintDst(bb, i, mod, dstfootprint, gra.isBlockLocal(topdcl));
+                        use_gen.set(id, true);
+                    }
+                }
             }
             else
             {
                 MUST_BE_TRUE((i->opcode() == G4_sel ||
-                              i->opcode() == G4_csel) &&
-                              i->getCondMod() != NULL,
-                             "Invalid CondMod");
+                    i->opcode() == G4_csel) &&
+                    i->getCondMod() != NULL,
+                    "Invalid CondMod");
             }
         }
 
@@ -2544,74 +2544,74 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
         // Process predicate
         //
         G4_Predicate* predicate = i->getPredicate();
-        if(predicate != NULL) {
+        if (predicate != NULL) {
             G4_VarBase *flagReg = predicate->getBase();
             MUST_BE_TRUE(flagReg->asRegVar()->getDeclare()->getAliasDeclare() == NULL, "Invalid alias flag decl.");
-			if (flagReg->asRegVar()->isRegAllocPartaker())
-			{
-				G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
-				unsigned id = topdcl->getRegVar()->getId();
-				BitSet* srcfootprint = footprints[id];
+            if (flagReg->asRegVar()->isRegAllocPartaker())
+            {
+                G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
+                unsigned id = topdcl->getRegVar()->getId();
+                BitSet* srcfootprint = footprints[id];
 
-				if (srcfootprint != NULL)
+                if (srcfootprint != NULL)
                 {
-                    footprintSrc( i, predicate, srcfootprint );
+                    footprintSrc(i, predicate, srcfootprint);
                 }
                 else
                 {
                     G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
                     unsigned int bitsetSize = topdcl->getNumberFlagElements();
-					
-					BitSet* newBitSet;
-                    newBitSet = new (m) BitSet( bitsetSize, false );
+
+                    BitSet* newBitSet;
+                    newBitSet = new (m) BitSet(bitsetSize, false);
                     toDelete.push(newBitSet);
-                    pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin() );
-					footprints[id] = newBitSet;
+                    pair<BitSet*, INST_LIST_RITER> second(newBitSet, bb->rbegin());
+                    footprints[id] = newBitSet;
                     srcfootprint = newBitSet;
-                    if( gra.isBlockLocal(topdcl) )
+                    if (gra.isBlockLocal(topdcl))
                     {
                         srcfootprint->setAll();
                     }
-                    footprintSrc( i, predicate, srcfootprint );
+                    footprintSrc(i, predicate, srcfootprint);
                 }
 
-				use_gen.set( ((G4_RegVar*)flagReg)->getId(), true );
-			}
+                use_gen.set(((G4_RegVar*)flagReg)->getId(), true);
+            }
         }
 
         //
-        // Check whether dst can is killed at this point
+        // Check whether dst can be killed at this point
         // A block of code is said to kill a variable when union
         // of all partial writes causes all elements to be written
         // into and any reads in the block can be sourced from
         // writes within that block itself
         //
-        if( dst != NULL && dst->getBase()->isRegAllocPartaker() )
+        if (dst != NULL && dst->getBase()->isRegAllocPartaker())
         {
-            G4_Declare* topdcl = GetTopDclFromRegRegion( dst );
-			unsigned id = topdcl->getRegVar()->getId();
-			BitSet* dstfootprint = footprints[id];
+            G4_Declare* topdcl = GetTopDclFromRegRegion(dst);
+            unsigned id = topdcl->getRegVar()->getId();
+            BitSet* dstfootprint = footprints[id];
 
-			if (dstfootprint != NULL)
+            if (dstfootprint != NULL)
             {
                 // Found dst in map
                 // Check whether all bits set
-				// pseudo_kill for this dst was not found in this BB yet
-				bool wholeRegionWritten = false;
-				unsigned int first;
+                // pseudo_kill for this dst was not found in this BB yet
+                bool wholeRegionWritten = false;
+                unsigned int first;
                 LocalLiveRange* topdclLR = nullptr;
 
-				if ((dstfootprint->isAllset() ||
+                if ((dstfootprint->isAllset() ||
                     // Check whether local RA marked this range
-                    ( topdcl &&
+                    (topdcl &&
                     (topdclLR = gra.getLocalLR(topdcl)) &&
-                    topdclLR->isLiveRangeLocal() &&
-                    topdclLR->getFirstRef( first ) == i ) ) &&
-                    // If single inst writes whole region then dont insert pseudo_kill
-                    ( ( wholeRegionWritten = LivenessAnalysis::writeWholeRegion( bb, i, dst, fg.builder->getOptions() ) ) == false) )
+                        topdclLR->isLiveRangeLocal() &&
+                        topdclLR->getFirstRef(first) == i)) &&
+                        // If single inst writes whole region then dont insert pseudo_kill
+                        ((wholeRegionWritten = LivenessAnalysis::writeWholeRegion(bb, i, dst, fg.builder->getOptions())) == false))
                 {
                     bool foundKill = false;
-                    INST_LIST::reverse_iterator nextIt = rit; 
+                    INST_LIST::reverse_iterator nextIt = rit;
                     ++nextIt;
                     if (nextIt != bb->rend())
                     {
@@ -2624,113 +2624,110 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
                                 nextDst->isDstRegRegion() &&
                                 nextDst->getBase()->isRegAllocPartaker() &&
                                 topdcl == GetTopDclFromRegRegion(nextDst))
-                {
+                            {
                                 foundKill = true;
                             }
                         }
                     }
                     if (!foundKill)
                     {
-                    // All bytes of dst written at this point, so this is a good place to insert
-                    // pseudo kill inst
-					pseudoKills.push_back(std::pair<G4_RegVar*, INST_LIST_RITER>(topdcl->getRegVar(), rit));
+                        // All bytes of dst written at this point, so this is a good place to insert
+                        // pseudo kill inst
+                        pseudoKills.emplace_back(topdcl, rit);
                     }
 
                     // Reset gen
-                    use_gen.set( dst->getBase()->asRegVar()->getId(), false );
+                    use_gen.set(dst->getBase()->asRegVar()->getId(), false);
 
                     // Set kill
-                    use_kill.set( dst->getBase()->asRegVar()->getId(), true );
+                    use_kill.set(dst->getBase()->asRegVar()->getId(), true);
 #ifdef DEBUG_VERBOSE_ON
-                    DEBUG_VERBOSE( "Found kill at inst " );
+                    DEBUG_VERBOSE("Found kill at inst ");
                     INST_LIST_ITER fwdIter = rit.base();
                     fwdIter--;
                     (*fwdIter)->emit_inst(std::cout, false, NULL);
-                    DEBUG_VERBOSE( " // $" << (*fwdIter)->getCISAOff() );
-                    DEBUG_VERBOSE( std::endl );
+                    DEBUG_VERBOSE(" // $" << (*fwdIter)->getCISAOff());
+                    DEBUG_VERBOSE(std::endl);
 #endif
                 }
             }
         }
 
-        if( mod != NULL && mod->getBase() != NULL && mod->getBase()->asRegVar()->isRegAllocPartaker() )
+        if (mod != NULL && mod->getBase() != NULL && mod->getBase()->asRegVar()->isRegAllocPartaker())
         {
             G4_VarBase *flagReg = mod->getBase();
             G4_Declare* topdcl = flagReg->asRegVar()->getDeclare();
-			unsigned id = topdcl->getRegVar()->getId();
-			BitSet* dstfootprint = footprints[id];
+            unsigned id = topdcl->getRegVar()->getId();
+            BitSet* dstfootprint = footprints[id];
 
-			if (dstfootprint != NULL)
+            if (dstfootprint != NULL)
             {
-				bool wholeRegionWritten = false;
-				unsigned int first;
+                bool wholeRegionWritten = false;
+                unsigned int first;
                 LocalLiveRange* topdclLR = nullptr;
-				if ((dstfootprint->isAllset() ||
+                if ((dstfootprint->isAllset() ||
                     // Check whether local RA marked this range
                     // This may not be necessary as currently local RA is not performed for flags.
-                    ( topdcl &&
+                    (topdcl &&
                     (topdclLR = gra.getLocalLR(topdcl)) &&
-                    topdclLR->isLiveRangeLocal() &&
-                    topdclLR->getFirstRef( first ) == i ) ) &&
-                    // If single inst writes whole region then dont insert pseudo_kill
-                    ( ( wholeRegionWritten = LivenessAnalysis::writeWholeRegion( bb, i, flagReg, fg.builder->getOptions() ) ) == false) )
+                        topdclLR->isLiveRangeLocal() &&
+                        topdclLR->getFirstRef(first) == i)) &&
+                        // If single inst writes whole region then dont insert pseudo_kill
+                        ((wholeRegionWritten = LivenessAnalysis::writeWholeRegion(bb, i, flagReg, fg.builder->getOptions())) == false))
                 {
                     // All bytes of dst written at this point, so this is a good place to insert
                     // pseudo kill inst
-					pseudoKills.push_back(std::pair<G4_RegVar*, INST_LIST_RITER>(topdcl->getRegVar(), rit));
+                    pseudoKills.emplace_back(topdcl, rit);
 
                     // Reset gen
-                    use_gen.set( flagReg->asRegVar()->getId(), false );
+                    use_gen.set(flagReg->asRegVar()->getId(), false);
 
                     // Set kill
-                    use_kill.set( flagReg->asRegVar()->getId(), true );
+                    use_kill.set(flagReg->asRegVar()->getId(), true);
 #ifdef DEBUG_VERBOSE_ON
-                    DEBUG_VERBOSE( "Found kill at inst " );
+                    DEBUG_VERBOSE("Found kill at inst ");
                     INST_LIST_ITER fwdIter = rit.base();
                     fwdIter--;
                     (*fwdIter)->emit_inst(std::cout, false, NULL);
-                    DEBUG_VERBOSE( " // $" << (*fwdIter)->getCISAOff() );
-                    DEBUG_VERBOSE( std::endl );
+                    DEBUG_VERBOSE(" // $" << (*fwdIter)->getCISAOff());
+                    DEBUG_VERBOSE(std::endl);
 #endif
                 }
             }
         }
-	}
+    }
 
     //
     // Insert pseudo_kill nodes in BB
     //
-    for( auto&& pseudoKill : pseudoKills )
+    for (auto&& pseudoKill : pseudoKills)
     {
-		if (pseudoKill.second != bb->rbegin())
+        if (pseudoKill.second != bb->rbegin())
         {
-			INST_LIST_ITER iterToInsert = pseudoKill.second.base();
+            INST_LIST_ITER iterToInsert = pseudoKill.second.base();
             do
             {
                 iterToInsert--;
-            }
-            while( (*iterToInsert)->isPseudoKill() );
-			G4_DstRegRegion* dstOpnd = fg.builder->createDstRegRegion(Direct, pseudoKill.first, 0, 0, 1, Type_UD);
-            G4_INST* killInst = fg.builder->createInternalInst( NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0 );
-            bb->insert( iterToInsert, killInst );
+            } while ((*iterToInsert)->isPseudoKill());
+            G4_DstRegRegion* dstOpnd = fg.builder->createDstRegRegion(Direct, pseudoKill.first->getRegVar(), 0, 0, 1, Type_UD);
+            G4_INST* killInst = fg.builder->createInternalInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
+            bb->insert(iterToInsert, killInst);
         }
     }
 
-	//
-	// initialize use_in
-	//
-	use_in = use_gen;
+    //
+    // initialize use_in
+    //
+    use_in = use_gen;
 
     //
     // Destroy bitsets allocated using mem manager
     //
-    while( toDelete.size() > 0 )
+    while (toDelete.size() > 0)
     {
         toDelete.top()->~BitSet();
         toDelete.pop();
     }
-
-	return;
 }
 
 //
