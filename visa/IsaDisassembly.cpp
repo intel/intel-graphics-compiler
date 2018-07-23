@@ -414,7 +414,23 @@ static string printAttribute(const attribute_info_t* attr, const kernel_format_t
         sstr << attr->value.intVal;
     else if (attr->size > 0)
     {
-        sstr << attr->value.stringVal;
+        if (strcmp(kernel->strings[attr->nameIndex], "AsmName") == 0)
+        {
+
+            std::string str(attr->value.stringVal);
+            auto found = str.find_last_of(DIR_SEPARATOR);
+            if (found != string::npos)
+            {
+                str = str.substr(found + 1);
+                sstr << str;
+            }
+            else
+                sstr << attr->value.stringVal;
+        }
+        else
+        {
+            sstr << attr->value.stringVal;
+        }
     }
 
     return sstr.str();
