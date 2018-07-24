@@ -642,7 +642,7 @@ void BinaryEncodingIGA::DoAll()
                         if (!opSpec->isSendOrSendsFamily())
                         {
                             type = getIGAType(src->getType());
-                            
+
                         }
                         else if (i == 0 &&
                             getGenxPlatform() >= GENX_SKL   &&

@@ -788,7 +788,7 @@ bool GenParser::tryParseInstOptDepInfoToken(InstOptSet &instOpts)
             }
         } else if (ConsumeIdentEq("Switch")) {
             newOpt = InstOpt::SWITCH;
-		} else {
+        } else {
             return false; // unrecognized option
         }
         if (!instOpts.add(newOpt)) {
@@ -1590,7 +1590,7 @@ private:
             if (!pOp->isValid()) {
                 Fail(sfLoc, "subfunction is out of bounds");
             }
-		} else {
+        } else {
             Fail(sfLoc, "invalid subfunction");
         }
 
@@ -2538,15 +2538,15 @@ private:
                     if (IS_NAN(val.f64) && (val.u64 & DROPPED_PAYLOAD)) {
                         Fail(opStart, "NaN payload value overflows");
                     }
-					//
-					// Use a raw bitwise assignment; some compilers will clear
-					// the NaN bit by making an assignment
-					val.u64 = ConvertDoubleToFloatBits(val.f64);
-					val.kind = ImmVal::F32;
-					// the below would be wrong
-					//   val = ConvertDoubleToFloat(val.f64);
-				} // else: sty == Type::DF (nothing needed)
-            }
+                    //
+                    // Use a raw bitwise assignment; some compilers will clear
+                    // the NaN bit by making an assignment
+                    val.u64 = ConvertDoubleToFloatBits(val.f64);
+                    val.kind = ImmVal::F32;
+                    // the below would be wrong
+                    //   val = ConvertDoubleToFloat(val.f64);
+                    } // else: sty == Type::DF (nothing needed)
+                }
             break;
         default:
             break;

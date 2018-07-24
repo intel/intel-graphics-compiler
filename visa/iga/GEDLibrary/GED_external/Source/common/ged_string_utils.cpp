@@ -265,7 +265,7 @@ void BreakLines(const string& src, vector<string>& lines, const size_t lineLengt
             // Break at the endline character.
             if (start == endLine)
             {
-                // This line contians only the endline character.
+                // This line contains only the endline character.
                 lines.push_back("");
                 ++start;
                 endLine = src.find('\n', endLine + 1);
@@ -298,7 +298,16 @@ void BreakLines(const string& src, vector<string>& lines, const size_t lineLengt
 
         GEDASSERT(start <= end);
         size_t currLength = end - start + 1;
-        lines.push_back(src.substr(start, currLength));
+        string lineToPush = src.substr(start, currLength);
+        if (lineToPush.find_first_not_of(' ') != std::string::npos)
+        {
+            lines.push_back(src.substr(start, currLength));
+        }
+        else
+        {
+            // Line consists only of whitespaces, replace with an empty line
+            lines.push_back("");
+        }
         start += (currLength + skip);
     }
 }

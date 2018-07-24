@@ -19,7 +19,6 @@
 #include <vector>
 #include <ostream>
 #include <sstream>
-#include <tuple>
 
 
 using namespace iga;
@@ -76,26 +75,30 @@ const char *iga_status_to_string(iga_status_t st) {
     }
 }
 
-typedef std::tuple<iga_gen_t, iga::Platform, const char *> PlatformTupleTy;
-static PlatformTupleTy ALL_PLATFORMS[]
-{
-    PlatformTupleTy(IGA_GEN7,iga::Platform::GEN7,"7"),
-    PlatformTupleTy(IGA_GEN7p5,iga::Platform::GEN7P5,"7p5"),
-    PlatformTupleTy(IGA_GEN8,iga::Platform::GEN8,"8"),
-    PlatformTupleTy(IGA_GEN8lp,iga::Platform::GEN8LP,"8lp"),
-    PlatformTupleTy(IGA_GEN9,iga::Platform::GEN9,"9"),
-    PlatformTupleTy(IGA_GEN9lp,iga::Platform::GEN9LP,"9lp"),
-    PlatformTupleTy(IGA_GEN9p5,iga::Platform::GEN9P5,"9p5"),
-    PlatformTupleTy(IGA_GEN10,iga::Platform::GEN10,"10"),
-    PlatformTupleTy(IGA_GEN11,iga::Platform::GEN11,"11"),
+struct PlatformEntry {
+  iga_gen_t     gen;
+  iga::Platform platform;
+  const char   *suffix;
+};
+
+static const PlatformEntry ALL_PLATFORMS[] {
+    {IGA_GEN7,iga::Platform::GEN7,"7"},
+    {IGA_GEN7p5,iga::Platform::GEN7P5,"7p5"},
+    {IGA_GEN8,iga::Platform::GEN8,"8"},
+    {IGA_GEN8lp,iga::Platform::GEN8LP,"8lp"},
+    {IGA_GEN9,iga::Platform::GEN9,"9"},
+    {IGA_GEN9lp,iga::Platform::GEN9LP,"9lp"},
+    {IGA_GEN9p5,iga::Platform::GEN9P5,"9p5"},
+    {IGA_GEN10,iga::Platform::GEN10,"10"},
+    {IGA_GEN11,iga::Platform::GEN11,"11"},
 };
 
 // conversion to an internal platform
 iga::Platform ToPlatform(iga_gen_t gen)
 {
     for (const auto &p : ALL_PLATFORMS)
-        if (std::get<0>(p) == gen)
-          return std::get<1>(p);
+        if (p.gen == gen)
+          return p.platform;
     return iga::Platform::INVALID;
 }
 
@@ -116,7 +119,7 @@ iga_status_t iga_platforms_list(
             i < std::min(gens_length_bytes,MAX_SPACE_NEEDED)/sizeof(iga_gen_t);
             i++)
         {
-            gens[i] = std::get<0>(ALL_PLATFORMS[i]);
+            gens[i] = ALL_PLATFORMS[i].gen;
         }
     }
     return IGA_SUCCESS;
@@ -128,8 +131,8 @@ iga_status_t iga_platform_symbol_suffix(
     if (suffix == nullptr)
         return IGA_INVALID_ARG;
     for (const auto &p : ALL_PLATFORMS) {
-        if (gen == std::get<0>(p)) {
-            *suffix = std::get<2>(p);
+        if (gen == p.gen) {
+            *suffix = p.suffix;
             return IGA_SUCCESS;
         }
     }

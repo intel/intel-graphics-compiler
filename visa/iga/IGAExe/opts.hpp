@@ -174,7 +174,7 @@ struct Opt {
         };
     }
 
-    bool hasAttribute(enum OptAttrs attr) const {
+    bool hasAttribute(OptAttrs attr) const {
         return (attributes & attr) != 0;
     }
 
@@ -193,7 +193,7 @@ struct Opt {
         bool optCheck = isOpt();
         std::string msgHelp  = makeHelpMessage();
         auto raiseMatchError =
-            [&](const char *msg) {
+            [&] (const char *msg) {
                 errHandler(
                     concat(
                         argv[argIx],
@@ -331,17 +331,38 @@ struct Opt {
             os <<  "\n";
             // auto format the description (crudely for now)
             size_t col = 1, slen = strlen(extendedDescription);
-            for (size_t i = 0; i < slen; i++, col++) {
-                char c = extendedDescription[i];
-                if (col > 72 && c == ' ') {
-                    col = 0;
-                    os << "\n";
-                    while (i + 1 < slen && isspace(extendedDescription[i + 1]))
-                        i++;
-                    // i++ at loop end gets the last space
-                } else {
-                    os << c;
+            auto canBreakHere = [&](size_t k) {
+                return extendedDescription[k] == ' ' ||
+                  extendedDescription[k] == '\n' ||
+                  extendedDescription[k] == '-' ||
+                  extendedDescription[k] == ',' ||
+                  extendedDescription[k] == '.' ||
+                  extendedDescription[k] == ';';
+            };
+            auto emitChar = [&](char c) {
+              os << c;
+              col ++;
+              if (c == '\n')
+                col = 1;
+            };
+            // TODO: determine the max cols via console/tty functions
+            static const size_t MAX_COLS = 80;
+            size_t i = 0;
+            while (i < slen) {
+                while (i < slen && isspace(extendedDescription[i])) {
+                    emitChar(extendedDescription[i++]);
                 }
+                // find the next span
+                size_t ext = 1;
+                while (i + ext < slen && !canBreakHere(i + ext))
+                  ext++;
+                // if it doesn't fit, put a newline in
+                if (col + ext >= MAX_COLS)
+                  emitChar('\n');
+                // emit the span
+                for (size_t k = 0; k < ext; k++)
+                  emitChar(extendedDescription[i + k]);
+                i += ext;
             }
         }
     }
@@ -553,19 +574,19 @@ class CmdlineSpec {
                 "h",
                 "help",
                 "shows help on an option",
-                "Without any argument -h will print general help on all "
-                "options. "
-                "However, if given an argument, -h will attempt to lookup that "
-                "argument. "
-                "Options are given without preceding - or --.  We check long "
-                "option "
-                "names first, "
-                "short names second, and finally argument indices last.  "
-                "Argument "
-                "indices are "
-                "specified as: \"#1\" for the first argument, \"#2\" for the "
-                "second, "
-                "etc."
+                "Without any argument -h will print general help on all options.  However, "
+                "if given an argument, -h will attempt to lookup that argument.  Options are "
+                "given without preceding - or --.  We check long option names first, short "
+                "names second, and finally argument indices last.  Argument indices are "
+                "specified as: \"#1\" for the first argument, \"#2\" for the second, etc."
+                "\n"
+                "EXAMPLES:\n"
+                "  % iga64 -h=p\n"
+                "lists information on the -p option\n"
+                "  % iga64 -h=Xfoo\n"
+                "lists information on the -Xfoo option\n"
+                "  % iga64 -h=#1\n"
+                "lists information on the first argument (non-option)\n"
                 "",
                 OptAttrs::ALLOW_UNSET | OptAttrs::OPT_FLAG_VAL,
                 [&] (const char *inp, const ErrorHandler &err, O &) {
@@ -746,20 +767,22 @@ class CmdlineSpec {
                 examples);
             exit(EXIT_SUCCESS);
         } else {
-            // given input: e.g. -h foo OR -h #1
+            // given input: e.g. -h foo -h #1
+            while (*inp == '-')
+              inp++; // convert -h=-foo -> -h=foo
             const Opt<O> *opt = nullptr;
             auto scanGroup = [&](const Group<O> &g, bool pfx) {
                 int off = 0;
-                auto match = pfx ? strpfx : streq;
                 if (g.prefix) {
-                    if (streq(g.prefix, inp) == 0) {
+                    if (streq(g.prefix, inp)) {
                         // exact group match; bail and deal with it below
                         return;
-                    } else if (g.prefix && streq(g.prefix, inp)) {
+                    } else if (strpfx(g.prefix, inp)) {
                         // group prefix e.g. "Xfoo" for group "X"
                         off += (int)strlen(g.prefix);
                     }
                 }
+                auto match = pfx ? strpfx : streq;
                 for (auto &o : g.members) {
                     // try long names
                     if (o.longName && match(inp + off, o.longName)) {
@@ -807,10 +830,7 @@ class CmdlineSpec {
             if (opt) {
                 opt->appendHelpMessage(std::cerr, 0, 0, 0, true);
                 exit(EXIT_SUCCESS);
-                return;
-            }
-
-            if (inp[0] == '#') {
+            } else if (inp[0] == '#') {
                 // try as an argument
                 // #1 #2 ... are the args
                 char *end = nullptr;

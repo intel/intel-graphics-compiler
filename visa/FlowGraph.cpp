@@ -501,8 +501,8 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
         assert(inst->asCFInst()->getJip() == nullptr && "IF should not have a label at this point");
 
         // create if_label
-        std::string createdLabel = (builder->getIsKernel() ? "k" : "f") + 
-            std::to_string(builder->getCUnitId()) + "_AUTO_GENERATED_IF_LABEL_" + 
+        std::string createdLabel = (builder->getIsKernel() ? "k" : "f") +
+            std::to_string(builder->getCUnitId()) + "_AUTO_GENERATED_IF_LABEL_" +
             std::to_string(sn);
         sn++;
         if_label = builder->createLabel(createdLabel, LABEL_BLOCK);
@@ -1314,7 +1314,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
 
         if (bb == firstSubroutineBB)
         {
-            // we've reached the first subroutine's entry BB, 
+            // we've reached the first subroutine's entry BB,
             break;
         }
 
@@ -4297,7 +4297,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
         output << "// -- GOOD: " << fg.BCStats.NumOfGoodInsts << "\n";
         output << "// --  BAD: " << fg.BCStats.NumOfBadInsts << "\n";
         output << "// --   OK: " << fg.BCStats.NumOfOKInsts << "\n";
-    
+
     }
 }
 

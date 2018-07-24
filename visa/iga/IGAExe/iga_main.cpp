@@ -26,6 +26,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "iga_main.hpp"
 #include "opts.hpp"
 
+#include <iomanip>
+#include <sstream>
+#include <tuple>
+
 
 extern "C" int iga_main(int argc, const char **argv)
 {
@@ -37,27 +41,28 @@ extern "C" int iga_main(int argc, const char **argv)
     opts::CmdlineSpec<Opts> cmdline(
         title.c_str(),
         opts::exeName(argv[0]),
-        "assembles 'file.asm' to file.krn (SKL and HSW respectively):\n"
-        "  % " IGA_EXE "  file.asm  -p=9   -a   > file.krn\n"
-        "  % " IGA_EXE "  file.asm  -p=7p5 -a  -o file.krn\n"
-        "disassembles 'file.bin' to 'file.asm' (SKL)\n"
-        "  % " IGA_EXE "  file.bin  -p=9  -d   > file.asm\n"
-        "  % " IGA_EXE "  file.bin  -p=9  -d  -o file.asm\n"
-        "same as above, but appends PC to each instruction\n"
-        "  % " IGA_EXE "  file.bin  -p=9  -Xprint-pc  -d   > file.asm\n"
-        "  % " IGA_EXE "  file.bin  -p=9  -Xprint-pc  -d  -o file.asm\n"
-        "disassembles for SKL (-d and -p=9 inferred from extension) to stdout\n"
+        "  % " IGA_EXE "  file.asm  -p=9  -a   > file.krn\n"
+        "  % " IGA_EXE "  file.asm  -p=11 -a  -o file.krn\n"
+        "assembles 'file.asm' to 'file.krn' for GEN9 and GEN11, respectively\n"
+        "  % " IGA_EXE "  file.asm9 >file.krn9\n"
+        "similar to above, but the mode and platform are inferred by the extension\n"
+        "(.asm* => -a) and (.*9 => -p=9)\n"
+        "  % " IGA_EXE "  file.krn  -p=9  -d   > file.asm\n"
+        "  % " IGA_EXE "  file.krn  -p=9  -d  -o file.asm\n"
+        "disassembles 'file.krn' to 'file.asm' for GEN9\n"
         "  % " IGA_EXE "  file.krn9\n"
-        "assembles for SKL (-a and -p=9 inferred from extension) to "
-        "file.krn\n"
-        "  % " IGA_EXE "  file.asm9 >file.krn\n");
+        "similar to above, but the mode and platform are inferred by the extension\n"
+        "(.krn* => -d) and (.*9 => -p=9)\n"
+        "  % " IGA_EXE "  file.bin  -p=9  -d  -Xprint-pc\n"
+        "similar to the previous, but appends PC to each instruction;"
+        " outputs to stdout\n");
     cmdline.defineFlag(
         "d",
         "disassemble",
         "disassembles the input file",
         "This makes iga disassemble the file (ignoring extension).  "
         "Without this iga attempts to infer the mode based on the extension.  "
-        "Files ending in '.krn' or '.dat' are treated as binary.",
+        "Files ending in '.krn' are assumed binary without this option.",
         opts::OptAttrs::ALLOW_UNSET,
         [] (const char *, const opts::ErrorHandler &err, Opts &baseOpts) {
             baseOpts.mode = Opts::Mode::DIS;
@@ -68,7 +73,7 @@ extern "C" int iga_main(int argc, const char **argv)
         "assembles the input file",
         "This makes iga assemble the file (ignoring extension).  "
         "Without this iga attempts to infer the mode based on the extension.  "
-        "Files ending in '.asm' are treated as binary.",
+        "Files ending in '.asm' are assumed syntax input without this option.",
         opts::OptAttrs::ALLOW_UNSET,
         [] (const char *, const opts::ErrorHandler &err, Opts &baseOpts) {
             baseOpts.mode = Opts::Mode::ASM;
@@ -84,46 +89,81 @@ extern "C" int iga_main(int argc, const char **argv)
             baseOpts.numericLabels = true;
         });
     ///////////////////////////////////////////// about the 80 col limit
+    std::string platformExtendedDescription;
+    std::vector<std::tuple<iga_gen_t,std::string>> platforms;
+    {
+        std::stringstream ss;
+        const char *defaultPlatformInfo =
+            "Examples of valid platforms are: GEN7.5, GEN8, GEN8LP, GEN9, ...\n"
+            "We also accept code names: HSW, BDW, CHV, ...";
+        size_t nps;
+        if (iga_platforms_list(0,nullptr,&nps) != IGA_SUCCESS) {
+            platformExtendedDescription = defaultPlatformInfo;
+        } else {
+            iga_gen_t *gens = (iga_gen_t *)alloca(nps);
+            if (iga_platforms_list(nps,gens,&nps) != IGA_SUCCESS) {
+               platformExtendedDescription = defaultPlatformInfo;
+            } else {
+                ss << "Valid platforms are:\n";
+                for (size_t pi = 0; pi < nps/sizeof(iga_gen_t); pi++) {
+                    const char *suffix = nullptr;
+                    if (iga_platform_symbol_suffix(gens[pi],&suffix) == IGA_SUCCESS) {
+                        ss << "  - " << std::setw(5) << std::left << suffix <<
+                          " (for GEN" << suffix << ")\n";
+                        platforms.emplace_back(gens[pi],suffix);
+                    }
+                } // for
+                platformExtendedDescription = ss.str();
+            }
+        }
+    } // platform extended description
     cmdline.defineOpt(
         "p",
         "platform",
         "DEVICE",
         "specifies the platform (e.g. \"GEN9\")",
-        "Examples of valid platforms are: GEN7.5, GEN8, GEN8LP, GEN9, ...\n"
-        "We also accept code names: HSW, BDW, CHV, ...",
+        platformExtendedDescription.c_str(),
         opts::OptAttrs::ALLOW_UNSET,
-        [] (const char *cinp, const opts::ErrorHandler &err, Opts &baseOpts) {
+        [&] (const char *cinp, const opts::ErrorHandler &err, Opts &baseOpts) {
+            if (strstr(cinp,"GEN") == cinp) // GEN9 -> 9
+              cinp += 3;
             std::string inp = cinp;
             std::transform(inp.begin(), inp.end(), inp.begin(), ::toupper);
 
+            // try IGA-preferred names first
             iga_gen_t p = IGA_GEN_INVALID;
-            if (inp == "IVB" || inp == "GEN7" || inp == "7") {
+            for (const auto &pt : platforms) {
+                std::string pnm = std::get<1>(pt);
+                std::transform(pnm.begin(), pnm.end(), pnm.begin(), ::toupper);
+                if (pnm == inp) {
+                    p = std::get<0>(pt);
+                    break;
+                }
+            }
+
+            if (p != IGA_GEN_INVALID) {
+              baseOpts.platform = p;
+              return;
+            }
+
+            // fall back on code names and other names
+            if (inp == "IVB" || inp == "7") {
                 p = IGA_GEN7;
-            } else if (
-                inp == "HSW" || inp == "GEN7.5" || inp == "GEN7_5" ||
-                inp == "GEN7P5" || inp == "7.5" || inp == "7P5") {
+            } else if (inp == "HSW" || inp == "7.5" || inp == "7P5") {
                 p = IGA_GEN7p5;
-            } else if (inp == "BDW" || inp == "GEN8" || inp == "8") {
+            } else if (inp == "BDW" || inp == "8") {
                 p = IGA_GEN8;
-            } else if (
-                inp == "CHV" || inp == "GEN8LP" || inp == "8LP" ||
-                inp == "GEN8.1" || inp == "GEN8P1" || inp == "8.1") {
+            } else if (inp == "CHV" || inp == "8LP" || inp == "8.1" || inp == "8P1") {
                 p = IGA_GEN8lp;
-            } else if (inp == "SKL" || inp == "GEN9" || inp == "9") {
+            } else if (inp == "SKL" || inp == "9") {
                 p = IGA_GEN9;
-            } else if (
-                inp == "BXT" || inp == "GEN9LP" || inp == "9LP" ||
-                inp == "GEN9.1" || inp == "GEN9P1" || inp == "9.1") {
+            } else if (inp == "BXT" ||  inp == "9LP" ||inp == "9.1" || inp == "9P1") {
                 p = IGA_GEN9lp;
-            } else if (
-                inp == "KBL" || inp == "GEN9.5" || inp == "GEN9_5" ||
-                inp == "GEN9P5" || inp == "9.5" || inp == "9P5") {
+            } else if (inp == "KBL" || inp == "9.5" || inp == "9P5") {
                 p = IGA_GEN9p5;
-            }  else if (inp == "CNL" || inp == "GEN10" || inp == "10") {
+            } else if (inp == "CNL" || inp == "10") {
                 p = IGA_GEN10;
-            } else if (
-                inp == "ICL" || inp == "CNLH" || inp == "GEN11" ||
-                inp == "11") {
+            } else if (inp == "ICL" || inp == "CNLH" || inp == "11") {
                 p = IGA_GEN11;
             } else {
                 err("invalid platform option");
@@ -224,13 +264,6 @@ extern "C" int iga_main(int argc, const char **argv)
                 "-Xdisable-ir-checking is deprecated; use -W* options");
         });
     xGrp.defineFlag(
-        "auto-deps",
-        nullptr,
-        "IGA automatically sets instruction dependency information",
-        "",
-        opts::OptAttrs::ALLOW_UNSET,
-        baseOpts.autosetDepInfo);
-    xGrp.defineFlag(
         "autocompact",
         nullptr,
         "auto compacts unmarked instructions",
@@ -257,9 +290,9 @@ extern "C" int iga_main(int argc, const char **argv)
         "This mode decodes instructions.\n"
         "EXAMPLES:\n"
         "  % iga -Xifs foo.krn9\n"
-        "    decodes kernel in foo.krn9 (-p=9 inferred)\n"
-        "  % iga -Xifs \"64 00 43 00  a0 0a 05 00   24 01 00 80  00 00 00 00\"\n"
-        "    decodes the hex bits above\n"
+        "    decodes kernel from foo.krn9 (-p=9 inferred)\n"
+        "  % iga -p=9 -Xifs \"64 00 43 00  a0 0a 05 00   24 01 00 80  00 00 00 00\"\n"
+        "    decodes the hex bits above into ISA\n"
         "  % iga -p=9 -Xifs foo.krn9 \"64 00 43 00  a0 0a 05 00   24 01 00 80  00 00 00 00\"\n"
         "    decodes and compares the fields\n",
         opts::OptAttrs::ALLOW_UNSET,
@@ -378,8 +411,8 @@ extern "C" int iga_main(int argc, const char **argv)
         "the input files",
         "The input files to assemble.  This defaults to stdin.",
         opts::OptAttrs::ALLOW_UNSET | opts::OptAttrs::ALLOW_MULTI,
-        [] (const char *inp, const opts::ErrorHandler &err, Opts &opts) {
-            opts.inputFiles.push_back(inp);
+        [] (const char *inp, const opts::ErrorHandler &err, Opts &baseOpts) {
+            baseOpts.inputFiles.push_back(inp);
         });
 
     cmdline.parse(argc, argv, baseOpts);

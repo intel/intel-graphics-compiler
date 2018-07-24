@@ -150,23 +150,25 @@ GED_RETURN_VALUE GEDIns::Init(const /* GED_MODEL */ uint8_t modelId, /* GED_OPCO
         GEDASSERT(invalidOpcode != _opcode);
         GEDASSERT(NULL != _decodingTable);
     }
-#endif // GED_DEBUG   
+#endif // GED_DEBUG
     return ret;
 }
 
 
 GED_RETURN_VALUE GEDIns::Decode(const /* GED_MODEL */ uint8_t modelId, const unsigned char* rawBytes, const unsigned int size)
 {
-    GED_RETURN_VALUE ret = GED_RETURN_VALUE_SUCCESS;
     if (NULL == rawBytes)
     {
-        ret = GED_RETURN_VALUE_NULL_POINTER;
-        return ret;
+        return GED_RETURN_VALUE_NULL_POINTER;
     }
     if (modelId >= numOfSupportedModels)
     {
-        ret = GED_RETURN_VALUE_INVALID_MODEL;
-        return ret;
+        return GED_RETURN_VALUE_INVALID_MODEL;
+    }
+    if (size < GED_COMPACT_INS_SIZE)
+    {
+        // Buffer isn't large enough to extract opcode and compact bit.
+        return GED_RETURN_VALUE_BUFFER_TOO_SHORT;
     }
     ClearStatus();
     _modelId = modelId;
@@ -174,10 +176,19 @@ GED_RETURN_VALUE GEDIns::Decode(const /* GED_MODEL */ uint8_t modelId, const uns
     _decodingTable = GetCurrentModelData().opcodeTables[_opcode].nativeDecoding;
     if (NULL == _decodingTable)
     {
-        ret = GED_RETURN_VALUE_OPCODE_NOT_SUPPORTED;
-        return ret;
+        return GED_RETURN_VALUE_OPCODE_NOT_SUPPORTED;
     }
     ExtractCmptCtrl(rawBytes);
+    if (!IsCompactValid())
+    {
+        if (size < GED_NATIVE_INS_SIZE)
+        {
+            // Buffer isn't large enough for the given Native instruction.
+            return GED_RETURN_VALUE_BUFFER_TOO_SHORT;
+        }
+    }
+
+    GED_RETURN_VALUE ret = GED_RETURN_VALUE_SUCCESS;
     if (IsCompactValid())
     {
         SetInstructionBytes(_compactBytes, rawBytes, size, GED_COMPACT_INS_SIZE);
@@ -517,11 +528,7 @@ void GEDIns::SetInstructionBytes(unsigned char* dst, const unsigned char* src, u
 {
     if (size > maxSize)
     {
-        size = maxSize; // ignore more than GED_NATIVE_INS_SIZE bytes
-    }
-    else if (size < maxSize)
-    {
-        memset(dst, 0, maxSize); // zero out the missing bytes
+        size = maxSize; // given buffer is too large, ignore the rest of the bytes.
     }
     MEMCPY(dst, src, size);
 }
