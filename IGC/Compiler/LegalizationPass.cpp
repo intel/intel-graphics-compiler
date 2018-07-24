@@ -1069,7 +1069,7 @@ void Legalization::visitFCmpInst(FCmpInst &FC)
         FC.getPredicate() == CmpInst::FCMP_ORD ||
         FC.getPredicate() == CmpInst::FCMP_ONE)
     {
-        if (m_preserveNan || PreserveNan)
+        if ((m_preserveNan || PreserveNan) && !FC.isFast())
         {
             visitFCmpInstUndorderedPredicate(FC);
         }
