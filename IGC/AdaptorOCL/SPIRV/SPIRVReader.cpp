@@ -1522,6 +1522,7 @@ SPIRVToLLVM::transCmpInst(SPIRVValue* BV, BasicBlock* BB, Function* F) {
   Instruction* Inst = nullptr;
   if (BT->isTypeVectorOrScalarInt() 
    || BT->isTypePointer()
+   || BT->isTypeQueue()
    || BT->isTypeBool())
     Inst = new ICmpInst(*BB, CmpMap::rmap(BC->getOpCode()),
         transValue(BC->getOperand(0), F, BB),

@@ -254,6 +254,11 @@ SPIRVType::isTypeNamedBarrier() const {
 }
 
 bool
+SPIRVType::isTypeQueue() const {
+  return OpCode == OpTypeQueue;
+}
+
+bool
 SPIRVType::isTypeVectorBool() const {
   return isTypeVector() && getVectorComponentType()->isTypeBool();
 }

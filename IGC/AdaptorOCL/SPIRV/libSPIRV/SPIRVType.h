@@ -119,6 +119,7 @@ public:
   bool isTypePipe()const;
   bool isTypeInt(unsigned Bits = 0) const;
   bool isTypeNamedBarrier() const;
+  bool isTypeQueue() const;
   bool isTypeOpaque() const;
   bool isTypePointer() const;
   bool isTypeSampler() const;
