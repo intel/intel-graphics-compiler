@@ -2005,19 +2005,6 @@ unset(_hostArchitecture)
 if(NOT GFX_DEVELOPMENT_DIR)
   get_filename_component(GFX_DEVELOPMENT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../ ABSOLUTE)
 endif()
-# CODEGEN_DIR shall be provided by UFO build system
-if(NOT CODEGEN_DIR)
-    igc_arch_get_cpu(_cpuSuffix "${IGC_OPTION__ARCHITECTURE_TARGET}")
-	get_filename_component(CODEGEN_DIR ${GFX_DEVELOPMENT_DIR}/dump${_cpuSuffix}/igc/ ABSOLUTE)
-    unset(_cpuSuffix)
-endif()
-
-set(_tgtName "MDAutogen")
-set(_tgtLabel "MetadataFrameWorkAutogen")
-set(_autogenScript "${IGC_SOURCE_DIR}/common/autogen.py")
-set(_autogenSource "${IGC_SOURCE_DIR}/common/MDFrameWork.h")
-set(_autogenTarget "${CODEGEN_DIR}/MDNodeFunctions.gen")
-
 
 if(CMAKE_SYSTEM_NAME MATCHES "Windows")
   find_program(PYTHON_EXECUTABLE NAMES python.exe PATHS "${BS_DIR_MIGRATION_BINARIES}/build-tools/python2-win32" NO_DEFAULT_PATH)
@@ -2025,20 +2012,14 @@ else()
   find_program(PYTHON_EXECUTABLE NAMES "python2" "python")
 endif()
 
-add_custom_command(OUTPUT "${_autogenTarget}"
-                       COMMAND "${PYTHON_EXECUTABLE}"
-                       ARGS ${_autogenScript} ${_autogenSource} ${_autogenTarget}
-                       MAIN_DEPENDENCY ${_autogenSource}
-                       DEPENDS ${_autogenScript} ${_autogenSource}
-                       COMMENT "Running autogen.py for autogenerating MDFrameWork Implementation")
-
-add_custom_target("${_tgtName}" ALL
-            DEPENDS "${_autogenTarget}"
-    COMMENT "Building custom target for Metadata Framework")
-
-set_property(TARGET "${_tgtName}"
-            PROPERTY PROJECT_LABEL "${_tgtLabel}")
-
+set(IGC_CODEGEN_BASE_DIR "${CMAKE_CURRENT_BINARY_DIR}/autogen")
+if(MSVC_IDE)
+    set(IGC_CODEGEN_DIR "${IGC_CODEGEN_BASE_DIR}/${CMAKE_CFG_INTDIR}")
+else()
+    set(IGC_CODEGEN_DIR "${IGC_CODEGEN_BASE_DIR}")
+endif()
+add_subdirectory(MDAutogen ${IGC_CODEGEN_BASE_DIR}/MDAutogen)
+set_source_files_properties(${IGC_CODEGEN_DIR}/MDNodeFunctions.gen PROPERTIES GENERATED TRUE)
 
 
 # ============================================================================
@@ -3273,7 +3254,7 @@ endif()
 # ======================================== Include directories =========================================
 
 include_directories(
-    "${CODEGEN_DIR}"
+    "${IGC_CODEGEN_DIR}"
 
     "${IGC_BUILD__IGC_SRC_DIR}"
     "${IGC_BUILD__IGC_COMMON_DIR}"
@@ -3589,7 +3570,7 @@ set_property(TARGET "LocalScheduler" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_L
 
 foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
   add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${IGC_BUILD__PROJ__GenISAIntrinsics}")
-  add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     "${_tgtName}")
+  add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"     MDAutogen)
   
   if(MSVC AND IGC_OPTION__BIF_LINK_BC)
     add_dependencies("${IGC_BUILD__PROJ${_libBuildSuffix}}"   "${IGC_BUILD__PROJ__BiFModule_OCL}")

@@ -19,6 +19,11 @@ set(IGC_BUILD__SRC__common
     "${CMAKE_CURRENT_SOURCE_DIR}/MDFrameWork.cpp"
   )
 
+# Add generated source files
+list(APPEND IGC_BUILD__SRC__common
+    "${IGC_CODEGEN_DIR}/MDNodeFunctions.gen" # Needed by MDFrameWork.cpp
+)
+  
 
     list(APPEND IGC_BUILD__SRC__common
       "${CMAKE_CURRENT_SOURCE_DIR}/allocator.cpp"
