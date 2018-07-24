@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "RPE.h"
 #include "GraphColor.h"
+#include "Timer.h"
 
 namespace vISA
 {
@@ -40,10 +41,12 @@ namespace vISA
 
     void RPE::run()
     {
+        startTimer(TIMER_RPE);
         for (auto& bb : gra.kernel.fg.BBs)
         {
             runBB(bb);
         }
+        stopTimer(TIMER_RPE);
     }
 
     void RPE::runBB(G4_BB* bb)

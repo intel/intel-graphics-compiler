@@ -12,6 +12,7 @@ DEF_TIMER(TIMER_HYBRID_RA,                                    "\tGRF_Hybrid_RA")
 DEF_TIMER(TIMER_GRF_GLOBAL_RA,                                "\tGRF_Global_RA")
 DEF_TIMER(TIMER_INTERFERENCE,                                "\t  Interference")
 DEF_TIMER(TIMER_COLORING,                                  "\t  Graph Coloring")
+DEF_TIMER(TIMER_SPILL,                                                  "spill") 
 DEF_TIMER(TIMER_PRERA_SCHEDULING,                            "preRA_Scheduling")
 DEF_TIMER(TIMER_SCHEDULING,                                        "Scheduling")
 DEF_TIMER(TIMER_ENCODE_AND_EMIT,								  "Encode+Emit")
@@ -21,7 +22,9 @@ DEF_TIMER(TIMER_VISA_BUILDER_APPEND_INST,               "VB_Append_Instruction")
 DEF_TIMER(TIMER_VISA_BUILDER_CREATE_VAR,                        "VB_Create_Var")
 DEF_TIMER(TIMER_VISA_BUILDER_CREATE_OPND,                   "VB_Create_Operand")
 DEF_TIMER(TIMER_VISA_BUILDER_IR_CONSTRUCTION,              "VB_IR_Construction")
-DEF_TIMER(TIMER_LIVENESS,                              "liveness")
+DEF_TIMER(TIMER_LIVENESS,                                            "liveness")
+DEF_TIMER(TIMER_RPE,                                    "Reg Pressure Estimate")
+
 
 
 

@@ -2480,6 +2480,7 @@ void Interference::generateSparseIntfGraph()
     {
         uint32_t numNeighbor = 0;
         uint32_t maxNeighbor = 0;
+        uint32_t maxIndex = 0;
         for (int i = 0, numVar = (int) sparseIntf.size(); i < numVar; ++i)
         {
             if (lrs[i]->getPhyReg() == nullptr)
@@ -2487,11 +2488,15 @@ void Interference::generateSparseIntfGraph()
                 auto intf = sparseIntf[i];
                 numNeighbor += (uint32_t)intf.size();
                 maxNeighbor = std::max(maxNeighbor, (uint32_t)intf.size());
+                if (maxNeighbor == (uint32_t)intf.size())
+                {
+                    maxIndex = i;
+                }
             }
         }
         float avgNeighbor = ((float)numNeighbor) / sparseIntf.size();
         std::cout << "\t--avg # neighbors: " << std::setprecision(6) << avgNeighbor << "\n";
-        std::cout << "\t--max # neighbors: " << maxNeighbor << "\n";
+        std::cout << "\t--max # neighbors: " << maxNeighbor << " (" << lrs[maxIndex]->getDcl()->getName() << ")\n";
     }
 
     stopTimer(TIMER_INTERFERENCE);
@@ -9845,6 +9850,7 @@ int GlobalRA::coloringRegAlloc()
                     }
                 }
 
+                startTimer(TIMER_SPILL);
                 SpillManagerGMRF spillGMRF(*this,
                     nextSpillOffset,
                     liveAnalysis.getNumSelectedVar(),
@@ -9864,6 +9870,7 @@ int GlobalRA::coloringRegAlloc()
 
                 if (builder.getOption(vISA_RATrace))
                 {
+                    std::cout << "\t--# variables spilled: " << coloring.getSpilledLiveRanges().size() << "\n";
                     std::cout << "\t--current spill size: " << nextSpillOffset << "\n";
                 }
 
@@ -9900,6 +9907,8 @@ int GlobalRA::coloringRegAlloc()
                         failSafeRAIteration++;
                     }
                 }
+
+                stopTimer(TIMER_SPILL);
             }
 
             // RA successfully allocates regs
