@@ -109,11 +109,31 @@ static bool samplesAveragedEqually(const std::vector<Instruction*>& similarSampl
 // detect the pattern where all sample results are added together then
 // multiply by constant
 static bool
-detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts)
+detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts, Instruction* texSample)
 {
     unsigned nSampleInsts = sampleInsts.size();
     float averagingFactor = float(1.0 / (nSampleInsts + 1));
 
+    Instruction* base[3];
+    for(auto* UI : texSample->users())
+    {
+        ExtractElementInst* ui = dyn_cast<ExtractElementInst>(UI);
+        if(ui == nullptr)
+        {
+            return false;
+        }
+        ConstantInt* ci = dyn_cast<ConstantInt>(ui->getIndexOperand());
+        if(ci == nullptr)
+        {
+            return false;
+        }
+        unsigned idx = static_cast<unsigned>(ci->getZExtValue());
+        if(idx <= 2)
+        {
+            base[idx] = ui;
+        }
+    }
+    
     Instruction* rgb[3] = { nullptr };
 
     for (unsigned i = 0; i < nSampleInsts; i++)
@@ -172,14 +192,26 @@ detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts)
 
     for (unsigned i = 0; i < 3; i++)
     {
-        Instruction* fmul = dyn_cast<Instruction>(*rgb[i]->users().begin());
+        Instruction* fadd = dyn_cast<Instruction>(*rgb[i]->users().begin());
+        if(fadd == nullptr || fadd->getOpcode() != Instruction::FAdd ||
+            fadd->getNumUses() > 1)
+        {
+            return false;
+        }
+        if(fadd->getOperand(0) != base[i] &&
+            fadd->getOperand(1) != base[i])
+        {
+            return false;
+        }
+
+        Instruction* fmul = dyn_cast<Instruction>(*fadd->users().begin());
         if (fmul == nullptr || fmul->getOpcode() != Instruction::FMul ||
             fmul->getNumUses() > 1)
         {
             return false;
         }
         ConstantFP* cf;
-        if (fmul->getOperand(0) == rgb[i])
+        if (fmul->getOperand(0) == fadd)
         {
             cf = dyn_cast<ConstantFP>(fmul->getOperand(1));
         }
@@ -382,7 +414,7 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function &F)
         return false;
 
     bool pattern1 = samplesAveragedEqually(similarSampleInsts);
-    bool pattern2 = detectSampleAveragePattern2(similarSampleInsts);
+    bool pattern2 = detectSampleAveragePattern2(similarSampleInsts, texelSample);
     if (!pattern1 && !pattern2)
         return false;
 
@@ -421,6 +453,9 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function &F)
 
     //create a if-then basic block with the gating condition
     IGCIRBuilder<> IRB(F.getContext());
+    FastMathFlags FMF;
+    FMF.setFast();
+    IRB.setFastMathFlags(FMF);
     IRB.SetInsertPoint(similarSampleInsts[0]);
     Value* gatingVal1 = IRB.CreateBitCast(gatingValue_mul1, IRB.getFloatTy());
     Value* cnd1 = IRB.CreateFCmpONE(gatingVal1, ConstantFP::get(IRB.getFloatTy(), 0.0f)); 
