@@ -74,9 +74,12 @@ bool VariableReuseAnalysis::runOnFunction(Function &F)
   // Nothing but cleanup data from previous runs.
   reset();
 
-  visitLiveInstructions(&F);
+  if (IGC_IS_FLAG_ENABLED(EnableVariableAlias))
+  {
+      visitLiveInstructions(&F);
 
-  postProcessing();
+      postProcessing();
+  }
 
   return false;
 }
@@ -245,6 +248,34 @@ void VariableReuseAnalysis::visitCallInst(CallInst& I)
     }
 }
 
+void VariableReuseAnalysis::visitCastInst(CastInst& I)
+{
+    if (!canBeAlias(&I)) {
+        return;
+    }
+
+    // Set alias of dst to CastInst's src
+    // As CastInst is noop, its definition is dropped and
+    // only its uses are merged to src's liveness info.
+    Value* D = &I;
+    Value* S = I.getOperand(0);
+    auto II = m_ValueAliasMap.find(D);
+    if (II == m_ValueAliasMap.end())
+    {
+        SSubVector SV;
+        SV.BaseVector = S;
+        SV.StartElementOffset = 0;
+        m_ValueAliasMap.insert(std::make_pair(D, SV));
+
+        // Extend S's liveness to contain D's
+        m_LV->mergeUseFrom(S, D);
+    }
+    else {
+        // Already alised, ignored (TODO: merge aliasee ?)
+        return;
+    }
+}
+
 bool VariableReuseAnalysis::isLocalValue(Value* V)
 {
     Instruction* I = dyn_cast<Instruction>(V);
@@ -257,6 +288,26 @@ bool VariableReuseAnalysis::isLocalValue(Value* V)
 // Return true if V0 and V1's live ranges overlap, return false otherwise.
 bool VariableReuseAnalysis::hasInterference(Value* V0, Value* V1)
 {
+    // Key assumption about dessa/liveness(LVInfo):
+    //   1. Each Value's Liveness (LVInfo) has a single definition (it's true
+    //      even we extend its liveness such as in patternmatch or elsewhere).
+    //   2. If two values are combined, they generally should be included into
+    //      the same congruent class, not by extending liveness to reflect both
+    //      as doing so will violate the single definition for our liveness.
+    //      For example:
+    //          1:   v0 = 10
+    //          2:      = v0 (last use)
+    //          3:   v1 = 20
+    //          4:      = v1 (last use)
+    //        v0 and v1 will be in the same congruent class. We will not extend
+    //        v0's liveness to "4", just {v0, v1} in the same congruent class.
+    //        However, for the following:
+    //          1:   v0 = 10
+    //          2:      = v0 (last use)
+    //          3:   v1 = bitcast v0
+    //          4:      = v1 (last use) 
+    //        then we can just extend v0's liveness to "4".
+    //        
     SmallVector<Value*, 8> V0cc;  // V0's congruent class
     SmallVector<Value*, 8> V1cc;  // V1's congruent class
     if (m_DeSSA) {
@@ -281,4 +332,50 @@ bool VariableReuseAnalysis::hasInterference(Value* V0, Value* V1)
     }
 
     return false;
+}
+
+// Check if From can be an alias to To. Return true if so. It is used
+// for checking alias-possible instructions such as bitcast/inttoptr/ptrtoint
+//     "From" can be an alias to "To" if and only if "To" will
+//     not be changed during the entire live range of "From".
+// This is trivial for LLVM IR, as LLVM IR is SSA. But after DeSSA,
+// need to check other values in the congruent class of "To".
+//
+bool VariableReuseAnalysis::canBeAlias(CastInst* I)
+{
+    if (!isNoOpInst(I, m_pCtx)) {
+        return false;
+    }
+
+    // Set alias of dst to CastInst's src
+    // As CastInst is noop, its definition is dropped and
+    // only its uses are merged to src's liveness info.
+    Value* D = I;
+    Value* S = I->getOperand(0);
+    if (isa<Constant>(S)) {
+        return false;
+    }
+
+    if (!m_DeSSA) {
+        // No congruent class, so it can be alias!
+        return true;
+    }
+
+    // If D is in a congruent class or both D and S have different
+    // uniform property, give up.   
+    if (m_DeSSA->getRootValue(D) ||
+        (m_WIA && m_WIA->whichDepend(D) != m_WIA->whichDepend(S))) {
+        return false;
+    }
+
+    SmallVector<Value*, 8> Scc;    // S's congruent class
+    m_DeSSA->getAllValuesInCongruentClass(S, Scc);
+    for (int i = 0, sz0 = (int)Scc.size(); i < sz0; ++i)
+    {
+        Value *v0 = Scc[i];
+        if (v0 != S && m_LV->hasInterference(D, v0)) {
+            return false;
+        }
+    }
+    return true;        
 }

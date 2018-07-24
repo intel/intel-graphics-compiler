@@ -705,6 +705,70 @@ bool LiveVars::hasInterference(llvm::Value* V0, llvm::Value* V1)
 	return false;
 }
 
+// Merge LVInfo for "fromV" into V's.
+//
+// This function is used after LVInfo has been constructed already and
+// we want to merge "fromV" into V. This function will have V's LVInfo
+// updated to reflect such a merging.
+void LiveVars::mergeUseFrom(Value* V, Value* fromV)
+{
+    assert(VirtRegInfo.count(V) && VirtRegInfo.count(fromV) &&
+        "MergeUseFrom should be used after LVInfo has been contructed!");
+
+    LVInfo &LVI = getLVInfo(V);
+    LVInfo &fromLVI = getLVInfo(fromV);
+    uint32_t newNumUses = LVI.NumUses + fromLVI.NumUses;
+
+    assert(LVI.uniform == fromLVI.uniform &&
+        "ICE: cannot merge uniform with non-uniform values!");
+
+    // Use V's defining BB, not fromV's
+    Instruction* defInst = dyn_cast<Instruction>(V);
+    BasicBlock* defBB = defInst ? defInst->getParent() : nullptr;
+
+    // For each AliveBlock of fromV, add it to V's
+    for (auto I : fromLVI.AliveBlocks) {
+        BasicBlock* BB = I;
+        MarkVirtRegAliveInBlock(LVI, defBB, BB);
+    }
+
+    // For each kill, add it into V's LVInfo
+    for (auto KI : fromLVI.Kills) {
+        Instruction* inst = KI;
+        BasicBlock* instBB = inst->getParent();
+
+        // Must set ScanAllKills as we are doing updating.
+        HandleVirtRegUse(V, instBB, inst, true);
+    }
+
+    // Special case. fromV is used in the phi.
+    //
+    //    If a value is defined in BB and its last use is in
+    //    a PHI in succ(BB), both its AliveBlocks and Kills 
+    //    are empty (see LiveVars.hpp)
+    // For example:
+    //       BB:
+    //           fromV = bitcast V
+    //       succ_BB:
+    //           phi = fromV
+    //
+    // In this case, we will need to make sure BB is marked as alive.
+    if (Instruction* I = dyn_cast<Instruction>(fromV))
+    {
+        for (User* user : I->users())
+        {
+            if (PHINode* PHI = dyn_cast<PHINode>(user))
+            {
+                BasicBlock* BB = I->getParent();
+                MarkVirtRegAliveInBlock(LVI, defBB, BB);
+                break;
+            }
+        }    
+    }
+
+    LVI.NumUses = newNumUses;
+}
+
 
 IGC_INITIALIZE_PASS_BEGIN(LiveVarsAnalysis, "LiveVarsAnalysis", "LiveVarsAnalysis", false, true)
 IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
