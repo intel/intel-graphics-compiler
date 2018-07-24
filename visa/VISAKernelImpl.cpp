@@ -8101,7 +8101,7 @@ int VISAKernelImpl::GetGenxDebugInfo(void *&buffer, unsigned int &size, void*& m
 
     auto& vecToUse = m_kernel->getKernelDebugInfo()->getMapGenISAOffsetToCISAIndex();
     mapNumElems = (unsigned int)vecToUse.size();
-    mapGenISAOffsetToVISAIndex = (void*)allocCodeBlock(sizeof(unsigned int) * 2*mapNumElems);
+    mapGenISAOffsetToVISAIndex = mapNumElems ? (void*)allocCodeBlock(sizeof(unsigned int) * 2*mapNumElems) : nullptr;
     for (auto& entries : vecToUse)
     {
         ((unsigned int*)mapGenISAOffsetToVISAIndex)[i * 2] = entries.first;
