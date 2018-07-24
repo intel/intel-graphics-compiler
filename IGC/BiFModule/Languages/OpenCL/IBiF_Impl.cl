@@ -820,7 +820,7 @@ uint OVERLOADABLE intel_get_eu_thread_id( void )
 }
 
 __attribute__((always_inline))
-void OVERLOADABLE intel_get_eu_thread_pause( uint value )
+void OVERLOADABLE intel_eu_thread_pause( uint value )
 {
     __builtin_IB_eu_thread_pause(value);
 }
