@@ -1871,7 +1871,24 @@ bool COpenCLKernel::hasReadWriteImage(llvm::Function &F)
 
 bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)
 {
+    //If the driver has forced a specific SIMD mode, then:
+    // 1. compile only that SIMD mode and nothing else
+    // 2. Compille that SIMD mode even if it is not profitable, i.e. even if compileThisSIMD = false for it.
+    //    Don't bother checking profitability for it  
+    if (m_Context->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver != 0)
+    {
+        //Entered here means driver has requested a specific SIMD mode
+        if ((simdMode == SIMDMode::SIMD8 && m_Context->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver == 8) ||
+            (simdMode == SIMDMode::SIMD16 && m_Context->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver == 16) ||
+            (simdMode == SIMDMode::SIMD32 && m_Context->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver == 32))
+        {
+            return true;
+        }
+        return false;
+    }
+
     bool compileThisSIMD = CompileThisSIMD(simdMode, EP, F);
+    
     SIMDMode origSIMDMode = m_Context->getDefaultSIMDMode();
 
     //if compilation SIMD mode is true then we are guaranteed to compile this mode.
