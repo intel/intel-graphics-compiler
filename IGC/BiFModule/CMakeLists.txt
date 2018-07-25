@@ -77,6 +77,13 @@
   endif()
   unset(_archOs)
 
+  if(NOT EXISTS ${CCLANG_DIR_BINARIES})
+    set(CCLANG_DIR_BINARIES "${CMAKE_CURRENT_SOURCE_DIR}/../../../../cclang-prebuilt/${_OS_folder}")
+  endif()
+  if(NOT EXISTS ${CCLANG_DIR_BINARIES})
+    set(CCLANG_DIR_BINARIES "${IGC_BUILD__GFX_DEV_SRC_DIR}/Clang/Prebuilt/${_OS_folder}")
+  endif()
+
   set(IGC_TARGET__TOOLS_CLANG_DIR "${IGC_OPTION__OUTPUT_DIR}/clang/${_OS_folder}${_cpuSuffix}")
   foreach(configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE} "Release")
     string(TOUPPER "${configName}" upperConfigName)
