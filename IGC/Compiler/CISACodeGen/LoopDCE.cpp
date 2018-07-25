@@ -128,8 +128,13 @@ bool LoopDeadCodeElimination::processLoop(Loop *L) {
     bool ExitingOnTrue = !L->contains(BI->getSuccessor(0));
     auto Cond = BI->getCondition();
     for (auto U : Cond->users()) {
+        
       auto SI = dyn_cast<SelectInst>(U);
-      if (!SI)
+
+      //Check that 'select' instruction is within the loop and also that the 
+      //Branch condition is used as the select's condition and not as the select's
+      //true or false value
+      if (!SI || !L->contains(SI->getParent()) || SI->getCondition() != Cond)
         continue;
       // TODO: Handle the trivial case where 'select' is used as a loop-carried
       // value.
