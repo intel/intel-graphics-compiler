@@ -2320,20 +2320,15 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
 
 			Type *Ty = value->getType();
 			VectorType* VTy = dyn_cast<VectorType>(Ty);
-            Type *BTy = VTy ? VTy->getElementType() : Ty;
 			int nelts = (VTy ? (int)VTy->getNumElements() : 1);
 
-            VISA_Type visaTy = GetType(BTy);
-			int typeBytes = (int)CEncoder::GetCISADataTypeSize(visaTy);
+			int typeBytes = (int)CEncoder::GetCISADataTypeSize(Base->GetType());
 			int offsetInBytes = typeBytes * startIx;
-            int nbelts = nelts;
 			if (!Base->IsUniform())
 			{
-                int width = (int)numLanes(m_SIMDSize);
-				offsetInBytes *= width;
-                nbelts *= width;
+				offsetInBytes *= (int)numLanes(m_SIMDSize);
 			}
-			CVariable* AliasVar = GetNewAlias(Base, visaTy, offsetInBytes, nbelts);
+			CVariable* AliasVar = GetNewAlias(Base, Base->GetType(), offsetInBytes, nelts);
 			symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, AliasVar));
 			return AliasVar;
 		}

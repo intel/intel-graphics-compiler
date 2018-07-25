@@ -143,7 +143,6 @@ public:
 
   // Visitor
   void visitCallInst(llvm::CallInst& I);
-  void visitCastInst(llvm::CastInst& I);
 
 
   // Collect aliases from subVector to base vector. The map's key is
@@ -180,9 +179,6 @@ private:
   void visitLiveInstructions(llvm::Function* F);
 
   void postProcessing();
-
-  // Return true if this instruction can be converted to an alias
-  bool canBeAlias(llvm::CastInst* I);
 
   CodeGenContext* m_pCtx;
   WIAnalysis* m_WIA;
