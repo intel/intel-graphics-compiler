@@ -793,6 +793,7 @@ void DeSSA::getAllValuesInCongruentClass(
 		do {
 			if (N->parent.getInt() &
 				(Node::kPHIIsolatedFlag | Node::kRegisterIsolatedFlag)) {
+                N = N->next;
 				continue;
 			}
 			if (V != N->value) {
