@@ -228,6 +228,10 @@ public:
   /// passed through one.
   bool isLiveOut(llvm::Value *LV, const llvm::BasicBlock &MBB);
 
+  /// Merge LVInfo of "fromV" into V's LVInfo (ignore the def of "fromV")
+  /// Note that this is used after LVInfo has been constructed already.
+  void mergeUseFrom(llvm::Value* V, llvm::Value* fromV);
+
   /// If two values' live ranges overlap, return true.
   bool hasInterference(llvm::Value* V0, llvm::Value* V1);
 
