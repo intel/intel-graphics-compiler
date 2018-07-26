@@ -176,6 +176,18 @@ private:
 
 };
 
+const unsigned int INVALID_SIZE = (~0);
+
+class InstructionInfo
+{
+public:
+    InstructionInfo() : m_size(INVALID_SIZE), m_offset(0) {}
+    InstructionInfo(unsigned int size, unsigned int offset) : m_size(size), m_offset(offset) {}
+    unsigned int m_size;
+    unsigned int m_offset;
+};
+typedef std::map<const llvm::Instruction*, InstructionInfo> InstInfoMap;
+
 /// @brief VISAModule holds information on LLVM entry point function
 ///        and have access to emitted VISA code.
 class VISAModule
@@ -281,7 +293,7 @@ public:
     }
     void Reset();
 
-    const std::string m_triple = "vISA_64";
+    std::string m_triple = "vISA_64";
 
     CShader* m_pShader;
 
@@ -304,6 +316,25 @@ public:
     {
         return m_pShader->ProgramOutput()->m_unpaddedProgramSize;
     }
+
+    const InstInfoMap* GetInstInfoMap() { return &m_instInfoMap; }
+
+
+    VISAModule& operator=(VISAModule& other) = default;
+
+    static VISAModule* BuildNew(CShader* s)
+    {
+        auto n = new VISAModule(s);
+
+        if (n->m_pShader->GetContext()->m_DriverInfo.SupportElfFormat())
+        {
+            n->isDirectElfInput = true;
+        }
+
+        return n;
+    }
+
+    unsigned int GetCurrentVISAId() { return m_currentVisaId; }
 
 private:
     /// @brief Default Constructor.
@@ -337,17 +368,7 @@ private:
 
     bool isCloned;
 
-    struct InstructionInfo
-    {
-        InstructionInfo() : m_size(INVALID_SIZE), m_offset(0) {}
-        InstructionInfo(unsigned int size, unsigned int offset) : m_size(size), m_offset(offset) {}
-        unsigned int m_size;
-        unsigned int m_offset;
-    };
-    typedef std::map<const llvm::Instruction*, InstructionInfo> InstInfoMap;
     InstInfoMap m_instInfoMap;
-
-    static const unsigned int INVALID_SIZE = (~0);
 
     /// Constants represents VISA register encoding in DWARF
     static const unsigned int LOCAL_SURFACE_BTI = (254);

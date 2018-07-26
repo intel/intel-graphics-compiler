@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "messageEncoding.hpp"
 #include "PayloadMapping.hpp"
 #include "VectorProcess.hpp"
+#include "DebugInfo.hpp"
 #include "ShaderCodeGen.hpp"
 #include "common/allocator.h"
 #include "common/debug/Dump.hpp"
@@ -353,7 +354,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     }
 
     bool isCloned = false;
-    if (m_currShader->GetContext()->m_instrTypes.hasDebugInfo)
+    if (DebugInfoData::hasDebugInfo(m_currShader))
     {
         auto fIT = m_moduleMD->FuncMD.find(&F);
         if (fIT != m_moduleMD->FuncMD.end() &&
@@ -428,17 +429,23 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
 		IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
-        IF_DEBUG_INFO(m_pDebugEmitter->Initialize(m_currShader, m_currShader->GetContext()->m_instrTypes.hasDebugInfo);)
+        IF_DEBUG_INFO(m_pDebugEmitter->Initialize(m_currShader, DebugInfoData::hasDebugInfo(m_currShader));)
     }
 
-	if (m_currShader->GetContext()->m_instrTypes.hasDebugInfo)
+	if (DebugInfoData::hasDebugInfo(m_currShader))
 	{
+        if (!m_currShader->diData)
+            m_currShader->diData = new ::DebugInfoData;
+
+        m_currShader->diData->m_pShader = m_currShader;
+        m_currShader->diData->m_pDebugEmitter = m_pDebugEmitter;
+
 		IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->ResetVISAModule();)
 		IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->setFunction(&F, isCloned);)
     }
 
     // We only invoke EndEncodingMark() to update last VISA id.
-	IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
+    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
 
     COMPILER_TIME_END(m_currShader->GetContext(), TIME_vISAEmitInit);
     COMPILER_TIME_START(m_currShader->GetContext(), TIME_vISAEmitLoop);
@@ -448,7 +455,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     bool disableSlicing =
         IGC_IS_FLAG_ENABLED(DisableSIMD32Slicing) ||
         !m_currShader->GetContext()->m_retryManager.AllowSimd32Slicing() ||
-        m_currShader->GetContext()->m_instrTypes.hasDebugInfo ||
+        DebugInfoData::hasDebugInfo(m_currShader) ||
         m_pattern->m_samplertoRenderTargetEnable;
 
     IGC::Debug::Dump* llvmtoVISADump = nullptr;
@@ -610,9 +617,12 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
     COMPILER_TIME_END(m_currShader->GetContext(), TIME_CG_vISAEmitPass);
 
+    IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->markOutput(F, m_currShader);)
+    IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->addVISAModule(&F, m_pDebugEmitter->GetVISAModule());)
+
     // Compile only when this is the last function for this kernel.
     bool destroyVISABuilder = false;
-    if (!m_FGA || m_FGA->isGroupTail(&F))
+    if (finalize)
     {
         destroyVISABuilder = true;
         m_encoder->Compile();
@@ -625,18 +635,16 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         }
     }
 
-    if(m_currShader->ProgramOutput()->m_programBin)
-    {
-        EmitDebugInfo(finalize);
-    }
-    if(finalize)
-    {
-        IF_DEBUG_INFO(IDebugEmitter::Release(m_pDebugEmitter);)
-    }
-
     if (destroyVISABuilder)
     {
-        m_encoder->DestroyVISABuilder();
+        if (!m_currShader->diData)
+        {
+            IF_DEBUG_INFO(IDebugEmitter::Release(m_pDebugEmitter);)
+
+            // Postpone destroying VISA builder to
+            // after emitting debug info
+            m_encoder->DestroyVISABuilder();
+        }
     }
 
     if ((m_currShader->GetShaderType() == ShaderType::COMPUTE_SHADER ||
@@ -13308,46 +13316,6 @@ void EmitPass::ResetVMask(bool createJmpForDiscard)
             m_encoder->Push();
         }
     }
-}
-
-void EmitPass::EmitDebugInfo(bool finalize)
-{
-    unsigned int dbgSize = 0;
-    void *dbgInfo = nullptr;
-    void *buffer = nullptr;
-
-    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->Finalize(buffer, dbgSize, finalize);)
-
-    if (dbgSize != 0)
-    {
-        assert(buffer != nullptr && "Failed to generate VISA debug info");
-
-        dbgInfo = IGC::aligned_malloc(dbgSize, sizeof(void*));
-
-        memcpy_s(dbgInfo, dbgSize, buffer, dbgSize);
-
-        IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->Free(buffer);)
-
-        if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-        {
-            std::string debugFileNameStr = IGC::Debug::GetDumpName(m_currShader, "elf");
-
-            // Try to create the directory for the file (it might not already exist).
-            if (iSTD::ParentDirectoryCreate(debugFileNameStr.c_str()) == 0)
-            {
-                void* dbgFile = iSTD::FileOpen(debugFileNameStr.c_str(), "wb+");
-                if (dbgFile != nullptr)
-                {
-                    iSTD::FileWrite(dbgInfo, dbgSize, 1, dbgFile);
-                    iSTD::FileClose(dbgFile);
-                }
-            }
-        }
-    }
-
-    SProgramOutput* pOutput = m_currShader->ProgramOutput();
-    pOutput->m_debugDataVISA = dbgInfo;
-    pOutput->m_debugDataVISASize = dbgSize;
 }
 
 void EmitPass::emitGetBufferPtr(GenIntrinsicInst* inst)
