@@ -49,6 +49,325 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGC_DEBUG_VARIABLES
 #endif
 
+#if defined(IGC_DEBUG_VARIABLES)
+
+// Code for reading IGC regkeys "ShaderDumpEnable", "DumpToCurrentDir", "ShaderDumpPidDisable".
+// Code for shader dump directory name scheme.
+// Code is copied from IGC project. This duplication is undesirable in the long term.
+// IGC is expected to put this code in single file, without unncessary llvm (and other dependencies).
+// Then FCL will just include this single file to avoid code duplication and maintainability issues.
+
+#include <mutex>
+
+#if defined(_WIN32 )|| defined( _WIN64 )
+#include <direct.h>
+#include <process.h>
+#endif
+
+#if defined __linux__
+#include "iStdLib/File.h"
+#endif
+
+namespace {
+	std::string g_shaderOutputFolder;
+}
+
+namespace FCL
+{
+	namespace Debug
+	{
+		static std::mutex stream_mutex;
+
+		void DumpLock()
+		{
+			stream_mutex.lock();
+		}
+
+		void DumpUnlock()
+		{
+			stream_mutex.unlock();
+		}
+	}
+
+#define IGC_REGISTRY_KEY "SOFTWARE\\INTEL\\IGFX\\IGC"
+
+	typedef char FCLdebugString[256];
+
+	int32_t FCLShDumpEn = 0;
+	int32_t FCLDumpToCurrDir = 0;
+	int32_t FCLShDumpPidDis = 0;
+	int32_t FCLEnvKeysRead = 0;
+
+	/*****************************************************************************\
+	FCLReadIGCEnv
+	\*****************************************************************************/
+	static bool FCLReadIGCEnv(
+		const char*  pName,
+		void*        pValue,
+		unsigned int size)
+	{
+		if (pName != NULL)
+		{
+			const char nameTag[] = "IGC_";
+			std::string pKey = std::string(nameTag) + std::string(pName);
+
+			const char* envVal = getenv(pKey.c_str());
+
+			if (envVal != NULL)
+			{
+				if (size >= sizeof(unsigned int))
+				{
+					// Try integer conversion
+					char* pStopped = nullptr;
+					unsigned int *puVal = (unsigned int *)pValue;
+					*puVal = strtoul(envVal, &pStopped, 0);
+					if (pStopped == envVal + strlen(envVal))
+					{
+						return true;
+					}
+				}
+
+				// Just return the string
+				strncpy((char*)pValue, envVal, size);
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/*****************************************************************************\
+	FCLReadIGCRegistry
+	\*****************************************************************************/
+	static bool FCLReadIGCRegistry(
+		const char*  pName,
+		void*        pValue,
+		unsigned int size)
+	{
+		// All platforms can retrieve settings from environment
+		if (FCLReadIGCEnv(pName, pValue, size))
+		{
+			return true;
+		}
+
+#if defined _WIN32
+		LONG success = ERROR_SUCCESS;
+		HKEY uscKey;
+
+		success = RegOpenKeyExA(
+			HKEY_LOCAL_MACHINE,
+			IGC_REGISTRY_KEY,
+			0,
+			KEY_READ,
+			&uscKey);
+
+		if (ERROR_SUCCESS == success)
+		{
+			DWORD dwSize = size;
+			success = RegQueryValueExA(
+				uscKey,
+				pName,
+				NULL,
+				NULL,
+				(LPBYTE)pValue,
+				&dwSize);
+
+			RegCloseKey(uscKey);
+		}
+		return (ERROR_SUCCESS == success);
+#endif // defined _WIN32
+
+		return false;
+	}
+
+
+	bool getFCLIGCBinaryKey(const char *keyName)
+	{
+		FCLdebugString value = { 0 };
+
+		bool isSet = FCLReadIGCRegistry(
+			keyName,
+			&value,
+			sizeof(value));
+
+		return(value[0] == 1);
+	}
+
+
+	void FCLReadKeysFromEnv()
+	{
+		if (!FCLEnvKeysRead)
+		{
+			FCLShDumpEn			= getFCLIGCBinaryKey("ShaderDumpEnable");
+			FCLDumpToCurrDir	= getFCLIGCBinaryKey("DumpToCurrentDir");
+			FCLShDumpPidDis		= getFCLIGCBinaryKey("ShaderDumpPidDisable");
+
+			FCLEnvKeysRead = 1;
+		}
+	}
+
+	bool GetFCLShaderDumpEnable()
+	{
+		FCLReadKeysFromEnv();
+		return FCLShDumpEn;
+	}
+
+	bool GetFCLShaderDumpPidDisable()
+	{
+		FCLReadKeysFromEnv();
+		return FCLShDumpPidDis;
+	}
+
+	bool GetFCLDumpToCurrentDir()
+	{
+		FCLReadKeysFromEnv();
+		return FCLDumpToCurrDir;
+	}
+
+
+
+#define FCL_IGC_IS_FLAG_ENABLED(name) FCL::GetFCL##name()
+
+
+
+	typedef const char* OutputFolderName;
+
+	OutputFolderName  GetBaseIGCOutputFolder()
+	{
+#if defined(IGC_DEBUG_VARIABLES)
+		static std::mutex m;
+		std::lock_guard<std::mutex> lck(m);
+		static std::string IGCBaseFolder;
+		if (IGCBaseFolder != "")
+		{
+			return IGCBaseFolder.c_str();
+		}
+#   if defined(_WIN64) || defined(_WIN32)
+		if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && IGCBaseFolder == "")
+		{
+			bool needMkdir = 1;
+			char dumpPath[256];
+
+			sprintf_s(dumpPath, "c:\\Intel\\IGC\\");
+
+			if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY && needMkdir)
+			{
+				_mkdir(dumpPath);
+			}
+
+			// Make sure we can write in the dump folder as the app may be sandboxed
+			if (needMkdir)
+			{
+				int tmp_id = _getpid();
+				std::string testFilename = std::string(dumpPath) + "testfile" + std::to_string(tmp_id);
+				HANDLE testFile =
+					CreateFileA(testFilename.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_FLAG_DELETE_ON_CLOSE, NULL);
+				if (testFile == INVALID_HANDLE_VALUE)
+				{
+					char temppath[256];
+					if (GetTempPathA(sizeof(temppath), temppath) != 0)
+					{
+						sprintf_s(dumpPath, "%sIGC\\", temppath);
+					}
+				}
+				else
+				{
+					CloseHandle(testFile);
+				}
+			}
+
+			if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY && needMkdir)
+			{
+				_mkdir(dumpPath);
+			}
+
+			IGCBaseFolder = dumpPath;
+		}
+#elif defined __linux__
+		IGCBaseFolder = "/tmp/IntelIGC/";
+#endif
+		return IGCBaseFolder.c_str();
+#else
+		return "";
+#endif
+	}
+
+	OutputFolderName  GetShaderOutputFolder()
+	{
+#if defined(IGC_DEBUG_VARIABLES)
+		static std::mutex m;
+		std::lock_guard<std::mutex> lck(m);
+		if (g_shaderOutputFolder != "")
+		{
+			return g_shaderOutputFolder.c_str();
+		}
+#   if defined(_WIN64) || defined(_WIN32)
+		if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "")
+		{
+			char dumpPath[256];
+			sprintf_s(dumpPath, "%s", GetBaseIGCOutputFolder());
+			char appPath[MAX_PATH] = { 0 };
+			// check a process id and make an adequate directory for it:
+
+			if (::GetModuleFileNameA(NULL, appPath, sizeof(appPath) - 1))
+			{
+				std::string appPathStr = std::string(appPath);
+				int pos = appPathStr.find_last_of("\\") + 1;
+
+				if (FCL_IGC_IS_FLAG_ENABLED(ShaderDumpPidDisable))
+				{
+					sprintf_s(dumpPath, "%s%s\\", dumpPath, appPathStr.substr(pos, MAX_PATH).c_str());
+				}
+				else
+				{
+					sprintf_s(dumpPath, "%s%s_%d\\", dumpPath, appPathStr.substr(pos, MAX_PATH).c_str(), _getpid());
+				}
+			}
+			else
+			{
+				sprintf_s(dumpPath, "%sunknownProcess_%d\\", dumpPath, _getpid());
+			}
+
+			if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY)
+			{
+				_mkdir(dumpPath);
+			}
+
+			g_shaderOutputFolder = dumpPath;
+		}
+#elif defined __linux__
+		if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "")
+		{
+			bool needMkdir = true;
+
+			char path[MAX_PATH] = { 0 };
+			bool pidEnabled = FCL_IGC_IS_FLAG_ENABLED(ShaderDumpPidDisable);
+
+			if (needMkdir)
+			{
+				iSTD::CreateAppOutputDir(
+					path,
+					MAX_PATH,
+					GetBaseIGCOutputFolder(),
+					false,
+					true,
+					pidEnabled);
+			}
+
+			g_shaderOutputFolder = path;
+		}
+
+#endif
+		return g_shaderOutputFolder.c_str();
+#else
+		return "";
+#endif
+	}
+
+} // namespace FCL
+/// pk this ends here
+#endif
 
 #ifndef WIN32
 #include <dlfcn.h>
@@ -1027,12 +1346,10 @@ namespace TC
 			bool successTC = TranslateClang(&args, pOutputArgs, exceptString, pInputArgs->pInternalOptions);
 
 #if defined(IGC_DEBUG_VARIABLES)
-			//if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-            if(0)
+			if (FCL_IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
             {
-
                 // Works for all OSes. Creates dir if necessary.
-                const char *pOutputFolder = "";// IGC::Debug::GetShaderOutputFolder();
+                const char *pOutputFolder = FCL::GetShaderOutputFolder();
                 stringstream ss;
                 char* pBuffer = (char *)pInputArgs->pInput;
                 UINT  bufferSize = pInputArgs->InputSize;
