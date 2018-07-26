@@ -2043,13 +2043,20 @@ int VISAKernelImpl::CreateVISAImmediate(VISA_VectorOpnd *&cisa_opnd, const void 
         else if( isaType == ISA_TYPE_UQ) {
             cisa_opnd->g4opnd = m_builder->createImmWithLowerType(*(int64_t *)value, Type_UQ);
         }
-        else if( isaType == ISA_TYPE_DF ) {
+        else if( isaType == ISA_TYPE_DF ) 
+        {
             cisa_opnd->g4opnd = m_builder->createDFImm(*(double*)value);
-        }else if( isaType == ISA_TYPE_F ){
+        }
+        else if( isaType == ISA_TYPE_F )
+        {
             cisa_opnd->g4opnd = m_builder->createImm(*(float*)(value));
-        }else if( isaType == ISA_TYPE_HF ){
+        }
+        else if( isaType == ISA_TYPE_HF )
+        {
             cisa_opnd->g4opnd = m_builder->createImmWithLowerType(*(unsigned*)(value), Type_HF);
-        }else{
+        }
+        else
+        {
             int64_t tmpValue = typecastVals(value, isaType);
             cisa_opnd->g4opnd = m_builder->createImmWithLowerType(
                 tmpValue, g4type );

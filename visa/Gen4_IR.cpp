@@ -1495,6 +1495,7 @@ G4_INST::MovType G4_INST::canPropagate(const IR_Builder* builder)
 
     G4_Operand *src = srcs[0];
 
+
     if (src->isRelocImm())
     {
         return SuperMov;
@@ -2179,6 +2180,7 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt)
     G4_Type dstType, srcType;
     dstType = dst->getType();
     srcType = src->getType();
+
 
     // no dst type promotion after hoisting
     if (!Is_Type_Included(dstType, srcType, opt) ||
@@ -6973,13 +6975,12 @@ void G4_INST::setImplAccDst(G4_DstRegRegion* opnd)
 
 void G4_INST::dump() const
 {
-#if _DEBUG
+
     G4_INST& inst = const_cast<G4_INST&>(*this);
     if (!inst.isLabel())
         std::cerr << "\t";
     inst.emit(std::cerr, false, false);
     std::cerr << "\n";
-#endif
 }
 
 bool G4_INST::canSupportSaturate() const
@@ -7059,6 +7060,7 @@ bool G4_INST::canSupportCondMod(const IR_Builder& builder) const
         }
         return true;
     }
+
 
 	return ((op == G4_add) ||
 		(op == G4_addc) ||
