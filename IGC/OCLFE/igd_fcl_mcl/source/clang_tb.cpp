@@ -190,6 +190,7 @@ namespace FCL
 			keyName,
 			&value,
 			sizeof(value));
+		isSet = isSet;
 
 		return(value[0] == 1);
 	}
