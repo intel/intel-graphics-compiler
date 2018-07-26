@@ -449,7 +449,11 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         }
         mpm.add(createPromoteMemoryToRegisterPass());
     }
-
+    if(ctx.m_instrTypes.hasLoop)
+    {
+        // need to run loop simplify to canonicalize loop and merge latches
+        mpm.add(createLoopSimplifyPass());
+    }
     if (ctx.m_enableSubroutine)
     {
         // Sort functions if subroutine is enabled.
