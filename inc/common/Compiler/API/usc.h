@@ -76,6 +76,7 @@ typedef struct _SUscGTSystemInfo
     unsigned int   EuCountPerPoolMin;
     unsigned int   MaxSlicesSupported;
     unsigned int   MaxSubSlicesSupported;
+    unsigned int   CsrSizeInMb;
 } SUscGTSystemInfo;
 
 // This slimmed version of the full sku feature table ( in sku_wa.h ).
@@ -224,6 +225,7 @@ inline void InitializeUscAdapterInfo(
     uscAdpaterInfo.UscGTSystemInfo.MaxSlicesSupported = bigGTSystemInfo.MaxSlicesSupported;
     uscAdpaterInfo.UscGTSystemInfo.MaxSubSlicesSupported = bigGTSystemInfo.MaxSubSlicesSupported;
     uscAdpaterInfo.UscGTSystemInfo.IsDynamicallyPopulated = bigGTSystemInfo.IsDynamicallyPopulated;
+    uscAdpaterInfo.UscGTSystemInfo.CsrSizeInMb = bigGTSystemInfo.CsrSizeInMb;
 }
 
 /*****************************************************************************\

@@ -93,43 +93,11 @@ bool CSystemThread::CreateSystemThreadKernel(
 
         const IGC::SCompilerHwCaps &Caps = const_cast<IGC::CPlatform&>(platform).GetCaps();
 
-        if( mode & SYSTEM_THREAD_MODE_CSR )
-        {
-            unsigned int subSliceCount = Caps.KernelHwCaps.SubSliceCount;
-            // HSW and BDW differs in EU count per subslice but during preemption uses same memory size for EU data dump
-            const unsigned int EuRangeInSubslice = 0x10;
-            // HSW and BDW uses the same range for dumping data from single EU, 64KB although there are 7 threads in EU
-            const unsigned int singleEuDumpSize = 0x10000UL; // 64KB
-            const unsigned int slmSingleSubsliceData = 0x10000UL; // 64KB
+        if (mode & SYSTEM_THREAD_MODE_CSR)
+        pSystemThreadKernelOutput->m_SystemThreadScratchSpace = Caps.KernelHwCaps.CsrSizeInMb * sizeof(MEGABYTE);
 
-            // during preemption, data which should be preserved, are stored in specialized preemption scratch space,
-            // scratch space contains dump for SLM memory for each subslice and all spawned EU threads (GRFs and ARFs)
-            //
-            // EU data: 8k per each thread, ordered by FFTid, preemption EU design specify 64KB space per EU 
-            //          (although there are 7 threads in EU), additionaly EU data are alligned by rows,
-            // SLM memory: 64k of SLM per each subslice
-            pSystemThreadKernelOutput->m_SystemThreadScratchSpace = 
-                subSliceCount *
-                EuRangeInSubslice *                                                              
-                singleEuDumpSize                                  // EU data
-                + 
-                ( subSliceCount * slmSingleSubsliceData );        // SLM data                                  
-        }
-
-        if( mode & ( SYSTEM_THREAD_MODE_DEBUG | SYSTEM_THREAD_MODE_DEBUG_LOCAL ) )
-        {
-            unsigned int subSliceCount = Caps.KernelHwCaps.SubSliceCount;
-            const unsigned int slmSingleSubsliceData = 0x10000UL; // 64KB
-
-            pSystemThreadKernelOutput->m_SystemThreadResourceSize =
-                pKernelProgram->GetCacheFlushDataSize() + 
-                pKernelProgram->GetPerThreadDebugDataSize() * 
-                Caps.KernelHwCaps.EUCount * 
-                Caps.KernelHwCaps.EUThreadsPerEU
-                +
-                (subSliceCount * slmSingleSubsliceData);        // SLM data                                  
-
-        }
+        if (mode & (SYSTEM_THREAD_MODE_DEBUG | SYSTEM_THREAD_MODE_DEBUG_LOCAL))
+        pSystemThreadKernelOutput->m_SystemThreadResourceSize = Caps.KernelHwCaps.CsrSizeInMb * 2 * sizeof(MEGABYTE);
 
         pSystemThreadKernelOutput->m_pKernelProgram = 
             IGC::aligned_malloc( pSystemThreadKernelOutput->m_KernelProgramSize, DQWORD_SIZE );
@@ -378,20 +346,6 @@ void CGenSystemInstructionKernelProgram::Delete(CGenSystemInstructionKernelProgr
 CGenSystemInstructionKernelProgram::CGenSystemInstructionKernelProgram(
     const SYSTEM_THREAD_MODE mode)
 {
-    TODO("Switch if required based on platform");
-    m_pGpgpuArfSaveRegData = &cGpgpuArfSaveRegDataGen8[ 0 ] ;
-    m_pGpgpuArfRestoreRegData = &cGpgpuArfRestoreRegDataGen8[ 0 ] ;
-    m_cGpgpuArfRegNumber = sizeof( cGpgpuArfSaveRegDataGen8 ) / sizeof( SArfRegData );
-
-    if( mode & ( SYSTEM_THREAD_MODE_DEBUG | SYSTEM_THREAD_MODE_DEBUG_LOCAL ) )
-    {
-        m_pShaderDebugArfRegData = &cShaderDebugArfRegDataGen8[ 0 ];
-        m_cShaderDebugArfRegNumber = sizeof( cShaderDebugArfRegDataGen8 ) / sizeof( SArfRegData );
-        m_PerThreadDebugDataSizeInBytes = cGen8SIPThreadScratchSize;
-    }
-
-    m_FlushDataSizeInBytes = 0;
-    m_CacheFlushCount = 0 ;
     m_LinearAddress = NULL;
     m_ProgramSize = 0 ;
 }

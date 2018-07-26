@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <stdint.h>
 #include "usc.h"
-#include "SystemThreadRegs.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
@@ -114,20 +113,10 @@ namespace SIP
 
             CGenSystemInstructionKernelProgram(const USC::SYSTEM_THREAD_MODE mode);
             unsigned int  GetProgramSize(){ ASSERT(m_ProgramSize) ; return m_ProgramSize;}
-            unsigned int  GetCacheFlushDataSize(){ return m_FlushDataSizeInBytes;}
-            unsigned int  GetPerThreadDebugDataSize(){ return m_PerThreadDebugDataSizeInBytes; }
             void * GetLinearAddress(){ ASSERT(m_LinearAddress); return m_LinearAddress;}
 
     protected:
 
-         const SArfRegData* m_pShaderDebugArfRegData;
-         const SArfRegData* m_pGpgpuArfSaveRegData;
-         const SArfRegData* m_pGpgpuArfRestoreRegData;
-         unsigned int m_cGpgpuArfRegNumber;
-         unsigned int m_cShaderDebugArfRegNumber;
-         unsigned int m_PerThreadDebugDataSizeInBytes; // Number of bytes that will be dumped in the scratch space per thread
-         unsigned int m_FlushDataSizeInBytes;
-         unsigned int m_CacheFlushCount;// Number of times we write to cache to flush it
          unsigned int m_ProgramSize;
          void* m_LinearAddress;
 

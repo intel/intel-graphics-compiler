@@ -61,6 +61,7 @@ struct S3DKernelHardwareCapabilities
     unsigned int   EUThreadsPerEU;
     unsigned int   EUCountPerPoolMax;
     unsigned int   KernelPointerAlignSize;
+    unsigned int   CsrSizeInMb;
 };
 
 namespace IGC

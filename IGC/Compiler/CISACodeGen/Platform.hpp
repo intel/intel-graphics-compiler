@@ -119,6 +119,7 @@ public:
         m_GTSystemInfo.MaxSlicesSupported = gtSystemInfo.MaxSlicesSupported;
         m_GTSystemInfo.MaxSubSlicesSupported = gtSystemInfo.MaxSubSlicesSupported;
         m_GTSystemInfo.IsDynamicallyPopulated = gtSystemInfo.IsDynamicallyPopulated;
+        m_GTSystemInfo.CsrSizeInMb = gtSystemInfo.CsrSizeInMb;
     }
 
     void SetGTSystemInfo(const GT_SYSTEM_INFO &gtSystemInfo) {

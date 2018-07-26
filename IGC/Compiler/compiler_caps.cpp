@@ -136,6 +136,7 @@ void SetCompilerCaps(SKU_FEATURE_TABLE* pSkuFeatureTable, CPlatform* platform)
     caps.KernelHwCaps.EUCount = sysinfo.EUCount;
     caps.KernelHwCaps.EUCountPerSubSlice = sysinfo.MaxEuPerSubSlice;
     caps.KernelHwCaps.EUCountPerPoolMax = sysinfo.EuCountPerPoolMax;
+    caps.KernelHwCaps.CsrSizeInMb = sysinfo.CsrSizeInMb;
 
     //TODO: fix TC_tester; Set dummy values in TC_Tester
     if (sysinfo.EUCount) {
