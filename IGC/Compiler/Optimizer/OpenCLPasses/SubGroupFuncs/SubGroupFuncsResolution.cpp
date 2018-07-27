@@ -332,7 +332,9 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst &CI)
         use = *(CI.user_begin());
     }
 
-    if (use && isa<BitCastInst>(use) && use->getType()->getScalarType()->isFloatTy())
+    if (use && isa<BitCastInst>(use) &&
+        (use->getType()->getScalarType()->isFloatTy() ||
+         use->getType()->getScalarType()->isDoubleTy()))
     {
         BitCastInst * bitCast = cast<BitCastInst>(use);
         types[0] = bitCast->getType();
