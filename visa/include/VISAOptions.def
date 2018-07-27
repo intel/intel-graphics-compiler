@@ -122,6 +122,7 @@ DEF_VISA_OPTION(vISA_SequentialScheduling,  ET_BOOL, "-seqschedule",     UNUSED,
 DEF_VISA_OPTION(vISA_preRA_Schedule,        ET_BOOL, "-nopresched",      UNUSED, true)
 DEF_VISA_OPTION(vISA_preRA_ScheduleCtrl,      ET_INT32, "-presched-ctrl",      "USAGE: -presched-ctrl <ctrl>\n", 4)
 DEF_VISA_OPTION(vISA_preRA_ScheduleBlock,     ET_CSTR,  "-presched-block",     "USAGE: -presched-block <block-name>\n", NULL)
+DEF_VISA_OPTION(vISA_preRA_ScheduleRPThreshold, ET_INT32, "-presched-rp",      "USAGE: -presched-rp <threshold>\n", 0)
 DEF_VISA_OPTION(vISA_postRA_ScheduleBlock,    ET_CSTR,  "-postsched-block",    "USAGE: -postsched-block <block-name>\n", NULL)
 DEF_VISA_OPTION(vISA_DumpSchedule,          ET_BOOL, "-dumpSchedule",    UNUSED, false)
 DEF_VISA_OPTION(vISA_DumpDagDot,            ET_BOOL, "-dumpDagDot",      UNUSED, false)

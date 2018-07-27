@@ -483,6 +483,11 @@ static unsigned getLatencyHidingThreshold(Options *m_options)
 {
     unsigned NumGrfs = m_options->getuInt32Option(vISA_TotalGRFNum);
     float Ratio = NumGrfs / 128.0f;
+    unsigned RPThreshold = m_options->getuInt32Option(vISA_preRA_ScheduleRPThreshold);
+    if (RPThreshold > 0)
+    {
+        return unsigned(RPThreshold * Ratio);
+    }
     return unsigned(LATENCY_PRESSURE_THRESHOLD * Ratio);
 }
 
@@ -1119,7 +1124,8 @@ void BB_Scheduler::LatencyScheduling()
 static void mergeSegments(const std::vector<unsigned>& RPtrace,
                           const std::vector<unsigned>& Max,
                           const std::vector<unsigned>& Min,
-                          std::vector<unsigned>& Segments)
+                          std::vector<unsigned>& Segments,
+                          unsigned Threshold)
 {
     unsigned n = std::min<unsigned>((unsigned)Max.size(), (unsigned)Min.size());
     assert(n >= 2);
@@ -1140,7 +1146,7 @@ static void mergeSegments(const std::vector<unsigned>& RPtrace,
             unsigned Hi2 = RPtrace[Max[i - 1]];
             unsigned Lo2 = RPtrace[Min[i]];
 
-            if ((Hi2 - Lo + Hi) <= LATENCY_PRESSURE_THRESHOLD) {
+            if ((Hi2 - Lo + Hi) <= Threshold) {
                 Hi = Hi2 - Lo + Hi;
                 Lo = Lo2;
             } else {
@@ -1155,7 +1161,7 @@ static void mergeSegments(const std::vector<unsigned>& RPtrace,
         // otherwise it is the end pressure.
         unsigned Hi2 = (Min.back() > Max.back()) ? RPtrace.back()
                                                  : RPtrace[Max.back()];
-        if ((Hi2 - Lo + Hi) > LATENCY_PRESSURE_THRESHOLD)
+        if ((Hi2 - Lo + Hi) > Threshold)
             Segments.push_back(Min.back());
         return;
     }
@@ -1178,7 +1184,7 @@ static void mergeSegments(const std::vector<unsigned>& RPtrace,
         unsigned Lo2 = RPtrace[Min[i]];
 
         // Merge two segments
-        if ((Hi2 - Lo + Hi) <= LATENCY_PRESSURE_THRESHOLD) {
+        if ((Hi2 - Lo + Hi) <= Threshold) {
             Hi = Hi2 - Lo + Hi;
             Lo = Lo2;
         } else {
@@ -1193,7 +1199,7 @@ static void mergeSegments(const std::vector<unsigned>& RPtrace,
     // otherwise it is the end pressure.
     unsigned Hi2 = (Min.back() > Max.back()) ? RPtrace.back()
                                              : RPtrace[Max.back()];
-    if ((Hi2 - Lo + Hi) > LATENCY_PRESSURE_THRESHOLD)
+    if ((Hi2 - Lo + Hi) > Threshold)
         Segments.push_back(Min.back());
 }
 
@@ -1249,7 +1255,8 @@ void LatencyQueue::init()
         // and starts a new group.
         //
         std::vector<unsigned> Segments;
-        mergeSegments(RPtrace, Max, Min, Segments);
+        unsigned Threshold = getLatencyHidingThreshold(ddd.getOptions());
+        mergeSegments(RPtrace, Max, Min, Segments, Threshold);
 
         // Iterate segments and assign a group id to each insstruction.
         unsigned i = 0;

@@ -3487,6 +3487,11 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
             uint32_t V = m_program->m_DriverInfo->getVISAPreRASchedulerCtrl();
             vbuilder->SetOption(vISA_preRA_ScheduleCtrl, V);
         }
+
+        if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedRPThreshold))
+        {
+            vbuilder->SetOption(vISA_preRA_ScheduleRPThreshold, Val);
+        }
     }
     else
     {
