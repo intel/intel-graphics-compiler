@@ -150,8 +150,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "Compiler/SampleCmpToDiscard.h"
 
-#include "DebugInfo.hpp"
-
 #include "Compiler/CISACodeGen/HalfPromotion.h"
 
 /***********************************************************************************
@@ -714,9 +712,7 @@ void PSCodeGen(PixelShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, earlyExit, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         }
     }
-    PassMgr.add(new DebugInfoPass(shaders, SIMDMode::SIMD32));
-    PassMgr.add(new DebugInfoPass(shaders, SIMDMode::SIMD16));
-    PassMgr.add(new DebugInfoPass(shaders, SIMDMode::SIMD8));
+
     PassMgr.run(*(ctx->getModule()));
     DumpLLVMIR(ctx, "codegen");
 
@@ -895,9 +891,6 @@ void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &kernels
         AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 16));
         AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
     }
-    Passes.add(new DebugInfoPass(kernels, SIMDMode::SIMD32));
-    Passes.add(new DebugInfoPass(kernels, SIMDMode::SIMD16));
-    Passes.add(new DebugInfoPass(kernels, SIMDMode::SIMD8));
     Passes.run(*(ctx->getModule()));
     COMPILER_TIME_END(ctx, TIME_CodeGen);
     DumpLLVMIR(ctx, "codegen");
@@ -922,12 +915,6 @@ void CodeGenCommon(ContextType* ctx)
 
 
     CodeGen(ctx, shaders);
-
-    IGCPassManager DIPass(ctx, "DI");
-    DIPass.add(new DebugInfoPass(shaders, SIMDMode::SIMD32));
-    DIPass.add(new DebugInfoPass(shaders, SIMDMode::SIMD16));
-    DIPass.add(new DebugInfoPass(shaders, SIMDMode::SIMD8));
-    DIPass.run(*(ctx->getModule()));
 
 
     // gather data to send back to the driver

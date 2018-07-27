@@ -71,12 +71,10 @@ DebugEmitter::~DebugEmitter()
 void DebugEmitter::Reset()
 {
     m_str.clear();
-    if (toFree.size() > 0)
+    if (m_pVISAModule)
     {
-        for (auto& item : toFree)
-            delete item;
+        delete m_pVISAModule;
         m_pVISAModule = nullptr;
-        toFree.clear();
     }
     if (m_pStreamEmitter)
     {
@@ -165,12 +163,16 @@ void DebugEmitter::Initialize(CShader* pShader, bool debugEnabled)
     // VISA module will be initialized even when debugger is disabled.
     // Its overhead is minimum and it will be used in debug mode to
     // assert on calling DebugEmitter in the right order.
-    m_pVISAModule = VISAModule::BuildNew(pShader);
-    toFree.push_back(m_pVISAModule);
+    m_pVISAModule = new VISAModule(pShader);
 
     if (!m_debugEnabled)
     {
         return;
+    }
+
+    if (m_pVISAModule->m_pShader->GetContext()->m_DriverInfo.SupportElfFormat())
+    {
+        m_pVISAModule->isDirectElfInput = true;
     }
 
     std::string dataLayout = m_pVISAModule->GetDataLayout();
@@ -201,7 +203,7 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
     const Function *pFunc = m_pVISAModule->GetEntryFunction();
     // Collect debug information for given function.
     m_pStreamEmitter->SwitchSection(m_pStreamEmitter->GetTextSection());
-    m_pDwarfDebug->beginFunction(pFunc, m_pVISAModule);
+    m_pDwarfDebug->beginFunction(pFunc);
     unsigned int prevOffset = 0;
 
     if (m_pVISAModule->isDirectElfInput)
@@ -212,30 +214,11 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
         // relying on dbgmerge. elf generated will have
         // text section and debug_line sections populated.
         std::map<unsigned int, const llvm::Instruction*>& VISAIndexToInst = m_pVISAModule->VISAIndexToInst;
-        std::vector<std::pair<unsigned int, unsigned int>> GenISAToVISAIndex;
-        unsigned int subEnd = m_pVISAModule->GetCurrentVISAId();
-        unsigned int prevLastGenOff = lastGenOff;
-
-        for (auto item : m_pVISAModule->GenISAToVISAIndex)
-        {
-            if (item.first > lastGenOff)
-            {
-                if (item.second <= subEnd ||
-                    item.second == 0xffffffff)
-                {
-                    GenISAToVISAIndex.push_back(item);
-                    lastGenOff = item.first;
-                    continue;
-                }
-
-                if (item.second > subEnd)
-                    break;
-            }
-        }
+        std::vector<std::pair<unsigned int, unsigned int>>& GenISAToVISAIndex = m_pVISAModule->GenISAToVISAIndex;
 
         void* genxISA = m_pVISAModule->m_pShader->ProgramOutput()->m_programBin;
         unsigned int prevSrcLine = 0;
-        unsigned int pc = prevLastGenOff;
+        unsigned int pc = 0;
         for (auto item : GenISAToVISAIndex)
         {
             for (unsigned int i = pc; i != item.first; i++)
@@ -264,12 +247,9 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
             }
         }
 
-        if (finalize)
+        for (unsigned int i = pc; i != m_pVISAModule->getUnpaddedProgramSize(); i++)
         {
-            for (unsigned int i = pc; i != m_pVISAModule->getUnpaddedProgramSize(); i++)
-            {
-                m_pStreamEmitter->EmitInt8(((unsigned char*)genxISA)[i]);
-            }
+            m_pStreamEmitter->EmitInt8(((unsigned char*)genxISA)[i]);
         }
     }
     else
@@ -360,10 +340,7 @@ void DebugEmitter::Free(void *pBuffer)
 
 void DebugEmitter::ResetVISAModule()
 {
-    m_pVISAModule = VISAModule::BuildNew(m_pVISAModule->m_pShader);
-    toFree.push_back(m_pVISAModule);
     m_pVISAModule->Reset();
-    m_pVISAModule->setDISPToFuncMap(m_pDwarfDebug->getDISPToFunction());
 }
 
 /*static*/ bool DebugMetadataInfo::hasDashgOption(CodeGenContext* ctx)

@@ -31,8 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"
 
-#include "VISAModule.hpp"
-
 namespace llvm
 {
 class Instruction;
@@ -93,10 +91,6 @@ public:
     virtual void setFunction(llvm::Function* F, bool c) = 0;
 
     virtual void ResetVISAModule() = 0;
-
-    virtual IGC::VISAModule* GetVISAModule() = 0;
-
-    virtual void SetVISAModule(IGC::VISAModule*) = 0;
 };
 
 } // namespace IGC

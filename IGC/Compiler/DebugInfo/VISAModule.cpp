@@ -574,6 +574,12 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
         // so that finalizer can extend their liveness to end of
         // the program. This will help debugger examine their
         // values anywhere in the code till they are in scope.
+        if (m_outputVals.find(pVar) == m_outputVals.end())
+        {
+            m_pShader->GetEncoder().GetVISAKernel()->AddAttributeToVar(pVar->visaGenVariable[0], "Output", 0, nullptr);
+            (void) m_outputVals.insert(pVar);
+        }
+
         reg = m_pShader->GetEncoder().GetVISAKernel()->getDeclarationID(pVar->visaGenVariable[0]);
         assert(reg < GENERAL_REGISTER_NUM && "Bad VISA general register");
         if (isInSurface)

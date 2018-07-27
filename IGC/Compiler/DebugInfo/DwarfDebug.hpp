@@ -509,7 +509,7 @@ namespace IGC
         void endModule();
 
         /// \brief Gather pre-function debug information.
-        void beginFunction(const llvm::Function *MF, IGC::VISAModule*);
+        void beginFunction(const llvm::Function *MF);
 
         /// \brief Gather and emit post-function debug information.
         void endFunction(const llvm::Function *MF);
@@ -572,12 +572,6 @@ namespace IGC
         std::map<llvm::DISubprogram*, const llvm::Function*> DISPToFunction;
 
         void gatherDISubprogramNodes();
-
-    public:
-        std::map<llvm::DISubprogram*, const llvm::Function*>* getDISPToFunction()
-        {
-            return &DISPToFunction;
-        }
     };
 } // namespace IGC
 

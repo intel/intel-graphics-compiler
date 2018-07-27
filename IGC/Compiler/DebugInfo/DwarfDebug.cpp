@@ -284,8 +284,16 @@ DIE *DwarfDebug::updateSubprogramScopeDIE(CompileUnit *SPCU, DISubprogram* SP)
 #if 1
     SPCU->addLabelAddress(SPDie, dwarf::DW_AT_low_pc,
         Asm->GetTempSymbol("func_begin", m_pModule->GetFunctionNumber(SP->getName().data())));
-    SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc,
-        Asm->GetTempSymbol("func_end", m_pModule->GetFunctionNumber(SP->getName().data())));
+    if (m_pModule->isDirectElfInput)
+    {
+        auto highPC = m_pModule->getUnpaddedProgramSize();
+        SPCU->addUInt(SPDie, dwarf::DW_AT_high_pc, Optional<dwarf::Form>(), highPC);
+    }
+    else
+    {
+        SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc,
+            Asm->GetTempSymbol("func_end", m_pModule->GetFunctionNumber(SP->getName().data())));
+    }
 #else
     // Following existed before supporting stack calls. GetFunctionNumber() was hard
     // coded to return 0 always so for single function this worked. With stackcall
@@ -736,6 +744,8 @@ void DwarfDebug::beginModule()
     // module using debug info finder to collect debug info.
     NamedMDNode *CU_Nodes = M->getNamedMetadata("llvm.dbg.cu");
     if (!CU_Nodes) return;
+
+
     // Emit initial sections so we can reference labels later.
     emitSectionLabels();
 
@@ -770,9 +780,6 @@ void DwarfDebug::beginModule()
         {
             CU->getOrCreateTypeDIE(RetainedTypes[i]);
         }
-
-        // Assume there is a single CU
-        break;
     }
 
     // Prime section data.
@@ -844,9 +851,6 @@ void DwarfDebug::collectDeadVariables()
                 }
             }
         }
-        
-        // Assume there is a single CU
-        break;
     }
 }
 
@@ -1293,10 +1297,8 @@ static DebugLoc getFnDebugLoc(DebugLoc DL, const LLVMContext &Ctx)
 
 // Gather pre-function debug information.  Assumes being called immediately
 // after the function entry point has been emitted.
-void DwarfDebug::beginFunction(const Function *MF, IGC::VISAModule* v)
+void DwarfDebug::beginFunction(const Function *MF)
 {
-    m_pModule = v;
-
     // Grab the lexical scopes for the function, if we don't have any of those
     // then we're not going to be able to do anything.
     LScopes.initialize(m_pModule);
@@ -1321,7 +1323,7 @@ void DwarfDebug::beginFunction(const Function *MF, IGC::VISAModule* v)
     // Assumes in correct section after the entry point.
     Asm->EmitLabel(FunctionBeginSym);
 
-    for (auto II = m_pModule->begin(), IE = m_pModule->end(); II != IE; ++II)
+    for (VISAModule::const_iterator II = m_pModule->begin(), IE = m_pModule->end(); II != IE; ++II)
     {
         const Instruction *MI = *II;
 

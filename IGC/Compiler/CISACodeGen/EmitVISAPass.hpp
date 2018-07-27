@@ -445,6 +445,9 @@ public:
     CVariable* GetSrcVariable(const SSource& source, bool fromConstPool = false);
     void SetSourceModifiers(unsigned int sourceIndex, const SSource& source);
 
+    // Debug info functions
+    void EmitDebugInfo(bool finalize);
+
     CVariable* m_destination;
     GenXFunctionGroupAnalysis *m_FGA;
     CodeGenPatternMatch* m_pattern;

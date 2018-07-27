@@ -94,8 +94,6 @@ public:
     void Free(void *pBuffer);
     void setFunction(llvm::Function* F, bool isCloned);
     void ResetVISAModule();
-    VISAModule* GetVISAModule() { return m_pVISAModule; }
-    void SetVISAModule(VISAModule* other) { m_pVISAModule = other; }
 
 private:
     /// @brief Reset Debug Emitter instance.
@@ -114,10 +112,6 @@ private:
 
     /// m_pDwarfDebug - dwarf debug info processor.
     DwarfDebug *m_pDwarfDebug;
-
-    std::vector<VISAModule*> toFree;
-
-    unsigned int lastGenOff = 0;
 };
 
 } // namespace IGC
