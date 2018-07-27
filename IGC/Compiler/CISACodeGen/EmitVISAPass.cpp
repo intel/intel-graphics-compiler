@@ -4109,7 +4109,7 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
     }
     else
     {
-        if(psProgram->GetPhase() != PSPHASE_LEGACY)
+        if(!psProgram->IsLastPhase())
         {
             return;
         }
