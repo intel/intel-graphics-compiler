@@ -69,7 +69,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/AddressSpaceAliasAnalysis/AddressSpaceAliasAnalysis.h"
 #include "Compiler/Optimizer/OpenCLPasses/DeviceEnqueueFuncs/DeviceEnqueue.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/DeviceEnqueueFuncs/TransformBlocks.hpp"
-#include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressStaticResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/UndefinedReferences/UndefinedReferencesPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/SubGroupFuncs/SubGroupFuncsResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/BIFTransforms/BIFTransforms.hpp"
@@ -332,8 +331,6 @@ static void CommonOCLBasedPasses(
         mpm.add(createResolveGASPass());
         // Run another round of constant breaking as GAS resolving may generate constants (constant address)
         mpm.add(new BreakConstantExpr());
-        // Note : this pass is disabled in OCL for now
-        // mpm.add(new IGILGenericAddressStaticResolution(false));
     }
 
 

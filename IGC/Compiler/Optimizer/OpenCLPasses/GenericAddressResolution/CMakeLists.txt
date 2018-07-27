@@ -4,9 +4,6 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 set(IGC_BUILD__SRC__GenericAddressResolution
     "${CMAKE_CURRENT_SOURCE_DIR}/GenericAddressDynamicResolution.cpp"
   )
-set(IGC_BUILD__SRC__GenericAddressSpaceStaticResolution
-    "${CMAKE_CURRENT_SOURCE_DIR}/GenericAddressStaticResolution.cpp"
-  )
 set(IGC_BUILD__SRC__OpenCLPasses_GenericAddressResolution
     ${IGC_BUILD__SRC__GenericAddressResolution}
     ${IGC_BUILD__SRC__GenericAddressSpaceStaticResolution}
@@ -15,9 +12,6 @@ set(IGC_BUILD__SRC__OpenCLPasses_GenericAddressResolution
 
 set(IGC_BUILD__HDR__GenericAddressResolution
     "${CMAKE_CURRENT_SOURCE_DIR}/GenericAddressDynamicResolution.hpp"
-  )
-set(IGC_BUILD__HDR__GenericAddressSpaceStaticResolution
-    "${CMAKE_CURRENT_SOURCE_DIR}/GenericAddressStaticResolution.hpp"
   )
 set(IGC_BUILD__HDR__OpenCLPasses_GenericAddressResolution
     ${IGC_BUILD__HDR__GenericAddressResolution}
