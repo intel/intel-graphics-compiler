@@ -116,8 +116,8 @@ static bool IsStatelessSurface(G4_Operand *surface) {
 
 static bool IsBindlessSurface(IR_Builder& builder, G4_Operand* surface)
 {
-	return surface->isSrcRegRegion() &&
-		surface->asSrcRegRegion()->getBase()->asRegVar()->getDeclare() == builder.getBuiltinT252();
+	return builder.forceSplitSend() || (surface->isSrcRegRegion() &&
+		surface->asSrcRegRegion()->getBase()->asRegVar()->getDeclare() == builder.getBuiltinT252());
 }
 
 static bool IsNoMask(Common_VISA_EMask_Ctrl eMask) {

@@ -390,4 +390,10 @@
         return true;
     }
 
+    bool forceSplitSend() const
+    {
+        return false;
+    }
+
+
     // end HW capabilities
