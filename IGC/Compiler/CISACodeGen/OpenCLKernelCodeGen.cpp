@@ -1223,7 +1223,7 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
     //
     if (IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull) &&
         IGC_IS_FLAG_ENABLED(EnableStatefulToken) &&
-        arg && arg->use_empty() &&
+        arg->use_empty() &&
         (type == KernelArg::ArgType::PTR_GLOBAL ||
          type == KernelArg::ArgType::PTR_CONSTANT))
     {
