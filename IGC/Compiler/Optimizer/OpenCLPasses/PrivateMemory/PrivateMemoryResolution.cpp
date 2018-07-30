@@ -791,8 +791,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 
         Argument* r0Arg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::R0);
         ExtractElementInst* r0_5 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"), pEntryPoint);
-        Value* privateBase = BinaryOperator::CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"), pEntryPoint);
-
+        BinaryOperator* privateBase = BinaryOperator::CreateAnd(r0_5, ConstantInt::get(typeInt32, 0xFFFFFC00), VALUE_NAME("privateBase"), pEntryPoint);
 
         for (auto pAI : allocaInsts)
         {
@@ -855,7 +854,6 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
             {
                 bufferSize = m_ModAllocaInfo->getBufferSize(pAI);
             }
-
 
             Value* bufferOffset = builder.CreateMul(simdSize, ConstantInt::get(typeInt32, scalarBufferOffset), VALUE_NAME(pAI->getName() + ".SIMDBufferOffset"));
             Value* perLaneOffset = builder.CreateMul(simdLaneId, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));

@@ -380,7 +380,6 @@ private:
     // like builinImmVector4, only initialized if kernel uses SLM untyped r/w (ok, may need it for blocked SLM message as well)
     G4_Declare* builtinSLMSpillAddr;
 
-
     bool usesSampler;
 
     // function call related declares
@@ -760,7 +759,6 @@ public:
 
         builtinSLMSpillAddr = nullptr;
         builtinImmVector4 = nullptr;
-
     }
 
     G4_Declare* getBuiltinSLMSpillAddr() const { return builtinSLMSpillAddr; }
@@ -904,7 +902,6 @@ public:
     {
         return bti->isSrcRegRegion() && bti->getTopDcl() == getBuiltinT252();
     }
-
 
     FINALIZER_INFO* getJitInfo()
     {
