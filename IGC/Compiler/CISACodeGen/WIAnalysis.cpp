@@ -246,6 +246,8 @@ bool WIAnalysis::runOnFunction(Function &F) {
   m_ctrlBranches.clear();
 
   m_backwardList.clear();
+  m_storeDepMap.clear();
+  m_allocaDepMap.clear();
 
   updateArgsDependency(&F);
 
