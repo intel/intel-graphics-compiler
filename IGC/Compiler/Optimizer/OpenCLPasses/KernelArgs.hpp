@@ -461,6 +461,10 @@ namespace IGC
         /// @return A constant iterator to the end of the kernel arguments
         const_iterator end();
 
+        /// #brief Check if we need to insert dummy per-thread data for OpenCL 
+        ///
+        void checkForZeroPerThreadData();
+
     private:
         /// @brief  Check if the given argument needs to be allocated and add it to the allocation args container.
         /// @param  kernelArg   The kernel argument that might need to be allocated

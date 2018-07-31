@@ -1067,35 +1067,6 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
         KernelArg kernelArg = KernelArg(implicitArgs[i], DL, &(*funcArg), implicitArgs.getExplicitArgNum(i), implicitArgs.getStructArgOffset(i));
         addAllocationArg(kernelArg); 
     }
-
-    // On SKL, when we use Indirect thread payload, Spec says: 
-    // if Cross-Thread Constant Data Read Length for Indirect is greater than 0, 
-    // then Per thread data field must also be greater than 0.
-    // In that case we allocate one blank payload grf for Per thread constant.
-    if(layout == KernelArgsOrder::InputType::INDIRECT)
-    {
-        // if PTD == 0 && CTCD > 0 then we would need to allocate a dummy argument to occupy a single GRF in a PTD
-        // PTD 1 && CTCD > 0 is perfectly OK
-        int PerThreadData = 0;
-        bool HWWAForZeroLengthPTDRequired = true;
-        for( AllocationArgs::const_iterator i = m_args.begin(), e = m_args.end(); i != e; ++i)
-        {
-            const KernelArg *arg = i->second.data();
-            if(arg->needsAllocation() && !arg->isConstantBuf())
-            {
-                if(++PerThreadData > 0 + 1 /* IMPLICIT_R0 */ )
-                {
-                    HWWAForZeroLengthPTDRequired = false;
-                    break;
-                }
-            }
-        }
-        if(HWWAForZeroLengthPTDRequired)
-        {
-            KernelArg kernelArg = KernelArg(KernelArg::ArgType::R1, KernelArg::AccessQual::NONE, 32, 4, 32, false, nullptr, 0);
-            addAllocationArg(kernelArg);
-        }
-    }
 }
 
 void KernelArgs::addAllocationArg(KernelArg& kernelArg)
@@ -1114,5 +1085,36 @@ KernelArgs::const_iterator KernelArgs::begin()
 KernelArgs::const_iterator KernelArgs::end()
 {
     return const_iterator(m_args.end(), m_args.end(), (*(--m_args.end())).second.end());
+}
+
+void KernelArgs::checkForZeroPerThreadData()
+{
+
+    // On SKL, when we use Indirect thread payload, Spec says: 
+    // if Cross-Thread Constant Data Read Length for Indirect is greater than 0, 
+    // then Per thread data field must also be greater than 0.
+    // In that case we allocate one blank payload grf for Per thread constant.
+
+        // if PTD == 0 && CTCD > 0 then we would need to allocate a dummy argument to occupy a single GRF in a PTD
+        // PTD 1 && CTCD > 0 is perfectly OK
+    int PerThreadData = 0;
+    bool HWWAForZeroLengthPTDRequired = true;
+    for (AllocationArgs::const_iterator i = m_args.begin(), e = m_args.end(); i != e; ++i)
+    {
+        const KernelArg *arg = i->second.data();
+        if (arg->needsAllocation() && !arg->isConstantBuf())
+        {
+            if (++PerThreadData > 0 + 1 /* IMPLICIT_R0 */)
+            {
+                HWWAForZeroLengthPTDRequired = false;
+                break;
+            }
+        }
+    }
+    if (HWWAForZeroLengthPTDRequired)
+    {
+        KernelArg kernelArg = KernelArg(KernelArg::ArgType::R1, KernelArg::AccessQual::NONE, 32, 4, 32, false, nullptr, 0);
+        addAllocationArg(kernelArg);
+    }
 }
 

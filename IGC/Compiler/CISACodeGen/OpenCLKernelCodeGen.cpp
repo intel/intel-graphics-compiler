@@ -1326,6 +1326,11 @@ void COpenCLKernel::AllocatePayload()
 
     KernelArgs kernelArgs(*entry, m_DL, m_pMdUtils, layout, m_ModuleMetadata);
 
+    if (layout == KernelArgsOrder::InputType::INDIRECT && !loadThreadPayload)
+    {
+        kernelArgs.checkForZeroPerThreadData();
+    }
+
     for (KernelArgs::const_iterator i = kernelArgs.begin(), e = kernelArgs.end(); i != e; ++i) {
         KernelArg arg = *i;
 
