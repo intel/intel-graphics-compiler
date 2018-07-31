@@ -2067,6 +2067,11 @@ CVariable *CShader::GetSymbolFromSource(Instruction *UseInst,
             if (!DefInst || GetIsUniform(DefInst))
                 continue;
 
+            if (m_deSSA && m_deSSA->getRootValue(DefInst))
+            {
+                continue;
+            }
+
             CVariable *Var = reuseSourceVar(UseInst, DefInst, preferredAlign);
             if (Var)
                 return Var;
@@ -2082,6 +2087,11 @@ CVariable *CShader::GetSymbolFromSource(Instruction *UseInst,
         auto DefInst = dyn_cast<Instruction>(Opnd);
         if (!DefInst)
             return nullptr;
+
+        if (m_deSSA && m_deSSA->getRootValue(DefInst))
+        {
+            return nullptr;
+        }
 
         // TODO: allow %y = trunc i32 %x to i16
         if (!CI->isNoopCast(*m_DL))
@@ -2584,8 +2594,18 @@ bool CShader::VMECoalescePattern(GenIntrinsicInst *genInst)
     if (!IsSetMessageIntrinsic(genInst))
         return false;
 
+    if (m_deSSA && m_deSSA->getRootValue(genInst))
+    {
+        return false;
+    }
+
     if (GenIntrinsicInst *argInst = dyn_cast<GenIntrinsicInst>(genInst->getOperand(0)))
     {
+        if (m_deSSA && m_deSSA->getRootValue(argInst))
+        {
+            return false;
+        }
+
         switch (argInst->getIntrinsicID())
         {
         case GenISAIntrinsic::GenISA_createMessagePhases:
