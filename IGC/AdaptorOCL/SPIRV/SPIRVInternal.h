@@ -874,6 +874,10 @@ ConstantInt *getInt64(Module *M, int64_t value);
 /// Get a 32 bit integer constant.
 ConstantInt *getInt32(Module *M, int value);
 
+/// Decode OpenCL version which is encoded as Major*10^5+Minor*10^3+Rev
+std::tuple<unsigned short, unsigned char, unsigned char>
+decodeOCLVer(unsigned Ver);
+
 }
 
 #endif

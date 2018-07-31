@@ -3449,8 +3449,10 @@ SPIRVToLLVM::transSourceLanguage() {
   SPIRVWord Ver = 0;
   SpvSourceLanguage Lang = BM->getSourceLanguage(&Ver);
   assert((Lang == SpvSourceLanguageOpenCL_C || Lang == SpvSourceLanguageOpenCL_CPP) && "Unsupported source language");
-  unsigned Major = Ver/10;
-  unsigned Minor = (Ver%10);
+  unsigned short Major = 0;
+  unsigned char Minor = 0;
+  unsigned char Rev = 0;
+  std::tie(Major, Minor, Rev) = decodeOCLVer(Ver);
   addOCLVersionMetadata(Context, M, kSPIR2MD::SPIRVer, Major, Minor);
   addOCLVersionMetadata(Context, M, kSPIR2MD::OCLVer, Major, Minor);
   return true;

@@ -385,5 +385,13 @@ getInt32(Module *M, int value) {
   return ConstantInt::get(Type::getInt32Ty(M->getContext()), value, true);
 }
 
+std::tuple<unsigned short, unsigned char, unsigned char>
+decodeOCLVer(unsigned Ver) {
+  unsigned short Major = Ver / 100000;
+  unsigned char Minor = (Ver % 100000) / 1000;
+  unsigned char Rev = Ver % 1000;
+  return std::make_tuple(Major, Minor, Rev);
+}
+
 }
 
