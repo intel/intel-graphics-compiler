@@ -1187,14 +1187,16 @@ void HWConformity::fixAlign13SrcInst(INST_LIST_ITER iter, G4_BB* bb)
         {
             if (!isGoodAlign1TernarySrc(inst, i, canBeImm))
             {
-                G4_SubReg_Align subalign = Any;
-                if (i == 2)
+                if (i == 2 && builder.noSrc2Regioning())
                 {
-                    // when there's no scr2 regioning, 
-                    // src2 has to hvae same offset as dst, we enforce it by making it GRF-aligned
-                    subalign = builder.noSrc2Regioning() ? Sixteen_Word : Four_Word;
+                    // some additional handling for src2 when src2 regioning is not available
+                    fixSrc2(iter, bb, false);
                 }
-                inst->setSrc(insertMovBefore(iter, i, inst->getSrc(i)->getType(), bb, subalign), i);
+                else
+                {
+                    G4_SubReg_Align subalign = (i == 2) ? Four_Word : Any;
+                    inst->setSrc(insertMovBefore(iter, i, inst->getSrc(i)->getType(), bb, subalign), i);
+                }
             }
             else
             {
@@ -3835,25 +3837,7 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
                 bool isSrc2 = (k == 0);
                 if (builder.noSrc2Regioning() && isSrc2)
                 {
-                    // Promote src2's type to f if necessary.
-                    //
-                    // mad (4) r10.0<1>:f src0 src1 r12.0<1>:hf  --> f
-                    // mad (4) r10.0<2>:hf src0 src1 r12.0<1>:hf --> f
-                    // mad (4) r10.0<1>:hf src0 src1 r12.0<2>:hf --> hf
-                    // mad (4) r10.0<2>:hf src0 src1 r12.1<2>:hf --> f
-                    G4_Type srcTy = src->getType();
-                    unsigned short dstEltSz = inst->getDst()->getExecTypeSize();
-                    if (dstEltSz >= 4 && IS_HFTYPE(src->getType()))
-                    {
-                        srcTy = Type_F;
-                    }
-                    inst->setSrc(insertMovBefore(iter, k, srcTy, bb, Sixteen_Word), k);
-
-                    // Check if dst stride aligns with src2.
-                    if (dstEltSz != G4_Type_Table[srcTy].byteSize)
-                    {
-                        inst->setDest(insertMovAfter(iter, inst->getDst(), inst->getDst()->getType(), bb, Sixteen_Word));
-                    }
+                    fixSrc2(iter, bb, true);
                 }
                 else
                 {
@@ -7537,5 +7521,37 @@ void HWConformity::fixPackedHFConversions(INST_LIST_ITER it, G4_BB* bb)
         getTypeSize(inst->getExecType()) > 2)
     {
         helperGenerateTempDst(bb, it, inst, 2, Type_HF);
+    }
+}
+
+void HWConformity::fixSrc2(INST_LIST_ITER it, G4_BB* bb, bool swapSrc0and2)
+{
+    G4_INST* inst = *it;
+    int srcPos = swapSrc0and2 ? 0 : 2; // unfortunate side effect of vISA mad and Gen mad having difference src order
+    assert(inst->getNumSrc() == 3 && "expect 3-src inst");
+    if (builder.noSrc2Regioning())
+    {
+        auto src = inst->getSrc(srcPos);
+        // we have to make sure src2 and dst are aligned 
+        // Promote src2's type to f if necessary.
+        //
+        // mad (4) r10.0<1>:f src0 src1 r12.0<1>:hf  --> f
+        // mad (4) r10.0<2>:hf src0 src1 r12.0<1>:hf --> f
+        // mad (4) r10.0<1>:hf src0 src1 r12.0<2>:hf --> hf
+        // mad (4) r10.0<2>:hf src0 src1 r12.1<2>:hf --> f
+        // ditto for 3-src inst with int types
+        G4_Type srcTy = src->getType();
+        unsigned short dstEltSz = inst->getDst()->getExecTypeSize();
+        if (dstEltSz >= 4)
+        {
+            srcTy = IS_TYPE_FLOAT_ALL(srcTy) ? Type_F : Type_D;
+        }
+        inst->setSrc(insertMovBefore(it, srcPos, srcTy, bb, Sixteen_Word), srcPos);
+
+        // Check if dst stride aligns with src2.
+        if (dstEltSz != G4_Type_Table[srcTy].byteSize)
+        {
+            inst->setDest(insertMovAfter(it, inst->getDst(), inst->getDst()->getType(), bb, Sixteen_Word));
+        }
     }
 }

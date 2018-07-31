@@ -202,6 +202,8 @@ namespace vISA
 
         bool checkSrcMod(INST_LIST_ITER it, G4_BB* bb, int srcPos);
 
+        void fixSrc2(INST_LIST_ITER it, G4_BB* bb, bool swapSrc0and2);
+
     public:
         HWConformity(IR_Builder& b, G4_Kernel &k, vISA::Mem_Manager& m) :
             builder(b), kernel(k), mem(m)
