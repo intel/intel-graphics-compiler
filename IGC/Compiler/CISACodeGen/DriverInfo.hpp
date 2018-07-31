@@ -219,6 +219,9 @@ public:
 
     /// Check if we have to worry about stack overflow while recursing in loop analysis
     virtual bool HasSmallStack() const { return false; }
+
+    /// Check if the stateful token is supported
+    virtual bool SupportStatefulToken() const { return false; }
 };
 
 }//namespace IGC
