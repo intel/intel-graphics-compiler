@@ -13415,7 +13415,9 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
         uint as = resourcePtr->getType()->getPointerAddressSpace();
         uint bufferIndex;
         bool directIndexing;
+
         bufType = DecodeAS4GFXResource(as, directIndexing, bufferIndex);
+
         if(IsBindless(bufType) || !directIndexing)
         {
             if (isa<IntToPtrInst>(resourcePtr))

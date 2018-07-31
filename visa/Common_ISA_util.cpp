@@ -37,7 +37,7 @@ vISAPreDefinedSurface vISAPreDefSurf[COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1] =
 	{ 0, PREDEF_SURF_0, "T0" },
 	{ 1, PREDEF_SURF_1, "T1" },
 	{ 2, PREDEF_SURF_2, "T2" },
-	{ 3, PREDEF_SURF_3, "T3" },
+	{ 3, PREDEF_SURF_3, "TSS" },
 	{ 4, PREDEF_SURF_252, "T252" },
 	{ 5, PREDEF_SURF_255, "T255" },
 };
