@@ -1325,8 +1325,26 @@ namespace IGC
     void UnifyIROGL(CodeGenContext* ctx);
     void ConstantFolder(char* bitcode, uint bitcodeSize, void* CBptr[15], uint* pNewCB);
 
+    // Apply link optimization to shader programs.
     void LinkOptIR(CodeGenContext* ctxs[], bool usesStreamOutput);
 
+    class LTOPSAction {
+    public:
+        virtual void operator()(llvm::GenIntrinsicInst* inst) = 0;
+        virtual ~LTOPSAction() { }
+    };
+    typedef std::vector<std::unique_ptr<LTOPSAction> > LTOPSActions;
+
+    // Apply link optimization to shader program, record and return
+    // actions performed on PS.
+    void LinkOptIRGetPSActions(CodeGenContext* ctxs[],
+        bool usesStreamOutput, LTOPSActions& psActions);
+
+    // Replay previous LTO actions on PS, used for PS retry. So we don't need
+    // to go through the whole LTO process again.
+    void LinkOptReplayPSActions(PixelShaderContext* psCtx,
+        const LTOPSActions& psActions);
+    
     inline llvm::LLVMContext* toLLVMContext(CodeGenContext* p) {
         return p->getLLVMContext();
     }
