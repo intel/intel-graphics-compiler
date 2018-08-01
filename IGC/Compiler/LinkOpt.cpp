@@ -372,7 +372,7 @@ void ShaderIOAnalysis::onGenIntrinsic(GenIntrinsicInst* inst)
         break;
 
     case GenISAIntrinsic::GenISA_DCL_HSPatchConstInputVec:
-        if (doInput())
+        if (doOutput())
             addHSPatchConstInputDecl(inst);
         break;
 
