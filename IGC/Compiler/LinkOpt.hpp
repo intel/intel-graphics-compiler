@@ -428,4 +428,68 @@ inline uint getImmValueU32( const llvm::Value* value)
     return ival;
 }
 
+class LTOPSConstRepAction : public LTOPSAction {
+    llvm::APFloat imm;
+
+public:
+    LTOPSConstRepAction(llvm::APFloat immf) : imm(immf) { }
+
+    void operator()(llvm::GenIntrinsicInst* inst)
+    {
+        llvm::Value* cv;
+
+        if (inst->getType()->isHalfTy())
+        {
+            // PS input is in low precision, lower the output const value
+            bool isExact = false;
+            llvm::APFloat immh = imm;
+            immh.convert(llvm::APFloat::IEEEhalf(), llvm::APFloat::rmTowardZero, &isExact);
+            cv = llvm::ConstantFP::get(inst->getContext(), immh);
+        }
+        else
+        {
+            cv = llvm::ConstantFP::get(inst->getContext(), imm);
+        }
+         
+        inst->replaceAllUsesWith(cv);
+        inst->eraseFromParent();
+    }
+};
+
+class LTOPSConstInterpAction : public LTOPSAction {
+    int attrIndex;
+    bool setMode;
+
+public:
+    LTOPSConstInterpAction(int idx, bool _setMode)
+        : attrIndex(idx), setMode(_setMode) { }
+
+    void operator()(llvm::GenIntrinsicInst* inst)
+    {
+        llvm::Value* idxv = llvm::ConstantInt::get(
+            llvm::Type::getInt32Ty(inst->getContext()), attrIndex);
+        inst->setOperand(ShaderIOAnalysis::INPUT_ATTR_ARG, idxv);
+        if (setMode)
+        {
+            llvm::Value* modev = llvm::ConstantInt::get(
+                llvm::Type::getInt32Ty(inst->getContext()), EINTERPOLATION_CONSTANT);
+            inst->setOperand(ShaderIOAnalysis::INPUT_INTERPMODE_ARG, modev);
+        }
+    }
+};
+
+class LTOPSAdjustIndexAction : public LTOPSAction {
+    int attrIndex;
+
+public:
+    LTOPSAdjustIndexAction(int idx) : attrIndex(idx) { }
+
+    void operator()(llvm::GenIntrinsicInst* inst)
+    {
+        llvm::Value* idxv = llvm::ConstantInt::get(
+            llvm::Type::getInt32Ty(inst->getContext()), attrIndex);
+        inst->setOperand(ShaderIOAnalysis::INPUT_ATTR_ARG, idxv);
+    }
+};
+
 } // namespace IGC

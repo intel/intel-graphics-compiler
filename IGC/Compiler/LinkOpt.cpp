@@ -508,16 +508,18 @@ static void compactPsInputs(
     CodeGenContext* psCtx,
     vector<int>& psIdxMap,
     ShaderType inputShaderType,
-    VecOfIntrinVec& psIn,
-    const VecOfVec<Value*>& outVals)
+    const VecOfIntrinVec& psIn,
+    const VecOfVec<Value*>& outVals,
+    LTOPSActions& actions)
 {
     unsigned nPsIn = 0;
     unsigned nConstInterp = 0;
+    actions.resize(psIn.size());
 
     // count the number of constatnt interpolation attributes
     for (unsigned i = 0; i < psIn.size(); i++)
     {
-        IntrinVec& iv = psIn[i];
+        const IntrinVec& iv = psIn[i];
         ConstantFP* cfp;
         if (iv.size() > 0)
         {
@@ -551,10 +553,12 @@ static void compactPsInputs(
         }
     }
 
+    set<int> psInClear;
+
     // cleanup all constants, gather const interpolation inputs
     for (unsigned i = 0; i < psIn.size(); i++)
     {
-        IntrinVec& iv = psIn[i];
+        const IntrinVec& iv = psIn[i];
         if (iv.size() > 0)
         {
             bool clean = false;
@@ -564,21 +568,8 @@ static void compactPsInputs(
             {
                 // if vs output is const, then just propogate it
                 APFloat immf = cfp->getValueAPF();
-                Value* psInConst = ConstantFP::get(toLLVMContext(*psCtx), immf);
-
-                for (auto inst : iv)
-                {
-                    if (inst->getType()->isHalfTy())
-                    {
-                        // PS input is in low precision, lower the output const value
-                        bool isExact = false;
-                        APFloat immh = immf;
-                        immh.convert(llvm::APFloat::IEEEhalf(), llvm::APFloat::rmTowardZero, &isExact);
-                        psInConst = ConstantFP::get(toLLVMContext(*psCtx), immh);
-                    }
-                    inst->replaceAllUsesWith(psInConst);
-                    inst->eraseFromParent();
-                }
+                unique_ptr<LTOPSAction> act(new LTOPSConstRepAction(immf));
+                actions[i] = std::move(act);
                 clean = true;
             }
             else
@@ -595,40 +586,29 @@ static void compactPsInputs(
                 }
 
                 // check for GS output can be promoted to const interpolation
-                Value* constInterpV = nullptr;
+                bool updateInterpMode = false;
                 if (inputShaderType == ShaderType::GEOMETRY_SHADER &&
                     !psCtx->m_DriverInfo.WADisableConstInterpolationPromotion() &&
                     isConstInterpolationOutput(outVals[i]) &&
                     !((nConstInterp & 0x3) == 1 &&nPsIn == nConstInterp - 1))
                 {
                     isConstInterpInput = true;
-                    constInterpV = ConstantInt::get(
-                        Type::getInt32Ty(toLLVMContext(*psCtx)),
-                        EINTERPOLATION_CONSTANT);
+                    updateInterpMode = true;
                 }
                 
                 if (isConstInterpInput)
                 {
-                    Value* newIdx = ConstantInt::get(
-                        Type::getInt32Ty(toLLVMContext(*psCtx)), nPsIn);
                     psIdxMap[i] = nPsIn++;
-
-                    for (auto inst : iv)
-                    {
-                        inst->setOperand(ShaderIOAnalysis::INPUT_ATTR_ARG, newIdx);
-                        if (constInterpV)
-                        {
-                            inst->setOperand(ShaderIOAnalysis::INPUT_INTERPMODE_ARG,
-                                constInterpV);
-                        }
-                    }
+                    unique_ptr<LTOPSAction> act(
+                        new LTOPSConstInterpAction(psIdxMap[i], updateInterpMode));
+                    actions[i] = std::move(act);
                     clean = true;
                 }
             }
 
             if (clean)
             {
-                iv.clear();
+                psInClear.insert(i);
             }
         }
     }
@@ -636,18 +616,32 @@ static void compactPsInputs(
 
     for (unsigned i = 0; i < psIn.size(); i++)
     {
-        IntrinVec& iv = psIn[i];
+        const IntrinVec& iv = psIn[i];
 
-        if (iv.size() > 0)
+        if (iv.size() > 0 && !psInClear.count(i))
+        {
+            if (psIdxMap[i] == -1)
+            {
+                psIdxMap[i] = nPsIn++;
+            }
+            unique_ptr<LTOPSAction> act(new LTOPSAdjustIndexAction(psIdxMap[i]));
+            actions[i] = std::move(act);
+        }
+    }
+}
+
+void applyPsLtoActions(
+    VecOfIntrinVec& psIn,
+    const LTOPSActions& actions)
+{
+    for (unsigned i = 0; i < psIn.size(); i++)
+    {
+        IntrinVec& iv = psIn[i];
+        if (iv.size() > 0 && actions[i])
         {
             for (auto inst : iv)
             {
-                if (psIdxMap[i] == -1)
-                {
-                    psIdxMap[i] = nPsIn++;
-                }
-                inst->setOperand(ShaderIOAnalysis::INPUT_ATTR_ARG,
-                    ConstantInt::get(Type::getInt32Ty(toLLVMContext(*psCtx)), psIdxMap[i]));
+                (*actions[i])(inst);
             }
         }
     }
@@ -751,7 +745,8 @@ static bool linkOptVsDsGsToPs(
     LinkOptContext* linkCtx,
     ShaderType outShaderType,
     CodeGenContext* outCtx,
-    VecOfIntrinVec& outInsts)
+    VecOfIntrinVec& outInsts,
+    LTOPSActions& actions)
 {
     bool preStageOutputRemoved = false;
 
@@ -820,7 +815,8 @@ static bool linkOptVsDsGsToPs(
     if (psCtx)
     {
         // compact PS input attrs (moving towards index 0)
-        compactPsInputs(psCtx, psIdxMap, outShaderType, psIn, outVals);
+        compactPsInputs(psCtx, psIdxMap, outShaderType, psIn, outVals, actions);
+        applyPsLtoActions(psIn, actions);
     }
 
     // whether we have output values removed, so that we can do DCR again
@@ -1118,7 +1114,7 @@ static void ltoDestroy(LinkOptContext* linkContext)
     linkContext->closeDebugDump();
 }
 
-static ShaderType ltoToPS(LinkOptContext* ltoCtx)
+static ShaderType ltoToPS(LinkOptContext* ltoCtx, LTOPSActions& actions)
 {
     CodeGenContext* psCtx = ltoCtx->getPS();
     CodeGenContext* gsCtx = ltoCtx->getGS();
@@ -1170,7 +1166,7 @@ static ShaderType ltoToPS(LinkOptContext* ltoCtx)
             LTODumpLLVMIR(psCtx, "beLTOI");
         }
         LTODumpLLVMIR(prePsCtx, "beLTOO");
-        if (linkOptVsDsGsToPs(ltoCtx, prevType, prePsCtx, *prePsOuts))
+        if (linkOptVsDsGsToPs(ltoCtx, prevType, prePsCtx, *prePsOuts, actions))
         {
             // Outputs were removed from preStage, so DCR make sense in such case.
             runPasses(prePsCtx,
@@ -1294,7 +1290,8 @@ static ShaderType ltoToHs(LinkOptContext* ltoCtx)
     return prevType;
 }
 
-void LinkOptIR(CodeGenContext* ctxs[], bool usesStreamOutput)
+void LinkOptIRGetPSActions(CodeGenContext* ctxs[], bool usesStreamOutput,
+    LTOPSActions& actions)
 {
     if (!IGC_IS_FLAG_ENABLED(EnableLTO))
     {
@@ -1343,7 +1340,7 @@ void LinkOptIR(CodeGenContext* ctxs[], bool usesStreamOutput)
     }
     else
     {
-        prevType = ltoToPS(ltoCtx);
+        prevType = ltoToPS(ltoCtx, actions);
     }
 
     while (prevType != ShaderType::VERTEX_SHADER)
@@ -1373,6 +1370,27 @@ void LinkOptIR(CodeGenContext* ctxs[], bool usesStreamOutput)
     if (vsCtx)  DumpLLVMIR(vsCtx, "lto");
 
     ltoDestroy(ltoCtx);
+}
+
+void LinkOptReplayPSActions(PixelShaderContext* psCtx,
+    const LTOPSActions& psActions)
+{
+    LinkOptContext ltoCtx;
+    ltoCtx.setContext(ShaderType::PIXEL_SHADER, psCtx);
+
+    runPasses(psCtx,
+        new ShaderIOAnalysis(&ltoCtx, s_psType, s_doIn),
+        nullptr);
+    VecOfIntrinVec &psIn = ltoCtx.ps.inInsts;
+
+    applyPsLtoActions(psIn, psActions);
+    DumpLLVMIR(psCtx, "lto");
+}
+
+void LinkOptIR(CodeGenContext* ctxs[], bool usesStreamOutput)
+{
+    LTOPSActions actions;
+    LinkOptIRGetPSActions(ctxs, usesStreamOutput, actions);
 }
 
 } // namespace IGC
