@@ -42,12 +42,9 @@ namespace vISA
     void RPE::run()
     {
         startTimer(TIMER_RPE);
-        if (liveAnalysis->getNumSelectedVar() > 0)
+        for (auto& bb : gra.kernel.fg.BBs)
         {
-            for (auto& bb : gra.kernel.fg.BBs)
-            {
-                runBB(bb);
-            }
+            runBB(bb);
         }
         stopTimer(TIMER_RPE);
     }
