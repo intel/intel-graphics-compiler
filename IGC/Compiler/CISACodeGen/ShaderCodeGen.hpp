@@ -74,6 +74,7 @@ uint64_t GetImmediateVal(llvm::Value* Const);
 e_alignment GetPreferredAlignment(llvm::Value *Val, WIAnalysis *WIA, CodeGenContext* pContext);
 
 class CShaderProgram;
+class DebugInfoData;
 
 ///--------------------------------------------------------------------------------------------------------
 class CShader
@@ -351,6 +352,8 @@ public:
         }
         return (*iter).second[index];
     }
+
+    DebugInfoData* diData = nullptr;
 
 private:
     // Return DefInst's CVariable if it could be reused for UseInst, and return
