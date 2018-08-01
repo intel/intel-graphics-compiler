@@ -661,6 +661,8 @@ namespace IGC
         // cache the compiled kernel during retry
         CShader* m_simdEntries[3];
 
+        CShader* PickCSEntryForcedFromDriver(SIMDMode& simdMode, 
+            unsigned char forcedSIMDModeFromDriver);
         CShader* PickCSEntryByRegKey(SIMDMode& simdMode);
         CShader* PickCSEntryEarly(SIMDMode& simdMode,
             ComputeShaderContext* cgCtx);

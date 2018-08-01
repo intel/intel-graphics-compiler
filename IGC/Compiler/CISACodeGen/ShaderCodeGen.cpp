@@ -736,11 +736,11 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders
     SIMDMode maxSimdMode = ctx->GetMaxSIMDMode();
     unsigned int waveSize = ctx->getModuleMetaData()->csInfo.waveSize;
 
-    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) || waveSize == 32)
+    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) || waveSize == 32 || ctx->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver == 32)
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, false);
     }
-    else if(((IGC_IS_FLAG_ENABLED(ForceCSSIMD16)) && simdModeAllowed <= SIMDMode::SIMD16) || 
+    else if(((IGC_IS_FLAG_ENABLED(ForceCSSIMD16)) && simdModeAllowed <= SIMDMode::SIMD16 || ctx->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver == 16) ||
         waveSize == 16)
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, false);

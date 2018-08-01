@@ -667,6 +667,24 @@ bool CComputeShader::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Func
     return true;
 }
 
+CShader* RetryManager::PickCSEntryForcedFromDriver(SIMDMode& simdMode, unsigned char forcedSIMDModeFromDriver)
+{
+    switch (forcedSIMDModeFromDriver)
+    {
+    case 8: simdMode = SIMDMode::SIMD8;
+        simdMode = SIMDMode::SIMD8;
+        return m_simdEntries[0];
+    case 16:simdMode = SIMDMode::SIMD16;
+        simdMode = SIMDMode::SIMD16;
+        return m_simdEntries[1];
+    case 32:simdMode = SIMDMode::SIMD32;
+        simdMode = SIMDMode::SIMD32;
+        return m_simdEntries[2];
+    default: simdMode = SIMDMode::UNKNOWN;
+        return nullptr;
+    }
+}
+
 CShader* RetryManager::PickCSEntryByRegKey(SIMDMode& simdMode)
 {
     if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32))
@@ -805,7 +823,12 @@ bool RetryManager::PickupCS(ComputeShaderContext* cgCtx)
     SComputeShaderKernelProgram* pKernelProgram = &cgCtx->programOutput;
 
     shader = static_cast<CComputeShader*>(
-        PickCSEntryByRegKey(simdMode));
+        PickCSEntryForcedFromDriver(simdMode, cgCtx->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver));
+    if (!shader)
+    {
+        shader = static_cast<CComputeShader*>(
+            PickCSEntryByRegKey(simdMode));
+    }
     if (!shader)
     {
         shader = static_cast<CComputeShader*>(

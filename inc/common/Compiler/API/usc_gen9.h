@@ -177,6 +177,8 @@ struct SCompilerInputComputeShader_Gen9 : public SCompilerInputCommon_Gen7
 
     // Maximum size of available pool in physical (EU) threads
     unsigned int EUThreadsInPoolMax;
+
+    unsigned char forcedSIMDModeFromDriver = 0; // 0 means not forced
 };
 
 /*****************************************************************************\
