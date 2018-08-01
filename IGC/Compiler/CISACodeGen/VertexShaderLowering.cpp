@@ -358,7 +358,7 @@ void VertexShaderLowering::LowerIntrinsicInputOutput(Function& F)
                 //No need to pad URB at offset position 0 for OGL since it is always padded with 0
                 if(i == 1 && m_context->m_DriverInfo.NeedClearVertexHeader())
                 {
-                    break;
+                    continue;
                 }
                 else
                 {
