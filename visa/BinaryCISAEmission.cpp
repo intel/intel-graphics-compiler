@@ -321,24 +321,7 @@ void CBinaryCISAEmitter::emitAttributeInfo(VISAKernelImpl *cisa_kernel, attribut
         }
     }
     else
-    {
-        if (strcmp((cisa_kernel->getKernelFormat())->strings[attr->nameIndex], "AsmName") == 0)
-        {
-            std::string str(attr->value.stringVal);
-            auto found = str.find_last_of(DIR_SEPARATOR);
-            if (found >= 0)
-            {
-                str = str.substr(found + 1);
-                cisa_kernel->writeInToCisaBinaryBuffer(str.c_str(), str.length());
-            }
-            else
-                cisa_kernel->writeInToCisaBinaryBuffer(attr->value.stringVal, attr->size);
-        }
-        else
-        {
-            cisa_kernel->writeInToCisaBinaryBuffer(attr->value.stringVal, attr->size);
-        }
-    }
+        cisa_kernel->writeInToCisaBinaryBuffer(attr->value.stringVal, attr->size);
 }
 
 void CBinaryCISAEmitter::emitVectorOpnd(VISAKernelImpl * cisa_kernel, vector_opnd * cisa_opnd)
