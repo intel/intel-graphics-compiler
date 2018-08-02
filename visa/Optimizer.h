@@ -241,6 +241,7 @@ private:
     void clearSendDependencies();
     void loadThreadPayload();
     void insertFenceBeforeEOT();
+    void insertScratchReadBeforeEOT();
 
     void insertHashMovs();
     void insertDummyCompactInst();
@@ -329,6 +330,7 @@ public:
         PI_split4GRFVars,
         PI_loadThreadPayload,
         PI_insertFenceBeforeEOT,
+        PI_insertScratchReadBeforeEOT,
         PI_NUM_PASSES
     };
 

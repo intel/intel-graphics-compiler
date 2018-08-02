@@ -390,4 +390,9 @@
         return true;
     }
 
+    bool needToClearScratchWrites() const
+    {
+        return true;
+    }
+
     // end HW capabilities

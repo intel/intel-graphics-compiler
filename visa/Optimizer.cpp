@@ -629,6 +629,7 @@ void Optimizer::initOptimizations()
     INITIALIZE_PASS(split4GRFVars,           vISA_split4GRFVar,            TIMER_OPTIMIZER);
     INITIALIZE_PASS(loadThreadPayload,       vISA_loadThreadPayload,       TIMER_MISC_OPTS);
     INITIALIZE_PASS(insertFenceBeforeEOT,    vISA_EnableAlways,            TIMER_MISC_OPTS);
+    INITIALIZE_PASS(insertScratchReadBeforeEOT, vISA_clearScratchWritesBeforeEOT, TIMER_MISC_OPTS);
 
     // Verify all passes are initialized.
 #ifdef _DEBUG
@@ -1219,6 +1220,8 @@ int Optimizer::optimization()
     // passes, except initializePayload, to avoid
     // potential code ordering issue.
     runPass(PI_createR0Copy);
+
+    runPass(PI_insertScratchReadBeforeEOT);
 
     runPass(PI_initializePayload);
 
@@ -7614,6 +7617,61 @@ public:
                     bb->insert(iter, fenceInst);
                     builder.instList.clear();
                 }
+            }
+        }
+    }
+
+    // some platforms require a scratch read before the end of thread to 
+    // ensure that all outstanding scratch writes are globally observed
+    void Optimizer::insertScratchReadBeforeEOT()
+    {
+
+        if (builder.needFenceBeforeEOT() || builder.getJitInfo()->spillMemUsed == 0)
+        {
+            return;
+        }
+
+        struct ScratchReadDesc
+        {
+            uint32_t addrOffset : 12;
+            uint32_t dataElements : 2;
+            uint32_t reserved : 3;
+            uint32_t opType : 2;
+            uint32_t header : 1;
+            uint32_t resLen : 5;
+            uint32_t msgLen : 4;
+            uint32_t reserved2: 3;
+        };
+
+        union {
+            uint32_t value;
+            ScratchReadDesc layout;
+        } desc;
+
+        // msg desc for 1GRF scratch block read
+        desc.value = 0;
+        desc.layout.opType = 2;
+        desc.layout.header = 1;
+        desc.layout.resLen = 1;
+        desc.layout.msgLen = 1;
+
+        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID_DP_DC);
+
+        for (auto bb : kernel.fg.BBs)
+        {
+            if (bb->isLastInstEOT())
+            {
+                auto iter = std::prev(bb->end());
+
+                auto msgDesc = builder.createSendMsgDesc(desc.value, extDesc, true, false, nullptr, nullptr);
+                auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
+                // it's safe to use r0 here because EOT src must be between r112-r127
+                auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinR0(), 1);
+                auto sendInst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
+                    builder.createImm(extDesc, Type_UD), builder.createImm(desc.value, Type_UD), InstOpt_WriteEnable, true,
+                    false, msgDesc);
+                bb->insert(iter, sendInst);
+                builder.instList.clear();
             }
         }
     }
