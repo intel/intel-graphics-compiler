@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/Stats.hpp"
 #include "common/Types.hpp"
 #include "common/allocator.h"
+#include "common/igc_resourceDimTypes.h"
 // hack
 #include "common/debug/Debug.hpp"
 #include "common/debug/Dump.hpp"
