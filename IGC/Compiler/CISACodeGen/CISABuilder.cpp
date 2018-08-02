@@ -4360,6 +4360,13 @@ void CEncoder::Copy(CVariable* dst, CVariable* src)
     }
 }
 
+void CEncoder::LifetimeStart(CVariable* var)
+{
+    SModifier noMod; // Default is no mod.
+    noMod.init();
+    V(vKernel->AppendVISALifetime(LIFETIME_START, GetSourceOperand(var, noMod)));
+}
+
 void CEncoder::BoolToInt(CVariable* dst, CVariable* src)
 {
     assert(src->GetType() == ISA_TYPE_BOOL);
