@@ -230,8 +230,7 @@ void SubGroupFuncsResolution::CheckSIMDSize(Instruction &I, StringRef msg)
 
     if (simdSize == 32 || IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) == 32)
     {
-        auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-        ctx->EmitError(std::string(msg).c_str());
+        m_pCtx->EmitError(std::string(msg).c_str());
     }
 }
 
@@ -303,7 +302,11 @@ void SubGroupFuncsResolution::simdBlockRead(llvm::CallInst &CI)
     GenISAIntrinsic::ID  genIntrinID = GenISAIntrinsic::GenISA_simdBlockRead;
 	ADDRESS_SPACE AS = (ADDRESS_SPACE)PtrTy->getAddressSpace();
 	bool supportLocal = false;
-	assert((AS != ADDRESS_SPACE_LOCAL || supportLocal) && "BlockReadLocal not supported!");
+    if (AS == ADDRESS_SPACE_LOCAL && !supportLocal)
+    {
+        m_pCtx->EmitError("BlockReadLocal not supported!");
+        return;
+    }
 
     switch (CI.getType()->getScalarType()->getScalarSizeInBits())
     {
@@ -367,7 +370,11 @@ void SubGroupFuncsResolution::simdBlockWrite(llvm::CallInst &CI)
 	assert(PtrTy && "simdBlockWrite has non-pointer type!");
 	ADDRESS_SPACE AS = (ADDRESS_SPACE)PtrTy->getAddressSpace();
 	bool supportLocal = false;
-	assert((AS != ADDRESS_SPACE_LOCAL || supportLocal) && "BlockWriteLocal not supported!");
+    if (AS == ADDRESS_SPACE_LOCAL && !supportLocal)
+    {
+        m_pCtx->EmitError("BlockWriteLocal not supported!");
+        return;
+    }
 
     SmallVector<Value*, 2> args;
     SmallVector<Type*, 2>  types;
@@ -638,13 +645,13 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
         // The spec requires that the width and height are compile-time constants.
         if (!isa<ConstantInt>(CI.getOperand(2)))
         {
-            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("width argument supplied to intel_media_block_read*() must be constant.");
+            m_pCtx->EmitError("width argument supplied to intel_media_block_read*() must be constant.");
             return;
         }
 
         if (!isa<ConstantInt>(CI.getOperand(3)))
         {
-            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("height argument supplied to intel_media_block_read*() must be constant.");
+            m_pCtx->EmitError("height argument supplied to intel_media_block_read*() must be constant.");
             return;
         }
 
@@ -662,7 +669,7 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
 
         CheckMediaBlockInstError(MediaBlockRead, true);
         //Return if any error
-        if (!(getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->oclErrorMessage.empty()))
+        if (!m_pCtx->oclErrorMessage.empty())
         {
             return;
         }
@@ -680,13 +687,13 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
         // The spec requires that the width and height are compile-time constants.
         if (!isa<ConstantInt>(CI.getOperand(2)))
         {
-            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("width argument supplied to intel_media_block_write*() must be constant.");
+            m_pCtx->EmitError("width argument supplied to intel_media_block_write*() must be constant.");
             return;
         }
 
         if (!isa<ConstantInt>(CI.getOperand(3)))
         {
-            getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError("height argument supplied to intel_media_block_write*() must be constant.");
+            m_pCtx->EmitError("height argument supplied to intel_media_block_write*() must be constant.");
             return;
         }
 
@@ -705,7 +712,7 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
 
         CheckMediaBlockInstError(MediaBlockWrite, false);
         //Return if any error
-        if (!(getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->oclErrorMessage.empty()))
+        if (!m_pCtx->oclErrorMessage.empty())
         {
             return;
         }
@@ -867,8 +874,7 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst* i
             raw_string_ostream S(output);
             S << "width for " << builtinPrefix << "*() must be <= " << 32 / typeSize;
             S.flush();
-            CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-            ctx->EmitError(output.c_str());
+            m_pCtx->EmitError(output.c_str());
             return;
         }
 
@@ -879,8 +885,7 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst* i
             S << "height for " << widthInBytes << " bytes wide "
                 << builtinPrefix << "*() must be <= " << maxRows;
             S.flush();
-            CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-            ctx->EmitError(output.c_str());
+            m_pCtx->EmitError(output.c_str());
             return;
         }
 
@@ -895,8 +900,7 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst* i
 				S << builtinPrefix << "*() attempt of " << IOSize <<
 					" bytes.  Must be <= " << maxIOSize << " bytes.";
 				S.flush();
-				CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-				ctx->EmitError(output.c_str());
+				m_pCtx->EmitError(output.c_str());
 				return;
 			}
 		}
@@ -914,8 +918,7 @@ void SubGroupFuncsResolution::CheckMediaBlockInstError(llvm::GenIntrinsicInst* i
                 S << builtinPrefix << "_us*() widths must be dual pixel aligned.";
             }
             S.flush();
-            CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-            ctx->EmitError(output.c_str());
+            m_pCtx->EmitError(output.c_str());
             return;
         }
     }
