@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/WIAnalysis.hpp"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/CISACodeGen/DeSSA.hpp"
+#include "Compiler/CISACodeGen/CoalescingEngine.hpp"
 
 
 #include "common/LLVMWarningsPush.hpp"
@@ -84,6 +85,8 @@ public:
 
   virtual bool runOnFunction(llvm::Function &F) override;
 
+  // Need to perform this after WI/LiveVars/DeSSA/CoalescingEnging.
+  // (todo: check if coalescing can be merged into dessa completely)
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     // AU.addRequired<RegisterEstimator>();
     AU.setPreservesAll();
@@ -91,6 +94,7 @@ public:
 	AU.addRequired<LiveVarsAnalysis>();
 	AU.addRequired<CodeGenPatternMatch>();
 	AU.addRequired<DeSSA>();
+    AU.addRequired<CoalescingEngine>();
     AU.addRequired<CodeGenContextWrapper>();
   }
 
@@ -184,11 +188,17 @@ private:
   // Return true if this instruction can be converted to an alias
   bool canBeAlias(llvm::CastInst* I);
 
+  // If V has been payload-coalesced, return true.
+  bool hasBeenPayloadCoalesced(llvm::Value *V) {
+      return (m_coalescingEngine->GetValueCCTupleMapping(V) != nullptr);
+  }
+
   CodeGenContext* m_pCtx;
   WIAnalysis* m_WIA;
   LiveVars* m_LV;
   DeSSA* m_DeSSA;
   CodeGenPatternMatch* m_PatternMatch;
+  CoalescingEngine* m_coalescingEngine;
 
   // The register pressure estimator (optional).
   RegisterEstimator *m_RPE;

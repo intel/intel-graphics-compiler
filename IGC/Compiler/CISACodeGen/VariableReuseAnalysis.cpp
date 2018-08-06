@@ -40,6 +40,7 @@ IGC_INITIALIZE_PASS_DEPENDENCY(WIAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(LiveVarsAnalysis)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenPatternMatch)
 IGC_INITIALIZE_PASS_DEPENDENCY(DeSSA)
+IGC_INITIALIZE_PASS_DEPENDENCY(CoalescingEngine)
 IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(VariableReuseAnalysis, "VariableReuseAnalysis",
                         "VariableReuseAnalysis", false, true)
@@ -50,7 +51,8 @@ llvm::FunctionPass *IGC::createVariableReuseAnalysisPass() {
 
 VariableReuseAnalysis::VariableReuseAnalysis()
     : FunctionPass(ID),
-      m_WIA(nullptr), m_LV(nullptr), m_DeSSA(nullptr), m_PatternMatch(nullptr),
+      m_WIA(nullptr), m_LV(nullptr), m_DeSSA(nullptr),
+      m_PatternMatch(nullptr), m_coalescingEngine(nullptr),
       m_pCtx(nullptr), m_RPE(nullptr), m_SimdSize(0),
       m_IsFunctionPressureLow(Status::Undef),
       m_IsBlockPressureLow(Status::Undef) {
@@ -67,6 +69,7 @@ bool VariableReuseAnalysis::runOnFunction(Function &F)
   m_LV = &(getAnalysis<LiveVarsAnalysis>().getLiveVars());
   m_PatternMatch = &getAnalysis<CodeGenPatternMatch>();
   m_pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  m_coalescingEngine = &getAnalysis<CoalescingEngine>();
 
   // FIXME: enable RPE.
   // m_RPE = &getAnalysis<RegisterEstimator>();
@@ -347,6 +350,9 @@ bool VariableReuseAnalysis::hasInterference(Value* V0, Value* V1)
 //
 bool VariableReuseAnalysis::canBeAlias(CastInst* I)
 {
+    if (hasBeenPayloadCoalesced(I)) {
+        return false;
+    }
     if (!isNoOpInst(I, m_pCtx)) {
         return false;
     }
@@ -357,6 +363,10 @@ bool VariableReuseAnalysis::canBeAlias(CastInst* I)
     Value* D = I;
     Value* S = I->getOperand(0);
     if (isa<Constant>(S)) {
+        return false;
+    }
+
+    if (hasBeenPayloadCoalesced(S)) {
         return false;
     }
 
