@@ -2558,10 +2558,9 @@ void CEncoder::SetCr0FromRneModeTo(uint roundingMode)
     VISA_VectorOpnd* src1_Opnd = nullptr;
     VISA_VectorOpnd* dst_Opnd = nullptr;
     VISA_GenVar* cr0_var;
-    uint bitmaskImm = roundingMode << 4;
     V(vKernel->GetPredefinedVar(cr0_var, PREDEFINED_CR0));
     V(vKernel->CreateVISASrcOperand(src0_Opnd, cr0_var, MODIFIER_NONE, 0, 1, 0, 0, 0));
-    V(vKernel->CreateVISAImmediate(src1_Opnd, &bitmaskImm, ISA_TYPE_UD));
+    V(vKernel->CreateVISAImmediate(src1_Opnd, &roundingMode, ISA_TYPE_UD));
     V(vKernel->CreateVISADstOperand(dst_Opnd, cr0_var, 1, 0, 0));
     V(vKernel->AppendVISAArithmeticInst(
         ISA_OR,
@@ -2580,7 +2579,10 @@ void CEncoder::SetCr0RneMode()
     VISA_VectorOpnd* src1_Opnd = nullptr;
     VISA_VectorOpnd* dst_Opnd = nullptr;
     VISA_GenVar* cr0_var;
-    uint imm_data = 0xffff7fcf;
+
+    // Note that this will set RNE for FP and rtz for float->int
+    uint imm_data = ~IntAndFPRoundingModeMask;
+
     V(vKernel->GetPredefinedVar(cr0_var, PREDEFINED_CR0));
     V(vKernel->CreateVISASrcOperand(src0_Opnd, cr0_var, MODIFIER_NONE, 0, 1, 0, 0, 0));
     V(vKernel->CreateVISAImmediate(src1_Opnd, &imm_data, ISA_TYPE_UD));

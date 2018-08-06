@@ -349,16 +349,22 @@ public:
     void SetFloatDenormMode(VISAKernel* vKernel, Float_DenormMode mode16, 
                             Float_DenormMode mode32, Float_DenormMode mode64);
     void SetVectorMask(bool vMask);
-    // Values of RM bit-field in CR0
+    // RM bits in CR0.0.
+    //    float RM bits: [5:4];
+    //    int RM (float -> int): Bit 12: 0 -> rtz; 1 -> using Float RM
     enum RoundingMode {
-        RoundToNearestEven = 0,
-        RoundToPositive = 1,
-        RoundToNegative = 2,
-        RoundToZero = 3,
-        RoundToNearestEven_int = 0x800,
-        RoundToPositive_int = 0x801,
-        RoundToNegative_int = 0x802,
-        RoundToZero_int = 0x803
+        // float rounding mode
+        RoundToNearestEven = 0x00,
+        RoundToPositive = 0x10,
+        RoundToNegative = 0x20,
+        RoundToZero = 0x30,
+        // int rounding mode, use FP RM for all rounding modes but rtz.
+        RoundToNearestEven_int = 0x1000,
+        RoundToPositive_int = 0x1010,
+        RoundToNegative_int = 0x1020,
+        RoundToZero_int = 0x1030,
+
+        IntAndFPRoundingModeMask = 0x1030
     };
 
     // SetCr0FromRneModeTo - Assumes that current rounding mode is RNE. Switches to mode
