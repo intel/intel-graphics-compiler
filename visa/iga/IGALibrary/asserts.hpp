@@ -53,7 +53,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // *   DEBUG_TRACE enabled via #define DEBUG_TRACE_ENABLED before including
 //   asserts.hpp.  Sends tracing statements to the output console and stderr
 //
-#if (defined(_DEBUG) || defined(_INTERNAL_ASSERTS)) && !defined(BUILD_FOR_GTX)
+#if (defined(_DEBUG) || !defined(NDEBUG)) && !defined(BUILD_FOR_GTX)
 #define IGA_ASSERT(C,M) \
     do { \
         if (!(C)) { \

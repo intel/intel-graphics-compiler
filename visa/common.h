@@ -97,7 +97,7 @@ extern std::stringstream errorMsgs;
 #endif
 
 // disable asserts only for release DLL
-#if defined(_DEBUG) || defined(_INTERNAL_ASSERTS) || !defined(DLL_MODE)
+#if defined(_DEBUG) || !defined(DLL_MODE) || !defined(NDEBUG)
 #define ASSERT_USER(x, errormsg) {  if (!(x))   \
 {           \
     errorMsgs << "Error in Common ISA file:" << errormsg << std::endl; \
