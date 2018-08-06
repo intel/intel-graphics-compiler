@@ -61,7 +61,7 @@ static std::string stringFrom(type in)
     return  ss.str();
 }
 
-static void CreateCompilerCapsString(const GT_SYSTEM_INFO* sysinfo, std::string &outputString)
+static void CreateCompilerCapsString(const GT_SYSTEM_INFO* sysinfo, PLATFORM platformInfo, std::string &outputString)
 {
     outputString.append("// Hardware Caps :\n");
     outputString.append("EUCount \t\t= \t");
@@ -106,12 +106,35 @@ static void CreateCompilerCapsString(const GT_SYSTEM_INFO* sysinfo, std::string 
     outputString.append("MaxSubSlicesSupported \t\t= \t");
     outputString.append(stringFrom<unsigned int>(sysinfo->MaxSubSlicesSupported));
     outputString.append("\n");
+
+
+    std::stringstream ss;
+    outputString.append("UsDeviceID \t\t= \t");
+    ss << "0x" << std::hex << platformInfo.usDeviceID;
+    outputString.append(ss.str());
+    outputString.append("\n");
+    ss.str(std::string());
+    outputString.append("UsRevId \t\t= \t");
+    ss << "0x" << std::hex << platformInfo.usRevId;
+    outputString.append(ss.str());
+    outputString.append("\n");
+    ss.str(std::string());
+    outputString.append("UsDeviceID_PCH \t\t= \t");
+    ss << "0x" << std::hex << platformInfo.usDeviceID_PCH;
+    outputString.append(ss.str());
+    outputString.append("\n");
+    ss.str(std::string());
+    outputString.append("UsRevId_PCH \t\t= \t");
+    ss << "0x" << std::hex << platformInfo.usRevId_PCH;
+    outputString.append(ss.str());
+    outputString.append("\n");
+
 }
 
-static void DumpCaps(const GT_SYSTEM_INFO sysinfo, Debug::Dump const& dump)
+static void DumpCaps(const GT_SYSTEM_INFO sysinfo, PLATFORM platformInfo, Debug::Dump const& dump)
 {
     std::string outputString;
-    CreateCompilerCapsString(&sysinfo, outputString);
+    CreateCompilerCapsString(&sysinfo, platformInfo, outputString);
     dump.stream() << outputString;
 }
 
@@ -151,7 +174,7 @@ void SetCompilerCaps(SKU_FEATURE_TABLE* pSkuFeatureTable, CPlatform* platform)
     if (IGC_IS_FLAG_ENABLED(EnableCapsDump))
     {
         auto name = DumpName("HardwareCaps");
-        IGC::DumpCaps(sysinfo, Dump(name.Extension("txt"), Debug::DumpType::COS_TEXT));
+        IGC::DumpCaps(sysinfo, platform->getPlatformInfo(), Dump(name.Extension("txt"), Debug::DumpType::COS_TEXT));
     }
     platform->SetCaps(caps);
 }
