@@ -574,8 +574,9 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
            ctx.platform.need64BitEmulation())))) {
         mpm.add(new BreakConstantExpr());
         mpm.add(createEmu64OpsPass());
-        mpm.add(createInstructionSimplifierPass());
     }
+
+    mpm.add(createInstructionSimplifierPass());
 
     // This pass inserts bitcasts for vector loads/stores.
     // This pass could be moved further toward EmitPass.
