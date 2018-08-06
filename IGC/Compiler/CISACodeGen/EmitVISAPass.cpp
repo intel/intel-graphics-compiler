@@ -11407,9 +11407,7 @@ void EmitPass::CmpBoolOp(llvm::BinaryOperator* inst,
                          const SSource& bitSource,
                          const DstModifier&  modifier)
 {
-    CVariable* tempBool = m_currShader->GetNewVector(inst);
-    CVariable* dst = m_destination;
-    m_destination = tempBool;
+
     DstModifier init;
     Cmp(predicate, cmpSources, init);
 
@@ -11417,8 +11415,7 @@ void EmitPass::CmpBoolOp(llvm::BinaryOperator* inst,
     CVariable* boolOpSource = GetSrcVariable(bitSource);
     m_encoder->SetDstModifier(modifier);
 
-    EmitSimpleAlu(inst, dst, tempBool, boolOpSource);
-    m_destination = dst;
+    EmitSimpleAlu(inst, m_destination, m_destination, boolOpSource);
 }
 
 void EmitPass::emitAluConditionMod(Pattern* aluPattern, llvm::Instruction* alu, llvm::CmpInst* cmp)
