@@ -288,6 +288,7 @@ namespace IGC
         bool         EnableVertexReordering;
 
         unsigned int BindingTableEntryBitmap;
+        unsigned int m_SamplerCount;
     };
 
     struct SGeometryShaderKernelProgram : SKernelProgram

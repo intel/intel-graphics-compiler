@@ -226,6 +226,39 @@ static Constant *getQNaN(Type *Ty) {
 
 void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
 {
+    CodeGenContext* pCodeGenCtx = m_pCtxWrapper->getCodeGenContext();
+
+    // TODO: Fix this for all Shaders once and for all
+    if (pCodeGenCtx->type == ShaderType::VERTEX_SHADER)
+    {
+        if (const GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(&I))
+        {
+            VertexShaderContext* pShaderCtx = static_cast <VertexShaderContext*>(pCodeGenCtx);
+            switch (intr->getIntrinsicID())
+            {
+                case llvm::GenISAIntrinsic::GenISA_gather4Cptr:
+                case llvm::GenISAIntrinsic::GenISA_gather4POCptr:
+                case llvm::GenISAIntrinsic::GenISA_gather4POptr:
+                case llvm::GenISAIntrinsic::GenISA_gather4ptr:
+                case llvm::GenISAIntrinsic::GenISA_sampleptr:
+                case llvm::GenISAIntrinsic::GenISA_sampleLptr:
+                case llvm::GenISAIntrinsic::GenISA_sampleBCptr:
+                case llvm::GenISAIntrinsic::GenISA_sampleBptr:
+                case llvm::GenISAIntrinsic::GenISA_sampleCptr:
+                case llvm::GenISAIntrinsic::GenISA_sampleDCptr:
+                case llvm::GenISAIntrinsic::GenISA_sampleDptr:
+                case llvm::GenISAIntrinsic::GenISA_sampleKillPix:
+                case llvm::GenISAIntrinsic::GenISA_sampleLCptr:
+                case llvm::GenISAIntrinsic::GenISA_sampleinfoptr:
+                    pShaderCtx->programOutput.m_SamplerCount++;
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+
     if (const GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(&I))
     {
         switch (intr->getIntrinsicID())
@@ -241,7 +274,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
         case llvm::GenISAIntrinsic::GenISA_sampleDCptr:
         case llvm::GenISAIntrinsic::GenISA_sampleLCptr:
         {
-            CodeGenContext* pCodeGenCtx = m_pCtxWrapper->getCodeGenContext();
+
             uint bufferIndex = GetSampleCResourceIdx(I);
             if (bufferIndex == -1) break;
 
