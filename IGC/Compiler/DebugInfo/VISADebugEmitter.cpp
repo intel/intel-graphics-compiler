@@ -218,7 +218,7 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
 
         for (auto item : m_pVISAModule->GenISAToVISAIndex)
         {
-            if (item.first > lastGenOff)
+            if ((item.first > lastGenOff) || ((item.first | lastGenOff) == 0))
             {
                 if (item.second <= subEnd ||
                     item.second == 0xffffffff)
