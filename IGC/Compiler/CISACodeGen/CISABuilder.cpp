@@ -2598,6 +2598,21 @@ void CEncoder::SetCr0RneMode()
         src1_Opnd));
 }
 
+CEncoder::RoundingMode CEncoder::getEncoderRoundingMode(Float_RoundingMode FP_RM)
+{
+    switch (FP_RM) {
+    default:
+        break;
+    case FLOAT_ROUND_TO_POSITIVE:
+        return RoundingMode::RoundToPositive;
+    case FLOAT_ROUND_TO_NEGATIVE:
+        return RoundingMode::RoundToNegative;
+    case FLOAT_ROUND_TO_ZERO:
+        return RoundingMode::RoundToZero;
+    }
+    return RoundToNearestEven;
+}
+
 VISA_LabelOpnd* CEncoder::GetLabel(uint label)
 {
     VISA_LabelOpnd *visaLabel = labelMap[label];

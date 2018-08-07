@@ -1000,6 +1000,11 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
 {
   // handle 3D specific intrinsics
   EOPCODE intrinsic_name = GetOpCode((Instruction*)(inst));
+  GenISAIntrinsic::ID GII_id = GenISAIntrinsic::no_intrinsic;
+  if (const GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(inst))
+  {
+      GII_id = GII->getIntrinsicID();
+  }
   if(IsMathIntrinsic(intrinsic_name) ||
       intrinsic_name == llvm_input || 
       intrinsic_name == llvm_sgv ||
@@ -1025,7 +1030,8 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
       intrinsic_name == llvm_pair_to_ptr ||
       intrinsic_name == llvm_waveBallot ||
       intrinsic_name == llvm_waveAll ||
-      intrinsic_name == llvm_fma)
+      intrinsic_name == llvm_fma ||
+      GII_id == GenISAIntrinsic::GenISA_getSR0)
   {
     if (intrinsic_name == llvm_input ||
         intrinsic_name == llvm_shaderinputvec)
@@ -1073,16 +1079,6 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
         return WIAnalysis::UNIFORM;
     }
 
-    if (const GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(inst))
-    {
-        switch (GII->getIntrinsicID()) {
-        default:
-            break;
-        case GenISAIntrinsic::GenISA_getSR0:
-            return WIAnalysis::UNIFORM;
-        }
-    }
-    
     // Iterate over all input dependencies. If all are uniform - propagate it.
     // otherwise - return RANDOM
     unsigned numParams = inst->getNumArgOperands();
@@ -1090,7 +1086,6 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
     bool isAllUniform = true;
     for (unsigned i = 0; i < numParams; ++i)
     {
-      // Operand 0 is the function's name
       Value* op = inst->getArgOperand(i);
       WIDependancy dep = getDependency(op);
       if (WIAnalysis::UNIFORM != dep)

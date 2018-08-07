@@ -222,6 +222,14 @@ enum Float_DenormMode
     FLOAT_DENORM_RETAIN,
 };
 
+enum Float_RoundingMode
+{
+    FLOAT_ROUND_TO_NEAREST_EVEN = 0,
+    FLOAT_ROUND_TO_POSITIVE = 1,
+    FLOAT_ROUND_TO_NEGATIVE = 2,
+    FLOAT_ROUND_TO_ZERO = 3
+};
+
 //
 // Type of printf argument.
 // Note: changes to this enum must be co-ordinated with Runtime.

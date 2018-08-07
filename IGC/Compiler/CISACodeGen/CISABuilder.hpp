@@ -372,6 +372,8 @@ public:
     void SetCr0FromRneModeTo(uint roundingMode);
     // SetCr0RneMode - Sets the rounding mode to RNE
     void SetCr0RneMode();
+    // Get rouding mode of encoder
+    RoundingMode getEncoderRoundingMode(Float_RoundingMode FP_RM);
 
     static uint GetCISADataTypeSize(VISA_Type type);
     static e_alignment GetCISADataTypeAlignment(VISA_Type type);

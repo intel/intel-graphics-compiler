@@ -11647,24 +11647,39 @@ bool EmitPass::ignoreRoundingMode(llvm::Instruction* inst) const
         // these generate raw moves or no instructions at all
         return true;
     }
+
+    if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(inst))
+    {
+        GenISAIntrinsic::ID id = GII->getIntrinsicID();
+        switch (id)
+        {
+        default:
+            break;        
+        }
+    }
     // add more instr as needed
     return false;
 }
 
 void EmitPass::ResetRoundingMode(llvm::GenIntrinsicInst* inst)
 {
+    if (m_roundingMode == CEncoder::RoundToNearestEven) {
+        // Already in default mode.
+        return;
+    }
+
     for (auto nextInst = GetNextInstruction(inst); nextInst != nullptr; nextInst = GetNextInstruction(nextInst))
     {
+        if (ignoreRoundingMode(nextInst))
+        {
+            continue;
+        }
         if (llvm::GenIntrinsicInst* nextGenIntrinsicInst = dyn_cast<llvm::GenIntrinsicInst>(nextInst))
         {
             if (GetRoundingMode(nextGenIntrinsicInst) == m_roundingMode)
             {
                 return;
             }
-        }
-        else if (ignoreRoundingMode(nextInst))
-        {
-            continue;
         }
         break;
     }
