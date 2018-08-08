@@ -1918,8 +1918,6 @@ namespace {
 			AU.setPreservesCFG();
 			AU.addRequired<CodeGenContextWrapper>();
 		}
-    private:
-        bool isICBOffseted(llvm::LoadInst* inst, uint offset);
 	};
 
 } // namespace
@@ -1951,78 +1949,47 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F)
                     bool directBuf;
                     unsigned bufId;
                     BufferType bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufId);
-                    bool bICBNoOffset =
-                        (IGC::INVALID_CONSTANT_BUFFER_INVALID_ADDR == modMD->pushInfo.inlineConstantBufferOffset && bufType == CONSTANT_BUFFER && directBuf && bufId == modMD->pushInfo.inlineConstantBufferSlot);
-                    bool bICBOffseted =
-                        (IGC::INVALID_CONSTANT_BUFFER_INVALID_ADDR != modMD->pushInfo.inlineConstantBufferOffset && ADDRESS_SPACE_CONSTANT == as && isICBOffseted(inst, modMD->pushInfo.inlineConstantBufferOffset));
-                    if (bICBNoOffset || bICBOffseted)
+                    if (bufType == CONSTANT_BUFFER && directBuf && bufId == modMD->pushInfo.inlineConstantBufferSlot)
                     {
                         Value *ptrVal = inst->getPointerOperand();
-                        Value *eltPtr = nullptr;
-                        Value *eltIdx = nullptr;
-                        if (IntToPtrInst *i2p = dyn_cast<IntToPtrInst>(ptrVal))
+                        ConstantExpr *ptrExpr = dyn_cast<ConstantExpr>(ptrVal);
+                        IntToPtrInst *i2p = dyn_cast<IntToPtrInst>(ptrVal);
+                        if (ptrExpr == nullptr && i2p)
                         {
-                            eltPtr = i2p->getOperand(0);
-                        }
-                        else if (GetElementPtrInst *gep = dyn_cast<GetElementPtrInst>(ptrVal))
-                        {
-                            if (gep->getNumOperands() != 3)
-                            {
-                                continue;
-                            }
+                            m_builder.SetInsertPoint(inst);
 
-                            Type* eleType = gep->getPointerOperandType()->getPointerElementType();
-                            if (!eleType->isArrayTy() ||
-                                !(eleType->getArrayElementType()->isFloatTy() || eleType->getArrayElementType()->isIntegerTy(32)))
+                            unsigned int size_in_bytes = inst->getType()->getPrimitiveSizeInBits() / 8;
+                            if (size_in_bytes)
                             {
-                                continue;
-                            }
-                            
-                            eltIdx = gep->getOperand(2);
-                        }
-                        else
-                        {
-                            continue;
-                        }
-
-                        m_builder.SetInsertPoint(inst);
-
-                        unsigned int size_in_bytes = inst->getType()->getPrimitiveSizeInBits() / 8;
-                        if (size_in_bytes)
-                        {
-                            Value* ICBbuffer = UndefValue::get(VectorType::get(inst->getType(), maxImmConstantSizePushed / size_in_bytes));
-                            if (inst->getType()->isFloatTy())
-                            {
-                                float returnConstant = 0;
-                                for (unsigned int i = 0; i < maxImmConstantSizePushed; i += size_in_bytes)
+                                Value* ICBbuffer = UndefValue::get(VectorType::get(inst->getType(), maxImmConstantSizePushed / size_in_bytes));
+                                if (inst->getType()->isFloatingPointTy())
                                 {
-                                    memcpy_s(&returnConstant, size_in_bytes, offset + i, size_in_bytes);
-                                    Value *fp = ConstantFP::get(inst->getType(), returnConstant);
-                                    ICBbuffer = m_builder.CreateInsertElement(ICBbuffer, fp, m_builder.getInt32(i / size_in_bytes));
+                                    float returnConstant = 0;
+                                    for (unsigned int i = 0; i < maxImmConstantSizePushed; i += size_in_bytes)
+                                    {
+                                        memcpy_s(&returnConstant, size_in_bytes, offset + i, size_in_bytes);
+                                        Value *fp = ConstantFP::get(inst->getType(), returnConstant);
+                                        ICBbuffer = m_builder.CreateInsertElement(ICBbuffer, fp, m_builder.getInt32(i / size_in_bytes));
+                                    }
+                                    Value *eltIdxVal = i2p->getOperand(0);
+                                    Value *div = m_builder.CreateLShr(eltIdxVal, m_builder.getInt32(2));
+                                    Value *ICBvalue = m_builder.CreateExtractElement(ICBbuffer, div);
+                                    inst->replaceAllUsesWith(ICBvalue);
                                 }
-
-                                if (eltPtr)
+                                else if (inst->getType()->isIntegerTy())
                                 {
-                                    eltIdx = m_builder.CreateLShr(eltPtr, m_builder.getInt32(2));
+                                    int returnConstant = 0;
+                                    for (unsigned int i = 0; i < maxImmConstantSizePushed; i += size_in_bytes)
+                                    {
+                                        memcpy_s(&returnConstant, size_in_bytes, offset + i, size_in_bytes);
+                                        Value *fp = ConstantInt::get(inst->getType(), returnConstant);
+                                        ICBbuffer = m_builder.CreateInsertElement(ICBbuffer, fp, m_builder.getInt32(i / size_in_bytes));
+                                    }
+                                    Value *eltIdxVal = i2p->getOperand(0);
+                                    Value *div = m_builder.CreateLShr(eltIdxVal, m_builder.getInt32(2));
+                                    Value *ICBvalue = m_builder.CreateExtractElement(ICBbuffer, div);
+                                    inst->replaceAllUsesWith(ICBvalue);
                                 }
-                                Value *ICBvalue = m_builder.CreateExtractElement(ICBbuffer, eltIdx);
-                                inst->replaceAllUsesWith(ICBvalue);
-                            }
-                            else if (inst->getType()->isIntegerTy(32))
-                            {
-                                int returnConstant = 0;
-                                for (unsigned int i = 0; i < maxImmConstantSizePushed; i += size_in_bytes)
-                                {
-                                    memcpy_s(&returnConstant, size_in_bytes, offset + i, size_in_bytes);
-                                    Value *fp = ConstantInt::get(inst->getType(), returnConstant);
-                                    ICBbuffer = m_builder.CreateInsertElement(ICBbuffer, fp, m_builder.getInt32(i / size_in_bytes));
-                                }
-                                if (eltPtr)
-                                {
-                                    eltIdx = m_builder.CreateLShr(eltPtr, m_builder.getInt32(2));
-                                }
-                                Value *ICBvalue = m_builder.CreateExtractElement(ICBbuffer, eltIdx);
-                                inst->replaceAllUsesWith(ICBvalue);
                             }
                         }
                     }
@@ -2032,24 +1999,6 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F)
     }
 
 	return false;
-}
-
-bool IGCIndirectICBPropagaion::isICBOffseted(llvm::LoadInst* inst, uint offset) {
-    Value *ptrVal = inst->getPointerOperand();
-    std::vector<Value*> srcInstList;
-    IGC::TracePointerSource(ptrVal, false, true, srcInstList);
-    if (srcInstList.size())
-    {
-        CallInst* inst = dyn_cast<CallInst>(srcInstList.back());
-        GenIntrinsicInst* genIntr = inst ? dyn_cast<GenIntrinsicInst>(inst) : nullptr;
-        if (!genIntr || (genIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_RuntimeValue))
-            return false;
-
-        llvm::ConstantInt* ci = dyn_cast<llvm::ConstantInt>(inst->getOperand(0));
-        return ci && (uint)ci->getZExtValue() == offset;
-    }
-
-    return false;
 }
 
 IGC_INITIALIZE_PASS_BEGIN(IGCIndirectICBPropagaion, "IGCIndirectICBPropagaion",

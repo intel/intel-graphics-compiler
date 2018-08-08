@@ -18,10 +18,9 @@ const unsigned int NUM_SHADER_RESOURCE_VIEW_SIZE = (INPUT_RESOURCE_SLOT_COUNT + 
 
 const unsigned int g_c_maxNumberOfBufferPushed = 4;
 
+
 namespace IGC
 {
-    const unsigned int INVALID_CONSTANT_BUFFER_INVALID_ADDR = 0xFFFFFFFF;
-
     enum FunctionTypeMD
     {
         UnknownFunction,
@@ -158,15 +157,14 @@ namespace IGC
         bool isStatic = false;
     };
 
-    // simplePushInfoArr needs to be initialized to a vector of size g_c_maxNumberOfBufferPushed, which we are doing in module MD initialization done in code gen context
+	// simplePushInfoArr needs to be initialized to a vector of size g_c_maxNumberOfBufferPushed, which we are doing in module MD initialization done in code gen context
 	// All the pushinfo below is mapping to an argument number (int) so that we can retrieve relevant Argument as a value pointer from Function
     struct PushInfo
     {
         std::vector<StatelessPushInfo> pushableAddresses;
         unsigned int MaxNumberOfPushedBuffers = 0; ///> specifies the maximum number of buffers available for the simple push mechanism for current shader.
 
-        unsigned int inlineConstantBufferSlot = INVALID_CONSTANT_BUFFER_INVALID_ADDR; // slot of the inlined constant buffer
-        unsigned int inlineConstantBufferOffset = INVALID_CONSTANT_BUFFER_INVALID_ADDR;    // offset of the inlined constant buffer
+        unsigned int inlineConstantBufferSlot = 0xFFFFFFFF; // slot of the inlined constant buffer
 
 		std::map<ConstantAddress, int> constants;
 		std::map<unsigned int, SInputDesc> inputs;
