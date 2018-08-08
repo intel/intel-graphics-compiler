@@ -1945,7 +1945,9 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
         }
         else if(simdMode == SIMDMode::SIMD32 && IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 32) {
             //SIMD32 if not forced must see if SIMD16 has been generated without force or without spill
-            if((!m_parent->GetShader(SIMDMode::SIMD16) && IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 16) ||
+            auto simd16Shader = m_parent->GetShader(SIMDMode::SIMD16);
+            bool hasSIMD16 = simd16Shader && simd16Shader->ProgramOutput()->m_programSize > 0;
+            if(!hasSIMD16 ||
                (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) == 16 && m_Context->m_retryManager.GetLastSpillSize()))
            {
                 compileThisSIMD = false;
