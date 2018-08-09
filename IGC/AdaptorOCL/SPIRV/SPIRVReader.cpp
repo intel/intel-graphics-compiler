@@ -1596,13 +1596,6 @@ SPIRVToLLVM::postProcessOCL() {
   for (auto aggrFunc : aggrFuncs)
       postProcessFunctionsWithAggregateArguments(aggrFunc);
 
-  //Adjust ndrange_t type
-  auto ndrangeTy = M->getTypeByName("struct.ndrange_t");
-  if (ndrangeTy != nullptr)
-  {
-      ndrangeTy->setName("struct.Ndrange_t");
-  }
-
   return true;
 }
 
