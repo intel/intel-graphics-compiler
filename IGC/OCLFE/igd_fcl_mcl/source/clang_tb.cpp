@@ -1041,6 +1041,9 @@ namespace TC
     case TB_DATA_FORMAT_LLVM_BINARY:
       optionsEx += " -emit-llvm-bc";
       break;
+    case TB_DATA_FORMAT_SPIR_V:
+      optionsEx += " -emit-spirv";
+      break;
     default:
       break;
     }
@@ -1267,6 +1270,7 @@ namespace TC
 		{
 			//{ { TB_DATA_FORMAT_ELF, TB_DATA_FORMAT_LLVM_BINARY } },
 		case TB_DATA_FORMAT_LLVM_BINARY:
+		case TB_DATA_FORMAT_SPIR_V:
 			switch (ehType)
 			{
 			case EH_TYPE_OPENCL_SOURCE:

@@ -74,8 +74,10 @@ CIF_DECLARE_INTERFACE_PIMPL(FclOclTranslationCtx) : CIF::PimplBase
                   // from                 // to
                 { CodeType::elf,     CodeType::llvmBc },
                 { CodeType::elf,     CodeType::llvmLl },
+                { CodeType::elf,     CodeType::spirV  },
                 { CodeType::oclC,    CodeType::llvmBc },
                 { CodeType::oclC,    CodeType::llvmLl },
+                { CodeType::oclC,    CodeType::spirV },
             };
         for(const auto & st : supportedTranslations){
             if((inType == st.first) && (outType == st.second)){
@@ -153,6 +155,8 @@ protected:
         createArgs.TranslationCode.Type.Output = TC::TB_DATA_FORMAT_LLVM_BINARY;
         if(outType == CodeType::llvmLl){
             createArgs.TranslationCode.Type.Output = TC::TB_DATA_FORMAT_LLVM_TEXT;
+        }else if(outType == CodeType::spirV) {
+            createArgs.TranslationCode.Type.Output = TC::TB_DATA_FORMAT_SPIR_V;
         }
 
         TC::CClangTranslationBlock *legacyInterface = nullptr;
