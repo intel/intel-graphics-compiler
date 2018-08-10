@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
-#include "SPIRV/SPIRVInternal.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -305,14 +304,6 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
                         keepAlwaysInline = true;
                         break;
                     }
-                }
-
-                // SPIR-V image functions don't contain opaque types for images, 
-                // they use i64 values instead.
-                // We need to detect them based on function name.
-                if (F->getName().startswith(spv::kLLVMName::builtinPrefix) &&
-                    F->getName().contains("Image")) {
-                  keepAlwaysInline = true;
                 }
             }
 
