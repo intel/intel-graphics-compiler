@@ -42,6 +42,20 @@ float __attribute__((overloadable)) atomic_cmpxchg(volatile __local float *p, fl
 // +atomic_compare_exchange_* float variant already defined in an OCL 2.0 specification.
 #endif
 
+
+// Planar YUV.
+#define cl_intel_planar_yuv 0x1
+#define CLK_NV12_INTEL 0x410E
+
+// Packed YUV
+#define cl_intel_packed_yuv 0x1
+#define CLK_YUYV_INTEL 0x4076
+#define CLK_UYVY_INTEL 0x4077
+#define CLK_YVYU_INTEL 0x4078
+#define CLK_VYUY_INTEL 0x4079
+
+// These types are built-in in Clang 5.0
+#ifndef __CLANG_50__
 // Externally exposed device side VME.
 
 // ... Defines ...
@@ -176,20 +190,7 @@ float __attribute__((overloadable)) atomic_cmpxchg(volatile __local float *p, fl
 #define CLK_AVC_REF_RESULT_INITIALIZE_INTEL                         {0}
 #define CLK_AVC_SIC_RESULT_INITIALIZE_INTEL                         {0}
 
-// Planar YUV.
-#define cl_intel_planar_yuv                                        0x1
-#define CLK_NV12_INTEL                                             0x410E
-
-// Packed YUV
-
-#define cl_intel_packed_yuv                                        0x1
-#define CLK_YUYV_INTEL                                             0x4076
-#define CLK_UYVY_INTEL                                             0x4077
-#define CLK_YVYU_INTEL                                             0x4078
-#define CLK_VYUY_INTEL                                             0x4079
-
 // ... Helper macros ...
-
 // (Internal only helpers for setting skip partition masks)
 
 #define CLK_AVC_ME_INTERNAL_16x16_CLK_AVC_ME_MAJOR_FORWARD_INTEL        \
@@ -282,6 +283,7 @@ typedef struct
 {
     uint4 x;
 } intel_sub_group_avc_sic_result_t;
+#endif // !__CLANG_50__
 
 // ... Common VME operations ...
 #pragma OPENCL EXTENSION cl_intel_device_side_avc_motion_estimation : enable

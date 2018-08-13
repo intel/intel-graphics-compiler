@@ -419,11 +419,12 @@ ndrange_t __attribute__((overloadable)) ndrange_3D(const size_t[3]);
 ndrange_t __attribute__((overloadable)) ndrange_3D(const size_t[3], const size_t[3]);
 ndrange_t __attribute__((overloadable)) ndrange_3D(const size_t[3], const size_t[3], const size_t[3]);
 
+#ifndef __CLANG_50__
 #if defined(cl_khr_subgroups)
 uint __attribute__((overloadable)) get_kernel_sub_group_count_for_ndrange(const ndrange_t range, void(^block)(void));
 uint __attribute__((overloadable)) get_kernel_max_sub_group_size_for_ndrange(const ndrange_t range, void(^block)(void));
 #endif
-
+#endif // !__CLANG_50__
 
 void __attribute__((overloadable)) retain_event(clk_event_t);
 
@@ -6625,5 +6626,14 @@ void __attribute__((overloadable)) intel_work_group_vme_mb_multi_bidir_check_8x8
 #if defined(cl_khr_fp64) && ( __OPENCL_C_VERSION__ >= CL_VERSION_1_2 )
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
 #endif
+
+#ifdef __CLANG_50__
+// Clang requires this pragma to be enabled if subgroup functions are to be used.
+// Not all tests follow this requirement, leave it enabled for transition period until they are fixed.
+#if defined(cl_khr_subgroups)
+#pragma OPENCL EXTENSION cl_khr_subgroups : enable
+#endif
+#endif // __CLANG_50__
+
 
 #endif // #ifndef _OPENCL_CTH_
