@@ -52,7 +52,6 @@ CDomainShader::CDomainShader(llvm::Function *pFunc, CShaderProgram* pProgram) :
     CShader(pFunc, pProgram)
     , m_pURBWriteHandleReg(nullptr)
     , m_pMaxInputSignatureCount(0)
-    , m_pMaxOutputSignatureCount(0)
     , m_pMaxPatchConstantSignatureDeclarations(0)
     , m_pInputControlPointCount(0)
     , m_pURBReadHandleReg(nullptr)
@@ -132,16 +131,13 @@ void CDomainShader::ExtractGlobalVariables()
     pGlobal = module->getGlobalVariable("MaxNumOfInputSignatureEntries");
     m_pMaxInputSignatureCount = int_cast<unsigned int>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
 
-    pGlobal = module->getGlobalVariable("MaxNumOfOutputSignatureEntries");
-    m_pMaxOutputSignatureCount = int_cast<unsigned int>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
-
     pGlobal = module->getGlobalVariable("MaxNumOfPatchConstantSignatureEntries");
     m_pMaxPatchConstantSignatureDeclarations = int_cast<unsigned int>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
 }
 
 OctEltUnit CDomainShader::GetURBAllocationSize() const
 {
-    return std::max( (OctEltUnit( ( m_pMaxOutputSignatureCount + 1 ) / 2 )), OctEltUnit(1) );
+    return std::max(round_up<OctElement>(m_properties.m_URBOutputLength), OctEltUnit(1) );
 }
 
 OctEltUnit CDomainShader::GetVertexURBEntryReadLength() const

@@ -292,6 +292,7 @@ void DomainShaderLowering::LowerIntrinsicInputOutput(Function& F)
             };
             // write 32bytes of random data in the vertex header
             Value* offset = ConstantInt::get(Type::getInt32Ty(m_pModule->getContext()), 0);
+            m_dsPropsPass->DeclareOutput(QuadEltUnit(1));
             AddURBWrite(offset, 0xFF, data, retBlock->getTerminator());
         }
     }
@@ -513,6 +514,7 @@ void DomainShaderLowering::lowerOutput(GenIntrinsicInst* inst, std::vector<llvm:
     QuadEltUnit offset = GetURBOffset(usage, attributeIndex);
     assert(offset.Count() < (m_maxNumOfOutput + m_headerSize.Count()) && "Index is out of bound");
     offsetInst[offset.Count()] = inst;
+    m_dsPropsPass->DeclareOutput(offset);
     // Create urb write instruction.
     Value* offsetVal = builder.getInt32(offset.Count());
     AddURBWrite(offsetVal, mask, data, inst);
@@ -636,12 +638,17 @@ void DomainShaderLowering::SetMaskAndData(
 
 char CollectDomainShaderProperties::ID = 0;
 
-DomainShaderProperties::DomainShaderProperties() : m_hasClipDistance(false), m_isVPAIndexDeclared(false), m_isRTAIndexDeclared(false)
-{}
-
 void CollectDomainShaderProperties::DeclareClipDistance()
 {
     m_dsProps.m_hasClipDistance = true;
+}
+
+void CollectDomainShaderProperties::DeclareOutput(QuadEltUnit newOffset)
+{
+    if(m_dsProps.m_URBOutputLength < newOffset)
+    {
+        m_dsProps.m_URBOutputLength = newOffset;
+    }
 }
 
 void CollectDomainShaderProperties::SetDomainPointUArgu(llvm::Argument* Arg)

@@ -35,13 +35,13 @@ namespace IGC
 class DomainShaderProperties
 {
 public:
-    DomainShaderProperties();
-    bool m_hasClipDistance;
+    bool m_hasClipDistance = false;
+    QuadEltUnit  m_URBOutputLength = QuadEltUnit(0);
     llvm::Argument* m_UArg;
     llvm::Argument* m_VArg;
     llvm::Argument* m_WArg;
-    bool m_isVPAIndexDeclared;
-    bool m_isRTAIndexDeclared;
+    bool m_isVPAIndexDeclared = false;
+    bool m_isRTAIndexDeclared = false;
 };
 
 class CollectDomainShaderProperties : public llvm::ImmutablePass
@@ -50,6 +50,7 @@ public:
     CollectDomainShaderProperties();
     static char ID;
     void DeclareClipDistance();
+    void DeclareOutput(QuadEltUnit offset);
     void SetDomainPointUArgu(llvm::Argument* Arg);
     void SetDomainPointVArgu(llvm::Argument* Arg);
     void SetDomainPointWArgu(llvm::Argument* Arg);

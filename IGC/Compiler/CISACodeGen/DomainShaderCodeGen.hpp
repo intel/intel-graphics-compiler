@@ -76,7 +76,6 @@ private:
     CVariable*             m_pURBWriteHandleReg;
 
     uint32_t               m_pMaxInputSignatureCount; // number of attributes associated with each input
-    uint32_t               m_pMaxOutputSignatureCount; // number of attributes associated with each output
     uint32_t               m_pMaxPatchConstantSignatureDeclarations; // number of patch constant declarations
     uint32_t               m_pInputControlPointCount; // number of input control points to the DS
     CVariable*             m_pURBReadHandleReg;
