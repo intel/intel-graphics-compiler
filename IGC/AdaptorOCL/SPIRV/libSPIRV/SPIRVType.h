@@ -398,7 +398,7 @@ public:
   CapVec getRequiredCapability() const {
     CapVec CV;
     CV.push_back(SPIRVCapabilityKind::CapabilityImageBasic);
-    if (Acc.size() > 0 && Acc[0] == SPIRVCapabilityKind::CapabilityImageReadWrite)
+    if (Acc.size() > 0 && Acc[0] == AccessQualifierReadWrite)
       CV.push_back(SPIRVCapabilityKind::CapabilityImageReadWrite);
     if (Desc.MS)
       CV.push_back(SPIRVCapabilityKind::CapabilityImageMipmap);
