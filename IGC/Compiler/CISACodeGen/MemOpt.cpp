@@ -593,16 +593,18 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
     if (Off == 0 && LdSize == NextLoadSize)
       break;
 
-    HighestOffset = MAX(Off + NextLoadSize, HighestOffset);
-    LowestOffset = MIN(Off, LowestOffset);
+    int64_t newHighestOffset = MAX(Off + NextLoadSize, HighestOffset);
+    int64_t newLowestOffset = MIN(Off, LowestOffset);
 
-    unsigned newNumElts = unsigned((HighestOffset - LowestOffset) /
+    unsigned newNumElts = unsigned((newHighestOffset - newLowestOffset) /
                                    LdScalarSize);
 
     // Bail out if the resulting vector load is already not profitable.
     if (newNumElts > profitVec[0])
-      break;
+      continue;
 
+    HighestOffset = newHighestOffset;
+    LowestOffset = newLowestOffset;
     NumElts = newNumElts;
 
     // This load is to be merged. Remove it from check list.

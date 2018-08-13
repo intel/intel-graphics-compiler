@@ -1223,8 +1223,11 @@ void OptimizeIR(CodeGenContext* pContext)
                     mpm.add(createLoopUnrollPass());
                 }
 
-                if (pContext->m_instrTypes.hasNonPrimitiveAlloca && pContext->type == ShaderType::OPENCL_SHADER)
+                if(pContext->m_instrTypes.hasNonPrimitiveAlloca)
+                {
                     mpm.add(createSROAPass());
+                }
+                mpm.add(llvm::createInstructionCombiningPass());
             }
 
             if (pContext->m_shaderHasLoadStore)
