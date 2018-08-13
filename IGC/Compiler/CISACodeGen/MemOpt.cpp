@@ -323,9 +323,6 @@ IGC_INITIALIZE_PASS_END(MemOpt, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYS
 
 char MemOpt::ID = 0;
 
-// Limit for the number of instructions to scan from the leading load/store.
-static const unsigned MaxScanLimit = 150;
-
 void MemOpt::buildProfitVectorLengths(Function &F) {
   ProfitVectorLengths.clear();
 
@@ -507,7 +504,7 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
   // List of instructions need dependency check.
   SmallVector<Instruction*, 8> CheckList;
 
-  unsigned Limit = MaxScanLimit;
+  unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
   auto ME = MemRefs.end();
   for (++MI; Limit != 0 && MI != ME; Limit -= MI->second, ++MI) {
     // Bail out if the limit is reached.
@@ -841,7 +838,7 @@ bool MemOpt::mergeStore(StoreInst *LeadingStore,
   // List of instructions need dependency check.
   SmallVector<Instruction*, 8> CheckList;
 
-  unsigned Limit = MaxScanLimit;
+  unsigned Limit = IGC_GET_FLAG_VALUE(MemOptWindowSize);
   auto ME = MemRefs.end();
   for (++MI; Limit != 0 && MI != ME; Limit -= MI->second, ++MI) {
     // Bail out if the limit is reached.
