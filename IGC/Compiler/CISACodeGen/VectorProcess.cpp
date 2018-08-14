@@ -159,9 +159,9 @@ namespace
         {
             initializeVectorProcessPass(*PassRegistry::getPassRegistry());
         }
-
-        virtual bool runOnFunction(Function &F);
-        virtual void getAnalysisUsage(AnalysisUsage &AU) const
+        StringRef getPassName() const override { return "VectorProcess"; }
+        bool runOnFunction(Function &F) override;
+        void getAnalysisUsage(AnalysisUsage &AU) const override
         {
             AU.setPreservesCFG();
             AU.addRequired<CodeGenContextWrapper>();
