@@ -47,9 +47,6 @@ namespace TC
         bool HasMemoryIntrinsics() const override { return true; }
 
         bool HasNonNativeLoadStore() const override { return true; }
-
-        // WA for failure when transposing private memory
-        bool SupportTransposeLayoutForPrivateMemory() const override { return false; }
         
         bool NeedLoweringInlinedConstants() const override { return true; }
         bool benefitFromTypeDemotion() const override { return true; }

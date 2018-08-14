@@ -815,8 +815,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
             
             // If we can use SOA layout transpose the memory
             Type* pTypeOfAccessedObject = nullptr;
-            bool TransposeMemLayout = CanUseSOALayout(pAI, pTypeOfAccessedObject) &&
-                Ctx.m_DriverInfo.SupportTransposeLayoutForPrivateMemory(); // remove this check in next step
+            bool TransposeMemLayout = CanUseSOALayout(pAI, pTypeOfAccessedObject);
 
             unsigned int bufferSize = 0;
             if (TransposeMemLayout)

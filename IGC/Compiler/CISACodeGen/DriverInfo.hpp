@@ -122,9 +122,6 @@ public:
     /// Has load store not natively supported
     virtual bool HasNonNativeLoadStore() const { return false; }
 
-    /// Enable transposing private memory for better access pattern. Causes failures in some APIs
-    virtual bool SupportTransposeLayoutForPrivateMemory() const { return true; }
-
     /// Need lowering global inlined constant buffers
     virtual bool NeedLoweringInlinedConstants() const { return false; }
 
