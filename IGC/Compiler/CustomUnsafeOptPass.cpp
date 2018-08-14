@@ -2795,7 +2795,7 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
                     DotProductSourceMatch(CI) && canOptimizeDotProduct(Values, &II);
                 // Lower the ratio threshold for this case
                 FoldThreshold = 9;
-                RatioNeeded = 3;
+                RatioNeeded = 4;
             }
             else if (auto *GII = dyn_cast<GenIntrinsicInst>(&II))
 			{
