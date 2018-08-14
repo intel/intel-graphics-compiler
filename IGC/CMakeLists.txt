@@ -2794,8 +2794,8 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
           -Wno-enum-compare
           -Wno-type-limits
           -Wno-ignored-qualifiers
-          -Wno-format
-          -Wno-format-security
+          -Wformat
+          -Wformat-security
           -Wno-extra
           -Wno-write-strings
           -finline
@@ -2816,8 +2816,6 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
         PATTERN "${IGC_BUILD__RELEASE_PATTERN}"
         SET_RAW
           -D_FORTIFY_SOURCE=2
-          -Wformat
-          -Wformat-security
           -fstack-protector
       )
       if(_igc_compiler_is_gnu OR (_igc_compiler_is_clang AND NOT CMAKE_C_COMPILER_VERSION LESS "4.0"))

@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include <exception>
+#include <cinttypes>
 #include "../../3d/common/iStdLib/iStdLib.h"
 #include "IGC/common/igc_debug.h"
 #include "IGC/common/igc_regkeys.hpp"
@@ -57,7 +58,7 @@ void DebugKernelBinaryHeader_Gen7(
 {
     ICBE_DPF_STR( output, GFXDBG_HARDWARE, "Gen7 Kernel Binary Header:\n" );
     ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tCheckSum = %x\n", pHeader->CheckSum );
-    ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tShaderHashCode = %llx\n", pHeader->ShaderHashCode );
+    ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tShaderHashCode = %" PRIu64 "\n", pHeader->ShaderHashCode );
     ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tKernelNameSize = %d\n", pHeader->KernelNameSize );
     ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tPatchListSize = %d\n", pHeader->PatchListSize );
     ICBE_DPF_STR( output, GFXDBG_HARDWARE, "\tKernelHeapSize = %d\n", pHeader->KernelHeapSize );
@@ -1356,7 +1357,7 @@ void DebugPatchList(
                     "\tGlobalBufferIndex = %d\n",
                     pPatchItem->GlobalBufferIndex);
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
-                    "\tGlobalPointerOffset = %llu\n",
+                    "\tGlobalPointerOffset = %" PRIu64 "\n",
                     pPatchItem->GlobalPointerOffset);
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tBufferType = %d\n",
@@ -1380,7 +1381,7 @@ void DebugPatchList(
                     "\tConstantBufferIndex = %d\n",
                     pPatchItem->ConstantBufferIndex);
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
-                    "\tConstantPointerOffset = %llu\n",
+                    "\tConstantPointerOffset = %" PRIu64 "\n",
                     pPatchItem->ConstantPointerOffset);
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tBufferType = %d\n",
