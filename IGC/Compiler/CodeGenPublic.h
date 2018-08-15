@@ -194,7 +194,7 @@ namespace IGC
         unsigned int            m_InterestingConstantsSize = 0;
         
         // GTPin requests
-        gtpin::igc::igc_init_t m_GTPinRequest;
+        gtpin::igc::igc_init_t m_GTPinRequest = {0};
     };
 
     struct SPixelShaderKernelProgram : SKernelProgram
