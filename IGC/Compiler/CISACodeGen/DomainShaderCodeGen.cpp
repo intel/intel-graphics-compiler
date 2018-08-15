@@ -277,8 +277,8 @@ void CDomainShader::FillProgram(SDomainShaderKernelProgram* pKernelProgram)
 
     pKernelProgram->MaxNumberOfThreads               = m_Platform->getMaxDomainShaderThreads();
     pKernelProgram->ComputeWAttribute                = !m_properties.m_WArg->use_empty();
-    pKernelProgram->URBAllocationSize                = GetURBAllocationSize() + GetURBHeaderSize();
-    pKernelProgram->VertexURBEntryOutputLength       = GetURBAllocationSize();
+    pKernelProgram->URBAllocationSize                = GetURBAllocationSize();
+    pKernelProgram->VertexURBEntryOutputLength       = GetURBAllocationSize() - GetURBHeaderSize();
     pKernelProgram->VertexURBEntryReadLength         = GetVertexURBEntryReadLength();
     pKernelProgram->VertexURBEntryReadOffset         = OctEltUnit(0);
     pKernelProgram->VertexURBEntryOutputReadOffset   = GetURBHeaderSize(); 
