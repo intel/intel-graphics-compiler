@@ -47,6 +47,7 @@ using namespace std;
 using namespace vISA;
 
 #define FAIL_SAFE_RA_LIMIT 3
+#define ADDR_TAKE_SIZE_LIMIT 256
 
 #define MIN(x,y)	(((x)<(y))? (x):(y))
 #define MAX(x,y)	(((x)<(y))? (y):(x))
@@ -9689,7 +9690,7 @@ int GlobalRA::coloringRegAlloc()
         }
 
         bool allowAddrTaken = builder.getOption(vISA_FastSpill) ||
-            !kernel.getHasAddrTaken();
+            (kernel.getMaxAddrTakenSize() <= ADDR_TAKE_SIZE_LIMIT);
         bool reserveSpillReg = false;
         if (builder.getOption(vISA_FailSafeRA) &&
             kernel.getOptions()->getTarget() == VISA_3D &&

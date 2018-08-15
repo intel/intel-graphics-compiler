@@ -1560,13 +1560,16 @@ int VISAKernelImpl::CreateVISAAddressOfOperandGeneric(VISA_VectorOpnd *&cisa_opn
         }
 #endif
         // set up to the top level dcl to be addressed
-        src0Dcl->setAddressed();
-        m_kernel->setHasAddrTaken(true);
-        G4_Declare *parentDcl = src0Dcl->getAliasDeclare();
-        while( parentDcl ){
+		src0Dcl->setAddressed();
+        G4_Declare *parentDcl = src0Dcl->getAliasDeclare(); 
+		G4_Declare *topDcl = src0Dcl;
+        while( parentDcl )
+		{
             parentDcl->setAddressed();
+			topDcl = parentDcl;
             parentDcl = parentDcl->getAliasDeclare();
         }
+		m_kernel->setMaxAddrTakenSize(topDcl->getByteSize());
         cisa_opnd->g4opnd = m_builder->createAddrExp(
             src0Dcl->getRegVar(),
             offset,
