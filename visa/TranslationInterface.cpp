@@ -1858,7 +1858,8 @@ G4_INST* IR_Builder::createFenceInstruction( uint8_t flushParam, bool commitEnab
     }
 
     int flushBits = (flushParam >> 1) & 0xF;
-    bool L1Flush = (flushParam & L1_FLUSH_MASK) != 0;
+    bool L1Flush = (flushParam & L1_FLUSH_MASK) != 0 &&
+        !(hasSLMFence() && !globalMemFence);
 
     int desc = 0x7 << 14 | ((commitEnable ? 1 : 0) << 13 );
 
