@@ -852,17 +852,27 @@ Common_VISA_EMask_Ctrl CEncoder::GetAluEMask(CVariable* dst)
 {
     e_mask mask = m_encoderState.m_mask;
     bool noMask = m_encoderState.m_noMask;
-    if (dst && (dst->IsUniform() || m_encoderState.m_SubSpanDestination))
+    if (dst)
     {
-        if (dst->GetVarType() == EVARTYPE_ADDRESS)
-        {
-            noMask |= dst->IsVectorUniform();
-        }
-        else
+        if (m_encoderState.m_SubSpanDestination)
         {
             noMask = true;
         }
-    }
+        else
+        {
+            if (dst->GetVarType() == EVARTYPE_ADDRESS)
+            {
+                if (dst->IsVectorUniform() && dst->IsUniform())
+                {
+                    noMask = true;
+                }
+            }
+            else if (dst->IsUniform())
+            {
+                noMask = true;
+            }
+        }
+    } 
 
     return ConvertMaskToVisaType(mask, noMask);
 }
