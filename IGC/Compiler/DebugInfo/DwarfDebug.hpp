@@ -578,6 +578,8 @@ namespace IGC
         {
             return &DISPToFunction;
         }
+
+        unsigned int lowPc = 0, highPc = 0;
     };
 } // namespace IGC
 

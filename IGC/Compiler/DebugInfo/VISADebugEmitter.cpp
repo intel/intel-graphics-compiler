@@ -215,6 +215,7 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
         std::vector<std::pair<unsigned int, unsigned int>> GenISAToVISAIndex;
         unsigned int subEnd = m_pVISAModule->GetCurrentVISAId();
         unsigned int prevLastGenOff = lastGenOff;
+        m_pDwarfDebug->lowPc = lastGenOff;
 
         for (auto item : m_pVISAModule->GenISAToVISAIndex)
         {
@@ -269,8 +270,11 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
             for (unsigned int i = pc; i != m_pVISAModule->getUnpaddedProgramSize(); i++)
             {
                 m_pStreamEmitter->EmitInt8(((unsigned char*)genxISA)[i]);
+                lastGenOff++;
             }
         }
+
+        m_pDwarfDebug->highPc = lastGenOff;
     }
     else
     {

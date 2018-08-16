@@ -282,10 +282,18 @@ DIE *DwarfDebug::updateSubprogramScopeDIE(CompileUnit *SPCU, DISubprogram* SP)
     }
 
 #if 1
-    SPCU->addLabelAddress(SPDie, dwarf::DW_AT_low_pc,
-        Asm->GetTempSymbol("func_begin", m_pModule->GetFunctionNumber(SP->getName().data())));
-    SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc,
-        Asm->GetTempSymbol("func_end", m_pModule->GetFunctionNumber(SP->getName().data())));
+    if (m_pModule->isDirectElfInput)
+    {
+        SPCU->addUInt(SPDie, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, lowPc);
+        SPCU->addUInt(SPDie, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, highPc);
+    }
+    else
+    {
+        SPCU->addLabelAddress(SPDie, dwarf::DW_AT_low_pc,
+            Asm->GetTempSymbol("func_begin", m_pModule->GetFunctionNumber(SP->getName().data())));
+        SPCU->addLabelAddress(SPDie, dwarf::DW_AT_high_pc,
+            Asm->GetTempSymbol("func_end", m_pModule->GetFunctionNumber(SP->getName().data())));
+    }
 #else
     // Following existed before supporting stack calls. GetFunctionNumber() was hard
     // coded to return 0 always so for single function this worked. With stackcall
@@ -630,32 +638,35 @@ CompileUnit *DwarfDebug::constructCompileUnit(DICompileUnit* DIUnit)
     Asm->EmitLabel(ModuleBeginSym);
     // 2.17.1 requires that we use DW_AT_low_pc for a single entry point
     // into an entity. We're using 0 (or a NULL label) for this.
-    NewCU->addLabelAddress(Die, dwarf::DW_AT_low_pc, ModuleBeginSym);
+
     if (m_pModule->isDirectElfInput)
     {
         auto highPC = m_pModule->getUnpaddedProgramSize();
+        NewCU->addUInt(Die, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, 0);
         NewCU->addUInt(Die, dwarf::DW_AT_high_pc, Optional<dwarf::Form>(), highPC);
+
+        // DW_AT_stmt_list is a offset of line number information for this
+        // compile unit in debug_line section. For split dwarf this is
+        // left in the skeleton CU and so not included.
+        // The line table entries are not always emitted in assembly, so it
+        // is not okay to use line_table_start here.
+        NewCU->addUInt(Die, dwarf::DW_AT_stmt_list, dwarf::DW_FORM_sec_offset, 0);
     }
     else
     {
+        NewCU->addLabelAddress(Die, dwarf::DW_AT_low_pc, ModuleBeginSym);
         NewCU->addLabelAddress(Die, dwarf::DW_AT_high_pc, ModuleEndSym);
+
+        // Define start line table label for each Compile Unit.
+        MCSymbol *LineTableStartSym = Asm->GetTempSymbol("line_table_start", NewCU->getUniqueID());
+        Asm->SetMCLineTableSymbol(LineTableStartSym, NewCU->getUniqueID());
+
+        // Use a single line table if we are using .loc and generating assembly.
+        bool UseTheFirstCU = (NewCU->getUniqueID() == 0);
+        NewCU->addLabel(Die, dwarf::DW_AT_stmt_list, dwarf::DW_FORM_sec_offset,
+        UseTheFirstCU ? Asm->GetTempSymbol("section_line") : LineTableStartSym);
     }
 
-    // Define start line table label for each Compile Unit.
-    MCSymbol *LineTableStartSym = Asm->GetTempSymbol("line_table_start", NewCU->getUniqueID());
-    Asm->SetMCLineTableSymbol(LineTableStartSym, NewCU->getUniqueID());
-
-    // Use a single line table if we are using .loc and generating assembly.
-    bool UseTheFirstCU = (NewCU->getUniqueID() == 0);
-
-
-    // DW_AT_stmt_list is a offset of line number information for this
-    // compile unit in debug_line section. For split dwarf this is
-    // left in the skeleton CU and so not included.
-    // The line table entries are not always emitted in assembly, so it
-    // is not okay to use line_table_start here.
-    NewCU->addLabel(Die, dwarf::DW_AT_stmt_list, dwarf::DW_FORM_sec_offset,
-        UseTheFirstCU ? Asm->GetTempSymbol("section_line") : LineTableStartSym);
     // If we're using split dwarf the compilation dir is going to be in the
     // skeleton CU and so we don't need to duplicate it here.
     if (!CompilationDir.empty())
@@ -1764,8 +1775,7 @@ void DwarfDebug::emitDIE(DIE *Die)
         }
         case dwarf::DW_AT_ranges:
             // DW_AT_range Value encodes offset in debug_range section.
-            Asm->EmitLabelPlusOffset(DwarfDebugRangeSectionSym,
-                cast<DIEInteger>(Values[i])->getValue(), 4);
+            Values[i]->EmitValue(Asm, Form);
             break;
         case dwarf::DW_AT_location:
             if (DIELabel *L = dyn_cast<DIELabel>(Values[i]))
