@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
+#include <unordered_map>
 
 namespace IGC
 {
@@ -62,7 +63,11 @@ namespace IGC
     private:
         void PromoteSamplerTextureToDirectAS(llvm::GenIntrinsicInst *&pIntr, llvm::Value* resourcePtr);
         void PromoteBufferToDirectAS(llvm::Instruction* inst, llvm::Value* resourcePtr);
-		void PromoteStatelessToBindlessBuffers(llvm::Instruction* inst, llvm::Value* resourcePtr);
+
+        void GetAccessInstToSrcPointerMap(llvm::Instruction* inst, llvm::Value* resourcePtr);
+        void PromoteStatelessToBindlessBuffers(llvm::Function& F);
+
+        std::unordered_map<llvm::Value*, llvm::Value*> m_AccessToSrcPtrMap;
 
         CodeGenContext* m_pCodeGenContext;
         IGCMD::MetaDataUtils*  m_pMdUtils;
