@@ -8696,7 +8696,7 @@ void VarSplit::insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Ope
     return;
 }
 
-void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int index, G4_Operand *srcOpnd, int pos, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList)
+void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int index, G4_SrcRegRegion *srcOpnd, int pos, G4_BB* bb, INST_LIST_ITER instIter, std::vector<G4_Declare*> &splitDclList)
 {
     G4_INST *inst = (*instIter);
 
@@ -8705,16 +8705,9 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
     int splitSize = kernel.getSimdSize() == 8 ? 1 : 2;
     if (sizeInGRF != splitSize)
     {
-        unsigned short dclWidth = 0;
-        unsigned short dclHeight = 0;
-        int dclTotalSize = 0;
-        G4_SrcRegRegion* oldSrc = srcOpnd->asSrcRegRegion();
-        getHeightWidth(oldSrc->getType(), (srcOpnd->getRightBound() - srcOpnd->getLeftBound() + 1) / oldSrc->getElemSize(), dclWidth, dclHeight, dclTotalSize);
-        char* newDclName = kernel.fg.builder->getNameString(kernel.fg.builder->mem, 16, "copy_%d_%s", index, oldDcl->getName());
-        G4_Declare * newDcl = kernel.fg.builder->createDeclareNoLookup(newDclName, G4_GRF, dclWidth, dclHeight, oldSrc->getType());
-        newDcl->setAlign(oldDcl->getAlign());
-        newDcl->setSubRegAlign(oldDcl->getSubRegAlign());
-        unsigned newLeftBound = 0;
+
+        int numElt = getTypeSize(srcOpnd->getType()) > 4 ? 4 : (4 / getTypeSize(srcOpnd->getType()));
+        G4_Declare* newDcl = kernel.fg.builder->createTempVar(numElt * splitSize, srcOpnd->getType(), Either, Any);
 
         for (size_t i = 0; i < splitDclList.size(); i++)
         {
@@ -8725,32 +8718,16 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
             if (!(srcOpnd->getRightBound() < leftBound || rightBound < srcOpnd->getLeftBound()))
             {
 
-                G4_DstRegRegion* dst = kernel.fg.builder->createDstRegRegion(Direct,
-                    newDcl->getRegVar(),
-                    newLeftBound / G4_GRF_REG_NBYTES,
-                    0,
-                    1,
-                    oldSrc->getType());
-                newLeftBound += subDcl->getByteSize();
-                G4_SrcRegRegion* src = kernel.fg.builder->createSrcRegRegion(
-                    Mod_src_undef,
-                    Direct,
-                    subDcl->getRegVar(),
-                    0,
-                    0,
-                    kernel.fg.builder->getRegionStride1(),
-                    oldSrc->getType());
-                G4_INST* movInst = kernel.fg.builder->createInternalInst(nullptr, G4_mov, nullptr, false,
-                    (unsigned char)subDcl->getTotalElems(), dst, src, nullptr, InstOpt_WriteEnable,
-                    inst->getLineNo(), inst->getCISAOff(), inst->getSrcFilename());
-                bb->insert(instIter, movInst);
+                newDcl->setAliasDeclare(subDcl, 0);
+                G4_SrcRegRegion* newSrc = kernel.fg.builder->Create_Src_Opnd_From_Dcl(newDcl, srcOpnd->getRegion());
+                newSrc->setRegOff(srcOpnd->getRegOff() % splitSize);
+                newSrc->setSubRegOff(srcOpnd->getSubRegOff());
+                newSrc->setModifier(srcOpnd->getModifier());
+                inst->setSrc(newSrc, pos);
+                break;
             }
         }
-        G4_SrcRegRegion* newSrc = kernel.fg.builder->Create_Src_Opnd_From_Dcl(newDcl, oldSrc->getRegion());
-        newSrc->setRegOff(0);
-        newSrc->setSubRegOff(oldSrc->getSubRegOff());
-        newSrc->setModifier(oldSrc->getModifier());
-        inst->setSrc(newSrc, pos);
+
     }
     else
     {
@@ -8976,7 +8953,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
 
             if (opnd->isSrcRegRegion())
             {
-                insertMovesFromTemp(kernel, topDcl, srcIndex, opnd, pos, bb, instIter, splitDclList);
+                insertMovesFromTemp(kernel, topDcl, srcIndex, opnd->asSrcRegRegion(), pos, bb, instIter, splitDclList);
             }
 
             srcIndex++;
