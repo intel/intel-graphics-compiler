@@ -1344,11 +1344,11 @@ bool CustomUnsafeOptPass::visitExchangeCB(llvm::BinaryOperator &I)
         return false;
     }
 
-    unsigned bufId;
+    unsigned bufId = 0;
     unsigned cbIndex0 = 0;
     unsigned cbIndex1 = 0;
     unsigned hasCB = 0;
-    bool directBuf;
+    bool directBuf = false;
 
     for (int i = 0; i < 2; i++)
     {
@@ -2680,7 +2680,12 @@ bool EarlyOutPatterns::DotProductMatch(const Instruction *I)
 
     using namespace PatternMatch;
 
-	Value *X1, *Y1, *Z1, *X2, *Y2, *Z2;
+    Value *X1 = nullptr;
+    Value *Y1 = nullptr;
+    Value *Z1 = nullptr;
+    Value *X2 = nullptr;
+    Value *Y2 = nullptr;
+    Value *Z2 = nullptr;
 
 	// dp3
 

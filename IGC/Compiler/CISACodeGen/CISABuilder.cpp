@@ -2508,7 +2508,7 @@ void CEncoder::SetFloatDenormMode(VISAKernel* vKernel, Float_DenormMode mode16,
     VISA_VectorOpnd* src0_Opnd = nullptr;
     VISA_VectorOpnd* src1_Opnd = nullptr;
     VISA_VectorOpnd* dst_Opnd = nullptr;
-    VISA_GenVar* cr0_var;
+    VISA_GenVar* cr0_var = nullptr;
     uint imm_data = 0;
     if (mode16 == FLOAT_DENORM_RETAIN)
         imm_data |= 0x400;

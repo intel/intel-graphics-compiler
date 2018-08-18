@@ -759,8 +759,8 @@ bool CodeSinking::checkCongruent(const InstPair& values,
             return false;
         }
         unsigned as = ld0->getPointerAddressSpace();
-        unsigned bufId;
-        bool directBuf;
+        unsigned bufId = 0;
+        bool directBuf = false;
         BufferType bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufId);
         if (bufType != CONSTANT_BUFFER)
         {

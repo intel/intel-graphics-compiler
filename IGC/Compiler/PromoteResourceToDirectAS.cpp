@@ -180,7 +180,7 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
         // Only try to promote bindless pointers ( as(1) or as(2) ), or indirect buffer access
         return;
     }
-    unsigned bufID;
+    unsigned bufID = 0;
     BufferType bufTy;
     BufferAccessType accTy;
     bool canPromote = false;

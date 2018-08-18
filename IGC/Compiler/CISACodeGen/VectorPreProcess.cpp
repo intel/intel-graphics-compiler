@@ -583,7 +583,7 @@ bool VectorPreProcess::splitStore(AbstractStoreInst& ASI, V2SMap& vecToSubVec)
     if (svals.size() == 0)
     {
         // Need to create splitted values.
-        Instruction *insertBeforeInst;
+        Instruction *insertBeforeInst = nullptr;
         Value* scalars[VP_MAX_VECTOR_SIZE];
         getOrGenScalarValues(*SI->getParent()->getParent(),
                              StoredVal, scalars, insertBeforeInst);

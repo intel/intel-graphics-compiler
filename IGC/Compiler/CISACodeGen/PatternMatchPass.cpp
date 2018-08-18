@@ -503,7 +503,8 @@ CodeGenPatternMatch::isFPToIntegerSatWithExactConstant(llvm::CastInst *I) {
             return std::make_tuple(nullptr, 0, ISA_TYPE_F);
     }
 
-    llvm::ConstantFP *CMin, *CMax;
+    llvm::ConstantFP *CMin = nullptr;
+    llvm::ConstantFP *CMax = nullptr;
     llvm::Value *X = nullptr;
 
     if (!match(I->getOperand(0), m_ClampWithConstants(m_Value(X), CMin, CMax)))
@@ -627,7 +628,8 @@ CodeGenPatternMatch::isFPToUnsignedIntSatWithInexactConstant( llvm::SelectInst *
 
     // Fold extra clamp.
     Value *X2 = nullptr;
-    ConstantFP *CMin2, *CMax2;
+    ConstantFP *CMin2 = nullptr;
+    ConstantFP *CMax2 = nullptr;
     if (match(X, m_ClampWithConstants(m_Value(X2), CMin2, CMax2))) {
         if (CMin2 == FMin) {
             if (CMax2->isExactlyValue(255.0)) {
@@ -2529,7 +2531,7 @@ bool CodeGenPatternMatch::MatchSatModifier(llvm::Instruction& I)
         }
     };
     bool match = false;    
-    llvm::Value* source;
+    llvm::Value* source = nullptr;
     if(isSat(&I, source))
     {
         SatPattern *satPattern = new (m_allocator) SatPattern();
