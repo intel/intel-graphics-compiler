@@ -390,12 +390,6 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         mpm.add(llvm::createLoopSimplifyPass());
     }
 
-    if (isOptDisabled)
-    {
-        // Since we don't support switch statements, switch lowering is needed.
-        // But when optimizations are disabled, the pass doesn't run as a part of OptimizeIR.
-        mpm.add(llvm::createLowerSwitchPass());
-    }
 
     // Lower/Resolve OCL inlined constants.
     if (ctx.m_DriverInfo.NeedLoweringInlinedConstants()) {
@@ -497,10 +491,9 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         mpm.add(createConstantPropagationPass());
         mpm.add(createDeadCodeEliminationPass());
         mpm.add(createCFGSimplificationPass());
-        //CFG simplification can create switch statement we don't support
-        mpm.add(createLowerSwitchPass());
-
-    }
+    }    
+    // Since we don't support switch statements, switch lowering is needed after the last CFG simplication
+    mpm.add(llvm::createLowerSwitchPass());
 
     // Split big vector & 3-element load/store, etc.
     mpm.add(createVectorPreProcessPass());
@@ -1227,7 +1220,6 @@ void OptimizeIR(CodeGenContext* pContext)
                 {
                     mpm.add(createSROAPass());
                 }
-                mpm.add(llvm::createInstructionCombiningPass());
             }
 
             if (pContext->m_shaderHasLoadStore)
@@ -1291,7 +1283,11 @@ void OptimizeIR(CodeGenContext* pContext)
             mpm.add(llvm::createLowerSwitchPass());
             // After lowering 'switch', run jump threading to remove redundant jumps.
             mpm.add(llvm::createJumpThreadingPass());
+
+            // run instruction combining to clean up the code after CFG optimizations
+            mpm.add(createInstructionCombiningPass());
             mpm.add(llvm::createDeadCodeEliminationPass());
+            mpm.add(llvm::createEarlyCSEPass());
 
             if(pContext->type == ShaderType::PIXEL_SHADER)
             {
