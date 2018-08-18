@@ -76,6 +76,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->psHasSideEffect = false;
     instrList->hasDebugInfo = false;
     instrList->hasAtomics = false;
+    instrList->hasBarrier = false;
     instrList->hasDiscard = false;
     instrList->mayHaveIndirectOperands = false;
 	instrList->numSample = 0;
@@ -187,6 +188,9 @@ void CheckInstrTypes::visitCallInst(CallInst &C)
             break;
         case GenISAIntrinsic::GenISA_WaveShuffleIndex:
             g_InstrTypes->mayHaveIndirectOperands = true;
+            break;
+        case GenISAIntrinsic::GenISA_threadgroupbarrier:
+            g_InstrTypes->hasBarrier = true;
             break;
         default:
             break;

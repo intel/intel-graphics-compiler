@@ -142,6 +142,7 @@ namespace IGC
         bool hasGenericAddressSpacePointers;
         bool hasDebugInfo;        //<! true only if module contains debug info !llvm.dbg.cu
         bool hasAtomics;
+        bool hasBarrier;        //<! true if module has thread group barrier
         bool hasDiscard;
         bool mayHaveIndirectOperands;  //<! true if code may have indirect operands like r5[a0].
 		unsigned int numSample;
