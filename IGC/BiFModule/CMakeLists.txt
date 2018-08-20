@@ -852,7 +852,6 @@ endfunction()
 ### -include-pch OCL_64 -cl-enable-half -D__EXECUTION_MODEL_DEBUG=1 -D__OPENCL_C_VERSION__=120 -Dcl_khr_fp16 -I                     .\IGCBiFModule\PointerSize\IBiF_size_t.cl            -o .\IGCsize_t_64.bc
 
 # Other:
-#     %LLVM_AS_EXE% IGCBiFModule\shared\IGCBiF_Impl_ll.ll -o .\IBiF_Impl_ll.bc
 #     %LLVM_LINK_EXE% .\IBiF_Impl_int.bc .\IGCBiF_Impl_ll.bc -o .\OCLBiFImpl.bc
 
 
@@ -916,7 +915,6 @@ igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
     TRIPLE               spir64
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/IBiF_Impl.cl"
-                         "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/IGCBiF_Impl_ll.ll"
     FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC}
     INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_SPIRV_COMMON_INC_DIRS}
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}

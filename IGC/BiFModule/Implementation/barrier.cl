@@ -26,10 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Barrier Instructions
 
-// Just empty prototype - implementation handwritten in .ll
-
-INLINE void __intel_Barrier( void );
-
 static void __intel_atomic_work_item_fence( Scope_t Memory, uint Semantics )
 {
     bool fence = Semantics & ( Acquire | Release | AcquireRelease | SequentiallyConsistent );
@@ -66,7 +62,7 @@ void __builtin_spirv_OpControlBarrier_i32_i32_i32(Scope_t Execution, Scope_t Mem
 
     if( Execution <= Workgroup )
     {
-        __intel_Barrier();
+        __builtin_IB_thread_group_barrier();
     }
 }
 

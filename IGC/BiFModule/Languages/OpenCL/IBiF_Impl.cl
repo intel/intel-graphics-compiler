@@ -211,8 +211,6 @@ static uint get_spirv_mem_order( memory_order order )
 //*****************************************************************************/
 // Synchronization functions
 //*****************************************************************************/
-// Just empty prototype - implementation handwritten in .ll
-INLINE void __intel_Barrier( void );
 
 INLINE void OVERLOADABLE work_group_barrier(cl_mem_fence_flags flags)
 {
