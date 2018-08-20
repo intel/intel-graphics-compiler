@@ -604,6 +604,36 @@ atomic_flag_prototype(clear, void)
 
 #endif
 
+#if defined(cl_intel_64bit_global_atomics_placeholder)
+long __attribute__((overloadable)) atomic_add(volatile __global long *p, long val);
+long __attribute__((overloadable)) atomic_sub(volatile __global long *p, long val);
+long __attribute__((overloadable)) atomic_xchg(volatile __global long *p, long val);
+long __attribute__((overloadable)) atomic_min(volatile __global long *p, long val);
+unsigned long __attribute__((overloadable)) atomic_min(volatile __global unsigned long *p, unsigned long val);
+long __attribute__((overloadable)) atomic_max(volatile __global long *p, long val);
+unsigned long __attribute__((overloadable)) atomic_max(volatile __global unsigned long *p, unsigned long val);
+long __attribute__((overloadable)) atomic_and(volatile __global long *p, long val);
+long __attribute__((overloadable)) atomic_or(volatile __global long *p, long val);
+long __attribute__((overloadable)) atomic_xor(volatile __global long *p, long val);
+long __attribute__((overloadable)) atomic_inc(volatile __global long *p, long val);
+long __attribute__((overloadable)) atomic_dec(volatile __global long *p, long val);
+long __attribute__((overloadable)) atomic_cmpxchg(volatile __global long *p, long val);
+
+long __attribute__((overloadable)) atom_add(volatile __global long *p, long val);
+long __attribute__((overloadable)) atom_sub(volatile __global long *p, long val);
+long __attribute__((overloadable)) atom_xchg(volatile __global long *p, long val);
+long __attribute__((overloadable)) atom_min(volatile __global long *p, long val);
+unsigned long __attribute__((overloadable)) atom_min(volatile __global unsigned long *p, unsigned long val);
+long __attribute__((overloadable)) atom_max(volatile __global long *p, long val);
+unsigned long __attribute__((overloadable)) atom_max(volatile __global unsigned long *p, unsigned long val);
+long __attribute__((overloadable)) atom_and(volatile __global long *p, long val);
+long __attribute__((overloadable)) atom_or(volatile __global long *p, long val);
+long __attribute__((overloadable)) atom_xor(volatile __global long *p, long val);
+long __attribute__((overloadable)) atom_inc(volatile __global long *p, long val);
+long __attribute__((overloadable)) atom_dec(volatile __global long *p, long val);
+long __attribute__((overloadable)) atom_cmpxchg(volatile __global long *p, long val);
+#endif // defined(cl_intel_64bit_global_atomics_placeholder)
+
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 void __attribute__((overloadable)) work_group_barrier(cl_mem_fence_flags flags, memory_scope scope);
 void __attribute__((overloadable)) work_group_barrier(cl_mem_fence_flags flags);

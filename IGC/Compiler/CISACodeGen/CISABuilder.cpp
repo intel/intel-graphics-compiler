@@ -77,36 +77,52 @@ VISAAtomicOps convertAtomicOpEnumToVisa(AtomicOp op)
     switch(op)
     {
     case EATOMIC_AND:
+    case EATOMIC_AND64:
         return ATOMIC_AND;
     case EATOMIC_DEC:
+    case EATOMIC_DEC64:
         return ATOMIC_DEC;
     case EATOMIC_IADD:
+    case EATOMIC_IADD64:
         return ATOMIC_ADD;
     case EATOMIC_IMAX:
+    case EATOMIC_IMAX64:
         return ATOMIC_IMAX;
     case EATOMIC_IMIN:
+    case EATOMIC_IMIN64:
         return ATOMIC_IMIN;
     case EATOMIC_INC:
+    case EATOMIC_INC64:
         return ATOMIC_INC;
     case EATOMIC_MAX:
+    case EATOMIC_MAX64:
         return ATOMIC_MAX;
     case EATOMIC_MIN:
+    case EATOMIC_MIN64:
         return ATOMIC_MIN;
     case EATOMIC_OR:
+    case EATOMIC_OR64:
         return ATOMIC_OR;
     case EATOMIC_SUB:
+    case EATOMIC_SUB64:
         return ATOMIC_SUB;
     case EATOMIC_UMAX:
+    case EATOMIC_UMAX64:
         return ATOMIC_MAX;
     case EATOMIC_UMIN:
+    case EATOMIC_UMIN64:
         return ATOMIC_MIN;
     case EATOMIC_XOR:
+    case EATOMIC_XOR64:
         return ATOMIC_XOR;
     case EATOMIC_XCHG:
+    case EATOMIC_XCHG64:
         return ATOMIC_XCHG;
     case EATOMIC_CMPXCHG:
+    case EATOMIC_CMPXCHG64:
         return ATOMIC_CMPXCHG;
     case EATOMIC_PREDEC:
+    case EATOMIC_PREDEC64:
         return ATOMIC_PREDEC;
     case EATOMIC_FMAX:
         return ATOMIC_FMAX;
@@ -4933,7 +4949,7 @@ void CEncoder::AtomicRawA64(AtomicOp atomic_op,
                             CVariable* offset,
                             CVariable* src0,
                             CVariable* src1,
-                            bool is16Bit)
+                            unsigned short bitwidth)
 {
     // For cmpxchg, we have to change the order of arguments.
     if (atomic_op == EATOMIC_CMPXCHG) {
@@ -4956,7 +4972,7 @@ void CEncoder::AtomicRawA64(AtomicOp atomic_op,
 
             V(vKernel->AppendVISASvmAtomicInst(GetFlagOperand(m_encoderState.m_flag),
                                                SplitEMask(fromExecSize, toExecSize, thePart, execMask),
-                                               toExecSize, atomicOpcode, is16Bit,
+                                               toExecSize, atomicOpcode, bitwidth,
                                                addressOpnd, src0Opnd, src1Opnd, dstOpnd));
         }
 
@@ -4972,7 +4988,7 @@ void CEncoder::AtomicRawA64(AtomicOp atomic_op,
                                        ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask),
                                        visaExecSize(m_encoderState.m_simdSize),
                                        atomicOpcode,
-                                       is16Bit,
+                                       bitwidth,
                                        addressOpnd,
                                        src0Opnd,
                                        src1Opnd,

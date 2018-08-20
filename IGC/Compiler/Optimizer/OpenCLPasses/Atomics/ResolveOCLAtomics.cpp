@@ -152,7 +152,9 @@ void ResolveOCLAtomics::processOCLAtomic(CallInst &callInst, AtomicOp op, Buffer
     const bool is64bit = m_64bitPointer && bufType != SLM;
 
     // Cmpxchg intrinsic has 2 sources.
-    if( op == EATOMIC_CMPXCHG || op == EATOMIC_FCMPWR )
+    if( op == EATOMIC_CMPXCHG || 
+        op == EATOMIC_CMPXCHG64 ||
+        op == EATOMIC_FCMPWR )
     {
         src1 = callInst.getOperand(2);
         // For 64-bit pointers, we have to use the A64 versions of GenISA atomic intrinsics.

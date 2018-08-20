@@ -10566,7 +10566,7 @@ static void FillSVMAtomicMsgDesc(bool is16Bit, bool isFloatOp, uint32_t &msgDesc
 
 int IR_Builder::translateVISASVMAtomicInst(
     VISAAtomicOps atomicOp,
-    bool is16Bit,
+    unsigned short bitwidth,
     Common_ISA_Exec_Size execSize,
     Common_VISA_EMask_Ctrl emask,
     G4_Predicate* pred,
@@ -10575,6 +10575,8 @@ int IR_Builder::translateVISASVMAtomicInst(
     G4_SrcRegRegion* src1,
     G4_DstRegRegion* dst)
 {
+    MUST_BE_TRUE(bitwidth == 16 || bitwidth == 32 || bitwidth == 64,
+        "bitwidth must be 16/32/64");
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -10586,7 +10588,7 @@ int IR_Builder::translateVISASVMAtomicInst(
     }
     MUST_BE_TRUE(execSize == EXEC_SIZE_8, "execution size must be 8 for SVM atomic messages");
 
-    bool isDWord = G4_Type_Table[dst->getType()].byteSize == 4;
+    bool isDWord = bitwidth == 32;
 
     unsigned op = Get_Atomic_Op(atomicOp);
 
@@ -10641,7 +10643,7 @@ int IR_Builder::translateVISASVMAtomicInst(
     msgDesc |= (isDWord ? 0 : 1) << 12;
 
     // Fill remaining bits.
-    FillSVMAtomicMsgDesc(is16Bit, IsFloatAtomicOps(atomicOp), msgDesc);
+    FillSVMAtomicMsgDesc(bitwidth == 16, IsFloatAtomicOps(atomicOp), msgDesc);
 
     if (msgs[1] == 0) {
         last_inst = Create_Send_Inst_For_CISA(pred, dst,

@@ -243,6 +243,26 @@ float    __builtin_IB_atomic_cmpxchg_global_f32(__global float*, float, float);
 int      __builtin_IB_atomic_cmpxchg_local_i32(__local int*, int, int);
 float    __builtin_IB_atomic_cmpxchg_local_f32(__local float*, float, float);
 
+// 64bit Atomic operations
+#if defined(cl_intel_64bit_global_atomics_placeholder)
+long     __builtin_IB_atomic_add_global_i64(__global long*, long);
+long     __builtin_IB_atomic_sub_global_i64(__global long*, long);
+long     __builtin_IB_atomic_xchg_global_i64(__global long*, long);
+long     __builtin_IB_atomic_min_global_i64(__global long*, long);
+ulong    __builtin_IB_atomic_min_global_u64(__global ulong*, ulong);
+double   __builtin_IB_atomic_min_global_f64(__global double*, double);
+long     __builtin_IB_atomic_max_global_i64(__global long*, long);
+ulong    __builtin_IB_atomic_max_global_u64(__global ulong*, ulong);
+double   __builtin_IB_atomic_max_global_f64(__global double*, double);
+long     __builtin_IB_atomic_and_global_i64(__global long*, long);
+long     __builtin_IB_atomic_or_global_i64(__global long*, long);
+long     __builtin_IB_atomic_xor_global_i64(__global long*, long);
+long     __builtin_IB_atomic_inc_global_i64(__global long*);
+long     __builtin_IB_atomic_dec_global_i64(__global long*);
+long     __builtin_IB_atomic_cmpxchg_global_i64(__global long*, long, long);
+double   __builtin_IB_atomic_cmpxchg_global_f64(__global double*, double, double);
+#endif // defined(cl_intel_64bit_global_atomics_placeholder)
+
 
 int      __builtin_IB_image_atomic_add_i32(int, int4, int);
 int      __builtin_IB_image_atomic_sub_i32(int, int4, int);

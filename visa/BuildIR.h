@@ -2273,7 +2273,7 @@ public:
 
     int translateVISASVMAtomicInst(
         VISAAtomicOps op,
-        bool is16Bit,
+        unsigned short bitwidth,
         Common_ISA_Exec_Size executionSize,
         Common_VISA_EMask_Ctrl emask,
         G4_Predicate* pred,

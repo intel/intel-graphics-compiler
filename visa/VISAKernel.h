@@ -458,7 +458,7 @@ public:
     CM_BUILDER_API int
     AppendVISASvmAtomicInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
                             Common_ISA_Exec_Size executionSize,
-                            VISAAtomicOps op, bool is16Bit,
+                            VISAAtomicOps op, unsigned short bitwidth,
                             VISA_RawOpnd *addresses, VISA_RawOpnd *src0,
                             VISA_RawOpnd *src1, VISA_RawOpnd *dst);
 

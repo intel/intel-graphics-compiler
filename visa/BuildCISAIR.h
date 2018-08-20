@@ -319,7 +319,7 @@ public:
                                             Common_VISA_EMask_Ctrl emask,
                                             unsigned   exec_size,
                                             VISAAtomicOps op,
-                                            bool is16Bit,
+                                            unsigned short bitwidth,
                                             VISA_opnd* addresses,
                                             VISA_opnd* src0,
                                             VISA_opnd* src1,

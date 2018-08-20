@@ -49,6 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGC_DEBUG_VARIABLES
 #endif
 
+
 #if defined(IGC_DEBUG_VARIABLES)
 
 // Code for reading IGC regkeys "ShaderDumpEnable", "DumpToCurrentDir", "ShaderDumpPidDisable".
@@ -190,7 +191,7 @@ namespace FCL
 			keyName,
 			&value,
 			sizeof(value));
-		isSet = isSet;
+        isSet = isSet;
 
 		return(value[0] == 1);
 	}
@@ -1102,6 +1103,10 @@ namespace TC
     {
       optionsEx += " -Dcl_intel_device_side_avc_motion_estimation";
     }
+    if (extensions.find("cl_intel_64bit_global_atomics_placeholder") != std::string::npos)
+    {
+        optionsEx += " -Dcl_intel_64bit_global_atomics_placeholder";
+    }
 
     optionsEx += " -D__IMAGE_SUPPORT__ -D__ENDIAN_LITTLE__";
 
@@ -1360,7 +1365,7 @@ namespace TC
 			if (FCL_IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
             {
                 // Works for all OSes. Creates dir if necessary.
-                const char *pOutputFolder = FCL::GetShaderOutputFolder();
+				const char *pOutputFolder = FCL::GetShaderOutputFolder();
                 stringstream ss;
                 char* pBuffer = (char *)pInputArgs->pInput;
                 UINT  bufferSize = pInputArgs->InputSize;

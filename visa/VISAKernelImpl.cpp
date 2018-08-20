@@ -4384,7 +4384,7 @@ int VISAKernelImpl::AppendVISASvmAtomicInst(VISA_PredOpnd *pred,
                                             Common_VISA_EMask_Ctrl emask,
                                             Common_ISA_Exec_Size executionSize,
                                             VISAAtomicOps op,
-                                            bool is16Bit,
+                                            unsigned short bitwidth,
                                             VISA_RawOpnd* address,
                                             VISA_RawOpnd* src0,
                                             VISA_RawOpnd* src1,
@@ -4403,7 +4403,7 @@ int VISAKernelImpl::AppendVISASvmAtomicInst(VISA_PredOpnd *pred,
         CreateGenRawDstOperand(dst);
         G4_Predicate * g4Pred = (pred != NULL) ? (G4_Predicate *)pred->g4opnd : NULL;
         status = m_builder->translateVISASVMAtomicInst(
-            static_cast<VISAAtomicOps>(op), is16Bit, executionSize, emask,
+            static_cast<VISAAtomicOps>(op), bitwidth, executionSize, emask,
             g4Pred, (G4_SrcRegRegion *)address->g4opnd,
             (G4_SrcRegRegion *)src0->g4opnd, (G4_SrcRegRegion *)src1->g4opnd,
             (G4_DstRegRegion *)dst->g4opnd);
@@ -4416,8 +4416,13 @@ int VISAKernelImpl::AppendVISASvmAtomicInst(VISA_PredOpnd *pred,
         inst_desc = &CISA_INST_table[ISA_SVM];
         int num_operands = 0;
         ADD_OPND(num_operands, opnd, this->CreateOtherOpnd(SVM_ATOMIC, ISA_TYPE_UB));
-        uint8_t OpAnd16BitTag = uint8_t(op) | uint8_t((is16Bit ? 1 : 0) << 5);
-        ADD_OPND(num_operands, opnd, this->CreateOtherOpnd(OpAnd16BitTag, ISA_TYPE_UB));
+        uint8_t BitwidthTag = uint8_t(op);
+        switch (bitwidth)
+        {
+            case 16: BitwidthTag |= 0x20; break;
+            case 64: BitwidthTag |= 0x40; break;
+        };
+        ADD_OPND(num_operands, opnd, this->CreateOtherOpnd(BitwidthTag, ISA_TYPE_UB));
         ADD_OPND(num_operands, opnd, address);
         ADD_OPND(num_operands, opnd, src0);
         ADD_OPND(num_operands, opnd, src1);

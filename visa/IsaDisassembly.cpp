@@ -627,10 +627,13 @@ static void printAtomicSubOpc(stringstream &sstr, uint8_t value)
     VISAAtomicOps op = static_cast<VISAAtomicOps>(value & 0x1F);
     sstr << "." << CISAAtomicOpNames[op];
 
-    bool is16Bit = (value >> 5) == 1;
-    if (is16Bit)
+    if ((value >> 5) == 1)
     {
         sstr << ".16";
+    }
+    else if ((value >> 6) == 1) 
+    {
+        sstr << ".64";
     }
 }
 

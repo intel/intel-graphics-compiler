@@ -1663,7 +1663,7 @@ bool CISA_IR_Builder::CISA_create_svm_atomic_instruction(VISA_opnd* pred,
                                                          Common_VISA_EMask_Ctrl emask,
                                                          unsigned   exec_size,
                                                          VISAAtomicOps op,
-                                                         bool is16Bit,
+                                                         unsigned short bitwidth,
                                                          VISA_opnd* addresses,
                                                          VISA_opnd* src0,
                                                          VISA_opnd* src1,
@@ -1672,7 +1672,7 @@ bool CISA_IR_Builder::CISA_create_svm_atomic_instruction(VISA_opnd* pred,
 {
     Common_ISA_Exec_Size executionSize = Get_Common_ISA_Exec_Size_From_Raw_Size(exec_size);
     m_kernel->AppendVISASvmAtomicInst(
-        (VISA_PredOpnd *)pred, emask, executionSize, op, is16Bit,
+        (VISA_PredOpnd *)pred, emask, executionSize, op, bitwidth,
         (VISA_RawOpnd *)addresses, (VISA_RawOpnd *)src0, (VISA_RawOpnd *)src1,
         (VISA_RawOpnd *)dst);
     return true;

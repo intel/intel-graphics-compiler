@@ -79,7 +79,7 @@
 
   if(NOT EXISTS ${CCLANG_DIR_BINARIES})
     set(CCLANG_DIR_BINARIES "${CMAKE_CURRENT_SOURCE_DIR}/../../../../cclang-prebuilt/${_OS_folder}")
-  endif()
+  endif()  
   if(NOT EXISTS ${CCLANG_DIR_BINARIES})
     set(CCLANG_DIR_BINARIES "${IGC_BUILD__GFX_DEV_SRC_DIR}/Clang/Prebuilt/${_OS_folder}")
   endif()
@@ -89,7 +89,7 @@
     string(TOUPPER "${configName}" upperConfigName)
     set(locPropName "IMPORTED_LOCATION_${upperConfigName}")
     set_property(TARGET CLANG_7Z
-        PROPERTY "${locPropName}" "${IGC_BUILD__GFX_DEV_SRC_DIR}/Clang/Prebuilt/${_OS_folder}/Release/${_cpuSuffix}/clang.7z"
+        PROPERTY "${locPropName}" "${CCLANG_DIR_BINARIES}/Release/${_cpuSuffix}/clang.7z"
     )
     set_property(TARGET CLANG_7Z_OUTPUT
         PROPERTY "${locPropName}" "${IGC_TARGET__TOOLS_CLANG_DIR}"
@@ -898,7 +898,7 @@ set(FLAG "")
 
 igc_bif_find_cl_files(IGC_BUILD__BIF_OCL_COMMON_DEPENDS ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS} "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation")
 
-set(KHR_DEFINES "cl_khr_f16" "cl_khrfp64" "cl_khr_gl_msaa_sharing" "cl_khr_mipmap_image" "cl_khr_depth_images" "cl_intel_subgroups_short" "cl_intel_subgroups_char" "cl_intel_subgroups_long")
+set(KHR_DEFINES "cl_khr_f16" "cl_khrfp64" "cl_khr_gl_msaa_sharing" "cl_khr_mipmap_image" "cl_khr_depth_images" "cl_intel_subgroups_short" "cl_intel_subgroups_char" "cl_intel_subgroups_long" "cl_intel_64bit_global_atomics_placeholder")
 
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"

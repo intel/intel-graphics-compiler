@@ -803,14 +803,20 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
 
 /// Read a byte which encodes the atomic opcode and a flag indicating whether
 /// this is a 16bit atomic operation.
-std::tuple<VISAAtomicOps, bool> getAtomicOpAnd16BitTag(unsigned &bytePos,
-                                                            const char *buf)
+std::tuple<VISAAtomicOps, unsigned short> getAtomicOpAndBitwidth(unsigned &bytePos,
+                                                                 const char *buf)
 {
-    // bits 0-4 atomic op and bit 5 for is-16-bit tag
+    // bits 0-4 atomic op and bit 5-6 encode the bitwidth
     uint8_t data = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
     VISAAtomicOps op = static_cast<VISAAtomicOps>(data & 0x1F);
-    bool is16Bit = (data >> 5 == 1);
-    return std::tie(op, is16Bit);
+    unsigned short bitwidth;
+    if (data >> 5 == 1)
+        bitwidth = 16;
+    else if (data >> 6 == 1)
+        bitwidth = 64;
+    else
+        bitwidth = 32;
+    return std::tie(op, bitwidth);
 }
 
 static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Opcode opcode, RoutineContainer& container)
@@ -1136,8 +1142,8 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
     }
     case ISA_DWORD_ATOMIC: {
         VISAAtomicOps subOpc;
-        bool is16Bit;
-        std::tie(subOpc, is16Bit) = getAtomicOpAnd16BitTag(bytePos, buf);
+        unsigned short bitwidth;
+        std::tie(subOpc, bitwidth) = getAtomicOpAndBitwidth(bytePos, buf);
 
         Common_VISA_EMask_Ctrl eMask = vISA_EMASK_M1;
         Common_ISA_Exec_Size exSize = EXEC_SIZE_ILLEGAL;
@@ -1155,14 +1161,14 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
             ->CreateVISAStateOperandHandle(surfaceHnd,
                                            container.surfaceVarDecls[surface]);
         kernelBuilderImpl->AppendVISASurfAccessDwordAtomicInst(
-            pred, subOpc, is16Bit, eMask, exSize, surfaceHnd, offsets, src0,
+            pred, subOpc, bitwidth == 16, eMask, exSize, surfaceHnd, offsets, src0,
             src1, dst);
         break;
     }
     case ISA_3D_TYPED_ATOMIC: {
         VISAAtomicOps subOpc;
-        bool is16Bit;
-        std::tie(subOpc, is16Bit) = getAtomicOpAnd16BitTag(bytePos, buf);
+        unsigned short bitwidth;
+        std::tie(subOpc, bitwidth) = getAtomicOpAndBitwidth(bytePos, buf);
 
         Common_VISA_EMask_Ctrl eMask = vISA_EMASK_M1;
         Common_ISA_Exec_Size exSize = EXEC_SIZE_ILLEGAL;
@@ -1181,7 +1187,7 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
         VISA_StateOpndHandle* surfaceHnd = NULL;
         kernelBuilderImpl->CreateVISAStateOperandHandle(
             surfaceHnd, container.surfaceVarDecls[surface]);
-        kernelBuilderImpl->AppendVISA3dTypedAtomic(subOpc, is16Bit, pred, eMask,
+        kernelBuilderImpl->AppendVISA3dTypedAtomic(subOpc, bitwidth == 16, pred, eMask,
                                                    exSize, surfaceHnd, u, v, r,
                                                    lod, src0, src1, dst);
         break;
@@ -1562,8 +1568,8 @@ static void readInstructionSVM(unsigned& bytePos, const char* buf, ISA_Opcode op
             VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
 
             VISAAtomicOps op;
-            bool is16Bit;
-            std::tie(op, is16Bit) = getAtomicOpAnd16BitTag(bytePos, buf);
+            unsigned short bitwidth;
+            std::tie(op, bitwidth) = getAtomicOpAndBitwidth(bytePos, buf);
 
             VISA_RawOpnd* addresses = readRawOperandNG(bytePos, buf, container);
             VISA_RawOpnd*      src0 = readRawOperandNG(bytePos, buf, container);
@@ -1571,7 +1577,7 @@ static void readInstructionSVM(unsigned& bytePos, const char* buf, ISA_Opcode op
             VISA_RawOpnd*       dst = readRawOperandNG(bytePos, buf, container);
 
             kernelBuilder->AppendVISASvmAtomicInst(
-                pred, emask, esize, op, is16Bit, addresses, src0, src1, dst);
+                pred, emask, esize, op, bitwidth, addresses, src0, src1, dst);
             break;
         }
     case SVM_GATHER4SCALED: {

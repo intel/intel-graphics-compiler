@@ -54,6 +54,12 @@ INLINE float OVERLOADABLE atomic_xchg(__local volatile float *p, float val) {
     return as_float( __builtin_IB_atomic_xchg_local_i32( (__local volatile int *)p, as_int(val) ) );
 }
 
+#if defined(cl_intel_64bit_global_atomics_placeholder)
+INLINE float OVERLOADABLE atomic_xchg(__global volatile double *p, double val) {
+    return as_double( __builtin_IB_atomic_xchg_global_i64( (__global volatile long *)p, as_long(val) ) );
+}
+#endif // if defined(cl_intel_64bit_global_atomics_placeholder)
+
 
 #define DEF_ATOMIC_1SRC(KEY, ADDRSPACE, TYPE, IGC_TYPE, IGC_CL_TYPE) \
 INLINE TYPE OVERLOADABLE atomic_##KEY(volatile __##ADDRSPACE TYPE *p) { \
@@ -243,6 +249,98 @@ DEF_ATOM_1SRC(dec, global, uint, i32, int)
 DEF_ATOM_1SRC(dec, local, int, i32, int)
 DEF_ATOM_1SRC(dec, local, uint, i32, int)
 
+
+#if defined(cl_intel_64bit_global_atomics_placeholder)
+
+// atomic_add_64
+DEF_ATOMIC_2SRC(add, global, long, i64, long)
+DEF_ATOMIC_2SRC(add, global, ulong, i64, long)
+
+// atomic_sub_64
+DEF_ATOMIC_SUB(sub, global, long, i64, long)
+DEF_ATOMIC_SUB(sub, global, ulong, i64, long)
+
+// atomic_xchg_64
+DEF_ATOMIC_2SRC(xchg, global, long, i64, long)
+DEF_ATOMIC_2SRC(xchg, global, ulong, i64, long)
+
+// atomic_min_64
+DEF_ATOMIC_2SRC(min, global, long, i64, long)
+DEF_ATOMIC_2SRC(min, global, ulong, u64, ulong)
+
+// atomic_max_64
+DEF_ATOMIC_2SRC(max, global, long, i64, long)
+DEF_ATOMIC_2SRC(max, global, ulong, u64, ulong)
+
+// atomic_and_64
+DEF_ATOMIC_2SRC(and, global, long, i64, long)
+DEF_ATOMIC_2SRC(and, global, ulong, i64, long)
+
+// atomic_or_64
+DEF_ATOMIC_2SRC(or, global, long, i64, long)
+DEF_ATOMIC_2SRC(or, global, ulong, i64, long)
+
+// atomic_xor_64
+DEF_ATOMIC_2SRC(xor, global, long, i64, long)
+DEF_ATOMIC_2SRC(xor, global, ulong, i64, long)
+
+// atomic_inc_64
+DEF_ATOMIC_1SRC(inc, global, long, i64, long)
+DEF_ATOMIC_1SRC(inc, global, ulong, i64, long)
+
+// atomic_dec_64
+DEF_ATOMIC_1SRC(dec, global, long, i64, long)
+DEF_ATOMIC_1SRC(dec, global, ulong, i64, long)
+
+// atomic_cmpxchg_64
+DEF_ATOMIC_3SRC(cmpxchg, global, long, i64, long)
+DEF_ATOMIC_3SRC(cmpxchg, global, ulong, i64, long)
+
+// atom_add
+DEF_ATOM_2SRC(add, global, long, i64, long)
+DEF_ATOM_2SRC(add, global, ulong, i64, long)
+
+// atom_sub
+DEF_ATOM_SUB(sub, global, long, i64, long)
+DEF_ATOM_SUB(sub, global, ulong, i64, long)
+
+// atom_xchg
+DEF_ATOM_2SRC(xchg, global, long, i64, long)
+DEF_ATOM_2SRC(xchg, global, ulong, i64, long)
+
+// atom_min
+DEF_ATOM_2SRC(min, global, long, i64, long)
+DEF_ATOM_2SRC(min, global, ulong, u64, ulong)
+
+// atom_max
+DEF_ATOM_2SRC(max, global, long, i64, long)
+DEF_ATOM_2SRC(max, global, ulong, u64, ulong)
+
+// atom_and
+DEF_ATOM_2SRC(and, global, long, i64, long)
+DEF_ATOM_2SRC(and, global, ulong, i64, long)
+
+// atom_or
+DEF_ATOM_2SRC(or, global, long, i64, long)
+DEF_ATOM_2SRC(or, global, ulong, i64, long)
+
+// atom_xor
+DEF_ATOM_2SRC(xor, global, long, i64, long)
+DEF_ATOM_2SRC(xor, global, ulong, i64, long)
+
+// atom_inc
+DEF_ATOM_1SRC(inc, global, long, i64, long)
+DEF_ATOM_1SRC(inc, global, ulong, i64, long)
+
+// atom_cmpxchg
+DEF_ATOM_3SRC(cmpxchg, global, long, i64, long)
+DEF_ATOM_3SRC(cmpxchg, global, ulong, i64, long)
+
+// atom_dec
+DEF_ATOM_1SRC(dec, global, long, i64, long)
+DEF_ATOM_1SRC(dec, global, ulong, i64, long)
+
+#endif // if defined(cl_intel_64bit_global_atomics_placeholder)
 
 // The below functions were added because of the clang 4.0 itanium mangling update
 // See http://llvm.org/viewvc/llvm-project?view=revision&revision=262414

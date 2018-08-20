@@ -155,7 +155,7 @@ public:
                         CVariable *src1, bool is16Bit = false);
     void AtomicRawA64(AtomicOp atomic_op, CVariable *dst,
                       CVariable *elem_offset, CVariable *src0, CVariable *src1,
-                      bool is16Bit = false);
+                      unsigned short bitwidth);
     void Cmp(e_predicate p, CVariable* dst, CVariable* src0, CVariable* src1);
     void Select(CVariable* flag, CVariable* dst, CVariable* src0, CVariable* src1);
     void GenericAlu(e_opcode opcode, CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2 = nullptr);

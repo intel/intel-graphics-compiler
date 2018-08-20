@@ -98,6 +98,7 @@ VISA_RawOpnd* rawOperandArray[16];
 
     bool                   sat;
     short                  shortnum;
+    unsigned short         ushortnum;
 
     struct {
         //G4_CondModifier        mod;
@@ -498,6 +499,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %type <non_uniform_sampler> NON_UNIFORM_SAMPLER_ENABLE
 %type <attr_gen> GEN_ATTR
 %type <flag> IS_ATOMIC16
+%type <ushortnum> ATOMIC_BITWIDTH
 
 %type <string> RTWRITE_MODE
 
@@ -1256,8 +1258,8 @@ SVM_OP ExecSize VecSrcOperand_G_I_IMM RawOperand
     /// printf("Exec size: %d\n", $8.exec_size);
     pCisaBuilder->CISA_create_svm_scatter_instruction($1.cisa_gen_opnd, (SVMSubOpcode)$2, $7.emask, $7.exec_size, (unsigned int)$4, (unsigned int)$6, $8.cisa_gen_opnd, $9.cisa_gen_opnd, CISAlineno);
 }
-//          2             3             4           5        6          7          8          9
-| Predicate SVM_ATOMIC_OP ATOMIC_SUB_OP IS_ATOMIC16 ExecSize RawOperand RawOperand RawOperand RawOperand
+//          2             3             4               5        6          7          8          9
+| Predicate SVM_ATOMIC_OP ATOMIC_SUB_OP ATOMIC_BITWIDTH ExecSize RawOperand RawOperand RawOperand RawOperand
 {
     pCisaBuilder->CISA_create_svm_atomic_instruction($1.cisa_gen_opnd, $5.emask, $5.exec_size, $3, $4, $6.cisa_gen_opnd, $8.cisa_gen_opnd, $9.cisa_gen_opnd, $7.cisa_gen_opnd, CISAlineno);
 }
@@ -2064,6 +2066,13 @@ IS_ATOMIC16: { $$ = false ; }
              $$ = true;
              TRACE("** atomic 16");
          };
+
+ATOMIC_BITWIDTH: { $$ = 32; } |'.' NUMBER
+        {
+            MUST_HOLD(($2 == 16 || $2 == 64 ), "Only supports 16/64.");
+            TRACE("\n** atomic NUMBER");
+            $$ = (unsigned short)$2;
+        };
 
 %%
 /*

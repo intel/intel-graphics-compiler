@@ -10022,7 +10022,7 @@ void EmitPass::emitScalarAtomics(
 
     if(isA64)
     {
-        m_encoder->AtomicRawA64(uniformAtomicOp, pReturnVal, pDstAddr, pFinalAtomicSrcVal, nullptr, is16Bit);
+        m_encoder->AtomicRawA64(uniformAtomicOp, pReturnVal, pDstAddr, pFinalAtomicSrcVal, nullptr, is16Bit ? 16 : 32);
     }
     else
     {
@@ -10090,7 +10090,7 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
 
 CVariable *EmitPass::UnpackOrBroadcastIfUniform(CVariable *pVar)
 {
-    if (pVar->GetElemSize() == 4)
+    if (pVar->GetElemSize() == 4 || pVar->GetElemSize() == 8)
         return BroadcastIfUniform(pVar);
 
     assert(pVar->GetElemSize() == 2);
@@ -10149,7 +10149,9 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
         atomic_op = static_cast<AtomicOp>(llvm::cast<llvm::ConstantInt>(pInsn->getOperand(3))->getZExtValue());
     }
 
+    unsigned short bitwidth = pInsn->getType()->getScalarSizeInBits();
     const bool is16Bit = (pInsn->getType()->getScalarSizeInBits() == 16);
+
 
     // atomic_inc and atomic_dec don't have both src0 and src1.
     if(atomic_op != EATOMIC_INC && atomic_op != EATOMIC_DEC)
@@ -10160,8 +10162,8 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
     // Dst address in bytes.
     CVariable* pDstAddr = GetSymbol(pllDstAddr);
     // If DisableScalarAtomics regkey is enabled or DisableIGCOptimizations regkey is enabled then
-    // don't enable scalar atomics
-    if (IsUniformAtomic(pInsn))
+    // don't enable scalar atomics, also do not enable for 64 bit
+    if (IsUniformAtomic(pInsn) && bitwidth != 64)
     {
             PointerType *PtrTy = dyn_cast<PointerType>(pllDstAddr->getType());
             bool isA64 = PtrTy && isA64Ptr(PtrTy, m_currShader->GetContext());
@@ -10186,15 +10188,29 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
     else
     {
         CVariable* pDst = returnsImmValue ?
-            m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF) :
+            m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), m_destination->GetType(), EALIGN_GRF) :
             nullptr;
 
         PointerType *PtrTy = dyn_cast<PointerType>(pllDstAddr->getType());
         bool isA64 = PtrTy && isA64Ptr(PtrTy, m_currShader->GetContext());
-        if(isA64)
+        bool extendPointer = (bitwidth == 64 && !isA64);
+        if(isA64 || extendPointer)
         {
-            m_encoder->AtomicRawA64(atomic_op, pDst, pDstAddr, pSrc0, pSrc1, is16Bit);
-            m_encoder->Push();
+            if (extendPointer) 
+            {
+                pDstAddr = m_currShader->BitCast(pDstAddr, GetUnsignedIntegerType(pDstAddr->GetType()));
+                CVariable* pDstAddr2 = m_currShader->GetNewVariable(pDstAddr->GetNumberElement(),
+                    ISA_TYPE_UQ, EALIGN_GRF);
+                m_encoder->Cast(pDstAddr2, pDstAddr);
+                m_encoder->AtomicRawA64(atomic_op, pDst, pDstAddr2, pSrc0, pSrc1, bitwidth);
+                m_encoder->Push();
+            }
+            else 
+            {
+                m_encoder->AtomicRawA64(atomic_op, pDst, pDstAddr, pSrc0, pSrc1, bitwidth);
+                m_encoder->Push();
+            }
+           
             if (returnsImmValue)
             {
                 m_encoder->Cast(
