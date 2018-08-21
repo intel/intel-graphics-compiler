@@ -1665,8 +1665,14 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value *V, WIAnalysis *WIA,
                 return EALIGN_GRF;
             }
         }
-        if (IsRawAtomicIntrinsic(*UI)) {
-            GenIntrinsicInst *GII = cast<GenIntrinsicInst>(*UI);
+
+        // Last, check Gen intrinsic.
+        GenIntrinsicInst *GII = dyn_cast<GenIntrinsicInst>(*UI);
+        if (!GII) {
+            continue;
+        }
+        
+        if (IsRawAtomicIntrinsic(GII)) {
             Value *Ptr = GII->getArgOperand(1);
             if (WIA->whichDepend(Ptr) == WIAnalysis::UNIFORM) {
                 if (PointerType *PtrTy = dyn_cast<PointerType>(Ptr->getType())) {
