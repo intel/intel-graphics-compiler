@@ -149,9 +149,6 @@ public:
     /// Driver supports promoting buffers to bindful
     virtual bool SupportsStatelessToStatefullBufferTransformation() const { return false; }
 
-    /// Pick fixed 64B URB header in case we need consistent indpendent linking
-    virtual bool HasFixedURBHeaderSize() const { return false; }
-
     /// Need emulation of 64bits type for HW not supporting it natively
     virtual bool Enable64BitEmu() const { return false; }
 

@@ -348,7 +348,7 @@ void DomainShaderLowering::CalculateVertexHeaderSize(Function& F)
     IGC::CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (context->getModuleMetaData()->hasVertexHeader)
     {
-        if (context->m_DriverInfo.HasFixedURBHeaderSize())
+        if (context->getModuleMetaData()->use64BVertexHeader)
         {
             m_headerSize = QuadEltUnit(4);
             m_dsPropsPass->DeclareClipDistance();

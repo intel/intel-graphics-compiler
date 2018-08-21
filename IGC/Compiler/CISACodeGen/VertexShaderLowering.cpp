@@ -434,7 +434,7 @@ void VertexShaderLowering::CalculateVertexHeaderSize(Function& F)
 {
     if (m_context->getModuleMetaData()->hasVertexHeader)
     {
-        if (m_context->m_DriverInfo.HasFixedURBHeaderSize())
+        if (m_context->getModuleMetaData()->use64BVertexHeader)
         {
             m_headerSize = QuadEltUnit(4);
             m_vsPropsPass->DeclareClipDistance();

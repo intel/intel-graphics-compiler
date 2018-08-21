@@ -162,7 +162,7 @@ void CollectGeometryShaderProperties::ExtractGlobalVariables( llvm::Function & F
     auto clipCullAsInput = (pGlobal == nullptr) ? false : true;
     m_gsProps.Input().PerVertex().HasClipDistances(clipCullAsInput);
     CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (context->m_DriverInfo.HasFixedURBHeaderSize())
+    if (context->getModuleMetaData()->use64BVertexHeader)
     {
         m_gsProps.Input().PerVertex().HasClipDistances(true);
         m_gsProps.Input().PerVertex().HasCullDistances(true);

@@ -224,6 +224,7 @@ namespace IGC
         // bindings do not alias.
         bool statefullResourcesNotAliased = false; 
 
+        bool use64BVertexHeader = false;
         bool hasVertexHeader = true;
         unsigned int privateMemoryPerWI = 0;
         std::array<uint64_t, NUM_SHADER_RESOURCE_VIEW_SIZE> m_ShaderResourceViewMcsMask;

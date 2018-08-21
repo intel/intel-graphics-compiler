@@ -751,7 +751,7 @@ void CollectHullShaderProperties::gatherInformation(llvm::Function* kernel)
     pGlobal = module->getGlobalVariable("ShaderHasClipCullInput");
     auto clipCullAsInput = (pGlobal == nullptr) ? false : true;
     IGC::CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (ctx->m_DriverInfo.HasFixedURBHeaderSize()){
+    if (ctx->getModuleMetaData()->use64BVertexHeader){
         // In case we have no linking information we need the URB header to have a fixed size
         clipCullAsInput = true; 
     }
