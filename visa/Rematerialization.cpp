@@ -761,8 +761,7 @@ namespace vISA
                 {
                     G4_SrcRegRegion* srcRgn = uniqueDefInst->getSrc(i)->asSrcRegRegion();
 
-                    if (srcRgn->getTopDcl()->getNumElems() > 1 &&
-                        !src->isSpilled())
+                    if (srcRgn->getTopDcl()->getNumElems() > 1)
                     {
                         // Extending non-scalar operands can be expensive
                         return false;
