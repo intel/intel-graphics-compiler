@@ -2094,7 +2094,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         
         patch.Token = PATCH_TOKEN_GTPIN_INFO;
         unsigned int size = 0;
-        const void* buffer = nullptr;
+        void* buffer = nullptr;
         const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
         if (annotations.m_executionEnivronment.CompiledSIMDSize == 8)
         {
@@ -2120,8 +2120,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                 retValue.Success = false;
                 return retValue;
             }
-            
-            freeBlock(const_cast<void*>(buffer));
+            IGC::aligned_free(buffer);
         }
     }
 
