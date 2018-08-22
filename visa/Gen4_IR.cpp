@@ -7063,6 +7063,7 @@ bool G4_INST::canSupportCondMod(const IR_Builder& builder) const
 
 
 	return ((op == G4_add) ||
+        (op == G4_and) ||
 		(op == G4_addc) ||
 		(op == G4_asr) ||
 		(op == G4_avg) ||
@@ -7079,6 +7080,8 @@ bool G4_INST::canSupportCondMod(const IR_Builder& builder) const
 		(op == G4_mad) ||
 		(op == G4_mov) ||
 		(op == G4_mul) ||
+        (op == G4_not) ||
+        (op == G4_or) ||
 		(op == G4_pln) ||
         (op == G4_rndd) ||
         (op == G4_rnde) ||
@@ -7088,7 +7091,8 @@ bool G4_INST::canSupportCondMod(const IR_Builder& builder) const
 		(op == G4_sada2) ||
 		(op == G4_shl) ||
 		(op == G4_shr) ||
-		(op == G4_subb));
+		(op == G4_subb) ||
+        (op == G4_xor));
 }
 
 // convert (execsize, offset) into emask option

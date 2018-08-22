@@ -4236,10 +4236,10 @@ void Optimizer::optimizeLogicOperation()
             }
 
             if ((!Opcode_can_use_cond_mod(op) && !Opcode_define_cond_mod(op) &&
-                 !inst->isPseudoLogic()) ||
+                !inst->isPseudoLogic()) ||
                 !dst || nullDst || (dcl && dcl->isOutput()))
             {
-              continue;
+                continue;
             }
 
             INST_LIST_ITER next_iter = ii, pred_iter = ii;
@@ -4368,13 +4368,7 @@ void Optimizer::optimizeLogicOperation()
                 }
                 continue;
             }
-            // List of instructions that can use a superset of cond modifiers
-            // that logic instructions use
-            //The sel instruction uses any conditional modifier internally and does not update the flag register if a conditional modifier is used.
-            else if( inst->getPredicate() == NULL &&
-                ( G4_Inst_Table[op].instType == InstTypeLogic ||
-                inst->canSupportCondMod(builder) ) &&
-                next_iter != bb->end() )
+            else if (inst->getPredicate() == NULL && inst->canSupportCondMod(builder))
             {
                 // FIXME: why this condition?
                 if (op == G4_pseudo_mad && inst->getExecSize()==1)
