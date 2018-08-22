@@ -835,18 +835,19 @@ G4_INST* IR_Builder::Create_SplitSend_Inst_For_CISA(
 
     msgDesc->setHeaderPresent(header_present);
 
-    return Create_SplitSend_Inst_For_CISA(pred, dst, src1, src2, execsize,
-                                          msgDesc, option, is_sendc);
+    return Create_SplitSend_Inst(pred, dst, src1, src2, execsize,
+        msgDesc, option, is_sendc);
 }
 
-G4_INST *IR_Builder::Create_SplitSend_Inst_For_CISA(G4_Predicate *pred,
-                                                    G4_DstRegRegion *dst,
-                                                    G4_SrcRegRegion *src1,
-                                                    G4_SrcRegRegion *src2,
-                                                    unsigned execsize,
-                                                    G4_SendMsgDescriptor *msgDesc,
-                                                    unsigned option,
-                                                    bool is_sendc)
+// desc, if indirect, is constructed from the BTI/STI values in msgDesc and is always a0.0
+G4_INST *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
+    G4_DstRegRegion *dst,
+    G4_SrcRegRegion *src1,
+    G4_SrcRegRegion *src2,
+    unsigned execsize,
+    G4_SendMsgDescriptor *msgDesc,
+    unsigned option,
+    bool is_sendc)
 {
     G4_opcode send_opcode = is_sendc ? G4_sendsc : G4_sends;
 
@@ -858,7 +859,7 @@ G4_INST *IR_Builder::Create_SplitSend_Inst_For_CISA(G4_Predicate *pred,
     G4_Operand *sti = msgDesc->getSti();
 
     G4_Operand* descOpnd = NULL;
-    G4_Operand* exdescOpnd = NULL;
+    G4_SrcRegRegion* extDescOpnd = nullptr;
 
     bool needsSamplerMove = sti && !sti->isImm() && !isBindlessSampler(sti);
     bool needsSurfaceMove = false;
@@ -930,8 +931,7 @@ G4_INST *IR_Builder::Create_SplitSend_Inst_For_CISA(G4_Predicate *pred,
 
     if (needsA0ExDesc)
     {
-        exdescOpnd = createBindlessExDesc(exdesc);
-        msgDesc->setExtMsgDesc(exdescOpnd);
+        extDescOpnd = createBindlessExDesc(exdesc);
     }
     else
     {
@@ -941,7 +941,45 @@ G4_INST *IR_Builder::Create_SplitSend_Inst_For_CISA(G4_Predicate *pred,
     return createSplitSendInst(pred, send_opcode, (uint8_t)execsize,
         dst, src1, src2,
         descOpnd,
-        option, msgDesc, msgDesc->getExtMsgDescOpnd(), 0);
+        option, msgDesc, extDescOpnd, 0);
+}
+
+// for RTWrite,
+// desc has a constant BTI value (i.e., no bindless) and no STI
+// extDesc may be indirect (MRT and other bits) and is passed in
+G4_INST *IR_Builder::Create_SplitSend_Inst_For_RTWrite(G4_Predicate *pred,
+    G4_DstRegRegion *dst,
+    G4_SrcRegRegion *src1,
+    G4_SrcRegRegion *src2,
+    G4_SrcRegRegion *extDescOpnd,
+    unsigned execsize,
+    G4_SendMsgDescriptor *msgDesc,
+    unsigned option)
+{
+    G4_opcode send_opcode = G4_sendsc;
+
+    fixSendDstType(dst, (uint8_t)execsize);
+
+    uint32_t desc = msgDesc->getDesc();
+    G4_Operand* descOpnd = nullptr;
+    G4_Operand *bti = msgDesc->getBti();
+
+    if (bti && bti->isSrcRegRegion())
+    {
+        //add (1) a0.0:ud bti:ud desc:ud
+        G4_DstRegRegion* addrDstOpnd = Create_Dst_Opnd_From_Dcl(builtinA0, 1);
+        createInst(nullptr, G4_add, nullptr, false, 1, addrDstOpnd, bti,
+            createImm(desc, Type_UD), InstOpt_WriteEnable, 0);
+        descOpnd = Create_Src_Opnd_From_Dcl(builtinA0, getRegionScalar());
+    }
+    else
+    {
+        descOpnd = createImm(desc, Type_UD);
+    }
+
+    return createSplitSendInst(pred, send_opcode, (uint8_t)execsize,
+        dst, src1, src2, descOpnd,
+        option, msgDesc, extDescOpnd);
 }
 
 // create a dcl for MRF, size in UD is given

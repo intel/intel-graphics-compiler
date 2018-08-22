@@ -9099,6 +9099,7 @@ int IR_Builder::translateVISARTWrite3DInst(
     {
         G4_SendMsgDescriptor *msgDesc = NULL;
         G4_SrcRegRegion *m0 = NULL;
+        bool indirectExDesc = false;
         if (useHeader)
         {
             m0 = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
@@ -9125,9 +9126,8 @@ int IR_Builder::translateVISARTWrite3DInst(
                 // mov (1) a0.2:ud extDesc
                 G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(getBuiltinA0Dot2(), 1);
                 createInst(nullptr, G4_mov, nullptr, false, 1, dst, createImm(extDesc, Type_UD), nullptr, InstOpt_WriteEnable);
-                G4_SrcRegRegion* extDescOpnd = Create_Src_Opnd_From_Dcl(getBuiltinA0Dot2(), getRegionScalar());
                 msgDesc = createSendMsgDesc(desc, extDesc, false, true, surface, nullptr);
-                msgDesc->setExtMsgDesc(extDescOpnd);
+                indirectExDesc = true;
             }
         }
 
@@ -9135,25 +9135,18 @@ int IR_Builder::translateVISARTWrite3DInst(
             If we need to set cps counter then ext_message descriptor
             needs to be a register.
         */
-        if(cpsCounter)
+        if (cpsCounter)
         {
             ASSERT_USER(hasCPS(), "CPS counter is not supported");
-            //getting lower bits.
             unsigned msgDescValue = msgDesc->getExtendedDesc();
 
-            G4_Declare *extDescDcl = getBuiltinA0Dot2();
-
             //shifting CPS counter by appropriate number of bits and storing in ext_descriptor operand
-
-            G4_DstRegRegion *dstMove2 = Create_Dst_Opnd_From_Dcl(extDescDcl, 1);
+            G4_DstRegRegion *dstMove2 = Create_Dst_Opnd_From_Dcl(getBuiltinA0Dot2(), 1);
             G4_Imm *immedOpnd = createImm(msgDescValue, Type_UD);
 
             ///setting lower bits
             createInst(NULL, G4_or, NULL, false, 1, dstMove2, cpsCounter, immedOpnd, NULL, InstOpt_WriteEnable, 0);
-
-            //creating message descriptor
-            G4_SrcRegRegion *extMsgDescOpnd  = Create_Src_Opnd_From_Dcl(extDescDcl, getRegionScalar());
-            msgDesc->setExtMsgDesc(extMsgDescOpnd);
+            indirectExDesc = true;
         }
 
         if (!useHeader)
@@ -9161,15 +9154,16 @@ int IR_Builder::translateVISARTWrite3DInst(
             m0 = srcToUse;
             srcToUse = createNullSrc(Type_UD);
         }
-        last_inst = Create_SplitSend_Inst_For_CISA(
-            pred,                       //predicate
-            createNullDst(Type_UD),     //dst
-            m0,                         //src1
-            srcToUse,                   //src2
-            execSize,                   //execsize
+
+        last_inst = Create_SplitSend_Inst_For_RTWrite(
+            pred,                       
+            createNullDst(Type_UD),     
+            m0,                         
+            srcToUse,
+            indirectExDesc ? Create_Src_Opnd_From_Dcl(getBuiltinA0Dot2(), getRegionScalar()) : nullptr,
+            execSize,                   
             msgDesc,
-            instOpt,                    //instOpt
-            true );                     //is_sendc
+            instOpt);
     }
     else
     {
@@ -9458,7 +9452,7 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
 
     if (forceSplitSend)
     {
-        sendInst = builder->Create_SplitSend_Inst_For_CISA(
+        sendInst = builder->Create_SplitSend_Inst(
             pred, dst1, srcToUse, builder->createNullSrc(Type_UD), execSize, msgDesc, instOpt, false);
     }
     else
@@ -9609,7 +9603,7 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
 
         if (forceSplitSend)
         {
-            sendInst = builder->Create_SplitSend_Inst_For_CISA(
+            sendInst = builder->Create_SplitSend_Inst(
                 pred, dst2, srcToUse2, builder->createNullSrc(Type_UD), execSize, msgDesc2, instOpt2, false);
         }
         else
@@ -9933,8 +9927,8 @@ int IR_Builder::translateVISASampler3DInst(
             extDesc |= (1 << CPS_LOD_COMPENSATION_ENABLE);
         }
         G4_SendMsgDescriptor *msgDesc = createSendMsgDesc(desc, extDesc, true, false, surface, samplerIdx);
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dst, msgs[0], msgs[1],
-                                                   execSize, msgDesc, instOpt, false);
+        last_inst = Create_SplitSend_Inst(pred, dst, msgs[0], msgs[1], 
+            execSize, msgDesc, instOpt, false);
     }
     setUniformSampler(last_inst, uniformSampler);
     return CM_SUCCESS;

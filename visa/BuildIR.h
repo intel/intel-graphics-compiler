@@ -1526,14 +1526,23 @@ public:
                                        unsigned option,
                                        bool is_sendc);
 
-    G4_INST *Create_SplitSend_Inst_For_CISA(G4_Predicate *pred,
-                                            G4_DstRegRegion *dst,
-                                            G4_SrcRegRegion *src1,
-                                            G4_SrcRegRegion *src2,
-                                            unsigned execsize,
-                                            G4_SendMsgDescriptor *msgDesc,
-                                            unsigned option,
-                                            bool is_sendc);
+    G4_INST *Create_SplitSend_Inst(G4_Predicate *pred,
+        G4_DstRegRegion *dst,
+        G4_SrcRegRegion *src1,
+        G4_SrcRegRegion *src2,
+        unsigned execsize,
+        G4_SendMsgDescriptor *msgDesc,
+        unsigned option,
+        bool is_sendc);
+
+    G4_INST *Create_SplitSend_Inst_For_RTWrite(G4_Predicate *pred,
+        G4_DstRegRegion *dst,
+        G4_SrcRegRegion *src1,
+        G4_SrcRegRegion *src2,
+        G4_SrcRegRegion *extDesc,
+        unsigned execsize,
+        G4_SendMsgDescriptor *msgDesc,
+        unsigned option);
 
     G4_INST* Create_Send_Inst_For_CISA(
                         G4_Predicate* pred,

@@ -273,7 +273,6 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor( uint32_t fCtrl, uint32_t regs2rcv,
 
     m_bti = bti;
     m_sti = sti;
-    m_extMsgDesc  =  NULL;
 
     if (m_bti && m_bti->isImm())
     {
@@ -304,7 +303,6 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor(uint32_t desc, uint32_t extDesc,
     this->desc.value = desc;
     this->extDesc.value = extDesc;
 
-    m_extMsgDesc = NULL;
     if (bti && bti->isImm())
     {
         setBindingTableIdx((unsigned)bti->asImm()->getInt());

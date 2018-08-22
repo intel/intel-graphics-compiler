@@ -282,7 +282,6 @@ private:
 
     G4_Operand *m_sti;
     G4_Operand *m_bti;
-    G4_Operand *m_extMsgDesc;
 
 public:
     G4_SendMsgDescriptor()
@@ -293,7 +292,6 @@ public:
         writeMsg = false;
         m_bti = NULL;
         m_sti = NULL;
-        m_extMsgDesc  = NULL;
     };
 
     static const int SLMIndex = 0xFE;
@@ -595,8 +593,6 @@ public:
 
     G4_Operand *getBti(){ return m_bti; }
     G4_Operand *getSti(){ return m_sti; }
-    G4_Operand *getExtMsgDescOpnd() { return m_extMsgDesc; }
-    void setExtMsgDesc(G4_Operand * extMsgDesc){ m_extMsgDesc = extMsgDesc; }
 
     uint32_t getDesc() const { return desc.value; }
     uint32_t getExtendedDesc() const { return extDesc.value; }
