@@ -59,7 +59,10 @@ public:
     void getAnalysisUsage(llvm::AnalysisUsage &AU) const
     {
         AU.addRequired<CodeGenContextWrapper>();
-
+    }
+    virtual llvm::StringRef getPassName() const
+    {
+        return "MCSOptimization";
     }
 
     static char ID;

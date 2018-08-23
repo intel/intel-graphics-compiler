@@ -404,6 +404,14 @@ bool GatingSimilarSamples::areSampleInstructionsSimilar(Instruction* firstSample
 //This pass assumes loop unrolling has been performed
 bool GatingSimilarSamples::runOnFunction(llvm::Function &F)
 {
+    BB = nullptr; //opt runs only if single BB in function
+    motionSample = nullptr;
+    texelSample = nullptr;
+    resultInst = nullptr;
+    gatingValue_mul1 = nullptr;
+    gatingValue_mul2 = nullptr;
+    similarSampleInsts.clear();
+
     if (IGC_GET_FLAG_VALUE(DisableGatingSimilarSamples))
         return false;
     if (F.getBasicBlockList().size() != 1)

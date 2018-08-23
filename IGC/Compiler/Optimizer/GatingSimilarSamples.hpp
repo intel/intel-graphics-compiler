@@ -62,16 +62,22 @@ namespace IGC
         {
             AU.addRequired<IGC::CodeGenContextWrapper>();
         }
+
+        /// @brief  Provides name of pass
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "GatingSimilarSamples";
+        }
         
     private:
-        llvm::BasicBlock* BB; //opt runs only if single BB in function
-        llvm::Instruction* motionSample = nullptr;
-        llvm::Instruction* texelSample = nullptr;
-        llvm::Instruction* resultInst = nullptr;
+        llvm::BasicBlock* BB;
+        llvm::Instruction* motionSample;
+        llvm::Instruction* texelSample;
+        llvm::Instruction* resultInst;
 
         //motion.xy will be the gating value
-        llvm::Value* gatingValue_mul1 = nullptr; //motion.x
-        llvm::Value* gatingValue_mul2 = nullptr; //motion.y
+        llvm::Value* gatingValue_mul1; //motion.x
+        llvm::Value* gatingValue_mul2; //motion.y
         std::vector<llvm::Instruction*> similarSampleInsts;
         bool areSampleInstructionsSimilar( llvm::Instruction*, llvm::Instruction*);
         bool checkAndSaveSimilarSampleInsts();
