@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GTGPU_RT_ASM_Interface.h"
 #include "iga/IGALibrary/api/igaEncoderWrapper.hpp"
 #include "Timer.h"
+#include "BuildIR.h"
 
 using namespace iga;
 using namespace vISA;
@@ -756,7 +757,9 @@ void BinaryEncodingIGA::DoAll()
         autoCompact = false;
     }
 
-    KernelEncoder encoder(IGAKernel, autoCompact);
+    bool dontCompactProlog = kernel.fg.builder->needsToLoadLocalID();
+
+    KernelEncoder encoder(IGAKernel, autoCompact, dontCompactProlog);
     encoder.encode();
 
     stopTimer(TIMER_IGA_ENCODER);

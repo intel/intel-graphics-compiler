@@ -395,4 +395,9 @@
         return true;
     }
 
+    bool needsToLoadLocalID() const
+    {
+        return false;
+    }
+
     // end HW capabilities
