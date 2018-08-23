@@ -1165,6 +1165,15 @@ void ScalarizeFunction::releaseAllSCMEntries()
 
 void ScalarizeFunction::resolveDeferredInstructions()
 {
+    std::map<Value*, Value*> dummyToScalarMap;
+
+    // lambda to check if a value is a dummy instruction
+    auto isDummyValue = [] (Value* val)->bool
+    {
+        LoadInst* ld = dyn_cast<LoadInst>(val);
+        return (ld && isa<ConstantPointerNull>(ld->getPointerOperand()));
+    };
+
     for (unsigned index = 0; index < m_DRL.size(); ++index)
     {
         DRLEntry current = m_DRL[index];
@@ -1213,11 +1222,30 @@ void ScalarizeFunction::resolveDeferredInstructions()
         {
             Instruction *dummyInst = dyn_cast<Instruction>(current.dummyVals[i]);
             assert(dummyInst && "Dummy values are all instructions!");
-            dummyInst->replaceAllUsesWith(currentInstEntry->scalarValues[i]);
-            // Erase dummy instruction (don't use eraseFromParent as the dummy is not in the function)
-            delete dummyInst;
+            Value* scalarVal = currentInstEntry->scalarValues[i];
+
+            if (isDummyValue(scalarVal))
+            {
+                // It's possible the scalar values are not resolved earlier and are themselves dummy instructions.
+                // In order to find the real value, we look in the map to see which value replaced it.
+                auto realScalarVal = dummyToScalarMap.find(scalarVal);
+                assert(realScalarVal != dummyToScalarMap.end() && "Replacement value not found!");
+                scalarVal = dummyToScalarMap[scalarVal];
+            }
+
+            // Save every dummy instruction with the scalar value its replaced with
+            dummyToScalarMap[dummyInst] = scalarVal;
         }
     }
+
+    for ( auto entry : dummyToScalarMap )
+    {
+        // Replace and erase all dummy instructions (don't use eraseFromParent as the dummy is not in the function)
+        Instruction *dummyInst = cast<Instruction>(entry.first);
+        dummyInst->replaceAllUsesWith(entry.second);
+        delete dummyInst;
+    }
+
     // clear DRL
     m_DRL.clear();
 }
