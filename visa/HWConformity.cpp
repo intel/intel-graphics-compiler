@@ -2122,7 +2122,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
     }
 
     if (builder.hasMacl() && !IS_QTYPE(dst->getType()) &&
-        (builder.no64bitType() || inst->getExecSize() > 1))
+        (builder.noDwDstForDwordMul() || inst->getExecSize() > 1))
     {
         // use macl for D = D x D. We use macl when possible 
         // except on scalar inst on platforms that support native DMul

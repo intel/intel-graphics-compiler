@@ -400,4 +400,9 @@
         return false;
     }
 
+    bool noDwDstForDwordMul() const
+    {
+        return no64bitType();
+    }
+
     // end HW capabilities
