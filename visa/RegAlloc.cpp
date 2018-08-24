@@ -169,7 +169,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
             {
                 G4_VarBase* ptr = dst->getBase();
                 if (ptr->isRegVar() && ptr->asRegVar()->getDeclare()->getRegFile() == G4_ADDRESS &&
-                    !ptr->asRegVar()->getDeclare()->getIsExDesc())
+                    !ptr->asRegVar()->getDeclare()->isMsgDesc())
                 {
 
                     // dst is an address variable.  ExDesc A0 may be ignored since they are never used in indirect access

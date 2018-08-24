@@ -1811,7 +1811,6 @@ class G4_Declare
     // widening this variable or not (e.g. byte to word).
     uint16_t noWidening : 1;
 
-    uint16_t isExDesc : 1;
     uint16_t capableOfReuse : 1;
     uint16_t isSplittedDcl : 1;
     uint16_t isPartialDcl : 1;
@@ -1890,7 +1889,6 @@ public:
         isPreDefFEStackVar = false;
         doNotSpill = false;
         isScallDcl = false;
-        isExDesc = false;
         capableOfReuse = false;
 
         hasNonDefaultMaskDef = false;
@@ -2128,8 +2126,7 @@ public:
     void setDoNotSpill()        { doNotSpill = true; }
     bool isDoNotSpill() const   { return doNotSpill; }
 
-    void setIsExDesc()          { isExDesc = true; }
-    bool getIsExDesc() const       { return isExDesc; }
+    bool isMsgDesc() const { return regFile == G4_ADDRESS && elemType == Type_UD; }
 
     void setCapableOfReuse()          { capableOfReuse = true; }
     bool getCapableOfReuse() const       { return capableOfReuse; }

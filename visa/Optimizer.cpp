@@ -5209,7 +5209,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     G4_Operand *exDesc = inst->getSrc(3);
 
                     if (header->getTopDcl() && header->getTopDcl()->getCapableOfReuse() &&
-                        exDesc->getTopDcl() && exDesc->getTopDcl()->getIsExDesc())
+                        exDesc->isSrcRegRegion())
                     {
 
                         if (instVector.size() != 0)
@@ -5246,13 +5246,32 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         for (auto bb : fg.BBs)
         {
             InstValues values(4);
-            for (auto iter = bb->begin(), iterEnd = bb->end();
-                iter != iterEnd;)
+            for (auto iter = bb->begin(), iterEnd = bb->end(); iter != iterEnd;)
             {
                 G4_INST* inst = *iter;
-                G4_DstRegRegion* dst = inst->getDst();
-                if (dst != nullptr && dst->getTopDcl() != nullptr &&
-                    dst->getTopDcl()->getIsExDesc())
+                
+                auto isDstExtDesc = [](G4_INST* inst)
+                {
+                    G4_DstRegRegion* dst = inst->getDst();
+                    if (dst && dst->getTopDcl() && dst->getTopDcl()->isMsgDesc())
+                    {
+                        // check that its single use is at src3 of split send
+                        if (inst->use_size() != 1)
+                        {
+                            return false;
+                        }
+                        auto use = inst->use_front();
+                        G4_INST* useInst = use.first;
+                        Gen4_Operand_Number num = use.second;
+                        if (useInst->isSplitSend() && num == Opnd_src3)
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+
+                if (isDstExtDesc(inst))
                 {
                     G4_INST* valInst = values.findValue(inst);
                     if (valInst != nullptr)

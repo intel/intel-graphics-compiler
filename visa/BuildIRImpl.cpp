@@ -662,25 +662,14 @@ G4_INST* IR_Builder::Create_Send_Inst_For_CISA(
 // returns a0.2<0;1,0>:ud
 G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
 {
-#define BINDLESS_OFFSET_IN_EXDESC 12
-#if 1
     // virtual var for each exdesc
     G4_SrcRegRegion* T252 = Create_Src_Opnd_From_Dcl(builtinT252, getRegionScalar());
     char* buf = getNameString(mem, 20, "ExDesc%d", num_temp_dcl++);
     G4_Declare* exDescDecl = createDeclareNoLookup(buf, G4_ADDRESS, 1, 1, Type_UD);
-    exDescDecl->setIsExDesc();
     exDescDecl->setSubRegAlign(Four_Word);
     G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(exDescDecl, 1);
     createInst(NULL, G4_add, NULL, false, 1, dst, T252, createImm(exdesc, Type_UD), InstOpt_WriteEnable);
     return Create_Src_Opnd_From_Dcl(exDescDecl, getRegionScalar());
-#else
-    // hard-code exdesc to a0.2
-    G4_SrcRegRegion* T252 = Create_Src_Opnd_From_Dcl(builtinT252, getRegionScalar());
-    G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(builtinA0Dot2, 1);
-    dst = Create_Dst_Opnd_From_Dcl(builtinA0Dot2, 1);
-    createInst(NULL, G4_add, NULL, false, 1, dst, T252, createImm(exdesc, Type_UD), InstOpt_WriteEnable);
-    return Create_Src_Opnd_From_Dcl(builtinA0Dot2, getRegionScalar());
-#endif
 }
 
 G4_INST *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
