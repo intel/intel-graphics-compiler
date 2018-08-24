@@ -457,17 +457,6 @@ public:
                                                  VISA_opnd *dstSrc,
                                                  int line_no);
 
-    bool CISA_create_strbuf_scaled_instruction(ISA_Opcode opcode,
-                                               VISA_opnd *pred,
-                                               Common_VISA_EMask_Ctrl eMask,
-                                               unsigned execSize,
-                                               ChannelMask chMask,
-                                               char* surfaceName,
-                                               VISA_opnd *uOffsets,
-                                               VISA_opnd *vOffsets,
-                                               VISA_opnd *dstSrc,
-                                               int line_no);
-
     bool CISA_create_scatter_scaled_instruction(ISA_Opcode opcode,
                                                 VISA_opnd *pred,
                                                 Common_VISA_EMask_Ctrl eMask,

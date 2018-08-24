@@ -2046,8 +2046,6 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
     case ISA_3D_RT_WRITE:
     case ISA_GATHER4_SCALED:
     case ISA_SCATTER4_SCALED:
-    case ISA_STRBUFLD_SCALED:
-    case ISA_STRBUFST_SCALED:
     case ISA_GATHER_SCALED:
     case ISA_SCATTER_SCALED:
     case ISA_DWORD_ATOMIC:
@@ -2341,29 +2339,6 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
             sstr << printOperand(isaHeader, header, inst, i++, opt);
 
             /// offsets
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
-
-            /// src/dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
-            break;
-        }
-        case ISA_STRBUFLD_SCALED:
-        case ISA_STRBUFST_SCALED:
-        {
-            ChannelMask chMask = ChannelMask::createFromBinary(opcode,
-                    getPrimitiveOperand<uint8_t>(inst, i++));
-            sstr << "." << chMask.getString();
-
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader);
-
-            /// surface
-            surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << printSurfaceIndex(isaHeader, surface);
-
-            /// U offsets
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
-
-            /// V offsets
             sstr << printOperand(isaHeader, header, inst, i++, opt);
 
             /// src/dst

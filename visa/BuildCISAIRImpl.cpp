@@ -1942,36 +1942,6 @@ bool CISA_IR_Builder::CISA_create_scatter4_scaled_instruction(ISA_Opcode        
     return ret == CM_SUCCESS;
 }
 
-bool CISA_IR_Builder::CISA_create_strbuf_scaled_instruction(ISA_Opcode              opcode,
-                                                            VISA_opnd               *pred,
-                                                            Common_VISA_EMask_Ctrl  eMask,
-                                                            unsigned                execSize,
-                                                            ChannelMask             chMask,
-                                                            char                    *surfaceName,
-                                                            VISA_opnd               *uOffsets,
-                                                            VISA_opnd               *vOffsets,
-                                                            VISA_opnd               *dstSrc,
-                                                            int                     lineNo)
-{
-    VISA_SurfaceVar *surfaceVar =
-        (VISA_SurfaceVar*)m_kernel->getDeclFromName(surfaceName);
-    MUST_BE_TRUE1(surfaceVar != NULL, lineNo, "Surface was not found");
-
-    VISA_StateOpndHandle *surface = NULL;
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
-
-    int ret = m_kernel->AppendVISASurfAccessStrBufLdStInst(
-                opcode, static_cast<VISA_PredOpnd *>(pred),
-                eMask, Get_Common_ISA_Exec_Size_From_Raw_Size(execSize),
-                chMask.getAPI(),
-                surface,
-                static_cast<VISA_RawOpnd *>(uOffsets),
-                static_cast<VISA_RawOpnd *>(vOffsets),
-                static_cast<VISA_RawOpnd *>(dstSrc));
-
-    return ret == CM_SUCCESS;
-}
-
 bool CISA_IR_Builder::CISA_create_scatter_scaled_instruction(ISA_Opcode             opcode,
                                                              VISA_opnd              *pred,
                                                              Common_VISA_EMask_Ctrl eMask,

@@ -294,12 +294,6 @@ gather4_scaled|scatter4_scaled {
     return SCATTER4_SCALED_OP;
 }
 
-strbuf_load|strbuf_store {
-    TRACE("\n** strbuf load/store INST ");
-    CISAlval.opcode = str2opcode(yytext);
-    return STRBUF_SCALED_OP;
-}
-
 barrier {
                TRACE("\n** barrier INST ");
 			   CISAlval.opcode = str2opcode(yytext);

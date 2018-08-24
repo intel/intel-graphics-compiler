@@ -381,7 +381,6 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <opcode> SCATTER_TYPED_OP
 %token <opcode> SCATTER_SCALED_OP
 %token <opcode> SCATTER4_SCALED_OP
-%token <opcode> STRBUF_SCALED_OP
 %token <opcode> BARRIER_OP
 %token <opcode> PBARRIER_OP
 %token <opcode> ATOMIC_OP
@@ -875,7 +874,6 @@ CISAInst: LogicInstruction
         | ScatterTypedInstruction
         | ScatterScaledInstruction
         | Scatter4ScaledInstruction
-        | StrbufScaledInstruction
         | SynchronizationInstruction
         | BranchInstruction
         | UntypedAtomicInstruction
@@ -1077,12 +1075,6 @@ ScatterTypedInstruction :  Predicate   SCATTER_TYPED_OP  SAMPLER_CHANNEL  ExecSi
 Scatter4ScaledInstruction : Predicate SCATTER4_SCALED_OP SAMPLER_CHANNEL  ExecSize VAR VecSrcOperand_G_I_IMM RawOperand RawOperand
         {
             pCisaBuilder->CISA_create_scatter4_scaled_instruction($2, $1.cisa_gen_opnd, $4.emask, $4.exec_size, ChannelMask::createFromAPI($3), $5, $6.cisa_gen_opnd, $7.cisa_gen_opnd, $8.cisa_gen_opnd, CISAlineno);
-        };
-
-//                               1                2               3        4   5          6          7          8
-StrbufScaledInstruction: Predicate STRBUF_SCALED_OP SAMPLER_CHANNEL ExecSize VAR RawOperand RawOperand RawOperand
-        {
-            pCisaBuilder->CISA_create_strbuf_scaled_instruction($2, $1.cisa_gen_opnd, $4.emask, $4.exec_size, ChannelMask::createFromAPI($3), $5, $6.cisa_gen_opnd, $7.cisa_gen_opnd, $8.cisa_gen_opnd, CISAlineno);
         };
             
 //                                 1                 2   3      4   5      6   7                        8        9                      

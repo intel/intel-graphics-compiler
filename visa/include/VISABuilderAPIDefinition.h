@@ -402,22 +402,6 @@ public:
                                                       VISA_RawOpnd              *offsets,
                                                       VISA_RawOpnd              *dstSrc) = 0;
 
-    /// AppendVISASurfAccessStrBufLdStInst
-    /// --append a strbuf load/store (or gather4/scatter4)
-    /// @surface
-    /// @uOffsets
-    /// @vOffsets
-    CM_BUILDER_API virtual int
-        AppendVISASurfAccessStrBufLdStInst(ISA_Opcode                opcode,
-                                           VISA_PredOpnd             *pred,
-                                           Common_VISA_EMask_Ctrl    eMask,
-                                           Common_ISA_Exec_Size      execSize,
-                                           VISAChannelMask           chMask,
-                                           VISA_StateOpndHandle      *surface,
-                                           VISA_RawOpnd              *uOffsets,
-                                           VISA_RawOpnd              *vOffsets,
-                                           VISA_RawOpnd              *dstSrc) = 0;
-
     /// AppendVISASurfAccessScatterScaledInst
     /// --append a (1/2/4) byte gather/scatter instruction to this kernel
     /// @globalOffset

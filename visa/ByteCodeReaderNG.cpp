@@ -1081,33 +1081,6 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
                                                             offsets, dstOrSrc);
         break;
     }
-    case ISA_STRBUFLD_SCALED:
-    case ISA_STRBUFST_SCALED: {
-        Common_VISA_EMask_Ctrl eMask = vISA_EMASK_M1;
-        Common_ISA_Exec_Size exSize = EXEC_SIZE_ILLEGAL;
-        readExecSizeNG(bytePos, buf, exSize, eMask, container);
-
-        VISA_PredOpnd* pred = readPredicateOperandNG(bytePos, buf, container);
-        unsigned channelMask = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-        uint8_t surface = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-        VISA_RawOpnd* uOffsets = readRawOperandNG(bytePos, buf, container);
-        VISA_RawOpnd* vOffsets = readRawOperandNG(bytePos, buf, container);
-        VISA_RawOpnd* dstOrSrc = readRawOperandNG(bytePos, buf, container);
-
-        VISA_StateOpndHandle* surfaceHnd = NULL;
-        kernelBuilderImpl
-            ->CreateVISAStateOperandHandle(surfaceHnd,
-                                           container.surfaceVarDecls[surface]);
-        kernelBuilderImpl
-            ->AppendVISASurfAccessStrBufLdStInst(opcode, pred,
-                                                 eMask, exSize,
-                                                 ChannelMask::createAPIFromBinary(opcode,
-                                                                                  channelMask),
-                                                 surfaceHnd,
-                                                 uOffsets, vOffsets,
-                                                 dstOrSrc);
-        break;
-    }
     case ISA_GATHER_SCALED:
     case ISA_SCATTER_SCALED: {
         Common_VISA_EMask_Ctrl eMask = vISA_EMASK_M1;

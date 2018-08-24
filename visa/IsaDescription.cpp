@@ -155,8 +155,8 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_3D_TYPED_ATOMIC,    ISA_Inst_Data_Port,  "typed_atomic",        9, 1 },
     { ISA_GATHER4_SCALED,     ISA_Inst_Data_Port,  "gather4_scaled",      4, 1 },
     { ISA_SCATTER4_SCALED,    ISA_Inst_Data_Port,  "scatter4_scaled",     5, 0 },
-    { ISA_STRBUFLD_SCALED,    ISA_Inst_Data_Port,  "strbuf_load",         4, 1 },
-    { ISA_STRBUFST_SCALED,    ISA_Inst_Data_Port,  "strbuf_store",        5, 0 },
+    { ISA_RESERVED_76,        ISA_Inst_Reserved,   "reserved76",          0, 0 },
+    { ISA_RESERVED_77,        ISA_Inst_Reserved,   "reserved77",          0, 0 },
     { ISA_GATHER_SCALED,      ISA_Inst_Data_Port,  "gather_scaled",       4, 1 },
     { ISA_SCATTER_SCALED,     ISA_Inst_Data_Port,  "scatter_scaled",      5, 0 },
     { ISA_RAW_SENDS,          ISA_Inst_Misc,       "raw_sends",           0, 0 },
@@ -1517,38 +1517,18 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
        
     },
 
-    /// 118 (0x76)
+    /// 118
+    { ALL, ISA_RESERVED_76, ISA_Inst_Reserved, "reserved_76", 0, 0,
     {
-        ALL, ISA_STRBUFLD_SCALED, ISA_Inst_Data_Port, "strbuf_load", 7, 0,
-        {
-            {OPND_EXECSIZE,           ISA_TYPE_UB, 0},             /// execution size
-            {OPND_PRED,               ISA_TYPE_UW, 0},             /// predicate
-            {OPND_OTHER,              ISA_TYPE_UB, 0},             /// channel mask
-            {OPND_SURFACE,            ISA_TYPE_UB, 0},             /// surface
-            {OPND_RAW,                ISA_TYPE_UD, GRF_ALIGNED},   /// U offsets
-            {OPND_RAW,                ISA_TYPE_UD, GRF_ALIGNED},   /// V offsets
-            {OPND_RAW,                ISA_TYPE_F |
-                                      ISA_TYPE_D |
-                                      ISA_TYPE_UD, GRF_ALIGNED}    /// dst
-        },
-       
     },
 
-    /// 119 (0x77)
+    },
+
+    /// 119
+    { ALL, ISA_RESERVED_77, ISA_Inst_Reserved, "reserved_77", 0, 0,
     {
-        ALL, ISA_STRBUFST_SCALED, ISA_Inst_Data_Port, "strbuf_store", 7, 0,
-        {
-            {OPND_EXECSIZE,           ISA_TYPE_UB, 0},             /// execution size
-            {OPND_PRED,               ISA_TYPE_UW, 0},             /// predicate
-            {OPND_OTHER,              ISA_TYPE_UB, 0},             /// channel mask
-            {OPND_SURFACE,            ISA_TYPE_UB, 0},             /// surface
-            {OPND_RAW,                ISA_TYPE_UD, GRF_ALIGNED},   /// U offsets
-            {OPND_RAW,                ISA_TYPE_UD, GRF_ALIGNED},   /// V offsets
-            {OPND_RAW,                ISA_TYPE_F |
-                                      ISA_TYPE_D |
-                                      ISA_TYPE_UD, GRF_ALIGNED}    /// dst
-        },
-       
+    },
+
     },
 
     /// 120 (0x78)

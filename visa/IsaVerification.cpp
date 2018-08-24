@@ -2773,24 +2773,6 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
         {
             break;
         }
-        case ISA_STRBUFLD_SCALED:
-        case ISA_STRBUFST_SCALED:
-        {
-            ChannelMask chMask = ChannelMask::createFromBinary(opcode,
-                    getPrimitiveOperand<uint8_t>(inst, i++));
-
-            if (ISA_STRBUFST_SCALED == opcode) {
-                 REPORT_INSTRUCTION(options,chMask == ChannelMask::RGBA ||
-                                    chMask == ChannelMask::RGB  ||
-                                    chMask == ChannelMask::RG   ||
-                                    chMask == ChannelMask::R,
-                                    "Incorrect channel mask for STRBUF store instruction.");
-            } else {
-                 REPORT_INSTRUCTION(options,!(chMask == ChannelMask::NOMASK),
-                                    "Incorrect channel mask for STRBUF load instruction.");
-            }
-            break;
-        }
         case ISA_GATHER_SCALED:
         case ISA_SCATTER_SCALED:
         {

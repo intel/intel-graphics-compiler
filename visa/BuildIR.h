@@ -1943,23 +1943,6 @@ public:
                                         G4_SrcRegRegion *offsets,
                                         G4_SrcRegRegion *src);
 
-    int translateVISAStrBufLdScaledInst(G4_Predicate *pred,
-                                        Common_ISA_Exec_Size execSize,
-                                        Common_VISA_EMask_Ctrl eMask,
-                                        ChannelMask chMask,
-                                        G4_Operand *surface,
-                                        G4_SrcRegRegion *uOffsets,
-                                        G4_SrcRegRegion *vOffsets,
-                                        G4_DstRegRegion *dst);
-    int translateVISAStrBufStScaledInst(G4_Predicate *pred,
-                                        Common_ISA_Exec_Size execSize,
-                                        Common_VISA_EMask_Ctrl eMask,
-                                        ChannelMask chMask,
-                                        G4_Operand *surface,
-                                        G4_SrcRegRegion *uOffsets,
-                                        G4_SrcRegRegion *vOffsets,
-                                        G4_SrcRegRegion *src);
-
     int translateVISAGatherScaledInst(G4_Predicate *pred,
                                       Common_ISA_Exec_Size execSize,
                                       Common_VISA_EMask_Ctrl eMask,
