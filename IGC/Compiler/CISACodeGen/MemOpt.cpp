@@ -554,7 +554,17 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
       = dyn_cast<SCEVConstant>(SE->getMinusSCEV(NextPtr, LeadingPtr));
     // Skip load with non-constant distance.
     if (!Offset) {
-      
+      unsigned AS = LeadingLoad->getPointerAddressSpace();
+      // FIXME: So far, for OCL, only apply SymbolicPtr to local memory which
+      // has only 32 (in fact 16) significant bits.
+      // In case the pointer artithmetic is already broken down, as SCEV won't work
+      // always apply SymbolicPtr.
+      if (CGC->type == ShaderType::OPENCL_SHADER) {
+        if ((AS != ADDRESS_SPACE_LOCAL) &&
+           ((AS < ADDRESS_SPACE_NUM_ADDRESSES)))
+          continue;
+      }
+
       SymbolicPointer LeadingSymPtr;
       SymbolicPointer NextSymPtr;
       if (SymbolicPointer::decomposePointer(LeadingLoad->getPointerOperand(),
@@ -878,6 +888,16 @@ bool MemOpt::mergeStore(StoreInst *LeadingStore,
       = dyn_cast<SCEVConstant>(SE->getMinusSCEV(NextPtr, LeadingPtr));
     // Skip load with non-constant distance.
     if (!Offset) {
+      unsigned AS = LeadingStore->getPointerAddressSpace();
+      // FIXME: So far, for OCL, only apply SymbolicPtr to local memory which
+      // has only 32 (in fact 16) significant bits.
+      // In case the pointer artithmetic is already broken down, as SCEV won't work
+      // always apply SymbolicPtr.
+      if (CGC->type == ShaderType::OPENCL_SHADER) {
+        if ((AS != ADDRESS_SPACE_LOCAL) &&
+           ((AS < ADDRESS_SPACE_NUM_ADDRESSES)))
+          continue;
+      }
 
       SymbolicPointer LeadingSymPtr;
       SymbolicPointer NextSymPtr;
@@ -1515,66 +1535,49 @@ SymbolicPointer::decomposePointer(const Value *Ptr, SymbolicPointer &SymPtr,
         continue;
       }
 
-      // In some cases the GEP might have indices that don't directly have a baseoffset
-      // we need to dig deeper to find these
-      std::vector<Value*> terms = {Index};
-      if (BinaryOperator *BOp = dyn_cast<BinaryOperator>(Index))
-      {
-          if (!(dyn_cast<ConstantInt>(BOp->getOperand(1)) && 
-              BOp->getOpcode() == Instruction::Add))
-          {
-              terms.clear();
-              terms.push_back(BOp->getOperand(0));
-              terms.push_back(BOp->getOperand(1));
-          }
+      uint64_t Scale = DL->getTypeAllocSize(GTI.getIndexedType());
+      ExtensionKind Extension = EK_NotExtended;
+
+      // If the integer type is smaller than the pointer size, it is implicitly
+      // sign extended to pointer size.
+      unsigned Width = Index->getType()->getIntegerBitWidth();
+      if (ptrSize > Width)
+        Extension = EK_SignExt;
+
+      // Use getLinearExpression to decompose the index into a C1*V+C2 form.
+      APInt IndexScale(Width, 0), IndexOffset(Width, 0);
+      Index = getLinearExpression(Index, IndexScale, IndexOffset, Extension,
+                                  0U, DL);
+
+      // The GEP index scale ("Scale") scales C1*V+C2, yielding (C1*V+C2)*Scale.
+      // This gives us an aggregate computation of (C1*Scale)*V + C2*Scale.
+      SymPtr.Offset += IndexOffset.getSExtValue() * Scale;
+      Scale *= IndexScale.getSExtValue();
+
+      SymbolicIndex Idx(Index, Extension);
+
+      // If we already had an occurrence of this index variable, merge this
+      // scale into it.  For example, we want to handle:
+      //   A[x][x] -> x*16 + x*4 -> x*20
+      // This also ensures that 'x' only appears in the index list once.
+      for (unsigned i = 0, e = SymPtr.Terms.size(); i != e; ++i) {
+        if (SymPtr.Terms[i].Idx == Idx) {
+          Scale += SymPtr.Terms[i].Scale;
+          SymPtr.Terms.erase(SymPtr.Terms.begin()+i);
+          break;
+        }
       }
 
-      for (auto Ind : terms)
-      {
-          uint64_t Scale = DL->getTypeAllocSize(GTI.getIndexedType());
-          ExtensionKind Extension = EK_NotExtended;
+      // Make sure that we have a scale that makes sense for this target's
+      // pointer size.
+      if (unsigned ShiftBits = 64 - ptrSize) {
+        Scale <<= ShiftBits;
+        Scale = (int64_t)Scale >> ShiftBits;
+      }
 
-          // If the integer type is smaller than the pointer size, it is implicitly
-          // sign extended to pointer size.
-          unsigned Width = Index->getType()->getIntegerBitWidth();
-          if (ptrSize > Width)
-              Extension = EK_SignExt;
-
-          // Use getLinearExpression to decompose the index into a C1*V+C2 form.
-          APInt IndexScale(Width, 0), IndexOffset(Width, 0);
-          Value* new_Ind = getLinearExpression(Ind, IndexScale, IndexOffset, Extension,
-              0U, DL);
-
-          // The GEP index scale ("Scale") scales C1*V+C2, yielding (C1*V+C2)*Scale.
-          // This gives us an aggregate computation of (C1*Scale)*V + C2*Scale.
-          SymPtr.Offset += IndexOffset.getSExtValue() * Scale;
-          Scale *= IndexScale.getSExtValue();
-
-          SymbolicIndex Idx(new_Ind, Extension);
-
-          // If we already had an occurrence of this index variable, merge this
-          // scale into it.  For example, we want to handle:
-          //   A[x][x] -> x*16 + x*4 -> x*20
-          // This also ensures that 'x' only appears in the index list once.
-          for (unsigned i = 0, e = SymPtr.Terms.size(); i != e; ++i) {
-              if (SymPtr.Terms[i].Idx == Idx) {
-                  Scale += SymPtr.Terms[i].Scale;
-                  SymPtr.Terms.erase(SymPtr.Terms.begin() + i);
-                  break;
-              }
-          }
-
-          // Make sure that we have a scale that makes sense for this target's
-          // pointer size.
-          if (unsigned ShiftBits = 64 - ptrSize) {
-              Scale <<= ShiftBits;
-              Scale = (int64_t)Scale >> ShiftBits;
-          }
-
-          if (Scale) {
-              Term Entry = { Idx, int64_t(Scale) };
-              SymPtr.Terms.push_back(Entry);
-          }
+      if (Scale) {
+        Term Entry = {Idx, int64_t(Scale)};
+        SymPtr.Terms.push_back(Entry);
       }
     }
 
