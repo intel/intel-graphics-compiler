@@ -750,12 +750,12 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
         // Creates intrinsics that will be lowered in the CodeGen and will handle the stack-pointer
         Function *stackAllocaFunc = GenISAIntrinsic::getDeclaration(m_currFunction->getParent(), GenISAIntrinsic::GenISA_StackAlloca);
         Instruction *simdLaneId16 = CallInst::Create(simdLaneIdFunc, VALUE_NAME("simdLaneId16"), pEntryPoint);
-        Instruction *simdLaneId = ZExtInst::CreateIntegerCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"), pEntryPoint);
+        Value *simdLaneId = ZExtInst::CreateIntegerCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"), pEntryPoint);
         Instruction *simdSize = CallInst::Create(simdSizeFunc, VALUE_NAME("simdSize"), pEntryPoint);
         for (auto pAI : allocaInsts)
         {
             assert(!pAI->use_empty() && "Should not reach here with alloca instruction that has no usage!");
-
+            bool isUniform = pAI->getMetadata("uniform") != nullptr;
             llvm::IRBuilder<> builder(pAI);
             IF_DEBUG_INFO(builder.SetCurrentDebugLocation(emptyDebugLoc));
 
@@ -764,7 +764,8 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
             unsigned int bufferSize = m_ModAllocaInfo->getBufferSize(pAI);
 
             Value* bufferOffset = builder.CreateMul(simdSize, ConstantInt::get(typeInt32, scalarBufferOffset), VALUE_NAME(pAI->getName() + ".SIMDBufferOffset"));
-            Value* perLaneOffset = builder.CreateMul(simdLaneId, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
+            Value* increment = isUniform ? builder.getInt32(0) : simdLaneId;
+            Value* perLaneOffset = builder.CreateMul(increment, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
             Value* totalOffset = builder.CreateAdd(bufferOffset, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
             Value* stackAlloca = builder.CreateCall(stackAllocaFunc, totalOffset, VALUE_NAME("stackAlloca"));
             Value* privateBuffer = builder.CreatePointerCast(stackAlloca, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
@@ -786,7 +787,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
         // PrivateMemoryUsageAnalysis pass, no need to run AddImplicitArgs pass.
 
         Instruction *simdLaneId16 = CallInst::Create(simdLaneIdFunc, VALUE_NAME("simdLaneId16"), pEntryPoint);
-        Instruction *simdLaneId = ZExtInst::CreateIntegerCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"), pEntryPoint);
+        Value *simdLaneId = ZExtInst::CreateIntegerCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"), pEntryPoint);
         Instruction *simdSize = CallInst::Create(simdSizeFunc, VALUE_NAME("simdSize"), pEntryPoint);
 
         Argument* r0Arg = implicitArgs.getArgInFunc(*m_currFunction, ImplicitArg::R0);
@@ -797,7 +798,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
         for (auto pAI : allocaInsts)
         {
             assert(!pAI->use_empty() && "Should not reach here with alloca instruction that has no usage!");
-
+            bool isUniform = pAI->getMetadata("uniform") != nullptr;
             llvm::IRBuilder<> builder(pAI);
             // Post upgrade to LLVM 3.5.1, it was found that inliner propagates debug info of callee
             // in to the alloca. Further, those allocas are somehow hoisted to the top of program.
@@ -857,7 +858,8 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 
 
             Value* bufferOffset = builder.CreateMul(simdSize, ConstantInt::get(typeInt32, scalarBufferOffset), VALUE_NAME(pAI->getName() + ".SIMDBufferOffset"));
-            Value* perLaneOffset = builder.CreateMul(simdLaneId, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
+            Value* perLaneOffset = isUniform ? builder.getInt32(0) : simdLaneId;
+            perLaneOffset = builder.CreateMul(perLaneOffset, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
             Value* totalOffset = builder.CreateAdd(bufferOffset, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
             Value* threadOffset = builder.CreateAdd(privateBase, totalOffset, VALUE_NAME(pAI->getName() + ".threadOffset"));
             Value* privateBufferPTR = builder.CreateIntToPtr(threadOffset, Type::getInt8Ty(C)->getPointerTo(ADDRESS_SPACE_PRIVATE), VALUE_NAME(pAI->getName() + ".privateBufferPTR"));
@@ -903,7 +905,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
     ConstantInt *totalPrivateMemPerWIValue = ConstantInt::get(typeInt32, totalPrivateMemPerWI);
 
     Instruction *simdLaneId16 = CallInst::Create(simdLaneIdFunc, VALUE_NAME("simdLaneId16"), pEntryPoint);
-    Instruction *simdLaneId = ZExtInst::CreateIntegerCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"), pEntryPoint);
+    Value* simdLaneId = ZExtInst::CreateIntegerCast(simdLaneId16, typeInt32, false, VALUE_NAME("simdLaneId"), pEntryPoint);
     Instruction *simdSize = CallInst::Create(simdSizeFunc, VALUE_NAME("simdSize"), pEntryPoint);
     BinaryOperator* totalPrivateMemPerThread = BinaryOperator::CreateMul(simdSize, totalPrivateMemPerWIValue, VALUE_NAME("totalPrivateMemPerThread"), pEntryPoint);
     ExtractElementInst* r0_5 = ExtractElementInst::Create(r0Arg, ConstantInt::get(typeInt32, 5), VALUE_NAME("r0.5"), pEntryPoint);
@@ -936,14 +938,15 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 
         llvm::IRBuilder<> builder(pAI);
         IF_DEBUG_INFO(builder.SetCurrentDebugLocation(emptyDebugLoc));
-
+        bool isUniform = pAI->getMetadata("uniform") != nullptr;
         // Get buffer information from the analysis
         unsigned int scalarBufferOffset = m_ModAllocaInfo->getBufferOffset(pAI);
         unsigned int bufferSize = m_ModAllocaInfo->getBufferSize(pAI);
 
         Value* bufferOffset = builder.CreateMul(simdSize, ConstantInt::get(typeInt32, scalarBufferOffset), VALUE_NAME(pAI->getName() + ".SIMDBufferOffset"));
         Value* bufferOffsetForThread = builder.CreateAdd(perThreadOffset, bufferOffset, VALUE_NAME(pAI->getName() + ".bufferOffsetForThread"));
-        Value* perLaneOffset = builder.CreateMul(simdLaneId, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
+        Value* perLaneOffset = isUniform ? builder.getInt32(0) : simdLaneId;
+        perLaneOffset = builder.CreateMul(simdLaneId, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
         Value* totalOffset = builder.CreateAdd(bufferOffsetForThread, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
         Value* privateBufferGEP = builder.CreateGEP(privateMemArg, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
         Value* privateBuffer = builder.CreatePointerCast(privateBufferGEP, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));
