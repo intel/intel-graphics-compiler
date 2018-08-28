@@ -69,6 +69,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
+#include "Compiler/CISACodeGen/ComputeShaderLowering.hpp"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
@@ -601,6 +602,9 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
 
     case ShaderType::DOMAIN_SHADER:
         mpm.add(createDomainShaderLoweringPass());
+        break;
+    case ShaderType::COMPUTE_SHADER:
+        mpm.add(CreateComputeShaderLowering());
         break;
     default:
         break;

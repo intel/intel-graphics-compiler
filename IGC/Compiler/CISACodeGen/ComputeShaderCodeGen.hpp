@@ -43,7 +43,7 @@ public:
     void        FillProgram(SComputeShaderKernelProgram* pKernelProgram);
     void        PreCompile();
     void        ExtractGlobalVariables();
-    void        CreateThreadPayloadData(void* & pThreadPayload, uint& threadPayloadSize);
+    void        CreateThreadPayloadData(void* & pThreadPayload, uint& curbeTotalDataLength, uint& curbeReadLength);
     uint        GetNumberOfId();
     void        ParseShaderSpecificOpcode(llvm::Instruction* inst);
 
