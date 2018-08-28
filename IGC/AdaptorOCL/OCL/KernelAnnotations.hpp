@@ -292,6 +292,7 @@ struct ExecutionEnivronment
     bool   CompiledForGreaterThan4GBBuffers           = false;
     DWORD  FixedWorkgroupSize[3];
     DWORD  NumGRFRequired;
+	DWORD  WorkgroupWalkOrder[3] = { 3, 3, 3 };
 };
 
 struct KernelTypeProgramBinaryInfo

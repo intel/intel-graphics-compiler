@@ -1925,6 +1925,11 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.RequiredWorkGroupSizeZ = annotations.m_executionEnivronment.FixedWorkgroupSize[2];
         }
 
+		patch.WorkgroupWalkOrderDims = 0;
+		patch.WorkgroupWalkOrderDims |= annotations.m_executionEnivronment.WorkgroupWalkOrder[0];
+		patch.WorkgroupWalkOrderDims |= annotations.m_executionEnivronment.WorkgroupWalkOrder[1] << 2;
+		patch.WorkgroupWalkOrderDims |= annotations.m_executionEnivronment.WorkgroupWalkOrder[2] << 4;
+
         patch.CompiledSIMD32 = ( annotations.m_executionEnivronment.CompiledSIMDSize == 32 );
         patch.CompiledSIMD16 = ( annotations.m_executionEnivronment.CompiledSIMDSize == 16 );
         patch.CompiledSIMD8  = ( annotations.m_executionEnivronment.CompiledSIMDSize == 8 );

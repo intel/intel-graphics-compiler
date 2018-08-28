@@ -438,6 +438,11 @@ void COpenCLKernel::CreateKernelAttributeInfo()
     {
         m_kernelInfo.m_kernelAttributeInfo += " " + getSubGroupSizeString(subGroupSize);
     }
+	WorkgroupWalkOrderMetaDataHandle workgroupWalkOrder = funcInfoMD->getWorkgroupWalkOrder();
+	if (workgroupWalkOrder->hasValue())
+	{
+		m_kernelInfo.m_kernelAttributeInfo += " " + getWorkgroupWalkOrderString(workgroupWalkOrder);
+	}
     ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
     if (threadGroupSize->hasValue())
     {
@@ -476,6 +481,15 @@ std::string COpenCLKernel::getSubGroupSizeString(SubGroupSizeMetaDataHandle& sub
     subTypeString += utostr(subGroupSize->getSIMD_size());
     subTypeString += ")";
     return subTypeString;
+}
+std::string COpenCLKernel::getWorkgroupWalkOrderString(WorkgroupWalkOrderMetaDataHandle& workgroupWalkOrder)
+{
+	std::string subTypeString = "intel_reqd_workgroup_walk_order(";
+	subTypeString += utostr(workgroupWalkOrder->getDim0()) + ",";
+	subTypeString += utostr(workgroupWalkOrder->getDim1()) + ",";
+	subTypeString += utostr(workgroupWalkOrder->getDim2()) + ",";
+	subTypeString += ")";
+	return subTypeString;
 }
 std::string COpenCLKernel::getVecTypeHintString(VectorTypeHintMetaDataHandle& vecTypeHintInfo)
 {
@@ -1493,6 +1507,7 @@ void COpenCLKernel::FillKernel()
     FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(entry);
     ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
     SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
+	WorkgroupWalkOrderMetaDataHandle workgroupWalkOrder = funcInfoMD->getWorkgroupWalkOrder();
     if(threadGroupSize->hasValue())
     {
         m_kernelInfo.m_executionEnivronment.HasFixedWorkGroupSize = true;
@@ -1504,6 +1519,13 @@ void COpenCLKernel::FillKernel()
     {
         m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = subGroupSize->getSIMD_size();
     }
+
+	if (workgroupWalkOrder->hasValue())
+	{
+		m_kernelInfo.m_executionEnivronment.WorkgroupWalkOrder[0] = workgroupWalkOrder->getDim0();
+		m_kernelInfo.m_executionEnivronment.WorkgroupWalkOrder[1] = workgroupWalkOrder->getDim1();
+		m_kernelInfo.m_executionEnivronment.WorkgroupWalkOrder[2] = workgroupWalkOrder->getDim2();
+	}
  
     auto &FuncMap = m_Context->getModuleMetaData()->FuncMD;
     auto FuncIter = FuncMap.find(entry);

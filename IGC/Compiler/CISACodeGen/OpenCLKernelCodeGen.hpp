@@ -96,6 +96,7 @@ protected:
     std::string getVecTypeHintString(IGC::IGCMD::VectorTypeHintMetaDataHandle& vecTypeHintInfo);
     std::string getThreadGroupSizeString(IGC::IGCMD::ThreadGroupSizeMetaDataHandle& threadGroupSize, bool isHint);
     std::string getSubGroupSizeString(IGC::IGCMD::SubGroupSizeMetaDataHandle& subGroupSize);
+	std::string getWorkgroupWalkOrderString(IGC::IGCMD::WorkgroupWalkOrderMetaDataHandle& workgroupWalkOrder);
     // Create annotation for printf strings.
     void CreatePrintfStringAnnotations();
 

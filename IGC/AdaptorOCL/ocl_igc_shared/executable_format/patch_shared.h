@@ -203,10 +203,11 @@ struct SPatchExecutionEnvironment :
     uint32_t    SubgroupIndependentForwardProgressRequired;
     uint32_t    CompiledForGreaterThan4GBBuffers;
     uint32_t    NumGRFRequired;
+	uint32_t    WorkgroupWalkOrderDims; // dim0 : [0 : 1]; dim1 : [2 : 3]; dim2 : [4 : 5]
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert(sizeof(SPatchExecutionEnvironment) == (80 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
+static_assert(sizeof(SPatchExecutionEnvironment) == (84 + sizeof(SPatchItemHeader)), "The size of SPatchExecutionEnvironment is not what is expected");
 
 /*****************************************************************************\
 STRUCT: SPatchString
