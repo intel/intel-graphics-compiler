@@ -8781,9 +8781,9 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
 
 bool VarSplit::canDoGlobalSplit(IR_Builder& builder, G4_Kernel &kernel, uint32_t instNum, uint32_t spillRefCount, uint32_t sendSpillRefCount)
 {
-    if (builder.getOption(vISA_GlobalSendVarSplit))
+    if (!builder.getOption(vISA_GlobalSendVarSplit))
     {
-        return true;
+        return false;
     }
 
     if (!builder.getOption(vISA_Debug) &&               //Not work in debug mode
