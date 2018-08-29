@@ -2459,52 +2459,12 @@ bool CodeGenPatternMatch::MatchBranch(llvm::BranchInst& I)
     if(!I.isUnconditional())
     {
         Value* cond = I.getCondition();
-        ICmpInst* icmp = dyn_cast<ICmpInst>(cond);
-        bool predMatched = false;
-
         if(GenIntrinsicInst* intrin = dyn_cast<GenIntrinsicInst>(cond,
             GenISAIntrinsic::GenISA_UpdateDiscardMask))
         {
             pattern->isDiscardBranch = true;
         }
-        else if(icmp)
-        {
-            GenIntrinsicInst* intrin = dyn_cast<GenIntrinsicInst>(
-                icmp->getOperand(0), GenISAIntrinsic::GenISA_WaveBallot);
-            ConstantInt* constCmp = dyn_cast<ConstantInt>(icmp->getOperand(1));
-
-            if(intrin && constCmp)
-            {
-                if(icmp->getPredicate() == ICmpInst::ICMP_NE || icmp->getPredicate() == ICmpInst::ICMP_EQ)
-                {
-                    if(constCmp->isZero())
-                    {
-                        pattern->predMode = EPRED_ANY;
-                        pattern->cond = GetSource(intrin->getArgOperand(0), false, false);
-                        if(icmp->getPredicate() == ICmpInst::ICMP_EQ)
-                        {
-                            pattern->cond.mod = EMOD_NOT;
-                        }
-                        predMatched = true;
-                    }
-                    else if(constCmp->isMinusOne())
-                    {
-                        pattern->predMode = EPRED_ALL;
-                        pattern->cond = GetSource(intrin->getArgOperand(0), false, false);
-                        if(icmp->getPredicate() == ICmpInst::ICMP_NE)
-                        {
-                            pattern->cond.mod = EMOD_NOT;
-                        }
-                        predMatched = true;
-                    }
-                }
-            }
-        }
-
-        if(!predMatched)
-        {
-            pattern->cond = GetSource(I.getCondition(), false, false);
-        }
+        pattern->cond = GetSource(I.getCondition(), false, false);
     }
     AddPattern(pattern);
     return true;
@@ -2633,37 +2593,7 @@ bool CodeGenPatternMatch::MatchSelectModifier(llvm::SelectInst& I)
     SelectPattern *pattern = new (m_allocator) SelectPattern();
     pattern->predMode = EPRED_NORMAL;
 
-    /**
-     * Match the IR for blend to fill
-     *   %1 = WaveBallot(i1 %cond)      ; return uniform i32
-     *   %2 = icmp ne i31 %1, i32 0
-     *   %3 = select i1 %2, i32 %x, i32 %y
-     *   ->
-     *   cmp f0.0 ...
-     *   ifany_f0.0 select ...
-     */
-    Value* cond = I.getCondition();
-    ICmpInst* icmp = dyn_cast<ICmpInst>(cond);
-    bool predMatched = false;
-    if (icmp != nullptr && cond->hasOneUse() &&
-        m_WI->whichDepend(cond) == WIAnalysis::UNIFORM &&
-        icmp->getPredicate() == ICmpInst::ICMP_NE)
-    {
-        GenIntrinsicInst* intrin = dyn_cast<GenIntrinsicInst>(
-            icmp->getOperand(0), GenISAIntrinsic::GenISA_WaveBallot);
-        ConstantInt* const0 = dyn_cast<ConstantInt>(icmp->getOperand(1));
-        if (intrin && const0 && const0->getZExtValue() == 0)
-        {
-            pattern->sources[0] = GetSource(intrin->getArgOperand(0), false, false);
-            pattern->predMode = EPRED_ANY;
-            predMatched = true;
-        }
-    }
-
-    if (!predMatched)
-    {
-        pattern->sources[0] = GetSource(I.getCondition(), false, false);
-    }
+    pattern->sources[0] = GetSource(I.getCondition(), false, false);
     pattern->sources[1] = GetSource(I.getTrueValue(), true, false);
     pattern->sources[2] = GetSource(I.getFalseValue(), true, false);
     AddPattern(pattern);
