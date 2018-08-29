@@ -199,14 +199,6 @@ unsigned int LowerGEPForPrivMem::extractAllocaSize(llvm::AllocaInst* pAlloca)
 
 bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
 {
-    auto WI = &getAnalysis<WIAnalysis>();
-    bool isUniformAlloca = WI->whichDepend(pAlloca) == WIAnalysis::UNIFORM;
-    if(isUniformAlloca)
-    {
-        IRBuilder<> builder(pAlloca);
-        MDNode* node = MDNode::get(pAlloca->getContext(), ConstantAsMetadata::get(builder.getInt1(true)));
-        pAlloca->setMetadata("uniform", node);
-    }
     unsigned int allocaSize = extractAllocaSize(pAlloca);
     unsigned int allowedAllocaSizeInBytes = MAX_ALLOCA_PROMOTE_GRF_NUM * 4;
 
@@ -227,6 +219,8 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
     {
         return false;
     }
+    auto WI = &getAnalysis<WIAnalysis>();
+    bool isUniformAlloca = WI->whichDepend(pAlloca) == WIAnalysis::UNIFORM;
     if(isUniformAlloca)
     {
         // Heuristic: for uniform alloca we divide the size by 8 to adjust the pressure
