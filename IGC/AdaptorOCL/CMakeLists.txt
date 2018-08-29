@@ -103,7 +103,6 @@ set(IGC_BUILD__HDR__AdaptorOCL
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/ProcessFuncAttributes.h"
 
     "${CMAKE_CURRENT_SOURCE_DIR}/OCL/KernelAnnotations.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/OCL/RenderScriptEntry.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/OCL/CommandStream/SamplerTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/OCL/CommandStream/SurfaceTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/DriverInfoOCL.hpp"

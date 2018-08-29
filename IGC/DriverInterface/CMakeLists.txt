@@ -59,7 +59,6 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/GTPinInterfaceUtils.hpp"
 
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/KernelAnnotations.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/RenderScriptEntry.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/CommandStream/SamplerTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/CommandStream/SurfaceTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/Patch/patch_parser.h"

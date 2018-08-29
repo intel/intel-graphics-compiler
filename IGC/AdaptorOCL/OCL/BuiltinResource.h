@@ -31,8 +31,5 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define OCL_BC_32                       120
 #define OCL_BC_64                       121
 #define OCL_BC                          122
-#define OCL_BC_RS_COMMON                123
-#define OCL_BC_RS_V1                    124
-#define OCL_BC_RS_V2                    125
 #define OCL_BC_END                      125
 
