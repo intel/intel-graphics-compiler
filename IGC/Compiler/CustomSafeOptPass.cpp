@@ -186,7 +186,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst &I)
         if (GetElementPtrInst *pGEP = llvm::dyn_cast<GetElementPtrInst>(*it))
         {
             ConstantInt *C0 = dyn_cast<ConstantInt>(pGEP->getOperand(1));
-            if (!C0 || !C0->isZero() || pGEP->getNumOperands() != 3)
+            if (!C0 || !C0->isZero())
             {
                 return;
             }
