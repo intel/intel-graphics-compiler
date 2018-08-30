@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/CISABuilder.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/PixelShaderCodeGen.hpp"
+#include "Compiler/CISACodeGen/ComputeShaderCodeGen.hpp"
 #include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 #include "common/allocator.h"
 #include "common/Types.hpp"
