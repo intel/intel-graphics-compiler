@@ -280,21 +280,21 @@ void EstimateFunctionSize::checkSubroutine() {
   else if (pContext->m_instrTypes.hasIndirectCall)
     EnableSubroutine = false;
 
+  // Enable subroutine if function has the "UserSubroutine" attribute
+  if (!EnableSubroutine) {
+    for (Function& F : *M) {
+        if (F.hasFnAttribute("UserSubroutine")) {
+            EnableSubroutine = true;
+            break;
+        }
+    }
+  }
+
   if (EnableSubroutine) {
     std::size_t Threshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
     std::size_t MaxSize = getMaxExpandedSize();
     if (MaxSize <= Threshold && !HasRecursion)
       EnableSubroutine = false;
-  }
-
-  // Enable subroutine if function has the "UserSubroutine" attribute
-  if (!EnableSubroutine) {
-    for (Function& F : *M) {
-      if (F.hasFnAttribute("UserSubroutine")) {
-        EnableSubroutine = true;
-        break;
-      }
-    }
   }
 
   if (EnableSubroutine) {
