@@ -1278,7 +1278,11 @@ bool WIAnalysis::TrackAllocaDep(const Value* I, AllocaDep& dep)
 
 WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const AllocaInst* inst)
 {
-
+    if(getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->platform.getWATable().WaNoA32ByteScatteredStatelessMessages)
+    {
+        // avoid generating A32 byte scatter on platforms not supporting it
+        return WIAnalysis::RANDOM;
+    }
     if(!hasDependency(inst))
     {
         AllocaDep dep;
