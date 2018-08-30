@@ -229,7 +229,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
     CodeGenContext* pCodeGenCtx = m_pCtxWrapper->getCodeGenContext();
 
     // TODO: Fix this for all Shaders once and for all
-    if (pCodeGenCtx->type == ShaderType::VERTEX_SHADER)
+    if (pCodeGenCtx->type == ShaderType::VERTEX_SHADER && pCodeGenCtx->isPOSH())
     {
         if (const GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(&I))
         {
