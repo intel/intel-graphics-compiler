@@ -1337,7 +1337,8 @@ void OptimizeIR(CodeGenContext* pContext)
                 mpm.add(createAlwaysInlinerLegacyPass());
             }
 
-            if (pContext->m_DriverInfo.NeedExtraPassesAfterAlwaysInlinerPass() && pContext->m_instrTypes.hasNonPrimitiveAlloca)
+            if ((pContext->m_DriverInfo.NeedExtraPassesAfterAlwaysInlinerPass() || pContext->m_enableSubroutine)
+                && pContext->m_instrTypes.hasNonPrimitiveAlloca)
             {
                 mpm.add(createSROAPass());
             }
