@@ -388,11 +388,10 @@ static string printOperand(const common_isa_header& isaHeader, const kernel_form
     MUST_BE_TRUE(inst  , "Argument Exception: argument inst   is NULL.");
     MUST_BE_TRUE(inst->opnd_count > i, "No such operand, i, for instruction inst.");
     stringstream sstr;
-    bool showRegion = true;
     switch (getOperandType(inst, i))
     {
         case CISA_OPND_OTHER  : sstr << (getPrimitiveOperand<unsigned>             (inst, i)); break;
-        case CISA_OPND_VECTOR : sstr << printVectorOperand(isaHeader, header, getVectorOperand(inst, i), opt, showRegion); break;
+        case CISA_OPND_VECTOR : sstr << printVectorOperand(isaHeader, header, getVectorOperand(inst, i), opt, true); break;
         case CISA_OPND_RAW    : sstr << printRawOperand   (isaHeader, header, getRawOperand   (inst, i), opt); break;
         default               : MUST_BE_TRUE(false, "Invalid operand type.");
     }
@@ -746,7 +745,6 @@ static string printInstructionCommon(const common_isa_header& isaHeader, const k
             sstr << "." << Rel_op_str[(unsigned)(relOp & 0x7)];
         }
 
-        bool showRegion = true;
 
         if (ISA_Inst_Arith   == ISA_Inst_Table[opcode].type ||
             ISA_Inst_Mov     == ISA_Inst_Table[opcode].type ||
@@ -775,7 +773,7 @@ static string printInstructionCommon(const common_isa_header& isaHeader, const k
 
                 if(curOpnd.getOperandClass() == OPERAND_ADDRESS)
                 {
-                    sstr << printVectorOperand(isaHeader, header, curOpnd, opt, showRegion);
+                    sstr << printVectorOperand(isaHeader, header, curOpnd, opt, true);
                 }
                 else
                 {

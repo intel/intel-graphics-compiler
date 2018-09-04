@@ -454,12 +454,11 @@ VISA_RawOpnd* rawOperandArray[16];
 %type <genOperand> VecSrcOperand_G_IMM
 %type <genOperand> VecSrcOperand_A_G
 %type <genOperand> VecSrcOperand_G_I
-
+%type <genOperand> VecSrcOpndSimple
 %type <genOperand> VecDstOperand_A
 %type <genOperand> VecDstOperand_G
 %type <genOperand> VecDstOperand_G_I
 %type <genOperand> VecDstOperand_G_I_A
-
 %type <genOperand> DstGeneralOperand
 %type <genOperand> DstAddrOperand
 %type <genOperand> DstIndirectOperand
@@ -1493,7 +1492,6 @@ VecDstOperand_G_I_A : DstGeneralOperand
                 | DstAddrOperand
                 { $$ = $1; $$.type = OPERAND_ADDRESS; };
 
-
 /* ------ SRC -----------*/
 VecSrcOperand_G_I_IMM_A : SrcImmOperand
                   { $$ = $1; $$.type = OPERAND_IMMEDIATE; }
@@ -1548,6 +1546,14 @@ VecSrcOperand_G_I : SrcIndirectOperand_1
                   | SrcGeneralOperand_1
                     { $$ = $1; $$.type = OPERAND_GENERAL; }
 
+VecSrcOpndSimple :   VAR TwoDimOffset
+                   {
+                     // Simple Vector operand with no Modifier that has an
+                     // implicit src region = <1,1,0>
+                     TRACE("\n** VecSrcOpndSimple general operand");
+                     $$.type = OPERAND_GENERAL;
+                     $$.cisa_gen_opnd = pCisaBuilder->CISA_create_gen_src_operand($1, 1, 1, 0, $2.row, $2.elem, MODIFIER_NONE, CISAlineno);
+                   };
         
          //   1     2    3     4    5
 VMEOpndIME : '(' NUMBER ',' NUMBER ')'

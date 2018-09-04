@@ -490,7 +490,8 @@ bool hasExecSize(ISA_Opcode op, uint8_t subOp)
 				op == ISA_3D_INFO)
 			{
                 return true;
-            }else
+            }
+            else
                 return false;
         case ISA_Inst_Flow:
             if( op == ISA_SUBROUTINE || op == ISA_LABEL ){

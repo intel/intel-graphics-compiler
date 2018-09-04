@@ -645,6 +645,26 @@ static void verifyRawOperandType(const common_isa_header& isaHeader,
     }
 }
 
+static VISA_Type getRawOperandType(const common_isa_header& isaHeader,
+    const kernel_format_t* header,
+    const CISA_INST* inst,
+    const raw_opnd& opnd)
+{
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
+    uint32_t variable_count = header->variable_count;
+
+    uint32_t opnd_index = opnd.index;
+
+    if (opnd_index < variable_count + numPreDefinedVars &&
+        numPreDefinedVars <= opnd_index)
+    {
+        var_info_t* currVar = &header->variables[opnd_index - numPreDefinedVars];
+        return currVar->getType();
+    }
+    
+    return ISA_TYPE_NUM;
+}
+
 static void verifyRawOperand(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, unsigned i, ERROR_LIST, Options *options)
 {
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
@@ -1410,7 +1430,6 @@ static void verifyInstructionArith(const common_isa_header& isaHeader, const ker
                            src.getOperandClass() == OPERAND_INDIRECT ||
                            src.getOperandClass() == OPERAND_IMMEDIATE,
                            "source in arithmetic instruction must be general, indirect, or immediate");
-
 
         if (srcType == ISA_TYPE_DF)
         {
