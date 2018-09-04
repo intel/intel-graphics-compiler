@@ -419,16 +419,7 @@ void CHullShader::EmitPatchConstantInput(llvm::Instruction* pInst, CVariable* pD
         else
         {
             // attribute is a runtime value, we need to pass it as per-slot offset to URB read
-            if (QuadEltUnit(m_properties.m_pMaxOutputSignatureCount).Count() != 1)
-            {
-                CVariable* pVertexSize = ImmToVariable(QuadEltUnit(m_properties.m_pMaxPatchConstantSignatureDeclarations).Count(), ISA_TYPE_UD);
-                pPerSlotOffsetVar = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF);
-                GetEncoder().Mul(pPerSlotOffsetVar, GetSymbol(pIndirectVertexIdx), pVertexSize);
-            }
-            else
-            {
-                pPerSlotOffsetVar = GetSymbol(pIndirectVertexIdx);
-            }
+            pPerSlotOffsetVar = GetSymbol(pIndirectVertexIdx);
         }
 
         attributeOffset = attributeOffset + GetURBHeaderSize();

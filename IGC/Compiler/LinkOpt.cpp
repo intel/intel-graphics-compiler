@@ -188,10 +188,17 @@ void ShaderIOAnalysis::addDSPatchConstInputDecl(llvm::GenIntrinsicInst* inst)
 
 void ShaderIOAnalysis::addPatchConstOutput(GenIntrinsicInst* inst)
 {
-    Value* index = inst->getOperand(PATCHCONSTOUTPUT_ATTR_ARG);
-    uint imm = getImmValueU32(index);
+    if (isa<ConstantInt>(inst->getOperand(PATCHCONSTOUTPUT_ATTR_ARG)))
+    {
+        Value* index = inst->getOperand(PATCHCONSTOUTPUT_ATTR_ARG);
+        uint imm = getImmValueU32(index);
 
-    getContext()->addHSPatchConstOutput(inst, imm);
+        getContext()->addHSPatchConstOutput(inst, imm);
+    }
+    else
+    {
+        getContext()->m_abortLTO = true;
+    }
 }
 
 void ShaderIOAnalysis::addHSPatchConstInputDecl(llvm::GenIntrinsicInst* inst)
