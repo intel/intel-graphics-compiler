@@ -750,6 +750,14 @@ public:
     /// can patch required immediate offsets at indicated offsets.
     CM_BUILDER_API virtual int GetGenReloc(BasicRelocEntry *&buffer, unsigned int &size) = 0;
 
+    /// SetGTPinInit -- pass igc_init_t struct instance
+    /// VISA decodes this struct and enables options accordingly
+    CM_BUILDER_API virtual int SetGTPinInit(void* buffer) = 0;
+
+    /// GetGTPinBuffer -- returns data buffer for gtpin (eg, free GRF info)
+    /// This requires reRA pass to be executed, otherwise it returs nullptr
+    CM_BUILDER_API virtual int GetGTPinBuffer(void *& buffer, unsigned int& size) = 0;
+
     /// GetFreeGRFInfo -- returns free GRF information for gtpin
     /// This requires reRA pass to be executed, otherwise it returs nullptr
     CM_BUILDER_API virtual int GetFreeGRFInfo(void *& buffer, unsigned int& size) = 0;

@@ -8061,6 +8061,37 @@ int VISAKernelImpl::GetFunctionId(unsigned int& id)
     return CM_SUCCESS;
 }
 
+int VISAKernelImpl::SetGTPinInit(void* buffer)
+{
+    if (buffer)
+    {
+        auto gtpin = m_kernel->getGTPinData();
+        if (gtpin)
+        {
+            gtpin->setGTPinInit(buffer);
+        }
+    }
+
+    return CM_SUCCESS;
+}
+
+int VISAKernelImpl::GetGTPinBuffer(void*& buffer, unsigned int& size)
+{
+    buffer = nullptr;
+    size = 0;
+
+    if (getOptions()->getOption(vISA_GetFreeGRFInfo))
+    {
+        auto gtpin = m_kernel->getGTPinData();
+        if (gtpin)
+        {
+            buffer = gtpin->getGTPinInfoBuffer(size);
+        }
+    }
+
+    return CM_SUCCESS;
+}
+
 int VISAKernelImpl::GetFreeGRFInfo(void*& buffer, unsigned int& size)
 {
     buffer = nullptr;
@@ -8616,7 +8647,7 @@ void VISAKernelImpl::emitAllRelocs(unsigned int numRelocs, BasicRelocEntry* relo
     fclose(fp);
 }
 
-DLL_EXPORT void freeBlock(void* ptr);
+extern "C" void freeBlock(void* ptr);
 
 void VISAKernelImpl::computeAndEmitGenRelocs()
 {
@@ -8647,3 +8678,13 @@ bool VISAKernelImpl::getIntKernelAttributeValue(const char* attrName, int& value
 
     return false;
 }
+
+// buf contains instance of gtpin_init_t
+bool enableSrcLine(void* buf)
+{
+    if (!buf)
+        return false;
+
+    auto gtpin_init_data = (gtpin::igc::igc_init_t*)buf;
+    return gtpin_init_data->srcline_mapping;
+}

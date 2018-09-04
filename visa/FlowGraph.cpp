@@ -5796,6 +5796,49 @@ void G4_Kernel::renameAliasDeclares()
 #endif
 }
 
+void gtPinData::setGTPinInit(void* buffer)
+{
+    MUST_BE_TRUE(sizeof(gtpin::igc::igc_init_t) <= 200, "Check size of igc_init_t");
+    gtpin_init = (gtpin::igc::igc_init_t*)buffer;
+
+    if (gtpin_init->re_ra)
+        kernel.getOptions()->setOption(vISA_ReRAPostSchedule, true);
+    if (gtpin_init->grf_info)
+        kernel.getOptions()->setOption(vISA_GetFreeGRFInfo, true);
+}
+
+void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
+{
+    gtpin::igc::igc_init_t t;
+    t = *gtpin_init;
+
+    void* rerabuffer = nullptr;
+    unsigned int rerasize = 0;
+
+    rerabuffer = getFreeGRFInfo(rerasize);
+
+    gtpin::igc::igc_token_header_t th;
+    th.token = gtpin::igc::GTPIN_IGC_TOKEN::GTPIN_IGC_TOKEN_GRF_INFO;
+    th.token_size = sizeof(gtpin::igc::igc_token_header_t) + rerasize;
+
+    bufferSize = sizeof(gtpin::igc::igc_init_t) + sizeof(uint32_t) + sizeof(gtpin::igc::igc_token_header_t) + rerasize;
+
+    void* gtpinBuffer = allocCodeBlock(bufferSize);
+    unsigned int numTokens = 1;
+
+    std::memcpy(gtpinBuffer, &t, sizeof(gtpin::igc::igc_init_t));
+    std::memcpy((char*)gtpinBuffer + sizeof(gtpin::igc::igc_init_t),
+        &numTokens, sizeof(uint32_t));
+    std::memcpy((char*)gtpinBuffer + sizeof(gtpin::igc::igc_init_t) + sizeof(uint32_t),
+        &th, sizeof(gtpin::igc::igc_token_header_t));
+    std::memcpy((char*)gtpinBuffer + sizeof(gtpin::igc::igc_init_t) + sizeof(uint32_t) + sizeof(gtpin::igc::igc_token_header_t),
+        rerabuffer, rerasize);
+
+    free(rerabuffer);
+
+    return (void*)gtpinBuffer;
+}
+
 void gtPinData::markInsts()
 {
     // Take a snapshot of instructions in kernel.
@@ -5946,4 +5989,4 @@ void FuncInfo::dump() const
         std::cerr << bb->getId() << " ";
     }
     std::cerr << "\n";
-}
+}

@@ -382,6 +382,7 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
     m_kernel->setVersion((unsigned char)this->m_majorVersion, (unsigned char)this->m_minorVersion);
     m_kernel->setPWaTable(m_pWaTable);
     m_kernel->InitializeKernel(kernelName);
+    m_kernel->SetGTPinInit(getGtpinInit());
     this->m_kernel_count++;
 
     if(IS_GEN_BOTH_PATH)

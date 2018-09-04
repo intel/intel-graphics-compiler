@@ -186,7 +186,7 @@ void parse(const char *fileName, std::string testName, int argc, const char *arg
 #endif
 
 #ifdef DLL_MODE
-DLL_EXPORT int JITCompileWithRelocation(const char* kernelName,
+int JITCompileAllOptions(const char* kernelName,
     const void* kernelIsa,
     unsigned int kernelIsaSize,
     void* &genBinary,
@@ -201,16 +201,17 @@ DLL_EXPORT int JITCompileWithRelocation(const char* kernelName,
     const unsigned int numInputRelocEntries,
     const BasicRelocEntry* inputRelocs,
     unsigned int& numOutputRelocs,
-    BasicRelocEntry*& outputRelocs)
+    BasicRelocEntry*& outputRelocs,
+    void* gtpin_init)
 {
     // This function becomes the new entry point even for JITCompile clients.
-    if( kernelName == NULL || kernelIsa == NULL || strlen(kernelName) > COMMON_ISA_MAX_KERNEL_NAME_LEN )
+    if (kernelName == NULL || kernelIsa == NULL || strlen(kernelName) > COMMON_ISA_MAX_KERNEL_NAME_LEN)
     {
         return JIT_INVALID_INPUT;
     }
     // This must be done before processing the options,
     // as some options depend on the platform
-    if( SetPlatform(platform) != 0 )
+    if (SetPlatform(platform) != 0)
     {
         return JIT_INVALID_PLATFORM;
     }
@@ -227,6 +228,7 @@ DLL_EXPORT int JITCompileWithRelocation(const char* kernelName,
 
     CISA_IR_Builder::CreateBuilder(cisa_builder, vISA_MEDIA, builderOption, getGenxPlatform(), numArgs, args, &visaWaTable, true);
     cisa_builder->setupNativeRelocs(numInputRelocEntries, inputRelocs);
+    cisa_builder->setGtpinInit(gtpin_init);
 
     if (!cisa_builder)
     {
@@ -256,15 +258,10 @@ DLL_EXPORT int JITCompileWithRelocation(const char* kernelName,
         kernel->GetGenReloc(outputRelocs, numOutputRelocs);
     }
 
-    // Return free GRF info
-    kernel->GetFreeGRFInfo(tempJitInfo->freeGRFInfo, tempJitInfo->freeGRFInfoSize);
-    if (tempJitInfo->freeGRFInfoSize > 0)
+    if (gtpin_init)
     {
-        // Do this so caller can invoke freeBlock() function to release memory
-        void* buf = allocCodeBlock(tempJitInfo->freeGRFInfoSize);
-        memcpy_s(buf, tempJitInfo->freeGRFInfoSize, tempJitInfo->freeGRFInfo, tempJitInfo->freeGRFInfoSize);
-        free(tempJitInfo->freeGRFInfo);
-        tempJitInfo->freeGRFInfo = buf;
+        // Return free GRF info
+        kernel->GetGTPinBuffer(tempJitInfo->freeGRFInfo, tempJitInfo->freeGRFInfoSize);
     }
 
     if (jitInfo != NULL && tempJitInfo != NULL)
@@ -279,6 +276,28 @@ DLL_EXPORT int JITCompileWithRelocation(const char* kernelName,
 
     CISA_IR_Builder::DestroyBuilder(cisa_builder);
     return JIT_SUCCESS;
+}
+
+DLL_EXPORT int JITCompileWithRelocation(const char* kernelName,
+    const void* kernelIsa,
+    unsigned int kernelIsaSize,
+    void* &genBinary,
+    unsigned int& genBinarySize,
+    const char* platform,
+    int majorVersion,
+    int minorVersion,
+    int numArgs,
+    const char* args[],
+    char* errorMsg,
+    FINALIZER_INFO* jitInfo,
+    const unsigned int numInputRelocEntries,
+    const BasicRelocEntry* inputRelocs,
+    unsigned int& numOutputRelocs,
+    BasicRelocEntry*& outputRelocs)
+{
+    return JITCompileAllOptions(kernelName, kernelIsa, kernelIsaSize, genBinary, genBinarySize,
+        platform, majorVersion, minorVersion, numArgs, args, errorMsg, jitInfo,
+        numInputRelocEntries, inputRelocs, numOutputRelocs, outputRelocs, nullptr);
 }
 
 /**
@@ -303,9 +322,33 @@ DLL_EXPORT int JITCompile(const char* kernelName,
     // implementation of JITCompile.
     BasicRelocEntry* unusedPtr = NULL;
     unsigned int unusedNumOutputRelocs = 0;
-    return JITCompileWithRelocation(kernelName, kernelIsa, kernelIsaSize, genBinary, genBinarySize,
+    return JITCompileAllOptions(kernelName, kernelIsa, kernelIsaSize, genBinary, genBinarySize,
         platform, majorVersion, minorVersion, numArgs, args, errorMsg, jitInfo,
-        0, NULL, unusedNumOutputRelocs, unusedPtr);
+        0, NULL, unusedNumOutputRelocs, unusedPtr, nullptr);
+}
+
+DLL_EXPORT int JITCompile_v2(const char* kernelName,
+    const void* kernelIsa,
+    unsigned int kernelIsaSize,
+    void* &genBinary,
+    unsigned int& genBinarySize,
+    const char* platform,
+    int majorVersion,
+    int minorVersion,
+    int numArgs,
+    const char* args[],
+    char* errorMsg,
+    FINALIZER_INFO* jitInfo,
+    void* gtpin_init)
+{
+    // JITCompile will invoke the other JITCompile API that supports relocation.
+    // Via this path, relocs will be NULL. This way we can share a single
+    // implementation of JITCompile.
+    BasicRelocEntry* unusedPtr = NULL;
+    unsigned int unusedNumOutputRelocs = 0;
+    return JITCompileAllOptions(kernelName, kernelIsa, kernelIsaSize, genBinary, genBinarySize,
+        platform, majorVersion, minorVersion, numArgs, args, errorMsg, jitInfo,
+        0, NULL, unusedNumOutputRelocs, unusedPtr, gtpin_init);
 }
 
 DLL_EXPORT void getJITVersion(unsigned int& majorV, unsigned int& minorV )

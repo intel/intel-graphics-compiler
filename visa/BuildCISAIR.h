@@ -780,6 +780,9 @@ public:
         return nativeRelocs;
     }
 
+    void setGtpinInit(void* buf) { gtpin_init = buf; }
+    void* getGtpinInit() { return gtpin_init; }
+
 
 private:
 
@@ -810,6 +813,8 @@ private:
     PVISA_WA_TABLE m_pWaTable;
 
     NativeRelocs* nativeRelocs;
+
+    void* gtpin_init = nullptr;
 };
 extern _THREAD CISA_IR_Builder * pCisaBuilder;
 #endif

@@ -37,6 +37,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Gen4_IR.hpp"
 
+#include "gtpin_IGC_interface.h"
+
 namespace vISA
 {
 class IR_Builder;
@@ -1122,6 +1124,13 @@ public:
     // last use of the buffer.
     void* getFreeGRFInfo(unsigned int& size);
     
+    void setGTPinInit(void* buffer);
+    
+    gtpin::igc::igc_init_t* getGTPinInit() { return gtpin_init; }
+
+    // return igc_info_t format buffer. caller casts it to igc_info_t.
+    void* getGTPinInfoBuffer(unsigned int &bufferSize);
+
 private:
     G4_Kernel& kernel;
     std::set<G4_INST*> markedInsts;
@@ -1130,6 +1139,8 @@ private:
     // Data is assumed to be sorted in ascending order during insertion.
     // Duplicates are not allowed.
     std::vector<unsigned int> globalFreeRegs;
+
+    gtpin::igc::igc_init_t* gtpin_init = nullptr;
 };
 
 class G4_Kernel
@@ -1144,7 +1155,7 @@ class G4_Kernel
     void dumpDotFileInternal(const char* appendix);
     void dumpPassInternal(const char *appendix);
 
-    gtPinData* gtPinInfo;
+    gtPinData* gtPinInfo = nullptr;
 
     uint32_t asmInstCount;
     uint64_t kernelID;
@@ -1304,7 +1315,13 @@ public:
 
     void use64BitFESP();
 
-    gtPinData* getGTPinData() { return gtPinInfo; }
+    gtPinData* getGTPinData()
+    { 
+        if(!gtPinInfo)
+            allocGTPinData();
+
+        return gtPinInfo;
+    }
 
     void allocGTPinData()
     {

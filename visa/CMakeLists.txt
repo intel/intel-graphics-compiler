@@ -267,6 +267,7 @@ set(GenX_Common_Headers
   Rematerialization.h
   Metadata.h
   RPE.h
+  include/gtpin_IGC_interface.h
 )
 set(GenX_CISA_dis_Common_Headers
   common.h

@@ -657,6 +657,8 @@ public:
     CM_BUILDER_API int GetErrorMessage(const char *&errorMsg);
     CM_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size, void*&, unsigned int&);
     CM_BUILDER_API int GetGenReloc(BasicRelocEntry*& relocs, unsigned int& numRelocs);
+    CM_BUILDER_API int GetGTPinBuffer(void*& buffer, unsigned int& size);
+    CM_BUILDER_API int SetGTPinInit(void* buffer);
     CM_BUILDER_API int GetFreeGRFInfo(void*& buffer, unsigned int& size);
 
     CM_BUILDER_API int GetFunctionId(unsigned int& id);
