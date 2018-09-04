@@ -890,6 +890,7 @@ bool Optimizer::isCopyPropProfitable(G4_INST* movInst) const
 void Optimizer::reRAPostSchedule()
 {
     std::vector<Assignment> assignments;
+    auto finalizerInfo = *builder.getJitInfo();
     auto oldRAType = kernel.getRAType();
     auto gtpin = kernel.getGTPinData();
     computeGlobalFreeGRFs(kernel);
@@ -968,6 +969,8 @@ void Optimizer::reRAPostSchedule()
 
         computeGlobalFreeGRFs(kernel);
     }
+
+    *builder.getJitInfo() = finalizerInfo;
 }
 
 void Optimizer::accSubPostSchedule()
