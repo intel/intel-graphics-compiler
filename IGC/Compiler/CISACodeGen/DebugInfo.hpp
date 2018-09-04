@@ -84,14 +84,13 @@ namespace IGC
     class DebugInfoPass : public llvm::ModulePass
     {
     public:
-        DebugInfoPass(CShaderProgram::KernelShaderMap&, SIMDMode);
+        DebugInfoPass(CShaderProgram::KernelShaderMap&);
 
         virtual ~DebugInfoPass();
 
     private:
         static char ID;
         CShaderProgram::KernelShaderMap& kernels;
-        SIMDMode mode = SIMDMode::UNKNOWN;
         CShader* m_currShader = nullptr;
         IDebugEmitter* m_pDebugEmitter = nullptr;
 

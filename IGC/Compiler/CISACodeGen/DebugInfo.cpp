@@ -33,10 +33,9 @@ using namespace std;
 
 char DebugInfoPass::ID = 0;
 
-DebugInfoPass::DebugInfoPass(CShaderProgram::KernelShaderMap &k, SIMDMode m) :
+DebugInfoPass::DebugInfoPass(CShaderProgram::KernelShaderMap &k) :
     ModulePass(ID),
-    kernels(k),
-    mode(m)
+    kernels(k)
 {
     initializeMetaDataUtilsWrapperPass(*PassRegistry::getPassRegistry());
 }
@@ -57,29 +56,46 @@ bool DebugInfoPass::doFinalization(llvm::Module& M)
 
 bool DebugInfoPass::runOnModule(llvm::Module& M)
 {
-    for (auto& F : M)
+    std::vector<CShader*> units;
+    auto moduleMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
+    auto isCandidate = [](CShaderProgram* shaderProgram, SIMDMode m)
+    {
+        auto currShader = shaderProgram->GetShader(m);
+        if (!currShader || !currShader->diData)
+            return (CShader*)nullptr;
+
+        if (currShader->ProgramOutput()->m_programSize == 0)
+            return (CShader*)nullptr;
+
+        return currShader;
+    };
+
+    for (auto& k : kernels)
+    {
+        auto shaderProgram = k.second;
+        auto simd8 = isCandidate(shaderProgram, SIMDMode::SIMD8);
+        auto simd16 = isCandidate(shaderProgram, SIMDMode::SIMD16);
+        auto simd32 = isCandidate(shaderProgram, SIMDMode::SIMD32);
+
+        if (simd8) units.push_back(simd8);
+        if (simd16) units.push_back(simd16);
+        if (simd32) units.push_back(simd32);
+    }
+
+    for (auto& currShader : units)
     {
         // Look for the right CShaderProgram instance
-        auto it = kernels.find(&F);
-        if (it == kernels.end())
+        m_currShader = currShader;
+
+        MetaDataUtils *pMdUtils = m_currShader->GetMetaDataUtils();
+        if (!isEntryFunc(pMdUtils, m_currShader->entry))
             continue;
-
-        auto shaderProgram = (*it).second;
-        m_currShader = shaderProgram->GetShader(mode);
-
-        if (!m_currShader || !m_currShader->diData)
-            continue;
-
-        auto programSize = m_currShader->ProgramOutput()->m_programSize;
-        if (programSize == 0)
-            continue;
-
-        auto moduleMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
         bool isCloned = false;
         if (DebugInfoData::hasDebugInfo(m_currShader))
         {
-            auto fIT = moduleMD->FuncMD.find(&F);
+            auto fIT = moduleMD->FuncMD.find(m_currShader->entry);
             if (fIT != moduleMD->FuncMD.end() &&
                 (*fIT).second.isCloned)
             {
@@ -124,8 +140,6 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
             auto encoder = &(m_currShader->GetEncoder());
             encoder->DestroyVISABuilder();
         }
-
-        break;
     }
 
     return false;
