@@ -270,6 +270,7 @@ struct ThreadPayload
     bool  UnusedPerThreadConstantPresent;
     bool  HasStageInGridOrigin;
     bool  HasStageInGridSize;
+    uint32_t OffsetToSkipPerThreadDataLoad;
 };
 
 struct ExecutionEnivronment

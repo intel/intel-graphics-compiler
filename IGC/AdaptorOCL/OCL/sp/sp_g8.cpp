@@ -1901,6 +1901,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
         patch.IndirectPayloadStorage = annotations.m_threadPayload.CompiledForIndirectPayloadStorage;
         patch.UnusedPerThreadConstantPresent = annotations.m_threadPayload.UnusedPerThreadConstantPresent;
+        patch.OffsetToSkipPerThreadDataLoad = annotations.m_threadPayload.OffsetToSkipPerThreadDataLoad;
 
         retValue = AddPatchItem(
             patch,

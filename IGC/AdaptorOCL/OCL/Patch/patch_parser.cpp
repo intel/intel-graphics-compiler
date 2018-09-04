@@ -791,6 +791,9 @@ void DebugPatchList(
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tStageInGridSizePresent = %s\n",
                     pPatchItem->StageInGridSizePresent ? "true" : "false");
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tOffsetToSkipPerThreadDataLoad = %d\n",
+                    pPatchItem->OffsetToSkipPerThreadDataLoad);
             }
             break;
 

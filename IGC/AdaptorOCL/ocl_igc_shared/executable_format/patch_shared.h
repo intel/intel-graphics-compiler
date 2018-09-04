@@ -172,10 +172,11 @@ struct SPatchThreadPayload :
     uint32_t    GetGlobalOffsetPresent;
     uint32_t    StageInGridOriginPresent;
     uint32_t    StageInGridSizePresent;
+    uint32_t    OffsetToSkipPerThreadDataLoad;
 };
 
 // Update CURRENT_ICBE_VERSION when modifying the patch list
-static_assert( sizeof( SPatchThreadPayload ) == ( 48 + sizeof( SPatchItemHeader ) ) , "The size of SPatchThreadPayload is not what is expected" );
+static_assert( sizeof( SPatchThreadPayload ) == ( 52 + sizeof( SPatchItemHeader ) ) , "The size of SPatchThreadPayload is not what is expected" );
 
 /*****************************************************************************\
 STRUCT: SPatchExecutionEnvironment

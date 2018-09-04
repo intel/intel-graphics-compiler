@@ -1312,6 +1312,8 @@ void COpenCLKernel::AllocatePayload()
     m_kernelInfo.m_threadPayload.HasStageInGridOrigin = false;
     m_kernelInfo.m_threadPayload.HasStageInGridSize = false;
 
+    m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = 0;
+
     // Set the amount of the private memory used by the kernel
     // Set only if the private memory metadata actually exists and we don't use
     // scratch space for private memory.
