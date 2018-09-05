@@ -4576,20 +4576,74 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst )
 
     PointerType* ptrType = cast<PointerType>( llPtr->getType() );
     ResourceDescriptor resource = GetResourceVariable(llPtr);
-    if ( isA64Ptr( ptrType, m_currShader->GetContext() ) )
+
+    CVariable* src = GetSymbol(llPtr);
+    CVariable* data = GetSymbol(dataPtr);
+    bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
+
+    Type* Ty = dataPtr->getType();
+    VectorType* VTy = dyn_cast< VectorType >(Ty);
+    uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
+
+    uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
+    uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
+
+    // Special case for simd8 char block write, in which the total bytes = 8.
+    // (All the other cases, the total bytes is multiple of 16 (OW).
+    if (totalBytes == 8)
     {
-        CVariable* src  = GetSymbol( llPtr );
-        CVariable* data = GetSymbol( dataPtr );
+        // Use Byte scattered write. If address is aligned at least QW,
+        // we should use QW-aligned QW write!
+        //    ByteScatterred write:  use (blksizeInBits, nblk) = (8, 4) and two lanes
+        //    QW write :             use (blksizeInBits, nblk) = (64, 1) [todo] 
+        bool useQW = false;
+        uint32_t blkBits = useQW ? 64 : 8;
+        uint32_t nBlks = useQW ? 1 : 4;
 
-        Type* Ty            = dataPtr->getType();
-        VectorType* VTy     = dyn_cast< VectorType >( Ty );
-        uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
+        uint16_t activelanes = useQW ? 1 : 2;
+        // lanesToSIMDMode(activelanes);
+        SIMDMode simdmode = useQW ? SIMDMode::SIMD1 : SIMDMode::SIMD2;
 
-        uint32_t typeSizeInBytes = dataPtr->getType()->getScalarSizeInBits() / 8;
-        uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes( m_SimdMode );
+        CVariable* eOffset = src;
+        eOffset = ReAlignUniformVariable(src, EALIGN_GRF);
+        CVariable* ScatterOff = eOffset;
+        if (activelanes > 1)
+        {
+            assert(!useQW && "Only one lane is active when using QW!");
 
+            ScatterOff = m_currShader->GetNewVariable(
+                activelanes, eOffset->GetType(), eOffset->GetAlign(), true);
+
+            CVariable* immVar = m_currShader->ImmToVariable(0x40, ISA_TYPE_UV);
+            if (useA64 && m_currShader->m_Platform->hasNo64BitInst()) {
+                emitAddPairWithImm(ScatterOff, eOffset, immVar);
+            }
+            else {
+                m_encoder->SetNoMask();
+                m_encoder->SetUniformSIMDSize(simdmode);
+                m_encoder->SetSrcRegion(0, 0, 1, 0);
+                m_encoder->Add(ScatterOff, eOffset, immVar);
+                m_encoder->Push();
+            }
+        }
+
+        m_encoder->SetNoMask();
+        m_encoder->SetUniformSIMDSize(simdmode);
+        if (useA64)
+        {
+            m_encoder->ScatterA64(data, ScatterOff, blkBits, nBlks);
+        }
+        else {
+            m_encoder->ByteScatter(data, resource, ScatterOff, blkBits, nBlks);
+        }
+        m_encoder->Push();
+
+        return;
+    }
+
+    if (useA64)
+    {
         uint32_t bytesRemaining = totalBytes;
-
         uint32_t srcOffset   = 0;
         uint32_t bytesToRead = 0;
 
@@ -4659,16 +4713,6 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst )
     }
     else
     {
-        CVariable* src  = GetSymbol( llPtr );
-        CVariable* data = GetSymbol( dataPtr );
-
-        Type* Ty            = dataPtr->getType();
-        VectorType* VTy     = dyn_cast< VectorType >( Ty );
-        uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
-
-        uint32_t typeSizeInBytes = dataPtr->getType()->getScalarSizeInBits() / 8;
-        uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes( m_SimdMode );
-
         uint32_t bytesRemaining = totalBytes;
 
         // Emits instructions generating one or more OWORD block write instructions
@@ -4756,22 +4800,79 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst )
     Value* llPtr          = inst->getOperand( 0 );
     PointerType* ptrType  = cast<PointerType>( llPtr->getType() );
     ResourceDescriptor resource = GetResourceVariable(llPtr);
+    CVariable* src = GetSymbol(llPtr);
 
 	// If it is SLM, use OW-aligned OW address. The byte address (default)
 	// must be right-shifted by 4 bits to be OW address!
 	bool isToSLM = (ptrType->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL);
+    bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
 
-    if(isA64Ptr(ptrType, m_currShader->GetContext()))
+    Type* Ty = inst->getType();
+    VectorType* VTy = dyn_cast< VectorType >(Ty);
+    uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
+
+    uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
+    uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
+
+    // Special case for simd8 char block read, in which the total bytes = 8.
+    // (All the other cases, the total bytes is multiple of 16 (OW).
+    if (totalBytes == 8)
+    {
+        // Use Byte scattered read. If address is aligned at least QW,
+        // we should use QW-aligned QW read!
+        //    Byte Scattered read :  use (blksizeInBits, nblk) = (8, 4) and two lanes
+        //    QW read :              use (blksizeInBits, nblk) = (64, 1) [todo] 
+        bool useQW = false;
+        uint32_t blkBits = useQW ? 64 : 8;
+        uint32_t nBlks = useQW ? 1 : 4;
+        CVariable *gatherDst = m_destination;
+
+        uint16_t activelanes = useQW ? 1 : 2;
+        // lanesToSIMDMode(activelanes);
+        SIMDMode simdmode = useQW ? SIMDMode::SIMD1 : SIMDMode::SIMD2;
+
+        CVariable* eOffset = src;
+        eOffset = ReAlignUniformVariable(src, EALIGN_GRF);
+        CVariable* gatherOff = eOffset;
+        if (activelanes > 1)
+        {
+            assert(!useQW && "Only one lane is active when using QW!");
+
+            gatherOff = m_currShader->GetNewVariable(
+                activelanes, eOffset->GetType(), eOffset->GetAlign(), true);
+
+            CVariable* immVar = m_currShader->ImmToVariable(0x40, ISA_TYPE_UV);
+            if (useA64 && m_currShader->m_Platform->hasNo64BitInst()) {
+                emitAddPairWithImm(gatherOff, eOffset, immVar);
+            }
+            else {
+                m_encoder->SetNoMask();
+                m_encoder->SetUniformSIMDSize(simdmode);
+                m_encoder->SetSrcRegion(0, 0, 1, 0);
+                m_encoder->Add(gatherOff, eOffset, immVar);
+                m_encoder->Push();
+            }
+        }
+
+        m_encoder->SetNoMask();
+        m_encoder->SetUniformSIMDSize(simdmode);
+        if (useA64)
+        {
+            m_encoder->GatherA64(gatherDst, gatherOff, blkBits, nBlks);
+        }
+        else {
+            m_encoder->SetNoMask();
+            m_encoder->SetUniformSIMDSize(simdmode);
+            m_encoder->ByteGather(gatherDst, resource, gatherOff, blkBits, nBlks);
+        }
+        m_encoder->Push();
+
+        return;
+    }
+
+    if (useA64)
     {
 		assert(!isToSLM && "SLM's ptr size should be 32!");
-        CVariable* src        = GetSymbol( llPtr );
-
-        Type* Ty            = inst->getType();
-        VectorType* VTy     = dyn_cast< VectorType >( Ty );
-        uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
-
-        uint32_t typeSizeInBytes = inst->getType()->getScalarSizeInBits() / 8;
-        uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
 
         uint32_t bytesRemaining = totalBytes;
         uint32_t dstSubReg      = 0;
@@ -4839,14 +4940,6 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst )
     }
     else
     {
-        CVariable* src        = GetSymbol( llPtr );
-        Type* Ty            = inst->getType();
-        VectorType* VTy     = dyn_cast< VectorType >( Ty );
-        uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
-
-        uint32_t typeSizeInBytes = inst->getType()->getScalarSizeInBits() / 8;
-        uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
-
         // Emits below instructions generating one or more OWORD block read instructions:
         // mov (1)   r20.0<1>:ud r5.1<0;1,0>:ud {Align1, Q1, NoMask, Compacted}
         // and (1)   r21.5<1>:ud r0.5<0;1,0>:ud 0x3ff:ud {Align1, NoMask}
@@ -12709,7 +12802,7 @@ void EmitPass::emitVectorStore(StoreInst* inst)
                     useQW ? 0x80 : (activelanes == 2 ? 0x40 : (activelanes == 3 ? 0x8840 : 0xC840));
                 CVariable* immVar = m_currShader->ImmToVariable(incImm, ISA_TYPE_UV);
 
-                // When work-around of A64 SKI Si limitation of SIMD4, we use SIMD8 (nbelts > nbeltsWanted)
+                // When work-around of A64 SKL Si limitation of SIMD4, we use SIMD8 (nbelts > nbeltsWanted)
                 // in which all upper four channels are zero, meaning eOffset[0], Later, stored value
                 // must use storvedVar[0] for those extra lanes.
                 if (!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {

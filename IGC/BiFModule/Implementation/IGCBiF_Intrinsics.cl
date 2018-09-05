@@ -498,11 +498,13 @@ ushort    __builtin_IB_simd_block_read_1_global_h( const __global ushort* );
 ushort2   __builtin_IB_simd_block_read_2_global_h( const __global ushort* );
 ushort4   __builtin_IB_simd_block_read_4_global_h( const __global ushort* );
 ushort8   __builtin_IB_simd_block_read_8_global_h( const __global ushort* );
+ushort16  __builtin_IB_simd_block_read_16_global_h( const __global ushort* );
 
 uchar    __builtin_IB_simd_block_read_1_global_b( const __global uchar* );
 uchar2   __builtin_IB_simd_block_read_2_global_b( const __global uchar* );
 uchar4   __builtin_IB_simd_block_read_4_global_b( const __global uchar* );
 uchar8   __builtin_IB_simd_block_read_8_global_b( const __global uchar* );
+uchar16  __builtin_IB_simd_block_read_16_global_b( const __global uchar* );
 
 ulong    __builtin_IB_simd_block_read_1_global_l( const __global ulong* );
 ulong2   __builtin_IB_simd_block_read_2_global_l( const __global ulong* );
@@ -518,16 +520,19 @@ void    __builtin_IB_simd_block_write_1_global_h( __global ushort*, ushort );
 void    __builtin_IB_simd_block_write_2_global_h( __global ushort*, ushort2 );
 void    __builtin_IB_simd_block_write_4_global_h( __global ushort*, ushort4 );
 void    __builtin_IB_simd_block_write_8_global_h( __global ushort*, ushort8 );
+void    __builtin_IB_simd_block_write_16_global_h( __global ushort*, ushort16 );
+
+void    __builtin_IB_simd_block_write_1_global_b( __global uchar*, uchar );
+void    __builtin_IB_simd_block_write_2_global_b( __global uchar*, uchar2 );
+void    __builtin_IB_simd_block_write_4_global_b( __global uchar*, uchar4 );
+void    __builtin_IB_simd_block_write_8_global_b( __global uchar*, uchar8 );
+void    __builtin_IB_simd_block_write_16_global_b( __global uchar*, uchar16 );
 
 void    __builtin_IB_simd_block_write_1_global_l( __global ulong*, ulong );
 void    __builtin_IB_simd_block_write_2_global_l( __global ulong*, ulong2 );
 void    __builtin_IB_simd_block_write_4_global_l( __global ulong*, ulong4 );
 void    __builtin_IB_simd_block_write_8_global_l( __global ulong*, ulong8 );
 
-void    __builtin_IB_simd_block_write_1_global_b( __global uchar*, uchar );
-void    __builtin_IB_simd_block_write_2_global_b( __global uchar*, uchar2 );
-void    __builtin_IB_simd_block_write_4_global_b( __global uchar*, uchar4 );
-void    __builtin_IB_simd_block_write_8_global_b( __global uchar*, uchar8 );
 
 uint    __builtin_IB_simd_media_block_read_1( int, int2 );
 uint2   __builtin_IB_simd_media_block_read_2( int, int2 );
