@@ -1251,6 +1251,8 @@ Instruction *ConstantCoalescing::FindOrAddChunkExtract( BufChunk *cov_chunk, uin
         if( val == eltid - cov_chunk->chunkStart )
         {
             splitter = usei;
+            // move the extract element to make sure it dominates the new use
+            usei->moveBefore(cov_chunk->chunkIO->getNextNode());
             break;
         }
     }
