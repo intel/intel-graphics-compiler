@@ -654,7 +654,6 @@ DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_us,  ushort,  
 DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_us2, ushort2, ushort, i16, __builtin_IB_simd_block_read_2_global_h)
 DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_us4, ushort4, ushort, i16, __builtin_IB_simd_block_read_4_global_h)
 DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_us8, ushort8, ushort, i16, __builtin_IB_simd_block_read_8_global_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_READ_GLOBAL(intel_sub_group_block_read_us16, ushort16, ushort, i16, __builtin_IB_simd_block_read_16_global_h)
 
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_us,  ushort,  i16,   __builtin_IB_simd_media_block_write_1_h)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_IMAGE_WO(intel_sub_group_block_write_us2, ushort2, v2i16, __builtin_IB_simd_media_block_write_2_h)
@@ -670,7 +669,6 @@ DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us,  ushort,
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us2, ushort2, ushort, i16, v2i16, __builtin_IB_simd_block_write_2_global_h)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us4, ushort4, ushort, i16, v4i16, __builtin_IB_simd_block_write_4_global_h)
 DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us8, ushort8, ushort, i16, v8i16, __builtin_IB_simd_block_write_8_global_h)
-DEFN_INTEL_SUB_GROUP_BLOCK_WRITE_GLOBAL(intel_sub_group_block_write_us16, ushort16, ushort, i16, v8i16, __builtin_IB_simd_block_write_16_global_h)
 
 #ifdef cl_intel_subgroups_char
 DEFN_INTEL_SUB_GROUP_BLOCK_READ_IMAGE(intel_sub_group_block_read_uc,   uchar,  __builtin_IB_simd_media_block_read_1_b)
