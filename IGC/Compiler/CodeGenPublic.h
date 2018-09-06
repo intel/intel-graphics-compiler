@@ -750,7 +750,7 @@ namespace IGC
         //For storing error message
         std::string oclErrorMessage;
 
-        char *m_ConstantBufferReplaceShaderPatterns = nullptr;
+        void *m_ConstantBufferReplaceShaderPatterns = nullptr;
         uint m_ConstantBufferReplaceShaderPatternsSize = 0;
         uint m_ConstantBufferUsageMask = 0;
         uint m_ConstantBufferReplaceSize = 0;

@@ -424,7 +424,7 @@ bool GenUpdateCB::runOnFunction(Function &F)
             llvm::WriteBitcodeToFile(m_ConstantBufferReplaceShaderPatterns, bitcodeSS);
 
             size_t bufferSize = bitcodeSS.str().size();
-            char * CBPatterns = new char[bufferSize];
+            void* CBPatterns = aligned_malloc(bufferSize, 16);
 
             iSTD::MemCopy(
                 CBPatterns,
