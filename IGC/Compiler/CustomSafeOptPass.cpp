@@ -186,7 +186,7 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst &I)
         if (GetElementPtrInst *pGEP = llvm::dyn_cast<GetElementPtrInst>(*it))
         {
             ConstantInt *C0 = dyn_cast<ConstantInt>(pGEP->getOperand(1));
-            if (!C0 || !C0->isZero())
+            if (!C0 || !C0->isZero() || pGEP->getNumOperands() != 3)
             {
                 return;
             }
@@ -653,7 +653,11 @@ void CustomSafeOptPass::visitBinaryOperator(BinaryOperator &I)
     //        to
     //    a = b + c
     //    d = a + 8
-
+    
+    CodeGenContext* pContext = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    // WA for remaining bug in custom pass
+    if(pContext->m_DriverInfo.WADisableCustomPass())
+        return;
     if (I.getType()->isIntegerTy())
     {
         if ((I.getOpcode() == Instruction::Add || isEmulatedAdd(I)) &&

@@ -1132,9 +1132,9 @@ void OptimizeIR(CodeGenContext* pContext)
         mpm.add(new BreakConstantExpr());
         mpm.add(new IGCConstProp(!pContext->m_DriverInfo.SupportsPreciseMath()));
 
+        mpm.add(new CustomSafeOptPass());
         if(!pContext->m_DriverInfo.WADisableCustomPass())
         {
-            mpm.add(new CustomSafeOptPass());
             mpm.add(new CustomUnsafeOptPass());
         }
 
@@ -1290,9 +1290,9 @@ void OptimizeIR(CodeGenContext* pContext)
                 mpm.add(CreateEarlyOutPatternsPass());
                 mpm.add(createBlendToDiscardPass());
             }
+            mpm.add(new CustomSafeOptPass());
             if (!pContext->m_DriverInfo.WADisableCustomPass())
             {
-                mpm.add(new CustomSafeOptPass());
                 mpm.add(new CustomUnsafeOptPass());
             }
         }
