@@ -7593,7 +7593,7 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
             // TODO: clean up when we get generic coalescing
             assert((vector == m_destination->GetAlias() ||
                     vector->GetAlias() == m_destination->GetAlias()) &&
-                   m_destination->GetAliasOffset() == offset);
+                   m_destination->GetAliasOffset() == (offset + vector->GetAliasOffset()));
         }
         else
         {
