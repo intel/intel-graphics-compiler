@@ -637,14 +637,7 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
   }
 
   if (NumElts != MaxElts || s < 2)
-      return false;
-
-  // In some cases is not profitable to merge loads if less than half of the vector is being
-  // used. In some cases you could have big offset, meaning there are many holes
-  // and wasted space in your vector. This is a conservative heuristic that checks size of
-  // the vector and the number of loads to determine if we want to merge or not.
-  if ((NumElts / 2) > s)
-      return false;
+    return false;
 
   // Sort loads based on their offsets to the leading load and resize them to
   // be merged to the profitable length.
