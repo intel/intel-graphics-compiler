@@ -1128,6 +1128,7 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         {
             m_builder->getFCPatchInfo()->setFCComposableKernel(true);
         }
+        m_options->setOption(vISA_loadThreadPayload, false);
     }
     else if (strcmp(attrName, "Entry") == 0)
     {
