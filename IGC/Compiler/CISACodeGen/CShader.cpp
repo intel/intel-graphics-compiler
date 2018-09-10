@@ -2204,6 +2204,38 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
         return it->second;
     }
 
+    if (IGC_IS_FLAG_ENABLED(EnableVariableAlias))
+    {
+        if (m_VRA->m_ValueAliasMap.count(value))
+        {
+            // Generate alias
+            SSubVector& SV = m_VRA->m_ValueAliasMap[value];
+            Value* BaseVec = SV.BaseVector;
+            int startIx = SV.StartElementOffset;
+
+            CVariable *Base = GetSymbol(BaseVec);
+
+            Type *Ty = value->getType();
+            VectorType* VTy = dyn_cast<VectorType>(Ty);
+            Type *BTy = VTy ? VTy->getElementType() : Ty;
+            int nelts = (VTy ? (int)VTy->getNumElements() : 1);
+
+            VISA_Type visaTy = GetType(BTy);
+            int typeBytes = (int)CEncoder::GetCISADataTypeSize(visaTy);
+            int offsetInBytes = typeBytes * startIx;
+            int nbelts = nelts;
+            if (!Base->IsUniform())
+            {
+                int width = (int)numLanes(m_SIMDSize);
+                offsetInBytes *= width;
+                nbelts *= width;
+            }
+            CVariable* AliasVar = GetNewAlias(Base, visaTy, offsetInBytes, nbelts);
+            symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, AliasVar));
+            return AliasVar;
+        }
+    }
+
     if (!isa<InsertElementInst>(value) && value->hasOneUse()) {
         auto IEI = dyn_cast<InsertElementInst>(value->user_back());
         if (IEI && CanTreatScalarSourceAsAlias(IEI)) {
@@ -2322,38 +2354,6 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
             return newVar;
         }
     }
-
-	if (IGC_IS_FLAG_ENABLED(EnableVariableAlias))
-	{
-		if (m_VRA->m_ValueAliasMap.count(value))
-		{
-			// Generate alias
-			SSubVector& SV = m_VRA->m_ValueAliasMap[value];
-			Value* BaseVec = SV.BaseVector;
-			int startIx = SV.StartElementOffset;
-
-			CVariable *Base = GetSymbol(BaseVec);
-
-			Type *Ty = value->getType();
-			VectorType* VTy = dyn_cast<VectorType>(Ty);
-            Type *BTy = VTy ? VTy->getElementType() : Ty;
-			int nelts = (VTy ? (int)VTy->getNumElements() : 1);
-
-            VISA_Type visaTy = GetType(BTy);
-			int typeBytes = (int)CEncoder::GetCISADataTypeSize(visaTy);
-			int offsetInBytes = typeBytes * startIx;
-            int nbelts = nelts;
-			if (!Base->IsUniform())
-			{
-                int width = (int)numLanes(m_SIMDSize);
-				offsetInBytes *= width;
-                nbelts *= width;
-			}
-			CVariable* AliasVar = GetNewAlias(Base, visaTy, offsetInBytes, nbelts);
-			symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, AliasVar));
-			return AliasVar;
-		}
-	}
 
     // If we use a value which is not marked has needed by the pattern matching something went wrong
     assert(!isa<Instruction>(value) || isa<PHINode>(value) || m_CG->NeedInstruction(cast<Instruction>(*value)));
