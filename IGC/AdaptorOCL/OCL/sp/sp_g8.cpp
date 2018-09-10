@@ -1085,8 +1085,7 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
             ifdd.DW5.Gen8.ConstantURBEntryReadLength = 0;
 
             ifdd.DW7.Gen8.CrossThreadConstantDataReadLength = 
-                annotations.m_kernelProgram.ConstantBufferLength +
-                annotations.m_kernelProgram.NOSBufferSize;
+                annotations.m_kernelProgram.ConstantBufferLength;
 
             if( membuf.Write( ifdd ) == false )
             {

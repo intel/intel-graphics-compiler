@@ -1356,8 +1356,8 @@ void COpenCLKernel::AllocatePayload()
 			                arg.getArg()->use_empty());
 
         if (!constantBufferStartSet && arg.isConstantBuf()) {
-            AllocateNOSConstants(offset);
             constantBufferStart = offset;
+            AllocateNOSConstants(offset);
             constantBufferStartSet = true;
         }
 
