@@ -2027,10 +2027,10 @@ void DwarfDebug::gatherDISubprogramNodes()
         {
             for (auto& inst : bb)
             {
-                if (inst.getDebugLoc())
+                auto debugLoc = inst.getDebugLoc();
+                while (debugLoc)
                 {
-                    auto scope = inst.getDebugLoc().getScope();
-
+                    auto scope = debugLoc.getScope();
                     if (scope &&
                         dyn_cast_or_null<llvm::DISubprogram>(scope))
                     {
@@ -2039,13 +2039,10 @@ void DwarfDebug::gatherDISubprogramNodes()
                         DISPToFunction.insert(std::make_pair(DISP, &F));
                     }
 
-                    auto iat = inst.getDebugLoc().getInlinedAtScope();
-                    if (iat &&
-                        dyn_cast_or_null<llvm::DISubprogram>(iat))
-                    {
-                        addUniqueDISP(dyn_cast_or_null<llvm::DISubprogram>(iat));
-                    }
-
+                    if (debugLoc.getInlinedAt())
+                        debugLoc = debugLoc.getInlinedAt();
+                    else
+                        debugLoc = nullptr;
                 }
             }
         }
