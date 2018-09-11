@@ -681,9 +681,12 @@ namespace IGC
         LLVMContextWrapper& operator =(LLVMContextWrapper&) = delete;
 
     public:
-        LLVMContextWrapper() 
+        LLVMContextWrapper(bool createResourceDimTypes = true) 
         {
-            CreateResourceDimensionTypes(*this);
+            if (createResourceDimTypes)
+            {
+                CreateResourceDimensionTypes(*this);
+            }
         }
         /// ref count the LLVMContext as now CodeGenContext owns it
         unsigned int refCount = 0;
@@ -774,12 +777,13 @@ namespace IGC
             const CBTILayout&   _bitLayout, ///< binding table layout to be used in code gen
             const CPlatform&    _platform,  ///< IGC HW platform description
             const CDriverInfo&  driverInfo, ///< Queries to know runtime features support
-            LLVMContextWrapper* LLVMContext = nullptr) ///< LLVM context to use, if null a new one will be created
+            const bool          createResourceDimTypes = true,
+            LLVMContextWrapper* LLVMContext = nullptr)///< LLVM context to use, if null a new one will be created           
             : type(_type), platform(_platform), btiLayout(_bitLayout), m_DriverInfo(driverInfo), llvmCtxWrapper(LLVMContext)
         {
             if (llvmCtxWrapper == nullptr)
             {
-                initLLVMContextWrapper();
+                initLLVMContextWrapper(createResourceDimTypes);
             }
             else
             {
@@ -794,9 +798,9 @@ namespace IGC
         CodeGenContext(CodeGenContext&) = delete;
         CodeGenContext& operator =(CodeGenContext&) = delete;
 
-        void initLLVMContextWrapper()
+        void initLLVMContextWrapper(bool createResourceDimTypes = true)
         {
-            llvmCtxWrapper = new LLVMContextWrapper();
+            llvmCtxWrapper = new LLVMContextWrapper(createResourceDimTypes);
             llvmCtxWrapper->AddRef();
         }
 
@@ -927,8 +931,9 @@ namespace IGC
             const CBTILayout&   btiLayout, ///< binding table layout to be used in code gen
             const CPlatform&    platform,  ///< IGC HW platform description
             const CDriverInfo&  driverInfo,
+            const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
-            : CodeGenContext(ShaderType::VERTEX_SHADER, btiLayout, platform, driverInfo, llvmCtxWrapper)
+            : CodeGenContext(ShaderType::VERTEX_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
         {
             memset(&programOutput, 0, sizeof(SVertexShaderKernelProgram));
         }
@@ -944,8 +949,9 @@ namespace IGC
             const CBTILayout&   btiLayout, ///< binding table layout to be used in code gen
             const CPlatform&    platform,  ///< IGC HW platform description
             const CDriverInfo&  driverInfo,
+            const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
-            : CodeGenContext(ShaderType::PIXEL_SHADER, btiLayout, platform, driverInfo, llvmCtxWrapper)
+            : CodeGenContext(ShaderType::PIXEL_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
         {
             memset(&programOutput, 0, sizeof(SPixelShaderKernelProgram));
         }
@@ -960,8 +966,9 @@ namespace IGC
             const CBTILayout&   btiLayout, ///< binding table layout to be used in code gen
             const CPlatform&    platform,  ///< IGC HW platform description
             const CDriverInfo&  driverInfo,
+            const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
-            : CodeGenContext(ShaderType::GEOMETRY_SHADER, btiLayout, platform, driverInfo, llvmCtxWrapper)
+            : CodeGenContext(ShaderType::GEOMETRY_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
         {
             memset(&programOutput, 0, sizeof(SGeometryShaderKernelProgram));
         }
@@ -998,8 +1005,9 @@ namespace IGC
             const CBTILayout&   btiLayout, ///< binding table layout to be used in code gen
             const CPlatform&    platform,  ///< IGC HW platform description
             const CDriverInfo&  driverInfo,
+            const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
-            : CodeGenContext(ShaderType::COMPUTE_SHADER, btiLayout, platform, driverInfo, llvmCtxWrapper)
+            : CodeGenContext(ShaderType::COMPUTE_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
         {
             memset(&programOutput, 0, sizeof(SComputeShaderKernelProgram));
             isSecondCompile = false;
@@ -1104,8 +1112,9 @@ namespace IGC
             const CBTILayout&   btiLayout, ///< binding table layout to be used in code gen
             const CPlatform&    platform,  ///< IGC HW platform description
             const CDriverInfo&  driverInfo,
+            const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
-            : CodeGenContext(ShaderType::HULL_SHADER, btiLayout, platform, driverInfo, llvmCtxWrapper)
+            : CodeGenContext(ShaderType::HULL_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
         {
             memset(&programOutput, 0, sizeof(SHullShaderKernelProgram));
         }
@@ -1120,8 +1129,9 @@ namespace IGC
             const CBTILayout&   btiLayout, ///< binding table layout to be used in code gen
             const CPlatform&    platform,  ///< IGC HW platform description
             const CDriverInfo&  driverInfo,
+            const bool          createResourceDimTypes = true,
             LLVMContextWrapper* llvmCtxWrapper = nullptr) ///< LLVM context to use, if null a new one will be created
-            : CodeGenContext(ShaderType::DOMAIN_SHADER, btiLayout, platform, driverInfo, llvmCtxWrapper)
+            : CodeGenContext(ShaderType::DOMAIN_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmCtxWrapper)
         {
             memset(&programOutput, 0, sizeof(SDomainShaderKernelProgram));
         }
@@ -1260,10 +1270,11 @@ namespace IGC
 			const COCLBTILayout& btiLayout,
 			const CPlatform& platform,
 			const TC::STB_TranslateInputArgs* pInputArgs,
-            const CDriverInfo& driverInfo,
+            const CDriverInfo& driverInfo,           
             LLVMContextWrapper* llvmContext = nullptr,
-            bool shouldUseNonCoherentStatelessBTI = false)
-            : CodeGenContext(ShaderType::OPENCL_SHADER, btiLayout, platform, driverInfo, llvmContext),
+            bool shouldUseNonCoherentStatelessBTI = false,
+            const bool createResourceDimTypes = true)
+            : CodeGenContext(ShaderType::OPENCL_SHADER, btiLayout, platform, driverInfo, createResourceDimTypes, llvmContext),
             m_programOutput(platform.getPlatformInfo(), *this),
             m_InternalOptions(pInputArgs),
             m_Options(pInputArgs),

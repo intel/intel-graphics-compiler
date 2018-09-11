@@ -54,7 +54,7 @@ namespace IGC
     {
         for (unsigned int resourceDimTypeId = 0; resourceDimTypeId < (unsigned int)RESOURCE_DIMENSION_TYPE::NUM_RESOURCE_DIMENSION_TYPES; resourceDimTypeId++)
         {
-            llvm::StructType::create(llvm::Type::getInt8Ty(llvmCtx), ResourceDimensionTypeName[(RESOURCE_DIMENSION_TYPE)resourceDimTypeId]);
+            llvm::StructType::create(llvmCtx, ResourceDimensionTypeName[(RESOURCE_DIMENSION_TYPE)resourceDimTypeId]);
         }
     }
 
