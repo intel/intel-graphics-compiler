@@ -51,7 +51,7 @@ DEFINE_GED_SOURCE_ACCESSORS_01(uint32_t, Width)
 DEFINE_GED_SOURCE_ACCESSORS_012(GED_DATA_TYPE, DataType)
 DEFINE_GED_SOURCE_ACCESSORS_012(uint32_t, RegNum)
 DEFINE_GED_SOURCE_ACCESSORS_012(uint32_t, SubRegNum)
-DEFINE_GED_SOURCE_ACCESSORS_012(GED_SPECIAL_ACC, SpecialAcc)
+DEFINE_GED_SOURCE_ACCESSORS_012(GED_MATH_MACRO_EXT, MathMacroExt)
 DEFINE_GED_SOURCE_ACCESSORS_012(uint32_t, VertStride)
 DEFINE_GED_SOURCE_ACCESSORS_012(uint32_t, ChanSel)
 DEFINE_GED_SOURCE_ACCESSORS_012(GED_REP_CTRL, RepCtrl)
@@ -538,7 +538,7 @@ void DecoderBase::decodeBasicDestinationAlign1(Instruction *inst) {
 
         DirRegOpInfo dri = decodeDstDirRegInfo();
         if (inst->isMacro()) {
-            GED_DECODE(MathMacroExt, GED_SPECIAL_ACC, mme, DstSpecialAcc);
+            GED_DECODE(MathMacroExt, GED_MATH_MACRO_EXT, mme, DstMathMacroExt);
             inst->setMacroDestination(
                 dstMod, dri.regName, dri.regRef, mme, rgnHzDec, type);
         } else {
@@ -860,7 +860,7 @@ void DecoderBase::decodeTernaryDestinationAlign1(Instruction *inst)
     DirRegOpInfo dri = decodeDstDirRegInfo();
 
     if (inst->isMacro()) {
-        GED_DECODE(MathMacroExt, GED_SPECIAL_ACC, mme, DstSpecialAcc);
+        GED_DECODE(MathMacroExt, GED_MATH_MACRO_EXT, mme, DstMathMacroExt);
         inst->setMacroDestination(
             dstMod, dri.regName, dri.regRef, mme, Region::Horz::HZ_1, dri.type);
     } else {

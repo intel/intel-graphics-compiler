@@ -256,6 +256,19 @@ const char* MathFCEnumeration[15] =
     "RSQRTM", // 13
     NULL // 14
 }; // MathFCEnumeration[]
+const char* MathMacroExtEnumeration[10] =
+{
+    "mme0", // 0
+    "mme1", // 1
+    "mme2", // 2
+    "mme3", // 3
+    "mme4", // 4
+    "mme5", // 5
+    "mme6", // 6
+    "mme7", // 7
+    "nomme", // 8
+    NULL // 9
+}; // MathMacroExtEnumeration[]
 const char* MessageTypeEnumeration[64] =
 {
     "MSD0R_HWB", // 0
@@ -598,19 +611,6 @@ const char* SlotGroupEnumeration[4] =
     "high_8", // 2
     NULL // 3
 }; // SlotGroupEnumeration[]
-const char* SpecialAccEnumeration[10] =
-{
-    "acc2", // 0
-    "acc3", // 1
-    "acc4", // 2
-    "acc5", // 3
-    "acc6", // 4
-    "acc7", // 5
-    "acc8", // 6
-    "acc9", // 7
-    "noacc", // 8
-    NULL // 9
-}; // SpecialAccEnumeration[]
 const char* SrcModEnumeration[5] =
 {
     "", // 0

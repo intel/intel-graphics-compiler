@@ -51,9 +51,9 @@ extern OpcodeTables Opcodes[128];
 
 /*!
  * Get the top level disassembly table for the given instruction.
- * 
+ *
  * @param[in]       opcode The instruction's opcode.
- * 
+ *
  * @return      The requested disassembly table if the instruction is supported, NULL otherwise.
  */
 extern const ged_disassembly_table_t GetDisassemblyTable(/* GED_OPCODE */ uint32_t opcode);

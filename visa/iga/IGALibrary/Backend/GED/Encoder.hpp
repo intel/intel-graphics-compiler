@@ -354,11 +354,11 @@ namespace iga
     void EncoderBase::encodeSrcMathMacroReg(MathMacroExt a)
     {
         if (S == SourceIndex::SRC0) {
-            GED_ENCODE(Src0SpecialAcc, IGAToGEDTranslation::lowerSpecialAcc(a));
+            GED_ENCODE(Src0MathMacroExt, IGAToGEDTranslation::lowerSpecialAcc(a));
         } else if (S == SourceIndex::SRC1) {
-            GED_ENCODE(Src1SpecialAcc, IGAToGEDTranslation::lowerSpecialAcc(a));
+            GED_ENCODE(Src1MathMacroExt, IGAToGEDTranslation::lowerSpecialAcc(a));
         } else {
-            GED_ENCODE(Src2SpecialAcc, IGAToGEDTranslation::lowerSpecialAcc(a));
+            GED_ENCODE(Src2MathMacroExt, IGAToGEDTranslation::lowerSpecialAcc(a));
         }
     }
     template <SourceIndex S> void EncoderBase::encodeSrcReg(

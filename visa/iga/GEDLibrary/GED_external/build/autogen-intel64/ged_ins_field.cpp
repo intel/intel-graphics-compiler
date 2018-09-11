@@ -226,10 +226,10 @@ const char** stringGettersByField[102] =
     NULL, // 83
     NULL, // 84
     RegFileEnumerationDisassembly, // 85
-    SpecialAccEnumeration, // 86
-    SpecialAccEnumeration, // 87
-    SpecialAccEnumeration, // 88
-    SpecialAccEnumeration, // 89
+    MathMacroExtEnumeration, // 86
+    MathMacroExtEnumeration, // 87
+    MathMacroExtEnumeration, // 88
+    MathMacroExtEnumeration, // 89
     BranchCtrlEnumerationDisassembly, // 90
     NULL, // 91
     DataTypeEnumeration, // 92
@@ -331,10 +331,10 @@ const char* fieldNameByField[102] =
     "Src1Index", // 83
     "DescIndex", // 84
     "ExDescRegFile", // 85
-    "DstSpecialAcc", // 86
-    "Src0SpecialAcc", // 87
-    "Src1SpecialAcc", // 88
-    "Src2SpecialAcc", // 89
+    "DstMathMacroExt", // 86
+    "Src0MathMacroExt", // 87
+    "Src1MathMacroExt", // 88
+    "Src2MathMacroExt", // 89
     "BranchCtrl", // 90
     "SourceIndex", // 91
     "Src2DataType", // 92

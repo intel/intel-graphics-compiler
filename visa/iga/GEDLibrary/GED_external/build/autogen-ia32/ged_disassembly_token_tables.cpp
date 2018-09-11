@@ -602,7 +602,7 @@ const ged_disassembly_token_t DisassemblyTokensTable76[7] =
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DstRegFile }, // 0
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DstRegNum }, // 1
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 2
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DstSpecialAcc }, // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DstMathMacroExt }, // 3
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ':' }, // 4
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DstDataType }, // 5
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ' ' } // 6
@@ -613,7 +613,7 @@ const ged_disassembly_token_t DisassemblyTokensTable77[8] =
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0RegFile }, // 1
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0RegNum }, // 2
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 3
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0SpecialAcc }, // 4
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0MathMacroExt }, // 4
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ':' }, // 5
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_SrcDataType }, // 6
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ' ' } // 7
@@ -624,7 +624,7 @@ const ged_disassembly_token_t DisassemblyTokensTable78[8] =
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1RegFile }, // 1
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1RegNum }, // 2
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 3
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1SpecialAcc }, // 4
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1MathMacroExt }, // 4
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ':' }, // 5
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_SrcDataType }, // 6
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ' ' } // 7
@@ -635,7 +635,7 @@ const ged_disassembly_token_t DisassemblyTokensTable79[8] =
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2RegFile }, // 1
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2RegNum }, // 2
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 3
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2SpecialAcc }, // 4
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2MathMacroExt }, // 4
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ':' }, // 5
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_SrcDataType }, // 6
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      ' ' } // 7
@@ -660,15 +660,15 @@ const ged_disassembly_token_t DisassemblyTokensTable81[6] =
 }; // DisassemblyTokensTable81[]
 const ged_disassembly_token_t DisassemblyTokensTable82[1] =
 {
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DstSpecialAcc } // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_DstMathMacroExt } // 0
 }; // DisassemblyTokensTable82[]
 const ged_disassembly_token_t DisassemblyTokensTable83[1] =
 {
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0SpecialAcc } // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0MathMacroExt } // 0
 }; // DisassemblyTokensTable83[]
 const ged_disassembly_token_t DisassemblyTokensTable84[1] =
 {
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1SpecialAcc } // 0
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1MathMacroExt } // 0
 }; // DisassemblyTokensTable84[]
 const ged_disassembly_token_t DisassemblyTokensTable85[11] =
 {
@@ -700,7 +700,7 @@ const ged_disassembly_token_t DisassemblyTokensTable87[8] =
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0RegFile }, // 1
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0RegNum }, // 2
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 3
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0SpecialAcc }, // 4
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0MathMacroExt }, // 4
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '<' }, // 5
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0VertStride }, // 6
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '>' } // 7
@@ -711,7 +711,7 @@ const ged_disassembly_token_t DisassemblyTokensTable88[8] =
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1RegFile }, // 1
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1RegNum }, // 2
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 3
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1SpecialAcc }, // 4
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1MathMacroExt }, // 4
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '<' }, // 5
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1VertStride }, // 6
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '>' } // 7
@@ -722,7 +722,7 @@ const ged_disassembly_token_t DisassemblyTokensTable89[8] =
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2RegFile }, // 1
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2RegNum }, // 2
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 3
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2SpecialAcc }, // 4
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2MathMacroExt }, // 4
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '<' }, // 5
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2VertStride }, // 6
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '>' } // 7
@@ -846,7 +846,7 @@ const ged_disassembly_token_t DisassemblyTokensTable106[7] =
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0RegFile }, // 0
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0RegNum }, // 1
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 2
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0SpecialAcc }, // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0MathMacroExt }, // 3
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '<' }, // 4
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1VertStride }, // 5
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '>' } // 6
@@ -856,7 +856,7 @@ const ged_disassembly_token_t DisassemblyTokensTable107[7] =
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1RegFile }, // 0
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1RegNum }, // 1
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 2
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1SpecialAcc }, // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1MathMacroExt }, // 3
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '<' }, // 4
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1VertStride }, // 5
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '>' } // 6
@@ -866,7 +866,7 @@ const ged_disassembly_token_t DisassemblyTokensTable108[7] =
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2RegFile }, // 0
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2RegNum }, // 1
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 2
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2SpecialAcc }, // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2MathMacroExt }, // 3
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '<' }, // 4
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2VertStride }, // 5
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '>' } // 6
@@ -946,21 +946,21 @@ const ged_disassembly_token_t DisassemblyTokensTable116[4] =
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0RegFile }, // 0
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0RegNum }, // 1
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 2
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0SpecialAcc } // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src0MathMacroExt } // 3
 }; // DisassemblyTokensTable116[]
 const ged_disassembly_token_t DisassemblyTokensTable117[4] =
 {
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1RegFile }, // 0
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1RegNum }, // 1
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 2
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1SpecialAcc } // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src1MathMacroExt } // 3
 }; // DisassemblyTokensTable117[]
 const ged_disassembly_token_t DisassemblyTokensTable118[7] =
 {
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2RegFile }, // 0
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2RegNum }, // 1
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '.' }, // 2
-    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2SpecialAcc }, // 3
+    { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2MathMacroExt }, // 3
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '<' }, // 4
     { GED_DISASSEMBLY_TOKEN_TYPE_FIELD,     GED_INS_FIELD_Src2HorzStride }, // 5
     { GED_DISASSEMBLY_TOKEN_TYPE_CHAR,      '>' } // 6

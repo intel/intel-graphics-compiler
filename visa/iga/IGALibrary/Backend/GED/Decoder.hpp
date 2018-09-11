@@ -219,7 +219,7 @@ namespace iga
         template <SourceIndex S> uint32_t         decodeSrcRegNum();
         template <SourceIndex S> uint32_t         decodeSrcSubRegNum();
         // implicit accumulators
-        template <SourceIndex S> GED_SPECIAL_ACC  decodeSrcSpecialAcc();
+        template <SourceIndex S> GED_MATH_MACRO_EXT  decodeSrcMathMacroExt();
 
         // register indirect fields
         template <SourceIndex S> int32_t          decodeSrcAddrImm();
@@ -247,7 +247,7 @@ namespace iga
         template <SourceIndex S> Region decodeSrcRegionTernaryAlign1();
 
         template <SourceIndex S> MathMacroExt decodeSrcMathMacroReg() {
-            return GEDToIGATranslation::translate(decodeSrcSpecialAcc<S>());
+            return GEDToIGATranslation::translate(decodeSrcMathMacroExt<S>());
         }
         template <SourceIndex S> SrcModifier decodeSrcModifier() {
             if (m_opSpec->supportsSourceModifiers()) {

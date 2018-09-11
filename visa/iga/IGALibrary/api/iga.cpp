@@ -615,7 +615,7 @@ public:
 
 const char *iga_version_string()
 {
-#define IGA_EXTERNAL_INTERNAL "int"
+#define IGA_EXTERNAL_INTERNAL "ext"
     return IGA_VERSION_STRING "-" IGA_EXTERNAL_INTERNAL " (" __DATE__ ")";
 }
 

@@ -75,10 +75,10 @@ const char* modelNames[7] = { "gen7", "gen7_5", "gen8", "gen8_1", "gen9", "gen10
 
 /*!
  * Get the GED_MODEL Id for the given model name.
- * 
+ *
  * @param[in]       name   Name of the model to find.
  * @param[out]      model  Will hold the given model's Id if the model is found, otherwise unchanged.
- * 
+ *
  * @return      TRUE if the given model name is valid, FALSE otherwise.
  */
 bool GetModelByName(const string& name, /* GED_MODEL */ unsigned int& model)
@@ -1023,49 +1023,49 @@ GED_RETURN_VALUE GED_SetExDescRegFile(ged_ins_t* ins, const GED_REG_FILE value)
 {
     return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_ExDescRegFile, (const uint32_t)value);
 }
-GED_SPECIAL_ACC GED_GetDstSpecialAcc(ged_ins_t* ins, GED_RETURN_VALUE* result)
+GED_MATH_MACRO_EXT GED_GetDstMathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
     if (NULL == result) result = &localResult;
-    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_DstSpecialAcc, *result);
-    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_SPECIAL_ACC)value : GED_SPECIAL_ACC_INVALID;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_DstMathMacroExt, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_MATH_MACRO_EXT)value : GED_MATH_MACRO_EXT_INVALID;
 }
-GED_RETURN_VALUE GED_SetDstSpecialAcc(ged_ins_t* ins, const GED_SPECIAL_ACC value)
+GED_RETURN_VALUE GED_SetDstMathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value)
 {
-    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_DstSpecialAcc, (const uint32_t)value);
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_DstMathMacroExt, (const uint32_t)value);
 }
-GED_SPECIAL_ACC GED_GetSrc0SpecialAcc(ged_ins_t* ins, GED_RETURN_VALUE* result)
-{
-    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
-    if (NULL == result) result = &localResult;
-    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src0SpecialAcc, *result);
-    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_SPECIAL_ACC)value : GED_SPECIAL_ACC_INVALID;
-}
-GED_RETURN_VALUE GED_SetSrc0SpecialAcc(ged_ins_t* ins, const GED_SPECIAL_ACC value)
-{
-    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src0SpecialAcc, (const uint32_t)value);
-}
-GED_SPECIAL_ACC GED_GetSrc1SpecialAcc(ged_ins_t* ins, GED_RETURN_VALUE* result)
+GED_MATH_MACRO_EXT GED_GetSrc0MathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
     if (NULL == result) result = &localResult;
-    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src1SpecialAcc, *result);
-    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_SPECIAL_ACC)value : GED_SPECIAL_ACC_INVALID;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src0MathMacroExt, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_MATH_MACRO_EXT)value : GED_MATH_MACRO_EXT_INVALID;
 }
-GED_RETURN_VALUE GED_SetSrc1SpecialAcc(ged_ins_t* ins, const GED_SPECIAL_ACC value)
+GED_RETURN_VALUE GED_SetSrc0MathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value)
 {
-    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src1SpecialAcc, (const uint32_t)value);
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src0MathMacroExt, (const uint32_t)value);
 }
-GED_SPECIAL_ACC GED_GetSrc2SpecialAcc(ged_ins_t* ins, GED_RETURN_VALUE* result)
+GED_MATH_MACRO_EXT GED_GetSrc1MathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
     if (NULL == result) result = &localResult;
-    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src2SpecialAcc, *result);
-    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_SPECIAL_ACC)value : GED_SPECIAL_ACC_INVALID;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src1MathMacroExt, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_MATH_MACRO_EXT)value : GED_MATH_MACRO_EXT_INVALID;
 }
-GED_RETURN_VALUE GED_SetSrc2SpecialAcc(ged_ins_t* ins, const GED_SPECIAL_ACC value)
+GED_RETURN_VALUE GED_SetSrc1MathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value)
 {
-    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src2SpecialAcc, (const uint32_t)value);
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src1MathMacroExt, (const uint32_t)value);
+}
+GED_MATH_MACRO_EXT GED_GetSrc2MathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_Src2MathMacroExt, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_MATH_MACRO_EXT)value : GED_MATH_MACRO_EXT_INVALID;
+}
+GED_RETURN_VALUE GED_SetSrc2MathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_Src2MathMacroExt, (const uint32_t)value);
 }
 GED_BRANCH_CTRL GED_GetBranchCtrl(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
@@ -1290,6 +1290,21 @@ GED_RETURN_VALUE GED_SetIndexedSrcIndex(ged_ins_t* ins, const uint32_t value, co
     if (1 == index) return GED_SetSrc1Index(ins, value);
     return GED_RETURN_VALUE_INVALID_OPERAND;
 }
+GED_MATH_MACRO_EXT GED_GetIndexedSrcMathMacroExt(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
+{
+    if (0 == index) return GED_GetSrc0MathMacroExt(ins, result);
+    if (1 == index) return GED_GetSrc1MathMacroExt(ins, result);
+    if (2 == index) return GED_GetSrc2MathMacroExt(ins, result);
+    if (NULL != result) *result = GED_RETURN_VALUE_INVALID_OPERAND;
+    return GED_MATH_MACRO_EXT_INVALID;
+}
+GED_RETURN_VALUE GED_SetIndexedSrcMathMacroExt(ged_ins_t* ins, const GED_MATH_MACRO_EXT value, const uint8_t index)
+{
+    if (0 == index) return GED_SetSrc0MathMacroExt(ins, value);
+    if (1 == index) return GED_SetSrc1MathMacroExt(ins, value);
+    if (2 == index) return GED_SetSrc2MathMacroExt(ins, value);
+    return GED_RETURN_VALUE_INVALID_OPERAND;
+}
 GED_REG_FILE GED_GetIndexedSrcRegFile(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
 {
     if (0 == index) return GED_GetSrc0RegFile(ins, result);
@@ -1333,21 +1348,6 @@ GED_RETURN_VALUE GED_SetIndexedSrcRepCtrl(ged_ins_t* ins, const GED_REP_CTRL val
     if (0 == index) return GED_SetSrc0RepCtrl(ins, value);
     if (1 == index) return GED_SetSrc1RepCtrl(ins, value);
     if (2 == index) return GED_SetSrc2RepCtrl(ins, value);
-    return GED_RETURN_VALUE_INVALID_OPERAND;
-}
-GED_SPECIAL_ACC GED_GetIndexedSrcSpecialAcc(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
-{
-    if (0 == index) return GED_GetSrc0SpecialAcc(ins, result);
-    if (1 == index) return GED_GetSrc1SpecialAcc(ins, result);
-    if (2 == index) return GED_GetSrc2SpecialAcc(ins, result);
-    if (NULL != result) *result = GED_RETURN_VALUE_INVALID_OPERAND;
-    return GED_SPECIAL_ACC_INVALID;
-}
-GED_RETURN_VALUE GED_SetIndexedSrcSpecialAcc(ged_ins_t* ins, const GED_SPECIAL_ACC value, const uint8_t index)
-{
-    if (0 == index) return GED_SetSrc0SpecialAcc(ins, value);
-    if (1 == index) return GED_SetSrc1SpecialAcc(ins, value);
-    if (2 == index) return GED_SetSrc2SpecialAcc(ins, value);
     return GED_RETURN_VALUE_INVALID_OPERAND;
 }
 GED_SRC_MOD GED_GetIndexedSrcSrcMod(ged_ins_t* ins, GED_RETURN_VALUE* result, const uint8_t index)
@@ -1791,7 +1791,7 @@ GED_RETURN_VALUE GED_SetMessageTypeDP_DCRO(uint32_t* msgDesc, const GED_MODEL mo
 #if GED_EXPERIMENTAL
 GED_RETURN_VALUE GED_SetRawBits(ged_ins_t* ins, uint8_t low, uint8_t high, const uint64_t value)
 {
-    return reinterpret_cast<GEDIns*>(ins)->SetRawBits(low, high, value); 
+    return reinterpret_cast<GEDIns*>(ins)->SetRawBits(low, high, value);
 }
 #endif // GED_EXPERIMENTAL
 const char* GED_GetAccessModeString(GED_ACCESS_MODE AccessModeValue)
@@ -1874,6 +1874,10 @@ const char* GED_GetMathFCString(GED_MATH_FC MathFCValue)
 {
     return MathFCEnumeration[MathFCValue];
 }
+const char* GED_GetMathMacroExtString(GED_MATH_MACRO_EXT MathMacroExtValue)
+{
+    return MathMacroExtEnumeration[MathMacroExtValue];
+}
 const char* GED_GetMessageTypeString(GED_MESSAGE_TYPE MessageTypeValue)
 {
     return MessageTypeEnumeration[MessageTypeValue];
@@ -1921,10 +1925,6 @@ const char* GED_GetSIMDModeString(GED_SIMDMODE SIMDModeValue)
 const char* GED_GetSlotGroupString(GED_SLOT_GROUP SlotGroupValue)
 {
     return SlotGroupEnumeration[SlotGroupValue];
-}
-const char* GED_GetSpecialAccString(GED_SPECIAL_ACC SpecialAccValue)
-{
-    return SpecialAccEnumeration[SpecialAccValue];
 }
 const char* GED_GetSrcModString(GED_SRC_MOD SrcModValue)
 {

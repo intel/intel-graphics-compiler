@@ -186,14 +186,14 @@ EXPORTS
   GED_SetDescIndex
   GED_GetExDescRegFile
   GED_SetExDescRegFile
-  GED_GetDstSpecialAcc
-  GED_SetDstSpecialAcc
-  GED_GetSrc0SpecialAcc
-  GED_SetSrc0SpecialAcc
-  GED_GetSrc1SpecialAcc
-  GED_SetSrc1SpecialAcc
-  GED_GetSrc2SpecialAcc
-  GED_SetSrc2SpecialAcc
+  GED_GetDstMathMacroExt
+  GED_SetDstMathMacroExt
+  GED_GetSrc0MathMacroExt
+  GED_SetSrc0MathMacroExt
+  GED_GetSrc1MathMacroExt
+  GED_SetSrc1MathMacroExt
+  GED_GetSrc2MathMacroExt
+  GED_SetSrc2MathMacroExt
   GED_GetBranchCtrl
   GED_SetBranchCtrl
   GED_GetSourceIndex
@@ -232,14 +232,14 @@ EXPORTS
   GED_SetIndexedSrcHorzStride
   GED_GetIndexedSrcIndex
   GED_SetIndexedSrcIndex
+  GED_GetIndexedSrcMathMacroExt
+  GED_SetIndexedSrcMathMacroExt
   GED_GetIndexedSrcRegFile
   GED_SetIndexedSrcRegFile
   GED_GetIndexedSrcRegNum
   GED_SetIndexedSrcRegNum
   GED_GetIndexedSrcRepCtrl
   GED_SetIndexedSrcRepCtrl
-  GED_GetIndexedSrcSpecialAcc
-  GED_SetIndexedSrcSpecialAcc
   GED_GetIndexedSrcSrcMod
   GED_SetIndexedSrcSrcMod
   GED_GetIndexedSrcSubRegNum
@@ -339,6 +339,7 @@ EXPORTS
   GED_GetHeaderPresentString
   GED_GetMaskCtrlString
   GED_GetMathFCString
+  GED_GetMathMacroExtString
   GED_GetMessageTypeString
   GED_GetNoSrcDepSetString
   GED_GetOpcodeString
@@ -351,7 +352,6 @@ EXPORTS
   GED_GetSFIDString
   GED_GetSIMDModeString
   GED_GetSlotGroupString
-  GED_GetSpecialAccString
   GED_GetSrcModString
   GED_GetSubFuncIDString
   GED_GetSwizzleString

@@ -425,7 +425,7 @@ void EncoderBase::encodeTernaryDestinationAlign1(
     encodeDstReg(dst.getDirRegName(), dst.getDirRegRef().regNum);
 
     if (inst.isMacro()) {
-        GED_ENCODE(DstSpecialAcc, IGAToGEDTranslation::lowerMathMacroReg(dst.getMathMacroExt()));
+        GED_ENCODE(DstMathMacroExt, IGAToGEDTranslation::lowerMathMacroReg(dst.getMathMacroExt()));
         // GED_ENCODE(DstHorzStride, 1);
     } else {
         uint32_t subRegNum = SubRegToBytesOffset(
@@ -919,7 +919,7 @@ void EncoderBase::encodeBasicDestination(
         break;
     case Operand::Kind::MACRO:
         encodeDstReg(dst.getDirRegName(), dst.getDirRegRef().regNum);
-        GED_ENCODE(DstSpecialAcc, IGAToGEDTranslation::lowerSpecialAcc(dst.getMathMacroExt()));
+        GED_ENCODE(DstMathMacroExt, IGAToGEDTranslation::lowerSpecialAcc(dst.getMathMacroExt()));
         if (accessMode == GED_ACCESS_MODE_Align1 && m_model.supportsAlign16ImplicitAcc()) {
             fatal("Align1 dst math macro unsupported on this platform.");
             return;

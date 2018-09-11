@@ -34,25 +34,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef GED_ENUMERATIONS_H
 #define GED_ENUMERATIONS_H
 
-typedef enum 
+typedef enum
 {
     GED_ACCESS_MODE_Align1,  ///< GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
     GED_ACCESS_MODE_Align16, ///< GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
     GED_ACCESS_MODE_INVALID
 } GED_ACCESS_MODE;
-typedef enum 
+typedef enum
 {
     GED_ACC_WR_CTRL_Normal,  ///< all
     GED_ACC_WR_CTRL_AccWrEn, ///< all
     GED_ACC_WR_CTRL_INVALID
 } GED_ACC_WR_CTRL;
-typedef enum 
+typedef enum
 {
     GED_ADDR_MODE_Direct,   ///< all
     GED_ADDR_MODE_Indirect, ///< all
     GED_ADDR_MODE_INVALID
 } GED_ADDR_MODE;
-typedef enum 
+typedef enum
 {
     GED_ARCH_REG_null,    ///< all
     GED_ARCH_REG_a0,      ///< all
@@ -71,7 +71,7 @@ typedef enum
     GED_ARCH_REG_dbg0,    ///< all
     GED_ARCH_REG_INVALID
 } GED_ARCH_REG;
-typedef enum 
+typedef enum
 {
     GED_ATOMIC_OPERATION_TYPE_AOP_AND,    ///< all
     GED_ATOMIC_OPERATION_TYPE_AOP_OR,     ///< all
@@ -90,7 +90,7 @@ typedef enum
     GED_ATOMIC_OPERATION_TYPE_AOP_PREDEC, ///< all
     GED_ATOMIC_OPERATION_TYPE_INVALID
 } GED_ATOMIC_OPERATION_TYPE;
-typedef enum 
+typedef enum
 {
     GED_BLOCK_SIZE_OW1L,    ///< all
     GED_BLOCK_SIZE_OW1H,    ///< all
@@ -99,13 +99,13 @@ typedef enum
     GED_BLOCK_SIZE_OW8,     ///< all
     GED_BLOCK_SIZE_INVALID
 } GED_BLOCK_SIZE;
-typedef enum 
+typedef enum
 {
     GED_BRANCH_CTRL_Normal,  ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
     GED_BRANCH_CTRL_Branch,  ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
     GED_BRANCH_CTRL_INVALID
 } GED_BRANCH_CTRL;
-typedef enum 
+typedef enum
 {
     GED_CHANNEL_MASK_R,           ///< all
     GED_CHANNEL_MASK_NotIncluded, ///< all
@@ -114,7 +114,7 @@ typedef enum
     GED_CHANNEL_MASK_A,           ///< all
     GED_CHANNEL_MASK_INVALID
 } GED_CHANNEL_MASK;
-typedef enum 
+typedef enum
 {
     GED_CHANNEL_OFFSET_M0,      ///< all
     GED_CHANNEL_OFFSET_M4,      ///< all
@@ -126,7 +126,7 @@ typedef enum
     GED_CHANNEL_OFFSET_M28,     ///< all
     GED_CHANNEL_OFFSET_INVALID
 } GED_CHANNEL_OFFSET;
-typedef enum 
+typedef enum
 {
     GED_COND_MODIFIER_Normal,  ///< all
     GED_COND_MODIFIER_z,       ///< all
@@ -139,7 +139,7 @@ typedef enum
     GED_COND_MODIFIER_u,       ///< all
     GED_COND_MODIFIER_INVALID
 } GED_COND_MODIFIER;
-typedef enum 
+typedef enum
 {
     GED_DATA_TYPE_ud,      ///< all
     GED_DATA_TYPE_d,       ///< all
@@ -158,13 +158,13 @@ typedef enum
     GED_DATA_TYPE_nf,      ///< GEN11
     GED_DATA_TYPE_INVALID
 } GED_DATA_TYPE;
-typedef enum 
+typedef enum
 {
     GED_DEBUG_CTRL_Normal,     ///< all
     GED_DEBUG_CTRL_Breakpoint, ///< all
     GED_DEBUG_CTRL_INVALID
 } GED_DEBUG_CTRL;
-typedef enum 
+typedef enum
 {
     GED_DEP_CTRL_Normal,          ///< all
     GED_DEP_CTRL_NoDDClr,         ///< all
@@ -172,7 +172,7 @@ typedef enum
     GED_DEP_CTRL_NoDDClr_NoDDChk, ///< all
     GED_DEP_CTRL_INVALID
 } GED_DEP_CTRL;
-typedef enum 
+typedef enum
 {
     GED_DST_CHAN_EN_None,    ///< GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
     GED_DST_CHAN_EN_x,       ///< GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
@@ -192,13 +192,13 @@ typedef enum
     GED_DST_CHAN_EN_xyzw,    ///< GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
     GED_DST_CHAN_EN_INVALID
 } GED_DST_CHAN_EN;
-typedef enum 
+typedef enum
 {
     GED_EOT_None,    ///< all
     GED_EOT_EOT,     ///< all
     GED_EOT_INVALID
 } GED_EOT;
-typedef enum 
+typedef enum
 {
     GED_EXEC_MASK_OFFSET_CTRL_N1,      ///< all
     GED_EXEC_MASK_OFFSET_CTRL_N2,      ///< all
@@ -216,25 +216,25 @@ typedef enum
     GED_EXEC_MASK_OFFSET_CTRL_H2,      ///< all
     GED_EXEC_MASK_OFFSET_CTRL_INVALID
 } GED_EXEC_MASK_OFFSET_CTRL;
-typedef enum 
+typedef enum
 {
     GED_EXECUTION_DATA_TYPE_Integer, ///< GEN10, GEN11
     GED_EXECUTION_DATA_TYPE_Float,   ///< GEN10, GEN11
     GED_EXECUTION_DATA_TYPE_INVALID
 } GED_EXECUTION_DATA_TYPE;
-typedef enum 
+typedef enum
 {
     GED_HEADER_PRESENT_no,      ///< all
     GED_HEADER_PRESENT_yes,     ///< all
     GED_HEADER_PRESENT_INVALID
 } GED_HEADER_PRESENT;
-typedef enum 
+typedef enum
 {
     GED_MASK_CTRL_Normal,  ///< all
     GED_MASK_CTRL_NoMask,  ///< all
     GED_MASK_CTRL_INVALID
 } GED_MASK_CTRL;
-typedef enum 
+typedef enum
 {
     GED_MATH_FC_INV,               ///< all
     GED_MATH_FC_LOG,               ///< all
@@ -252,7 +252,20 @@ typedef enum
     GED_MATH_FC_RSQRTM,            ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
     GED_MATH_FC_INVALID
 } GED_MATH_FC;
-typedef enum 
+typedef enum
+{
+    GED_MATH_MACRO_EXT_mme0,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
+    GED_MATH_MACRO_EXT_mme1,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
+    GED_MATH_MACRO_EXT_mme2,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
+    GED_MATH_MACRO_EXT_mme3,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
+    GED_MATH_MACRO_EXT_mme4,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
+    GED_MATH_MACRO_EXT_mme5,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
+    GED_MATH_MACRO_EXT_mme6,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
+    GED_MATH_MACRO_EXT_mme7,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
+    GED_MATH_MACRO_EXT_nomme,   ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
+    GED_MATH_MACRO_EXT_INVALID
+} GED_MATH_MACRO_EXT;
+typedef enum
 {
     GED_MESSAGE_TYPE_MSD0R_HWB,      ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
     GED_MESSAGE_TYPE_MSD0W_HWB,      ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
@@ -319,13 +332,13 @@ typedef enum
     GED_MESSAGE_TYPE_MT1A_A64_UF4x2, ///< GEN9
     GED_MESSAGE_TYPE_INVALID
 } GED_MESSAGE_TYPE;
-typedef enum 
+typedef enum
 {
     GED_NO_SRC_DEP_SET_Normal,      ///< GEN10, GEN11, GEN9
     GED_NO_SRC_DEP_SET_NoSrcDepSet, ///< GEN10, GEN11, GEN9
     GED_NO_SRC_DEP_SET_INVALID
 } GED_NO_SRC_DEP_SET;
-typedef enum 
+typedef enum
 {
     GED_OPCODE_illegal, ///< all
     GED_OPCODE_mov,     ///< all
@@ -403,7 +416,7 @@ typedef enum
     GED_OPCODE_dim,     ///< GEN7.5
     GED_OPCODE_INVALID
 } GED_OPCODE;
-typedef enum 
+typedef enum
 {
     GED_PRED_CTRL_Normal,     ///< all
     GED_PRED_CTRL_Sequential, ///< all
@@ -425,38 +438,38 @@ typedef enum
     GED_PRED_CTRL_w,          ///< GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
     GED_PRED_CTRL_INVALID
 } GED_PRED_CTRL;
-typedef enum 
+typedef enum
 {
     GED_PRED_INV_Normal,  ///< all
     GED_PRED_INV_Invert,  ///< all
     GED_PRED_INV_INVALID
 } GED_PRED_INV;
-typedef enum 
+typedef enum
 {
     GED_REG_FILE_ARF,     ///< all
     GED_REG_FILE_GRF,     ///< all
     GED_REG_FILE_IMM,     ///< all
     GED_REG_FILE_INVALID
 } GED_REG_FILE;
-typedef enum 
+typedef enum
 {
     GED_REP_CTRL_NoRep,   ///< GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
     GED_REP_CTRL_Rep,     ///< GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
     GED_REP_CTRL_INVALID
 } GED_REP_CTRL;
-typedef enum 
+typedef enum
 {
     GED_RETURN_DATA_CONTROL_Disabled, ///< all
     GED_RETURN_DATA_CONTROL_Enabled,  ///< all
     GED_RETURN_DATA_CONTROL_INVALID
 } GED_RETURN_DATA_CONTROL;
-typedef enum 
+typedef enum
 {
     GED_SATURATE_Normal,  ///< all
     GED_SATURATE_sat,     ///< all
     GED_SATURATE_INVALID
 } GED_SATURATE;
-typedef enum 
+typedef enum
 {
     GED_SFID_NULL,       ///< all
     GED_SFID_SAMPLER,    ///< all
@@ -475,34 +488,21 @@ typedef enum
     GED_SFID_DP_CC,      ///< GEN7, GEN7.5, GEN8, GEN8.1
     GED_SFID_INVALID
 } GED_SFID;
-typedef enum 
+typedef enum
 {
     GED_SIMDMODE_SIMD4x2, ///< all
     GED_SIMDMODE_SIMD16,  ///< all
     GED_SIMDMODE_SIMD8,   ///< all
     GED_SIMDMODE_INVALID
 } GED_SIMDMODE;
-typedef enum 
+typedef enum
 {
     GED_SLOT_GROUP_SIMD4x2, ///< all
     GED_SLOT_GROUP_low_8,   ///< all
     GED_SLOT_GROUP_high_8,  ///< all
     GED_SLOT_GROUP_INVALID
 } GED_SLOT_GROUP;
-typedef enum 
-{
-    GED_SPECIAL_ACC_acc2,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
-    GED_SPECIAL_ACC_acc3,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
-    GED_SPECIAL_ACC_acc4,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
-    GED_SPECIAL_ACC_acc5,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
-    GED_SPECIAL_ACC_acc6,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
-    GED_SPECIAL_ACC_acc7,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
-    GED_SPECIAL_ACC_acc8,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
-    GED_SPECIAL_ACC_acc9,    ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
-    GED_SPECIAL_ACC_noacc,   ///< GEN10, GEN11, GEN8, GEN8.1, GEN9
-    GED_SPECIAL_ACC_INVALID
-} GED_SPECIAL_ACC;
-typedef enum 
+typedef enum
 {
     GED_SRC_MOD_Normal,            ///< all
     GED_SRC_MOD_Absolute,          ///< all
@@ -510,7 +510,7 @@ typedef enum
     GED_SRC_MOD_Negative_Absolute, ///< all
     GED_SRC_MOD_INVALID
 } GED_SRC_MOD;
-typedef enum 
+typedef enum
 {
     GED_SUB_FUNC_ID_GetTimeStamp,    ///< all
     GED_SUB_FUNC_ID_BarrierMsg,      ///< all
@@ -521,7 +521,7 @@ typedef enum
     GED_SUB_FUNC_ID_MMIOReadWrite,   ///< GEN7, GEN7.5, GEN8, GEN8.1
     GED_SUB_FUNC_ID_INVALID
 } GED_SUB_FUNC_ID;
-typedef enum 
+typedef enum
 {
     GED_SWIZZLE_x,       ///< GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
     GED_SWIZZLE_y,       ///< GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
@@ -529,7 +529,7 @@ typedef enum
     GED_SWIZZLE_w,       ///< GEN10, GEN7, GEN7.5, GEN8, GEN8.1, GEN9
     GED_SWIZZLE_INVALID
 } GED_SWIZZLE;
-typedef enum 
+typedef enum
 {
     GED_THREAD_CTRL_Normal,    ///< all
     GED_THREAD_CTRL_Atomic,    ///< all

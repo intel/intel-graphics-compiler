@@ -589,8 +589,6 @@ private:
     }
 
     virtual bool shouldPrintSFID(Platform p) const { return true; };
-    void filterExDesc(Platform p, const OpSpec &os, uint32_t& exDesc) {
-    }
 
     void formatEolComments(
         const Instruction &i,
@@ -1307,6 +1305,8 @@ static const GED_RETURN_VALUE constructPartialGEDSendInstruction(
     return status;
 }
 
+
+
 static const uint32_t SAMPLER_ENGINE            = 2;
 static const uint32_t SFID_DP_DC2               = 4; //SKL+
 static const uint32_t SFID_SAMPLER_CACHE        = 4; //[SNB,BDW]
@@ -1370,13 +1370,14 @@ void Formatter::EmitSendDescriptorInfoGED(
     } else {
         gedOP = GED_OPCODE_sends;
     }
+
     ged_ins_t gedInst;
-    filterExDesc(p, os, exDesc);
+
     getRetVal = constructPartialGEDSendInstruction(
         &gedInst, gedP, gedOP, os.isSendsFamily(), exDesc, desc);
-    GED_SFID gedSFID = GED_SFID_INVALID;
-    uint32_t sfid = getSFID(exDesc);
+    IGA_ASSERT(getRetVal == GED_RETURN_VALUE_SUCCESS, "Cannot construct GED Send Instruction");
 
+    GED_SFID gedSFID = GED_SFID_INVALID;
     if (getRetVal == GED_RETURN_VALUE_SUCCESS) {
         gedSFID = GED_GetSFID(&gedInst, &getRetVal);
     }
@@ -1389,8 +1390,9 @@ void Formatter::EmitSendDescriptorInfoGED(
     if (gedsfidString && gedSFID != GED_SFID_INVALID) {
         ss << gedsfidString;
     } else {
-        sfid = getSFID(exDesc);
-
+        // FIXME: This is the fall back path in case that it failed on getting SFID from gedInst,
+        //        which should not happen
+        uint32_t sfid = getSFID(exDesc);
         const char * sfidString = getSFIDString(p, sfid);
         if (sfidString) {
             ss << sfidString;
@@ -1496,6 +1498,8 @@ void Formatter::EmitSendDescriptorInfoGED(
     }
     else
     {
+
+        uint32_t sfid = getSFID(exDesc);
         if (sfid == SFID_SAMPLER_CACHE && p < iga::Platform::GEN9) {
             msgType = GED_GetMessageTypeDP_SAMPLER(desc, gedP, &getRetVal);
         } else if (sfid == SFID_DP_RC) {

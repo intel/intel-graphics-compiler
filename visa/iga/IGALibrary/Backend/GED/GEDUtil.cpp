@@ -83,7 +83,7 @@ iga::SFID iga::getSFID(
 
     if(getRetVal == GED_RETURN_VALUE_SUCCESS)
         gedSFID = GED_GetSFID(&gedInst, &getRetVal);
-    else return GEDToIGATranslation::translate(GED_SFID_INVALID);
+
 
     return GEDToIGATranslation::translate(gedSFID);
 }

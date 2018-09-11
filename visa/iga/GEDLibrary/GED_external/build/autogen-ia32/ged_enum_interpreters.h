@@ -39,10 +39,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*!
  * This is an enumeration of all the reinterpreted string enumerations available for queries by GED. It is a consolidated list of all
  * interpreters from all supported models.
- * 
+ *
  * @note        Some interpreters may not be available on all models.
  */
-typedef enum 
+typedef enum
 {
     GED_REINTERPRETED_ENUM_OperandWidth,       ///< The operand width, based on its data type.
 
@@ -52,11 +52,11 @@ typedef enum
     GED_REINTERPRETED_ENUM_OperandNumericType,
 
     /*!
-     * 
+     *
      *                 Nibble Control. This field is used in some instructions along with QtrCtrl. See the description of
      * ExecMaskOffsetCtrl.
      *                 NibCtrl is only used for SIMD4 instructions.
-     *             
+     *
      */
     GED_REINTERPRETED_ENUM_NibCtrl
 } GED_REINTERPRETED_ENUM;

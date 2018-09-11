@@ -1020,6 +1020,34 @@ const GED_MATH_FC* MathFCTable1[16] =
     NULL, // 14
     NULL // 15
 }; // MathFCTable1[]
+static GED_MATH_MACRO_EXT MathMacroExtVar0 = (GED_MATH_MACRO_EXT)0;
+static GED_MATH_MACRO_EXT MathMacroExtVar1 = (GED_MATH_MACRO_EXT)1;
+static GED_MATH_MACRO_EXT MathMacroExtVar2 = (GED_MATH_MACRO_EXT)2;
+static GED_MATH_MACRO_EXT MathMacroExtVar3 = (GED_MATH_MACRO_EXT)3;
+static GED_MATH_MACRO_EXT MathMacroExtVar4 = (GED_MATH_MACRO_EXT)4;
+static GED_MATH_MACRO_EXT MathMacroExtVar5 = (GED_MATH_MACRO_EXT)5;
+static GED_MATH_MACRO_EXT MathMacroExtVar6 = (GED_MATH_MACRO_EXT)6;
+static GED_MATH_MACRO_EXT MathMacroExtVar7 = (GED_MATH_MACRO_EXT)7;
+static GED_MATH_MACRO_EXT MathMacroExtVar8 = (GED_MATH_MACRO_EXT)8;
+const GED_MATH_MACRO_EXT* MathMacroExtTable0[16] =
+{
+    &MathMacroExtVar0, // 0
+    &MathMacroExtVar1, // 1
+    &MathMacroExtVar2, // 2
+    &MathMacroExtVar3, // 3
+    &MathMacroExtVar4, // 4
+    &MathMacroExtVar5, // 5
+    &MathMacroExtVar6, // 6
+    &MathMacroExtVar7, // 7
+    &MathMacroExtVar8, // 8
+    NULL, // 9
+    NULL, // 10
+    NULL, // 11
+    NULL, // 12
+    NULL, // 13
+    NULL, // 14
+    NULL // 15
+}; // MathMacroExtTable0[]
 static GED_MESSAGE_TYPE MessageTypeVar0 = (GED_MESSAGE_TYPE)0;
 static GED_MESSAGE_TYPE MessageTypeVar1 = (GED_MESSAGE_TYPE)1;
 static GED_MESSAGE_TYPE MessageTypeVar2 = (GED_MESSAGE_TYPE)2;
@@ -2461,34 +2489,6 @@ const GED_SLOT_GROUP* SlotGroupTable1[2] =
     &SlotGroupVar1, // 0
     &SlotGroupVar2 // 1
 }; // SlotGroupTable1[]
-static GED_SPECIAL_ACC SpecialAccVar0 = (GED_SPECIAL_ACC)0;
-static GED_SPECIAL_ACC SpecialAccVar1 = (GED_SPECIAL_ACC)1;
-static GED_SPECIAL_ACC SpecialAccVar2 = (GED_SPECIAL_ACC)2;
-static GED_SPECIAL_ACC SpecialAccVar3 = (GED_SPECIAL_ACC)3;
-static GED_SPECIAL_ACC SpecialAccVar4 = (GED_SPECIAL_ACC)4;
-static GED_SPECIAL_ACC SpecialAccVar5 = (GED_SPECIAL_ACC)5;
-static GED_SPECIAL_ACC SpecialAccVar6 = (GED_SPECIAL_ACC)6;
-static GED_SPECIAL_ACC SpecialAccVar7 = (GED_SPECIAL_ACC)7;
-static GED_SPECIAL_ACC SpecialAccVar8 = (GED_SPECIAL_ACC)8;
-const GED_SPECIAL_ACC* SpecialAccTable0[16] =
-{
-    &SpecialAccVar0, // 0
-    &SpecialAccVar1, // 1
-    &SpecialAccVar2, // 2
-    &SpecialAccVar3, // 3
-    &SpecialAccVar4, // 4
-    &SpecialAccVar5, // 5
-    &SpecialAccVar6, // 6
-    &SpecialAccVar7, // 7
-    &SpecialAccVar8, // 8
-    NULL, // 9
-    NULL, // 10
-    NULL, // 11
-    NULL, // 12
-    NULL, // 13
-    NULL, // 14
-    NULL // 15
-}; // SpecialAccTable0[]
 static GED_SRC_MOD SrcModVar0 = (GED_SRC_MOD)0;
 static GED_SRC_MOD SrcModVar1 = (GED_SRC_MOD)1;
 static GED_SRC_MOD SrcModVar2 = (GED_SRC_MOD)2;

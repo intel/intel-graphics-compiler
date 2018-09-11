@@ -537,20 +537,20 @@ namespace iga
         }
 
 
-        static GED_SPECIAL_ACC lowerSpecialAcc(MathMacroExt acc)
+        static GED_MATH_MACRO_EXT lowerSpecialAcc(MathMacroExt mme)
         {
-            switch (acc)
+            switch (mme)
             {
-            case MathMacroExt::MME0: return GED_SPECIAL_ACC_acc2;
-            case MathMacroExt::MME1: return GED_SPECIAL_ACC_acc3;
-            case MathMacroExt::MME2: return GED_SPECIAL_ACC_acc4;
-            case MathMacroExt::MME3: return GED_SPECIAL_ACC_acc5;
-            case MathMacroExt::MME4: return GED_SPECIAL_ACC_acc6;
-            case MathMacroExt::MME5: return GED_SPECIAL_ACC_acc7;
-            case MathMacroExt::MME6: return GED_SPECIAL_ACC_acc8;
-            case MathMacroExt::MME7: return GED_SPECIAL_ACC_acc9;
-            case MathMacroExt::NOMME: return GED_SPECIAL_ACC_noacc;
-            default: return GED_SPECIAL_ACC_INVALID;
+            case MathMacroExt::MME0: return GED_MATH_MACRO_EXT_mme0;
+            case MathMacroExt::MME1: return GED_MATH_MACRO_EXT_mme1;
+            case MathMacroExt::MME2: return GED_MATH_MACRO_EXT_mme2;
+            case MathMacroExt::MME3: return GED_MATH_MACRO_EXT_mme3;
+            case MathMacroExt::MME4: return GED_MATH_MACRO_EXT_mme4;
+            case MathMacroExt::MME5: return GED_MATH_MACRO_EXT_mme5;
+            case MathMacroExt::MME6: return GED_MATH_MACRO_EXT_mme6;
+            case MathMacroExt::MME7: return GED_MATH_MACRO_EXT_mme7;
+            case MathMacroExt::NOMME: return GED_MATH_MACRO_EXT_nomme;
+            default: return GED_MATH_MACRO_EXT_INVALID;
             }
         }
 
@@ -787,22 +787,22 @@ namespace iga
             return (type == RegName::GRF_R) ? GED_REG_FILE_GRF : GED_REG_FILE_ARF;
         }
 
-        static GED_SPECIAL_ACC lowerMathMacroReg(MathMacroExt MathMacroReg)
+        static GED_MATH_MACRO_EXT lowerMathMacroReg(MathMacroExt MathMacroReg)
         {
             // NOTE: GED puts special accumulators as acc2 to acc9
             switch (MathMacroReg) {
-            case MathMacroExt::MME0: return GED_SPECIAL_ACC_acc2;
-            case MathMacroExt::MME1: return GED_SPECIAL_ACC_acc3;
-            case MathMacroExt::MME2: return GED_SPECIAL_ACC_acc4;
-            case MathMacroExt::MME3: return GED_SPECIAL_ACC_acc5;
-            case MathMacroExt::MME4: return GED_SPECIAL_ACC_acc6;
-            case MathMacroExt::MME5: return GED_SPECIAL_ACC_acc7;
-            case MathMacroExt::MME6: return GED_SPECIAL_ACC_acc8;
-            case MathMacroExt::MME7: return GED_SPECIAL_ACC_acc9;
-            case MathMacroExt::NOMME: return GED_SPECIAL_ACC_noacc;
-            default: return GED_SPECIAL_ACC_INVALID;
+            case MathMacroExt::MME0: return GED_MATH_MACRO_EXT_mme0;
+            case MathMacroExt::MME1: return GED_MATH_MACRO_EXT_mme1;
+            case MathMacroExt::MME2: return GED_MATH_MACRO_EXT_mme2;
+            case MathMacroExt::MME3: return GED_MATH_MACRO_EXT_mme3;
+            case MathMacroExt::MME4: return GED_MATH_MACRO_EXT_mme4;
+            case MathMacroExt::MME5: return GED_MATH_MACRO_EXT_mme5;
+            case MathMacroExt::MME6: return GED_MATH_MACRO_EXT_mme6;
+            case MathMacroExt::MME7: return GED_MATH_MACRO_EXT_mme7;
+            case MathMacroExt::NOMME: return GED_MATH_MACRO_EXT_nomme;
+            default: return GED_MATH_MACRO_EXT_INVALID;
             }
-            return GED_SPECIAL_ACC_INVALID;
+            return GED_MATH_MACRO_EXT_INVALID;
         }
 
         static GED_ARCH_REG lowerArchReg(RegName type)
