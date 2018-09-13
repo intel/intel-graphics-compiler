@@ -1365,7 +1365,9 @@ G4_Type G4_INST::getOpExecType( int& extypesize )
     return extype;
 }
 
-G4_INST::MovType getMovType(G4_Type dstTy, G4_Type srcTy, G4_SrcModifier srcMod) {
+static G4_INST::MovType getMovType(G4_INST* Inst, G4_Type dstTy, G4_Type srcTy,
+                                   G4_SrcModifier srcMod)
+{
     // COPY when dst & src types are the same.
     if (dstTy == srcTy)
         return G4_INST::Copy;
@@ -1408,10 +1410,16 @@ G4_INST::MovType getMovType(G4_Type dstTy, G4_Type srcTy, G4_SrcModifier srcMod)
 
     // Always treat 'v' as SExt as they will always be extended even for
     // BYTE-sized types.
-    if (srcTy == Type_V)
+    if (srcTy == Type_V) {
+        // If the sign bit is 0, then zext is the same as sext.
+        // prefer zext as it allows more propagation.
+        G4_Operand *Op0 = Inst->getSrc(0);
+        if (Op0->isImm() && Op0->asImm()->isSignBitZero())
+            return G4_INST::ZExt;
         return G4_INST::SExt;
+    }
 
-    // Always treat 'uv' as SExt as they will always be extended even for
+    // Always treat 'uv' as ZExt as they will always be extended even for
     // BYTE-sized types.
     if (srcTy == Type_UV)
         return G4_INST::ZExt;
@@ -1438,6 +1446,12 @@ G4_INST::MovType getMovType(G4_Type dstTy, G4_Type srcTy, G4_SrcModifier srcMod)
             // Treat ABS as zero-extenstion.
             if (srcMod == Mod_Abs)
                 return G4_INST::ZExt;
+            // If the sign bit is 0, then zext is the same as sext.
+            // prefer zext as it allows more propagation.
+            G4_Operand *Op0 = Inst->getSrc(0);
+            if (Op0->isImm() && Op0->asImm()->isSignBitZero())
+                return G4_INST::ZExt;
+
             return G4_INST::SExt;
         }
         return G4_INST::ZExt;
@@ -1522,7 +1536,7 @@ G4_INST::MovType G4_INST::canPropagate(const IR_Builder* builder)
         srcMod = src->asSrcRegRegion()->getModifier();
     }
 
-    MovType MT = getMovType(dstType, srcType, srcMod);
+    MovType MT = getMovType(this, dstType, srcType, srcMod);
 
     //Disabling mix mode copy propogation
     if (!builder->hasMixMode() &&
@@ -5914,6 +5928,24 @@ bool G4_Imm::isZero() const
         return (imm.fp == 0.0);
     }
     return (imm.num == 0);
+}
+
+bool G4_Imm::isSignBitZero() const
+{
+    G4_Type Ty = getType();
+    int64_t val = getInt();
+    switch (Ty) {
+    case Type_B:
+    case Type_W:
+    case Type_D:
+    case Type_Q:
+        return val > 0;
+    case Type_V:
+        return ((uint64_t)val & 0x88888888) == 0;
+    default:
+        break;
+    }
+    return false;
 }
 
 G4_CmpRelation G4_Imm::compareOperand(G4_Operand *opnd)

@@ -2625,6 +2625,8 @@ public:
         return imm.fp;
     }
     bool isZero() const;
+    // True if this is a signed integer and its sign bit(s) are 0.
+    bool isSignBitZero() const;
     void emit(std::ostream& output, bool symbolreg=false);
     void emitAutoFmt(std::ostream& output);
 
