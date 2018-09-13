@@ -5852,7 +5852,7 @@ int IR_Builder::translateByteGatherInst(G4_Predicate *pred,
     {
         G4_Declare *dcl = Create_MRF_Dcl(exSize, offsets->getType());
         G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
-        createInst(nullptr, G4_add, 0, false, exSize, tmp, offsets, globalOffset, instOpt);
+        createInst(nullptr, G4_add, 0, false, instExSize, tmp, offsets, globalOffset, instOpt);
         offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     }
 
@@ -5967,7 +5967,7 @@ int IR_Builder::translateByteScatterInst(G4_Predicate *pred,
     {
         G4_Declare *dcl = Create_MRF_Dcl(exSize, offsets->getType());
         G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
-        createInst(nullptr, G4_add, 0, false, exSize, tmp, offsets, globalOffset, instOpt);
+        createInst(nullptr, G4_add, 0, false, instExSize, tmp, offsets, globalOffset, instOpt);
         offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     }
 
