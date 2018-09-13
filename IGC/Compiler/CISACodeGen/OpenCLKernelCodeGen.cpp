@@ -1912,6 +1912,7 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
             (simdMode == SIMDMode::SIMD16 && m_Context->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver == 16) ||
             (simdMode == SIMDMode::SIMD32 && m_Context->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver == 32))
         {
+            m_Context->setDefaultSIMDMode(simdMode);
             return true;
         }
         return false;
