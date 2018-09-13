@@ -153,7 +153,6 @@ SPIRVFunction::decodeBB(SPIRVDecoder &Decoder) {
           case OpDecorate:
           // We don't currently have a use for these structured control flow
           // opcodes, just ignore them for now.
-          case OpLoopMerge:
           case OpSelectionMerge:
           // OpUndef is in the strange "Miscellaneous Instructions" category which means
           // that it can be used as a constant or as an instruction.  LLVM represents it
