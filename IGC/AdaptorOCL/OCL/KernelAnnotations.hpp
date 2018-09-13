@@ -271,6 +271,7 @@ struct ThreadPayload
     bool  HasStageInGridOrigin;
     bool  HasStageInGridSize;
     uint32_t OffsetToSkipPerThreadDataLoad;
+    bool  PassInlineData;
 };
 
 struct ExecutionEnivronment

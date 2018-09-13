@@ -794,6 +794,9 @@ void DebugPatchList(
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tOffsetToSkipPerThreadDataLoad = %d\n",
                     pPatchItem->OffsetToSkipPerThreadDataLoad);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tPassInlineData = %s\n",
+                    pPatchItem->PassInlineData ? "true" : "false");
             }
             break;
 
