@@ -11214,6 +11214,19 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
             skipBarrierInstructionInCS = true;
         }
     }
+    else if (m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER) {
+        Function* F = inst->getParent()->getParent();
+        MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+        FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(F);
+        ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
+        if (threadGroupSize->hasValue())
+        {
+            int32_t sz = threadGroupSize->getXDim() * threadGroupSize->getYDim() * threadGroupSize->getZDim();
+            if (sz <= (int32_t)numLanes(m_SimdMode)) {
+                skipBarrierInstructionInCS = true;
+            }
+        }
+    }
 
     if (!skipBarrierInstructionInCS)
     {
