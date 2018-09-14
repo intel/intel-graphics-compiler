@@ -1542,6 +1542,7 @@ void COpenCLKernel::FillKernel()
         m_kernelInfo.m_executionEnivronment.CompiledSubGroupsNumber =
             FuncInfo.CompiledSubGroupsNumber;
     }
+
 }
 
 void COpenCLKernel::RecomputeBTLayout()

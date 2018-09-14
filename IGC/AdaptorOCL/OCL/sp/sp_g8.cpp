@@ -1962,6 +1962,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
         patch.NumGRFRequired = annotations.m_executionEnivronment.NumGRFRequired;
 
+
+
         retValue = AddPatchItem(
             patch,
             membuf );
