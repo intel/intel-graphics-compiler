@@ -776,16 +776,12 @@ void DeSSA::getAllValuesInCongruentClass(
 	Value* V,
 	SmallVector<Value*, 8>& ValsInCC)
 {
-	ValsInCC.push_back(V);
-	if (getRootValue(V) == nullptr) {
-		return;
-	}
-
 	// Handle InsertElement specially. Note that only rootValue from
 	// a sequence of insertElement is in congruent class. The RootValue
 	// has its liveness modified to cover all InsertElements that are
 	// grouped together.
 	Value* rootV = getInsEltRoot(V);
+    ValsInCC.push_back(rootV);
 	auto RI = RegNodeMap.find(rootV);
 	if (RI != RegNodeMap.end()) {
 		Node* First = RI->second;
@@ -796,7 +792,7 @@ void DeSSA::getAllValuesInCongruentClass(
                 N = N->next;
 				continue;
 			}
-			if (V != N->value) {
+			if (rootV != N->value) {
 				// No duplicate Value in ValsInCC
 				ValsInCC.push_back(N->value);
 			}

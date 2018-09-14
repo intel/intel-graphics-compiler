@@ -252,6 +252,8 @@ public:
 		MapUnionRegs(RegNodeMap, Val1, Val2);
 	}
 
+    llvm::Value* getInsEltRoot(llvm::Value* Val) const;
+
     private:
     void CoalesceInsertElementsForBasicBlock(llvm::BasicBlock *blk);
 
@@ -264,7 +266,6 @@ public:
         assert(InsEltMap.find(SrcVal) != InsEltMap.end());
         InsEltMap[DefVal] = InsEltMap[SrcVal];
     }
-    llvm::Value* getInsEltRoot(llvm::Value* Val) const;
   };
 
   struct MIIndexCompare {
