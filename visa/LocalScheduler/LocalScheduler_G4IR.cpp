@@ -832,7 +832,7 @@ public:
         firstBucket = GRF_BUCKET;
         numOfBuckets = TOTAL_BUCKETS;
         ddd = Ddd;
-        nodeBucketsArray.resize(sizeof(BucketHeadNode) * numOfBuckets);
+        nodeBucketsArray.resize(numOfBuckets);
 
         // Initialize a vector for each bucket
         for (int bucket_i = 0; bucket_i != (int)numOfBuckets; ++bucket_i)
