@@ -382,7 +382,8 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <opcode> SCATTER_SCALED_OP
 %token <opcode> SCATTER4_SCALED_OP
 %token <opcode> BARRIER_OP
-%token <opcode> PBARRIER_OP
+%token <opcode> SBARRIER_SIGNAL
+%token <opcode> SBARRIER_WAIT
 %token <opcode> ATOMIC_OP
 %token <opcode> DWORD_ATOMIC_OP
 %token <opcode> TYPED_ATOMIC_OP
@@ -1086,10 +1087,13 @@ SynchronizationInstruction: BARRIER_OP
             {
                 pCisaBuilder->CISA_create_sync_instruction($1);
             };
-            //          1                 2          3
-            | PBARRIER_OP VecSrcOperand_G_I RawOperand
+            | SBARRIER_SIGNAL
             {
-                pCisaBuilder->CISA_create_pbarrier_instruction($2.cisa_gen_opnd, $3.cisa_gen_opnd);
+                pCisaBuilder->CISA_create_sbarrier_instruction(true);
+            };
+            | SBARRIER_WAIT
+            {
+                pCisaBuilder->CISA_create_sbarrier_instruction(false);
             };
 
 //                         1         2             3           4        5   6                     7          8          9          10

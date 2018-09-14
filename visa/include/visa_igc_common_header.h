@@ -377,7 +377,7 @@ typedef enum {
     ISA_SCATTER_SCALED     = 0x79,
     ISA_RAW_SENDS          = 0x7A,
     ISA_LIFETIME           = 0x7B,
-    ISA_PBARRIER           = 0x7C,
+    ISA_SBARRIER           = 0x7C,
     ISA_DWORD_ATOMIC       = 0x7D,
     ISA_SQRTM              = 0x7E,
     ISA_DIVM               = 0x7F,

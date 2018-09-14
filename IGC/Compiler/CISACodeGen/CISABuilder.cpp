@@ -2463,24 +2463,6 @@ void CEncoder::Barrier()
     V(vKernel->AppendVISASyncInst(ISA_BARRIER));
 }
 
-void CEncoder::PredicatedBarrier(CVariable* dst, CVariable* mask)
-{
-    VISA_RawOpnd* pDstOpnd = GetRawDestination(dst);
-    VISA_VectorOpnd* pMaskOpnd = nullptr;
-
-     V(vKernel->CreateVISASrcOperand(
-                pMaskOpnd,
-                GetVISAVariable(mask),
-                ConvertModifierToVisaType(EMOD_NONE),
-                0,
-                1,
-                0,
-                0,
-                0));
-
-    V(vKernel->AppendVISAPredBarrierInst(pMaskOpnd, pDstOpnd));
-}
-
 void CEncoder::Fence(bool CommitEnable,
     bool L3_Flush_RW_Data,
     bool L3_Flush_Constant_Data,

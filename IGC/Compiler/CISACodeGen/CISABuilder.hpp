@@ -187,7 +187,6 @@ public:
 
     void AddrAdd(CVariable* dst, CVariable* src0, CVariable* src1);
     void Barrier();
-    void PredicatedBarrier(CVariable* dst, CVariable* mask);
     void Fence(bool CommitEnable, 
                 bool L3_Flush_RW_Data, 
                 bool L3_Flush_Constant_Data, 

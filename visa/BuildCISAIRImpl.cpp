@@ -1985,10 +1985,9 @@ bool CISA_IR_Builder::CISA_create_sync_instruction(ISA_Opcode opcode)
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_pbarrier_instruction(VISA_opnd *mask, VISA_opnd *dst) {
-    int ret = m_kernel
-        ->AppendVISAPredBarrierInst(static_cast<VISA_VectorOpnd *>(mask),
-                                    static_cast<VISA_RawOpnd *>(dst));
+bool CISA_IR_Builder::CISA_create_sbarrier_instruction(bool isSignal) 
+{
+    int ret = m_kernel->AppendVISASplitBarrierInst(isSignal);
     return ret == CM_SUCCESS;
 }
 

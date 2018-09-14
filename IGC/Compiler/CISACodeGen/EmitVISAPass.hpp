@@ -264,8 +264,6 @@ public:
     void emitAtomicCounter(llvm::GenIntrinsicInst* pInst);
     void emitRenderTargetRead(llvm::GenIntrinsicInst* inst);
 
-    void emitWorkGroupAny(llvm::GenIntrinsicInst* inst);
-
     void emitDiscard(llvm::Instruction* inst);
     void emitInitDiscardMask(llvm::GenIntrinsicInst* inst);
     void emitUpdateDiscardMask(llvm::GenIntrinsicInst* inst);

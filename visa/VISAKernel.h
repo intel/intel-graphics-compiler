@@ -483,7 +483,7 @@ public:
     CM_BUILDER_API int AppendVISASyncInst(ISA_Opcode opcode, unsigned char mask = 0);
     CM_BUILDER_API int AppendVISAWaitInst(VISA_VectorOpnd* mask);
 
-    CM_BUILDER_API int AppendVISAPredBarrierInst(VISA_VectorOpnd *mask, VISA_RawOpnd *dst);
+    CM_BUILDER_API int AppendVISASplitBarrierInst(bool isSignal);
 
     CM_BUILDER_API int AppendVISAMiscFileInst(char *fileName);
 

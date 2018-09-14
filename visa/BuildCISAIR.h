@@ -470,7 +470,7 @@ public:
 
     bool CISA_create_sync_instruction(ISA_Opcode opcode);
 
-    bool CISA_create_pbarrier_instruction(VISA_opnd *mask, VISA_opnd *dst);
+    bool CISA_create_sbarrier_instruction(bool isSignal);
 
     bool CISA_create_invtri_inst(VISA_opnd *pred,
 											   ISA_Opcode opcode,

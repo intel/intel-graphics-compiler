@@ -780,11 +780,11 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
                     kernelBuilder->CreateVISAImmediate(mask, &value, ISA_TYPE_UW);
                 }
                 kernelBuilder->AppendVISAWaitInst(mask);
-            } else if (opcode == ISA_PBARRIER) {
-                VISA_VectorOpnd *mask
-                    = readVectorOperandNG(bytePos, buf, container, false);
-                VISA_RawOpnd *dst = readRawOperandNG(bytePos, buf, container);
-                kernelBuilder->AppendVISAPredBarrierInst(mask, dst);
+            } 
+            else if (opcode == ISA_SBARRIER) 
+            {
+                uint32_t mode = readOtherOperandNG(bytePos, buf, ISA_TYPE_UB);
+                kernelBuilder->AppendVISASplitBarrierInst(mode != 0);
             }
             else
             {

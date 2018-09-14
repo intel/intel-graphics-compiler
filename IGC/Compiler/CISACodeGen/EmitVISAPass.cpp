@@ -7214,9 +7214,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_globalSync:
         emitMemoryFence();
         break;
-    case GenISAIntrinsic::GenISA_WorkGroupAny:
-        emitWorkGroupAny(inst);
-        break;
     case GenISAIntrinsic::GenISA_PHASE_OUTPUT:
         emitPhaseOutput(inst);
         break;
@@ -11283,43 +11280,6 @@ void EmitPass::emitMemoryFence()
 void EmitPass::emitFlushSamplerCache(llvm::Instruction* inst)
 {
     m_encoder->FlushSamplerCache();
-    m_encoder->Push();
-}
-
-void EmitPass::emitWorkGroupAny(llvm::GenIntrinsicInst* inst)
-{
-    assert(m_currShader->GetShaderType() == ShaderType::OPENCL_SHADER);
-    m_currShader->SetHasBarrier();
-
-    assert(m_currShader->m_Platform->hasPredicatedBarriers());
-
-    CVariable* predicateSource = GetSymbol(inst->getOperand(0));
-
-    CVariable* predicateMask = m_currShader->GetNewVariable(
-            numLanes(m_SimdMode),
-            ISA_TYPE_BOOL,
-            IGC::EALIGN_GRF);
-
-    CVariable* predicateMaskVector = m_currShader->GetNewVariable(
-            1,
-            ISA_TYPE_UD,
-            IGC::EALIGN_GRF,
-            true);
-
-    CVariable* zero = m_currShader->ImmToVariable(0, ISA_TYPE_UD);
-    CVariable* mask16bit = m_currShader->ImmToVariable(0xffff, ISA_TYPE_UD);
-
-    m_encoder->Cmp(EPREDICATE_NE, predicateMask, predicateSource, zero);
-    m_encoder->Push();
-
-    m_encoder->BoolToInt(predicateMaskVector, predicateMask);
-    m_encoder->Push();
-
-    m_encoder->PredicatedBarrier(m_destination, predicateMaskVector);
-    m_encoder->Push();
-
-    m_encoder->SetSrcRegion(0, 0, 1, 0);
-    m_encoder->And(m_destination, m_destination, mask16bit);
     m_encoder->Push();
 }
 

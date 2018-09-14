@@ -989,7 +989,7 @@ static void verifyInstructionSync(const common_isa_header& isaHeader, const kern
         case ISA_WAIT               : return;
         case ISA_FENCE              : return;
         case ISA_YIELD              : return;
-        case ISA_PBARRIER           : return;
+        case ISA_SBARRIER           : return;
         default: REPORT_INSTRUCTION(options,false, "Illegal Synchronization Instruction Opcode: %d, %s.", opcode, ISA_Inst_Table[opcode].str);
     }
 }

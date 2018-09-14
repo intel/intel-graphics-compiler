@@ -1735,8 +1735,10 @@ public:
 
     int translateVISAWaitInst(G4_Operand* mask);
 
-    int translateVISAPredBarrierInst(G4_Operand *mask, G4_DstRegRegion *dst);
+    int translateVISASplitBarrierInst(bool isSignal);
 
+    void generateBarrierSend();
+    void generateBarrierWait();
 
     int translateVISACompareInst(ISA_Opcode opcode,
                         Common_ISA_Exec_Size execSize,

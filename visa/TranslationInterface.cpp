@@ -1919,6 +1919,68 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
     return CM_SUCCESS;
 }
 
+void IR_Builder::generateBarrierSend()
+{
+    int exdesc = SFID_GATEWAY;
+    // 1 message length, 0 response length, no header, no ack
+    int desc = (0x1 << 25) + 0x4;
+
+    //get barrier id
+    G4_Declare *dcl = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
+
+    G4_SrcRegRegion* r0_src_opnd = createSrcRegRegion(
+        Mod_src_undef,
+        Direct,
+        builtinR0->getRegVar(),
+        0,
+        2,
+        getRegionScalar(),
+        Type_UD);
+
+    G4_DstRegRegion *mrf_dst1_opnd = Create_Dst_Opnd_From_Dcl(dcl, 1);
+
+    bool enableBarrierInstCounterBits = kernel.getOption(VISA_EnableBarrierInstCounterBits);
+    int mask = getBarrierMask(enableBarrierInstCounterBits);
+
+    G4_Imm *g4Imm = createImm(mask, Type_UD);
+
+    createInst(NULL,
+        G4_and,
+        NULL,
+        false,
+        8,
+        mrf_dst1_opnd,
+        r0_src_opnd,
+        g4Imm,
+        InstOpt_WriteEnable,
+        0);
+
+    // Generate the barrier send message
+    createSendInst(
+        NULL,
+        G4_send,
+        1,
+        createNullDst(Type_UD),
+        Create_Src_Opnd_From_Dcl(dcl, getRegionStride1()),
+        createImm(exdesc, Type_UD),
+        createImm(desc, Type_UD),
+        InstOpt_WriteEnable,
+        true,
+        true,
+        NULL,
+        0);
+}
+
+void IR_Builder::generateBarrierWait()
+{
+    // wait n0.0<0;1,0>:ud
+    G4_SrcRegRegion* N0
+        = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getN0Reg(),
+            0, 0, getRegionScalar(), Type_UD);
+    createInst(nullptr, G4_wait, nullptr, false, 1, nullptr, N0, nullptr,
+        InstOpt_WriteEnable);
+}
+
 int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
 {
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
@@ -1928,74 +1990,8 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
     {
     case ISA_BARRIER:
         {
-            //BARRIER (no arguments)
-            int exdesc = SFID_GATEWAY;
-            // 1 message length, 0 response length, no header, no ack
-            int desc = (0x1 << 25) + 0x4;
-
-            //get barrier id
-            G4_Declare *dcl = Create_MRF_Dcl( GENX_DATAPORT_IO_SZ, Type_UD );
-
-            G4_SrcRegRegion* r0_src_opnd = createSrcRegRegion(
-                Mod_src_undef,
-                Direct,
-                builtinR0->getRegVar(),
-                0,
-                2,
-                getRegionScalar(),
-                Type_UD );
-
-            G4_DstRegRegion *mrf_dst1_opnd = Create_Dst_Opnd_From_Dcl(dcl, 1);
-
-            bool enableBarrierInstCounterBits = kernel.getOption(VISA_EnableBarrierInstCounterBits);
-            int mask = getBarrierMask(enableBarrierInstCounterBits);
-
-            G4_Imm *g4Imm = createImm(mask, Type_UD);
-
-            createInst(     NULL,
-                G4_and,
-                NULL,
-                false,
-                8,
-                mrf_dst1_opnd,
-                r0_src_opnd,
-                g4Imm,
-                InstOpt_WriteEnable,
-                0 );
-
-            // Generate the barrier send message
-            G4_DstRegRegion *post_dst_opnd = createNullDst( Type_UD );
-            G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
-            createSendInst(
-                NULL,
-                G4_send,
-                1,
-                post_dst_opnd,
-                payload,
-                createImm( exdesc, Type_UD ),
-                createImm( desc, Type_UD ),
-                InstOpt_WriteEnable,
-                true,
-                true,
-                NULL,
-                0 );
-
-            // Generate the wait message
-            // wait n0.0<0;1,0>:ud
-            {
-                G4_SrcRegRegion* srcOpnd = createSrcRegRegion(Mod_src_undef, Direct,
-                    phyregpool.getN0Reg(), 0, 0, getRegionScalar(), Type_UD);
-                last_inst = createInst( NULL,
-                    G4_wait,
-                    NULL,
-                    false,
-                    1,
-                    NULL,
-                    srcOpnd,
-                    NULL,
-                    InstOpt_WriteEnable,
-                    0);
-            }
+            generateBarrierSend();
+            generateBarrierWait();
         }
         break;
     case ISA_SAMPLR_CACHE_FLUSH:
@@ -2074,66 +2070,20 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
     return CM_SUCCESS;
 }
 
-int IR_Builder::translateVISAPredBarrierInst(G4_Operand *mask, G4_DstRegRegion *dst) {
+int IR_Builder::translateVISASplitBarrierInst(bool isSignal) 
+{
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
 
-    G4_Declare *msg = Create_MRF_Dcl(GENX_DATAPORT_IO_SZ, Type_UD);
-    G4_SrcRegRegion *R02 = createSrcRegRegion(Mod_src_undef, Direct,
-                                              getBuiltinR0()->getRegVar(),
-                                              0, 2, getRegionScalar(),
-                                              Type_UD);
-    G4_SrcRegRegion *msg2Src = createSrcRegRegion(Mod_src_undef, Direct,
-                                                  msg->getRegVar(),0, 2,
-                                                  getRegionScalar(),
-                                                  Type_UD);
-    G4_DstRegRegion *msg2Dst = createDstRegRegion(Direct, msg->getRegVar(),
-                                                  0, 2, 1, Type_UD);
-    G4_DstRegRegion *msg2Dst1 = createDstRegRegion(Direct, msg->getRegVar(),
-                                                   0, 2, 1, Type_UD);
-    G4_DstRegRegion *msg3Dst = createDstRegRegion(Direct, msg->getRegVar(),
-                                                  0, 3, 1, Type_UD);
-
-    // Prepare the payload.
-    int barrierIDMask = getBarrierIDMask();
-    int predMaskEnable = getPredMaskEnableBit();
-    // Copy barrier ID from R0.
-    createInst(NULL, G4_and, NULL, false, 1, msg2Dst,
-               R02, createImm(barrierIDMask, Type_UD), InstOpt_WriteEnable);
-    // Set 'Predicate Mask Enable' as well as the 'Predicate Mask'.
-    createInst(NULL, G4_or, NULL, false, 1, msg2Dst1,
-               msg2Src, createImm((int64_t)1 << predMaskEnable, Type_UD), InstOpt_WriteEnable);
-    // Copy predicate mask.
-    createInst(NULL, G4_mov, NULL, false, 1, msg3Dst, mask,
-               NULL, InstOpt_WriteEnable);
-
-    CISA_SHARED_FUNCTION_ID SFID = SFID_GATEWAY;
-    unsigned MD = 0;
-    MD |= MDC_GW_BARRIER_MSG;
-    MD |= 1 << 14; // Ack is required.
-
-    G4_SrcRegRegion *src = createSrcRegRegion(Mod_src_undef, Direct,
-                                              msg->getRegVar(), 0, 0,
-                                              getRegionStride1(),
-                                              Type_UD);
-    last_inst = Create_Send_Inst_For_CISA(NULL, dst,
-                                          src, 1,
-                                          1,
-                                          8,
-                                          MD, SFID,
-                                          false, false,
-                                          true, true,
-                                          NULL, NULL,
-                                          InstOpt_WriteEnable, false);
-
-    // Wait for the notification.
-    // wait n0.0<0;1,0>:ud
-    G4_SrcRegRegion* N0
-        = createSrcRegRegion(Mod_src_undef, Direct, phyregpool.getN0Reg(),
-                             0, 0, getRegionScalar(), Type_UD);
-    last_inst = createInst(NULL, G4_wait, NULL, false, 1, NULL, N0, NULL,
-                           InstOpt_WriteEnable);
+    if (isSignal)
+    {
+        generateBarrierSend();
+    }
+    else
+    {
+        generateBarrierWait();
+    }
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif

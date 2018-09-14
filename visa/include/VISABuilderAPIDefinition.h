@@ -502,10 +502,9 @@ public:
     /// The mask, if not NULL, can be used to selectively disable waiting on some of the parent threads
     CM_BUILDER_API virtual int AppendVISAWaitInst(VISA_VectorOpnd *mask) = 0;
 
-    /// AppendVISAPredBarrierInst -- create a predicated barrier
-    /// @mask predicate mask
-    /// @dst DW0[15:0] contains predicated barrier mask sum
-    CM_BUILDER_API virtual int AppendVISAPredBarrierInst(VISA_VectorOpnd *mask, VISA_RawOpnd *dst) = 0;
+    /// AppendVISASplitBarrierInst -- create a split-phase barrier
+    /// isSignal indicates whether this is the signal or wait for the barrier
+    CM_BUILDER_API virtual int AppendVISASplitBarrierInst(bool isSignal) = 0;
 
     CM_BUILDER_API virtual int AppendVISAMiscFileInst(char *fileName) = 0;
 

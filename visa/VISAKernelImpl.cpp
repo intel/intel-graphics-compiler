@@ -4841,30 +4841,36 @@ int VISAKernelImpl::AppendVISASyncInst(ISA_Opcode opcode, unsigned char mask)
     return status;
 }
 
-int VISAKernelImpl::AppendVISAPredBarrierInst(VISA_VectorOpnd *mask, VISA_RawOpnd *dst) {
+int VISAKernelImpl::AppendVISASplitBarrierInst(bool isSignal) 
+{
     AppendVISAInstCommon();
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_APPEND_INST);
 #endif
     int status = CM_SUCCESS;
 
-    if (IS_GEN_BOTH_PATH) {
-        CreateGenRawDstOperand(dst);
-        status = m_builder->translateVISAPredBarrierInst(mask->g4opnd, dst->g4opnd->asDstRegRegion());
+    if (IS_GEN_BOTH_PATH) 
+    {
+        status = m_builder->translateVISASplitBarrierInst(isSignal);
     }
 
-    if (IS_VISA_BOTH_PATH) {
-        VISA_INST_Desc *instDesc = &CISA_INST_table[ISA_PBARRIER];
-        VISA_opnd *ops[2];
-        int numOps = 0;
+    if (IS_VISA_BOTH_PATH) 
+    {
+        VISA_INST_Desc *inst_desc = NULL;
+        VISA_opnd* opnd[1];
+        int num_pred_desc_operands = 0;
+        inst_desc = &CISA_INST_table[ISA_SBARRIER];
+        GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc);
+        int num_operands = 0;
 
-        ADD_OPND(numOps, ops, mask);
-        ADD_OPND(numOps, ops, dst);
+        uint8_t mode = isSignal ? 1 : 0;
+        ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, mode));
 
-        CisaFramework::CisaInst *inst
-            = new (m_mem) CisaFramework::CisaInst(m_mem);
+        CHECK_NUM_OPNDS(inst_desc, num_operands, num_pred_desc_operands);
 
-        inst->createCisaInstruction(ISA_PBARRIER, EXEC_SIZE_1, 0, 0, ops, numOps, instDesc);
+        CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(m_mem);
+
+        inst->createCisaInstruction(ISA_SBARRIER, EXEC_SIZE_1, 0, 0, opnd, num_operands, inst_desc);
         addInstructionToEnd(inst);
     }
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)

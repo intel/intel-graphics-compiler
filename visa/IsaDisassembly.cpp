@@ -844,11 +844,10 @@ static string printInstructionCommon(const common_isa_header& isaHeader, const k
         {
             sstr << printOperand(isaHeader, header, inst, 0, opt);
         }
-        else if (opcode == ISA_PBARRIER) {
-            // mask operand
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
-            // dst operand
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+        else if (opcode == ISA_SBARRIER) 
+        {
+            uint8_t mode = getPrimitiveOperand<uint8_t>(inst, i);
+            sstr << (mode ? ".signal" : ".wait");
         }
     }
 

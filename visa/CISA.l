@@ -300,10 +300,16 @@ barrier {
 			   return BARRIER_OP;
 }
 
-pbarrier {
-    TRACE("\n** barrier INST ");
-    CISAlval.opcode = str2opcode(yytext);
-    return PBARRIER_OP;
+sbarrier.signal {
+    TRACE("\n** sbarrier.signal INST ");
+    CISAlval.opcode = ISA_SBARRIER;
+    return SBARRIER_SIGNAL;
+}
+
+sbarrier.wait {
+    TRACE("\n** sbarrier.wait INST ");
+    CISAlval.opcode = ISA_SBARRIER;
+    return SBARRIER_WAIT;
 }
 
 sampler_cache_flush {
