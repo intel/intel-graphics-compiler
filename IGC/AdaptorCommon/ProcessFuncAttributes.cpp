@@ -431,7 +431,7 @@ bool ProcessBuiltinMetaData::runOnModule(Module& M)
         F->addFnAttr(llvm::Attribute::AlwaysInline);
 
         // disable JumpThread optimization on the block that contains this function
-        F->setCannotDuplicate();
+        F->setConvergent();
 
         if (m_pMdUtil->findFunctionsInfoItem(F) == m_pMdUtil->end_FunctionsInfo())
         {

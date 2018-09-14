@@ -138,6 +138,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/ErrorHandling.h>
 #include <llvm/Support/SourceMgr.h>
+#include <llvm/Transforms/IPO/FunctionAttrs.h>
 #include "common/LLVMWarningsPop.hpp"
 #include <sstream>
 
@@ -1085,6 +1086,12 @@ void OptimizeIR(CodeGenContext* pContext)
         // Do inter-procedural constant propagation early.
         if (pContext->m_enableSubroutine)
         {
+            // Here, we propagate function attributes across calls.  Remaining
+            // function calls that were conservatively marked as 'convergent'
+            // in ProcessBuiltinMetaData can have that attribute stripped if
+            // possible which potentially allows late stage code sinking of
+            // those calls by the instruction combiner.
+            mpm.add(createPostOrderFunctionAttrsLegacyPass());
             mpm.add(createConstantPropagationPass());
             mpm.add(createIPConstantPropagationPass());
         }
