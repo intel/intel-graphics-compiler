@@ -2646,6 +2646,164 @@ extern uint32_t GED_CALLCONV GED_GetExDescRegNum(ged_ins_t* ins, GED_RETURN_VALU
 extern GED_RETURN_VALUE GED_CALLCONV GED_SetExDescRegNum(ged_ins_t* ins, const uint32_t value);
 
 /*!
+ * Get the value of the MsgDescCategory field in the given instruction. See @ref GED_INS_FIELD_MsgDescCategory for the field's
+ * description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetMsgDescCategory(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the MsgDescCategory field in the given instruction. See @ref GED_INS_FIELD_MsgDescCategory for the field's
+ * description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDescCategory(ged_ins_t* ins, const uint32_t value);
+
+/*!
+ * Get the value of the MsgDescScratchAddrOffset field in the given instruction. See @ref GED_INS_FIELD_MsgDescScratchAddrOffset for
+ * the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetMsgDescScratchAddrOffset(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the MsgDescScratchAddrOffset field in the given instruction. See @ref GED_INS_FIELD_MsgDescScratchAddrOffset for
+ * the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDescScratchAddrOffset(ged_ins_t* ins, const uint32_t value);
+
+/*!
+ * Get the value of the MsgDescScratchBlockSize field in the given instruction. See @ref GED_INS_FIELD_MsgDescScratchBlockSize for the
+ * field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value upon success. If the encoded value is not valid, i.e. does not map to any valid enumerated value
+ *              for this instruction, the (invalid) encoded value is returned. If the field is not valid for the instruction, the
+ *              uint32_t equivalent of -1 is returned. If -1 is a valid value for this field, it is important to check the
+ *              GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetMsgDescScratchBlockSize(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the MsgDescScratchBlockSize field in the given instruction. See @ref GED_INS_FIELD_MsgDescScratchBlockSize for the
+ * field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDescScratchBlockSize(ged_ins_t* ins, const uint32_t value);
+
+/*!
+ * Get the value of the MsgDescScratchInvalidateAfterRead field in the given instruction. See @ref
+ * GED_INS_FIELD_MsgDescScratchInvalidateAfterRead for the field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      The requested value if the field is valid, uint32_t equivalent of -1 otherwise. If -1 is a valid value for this field,
+ *              it is important to check the GED_RETURN_VALUE result.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern uint32_t GED_CALLCONV GED_GetMsgDescScratchInvalidateAfterRead(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the MsgDescScratchInvalidateAfterRead field in the given instruction. See @ref
+ * GED_INS_FIELD_MsgDescScratchInvalidateAfterRead for the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDescScratchInvalidateAfterRead(ged_ins_t* ins, const uint32_t value);
+
+/*!
+ * Get the value of the MsgDescScratchChannelMode field in the given instruction. The function returns an enumeration value. To obtain
+ * the enum entry's string representation, use @ref GED_GetChannelModeString. See @ref GED_INS_FIELD_MsgDescScratchChannelMode for the
+ * field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      MsgDescScratchChannelMode's enumeration if the field is valid, GED_CHANNEL_MODE_INVALID otherwise.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern GED_CHANNEL_MODE GED_CALLCONV GED_GetMsgDescScratchChannelMode(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the MsgDescScratchChannelMode field in the given instruction. See @ref GED_INS_FIELD_MsgDescScratchChannelMode for
+ * the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDescScratchChannelMode(ged_ins_t* ins, const GED_CHANNEL_MODE value);
+
+/*!
+ * Get the value of the MsgDescScratchMessageType field in the given instruction. The function returns an enumeration value. To obtain
+ * the enum entry's string representation, use @ref GED_GetMessageTypeString. See @ref GED_INS_FIELD_MsgDescScratchMessageType for the
+ * field's description.
+ *
+ * @param[in]       ins    Pointer to the decoded instruction object.
+ * @param[out]      result If non-null, the function stores the @ref GED_RETURN_VALUE result indicating success or the specific error
+ *                         which caused the failure.
+ *
+ * @return      MsgDescScratchMessageType's enumeration if the field is valid, GED_MESSAGE_TYPE_INVALID otherwise.
+ *
+ * @note        @ref GED_DecodeIns must be called with the given instruction before calling this function.
+ */
+extern GED_MESSAGE_TYPE GED_CALLCONV GED_GetMsgDescScratchMessageType(ged_ins_t* ins, GED_RETURN_VALUE* result);
+
+/*!
+ * Set the value of the MsgDescScratchMessageType field in the given instruction. See @ref GED_INS_FIELD_MsgDescScratchMessageType for
+ * the field's description.
+ *
+ * @param[in,out]   ins    Pointer to the instruction object for encoding.
+ * @param[in]       value  The value to encode.
+ *
+ * @return      GED_RETURN_VALUE indicating success or encoding error.
+ */
+extern GED_RETURN_VALUE GED_CALLCONV GED_SetMsgDescScratchMessageType(ged_ins_t* ins, const GED_MESSAGE_TYPE value);
+
+/*!
  * Get the value of the ExecutionDataType field in the given instruction. The function returns an enumeration value. To obtain the
  * enum entry's string representation, use @ref GED_GetExecutionDataTypeString. See @ref GED_INS_FIELD_ExecutionDataType for the
  * field's description.
@@ -4213,6 +4371,16 @@ extern const char* GED_CALLCONV GED_GetBranchCtrlString(GED_BRANCH_CTRL BranchCt
  * @return      The requested string.
  */
 extern const char* GED_CALLCONV GED_GetChannelMaskString(GED_CHANNEL_MASK ChannelMaskValue);
+
+/*!
+ * Get the string representation for the given GED_CHANNEL_MODE enumerator. The function returns a NULL pointer for
+ * GED_CHANNEL_MODE_INVALID.
+ *
+ * @param[in]       ChannelModeValue   The given GED_CHANNEL_MODE enumerator.
+ *
+ * @return      The requested string.
+ */
+extern const char* GED_CALLCONV GED_GetChannelModeString(GED_CHANNEL_MODE ChannelModeValue);
 
 /*!
  * Get the string representation for the given GED_CHANNEL_OFFSET enumerator. The function returns a NULL pointer for

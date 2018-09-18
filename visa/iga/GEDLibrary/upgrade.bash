@@ -12,36 +12,20 @@ if [ ! -f GED.zip ]; then
    fatal "could not find ./GED.zip"
 fi
 
-#echo "Removing old GED"
-#rm -rf GED_external GED_internal
-#
-#echo "Unzipping GED.zip"
-#../bin/7za x -p12345678 GED.zip > /dev/null
-#
-#echo "Renaming Directories"
-#mv GED-internal GED_internal
-#mv GED-external GED_external
-#cat GED_internal/Source/common/version.cpp
-#
+echo "Removing old GED"
+rm -rf GED_external GED_internal
+
+echo "Unzipping GED.zip"
+../bin/7za x -p12345678 GED.zip > /dev/null
+
+echo "Renaming Directories"
+mv GED-internal GED_internal
+mv GED-external GED_external
+cat GED_internal/Source/common/version.cpp
+
 echo "Removing non-essential files"
 rm -rf GED_internal/Config
 rm -rf GED_external/Config
-rm -rf GED_internal/Source/ged/makefile
-rm -rf GED_external/Source/ged/makefile
-rm -rf GED_internal/Source/ged/makefile.autogenlib
-rm -rf GED_external/Source/ged/makefile.autogenlib
-rm -rf GED_internal/GIDE/
-rm -rf GED_external/GIDE/
-rm -rf GED_internal/Examples
-rm -rf GED_external/Examples
-rm -rf GED_internal/doc
-rm -rf GED_external/doc 
-rm -rf GED_internal/makefile
-rm -rf GED_external/makefile
-rm -rf GED_internal/build/autogen-intel64/html/
-rm -rf GED_internal/build/autogen-ia32/html
-rm -rf GED_external/build/autogen-intel64/html
-rm -rf GED_external/build/autogen-ia32/html
 
 # $1 = is dir: e.g. GED/build/autogen-ia32
 # $2 = the GED group ("autogenia32"  =>  used to make "set(GED_autogenia32_cpp..."

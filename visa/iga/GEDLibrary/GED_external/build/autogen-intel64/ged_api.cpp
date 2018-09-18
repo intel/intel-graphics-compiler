@@ -49,13 +49,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ged_model_gen11.h"
 ModelData ModelsArray[7] =
 {
-    { GEN7::Opcodes, "7", 102, (const ged_field_enum_table_t)OpcodeTable2, 29, PositionInterpreterTable0, 3, EnumInterpretersTable0, 0, NULL }, // 0
-    { GEN7_5::Opcodes, "7.5", 102, (const ged_field_enum_table_t)OpcodeTable3, 30, PositionInterpreterTable1, 3, EnumInterpretersTable0, 0, NULL }, // 1
-    { GEN8::Opcodes, "8", 102, (const ged_field_enum_table_t)OpcodeTable4, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 2
-    { GEN8_1::Opcodes, "8.1", 102, (const ged_field_enum_table_t)OpcodeTable4, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 3
-    { GEN9::Opcodes, "9", 102, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable3, 3, EnumInterpretersTable1, 0, NULL }, // 4
-    { GEN10::Opcodes, "10", 102, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable4, 3, EnumInterpretersTable1, 0, NULL }, // 5
-    { GEN11::Opcodes, "11", 102, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable5, 3, EnumInterpretersTable2, 0, NULL } // 6
+    { GEN7::Opcodes, "7", 108, (const ged_field_enum_table_t)OpcodeTable2, 29, PositionInterpreterTable0, 3, EnumInterpretersTable0, 0, NULL }, // 0
+    { GEN7_5::Opcodes, "7.5", 108, (const ged_field_enum_table_t)OpcodeTable3, 30, PositionInterpreterTable1, 3, EnumInterpretersTable0, 0, NULL }, // 1
+    { GEN8::Opcodes, "8", 108, (const ged_field_enum_table_t)OpcodeTable4, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 2
+    { GEN8_1::Opcodes, "8.1", 108, (const ged_field_enum_table_t)OpcodeTable4, 33, PositionInterpreterTable2, 3, EnumInterpretersTable1, 0, NULL }, // 3
+    { GEN9::Opcodes, "9", 108, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable3, 3, EnumInterpretersTable1, 0, NULL }, // 4
+    { GEN10::Opcodes, "10", 108, (const ged_field_enum_table_t)OpcodeTable0, 35, PositionInterpreterTable4, 3, EnumInterpretersTable1, 0, NULL }, // 5
+    { GEN11::Opcodes, "11", 108, (const ged_field_enum_table_t)OpcodeTable1, 35, PositionInterpreterTable5, 3, EnumInterpretersTable2, 0, NULL } // 6
 }; // ModelsArray[]
 
 #if GED_DISASSEMBLY
@@ -1150,6 +1150,68 @@ GED_RETURN_VALUE GED_SetExDescRegNum(ged_ins_t* ins, const uint32_t value)
 {
     return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_ExDescRegNum, value);
 }
+uint32_t GED_GetMsgDescCategory(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_MsgDescCategory, *result);
+}
+GED_RETURN_VALUE GED_SetMsgDescCategory(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_MsgDescCategory, value);
+}
+uint32_t GED_GetMsgDescScratchAddrOffset(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_MsgDescScratchAddrOffset, *result);
+}
+GED_RETURN_VALUE GED_SetMsgDescScratchAddrOffset(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_MsgDescScratchAddrOffset, value);
+}
+uint32_t GED_GetMsgDescScratchBlockSize(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_MsgDescScratchBlockSize, *result);
+}
+GED_RETURN_VALUE GED_SetMsgDescScratchBlockSize(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_MsgDescScratchBlockSize, value);
+}
+uint32_t GED_GetMsgDescScratchInvalidateAfterRead(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    return reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_MsgDescScratchInvalidateAfterRead, *result);
+}
+GED_RETURN_VALUE GED_SetMsgDescScratchInvalidateAfterRead(ged_ins_t* ins, const uint32_t value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_MsgDescScratchInvalidateAfterRead, value);
+}
+GED_CHANNEL_MODE GED_GetMsgDescScratchChannelMode(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_MsgDescScratchChannelMode, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_CHANNEL_MODE)value : GED_CHANNEL_MODE_INVALID;
+}
+GED_RETURN_VALUE GED_SetMsgDescScratchChannelMode(ged_ins_t* ins, const GED_CHANNEL_MODE value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_MsgDescScratchChannelMode, (const uint32_t)value);
+}
+GED_MESSAGE_TYPE GED_GetMsgDescScratchMessageType(ged_ins_t* ins, GED_RETURN_VALUE* result)
+{
+    GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
+    if (NULL == result) result = &localResult;
+    const uint32_t value = reinterpret_cast<GEDIns*>(ins)->GetUnsignedField(GED_INS_FIELD_MsgDescScratchMessageType, *result);
+    return (GED_RETURN_VALUE_SUCCESS == *result) ? (GED_MESSAGE_TYPE)value : GED_MESSAGE_TYPE_INVALID;
+}
+GED_RETURN_VALUE GED_SetMsgDescScratchMessageType(ged_ins_t* ins, const GED_MESSAGE_TYPE value)
+{
+    return reinterpret_cast<GEDIns*>(ins)->SetUnsignedField(GED_INS_FIELD_MsgDescScratchMessageType, (const uint32_t)value);
+}
 GED_EXECUTION_DATA_TYPE GED_GetExecutionDataType(ged_ins_t* ins, GED_RETURN_VALUE* result)
 {
     GED_RETURN_VALUE localResult = GED_RETURN_VALUE_INVALID_FIELD;
@@ -1825,6 +1887,10 @@ const char* GED_GetBranchCtrlString(GED_BRANCH_CTRL BranchCtrlValue)
 const char* GED_GetChannelMaskString(GED_CHANNEL_MASK ChannelMaskValue)
 {
     return ChannelMaskEnumeration[ChannelMaskValue];
+}
+const char* GED_GetChannelModeString(GED_CHANNEL_MODE ChannelModeValue)
+{
+    return ChannelModeEnumeration[ChannelModeValue];
 }
 const char* GED_GetChannelOffsetString(GED_CHANNEL_OFFSET ChannelOffsetValue)
 {

@@ -997,6 +997,49 @@ typedef enum
     /*!
      *
      *
+     * @par     Models:     GEN9
+     */
+    GED_INS_FIELD_MsgDescCategory,
+
+    /*!
+     * Address offset (Hword based)
+     *
+     * @par     Models:     GEN9
+     */
+    GED_INS_FIELD_MsgDescScratchAddrOffset,
+
+    /*!
+     *
+     *
+     * @par     Models:     GEN9
+     */
+    GED_INS_FIELD_MsgDescScratchBlockSize,
+
+    /*!
+     *
+     *
+     * @par     Models:     GEN9
+     */
+    GED_INS_FIELD_MsgDescScratchInvalidateAfterRead,
+
+    /*!
+     * Two modes of channel-enable are provided: a SIMD8 or SIMD16 Dword channel serial view of a register, and a SIMD4x2 view of a
+     * register.
+     *
+     * @par     Models:     GEN9
+     */
+    GED_INS_FIELD_MsgDescScratchChannelMode,
+
+    /*!
+     * Operation Type
+     *
+     * @par     Models:     GEN9
+     */
+    GED_INS_FIELD_MsgDescScratchMessageType,
+
+    /*!
+     *
+     *
      * @par     Models:     GEN10, GEN11
      */
     GED_INS_FIELD_ExecutionDataType,

@@ -116,6 +116,12 @@ typedef enum
 } GED_CHANNEL_MASK;
 typedef enum
 {
+    GED_CHANNEL_MODE_Oword,   ///< GEN9
+    GED_CHANNEL_MODE_Dword,   ///< GEN9
+    GED_CHANNEL_MODE_INVALID
+} GED_CHANNEL_MODE;
+typedef enum
+{
     GED_CHANNEL_OFFSET_M0,      ///< all
     GED_CHANNEL_OFFSET_M4,      ///< all
     GED_CHANNEL_OFFSET_M8,      ///< all

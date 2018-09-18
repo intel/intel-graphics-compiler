@@ -39,18 +39,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*!
  * Table mapping a GED_INS_FIELD to its GED_FIELD_TYPE.
  */
-extern GED_FIELD_TYPE fieldTypesByField[102];
+extern GED_FIELD_TYPE fieldTypesByField[108];
 
 /*!
  * Table mapping GED_INS_FIELD with string enumerations to the corresponding table, which maps an enum entry to its string
  * representation.
  */
-extern const char** stringGettersByField[102];
+extern const char** stringGettersByField[108];
 
 /*!
  * Table mapping GED_INS_FIELD to its name (string representation).
  */
-extern const char* fieldNameByField[102];
+extern const char* fieldNameByField[108];
 
 /*!
  * Table mapping a GED_PSEUDO_FIELD to its GED_FIELD_TYPE.

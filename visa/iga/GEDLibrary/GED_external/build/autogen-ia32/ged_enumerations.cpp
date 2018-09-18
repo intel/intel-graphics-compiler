@@ -118,6 +118,12 @@ const char* ChannelMaskEnumeration[6] =
     "A", // 4
     NULL // 5
 }; // ChannelMaskEnumeration[]
+const char* ChannelModeEnumeration[3] =
+{
+    "Oword", // 0
+    "Dword", // 1
+    NULL // 2
+}; // ChannelModeEnumeration[]
 const char* ChannelOffsetEnumeration[9] =
 {
     "M0", // 0

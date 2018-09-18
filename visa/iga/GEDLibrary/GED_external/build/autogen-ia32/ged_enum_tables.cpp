@@ -191,7 +191,14 @@ const ged_unsigned_enum_value_t* unsignedTable13[16] =
     NULL, // 14
     NULL // 15
 }; // unsignedTable13[]
-const ged_unsigned_enum_value_t* unsignedTable14[16] =
+const ged_unsigned_enum_value_t* unsignedTable14[4] =
+{
+    &unsignedVar0, // 0
+    &unsignedVar1, // 1
+    &unsignedVar2, // 2
+    &unsignedVar3 // 3
+}; // unsignedTable14[]
+const ged_unsigned_enum_value_t* unsignedTable15[16] =
 {
     &unsignedVar6, // 0
     &unsignedVar0, // 1
@@ -209,8 +216,8 @@ const ged_unsigned_enum_value_t* unsignedTable14[16] =
     NULL, // 13
     NULL, // 14
     &unsignedVar7 // 15
-}; // unsignedTable14[]
-const ged_unsigned_enum_value_t* unsignedTable15[15] =
+}; // unsignedTable15[]
+const ged_unsigned_enum_value_t* unsignedTable16[15] =
 {
     &unsignedVar2, // 0
     &unsignedVar2, // 1
@@ -223,24 +230,6 @@ const ged_unsigned_enum_value_t* unsignedTable15[15] =
     NULL, // 8
     NULL, // 9
     NULL, // 10
-    &unsignedVar2, // 11
-    &unsignedVar2, // 12
-    &unsignedVar2, // 13
-    NULL // 14
-}; // unsignedTable15[]
-const ged_unsigned_enum_value_t* unsignedTable16[15] =
-{
-    &unsignedVar2, // 0
-    &unsignedVar2, // 1
-    &unsignedVar1, // 2
-    &unsignedVar1, // 3
-    &unsignedVar0, // 4
-    &unsignedVar0, // 5
-    &unsignedVar3, // 6
-    &unsignedVar2, // 7
-    &unsignedVar3, // 8
-    &unsignedVar3, // 9
-    &unsignedVar1, // 10
     &unsignedVar2, // 11
     &unsignedVar2, // 12
     &unsignedVar2, // 13
@@ -262,9 +251,27 @@ const ged_unsigned_enum_value_t* unsignedTable17[15] =
     &unsignedVar2, // 11
     &unsignedVar2, // 12
     &unsignedVar2, // 13
-    &unsignedVar2 // 14
+    NULL // 14
 }; // unsignedTable17[]
 const ged_unsigned_enum_value_t* unsignedTable18[15] =
+{
+    &unsignedVar2, // 0
+    &unsignedVar2, // 1
+    &unsignedVar1, // 2
+    &unsignedVar1, // 3
+    &unsignedVar0, // 4
+    &unsignedVar0, // 5
+    &unsignedVar3, // 6
+    &unsignedVar2, // 7
+    &unsignedVar3, // 8
+    &unsignedVar3, // 9
+    &unsignedVar1, // 10
+    &unsignedVar2, // 11
+    &unsignedVar2, // 12
+    &unsignedVar2, // 13
+    &unsignedVar2 // 14
+}; // unsignedTable18[]
+const ged_unsigned_enum_value_t* unsignedTable19[15] =
 {
     &unsignedVar6, // 0
     &unsignedVar6, // 1
@@ -281,8 +288,8 @@ const ged_unsigned_enum_value_t* unsignedTable18[15] =
     &unsignedVar6, // 12
     &unsignedVar6, // 13
     NULL // 14
-}; // unsignedTable18[]
-const ged_unsigned_enum_value_t* unsignedTable19[15] =
+}; // unsignedTable19[]
+const ged_unsigned_enum_value_t* unsignedTable20[15] =
 {
     &unsignedVar6, // 0
     &unsignedVar6, // 1
@@ -299,8 +306,8 @@ const ged_unsigned_enum_value_t* unsignedTable19[15] =
     &unsignedVar6, // 12
     &unsignedVar6, // 13
     NULL // 14
-}; // unsignedTable19[]
-const ged_unsigned_enum_value_t* unsignedTable20[14] =
+}; // unsignedTable20[]
+const ged_unsigned_enum_value_t* unsignedTable21[14] =
 {
     &unsignedVar6, // 0
     &unsignedVar0, // 1
@@ -316,7 +323,7 @@ const ged_unsigned_enum_value_t* unsignedTable20[14] =
     &unsignedVar6, // 11
     &unsignedVar6, // 12
     &unsignedVar6 // 13
-}; // unsignedTable20[]
+}; // unsignedTable21[]
 static GED_ACCESS_MODE AccessModeVar0 = (GED_ACCESS_MODE)0;
 static GED_ACCESS_MODE AccessModeVar1 = (GED_ACCESS_MODE)1;
 const GED_ACCESS_MODE* AccessModeTable0[2] =
@@ -521,6 +528,13 @@ const GED_CHANNEL_MASK* ChannelMaskTable3[2] =
     &ChannelMaskVar4, // 0
     &ChannelMaskVar1 // 1
 }; // ChannelMaskTable3[]
+static GED_CHANNEL_MODE ChannelModeVar0 = (GED_CHANNEL_MODE)0;
+static GED_CHANNEL_MODE ChannelModeVar1 = (GED_CHANNEL_MODE)1;
+const GED_CHANNEL_MODE* ChannelModeTable0[2] =
+{
+    &ChannelModeVar0, // 0
+    &ChannelModeVar1 // 1
+}; // ChannelModeTable0[]
 static GED_CHANNEL_OFFSET ChannelOffsetVar0 = (GED_CHANNEL_OFFSET)0;
 static GED_CHANNEL_OFFSET ChannelOffsetVar1 = (GED_CHANNEL_OFFSET)1;
 static GED_CHANNEL_OFFSET ChannelOffsetVar2 = (GED_CHANNEL_OFFSET)2;

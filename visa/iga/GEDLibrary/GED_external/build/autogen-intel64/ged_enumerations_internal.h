@@ -43,6 +43,7 @@ extern const char* BlockSizeEnumeration[6];
 extern const char* BranchCtrlEnumeration[3];
 extern const char* BranchCtrlEnumerationDisassembly[3];
 extern const char* ChannelMaskEnumeration[6];
+extern const char* ChannelModeEnumeration[3];
 extern const char* ChannelOffsetEnumeration[9];
 extern const char* CondModifierEnumeration[10];
 extern const char* DataTypeEnumeration[16];

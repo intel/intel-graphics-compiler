@@ -210,6 +210,18 @@ EXPORTS
   GED_SetExDescAddrSubRegNum
   GED_GetExDescRegNum
   GED_SetExDescRegNum
+  GED_GetMsgDescCategory
+  GED_SetMsgDescCategory
+  GED_GetMsgDescScratchAddrOffset
+  GED_SetMsgDescScratchAddrOffset
+  GED_GetMsgDescScratchBlockSize
+  GED_SetMsgDescScratchBlockSize
+  GED_GetMsgDescScratchInvalidateAfterRead
+  GED_SetMsgDescScratchInvalidateAfterRead
+  GED_GetMsgDescScratchChannelMode
+  GED_SetMsgDescScratchChannelMode
+  GED_GetMsgDescScratchMessageType
+  GED_SetMsgDescScratchMessageType
   GED_GetExecutionDataType
   GED_SetExecutionDataType
   GED_GetSrc0TernaryImm
@@ -327,6 +339,7 @@ EXPORTS
   GED_GetBlockSizeString
   GED_GetBranchCtrlString
   GED_GetChannelMaskString
+  GED_GetChannelModeString
   GED_GetChannelOffsetString
   GED_GetCondModifierString
   GED_GetDataTypeString

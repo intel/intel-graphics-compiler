@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ged_enumerations_internal.h"
 #include "ged_ins_field_internal.h"
 #include "ged_ins_field.h"
-GED_FIELD_TYPE fieldTypesByField[102] =
+GED_FIELD_TYPE fieldTypesByField[108] =
 {
     0x3, // 0
     0x0, // 1
@@ -133,12 +133,18 @@ GED_FIELD_TYPE fieldTypesByField[102] =
     0x100, // 95
     0x100, // 96
     0x100, // 97
-    0x103, // 98
-    0x124, // 99
-    0x124, // 100
-    0x102 // 101
+    0x100, // 98
+    0x100, // 99
+    0x102, // 100
+    0x100, // 101
+    0x103, // 102
+    0x103, // 103
+    0x103, // 104
+    0x124, // 105
+    0x124, // 106
+    0x102 // 107
 }; // fieldTypesByField[]
-const char** stringGettersByField[102] =
+const char** stringGettersByField[108] =
 {
     OpcodeEnumeration, // 0
     NULL, // 1
@@ -238,12 +244,18 @@ const char** stringGettersByField[102] =
     NULL, // 95
     NULL, // 96
     NULL, // 97
-    ExecutionDataTypeEnumeration, // 98
+    NULL, // 98
     NULL, // 99
     NULL, // 100
-    NULL // 101
+    NULL, // 101
+    ChannelModeEnumeration, // 102
+    MessageTypeEnumerationDisassembly, // 103
+    ExecutionDataTypeEnumeration, // 104
+    NULL, // 105
+    NULL, // 106
+    NULL // 107
 }; // stringGettersByField[]
-const char* fieldNameByField[102] =
+const char* fieldNameByField[108] =
 {
     "Opcode", // 0
     "CmptCtrl", // 1
@@ -343,10 +355,16 @@ const char* fieldNameByField[102] =
     "ExMsgLength", // 95
     "ExDescAddrSubRegNum", // 96
     "ExDescRegNum", // 97
-    "ExecutionDataType", // 98
-    "Src0TernaryImm", // 99
-    "Src2TernaryImm", // 100
-    "Src2HorzStride" // 101
+    "MsgDescCategory", // 98
+    "MsgDescScratchAddrOffset", // 99
+    "MsgDescScratchBlockSize", // 100
+    "MsgDescScratchInvalidateAfterRead", // 101
+    "MsgDescScratchChannelMode", // 102
+    "MsgDescScratchMessageType", // 103
+    "ExecutionDataType", // 104
+    "Src0TernaryImm", // 105
+    "Src2TernaryImm", // 106
+    "Src2HorzStride" // 107
 }; // fieldNameByField[]
 GED_FIELD_TYPE pseudoFieldTypesByField[35] =
 {
