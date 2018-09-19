@@ -149,7 +149,7 @@ OctEltUnit CDomainShader::GetVertexURBEntryReadLength() const
 
 OctEltUnit CDomainShader::GetURBHeaderSize() const
 {
-    if (GetContext()->getModuleMetaData()->hasVertexHeader)
+    if (GetContext()->getModuleMetaData()->URBInfo.hasVertexHeader)
     {
         return (m_properties.m_hasClipDistance ? OctEltUnit(2) : OctEltUnit(1));
     }

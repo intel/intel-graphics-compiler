@@ -201,6 +201,13 @@ namespace IGC
         unsigned int numReplicas = 0;
     };
 
+    struct URBLayoutInfo
+    {
+        bool has64BVertexHeaderInput = false;
+        bool has64BVertexHeaderOutput = false;
+        bool hasVertexHeader = true;
+    };
+
     //metadata for the entire module
     struct ModuleMetaData
     {
@@ -220,14 +227,13 @@ namespace IGC
         unsigned int MinNOSPushConstantSize = 0;
         std::map<llvm::GlobalVariable*, int> inlineProgramScopeOffsets;
         ShaderData shaderData;
+        URBLayoutInfo URBInfo;
         bool UseBindlessImage = false;
 
         // When true compiler can assume that resources bound to two different
         // bindings do not alias.
         bool statefullResourcesNotAliased = false; 
 
-        bool use64BVertexHeader = false;
-        bool hasVertexHeader = true;
         unsigned int privateMemoryPerWI = 0;
         std::array<uint64_t, NUM_SHADER_RESOURCE_VIEW_SIZE> m_ShaderResourceViewMcsMask;
     };

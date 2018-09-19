@@ -666,6 +666,7 @@ static bool compactVsDsOutput(
     unsigned numOut = outInsts.size() * 4;
     VecOfIntrinVec newOut(outInsts.size());
     unsigned nNewOut = 0;
+    unsigned int maxIndex = 0;
     bool outputRemoved = false;
 
     // init all output attrs to undef
@@ -697,7 +698,7 @@ static bool compactVsDsOutput(
         if (psIdxMap[i] >= 0)
         {
             unsigned newIdx = psIdxMap[i];
-
+            maxIndex = std::max(newIdx, maxIndex);
             if (newIdx / 4 >= nNewOut)
             {
                 // output attr is promoted to const interpolation, this may 
@@ -727,6 +728,13 @@ static bool compactVsDsOutput(
             }
             liveOutInst.set(newIdx / 4);
         }
+    }
+
+    // If the size of attribute is aligned on a cache line we force the beginning of the 
+    // attributes to be aligned on 64B to reduce the number of cachelines accessed by SBE
+    if(iSTD::Align(maxIndex + 1, 8) % 16 == 0)
+    {
+        vsdsCtx->getModuleMetaData()->URBInfo.has64BVertexHeaderOutput = true;
     }
 
     // cleanup unused output intrinsics

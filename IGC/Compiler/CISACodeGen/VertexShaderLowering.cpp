@@ -432,9 +432,9 @@ unsigned int VertexShaderLowering::GetURBOffset(ShaderOutputType type, Value* at
 
 void VertexShaderLowering::CalculateVertexHeaderSize(Function& F)
 {
-    if (m_context->getModuleMetaData()->hasVertexHeader)
+    if (m_context->getModuleMetaData()->URBInfo.hasVertexHeader)
     {
-        if (m_context->getModuleMetaData()->use64BVertexHeader)
+        if (m_context->getModuleMetaData()->URBInfo.has64BVertexHeaderOutput)
         {
             m_headerSize = QuadEltUnit(4);
             m_vsPropsPass->DeclareClipDistance();

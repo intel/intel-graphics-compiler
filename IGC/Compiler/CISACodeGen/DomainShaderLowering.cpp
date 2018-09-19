@@ -346,9 +346,9 @@ void DomainShaderLowering::LowerIntrinsicInputOutput(Function& F)
 void DomainShaderLowering::CalculateVertexHeaderSize(Function& F)
 {
     IGC::CodeGenContext* context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (context->getModuleMetaData()->hasVertexHeader)
+    if (context->getModuleMetaData()->URBInfo.hasVertexHeader)
     {
-        if (context->getModuleMetaData()->use64BVertexHeader)
+        if (context->getModuleMetaData()->URBInfo.has64BVertexHeaderOutput)
         {
             m_headerSize = QuadEltUnit(4);
             m_dsPropsPass->DeclareClipDistance();
