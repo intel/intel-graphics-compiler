@@ -4112,8 +4112,9 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
         uint32_t pc = 0;
         output << std::endl;
         bool dissasemblyFailed = false;
-#define ERROR_STRING_MAX_LENGTH 65536
-        char errBuf[ERROR_STRING_MAX_LENGTH];
+#define ERROR_STRING_MAX_LENGTH 1024*16
+        char* errBuf = new char[ERROR_STRING_MAX_LENGTH];
+
 
         KernelView kView(getIGAPlatform(), binary, binarySize, errBuf, ERROR_STRING_MAX_LENGTH);
         dissasemblyFailed = !kView.decodeSucceeded();
@@ -4270,6 +4271,8 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
                 (*itBB)->emitBasicInstructionIga(stringBuffer, output, itInst, suppressRegs, lastRegs);
             }
         }
+
+        delete [] errBuf;
     }
     else
     {
