@@ -99,7 +99,87 @@ public:
         assert(isa<ConstantInt>(getOperand(idx)));
         return valueToImm64(getOperand(idx));
     }
+
 };
+
+
+///MetdataReadIntrinsicInst - wraps the llvm::CallInst and is not
+// a gen intrinsic. This is a very special case that needs to deal with
+// llvm specific instructions. This gives a centralized place to manage
+// this instruction. If in future there are too many such instructions,
+// a separate header file would be better
+// If we want to migrate any genintrisic that has syntax 
+// like genx.someintrisic(float/int const) for example
+// GenISA_DCL_SystemValue, "GenISA_RuntimeValue etc, we need to inherit from
+// MetadataReadIntrisicInst. Below RuntimeMetadataIntrisicInst has inherited 
+// from it to provide equivalent of GenISA_RuntimeValue.
+// This has been done to prevent any llvm optimization from modifying the constants
+class MetdataReadIntrinsicInst : public CallInst {
+public:
+    llvm::Intrinsic::ID getIntrinsicID() const {
+        return getCalledFunction()->getIntrinsicID();
+    }
+
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const CallInst *I) {
+        if(I->getCalledFunction()->getIntrinsicID() == llvm::Intrinsic::read_register)
+            return true;
+        //for all LLVM instructions return false
+        return false;
+    }
+
+    static inline bool classof(const Value *V) {
+        return isa <llvm::CallInst> (V) && classof(cast<llvm::CallInst>(V));
+    }
+    
+};
+
+//Supports RuntimeValue 
+//Layout will be something like this
+// %65 = call float @llvm.read_register.f32(metadata !3)
+// corresponding metadata
+// !3 = !{!"RuntimeValue", i32 0} 
+// where in metadata, 
+// Operand 0, defines what category of metadata it is
+// Operand 1, defines the correspoding value
+class  RuntimeMetdataIntrinsicInst : public MetdataReadIntrinsicInst{
+public:
+    Value* getOffset() const 
+    {
+        MetadataAsValue *mdV = cast<MetadataAsValue>(getOperand(0));
+        llvm::MDNode *mdN = cast<MDNode>(mdV->getMetadata());
+        return cast<ConstantAsMetadata>(mdN->getOperand(1))->getValue();
+    }
+    unsigned int getRuntimeConstant() const
+    {
+        MetadataAsValue *mdV = cast<MetadataAsValue>(getOperand(0));
+        llvm::MDNode *mdN = cast<MDNode>(mdV->getMetadata());
+
+        Value *runtimeValue  = cast<ConstantAsMetadata>(mdN->getOperand(1))->getValue();
+        return (unsigned int)llvm::cast<llvm::ConstantInt>(runtimeValue)->getZExtValue();
+    }
+
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const MetdataReadIntrinsicInst *I) {
+        if (I->getCalledFunction()->getIntrinsicID() == llvm::Intrinsic::read_register) {
+            //Check if hte metadata is "Runtime" if not, then return false
+            if (MetadataAsValue *mdV = dyn_cast<MetadataAsValue>(I->getOperand(0))) {
+                llvm::MDNode *mdN = dyn_cast<MDNode>(mdV->getMetadata());
+                if(mdN && (mdN->getNumOperands() == 2) &&
+                    cast<MDString>(mdN->getOperand(0))->getString() == "RuntimeValue") {
+                        return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    static inline bool classof(const Value *V) {
+        return isa <MetdataReadIntrinsicInst>(V) && classof(cast<MetdataReadIntrinsicInst>(V));
+    }
+
+};
+
 
 class RTWritIntrinsic : public GenIntrinsicInst {
 protected:
@@ -523,6 +603,9 @@ public:
         return usage;
     }
 };
+
+
+
 
 template <class X, class Y>
 inline bool isa(const Y &Val, GenISAIntrinsic::ID id)

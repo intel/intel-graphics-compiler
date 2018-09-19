@@ -123,13 +123,13 @@ llvm::Argument* PushAnalysis::addArgumentAndMetadata(llvm::Type *pType, std::str
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     IGC::ArgDependencyInfoMD argDepInfoMD;
     argDepInfoMD.argDependency = dependency;
-	modMD->pushInfo.pushAnalysisWIInfos.push_back(argDepInfoMD);
+         modMD->pushInfo.pushAnalysisWIInfos.push_back(argDepInfoMD);
 
-	//Add it to arglist and increment Argument Index
-	m_argList.push_back(pArg);
-	m_argIndex++;
+         //Add it to arglist and increment Argument Index
+         m_argList.push_back(pArg);
+         m_argIndex++;
 
-	m_funcTypeChanged = true;
+         m_funcTypeChanged = true;
 
     return pArg;
 }
@@ -145,6 +145,7 @@ bool PushAnalysis::IsStatelessCBLoad(
         %14 = inttoptr i64 %13 to <3 x float> addrspace(2)*
         %15 = load <3 x float> addrspace(2)* %14, align 16
     */
+    //Note @genx.GenISA.RuntimeValue(i32 constInt) is replaced with @llvm.read_register(metadata i32 ConstInt)
 
     if(!llvm::isa<llvm::LoadInst>(inst))
         return false;
@@ -188,13 +189,11 @@ bool PushAnalysis::IsStatelessCBLoad(
         pAddress = cast<Instruction>(pAddress)->getOperand(0);
     }
 
-    llvm::GenIntrinsicInst *pRuntimeVal = llvm::dyn_cast<llvm::GenIntrinsicInst>(pAddress);
-
-    if (pRuntimeVal == nullptr || 
-        pRuntimeVal->getIntrinsicID() != llvm::GenISAIntrinsic::GenISA_RuntimeValue)
+    llvm::RuntimeMetdataIntrinsicInst *pRuntimeVal = llvm::dyn_cast<llvm::RuntimeMetdataIntrinsicInst>(pAddress);
+    if (pRuntimeVal == nullptr)
         return false;
 
-    uint runtimeval0 = (uint)llvm::cast<llvm::ConstantInt>(pRuntimeVal->getOperand(0))->getZExtValue();
+    uint runtimeval0 = pRuntimeVal->getRuntimeConstant();
     PushInfo& pushInfo = m_context->getModuleMetaData()->pushInfo;
 
     // then check for static root descriptor so that we can do push safely
@@ -359,18 +358,15 @@ bool PushAnalysis::GetConstantOffsetForDynamicUniformBuffer(
     }
     else if (BitCastInst *bitCast = dyn_cast<BitCastInst>(offsetValue))
     {
-        if (GenIntrinsicInst* genIntr = dyn_cast<GenIntrinsicInst>(bitCast->getOperand(0)))
+        if (RuntimeMetdataIntrinsicInst* genIntr = dyn_cast<RuntimeMetdataIntrinsicInst>(bitCast->getOperand(0)))
         {
-            if (genIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue)
+            if (MDNode* bufIdMd = genIntr->getMetadata("dynamicBufferOffset.bufferId"))
             {
-                if (MDNode* bufIdMd = genIntr->getMetadata("dynamicBufferOffset.bufferId"))
+                ConstantInt* bufIdMdVal = mdconst::extract<ConstantInt>(bufIdMd->getOperand(0));
+                if (bufferId == int_cast<uint>(bufIdMdVal->getZExtValue()))
                 {
-                    ConstantInt* bufIdMdVal = mdconst::extract<ConstantInt>(bufIdMd->getOperand(0));
-                    if (bufferId == int_cast<uint>(bufIdMdVal->getZExtValue()))
-                    {
-                        relativeOffsetInBytes = 0;
-                        return true;
-                    }
+                    relativeOffsetInBytes = 0;
+                    return true;
                 }
             }
         }
@@ -598,19 +594,19 @@ unsigned int PushAnalysis::AllocatePushedConstant(
 {
     unsigned int size = load->getType()->getPrimitiveSizeInBits() / 8;
     assert(isa<LoadInst>(load) && "Expected a load instruction");
-	PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
+         PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
     
     bool canPromote = false;
     unsigned int sizeGrown = 0;
     // greedy allocation for now
     // first check if we are already pushing from the buffer
-	unsigned int piIndex;
-	bool cbIdxFound = false;
+         unsigned int piIndex;
+         bool cbIdxFound = false;
 
     //For stateless buffers, we store the GRFOffset into the simplePushInfoArr[piIndex].cbIdx
     //For stateful buffers, we store the bufferId into the simplePushInfoArr[piIndex].cbIdx
     //We traverse the array and identify which CB we're in based on either GFXOffset or bufferId
-	for (piIndex = 0; piIndex < pushInfo.simplePushBufferUsed; piIndex++)
+         for (piIndex = 0; piIndex < pushInfo.simplePushBufferUsed; piIndex++)
     {
         if (pushInfo.simplePushInfoArr[piIndex].cbIdx == cbIdxOrGRFOffset)
         {
@@ -618,23 +614,23 @@ unsigned int PushAnalysis::AllocatePushedConstant(
             break;
         }
     }
-	if(cbIdxFound)
+         if(cbIdxFound)
     {
-		unsigned int newStartOffset = iSTD::RoundDown(std::min(offset, pushInfo.simplePushInfoArr[piIndex].offset), SIZE_GRF);
-		unsigned int newEndOffset = iSTD::Round(std::max(offset + size, pushInfo.simplePushInfoArr[piIndex].offset + pushInfo.simplePushInfoArr[piIndex].size), SIZE_GRF);
+                  unsigned int newStartOffset = iSTD::RoundDown(std::min(offset, pushInfo.simplePushInfoArr[piIndex].offset), SIZE_GRF);
+                  unsigned int newEndOffset = iSTD::Round(std::max(offset + size, pushInfo.simplePushInfoArr[piIndex].offset + pushInfo.simplePushInfoArr[piIndex].size), SIZE_GRF);
         unsigned int newSize = newEndOffset - newStartOffset;
         
-		if (newSize - pushInfo.simplePushInfoArr[piIndex].size <= maxSizeAllowed)
+                  if (newSize - pushInfo.simplePushInfoArr[piIndex].size <= maxSizeAllowed)
         {
             sizeGrown = newSize - pushInfo.simplePushInfoArr[piIndex].size;
             canPromote = true;
-			pushInfo.simplePushInfoArr[piIndex].offset = newStartOffset;
-			pushInfo.simplePushInfoArr[piIndex].size = newSize;
+                           pushInfo.simplePushInfoArr[piIndex].offset = newStartOffset;
+                           pushInfo.simplePushInfoArr[piIndex].size = newSize;
             pushInfo.simplePushInfoArr[piIndex].isStateless = isStateless;
         }
     }
 
-	const unsigned int maxNumberOfPushedBuffers = pushInfo.MaxNumberOfPushedBuffers;
+         const unsigned int maxNumberOfPushedBuffers = pushInfo.MaxNumberOfPushedBuffers;
 
     // we couldn't add it to an existing buffer try to add a new one if there is a slot available
     if(canPromote == false && 
@@ -650,10 +646,10 @@ unsigned int PushAnalysis::AllocatePushedConstant(
             canPromote = true;
             sizeGrown = newSize;
 
-			piIndex = pushInfo.simplePushBufferUsed;
-			pushInfo.simplePushInfoArr[piIndex].cbIdx = cbIdxOrGRFOffset;
-			pushInfo.simplePushInfoArr[piIndex].offset = newStartOffset;
-			pushInfo.simplePushInfoArr[piIndex].size = newSize;
+                           piIndex = pushInfo.simplePushBufferUsed;
+                           pushInfo.simplePushInfoArr[piIndex].cbIdx = cbIdxOrGRFOffset;
+                           pushInfo.simplePushInfoArr[piIndex].offset = newStartOffset;
+                           pushInfo.simplePushInfoArr[piIndex].size = newSize;
             pushInfo.simplePushInfoArr[piIndex].isStateless = isStateless;
             pushInfo.simplePushBufferUsed++;
         }
@@ -694,7 +690,7 @@ void PushAnalysis::PromoteLoadToSimplePush(Instruction* load, SimplePushInfo& in
         if(it != info.simplePushLoads.end())
         {
             // Value is already getting pushed
-			assert((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                           assert((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
             value = m_argList[it->second];
             if(pTypeToPush != value->getType())
                 value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", load);
@@ -802,7 +798,7 @@ void PushAnalysis::ProcessFunction()
     uint32_t vsUrbReadIndexForInstanceIdSGV = 0;
     bool vsHasConstantBufferIndexedWithInstanceId = false;
 
-	m_funcTypeChanged = false;	// Reset flag at the beginning of processing every function
+         m_funcTypeChanged = false;         // Reset flag at the beginning of processing every function
     if(m_context->type == ShaderType::VERTEX_SHADER)
     {
         llvm::NamedMDNode *pMetaData = m_pFunction->getParent()->getNamedMetadata("ConstantBufferIndexedWithInstanceId");
@@ -831,7 +827,7 @@ void PushAnalysis::ProcessFunction()
         m_dsProps->SetDomainPointWArgu(valueW);
     }
 
-	PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
+    PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
     if (pushConstantMode == PushConstantMode::SIMPLE_PUSH)
     {
         BlockPushConstants();
@@ -843,6 +839,7 @@ void PushAnalysis::ProcessFunction()
         for (auto instIter = instructionList.begin(), endInstIter = instructionList.end(); instIter != endInstIter; ++instIter)
         {
             llvm::Instruction* inst = &(*instIter);
+
             // skip dead instructions
             if( inst->use_empty() )
             {
@@ -909,9 +906,9 @@ void PushAnalysis::ProcessFunction()
 
                 for (unsigned int i = 0; i < num_elms; ++i)
                 {
-					ConstantAddress address;
-					address.bufId = bufId;
-					address.eltId = eltId + i;
+                                             ConstantAddress address;
+                                             address.bufId = bufId;
+                                             address.eltId = eltId + i;
 
                     auto it = pushInfo.constants.find(address);
                     if (it != pushInfo.constants.end() || (pushInfo.constantReg.size() + pushInfo.constants.size() < m_pullConstantHeuristics->getPushConstantThreshold(m_pFunction) * 8))
@@ -939,7 +936,7 @@ void PushAnalysis::ProcessFunction()
                         }
                         else
                         {
-							assert((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                                                               assert((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
                             value = m_argList[it->second];
                             if (pTypeToPush != value->getType())
                                 value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", inst);
@@ -999,15 +996,15 @@ void PushAnalysis::ProcessFunction()
                             assert(inst->getType()->isHalfTy() || inst->getType()->isFloatTy());
                             llvm::Type* floatTy = Type::getFloatTy(m_pFunction->getContext());
                             addArgumentAndMetadata(floatTy, VALUE_NAME(std::string("input_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
-							input.argIndex = m_argIndex;
+                                                               input.argIndex = m_argIndex;
                             pushInfo.inputs[input.index] = input;
                         }
                         else
                         {
-							assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                                                               assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
                             input.argIndex = it->second.argIndex;
                         }
-						llvm::Value* replacementValue = m_argList[input.argIndex];
+                                                      llvm::Value* replacementValue = m_argList[input.argIndex];
                         if (inst->getType()->isHalfTy() && replacementValue->getType()->isFloatTy())
                         {
                             // Input is accessed using the half version of intrinsic, e.g.:
@@ -1048,12 +1045,12 @@ void PushAnalysis::ProcessFunction()
                                     if( it == pushInfo.inputs.end())
                                     {
                                         addArgumentAndMetadata(extract->getType(), VALUE_NAME(std::string("pushedinput_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
-										input.argIndex = m_argIndex;
+                                                                                          input.argIndex = m_argIndex;
                                         pushInfo.inputs[input.index] = input;
                                     }
                                     else
                                     {
-										assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                                                                                          assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
                                         input.argIndex = it->second.argIndex;
                                     }
 
@@ -1072,6 +1069,9 @@ void PushAnalysis::ProcessFunction()
             }
             else if(GenIntrinsicInst* intrinsic = dyn_cast<GenIntrinsicInst>(inst))
             {
+                //assert((intrinsic->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_RuntimeValue)
+                //    && "GenISA_RuntimeValue is not supported");
+
                 if ( DispatchGRFHardwareWAForHSAndGSDisabled() &&
                      (intrinsic->getIntrinsicID() == GenISAIntrinsic::GenISA_URBRead) && 
                      (m_context->type != ShaderType::DOMAIN_SHADER))
@@ -1116,14 +1116,14 @@ void PushAnalysis::ProcessFunction()
 
                                         auto it = pushInfo.inputs.find(input.index);
                                         if(it == pushInfo.inputs.end())
-                                        {	
+                                        {         
                                             addArgumentAndMetadata(extract->getType(), VALUE_NAME(std::string("urb_read_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
-											input.argIndex = m_argIndex;
+                                                                                                   input.argIndex = m_argIndex;
                                             pushInfo.inputs[input.index] = input;
                                         }
                                         else
                                         {
-											assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                                                                                                   assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
                                             input.argIndex = it->second.argIndex;
                                         }
                                         extract->replaceAllUsesWith(m_argList[input.argIndex]);
@@ -1135,6 +1135,8 @@ void PushAnalysis::ProcessFunction()
                 }
                 else if(intrinsic->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue)
                 {
+                    assert(false);
+
                     uint index = (uint)llvm::cast<llvm::ConstantInt>(intrinsic->getOperand(0))->getZExtValue();
                     auto it = pushInfo.constantReg.find(index);
                     Value* arg = nullptr;
@@ -1155,7 +1157,7 @@ void PushAnalysis::ProcessFunction()
                     }
                     else
                     {
-						assert((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                        assert((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
                         arg = m_argList[it->second];
                         while(arg->getType() != runtimeValue->getType() &&
                             runtimeValue->hasOneUse() &&
@@ -1173,47 +1175,86 @@ void PushAnalysis::ProcessFunction()
                     runtimeValue->replaceAllUsesWith(arg);
                 }
             }
+            else if (RuntimeMetdataIntrinsicInst *pRuntimeInst = dyn_cast<RuntimeMetdataIntrinsicInst>(inst))
+            {
+                uint index = pRuntimeInst->getRuntimeConstant();
+                auto it = pushInfo.constantReg.find(index);
+                Value* arg = nullptr;
+                Value* runtimeValue = inst;
+                if (it == pushInfo.constantReg.end())
+                {
+                    while (runtimeValue->hasOneUse() &&
+                        (isa<BitCastInst>(runtimeValue->user_back()) ||
+                            isa<IntToPtrInst>(runtimeValue->user_back())))
+                    {
+                        runtimeValue = runtimeValue->user_back();
+                    }
+                    arg = addArgumentAndMetadata(
+                        runtimeValue->getType(),
+                        VALUE_NAME(std::string("runtime_value_") + to_string(index)),
+                        WIAnalysis::UNIFORM);
+                    pushInfo.constantReg[index] = m_argIndex;
+                }
+                else
+                {
+                    assert((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                    arg = m_argList[it->second];
+                    while (arg->getType() != runtimeValue->getType() &&
+                        runtimeValue->hasOneUse() &&
+                        (isa<BitCastInst>(runtimeValue->user_back()) ||
+                            isa<IntToPtrInst>(runtimeValue->user_back())))
+                    {
+                        runtimeValue = runtimeValue->user_back();
+                    }
+                    if (arg->getType() != runtimeValue->getType())
+                    {
+                        arg = CastInst::CreateBitOrPointerCast(
+                            arg, runtimeValue->getType(), "", cast<Instruction>(runtimeValue));
+                    }
+                }
+                runtimeValue->replaceAllUsesWith(arg);
+            }
         }
     }
 
-	if (m_funcTypeChanged)
-	{
-		m_isFuncTypeChanged[m_pFunction] = true;
-	}
-	else
-	{
-		m_isFuncTypeChanged[m_pFunction] = false;
-	}
+    if (m_funcTypeChanged)
+    {
+        m_isFuncTypeChanged[m_pFunction] = true;
+    }
+    else
+    {
+        m_isFuncTypeChanged[m_pFunction] = false;
+    }
 
     m_pMdUtils->save(m_pFunction->getContext());
 }
 
 void PushAnalysis::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* pNewFunc)
 {
-	// Loop over the argument list, transferring uses of the old arguments over to
-	// the new arguments, also transferring over the names as well.
-	std::map<void*, unsigned int> argMap;
-	std::vector<std::pair<llvm::Instruction*, unsigned int>> newAddr;
-	Function::arg_iterator I = pFunc->arg_begin();
-	Function::arg_iterator E = pFunc->arg_end();
-	Function::arg_iterator currArg = pNewFunc->arg_begin();
-	llvm::Argument* oldArg;
-	llvm::Argument* newArg;
+     // Loop over the argument list, transferring uses of the old arguments over to
+     // the new arguments, also transferring over the names as well.
+     std::map<void*, unsigned int> argMap;
+     std::vector<std::pair<llvm::Instruction*, unsigned int>> newAddr;
+     Function::arg_iterator I = pFunc->arg_begin();
+     Function::arg_iterator E = pFunc->arg_end();
+     Function::arg_iterator currArg = pNewFunc->arg_begin();
+     llvm::Argument* oldArg;
+     llvm::Argument* newArg;
 
-	while (I != E)
-	{
-		if (currArg == pNewFunc->arg_end())
-			break;
+     while (I != E)
+     {
+          if (currArg == pNewFunc->arg_end())
+                   break;
 
-		oldArg = &(*I);
-		newArg = &(*currArg);
+          oldArg = &(*I);
+          newArg = &(*currArg);
 
-		assert(oldArg->getType() == newArg->getType());
-		
-		// Move the name and users over to the new version.
-		I->replaceAllUsesWith(newArg);
-		currArg->takeName(&(*I));
-        
+          assert(oldArg->getType() == newArg->getType());
+          
+          // Move the name and users over to the new version.
+          I->replaceAllUsesWith(newArg);
+          currArg->takeName(&(*I));
+    
         if (m_dsProps)
         {
             if (m_dsProps->GetDomainPointUArgu() == oldArg)
@@ -1223,15 +1264,16 @@ void PushAnalysis::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* pNew
             if (m_dsProps->GetDomainPointWArgu() == oldArg)
                 m_dsProps->SetDomainPointWArgu(newArg);
         }
-		++I; ++currArg;
-	}
-	while (I != E)
-	{
-		oldArg = &(*I);
-		llvm::Argument* newArg = new llvm::Argument(oldArg->getType(), oldArg->getName(), pNewFunc);
-		// Move the name and users over to the new version.
-		I->replaceAllUsesWith(newArg);
-		newArg->takeName(&(*I));
+        ++I; ++currArg;
+     }
+
+    while (I != E)
+    {
+        oldArg = &(*I);
+        llvm::Argument* newArg = new llvm::Argument(oldArg->getType(), oldArg->getName(), pNewFunc);
+        // Move the name and users over to the new version.
+        I->replaceAllUsesWith(newArg);
+        newArg->takeName(&(*I));
 
         if (m_dsProps)
         {
@@ -1242,116 +1284,116 @@ void PushAnalysis::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* pNew
             if (m_dsProps->GetDomainPointWArgu() == oldArg)
                 m_dsProps->SetDomainPointWArgu(newArg);
         }
-		++I;
-	}
-	
+        ++I;
+    }
+         
 }
 
 FunctionType* PushAnalysis::getNewFuncType(Function* pFunc)
 {
-	std::vector<Type *> newParamTypes;
+    std::vector<Type *> newParamTypes;
 
-	for (auto arg = pFunc->arg_begin(); arg != pFunc->arg_end(); ++arg)
-	{
-		newParamTypes.push_back((*&(arg))->getType());
-	}
-	
-	// Create new function type with explicit and implicit parameter types
-	return FunctionType::get(pFunc->getReturnType(), newParamTypes, pFunc->isVarArg());
+    for (auto arg = pFunc->arg_begin(); arg != pFunc->arg_end(); ++arg)
+    {
+        newParamTypes.push_back((*&(arg))->getType());
+    }
+
+    // Create new function type with explicit and implicit parameter types
+    return FunctionType::get(pFunc->getReturnType(), newParamTypes, pFunc->isVarArg());
 }
 
 bool PushAnalysis::runOnModule(llvm::Module& M)
 {
-	m_DL = &M.getDataLayout();
-	m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-	m_pullConstantHeuristics = &getAnalysis<PullConstantHeuristics>();
-	m_hsProps = getAnalysisIfAvailable<CollectHullShaderProperties>();
-	m_dsProps = getAnalysisIfAvailable<CollectDomainShaderProperties>();
-	m_gsProps = getAnalysisIfAvailable<CollectGeometryShaderProperties>();
-	m_vsProps = getAnalysisIfAvailable<CollectVertexShaderProperties>();
-	m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_DL = &M.getDataLayout();
+    m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    m_pullConstantHeuristics = &getAnalysis<PullConstantHeuristics>();
+    m_hsProps = getAnalysisIfAvailable<CollectHullShaderProperties>();
+    m_dsProps = getAnalysisIfAvailable<CollectDomainShaderProperties>();
+    m_gsProps = getAnalysisIfAvailable<CollectGeometryShaderProperties>();
+    m_vsProps = getAnalysisIfAvailable<CollectVertexShaderProperties>();
+    m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-	MapList<Function*, Function*> funcsMapping;
-	bool retValue = false;
+    MapList<Function*, Function*> funcsMapping;
+    bool retValue = false;
 
-	m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-	m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    m_context = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
-	for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
-	{	
-		Function* pFunc = &(*I);
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
+    {         
+        Function* pFunc = &(*I);
 
-		// Only handle functions defined in this module
-		if (pFunc->isDeclaration() || !isEntryFunc(m_pMdUtils, pFunc))
-			continue;
+        // Only handle functions defined in this module
+        if (pFunc->isDeclaration() || !isEntryFunc(m_pMdUtils, pFunc))
+            continue;
 
-		AnalyzeFunction(pFunc);
+        AnalyzeFunction(pFunc);
 
-		// Find out if function pFunc's type/signature changed
-		if (m_isFuncTypeChanged[pFunc])
-		{
-			retValue = true;
+        // Find out if function pFunc's type/signature changed
+        if (m_isFuncTypeChanged[pFunc])
+        {
+            retValue = true;
 
-			// Create the new function body and insert it into the module
-			FunctionType *pNewFTy = getNewFuncType(pFunc);
-			Function* pNewFunc = Function::Create(pNewFTy, pFunc->getLinkage());
-			pNewFunc->copyAttributesFrom(pFunc);
-			pNewFunc->setSubprogram(pFunc->getSubprogram());
-			pFunc->setSubprogram(nullptr);
-			M.getFunctionList().insert(pFunc->getIterator(), pNewFunc);
-			pNewFunc->takeName(pFunc);
+            // Create the new function body and insert it into the module
+            FunctionType *pNewFTy = getNewFuncType(pFunc);
+            Function* pNewFunc = Function::Create(pNewFTy, pFunc->getLinkage());
+            pNewFunc->copyAttributesFrom(pFunc);
+            pNewFunc->setSubprogram(pFunc->getSubprogram());
+            pFunc->setSubprogram(nullptr);
+            M.getFunctionList().insert(pFunc->getIterator(), pNewFunc);
+            pNewFunc->takeName(pFunc);
 
-			// Since we have now created the new function, splice the body of the old
-			// function right into the new function, leaving the old body of the function empty.
-			pNewFunc->getBasicBlockList().splice(pNewFunc->begin(), pFunc->getBasicBlockList());
+            // Since we have now created the new function, splice the body of the old
+            // function right into the new function, leaving the old body of the function empty.
+            pNewFunc->getBasicBlockList().splice(pNewFunc->begin(), pFunc->getBasicBlockList());
 
-			// Loop over the argument list, transferring uses of the old arguments over to
-			// the new arguments
-			updateNewFuncArgs(pFunc, pNewFunc);
+            // Loop over the argument list, transferring uses of the old arguments over to
+            // the new arguments
+            updateNewFuncArgs(pFunc, pNewFunc);
 
-			// Map old func to new func
-			funcsMapping[pFunc] = pNewFunc;
+            // Map old func to new func
+            funcsMapping[pFunc] = pNewFunc;
 
-			// This is a kernel function, so there should not be any call site
-			assert(pFunc->use_empty());
-		}
-	}
+            // This is a kernel function, so there should not be any call site
+            assert(pFunc->use_empty());
+         }
+    }
 
-	// Update IGC Metadata and shaders map
-	// Function declarations are changing, this needs to be reflected in the metadata.
-	MetadataBuilder mbuilder(&M);
-	for (auto i : funcsMapping)
-	{
-		auto oldFuncIter = m_pMdUtils->findFunctionsInfoItem(i.first);
-		m_pMdUtils->setFunctionsInfoItem(i.second, oldFuncIter->second);
-		m_pMdUtils->eraseFunctionsInfoItem(oldFuncIter);
+    // Update IGC Metadata and shaders map
+    // Function declarations are changing, this needs to be reflected in the metadata.
+    MetadataBuilder mbuilder(&M);
+    for (auto i : funcsMapping)
+    {
+        auto oldFuncIter = m_pMdUtils->findFunctionsInfoItem(i.first);
+        m_pMdUtils->setFunctionsInfoItem(i.second, oldFuncIter->second);
+        m_pMdUtils->eraseFunctionsInfoItem(oldFuncIter);
 
-		mbuilder.UpdateShadingRate(i.first, i.second);
-	}
-	m_pMdUtils->save(M.getContext());
+        mbuilder.UpdateShadingRate(i.first, i.second);
+    }
+    m_pMdUtils->save(M.getContext());
 
-	GenXFunctionGroupAnalysis* FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
+    GenXFunctionGroupAnalysis* FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
 
-	// Go over all changed functions
-	for (MapList<Function*, Function*>::const_iterator I = funcsMapping.begin(), E = funcsMapping.end(); I != E; ++I)
-	{
-		Function* pFunc = I->first;
+    // Go over all changed functions
+    for (MapList<Function*, Function*>::const_iterator I = funcsMapping.begin(), E = funcsMapping.end(); I != E; ++I)
+    {
+        Function* pFunc = I->first;
 
-		assert(pFunc->use_empty() && "Assume all user function are inlined at this point");
+        assert(pFunc->use_empty() && "Assume all user function are inlined at this point");
 
-		if (FGA) {
-			FGA->replaceEntryFunc(pFunc, I->second);
-		}
-		// Now, after changing funciton signature,
-		// and validate there are no calls to the old function we can erase it.
-		pFunc->eraseFromParent();
-	}
+        if (FGA) {
+               FGA->replaceEntryFunc(pFunc, I->second);
+        }
+        // Now, after changing funciton signature,
+        // and validate there are no calls to the old function we can erase it.
+        pFunc->eraseFromParent();
+    }
 
-	DumpLLVMIR(m_context, "push_analysis");
+    DumpLLVMIR(m_context, "push_analysis");
 
-	return retValue;
-
+    return retValue;
 }
+
 char PushAnalysis::ID=0;
 
 }//namespace IGC

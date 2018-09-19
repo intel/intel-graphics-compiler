@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "Compiler/CodeGenPublic.h"
 
 /// Declaration of upgrader passes. When the IR changes, we add passes to keep compatibility with
 /// clients which haven't moved yet to the new representation.
@@ -37,4 +38,6 @@ namespace IGC
     /// Transform legacy resource access intrinsics taking an integer representation to 
     /// the new intrinsics taking pointer representation
     llvm::Pass* CreateUpgradeResourceIntrinsic();
+    
+    llvm::Pass* CreateUpgradeConstantResourceIntrinsic();
 }

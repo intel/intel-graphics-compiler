@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/AsmParser/Parser.h>
+#include <llvm/ADT/ArrayRef.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "../AdaptorCommon/SurfaceFormats.hpp"
@@ -756,6 +757,7 @@ public:
     llvm::Value* create_uavSerializeAll();
     llvm::Value* create_discard(llvm::Value* condition);
     llvm::Value* create_runtime(llvm::Value* offset);
+    llvm::Value* create_runtimeAsMetadata(llvm::Value* offset, llvm::Type* DstPtrType=nullptr);
     llvm::Value* create_countbits(llvm::Value* src);
     llvm::Value* create_waveBallot(llvm::Value* src);
     llvm::Value* create_waveshuffleIndex(llvm::Value* src, llvm::Value* index);

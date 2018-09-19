@@ -90,6 +90,7 @@ IGC_IR_LLVM_INTRINSIC(assume)
 IGC_IR_LLVM_INTRINSIC(bswap)
 IGC_IR_LLVM_INTRINSIC(maxnum)
 IGC_IR_LLVM_INTRINSIC(minnum)
+IGC_IR_LLVM_INTRINSIC(read_register)
 
 // LLVM instructions allowed in IGC IR
 //------------------------------------

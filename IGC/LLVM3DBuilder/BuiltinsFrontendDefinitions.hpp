@@ -4261,6 +4261,40 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_runtime(ll
 }
 
 template<bool preserveNames, typename T, typename Inserter>
+inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_runtimeAsMetadata(llvm::Value* offset, llvm::Type* DstType)
+{
+    //This will create the intrinsic as below example
+    //  call float @llvm.read_register.f32(metadata !3)
+    //  !3 = !{!"RuntimeValue", i32 0}
+
+    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
+    llvm::ValueAsMetadata *vasM = llvm::ValueAsMetadata::get(offset);
+    llvm::MDString *str = llvm::MDString::get(module->getContext(), "RuntimeValue");
+    llvm::Metadata *Args[] = { str, vasM };
+    llvm::MDNode *metadaNode = llvm::MDNode::get(module->getContext(), Args);
+    llvm::MetadataAsValue *mdV = llvm::MetadataAsValue::get(module->getContext(), metadaNode);
+    llvm::Type *ty = this->getInt32Ty();
+
+    if(DstType && (DstType->isPointerTy() || DstType == this->getInt64Ty())) {
+        ty = this->getInt64Ty();
+    }
+    llvm::Function* pFunc = llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::read_register, ty);
+    llvm::Value *runtimeVal = this->CreateCall(pFunc, mdV);
+
+    llvm::Value *bitcastVal = nullptr;
+    if(DstType == nullptr) //Default is float data type
+        bitcastVal =  this->CreateBitCast(runtimeVal, this->getFloatTy());//.llvm::Intrinsic::getDeclaration(module, llvm::Intrinsic::read_register, this->getFloatTy());
+    else if(DstType->isPointerTy()) 
+        bitcastVal = this->CreateIntToPtr(runtimeVal, DstType);
+    else if(DstType != this->getInt32Ty() && DstType != this->getInt64Ty())
+        bitcastVal = this->CreateBitCast(runtimeVal, DstType);
+    else if(DstType == ty)
+        bitcastVal = runtimeVal;
+    assert((bitcastVal != nullptr) && "bitcast should not be a null pointer!!!");
+    return bitcastVal;
+}
+
+template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_uavSerializeAll()
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();

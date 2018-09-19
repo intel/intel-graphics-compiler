@@ -56,9 +56,9 @@ DECLARE_OPCODE(GenISA_GetPixelMask,              GenISAIntrinsic,      llvm_getp
 DECLARE_OPCODE(GenISA_readsurfaceinfoptr,        GenISAIntrinsic,      llvm_surfaceinfo,           false,  false,  false,  false, false,  false,  false  )
 DECLARE_OPCODE(GenISA_resinfoptr,                GenISAIntrinsic,      llvm_resinfoptr,            false,  false,  false,  false, false,  false,  false  )
 DECLARE_OPCODE(GenISA_sampleinfoptr,             GenISAIntrinsic,      llvm_sampleinfoptr,         false,  false,  false,  false, false,  false,  false  )
-DECLARE_OPCODE(GenISA_PullSampleIndexBarys,      GenISAIntrinsic,      llvm_pullSampleIndexBarys, false, false, false, false, false, false,  false  )
-DECLARE_OPCODE(GenISA_PullSnappedBarys,          GenISAIntrinsic,      llvm_pullSnappedBarys, false, false, false, false, false, false,  false  )
-DECLARE_OPCODE(sqrt,                             Intrinsic,      llvm_sqrt,                   true,   true,   true,  false,  true,  false,  false  )
+DECLARE_OPCODE(GenISA_PullSampleIndexBarys,      GenISAIntrinsic,      llvm_pullSampleIndexBarys,   false, false, false, false, false, false,  false  )
+DECLARE_OPCODE(GenISA_PullSnappedBarys,          GenISAIntrinsic,      llvm_pullSnappedBarys,       false, false, false, false, false, false,  false  )
+DECLARE_OPCODE(sqrt,                             Intrinsic,            llvm_sqrt,                   true,   true,   true,  false,  true,  false,  false  )
 DECLARE_OPCODE(GenISA_rsq,                       GenISAIntrinsic,      llvm_rsq,                    true,   true,   true,  false,  true,  false,  false  )
 DECLARE_OPCODE(FMul,                             Instruction,    llvm_fmul,                  true,   true,   true,   true,  false,  false,  false  )
 DECLARE_OPCODE(FAdd,                             Instruction,    llvm_fadd,                  true,   true,   true,   true,  false,  false,  false  )
@@ -243,3 +243,5 @@ DECLARE_OPCODE(GenISA_WaveAll,                  GenISAIntrinsic,      llvm_waveA
 DECLARE_OPCODE(GenISA_WavePrefix,               GenISAIntrinsic,      llvm_wavePrefix,          false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_QuadPrefix,               GenISAIntrinsic,      llvm_quadPrefix,          false, false, false, false, false, false, false)
 DECLARE_OPCODE(GenISA_WaveShuffleIndex,         GenISAIntrinsic,      llvm_waveShuffleIndex,    false, false, false, false, false, false, false)
+DECLARE_OPCODE(read_register,                   Intrinsic,            llvm_read_register,       false, false, false, false, false, false, false)
+
