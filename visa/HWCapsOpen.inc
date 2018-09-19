@@ -405,4 +405,9 @@
         return no64bitType();
     }
 
+    bool useNewExtDescFormat() const
+    {
+        return false;
+    }
+
     // end HW capabilities

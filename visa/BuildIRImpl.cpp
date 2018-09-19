@@ -657,8 +657,7 @@ G4_INST* IR_Builder::Create_Send_Inst_For_CISA(
 
 //bindless surfaces, write the content of T252 to extended message descriptor
 //exdesc holds the value of the extended message descriptor for bit [0:11]
-//shl (1) a0.2<1>:ud T252<0;1,0>:ud 0xC:uw {NoMask}
-//add (1) a0.2<1>:ud a0.2<1>:ud exDesc:ud {NoMask}
+//add (1) a0.2<1>:ud T252<1>:ud exDesc:ud {NoMask}
 // returns a0.2<0;1,0>:ud
 G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
 {
@@ -668,7 +667,14 @@ G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
     G4_Declare* exDescDecl = createDeclareNoLookup(buf, G4_ADDRESS, 1, 1, Type_UD);
     exDescDecl->setSubRegAlign(Four_Word);
     G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(exDescDecl, 1);
-    createInst(NULL, G4_add, NULL, false, 1, dst, T252, createImm(exdesc, Type_UD), InstOpt_WriteEnable);
+    if (useNewExtDescFormat())
+    {
+        createInst(nullptr, G4_mov, nullptr, false, 1, dst, T252, nullptr, InstOpt_WriteEnable);
+    }
+    else
+    {
+        createInst(NULL, G4_add, NULL, false, 1, dst, T252, createImm(exdesc, Type_UD), InstOpt_WriteEnable);
+    }
     return Create_Src_Opnd_From_Dcl(exDescDecl, getRegionScalar());
 }
 
