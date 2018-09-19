@@ -187,7 +187,7 @@ DEF_VISA_OPTION(vISA_ReRAPostSchedule,    ET_BOOL,  "-rerapostschedule",  UNUSED
 DEF_VISA_OPTION(vISA_GetFreeGRFInfo,      ET_BOOL,  "-getfreegrfinfo",    UNUSED, false)
 
 //=== HW Workarounds ===
-DEF_VISA_OPTION(vISA_clearScratchWritesBeforeEOT,   ET_BOOL,  NULLSTR, UNUSED, false)
+DEF_VISA_OPTION(vISA_clearScratchWritesBeforeEOT,   ET_BOOL,  NULLSTR, UNUSED, true)
 
 //=== HW debugging options ===
 DEF_VISA_OPTION(vISA_GenerateDebugInfo,   ET_BOOL,  "-generateDebugInfo", UNUSED, false)

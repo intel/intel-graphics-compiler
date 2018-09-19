@@ -1193,6 +1193,8 @@ int Optimizer::optimization()
     // invalid (funcInfo, calleeInfo may point to bad initBB).
     runPass(PI_removeEmptyBlocks);
 
+    runPass(PI_insertScratchReadBeforeEOT);
+
     // HW workaround
     runPass(PI_HWWorkaround);
 
@@ -1220,8 +1222,6 @@ int Optimizer::optimization()
     // passes, except initializePayload, to avoid
     // potential code ordering issue.
     runPass(PI_createR0Copy);
-
-    runPass(PI_insertScratchReadBeforeEOT);
 
     runPass(PI_initializePayload);
 
@@ -7634,7 +7634,7 @@ public:
         }
     }
 
-    // some platforms require a scratch read before the end of thread to 
+    // some platforms require extra instruction before an EOT to 
     // ensure that all outstanding scratch writes are globally observed
     void Optimizer::insertScratchReadBeforeEOT()
     {
@@ -7676,14 +7676,31 @@ public:
             {
                 auto iter = std::prev(bb->end());
 
-                auto msgDesc = builder.createSendMsgDesc(desc.value, extDesc, true, false, nullptr, nullptr);
-                auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
-                // it's safe to use r0 here because EOT src must be between r112-r127
-                auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinR0(), 1);
-                auto sendInst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
-                    builder.createImm(extDesc, Type_UD), builder.createImm(desc.value, Type_UD), InstOpt_WriteEnable, true,
-                    false, msgDesc);
-                bb->insert(iter, sendInst);
+                G4_INST* inst = nullptr;
+                if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN10)
+                {
+                    // an HDC fence is more efficient in this case
+                    // fence with commit enable
+                    int fenceDesc = G4_SendMsgDescriptor::createDesc((0x7 << 14) | (1 << 13), true, 1, 1);
+                    auto msgDesc = builder.createSendMsgDesc(fenceDesc, extDesc, true, true, nullptr, nullptr);
+                    auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
+                    auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinR0(), 1);
+                    inst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
+                        builder.createImm(extDesc, Type_UD), builder.createImm(fenceDesc, Type_UD), InstOpt_WriteEnable, true,
+                        true, msgDesc);
+                }
+                else
+                {
+                    // insert a dumy scratch read
+                    auto msgDesc = builder.createSendMsgDesc(desc.value, extDesc, true, false, nullptr, nullptr);
+                    auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
+                    // it's safe to use r0 here because EOT src must be between r112-r127
+                    auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinR0(), 1);
+                    inst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
+                        builder.createImm(extDesc, Type_UD), builder.createImm(desc.value, Type_UD), InstOpt_WriteEnable, true,
+                        false, msgDesc);
+                }
+                bb->insert(iter, inst);
                 builder.instList.clear();
             }
         }
