@@ -51,7 +51,7 @@ upgrader::upgradeBitcodeFile(MemoryBufferRef Buffer, LLVMContext &Context) {
     return nullptr;
 
   SmallVector<char, 0> Buf;
-  Buf.reserve(1024*1024);
+  Buf.reserve(256*1024);
 
   raw_svector_ostream OS(Buf);
   WriteBitcodeToFile(M, OS);
