@@ -1663,10 +1663,13 @@ void CustomUnsafeOptPass::visitBinaryOperator(BinaryOperator &I)
                             {
                                 if (!(fp0 && fp0->isExactlyValue(1.0)))
                                 {
-                                    Value *invOp = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(opType, 1.0), op1, "", &I), &I);
-                                    I.replaceAllUsesWith(
-                                        copyIRFlags(BinaryOperator::CreateFMul(op0, invOp, "", &I), &I));
-                                    patternFound = true;
+                                    if (I.hasAllowReciprocal())
+                                    {
+                                        Value *invOp = copyIRFlags(BinaryOperator::CreateFDiv(ConstantFP::get(opType, 1.0), op1, "", &I), &I);
+                                        I.replaceAllUsesWith(
+                                            copyIRFlags(BinaryOperator::CreateFMul(op0, invOp, "", &I), &I));
+                                        patternFound = true;
+                                    }
                                 }
                             }
                         }
