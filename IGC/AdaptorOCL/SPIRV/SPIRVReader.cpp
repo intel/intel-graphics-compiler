@@ -2268,59 +2268,39 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpCopyMemorySized: {
     SPIRVCopyMemorySized *BC = static_cast<SPIRVCopyMemorySized *>(BV);
-    assert(BB && "Invalid BB");
-    
-    SPIRVValue* BS = BC->getSource();
-    SPIRVValue* BT = BC->getTarget();
-    Value* SrcValue = transValue(BS, F, BB);
-    Value* TrgValue = transValue(BT, F, BB);
-    
-    //Create Bitcast of the Target and source Arguments
-    //This is needed in the case the either the source or target arguments are of
-    //<2 x i32>* type. LLVM only supports i8* type.
-    IRBuilder<> IRB(BB);
-    Value* pDst = IRB.CreateBitCast(
-                        TrgValue,
-                        Type::getInt8PtrTy(*Context, TrgValue->getType()->getPointerAddressSpace()));
-    Value* pSrc = IRB.CreateBitCast(
-                        SrcValue,
-                        Type::getInt8PtrTy(*Context, SrcValue->getType()->getPointerAddressSpace()));
+    CallInst *CI = nullptr;
+    llvm::Value *Dst = transValue(BC->getTarget(), F, BB);
+    unsigned Align = BC->getAlignment();
+    llvm::Value *Size = transValue(BC->getSize(), F, BB);
+    bool IsVolatile = BC->SPIRVMemoryAccess::getVolatile();
+    IRBuilder<> Builder(BB);
 
-    //Get all types needed to create llvm::memcpy
-    Type *Int1Ty = Type::getInt1Ty(*Context);
-    Type* Int32Ty = Type::getInt32Ty(*Context);
-    Type* VoidTy = Type::getVoidTy(*Context);
-    Type* DstTy = pDst->getType();
-    Type* SrcTy = pSrc->getType();
-    Type* SizeTy = transType(BC->getSize()->getType());
-    Type* ArgTy[] = { DstTy, SrcTy, SizeTy, Int32Ty, Int1Ty };
-
-    std::string FuncName;
-    raw_string_ostream TempName(FuncName);
-    TempName << "llvm.memcpy";
-    TempName << ".p" << SPIRSPIRVAddrSpaceMap::rmap(BT->getType()->getPointerStorageClass()) << "i8";
-    TempName << ".p" << SPIRSPIRVAddrSpaceMap::rmap(BS->getType()->getPointerStorageClass()) << "i8";
-    if (BC->getSize()->getType()->getBitWidth() == 32)
-       TempName << ".i32";
-    else
-       TempName << ".i64";
-    TempName.flush();
-
-    FunctionType *FT = FunctionType::get(VoidTy, ArgTy, false);
-    Function *Func = dyn_cast<Function>(M->getOrInsertFunction(FuncName, FT));
-    assert(Func && Func->getFunctionType() == FT && "Function type mismatch");
-    Func->setLinkage(GlobalValue::ExternalLinkage);
-
+    // If we copy from zero-initialized array, we can optimize it to llvm.memset
+    if (BC->getSource()->getOpCode() == OpBitcast) {
+      SPIRVValue *Source =
+        static_cast<SPIRVBitcast *>(BC->getSource())->getOperand(0);
+      if (Source->isVariable()) {
+        auto *Init = static_cast<SPIRVVariable *>(Source)->getInitializer();
+        
+        if (Init->getOpCode() == OpConstantNull) {
+          SPIRVType *Ty = static_cast<SPIRVConstantNull *>(Init)->getType();
+          if (Ty->isTypeArray()) {
+            SPIRVTypeArray *AT = static_cast<SPIRVTypeArray *>(Ty);
+            Type *SrcTy = transType(AT->getArrayElementType());
+            assert(SrcTy->isIntegerTy(8));
+            llvm::Value *Src = ConstantInt::get(SrcTy, 0);
+            CI = Builder.CreateMemSet(Dst, Src, Size, Align, IsVolatile);
+          }
+        }
+      }
+    }
+    if (!CI) {
+      llvm::Value *Src = transValue(BC->getSource(), F, BB);
+      CI = Builder.CreateMemCpy(Dst, Src, Size, Align, IsVolatile);
+    }
     if (isFuncNoUnwind())
-      Func->addFnAttr(Attribute::NoUnwind);
-
-    Value *Arg[] = { pDst,
-                     pSrc,
-                     dyn_cast<llvm::ConstantInt>(transValue(BC->getSize(),Func, BB)),
-                     ConstantInt::get(Int32Ty,BC->SPIRVMemoryAccess::getAlignment()),
-                     ConstantInt::get(Int1Ty,BC->hasDecorate(DecorationVolatile) || BC->SPIRVMemoryAccess::getVolatile() != 0 ) };
-
-    return mapValue( BV, CallInst::Create(Func, Arg, "", BB));
+      CI->getFunction()->addFnAttr(Attribute::NoUnwind);
+    return mapValue(BV, CI);
   }
   break;
   case OpCopyObject: {

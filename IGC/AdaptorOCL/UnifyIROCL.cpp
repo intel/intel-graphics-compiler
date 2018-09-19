@@ -344,6 +344,7 @@ static void CommonOCLBasedPasses(
     mpm.add(new WIFuncsAnalysis());
     mpm.add(new ImageFuncsAnalysis());
     mpm.add(new OpenCLPrintfAnalysis());
+    mpm.add(createDeadCodeEliminationPass());
     mpm.add(new ProgramScopeConstantAnalysis());
     mpm.add(new PrivateMemoryUsageAnalysis());
     mpm.add(new AggregateArgumentsAnalysis());
