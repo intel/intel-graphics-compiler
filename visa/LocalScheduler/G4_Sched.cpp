@@ -993,6 +993,18 @@ preNode* SethiUllmanQueue::select()
         if (TopIter == Q.end() || compare(*TopIter, *I))
             TopIter = I;
     }
+
+    // In rare cases, there is a cycle due to send pairing.
+    // Stop this heuristics if it happens.
+    if (TopIter == Q.end()) {
+        TheCurrTupleLead = nullptr;
+        TheCurrTupleParts = 0;
+        for (auto I = Q.begin(), E = Q.end(); I != E; ++I) {
+            if (TopIter == Q.end() || compare(*TopIter, *I))
+                TopIter = I;
+        }
+    }
+
     assert(TopIter != Q.end());
     preNode* Top = *TopIter;
     std::swap(*TopIter, Q.back());
