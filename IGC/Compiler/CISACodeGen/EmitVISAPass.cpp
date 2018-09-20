@@ -7135,6 +7135,8 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         emitTypedWrite(inst);
         break;
     case GenISAIntrinsic::GenISA_threadgroupbarrier:
+    case GenISAIntrinsic::GenISA_threadgroupbarrier_signal:
+    case GenISAIntrinsic::GenISA_threadgroupbarrier_wait:
         emitThreadGroupBarrier(inst);
         break;
     case GenISAIntrinsic::GenISA_memoryfence:
@@ -11230,8 +11232,16 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
 
     if (!skipBarrierInstructionInCS)
     {
+        e_barrierKind BarrierKind = EBARRIER_NORMAL; // default
+        GenIntrinsicInst* geninst = cast<GenIntrinsicInst>(inst);
+        if (geninst->getIntrinsicID() == GenISAIntrinsic::GenISA_threadgroupbarrier_signal) {
+            BarrierKind = EBARRIER_SIGNAL;
+        }
+        else if (geninst->getIntrinsicID() == GenISAIntrinsic::GenISA_threadgroupbarrier_wait) {
+            BarrierKind = EBARRIER_WAIT;
+        }
         m_currShader->SetHasBarrier();
-        m_encoder->Barrier();
+        m_encoder->Barrier(BarrierKind);
         m_encoder->Push();
     }
 }

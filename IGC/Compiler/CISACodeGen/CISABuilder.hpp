@@ -186,7 +186,7 @@ public:
     void OWStore(CVariable* dst, e_predefSurface surfaceType, CVariable* bufidx, CVariable* offset, uint dstSize, uint srcOffset);
 
     void AddrAdd(CVariable* dst, CVariable* src0, CVariable* src1);
-    void Barrier();
+    void Barrier(e_barrierKind BarrierKind);
     void Fence(bool CommitEnable, 
                 bool L3_Flush_RW_Data, 
                 bool L3_Flush_Constant_Data, 

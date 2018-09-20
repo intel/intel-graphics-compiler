@@ -1644,6 +1644,8 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
 
     //Sync built-ins
     m_CommandMap["__builtin_IB_thread_group_barrier"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_threadgroupbarrier, false);
+    m_CommandMap["__builtin_IB_thread_group_barrier_signal"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_threadgroupbarrier_signal, false);
+    m_CommandMap["__builtin_IB_thread_group_barrier_wait"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_threadgroupbarrier_wait, false);
     m_CommandMap["__builtin_IB_memfence"]             = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_memoryfence, false);
     m_CommandMap["__builtin_IB_flush_sampler_cache"]  = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_flushsampler, false);
     

@@ -103,6 +103,8 @@ Imported_Intrinsics = \
     "GenISA_atomiccounterinc": ["int",["anyptr"],"ReadWriteArgMem"],
     "GenISA_atomiccounterpredec": ["int",["anyptr"],"ReadWriteArgMem"],
     "GenISA_threadgroupbarrier": ["void",[],"Convergent"],
+    "GenISA_threadgroupbarrier_signal": ["void",[],"Convergent"],
+    "GenISA_threadgroupbarrier_wait": ["void",[],"Convergent"],
     "GenISA_memoryfence": ["void",["bool","bool","bool","bool","bool","bool","bool"],"Convergent"],
     "GenISA_flushsampler": ["void",[],"None"],
     "GenISA_globalSync": ["void",[],"Convergent"],

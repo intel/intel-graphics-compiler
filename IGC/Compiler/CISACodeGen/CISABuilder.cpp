@@ -2458,8 +2458,18 @@ void CEncoder::AddrAdd(CVariable* dst, CVariable* src0, CVariable* src1)
         pSrc1Opnd));
 }
 
-void CEncoder::Barrier()
+void CEncoder::Barrier(e_barrierKind BarrierKind)
 {
+    if (BarrierKind == EBARRIER_SIGNAL) {
+        // signal only
+        V(vKernel->AppendVISASplitBarrierInst(true));
+        return;
+    }
+    if (BarrierKind == EBARRIER_WAIT) {
+        // wait only
+        V(vKernel->AppendVISASplitBarrierInst(false));
+        return;
+    }
     V(vKernel->AppendVISASyncInst(ISA_BARRIER));
 }
 

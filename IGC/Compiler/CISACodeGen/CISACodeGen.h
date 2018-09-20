@@ -166,6 +166,13 @@ enum e_predefSampler : unsigned char
     ESAMPLER_BINDLESS,
 };
 
+enum e_barrierKind : unsigned char
+{
+    EBARRIER_NORMAL,  // default (signal+wait)
+    EBARRIER_SIGNAL,
+    EBARRIER_WAIT
+};
+
 class CVariable;
 
 struct ResourceDescriptor

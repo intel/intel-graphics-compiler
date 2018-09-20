@@ -117,6 +117,8 @@ void     __builtin_IB_flush_sampler_cache(void);
 
 // Barrier
 void     __builtin_IB_thread_group_barrier(void) __attribute__((convergent));
+void     __builtin_IB_thread_group_barrier_signal(void) __attribute__((convergent));
+void     __builtin_IB_thread_group_barrier_wait(void) __attribute__((convergent));
 
 // Workitem functions
 uint     __builtin_IB_get_work_dim(void) __attribute__((const));
