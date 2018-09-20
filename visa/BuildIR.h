@@ -1109,8 +1109,8 @@ public:
         uint32_t extDesc,
         bool isRead,
         bool isWrite,
-        G4_Operand *bti,
-        G4_Operand *sti);
+        G4_Operand *bti = nullptr,
+        G4_Operand *sti = nullptr);
 
     G4_SendMsgDescriptor* createSendMsgDesc(
         unsigned funcCtrl,
@@ -1122,8 +1122,8 @@ public:
         uint16_t extFuncCtrl,
         bool isRead,
         bool isWrite,
-        G4_Operand *bti,
-        G4_Operand *sti);
+        G4_Operand *bti = nullptr,
+        G4_Operand *sti = nullptr);
 
     G4_Operand* emitSampleIndexGE16(
         G4_Operand* sampler, G4_Declare* headerDecl);

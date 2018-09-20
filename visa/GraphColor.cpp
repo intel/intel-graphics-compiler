@@ -6599,7 +6599,7 @@ void GraphColor::saveRegs(
 
             G4_Imm* descImm = gra.createMsgDesc(owordSize, true, true);
             G4_SendMsgDescriptor* desc = builder.createSendMsgDesc((uint32_t)descImm->getImm() & 0x0007FFFFu, 0, 1, SFID_DP_DC,
-                false, messageLength, 0, false, true, NULL, NULL);
+                false, messageLength, 0, false, true);
 
             G4_INST* sendsInst = builder.createSplitSendInst(NULL, G4_sends, execSize, postDst, sendSrc1, sendSrc2, descImm, InstOpt_WriteEnable, desc, NULL);
             sendsInst->setCISAOff(UNMAPPABLE_VISA_INDEX);

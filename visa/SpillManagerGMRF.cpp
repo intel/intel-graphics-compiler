@@ -2787,7 +2787,7 @@ SpillManagerGMRF::createSpillSendInstr (
         // both scratch and block read use DC
         CISA_SHARED_FUNCTION_ID funcID = SFID_DP_DC;
 
-        G4_SendMsgDescriptor* desc = builder_->createSendMsgDesc( messageDescImm->getInt() & 0x0007FFFFu, 0, 1, funcID, false, extMsgLength, extFuncCtrl, false, true, NULL, NULL);
+        G4_SendMsgDescriptor* desc = builder_->createSendMsgDesc( messageDescImm->getInt() & 0x0007FFFFu, 0, 1, funcID, false, extMsgLength, extFuncCtrl, false, true);
         RegionDesc* region = builder_->getRegionStride1();
         G4_SrcRegRegion* headerOpnd = builder_->Create_Src_Opnd_From_Dcl(builder_->getBuiltinR0(), region);
         G4_SrcRegRegion* srcOpnd = createBlockSpillRangeSrcRegion(spillRangeDcl->getRegVar (), regOff);
@@ -2839,7 +2839,7 @@ SpillManagerGMRF::createSpillSendInstr (
         // both scratch and block read use DC
         CISA_SHARED_FUNCTION_ID funcID = SFID_DP_DC;
 
-        G4_SendMsgDescriptor* desc = builder_->createSendMsgDesc( messageDescImm->getInt() & 0x0007FFFFu, 0, 1, funcID, false, extMsgLength, extFuncCtrl, false, true, NULL, NULL);
+        G4_SendMsgDescriptor* desc = builder_->createSendMsgDesc( messageDescImm->getInt() & 0x0007FFFFu, 0, 1, funcID, false, extMsgLength, extFuncCtrl, false, true);
         RegionDesc* region = builder_->getRegionStride1();
         G4_SrcRegRegion* headerOpnd = builder_->Create_Src_Opnd_From_Dcl(builder_->getBuiltinR0(), region);
         G4_SrcRegRegion* srcOpnd = builder_->Create_Src_Opnd_From_Dcl(spillRangeDcl, region);
@@ -2913,7 +2913,7 @@ void SpillManagerGMRF::createSpill(
 
     unsigned extMsgLength = size;
     uint16_t extFuncCtrl = 0;
-    G4_SendMsgDescriptor* desc = builder_->createSendMsgDesc(messageDescImm->getInt() & 0x0007FFFFu, 0, 1, funcID, false, extMsgLength, extFuncCtrl, false, true, NULL, NULL);
+    G4_SendMsgDescriptor* desc = builder_->createSendMsgDesc(messageDescImm->getInt() & 0x0007FFFFu, 0, 1, funcID, false, extMsgLength, extFuncCtrl, false, true);
     G4_SrcRegRegion* headerOpnd = builder_->Create_Src_Opnd_From_Dcl(sendSrc0, builder_->getRegionStride1());
     G4_SrcRegRegion* srcOpnd = createBlockSpillRangeSrcRegion(spillDcl->getRegVar(), spillRegOff);
 
@@ -4487,7 +4487,7 @@ SpillManagerGMRF::fixSpillFillCode (
 		            unsigned int regs2rcv = ( message >> getSendRspLengthBitOffset() ) & 0x1F;
 		            G4_SendMsgDescriptor * msgDesc = builder_->createSendMsgDesc( message,
 			            regs2rcv, regs2snd, inst->getMsgDesc()->getFuncId(), inst->getMsgDesc()->isEOTInst(),
-                        0, inst->getMsgDesc()->getExtFuncCtrl(), true, false, NULL, NULL);
+                        0, inst->getMsgDesc()->getExtFuncCtrl(), true, false);
 
                     inst->setSrc( msg, 1 );
                     inst->setMsgDesc( msgDesc );
@@ -4529,7 +4529,7 @@ SpillManagerGMRF::fixSpillFillCode (
 		            unsigned int regs2rcv = ( message >> getSendRspLengthBitOffset() ) & 0x1F;
 		            G4_SendMsgDescriptor * msgDesc = builder_->createSendMsgDesc( message,
                         regs2rcv, regs2snd, inst->getMsgDesc()->getFuncId(), inst->getMsgDesc()->isEOTInst(), 0,
-                        inst->getMsgDesc()->getExtFuncCtrl(), false, true, NULL, NULL );
+                        inst->getMsgDesc()->getExtFuncCtrl(), false, true);
 
                     inst->setSrc( msg, 1 );
                     inst->setMsgDesc( msgDesc );

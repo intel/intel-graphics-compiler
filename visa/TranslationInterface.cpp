@@ -2809,7 +2809,7 @@ int IR_Builder::translateVISAOwordStoreInst(
         msgDesc += (1 << getSendMsgLengthBitOffset()) + (1 << getSendHeaderPresentBitOffset());
 
         G4_SendMsgDescriptor* desc = createSendMsgDesc( msgDesc, 0, 1, SFID_DP_DC,
-            false, extMsgLength, extFuncCtrl, false, true, surface, NULL );
+            false, extMsgLength, extFuncCtrl, false, true, surface);
 
         uint8_t sendSize = FIX_OWORD_SEND_EXEC_SIZE(num_oword);
 
@@ -3200,7 +3200,7 @@ int IR_Builder::translateVISAMediaStoreInst(
         uint16_t extFuncCtrl = 0;
 
         G4_SendMsgDescriptor* desc = createSendMsgDesc( msgDesc, 0, 1, SFID_DP_DC1,
-            false, extMsgLength, extFuncCtrl, false, true, surface, NULL);
+            false, extMsgLength, extFuncCtrl, false, true, surface);
 
         G4_Operand* msgOpnd = NULL;
         if (surface->isImm())
@@ -5365,7 +5365,7 @@ int IR_Builder::translateVISASLMUntypedScaledInst(
 
 	uint32_t exFuncCtrl = 0;
 	G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(MD, resLen, sizes[0], SFID,
-		false, sizes[1], (uint16_t)exFuncCtrl, isRead, !isRead, nullptr, nullptr);
+		false, sizes[1], (uint16_t)exFuncCtrl, isRead, !isRead);
 
 	applySideBandOffset(sideBand, sendMsgDesc);
 
@@ -5717,7 +5717,7 @@ int IR_Builder::translateVISASLMByteScaledInst(bool isRead,
 	unsigned resLen = isRead ? (exSize / GENX_DATAPORT_IO_SZ) * numBatch : 0;
 
 	G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(MD, resLen, sizes[0], SFID,
-		false, sizes[1], exFuncCtrl, isRead, !isRead, nullptr, nullptr);
+		false, sizes[1], exFuncCtrl, isRead, !isRead);
 
 	applySideBandOffset(sideBand, sendMsgDesc);
 
@@ -6536,7 +6536,7 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
     {
         desc = G4_SendMsgDescriptor::createDesc(0, false, numSrc, numDst);
     }
-    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(desc, exDesc, true, true, NULL, NULL);
+    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(desc, exDesc, true, true);
 
     // sanity check on srcLen/dstLen
     MUST_BE_TRUE(sendMsgDesc->MessageLength() <= numSrc, "message length mismatch for raw send");
@@ -6613,7 +6613,7 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
         descVal = G4_SendMsgDescriptor::createDesc(0, false, numSrc0, numDst);
     }
 
-    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(descVal, exDescVal, true, true, NULL, NULL);
+    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(descVal, exDescVal, true, true);
 
     MUST_BE_TRUE(sendMsgDesc->MessageLength() == numSrc0, "message length mismatch for raw sends");
     MUST_BE_TRUE(sendMsgDesc->ResponseLength() <= numDst, "response length mismatch for raw sends");
@@ -8887,7 +8887,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         {
             m0 = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
             msgDesc = createSendMsgDesc(fc, 0, RT_HEADER_SIZE, SFID_DP_WRITE, false, numRows,
-                0, false, true, surface, NULL);
+                0, false, true, surface);
             msgDesc->setHeaderPresent(useHeader);
         }
         else
@@ -8896,7 +8896,7 @@ int IR_Builder::translateVISARTWrite3DInst(
             {
                 // direct imm is a-ok
                 msgDesc = createSendMsgDesc(fc, 0, numRows, SFID_DP_WRITE, false, 0,
-                        0, false, true, surface, NULL);
+                        0, false, true, surface);
             }
             else
             {
@@ -8909,7 +8909,7 @@ int IR_Builder::translateVISARTWrite3DInst(
                 // mov (1) a0.2:ud extDesc
                 G4_DstRegRegion* dst = Create_Dst_Opnd_From_Dcl(getBuiltinA0Dot2(), 1);
                 createInst(nullptr, G4_mov, nullptr, false, 1, dst, createImm(extDesc, Type_UD), nullptr, InstOpt_WriteEnable);
-                msgDesc = createSendMsgDesc(desc, extDesc, false, true, surface, nullptr);
+                msgDesc = createSendMsgDesc(desc, extDesc, false, true, surface);
                 indirectExDesc = true;
             }
         }

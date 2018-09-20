@@ -454,7 +454,7 @@ G4_INST* IR_Builder::createSendInst(G4_Predicate* prd,
         int64_t srcVal = extDesc->asImm()->getInt();
         msgDesc = createSendMsgDesc( (unsigned int)msg->asImm()->getInt(),
             regs2rcv, regs2snd, (CISA_SHARED_FUNCTION_ID) (srcVal & 0x1F),
-            (srcVal & 0x20) != 0, 0, (uint16_t)(srcVal >> 16), isRead, isWrite, NULL, NULL);
+            (srcVal & 0x20) != 0, 0, (uint16_t)(srcVal >> 16), isRead, isWrite);
     }
 
     G4_INST* m = new (mem)G4_INST(useDefAllocator, instAllocList, prd, op, NULL, false, size, postDst, currSrc, msg, option);

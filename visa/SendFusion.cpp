@@ -1197,7 +1197,7 @@ void SendFusion::doFusion(
             desc->getExtFuncCtrl(),
             desc->isDataPortRead(),
             desc->isDataPortWrite(),
-            bti, nullptr);
+            bti);
 
         G4_SrcRegRegion* s0 = I0->getOperand(Opnd_src0)->asSrcRegRegion();
         G4_SrcRegRegion* s1 = I1->getOperand(Opnd_src0)->asSrcRegRegion();
@@ -1244,7 +1244,7 @@ void SendFusion::doFusion(
         desc->getExtFuncCtrl(),
         desc->isDataPortRead(),
         desc->isDataPortWrite(),
-        bti, nullptr);
+        bti);
 
     // First, create fused send.
     RegionDesc* region = Builder->getRegionStride1();

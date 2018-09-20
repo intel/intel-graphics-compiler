@@ -7380,7 +7380,7 @@ public:
             msgDescImm |= i;
 
             G4_SendMsgDescriptor* desc = kernel.fg.builder->createSendMsgDesc(
-                msgDescImm, 0, 1, funcID, false, msgSize, extFuncCtrl, false, true, nullptr, nullptr);
+                msgDescImm, 0, 1, funcID, false, msgSize, extFuncCtrl, false, true);
             RegionDesc* region = kernel.fg.builder->getRegionStride1();
             G4_SrcRegRegion* headerOpnd = kernel.fg.builder->Create_Src_Opnd_From_Dcl(kernel.fg.builder->getBuiltinR0(), region);
             G4_Declare* tempDcl = builder.createHardwiredDeclare(msgSize * 8, Type_UD, i, 0);
@@ -7682,7 +7682,7 @@ public:
                     // an HDC fence is more efficient in this case
                     // fence with commit enable
                     int fenceDesc = G4_SendMsgDescriptor::createDesc((0x7 << 14) | (1 << 13), true, 1, 1);
-                    auto msgDesc = builder.createSendMsgDesc(fenceDesc, extDesc, true, true, nullptr, nullptr);
+                    auto msgDesc = builder.createSendMsgDesc(fenceDesc, extDesc, true, true);
                     auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
                     auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinR0(), 1);
                     inst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
@@ -7692,7 +7692,7 @@ public:
                 else
                 {
                     // insert a dumy scratch read
-                    auto msgDesc = builder.createSendMsgDesc(desc.value, extDesc, true, false, nullptr, nullptr);
+                    auto msgDesc = builder.createSendMsgDesc(desc.value, extDesc, true, false);
                     auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
                     // it's safe to use r0 here because EOT src must be between r112-r127
                     auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinR0(), 1);
