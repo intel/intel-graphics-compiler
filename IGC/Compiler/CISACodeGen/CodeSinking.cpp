@@ -734,6 +734,7 @@ bool CodeSinking::checkCongruent(const InstPair& values,
         src0->getNumOperands() != src1->getNumOperands() ||
         src0->getType() != src1->getType() ||
         isa<PHINode>(src0) ||
+        isa<CmpInst>(src0) ||
         !(src0->getNumOperands() == 1 ||
           src0->getNumOperands() == 2))
         return false;
