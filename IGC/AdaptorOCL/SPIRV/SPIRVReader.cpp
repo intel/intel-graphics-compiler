@@ -2282,7 +2282,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
       if (Source->isVariable()) {
         auto *Init = static_cast<SPIRVVariable *>(Source)->getInitializer();
         
-        if (Init->getOpCode() == OpConstantNull) {
+        if (Init && Init->getOpCode() == OpConstantNull) {
           SPIRVType *Ty = static_cast<SPIRVConstantNull *>(Init)->getType();
           if (Ty->isTypeArray()) {
             SPIRVTypeArray *AT = static_cast<SPIRVTypeArray *>(Ty);
