@@ -7639,7 +7639,9 @@ public:
     void Optimizer::insertScratchReadBeforeEOT()
     {
 
-        if (builder.needFenceBeforeEOT() || builder.getJitInfo()->spillMemUsed == 0)
+        int globalScratchOffset = builder.getOptions()->getuInt32Option(vISA_SpillMemOffset);
+        if (builder.needFenceBeforeEOT() || 
+            (globalScratchOffset == 0 && builder.getJitInfo()->spillMemUsed == 0))
         {
             return;
         }
