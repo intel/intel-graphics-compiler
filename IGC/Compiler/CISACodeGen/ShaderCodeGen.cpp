@@ -581,6 +581,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
 
     mpm.add(new LowPrecisionOpt());
 
+
     // 3D input/output lowering
     switch (ctx.type)
     {
