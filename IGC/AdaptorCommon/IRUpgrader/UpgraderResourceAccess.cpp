@@ -166,6 +166,10 @@ void UpgradeResourceAccess::ChangeIntrinsic(CallInst& C, GenISAIntrinsic::ID ID)
 
 void UpgradeResourceAccess::visitCallInst(CallInst& C)
 {
+    if (C.isInlineAsm())
+    {
+        return;
+    }
     if(C.getCalledFunction()->getName().startswith("genx.GenISA.sample."))
     {
         ChangeIntrinsic(C, GenISAIntrinsic::GenISA_sampleptr);

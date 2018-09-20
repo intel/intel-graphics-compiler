@@ -1172,19 +1172,22 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
         // operations.
         // 
         Function* func = I.getCalledFunction();
-        StringRef fName = func->getName();
-        for (int FID=0; FID < NUM_FUNCTION_IDS; ++FID)
+        if (func)
         {
-            const PreCompiledFuncInfo& finfo = m_functionInfos[FID];
-            if (fName.equals(finfo.FuncName))
+            StringRef fName = func->getName();
+            for (int FID = 0; FID < NUM_FUNCTION_IDS; ++FID)
             {
-                m_libModuleToBeImported[finfo.LibModID] = true;
-                m_changed = true;
+                const PreCompiledFuncInfo& finfo = m_functionInfos[FID];
+                if (fName.equals(finfo.FuncName))
+                {
+                    m_libModuleToBeImported[finfo.LibModID] = true;
+                    m_changed = true;
 
-				// Make sure to use the default calling Convention
-				// as emulation functions uses the default!
-				I.setCallingConv(0);
-                break;
+                    // Make sure to use the default calling Convention
+                    // as emulation functions uses the default!
+                    I.setCallingConv(0);
+                    break;
+                }
             }
         }
     }

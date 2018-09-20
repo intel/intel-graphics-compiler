@@ -72,14 +72,15 @@ any_map = \
 }
 
 attribute_map = {
-    "None":            set(["NoUnwind"]),
-    "NoMem":           set(["NoUnwind","ReadNone"]),
-    "ReadMem":         set(["NoUnwind","ReadOnly"]),
-    "ReadArgMem":      set(["NoUnwind","ReadOnly","ArgMemOnly"]),
-    "ReadWriteArgMem": set(["NoUnwind","ArgMemOnly"]),
-    "NoReturn":        set(["NoUnwind","NoReturn"]),
-    "NoDuplicate":     set(["NoUnwind","NoDuplicate"]),
-    "Convergent":      set(["NoUnwind","Convergent"]),
+    "None":                set(["NoUnwind"]),
+    "NoMem":               set(["NoUnwind","ReadNone"]),
+    "ReadMem":             set(["NoUnwind","ReadOnly"]),
+    "ReadArgMem":          set(["NoUnwind","ReadOnly","ArgMemOnly"]),
+    "ReadWriteArgMem":     set(["NoUnwind","ArgMemOnly"]),
+    "NoReturn":            set(["NoUnwind","NoReturn"]),
+    "NoDuplicate":         set(["NoUnwind","NoDuplicate"]),
+    "Convergent":          set(["NoUnwind","Convergent"]),
+    "InaccessibleMemOnly": set(["NoUnwind","InaccessibleMemOnly"]),
 }
 
 def getAttributeList(Attrs):

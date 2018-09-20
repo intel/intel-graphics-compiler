@@ -1122,6 +1122,10 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I)
             match = MatchSingleInstruction(I);
         }
     }
+    else if(I.isInlineAsm())
+    {
+        return;
+    }
 
     assert(match && "no match for this call");
 }

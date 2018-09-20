@@ -136,6 +136,10 @@ void CheckInstrTypes::visitCallInst(CallInst &C)
 
     if(calledFunc == NULL)
     {
+        if (C.isInlineAsm())
+        {
+            return;
+        }
         // calls to 'blocks' have a null Function object
         g_InstrTypes->hasSubroutines = true;
         g_InstrTypes->hasIndirectCall = true;

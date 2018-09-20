@@ -1072,7 +1072,7 @@ bool SLMConstProp::runOnFunction(Function& F)
             else if (CallInst *CallI = dyn_cast<CallInst>(I)) {
                 // Skip if a user func is invoked.
                 Function* Callee = CallI->getCalledFunction();
-                if (!Callee || !Callee->isDeclaration()) {
+                if ((!Callee && !CallI->isInlineAsm()) || (Callee && !Callee->isDeclaration())) {
                     mayHaveUserFuncCalls = true;
                     break;
                 }

@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
+#include "Compiler/WaveIntrinsicWAPass.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
@@ -346,6 +347,18 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, TTI::UnrollingPrefer
     UP.AllowExpensiveTripCount = true;
 }
 
+
+bool GenIntrinsicsTTIImpl::isProfitableToHoist(Instruction *I)
+{
+    if (llvm::GenIntrinsicInst* pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(I))
+    {
+        if (unsafeToHoist(pIntrinsic->getIntrinsicID()))
+        {
+            return false;
+        }
+    }
+    return BaseT::isProfitableToHoist(I);
+}
 
 unsigned GenIntrinsicsTTIImpl::getCallCost(const Function *F, ArrayRef<const Value *> Arguments) {
     IGC::CodeGenContext *CGC = this->ctx;

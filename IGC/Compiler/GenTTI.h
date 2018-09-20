@@ -62,6 +62,8 @@ namespace llvm
 
          void getUnrollingPreferences(Loop *L, TTI::UnrollingPreferences &UP);
 
+         bool isProfitableToHoist(Instruction *I);
+
          using BaseT::getCallCost;
          unsigned getCallCost(const Function *F, ArrayRef<const Value *> Args);
     };

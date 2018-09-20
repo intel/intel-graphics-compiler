@@ -74,13 +74,18 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I)
     Function* function = I.getParent()->getParent();
     //Value* callingInst = ;
     Module* module = function->getParent();
-    StringRef funcName = I.getCalledFunction()->getName();
+    Function* calledFunction = I.getCalledFunction();
+    if (calledFunction == nullptr)
+    {
+        return;
+    }
+    StringRef funcName = calledFunction->getName();
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
 
     if (funcName.equals("__builtin_IB_get_global_offset") && ctx->getModuleMetaData()->compOpt.replaceGlobalOffsetsByZero)
     {
-        if (I.getCalledFunction()->getReturnType() == Type::getInt32Ty(module->getContext()))
+        if (calledFunction->getReturnType() == Type::getInt32Ty(module->getContext()))
         {
             ConstantInt* IntZero = ConstantInt::get(Type::getInt32Ty(module->getContext()), 0);
             I.replaceAllUsesWith(IntZero);
