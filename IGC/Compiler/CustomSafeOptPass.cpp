@@ -1956,9 +1956,13 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F)
                     unsigned bufId;
                     BufferType bufType = IGC::DecodeAS4GFXResource(as, directBuf, bufId);
                     bool bICBNoOffset =
-                        (IGC::INVALID_CONSTANT_BUFFER_INVALID_ADDR == modMD->pushInfo.inlineConstantBufferOffset && bufType == CONSTANT_BUFFER && directBuf && bufId == modMD->pushInfo.inlineConstantBufferSlot);
+                        (IGC::INVALID_CONSTANT_BUFFER_INVALID_ADDR == modMD->pushInfo.inlineConstantBufferOffset && 
+                         bufType == CONSTANT_BUFFER && directBuf && 
+                         bufId == modMD->pushInfo.inlineConstantBufferSlot);
                     bool bICBOffseted =
-                        (IGC::INVALID_CONSTANT_BUFFER_INVALID_ADDR != modMD->pushInfo.inlineConstantBufferOffset && ADDRESS_SPACE_CONSTANT == as && isICBOffseted(inst, modMD->pushInfo.inlineConstantBufferOffset));
+                        (IGC::INVALID_CONSTANT_BUFFER_INVALID_ADDR != modMD->pushInfo.inlineConstantBufferOffset && 
+                         ADDRESS_SPACE_CONSTANT == as && 
+                         isICBOffseted(inst, modMD->pushInfo.inlineConstantBufferOffset));
                     if (bICBNoOffset || bICBOffseted)
                     {
                         Value *ptrVal = inst->getPointerOperand();
@@ -1977,7 +1981,8 @@ bool IGCIndirectICBPropagaion::runOnFunction(Function &F)
 
                             Type* eleType = gep->getPointerOperandType()->getPointerElementType();
                             if (!eleType->isArrayTy() ||
-                                !(eleType->getArrayElementType()->isFloatTy() || eleType->getArrayElementType()->isIntegerTy(32)))
+                                !(eleType->getArrayElementType()->isFloatTy() || 
+                                  eleType->getArrayElementType()->isIntegerTy(32)))
                             {
                                 continue;
                             }
@@ -2044,13 +2049,11 @@ bool IGCIndirectICBPropagaion::isICBOffseted(llvm::LoadInst* inst, uint offset) 
     IGC::TracePointerSource(ptrVal, false, true, srcInstList);
     if (srcInstList.size())
     {
-        CallInst* inst = dyn_cast<CallInst>(srcInstList.back());
-        GenIntrinsicInst* genIntr = inst ? dyn_cast<GenIntrinsicInst>(inst) : nullptr;
-        if (!genIntr || (genIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_RuntimeValue))
+        RuntimeMetdataIntrinsicInst *rtInst = dyn_cast<RuntimeMetdataIntrinsicInst>(inst);
+        if (!rtInst)
             return false;
 
-        llvm::ConstantInt* ci = dyn_cast<llvm::ConstantInt>(inst->getOperand(0));
-        return ci && (uint)ci->getZExtValue() == offset;
+        return rtInst->getRuntimeConstant() == offset;
     }
 
     return false;
