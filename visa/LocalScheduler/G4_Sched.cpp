@@ -303,6 +303,9 @@ struct RegisterPressure
         }
     }
 
+    RegisterPressure(const RegisterPressure& other) = delete;
+    RegisterPressure& operator=(RegisterPressure& other) = delete;
+
     void init()
     {
         p2a = new PointsToAnalysis(kernel.Declares, kernel.fg.getNumBB());
@@ -382,11 +385,6 @@ struct RegisterPressure
         }
         std::cerr << "\n\n";
     }
-    private:
-        // Private copy ctor, assignment operator to prevent shallow copy that
-        // could lead to double free.
-        RegisterPressure(const RegisterPressure& other);
-        RegisterPressure& operator=(RegisterPressure& other);
 };
 
 struct SchedConfig
@@ -461,6 +459,9 @@ private:
     void SethiUllmanScheduling();
     void LatencyScheduling();
     bool verifyScheduling();
+
+    // Relocate pseudo-kills right before its successors.
+    void relocatePseudoKills();
 };
 
 } // namespace
@@ -1066,18 +1067,27 @@ public:
     // Add a new ready node.
     void push(preNode* N)
     {
-        Q.push_back(N);
+        if (N->getInst() && N->getInst()->isPseudoKill())
+            pseudoKills.push_back(N);
+        else
+            Q.push_back(N);
     }
 
     // Schedule the top node.
     preNode* pop()
     {
+        // Pop all pseudo-kills if any.
+        if (!pseudoKills.empty()) {
+            preNode* N = pseudoKills.back();
+            pseudoKills.pop_back();
+            return N;
+        }
         return select();
     }
 
     bool empty() const
     {
-        return Q.empty();
+        return pseudoKills.empty() && Q.empty();
     }
 
 private:
@@ -1089,6 +1099,9 @@ private:
     // Compare two ready nodes and decide which one should be scheduled first.
     // Return true if N2 has a higher priority than N1, false otherwise.
     bool compare(preNode* N1, preNode* N2);
+
+    // The ready pseudo kills.
+    std::vector<preNode *> pseudoKills;
 };
 
 } // namespace
@@ -1118,6 +1131,7 @@ void BB_Scheduler::LatencyScheduling()
         }
     }
 
+    relocatePseudoKills();
     assert(verifyScheduling());
 }
 
@@ -1384,42 +1398,11 @@ bool LatencyQueue::compare(preNode* N1, preNode* N2)
 {
     assert(N1->getID() != N2->getID());
     assert(N1->getInst() && N2->getInst());
-
-    auto Cmp = [](const preEdge &E1, const preEdge &E2) {
-        return E1.getNode()->getID() < E2.getNode()->getID();
-    };
+    assert(!N1->getInst()->isPseudoKill() &&
+           !N2->getInst()->isPseudoKill());
 
     G4_INST* Inst1 = N1->getInst();
-    if (Inst1->isPseudoKill()) {
-        // Direction is top-down, we compare the underlying nodes.
-        assert(!N1->succ_empty());
-
-        // Find the underlying node with highest ID.
-        auto &Max = *std::max_element(N1->Succs.begin(), N1->Succs.end(), Cmp);
-        preNode *N1F = Max.getNode();
-
-        // If the underlying node is not ready yet, then this pseudo-kill
-        // shall not be scheduled ahead of N2.
-        if (N1F->NumPredsLeft > 1)
-            return true;
-        return compare(N1F, N2);
-    }
-
     G4_INST* Inst2 = N2->getInst();
-    if (Inst2->isPseudoKill()) {
-        // Direction is top-down, we compare the underlying nodes.
-        assert(!N2->succ_empty());
-
-        // Find the underlying node with highest ID.
-        auto &Max = *std::max_element(N2->Succs.begin(), N2->Succs.end(), Cmp);
-        preNode *N2F = Max.getNode();
-
-        // If the underlying node is not ready yet, then this pseudo-kill
-        // shall not be scheduled ahead of N1.
-        if (N2F->NumPredsLeft > 1)
-            return false;
-        return compare(N1, N2F);
-    }
 
     // Group ID has higher priority, smaller ID means higher priority.
     unsigned GID1 = GroupInfo[N1->getInst()];
@@ -1437,7 +1420,7 @@ bool LatencyQueue::compare(preNode* N1, preNode* N2)
     if (P1 > P2)
         return false;
 
-    // Flavour sends.
+    // Favor sends.
     if (Inst1->isSend() && !Inst2->isSend())
         return false;
     else if (!Inst1->isSend() && Inst2->isSend())
@@ -1446,6 +1429,57 @@ bool LatencyQueue::compare(preNode* N1, preNode* N2)
     // Otherwise, break tie on ID.
     // Larger ID means higher priority.
     return N2->getID() > N1->getID();
+}
+
+// Find the edge with smallest ID.
+static G4_INST* minElt(const std::vector<preEdge>& Elts)
+{
+    assert(!Elts.empty());
+    if (Elts.size() == 1)
+        return Elts.front().getNode()->getInst();
+    auto Cmp = [](const preEdge& E1, const preEdge& E2) {
+        G4_INST* Inst1 = E1.getNode()->getInst();
+        G4_INST* Inst2 = E2.getNode()->getInst();
+        return Inst1 && Inst2 && Inst1->getLocalId() < Inst2->getLocalId();
+    };
+    auto E = std::min_element(Elts.begin(), Elts.end(), Cmp);
+    return E->getNode()->getInst();
+}
+
+// Given an instruction stream [p1 p2 A1 A2 A4 A3]
+// with dependency p1 -> {A1, A2}, p2-> {A3, A4},
+// for p in {p1, p2}, we compute the earliest location to insert
+// the pseudo kill p, p1<-A1, p2<-A4, and shuffle the stream to
+// [p1 A1 A2 p2 A4 A3].
+void BB_Scheduler::relocatePseudoKills()
+{
+    // Reset local id after scheduling and build the location map.
+    std::unordered_map<G4_INST*, G4_INST*> LocMap;
+    int i = 0;
+    for (auto Inst : schedule) { Inst->setLocalId(i++); }
+    for (auto N : ddd.getNodes()) {
+        G4_INST* Inst = N->getInst();
+        if (Inst && Inst->isPseudoKill())
+            LocMap[minElt(N->Succs)] = Inst;
+    }
+
+    // Do nothing if there is no pseudo-kills.
+    if (LocMap.empty())
+        return;
+
+    // Do relocation.
+    std::vector<G4_INST*> relocated;
+    relocated.reserve(schedule.size());
+    for (auto Inst : schedule) {
+        // pseudo-kills will be relocated.
+        if (Inst->isPseudoKill())
+            continue;
+        auto I = LocMap.find(Inst);
+        if (I != LocMap.end())
+            relocated.push_back(I->second);
+        relocated.push_back(Inst);
+    }
+    std::swap(schedule, relocated);
 }
 
 // Commit this scheduling if it is better.
