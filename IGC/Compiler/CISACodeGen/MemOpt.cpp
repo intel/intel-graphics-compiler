@@ -199,6 +199,39 @@ namespace {
       return false;
     }
 
+    template <typename AccessInstruction>
+    bool checkAlignmentBeforeMerge(AccessInstruction* inst,
+        SmallVector<std::tuple<AccessInstruction*, int64_t, MemRefListTy::iterator>, 8> &AccessIntrs)
+    {
+        if (inst->getAlignment() < 4 && WI->whichDepend(inst) != WIAnalysis::UNIFORM)
+        {
+            for (auto rit = AccessIntrs.rbegin(),
+                rie = AccessIntrs.rend(); rit != rie; ++rit)
+            {
+                unsigned accessSize = 0;
+                auto cur_offset = std::get<1>(*rit);
+                auto acessInst = std::get<0>(*rit);
+                if (isa<LoadInst>(acessInst))
+                    accessSize = unsigned(DL->getTypeSizeInBits(acessInst->getType())) / 8;
+                else
+                    accessSize = unsigned(DL->getTypeSizeInBits(acessInst->getOperand(0)->getType())) / 8;
+                if ((cur_offset + accessSize) > 4)
+                    AccessIntrs.pop_back();
+            }
+
+            if (AccessIntrs.size() < 2)
+                return false;
+
+            for (auto rit = AccessIntrs.rbegin(),
+                rie = AccessIntrs.rend(); rit != rie; ++rit)
+            {
+                if (std::get<0>(*rit)->getAlignment() >= 4)
+                    return false;
+            }
+        }
+        return true;
+    }
+
     /// Canonicalize the calculation of 64-bit pointer by performing the
     /// following transformations to help SCEV to identify the constant offset
     /// between pointers.
@@ -652,6 +685,10 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
   assert(FirstOffset <= 0 &&
          "The 1st load should be either the leading load or "
          "load with smaller offset!");
+  
+  // Next we need to check alignment
+  if (!checkAlignmentBeforeMerge(FirstLoad, LoadsToMerge))
+      return false;
 
   // Calculate the new pointer. If the leading load is not the first load,
   // re-calculate it from the leading pointer.
@@ -1019,10 +1056,14 @@ bool MemOpt::mergeStore(StoreInst *LeadingStore,
   // pointer from the first store (with the minimal offset) will be used as the
   // new pointer.
   StoreInst *FirstStore = std::get<0>(StoresToMerge.front());
+  
+  // Next we need to check alignment
+  if (!checkAlignmentBeforeMerge(FirstStore, StoresToMerge))
+      return false;
+  
   // We don't need to recalculate the new pointer as we merge stores to the
   // tailing store, which is dominated by all mergable stores' address
   // calculations.
-
   Type *NewPointerType =
       PointerType::get(NewStoreType, LeadingStore->getPointerAddressSpace());
   Value *NewPointer =
