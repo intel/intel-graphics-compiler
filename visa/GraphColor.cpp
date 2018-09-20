@@ -9722,6 +9722,12 @@ int GlobalRA::coloringRegAlloc()
             rpe.run();
             GraphColor coloring(liveAnalysis, kernel.getNumRegTotal(), false, forceSpill);
 
+            if (builder.getOption(vISA_dumpRPE) && iterationNo == 0 && !rematDone)
+            {
+                // dump pressure the first time we enter global RA
+                coloring.dumpRegisterPressure();
+            }
+
             unsigned spillRegSize = 0;
             unsigned indrSpillRegSize = 0;
             bool isColoringGood = coloring.regAlloc(doBankConflictReduction, highInternalConflict, reserveSpillReg, spillRegSize, indrSpillRegSize, &rpe);
