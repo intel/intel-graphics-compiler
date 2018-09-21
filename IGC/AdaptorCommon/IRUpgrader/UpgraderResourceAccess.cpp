@@ -27,8 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorCommon/IRUpgrader/IRUpgrader.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "Compiler/CISACodeGen/helper.h"
-#include "LLVM3DBuilder/BuiltinsFrontend.hpp"
-#include "LLVM3DBuilder/MetadataBuilder.h"
 
 #include <vector>
 
@@ -220,78 +218,10 @@ void UpgradeResourceAccess::visitCallInst(CallInst& C)
 }
 
 
-class UpgradeConstantResourceAccess : public FunctionPass, public InstVisitor<UpgradeConstantResourceAccess>
-{
-public:
-    UpgradeConstantResourceAccess() : FunctionPass(ID) {}
-    
-    static char ID;
-    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-    {
-        AU.setPreservesCFG();
-    }
-    bool runOnFunction(llvm::Function &F) override;
-    void visitCallInst(CallInst& C);
-private:
-    bool m_changed = false;
-    llvm::Module  *m_module;
-};
-char UpgradeConstantResourceAccess::ID = 0;
-
-bool UpgradeConstantResourceAccess::runOnFunction(llvm::Function &F)
-{
-    m_module = F.getParent();
-    visit(F);
-    return m_changed;
-}
-
-void UpgradeConstantResourceAccess::visitCallInst(CallInst& C)
-{
-    if(GenIntrinsicInst *pGenInst = dyn_cast<GenIntrinsicInst>(&C)) {
-        IRBuilder<> builder(pGenInst);
-        builder.SetInsertPoint(pGenInst);
-        //replace GenISA_RuntimeValue with llvm.read_register
-        if(pGenInst->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_RuntimeValue) {
-            Type *returnTy = pGenInst->getCalledFunction()->getReturnType();
-            Metadata *vasM;
-            if (Constant *ci = dyn_cast<Constant>(pGenInst->getOperand(0)))
-                vasM = ConstantAsMetadata::get(cast<Constant>(pGenInst->getOperand(0)));
-            else
-                return; //don't modify
-                //vasM = ValueAsMetadata::get(pGenInst->getOperand(0));
-
-            MDString *str = MDString::get(m_module->getContext(), "RuntimeValue");
-            Metadata *Args[] = { str, vasM };
-            llvm::MDNode *metadaNode = llvm::MDNode::get(m_module->getContext(), Args);
-            MetadataAsValue *mdV = MetadataAsValue::get(m_module->getContext(), metadaNode);
-            llvm::Function* pRuntimeFunc = nullptr;
-            if(returnTy->isPointerTy())
-                pRuntimeFunc = llvm::Intrinsic::getDeclaration(m_module, llvm::Intrinsic::read_register, builder.getInt64Ty());
-            else
-                pRuntimeFunc = llvm::Intrinsic::getDeclaration(m_module, llvm::Intrinsic::read_register, builder.getInt32Ty());
-            Value *result = builder.CreateCall(pRuntimeFunc, mdV);
-
-            if(returnTy->isPointerTy())
-                result = builder.CreateIntToPtr(result, returnTy);
-            else
-                result = builder.CreateBitCast(result, returnTy);
-            pGenInst->replaceAllUsesWith(result);
-            pGenInst->eraseFromParent();
-            m_changed = true;
-        }
-    }
-}
-
 namespace IGC 
 {
 Pass* CreateUpgradeResourceIntrinsic()
 {
     return new UpgradeResourceAccess();
 }
-
-Pass* CreateUpgradeConstantResourceIntrinsic()
-{
-    return new UpgradeConstantResourceAccess();
-}
-
-}
+}

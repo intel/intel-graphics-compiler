@@ -1005,14 +1005,12 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
   {
       GII_id = GII->getIntrinsicID();
   }
-
   if(IsMathIntrinsic(intrinsic_name) ||
       intrinsic_name == llvm_input || 
       intrinsic_name == llvm_sgv ||
       intrinsic_name == llvm_shaderinputvec ||
       intrinsic_name == llvm_getbufferptr ||
       intrinsic_name == llvm_runtimeValue ||
-      intrinsic_name == llvm_read_register ||
       intrinsic_name == llvm_getMessagePhaseX ||
       intrinsic_name == llvm_getMessagePhaseXV ||
       intrinsic_name == llvm_surfaceinfo ||

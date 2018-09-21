@@ -191,8 +191,8 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
         // Trace the resource pointer.
         // If we can find it, we can promote the indirect access to direct access
         // by encoding the BTI as a direct addrspace
-        if ((srcPtr->getType()->isPointerTy() || dyn_cast<RuntimeMetdataIntrinsicInst>(srcPtr))
-            && IGC::GetResourcePointerInfo(srcPtr, bufID, bufTy, accTy))
+        if (srcPtr->getType()->isPointerTy() &&
+            IGC::GetResourcePointerInfo(srcPtr, bufID, bufTy, accTy))
         {
             canPromote = true;
         }

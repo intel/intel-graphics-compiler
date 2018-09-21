@@ -531,13 +531,6 @@ ValuePair Emu64Ops::getExpandedValues(Value *V) {
     return VMI->second;
   }
 
-  if(RuntimeMetdataIntrinsicInst *RI = dyn_cast<RuntimeMetdataIntrinsicInst>(V)) {
-    Value* i32Source = IRB->CreateBitCast(RI, llvm::VectorType::get(IRB->getInt32Ty(), 2));
-    Value *Lo = IRB->CreateExtractElement(i32Source, IRB->getInt32(0));
-    Value *Hi = IRB->CreateExtractElement(i32Source, IRB->getInt32(1));
-    VMI->second = std::make_pair(Lo, Hi);
-    return VMI->second;
-  }
   errs() << "V = " << *V << '\n';
   llvm_unreachable("TODO: NOT IMPLEMENTED!");
 }
@@ -1758,8 +1751,7 @@ bool InstExpander::visitCall(CallInst &Call) {
     case Intrinsic::lifetime_end:
     case Intrinsic::invariant_start:
     case Intrinsic::invariant_end:
-    case Intrinsic::read_register:
-        return false;
+      return false;
     }
   }
   if (!Emu->isInt64(&Call)) {

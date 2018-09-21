@@ -110,9 +110,7 @@ void MarkReadOnlyLoad::visitLoadInst(LoadInst& LI)
     bool isRO = false;
 
     Value* srcPtr = TracePointerSource(ldPtr);
-    if (srcPtr && 
-        (isa<GenIntrinsicInst>(srcPtr) || isa<RuntimeMetdataIntrinsicInst>(srcPtr))
-        )
+    if (srcPtr && isa<GenIntrinsicInst>(srcPtr))
     {
         unsigned bufId;
         BufferType bufTy;
