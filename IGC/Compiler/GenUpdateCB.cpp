@@ -31,8 +31,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include <iStdLib/MemCopy.h>
 
+#include "common/LLVMUtils.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/Bitcode/BitcodeReader.h>
@@ -292,9 +294,12 @@ bool GenUpdateCB::runOnFunction(Function &F)
 {
     m_CbUpdateMap.clear();
     bool foundCases = false;
+    bool changed = false;
 
     // travel through instructions and mark the ones that are calculated with CB or imm
     DominatorTree &dom_tree = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+
+    m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     bool hasChange = true;
     while (hasChange)
@@ -355,7 +360,7 @@ bool GenUpdateCB::runOnFunction(Function &F)
     if (foundCases)
     {
         Instruction *ret = nullptr;
-        llvm::IRBuilder<> orig_builder(F.getContext());
+        LLVM3DBuilder<> orig_builder(F.getContext(), m_ctx->platform.getPlatformInfo());
 
         for (auto iter = m_CbUpdateMap.begin(); iter != m_CbUpdateMap.end(); iter++)
         {
@@ -401,18 +406,16 @@ bool GenUpdateCB::runOnFunction(Function &F)
                 store->setOperand(0, vmap[inst]);
 
                 // replace original shader with read from runtime
-                llvm::Function* runtimeFunc = llvm::GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::GenISA_RuntimeValue);
-                Instruction* pValue = orig_builder.CreateCall(runtimeFunc, orig_builder.getInt32(counter));
-                pValue->insertBefore(inst);
-
+                orig_builder.SetInsertPoint(inst);
+                Value* pValue = orig_builder.create_runtimeAsMetadata(orig_builder.getInt32(counter));
                 if (inst->getType()->isIntegerTy())
                 {
-                    pValue = llvm::cast<llvm::Instruction>(orig_builder.CreateBitCast(pValue, orig_builder.getInt32Ty()));
-                    pValue->insertBefore(inst);
+                    pValue = orig_builder.CreateBitCast(pValue, orig_builder.getInt32Ty());
                 }
 
                 inst->replaceAllUsesWith(pValue);
                 counter++;
+                changed = true;
             }
         }
 
@@ -439,7 +442,9 @@ bool GenUpdateCB::runOnFunction(Function &F)
         }
     }
 
-    return false;
+    DumpLLVMIR(m_ctx, "gencb");
+
+    return changed;
 }
 
 namespace IGC
@@ -453,7 +458,6 @@ namespace IGC
 
     uint lookupValue(Value* op, DenseMap<Value*, uint> &CalculatedValue)
     {
-
         if (ConstantFP *c = dyn_cast<ConstantFP>(op))
         {
             float floatValue = c->getValueAPF().convertToFloat();
@@ -476,6 +480,32 @@ namespace IGC
         return 0;
     }
 
+    static inline float denormToZeroF(float f)
+    {
+        return std::fpclassify(f) == FP_SUBNORMAL ? 0.0f : f;
+    }
+    static inline float utof(uint32_t bits)
+    {
+        union
+        {
+            float f;
+            uint32_t u;
+        } un;
+        un.u = bits;
+        return un.f;
+    }
+
+    static inline uint32_t ftou_ftz(float f)
+    {
+        union
+        {
+            float f;
+            uint32_t u;
+        } un;
+        un.f = denormToZeroF(f);
+        return un.u;
+    }
+
     void ConstantFolder(
         char*       bitcode,
         uint        bitcodeSize,
@@ -493,11 +523,10 @@ namespace IGC
             (const unsigned char*)bitcodeMem->getBufferStart(),
             (const unsigned char*)bitcodeMem->getBufferEnd());
 
-        LLVMContext context;
+        LLVMContextWrapper context;
         if (isBitCode)
         {
-
-			llvm::Expected<std::unique_ptr<llvm::Module>>  ModuleOrErr =
+            llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
                 llvm::parseBitcodeFile(bitcodeMem->getMemBufferRef(), context);
 
             if (llvm::Error EC = ModuleOrErr.takeError())
@@ -513,6 +542,8 @@ namespace IGC
         {
             assert(0 && "parsing bitcode failed");
         }
+
+        M->dump();
 
         // start constant folding
         DenseMap<Value*, uint> CalculatedValue;
@@ -531,7 +562,10 @@ namespace IGC
                 unsigned bufId;
                 IGC::DecodeAS4GFXResource(ld->getPointerAddressSpace(), directBuf, bufId);
                 int offset = IGC::getConstantBufferLoadOffset(ld);
-                CalculatedValue[ld] = (uint)(*(DWORD*)((char*)CBptr[bufId] + offset));
+                uint32_t bits = *(uint32_t*)((char*)CBptr[bufId] + offset);
+
+                CalculatedValue[ld] = ld->getType()->isFloatTy() ?
+                    ftou_ftz(utof(bits)) : bits;
             }
             else if (StoreInst *store = dyn_cast<StoreInst>(inst))
             {
@@ -576,18 +610,22 @@ namespace IGC
                         break;
                     case llvm_max:
                         ftod1.u = lookupValue(inst->getOperand(1), CalculatedValue);
-                        ftodTemp.f = std::max(ftod0.f, ftod1.f);
+                        // cannot use std::max since:
+                        //   std::max(Nan, x) = Nan
+                        //   std::max(x, NaN) = x
+                        //   fmax(Nan, x) = x
+                        //   fmax(x, Nan) = x
+                        ftodTemp.f = fmaxf(ftod0.f, ftod1.f);
                         break;
                     case llvm_min:
                         ftod1.u = lookupValue(inst->getOperand(1), CalculatedValue);
-                        ftodTemp.f = std::min(ftod0.f, ftod1.f);
+                        ftodTemp.f = fminf(ftod0.f, ftod1.f);
                         break;
                     case llvm_rsq:
                         ftodTemp.f = 1.0f / sqrt(ftod0.f);
                         break;
                     case llvm_fsat:
-                        ftodTemp.f = ftod0.f > 1.0f ? 1.0f : ftod0.f;
-                        ftodTemp.f = ftodTemp.f < 0.0f ? 0.0f : ftod0.f;
+                        ftodTemp.f = fminf(1.0f, fmaxf(0.0f, ftod0.f));
                         break;
                     default:
                         assert(0);
@@ -659,7 +697,9 @@ namespace IGC
                     }
                 }
 
-                CalculatedValue[inst] = ftodTemp.u;
+                if (inst->getType()->isFloatTy()) {
+                    CalculatedValue[inst] = ftou_ftz(ftodTemp.f);
+                }
             }
         }
     }
