@@ -19,12 +19,12 @@ SPVTOOLS_SRC_FILES := \
 		source/print.cpp \
 		source/software_version.cpp \
 		source/spirv_endian.cpp \
+		source/spirv_optimizer_options.cpp \
 		source/spirv_target_env.cpp \
 		source/spirv_validator_options.cpp \
 		source/table.cpp \
 		source/text.cpp \
 		source/text_handler.cpp \
-		source/util/bit_stream.cpp \
 		source/util/bit_vector.cpp \
 		source/util/parse_number.cpp \
 		source/util/string_utils.cpp \
@@ -34,30 +34,38 @@ SPVTOOLS_SRC_FILES := \
 		source/val/function.cpp \
 		source/val/instruction.cpp \
 		source/val/validation_state.cpp \
-		source/validate.cpp \
-		source/validate_adjacency.cpp \
-		source/validate_arithmetics.cpp \
-		source/validate_atomics.cpp \
-		source/validate_barriers.cpp \
-		source/validate_bitwise.cpp \
-		source/validate_builtins.cpp \
-		source/validate_capability.cpp \
-		source/validate_cfg.cpp \
-		source/validate_composites.cpp \
-		source/validate_conversion.cpp \
-		source/validate_datarules.cpp \
-		source/validate_decorations.cpp \
-		source/validate_derivatives.cpp \
-		source/validate_ext_inst.cpp \
-		source/validate_id.cpp \
-		source/validate_image.cpp \
-		source/validate_instruction.cpp \
-		source/validate_layout.cpp \
-		source/validate_literals.cpp \
-		source/validate_logicals.cpp \
-		source/validate_non_uniform.cpp \
-		source/validate_primitives.cpp \
-		source/validate_type_unique.cpp
+		source/val/validate.cpp \
+		source/val/validate_adjacency.cpp \
+		source/val/validate_annotation.cpp \
+		source/val/validate_arithmetics.cpp \
+		source/val/validate_atomics.cpp \
+		source/val/validate_barriers.cpp \
+		source/val/validate_bitwise.cpp \
+		source/val/validate_builtins.cpp \
+		source/val/validate_capability.cpp \
+		source/val/validate_cfg.cpp \
+		source/val/validate_composites.cpp \
+		source/val/validate_constants.cpp \
+		source/val/validate_conversion.cpp \
+		source/val/validate_datarules.cpp \
+		source/val/validate_debug.cpp \
+		source/val/validate_decorations.cpp \
+		source/val/validate_derivatives.cpp \
+		source/val/validate_ext_inst.cpp \
+		source/val/validate_execution_limitations.cpp \
+		source/val/validate_function.cpp \
+		source/val/validate_id.cpp \
+		source/val/validate_image.cpp \
+		source/val/validate_interfaces.cpp \
+		source/val/validate_instruction.cpp \
+		source/val/validate_memory.cpp \
+		source/val/validate_mode_setting.cpp \
+		source/val/validate_layout.cpp \
+		source/val/validate_literals.cpp \
+		source/val/validate_logicals.cpp \
+		source/val/validate_non_uniform.cpp \
+		source/val/validate_primitives.cpp \
+		source/val/validate_type.cpp
 
 SPVTOOLS_OPT_SRC_FILES := \
 		source/opt/aggressive_dead_code_elim_pass.cpp \
@@ -67,6 +75,7 @@ SPVTOOLS_OPT_SRC_FILES := \
 		source/opt/cfg.cpp \
 		source/opt/cfg_cleanup_pass.cpp \
 		source/opt/ccp_pass.cpp \
+		source/opt/combine_access_chains.cpp \
 		source/opt/common_uniform_elim_pass.cpp \
 		source/opt/compact_ids_pass.cpp \
 		source/opt/composite.cpp \
@@ -93,7 +102,6 @@ SPVTOOLS_OPT_SRC_FILES := \
 		source/opt/inline_pass.cpp \
 		source/opt/inline_exhaustive_pass.cpp \
 		source/opt/inline_opaque_pass.cpp \
-		source/opt/insert_extract_elim.cpp \
 		source/opt/instruction.cpp \
 		source/opt/instruction_list.cpp \
 		source/opt/ir_context.cpp \
@@ -122,6 +130,7 @@ SPVTOOLS_OPT_SRC_FILES := \
 		source/opt/pass_manager.cpp \
 		source/opt/private_to_local_pass.cpp \
 		source/opt/propagator.cpp \
+		source/opt/reduce_load_size.cpp \
 		source/opt/redundancy_elimination.cpp \
 		source/opt/register_pressure.cpp \
 		source/opt/remove_duplicates_pass.cpp \
@@ -302,7 +311,6 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := SPIRV-Tools
 LOCAL_C_INCLUDES := \
 		$(LOCAL_PATH)/include \
-		$(LOCAL_PATH)/source \
 		$(LOCAL_PATH)/external/spirv-headers/include \
 		$(SPVTOOLS_OUT_PATH)
 LOCAL_EXPORT_C_INCLUDES := \

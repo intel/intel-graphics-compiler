@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "opcode.h"
+#include "source/opcode.h"
 
 #include <assert.h>
 #include <string.h>
@@ -20,12 +20,12 @@
 #include <algorithm>
 #include <cstdlib>
 
-#include "instruction.h"
-#include "macro.h"
+#include "source/instruction.h"
+#include "source/macro.h"
+#include "source/spirv_constant.h"
+#include "source/spirv_endian.h"
+#include "source/spirv_target_env.h"
 #include "spirv-tools/libspirv.h"
-#include "spirv_constant.h"
-#include "spirv_endian.h"
-#include "spirv_target_env.h"
 
 namespace {
 struct OpcodeDescPtrLen {
@@ -33,7 +33,7 @@ struct OpcodeDescPtrLen {
   uint32_t len;
 };
 
-#include "core.insts-unified1.inc"  // defines kOpcodeTableEntries_1_3
+#include "core.insts-unified1.inc"
 
 static const spv_opcode_table_t kOpcodeTable = {ARRAY_SIZE(kOpcodeTableEntries),
                                                 kOpcodeTableEntries};
@@ -108,7 +108,7 @@ spv_result_t spvOpcodeTableNameLookup(spv_target_env env,
     // is indeed requested in the SPIR-V code; checking that should be
     // validator's work.
     if ((spvVersionForTargetEnv(env) >= entry.minVersion ||
-         entry.numExtensions > 0u) &&
+         entry.numExtensions > 0u || entry.numCapabilities > 0u) &&
         nameLength == strlen(entry.name) &&
         !strncmp(name, entry.name, nameLength)) {
       // NOTE: Found out Opcode!
@@ -153,7 +153,7 @@ spv_result_t spvOpcodeTableValueLookup(spv_target_env env,
     // is indeed requested in the SPIR-V code; checking that should be
     // validator's work.
     if (spvVersionForTargetEnv(env) >= it->minVersion ||
-        it->numExtensions > 0u) {
+        it->numExtensions > 0u || it->numCapabilities > 0u) {
       *pEntry = it;
       return SPV_SUCCESS;
     }

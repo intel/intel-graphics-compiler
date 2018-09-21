@@ -75,6 +75,7 @@ spv = {
         Simple = 0,
         GLSL450 = 1,
         OpenCL = 2,
+        VulkanKHR = 3,
     },
 
     ExecutionMode = {
@@ -254,6 +255,10 @@ spv = {
         ConstOffsets = 5,
         Sample = 6,
         MinLod = 7,
+        MakeTexelAvailableKHR = 8,
+        MakeTexelVisibleKHR = 9,
+        NonPrivateTexelKHR = 10,
+        VolatileTexelKHR = 11,
     },
 
     ImageOperandsMask = {
@@ -266,6 +271,10 @@ spv = {
         ConstOffsets = 0x00000020,
         Sample = 0x00000040,
         MinLod = 0x00000080,
+        MakeTexelAvailableKHR = 0x00000100,
+        MakeTexelVisibleKHR = 0x00000200,
+        NonPrivateTexelKHR = 0x00000400,
+        VolatileTexelKHR = 0x00000800,
     },
 
     FPFastMathModeShift = {
@@ -496,6 +505,9 @@ spv = {
         CrossWorkgroupMemory = 9,
         AtomicCounterMemory = 10,
         ImageMemory = 11,
+        OutputMemoryKHR = 12,
+        MakeAvailableKHR = 13,
+        MakeVisibleKHR = 14,
     },
 
     MemorySemanticsMask = {
@@ -510,12 +522,18 @@ spv = {
         CrossWorkgroupMemory = 0x00000200,
         AtomicCounterMemory = 0x00000400,
         ImageMemory = 0x00000800,
+        OutputMemoryKHR = 0x00001000,
+        MakeAvailableKHR = 0x00002000,
+        MakeVisibleKHR = 0x00004000,
     },
 
     MemoryAccessShift = {
         Volatile = 0,
         Aligned = 1,
         Nontemporal = 2,
+        MakePointerAvailableKHR = 3,
+        MakePointerVisibleKHR = 4,
+        NonPrivatePointerKHR = 5,
     },
 
     MemoryAccessMask = {
@@ -523,6 +541,9 @@ spv = {
         Volatile = 0x00000001,
         Aligned = 0x00000002,
         Nontemporal = 0x00000004,
+        MakePointerAvailableKHR = 0x00000008,
+        MakePointerVisibleKHR = 0x00000010,
+        NonPrivatePointerKHR = 0x00000020,
     },
 
     Scope = {
@@ -531,6 +552,7 @@ spv = {
         Workgroup = 2,
         Subgroup = 3,
         Invocation = 4,
+        QueueFamilyKHR = 5,
     },
 
     GroupOperation = {
@@ -641,6 +663,9 @@ spv = {
         VariablePointers = 4442,
         AtomicStorageOps = 4445,
         SampleMaskPostDepthCoverage = 4447,
+        StorageBuffer8BitAccess = 4448,
+        UniformAndStorageBuffer8BitAccess = 4449,
+        StoragePushConstant8 = 4450,
         Float16ImageAMD = 5008,
         ImageGatherBiasLodAMD = 5009,
         FragmentMaskAMD = 5010,
@@ -667,6 +692,8 @@ spv = {
         InputAttachmentArrayNonUniformIndexingEXT = 5310,
         UniformTexelBufferArrayNonUniformIndexingEXT = 5311,
         StorageTexelBufferArrayNonUniformIndexingEXT = 5312,
+        VulkanMemoryModelKHR = 5345,
+        VulkanMemoryModelDeviceScopeKHR = 5346,
         SubgroupShuffleINTEL = 5568,
         SubgroupBufferBlockIOINTEL = 5569,
         SubgroupImageBlockIOINTEL = 5570,

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef SPIRV_TOOLS_LIBSPIRV_HPP_
-#define SPIRV_TOOLS_LIBSPIRV_HPP_
+#ifndef INCLUDE_SPIRV_TOOLS_LIBSPIRV_HPP_
+#define INCLUDE_SPIRV_TOOLS_LIBSPIRV_HPP_
 
 #include <functional>
 #include <memory>
@@ -81,6 +81,17 @@ class ValidatorOptions {
     spvValidatorOptionsSetRelaxStoreStruct(options_, val);
   }
 
+  // Enables VK_KHR_relaxed_block_layout when validating standard
+  // uniform/storage buffer layout.
+  void SetRelaxBlockLayout(bool val) {
+    spvValidatorOptionsSetRelaxBlockLayout(options_, val);
+  }
+
+  // Skips validating standard uniform/storage buffer layout.
+  void SetSkipBlockLayout(bool val) {
+    spvValidatorOptionsSetSkipBlockLayout(options_, val);
+  }
+
   // Records whether or not the validator should relax the rules on pointer
   // usage in logical addressing mode.
   //
@@ -93,6 +104,36 @@ class ValidatorOptions {
 
  private:
   spv_validator_options options_;
+};
+
+// A C++ wrapper around an optimization options object.
+class OptimizerOptions {
+ public:
+  OptimizerOptions() : options_(spvOptimizerOptionsCreate()) {}
+  ~OptimizerOptions() { spvOptimizerOptionsDestroy(options_); }
+
+  // Allow implicit conversion to the underlying object.
+  operator spv_optimizer_options() const { return options_; }
+
+  // Records whether or not the optimizer should run the validator before
+  // optimizing.  If |run| is true, the validator will be run.
+  void set_run_validator(bool run) {
+    spvOptimizerOptionsSetRunValidator(options_, run);
+  }
+
+  // Records the validator options that should be passed to the validator if it
+  // is run.
+  void set_validator_options(const ValidatorOptions& val_options) {
+    spvOptimizerOptionsSetValidatorOptions(options_, val_options);
+  }
+
+  // Records the maximum possible value for the id bound.
+  void set_max_id_bound(uint32_t new_bound) {
+    spvOptimizerOptionsSetMaxIdBound(options_, new_bound);
+  }
+
+ private:
+  spv_optimizer_options options_;
 };
 
 // C++ interface for SPIRV-Tools functionalities. It wraps the context
@@ -162,7 +203,7 @@ class SpirvTools {
   bool Validate(const uint32_t* binary, size_t binary_size) const;
   // Like the previous overload, but takes an options object.
   bool Validate(const uint32_t* binary, size_t binary_size,
-                const ValidatorOptions& options) const;
+                spv_validator_options options) const;
 
  private:
   struct Impl;  // Opaque struct for holding the data fields used by this class.
@@ -171,4 +212,4 @@ class SpirvTools {
 
 }  // namespace spvtools
 
-#endif  // SPIRV_TOOLS_LIBSPIRV_HPP_
+#endif  // INCLUDE_SPIRV_TOOLS_LIBSPIRV_HPP_

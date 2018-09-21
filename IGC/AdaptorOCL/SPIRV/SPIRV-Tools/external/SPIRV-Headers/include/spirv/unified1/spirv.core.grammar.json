@@ -4010,6 +4010,32 @@
           "parameters" : [
             { "kind" : "IdRef" }
           ]
+        },
+        {
+          "enumerant" : "MakeTexelAvailableKHR",
+          "value" : "0x0100",
+          "capabilities" : [ "VulkanMemoryModelKHR" ],
+          "parameters" : [
+            { "kind" : "IdScope" }
+          ]
+        },
+        {
+          "enumerant" : "MakeTexelVisibleKHR",
+          "value" : "0x0200",
+          "capabilities" : [ "VulkanMemoryModelKHR" ],
+          "parameters" : [
+            { "kind" : "IdScope" }
+          ]
+        },
+        {
+          "enumerant" : "NonPrivateTexelKHR",
+          "value" : "0x0400",
+          "capabilities" : [ "VulkanMemoryModelKHR" ]
+        },
+        {
+          "enumerant" : "VolatileTexelKHR",
+          "value" : "0x0800",
+          "capabilities" : [ "VulkanMemoryModelKHR" ]
         }
       ]
     },
@@ -4176,6 +4202,21 @@
         {
           "enumerant" : "ImageMemory",
           "value" : "0x0800"
+        },
+        {
+          "enumerant" : "OutputMemoryKHR",
+          "value" : "0x1000",
+          "capabilities" : [ "VulkanMemoryModelKHR" ]
+        },
+        {
+          "enumerant" : "MakeAvailableKHR",
+          "value" : "0x2000",
+          "capabilities" : [ "VulkanMemoryModelKHR" ]
+        },
+        {
+          "enumerant" : "MakeVisibleKHR",
+          "value" : "0x4000",
+          "capabilities" : [ "VulkanMemoryModelKHR" ]
         }
       ]
     },
@@ -4201,6 +4242,27 @@
         {
           "enumerant" : "Nontemporal",
           "value" : "0x0004"
+        },
+        {
+          "enumerant" : "MakePointerAvailableKHR",
+          "value" : "0x0008",
+          "parameters" : [
+            { "kind" : "IdScope" }
+          ],
+          "capabilities" : [ "VulkanMemoryModelKHR" ]
+        },
+        {
+          "enumerant" : "MakePointerVisibleKHR",
+          "value" : "0x0010",
+          "parameters" : [
+            { "kind" : "IdScope" }
+          ],
+          "capabilities" : [ "VulkanMemoryModelKHR" ]
+        },
+        {
+          "enumerant" : "NonPrivatePointerKHR",
+          "value" : "0x0020",
+          "capabilities" : [ "VulkanMemoryModelKHR" ]
         }
       ]
     },
@@ -4328,6 +4390,11 @@
           "enumerant" : "OpenCL",
           "value" : 2,
           "capabilities" : [ "Kernel" ]
+        },
+        {
+          "enumerant" : "VulkanKHR",
+          "value" : 3,
+          "capabilities" : [ "VulkanMemoryModelKHR" ]
         }
       ]
     },
@@ -4659,11 +4726,12 @@
         {
           "enumerant" : "1D",
           "value" : 0,
-          "capabilities" : [ "Sampled1D" ]
+          "capabilities" : [ "Sampled1D", "Image1D" ]
         },
         {
           "enumerant" : "2D",
-          "value" : 1
+          "value" : 1,
+          "capabilities" : [ "Shader", "Kernel", "ImageMSArray" ]
         },
         {
           "enumerant" : "3D",
@@ -4672,17 +4740,17 @@
         {
           "enumerant" : "Cube",
           "value" : 3,
-          "capabilities" : [ "Shader" ]
+          "capabilities" : [ "Shader", "ImageCubeArray" ]
         },
         {
           "enumerant" : "Rect",
           "value" : 4,
-          "capabilities" : [ "SampledRect" ]
+          "capabilities" : [ "SampledRect", "ImageRect" ]
         },
         {
           "enumerant" : "Buffer",
           "value" : 5,
-          "capabilities" : [ "SampledBuffer" ]
+          "capabilities" : [ "SampledBuffer", "ImageBuffer" ]
         },
         {
           "enumerant" : "SubpassData",
@@ -6018,6 +6086,11 @@
         {
           "enumerant" : "Invocation",
           "value" : 4
+        },
+        {
+          "enumerant" : "QueueFamilyKHR",
+          "value" : 5,
+          "capabilities" : [ "VulkanMemoryModelKHR" ]
         }
       ]
     },
@@ -6530,6 +6603,25 @@
           "version" : "None"
         },
         {
+          "enumerant" : "StorageBuffer8BitAccess",
+          "value" : 4448,
+          "extensions" : [ "SPV_KHR_8bit_storage" ],
+          "version" : "None"
+        },
+        {
+          "enumerant" : "UniformAndStorageBuffer8BitAccess",
+          "value" : 4449,
+          "capabilities" : [ "StorageBuffer8BitAccess" ],
+          "extensions" : [ "SPV_KHR_8bit_storage" ],
+          "version" : "None"
+        },
+        {
+          "enumerant" : "StoragePushConstant8",
+          "value" : 4450,
+          "extensions" : [ "SPV_KHR_8bit_storage" ],
+          "version" : "None"
+        },
+        {
           "enumerant" : "Float16ImageAMD",
           "value" : 5008,
           "capabilities" : [ "Shader" ],
@@ -6726,6 +6818,18 @@
           "enumerant" : "GroupNonUniformPartitionedNV",
           "value" : 5297,
           "extensions" : [ "SPV_NV_shader_subgroup_partitioned" ],
+          "version" : "None"
+        },
+        {
+          "enumerant" : "VulkanMemoryModelKHR",
+          "value" : 5345,
+          "extensions" : [ "SPV_KHR_vulkan_memory_model" ],
+          "version" : "None"
+        },
+        {
+          "enumerant" : "VulkanMemoryModelDeviceScopeKHR",
+          "value" : 5346,
+          "extensions" : [ "SPV_KHR_vulkan_memory_model" ],
           "version" : "None"
         }
       ]
