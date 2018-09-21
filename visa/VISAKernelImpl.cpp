@@ -2263,7 +2263,8 @@ int VISAKernelImpl::CreateVISARawOperand(VISA_RawOpnd *& cisa_opnd, VISA_GenVar 
 // size == 1 means we want scalar region
 // FIXME: this is really a bug, rawOpnd should always occupy at least 1 GRF.
 // We should fix the vISA spec for this
-int VISAKernelImpl::CreateGenRawSrcOperand(VISA_RawOpnd *& cisa_opnd, uint8_t size)
+//  [noTypeChange: keep the original type. This likely needs refactoring]
+int VISAKernelImpl::CreateGenRawSrcOperand(VISA_RawOpnd *& cisa_opnd, uint8_t size, bool noTypeChange)
 {
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_CREATE_OPND);
@@ -2295,7 +2296,7 @@ int VISAKernelImpl::CreateGenRawSrcOperand(VISA_RawOpnd *& cisa_opnd, uint8_t si
             short row_offset = offset/G4_GRF_REG_NBYTES;
             short col_offset = 0;
 
-            if (G4_Type_Table[type].byteSize != 4)
+            if (G4_Type_Table[type].byteSize != 4 || noTypeChange)
             {
                 // keep the original type
                 col_offset = (offset%G4_GRF_REG_NBYTES)/G4_Type_Table[type].byteSize;

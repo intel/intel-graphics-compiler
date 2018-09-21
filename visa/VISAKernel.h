@@ -700,7 +700,7 @@ public:
 
     //VME violates our vISA assumption that raw operand is grf aligned, so... adding this for now
     //if anyone actually uses vISA builder externally to call VME we can expose it.
-    int CreateGenRawSrcOperand(VISA_RawOpnd *& cisa_opnd, uint8_t size);
+    int CreateGenRawSrcOperand(VISA_RawOpnd *& cisa_opnd, uint8_t size, bool noTypeChange = false);
     int CreateGenRawDstOperand(VISA_RawOpnd *& cisa_opnd);
 
     int CreateVISAIndirectGeneralOperand(VISA_VectorOpnd *& opnd, VISA_AddrVar *cisa_decl, VISA_Modifier mod, unsigned int addrOffset, unsigned short immediateOffset,
