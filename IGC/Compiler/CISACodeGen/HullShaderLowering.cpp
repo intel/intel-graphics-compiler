@@ -162,8 +162,17 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                         index = inst->getOperand(0);
                     }
 
-                    AddURBRead(index, inst->getOperand(1), inst);
-                    instructionToRemove.push_back(inst);
+					unsigned int vertexHeaderOffset = ctx->getModuleMetaData()->URBInfo.hasVertexHeader ?
+						(m_hullShaderInfo->GetProperties().m_HasClipCullAsInput ? 4 : 2)
+						: 0;
+
+					builder.SetInsertPoint(inst);
+
+					AddURBRead(
+						index,
+						builder.CreateAdd(inst->getOperand(1), builder.getInt32(vertexHeaderOffset)),
+						inst);
+					instructionToRemove.push_back(inst);
                 }
 
                 if(IID == GenISAIntrinsic::GenISA_PatchConstantOutput)

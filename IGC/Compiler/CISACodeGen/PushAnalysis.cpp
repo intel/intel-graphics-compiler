@@ -1084,17 +1084,25 @@ void PushAnalysis::ProcessFunction()
                         // If the input index of llvm_shaderinputvec is a constant
                         if(llvm::ConstantInt* pElementIndex = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(1)))
                         {
-                            uint elementIndex = static_cast<uint>(pElementIndex->getZExtValue());
+							int urbOffset = static_cast<int>(pElementIndex->getZExtValue());
+							int urbReadOffsetForPush = 0;
 
-                            uint currentElementIndex = (vertexIndex * numberOfElementsPerVertexThatAreGoingToBePushed * 4) +
-                                (elementIndex * 4);
+							if (m_context->type == ShaderType::HULL_SHADER)
+							{
+								urbReadOffsetForPush = m_context->getModuleMetaData()->URBInfo.hasVertexHeader ?
+									(m_hsProps->GetProperties().m_HasClipCullAsInput ? 4 : 2)
+									: 0;
+							}
 
-                            bool pushCondition = (elementIndex < numberOfElementsPerVertexThatAreGoingToBePushed);
+							bool pushCondition = ((urbOffset >= urbReadOffsetForPush) && (urbOffset - urbReadOffsetForPush) < (int)numberOfElementsPerVertexThatAreGoingToBePushed);
 
-                            // If the attribute index of URBRead is a constant then we pull 
-                            // inputs if elementIndex <= minElementsPerVertexThatCanBePushed
-                            if(pElementIndex && pushCondition)
-                            {
+							// If the attribute index of URBRead is a constant then we pull 
+							// inputs if elementIndex <= minElementsPerVertexThatCanBePushed
+							if (pElementIndex && pushCondition)
+							{
+								uint elementIndex = urbOffset - urbReadOffsetForPush;
+								uint currentElementIndex = (vertexIndex * numberOfElementsPerVertexThatAreGoingToBePushed * 4) + (elementIndex * 4);
+
                                 for(auto I = inst->user_begin(), E = inst->user_end(); I != E; ++I)
                                 {
                                     llvm::ExtractElementInst* extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I);

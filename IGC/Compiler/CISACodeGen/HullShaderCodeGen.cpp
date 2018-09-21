@@ -366,7 +366,7 @@ CVariable* CHullShader::GetURBInputHandle(CVariable* pVertexIndex)
 
 QuadEltUnit CHullShader::GetFinalGlobalOffet(QuadEltUnit globalOffset) 
 { 
-    return globalOffset + GetURBHeaderSize();
+    return globalOffset;
 }
 
 uint32_t CHullShader::GetMaxNumOfPushedInputs() const
