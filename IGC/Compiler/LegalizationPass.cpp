@@ -848,7 +848,6 @@ void Legalization::visitICmpInst(ICmpInst &IC)
         Value *Src = TI->getOperand(0);
         Type *SrcTy = Src->getType();
 
-        IRBuilder<>::InsertPointGuard Guard(*m_builder);
         m_builder->SetInsertPoint(&IC);
 
         Value *NOp0 = GetMaskedValue(m_builder, IC.isSigned(), Src, Ty);
@@ -862,7 +861,6 @@ void Legalization::visitICmpInst(ICmpInst &IC)
 
 Value* Legalization::addFCmpWithORD(FCmpInst &FC)
 {
-    IRBuilder<>::InsertPointGuard Guard(*m_builder);
     m_builder->SetInsertPoint(&FC);
 
     //Are both sources Not NaN's ? 
@@ -1838,7 +1836,6 @@ void Legalization::visitTruncInst(llvm::TruncInst &I) {
     if (!VTy || VTy->getNumElements() != 3 || !VTy->getElementType()->isIntegerTy(16))
         return;
 
-    IRBuilder<>::InsertPointGuard Guard(*m_builder);
     m_builder->SetInsertPoint(&I);
 
     assert(Idx < 3 && "The initial index is out of range!");
@@ -1901,7 +1898,6 @@ void Legalization::visitAddrSpaceCastInst(llvm::AddrSpaceCastInst &I) {
     if (!SLM)
         return;
 
-    IRBuilder<>::InsertPointGuard Guard(*m_builder);
     m_builder->SetInsertPoint(&I);
 
     unsigned PtrSz = m_DL->getPointerSizeInBits(cast<PointerType>(SLM->getType())->getAddressSpace());
@@ -1912,7 +1908,6 @@ void Legalization::visitAddrSpaceCastInst(llvm::AddrSpaceCastInst &I) {
     Value *GASPtr = m_builder->CreateIntToPtr(m_builder->CreateAdd(Start, Offset), DstPtrTy);
     I.replaceAllUsesWith(GASPtr);
     I.eraseFromParent();
-    return;
 }
 
 namespace {
