@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 #include <iStdLib/MemCopy.h>
 
 #include "common/LLVMUtils.h"
@@ -360,7 +359,7 @@ bool GenUpdateCB::runOnFunction(Function &F)
     if (foundCases)
     {
         Instruction *ret = nullptr;
-        LLVM3DBuilder<> orig_builder(F.getContext(), m_ctx->platform.getPlatformInfo());
+        llvm::IRBuilder<> orig_builder(F.getContext());
 
         for (auto iter = m_CbUpdateMap.begin(); iter != m_CbUpdateMap.end(); iter++)
         {
@@ -406,11 +405,14 @@ bool GenUpdateCB::runOnFunction(Function &F)
                 store->setOperand(0, vmap[inst]);
 
                 // replace original shader with read from runtime
-                orig_builder.SetInsertPoint(inst);
-                Value* pValue = orig_builder.create_runtimeAsMetadata(orig_builder.getInt32(counter));
+                llvm::Function* runtimeFunc = llvm::GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::GenISA_RuntimeValue);
+                Instruction* pValue = orig_builder.CreateCall(runtimeFunc, orig_builder.getInt32(counter));
+                pValue->insertBefore(inst);
+
                 if (inst->getType()->isIntegerTy())
                 {
-                    pValue = orig_builder.CreateBitCast(pValue, orig_builder.getInt32Ty());
+                    pValue = llvm::cast<llvm::Instruction>(orig_builder.CreateBitCast(pValue, orig_builder.getInt32Ty()));
+                    pValue->insertBefore(inst);
                 }
 
                 inst->replaceAllUsesWith(pValue);
@@ -441,9 +443,6 @@ bool GenUpdateCB::runOnFunction(Function &F)
             m_ctx->m_ConstantBufferReplaceSize = iSTD::Align(counter, 8)/8;
         }
     }
-
-    DumpLLVMIR(m_ctx, "gencb");
-
     return changed;
 }
 
@@ -542,8 +541,6 @@ namespace IGC
         {
             assert(0 && "parsing bitcode failed");
         }
-
-        M->dump();
 
         // start constant folding
         DenseMap<Value*, uint> CalculatedValue;
