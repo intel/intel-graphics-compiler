@@ -10195,7 +10195,7 @@ void Optimizer::split4GRFVars()
                 {
                     uint32_t lb = opnd->getLeftBound();
                     uint32_t rb = opnd->getRightBound();
-                    return (lb < 2 * GENX_GRF_REG_SIZ) && (rb > 2 * GENX_GRF_REG_SIZ);
+                    return (lb < 2 * GENX_GRF_REG_SIZ) && (rb >= 2 * GENX_GRF_REG_SIZ);
                 };
                 // check and remove decls with operands that cross 2GRF boundary
                 if (inst->getDst())
