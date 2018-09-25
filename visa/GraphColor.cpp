@@ -7197,7 +7197,7 @@ void GraphColor::addCallerSaveRestoreCode()
                     intf.interfereBetween(pseudoVCAId, i) == true)
                 {
                     if (!lrs[i]->getDcl()->getHasFileScope() &&
-                        !lrs[i]->getDcl()->getIsPreDefArg())
+                        !builder.isPreDefArg(lrs[i]->getDcl()))
                     {
                         // NOTE: Spilled live ranges should not be caller-save.
                         MUST_BE_TRUE(lrs[i]->getPhyReg()->isGreg(), ERROR_REGALLOC);
@@ -7209,7 +7209,7 @@ void GraphColor::addCallerSaveRestoreCode()
                         endReg = (endReg > 0) ? endReg : 1;
                         for (unsigned j = startReg; j < endReg; j++)
                         {
-                            if (lrs[i]->getDcl()->getIsPreDefRet())
+                            if (builder.isPreDefRet(lrs[i]->getDcl()))
                             {
                                 if (retRegs[j] == false)
                                 {

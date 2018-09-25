@@ -140,8 +140,10 @@ private:
 	bool assigned;
     bool isSplit;
 
+    IR_Builder& builder;
+
 public:
-	LocalLiveRange()
+	LocalLiveRange(IR_Builder& b) : builder(b)
 	{
 		topdcl = NULL;
 		firstRef = lastRef = NULL;

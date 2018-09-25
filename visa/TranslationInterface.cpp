@@ -52,8 +52,6 @@ using namespace vISA;
 
 static const uint8_t mapExecSizeToNumElts[6] = {1, 2, 4, 8, 16, 32};
 
-unsigned int IR_Builder::sampler8x8_group_id = 0;
-
 static uint32_t createSamplerMsgDesc(
     VISASampler3DSubOpCode samplerOp,
     uint8_t execSize,
@@ -164,9 +162,8 @@ int IR_Builder::translateVISAAddrInst(ISA_Opcode opcode, Common_ISA_Exec_Size ex
 
     if( src0Opnd->isAddrExp() &&
         src1Opnd == NULL  )
-        //if(0)
     {
-        last_inst = createInst(
+        createInst(
             NULL,
             G4_mov,
             NULL,
@@ -180,7 +177,7 @@ int IR_Builder::translateVISAAddrInst(ISA_Opcode opcode, Common_ISA_Exec_Size ex
     }
     else
     {
-        last_inst = createInst(
+        createInst(
             NULL,
             Get_G4_Opcode_From_Common_ISA_Opcode((ISA_Opcode)opcode),
             NULL,
@@ -215,7 +212,7 @@ void IR_Builder::expandFdiv(uint8_t exsize, G4_Predicate *predOpnd, bool saturat
     G4_DstRegRegion* invDst = Create_Dst_Opnd_From_Dcl(invResult, 1);
     createMathInst(predOpnd, false, exsize, invDst, src1Opnd, createNullSrc(invType), mathOp, instOpt);
     G4_SrcRegRegion* invSrc = Create_Src_Opnd_From_Dcl(invResult, getRegionStride1());
-    last_inst = createInst(duplicateOperand(predOpnd), G4_mul, nullptr, saturate, exsize, dstOpnd, src0Opnd, invSrc, instOpt);
+    createInst(duplicateOperand(predOpnd), G4_mul, nullptr, saturate, exsize, dstOpnd, src0Opnd, invSrc, instOpt);
 }
 
 void IR_Builder::expandPow(uint8_t exsize, G4_Predicate *predOpnd, bool saturate,
@@ -282,7 +279,7 @@ void IR_Builder::expandPow(uint8_t exsize, G4_Predicate *predOpnd, bool saturate
     G4_DstRegRegion* mulDst = Create_Dst_Opnd_From_Dcl(tmpVar, 1);
     createInst(duplicateOperand(predOpnd), G4_mul, nullptr, false, exsize, mulDst, mulSrc, src1Opnd, instOpt);
     G4_SrcRegRegion* expSrc = Create_Src_Opnd_From_Dcl(tmpVar, getRegionStride1());
-    last_inst = createMathInst(duplicateOperand(predOpnd), saturate, exsize, dstOpnd, expSrc, createNullSrc(mathType), MATH_EXP, instOpt);
+    createMathInst(duplicateOperand(predOpnd), saturate, exsize, dstOpnd, expSrc, createNullSrc(mathType), MATH_EXP, instOpt);
 }
 
 
@@ -318,7 +315,7 @@ int IR_Builder::translateVISAArithmeticInst(ISA_Opcode opcode, Common_ISA_Exec_S
         } 
         else
         {
-            last_inst = createMathInst(
+            createMathInst(
                 predOpnd,
                 saturate,
                 exsize,
@@ -332,7 +329,7 @@ int IR_Builder::translateVISAArithmeticInst(ISA_Opcode opcode, Common_ISA_Exec_S
     else if( ISA_Inst_Table[opcode].n_srcs == 3 )
     {
         // do not check type of sources, float and integer are supported
-        last_inst = createInst(
+        createInst(
             predOpnd,
             Get_G4_Opcode_From_Common_ISA_Opcode(opcode),
             condMod,
@@ -347,11 +344,10 @@ int IR_Builder::translateVISAArithmeticInst(ISA_Opcode opcode, Common_ISA_Exec_S
     }
     else
     {
-        // create inst
-        last_inst = createInst(
+        auto inst = createInst(
             predOpnd,
             Get_G4_Opcode_From_Common_ISA_Opcode(opcode),
-            condMod,   
+            condMod,
             saturate,
             exsize,
             dstOpnd,
@@ -369,8 +365,8 @@ int IR_Builder::translateVISAArithmeticInst(ISA_Opcode opcode, Common_ISA_Exec_S
                 1,
                 dstOpnd->getType() );
 
-            last_inst->setImplAccDst( accDstOpnd );
-            last_inst->setOptionOn(InstOpt_AccWrCtrl);
+            inst->setImplAccDst( accDstOpnd );
+            inst->setOptionOn(InstOpt_AccWrCtrl);
 
             //mov dst acc
 			G4_SrcRegRegion *accSrcOpnd = createSrcRegRegion(Mod_src_undef,
@@ -391,7 +387,7 @@ int IR_Builder::translateVISAArithmeticInst(ISA_Opcode opcode, Common_ISA_Exec_S
                 accSrcOpnd,
                 NULL,
                 instOpt,
-                last_inst->getLineNo());
+                inst->getLineNo());
         }
 
     }
@@ -445,7 +441,9 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     uint8_t element_size;       // element_size is set according to instExecSize
     unsigned int loopCount;
 
-    int line_no = last_inst ? last_inst->getLineNo() : 0;
+    G4_INST* lastInst = instList.empty() ? nullptr : instList.back();
+
+    int line_no = lastInst ? lastInst->getLineNo() : 0;
     G4_Imm *dbl_constant_0 = createDFImm(0.0);
     G4_Imm *dbl_constant_1 = createDFImm(1.0);
     G4_Align reg_align = Either;
@@ -836,7 +834,9 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
     madmInstOpt |= Get_Gen4_Emask(emask, 8); // only used in the loop
     RegionDesc *srcRegionDesc = getRegionStride1();
 
-    int line_no = last_inst ? last_inst->getLineNo() : 0;
+    G4_INST* lastInst = instList.empty() ? nullptr : instList.back();
+
+    int line_no = lastInst ? lastInst->getLineNo() : 0;
     G4_Imm *flt_constant_0 = createImm(float(0.0));
     G4_Imm *flt_constant_1 = createImm(float(1.0));
     G4_Align reg_align = Either;
@@ -1177,8 +1177,9 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
     unsigned int loopCount = 1;
     instOpt |= Get_Gen4_Emask(emask, 8); // for those insts of execution size of element_size
     RegionDesc *srcRegionDesc = getRegionStride1();
+    G4_INST* lastInst = instList.empty() ? nullptr : instList.back();
 
-    int line_no = last_inst ? last_inst->getLineNo() : 0;
+    int line_no = lastInst ? lastInst->getLineNo() : 0;
     G4_Imm *flt_constant_0 = createImm(float(0.0));
     G4_Imm *flt_constant_05 = createImm(float(0.5));
     G4_Align reg_align = Either;
@@ -1518,7 +1519,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     G4_SrcRegRegion *neg_src1 = nullptr;
     G4_Imm *immData = nullptr;
 
-    int line_no = last_inst ? last_inst->getLineNo() : 0;
+    G4_INST* lastInst = instList.empty() ? nullptr : instList.back();
+
+    int line_no = lastInst ? lastInst->getLineNo() : 0;
     G4_Align reg_align = Either;
     if (instExecSize == 1 || instExecSize == 4)
     {
@@ -2006,7 +2009,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
             G4_DstRegRegion* sendDstOpnd = Create_Dst_Opnd_From_Dcl( dstDcl, 1);
             G4_SrcRegRegion* sendMsgOpnd = Create_Src_Opnd_From_Dcl( dcl, getRegionStride1());
 
-            last_inst = createSendInst( NULL, G4_send, 8, sendDstOpnd, sendMsgOpnd,
+            createSendInst( NULL, G4_send, 8, sendDstOpnd, sendMsgOpnd,
                 createImm(SFID_SAMPLER, Type_UD), createImm(desc, Type_UD), 0, true, true, NULL, 0);
 
             G4_SrcRegRegion* moveSrcOpnd = createSrcRegRegion(Mod_src_undef, Direct, dstDcl->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
@@ -2021,12 +2024,14 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
         break;
     case ISA_YIELD:
         {
-            if (last_inst->opcode() != G4_label)
+            G4_INST* lastInst = instList.empty() ? nullptr : instList.back();
+            if (lastInst && lastInst->opcode() != G4_label)
             {
-                last_inst->setOptions(last_inst->getOption() | InstOpt_Switch);
+                lastInst->setOptionOn(InstOpt_Switch);
             }
             else
             {
+                // dummy move to apply the {switch}
                 G4_SrcRegRegion* srcOpnd = createSrcRegRegion(Mod_src_undef, Direct, getBuiltinR0()->getRegVar(), 0, 0, getRegionScalar(), Type_UD);
                 G4_DstRegRegion* dstOpnd = createDstRegRegion(Direct, getBuiltinR0()->getRegVar(), 0, 0, 1, Type_UD);
 
@@ -2142,7 +2147,7 @@ int IR_Builder::translateVISACompareInst(ISA_Opcode opcode, Common_ISA_Exec_Size
         dcl->getRegVar(),
         0);
 
-    last_inst = createInst(
+    createInst(
         NULL,
         Get_G4_Opcode_From_Common_ISA_Opcode((ISA_Opcode)opcode),
         condMod,
@@ -2185,7 +2190,7 @@ int IR_Builder::translateVISACompareInst(ISA_Opcode opcode, Common_ISA_Exec_Size
         Get_G4_CondModifier_From_Common_ISA_CondModifier(relOp),
         dstOpnd->asDstRegRegion()->getBase(), 0);
 
-    last_inst = createInst(
+    createInst(
         NULL,
         Get_G4_Opcode_From_Common_ISA_Opcode(opcode),
         condMod,
@@ -2241,7 +2246,7 @@ int IR_Builder::translateVISACFLabelInst(G4_Label* lab)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    last_inst = createInst(NULL, G4_label, NULL, false, UNDEFINED_EXEC_SIZE, NULL, lab, NULL, 0, 0);
+    createInst(NULL, G4_label, NULL, false, UNDEFINED_EXEC_SIZE, NULL, lab, NULL, 0, 0);
 
     if( lab->isFuncLabel() )
     {
@@ -2276,7 +2281,7 @@ int IR_Builder::translateVISACFCallInst(Common_ISA_Exec_Size execsize, Common_VI
         execSize = 2;
     }
 
-    last_inst = createInst(
+    createInst(
         predOpnd,
         callOpToUse,
         NULL,
@@ -2299,7 +2304,7 @@ int IR_Builder::translateVISACFJumpInst(G4_Predicate *predOpnd, G4_Label* lab)
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
-    last_inst = createInst(
+    createInst(
         predOpnd,
         Get_G4_Opcode_From_Common_ISA_Opcode((ISA_Opcode)ISA_JMP),
         NULL,
@@ -2335,7 +2340,7 @@ int IR_Builder::translateVISACFFCallInst(Common_ISA_Exec_Size execsize, Common_V
 
     uint8_t exsize = (uint8_t)Get_Common_ISA_Exec_Size(execsize);
 
-    last_inst = createInst(
+    auto fcall = createInst(
         predOpnd,
         G4_pseudo_fcall,
         NULL,
@@ -2367,11 +2372,11 @@ int IR_Builder::translateVISACFFCallInst(Common_ISA_Exec_Size execsize, Common_V
         calleeIndex = functionID;
     }
 
-    m_fcallInfo[last_inst] = new (mem) G4_FCALL(argSize, returnSize);
+    m_fcallInfo[fcall] = new (mem) G4_FCALL(argSize, returnSize);
 
     // Push resolved index to list of callees
     callees.push_back(calleeIndex);
-    last_inst->asCFInst()->setCalleeIndex(calleeIndex);
+    fcall->asCFInst()->setCalleeIndex(calleeIndex);
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -2389,7 +2394,7 @@ int IR_Builder::translateVISACFFretInst(Common_ISA_Exec_Size executionSize, Comm
 
     kernel.fg.setIsStackCallFunc();
 
-    last_inst = createInst(
+    createInst(
         predOpnd,
         G4_pseudo_fret,
         NULL,
@@ -2425,7 +2430,7 @@ int IR_Builder::translateVISACFRetInst(Common_ISA_Exec_Size executionSize, Commo
             Direct, tmpFCRet->getRegVar(), 0, 0, getRegionStride1(),
             Type_UD);
 
-        last_inst = createInst(predOpnd,
+        createInst(predOpnd,
             G4_pseudo_fc_ret,
             NULL,
             false,
@@ -2439,7 +2444,7 @@ int IR_Builder::translateVISACFRetInst(Common_ISA_Exec_Size executionSize, Commo
     else if( func_id == 0 )
     {
         // this will be lowered during CFG construction
-        last_inst = createInst(
+        createInst(
             predOpnd,
             G4_pseudo_exit,
             NULL,
@@ -2454,7 +2459,7 @@ int IR_Builder::translateVISACFRetInst(Common_ISA_Exec_Size executionSize, Commo
     else
     {
         // subroutine return
-        last_inst = createInst(
+        createInst(
             predOpnd,
             Get_G4_Opcode_From_Common_ISA_Opcode(ISA_RET),
             NULL,
@@ -2693,7 +2698,7 @@ int IR_Builder::translateVISAOwordLoadInst(
 
     if (!forceSplitSend) 
     {
-        last_inst = Create_Send_Inst_For_CISA(
+        Create_Send_Inst_For_CISA(
             NULL, d,
             payload,
             1,
@@ -2712,7 +2717,7 @@ int IR_Builder::translateVISAOwordLoadInst(
     }
     else {
         G4_SrcRegRegion *m0 = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
-        last_inst = Create_SplitSend_Inst_For_CISA(
+        Create_SplitSend_Inst_For_CISA(
             NULL, d, m0, 1,
             createNullSrc(Type_UD), 0,
             (num_oword - 1) / 2 + 1,
@@ -2872,7 +2877,7 @@ int IR_Builder::translateVISAOwordStoreInst(
         unsigned send_size = FIX_OWORD_SEND_EXEC_SIZE(num_oword);
         G4_DstRegRegion *post_dst_opnd = createNullDst( send_size > 8 ? Type_UW: Type_UD );
 
-        G4_INST *send_inst = Create_Send_Inst_For_CISA(
+        Create_Send_Inst_For_CISA(
             NULL,
             post_dst_opnd,
             payload,
@@ -2889,7 +2894,6 @@ int IR_Builder::translateVISAOwordStoreInst(
             NULL,
             InstOpt_WriteEnable,
             false );
-        last_inst = send_inst;
     }
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -3033,7 +3037,7 @@ int IR_Builder::translateVISAMediaLoadInst(
         send_exec_size *= 2;
     }
 
-    G4_INST *send_inst = Create_Send_Inst_For_CISA(
+    Create_Send_Inst_For_CISA(
         NULL,
         d,
         payload,
@@ -3050,7 +3054,6 @@ int IR_Builder::translateVISAMediaLoadInst(
         NULL,
         InstOpt_WriteEnable,
         false );
-    last_inst = send_inst;
 
     if( via_temp )
     {
@@ -3098,7 +3101,7 @@ int IR_Builder::translateVISAMediaLoadInst(
 
                 G4_DstRegRegion *tmp_dst_opnd = createDstRegRegion( tmp_dst );
 
-                last_inst = createInst( NULL, G4_mov, NULL, false, curr_exec_size, tmp_dst_opnd, tmp_src_opnd, NULL, InstOpt_WriteEnable );
+                createInst( NULL, G4_mov, NULL, false, curr_exec_size, tmp_dst_opnd, tmp_src_opnd, NULL, InstOpt_WriteEnable );
                 curr_offset += curr_exec_size;
                 remained_ele -= curr_exec_size;
             }
@@ -3266,7 +3269,7 @@ int IR_Builder::translateVISAMediaStoreInst(
         funcCtrl += planeID;
         G4_DstRegRegion *post_dst_opnd = createNullDst( Type_UD );
 
-        last_inst = Create_Send_Inst_For_CISA(
+        Create_Send_Inst_For_CISA(
             NULL,
             post_dst_opnd,
             payload,
@@ -3503,22 +3506,23 @@ int IR_Builder::translateVISAGatherInst(
         temp += DC_BYTE_SCATTERED_READ << 14; 
     }
 
-    if (useSplitSend) {
+    if (useSplitSend) 
+    {
         ASSERT_USER(!headerLess, "SplitSend should only be used when header is required!");
 
         G4_SrcRegRegion *m0 = Create_Src_Opnd_From_Dcl(header, getRegionStride1());
         G4_SrcRegRegion *m1 = Create_Src_Opnd_From_Dcl(offset, getRegionStride1());
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, d,
-                                                   m0, 1,
-                                                   m1, effectiveNumElt/GENX_DATAPORT_IO_SZ,
-                                                   effectiveNumElt/GENX_DATAPORT_IO_SZ,
-                                                   numElt,
-                                                   temp, 0,
-                                                   tf_id, false, true,
-                                                   true, false,
-                                                   surface, NULL, instOpt, false);
+        Create_SplitSend_Inst_For_CISA(pred, d,
+            m0, 1,
+            m1, effectiveNumElt / GENX_DATAPORT_IO_SZ,
+            effectiveNumElt / GENX_DATAPORT_IO_SZ,
+            numElt,
+            temp, 0,
+            tf_id, false, true,
+            true, false,
+            surface, NULL, instOpt, false);
     } else {
-        last_inst = Create_Send_Inst_For_CISA(
+        Create_Send_Inst_For_CISA(
             pred,
             d,
             msgSrcOpnd,
@@ -3740,7 +3744,7 @@ int IR_Builder::translateVISAScatterInst(
 
     G4_DstRegRegion *post_dst_opnd = createNullDst( effectiveNumElt > 8 ? Type_UW : Type_UD);
 
-    G4_INST *send_inst = Create_Send_Inst_For_CISA(
+    Create_Send_Inst_For_CISA(
         pred,
         post_dst_opnd,
         msgSrcOpnd,
@@ -3758,7 +3762,6 @@ int IR_Builder::translateVISAScatterInst(
         NULL,
         instOpt,
         false );
-    last_inst = send_inst;
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -3919,7 +3922,7 @@ int IR_Builder::translateVISAGather4Inst(
 
         G4_SrcRegRegion *m0 = Create_Src_Opnd_From_Dcl(header, getRegionStride1());
         G4_SrcRegRegion *m1 = Create_Src_Opnd_From_Dcl(offset, getRegionStride1());
-        last_inst = Create_SplitSend_Inst_For_CISA(NULL, d,
+        Create_SplitSend_Inst_For_CISA(NULL, d,
                                                    m0, 1, m1, numElt/GENX_DATAPORT_IO_SZ,
                                                    (numElt/GENX_DATAPORT_IO_SZ) * num_channel,
                                                    numElt, temp, 0, tf_id, false, hdrSize != 0,
@@ -3929,7 +3932,7 @@ int IR_Builder::translateVISAGather4Inst(
     else
     {
         G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(header ? header : offset, getRegionStride1());
-        last_inst = Create_Send_Inst_For_CISA(
+        Create_Send_Inst_For_CISA(
             NULL,
             d,
             payload,
@@ -4142,7 +4145,7 @@ int IR_Builder::translateVISAScatter4Inst(
             m1 = Create_Src_Opnd_From_Dcl(data, getRegionStride1());
             m1Len = data_size / GENX_DATAPORT_IO_SZ;
         }
-        last_inst = Create_SplitSend_Inst_For_CISA(NULL, post_dst_opnd,
+        Create_SplitSend_Inst_For_CISA(NULL, post_dst_opnd,
                                                    m0, m0Len, m1, m1Len, 0,
                                                    numElt,
                                                    temp, 0, tf_id, false, hdrSize != 0,
@@ -4153,7 +4156,7 @@ int IR_Builder::translateVISAScatter4Inst(
     else
     {
         G4_SrcRegRegion* payload = Create_Src_Opnd_From_Dcl(header ? header : offset, getRegionStride1());
-        last_inst = Create_Send_Inst_For_CISA(
+        Create_Send_Inst_For_CISA(
             NULL,
             post_dst_opnd,
             payload,
@@ -4413,20 +4416,23 @@ int IR_Builder::translateVISADwordAtomicInst(
 
     int msgLength = mrf_size/GENX_DATAPORT_IO_SZ;
 
-    if (useSplitSend) {
+    if (useSplitSend) 
+    {
         G4_SrcRegRegion *m0 = Create_Src_Opnd_From_Dcl(offset, getRegionStride1());
         G4_SrcRegRegion *m1 = Create_Src_Opnd_From_Dcl(data, getRegionStride1());
-        last_inst = Create_SplitSend_Inst_For_CISA(NULL, dstOpnd,
-                                                   m0, (numElt == 16 ? 2 : 1),
-                                                   m1, (numElt == 16 ? 2 : 1) * num_sources,
-                                                   dstLength,
-                                                   numElt, msgDesc, 0, tf_id,
-                                                   false, header_present,
-                                                   true, true,
-                                                   surface, NULL, instOpt, false);
-    } else {
+        Create_SplitSend_Inst_For_CISA(NULL, dstOpnd,
+            m0, (numElt == 16 ? 2 : 1),
+            m1, (numElt == 16 ? 2 : 1) * num_sources,
+            dstLength,
+            numElt, msgDesc, 0, tf_id,
+            false, header_present,
+            true, true,
+            surface, NULL, instOpt, false);
+    }
+    else 
+    {
         G4_SrcRegRegion* payloadOpnd = Create_Src_Opnd_From_Dcl((header_present ? header : offset), getRegionStride1());
-        last_inst = Create_Send_Inst_For_CISA(
+        Create_Send_Inst_For_CISA(
             NULL,
             dstOpnd,
             payloadOpnd,
@@ -4577,25 +4583,25 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
     bool forceSplitSend = IsBindlessSurface(*this, surface);
     if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        last_inst = Create_Send_Inst_For_CISA(pred, dst,
-                                              msgs[0], sizes[0],
-                                              resLen,
-                                              instExSize,
-                                              MD, SFID,
-                                              false, useHeader,
-                                              true, false,
-                                              surface, NULL, 
-                                              instOpt, false);
+        Create_Send_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0],
+            resLen,
+            instExSize,
+            MD, SFID,
+            false, useHeader,
+            true, false,
+            surface, NULL,
+            instOpt, false);
     } else {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dst,
-                                                   msgs[0], sizes[0], msgs[1], sizes[1],
-                                                   resLen,
-                                                   instExSize,
-                                                   MD, 0, SFID,
-                                                   false, useHeader,
-                                                   true, false,
-                                                   surface, NULL,
-                                                   instOpt, false);
+        Create_SplitSend_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0], msgs[1], sizes[1],
+            resLen,
+            instExSize,
+            MD, 0, SFID,
+            false, useHeader,
+            true, false,
+            surface, NULL,
+            instOpt, false);
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
@@ -4752,7 +4758,7 @@ int IR_Builder::translateTransposeVISALoadInst(
         send_exec_size *= 2;
     }
 
-    G4_INST *send_inst = Create_Send_Inst_For_CISA(
+    Create_Send_Inst_For_CISA(
         NULL,
         d,
         payload,
@@ -4769,8 +4775,6 @@ int IR_Builder::translateTransposeVISALoadInst(
         NULL,
         InstOpt_WriteEnable,
         false );
-    last_inst = send_inst;
-
 
     if( via_temp )
     {
@@ -4828,7 +4832,7 @@ int IR_Builder::translateTransposeVISALoadInst(
                 1,
                 original_dst->getType() );
             G4_DstRegRegion *tmp_dst_opnd = createDstRegRegion( tmp_dst );
-            last_inst = createInst( NULL, G4_mov, NULL, false, curr_exec_size, tmp_dst_opnd, tmp_src_opnd, NULL, InstOpt_WriteEnable );
+            createInst( NULL, G4_mov, NULL, false, curr_exec_size, tmp_dst_opnd, tmp_src_opnd, NULL, InstOpt_WriteEnable );
             curr_offset += curr_exec_size;
             curr_src_offset += 16;
             remained_ele -= curr_exec_size;
@@ -4988,25 +4992,25 @@ int IR_Builder::translateVISAGather4TypedInst(G4_Predicate           *pred,
 	bool forceSplitSend = IsBindlessSurface(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        last_inst = Create_Send_Inst_For_CISA(pred, dstOpnd,
-                                              msgs[0], sizes[0],
-                                              numEnabledChannels,
-                                              exSize,
-                                              msgDesc, sfId,
-                                              false, hasHeader,
-                                              true, false,
-                                              surface, NULL,
-                                              instOpt, false);
+        Create_Send_Inst_For_CISA(pred, dstOpnd,
+            msgs[0], sizes[0],
+            numEnabledChannels,
+            exSize,
+            msgDesc, sfId,
+            false, hasHeader,
+            true, false,
+            surface, NULL,
+            instOpt, false);
     } else {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dstOpnd,
-                                                   msgs[0], sizes[0], msgs[1], sizes[1],
-                                                   numEnabledChannels,
-                                                   exSize,
-                                                   msgDesc, 0, sfId,
-                                                   false, hasHeader,
-                                                   true, false,
-                                                   surface, NULL,
-                                                   instOpt, false);
+        Create_SplitSend_Inst_For_CISA(pred, dstOpnd,
+            msgs[0], sizes[0], msgs[1], sizes[1],
+            numEnabledChannels,
+            exSize,
+            msgDesc, 0, sfId,
+            false, hasHeader,
+            true, false,
+            surface, NULL,
+            instOpt, false);
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
@@ -5090,25 +5094,26 @@ int IR_Builder::translateVISAScatter4TypedInst(G4_Predicate           *pred,
 	bool forceSplitSend = IsBindlessSurface(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        last_inst = Create_Send_Inst_For_CISA(pred, dstOpnd,
-                                              msgs[0], sizes[0],
-                                              0,
-                                              exSize,
-                                              msgDesc, sfId,
-                                              false, hasHeader,
-                                              false, true,
-                                              surface, NULL,
-                                              instOpt, false);
-    } else {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dstOpnd,
-                                                   msgs[0], sizes[0], msgs[1], sizes[1],
-                                                   0,
-                                                   exSize,
-                                                   msgDesc, 0, sfId,
-                                                   false, hasHeader,
-                                                   false, true,
-                                                   surface, NULL,
-                                                   instOpt, false);
+        Create_Send_Inst_For_CISA(pred, dstOpnd,
+            msgs[0], sizes[0],
+            0,
+            exSize,
+            msgDesc, sfId,
+            false, hasHeader,
+            false, true,
+            surface, NULL,
+            instOpt, false);
+    } else 
+    {
+        Create_SplitSend_Inst_For_CISA(pred, dstOpnd,
+            msgs[0], sizes[0], msgs[1], sizes[1],
+            0,
+            exSize,
+            msgDesc, 0, sfId,
+            false, hasHeader,
+            false, true,
+            surface, NULL,
+            instOpt, false);
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
@@ -5200,7 +5205,7 @@ int IR_Builder::translateVISATypedAtomicInst(
     if (msgs[1] == 0 && !forceSplitSend)
     {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        last_inst = Create_Send_Inst_For_CISA(pred, dst,
+        Create_Send_Inst_For_CISA(pred, dst,
             msgs[0], sizes[0], dstLength, exSize,
             msgDesc, SFID_DP_DC1,
             false, false,
@@ -5210,7 +5215,7 @@ int IR_Builder::translateVISATypedAtomicInst(
     }
     else
     {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dst,
+        Create_SplitSend_Inst_For_CISA(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             dstLength, exSize,
             msgDesc, 0, SFID_DP_DC1,
@@ -5221,9 +5226,7 @@ int IR_Builder::translateVISATypedAtomicInst(
     }
 
     return CM_SUCCESS;
-
 }
-
 
 static void
 BuildMH2_A32_PSM(IR_Builder *IRB, G4_Declare *header,
@@ -5482,25 +5485,25 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
 	bool forceSplitSend = IsBindlessSurface(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        last_inst = Create_Send_Inst_For_CISA(pred, dst,
-                                              msgs[0], sizes[0],
-                                              resLen,
-                                              exSize,
-                                              MD, SFID,
-                                              false, useHeader,
-                                              true, false,
-                                              surface, NULL,
-                                              instOpt, false);
+        Create_Send_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0],
+            resLen,
+            exSize,
+            MD, SFID,
+            false, useHeader,
+            true, false,
+            surface, NULL,
+            instOpt, false);
     } else {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dst,
-                                                   msgs[0], sizes[0], msgs[1], sizes[1],
-                                                   resLen,
-                                                   exSize,
-                                                   MD, 0, SFID,
-                                                   false, useHeader,
-                                                   true, false,
-                                                   surface, NULL,
-                                                   instOpt, false);
+        Create_SplitSend_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0], msgs[1], sizes[1],
+            resLen,
+            exSize,
+            MD, 0, SFID,
+            false, useHeader,
+            true, false,
+            surface, NULL,
+            instOpt, false);
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
@@ -5579,27 +5582,27 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
 
     G4_DstRegRegion *dst = createNullDst(Type_UD);
 	bool forceSplitSend = IsBindlessSurface(*this, surface);
-	if (msgs[1] == 0 && !forceSplitSend) {
+    if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        last_inst = Create_Send_Inst_For_CISA(pred, dst,
-                                              msgs[0], sizes[0],
-                                              0,
-                                              exSize,
-                                              MD, SFID,
-                                              false, useHeader,
-                                              false, true,
-                                              surface, NULL, 
-                                              instOpt, false);
+        Create_Send_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0],
+            0,
+            exSize,
+            MD, SFID,
+            false, useHeader,
+            false, true,
+            surface, NULL,
+            instOpt, false);
     } else {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dst,
-                                                   msgs[0], sizes[0], msgs[1], sizes[1],
-                                                   0,
-                                                   exSize,
-                                                   MD, 0, SFID,
-                                                   false, useHeader,
-                                                   false, true,
-                                                   surface, NULL,
-                                                   instOpt, false);
+        Create_SplitSend_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0], msgs[1], sizes[1],
+            0,
+            exSize,
+            MD, 0, SFID,
+            false, useHeader,
+            false, true,
+            surface, NULL,
+            instOpt, false);
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
@@ -5841,27 +5844,28 @@ int IR_Builder::translateByteGatherInst(G4_Predicate *pred,
 
     unsigned resLen = (exSize / GENX_DATAPORT_IO_SZ) * numBatch;
 	bool forceSplitSend = IsBindlessSurface(*this, surface);
-	if (msgs[1] == 0 && !forceSplitSend) {
+    if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        last_inst = Create_Send_Inst_For_CISA(pred, dst,
-                                              msgs[0], sizes[0],
-                                              resLen,
-                                              instExSize,
-                                              MD, SFID,
-                                              false, useHeader,
-                                              true, false,
-                                              surface, NULL,
-                                              instOpt, false);
-    } else {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dst,
-                                                   msgs[0], sizes[0], msgs[1], sizes[1],
-                                                   resLen,
-                                                   instExSize,
-                                                   MD, 0, SFID,
-                                                   false, useHeader,
-                                                   true, false,
-                                                   surface, NULL,
-                                                   instOpt, false);
+        Create_Send_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0],
+            resLen,
+            instExSize,
+            MD, SFID,
+            false, useHeader,
+            true, false,
+            surface, NULL,
+            instOpt, false);
+    }
+    else {
+        Create_SplitSend_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0], msgs[1], sizes[1],
+            resLen,
+            instExSize,
+            MD, 0, SFID,
+            false, useHeader,
+            true, false,
+            surface, NULL,
+            instOpt, false);
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
@@ -5963,25 +5967,25 @@ int IR_Builder::translateByteScatterInst(G4_Predicate *pred,
 	bool forceSplitSend = IsBindlessSurface(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        last_inst = Create_Send_Inst_For_CISA(pred, dst,
-                                              msgs[0], sizes[0],
-                                              0,
-                                              instExSize,
-                                              MD, SFID,
-                                              false, useHeader,
-                                              false, true,
-                                              surface, NULL,
-                                              instOpt, false);
+        Create_Send_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0],
+            0,
+            instExSize,
+            MD, SFID,
+            false, useHeader,
+            false, true,
+            surface, NULL,
+            instOpt, false);
     } else {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dst,
-                                                   msgs[0], sizes[0], msgs[1], sizes[1],
-                                                   0,
-                                                   instExSize,
-                                                   MD, 0, SFID,
-                                                   false, useHeader,
-                                                   false, true,
-                                                   surface, NULL,
-                                                   instOpt, false);
+        Create_SplitSend_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0], msgs[1], sizes[1],
+            0,
+            instExSize,
+            MD, 0, SFID,
+            false, useHeader,
+            false, true,
+            surface, NULL,
+            instOpt, false);
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
@@ -6067,7 +6071,7 @@ int IR_Builder::translateVISALogicInst(ISA_Opcode opcode, G4_Predicate *predOpnd
         // bfi2 dst tmp src2 src3
         G4_Declare* tmpDcl = createTempVar( exsize, g4Srcs[0]->getType(), Either, Sixteen_Word);
         G4_DstRegRegion* tmpDst = Create_Dst_Opnd_From_Dcl( tmpDcl, 1);
-        last_inst = createInst(
+        createInst(
             predOpnd,
             g4_op,
             NULL,
@@ -6081,7 +6085,7 @@ int IR_Builder::translateVISALogicInst(ISA_Opcode opcode, G4_Predicate *predOpnd
 
         G4_SrcRegRegion* src0 = Create_Src_Opnd_From_Dcl(tmpDcl,
             (exsize == 1) ? getRegionScalar() : getRegionStride1());
-        last_inst = createInst(
+        createInst(
             predOpnd,
             G4_bfi2,
             NULL,
@@ -6097,7 +6101,7 @@ int IR_Builder::translateVISALogicInst(ISA_Opcode opcode, G4_Predicate *predOpnd
     else
     {
         // create inst
-        last_inst = createInst(
+        createInst(
             predOpnd,
             g4_op,
             NULL,
@@ -6226,7 +6230,7 @@ int IR_Builder::translateVISAVmeImeInst(
         regs2rcv = 288/GENX_GRF_REG_SIZ;
     }
 
-    G4_INST *send_inst = Create_Send_Inst_For_CISA(
+    Create_Send_Inst_For_CISA(
         NULL,
         d,
         payload,
@@ -6243,7 +6247,6 @@ int IR_Builder::translateVISAVmeImeInst(
         NULL,
         InstOpt_WriteEnable,
         false);
-    last_inst = send_inst;
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -6298,8 +6301,7 @@ int IR_Builder::translateVISAVmeSicInst(
 
     unsigned regs2rcv = 7;
 
-    // dst is already UW
-    G4_INST *send_inst = Create_Send_Inst_For_CISA(
+    Create_Send_Inst_For_CISA(
         NULL,
         d,
         payload,
@@ -6316,7 +6318,6 @@ int IR_Builder::translateVISAVmeSicInst(
         NULL,
         InstOpt_WriteEnable,
         false);
-    last_inst = send_inst;
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -6425,7 +6426,7 @@ int IR_Builder::translateVISAVmeFbrInst(
 
     unsigned regs2rcv = 7;
 
-    G4_INST *send_inst = Create_Send_Inst_For_CISA(
+    Create_Send_Inst_For_CISA(
         NULL,
         d,
         payload,
@@ -6442,7 +6443,6 @@ int IR_Builder::translateVISAVmeFbrInst(
         NULL,
         InstOpt_WriteEnable,
         false);
-    last_inst = send_inst;
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -6485,7 +6485,7 @@ int IR_Builder::translateVISAVmeIdmInst(
     unsigned regs2rcv = 16;
 
     // dst is already UW
-    G4_INST *send_inst = Create_Send_Inst_For_CISA(
+    Create_Send_Inst_For_CISA(
         NULL,
         d,
         payload,
@@ -6502,7 +6502,6 @@ int IR_Builder::translateVISAVmeIdmInst(
         NULL,
         InstOpt_WriteEnable,
         false);
-    last_inst = send_inst;
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -6761,7 +6760,7 @@ int IR_Builder::translateVISASamplerVAGenericInst(
     int reg_receive = dstSize/GENX_GRF_REG_SIZ;
     if(reg_receive < 1)
         reg_receive = 1;
-    last_inst = Create_Send_Inst_For_CISA(NULL, post_dst, payload, 2, reg_receive, 8,
+    Create_Send_Inst_For_CISA(NULL, post_dst, payload, 2, reg_receive, 8,
         msg_descriptor, SFID_SAMPLER, 0, 1, true, false, surface, sampler, InstOpt_WriteEnable, false);
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -6983,8 +6982,7 @@ int IR_Builder::translateVISAAvsInst(
 
         G4_DstRegRegion* d = Check_Send_Dst( dstOpnd->asDstRegRegion());
 
-        // dst is already UW
-        G4_INST *send_inst = Create_Send_Inst_For_CISA(
+        Create_Send_Inst_For_CISA(
             NULL,
             d,
             payload,
@@ -7001,7 +6999,6 @@ int IR_Builder::translateVISAAvsInst(
             sampler,
             InstOpt_WriteEnable,
             false);
-        last_inst = send_inst;
     }
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -7031,7 +7028,7 @@ int IR_Builder::translateVISADataMovementInst(ISA_Opcode opcode,
         if (src0Opnd->isSrcRegRegion())
             src0Opnd->asSrcRegRegion()->setType(Type_UD);
         dstOpnd->setType(Type_UD);
-        last_inst = createInst(
+        createInst(
             predOpnd,
             G4_mov,
             NULL,
@@ -7082,7 +7079,7 @@ int IR_Builder::translateVISADataMovementInst(ISA_Opcode opcode,
 				MUST_BE_TRUE(dstOpnd->getTopDcl()->getNumberFlagElements() == 32, "Dst must have 32 flag elements");
 				dstOpnd->setSubRegOff(1);
 			}
-            last_inst = createInst(
+            createInst(
                 predOpnd,
                 G4_mov,
                 NULL,
@@ -7102,7 +7099,7 @@ int IR_Builder::translateVISADataMovementInst(ISA_Opcode opcode,
                 dstOpnd->asDstRegRegion()->getBase()->asRegVar(),
                 0);
 
-            last_inst = createInst(
+            createInst(
                 predOpnd,
                 G4_and,
                 condMod,
@@ -7137,7 +7134,7 @@ int IR_Builder::translateVISADataMovementInst(ISA_Opcode opcode,
             src0Opnd->asSrcRegRegion()->setType(flagDcl->getNumberFlagElements() > 16 ? Type_UD : Type_UW);
         }
 
-        last_inst = createInst(
+        createInst(
             predOpnd,
             Get_G4_Opcode_From_Common_ISA_Opcode(opcode),
             condMod,
@@ -7300,7 +7297,7 @@ int IR_Builder::translateVISASamplerInst(
         }
     }
 
-    G4_INST *send_inst = Create_Send_Inst_For_CISA(
+    Create_Send_Inst_For_CISA(
         NULL,
         d,
         payload,
@@ -7317,7 +7314,6 @@ int IR_Builder::translateVISASamplerInst(
         sampler,
         0,
         false);
-    last_inst = send_inst;
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -7480,7 +7476,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
 
     //setting up M1.7
 
-    unsigned int m1_7 = IR_Builder::sampler8x8_group_id++;
+    unsigned int m1_7 = sampler8x8_group_id++;
 
     ISA_VA_Sub_Opcode originalSubOpcode = sub_opcode;
 
@@ -7718,7 +7714,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     /// Message Descriptor Setup
     /// 18:17 SIMD Mode (SIMD32/64 = 3)  |  16:12 Message Type (sampler8x8 = 01011 = 0xB)
     unsigned msg_descriptor = (0x3 << 17) + (0xB  << 12);
-    last_inst = Create_Send_Inst_For_CISA(NULL, post_dst, payload, reg_to_send, reg_to_receive, 8,
+    Create_Send_Inst_For_CISA(NULL, post_dst, payload, reg_to_send, reg_to_receive, 8,
         msg_descriptor, SFID_SAMPLER, 0, 1, true, false, surface, sampler, 0, false);
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -7808,8 +7804,7 @@ int IR_Builder::translateVISASamplerNormInst(
     temp += 0xc << 12;   // Bit 16-12 = 1100 for Sampler Message Type
     temp += 0x3 << 17;   // Bit 18-17 = 11 for SIMD32 mode
 
-    // dst is already UW
-    G4_INST *send_inst = Create_Send_Inst_For_CISA(
+    Create_Send_Inst_For_CISA(
         NULL,
         d,
         payload,
@@ -7826,7 +7821,6 @@ int IR_Builder::translateVISASamplerNormInst(
         sampler,
         0,
         false);
-    last_inst = send_inst;
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -7846,7 +7840,7 @@ int IR_Builder::translateVISASimdInst(ISA_Opcode opcode, G4_Predicate *predOpnd,
     G4_Operand *src0 = NULL, *src1 = NULL;
     G4_CondMod *condmod = NULL;
 
-    last_inst = createInst(
+    auto cfInst = createInst(
         predOpnd,
         Get_G4_Opcode_From_Common_ISA_Opcode((ISA_Opcode)opcode),
         condmod,
@@ -7860,7 +7854,7 @@ int IR_Builder::translateVISASimdInst(ISA_Opcode opcode, G4_Predicate *predOpnd,
 
     if( opcode == ISA_GOTO )
     {
-        last_inst->asCFInst()->setUip( label );
+        cfInst->asCFInst()->setUip( label );
     }
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -7945,13 +7939,13 @@ int IR_Builder::translateVISASampleInfoInst(
 
     if (forceSplitSend)
     {
-        last_inst = Create_SplitSend_Inst_For_CISA(NULL, dst, m0, numRows,
+        Create_SplitSend_Inst_For_CISA(NULL, dst, m0, numRows,
             createNullSrc(Type_UD), 0, retSize,
             execSize, fc, 0, SFID_SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false);
     }
     else
     {
-        last_inst = Create_Send_Inst_For_CISA(NULL, dst, m0, numRows, retSize,
+        Create_Send_Inst_For_CISA(NULL, dst, m0, numRows, retSize,
             execSize, fc, SFID_SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false);
     }
 
@@ -8075,13 +8069,13 @@ int IR_Builder::translateVISAResInfoInst(
             src0Size = numRows;
             src1Size = 0;
         }
-        last_inst = Create_SplitSend_Inst_For_CISA(NULL, dst, m0, src0Size, m1, src1Size, returnLength,
+        Create_SplitSend_Inst_For_CISA(NULL, dst, m0, src0Size, m1, src1Size, returnLength,
             execSize, fc, 0, SFID_SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false);
     }
     else
     {
         G4_SrcRegRegion *m = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
-        last_inst = Create_Send_Inst_For_CISA( NULL, dst, m, numRows, returnLength,
+        Create_Send_Inst_For_CISA( NULL, dst, m, numRows, returnLength,
             execSize, fc, SFID_SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false );
     }
 
@@ -8271,11 +8265,11 @@ int IR_Builder::translateVISAURBWrite3DInst(
                 payloadUD->getElemType());
         }
 
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, createNullDst(Type_UD), m0, 1, m1, numRows, 0,
+        Create_SplitSend_Inst_For_CISA(pred, createNullDst(Type_UD), m0, 1, m1, numRows, 0,
             execSize, fc, 0, SFID_URB, false, useHeader, false, true, NULL, NULL, instOpt, false);
     } else {
         G4_SrcRegRegion *m = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
-        last_inst = Create_Send_Inst_For_CISA( pred, createNullDst( Type_UD ), m, numRows, 0,
+        Create_Send_Inst_For_CISA( pred, createNullDst( Type_UD ), m, numRows, 0,
             execSize, fc, SFID_URB, false, useHeader, false, true, nullptr, nullptr, instOpt, false );
     }
     return CM_SUCCESS;
@@ -8938,7 +8932,7 @@ int IR_Builder::translateVISARTWrite3DInst(
             srcToUse = createNullSrc(Type_UD);
         }
 
-        last_inst = Create_SplitSend_Inst_For_RTWrite(
+        Create_SplitSend_Inst_For_RTWrite(
             pred,                       
             createNullDst(Type_UD),     
             m0,                         
@@ -8953,7 +8947,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         G4_SrcRegRegion *m = srcToUse;
         if (useHeader)
             m = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
-        last_inst = Create_Send_Inst_For_CISA( pred, createNullDst( Type_UD ), m, numRows, 0,
+         Create_Send_Inst_For_CISA( pred, createNullDst( Type_UD ), m, numRows, 0,
             execSize, fc, SFID_DP_WRITE, false, useHeader, false, true, surface, NULL, instOpt, true );
     }
     return CM_SUCCESS;
@@ -9688,6 +9682,7 @@ int IR_Builder::translateVISASampler3DInst(
     uint32_t fc = createSamplerMsgDesc(actualop, execSize, FP16Return, FP16Input);
     uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, useHeader, sizes[0], responseLength);
 
+    G4_INST* sendInst = nullptr;
 	bool forceSplitSend = IsBindlessSurface(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend)
     {
@@ -9699,7 +9694,7 @@ int IR_Builder::translateVISASampler3DInst(
         }
         G4_SendMsgDescriptor *msgDesc = createSendMsgDesc(desc, extDesc, true, false, surface, samplerIdx);
 
-        last_inst = Create_Send_Inst_For_CISA(pred, dst, msgs[0], execSize,
+        sendInst = Create_Send_Inst_For_CISA(pred, dst, msgs[0], execSize,
                                               msgDesc, instOpt, false);
     }
     else
@@ -9710,10 +9705,10 @@ int IR_Builder::translateVISASampler3DInst(
             extDesc |= (1 << CPS_LOD_COMPENSATION_ENABLE);
         }
         G4_SendMsgDescriptor *msgDesc = createSendMsgDesc(desc, extDesc, true, false, surface, samplerIdx);
-        last_inst = Create_SplitSend_Inst(pred, dst, msgs[0], msgs[1], 
+        sendInst = Create_SplitSend_Inst(pred, dst, msgs[0], msgs[1], 
             execSize, msgDesc, instOpt, false);
     }
-    setUniformSampler(last_inst, uniformSampler);
+    setUniformSampler(sendInst, uniformSampler);
     return CM_SUCCESS;
 }
 
@@ -9814,24 +9809,24 @@ int IR_Builder::translateVISALoad3DInst(
 	bool forceSplitSend = IsBindlessSurface(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend)
     {
-        last_inst = Create_Send_Inst_For_CISA(pred_opnd, dst,
-                                              msgs[0], sizes[0],
-                                              responseLength,
-                                              execSize, fc, SFID_SAMPLER,
-                                              false, useHeader,
-                                              true, false, surface, NULL,
-                                              instOpt, false);
+        Create_Send_Inst_For_CISA(pred_opnd, dst,
+            msgs[0], sizes[0],
+            responseLength,
+            execSize, fc, SFID_SAMPLER,
+            false, useHeader,
+            true, false, surface, NULL,
+            instOpt, false);
     }
     else
     {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred_opnd, dst,
-                                                   msgs[0], sizes[0], msgs[1], sizes[1],
-                                                   responseLength,
-                                                   execSize, fc, 0, SFID_SAMPLER,
-                                                   false, useHeader,
-                                                   true, false,
-                                                   surface, NULL,
-                                                   instOpt, false);
+        Create_SplitSend_Inst_For_CISA(pred_opnd, dst,
+            msgs[0], sizes[0], msgs[1], sizes[1],
+            responseLength,
+            execSize, fc, 0, SFID_SAMPLER,
+            false, useHeader,
+            true, false,
+            surface, NULL,
+            instOpt, false);
     }
 
     return CM_SUCCESS;
@@ -9942,24 +9937,24 @@ int IR_Builder::translateVISAGather3dInst(
 	bool forceSplitSend = IsBindlessSurface(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend)
     {
-        last_inst = Create_Send_Inst_For_CISA(pred, dst, msgs[0], sizes[0],
-                                              responseLength,
-                                              execSize, fc, SFID_SAMPLER,
-                                              false, useHeader,
-                                              true, false,
-                                              surface, samplerIdx,
-                                              instOpt, false);
+        Create_Send_Inst_For_CISA(pred, dst, msgs[0], sizes[0],
+            responseLength,
+            execSize, fc, SFID_SAMPLER,
+            false, useHeader,
+            true, false,
+            surface, samplerIdx,
+            instOpt, false);
     }
     else
     {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dst,
-                                                   msgs[0], sizes[0], msgs[1], sizes[1],
-                                                   responseLength,
-                                                   execSize, fc, 0, SFID_SAMPLER,
-                                                   false, useHeader,
-                                                   true, false,
-                                                   surface, samplerIdx,
-                                                   instOpt, false);
+        Create_SplitSend_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0], msgs[1], sizes[1],
+            responseLength,
+            execSize, fc, 0, SFID_SAMPLER,
+            false, useHeader,
+            true, false,
+            surface, samplerIdx,
+            instOpt, false);
     }
 
     return CM_SUCCESS;
@@ -10027,8 +10022,8 @@ int IR_Builder::translateVISASVMBlockReadInst(
     uint8_t sendExecSize = FIX_OWORD_SEND_EXEC_SIZE(numOword);
     dst->setType(Type_UD);
 
-    last_inst = Create_Send_Inst_For_CISA( NULL, dst, src, 1, rspLength, sendExecSize, desc,
-        SFID_DP_DC1, false, true, true, false, NULL, NULL, InstOpt_WriteEnable, false );
+    Create_Send_Inst_For_CISA(NULL, dst, src, 1, rspLength, sendExecSize, desc,
+        SFID_DP_DC1, false, true, true, false, NULL, NULL, InstOpt_WriteEnable, false);
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -10115,24 +10110,24 @@ int IR_Builder::translateVISASVMBlockWriteInst(
     G4_DstRegRegion* sendDst = createNullDst(Type_UD);
 
     if (msgs[1] == 0) {
-        last_inst = Create_Send_Inst_For_CISA(NULL, sendDst,
-                                              msgs[0], sizes[0],
-                                              0, sendExecSize,
-                                              desc, SFID_DP_DC1,
-                                              false, true,
-                                              false, true,
-                                              NULL, NULL,
-                                              InstOpt_WriteEnable, false);
+        Create_Send_Inst_For_CISA(NULL, sendDst,
+            msgs[0], sizes[0],
+            0, sendExecSize,
+            desc, SFID_DP_DC1,
+            false, true,
+            false, true,
+            NULL, NULL,
+            InstOpt_WriteEnable, false);
     } else {
-        last_inst = Create_SplitSend_Inst_For_CISA(NULL, sendDst,
-                                                   msgs[0], sizes[0],
-                                                   msgs[1], sizes[1],
-                                                   0, sendExecSize,
-                                                   desc, 0, SFID_DP_DC1,
-                                                   false, true,
-                                                   false, true,
-                                                   NULL, NULL,
-                                                   InstOpt_WriteEnable, false);
+        Create_SplitSend_Inst_For_CISA(NULL, sendDst,
+            msgs[0], sizes[0],
+            msgs[1], sizes[1],
+            0, sendExecSize,
+            desc, 0, SFID_DP_DC1,
+            false, true,
+            false, true,
+            NULL, NULL,
+            InstOpt_WriteEnable, false);
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
@@ -10210,7 +10205,7 @@ int IR_Builder::translateVISASVMScatterReadInst(
     desc |= (exSize == 8 ? 0 : 1) << 12;
     desc |= DC1_A64_SCATTERED_READ << 14;
 
-    last_inst = Create_Send_Inst_For_CISA( pred, dst, addresses, messageLength, responseLength, instExSize, desc,
+    Create_Send_Inst_For_CISA( pred, dst, addresses, messageLength, responseLength, instExSize, desc,
         SFID_DP_DC1, false, false, true, false, NULL, NULL, instOpt, false );
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
@@ -10285,24 +10280,25 @@ int IR_Builder::translateVISASVMScatterWriteInst(
     G4_DstRegRegion* dst = createNullDst(Type_UD);
     if (msgs[1] == 0) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        last_inst = Create_Send_Inst_For_CISA(pred, dst,
-                                              msgs[0], sizes[0],
-                                              0, instExSize,
-                                              desc, SFID_DP_DC1,
-                                              false, false,
-                                              false, true,
-                                              NULL, NULL,
-                                              instOpt, false);
-    } else {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dst,
-                                                   msgs[0], sizes[0],
-                                                   msgs[1], sizes[1],
-                                                   0, instExSize,
-                                                   desc, 0, SFID_DP_DC1,
-                                                   false, false,
-                                                   false, true,
-                                                   NULL, NULL,
-                                                   instOpt, false);
+        Create_Send_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0],
+            0, instExSize,
+            desc, SFID_DP_DC1,
+            false, false,
+            false, true,
+            NULL, NULL,
+            instOpt, false);
+    }
+    else {
+        Create_SplitSend_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0],
+            msgs[1], sizes[1],
+            0, instExSize,
+            desc, 0, SFID_DP_DC1,
+            false, false,
+            false, true,
+            NULL, NULL,
+            instOpt, false);
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
@@ -10423,25 +10419,26 @@ int IR_Builder::translateVISASVMAtomicInst(
     FillSVMAtomicMsgDesc(bitwidth == 16, IsFloatAtomicOps(atomicOp), msgDesc);
 
     if (msgs[1] == 0) {
-        last_inst = Create_Send_Inst_For_CISA(pred, dst,
-                                              msgs[0], sizes[0], dstLength,
-                                              instExSize,
-                                              msgDesc, SFID_DP_DC1,
-                                              false, false,
-                                              true, true,
-                                              NULL, NULL,
-                                              instOpt, false);
-    } else {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dst,
-                                              msgs[0], sizes[0],
-                                              msgs[1], sizes[1],
-                                              dstLength,
-                                              instExSize,
-                                              msgDesc, 0, SFID_DP_DC1,
-                                              false, false,
-                                              true, true,
-                                              NULL, NULL,
-                                              instOpt, false);
+        Create_Send_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0], dstLength,
+            instExSize,
+            msgDesc, SFID_DP_DC1,
+            false, false,
+            true, true,
+            NULL, NULL,
+            instOpt, false);
+    }
+    else {
+        Create_SplitSend_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0],
+            msgs[1], sizes[1],
+            dstLength,
+            instExSize,
+            msgDesc, 0, SFID_DP_DC1,
+            false, false,
+            true, true,
+            NULL, NULL,
+            instOpt, false);
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
@@ -10503,25 +10500,26 @@ int IR_Builder::translateSVMGather4Inst(Common_ISA_Exec_Size    execSize,
                       chMask.getNumEnabledChannels();
     if (msgs[1] == 0) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        last_inst = Create_Send_Inst_For_CISA(pred, dst,
-                                              msgs[0], sizes[0],
-                                              resLen,
-                                              exSize,
-                                              FC, SFID,
-                                              false, false,
-                                              true, false,
-                                              NULL, NULL,
-                                              instOpt, false);
-    } else {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dst,
-                                                   msgs[0], sizes[0], msgs[1], sizes[1],
-                                                   resLen,
-                                                   exSize,
-                                                   FC, 0, SFID,
-                                                   false, false,
-                                                   true, false,
-                                                   NULL, NULL,
-                                                   instOpt, false);
+        Create_Send_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0],
+            resLen,
+            exSize,
+            FC, SFID,
+            false, false,
+            true, false,
+            NULL, NULL,
+            instOpt, false);
+    }
+    else {
+        Create_SplitSend_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0], msgs[1], sizes[1],
+            resLen,
+            exSize,
+            FC, 0, SFID,
+            false, false,
+            true, false,
+            NULL, NULL,
+            instOpt, false);
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
@@ -10586,25 +10584,26 @@ int IR_Builder::translateSVMScatter4Inst(Common_ISA_Exec_Size   execSize,
     G4_DstRegRegion *dst = createNullDst(Type_UD);
     if (msgs[1] == 0) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        last_inst = Create_Send_Inst_For_CISA(pred, dst,
-                                              msgs[0], sizes[0],
-                                              0,
-                                              exSize,
-                                              FC, SFID,
-                                              false, false,
-                                              false, true,
-                                              NULL, NULL,
-                                              instOpt, false);
-    } else {
-        last_inst = Create_SplitSend_Inst_For_CISA(pred, dst,
-                                                   msgs[0], sizes[0], msgs[1], sizes[1],
-                                                   0,
-                                                   exSize,
-                                                   FC, 0, SFID,
-                                                   false, false,
-                                                   false, true,
-                                                   NULL, NULL,
-                                                   instOpt, false);
+        Create_Send_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0],
+            0,
+            exSize,
+            FC, SFID,
+            false, false,
+            false, true,
+            NULL, NULL,
+            instOpt, false);
+    }
+    else {
+        Create_SplitSend_Inst_For_CISA(pred, dst,
+            msgs[0], sizes[0], msgs[1], sizes[1],
+            0,
+            exSize,
+            FC, 0, SFID,
+            false, false,
+            false, true,
+            NULL, NULL,
+            instOpt, false);
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)

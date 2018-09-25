@@ -1104,7 +1104,7 @@ LocalLiveRange* GlobalRA::GetOrCreateLocalLiveRange(G4_Declare* topdcl, Mem_Mana
     // Check topdcl of operand and setup a new live range if required
     if (getLocalLR(topdcl) == NULL)
     {
-        setLocalLR(topdcl, new (mem)LocalLiveRange());
+        setLocalLR(topdcl, new (mem)LocalLiveRange(builder));
         getLocalLR(topdcl)->setTopDcl(topdcl);
     }
 
@@ -1336,7 +1336,7 @@ void LocalRA::calculateInputIntervals()
                         !(dst->isAreg()) &&
                         topdcl->isOutput() == false &&
                         lr->hasIndirectAccess() == false &&
-                        !(topdcl->getIsPreDefArg()))
+                        !builder.isPreDefArg(topdcl))
                     {
                         unsigned int lastRef = 0;
 
@@ -1386,7 +1386,7 @@ void LocalRA::calculateInputIntervals()
                             !(src->isAreg()) &&
                             topdcl->isOutput() == false &&
                             lr->hasIndirectAccess() == false &&
-                            !(topdcl->getIsPreDefArg()))
+                            !builder.isPreDefArg(topdcl))
                         {
                             unsigned int lastRef = 0;
 
@@ -1771,7 +1771,7 @@ bool LocalLiveRange::isLiveRangeLocal()
 {
     if (isIndirectAccess == false && numRefsInFG == 1 &&
         eot == false && topdcl->getHasFileScope() == false &&
-        topdcl->getIsPreDefRet() == false && topdcl->getIsPreDefArg() == false &&
+        !builder.isPreDefArg(topdcl) && !builder.isPreDefRet(topdcl) &&
         topdcl->isOutput() == false)
     {
         return true;

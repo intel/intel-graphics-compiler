@@ -422,8 +422,6 @@ private:
 		unsigned short nElems,
 		unsigned short nRows,
 		G4_Type        type,
-		RegionDesc *   srcRgn,
-		unsigned short dstRgn,
 		DeclareType    kind,
 		G4_RegVar *    base,
 		G4_Operand *   repRegion,

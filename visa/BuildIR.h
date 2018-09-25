@@ -345,7 +345,6 @@ private:
     USE_DEF_ALLOCATOR useDefAllocator;
 
     int                 func_id;
-    G4_INST*            last_inst;
     FINALIZER_INFO*        metaData;
 
     bool isKernel;
@@ -391,7 +390,7 @@ private:
     unsigned short arg_size;
     unsigned short return_var_size;
 
-    static unsigned int sampler8x8_group_id;
+    unsigned int sampler8x8_group_id;
 
     // Populate this data structure so after compiling all kernels
     // in file, we can emit out patch file using this up-levelled
@@ -520,6 +519,31 @@ public:
     G4_Declare* getStackCallRet() const
     {
         return preDefVars.getPreDefinedVar(PreDefinedVarsInternal::RET);
+    }
+
+    G4_Declare* getFE_SP() const
+    {
+        return preDefVars.getPreDefinedVar(PreDefinedVarsInternal::FE_SP);
+    }
+
+    G4_Declare* getFE_FP() const
+    {
+        return preDefVars.getPreDefinedVar(PreDefinedVarsInternal::FE_FP);
+    }
+
+    bool isPreDefArg(G4_Declare* dcl) const
+    {
+        return dcl == getStackCallArg();
+    }
+
+    bool isPreDefRet(G4_Declare* dcl) const
+    {
+        return dcl == getStackCallRet();
+    }
+
+    bool isPreDefFEStackVar(G4_Declare* dcl) const
+    {
+        return dcl == getFE_SP() || dcl == getFE_FP();
     }
 
     uint32_t getPerThreadInputSize() const { return perThreadInputSize; }
@@ -671,14 +695,12 @@ public:
                 {
                     dcl = createDeclareNoLookup(name, G4_INPUT, 8, 32, Type_UD);
                     dcl->getRegVar()->setPhyReg(phyregpool.getGreg(28), 0);
-                    dcl->setIsPreDefArg();
                     break;
                 }
                 case PreDefinedVarsInternal::RET:
                 {
                     dcl = createDeclareNoLookup(name, G4_GRF, 8, 12, Type_UD);
                     dcl->getRegVar()->setPhyReg(phyregpool.getGreg(16), 0);
-                    dcl->setIsPreDefRet();
                     dcl->setLiveOut();
                     break;
                 }
@@ -687,7 +709,6 @@ public:
                     unsigned int startReg = kernel.getStackCallStartReg();
                     dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, is64BitFEStackVars() ? Type_UQ : Type_UD);
                     dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg), SubRegs_SP_FP::FE_SP);
-                    dcl->setIsPreDefFEStackVar();
                     break;
                 }
                 case PreDefinedVarsInternal::FE_FP:
@@ -696,7 +717,6 @@ public:
                     unsigned int startReg = kernel.getStackCallStartReg();
                     dcl = createDeclareNoLookup(name, G4_GRF, 1, 1, is64BitFEStackVars() ? Type_UQ : Type_UD);
                     dcl->getRegVar()->setPhyReg(phyregpool.getGreg(startReg), SubRegs_SP_FP::FE_FP);
-                    dcl->setIsPreDefFEStackVar();
                     break;
                 }
                 case PreDefinedVarsInternal::HW_TID:
@@ -771,7 +791,7 @@ public:
     IR_Builder(INST_LIST_NODE_ALLOCATOR &alloc, PhyRegPool &pregs, G4_Kernel &k,
         Mem_Manager &m, Options *options, bool isFESP64Bits,
         FINALIZER_INFO *jitInfo = NULL, PVISA_WA_TABLE pWaTable = NULL)
-        : curFile(NULL), curLine(0), curCISAOffset(-1), func_id(-1), last_inst(NULL), metaData(jitInfo),
+        : curFile(NULL), curLine(0), curCISAOffset(-1), func_id(-1), metaData(jitInfo),
         isKernel(false), cunit(0), varRelocTable(NULL), funcRelocTable(NULL), resolvedCalleeNames(NULL),
         usesSampler(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
         CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),

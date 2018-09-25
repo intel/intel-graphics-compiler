@@ -1492,7 +1492,8 @@ G4_INST::MovType G4_INST::canPropagate(const IR_Builder* builder)
     if (topDcl)
     {
         G4_Declare* rootDcl = topDcl->getRootDeclare();
-        if (rootDcl->getIsPreDefFEStackVar() || rootDcl->getIsPreDefArg() || rootDcl->getIsPreDefRet())
+        if (builder->isPreDefFEStackVar(rootDcl) || builder->isPreDefArg(rootDcl) || 
+            builder->isPreDefRet(rootDcl))
         {
             return SuperMov;
         }
@@ -2427,8 +2428,8 @@ bool G4_INST::canHoistTo( G4_INST *defInst, bool simdBB, const IR_Builder* build
     if (defInst->getDst() && defInst->getDst()->getTopDcl())
     {
         G4_Declare* defDstDcl = defInst->getDst()->getTopDcl()->getRootDeclare();
-        if (defDstDcl->getIsPreDefFEStackVar() || defDstDcl->getIsPreDefArg() ||
-            defDstDcl->getIsPreDefRet())
+        if (builder->isPreDefFEStackVar(defDstDcl) || builder->isPreDefArg(defDstDcl) ||
+            builder->isPreDefRet(defDstDcl))
         {
             return false;
         }

@@ -5759,14 +5759,8 @@ G4_Kernel::~G4_Kernel()
 
 void G4_Kernel::use64BitFESP()
 {
-    for (auto dcl : Declares)
-    {
-        if (dcl->getIsPreDefFEStackVar())
-        {
-            dcl->setTypeToUQ();
-        }
-    }
-
+    fg.builder->getFE_FP()->setTypeToUQ();
+    fg.builder->getFE_SP()->setTypeToUQ();
     fg.builder->set64BitFEStackVars();
 }
 

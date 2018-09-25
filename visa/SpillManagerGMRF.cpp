@@ -1185,8 +1185,6 @@ SpillManagerGMRF::createRangeDeclare (
     unsigned short nElems,
 	unsigned short nRows,
 	G4_Type        type,
-	RegionDesc *   srcRgn,
-	unsigned short dstRgn,
 	DeclareType    kind,
 	G4_RegVar *    base,
 	G4_Operand *   repRegion,
@@ -1254,7 +1252,7 @@ SpillManagerGMRF::createTransientGRFRangeDeclare (
 
 	G4_Declare * transientRangeDeclare =
 		createRangeDeclare(
-			name, G4_GRF, width, height, type, NULL, DEF_HORIZ_STRIDE,
+			name, G4_GRF, width, height, type,
 			regVarKind, region->getBase ()->asRegVar (), region, execSize);
 
     if( failSafeSpill_ )
@@ -1316,7 +1314,7 @@ SpillManagerGMRF::createPostDstSpillRangeDeclare (
 
 	G4_Declare * transientRangeDeclare =
 		createRangeDeclare (
-			name, G4_GRF, REG_DWORD_SIZE, nRows, Type_UD, NULL, 0,
+			name, G4_GRF, REG_DWORD_SIZE, nRows, Type_UD, 
             DeclareType::Spill, spilledRegVar, normalizedPostDst, REG_DWORD_SIZE);
 
     if( failSafeSpill_ )
@@ -1430,7 +1428,7 @@ SpillManagerGMRF::createMRFFillRangeDeclare (
 		createRangeDeclare(
 		name,
 		G4_GRF,
-		width, nRows, filledRegion->getType(), NULL, 0,
+		width, nRows, filledRegion->getType(),
 		DeclareType::Fill, filledRegVar, normalizedMRFSrc,
 		width);
 
@@ -1495,7 +1493,7 @@ SpillManagerGMRF::createTemporaryRangeDeclare (
 
 	G4_Declare * temporaryRangeDeclare =
 		createRangeDeclare(
-			name, G4_GRF, width, height, type, NULL, DEF_HORIZ_STRIDE,
+			name, G4_GRF, width, height, type,
 			regVarKind, spilledRegVar, NULL, 0);
 
     if( failSafeSpill_ )
@@ -1690,7 +1688,7 @@ SpillManagerGMRF::createMRangeDeclare (
 		createRangeDeclare (
 			name,
             G4_GRF,
-            width, height, Type_UD, NULL, DEF_HORIZ_STRIDE,
+            width, height, Type_UD,
             DeclareType::Tmp, regVar->getNonTransientBaseRegVar (), NULL, 0);
 
     if( failSafeSpill_ )
@@ -1740,7 +1738,7 @@ SpillManagerGMRF::createMRangeDeclare (
 		createRangeDeclare (
 			name,
             G4_GRF,
-            width, (unsigned short) height, Type_UD, NULL, DEF_HORIZ_STRIDE,
+            width, (unsigned short) height, Type_UD,
             DeclareType::Tmp, region->getBase ()->asRegVar (), NULL, 0);
 
     if( failSafeSpill_ )
@@ -1792,7 +1790,7 @@ SpillManagerGMRF::createMRangeDeclare (
 		createRangeDeclare (
 			name,
             G4_GRF,
-            (unsigned short) width, (unsigned short) height, Type_UD, NULL, DEF_HORIZ_STRIDE,
+            (unsigned short) width, (unsigned short) height, Type_UD,
             DeclareType::Tmp, region->getBase ()->asRegVar (), NULL, 0);
 
     if( failSafeSpill_ )
@@ -4434,7 +4432,7 @@ SpillManagerGMRF::fixSpillFillCode (
 		                    createRangeDeclare (
 			                    name,
                                 G4_GRF,
-                                REG_DWORD_SIZE, 1, Type_UD, NULL, DEF_HORIZ_STRIDE,
+                                REG_DWORD_SIZE, 1, Type_UD,
                                 DeclareType::Tmp, fillRegVar, NULL, 0);
 
 	                    G4_DstRegRegion * mHeaderInputDstRegion =

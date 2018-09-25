@@ -775,7 +775,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
              !(fg.builder->getFCPatchInfo() && 
                fg.builder->getFCPatchInfo()->getFCComposableKernel() &&
                !decl->isLiveIn())) &&
-             !(decl->getIsPreDefArg() &&
+             !(fg.builder->isPreDefArg(decl) &&
                (fg.builder->getIsKernel() ||
                 (fg.getIsStackCallFunc() &&
                  fg.builder->getArgSize() == 0)))) ||
@@ -789,7 +789,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 #endif
         }
         if ((decl->isOutput() == true &&
-            !(decl->getIsPreDefRet() &&
+            !(fg.builder->isPreDefRet(decl) &&
                (fg.builder->getIsKernel() ||
                 (fg.getIsStackCallFunc() &&
                  fg.builder->getRetVarSize() == 0)))) ||

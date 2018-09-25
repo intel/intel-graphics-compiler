@@ -1796,9 +1796,6 @@ class G4_Declare
 
     uint16_t hasFileScope : 1;     // has a file scope (relevant for CISA 3.0+)
     uint16_t isOldFPDcl : 1;
-    uint16_t isPreDefArg : 1;
-    uint16_t isPreDefRet : 1;
-    uint16_t isPreDefFEStackVar : 1;
     uint16_t isFretLoc : 1;
     // fake declare representing the life interval of a subroutine call, used by augmentation
     uint16_t isScallDcl : 1;    
@@ -1884,10 +1881,7 @@ public:
         startID = 0;
 
         isOldFPDcl = false;
-        isPreDefArg = false;
-        isPreDefRet = false;
         isFretLoc = false;
-        isPreDefFEStackVar = false;
         doNotSpill = false;
         isScallDcl = false;
         capableOfReuse = false;
@@ -1944,9 +1938,6 @@ public:
 
     void resizeNumRows( unsigned int numrows )
     {
-        MUST_BE_TRUE( ( this->getIsPreDefArg() || this->getIsPreDefRet() ),
-            "Dcl other than pre-defined arg/ret cannot be resized" );
-
         int byteSize = numrows * GENX_GRF_REG_SIZ;
         setTotalElems(byteSize / getElemSize());
     }
@@ -2115,15 +2106,6 @@ public:
     void setOldFPDcl()          {isOldFPDcl = true;}
     bool getOldFPDcl()          { return isOldFPDcl;}
 
-    void setIsPreDefArg()      { isPreDefArg = true; }
-    bool getIsPreDefArg()      { return isPreDefArg; }
-
-    void setIsPreDefRet()      { isPreDefRet = true; }
-    bool getIsPreDefRet()      { return isPreDefRet; }
-
-    void setIsPreDefFEStackVar() { isPreDefFEStackVar = true; }
-    bool getIsPreDefFEStackVar() { return isPreDefFEStackVar; }
-
     void setDoNotSpill()        { doNotSpill = true; }
     bool isDoNotSpill() const   { return doNotSpill; }
 
@@ -2159,7 +2141,6 @@ public:
         // These variables are specially treated because their declaration is created
         // first and only then kernel attribute will be read that determines their
         // size (32-bit/64-bit).
-        MUST_BE_TRUE(getIsPreDefFEStackVar(), "Cannot change type of non-FE_SP var");
         elemType = Type_UQ;
     }
 
