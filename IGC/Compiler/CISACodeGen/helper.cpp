@@ -1236,6 +1236,7 @@ bool DSDualPatchEnabled(class CodeGenContext* ctx)
 {
     return ctx->platform.supportDSDualPatchDispatch() &&
         ctx->platform.WaDisableDSDualPatchMode() &&
+        !(ctx->m_DriverInfo.APIDisableDSDualPatchDispatch()) &&
         IGC_IS_FLAG_DISABLED(DisableDSDualPatch);
 }
 

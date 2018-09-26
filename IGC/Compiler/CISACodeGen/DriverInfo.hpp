@@ -216,6 +216,9 @@ public:
 
     /// Check if the stateful token is supported
     virtual bool SupportStatefulToken() const { return false; }
+
+    /// Disables dual patch dispatch for APIs that don't use it
+    virtual bool APIDisableDSDualPatchDispatch() const { return false; }
 };
 
 }//namespace IGC
