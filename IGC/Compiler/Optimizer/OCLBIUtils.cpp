@@ -29,9 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "Compiler/DebugInfo/DebugInfoUtils.hpp"
 
-// For OCL precision
-#include "BiFModule/Headers/intel_ext.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Instructions.h"
 #include "common/LLVMWarningsPop.hpp"

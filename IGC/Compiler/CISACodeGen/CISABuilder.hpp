@@ -26,8 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #include "Compiler/CISACodeGen/CISACodeGen.h"
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
-
-
 #include "Compiler/CISACodeGen/helper.h"
 
 #include "visa_wa.h"
