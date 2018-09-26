@@ -235,10 +235,24 @@ CVariable* CShader::CreateSP(bool ptr64bits)
 void CShader::InitKernelStack(bool ptr64bits)
 {
     CreateSP(ptr64bits);
-    ImplicitArgs kerArgs(*entry, m_pMdUtils);
-    // Pre-condition: all kernel arguments have been created already.
-    auto kerArg = kerArgs.getImplicitArg(*entry, ImplicitArg::ArgType::PRIVATE_BASE);
+    ImplicitArgs implicitArgs(*entry, m_pMdUtils);
+    unsigned numPushArgs = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
+    unsigned numImplicitArgs = implicitArgs.size();
+    unsigned numFuncArgs = entry->getArgumentList().size() - numImplicitArgs - numPushArgs;
+
+    Argument* kerArg = nullptr;
+    llvm::Function::arg_iterator arg = entry->arg_begin();
+    for (unsigned i = 0; i < numFuncArgs; ++i, ++arg);
+    for (unsigned i = 0; i < numImplicitArgs; ++i, ++arg) {
+        ImplicitArg implicitArg = implicitArgs[i];
+        if (implicitArg.getArgType() == ImplicitArg::ArgType::PRIVATE_BASE)
+        {
+            kerArg = (&*arg);
+            break;
+        }
+    }
     assert(kerArg);
+
     CVariable* pHWTID = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1);
     encoder.SetSrcRegion(0, 0, 1, 0);
     encoder.SetSrcSubReg(0, 5);
