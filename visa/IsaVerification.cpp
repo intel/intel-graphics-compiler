@@ -2578,7 +2578,10 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
              }
 
              surface = getPrimitiveOperand<uint8_t>(inst, i++);
-             REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for OWORD_LD*/MEDIA_ST");
+             if (getGenxPlatform() < GENX_ICL)
+             {
+                 REPORT_INSTRUCTION(options, 0 != surface, "Surface T0 (the SLM surface) is not allowed for OWORD_LD*/OWORD_ST");
+             }
              REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->surface_count,
                  "CISA dataport instruction uses an undeclared surface.");
 
