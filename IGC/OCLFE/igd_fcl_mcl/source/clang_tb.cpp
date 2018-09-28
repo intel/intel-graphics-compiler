@@ -191,7 +191,7 @@ namespace FCL
 			keyName,
 			&value,
 			sizeof(value));
-        isSet = isSet;
+		isSet = isSet;
 
 		return(value[0] == 1);
 	}
@@ -368,7 +368,7 @@ namespace FCL
 	}
 
 } // namespace FCL
-/// pk this ends here
+ /// pk this ends here
 #endif
 
 #ifndef WIN32
@@ -567,11 +567,11 @@ namespace TC
 #else
 				// Both 32 and 64 bit for non-Windows OS
 				CCModule.pModule = dlopen(CCModule.pModuleName, RTLD_NOW);
-                if (NULL == CCModule.pModule)
-                {
-                    // Try to load with old name. See header file for explanation.
-                    CCModule.pModule = dlopen(CCModule.pModuleOldName, RTLD_NOW);
-                }
+				if (NULL == CCModule.pModule)
+				{
+					// Try to load with old name. See header file for explanation.
+					CCModule.pModule = dlopen(CCModule.pModuleOldName, RTLD_NOW);
+				}
 				if (NULL != CCModule.pModule)
 				{
 					CCModule.pCompile = (CCModuleStruct::PFcnCCCompile)dlsym(CCModule.pModule, "Compile");
@@ -700,69 +700,71 @@ namespace TC
 	Output:
 
 	\*****************************************************************************/
-	unsigned int GetOclCVersionFromOptions(const char* pOptions, const char* pInternalOptions, 
-                                           const std::string& oclVersion /*OCL runtime API version*/, 
-                                           std::string& exceptString)
+	unsigned int GetOclCVersionFromOptions(const char* pOptions, const char* pInternalOptions,
+		const std::string& oclVersion /*OCL runtime API version*/,
+		std::string& exceptString)
 	{
-        exceptString.clear();
+		exceptString.clear();
 
-        if(pOptions == nullptr){
-            return 0; // no options (i.e. no options from client application)
-        }
+		if (pOptions == nullptr) {
+			return 0; // no options (i.e. no options from client application)
+		}
 
 		std::string optName = "-cl-std="; // opt that we are looking for
 		unsigned int device_version = atoi(oclVersion.c_str());
 
 		const char* optSubstring = strstr(pOptions, optName.c_str());
-        if(optSubstring == nullptr){
-            return 0 ; // -cl-std not specified
-        }
+		if (optSubstring == nullptr) {
+			return 0; // -cl-std not specified
+		}
 
-        bool validate = true;
-        if((pInternalOptions != nullptr) && (strstr(pInternalOptions, "-force-cl-std") != nullptr)){
-            // we're forcing the -cl-std version internally, so no need for validating it
-            validate = false;
-        }
+		bool validate = true;
+		if ((pInternalOptions != nullptr) && (strstr(pInternalOptions, "-force-cl-std") != nullptr)) {
+			// we're forcing the -cl-std version internally, so no need for validating it
+			validate = false;
+		}
 
-        const char * optValue = optSubstring + optName.size();
-        const char * end = optValue + strlen(optValue);
+		const char * optValue = optSubstring + optName.size();
+		const char * end = optValue + strlen(optValue);
 
-        // parse
-        std::string invalidFormatMessage = "Invalid format of -cl-std option, expected -cl-std=CLMAJOR.MINOR";
-        auto isNumeric = [](char v){ return (v >= '0') && (v <= '9'); };
-        if(false == ((end - optValue >= 5) && (optValue[0] == 'C') && (optValue[1] == 'L') && isNumeric(optValue[2]) 
-                                           && (optValue[3] == '.') && isNumeric(optValue[4])
-                     )
-           ){
-            exceptString = invalidFormatMessage;
-            return 0;
-        }
+		// parse
+		std::string invalidFormatMessage = "Invalid format of -cl-std option, expected -cl-std=CLMAJOR.MINOR";
+		auto isNumeric = [](char v) { return (v >= '0') && (v <= '9'); };
+		if (false == ((end - optValue >= 5) && (optValue[0] == 'C') && (optValue[1] == 'L') && isNumeric(optValue[2])
+			&& (optValue[3] == '.') && isNumeric(optValue[4])
+			)
+			) {
+			exceptString = invalidFormatMessage;
+			return 0;
+		}
 
-        unsigned int retVersion = 0;
-        // subverions
-        if((end - optValue >= 7) && (optValue[5] != ' ')){
-            if((optValue[5] == '.' ) || isNumeric(optValue[6])){
-                retVersion += optValue[6] - '0';
-            }else if (isNumeric(optValue[5])){
-                retVersion += optValue[5] - '0';
-            }else{
-                exceptString = invalidFormatMessage;
-                return 0;
-            }
-        }
+		unsigned int retVersion = 0;
+		// subverions
+		if ((end - optValue >= 7) && (optValue[5] != ' ')) {
+			if ((optValue[5] == '.') || isNumeric(optValue[6])) {
+				retVersion += optValue[6] - '0';
+			}
+			else if (isNumeric(optValue[5])) {
+				retVersion += optValue[5] - '0';
+			}
+			else {
+				exceptString = invalidFormatMessage;
+				return 0;
+			}
+		}
 
-        retVersion += 100 * (optValue[2] - '0') + 10 * (optValue[4] - '0');
+		retVersion += 100 * (optValue[2] - '0') + 10 * (optValue[4] - '0');
 
-        if(validate == false){
-            return retVersion;
-        }
+		if (validate == false) {
+			return retVersion;
+		}
 
-        if(device_version < retVersion){
-            exceptString = "-cl-std OpenCLC version greater than OpenCL (API) version";
-            return 0;
-        }
+		if (device_version < retVersion) {
+			exceptString = "-cl-std OpenCLC version greater than OpenCL (API) version";
+			return 0;
+		}
 
-        return retVersion;
+		return retVersion;
 	}
 
 	/*****************************************************************************\
@@ -865,7 +867,7 @@ namespace TC
 		const SElf64SectionHeader* pSectionHeader = pElfReader->GetSectionHeader(1);
 		if (NULL == pSectionHeader)
 		{
-            assert("pSectionHeader cannot be NULL");
+			assert("pSectionHeader cannot be NULL");
 		}
 		if (pSectionHeader->Type == SH_TYPE_OPENCL_SOURCE)
 		{
@@ -911,75 +913,77 @@ namespace TC
 		EnsureProperPCH(pClangArgs, pInternalOptions, exceptString);
 	}
 
-    std::string FormatExtensionsString(const std::vector<std::string> &extensions)
-    {
-        std::stringstream output;
+	std::string FormatExtensionsString(const std::vector<std::string> &extensions)
+	{
+		std::stringstream output;
 
-        if (!extensions.empty())
-        {
-            output << "-cl-ext=-all,";
-            output << "+" << extensions[0];
-        }
+		if (!extensions.empty())
+		{
+			output << "-cl-ext=-all,";
+			output << "+" << extensions[0];
+		}
 
-        for (unsigned i = 1; i < extensions.size(); i++)
-            output << ",+" << extensions[i];
+		for (unsigned i = 1; i < extensions.size(); i++)
+			output << ",+" << extensions[i];
 
-        output.flush();
-        return output.str();
-    }
+		output.flush();
+		return output.str();
+	}
 
-    std::string GetListOfExtensionsFromInternalOptions(const char *pInternalOptions){
-        if(pInternalOptions == nullptr){
-            return std::string{};
-        }
+	std::string GetListOfExtensionsFromInternalOptions(const char *pInternalOptions) {
+		if (pInternalOptions == nullptr) {
+			return std::string{};
+		}
 
-        const char * beg = strstr(pInternalOptions, "-cl-ext=");
-        if(beg == nullptr){
-            return std::string{};
-        }
+		const char * beg = strstr(pInternalOptions, "-cl-ext=");
+		if (beg == nullptr) {
+			return std::string{};
+		}
 
-        const char * end = strstr(beg, " ");
-        if(end == nullptr){
-            // cl-ext fills the rest of the string
-            return std::string(beg);
-        }
+		const char * end = strstr(beg, " ");
+		if (end == nullptr) {
+			// cl-ext fills the rest of the string
+			return std::string(beg);
+		}
 
-        return std::string{beg, end};
-    }
+		return std::string{ beg, end };
+	}
 
-    std::string GetCDefinesFromInternalOptions(const char *pInternalOptions){
-        if(pInternalOptions == nullptr){
-            return std::string{};
-        }
+	std::string GetCDefinesFromInternalOptions(const char *pInternalOptions) {
+		if (pInternalOptions == nullptr) {
+			return std::string{};
+		}
 
-        std::string internalDefines = "";
+		std::string internalDefines = "";
 
-        const char * beg = strstr(pInternalOptions, "-D");
-        const char * end = nullptr;
-        while(beg != nullptr){
-            if((beg == pInternalOptions) || (beg[-1] == ' ')){
-                end = strstr(beg, " ");
-                if(end == nullptr){
-                    if(beg[2] != '\0'){                    
-                        // more than just -D
-                        internalDefines += std::string(beg);
-                    }
-                    break;
-                }else{
-                    if(end - beg > 2){
-                        internalDefines += std::string(beg, end);
-                    }
-                }
-                internalDefines += " ";
-            }else{
-                end = beg + 2; // -D
-            }
+		const char * beg = strstr(pInternalOptions, "-D");
+		const char * end = nullptr;
+		while (beg != nullptr) {
+			if ((beg == pInternalOptions) || (beg[-1] == ' ')) {
+				end = strstr(beg, " ");
+				if (end == nullptr) {
+					if (beg[2] != '\0') {
+						// more than just -D
+						internalDefines += std::string(beg);
+					}
+					break;
+				}
+				else {
+					if (end - beg > 2) {
+						internalDefines += std::string(beg, end);
+					}
+				}
+				internalDefines += " ";
+			}
+			else {
+				end = beg + 2; // -D
+			}
 
-            beg = strstr(end, "-D");
-        }
+			beg = strstr(end, "-D");
+		}
 
-        return internalDefines;
-    }
+		return internalDefines;
+	}
 
 	/*****************************************************************************\
 
@@ -1001,11 +1005,11 @@ namespace TC
 		m_cthBuffer = llvm::LoadCharBufferFromResource(IDR_CTH_H, "H", CTHeaderSize);
 		assert(m_cthBuffer && "Error loading Opencl_cth.h");
 
-        if (m_cthBuffer)
-        {
-            // Process the CT Header
-            assert(CTHeaderSize > 0 && "Resource for the CT Header is empty");
-            assert(m_cthBuffer[CTHeaderSize-1] == '\0' && "Resource for the CT Header is not null terminated");
+		if (m_cthBuffer)
+		{
+			// Process the CT Header
+			assert(CTHeaderSize > 0 && "Resource for the CT Header is empty");
+			assert(m_cthBuffer[CTHeaderSize - 1] == '\0' && "Resource for the CT Header is not null terminated");
 
 			pArgs->inputHeaders.push_back(m_cthBuffer);
 			pArgs->inputHeadersNames.push_back("CTHeader.h");
@@ -1013,157 +1017,418 @@ namespace TC
 		}
 	}
 
-  /*****************************************************************************\
+	/**********************************************************************\
 
-  Function:
-  CClangTranslationBlock::TranslateClang
+	Function:
+	GetParam
 
-  Description:
-  Translates from CL to LL/BC
+	Description:
+	takes first parameter from Head
+	and assigns the rest of parameters to Tail
+	Head  : input string with list / output with head
+	Tail  : output string
 
-  Input:
+	returns Head or NULL if Head is empty
 
-  Output:
+	\**********************************************************************/
+	char *GetParam(char *Head, char *Tail) {
+		static char Delim = ' ';
+		static char Slash = '\\';
+		char Quote = 0;
+		char PrevChar = 0;
+		char *Pos = NULL;
+		int Length = 0;
 
-  \*****************************************************************************/
-  bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs* pInputArgs,
-    STB_TranslateOutputArgs* pOutputArgs, std::string& exceptString, const char* pInternalOptions)
-  {
-    // additional clang options
-    std::string optionsEx = pInputArgs->optionsEx;
-    std::string options = pInputArgs->options;
-    optionsEx.append(" -disable-llvm-optzns -fblocks -I. -D__ENABLE_GENERIC__=1");
+		if (Head == NULL)
+		{
+			*Tail = 0;
+			goto ERROR_HANDLER;
+		}
 
-    switch (m_OutputFormat)
-    {
-    case TB_DATA_FORMAT_LLVM_TEXT:
-      optionsEx += " -emit-llvm";
-      break;
-    case TB_DATA_FORMAT_LLVM_BINARY:
-      optionsEx += " -emit-llvm-bc";
-      break;
-    case TB_DATA_FORMAT_SPIR_V:
-      optionsEx += " -emit-spirv";
+		Quote = Delim;
+		Pos = Head;
+		Length = (int)strlen(Head);
 
-      // There's no way to get Clang version from the DLL, 
-      // so in the transition period we must rely on the fact that
-      // we will emit spirv as intermediate only with Clang5.0 (and later). 
-      // TODO: Remove this and related code in cth after all platforms switch to 5.0 from 4.0.
-      optionsEx += " -D__CLANG_50__";
-      break;
-    default:
-      break;
-    }
+		while (*Pos == Delim)
+		{
+			Pos++;
+			Length--;
+		}
+		if (*Pos == 0)
+		{
+			*Tail = 0;
+			Head = NULL;
+			goto ERROR_HANDLER;
+		}
 
-    if (options.find("-triple") == std::string::npos) {
-      // if target triple not explicitly set
-      if (pInputArgs->b32bit)
-      {
-        optionsEx += " -D__32bit__=1";
-        options += " -triple spir";
-      }
-      else
-      {
-        options += " -triple spir64";
-      }
-    }
+		switch (*Pos)
+		{
+		case '\"':
+			Quote = *Pos;
+			break;
+		default: break;
+		}
 
-    if (options.find("-gline-tables-only") != std::string::npos)
-    {
-      optionsEx += " -debug-info-kind=line-tables-only -dwarf-version=4";
-    }
+		do
+		{
+			PrevChar = *Pos;
+			Pos++;
+			Length--;
+			switch (*Pos)
+			{
+			case '\"':
+				if (PrevChar != Slash)
+				{
+					if (Quote == Delim)
+					{
+						Quote = *Pos; // Open quote string
+					}
+					else
+					{
+						Quote = Delim; // Close quote string
+					}
+				}
+				break;
+			default: break;
+			}
+		} while ((*Pos != 0)
+			&& ((*Pos != Delim)
+				|| ((*Pos == Delim) && (Quote != Delim))));
+		if (*Pos == Delim)
+		{
+			*Pos = 0; // finish Head
+			Pos++; // skip zero
+			while (*Pos == Delim)
+			{
+				Pos++; // skip multiple delimiters
+				Length--;
+			}
+			if (*Pos != 0)
+			{
+				strcpy_s(Tail, Length, Pos); // Assign the rest of params to Tail
+			}
+			else
+			{
+				*Tail = 0;
+			}
+		}
+		else
+		{
+			*Tail = 0;
+		}
 
-    std::string extensionsFromInternalOptions = GetListOfExtensionsFromInternalOptions(pInternalOptions);
-    std::string extensions;
+		while (*Head == Delim)
+		{
+			Head++;
+		}
 
-    // if extensions list is passed in via internal options, it will override the default ones.
-    if (extensionsFromInternalOptions.size() != 0)
-    {
-      extensions = extensionsFromInternalOptions;
-      optionsEx += " " + extensionsFromInternalOptions;
-    }
-    else
-    {
-      extensions = FormatExtensionsString(m_Extensions);
-      optionsEx += " " + extensions;
-    }
+	ERROR_HANDLER:
+		return Head;
+	}
 
-    // get additional -D flags from internal options
-    optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
+	/**********************************************************************\
 
-    if (extensions.find("cl_intel_subgroups_short") != std::string::npos)
-    {
-      optionsEx += " -Dcl_intel_subgroups_short";
-    }
-    if (extensions.find("cl_intel_media_block_io") != std::string::npos)
-    {
-      optionsEx += " -Dcl_intel_media_block_io";
-    }
-    if (extensions.find("cl_intel_device_side_avc_motion_estimation") != std::string::npos)
-    {
-      optionsEx += " -Dcl_intel_device_side_avc_motion_estimation";
-    }
-    if (extensions.find("cl_intel_64bit_global_atomics_placeholder") != std::string::npos)
-    {
-        optionsEx += " -Dcl_intel_64bit_global_atomics_placeholder";
-    }
+	Class Function:
+	BuildOptionsAreValid
 
-    optionsEx += " -D__IMAGE_SUPPORT__ -D__ENDIAN_LITTLE__";
+	Description:
+	Walks through options and makes sure they're ok
 
-    IOCLFEBinaryResult *pResultPtr = NULL;
-    int res = m_CCModule.pCompile(pInputArgs->pszProgramSource,
-      (const char**)pInputArgs->inputHeaders.data(),
-      (unsigned int)pInputArgs->inputHeaders.size(),
-      (const char**)pInputArgs->inputHeadersNames.data(),
-      NULL,
-      0,
-      options.c_str(),
-      optionsEx.c_str(),
-      pInputArgs->oclVersion.c_str(),
-      &pResultPtr);
+	\**********************************************************************/
 
-    Utils::FillOutputArgs(pResultPtr, pOutputArgs, exceptString);
-    if (!exceptString.empty()) // str != "" => there was an exception. skip further code and return. 
-    {
-      return false;
-    }
+	int BuildOptionsAreValid(const char *options, std::string& exceptString)
+	{
+		int  retVal = 0;
 
-    // if -dump-opt-llvm is enabled dump the llvm output to the file
-    size_t dumpOptPosition = options.find("-dump-opt-llvm");
-    if ((0 == res) && dumpOptPosition != std::string::npos)
-    {
-      std::string dumpFileName;
-      std::istringstream iss(options.substr(dumpOptPosition));
-      iss >> dumpFileName;
-      size_t equalSignPosition = dumpFileName.find('=');
-      if (equalSignPosition != std::string::npos)
-      {
-        dumpFileName = dumpFileName.substr(equalSignPosition + 1);
-        // dump the archive
-        FILE* file = fopen(dumpFileName.c_str(), "wb");
-        if (file != NULL)
-        {
-          fwrite(pOutputArgs->pOutput, pOutputArgs->OutputSize, 1, file);
-          fclose(file);
-        }
-      }
-      else
-      {
-        std::string errorString = "\nWarning: File name not specified with the -dump-opt-llvm option.\n";
+		char*   nextTok = NULL;
+		char*   pParam = NULL;
+		char*   pBuffer = NULL;
+		bool    ignoreNextToken = false;
+		bool    checkBinaryType = false;
+		bool    isCommonOption = false;
+
+		if (options)
+		{
+			size_t  optionsSize = strlen(options) + 1;
+			//alocate memory for pBuffer and nextTok
+			pBuffer = new char[optionsSize];
+			nextTok = new char[optionsSize];
+
+			strcpy_s(pBuffer, optionsSize, options);
+			pParam = GetParam(pBuffer, nextTok);
+
+			if (pParam)
+			{
+				do
+				{
+					if (checkBinaryType)
+					{
+						// If "spir" does not follow the -x option, we must fail
+						if ((strcmp(pParam, "spir") && strcmp(pParam, "spir64")))
+						{
+							// Invalid option - break out of the loop and return 
+							// CL_INVALID_BUILD_OPTIONS
+							retVal = -43;
+							std::string invalidOption(pParam);
+
+							exceptString += "\nUnrecognized build options: " + invalidOption;
+							break;
+						}
+
+						// reset
+						checkBinaryType = false;
+					}
+					else if (ignoreNextToken == false)
+					{
+						// Check for common Intel OpenCL CPU/GPU options
+						isCommonOption =
+							(strcmp(pParam, "-cl-single-precision-constant") == 0) ||
+							(strcmp(pParam, "-cl-denorms-are-zero") == 0) ||
+							(strcmp(pParam, "-cl-fp32-correctly-rounded-divide-sqrt") == 0) ||
+							(strcmp(pParam, "-cl-opt-disable") == 0) ||
+							(strcmp(pParam, "-cl-strict-aliasing") == 0) ||
+							(strcmp(pParam, "-cl-mad-enable") == 0) ||
+							(strcmp(pParam, "-cl-no-signed-zeros") == 0) ||
+							(strcmp(pParam, "-cl-unsafe-math-optimizations") == 0) ||
+							(strcmp(pParam, "-cl-finite-math-only") == 0) ||
+							(strcmp(pParam, "-cl-fast-relaxed-math") == 0) ||
+							(strcmp(pParam, "-w") == 0) ||
+							(strcmp(pParam, "-Werror") == 0) ||
+							(strcmp(pParam, "-cl-std=CL1.1") == 0) ||
+							(strcmp(pParam, "-cl-std=CL1.2") == 0) ||
+							(strcmp(pParam, "-cl-std=CL2.0") == 0) ||
+							(strcmp(pParam, "-cl-std=CL2.1") == 0) ||
+							(strcmp(pParam, "-cl-uniform-work-group-size") == 0) || //it's work only for OCL version greater than 1.2
+							(strcmp(pParam, "-cl-kernel-arg-info") == 0) ||
+							(strncmp(pParam, "-x", 2) == 0) ||
+							(strncmp(pParam, "-D", 2) == 0) ||
+							(strncmp(pParam, "-I", 2) == 0) ||
+							(strncmp(pParam, "-spir-std=", 10) == 0) ||
+							(strcmp(pParam, "-gline-tables-only") == 0) ||
+							(strcmp(pParam, "-cl-intel-greater-than-4GB-buffer-required") == 0) || //used in old version of driver
+							(strcmp(pParam, "-triple") == 0) || //used in NEO
+							(strcmp(pParam, "-dwarf-column-info") == 0) ||
+							(strcmp(pParam, "-cl-intel-debug-info") == 0) ||
+							(strncmp(pParam, "-dump-opt-llvm", 14) == 0) ||
+							(strcmp(pParam, "-cl-no-subgroup-ifp") == 0);
+
+						if (isCommonOption)
+						{
+							// check to see if they used a space immediately after 
+							// the define/include. If they did...
+							if ((strcmp(pParam, "-D") == 0) ||
+								(strcmp(pParam, "-I") == 0))
+							{
+								// ignore next token as it is the define/include
+								ignoreNextToken = true;
+							}
+							else if (strcmp(pParam, "-x") == 0)
+							{
+								// we need to check the next parameter for "spir"
+								checkBinaryType = true;
+							}
+							else if (strcmp(pParam, "-triple") == 0)
+							{
+								checkBinaryType = true;
+							}
+						}
+						// Check for Intel OpenCL CPU options
+						// OCL Kernel Profiler requires "-g" to create debug information for instrumented kernels. 
+						// Without those information OCL Profiler is unable to associate OpenC code with IL instructions.
+						else if ((strcmp(pParam, "-g") == 0) ||
+							(strcmp(pParam, "-profiler") == 0) ||
+							(strncmp(pParam, "-s", 2) == 0))
+						{
+							if (strcmp(pParam, "-s") == 0)
+							{
+								// ignore next token as it is the source path
+								ignoreNextToken = true;
+							}
+						}
+						else
+						{
+							// Invalid option - break out of the loop and return 
+							// CL_INVALID_BUILD_OPTIONS
+							retVal = -43;
+							std::string invalidOption(pParam);
+
+							exceptString += "\nUnrecognized build options: " + invalidOption;
+
+							break;
+						}
+					}
+					else
+					{
+						ignoreNextToken = false;
+					}
+					strcpy_s(pBuffer, optionsSize, nextTok);
+				} while ((pParam = GetParam(pBuffer, nextTok)) != NULL);
+			}
+
+			delete[] pBuffer;
+			delete[] nextTok;
+		}
+		return retVal;
+	}
+
+
+
+	/*****************************************************************************\
+
+	Function:
+	CClangTranslationBlock::TranslateClang
+
+	Description:
+	Translates from CL to LL/BC
+
+	Input:
+
+	Output:
+
+	\*****************************************************************************/
+	bool CClangTranslationBlock::TranslateClang(const TranslateClangArgs* pInputArgs,
+		STB_TranslateOutputArgs* pOutputArgs, std::string& exceptString, const char* pInternalOptions)
+	{
+		// additional clang options
+		std::string optionsEx = pInputArgs->optionsEx;
+		std::string options = pInputArgs->options;
+		optionsEx.append(" -disable-llvm-optzns -fblocks -I. -D__ENABLE_GENERIC__=1");
+
+		switch (m_OutputFormat)
+		{
+		case TB_DATA_FORMAT_LLVM_TEXT:
+			optionsEx += " -emit-llvm";
+			break;
+		case TB_DATA_FORMAT_LLVM_BINARY:
+			optionsEx += " -emit-llvm-bc";
+			break;
+		case TB_DATA_FORMAT_SPIR_V:
+			optionsEx += " -emit-spirv";
+
+			// There's no way to get Clang version from the DLL, 
+			// so in the transition period we must rely on the fact that
+			// we will emit spirv as intermediate only with Clang5.0 (and later). 
+			// TODO: Remove this and related code in cth after all platforms switch to 5.0 from 4.0.
+			optionsEx += " -D__CLANG_50__";
+			break;
+		default:
+			break;
+		}
+
+		if (options.find("-triple") == std::string::npos) {
+			// if target triple not explicitly set
+			if (pInputArgs->b32bit)
+			{
+				optionsEx += " -D__32bit__=1";
+				options += " -triple spir";
+			}
+			else
+			{
+				options += " -triple spir64";
+			}
+		}
+
+		if (options.find("-gline-tables-only") != std::string::npos)
+		{
+			optionsEx += " -debug-info-kind=line-tables-only -dwarf-version=4";
+		}
+
+		std::string extensionsFromInternalOptions = GetListOfExtensionsFromInternalOptions(pInternalOptions);
+		std::string extensions;
+
+		// if extensions list is passed in via internal options, it will override the default ones.
+		if (extensionsFromInternalOptions.size() != 0)
+		{
+			extensions = extensionsFromInternalOptions;
+			optionsEx += " " + extensionsFromInternalOptions;
+		}
+		else
+		{
+			extensions = FormatExtensionsString(m_Extensions);
+			optionsEx += " " + extensions;
+		}
+
+		// get additional -D flags from internal options
+		optionsEx += " " + GetCDefinesFromInternalOptions(pInternalOptions);
+
+		if (extensions.find("cl_intel_subgroups_short") != std::string::npos)
+		{
+			optionsEx += " -Dcl_intel_subgroups_short";
+		}
+		if (extensions.find("cl_intel_media_block_io") != std::string::npos)
+		{
+			optionsEx += " -Dcl_intel_media_block_io";
+		}
+		if (extensions.find("cl_intel_device_side_avc_motion_estimation") != std::string::npos)
+		{
+			optionsEx += " -Dcl_intel_device_side_avc_motion_estimation";
+		}
+		if (extensions.find("cl_intel_64bit_global_atomics_placeholder") != std::string::npos)
+		{
+			optionsEx += " -Dcl_intel_64bit_global_atomics_placeholder";
+		}
+
+		optionsEx += " -D__IMAGE_SUPPORT__ -D__ENDIAN_LITTLE__";
+
+		IOCLFEBinaryResult *pResultPtr = NULL;
+		int res = m_CCModule.pCompile(pInputArgs->pszProgramSource,
+			(const char**)pInputArgs->inputHeaders.data(),
+			(unsigned int)pInputArgs->inputHeaders.size(),
+			(const char**)pInputArgs->inputHeadersNames.data(),
+			NULL,
+			0,
+			options.c_str(),
+			optionsEx.c_str(),
+			pInputArgs->oclVersion.c_str(),
+			&pResultPtr);
+
+		if (0 != BuildOptionsAreValid(options.c_str(), exceptString)) res = -43;
+
+		Utils::FillOutputArgs(pResultPtr, pOutputArgs, exceptString);
+		if (!exceptString.empty()) // str != "" => there was an exception. skip further code and return. 
+		{
+			return false;
+		}
+
+
+
+
+		// if -dump-opt-llvm is enabled dump the llvm output to the file
+		size_t dumpOptPosition = options.find("-dump-opt-llvm");
+		if ((0 == res) && dumpOptPosition != std::string::npos)
+		{
+			std::string dumpFileName;
+			std::istringstream iss(options.substr(dumpOptPosition));
+			iss >> dumpFileName;
+			size_t equalSignPosition = dumpFileName.find('=');
+			if (equalSignPosition != std::string::npos)
+			{
+				dumpFileName = dumpFileName.substr(equalSignPosition + 1);
+				// dump the archive
+				FILE* file = fopen(dumpFileName.c_str(), "wb");
+				if (file != NULL)
+				{
+					fwrite(pOutputArgs->pOutput, pOutputArgs->OutputSize, 1, file);
+					fclose(file);
+				}
+			}
+			else
+			{
+				std::string errorString = "\nWarning: File name not specified with the -dump-opt-llvm option.\n";
 #ifdef LLVM_ON_WIN32
-        pOutputArgs->pErrorString = _strdup(errorString.c_str());
+				pOutputArgs->pErrorString = _strdup(errorString.c_str());
 #else
-        pOutputArgs->pErrorString = strdup(errorString.c_str());
+				pOutputArgs->pErrorString = strdup(errorString.c_str());
 #endif
-        pOutputArgs->ErrorStringSize = errorString.length() + 1;
-      }
-    }
+				pOutputArgs->ErrorStringSize = errorString.length() + 1;
+			}
+		}
 
-    //pResult.release();
-    pResultPtr->Release();
+		//pResult.release();
+		pResultPtr->Release();
 
-    return (0 == res);
-  }
+		return (0 == res);
+	}
 
 	/*****************************************************************************\
 
@@ -1204,11 +1469,11 @@ namespace TC
 		{
 			const SElf64SectionHeader* pSectionHeader = pElfReader->GetSectionHeader(i);
 			assert(pSectionHeader != NULL);
-            if(pSectionHeader == NULL)
-            {
-                SetErrorString("No section header", pOutputArgs);
-                return false;
-            }
+			if (pSectionHeader == NULL)
+			{
+				SetErrorString("No section header", pOutputArgs);
+				return false;
+			}
 
 			if ((pSectionHeader->Type == SH_TYPE_OPENCL_LLVM_ARCHIVE) ||
 				(pSectionHeader->Type == SH_TYPE_OPENCL_LLVM_BINARY))
@@ -1265,7 +1530,7 @@ namespace TC
 		if (!pElfReader.get())
 		{
 			SetErrorString("CElfReader::Create returned NULL\n", pOutputArgs);
-            return false;
+			return false;
 		}
 
 		if (!pElfReader->IsValidElf64(pInputArgs->pInput, pInputArgs->InputSize))
@@ -1363,17 +1628,17 @@ namespace TC
 
 #if defined(IGC_DEBUG_VARIABLES)
 			if (FCL_IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
-            {
-                // Works for all OSes. Creates dir if necessary.
+			{
+				// Works for all OSes. Creates dir if necessary.
 				const char *pOutputFolder = FCL::GetShaderOutputFolder();
-                stringstream ss;
-                char* pBuffer = (char *)pInputArgs->pInput;
-                UINT  bufferSize = pInputArgs->InputSize;
+				stringstream ss;
+				char* pBuffer = (char *)pInputArgs->pInput;
+				UINT  bufferSize = pInputArgs->InputSize;
 
-                // Create hash based on cclang binary output (currently llvm binary; later also spirv).
-                // Hash computed in fcl needs to be same as the one computed in igc.
-                // This is to ensure easy matching .cl files dumped in fcl with .ll/.dat/.asm/... files dumoed in igc.
-                QWORD hash = iSTD::Hash(reinterpret_cast<const DWORD *>(pOutputArgs->pOutput), (DWORD)(pOutputArgs->OutputSize) / 4);
+				// Create hash based on cclang binary output (currently llvm binary; later also spirv).
+				// Hash computed in fcl needs to be same as the one computed in igc.
+				// This is to ensure easy matching .cl files dumped in fcl with .ll/.dat/.asm/... files dumoed in igc.
+				QWORD hash = iSTD::Hash(reinterpret_cast<const DWORD *>(pOutputArgs->pOutput), (DWORD)(pOutputArgs->OutputSize) / 4);
 
 				ss << pOutputFolder;
 				ss << "OCL_"
@@ -1540,14 +1805,15 @@ namespace TC
 		}
 
 		// Find out what GPU platform the driver is running on
-        if(pCreateArgs->pCreateData != nullptr){
-        }else{
-            // assume m_OCL_Ver, etc. will be set-up later
-            SGlobalData globDataTmp = {0};
-            m_GlobalData = globDataTmp;
-            m_HWPlatform = IGFX_UNKNOWN;
-            m_OCL_Ver = "120";
-        }
+		if (pCreateArgs->pCreateData != nullptr) {
+		}
+		else {
+			// assume m_OCL_Ver, etc. will be set-up later
+			SGlobalData globDataTmp = { 0 };
+			m_GlobalData = globDataTmp;
+			m_HWPlatform = IGFX_UNKNOWN;
+			m_OCL_Ver = "120";
+		}
 		m_InputFormat = pCreateArgs->TranslationCode.Type.Input;
 		m_OutputFormat = pCreateArgs->TranslationCode.Type.Output;
 
