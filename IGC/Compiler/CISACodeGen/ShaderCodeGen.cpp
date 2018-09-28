@@ -455,6 +455,8 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
     if (ctx.m_enableSubroutine)
     {
         // Sort functions if subroutine is enabled.
+		mpm.add(llvm::createGlobalDCEPass());
+		mpm.add(new PurgeMetaDataUtils());
         mpm.add(createGenXCodeGenModulePass());
     }
 
