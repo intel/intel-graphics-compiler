@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/NoFolder.h>
 #include <llvm/Pass.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -48,7 +49,7 @@ using namespace IGC::IGCMD;
 
 namespace {
 
-typedef IRBuilder<> BuilderType;
+typedef IRBuilder<llvm::NoFolder> BuilderType;
 
 class GASPropagator;
 
