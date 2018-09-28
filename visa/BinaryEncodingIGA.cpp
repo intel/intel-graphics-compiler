@@ -459,7 +459,7 @@ void BinaryEncodingIGA::DoAll()
 
             if (opSpec->op == Op::INVALID)
             {
-                std::cerr << "INVALID opcode" << ISA_Inst_Table[inst->opcode()].str << std::endl;
+                std::cerr << "INVALID opcode " << G4_Inst_Table[inst->opcode()].str << "\n";
                 ASSERT_USER(false, "INVALID OPCODE.");
                 continue;
             }
