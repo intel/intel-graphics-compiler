@@ -1414,6 +1414,14 @@ void COpenCLKernel::AllocatePayload()
         }
     }
 
+    if (!constantBufferStartSet)
+    {
+        // In case no constants found in loop above:
+        constantBufferStart = offset;
+        AllocateNOSConstants(offset);
+        constantBufferStartSet = true;
+    }
+
     if (!constantBufferEndSet && constantBufferStartSet) {
         constantBufferEnd = offset;
     }
