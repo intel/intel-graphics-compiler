@@ -756,6 +756,18 @@ public:
         builtinR0->getRegVar()->setPhyReg(phyregpool.getGreg(0), 0);
         realR0 = builtinR0;
 
+        if (m_options->getOption(vISA_enablePreemption))
+        {
+            G4_Declare *R0CopyDcl = createTempVar(8, Type_UD, Either, Sixteen_Word);
+            builtinR0 = R0CopyDcl;
+        }
+
+        if (m_options->getOption(vISA_clearScratchWritesBeforeEOT))
+        {
+            // make r0 live out as we may need a dummy move at the end
+            builtinR0->setLiveOut();
+        }
+
         builtinA0 = createDeclareNoLookup(
             "BuiltinA0",
             G4_ADDRESS,
@@ -817,11 +829,7 @@ public:
 
         fcPatchInfo = NULL;
 
-        if (m_options->getOption(vISA_enablePreemption))
-        {
-            G4_Declare *R0CopyDcl = createTempVar(8, Type_UD, Either, Sixteen_Word);
-            builtinR0 = R0CopyDcl;
-        }
+
 
         createPreDefinedVars();
     }

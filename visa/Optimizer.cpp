@@ -7677,8 +7677,6 @@ public:
             if (bb->isLastInstEOT())
             {
                 auto iter = std::prev(bb->end());
-
-                G4_INST* inst = nullptr;
                 if (getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN10)
                 {
                     // an HDC fence is more efficient in this case
@@ -7687,22 +7685,25 @@ public:
                     auto msgDesc = builder.createSendMsgDesc(fenceDesc, extDesc, true, true);
                     auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
                     auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinR0(), 1);
-                    inst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
+                    G4_INST* inst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
                         builder.createImm(extDesc, Type_UD), builder.createImm(fenceDesc, Type_UD), InstOpt_WriteEnable, true,
                         true, msgDesc);
+                    bb->insert(iter, inst);
                 }
                 else
                 {
                     // insert a dumy scratch read
                     auto msgDesc = builder.createSendMsgDesc(desc.value, extDesc, true, false);
                     auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
-                    // it's safe to use r0 here because EOT src must be between r112-r127
-                    auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinR0(), 1);
-                    inst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
+                    // We can use any dst that does not conflcit with EOT src, which must be between r112-r127
+                    auto dstDcl = builder.createHardwiredDeclare(8, Type_UD, 1, 0);
+                    auto dst = builder.Create_Dst_Opnd_From_Dcl(dstDcl, 1);
+                    G4_INST* sendInst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
                         builder.createImm(extDesc, Type_UD), builder.createImm(desc.value, Type_UD), InstOpt_WriteEnable, true,
                         false, msgDesc);
+                    bb->insert(iter, sendInst);
                 }
-                bb->insert(iter, inst);
+
                 builder.instList.clear();
             }
         }
