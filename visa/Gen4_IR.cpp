@@ -7716,13 +7716,8 @@ bool G4_INST::canSrcBeAcc(int srcId, const IR_Builder& builder) const
     else if (getDst()->getType() == Type_HF && src->getType() == Type_F &&
         dstEltSize == 2)
     {
-        // mix mode inst with packed HF dst
-        // this is ok if the dst has .0 offset
-        uint32_t subreg = getDst()->getLinearizedStart() % GENX_GRF_REG_SIZ;
-        if (subreg != 0)
-        {
-            return false;
-        }
+        // no acc for mix mode inst with packed HF dst
+        return false;
     }
 
     if (opcode() == G4_mad && srcId == 0)
