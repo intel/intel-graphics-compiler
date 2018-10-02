@@ -201,8 +201,8 @@ public:
     void emitSimdSize(llvm::Instruction* inst);
     void emitSimdShuffle(llvm::Instruction* inst);
     void emitSimdShuffleDown(llvm::Instruction* inst);
-    void emitSimdBlockRead(llvm::Instruction* inst);
-    void emitSimdBlockWrite(llvm::Instruction* inst);
+    void emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal = nullptr);
+    void emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal = nullptr);
     void emitSimdMediaBlockRead(llvm::Instruction* inst);
     void emitSimdMediaBlockWrite(llvm::Instruction* inst);
     void emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead);

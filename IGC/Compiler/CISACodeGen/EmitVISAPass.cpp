@@ -4569,7 +4569,7 @@ void EmitPass::emitSimdShuffleDown( llvm::Instruction* inst )
     m_encoder->Push();
 }
 
-void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst )
+void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst, llvm::Value* ptrVal )
 {
     Value* llPtr    = inst->getOperand( 0 );
     Value* dataPtr  = inst->getOperand( 1 );
@@ -4577,7 +4577,17 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst )
     PointerType* ptrType = cast<PointerType>( llPtr->getType() );
     ResourceDescriptor resource = GetResourceVariable(llPtr);
 
-    CVariable* src = GetSymbol(llPtr);
+    CVariable* src = nullptr;
+    if (ptrVal)
+    {
+        src = GetSymbol(ptrVal);
+        src = m_currShader->BitCast(src, GetUnsignedType(src->GetType()));
+    }
+    else
+    {
+        src = GetSymbol(llPtr);
+    }
+
     CVariable* data = GetSymbol(dataPtr);
     bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
 
@@ -4721,33 +4731,20 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst )
         // but since this is a SIMD opcode and we're  compiling SIMD8, SIMD16,
         // we don't expect to see a 1 OWORD write.
 
-        // shr( 16 ) r62.0<1>:ud r60.0<0; 1, 0>:ud 0x4:uw{ Align1, H1, NoMask }
-        // mov( 1 ) r64.2<1>:ud r62.0<0; 1, 0>:ud{ Align1, NoMask, Compacted }
+        // shr( 1 ) r64.2<1>:ud r60.0<0; 1, 0>:ud 0x4:uw{ Align1, H1, NoMask }
         // mov( 16 ) r65.0<1>:ud r54.0<8; 8, 1>:ud{ Align1, NoMask, Compacted }
         // and( 1 ) r64.5<1>:ud r0.5<0; 1, 0>:ud 0x3ff:ud{ Align1, NoMask }
         // send( 16 ) null<1>:uw r64 0xa 0x60a03ff:ud{ Align1, NoMask } oword block write
 
         CVariable* src0shifted = m_currShader->GetNewVariable(
-            numLanes( m_SimdMode ),
-            ISA_TYPE_UD,
-            EALIGN_DWORD );
-
-        m_encoder->SetSimdSize( m_SimdMode );
-        m_encoder->SetNoMask();
-        m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-        m_encoder->Shr( src0shifted, src, m_currShader->ImmToVariable( 4, ISA_TYPE_UD ) );
-        m_encoder->Push();
-
-        m_encoder->SetSimdSize( SIMDMode::SIMD1 );
-        m_encoder->SetNoMask();
-        m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-
-        CVariable* pTempVar = m_currShader->GetNewVariable(
             numLanes( SIMDMode::SIMD1 ),
             ISA_TYPE_UD,
             EALIGN_DWORD );
 
-        m_encoder->Copy( pTempVar, src0shifted );
+        m_encoder->SetSimdSize( SIMDMode::SIMD1 );
+        m_encoder->SetNoMask();
+        m_encoder->SetSrcRegion( 0, 0, 1, 0 );
+        m_encoder->Shr( src0shifted, src, m_currShader->ImmToVariable( 4, ISA_TYPE_UD ) );
         m_encoder->Push();
 
         uint32_t srcOffset   = 0;
@@ -4779,7 +4776,7 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst )
                 assert( 0 );
             }
 
-            m_encoder->OWStore( data, resource.m_surfaceType, resource.m_resource, pTempVar, bytesToRead, srcOffset );
+            m_encoder->OWStore( data, resource.m_surfaceType, resource.m_resource, src0shifted, bytesToRead, srcOffset );
             srcOffset = srcOffset + bytesToRead;
             m_encoder->Push();
 
@@ -4788,19 +4785,29 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst )
                 m_encoder->SetSimdSize( SIMDMode::SIMD1 );
                 m_encoder->SetNoMask();
                 m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-                m_encoder->Add( pTempVar, pTempVar, m_currShader->ImmToVariable( ( bytesToRead / 16 ), ISA_TYPE_UD ) ); // (bytesToRead / 16) is units of OWORDS
+                m_encoder->Add(src0shifted, src0shifted, m_currShader->ImmToVariable( ( bytesToRead / 16 ), ISA_TYPE_UD ) ); // (bytesToRead / 16) is units of OWORDS
                 m_encoder->Push();
             }
         }
     }
 }
 
-void EmitPass::emitSimdBlockRead( llvm::Instruction* inst )
+void EmitPass::emitSimdBlockRead( llvm::Instruction* inst, llvm::Value* ptrVal )
 {
     Value* llPtr          = inst->getOperand( 0 );
     PointerType* ptrType  = cast<PointerType>( llPtr->getType() );
     ResourceDescriptor resource = GetResourceVariable(llPtr);
-    CVariable* src = GetSymbol(llPtr);
+
+    CVariable* src = nullptr;
+    if (ptrVal)
+    {
+        src = GetSymbol(ptrVal);
+        src = m_currShader->BitCast(src, GetUnsignedType(src->GetType()));
+    }
+    else
+    {
+        src = GetSymbol(llPtr);
+    }
 
 	// If it is SLM, use OW-aligned OW address. The byte address (default)
 	// must be right-shifted by 4 bits to be OW address!
@@ -4959,14 +4966,13 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst )
 			// It is OW-aligned OW address
 			m_encoder->Shr(pTempVar, src, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
 		}
-		else {
-			m_encoder->Copy(pTempVar, src);
-		}
+
         m_encoder->Push();
 
         uint32_t dstSubReg      = 0;
         uint32_t bytesToRead    = 0;
         uint32_t bytesRemaining = totalBytes;
+        bool isFirstIter = true;
         while ( bytesRemaining )
         {
             if ( bytesRemaining >= 128 )
@@ -4993,9 +4999,11 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst )
             {
                 assert( 0 );
             }
+
+            bool useSrc = isFirstIter && !isToSLM;
             m_encoder->SetDstSubVar( dstSubReg );
             dstSubReg = dstSubReg+4;
-            m_encoder->OWLoad( m_destination, resource, pTempVar, isToSLM, bytesToRead );
+            m_encoder->OWLoad( m_destination, resource, useSrc ? src : pTempVar, isToSLM, bytesToRead );
             m_encoder->Push();
 
             if ( bytesRemaining )
@@ -5004,9 +5012,10 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst )
                 m_encoder->SetSimdSize( SIMDMode::SIMD1 );
                 m_encoder->SetNoMask();
                 m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-                m_encoder->Add( pTempVar, pTempVar,  m_currShader->ImmToVariable(  offset, ISA_TYPE_UD ) );
+                m_encoder->Add( pTempVar, useSrc ? src : pTempVar,  m_currShader->ImmToVariable(  offset, ISA_TYPE_UD ) );
                 m_encoder->Push();
             }
+            isFirstIter = false;
         }
     }
 }

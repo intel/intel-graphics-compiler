@@ -1107,6 +1107,11 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I)
                 MatchShuffleBroadCast(*CI) ||
                 MatchWaveShuffleIndex(*CI);
             break;
+        case GenISAIntrinsic::GenISA_simdBlockRead:
+        case GenISAIntrinsic::GenISA_simdBlockWrite:
+            match = MatchBlockReadWritePointer(*CI) || 
+                MatchSingleInstruction(*CI);
+            break;
         default:
             match = MatchSingleInstruction(I);
             // no pattern for the rest of the intrinsics
@@ -1710,6 +1715,59 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
         AddPattern(pattern);
     }
     return found;
+}
+
+// match simdblockRead/Write with preceding inttoptr if possible 
+// to save a copy move
+bool CodeGenPatternMatch::MatchBlockReadWritePointer(llvm::GenIntrinsicInst& I)
+{
+    struct BlockReadWritePointerPattern : public Pattern
+    {
+        GenIntrinsicInst* inst;
+        Value* offset;
+        explicit BlockReadWritePointerPattern(GenIntrinsicInst* I, Value* ofst) : inst(I), offset(ofst) {}
+        virtual void Emit(EmitPass* pass, const DstModifier& modifier)
+        {
+            switch (inst->getIntrinsicID())
+            {
+                case GenISAIntrinsic::GenISA_simdBlockRead:
+                    pass->emitSimdBlockRead(inst, offset);
+                    break;
+                case GenISAIntrinsic::GenISA_simdBlockWrite:
+                    pass->emitSimdBlockWrite(inst, offset);
+                    break;
+                default:
+                    assert(false && "unexpected intrinsic");
+            }
+        }
+    };
+
+    if (I.getIntrinsicID() != GenISAIntrinsic::GenISA_simdBlockRead &&
+        I.getIntrinsicID() != GenISAIntrinsic::GenISA_simdBlockWrite)
+    {
+        return false;
+    }
+
+    // check the address is inttoptr with same dst and src type width
+    auto ptrVal = I.getOperand(0);
+    auto I2P = dyn_cast<IntToPtrInst>(ptrVal);
+    if (I2P &&
+        I2P->getOperand(0)->getType()->getIntegerBitWidth() ==
+        m_ctx->getRegisterPointerSizeInBits(I2P->getAddressSpace()))
+    {
+        auto addrBase = I2P->getOperand(0);
+        BlockReadWritePointerPattern *pattern = new (m_allocator) BlockReadWritePointerPattern(&I, addrBase);
+        MarkAsSource(addrBase);
+        // for write mark data ptr as well
+        if (I.getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockWrite)
+        {
+            MarkAsSource(I.getOperand(1));
+        }
+
+        AddPattern(pattern);
+        return true;
+    }
+    return false;
 }
 
 bool CodeGenPatternMatch::MatchLoadStorePointer(llvm::Instruction& I, llvm::Value& ptrVal)
