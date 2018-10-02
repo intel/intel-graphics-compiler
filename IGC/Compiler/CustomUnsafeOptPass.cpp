@@ -385,22 +385,22 @@ bool CustomUnsafeOptPass::visitBinaryOperatorFmulFaddPropagation(BinaryOperator 
         {
             if( !dyn_cast<ConstantFP>( instSrc1[0]->getOperand( sameSrcId1 ) ) )
             {
-                llvm::Instruction *tempInstr =
-                    llvm::dyn_cast<llvm::Instruction>( instSrc1[0]->getOperand( sameSrcId1 ) );
-
-                if( tempInstr->getOpcode() == Instruction::FDiv )
+                if (llvm::Instruction *tempInstr = llvm::dyn_cast<llvm::Instruction>( instSrc1[0]->getOperand( sameSrcId1 ) ))
                 {
-                    ConstantFP *C0 = dyn_cast<ConstantFP>( tempInstr->getOperand(0) );
-                    if( C0 && C0->isExactlyValue( 1.0 ) )
+                    if( tempInstr->getOpcode() == Instruction::FDiv )
+                    {
+                        ConstantFP *C0 = dyn_cast<ConstantFP>( tempInstr->getOperand(0) );
+                        if( C0 && C0->isExactlyValue( 1.0 ) )
+                        {
+                            numOfSet = 0;
+                        }
+                    }
+
+                    IGC::EOPCODE intrinsic_name = IGC::GetOpCode(tempInstr);
+                    if(intrinsic_name==IGC::llvm_exp)
                     {
                         numOfSet = 0;
                     }
-                }
-
-                IGC::EOPCODE intrinsic_name = IGC::GetOpCode(tempInstr);
-                if(intrinsic_name==IGC::llvm_exp)
-                {
-                    numOfSet = 0;
                 }
             }
         }
