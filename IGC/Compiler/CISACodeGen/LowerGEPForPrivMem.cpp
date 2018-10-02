@@ -101,6 +101,15 @@ private:
 
     /// Keep track of each BB affected by promoting MemtoReg and the current pressure at that block
     llvm::DenseMap<llvm::BasicBlock *, unsigned>         m_pBBPressure;
+
+    struct PromotedLiverange
+    {
+        unsigned int lowId;
+        unsigned int highId;
+        unsigned int varSize;
+    };
+
+    std::vector<PromotedLiverange> m_promotedLiveranges;
 };
 
 FunctionPass *createPromotePrivateArrayToReg()
@@ -154,7 +163,7 @@ bool LowerGEPForPrivMem::runOnFunction(llvm::Function &F)
     }
     m_pDL = &F.getParent()->getDataLayout();
     m_pRegisterPressureEstimate = &getAnalysis<RegisterPressureEstimate>();
-
+    m_pRegisterPressureEstimate->buildRPMapPerInstruction();
     m_allocasToPrivMem.clear();
 
     visit(F);
@@ -266,40 +275,34 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
         }
     }
     
-    // find all the BB's that lie in the liverange of lowestAssignedNumber 
-    // and highestAssignedNumber for the use of the alloca instruction
-    auto &BBs = m_pFunc->getBasicBlockList();
-    DenseSet<BasicBlock*> bbList;
-    for (auto BI = BBs.begin(), BE = BBs.end(); BI != BE; ++BI)
+    uint32_t maxGRFPressure = (uint32_t)(grfRatio * MAX_PRESSURE_GRF_NUM * 4);
+
+    unsigned int pressure = 0;
+    for(unsigned int i = lowestAssignedNumber; i < highestAssignedNumber; i++)
     {
-        BasicBlock *BB = &*BI;
-        unsigned int bbMaxAssignedNumber = m_pRegisterPressureEstimate->getMaxAssignedNumberForBB(BB);
-        unsigned int bbMinAssignedNumber = m_pRegisterPressureEstimate->getMinAssignedNumberForBB(BB);
-        if (((lowestAssignedNumber >= bbMinAssignedNumber) && (lowestAssignedNumber <= bbMaxAssignedNumber)) ||
-            ((bbMinAssignedNumber >= lowestAssignedNumber) && (bbMinAssignedNumber <= highestAssignedNumber)))
+        pressure = std::max(
+            pressure, m_pRegisterPressureEstimate->getRegisterPressureForInstructionFromRPMap(i));
+    }
+
+    for(auto it : m_promotedLiveranges)
+    {
+        // check interval intersection
+        if((it.lowId < lowestAssignedNumber && it.highId > lowestAssignedNumber) ||
+            (it.lowId > lowestAssignedNumber && it.lowId < highestAssignedNumber))
         {
-            if (!m_pBBPressure.count(BB))
-            {
-                m_pBBPressure[BB] = m_pRegisterPressureEstimate->getRegisterPressure(BB);
-            }
-
-            // scale alloc size based on the number of GRFs we have
-            float grfRatio = m_ctx->getNumGRFPerThread() / 128.0f;
-            uint32_t maxGRFPressure = (uint32_t) (grfRatio * MAX_PRESSURE_GRF_NUM * 4);
- 
-            if (allocaSize + m_pBBPressure[BB] > maxGRFPressure)
-            {
-                return false;
-            }
-
-            bbList.insert(BB);
+            pressure += it.varSize;
         }
     }
 
-    for(auto it : bbList)
+    if(allocaSize + pressure > maxGRFPressure)
     {
-        m_pBBPressure[it] += allocaSize;
+        return false;
     }
+    PromotedLiverange liverange;
+    liverange.lowId = lowestAssignedNumber;
+    liverange.highId = highestAssignedNumber;
+    liverange.varSize = allocaSize;
+    m_promotedLiveranges.push_back(liverange);
     return true;
 }
 
