@@ -4216,6 +4216,8 @@ struct AccInterval
     bool mustBeAcc0 = false;
     bool isPreAssigned = false;
     int assignedAcc = -1;
+    int bundleConflictTimes = 0;
+    int bankConflictTimes = 0;
 
     AccInterval(G4_INST* inst_, int lastUse_, bool preAssigned = false) :
         inst(inst_), lastUse(lastUse_), isPreAssigned(preAssigned)
@@ -4235,7 +4237,8 @@ struct AccInterval
             return (double) 1000000;
         }
         int dist = lastUse - inst->getLocalId();
-        return std::pow((double) inst->use_size(), 3) / dist;
+
+        return std::pow((double)inst->use_size(), 3) / dist;
     }
 
     // see if this interval needs both halves of the acc
@@ -4265,9 +4268,11 @@ struct AccInterval
     }
 };
 
+
 // returns true if the inst is a candidate for acc substitution
 // lastUse is also update to point to the last use id of the inst
 static bool isAccCandidate(G4_INST* inst, G4_Kernel& kernel, int& lastUse, bool& mustBeAcc0)
+
 {
     mustBeAcc0 = false;
     G4_DstRegRegion* dst = inst->getDst();
@@ -4290,6 +4295,7 @@ static bool isAccCandidate(G4_INST* inst, G4_Kernel& kernel, int& lastUse, bool&
         // ToDo: may swap source here
         if (useInst->getNumSrc() == 3)
         {
+
             if (!kernel.fg.builder->relaxedACCRestrictions() && 
                 std::find(threeSrcUses.begin(), threeSrcUses.end(), useInst) != threeSrcUses.end())
             {
@@ -4301,7 +4307,9 @@ static bool isAccCandidate(G4_INST* inst, G4_Kernel& kernel, int& lastUse, bool&
             {
                 case Opnd_src1:
                     break;  //OK
+
                 case Opnd_src0:
+
                     if (kernel.fg.builder->canMadHaveSrc0Acc())
                     {
                         // OK
@@ -4595,19 +4603,20 @@ struct AccAssignment
     // the pre-assigned interavl is also pushed to active list
     void handlePreAssignedInterval(AccInterval* interval)
     {
-        if (!freeAccs[0])
+        if (!freeAccs[interval->assignedAcc])
         {
-            spillInterval(0);
+            spillInterval(interval->assignedAcc);
         }
-        freeAccs[0] = false;
+        freeAccs[interval->assignedAcc] = false;
 
         if (interval->needBothAcc())
         {
-            if (!freeAccs[1])
+            assert(interval->assignedAcc == 0 && "Total 2 acc support right now");
+            if (!freeAccs[interval->assignedAcc + 1]) // && activeIntervals.size()
             {
-                spillInterval(1);
+                spillInterval(interval->assignedAcc + 1);
             }
-            freeAccs[1] = false;
+            freeAccs[interval->assignedAcc + 1] = false;
         }
 
         activeIntervals.push_back(interval);
@@ -4634,6 +4643,7 @@ struct AccAssignment
                 {
                     freeAccs[i+1] = false;
                 }
+
                 activeIntervals.push_back(interval);
                 return true;
             }
@@ -4647,6 +4657,7 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
     int numGeneralAcc = getNumACC(builder);
 
     std::vector<AccInterval*> intervals;
+
 
     //build intervals for potential acc candidates as well as pre-existing acc uses from mac/mach/addc/etc
     for (auto instIter = bb->begin(), instEnd = bb->end(); instIter != instEnd; ++instIter)
@@ -4665,11 +4676,16 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
         {
             int lastUseId = 0;
             bool mustBeAcc0 = false;
+            int bundleBCTimes = 0;
+            int bankBCTimes = 0;
             if (isAccCandidate(inst, kernel, lastUseId, mustBeAcc0))
             {
                 // this is a potential candidate for acc substitution
                 AccInterval *newInterval = new AccInterval(inst, lastUseId);
                 newInterval->mustBeAcc0 = mustBeAcc0;
+                newInterval->bankConflictTimes = bankBCTimes;
+                newInterval->bundleConflictTimes = bundleBCTimes;
+
                 intervals.push_back(newInterval);
             }
         }
@@ -4684,11 +4700,10 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
         accAssign.expireIntervals(interval);
 
         // assign interval
-        accAssign.assignAcc(interval);
+        bool foundFreeAcc = accAssign.assignAcc(interval);
 
-        // ToDo: add spill code handling later
-#if 0
-        if (!foundFreeAcc)
+        //Spill
+        if (!foundFreeAcc && accAssign.activeIntervals.size() != 0)
         {
             // check if we should spill one of the active intervals
             auto spillCostCmp = [interval](AccInterval* intv1, AccInterval* intv2)
@@ -4709,20 +4724,38 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
                 }
                 return false;
             };
-            auto spillIter = std::min_element(activeIntervals.begin(), activeIntervals.end(),
+            auto spillIter = std::min_element(accAssign.activeIntervals.begin(), accAssign.activeIntervals.end(),
                 spillCostCmp);
             auto spillCandidate = *spillIter;
             if (interval->getSpillCost() > spillCandidate->getSpillCost() &&
                 !spillCandidate->isPreAssigned &&
                 !(interval->mustBeAcc0 && spillCandidate->assignedAcc != 0))
             {
-                interval->assignedAcc = spillCandidate->assignedAcc;
-                spillCandidate->assignedAcc = -1;
-                activeIntervals.erase(spillIter);
-                activeIntervals.push_back(interval);
+                bool tmpAssignValue[2];
+
+                tmpAssignValue[0] = accAssign.freeAccs[spillCandidate->assignedAcc];
+                accAssign.freeAccs[spillCandidate->assignedAcc] = true;
+                if (spillCandidate->needBothAcc())
+                {
+                    tmpAssignValue[1] = accAssign.freeAccs[spillCandidate->assignedAcc + 1];
+                    accAssign.freeAccs[spillCandidate->assignedAcc + 1] = true;
+                }
+
+                if (accAssign.assignAcc(interval))
+                {
+                    spillCandidate->assignedAcc = -1;
+                    accAssign.activeIntervals.erase(spillIter);
+                }
+                else
+                {
+                    accAssign.freeAccs[spillCandidate->assignedAcc] = tmpAssignValue[0];
+                    if (spillCandidate->needBothAcc())
+                    {
+                        accAssign.freeAccs[spillCandidate->assignedAcc + 1] = tmpAssignValue[1];
+                    }
+                }
             }
         }
-#endif
     }
 
     for (auto interval : intervals)

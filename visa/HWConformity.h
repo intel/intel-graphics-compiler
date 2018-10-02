@@ -211,9 +211,10 @@ namespace vISA
         }
         void chkHWConformity();
         static void tryEliminateMadSrcModifier(IR_Builder &builder, G4_INST *inst);
-        void accSubstitution(G4_BB* bb);
         int getNumAccSubDef() const { return numAccSubDef; }
         int getNumAccSubUse() const { return numAccSubUse; }
+        void accSubstitution(G4_BB* bb);
+
     };
 }
 //single entry point for HW conformity checks

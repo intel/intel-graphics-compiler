@@ -4192,13 +4192,14 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
             return retString;
         };
 
-        int suppressRegs[3];
+        int suppressRegs[4];
         int lastRegs[3];
         for (int i = 0; i < 3; i++)
         {
             suppressRegs[i] = -1;
             lastRegs[i] = -1;
         }
+        suppressRegs[3] = -1;
 
         uint32_t lastLabelPC = 0;
         for (BB_LIST_ITER itBB = fg.BBs.begin(); itBB != fg.BBs.end(); ++itBB)
@@ -5986,4 +5987,4 @@ void FuncInfo::dump() const
         std::cerr << bb->getId() << " ";
     }
     std::cerr << "\n";
-}
+}
