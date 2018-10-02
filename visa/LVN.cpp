@@ -213,12 +213,14 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
         unsigned int use_rb = use->getRightBound();
 
         // Ensure a single def flows in to the use
-        if (useInst->getSingleDef(opndNum) == NULL)
+        auto it = useDef.find(use);
+        if(it == useDef.end() ||
+            (*it).second.size() != 1)
         {
             canReplace = false;
             break;
         }
-
+        
         if (bb->isInSimdFlow())
         {
             auto defCoversUseEmask = defInst->getMaskOffset() <= useInst->getMaskOffset() &&
@@ -1261,7 +1263,7 @@ bool LVN::valuesMatch(Value& val1, Value& val2)
             G4_INST* val1Inst = val1.getInst();
             G4_INST* val2Inst = val2.getInst();
 
-            if (!val2Inst->isWriteEnableInst() &&
+            if (val1Inst->isWriteEnableInst() != val2Inst->isWriteEnableInst() ||
                 val1Inst->getMaskOption() != val2Inst->getMaskOption())
             {
                 match = false;
@@ -1519,6 +1521,18 @@ void LVN::addUse(G4_DstRegRegion* dst, G4_INST* use, unsigned int srcIndex)
     else
     {
         (*it).second.push_back(useInst);
+    }
+
+    auto srcOpnd = use->getSrc(srcIndex);
+    auto itUD = useDef.find(srcOpnd);
+    if (itUD == useDef.end())
+    {
+        DefList defs = { dst->getInst() };
+        useDef.insert(std::make_pair(srcOpnd, defs));
+    }
+    else
+    {
+        (*itUD).second.push_back(dst->getInst());
     }
 }
 

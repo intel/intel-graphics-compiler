@@ -108,6 +108,8 @@ typedef struct UseInfo
     Gen4_Operand_Number second;
 } UseInfo;
 typedef std::list<UseInfo> UseList;
+typedef std::list<vISA::G4_INST*> DefList;
+
 typedef struct DefUseInfo
 {
     vISA::G4_INST* first;
@@ -128,6 +130,7 @@ class LVN
 {
 private:
     std::map<G4_INST*, UseList> defUse;
+    std::map<G4_Operand*, DefList> useDef;
     G4_BB* bb;
     FlowGraph& fg;
     LvnTable lvnTable;
