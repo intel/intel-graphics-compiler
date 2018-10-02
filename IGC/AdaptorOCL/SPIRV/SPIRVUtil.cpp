@@ -271,6 +271,9 @@ getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, st
       else if (DataTy->getBitWidth() == 32 && hasI32Postfix) {
         tmpName << "_ui";
       }
+      else if (DataTy->getBitWidth() == 64) {
+        tmpName << "_ul";
+      }
 
       if (DataTy->isTypeVector()) {
         if (unsigned ComponentCount = DataTy->getVectorComponentCount())
