@@ -203,14 +203,14 @@ MDNode* CreateNode(const std::map < Key, Value> &FuncMD, Module* module, StringR
 void readNode(unsigned char &b, MDNode* node)
 {
     ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
-    b = ((unsigned char)cast<ConstantInt>(pVal->getValue())->getZExtValue()) ? true : false;
+    b = (unsigned char)cast<ConstantInt>(pVal->getValue())->getZExtValue();
     return;
 }
 
 void readNode(char &b, MDNode* node)
 {
 	ValueAsMetadata* pVal = cast<ValueAsMetadata>(node->getOperand(1));
-	b = ((char)cast<ConstantInt>(pVal->getValue())->getZExtValue()) ? true : false;
+	b = (char)cast<ConstantInt>(pVal->getValue())->getZExtValue();
 	return;
 }
 
