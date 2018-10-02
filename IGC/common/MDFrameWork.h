@@ -218,7 +218,7 @@ namespace IGC
         VertexShaderInfo vsInfo;
         PixelShaderInfo psInfo;
         ComputeShaderInfo csInfo;
-        std::map<ConstantAddress, std::vector<char>>    inlineDynConstants;
+        std::map<ConstantAddress, uint32_t>    inlineDynConstants;
 		ImmConstantInfo immConstant;
 		std::vector<InlineProgramScopeBuffer> inlineConstantBuffers;
 		std::vector<InlineProgramScopeBuffer> inlineGlobalBuffers;

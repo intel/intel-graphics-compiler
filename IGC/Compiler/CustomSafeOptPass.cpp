@@ -1261,7 +1261,8 @@ Constant* IGCConstProp::ReplaceFromDynConstants(unsigned bufId, unsigned eltId, 
     auto it = modMD->inlineDynConstants.find(cl);
     if ((it != modMD->inlineDynConstants.end()) && (it->first.size == cl.size))
     {
-        if (it->second.size() >= size_in_bytes)
+        // For constant buffer accesses of size <= 32bit.
+        if(size_in_bytes <= 4)
         {
             // This constant is
             //          found in the Dynamic inline constants list, and
@@ -1269,7 +1270,7 @@ Constant* IGCConstProp::ReplaceFromDynConstants(unsigned bufId, unsigned eltId, 
             if (!(type->isVectorTy()))
             {
                 // Handling for base types (Integer/FloatingPoint)
-                pConstVal = &(it->second[0]);
+                pConstVal = (char *) (&(it->second));
                 return GetConstantValue(type, pConstVal);
             }
         }

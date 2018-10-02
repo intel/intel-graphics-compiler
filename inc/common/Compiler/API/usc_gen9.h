@@ -32,25 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace USC
 {
 
-/*****************************************************************************\
-Enum: GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT
-\*****************************************************************************/
-enum  GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT
-{
-    GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_DISABLED = 0x0,  // All components disabled
-    GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XY = 0x1,        // 2D attribute, z and w components disabled
-    GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZ = 0x2,       // 3D attribute, w components disabled
-    GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZW = 0x3,      // 4D attribute, no disabled components
-};
-
-enum GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE
-{
-    GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE_NONE,               // No Coverage
-    GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE_NORMAL,             // OUTERCONSERVATIVE when conservative rasterization is enabled. 
-                                                                    // Normal otherwise.
-    GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE_INNERCONSERVATIVE,  // INNER conservative rasterization
-    GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE_DEPTH_COVERAGE      // Depth coverage
-};
 
 /*****************************************************************************\
 ENUM:   BLEND_OPTIMIZATION_MODE
@@ -177,8 +158,6 @@ struct SCompilerInputComputeShader_Gen9 : public SCompilerInputCommon_Gen7
 
     // Maximum size of available pool in physical (EU) threads
     unsigned int EUThreadsInPoolMax;
-
-    unsigned char forcedSIMDModeFromDriver = 0; // 0 means not forced
 };
 
 /*****************************************************************************\

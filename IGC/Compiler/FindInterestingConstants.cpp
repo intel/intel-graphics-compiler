@@ -246,15 +246,20 @@ bool FindInterestingConstants::getConstantAddress(llvm::LoadInst &I, unsigned &b
     return true;
 }
 
-void FindInterestingConstants::addInterestingConstant(CodeGenContext* ctx, unsigned bufId, unsigned eltId, int size_in_bytes, USC::VALUE_HINT valueHint)
+void FindInterestingConstants::addInterestingConstant(CodeGenContext* ctx, unsigned bufId, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t value = 0)
 {
-    USC::ConstantAddrValue cl;
-    cl.ca.bufId = bufId;
-    cl.ca.eltId = eltId;
-    cl.ca.size = size_in_bytes;
-    cl.valueHint = valueHint;
+    // For constant buffer accesses of size <= 32bit.
+    if (size_in_bytes <= 4)
+    {
+        USC::ConstantAddrValue cl;
+        cl.ca.bufId = bufId;
+        cl.ca.eltId = eltId;
+        cl.ca.size = size_in_bytes;
+        cl.anyValue = anyValue;
+        cl.value = value;
 
-    m_InterestingConstants.push_back(cl);
+        m_InterestingConstants.push_back(cl);
+    }
 }
 
 void FindInterestingConstants::visitLoadInst(llvm::LoadInst &I)
@@ -264,12 +269,12 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst &I)
     unsigned bufId;
     unsigned eltId;
     int size_in_bytes;
-    USC::VALUE_HINT valueHint;
+    bool anyValue;
 
     m_zeroFolded = 0;
     m_constFolded = 0;
     m_constFoldBranch = false;
-    valueHint = USC::ANY_VALUE;
+    anyValue = true;
     if(getConstantAddress(I, bufId, eltId, size_in_bytes))
     {
         for (auto UI = I.user_begin(), UE = I.user_end(); UI != UE; ++UI)
@@ -297,7 +302,7 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst &I)
                     
                 if (FoldsToZero(&I, useInst))
                 {
-                    valueHint = USC::ZERO_VALUE;
+                    anyValue = false;
                     m_zeroFolded++;
 
                     FoldsToZeroPropagate(useInst);
@@ -313,7 +318,7 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst &I)
         if (isInteresting)
         {
             // Get the ConstantAddress from LoadInst and log it in interesting constants
-            addInterestingConstant(ctx, bufId, eltId, size_in_bytes, valueHint);
+            addInterestingConstant(ctx, bufId, eltId, size_in_bytes, anyValue);
         }
     }
 }

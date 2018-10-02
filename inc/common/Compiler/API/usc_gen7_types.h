@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 // reuse GFX enumeration types common to gen6 and gen7 
+#include <sstream>
 #include "usc.h"
 #include "SurfaceFormats.h"
 #include "ShaderTypesConst.h"
@@ -48,7 +49,7 @@ on both compilers are the same, but internally, on byte basis, they are
 different. If such construction is serialized on build from one compiler,
 it cannot be properly deserialized on build form the second one.
 Theoretically #pragma pack(1) could be used to prevent compilers from adding
-padding, but some compilers have only partial support for it. 
+padding, but some compilers have only partial support for it.
 
 Therefore manual padding is added to prevent compilers from adding it
 automatically. It is added between members as well as at the end of the
@@ -209,6 +210,26 @@ enum GFXMEDIA_GPUWALKER_SIMD
 };
 
 /*****************************************************************************\
+Enum: GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT
+\*****************************************************************************/
+enum  GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT
+{
+    GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_DISABLED = 0x0,  // All components disabled
+    GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XY = 0x1,        // 2D attribute, z and w components disabled
+    GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZ = 0x2,       // 3D attribute, w components disabled
+    GFX3DSTATE_SF_ATTRIBUTE_ACTIVE_COMPONENT_XYZW = 0x3,      // 4D attribute, no disabled components
+};
+
+enum GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE
+{
+    GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE_NONE,               // No Coverage
+    GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE_NORMAL,             // OUTERCONSERVATIVE when conservative rasterization is enabled. 
+                                                                    // Normal otherwise.
+    GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE_INNERCONSERVATIVE,  // INNER conservative rasterization
+    GFX3DSTATE_PSEXTRA_INPUT_COVERAGE_MASK_MODE_DEPTH_COVERAGE      // Depth coverage
+};
+
+/*****************************************************************************\
 STRUCT: STypedUAVReadEmulationEntry
 \*****************************************************************************/
 struct STypedUAVReadEmulationEntry
@@ -233,26 +254,33 @@ struct ConstantAddress
     unsigned int bufId = 0;
     unsigned int eltId = 0;
     int size = 0;
+
+    void Serialize( std::stringstream& stringStream ) const
+    {
+        stringStream << bufId << eltId << size;
+    }
 };
 
 bool operator < (const ConstantAddress &a, const ConstantAddress &b);
 
-enum VALUE_HINT
-{
-    ZERO_VALUE,
-    ANY_VALUE,
-};
-
 struct ConstantAddrValue
 {
     ConstantAddress ca;
-    VALUE_HINT valueHint;
+    bool anyValue;
+    uint32_t value;
 };
 
 struct InlineDynConstants
 {
     ConstantAddress ca;
-    void* value;
+    uint32_t value;
+
+    void Serialize( std::stringstream& stringStream ) const
+    {
+        ca.Serialize( stringStream );
+
+        stringStream << value;
+    }
 };
 
 // Dynamic Constant Folding
@@ -260,6 +288,14 @@ struct DynamicConstFoldingInputs
 {
     const InlineDynConstants* pInlineDynConstants = nullptr;
     unsigned int              m_inlineDynConstantsSize = 0;
+
+    void Serialize( std::stringstream& stringStream ) const
+    {
+        for( unsigned int i = 0; i < m_inlineDynConstantsSize; i++ )
+        {
+            pInlineDynConstants[ i ].Serialize( stringStream );
+        }
+    }
 };
 
 // Constant Buffer to Constant Register gather entry 
@@ -291,6 +327,15 @@ struct SComputeShaderNOSLayout
 struct SCompilerInputCommon
 {
     DynamicConstFoldingInputs m_DcfInputs;
+    void* m_pGTPinInput;
+    const unsigned int* m_pShaderDebugInfo;
+
+    void Serialize( std::stringstream& shaderCacheBlob ) const
+    {
+        m_DcfInputs.Serialize( shaderCacheBlob );
+
+        // Assume that m_pGTPinInput and m_pShaderDebugInfo are not valid when caching
+    }
 };
 
 /*****************************************************************************\
@@ -302,6 +347,12 @@ struct SCompilerInputCommon_Gen7 : public SCompilerInputCommon
     bool isRowMajor;
     int  numChannelsUsed;
     unsigned int shaderHash;
+
+    void Serialize( std::stringstream& shaderCacheBlob ) const
+    {
+        SCompilerInputCommon::Serialize( shaderCacheBlob );
+        shaderCacheBlob << secondCompile << isRowMajor << numChannelsUsed << shaderHash;
+    }
 };
 
 static const SComputeShaderNOSLayout g_nosLayout = { 0, 1, 2 };
