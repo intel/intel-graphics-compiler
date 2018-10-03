@@ -83,6 +83,13 @@ public:
         return NoAlias;
     }
 
+    // Private memory doesn't alias any stateful memory
+    if((AS1 == ADDRESS_SPACE_PRIVATE && AS2 > ADDRESS_SPACE_NUM_ADDRESSES) ||
+        (AS1 > ADDRESS_SPACE_NUM_ADDRESSES && AS2 == ADDRESS_SPACE_PRIVATE))
+    {
+        return NoAlias;
+    }
+
 
     /// For some client APIs (e.g. vulkan) compiler is free to assume that
     /// resources bound to two different bindings points never alias unless a
