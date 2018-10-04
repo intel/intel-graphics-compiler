@@ -410,4 +410,9 @@
         return false;
     }
 
+    bool has16OWordSLMBlockRW() const
+    {
+        return false;
+    }
+
     // end HW capabilities

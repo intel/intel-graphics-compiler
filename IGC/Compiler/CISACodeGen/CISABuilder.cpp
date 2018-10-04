@@ -3168,6 +3168,8 @@ Common_ISA_Oword_Num  ConvertSizeToVisaType(uint size)
         return OWORD_NUM_4;
     case 8:
         return OWORD_NUM_8;
+    case 16:
+        return OWORD_NUM_16;
     default:
         assert( 0 && "unreachable" );
         return OWORD_NUM_ILLEGAL;

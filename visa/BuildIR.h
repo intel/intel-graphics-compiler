@@ -2440,6 +2440,8 @@ private:
     uint32_t getSamplerResponseLength(int numChannels, bool isFP16, int execSize,
         bool pixelNullMask, bool nullDst);
 
+    uint32_t setOwordForDesc(uint32_t desc, int numOword, bool isSLM = false) const;
+
 };
 }
 

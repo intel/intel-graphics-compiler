@@ -592,6 +592,8 @@ unsigned Get_Common_ISA_Oword_Num( Common_ISA_Oword_Num num )
             return 4;
         case OWORD_NUM_8:
             return 8;
+        case OWORD_NUM_16:
+            return 16;
         default:
             MUST_BE_TRUE( false, "illegal Oword number (should be 0..3)." );
             return 0;
@@ -1412,8 +1414,10 @@ Common_ISA_Oword_Num Get_Common_ISA_Oword_Num_From_Number( unsigned num )
             return OWORD_NUM_4;
         case 8:
             return OWORD_NUM_8;
+        case 16:
+            return OWORD_NUM_16;
         default:
-            MUST_BE_TRUE( false, "illegal Oword number (should be 0..3)." );
+            MUST_BE_TRUE( false, "illegal Oword number." );
             return OWORD_NUM_ILLEGAL;
     }
 }

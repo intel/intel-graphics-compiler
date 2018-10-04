@@ -203,7 +203,8 @@ typedef enum {
     OWORD_NUM_2 = 0x1,
     OWORD_NUM_4 = 0x2,
     OWORD_NUM_8 = 0x3,
-    OWORD_NUM_ILLEGAL = 0x4
+    OWORD_NUM_16 = 0x4,
+    OWORD_NUM_ILLEGAL = 0x5
 } Common_ISA_Oword_Num;
 
 // media load inst modifiers

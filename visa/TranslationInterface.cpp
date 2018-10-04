@@ -2558,7 +2558,7 @@ static G4_Operand* lowerSurface255To253(G4_Operand* surface, IR_Builder& builder
     }
 }
 
-static uint32_t setOwordForDesc(uint32_t desc, int numOword)
+uint32_t IR_Builder::setOwordForDesc(uint32_t desc, int numOword, bool isSLM) const
 {
     switch (numOword)
     {   
@@ -2570,6 +2570,9 @@ static uint32_t setOwordForDesc(uint32_t desc, int numOword)
         return desc | (0x3 << MESSAGE_SPECIFIC_CONTROL); 
     case 8: 
         return desc | (0x4 << MESSAGE_SPECIFIC_CONTROL);
+    case 16:
+        assert(isSLM && has16OWordSLMBlockRW() && "16OWord block r/w not supported");
+        return desc | (0x5 << MESSAGE_SPECIFIC_CONTROL);
     default:
         /// TODO(move to verifier): default: ASSERT_USER(false, "OWord block size must be 1/2/4/8.");
         return desc;
@@ -2618,7 +2621,7 @@ int IR_Builder::translateVISAOwordLoadInst(
 
     surface = lowerSurface255To253(surface, *this);
 
-    unsigned num_oword = Get_Common_ISA_Oword_Num( (Common_ISA_Oword_Num)size );
+    unsigned num_oword = Get_Common_ISA_Oword_Num( size );
 	bool unaligned = (opcode == ISA_OWORD_LD_UNALIGNED);
 
     // create dcl for VX
@@ -2668,7 +2671,7 @@ int IR_Builder::translateVISAOwordLoadInst(
     }
 
     // Set bit 12-8 for the message descriptor
-    temp = setOwordForDesc(temp, num_oword);
+    temp = setOwordForDesc(temp, num_oword, IsSLMSurface(surface));
 
     // !!!WHY???
     if (num_oword > 2)
@@ -2785,13 +2788,13 @@ int IR_Builder::translateVISAOwordStoreInst(
 
     surface = lowerSurface255To253(surface, *this);
 
-    unsigned num_oword = Get_Common_ISA_Oword_Num( (Common_ISA_Oword_Num)size );
+    unsigned num_oword = Get_Common_ISA_Oword_Num(size);
     unsigned obj_size = num_oword * 16; // size of obj in bytes
 
     unsigned funcCtrl = DC_OWORD_BLOCK_WRITE << 14;
 
     // Set bit 12-8 for the message descriptor
-    funcCtrl = setOwordForDesc(funcCtrl, num_oword);
+    funcCtrl = setOwordForDesc(funcCtrl, num_oword, IsSLMSurface(surface));
     
     if (useSends())
     {

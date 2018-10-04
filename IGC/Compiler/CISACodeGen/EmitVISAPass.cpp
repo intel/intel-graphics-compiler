@@ -4569,6 +4569,35 @@ void EmitPass::emitSimdShuffleDown( llvm::Instruction* inst )
     m_encoder->Push();
 }
 
+static uint32_t getBlockMsgSize(uint32_t bytesRemaining, bool do256Byte)
+{
+    if (do256Byte && bytesRemaining >= 256)
+    {
+        return 256;
+    }
+    else if (bytesRemaining >= 128)
+    {
+        return 128;
+    }
+    else if (bytesRemaining >= 64)
+    {
+        return 64;
+    }
+    else if (bytesRemaining >= 32)
+    {
+        return 32;
+    }
+    else  if (bytesRemaining >= 16)
+    {
+        return 16;
+    }
+    else
+    {
+        assert(0);
+        return 0;
+    }
+}
+
 void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst, llvm::Value* ptrVal )
 {
     Value* llPtr    = inst->getOperand( 0 );
@@ -4677,30 +4706,8 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst, llvm::Value* ptrVal 
 
         while ( bytesRemaining )
         {
-            if ( bytesRemaining >= 128 )
-            {
-                bytesRemaining -= 128;
-                bytesToRead     = 128;
-            }
-            else if ( bytesRemaining >= 64 )
-            {
-                bytesRemaining -= 64;
-                bytesToRead     = 64;
-            }
-            else if ( bytesRemaining >= 32 )
-            {
-                bytesRemaining -= 32;
-                bytesToRead     = 32;
-            }
-            else  if (bytesRemaining >= 16)
-            {
-                bytesRemaining -= 16;
-                bytesToRead = 16;
-            }
-            else
-            {
-                assert( 0 );
-            }
+            bytesToRead = getBlockMsgSize(bytesRemaining, false);
+            bytesRemaining -= bytesToRead;
 
             m_encoder->OWStoreA64( data, pTempVar, bytesToRead, srcOffset );
             srcOffset = srcOffset + bytesToRead;
@@ -4751,30 +4758,10 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst, llvm::Value* ptrVal 
         uint32_t bytesToRead = 0;
         while ( bytesRemaining )
         {
-            if ( bytesRemaining >= 128 )
-            {
-                bytesRemaining -= 128;
-                bytesToRead     = 128;
-            }
-            else if ( bytesRemaining >= 64 )
-            {
-                bytesRemaining -= 64;
-                bytesToRead     = 64;
-            }
-            else if ( bytesRemaining >= 32 )
-            {
-                bytesRemaining -= 32;
-                bytesToRead     = 32;
-            }
-            else  if (bytesRemaining >= 16)
-            {
-                bytesRemaining -= 16;
-                bytesToRead = 16;
-            }
-            else
-            {
-                assert( 0 );
-            }
+            bool canDo256Byte = false;
+
+            bytesToRead = getBlockMsgSize(bytesRemaining, canDo256Byte);
+            bytesRemaining -= bytesToRead;
 
             m_encoder->OWStore( data, resource.m_surfaceType, resource.m_resource, src0shifted, bytesToRead, srcOffset );
             srcOffset = srcOffset + bytesToRead;
@@ -4881,8 +4868,8 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst, llvm::Value* ptrVal )
     {
 		assert(!isToSLM && "SLM's ptr size should be 32!");
 
+        uint32_t dstOffset = 0;
         uint32_t bytesRemaining = totalBytes;
-        uint32_t dstSubReg      = 0;
         uint32_t bytesToRead    = 0;
 
         // Emits instructions generating one or more A64 OWORD block read instructions
@@ -4900,35 +4887,12 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst, llvm::Value* ptrVal )
 
         while ( bytesRemaining )
         {
-            if ( bytesRemaining >= 128 )
-            {
-                bytesRemaining -= 128;
-                bytesToRead = 128;
-            }
-            else if ( bytesRemaining >= 64 )
-            {
-                bytesRemaining -= 64;
-                bytesToRead = 64;
-            }
-            else if ( bytesRemaining >= 32 )
-            {
-                bytesRemaining -= 32;
-                bytesToRead = 32;
-            }
-            else  if ( bytesRemaining >= 16 )
-            {
-                bytesRemaining -= 16;
-                bytesToRead = 16;
-            }
-            else
-            {
-                assert( 0 );
-            }
+            bytesToRead = getBlockMsgSize(bytesRemaining, false);
+            bytesRemaining -= bytesToRead;
 
-            m_encoder->SetDstSubVar( dstSubReg );
-            dstSubReg = dstSubReg + 4;
-            m_encoder->OWLoadA64( m_destination, pTempVar, bytesToRead );
+            m_encoder->OWLoadA64( m_destination, pTempVar, bytesToRead, dstOffset);
             m_encoder->Push();
+            dstOffset += bytesToRead;
 
             if ( bytesRemaining )
             {
@@ -4962,49 +4926,29 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst, llvm::Value* ptrVal )
             ISA_TYPE_UD,
             EALIGN_DWORD );
 
-		if (isToSLM) {
+		if (isToSLM) 
+        {
 			// It is OW-aligned OW address
 			m_encoder->Shr(pTempVar, src, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
 		}
 
         m_encoder->Push();
 
-        uint32_t dstSubReg      = 0;
+        uint32_t dstOffset = 0;
         uint32_t bytesToRead    = 0;
         uint32_t bytesRemaining = totalBytes;
         bool isFirstIter = true;
         while ( bytesRemaining )
         {
-            if ( bytesRemaining >= 128 )
-            {
-                bytesRemaining -= 128;
-                bytesToRead     = 128;
-            }
-            else if ( bytesRemaining >= 64 )
-            {
-                bytesRemaining -= 64;
-                bytesToRead     = 64;
-            }
-            else if ( bytesRemaining >= 32 )
-            {
-                bytesRemaining -= 32;
-                bytesToRead     = 32;
-            }
-            else  if (bytesRemaining >= 16)
-            {
-                bytesRemaining -= 16;
-                bytesToRead = 16;
-            }
-            else
-            {
-                assert( 0 );
-            }
+            bool canDo256Byte = false;
+
+            bytesToRead = getBlockMsgSize(bytesRemaining, canDo256Byte);
+            bytesRemaining -= bytesToRead;
 
             bool useSrc = isFirstIter && !isToSLM;
-            m_encoder->SetDstSubVar( dstSubReg );
-            dstSubReg = dstSubReg+4;
-            m_encoder->OWLoad( m_destination, resource, useSrc ? src : pTempVar, isToSLM, bytesToRead );
+            m_encoder->OWLoad( m_destination, resource, useSrc ? src : pTempVar, isToSLM, bytesToRead, dstOffset );
             m_encoder->Push();
+            dstOffset += bytesToRead;
 
             if ( bytesRemaining )
             {
