@@ -11442,7 +11442,7 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
         }
     }
 
-    if (IID == GenISAIntrinsic::GenISA_atomiccounterpredec &&
+    if (IID == GenISAIntrinsic::GenISA_atomiccounterpredec && !uniformAtomic &&
         !m_currShader->m_Platform->hasAtomicPreDec())
     {
         unsigned int counter = m_currShader->m_dispatchSize == SIMDMode::SIMD32 ? 2 : 1;
