@@ -206,6 +206,23 @@ unsigned int LowerGEPForPrivMem::extractAllocaSize(llvm::AllocaInst* pAlloca)
     return totalArrayStructureSize;
 }
 
+static void GetAllocaLiverange(Instruction* I, unsigned int& liverangeStart, unsigned int& liverangeEnd, RegisterPressureEstimate* rpe)
+{
+    for(Value::user_iterator use_it = I->user_begin(), use_e = I->user_end(); use_it != use_e; ++use_it)
+    {
+        if(isa<GetElementPtrInst>(*use_it) || isa<BitCastInst>(*use_it))
+        {
+            GetAllocaLiverange(cast<Instruction>(*use_it), liverangeStart, liverangeEnd, rpe);
+        }
+        else if(isa<LoadInst>(*use_it) || isa<StoreInst>(*use_it) || isa<llvm::IntrinsicInst>(*use_it))
+        {
+            unsigned int idx = rpe->getAssignedNumberForInst(cast<Instruction>(*use_it));
+            liverangeStart = std::min(liverangeStart, idx);
+            liverangeEnd = std::max(liverangeEnd, idx);
+        }
+    }
+}
+
 bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
 {
     auto WI = &getAnalysis<WIAnalysis>();
@@ -261,24 +278,15 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
 
     // get all the basic blocks that contain the uses of the alloca
     // then estimate how much changing this alloca to register adds to the pressure at that block.
-    unsigned int assignedNumber = 0;
-    unsigned int lowestAssignedNumber = m_pRegisterPressureEstimate->getMaxAssignedNumberForFunction();
+    unsigned int lowestAssignedNumber = 0xFFFFFFFF;
     unsigned int highestAssignedNumber = 0;
 
-    for (auto II = pAlloca->user_begin(), IE = pAlloca->user_end(); II != IE; ++II)
-    {
-        if (Instruction* inst = dyn_cast<Instruction>(*II))
-        {
-            assignedNumber = m_pRegisterPressureEstimate->getAssignedNumberForInst(inst);
-            lowestAssignedNumber = (lowestAssignedNumber < assignedNumber) ? lowestAssignedNumber : assignedNumber;
-            highestAssignedNumber = (highestAssignedNumber > assignedNumber) ? highestAssignedNumber : assignedNumber;
-        }
-    }
+    GetAllocaLiverange(pAlloca, lowestAssignedNumber, highestAssignedNumber, m_pRegisterPressureEstimate);
     
     uint32_t maxGRFPressure = (uint32_t)(grfRatio * MAX_PRESSURE_GRF_NUM * 4);
 
     unsigned int pressure = 0;
-    for(unsigned int i = lowestAssignedNumber; i < highestAssignedNumber; i++)
+    for(unsigned int i = lowestAssignedNumber; i <= highestAssignedNumber; i++)
     {
         pressure = std::max(
             pressure, m_pRegisterPressureEstimate->getRegisterPressureForInstructionFromRPMap(i));
