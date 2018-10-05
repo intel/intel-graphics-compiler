@@ -1255,7 +1255,7 @@ bool CodeSinking::LoopSinkInstructions(
     bool changed = false;
     // Just a placeholder, all LIs considered here are ALUs.
     SmallPtrSet<Instruction *, 16> stores;
-    const int PresureReductionThreshold = 10;
+    const int SaveThreshold = IGC_GET_FLAG_VALUE(LoopSinkMinSave);
     bool keepLooping;
     uint32_t N = (uint32_t)InstUseInfo.size();
     do {
@@ -1268,7 +1268,7 @@ bool CodeSinking::LoopSinkInstructions(
 
             int sz1 = (int)OUG->Users.size();
             int save = sz1 - (int)(OUG->Operands.size());
-            if (save >= PresureReductionThreshold)
+            if (save >= SaveThreshold)
             {
                 // Sink
                 bool t = false;
