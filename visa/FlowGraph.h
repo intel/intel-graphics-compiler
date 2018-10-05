@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iomanip>
 #include <unordered_map>
 #include <set>
+#include <unordered_set>
 
 #include "cm_portability.h"
 
@@ -666,6 +667,12 @@ private:
     // This list only grows and is freed when the FlowGraph is destroyed
     std::vector<G4_BB*> BBAllocList;
 
+    // stores all INST that may be target of indirect jump. Currently these inst must be jmpi themselves
+    std::unordered_set<G4_INST*> indirectJmpTarget;
+
+    // stores all endift inst that have labels associated with it
+    std::unordered_map<G4_INST*, G4_Label*> endifWithLabels;
+
 public:
     typedef std::pair<G4_BB*, G4_BB*> Edge;
     typedef std::set<G4_BB*> Blocks;
@@ -1031,6 +1038,24 @@ public:
             }
         }
         return numCalls;
+    }
+
+    bool isIndirectJmpTarget(G4_INST* inst) const
+    {
+        return indirectJmpTarget.count(inst);
+    }
+
+    G4_Label* getLabelForEndif(G4_INST* inst) const
+    {
+        auto iter = endifWithLabels.find(inst);
+        if (iter != endifWithLabels.end())
+        {
+            return iter->second;
+        }
+        else
+        {
+            return nullptr;
+        }
     }
 
 private:

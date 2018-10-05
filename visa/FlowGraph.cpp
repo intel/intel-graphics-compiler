@@ -938,7 +938,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
                         for (std::list<G4_Label*>::const_iterator it = jmpTargets.begin(); it != jmpTargets.end(); ++it)
                         {
                             G4_INST* jmpInst = builder->createInst(NULL, G4_jmpi, NULL, false, 1, NULL, *it, NULL, 0);
-                            jmpInst->setIndirectJmpTarget();
+                            indirectJmpTarget.emplace(jmpInst);
                             INST_LIST_ITER jmpInstIter = builder->instList.end();
                             curr_BB->splice(curr_BB->end(), builder->instList, --jmpInstIter);
                             addPredSuccEdges(curr_BB, getLabelBB(labelMap, (*it)->getLabel()));
@@ -2328,7 +2328,7 @@ void FlowGraph::removeRedundantLabels()
                 // replace label in instructions
                 if (i->isFlowControl())
                 {
-                    if (i->isIndirectJmpTarget())
+                    if (isIndirectJmpTarget(i))
                     {
                         // due to the switchjmp we may have multiple jmpi
                         // at the end of a block.
@@ -3160,7 +3160,7 @@ G4_Label* FlowGraph::insertEndif(G4_BB* bb, unsigned char execSize, bool createL
     {
         std::string name = "_AUTO_LABEL_%d" + std::to_string(autoLabelId++);
         G4_Label* label = builder->createLabel(name, LABEL_BLOCK);
-        endifInst->setInstLabel(label);
+        endifWithLabels.emplace(endifInst, label);
         return label;
     }
     else
@@ -3176,8 +3176,8 @@ G4_Label* FlowGraph::insertEndif(G4_BB* bb, unsigned char execSize, bool createL
 void FlowGraph::setJIPForEndif(G4_INST* endif, G4_INST* target, G4_BB* targetBB)
 {
     MUST_BE_TRUE(endif->opcode() == G4_endif, "must be an endif instruction");
-    G4_Label* label = target->getInstLabel();
-    if (label == NULL)
+    G4_Label* label = getLabelForEndif(target);
+    if (label)
     {
         // see if there's another label before the inst that we can reuse
         // FIXME: we really should associate labels with inst instead of having special label inst,
@@ -3218,7 +3218,7 @@ void FlowGraph::setJIPForEndif(G4_INST* endif, G4_INST* target, G4_BB* targetBB)
         {
             std::string name = "_AUTO_LABEL_" + std::to_string(autoLabelId++);
             label = builder->createLabel(name, LABEL_BLOCK);
-            target->setInstLabel(label);
+            endifWithLabels.emplace(target, label);
         }
     }
     endif->asCFInst()->setJip(label);
@@ -4740,10 +4740,6 @@ void G4_BB::emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST
         emitInstId(output, inst->getLineNo(), inst->getCISAOff(), inst->getGlobalID());
 
          emitBankConflict(output, inst);
-        if (inst->isSend())
-        {
-            inst->emit_send_desc(output);
-        }
     }
 }
 void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)

@@ -169,7 +169,8 @@ void Optimizer::insertFallThroughJump()
             if (!(*next)->empty() && (*next)->front()->isLabel() &&
                 !bb->empty() && bb->back()->opcode() == G4_jmpi &&
                 bb->back()->getPredicate() == NULL &&
-                !bb->back()->isIndirectJmpTarget() ) {
+                !fg.isIndirectJmpTarget(bb->back())) 
+                {
                     if ((*next)->front()->getSrc(0) == bb->back()->getSrc(0))
                     {
                         std::list<G4_INST*>::iterator it = bb->end();
@@ -1284,9 +1285,10 @@ void Optimizer::insertInstLabels()
             ++iter2;
 
             G4_INST* inst = *currIter;
-            if( inst->getInstLabel() != NULL )
+            G4_Label* endifLabel = fg.getLabelForEndif(inst);
+            if (endifLabel)
             {
-                G4_INST* labelInst = fg.createNewLabelInst( inst->getInstLabel(), inst->getLineNo(), inst->getCISAOff() );
+                G4_INST* labelInst = fg.createNewLabelInst( endifLabel, inst->getLineNo(), inst->getCISAOff() );
                 bb->insert( currIter, labelInst );
             }
         }

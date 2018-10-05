@@ -2501,7 +2501,6 @@ SpillManagerGMRF::createSendInst(
         NULL, G4_send, execSize, postDst,
         payload, exDesc, desc, option, !isWrite, isWrite, nullptr);
     sendInst->setCISAOff(curInst->getCISAOff());
-    sendInst->setSpillOrFill();
 
     return sendInst;
 }
@@ -2791,7 +2790,6 @@ SpillManagerGMRF::createSpillSendInstr (
         G4_SrcRegRegion* srcOpnd = createBlockSpillRangeSrcRegion(spillRangeDcl->getRegVar (), regOff);
 
         sendInst = builder_->createSplitSendInst( NULL, G4_sends, (unsigned char) execSize, postDst, headerOpnd, srcOpnd, messageDescImm, InstOpt_WriteEnable, desc, NULL, 0);
-        sendInst->setSpillOrFill();
         sendInst->setCISAOff(curInst->getCISAOff());
     }
     else
@@ -2843,7 +2841,6 @@ SpillManagerGMRF::createSpillSendInstr (
         G4_SrcRegRegion* srcOpnd = builder_->Create_Src_Opnd_From_Dcl(spillRangeDcl, region);
 
         sendInst = builder_->createSplitSendInst( NULL, G4_sends, (unsigned char) execSize, postDst, headerOpnd, srcOpnd, messageDescImm, option, desc, NULL, 0);
-        sendInst->setSpillOrFill();
         sendInst->setCISAOff(curInst->getCISAOff());
     }
     else
@@ -2918,7 +2915,6 @@ void SpillManagerGMRF::createSpill(
     G4_DstRegRegion * postDst = builder_->createNullDst(esize == 16 ? Type_UW : Type_UD);
 
     G4_INST* sendInst = builder_->createSplitSendInst(NULL, G4_sends, (unsigned char)esize, postDst, headerOpnd, srcOpnd, messageDescImm, spillMask, desc, NULL, 0);
-    sendInst->setSpillOrFill();
     sendInst->setCISAOff(curInst->getCISAOff());
 }
 
@@ -3291,8 +3287,7 @@ void SpillManagerGMRF::createFill(
     G4_DstRegRegion * postDst = builder_->createDstRegRegion(
         Direct, fillDcl->getRegVar(), (short)fillRegOff, 0, 1, Type_UW);
     G4_SrcRegRegion* payload = builder_->Create_Src_Opnd_From_Dcl(sendSrc, builder_->getRegionStride1());
-    G4_INST* fillInst = createSendInst((unsigned char)esize, postDst, payload, messageDescImm, funcID, false, InstOpt_WriteEnable);
-    fillInst->setSpillOrFill();
+    createSendInst((unsigned char)esize, postDst, payload, messageDescImm, funcID, false, InstOpt_WriteEnable);
  
     numGRFFill++;
 }
@@ -4409,8 +4404,7 @@ SpillManagerGMRF::fixSpillFillCode (
 			++kt;
 			G4_INST * inst = *jt;
 
-            if( inst->isSend() &&
-                 inst->getSpillOrFill() == true )
+            if (inst->isSend())
             {
                 if( inst->getMsgDesc()->isScratchRead() )
                 {

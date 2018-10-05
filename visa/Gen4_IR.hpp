@@ -669,9 +669,7 @@ protected:
     // during optimization, an inst may become redundant and be marked dead
     unsigned short dead : 1;
     unsigned short scratch : 1;
-    unsigned short mIsIndirectJmpTarget : 1;
     unsigned short evenlySplitInst : 1;
-    unsigned short isSpillOrFill : 1;
     unsigned char    execSize; 
 
     BinInst *bin;
@@ -683,10 +681,6 @@ protected:
             unsigned int lexicalId;
         } ra;
     } m_Transient;
-
-    // label associated with this instruction
-    // this is used to link the SIMD CF instructions that we do not want to model in the CFG
-    G4_Label* mLabel;
 
     // make it private so only the IR_Builder can create new instructions
     void *operator new(size_t sz, Mem_Manager& m){ return m.alloc(sz); }
@@ -858,14 +852,6 @@ public:
     {
         return detectComprInst();
     }
-    bool isIndirectJmpTarget() const
-    {
-        return mIsIndirectJmpTarget;
-    }
-    void setIndirectJmpTarget()
-    {
-        mIsIndirectJmpTarget = true;
-    }
     bool isComprInvariantSrcRegion(G4_SrcRegRegion* src, int srcPos);
 
     G4_Operand* getSrc(unsigned i) const
@@ -881,9 +867,6 @@ public:
         MUST_BE_TRUE( op == G4_label, "inst must be a label");
         return (G4_Label*) getSrc(0);
     }
-
-    G4_Label* getInstLabel() const { return mLabel; }
-    void setInstLabel(G4_Label* label) { mLabel = label; }
 
     MDLocation *getLocation() const { return location; }
     void setLocation(MDLocation* loc) {
@@ -1184,8 +1167,6 @@ public:
     bool canUseACCOpt( bool handleComprInst, bool checkRegion,
         uint16_t &hs, bool allow3Src, bool allowTypeDemotion, bool insertMov = false );
 
-    void setSpillOrFill() { isSpillOrFill = true; }
-    bool getSpillOrFill() { return isSpillOrFill; }
     bool hasNULLDst();
     bool goodTwoGRFDst( bool& );
     BinInst *   getBinInst() { return bin; };
@@ -2974,34 +2955,20 @@ namespace vISA
         short getSubRegOff()               { return subRegOff; }
         void  setSubRegOff(short off)
         {
-            bool recomputeLeftBound = false;
             if (subRegOff != off)
             {
-                unsetRightBound();
-                recomputeLeftBound = true;
-            }
-
-            subRegOff = off;
-
-            if (recomputeLeftBound)
-            {
+                subRegOff = off;
                 computeLeftBound();
+                unsetRightBound();
             }
         }
 
         void  setRegOff(short off)
         {
-            bool recomputeLeftBound = false;
             if (regOff != off)
             {
+                regOff = off;
                 unsetRightBound();
-                recomputeLeftBound = true;
-            }
-
-            regOff = off;
-
-            if (recomputeLeftBound)
-            {
                 computeLeftBound();
             }
         }
@@ -3189,18 +3156,11 @@ public:
     short getSubRegOff()               { return subRegOff; }
     void  setSubRegOff(short off)
     {
-        bool recomputeLeftBound = false;
         if (subRegOff != off)
         {
-            unsetRightBound();
-            recomputeLeftBound = true;
-        }
-
-        subRegOff = off;
-
-        if (recomputeLeftBound)
-        {
+            subRegOff = off;
             computeLeftBound();
+            unsetRightBound();
         }
     }
 

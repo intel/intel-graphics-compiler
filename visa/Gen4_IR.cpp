@@ -471,10 +471,8 @@ G4_INST::G4_INST(USE_DEF_ALLOCATOR& allocator,
     op(o), dst(d), predicate(prd), mod(m), option(opt), msgDesc(NULL),
     local_id(0),
     srcCISAoff(-1),
-    sat(s), scratch(false),
-    mIsIndirectJmpTarget(false), evenlySplitInst(false),
-    execSize(size), bin(0), mLabel(NULL),
-    global_id(-1),
+    sat(s), scratch(false), evenlySplitInst(false),
+    execSize(size), bin(0), global_id(-1),
     useInstList(allocator),
     defInstList(allocator),
     location(NULL)
@@ -488,7 +486,6 @@ G4_INST::G4_INST(USE_DEF_ALLOCATOR& allocator,
     dead = false;
     implAccSrc = nullptr;
     implAccDst = nullptr;
-    isSpillOrFill = false;
 
     resetRightBound(dst);
     resetRightBound(s0);
@@ -521,9 +518,8 @@ G4_INST::G4_INST(
     local_id(0),
     global_id(-1),
     srcCISAoff(-1),
-    sat(s), scratch(false),
-    mIsIndirectJmpTarget(false), evenlySplitInst(false),
-    execSize(size), bin(0), mLabel(NULL),
+    sat(s), scratch(false), evenlySplitInst(false),
+    execSize(size), bin(0),
     useInstList(allocator),
     defInstList(allocator),
     location(NULL)
@@ -537,7 +533,6 @@ G4_INST::G4_INST(
     dead = false;
     implAccSrc = nullptr;
     implAccDst = nullptr;
-    isSpillOrFill = false;
 
     resetRightBound(dst);
     resetRightBound(s0);
@@ -3242,7 +3237,7 @@ void G4_INST::emit_send_desc(std::ostream& output)
 
     // Emit a text description of the descriptor if it is available
      G4_SendMsgDescriptor* msgDesc = sendInst->getMsgDesc();
-    if( msgDesc != NULL )
+    if (msgDesc)
     {
         output << " // ";
 
@@ -3251,19 +3246,6 @@ void G4_INST::emit_send_desc(std::ostream& output)
             output << msgDesc->getDescType();
         }
 
-        // Whether spill/fill
-        if( sendInst->getSpillOrFill() == true )
-        {
-            if( msgDesc->isDataPortRead() || msgDesc->isScratchRead() )
-                output << ", fill";
-            else
-                output << ", spill";
-
-            if(msgDesc->isScratchRead() || msgDesc->isScratchWrite() )
-            {
-                output << ", offset = " << msgDesc->getScratchRWOffset();
-            }
-        }
         output << ", resLen=" << msgDesc->ResponseLength();
         output << ", msgLen=" << msgDesc->MessageLength();
         if (isSplitSend())
@@ -3275,7 +3257,6 @@ void G4_INST::emit_send_desc(std::ostream& output)
         {
             output << ", barrier";
         }
-
     }
 }
 
