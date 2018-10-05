@@ -1312,9 +1312,6 @@ void COpenCLKernel::AllocatePayload()
     m_kernelInfo.m_threadPayload.HasStageInGridOrigin = false;
     m_kernelInfo.m_threadPayload.HasStageInGridSize = false;
 
-    m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = 0;
-    m_kernelInfo.m_threadPayload.PassInlineData = false;
-
     // Set the amount of the private memory used by the kernel
     // Set only if the private memory metadata actually exists and we don't use
     // scratch space for private memory.
@@ -1437,6 +1434,9 @@ void COpenCLKernel::AllocatePayload()
             encoder.GetVISAKernel()->AddKernelAttribute("perThreadInputSize", sizeof(uint16_t), &perThreadInputSize);
         }
     }
+
+    m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = 0;
+    m_kernelInfo.m_threadPayload.PassInlineData = false;
     
     assert(constantBufferEnd >= constantBufferStart && "Constant buffer size should be non negative!");
     m_ConstantBufferLength = constantBufferEnd - constantBufferStart;
