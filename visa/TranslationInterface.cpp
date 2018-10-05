@@ -10089,10 +10089,22 @@ int IR_Builder::translateVISASVMBlockWriteInst(
 
     sources[len].opnd = src;
 
-    switch (src->getElemSize()) {
-        case 2: sources[len].execSize = 16 * srcNumGRF; break;
-        case 4: sources[len].execSize =  8 * srcNumGRF; break;
-        case 8: sources[len].execSize =  4 * srcNumGRF; break;
+    uint32_t movExecSize = 0;
+
+    switch (src->getElemSize()) 
+    {
+        case 2: 
+            sources[len].execSize = 16 * srcNumGRF; 
+            movExecSize = 16;
+            break;
+        case 4: 
+            sources[len].execSize = 8 * srcNumGRF;
+            movExecSize = 8;
+            break;
+        case 8: 
+            sources[len].execSize = 4 * srcNumGRF;
+            movExecSize = 4;
+            break;
     }
 
     sources[len].instOpt = InstOpt_WriteEnable;
@@ -10100,7 +10112,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
 
     G4_SrcRegRegion *msgs[2] = {0, 0};
     unsigned sizes[2] = {0, 0};
-    preparePayload(msgs, sizes, sendExecSize, useSplitSend, sources, len);
+    preparePayload(msgs, sizes, movExecSize, useSplitSend, sources, len);
 
     DATA_CACHE1_MESSAGES msgSubOpcode = DC1_A64_BLOCK_WRITE;
 
@@ -10112,7 +10124,8 @@ int IR_Builder::translateVISASVMBlockWriteInst(
 
     G4_DstRegRegion* sendDst = createNullDst(Type_UD);
 
-    if (msgs[1] == 0) {
+    if (msgs[1] == 0) 
+    {
         Create_Send_Inst_For_CISA(NULL, sendDst,
             msgs[0], sizes[0],
             0, sendExecSize,
@@ -10121,7 +10134,9 @@ int IR_Builder::translateVISASVMBlockWriteInst(
             false, true,
             NULL, NULL,
             InstOpt_WriteEnable, false);
-    } else {
+    } 
+    else 
+    {
         Create_SplitSend_Inst_For_CISA(NULL, sendDst,
             msgs[0], sizes[0],
             msgs[1], sizes[1],
