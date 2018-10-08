@@ -675,3 +675,250 @@ void CustomLoopVersioning::addPhiNodes(
         phi->addIncoming(Inst, origLoop->getExitingBlock());
     }
 }
+
+
+// This pass is mostly forked from LoopSimplification pass
+class LoopCanonicalization : public llvm::FunctionPass
+{
+public:
+    static char ID;
+
+    LoopCanonicalization();
+
+    void getAnalysisUsage(llvm::AnalysisUsage& AU) const
+    {
+        AU.addRequired<llvm::LoopInfoWrapperPass>();
+        AU.addRequired<llvm::DominatorTreeWrapperPass>();
+        AU.addRequiredID(llvm::LCSSAID);
+        AU.addPreservedID(LCSSAID);
+    }
+
+    bool runOnFunction(Function& F);
+    bool processLoop(Loop* loop, DominatorTree *DT, LoopInfo *LI, bool PreserveLCSSA);
+    bool processOneLoop(Loop* loop, DominatorTree *DT, LoopInfo *LI, bool PreserveLCSSA);
+
+
+    llvm::StringRef getPassName() const
+    {
+        return "IGC loop canonicalization";
+    }
+
+private:
+    CodeGenContext * m_cgCtx;
+    llvm::LoopInfo* m_LI;
+    llvm::DominatorTree* m_DT;
+    llvm::Function* m_function;
+};
+#undef PASS_FLAG
+#undef PASS_DESC
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+#define PASS_FLAG     "igc-loop-canonicalization"
+#define PASS_DESC     "IGC Loop canonicalization"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+IGC_INITIALIZE_PASS_BEGIN(LoopCanonicalization, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+IGC_INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass);
+IGC_INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass);
+IGC_INITIALIZE_PASS_DEPENDENCY(LCSSAWrapperPass)
+IGC_INITIALIZE_PASS_END(LoopCanonicalization, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+
+
+char LoopCanonicalization::ID = 0;
+
+LoopCanonicalization::LoopCanonicalization() : FunctionPass(ID)
+{
+    initializeLoopCanonicalizationPass(*PassRegistry::getPassRegistry());
+}
+/// \brief This method is called when the specified loop has more than one
+/// backedge in it.
+///
+/// If this occurs, revector all of these backedges to target a new basic block
+/// and have that block branch to the loop header.  This ensures that loops
+/// have exactly one backedge.
+static BasicBlock *insertUniqueBackedgeBlock(Loop *L, BasicBlock *Preheader,
+    DominatorTree *DT, LoopInfo *LI) {
+    assert(L->getNumBackEdges() > 1 && "Must have > 1 backedge!");
+
+    // Get information about the loop
+    BasicBlock *Header = L->getHeader();
+    Function *F = Header->getParent();
+
+    // Unique backedge insertion currently depends on having a preheader.
+    if(!Preheader)
+        return nullptr;
+
+    // The header is not an EH pad; preheader insertion should ensure this.
+    assert(!Header->isEHPad() && "Can't insert backedge to EH pad");
+
+    // Figure out which basic blocks contain back-edges to the loop header.
+    std::vector<BasicBlock*> BackedgeBlocks;
+    for(pred_iterator I = pred_begin(Header), E = pred_end(Header); I != E; ++I) {
+        BasicBlock *P = *I;
+
+        // Indirectbr edges cannot be split, so we must fail if we find one.
+        if(isa<IndirectBrInst>(P->getTerminator()))
+            return nullptr;
+
+        if(P != Preheader) BackedgeBlocks.push_back(P);
+    }
+
+    // Create and insert the new backedge block...
+    BasicBlock *BEBlock = BasicBlock::Create(Header->getContext(),
+        Header->getName() + ".backedge", F);
+    BranchInst *BETerminator = BranchInst::Create(Header, BEBlock);
+    BETerminator->setDebugLoc(Header->getFirstNonPHI()->getDebugLoc());
+
+    // Move the new backedge block to right after the last backedge block.
+    Function::iterator InsertPos = ++BackedgeBlocks.back()->getIterator();
+    F->getBasicBlockList().splice(InsertPos, F->getBasicBlockList(), BEBlock);
+
+    // Now that the block has been inserted into the function, create PHI nodes in
+    // the backedge block which correspond to any PHI nodes in the header block.
+    for(BasicBlock::iterator I = Header->begin(); isa<PHINode>(I); ++I) {
+        PHINode *PN = cast<PHINode>(I);
+        PHINode *NewPN = PHINode::Create(PN->getType(), BackedgeBlocks.size(),
+            PN->getName() + ".be", BETerminator);
+
+        // Loop over the PHI node, moving all entries except the one for the
+        // preheader over to the new PHI node.
+        unsigned PreheaderIdx = ~0U;
+        bool HasUniqueIncomingValue = true;
+        Value *UniqueValue = nullptr;
+        for(unsigned i = 0, e = PN->getNumIncomingValues(); i != e; ++i) {
+            BasicBlock *IBB = PN->getIncomingBlock(i);
+            Value *IV = PN->getIncomingValue(i);
+            if(IBB == Preheader) {
+                PreheaderIdx = i;
+            }
+            else {
+                NewPN->addIncoming(IV, IBB);
+                if(HasUniqueIncomingValue) {
+                    if(!UniqueValue)
+                        UniqueValue = IV;
+                    else if(UniqueValue != IV)
+                        HasUniqueIncomingValue = false;
+                }
+            }
+        }
+
+        // Delete all of the incoming values from the old PN except the preheader's
+        assert(PreheaderIdx != ~0U && "PHI has no preheader entry??");
+        if(PreheaderIdx != 0) {
+            PN->setIncomingValue(0, PN->getIncomingValue(PreheaderIdx));
+            PN->setIncomingBlock(0, PN->getIncomingBlock(PreheaderIdx));
+        }
+        // Nuke all entries except the zero'th.
+        for(unsigned i = 0, e = PN->getNumIncomingValues() - 1; i != e; ++i)
+            PN->removeIncomingValue(e - i, false);
+
+        // Finally, add the newly constructed PHI node as the entry for the BEBlock.
+        PN->addIncoming(NewPN, BEBlock);
+
+        // As an optimization, if all incoming values in the new PhiNode (which is a
+        // subset of the incoming values of the old PHI node) have the same value,
+        // eliminate the PHI Node.
+        if(HasUniqueIncomingValue) {
+            NewPN->replaceAllUsesWith(UniqueValue);
+            BEBlock->getInstList().erase(NewPN);
+        }
+    }
+
+    // Now that all of the PHI nodes have been inserted and adjusted, modify the
+    // backedge blocks to jump to the BEBlock instead of the header.
+    // If one of the backedges has llvm.loop metadata attached, we remove
+    // it from the backedge and add it to BEBlock.
+    unsigned LoopMDKind = BEBlock->getContext().getMDKindID("llvm.loop");
+    MDNode *LoopMD = nullptr;
+    for(unsigned i = 0, e = BackedgeBlocks.size(); i != e; ++i) {
+        TerminatorInst *TI = BackedgeBlocks[i]->getTerminator();
+        if(!LoopMD)
+            LoopMD = TI->getMetadata(LoopMDKind);
+        TI->setMetadata(LoopMDKind, nullptr);
+        for(unsigned Op = 0, e = TI->getNumSuccessors(); Op != e; ++Op)
+            if(TI->getSuccessor(Op) == Header)
+                TI->setSuccessor(Op, BEBlock);
+    }
+    BEBlock->getTerminator()->setMetadata(LoopMDKind, LoopMD);
+
+    //===--- Update all analyses which we must preserve now -----------------===//
+
+    // Update Loop Information - we know that this block is now in the current
+    // loop and all parent loops.
+    L->addBasicBlockToLoop(BEBlock, *LI);
+
+    // Update dominator information
+    DT->splitBlock(BEBlock);
+
+    return BEBlock;
+}
+
+bool LoopCanonicalization::runOnFunction(llvm::Function& F)
+{
+    bool Changed = false;
+    LoopInfo *LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    DominatorTree *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+    bool PreserveLCSSA = mustPreserveAnalysisID(LCSSAID);
+
+    // Simplify each loop nest in the function.
+    for(LoopInfo::iterator I = LI->begin(), E = LI->end(); I != E; ++I)
+        Changed |= processLoop(*I, DT, LI, PreserveLCSSA);
+    return Changed;
+}
+
+bool LoopCanonicalization::processLoop(llvm::Loop* L, DominatorTree *DT, LoopInfo *LI, bool PreserveLCSSA)
+{
+    bool changed = false;
+    // Worklist maintains our depth-first queue of loops in this nest to process.
+    SmallVector<Loop *, 4> Worklist;
+    Worklist.push_back(L);
+
+    // Walk the worklist from front to back, pushing newly found sub loops onto
+    // the back. This will let us process loops from back to front in depth-first
+    // order. We can use this simple process because loops form a tree.
+    for(unsigned Idx = 0; Idx != Worklist.size(); ++Idx) {
+        Loop *L2 = Worklist[Idx];
+        Worklist.append(L2->begin(), L2->end());
+    }
+
+    while(!Worklist.empty())
+        changed |= processOneLoop(Worklist.pop_back_val(), DT, LI, PreserveLCSSA);
+    return changed;
+}
+
+// Do basic loop canonicalization to ensure correctness. We need a single header and single latch
+bool LoopCanonicalization::processOneLoop(Loop* L, DominatorTree *DT, LoopInfo *LI, bool PreserveLCSSA)
+{
+    bool changed = false;
+    // Does the loop already have a preheader?  If so, don't insert one.
+    BasicBlock *Preheader = L->getLoopPreheader();
+    if(!Preheader) {
+        Preheader = InsertPreheaderForLoop(L, DT, LI, PreserveLCSSA);
+        if(Preheader) {
+            changed = true;
+        }
+    }
+
+    // If the header has more than two predecessors at this point (from the
+    // preheader and from multiple backedges), we must adjust the loop.
+    BasicBlock *LoopLatch = L->getLoopLatch();
+    if(!LoopLatch) {
+        // If we either couldn't, or didn't want to, identify nesting of the loops,
+        // insert a new block that all backedges target, then make it jump to the
+        // loop header.
+        LoopLatch = insertUniqueBackedgeBlock(L, Preheader, DT, LI);
+        if(LoopLatch) {
+            changed = true;
+        }
+    }
+    return changed;
+}
+
+namespace IGC
+{
+FunctionPass* createLoopCanonicalization()
+{
+    return new LoopCanonicalization();
+}
+}
+

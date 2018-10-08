@@ -370,6 +370,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
 
     if (ctx.m_threadCombiningOptDone)
     {
+        mpm.add(createLoopCanonicalization());
         mpm.add(llvm::createLoopDeletionPass());
         mpm.add(llvm::createBreakCriticalEdgesPass());
         mpm.add(llvm::createLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));
@@ -450,6 +451,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
     if(ctx.m_instrTypes.hasLoop)
     {
         // need to run loop simplify to canonicalize loop and merge latches
+        mpm.add(createLoopCanonicalization());
         mpm.add(createLoopSimplifyPass());
     }
     if (ctx.m_enableSubroutine)
@@ -1164,6 +1166,7 @@ void OptimizeIR(CodeGenContext* pContext)
             if( pContext->m_instrTypes.hasLoop )
             {
                 mpm.add(createLoopDeadCodeEliminationPass());
+                mpm.add(createLoopCanonicalization());
                 mpm.add(llvm::createLoopDeletionPass());
                 mpm.add(llvm::createBreakCriticalEdgesPass());
                 mpm.add(llvm::createLoopRotatePass(LOOP_ROTATION_HEADER_INST_THRESHOLD));

@@ -39,7 +39,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
-
+///////////////////////////////////////////////////////////////////////////
+/// Enforce a single latch for every loop header. This needs to be ran before
+/// LLVM Loop canonicalization pass as LLVM loop simplification pass sometimes 
+/// decides to spilt the loop. Spliting the loop may cause functional issues 
+/// in case of barriers being used and it may cause extra SIMD divergence causing 
+/// performance degradation
+llvm::FunctionPass* createLoopCanonicalization();
 /**
  * Custom loop versioning.
  * Break loop into segments to expose loop invirants.
