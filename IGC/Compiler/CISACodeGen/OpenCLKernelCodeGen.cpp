@@ -1353,6 +1353,12 @@ void COpenCLKernel::AllocatePayload()
 			                IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset) &&
 			                arg.getArg()->use_empty());
 
+        if (constantBufferStartSet && !constantBufferEndSet && !arg.isConstantBuf())
+        {
+            constantBufferEnd = offset;
+            constantBufferEndSet = true;
+        }
+
         if (!constantBufferStartSet && arg.isConstantBuf()) {
             constantBufferStart = offset;
             AllocateNOSConstants(offset);
@@ -1421,6 +1427,7 @@ void COpenCLKernel::AllocatePayload()
 
     if (!constantBufferEndSet && constantBufferStartSet) {
         constantBufferEnd = offset;
+        constantBufferEndSet = true;
     }
 
     // ToDo: we should avoid passing all three dimensions of local id
