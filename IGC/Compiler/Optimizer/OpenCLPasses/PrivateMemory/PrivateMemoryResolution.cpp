@@ -832,6 +832,11 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
                     uint64_t tmpAllocaSize = bufferSize;
                     while (pTmpType != pTypeOfAccessedObject)
                     {
+                        if (pTmpType->isStructTy() && pTmpType->getStructNumElements() == 1)
+                        {
+                            pTmpType = pTmpType->getStructElementType(0);
+                        }
+
                         if (pTmpType->isArrayTy())
                         {
                             tmpAllocaSize *= pTmpType->getArrayNumElements();

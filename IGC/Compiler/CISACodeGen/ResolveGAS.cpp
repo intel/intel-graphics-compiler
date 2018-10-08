@@ -432,21 +432,16 @@ bool GASPropagator::visitPHINode(PHINode &PN) {
   }
 
   // Propagate this phi node.
+  PHINode *NewPN = PHINode::Create(NonGASTy, e, "", &PN);
   for (unsigned i = 0; i != e; ++i)
-    PN.setIncomingValue(i, NewIncomingValues[i]);
-  PN.mutateType(NonGASTy);
+    NewPN->addIncoming(NewIncomingValues[i], PN.getIncomingBlock(i));
+  NewPN->takeName(&PN);
 
-  // Create additional cast to enable further propagation.
   BuilderType::InsertPointGuard Guard(*IRB);
   IRB->SetInsertPoint(PN.getParent()->getFirstNonPHI());
-  Value *NewPtr = IRB->CreateAddrSpaceCast(&PN, GASTy);
-  for (auto UI = PN.use_begin(), UE = PN.use_end(); UI != UE; /*EMPTY*/) {
-    Use &U = *UI++;
-    if (U.getUser() == NewPtr)
-      continue;
-    U.set(NewPtr);
-  }
-
+  Value *NewPtr = IRB->CreateAddrSpaceCast(NewPN, GASTy);
+  PN.replaceAllUsesWith(NewPtr);
+  PN.eraseFromParent();
   return true;
 }
 
