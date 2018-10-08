@@ -79,8 +79,6 @@ char GenericAddressAnalysis::ID = 0;
 
 bool GenericAddressAnalysis::runOnFunction(Function& F)
 {
-    bool HasGAS = false;
-
     for (auto& BB : F.getBasicBlockList()) {
         for (auto& Inst : BB.getInstList()) {
             Type* Ty = Inst.getType();
@@ -94,22 +92,18 @@ bool GenericAddressAnalysis::runOnFunction(Function& F)
                 Ty = GEP->getPointerOperandType();
             auto PT = dyn_cast<PointerType>(Ty);
             if (PT && PT->getAddressSpace() == ADDRESS_SPACE_GENERIC) {
-                HasGAS = true;
-                break;
+                auto implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+                SmallVector<ImplicitArg::ArgType, 3> args;
+                args.push_back(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS);
+                args.push_back(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_SIZE);
+                args.push_back(ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE);
+                ImplicitArgs::addImplicitArgs(F, args, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
+                return true;
             }
         }
     }
 
-    if (HasGAS) {
-        auto implicitArgs = ImplicitArgs(F, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
-        SmallVector<ImplicitArg::ArgType, 2> args;
-        args.push_back(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS);
-        args.push_back(ImplicitArg::LOCAL_MEMORY_STATELESS_WINDOW_SIZE);
-        args.push_back(ImplicitArg::PRIVATE_MEMORY_STATELESS_SIZE);
-        ImplicitArgs::addImplicitArgs(F, args, getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils());
-    }
-
-    return HasGAS;
+    return false;
 }
 
 namespace {
