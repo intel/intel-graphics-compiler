@@ -24,94 +24,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include "Compiler/MetaDataUtilsWrapper.h"
-#include "Compiler/CodeGenContextWrapper.hpp"
+#pragma once
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/DataLayout.h>
-#include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 
-namespace IGC
-{
+namespace IGC {
+llvm::FunctionPass *createGenericAddressAnalysisPass();
+void initializeGenericAddressAnalysisPass(llvm::PassRegistry &);
 
-class GenericAddressAnalysis : public llvm::FunctionPass, public llvm::InstVisitor<GenericAddressAnalysis>
-{
-public:
-    // Pass identification, replacement for typeid
-    static char ID;
-
-    bool m_hasGenericAddressSpacePointers;
-
-    GenericAddressAnalysis();
-
-    ~GenericAddressAnalysis();
-
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-    {
-        AU.setPreservesCFG();
-        AU.addRequired<MetaDataUtilsWrapper>();
-    }
-
-    virtual llvm::StringRef getPassName() const override
-    {
-        return "GenericAddressAnalysis";
-    }
-
-    virtual bool runOnFunction(llvm::Function &F) override;
-
-    void visitAllocaInst(llvm::AllocaInst &I);
-    void visitLoadInst(llvm::LoadInst &I);
-    void visitStoreInst(llvm::StoreInst &I);
-    void visitGetElementPtr(llvm::GetElementPtrInst &I);
-    void visitBitCastInst(llvm::BitCastInst &I);
-    void visitAddrSpaceCastInst(llvm::AddrSpaceCastInst &I);
-};
-
-class GenericAddressDynamicResolution : public llvm::FunctionPass
-{
-public:
-    // Pass identification, replacement for typeid
-    static char ID;
-    llvm::Module *m_module;
-
-    GenericAddressDynamicResolution();
-
-    ~GenericAddressDynamicResolution();
-
-    virtual llvm::StringRef getPassName() const override
-    {
-        return "GenericAddressDynamicResolution";
-    }
-
-    virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-    {
-        AU.addRequired<MetaDataUtilsWrapper>();
-        AU.addRequired<CodeGenContextWrapper>();
-    }
-
-    virtual bool runOnFunction(llvm::Function &F) override;
-
-    bool visitLoadStoreInst(llvm::Instruction &I);
-
-    bool visitIntrinsicCall(llvm::CallInst& I);
-    llvm::Module* getModule()
-    {
-        return m_module;
-    }
-
-
-private:
-    llvm::Value* addIsAddrSpaceComparison(llvm::Value* pointer, llvm::Instruction* insertPoint, const unsigned targetAS);
-    
-    llvm::Type*  getPointerAsIntType(llvm::LLVMContext& Ctx, const unsigned AS);
-
-    llvm::Value* getAddrSpaceWindowEndAddress(llvm::Instruction& insertPoint, const unsigned targetAS);
-    void         resolveGAS(llvm::Instruction &I, llvm::Value* pointerOperand, const unsigned targetAS);
-};
-
-}
-
+llvm::FunctionPass *createGenericAddressDynamicResolutionPass();
+void initializeGenericAddressDynamicResolutionPass(llvm::PassRegistry &);
+} // End namespace IGC

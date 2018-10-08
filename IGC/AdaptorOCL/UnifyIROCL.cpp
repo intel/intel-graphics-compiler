@@ -351,8 +351,7 @@ static void CommonOCLBasedPasses(
     mpm.add(new ExtensionFuncsAnalysis());
     mpm.add(new ExtensionArgAnalysis());
     mpm.add(new DeviceEnqueueFuncsAnalysis());
-
-    mpm.add(new GenericAddressAnalysis());
+    mpm.add(createGenericAddressAnalysisPass());
     if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
     {
         mpm.add(new BuiltinCallGraphAnalysis());
@@ -418,7 +417,7 @@ static void CommonOCLBasedPasses(
     // (optimizeIR()) will fully take advantage of the flags.
     mpm.add(new SetFastMathFlags());
 
-    mpm.add(new GenericAddressDynamicResolution());
+    mpm.add(createGenericAddressDynamicResolutionPass());
 
     mpm.add(new FixResourcePtr());
 
