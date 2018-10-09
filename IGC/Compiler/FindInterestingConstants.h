@@ -67,17 +67,20 @@ namespace IGC
         void visitLoadInst(llvm::LoadInst &I);
 
     private:
-        unsigned int m_zeroFolded;
-        unsigned int m_constFolded;
+        unsigned int m_foldsToZero;
+        unsigned int m_foldsToConst;
+        unsigned int m_foldsToSource;
         bool m_constFoldBranch;
         std::vector<USC::ConstantAddrValue> m_InterestingConstants;
 
         // Helper functions
         bool getConstantAddress(llvm::LoadInst &I, unsigned &bufId, unsigned &eltId, int &size_in_bytes);
-        bool FoldsToZero(llvm::Instruction* inst, llvm::Value* use);
-        bool FoldsToConst(llvm::Instruction* inst, llvm::Instruction* use);
-        void FoldsToZeroPropagate(llvm::Instruction* I);
+        bool FoldsToConst(llvm::Instruction* inst, llvm::Instruction* use, bool &propagate);
+        bool FoldsToZero(llvm::Instruction* inst, llvm::Instruction* use);
+        bool FoldsToSource(llvm::Instruction* inst, llvm::Instruction* use);
         void FoldsToConstPropagate(llvm::Instruction* I);
+        void FoldsToZeroPropagate(llvm::Instruction* I);
+        void FoldsToSourcePropagate(llvm::Instruction* I);
         void addInterestingConstant(CodeGenContext* ctx, unsigned bufId, unsigned eltId, int size_in_bytes, bool anyValue, uint32_t value);
         template<typename ContextT>
         void copyInterestingConstants(ContextT* pShaderCtx);

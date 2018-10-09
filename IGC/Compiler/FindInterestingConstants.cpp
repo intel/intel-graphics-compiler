@@ -50,64 +50,69 @@ FindInterestingConstants::FindInterestingConstants() : FunctionPass(ID)
     initializeFindInterestingConstantsPass(*PassRegistry::getPassRegistry());
 }
 
-template<typename ContextT>
-void FindInterestingConstants::copyInterestingConstants(ContextT* pShaderCtx)
+bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use, bool &propagate)
 {
-    pShaderCtx->programOutput.m_InterestingConstantsSize = m_InterestingConstants.size();
-    pShaderCtx->programOutput.m_pInterestingConstants = new USC::ConstantAddrValue[m_InterestingConstants.size()];
-    memcpy_s(pShaderCtx->programOutput.m_pInterestingConstants, m_InterestingConstants.size() * sizeof(USC::ConstantAddrValue),
-        &m_InterestingConstants[0],
-        m_InterestingConstants.size() * sizeof(USC::ConstantAddrValue));
-}
+    propagate = false;
 
-bool FindInterestingConstants::doFinalization(llvm::Module &M)
-{
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    
-    if (m_InterestingConstants.size() != 0)
+    // "use" instruction should have some operand(s)
+    assert(use->getNumOperands() != 0);
+    if (BranchInst* brInst = dyn_cast<BranchInst>(use))
     {
-        if (ctx->type == ShaderType::PIXEL_SHADER)
+        m_constFoldBranch = true;
+        return false;
+    }
+
+    for (auto &U : use->operands())
+    {
+        Value *V = U.get();
+        if (V == inst)
+            continue;
+        else if (Constant* op = dyn_cast<Constant>(V))
+            continue;
+        else
         {
-            PixelShaderContext* pShaderCtx = static_cast <PixelShaderContext*>(ctx);
-            copyInterestingConstants(pShaderCtx);
-        }
-        else if (ctx->type == ShaderType::VERTEX_SHADER)
-        {
-            VertexShaderContext* pShaderCtx = static_cast <VertexShaderContext*>(ctx);
-            copyInterestingConstants(pShaderCtx);
-        }
-        else if (ctx->type == ShaderType::GEOMETRY_SHADER)
-        {
-            GeometryShaderContext* pShaderCtx = static_cast <GeometryShaderContext*>(ctx);
-            copyInterestingConstants(pShaderCtx);
-        }
-        else if (ctx->type == ShaderType::HULL_SHADER)
-        {
-            HullShaderContext* pShaderCtx = static_cast <HullShaderContext*>(ctx);
-            copyInterestingConstants(pShaderCtx);
-        }
-        else if (ctx->type == ShaderType::DOMAIN_SHADER)
-        {
-            DomainShaderContext* pShaderCtx = static_cast <DomainShaderContext*>(ctx);
-            copyInterestingConstants(pShaderCtx);
-        }
-        else if (ctx->type == ShaderType::COMPUTE_SHADER)
-        {
-            ComputeShaderContext* pShaderCtx = static_cast <ComputeShaderContext*>(ctx);
-            copyInterestingConstants(pShaderCtx);
+            // For select instruction all operands need not be constants to simplify the instruction
+            if (SelectInst* selInst = dyn_cast<SelectInst>(use))
+            {
+                if (selInst->getOperand(0) == inst)
+                    return true;
+            }
+            else
+                return false;
         }
     }
-    return false;
+    propagate = true;
+    return true;
 }
 
-bool FindInterestingConstants::runOnFunction(Function &F)
+void FindInterestingConstants::FoldsToConstPropagate(llvm::Instruction* I)
 {
-    visit(F);
-    return false;
+    bool propagate = false;
+    // if instruction count that can be folded to zero reached threshold, dont loop through 
+    for (auto UI = I->user_begin(), UE = I->user_end(); (UI != UE); ++UI)
+    {
+        if ((m_constFoldBranch) ||
+            (m_foldsToConst >= IGC_GET_FLAG_VALUE(FoldsToConstPropThreshold)))
+            break;
+
+        if (Instruction* useInst = dyn_cast<Instruction>(*UI))
+        {
+            if (useInst->getParent() == I->getParent())	// TBD Do we need this
+            {
+                if (FoldsToConst(I, useInst, propagate))
+                {
+                    m_foldsToConst++;
+                    if (propagate)
+                        FoldsToConstPropagate(useInst);
+                }
+            }
+        }
+    }
 }
 
-bool FindInterestingConstants::FoldsToZero(Instruction* inst, Value* use)
+bool FindInterestingConstants::FoldsToZero(Instruction* inst, Instruction* use)
 {
+    bool propagate = false;
     if (BranchInst* brInst = dyn_cast<BranchInst>(use))
     {
         m_constFoldBranch = true;
@@ -125,67 +130,62 @@ bool FindInterestingConstants::FoldsToZero(Instruction* inst, Value* use)
             return true;
         }
     }
+    if (FoldsToConst(inst, use, propagate))
+    {
+        m_foldsToConst++;
+        if (propagate)
+            FoldsToConstPropagate(use);
+    }
     return false;
-}
-
-bool FindInterestingConstants::FoldsToConst(Instruction* inst, Instruction* use)
-{
-    // "use" instruction should have some operand(s)
-    assert(use->getNumOperands() != 0);
-    if (BranchInst* brInst = dyn_cast<BranchInst>(use))
-    {
-        m_constFoldBranch = true;
-        return false;
-    }
-
-    for (auto &U : use->operands())
-    {
-        Value *V = U.get();
-        if (V == inst)
-            continue;
-        else if (Constant* op = dyn_cast<Constant>(V))
-            continue;
-        else
-            return false;
-    }
-    return true;
 }
 
 void FindInterestingConstants::FoldsToZeroPropagate(llvm::Instruction* I)
 {
-    for (auto UI = I->user_begin(), UE = I->user_end(); ((UI != UE) && (m_zeroFolded < IGC_GET_FLAG_VALUE(FoldsToZeroPropThreshold))); ++UI)
+    for (auto UI = I->user_begin(), UE = I->user_end(); (UI != UE); ++UI)
     {
         if ((m_constFoldBranch) ||
-            (m_zeroFolded >= IGC_GET_FLAG_VALUE(FoldsToZeroPropThreshold)))
+            (m_foldsToZero >= IGC_GET_FLAG_VALUE(FoldsToZeroPropThreshold)))
             break;
         if (Instruction* useInst = dyn_cast<Instruction>(*UI))
         {
             if (FoldsToZero(I, useInst))
             {
-                m_zeroFolded++;
+                m_foldsToZero++;
                 FoldsToZeroPropagate(useInst);
             }
         }
     }
 }
 
-void FindInterestingConstants::FoldsToConstPropagate(llvm::Instruction* I)
+bool FindInterestingConstants::FoldsToSource(llvm::Instruction* inst, llvm::Instruction* use)
 {
-    // if instruction count that can be folded to zero reached threshold, dont loop through 
-    for (auto UI = I->user_begin(), UE = I->user_end(); (UI != UE); ++UI)
+    if (BinaryOperator *binInst = dyn_cast<BinaryOperator>(use))
     {
-        if ((m_constFoldBranch) ||
-            (m_constFolded >= IGC_GET_FLAG_VALUE(FoldsToConstPropThreshold)))
-            break;
+        if (binInst->getOpcode() == Instruction::FMul)
+        {
+            return true;
+        }
+        else if (binInst->getOpcode() == Instruction::FDiv &&
+            inst == binInst->getOperand(1))
+        {
+            return true;
+        }
+    }
+    return false;
+}
 
+void FindInterestingConstants::FoldsToSourcePropagate(llvm::Instruction* I)
+{
+    for (auto UI = I->user_begin(), UE = I->user_end(); UI != UE; ++UI)
+    {
         if (Instruction* useInst = dyn_cast<Instruction>(*UI))
         {
-            if (useInst->getParent() == I->getParent())	// TBD Do we need this
+            if (FoldsToSource(I, useInst))
             {
-                if (FoldsToConst(I,useInst))
+                m_foldsToSource++;
+                if (m_foldsToSource >= IGC_GET_FLAG_VALUE(FoldsToSourceThreshold))
                 {
-                    m_constFolded++;
-                    FoldsToConstPropagate(useInst);
+                    break;
                 }
             }
         }
@@ -265,60 +265,117 @@ void FindInterestingConstants::addInterestingConstant(CodeGenContext* ctx, unsig
 void FindInterestingConstants::visitLoadInst(llvm::LoadInst &I)
 {
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    bool isInteresting = false;
     unsigned bufId;
     unsigned eltId;
     int size_in_bytes;
-    bool anyValue;
 
-    m_zeroFolded = 0;
-    m_constFolded = 0;
+    m_foldsToZero = 0;
+    m_foldsToConst = 0;
+    m_foldsToSource = 0;
     m_constFoldBranch = false;
-    anyValue = true;
     if(getConstantAddress(I, bufId, eltId, size_in_bytes))
     {
-        for (auto UI = I.user_begin(), UE = I.user_end(); UI != UE; ++UI)
+        /*
+        This Constant is interesting, if the use instruction:
+        is branch
+        or subsequent Instructions get folded to constant if the constant value is known
+        or subsequent Instructions get folded to zero if the constant value is 0
+        or subsequent Instructions get folded to its source if the constant value is 1 (mul/div by 1 scenarios)
+        */
+        FoldsToConstPropagate(&I);
+        // If m_foldsToConst is greater than threshold or some branch instruction gets simplified because of this constant
+        if ((m_constFoldBranch) || (m_foldsToConst >= IGC_GET_FLAG_VALUE(FoldsToConstPropThreshold)))
         {
-            if (Instruction* useInst = dyn_cast<Instruction>(*UI))
+            // Get the ConstantAddress from LoadInst and log it in interesting constants
+            addInterestingConstant(ctx, bufId, eltId, size_in_bytes, true);
+        }
+        else
+        {
+            m_foldsToConst = 0;     // Reset FoldsToConst count to zero. We can keep looking for this case when FoldsToZero cannot be propagated further
+            FoldsToZeroPropagate(&I);
+            // If m_foldsToZero is greater than threshold or some branch instruction gets simplified because of this constant
+            if ((m_constFoldBranch) ||
+                ((m_foldsToZero + m_foldsToConst) >= IGC_GET_FLAG_VALUE(FoldsToZeroPropThreshold)))
             {
-                /*
-                    This Constant is interesting, if the use instruction:
-                            is branch
-                            and subsequent Instructions get folded to zero if the constant value is 0 (FoldsToZeroPropThreshold)
-                            and subsequent Instructions get folded to constant if the constant value is known 
-                */
+                // Zero value for this constant is interesting
+                // Get the ConstantAddress from LoadInst and log it in interesting constants
+                addInterestingConstant(ctx, bufId, eltId, size_in_bytes, false, 0);
+                // Continue finding if ONE_VALUE is beneficial for this constant
+            }
 
-                if (FoldsToConst(&I, useInst))
+            FoldsToSourcePropagate(&I);
+            if (m_foldsToSource >= IGC_GET_FLAG_VALUE(FoldsToSourceThreshold))
+            {
+                // One value for this constant is interesting
+                // Get the ConstantAddress from LoadInst and log it in interesting constants
+                if (I.getType()->isIntegerTy())
                 {
-                    m_constFolded++;
-                    FoldsToConstPropagate(useInst);
+                    addInterestingConstant(ctx, bufId, eltId, size_in_bytes, false, 1);
                 }
-                // If m_constFolded is greater than threshold or some branch instruction gets simplified because of this constant
-                if ((m_constFoldBranch) || (m_constFolded >= IGC_GET_FLAG_VALUE(FoldsToConstPropThreshold)))
+                else if (I.getType()->isFloatTy())
                 {
-                    isInteresting = true;
-                    break;
-                }
-                    
-                if (FoldsToZero(&I, useInst))
-                {
-                    anyValue = false;
-                    m_zeroFolded++;
-
-                    FoldsToZeroPropagate(useInst);
-                }
-                // If m_zeroFolded is greater than threshold or some branch instruction gets simplified because of this constant
-                if ((m_constFoldBranch) || (m_zeroFolded >= IGC_GET_FLAG_VALUE(FoldsToZeroPropThreshold)))
-                {
-                    isInteresting = true;
-                    break;
+                    uint32_t value;
+                    float floatValue = 1.0;
+                    memcpy_s(&value, sizeof(uint32_t), &floatValue, sizeof(float));
+                    addInterestingConstant(ctx, bufId, eltId, size_in_bytes, false, value);
                 }
             }
         }
-        if (isInteresting)
+    }
+}
+
+template<typename ContextT>
+void FindInterestingConstants::copyInterestingConstants(ContextT* pShaderCtx)
+{
+    pShaderCtx->programOutput.m_InterestingConstantsSize = m_InterestingConstants.size();
+    pShaderCtx->programOutput.m_pInterestingConstants = new USC::ConstantAddrValue[m_InterestingConstants.size()];
+    memcpy_s(pShaderCtx->programOutput.m_pInterestingConstants, m_InterestingConstants.size() * sizeof(USC::ConstantAddrValue),
+        &m_InterestingConstants[0],
+        m_InterestingConstants.size() * sizeof(USC::ConstantAddrValue));
+}
+
+bool FindInterestingConstants::doFinalization(llvm::Module &M)
+{
+    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    if (m_InterestingConstants.size() != 0)
+    {
+        if (ctx->type == ShaderType::PIXEL_SHADER)
         {
-            // Get the ConstantAddress from LoadInst and log it in interesting constants
-            addInterestingConstant(ctx, bufId, eltId, size_in_bytes, anyValue);
+            PixelShaderContext* pShaderCtx = static_cast <PixelShaderContext*>(ctx);
+            copyInterestingConstants(pShaderCtx);
+        }
+        else if (ctx->type == ShaderType::VERTEX_SHADER)
+        {
+            VertexShaderContext* pShaderCtx = static_cast <VertexShaderContext*>(ctx);
+            copyInterestingConstants(pShaderCtx);
+        }
+        else if (ctx->type == ShaderType::GEOMETRY_SHADER)
+        {
+            GeometryShaderContext* pShaderCtx = static_cast <GeometryShaderContext*>(ctx);
+            copyInterestingConstants(pShaderCtx);
+        }
+        else if (ctx->type == ShaderType::HULL_SHADER)
+        {
+            HullShaderContext* pShaderCtx = static_cast <HullShaderContext*>(ctx);
+            copyInterestingConstants(pShaderCtx);
+        }
+        else if (ctx->type == ShaderType::DOMAIN_SHADER)
+        {
+            DomainShaderContext* pShaderCtx = static_cast <DomainShaderContext*>(ctx);
+            copyInterestingConstants(pShaderCtx);
+        }
+        else if (ctx->type == ShaderType::COMPUTE_SHADER)
+        {
+            ComputeShaderContext* pShaderCtx = static_cast <ComputeShaderContext*>(ctx);
+            copyInterestingConstants(pShaderCtx);
         }
     }
+    return false;
+}
+
+bool FindInterestingConstants::runOnFunction(Function &F)
+{
+    visit(F);
+    return false;
 }
