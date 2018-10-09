@@ -37,8 +37,8 @@ void* AllocGTPinDataBuffer(const IGC::SKernelProgram* program, const IGC::SProgr
     gtpin::igc::igc_info_t gtpinReturnStatus;
     memset(&gtpinReturnStatus, 0, sizeof(gtpinReturnStatus));
 
-    // Version check
-    if (gtpinRequest->version != gtpin::igc::GTPIN_IGC_INTERFACE_VERSION)
+    // Version check - allow higher gtpin version
+    if ((int)gtpinRequest->version < (int)gtpin::igc::GTPIN_IGC_INTERFACE_VERSION)
     {
         bufferSize = 0;
         return nullptr;
