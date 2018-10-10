@@ -481,8 +481,13 @@ namespace IGC
 
     static inline float denormToZeroF(float f)
     {
-        return std::fpclassify(f) == FP_SUBNORMAL ? 0.0f : f;
+        if (std::fpclassify(f) == FP_SUBNORMAL)
+        {
+            return f < 0.0f ? -0.0f : 0.0f;
+        }
+        return f;
     }
+
     static inline float utof(uint32_t bits)
     {
         union
@@ -645,7 +650,14 @@ namespace IGC
                         ftodTemp.i = ftod0.i + ftod1.i;
                         break;
                     case Instruction::FSub:
-                        ftodTemp.f = ftod0.f - ftod1.f;
+                        if (ftod0.f == 0.0f && isa<ConstantFP>(inst->getOperand(0)))
+                        {
+                            ftodTemp.f = -ftod1.f;
+                        }
+                        else
+                        {
+                            ftodTemp.f = ftod0.f - ftod1.f;
+                        }
                         break;
                     case Instruction::Mul:
                         ftodTemp.i = ftod0.i * ftod1.i;
