@@ -1381,6 +1381,13 @@ bool InstExpander::visitFPToSI(FPToSIInst &F2S) {
   return true;
 }
 
+// Note: This method uses splitBasciBlock() which moves Pos (and all
+// instructions following it till the end of basic block) to a new basic block.
+// If IRB's insert point is set to Pos or an instruction after Pos in the same
+// basic block than the insert basic block value in IRB will be invalid after
+// this method completes. A correct insert point should be set in IRB after this
+// method is called.
+// 
 Value *InstExpander::convertUIToFP32(Type *DstTy, Value *Lo, Value *Hi, Instruction *Pos) {
   BuilderType::InsertPointGuard Guard(*IRB);
   IRB->SetInsertPoint(Pos);
@@ -1499,6 +1506,7 @@ bool InstExpander::visitUIToFP(UIToFPInst &U2F) {
     NewVal = IRB->CreateCall3(Fma, HiF, FC0, LoF);
   } else {
     NewVal = convertUIToFP32(IRB->getFloatTy(), Lo, Hi, &U2F);
+    IRB->SetInsertPoint(&U2F);
     // It's OK to apply the same approach in `convertUIToFP32` to convert 64-bit
     // integer into half. But, it would introduce a little more instructions to
     // properly round the remaining 48 bits into the high 16 bits. Instead, that
@@ -1558,6 +1566,7 @@ bool InstExpander::visitSIToFP(SIToFPInst &S2F) {
     Hi = IRB->CreateExtractValue(V, 1);
 
     NewVal = convertUIToFP32(IRB->getFloatTy(), Lo, Hi, &S2F);
+    IRB->SetInsertPoint(&S2F);
     NewVal = IRB->CreateBitCast(NewVal, IRB->getInt32Ty());
     Sign = IRB->CreateAnd(Sign, IRB->getInt32(0x80000000));
     NewVal = IRB->CreateOr(NewVal, Sign);
