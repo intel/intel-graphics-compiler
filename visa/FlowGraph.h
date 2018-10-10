@@ -1042,7 +1042,7 @@ public:
 
     bool isIndirectJmpTarget(G4_INST* inst) const
     {
-        return indirectJmpTarget.count(inst);
+        return indirectJmpTarget.count(inst) > 0;
     }
 
     G4_Label* getLabelForEndif(G4_INST* inst) const
