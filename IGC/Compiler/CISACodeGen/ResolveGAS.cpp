@@ -128,6 +128,8 @@ private:
   bool visitICmp(ICmpInst &);
   bool visitSelect(SelectInst &);
   bool visitMemCpyInst(MemCpyInst &);
+  bool visitMemMoveInst(MemMoveInst &);
+  bool visitMemSetInst(MemSetInst &);
   bool visitCallInst(CallInst &);
 };
 
@@ -477,33 +479,70 @@ bool GASPropagator::visitSelect(SelectInst &I) {
   return true;
 }
 
-bool GASPropagator::visitMemCpyInst(MemCpyInst &I) {
-  AddrSpaceCastInst *ASCI = nullptr;
-
+static bool handelMemTransferInst(MemTransferInst &I) {
+  Value *NewDst = nullptr;
+  Type *NewDstTy = nullptr;
   Use *DstUse = &I.getArgOperandUse(0);
-  ASCI = dyn_cast<AddrSpaceCastInst>(DstUse->get());
+  if (auto ASCI = dyn_cast<AddrSpaceCastInst>(DstUse->get())) {
+    NewDst = ASCI->getOperand(0);
+    NewDstTy = NewDst->getType();
+  }
+
+  Value *NewSrc = nullptr;
+  Type *NewSrcTy = nullptr;
+  Use *SrcUse = &I.getArgOperandUse(1);
+  if (auto ASCI = dyn_cast<AddrSpaceCastInst>(SrcUse->get())) {
+    NewSrc = ASCI->getOperand(0);
+    NewSrcTy = NewSrc->getType();
+  }
+
+  // No address space cast on src or dst.
+  if (NewDst == nullptr && NewSrc == nullptr)
+    return false;
+
+  Type *Tys[] = {NewDstTy ? NewDstTy : I.getArgOperand(0)->getType(),
+                 NewSrcTy ? NewSrcTy : I.getArgOperand(1)->getType(),
+                 I.getArgOperand(2)->getType()};
+  Function *Fn = nullptr;
+  Module *M = I.getParent()->getParent()->getParent();
+  if (isa<MemCpyInst>(I))
+    Fn = Intrinsic::getDeclaration(M, Intrinsic::memcpy, Tys);
+  else if (isa<MemMoveInst>(I))
+    Fn = Intrinsic::getDeclaration(M, Intrinsic::memmove, Tys);
+  else
+    llvm_unreachable("unsupported memory intrinsic kind");
+
+  I.setCalledFunction(Fn);
+  if (NewDst)
+    DstUse->set(NewDst);
+  if (NewSrc)
+    SrcUse->set(NewSrc);
+  return true;
+}
+
+bool GASPropagator::visitMemCpyInst(MemCpyInst &I) {
+  return handelMemTransferInst(I);
+}
+
+bool GASPropagator::visitMemMoveInst(MemMoveInst &I) {
+  return handelMemTransferInst(I);
+}
+
+bool GASPropagator::visitMemSetInst(MemSetInst &I) {
+  Use *DstUse = &I.getArgOperandUse(0);
+  auto ASCI = dyn_cast<AddrSpaceCastInst>(DstUse->get());
   if (!ASCI)
     return false;
 
   Value *OrigDst = ASCI->getOperand(0);
   Type *OrigDstTy = OrigDst->getType();
 
-  Use *SrcUse = &I.getArgOperandUse(1);
-  ASCI = dyn_cast<AddrSpaceCastInst>(SrcUse->get());
-  if (!ASCI)
-    return false;
-
-  Value *OrigSrc = ASCI->getOperand(0);
-  Type *OrigSrcTy = OrigSrc->getType();
-
-  Type *Tys[] = {OrigDstTy, OrigSrcTy, I.getArgOperand(2)->getType()};
+  Type *Tys[] = {OrigDstTy, I.getArgOperand(2)->getType()};
   Function *Fn = Intrinsic::getDeclaration(
-      I.getParent()->getParent()->getParent(), Intrinsic::memcpy, Tys);
+      I.getParent()->getParent()->getParent(), Intrinsic::memset, Tys);
 
   I.setCalledFunction(Fn);
   DstUse->set(OrigDst);
-  SrcUse->set(OrigSrc);
-
   return true;
 }
 
