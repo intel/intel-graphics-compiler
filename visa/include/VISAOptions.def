@@ -140,7 +140,6 @@ DEF_VISA_OPTION(vISA_ReorderDPSendToDifferentBti, ET_BOOL, "-nodpsendreorder", U
 DEF_VISA_OPTION(vISA_WAWSubregHazardAvoidance,    ET_BOOL, "-noWAWSubregHazardAvoidance", UNUSED, true)
 DEF_VISA_OPTION(vISA_useMultiThreadedLatencies,   ET_BOOL, "-dontUseMultiThreadedLatencies", UNUSED, true)
 DEF_VISA_OPTION(vISA_SchedulerWindowSize,         ET_INT32, "-schedulerwindow", "USAGE: -schedulerwindow <window-size>\n", 4096)
-DEF_VISA_OPTION(vISA_NumPackedSends,    ET_INT32, "-numpackedsends",        "USAGE: -numpackedsends <num>\n",     1)
 DEF_VISA_OPTION(vISA_UnifiedSendCycle,  ET_INT32, "-unifiedSendCycle",      "USAGE: -unifiedSendCycle <cycle>\n", 0)
 DEF_VISA_OPTION(vISA_HWThreadNumberPerEU, ET_INT32, "-HWThreadNumberPerEU", "USAGE: -HWThreadNumberPerEU <num>\n",  7)
 DEF_VISA_OPTION(vISA_NoAtomicSend, ET_BOOL, "-noAtomicSend", UNUSED, false)

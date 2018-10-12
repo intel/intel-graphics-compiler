@@ -108,23 +108,12 @@ class Node
     // This is used to avoid WAW hazzards during scheduling.
     int wSubreg;
 
-    // due to coalescing we may end up with dead node, and since we use a vector
-    // it's not easy to delete it, so we just mark the node as dead.
-    // it's not needed for correctness as a dead node has no pred/succ and won't be scheduled,
-    // we just leave it for debugging
-    bool m_isDead = false;
-
 public:
     static const uint32_t SCHED_CYCLE_UNINIT = UINT_MAX;
     static const int NO_SUBREG = INT_MAX;
     static const int PRIORITY_UNINIT = -1;
 
-    // WARNING!!!: hasPreds() will return the right value ONLY before
-    // the node's predecessors get scheduled (we are reusing the element
-    // predsNotScheduled for two things to save memory).
-    bool hasPreds() { return predsNotScheduled != 0;  };
     unsigned getNodeID() const{ return nodeID; };
-
     bool isTransitiveDep(Node *edgeDst);
     bool hasTransitiveEdgeToBarrier;
 
@@ -146,10 +135,6 @@ public:
         const LatencyTable &LT);
     ~Node()
     {
-        if (succs.size() > 0)
-        {
-            succs.clear();
-        }
     }
     void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
     const std::vector<G4_INST *> *getInstructions() const { return &instVec; }
@@ -174,9 +159,8 @@ public:
     void setWritesToSubreg(int reg) { wSubreg = reg; }
     int writesToSubreg() { return wSubreg; }
     void addPairInstr(G4_INST *inst) { instVec.push_back(inst); }
+    void clear() { instVec.clear(); }
     void deletePred(Node *pred);
-    bool isDead() const { return m_isDead; }
-    void setDead() { m_isDead = true; }
 
     friend class DDD;
     friend class G4_BB_Schedule;
@@ -256,10 +240,6 @@ class DDD {
     int HWthreadsPerEU;
     const LatencyTable LT;
 
-    // Counter that holds num of sends scheduled by
-    // list scheduler just before current instruction.
-    uint32_t numSendsScheduled;
-
     int GRF_BUCKET;
     int ACC_BUCKET;
     int FLAG0_BUCKET;
@@ -273,13 +253,14 @@ class DDD {
     bool useMTLatencies;
     G4_Kernel* kernel;
 
+    // Gather all initial ready nodes.
+    void collectRoots();
+
 public:
     typedef std::pair<Node *, Node *> instrPair_t;
     typedef std::vector<instrPair_t> instrPairVec_t;
     NODE_LIST Nodes, Roots;
-    NODE_VECT pstOrder, originalOrder;
     void moveDeps(Node *fromNode, Node *toNode);
-    uint32_t numOfPairs;
     void pairTypedWriteOrURBWriteNodes(G4_BB *bb);
 
 
@@ -296,12 +277,8 @@ public:
             }
             Nodes.clear();
         }
-
-        pstOrder.clear();
-        originalOrder.clear();
     }
     void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
-    void InsertRoot(Node *root) { Roots.push_back(root); }
     void InsertNode(Node *node) { Nodes.push_back(node); }
     void dumpNodes(G4_BB *bb);
     void dumpDagDot(G4_BB *bb);
@@ -317,12 +294,6 @@ public:
     bool getBucketDescrs(Node *inst, std::vector<BucketDescr> &bucketDescrs);
 
     const Options *m_options;
-
-    uint32_t getNumSendsScheduled() { return numSendsScheduled; }
-    void recordConsecutiveSendsScheduled(uint32_t howmany) {
-      numSendsScheduled = howmany;
-    }
-
     uint32_t getEdgeLatency_old(Node *node, DepType depT);
     uint32_t getEdgeLatency_new(Node *node, DepType depT);
     uint32_t getEdgeLatency(Node *node, DepType depT);
@@ -335,12 +306,9 @@ class G4_BB_Schedule {
     DDD *ddd;
     const Options *m_options;
     G4_Kernel *kernel;
-    uint32_t optimumConsecutiveSends;
-    void setOptimumConsecutiveSends();
 
 public:
     std::vector<Node *> scheduledNodes;
-    unsigned curINum;
     unsigned lastCycle;
     unsigned sendStallCycle;
     unsigned sequentialCycle;
@@ -352,7 +320,6 @@ public:
     void *operator new(size_t sz, Mem_Manager &m){ return m.alloc(sz); }
     // Dumps the schedule
     void emit(std::ostream &);
-    uint32_t getOptimumConsecutiveSends() { return optimumConsecutiveSends; }
     void dumpSchedule(G4_BB *bb);
     G4_BB *getBB() const { return bb; };
     G4_Kernel *getKernel() const { return kernel; }

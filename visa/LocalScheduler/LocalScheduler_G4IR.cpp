@@ -296,11 +296,6 @@ void LocalScheduler::localScheduling()
     jitInfo->BBNum = i;
 }
 
-void G4_BB_Schedule::setOptimumConsecutiveSends()
-{
-    optimumConsecutiveSends = m_options->getuInt32Option(vISA_NumPackedSends);
-}
-
 void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
 {
     const char *asmName = nullptr;
@@ -390,12 +385,10 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
 G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
     int dddTimer, int schTimer, uint32_t& totalCycle,
     const Options *options, const LatencyTable &LT)
-    : kernel(k), mem(m), bb(block), curINum(0),
+    : kernel(k), mem(m), bb(block),
     lastCycle(0), sendStallCycle(0),
     sequentialCycle(0), m_options(options)
 {
-    setOptimumConsecutiveSends();
-
     // we use local id in the scheduler for determining two instructions' original ordering
     bb->resetLocalId();
 
@@ -995,12 +988,10 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
     : mem(m), m_options(options), LT(lt), kernel(k)
 {
     Node* lastBarrier = NULL;
-    numOfPairs = 0;
-    numSendsScheduled = 0;
     totalGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
     HWthreadsPerEU = m_options->getuInt32Option(vISA_HWThreadNumberPerEU);
-
     useMTLatencies = m_options->getOption(vISA_useMultiThreadedLatencies);
+    bool BTIIsRestrict = m_options->getOption(vISA_ReorderDPSendToDifferentBti);
 
     GRF_BUCKET = 0;
     ACC_BUCKET = GRF_BUCKET + totalGRFNum;
@@ -1019,7 +1010,6 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
     std::list<G4_INST*>::reverse_iterator iInst(bb->rbegin()), iInstEnd(bb->rend());
     std::vector<BucketDescr> BDvec;
 
-    bool BTIIsRestrict = m_options->getOption(vISA_ReorderDPSendToDifferentBti);
 
     for (int nodeId = (int)(bb->size() - 1); iInst != iInstEnd; ++iInst, nodeId--)
     {
@@ -1027,12 +1017,9 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
         // If we have a pair of instructions to be mapped on a single DAG node:
         node = new (mem)Node(nodeId, *iInst, depEdgeAllocator, LT);
         allNodes.push_back(node);
-
-        assert(node->getInstructions()->size() == 1);
-        G4_INST *curInst = *node->getInstructions()->begin();
+        G4_INST *curInst = node->getInstructions()->front();
         bool hasIndir = false;
         BDvec.clear();
-        unsigned NumRegs = m_options->getuInt32Option(vISA_TotalGRFNum);
 
 
         // Get buckets for all physical registers assigned in curInst
@@ -1058,19 +1045,14 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
             for (auto it = LB.begin(), ite = LB.end(); it != ite; ++it) {
                 BucketNode *BNode = *it;
                 Node* liveNode = BNode->node;
-                if (!liveNode->hasPreds())
+                if (liveNode->preds.empty())
                 {
                     createAddEdge(node, liveNode, depType);
                 }
             }
             LB.clearAllLive();
-
-            if (depType == DEP_LABEL)
+            if (lastBarrier)
             {
-                Roots.push_back(node);
-            }
-
-            if (lastBarrier) {
                 createAddEdge(node, lastBarrier, lastBarrier->isBarrier());
             }
 
@@ -1173,38 +1155,6 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
 
         // Insert this node into the graph.
         InsertNode(node);
-    }
-
-    // We have no label in this block. Need to initialize roots to traverse the DAG correctly.
-    if (Roots.size() == 0)
-    {
-        // Iterate over all buckets and push all live instructions
-        // in to Root list
-        for (auto it = LB.begin(), ite = LB.end(); it != ite; ++it)
-        {
-            Node *curLiveNode = (*it)->node;
-            if (!curLiveNode->hasPreds())
-            {
-                if (std::find(Roots.begin(), Roots.end(), curLiveNode) == Roots.end())
-                {
-                    // Insert Root node only if it hasnt yet
-                    // been inserted to Root list.
-                    Roots.push_back(curLiveNode);
-                }
-            }
-        }
-
-        // It is possible that first inst of a BB is a barrier
-        // If the inst does not have any operands then it will not be present in
-        // any bucket. Also since it is a barrier, all other buckets will have been
-        // emptied. So previous loop will not find any Roots. This will cause
-        // list scheduler to have 0-size ready list. The fix is to check whether
-        // size of Roots is zero and inserting barrier in to Roots if it is.
-        if (Roots.size() == 0) {
-            MUST_BE_TRUE(lastBarrier != NULL,
-                "Size of Roots list was 0 and no barrier was found");
-            Roots.push_back(lastBarrier);
-        }
     }
 }
 
@@ -1486,7 +1436,6 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
     }
 
     // 2. Join nodes that need pairing
-    uint32_t cntPairs = 0;
     for (auto&& pair : instrPairs) {
         Node *firstNode = pair.first;
         Node *secondNode = pair.second;
@@ -1500,15 +1449,6 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
         {
             // A. move the deps of seconde node to the first.
             moveDeps(secondNode, firstNode);
-            secondNode->setDead();
-
-            // if second node is not root, first node may not be either 
-            // as it has inherited second node's predecessors
-            auto result2 = std::find(Roots.begin(), Roots.end(), secondNode);
-            if (result2 == std::end(Roots))
-            {
-                Roots.remove(firstNode);
-            }
 
             // B. We add the second instruction to the first node.
             assert(firstNode->getInstructions()->size() == 1);
@@ -1518,10 +1458,21 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
             {
                 firstInstr->setOptionOn(InstOpt_Atomic);
             }
-            cntPairs++;
+
+            // C. Cleanup the paired node.
+            secondNode->clear();
         }
     }
-    numOfPairs = cntPairs;
+}
+
+void DDD::collectRoots()
+{
+    Roots.clear();
+    for (auto N : allNodes) {
+        if (N->preds.empty() && !N->getInstructions()->empty()) {
+            Roots.push_back(N);
+       }
+    }
 }
 
 void DDD::setPriority(Node *pred, const Edge &edge)
@@ -1795,7 +1746,7 @@ struct criticalCmp
             else
             {
                 return (*n1->getInstructions())[0]->getLocalId()
-            > (*n2->getInstructions())[0]->getLocalId();
+                     > (*n2->getInstructions())[0]->getLocalId();
             }
         }
     }
@@ -1822,11 +1773,9 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
     // that is their earliest cycle is >= than the current schedule cycle.
     std::priority_queue<Node *, std::vector<Node *>, earlyCmp> preReadyQueue(SS);
 
-    for (NODE_LIST_ITER node_it = Roots.begin();
-        node_it != Roots.end();
-        node_it++)
-    {
-        preReadyQueue.push(*node_it);
+    collectRoots();
+    for (auto N : Roots) {
+        preReadyQueue.push(N);
     }
 
     // The scheduler's clock.
@@ -1869,7 +1818,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
         // Pointer to node to be scheduled.
         Node *scheduled = readyList.top();
         readyList.pop();
-        	
+
         // try to avoid b2b math if possible as there are pipeline stalls
         if (scheduled->getInstructions()->front()->isMath() &&
             lastScheduled && lastScheduled->getInstructions()->front()->isMath())
@@ -1996,7 +1945,6 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
                 preReadyQueue.push(succ);
             }
         }
-        schedule->curINum++;
 
         // Increment the scheduler's clock after each scheduled node
         currCycle += scheduled->getOccupancy();
