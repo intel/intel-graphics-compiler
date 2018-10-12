@@ -324,7 +324,7 @@ static void CommonOCLBasedPasses(
 
     mpm.add(new BreakConstantExpr());
 
-    if(IGC_IS_FLAG_ENABLED(EnableGASResolver))
+    if (IGC_IS_FLAG_ENABLED(EnableGASResolver))
     {
         // Add fix up of illegal `addrspacecast` in respect to OCL 2.0 spec.
         mpm.add(createFixAddrSpaceCastPass());
@@ -416,9 +416,6 @@ static void CommonOCLBasedPasses(
     // forget setting math flags. We expect the generic llvm optimizations after the unification
     // (optimizeIR()) will fully take advantage of the flags.
     mpm.add(new SetFastMathFlags());
-
-    mpm.add(createGenericAddressDynamicResolutionPass());
-
     mpm.add(new FixResourcePtr());
 
     bool isOptDisabled = pContext->getModuleMetaData()->compOpt.OptDisable;

@@ -71,6 +71,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
+#include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryUsageAnalysis.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/PrivateMemory/PrivateMemoryResolution.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/ProgramScopeConstants/ProgramScopeConstantResolution.hpp"
@@ -435,6 +436,18 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
     // Promotes indirect resource access to direct
     mpm.add(new PromoteResourceToDirectAS());
 
+    if (ctx.m_instrTypes.hasGenericAddressSpacePointers)
+    {
+        if (!isOptDisabled &&
+            IGC_IS_FLAG_ENABLED(EnableGASResolver))
+        {
+            mpm.add(createFixAddrSpaceCastPass());
+            mpm.add(createResolveGASPass());
+            mpm.add(createSROAPass());
+        }
+        mpm.add(createGenericAddressDynamicResolutionPass());
+    }
+
     // Resolve the Private memory to register pass
     if (!isOptDisabled)
     {
@@ -457,8 +470,8 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
     if (ctx.m_enableSubroutine)
     {
         // Sort functions if subroutine is enabled.
-		mpm.add(llvm::createGlobalDCEPass());
-		mpm.add(new PurgeMetaDataUtils());
+        mpm.add(llvm::createGlobalDCEPass());
+        mpm.add(new PurgeMetaDataUtils());
         mpm.add(createGenXCodeGenModulePass());
     }
 
@@ -1160,7 +1173,15 @@ void OptimizeIR(CodeGenContext* pContext)
         mpm.add(llvm::createInstructionCombiningPass());
         mpm.add(llvm::createDeadCodeEliminationPass());       // this should be done both before/after constant propagation
 
-		if( pContext->m_instrTypes.hasMultipleBB )
+        if (pContext->m_instrTypes.hasGenericAddressSpacePointers &&
+            IGC_IS_FLAG_ENABLED(EnableGASResolver))
+        {
+            mpm.add(createFixAddrSpaceCastPass());
+            mpm.add(createResolveGASPass());
+            mpm.add(createSROAPass());
+        }
+
+        if (pContext->m_instrTypes.hasMultipleBB)
         {
             // disable loop unroll for excessive large shaders
             if( pContext->m_instrTypes.hasLoop )

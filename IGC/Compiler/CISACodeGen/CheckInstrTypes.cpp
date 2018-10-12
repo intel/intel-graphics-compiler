@@ -53,7 +53,7 @@ char CheckInstrTypes::ID = 0;
 CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID), g_InstrTypes(instrList)
 {
     initializeLoopInfoWrapperPassPass(*PassRegistry::getPassRegistry());	
-	initializeCheckInstrTypesPass(*PassRegistry::getPassRegistry());
+    initializeCheckInstrTypesPass(*PassRegistry::getPassRegistry());
 
     instrList->CorrelatedValuePropagationEnable = false;
     instrList->hasLoop = false;
@@ -68,6 +68,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasFunctionAddressTaken = false;
     instrList->hasSel = false;
     instrList->hasPointer = false;
+    instrList->hasGenericAddressSpacePointers = false;
     instrList->hasLocalLoadStore = false;
     instrList->hasSubroutines = false;
     instrList->hasPrimitiveAlloca = false;
@@ -79,13 +80,13 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasBarrier = false;
     instrList->hasDiscard = false;
     instrList->mayHaveIndirectOperands = false;
-	instrList->numSample = 0;
-	instrList->numBB = 0;
-	instrList->numLoopInsts = 0;
+    instrList->numSample = 0;
+    instrList->numBB = 0;
+    instrList->numLoopInsts = 0;
     instrList->numOfLoop = 0;
     instrList->numInsts = 0;
-	instrList->sampleCmpToDiscardOptimizationPossible = false;
-	instrList->sampleCmpToDiscardOptimizationSlot = 0;
+    instrList->sampleCmpToDiscardOptimizationPossible = false;
+    instrList->sampleCmpToDiscardOptimizationSlot = 0;
 }
 
 void CheckInstrTypes::SetLoopFlags(Function &F)
@@ -116,14 +117,21 @@ bool CheckInstrTypes::runOnFunction(Function &F)
     g_InstrTypes->hasDebugInfo = F.getParent()->getNamedMetadata("llvm.dbg.cu") != nullptr;
 
     visit(F);
-	SetLoopFlags(F);
+    SetLoopFlags(F);
     return false;
 }
 
-void CheckInstrTypes::visitInstruction(llvm::Instruction &I) {
+void CheckInstrTypes::visitInstruction(llvm::Instruction &I)
+ {
     if (!llvm::isa<llvm::DbgInfoIntrinsic>(&I))
     {
         g_InstrTypes->numInsts++;
+    }
+
+    auto PT = dyn_cast<PointerType>(I.getType());
+    if (PT && PT->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
+    {
+        g_InstrTypes->hasGenericAddressSpacePointers = true;
     }
 }
 
@@ -245,6 +253,12 @@ void CheckInstrTypes::visitAllocaInst(AllocaInst &I)
     {
         g_InstrTypes->hasPrimitiveAlloca = true;
     }
+
+    auto PT = dyn_cast<PointerType>(I.getAllocatedType());
+    if (PT && PT->getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
+    {
+        g_InstrTypes->hasGenericAddressSpacePointers = true;
+    }
 }
 
 void CheckInstrTypes::visitLoadInst(LoadInst &I)
@@ -255,6 +269,10 @@ void CheckInstrTypes::visitLoadInst(LoadInst &I)
     {
         g_InstrTypes->hasLocalLoadStore = true;
     }
+    if (I.getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
+    {
+        g_InstrTypes->hasGenericAddressSpacePointers = true;
+    }
 }
 
 void CheckInstrTypes::visitStoreInst(StoreInst &I)
@@ -262,13 +280,17 @@ void CheckInstrTypes::visitStoreInst(StoreInst &I)
     g_InstrTypes->numInsts++;
     g_InstrTypes->hasLoadStore = true;
     uint as = I.getPointerAddressSpace();
-    if(as != ADDRESS_SPACE_PRIVATE)
+    if (as != ADDRESS_SPACE_PRIVATE)
     {
         g_InstrTypes->psHasSideEffect = true;
     }
-    if (I.getPointerAddressSpace() == ADDRESS_SPACE_LOCAL)
+    if (as == ADDRESS_SPACE_LOCAL)
     {
         g_InstrTypes->hasLocalLoadStore = true;
+    }
+    if (as == ADDRESS_SPACE_GENERIC)
+    {
+        g_InstrTypes->hasGenericAddressSpacePointers = true;
     }
 }
 
@@ -282,4 +304,13 @@ void CheckInstrTypes::visitSelectInst(SelectInst &I)
 {
     g_InstrTypes->numInsts++;
     g_InstrTypes->hasSel = true;
+}
+
+void CheckInstrTypes::visitGetElementPtrInst(llvm::GetElementPtrInst &I)
+{
+    g_InstrTypes->numInsts++;
+    if (I.getPointerAddressSpace() == ADDRESS_SPACE_GENERIC)
+    {
+        g_InstrTypes->hasGenericAddressSpacePointers = true;
+    }
 }

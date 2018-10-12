@@ -72,6 +72,7 @@ namespace IGC
         void visitAllocaInst(llvm::AllocaInst &I);
         void visitLoadInst(llvm::LoadInst &I);
         void visitStoreInst(llvm::StoreInst &I);
+        void visitGetElementPtrInst(llvm::GetElementPtrInst &I);
         void visitPHINode(llvm::PHINode &PN);
         void visitSelectInst(llvm::SelectInst &I);
         void SetLoopFlags(llvm::Function &F);

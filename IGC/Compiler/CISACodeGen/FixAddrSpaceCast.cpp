@@ -73,7 +73,7 @@ FunctionPass *IGC::createFixAddrSpaceCastPass() {
 char AddrSpaceCastFixing::ID = 0;
 
 #define PASS_FLAG     "igc-addrspacecast-fix"
-#define PASS_DESC     "Fix invalid addrspacecast-relevant patterns due to incompatible OCL FE, i.e. clang"
+#define PASS_DESC     "Fix invalid addrspacecast-relevant patterns"
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 namespace IGC {
