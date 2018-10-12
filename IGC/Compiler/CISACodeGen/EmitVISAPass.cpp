@@ -5173,6 +5173,7 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
         blockWidth = 32;
     }
 
+
     CVariable* pTempVar0 = nullptr;
     CVariable* pTempVar  = nullptr;
 
@@ -5199,6 +5200,8 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
     // mov( 1 ) r36.1<1>:d r13.1<0; 1, 0>:d{ Align1, NoMask }
     // send( 8 ) r32.0<1>:ud r36 0xc 0x2490000:ud{ Align1, NoMask } // media block read
 
+    int scale = (blockWidth == 64) ? 2 : 1;
+
     for ( pass = 0; pass < numPasses; pass++ )
     {
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
@@ -5216,8 +5219,8 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
         }
         else 
         {
-            m_encoder->Add(pTempVar0, pTempVar0, m_currShader->ImmToVariable(32, ISA_TYPE_UD));
-            dstSubReg = dstSubReg + blockHeight;
+            m_encoder->Add(pTempVar0, pTempVar0, m_currShader->ImmToVariable(blockWidth, ISA_TYPE_UD));
+            dstSubReg = dstSubReg + scale * blockHeight;
         }
         m_encoder->Push();
 
@@ -5271,10 +5274,12 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
         {
             for (uint32_t pass = 0; pass < numPasses; pass++)
             {
-                m_encoder->SetSimdSize(typeSizeInBytes == 8 ? SIMDMode::SIMD4 : SIMDMode::SIMD8);
+                SIMDMode mode = typeSizeInBytes == 8 && blockWidth != 64 ? SIMDMode::SIMD4 : SIMDMode::SIMD8;
+                m_encoder->SetSimdSize(mode);
                 m_encoder->SetNoMask();
-                m_encoder->SetSrcSubVar(0, i + (blockHeight * pass));
-                m_encoder->SetDstSubVar(dstSubReg++);
+                m_encoder->SetSrcSubVar(0, scale * (i + (blockHeight * pass)));
+                m_encoder->SetDstSubVar(dstSubReg);
+                dstSubReg += scale;
                 m_encoder->Copy(m_destination, pTempDest);
                 m_encoder->Push();
             }
@@ -5336,14 +5341,16 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
         blockWidth = 32;
     }
 
+
     CVariable* pTempVar0 = nullptr;
     CVariable* pTempVar  = nullptr;
 
     uint32_t dstSubReg = 0;
 
+    int scale = (blockWidth == 64) ? 2 : 1;
     for ( pass = 0; pass < numPasses; pass++ )
     {
-        uint32_t srcSubVar = pass;
+        uint32_t srcSubVar = pass * scale;
         uint32_t dstSubVar = 0;
 
         CVariable* tempdst = m_currShader->GetNewVariable(
@@ -5359,12 +5366,14 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
         if ( numPasses > 1 )
         {
             for ( uint i = 0; i < nbElements; ++i )
-            {
-                m_encoder->SetSimdSize(typeSizeInBytes == 8 ? SIMDMode::SIMD4 : SIMDMode::SIMD8);
+            { 
+                SIMDMode mode = (typeSizeInBytes == 8 && blockWidth != 64) ? SIMDMode::SIMD4 : SIMDMode::SIMD8;
+                m_encoder->SetSimdSize(mode);
                 m_encoder->SetNoMask();
                 m_encoder->SetSrcSubVar( 0, srcSubVar );
-                m_encoder->SetDstSubVar( dstSubVar++ );
-                srcSubVar = srcSubVar + numPasses;
+                m_encoder->SetDstSubVar( dstSubVar );
+                dstSubVar += scale;
+                srcSubVar = srcSubVar + scale * numPasses;
                 m_encoder->Copy( tempdst, data );
                 m_encoder->Push();
             }
@@ -5416,9 +5425,9 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
             m_encoder->SetSimdSize( SIMDMode::SIMD1 );
             m_encoder->SetNoMask();
             m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-            m_encoder->Add( pTempVar0, pTempVar0, m_currShader->ImmToVariable( 32, ISA_TYPE_UD ) );
+            m_encoder->Add( pTempVar0, pTempVar0, m_currShader->ImmToVariable( blockWidth, ISA_TYPE_UD ) );
             m_encoder->Push();
-            dstSubReg = dstSubReg + blockHeight;
+            dstSubReg = dstSubReg + scale * blockHeight;
         }
 
         m_encoder->SetDstSubVar( dstSubReg );
