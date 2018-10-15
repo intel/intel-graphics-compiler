@@ -316,6 +316,9 @@ uint16_t  iga::ConvertFloatToHalf(float f)
 
     uint32_t m32 = IGA_F32_MANT_MASK & f32;
     uint32_t e32 = (IGA_F32_EXP_MASK & f32) >> FloatMantissaBits<float>();
+    const int MANTISSA_DIFFERENCE =
+      FloatMantissaBits<float>() - FloatMantissaBits<uint16_t>();
+    const int BIAS_DIFFERENCE = FloatBiasDiff<float,uint16_t>();
 
     uint32_t m16;
     uint32_t e16;
@@ -327,8 +330,7 @@ uint16_t  iga::ConvertFloatToHalf(float f)
         if (m32 != 0) {
             // preserve the bottom 9 bits of the NaN payload and
             // shift the signaling bit (high bit) down as bit 10
-            m16 |= (IGA_F32_QNAN_BIT & f32) >>
-                (FloatMantissaBits<float>() - FloatMantissaBits<uint16_t>());
+            m16 |= (IGA_F32_QNAN_BIT & f32) >> MANTISSA_DIFFERENCE;
             // s eeeeeeee mmmmmmmmmmmmmmmmmmmmmm
             //            |            |||||||||
             //            |            vvvvvvvvv
@@ -340,14 +342,17 @@ uint16_t  iga::ConvertFloatToHalf(float f)
                 m16 = 0x1;
             }
         }
-    } else if (e32 > (127 - 15) + 0x1E) { // e16 overflows 5 bits after bias fix
+    } else if (e32 > (uint32_t)BIAS_DIFFERENCE + 0x1E) { // e16 overflows 5 bits after bias fix
         // Too large for f16 => infinity
         e16 = IGA_F16_EXP_MASK;
         m16 = 0;
-    } else if (e32 <= (127 - 15) && e32 >= 0x66) {
+    } else if (e32 < 0x66) { // 102
+        // Too small: rounds to +/-0.0
+        e16 = 0;
+        m16 = 0;
+    } else if (e32 <= (uint32_t)BIAS_DIFFERENCE && e32 >= 0x66) {
         // Denorm/subnorm float
         //
-        // Code taken from simulator ThreadContext::IE_F32TO16
         // Normal floats are:
         //   (1 + sum{m[i]^(23-i)*2^(-i)}) * 2^(e - bias)
         //   (each mantissa bit is a fractional power of 2)
@@ -363,15 +368,12 @@ uint16_t  iga::ConvertFloatToHalf(float f)
         for (; e32 <= 127 - 15; m32 >>= 1, e32++)
             ;
         e16 = 0;
-        m16 = m32 >> (FloatMantissaBits<float>() - FloatMantissaBits<uint16_t>());
-    } else if (e32 < 0x66) {
-        // Too small: rounds to +/-0.0
-        e16 = 0;
-        m16 = 0;
+        m16 = m32 >> MANTISSA_DIFFERENCE;
+
     } else {
         // Normalized float
         e16 = (e32 - (127 - 15)) << FloatMantissaBits<uint16_t>();
-        m16 = m32 >> (FloatMantissaBits<float>() - FloatMantissaBits<uint16_t>());
+        m16 = m32 >> MANTISSA_DIFFERENCE;
         // TODO: rounding voodoo?
     }
 
@@ -422,6 +424,20 @@ float iga::ConvertQuarterToFloatGEN(uint8_t u8)
     }
 }
 
+bool iga::IsNaN(uint16_t u16)
+{
+    return
+        (IGA_F16_EXP_MASK & u16) == IGA_F16_EXP_MASK &&
+        (IGA_F16_MANT_MASK & u16) != 0;
+}
+
+bool iga::IsInf(uint16_t u16)
+{
+    return
+        (IGA_F16_EXP_MASK & u16) == IGA_F16_EXP_MASK &&
+        (IGA_F16_MANT_MASK & u16) == 0;
+}
+
 float iga::ConvertHalfToFloat(uint16_t u16)
 {
     static const int MANTISSA_DIFFERENCE = // 23 - 10
@@ -437,9 +453,9 @@ float iga::ConvertHalfToFloat(uint16_t u16)
         e32 = e16 + FloatBiasDiff<float,uint16_t>(); // (127 - 15); // 0x70
         m32 = m16 << (23 - 10);
     } else if (e16 == 0 && m16 != 0) {
-        // denorm/subnorm number (e16 == 0)
+        // denorm/subnorm number (e16 == 0) => renormalize it
         // shift the mantissa left until the hidden one gets set
-        for (e32 = (127 - 15 + 1);
+        for (e32 = (FloatBiasDiff<float,uint16_t>() + 1);
             (m16 & (IGA_F16_MANT_MASK + 1)) == 0;
             m16 <<= 1, e32--)
             ;
@@ -447,8 +463,8 @@ float iga::ConvertHalfToFloat(uint16_t u16)
     } else if (e16 == 0) { // +/- 0.0
         e32 = 0;
         m32 = 0;
-    } else {
-        e32 = IGA_F16_EXP_MASK >> FloatMantissaBits<float>();
+    } else { // infinity or NaN
+        e32 = IGA_F32_EXP_MASK >> FloatMantissaBits<float>();
         if (m16 == 0) { // Infinity
             m32 = 0;
         } else { // NaN:  m16!=0 && e16==0x1F
@@ -460,7 +476,7 @@ float iga::ConvertHalfToFloat(uint16_t u16)
         }
     }
 
-    return FloatFromBits(s32 | (e32 << 23) | m32);
+    return FloatFromBits(s32 | (e32 << FloatMantissaBits<float>()) | m32);
 }
 
 double iga::ConvertFloatToDouble(float f)

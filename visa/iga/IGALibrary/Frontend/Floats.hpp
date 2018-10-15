@@ -90,6 +90,10 @@ static float FloatFromBits(uint32_t f) {
 }
 static uint16_t FloatFromBits(uint16_t f) {return f;}
 
+bool IsNaN(uint16_t u16);
+bool IsInf(uint16_t u16);
+
+
 
 static const uint64_t IGA_F64_SIGN_BIT  = 0x8000000000000000ull;
 static const uint64_t IGA_F64_EXP_MASK  = 0x7FF0000000000000ull;
