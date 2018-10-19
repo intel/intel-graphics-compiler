@@ -415,4 +415,9 @@
         return false;
     }
 
+    uint32_t getNumThreadPerEU() const
+    {
+        return 7;
+    }
+
     // end HW capabilities

@@ -4254,15 +4254,8 @@ void CEncoder::Compile()
         context->type == ShaderType::COMPUTE_SHADER )&&
         m_program->m_dispatchSize == SIMDMode::SIMD16)
     {
-        uint sendStallCycle = 0;
-        uint staticCycle = 0;
-        for (uint i = 0; i < jitInfo->BBNum; i++)
-        {
-            sendStallCycle += jitInfo->BBInfo[i].sendStallCycle;
-            staticCycle += jitInfo->BBInfo[i].staticCycle;
-        }
-        m_program->m_sendStallCycle = sendStallCycle;
-        m_program->m_staticCycle = staticCycle;
+        m_program->m_sendStallCycle = jitInfo->sendStallCycle;
+        m_program->m_staticCycle = jitInfo->staticCycle;
     }
 
     if (jitInfo->isSpill && AvoidRetryOnSmallSpill())
