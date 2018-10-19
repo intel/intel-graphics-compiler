@@ -123,7 +123,6 @@ void CComputeShader::ParseShaderSpecificOpcode(llvm::Instruction* inst)
 
 void CComputeShader::CreateThreadPayloadData(void* & pThreadPayload, uint& threadPayloadSize)
 {
-
     // Find the max thread group dimension
     const OctEltUnit SIZE_OF_DQWORD = OctEltUnit(2);
     uint numberOfId = GetNumberOfId();
