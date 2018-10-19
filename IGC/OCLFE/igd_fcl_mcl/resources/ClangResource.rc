@@ -45,15 +45,30 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #define VER_FILEDESCRIPTION         "OpenCL User Mode Driver for Intel(R) Graphics Technology\0"
 
-#ifdef __CT__
+#ifdef AMD64
 #define VER_INTERNALNAME            "igdfcl64.dll"
 #define VER_ORIGINALNAME            "igdfcl64.dll"
+#if _DEBUG
+#define VER_DUMP					"../../../../../dump64/igc/bif/Debug/opencl_cth.h"
+#elif _INTERNAL
+#define VER_DUMP					"../../../../../dump64/igc/bif/ReleaseInternal/opencl_cth.h"
+#else
+#define VER_DUMP					"../../../../../dump64/igc/bif/Release/opencl_cth.h"
+#endif
 #else
 #define VER_INTERNALNAME            "igdfcl32.dll"
 #define VER_ORIGINALNAME            "igdfcl32.dll"
+#if _DEBUG
+#define VER_DUMP					"../../../../../dump32/igc/bif/Debug/opencl_cth.h"
+#elif _INTERNAL
+#define VER_DUMP					"../../../../../dump32/igc/bif/ReleaseInternal/opencl_cth.h"
+#else
+#define VER_DUMP					"../../../../../dump32/igc/bif/Release/opencl_cth.h"
+#endif
 #endif
 
-IDR_CTH_H               H     "../../../BiFModule/Languages/opencl_cth.h"
+
+IDR_CTH_H               H			VER_DUMP
 
 
 #include <verinfo.ver>

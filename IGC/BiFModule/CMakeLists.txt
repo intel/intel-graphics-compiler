@@ -857,17 +857,14 @@ endfunction()
 
 file(GLOB_RECURSE _PRE_RELEASE_CL 	"${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PreRelease/*.cl")
 
-set(IGC_BUILD__BIF_OCL_FORCE_INC        		     "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/opencl_cth.h")
-set(IGC_BUILD__BIF_OCL_SHARED_INC                    "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/opencl_cth_released.h")
-set(IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE        "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PreRelease/opencl_cth_pre_release.h")
-
 set(_concatScript   "${IGC_SOURCE_DIR}/BiFModule/concat.py")
-set(IGC_BUILD__BIF_OCL_FORCE_INC  "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/opencl_cth.h")
+set(IGC_BUILD__BIF_OCL_FORCE_INC  "${IGC_BUILD__BIF_DIR}/opencl_cth.h")
 set(IGC_BUILD__BIF_OCL_SHARED_INC  "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/opencl_cth_released.h")
 set(IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE    "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PreRelease/opencl_cth_pre_release.h")
 
 add_custom_command(
     OUTPUT "${IGC_BUILD__BIF_OCL_FORCE_INC}"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${IGC_BUILD__BIF_DIR}"
     COMMAND "${PYTHON_EXECUTABLE}"
     ARGS ${_concatScript} -top ${IGC_BUILD__BIF_OCL_SHARED_INC} -bottom ${IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE} -new ${IGC_BUILD__BIF_OCL_FORCE_INC}
     DEPENDS ${_concatScript}
@@ -875,7 +872,6 @@ add_custom_command(
     DEPENDS ${IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE}
     COMMENT "Running concat.py for autogenerating opencl_cth.h"
     )
-
 
 set(IGC_BUILD__BIF_OCL_COMMON_INC_DIRS
     "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL"

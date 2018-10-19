@@ -58,7 +58,7 @@ endfunction()
 
 set(_fclResSymbolFiles)
 
-igc_resource_embed_file(_fclResSymbolFiles IDR_CTH_H_H_133 "${IGC_BUILD__IGC_SRC_DIR}/BiFModule/Languages/opencl_cth.h")
+igc_resource_embed_file(_fclResSymbolFiles IDR_CTH_H_H_133 "${IGC_BUILD__BIF_DIR}/opencl_cth.h")
 
 # =========================================== Custom targets ============================================
 
