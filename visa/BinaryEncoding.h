@@ -737,6 +737,8 @@ namespace vISA
         Status EncodeSplitSendSrc1(G4_INST*);
         Status EncodeSplitSendSrc2(G4_INST*);
 
+        Status EncodeIndirectCallTarget(G4_INST*);
+
         void SetCmpSrc1Imm32(BinInst *mybin, uint32_t immediateData, G4_Operand* src);
 
         virtual void SetCompactCtrl(BinInst *mybin, uint32_t value);

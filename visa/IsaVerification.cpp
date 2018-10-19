@@ -1006,6 +1006,7 @@ static void verifyInstructionControlFlow(const common_isa_header& isaHeader, con
         case ISA_CALL:
         case ISA_FRET:
         case ISA_LABEL:
+        case ISA_IFCALL:    // no checks for now 
              break;
         case ISA_GOTO:
         case ISA_FCALL:

@@ -1225,6 +1225,17 @@ static void readInstructionControlFlow(unsigned& bytePos, const char* buf, ISA_O
 
             return;
         }
+    case ISA_IFCALL:
+    {
+        readExecSizeNG(bytePos, buf, esize, emask, container);
+        VISA_PredOpnd* pred = hasPredicate(opcode) ? readPredicateOperandNG(bytePos, buf, container) : nullptr;
+
+        VISA_VectorOpnd* funcAddr = readVectorOperandNG(bytePos, buf, container, false);
+        uint8_t argSize = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+        uint8_t retSize = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
+        kernelBuilder->AppendVISACFIndirectFuncCallInst(pred, emask, esize, funcAddr, argSize, retSize);
+        return;
+    }
     case ISA_SWITCHJMP:
         {
             Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;

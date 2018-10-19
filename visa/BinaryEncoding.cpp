@@ -2292,6 +2292,38 @@ BinaryEncoding::Status BinaryEncoding::EncodeSplitSendSrc0(G4_INST* inst)
 
     return SUCCESS;
 }
+
+// Gen encodes target for call as src1, though internally we store it in src0
+BinaryEncoding::Status BinaryEncoding::EncodeIndirectCallTarget(G4_INST* inst)
+{
+    BinInst *mybin = inst->getBinInst();
+    G4_Operand* funcAddr = inst->getSrc(0);
+    EncodeSrc1RegFile(mybin, funcAddr);
+    EncodeSrc1Type(mybin, funcAddr);
+    if (funcAddr->isImm())
+    {
+        EncodeSrcImmData(mybin, funcAddr);
+    }
+    else
+    {
+        G4_SrcRegRegion *srcRegion = funcAddr->asSrcRegRegion();
+        EncodeSrc1RegNum(inst, mybin, srcRegion);
+        EncodeSrc1ArchRegNum(inst, mybin, srcRegion);
+        EncodeSrc1IndirectRegNum(inst, mybin, srcRegion);
+        EncodeSrc1AddrMode(mybin, srcRegion);
+        EncodeSrc1RepCtrl(mybin, srcRegion);
+        EncodeSrc1Modifier(mybin, srcRegion);
+        EncodeSrc1ChanSelect(inst, mybin, srcRegion);
+        RegionDesc *rd = srcRegion->getRegion();
+        bool WidthValid = EncodeSrc1Width(inst, mybin, rd, srcRegion);
+        bool HorzStrideValid = EncodeSrc1HorzStride(inst, mybin, rd, srcRegion);
+        EncodeSrc1VertStride(inst, mybin, rd, srcRegion, WidthValid, HorzStrideValid);
+    }
+
+    return SUCCESS;
+}
+
+
 BinaryEncoding::Status BinaryEncoding::EncodeOperandSrc1(G4_INST* inst)
 {
     BinInst *mybin = inst->getBinInst();
@@ -3160,36 +3192,48 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
         }
     }
 
-    if ( op == G4_call              &&
-         inst->getSrc(0)            &&
-         inst->getSrc(0)->isLabel() )
-    {
-        G4_Operand *opnd = inst->getSrc(0);
-        std::string jmpLabel = ((G4_Label*) opnd)->getLabel();
-        int32_t info = GetLabelInfo(this->LabelMap, jmpLabel);
-        if (info == -1)
+    if ( op == G4_call && inst->getSrc(0))
+    { 
+
+        if (inst->getSrc(0)->isLabel())
         {
-            return false;
+            G4_Operand *opnd = inst->getSrc(0);
+            std::string jmpLabel = ((G4_Label*)opnd)->getLabel();
+            int32_t info = GetLabelInfo(this->LabelMap, jmpLabel);
+            if (info == -1)
+            {
+                return false;
+            }
+            int32_t jmpOffset = info - insOffset;
+            if (!isValidIPOffset(jmpOffset))
+            {
+                MUST_BE_TRUE(false, "invalid IP offset for call");
+            }
+
+            jmpOffset *= (int32_t)JUMP_INST_COUNT_SIZE;
+
+            BinInst *mybin = inst->getBinInst();
+
+            SetSrc0VertStride(mybin, 2);
+            SetSrc0Width(mybin, 2);
+            SetSrc0HorzStride(mybin, 1);
+
+
+            SetSrc1RegFile(mybin, REG_FILE_I);
+            SetSrc1Type(mybin, SRC_IMM_TYPE_D);
+
+            SetCmpSrc1Imm32(mybin, jmpOffset, opnd);
         }
-        int32_t jmpOffset = info - insOffset;
-        if ( !isValidIPOffset(jmpOffset) )
+        else
         {
-            MUST_BE_TRUE(false, "invalid IP offset for call");
+            // indirect call
+            BinInst *mybin = inst->getBinInst();
+
+            SetSrc0VertStride(mybin, 2);
+            SetSrc0Width(mybin, 2);
+            SetSrc0HorzStride(mybin, 1);
+            EncodeIndirectCallTarget(inst);
         }
-
-        jmpOffset *= (int32_t)JUMP_INST_COUNT_SIZE;
-
-        BinInst *mybin = inst->getBinInst();
-
-        SetSrc0VertStride(mybin, 2);
-        SetSrc0Width(mybin, 2);
-        SetSrc0HorzStride(mybin, 1);
-
-
-        SetSrc1RegFile(mybin, REG_FILE_I);
-        SetSrc1Type(mybin, SRC_IMM_TYPE_D);
-
-        SetCmpSrc1Imm32(mybin, jmpOffset, opnd);
     }
     return true;
 }

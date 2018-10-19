@@ -2220,9 +2220,31 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingCALL(G4_INST* inst)
 	EncodeInstHeader(inst, oneSrc.GetHeader());
 	EncodeOperandDst(inst, oneSrc.GetOperandControl());
 
-    //Needed for correctness
-    oneSrc.SetSrc1Regfile(G9HDL::REGFILE_IMM);
-    oneSrc.SetSrc1Srctype(GetOperandSrcHDLImmType(Type_D));
+    if (inst->getSrc(0) && !inst->getSrc(0)->isLabel())
+    {
+        // indirect call
+        G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC* ptr = (G9HDL::EU_INSTRUCTION_BASIC_TWO_SRC*)&oneSrc;
+
+        SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG_REG, 1>::EncodeEuInstructionSourcesReg(
+            inst, inst->getSrc(0), ptr->GetRegsource() //by reference
+        );
+
+        ptr->GetRegsource().SetSrc1Regfile(TranslateVisaToHDLRegFile(EncodingHelper::GetSrcRegFile(inst->getSrc(0))));
+
+        if (!inst->getSrc(0)->isImm())
+        {
+            ptr->GetRegsource().SetSrc1Srctype(GetOperandSrcHDLType(inst->getSrc(0)->getType()));
+        }
+    }
+    else
+    { 
+        //Needed for correctness
+        oneSrc.SetSrc1Regfile(G9HDL::REGFILE_IMM);
+        oneSrc.SetSrc1Srctype(GetOperandSrcHDLImmType(Type_D));
+    }
+
+   
+
 
 	bin->DWords[0] = oneSrc.GetDWORD(0);
 	bin->DWords[1] = oneSrc.GetDWORD(1);

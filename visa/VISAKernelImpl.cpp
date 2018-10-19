@@ -309,10 +309,7 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
 
         binary = pBinaryEncoding->EmitBinary(binarySize);
 
-        if (m_options->getOption(vISA_GenerateDebugInfo))
-        {
-            pBinaryEncoding->computeBinaryOffsets();
-        }
+        pBinaryEncoding->computeBinaryOffsets();
 
         for (auto bb : m_kernel->fg.BBs)
         {
@@ -327,6 +324,9 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
 
         delete pBinaryEncoding;
     }
+
+    // perform any necessary relocation
+    m_kernel->doRelocation(binary, binarySize);
 
 
     if (m_options->getOption(vISA_PrintASMCount))
@@ -365,8 +365,6 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
     {
         m_builder->getJitInfo()->numAsmCount = m_kernel->getAsmCount();
     }
-
-
 
     return binary;
 }
@@ -3246,6 +3244,57 @@ int VISAKernelImpl::AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VIS
 #endif
     return status;
 }
+
+int VISAKernelImpl::AppendVISACFIndirectFuncCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask,
+    Common_ISA_Exec_Size executionSize, VISA_VectorOpnd* funcAddr, uint8_t argSize, uint8_t returnSize)
+{
+    AppendVISAInstCommon();
+#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
+    startTimer(TIMER_VISA_BUILDER_APPEND_INST);
+#endif
+    int status = CM_SUCCESS;
+    if (IS_GEN_BOTH_PATH)
+    {
+        G4_Predicate * g4Pred = pred ? (G4_Predicate *)pred->g4opnd : nullptr;
+        status = m_builder->translateVISACFIFCallInst(executionSize, emask, g4Pred, funcAddr->g4opnd, 
+            argSize, returnSize);
+    }
+    if (IS_VISA_BOTH_PATH)
+    {
+        VISA_INST_Desc *inst_desc = &CISA_INST_table[ISA_IFCALL];
+        VISA_opnd *opnd[3]; //should be more then enough
+        int num_pred_desc_operands = 2;
+        GET_NUM_PRED_DESC_OPNDS(num_pred_desc_operands, inst_desc);
+        int num_operands = 0;
+
+        opnd[num_operands] = funcAddr;
+        ++num_operands;
+
+        ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, argSize));
+
+        ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(num_pred_desc_operands, num_operands, inst_desc, returnSize));
+
+        CHECK_NUM_OPNDS(inst_desc, num_operands, num_pred_desc_operands);
+
+        unsigned short pred_id = pred ? pred->_opnd.v_opnd.opnd_val.pred_opnd.index : 0;
+
+        /*
+        Making a copy of descriptor adn setting correct number of operands.
+        This is used later to calculate total size of the buffer.
+        */
+        CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(this->m_mem);
+
+        unsigned char size = executionSize;
+        size += emask << 4;
+        inst->createCisaInstruction(ISA_IFCALL, size, 0, pred_id, opnd, num_operands, inst_desc);
+        addInstructionToEnd(inst);
+    }
+#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
+    stopTimer(TIMER_VISA_BUILDER_APPEND_INST);
+#endif
+    return status;
+}
+
 
 int VISAKernelImpl::AppendVISACFFunctionRetInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize)
 {

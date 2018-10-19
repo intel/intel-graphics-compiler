@@ -394,6 +394,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <opcode> VME_SIC_OP
 %token <opcode> VME_FBR_OP
 %token <opcode> BRANCH_OP
+%token <opcode> IFCALL
 %token <opcode> SWITCHJMP_OP
 %token <opcode> SIMDCF_OP
 %token <opcode> MOVS_OP
@@ -1306,6 +1307,12 @@ BranchInstruction : Predicate BRANCH_OP ExecSize TargetLabel
            // memcpy(&temp, &$7, sizeof(Common_ISA_Function_Parameters_t));
             //int num_parameters = 1;
             pCisaBuilder->CISA_create_fcall_instruction($1.cisa_gen_opnd, $2, $3.emask, $3.exec_size, (unsigned)$4, (unsigned)$5, (unsigned)$6, CISAlineno);
+         }
+         // 1           2       3       4                   5       6
+         | Predicate IFCALL ExecSize VecSrcOperand_G_I_IMM NUMBER NUMBER
+         {
+            pCisaBuilder->CISA_create_ifcall_instruction($1.cisa_gen_opnd, $3.emask, $3.exec_size, 
+            $4.cisa_gen_opnd, (unsigned)$5, (unsigned)$6, CISAlineno);
          }
 
                       // 1        2         3

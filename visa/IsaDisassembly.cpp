@@ -905,23 +905,17 @@ static string printInstructionControlFlow(const common_isa_header& isaHeader, co
             case ISA_GOTO:
             case ISA_FCALL:
             {
-                if (opcode == ISA_JMP  ||
-                    opcode == ISA_CALL ||
-                    opcode == ISA_GOTO ||
-                    opcode == ISA_FCALL)
-                {
-                    /// label / function id to jump / call to.
-                    label_id = getPrimitiveOperand<uint16_t>(inst, i++);
+                /// label / function id to jump / call to.
+                label_id = getPrimitiveOperand<uint16_t>(inst, i++);
 
-                    if (opcode == ISA_FCALL)
-                    {
-                        sstr << " " << (unsigned) label_id;
-                    }
-                    else
-                    {
-                        sstr << " " << header->strings[header->labels[label_id].name_index];
-                        if (header->labels[label_id].kind == LABEL_SUBROUTINE) sstr << "_" << label_id;
-                    }
+                if (opcode == ISA_FCALL)
+                {
+                    sstr << " " << (unsigned)label_id;
+                }
+                else
+                {
+                    sstr << " " << header->strings[header->labels[label_id].name_index];
+                    if (header->labels[label_id].kind == LABEL_SUBROUTINE) sstr << "_" << label_id;
                 }
 
                 if (opcode == ISA_FCALL)
@@ -933,6 +927,15 @@ static string printInstructionControlFlow(const common_isa_header& isaHeader, co
                     sstr << " " << getPrimitiveOperand<unsigned>(inst, i++);
                 }
 
+                break;
+            }
+            case ISA_IFCALL:
+            {
+                sstr << printOperand(isaHeader, header, inst, i++, opt);
+                /// arg size
+                sstr << " " << getPrimitiveOperand<unsigned>(inst, i++);
+                /// return size
+                sstr << " " << getPrimitiveOperand<unsigned>(inst, i++);
                 break;
             }
             case ISA_SWITCHJMP:

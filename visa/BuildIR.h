@@ -1806,6 +1806,13 @@ public:
                         uint8_t argSize,
                         uint8_t returnSize);
 
+    int translateVISACFIFCallInst(Common_ISA_Exec_Size execsize,
+        Common_VISA_EMask_Ctrl emask,
+        G4_Predicate *predOpnd,
+        G4_Operand* funcAddr,
+        uint8_t argSize,
+        uint8_t returnSize);
+
     int translateVISACFFretInst(Common_ISA_Exec_Size execsize,
                         Common_VISA_EMask_Ctrl emask,
                         G4_Predicate *predOpnd);

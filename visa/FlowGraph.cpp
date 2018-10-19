@@ -5902,6 +5902,56 @@ unsigned int G4_Kernel::getNumCalleeSaveRegs()
     return totalGRFs - calleeSaveStart() - getNumScratchRegs();
 }
 
+void RelocationEntry::doRelocation(void* binary, uint32_t binarySize)
+{
+    switch (relocType)
+    {
+        case RelocationType::IndirectCall:
+        {
+            // need an IGA function
+            // replaceImm32Value(char* instOffset, uint32_t val);
+            // that will replace the imm32 value used by the instruction
+            // located at instOffset with value 'val'
+            // for now we assume inst is uncompacted and the imm32 is always at byte 3
+
+            uint32_t relocVal = (uint32_t) indirectCallInst->getGenOffset();
+            uint32_t instOffset = (uint32_t) inst->getGenOffset();
+            assert (relocVal < binarySize && instOffset < binarySize && "invalid relocation offset");
+            uint32_t* immLoc = (uint32_t*) ((char*) binary + instOffset + 12);
+            *immLoc = relocVal;
+            break;
+        }
+        default:
+            assert(false && "unhandled relocation type");
+    }
+}
+
+void RelocationEntry::dump() const
+{
+    std::cerr << "Relocation entry: " << getTypeString() << "\n";
+    std::cerr << "\t";
+    inst->dump();
+    switch (relocType)
+    {
+        case RelocationType::IndirectCall:
+            std::cerr << "call inst (offset=" << indirectCallInst->getGenOffset() << "):\t";
+            indirectCallInst->dump();
+
+    }
+    std::cerr << "\n";
+}
+
+//
+// perform relocation for every entry in the allocation table
+//
+void G4_Kernel::doRelocation(void* binary, uint32_t binarySize)
+{
+    for (auto&& entry : relocationTable)
+    {
+        entry.doRelocation(binary, binarySize);
+    }
+}
+
 void SCCAnalysis::run()
 {
     SCCNodes.resize(cfg.getNumBB());

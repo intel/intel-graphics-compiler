@@ -596,27 +596,43 @@ static void propagateCalleeInfo(G4_Kernel* kernel, G4_Kernel* callee)
 
 // After compiling each compilation unit this function is invoked which stitches together callers
 // with their callees. It modifies pseudo_fcall/fret in to call/ret opcodes.
-void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*> compilation_units )
+void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& compilation_units )
 {
     list <int> callee_index;
     G4_Kernel* kernel = NULL;
 
-    for (std::list<G4_Kernel*>::iterator it = compilation_units.begin();
-        it != compilation_units.end();
-        it++ )
+    bool hasIndirectCall = false;
+    for (auto cur : compilation_units)
     {
-        G4_Kernel* cur = (*it);
-
-        if( (*it)->fg.builder->getIsKernel() == true )
+        if (cur->fg.builder->getIsKernel())
         {
             ASSERT_USER( kernel == NULL, "Multiple kernel objects found when stitching together");
             kernel = cur;
+        }
+
+        if (cur->hasIndirectCall())
+        {
+            hasIndirectCall = true;
         }
     }
 
     ASSERT_USER( kernel != NULL, "Valid kernel not found when stitching compiled units");
 
-    Enumerate_Callees( header, kernel, compilation_units, callee_index );
+    if (hasIndirectCall)
+    { 
+        // we have to include every function  
+        for (auto&& cu : compilation_units)
+        {
+            if (!cu->fg.builder->getIsKernel())
+            {
+                callee_index.push_back(cu->fg.builder->getFuncId());
+            }
+        }
+    }
+    else
+    { 
+        Enumerate_Callees(header, kernel, compilation_units, callee_index);
+    }
 
     callee_index.sort();
     callee_index.unique();
@@ -628,12 +644,9 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*> comp
 #endif
 
     // Append flowgraph of all callees to kernel
-    for( std::list<int>::iterator it = callee_index.begin();
-        it != callee_index.end();
-        it++ )
+    for (auto calleeId : callee_index)
     {
-        int cur = (*it);
-        G4_Kernel* callee = Get_Resolved_Compilation_Unit( header, compilation_units, cur );
+        G4_Kernel* callee = Get_Resolved_Compilation_Unit(header, compilation_units, calleeId);
         propagateCalleeInfo(kernel, callee);
 
         for( BB_LIST_ITER bb = callee->fg.BBs.begin();
@@ -648,49 +661,49 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*> comp
     kernel->fg.reassignBlockIDs();
 
     // Change fcall/fret to call/ret and setup caller/callee edges
-    for( BB_LIST_ITER it = kernel->fg.BBs.begin();
-        it != kernel->fg.BBs.end();
-        it++ )
+    for (G4_BB* cur : kernel->fg.BBs)
     {
-        G4_BB* cur = (*it);
-
         if( cur->size() > 0 && cur->isEndWithFCall() )
         {
             // Setup successor/predecessor
             G4_INST* fcall = cur->back();
-            int calleeIndex = fcall->asCFInst()->getCalleeIndex();
-            G4_Kernel* callee = Get_Resolved_Compilation_Unit( header, compilation_units, calleeIndex );
-            G4_BB* retBlock = cur->Succs.front();
-            ASSERT_USER( cur->Succs.size() == 1, "fcall basic block cannot have more than 1 successor");
-            ASSERT_USER( retBlock->Preds.size() == 1, "block after fcall cannot have more than 1 predecessor");
+            if (!fcall->asCFInst()->isIndirectCall())
+            {
+                int calleeIndex = fcall->asCFInst()->getCalleeIndex();
+                G4_Kernel* callee = Get_Resolved_Compilation_Unit(header, compilation_units, calleeIndex);
+                G4_BB* retBlock = cur->Succs.front();
+                ASSERT_USER(cur->Succs.size() == 1, "fcall basic block cannot have more than 1 successor");
+                ASSERT_USER(retBlock->Preds.size() == 1, "block after fcall cannot have more than 1 predecessor");
 
-            // Remove old edge
-            retBlock->Preds.erase(retBlock->Preds.begin());
-            cur->Succs.erase(cur->Succs.begin());
+                // Remove old edge
+                retBlock->Preds.erase(retBlock->Preds.begin());
+                cur->Succs.erase(cur->Succs.begin());
 
-            // Connect new fg
-            kernel->fg.addPredSuccEdges( cur, callee->fg.getEntryBB() );
-            kernel->fg.addPredSuccEdges( callee->fg.getUniqueReturnBlock(), retBlock );
+                // Connect new fg
+                kernel->fg.addPredSuccEdges(cur, callee->fg.getEntryBB());
+                kernel->fg.addPredSuccEdges(callee->fg.getUniqueReturnBlock(), retBlock);
 
-            G4_INST* calleeLabel = callee->fg.getEntryBB()->front();
-            ASSERT_USER( calleeLabel->isLabel() == true, "Entry inst is not label");
+                G4_INST* calleeLabel = callee->fg.getEntryBB()->front();
+                ASSERT_USER(calleeLabel->isLabel() == true, "Entry inst is not label");
 
-            // ret/e-mask
-            fcall->setSrc( fcall->getSrc(0), 1 );
+                // ret/e-mask
+                fcall->setSrc(fcall->getSrc(0), 1);
 
-            // dst label
-            fcall->setSrc( calleeLabel->getSrc(0), 0 );
-            fcall->setOpcode( G4_call );
+                // dst label
+                fcall->setSrc(calleeLabel->getSrc(0), 0);
+                fcall->setOpcode(G4_call);
+            }
+            else
+            {
+                fcall->setSrc(fcall->getSrc(0), 1);
+                fcall->setOpcode(G4_call);
+            }
         }
     }
 
     // Change fret to ret
-    for( BB_LIST_ITER it = kernel->fg.BBs.begin();
-        it != kernel->fg.BBs.end();
-        it++ )
+    for (G4_BB* cur : kernel->fg.BBs)
     {
-        G4_BB* cur = (*it);
-
         if( cur->size() > 0 && cur->isEndWithFRet() )
         {
             G4_INST* fret = cur->back();
@@ -701,14 +714,12 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*> comp
     }
 
     // Append declarations and color attributes from all callees to kernel
-    for( list<int>::iterator it = callee_index.begin(); it != callee_index.end(); ++it ) {
-        G4_Kernel* callee;
+    for (auto it = callee_index.begin(); it != callee_index.end(); ++it ) 
+    {
+        G4_Kernel* callee = Get_Resolved_Compilation_Unit( header, compilation_units, (*it) );
 
-        callee = Get_Resolved_Compilation_Unit( header, compilation_units, (*it) );
-
-        for( DECLARE_LIST_ITER dcl_it = callee->Declares.begin(); dcl_it != callee->Declares.end(); ++dcl_it ) {
-            G4_Declare* curDcl;
-            curDcl = *dcl_it;
+        for (auto curDcl : callee->Declares) 
+        {
             kernel->Declares.push_back( curDcl );
         }
     }
@@ -2669,6 +2680,20 @@ bool CISA_IR_Builder::CISA_create_fcall_instruction(VISA_opnd *pred_opnd,
 {
     Common_ISA_Exec_Size executionSize = Get_Common_ISA_Exec_Size_From_Raw_Size(exec_size);
     m_kernel->AppendVISACFFunctionCallInst((VISA_PredOpnd *)pred_opnd,emask, executionSize, (unsigned short)func_id, (unsigned char)arg_size, (unsigned char)return_size);
+    return true;
+}
+
+bool CISA_IR_Builder::CISA_create_ifcall_instruction(VISA_opnd *pred_opnd,
+    Common_VISA_EMask_Ctrl emask,
+    unsigned exec_size,
+    VISA_opnd* funcAddr,
+    unsigned arg_size,
+    unsigned return_size,
+    int line_no) //last index
+{
+    Common_ISA_Exec_Size executionSize = Get_Common_ISA_Exec_Size_From_Raw_Size(exec_size);
+    m_kernel->AppendVISACFIndirectFuncCallInst((VISA_PredOpnd *)pred_opnd, emask, executionSize, 
+        (VISA_VectorOpnd*) funcAddr, (uint8_t) arg_size, (uint8_t) return_size);
     return true;
 }
 

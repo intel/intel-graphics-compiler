@@ -684,6 +684,14 @@ public:
 										        unsigned return_size,
                                                 int line_no);
 
+    bool CISA_create_ifcall_instruction(VISA_opnd *pred_opnd,
+        Common_VISA_EMask_Ctrl emask,
+        unsigned exec_size,
+        VISA_opnd* funcAddr,
+        unsigned arg_size,
+        unsigned return_size,
+        int line_no);
+
     bool CISA_create_raw_send_instruction(ISA_Opcode opcode,
                                             unsigned char modifier,
                                             Common_VISA_EMask_Ctrl emask,

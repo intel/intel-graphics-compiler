@@ -1168,6 +1168,66 @@ private:
     gtpin::igc::igc_init_t* gtpin_init = nullptr;
 };
 
+enum class RelocationType
+{
+    IndirectCall, // patched value is the address of an indirect call inst
+};
+
+class RelocationEntry
+{
+    G4_INST* inst;  // instruction to be relocated
+    int opndPos;    // operand to be relocated. This should be a RelocImm
+    RelocationType relocType;
+    G4_INST* indirectCallInst = nullptr;   // the call inst for the indirect call relocation
+
+    RelocationEntry(G4_INST* i, int pos, RelocationType type, G4_INST* call) :
+        inst(i), opndPos(pos), relocType(type), indirectCallInst(call) {}
+
+public:
+    static RelocationEntry createIndirectCallReloc(G4_INST* inst, int opndPos, G4_INST* callInst)
+    {
+        RelocationEntry entry(inst, opndPos, RelocationType::IndirectCall, callInst);
+        return entry;
+    }
+
+    G4_INST* getInst() const
+    {
+        return inst;
+    }
+
+    RelocationType getType() const
+    {
+        return relocType;
+    }
+
+    const char* getTypeString() const
+    {
+        switch (relocType)
+        {
+            case RelocationType::IndirectCall:
+                return "IndirectCall";
+            default:
+                assert(false && "unhanlded relocation type");
+                return "";
+        }
+    }
+
+    uint32_t getOpndPos() const
+    {
+        return opndPos;
+    }
+
+    G4_INST* getIndirectCallInst() const
+    {
+        assert(relocType == RelocationType::IndirectCall && "invalid relocation type");
+        return indirectCallInst;
+    }
+
+    void doRelocation(void* binary, uint32_t binarySize);
+
+    void dump() const;
+};
+
 class G4_Kernel
 {
     const char* name;
@@ -1202,6 +1262,11 @@ class G4_Kernel
 	uint32_t maxAddrTakenSize;
 
     unsigned int callerSaveLastGRF;
+
+    bool m_hasIndirectCall = false;
+
+    // stores all relocations to be performed after binary encoding
+    std::vector<RelocationEntry> relocationTable;
 
 public:
     FlowGraph fg;
@@ -1363,6 +1428,22 @@ public:
     unsigned int getNumCalleeSaveRegs();
 
     void renameAliasDeclares();
+
+    bool hasIndirectCall() const
+    {
+        return m_hasIndirectCall;
+    }
+    void setHasIndirectCall()
+    {
+        m_hasIndirectCall = true;
+    }
+
+    void addRelocation(RelocationEntry& entry)
+    {
+        relocationTable.push_back(entry);
+    }
+
+    void doRelocation(void* binary, uint32_t binarySize);
 };
 
 class SCCAnalysis

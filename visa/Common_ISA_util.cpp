@@ -508,8 +508,9 @@ bool hasExecSize(ISA_Opcode op, uint8_t subOp)
 
 bool hasLabelSrc(ISA_Opcode op)
 {
-    if( ISA_Inst_Table[op].type == ISA_Inst_Flow){
-        if( op == ISA_RET || op == ISA_FRET )
+    if( ISA_Inst_Table[op].type == ISA_Inst_Flow)
+    {
+        if (op == ISA_RET || op == ISA_FRET || op == ISA_IFCALL)
             return false;
         else //( op == ISA_SUBROUTINE || op == ISA_LABEL || op == ISA_JMP || op == ISA_CALL || op == ISA_FCALL )
             return true;

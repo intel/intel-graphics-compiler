@@ -396,7 +396,13 @@ jmp|call|ret|fret|fcall|goto {
 			   TRACE("\n** branch INST ");
 			   CISAlval.opcode = str2opcode(yytext);
 			   return BRANCH_OP;
-		   }
+}
+
+ifcall {
+    TRACE("\n** indirect call INST ");
+    CISAlval.opcode = ISA_IFCALL;
+	return IFCALL;
+}
 
 switchjmp {
 			   TRACE("\n** branch INST ");

@@ -116,7 +116,7 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_SCATTER4_TYPED,     ISA_Inst_Data_Port,  "scatter4_typed",      8, 0 },
     { ISA_VA_SKL_PLUS,        ISA_Inst_Sampler,    "va_skl_plus",         0, 0 },
     { ISA_SVM,                ISA_Inst_SVM,        "svm",                 0, 0 },
-    { ISA_RESERVED_4F,        ISA_Inst_Reserved,   "reserved4F",          0, 0 },
+    { ISA_IFCALL,             ISA_Inst_Flow,       "ifcall",              3, 0 },
     { ISA_RESERVED_50,        ISA_Inst_Misc,       "reserved50",          0, 0 },
     { ISA_FILE,               ISA_Inst_Misc,       "file",                1, 0 },
     { ISA_LOC,                ISA_Inst_Misc,       "loc",                 1, 0 },
@@ -1092,8 +1092,13 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 79
-    { ALL, ISA_RESERVED_4F, ISA_Inst_Reserved, "reserved_4f", 0, 0,
+    { ALL, ISA_IFCALL, ISA_Inst_Flow, "ifcall", 5, 0,
     {
+        { OPND_EXECSIZE, ISA_TYPE_UB, 0 },
+        { OPND_PRED, ISA_TYPE_UW, 0 },
+        { OPND_KIND, ISA_TYPE_UD, 0 }, /// function_addr
+        { OPND_KIND, ISA_TYPE_UB, 0 }, /// arg_size
+        { OPND_KIND, ISA_TYPE_UB, 0 }, /// return_size
     },
    
     },

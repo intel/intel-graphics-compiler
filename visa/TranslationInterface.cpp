@@ -2383,6 +2383,58 @@ int IR_Builder::translateVISACFFCallInst(Common_ISA_Exec_Size execsize, Common_V
     return CM_SUCCESS;
 }
 
+int IR_Builder::translateVISACFIFCallInst(Common_ISA_Exec_Size execsize, Common_VISA_EMask_Ctrl emask, 
+    G4_Predicate *predOpnd, G4_Operand* funcAddr, uint8_t argSize, uint8_t returnSize)
+{
+#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
+    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
+#endif
+    kernel.fg.setHasStackCalls();
+    kernel.setHasIndirectCall();
+
+    if (this->getArgSize() < argSize)
+    {
+        this->setArgSize(argSize);
+    }
+
+    if (this->getRetVarSize() < returnSize)
+    {
+        this->setRetVarSize(returnSize);
+    }
+
+    uint8_t exsize = (uint8_t)Get_Common_ISA_Exec_Size(execsize);
+
+    G4_Declare* callOffset = createTempVar(1, Type_D, Either, Any);
+
+    // symbolic imm representing call's address
+    SuperRelocEntry reloc;
+    auto callLoc = createRelocImm(reloc, Type_UD);
+    auto src0 = funcAddr;
+    if (!src0->isSrcRegRegion() || 
+        src0->isSrcRegRegion() && src0->asSrcRegRegion()->getModifier() != Mod_src_undef)
+    {
+        auto tmpSrc0 = createTempVar(1, Type_D, Either, Any);
+        createInst(nullptr, G4_mov, nullptr, false, 1, 
+            Create_Dst_Opnd_From_Dcl(tmpSrc0, 1), src0, nullptr, InstOpt_WriteEnable);
+        src0 = Create_Src_Opnd_From_Dcl(tmpSrc0, getRegionScalar());
+    }
+    src0->asSrcRegRegion()->setModifier(Mod_Minus);
+    auto callOffsetInst = createInst(nullptr, G4_add, nullptr, false, 1, 
+        Create_Dst_Opnd_From_Dcl(callOffset, 1), src0, callLoc, InstOpt_WriteEnable);
+
+    auto fcall = createInst(predOpnd, G4_pseudo_fcall, nullptr, false, exsize,
+        nullptr, Create_Src_Opnd_From_Dcl(callOffset, getRegionScalar()), nullptr, 0, 0);
+
+    m_fcallInfo[fcall] = new (mem) G4_FCALL(argSize, returnSize);
+    RelocationEntry relocEntry = RelocationEntry::createIndirectCallReloc(callOffsetInst, 1, fcall);
+    kernel.addRelocation(relocEntry);
+
+#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
+    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
+#endif
+    return CM_SUCCESS;
+}
+
 int IR_Builder::translateVISACFFretInst(Common_ISA_Exec_Size executionSize, Common_VISA_EMask_Ctrl emask, G4_Predicate *predOpnd)
 {
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)

@@ -611,9 +611,7 @@ class G4_FCALL
 
 public:
     G4_FCALL(uint16_t argVarSz, uint16_t retVarSz) : argSize(argVarSz), retSize(retVarSz)
-    {
-
-    }
+    {}
 
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
 
@@ -1299,6 +1297,8 @@ class G4_InstCF : public G4_INST
 
 public:
 
+    static const uint32_t unknownCallee = 0xFFFF;
+
     G4_InstCF(
         USE_DEF_ALLOCATOR& allocator,
         std::vector<G4_INST*>& instList,
@@ -1312,7 +1312,7 @@ public:
         G4_Operand* s1,
         unsigned int opt) :
         G4_INST(allocator, instList, prd, o, m, sat, size, d, s0, s1, opt),
-        jip(NULL), uip(NULL), isBackwardBr(false), calleeIndex(0),
+        jip(NULL), uip(NULL), isBackwardBr(false), calleeIndex(unknownCallee),
         assocPseudoVCA(nullptr), assocPseudoA0Save(nullptr), assocPseudoFlagSave(nullptr)
     {
         if( o == G4_break || o == G4_cont || o == G4_halt )
@@ -1412,6 +1412,25 @@ public:
     {
         MUST_BE_TRUE(op == G4_pseudo_fcall, "Must be a FCALL");
         return calleeIndex;
+    }
+
+    bool isIndirectCall() const
+    {
+        return op == G4_pseudo_fcall && getCalleeIndex() == G4_InstCF::unknownCallee;
+    }
+
+    // for direct call, this is null till after the compilation units are stitched together
+    // for indirect call, this is src0 
+    G4_Operand* getCalleeAddress() const
+    {
+        if (op == G4_pseudo_fcall)
+        {
+            return getSrc(0);
+        }
+        else
+        {
+            return nullptr;
+        }
     }
 
     void setAssocPseudoVCA(G4_RegVar* var)

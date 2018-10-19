@@ -333,7 +333,7 @@ typedef enum {
     ISA_SCATTER4_TYPED     = 0x4C,
     ISA_VA_SKL_PLUS        = 0x4D,
     ISA_SVM                = 0x4E,
-    ISA_RESERVED_4F        = 0x4F,
+    ISA_IFCALL             = 0x4F,
     ISA_RESERVED_50        = 0x50,
     ISA_FILE               = 0x51,
     ISA_LOC                = 0x52,
