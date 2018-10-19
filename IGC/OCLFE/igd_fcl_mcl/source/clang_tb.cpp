@@ -1205,7 +1205,6 @@ namespace TC
 							(strncmp(pParam, "-I", 2) == 0) ||
 							(strncmp(pParam, "-spir-std=", 10) == 0) ||
 							(strcmp(pParam, "-gline-tables-only") == 0) ||
-							(strcmp(pParam, "-cl-intel-greater-than-4GB-buffer-required") == 0) || //used in old version of driver
 							(strcmp(pParam, "-triple") == 0) || //used in NEO
 							(strcmp(pParam, "-dwarf-column-info") == 0) ||
 							(strcmp(pParam, "-cl-intel-debug-info") == 0) ||
