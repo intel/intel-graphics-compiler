@@ -2368,7 +2368,7 @@ int VISAKernelImpl::CreateVISAStateOperandHandle(VISA_StateOpndHandle *&opnd, VI
     return status;
 }
 
-int VISAKernelImpl::CreateVISANullRawOperand(VISA_RawOpnd *& cisa_opnd)
+int VISAKernelImpl::CreateVISANullRawOperand(VISA_RawOpnd *& cisa_opnd, bool isDst)
 {
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_CREATE_OPND);
@@ -2382,15 +2382,12 @@ int VISAKernelImpl::CreateVISANullRawOperand(VISA_RawOpnd *& cisa_opnd)
     cisa_opnd->_opnd.r_opnd.offset = 0;
     cisa_opnd->size = sizeof(cisa_opnd->_opnd.r_opnd.index) + sizeof(cisa_opnd->_opnd.r_opnd.offset);
 
-    if (IS_GEN_BOTH_PATH)
-    {
-        cisa_opnd->g4opnd = m_builder->createNullDst(Type_UD);
-    }
+    int ret = CreateGenNullRawOperand(cisa_opnd, isDst);
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    return CM_SUCCESS;
+    return ret;
 }
 
 /**
@@ -2401,11 +2398,8 @@ int VISAKernelImpl::CreateGenNullRawOperand(VISA_RawOpnd *& cisa_opnd, bool isDs
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     startTimer(TIMER_VISA_BUILDER_CREATE_OPND);
 #endif
-    G4_Declare *dcl = nullptr;
     if(IS_GEN_BOTH_PATH)
     {
-        dcl = getGenVar(0)->genVar.dcl;
-
         if(isDst)
         {
             cisa_opnd->g4opnd = m_builder->createNullDst(Type_UD);

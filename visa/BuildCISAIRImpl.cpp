@@ -2953,7 +2953,7 @@ VISA_opnd * CISA_IR_Builder::CISA_create_RAW_NULL_operand(int line_no)
 
     VISA_RawOpnd *cisa_opnd = NULL;
     int status = CM_SUCCESS;
-    status = m_kernel->CreateVISANullRawOperand(cisa_opnd);
+    status = m_kernel->CreateVISANullRawOperand(cisa_opnd, true);
     MUST_BE_TRUE1(status == CM_SUCCESS, line_no, "Was not able to create NULL RAW operand.");
     return (VISA_opnd *)cisa_opnd;
 

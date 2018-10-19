@@ -1909,7 +1909,7 @@ void CEncoder::URBWrite(
     if (offset->IsImmediate())
     {
         immOffset = int_cast<unsigned short>(offset->GetImmediateValue());
-        V(vKernel->CreateVISANullRawOperand(perSlotOffset));
+        V(vKernel->CreateVISANullRawOperand(perSlotOffset, false));
     }
     else
     {
@@ -1937,7 +1937,7 @@ void CEncoder::URBWrite(
         URBChannelMask immMask(immChannelMask);
         if (immMask.isAllSet())
         {
-            V(vKernel->CreateVISANullRawOperand(channelMask));
+            V(vKernel->CreateVISANullRawOperand(channelMask, false));
         }
         else
         {
@@ -1993,7 +1993,7 @@ VISA_RawOpnd* CEncoder::GetRawSource(CVariable* var, uint offset)
     }
     else
     {
-        V(vKernel->CreateVISANullRawOperand(srcOpnd));
+        V(vKernel->CreateVISANullRawOperand(srcOpnd, false));
     }
     return srcOpnd;
 }
@@ -2009,7 +2009,7 @@ VISA_RawOpnd* CEncoder::GetRawDestination(CVariable* var, unsigned offset)
     }
     else
     {
-         V(vKernel->CreateVISANullRawOperand(dstOpnd));
+         V(vKernel->CreateVISANullRawOperand(dstOpnd, true));
     }
     return dstOpnd;
 }
@@ -2136,7 +2136,7 @@ void CEncoder::RenderTargetWrite(CVariable* var[],
     {
         if(isUndefined[i])
         {
-            V(vKernel->CreateVISANullRawOperand(srcOpnd[numMsgSpecificOpnds++]));
+            V(vKernel->CreateVISANullRawOperand(srcOpnd[numMsgSpecificOpnds++], false));
         }else
         {
             srcOpnd[numMsgSpecificOpnds++] = GetRawSource(var[i]);

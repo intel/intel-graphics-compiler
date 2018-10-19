@@ -226,7 +226,7 @@ public:
     CM_BUILDER_API virtual int CreateVISARawOperand(VISA_RawOpnd *&opnd, VISA_GenVar *decl, unsigned short offset) = 0;
 
     /// CreateVISANullRawOperand -- A short hand for createing V0<0;1,0>
-    CM_BUILDER_API virtual int CreateVISANullRawOperand(VISA_RawOpnd *&opnd) = 0;
+    CM_BUILDER_API virtual int CreateVISANullRawOperand(VISA_RawOpnd *&opnd, bool isDst) = 0;
     /********** CREATE OPERAND APIS END ******************/
 
     /********** APPEND INSTRUCTION APIS START ******************/

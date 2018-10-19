@@ -308,7 +308,7 @@ public:
 
     CM_BUILDER_API int CreateVISARawOperand(VISA_RawOpnd *& opnd, VISA_GenVar *decl, unsigned short offset);
 
-    CM_BUILDER_API int CreateVISANullRawOperand(VISA_RawOpnd *& opnd);
+    CM_BUILDER_API int CreateVISANullRawOperand(VISA_RawOpnd *& opnd, bool isDst);
 
     CM_BUILDER_API int GetPredefinedVar(VISA_GenVar *&predDcl, PreDefined_Vars varName);
 

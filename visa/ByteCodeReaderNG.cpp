@@ -306,7 +306,7 @@ static VISA_RawOpnd* readRawOperandNG(unsigned& bytePos, const char* buf, Routin
     */
     if(index == 0)
     {
-       kernelBuilderImpl->CreateVISANullRawOperand(opnd); //dst
+       kernelBuilderImpl->CreateVISANullRawOperand(opnd, true); //dst
     }
     else
     {
@@ -988,7 +988,7 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
                 VISA_RawOpnd* vOffset = readRawOperandNG(bytePos, buf, container);
                 VISA_RawOpnd* rOffset = readRawOperandNG(bytePos, buf, container);
                 VISA_RawOpnd* lod = NULL;
-                kernelBuilderImpl->CreateVISANullRawOperand(lod);
+                kernelBuilderImpl->CreateVISANullRawOperand(lod, false);
                 VISA_RawOpnd*     msg = readRawOperandNG(bytePos, buf, container);
 
                 VISA_StateOpndHandle* surfaceHnd = NULL;
