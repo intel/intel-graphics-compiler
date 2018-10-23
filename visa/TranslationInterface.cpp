@@ -2411,7 +2411,7 @@ int IR_Builder::translateVISACFIFCallInst(Common_ISA_Exec_Size execsize, Common_
     auto callLoc = createRelocImm(reloc, Type_UD);
     auto src0 = funcAddr;
     if (!src0->isSrcRegRegion() || 
-        src0->isSrcRegRegion() && src0->asSrcRegRegion()->getModifier() != Mod_src_undef)
+        (src0->isSrcRegRegion() && (src0->asSrcRegRegion()->getModifier() != Mod_src_undef)))
     {
         auto tmpSrc0 = createTempVar(1, Type_D, Either, Any);
         createInst(nullptr, G4_mov, nullptr, false, 1, 
