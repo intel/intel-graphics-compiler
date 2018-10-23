@@ -2654,9 +2654,8 @@ SPIRVToLLVM::transFunction(SPIRVFunction *BF) {
     auto BA = BF->getArgument(I->getArgNo());
     mapValue(BA, &(*I));
     const std::string &ArgName = BA->getName();
-    if (ArgName.empty())
-      continue;
-    I->setName(ArgName);
+    if (!ArgName.empty())
+      I->setName(ArgName);
     BA->foreachAttr([&](SPIRVFuncParamAttrKind Kind){
      if (Kind == FunctionParameterAttributeCount)
         return;
