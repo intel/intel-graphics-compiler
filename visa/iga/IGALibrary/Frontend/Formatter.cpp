@@ -1448,6 +1448,7 @@ void Formatter::EmitSendDescriptorInfoGED(
             break;
             /// includes: GEN11
         case GED_SFID_DP_DC2:     ///< GEN10, GEN9
+            msgType = GED_GetMessageTypeDP_DC2(desc, gedP, &getRetVal);
             break;
         case GED_SFID_DP_RC:      ///< all
             msgType = GED_GetMessageTypeDP_RC(desc, gedP, &getRetVal);
@@ -1482,6 +1483,7 @@ void Formatter::EmitSendDescriptorInfoGED(
             break;
         /// includes: GEN11
         case GED_SFID_DP_DC1:     ///< GEN7.5, GEN8, GEN8.1, GEN9, GEN10
+            msgType = GED_GetMessageTypeDP_DC1(desc, gedP, &getRetVal);
             break;
             /// includes: GEN11
         case GED_SFID_CRE:        ///< GEN7.5, GEN8, GEN8.1, GEN9, GEN10
