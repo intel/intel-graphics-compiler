@@ -1236,6 +1236,13 @@ static void readInstructionControlFlow(unsigned& bytePos, const char* buf, ISA_O
         kernelBuilder->AppendVISACFIndirectFuncCallInst(pred, emask, esize, funcAddr, argSize, retSize);
         return;
     }
+    case ISA_FADDR:
+    {
+        uint16_t funcId = readPrimitiveOperandNG<uint16_t>(bytePos, buf);
+        VISA_VectorOpnd* dst = readVectorOperandNG(bytePos, buf, container, true);
+        kernelBuilder->AppendVISACFFuncAddrInst(funcId, dst);
+        return;
+    }
     case ISA_SWITCHJMP:
         {
             Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;

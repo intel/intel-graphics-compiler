@@ -395,6 +395,7 @@ VISA_RawOpnd* rawOperandArray[16];
 %token <opcode> VME_FBR_OP
 %token <opcode> BRANCH_OP
 %token <opcode> IFCALL
+%token <opcode> FADDR
 %token <opcode> SWITCHJMP_OP
 %token <opcode> SIMDCF_OP
 %token <opcode> MOVS_OP
@@ -455,7 +456,6 @@ VISA_RawOpnd* rawOperandArray[16];
 %type <genOperand> VecSrcOperand_G_I_IMM
 %type <genOperand> VecSrcOperand_G_IMM
 %type <genOperand> VecSrcOperand_A_G
-%type <genOperand> VecSrcOperand_G_I
 %type <genOperand> VecSrcOpndSimple
 %type <genOperand> VecDstOperand_A
 %type <genOperand> VecDstOperand_G
@@ -1314,6 +1314,11 @@ BranchInstruction : Predicate BRANCH_OP ExecSize TargetLabel
             pCisaBuilder->CISA_create_ifcall_instruction($1.cisa_gen_opnd, $3.emask, $3.exec_size, 
             $4.cisa_gen_opnd, (unsigned)$5, (unsigned)$6, CISAlineno);
          }
+         // 1       2       3    
+         | FADDR  NUMBER VecDstOperand_G_I
+         {
+            pCisaBuilder->CISA_create_faddr_instruction((uint32_t) $2, $3.cisa_gen_opnd, CISAlineno);
+         }
 
                       // 1        2         3
 CondtionInstruction : Predicate SIMDCF_OP ExecSize
@@ -1547,15 +1552,6 @@ VecSrcOperand_A_G : SrcGeneralOperand
                   { $$ = $1; $$.type = OPERAND_ADDRESS; }
                   | AddrOfOperand
                   { $$ = $1; $$.type = OPERAND_ADDRESSOF; };
-
-VecSrcOperand_G_I : SrcIndirectOperand_1
-                    { $$ = $1; $$.type = OPERAND_INDIRECT; }
-                  | SrcIndirectOperand
-                    { $$ = $1; $$.type = OPERAND_INDIRECT; }
-                  | SrcGeneralOperand
-                    { $$ = $1; $$.type = OPERAND_GENERAL; }
-                  | SrcGeneralOperand_1
-                    { $$ = $1; $$.type = OPERAND_GENERAL; }
 
 VecSrcOpndSimple :   VAR TwoDimOffset
                    {

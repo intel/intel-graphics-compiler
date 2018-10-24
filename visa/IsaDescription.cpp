@@ -117,7 +117,7 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_VA_SKL_PLUS,        ISA_Inst_Sampler,    "va_skl_plus",         0, 0 },
     { ISA_SVM,                ISA_Inst_SVM,        "svm",                 0, 0 },
     { ISA_IFCALL,             ISA_Inst_Flow,       "ifcall",              3, 0 },
-    { ISA_RESERVED_50,        ISA_Inst_Misc,       "reserved50",          0, 0 },
+    { ISA_FADDR,              ISA_Inst_Flow,       "faddr",               1, 1 },
     { ISA_FILE,               ISA_Inst_Misc,       "file",                1, 0 },
     { ISA_LOC,                ISA_Inst_Misc,       "loc",                 1, 0 },
     { ISA_RESERVED_53,        ISA_Inst_Reserved,   "reserved53",          0, 0 },
@@ -1104,8 +1104,10 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 80
-    { ALL, ISA_RESERVED_50, ISA_Inst_Reserved, "reserved_50", 0, 0,
+    { ALL, ISA_FADDR, ISA_Inst_Flow, "faddr", 2, 0,
     {
+        { OPND_KIND, ISA_TYPE_UW, 0 }, /// func_id
+        { OPND_VECTOR_DST_G_I, ISA_TYPE_UD, 0 },
     },
    
     },

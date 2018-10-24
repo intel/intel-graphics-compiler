@@ -1171,6 +1171,7 @@ private:
 enum class RelocationType
 {
     IndirectCall, // patched value is the address of an indirect call inst
+    FunctionAddr, // patched value is the address of a function
 };
 
 class RelocationEntry
@@ -1179,14 +1180,24 @@ class RelocationEntry
     int opndPos;    // operand to be relocated. This should be a RelocImm
     RelocationType relocType;
     G4_INST* indirectCallInst = nullptr;   // the call inst for the indirect call relocation
+    uint32_t funcId = (uint32_t) -1;    // the function id for function address relocation
 
     RelocationEntry(G4_INST* i, int pos, RelocationType type, G4_INST* call) :
         inst(i), opndPos(pos), relocType(type), indirectCallInst(call) {}
+
+    RelocationEntry(G4_INST* i, int pos, RelocationType type, uint32_t functionId) :
+        inst(i), opndPos(pos), relocType(type), funcId(functionId) {}
 
 public:
     static RelocationEntry createIndirectCallReloc(G4_INST* inst, int opndPos, G4_INST* callInst)
     {
         RelocationEntry entry(inst, opndPos, RelocationType::IndirectCall, callInst);
+        return entry;
+    }
+
+    static RelocationEntry createFuncAddrReloc(G4_INST* inst, int opndPos, uint32_t funcId)
+    {
+        RelocationEntry entry(inst, opndPos, RelocationType::FunctionAddr, funcId);
         return entry;
     }
 
@@ -1206,6 +1217,8 @@ public:
         {
             case RelocationType::IndirectCall:
                 return "IndirectCall";
+            case RelocationType::FunctionAddr:
+                return "FunctionAddress";
             default:
                 assert(false && "unhanlded relocation type");
                 return "";
@@ -1223,7 +1236,13 @@ public:
         return indirectCallInst;
     }
 
-    void doRelocation(void* binary, uint32_t binarySize);
+    uint32_t getFunctionId() const
+    {
+        assert(relocType == RelocationType::FunctionAddr && "invalid relocation type");
+        return funcId;
+    }
+
+    void doRelocation(const G4_Kernel& k, void* binary, uint32_t binarySize);
 
     void dump() const;
 };
@@ -1267,6 +1286,12 @@ class G4_Kernel
 
     // stores all relocations to be performed after binary encoding
     std::vector<RelocationEntry> relocationTable;
+
+    // id -> function map for all functions (transitively) called by this kernel
+    // this differs from the "callees" in IR_Builder as the one in builder only contain 
+    // functions directly called by this kernel
+    // this is populated for kernel only 
+    std::unordered_map<uint32_t, G4_Kernel*> allCallees;
 
 public:
     FlowGraph fg;
@@ -1444,6 +1469,21 @@ public:
     }
 
     void doRelocation(void* binary, uint32_t binarySize);
+
+    void addCallee(uint32_t funcId, G4_Kernel* function) { allCallees.emplace(funcId, function); }
+
+    G4_Kernel* getCallee(uint32_t funcId) const
+    {
+        auto iter = allCallees.find(funcId);
+        if (iter != allCallees.end())
+        {
+            return iter->second;
+        }
+        return nullptr;
+    }
+
+
+    G4_INST* getFirstNonLabelInst() const;
 };
 
 class SCCAnalysis

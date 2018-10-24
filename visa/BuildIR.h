@@ -1813,6 +1813,8 @@ public:
         uint8_t argSize,
         uint8_t returnSize);
 
+    int translateVISACFFuncAddrInst(uint32_t funcId, G4_DstRegRegion* dst);
+
     int translateVISACFFretInst(Common_ISA_Exec_Size execsize,
                         Common_VISA_EMask_Ctrl emask,
                         G4_Predicate *predOpnd);

@@ -2435,6 +2435,30 @@ int IR_Builder::translateVISACFIFCallInst(Common_ISA_Exec_Size execsize, Common_
     return CM_SUCCESS;
 }
 
+int IR_Builder::translateVISACFFuncAddrInst(uint32_t funcId, G4_DstRegRegion* dst)
+{
+#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
+    startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
+#endif
+
+    // symbolic imm representing function's address
+    SuperRelocEntry reloc;
+    auto funcAddr = createRelocImm(reloc, Type_UD);
+    auto movInst = createInst(nullptr, G4_mov, nullptr, false, 1, dst, funcAddr, nullptr, InstOpt_WriteEnable);
+
+    RelocationEntry relocEntry = RelocationEntry::createFuncAddrReloc(movInst, 0, funcId);
+    kernel.addRelocation(relocEntry);
+
+    // ToDo: use a separate list to distinguish calls v. faddr?
+    callees.push_back(funcId);
+
+#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
+    stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
+#endif
+    return CM_SUCCESS;
+
+}
+
 int IR_Builder::translateVISACFFretInst(Common_ISA_Exec_Size executionSize, Common_VISA_EMask_Ctrl emask, G4_Predicate *predOpnd)
 {
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)

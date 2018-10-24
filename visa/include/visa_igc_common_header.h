@@ -334,7 +334,7 @@ typedef enum {
     ISA_VA_SKL_PLUS        = 0x4D,
     ISA_SVM                = 0x4E,
     ISA_IFCALL             = 0x4F,
-    ISA_RESERVED_50        = 0x50,
+    ISA_FADDR              = 0x50,
     ISA_FILE               = 0x51,
     ISA_LOC                = 0x52,
     ISA_RESERVED_53        = 0x53,

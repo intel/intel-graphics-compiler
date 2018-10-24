@@ -343,6 +343,12 @@ public:
         Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_VectorOpnd* funcAddr,
         unsigned char argSize, unsigned char returnSize) = 0;
 
+    /// AppendVISACFFuncAddrInst -- stores the address of function <funcId> into <dst>
+    /// faddr funcId dst
+    /// funcId is the id of the function whose address is taken
+    /// dst must have UD type with scalar region
+    CM_BUILDER_API virtual int AppendVISACFFuncAddrInst(uint32_t funcId, VISA_VectorOpnd* dst) = 0;
+
     /// AppendVISACFFunctionRetInst -- append a function return instruction to this kernel
     /// [pred] fret (emask, execSize)
     CM_BUILDER_API virtual int AppendVISACFFunctionRetInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize) = 0;

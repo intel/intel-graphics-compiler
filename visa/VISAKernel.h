@@ -375,6 +375,8 @@ public:
         Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize,
         VISA_VectorOpnd* funcAddr, uint8_t argSize, uint8_t returnSize);
 
+    CM_BUILDER_API int AppendVISACFFuncAddrInst(uint32_t funcID, VISA_VectorOpnd* dst);
+
     CM_BUILDER_API int AppendVISACFFunctionRetInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize);
 
     CM_BUILDER_API int AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned char labelCount, VISA_LabelOpnd **labels);

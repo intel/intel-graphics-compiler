@@ -556,26 +556,9 @@ G4_Kernel* Get_Resolved_Compilation_Unit( common_isa_header header, std::list<G4
 
 void Enumerate_Callees( common_isa_header header, G4_Kernel* kernel, std::list<G4_Kernel*> compilation_units, std::list<int>& callees )
 {
-    for(std::list<int>::iterator it = kernel->fg.builder->callees.begin();
-        it != kernel->fg.builder->callees.end();
-        it++)
+    for (int cur : kernel->fg.builder->callees)
     {
-        int cur = (*it);
-
-        bool alreadyAdded = false;
-
-        for( std::list<int>::iterator c = callees.begin();
-            c != callees.end();
-            c++ )
-        {
-            if( (*c) == cur )
-            {
-                alreadyAdded = true;
-                break;
-            }
-        }
-
-        if( alreadyAdded == false )
+        if (std::find(callees.begin(), callees.end(), cur) == callees.end())
         {
             callees.push_back( cur );
             G4_Kernel* k = Get_Resolved_Compilation_Unit( header, compilation_units, cur );
@@ -648,12 +631,11 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& com
     {
         G4_Kernel* callee = Get_Resolved_Compilation_Unit(header, compilation_units, calleeId);
         propagateCalleeInfo(kernel, callee);
+        kernel->addCallee(calleeId, callee);
 
-        for( BB_LIST_ITER bb = callee->fg.BBs.begin();
-            bb != callee->fg.BBs.end();
-            bb++ )
+        for (auto bb : callee->fg.BBs)
         {
-            kernel->fg.BBs.push_back( (*bb) );
+            kernel->fg.BBs.push_back(bb);
             kernel->fg.incrementNumBBs();
         }
     }
@@ -2694,6 +2676,13 @@ bool CISA_IR_Builder::CISA_create_ifcall_instruction(VISA_opnd *pred_opnd,
     Common_ISA_Exec_Size executionSize = Get_Common_ISA_Exec_Size_From_Raw_Size(exec_size);
     m_kernel->AppendVISACFIndirectFuncCallInst((VISA_PredOpnd *)pred_opnd, emask, executionSize, 
         (VISA_VectorOpnd*) funcAddr, (uint8_t) arg_size, (uint8_t) return_size);
+    return true;
+}
+
+bool CISA_IR_Builder::CISA_create_faddr_instruction(uint32_t funcId,
+    VISA_opnd* dst, int line_no) 
+{
+    m_kernel->AppendVISACFFuncAddrInst(funcId, (VISA_VectorOpnd*) dst);
     return true;
 }
 

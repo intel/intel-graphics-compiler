@@ -404,6 +404,12 @@ ifcall {
 	return IFCALL;
 }
 
+faddr {
+    TRACE("\n** function address INST ");
+    CISAlval.opcode = ISA_FADDR;
+	return FADDR;
+}
+
 switchjmp {
 			   TRACE("\n** branch INST ");
 			   CISAlval.opcode = str2opcode(yytext);

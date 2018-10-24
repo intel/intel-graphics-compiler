@@ -3295,6 +3295,40 @@ int VISAKernelImpl::AppendVISACFIndirectFuncCallInst(VISA_PredOpnd *pred, Common
     return status;
 }
 
+int VISAKernelImpl::AppendVISACFFuncAddrInst(uint32_t funcID, VISA_VectorOpnd* dst)
+{
+    AppendVISAInstCommon();
+#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
+    startTimer(TIMER_VISA_BUILDER_APPEND_INST);
+#endif
+    int status = CM_SUCCESS;
+    if (IS_GEN_BOTH_PATH)
+    {
+        status = m_builder->translateVISACFFuncAddrInst(funcID, (G4_DstRegRegion*) dst->g4opnd);
+    }
+    if (IS_VISA_BOTH_PATH)
+    {
+        VISA_INST_Desc *inst_desc = &CISA_INST_table[ISA_FADDR];
+        VISA_opnd *opnd[3]; //should be more then enough
+        int num_operands = 0;
+
+        ADD_OPND(num_operands, opnd, this->CreateOtherOpndHelper(0, num_operands, inst_desc, funcID));
+
+        opnd[num_operands] = dst;
+        ++num_operands;
+
+        CisaFramework::CisaInst * inst = new(m_mem)CisaFramework::CisaInst(this->m_mem);
+
+        inst->createCisaInstruction(ISA_FADDR, EXEC_SIZE_1, 0, 0, opnd, num_operands, inst_desc);
+        addInstructionToEnd(inst);
+    }
+#if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
+    stopTimer(TIMER_VISA_BUILDER_APPEND_INST);
+#endif
+    return status;
+}
+
+
 
 int VISAKernelImpl::AppendVISACFFunctionRetInst(VISA_PredOpnd *pred, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize)
 {

@@ -938,6 +938,12 @@ static string printInstructionControlFlow(const common_isa_header& isaHeader, co
                 sstr << " " << getPrimitiveOperand<unsigned>(inst, i++);
                 break;
             }
+            case ISA_FADDR:
+            {
+                sstr << getPrimitiveOperand<uint16_t>(inst, i++);
+                sstr << printOperand(isaHeader, header, inst, i++, opt);
+                break;
+            }
             case ISA_SWITCHJMP:
             {
                 /// skip num_labels

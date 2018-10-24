@@ -5902,8 +5902,10 @@ unsigned int G4_Kernel::getNumCalleeSaveRegs()
     return totalGRFs - calleeSaveStart() - getNumScratchRegs();
 }
 
-void RelocationEntry::doRelocation(void* binary, uint32_t binarySize)
+void RelocationEntry::doRelocation(const G4_Kernel& kernel, void* binary, uint32_t binarySize)
 {
+    uint32_t instOffset = (uint32_t)inst->getGenOffset();
+    assert(instOffset < binarySize && "invalid offset for relocation instruction");
     switch (relocType)
     {
         case RelocationType::IndirectCall:
@@ -5915,10 +5917,26 @@ void RelocationEntry::doRelocation(void* binary, uint32_t binarySize)
             // for now we assume inst is uncompacted and the imm32 is always at byte 3
 
             uint32_t relocVal = (uint32_t) indirectCallInst->getGenOffset();
-            uint32_t instOffset = (uint32_t) inst->getGenOffset();
-            assert (relocVal < binarySize && instOffset < binarySize && "invalid relocation offset");
+            assert (relocVal < binarySize && "invalid relocation offset");
             uint32_t* immLoc = (uint32_t*) ((char*) binary + instOffset + 12);
             *immLoc = relocVal;
+            break;
+        }
+        case RelocationType::FunctionAddr:
+        {
+            G4_Kernel* callee = kernel.getCallee(funcId);
+            assert(callee && "callee not found");
+            if (callee)
+            {
+                auto firstInst = callee->getFirstNonLabelInst();
+                if (firstInst)
+                {
+                    uint32_t relocVal = (uint32_t) firstInst->getGenOffset();
+                    assert(relocVal < binarySize && "invalid relocation offset");
+                    uint32_t* immLoc = (uint32_t*)((char*)binary + instOffset + 12);
+                    *immLoc = relocVal;
+                }
+            }
             break;
         }
         default:
@@ -5936,7 +5954,8 @@ void RelocationEntry::dump() const
         case RelocationType::IndirectCall:
             std::cerr << "call inst (offset=" << indirectCallInst->getGenOffset() << "):\t";
             indirectCallInst->dump();
-
+        case RelocationType::FunctionAddr:
+            std::cerr << "function id = " << funcId;
     }
     std::cerr << "\n";
 }
@@ -5948,9 +5967,25 @@ void G4_Kernel::doRelocation(void* binary, uint32_t binarySize)
 {
     for (auto&& entry : relocationTable)
     {
-        entry.doRelocation(binary, binarySize);
+        entry.doRelocation(*this, binary, binarySize);
     }
 }
+
+G4_INST* G4_Kernel::getFirstNonLabelInst() const
+{
+    for (auto bb : fg.BBs)
+    {
+        G4_INST* firstInst = bb->getFirstInst();
+        if (firstInst)
+        {
+            return firstInst;
+        }
+    }
+    // empty kernel
+    return nullptr;
+}
+
+
 
 void SCCAnalysis::run()
 {
