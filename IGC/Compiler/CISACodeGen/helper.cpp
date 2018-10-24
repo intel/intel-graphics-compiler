@@ -100,6 +100,31 @@ unsigned EncodeAS4GFXResource(
     return temp.u32Val;
 }
 
+unsigned SetBufferAsBindless(unsigned addressSpaceOfPtr, BufferType bufferType)
+{
+    GFXResourceAddrSpace temp = {};
+    temp.u32Val = addressSpaceOfPtr;
+
+    // Mark buffer as it is bindless for further processing
+    if (bufferType == BufferType::RESOURCE ||
+        bufferType == BufferType::CONSTANT_BUFFER ||
+        bufferType == BufferType::UAV)
+    {
+        temp.bits.bufType = IGC::BINDLESS + 1;
+    }
+    else if (bufferType == BufferType::SAMPLER)
+    {
+        temp.bits.bufType = IGC::BINDLESS_SAMPLER + 1;
+    }
+    else
+    {
+        // other types of buffers shouldn't reach this part.
+        assert(0);
+    }
+
+    return temp.u32Val;
+}
+
 bool UsesTypedConstantBuffer(CodeGenContext* pContext)
 {
     if(pContext->m_DriverInfo.UsesTypedConstantBuffers3D() &&

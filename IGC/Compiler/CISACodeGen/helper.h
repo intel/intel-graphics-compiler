@@ -162,6 +162,8 @@ unsigned EncodeAS4GFXResource(
     BufferType bufType,
     unsigned uniqueIndAS);
 
+unsigned SetBufferAsBindless(unsigned addressSpaceOfPtr, BufferType bufferType);
+
 BufferType DecodeAS4GFXResource(unsigned addrSpace, bool& directIdx, unsigned& bufId);
 int getConstantBufferLoadOffset(llvm::LoadInst *ld);
 
