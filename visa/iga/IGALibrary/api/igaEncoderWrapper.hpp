@@ -25,4 +25,12 @@ public:
     iga_status_t encode();
     void* getBinary() const { return buf; }
     uint32_t getBinarySize() const { return binarySize; }
-};
+
+    // patchImmValue - Decode the first instruction start from binary, and patch the imm field to given val
+    // input type - the type of given immediate value
+    // input val - the given immediate value
+    // return - true on success, false if any error
+    // This function is used by visa to patch the add or mov instructions' imm field for the indirect call
+    // FIXME: Move this api to somewhere else that's more apporopriate
+    static bool patchImmValue(const iga::Model& model, unsigned char* binary, iga::Type type, const iga::ImmVal &val);
+};

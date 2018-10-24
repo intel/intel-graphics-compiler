@@ -219,9 +219,9 @@ namespace iga
         std::map<const Block *, int32_t>          m_blockToOffsetMap;
         std::map<const Instruction *, int32_t>    m_instPcs; // maps instruction ID to PC
 
-    protected:
+    public:
         ////////////////////////////////////////////////////////////////
-        uint64_t typeConvesionHelper(const ImmVal &val, Type type)
+        static uint64_t typeConvesionHelper(const ImmVal &val, Type type)
         {
             uint64_t value = 0;
             switch (type) {
@@ -260,6 +260,8 @@ namespace iga
             return value;
         }
 
+    protected:
+        ////////////////////////////////////////////////////////////////
         // allowable types for ternary Align1
         static bool isTernaryAlign1Floating(Type t) {
             switch (t) {
