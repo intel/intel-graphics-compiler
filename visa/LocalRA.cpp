@@ -2816,11 +2816,33 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
 
                                     unsigned int pos = usePoint.second;
                                     G4_SrcRegRegion* oldSrc = useInst->getSrc(pos)->asSrcRegRegion();
-                                    G4_SrcRegRegion* newSrc = builder.Create_Src_Opnd_From_Dcl(newDcl, oldSrc->getRegion());
+                                    G4_Declare *oldSrcDcl = oldSrc->getBase()->asRegVar()->getDeclare();
+                                    G4_Declare* newSrcDcl = newDcl;
+                                    G4_Declare *aliasOldSrcDcl = oldSrcDcl->getAliasDeclare();
+                                    if (aliasOldSrcDcl != NULL)
+                                    {
+                                        char* newSrcDclName = builder.getNameString(builder.mem, 16, "copy_%s", oldSrcDcl->getName());
+                                        newSrcDcl = builder.createDeclareNoLookup(newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(), oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
+                                        newSrcDcl->setAlign(oldSrcDcl->getAlign());
+                                        newSrcDcl->setSubRegAlign(oldSrcDcl->getSubRegAlign());
+                                        newSrcDcl->setAliasDeclare(aliasOldSrcDcl, oldSrcDcl->getAliasOffset());
+                                    }
+                                    G4_SrcRegRegion* newSrc = builder.Create_Src_Opnd_From_Dcl(newSrcDcl, oldSrc->getRegion());
                                     newSrc->setRegOff(oldSrc->getRegOff());
                                     newSrc->setSubRegOff(oldSrc->getSubRegOff());
                                     newSrc->setModifier(oldSrc->getModifier());
                                     useInst->setSrc(newSrc, pos);
+                                    while (aliasOldSrcDcl && aliasOldSrcDcl != oldDcl)
+                                    {
+                                        oldSrcDcl = aliasOldSrcDcl;
+                                        char* newSrcDclName = builder.getNameString(builder.mem, 16, "copy_%s", oldSrcDcl->getName());
+                                        newSrcDcl = builder.createDeclareNoLookup(newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(), oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
+                                        newSrcDcl->setAlign(oldSrcDcl->getAlign());
+                                        newSrcDcl->setSubRegAlign(oldSrcDcl->getSubRegAlign());
+                                        aliasOldSrcDcl = oldSrcDcl->getAliasDeclare();
+                                        MUST_BE_TRUE(aliasOldSrcDcl != NULL, "Invalid alias decl");
+                                        newSrcDcl->setAliasDeclare(aliasOldSrcDcl, oldSrcDcl->getAliasOffset());
+                                    }
 
                                     split = true;
                                 }
@@ -2828,11 +2850,33 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                 {
                                     unsigned int pos = usePoint.second;
                                     G4_SrcRegRegion* oldSrc = useInst->getSrc(pos)->asSrcRegRegion();
-                                    G4_SrcRegRegion* newSrc = builder.Create_Src_Opnd_From_Dcl(newDcl, oldSrc->getRegion());
+                                    G4_Declare *oldSrcDcl = oldSrc->getBase()->asRegVar()->getDeclare();
+                                    G4_Declare* newSrcDcl = newDcl;
+                                    G4_Declare *aliasOldSrcDcl = oldSrcDcl->getAliasDeclare();
+                                    if (aliasOldSrcDcl != NULL)
+                                    {
+                                        char* newSrcDclName = builder.getNameString(builder.mem, 16, "copy_%s", oldSrcDcl->getName());
+                                        newSrcDcl = builder.createDeclareNoLookup(newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(), oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
+                                        newSrcDcl->setAlign(oldSrcDcl->getAlign());
+                                        newSrcDcl->setSubRegAlign(oldSrcDcl->getSubRegAlign());
+                                        newSrcDcl->setAliasDeclare(aliasOldSrcDcl, oldSrcDcl->getAliasOffset());
+                                    }
+                                    G4_SrcRegRegion* newSrc = builder.Create_Src_Opnd_From_Dcl(newSrcDcl, oldSrc->getRegion());
                                     newSrc->setRegOff(oldSrc->getRegOff());
                                     newSrc->setSubRegOff(oldSrc->getSubRegOff());
                                     newSrc->setModifier(oldSrc->getModifier());
                                     useInst->setSrc(newSrc, pos);
+                                    while (aliasOldSrcDcl && aliasOldSrcDcl != oldDcl)
+                                    {
+                                        oldSrcDcl = aliasOldSrcDcl;
+                                        char* newSrcDclName = builder.getNameString(builder.mem, 16, "copy_%s", oldSrcDcl->getName());
+                                        newSrcDcl = builder.createDeclareNoLookup(newSrcDclName, G4_GRF, oldSrcDcl->getNumElems(), oldSrcDcl->getNumRows(), oldSrcDcl->getElemType());
+                                        newSrcDcl->setAlign(oldSrcDcl->getAlign());
+                                        newSrcDcl->setSubRegAlign(oldSrcDcl->getSubRegAlign());
+                                        aliasOldSrcDcl = oldSrcDcl->getAliasDeclare();
+                                        MUST_BE_TRUE(aliasOldSrcDcl != NULL, "Invalid alias decl");
+                                        newSrcDcl->setAliasDeclare(aliasOldSrcDcl, oldSrcDcl->getAliasOffset());
+                                    }
                                 }
                                 else
                                 {
