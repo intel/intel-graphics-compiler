@@ -429,24 +429,39 @@ void AlignmentAnalysis::SetInstAlignment(MemSetInst &I)
 {
     // Set the align attribute of the memset according to the detected
     // alignment of its operand.
+#if LLVM_VERSION_MAJOR == 4
     unsigned alignment = iSTD::Max(I.getAlignment(), getAlignValue(I.getRawDest()));
     I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
+#elif LLVM_VERSION_MAJOR == 7
+	unsigned alignment = iSTD::Max(I.getDestAlignment(), getAlignValue(I.getRawDest()));
+	I.setDestAlignment(alignment);
+#endif
 }
 
 void AlignmentAnalysis::SetInstAlignment(MemCpyInst &I)
 {
     // Set the align attribute of the memcpy based on the minimum alignment of its source and dest fields
     unsigned alignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
+#if LLVM_VERSION_MAJOR == 4
     alignment = iSTD::Max(I.getAlignment(), alignment);
     I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
+#elif LLVM_VERSION_MAJOR == 7
+	alignment = iSTD::Max(I.getDestAlignment(), alignment);
+	I.setDestAlignment(alignment);
+#endif
 }
 
 void AlignmentAnalysis::SetInstAlignment(MemMoveInst &I)
 {
     // Set the align attribute of the memmove based on the minimum alignment of its source and dest fields
     unsigned alignment = iSTD::Min(getAlignValue(I.getRawDest()), getAlignValue(I.getRawSource()));
+#if LLVM_VERSION_MAJOR == 4
     alignment = iSTD::Max(I.getAlignment(), alignment);
     I.setAlignment(ConstantInt::get(Type::getInt32Ty(I.getContext()), alignment));
+#elif LLVM_VERSION_MAJOR == 7
+	alignment = iSTD::Max(I.getDestAlignment(), alignment);
+	I.setDestAlignment(alignment);
+#endif
 }
 
 unsigned int AlignmentAnalysis::getAlignValue(Value *V) const

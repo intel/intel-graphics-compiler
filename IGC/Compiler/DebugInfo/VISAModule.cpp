@@ -44,7 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Instruction.h"
-#include "llvm/IR/Function.h"
+#include "llvmWrapper/IR/Function.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/DebugInfo.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -461,14 +461,14 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
             m_pShader->GetMetaDataUtils()->findFunctionsInfoItem(const_cast<Function*>(m_pEntryFunc));
         if (itr != m_pShader->GetMetaDataUtils()->end_FunctionsInfo())
         {
-            unsigned int explicitArgsNum = m_pEntryFunc->getArgumentList().size() - itr->second->size_ImplicitArgInfoList();
+            unsigned int explicitArgsNum = IGCLLVM::GetFuncArgSize(m_pEntryFunc) - itr->second->size_ImplicitArgInfoList();
             if (pArgument->getArgNo() < explicitArgsNum)
             {
                 const std::string typeStr = itr->second->getOpenCLArgBaseTypesItem(pArgument->getArgNo());
                 KernelArg::ArgType argType = KernelArg::calcArgType(pArgument, typeStr);
 
                 IGC::IGCMD::ResourceAllocMetaDataHandle resAllocMD = itr->second->getResourceAlloc();
-                assert(resAllocMD->size_ArgAllocs() == m_pEntryFunc->getArgumentList().size() && "invalid argument allocs list");
+                assert(resAllocMD->size_ArgAllocs() == IGCLLVM::GetFuncArgSize(m_pEntryFunc) && "invalid argument allocs list");
                 IGC::IGCMD::ArgAllocMetaDataHandle argInfo = resAllocMD->getArgAllocsItem(pArgument->getArgNo());
                 unsigned int index = argInfo->isIndexHasValue() ? argInfo->getIndex() : 0;
 

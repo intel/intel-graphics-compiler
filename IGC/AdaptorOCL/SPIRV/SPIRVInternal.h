@@ -73,6 +73,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 
+#include "llvmWrapper/IR/Attributes.h"
+
 #include "llvm/ADT/StringSwitch.h"
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
@@ -85,7 +87,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Support/Dwarf.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/ToolOutputFile.h"
@@ -837,7 +838,7 @@ void getFunctionTypeParameterTypes(llvm::FunctionType* FT,
     std::vector<Type*>& ArgTys);
 Function *getOrCreateFunction(Module *M, Type *RetTy,
     ArrayRef<Type *> ArgTypes, StringRef Name, bool Mangle = false,
-    AttributeSet *Attrs = nullptr, bool takeName = true);
+	IGCLLVM::AttributeSet *Attrs = nullptr, bool takeName = true);
 std::vector<Value *> getArguments(CallInst* CI);
 
 void decorateSPIRVBuiltin(std::string &S);
@@ -855,17 +856,17 @@ std::string getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> 
 /// \return mutated call instruction.
 CallInst *mutateCallInst(Module *M, CallInst *CI,
     std::function<std::string (CallInst *, std::vector<Value *> &)>ArgMutate,
-    bool Mangle = false, AttributeSet *Attrs = nullptr, bool takeName = true);
+    bool Mangle = false, IGCLLVM::AttributeSet *Attrs = nullptr, bool takeName = true);
 
 /// Mutate function by change the arguments.
 /// \param ArgMutate mutates the function arguments.
 void mutateFunction(Function *F,
     std::function<std::string (CallInst *, std::vector<Value *> &)>ArgMutate,
-    bool Builtin , AttributeSet *Attrs = nullptr, bool takeName = true);
+    bool Builtin , IGCLLVM::AttributeSet *Attrs = nullptr, bool takeName = true);
 
 /// Add a call instruction at \p Pos.
 CallInst *addCallInst(Module *M, StringRef FuncName, Type *RetTy,
-    ArrayRef<Value *> Args, AttributeSet *Attrs, Instruction *Pos,
+    ArrayRef<Value *> Args, IGCLLVM::AttributeSet *Attrs, Instruction *Pos,
     bool Builtin, StringRef InstName, bool TakeFuncName = true);
 
 /// Get a 64 bit integer constant.

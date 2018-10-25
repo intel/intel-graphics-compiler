@@ -1,10 +1,12 @@
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/IR/IRBuilder.h"
+
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/ADT/Twine.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/ConstantFolder.h"
@@ -22,24 +24,24 @@
 namespace llvm {
 
     template<typename T = ConstantFolder, typename Inserter = IRBuilderDefaultInserter >
-    class IGCIRBuilder : public IRBuilder<T, Inserter>
+    class IGCIRBuilder : public IGCLLVM::IRBuilder<T, Inserter>
     {
     public:
         IGCIRBuilder(LLVMContext &C, const T &F, Inserter I = Inserter(),
             MDNode *FPMathTag = nullptr,
             ArrayRef<OperandBundleDef> OpBundles = None)
-            : IRBuilder<T, Inserter>(C, F, I, FPMathTag, OpBundles){}
+            : IGCLLVM::IRBuilder<T, Inserter>(C, F, I, FPMathTag, OpBundles){}
 
         explicit IGCIRBuilder(LLVMContext &C, MDNode *FPMathTag = nullptr,
             ArrayRef<OperandBundleDef> OpBundles = None)
-            : IRBuilder<T, Inserter>(C, FPMathTag, OpBundles){}
+            : IGCLLVM::IRBuilder<T, Inserter>(C, FPMathTag, OpBundles){}
 
         explicit IGCIRBuilder(BasicBlock *TheBB, MDNode *FPMathTag = nullptr)
-            : IRBuilder<T, Inserter>(TheBB, FPMathTag){}
+            : IGCLLVM::IRBuilder<T, Inserter>(TheBB, FPMathTag){}
 
         explicit IGCIRBuilder(Instruction *IP, MDNode *FPMathTag = nullptr,
             ArrayRef<OperandBundleDef> OpBundles = None)
-            : IRBuilder<T, Inserter>(IP, FPMathTag, OpBundles) {}
+            : IGCLLVM::IRBuilder<T, Inserter>(IP, FPMathTag, OpBundles) {}
 
         CallInst *CreateCall2(Value *Callee, Value *Arg1, Value *Arg2,
             const Twine &Name = "") {

@@ -63,27 +63,33 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///
 //===----------------------------------------------------------------------===//
 
-#include "libSPIRV/SPIRVInstruction.h"
-#include "SPIRVInternal.h"
-#include "Mangler/ParameterType.h"
-
 #include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/Bitcode/BitcodeWriter.h"
+#include "llvmWrapper/IR/Attributes.h"
+#include "llvmWrapper/Support/ToolOutputFile.h"
+
+#include <llvm/Support/ScaledNumber.h>
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "common/LLVMWarningsPop.hpp"
+
+#include "libSPIRV/SPIRVInstruction.h"
+#include "SPIRVInternal.h"
+#include "Mangler/ParameterType.h"
 
 namespace spv{
 
 void
 saveLLVMModule(Module *M, const std::string &OutputFile) {
   std::error_code EC;
-  tool_output_file Out(OutputFile.c_str(), EC, sys::fs::F_None);
+  IGCLLVM::tool_output_file Out(OutputFile.c_str(), EC, sys::fs::F_None);
   if (EC) {
     spirv_assert(0 && "Failed to open file");
     return;
   }
 
-  WriteBitcodeToFile(M, Out.os());
+  IGCLLVM::WriteBitcodeToFile(M, Out.os());
   Out.keep();
 }
 
@@ -106,7 +112,7 @@ getFunctionTypeParameterTypes(llvm::FunctionType* FT,
 
 Function *
 getOrCreateFunction(Module *M, Type *RetTy, ArrayRef<Type *> ArgTypes,
-    StringRef Name, bool builtin, AttributeSet *Attrs, bool takeName) {
+    StringRef Name, bool builtin, IGCLLVM::AttributeSet *Attrs, bool takeName) {
   std::string FuncName(Name);
   if (builtin)
      decorateSPIRVBuiltin(FuncName, ArgTypes);
@@ -300,8 +306,8 @@ getSPIRVBuiltinName(Op OC, SPIRVInstruction *BI, std::vector<Type*> ArgTypes, st
 
 CallInst *
 mutateCallInst(Module *M, CallInst *CI,
-  std::function<std::string(CallInst *, std::vector<Value *> &)>ArgMutate,
-  bool Mangle, AttributeSet *Attrs, bool TakeFuncName) {
+    std::function<std::string (CallInst *, std::vector<Value *> &)>ArgMutate,
+    bool Mangle, IGCLLVM::AttributeSet *Attrs, bool TakeFuncName) {
 
   auto Args = getArguments(CI);
   auto NewName = ArgMutate(CI, Args);
@@ -355,7 +361,7 @@ mutateCallInst(Module *M, CallInst *CI,
 void
 mutateFunction(Function *F,
     std::function<std::string (CallInst *, std::vector<Value *> &)>ArgMutate,
-    bool Mangle, AttributeSet *Attrs, bool TakeFuncName) {
+    bool Mangle, IGCLLVM::AttributeSet *Attrs, bool TakeFuncName) {
   auto M = F->getParent();
   for (auto I = F->user_begin(), E = F->user_end(); I != E;) {
     if (auto CI = dyn_cast<CallInst>(*I++))
@@ -369,7 +375,7 @@ mutateFunction(Function *F,
 
 CallInst *
 addCallInst(Module *M, StringRef FuncName, Type *RetTy, ArrayRef<Value *> Args,
-    AttributeSet *Attrs, Instruction *Pos, bool Mangle, StringRef InstName,
+	IGCLLVM::AttributeSet *Attrs, Instruction *Pos, bool Mangle, StringRef InstName,
     bool TakeFuncName) {
   auto F = getOrCreateFunction(M, RetTy, getTypes(Args),
       FuncName, Mangle, Attrs, TakeFuncName);

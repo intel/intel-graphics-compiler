@@ -1625,7 +1625,7 @@ void Legalization::visitAlloca(AllocaInst& I)
     if(type != legalAllocaType)
     {
         // Remaining alloca of i1 need to be promoted
-        AllocaInst* newAlloca = new AllocaInst(legalAllocaType, "", &I);
+        AllocaInst* newAlloca = new AllocaInst(legalAllocaType, 0, "", &I);
         RecursivelyChangePointerType(&I, newAlloca);
         m_instructionsToRemove.push_back(&I);
     }

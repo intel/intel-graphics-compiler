@@ -30,6 +30,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/igc_regkeys.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/IR/Instructions.h"
+
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
@@ -93,7 +96,7 @@ static Instruction *insertReverseLoop(BasicBlock *Loc, BasicBlock *Post, Value *
     LLVMContext &C = F->getContext();
     IntegerType* LengthType = cast<IntegerType>(Length->getType());
     // Create an alloca for storing the loop's induction variable
-    Value* pIV = new AllocaInst(LengthType, "pIV", &(*F->getEntryBlock().begin()));
+    Value* pIV = new AllocaInst(LengthType, 0, "pIV", &(*F->getEntryBlock().begin()));
     // Split the BB at the location of the call
     BasicBlock *Pre = Loc;
     // Create a new BB for the loop Body
@@ -138,7 +141,7 @@ static Instruction *insertLoop(Instruction *Loc, Value *Length, StringRef BBName
     LLVMContext &C = F->getContext();
     IntegerType* LengthType = cast<IntegerType>(Length->getType());
     // Create an alloca for storing the loop's induction variable
-    Value* pIV = new AllocaInst(LengthType, "pIV", &(*F->getEntryBlock().begin()));        
+    Value* pIV = new AllocaInst(LengthType, 0, "pIV", &(*F->getEntryBlock().begin()));        
     // Split the BB at the location of the call
     BasicBlock *Pre = Loc->getParent();
     BasicBlock *Post = Pre->splitBasicBlock(
@@ -355,7 +358,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemcpy(MemCpyInst* MC)
     Value *Dst = MC->getRawDest();
     Value *Src = MC->getRawSource();
     Value *LPCount = MC->getLength();
-    uint32_t Align = MC->getAlignment();
+    uint32_t Align = IGCLLVM::getDestAlignment(MC);
     const bool IsVolatile = MC->isVolatile();
     const uint32_t SrcAS = MC->getSourceAddressSpace();
     const uint32_t DstAS = MC->getDestAddressSpace();
@@ -467,7 +470,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemMove(MemMoveInst* MM)
     Value *Dst = MM->getRawDest();
     Value *Src = MM->getRawSource();
     Value *LPCount = MM->getLength();
-    uint32_t Align = MM->getAlignment();
+    uint32_t Align = IGCLLVM::getDestAlignment(MM);
     if (Align == 0)
         Align = 1;
     const bool IsVolatile = MM->isVolatile();
@@ -655,7 +658,7 @@ void ReplaceUnsupportedIntrinsics::replaceMemset(MemSetInst* MS)
     Value *Dst = MS->getRawDest();
     Value *Src = MS->getValue();
     Value *LPCount = MS->getLength();
-    uint32_t Align = MS->getAlignment();
+    uint32_t Align = IGCLLVM::getDestAlignment(MS);
     const bool IsVolatile = MS->isVolatile();
     const uint32_t AS = MS->getDestAddressSpace();
 

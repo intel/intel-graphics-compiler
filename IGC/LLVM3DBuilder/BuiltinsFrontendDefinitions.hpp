@@ -26,6 +26,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/debug/DebugMacros.hpp" // VALUE_NAME() definition.
 
+#include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/AsmParser/Parser.h"
+
+#include "common/LLVMWarningsPop.hpp"
+
 typedef union _gfxResourceAddressSpace
 {
     struct _bits
@@ -3644,7 +3650,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDFloor(llvm::Value
 
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
-    bool failed = llvm::parseAssemblyInto(codeBuf, *mod, diagnostic);
+    bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
     assert(!failed && "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_floor_f64");
@@ -3734,7 +3740,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDCeil(llvm::Value 
 
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
-    bool failed = llvm::parseAssemblyInto(codeBuf, *mod, diagnostic);
+    bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
     assert(!failed && "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_ceil_f64");
@@ -3814,7 +3820,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDTrunc(llvm::Value
 
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
-    bool failed = llvm::parseAssemblyInto(codeBuf, *mod, diagnostic);
+    bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
     assert(!failed && "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_trunc_f64");
@@ -3916,7 +3922,7 @@ llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::CreateDRoundNE(llvm::Val
 
     llvm::MemoryBufferRef codeBuf(code, "<string>");
     llvm::SMDiagnostic diagnostic;
-    bool failed = llvm::parseAssemblyInto(codeBuf, *mod, diagnostic);
+    bool failed = IGCLLVM::parseAssemblyInto(codeBuf, *mod, diagnostic);
     assert(!failed && "Error parse llvm assembly");
 
     func = mod->getFunction("__builtin_roundne_f64");

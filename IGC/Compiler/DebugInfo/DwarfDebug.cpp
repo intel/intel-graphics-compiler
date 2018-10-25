@@ -49,6 +49,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/DebugInfo/Version.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/Support/Debug.h"
+#include <llvmWrapper/IR/Function.h>
+#include "llvmWrapper/BinaryFormat/Dwarf.h"
+
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/IR/DIBuilder.h"
@@ -61,7 +66,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/Support/Dwarf.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/LEB128.h"
@@ -381,7 +385,7 @@ DIE *DwarfDebug::constructInlinedScopeDIE(CompileUnit *TheCU, LexicalScope *Scop
     DIE *OriginDIE = TheCU->getDIE(InlinedSP);
     if (!OriginDIE)
     {
-        DEBUG(dbgs() << "Unable to find original DIE for an inlined subprogram.");
+        LLVM_DEBUG(dbgs() << "Unable to find original DIE for an inlined subprogram.");
         return NULL;
     }
 
@@ -1030,7 +1034,7 @@ bool DwarfDebug::addCurrentFnArgument(const Function *MF, DbgVariable *Var, Lexi
     size_t Size = CurrentFnArguments.size();
     if (Size == 0)
     {
-        CurrentFnArguments.resize(MF->arg_size());
+        CurrentFnArguments.resize(IGCLLVM::GetFuncArgSize(MF));
     }
     // llvm::Function argument size is not good indicator of how many
     // arguments does the function have at source level.
@@ -1367,7 +1371,7 @@ void DwarfDebug::beginFunction(const Function *MF, IGC::VISAModule* v)
                     if (History.size() >= 2 &&
                         Prev->isIdenticalTo(History[History.size() - 2]))
                     {
-                        DEBUG(dbgs() << "Coalescing identical DBG_VALUE entries:\n"
+                        LLVM_DEBUG(dbgs() << "Coalescing identical DBG_VALUE entries:\n"
                             << "\t" << *Prev << "\t"
                             << *History[History.size() - 2] << "\n");
                         History.pop_back();

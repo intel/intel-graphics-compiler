@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/Function.h>
+#include <llvmWrapper/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
 
@@ -351,7 +351,7 @@ Argument* WIFuncResolution::getImplicitArg(CallInst &CI, ImplicitArg::ArgType ar
     unsigned int implicitArgIndex = m_implicitArgs.getArgIndex(argType);
 
     Function* pFunc = CI.getParent()->getParent();
-    unsigned int implicitArgIndexInFunc = pFunc->getArgumentList().size() - numImplicitArgs + implicitArgIndex;
+    unsigned int implicitArgIndexInFunc = IGCLLVM::GetFuncArgSize(pFunc) - numImplicitArgs + implicitArgIndex;
     
     Function::arg_iterator arg = pFunc->arg_begin();
     for (unsigned int i = 0; i < implicitArgIndexInFunc; ++i, ++arg);

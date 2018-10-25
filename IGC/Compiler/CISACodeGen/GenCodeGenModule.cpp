@@ -34,6 +34,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/igc_regkeys.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/IR/Argument.h"
+#include "llvmWrapper/IR/Attributes.h"
+
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/Analysis/InlineCost.h"
@@ -321,7 +325,7 @@ static bool DeduceNonNullAttribute(Module &M)
         if (Skip)
             continue;
 
-        for (auto &Arg : F.getArgumentList()) 
+        for (auto &Arg : F.args()) 
         {
             // Only for used pointer arguments.
             if (Arg.use_empty() || !Arg.getType()->isPointerTy())
@@ -343,9 +347,7 @@ static bool DeduceNonNullAttribute(Module &M)
             }
 
             if (NotNull) {
-                AttrBuilder B;
-                B.addAttribute(llvm::Attribute::NonNull);
-                Arg.addAttr(AttributeSet::get(F.getContext(), Arg.getArgNo() + 1, B));
+				IGCLLVM::ArgumentAddAttr(Arg, Arg.getArgNo() + 1, llvm::Attribute::NonNull);
                 Modifided = true;
             }
         }

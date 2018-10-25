@@ -24,6 +24,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/Bitcode/BitcodeWriter.h"
+
+#include <llvm/Support/ScaledNumber.h>
+#include <llvm/Bitcode/BitcodeReader.h>
+#include <llvm/IRReader/IRReader.h>
+#include <llvm/Support/MemoryBuffer.h>
+#include "common/LLVMWarningsPop.hpp"
+
 #include "Compiler/GenUpdateCB.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
@@ -34,13 +44,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iStdLib/MemCopy.h>
 
 #include "common/LLVMUtils.h"
-#include "common/LLVMWarningsPush.hpp"
-#include <llvm/Bitcode/BitcodeWriter.h>
-#include <llvm/Bitcode/BitcodeReader.h>
-#include <llvm/IRReader/IRReader.h>
-#include <llvm/Support/MemoryBuffer.h>
-#include "common/LLVMWarningsPop.hpp"
-
 
 char IGC::GenUpdateCB::ID = 0;
 
@@ -426,7 +429,7 @@ bool GenUpdateCB::runOnFunction(Function &F)
             // write the minishader Module to memory
             llvm::SmallVector<char, 4> bitcodeSV;
             llvm::raw_svector_ostream bitcodeSS(bitcodeSV);
-            llvm::WriteBitcodeToFile(m_ConstantBufferReplaceShaderPatterns, bitcodeSS);
+            IGCLLVM::WriteBitcodeToFile(m_ConstantBufferReplaceShaderPatterns, bitcodeSS);
 
             size_t bufferSize = bitcodeSS.str().size();
             void* CBPatterns = aligned_malloc(bufferSize, 16);

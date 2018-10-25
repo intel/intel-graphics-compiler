@@ -167,9 +167,9 @@ void ThreadCombining::CreateLoopKernel(
     
     // mainEntry
     builder.SetInsertPoint(mainEntry);
-    Value* iterBarriers = builder.CreateAlloca(builder.getInt32Ty(), 0, "iterBarriers");
-    Value* iterX = builder.CreateAlloca(builder.getInt32Ty(), 0, "iterX");
-    Value* iterY = builder.CreateAlloca(builder.getInt32Ty(), 0, "iterY");
+    Value* iterBarriers = builder.CreateAlloca(builder.getInt32Ty(), nullptr, "iterBarriers");
+    Value* iterX = builder.CreateAlloca(builder.getInt32Ty(), nullptr, "iterX");
+    Value* iterY = builder.CreateAlloca(builder.getInt32Ty(), nullptr, "iterY");
     
     // This is a map of the live register and the register to store it
     std::map<llvm::Instruction*, Value*> regToAllocaMap;

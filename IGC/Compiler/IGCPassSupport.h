@@ -52,7 +52,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     Registry.registerPass(*PI, true); \
     return PI; \
   } \
-  LLVM_DEFINE_ONCE_FLAG(Initialize##passName##PassFlag);\
+  static llvm::once_flag Initialize##passName##PassFlag;\
   void initialize##passName##Pass(PassRegistry &Registry) { \
     llvm::call_once(Initialize##passName##PassFlag,                            \
                     initialize##passName##PassOnce, std::ref(Registry));       \
@@ -70,7 +70,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     Registry.registerPass(*PI, true); \
     return PI; \
   } \
-  LLVM_DEFINE_ONCE_FLAG(Initialize##passName##PassFlag);\
+  static llvm::once_flag Initialize##passName##PassFlag;\
   void initialize##passName##Pass(PassRegistry &Registry) { \
     llvm::call_once(Initialize##passName##PassFlag,                            \
                     initialize##passName##PassOnce, std::ref(Registry));       \
@@ -88,7 +88,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                                    *AI, def, true); \
     return AI; \
   } \
-  LLVM_DEFINE_ONCE_FLAG(Initialize##passName##PassFlag);\
+  static llvm::once_flag Initialize##passName##PassFlag;\
   void initialize##passName##Pass(PassRegistry &Registry) { \
     llvm::call_once(Initialize##passName##PassFlag,                            \
                     initialize##passName##PassOnce, std::ref(Registry));       \

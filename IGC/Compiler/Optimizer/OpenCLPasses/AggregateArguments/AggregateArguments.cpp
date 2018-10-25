@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/Function.h>
+#include "llvmWrapper/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -257,7 +257,7 @@ void ResolveAggregateArguments::storeArgument(const Argument* arg, AllocaInst* b
 {
     unsigned int startArgNo, endArgNo;
     getImplicitArg(arg->getArgNo(), startArgNo, endArgNo);
-    unsigned int baseImplicitArg = m_pFunction->getArgumentList().size() - m_implicitArgs.size();
+    unsigned int baseImplicitArg = IGCLLVM::GetFuncArgSize(m_pFunction) - m_implicitArgs.size();
 
     // Iterate over all function arguments till reach the first implicit argument
     // associated with the explicit given argument.

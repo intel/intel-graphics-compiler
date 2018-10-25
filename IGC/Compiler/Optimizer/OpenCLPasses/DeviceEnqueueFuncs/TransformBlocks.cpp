@@ -41,6 +41,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/IR/Argument.h"
+#include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/IR/Attributes.h"
+#include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/Transforms/Utils.h"
+
 #include "llvm/Pass.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/IRBuilder.h"
@@ -448,7 +455,7 @@ namespace //Anonymous
     //////////////////////////////////////////////////////////////////////////
     class StoreInstBuilder
     {
-        llvm::IRBuilder<>& _builder;
+        IGCLLVM::IRBuilder<>& _builder;
         const llvm::DataLayout* _DL;
 
         uint64_t CreateStore(llvm::Value* dest, llvm::Value* source, unsigned align) const
@@ -473,7 +480,7 @@ namespace //Anonymous
         }
 
     public:
-        StoreInstBuilder(llvm::IRBuilder<>& builder) : _builder(builder), _DL(&(builder.GetInsertBlock()->getParent()->getParent()->getDataLayout()))
+        StoreInstBuilder(IGCLLVM::IRBuilder<>& builder) : _builder(builder), _DL(&(builder.GetInsertBlock()->getParent()->getParent()->getDataLayout()))
         {
             assert(_DL != nullptr);
         }
@@ -521,7 +528,7 @@ namespace //Anonymous
         llvm::Type* getCaptureType(size_t captureNum) const { return _captureStructType->getElementType(_captureIndicies[captureNum]); }
 
         /// Create set of instructions to prepare block structure and call block_invoke from _dispatch_X
-        llvm::CallInst* EmitBlockInvokeCall(llvm::IRBuilder<>& builder, llvm::ArrayRef<llvm::Argument*> captures, llvm::ArrayRef<llvm::Argument*> tailingArgs) const;
+        llvm::CallInst* EmitBlockInvokeCall(IGCLLVM::IRBuilder<>& builder, llvm::ArrayRef<llvm::Argument*> captures, llvm::ArrayRef<llvm::Argument*> tailingArgs) const;
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -924,7 +931,7 @@ namespace //Anonymous
                 return nDRange;
             }
 
-            auto allocaInst = new AllocaInst(expectedNdrangeTy, "converted_ndrange", &(*_deviceExecCall->getCallerFunc()->getEntryBlock().getFirstInsertionPt()));
+            auto allocaInst = new AllocaInst(expectedNdrangeTy, 0, "converted_ndrange", &(*_deviceExecCall->getCallerFunc()->getEntryBlock().getFirstInsertionPt()));
             //TODO: fix bug in later IGC passes
             allocaInst->setAlignment(4);
 
@@ -1092,7 +1099,7 @@ namespace //Anonymous
         llvm::AllocaInst* AllocateBuffer(llvm::Type* type, uint64_t arrSize, const llvm::Twine& name = "");
 
         /// Create instruction to fill buffers for enqueue_IB_kernel()
-        BufferArguments CreateBufferArguments(llvm::IRBuilder<>& builder, llvm::ArrayRef<Capture> capturedValues);
+        BufferArguments CreateBufferArguments(IGCLLVM::IRBuilder<>& builder, llvm::ArrayRef<Capture> capturedValues);
 
     protected:
         /// Create call to enqueue_IB_kernel
@@ -2093,7 +2100,7 @@ namespace //Anonymous
         return align;
     }
 
-    llvm::CallInst* BlockInvoke::EmitBlockInvokeCall(llvm::IRBuilder<>& builder, llvm::ArrayRef<llvm::Argument*> captures, llvm::ArrayRef<llvm::Argument*> tailingArgs) const
+    llvm::CallInst* BlockInvoke::EmitBlockInvokeCall(IGCLLVM::IRBuilder<>& builder, llvm::ArrayRef<llvm::Argument*> captures, llvm::ArrayRef<llvm::Argument*> tailingArgs) const
     {
         //IRBuilder: allocate structure
         auto block_descriptor_val = builder.CreateAlloca(_captureStructType, nullptr, ".block_struct");
@@ -2171,7 +2178,7 @@ namespace //Anonymous
                 // note: byValArgs is filled in sorted manner
                 if ((byValI != byValE) && (argNum == *byValI))
                 {
-                    arg.addAttr(llvm::AttributeSet::get(_context, llvm::AttributeSet::FunctionIndex, llvm::Attribute::ByVal));
+					IGCLLVM::ArgumentAddAttr(arg, IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::ByVal);                    
                     ++byValI;
                 }
             }
@@ -2185,7 +2192,7 @@ namespace //Anonymous
 
         //Generate body
         llvm::BasicBlock* BB = BasicBlock::Create(_context, "entry", _dispatchKernel);
-        llvm::IRBuilder<> builder(BB);
+        IGCLLVM::IRBuilder<> builder(BB);
         _blockInvoke.EmitBlockInvokeCall(builder, _captureArgs, _pointerArgs);
         builder.CreateRetVoid();
 
@@ -2340,13 +2347,13 @@ namespace //Anonymous
     llvm::AllocaInst* EnqueueKernelCall::AllocateBuffer(llvm::Type* type, uint64_t arrSize, const llvm::Twine& name /*= ""*/)
     {
         auto arrayType = llvm::ArrayType::get(type, arrSize);
-        auto allocaInst = new AllocaInst(arrayType, name, &(*_deviceExecCall->getCallerFunc()->getEntryBlock().getFirstInsertionPt()));
+        auto allocaInst = new AllocaInst(arrayType, 0, name, &(*_deviceExecCall->getCallerFunc()->getEntryBlock().getFirstInsertionPt()));
         //TODO: fix bug in later IGC passes
         allocaInst->setAlignment(8);
         return allocaInst;
     }
 
-    EnqueueKernelCall::BufferArguments EnqueueKernelCall::CreateBufferArguments(llvm::IRBuilder<>& builder, llvm::ArrayRef<Capture> capturedValues)
+    EnqueueKernelCall::BufferArguments EnqueueKernelCall::CreateBufferArguments(IGCLLVM::IRBuilder<>& builder, llvm::ArrayRef<Capture> capturedValues)
     {
         auto& context = _deviceExecCall->getContext();
         auto int32ty = Type::getInt32Ty(context);
@@ -2498,7 +2505,7 @@ namespace //Anonymous
             newFuncName.append("_events");
         }
 
-        IRBuilder<> builder(_deviceExecCall->getCall());
+        IGCLLVM::IRBuilder<> builder(_deviceExecCall->getCall());
         auto capturedValues = _deviceExecCall->getParamValue()->getCapturedValues(dispatcher->getCaptureIndicies());
         auto buffers = CreateBufferArguments(builder, capturedValues);
 

@@ -30,7 +30,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TypeLegalizer.h"
 #include "InstExpander.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Support/Debug.h"
+
+#include "llvmWrapper/Support/Debug.h"
+
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
 using namespace llvm;
@@ -52,7 +54,7 @@ bool InstExpander::expand(Instruction *I) {
 
 // By default, capture all missing instructions!
 bool InstExpander::visitInstruction(Instruction &I) {
-  DEBUG(dbgs() << "EXPAND: " << I << '\n');
+  LLVM_DEBUG(dbgs() << "EXPAND: " << I << '\n');
   llvm_unreachable("UNKNOWN INSTRUCTION IS BEING EXPANDED!");
   return false;
 }

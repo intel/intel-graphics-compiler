@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/DerivedTypes.h>
-#include <llvm/IR/Function.h>
+#include <llvmWrapper/IR/Function.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -389,7 +389,7 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* 
     ImplicitArg::ArgMap OffsetArgs;
     FunctionInfoMetaDataHandle funcInfoMD =
         pMdUtils->getFunctionsInfoItem(const_cast<Function*>(&F));
-    for (auto& Arg : F.getArgumentList() )
+    for (auto& Arg : F.args() )
     {
         Value* AV = &Arg;
         PointerType* PTy = dyn_cast<PointerType>(AV->getType());
@@ -465,10 +465,10 @@ int32_t ImplicitArgs::getStructArgOffset(unsigned int index) const
 
 TODO("Refactor code to avoid code triplication for getArgInFunc(), getImplicitArg() and WIFuncResolution::getImplicitArg()")
 Argument* ImplicitArgs::getArgInFunc(llvm::Function& F, ImplicitArg::ArgType argType) {
-    assert(F.getArgumentList().size() >= size() && "Invalid number of argumnents in the function!");
+    assert(IGCLLVM::GetFuncArgSize(F) >= size() && "Invalid number of argumnents in the function!");
     
     unsigned int argIndex       =  getArgIndex(argType);
-    unsigned int argIndexInFunc = F.getArgumentList().size() - size() + argIndex;
+    unsigned int argIndexInFunc = IGCLLVM::GetFuncArgSize(F) - size() + argIndex;
     Function::arg_iterator arg  = F.arg_begin();
     for (unsigned int i = 0; i < argIndexInFunc; ++i,  ++arg);
 
@@ -482,7 +482,7 @@ Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType a
         return nullptr;
     unsigned int implicitArgIndex = this->getArgIndex(argType);
 
-    unsigned int implicitArgIndexInFunc = F.getArgumentList().size() - numImplicitArgs + implicitArgIndex;
+    unsigned int implicitArgIndexInFunc = IGCLLVM::GetFuncArgSize(F) - numImplicitArgs + implicitArgIndex;
 
     Function::arg_iterator arg = F.arg_begin();
     for (unsigned int i = 0; i < implicitArgIndexInFunc; ++i, ++arg);
@@ -492,14 +492,14 @@ Argument* ImplicitArgs::getImplicitArg(llvm::Function& F, ImplicitArg::ArgType a
 
 Argument* ImplicitArgs::getNumberedImplicitArg(llvm::Function& F, ImplicitArg::ArgType argType, int argNum)
 {
-    assert(F.getArgumentList().size() >= size() && "Invalid number of arguments in the function!");
+    assert(IGCLLVM::GetFuncArgSize(F) >= size() && "Invalid number of arguments in the function!");
     
     unsigned int numImplicitArgs = size();
     unsigned int implicitArgIndex = this->getNumberedArgIndex(argType, argNum);
     if (implicitArgIndex == numImplicitArgs)
       return nullptr;
 
-    unsigned int implicitArgIndexInFunc = F.getArgumentList().size() - numImplicitArgs + implicitArgIndex;
+    unsigned int implicitArgIndexInFunc = IGCLLVM::GetFuncArgSize(F) - numImplicitArgs + implicitArgIndex;
 
     Function::arg_iterator arg = F.arg_begin();
     for (unsigned int i = 0; i < implicitArgIndexInFunc; ++i, ++arg);

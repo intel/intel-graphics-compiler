@@ -24,6 +24,28 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Support/ScaledNumber.h>
+#include "llvm/ADT/PostOrderIterator.h"
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Verifier.h>
+#include <llvm/Analysis/CFGPrinter.h>
+#include <llvm/Analysis/Passes.h>
+#include <llvm/Pass.h>
+#include <llvm/IR/PassManager.h>
+#include <llvm/Transforms/IPO.h>
+#include <llvm/Transforms/IPO/AlwaysInliner.h>
+#include <llvm/Transforms/Scalar.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Function.h>
+#include <llvm/Analysis/TargetLibraryInfo.h>
+#include <llvm/Transforms/InstCombine/InstCombineWorklist.h>
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+
+#include <llvmWrapper/Transforms/Utils.h>
+
+#include "common/LLVMWarningsPop.hpp"
+
 #include "AdaptorCommon/AddImplicitArgs.hpp"
 #include "AdaptorCommon/ProcessFuncAttributes.h"
 #include "common/LLVMUtils.h"
@@ -98,25 +120,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <iStdLib/utility.h>
 
-#include "common/LLVMWarningsPush.hpp"
-#include "llvm/ADT/PostOrderIterator.h"
-#include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Verifier.h>
-#include <llvm/Analysis/CFGPrinter.h>
-#include <llvm/Analysis/Passes.h>
-#include <llvm/Pass.h>
-#include <llvm/IR/PassManager.h>
-#include <llvm/Transforms/IPO.h>
-#include <llvm/Transforms/IPO/AlwaysInliner.h>
-#include <llvm/Transforms/Scalar.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Function.h>
-#include <llvm/Analysis/TargetLibraryInfo.h>
-#include "common/LLVMWarningsPop.hpp"
-#include <sstream>
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 
 #include <algorithm>
+
+
 
 using namespace llvm;
 using namespace IGC::IGCMD;

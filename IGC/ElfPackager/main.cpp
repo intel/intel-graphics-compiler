@@ -24,13 +24,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#include "../AdaptorOCL/CLElfLib/ElfReader.h"
-#include "../AdaptorOCL/CLElfLib/ElfWriter.h"
-#include "../AdaptorOCL/CLElfLib/CLElfTypes.h"
-
-#include "../AdaptorOCL/OCL/LoadBuffer.h"
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/Support/ScaledNumber.h>
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
 #include "llvm/Transforms/Utils/Cloning.h"
@@ -51,6 +47,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/Support/SourceMgr.h"
 #include "common/LLVMWarningsPop.hpp"
+
+#include "ElfReader.h"
+#include "ElfWriter.h"
+
+#include "CLElfTypes.h"
+
+#include "../AdaptorOCL/OCL/LoadBuffer.h"
 
 #include <string>
 #include <list>

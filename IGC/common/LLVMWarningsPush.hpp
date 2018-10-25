@@ -55,6 +55,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #   pragma warning( push )
 #endif
 
+#include <llvm/Config/llvm-config.h>
+
 #if defined( _WIN32 ) || defined( _WIN64 )
 
 // 'inline' : used more than once
@@ -100,6 +102,24 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //error C4296: '>=': expression is always true
 #   pragma warning( disable : 4296 )
+
+//'argument': conversion from 'int' to 'size_t', signed / unsigned mismatch
+#   pragma warning( disable : 4245 )
+
+//declaration of 'X' hides previous local declaration
+#   pragma warning( disable : 4456 )
+
+// structure was padded due to alignment specifier
+#   pragma warning( disable : 4324 )
+
+// unreferenced formal parameter
+#   pragma warning( disable : 4100 )
+
+// declaration of 'X' hides class member
+#   pragma warning( disable : 4458 )
+
+// cast truncates constatnt value
+#   pragma warning( disable : 4310 )
 
 #endif
 

@@ -33,7 +33,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/Stats.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/Function.h>
+
+#include "llvmWrapper/IR/Instructions.h"
+
+#include <llvmWrapper/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/Analysis/ValueTracking.h>
@@ -200,7 +203,7 @@ bool StatelessToStatefull::runOnFunction(llvm::Function &F)
 Argument* StatelessToStatefull::getBufferOffsetArg(Function* F, uint32_t ArgNumber)
 {
     uint32_t nImplicitArgs = m_pImplicitArgs->size();
-    uint32_t totalArgs = (uint32_t)F->getArgumentList().size();
+    uint32_t totalArgs = (uint32_t)IGCLLVM::GetFuncArgSize(F);
     uint32_t nExplicitArgs = (totalArgs - nImplicitArgs);
     uint32_t implicit_ix = m_pImplicitArgs->getNumberedArgIndex(ImplicitArg::BUFFER_OFFSET, ArgNumber);
     uint32_t arg_ix = nExplicitArgs + implicit_ix;
@@ -494,7 +497,7 @@ void StatelessToStatefull::visitLoadInst(LoadInst &I)
         Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", &I);
         pPtrToInt->setDebugLoc(DL);
 
-        Instruction* pLoad = new LoadInst(pPtrToInt, "", I.isVolatile(), I.getAlignment(), I.getOrdering(), I.getSynchScope(), &I);
+        Instruction* pLoad = new LoadInst(pPtrToInt, "", I.isVolatile(), I.getAlignment(), I.getOrdering(), IGCLLVM::getSyncScopeID(&I), &I);
         pLoad->setDebugLoc(DL);
 
         PointerType* ptrType = dyn_cast<PointerType>(ptr->getType());
@@ -544,7 +547,7 @@ void StatelessToStatefull::visitStoreInst(StoreInst &I)
             Instruction* pPtrToInt = IntToPtrInst::Create(Instruction::IntToPtr, offset, pTy, "", &I);
             pPtrToInt->setDebugLoc(DL);
 
-            Instruction* pStore = new StoreInst(dataVal, pPtrToInt, I.isVolatile(), I.getAlignment(), I.getOrdering(), I.getSynchScope(), &I);
+            Instruction* pStore = new StoreInst(dataVal, pPtrToInt, I.isVolatile(), I.getAlignment(), I.getOrdering(), IGCLLVM::getSyncScopeID(&I), &I);
             pStore->setDebugLoc(DL);
 
             I.eraseFromParent();

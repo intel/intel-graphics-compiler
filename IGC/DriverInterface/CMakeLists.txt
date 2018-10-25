@@ -19,8 +19,8 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/gtpin_igc_ocl.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/util/BinaryStream.cpp"
 
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/Upgrader/Upgrader.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/Upgrader/BitcodeReader.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/Upgrader/llvm${LLVM_VERSION_MAJOR}/Upgrader.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/Upgrader/llvm${LLVM_VERSION_MAJOR}/BitcodeReader.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/UnifyIROCL.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.cpp"
   )
@@ -85,7 +85,7 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/spp_g8.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/gtpin_igc_ocl.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/util/BinaryStream.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/Upgrader/Upgrader.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/Upgrader/llvm${LLVM_VERSION_MAJOR}/Upgrader.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.h"
 
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API/ErrorCode.h"

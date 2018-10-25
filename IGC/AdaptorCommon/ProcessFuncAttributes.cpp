@@ -34,6 +34,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRV/SPIRVInternal.h"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/IR/Attributes.h"
+
 #include <llvm/Pass.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Function.h>
@@ -233,7 +236,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         for (auto I : F->users()) {
             if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
                 if (callInst->hasFnAttr(llvm::Attribute::NoInline)) {
-                    callInst->removeAttribute(llvm::AttributeSet::FunctionIndex, llvm::Attribute::NoInline);
+                    callInst->removeAttribute(IGCLLVM::AttributeSet::FunctionIndex, llvm::Attribute::NoInline);
                 }
             }
         }
@@ -293,7 +296,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
             if (!keepAlwaysInline)
             {
-                for (auto &arg : F->getArgumentList())
+                for (auto &arg : F->args())
                 {
                     // If argument contains an opaque type e.g. image, then always inline it.
                     // If argument is a pointer to GAS, always inline it for perf reason.

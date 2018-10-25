@@ -28,10 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #pragma once
 
-#include <vector>
-#include <stdint.h>
-#include "usc.h"
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/Support/ScaledNumber.h>
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/IR/LLVMContext.h>
@@ -41,6 +39,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SourceMgr.h>
 #include "common/LLVMWarningsPop.hpp"
+
+#include <vector>
+#include <stdint.h>
+
+#include "usc.h"
+
 #include "../AdaptorOCL/OCL/LoadBuffer.h"
 #include "Compiler/CISACodeGen/Platform.hpp"
 #include "common/debug/Debug.hpp"

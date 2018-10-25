@@ -46,7 +46,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Compiler.h"
+#if LLVM_VERSION_MAJOR == 4
 #include "llvm/Support/Dwarf.h"
+#elif LLVM_VERSION_MAJOR == 7
+#include "llvm/BinaryFormat/Dwarf.h"
+#endif
 #include "llvm/ADT/StringRef.h"
 #include "common/LLVMWarningsPop.hpp"
 

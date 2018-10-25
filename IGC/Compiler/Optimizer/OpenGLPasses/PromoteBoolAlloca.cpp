@@ -317,7 +317,7 @@ void PromoteBoolAllocaPass::visitAlloca(llvm::AllocaInst& I)
     if (pType != pLegalAllocaType)
     {
         // Remaining alloca of i1 need to be promoted
-        llvm::AllocaInst* newAlloca = new llvm::AllocaInst(pLegalAllocaType, "", &I);
+        llvm::AllocaInst* newAlloca = new llvm::AllocaInst(pLegalAllocaType, 0, "", &I);
         RecursivelyChangePointerType(&I, newAlloca);
         m_instructionsToRemove.push_back(&I);
     }

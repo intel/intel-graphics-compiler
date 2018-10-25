@@ -23,15 +23,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Support/ScaledNumber.h>
+#include "llvm/ADT/StringSwitch.h"
+#include "common/LLVMWarningsPop.hpp"
+
 #include "Compiler/CISACodeGen/PixelShaderCodeGen.hpp"
 
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
 #include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 #include "common/allocator.h"
 #include <iStdLib/utility.h>
-#include "common/LLVMWarningsPush.hpp"
-#include "llvm/ADT/StringSwitch.h"
-#include "common/LLVMWarningsPop.hpp"
 #include "common/secure_mem.h"
 #include "Simd32Profitability.hpp"
 #include "EmitVISAPass.hpp"

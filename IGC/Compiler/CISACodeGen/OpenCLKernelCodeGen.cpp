@@ -23,6 +23,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Support/ScaledNumber.h>
+#include "llvm/IR/DataLayout.h"
+#include "llvm/ADT/StringExtras.h"
+#include "common/LLVMWarningsPop.hpp"
+
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
@@ -41,11 +47,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/secure_mem.h"
 
 #include <iStdLib/utility.h>
-
-#include "common/LLVMWarningsPush.hpp"
-#include "llvm/IR/DataLayout.h"
-#include "llvm/ADT/StringExtras.h"
-#include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 

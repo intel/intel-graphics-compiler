@@ -31,6 +31,8 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 using namespace std;
 
+#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
+
 char DebugInfoPass::ID = 0;
 
 DebugInfoPass::DebugInfoPass(CShaderProgram::KernelShaderMap &k) :
@@ -250,3 +252,5 @@ void DebugInfoData::markOutputVars(const llvm::Instruction* pInst)
         }
     }
 }
+
+#endif

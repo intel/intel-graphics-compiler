@@ -28,6 +28,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublic.h"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/IR/IRBuilder.h"
+
 #include <llvm/Pass.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/Transforms/Utils/ValueMapper.h>
@@ -76,6 +79,9 @@ bool GlobalToLocal::runOnFunction(llvm::Function &F)
         return false;
     }
     Instruction* topFirstBB = &(*F.getEntryBlock().begin());
+
+	IGCLLVM::IRBuilder<> builder(topFirstBB);
+
     Module::GlobalListType&  globalList = F.getParent()->getGlobalList();
     for(auto GI = globalList.begin(), GE = globalList.end(); GI != GE; ++GI)
     {
@@ -86,8 +92,9 @@ bool GlobalToLocal::runOnFunction(llvm::Function &F)
             // If these constant expressions are not removed it causes issues when replaceAllUsesWith() 
             // is called on the Global
             global->removeDeadConstantUsers();
-
-            Instruction* alloc = new AllocaInst(global->getType()->getPointerElementType(), "", topFirstBB);
+			
+			builder.SetInsertPoint(topFirstBB);
+            Instruction* alloc = builder.CreateAlloca(global->getType()->getPointerElementType());
             if(global->hasInitializer())
             {
                 new StoreInst(global->getInitializer(), alloc, topFirstBB);

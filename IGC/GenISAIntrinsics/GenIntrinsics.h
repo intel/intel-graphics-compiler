@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/IR/Attributes.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/Function.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -58,8 +59,8 @@ namespace GenISAIntrinsic {
   __attribute__ ((visibility ("default"))) Function *getDeclaration(Module *M, ID id, ArrayRef<Type*> Tys = None);
 #else
   Function *getDeclaration(Module *M, ID id, ArrayRef<Type*> Tys = None);
-#endif
-  AttributeSet getGenIntrinsicAttributes(LLVMContext& C, GenISAIntrinsic::ID id);
+#endif  
+  IGCLLVM::AttributeSet getGenIntrinsicAttributes(LLVMContext& C, GenISAIntrinsic::ID id);
  
   //Override of isIntrinsic method defined in Function.h
   inline bool isIntrinsic(const Function *CF)

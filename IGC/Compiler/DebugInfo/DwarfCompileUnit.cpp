@@ -49,6 +49,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/DebugInfo/Version.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/IR/GlobalValue.h"
+
 #include "llvm/ADT/APFloat.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Constants.h"
@@ -1177,7 +1180,7 @@ DIE *CompileUnit::getOrCreateSubprogramDIE(DISubprogram* SP)
     StringRef LinkageName = SP->getLinkageName();
     if (!LinkageName.empty())
     {
-        addString(SPDie, dwarf::DW_AT_MIPS_linkage_name, GlobalValue::getRealLinkageName(LinkageName));
+        addString(SPDie, dwarf::DW_AT_MIPS_linkage_name, IGCLLVM::GlobalValue::getRealLinkageName(LinkageName));
     }
 
     // Constructors and operators for anonymous aggregates do not have names.
@@ -1273,7 +1276,11 @@ void CompileUnit::constructSubrangeDIE(DIE &Buffer, DISubrange* SR, DIE *IndexTy
     // an upper bound.
     int64_t LowerBound = SR->getLowerBound();
     int64_t DefaultLowerBound = getDefaultLowerBound();
-    int64_t Count = SR->getCount();
+    int64_t Count = SR->getCount()
+#if LLVM_VERSION_MAJOR == 7
+		.dyn_cast<ConstantInt*>()->getSExtValue()
+#endif
+		;
 
     if (DefaultLowerBound == -1 || LowerBound != DefaultLowerBound)
     {

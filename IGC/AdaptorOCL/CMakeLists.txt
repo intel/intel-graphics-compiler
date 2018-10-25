@@ -7,11 +7,12 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 #include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ocl_igc_shared/executable_format")
 
   set(IGC_BUILD__SRC__AdaptorOCL
-      "${CMAKE_CURRENT_SOURCE_DIR}/Upgrader/Upgrader.cpp"
-      "${CMAKE_CURRENT_SOURCE_DIR}/Upgrader/BitcodeReader.cpp"
+      "${CMAKE_CURRENT_SOURCE_DIR}/Upgrader/llvm${LLVM_VERSION_MAJOR}/Upgrader.cpp"
+      "${CMAKE_CURRENT_SOURCE_DIR}/Upgrader/llvm${LLVM_VERSION_MAJOR}/BitcodeReader.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/UnifyIROCL.cpp"
       "${CMAKE_CURRENT_SOURCE_DIR}/MoveStaticAllocas.cpp"
     )
+	
 if(IGC_BUILD__SPIRV_ENABLED)
   list(APPEND IGC_BUILD__SRC__AdaptorOCL
       SPIRV/libSPIRV/OpenCL.std.h

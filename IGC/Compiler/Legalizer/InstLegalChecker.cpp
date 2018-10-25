@@ -30,7 +30,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TypeLegalizer.h"
 #include "InstLegalChecker.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Support/Debug.h"
+
+#include "llvmWrapper/Support/Debug.h"
+
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
 using namespace llvm;
@@ -38,7 +40,7 @@ using namespace IGC::Legalizer;
 
 // By default, capture all missing instructions!
 LegalizeAction InstLegalChecker::visitInstruction(Instruction &I) {
-  DEBUG(dbgs() << "LEGAL-CHECK: " << I << '\n');
+  LLVM_DEBUG(dbgs() << "LEGAL-CHECK: " << I << '\n');
   llvm_unreachable("UNKNOWN INSTRUCTION IS BEING LEGAL-CHECKED!");
 }
 

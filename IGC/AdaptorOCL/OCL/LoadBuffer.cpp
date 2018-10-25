@@ -72,7 +72,7 @@ MemoryBuffer *llvm::LoadBufferFromResource(const char *pResName,
 
 #endif
 
-#ifdef LLVM_ON_WIN32
+#ifdef WIN32
 #include <Windows.h>
 // Windows.h defines MemoryFence as _mm_mfence, but this conflicts with llvm::sys::MemoryFence
 #undef MemoryFence

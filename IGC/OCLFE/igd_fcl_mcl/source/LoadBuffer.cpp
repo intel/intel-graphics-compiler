@@ -76,7 +76,7 @@ char* llvm::LoadCharBufferFromResource(unsigned int ResNumber,
 }
 #endif
 
-#ifdef LLVM_ON_WIN32
+#ifdef WIN32
 #include <Windows.h>
 
 char* llvm::LoadCharBufferFromResource(unsigned int ResNumber,

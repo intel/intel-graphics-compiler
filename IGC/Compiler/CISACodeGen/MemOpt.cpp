@@ -1151,6 +1151,10 @@ public:
 
   bool isZExt() const { return getOpcode() == Instruction::ZExt; }
   bool isSExt() const { return getOpcode() == Instruction::SExt; }
+
+#if LLVM_VERSION_MAJOR == 7
+  ~ExtOperator() = delete;
+#endif
 };
 
 class OverflowingAdditiveOperator : public Operator {
@@ -1174,10 +1178,24 @@ public:
   bool hasNoSignedWrap() const {
     return cast<OverflowingBinaryOperator>(this)->hasNoSignedWrap();
   }
+
+#if LLVM_VERSION_MAJOR == 7
+  ~OverflowingAdditiveOperator() = delete;
+#endif
 };
 
-class OrOperator : public ConcreteOperator<BinaryOperator, Instruction::Or> {};
-class BitCastOperator : public ConcreteOperator<Operator, Instruction::BitCast> {};
+class OrOperator : public ConcreteOperator<BinaryOperator, Instruction::Or> 
+{
+#if LLVM_VERSION_MAJOR == 7
+	~OrOperator() = delete;
+#endif
+};
+class BitCastOperator : public ConcreteOperator<Operator, Instruction::BitCast> 
+{
+#if LLVM_VERSION_MAJOR == 7
+	~BitCastOperator() = delete;
+#endif
+};
 
 bool MemOpt::canonicalizeGEP64(Instruction *I) const {
   Value *Ptr = nullptr;
@@ -1400,7 +1418,12 @@ SymbolicPointer::getLinearExpression(Value *V, APInt &Scale, APInt &Offset,
 }
 
 class IntToPtrOperator :
-    public ConcreteOperator<Operator, Instruction::IntToPtr> {};
+    public ConcreteOperator<Operator, Instruction::IntToPtr> 
+{
+#if LLVM_VERSION_MAJOR == 7
+	~IntToPtrOperator() = delete;
+#endif
+};
 
 bool
 SymbolicPointer::decomposePointer(const Value *Ptr, SymbolicPointer &SymPtr,

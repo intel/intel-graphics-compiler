@@ -149,33 +149,35 @@ void CSystemThread::DeleteSystemThreadKernel(
 //populate the SIPKernelInfo map with starting address and size of every SIP kernels
 void populateSIPKernelInfo(std::map< unsigned char, std::pair<void*, unsigned int> > &SIPKernelInfo)
 {
-    SIPKernelInfo[GEN9_SIP_DEBUG] = std::make_pair((void*)&Gen9SIPDebug, sizeof(Gen9SIPDebug));
+	//LLVM_UPGRADE_TODO
+	// check if (int)sizeof(T) is ok or change the pair def for SIPKernelInfo
+    SIPKernelInfo[GEN9_SIP_DEBUG] = std::make_pair((void*)&Gen9SIPDebug, (int)sizeof(Gen9SIPDebug));
 
-    SIPKernelInfo[GEN9_SIP_CSR] = std::make_pair((void*)&Gen9SIPCSR, sizeof(Gen9SIPCSR));
+    SIPKernelInfo[GEN9_SIP_CSR] = std::make_pair((void*)&Gen9SIPCSR, (int)sizeof(Gen9SIPCSR));
 
-    SIPKernelInfo[GEN9_SIP_CSR_DEBUG] = std::make_pair((void*)&Gen9SIPCSRDebug, sizeof(Gen9SIPCSRDebug));
+    SIPKernelInfo[GEN9_SIP_CSR_DEBUG] = std::make_pair((void*)&Gen9SIPCSRDebug, (int)sizeof(Gen9SIPCSRDebug));
 
-    SIPKernelInfo[GEN10_SIP_DEBUG] = std::make_pair((void*)&Gen10SIPDebug, sizeof(Gen10SIPDebug));
+    SIPKernelInfo[GEN10_SIP_DEBUG] = std::make_pair((void*)&Gen10SIPDebug, (int)sizeof(Gen10SIPDebug));
 
-    SIPKernelInfo[GEN10_SIP_CSR] = std::make_pair((void*)&Gen10SIPCSR, sizeof(Gen10SIPCSR));
+    SIPKernelInfo[GEN10_SIP_CSR] = std::make_pair((void*)&Gen10SIPCSR, (int)sizeof(Gen10SIPCSR));
 
-    SIPKernelInfo[GEN10_SIP_CSR_DEBUG] = std::make_pair((void*)&Gen10SIPCSRDebug, sizeof(Gen10SIPCSRDebug));
+    SIPKernelInfo[GEN10_SIP_CSR_DEBUG] = std::make_pair((void*)&Gen10SIPCSRDebug, (int)sizeof(Gen10SIPCSRDebug));
 
-    SIPKernelInfo[GEN9_SIP_DEBUG_BINDLESS] = std::make_pair((void*)&Gen9SIPDebugBindless, sizeof(Gen9SIPDebugBindless));
+    SIPKernelInfo[GEN9_SIP_DEBUG_BINDLESS] = std::make_pair((void*)&Gen9SIPDebugBindless, (int)sizeof(Gen9SIPDebugBindless));
 
-    SIPKernelInfo[GEN10_SIP_DEBUG_BINDLESS] = std::make_pair((void*)&Gen10SIPDebugBindless, sizeof(Gen10SIPDebugBindless));
+    SIPKernelInfo[GEN10_SIP_DEBUG_BINDLESS] = std::make_pair((void*)&Gen10SIPDebugBindless, (int)sizeof(Gen10SIPDebugBindless));
 
-    SIPKernelInfo[GEN9_BXT_SIP_CSR] = std::make_pair((void*)&Gen9BXTSIPCSR, sizeof(Gen9BXTSIPCSR));
+    SIPKernelInfo[GEN9_BXT_SIP_CSR] = std::make_pair((void*)&Gen9BXTSIPCSR, (int)sizeof(Gen9BXTSIPCSR));
 
-    SIPKernelInfo[GEN9_SIP_CSR_DEBUG_LOCAL] = std::make_pair((void*)&Gen9SIPCSRDebugLocal, sizeof(Gen9SIPCSRDebugLocal));
+    SIPKernelInfo[GEN9_SIP_CSR_DEBUG_LOCAL] = std::make_pair((void*)&Gen9SIPCSRDebugLocal, (int)sizeof(Gen9SIPCSRDebugLocal));
 
-    SIPKernelInfo[GEN9_GLV_SIP_CSR] = std::make_pair((void*)&Gen9GLVSIPCSR, sizeof(Gen9GLVSIPCSR));
+    SIPKernelInfo[GEN9_GLV_SIP_CSR] = std::make_pair((void*)&Gen9GLVSIPCSR, (int)sizeof(Gen9GLVSIPCSR));
 
-    SIPKernelInfo[GEN11_SIP_CSR] = std::make_pair((void*)&Gen11SIPCSR, sizeof(Gen11SIPCSR));
+    SIPKernelInfo[GEN11_SIP_CSR] = std::make_pair((void*)&Gen11SIPCSR, (int)sizeof(Gen11SIPCSR));
 
-    SIPKernelInfo[GEN11_HP_SIP_CSR] = std::make_pair((void*)&Gen11HPSIPCSR, sizeof(Gen11HPSIPCSR));
+    SIPKernelInfo[GEN11_HP_SIP_CSR] = std::make_pair((void*)&Gen11HPSIPCSR, (int)sizeof(Gen11HPSIPCSR));
 
-    SIPKernelInfo[GEN11_LKF_SIP_CSR] = std::make_pair((void*)&Gen11LKFSIPCSR, sizeof(Gen11LKFSIPCSR));
+    SIPKernelInfo[GEN11_LKF_SIP_CSR] = std::make_pair((void*)&Gen11LKFSIPCSR, (int)sizeof(Gen11LKFSIPCSR));
 }
 
 CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(

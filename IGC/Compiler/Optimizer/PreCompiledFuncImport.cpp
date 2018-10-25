@@ -23,6 +23,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Support/ScaledNumber.h>
+#include "llvm/ADT/SmallSet.h"
+#include <llvm/IR/Module.h>
+#include <llvmWrapper/IR/Function.h>
+#include <llvm/IR/InstIterator.h>
+#include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/GenericDomTree.h>
+#include <llvm/Bitcode/BitcodeReader.h>
+#include <llvm/Bitcode/BitcodeWriter.h>
+#include <llvm/Linker/Linker.h>
+#include <llvm/Support/SourceMgr.h>
+#include <llvm/IRReader/IRReader.h>
+#include "common/LLVMWarningsPop.hpp"
 
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
@@ -42,21 +56,11 @@ const unsigned char igcbuiltin_emu_sp_div[] = {0};
 #include "common/LLVMUtils.h"
 #include "AdaptorOCL/OCL/BuiltinResource.h"
 #include "AdaptorOCL/OCL/LoadBuffer.h"
-#include "AdaptorOCL/Upgrader/Upgrader.h"
-
-#include "common/LLVMWarningsPush.hpp"
-#include "llvm/ADT/SmallSet.h"
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Function.h>
-#include <llvm/IR/InstIterator.h>
-#include <llvm/Support/MemoryBuffer.h>
-#include <llvm/Support/GenericDomTree.h>
-#include <llvm/Bitcode/BitcodeReader.h>
-#include <llvm/Bitcode/BitcodeWriter.h>
-#include <llvm/Linker/Linker.h>
-#include <llvm/Support/SourceMgr.h>
-#include <llvm/IRReader/IRReader.h>
-#include "common/LLVMWarningsPop.hpp"
+#if LLVM_VERSION_MAJOR == 4
+#include "AdaptorOCL/Upgrader/llvm4/Upgrader.h"
+#elif LLVM_VERSION_MAJOR == 7
+#include "AdaptorOCL/Upgrader/llvm7/Upgrader.h"
+#endif
 
 using namespace llvm;
 using namespace IGC;
@@ -883,7 +887,7 @@ Value* PreCompiledFuncImport::createFlagValue(Function *F)
     BasicBlock *EntryBB = &(F->getEntryBlock());
     Instruction* insert_before = &(*EntryBB->getFirstInsertionPt());
     Type *intTy = Type::getInt32Ty(Ctx);
-    Value *flagPtrValue = new AllocaInst(intTy, "DPEmuFlag", insert_before);
+    Value *flagPtrValue = new AllocaInst(intTy, 0, "DPEmuFlag", insert_before);
     return flagPtrValue;
 }
 
@@ -1447,7 +1451,7 @@ void PreCompiledFuncImport::replaceFunc(Function* old_func, Function* new_func)
 		llvm::Function::arg_iterator new_arg_iter = new_func->arg_begin();
 		llvm::Function::arg_iterator new_arg_end = new_func->arg_end();
 
-		assert(new_func->arg_size() >= numArgOperands);
+		assert(IGCLLVM::GetFuncArgSize(new_func) >= numArgOperands);
 
 		// basic arguments
 		for (unsigned int i = 0; i < numArgOperands; ++i, ++new_arg_iter)

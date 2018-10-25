@@ -24,6 +24,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Support/ScaledNumber.h>
+#include "common/LLVMWarningsPop.hpp"
+
 #include "sp_g8.h"
 #include "sp_convert_g8.h"
 #include "sp_debug.h"
@@ -41,6 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/secure_mem.h"
 #include "common/debug/Dump.hpp"
 #include "common/debug/Debug.hpp"
+
 #include <iStdLib/MemCopy.h>
 
 #include "patch_list.h"
@@ -59,6 +65,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <algorithm>
 #include <cstring>
+
 
 using namespace IGC;
 using namespace IGC::IGCMD; 

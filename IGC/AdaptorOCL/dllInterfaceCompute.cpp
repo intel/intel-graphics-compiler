@@ -24,6 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Support/ScaledNumber.h>
+#include "common/LLVMWarningsPop.hpp"
+
 #include <assert.h>
 #include <cstring>
 #include <string>
@@ -34,12 +38,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorOCL/OCL/BuiltinResource.h"
 #include "AdaptorOCL/OCL/TB/igc_tb.h"
 
-#include "AdaptorOCL/Upgrader/Upgrader.h"
+#if LLVM_VERSION_MAJOR == 4
+#include "AdaptorOCL/Upgrader/llvm4/Upgrader.h"
+#elif LLVM_VERSION_MAJOR == 7
+#include "AdaptorOCL/Upgrader/llvm7/Upgrader.h"
+#endif
 #include "AdaptorOCL/UnifyIROCL.hpp"
 #include "AdaptorOCL/DriverInfoOCL.hpp"
 
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
+
+
 
 #include "common/debug/Dump.hpp"
 #include "common/debug/Debug.hpp"
@@ -50,7 +60,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "usc.h"
 
 #include "AdaptorOCL/OCL/sp/gtpin_igc_ocl.h"
+
 #include <iStdLib/MemCopy.h>
+
 
 #if defined(IGC_SPIRV_ENABLED)
 #include "common/LLVMWarningsPush.hpp"
@@ -59,10 +71,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorOCL/SPIRV/SPIRV-Tools/include/spirv-tools/libspirv.h"
 #endif
 
+#include "common/LLVMWarningsPush.hpp"
+#include "llvmWrapper/Bitcode/BitcodeWriter.h"
+#include "common/LLVMWarningsPop.hpp"
+
+
 #include "inc/gtpin_IGC_interface.h"
+
 
 #include <sstream>
 #include <iomanip>
+
 
 //In case of use GT_SYSTEM_INFO in GlobalData.h from inc/umKmInc/sharedata.h
 //We have to do this temporary defines
@@ -392,7 +411,7 @@ bool ProcessElfInput(
         // serialized out
         std::string OutputString;
         llvm::raw_string_ostream OStream(OutputString);
-        llvm::WriteBitcodeToFile(OutputModule.get(), OStream);
+        IGCLLVM::WriteBitcodeToFile(OutputModule.get(), OStream);
         OStream.flush();
 
         // Create a copy of the string to return to the caller. The output type

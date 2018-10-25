@@ -62,18 +62,23 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ///
 //===----------------------------------------------------------------------===//
 
+#include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/DIBuilder.h"
+
+#include <llvm/Support/ScaledNumber.h>
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/IntrinsicInst.h>
+#include "libSPIRV/SPIRVDebugInfoExt.h"
+#include "llvm/Transforms/Utils/Cloning.h"
+#include "common/LLVMWarningsPop.hpp"
+
 #include "libSPIRV/SPIRVFunction.h"
 #include "libSPIRV/SPIRVInstruction.h"
 #include "SPIRVInternal.h"
 #include "common/MDFrameWork.h"
 #include "../../AdaptorCommon/TypesLegalizationPass.hpp"
-#include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/LegacyPassManager.h>
-#include <llvm/IR/IntrinsicInst.h>
-#include "libSPIRV/SPIRVDebugInfoExt.h"
-#include <llvm/Support/Dwarf.h>
-#include "llvm/Transforms/Utils/Cloning.h"
-#include "common/LLVMWarningsPop.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -760,11 +765,11 @@ public:
   {
       OpDebugValue dbgValue(inst);
 
-      auto dbgValueInst = Builder.insertDbgValueIntrinsic(localVar, 0, 
-          createLocalVar(BM->get<SPIRVExtInst>(dbgValue.getVar())), 
-          createExpression(BM->get<SPIRVExtInst>(dbgValue.getExpression())),
-          createLocation(inst->getLine()->getLine(), inst->getLine()->getColumn(), createScope(inst->getDIScope())),
-          insertAtEnd);
+	  auto dbgValueInst = Builder.insertDbgValueIntrinsic(localVar, 0,
+		  createLocalVar(BM->get<SPIRVExtInst>(dbgValue.getVar())),
+		  createExpression(BM->get<SPIRVExtInst>(dbgValue.getExpression())),
+		  createLocation(inst->getLine()->getLine(), inst->getLine()->getColumn(), createScope(inst->getDIScope())),
+		  insertAtEnd);
 
       return dbgValueInst;
   }
@@ -810,7 +815,7 @@ private:
   SPIRVModule *BM;
   Module *M;
   SPIRVDbgInfo SpDbg;
-  DIBuilder Builder;
+  IGCLLVM::DIBuilder Builder;
   bool Enable;
   DICompileUnit* cu = nullptr;
   SPIRVToLLVM* SPIRVTranslator = nullptr;
@@ -1671,7 +1676,7 @@ SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
 
       for (auto RetInst : Returns) {
           Value* ReturnedValPtr = cast<LoadInst>(RetInst->getReturnValue())->getPointerOperand();
-          IRBuilder<> builder(RetInst);
+          IGCLLVM::IRBuilder<> builder(RetInst);
           auto size = DL.getTypeAllocSize(RetInst->getReturnValue()->getType());
           builder.CreateMemCpy(&*NewF->arg_begin(), ReturnedValPtr, size, ptrSize);
           builder.CreateRetVoid();
@@ -1682,7 +1687,9 @@ SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
   for (auto I = F->user_begin(), E = F->user_end(); I != E;) {
     if (auto CI = dyn_cast<CallInst>(*I++)) {
       auto Args = getArguments(CI);
-      auto Alloca = new AllocaInst(CI->getType(), "", CI);
+	  IGCLLVM::IRBuilder<> builder(CI);
+      //auto Alloca = new AllocaInst(CI->getType(), "", CI);
+	  auto Alloca = builder.CreateAlloca(CI->getType());
       Args.insert(Args.begin(), Alloca);
       auto NewCI = CallInst::Create(NewF, Args, "", CI);
       NewCI->setCallingConv(CI->getCallingConv());
@@ -1705,6 +1712,7 @@ SPIRVToLLVM::postProcessFunctionsWithAggregateArguments(Function* F) {
 
   mutateFunction (F, [=](CallInst *CI, std::vector<Value *> &Args) {
     auto FBegin = CI->getParent()->getParent()->begin()->getFirstInsertionPt();
+	IGCLLVM::IRBuilder<> builder_begin(&(*FBegin));
     for (auto &I:Args) {
       auto T = I->getType();
       if (!T->isAggregateType())
@@ -1716,9 +1724,11 @@ SPIRVToLLVM::postProcessFunctionsWithAggregateArguments(Function* F) {
           I = loadInst->getPointerOperand();
       }
 
-      auto Alloca = new AllocaInst(T, "", &(*FBegin));
+      //auto Alloca = new AllocaInst(T, &(*FBegin));
+	  auto Alloca = builder_begin.CreateAlloca(T);
       Alloca->setAlignment(ptrSize);
-      IRBuilder<> builder(CI);
+      
+	  IGCLLVM::IRBuilder<> builder(CI);
       auto size = DL.getTypeAllocSize(T);
       builder.CreateMemCpy(Alloca, I, size, ptrSize);
       if (T->isArrayTy()) {
@@ -2068,7 +2078,9 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
     if (BS == StorageClassFunction && !Init) {
         assert (BB && "Invalid BB");
-        return mapValue(BV, new AllocaInst(Ty, BV->getName(), BB));
+		IGCLLVM::IRBuilder<> builder(BB);
+        //return mapValue(BV, new AllocaInst(Ty, BV->getName(), BB));
+		return mapValue(BV, builder.CreateAlloca(Ty, nullptr, BV->getName()));
     }
     auto AddrSpace = SPIRSPIRVAddrSpaceMap::rmap(BS);
     auto LVar = new GlobalVariable(*M, Ty, IsConst, LinkageTy, Initializer,
@@ -2218,7 +2230,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
         // %5 = bitcast %0* %CS.tmpstore to i8*
         // call void @llvm.memcpy.p1i8.p0i8.i64(i8 addrspace(1)* %4, i8* %5, i64 16, i32 0, i1 false)
         // So we emit this store in a similar fashion as clang would.
-        IRBuilder<> IRB(&F->getEntryBlock(), F->getEntryBlock().begin());
+        IGCLLVM::IRBuilder<> IRB(&F->getEntryBlock(), F->getEntryBlock().begin());
         auto DL = M->getDataLayout();
         std::function<void(ConstantStruct*, Value*)>
         LowerConstantStructStore = [&](ConstantStruct *CS, Value *pointer)
@@ -2273,7 +2285,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     unsigned Align = BC->getAlignment();
     llvm::Value *Size = transValue(BC->getSize(), F, BB);
     bool IsVolatile = BC->SPIRVMemoryAccess::getVolatile();
-    IRBuilder<> Builder(BB);
+    IGCLLVM::IRBuilder<> Builder(BB);
 
     // If we copy from zero-initialized array, we can optimize it to llvm.memset
     if (BC->getSource()->getOpCode() == OpBitcast) {
@@ -2665,7 +2677,7 @@ SPIRVToLLVM::transFunction(SPIRVFunction *BF) {
   BF->foreachReturnValueAttr([&](SPIRVFuncParamAttrKind Kind){
     if (Kind == FunctionParameterAttributeCount)
       return;
-    F->addAttribute(AttributeSet::ReturnIndex,
+    F->addAttribute(IGCLLVM::AttributeSet::ReturnIndex,
         SPIRSPIRVFuncParamAttrMap::rmap(Kind));
   });
 
@@ -3470,7 +3482,7 @@ SPIRVToLLVM::transOCLBuiltinFromExtInst(SPIRVExtInst *BC, BasicBlock *BB) {
       BC->getName(),
       BB);
   setCallingConv(Call);
-  Call->addAttribute(AttributeSet::FunctionIndex, Attribute::NoUnwind);
+  Call->addAttribute(IGCLLVM::AttributeSet::FunctionIndex, Attribute::NoUnwind);
   return Call;
 }
 

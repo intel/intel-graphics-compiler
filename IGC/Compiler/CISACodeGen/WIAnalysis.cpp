@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvmWrapper/IR/Function.h>
 #include <llvm/IR/CFG.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Debug.h>
@@ -407,7 +408,7 @@ void WIAnalysis::updateArgsDependency(llvm::Function *pF)
 
     ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     ImplicitArgs implicitArgs(*pF, m_pMdUtils);
-    unsigned implicitArgStart = (unsigned)(pF->getArgumentList().size()
+    unsigned implicitArgStart = (unsigned)(IGCLLVM::GetFuncArgSize(pF)
         - implicitArgs.size()
         - (IsSubroutine ? 0 : modMD->pushInfo.pushAnalysisWIInfos.size()));
 

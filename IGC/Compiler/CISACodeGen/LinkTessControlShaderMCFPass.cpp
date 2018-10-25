@@ -36,6 +36,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
+#include <llvmWrapper/IR/Function.h>
+
+
 
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -1561,7 +1564,7 @@ namespace IGC
         llvm::Value* pHSControlPointID = llvm::GenISAIntrinsic::getDeclaration(pNewFunction->getParent(),
             GenISAIntrinsic::GenISA_DCL_HSControlPointID);
 
-        unsigned int argIndexInFunc = pNewFunction->getArgumentList().size() - 1;
+        unsigned int argIndexInFunc = IGCLLVM::GetFuncArgSize(pNewFunction) - 1;
         Function::arg_iterator arg = pNewFunction->arg_begin();
         for (unsigned int i = 0; i < argIndexInFunc; ++i, ++arg);
 

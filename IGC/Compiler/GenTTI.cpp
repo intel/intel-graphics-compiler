@@ -33,6 +33,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include "WrapperLLVM/Utils.h"
+
 #include "llvm/Analysis/CodeMetrics.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/ScalarEvolution.h"
@@ -117,7 +120,11 @@ unsigned countTotalInstructions(const Function *F, bool CheckSendMsg = true) {
     return EstimatedInstCnt;
 }
 
-void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, TTI::UnrollingPreferences &UP)
+void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, 
+#if LLVM_VERSION_MAJOR == 7
+	ScalarEvolution &SE, 
+#endif
+	TTI::UnrollingPreferences &UP)
 {
     unsigned LoopUnrollThreshold = ctx->m_DriverInfo.GetLoopUnrollThreshold();
 
@@ -141,10 +148,12 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, TTI::UnrollingPrefer
     {
         UP.Threshold = 200;
     }
-    
-    ScalarEvolution *SE = &dummyPass->getAnalysisIfAvailable<ScalarEvolutionWrapperPass>()->getSE();
-    if (!SE)
-        return;
+
+#if LLVM_VERSION_MAJOR == 4
+	ScalarEvolution *SE = &dummyPass->getAnalysisIfAvailable<ScalarEvolutionWrapperPass>()->getSE();
+	if (!SE)
+		return;
+#endif
 
     unsigned sendMessage = 0;
     unsigned TripCount = 0;
@@ -152,7 +161,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, TTI::UnrollingPrefer
     if (!ExitingBlock || !L->isLoopExiting(ExitingBlock))
         ExitingBlock = L->getExitingBlock();
      if (ExitingBlock)
-         TripCount = SE->getSmallConstantTripCount(L, ExitingBlock);
+         TripCount = IGCLLVM::getref(SE).getSmallConstantTripCount(L, ExitingBlock);
 
     // Do not enable partial unrolling if the loop counter is float. It can cause precision issue.
     if (ExitingBlock) {

@@ -30,7 +30,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/DebugInfo/DebugInfoUtils.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/IR/Instructions.h"
+
+#include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/Instructions.h"
+
 #include "common/LLVMWarningsPop.hpp"
 
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
@@ -259,7 +262,7 @@ Value* CImagesBI::CImagesUtils::traceImageOrSamplerArgument(CallInst* pCallInst,
             unsigned as = IGC::EncodeAS4GFXResource(*bufIdV, bufType, 0);
 
             Function* mainFunc = pCallInst->getParent()->getParent();
-            for (auto &arg : mainFunc->getArgumentList())
+            for (auto &arg : mainFunc->args())
             {
                 unsigned argAS = -1;
                 if(arg.getType()->isPointerTy())
@@ -1441,7 +1444,7 @@ public:
         Value *pNumBytes = m_pCallInst->getArgOperand(2);
         uint64_t Align   = cast<ConstantInt>(m_pCallInst->getArgOperand(3))->getZExtValue();
 
-        IRBuilder<> IRB(m_pCallInst);
+        IGCLLVM::IRBuilder<> IRB(m_pCallInst);
 
         Value *pDsti8 = IRB.CreateBitCast(
             pDst, IRB.getInt8PtrTy(cast<PointerType>(pDst->getType())->getAddressSpace()));

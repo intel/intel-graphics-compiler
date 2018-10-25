@@ -24,6 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
+#include "common/LLVMWarningsPush.hpp"
+#include <llvmWrapper/IR/Function.h>
+#include "common/LLVMWarningsPop.hpp"
+
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "Compiler/CISACodeGen/DeSSA.hpp"
@@ -238,7 +242,7 @@ void CShader::InitKernelStack(bool ptr64bits)
     ImplicitArgs implicitArgs(*entry, m_pMdUtils);
     unsigned numPushArgs = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
     unsigned numImplicitArgs = implicitArgs.size();
-    unsigned numFuncArgs = entry->getArgumentList().size() - numImplicitArgs - numPushArgs;
+    unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(entry) - numImplicitArgs - numPushArgs;
 
     Argument* kerArg = nullptr;
     llvm::Function::arg_iterator arg = entry->arg_begin();
@@ -310,7 +314,7 @@ void CShader::CreateImplicitArgs()
 	// Push Args are only for entry function
 	unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
 	unsigned numPushArgs = (isEntryFunc(m_pMdUtils, entry) ? numPushArgsEntry : 0);
-    unsigned numFuncArgs = entry->getArgumentList().size() - numImplicitArgs - numPushArgs;
+    unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(entry) - numImplicitArgs - numPushArgs;
 
     llvm::Function::arg_iterator arg = entry->arg_begin();
     for (unsigned i = 0; i < numFuncArgs; ++i, ++arg)
@@ -1836,7 +1840,7 @@ void CShader::BeginFunction(llvm::Function *F)
         encoder.BeginSubroutine(F);
     }
     // Set already created symbols for formal arguments.
-    for (auto &Arg : F->getArgumentList())
+    for (auto &Arg : F->args())
     {
         if (!Arg.use_empty())
         {
@@ -1897,7 +1901,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStack
     unsigned numImplicitArgs = implicitArgs.size();
 	unsigned numPushArgsEntry = m_ModuleMetadata->pushInfo.pushAnalysisWIInfos.size();
 	unsigned numPushArgs = (isEntryFunc(m_pMdUtils, F) ? numPushArgsEntry : 0);
-    unsigned numFuncArgs = F->getArgumentList().size() - numImplicitArgs - numPushArgs;
+    unsigned numFuncArgs = IGCLLVM::GetFuncArgSize(F) - numImplicitArgs - numPushArgs;
 
     CVariable* var = nullptr;
     llvm::Function::arg_iterator arg = F->arg_begin();
@@ -1930,7 +1934,7 @@ CVariable* CShader::getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStack
 				ImplicitArgs IAs(K, m_pMdUtils);
 				uint32_t nIAs = (uint32_t)IAs.size();
                 uint32_t iArgIx = IAs.getArgIndex(ArgType);
-				uint32_t argIx = (uint32_t)K.getArgumentList().size() - nIAs + iArgIx;
+				uint32_t argIx = (uint32_t)IGCLLVM::GetFuncArgSize(K) - nIAs + iArgIx;
 				if (isEntryFunc(m_pMdUtils, &K)) {
 					argIx = argIx - numPushArgsEntry;
 				}

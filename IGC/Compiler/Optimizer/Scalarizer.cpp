@@ -29,6 +29,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/IR/Instructions.h"
+
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Operator.h"
 #include "llvm/IR/Module.h"
@@ -1243,7 +1246,7 @@ void ScalarizeFunction::resolveDeferredInstructions()
         // Replace and erase all dummy instructions (don't use eraseFromParent as the dummy is not in the function)
         Instruction *dummyInst = cast<Instruction>(entry.first);
         dummyInst->replaceAllUsesWith(entry.second);
-        delete dummyInst;
+        IGCLLVM::DeleteInstruction(dummyInst);
     }
 
     // clear DRL

@@ -25,6 +25,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 #include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/IR/Instructions.h"
+
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallPtrSet.h"
@@ -615,7 +618,7 @@ namespace Legalizer {
     NewLd->setVolatile(RefLd->isVolatile());
     NewLd->setAlignment(int_cast<unsigned int>(MinAlign(Align, Off)));
     NewLd->setOrdering(RefLd->getOrdering());
-    NewLd->setSynchScope(RefLd->getSynchScope());
+	IGCLLVM::CopySyncScopeID(NewLd, RefLd);
   }
 
   template<> inline
@@ -627,7 +630,7 @@ namespace Legalizer {
     NewSt->setVolatile(RefSt->isVolatile());
     NewSt->setAlignment(int_cast<unsigned int>(MinAlign(Align, Off)));
     NewSt->setOrdering(RefSt->getOrdering());
-    NewSt->setSynchScope(RefSt->getSynchScope());
+	IGCLLVM::CopySyncScopeID(NewSt, RefSt);    
   }
 
 } // End Legalizer namespace

@@ -30,7 +30,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TypeLegalizer.h"
 #include "InstScalarizer.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/Support/Debug.h"
+
+#include "llvmWrapper/Support/Debug.h"
+
 #include "llvm/Support/raw_ostream.h"
 #include "common/LLVMWarningsPop.hpp"
 
@@ -54,7 +56,7 @@ bool InstScalarizer::scalarize(Instruction *I) {
 
 // By default, capture all missing instructions!
 bool InstScalarizer::visitInstruction(Instruction &I) {
-  DEBUG(dbgs() << "SCALARIZE: " << I << '\n');
+  LLVM_DEBUG(dbgs() << "SCALARIZE: " << I << '\n');
   llvm_unreachable("UNKNOWN INSTRUCTION IS BEING SCALARIZED!");
   return false;
 }

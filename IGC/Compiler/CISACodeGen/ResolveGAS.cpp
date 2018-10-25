@@ -33,6 +33,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/Support/Debug.h"
+
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/ADT/PostOrderIterator.h>
 #include <llvm/Analysis/LoopInfo.h>
@@ -303,8 +306,8 @@ bool GASResolving::isAddrSpaceResolvable(PHINode *PN, const Loop *L,
 
 bool GASPropagator::visitInstruction(Instruction &I) {
   // DO NOTHING.
-  DEBUG(dbgs() << "PROPAGATE:" << *TheVal << '\n');
-  DEBUG(dbgs() << "  THROUGH:" << I << '\n');
+  LLVM_DEBUG(dbgs() << "PROPAGATE:" << *TheVal << '\n');
+  LLVM_DEBUG(dbgs() << "  THROUGH:" << I << '\n');
   return false;
 }
 

@@ -75,6 +75,10 @@ instead if the structure is small.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include "WrapperLLVM/Utils.h"
+#include "llvmWrapper/IR/IRBuilder.h"
+
 #include <llvm/ADT/Statistic.h>
 #include <llvm/ADT/SetVector.h>
 #include <llvm/Analysis/ConstantFolding.h>
@@ -238,9 +242,9 @@ void CustomSafeOptPass::visitAllocaInst(AllocaInst &I)
         return;
     }
     // found a case to optimize
-    IRBuilder<> IRB(&I);
+    IGCLLVM::IRBuilder<> IRB(&I);
     llvm::ArrayType* allocaArraySize = llvm::ArrayType::get(pType->getArrayElementType(), newSize);
-    llvm::Value* newAlloca = IRB.CreateAlloca( allocaArraySize, 0);
+    llvm::Value* newAlloca = IRB.CreateAlloca( allocaArraySize, nullptr);
     llvm::Value* gepArg1;
 
     for (Value::user_iterator it = I.user_begin(), e = I.user_end(); it != e; ++it)
@@ -2422,7 +2426,12 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
 	// 2. The Dest block is jumped to by all of the switch cases (and the default)
 	BasicBlock *Dest = nullptr;
 	{
-		const auto *CaseSucc = SI->case_begin().getCaseSuccessor();
+		const auto *CaseSucc = 
+#if LLVM_VERSION_MAJOR == 4
+			SI->case_begin().getCaseSuccessor();
+#elif LLVM_VERSION_MAJOR == 7
+            SI->case_begin()->getCaseSuccessor();
+#endif
 		auto *BI = dyn_cast<BranchInst>(CaseSucc->getTerminator());
 
 		if (BI == nullptr)

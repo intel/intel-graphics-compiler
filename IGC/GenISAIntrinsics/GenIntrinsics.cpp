@@ -504,7 +504,7 @@ bool GenISAIntrinsic::isOverloaded(GenISAIntrinsic::ID id) {
 #include "IntrinsicGenISA.gen"
 #undef GET_INTRINSIC_GENERATOR_GLOBAL
 
-AttributeSet GenISAIntrinsic::getGenIntrinsicAttributes(LLVMContext& C, GenISAIntrinsic::ID id)
+IGCLLVM::AttributeSet GenISAIntrinsic::getGenIntrinsicAttributes(LLVMContext& C, GenISAIntrinsic::ID id)
 {
     return getAttributes(C, (GenISAIntrinsic::ID)(id - 1));
 }

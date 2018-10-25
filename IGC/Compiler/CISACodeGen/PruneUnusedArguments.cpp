@@ -95,7 +95,7 @@ bool PruneUnusedArguments::runOnModule(Module &M) {
       // Collect unused arguments and their indices.
       SmallVector<std::pair<Argument *, unsigned>, 8> UnusedArgs;
       unsigned Index = 0;
-      for (auto &Arg : F->getArgumentList()) {
+      for (auto &Arg : F->args()) {
         if (Arg.use_empty())
           UnusedArgs.push_back(std::make_pair(&Arg, Index));
         Index++;

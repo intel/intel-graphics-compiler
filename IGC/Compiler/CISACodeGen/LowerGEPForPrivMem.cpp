@@ -35,7 +35,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/IRBuilder.h>
+
+#include "llvmWrapper/IR/IRBuilder.h"
+
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/ADT/SmallVector.h>
@@ -140,13 +142,13 @@ llvm::AllocaInst* LowerGEPForPrivMem::createVectorForAlloca(
     llvm::AllocaInst* pAlloca,
     llvm::Type* pBaseType)
 {
-    IRBuilder<> IRB(pAlloca);
+    IGCLLVM::IRBuilder<> IRB(pAlloca);
 
     unsigned int totalSize = extractAllocaSize(pAlloca) / int_cast<unsigned int>(m_pDL->getTypeAllocSize(pBaseType));
 
     llvm::VectorType* pVecType = llvm::VectorType::get(pBaseType, totalSize);
 
-    AllocaInst *pAllocaValue = IRB.CreateAlloca(pVecType, 0);
+    AllocaInst *pAllocaValue = IRB.CreateAlloca(pVecType);
     return pAllocaValue;
 }
 

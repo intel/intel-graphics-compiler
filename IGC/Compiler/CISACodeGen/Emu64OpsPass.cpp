@@ -48,6 +48,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 
 #include "common/LLVMUtils.h"
+
+#include "llvmWrapper/IR/Instructions.h"
+
 #include "common/IGCIRBuilder.h"
 
 #include "GenISAIntrinsics/GenIntrinsics.h"
@@ -61,7 +64,9 @@ using namespace llvm;
 using namespace IGC;
 using namespace IGC::IGCMD;
 
+
 using std::ldexp;
+
 
 namespace {
 
@@ -148,12 +153,12 @@ private:
   }
 
   void dupMemoryAttribute(LoadInst *NewLD, LoadInst *RefLD, unsigned Off) const {
-    unsigned Align = getAlignment(RefLD);
-
+    unsigned Align = getAlignment(RefLD);	
+	
     NewLD->setVolatile(RefLD->isVolatile());
     NewLD->setAlignment(unsigned(MinAlign(Align, Off)));
     NewLD->setOrdering(RefLD->getOrdering());
-    NewLD->setSynchScope(RefLD->getSynchScope());
+	IGCLLVM::CopySyncScopeID(NewLD, RefLD);    
   }
 
   void dupMemoryAttribute(StoreInst *NewST, StoreInst *RefST, unsigned Off) const {
@@ -162,7 +167,7 @@ private:
     NewST->setVolatile(RefST->isVolatile());
     NewST->setAlignment(unsigned(MinAlign(Align, Off)));
     NewST->setOrdering(RefST->getOrdering());
-    NewST->setSynchScope(RefST->getSynchScope());
+	IGCLLVM::CopySyncScopeID(NewST, RefST);
   }
 
   bool expandArguments(Function &F);

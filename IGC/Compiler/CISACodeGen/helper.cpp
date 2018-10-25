@@ -32,6 +32,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/Analysis/ValueTracking.h>
+
+#include <llvmWrapper/Support/KnownBits.h>
+#include <llvmWrapper/IR/Instructions.h>
+
 #include "common/LLVMWarningsPop.hpp"
 
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
@@ -209,7 +213,7 @@ llvm::LoadInst* cloneLoad(llvm::LoadInst *Orig, llvm::Value *Ptr)
     LI->setAlignment(Orig->getAlignment());
     if (LI->isAtomic())
     {
-        LI->setAtomic(Orig->getOrdering(), Orig->getSynchScope());
+        LI->setAtomic(Orig->getOrdering(), IGCLLVM::getSyncScopeID(Orig));
     }
     // Clone metadata
     llvm::SmallVector<std::pair<unsigned, llvm::MDNode *>, 4> MDs;
@@ -229,7 +233,7 @@ llvm::StoreInst* cloneStore(llvm::StoreInst *Orig, llvm::Value *Val, llvm::Value
     SI->setAlignment(Orig->getAlignment());
     if (SI->isAtomic())
     {
-        SI->setAtomic(Orig->getOrdering(), Orig->getSynchScope());
+        SI->setAtomic(Orig->getOrdering(), IGCLLVM::getSyncScopeID(Orig));
     }
     // Clone metadata
     llvm::SmallVector<std::pair<unsigned, llvm::MDNode *>, 4> MDs;
@@ -1352,6 +1356,7 @@ bool valueIsPositive(
 	llvm::AssumptionCache *AC,
 	llvm::Instruction *CxtI)
 {
+#if LLVM_VERSION_MAJOR == 4
 	bool isKnownNegative = false;
 	bool isKnownPositive = false;
 	llvm::ComputeSignBit(
@@ -1362,7 +1367,15 @@ bool valueIsPositive(
 		0,
 		AC,
 		CxtI);
-    return isKnownPositive;
+	return isKnownPositive;
+#elif LLVM_VERSION_MAJOR == 7
+	return computeKnownBits(
+		V,
+		*DL,
+		0,
+		AC,
+		CxtI).isNonNegative();
+#endif
 }
 
 

@@ -399,7 +399,7 @@ def createAttributeTable():
     f = open(outputFile,"a")
     f.write("// Add parameter attributes that are not common to all intrinsics.\n"
             "#ifdef GET_INTRINSIC_ATTRIBUTES\n"
-            "static AttributeSet getAttributes(LLVMContext &C, GenISAIntrinsic::ID id) {\n"
+            "static IGCLLVM::AttributeSet getAttributes(LLVMContext &C, GenISAIntrinsic::ID id) {\n"
             "  static const uint8_t IntrinsicsToAttributesMap[] = {\n")
     attribute_Array = []
     for i in range(len(ID_array)):
@@ -415,7 +415,7 @@ def createAttributeTable():
             attribute_Array.append(intrinsic_attribute)
     f.write("  };\n\n")
 
-    f.write("  AttributeSet AS[1];\n" #Currently only allowed to have one attribute per instrinsic
+    f.write("  IGCLLVM::AttributeSet AS[1];\n" #Currently only allowed to have one attribute per instrinsic
             "  unsigned NumAttrs = 0;\n"
             "  if (id != 0) {\n"
             "    switch(IntrinsicsToAttributesMap[id - Intrinsic::num_intrinsics]) {\n"
@@ -425,13 +425,13 @@ def createAttributeTable():
         Attrs = getAttributeList([x.strip() for x in attribute_Array[i].split(',')])
         f.write("""    case {num}: {{
       const Attribute::AttrKind Atts[] = {{{attrs}}};
-      AS[0] = AttributeSet::get(C, AttributeSet::FunctionIndex, Atts);
+      AS[0] = IGCLLVM::AttributeSet::get(C, IGCLLVM::AttributeSet::FunctionIndex, Atts);
       NumAttrs = 1;
       break;
       }}\n""".format(num=i+1, attrs=','.join(Attrs)))
     f.write("    }\n"
             "  }\n"
-            "  return AttributeSet::get(C, makeArrayRef(AS, NumAttrs));\n"
+            "  return IGCLLVM::AttributeSet::get(C, makeArrayRef(AS, NumAttrs));\n"
             "}\n"
             "#endif // GET_INTRINSIC_ATTRIBUTES\n\n")
     f.close()

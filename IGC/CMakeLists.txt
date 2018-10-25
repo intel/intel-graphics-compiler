@@ -54,6 +54,27 @@ endif()
 
 
 
+
+if(NOT DEFINED LLVM_VERSION_MAJOR)
+  set(LLVM_VERSION_MAJOR 4)
+  #set(LLVM_VERSION_MAJOR 7)  
+endif()
+if(NOT DEFINED LLVM_VERSION_MINOR)
+  set(LLVM_VERSION_MINOR 0)
+endif()
+if(NOT DEFINED LLVM_VERSION_PATCH)
+  set(LLVM_VERSION_PATCH 0)
+endif()
+if(NOT DEFINED LLVM_VERSION_SUFFIX)
+  set(LLVM_VERSION_SUFFIX "")
+endif()
+
+if (NOT PACKAGE_VERSION)
+  set(PACKAGE_VERSION
+    "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}${LLVM_VERSION_SUFFIX}")
+endif()
+
+
 # ======================================================================================================
 # ================================================ UTILS ===============================================
 # ======================================================================================================
@@ -3249,6 +3270,13 @@ else()
     endif()
 endif()
 
+
+# ==================================== WrapperLLVM package =============================================
+
+add_subdirectory(WrapperLLVM)
+igc_sg_define(IGC__WrapperLLVM)
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/WrapperLLVM/include")
+
 # ======================================== Include directories =========================================
 
 include_directories(
@@ -3438,6 +3466,7 @@ set(IGC_BUILD__HDR__IGC__igc_common
 set(IGC_BUILD__HDR__IGC__igc_dll
     ${IGC_BUILD__HDR__IGC__igc_common}
     ${IGC_BUILD__HDR__IGC_DriverInterface__igc_dll}
+	${IGC_WrapperLLVM_HDR}
   )
   
 #FCL
@@ -3620,8 +3649,8 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
           "${IGC_BUILD__PROJ__ILAdapter}")
     endif()
 
-  endif()
-
+  endif()  
+  
   list(APPEND _targetLinkLine
       "${IGC_BUILD__PROJ__AdaptorOGL}"
   )

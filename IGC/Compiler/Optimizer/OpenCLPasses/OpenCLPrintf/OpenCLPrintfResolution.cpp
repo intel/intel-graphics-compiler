@@ -30,6 +30,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"
+
+#include "llvmWrapper/IR/Attributes.h"
+
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
@@ -680,7 +683,7 @@ CallInst* OpenCLPrintfResolution::genAtomicAdd(Value *outputBufferPtr,
       Type* argTypes[] = { outputBufferPtr->getType(), dataSize->getType() };
       FunctionType *atomicFuncType = FunctionType::get(dataSize->getType(), argTypes, false);
       m_atomicAddFunc = cast<Function>(m_module->getOrInsertFunction("__builtin_IB_atomic_add_global_i32",
-          atomicFuncType, AttributeSet()));
+          atomicFuncType, IGCLLVM::AttributeSet()));
     }
     std::vector<Value*> args;
     args.push_back(outputBufferPtr);
