@@ -236,7 +236,8 @@ void COpenCLKernel::PreCompile()
         for (; loIter != loEnd; ++loIter)
         {
             LocalOffsetMetaDataHandle loHandle = *loIter;
-            m_localOffsetsMap[loHandle->getVar()] = loHandle->getOffset();
+            Value* var = loHandle->getVar(entry->getParent());
+            if (var) m_localOffsetsMap[var] = loHandle->getOffset();
         }
     }
 }

@@ -280,10 +280,11 @@ bool GenIRLowering::runOnFunction(Function &F) {
       LOI != LOE; ++LOI) {
       IGCMD::LocalOffsetMetaDataHandle LH = *LOI;
       // look up the value-to-offset mapping
-      Value *V = LH->getVar();
+      Value *V = LH->getVar(F.getParent());
       unsigned Offset = LH->getOffset();
+      // Skip if global no longer exist
       // Skip non-pointer values.
-      if (!V->getType()->isPointerTy())
+      if (!V || !V->getType()->isPointerTy())
           continue;
       // Skip non-local pointers.
       unsigned AS = V->getType()->getPointerAddressSpace();
