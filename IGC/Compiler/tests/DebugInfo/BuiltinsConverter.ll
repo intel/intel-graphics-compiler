@@ -47,7 +47,7 @@ entry:
 ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_sample_l
 ; CHECK: [[CoordX1:%[a-zA-Z0-9]+]] = extractelement <2 x float> %fcoord, i32 0, !dbg !1
 ; CHECK: [[CoordY1:%[a-zA-Z0-9]+]] = extractelement <2 x float> %fcoord, i32 1, !dbg !1
-; CHECK: [[res1:%[a-zA-Z0-9]+]] = call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[CoordX1]], float [[CoordY1]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0), !dbg !1
+; CHECK: [[res1:%[a-zA-Z0-9]+]] = call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[CoordX1]], float [[CoordY1]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0), !dbg !1
 ; CHECK: [[arrayidx1:%[a-zA-Z0-9]+]] = getelementptr inbounds <4 x float> addrspace(1)* %buf1, i32 0, !dbg !2
 ; CHECK: store <4 x float> [[res1]], <4 x float> addrspace(1)* [[arrayidx1]], align 16, !dbg !3
 
@@ -58,8 +58,8 @@ entry:
 ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_ld
 ; CHECK: [[CoordX2:%[a-zA-Z0-9]+]] = extractelement <2 x i32> %coord, i32 0, !dbg !1
 ; CHECK: [[CoordY2:%[a-zA-Z0-9]+]] = extractelement <2 x i32> %coord, i32 1, !dbg !1
-; CHECK: [[ptr2:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2), !dbg !1
-; CHECK: [[res2:%[a-zA-Z0-9]+]] = call <4 x float> @genx.GenISA.ldptr.v4f32.p196608f32(i32 [[CoordX2]], i32 [[CoordY2]], i32 0, i32 0, float addrspace(196608)* [[ptr2]], i32 0, i32 0, i32 0), !dbg !1
+; CHECK: [[ptr2:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2), !dbg !1
+; CHECK: [[res2:%[a-zA-Z0-9]+]] = call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196608f32(i32 [[CoordX2]], i32 [[CoordY2]], i32 0, i32 0, float addrspace(196608)* [[ptr2]], i32 0, i32 0, i32 0), !dbg !1
 ; CHECK: [[arrayidx2:%[a-zA-Z0-9]+]] = getelementptr inbounds <4 x float> addrspace(1)* %buf1, i32 1, !dbg !2
 ; CHECK: store <4 x float> [[res2]], <4 x float> addrspace(1)* [[arrayidx2]], align 16, !dbg !3
 
@@ -70,8 +70,8 @@ entry:
 ; CHECK-NOT: call <4 x i32> @__builtin_IB_OCL_2d_ldui
 ; CHECK: [[CoordX3:%[a-zA-Z0-9]+]] = extractelement <2 x i32> %coord, i32 0, !dbg !1
 ; CHECK: [[CoordY3:%[a-zA-Z0-9]+]] = extractelement <2 x i32> %coord, i32 1, !dbg !1
-; CHECK: [[ptr3:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2), !dbg !1
-; CHECK: [[res3:%[a-zA-Z0-9]+]] = call <4 x i32> @genx.GenISA.ldui.ptr.p196608f32(i32 [[CoordX3]], i32 [[CoordY3]], i32 0, i32 0, float addrspace(196608)* [[ptr3]], i32 0, i32 0, i32 0), !dbg !1
+; CHECK: [[ptr3:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2), !dbg !1
+; CHECK: [[res3:%[a-zA-Z0-9]+]] = call <4 x i32> @llvm.genx.GenISA.ldui.ptr.p196608f32(i32 [[CoordX3]], i32 [[CoordY3]], i32 0, i32 0, float addrspace(196608)* [[ptr3]], i32 0, i32 0, i32 0), !dbg !1
 ; CHECK: [[arrayidx3:%[a-zA-Z0-9]+]] = getelementptr inbounds <4 x i32> addrspace(1)* %buf2, i32 0, !dbg !2
 ; CHECK: store <4 x i32> [[res3]], <4 x i32> addrspace(1)* [[arrayidx3]], align 16, !dbg !3
 
@@ -82,7 +82,7 @@ entry:
 ; CHECK-NOT: call void @__builtin_IB_write_2d_i
 ; CHECK: [[arrayidx4:%[a-zA-Z0-9]+]] = getelementptr inbounds <4 x i32> addrspace(1)* %buf2, i32 1, !dbg !1
 ; CHECK: [[res4:%[a-zA-Z0-9]+]] = load <4 x i32> addrspace(1)* [[arrayidx4]], align 16, !dbg !2
-; CHECK: [[ptr4:%[a-zA-Z0-9]+]] = call float addrspace(131074)* @genx.GenISA.GetBufferPtr.p131074f32(i32 2, i32 1), !dbg !3
+; CHECK: [[ptr4:%[a-zA-Z0-9]+]] = call float addrspace(131074)* @llvm.genx.GenISA.GetBufferPtr.p131074f32(i32 2, i32 1), !dbg !3
 ; CHECK: [[CoordX4:%[a-zA-Z0-9]+]] = extractelement <2 x i32> %coord, i32 0, !dbg !3
 ; CHECK: [[CoordY4:%[a-zA-Z0-9]+]] = extractelement <2 x i32> %coord, i32 1, !dbg !3
 ; CHECK: [[floatColor:%[a-zA-Z0-9]+]] = bitcast <4 x i32> [[res4]] to <4 x float>, !dbg !3
@@ -90,7 +90,7 @@ entry:
 ; CHECK: [[ColorY:%[a-zA-Z0-9]+]] = extractelement <4 x float> [[floatColor]], i32 1, !dbg !3
 ; CHECK: [[ColorZ:%[a-zA-Z0-9]+]] = extractelement <4 x float> [[floatColor]], i32 2, !dbg !3
 ; CHECK: [[ColorW:%[a-zA-Z0-9]+]] = extractelement <4 x float> [[floatColor]], i32 3, !dbg !3
-; CHECK: call void @genx.GenISA.typedwrite.p131074f32(float addrspace(131074)* [[ptr4]], i32 [[CoordX4]], i32 [[CoordY4]], i32 0, i32 0, float [[ColorX]], float [[ColorY]], float [[ColorZ]], float [[ColorW]]), !dbg !3
+; CHECK: call void @llvm.genx.GenISA.typedwrite.p131074f32(float addrspace(131074)* [[ptr4]], i32 [[CoordX4]], i32 [[CoordY4]], i32 0, i32 0, float [[ColorX]], float [[ColorY]], float [[ColorZ]], float [[ColorW]]), !dbg !3
 
   %tmp1 = extractelement <2 x float> %fcoord, i32 0, !dbg !1
   %tmp2 = call float @__builtin_IB_frnd_ni(float %tmp1) #0, !dbg !2

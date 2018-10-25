@@ -37,4 +37,6 @@ namespace IGC
     /// Transform legacy resource access intrinsics taking an integer representation to 
     /// the new intrinsics taking pointer representation
     llvm::Pass* CreateUpgradeResourceIntrinsic();
+    ///Transfor legacy gen intrisics with prefix "@genx." => "@llvm.genx."
+    llvm::Pass* CreateUpgradeGenIntrinsicPrefix();
 }

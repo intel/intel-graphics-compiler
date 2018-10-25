@@ -36,16 +36,16 @@ target triple = "igil_32_GEN8"
 
 define void @test(float addrspace(1)* %dst, float %x, float %y) #0 {
 entry:
-  %res = call float @genx.GenISA.min.f32(float %x, float %y), !dbg !1
+  %res = call float @llvm.genx.GenISA.min.f32(float %x, float %y), !dbg !1
   store float %res, float addrspace(1)* %dst, align 4, !dbg !2
   ret void
 
 ; CHECK: [[x:%[a-zA-Z0-9_]+]] = fadd float %x, 0.000000e+00, !dbg !1
 ; CHECK: [[y:%[a-zA-Z0-9_]+]] = fadd float %y, 0.000000e+00, !dbg !1
-; CHECK: [[res:%[a-zA-Z0-9_]+]] = call float @genx.GenISA.min.f32(float [[x]], float [[y]]), !dbg !1
+; CHECK: [[res:%[a-zA-Z0-9_]+]] = call float @llvm.genx.GenISA.min.f32(float [[x]], float [[y]]), !dbg !1
 }
 
-declare float @genx.GenISA.min.f32(float, float) #1
+declare float @llvm.genx.GenISA.min.f32(float, float) #1
 
 attributes #0 = { alwaysinline nounwind }
 attributes #1 = { nounwind readnone }

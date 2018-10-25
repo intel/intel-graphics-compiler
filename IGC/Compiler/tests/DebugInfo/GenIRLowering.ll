@@ -61,8 +61,8 @@ define void @GenIRLowering_test(float addrspace(1)* %src1, float addrspace(1)* %
 ; CHECK: [[inst6:%[a-zA-Z0-9]+]] = add i32 [[inst5]], 8, !dbg !4
 ; CHECK: [[inst7:%[a-zA-Z0-9]+]] = inttoptr i32 [[inst6]] to float addrspace(1)*, !dbg !4
 ; CHECK: [[inst8:%[a-zA-Z0-9]+]] = load float addrspace(1)* [[inst7]], align 4, !dbg !5
-; CHECK: [[inst9:%[a-zA-Z0-9]+]] = call float @genx.GenISA.max.f32(float [[inst4]], float %8), !dbg !6
-; CHECK: [[inst10:%[a-zA-Z0-9]+]] = call float @genx.GenISA.min.f32(float [[inst9]], float 5.000000e+00), !dbg !7
+; CHECK: [[inst9:%[a-zA-Z0-9]+]] = call float @llvm.genx.GenISA.max.f32(float [[inst4]], float %8), !dbg !6
+; CHECK: [[inst10:%[a-zA-Z0-9]+]] = call float @llvm.genx.GenISA.min.f32(float [[inst9]], float 5.000000e+00), !dbg !7
 
 }
 

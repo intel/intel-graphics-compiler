@@ -124,7 +124,7 @@ def generateEnums():
     for i in range(len(ID_array)):
         pretty_indent = 40 - len(ID_array[i])
         f.write("  " + ID_array[i]+",")
-        f.write((" "*pretty_indent)+'// genx.'+ID_array[i].replace("_",".")+'\n')
+        f.write((" "*pretty_indent)+'// llvm.genx.'+ID_array[i].replace("_",".")+'\n')
     f.write("#endif\n\n")
     f.close()
 
@@ -133,7 +133,7 @@ def generateIDArray():
     f.write("// Intrinsic ID to name table\n"
             "#ifdef GET_INTRINSIC_NAME_TABLE\n")
     for i in range(len(ID_array)):
-        f.write('  "genx.'+ID_array[i].replace("_",".")+'",\n')
+        f.write('  "llvm.genx.'+ID_array[i].replace("_",".")+'",\n')
     f.write("#endif\n\n")
     f.close()
 
@@ -189,9 +189,10 @@ def sortedIntrinsicsOnLenth():
             "char input_letter;\n"
             "bool isError = false;\n"
             "bool bump = false;\n"
+            "unsigned start_index = std::string(\"llvm.genx.GenISA.\").size();\n"
             "for (unsigned i = 0; i < Len; i++)\n"
             "{\n"
-            "    input_letter = input_name[12 + i];\n"
+            "    input_letter = input_name[start_index + i];\n"
             "    unsigned counter = 0;\n"
             "    while (1)\n"
             "    {\n"
@@ -408,10 +409,10 @@ def createAttributeTable():
         for j in range(len(attribute_Array)):
             if intrinsic_attribute == attribute_Array[j]:
                 found = True
-                f.write("    " + str(j+1) + ", // genx." + ID_array[i].replace("_",".") + "\n")
+                f.write("    " + str(j+1) + ", // llvm.genx." + ID_array[i].replace("_",".") + "\n")
                 break
         if not found:
-            f.write("    " + str(len(attribute_Array)+1) + ", // genx." + ID_array[i].replace("_",".") + "\n")
+            f.write("    " + str(len(attribute_Array)+1) + ", // llvm.genx." + ID_array[i].replace("_",".") + "\n")
             attribute_Array.append(intrinsic_attribute)
     f.write("  };\n\n")
 

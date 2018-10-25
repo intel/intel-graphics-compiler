@@ -168,43 +168,47 @@ void UpgradeResourceAccess::visitCallInst(CallInst& C)
     {
         return;
     }
-    if(C.getCalledFunction()->getName().startswith("genx.GenISA.sample."))
+
+    //Note : This upgrader pass is handling legacy intrinsics as well, 
+    // hence we might be dealing with intrinsics starting with @genx.
+    if(C.getCalledFunction()->getName().contains("genx.GenISA.sample."))
     {
         ChangeIntrinsic(C, GenISAIntrinsic::GenISA_sampleptr);
     }
-    else if(C.getCalledFunction()->getName().startswith("genx.GenISA.sampleB."))
+    else if(C.getCalledFunction()->getName().contains("genx.GenISA.sampleB."))
     {
         ChangeIntrinsic(C, GenISAIntrinsic::GenISA_sampleBptr);
     }
-    else if(C.getCalledFunction()->getName().startswith("genx.GenISA.sampleD."))
+    else if(C.getCalledFunction()->getName().contains("genx.GenISA.sampleD."))
     {
         ChangeIntrinsic(C, GenISAIntrinsic::GenISA_sampleDptr);
     }
-    else if(C.getCalledFunction()->getName().startswith("genx.GenISA.sampleC."))
+    else if(C.getCalledFunction()->getName().contains("genx.GenISA.sampleC."))
     {
         ChangeIntrinsic(C, GenISAIntrinsic::GenISA_sampleCptr);
     }
-    else if(C.getCalledFunction()->getName().startswith("genx.GenISA.sampleL."))
+    else if(C.getCalledFunction()->getName().contains("genx.GenISA.sampleL."))
     {
         ChangeIntrinsic(C, GenISAIntrinsic::GenISA_sampleLptr);
     }
-    else if(C.getCalledFunction()->getName().startswith("genx.GenISA.gather4."))
+    else if(C.getCalledFunction()->getName().contains("genx.GenISA.gather4."))
     {
         ChangeIntrinsic(C, GenISAIntrinsic::GenISA_gather4ptr);
     }
-    else if(C.getCalledFunction()->getName().startswith("genx.GenISA.ldms."))
+    else if(C.getCalledFunction()->getName().contains("genx.GenISA.ldms."))
     {
         ChangeIntrinsic(C, GenISAIntrinsic::GenISA_ldmsptr);
     }
-    else if(C.getCalledFunction()->getName().equals("genx.GenISA.ldmcs"))
+    else if(C.getCalledFunction()->getName().equals("llvm.genx.GenISA.ldmcs") || 
+        C.getCalledFunction()->getName().equals("genx.GenISA.ldmcs"))
     {
         ChangeIntrinsic(C, GenISAIntrinsic::GenISA_ldmcsptr);
     }
-    else if(C.getCalledFunction()->getName().startswith("genx.GenISA.ld."))
+    else if(C.getCalledFunction()->getName().contains("genx.GenISA.ld."))
     {
         ChangeIntrinsic(C, GenISAIntrinsic::GenISA_ldptr);
     }
-    else if(C.getCalledFunction()->getName().equals("genx.GenISA.sampleKill.legacy"))
+    else if(C.getCalledFunction()->getName().contains("genx.GenISA.sampleKill.legacy"))
     {
         ChangeIntrinsic(C, GenISAIntrinsic::GenISA_sampleKillPix);
     }
@@ -217,6 +221,40 @@ void UpgradeResourceAccess::visitCallInst(CallInst& C)
     }
 }
 
+class UpgradeGenIntrinsicPrefix : public ModulePass, public InstVisitor<UpgradeGenIntrinsicPrefix>
+{
+public:
+    UpgradeGenIntrinsicPrefix() : ModulePass(ID) {}
+    
+    static char ID;
+    void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
+    {
+        AU.setPreservesCFG();
+    }
+    //bool runOnFunction(llvm::Function &F) override;
+    bool runOnModule(llvm::Module &M) override;
+
+    llvm::StringRef getPassName() const override
+    {
+        return "UpgradeGenIntrinsicPrefix";
+    }
+
+private:
+    bool m_changed = false;
+};
+char UpgradeGenIntrinsicPrefix::ID = 0;
+
+bool UpgradeGenIntrinsicPrefix::runOnModule(llvm::Module &M)
+{
+    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I) {
+        Function* pFunc = &(*I);
+        if (pFunc->getName().startswith("genx."))
+            pFunc->setName("llvm." + pFunc->getName());
+    }
+
+    return m_changed;
+}
+
 
 namespace IGC 
 {
@@ -224,4 +262,11 @@ Pass* CreateUpgradeResourceIntrinsic()
 {
     return new UpgradeResourceAccess();
 }
-}
+
+Pass* CreateUpgradeGenIntrinsicPrefix()
+{
+    return new UpgradeGenIntrinsicPrefix();
+}
+
+
+}

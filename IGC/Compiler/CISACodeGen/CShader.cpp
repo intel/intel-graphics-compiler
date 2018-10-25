@@ -1079,8 +1079,8 @@ uint CShader::GetNbElementAndMask(llvm::Value* value, uint32_t& mask)
         // We could have case like below that payload is undef on some path.
         //
         // BB1:
-        //   %147 = call i32 @genx.GenISA.createMessagePhasesNoInit(i32 11)
-        //   call void @genx.GenISA.vmeSendIME2(i32 % 147, ...)
+        //   %147 = call i32 @llvm.genx.GenISA.createMessagePhasesNoInit(i32 11)
+        //   call void @llvm.genx.GenISA.vmeSendIME2(i32 % 147, ...)
         //   br label %BB2
         // BB2:
         //   ... = phi i32[%147, %BB1], [0, %BB]

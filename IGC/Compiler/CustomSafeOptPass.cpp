@@ -354,16 +354,16 @@ void CustomSafeOptPass::visitCallInst(CallInst &C)
 //
 // pattern match packing of two half float from f32tof16:
 //
-// % 43 = call float @genx.GenISA.f32tof16.rtz(float %res_s55.i)
-// % 44 = call float @genx.GenISA.f32tof16.rtz(float %res_s59.i)
+// % 43 = call float @llvm.genx.GenISA.f32tof16.rtz(float %res_s55.i)
+// % 44 = call float @llvm.genx.GenISA.f32tof16.rtz(float %res_s59.i)
 // % 47 = bitcast float %44 to i32
 // % 49 = bitcast float %43 to i32
 // %addres_s68.i = shl i32 % 47, 16
 // % mulres_s69.i = add i32 %addres_s68.i, % 49
 // % 51 = bitcast i32 %mulres_s69.i to float
 // into
-// %43 = call half @genx.GenISA_ftof_rtz(float %res_s55.i)
-// %44 = call half @genx.GenISA_ftof_rtz(float %res_s59.i)
+// %43 = call half @llvm.genx.GenISA_ftof_rtz(float %res_s55.i)
+// %44 = call half @llvm.genx.GenISA_ftof_rtz(float %res_s59.i)
 // %45 = insertelement <2 x half>undef, %43, 0
 // %46 = insertelement <2 x half>%45, %44, 1
 // %51 = bitcast <2 x half> %46 to float

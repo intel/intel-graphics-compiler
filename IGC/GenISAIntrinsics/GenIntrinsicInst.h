@@ -87,8 +87,9 @@ public:
 
     // Methods for support type inquiry through isa, cast, and dyn_cast:
     static inline bool classof(const CallInst *I) {
-        if (const Function *CF = I->getCalledFunction())
-            return (CF->getName().startswith("genx"));
+        if (const Function *CF = I->getCalledFunction()) {
+            return (CF->getName().startswith(GenISAIntrinsic::getGenIntrinsicPrefix()));
+        }
         return false;
     }
     static inline bool classof(const Value *V) {

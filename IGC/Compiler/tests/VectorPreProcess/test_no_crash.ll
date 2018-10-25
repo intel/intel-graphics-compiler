@@ -118,7 +118,7 @@ define void @calculateFaceNormals(i32 addrspace(1)* %indexes, <4 x float> addrsp
   %38 = fadd float %37, %36
   %39 = fmul float %32, %32
   %40 = fadd float %39, %38
-  %41 = call float @genx.GenISA.sqrt.f32(float %40)
+  %41 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %40)
   %42 = fdiv float 1.000000e+00, %41, !fpmath !80
   %43 = fmul float %42, %32
   %44 = fmul float %42, %33
@@ -379,7 +379,7 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   %97 = fadd float %96, %95
   %98 = fmul float %normal.116.7, %normal.116.7
   %99 = fadd float %98, %97
-  %100 = call float @genx.GenISA.sqrt.f32(float %99)
+  %100 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %99)
   %101 = fdiv float 1.000000e+00, %100, !fpmath !80
   %102 = fmul float %101, %normal.116.7
   %103 = fmul float %101, %normal.117.7
@@ -550,7 +550,7 @@ define void @satisfyConstraints(<4 x float> addrspace(1)* %positions, i32 addrsp
   br i1 %25, label %26, label %._crit_edge98
 
 ; <label>:26                                      ; preds = %24
-  %27 = call float @genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
+  %27 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
   br label %._crit_edge98
 
 ._crit_edge98:                                    ; preds = %24, %26
@@ -563,7 +563,7 @@ define void @satisfyConstraints(<4 x float> addrspace(1)* %positions, i32 addrsp
   %31 = fmul float %30, %30
   %32 = fmul float %rest.0, %rest.0
   %33 = fadd float %31, %32
-  %34 = call float @genx.GenISA.sqrt.f32(float %33)
+  %34 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %33)
   br label %._crit_edge99
 
 ._crit_edge99:                                    ; preds = %._crit_edge98, %29
@@ -590,7 +590,7 @@ define void @satisfyConstraints(<4 x float> addrspace(1)* %positions, i32 addrsp
   %46 = fadd float %45, %44
   %47 = fmul float %38, %38
   %48 = fadd float %47, %46
-  %49 = call float @genx.GenISA.sqrt.f32(float %48)
+  %49 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %48)
   %50 = fsub float %49, %rest.1
   %51 = fdiv float %50, %49, !fpmath !80
   %52 = fmul float %51, 5.000000e-01
@@ -713,12 +713,12 @@ _Z4fabsf.exit2.i.i:                               ; preds = %_Z4fabsf.exit.i.i, 
 _Z4fabsf.exit2.i.i._crit_edge:                    ; preds = %_Z4fabsf.exit2.i.i, %113
   %115 = phi i1 [ %114, %113 ], [ false, %_Z4fabsf.exit2.i.i ]
   %116 = fadd float %109, %111
-  %117 = call float @genx.GenISA.sqrt.f32(float %116)
+  %117 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %116)
   %118 = fmul float %109, %111
   %119 = fmul float %118, 2.000000e+00
   %120 = fdiv float %119, %116, !fpmath !80
   %121 = fsub float %116, %120
-  %122 = call float @genx.GenISA.sqrt.f32(float %121)
+  %122 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %121)
   %123 = fmul float %117, %122
   br i1 %112, label %._crit_edge101, label %124
 
@@ -731,12 +731,12 @@ _Z4fabsf.exit2.i.i._crit_edge:                    ; preds = %_Z4fabsf.exit2.i.i,
   %127 = fdiv float %111, %109, !fpmath !80
   %128 = fmul float %127, %127
   %129 = fadd float %128, 1.000000e+00
-  %130 = call float @genx.GenISA.sqrt.f32(float %129)
+  %130 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %129)
   %131 = fmul float %109, %130
   %132 = fmul float %109, %109
   %133 = fmul float %111, %111
   %134 = fadd float %132, %133
-  %135 = call float @genx.GenISA.sqrt.f32(float %134)
+  %135 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %134)
   %136 = fcmp oeq float %109, 0.000000e+00
   br i1 %136, label %_Z5hypotff.exit.i, label %137
 
@@ -822,12 +822,12 @@ _Z4fabsf.exit2.i4.i:                              ; preds = %_Z4fabsf.exit.i3.i,
 _Z4fabsf.exit2.i4.i._crit_edge:                   ; preds = %_Z4fabsf.exit2.i4.i, %170
   %172 = phi i1 [ %171, %170 ], [ false, %_Z4fabsf.exit2.i4.i ]
   %173 = fadd float %166, %168
-  %174 = call float @genx.GenISA.sqrt.f32(float %173)
+  %174 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %173)
   %175 = fmul float %166, %168
   %176 = fmul float %175, 2.000000e+00
   %177 = fdiv float %176, %173, !fpmath !80
   %178 = fsub float %173, %177
-  %179 = call float @genx.GenISA.sqrt.f32(float %178)
+  %179 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %178)
   %180 = fmul float %174, %179
   br i1 %169, label %._crit_edge107, label %181
 
@@ -840,12 +840,12 @@ _Z4fabsf.exit2.i4.i._crit_edge:                   ; preds = %_Z4fabsf.exit2.i4.i
   %184 = fdiv float %168, %166, !fpmath !80
   %185 = fmul float %184, %184
   %186 = fadd float %185, 1.000000e+00
-  %187 = call float @genx.GenISA.sqrt.f32(float %186)
+  %187 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %186)
   %188 = fmul float %166, %187
   %189 = fmul float %166, %166
   %190 = fmul float %168, %168
   %191 = fadd float %189, %190
-  %192 = call float @genx.GenISA.sqrt.f32(float %191)
+  %192 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %191)
   %193 = fcmp oeq float %166, 0.000000e+00
   br i1 %193, label %_Z5hypotff.exit7.i, label %194
 
@@ -931,12 +931,12 @@ _Z4fabsf.exit2.i11.i:                             ; preds = %_Z4fabsf.exit.i10.i
 _Z4fabsf.exit2.i11.i._crit_edge:                  ; preds = %_Z4fabsf.exit2.i11.i, %227
   %229 = phi i1 [ %228, %227 ], [ false, %_Z4fabsf.exit2.i11.i ]
   %230 = fadd float %223, %225
-  %231 = call float @genx.GenISA.sqrt.f32(float %230)
+  %231 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %230)
   %232 = fmul float %223, %225
   %233 = fmul float %232, 2.000000e+00
   %234 = fdiv float %233, %230, !fpmath !80
   %235 = fsub float %230, %234
-  %236 = call float @genx.GenISA.sqrt.f32(float %235)
+  %236 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %235)
   %237 = fmul float %231, %236
   br i1 %226, label %._crit_edge113, label %238
 
@@ -949,12 +949,12 @@ _Z4fabsf.exit2.i11.i._crit_edge:                  ; preds = %_Z4fabsf.exit2.i11.
   %241 = fdiv float %225, %223, !fpmath !80
   %242 = fmul float %241, %241
   %243 = fadd float %242, 1.000000e+00
-  %244 = call float @genx.GenISA.sqrt.f32(float %243)
+  %244 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %243)
   %245 = fmul float %223, %244
   %246 = fmul float %223, %223
   %247 = fmul float %225, %225
   %248 = fadd float %246, %247
-  %249 = call float @genx.GenISA.sqrt.f32(float %248)
+  %249 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %248)
   %250 = fcmp oeq float %223, 0.000000e+00
   br i1 %250, label %_Z6lengthDv4_f.exit, label %251
 
@@ -1493,7 +1493,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   br i1 %695, label %696, label %._crit_edge98.1
 
 ; <label>:696                                     ; preds = %694
-  %697 = call float @genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
+  %697 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
   br label %._crit_edge98.1
 
 ._crit_edge98.1:                                  ; preds = %694, %696
@@ -1506,7 +1506,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %701 = fmul float %700, %700
   %702 = fmul float %rest.0.1, %rest.0.1
   %703 = fadd float %701, %702
-  %704 = call float @genx.GenISA.sqrt.f32(float %703)
+  %704 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %703)
   br label %._crit_edge99.1
 
 ._crit_edge99.1:                                  ; preds = %._crit_edge98.1, %699
@@ -1533,7 +1533,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %716 = fadd float %715, %714
   %717 = fmul float %708, %708
   %718 = fadd float %717, %716
-  %719 = call float @genx.GenISA.sqrt.f32(float %718)
+  %719 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %718)
   %720 = fsub float %719, %rest.1.1
   %721 = fdiv float %720, %719, !fpmath !80
   %722 = fmul float %721, 5.000000e-01
@@ -1595,7 +1595,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   br i1 %752, label %753, label %._crit_edge98.2
 
 ; <label>:753                                     ; preds = %751
-  %754 = call float @genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
+  %754 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
   br label %._crit_edge98.2
 
 ._crit_edge98.2:                                  ; preds = %751, %753
@@ -1608,7 +1608,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %758 = fmul float %757, %757
   %759 = fmul float %rest.0.2, %rest.0.2
   %760 = fadd float %758, %759
-  %761 = call float @genx.GenISA.sqrt.f32(float %760)
+  %761 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %760)
   br label %._crit_edge99.2
 
 ._crit_edge99.2:                                  ; preds = %._crit_edge98.2, %756
@@ -1635,7 +1635,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %773 = fadd float %772, %771
   %774 = fmul float %765, %765
   %775 = fadd float %774, %773
-  %776 = call float @genx.GenISA.sqrt.f32(float %775)
+  %776 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %775)
   %777 = fsub float %776, %rest.1.2
   %778 = fdiv float %777, %776, !fpmath !80
   %779 = fmul float %778, 5.000000e-01
@@ -1697,7 +1697,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   br i1 %809, label %810, label %._crit_edge98.3
 
 ; <label>:810                                     ; preds = %808
-  %811 = call float @genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
+  %811 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
   br label %._crit_edge98.3
 
 ._crit_edge98.3:                                  ; preds = %808, %810
@@ -1710,7 +1710,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %815 = fmul float %814, %814
   %816 = fmul float %rest.0.3, %rest.0.3
   %817 = fadd float %815, %816
-  %818 = call float @genx.GenISA.sqrt.f32(float %817)
+  %818 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %817)
   br label %._crit_edge99.3
 
 ._crit_edge99.3:                                  ; preds = %._crit_edge98.3, %813
@@ -1737,7 +1737,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %830 = fadd float %829, %828
   %831 = fmul float %822, %822
   %832 = fadd float %831, %830
-  %833 = call float @genx.GenISA.sqrt.f32(float %832)
+  %833 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %832)
   %834 = fsub float %833, %rest.1.3
   %835 = fdiv float %834, %833, !fpmath !80
   %836 = fmul float %835, 5.000000e-01
@@ -1809,7 +1809,7 @@ declare i32 @__builtin_IB_get_local_size(i32)
 declare i32 @__builtin_IB_get_group_id(i32)
 
 ; Function Attrs: nounwind readnone
-declare float @genx.GenISA.sqrt.f32(float) #1
+declare float @llvm.llvm.genx.GenISA.sqrt.f32(float) #1
 
 ; Function Attrs: nounwind readnone
 declare i32 @llvm.ctlz.i32(i32, i1) #1

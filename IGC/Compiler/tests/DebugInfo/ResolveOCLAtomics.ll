@@ -39,8 +39,8 @@ define void @test(i32 * %dst, <8 x i32> %r0, <8 x i32> %payloadHeader, i8* %priv
 
 ; CHECK-NOT: call i32 @__builtin_IB_atomic_inc_local_i32
 ; CHECK: [[PtrDstToInt:%[a-zA-Z0-9]+]] = ptrtoint i32* %dst to i32, !dbg !2
-; CHECK: [[res1:%[a-zA-Z0-9]+]] = call i32 addrspace(3)* @genx.GenISA.GetBufferPtr.p3i32(i32 0, i32 3), !dbg !2
-; CHECK: [[res2:%[a-zA-Z0-9]+]] = call i32 @genx.GenISA.dwordatomicraw.p3i32(i32 addrspace(3)* [[res1]], i32 [[PtrDstToInt]], i32 0, i32 2), !dbg !2
+; CHECK: [[res1:%[a-zA-Z0-9]+]] = call i32 addrspace(3)* @llvm.genx.GenISA.GetBufferPtr.p3i32(i32 0, i32 3), !dbg !2
+; CHECK: [[res2:%[a-zA-Z0-9]+]] = call i32 @llvm.genx.GenISA.dwordatomicraw.p3i32(i32 addrspace(3)* [[res1]], i32 [[PtrDstToInt]], i32 0, i32 2), !dbg !2
 }
 
 declare i32 @__builtin_IB_atomic_inc_local_i32(i32*)

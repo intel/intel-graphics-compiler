@@ -379,7 +379,7 @@ Value* FixResourcePtr::CreateStoreIntrinsic(StoreInst *inst, Instruction* bufPtr
 ///  %23 = extractelement <4 x i32> %Temp-47.i, i32 1
 ///  %24 = extractelement <4 x i32> %Temp-47.i, i32 2
 ///  %25 = extractelement <4 x i32> %Temp-47.i, i32 3
-///  %26 = call i32 addrspace(1179648)* @genx.GenISA.GetBufferPtr.p1179648i32(i32 %22, i32 1)
+///  %26 = call i32 addrspace(1179648)* @llvm.genx.GenISA.GetBufferPtr.p1179648i32(i32 %22, i32 1)
 /// 
 /// @param bufferIndex Buffer index value to resolve
 /// @param vectorIndex Index inside of a vector where the buffer index is stored

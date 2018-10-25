@@ -47,6 +47,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/Support/SourceMgr.h"
 #include "common/LLVMWarningsPop.hpp"
+#include "../GenISAIntrinsics/GenIntrinsics.h"
 
 #include "ElfReader.h"
 #include "ElfWriter.h"
@@ -140,6 +141,8 @@ std::unique_ptr<Module> LocalCloneModule(
             I->getName(),
             I->getFunctionType(),
             I->getAttributes()));
+        if(I->getName().startswith(GenISAIntrinsic::getGenIntrinsicPrefix()))
+            NF->setAttributes(I->getAttributes());
 
         VMap[&*I] = NF;
         Function *F = cast<Function>(VMap[&*I]);
@@ -160,6 +163,9 @@ std::unique_ptr<Module> LocalCloneModule(
                         I2->getName(),
                         I2->getFunctionType(),
                         I2->getAttributes()));
+
+                    if(I->getName().startswith(GenISAIntrinsic::getGenIntrinsicPrefix()))
+                        NF2->setAttributes(I->getAttributes());
 
                     VMap[&*I2] = NF2;
                     Function *F2 = cast<Function>(VMap[&*I2]);

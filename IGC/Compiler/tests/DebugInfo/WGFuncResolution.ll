@@ -38,7 +38,7 @@ define void @test(i32* %dst) #0 {
   ret void
 
 ; CHECK-NOT: = call i32 @__builtin_IB_work_group_any
-; CHECK: [[res:%[a-zA-Z0-9]+]] =  call i32 @genx.GenISA.WorkGroupAny(i32 10), !dbg !1
+; CHECK: [[res:%[a-zA-Z0-9]+]] =  call i32 @llvm.genx.GenISA.WorkGroupAny(i32 10), !dbg !1
 }
 
 declare i32 @__builtin_IB_work_group_any(i32)

@@ -39,9 +39,9 @@ entry:
   br i1 %cond, label %BBTrue, label %BBFalse
 
 ; CHECK: entry:
-; CHECK: [[simdLaneId16:%[a-zA-Z0-9_.]+]] = call i16 @genx.GenISA.simdLaneId()
+; CHECK: [[simdLaneId16:%[a-zA-Z0-9_.]+]] = call i16 @llvm.genx.GenISA.simdLaneId()
 ; CHECK: [[simdLaneId:%[a-zA-Z0-9_.]+]] = zext i16 [[simdLaneId16]] to i32
-; CHECK: [[simdSize:%[a-zA-Z0-9_.]+]] = call i32 @genx.GenISA.simdSize()
+; CHECK: [[simdSize:%[a-zA-Z0-9_.]+]] = call i32 @llvm.genx.GenISA.simdSize()
 ; CHECK: [[totalPrivateMemPerThread:%[a-zA-Z0-9_.]+]] = mul i32 [[simdSize]], 80
 ; CHECK: [[r0_5:%[a-zA-Z0-9_.]+]] = extractelement <8 x i32> %r0, i32 5
 ; CHECK: [[threadId:%[a-zA-Z0-9_.]+]] = and i32 [[r0_5]], 511

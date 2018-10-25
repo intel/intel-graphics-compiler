@@ -65,6 +65,11 @@ public:
         AU.addRequired<CodeGenContextWrapper>();
     }
 
+    llvm::StringRef getPassName() const override
+    {
+        return "GeometryShaderLowering";
+    }
+
 private:
     /// Replaces high-level intrinsics GSinputVec with URBRead instructions.
     void lowerInputGS(llvm::Instruction* pInst);

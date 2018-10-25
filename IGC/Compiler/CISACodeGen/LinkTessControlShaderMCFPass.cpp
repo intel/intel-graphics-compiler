@@ -1146,7 +1146,7 @@ namespace IGC
     ///        HSControlPointID() calls.
     /// 
     ///        FROM -->
-    ///            % 3 = call i32 @genx.GenISA.DCL.HSControlPointID()
+    ///            % 3 = call i32 @llvm.genx.GenISA.DCL.HSControlPointID()
     ///            store i32 % 3, i32* @0
     ///            . . .
     ///            % 4 = load i32, i32* @0
@@ -1154,10 +1154,10 @@ namespace IGC
     ///            % 10 = insertelement <4 x i32> <i32 0, i32 0, i32 undef, i32 1>, i32 % 4, i32 2
     /// 
     ///        TO -->
-    ///            % 3 = call i32 @genx.GenISA.DCL.HSControlPointID()
+    ///            % 3 = call i32 @llvm.genx.GenISA.DCL.HSControlPointID()
     ///            store i32 % 3, i32* @0
     ///            . . .
-    ///            % 4 = call i32 @genx.GenISA.DCL.HSControlPointID()
+    ///            % 4 = call i32 @llvm.genx.GenISA.DCL.HSControlPointID()
     ///            . . .
     ///            % 10 = insertelement <4 x i32> <i32 0, i32 0, i32 undef, i32 1>, i32 % 4, i32 2
     /// 
@@ -1171,8 +1171,8 @@ namespace IGC
             GenISAIntrinsic::GenISA_DCL_HSControlPointID);
         
         // Pass through usages of the call to HSControlPointID.
-        // e.g.: %3 = call i32 @genx.GenISA.DCL.HSControlPointID()
-        //      %16 = call i32 @genx.GenISA.DCL.HSControlPointID()
+        // e.g.: %3 = call i32 @llvm.genx.GenISA.DCL.HSControlPointID()
+        //      %16 = call i32 @llvm.genx.GenISA.DCL.HSControlPointID()
         for (Value::user_iterator i = pHSControlPointID->user_begin(), e = pHSControlPointID->user_end();
             i != e;
             ++i)
@@ -1180,7 +1180,7 @@ namespace IGC
             Instruction *useInst = cast<Instruction>(*i);
 
             // Pass through the usages of the each HSControlPointID's call result.
-            // e.g.: call void @genx.GenISA.OutputTessControlPoint(float %19, float %20, float %21, float %22, i32 %11, i32 %16, i32 %17)
+            // e.g.: call void @llvm.genx.GenISA.OutputTessControlPoint(float %19, float %20, float %21, float %22, i32 %11, i32 %16, i32 %17)
             //       store i32 %3, i32* @0
             for (Value::user_iterator _i = useInst->user_begin(), _e = useInst->user_end();
                 _i != _e;
@@ -1217,7 +1217,7 @@ namespace IGC
             ldInst->replaceAllUsesWith(pCPId);
             ldInst->eraseFromParent();
 
-            // e.g.:  %4 = load i32, i32* @0 <--replaced with --> %4 = call i32 @genx.GenISA.DCL.HSControlPointID()
+            // e.g.:  %4 = load i32, i32* @0 <--replaced with --> %4 = call i32 @llvm.genx.GenISA.DCL.HSControlPointID()
         }
     }
 

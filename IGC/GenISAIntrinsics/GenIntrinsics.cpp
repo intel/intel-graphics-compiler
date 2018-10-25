@@ -514,7 +514,14 @@ Function *GenISAIntrinsic::getDeclaration(Module *M, GenISAIntrinsic::ID id, Arr
     // because intrinsics must be a specific type.
     Function *F = 
         cast<Function>(M->getOrInsertFunction(getName((GenISAIntrinsic::ID)(id-Intrinsic::num_intrinsics), Tys),
-        getType(M->getContext(), (GenISAIntrinsic::ID)(id-Intrinsic::num_intrinsics), Tys),getAttributes(M->getContext(),(GenISAIntrinsic::ID)(id-1))));
+                       getType(M->getContext(), 
+                       (GenISAIntrinsic::ID)(id-Intrinsic::num_intrinsics), Tys),
+                       getAttributes(M->getContext(),(GenISAIntrinsic::ID)(id-1))));
+
+    //Since Function::isIntrinsic() will return true due to llvm. prefix, Module::getOrInsertFunction fails to add the attributes.
+    //explicitly adding the attribute to handle this problem.
+    //This since is setup on the function declaration, attribute assignment is global and hence this approach suffices.
+    F->setAttributes(getAttributes(M->getContext(), (GenISAIntrinsic::ID)(id - 1)));
     return F;
 }
 
@@ -560,12 +567,10 @@ GenISAIntrinsic::ID GenISAIntrinsic::getIntrinsicID(const Function *F) {
     if (it == (*safeIntrinsicIDCache).end()) {
         const ValueName *valueName = F->getValueName();
         GenISAIntrinsic::ID Id = no_intrinsic;
-        unsigned int Len = valueName->getKeyLength();
-        const char* Name = valueName->getKeyData();
-        // we expect that only IGC intrinsics should call this function
-        assert(!(Len < 5 || Name[4] != '.' || Name[0] != 'g' || Name[1] != 'e'
-            || Name[2] != 'n' || Name[3] != 'x'));
-        Id = lookupGenIntrinsicID(Name, Len);
+        llvm::StringRef prefix = getGenIntrinsicPrefix();
+        llvm::StringRef Name = valueName->getKey();
+        assert(Name.size()>prefix.size() && Name.startswith(prefix) && "Not a valid gen intrinsic name signature\n");
+        Id = lookupGenIntrinsicID(Name.data(), Name.size());
         (*safeIntrinsicIDCache)[F] = Id;
         return Id;
     }

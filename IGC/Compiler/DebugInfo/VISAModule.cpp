@@ -246,7 +246,7 @@ const Argument* VISAModule::GetTracedArgument64Ops(const Value* pVal) const
 {
     /*  %.privateBuffer111 = bitcast i8* %23 to %opencl.image2d_t addrspace(1)**
     %24 = bitcast %opencl.image2d_t addrspace(1)** %.privateBuffer111 to i64*
-    %25 = call { i32, i32 } @genx.GenISA.ptr.to.pair.p1opencl.image2d_t(%opencl.image2d_t addrspace(1)* %Input)
+    %25 = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1opencl.image2d_t(%opencl.image2d_t addrspace(1)* %Input)
     %26 = extractvalue { i32, i32 } %25, 0
     %27 = extractvalue { i32, i32 } %25, 1
     %28 = insertelement <2 x i32> undef, i32 %26, i32 0
@@ -328,7 +328,7 @@ const Argument* VISAModule::GetTracedArgument64Ops(const Value* pVal) const
     pBaseValue = insertelement->getOperand(1);
 
     // Get to call from extractvalue
-    // %25 = call { i32, i32 } @genx.GenISA.ptr.to.pair.p1opencl.image2d_t(%opencl.image2d_t addrspace(1)* %Input)
+    // %25 = call { i32, i32 } @llvm.genx.GenISA.ptr.to.pair.p1opencl.image2d_t(%opencl.image2d_t addrspace(1)* %Input)
     if (!isa<const ExtractValueInst>(pBaseValue))
     {
         return arg;

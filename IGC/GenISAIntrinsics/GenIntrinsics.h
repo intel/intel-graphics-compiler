@@ -43,10 +43,11 @@ namespace GenISAIntrinsic {
     num_genisa_intrinsics
   };
 
+
   /// Intrinsic::getName(ID) - Return the LLVM name for an intrinsic, such as
   /// "llvm.ppc.altivec.lvx".
   std::string getName(ID id, ArrayRef<Type*> Tys = None);
-
+  
   
   /// Intrinsic::getDeclaration(M, ID) - Create or insert an LLVM Function
   /// declaration for an intrinsic, and return it.
@@ -63,11 +64,11 @@ namespace GenISAIntrinsic {
   IGCLLVM::AttributeSet getGenIntrinsicAttributes(LLVMContext& C, GenISAIntrinsic::ID id);
  
   //Override of isIntrinsic method defined in Function.h
+  inline const char * getGenIntrinsicPrefix() { return "llvm.genx."; }
   inline bool isIntrinsic(const Function *CF)
   {
-      return (CF->getName().startswith("genx"));
+      return (CF->getName().startswith(getGenIntrinsicPrefix()));
   }
-  
   ID getIntrinsicID(const Function *F);
   
 } // namespace GenISAIntrinsic

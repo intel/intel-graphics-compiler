@@ -3273,7 +3273,7 @@ bool CodeGenPatternMatch::MatchShuffleBroadCast(llvm::GenIntrinsicInst& I)
     // Match cases like:
     //    %84 = bitcast <2 x i32> %vCastload to <4 x half>
     //    %scalar269 = extractelement <4 x half> % 84, i32 0
-    //    %simdShuffle = call half @genx.GenISA.simdShuffle.f.f16(half %scalar269, i32 0)
+    //    %simdShuffle = call half @llvm.genx.GenISA.simdShuffle.f.f16(half %scalar269, i32 0)
     //
     // to mov with region and offset
     struct BroadCastPattern : public Pattern
@@ -3319,17 +3319,17 @@ bool CodeGenPatternMatch::MatchRegisterRegion(llvm::GenIntrinsicInst& I)
 
     /*
     * Match case 1 - With SubReg Offset: Shuffle( data, (laneID << x) + y )
-    *   %25 = call i16 @genx.GenISA.simdLaneId()
+    *   %25 = call i16 @llvm.genx.GenISA.simdLaneId()
     *   %30 = zext i16 %25 to i32
     *   %31 = shl nuw nsw i32 %30, 1  - Current LaneID shifted by x
     *   %36 = add i32 %31, 1          - Current LaneID shifted by x + y  Shuffle( data, (laneID << x) + 1 )
-    *   %37 = call float @genx.GenISA.WaveShuffleIndex.f32(float %21, i32 %36)
+    *   %37 = call float @llvm.genx.GenISA.WaveShuffleIndex.f32(float %21, i32 %36)
 
     * Match case 2(Special case of Match Case 1) - No SubReg Offset: Shuffle( data, (laneID << x) + 0 )
-    *    %25 = call i16 @genx.GenISA.simdLaneId()
+    *    %25 = call i16 @llvm.genx.GenISA.simdLaneId()
     *    %30 = zext i16 %25 to i32
     *    %31 = shl nuw nsw i32 %30, 1 - Current LaneID shifted by x
-    *    %32 = call float @genx.GenISA.WaveShuffleIndex.f32(float %21, i32 %31)
+    *    %32 = call float @llvm.genx.GenISA.WaveShuffleIndex.f32(float %21, i32 %31)
     */
 
     Value* data = I.getOperand(0);

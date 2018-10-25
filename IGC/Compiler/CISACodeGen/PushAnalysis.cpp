@@ -140,7 +140,7 @@ bool PushAnalysis::IsStatelessCBLoad(
     unsigned int& offset)
 {
     /*
-        %12 = call i64 @genx.GenISA.RuntimeValue(i32 2)
+        %12 = call i64 @llvm.genx.GenISA.RuntimeValue(i32 2)
         %13 = add i64 %12, 16
         %14 = inttoptr i64 %13 to <3 x float> addrspace(2)*
         %15 = load <3 x float> addrspace(2)* %14, align 16
@@ -257,7 +257,7 @@ bool PushAnalysis::IsStatelessCBLoad(
 //
 // Below is an example of pattern we're looking for:
 //
-//   %runtime_value_1 = call fast float @genx.GenISA.RuntimeValue(i32 1)
+//   %runtime_value_1 = call fast float @llvm.genx.GenISA.RuntimeValue(i32 1)
 //   %spv.bufferOffset.mdNode0.cr1 = bitcast float %runtime_value_1 to i32
 //   %1 = and i32 %spv.bufferOffset.mdNode1.cr1, -16
 //   %2 = add i32 %1, 24
@@ -1011,7 +1011,7 @@ void PushAnalysis::ProcessFunction()
                         if (inst->getType()->isHalfTy() && replacementValue->getType()->isFloatTy())
                         {
                             // Input is accessed using the half version of intrinsic, e.g.:
-                            //     call half @genx.GenISA.DCL.inputVec.f16 (i32 13, i32 2)
+                            //     call half @llvm.genx.GenISA.DCL.inputVec.f16 (i32 13, i32 2)
                             replacementValue = CastInst::CreateFPCast(replacementValue, inst->getType(), "",  inst);
                         }
                         inst->replaceAllUsesWith(replacementValue);

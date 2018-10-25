@@ -50,7 +50,7 @@ entry:
 ; CHECK: call void @llvm.dbg.value(metadata [[m46:![0-9]+]], i64 0, metadata [[m47:![0-9]+]])
 ; CHECK: [[CoordX:%[a-zA-Z0-9]+]] = extractelement <2 x float> %arg_value_float2, i32 0, !dbg !3
 ; CHECK: [[CoordY:%[a-zA-Z0-9]+]] = extractelement <2 x float> %arg_value_float2, i32 1, !dbg !3
-; CHECK: [[resFloat:%[a-zA-Z0-9]+]] = call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[CoordX]], float [[CoordY]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0), !dbg !3
+; CHECK: [[resFloat:%[a-zA-Z0-9]+]] = call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[CoordX]], float [[CoordY]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0), !dbg !3
 ; CHECK: [[res:%[a-zA-Z0-9]+]] = bitcast <4 x float> [[resFloat]] to <4 x i32>, !dbg !4
 
 }

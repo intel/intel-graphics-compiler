@@ -230,11 +230,11 @@ detectSampleAveragePattern2(const std::vector<Instruction*>& sampleInsts, Instru
 }
 
 // Need to match a very specific pattern here
-// @genx.GenISA.sampleptr1 => samples(tex0....) ---> This will be motionSample, sampling from tex0
-// @genx.GenISA.sampleptr2 => samples(tex1....) ---> This will be texelSample, sampling from tex1. We search similar to this
-// @genx.GenISA.sampleptr3 => samples(tex1....)
-// @genx.GenISA.sampleptr4 => samples(tex1....)
-// @genx.GenISA.sampleptr5 => samples(tex1....)
+// @llvm.genx.GenISA.sampleptr1 => samples(tex0....) ---> This will be motionSample, sampling from tex0
+// @llvm.genx.GenISA.sampleptr2 => samples(tex1....) ---> This will be texelSample, sampling from tex1. We search similar to this
+// @llvm.genx.GenISA.sampleptr3 => samples(tex1....)
+// @llvm.genx.GenISA.sampleptr4 => samples(tex1....)
+// @llvm.genx.GenISA.sampleptr5 => samples(tex1....)
 bool GatingSimilarSamples::checkAndSaveSimilarSampleInsts()
 {
     for (auto &I : BB->getInstList())

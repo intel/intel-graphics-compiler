@@ -142,26 +142,26 @@ bool SampleCmpToDiscard::canFoldValue(Instruction* inst, std::map<Value*, APFloa
 {
 	// currently we are handling the following type of cases 
 	/*
-	* %92 = call <4 x half> @genx.GenISA.sampleCptr.v4f16.f16.p196609v4f32.p524289i32(
+	* %92 = call <4 x half> @llvm.genx.GenISA.sampleCptr.v4f16.f16.p196609v4f32.p524289i32(
 		half %91, half %89, half %90, half %91, half %87, half 0xH0000, <4 x float> addrspace(196609)* null,
 		i32 addrspace(524289)* null, i32 0, i32 0, i32 0)
 	* %93 = extractelement <4 x half> %92, i32 0
 	* %94 = fsub half 0xH3C00, %93 // 1 - B
 	* %95 = fmul half %94, 0xH3400 // 0.25 * (1-B)
 	* %96 = fadd half %95, %93 // 0.25 * ( 1-B) + B 
-	* call void @genx.GenISA.OUTPUT.f16(half %96, half %96, half %96, half %96, i32 0, i32 0)
+	* call void @llvm.genx.GenISA.OUTPUT.f16(half %96, half %96, half %96, half %96, i32 0, i32 0)
 	* ret void
 	*/
 
 	/*
-	* %62 = call <4 x float> @genx.GenISA.sampleBCptr.v4f32.f32.p196609i8.p524293i8(
+	* %62 = call <4 x float> @llvm.genx.GenISA.sampleBCptr.v4f32.f32.p196609i8.p524293i8(
 	* float %61, float 0.000000e+00, float %57, float %58, float 0.000000e+00,
 	* float 0.000000e+00, i8 addrspace(196609)* null,
 	* i8 addrspace(524293)* inttoptr (i64 5 to i8 addrspace(524293)*), i32 0, i32 0, i32 0)
 	* %scalar40 = extractelement <4 x float> %62, i32 0
 	* %phitmp = fmul float %scalar40, 7.500000e-01
 	* %63 = fadd float %phitmp, 2.500000e-01
-	* call void @genx.GenISA.OUTPUT.f32(float %63, float %63, float %63, float %63, i32 0, i32 0)
+	* call void @llvm.genx.GenISA.OUTPUT.f32(float %63, float %63, float %63, float %63, i32 0, i32 0)
 	*/
 	bool foldInst = false;
 	APFloat newConstantFloat = cast<ConstantFP>(ConstantFP::get(inst->getType(), 1.0))->getValueAPF();
