@@ -9205,8 +9205,6 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
     int status = CM_SUCCESS;
     G4_SrcRegRegion *secondHalf[12];
 
-    //FIXME: consider enabling split send for this function too
-
     bool isHalfReturn = G4_Type_Table[dst->getType()].byteSize == 2;
     const bool halfInput = G4_Type_Table[params[0]->getType()].byteSize == 2;
 
@@ -9283,22 +9281,16 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
         }
     }
 
-    // For SKL+, if Pixel Null Mask is enabled, then the response length must
-    // be set to a value one larger.
-    //
-    // FIXME: numChannels is in fact the reponse length, which is misleading.
-    unsigned int reponseLength = dst->isNullReg() ? 0 : numChannels;
-    if (pixelNullMaskEnable) {
-        ++reponseLength;
-    }
+    uint32_t responseLength = builder->getSamplerResponseLength(numChannels, isHalfReturn, 8, 
+        pixelNullMaskEnable, dst->isNullReg());
 
     uint32_t fc = createSamplerMsgDesc(actualop, execSize, isHalfReturn, halfInput);
-    uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, useHeader, numRows, reponseLength);
+    uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, useHeader, numRows, responseLength);
     uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID_SAMPLER);
 
     if (cpsEnable)
     {
-        checkCPSEnable(actualop, reponseLength, 8);
+        checkCPSEnable(actualop, responseLength, 8);
         extDesc |= (1 << CPS_LOD_COMPENSATION_ENABLE);
     }
     G4_SendMsgDescriptor *msgDesc = builder->createSendMsgDesc(desc, extDesc, true, false, surface, sampler);

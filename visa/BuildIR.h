@@ -2411,6 +2411,9 @@ public:
     void expandPow(uint8_t exsize, G4_Predicate *predOpnd, bool saturate,
         G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd, uint32_t instOpt);
 
+    uint32_t getSamplerResponseLength(int numChannels, bool isFP16, int execSize,
+        bool pixelNullMask, bool nullDst);
+
 #include "HWCapsOpen.inc"
 
 private:
@@ -2445,9 +2448,6 @@ private:
 
     void buildTypedSurfaceAddressPayload(G4_SrcRegRegion* u, G4_SrcRegRegion* v, G4_SrcRegRegion* r, G4_SrcRegRegion* lod,
         uint32_t exSize, uint32_t instOpt, payloadSource sources[], uint32_t& len);
-
-    uint32_t getSamplerResponseLength(int numChannels, bool isFP16, int execSize,
-        bool pixelNullMask, bool nullDst);
 
     uint32_t setOwordForDesc(uint32_t desc, int numOword, bool isSLM = false) const;
 
