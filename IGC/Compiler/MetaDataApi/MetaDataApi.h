@@ -1124,14 +1124,13 @@ public:
     LocalOffsetMetaData(const char* name);
 
     /// Var related methods
-    VarType getVar(llvm::Module* m) const
+    VarType getVar() const
     {
-        auto globalVar = m->getNamedGlobal(m_Var.get());
-        return globalVar ? globalVar : nullptr;
+        return m_Var.get();
     }
     void setVar( const VarType& val)
     {
-        m_Var.set(val->getName().str());
+        m_Var.set(val);
     }
     bool isVarHasValue() const
     {
@@ -1189,7 +1188,7 @@ private:
 
 private:
     // data members
-    MetaDataValue<std::string> m_Var;
+    MetaDataValue<llvm::GlobalVariable> m_Var;        
     MetaDataValue<int32_t> m_Offset;
     // parent node
     const llvm::MDNode* m_pNode;
