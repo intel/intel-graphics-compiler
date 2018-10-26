@@ -139,7 +139,7 @@ private:
     bool hoistCongruentPhi(llvm::Function& F);
 
     // Move LI back into loops
-    bool loopSink(llvm::BasicBlock* BBWithPressure);
+    bool loopSink(llvm::BasicBlock* BBWithPressure, bool SinkMultipleLevel);
     bool canLoopSink(llvm::Instruction *I, llvm::Loop *L, llvm::BasicBlock *BB);
     bool LoopSinkInstructions(
         llvm::SmallVector<llvm::Instruction*, 64> sinkCandidates, llvm::Loop* L);

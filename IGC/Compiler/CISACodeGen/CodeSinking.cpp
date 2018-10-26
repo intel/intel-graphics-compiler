@@ -1067,54 +1067,78 @@ bool CodeSinking::hoistCongruentPhi(Function& F)
     return changed;
 }
 
-bool CodeSinking::loopSink(BasicBlock* BBWithPressure)
+bool CodeSinking::loopSink(BasicBlock* BBWithPressure, bool SinkMultipleLevel)
 {
     // Sink loop invariants back into the loop body if register
     // pressure can be reduced.
 
-    Loop* L = LI->getLoopFor(BBWithPressure);
-    if (!L)
+    // L0 is inner loop
+    Loop* L0 = LI->getLoopFor(BBWithPressure);
+    if (!L0)
         return false;
 
-    BasicBlock *Preheader = L->getLoopPreheader();
-    if (!Preheader)
-        return false;
-
-    // Find LIs in preheader that would definitely reduce
-    // register pressure after moving those LIs inside the loop
-    SmallPtrSet<Instruction *, 16> stores;
-    SmallVector<Instruction*, 64> sinkCandidates;
-    bool changed = false;
-
-    // Moving LI back to the loop. Here we only consider to move LIs into
-    // the single BB (BBWithPressure).
-    //
-    // Go over instructions in reverse order and sink the noOp instructions
-    // on-the-fly first, so that their dependent instructions can be added
-    // into candidate lists for further sinking.
-    for (auto II = Preheader->rbegin(), IE = Preheader->rend(); II != IE;)
-    {
-        Instruction *I = &*II++;
-
-        if (I->mayWriteToMemory()) {
-            stores.insert(I);
-        }
-        if (!canLoopSink(I, L, BBWithPressure))
-            continue;
-
-        // Sink noOp instruction.
-        if (isNoOpInst(I, CTX)) {
-            if (SinkInstruction(I, stores, true)) {
-                changed = true;
-            }
-            continue;
-        }
-
-        sinkCandidates.push_back(I);
+    // L1 is parent loop
+    Loop* L1 = nullptr;
+    if (SinkMultipleLevel) {
+        L1 = L0->getParentLoop();
     }
 
-    bool t = LoopSinkInstructions(sinkCandidates, L);
-    changed |= t;
+    // At most, do two-level loop sink
+    //     x = ...
+    //   ParentLoop
+    //     y = ...
+    //     Loop:
+    //          = x 
+    //          = y
+    // Normally, only y can be sinked. When multiLevel is true,
+    // x can be sinked into Loop (inner) as well.
+    bool changed = false;
+    for (int i = 0; i < 2; ++i)
+    {
+        Loop* L = (i == 0) ? L0 : L1;
+        if (!L) {
+            break;
+        }
+        // No Preheader, stop!
+        BasicBlock *Preheader = L->getLoopPreheader();
+        if (!Preheader)
+            break;
+
+        // Find LIs in preheader that would definitely reduce
+        // register pressure after moving those LIs inside the loop
+        SmallPtrSet<Instruction *, 16> stores;
+        SmallVector<Instruction*, 64> sinkCandidates;
+
+        // Moving LI back to the loop. Here we only consider to move LIs into
+        // the single BB (BBWithPressure).
+        //
+        // Go over instructions in reverse order and sink the noOp instructions
+        // on-the-fly first, so that their dependent instructions can be added
+        // into candidate lists for further sinking.
+        for (auto II = Preheader->rbegin(), IE = Preheader->rend(); II != IE;)
+        {
+            Instruction *I = &*II++;
+
+            if (I->mayWriteToMemory()) {
+                stores.insert(I);
+            }
+            if (!canLoopSink(I, L0, BBWithPressure))
+                continue;
+
+            // Sink noOp instruction.
+            if (isNoOpInst(I, CTX)) {
+                if (SinkInstruction(I, stores, true)) {
+                    changed = true;
+                }
+                continue;
+            }
+
+            sinkCandidates.push_back(I);
+        }
+
+        bool t = LoopSinkInstructions(sinkCandidates, L0);
+        changed |= t;
+    }
 
     // Invoke LocalSink() to move def to its first use
     // (Currently, it should be no opt as LoopSink only
