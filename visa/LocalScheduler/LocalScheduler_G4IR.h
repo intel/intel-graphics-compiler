@@ -86,7 +86,7 @@ class Node
     unsigned nodeID;
 
     // LIR instruction pointer
-    std::vector<G4_INST *> instVec;
+    std::list<G4_INST *> instVec;
 
     // Longest distance to the end of the DAG.
     int priority;
@@ -137,7 +137,7 @@ public:
     {
     }
     void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
-    const std::vector<G4_INST *> *getInstructions() const { return &instVec; }
+    const std::list<G4_INST *> *getInstructions() const { return &instVec; }
     DepType isBarrier() const { return barrier; }
     void MarkAsUnresolvedIndirAddressBarrier() {
       barrier = INDIRECT_ADDR_BARRIER;

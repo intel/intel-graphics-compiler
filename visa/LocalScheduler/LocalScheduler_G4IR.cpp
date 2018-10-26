@@ -324,7 +324,7 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
                 }
                 if (externCycle == cycle) {
                     ofile << "[" << (*nodeIT)->nodeID << "]";
-                    const std::vector<G4_INST *> *instrs
+                    const std::list<G4_INST *> *instrs
                         = (*nodeIT)->getInstructions();
                     if (instrs->empty()) {
                         ofile << "I" << 0;
@@ -1002,7 +1002,6 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
         bool hasIndir = false;
         BDvec.clear();
 
-
         // Get buckets for all physical registers assigned in curInst
         hasIndir = getBucketDescrs(node, BDvec);
         if (hasIndir)
@@ -1351,7 +1350,7 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
     for (auto it = allNodes.rbegin(), ite = allNodes.rend(); it != ite; ++it)
     {
         Node *node = *it;
-        G4_INST *inst = (*node->getInstructions())[0];
+        G4_INST *inst = (*node->getInstructions()).front();
         // {0,1}
         if (!foundFirst && isTypedWritePart(inst, 0)) {
             foundFirst = node;
@@ -1379,7 +1378,7 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
     for (auto it = allNodes.rbegin(), ite = allNodes.rend(); it != ite; ++it)
     {
         Node *node = *it;
-        G4_INST *inst = (*node->getInstructions())[0];
+        G4_INST *inst = (*node->getInstructions()).front();
         if (!leadingURB && isLeadingURBWrite(inst))
         {
             leadingURB = node;
@@ -1388,7 +1387,7 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
         {
             if (inst->isSend() && inst->getMsgDesc()->getFuncId() == SFID_URB)
             { 
-                if (canFuseURB(inst, (*leadingURB->getInstructions())[0]))
+                if (canFuseURB(inst, (*leadingURB->getInstructions()).front()))
                 {
                     instrPairs.emplace_back(DDD::instrPair_t(leadingURB, node));
                     leadingURB = nullptr;
@@ -1420,8 +1419,8 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
     for (auto&& pair : instrPairs) {
         Node *firstNode = pair.first;
         Node *secondNode = pair.second;
-        G4_INST *firstInstr = (*firstNode->getInstructions())[0];
-        G4_INST *secondInstr = (*secondNode->getInstructions())[0];
+        G4_INST *firstInstr = (*firstNode->getInstructions()).front();
+        G4_INST *secondInstr = (*secondNode->getInstructions()).front();
         assert(firstNode->getInstructions()->size() == 1);
         assert(secondNode->getInstructions()->size() == 1);
         assert(*firstNode->getInstructions()->begin() == firstInstr);
@@ -1566,7 +1565,7 @@ void DDD::dumpDagDot(G4_BB *bb)
             ofile << G4_Inst_Table[inst->opcode()].str << ", ";
         }
         ofile << "[" << node->nodeID << "]";
-        const std::vector<G4_INST *> *instrs = node->getInstructions();
+        const std::list<G4_INST *> *instrs = node->getInstructions();
         if (instrs->empty()) {
             ofile << "I" << 0;
         } else {
@@ -1669,8 +1668,8 @@ struct earlyCmp {
 #if (defined(_DEBUG) || defined(_INTERNAL))
         if (sequentialSched)
         {
-            return ((*n1->getInstructions())[0]->getLocalId()
-                > (*n2->getInstructions())[0]->getLocalId());
+            return ((*n1->getInstructions()).front()->getLocalId()
+                > (*n2->getInstructions()).front()->getLocalId());
         }
 #endif
         return n1->getEarliest() > n2->getEarliest();
@@ -1692,8 +1691,8 @@ struct criticalCmp
         // with the lowermost number.
         if (sequentialSched)
         {
-            return ((*n1->getInstructions())[0]->getLocalId()
-                > (*n2->getInstructions())[0]->getLocalId());
+            return ((*n1->getInstructions()).front()->getLocalId()
+                > (*n2->getInstructions()).front()->getLocalId());
         }
 #endif
         // Critical Path Heuristic
@@ -1708,8 +1707,8 @@ struct criticalCmp
         else
         {
             // 1. Favor sends over non-sends
-            bool n1_isSend = (*n1->getInstructions())[0]->isSend();
-            bool n2_isSend = (*n2->getInstructions())[0]->isSend();
+            bool n1_isSend = (*n1->getInstructions()).front()->isSend();
+            bool n2_isSend = (*n2->getInstructions()).front()->isSend();
             if (n1_isSend != n2_isSend)
             {
                 return n1_isSend < n2_isSend;
@@ -1726,8 +1725,8 @@ struct criticalCmp
             //    NOTE: This is new.
             else
             {
-                return (*n1->getInstructions())[0]->getLocalId()
-                     > (*n2->getInstructions())[0]->getLocalId();
+                return (*n1->getInstructions()).front()->getLocalId()
+                     > (*n2->getInstructions()).front()->getLocalId();
             }
         }
     }
@@ -2063,7 +2062,7 @@ uint32_t DDD::getEdgeLatency_new(Node *node, DepType depT) {
     {
     case RAW:
     case RAW_MEMORY: {
-        G4_INST *inst = (*node->getInstructions())[0];
+        G4_INST *inst = (*node->getInstructions()).front();
         latency = LT.getLatency(inst).getSumOldStyle();
         break;
     }
