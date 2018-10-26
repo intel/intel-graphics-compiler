@@ -60,7 +60,7 @@ InlineLocalsResolution::InlineLocalsResolution() :
     initializeInlineLocalsResolutionPass(*PassRegistry::getPassRegistry());
 }
 
-//const unsigned int InlineLocalsResolution::VALID_LOCAL_HIGH_BITS = 0x10000000;
+const unsigned int InlineLocalsResolution::VALID_LOCAL_HIGH_BITS = 0x10000000;
 
 static bool useAsPointerOnly(Value *V) {
     assert(V->getType()->isPointerTy() && "Expect the input value is a pointer!");
@@ -166,10 +166,10 @@ bool InlineLocalsResolution::runOnModule(Module &M)
                 continue;
             }
 
-            //bool UseAsPointerOnly = useAsPointerOnly(arg);
+            bool UseAsPointerOnly = useAsPointerOnly(arg);
             unsigned Offset = totalSize;
-            //if (!UseAsPointerOnly)
-            //    Offset |= VALID_LOCAL_HIGH_BITS;
+            if (!UseAsPointerOnly)
+                Offset |= VALID_LOCAL_HIGH_BITS;
 
             if (IsFirstSLMArgument) {
                 auto BufType = ArrayType::get(Type::getInt8Ty(M.getContext()), 0);
@@ -433,8 +433,8 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
         {
             LocalOffsetMetaDataHandle lo = LocalOffsetMetaDataHandle(LocalOffsetMetaData::get());
             unsigned Offset = offsetIter->second;
-            //if (!useAsPointerOnly(offsetIter->first))
-            //    Offset |= VALID_LOCAL_HIGH_BITS;
+            if (!useAsPointerOnly(offsetIter->first))
+                Offset |= VALID_LOCAL_HIGH_BITS;
             lo->setVar(offsetIter->first);
             lo->setOffset(Offset);
             pMdUtils->getFunctionsInfoItem(iter->first)->addLocalOffsetsItem(lo);
