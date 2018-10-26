@@ -1210,11 +1210,7 @@ double __builtin_spirv_OpGroupBroadcast_i32_f64_v3i32(uint Execution, double Val
     }
     else if (Execution == Subgroup) 
     {
-        uint2 result;
-        uint2 split_val = as_uint2(Value);
-        result.s0 = __builtin_IB_simd_shuffle(split_val.s0, LocalId.s0);
-        result.s1 = __builtin_IB_simd_shuffle(split_val.s1, LocalId.s0);
-        return as_double(result);
+        return __builtin_IB_simd_shuffle_df( Value, LocalId.s0 );
     }
     else
     {
@@ -1231,11 +1227,7 @@ double __builtin_spirv_OpGroupBroadcast_i32_f64_v3i64(uint Execution, double Val
     }
     else if (Execution == Subgroup) 
     {
-        uint2 result;
-        uint2 split_val = as_uint2(Value);
-        result.s0 = __builtin_IB_simd_shuffle(split_val.s0, (uint)LocalId.s0);
-        result.s1 = __builtin_IB_simd_shuffle(split_val.s1, (uint)LocalId.s0);
-        return as_double(result);
+        return __builtin_IB_simd_shuffle_df( Value, (uint) LocalId.s0 );
     }
     else
     {
