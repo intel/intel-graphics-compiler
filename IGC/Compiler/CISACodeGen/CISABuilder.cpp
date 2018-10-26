@@ -3515,27 +3515,31 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         }
     }
 
-	auto enableScheduler = [=]() {
-		if (context->getModuleMetaData()->csInfo.forcedVISAPreRASchedulerOff) 
-			return false;
-		if (IGC_IS_FLAG_ENABLED(EnableVISAPreSched) && m_program->m_DriverInfo->enableVISAPreRAScheduler()) 
-			return true;
-		if (IGC_IS_FLAG_ENABLED(ForceVISAPreSched)) 
-			return true;
-		return false;
-	};
-
-	if (enableScheduler())
-    {
-        // Check if preRA scheduler is disabled from compiler options.
-        bool SchedEnable = true;
-        if (context->type == ShaderType::OPENCL_SHADER)
-        {
+    auto enableScheduler = [=]() {
+        // Check if preRA scheduler is disabled from input.
+        if (context->getModuleMetaData()->csInfo.forcedVISAPreRASchedulerOff)
+            return false;
+        if (context->type == ShaderType::OPENCL_SHADER) {
             auto ClContext = static_cast<OpenCLProgramContext*>(context);
-            SchedEnable = ClContext->m_InternalOptions.IntelEnablePreRAScheduling;
+            if (!ClContext->m_InternalOptions.IntelEnablePreRAScheduling)
+                return false;
         }
-        vbuilder->SetOption(vISA_preRA_Schedule, SchedEnable);
 
+        // Check reg-key.
+        if (IGC_IS_FLAG_ENABLED(ForceVISAPreSched))
+            return true;
+
+        // API check.
+        if (IGC_IS_FLAG_ENABLED(EnableVISAPreSched) &&
+            m_program->m_DriverInfo->enableVISAPreRAScheduler())
+            return true;
+
+        return false;
+    };
+
+    if (enableScheduler())
+    {
+        vbuilder->SetOption(vISA_preRA_Schedule, true);
         if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedCtrl))
         {
             vbuilder->SetOption(vISA_preRA_ScheduleCtrl, Val);
