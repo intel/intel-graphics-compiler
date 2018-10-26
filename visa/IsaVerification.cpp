@@ -1505,7 +1505,8 @@ static void verifyInstructionArith(const common_isa_header& isaHeader, const ker
             case ISA_ADDC:
             case ISA_SUBB:
             {
-                REPORT_INSTRUCTION(options,srcType == ISA_TYPE_UD, "%s src0 and src1 only supports single UD type", ISA_Inst_Table[opcode].str);
+                REPORT_INSTRUCTION(options,srcType == ISA_TYPE_UD || srcType == ISA_TYPE_UV, 
+                    "%s src0 and src1 only supports single UD type", ISA_Inst_Table[opcode].str);
                 break;
             }
             case ISA_DP4A:
