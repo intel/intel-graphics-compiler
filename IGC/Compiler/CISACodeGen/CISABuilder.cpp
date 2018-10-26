@@ -3515,9 +3515,17 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         }
     }
 
-    if ((IGC_IS_FLAG_ENABLED(EnableVISAPreSched) &&
-         m_program->m_DriverInfo->enableVISAPreRAScheduler()) ||
-        IGC_IS_FLAG_ENABLED(ForceVISAPreSched))
+	auto enableScheduler = [=]() {
+		if (context->getModuleMetaData()->csInfo.forcedVISAPreRASchedulerOff) 
+			return false;
+		if (IGC_IS_FLAG_ENABLED(EnableVISAPreSched) && m_program->m_DriverInfo->enableVISAPreRAScheduler()) 
+			return true;
+		if (IGC_IS_FLAG_ENABLED(ForceVISAPreSched)) 
+			return true;
+		return false;
+	};
+
+	if (enableScheduler())
     {
         // Check if preRA scheduler is disabled from compiler options.
         bool SchedEnable = true;
