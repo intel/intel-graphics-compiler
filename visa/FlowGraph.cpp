@@ -5820,12 +5820,12 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
     void* gtpinBuffer = allocCodeBlock(bufferSize);
     unsigned int numTokens = 1;
 
-    std::memcpy(gtpinBuffer, &t, sizeof(gtpin::igc::igc_init_t));
-    std::memcpy((char*)gtpinBuffer + sizeof(gtpin::igc::igc_init_t),
+    memcpy_s(gtpinBuffer, sizeof(gtpin::igc::igc_init_t), &t, sizeof(gtpin::igc::igc_init_t));
+    memcpy_s((char*)gtpinBuffer + sizeof(gtpin::igc::igc_init_t), sizeof(uint32_t),
         &numTokens, sizeof(uint32_t));
-    std::memcpy((char*)gtpinBuffer + sizeof(gtpin::igc::igc_init_t) + sizeof(uint32_t),
+    memcpy_s((char*)gtpinBuffer + sizeof(gtpin::igc::igc_init_t) + sizeof(uint32_t), sizeof(gtpin::igc::igc_token_header_t),
         &th, sizeof(gtpin::igc::igc_token_header_t));
-    std::memcpy((char*)gtpinBuffer + sizeof(gtpin::igc::igc_init_t) + sizeof(uint32_t) + sizeof(gtpin::igc::igc_token_header_t),
+    memcpy_s((char*)gtpinBuffer + sizeof(gtpin::igc::igc_init_t) + sizeof(uint32_t) + sizeof(gtpin::igc::igc_token_header_t), rerasize,
         rerabuffer, rerasize);
 
     free(rerabuffer);
