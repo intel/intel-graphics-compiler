@@ -980,7 +980,7 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb, unsigned int &threeSou
                 i++)
             {
                 G4_INST* inst = (*i);
-                if (inst->getNumSrc() == 3 && !inst->isSend())
+                if (prevInst && inst->getNumSrc() == 3 && !inst->isSend())
                 {
                     setupBankForSrc0(inst, prevInst);
                 }

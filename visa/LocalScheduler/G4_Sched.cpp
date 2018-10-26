@@ -530,7 +530,7 @@ bool preRA_Scheduler::run()
             G4_Label* L = bb->getLabel();
             if (!L || TargetBB.compare(L->asLabel()->getLabel()) != 0) {
                 SCHED_DUMP(std::cerr << "Skip non-target block, " 
-                                     << L->asLabel()->getLabel() << "\n");
+                                     << (L ? L->asLabel()->getLabel() : "")  << "\n");
                 continue;
             }
         }
