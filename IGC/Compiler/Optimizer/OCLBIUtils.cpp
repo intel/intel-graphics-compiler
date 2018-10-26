@@ -1641,6 +1641,12 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_HMIN"]          = CSimpleIntrinMapping::create(Intrinsic::minnum);
     m_CommandMap["__builtin_IB_dmin"]          = CSimpleIntrinMapping::create(Intrinsic::minnum);
     m_CommandMap["__builtin_IB_dmax"]          = CSimpleIntrinMapping::create(Intrinsic::maxnum);
+    m_CommandMap["__builtin_IB_mul_rtz_f64"]   = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_mul_rtz);
+    m_CommandMap["__builtin_IB_mul_rtz_f32"]   = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_mul_rtz);
+    m_CommandMap["__builtin_IB_fma_rtz_f64"]   = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_fma_rtz);
+    m_CommandMap["__builtin_IB_fma_rtz_f32"]   = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_fma_rtz);
+    m_CommandMap["__builtin_IB_add_rtz_f64"]   = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_add_rtz);
+    m_CommandMap["__builtin_IB_add_rtz_f32"]   = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_add_rtz);
 
     //Sync built-ins
     m_CommandMap["__builtin_IB_thread_group_barrier"] = CSimpleIntrinMapping::create(GenISAIntrinsic::GenISA_threadgroupbarrier, false);

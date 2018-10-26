@@ -7303,6 +7303,11 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_evaluateSampler:
         // nothing to do
         break;
+    case GenISAIntrinsic::GenISA_mul_rtz:
+    case GenISAIntrinsic::GenISA_fma_rtz:
+    case GenISAIntrinsic::GenISA_add_rtz:
+        emitFPOrtz(inst);
+        break;
     default:
         // we assume that some of gen-intrinsic should always be pattern-matched away,
         // therefore we do not handle them in visa-emission, cases include:
@@ -11810,6 +11815,48 @@ void EmitPass::emititof(llvm::GenIntrinsicInst* inst)
     }
     m_encoder->Cast(dst, src);
     m_encoder->Push();
+
+    ResetRoundingMode(inst);
+}
+
+// Emit FP Operations (FPO) using round-to-zero (rtz)
+void EmitPass::emitFPOrtz(llvm::GenIntrinsicInst* inst)
+{
+    assert(inst->getNumArgOperands() >= 2 && "ICE: incorrect gen intrinsic");
+
+    GenISAIntrinsic::ID GID = inst->getIntrinsicID();
+    CVariable* src0 = GetSymbol(inst->getOperand(0));
+    CVariable* src1 = GetSymbol(inst->getOperand(1));
+    CEncoder::RoundingMode RM = CEncoder::RoundingMode::RoundToZero;
+    CVariable* dst = m_destination;
+
+    if (RM != m_roundingMode)
+    {
+        m_encoder->SetCr0FromRneModeTo(RM);
+        m_roundingMode = RM;
+    }
+
+    switch (GID)
+    {
+    default:
+        assert(false && "ICE: unexpected Gen Intrinsic");
+        break;
+    case GenISAIntrinsic::GenISA_mul_rtz:
+        m_encoder->Mul(dst, src0, src1);
+        m_encoder->Push();
+        break;
+    case  GenISAIntrinsic::GenISA_add_rtz:
+        m_encoder->Add(dst, src0, src1);
+        m_encoder->Push();
+        break;
+    case GenISAIntrinsic::GenISA_fma_rtz:
+      {
+        CVariable* src2 = GetSymbol(inst->getOperand(2));
+        m_encoder->Mad(dst, src0, src1, src2);
+        m_encoder->Push();
+        break;
+      }
+    }
 
     ResetRoundingMode(inst);
 }

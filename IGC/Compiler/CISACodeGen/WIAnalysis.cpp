@@ -1032,7 +1032,10 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
       intrinsic_name == llvm_waveBallot ||
       intrinsic_name == llvm_waveAll ||
       intrinsic_name == llvm_fma ||
-      GII_id == GenISAIntrinsic::GenISA_getSR0)
+      GII_id == GenISAIntrinsic::GenISA_getSR0 ||
+      GII_id == GenISAIntrinsic::GenISA_mul_rtz ||
+      GII_id == GenISAIntrinsic::GenISA_fma_rtz ||
+      GII_id == GenISAIntrinsic::GenISA_add_rtz)
   {
     if (intrinsic_name == llvm_input ||
         intrinsic_name == llvm_shaderinputvec)

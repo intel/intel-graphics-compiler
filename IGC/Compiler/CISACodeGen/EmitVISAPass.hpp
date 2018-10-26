@@ -307,6 +307,7 @@ public:
     void emitHSSGV(llvm::GenIntrinsicInst* inst);
     void emitf32tof16_rtz(llvm::GenIntrinsicInst* inst);
     void emititof(llvm::GenIntrinsicInst* inst);
+    void emitFPOrtz(llvm::GenIntrinsicInst* inst);
     void emitfptrunc(llvm::GenIntrinsicInst* inst);
     CEncoder::RoundingMode GetRoundingMode(llvm::GenIntrinsicInst* inst);
     void ResetRoundingMode(llvm::GenIntrinsicInst* inst);
