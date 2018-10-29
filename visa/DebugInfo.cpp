@@ -1750,6 +1750,9 @@ void resetGenOffsets(G4_Kernel& kernel)
 void updateDebugInfo(G4_Kernel& kernel, G4_INST* inst, LivenessAnalysis& liveAnalysis, LiveRange* lrs[], BitSet& live, DebugInfoState* state,
     bool closeAllOpenIntervals)
 {
+    if (closeAllOpenIntervals && !state->getPrevInst())
+        return;
+
     auto krnlDbgInfo = kernel.getKernelDebugInfo();
 
     // Update live-intervals only when bits change in bit-vector.

@@ -408,7 +408,7 @@ void FlowGraph::matchLoop(INST_LIST& instlist)
 
 }
 
-G4_INST* FlowGraph::createNewLabelInst(G4_Label* label, int lineNo = 0, int CISAOff = 0)
+G4_INST* FlowGraph::createNewLabelInst(G4_Label* label, int lineNo = 0, int CISAOff = UNMAPPABLE_VISA_INDEX)
 {
     //srcFileName is NULL
     return builder->createInternalInst(NULL, G4_label,

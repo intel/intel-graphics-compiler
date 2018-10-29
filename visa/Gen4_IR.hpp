@@ -1746,14 +1746,14 @@ namespace vISA
 
         void setStateOpen(uint32_t VISAIndex)
         {
-            MUST_BE_TRUE(state == Closed, "Cannot open internal in Open state");
+            //MUST_BE_TRUE(state == Closed, "Cannot open internal in Open state");
             state = Open;
             openIntervalVISAIndex = VISAIndex;
         }
 
         void setStateClosed(uint32_t VISAIndex)
         {
-            MUST_BE_TRUE(state == Open, "Cannot close interval in Close state");
+            //MUST_BE_TRUE(state == Open, "Cannot close interval in Close state");
             state = Closed;
             addLiveInterval(VISAIndex, openIntervalVISAIndex);
         }

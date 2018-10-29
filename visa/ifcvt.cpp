@@ -457,7 +457,7 @@ namespace {
             std::string id = "LABEL__EMPTYBB__" + toString(BB->getId());
             G4_Label *label = IRB->createLabel(id, LABEL_BLOCK);
             G4_INST *inst =
-                IRB->createInst(nullptr, G4_label, nullptr, false,
+                IRB->createInternalInst(nullptr, G4_label, nullptr, false,
                                 UNDEFINED_EXEC_SIZE, nullptr,
                                 label, nullptr, 0);
             BB->push_back(inst);
