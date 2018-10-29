@@ -387,34 +387,18 @@ namespace IGC
 
             {
 
-                bool needMkdir = 0;
-
-                if(IGC_IS_FLAG_ENABLED(DumpLLVMIR) ||
-
+                bool needMkdir = 
+                    IGC_IS_FLAG_ENABLED(DumpLLVMIR) ||
                     IGC_IS_FLAG_ENABLED(EnableCosDump) ||
-
                     IGC_IS_FLAG_ENABLED(EnableVISAOutput) ||
-
                     IGC_IS_FLAG_ENABLED(EnableVISABinary) ||
-
                     IGC_IS_FLAG_ENABLED(EnableVISADumpCommonISA) ||
-
                     GetDebugFlag(DebugFlag::DUMP_AFTER_PASSES) ||
-
                     GetDebugFlag(DebugFlag::VISA_OUTPUT) ||
-
                     GetDebugFlag(DebugFlag::VISA_BINARY) ||
-
                     GetDebugFlag(DebugFlag::VISA_DUMPCOMMONISA) ||
-
-                    IGC_IS_FLAG_ENABLED(EnableCapsDump))
-
-                {
-
-                    needMkdir = 1;
-
-                }
-
+                    IGC_IS_FLAG_ENABLED(EnableCapsDump) ||
+                    IGC_IS_FLAG_ENABLED(ShaderOverride);
 
 
                 char dumpPath[256];
