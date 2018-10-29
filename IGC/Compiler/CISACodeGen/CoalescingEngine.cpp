@@ -1171,8 +1171,6 @@ CVariable* CoalescingEngine::PrepareExplicitPayload(
     {
         payload = outProgram->GetNewVariable(numOperands*numLanes(simdMode), ISA_TYPE_F, EALIGN_GRF);
 
-        encoder->LifetimeStart(payload);
-
         for(uint i=0;i < numOperands;i++)
         {
             Value* val = m_PayloadMapping.GetPayloadElementToValueMapping(inst, i);
