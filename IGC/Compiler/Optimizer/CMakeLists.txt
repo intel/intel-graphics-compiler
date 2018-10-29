@@ -2,6 +2,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_subdirectory(OpenCLPasses)
 add_subdirectory(OpenGLPasses)
+add_subdirectory(IGCInstCombiner)
 
 set(IGC_BUILD__SRC__Optimizer
     "${CMAKE_CURRENT_SOURCE_DIR}/BuiltInFuncImport.cpp"
@@ -25,6 +26,7 @@ set(IGC_BUILD__SRC__Compiler_Optimizer
     ${IGC_BUILD__SRC__Optimizer}
     ${IGC_BUILD__SRC__Optimizer_OpenCLPasses}
     ${IGC_BUILD__SRC__Optimizer_OpenGLPasses}
+    ${IGC_BUILD__SRC__Optimizer_IGCInstCombiner}
     PARENT_SCOPE
   )
 
@@ -49,6 +51,7 @@ set(IGC_BUILD__HDR__Compiler_Optimizer
     ${IGC_BUILD__HDR__Optimizer}
     ${IGC_BUILD__HDR__Optimizer_OpenCLPasses}
     ${IGC_BUILD__HDR__Optimizer_OpenGLPasses}
+    ${IGC_BUILD__HDR__Optimizer_IGCInstCombiner}
     PARENT_SCOPE
   )
 
@@ -59,6 +62,7 @@ igc_sg_register(
     GROUPS
       Compiler__Optimizer_OpenCLPasses
       Compiler__Optimizer_OpenGLPasses
+      Compiler__Optimizer_IGCInstCombiner
     FILES
       ${IGC_BUILD__SRC__Optimizer}
       ${IGC_BUILD__HDR__Optimizer}

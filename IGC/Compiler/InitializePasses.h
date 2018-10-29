@@ -135,3 +135,5 @@ void initializeCheckInstrTypesPass(llvm::PassRegistry&);
 void initializeHalfPromotionPass(llvm::PassRegistry&);
 void initializeFixFastMathFlagsPass(llvm::PassRegistry&);
 void initializeCodeAssumptionPass(llvm::PassRegistry&);
+void initializeIGCInstructionCombiningPassPass(llvm::PassRegistry&);
+

@@ -157,6 +157,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/SetMathPrecisionForPositionOutput.hpp"
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "Compiler/SampleCmpToDiscard.h"
+#include "Compiler/Optimizer/IGCInstCombiner/4.0/IGCInstructionCombining.hpp"
 
 #include "DebugInfo.hpp"
 
@@ -489,7 +490,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         if (IGC_IS_FLAG_ENABLED(EnableAdvMemOpt))
           mpm.add(createAdvMemOptPass());
         mpm.add(createMemOptPass());
-        mpm.add(llvm::createInstructionCombiningPass());
+        mpm.add(createIGCInstructionCombiningPass());
     }
 
     if (!isOptDisabled &&
@@ -535,7 +536,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         // Optimize lower-level IR
         if (!fastCompile)
         {
-            mpm.add(createInstructionCombiningPass());
+            mpm.add(createIGCInstructionCombiningPass());
         }
         mpm.add(new GenSpecificPattern());
         if (!fastCompile)
@@ -1179,7 +1180,7 @@ void OptimizeIR(CodeGenContext* pContext)
             mpm.add(createGenFDIVEmulation());
         }
 
-        mpm.add(llvm::createInstructionCombiningPass());
+        mpm.add(createIGCInstructionCombiningPass());
         mpm.add(llvm::createDeadCodeEliminationPass());       // this should be done both before/after constant propagation
 
         if (pContext->m_instrTypes.hasGenericAddressSpacePointers &&
@@ -1219,7 +1220,7 @@ void OptimizeIR(CodeGenContext* pContext)
                     mpm.add(new CustomLoopVersioning());
                 }
 
-                mpm.add(llvm::createInstructionCombiningPass());
+                mpm.add(createIGCInstructionCombiningPass());
                 if (IGC_IS_FLAG_ENABLED(EnableAdvCodeMotion) &&
                     pContext->type == ShaderType::OPENCL_SHADER &&
                     !pContext->m_instrTypes.hasSwitch)
@@ -1324,7 +1325,8 @@ void OptimizeIR(CodeGenContext* pContext)
             mpm.add(llvm::createJumpThreadingPass());
 
             // run instruction combining to clean up the code after CFG optimizations
-            mpm.add(createInstructionCombiningPass());
+            mpm.add(createIGCInstructionCombiningPass());
+
             mpm.add(llvm::createDeadCodeEliminationPass());
             mpm.add(llvm::createEarlyCSEPass());
 

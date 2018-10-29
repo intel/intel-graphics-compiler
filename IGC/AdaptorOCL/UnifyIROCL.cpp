@@ -104,6 +104,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/SPIRMetaDataTranslation.h"
 #include "Compiler/Optimizer/OpenCLPasses/ErrorCheckPass.h"
+
+
 #include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
@@ -112,6 +114,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/SpirMetaDataApi.h"
 #include "Compiler/Optimizer/FixFastMathFlags.hpp"
 #include "MoveStaticAllocas.h"
+#include "Compiler/Optimizer/IGCInstCombiner/4.0/IGCInstructionCombining.hpp"
 
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"
@@ -397,7 +400,7 @@ static void CommonOCLBasedPasses(
             mpm.add(createSimplifyConstantPass());
             mpm.add(createPromoteConstantPass());
         }
-        mpm.add(createInstructionCombiningPass());
+        mpm.add(createIGCInstructionCombiningPass());
 
         // Instcombine can create constant expressions, which are not handled by the program scope constant resolution pass
         mpm.add(new BreakConstantExpr());
@@ -415,7 +418,7 @@ static void CommonOCLBasedPasses(
 
     // TODO: Run CheckInstrTypes after builtin import to determine if builtins have allocas.
     mpm.add(createSROAPass());
-    mpm.add(createInstructionCombiningPass());
+    mpm.add(createIGCInstructionCombiningPass());
 
     // "false" to createScalarizerPass() means that vector load/stores are NOT scalarized
     mpm.add(createScalarizerPass(false));
