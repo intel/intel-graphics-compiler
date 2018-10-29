@@ -166,6 +166,18 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M)
         addData(initializer, inlineProgramScopeBuffer, pointerOffsetInfoList, inlineProgramScopeOffsets, AS);
     }
 
+    if (inlineProgramScopeOffsets.size())
+    {
+        // Add globals tracked in metadata to the "llvm.used" list so they won't be deleted by optimizations
+        llvm::SmallVector<GlobalValue*, 4> gvec;
+        for (auto Node : inlineProgramScopeOffsets)
+        {
+            gvec.push_back(Node.first);
+        }
+        ArrayRef<GlobalValue*> globalArray(gvec);
+        IGC::appendToUsed(M, globalArray);
+    }
+
     MetaDataUtils *mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
 	ModuleMetaData *modMd = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 

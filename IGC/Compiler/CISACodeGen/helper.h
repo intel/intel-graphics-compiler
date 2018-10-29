@@ -319,4 +319,8 @@ inline float GetThreadOccupancyPerSubslice(SIMDMode simdMode, unsigned threadGro
     return occupancy;
 }
 
+// Duplicate of the LLVM function in llvm/Transforms/Utils/ModuleUtils.h
+// Global can now be any pointer type that uses addrspace
+void appendToUsed(llvm::Module &M, llvm::ArrayRef<llvm::GlobalValue *> Values);
+
 } // namespace IGC

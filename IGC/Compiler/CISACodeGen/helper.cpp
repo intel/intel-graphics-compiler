@@ -1378,5 +1378,36 @@ bool valueIsPositive(
 #endif
 }
 
+void appendToUsed(llvm::Module &M, ArrayRef<GlobalValue *> Values)
+{
+    std::string Name = "llvm.used";
+    GlobalVariable *GV = M.getGlobalVariable(Name);
+    SmallPtrSet<Constant *, 16> InitAsSet;
+    SmallVector<Constant *, 16> Init;
+    if (GV) {
+        ConstantArray *CA = dyn_cast<ConstantArray>(GV->getInitializer());
+        for (auto &Op : CA->operands()) {
+            Constant *C = cast_or_null<Constant>(Op);
+            if (InitAsSet.insert(C).second)
+                Init.push_back(C);
+        }
+        GV->eraseFromParent();
+    }
+
+    Type *Int8PtrTy = llvm::Type::getInt8PtrTy(M.getContext());
+    for (auto *V : Values) {
+        Constant *C = ConstantExpr::getAddrSpaceCast(V, Int8PtrTy);
+        if (InitAsSet.insert(C).second)
+            Init.push_back(C);
+    }
+
+    if (Init.empty())
+        return;
+
+    ArrayType *ATy = ArrayType::get(Int8PtrTy, Init.size());
+    GV = new llvm::GlobalVariable(M, ATy, false, GlobalValue::AppendingLinkage,
+                                  ConstantArray::get(ATy, Init), Name);
+    GV->setSection("llvm.metadata");
+}
 
 } // namespace IGC

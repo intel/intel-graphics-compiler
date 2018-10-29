@@ -34,7 +34,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Instructions.h>
-#include "llvm/Transforms/Utils/ModuleUtils.h"
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -183,9 +182,7 @@ bool InlineLocalsResolution::runOnModule(Module &M)
                 lo->setVar(ExtSLM);
                 lo->setOffset(Offset);
                 pMdUtils->getFunctionsInfoItem(pFunc)->addLocalOffsetsItem(lo);
-                Type* Int8PtrTy = Type::getInt8PtrTy(M.getContext());
-                auto AppendCE = ConstantExpr::getAddrSpaceCast(ExtSLM, Int8PtrTy);
-                appendToUsed(M, new GlobalVariable(M, Int8PtrTy, true, GlobalVariable::InternalLinkage, AppendCE));
+                IGC::appendToUsed(M, ExtSLM);
                 IsFirstSLMArgument = false;
             } else {
                 // FIXME: The following code should be removed as well by
