@@ -44,8 +44,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <random>
 #include <chrono>
 
+#include "BinaryEncodingIGA.h"
 #include "iga/IGALibrary/api/iga.h"
 #include "iga/IGALibrary/api/iga.hpp"
+#include "iga/IGALibrary/api/igaEncoderWrapper.hpp"
 
 #if defined(WIN32)
 #define CDECLATTRIBUTE __cdecl
@@ -5910,16 +5912,18 @@ void RelocationEntry::doRelocation(const G4_Kernel& kernel, void* binary, uint32
     {
         case RelocationType::IndirectCall:
         {
-            // need an IGA function
-            // replaceImm32Value(char* instOffset, uint32_t val);
-            // that will replace the imm32 value used by the instruction
-            // located at instOffset with value 'val'
-            // for now we assume inst is uncompacted and the imm32 is always at byte 3
+            uint32_t relocVal = (uint32_t)indirectCallInst->getGenOffset();
+            assert(relocVal < binarySize && "invalid relocation offset");
 
-            uint32_t relocVal = (uint32_t) indirectCallInst->getGenOffset();
-            assert (relocVal < binarySize && "invalid relocation offset");
-            uint32_t* immLoc = (uint32_t*) ((char*) binary + instOffset + 12);
-            *immLoc = relocVal;
+            iga::ImmVal iga_imm;
+            iga_imm.kind = iga::ImmVal::U32;
+            iga_imm.u32 = relocVal;
+            bool status = KernelEncoder::patchImmValue(
+                *iga::Model::LookupModel(BinaryEncodingIGA::getIGAInternalPlatform(getGenxPlatform())),
+                (unsigned char*)binary + instOffset,
+                BinaryEncodingIGA::getIGAType(Type_UD),
+                iga_imm);
+            assert(status == true);
             break;
         }
         case RelocationType::FunctionAddr:
@@ -5933,8 +5937,16 @@ void RelocationEntry::doRelocation(const G4_Kernel& kernel, void* binary, uint32
                 {
                     uint32_t relocVal = (uint32_t) firstInst->getGenOffset();
                     assert(relocVal < binarySize && "invalid relocation offset");
-                    uint32_t* immLoc = (uint32_t*)((char*)binary + instOffset + 12);
-                    *immLoc = relocVal;
+
+                    iga::ImmVal iga_imm;
+                    iga_imm.kind = iga::ImmVal::U32;
+                    iga_imm.u32 = relocVal;
+                    bool status = KernelEncoder::patchImmValue(
+                        *iga::Model::LookupModel(BinaryEncodingIGA::getIGAInternalPlatform(getGenxPlatform())),
+                        (unsigned char*)binary + instOffset,
+                        BinaryEncodingIGA::getIGAType(Type_UD),
+                        iga_imm);
+                    assert(status == true);
                 }
             }
             break;

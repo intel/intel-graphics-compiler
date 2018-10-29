@@ -34,7 +34,7 @@ using namespace iga;
 using namespace vISA;
 
 
-static Platform getIGAInternalPlatform(TARGET_PLATFORM genxPlatform)
+Platform BinaryEncodingIGA::getIGAInternalPlatform(TARGET_PLATFORM genxPlatform)
 {
     Platform platform = Platform::INVALID;
     switch (genxPlatform)
