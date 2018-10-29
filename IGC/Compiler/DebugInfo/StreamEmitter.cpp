@@ -33,15 +33,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
-
 #include "Compiler/DebugInfo/StreamEmitter.hpp"
 #include "Compiler/DebugInfo/Version.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/GlobalValue.h"
-#include "llvm/MC/MCAsmBackend.h"
+#include "llvmWrapper/MC/MCAsmBackend.h"
 
 #include "llvm/MC/MCAsmInfoELF.h"
 
@@ -63,6 +61,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace llvm;
 using namespace IGC;
 
+
+
+
+
 namespace IGC
 {
 ///////////////////////////////////////////////////////////////////////////////
@@ -76,7 +78,11 @@ public:
     VISAMCAsmInfo(unsigned int pointerSize) : MCAsmInfoELF()
     {
         DwarfUsesRelocationsAcrossSections = true;
+#if LLVM_VERSION_MAJOR == 7
+        CodePointerSize = pointerSize;
+#else
         PointerSize = pointerSize;
+#endif
     }
 };
 
@@ -296,15 +302,16 @@ public:
     }
 };
 
-class VISAAsmBackend : public MCAsmBackend
+class VISAAsmBackend : public IGCLLVM::MCAsmBackend
 {
     StringRef m_targetTriple;
     bool m_is64Bit;
 public:
     VISAAsmBackend(StringRef targetTriple, bool is64Bit)
-        : MCAsmBackend(), m_targetTriple(targetTriple), m_is64Bit(is64Bit) {}
+        : IGCLLVM::MCAsmBackend(),
+		m_targetTriple(targetTriple), m_is64Bit(is64Bit) {}
 
-    unsigned getNumFixupKinds() const
+    unsigned getNumFixupKinds() const override
     {
         return 0;
     }
@@ -329,11 +336,35 @@ public:
         }
     }
 
-    void applyFixup(const MCFixup &fixup, char *pData, unsigned dataSize, uint64_t value, bool isPCRel) const
+#if LLVM_VERSION_MAJOR == 4
+	void applyFixup(const MCFixup &fixup, char *pData, unsigned dataSize, uint64_t value, bool isPCRel) const override
+	{
+		unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
+
+		assert(fixup.getOffset() + size <= dataSize &&
+		    "Invalid fixup offset!");
+
+		// Check that uppper bits are either all zeros or all ones.
+		// Specifically ignore overflow/underflow as long as the leakage is
+		// limited to the lower bits. This is to remain compatible with
+		// other assemblers.
+		assert(isIntN(size * 8 + 1, value) &&
+			"value does not fit in the fixup field");
+
+		for (unsigned i = 0; i != size; ++i)
+		{
+			pData[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
+		}
+	}
+#elif LLVM_VERSION_MAJOR == 7    
+	void applyFixup(const MCAssembler &Asm, const MCFixup &fixup,
+  	                const MCValue &Target, MutableArrayRef<char> Data,
+  	                uint64_t value, bool IsResolved,
+  	                const MCSubtargetInfo *STI) const override
     {
         unsigned size = 1 << getFixupKindLog2Size(fixup.getKind());
 
-        assert(fixup.getOffset() + size <= dataSize &&
+        assert(fixup.getOffset() + size <= Data.size() &&
             "Invalid fixup offset!");
 
         // Check that uppper bits are either all zeros or all ones.
@@ -345,11 +376,16 @@ public:
 
         for (unsigned i = 0; i != size; ++i)
         {
-            pData[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
+            Data[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
         }
     }
+#endif
 
-    bool mayNeedRelaxation(const MCInst &inst) const
+#if LLVM_VERSION_MAJOR == 4
+    bool mayNeedRelaxation(const MCInst &inst) const override
+#elif LLVM_VERSION_MAJOR == 7
+    bool mayNeedRelaxation(const MCInst &inst, const MCSubtargetInfo &STI) const override
+#endif
     {
         assert(false && "TODO: implement this");
         llvm_unreachable("Unimplemented");
@@ -359,7 +395,7 @@ public:
     bool fixupNeedsRelaxation(const MCFixup &fixup,
         uint64_t value,
         const MCRelaxableFragment *pDF,
-        const MCAsmLayout &layout) const
+        const MCAsmLayout &layout) const override
     {
         assert(false && "TODO: implement this");
         llvm_unreachable("Unimplemented");
@@ -367,13 +403,14 @@ public:
     }
 
     void relaxInstruction(const MCInst &inst, const MCSubtargetInfo &STI,
-        MCInst &res) const
+        MCInst &res) const override
     {
         assert(false && "TODO: implement this");
         llvm_unreachable("Unimplemented");
     }
 
-    bool writeNopData(uint64_t count, MCObjectWriter *pOW) const
+#if LLVM_VERSION_MAJOR == 4
+    bool writeNopData(uint64_t count, MCObjectWriter *pOW) const override
     {
         for (uint64_t i = 0; i < count; ++i)
         {
@@ -381,10 +418,22 @@ public:
         }
         return true;
     }
+#elif LLVM_VERSION_MAJOR == 7
+    bool writeNopData(raw_ostream &OS, uint64_t Count) const override
+    {
+		const char nop = (char) 0x90;
+        for (uint64_t i = 0; i < Count; ++i)
+        {
+            OS.write(&nop, 1);
+        }
+        return true;
+    }
+#endif
 
     /// createObjectWriter - Create a new MCObjectWriter instance for use by the
     /// assembler backend to emit the final object file.
-    MCObjectWriter *createObjectWriter(llvm::raw_pwrite_stream &os) const
+#if LLVM_VERSION_MAJOR == 4
+    MCObjectWriter *createObjectWriter(llvm::raw_pwrite_stream &os) const override
     {
         Triple triple(m_targetTriple);
         uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
@@ -394,6 +443,27 @@ public:
         MCELFObjectTargetWriter *pMOTW = new VISAELFObjectWriter(m_is64Bit, osABI, eMachine, hasRelocationAddend);
         return createELFObjectWriter(pMOTW, os,  /*IsLittleEndian=*/true);
     }
+#elif LLVM_VERSION_MAJOR == 7
+	std::unique_ptr<MCObjectWriter> createObjectWriter(llvm::raw_pwrite_stream &os) const
+	{
+		Triple triple(m_targetTriple);
+		uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
+		uint16_t eMachine = m_is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
+		// Only i386 uses Rel instead of RelA.
+		bool hasRelocationAddend = eMachine != ELF::EM_386;		
+		std::unique_ptr<MCELFObjectTargetWriter> pMOTW
+			= llvm::make_unique<VISAELFObjectWriter>(m_is64Bit, osABI, eMachine, hasRelocationAddend);
+		return createELFObjectWriter(std::move(pMOTW), os,  /*IsLittleEndian=*/true);
+	}
+#endif
+
+#if LLVM_VERSION_MAJOR == 7
+	std::unique_ptr<MCObjectTargetWriter> createObjectTargetWriter() const override
+	{
+        assert(false && "TODO: implement this");
+        llvm_unreachable("Unimplemented");
+	}
+#endif
 };
 
 class VISAMCCodeEmitter : public MCCodeEmitter
@@ -420,6 +490,7 @@ class VISAMCCodeEmitter : public MCCodeEmitter
 StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& dataLayout, const std::string& targetTriple) :
     m_targetTriple(targetTriple), m_setCounter(0)
 {
+#if LLVM_VERSION_MAJOR == 4
     m_pDataLayout = new DataLayout(dataLayout);
     m_pSrcMgr = new SourceMgr();
     m_pAsmInfo = new VISAMCAsmInfo(GetPointerSize());
@@ -430,10 +501,12 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& da
     // Create new MC context
     m_pContext = new MCContext((const llvm::MCAsmInfo*)m_pAsmInfo, regInfo, m_pObjFileInfo, m_pSrcMgr);
 
-    m_pObjFileInfo->InitMCObjectFileInfo(Triple(GetTargetTriple()), false, CodeModel::Default, *m_pContext);
+	Triple triple = Triple(GetTargetTriple());
+
+    m_pObjFileInfo->InitMCObjectFileInfo(Triple(GetTargetTriple()), false, CodeModel::Default, *m_pContext);  
 
     VISAMCCodeEmitter *pCodeEmitter = new VISAMCCodeEmitter();
-    bool is64Bit = GetPointerSize() == 8;
+    bool is64Bit = GetPointerSize() == 8;    
     VISAAsmBackend *pAsmBackend = new VISAAsmBackend(GetTargetTriple(), is64Bit);
 
     bool isRelaxAll = false;
@@ -442,9 +515,43 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& da
 #ifdef LLVM_3400
         // /*MCTargetStreamer* */ nullptr,
 #endif
-        *pAsmBackend, outStream, pCodeEmitter, isRelaxAll);
+        *pAsmBackend, outStream, pCodeEmitter, isRelaxAll);        
 
     m_pMCStreamer->InitSections(isNoExecStack);
+#elif LLVM_VERSION_MAJOR == 7
+	m_pDataLayout = new DataLayout(dataLayout);
+	m_pSrcMgr = new SourceMgr();
+	m_pAsmInfo = new VISAMCAsmInfo(GetPointerSize());
+	m_pObjFileInfo = new MCObjectFileInfo();
+
+	MCRegisterInfo *regInfo = nullptr;
+
+	// Create new MC context
+	m_pContext = new MCContext((const llvm::MCAsmInfo*)m_pAsmInfo, regInfo, m_pObjFileInfo, m_pSrcMgr);
+
+	Triple triple = Triple(GetTargetTriple());
+	m_pObjFileInfo->InitMCObjectFileInfo(Triple(GetTargetTriple()), false, *m_pContext);
+
+	bool is64Bit = GetPointerSize() == 8;
+	uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
+	uint16_t eMachine = is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
+	bool hasRelocationAddend = eMachine != ELF::EM_386;
+	std::unique_ptr<MCAsmBackend> pAsmBackend
+		= llvm::make_unique<VISAAsmBackend>(GetTargetTriple(), is64Bit);
+	std::unique_ptr<MCELFObjectTargetWriter> pTargetObjectWriter
+		= llvm::make_unique<VISAELFObjectWriter>(is64Bit, osABI, eMachine, hasRelocationAddend);
+	std::unique_ptr<MCObjectWriter> pObjectWriter
+		= createELFObjectWriter(std::move(pTargetObjectWriter), outStream, false);
+	std::unique_ptr<MCCodeEmitter> pCodeEmitter
+		= llvm::make_unique<VISAMCCodeEmitter>();
+
+	bool isRelaxAll = false;
+	bool isNoExecStack = false;
+	m_pMCStreamer = createELFStreamer(*m_pContext,
+		std::move(pAsmBackend), std::move(pObjectWriter), std::move(pCodeEmitter), isRelaxAll);
+
+	m_pMCStreamer->InitSections(isNoExecStack);
+#endif
 }
 
 StreamEmitter::~StreamEmitter()
@@ -592,7 +699,11 @@ void StreamEmitter::EmitSLEB128(int64_t value, const char * /*desc*/) const
 
 void StreamEmitter::EmitULEB128(uint64_t value, llvm::StringRef /*desc*/, unsigned padTo) const
 {
+#if LLVM_VERSION_MAJOR == 4
     m_pMCStreamer->EmitULEB128IntValue(value, padTo);
+#elif LLVM_VERSION_MAJOR == 4
+    m_pMCStreamer->EmitULEB128IntValue(value);
+#endif
 }
 
 void StreamEmitter::EmitLabel(MCSymbol *pLabel) const
@@ -733,7 +844,11 @@ void StreamEmitter::EmitDwarfRegOp(unsigned reg, unsigned offset, bool indirect)
 
 bool StreamEmitter::EmitDwarfFileDirective(unsigned fileNo, StringRef directory, StringRef filename, unsigned cuID) const
 {
+#if LLVM_VERSION_MAJOR == 4
     return (m_pMCStreamer->EmitDwarfFileDirective(fileNo, directory, filename, cuID) != 0);
+#elif LLVM_VERSION_MAJOR == 7
+    return (m_pMCStreamer->EmitDwarfFileDirective(fileNo, directory, filename, nullptr, llvm::None, cuID) != 0);
+#endif
 }
 
 void StreamEmitter::EmitDwarfLocDirective(unsigned fileNo, unsigned line, unsigned column, unsigned flags,
@@ -763,6 +878,3 @@ const std::string& StreamEmitter::GetTargetTriple() const
 {
     return m_targetTriple;
 }
-
-#endif
-

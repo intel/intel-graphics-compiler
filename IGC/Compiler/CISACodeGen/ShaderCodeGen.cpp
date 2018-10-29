@@ -737,9 +737,7 @@ void PSCodeGen(PixelShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders
             AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, earlyExit, ShaderDispatchMode::NOT_APPLICABLE, pSignature);
         }
     }
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
     PassMgr.add(new DebugInfoPass(shaders));
-#endif
     PassMgr.run(*(ctx->getModule()));
     DumpLLVMIR(ctx, "codegen");
 
@@ -918,9 +916,7 @@ void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &kernels
         AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 16));
         AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
     }
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
     Passes.add(new DebugInfoPass(kernels));
-#endif
     Passes.run(*(ctx->getModule()));
     COMPILER_TIME_END(ctx, TIME_CodeGen);
     DumpLLVMIR(ctx, "codegen");
@@ -947,9 +943,7 @@ void CodeGenCommon(ContextType* ctx)
     CodeGen(ctx, shaders);
 
     IGCPassManager DIPass(ctx, "DI");
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
     DIPass.add(new DebugInfoPass(shaders));
-#endif
     DIPass.run(*(ctx->getModule()));
 
 

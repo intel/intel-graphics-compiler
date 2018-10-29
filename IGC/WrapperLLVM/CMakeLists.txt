@@ -48,6 +48,7 @@ set(IGC_WrapperLLVM_HDR
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Utils.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/InstSimplifyPass.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/BinaryFormat/Dwarf.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/MC/MCAsmBackend.h"
   )
 
 include_directories(

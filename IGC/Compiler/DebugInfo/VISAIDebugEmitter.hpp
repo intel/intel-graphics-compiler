@@ -27,7 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"
 
@@ -99,6 +98,4 @@ public:
     virtual void SetVISAModule(IGC::VISAModule*) = 0;
 };
 
-} // namespace IGC
-
-#endif
+} // namespace IGC

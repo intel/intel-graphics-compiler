@@ -38,8 +38,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
-
 #define DEBUG_TYPE "dwarfdebug"
 #include "Compiler/DebugInfo/DwarfCompileUnit.hpp"
 #include "Compiler/DebugInfo/DIE.hpp"
@@ -393,6 +391,7 @@ void CompileUnit::addSourceLine(DIE *Die, DIType* Ty)
     addSourceLine(Die, Ty, Ty->getLine());
 }
 
+#if LLVM_VERSION_MAJOR == 4
 /// addSourceLine - Add location information to specified debug information
 /// entry.
 void CompileUnit::addSourceLine(DIE *Die, DINamespace* NS)
@@ -402,6 +401,7 @@ void CompileUnit::addSourceLine(DIE *Die, DINamespace* NS)
 
     addSourceLine(Die, NS, NS->getLine());
 }
+#endif
 
 /// addRegisterOp - Add register operand.
 void CompileUnit::addRegisterOp(DIEBlock *TheDie, unsigned DWReg)
@@ -1129,7 +1129,9 @@ DIE *CompileUnit::getOrCreateNameSpace(DINamespace* NS)
     {
         addString(NDie, dwarf::DW_AT_name, NS->getName());
     }
+#if LLVM_VERSION_MAJOR == 4
     addSourceLine(NDie, NS);
+#endif
     return NDie;
 }
 
@@ -1671,4 +1673,3 @@ void CompileUnit::emitHeader(const MCSection *ASection, const MCSymbol *ASection
     Asm->EmitInt8(Asm->GetPointerSize());
 }
 
-#endif

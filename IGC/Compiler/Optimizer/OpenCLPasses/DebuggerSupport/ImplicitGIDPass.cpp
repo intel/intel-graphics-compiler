@@ -26,9 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Config/llvm-config.h"
+#include "llvmWrapper/IR/Attributes.h"
 #include "common/LLVMWarningsPop.hpp"
-
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
 
 #include "Compiler/Optimizer/OpenCLPasses/DebuggerSupport/ImplicitGIDPass.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
@@ -271,10 +270,10 @@ Value* ImplicitGlobalId::CreateGetId(unsigned dim, IRBuilder<> &B, GlobalOrLocal
         assert(pNewFunc && "Failed to create new function declaration");
 
         // Set function attributes
-        AttributeSet funcAttrs;
+		IGCLLVM::AttributeSet funcAttrs;
         AttrBuilder attBuilder;
         attBuilder.addAttribute(Attribute::NoUnwind).addAttribute(Attribute::ReadNone);
-        funcAttrs = AttributeSet::get(pNewFunc->getContext(), AttributeSet::FunctionIndex, attBuilder);
+        funcAttrs = IGCLLVM::AttributeSet::get(pNewFunc->getContext(), IGCLLVM::AttributeSet::FunctionIndex, attBuilder);
         pNewFunc->setAttributes(funcAttrs);
 
         getFunc = pNewFunc;
@@ -282,6 +281,4 @@ Value* ImplicitGlobalId::CreateGetId(unsigned dim, IRBuilder<> &B, GlobalOrLocal
     // Create arguments and call instruction
     Value* const_dim = ConstantInt::get(uint32_type, dim, false);
     return B.CreateCall(getFunc, const_dim, nameCall);
-}
-
-#endif
+}

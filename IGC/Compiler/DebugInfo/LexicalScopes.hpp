@@ -39,8 +39,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
@@ -286,5 +284,3 @@ private:
 };
 
 } // namespace IGC
-
-#endif

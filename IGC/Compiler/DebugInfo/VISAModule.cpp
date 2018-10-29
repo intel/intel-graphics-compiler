@@ -32,8 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
-
 #include "Compiler/DebugInfo/VISAModule.hpp"
 #include "Compiler/DebugInfo/DebugInfoUtils.hpp"
 #include "Compiler/DebugInfo/LexicalScopes.hpp"
@@ -852,5 +850,3 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
 
     return GenISARange;
 }
-
-#endif

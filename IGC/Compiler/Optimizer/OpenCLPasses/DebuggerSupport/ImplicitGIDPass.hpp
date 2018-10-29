@@ -27,8 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
-
 #include "Compiler/MetaDataUtilsWrapper.h"
 
 #include "common/LLVMWarningsPush.hpp"
@@ -133,4 +131,3 @@ private:
 };
 
 } // namespace IGC
-#endif

@@ -27,15 +27,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
-
 #include "Compiler/DebugInfo/Version.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
-#include "llvm/IR/DIBuilder.h"
+#include "llvmWrapper/IR/DIBuilder.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DebugLoc.h"
 #include "llvm/IR/DebugInfoMetadata.h"
@@ -137,7 +135,7 @@ public:
         for (unsigned int j = 0; j < GVs.size(); j++)
         {
 			llvm::DIGlobalVariable* GV = GVs[j]->getVariable();
-            llvm::DIBuilder Builder(M);
+            IGCLLVM::DIBuilder Builder(M);
             llvm::DIVariable *Var = Builder.createAutoVariable(llvm::cast<llvm::DIScope>(descriptor),
                 GV->getDisplayName(),
                 Builder.createFile(GV->getFilename(), GV->getDirectory()),
@@ -171,5 +169,3 @@ private:
 };
 
 } // namespace IGC
-
-#endif

@@ -40,8 +40,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
-
 #include "Compiler/DebugInfo/DIE.hpp"
 #include "Compiler/DebugInfo/DwarfDebug.hpp"
 #include "Compiler/DebugInfo/Version.hpp"
@@ -222,7 +220,9 @@ public:
     void addSourceLine(DIE *Die, llvm::DIVariable* V);
     void addSourceLine(DIE *Die, llvm::DISubprogram* SP);
     void addSourceLine(DIE *Die, llvm::DIType* Ty);
+#if LLVM_VERSION_MAJOR == 4
     void addSourceLine(DIE *Die, llvm::DINamespace* NS);
+#endif
 
     /// addConstantValue - Add constant value entry in variable DIE.
     void addConstantValue(DIE *Die, const llvm::ConstantInt *CI, bool Unsigned);
@@ -364,5 +364,3 @@ private:
 };
 
 } // namespace IGC
-
-#endif

@@ -353,7 +353,6 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         return false;
     }
 
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
     bool isCloned = false;
     if (DebugInfoData::hasDebugInfo(m_currShader))
     {
@@ -364,7 +363,6 @@ bool EmitPass::runOnFunction(llvm::Function &F)
             isCloned = true;
         }
     }
-#endif
 
     COMPILER_TIME_START(m_currShader->GetContext(), TIME_CG_vISAEmitPass);
     COMPILER_TIME_START(m_currShader->GetContext(), TIME_vISAEmitInit);
@@ -434,7 +432,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         IF_DEBUG_INFO(m_pDebugEmitter->Initialize(m_currShader, DebugInfoData::hasDebugInfo(m_currShader));)
     }
 
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
+
 	if (DebugInfoData::hasDebugInfo(m_currShader))
 	{
         if (!m_currShader->diData)
@@ -446,7 +444,6 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 		IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->ResetVISAModule();)
 		IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->setFunction(&F, isCloned);)
     }
-#endif
 
     // We only invoke EndEncodingMark() to update last VISA id.
     IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
@@ -459,9 +456,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     bool disableSlicing =
         IGC_IS_FLAG_ENABLED(DisableSIMD32Slicing) ||
         !m_currShader->GetContext()->m_retryManager.AllowSimd32Slicing() ||
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
         DebugInfoData::hasDebugInfo(m_currShader) ||
-#endif
         m_pattern->m_samplertoRenderTargetEnable;
 
     IGC::Debug::Dump* llvmtoVISADump = nullptr;

@@ -27,8 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
-
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/Support/DataTypes.h"
 #include "common/LLVMWarningsPop.hpp"
@@ -380,6 +378,4 @@ private:
     static const unsigned int TEXTURE_REGISTER_NUM = (255);
 };
 
-} // namespace IGC
-
-#endif
+} // namespace IGC

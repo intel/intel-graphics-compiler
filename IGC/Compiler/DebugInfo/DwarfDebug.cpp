@@ -38,8 +38,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/Config/llvm-config.h"
 
-#if LLVM_VERSION_MAJOR == 4 && LLVM_VERSION_MINOR == 0
-
 #define DEBUG_TYPE "dwarfdebug"
 #include "Compiler/DebugInfo/DwarfDebug.hpp"
 #include "Compiler/DebugInfo/DIE.hpp"
@@ -835,8 +833,11 @@ void DwarfDebug::collectDeadVariables()
             {
                 continue;
             }
-
+#if LLVM_VERSION_MAJOR == 4 
             DILocalVariableArray Variables = SP->getVariables();
+#elif LLVM_VERSION_MAJOR == 7
+			auto Variables = SP->getRetainedNodes();
+#endif
             if (Variables.size() == 0)
                 continue;
 
@@ -1164,7 +1165,12 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
 
     // Collect info for variables that were optimized out.
     LexicalScope *FnScope = LScopes.getCurrentFunctionScope();
-    DILocalVariableArray Variables = cast<DISubprogram>(FnScope->getScopeNode())->getVariables();
+#if LLVM_VERSION_MAJOR == 4 
+	DILocalVariableArray Variables = cast<DISubprogram>(FnScope->getScopeNode())->getVariables();
+#elif LLVM_VERSION_MAJOR == 7
+	auto Variables = cast<DISubprogram>(FnScope->getScopeNode())->getRetainedNodes();
+#endif
+    
     for (unsigned i = 0, e = Variables.size(); i != e; ++i)
     {
         DILocalVariable* DV = cast_or_null<DILocalVariable>(Variables[i]);
@@ -1489,7 +1495,12 @@ void DwarfDebug::endFunction(const Function *MF)
         if (SP)
         {
             // Collect info for variables that were optimized out.
-            DILocalVariableArray Variables = SP->getVariables();
+#if LLVM_VERSION_MAJOR == 4 
+			DILocalVariableArray Variables = SP->getVariables();
+#elif LLVM_VERSION_MAJOR == 7
+			auto Variables = SP->getRetainedNodes();
+#endif
+            
             for (unsigned i = 0, e = Variables.size(); i != e; ++i)
             {
                 DILocalVariable* DV = cast_or_null<DILocalVariable>(Variables[i]);
@@ -2054,6 +2065,4 @@ void DwarfDebug::gatherDISubprogramNodes()
 
     m_pModule->setDISPToFuncMap(&DISPToFunction);
 }
-
-#endif
 
