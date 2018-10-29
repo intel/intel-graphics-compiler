@@ -4628,6 +4628,9 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst, llvm::Value* ptrVal 
     uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
     uint32_t totalBytes = nbElements * typeSizeInBytes * numLanes(m_SimdMode);
 
+    // Special case for uniform data. data is expected to be non-uniform.
+    data = BroadcastIfUniform(data);
+
     // Special case for simd8 char block write, in which the total bytes = 8.
     // (All the other cases, the total bytes is multiple of 16 (OW).
     if (totalBytes == 8)
