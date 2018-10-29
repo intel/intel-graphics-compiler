@@ -23,48 +23,38 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
+
 #pragma once
+
 #include "common/LLVMWarningsPush.hpp"
-#include <llvm/IR/PassManager.h>
-#include <llvm/IR/Argument.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Type.h>
+#include <llvm/Transforms/Utils/ValueMapper.h>
+#include <llvm/Transforms/Utils/Cloning.h>
+#include <llvm/ADT/MapVector.h>
 #include "common/LLVMWarningsPop.hpp"
 
+class FunctionUpgrader
+{
+private:
+	llvm::Function* m_pFunction;
 
-namespace IGC
-{
-class DomainShaderProperties
-{
+	// map place holder argument with the real argument
+	llvm::MapVector<llvm::LoadInst*, llvm::Argument*> m_pNewArguments;
+
+	llvm::FunctionType* UpgradeFunctionTypeWithNewArgs();
+
+	llvm::Function* UpgradeFunctionWithNewArgs();
+
+	void CleanPlaceHoldersArgs();
+
 public:
-    bool m_hasClipDistance = false;
-    QuadEltUnit  m_URBOutputLength = QuadEltUnit(0);
-    llvm::Value* m_UArg;
-    llvm::Value* m_VArg;
-    llvm::Value* m_WArg;
-    bool m_isVPAIndexDeclared = false;
-    bool m_isRTAIndexDeclared = false;
+	void SetFunctionToUpgrade(llvm::Function* pFunction);
+	void Clean();
+
+	llvm::Argument* GetArgumentFromRebuild(llvm::LoadInst* pPlaceHolderArg);
+
+	llvm::Value* AddArgument(llvm::StringRef argName, llvm::Type* argType);
+
+	llvm::Function* RebuildFunction();
 };
-
-class CollectDomainShaderProperties : public llvm::ImmutablePass
-{
-public:
-    CollectDomainShaderProperties();
-    static char ID;
-    void DeclareClipDistance();
-    void DeclareOutput(QuadEltUnit offset);
-    void SetDomainPointUArgu(llvm::Value* Arg);
-    void SetDomainPointVArgu(llvm::Value* Arg);
-    void SetDomainPointWArgu(llvm::Value* Arg);
-    llvm::Value* GetDomainPointUArgu();
-    llvm::Value* GetDomainPointVArgu();
-    llvm::Value* GetDomainPointWArgu();
-    void SetRTAIndexDeclared(bool isRTAIndexDeclared);
-    void SetVPAIndexDeclared(bool isVPAIndexDeclared);
-
-    const DomainShaderProperties& GetProperties() { return m_dsProps; }
-protected:
-    DomainShaderProperties m_dsProps;
-};
-/// Creates a function pass that lowers input/output intrinsics to URB read/write
-llvm::FunctionPass* createDomainShaderLoweringPass();
-
-} // namespace IGC

@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/PassManager.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "FunctionUpgrader.h"
 
 #include <map>
 
@@ -83,6 +84,7 @@ class PushAnalysis : public llvm::ModulePass
     uint    m_maxStatelessOffset;
 	int    m_argIndex;
 	std::vector < llvm::Value* > m_argList;
+	FunctionUpgrader m_pFuncUpgrade;
 
     // Helper function
     /// Return true if the constant is in the range which we are allowed to push
@@ -115,8 +117,6 @@ class PushAnalysis : public llvm::ModulePass
     unsigned int GetMaxNumberOfPushedInputs();
     unsigned int GetHSMaxNumberOfPushedInputs();
     bool DispatchGRFHardwareWAForHSAndGSDisabled();
-	void updateNewFuncArgs(llvm::Function* , llvm::Function* );
-	llvm::FunctionType* getNewFuncType(llvm::Function* );
 
 
     /// return the push constant mode supported based on driver and platform support
@@ -134,7 +134,7 @@ public:
         AU.addRequired<PullConstantHeuristics>();
     }
 
-    llvm::Argument* addArgumentAndMetadata(llvm::Type *pType, std::string argName, IGC::WIAnalysis::WIDependancy dependency);
+	llvm::Value* addArgumentAndMetadata(llvm::Type *pType, std::string argName, IGC::WIAnalysis::WIDependancy dependency);
 	bool runOnModule(llvm::Module& ) override;
     void ProcessFunction();
     void AnalyzeFunction(llvm::Function *F)

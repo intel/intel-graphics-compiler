@@ -668,32 +668,32 @@ void CollectDomainShaderProperties::DeclareOutput(QuadEltUnit newOffset)
     }
 }
 
-void CollectDomainShaderProperties::SetDomainPointUArgu(llvm::Argument* Arg)
+void CollectDomainShaderProperties::SetDomainPointUArgu(llvm::Value* Arg)
 {
     m_dsProps.m_UArg = Arg;
 }
 
-void CollectDomainShaderProperties::SetDomainPointVArgu(llvm::Argument* Arg)
+void CollectDomainShaderProperties::SetDomainPointVArgu(llvm::Value* Arg)
 {
     m_dsProps.m_VArg = Arg;
 }
 
-void CollectDomainShaderProperties::SetDomainPointWArgu(llvm::Argument* Arg)
+void CollectDomainShaderProperties::SetDomainPointWArgu(llvm::Value* Arg)
 {
     m_dsProps.m_WArg = Arg;
 }
 
-llvm::Argument* CollectDomainShaderProperties::GetDomainPointUArgu()
+llvm::Value* CollectDomainShaderProperties::GetDomainPointUArgu()
 {
     return (m_dsProps.m_UArg);
 }
 
-llvm::Argument* CollectDomainShaderProperties::GetDomainPointVArgu()
+llvm::Value* CollectDomainShaderProperties::GetDomainPointVArgu()
 {
     return (m_dsProps.m_VArg);
 }
 
-llvm::Argument* CollectDomainShaderProperties::GetDomainPointWArgu()
+llvm::Value* CollectDomainShaderProperties::GetDomainPointWArgu()
 {
     return (m_dsProps.m_WArg);
 }

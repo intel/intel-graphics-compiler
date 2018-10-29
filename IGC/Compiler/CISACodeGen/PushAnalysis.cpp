@@ -117,21 +117,21 @@ template < typename T > std::string to_string(const T& n)
     return stm.str();
 }
 
-llvm::Argument* PushAnalysis::addArgumentAndMetadata(llvm::Type *pType, std::string argName, IGC::WIAnalysis::WIDependancy dependency)
+Value* PushAnalysis::addArgumentAndMetadata(llvm::Type *pType, std::string argName, IGC::WIAnalysis::WIDependancy dependency)
 {
-    llvm::Argument *pArg = new llvm::Argument(pType, argName, m_pFunction);
-    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
-    IGC::ArgDependencyInfoMD argDepInfoMD;
-    argDepInfoMD.argDependency = dependency;
+	auto pArgInfo = m_pFuncUpgrade.AddArgument(argName, pType);
+	ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+	IGC::ArgDependencyInfoMD argDepInfoMD;
+	argDepInfoMD.argDependency = dependency;
 	modMD->pushInfo.pushAnalysisWIInfos.push_back(argDepInfoMD);
 
 	//Add it to arglist and increment Argument Index
-	m_argList.push_back(pArg);
+	m_argList.push_back(pArgInfo);
 	m_argIndex++;
 
 	m_funcTypeChanged = true;
 
-    return pArg;
+	return pArgInfo;
 }
 
 bool PushAnalysis::IsStatelessCBLoad(
@@ -823,9 +823,9 @@ void PushAnalysis::ProcessFunction()
 
     if(m_context->type == ShaderType::DOMAIN_SHADER)
     {
-        llvm::Argument* valueU = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_U"), WIAnalysis::RANDOM);
-        llvm::Argument* valueV = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_V"), WIAnalysis::RANDOM);
-        llvm::Argument* valueW = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_W"), WIAnalysis::RANDOM);
+        auto valueU = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_U"), WIAnalysis::RANDOM);
+		auto valueV = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_V"), WIAnalysis::RANDOM);
+		auto valueW = addArgumentAndMetadata(Type::getFloatTy(m_pFunction->getContext()), VALUE_NAME("DS_W"), WIAnalysis::RANDOM);
         m_dsProps->SetDomainPointUArgu(valueU);
         m_dsProps->SetDomainPointVArgu(valueV);
         m_dsProps->SetDomainPointWArgu(valueW);
@@ -1196,78 +1196,6 @@ void PushAnalysis::ProcessFunction()
     m_pMdUtils->save(m_pFunction->getContext());
 }
 
-void PushAnalysis::updateNewFuncArgs(llvm::Function* pFunc, llvm::Function* pNewFunc)
-{
-	// Loop over the argument list, transferring uses of the old arguments over to
-	// the new arguments, also transferring over the names as well.
-	std::map<void*, unsigned int> argMap;
-	std::vector<std::pair<llvm::Instruction*, unsigned int>> newAddr;
-	Function::arg_iterator I = pFunc->arg_begin();
-	Function::arg_iterator E = pFunc->arg_end();
-	Function::arg_iterator currArg = pNewFunc->arg_begin();
-	llvm::Argument* oldArg;
-	llvm::Argument* newArg;
-
-	while (I != E)
-	{
-		if (currArg == pNewFunc->arg_end())
-			break;
-
-		oldArg = &(*I);
-		newArg = &(*currArg);
-
-		assert(oldArg->getType() == newArg->getType());
-		
-		// Move the name and users over to the new version.
-		I->replaceAllUsesWith(newArg);
-		currArg->takeName(&(*I));
-        
-        if (m_dsProps)
-        {
-            if (m_dsProps->GetDomainPointUArgu() == oldArg)
-                m_dsProps->SetDomainPointUArgu(newArg);
-            if (m_dsProps->GetDomainPointVArgu() == oldArg)
-                m_dsProps->SetDomainPointVArgu(newArg);
-            if (m_dsProps->GetDomainPointWArgu() == oldArg)
-                m_dsProps->SetDomainPointWArgu(newArg);
-        }
-		++I; ++currArg;
-	}
-	while (I != E)
-	{
-		oldArg = &(*I);
-		llvm::Argument* newArg = new llvm::Argument(oldArg->getType(), oldArg->getName(), pNewFunc);
-		// Move the name and users over to the new version.
-		I->replaceAllUsesWith(newArg);
-		newArg->takeName(&(*I));
-
-        if (m_dsProps)
-        {
-            if (m_dsProps->GetDomainPointUArgu() == oldArg)
-                m_dsProps->SetDomainPointUArgu(newArg);
-            if (m_dsProps->GetDomainPointVArgu() == oldArg)
-                m_dsProps->SetDomainPointVArgu(newArg);
-            if (m_dsProps->GetDomainPointWArgu() == oldArg)
-                m_dsProps->SetDomainPointWArgu(newArg);
-        }
-		++I;
-	}
-	
-}
-
-FunctionType* PushAnalysis::getNewFuncType(Function* pFunc)
-{
-	std::vector<Type *> newParamTypes;
-
-	for (auto arg = pFunc->arg_begin(); arg != pFunc->arg_end(); ++arg)
-	{
-		newParamTypes.push_back((*&(arg))->getType());
-	}
-	
-	// Create new function type with explicit and implicit parameter types
-	return FunctionType::get(pFunc->getReturnType(), newParamTypes, pFunc->isVarArg());
-}
-
 bool PushAnalysis::runOnModule(llvm::Module& M)
 {
 	m_DL = &M.getDataLayout();
@@ -1288,10 +1216,12 @@ bool PushAnalysis::runOnModule(llvm::Module& M)
 	for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
 	{	
 		Function* pFunc = &(*I);
-
+		
 		// Only handle functions defined in this module
 		if (pFunc->isDeclaration() || !isEntryFunc(m_pMdUtils, pFunc))
 			continue;
+
+		m_pFuncUpgrade.SetFunctionToUpgrade(pFunc);
 
 		AnalyzeFunction(pFunc);
 
@@ -1301,21 +1231,25 @@ bool PushAnalysis::runOnModule(llvm::Module& M)
 			retValue = true;
 
 			// Create the new function body and insert it into the module
-			FunctionType *pNewFTy = getNewFuncType(pFunc);
-			Function* pNewFunc = Function::Create(pNewFTy, pFunc->getLinkage());
+			Function* pNewFunc = m_pFuncUpgrade.RebuildFunction();
 			pNewFunc->copyAttributesFrom(pFunc);
 			pNewFunc->setSubprogram(pFunc->getSubprogram());
-			pFunc->setSubprogram(nullptr);
-			M.getFunctionList().insert(pFunc->getIterator(), pNewFunc);
+			pFunc->setSubprogram(nullptr);			
 			pNewFunc->takeName(pFunc);
 
-			// Since we have now created the new function, splice the body of the old
-			// function right into the new function, leaving the old body of the function empty.
-			pNewFunc->getBasicBlockList().splice(pNewFunc->begin(), pFunc->getBasicBlockList());
-
-			// Loop over the argument list, transferring uses of the old arguments over to
-			// the new arguments
-			updateNewFuncArgs(pFunc, pNewFunc);
+			// Reassign the arguments for domain shader to real arguments
+			if (m_context->type == ShaderType::DOMAIN_SHADER)
+				// function right into the new function, leaving the old body of the function empty.
+			{
+				// Loop over the argument list, transferring uses of the old arguments over to
+				// the new arguments
+				m_dsProps->SetDomainPointUArgu(
+					m_pFuncUpgrade.GetArgumentFromRebuild((LoadInst*)m_dsProps->GetDomainPointUArgu()));
+				m_dsProps->SetDomainPointVArgu(
+					m_pFuncUpgrade.GetArgumentFromRebuild((LoadInst*)m_dsProps->GetDomainPointVArgu()));
+				m_dsProps->SetDomainPointWArgu(
+					m_pFuncUpgrade.GetArgumentFromRebuild((LoadInst*)m_dsProps->GetDomainPointWArgu()));
+			}
 
 			// Map old func to new func
 			funcsMapping[pFunc] = pNewFunc;
@@ -1323,6 +1257,7 @@ bool PushAnalysis::runOnModule(llvm::Module& M)
 			// This is a kernel function, so there should not be any call site
 			assert(pFunc->use_empty());
 		}
+		m_pFuncUpgrade.Clean();
 	}
 
 	// Update IGC Metadata and shaders map
