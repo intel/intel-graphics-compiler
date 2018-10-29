@@ -25,7 +25,6 @@
 #======================= end_copyright_notice ==================================
 
 
-
 # CMake settings:
 #  - IGC_OPTION__LIBRARY_NAME
 #FCL
@@ -3279,6 +3278,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/WrapperLLVM/include")
 
 # ======================================== Include directories =========================================
 
+
 include_directories(
     "${IGC_CODEGEN_DIR}"
 
@@ -3301,8 +3301,9 @@ include_directories(
     "${IGC_OPTION__OUTPUT_DIR}"
     
     "${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL/ocl_igc_shared/executable_format"
-	"${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL"
+    "${IGC_BUILD__IGC_SRC_DIR}/AdaptorOCL"
   )
+
   include_directories(
       "${IGC_BUILD__COMMON_COMPILER_DIR}/common"
   )
