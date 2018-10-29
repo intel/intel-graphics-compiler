@@ -890,7 +890,6 @@ void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
                 offset[index[0]], offset[index[1]],
                 srcBC[index[0]], srcBC[index[1]]);
         }
-
     }
     else
     {
@@ -12485,4 +12484,4 @@ void  GlobalRA::insertRestoreAddr(G4_BB* bb)
 
         last->setExecSize(2);
     }
-}
+}
