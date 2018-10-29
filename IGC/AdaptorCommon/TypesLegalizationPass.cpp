@@ -247,6 +247,17 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
     IRBuilder<> builder(ip);
     return builder.CreateExtractValue(val, indices);
   }
+    else if (PHINode* phi = dyn_cast<PHINode>(val))
+    {
+        IRBuilder<> builder(&(*ip->getParent()->getFirstInsertionPt()));
+        PHINode* newPhi = builder.CreatePHI(ip->getType(), phi->getNumIncomingValues());
+        for (unsigned i = 0; i < phi->getNumIncomingValues(); i++)
+        {
+            Value* v = ResolveValue(ip, phi->getIncomingValue(i), indices);
+            newPhi->addIncoming(v, phi->getIncomingBlock(i));
+        }
+        return newPhi;
+    }
 
   // What other kind of instruction can we have here?
   assert( !"Unresolved instruction!" );
