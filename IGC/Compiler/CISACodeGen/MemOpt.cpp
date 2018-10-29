@@ -201,10 +201,13 @@ namespace {
 
     template <typename AccessInstruction>
     bool checkAlignmentBeforeMerge(AccessInstruction* inst,
-        SmallVector<std::tuple<AccessInstruction*, int64_t, MemRefListTy::iterator>, 8> &AccessIntrs)
+        SmallVector<std::tuple<AccessInstruction*, int64_t, MemRefListTy::iterator>, 8> &AccessIntrs,
+        unsigned &NumElts)
     {
         if (inst->getAlignment() < 4 && WI->whichDepend(inst) != WIAnalysis::UNIFORM)
         {
+            // Need the first offset value (not necessarily zero)
+            auto firstOffset = std::get<1>(AccessIntrs[0]);
             for (auto rit = AccessIntrs.rbegin(),
                 rie = AccessIntrs.rend(); rit != rie; ++rit)
             {
@@ -215,7 +218,7 @@ namespace {
                     accessSize = unsigned(DL->getTypeSizeInBits(acessInst->getType())) / 8;
                 else
                     accessSize = unsigned(DL->getTypeSizeInBits(acessInst->getOperand(0)->getType())) / 8;
-                if ((cur_offset + accessSize) > 4)
+                if ((cur_offset - firstOffset + accessSize) > 4)
                     AccessIntrs.pop_back();
             }
 
@@ -228,6 +231,7 @@ namespace {
                 if (std::get<0>(*rit)->getAlignment() >= 4)
                     return false;
             }
+            NumElts = AccessIntrs.size();
         }
         return true;
     }
@@ -687,7 +691,7 @@ bool MemOpt::mergeLoad(LoadInst *LeadingLoad,
          "load with smaller offset!");
   
   // Next we need to check alignment
-  if (!checkAlignmentBeforeMerge(FirstLoad, LoadsToMerge))
+  if (!checkAlignmentBeforeMerge(FirstLoad, LoadsToMerge, NumElts))
       return false;
 
   // Calculate the new pointer. If the leading load is not the first load,
@@ -1058,7 +1062,7 @@ bool MemOpt::mergeStore(StoreInst *LeadingStore,
   StoreInst *FirstStore = std::get<0>(StoresToMerge.front());
   
   // Next we need to check alignment
-  if (!checkAlignmentBeforeMerge(FirstStore, StoresToMerge))
+  if (!checkAlignmentBeforeMerge(FirstStore, StoresToMerge, NumElts))
       return false;
   
   // We don't need to recalculate the new pointer as we merge stores to the
