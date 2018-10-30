@@ -1791,15 +1791,9 @@ class G4_Declare
     unsigned        startID;
 
     uint16_t spillFlag : 1;    // Indicate this declare gets spill reg
-    uint16_t isTempAddr : 1;  // Indicate this declare is newly created addr temp
     uint16_t addressed : 1;     // whether this declare is address-taken
 
     uint16_t hasFileScope : 1;     // has a file scope (relevant for CISA 3.0+)
-    uint16_t isOldFPDcl : 1;
-    uint16_t isFretLoc : 1;
-    // fake declare representing the life interval of a subroutine call, used by augmentation
-    uint16_t isScallDcl : 1;    
-    uint16_t hasNonDefaultMaskDef : 1;
     uint16_t doNotSpill : 1;    // indicates that this declare should never be spilled
 
     uint16_t liveIn : 1;   // indicate if this varaible has "Input" or "Input_Output" attribute
@@ -1874,19 +1868,13 @@ public:
 
         spillFlag = false;
         spillDCL = NULL;
-        isTempAddr = false;
 
         addrTakenSpillFillDcl = NULL;
 
         startID = 0;
 
-        isOldFPDcl = false;
-        isFretLoc = false;
         doNotSpill = false;
-        isScallDcl = false;
         capableOfReuse = false;
-
-        hasNonDefaultMaskDef = false;
 
         scopeID = 0;
 
@@ -2000,9 +1988,6 @@ public:
     void setRegFile( G4_RegFileKind rfile)  { regFile = rfile; }
     void setHasFileScope()                  {hasFileScope = true;}
 
-    void setIsFretLoc()                        {isFretLoc = true;}
-    bool getIsFRetLoc()                        {return isFretLoc;}
-
     bool useGRF()   { return (regFile & (G4_GRF | G4_INPUT)) != 0; }
     bool isInput()  { return liveIn || ((regFile & G4_INPUT) != 0); }
     bool isOutput() { return liveOut; }
@@ -2022,10 +2007,7 @@ public:
         }
         return rootDcl;
     }
-    bool getIsOrgDeclare()
-    {
-        return (AliasDCL == NULL && !isPartialDcl);
-    }
+
     // like above, but also return the alias offset in bytes
     G4_Declare*    getRootDeclare(uint32_t& offset)
     {
@@ -2083,13 +2065,7 @@ public:
     void        setSpilledDeclare(G4_Declare* sd) {spillDCL = sd;}
     G4_Declare* getSpilledDeclare()  {return spillDCL;}
 
-    void  setNewTempAddrFlag() {isTempAddr = true;}
-    bool  isNewTempAddr() const     {return isTempAddr;}
-
     unsigned getDeclId() { return decl_id; }
-
-    void setIsScallDcl()  { isScallDcl = true; }
-    bool getIsScallDcl()  { return isScallDcl; }
 
     void setIsSplittedDcl(bool b) { isSplittedDcl = b; }
     bool getIsSplittedDcl() { return isSplittedDcl; }
@@ -2102,9 +2078,6 @@ public:
 
     void        setSplitVarStartID(unsigned id) { startID = id; };
     unsigned    getSplitVarStartID() { return startID; };
-
-    void setOldFPDcl()          {isOldFPDcl = true;}
-    bool getOldFPDcl()          { return isOldFPDcl;}
 
     void setDoNotSpill()        { doNotSpill = true; }
     bool isDoNotSpill() const   { return doNotSpill; }
@@ -2131,18 +2104,6 @@ public:
     }
 
     void emit(std::ostream& output, bool isDumpDot, bool isSymbolReg);
-
-    void setTypeToUQ()
-    {
-        // This method is intended to be used only for changing type of FE_SP/FE_BP
-        // pre-defined variables. Using it for any other variables is very very
-        // risky!
-        //
-        // These variables are specially treated because their declaration is created
-        // first and only then kernel attribute will be read that determines their
-        // size (32-bit/64-bit).
-        elemType = Type_UQ;
-    }
 
     void prepareForRealloc(G4_Kernel*);
 };

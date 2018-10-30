@@ -880,6 +880,13 @@ namespace vISA
                 vars.resize(id + 1);
         }
 
+        // temp variable storing the FP dcl's old value
+        // created in addStoreRestoreForFP
+        G4_Declare* oldFPDcl = nullptr;
+
+        // new temps for each reference of spilled address/flag decls 
+        std::unordered_set<G4_Declare*> addrFlagSpillDcls;
+
     public:
         G4_Kernel& kernel;
         IR_Builder& builder;
@@ -931,6 +938,18 @@ namespace vISA
 
         // RA specific fields
         G4_Declare* getGRFDclForHRA(int GRFNum) const { return GRFDclsForHRA[GRFNum]; }
+
+        G4_Declare* getOldFPDcl() const { return oldFPDcl; }
+
+        bool isAddrFlagSpillDcl(G4_Declare* dcl) const
+        {
+            return addrFlagSpillDcls.count(dcl) != 0;
+        }
+
+        void addAddrFlagSpillDcl(G4_Declare* dcl)
+        {
+            addrFlagSpillDcls.insert(dcl);
+        }
 
         unsigned int getSplitVarNum(G4_Declare* dcl)
         {

@@ -3772,7 +3772,6 @@ void Augmentation::buildLiveIntervals()
             {
                 char* name = kernel.fg.builder->getNameString(kernel.fg.builder->mem, 32, "SCALL_%d", funcCnt++);
                 G4_Declare* scallDcl = kernel.fg.builder->createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UD);
-                scallDcl->setIsScallDcl();
 
                 updateStartInterval(scallDcl, inst);
                 updateEndInterval(scallDcl, inst);
@@ -4495,11 +4494,9 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare* newDcl, bool isCall)
 //
 void Augmentation::buildSIMDIntfAll(G4_Declare* newDcl)
 {
-
-    if (newDcl->getIsScallDcl())
+    auto callDclMapIt = callDclMap.find(newDcl);
+    if (callDclMapIt != callDclMap.end())
     {
-        CALL_DECL_MAP_ITER callDclMapIt = callDclMap.find(newDcl);
-        MUST_BE_TRUE(callDclMapIt != callDclMap.end(), "Invalid scall decl");
 
         G4_Declare* varDcl = NULL;
 
@@ -5047,7 +5044,7 @@ void GraphColor::createLiveRanges(unsigned reserveSpillSize)
         {
             lrs[var->getId()]->allocForbiddenCalleeSave(mem, &builder.kernel);
         }
-        else if (varDcl->getOldFPDcl())
+        else if (varDcl == gra.getOldFPDcl())
         {
             lrs[var->getId()]->allocForbiddenCallerSave(mem, &builder.kernel);
         }
@@ -5179,13 +5176,13 @@ void GraphColor::computeSpillCosts(bool useSplitLLRHeuristic)
         // accessed by each sequential use are limited to 2 registers for general instructions
         // and 8 registers for SEND instructions.
         //
-        else if (dcl->isNewTempAddr() == true ||
+        else if (gra.isAddrFlagSpillDcl(dcl) ||
             lrs[i]->isRetIp() ||
             lrs[i]->getIsInfiniteSpillCost() == true ||
             ((lrs[i]->getVar()->isRegVarTransient() == true ||
                 lrs[i]->getVar()->isRegVarTmp() == true) &&
                 lrs[i]->getVar()->isSpilled() == false) ||
-            dcl->getOldFPDcl() == true ||
+            dcl == gra.getOldFPDcl() ||
             (m_options->getOption(vISA_enablePreemption) &&
                 dcl == builder.getBuiltinR0()))
         {
@@ -6292,7 +6289,8 @@ void GraphColor::cleanupRedundantARFFillCode()
                 {
                     G4_RegVar* addrReg = dst->getBase()->asRegVar();
 
-                    if (addrReg->getDeclare()->isNewTempAddr()) {
+                    if (gra.isAddrFlagSpillDcl(addrReg->getDeclare())) 
+                    {
                         G4_SrcRegRegion* srcRgn = inst->getSrc(0)->asSrcRegRegion();
 
                         if (redundantAddrFill(dst, srcRgn, inst->getExecSize())) {
@@ -6353,7 +6351,7 @@ void GraphColor::pruneActiveSpillAddrLocs(G4_DstRegRegion* dstRegion, unsigned e
 
 void GraphColor::updateActiveSpillAddrLocs(G4_DstRegRegion* tmpDstRegion, G4_SrcRegRegion* srcRegion, unsigned exec_size)
 {
-    MUST_BE_TRUE(tmpDstRegion->getBase()->asRegVar()->getDeclare()->isNewTempAddr(), "Unknown error in ADDR reg spill code cleanup!");
+    MUST_BE_TRUE(gra.isAddrFlagSpillDcl(tmpDstRegion->getBase()->asRegVar()->getDeclare()), "Unknown error in ADDR reg spill code cleanup!");
     G4_RegVar* addrReg = tmpDstRegion->getBase()->asRegVar();
     MUST_BE_TRUE(addrReg->getPhyReg()->isA0(), "Unknown error in ADDR reg spill code cleanup!");
     unsigned startAddrId = addrReg->getPhyRegOff();
@@ -6375,7 +6373,7 @@ bool GraphColor::redundantAddrFill(G4_DstRegRegion* tmpDstRegion, G4_SrcRegRegio
 {
     bool match = true;
 
-    MUST_BE_TRUE(tmpDstRegion->getBase()->asRegVar()->getDeclare()->isNewTempAddr(), "Unknown error in ADDR reg spill code cleanup!");
+    MUST_BE_TRUE(gra.isAddrFlagSpillDcl(tmpDstRegion->getBase()->asRegVar()->getDeclare()), "Unknown error in ADDR reg spill code cleanup!");
     G4_RegVar* addrReg = tmpDstRegion->getBase()->asRegVar();
     MUST_BE_TRUE(addrReg->getPhyReg()->isA0(), "Unknown error in ADDR reg spill code cleanup!");
     unsigned startAddrId = addrReg->getPhyRegOff();
@@ -8125,7 +8123,7 @@ void GlobalRA::addCalleeSavePseudoCode()
 void GlobalRA::addStoreRestoreForFP()
 {
     G4_Declare* prevFP = builder.createTempVar(1, Type_UD, Either, Any);
-    prevFP->setOldFPDcl();
+    oldFPDcl = prevFP;
     G4_DstRegRegion* oldFPDst = builder.createDstRegRegion(Direct, prevFP->getRegVar(), 0, 0, 1, Type_UD);
     RegionDesc* rd = builder.getRegionScalar();
     G4_Operand* oldFPSrc = builder.createSrcRegRegion(Mod_src_undef, Direct, prevFP->getRegVar(), 0, 0, rd, Type_UD);

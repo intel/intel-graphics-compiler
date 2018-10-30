@@ -1428,8 +1428,6 @@ public:
     void setKernelDebugInfo(KernelDebugInfo* k) { kernelDbgInfo = k; }
     KernelDebugInfo* getKernelDebugInfo();
 
-    void use64BitFESP();
-
     gtPinData* getGTPinData()
     { 
         if(!gtPinInfo)

@@ -1133,13 +1133,6 @@ int VISAKernelImpl::AddKernelAttribute(const char* attrName, int size, const voi
         m_builder->getFCPatchInfo()->setIsEntryKernel(true);
         m_options->setOption(vISA_loadThreadPayload, true);
     }
-    else if (strcmp(attrName, "FESPSize") == 0 && attr->value.intVal == 64)
-    {
-        if (IS_GEN_BOTH_PATH)
-        {
-            m_kernel->use64BitFESP();
-        }
-    }
     else if (strcmp(attrName, "RetValSize") == 0)
     {
         if (IS_GEN_BOTH_PATH)

@@ -4064,8 +4064,7 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
         for (auto dcl : Declares)
         {
             if (!dcl->getRegVar()->isPhyRegAssigned() && !dcl->isSpilled() &&
-                !fg.isPseudoDcl(dcl) && !dcl->getIsScallDcl() &&
-                !dcl->getIsPartialDcl())
+                !fg.isPseudoDcl(dcl) && !dcl->getIsPartialDcl())
             {
                 if (beforeRegAlloc == false)
                 {
@@ -5754,13 +5753,6 @@ G4_Kernel::~G4_Kernel()
     }
 
     Declares.clear();
-}
-
-void G4_Kernel::use64BitFESP()
-{
-    fg.builder->getFE_FP()->setTypeToUQ();
-    fg.builder->getFE_SP()->setTypeToUQ();
-    fg.builder->set64BitFEStackVars();
 }
 
 //

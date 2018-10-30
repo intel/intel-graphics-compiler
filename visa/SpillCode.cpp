@@ -90,7 +90,7 @@ G4_Declare* SpillManager::createNewTempAddrDeclare(G4_Declare* dcl)
     // Live range of new temp addrs is short so that there is no point spilling them.
     // indicate this is for newly created addr temp so that RA won't spill it
     // in subsequent RA allocation
-    sp->setNewTempAddrFlag();
+    gra.addAddrFlagSpillDcl(sp);
 
     return sp;
 }
@@ -105,7 +105,7 @@ G4_Declare* SpillManager::createNewTempFlagDeclare(G4_Declare* dcl)
 	gra.setBBId(sp, bbId);
     sp->setSubRegAlign(dcl->getSubRegAlign());
     sp->setAlign(dcl->getAlign());
-    sp->setNewTempAddrFlag();
+    gra.addAddrFlagSpillDcl(sp);
 
 	return sp;
 }
@@ -133,7 +133,7 @@ G4_Declare* SpillManager::createNewTempAddrDeclare(G4_Declare* dcl, uint16_t num
     // Live range of new temp addrs is short so that there is no point spilling them.
     // indicate this is for newly created addr temp so that RA won't spill it
     // in subsequent RA allocation
-    sp->setNewTempAddrFlag();
+    gra.addAddrFlagSpillDcl(sp);
 
 	return sp;
 }

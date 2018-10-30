@@ -3358,7 +3358,6 @@ void GlobalRA::setABIForStackCallFunctionCalls()
 			G4_INST* fret = bb->back();
 			RegionDesc* rd = kernel.fg.builder->createRegionDesc(2, 2, 1);
 			G4_Declare* r1_src = kernel.fg.builder->createDeclareNoLookup(n, G4_INPUT, 8, 1, Type_UD);
-			r1_src->setIsFretLoc();
 			r1_src->getRegVar()->setPhyReg(regPool.getGreg(1), 0);
             G4_Operand* srcRgn = kernel.fg.builder->createSrcRegRegion(Mod_src_undef, Direct, r1_src->getRegVar(), 0, 0, rd, Type_UD);
 			fret->setSrc(srcRgn, 0);
