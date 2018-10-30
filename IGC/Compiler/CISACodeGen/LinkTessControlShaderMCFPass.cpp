@@ -75,7 +75,10 @@ namespace IGC
 
         /// @brief  Constructor
         LinkTessControlShaderMCF();
-        ~LinkTessControlShaderMCF() {};
+        ~LinkTessControlShaderMCF() 
+        {
+            delete mpBuilder;
+        };
 
         /// @brief  Provides name of pass
         virtual llvm::StringRef getPassName() const override {
