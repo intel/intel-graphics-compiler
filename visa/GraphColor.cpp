@@ -957,8 +957,9 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb, unsigned int &threeSou
             }
             else
             {
-                setupBankConflictsforTwoGRFs(inst);
+                    setupBankConflictsforTwoGRFs(inst);
             }
+            
         }
         if (inst->isSend() && !inst->isEOT())
         {
