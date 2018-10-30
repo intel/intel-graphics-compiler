@@ -268,7 +268,13 @@ private:
       AU.addRequired<MetaDataUtilsWrapper>();
       AU.addRequired<CodeGenContextWrapper>();
       AU.addRequired<TranslationTable>();
-    }   
+    }
+
+    void checkLocalIdUniform(
+        llvm::Function* F,
+        bool& IsLxUniform,
+        bool& IsLyUniform,
+        bool& IsLzUniform);
 
 private:
 #ifdef OCL_SPECIFIC
