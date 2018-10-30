@@ -140,6 +140,9 @@ public:
     /// Configure vISA pre-RA scheduler. Not tested on all APIs
     virtual unsigned getVISAPreRASchedulerCtrl() const { return 4; }
 
+    /// Turn on sampler clustering. Hopefully VISA PreRA scheduler with latency hiding can replace it.
+    virtual bool enableSampleClustering() const { return true; }
+
     /// Make sure optimization are consistent to avoid Z-fighting issue
     virtual bool PreventZFighting() const { return false; }
 

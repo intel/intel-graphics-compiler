@@ -230,8 +230,12 @@ bool MemOpt2::runOnFunction(Function &F) {
         bool LocalChanged = false;
         // Clear bookkeeping.
         Clear();
-        // Cluster samplers.
-        LocalChanged = clusterSampler(&BB);
+
+        if (cgCtx->m_DriverInfo.enableSampleClustering())
+        {
+            // Cluster samplers.
+            LocalChanged = clusterSampler(&BB);
+        }
 
         // Cluster MediaBlockReads
         LocalChanged |= clusterMediaBlockRead(&BB);
