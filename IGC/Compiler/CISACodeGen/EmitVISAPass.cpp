@@ -1464,7 +1464,11 @@ CVariable* EmitPass::GetSrcVariable(const SSource& source, bool fromConstPool)
 
 void EmitPass::SetSourceModifiers(unsigned int sourceIndex, const SSource& source)
 {
-    m_encoder->SetSrcModifier(sourceIndex, source.mod);  
+    if (source.mod != EMOD_NONE)
+    {
+        m_encoder->SetSrcModifier(sourceIndex, source.mod);
+    }
+
     int numberOfLanes = 0;
     if (m_currShader->GetIsUniform(source.value))
     {
@@ -1830,7 +1834,10 @@ void EmitPass::EmitAddPair(GenIntrinsicInst *GII, const SSource Sources[4], cons
     CVariable *L0 = GetSrcVariable(Sources[0]);
     CVariable *H0 = GetSrcVariable(Sources[1]);
     CVariable *L1 = GetSrcVariable(Sources[2]);
-    CVariable *H1 = GetSrcVariable(Sources[3]);
+    CVariable *H1 = GetSrcVariable(Sources[3]);    
+    for(unsigned srcId = 0; srcId < 4; ++srcId) {
+        SetSourceModifiers(srcId, Sources[srcId]);
+    }
 
     m_encoder->AddPair(Lo, Hi, L0, H0, L1, H1);
     m_encoder->Push();
