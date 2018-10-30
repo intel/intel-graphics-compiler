@@ -522,8 +522,13 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
     // Split big vector & 3-element load/store, etc.
     mpm.add(createVectorPreProcessPass());
 
-    // Create Gen IR lowering
+    // Create Gen IR lowering.
+    //   To replace SLM pointer if they are constants, break constants first.
+    if (ctx.m_instrTypes.hasLocalLoadStore) {
+        mpm.add(new BreakConstantExpr());
+    }
     mpm.add(createGenIRLowerPass());
+
     mpm.add(new WorkaroundAnalysis());
     if (!isOptDisabled)
     {

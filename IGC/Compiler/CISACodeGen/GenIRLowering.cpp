@@ -273,6 +273,79 @@ bool GenIRLowering::runOnFunction(Function &F) {
 
   bool Changed = false;
 
+  // Replace SLM PtrToInt by the assigned immed offset
+  // Later optimization (InstCombine) can fold away some address computation
+  for (auto LOI = FII->second->begin_LocalOffsets(),
+      LOE = FII->second->end_LocalOffsets();
+      LOI != LOE; ++LOI) {
+      IGCMD::LocalOffsetMetaDataHandle LH = *LOI;
+      // look up the value-to-offset mapping
+      Value *V = LH->getVar();
+      unsigned Offset = LH->getOffset();
+      // Skip non-pointer values.
+      if (!V->getType()->isPointerTy())
+          continue;
+      // Skip non-local pointers.
+      unsigned AS = V->getType()->getPointerAddressSpace();
+      if (AS != ADDRESS_SPACE_LOCAL)
+          continue;
+
+      // It is possible that a global (slm) is used in more than one kernels
+      // and each kernel might have a different offset for this global. Thus,
+      // we can only replace the uses within this kernel function. We will check
+      // instructions only as the constant expressions have been broken up
+      // before this pass.
+      PointerType* PTy = cast<PointerType>(V->getType());
+      Constant* CO = ConstantInt::get(Type::getInt32Ty(F.getContext()), Offset);
+      Constant* NewBase = ConstantExpr::getIntToPtr(CO, PTy);
+      auto NI = V->user_begin();
+      for (auto I = NI, E = V->user_end(); I != E; I = NI)
+      {
+          ++NI;
+          Instruction* Inst = dyn_cast<Instruction>(*I);
+          if (!Inst || Inst->getParent()->getParent() != &F) {
+              continue;
+          }
+
+          // As constant exprs have been broken up, need to check insts only.
+          if (GetElementPtrInst *GEPI = dyn_cast<GetElementPtrInst>(Inst))
+          {
+              // sanity check
+              if (GEPI->getOperand(0) == V) {
+                  // operand 0 is pointer operand
+                  GEPI->setOperand(0, NewBase);
+                  Changed = true;
+              }
+          }
+          else if (PtrToIntInst *PI = dyn_cast<PtrToIntInst>(Inst))
+          {
+              Value *CI = ConstantInt::get(PI->getType(), Offset);
+              PI->replaceAllUsesWith(CI);
+              PI->eraseFromParent();
+              Changed = true;
+          }
+          else if (BitCastInst *BCI = dyn_cast<BitCastInst>(Inst))
+          {
+              BCI->setOperand(0, NewBase);
+              Changed = true;
+          }
+          else if (LoadInst *LI = dyn_cast<LoadInst>(Inst))
+          {
+              LI->setOperand(0, NewBase);
+              Changed = true;
+          }
+          else if (StoreInst* SI = dyn_cast<StoreInst>(Inst))
+          {
+              if (SI->getPointerOperand() == V)
+              {
+                  // pointer operand is operand 1!
+                  SI->setOperand(1, NewBase);
+                  Changed = true;
+              }
+          }
+      }
+  }
+
   // Low GEP into gen.gep{32|64} in the 1st pass.
   for (auto &BB : F) {
     for (auto BI = BB.begin(), BE = BB.end(); BI != BE;) {
@@ -305,35 +378,6 @@ bool GenIRLowering::runOnFunction(Function &F) {
       case Instruction::GetElementPtr:
         Changed |= lowerGetElementPtrInst(cast<GetElementPtrInst>(Inst), BI);
         break;
-      }
-    }
-  }
-
-  // Replace SLM PtrToInt by the assigned immed offset
-  // Later optimization (InstCombine) can fold away some address computation
-  for (auto LOI = FII->second->begin_LocalOffsets(),
-            LOE = FII->second->end_LocalOffsets();
-       LOI != LOE; ++LOI) {
-    IGCMD::LocalOffsetMetaDataHandle LH = *LOI;
-    // look up the value-to-offset mapping
-    Value *V = LH->getVar();
-    unsigned Offset = LH->getOffset();
-    // Skip non-pointer values.
-    if (!V->getType()->isPointerTy())
-      continue;
-    // Skip non-local pointers.
-    unsigned AS = V->getType()->getPointerAddressSpace();
-    if (AS != ADDRESS_SPACE_LOCAL)
-      continue;
-    for (auto I = V->user_begin(), E = V->user_end(); I != E; ++I) {
-      if (ConstantExpr *CE = dyn_cast<ConstantExpr>(*I)) {
-        if (CE->getOpcode() == Instruction::PtrToInt) {
-          Value *CI = ConstantInt::get(CE->getType(), Offset);
-          CE->replaceAllUsesWith(CI);
-        }
-      } else if (PtrToIntInst *PI = dyn_cast<PtrToIntInst>(*I)) {
-        Value *CI = ConstantInt::get(PI->getType(), Offset);
-        PI->replaceAllUsesWith(CI);
       }
     }
   }
