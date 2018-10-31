@@ -3917,6 +3917,8 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         }
 
         std::string asmName = IGC::Debug::GetDumpName(m_program, "asm");
+        std::replace_if(asmName.begin(), asmName.end(),
+            [](const char& c) {return c == '>' || c == '<'; }, '_');
         if (asmName.length() >= MAX_VISA_STRING_LENGTH)
         {
             asmName.resize(MAX_VISA_STRING_LENGTH);
@@ -4188,6 +4190,8 @@ void CEncoder::Compile()
     if( m_enableVISAdump )
     {
         std::string isaName = IGC::Debug::GetDumpName(m_program, "isa");
+        std::replace_if(isaName.begin(), isaName.end(),
+            [](const char& c) {return c == '>' || c == '<'; }, '_');
         // vISA does not support string of length >= 255. Truncate if this exceeds
         // the limit. Note that vISA may append an extension, so relax it to a
         // random number 240 here.
