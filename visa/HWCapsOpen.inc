@@ -425,4 +425,9 @@
         return true;
     }
 
+    bool hasStrideFloatRegions() const
+    {
+        return true;
+    }
+
     // end HW capabilities
