@@ -1377,9 +1377,10 @@ SpillManagerGMRF::createMRFFillRangeDeclare (
 	G4_INST *         sendInst
 )
 {
-    MUST_BE_TRUE ((sendInst->isSend() && (sendInst->getSrc(0)->asSrcRegRegion () == filledRegion)) ||
-                  (sendInst->isSplitSend() && (sendInst->getSrc(1)->asSrcRegRegion () == filledRegion)),
-                  "Error in createMRFFillRangeDeclare");
+    bool right_instruction = (sendInst->isSend() && (sendInst->getSrc(0)->asSrcRegRegion() == filledRegion)) ||
+                             (sendInst->isSplitSend() && (sendInst->getSrc(1)->asSrcRegRegion() == filledRegion));
+
+    MUST_BE_TRUE (right_instruction, "Error in createMRFFillRangeDeclare");
 
 	G4_RegVar * filledRegVar = getRegVar (filledRegion);
 	const char * name =
@@ -4260,8 +4261,10 @@ SpillManagerGMRF::insertSpillFillCode (
 							(*it)->erase(jt);
 							break;
 						}
-						if ((inst->isSend() && i == 0) ||
-                            (inst->isSplitSend() && i == 1)) {
+                        bool insertMRF = (inst->isSend() && i == 0) ||
+                                         (inst->isSplitSend() && i == 1);
+
+						if (insertMRF) {
                             // treat it as MRF since we may need to spill >2 GRFs
 							insertFillMRFRangeCode (
 								inst->getSrc (i)->asSrcRegRegion (), jt, (*it));
