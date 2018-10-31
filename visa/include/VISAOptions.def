@@ -54,6 +54,7 @@ DEF_VISA_OPTION(vISA_enableCleanupBindless, ET_BOOL, NULLSTR,            UNUSED,
 DEF_VISA_OPTION(vISA_EnableSplitVariables,  ET_BOOL, "-noSplitVariables", UNUSED, false)
 DEF_VISA_OPTION(vISA_ChangeMoveType,        ET_BOOL, "-ALTMode",         UNUSED, true)
 DEF_VISA_OPTION(vISA_accSubstitution,       ET_BOOL, "-noAccSub",          UNUSED, true)
+DEF_VISA_OPTION(vISA_accSubDF,              ET_BOOL, "-accSubDF",          UNUSED, false)
 DEF_VISA_OPTION(vISA_doAccSubAfterSchedule, ET_BOOL, "-accSubPostSchedule",	UNUSED, true)
 DEF_VISA_OPTION(vISA_ifCvt,                 ET_BOOL, "-noifcvt",     UNUSED, true)
 DEF_VISA_OPTION(vISA_LVN,                   ET_BOOL, "-nolvn",       UNUSED, true)

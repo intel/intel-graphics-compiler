@@ -4537,13 +4537,17 @@ static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
 
 static uint32_t getNumACC(IR_Builder& builder)
 {
-    uint32_t numUserAcc = builder.getOptions()->getuInt32Option(vISA_numGeneralAcc);
-    if (numUserAcc != 0)
+    uint32_t numAcc = builder.getOptions()->getuInt32Option(vISA_numGeneralAcc);
+    if (numAcc == 0)
     {
-        // use user-provided value
-        return numUserAcc;
+        numAcc = builder.getNumACC();
     }
-    return builder.getNumACC();
+
+    if (builder.kernel.getNumRegTotal() == 256)
+    {
+        numAcc *= 2;   
+    }
+    return numAcc;
 }
 
 struct AccAssignment

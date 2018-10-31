@@ -7560,14 +7560,16 @@ bool G4_INST::canDstBeAcc(const IR_Builder& builder) const
             return false;
         }
         break;
-#if 0
     case Type_DF:
+    	 if (!builder.getOption(vISA_accSubDF))
+    	 {
+    	     return false;
+    	 }
         if (getExecSize() != 32 && getExecSize() != 8)
         {
             return false;
         }
         break;
-#endif
     case Type_D:
     case Type_UD:
         if (getExecSize() != 8)
@@ -7675,14 +7677,17 @@ bool G4_INST::canSrcBeAcc(int srcId, const IR_Builder& builder) const
             return false;
         }
         break;
-#if 0
     case Type_DF:
+    	 if (!builder.getOption(vISA_accSubDF))
+    	 {
+    	     return false;
+    	 }
+    	
         if (getExecSize() != 32 && getExecSize() != 8)
         {
             return false;
         }
         break;
-#endif
     case Type_D:
     case Type_UD:
         if (getExecSize() != 8)
