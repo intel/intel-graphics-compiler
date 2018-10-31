@@ -150,6 +150,8 @@ typedef struct GT_SYSTEM_INFO
     uint32_t        TotalGsThreads;                 // Total threads in GS
     uint32_t        TotalPsThreadsWindowerRange;    // Total threads in PS Windower Range
 
+    uint32_t        TotalVsThreads_Pocs;            // Total threads in VS for POCS	
+
     // Note: The CSR size requirement is not clear at this moment. Till then the driver will set
     // the maximum size that should be sufficient for all platform SKUs. 
     uint32_t        CsrSizeInMb;                    // Total size that driver needs to allocate for CSR.
