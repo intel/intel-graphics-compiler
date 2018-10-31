@@ -231,7 +231,11 @@ namespace {
                 if (std::get<0>(*rit)->getAlignment() >= 4)
                     return false;
             }
-            NumElts = AccessIntrs.size();
+
+            // Need to subtract the last offset by the first offset and add one to
+            // get the new size of the vector
+            auto lastOffset = std::get<1>(AccessIntrs[AccessIntrs.size() - 1]);
+            NumElts = unsigned(lastOffset - firstOffset) + 1;
         }
         return true;
     }
