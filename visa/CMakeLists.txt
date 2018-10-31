@@ -66,6 +66,11 @@ endif(WIN32)
 # In the case where this is the IGC build we need to add a dummy custom target check_headers
 if (IGC_BUILD)
   add_custom_target(check_headers)
+
+  if(MSVC)
+    bs_set_wdk(check_headers)
+  endif(MSVC)
+
 endif (IGC_BUILD)
 
 # Common library used by the shared libraries in this file (a sub directory of this directory hence
