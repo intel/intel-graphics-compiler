@@ -2180,10 +2180,6 @@ message(STATUS "================================================================
 
 # =========================================== Helper variables =========================================
 
-if(MSVC)
-#Utility cmake file for setting WDK and VC paths.
-include(${BUILD_SYS_INC}/utils.cmake)
-endif()
 
 # We are building IGC.
 set(IGC_BUILD YES)
