@@ -100,7 +100,10 @@ public:
   virtual void addUnknownStructField(
     SPIRVTypeStruct*, unsigned idx, SPIRVId id);
   virtual void resolveUnknownStructFields();
-  bool hasDebugInfo() const { return !LineVec.empty();}
+  bool hasDebugInfo() const
+  {
+      return getCompilationUnit() != nullptr;
+  }
 
   // Error handling functions
   SPIRVErrorLog &getErrorLog() { return ErrLog;}
@@ -208,7 +211,7 @@ public:
   virtual SPIRVInstruction *addInstruction(SPIRVInstruction *Inst,
       SPIRVBasicBlock *BB);
 
-  virtual SPIRVExtInst* getCompilationUnit()
+  virtual SPIRVExtInst* getCompilationUnit() const
   {
       for (auto& item : IdEntryMap)
       {

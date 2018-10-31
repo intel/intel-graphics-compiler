@@ -212,7 +212,7 @@ public:
 
   virtual void addCapability(SPIRVCapabilityKind) = 0;
   
-  virtual SPIRVExtInst* getCompilationUnit() = 0;
+  virtual SPIRVExtInst* getCompilationUnit() const = 0;
   virtual std::vector<SPIRVExtInst*> getGlobalVars() = 0;
 
   // I/O functions
