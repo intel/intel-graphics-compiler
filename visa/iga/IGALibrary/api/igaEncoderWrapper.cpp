@@ -8,8 +8,12 @@ iga_status_t KernelEncoder::encode()
 {
 
     ErrorHandler errHandler;
-    Encoder enc(kernel->getModel(),
-        errHandler, EncoderOpts(autoCompact, true, nocompactFirstEightInst));
+    Encoder enc(kernel->getModel(), errHandler,
+                EncoderOpts(autoCompact,
+                            true,
+                            nocompactFirstEightInst,
+                            false
+                ));
     enc.encodeKernel(
         *kernel,
         kernel->getMemManager(),

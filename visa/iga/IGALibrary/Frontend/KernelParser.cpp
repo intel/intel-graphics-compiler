@@ -760,8 +760,8 @@ bool GenParser::TryParseInstOptOrDepInfo(InstOptSet &instOpts)
 bool GenParser::tryParseInstOptDepInfoToken(InstOptSet &instOpts)
 {
     auto loc = NextLoc();
-    InstOpt newOpt = InstOpt::ACCWREN;
     if (LookingAt(IDENT)) {
+        InstOpt newOpt = InstOpt::ACCWREN;
         // classic instruction option that affects instruction dependency
         // scheduling etc...
         if (ConsumeIdentEq("NoDDChk")) {
@@ -2975,7 +2975,9 @@ Kernel *iga::ParseGenKernel(
     const ParseOpts &popts)
 {
     Kernel *k = new Kernel(m);
+
     InstBuilder h(k, e);
+
     KernelParser p(m, h, inp, e, popts);
     try {
         p.ParseListing();

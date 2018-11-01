@@ -33,4 +33,5 @@ public:
     // This function is used by visa to patch the add or mov instructions' imm field for the indirect call
     // FIXME: Move this api to somewhere else that's more apporopriate
     static bool patchImmValue(const iga::Model& model, unsigned char* binary, iga::Type type, const iga::ImmVal &val);
+
 };

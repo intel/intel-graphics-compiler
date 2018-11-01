@@ -166,6 +166,7 @@ class InstBuilder {
 
 
 
+
     void clearInstState() {
         m_predication.function = PredCtrl::NONE;
         m_predication.inverse = false;
@@ -263,6 +264,7 @@ class InstBuilder {
         } // else: targets end of program exactly
     }
 
+
 public:
     InstBuilder(Kernel *kernel, ErrorHandler &e)
         : m_model(kernel->getModel())
@@ -273,6 +275,7 @@ public:
     }
 
     ErrorHandler &errorHandler() {return m_errorHandler;}
+
 
     // Called at the beginning of the program
     void ProgramStart() {
