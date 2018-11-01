@@ -461,31 +461,31 @@ static BufferAccessType getDefaultAccessType(BufferType bufTy)
 bool GetResourcePointerInfo(Value* srcPtr, unsigned &resID, IGC::BufferType &resTy, BufferAccessType& accessTy)
 {
     accessTy = BufferAccessType::ACCESS_READWRITE;
-    if (Instruction* inst = dyn_cast<Instruction>(srcPtr))
-    {
-        // For bindless pointers with encoded metadata
-        if (inst->getType()->isPointerTy())
-        {
-            MDNode* resID_md = inst->getMetadata("resID");
-            MDNode* resTy_md = inst->getMetadata("resTy");
-			MDNode* accTy_md = inst->getMetadata("accessTy");
-            if (resID_md && resTy_md)
-            {
-                resID = (unsigned) mdconst::dyn_extract<ConstantInt>(resID_md->getOperand(0))->getZExtValue();
-                resTy = (BufferType) mdconst::dyn_extract<ConstantInt>(resTy_md->getOperand(0))->getZExtValue();
-
-				if (accTy_md)
-					accessTy = (BufferAccessType) mdconst::dyn_extract<ConstantInt>(accTy_md->getOperand(0))->getZExtValue();
-				else
-                	accessTy = getDefaultAccessType(resTy);
-                return true;
-            }
-        }
-	}
 	if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(srcPtr))
     {
+        // For bindless pointers with encoded metadata
+        if(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue)
+        {
+            if (inst->hasOperandBundles())
+            {
+                auto resIDBundle = inst->getOperandBundle("resID");
+                auto resTyBundle = inst->getOperandBundle("resTy");
+                auto accessTyBundle = inst->getOperandBundle("accessTy");
+                if (resIDBundle && resTyBundle)
+                {
+                    resID = (unsigned) (cast<ConstantInt>(resIDBundle->Inputs.front()))->getZExtValue();
+                    resTy = (BufferType) (cast<ConstantInt>(resTyBundle->Inputs.front()))->getZExtValue();
+
+                    if (accessTyBundle)
+                        accessTy = (BufferAccessType) (cast<ConstantInt>(accessTyBundle->Inputs.front()))->getZExtValue();
+                    else
+                        accessTy = getDefaultAccessType(resTy);
+                    return true;
+                }
+            }
+        }
 		// For GetBufferPtr instructions with buffer info in the operands
-        if(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr)
+        else if(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr)
 		{
             Value *bufIdV = inst->getOperand(0);
             Value *bufTyV = inst->getOperand(1);
