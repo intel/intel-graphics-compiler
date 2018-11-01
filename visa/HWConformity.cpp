@@ -3167,6 +3167,15 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                         movInst->setSrc(srcAsUD, 0);
                         movInst->setExecSize(inst->getExecSize() * 2);
 
+                        // NoMask is set on the mov instruction, but if we fall outside of the new execution size,
+                        // it won't be executed fully
+                        // e.g., we have to change
+                        // (W) mov (16|M24) r[a0.0,64]<1>:ud r67.0<8;8,1>:ud
+                        // into
+                        // (W) mov (16|M0) r[a0.0,64]<1>:ud r67.0<8;8,1>:ud
+                        movInst->setMaskOption(InstOpt_M0);
+
+
                         // mov saturate/pred to the original inst
                         movInst->setOptionOn(InstOpt_WriteEnable);
                         if (movInst->getSaturate())
