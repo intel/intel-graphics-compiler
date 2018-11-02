@@ -1329,10 +1329,10 @@ void COpenCLKernel::AllocatePayload()
     uint offset                 = 0;
     
     uint constantBufferStart    = 0;
-    uint constantBufferEnd      = 0;
-
     bool constantBufferStartSet = false;
-    bool constantBufferEndSet   = false;
+
+    uint prevOffset = 0;
+    bool nosBufferAllocated = false;
     
     KernelArgsOrder::InputType layout = 
             m_kernelInfo.m_threadPayload.CompiledForIndirectPayloadStorage ?
@@ -1346,96 +1346,87 @@ void COpenCLKernel::AllocatePayload()
         kernelArgs.checkForZeroPerThreadData();
     }
 
-    for (KernelArgs::const_iterator i = kernelArgs.begin(), e = kernelArgs.end(); i != e; ++i) {
+    for (KernelArgs::const_iterator i = kernelArgs.begin(), e = kernelArgs.end(); i != e; ++i) 
+    {
         KernelArg arg = *i;
+        prevOffset = offset;
 
 		// For now, only check BUFFER_OFFSET arguments (may move it into KernelArg class)
 		bool IsUnusedArg = (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET &&
 			                IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset) &&
 			                arg.getArg()->use_empty());
 
-        if (constantBufferStartSet && !constantBufferEndSet && !arg.isConstantBuf())
-        {
-            constantBufferEnd = offset;
-            constantBufferEndSet = true;
-        }
+        // Runtime Values should not be processed any further. No annotations shall be created for them.
+        // Only added to KernelArgs to enforce correct allocation order.
+        bool isRuntimeValue = (arg.getArgType() == KernelArg::ArgType::RUNTIME_VALUE);
 
-        if (!constantBufferStartSet && arg.isConstantBuf()) {
+        if (!constantBufferStartSet && arg.isConstantBuf())
+        {
             constantBufferStart = offset;
-            AllocateNOSConstants(offset);
             constantBufferStartSet = true;
         }
 
-        if (arg.getArgType() == KernelArg::ArgType::RUNTIME_VALUE)
-        {
-            // Runtime Values should not be processed any further. No annotations shall be creatred for them.
-            // Only added to KernelArgs to enforce correct allocation order.
-            continue;
+        if (!nosBufferAllocated && isRuntimeValue) {
+            assert(arg.isConstantBuf() && "RuntimeValues must be marked as isConstantBuf");
+            AllocateNOSConstants(offset);
+            nosBufferAllocated = true;
         }
 
         // Local IDs are non-uniform and may have two instances in SIMD32 mode
         int numAllocInstances = arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_IDS ? m_numberInstance : 1;
 
-        if (arg.needsAllocation() && !IsUnusedArg)
+        if (!IsUnusedArg && !isRuntimeValue)
         {
-            // Align on the desired alignment for this argument
-            offset = iSTD::Align(offset, arg.getAlignment());
-
-            // Arguments larger than a GRF must be at least GRF-aligned.
-            // Arguments smaller than a GRF may not cross GRF boundaries.
-            // This means that arguments that cross a GRF boundary
-            // must be GRF aligned.
-            // Note that this is done AFTER we align on the base alignment,
-            // because of edge cases where aligning on the base alignment
-            // is what causes the "overflow".
-            unsigned int startGRF = offset / SIZE_GRF;
-            unsigned int endGRF = (offset + arg.getAllocateSize() - 1) / SIZE_GRF;
-            if (startGRF != endGRF)
+            if (arg.needsAllocation())
             {
-                offset = iSTD::Align(offset, SIZE_GRF);
+                // Align on the desired alignment for this argument
+                offset = iSTD::Align(offset, arg.getAlignment());
+
+                // Arguments larger than a GRF must be at least GRF-aligned.
+                // Arguments smaller than a GRF may not cross GRF boundaries.
+                // This means that arguments that cross a GRF boundary
+                // must be GRF aligned.
+                // Note that this is done AFTER we align on the base alignment,
+                // because of edge cases where aligning on the base alignment
+                // is what causes the "overflow".
+                unsigned int startGRF = offset / SIZE_GRF;
+                unsigned int endGRF = (offset + arg.getAllocateSize() - 1) / SIZE_GRF;
+                if (startGRF != endGRF)
+                {
+                    offset = iSTD::Align(offset, SIZE_GRF);
+                }
+
+                // And now actually tell vISA we need this space.
+                // (Except for r0, which is a predefined variable, and should never be allocated as input!)
+                const llvm::Argument * A = arg.getArg();
+                if(A != nullptr && arg.getArgType() != KernelArg::ArgType::IMPLICIT_R0) 
+                {
+                    CVariable* var = GetSymbol(const_cast<Argument*>(A));
+                    for (int i = 0; i < numAllocInstances; ++i)
+                    {
+                        AllocateInput(var, offset + (arg.getAllocateSize() * i), i);
+                    }
+                }
+                // or else we would just need to increase an offset
             }
 
-            // And now actually tell vISA we need this space.
-            // (Except for r0, which is a predefined variable, and should never be allocated as input!)
-            const llvm::Argument * A = arg.getArg();
-            if(A != nullptr && arg.getArgType() != KernelArg::ArgType::IMPLICIT_R0) 
+            // Create annotations for the kernel argument
+            // If an arg is unused, don't generate patch token for it.
+            CreateAnnotations(&arg, offset - constantBufferStart);
+
+            if (arg.needsAllocation())
             {
-                CVariable* var = GetSymbol(const_cast<Argument*>(A));
                 for (int i = 0; i < numAllocInstances; ++i)
                 {
-                    AllocateInput(var, offset + (arg.getAllocateSize() * i), i);
+                    offset += arg.getAllocateSize();
                 }
             }
-            // or else we would just need to increase an offset
         }
 
-        // Create annotations for the kernel argument
-		// If an arg is unused, don't generate patch token for it.
-		if (!IsUnusedArg)
-		{
-			CreateAnnotations(&arg, offset - constantBufferStart);
-		}
-
-        if (arg.needsAllocation() && !IsUnusedArg)
+        if (arg.isConstantBuf())
         {
-            for (int i = 0; i < numAllocInstances; ++i)
-            {
-                offset += arg.getAllocateSize();
-            }
+            m_ConstantBufferLength += offset - prevOffset;
         }
-    }
-
-    if (!constantBufferStartSet)
-    {
-        // In case no constants found in loop above:
-        constantBufferStart = offset;
-        AllocateNOSConstants(offset);
-        constantBufferStartSet = true;
-    }
-
-    if (!constantBufferEndSet && constantBufferStartSet) {
-        constantBufferEnd = offset;
-        constantBufferEndSet = true;
     }
 
     // ToDo: we should avoid passing all three dimensions of local id
@@ -1453,8 +1444,6 @@ void COpenCLKernel::AllocatePayload()
     m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = 0;
     m_kernelInfo.m_threadPayload.PassInlineData = false;
     
-    assert(constantBufferEnd >= constantBufferStart && "Constant buffer size should be non negative!");
-    m_ConstantBufferLength = constantBufferEnd - constantBufferStart;
     m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, SIZE_GRF);
 
     CreateInlineSamplerAnnotations();
