@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Support/SourceMgr.h>
 #include "common/LLVMWarningsPop.hpp"
+#include "common/Types.hpp"
 
 using namespace IGC;
 using namespace IGC::Debug;
@@ -130,3 +131,77 @@ void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
         }
     }
 }
+
+// This function was implemented due to disability of creating new arguments for
+// already existing functions via argument constructor. LLVM 7 does not give us
+// such possibility. The only way is to create totally new function with new 
+// signature and then splice the basic block list. 
+// BE CAREFUL: this function changes pointer to the function passed as a parameter.
+// It is reassigned to the new created function (with an additional parameters). 
+// The function initially passed as an argument is not needed anymore, because all
+// of the basic blocks are spliced to the new function.
+std::vector<llvm::Argument *> SpliceFuncWithNewArguments(
+    llvm::Function* &pSourceFunc,
+    const std::vector<llvm::Type*>& newArgs,
+    const std::vector<std::string>& newArgsNames)
+{
+    assert(newArgsNames.size() <= newArgs.size() && "To many arguments names");
+    std::vector<llvm::Type*> arguments;
+
+    // gather all arguments from source function
+    for (auto& argIter : range(pSourceFunc->arg_begin(), pSourceFunc->arg_end()))
+    {
+        arguments.push_back(argIter.getType());
+    }
+    // concatenate old arguments and new arguments
+    arguments.insert(arguments.end(), newArgs.begin(), newArgs.end());
+    
+    llvm::Function* pNewFunction = llvm::Function::Create(llvm::FunctionType::get(
+        pSourceFunc->getReturnType(), arguments, false),
+        pSourceFunc->getLinkage(),
+        pSourceFunc->getName(),
+        pSourceFunc->getParent());
+
+    pNewFunction->setAttributes(pSourceFunc->getAttributes());
+    pNewFunction->getBasicBlockList().splice(pNewFunction->begin(), pSourceFunc->getBasicBlockList());
+
+    // set names of copied arguments
+    auto newArg = pNewFunction->arg_begin();
+    for (auto oldArg = pSourceFunc->arg_begin(),
+        oldArgEnd = pSourceFunc->arg_end();
+        oldArg != oldArgEnd;
+        ++oldArg, ++newArg)
+    {
+        oldArg->replaceAllUsesWith(&(*newArg));
+        newArg->takeName(&(*oldArg));
+    }
+    // set names for newly added arguments and collect them to the vector
+    // at this moment, pointer newArg must point to the first new argument
+    std::vector<llvm::Argument *>newArguments;
+    for (auto argName = newArgsNames.begin(); newArg != pNewFunction->arg_end(); newArg++)
+    {
+        if (argName != newArgsNames.end())
+        {
+            newArg->setName(*argName);
+            argName++;
+        }
+        newArguments.push_back(&*newArg);
+    }
+    pNewFunction->takeName(pSourceFunc);
+    //pNewFunction->setName(pSourceFunc->getName());
+    pSourceFunc->removeFromParent();
+    // reassign function pointer to newly created function (with new arguments)
+    pSourceFunc = pNewFunction;
+
+    assert(newArguments.size() && "This function should create one argument at least.");
+
+    return newArguments;
+}
+
+llvm::Argument* SpliceFuncWithNewArgument(
+    llvm::Function* &pSourceFunc,
+    llvm::Type* newArg,
+    std::string newArgName)
+{
+    return SpliceFuncWithNewArguments(pSourceFunc, std::vector<llvm::Type*>(1, newArg), std::vector<std::string>(1, newArgName)).at(0);
+}
