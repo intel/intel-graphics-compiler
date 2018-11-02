@@ -64,6 +64,11 @@ void __builtin_spirv_OpControlBarrier_i32_i32_i32(Scope_t Execution, Scope_t Mem
     {
         __builtin_IB_thread_group_barrier();
     }
+    else  if( Execution == Subgroup )
+    {
+        // nothing will be emited but we need to prevent optimization spliting control flow
+        __builtin_IB_sub_group_barrier();
+    }
 }
 
 void __builtin_spirv_OpMemoryBarrier_i32_i32(Scope_t Memory, uint Semantics)

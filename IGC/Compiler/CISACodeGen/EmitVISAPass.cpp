@@ -7305,6 +7305,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_evaluateSampler:
         // nothing to do
         break;
+    case GenISAIntrinsic::GenISA_wavebarrier:
+        // nothing to do
+        break;
     case GenISAIntrinsic::GenISA_mul_rtz:
     case GenISAIntrinsic::GenISA_fma_rtz:
     case GenISAIntrinsic::GenISA_add_rtz:

@@ -49,6 +49,7 @@ IGC_INITIALIZE_PASS_END(SubGroupFuncsResolution, PASS_FLAG, PASS_DESCRIPTION, PA
 
 char SubGroupFuncsResolution::ID = 0;
 
+const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_BARRIER            = "__builtin_IB_sub_group_barrier";
 const llvm::StringRef SubGroupFuncsResolution::GET_MAX_SUB_GROUP_SIZE       = "__builtin_IB_get_simd_size";
 const llvm::StringRef SubGroupFuncsResolution::GET_SUB_GROUP_LOCAL_ID       = "__builtin_IB_get_simd_id";
 const llvm::StringRef SubGroupFuncsResolution::SUB_GROUP_SHUFFLE            = "__builtin_IB_simd_shuffle";
@@ -812,6 +813,14 @@ void SubGroupFuncsResolution::visitCallInst( CallInst &CI )
     else if (funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_SCAN_FMIN))
     {
         return subGroupScan(WaveOps::FMIN, CI);
+    }
+    else if(funcName.startswith(SubGroupFuncsResolution::SUB_GROUP_BARRIER))
+    {
+        Function*    waveBarrier = GenISAIntrinsic::getDeclaration(
+            CI.getCalledFunction()->getParent(),
+            GenISAIntrinsic::GenISA_wavebarrier);
+        CallInst::Create(waveBarrier, "", &CI);
+        CI.eraseFromParent();
     }
     else
     {

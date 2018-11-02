@@ -108,6 +108,7 @@ Imported_Intrinsics = \
     "GenISA_threadgroupbarrier": ["void",[],"Convergent"],
     "GenISA_threadgroupbarrier_signal": ["void",[],"Convergent"],
     "GenISA_threadgroupbarrier_wait": ["void",[],"Convergent"],
+    "GenISA_wavebarrier": ["void",[],"Convergent"],
     "GenISA_memoryfence": ["void",["bool","bool","bool","bool","bool","bool","bool"],"Convergent"],
     "GenISA_flushsampler": ["void",[],"None"],
     "GenISA_globalSync": ["void",[],"Convergent"],

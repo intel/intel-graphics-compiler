@@ -477,7 +477,6 @@ __local   void* __builtin_IB_to_local(void*);
 __private void* __builtin_IB_to_private(void*);
 
 // SubGroup Functions
-
 int     __builtin_IB_get_simd_size( void );
 int     __builtin_IB_get_simd_id( void );
 int     __builtin_IB_simd_shuffle( int, int );
@@ -489,6 +488,7 @@ double  __builtin_IB_simd_shuffle_df(double, uint);
 uint    __builtin_IB_simd_shuffle_down( uint, uint, uint );
 ushort  __builtin_IB_simd_shuffle_down_us( ushort, ushort, uint );
 uchar  __builtin_IB_simd_shuffle_down_uc( uchar, uchar, uint );
+void   __builtin_IB_sub_group_barrier();
 
 // Block read : global address space
 uint    __builtin_IB_simd_block_read_1_global( const __global uint* );

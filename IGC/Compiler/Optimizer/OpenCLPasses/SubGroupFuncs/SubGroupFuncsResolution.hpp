@@ -87,6 +87,7 @@ namespace IGC
         void subGroupReduce(WaveOps op, llvm::CallInst &CI);
         void subGroupScan(WaveOps op, llvm::CallInst &CI);
 
+        static const llvm::StringRef SUB_GROUP_BARRIER;
         static const llvm::StringRef GET_MAX_SUB_GROUP_SIZE;
         static const llvm::StringRef GET_SUB_GROUP_LOCAL_ID;
         static const llvm::StringRef SUB_GROUP_SHUFFLE;

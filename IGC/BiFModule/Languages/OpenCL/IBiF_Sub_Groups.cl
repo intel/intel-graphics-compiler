@@ -83,13 +83,13 @@ INLINE uint OVERLOADABLE get_sub_group_local_id( void )
 
 INLINE void OVERLOADABLE sub_group_barrier( cl_mem_fence_flags flags )
 {
-    // Nothing!
+    __builtin_spirv_OpControlBarrier_i32_i32_i32( Subgroup, 0, AcquireRelease );
 }
 
 #if(__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 INLINE void OVERLOADABLE sub_group_barrier( cl_mem_fence_flags flags, memory_scope scope )
 {
-    // Nothing!
+    __builtin_spirv_OpControlBarrier_i32_i32_i32( Subgroup, 0, AcquireRelease );
 }
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
 
