@@ -733,6 +733,7 @@ char SubroutineInliner::ID = 0;
 void SubroutineInliner::getAnalysisUsage(AnalysisUsage &AU) const 
 {
     AU.addRequired<EstimateFunctionSize>();
+    AU.addRequired<CodeGenContextWrapper>();
     LegacyInlinerBase::getAnalysisUsage(AU);
 }
 
@@ -758,9 +759,15 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
 
         int FCtrl = IGC_GET_FLAG_VALUE(FunctionControl);
 
-        // do not inline subroutines with the "NeverInlineSubroutine" attribute
-        if (FCtrl != FLAG_FCALL_FORCE_INLINE &&
-            Callee->hasFnAttribute("NeverInlineSubroutine"))
+        if (FCtrl == FLAG_FCALL_FORCE_INLINE)
+            return InlineCost::getAlways();
+
+        // If m_enableSubroutine is disabled by EstimateFunctionCost pass, always inline
+        if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_enableSubroutine == false)
+            return InlineCost::getAlways();
+
+        if (Callee->hasFnAttribute("UserSubroutine") &&
+            Callee->hasFnAttribute(llvm::Attribute::NoInline))
             return InlineCost::getNever();
 
         if (FCtrl != FLAG_FCALL_FORCE_SUBROUTINE &&

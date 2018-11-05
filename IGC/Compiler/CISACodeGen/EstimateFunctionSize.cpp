@@ -272,6 +272,8 @@ void EstimateFunctionSize::checkSubroutine() {
   if (!CGW || AL != AL_Module)
     return;
 
+  bool neverInline = false;
+
   CodeGenContext *pContext = CGW->getCodeGenContext();
   bool EnableSubroutine = true;
   if (pContext->type != ShaderType::OPENCL_SHADER &&
@@ -285,12 +287,17 @@ void EstimateFunctionSize::checkSubroutine() {
     for (Function& F : *M) {
         if (F.hasFnAttribute("UserSubroutine")) {
             EnableSubroutine = true;
-            break;
+            if (F.hasFnAttribute(llvm::Attribute::NoInline)) {
+                neverInline = true;
+            }
         }
     }
   }
 
-  if (EnableSubroutine) {
+  if (neverInline) {
+    EnableSubroutine = true;
+  }
+  else if (EnableSubroutine) {
     std::size_t Threshold = IGC_GET_FLAG_VALUE(SubroutineThreshold);
     std::size_t MaxSize = getMaxExpandedSize();
     if (MaxSize <= Threshold && !HasRecursion)
