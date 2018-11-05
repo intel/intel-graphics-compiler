@@ -52,9 +52,16 @@ public:
 	void SetFunctionToUpgrade(llvm::Function* pFunction);
 	void Clean();
 
+	int SizeArgFromRebuild();
+
+	bool IsUsedPlacedHolder(llvm::Value* PlaceHolderToCheck);
+
+	llvm::Argument* GetArgumentFromRebuild(llvm::Value* pPlaceHolderArg);
 	llvm::Argument* GetArgumentFromRebuild(llvm::LoadInst* pPlaceHolderArg);
 
 	llvm::Value* AddArgument(llvm::StringRef argName, llvm::Type* argType);
 
 	llvm::Function* RebuildFunction();
+
+	bool NeedToRebuild();
 };

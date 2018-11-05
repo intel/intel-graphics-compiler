@@ -1234,10 +1234,6 @@ bool PushAnalysis::runOnModule(llvm::Module& M)
 
 			// Create the new function body and insert it into the module
 			Function* pNewFunc = m_pFuncUpgrade.RebuildFunction();
-			pNewFunc->copyAttributesFrom(pFunc);
-			pNewFunc->setSubprogram(pFunc->getSubprogram());
-			pFunc->setSubprogram(nullptr);			
-			pNewFunc->takeName(pFunc);
 
 			// Reassign the arguments for domain shader to real arguments
 			if (m_context->type == ShaderType::DOMAIN_SHADER)

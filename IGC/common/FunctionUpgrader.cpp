@@ -53,10 +53,19 @@ llvm::Value* FunctionUpgrader::AddArgument(llvm::StringRef argName, llvm::Type* 
 	return PlaceHolderArg;
 }
 
+bool FunctionUpgrader::IsUsedPlacedHolder(llvm::Value* PlaceHolderToCheck)
+{
+	return m_pNewArguments.find((LoadInst*)PlaceHolderToCheck) != m_pNewArguments.end();
+}
+
+Argument* FunctionUpgrader::GetArgumentFromRebuild(llvm::Value* pPlaceHolderArg)
+{
+	return GetArgumentFromRebuild((LoadInst*)pPlaceHolderArg);
+}
+
 Argument* FunctionUpgrader::GetArgumentFromRebuild(llvm::LoadInst* pPlaceHolderArg)
 {
-	
-	if (m_pNewArguments.find(pPlaceHolderArg) != m_pNewArguments.end())
+	if (IsUsedPlacedHolder(pPlaceHolderArg))
 	{
 		if (m_pNewArguments[pPlaceHolderArg] != nullptr)
 		{
@@ -101,6 +110,11 @@ Function* FunctionUpgrader::RebuildFunction()
 	}
 
 	CleanPlaceHoldersArgs();
+
+	pFunctionRebuild->copyAttributesFrom(m_pFunction);
+	pFunctionRebuild->setSubprogram(m_pFunction->getSubprogram());
+	m_pFunction->setSubprogram(nullptr);
+	pFunctionRebuild->takeName(m_pFunction);
 
 	return pFunctionRebuild;
 }
@@ -188,3 +202,13 @@ void FunctionUpgrader::CleanPlaceHoldersArgs()
 		pPlaceHolderArgAlloc->eraseFromParent();
 	}
 }
+
+int FunctionUpgrader::SizeArgFromRebuild()
+{
+	return m_pNewArguments.size();
+}
+
+bool FunctionUpgrader::NeedToRebuild()
+{
+	return m_pNewArguments.size() > 0;
+}
