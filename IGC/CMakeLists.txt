@@ -3242,6 +3242,10 @@ if(TARGET LLVMCore)
     endif()
 
     message(STATUS "[IGC] Using LLVM includes from: ${LLVM_INCLUDE_DIRS}")
+elseif(IGC_LLVM_LINK_WITH_SYSTEM_LIBS)
+    find_package(LLVM REQUIRED CONFIG)
+    message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+    add_definitions(${LLVM_DEFINITIONS})
 else()
     message(STATUS "[IGC] LLVM targets are not defined. Try to use LLVM from standard known locations")
 
@@ -3319,32 +3323,40 @@ if(LLVM_ON_WIN32)
     )
 endif()
 
-# Link targets/dependencies (in required link order).
-# NOTE: Since the libraries are grouped in the same link group (in GCC/CLANG),
-#       there is no longer need to order in most dependant first manner.
-set(IGC_BUILD__LLVM_LIBS_TO_LINK
-    "LLVMipo"
-    "LLVMIRReader"
-    "LLVMBitWriter"
-    "LLVMAsmParser"
-    "LLVMBitReader"
-    "LLVMLinker"
-    "LLVMCodeGen"
-    "LLVMScalarOpts"
-    "LLVMTransformUtils"
-    "LLVMAnalysis"
-    "LLVMTarget"
-    "LLVMObjCARCOpts"
-    "LLVMVectorize"
-    "LLVMInstrumentation"
-    "LLVMObject"
-    "LLVMMCParser"
-    "LLVMProfileData"
-    "LLVMMC"
-    "LLVMCore"
-    "LLVMSupport"
-    "LLVMDemangle"
-    )
+if(IGC_LLVM_LINK_WITH_SYSTEM_LIBS)
+  # Use dynamic libraries when linking with system libraries.
+  set(IGC_BUILD__LLVM_LIBS_TO_LINK
+      "LLVM"
+      "dl"
+     )
+else()
+  # Link targets/dependencies (in required link order).
+  # NOTE: Since the libraries are grouped in the same link group (in GCC/CLANG),
+  #       there is no longer need to order in most dependant first manner.
+  set(IGC_BUILD__LLVM_LIBS_TO_LINK
+      "LLVMipo"
+      "LLVMIRReader"
+      "LLVMBitWriter"
+      "LLVMAsmParser"
+      "LLVMBitReader"
+      "LLVMLinker"
+      "LLVMCodeGen"
+      "LLVMScalarOpts"
+      "LLVMTransformUtils"
+      "LLVMAnalysis"
+      "LLVMTarget"
+      "LLVMObjCARCOpts"
+      "LLVMVectorize"
+      "LLVMInstrumentation"
+      "LLVMObject"
+      "LLVMMCParser"
+      "LLVMProfileData"
+      "LLVMMC"
+      "LLVMCore"
+      "LLVMSupport"
+      "LLVMDemangle"
+      )
+endif()
 
 
 
