@@ -86,7 +86,6 @@ DECLARE_IGC_REGKEY(bool, DisableMatchPow,               false, "Setting this to 
 DECLARE_IGC_REGKEY(bool, DisableIRVerification,         false, "Setting this to 1/true adds a compiler switch to disable IGC IR verification.")
 DECLARE_IGC_REGKEY(bool, DisableLoopUnroll,             false, "Setting this to 1/true adds a compiler switch to disable loop unrolling.")
 DECLARE_IGC_REGKEY(bool, DisableRuntimeLoopUnrolling,   false, "Setting this to 1/true adds a compiler switch to disable runtime loop unrolling.")
-DECLARE_IGC_REGKEY(bool, DisablePartialUnrolling,       false, "Setting this to 1/true adds a compiler switch to disable partial loop unrolling.")
 DECLARE_IGC_REGKEY(DWORD,SetLoopUnrollThreshold,        0,     "Set the loop unroll threshold. Value 0 will use the default threshold.")
 DECLARE_IGC_REGKEY(debugString, LLVMCommandLine,        0,     "applies LLVM command line")
 DECLARE_IGC_REGKEY(bool, DisableDX9LowPrecision,        true,  "Disables HF in DX9.")
