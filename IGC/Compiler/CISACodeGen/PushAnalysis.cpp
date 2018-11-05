@@ -909,6 +909,8 @@ void PushAnalysis::ProcessFunction()
 
                 for (unsigned int i = 0; i < num_elms; ++i)
                 {
+                    if(allExtract && extracts[i].empty())
+                        continue;
 					ConstantAddress address;
 					address.bufId = bufId;
 					address.eltId = eltId + i;
