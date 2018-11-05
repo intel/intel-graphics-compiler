@@ -355,6 +355,10 @@ public:
 
     DebugInfoData* diData = nullptr;
 
+    void SetHasGlobalStatelessAccess() { m_HasGlobalStatelessMemoryAccess = true; }
+    bool GetHasGlobalStatelessAccess() const { return m_HasGlobalStatelessMemoryAccess; }
+    void SetHasConstantStatelessAccess() { m_HasConstantStatelessMemoryAccess = true; }
+    bool GetHasConstantStatelessAccess() const { return m_HasConstantStatelessMemoryAccess; }
 
 private:
     // Return DefInst's CVariable if it could be reused for UseInst, and return
@@ -450,6 +454,12 @@ protected:
     // for each vector BCI whose uses are all extractElt with imm offset, 
     // we store the CVariables for each index
     llvm::DenseMap<llvm::Instruction*, llvm::SmallVector<CVariable*, 8>> m_VectorBCItoCVars;
+
+    // Those two are for stateful token setup. It is a quick
+    // special case checking. Once a generic approach is added,
+    // this two fields shall be retired.
+    bool m_HasGlobalStatelessMemoryAccess;
+    bool m_HasConstantStatelessMemoryAccess;
 
 
 };

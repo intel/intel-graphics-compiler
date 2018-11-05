@@ -1239,9 +1239,11 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
     if (IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull) &&
         IGC_IS_FLAG_ENABLED(EnableStatefulToken) &&
         m_DriverInfo->SupportStatefulToken() &&
-        arg && arg->use_empty() &&
-        (type == KernelArg::ArgType::PTR_GLOBAL ||
-         type == KernelArg::ArgType::PTR_CONSTANT))
+        arg &&
+        ((type == KernelArg::ArgType::PTR_GLOBAL &&
+           (arg->use_empty() || !GetHasGlobalStatelessAccess())) ||
+         (type == KernelArg::ArgType::PTR_CONSTANT &&
+           (arg->use_empty() || !GetHasConstantStatelessAccess()))))
     {
         iOpenCL::ConstantInputAnnotation* constInput = new iOpenCL::ConstantInputAnnotation();
 
@@ -1257,6 +1259,20 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
 
 void COpenCLKernel::ParseShaderSpecificOpcode( llvm::Instruction* inst )
 {
+    auto setStatelessAccess = [&](unsigned AS) {
+        if (AS == ADDRESS_SPACE_GLOBAL ||
+            AS == ADDRESS_SPACE_GENERIC ||
+            AS == ADDRESS_SPACE_GLOBAL_OR_PRIVATE)
+        {
+            SetHasGlobalStatelessAccess();
+        }
+
+        if (AS == ADDRESS_SPACE_CONSTANT)
+        {
+            SetHasConstantStatelessAccess();
+        }
+    };
+
     // Currently we see data corruption when we have IEEE macros and midthread preemption enabled.
     // Adding a temporary work around to disable mid thread preemption when we see IEEE Macros.
     switch( inst->getOpcode() )
@@ -1276,10 +1292,44 @@ void COpenCLKernel::ParseShaderSpecificOpcode( llvm::Instruction* inst )
             }
         }
         break;
+    case Instruction::Load:
+    {
+        unsigned AS = cast<LoadInst>(inst)->getPointerAddressSpace();
+        setStatelessAccess(AS);
+        break;
+    }
+    case Instruction::Store:
+    {
+        unsigned AS = cast<StoreInst>(inst)->getPointerAddressSpace();
+        setStatelessAccess(AS);
+        break;
+    }
     default:
         break;
     }
 
+    if (CallInst* CallI = dyn_cast<CallInst>(inst))
+    {
+
+        // Checking stateless access info
+        if (!isa<IntrinsicInst>(CallI) && !isa<GenIntrinsicInst>(CallI)) {
+            // function/subroutine call. Give up
+            SetHasConstantStatelessAccess();
+            SetHasGlobalStatelessAccess();
+        }
+        else
+        {
+            for (int i = 0, e = (int)CallI->getNumArgOperands(); i < e; ++i)
+            {
+                Value* arg = CallI->getArgOperand(i);
+                PointerType* PTy = dyn_cast<PointerType>(arg->getType());
+                if (!PTy)
+                    continue;
+                unsigned AS = PTy->getAddressSpace();
+                setStatelessAccess(AS);
+            }
+        }
+    }
 }
 
 void COpenCLKernel::AllocatePayload()
