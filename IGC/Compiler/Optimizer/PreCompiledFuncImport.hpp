@@ -48,12 +48,13 @@ namespace IGC
         int ModSize;                // The number of bytes of this Module
     } LibraryModuleInfo;
 
-	enum EmuKind : uint8_t {
-		EMU_UNUSED = 0,
-		EMU_I64DIVREM = 0x1,    // bit 0: original emulation lib, mostly i64 div/rem
-		EMU_DP = 0x2,           // bit 1: IEEE-compliant double emulation (+-*/,cmp,convert,etc)
-		EMU_SP_DIV = 0x4        // bit 2: IEEE-complaint float div emulation (float)
-	};
+    enum EmuKind : uint8_t {
+        EMU_UNUSED = 0,
+        EMU_I64DIVREM = 0x1,    // bit 0: original emulation lib, mostly i64 div/rem
+        EMU_DP = 0x2,           // bit 1: IEEE-compliant double emulation (+-*/,cmp,convert,etc)
+        EMU_SP_DIV = 0x4,       // bit 2: IEEE-complaint float div emulation (float)
+
+    };
 
     class PreCompiledFuncImport : public llvm::ModulePass, public llvm::InstVisitor<PreCompiledFuncImport>
     {
@@ -106,6 +107,7 @@ namespace IGC
             NUM_FUNCTIONS
         };
 
+
         enum EmulatedFunctionTypes
         {
             TYPE_SCALAR,
@@ -154,6 +156,7 @@ namespace IGC
 
     private:
         void processDivide(llvm::BinaryOperator &inst, EmulatedFunctions function);
+
         void processFPBinaryOperator(llvm::Instruction& I, FunctionIDs FID);
         llvm::Function* getOrCreateFunction(FunctionIDs FID);
         llvm::Value* createFlagValue(llvm::Function *F);
@@ -198,7 +201,7 @@ namespace IGC
 		const uint32_t m_emuKind;
 		bool isDPEmu() const { return (m_emuKind & EmuKind::EMU_DP) > 0; }
 		bool isI64DivRem() const { return (m_emuKind & EmuKind::EMU_I64DIVREM) > 0; }
-		bool isSPDiv() const { return (m_emuKind & EmuKind::EMU_SP_DIV) > 0; }
+        bool isSPDiv() const { return (m_emuKind & EmuKind::EMU_SP_DIV) > 0; }
 		bool isDPConvFunc(llvm::Function *F) const;
 
         bool m_libModuleToBeImported[NUM_LIBMODS];

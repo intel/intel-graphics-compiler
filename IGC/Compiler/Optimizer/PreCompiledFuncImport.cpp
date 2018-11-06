@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorCommon/ImplicitArgs.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncImport.hpp"
 #include "Compiler/Optimizer/PreCompiledFuncLibrary.cpp"
+
 // No Support to double emulation.
 const unsigned char igcbuiltin_emu_dp_add_sub[] = {0};
 const unsigned char igcbuiltin_emu_dp_fma_mul[] = {0};
@@ -134,6 +135,7 @@ const char* PreCompiledFuncImport::m_sFunctionNames[NUM_FUNCTIONS][NUM_TYPES] =
         "__precompiled_smod16"
     }
 };
+
 
 const PreCompiledFuncInfo PreCompiledFuncImport::m_functionInfos[NUM_FUNCTION_IDS] =
 {
@@ -336,6 +338,11 @@ bool PreCompiledFuncImport::preProcessDouble()
     return (toBeDeleted.size() > 0);
 }
 
+inline bool isInt32DivRemEmulationFunction(Function* func)
+{
+    return func->getName().contains("precompiled_s32divrem") || func->getName().contains("precompiled_u32divrem");
+}
+
 bool PreCompiledFuncImport::runOnModule(Module &M)
 {
 	// sanity check
@@ -414,6 +421,7 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
 	FuncNeedIA.clear();
 	NewFuncWithIA.clear();
 
+
     // Post processing, set those imported functions as internal linkage
     // and alwaysinline.
     for (auto II = M.begin(), IE = M.end(); II != IE; )
@@ -446,7 +454,7 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
             // is set, do not inline any of them.
 			if (m_enableSubroutineCallForEmulation &&
                 (IGC_IS_FLAG_ENABLED(ForceSubroutineForEmulation) ||
-				 (Func->hasNUsesOrMore(4) && !isDPConvFunc(Func))))
+				 (Func->hasNUsesOrMore(4) && !isDPConvFunc(Func) && !isInt32DivRemEmulationFunction(Func))))
 			{
 				Func->addFnAttr(llvm::Attribute::NoInline);
 			}
@@ -530,8 +538,7 @@ void PreCompiledFuncImport::visitBinaryOperator(BinaryOperator &I)
             };
         }
     }
-
-    if (isDPEmu() && I.getOperand(0)->getType()->isDoubleTy())
+    else if (isDPEmu() && I.getOperand(0)->getType()->isDoubleTy())
     {
         switch (I.getOpcode())
         {
@@ -555,6 +562,8 @@ void PreCompiledFuncImport::visitBinaryOperator(BinaryOperator &I)
     }
 }
 
+
+//64 bit emulation for divide 
 void PreCompiledFuncImport::processDivide(BinaryOperator &inst, EmulatedFunctions function)
 {
     unsigned int numElements = 1;
