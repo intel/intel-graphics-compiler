@@ -250,7 +250,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
                 case llvm::GenISAIntrinsic::GenISA_sampleKillPix:
                 case llvm::GenISAIntrinsic::GenISA_sampleLCptr:
                 case llvm::GenISAIntrinsic::GenISA_sampleinfoptr:
-                    pShaderCtx->programOutput.m_SamplerCount++;
+                    pShaderCtx->programOutput.m_SamplerCount = 1;
                     break;
                 default:
                     break;
