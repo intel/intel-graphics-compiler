@@ -36,8 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 #include "LLVM3DBuilder/BuiltinsFrontend.hpp"
 
-#include "common/FunctionUpgrader.h"
-
 using namespace IGC;
 using namespace IGC::IGCMD;
 using namespace llvm;
@@ -217,14 +215,10 @@ Function* LinkMultiRateShader::PatchSamplePhaseSignature(
     Module* M = samplePhase->getParent();
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     LLVM3DBuilder<> builder(samplePhase->getContext(), ctx->platform.getPlatformInfo());
-    
-    FunctionUpgrader FuncUpgrader;
-    
-    FuncUpgrader.SetFunctionToUpgrade(samplePhase);
-    
+
     // find all the phase inputs
     Function* phaseInput = GenISAIntrinsic::getDeclaration(M, GenISAIntrinsic::GenISA_PHASE_INPUT);
-    Value* sampleIndex = FuncUpgrader.AddArgument("", builder.getInt32Ty());
+    Value* sampleIndex = new llvm::Argument(builder.getInt32Ty(), "", samplePhase);
 
     SmallVector<Type*, 10> funcSignature;
     funcSignature.push_back(builder.getInt32Ty());
@@ -244,7 +238,7 @@ Function* LinkMultiRateShader::PatchSamplePhaseSignature(
                 }
                 else
                 {
-                    arg = FuncUpgrader.AddArgument("", inst->getType());
+                    arg = new llvm::Argument(inst->getType(), "", samplePhase);
                     funcSignature.push_back(inst->getType());
                     linkArguments[index] = arg;
                     linkSignature[index] = inputLocation++;
@@ -253,15 +247,7 @@ Function* LinkMultiRateShader::PatchSamplePhaseSignature(
             }
         }
     }
-    
-    Function* newSamplePhase = FuncUpgrader.RebuildFunction();
-    
-    samplePhase->eraseFromParent();
-    samplePhase = newSamplePhase;
-    sampleIndex = FuncUpgrader.GetArgumentFromRebuild(sampleIndex);
-    
-    FuncUpgrader.Clean();
-    
+
     // Replace sample index intrinsic
     Function* SGV = GenISAIntrinsic::getDeclaration(
         M, 
@@ -339,6 +325,7 @@ Function* LinkMultiRateShader::PatchSamplePhaseSignature(
         }
     }
 
+
     Function* rtWrite = GenISAIntrinsic::getDeclaration(
         M,
         GenISAIntrinsic::GenISA_RTWrite,
@@ -354,6 +341,7 @@ Function* LinkMultiRateShader::PatchSamplePhaseSignature(
             }
         }
     }
+
 
     Function* dualBlend = GenISAIntrinsic::getDeclaration(
         M,
@@ -371,5 +359,22 @@ Function* LinkMultiRateShader::PatchSamplePhaseSignature(
         }
     }
 
-    return samplePhase;
+    // Create new function with the right signature
+    FunctionType* signature = FunctionType::get(builder.getVoidTy(), funcSignature, false);
+    Function* newSamplePhase = Function::Create(signature, GlobalValue::PrivateLinkage, "samplePhase", M);
+    newSamplePhase->addFnAttr(llvm::Attribute::AlwaysInline);
+
+    newSamplePhase->getBasicBlockList().splice(
+        newSamplePhase->begin(),
+        samplePhase->getBasicBlockList());
+    for(auto I = samplePhase->arg_begin(), E = samplePhase->arg_end(), I2 = newSamplePhase->arg_begin(); 
+        I != E; 
+        ++I, ++I2)
+    {
+        I->replaceAllUsesWith(&(*I2));
+    }
+
+    samplePhase->eraseFromParent();
+    
+    return newSamplePhase;
 }
