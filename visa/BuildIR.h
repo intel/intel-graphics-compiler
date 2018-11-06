@@ -341,6 +341,62 @@ public:
     int curCISAOffset;
 
 private:
+
+    class GlobalImmPool
+    {
+        struct ImmVal
+        {
+            G4_Imm* imm;
+            int numElt;
+
+            bool operator==(const ImmVal& v)
+            {
+                return imm == v.imm && numElt == v.numElt;
+            }
+        };
+        static const int maxPoolSize = 8;   //reg pressure control, for now just do naive first-come first-serve
+        std::array<ImmVal, maxPoolSize> immArray;
+        std::array<G4_Declare*, maxPoolSize> dclArray;
+        int curSize = 0;
+        IR_Builder& builder;
+
+public:
+        GlobalImmPool(IR_Builder& b) :builder(b) {}
+
+        G4_Declare* addImmVal(G4_Imm* imm, int numElt)
+        {
+            ImmVal val = { imm, numElt };
+            for (int i = 0; i < curSize; ++i)
+            {
+                if (val == immArray[i])
+                {
+                    return dclArray[i];
+                }
+            }
+            if (curSize == maxPoolSize)
+            {
+                return nullptr;
+            }
+            immArray[curSize] = val;
+            dclArray[curSize] = builder.createTempVar(numElt, imm->getType(), Either, Any);
+            return dclArray[curSize++];
+        }
+
+        int size() const { return curSize; }
+
+        const ImmVal& getImmVal(int i)
+        {
+            return immArray[i];
+        }
+
+        G4_Declare* getImmDcl(int i)
+        {
+            return dclArray[i];
+        }
+    };
+
+    GlobalImmPool immPool;
+
     //allocator pools
     USE_DEF_ALLOCATOR useDefAllocator;
 
@@ -612,6 +668,8 @@ public:
     }
 
 
+
+
     G4_FCALL* getFcallInfo(G4_INST* inst) {
         std::map<G4_INST *, G4_FCALL *>::iterator it;
         it = m_fcallInfo.find(inst);
@@ -802,7 +860,7 @@ public:
         usesSampler(false), m_pWaTable(pWaTable), m_options(options), CanonicalRegionStride0(0, 1, 0),
         CanonicalRegionStride1(1, 1, 0), CanonicalRegionStride2(2, 1, 0), CanonicalRegionStride4(4, 1, 0),
         use64BitFEStackVars(isFESP64Bits), mem(m), phyregpool(pregs), hashtable(m), rgnpool(m), dclpool(m),
-        instList(alloc), kernel(k)
+        instList(alloc), kernel(k), immPool(*this)
     {
         num_general_dcl = 0;
         num_temp_dcl = 0;
@@ -2408,6 +2466,8 @@ public:
     uint32_t getSamplerResponseLength(int numChannels, bool isFP16, int execSize,
         bool pixelNullMask, bool nullDst);
 
+    void materializeGlobalImm(G4_BB* entryBB);
+
 #include "HWCapsOpen.inc"
 
 private:
@@ -2444,6 +2504,8 @@ private:
         uint32_t exSize, uint32_t instOpt, payloadSource sources[], uint32_t& len);
 
     uint32_t setOwordForDesc(uint32_t desc, int numOword, bool isSLM = false) const;
+
+    G4_Declare* getImmDcl(G4_Imm* val, int numElt);
 
 };
 }

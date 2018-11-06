@@ -424,6 +424,19 @@ static G4_SrcRegRegion* operandToDirectSrcRegRegion(
     }
 }
 
+G4_Declare* IR_Builder::getImmDcl(G4_Imm* val, int numElt)
+{
+    auto dcl = immPool.addImmVal(val, numElt);
+    if (dcl)
+    {
+        return dcl;
+    }
+    dcl = createTempVarWithNoSpill(numElt, val->getType(), Either, Any);
+    createInst(nullptr, G4_mov, nullptr, false, numElt, Create_Dst_Opnd_From_Dcl(dcl, 1), val,
+        nullptr, InstOpt_WriteEnable, 0);
+    return dcl;
+};
+
 int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_Exec_Size executionSize,
                                                   Common_VISA_EMask_Ctrl emask, G4_Predicate *predOpnd,
                                                   bool saturate, G4_CondMod* condMod, G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd)
@@ -481,32 +494,22 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     G4_SrcRegRegion tmpSrcRegForCR0(Mod_src_undef, Direct, regCR0->getRegVar(),0, 0, getRegionScalar(), Type_UD );
 
     // 0.0:df and 1.0:df constants
-    G4_Declare *t0  = createTempVarWithNoSpill( 4, Type_DF, reg_align, Any );
-    G4_Declare *t1  = createTempVarWithNoSpill( 4, Type_DF, reg_align, Any );
 
-	inst = createPseudoKills({ t0, t1, t6, t7, t8, t9, t10, t11, t12, t13 });
+    // r0 = 0.0:df, r1 = 1.0:df
+    G4_Declare *t0  = getImmDcl(dbl_constant_0, 4);
+    G4_Declare *t1  = getImmDcl(dbl_constant_1, 4);
 
-    G4_DstRegRegion tdst0(Direct, t0->getRegVar(), 0, 0, 1, Type_DF );
-    G4_DstRegRegion tdst1(Direct, t1->getRegVar(), 0, 0, 1, Type_DF );
+	inst = createPseudoKills({ t6, t7, t8, t9, t10, t11, t12, t13 });
+
     G4_SrcRegRegion tsrc0(Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_DF );
     G4_SrcRegRegion tsrc1(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, srcRegionDesc, Type_DF );
 
-    G4_DstRegRegion *t0DstOpnd = createDstRegRegion(tdst0);
-    G4_DstRegRegion *t1DstOpnd = createDstRegRegion(tdst1);
 
     // those are for drcp
     G4_SrcRegRegion valueOneScalarReg(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, getRegionScalar(), Type_DF );
     G4_Operand *valueOneOpnd = createSrcRegRegion(valueOneScalarReg); // it is used in drcp
 
-    // r0 = 0.0:df, r1 = 1.0:df
-    // NOTE: 'NoMask' is required as constants are required for splitting
-    // parts. Once they are in diverged branches, it won't be properly
-    // initialized without 'NoMask'.
-    inst = createInst(NULL, G4_mov, NULL, false, exsize, t0DstOpnd, dbl_constant_0,
-        NULL, InstOpt_WriteEnable, line_no); // (4) {NoMask}
 
-    createInst(NULL, G4_mov, NULL, false, exsize, t1DstOpnd, dbl_constant_1,
-        NULL, InstOpt_WriteEnable, line_no); // (4) {NoMask}
 
     if ( src0Opnd == NULL )
     {
@@ -871,10 +874,10 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
     G4_Declare *regCR0Denorm = createTempVarWithNoSpill(1, Type_UD, reg_align, Any);
 
     // 0.0:f and 1.0:f constants
-    G4_Declare *t2  = createTempVarWithNoSpill( 8, Type_F, reg_align, Any );
-    G4_Declare *t5  = createTempVarWithNoSpill( 8, Type_F, reg_align, Any );
+    G4_Declare *t2 = getImmDcl(flt_constant_0, 8);
+    G4_Declare *t5 = getImmDcl(flt_constant_1, 8);
 
-	inst = createPseudoKills({ t1, t2, t4, t5, t6, t8, t9, t10, t11 });
+	inst = createPseudoKills({ t1, t4, t6, t8, t9, t10, t11 });
 
     // those are for drcp
     G4_SrcRegRegion valueOneScalarReg(Mod_src_undef, Direct, t2->getRegVar(), 0, 0, getRegionScalar(), Type_F );
@@ -913,23 +916,8 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
     G4_SrcRegRegion tmpSrcRegForCR0(Mod_src_undef, Direct, regCR0->getRegVar(), 0, 0, getRegionScalar(), Type_UD );
 
     // t2 and t5 are constants
-    G4_DstRegRegion tdst2(Direct, t2->getRegVar(), 0, 0, 1, Type_F );
-    G4_DstRegRegion tdst5(Direct, t5->getRegVar(), 0, 0, 1, Type_F );
     G4_SrcRegRegion tsrc2(Mod_src_undef, Direct, t2->getRegVar(), 0, 0, srcRegionDesc, Type_F );
     G4_SrcRegRegion tsrc5(Mod_src_undef, Direct, t5->getRegVar(), 0, 0, srcRegionDesc, Type_F );
-
-    G4_DstRegRegion *t2DstOpnd = createDstRegRegion(tdst2);
-    G4_DstRegRegion *t5DstOpnd = createDstRegRegion(tdst5);
-
-    // r0 = 0.0:f, r1 = 1.0:f
-    // NOTE: 'NoMask' is required as constants are required for splitting
-    // parts. Once they are in diverged branches, it won't be properly
-    // initialized without 'NoMask'.
-    inst = createInst(NULL, G4_mov, NULL, false, exsize, t2DstOpnd, flt_constant_0,
-        NULL, InstOpt_WriteEnable, line_no); // mov (8) r4.0<1>:f 0:f {NoMask}
-
-    inst = createInst(NULL, G4_mov, NULL, false, exsize, t5DstOpnd, flt_constant_1,
-        NULL, InstOpt_WriteEnable, line_no); // mov (8) r104.0<1>:f 0x3f800000:f {NoMask}
 
     G4_SrcRegRegion tsrc8_final(Mod_src_undef, Direct, t8->getRegVar(), 0, 0,
         getRegionStride1(), t8->getElemType() );
@@ -1212,13 +1200,12 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
     G4_Declare *regCR0Denorm = createTempVarWithNoSpill(1, Type_UD, reg_align, Any);
 
     // 0.0:f and 0.5:f constants
-    G4_Declare *t0  = createTempVarWithNoSpill( 8, Type_F, reg_align, Any );
-    G4_Declare *t8  = createTempVarWithNoSpill( 8, Type_F, reg_align, Any );
+    G4_Declare* t0 = getImmDcl(flt_constant_0, 8);
+    G4_Declare *t8 = getImmDcl(flt_constant_05, 8);
 
-	inst = createPseudoKills ({ t0, t6, t7, t8, t9, t10, t11 });
+	inst = createPseudoKills ({ t6, t7, t9, t10, t11 });
 	
     G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size);
-
 
     if (src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef)
     {
@@ -1239,24 +1226,9 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
     G4_SrcRegRegion regSrcCR0(Mod_src_undef, Direct, phyregpool.getCr0Reg(), 0, 0, getRegionScalar(), Type_UD );
     G4_SrcRegRegion tmpSrcRegForCR0(Mod_src_undef, Direct, regCR0->getRegVar(), 0, 0, getRegionScalar(), Type_UD );
 
-    G4_DstRegRegion tdst0(Direct, t0->getRegVar(), 0, 0, 1, Type_F );
-    G4_DstRegRegion tdst8(Direct, t8->getRegVar(), 0, 0, 1, Type_F );
     G4_SrcRegRegion tsrc0(Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_F );
     G4_SrcRegRegion tsrc8(Mod_src_undef, Direct, t8->getRegVar(), 0, 0, srcRegionDesc, Type_F );
 
-    G4_DstRegRegion *t0DstOpnd = createDstRegRegion(tdst0);
-    G4_DstRegRegion *t8DstOpnd = createDstRegRegion(tdst8);
-
-    // r0 = 0.0:f, r8 = 0.5:f
-    // NOTE: 'NoMask' is required as constants are required for splitting
-    // parts. Once they are in diverged branches, it won't be properly
-    // initialized without 'NoMask'.
-    inst = createInst(NULL, G4_mov, NULL, false, exsize, t0DstOpnd, flt_constant_0,
-        NULL, InstOpt_WriteEnable, line_no); //mov (8) r0.0<1>:f 0:f {NoMask}
-    
-    createInst(NULL, G4_mov, NULL, false, exsize, t8DstOpnd, flt_constant_05,
-        NULL, InstOpt_WriteEnable, line_no); // mov (8) r8.0<1>:f 0x3f000000:f {NoMask}
-    
 
     G4_SrcRegRegion tsrc7_final(Mod_src_undef, Direct, t7->getRegVar(), 0, 0,
         getRegionStride1(), t7->getElemType() );
@@ -1540,9 +1512,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
-    G4_Declare *t0  = createTempVarWithNoSpill(4, Type_DF, reg_align, Any);
-    G4_Declare *t1  = createTempVarWithNoSpill(4, Type_DF, reg_align, Any);
-    G4_Declare *t2  = createTempVarWithNoSpill(4, Type_DF, reg_align, Any);
+    G4_Declare *t0 = getImmDcl(createDFImm(0.0), 4);
+    G4_Declare *t1 = getImmDcl(createDFImm(1.0), 4);
+    G4_Declare *t2 = getImmDcl(createDFImm(0.5), 4);
     G4_Declare *t6  = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
     G4_Declare *t7  = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
     G4_Declare *t8  = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
@@ -1550,7 +1522,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     G4_Declare *t10 = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
     G4_Declare *t11 = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
 
-	inst = createPseudoKills({ t0, t1, t2, t6, t7, t8, t9, t10, t11 });
+	inst = createPseudoKills({t6, t7, t8, t9, t10, t11 });
 
     G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size);
 
@@ -1583,27 +1555,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     G4_SrcRegRegion csrc0(Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
     G4_SrcRegRegion csrc1(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
     G4_SrcRegRegion csrc2(Mod_src_undef, Direct, t2->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
-    G4_DstRegRegion cdst0(Direct, t0->getRegVar(), 0, 0, 1, Type_DF);
-    G4_DstRegRegion cdst1(Direct, t1->getRegVar(), 0, 0, 1, Type_DF);
-    G4_DstRegRegion cdst2(Direct, t2->getRegVar(), 0, 0, 1, Type_DF);
-
-    immData = createDFImm(0.0);
-    dst0 = createDstRegRegion(cdst0);
-    //mov (4) r0.0<1>:df 0.0:df {NoMask}
-    inst = createInst(NULL, G4_mov, NULL, false, exsize, dst0, immData, NULL, InstOpt_WriteEnable, line_no);
-    
-
-    immData = createDFImm(1.0);
-    dst0 = createDstRegRegion(cdst1);
-    //mov (4) r1.0<1>:df 1.0:df {NoMask}
-    inst = createInst(NULL, G4_mov, NULL, false, exsize, dst0, immData, NULL, InstOpt_WriteEnable, line_no);
-    
-
-    immData = createDFImm(0.5);
-    dst0 = createDstRegRegion(cdst2);
-    //mov (4) r2.0<1>:df 0.5:df {NoMask}  --- r8.0<1>
-    inst = createInst(NULL, G4_mov, NULL, false, exsize, dst0, immData, NULL, InstOpt_WriteEnable, line_no);
-    
 
     // final result is at r7.noacc
     G4_SrcRegRegion tsrc7_final(Mod_src_undef, Direct, t7->getRegVar(), 0, 0, getRegionStride1(), 

@@ -1212,6 +1212,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         kernelInfo->updateExitBB(BBs.back());
     }
 
+    builder->materializeGlobalImm(getEntryBB());
     normalizeRegionDescriptors();
     localDataFlowAnalysis();
 }
@@ -1238,6 +1239,21 @@ void FlowGraph::normalizeRegionDescriptors()
                 }
             }
         }
+    }
+}
+
+// materialize the values in global Imm at entry BB
+void IR_Builder::materializeGlobalImm(G4_BB* entryBB)
+{
+    for (int i = 0, numImm = immPool.size(); i < numImm; ++i)
+    {
+        auto&& immVal = immPool.getImmVal(i);
+        auto dcl = immPool.getImmDcl(i);
+        G4_INST* inst = createInternalInst(nullptr, G4_mov, nullptr, false, immVal.numElt, 
+            Create_Dst_Opnd_From_Dcl(dcl, 1), immVal.imm, nullptr, InstOpt_WriteEnable);
+        auto iter = std::find_if(entryBB->begin(), entryBB->end(), 
+            [](G4_INST* inst) { return !inst->isLabel(); });
+        entryBB->insert(iter, inst);
     }
 }
 
