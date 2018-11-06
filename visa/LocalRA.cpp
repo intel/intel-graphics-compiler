@@ -737,7 +737,6 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
             {
                 // For EOT use r112 - r127
                 // for simplicity we assign each EOT source unique GRFs
-                MUST_BE_TRUE(nextEOTGRF + dcl->getNumRows() <= G4_DEFAULT_GRF_NUM, "Illegal EOT GRF");
                 G4_Greg* phyReg = builder.phyregpool.getGreg(nextEOTGRF);
                 dcl->getRegVar()->setPhyReg(phyReg, 0);
                 dclLR->setPhyReg(phyReg, 0);
