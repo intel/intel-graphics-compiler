@@ -23,7 +23,15 @@
 #ifndef IGC_OPENCL_H
 #define IGC_OPENCL_H
 
-#cmakedefine IGC_LIBRARY_NAME "${CMAKE_SHARED_LIBRARY_PREFIX}${IGC_LIBRARY_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}"
-#cmakedefine FCL_LIBRARY_NAME "${CMAKE_SHARED_LIBRARY_PREFIX}${FCL_LIBRARY_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+#if defined(_WIN64)
+  #cmakedefine IGC_LIBRARY_NAME     "${IGC_LIBRARY_NAME}64.dll"
+  #cmakedefine FCL_LIBRARY_NAME     "${FCL_LIBRARY_NAME}64.dll"
+#elif defined(_WIN32)
+  #cmakedefine IGC_LIBRARY_NAME     "${IGC_LIBRARY_NAME}32.dll"
+  #cmakedefine FCL_LIBRARY_NAME     "${FCL_LIBRARY_NAME}64.dll"
+#else
+  #cmakedefine IGC_LIBRARY_NAME     "lib${IGC_LIBRARY_NAME}.so"
+  #cmakedefine FCL_LIBRARY_NAME     "lib${FCL_LIBRARY_NAME}.so"
+#endif
 
 #endif /* IGC_OPENCL_H */
