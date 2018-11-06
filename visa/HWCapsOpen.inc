@@ -420,4 +420,9 @@
         return 7;
     }
 
+    bool hasVxHFloat64b() const
+    {
+        return true;
+    }
+
     // end HW capabilities

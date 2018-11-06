@@ -5935,6 +5935,11 @@ void HWConformity::conformBB( BB_LIST_ITER it)
         fixLine(i, bb);
         fixRotate(i, bb);
 
+        if (!builder.hasVxHFloat64b())
+        {
+            fixVxHFloat64b(i, bb);
+        }
+
         // CHV/BXT specific checks for 64b datatypes
         fix64bInst( i, bb);
 
@@ -5942,6 +5947,7 @@ void HWConformity::conformBB( BB_LIST_ITER it)
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
 #endif
         fixImm64( i, bb ); // fixed immediates for DF4 in fixImm64()
+
 
         // FIXME: may be better to call fixDstAlign instead
         if (getGenxPlatform() == GENX_BDW)
@@ -7601,3 +7607,51 @@ void HWConformity::fixSrc2(INST_LIST_ITER it, G4_BB* bb, bool swapSrc0and2)
         }
     }
 }
+
+void HWConformity::fixVxHFloat64b(INST_LIST_ITER it, G4_BB* bb)
+{
+    // at this point VxH region should only be on src0
+    G4_INST* inst = *it;
+    G4_SrcRegRegion* src0 = inst->getSrc(0) && inst->getSrc(0)->isSrcRegRegion() ? 
+        inst->getSrc(0)->asSrcRegRegion() : nullptr;
+    
+    if (src0 && src0->getRegAccess() == IndirGRF && src0->getRegion()->isRegionWH())
+    {
+        auto type = src0->getType();
+        if (type == Type_HF || type == Type_F)
+        {
+            auto intType = type == Type_HF ? Type_UW : Type_UD;
+            if (inst->isRawMov())
+            {
+                // directly change the dst/src type to int
+                inst->getDst()->setType(intType);
+                src0->setType(intType);
+            }
+            else
+            {
+                // generate a copy move using int type
+                // FIXME: code is a bit hacky, may want to change insertMovBefore
+                // so that we could specify the move type
+                auto origType = src0->getType();
+                auto origMod = src0->getModifier();
+                src0->setType(intType);
+                src0->setModifier(Mod_src_undef);
+                auto newSrc = insertMovBefore(it, 0, intType, bb);
+                newSrc->asSrcRegRegion()->setType(origType);
+                newSrc->asSrcRegRegion()->setModifier(origMod);
+                inst->setSrc(newSrc, 0);
+            }
+        }
+        else if (getTypeSize(type) == 8)
+        {
+            int numDwords = inst->getExecSize() * 2;
+            G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src0->getType(), Either, Any);
+            RegionDesc* newRegion = builder.getRegionStride1();
+            copyDwordsIndirect(tmpSrc, src0, numDwords, bb, it);
+            G4_SrcRegRegion* tmpSrcOpnd = builder.createSrcRegRegion(src0->getModifier(),
+                Direct, tmpSrc->getRegVar(), 0, 0, newRegion, tmpSrc->getElemType());
+            inst->setSrc(tmpSrcOpnd, 0);
+        }
+    }
+}
+
