@@ -223,6 +223,7 @@ public:
     void StackCall(CVariable *flag, llvm::Function *F, unsigned char argSize, unsigned char retSize);
     void StackRet(CVariable *flag);
     void Loc(unsigned int line);
+    void File(std::string& s);
 
     inline void Jump(uint label);
     inline void Cast(CVariable* dst, CVariable* src);

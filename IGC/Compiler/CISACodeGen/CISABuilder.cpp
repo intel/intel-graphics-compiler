@@ -5264,5 +5264,10 @@ void CEncoder::Loc(unsigned int line)
     V(vKernel->AppendVISAMiscLOC(line));
 }
 
+void CEncoder::File(std::string& s)
+{
+    V(vKernel->AppendVISAMiscFileInst(s.c_str()));
+}
+
 
 }

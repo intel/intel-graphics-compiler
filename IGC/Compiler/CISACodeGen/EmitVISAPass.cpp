@@ -469,6 +469,8 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
     DenseMap<Instruction*, uint32_t> rootToVISAId;
 
+    StringRef curSrcFile, curSrcDir;
+
     for(uint i = 0; i < m_pattern->m_numBlocks; i++)
     {
         SBasicBlock& block = m_pattern->m_blocks[i];
@@ -501,6 +503,18 @@ bool EmitPass::runOnFunction(llvm::Function &F)
             if ((*I).m_root->getDebugLoc())
             {
                 unsigned int curLineNumber = (*I).m_root->getDebugLoc().getLine();
+                auto&& srcFile = (*I).m_root->getDebugLoc()->getScope()->getFilename();
+                auto&& srcDir = (*I).m_root->getDebugLoc()->getScope()->getDirectory();
+                if (!curSrcFile.equals(srcFile) || !curSrcDir.equals(srcDir))
+                {
+                    curSrcFile = srcFile;
+                    curSrcDir = srcDir;
+                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
+                    std::string fileName = std::string(curSrcDir);
+                    fileName += std::string(curSrcFile);
+                    m_encoder->File(fileName);
+                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
+                }
                 if (curLineNumber != lineNo)
                 {
                     IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)

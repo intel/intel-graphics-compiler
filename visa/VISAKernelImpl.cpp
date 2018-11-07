@@ -4800,7 +4800,7 @@ int VISAKernelImpl::AppendVISASplitBarrierInst(bool isSignal)
     return status;
 }
 
-int VISAKernelImpl::AppendVISAMiscFileInst(char *fileName)
+int VISAKernelImpl::AppendVISAMiscFileInst(const char *fileName)
 {
     AppendVISAInstCommon();
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)

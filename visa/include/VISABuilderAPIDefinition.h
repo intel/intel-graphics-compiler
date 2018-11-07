@@ -521,7 +521,7 @@ public:
     /// isSignal indicates whether this is the signal or wait for the barrier
     CM_BUILDER_API virtual int AppendVISASplitBarrierInst(bool isSignal) = 0;
 
-    CM_BUILDER_API virtual int AppendVISAMiscFileInst(char *fileName) = 0;
+    CM_BUILDER_API virtual int AppendVISAMiscFileInst(const char *fileName) = 0;
 
     CM_BUILDER_API virtual int AppendVISAMiscLOC(unsigned int lineNumber) = 0;
 

@@ -491,7 +491,7 @@ public:
 
     CM_BUILDER_API int AppendVISASplitBarrierInst(bool isSignal);
 
-    CM_BUILDER_API int AppendVISAMiscFileInst(char *fileName);
+    CM_BUILDER_API int AppendVISAMiscFileInst(const char *fileName);
 
     CM_BUILDER_API int AppendVISAMiscLOC(unsigned int lineNumber);
 
