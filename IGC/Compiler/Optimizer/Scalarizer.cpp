@@ -485,6 +485,7 @@ void ScalarizeFunction::scalarizeInstruction(PHINode *PI)
         }
     }
 
+
     // Prepare empty SCM entry for the instruction
     SCMEntry *newEntry = getSCMEntry(PI);
 
