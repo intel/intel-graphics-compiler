@@ -3341,6 +3341,7 @@ namespace IGC {
         AU.addRequired<TargetLibraryInfoWrapperPass>();
         AU.addRequired<DominatorTreeWrapperPass>();
         AU.addPreserved<DominatorTreeWrapperPass>();
+        AU.addPreserved<OptimizationRemarkEmitterWrapperPass>();
         AU.addPreserved<AAResultsWrapperPass>();
         AU.addPreserved<BasicAAWrapperPass>();
         AU.addPreserved<GlobalsAAWrapperPass>();
@@ -3354,7 +3355,7 @@ namespace IGC {
         auto &AC = getAnalysis<AssumptionCacheTracker>().getAssumptionCache(F);
         auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
         auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-		auto &ORE = getAnalysis<OptimizationRemarkEmitterWrapperPass>(F).getORE();
+        auto &ORE = getAnalysis<OptimizationRemarkEmitterWrapperPass>().getORE();
 
         // Optional analyses.
         auto *LIWP = getAnalysisIfAvailable<LoopInfoWrapperPass>();
@@ -3378,6 +3379,7 @@ INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(GlobalsAAWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(OptimizationRemarkEmitterWrapperPass)
 IGC_INITIALIZE_PASS_END(IGCInstructionCombiningPass, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 FunctionPass* IGC::createIGCInstructionCombiningPass() {
