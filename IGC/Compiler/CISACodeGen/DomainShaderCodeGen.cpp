@@ -294,24 +294,37 @@ void CDomainShader::FillProgram(SDomainShaderKernelProgram* pKernelProgram)
 
 void CDomainShader::AddEpilogue(llvm::ReturnInst* pRet)
 {
-
-    bool addDummyURB = true;
-    if (pRet != &(*pRet->getParent()->begin()))
+    if(this->GetContext()->platform.WaForceDSToWriteURB())
     {
-        auto intinst = dyn_cast<GenIntrinsicInst>(pRet->getPrevNode());
-
-        // if a URBWrite intrinsic is present no need to insert dummy urb write
-        if (intinst && intinst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBWrite)
+        CVariable* channelMask = ImmToVariable(0xFF, ISA_TYPE_D);
+        CVariable* URBHandle = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
+	encoder.SetNoMask();
+        encoder.Copy(URBHandle, ImmToVariable(0xFFFFFFFF, ISA_TYPE_D));
+        encoder.Push();
+        CVariable* offset = ImmToVariable(0, ISA_TYPE_D);
+        CVariable* payload = GetNewVariable(8*numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
+        encoder.SetNoMask();
+	encoder.URBWrite(payload, 0, offset, URBHandle, channelMask);
+        encoder.Push();
+    }
+    else
+    {
+        bool addDummyURB = true;
+        if(pRet != &(*pRet->getParent()->begin()))
         {
-            addDummyURB = false;
+            auto intinst = dyn_cast<GenIntrinsicInst>(pRet->getPrevNode());
+
+            // if a URBWrite intrinsic is present no need to insert dummy urb write
+            if(intinst && intinst->getIntrinsicID() == GenISAIntrinsic::GenISA_URBWrite)
+            {
+                addDummyURB = false;
+            }
+        }
+        if(addDummyURB)
+        {
+            EmitEOTURBWrite();
         }
     }
-
-    if (addDummyURB)
-    {
-        EmitEOTURBWrite();
-    }
-
     CShader::AddEpilogue(pRet);
 }
 
