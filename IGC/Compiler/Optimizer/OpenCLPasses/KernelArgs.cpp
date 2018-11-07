@@ -40,7 +40,7 @@ using namespace IGC;
 using namespace IGC::IGCMD;
 using namespace llvm;
 
-KernelArg::KernelArg(KernelArg::ArgType argType, KernelArg::AccessQual accessQual, unsigned int allocateSize, unsigned int elemAllocateSize, size_t align, bool isConstantBuf, llvm::Argument * arg, unsigned int associatedArgNo ):
+KernelArg::KernelArg(KernelArg::ArgType argType, KernelArg::AccessQual accessQual, unsigned int allocateSize, unsigned int elemAllocateSize, size_t align, bool isConstantBuf, const llvm::Argument * arg, unsigned int associatedArgNo ):
     m_implicitArgument(false),
     m_argType(argType),
     m_accessQual(accessQual),
@@ -744,6 +744,8 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
         {
             KernelArg::ArgType::IMPLICIT_R0,
 
+            KernelArg::ArgType::RUNTIME_VALUE,
+
             KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER,
         
             KernelArg::ArgType::PTR_LOCAL,
@@ -853,6 +855,8 @@ KernelArgsOrder::KernelArgsOrder(InputType layout)
 
             KernelArg::ArgType::R1,
             KernelArg::ArgType::IMPLICIT_LOCAL_IDS,
+
+            KernelArg::ArgType::RUNTIME_VALUE,
             
             KernelArg::ArgType::IMPLICIT_PAYLOAD_HEADER,
             KernelArg::ArgType::PTR_LOCAL,
@@ -1065,6 +1069,22 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
     for (unsigned int i = 0; i < numImplicitArgs; ++i, ++funcArg)
     {
         KernelArg kernelArg = KernelArg(implicitArgs[i], DL, &(*funcArg), implicitArgs.getExplicitArgNum(i), implicitArgs.getStructArgOffset(i));
+        addAllocationArg(kernelArg); 
+    }
+    
+    // Need to add Runtime Values, so they can trigger NOSBuffer allocation in correct
+    // order (especially needed when InputType::INDEPENDENT or InputType::CURBE is used).
+    for (unsigned int i = 0; i < numRuntimeValue; ++i, ++funcArg)
+    {
+        KernelArg kernelArg = KernelArg(
+            KernelArg::ArgType::RUNTIME_VALUE,      // argType
+            KernelArg::AccessQual::NONE,            // accessQual
+            4,                                      // allocateSize
+            4,                                      // elemAllocateSize
+            4,                                      // align
+            true,                                   // isConstantBuf
+            &(*funcArg),                            // arg
+            numExplicitArgs + numImplicitArgs + 1); // associatedArgNo
         addAllocationArg(kernelArg); 
     }
 }

@@ -68,6 +68,7 @@ namespace IGC
             PTR_DEVICE_QUEUE,
 
             CONSTANT_REG,
+            RUNTIME_VALUE,
 
             IMPLICIT_CONSTANT_BASE,
             IMPLICIT_GLOBAL_BASE,
@@ -179,7 +180,7 @@ namespace IGC
             unsigned int elemAllocateSize,
             size_t align,
             bool isConstantBuf,
-            llvm::Argument * arg,
+            const llvm::Argument * arg,
             unsigned int associatedArgNo);
 
         /// @brief  Constructor.

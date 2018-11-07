@@ -1366,6 +1366,13 @@ void COpenCLKernel::AllocatePayload()
             constantBufferStartSet = true;
         }
 
+        if (arg.getArgType() == KernelArg::ArgType::RUNTIME_VALUE)
+        {
+            // Runtime Values should not be processed any further. No annotations shall be creatred for them.
+            // Only added to KernelArgs to enforce correct allocation order.
+            continue;
+        }
+
         // Local IDs are non-uniform and may have two instances in SIMD32 mode
         int numAllocInstances = arg.getArgType() == KernelArg::ArgType::IMPLICIT_LOCAL_IDS ? m_numberInstance : 1;
 

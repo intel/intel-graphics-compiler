@@ -1137,7 +1137,8 @@ Instruction *ConstantCoalescing::CreateChunkLoad(Instruction *seedi, BufChunk *c
 
         Value *eac;
         // ocl case: no gep
-        if(load->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT)
+        if(load->getPointerAddressSpace() == ADDRESS_SPACE_CONSTANT ||
+           load->getPointerAddressSpace() == ADDRESS_SPACE_GLOBAL)
         {
             eac = cb_ptr;
             if(eltid == chunk->chunkStart && isa<IntToPtrInst>(eac))
@@ -1277,7 +1278,7 @@ void ConstantCoalescing::AdjustChunk( BufChunk *cov_chunk, uint start_adj, uint 
     {
         Value *addr_ptr = cov_chunk->chunkIO->getOperand(0);
         unsigned addrSpace = (cast<PointerType>(addr_ptr->getType()))->getAddressSpace();
-        if(addrSpace == ADDRESS_SPACE_CONSTANT)
+        if(addrSpace == ADDRESS_SPACE_CONSTANT || addrSpace == ADDRESS_SPACE_GLOBAL)
         {
             // ocl path
             assert(isa<IntToPtrInst>(addr_ptr));
