@@ -55,6 +55,7 @@ public:
         delete IGAKernel;
     }
 
+
     void DoAll();
     void FixInst();
     void *EmitBinary(uint32_t& binarySize);

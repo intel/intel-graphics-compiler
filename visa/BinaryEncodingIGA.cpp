@@ -411,6 +411,7 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
     return igaOp;
 }
 
+
 void BinaryEncodingIGA::DoAll()
 {
     FixInst();
