@@ -173,7 +173,7 @@ bool StatelessToStatefull::runOnFunction(llvm::Function &F)
         return false;
     }
 
-	if (IGC_IS_FLAG_ENABLED(EnableCodeAssumption))
+	if (IGC_IS_FLAG_ENABLED(CodeAssumption))
 	{
 		// Use assumption cache
 		m_ACT = &getAnalysis<AssumptionCacheTracker>();

@@ -401,10 +401,10 @@ void WIAnalysis::updateArgsDependency(llvm::Function *pF)
     Assumption is that the order of metadata matches the order of arguments in function.
     */
 
-    // For a subroutine, conservatively assume that all user provided arguments
-    // are random. Note that all other functions are treated as kernels.
-    // To enable subroutine for other FEs, we need to update this check.
-    bool IsSubroutine = !isEntryFunc(m_pMdUtils, pF);
+	// For a subroutine, conservatively assume that all user provided arguments
+	// are random. Note that all other functions are treated as kernels.
+	// To enable subroutine for other FEs, we need to update this check.
+	bool IsSubroutine = !isEntryFunc(m_pMdUtils, pF);
 
     ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     ImplicitArgs implicitArgs(*pF, m_pMdUtils);
@@ -425,22 +425,48 @@ void WIAnalysis::updateArgsDependency(llvm::Function *pF)
     }
 
     // 2. add implicit args
-    //    By default, local IDs are not uniform. But if we know that the runtime dispatchs
-    //    order (intel_reqd_workgroup_walk_order()) and work group size (reqd_work_group_size()),
-    //    we may derive that some of local IDs are uniform.
-    bool localX_uniform = false, localY_uniform = false, localZ_uniform = false;
-    if (!IsSubroutine)
-    {
-        checkLocalIdUniform(pF, localX_uniform, localY_uniform, localZ_uniform);
-    }
+	//    By default, local IDs are not uniform. But if we know that the runtime dispatchs
+	//    threads in the linear order of work items, ie,
+	//         localID(thread[x].lane[y]) = localID(thread[x].lane[y-1]) + 1; and
+	//         localID(thread[0].lane[0]) = 0
+	//    And if work group size is available during compiling (reqd_work_group_size()), we
+	//    may have some of local IDs to be set uniform.
+	bool localY_uniform = false, localZ_uniform = false;
+	CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+	if (IGC_IS_FLAG_ENABLED(DispatchOCLWGInOrder) && pCtx->type == ShaderType::OPENCL_SHADER)
+	{
+		MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+		FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(pF);
+		ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
+		if (threadGroupSize->hasValue())
+		{
+			// if getXDim is multiple of 32, both localY and localZ should be uniform.
+			SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
+			uint32_t simdSize = 0;
+			if (subGroupSize->hasValue())
+			{
+				simdSize = (uint32_t)subGroupSize->getSIMD_size();
+			}
+			simdSize = simdSize > 0 ? simdSize : 32;
+			uint32_t X = (uint32_t)threadGroupSize->getXDim();
+			uint32_t Y = (uint32_t)threadGroupSize->getYDim();
+			uint32_t XxY = X * Y;
+			if (X > 0 && (X % simdSize) == 0) {
+				localY_uniform = true;
+				localZ_uniform = true;
+			}
+			else if (XxY > 0 && (XxY % simdSize) == 0) {
+				localZ_uniform = true;
+			}
+		}
+	}
 
     for (unsigned i = 0; i < implicitArgs.size(); ++i, ++ai)
     {
         assert(ai != ae);
 		const ImplicitArg& iArg = implicitArgs[ai->getArgNo() - implicitArgStart];
 		WIAnalysis::WIDependancy dependency = iArg.getDependency();
-		if ((localX_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_X) ||
-            (localY_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_Y) ||
+		if ((localY_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_Y) ||
 			(localZ_uniform && iArg.getArgType() == ImplicitArg::ArgType::LOCAL_ID_Z)) {
 			dependency = UNIFORM;
 		}
@@ -1344,99 +1370,6 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const VAArgInst* inst)
 {
   assert(false && "Are we supporting this ??");
   return WIAnalysis::RANDOM;
-}
-
-// Set IsLxUniform/IsLyUniform/IsLxUniform to true if they are uniform;
-// do nothing otherwise.
-void WIAnalysis::checkLocalIdUniform(
-    Function* F,
-    bool& IsLxUniform,
-    bool& IsLyUniform,
-    bool& IsLzUniform)
-{
-    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (pCtx->type != ShaderType::OPENCL_SHADER)
-    {
-        return;
-    }
-
-    MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(F);
-
-    int32_t WO_0 = -1, WO_1 = -1, WO_2 = -1;
-    WorkgroupWalkOrderMetaDataHandle workgroupWalkOrder = funcInfoMD->getWorkgroupWalkOrder();
-    if (workgroupWalkOrder->hasValue())
-    {
-        WO_0 = workgroupWalkOrder->getDim0();
-        WO_1 = workgroupWalkOrder->getDim1();
-        WO_2 = workgroupWalkOrder->getDim2();
-    }
-
-    uint32_t simdSize = 0;
-    SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
-    if (subGroupSize->hasValue())
-    {
-        simdSize = (uint32_t)subGroupSize->getSIMD_size();
-    }
-    simdSize = simdSize >= 8 ? simdSize : 32;
-
-    int32_t X = -1, Y = -1, Z = -1;
-    ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
-    if (threadGroupSize->hasValue())
-    {
-        X = (int32_t)threadGroupSize->getXDim();
-        Y = (int32_t)threadGroupSize->getYDim();
-        Z = (int32_t)threadGroupSize->getZDim();
-
-    }
-
-    if (WO_0 == 0 && ((X / simdSize) * simdSize) == X)
-    {
-        // each thread will have Y and Z unchanged.
-        IsLyUniform = true;
-        IsLzUniform = true;
-    }
-    else if (WO_0 == 1 && ((Y / simdSize) * simdSize) == Y)
-    {
-        // each thread will have X and Z unchanged.
-        IsLxUniform = true;
-        IsLzUniform = true;
-    }
-    else if (WO_0 == 2 && ((Z / simdSize) * simdSize) == Z)
-    {
-        // each thread will have X and Z unchanged.
-        IsLxUniform = true;
-        IsLzUniform = true;
-    }
-
-    if (X == 1)
-    {
-        IsLxUniform = true;
-    }
-    if (Y == 1)
-    {
-        IsLyUniform = true;
-    }
-    if (Z == 1)
-    {
-        IsLzUniform = true;
-    }
-
-    if (IGC_IS_FLAG_ENABLED(DispatchOCLWGInLinearOrder) ||
-        (WO_0 == 0 && WO_1 == 1 && WO_2 == 2))
-    {
-        // linear order dispatch
-        uint32_t XxY = X * Y;
-        if (X > 0 && (X % simdSize) == 0)
-        {
-            IsLyUniform = true;
-            IsLzUniform = true;
-        }
-        else if (X > 0 && Y > 0 && (XxY % simdSize) == 0) {
-            IsLyUniform = true;
-        }
-
-    }
 }
 
 BranchInfo::BranchInfo(const TerminatorInst *inst, const BasicBlock *ipd) 

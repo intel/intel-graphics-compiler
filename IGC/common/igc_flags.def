@@ -125,14 +125,10 @@ DECLARE_IGC_REGKEY(DWORD,FoldsToSourceThreshold,        10,     "Set the thresho
 DECLARE_IGC_REGKEY(bool, DisableDynamicConstantFolding, true,  "Disable Dynamic Constant Folding")
 DECLARE_IGC_REGKEY(bool, DisableRectListOpt,            false, "Disable Rect List optimization")
 
-DECLARE_IGC_REGKEY(bool, DispatchOCLWGInLinearOrder,    false, "If set, dispatch HW threads based on the linearized order of WI in a WG; \
-                                                                ie, let localSize=(lx, ly, lz), localId=(ix, iy, iz). And \
-                                                                   linearLocalId = ix + lx * (iy + ly * iz); \
-                                                                And linear order means that \
-                                                                   linearLocalId(lane[x+1])=linearLocalId(lane[x])+1")
-DECLARE_IGC_REGKEY(DWORD, EnableCodeAssumption,         1, \
+DECLARE_IGC_REGKEY(bool, DispatchOCLWGInOrder,          false, "If set, dispatch HW threads based on the linearized order of WI in a WG; ie, localID(lane[x])=localID(lane[x-1])+1; 1st thread's localID[lane[0])=0.")
+DECLARE_IGC_REGKEY(DWORD, CodeAssumption,               1, \
     "If set (> 0), generate llvm.assume to help certain optimizations. It is OCL only for now. \
-	 Only 1 and 2 are valid. 2 will be 1 plus additional assumption. It also does other minor changes.")
+	 Only 1 and 2 are valid. 2 will be 1 plus additional assumption.")
 DECLARE_IGC_REGKEY(bool, EnableHoistMulInLoop, true,
     "Hoist multiply with loop invirant out of loop, FP unsafe")
 DECLARE_IGC_REGKEY(bool, EnableGVN, true,

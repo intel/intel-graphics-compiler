@@ -39,15 +39,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace llvm;
 using namespace IGC;
-using namespace IGC::IGCMD;
 
 namespace {
 	const StringRef OCLBIF_GET_GLOBAL_ID = "_Z13get_global_idj";
 	const StringRef OCLBIF_GET_LOCAL_ID = "_Z12get_local_idj";
 	const StringRef OCLBIF_GET_GROUP_ID = "_Z12get_group_idj";
-    const StringRef OCLBIF_GET_GLOBAL_ID_SPIRV = "__builtin_spirv_BuiltInGlobalInvocationID";
-    const StringRef OCLBIF_GET_LOCAL_ID_SPIRV = "__builtin_spirv_BuiltInLocalInvocationId";
-    const StringRef OCLBIF_GET_GROUP_ID_SPIRV = "__builtin_spirv_BuiltInWorkgroupId";
 }
 
 // Register pass to igc-opt
@@ -56,8 +52,6 @@ namespace {
 #define PASS_CFG_ONLY false
 #define PASS_ANALYSIS false
 IGC_INITIALIZE_PASS_BEGIN(CodeAssumption, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
-IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
-IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
 IGC_INITIALIZE_PASS_END(CodeAssumption, PASS_FLAG, PASS_DESCRIPTION, PASS_CFG_ONLY, PASS_ANALYSIS)
 
 
@@ -65,88 +59,12 @@ char CodeAssumption::ID = 0;
 
 bool CodeAssumption::runOnModule(Module& M)
 {
-    m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-
-    // Add code assist uniform analysis.
-    uniformHelper(&M);
-
-    if (IGC_GET_FLAG_VALUE(EnableCodeAssumption) > 1)
-    {
-        addAssumption(&M);
-    }
-
-    return m_changed;
-}
-
-void CodeAssumption::uniformHelper(Module *M)
-{
-    for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I)
-    {
-        Function *F = &(*I);
-        if (F->isDeclaration())
-            continue;
-
-        if (!IGC_IS_FLAG_ENABLED(DispatchOCLWGInLinearOrder) &&
-            !IsSGIdUniform(m_pMDUtils, F))
-        {
-            continue;
-        }
-
-        // Entry BB and its unique successors if any
-        BasicBlock *BB = &F->getEntryBlock();
-        while (BB)
-        {
-            auto NI = BB->begin();
-            for (auto II = NI, IE = BB->end(); II != IE; II = NI)
-            {
-                ++NI;
-                CallInst *CallI = dyn_cast<CallInst>(II);
-                if (!CallI)
-                    continue;
-                Function* callee = CallI->getCalledFunction();
-                StringRef FN = callee->getName();
-
-                // sub_group_id
-                if (FN.equals("__builtin_spirv_BuiltInSubgroupId") ||
-                    FN.equals("_Z16get_sub_group_idv"))
-                {
-                    // The value must be uniform. Using shuffle with index=0 to
-                    // enforce it. (This is entry BB, thus lane 0 must be active.)
-                    Type* int32Ty = Type::getInt32Ty(M->getContext());
-                    Value*  args[2];
-                    args[0] = CallI;
-                    args[1] = ConstantInt::getNullValue(int32Ty);
-
-                    Type* ITys[2] = { args[0]->getType(), int32Ty };
-                    Function* shuffleIntrin = GenISAIntrinsic::getDeclaration(
-                        M,
-                        GenISAIntrinsic::GenISA_WaveShuffleIndex,
-                        ITys);
-
-                    Instruction* shuffleCall = CallInst::Create(shuffleIntrin, args, "sgid", &*NI);
-
-                    shuffleCall->setDebugLoc(CallI->getDebugLoc());
-
-                    CallI->replaceAllUsesWith(shuffleCall);
-                    shuffleCall->setOperand(0, CallI);
-
-                    m_changed = true;
-                }
-            }
-
-            BB = BB->getUniqueSuccessor();
-        }
-    }
-}
-
-void CodeAssumption::addAssumption(Module *M)
-{
 	// Do it for 64-bit pointer only
-	if (M->getDataLayout().getPointerSize() != 8) {
-		return;
+	if (M.getDataLayout().getPointerSize() != 8) {
+		return false;
 	}
 
-	for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I)
+	for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
 	{
 		Function* F = &(*I);
 		StringRef FN = F->getName();
@@ -194,6 +112,8 @@ void CodeAssumption::addAssumption(Module *M)
 			}
 		}
 	}
+
+	return m_changed;
 }
 
 
@@ -315,68 +235,3 @@ bool CodeAssumption::addAssumption(Function* F, AssumptionCache* AC)
 	}
 	return assumeAdded;
 }
-
-// Return true if SubGroupID is uniform
-bool CodeAssumption::IsSGIdUniform(MetaDataUtils* pMDU, Function* F)
-{
-    if (!isEntryFunc(pMDU, F)) {
-        return false;
-    }
-
-    FunctionInfoMetaDataHandle funcInfoMD = pMDU->getFunctionsInfoItem(F);
-    ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
-    WorkgroupWalkOrderMetaDataHandle workgroupWalkOrder = funcInfoMD->getWorkgroupWalkOrder();
-
-    // WO (Walk Order): it is a triple (d0, d1, d2), where each d0/d1/d2 are 0|1|2.
-    // This WO indicates that the work-items are dispatched along d0 first, then d1,
-    // at last d2. For example, given work group size (8, 2, 1). With WO(0,1,2), 
-    // the work-items are dispatched in the linear order like the following:
-    // (note that each triple is local id triple, assuming SIMD8)
-    //   1st thread of simd8: (0, 0, 0) (1, 0, 0), (2, 0, 0), ......, (7, 0, 0)
-    //   2nd thread of simd8: (0, 1, 0) (1, 1, 0), (2, 1, 0), ......, (7, 1, 0)
-    // With WO(1, 0, 2), work-items are dispatched like:
-    //   1st thread of simd8: (0, 0, 0) (0, 1, 0), (1, 0, 0), (1, 1, 0), ......, (3, 1, 0),
-    //   2nd thread of simd8: (4, 0, 0) (4, 1, 0), (5, 0, 0), (5, 1, 0), ......, (7, 1, 0)
-    //
-    int32_t WO_0 = -1, WO_1 = -1, WO_2 = -1;
-    if (workgroupWalkOrder->hasValue())
-    {
-        WO_0 = workgroupWalkOrder->getDim0();
-        WO_1 = workgroupWalkOrder->getDim1();
-        WO_2 = workgroupWalkOrder->getDim2();
-
-        if (WO_0 == 0 && WO_1 == 1 && WO_2 == 2)
-        {
-            // order (0, 1, 2): linear order
-            return true;
-        }
-    }
-
-    if (threadGroupSize->hasValue())
-    {
-        SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
-        if (subGroupSize->hasValue())
-        {
-            uint32_t simdSize = (uint32_t)subGroupSize->getSIMD_size();
-
-            uint32_t X = (uint32_t)threadGroupSize->getXDim();
-            uint32_t Y = (uint32_t)threadGroupSize->getYDim();
-            uint32_t Z = (uint32_t)threadGroupSize->getZDim();
-
-            bool hasWO = (WO_0 >= 0); // WO_1 and WO_2 >=0
-            if ((X * Y * Z) <= simdSize)
-            {
-                // WG has only 1 thread.
-                return true;
-            }
-            else if (hasWO &&
-                ((Y == 1 && Z == 1) ||
-                 (X == 1 && Z == 1) ||
-                 (X == 1 && Y == 1)))
-            {
-                return true;
-            }
-        }
-    }
-    return false;
-}
