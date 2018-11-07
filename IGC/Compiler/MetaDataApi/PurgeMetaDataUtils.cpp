@@ -113,7 +113,7 @@ bool PurgeMetaDataUtils::runOnModule(Module &M)
     // Update when there is any change.
     if (!ToBeDeleted.empty())
     {
-        pMdUtils->save(toLLVMContext(*pContext));
+        pMdUtils->save(*pContext->getLLVMContext());
         m_changed = true;
     }
 

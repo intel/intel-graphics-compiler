@@ -25,6 +25,7 @@ igc_sg_define(Compiler__Optimizer)
 
 
 set(IGC_BUILD__SRC__Compiler
+    "${CMAKE_CURRENT_SOURCE_DIR}/CodeGenContext.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/CodeGenContextWrapper.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/compiler_caps.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/CustomSafeOptPass.cpp"

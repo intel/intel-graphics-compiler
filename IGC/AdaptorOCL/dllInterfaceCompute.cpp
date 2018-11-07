@@ -352,7 +352,7 @@ bool ProcessElfInput(
               if(InputArgs.OptionsSize > 0){
                   options = llvm::StringRef(InputArgs.pOptions, InputArgs.OptionsSize - 1);
               }
-              bool success = spv::ReadSPIRV(toLLVMContext(Context), IS, pKernelModule, options, stringErrMsg);
+              bool success = spv::ReadSPIRV(*Context.getLLVMContext(), IS, pKernelModule, options, stringErrMsg);
 #else
               std::string stringErrMsg{ "SPIRV consumption not enabled for the TARGET." };
               bool success = false;
@@ -368,7 +368,7 @@ bool ProcessElfInput(
                   llvm::MemoryBuffer::getMemBuffer(buf, "", false);
 
               llvm::Expected<std::unique_ptr<llvm::Module>> errorOrModule = 
-                    llvm::parseBitcodeFile(pInputBuffer->getMemBufferRef(), toLLVMContext(Context));
+                    llvm::parseBitcodeFile(pInputBuffer->getMemBufferRef(), *Context.getLLVMContext());
               if (llvm::Error EC = errorOrModule.takeError())
               {
                   std::string errMsg;
@@ -795,7 +795,7 @@ bool TranslateBuild(
                 }
 
                 llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-                    getLazyBitcodeModule(pGenericBuffer->getMemBufferRef(), toLLVMContext(oclContext));
+                    getLazyBitcodeModule(pGenericBuffer->getMemBufferRef(), *oclContext.getLLVMContext());
                 
                 if (llvm::Error EC = ModuleOrErr.takeError()) 
                 {
@@ -836,7 +836,7 @@ bool TranslateBuild(
 				assert(pSizeTBuffer && "Error loading builtin resource");
 
 				llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-					getLazyBitcodeModule(pSizeTBuffer->getMemBufferRef(), toLLVMContext(oclContext));
+					getLazyBitcodeModule(pSizeTBuffer->getMemBufferRef(), *oclContext.getLLVMContext());
 				if (llvm::Error EC = ModuleOrErr.takeError())
 					assert(0 && "Error lazily loading bitcode for size_t builtins");
 				else
@@ -894,9 +894,9 @@ bool TranslateBuild(
             // Create a new LLVMContext
             oclContext.initLLVMContextWrapper();
 			
-			IGC::Debug::RegisterComputeErrHandlers(toLLVMContext(oclContext));
+			IGC::Debug::RegisterComputeErrHandlers(*oclContext.getLLVMContext());
 
-            if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, toLLVMContext(oclContext), inputDataFormatTemp))
+            if (!ParseInput(pKernelModule, pInputArgs, pOutputArgs, *oclContext.getLLVMContext(), inputDataFormatTemp))
             {
                 return false;
             }

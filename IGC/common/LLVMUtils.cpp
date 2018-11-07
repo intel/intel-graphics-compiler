@@ -78,7 +78,7 @@ void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
 	SetCurrentDebugHash(pContext->hash.asmHash.value);
     if (IGC_IS_FLAG_ENABLED(DumpLLVMIR))
     {
-        pContext->getMetaDataUtils()->save(toLLVMContext(*pContext));
+        pContext->getMetaDataUtils()->save(*pContext->getLLVMContext());
         serialize(*(pContext->getModuleMetaData()), pContext->getModule());
         using namespace IGC::Debug;
         auto name =
@@ -108,7 +108,7 @@ void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName)
         {
             fclose(fp);
             errs() << "Override shader: " << fileName << "\n";
-            Module* mod = parseIRFile(fileName, Err, toLLVMContext(*pContext)).release();
+            Module* mod = parseIRFile(fileName, Err, *pContext->getLLVMContext()).release();
             if (mod)
             {
                 pContext->deleteModule();

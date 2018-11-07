@@ -178,41 +178,6 @@ namespace IGC
 {
 const int LOOP_ROTATION_HEADER_INST_THRESHOLD = 32;
 
-RetryManager::~RetryManager()
-{
-    for (unsigned i = 0; i < 3; i++)
-    {
-        if (m_simdEntries[i])
-        {
-            delete m_simdEntries[i];
-        }
-    }
-}
-
-bool RetryManager::AnyKernelSpills()
-{
-    for (unsigned i = 0; i < 3; i++)
-    {
-        if (m_simdEntries[i] && m_simdEntries[i]->m_spillCost > 0.0)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool RetryManager::PickupKernels(CodeGenContext* cgCtx)
-{
-    if (cgCtx->type == ShaderType::COMPUTE_SHADER)
-    {
-        return PickupCS(static_cast<ComputeShaderContext*>(cgCtx));
-    }
-    else
-    {
-        assert(false && "TODO for other shader types");
-        return true;
-    }
-}
 
 inline void AddURBWriteRelatedPass(CodeGenContext &ctx, IGCPassManager& mpm)
 {
@@ -1417,16 +1382,6 @@ void OptimizeIR(CodeGenContext* pContext)
     //pContext->shaderEntry->viewCFG();
     DumpLLVMIR(pContext, "optimized");
     MEM_SNAPSHOT( IGC::SMS_AFTER_OPTIMIZER );
-}
-
-void CodeGenContext::initCompOptionFromRegkey()
-{
-    CompOptions& opt = getModuleMetaData()->compOpt;
-
-    opt.pixelShaderDoNotAbortOnSpill =
-        IGC_IS_FLAG_ENABLED(PixelShaderDoNotAbortOnSpill);
-    opt.forcePixelShaderSIMDMode =
-        IGC_GET_FLAG_VALUE(ForcePixelShaderSIMDMode);
 }
 
 }  // namespace IGC

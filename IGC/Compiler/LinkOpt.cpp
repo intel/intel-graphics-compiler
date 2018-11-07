@@ -672,7 +672,7 @@ static bool compactVsDsOutput(
     // init all output attrs to undef
     // move output intrinsics to close to each other, for f64, we may see
     // non-contiguous output index 
-    Value* undef = UndefValue::get(Type::getFloatTy(toLLVMContext(*vsdsCtx)));
+    Value* undef = UndefValue::get(Type::getFloatTy(*vsdsCtx->getLLVMContext()));
     for (unsigned i = 0; i < outInsts.size(); i++)
     {
         if (outInsts[i].size() > 0)
@@ -684,7 +684,7 @@ static bool compactVsDsOutput(
                 intrin->setOperand(2, undef);
                 intrin->setOperand(3, undef);
                 intrin->setOperand(ShaderIOAnalysis::OUTPUT_ATTR_ARG,
-                    ConstantInt::get(Type::getInt32Ty(toLLVMContext(*vsdsCtx)), nNewOut));
+                    ConstantInt::get(Type::getInt32Ty(*vsdsCtx->getLLVMContext()), nNewOut));
                 newOut[nNewOut].push_back(intrin);
             }
             nNewOut++;
@@ -715,7 +715,7 @@ static bool compactVsDsOutput(
                     newIntrin->setOperand(2, undef);
                     newIntrin->setOperand(3, undef);
                     newIntrin->setOperand(ShaderIOAnalysis::OUTPUT_ATTR_ARG,
-                        ConstantInt::get(Type::getInt32Ty(toLLVMContext(*vsdsCtx)), newIdx / 4));
+                        ConstantInt::get(Type::getInt32Ty(*vsdsCtx->getLLVMContext()), newIdx / 4));
                     newIntrin->insertAfter(intrin);
                     newOut[newIdx / 4].push_back(newIntrin);
                 }
@@ -803,7 +803,7 @@ static bool linkOptVsDsGsToPs(
         psIn.resize(numOut);
     }
     // make sure all PS input will has a VS output
-    Value* f0 = ConstantFP::get(Type::getFloatTy(toLLVMContext(*outCtx)), 0);
+    Value* f0 = ConstantFP::get(Type::getFloatTy(*outCtx->getLLVMContext()), 0);
     for (unsigned i = 0; i < psIn.size(); i++)
     {
         if (psIn[i].size() > 0)
@@ -874,18 +874,18 @@ static bool linkOptHsToDs(LinkOptContext* linkCtx)
                     for (auto inst : dsIn[i][c])
                     {
                         inst->setOperand(ShaderIOAnalysis::DSCTRLPTINPUT_ATTR_ARG,
-                            ConstantInt::get(Type::getInt32Ty(toLLVMContext(*dsCtx)), i - nDead));
+                            ConstantInt::get(Type::getInt32Ty(*dsCtx->getLLVMContext()), i - nDead));
                     }
                 }
                 for (auto inst : hsOut[i])
                 {
                     inst->setOperand(ShaderIOAnalysis::OUTPUTTESSCTRLPT_ATTR_ARG,
-                        ConstantInt::get(Type::getInt32Ty(toLLVMContext(*hsCtx)), i - nDead));
+                        ConstantInt::get(Type::getInt32Ty(*hsCtx->getLLVMContext()), i - nDead));
                 }
                 for (auto inst : hsOutIn[i])
                 {
                     inst->setOperand(1,
-                        ConstantInt::get(Type::getInt32Ty(toLLVMContext(*hsCtx)), i - nDead));
+                        ConstantInt::get(Type::getInt32Ty(*hsCtx->getLLVMContext()), i - nDead));
                 }
             }
         }
@@ -910,12 +910,12 @@ static bool linkOptHsToDs(LinkOptContext* linkCtx)
                 for (auto inst : hsOut[i])
                 {
                     inst->setOperand(ShaderIOAnalysis::OUTPUTTESSCTRLPT_ATTR_ARG,
-                        ConstantInt::get(Type::getInt32Ty(toLLVMContext(*hsCtx)), i - nDead));
+                        ConstantInt::get(Type::getInt32Ty(*hsCtx->getLLVMContext()), i - nDead));
                 }
                 for (auto inst : hsOutIn[i])
                 {
                     inst->setOperand(1,
-                        ConstantInt::get(Type::getInt32Ty(toLLVMContext(*hsCtx)), i - nDead));
+                        ConstantInt::get(Type::getInt32Ty(*hsCtx->getLLVMContext()), i - nDead));
                 }
             }
         }
@@ -935,9 +935,9 @@ static bool linkOptHsToDs(LinkOptContext* linkCtx)
         {
             assert(pcOut[i].size());
             Value* dsv_sidx = ConstantInt::get(
-                Type::getInt32Ty(toLLVMContext(*dsCtx)), sidx);
+                Type::getInt32Ty(*dsCtx->getLLVMContext()), sidx);
             Value* hsv_sidx = ConstantInt::get(
-                Type::getInt32Ty(toLLVMContext(*hsCtx)), sidx);
+                Type::getInt32Ty(*hsCtx->getLLVMContext()), sidx);
 
             if (i < hspcIn.size())
             {
@@ -1042,12 +1042,12 @@ static void linkOptVovToVov(LinkOptContext* linkCtx,
                 {
                     inst = inInsts[i][j];
                     inst->setOperand(ShaderIOAnalysis::HSGSINPUT_ATTR_ARG,
-                        ConstantInt::get(Type::getInt32Ty(toLLVMContext(*inCtx)), i - nDead));
+                        ConstantInt::get(Type::getInt32Ty(*inCtx->getLLVMContext()), i - nDead));
                 }
                 assert(outInsts[i].size() == 1);
                 inst = outInsts[i][0];
                 inst->setOperand(ShaderIOAnalysis::OUTPUT_ATTR_ARG,
-                    ConstantInt::get(Type::getInt32Ty(toLLVMContext(*outCtx)), i - nDead));
+                    ConstantInt::get(Type::getInt32Ty(*outCtx->getLLVMContext()), i - nDead));
             }
         }
     }

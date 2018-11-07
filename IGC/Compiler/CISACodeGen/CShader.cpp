@@ -3047,37 +3047,4 @@ CShaderProgram::~CShaderProgram()
         delete m_SIMDshaders[i];
     }
     m_context = nullptr;
-}
-
-unsigned int CodeGenContext::getRegisterPointerSizeInBits(unsigned int AS) const
-{
-    unsigned int pointerSizeInRegister = 32;
-    switch(AS)
-    {
-    case ADDRESS_SPACE_GLOBAL:
-    case ADDRESS_SPACE_CONSTANT:
-    case ADDRESS_SPACE_GENERIC:
-    case ADDRESS_SPACE_GLOBAL_OR_PRIVATE:
-        pointerSizeInRegister = 
-            getModule()->getDataLayout().getPointerSizeInBits(AS);
-        break;
-    case ADDRESS_SPACE_LOCAL:
-        pointerSizeInRegister = 32;
-        break;
-    case ADDRESS_SPACE_PRIVATE:
-        if(getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory)
-        {
-            pointerSizeInRegister = 32;
-        }
-        else
-        {
-            pointerSizeInRegister = 
-                getModule()->getDataLayout().getPointerSizeInBits(AS);
-        }
-        break;
-    default:
-        pointerSizeInRegister = 32;
-        break;
-    }
-    return pointerSizeInRegister;
-}
+}

@@ -76,7 +76,6 @@ namespace llvm
     class Function;
 }
 
-#define D3D_MAX_USERCLIPPLANES 6
 #define MAX_VSHADER_INPUT_REGISTERS_PACKAGEABLE 32
 static const unsigned int g_c_Max_PS_attributes = 32;
 
@@ -531,121 +530,37 @@ namespace IGC
         USC::SShaderStageBTLayout* getModifiableLayout();
     };
 
-    typedef struct RetryState {
-        bool allowUnroll;
-        bool allowLICM;
-        bool allowCodeSinking;
-        bool allowSimd32Slicing;
-        bool allowPromotePrivateMemory;
-        bool allowPreRAScheduler;
-        bool allowLargeURBWrite;
-        unsigned nextState;
-    } RetryState;
-
-    const RetryState RetryTable[] = {
-        { true, true, true, false, true, true, true, 1 },
-        { false, false, true, true, false, false, false, 500 }
-    };
-
     class RetryManager
     {
     public:
-        RetryManager() : stateId(0), enabled(false)
-        {
-            memset(m_simdEntries, 0, sizeof(m_simdEntries));
-        }
-
+        RetryManager();
         ~RetryManager();
 
-        bool AdvanceState() {
-            if (!enabled || IGC_IS_FLAG_ENABLED(DisableRecompilation))
-            {
-                return false;
-            }
-            assert(stateId < getStateCnt());
-            stateId = RetryTable[stateId].nextState;
-            return (stateId < getStateCnt());
-        }
-        bool AllowUnroll() {
-            assert(stateId < getStateCnt());
-            return RetryTable[stateId].allowUnroll;
-        }
-        bool AllowLICM() {
-            assert(stateId < getStateCnt());
-            return RetryTable[stateId].allowLICM;
-        }
-        bool AllowPromotePrivateMemory() {
-            assert(stateId < getStateCnt());
-            return RetryTable[stateId].allowPromotePrivateMemory;
-        }
-        bool AllowPreRAScheduler() {
-            assert(stateId < getStateCnt());
-            return RetryTable[stateId].allowPreRAScheduler;
-        }
-        bool AllowCodeSinking() {
-            assert(stateId < getStateCnt());
-            return RetryTable[stateId].allowCodeSinking;
-        }
-        bool AllowSimd32Slicing() {
-            assert(stateId < getStateCnt());
-            return RetryTable[stateId].allowSimd32Slicing;
-        }
-        bool AllowLargeURBWrite() {
-            assert(stateId < getStateCnt());
-            return RetryTable[stateId].allowLargeURBWrite;
-        }
-        bool IsFirstTry() {
-            return (stateId == 0);
-        }
-        bool IsLastTry() {
-            return (!enabled ||
-                IGC_IS_FLAG_ENABLED(DisableRecompilation) ||
-                IGC_IS_FLAG_ENABLED(ForceOCLSIMDWidth) ||
-                (stateId < getStateCnt() &&
-                RetryTable[stateId].nextState >= getStateCnt()));
-        }
-        unsigned GetRetryId() const { return stateId; }
+        bool AdvanceState();
+        bool AllowUnroll();
+        bool AllowLICM();
+        bool AllowPromotePrivateMemory();
+        bool AllowPreRAScheduler();
+        bool AllowCodeSinking();
+        bool AllowSimd32Slicing();
+        bool AllowLargeURBWrite();
+        bool IsFirstTry();
+        bool IsLastTry();
+        unsigned GetRetryId() const;
 
-        void Enable() { enabled = true; }
-        void Disable() { enabled = false; }
+        void Enable();
+        void Disable();
         
-        void SetSpillSize(unsigned int spillSize) { lastSpillSize = spillSize; }
-        unsigned int GetLastSpillSize() { return lastSpillSize; }
+        void SetSpillSize(unsigned int spillSize);
+        unsigned int GetLastSpillSize();
         unsigned int numInstructions = 0;
         /// the set of OCL kernels that need to recompile
         std::set<std::string> kernelSet;
 
-        void ClearSpillParams() {
-            lastSpillSize = 0;
-            numInstructions = 0;
-        }
-
+        void ClearSpillParams();
         // save entry for given SIMD mode, to avoid recompile for next retry.
-        void SaveSIMDEntry(SIMDMode simdMode, CShader* shader)
-        {
-            switch (simdMode)
-            {
-            case SIMDMode::SIMD8:   m_simdEntries[0] = shader;  break;
-            case SIMDMode::SIMD16:  m_simdEntries[1] = shader;  break;
-            case SIMDMode::SIMD32:  m_simdEntries[2] = shader;  break;
-            default:
-                assert(false);
-            }
-        }
-
-        CShader* GetSIMDEntry(SIMDMode simdMode)
-        {
-            switch (simdMode)
-            {
-            case SIMDMode::SIMD8:   return m_simdEntries[0];
-            case SIMDMode::SIMD16:  return m_simdEntries[1];
-            case SIMDMode::SIMD32:  return m_simdEntries[2];
-            default:
-                assert(false);
-                return nullptr;
-            }
-        }
-
+        void SaveSIMDEntry(SIMDMode simdMode, CShader* shader);
+        CShader* GetSIMDEntry(SIMDMode simdMode);
         bool AnyKernelSpills();
 
         // Try to pickup the simd mode & kernel based on heuristics and fill
@@ -655,7 +570,7 @@ namespace IGC
     private:
         unsigned stateId;
 
-        unsigned getStateCnt() { return sizeof(RetryTable) / sizeof(RetryState); };
+        unsigned getStateCnt();
 
         /// internal knob to disable retry manager.
         bool enabled;
@@ -682,28 +597,15 @@ namespace IGC
         LLVMContextWrapper& operator =(LLVMContextWrapper&) = delete;
 
     public:
-        LLVMContextWrapper(bool createResourceDimTypes = true) 
-        {
-            if (createResourceDimTypes)
-            {
-                CreateResourceDimensionTypes(*this);
-            }
-        }
+        LLVMContextWrapper(bool createResourceDimTypes = true);
         /// ref count the LLVMContext as now CodeGenContext owns it
         unsigned int refCount = 0;
         /// IntrinsicIDCache - Cache of intrinsic pointer to numeric ID mappings
         /// requested in this context
         typedef llvm::ValueMap<const llvm::Function*, unsigned> SafeIntrinsicIDCacheTy;
         SafeIntrinsicIDCacheTy m_SafeIntrinsicIDCache;
-        void AddRef() { refCount++; }
-        void Release() 
-        { 
-            refCount--; 
-            if (refCount == 0)
-            {
-                delete this;
-            }
-        }
+        void AddRef();
+        void Release();
     };
 
     class CodeGenContext
@@ -769,9 +671,6 @@ namespace IGC
         /// input: IGC MetaData Utils
         IGC::IGCMD::MetaDataUtils  *m_pMdUtils = nullptr;
         IGC::ModuleMetaData *modMD = nullptr;
-
-        void initCompOptionFromRegkey();
-
     public:
         CodeGenContext(
             ShaderType          _type,      ///< shader type
@@ -799,130 +698,28 @@ namespace IGC
         CodeGenContext(CodeGenContext&) = delete;
         CodeGenContext& operator =(CodeGenContext&) = delete;
 
-        void initLLVMContextWrapper(bool createResourceDimTypes = true)
-        {
-            llvmCtxWrapper = new LLVMContextWrapper(createResourceDimTypes);
-            llvmCtxWrapper->AddRef();
-        }
+        void initLLVMContextWrapper(bool createResourceDimTypes = true);
+        llvm::LLVMContext* getLLVMContext();
+        IGC::IGCMD::MetaDataUtils* getMetaDataUtils();
+        llvm::Module* getModule() const;
 
-        llvm::LLVMContext* getLLVMContext() {
-            return llvmCtxWrapper;
-        } 
-
-        IGC::IGCMD::MetaDataUtils* getMetaDataUtils()
-        {
-            assert(m_pMdUtils && "Metadata Utils is not initialized");
-            return m_pMdUtils;
-        }
-
-        llvm::Module* getModule() const { return module; }
-
-        void setModule(llvm::Module *m)
-        {
-            module = m;
-            m_pMdUtils = new IGC::IGCMD::MetaDataUtils(m);
-            modMD = new IGC::ModuleMetaData();
-            initCompOptionFromRegkey();
-        }
-
+        void setModule(llvm::Module *m);
         // Several clients explicitly delete module without resetting module to null.
         // This causes the issue later when the dtor is invoked (trying to delete a
         // dangling pointer again). This function is used to replace any explicit
         // delete in order to prevent deleting dangling pointers happening.
-        void deleteModule()
-        {
-            delete m_pMdUtils;
-            delete modMD;
-            delete module;
-            m_pMdUtils = nullptr;
-            modMD = nullptr;
-            module = nullptr;
-            delete annotater;
-            annotater = nullptr;
-        }
-
-        IGC::ModuleMetaData* getModuleMetaData() const
-        {
-            assert(modMD && "Module Metadata is not initialized");
-            return modMD;
-        }
-
+        void deleteModule();
+        IGC::ModuleMetaData* getModuleMetaData() const;
         unsigned int getRegisterPointerSizeInBits(unsigned int AS) const;
-
-        bool enableFunctionCall() const
-        {
-            if (m_enableSubroutine)
-                return true;
-
-            int FCtrol = IGC_GET_FLAG_VALUE(FunctionControl);
-            return FCtrol == FLAG_FCALL_FORCE_SUBROUTINE ||
-                   FCtrol == FLAG_FCALL_FORCE_STACKCALL;
-        }
-
-        virtual void InitVarMetaData() {}
-
-        virtual ~CodeGenContext()
-        {
-            clear();
-        }
-
-
-        void clear()
-        {
-			m_enableSubroutine = false;
-
-            delete modMD;
-            delete m_pMdUtils;
-            modMD = nullptr;
-            m_pMdUtils = nullptr;
-
-            delete module;
-            llvmCtxWrapper->Release();
-            module = nullptr;
-            llvmCtxWrapper = nullptr;
-        }
-
-        void EmitError(const char* errorstr)
-        {
-            std::string str(errorstr);
-            std::string  msg;
-            msg += "\nerror: ";
-            msg += str;
-            msg += "\nerror: backend compiler failed build.\n";
-            str = msg;
-            this->oclErrorMessage = str;// where to get this from
-            return;
-        }
-
-        CompOptions& getCompilerOption()
-        {
-            return getModuleMetaData()->compOpt;
-        }
-
-        virtual void resetOnRetry()
-        {
-            m_tempCount = 0;
-        }
-
-        virtual uint32_t getNumGRFPerThread() const
-        {
-            if (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0)
-            {
-                return IGC_GET_FLAG_VALUE(TotalGRFNum);
-            }
-            return 128;
-        }               
-
-        bool isPOSH() const
-        {
-            return this->getModule()->getModuleFlag(
-                "IGC::PositionOnlyVertexShader") != nullptr;
-        }
-        void setPOSH()
-        {
-            this->getModule()->addModuleFlag(llvm::Module::Error,
-                "IGC::PositionOnlyVertexShader", 1);
-        }
+        bool enableFunctionCall() const;
+        virtual void InitVarMetaData();
+        virtual ~CodeGenContext();
+        void clear();
+        void EmitError(const char* errorstr);
+        CompOptions& getCompilerOption();
+        virtual void resetOnRetry();
+        virtual uint32_t getNumGRFPerThread() const;
+        bool isPOSH() const;
     };
 
     class VertexShaderContext : public CodeGenContext
@@ -1019,91 +816,17 @@ namespace IGC
         }
 
         /** get shader's thread group size */
-        unsigned GetThreadGroupSize()
-        {
-            llvm::GlobalVariable* pGlobal = getModule()->getGlobalVariable("ThreadGroupSize_X");
-            unsigned threadGroupSize_X = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
-
-            pGlobal = getModule()->getGlobalVariable("ThreadGroupSize_Y");
-            unsigned threadGroupSize_Y = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
-
-            pGlobal = getModule()->getGlobalVariable("ThreadGroupSize_Z");
-            unsigned threadGroupSize_Z = int_cast<unsigned>(llvm::cast<llvm::ConstantInt>(pGlobal->getInitializer())->getZExtValue());
-
-            return threadGroupSize_X * threadGroupSize_Y * threadGroupSize_Z;
-        }
-
+        unsigned GetThreadGroupSize();
         /** get hardware thread size per workgroup */
-        unsigned GetHwThreadPerWorkgroup()
-        {
-            unsigned hwThreadPerWorkgroup = platform.getMaxNumberThreadPerSubslice();
-
-            if (platform.supportPooledEU())
-            {
-                hwThreadPerWorkgroup = platform.getMaxNumberThreadPerWorkgroupPooledMax();
-            }
-            return hwThreadPerWorkgroup;
-        }
-
-        unsigned GetSlmSizePerSubslice()
-        {
-            return 65536; // TODO: should get this from GTSysInfo instead of hardcoded value
-        }
-
-        float GetThreadOccupancy(SIMDMode simdMode)
-        {
-            return GetThreadOccupancyPerSubslice(simdMode, GetThreadGroupSize(), GetHwThreadPerWorkgroup(), m_slmSize, GetSlmSizePerSubslice());
-        }
-
+        unsigned GetHwThreadPerWorkgroup();
+        unsigned GetSlmSizePerSubslice();
+        float GetThreadOccupancy(SIMDMode simdMode);
         /** get smallest SIMD mode allowed based on thread group size */
-        SIMDMode GetLeastSIMDModeAllowed()
-        {
-            unsigned threadGroupSize = GetThreadGroupSize();
-            unsigned hwThreadPerWorkgroup = GetHwThreadPerWorkgroup();
-
-            if ((threadGroupSize <= hwThreadPerWorkgroup * 8) &&
-                threadGroupSize <= 512)
-            {
-                return SIMDMode::SIMD8;
-            }
-            else
-            if (threadGroupSize <= hwThreadPerWorkgroup * 16)
-            {
-                return SIMDMode::SIMD16;
-            }
-            else
-            {
-                return SIMDMode::SIMD32;
-            }
-        }
-
+        SIMDMode GetLeastSIMDModeAllowed();
         /** get largest SIMD mode for performance based on thread group size */
-        SIMDMode GetMaxSIMDMode()
-        {
-            unsigned threadGroupSize = GetThreadGroupSize();
+        SIMDMode GetMaxSIMDMode();
 
-            if (threadGroupSize<=8)
-            {
-                return SIMDMode::SIMD8;
-            }
-            else if (threadGroupSize <= 16)
-            {
-                return SIMDMode::SIMD16;
-            }
-            else
-            {
-                return SIMDMode::SIMD32;
-            }
-        }
-
-        float GetSpillThreshold() const
-        {
-            float spillThresholdSLM =
-                float(IGC_GET_FLAG_VALUE(CSSpillThresholdSLM)) / 100.0f;
-            float spillThresholdNoSLM =
-                float(IGC_GET_FLAG_VALUE(CSSpillThresholdNoSLM)) / 100.0f;
-            return m_slmSize ? spillThresholdSLM : spillThresholdNoSLM;
-        }
+        float GetSpillThreshold() const;
     };
 
     class HullShaderContext : public CodeGenContext
@@ -1285,48 +1008,14 @@ namespace IGC
 			m_ShouldUseNonCoherentStatelessBTI(shouldUseNonCoherentStatelessBTI)
         {
         }
-
-        void SetFuncStr(llvm::Function* pFunc, std::string str)
-        {
-            m_hashes_per_kernel[pFunc] = str;
-        }
-
-        std::string GetStr(llvm::Function* pFunc)
-        {
-            assert(m_hashes_per_kernel.find(pFunc) != m_hashes_per_kernel.end() &&
-                "Hash for function hasn't been computed yet");
-            return m_hashes_per_kernel[pFunc];
-        }
-
-        bool isSPIRV() const
-        {
-            return isSpirV;
-        }
-
-        void setAsSPIRV()
-        {
-            isSpirV = true;
-        }
-        float getProfilingTimerResolution()
-        {
-            return m_ProfilingTimerResolution;
-        }
-
-        SIMDMode getDefaultSIMDMode()
-        {
-            return defaultSIMDMode;
-        }
-
-        void setDefaultSIMDMode(SIMDMode simd)
-        {
-            defaultSIMDMode = simd;
-        }
-
-        uint32_t getNumGRFPerThread() const
-        {
-            return CodeGenContext::getNumGRFPerThread();
-        }
-
+        void SetFuncStr(llvm::Function* pFunc, std::string str);
+        std::string GetStr(llvm::Function* pFunc);
+        bool isSPIRV() const;
+        void setAsSPIRV();
+        float getProfilingTimerResolution();
+        SIMDMode getDefaultSIMDMode();
+        void setDefaultSIMDMode(SIMDMode simd);
+        uint32_t getNumGRFPerThread() const;
     private:
         SIMDMode defaultSIMDMode = SIMDMode::BEGIN;
         llvm::DenseMap<llvm::Function*, std::string> m_hashes_per_kernel;
@@ -1363,48 +1052,4 @@ namespace IGC
     // to go through the whole LTO process again.
     void LinkOptReplayPSActions(PixelShaderContext* psCtx,
         const LTOPSActions& psActions);
-    
-    inline llvm::LLVMContext* toLLVMContext(CodeGenContext* p) {
-        return p->getLLVMContext();
-    }
-
-    inline llvm::LLVMContext& toLLVMContext(CodeGenContext& p) {
-        return *(p.getLLVMContext());
-    }
-
-    inline VertexShaderContext* toVSCtx(CodeGenContext* ctx)
-    {
-        assert(ctx->type == ShaderType::VERTEX_SHADER);
-        return static_cast<VertexShaderContext*>(ctx);
-    }
-
-    inline HullShaderContext* toHSCtx(CodeGenContext* ctx)
-    {
-        assert(ctx->type == ShaderType::HULL_SHADER);
-        return static_cast<HullShaderContext*>(ctx);
-    }
-
-    inline DomainShaderContext* toDSCtx(CodeGenContext* ctx)
-    {
-        assert(ctx->type == ShaderType::DOMAIN_SHADER);
-        return static_cast<DomainShaderContext*>(ctx);
-    }
-
-    inline GeometryShaderContext* toGSCtx(CodeGenContext* ctx)
-    {
-        assert(ctx->type == ShaderType::GEOMETRY_SHADER);
-        return static_cast<GeometryShaderContext*>(ctx);
-    }
-
-    inline PixelShaderContext* toPSCtx(CodeGenContext* ctx)
-    {
-        assert(ctx->type == ShaderType::PIXEL_SHADER);
-        return static_cast<PixelShaderContext*>(ctx);
-    }
-
-    inline ComputeShaderContext* toCSCtx(CodeGenContext* ctx)
-    {
-        assert(ctx->type == ShaderType::COMPUTE_SHADER);
-        return static_cast<ComputeShaderContext*>(ctx);
-    }
 } // end IGC namespace
