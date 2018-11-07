@@ -4665,6 +4665,7 @@ struct AccAssignment
     }
 };
 
+
 void HWConformity::multiAccSubstitution(G4_BB* bb)
 {
     int numGeneralAcc = getNumACC(builder);
@@ -4703,6 +4704,7 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
             }
         }
     }
+
 
     //modified linear scan to assign free accs to intervals
     AccAssignment accAssign(numGeneralAcc);
@@ -4795,6 +4797,7 @@ void HWConformity::multiAccSubstitution(G4_BB* bb)
 #endif
         }
     }
+
 
     for (int i = 0, end = (int)intervals.size(); i < end; ++i)
     {

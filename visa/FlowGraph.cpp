@@ -4714,7 +4714,8 @@ void G4_BB::emitBankConflict(std::ostream& output, G4_INST *inst)
 }
 
 
-static void emitInstId(std::ostream& output, int srcLine, int vISAId, int genId)
+
+static void emitInstId(std::ostream& output, int srcLine, int vISAId, int genId, uint64_t pc)
 {
     if (srcLine != 0)
     {
@@ -4728,6 +4729,11 @@ static void emitInstId(std::ostream& output, int srcLine, int vISAId, int genId)
     {
         output << "&" << genId;
     }
+
+    if (pc != 0xffffffff)
+    {
+        output << ":%" << pc;
+    }
 }
 
 void G4_BB::emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST_LIST_ITER &it, int *suppressRegs, int *lastRegs)
@@ -4738,10 +4744,12 @@ void G4_BB::emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST
     if (!inst->isLabel() && inst->opcode() < G4_NUM_OPCODE)
     {
         output << " //";
-        emitInstId(output, inst->getLineNo(), inst->getCISAOff(), inst->getGlobalID());
+        emitInstId(output, inst->getLineNo(), inst->getCISAOff(), inst->getGlobalID(), inst->getGenOffset());
 
          emitBankConflict(output, inst);
     }
+
+
 }
 void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)
 {
@@ -4754,7 +4762,7 @@ void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)
         SendInst->emit_send(output);
 
         output << " //";
-        emitInstId(output, SendInst->getLineNo(), SendInst->getCISAOff(), SendInst->getGlobalID());
+        emitInstId(output, SendInst->getLineNo(), SendInst->getCISAOff(), SendInst->getGlobalID(), SendInst->getGenOffset());
         (*it)->emit_send_desc(output);
     }
     else
@@ -4767,10 +4775,11 @@ void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)
         if ((*it)->isLabel() == false)
         {
             output << " //";
-            emitInstId(output, inst->getLineNo(), inst->getCISAOff(), inst->getGlobalID());
+            emitInstId(output, inst->getLineNo(), inst->getCISAOff(), inst->getGlobalID(), inst->getGenOffset());
             emitBankConflict(output, inst);
         }
     }
+
 }
 void G4_BB::emitInstruction(std::ostream& output, INST_LIST_ITER &it)
 {

@@ -1247,6 +1247,7 @@ public:
     void dump() const;
 };
 
+
 class G4_Kernel
 {
     const char* name;
@@ -1482,6 +1483,7 @@ public:
 
 
     G4_INST* getFirstNonLabelInst() const;
+
 };
 
 class SCCAnalysis

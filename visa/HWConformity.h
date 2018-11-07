@@ -33,6 +33,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_ISA_util.h"
 
 #include <map>
+
+struct AccInterval;
+
 namespace vISA
 {
     class HWConformity
@@ -199,6 +202,7 @@ namespace vISA
 
         void* operator new(size_t sz, vISA::Mem_Manager& m) { return m.alloc(sz); }
         void multiAccSubstitution(G4_BB* bb);
+
 
         bool checkSrcMod(INST_LIST_ITER it, G4_BB* bb, int srcPos);
 

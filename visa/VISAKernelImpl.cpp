@@ -329,6 +329,7 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
     m_kernel->doRelocation(binary, binarySize);
 
 
+
     if (m_options->getOption(vISA_PrintASMCount))
     {
         RELEASE_MSG("\tKernel " << m_asmName << " : " << m_kernel->getAsmCount() << " asm_count" << std::endl);
