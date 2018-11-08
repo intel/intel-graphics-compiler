@@ -355,7 +355,7 @@ bool ThreadCombining::canDoOptimization(Function* m_kernel, llvm::Module& M)
     if (threadGroupSize_X == 1 ||
 		threadGroupSize_Y == 1 ||
 		threadGroupSize_Z != 1 ||
-        !m_SLMUsed || 
+        (!m_SLMUsed && IGC_IS_FLAG_DISABLED(EnableThreadCombiningWithNoSLM))|| 
         anyBarrierWithinControlFlow)
     {
 		return false;

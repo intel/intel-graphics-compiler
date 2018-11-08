@@ -248,6 +248,7 @@ DECLARE_IGC_REGKEY(DWORD, OCLInlineThreshold,           512,   "Setting OCL inli
 DECLARE_IGC_REGKEY(bool, EnableForceGroupSize,          false, "Enable forcing thread Group Size ForceGroupSizeX and ForceGroupSizeY")
 DECLARE_IGC_REGKEY(DWORD, ForceGroupSizeX,              8, "force group size along X")
 DECLARE_IGC_REGKEY(DWORD, ForceGroupSizeY,              8, "force group size along Y")
+DECLARE_IGC_REGKEY(bool, EnableThreadCombiningWithNoSLM, false, "Enable thread combining opt for shader without SLM")
 DECLARE_IGC_REGKEY(DWORD, SubroutineThreshold,          110000, "Minimal kernel size to enable subroutines")
 DECLARE_IGC_REGKEY(DWORD, SubroutineInlinerThreshold,   3000, "Subroutine inliner threshold")
 DECLARE_IGC_REGKEY(bool, EnableConstantPromotion,       true, "Enable global constant data to register promotion")
