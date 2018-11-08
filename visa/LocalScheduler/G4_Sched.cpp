@@ -1466,13 +1466,16 @@ static G4_INST* minElt(const std::vector<preEdge>& Elts)
 void BB_Scheduler::relocatePseudoKills()
 {
     // Reset local id after scheduling and build the location map.
-    std::unordered_map<G4_INST*, G4_INST*> LocMap;
+    // Multiple pseudo-kills may be placed before a single instruction.
+    std::unordered_map<G4_INST*, std::vector<G4_INST *>> LocMap;
     int i = 0;
     for (auto Inst : schedule) { Inst->setLocalId(i++); }
     for (auto N : ddd.getNodes()) {
         G4_INST* Inst = N->getInst();
-        if (Inst && Inst->isPseudoKill())
-            LocMap[minElt(N->Succs)] = Inst;
+        if (Inst && Inst->isPseudoKill()) {
+            G4_INST* Pos = minElt(N->Succs);
+            LocMap[Pos].push_back(Inst);
+        }
     }
 
     // Do nothing if there is no pseudo-kills.
@@ -1488,7 +1491,7 @@ void BB_Scheduler::relocatePseudoKills()
             continue;
         auto I = LocMap.find(Inst);
         if (I != LocMap.end())
-            relocated.push_back(I->second);
+            relocated.insert(relocated.end(), I->second.begin(), I->second.end());
         relocated.push_back(Inst);
     }
     std::swap(schedule, relocated);
@@ -1557,7 +1560,7 @@ bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
                 return true;
             }
         } else if (NewRPE < MaxRPE) {
-            SCHED_DUMP(std::cerr << "the reduced pressure is " << NewRPE - MaxRPE << "\n");
+            SCHED_DUMP(std::cerr << "the reduced pressure is " << MaxRPE - NewRPE << "\n");
         }
     }
 
