@@ -3553,7 +3553,9 @@ bool HoistFMulInLoopPass::hoistMulInLoop(Loop* loop, bool replacePhi)
             break;
         }
 
-        if (!phi->getType()->isFloatTy())
+        if (!phi->getType()->isFloatTy() &&
+            !phi->getType()->isDoubleTy() &&
+            !phi->getType()->isHalfTy())
         {
             continue;
         }
