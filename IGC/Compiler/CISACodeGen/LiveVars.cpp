@@ -550,6 +550,20 @@ bool LiveVars::isLiveAt(Value *VL, Instruction *MI) {
 bool LiveVars::isLiveOut(Value *VL, const BasicBlock &MBB) {
   LiveVars::LVInfo &VI = getLVInfo(VL);
 
+  if (isa<Instruction>(VL) && VI.AliveBlocks.empty())
+  {
+      // a local value does not live out of any BB.
+      // (Originally, this function might be for checking non-local
+      //  value. Adding this code to make it work for any value.)
+      Instruction* I = cast<Instruction>(VL);
+      if (VI.Kills.size() == 1) {
+          BasicBlock *killBB = VI.Kills[0]->getParent();
+          if (killBB == I->getParent()) {
+              return false;
+          }
+      }
+  }
+
   // Loop over all of the successors of the basic block, checking to see if
   // the value is either live in the block, or if it is killed in the block.
   SmallVector<const BasicBlock*, 8> OpSuccBlocks;
