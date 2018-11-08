@@ -891,7 +891,7 @@ preNode* SethiUllmanQueue::scheduleClusteringNode()
 
     // The width limit of clustering.
     const unsigned CLUSTER_SIZE_MIN = 4;
-    const unsigned CLUSTER_SIZE_MAX = 8;
+    const unsigned CLUSTER_SIZE_MAX = 16;
 
     // Match clustering nodes.
     auto collectClustering = [&](preNode* Node, preNode* predNode) {

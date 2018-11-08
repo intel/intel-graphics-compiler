@@ -34,4 +34,4 @@ public:
     // FIXME: Move this api to somewhere else that's more apporopriate
     static bool patchImmValue(const iga::Model& model, unsigned char* binary, iga::Type type, const iga::ImmVal &val);
 
-};
+};

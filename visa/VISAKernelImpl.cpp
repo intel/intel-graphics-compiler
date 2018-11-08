@@ -8600,4 +8600,4 @@ bool enableSrcLine(void* buf)
 
     auto gtpin_init_data = (gtpin::igc::igc_init_t*)buf;
     return gtpin_init_data->srcline_mapping != 0;
-}
+}

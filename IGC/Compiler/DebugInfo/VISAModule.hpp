@@ -378,4 +378,4 @@ private:
     static const unsigned int TEXTURE_REGISTER_NUM = (255);
 };
 
-} // namespace IGC
+} // namespace IGC

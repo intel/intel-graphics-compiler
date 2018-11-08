@@ -452,4 +452,4 @@ std::string DebugMetadataInfo::getUniqueFuncName(Function& F)
     }
 
     return F.getName().str() + "$dup" + "$" + std::to_string(numClones);
-}
+}

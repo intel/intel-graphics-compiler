@@ -281,4 +281,4 @@ Value* ImplicitGlobalId::CreateGetId(unsigned dim, IRBuilder<> &B, GlobalOrLocal
     // Create arguments and call instruction
     Value* const_dim = ConstantInt::get(uint32_type, dim, false);
     return B.CreateCall(getFunc, const_dim, nameCall);
-}
+}

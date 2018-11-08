@@ -98,4 +98,4 @@ public:
     virtual void SetVISAModule(IGC::VISAModule*) = 0;
 };
 
-} // namespace IGC
+} // namespace IGC

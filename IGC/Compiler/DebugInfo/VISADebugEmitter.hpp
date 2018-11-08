@@ -118,4 +118,4 @@ private:
     unsigned int lastGenOff = 0;
 };
 
-} // namespace IGC
+} // namespace IGC

@@ -411,7 +411,6 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
     return igaOp;
 }
 
-
 void BinaryEncodingIGA::DoAll()
 {
     FixInst();
@@ -758,7 +757,7 @@ void BinaryEncodingIGA::DoAll()
     }
 
 
-    bool dontCompactProlog = kernel.fg.builder->needsToLoadLocalID();
+	bool dontCompactProlog = kernel.fg.builder->needsToLoadLocalID();
 
     KernelEncoder encoder(IGAKernel, autoCompact, dontCompactProlog);
     encoder.encode();

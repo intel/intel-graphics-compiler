@@ -204,4 +204,4 @@ llvm::Argument* SpliceFuncWithNewArgument(
     std::string newArgName)
 {
     return SpliceFuncWithNewArguments(pSourceFunc, std::vector<llvm::Type*>(1, newArg), std::vector<std::string>(1, newArgName)).at(0);
-}
+}

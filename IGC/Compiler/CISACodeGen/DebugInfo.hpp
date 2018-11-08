@@ -106,4 +106,4 @@ namespace IGC
 
         void EmitDebugInfo(bool);
     };
-};
+};

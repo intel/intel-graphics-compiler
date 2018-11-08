@@ -5561,6 +5561,9 @@ getBitcodeFileContents(MemoryBufferRef Buffer) {
   while (true) {
     uint64_t BCBegin = Stream.getCurrentByteNo();
 
+    // We may be consuming bitcode from a client that leaves garbage at the end
+    // of the bitcode stream. If we are close enough to
+    // the end that there cannot possibly be another module, stop looking.
     if (BCBegin + 8 >= Stream.getBitcodeBytes().size())
       return F;
 

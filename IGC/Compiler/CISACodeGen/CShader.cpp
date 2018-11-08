@@ -3047,4 +3047,4 @@ CShaderProgram::~CShaderProgram()
         delete m_SIMDshaders[i];
     }
     m_context = nullptr;
-}
+}

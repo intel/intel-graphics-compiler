@@ -211,4 +211,4 @@ int FunctionUpgrader::SizeArgFromRebuild()
 bool FunctionUpgrader::NeedToRebuild()
 {
 	return m_pNewArguments.size() > 0;
-}
+}
