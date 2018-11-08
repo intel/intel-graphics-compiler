@@ -3340,8 +3340,8 @@ namespace IGC {
         AU.addRequired<AssumptionCacheTracker>();
         AU.addRequired<TargetLibraryInfoWrapperPass>();
         AU.addRequired<DominatorTreeWrapperPass>();
+        AU.addRequired<OptimizationRemarkEmitterWrapperPass>();
         AU.addPreserved<DominatorTreeWrapperPass>();
-        AU.addPreserved<OptimizationRemarkEmitterWrapperPass>();
         AU.addPreserved<AAResultsWrapperPass>();
         AU.addPreserved<BasicAAWrapperPass>();
         AU.addPreserved<GlobalsAAWrapperPass>();
