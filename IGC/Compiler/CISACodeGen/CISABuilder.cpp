@@ -3489,6 +3489,12 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
     // Set up options. This must be done before creating any variable/instructions 
     // since some of the options affect IR building.
 
+    if (context->type == ShaderType::OPENCL_SHADER && context->m_floatDenormMode32 == FLOAT_DENORM_RETAIN && 
+        context->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
+    {
+        vbuilder->SetOption(vISA_hasRNEandDenorm, true);
+    }
+
     // need to fold ret into the previous RTWrite/URBWrite/etc
     if (context->type != ShaderType::OPENCL_SHADER && context->type != ShaderType::COMPUTE_SHADER)
     {
