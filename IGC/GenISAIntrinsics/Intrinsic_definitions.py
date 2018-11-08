@@ -119,7 +119,7 @@ Imported_Intrinsics = \
     "GenISA_evaluateSampler": ["void",["anyvector"],"None"],
     "GenISA_ldmsptr16bit": ["anyvector",["short","short","short","short","short","short","short","short","short","anyptr","int","int","int"],"NoMem"],
     "GenISA_ldmsptr": ["anyvector",["int","int","int","int","int","int","int","anyptr","int","int","int"],"NoMem"],
-    "GenISA_ldmcsptr": ["anyvector",["int","int","int","int","anyptr","int","int","int"],"NoMem"],
+    "GenISA_ldmcsptr": ["anyvector",["anyint",1,1,1,"anyptr","int","int","int"],"NoMem"],
     "GenISA_lodptr": ["anyvector",["anyfloat",1,1,1,"anyptr","anyptr"],"NoMem"],
     "GenISA_sampleptr": ["anyvector",["anyfloat",1,1,1,1,"anyptr","anyptr","int","int","int"],"NoMem"],
     "GenISA_sampleBptr": ["anyvector",["anyfloat",1,1,1,1,1,"anyptr","anyptr","int","int","int"],"NoMem"],

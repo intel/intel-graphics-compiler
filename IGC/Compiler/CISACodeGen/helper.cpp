@@ -527,9 +527,13 @@ void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value* oldPt
     GenISAIntrinsic::ID id = pIntr->getIntrinsicID();
     switch(id)
     {
+        case llvm::GenISAIntrinsic::GenISA_ldmcsptr:
+            overloadedTys.push_back(pCalledFunc->getReturnType());
+            overloadedTys.push_back(args[0]->getType());
+            overloadedTys.push_back(newPtr->getType());
+            break;
         case llvm::GenISAIntrinsic::GenISA_ldptr:
         case llvm::GenISAIntrinsic::GenISA_ldmsptr:
-        case llvm::GenISAIntrinsic::GenISA_ldmcsptr:
             overloadedTys.push_back(pCalledFunc->getReturnType());
             overloadedTys.push_back(newPtr->getType());
             break;

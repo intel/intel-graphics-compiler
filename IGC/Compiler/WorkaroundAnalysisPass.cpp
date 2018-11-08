@@ -264,6 +264,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
         switch (intr->getIntrinsicID())
         {
         case llvm::GenISAIntrinsic::GenISA_gather4POCptr:
+		case llvm::GenISAIntrinsic::GenISA_gather4POptr:
             GatherOffsetWorkaround(cast<SamplerGatherIntrinsic>(&I));
             break;
         case GenISAIntrinsic::GenISA_ldmsptr:
@@ -383,45 +384,48 @@ void WorkaroundAnalysis::ldmsOffsetWorkaournd(LdMSIntrinsic* ldms)
     }
 }
 
-/// transform gather4poc into gather4
-void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpoc)
+/// transform gather4poc and gatherpo into gather4c/gather4
+void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo)
 {
     if(IGC_IS_FLAG_DISABLED(EnableGather4cpoWA))
     {
         return;
     }
     Value* zero = m_builder->getInt32(0);
-    if(gatherpoc->getOperand(8) != zero ||
-        gatherpoc->getOperand(9) != zero ||
-        gatherpoc->getOperand(10) != zero)
+	bool hasRef = gatherpo->getIntrinsicID() == llvm::GenISAIntrinsic::GenISA_gather4POCptr;
+    if(gatherpo->getOperand(hasRef ? 8 : 7) != zero ||
+		gatherpo->getOperand(hasRef ? 9 : 8) != zero ||
+		gatherpo->getOperand(hasRef ? 10 : 9) != zero)
     {
         // only apply the WA if all the immediate offsets are zero
         return;
     }
-    Value* resource = gatherpoc->getTextureValue();
-    Value* sampler = gatherpoc->getSamplerValue();
+    Value* resource = gatherpo->getTextureValue();
+    Value* sampler = gatherpo->getSamplerValue();
     Function* resInfo = 
         GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_resinfoptr, resource->getType());
-    m_builder->SetInsertPoint(gatherpoc);
+    m_builder->SetInsertPoint(gatherpo);
     Value* info = m_builder->CreateCall2(resInfo, resource, m_builder->getInt32(0));
-    Value* arg[] =
-    {
-        gatherpoc->getOperand(0), // ref
-        nullptr,                  // u
-        nullptr,                  // v
-        gatherpoc->getOperand(5), // r
-        ConstantFP::get(gatherpoc->getOperand(0)->getType(), 0.0),   // ai
-        resource,
-        sampler,
-        zero,
-        zero,
-        zero,
-        gatherpoc->getOperand(11),
-    };
+	std::vector<Value*> arg;
+	if (hasRef)
+	{
+		arg.push_back(gatherpo->getOperand(0)); // ref
+	}
+	arg.push_back(nullptr);                  // u
+	arg.push_back(nullptr);                  // v
+	arg.push_back(gatherpo->getOperand(hasRef ? 5 : 4)); // r
+	arg.push_back(ConstantFP::get(gatherpo->getOperand(0)->getType(), 0.0));   // ai
+	arg.push_back(resource);
+	arg.push_back(sampler);
+	arg.push_back(zero);
+	arg.push_back(zero);
+	arg.push_back(zero);
+	arg.push_back(gatherpo->getOperand(hasRef ? 11 : 10));
+
     for(unsigned int i = 0; i < 2; i++)
     {
-        Value* coord = gatherpoc->getOperand(i + 1);
-        Value* offset = gatherpoc->getOperand(i + 3);
+        Value* coord = gatherpo->getOperand(i + (hasRef ? 1 : 0));
+        Value* offset = gatherpo->getOperand(i + (hasRef ? 3 : 2));
 
         Value* size = m_builder->CreateExtractElement(info, m_builder->getInt32(i));
         size = m_builder->CreateUIToFP(size, coord->getType());
@@ -434,20 +438,22 @@ void WorkaroundAnalysis::GatherOffsetWorkaround(SamplerGatherIntrinsic* gatherpo
         //
         Value* newCoord = m_builder->CreateFMul(offset, invSize);
         newCoord = m_builder->CreateFAdd(newCoord, coord);
-        arg[i + 1] = newCoord;
+        arg[i + (hasRef ? 1 : 0)] = newCoord;
     }
     Type* types[] =
     {
-        gatherpoc->getType(),
-        gatherpoc->getOperand(0)->getType(),
+		gatherpo->getType(),
+		gatherpo->getOperand(0)->getType(),
         resource->getType(),
         sampler->getType(),
     }; 
-    Function* gather4cFunc =
-        GenISAIntrinsic::getDeclaration(m_pModule, GenISAIntrinsic::GenISA_gather4Cptr, types);
-    Value* gather4c = m_builder->CreateCall(gather4cFunc, arg);
-    gatherpoc->replaceAllUsesWith(gather4c);
-    gatherpoc->eraseFromParent();
+    Function* gather4Func = GenISAIntrinsic::getDeclaration(
+		m_pModule,
+		hasRef ? GenISAIntrinsic::GenISA_gather4Cptr : GenISAIntrinsic::GenISA_gather4ptr,
+		types);
+    Value* gather4c = m_builder->CreateCall(gather4Func, arg);
+	gatherpo->replaceAllUsesWith(gather4c);
+	gatherpo->eraseFromParent();
 }
 
 

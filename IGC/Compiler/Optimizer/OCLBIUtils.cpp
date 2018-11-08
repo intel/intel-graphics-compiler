@@ -1091,7 +1091,7 @@ public:
         m_args.push_back(m_pIntZero);   // LOD
         prepareImageBTI();
         prepareZeroOffsets();
-        Type* types[] = { llvm::VectorType::get(m_pFloatType, 4), m_args[7]->getType() };
+        Type* types[] = { llvm::VectorType::get(m_pFloatType, 4), m_pIntType, m_args[7]->getType() };
         replaceGenISACallInst(GenISAIntrinsic::GenISA_ldmcsptr, types);
     }
 };

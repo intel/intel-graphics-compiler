@@ -81,29 +81,30 @@ void ConvertMSAAPayloadTo16Bit::visitCallInst(CallInst &I)
                 
 
                 assert(ldmcs!=NULL);
-
+                Type* coordType = m_builder->getInt32Ty();
                 Type* types_ldmcs[] = { 
                     VectorType::get(m_builder->getInt16Ty(), 4),
+                    coordType,
                     ldmcs->getOperand(4)->getType() };
 
                 Function *func_ldmcs =
                     GenISAIntrinsic::getDeclaration(
                     I.getParent()->getParent()->getParent(),
                     GenISAIntrinsic::GenISA_ldmcsptr,
-                    llvm::ArrayRef<Type*>(types_ldmcs, 2));
+                    llvm::ArrayRef<Type*>(types_ldmcs, 3));
 
+			   m_builder->SetInsertPoint(ldmcs);
                Value * packed_tex_params_ldmcs[] = {
-                    ldmcs->getOperand(0),
-                    ldmcs->getOperand(1),
-                    ldmcs->getOperand(2),
-                    ldmcs->getOperand(3),
+                    m_builder->CreateTrunc(ldmcs->getOperand(0), coordType),
+					m_builder->CreateTrunc(ldmcs->getOperand(1), coordType),
+					m_builder->CreateTrunc(ldmcs->getOperand(2), coordType),
+					m_builder->CreateTrunc(ldmcs->getOperand(3), coordType),
                     ldmcs->getOperand(4),
                     ldmcs->getOperand(5),
                     ldmcs->getOperand(6),
                     ldmcs->getOperand(7)
                 };
 
-                m_builder->SetInsertPoint(ldmcs);
                llvm::CallInst* new_mcs_call = m_builder->CreateCall(func_ldmcs, packed_tex_params_ldmcs);
 
                 llvm::Value* mcs0 = m_builder->CreateExtractElement(new_mcs_call, m_builder->getInt32(0));

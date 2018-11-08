@@ -143,7 +143,6 @@ void UpgradeResourceAccess::ChangeIntrinsic(CallInst& C, GenISAIntrinsic::ID ID)
     }
         break;
     case GenISAIntrinsic::GenISA_ldmsptr:
-    case GenISAIntrinsic::GenISA_ldmcsptr:
     case GenISAIntrinsic::GenISA_ldptr: {
         types.push_back(C.getType());
         unsigned int resIndex = C.getNumOperands() - 5;
@@ -151,6 +150,14 @@ void UpgradeResourceAccess::ChangeIntrinsic(CallInst& C, GenISAIntrinsic::ID ID)
         types.push_back(args[resIndex]->getType());
     }
         break;
+	case GenISAIntrinsic::GenISA_ldmcsptr: {
+		types.push_back(C.getType());
+		types.push_back(C.getArgOperand(0)->getType());
+		unsigned int resIndex = C.getNumOperands() - 5;
+		args[resIndex] = GetResource(m, builder, args[resIndex]);
+		types.push_back(args[resIndex]->getType());
+	}
+	    break;
     default:
         assert("unhandled intrinsic upgrade" && 0);
         break;

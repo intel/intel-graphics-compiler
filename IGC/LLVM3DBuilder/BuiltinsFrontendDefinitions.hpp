@@ -1761,9 +1761,9 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_ldms(
 
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
 
-    llvm::Type* types[] = { llvm::VectorType::get(this->getInt32Ty(), 2), int32_textureIdx->getType() };
+    llvm::Type* types[] = { llvm::VectorType::get(this->getInt32Ty(), 2), this->getInt32Ty(), int32_textureIdx->getType() };
     llvm::Function* func_llvm_GenISA_ldmcsptr_v4f32_f32 = llvm::GenISAIntrinsic::getDeclaration
-        (module, llvm::GenISAIntrinsic::GenISA_ldmcsptr, llvm::ArrayRef<llvm::Type*>(types, 2));
+        (module, llvm::GenISAIntrinsic::GenISA_ldmcsptr, llvm::ArrayRef<llvm::Type*>(types, 3));
     llvm::CallInst* packed_mcs_call = this->CreateCall(func_llvm_GenISA_ldmcsptr_v4f32_f32, packed_mcs_params);
 
 
