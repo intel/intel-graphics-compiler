@@ -1094,9 +1094,13 @@ namespace IGC
 
     bool CPixelShader::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)
     {
+        CodeGenContext* ctx = GetContext();
         bool forceSIMD32 = 
-            (this->GetContext()->getCompilerOption().forcePixelShaderSIMDMode &
+            (ctx->getCompilerOption().forcePixelShaderSIMDMode &
                 FLAG_PS_SIMD_MODE_FORCE_SIMD32) != 0;
+        bool forceSIMD16 =
+            (ctx->getCompilerOption().forcePixelShaderSIMDMode &
+                FLAG_PS_SIMD_MODE_FORCE_SIMD16) != 0;
 
         if (m_HasoStencil && simdMode != SIMDMode::SIMD8)
         {
@@ -1118,7 +1122,7 @@ namespace IGC
         }
        if(simdMode == SIMDMode::SIMD16 && EP.m_ShaderMode == ShaderDispatchMode::NOT_APPLICABLE)
        {
-           if(IGC_GET_FLAG_VALUE(ForcePixelShaderSIMDMode) & FLAG_PS_SIMD_MODE_FORCE_SIMD16)
+           if (forceSIMD16)
            {
                return true;
            }
@@ -1143,7 +1147,6 @@ namespace IGC
                 return false;
             }
 
-            CodeGenContext* ctx = GetContext();
             const PixelShaderInfo &psInfo = ctx->getModuleMetaData()->psInfo;
 
             if (psInfo.ForceEnableSimd32) // UMD forced compilation of simd32.
