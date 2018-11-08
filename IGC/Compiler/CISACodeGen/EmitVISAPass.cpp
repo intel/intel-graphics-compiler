@@ -5970,6 +5970,7 @@ void EmitPass::interceptSamplePayloadCoalescing(
 
 }
 
+
 ResourceDescriptor EmitPass::GetSampleResourceHelper(SampleIntrinsic* inst)
 {
     llvm::Value* texOp = inst->getTextureValue();
@@ -5980,7 +5981,9 @@ ResourceDescriptor EmitPass::GetSampleResourceHelper(SampleIntrinsic* inst)
 void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
 {
     EOPCODE opCode = GetOpCode(inst);
+
     ResourceDescriptor resource = GetSampleResourceHelper(inst);
+
 
     //Get sampler index in the array of operands
     llvm::Value* samplerOp = inst->getSamplerValue();
@@ -9619,11 +9622,6 @@ CVariable* EmitPass::BroadcastAndTruncPointer(CVariable* pVar)
     }
 
     return pVar;
-}
-
-void EmitPass::ValidateNumberofSources(EOPCODE opCode, uint &numberofSrcs)
-{
-    PayloadMapping::ValidateNumberofSources(opCode, numberofSrcs);
 }
 
 // Method used to emit reads from GS SGV variables that are not per-vertex.

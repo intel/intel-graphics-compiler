@@ -274,8 +274,13 @@ bool PayloadMapping::HasNonHomogeneousPayloadElements_RTWrite(const Instruction 
 }
 
 /// \brief
-bool PayloadMapping::IsZeroImmediate(const Value* value)
+bool PayloadMapping::IsUndefOrZeroImmediate(const Value* value)
 {
+    if (llvm::isa<llvm::UndefValue>(value))
+    {
+        return true;
+    }
+
     if (const llvm::ConstantInt *CInt = llvm::dyn_cast<llvm::ConstantInt>(value)){
         if (CInt->getZExtValue() == 0){
             return true;
@@ -333,7 +338,7 @@ uint PayloadMapping::GetNumPayloadElements_LDMS(const GenIntrinsicInst *inst)
 
     for (uint i = numSources - 1; i > 0; i--)
     {
-        if (IsZeroImmediate(inst->getOperand(i)))
+        if (IsUndefOrZeroImmediate(inst->getOperand(i)))
         {
             numSources--;
         }
@@ -441,7 +446,7 @@ uint PayloadMapping::GetNonAdjustedNumPayloadElements_Sample(const SampleIntrins
     //Check for valid number of sources from the end of the list
     for (uint i = (numSources - 1); i >= 1; i--)
     {
-        if (IsZeroImmediate(inst->getOperand(i)))
+        if (IsUndefOrZeroImmediate(inst->getOperand(i)))
         {
             numSources--;
         }
@@ -452,8 +457,7 @@ uint PayloadMapping::GetNonAdjustedNumPayloadElements_Sample(const SampleIntrins
     }
 
     //temp solution to send valid sources but having 0 as their values.
-    SampleIntrinsic *sampleInst = (SampleIntrinsic *)inst;
-    EOPCODE opCode = GetOpCode(sampleInst);
+    EOPCODE opCode = GetOpCode(inst);
     ValidateNumberofSources(opCode, numSources);
 
     if (IsZeroLOD(inst))

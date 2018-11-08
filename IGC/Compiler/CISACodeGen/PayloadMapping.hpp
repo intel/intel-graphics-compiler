@@ -100,7 +100,7 @@ protected:
     bool HasNonHomogeneousPayloadElements_RTWrite(const llvm::Instruction *inst);
 
     /// ------------------------------
-    bool IsZeroImmediate(const llvm::Value* value);
+    bool IsUndefOrZeroImmediate(const llvm::Value* value);
     bool IsZeroLOD(const llvm::SampleIntrinsic *inst);
     bool DoPeelFirstElement(const llvm::Instruction *inst);
 

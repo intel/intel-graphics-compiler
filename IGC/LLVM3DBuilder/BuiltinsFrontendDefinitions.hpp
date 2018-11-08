@@ -1506,6 +1506,35 @@ inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLEL
 
 template<bool preserveNames, typename T, typename Inserter>
 inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED(
+    SampleD_DC_FromCubeParams& sampleParams,
+    llvm::Value* minlod,
+    bool feedback_enabled,
+    llvm::Type* returnType)
+{
+    return Create_SAMPLED(
+        sampleParams.get_float_src_u(),
+        sampleParams.get_float_src_v(),
+        sampleParams.get_float_src_r(),
+        sampleParams.get_dxu(),
+        sampleParams.get_dxv(),
+        sampleParams.get_dxr(),
+        sampleParams.get_dyu(),
+        sampleParams.get_dyv(),
+        sampleParams.get_dyr(),
+        sampleParams.get_float_src_ai(),
+        sampleParams.get_int32_textureIdx(),
+        sampleParams.get_int32_sampler(),
+        sampleParams.get_int32_offsetU(),
+        sampleParams.get_int32_offsetV(),
+        sampleParams.get_int32_offsetW(),
+        minlod,
+        feedback_enabled,
+        returnType
+    );
+}
+
+template<bool preserveNames, typename T, typename Inserter>
+inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::Create_SAMPLED(
     llvm::Value* float_src1_s_chan0,
     llvm::Value* float_src1_s_chan1,
     llvm::Value* float_src1_s_chan2,
@@ -1988,6 +2017,29 @@ inline SampleParamsFromCube LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_S
 
 template<bool preserveNames, typename T, typename Inserter>
 inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_SAMPLE_D_DC_Cube_Params(
+    SampleD_DC_FromCubeParams& params)
+{
+    return Prepare_SAMPLE_D_DC_Cube_Params(
+        params.float_src_u,
+        params.float_src_v,
+        params.float_src_r,
+        params.float_src_ai,
+        params.dxu,
+        params.dxv,
+        params.dxr,
+        params.dyu,
+        params.dyv,
+        params.dyr,
+        params.int32_textureIdx,
+        params.int32_sampler,
+        params.int32_offsetU,
+        params.int32_offsetV,
+        params.int32_offsetW
+    );
+}
+
+template<bool preserveNames, typename T, typename Inserter>
+inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prepare_SAMPLE_D_DC_Cube_Params(
     llvm::Value* float_src_r,
     llvm::Value* float_src_s,
     llvm::Value* float_src_t,
@@ -2023,375 +2075,377 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prep
     assert(coordType->isFloatTy() || coordType->isHalfTy());
     llvm::Value* zero = llvm::ConstantFP::get(coordType, 0.0);
 
-    // Create basic blocks.
-    llvm::BasicBlock* block_final = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cubefinal_block"));
-
-    llvm::BasicBlock* block_major_t = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cubemajor_t_block"));
-    llvm::BasicBlock* block_not_t = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cubenott_block"));
-    llvm::BasicBlock* block_zp = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cube_face_zp_block"));
-    llvm::BasicBlock* block_zm = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cube_face_zm_block"));
-
-    llvm::BasicBlock* block_major_s = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cubemajor_s_block"));
-    llvm::BasicBlock* block_yp = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cube_face_yp_block"));
-    llvm::BasicBlock* block_ym = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cube_face_ym_block"));
-
-    llvm::BasicBlock* block_major_r = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cubemajor_r_block"));
-    llvm::BasicBlock* block_xp = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cube_face_xp_block"));
-    llvm::BasicBlock* block_xm = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cube_face_xm_block"));
-
     // Create coordinate absolute values to look for major.
     llvm::Value* float_abs_r = this->CreateFAbs(float_src_r);
     llvm::Value* float_abs_s = this->CreateFAbs(float_src_s);
     llvm::Value* float_abs_t = this->CreateFAbs(float_src_t);
 
-    // Find the major coordinate (and thus cube face), precedence is Z,Y,X.
-    llvm::Value* int1_cmp_tges = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, float_abs_t, float_abs_s, VALUE_NAME("cmp_tges"));
-
-    llvm::Value* int1_cmp_tger = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, float_abs_t, float_abs_r, VALUE_NAME("cmp_tger"));
-
-    llvm::Value* int1_tgesr = this->CreateAnd(int1_cmp_tger, int1_cmp_tges);
-
-    // Major coordinate is T, faces could be +Z or -Z
-    this->CreateCondBr(int1_tgesr, block_major_t, block_not_t);
-    this->SetInsertPoint(block_major_t);
-    parentFunc->getBasicBlockList().push_back(block_major_t);
-
-    // Normalize coordinates and gradients.
-    llvm::Value* float_tnorm_r = this->CreateFDiv(float_src_r, float_abs_t, VALUE_NAME("tnorm_r"));
-    llvm::Value* float_tnorm_s = this->CreateFDiv(float_src_s, float_abs_t, VALUE_NAME("tnorm_s"));
-    llvm::Value* float_tnorm_drdx = this->CreateFDiv(float_drdx, float_abs_t, VALUE_NAME("tnorm_drdx"));
-    llvm::Value* float_tnorm_drdy = this->CreateFDiv(float_drdy, float_abs_t, VALUE_NAME("tnorm_drdy"));
-    llvm::Value* float_tnorm_dsdx = this->CreateFDiv(float_dsdx, float_abs_t, VALUE_NAME("tnorm_dsdx"));
-    llvm::Value* float_tnorm_dsdy = this->CreateFDiv(float_dsdy, float_abs_t, VALUE_NAME("tnorm_dsdy"));
-    llvm::Value* float_tnorm_dtdx = this->CreateFDiv(float_dtdx, float_abs_t, VALUE_NAME("tnorm_dtdx"));
-    llvm::Value* float_tnorm_dtdy = this->CreateFDiv(float_dtdy, float_abs_t, VALUE_NAME("tnorm_dtdy"));
-
-    // Select positive or negative face.
-    llvm::Value* int1_cmpx_t = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, float_src_t, zero, VALUE_NAME("cmpx_t"));
-    this->CreateCondBr(int1_cmpx_t, block_zp, block_zm);
-    this->SetInsertPoint(block_zp);
-    parentFunc->getBasicBlockList().push_back(block_zp);
-    
-    // Face +Z,
-    // major = neg T
-    // u     = R
-    // v     = neg S
-
-    llvm::Value* float_face_zp_id = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(coordType, 4.0));
-
-    // Select u from s/r/t
-    llvm::Value* float_face_zp_u = float_tnorm_r;
-
-    // Select v from s/r/t
-    llvm::Value* float_face_zp_v = this->CreateFNeg(float_tnorm_s, VALUE_NAME("face_zp_v"));
-
-    // du/dx = dm * u + d{s/r/t}/dx
-    llvm::Value* float_neg_dmx4 = this->CreateFNeg(float_tnorm_dtdx, VALUE_NAME("neg_dmx"));
-    llvm::Value* float_dmxu4 = this->CreateFMul(float_neg_dmx4, float_tnorm_r, VALUE_NAME("dmxu"));
-    llvm::Value* float_face_zp_dudx = this->CreateFAdd(float_dmxu4, float_tnorm_drdx, VALUE_NAME("face_zp_dudx"));
-
-    // du/dy = dm * u + d{s/r/t}/dy
-    llvm::Value* float_neg_dmy4 = this->CreateFNeg(float_tnorm_dtdy, VALUE_NAME("neg_dmy"));
-    llvm::Value* float_dmyu4 = this->CreateFMul(float_neg_dmy4, float_tnorm_r, VALUE_NAME("dmyu"));
-    llvm::Value* float_face_zp_dudy = this->CreateFAdd(float_dmyu4, float_tnorm_drdy, VALUE_NAME("face_zp_dvdx"));
-
-    // dv/dx = dm * v + d{s/r/t}/dx
-    llvm::Value* float_dmxv4 = this->CreateFMul(float_tnorm_dtdx, float_tnorm_s, VALUE_NAME("dmxv"));
-    llvm::Value* float_face_zp_dvdx = this->CreateFSub(float_dmxv4, float_tnorm_dsdx, VALUE_NAME("face_zp_dvdx"));
-
-    // dv/dy = dm * v + d{s/r/t}/dy
-    llvm::Value* float_dmyv4 = this->CreateFMul(float_tnorm_dtdy, float_tnorm_s, VALUE_NAME("dmyv"));
-    llvm::Value* float_face_zp_dvdy = this->CreateFSub(float_dmyv4, float_tnorm_dsdy, VALUE_NAME("face_zp_dvdy"));
-
-    this->CreateBr(block_final);
-    this->SetInsertPoint(block_zm);
-    parentFunc->getBasicBlockList().push_back(block_zm);
-
-    // Face -Z,
-    // major = T
-    // u     = neg R
-    // v     = neg S
-
-    llvm::Value* float_face_zm_id = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(coordType, 5.0));
-
-    // Select u from s/r/t
-    llvm::Value* float_face_zm_u = this->CreateFNeg(float_tnorm_r, VALUE_NAME("face_zm_u"));
-
-    // Select v from s/r/t
-    llvm::Value* float_face_zm_v = this->CreateFNeg(float_tnorm_s, VALUE_NAME("face_zm_v"));
-
-    // du/dx = dm * u + d{s/r/t}/dx
-    llvm::Value* float_dmxu5 = this->CreateFMul(float_tnorm_dtdx, float_face_zm_u, VALUE_NAME("dmxu"));
-    llvm::Value* float_face_zm_dudx = this->CreateFSub(float_dmxu5, float_tnorm_drdx, VALUE_NAME("face_zm_dudx"));
-
-    // du/dy = dm * u + d{s/r/t}/dy
-    llvm::Value* float_dmyu5 = this->CreateFMul(float_tnorm_dtdy, float_face_zm_u, VALUE_NAME("dmyu"));
-    llvm::Value* float_face_zm_dudy = this->CreateFSub(float_dmyu5, float_tnorm_drdy, VALUE_NAME("face_zm_dvdx"));
-
-    // dv/dx = dm * v + d{s/r/t}/dx
-    llvm::Value* float_dmxv5 = this->CreateFMul(float_tnorm_dtdx, float_face_zm_v, VALUE_NAME("dmxv"));
-    llvm::Value* float_face_zm_dvdx = this->CreateFSub(float_dmxv5, float_tnorm_dsdx, VALUE_NAME("face_zm_dvdx"));
-
-    // dv/dy = dm * v + d{s/r/t}/dy
-    llvm::Value* float_dmyv5 = this->CreateFMul(float_tnorm_dtdy, float_face_zm_v, VALUE_NAME("dmyv"));
-    llvm::Value* float_face_zm_dvdy = this->CreateFSub(float_dmyv5, float_tnorm_dsdy, VALUE_NAME("face_zm_dvdy"));
-
-    this->CreateBr(block_final);
-    this->SetInsertPoint(block_not_t);
-    parentFunc->getBasicBlockList().push_back(block_not_t);
-
-    // Choose major S or R.
-    llvm::Value* int1_cmp_sger = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, float_abs_s, float_abs_r, VALUE_NAME("cmp_sger"));
-
-    // Major coordinate is S, faces could be +Y or -Y
-    this->CreateCondBr(int1_cmp_sger, block_major_s, block_major_r);
-    this->SetInsertPoint(block_major_s);
-    parentFunc->getBasicBlockList().push_back(block_major_s);
-
-    // Normalize coordinates and gradients.
-    llvm::Value* float_snorm_r = this->CreateFDiv(float_src_r, float_abs_s, VALUE_NAME("snorm_r"));
-    llvm::Value* float_snorm_t = this->CreateFDiv(float_src_t, float_abs_s, VALUE_NAME("snorm_t"));
-    llvm::Value* float_snorm_drdx = this->CreateFDiv(float_drdx, float_abs_s, VALUE_NAME("snorm_drdx"));
-    llvm::Value* float_snorm_drdy = this->CreateFDiv(float_drdy, float_abs_s, VALUE_NAME("snorm_drdy"));
-    llvm::Value* float_snorm_dsdx = this->CreateFDiv(float_dsdx, float_abs_s, VALUE_NAME("snorm_dsdx"));
-    llvm::Value* float_snorm_dsdy = this->CreateFDiv(float_dsdy, float_abs_s, VALUE_NAME("snorm_dsdy"));
-    llvm::Value* float_snorm_dtdx = this->CreateFDiv(float_dtdx, float_abs_s, VALUE_NAME("snorm_dtdx"));
-    llvm::Value* float_snorm_dtdy = this->CreateFDiv(float_dtdy, float_abs_s, VALUE_NAME("snorm_dtdy"));
-
-    // Select positive or negative face.
-    llvm::Value* int1_cmpx_s = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, float_src_s, zero, VALUE_NAME("cmpx_s"));
-    this->CreateCondBr(int1_cmpx_s, block_yp, block_ym);
-    this->SetInsertPoint(block_yp);
-    parentFunc->getBasicBlockList().push_back(block_yp);
-    
-    // Face +Y,
-    // major = neg S
-    // u     = R
-    // v     = T
-
-    llvm::Value* float_face_yp_id = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(coordType, 2.0));
-
-    // Select u from s/r/t
-    llvm::Value* float_face_yp_u = float_snorm_r;
-
-    // Select v from s/r/t
-    llvm::Value* float_face_yp_v = float_snorm_t;
-
-    // du/dx = dm * u + d{s/r/t}/dx
-    llvm::Value* float_neg_dmx2 = this->CreateFNeg(float_snorm_dsdx, VALUE_NAME("neg_dmx"));
-    llvm::Value* float_dmxu2 = this->CreateFMul(float_neg_dmx2, float_snorm_r, VALUE_NAME("dmxu"));
-    llvm::Value* float_face_yp_dudx = this->CreateFAdd(float_dmxu2, float_snorm_drdx, VALUE_NAME("face_yp_dudx"));
-
-    // du/dy = dm * u + d{s/r/t}/dy
-    llvm::Value* float_neg_dmy2 = this->CreateFNeg(float_snorm_dsdy, VALUE_NAME("neg_dmy"));
-    llvm::Value* float_dmyu2 = this->CreateFMul(float_neg_dmy2, float_snorm_r, VALUE_NAME("dmyu"));
-    llvm::Value* float_face_yp_dudy = this->CreateFAdd(float_dmyu2, float_snorm_drdy, VALUE_NAME("face_yp_dvdx"));
-
-    // dv/dx = dm * v + d{s/r/t}/dx
-    llvm::Value* float_dmxv2 = this->CreateFMul(float_neg_dmx2, float_snorm_t, VALUE_NAME("dmxv"));
-    llvm::Value* float_face_yp_dvdx = this->CreateFAdd(float_dmxv2, float_snorm_dtdx, VALUE_NAME("face_yp_dvdx"));
-
-    // dv/dy = dm * v + d{s/r/t}/dy
-    llvm::Value* float_dmyv2 = this->CreateFMul(float_neg_dmy2, float_snorm_t, VALUE_NAME("dmyv"));
-    llvm::Value* float_face_yp_dvdy = this->CreateFAdd(float_dmyv2, float_snorm_dtdy, VALUE_NAME("face_yp_dvdy"));
-
-    this->CreateBr(block_final);
-    this->SetInsertPoint(block_ym);
-    parentFunc->getBasicBlockList().push_back(block_ym);
-
-    // Face -Y,
-    // major = S
-    // u     = R
-    // v     = neg T
-
-    llvm::Value* float_face_ym_id = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(coordType, 3.0));
-
-    // Select u from s/r/t
-    llvm::Value* float_face_ym_u = float_snorm_r;
-
-    // Select v from s/r/t
-    llvm::Value* float_face_ym_v = this->CreateFNeg(float_snorm_t, VALUE_NAME("face_ym_v"));
-
-    // du/dx = dm * u + d{s/r/t}/dx
-    llvm::Value* float_dmxu3 = this->CreateFMul(float_snorm_dsdx, float_snorm_r, VALUE_NAME("dmxu"));
-    llvm::Value* float_face_ym_dudx = this->CreateFAdd(float_dmxu3, float_snorm_drdx, VALUE_NAME("face_ym_dudx"));
-
-    // du/dy = dm * u + d{s/r/t}/dy
-    llvm::Value* float_dmyu3 = this->CreateFMul(float_snorm_dsdy, float_snorm_r, VALUE_NAME("dmyu"));
-    llvm::Value* float_face_ym_dudy = this->CreateFAdd(float_dmyu3, float_snorm_drdy, VALUE_NAME("face_ym_dvdx"));
-
-    // dv/dx = dm * v + d{s/r/t}/dx
-    llvm::Value* float_dmxv3 = this->CreateFMul(float_snorm_dsdx, float_face_ym_v, VALUE_NAME("dmxv"));
-    llvm::Value* float_face_ym_dvdx = this->CreateFSub(float_dmxv3, float_snorm_dtdx, VALUE_NAME("face_ym_dvdx"));
-
-    // dv/dy = dm * v + d{s/r/t}/dy
-    llvm::Value* float_dmyv3 = this->CreateFMul(float_snorm_dsdx, float_face_ym_v, VALUE_NAME("dmyv"));
-    llvm::Value* float_face_ym_dvdy = this->CreateFSub(float_dmyv3, float_snorm_dtdy, VALUE_NAME("face_ym_dvdy"));
-
-    this->CreateBr(block_final);
-    this->SetInsertPoint(block_major_r);
-    parentFunc->getBasicBlockList().push_back(block_major_r);
-
-    // Major coordinate is R, faces could be +X or -X
-
-    // Normalize coordinates and gradients.
-    llvm::Value* float_rnorm_s = this->CreateFDiv(float_src_s, float_abs_r, VALUE_NAME("rnorm_r"));
-    llvm::Value* float_rnorm_t = this->CreateFDiv(float_src_t, float_abs_r, VALUE_NAME("rnorm_t"));
-    llvm::Value* float_rnorm_drdx = this->CreateFDiv(float_drdx, float_abs_r, VALUE_NAME("rnorm_drdx"));
-    llvm::Value* float_rnorm_drdy = this->CreateFDiv(float_drdy, float_abs_r, VALUE_NAME("rnorm_drdy"));
-    llvm::Value* float_rnorm_dsdx = this->CreateFDiv(float_dsdx, float_abs_r, VALUE_NAME("rnorm_dsdx"));
-    llvm::Value* float_rnorm_dsdy = this->CreateFDiv(float_dsdy, float_abs_r, VALUE_NAME("rnorm_dsdy"));
-    llvm::Value* float_rnorm_dtdx = this->CreateFDiv(float_dtdx, float_abs_r, VALUE_NAME("rnorm_dtdx"));
-    llvm::Value* float_rnorm_dtdy = this->CreateFDiv(float_dtdy, float_abs_r, VALUE_NAME("rnorm_dtdy"));
-
-    // Select positive or negative face.
-    llvm::Value* int1_cmpx_r = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, float_src_r, zero, VALUE_NAME("cmpx_r"));
-    this->CreateCondBr(int1_cmpx_r, block_xp, block_xm);
-    this->SetInsertPoint(block_xp);
-    parentFunc->getBasicBlockList().push_back(block_xp);
-
-    // Face +X,
-    // major = neg R
-    // u     = neg T
-    // v     = neg S
-
-    llvm::Value* float_face_xp_id = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(coordType, 0.0));
-
-    // Select u from s/r/t
-    llvm::Value* float_face_xp_u = this->CreateFNeg(float_rnorm_t, VALUE_NAME("face_xp_u"));
-
-    // Select v from s/r/t
-    llvm::Value* float_face_xp_v = this->CreateFNeg(float_rnorm_s, VALUE_NAME("face_xp_v"));
-
-    // du/dx = dm * u + d{s/r/t}/dx
-    llvm::Value* float_dmxu0 = this->CreateFMul(float_rnorm_drdx, float_rnorm_t, VALUE_NAME("dmxu"));
-    llvm::Value* float_face_xp_dudx = this->CreateFSub(float_dmxu0, float_rnorm_dtdx, VALUE_NAME("face_xp_dudx"));
-
-    // du/dy = dm * u + d{s/r/t}/dy
-    llvm::Value* float_dmyu0 = this->CreateFMul(float_rnorm_drdy, float_rnorm_t, VALUE_NAME("dmyu"));
-    llvm::Value* float_face_xp_dudy = this->CreateFSub(float_dmyu0, float_rnorm_dtdy, VALUE_NAME("face_xp_dvdx"));
-
-    // dv/dx = dm * v + d{s/r/t}/dx
-    llvm::Value* float_dmxv0 = this->CreateFMul(float_rnorm_drdx, float_rnorm_s, VALUE_NAME("dmxv"));
-    llvm::Value* float_face_xp_dvdx = this->CreateFSub(float_dmxv0, float_rnorm_dsdx, VALUE_NAME("face_xp_dvdx"));
-
-    // dv/dy = dm * v + d{s/r/t}/dy
-    llvm::Value* float_dmyv0 = this->CreateFMul(float_rnorm_drdy, float_rnorm_s, VALUE_NAME("dmyv"));
-    llvm::Value* float_face_xp_dvdy = this->CreateFSub(float_dmyv0, float_rnorm_dsdy, VALUE_NAME("face_xp_dvdy"));
-
-    this->CreateBr(block_final);
-    this->SetInsertPoint(block_xm);
-    parentFunc->getBasicBlockList().push_back(block_xm);
-
-    // Face -X,
-    // major = R
-    // u     = T
-    // v     = neg S
-
-    llvm::Value* float_face_xm_id = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(coordType, 1.0));
-
-    // Select u from s/r/t
-    llvm::Value* float_face_xm_u = float_rnorm_t;
-
-    // Select v from s/r/t
-    llvm::Value* float_face_xm_v = this->CreateFNeg(float_rnorm_s, VALUE_NAME("face_xm_v"));
-
-    // du/dx = dm * u + d{s/r/t}/dx
-    llvm::Value* float_dmxu1 = this->CreateFMul(float_rnorm_drdx, float_rnorm_t, VALUE_NAME("dmxu"));
-    llvm::Value* float_face_xm_dudx = this->CreateFAdd(float_dmxu1, float_rnorm_dtdx, VALUE_NAME("face_xm_dudx"));
-
-    // du/dy = dm * u + d{s/r/t}/dy
-    llvm::Value* float_dmyu1 = this->CreateFMul(float_rnorm_drdy, float_rnorm_t, VALUE_NAME("dmyu"));
-    llvm::Value* float_face_xm_dudy = this->CreateFAdd(float_dmyu1, float_rnorm_dtdx, VALUE_NAME("face_xm_dvdx"));
-
-    // dv/dx = dm * v + d{s/r/t}/dx
-    llvm::Value* float_dmxv1 = this->CreateFMul(float_rnorm_drdx, float_face_xm_v, VALUE_NAME("dmxv"));
-    llvm::Value* float_face_xm_dvdx = this->CreateFSub(float_dmxv1, float_rnorm_dsdx, VALUE_NAME("face_xm_dvdx"));
-
-    // dv/dy = dm * v + d{s/r/t}/dy
-    llvm::Value* float_dmyv1 = this->CreateFMul(float_rnorm_drdy, float_face_xm_v, VALUE_NAME("dmyv"));
-    llvm::Value* float_face_xm_dvdy = this->CreateFSub(float_dmyv1, float_rnorm_dsdy, VALUE_NAME("face_xm_dvdy"));
-
-    this->CreateBr(block_final);
-    this->SetInsertPoint(block_final);
-    parentFunc->getBasicBlockList().push_back(block_final);
-
-    llvm::PHINode* phi_u = this->CreatePHI(coordType, 6, VALUE_NAME("phi_u"));
-    phi_u->addIncoming(float_face_xp_u, block_xp);
-    phi_u->addIncoming(float_face_xm_u, block_xm);
-    phi_u->addIncoming(float_face_yp_u, block_yp);
-    phi_u->addIncoming(float_face_ym_u, block_ym);
-    phi_u->addIncoming(float_face_zp_u, block_zp);
-    phi_u->addIncoming(float_face_zm_u, block_zm);
-
-    llvm::PHINode* phi_v = this->CreatePHI(coordType, 6, VALUE_NAME("phi_v"));
-    phi_v->addIncoming(float_face_xp_v, block_xp);
-    phi_v->addIncoming(float_face_xm_v, block_xm);
-    phi_v->addIncoming(float_face_yp_v, block_yp);
-    phi_v->addIncoming(float_face_ym_v, block_ym);
-    phi_v->addIncoming(float_face_zp_v, block_zp);
-    phi_v->addIncoming(float_face_zm_v, block_zm);
-
-    llvm::PHINode* phi_dudx = this->CreatePHI(coordType, 6, VALUE_NAME("phi_dudx"));
-    phi_dudx->addIncoming(float_face_xp_dudx, block_xp);
-    phi_dudx->addIncoming(float_face_xm_dudx, block_xm);
-    phi_dudx->addIncoming(float_face_yp_dudx, block_yp);
-    phi_dudx->addIncoming(float_face_ym_dudx, block_ym);
-    phi_dudx->addIncoming(float_face_zp_dudx, block_zp);
-    phi_dudx->addIncoming(float_face_zm_dudx, block_zm);
-
-    llvm::PHINode* phi_dudy = this->CreatePHI(coordType, 6, VALUE_NAME("phi_dudy"));
-    phi_dudy ->addIncoming(float_face_xp_dudy, block_xp);
-    phi_dudy ->addIncoming(float_face_xm_dudy, block_xm);
-    phi_dudy ->addIncoming(float_face_yp_dudy, block_yp);
-    phi_dudy ->addIncoming(float_face_ym_dudy, block_ym);
-    phi_dudy ->addIncoming(float_face_zp_dudy, block_zp);
-    phi_dudy ->addIncoming(float_face_zm_dudy, block_zm);
-
-    llvm::PHINode* phi_dvdx = this->CreatePHI(coordType, 6, VALUE_NAME("phi_dvdx"));
-    phi_dvdx->addIncoming(float_face_xp_dvdx, block_xp);
-    phi_dvdx->addIncoming(float_face_xm_dvdx, block_xm);
-    phi_dvdx->addIncoming(float_face_yp_dvdx, block_yp);
-    phi_dvdx->addIncoming(float_face_ym_dvdx, block_ym);
-    phi_dvdx->addIncoming(float_face_zp_dvdx, block_zp);
-    phi_dvdx->addIncoming(float_face_zm_dvdx, block_zm);
-
-    llvm::PHINode* phi_dvdy = this->CreatePHI(coordType, 6, VALUE_NAME("phi_dvdy"));
-    phi_dvdy->addIncoming(float_face_xp_dvdy, block_xp);
-    phi_dvdy->addIncoming(float_face_xm_dvdy, block_xm);
-    phi_dvdy->addIncoming(float_face_yp_dvdy, block_yp);
-    phi_dvdy->addIncoming(float_face_ym_dvdy, block_ym);
-    phi_dvdy->addIncoming(float_face_zp_dvdy, block_zp);
-    phi_dvdy->addIncoming(float_face_zm_dvdy, block_zm);
-
-    llvm::PHINode* phi_face_id = this->CreatePHI(coordType, 6, VALUE_NAME("phi_face_id"));
-    phi_face_id->addIncoming(float_face_xp_id, block_xp);
-    phi_face_id->addIncoming(float_face_xm_id, block_xm);
-    phi_face_id->addIncoming(float_face_yp_id, block_yp);
-    phi_face_id->addIncoming(float_face_ym_id, block_ym);
-    phi_face_id->addIncoming(float_face_zp_id, block_zp);
-    phi_face_id->addIncoming(float_face_zm_id, block_zm);
-
-
-    SampleD_DC_FromCubeParams D_DC_CUBE_params;
-
-    D_DC_CUBE_params.float_src_u = phi_u;
-    D_DC_CUBE_params.dxu = phi_dudx;
-    D_DC_CUBE_params.dyu = phi_dudy;
-    D_DC_CUBE_params.float_src_v = phi_v;
-    D_DC_CUBE_params.dxv = phi_dvdx;
-    D_DC_CUBE_params.dyv = phi_dvdy;
-    D_DC_CUBE_params.float_src_r = phi_face_id;
-    D_DC_CUBE_params.dxr = zero;
-    D_DC_CUBE_params.dyr = zero;
-    D_DC_CUBE_params.float_src_ai = float_src_ai;
-    D_DC_CUBE_params.int32_textureIdx = int32_textureIdx;
-    D_DC_CUBE_params.int32_sampler = int32_sampler;
-    D_DC_CUBE_params.int32_offsetU = m_int0;
-    D_DC_CUBE_params.int32_offsetV = m_int0;
-    D_DC_CUBE_params.int32_offsetW = m_int0;
-
-    return D_DC_CUBE_params;
+    {
+        // Create basic blocks.
+        llvm::BasicBlock* block_final = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cubefinal_block"));
+
+        llvm::BasicBlock* block_major_t = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cubemajor_t_block"));
+        llvm::BasicBlock* block_not_t = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cubenott_block"));
+        llvm::BasicBlock* block_zp = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cube_face_zp_block"));
+        llvm::BasicBlock* block_zm = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cube_face_zm_block"));
+
+        llvm::BasicBlock* block_major_s = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cubemajor_s_block"));
+        llvm::BasicBlock* block_yp = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cube_face_yp_block"));
+        llvm::BasicBlock* block_ym = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cube_face_ym_block"));
+
+        llvm::BasicBlock* block_major_r = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cubemajor_r_block"));
+        llvm::BasicBlock* block_xp = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cube_face_xp_block"));
+        llvm::BasicBlock* block_xm = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cube_face_xm_block"));
+
+        // Find the major coordinate (and thus cube face), precedence is Z,Y,X.
+        llvm::Value* int1_cmp_tges = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, float_abs_t, float_abs_s, VALUE_NAME("cmp_tges"));
+
+        llvm::Value* int1_cmp_tger = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, float_abs_t, float_abs_r, VALUE_NAME("cmp_tger"));
+
+        llvm::Value* int1_tgesr = this->CreateAnd(int1_cmp_tger, int1_cmp_tges);
+
+        // Major coordinate is T, faces could be +Z or -Z
+        this->CreateCondBr(int1_tgesr, block_major_t, block_not_t);
+        this->SetInsertPoint(block_major_t);
+        parentFunc->getBasicBlockList().push_back(block_major_t);
+
+        // Normalize coordinates and gradients.
+        llvm::Value* float_tnorm_r = this->CreateFDiv(float_src_r, float_abs_t, VALUE_NAME("tnorm_r"));
+        llvm::Value* float_tnorm_s = this->CreateFDiv(float_src_s, float_abs_t, VALUE_NAME("tnorm_s"));
+        llvm::Value* float_tnorm_drdx = this->CreateFDiv(float_drdx, float_abs_t, VALUE_NAME("tnorm_drdx"));
+        llvm::Value* float_tnorm_drdy = this->CreateFDiv(float_drdy, float_abs_t, VALUE_NAME("tnorm_drdy"));
+        llvm::Value* float_tnorm_dsdx = this->CreateFDiv(float_dsdx, float_abs_t, VALUE_NAME("tnorm_dsdx"));
+        llvm::Value* float_tnorm_dsdy = this->CreateFDiv(float_dsdy, float_abs_t, VALUE_NAME("tnorm_dsdy"));
+        llvm::Value* float_tnorm_dtdx = this->CreateFDiv(float_dtdx, float_abs_t, VALUE_NAME("tnorm_dtdx"));
+        llvm::Value* float_tnorm_dtdy = this->CreateFDiv(float_dtdy, float_abs_t, VALUE_NAME("tnorm_dtdy"));
+
+        // Select positive or negative face.
+        llvm::Value* int1_cmpx_t = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, float_src_t, zero, VALUE_NAME("cmpx_t"));
+        this->CreateCondBr(int1_cmpx_t, block_zp, block_zm);
+        this->SetInsertPoint(block_zp);
+        parentFunc->getBasicBlockList().push_back(block_zp);
+
+        // Face +Z,
+        // major = neg T
+        // u     = R
+        // v     = neg S
+
+        llvm::Value* float_face_zp_id = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(coordType, 4.0));
+
+        // Select u from s/r/t
+        llvm::Value* float_face_zp_u = float_tnorm_r;
+
+        // Select v from s/r/t
+        llvm::Value* float_face_zp_v = this->CreateFNeg(float_tnorm_s, VALUE_NAME("face_zp_v"));
+
+        // du/dx = dm * u + d{s/r/t}/dx
+        llvm::Value* float_neg_dmx4 = this->CreateFNeg(float_tnorm_dtdx, VALUE_NAME("neg_dmx"));
+        llvm::Value* float_dmxu4 = this->CreateFMul(float_neg_dmx4, float_tnorm_r, VALUE_NAME("dmxu"));
+        llvm::Value* float_face_zp_dudx = this->CreateFAdd(float_dmxu4, float_tnorm_drdx, VALUE_NAME("face_zp_dudx"));
+
+        // du/dy = dm * u + d{s/r/t}/dy
+        llvm::Value* float_neg_dmy4 = this->CreateFNeg(float_tnorm_dtdy, VALUE_NAME("neg_dmy"));
+        llvm::Value* float_dmyu4 = this->CreateFMul(float_neg_dmy4, float_tnorm_r, VALUE_NAME("dmyu"));
+        llvm::Value* float_face_zp_dudy = this->CreateFAdd(float_dmyu4, float_tnorm_drdy, VALUE_NAME("face_zp_dvdx"));
+
+        // dv/dx = dm * v + d{s/r/t}/dx
+        llvm::Value* float_dmxv4 = this->CreateFMul(float_tnorm_dtdx, float_tnorm_s, VALUE_NAME("dmxv"));
+        llvm::Value* float_face_zp_dvdx = this->CreateFSub(float_dmxv4, float_tnorm_dsdx, VALUE_NAME("face_zp_dvdx"));
+
+        // dv/dy = dm * v + d{s/r/t}/dy
+        llvm::Value* float_dmyv4 = this->CreateFMul(float_tnorm_dtdy, float_tnorm_s, VALUE_NAME("dmyv"));
+        llvm::Value* float_face_zp_dvdy = this->CreateFSub(float_dmyv4, float_tnorm_dsdy, VALUE_NAME("face_zp_dvdy"));
+
+        this->CreateBr(block_final);
+        this->SetInsertPoint(block_zm);
+        parentFunc->getBasicBlockList().push_back(block_zm);
+
+        // Face -Z,
+        // major = T
+        // u     = neg R
+        // v     = neg S
+
+        llvm::Value* float_face_zm_id = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(coordType, 5.0));
+
+        // Select u from s/r/t
+        llvm::Value* float_face_zm_u = this->CreateFNeg(float_tnorm_r, VALUE_NAME("face_zm_u"));
+
+        // Select v from s/r/t
+        llvm::Value* float_face_zm_v = this->CreateFNeg(float_tnorm_s, VALUE_NAME("face_zm_v"));
+
+        // du/dx = dm * u + d{s/r/t}/dx
+        llvm::Value* float_dmxu5 = this->CreateFMul(float_tnorm_dtdx, float_face_zm_u, VALUE_NAME("dmxu"));
+        llvm::Value* float_face_zm_dudx = this->CreateFSub(float_dmxu5, float_tnorm_drdx, VALUE_NAME("face_zm_dudx"));
+
+        // du/dy = dm * u + d{s/r/t}/dy
+        llvm::Value* float_dmyu5 = this->CreateFMul(float_tnorm_dtdy, float_face_zm_u, VALUE_NAME("dmyu"));
+        llvm::Value* float_face_zm_dudy = this->CreateFSub(float_dmyu5, float_tnorm_drdy, VALUE_NAME("face_zm_dvdx"));
+
+        // dv/dx = dm * v + d{s/r/t}/dx
+        llvm::Value* float_dmxv5 = this->CreateFMul(float_tnorm_dtdx, float_face_zm_v, VALUE_NAME("dmxv"));
+        llvm::Value* float_face_zm_dvdx = this->CreateFSub(float_dmxv5, float_tnorm_dsdx, VALUE_NAME("face_zm_dvdx"));
+
+        // dv/dy = dm * v + d{s/r/t}/dy
+        llvm::Value* float_dmyv5 = this->CreateFMul(float_tnorm_dtdy, float_face_zm_v, VALUE_NAME("dmyv"));
+        llvm::Value* float_face_zm_dvdy = this->CreateFSub(float_dmyv5, float_tnorm_dsdy, VALUE_NAME("face_zm_dvdy"));
+
+        this->CreateBr(block_final);
+        this->SetInsertPoint(block_not_t);
+        parentFunc->getBasicBlockList().push_back(block_not_t);
+
+        // Choose major S or R.
+        llvm::Value* int1_cmp_sger = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, float_abs_s, float_abs_r, VALUE_NAME("cmp_sger"));
+
+        // Major coordinate is S, faces could be +Y or -Y
+        this->CreateCondBr(int1_cmp_sger, block_major_s, block_major_r);
+        this->SetInsertPoint(block_major_s);
+        parentFunc->getBasicBlockList().push_back(block_major_s);
+
+        // Normalize coordinates and gradients.
+        llvm::Value* float_snorm_r = this->CreateFDiv(float_src_r, float_abs_s, VALUE_NAME("snorm_r"));
+        llvm::Value* float_snorm_t = this->CreateFDiv(float_src_t, float_abs_s, VALUE_NAME("snorm_t"));
+        llvm::Value* float_snorm_drdx = this->CreateFDiv(float_drdx, float_abs_s, VALUE_NAME("snorm_drdx"));
+        llvm::Value* float_snorm_drdy = this->CreateFDiv(float_drdy, float_abs_s, VALUE_NAME("snorm_drdy"));
+        llvm::Value* float_snorm_dsdx = this->CreateFDiv(float_dsdx, float_abs_s, VALUE_NAME("snorm_dsdx"));
+        llvm::Value* float_snorm_dsdy = this->CreateFDiv(float_dsdy, float_abs_s, VALUE_NAME("snorm_dsdy"));
+        llvm::Value* float_snorm_dtdx = this->CreateFDiv(float_dtdx, float_abs_s, VALUE_NAME("snorm_dtdx"));
+        llvm::Value* float_snorm_dtdy = this->CreateFDiv(float_dtdy, float_abs_s, VALUE_NAME("snorm_dtdy"));
+
+        // Select positive or negative face.
+        llvm::Value* int1_cmpx_s = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, float_src_s, zero, VALUE_NAME("cmpx_s"));
+        this->CreateCondBr(int1_cmpx_s, block_yp, block_ym);
+        this->SetInsertPoint(block_yp);
+        parentFunc->getBasicBlockList().push_back(block_yp);
+
+        // Face +Y,
+        // major = neg S
+        // u     = R
+        // v     = T
+
+        llvm::Value* float_face_yp_id = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(coordType, 2.0));
+
+        // Select u from s/r/t
+        llvm::Value* float_face_yp_u = float_snorm_r;
+
+        // Select v from s/r/t
+        llvm::Value* float_face_yp_v = float_snorm_t;
+
+        // du/dx = dm * u + d{s/r/t}/dx
+        llvm::Value* float_neg_dmx2 = this->CreateFNeg(float_snorm_dsdx, VALUE_NAME("neg_dmx"));
+        llvm::Value* float_dmxu2 = this->CreateFMul(float_neg_dmx2, float_snorm_r, VALUE_NAME("dmxu"));
+        llvm::Value* float_face_yp_dudx = this->CreateFAdd(float_dmxu2, float_snorm_drdx, VALUE_NAME("face_yp_dudx"));
+
+        // du/dy = dm * u + d{s/r/t}/dy
+        llvm::Value* float_neg_dmy2 = this->CreateFNeg(float_snorm_dsdy, VALUE_NAME("neg_dmy"));
+        llvm::Value* float_dmyu2 = this->CreateFMul(float_neg_dmy2, float_snorm_r, VALUE_NAME("dmyu"));
+        llvm::Value* float_face_yp_dudy = this->CreateFAdd(float_dmyu2, float_snorm_drdy, VALUE_NAME("face_yp_dvdx"));
+
+        // dv/dx = dm * v + d{s/r/t}/dx
+        llvm::Value* float_dmxv2 = this->CreateFMul(float_neg_dmx2, float_snorm_t, VALUE_NAME("dmxv"));
+        llvm::Value* float_face_yp_dvdx = this->CreateFAdd(float_dmxv2, float_snorm_dtdx, VALUE_NAME("face_yp_dvdx"));
+
+        // dv/dy = dm * v + d{s/r/t}/dy
+        llvm::Value* float_dmyv2 = this->CreateFMul(float_neg_dmy2, float_snorm_t, VALUE_NAME("dmyv"));
+        llvm::Value* float_face_yp_dvdy = this->CreateFAdd(float_dmyv2, float_snorm_dtdy, VALUE_NAME("face_yp_dvdy"));
+
+        this->CreateBr(block_final);
+        this->SetInsertPoint(block_ym);
+        parentFunc->getBasicBlockList().push_back(block_ym);
+
+        // Face -Y,
+        // major = S
+        // u     = R
+        // v     = neg T
+
+        llvm::Value* float_face_ym_id = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(coordType, 3.0));
+
+        // Select u from s/r/t
+        llvm::Value* float_face_ym_u = float_snorm_r;
+
+        // Select v from s/r/t
+        llvm::Value* float_face_ym_v = this->CreateFNeg(float_snorm_t, VALUE_NAME("face_ym_v"));
+
+        // du/dx = dm * u + d{s/r/t}/dx
+        llvm::Value* float_dmxu3 = this->CreateFMul(float_snorm_dsdx, float_snorm_r, VALUE_NAME("dmxu"));
+        llvm::Value* float_face_ym_dudx = this->CreateFAdd(float_dmxu3, float_snorm_drdx, VALUE_NAME("face_ym_dudx"));
+
+        // du/dy = dm * u + d{s/r/t}/dy
+        llvm::Value* float_dmyu3 = this->CreateFMul(float_snorm_dsdy, float_snorm_r, VALUE_NAME("dmyu"));
+        llvm::Value* float_face_ym_dudy = this->CreateFAdd(float_dmyu3, float_snorm_drdy, VALUE_NAME("face_ym_dvdx"));
+
+        // dv/dx = dm * v + d{s/r/t}/dx
+        llvm::Value* float_dmxv3 = this->CreateFMul(float_snorm_dsdx, float_face_ym_v, VALUE_NAME("dmxv"));
+        llvm::Value* float_face_ym_dvdx = this->CreateFSub(float_dmxv3, float_snorm_dtdx, VALUE_NAME("face_ym_dvdx"));
+
+        // dv/dy = dm * v + d{s/r/t}/dy
+        llvm::Value* float_dmyv3 = this->CreateFMul(float_snorm_dsdx, float_face_ym_v, VALUE_NAME("dmyv"));
+        llvm::Value* float_face_ym_dvdy = this->CreateFSub(float_dmyv3, float_snorm_dtdy, VALUE_NAME("face_ym_dvdy"));
+
+        this->CreateBr(block_final);
+        this->SetInsertPoint(block_major_r);
+        parentFunc->getBasicBlockList().push_back(block_major_r);
+
+        // Major coordinate is R, faces could be +X or -X
+
+        // Normalize coordinates and gradients.
+        llvm::Value* float_rnorm_s = this->CreateFDiv(float_src_s, float_abs_r, VALUE_NAME("rnorm_r"));
+        llvm::Value* float_rnorm_t = this->CreateFDiv(float_src_t, float_abs_r, VALUE_NAME("rnorm_t"));
+        llvm::Value* float_rnorm_drdx = this->CreateFDiv(float_drdx, float_abs_r, VALUE_NAME("rnorm_drdx"));
+        llvm::Value* float_rnorm_drdy = this->CreateFDiv(float_drdy, float_abs_r, VALUE_NAME("rnorm_drdy"));
+        llvm::Value* float_rnorm_dsdx = this->CreateFDiv(float_dsdx, float_abs_r, VALUE_NAME("rnorm_dsdx"));
+        llvm::Value* float_rnorm_dsdy = this->CreateFDiv(float_dsdy, float_abs_r, VALUE_NAME("rnorm_dsdy"));
+        llvm::Value* float_rnorm_dtdx = this->CreateFDiv(float_dtdx, float_abs_r, VALUE_NAME("rnorm_dtdx"));
+        llvm::Value* float_rnorm_dtdy = this->CreateFDiv(float_dtdy, float_abs_r, VALUE_NAME("rnorm_dtdy"));
+
+        // Select positive or negative face.
+        llvm::Value* int1_cmpx_r = this->CreateFCmp(llvm::FCmpInst::FCMP_OGE, float_src_r, zero, VALUE_NAME("cmpx_r"));
+        this->CreateCondBr(int1_cmpx_r, block_xp, block_xm);
+        this->SetInsertPoint(block_xp);
+        parentFunc->getBasicBlockList().push_back(block_xp);
+
+        // Face +X,
+        // major = neg R
+        // u     = neg T
+        // v     = neg S
+
+        llvm::Value* float_face_xp_id = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(coordType, 0.0));
+
+        // Select u from s/r/t
+        llvm::Value* float_face_xp_u = this->CreateFNeg(float_rnorm_t, VALUE_NAME("face_xp_u"));
+
+        // Select v from s/r/t
+        llvm::Value* float_face_xp_v = this->CreateFNeg(float_rnorm_s, VALUE_NAME("face_xp_v"));
+
+        // du/dx = dm * u + d{s/r/t}/dx
+        llvm::Value* float_dmxu0 = this->CreateFMul(float_rnorm_drdx, float_rnorm_t, VALUE_NAME("dmxu"));
+        llvm::Value* float_face_xp_dudx = this->CreateFSub(float_dmxu0, float_rnorm_dtdx, VALUE_NAME("face_xp_dudx"));
+
+        // du/dy = dm * u + d{s/r/t}/dy
+        llvm::Value* float_dmyu0 = this->CreateFMul(float_rnorm_drdy, float_rnorm_t, VALUE_NAME("dmyu"));
+        llvm::Value* float_face_xp_dudy = this->CreateFSub(float_dmyu0, float_rnorm_dtdy, VALUE_NAME("face_xp_dvdx"));
+
+        // dv/dx = dm * v + d{s/r/t}/dx
+        llvm::Value* float_dmxv0 = this->CreateFMul(float_rnorm_drdx, float_rnorm_s, VALUE_NAME("dmxv"));
+        llvm::Value* float_face_xp_dvdx = this->CreateFSub(float_dmxv0, float_rnorm_dsdx, VALUE_NAME("face_xp_dvdx"));
+
+        // dv/dy = dm * v + d{s/r/t}/dy
+        llvm::Value* float_dmyv0 = this->CreateFMul(float_rnorm_drdy, float_rnorm_s, VALUE_NAME("dmyv"));
+        llvm::Value* float_face_xp_dvdy = this->CreateFSub(float_dmyv0, float_rnorm_dsdy, VALUE_NAME("face_xp_dvdy"));
+
+        this->CreateBr(block_final);
+        this->SetInsertPoint(block_xm);
+        parentFunc->getBasicBlockList().push_back(block_xm);
+
+        // Face -X,
+        // major = R
+        // u     = T
+        // v     = neg S
+
+        llvm::Value* float_face_xm_id = llvm::cast<llvm::ConstantFP>(llvm::ConstantFP::get(coordType, 1.0));
+
+        // Select u from s/r/t
+        llvm::Value* float_face_xm_u = float_rnorm_t;
+
+        // Select v from s/r/t
+        llvm::Value* float_face_xm_v = this->CreateFNeg(float_rnorm_s, VALUE_NAME("face_xm_v"));
+
+        // du/dx = dm * u + d{s/r/t}/dx
+        llvm::Value* float_dmxu1 = this->CreateFMul(float_rnorm_drdx, float_rnorm_t, VALUE_NAME("dmxu"));
+        llvm::Value* float_face_xm_dudx = this->CreateFAdd(float_dmxu1, float_rnorm_dtdx, VALUE_NAME("face_xm_dudx"));
+
+        // du/dy = dm * u + d{s/r/t}/dy
+        llvm::Value* float_dmyu1 = this->CreateFMul(float_rnorm_drdy, float_rnorm_t, VALUE_NAME("dmyu"));
+        llvm::Value* float_face_xm_dudy = this->CreateFAdd(float_dmyu1, float_rnorm_dtdx, VALUE_NAME("face_xm_dvdx"));
+
+        // dv/dx = dm * v + d{s/r/t}/dx
+        llvm::Value* float_dmxv1 = this->CreateFMul(float_rnorm_drdx, float_face_xm_v, VALUE_NAME("dmxv"));
+        llvm::Value* float_face_xm_dvdx = this->CreateFSub(float_dmxv1, float_rnorm_dsdx, VALUE_NAME("face_xm_dvdx"));
+
+        // dv/dy = dm * v + d{s/r/t}/dy
+        llvm::Value* float_dmyv1 = this->CreateFMul(float_rnorm_drdy, float_face_xm_v, VALUE_NAME("dmyv"));
+        llvm::Value* float_face_xm_dvdy = this->CreateFSub(float_dmyv1, float_rnorm_dsdy, VALUE_NAME("face_xm_dvdy"));
+
+        this->CreateBr(block_final);
+        this->SetInsertPoint(block_final);
+        parentFunc->getBasicBlockList().push_back(block_final);
+
+        llvm::PHINode* phi_u = this->CreatePHI(coordType, 6, VALUE_NAME("phi_u"));
+        phi_u->addIncoming(float_face_xp_u, block_xp);
+        phi_u->addIncoming(float_face_xm_u, block_xm);
+        phi_u->addIncoming(float_face_yp_u, block_yp);
+        phi_u->addIncoming(float_face_ym_u, block_ym);
+        phi_u->addIncoming(float_face_zp_u, block_zp);
+        phi_u->addIncoming(float_face_zm_u, block_zm);
+
+        llvm::PHINode* phi_v = this->CreatePHI(coordType, 6, VALUE_NAME("phi_v"));
+        phi_v->addIncoming(float_face_xp_v, block_xp);
+        phi_v->addIncoming(float_face_xm_v, block_xm);
+        phi_v->addIncoming(float_face_yp_v, block_yp);
+        phi_v->addIncoming(float_face_ym_v, block_ym);
+        phi_v->addIncoming(float_face_zp_v, block_zp);
+        phi_v->addIncoming(float_face_zm_v, block_zm);
+
+        llvm::PHINode* phi_dudx = this->CreatePHI(coordType, 6, VALUE_NAME("phi_dudx"));
+        phi_dudx->addIncoming(float_face_xp_dudx, block_xp);
+        phi_dudx->addIncoming(float_face_xm_dudx, block_xm);
+        phi_dudx->addIncoming(float_face_yp_dudx, block_yp);
+        phi_dudx->addIncoming(float_face_ym_dudx, block_ym);
+        phi_dudx->addIncoming(float_face_zp_dudx, block_zp);
+        phi_dudx->addIncoming(float_face_zm_dudx, block_zm);
+
+        llvm::PHINode* phi_dudy = this->CreatePHI(coordType, 6, VALUE_NAME("phi_dudy"));
+        phi_dudy->addIncoming(float_face_xp_dudy, block_xp);
+        phi_dudy->addIncoming(float_face_xm_dudy, block_xm);
+        phi_dudy->addIncoming(float_face_yp_dudy, block_yp);
+        phi_dudy->addIncoming(float_face_ym_dudy, block_ym);
+        phi_dudy->addIncoming(float_face_zp_dudy, block_zp);
+        phi_dudy->addIncoming(float_face_zm_dudy, block_zm);
+
+        llvm::PHINode* phi_dvdx = this->CreatePHI(coordType, 6, VALUE_NAME("phi_dvdx"));
+        phi_dvdx->addIncoming(float_face_xp_dvdx, block_xp);
+        phi_dvdx->addIncoming(float_face_xm_dvdx, block_xm);
+        phi_dvdx->addIncoming(float_face_yp_dvdx, block_yp);
+        phi_dvdx->addIncoming(float_face_ym_dvdx, block_ym);
+        phi_dvdx->addIncoming(float_face_zp_dvdx, block_zp);
+        phi_dvdx->addIncoming(float_face_zm_dvdx, block_zm);
+
+        llvm::PHINode* phi_dvdy = this->CreatePHI(coordType, 6, VALUE_NAME("phi_dvdy"));
+        phi_dvdy->addIncoming(float_face_xp_dvdy, block_xp);
+        phi_dvdy->addIncoming(float_face_xm_dvdy, block_xm);
+        phi_dvdy->addIncoming(float_face_yp_dvdy, block_yp);
+        phi_dvdy->addIncoming(float_face_ym_dvdy, block_ym);
+        phi_dvdy->addIncoming(float_face_zp_dvdy, block_zp);
+        phi_dvdy->addIncoming(float_face_zm_dvdy, block_zm);
+
+        llvm::PHINode* phi_face_id = this->CreatePHI(coordType, 6, VALUE_NAME("phi_face_id"));
+        phi_face_id->addIncoming(float_face_xp_id, block_xp);
+        phi_face_id->addIncoming(float_face_xm_id, block_xm);
+        phi_face_id->addIncoming(float_face_yp_id, block_yp);
+        phi_face_id->addIncoming(float_face_ym_id, block_ym);
+        phi_face_id->addIncoming(float_face_zp_id, block_zp);
+        phi_face_id->addIncoming(float_face_zm_id, block_zm);
+
+
+        SampleD_DC_FromCubeParams D_DC_CUBE_params;
+
+        D_DC_CUBE_params.float_src_u = phi_u;
+        D_DC_CUBE_params.dxu = phi_dudx;
+        D_DC_CUBE_params.dyu = phi_dudy;
+        D_DC_CUBE_params.float_src_v = phi_v;
+        D_DC_CUBE_params.dxv = phi_dvdx;
+        D_DC_CUBE_params.dyv = phi_dvdy;
+        D_DC_CUBE_params.float_src_r = phi_face_id;
+        D_DC_CUBE_params.dxr = zero;
+        D_DC_CUBE_params.dyr = zero;
+        D_DC_CUBE_params.float_src_ai = float_src_ai;
+        D_DC_CUBE_params.int32_textureIdx = int32_textureIdx;
+        D_DC_CUBE_params.int32_sampler = int32_sampler;
+        D_DC_CUBE_params.int32_offsetU = m_int0;
+        D_DC_CUBE_params.int32_offsetV = m_int0;
+        D_DC_CUBE_params.int32_offsetW = m_int0;
+
+        return D_DC_CUBE_params;
+    }
 }
 
 template<bool preserveNames, typename T, typename Inserter>

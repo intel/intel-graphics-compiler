@@ -330,6 +330,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
     initializeSimd32ProfitabilityAnalysisPass(*PassRegistry::getPassRegistry());
     initializeGenXFunctionGroupAnalysisPass(*PassRegistry::getPassRegistry());
 
+
     if (ctx.type == ShaderType::PIXEL_SHADER)
     {
         mpm.add(new DiscardLowering());

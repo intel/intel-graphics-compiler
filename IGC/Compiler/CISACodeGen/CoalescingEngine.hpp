@@ -851,12 +851,6 @@ public:
 
 public:
 
-    void ValidateNumberofSources(EOPCODE opCode, uint &numberofSrcs)
-    {
-        return m_PayloadMapping.ValidateNumberofSources(opCode, numberofSrcs);
-    }
-
-
     uint GetNumPayloadElements(llvm::Instruction *inst)
     {
         if (currentPart_ == 0)

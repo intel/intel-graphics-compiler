@@ -175,6 +175,7 @@ public:
         CVariable*& outputDepthOpnd,
         CVariable*& vStencilOpnd);
 
+
     ResourceDescriptor GetSampleResourceHelper(llvm::SampleIntrinsic* inst);
 
     void interceptSamplePayloadCoalescing(
@@ -398,7 +399,6 @@ public:
     CVariable* TruncatePointer(CVariable* pVar);
     CVariable* ReAlignUniformVariable(CVariable *pVar, e_alignment align = EALIGN_GRF);
     CVariable* BroadcastAndTruncPointer(CVariable* pVar);
-    void ValidateNumberofSources(EOPCODE opCode, uint &numberofSrcs);
     CVariable* IndexableResourceIndex(CVariable* indexVar, uint btiIndex);
     ResourceDescriptor GetResourceVariable(llvm::Value* resourcePtr);
     SamplerDescriptor GetSamplerVariable(llvm::Value* samplerPtr);

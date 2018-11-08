@@ -63,6 +63,7 @@ inline bool genplatform::hasSupportforTenBitFloatConversion() const
     return false;
 }
 
+
 class SampleParamsFromCube
 {
 public:
@@ -408,6 +409,11 @@ public:
         llvm::Value* int32_textureIdx,
         llvm::Value* int32_sampler);
 
+    llvm::CallInst* Create_SAMPLED(
+        SampleD_DC_FromCubeParams& sampleParams,
+        llvm::Value* minlod = nullptr,
+        bool feedback_enabled = false,
+        llvm::Type* returnType = nullptr);
 
     llvm::CallInst* Create_SAMPLED(
         llvm::Value* float_src1_s_chan0,
@@ -448,6 +454,8 @@ public:
         llvm::Value* int32_offsetV,
         llvm::Value* int32_offsetW,
         llvm::Type* returnType = nullptr);
+
+    SampleD_DC_FromCubeParams Prepare_SAMPLE_D_DC_Cube_Params(SampleD_DC_FromCubeParams& params);
 
     SampleD_DC_FromCubeParams Prepare_SAMPLE_D_DC_Cube_Params(
         llvm::Value* float_src_x,
