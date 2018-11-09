@@ -1415,7 +1415,10 @@ SymbolicPointer::getLinearExpression(Value *V, APInt &Scale, APInt &Offset,
     Value *Result = getLinearExpression(CastOp, Scale, Offset, Extension,
                                         Depth+1, DL);
     Scale = Scale.zext(OldWidth);
-    Offset = Offset.zext(OldWidth);
+    if (Extension == EK_SignExt)
+        Offset = Offset.sext(OldWidth);
+    else
+        Offset = Offset.zext(OldWidth);
 
     return Result;
   }
