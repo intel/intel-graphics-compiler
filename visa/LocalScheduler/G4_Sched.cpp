@@ -506,13 +506,13 @@ bool preRA_Scheduler::run()
 {
     if (m_options->getTarget() != VISA_3D)
     {
-        return false;
+        // Do not run pre-RA scheduler for CM unless user forces it.
+        if (!m_options->getOption(vISA_preRA_ScheduleForce))
+            return false;
     }
 
     unsigned Threshold = getRPReductionThreshold(m_options, kernel);
     unsigned SchedCtrl = m_options->getuInt32Option(vISA_preRA_ScheduleCtrl);
-    const char *BBName = m_options->getOptionCstr(vISA_preRA_ScheduleBlock);
-    string TargetBB(BBName == nullptr ? "" : BBName);
 
     SchedConfig config(SchedCtrl);
     RegisterPressure rp(kernel, mem, rpe);
@@ -523,16 +523,6 @@ bool preRA_Scheduler::run()
             SCHED_DUMP(std::cerr << "Skip block with instructions "
                 << bb->size() << "\n");
             continue;
-        }
-
-        // Skip non-target blocks, if enabled.
-        if (!TargetBB.empty()) {
-            G4_Label* L = bb->getLabel();
-            if (!L || TargetBB.compare(L->asLabel()->getLabel()) != 0) {
-                SCHED_DUMP(std::cerr << "Skip non-target block, "
-                                     << (L ? L->asLabel()->getLabel() : "")  << "\n");
-                continue;
-            }
         }
 
         unsigned MaxPressure = rp.getPressure(bb);

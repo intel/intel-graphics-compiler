@@ -3566,18 +3566,6 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         vbuilder->SetOption(vISA_preRA_Schedule, false);
     }
 
-    if (IGC_IS_FLAG_ENABLED(VISAPreSchedBlock))
-    {
-        const char* BBName = IGC_GET_REGKEYSTRING(VISAPreSchedBlock);
-        vbuilder->SetOption(vISA_preRA_ScheduleBlock, BBName);
-    }
-
-    if (IGC_IS_FLAG_ENABLED(VISAPostSchedBlock))
-    {
-        const char* BBName = IGC_GET_REGKEYSTRING(VISAPostSchedBlock);
-        vbuilder->SetOption(vISA_postRA_ScheduleBlock, BBName);
-    }
-
     if (IGC_IS_FLAG_ENABLED(FastSpill))
     {
         vbuilder->SetOption(vISA_FastSpill, true);
