@@ -123,9 +123,10 @@ unsigned int VertexShaderLowering::InsertInEmptySlot(Instruction* sgv)
     return index;
 }
 
+
 unsigned int VertexShaderLowering::GetUnusedInputSlot()
 {    
-    for(unsigned int i = 0; i<32*4; i++)
+    for(unsigned int i = 0; i<ARRAY_COUNT(m_inputUsed); i++)
     {
         if(m_inputUsed[i] == false)
         {
@@ -481,6 +482,8 @@ void VertexShaderLowering::AddURBRead(Value* index, Value* offset, Instruction* 
         offset
     };
     unsigned int inIndex = int_cast<unsigned int>(cast<ConstantInt>(offset)->getZExtValue());
+    assert(inIndex < MaxNumOfUserInputs);
+
     Instruction* urbRead = GenIntrinsicInst::Create(
         GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBRead), 
         arguments, 

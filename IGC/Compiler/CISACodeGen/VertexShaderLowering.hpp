@@ -83,6 +83,7 @@ public:
     }
     static char         ID;
 private:
+
     void LowerIntrinsicInputOutput(llvm::Function &F);
     bool determineIfInstructionUsingInstanceIDisConstantBuffer(
         llvm::Value* user );
@@ -102,11 +103,22 @@ private:
     unsigned int GetUnusedInputSlot();
     //HACK: to remove once we don't need header anymore
     void AddInitializedHeader(llvm::Instruction* prev);
+
+
+private:
+    // Maximum number of input vertex elements. Limited by 3DSTATE_VF.
+    static const unsigned int MaxNumOfUserInputs = 32; // in 4*DWORD units
+
+    // Maximum number of inputs including SGVs. SGVs can be located in URB past
+    // the number of available vertex elements. 
+    // Currently additional 2 inputs is enough for all SGVs.
+    static const unsigned int MaxNumOfInputs     = 34; // in 4*DWORD units
+
     CollectVertexShaderProperties* m_vsPropsPass;
     llvm::Module* m_module;
     CodeGenContext* m_context;
     QuadEltUnit m_headerSize;
-    bool m_inputUsed[32*4];
+    bool m_inputUsed[MaxNumOfInputs * 4]; // used vertex elements and SGV slots
     bool m_isHeaderPresent;
 };
 
