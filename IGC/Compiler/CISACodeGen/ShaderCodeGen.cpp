@@ -516,8 +516,6 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         mpm.add(createDeadCodeEliminationPass());
     }
 
-    mpm.add(new WAFMinFMax());
-
     if(!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion))
     {
         mpm.add(new HalfPromotion());
@@ -601,6 +599,8 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
     default:
         break;
     }
+
+    mpm.add(new WAFMinFMax());
 }
 
 inline void AddCodeGenPasses(CodeGenContext &ctx, CShaderProgram::KernelShaderMap &shaders, IGCPassManager& Passes, SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE, PSSignature* pSignature = nullptr)
