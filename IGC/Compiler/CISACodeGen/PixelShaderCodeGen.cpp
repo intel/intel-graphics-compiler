@@ -771,7 +771,6 @@ namespace IGC
 
         CreateGatherMap();
         CreateConstantBufferOutput(pKernelProgram);
-        FillGTPinRequest(pKernelProgram);
 
         pKernelProgram->bindingTableEntryCount  = this->GetMaxUsedBindingTableEntryCount();
         pKernelProgram->BindingTableEntryBitmap = this->GetBindingTableEntryBitmap();

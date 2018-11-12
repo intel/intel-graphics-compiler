@@ -63,7 +63,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorOCL/TranslationBlock.h"
 
 #include "common/MDFrameWork.h"
-#include "inc/gtpin_IGC_interface.h"
 
 /************************************************************************
 This file contains the interface structure and functions to communicate
@@ -98,8 +97,8 @@ namespace IGC
         void*           m_debugDataGenISA;          //<! GenISA debug data (VISA -> GenISA)
         unsigned int    m_debugDataGenISASize;      //<! Number of bytes of GenISA debug data
         unsigned int    m_InstructionCount;
-        void*           m_freeGRFInfo;              // Will be populated only when a special switch is passed by gtpin
-        unsigned int    m_freeGRFInfoSize;
+        void*           m_gtpinBuffer;              // Will be populated by VISA only when special switch is passed by gtpin
+        unsigned int    m_gtpinBufferSize;
 
         void Destroy()
         {
@@ -194,10 +193,6 @@ namespace IGC
         // Interesting constants for dynamic constant folding
         USC::ConstantAddrValue* m_pInterestingConstants = nullptr;
         unsigned int            m_InterestingConstantsSize = 0;
-        
-        // GTPin requests
-        gtpin::igc::igc_init_t m_GTPinRequest = {0};
-
     };
 
     struct SPixelShaderKernelProgram : SKernelProgram
@@ -663,7 +658,7 @@ namespace IGC
         uint m_ConstantBufferUsageMask = 0;
         uint m_ConstantBufferReplaceSize = 0;
 
-        gtpin::igc::igc_init_t m_GTPinRequest;
+        void* gtpin_init = nullptr;
 
     protected:
         // Objects pointed to by these pointers are owned by this class.
@@ -693,8 +688,6 @@ namespace IGC
             }
 
             m_indexableTempSize.resize(64);
-
-            memset(&m_GTPinRequest, 0, sizeof(m_GTPinRequest));
         }
 
         CodeGenContext(CodeGenContext&) = delete;

@@ -67,6 +67,8 @@ bool TranslateBuild(
 
 }
 
+bool enableSrcLine(void*);
+
 namespace IGC {
 
 inline TC::TB_DATA_FORMAT toLegacyFormat(CodeType::CodeType_t format){
@@ -123,6 +125,15 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
 
         TC::STB_TranslateInputArgs inputArgs;
         if(src != nullptr){
+            if (gtPinInput)
+            {
+                bool srcLine = enableSrcLine(gtPinInput);
+                if (srcLine)
+                {
+                    const char* arg = " -gline-tables-only";
+                    src->PushBackRawBytes(arg, strlen(arg));
+                }
+            }
             inputArgs.pInput = src->GetMemoryWriteable<char>();
             inputArgs.InputSize = static_cast<uint32_t>(src->GetSizeRaw());
         }

@@ -2525,13 +2525,6 @@ static bool isUsedInPHINode(llvm::Instruction *I) {
     return false;
 }
 
-void CShader::FillGTPinRequest(SKernelProgram* pKernelProgram)
-{
-    IGC::CodeGenContext* ctx = GetContext();
-    memcpy_s(&(pKernelProgram->m_GTPinRequest), sizeof(pKernelProgram->m_GTPinRequest),
-             &(ctx->m_GTPinRequest), sizeof(ctx->m_GTPinRequest));
-}
-
 bool CShader::CanTreatScalarSourceAsAlias(llvm::InsertElementInst *IEI) {
     // Skip if it's not enabled.
     if (!IGC_IS_FLAG_ENABLED(EnableInsertElementScalarCoalescing))

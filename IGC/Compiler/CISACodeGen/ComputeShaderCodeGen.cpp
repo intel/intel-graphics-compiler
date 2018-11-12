@@ -459,7 +459,6 @@ void CComputeShader::FillProgram(SComputeShaderKernelProgram* pKernelProgram)
     ProgramOutput()->m_scratchSpaceUsedByShader = m_ScratchSpaceSize;
     CreateGatherMap();
     CreateConstantBufferOutput(pKernelProgram);
-    FillGTPinRequest(pKernelProgram);
     
     pKernelProgram->ConstantBufferLoaded           = m_constantBufferLoaded;
     pKernelProgram->hasControlFlow                 = m_numBlocks > 1 ? true : false;

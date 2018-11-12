@@ -270,7 +270,6 @@ void CDomainShader::FillProgram(SDomainShaderKernelProgram* pKernelProgram)
     ProgramOutput()->m_scratchSpaceUsedByShader = m_ScratchSpaceSize;
     CreateGatherMap();
     CreateConstantBufferOutput(pKernelProgram);
-    FillGTPinRequest(pKernelProgram);
 
     pKernelProgram->NOSBufferSize = m_NOSBufferSize/SIZE_GRF; // in 256 bits
     pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;

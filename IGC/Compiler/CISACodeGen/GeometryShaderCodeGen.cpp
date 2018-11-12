@@ -354,7 +354,6 @@ void CGeometryShader::FillProgram(SGeometryShaderKernelProgram* pKernelProgram)
 
     CreateGatherMap();
     CreateConstantBufferOutput(pKernelProgram);
-    FillGTPinRequest(pKernelProgram);
 
     pKernelProgram->ConstantBufferLoaded = m_constantBufferLoaded;
     pKernelProgram->NOSBufferSize = m_NOSBufferSize/SIZE_GRF; // in 256 bits

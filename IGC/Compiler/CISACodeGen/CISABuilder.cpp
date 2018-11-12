@@ -3414,13 +3414,12 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
 
     bool KernelDebugEnable = false;
     bool ForceNonCoherentStatelessBti = false;
-    bool doReRA = false;
+    auto gtpin_init = context->gtpin_init;
     if (context->type == ShaderType::OPENCL_SHADER)
     {
         auto ClContext = static_cast<OpenCLProgramContext*>(context);
         KernelDebugEnable = ClContext->m_InternalOptions.KernelDebugEnable;
         ForceNonCoherentStatelessBti = ClContext->m_ShouldUseNonCoherentStatelessBTI;
-        doReRA = ClContext->m_InternalOptions.DoReRA;
     }
 
     bool EnableBarrierInstCounterBits = false;
@@ -3832,17 +3831,6 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         vbuilder->SetOption(vISA_GlobalSendVarSplit, true);
     }
 
-    // TODO: doReRA will eventually be depricated. Remove when OCL starts using the new gtpin interface
-    if (doReRA || context->m_GTPinRequest.re_ra)
-    {
-        vbuilder->SetOption(vISA_ReRAPostSchedule, true);
-    }
-
-    if (doReRA || context->m_GTPinRequest.grf_info)
-    {
-        vbuilder->SetOption(vISA_GetFreeGRFInfo, true);
-    }
-
     if (IGC_IS_FLAG_ENABLED(FuseTypedWrite))
     {
         vbuilder->SetOption(vISA_FuseTypedWrites, true);
@@ -3939,6 +3927,11 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
     }
 
     vMainKernel = vKernel;
+
+    if (gtpin_init)
+    {
+        vKernel->SetGTPinInit(gtpin_init);
+    }
 
     // Right now only 1 main function in the kernel
     VISA_LabelOpnd *functionLabel = nullptr;
@@ -4396,7 +4389,7 @@ void CEncoder::Compile()
     pOutput->m_debugDataGenISASize = dbgSize;
     pOutput->m_InstructionCount = jitInfo->numAsmCount;
 
-    vMainKernel->GetFreeGRFInfo(pOutput->m_freeGRFInfo, pOutput->m_freeGRFInfoSize);
+    vMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
 
     if (jitInfo->isSpill == true)
     {

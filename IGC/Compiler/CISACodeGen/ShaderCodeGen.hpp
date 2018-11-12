@@ -221,8 +221,6 @@ public:
 
     bool isUnpacked(llvm::Value* value);
 
-    void FillGTPinRequest(SKernelProgram* pKernelProgram);
-
     /// Return true if we are sure that all lanes are active at the begging of the thread
     virtual bool HasFullDispatchMask() { return false; }
 

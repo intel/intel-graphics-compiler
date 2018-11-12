@@ -59,8 +59,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../../../visa/include/visaBuilder_interface.h"
 
-#include "../../../AdaptorCommon/GTPinInterfaceUtils.hpp"
-
 #include "gtpin_igc_ocl.h"
 
 #include <algorithm>
@@ -2055,50 +2053,6 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                 retValue = AddPatchItem(patch, membuf);
             }
         }
-
-        // Patch for free GRFs
-        // TODO: To be removed!
-        if (retValue.Success)
-        {
-            iOpenCL::SPatchGtpinFreeGRFInfo patch;
-            memset(&patch, 0, sizeof(patch));
-
-            patch.Token = PATCH_TOKEN_GTPIN_FREE_GRF_INFO;
-            unsigned int size = 0;
-            const void* buffer = nullptr;
-            if (annotations.m_executionEnivronment.CompiledSIMDSize == 8)
-            {
-                size = annotations.m_kernelProgram.simd8.m_freeGRFInfoSize;
-                buffer = annotations.m_kernelProgram.simd8.m_freeGRFInfo;
-            }
-            else if (annotations.m_executionEnivronment.CompiledSIMDSize == 16)
-            {
-                size = annotations.m_kernelProgram.simd16.m_freeGRFInfoSize;
-                buffer = annotations.m_kernelProgram.simd16.m_freeGRFInfo;
-            }
-            else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32)
-            {
-                size = annotations.m_kernelProgram.simd32.m_freeGRFInfoSize;
-                buffer = annotations.m_kernelProgram.simd32.m_freeGRFInfo;
-            }
-
-            if (size > 0)
-            {
-                patch.BufferSize = size;
-
-                patch.Size = sizeof(patch) + size;
-
-                retValue = AddPatchItem(patch, membuf);
-
-                if (!membuf.Write((const char*)buffer, size))
-                {
-                    retValue.Success = false;
-                    return retValue;
-                }
-
-                freeBlock(const_cast<void*>(buffer));
-            }
-        }
     }
     
     // Patch for GTPin output structure
@@ -2113,15 +2067,18 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
         if (annotations.m_executionEnivronment.CompiledSIMDSize == 8)
         {
-            buffer = AllocGTPinDataBuffer(program, &(program->simd8), size);
+            buffer = program->simd8.m_gtpinBuffer;
+            size = program->simd8.m_gtpinBufferSize;
         }
         else if (annotations.m_executionEnivronment.CompiledSIMDSize == 16)
         {
-            buffer = AllocGTPinDataBuffer(program, &(program->simd16), size);
+            buffer = program->simd16.m_gtpinBuffer;
+            size = program->simd16.m_gtpinBufferSize;
         }
         else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32)
         {
-            buffer = AllocGTPinDataBuffer(program, &(program->simd32), size);
+            buffer = program->simd32.m_gtpinBuffer;
+            size = program->simd32.m_gtpinBufferSize;
         }
         
         if (size > 0)
@@ -2135,7 +2092,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                 retValue.Success = false;
                 return retValue;
             }
-            IGC::aligned_free(buffer);
+            freeBlock(buffer);
         }
     }
 

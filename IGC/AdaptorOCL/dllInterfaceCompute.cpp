@@ -75,10 +75,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/Bitcode/BitcodeWriter.h"
 #include "common/LLVMWarningsPop.hpp"
 
-
-#include "inc/gtpin_IGC_interface.h"
-
-
 #include <sstream>
 #include <iomanip>
 
@@ -719,14 +715,10 @@ bool TranslateBuild(
         oclContext.setAsSPIRV();
     }
 
-    if(IGC_IS_FLAG_ENABLED(EnableReadGTPinInput))
+    if (IGC_IS_FLAG_ENABLED(EnableReadGTPinInput))
     {
         // Set GTPin flags
-        if(pInputArgs->GTPinInput)
-        {
-            memcpy_s(&(oclContext.m_GTPinRequest), sizeof(gtpin::igc::igc_init_t),
-                     pInputArgs->GTPinInput, sizeof(gtpin::igc::igc_init_t));
-        }
+        oclContext.gtpin_init = pInputArgs->GTPinInput;
     }
 
     oclContext.setModule(pKernelModule);

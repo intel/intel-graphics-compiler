@@ -1544,7 +1544,6 @@ unsigned int COpenCLKernel::getSumFixedTGSMSizes(Function* F)
 
 void COpenCLKernel::FillKernel()
 {
-    FillGTPinRequest(&(m_kernelInfo.m_kernelProgram));
     m_kernelInfo.m_executionEnivronment.PerThreadSpillFillSize = ProgramOutput()->m_scratchSpaceUsedBySpills;
     m_kernelInfo.m_executionEnivronment.PerThreadScratchSpace = ProgramOutput()->m_scratchSpaceUsedByShader;
     m_kernelInfo.m_kernelProgram.NOSBufferSize = m_NOSBufferSize / SIZE_GRF; // in 256 bits
