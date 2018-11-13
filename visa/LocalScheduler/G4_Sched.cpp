@@ -880,7 +880,7 @@ preNode* SethiUllmanQueue::scheduleClusteringNode()
     }
 
     // The width limit of clustering.
-    const unsigned CLUSTER_SIZE_MIN = 4;
+    const unsigned CLUSTER_SIZE_MIN = 3;
     const unsigned CLUSTER_SIZE_MAX = 8;
 
     // Match clustering nodes.
