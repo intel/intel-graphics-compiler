@@ -661,13 +661,14 @@ void BinaryEncodingIGA::DoAll()
 
                         if (igaInst->isMacro())
                         {
+                            auto accRegSel = srcRegion->isNullReg() ? NOACC : srcRegion->getAccRegSel();
                             RegRef regRef = getIGARegRef(srcRegion);
                             igaInst->setMacroSource(
                                 opIx,
                                 srcMod,
                                 getIGARegName(srcRegion),
                                 regRef,
-                                getIGAImplAcc(srcRegion->getAccRegSel()),
+                                getIGAImplAcc(accRegSel),
 								region,
                                 type);
                         }
