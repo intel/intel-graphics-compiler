@@ -358,6 +358,7 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
 
     for (int i=0; i < NUM_LIBMODS; ++i) {
         m_libModuleToBeImported[i] = false;
+        m_libModuleAlreadyImported[i] = false;
     }
 
     SmallSet<Function*, 32> origFunctions;
@@ -375,45 +376,57 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
         m_changed = true;
     }
  
-    visit(M);
-
-    if (m_changed)
+    unsigned int count = 0;
+    while (count < 2)
     {
-        llvm::Linker ld(M);
-        for (int i=0; i < NUM_LIBMODS; ++i)
+        count++;
+        visit(M);
+
+        if (m_changed)
         {
-            if (!m_libModuleToBeImported[i]) {
-                continue;
-            }
-
-            const char* pLibraryModule = (const char*)m_libModInfos[i].Mod;
-            uint32_t libSize = m_libModInfos[i].ModSize;
-
-            // Load the module we want to compile and link it to existing module
-            //StringRef BitRef((char*)preCompiledFunctionLibrary, preCompiledFunctionLibrarySize);
-            StringRef BitRef(pLibraryModule, libSize);
-            //llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-            //    llvm::getLazyBitcodeModule(MemoryBufferRef(BitRef.str(), ""), M.getContext());
-            llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
-                llvm::parseBitcodeFile(MemoryBufferRef(BitRef.str(), ""), M.getContext());
-            assert(ModuleOrErr && "llvm getLazyBitcodeModule - FAILED to parse bitcode");
-            std::unique_ptr<llvm::Module> m_pBuiltinModule = std::move(*ModuleOrErr);
-            assert(m_pBuiltinModule && "llvm version mismatch - could not load llvm module");
-
-            // Set target triple and datalayout to the original module (emulation func
-            // works for both 64 & 32 bit applications).
-            m_pBuiltinModule->setDataLayout(M.getDataLayout());
-            m_pBuiltinModule->setTargetTriple(M.getTargetTriple());
-
-            // Linking the two modules
             llvm::Linker ld(M);
-
-            if (ld.linkInModule(std::move(m_pBuiltinModule)))
+            for (int i = 0; i < NUM_LIBMODS; ++i)
             {
-                assert(0 && "Error linking the two modules");
-            }
+                if (!m_libModuleToBeImported[i]) {
+                    continue;
+                }
 
-            m_pBuiltinModule = nullptr;
+                if (m_libModuleAlreadyImported[i])
+                    continue;
+
+                const char* pLibraryModule = (const char*)m_libModInfos[i].Mod;
+                uint32_t libSize = m_libModInfos[i].ModSize;
+
+                // Load the module we want to compile and link it to existing module
+                //StringRef BitRef((char*)preCompiledFunctionLibrary, preCompiledFunctionLibrarySize);
+                StringRef BitRef(pLibraryModule, libSize);
+                //llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
+                //    llvm::getLazyBitcodeModule(MemoryBufferRef(BitRef.str(), ""), M.getContext());
+                llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
+                    llvm::parseBitcodeFile(MemoryBufferRef(BitRef.str(), ""), M.getContext());
+                assert(ModuleOrErr && "llvm getLazyBitcodeModule - FAILED to parse bitcode");
+                std::unique_ptr<llvm::Module> m_pBuiltinModule = std::move(*ModuleOrErr);
+                assert(m_pBuiltinModule && "llvm version mismatch - could not load llvm module");
+
+                // Set target triple and datalayout to the original module (emulation func
+                // works for both 64 & 32 bit applications).
+                m_pBuiltinModule->setDataLayout(M.getDataLayout());
+                m_pBuiltinModule->setTargetTriple(M.getTargetTriple());
+
+                // Linking the two modules
+                llvm::Linker ld(M);
+
+                if (ld.linkInModule(std::move(m_pBuiltinModule)))
+                {
+                    assert(0 && "Error linking the two modules");
+                }
+                m_libModuleAlreadyImported[i] = true;
+                m_pBuiltinModule = nullptr;
+            }
+        }
+        for (int i = 0; i < NUM_LIBMODS; ++i) 
+        {
+            m_libModuleToBeImported[i] = false;
         }
     }
 
@@ -511,31 +524,33 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
 
 void PreCompiledFuncImport::visitBinaryOperator(BinaryOperator &I)
 {
-    if (isI64DivRem() && I.getOperand(0)->getType()->isIntOrIntVectorTy())
+    if (I.getOperand(0)->getType()->isIntOrIntVectorTy())
     {
-        unsigned int integerBitWidth =
-            I.getOperand(0)->getType()->getScalarType()->getIntegerBitWidth();
+        unsigned int integerBitWidth = I.getOperand(0)->getType()->getScalarType()->getIntegerBitWidth();
 
         if (integerBitWidth == 64)
         {
-            switch (I.getOpcode())
+            if (isI64DivRem())
             {
-            case Instruction::UDiv:
-                processDivide(I, FUNCTION_UDIV);
-                break;
-            case Instruction::URem:
-                processDivide(I, FUNCTION_UREM);
-                break;
-            case Instruction::SDiv:
-                processDivide(I, FUNCTION_SDIV);
-                break;
-            case Instruction::SRem:
-                processDivide(I, FUNCTION_SREM);
-                break;
-            default:
-                // nothing
-                break;
-            };
+                switch (I.getOpcode())
+                {
+                case Instruction::UDiv:
+                    processDivide(I, FUNCTION_UDIV);
+                    break;
+                case Instruction::URem:
+                    processDivide(I, FUNCTION_UREM);
+                    break;
+                case Instruction::SDiv:
+                    processDivide(I, FUNCTION_SDIV);
+                    break;
+                case Instruction::SRem:
+                    processDivide(I, FUNCTION_SREM);
+                    break;
+                default:
+                    // nothing
+                    break;
+                };
+            }
         }
     }
     else if (isDPEmu() && I.getOperand(0)->getType()->isDoubleTy())

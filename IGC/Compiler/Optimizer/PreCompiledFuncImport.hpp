@@ -205,6 +205,9 @@ namespace IGC
 		bool isDPConvFunc(llvm::Function *F) const;
 
         bool m_libModuleToBeImported[NUM_LIBMODS];
+        bool m_libModuleAlreadyImported[NUM_LIBMODS];
+
+        bool Int32DivRemEmuRemaining = true;
 
         static const PreCompiledFuncInfo m_functionInfos[NUM_FUNCTION_IDS];
         static const LibraryModuleInfo m_libModInfos[NUM_LIBMODS];
