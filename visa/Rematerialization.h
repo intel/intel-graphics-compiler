@@ -126,6 +126,7 @@ namespace vISA
         // Map BB->subroutine it belongs to
         // BBs not present are assumed to belong to main kernel
         std::unordered_map<G4_BB*, const FuncInfo*> BBPerSubroutine;
+        bool cr0DefBB = false;
 
         void populateRefs();
         void populateSamplerHeaderMap();

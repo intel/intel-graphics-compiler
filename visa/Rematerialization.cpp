@@ -776,6 +776,11 @@ namespace vISA
             uniqueDefInst->getExecSize() > 1)
             incNumRematsInLoop();
 
+        if (cr0DefBB && IS_TYPE_FLOAT_ALL(uniqueDefInst->getExecType()))
+        {
+            return false;
+        }
+
         return true;
     }
 
@@ -1004,8 +1009,16 @@ namespace vISA
 
         populateRefs();
 
+        auto firstProgInst = kernel.fg.BBs.front()->getFirstInst();
+
         for (auto bb : kernel.fg.BBs)
         {
+            if (kernel.getOptions()->getTarget() == VISATarget::VISA_3D)
+            {
+                // For Cm, assume cr0 def is live across BBs
+                // For IGC, assume cr0 is reset at each BB entry
+                cr0DefBB = false;
+            }
             // Store cache of rematerialized operations so nearby instructions
             // can reuse them.
             // <Unique def, <Remat'd def, Lexical id of last ref>>
@@ -1015,7 +1028,11 @@ namespace vISA
                 instIt++)
             {
                 auto inst = (*instIt);
+                auto dst = inst->getDst();
                 bool runRemat = false;
+
+                cr0DefBB |= dst &&
+                    dst->isCrReg() && (inst != firstProgInst);
 
                 // Run remat if any src opnd is spilled
                 for (unsigned int opnd = 0; opnd < G4_MAX_SRCS; opnd++)
