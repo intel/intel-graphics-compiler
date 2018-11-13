@@ -10344,8 +10344,6 @@ int IR_Builder::translateVISASVMAtomicInst(
     }
     MUST_BE_TRUE(execSize == EXEC_SIZE_8, "execution size must be 8 for SVM atomic messages");
 
-    bool isDWord = bitwidth == 32;
-
     unsigned op = Get_Atomic_Op(atomicOp);
 
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
@@ -10389,14 +10387,13 @@ int IR_Builder::translateVISASVMAtomicInst(
     G4_SrcRegRegion *msgs[2] = {0, 0};
     unsigned sizes[2] = {0, 0};
     preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
-
-    unsigned dstLength = dst->isNullReg() ? 0 : (isDWord ? 1 : 2);
+    unsigned dstLength = dst->isNullReg() ? 0 : ((bitwidth == 16 || bitwidth == 32) ? 1 : 2);
     unsigned msgDesc = 0;
     msgDesc |= getA64BTI();
     msgDesc |= op << 8;
 #define A64_ATOMIC_RETURN_DATA_CONTROL_BIT 13
     msgDesc |= (dstLength ? 1 : 0) << A64_ATOMIC_RETURN_DATA_CONTROL_BIT;
-    msgDesc |= (isDWord ? 0 : 1) << 12;
+    msgDesc |= ((bitwidth == 16 || bitwidth == 32) ? 0 : 1) << 12;
 
     // Fill remaining bits.
     FillSVMAtomicMsgDesc(bitwidth == 16, IsFloatAtomicOps(atomicOp), msgDesc);
