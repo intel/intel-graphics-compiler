@@ -188,8 +188,7 @@ std::vector<llvm::Argument *> SpliceFuncWithNewArguments(
         newArguments.push_back(&*newArg);
     }
     pNewFunction->takeName(pSourceFunc);
-    //pNewFunction->setName(pSourceFunc->getName());
-    pSourceFunc->removeFromParent();
+    pSourceFunc->eraseFromParent();
     // reassign function pointer to newly created function (with new arguments)
     pSourceFunc = pNewFunction;
 
