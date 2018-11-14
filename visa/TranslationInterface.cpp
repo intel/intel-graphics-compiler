@@ -473,7 +473,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     }
 
     // pred and conModifier
-    G4_Declare *tmpFlag = createTempFlag(2);
+    G4_Declare *tmpFlag = createTempFlag(1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
@@ -496,7 +496,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     G4_Declare *t0  = getImmDcl(dbl_constant_0, 4);
     G4_Declare *t1  = getImmDcl(dbl_constant_1, 4);
 
-	inst = createPseudoKills({ t6, t7, t8, t9, t10, t11, t12, t13 });
+	inst = createPseudoKills({ t6, t7, t8, t9, t10, t11, t12, t13, tmpFlag });
 
     G4_SrcRegRegion tsrc0(Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_DF );
     G4_SrcRegRegion tsrc1(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, srcRegionDesc, Type_DF );
@@ -857,7 +857,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
     }
 
     // pred and conModifier
-    G4_Declare *tmpFlag = createTempFlag(2);
+    G4_Declare *tmpFlag = createTempFlag(1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
@@ -876,7 +876,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
     G4_Declare *t2 = getImmDcl(flt_constant_0, 8);
     G4_Declare *t5 = getImmDcl(flt_constant_1, 8);
 
-	inst = createPseudoKills({ t1, t4, t6, t8, t9, t10, t11 });
+	inst = createPseudoKills({ t1, t4, t6, t8, t9, t10, t11, tmpFlag });
 
     // those are for drcp
     G4_SrcRegRegion valueOneScalarReg(Mod_src_undef, Direct, t2->getRegVar(), 0, 0, getRegionScalar(), Type_F );
@@ -1157,7 +1157,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
     }
 
     // pred and conModifier
-    G4_Declare *tmpFlag = createTempFlag(2);
+    G4_Declare *tmpFlag = createTempFlag(1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
@@ -1174,7 +1174,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
     G4_Declare* t0 = getImmDcl(flt_constant_0, 8);
     G4_Declare *t8 = getImmDcl(flt_constant_05, 8);
 
-	inst = createPseudoKills ({ t6, t7, t9, t10, t11 });
+	inst = createPseudoKills ({ t6, t7, t9, t10, t11, tmpFlag });
 	
     G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size);
 
@@ -1450,7 +1450,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     }
 
     // pred and conModifier
-    G4_Declare *flagReg = createTempFlag(2);
+    G4_Declare *flagReg = createTempFlag(1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
@@ -1464,7 +1464,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     G4_Declare *t10 = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
     G4_Declare *t11 = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
 
-	inst = createPseudoKills({t6, t7, t8, t9, t10, t11 });
+	inst = createPseudoKills({t6, t7, t8, t9, t10, t11, flagReg });
 
     G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size);
 
