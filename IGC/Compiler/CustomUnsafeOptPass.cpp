@@ -112,6 +112,12 @@ static bool allowUnsafeMathOpt(CodeGenContext* ctx, llvm::BinaryOperator& op)
     {
         return true;
     }
+
+	if (IGC_IS_FLAG_ENABLED(EnableFastMath))
+	{
+		return true;
+	}
+
     return false;
 }
 
