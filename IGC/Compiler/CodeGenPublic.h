@@ -56,6 +56,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/IRBuilder.h>
 #include "llvm/IR/Function.h"
 #include "llvm/IR/ValueMap.h"
+#include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "CodeGenPublicEnums.h"
@@ -836,6 +837,8 @@ namespace IGC
             m_pMdUtils = nullptr;
             modMD = nullptr;
             module = nullptr;
+            delete annotater;
+            annotater = nullptr;
         }
 
         IGC::ModuleMetaData* getModuleMetaData() const
