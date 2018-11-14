@@ -1408,7 +1408,7 @@ static double   OVERLOADABLE __intel_add(double lhs, double rhs) { return lhs + 
     uint lsize = __spirv_WorkgroupSize();   			 								 \
     data[0] = identity;                                                 				 \
     data[lid + 1] = X;                                                  				 \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, WorkgroupMemory);         \
+    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
     X = data[lid];                                                      				 \
     uint offset = 1;                                                 				     \
     while( offset < lsize )                                             				 \
@@ -1417,9 +1417,9 @@ static double   OVERLOADABLE __intel_add(double lhs, double rhs) { return lhs + 
                      data[ lid - offset ] :                              				 \
                      identity;                                           				 \
         X = op( X, other );                                             				 \
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, WorkgroupMemory);       \
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);       \
         data[lid] = X;                                                  				 \
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, WorkgroupMemory);       \
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);       \
         offset <<= 1;                                                   				 \
     }                                                                   				 \
     return X;                                                           				 \
