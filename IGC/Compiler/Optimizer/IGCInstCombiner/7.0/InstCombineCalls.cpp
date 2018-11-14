@@ -102,7 +102,7 @@ using namespace IGCombiner;
 STATISTIC(NumSimplified, "Number of library calls simplified");
 
 static cl::opt<unsigned> GuardWideningWindow(
-    "instcombine-guard-widening-window",
+    "igc-instcombine-guard-widening-window",
     cl::init(3),
     cl::desc("How wide an instruction window to bypass looking for "
              "another guard"));

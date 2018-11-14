@@ -52,7 +52,7 @@ using namespace IGCombiner;
 #define DEBUG_TYPE "instcombine"
 
 static cl::opt<unsigned>
-MaxNumPhis("instcombine-max-num-phis", cl::init(512),
+MaxNumPhis("igc-instcombine-max-num-phis", cl::init(512),
            cl::desc("Maximum number phis to handle in intptr/ptrint folding"));
 
 /// The PHI arguments will be folded into a single operation with a PHI node

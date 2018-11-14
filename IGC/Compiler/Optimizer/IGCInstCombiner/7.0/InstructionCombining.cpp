@@ -162,11 +162,11 @@ DEBUG_COUNTER(VisitCounter, "instcombine-visit",
               "Controls which instructions are visited");
 
 static cl::opt<bool>
-EnableExpensiveCombines("expensive-combines",
+EnableExpensiveCombines("igc-expensive-combines",
                         cl::desc("Enable expensive instruction combines"));
 
 static cl::opt<unsigned>
-MaxArraySize("instcombine-maxarray-size", cl::init(1024),
+MaxArraySize("igc-instcombine-maxarray-size", cl::init(1024),
              cl::desc("Maximum array size considered when doing a combine"));
 
 // FIXME: Remove this flag when it is no longer necessary to convert
@@ -176,7 +176,7 @@ MaxArraySize("instcombine-maxarray-size", cl::init(1024),
 // for their entire lifetime. However, passes like DSE and instcombine can
 // delete stores to the alloca, leading to misleading and inaccurate debug
 // information. This flag can be removed when those passes are fixed.
-static cl::opt<unsigned> ShouldLowerDbgDeclare("instcombine-lower-dbg-declare",
+static cl::opt<unsigned> ShouldLowerDbgDeclare("igc-instcombine-lower-dbg-declare",
                                                cl::Hidden, cl::init(true));
 
 Value *InstCombiner::EmitGEPOffset(User *GEP) {
