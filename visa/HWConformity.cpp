@@ -7600,6 +7600,11 @@ void HWConformity::fixSrc2(INST_LIST_ITER it, G4_BB* bb, bool swapSrc0and2)
         if (dstEltSz >= 4)
         {
             srcTy = IS_TYPE_FLOAT_ALL(srcTy) ? Type_F : Type_D;
+            if (!builder.hasMixMode() && srcTy == Type_F)
+            {
+                // we can't change the srcType
+                srcTy = src->getType();
+            }
         }
         inst->setSrc(insertMovBefore(it, srcPos, srcTy, bb, Sixteen_Word), srcPos);
 
