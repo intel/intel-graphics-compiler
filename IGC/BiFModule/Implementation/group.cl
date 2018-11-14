@@ -948,7 +948,7 @@ void __builtin_spirv_OpGroupWaitEvents_i32_i32_p0i64(uint Execution, uint NumEve
 {
     if (Execution == Workgroup)
     {
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, WorkgroupMemory | CrossWorkgroupMemory);
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, AcquireRelease | WorkgroupMemory | CrossWorkgroupMemory);
     }
     else if (Execution == Subgroup)
     {
@@ -962,7 +962,7 @@ void __builtin_spirv_OpGroupWaitEvents_i32_i32_p4i64(uint Execution, uint NumEve
 {
     if (Execution == Workgroup)
     {
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, WorkgroupMemory | CrossWorkgroupMemory);
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, AcquireRelease | WorkgroupMemory | CrossWorkgroupMemory);
     }
     else if (Execution == Subgroup)
     {
@@ -978,9 +978,9 @@ bool __builtin_spirv_OpGroupAll_i32_i1(uint Execution, bool Predicate)
     {
         GET_MEMPOOL_PTR(tmp, int, 1)
         *tmp = 0;
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, WorkgroupMemory); // Wait for tmp to be initialized
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         __builtin_spirv_OpAtomicOr_p3i32_i32_i32_i32((volatile local uint*)tmp, Device, Relaxed, Predicate == 0); // Set to true if predicate is zero
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, WorkgroupMemory); // Wait for threads
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for threads
         return (*tmp == 0); // Return true if none of them failed the test
     }
     else if (Execution == Subgroup)
@@ -1002,9 +1002,9 @@ bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate)
     {
         GET_MEMPOOL_PTR(tmp, int, 1)
         *tmp = 0;
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, WorkgroupMemory); // Wait for tmp to be initialized
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         __builtin_spirv_OpAtomicOr_p3i32_i32_i32_i32((volatile local uint*)tmp, Device, Relaxed, Predicate != 0); // Set to true if predicate is non-zero
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, WorkgroupMemory);
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory);
         return *tmp; // Return true if any of them passed the test
     }
     else if (Execution == Subgroup) 
@@ -1034,9 +1034,9 @@ bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate)
     {                                                                                   \
         *tmp = Value;                                                                   \
     }                                                                                   \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, WorkgroupMemory);        \
+    __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory);        \
     type ret = *tmp;                                                                    \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, WorkgroupMemory);        \
+    __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory);        \
     return ret;                                                                         \
 }                           
 
@@ -1360,20 +1360,20 @@ static double   OVERLOADABLE __intel_add(double lhs, double rhs) { return lhs + 
     uint lid = __spirv_BuiltInLocalInvocationIndex();              				 		 \
     uint lsize = __spirv_WorkgroupSize();   			 								 \
     data[lid] = X;                                                      				 \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, WorkgroupMemory);         \
+    __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory);         \
     uint mask = 1 << ( ((8 * sizeof(uint)) - __builtin_spirv_OpenCL_clz_i32(lsize - 1)) - 1) ;  \
     while( mask > 0 )                                                   				 \
     {                                                                   				 \
         uint c = lid ^ mask;                                            				 \
         type other = ( c < lsize ) ? data[ c ] : identity;                     			 \
         X = op( other, X );                                        			             \
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, WorkgroupMemory);     \
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
         data[lid] = X;                                             				 \
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, WorkgroupMemory);     \
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
         mask >>= 1;                                                     				 \
     }                                                                   				 \
     type ret = data[0];                                                 				 \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, WorkgroupMemory);         \
+    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);         \
     return ret;  																		 \
 }          																 
 
@@ -1384,7 +1384,7 @@ static double   OVERLOADABLE __intel_add(double lhs, double rhs) { return lhs + 
     uint lid = __spirv_BuiltInLocalInvocationIndex();                        				 \
     uint lsize = __spirv_WorkgroupSize();   			 								 \
     data[lid] = X;                                                      				 \
-    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, WorkgroupMemory);         \
+    __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0,AcquireRelease |  WorkgroupMemory);         \
     uint offset = 1;                                                 					 \
     while( offset < lsize )                                             				 \
     {                                                                   				 \
@@ -1392,9 +1392,9 @@ static double   OVERLOADABLE __intel_add(double lhs, double rhs) { return lhs + 
                      data[ lid - offset ] :                              				 \
                      identity;                                           				 \
         X = op( X, other );                                             				 \
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, WorkgroupMemory);     \
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
         data[lid] = X;                                                  				 \
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, WorkgroupMemory);     \
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Workgroup, 0, AcquireRelease | WorkgroupMemory);     \
         offset <<= 1;                                                   		 		 \
     }                                                                   				 \
     return X;                                                           				 \
