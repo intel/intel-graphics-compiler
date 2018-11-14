@@ -1515,12 +1515,12 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, const SSource sources[2], const Dst
 {
     CVariable* srcs[2] = {nullptr, nullptr};
 
-    srcs[0] = GetSrcVariable(sources[0]);
+    srcs[0] = GetSrcVariable(sources[0], sources[0].fromConstantPool);
     SetSourceModifiers(0, sources[0]);
 
     if(sources[1].value)
     {
-        srcs[1] = GetSrcVariable(sources[1]);
+        srcs[1] = GetSrcVariable(sources[1], sources[1].fromConstantPool);
         SetSourceModifiers(1, sources[1]);
     }
     m_encoder->SetDstModifier(modifier);

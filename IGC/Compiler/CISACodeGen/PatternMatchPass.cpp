@@ -2459,15 +2459,30 @@ bool CodeGenPatternMatch::MatchModifier(llvm::Instruction& I, bool SupportSrc0Mo
 
     ModifierPattern *pattern = new (m_allocator)ModifierPattern();
     pattern->instruction = &I;
+    uint nbSources = GetNbSources(I);
 
     bool supportModifer = SupportsModifier(&I);
     bool supportRegioning = SupportsRegioning(&I);
-    uint nbSources = GetNbSources(I);
     pattern->sources[0] = GetSource(I.getOperand(0), supportModifer && SupportSrc0Mod, supportRegioning);
     if (nbSources>1)
     {
         pattern->sources[1] = GetSource(I.getOperand(1), supportModifer, supportRegioning);
     }
+
+    if (nbSources > 1 && I.getType()->isDoubleTy())
+    {
+        // add df imm to constant pool for binary/ternary inst
+        // we don't do 64-bit int imm for now since it may fit in D/W
+        for (int i = 0, numSrc = (int)nbSources; i < numSrc; ++i)
+        {
+            if (isa<Constant>(I.getOperand(i)))
+            {
+                AddToConstantPool(I.getParent(), I.getOperand(i));
+                pattern->sources[i].fromConstantPool = true;
+            }
+        }
+    }
+
     AddPattern(pattern);
 
     return true;
