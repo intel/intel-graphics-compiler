@@ -3331,7 +3331,6 @@ set(IGC_BUILD__LLVM_LIBS_TO_LINK
     "LLVMLinker"
     "LLVMCodeGen"
     "LLVMScalarOpts"
-    "LLVMInstCombine"
     "LLVMTransformUtils"
     "LLVMAnalysis"
     "LLVMTarget"
