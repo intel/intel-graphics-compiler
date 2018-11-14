@@ -24,6 +24,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 #pragma once
+#include "Compiler/MetaDataUtilsWrapper.h"
+#include "Compiler/CodeGenContextWrapper.hpp"
+
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/PassSupport.h"
 #include "llvm/IR/Instructions.h"
@@ -34,6 +37,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace IGC
 {
+    // forward decl
+    namespace IGCMD {
+        class MetaDataUtils;
+    }
+
 	//
 	// CodeAssumption inserts llvm.assume to make sure some of code's
 	// attributes holds. For example, OCL's get_global_id() will be
@@ -52,6 +60,8 @@ namespace IGC
 
 		void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
 			AU.setPreservesCFG();
+            AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
 		}
 
 		// APIs used directly
@@ -59,8 +69,18 @@ namespace IGC
 			llvm::Function* F,
 			llvm::AssumptionCache *AC);
 
+        static bool IsSGIdUniform(IGCMD::MetaDataUtils* pMDU, llvm::Function* F);
+
 	private:
 		bool m_changed;
+
+        IGCMD::MetaDataUtils* m_pMDUtils;
+
+        // Simple change to help uniform analysis (later).
+        void uniformHelper(llvm::Module* M);
+
+        // Add llvm.assume to assist other optimization such statelessToStateful
+        void addAssumption(llvm::Module* M);
 
 		// helpers
 		static bool isPositiveIndVar(

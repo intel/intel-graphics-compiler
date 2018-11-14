@@ -284,7 +284,7 @@ static void CommonOCLBasedPasses(
         IF_DEBUG_INFO(mpm.add(new ImplicitGlobalId());)
     }
 
-	if (IGC_GET_FLAG_VALUE(CodeAssumption) == 2)
+	if (IGC_IS_FLAG_ENABLED(EnableCodeAssumption))
 	{
 		mpm.add(new CodeAssumption());
 	}
