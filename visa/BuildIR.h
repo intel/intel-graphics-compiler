@@ -762,12 +762,6 @@ public:
             builtinR0 = R0CopyDcl;
         }
 
-        if (m_options->getOption(vISA_clearScratchWritesBeforeEOT))
-        {
-            // make r0 live out as we may need a dummy move at the end
-            builtinR0->setLiveOut();
-        }
-
         builtinA0 = createDeclareNoLookup(
             "BuiltinA0",
             G4_ADDRESS,

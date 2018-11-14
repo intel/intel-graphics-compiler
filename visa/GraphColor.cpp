@@ -9658,6 +9658,13 @@ int GlobalRA::coloringRegAlloc()
 
         resetGlobalRAStates();
 
+        if (builder.getOption(vISA_clearScratchWritesBeforeEOT) && 
+            (globalScratchOffset + nextSpillOffset) > 0)
+        {
+            // we need to set r0 be live out for this WA
+            builder.getBuiltinR0()->setLiveOut();
+        }
+
         //Identify the local variables to speedup following analysis
         markGraphBlockLocalVars(false);
         
@@ -9849,7 +9856,7 @@ int GlobalRA::coloringRegAlloc()
                     {
                         spillSize += lr->getDcl()->getByteSize();
                     }
-                    if (spillSize * 1.5 < (SCRATCH_MSG_LIMIT - builder.getOptions()->getuInt32Option(vISA_SpillMemOffset)))
+                    if (spillSize * 1.5 < (SCRATCH_MSG_LIMIT - globalScratchOffset))
                     {
                         enableSpillSpaceCompression = false;
                     }
