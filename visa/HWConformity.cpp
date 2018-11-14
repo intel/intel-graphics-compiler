@@ -7635,7 +7635,8 @@ void HWConformity::fixStridedRegion(INST_LIST_ITER it, G4_BB* bb)
             auto type = src->getType();
             if (IS_TYPE_FLOAT_ALL(type) || getTypeSize(type) == 8)
             {
-                insertMovBefore(it, i, type, bb);
+                auto newSrc = insertMovBefore(it, i, type, bb);
+                inst->setSrc(newSrc, i);
             }
         }
     }
