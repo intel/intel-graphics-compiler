@@ -135,6 +135,8 @@ DECLARE_IGC_REGKEY(bool, EnableHoistMulInLoop, true,
     "Hoist multiply with loop invirant out of loop, FP unsafe")
 DECLARE_IGC_REGKEY(bool, EnableGVN, true,
     "Enable LLVM global value numbering")
+DECLARE_IGC_REGKEY(bool, EnableLogicalAndToBranch, true,
+    "Enable convert logical AND to conditional branch")
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, ShaderDebugHashCodeInKernel,   false, "Append hash code to the binary")

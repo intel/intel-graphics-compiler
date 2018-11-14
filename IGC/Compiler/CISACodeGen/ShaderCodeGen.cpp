@@ -1126,6 +1126,7 @@ void OptimizeIR(CodeGenContext* pContext)
             mpm.add(createMarkReadOnlyLoadPass());
         }
 
+        mpm.add(createLogicalAndToBranchPass());
         mpm.add(llvm::createEarlyCSEPass());
 
         if (pContext->m_instrTypes.CorrelatedValuePropagationEnable)

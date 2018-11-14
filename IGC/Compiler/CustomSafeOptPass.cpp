@@ -2616,4 +2616,241 @@ bool FlattenSmallSwitch::runOnFunction(Function &F)
 IGC_INITIALIZE_PASS_BEGIN(FlattenSmallSwitch, "flattenSmallSwitch", "flattenSmallSwitch", false, false)
 IGC_INITIALIZE_PASS_END(FlattenSmallSwitch, "flattenSmallSwitch", "flattenSmallSwitch", false, false)
 
+////////////////////////////////////////////////////////////////////////
+// LogicalAndToBranch trying to find logical AND like below:
+//    res = simpleCond0 && complexCond1
+// and convert it to:
+//    if simpleCond0
+//        res = complexCond1
+//    else
+//        res = false
+namespace {
+class LogicalAndToBranch : public FunctionPass
+{
+public:
+    static char ID;
+    const int NUM_INST_THRESHOLD = 32;
+    LogicalAndToBranch();
+
+    StringRef getPassName() const override { return "LogicalAndToBranch"; }
+
+    bool runOnFunction(Function& F) override;
+
+protected:
+    SmallPtrSet<Instruction*, 8> m_sched;
+
+    // schedule instruction up before insertPos
+    bool scheduleUp(BasicBlock* bb, Value* V, Instruction* &insertPos);
+
+    // check if it's safe to convert instructions between cond0 & cond1,
+    // moveInsts are the values referened out of (cond0, cond1), we need to
+    // move them before cond0
+    bool isSafeToConvert(Instruction* cond0, Instruction* cond1,
+        smallvector<Instruction*, 8>& moveInsts);
+
+    void convertAndToBranch(Instruction* opAnd,
+        Instruction* cond0, Instruction* cond1, BasicBlock* &newBB);
+};
+
+}
+
+IGC_INITIALIZE_PASS_BEGIN(LogicalAndToBranch, "logicalAndToBranch", "logicalAndToBranch", false, false)
+IGC_INITIALIZE_PASS_END(LogicalAndToBranch, "logicalAndToBranch", "logicalAndToBranch", false, false)
+
+char LogicalAndToBranch::ID = 0;
+FunctionPass *IGC::createLogicalAndToBranchPass() { return new LogicalAndToBranch(); }
+
+LogicalAndToBranch::LogicalAndToBranch() : FunctionPass(ID)
+{
+    initializeLogicalAndToBranchPass(*PassRegistry::getPassRegistry());
+}
+
+bool LogicalAndToBranch::scheduleUp(BasicBlock* bb, Value* V,
+    Instruction* &insertPos)
+{
+    Instruction *inst = dyn_cast<Instruction>(V);
+    if (!inst)
+        return false;
+
+    if (inst->getParent() != bb || isa<PHINode>(inst))
+        return false;
+
+    if (m_sched.count(inst))
+    {
+        if (insertPos && !isInstPrecede(inst, insertPos))
+            insertPos = inst;
+        return false;
+    }
+
+    bool changed = false;
+
+    for (auto OI = inst->op_begin(), OE = inst->op_end(); OI != OE; ++OI)
+    {
+        changed |= scheduleUp(bb, OI->get(), insertPos);
+    }
+    m_sched.insert(inst);
+
+    if (insertPos && isInstPrecede(inst, insertPos))
+        return changed;
+
+    if (insertPos) {
+        inst->removeFromParent();
+        inst->insertBefore(insertPos);
+    }
+
+    return true;
+}
+
+// split original basic block from:
+//   original BB:
+//     %cond0 =
+//     ...
+//     %cond1 =
+//     %andRes = and i1 %cond0, %cond1
+//     ...
+// to:
+//    original BB:
+//      %cond0 =
+//      if %cond0, if.then, if.else
+//
+//    if.then:
+//      ...
+//      %cond1 =
+//      br if.end
+//
+//    if.else:
+//      br if.end
+//
+//    if.end:
+//       %andRes = phi [%cond1, if.then], [false, if.else]
+//       ...
+void LogicalAndToBranch::convertAndToBranch(Instruction* opAnd,
+    Instruction* cond0, Instruction* cond1, BasicBlock* &newBB)
+{
+    BasicBlock* bb = opAnd->getParent();
+    BasicBlock *bbThen, *bbElse, *bbEnd;
+
+    bbThen = bb->splitBasicBlock(cond0->getNextNode(), "if.then");
+    bbElse = bbThen->splitBasicBlock(opAnd, "if.else");
+    bbEnd = bbElse->splitBasicBlock(opAnd, "if.end");
+
+    bb->getTerminator()->eraseFromParent();
+    BranchInst* br = BranchInst::Create(bbThen, bbElse, cond0, bb);
+
+    bbThen->getTerminator()->eraseFromParent();
+    br = BranchInst::Create(bbEnd, bbThen);
+
+    PHINode* phi = PHINode::Create(opAnd->getType(), 2, "", opAnd);
+    phi->addIncoming(cond1, bbThen);
+    phi->addIncoming(ConstantInt::getFalse(opAnd->getType()), bbElse);
+    opAnd->replaceAllUsesWith(phi);
+    opAnd->eraseFromParent();
+
+    newBB = bbEnd;
+}
+
+bool LogicalAndToBranch::isSafeToConvert(
+    Instruction* cond0, Instruction* cond1,
+    smallvector<Instruction*, 8>& moveInsts)
+{
+    BasicBlock::iterator is0(cond0);
+    BasicBlock::iterator is1(cond1);
+
+    bool isSafe = true;
+    SmallPtrSet<Value*, 32> iset;
+
+    iset.insert(cond1);
+    for (auto i = ++is0; i != is1; ++i)
+    {
+        if ((*i).mayHaveSideEffects())
+        {
+            isSafe = false;
+            break;
+        }
+        iset.insert(&(*i));
+    }
+
+    if (!isSafe)
+    {
+        return false;
+    }
+
+    is0 = cond0->getIterator();
+    // check if the values in between are used elsewhere
+    for (auto i = ++is0; i != is1; ++i)
+    {
+        Instruction* inst = &*i;
+        for (auto ui : inst->users())
+        {
+            if (iset.count(ui) == 0)
+            {
+                moveInsts.push_back(inst);
+                break;
+            }
+        }
+    }
+    return isSafe;
+}
+
+bool LogicalAndToBranch::runOnFunction(Function& F)
+{
+    bool changed = false;
+    if (IGC_IS_FLAG_DISABLED(EnableLogicalAndToBranch))
+    {
+        return changed;
+    }
+
+    for (auto BI = F.begin(), BE = F.end(); BI != BE; )
+    {
+        // advance iterator before handling current BB
+        BasicBlock *bb = &*BI++;
+
+        for (auto II = bb->begin(), IE = bb->end(); II != IE; )
+        {
+            Instruction* inst = &(*II++);
+
+            // search for "and i1"
+            if (inst->getOpcode() == BinaryOperator::And &&
+                inst->getType()->isIntegerTy(1))
+            {
+                Instruction* s0 = dyn_cast<Instruction>(inst->getOperand(0));
+                Instruction* s1 = dyn_cast<Instruction>(inst->getOperand(1));
+                if (s0 && s1 &&
+                    s0->getNumUses() == 1 && s1->getNumUses() == 1 &&
+                    s0->getParent() == bb && s1->getParent() == bb)
+                {
+                    if (isInstPrecede(s1, s0))
+                    {
+                        std::swap(s0, s1);
+                    }
+                    BasicBlock::iterator is0(s0);
+                    BasicBlock::iterator is1(s1);
+
+                    if (std::distance(is0, is1) < NUM_INST_THRESHOLD)
+                    {
+                        continue;
+                    }
+
+                    smallvector<Instruction*, 8> moveInsts;
+                    if (isSafeToConvert(s0, s1, moveInsts))
+                    {
+                        // if values defined between s0 & s1 are referenced
+                        // outside of (s0, s1), they need to be moved before
+                        // s0 to keep SSA form.
+                        for (auto inst : moveInsts)
+                            scheduleUp(bb, inst, s0);
+                        m_sched.clear();
+
+                        // IE need to be updated since original BB is splited
+                        convertAndToBranch(inst, s0, s1, bb);
+                        IE = bb->end();
+                        changed = true;
+                    }
+                }
+            }
+        }
+    }
+
+    return changed;
+}
 
