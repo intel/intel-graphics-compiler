@@ -4063,18 +4063,6 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
 
         for (auto dcl : Declares)
         {
-            if (!dcl->getRegVar()->isPhyRegAssigned() && !dcl->isSpilled() &&
-                !fg.isPseudoDcl(dcl) && !dcl->getIsPartialDcl())
-            {
-                if (beforeRegAlloc == false)
-                {
-                    if (!dcl->getRegVar()->isPhyRegAssigned() && !dcl->isSpilled())
-                    {
-                        MUST_BE_TRUE(false, "ERROR: Fail to allocate physical register for variable <"
-                            << dcl->getName() << ">");
-                    }
-                }
-            }
             dcl->emit(output, false, m_options->getOption(vISA_SymbolReg));
             output << "\n";
         }
