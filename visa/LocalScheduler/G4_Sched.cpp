@@ -338,7 +338,7 @@ struct RegisterPressure
     unsigned getPressure(G4_BB* bb, std::vector<G4_INST*>* Insts = nullptr)
     {
         unsigned Max = 0;
-        for (auto Inst : *bb) 
+        for (auto Inst : *bb)
         {
             if (Inst->isPseudoKill())
                 continue;
@@ -529,7 +529,7 @@ bool preRA_Scheduler::run()
         if (!TargetBB.empty()) {
             G4_Label* L = bb->getLabel();
             if (!L || TargetBB.compare(L->asLabel()->getLabel()) != 0) {
-                SCHED_DUMP(std::cerr << "Skip non-target block, " 
+                SCHED_DUMP(std::cerr << "Skip non-target block, "
                                      << (L ? L->asLabel()->getLabel() : "")  << "\n");
                 continue;
             }
