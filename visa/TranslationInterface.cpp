@@ -447,8 +447,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
 
     G4_INST* inst;
     uint8_t instExecSize = (uint8_t) Get_Common_ISA_Exec_Size(executionSize);
-    const uint8_t exsize = 4; // exsize is a constant and never changed
-    unsigned int instOpt = Get_Gen4_Emask(emask, 4); // for insts of execution size of element_size before the loop
+    uint8_t exsize = 4; 
     RegionDesc *srcRegionDesc = getRegionStride1();
     RegionDesc *rdAlign16 = getRegionStride1();
     uint8_t element_size;       // element_size is set according to instExecSize
@@ -460,7 +459,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     G4_Imm *dbl_constant_0 = createDFImm(0.0);
     G4_Imm *dbl_constant_1 = createDFImm(1.0);
     G4_Align reg_align = Either;
-    if ( instExecSize == 1 || instExecSize == 4 )
+
+    if (instExecSize == 1 || instExecSize == 4)
     {
         element_size = 4;
         loopCount = 1;
@@ -469,9 +469,19 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     {
         ASSERT_USER(instExecSize == 8, "simd2 and simd16 support will be added later");
         element_size = 8;
-        loopCount = 2;
+        if (hasSIMD8DFMadm())
+        {
+            exsize = 8;
+            loopCount = 1;
+        }
+        else
+        {
+            loopCount = 2;
+        }
     }
 
+    unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
+ 
     // pred and conModifier
     G4_Declare *tmpFlag = createTempFlag(1);
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
@@ -1419,8 +1429,8 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
 
     G4_INST* inst;
     uint8_t instExecSize = (uint8_t)Get_Common_ISA_Exec_Size(executionSize);
-    const uint8_t exsize = 4; // exsize is a constant and never changed
-    unsigned int instOpt = Get_Gen4_Emask(emask, 4); // for insts of execution size of element_size before the loop
+    uint8_t exsize = 4; 
+   
     RegionDesc *srcRegionDesc = getRegionStride1();
     RegionDesc *rdAlign16 = getRegionStride1();
     unsigned int loopCount;
@@ -1437,6 +1447,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
 
     int line_no = lastInst ? lastInst->getLineNo() : 0;
     G4_Align reg_align = Either;
+
     if (instExecSize == 1 || instExecSize == 4)
     {
         element_size = 4;
@@ -1446,8 +1457,18 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     {
         ASSERT_USER(instExecSize == 8, "simd2 and simd16 support will be added later");
         element_size = 8;
-        loopCount = 2;
+        if (hasSIMD8DFMadm())
+        {
+            exsize = 8;
+            loopCount = 1;
+        }
+        else
+        {
+            loopCount = 2;
+        }
     }
+
+    unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
 
     // pred and conModifier
     G4_Declare *flagReg = createTempFlag(1);

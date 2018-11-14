@@ -430,4 +430,9 @@
         return true;
     }
 
+    bool hasSIMD8DFMadm() const
+    {
+        return false;
+    }
+
     // end HW capabilities
