@@ -693,11 +693,6 @@ bool TranslateBuild(
 				DumpShaderFile(pOutputFolder, spirv_text->str, spirv_text->length, hash, ".spvasm");
 				spvTextDestroy(spirv_text);
 			}
-			else {
-				printf("warning: There was an error during disassebling SPIRV binary. Error message:\n> ");
-				spvDiagnosticPrint(diag);
-				spvDiagnosticDestroy(diag);
-			}
 			#endif
 		}
 
