@@ -202,8 +202,6 @@ public:
     bool        GetHasBarrier() const { return m_HasBarrier; } 
     void        SetHasBarrier() { m_HasBarrier = true; }
 
-    bool        GetDSDualPatch() const { return m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH; }
-
     void        GetSimdOffsetBase(CVariable*& pVar);
     /// Returns a simd8 register filled with values [24, 20, 16, 12, 8, 4, 0]
     /// that are used to index subregisters of a GRF when counting offsets in bytes.
