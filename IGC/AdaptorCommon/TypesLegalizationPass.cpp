@@ -185,6 +185,12 @@ TypesLegalizationPass::ResolveValue( Instruction *ip,Value *val,SmallVector<unsi
 
   if(InsertValueInst *civ = dyn_cast<InsertValueInst>(val)) {
     ArrayRef<unsigned> civIndices = civ->getIndices();
+    if(indices.size() < civIndices.size()) {
+      // We have less indices collected than it is needed to reference scalar value
+      // inserted here. We will skip this instruction and anticipate there is further
+      // ExtractValue further that will specify missing indices.
+      return nullptr;
+    }
     unsigned i = 0;
     for(; i < civIndices.size(); ++i) {
       if(civIndices[i] != indices[i]) {
@@ -281,8 +287,11 @@ void TypesLegalizationPass::ResolveExtractValue( ExtractValueInst* evInst )
   SmallVector<unsigned,8> indices( evIndices.begin(),evIndices.end() );
 
   Value* val = ResolveValue( evInst,evInst->getOperand( 0 ),indices );
-  evInst->replaceAllUsesWith( val );
-  evInst->eraseFromParent();
+  if(val)
+  {
+    evInst->replaceAllUsesWith( val );
+    evInst->eraseFromParent();
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////
