@@ -1811,7 +1811,7 @@ void GatherDataForDriver(OpenCLProgramContext* ctx, COpenCLKernel* pShader, CSha
 
     if (pOutput->m_scratchSpaceUsedBySpills == 0 ||
         noRetry ||
-        ctx->m_retryManager.IsLastTry() ||
+        ctx->m_retryManager.IsLastTry(ctx) ||
         fullDebugInfo)
     {
         // Save the shader program to the state processor to be handled later
@@ -1916,7 +1916,7 @@ void CodeGen(OpenCLProgramContext* ctx)
         COpenCLKernel* simd16Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
         COpenCLKernel* simd32Shader = static_cast<COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
 
-        if (ctx->m_DriverInfo.sendMultipleSIMDModes())
+        if (ctx->m_DriverInfo.sendMultipleSIMDModes() && (ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 0))
         {
             //Gather the kernel binary for each compiled kernel
             if (SetKernelProgram(simd32Shader, 32))
@@ -1970,12 +1970,12 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
     // 1. compile only that SIMD mode and nothing else
     // 2. Compille that SIMD mode even if it is not profitable, i.e. even if compileThisSIMD = false for it.
     //    Don't bother checking profitability for it  
-    if (m_Context->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver != 0)
+    if (m_Context->getModuleMetaData()->csInfo.forcedSIMDSize != 0)
     {
         //Entered here means driver has requested a specific SIMD mode
-        if ((simdMode == SIMDMode::SIMD8 && m_Context->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver == 8) ||
-            (simdMode == SIMDMode::SIMD16 && m_Context->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver == 16) ||
-            (simdMode == SIMDMode::SIMD32 && m_Context->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver == 32))
+        if ((simdMode == SIMDMode::SIMD8 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 8) ||
+            (simdMode == SIMDMode::SIMD16 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 16) ||
+            (simdMode == SIMDMode::SIMD32 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 32))
         {
             m_Context->setDefaultSIMDMode(simdMode);
             return true;
@@ -1984,6 +1984,7 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
     }
 
     bool compileThisSIMD = CompileThisSIMD(simdMode, EP, F);
+    CodeGenContext *pCtx = GetContext();
     
     SIMDMode origSIMDMode = m_Context->getDefaultSIMDMode();
 
@@ -2006,7 +2007,7 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
         if (simdMode == SIMDMode::SIMD8 && m_Context->getDefaultSIMDMode() == SIMDMode::BEGIN)
             m_Context->setDefaultSIMDMode(simdMode);
 
-        if(m_Context->m_DriverInfo.sendMultipleSIMDModes()) {
+        if(m_Context->m_DriverInfo.sendMultipleSIMDModes() && (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)) {
             compileThisSIMD = true; //in this case continue to compile unless below condition is observed
         }
     }
@@ -2016,7 +2017,7 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
     //Note for this check to work the order must he ascending. Becuase in descending
     //order that is simd32 -> simd16--> simd8 we still have chance that one of hte lower
     //simd modes will compile.
-    if (compileThisSIMD && m_Context->m_DriverInfo.sendMultipleSIMDModes()) {
+    if (compileThisSIMD && m_Context->m_DriverInfo.sendMultipleSIMDModes() && (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)) {
         //Here are some of the assumptions
         //1. if m_Context->m_DriverInfo.sendMultipleSIMDModes() is true that means the order is always ascending.
         //   This will be cleaned up as a separate interface in CodeGen for compute path.
@@ -2027,18 +2028,18 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
         if(origSIMDMode  ==  SIMDMode::SIMD8 && m_Context->m_retryManager.GetLastSpillSize())
         {
             //if any one of these are set, we need to try compiling SIMD
-           if ((simdMode == SIMDMode::SIMD32 && IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 32) ||
-               (simdMode == SIMDMode::SIMD16 && IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 16))
+           if ((simdMode == SIMDMode::SIMD32 && pCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 32) ||
+               (simdMode == SIMDMode::SIMD16 && pCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 16))
            {
                compileThisSIMD = false;
            }
         }
-        else if(simdMode == SIMDMode::SIMD32 && IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 32) {
+        else if(simdMode == SIMDMode::SIMD32 && pCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 32) {
             //SIMD32 if not forced must see if SIMD16 has been generated without force or without spill
             auto simd16Shader = m_parent->GetShader(SIMDMode::SIMD16);
             bool hasSIMD16 = simd16Shader && simd16Shader->ProgramOutput()->m_programSize > 0;
             if(!hasSIMD16 ||
-               (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) == 16 && m_Context->m_retryManager.GetLastSpillSize()))
+               (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 16 && m_Context->m_retryManager.GetLastSpillSize()))
            {
                 compileThisSIMD = false;
            }
@@ -2062,7 +2063,7 @@ bool COpenCLKernel::CompileThisSIMD(SIMDMode simdMode, EmitPass &EP, llvm::Funct
          (simd32Program && simd32Program->ProgramOutput()->m_programSize > 0))
         
     {
-        if(!pCtx->m_DriverInfo.sendMultipleSIMDModes())
+        if(!(pCtx->m_DriverInfo.sendMultipleSIMDModes() && (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)))
             return false;
     }
 
@@ -2134,7 +2135,7 @@ bool COpenCLKernel::CompileThisSIMD(SIMDMode simdMode, EmitPass &EP, llvm::Funct
 
         // Check if we force code generation for the current SIMD size.
         // Note that for SIMD8, we always force it!
-        if (numLanes(simdMode) == IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) ||
+        if (numLanes(simdMode) == pCtx->getModuleMetaData()->csInfo.forcedSIMDSize ||
             simdMode == SIMDMode::SIMD8)
         {
             return true;

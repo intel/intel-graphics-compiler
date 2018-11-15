@@ -850,6 +850,8 @@ bool TranslateBuild(
 			BuiltinGenericModule->setTargetTriple(BuiltinSizeModule->getTargetTriple());
 		}
 
+        oclContext.getModuleMetaData()->csInfo.forcedSIMDSize |= IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth);
+
         if (llvm::StringRef(oclContext.getModule()->getTargetTriple()).startswith("spir"))
         {
             IGC::UnifyIRSPIR(&oclContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));

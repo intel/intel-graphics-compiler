@@ -696,7 +696,7 @@ void PSCodeGen(PixelShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders
 
         // for versioned loop, in general SIMD16 with spill has better perf
         bool earlyExit16 = psInfo.hasVersionedLoop ? false : earlyExit;
-        AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
+        AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(ctx), ShaderDispatchMode::NOT_APPLICABLE, pSignature);
 
         if (enableSimd32 || IGC_GET_FLAG_VALUE(SkipTREarlyExitCheck))
         {
@@ -728,11 +728,11 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders
     SIMDMode maxSimdMode = ctx->GetMaxSIMDMode();
     unsigned int waveSize = ctx->getModuleMetaData()->csInfo.waveSize;
 
-    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) || waveSize == 32 || ctx->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver == 32)
+    if (IGC_IS_FLAG_ENABLED(ForceCSSIMD32) || waveSize == 32 || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 32)
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, false);
     }
-    else if(((IGC_IS_FLAG_ENABLED(ForceCSSIMD16)) && simdModeAllowed <= SIMDMode::SIMD16) || ctx->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver == 16 ||
+    else if(((IGC_IS_FLAG_ENABLED(ForceCSSIMD16)) && simdModeAllowed <= SIMDMode::SIMD16) || ctx->getModuleMetaData()->csInfo.forcedSIMDSize == 16 ||
         waveSize == 16)
     {
         AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, false);
@@ -786,7 +786,7 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders
 
             if (ctx->m_enableSubroutine || !cgSimd16)
             {
-                AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry());
+                AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, !ctx->m_retryManager.IsLastTry(ctx));
                 setEarlyExit16Stat = true;
             }
             else
@@ -801,14 +801,14 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders
                     AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, true);
 
                 AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8,
-                    !ctx->m_retryManager.IsLastTry());
+                    !ctx->m_retryManager.IsLastTry(ctx));
             }
             break;
         }
 
         case SIMDMode::SIMD16:
         {
-            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, !ctx->m_retryManager.IsLastTry());
+            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD16, !ctx->m_retryManager.IsLastTry(ctx));
             if (!ctx->m_enableSubroutine && maxSimdMode == SIMDMode::SIMD32)
             {
                 AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, true);
@@ -818,7 +818,7 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders
 
         case SIMDMode::SIMD32:
         {
-            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, !ctx->m_retryManager.IsLastTry());
+            AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD32, !ctx->m_retryManager.IsLastTry(ctx));
             break;
         }
 
@@ -875,12 +875,12 @@ void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &kernels
         // If Multiple SIMD mode is enabled start with lower SIMD mode first.
         // Idea here is if a give SIMD mode spill all SIMD modes above that will definetly fail.
         AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
-        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 16));
-        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 32));
+        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
+        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
     } else {
         // The order in which we call AddCodeGenPasses matters, please to not change order
-        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 32));
-        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) != 16));
+        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
         AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
     }
     Passes.add(new DebugInfoPass(kernels));

@@ -392,7 +392,7 @@ void CShaderProgram::FillProgram(SComputeShaderKernelProgram* pKernelProgram)
     ComputeShaderContext* pctx =
         static_cast<ComputeShaderContext*>(GetContext());
     RetryManager& retryMgr = GetContext()->m_retryManager;
-    bool isLastTry = retryMgr.IsLastTry();
+    bool isLastTry = retryMgr.IsLastTry(pctx);
 
     float spillThreshold = pctx->GetSpillThreshold();
 

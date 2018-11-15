@@ -95,12 +95,11 @@ bool RetryManager::AllowLargeURBWrite() {
 bool RetryManager::IsFirstTry() {
     return (stateId == 0);
 }
-bool RetryManager::IsLastTry() {
+bool RetryManager::IsLastTry(CodeGenContext* cgCtx) {
     return (!enabled ||
         IGC_IS_FLAG_ENABLED(DisableRecompilation) ||
-        IGC_IS_FLAG_ENABLED(ForceOCLSIMDWidth) ||
-        (stateId < getStateCnt() &&
-            RetryTable[stateId].nextState >= getStateCnt()));
+        (cgCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 0) ||
+        (stateId < getStateCnt() && RetryTable[stateId].nextState >= getStateCnt()));
 }
 unsigned RetryManager::GetRetryId() const { return stateId; }
 
@@ -337,7 +336,7 @@ bool RetryManager::PickupCS(ComputeShaderContext* cgCtx)
     SComputeShaderKernelProgram* pKernelProgram = &cgCtx->programOutput;
 
     shader = static_cast<CComputeShader*>(
-        PickCSEntryForcedFromDriver(simdMode, cgCtx->getModuleMetaData()->csInfo.forcedSIMDModeFromDriver));
+        PickCSEntryForcedFromDriver(simdMode, cgCtx->getModuleMetaData()->csInfo.forcedSIMDSize));
     if(!shader)
     {
         shader = static_cast<CComputeShader*>(
@@ -348,7 +347,7 @@ bool RetryManager::PickupCS(ComputeShaderContext* cgCtx)
         shader = static_cast<CComputeShader*>(
             PickCSEntryEarly(simdMode, cgCtx));
     }
-    if(!shader && IsLastTry())
+    if(!shader && IsLastTry(cgCtx))
     {
         shader = static_cast<CComputeShader*>(
             PickCSEntryFinally(simdMode));

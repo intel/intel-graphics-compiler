@@ -153,7 +153,7 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
 
         // Determine how many simd modes we have per kernel
         std::vector<IGC::COpenCLKernel*> kernelVec;
-        if (m_pContext->m_DriverInfo.sendMultipleSIMDModes())
+        if (m_pContext->m_DriverInfo.sendMultipleSIMDModes() && (m_pContext->getModuleMetaData()->csInfo.forcedSIMDSize == 0))
         {
             SIMDMode defaultSIMD = m_pContext->getDefaultSIMDMode();
             switch (defaultSIMD)

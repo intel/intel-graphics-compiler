@@ -545,9 +545,9 @@ namespace IGC
         bool AllowSimd32Slicing();
         bool AllowLargeURBWrite();
         bool IsFirstTry();
-        bool IsLastTry();
+        bool IsLastTry(CodeGenContext* cgCtx);
         unsigned GetRetryId() const;
-
+        
         void Enable();
         void Disable();
         

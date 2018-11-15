@@ -229,7 +229,7 @@ void SubGroupFuncsResolution::CheckSIMDSize(Instruction &I, StringRef msg)
 {
     int32_t simdSize = GetSIMDSize(I.getParent()->getParent());
 
-    if (simdSize == 32 || IGC_GET_FLAG_VALUE(ForceOCLSIMDWidth) == 32)
+    if (simdSize == 32 || m_pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 32)
     {
         m_pCtx->EmitError(std::string(msg).c_str());
     }

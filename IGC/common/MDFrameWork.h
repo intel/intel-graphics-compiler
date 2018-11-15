@@ -102,7 +102,7 @@ namespace IGC
         unsigned int maxWorkGroupSize = 0;
         unsigned int waveSize = 0; // force a wave size
         std::vector<ComputeShaderSecondCompileInputInfoMD> ComputeShaderSecondCompile;
-        unsigned char forcedSIMDModeFromDriver = 0;  // 0 means not forced
+        unsigned char forcedSIMDSize = 0;  // 0 means not forced
 		bool forcedVISAPreRASchedulerOff = false;
     };
 
