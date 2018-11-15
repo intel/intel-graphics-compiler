@@ -6527,17 +6527,13 @@ void GraphColor::saveSubRegs(
         unsigned owordSize = ROUND(size, 16) / 16;
         G4_DstRegRegion *postDst = builder.createNullDst(Type_UD);
         G4_SrcRegRegion *payload = builder.Create_Src_Opnd_From_Dcl(scratchRegDcl, builder.getRegionStride1());
-        G4_Operand * exDesc = builder.createImm(0xa, Type_UD);
+        G4_Imm* exDesc = builder.createImm(0xa, Type_UD);
         G4_Imm* desc = gra.createMsgDesc(owordSize, true, false);
-        //bool restoreVal = Options::isaBinaryInput;
-        //Options::isaBinaryInput = false;
+        auto msgDesc = builder.createSendMsgDesc((uint32_t) desc->getInt(), (uint32_t) exDesc->getInt(), false, true);
         auto sendInst = builder.createSendInst(
-            NULL, G4_send, execSize, postDst, payload, exDesc, desc, InstOpt_WriteEnable, false, true, NULL);
+            NULL, G4_send, execSize, postDst, payload, exDesc, desc, InstOpt_WriteEnable, msgDesc);
         sendInst->setCISAOff(UNMAPPABLE_VISA_INDEX);
-        //Options::isaBinaryInput = restoreVal;
-        INST_LIST_ITER sendIt = builder.instList.end();
-        --sendIt;
-        bb->insert(insertIt, *sendIt);
+        bb->insert(insertIt, sendInst);
     }
 }
 
@@ -6710,17 +6706,13 @@ void GraphColor::saveRegs(
             uint8_t execSize = (owordSize > 2) ? 16 : 8;
             G4_DstRegRegion * postDst = builder.createNullDst((execSize > 8) ? Type_UW : Type_UD);
             G4_SrcRegRegion* payload = builder.Create_Src_Opnd_From_Dcl(msgDcl, builder.getRegionStride1());
-            G4_Operand * exDesc = builder.createImm(0xa, Type_UD);
+            G4_Imm* exDesc = builder.createImm(0xa, Type_UD);
             G4_Imm* desc = gra.createMsgDesc(owordSize, true, false);
-            //bool restoreVal = Options::isaBinaryInput;
-            //Options::isaBinaryInput = false;
+            auto msgDesc = builder.createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), false, true);
             auto sendInst = builder.createSendInst(
-                NULL, G4_send, execSize, postDst, payload, exDesc, desc, InstOpt_WriteEnable, false, true, NULL);
+                NULL, G4_send, execSize, postDst, payload, exDesc, desc, InstOpt_WriteEnable, msgDesc);
             sendInst->setCISAOff(UNMAPPABLE_VISA_INDEX);
-            //Options::isaBinaryInput = restoreVal;
-            INST_LIST_ITER sendIt = builder.instList.end();
-            --sendIt;
-            bb->insert(insertIt, *sendIt);
+            bb->insert(insertIt, sendInst);
         }
         //
         // mov (8) [startReg-1]<1>:d r126.0<8;8,1>:d
@@ -6847,17 +6839,13 @@ void GraphColor::restoreSubRegs(
         G4_DstRegRegion* postDst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 0, 1, Type_UD);
         G4_SrcRegRegion* payload = builder.createSrcRegRegion(Mod_src_undef, Direct,
             scratchRegDcl->getRegVar(), 1, 0, builder.getRegionStride1(), Type_UD);
-        G4_Operand * exDesc = builder.createImm(0xa, Type_UD);
+        G4_Imm* exDesc = builder.createImm(0xa, Type_UD);
         G4_Imm* desc = gra.createMsgDesc(owordSize, false, false);
-        //bool restoreVal = Options::isaBinaryInput;
-        //Options::isaBinaryInput = false;
+        auto msgDesc = builder.createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), true, false);
         auto sendInst = builder.createSendInst(
-            NULL, G4_send, execSize, postDst, payload, exDesc, desc, InstOpt_WriteEnable, true, false, NULL);
+            NULL, G4_send, execSize, postDst, payload, exDesc, desc, InstOpt_WriteEnable, msgDesc);
         sendInst->setCISAOff(UNMAPPABLE_VISA_INDEX);
-        //Options::isaBinaryInput = restoreVal;
-        INST_LIST_ITER sendIt = builder.instList.end();
-        --sendIt;
-        bb->insert(insertIt, *sendIt);
+        bb->insert(insertIt, sendInst);
     }
     //
     // mov (size) startReg.startSubReg<1>:b r126<1;1,1>:b
@@ -6940,17 +6928,13 @@ void GraphColor::restoreRegs(
 
             G4_DstRegRegion* postDst = builder.createDstRegRegion(Direct, dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
             G4_SrcRegRegion* payload = builder.Create_Src_Opnd_From_Dcl(scratchRegDcl, builder.getRegionStride1());
-            G4_Operand * exDesc = builder.createImm(0xa, Type_UD);
+            G4_Imm* exDesc = builder.createImm(0xa, Type_UD);
             G4_Imm* desc = gra.createMsgDesc(owordSize, false, false);
-            //bool restoreVal = Options::isaBinaryInput;
-            //Options::isaBinaryInput = false;
+            auto msgDesc = builder.createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), true, false);
             auto sendInst = builder.createSendInst(
-                NULL, G4_send, execSize, postDst, payload, exDesc, desc, InstOpt_WriteEnable, true, false, NULL);
+                NULL, G4_send, execSize, postDst, payload, exDesc, desc, InstOpt_WriteEnable, msgDesc);
             sendInst->setCISAOff(UNMAPPABLE_VISA_INDEX);
-            //Options::isaBinaryInput = restoreVal;
-            INST_LIST_ITER sendIt = builder.instList.end();
-            --sendIt;
-            bb->insert(insertIt, *sendIt);
+            bb->insert(insertIt, sendInst);
         }
 
         builder.instList.clear();

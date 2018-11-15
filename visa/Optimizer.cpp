@@ -7691,8 +7691,7 @@ public:
                     auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
                     auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinR0(), 1);
                     G4_INST* inst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
-                        builder.createImm(extDesc, Type_UD), builder.createImm(fenceDesc, Type_UD), InstOpt_WriteEnable, true,
-                        true, msgDesc);
+                        builder.createImm(extDesc, Type_UD), builder.createImm(fenceDesc, Type_UD), InstOpt_WriteEnable, msgDesc);
                     bb->insert(iter, inst);
                 }
                 else
@@ -7704,8 +7703,7 @@ public:
                     auto dstDcl = builder.createHardwiredDeclare(8, Type_UD, 1, 0);
                     auto dst = builder.Create_Dst_Opnd_From_Dcl(dstDcl, 1);
                     G4_INST* sendInst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
-                        builder.createImm(extDesc, Type_UD), builder.createImm(desc.value, Type_UD), InstOpt_WriteEnable, true,
-                        false, msgDesc);
+                        builder.createImm(extDesc, Type_UD), builder.createImm(desc.value, Type_UD), InstOpt_WriteEnable, msgDesc);
                     bb->insert(iter, sendInst);
                 }
 

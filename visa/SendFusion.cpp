@@ -1279,8 +1279,6 @@ void SendFusion::doFusion(
             Builder->createImm(newDesc->getExtendedDesc(), Type_UD),
             Builder->createImm(newDesc->getDesc(), Type_UD),
             InstOpt_WriteEnable,
-            newDesc->isDataPortRead(),
-            newDesc->isDataPortWrite(),
             newDesc);
     }
 

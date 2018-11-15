@@ -2497,10 +2497,10 @@ SpillManagerGMRF::createSendInst(
     G4_INST* sendInst;
 
     G4_Imm *exDesc = builder_->createImm(funcID, Type_UD);
-
+    auto msgDesc = builder_->createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), !isWrite, isWrite);
     sendInst = builder_->createSendInst(
         NULL, G4_send, execSize, postDst,
-        payload, exDesc, desc, option, !isWrite, isWrite, nullptr);
+        payload, exDesc, desc, option, msgDesc);
     sendInst->setCISAOff(curInst->getCISAOff());
 
     return sendInst;

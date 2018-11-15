@@ -6687,15 +6687,6 @@ void G4_INST::computeRightBound(G4_Operand* opnd)
 
         if(isSend())
 		{
-            if( getMsgDesc() == NULL &&
-                ( opnd == srcs[0] || opnd == dst ) )
-            {
-                // This call is from createSendInst where msg desc is
-                // not available.
-                opnd->unsetRightBound();
-                done = true;
-            }
-
             auto computeSendOperandBound = [](G4_Operand* opnd, int numReg)
             {
                 if (numReg == 0)

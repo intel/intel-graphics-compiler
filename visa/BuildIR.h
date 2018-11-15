@@ -1562,7 +1562,6 @@ public:
                             unsigned char size, G4_DstRegRegion* postDst,
                             G4_SrcRegRegion* payload, G4_Operand* src,
                             G4_Operand* msg, unsigned int option,
-                            bool isRead, bool isWrite,
                             G4_SendMsgDescriptor *msgDesc,
                             int lineno = 0);
 

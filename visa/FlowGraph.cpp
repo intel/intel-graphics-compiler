@@ -1384,11 +1384,11 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
                                 G4_SrcRegRegion* sendMsgOpnd = builder->Create_Src_Opnd_From_Dcl(
                                     builder->getBuiltinR0(),
                                     builder->getRegionStride1());
-
+                                auto msgDesc = builder->createSendMsgDesc(desc, SFID_SAMPLER, true, true);
                                 G4_INST* samplerFlushInst = builder->createSendInst(nullptr, G4_send,
                                     8, builder->createNullDst(Type_UD), sendMsgOpnd,
                                     builder->createImm(SFID_SAMPLER, Type_UD), builder->createImm(desc, Type_UD),
-                                    0, true, true, NULL, 0);
+                                    0, msgDesc, 0);
                                 auto iter = bb->end();
                                 --iter;
                                 bb->insert(iter, samplerFlushInst);
@@ -4339,6 +4339,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
 
     G4_DstRegRegion *sendDst = builder->createNullDst(Type_UD);
 
+    auto msgDesc = builder->createSendMsgDesc(desc, exdesc, false, true);
     G4_INST* sendInst = builder->createSendInst(
         NULL,
         G4_send,
@@ -4348,9 +4349,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
         builder->createImm(exdesc, Type_UD),
         builder->createImm(desc, Type_UD),
         InstOpt_WriteEnable,
-        /*isRead*/false,
-        /*isWrite*/true,
-        NULL,
+        msgDesc,
         0);
     // need to make sure builder list is empty since later phases do a splice on the entire list
     builder->instList.pop_back();

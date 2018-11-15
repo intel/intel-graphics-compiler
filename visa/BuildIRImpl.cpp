@@ -436,27 +436,11 @@ G4_INST* IR_Builder::createSendInst(G4_Predicate* prd,
                                     G4_Operand* extDesc,
                                     G4_Operand* msg,
                                     unsigned int option,
-                                    bool isRead,
-                                    bool isWrite,
                                     G4_SendMsgDescriptor *msgDesc,
                                     int lineno)
 {
 
-    if( !msgDesc )
-    {
-        // construct a msg descriptor here
-        MUST_BE_TRUE( extDesc->isImm(), "Extended msg desc is not immediate.");
-        MUST_BE_TRUE( msg->isImm(), "msgDesc is not provided and msg desc argument is not immediate.");
-
-        unsigned int regs2snd = ( msg->asImm()->getInt() >> getSendMsgLengthBitOffset() ) & 0xF;
-        unsigned int regs2rcv = ( msg->asImm()->getInt() >> getSendRspLengthBitOffset() ) & 0x1F;
-
-        int64_t srcVal = extDesc->asImm()->getInt();
-        msgDesc = createSendMsgDesc( (unsigned int)msg->asImm()->getInt(),
-            regs2rcv, regs2snd, (CISA_SHARED_FUNCTION_ID) (srcVal & 0x1F),
-            (srcVal & 0x20) != 0, 0, (uint16_t)(srcVal >> 16), isRead, isWrite);
-    }
-
+    assert (msgDesc && "msgDesc must not be null");
     G4_INST* m = new (mem)G4_INST(useDefAllocator, instAllocList, prd, op, NULL, false, size, postDst, currSrc, msg, option);
 
     ///used in binary encoding
@@ -692,8 +676,6 @@ G4_INST *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
 
     uint32_t exdesc = msgDesc->getExtendedDesc();
     uint32_t desc = msgDesc->getDesc();
-    bool isRead = msgDesc->isDataPortRead();
-    bool isWrite = msgDesc->isDataPortWrite();
     G4_Operand *bti = msgDesc->getBti();
     G4_Operand *sti = msgDesc->getSti();
     G4_Operand *descOpnd = NULL;
@@ -791,8 +773,6 @@ G4_INST *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
         exdescOpnd,
         descOpnd,
         option,
-        isRead,
-        isWrite,
         msgDesc,
         0);
 }

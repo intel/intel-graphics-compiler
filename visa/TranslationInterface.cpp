@@ -1855,6 +1855,7 @@ void IR_Builder::generateBarrierSend()
         0);
 
     // Generate the barrier send message
+    auto msgDesc = createSendMsgDesc(desc, exdesc, true, true);
     createSendInst(
         NULL,
         G4_send,
@@ -1864,9 +1865,7 @@ void IR_Builder::generateBarrierSend()
         createImm(exdesc, Type_UD),
         createImm(desc, Type_UD),
         InstOpt_WriteEnable,
-        true,
-        true,
-        NULL,
+        msgDesc,
         0);
 }
 
@@ -1905,8 +1904,9 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
             G4_DstRegRegion* sendDstOpnd = Create_Dst_Opnd_From_Dcl( dstDcl, 1);
             G4_SrcRegRegion* sendMsgOpnd = Create_Src_Opnd_From_Dcl( dcl, getRegionStride1());
 
+            auto msgDesc = createSendMsgDesc(desc, SFID_SAMPLER, true, true);
             createSendInst( NULL, G4_send, 8, sendDstOpnd, sendMsgOpnd,
-                createImm(SFID_SAMPLER, Type_UD), createImm(desc, Type_UD), 0, true, true, NULL, 0);
+                createImm(SFID_SAMPLER, Type_UD), createImm(desc, Type_UD), 0, msgDesc, 0);
 
             G4_SrcRegRegion* moveSrcOpnd = createSrcRegRegion(Mod_src_undef, Direct, dstDcl->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
             Create_MOV_Inst( dstDcl, 0, 0, 8, NULL, NULL, moveSrcOpnd);
@@ -6526,8 +6526,6 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
         createImm( exDesc, Type_UD ),
         msgDescOpnd,
         inst_opt,
-        true,
-        true,
         sendMsgDesc,
         0);
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
