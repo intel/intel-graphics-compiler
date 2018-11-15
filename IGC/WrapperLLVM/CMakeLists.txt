@@ -38,6 +38,7 @@ set(IGC_WrapperLLVM_HDR
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Instructions.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Function.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/GlobalValue.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/ValueHandle.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/ToolOutputFile.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Bitcode/BitcodeWriter.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/IPO.h"

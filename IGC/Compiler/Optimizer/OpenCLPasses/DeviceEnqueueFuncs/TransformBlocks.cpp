@@ -46,6 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvmWrapper/IR/Instructions.h"
 #include "llvmWrapper/IR/Attributes.h"
 #include "llvmWrapper/IR/IRBuilder.h"
+#include "llvmWrapper/IR/ValueHandle.h"
 #include "llvmWrapper/Transforms/Utils.h"
 
 #include "llvm/Pass.h"
@@ -581,7 +582,7 @@ namespace //Anonymous
     struct Capture
     {
         enum { ARG_NUM_NONE = UINT_MAX };
-        llvm::WeakVH value;
+        IGCLLVM::WeakVH value;
         CaptureKind  kind;
         unsigned     argNum;
 
