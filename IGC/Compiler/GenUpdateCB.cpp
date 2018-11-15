@@ -358,7 +358,6 @@ bool GenUpdateCB::runOnFunction(Function &F)
 
     // look for cases to create mini-shader
     uint counter = 0;
-    m_maxCBcases = 1;
     if (foundCases)
     {
         Instruction *ret = nullptr;
@@ -408,7 +407,8 @@ bool GenUpdateCB::runOnFunction(Function &F)
                 store->setOperand(0, vmap[inst]);
 
                 // replace original shader with read from runtime
-                llvm::Function* runtimeFunc = llvm::GenISAIntrinsic::getDeclaration(F.getParent(), GenISAIntrinsic::GenISA_RuntimeValue);
+                llvm::Function* runtimeFunc = llvm::GenISAIntrinsic::getDeclaration(
+                    F.getParent(), GenISAIntrinsic::GenISA_RuntimeValue);
                 Instruction* pValue = orig_builder.CreateCall(runtimeFunc, orig_builder.getInt32(counter));
                 pValue->insertBefore(inst);
 
