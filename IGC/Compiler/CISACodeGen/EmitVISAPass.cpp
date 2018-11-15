@@ -2431,17 +2431,57 @@ void EmitPass::emitCmpSADs(llvm::GenIntrinsicInst* inst)
 
     // Collect the MVs
     if (m_currShader->m_Platform->hasNo64BitInst()) {
+        CVariable* pMVMinAlias = m_currShader->GetNewAlias(pMVMin, ISA_TYPE_UD, 0, 32);
+        CVariable* pMVCurrAlias = m_currShader->GetNewAlias(pMVCurr, ISA_TYPE_UD, 0, 32);
+
+        //(W&fX.X) mov(8|M0) r(DST).0<1>:f    r(SRC).0<2;1,0>:f 
         m_encoder->SetNoMask();
-        m_encoder->SetSimdSize(SIMDMode::SIMD16);
-        m_encoder->Select(pFlag, pMVMin, pMVCurr, pMVMin);
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->SetSrcRegion(0, 2, 1, 0);
+        m_encoder->SetSrcRegion(1, 2, 1, 0);
+        m_encoder->SetDstRegion(2);
+        m_encoder->Select(pFlag, pMVMinAlias, pMVCurrAlias, pMVMinAlias);
         m_encoder->Push();
 
+        //(W&fX.X) mov(8|M0) r(DST).1<1>:f    r(SRC).1<2;1,0>:f
         m_encoder->SetNoMask();
-        m_encoder->SetSimdSize(SIMDMode::SIMD16);
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->SetSrcRegion(0, 2, 1, 0);
+        m_encoder->SetSrcRegion(1, 2, 1, 0);
+        m_encoder->SetDstRegion(2);
+        m_encoder->SetSrcSubReg(0, 1);
+        m_encoder->SetSrcSubReg(1, 1);
+        m_encoder->SetDstSubReg(1);
+        m_encoder->Select(pFlag, pMVMinAlias, pMVCurrAlias, pMVMinAlias);
+        m_encoder->Push();
+
+        //(W&fX.X) mov(8|M8) r(DST+2).0<2>:f    r(SRC+2).0<2;1,0>:f
+        m_encoder->SetNoMask();
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->SetMask(EMASK_Q2);
         m_encoder->SetSrcSubVar(0, 2);
         m_encoder->SetSrcSubVar(1, 2);
         m_encoder->SetDstSubVar(2);
-        m_encoder->Select(pFlag, pMVMin, pMVCurr, pMVMin);
+        m_encoder->SetSrcRegion(0, 2, 1, 0);
+        m_encoder->SetSrcRegion(1, 2, 1, 0);
+        m_encoder->SetDstRegion(2);
+        m_encoder->Select(pFlag, pMVMinAlias, pMVCurrAlias, pMVMinAlias);
+        m_encoder->Push();
+
+        //(W&fX.X) mov(8|M8) r(DST+2).1<2>:f    r(SRC+2).1<2;1,0>:f
+        m_encoder->SetNoMask();
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->SetMask(EMASK_Q2);
+        m_encoder->SetSrcSubVar(0, 2);
+        m_encoder->SetSrcSubVar(1, 2);
+        m_encoder->SetDstSubVar(2);
+        m_encoder->SetSrcRegion(0, 2, 1, 0);
+        m_encoder->SetSrcRegion(1, 2, 1, 0);
+        m_encoder->SetDstRegion(2);
+        m_encoder->SetSrcSubReg(0, 1);
+        m_encoder->SetSrcSubReg(1, 1);
+        m_encoder->SetDstSubReg(1);
+        m_encoder->Select(pFlag, pMVMinAlias, pMVCurrAlias, pMVMinAlias);
         m_encoder->Push();
     } else {
         CVariable* pMVCurrAlias = m_currShader->GetNewAlias(pMVCurr, ISA_TYPE_UQ, 0, 16);
