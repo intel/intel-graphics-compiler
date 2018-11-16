@@ -288,7 +288,8 @@ OctEltUnit CVertexShader::GetVertexURBEntryOutputReadLength() const
     {
         return round_up<OctElement>(m_properties.m_URBOutputLength) - GetURBHeaderSize();
     }
-    return OctEltUnit(0);
+    // The minimum valid value for vertex URB entry output length is 1.
+    return OctEltUnit(1);
 }
 
 OctEltUnit CVertexShader::GetVertexURBEntryOutputReadOffset() const
