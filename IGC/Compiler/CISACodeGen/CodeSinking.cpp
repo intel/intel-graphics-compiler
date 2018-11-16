@@ -736,7 +736,8 @@ bool CodeSinking::checkCongruent(const InstPair& values,
         isa<PHINode>(src0) ||
         isa<CmpInst>(src0) ||
         !(src0->getNumOperands() == 1 ||
-          src0->getNumOperands() == 2))
+          src0->getNumOperands() == 2)||
+        (isa<AllocaInst>(src0) && src0 != src1))
         return false;
 
     if (CallInst* call0 = dyn_cast<CallInst>(src0))

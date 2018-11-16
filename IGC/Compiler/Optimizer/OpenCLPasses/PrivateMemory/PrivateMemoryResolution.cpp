@@ -553,7 +553,10 @@ static void sinkAllocas(SmallVectorImpl<AllocaInst *> &Allocas) {
     SmallVector<Instruction *, 8> UInsts;
     for (auto U : AI->users()) {
       auto UI = dyn_cast<Instruction>(U);
-      if (!UI) {
+      //can't sink the alloca in the same BB where a PHI node exists
+      //As it will violate the basic block structure, since phi nodes
+      //will always be at the beginging of a BB
+      if (!UI || isa<PHINode>(UI)) {
         Skip = true;
         break;
       }
