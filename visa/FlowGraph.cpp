@@ -4318,28 +4318,17 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     // mov (8) r1.0<1>:ud r0.0<8;8,1>:ud {NoMask}
     // send (8) null r1 0x27 desc
     IR_Builder* builder = parent->builder;
-
-    G4_Declare* dcl = nullptr;
-    if (!builder->getOption(vISA_enablePreemption))
+    G4_Declare *dcl = builder->Create_MRF_Dcl(8, Type_UD);
+    G4_DstRegRegion* movDst = builder->Create_Dst_Opnd_From_Dcl(dcl, 1);
+    G4_SrcRegRegion* r0Src = builder->Create_Src_Opnd_From_Dcl(
+        builder->getBuiltinR0(), builder->getRegionStride1());
+    G4_INST *movInst = builder->createInternalInst(NULL, G4_mov, NULL, false, 8,
+        movDst, r0Src, NULL, InstOpt_WriteEnable, 0, lastInst ? lastInst->getCISAOff() : -1, 0);
+    if (lastInst)
     {
-        // add a mov since we can't directly use r0 due to the early EOT restriction
-        dcl = builder->Create_MRF_Dcl(8, Type_UD);
-        G4_DstRegRegion* movDst = builder->Create_Dst_Opnd_From_Dcl(dcl, 1);
-        G4_SrcRegRegion* r0Src = builder->Create_Src_Opnd_From_Dcl(
-            builder->getBuiltinR0(), builder->getRegionStride1());
-
-        G4_INST *movInst = builder->createInternalInst(NULL, G4_mov, NULL, false, 8,
-            movDst, r0Src, NULL, InstOpt_WriteEnable, 0, lastInst ? lastInst->getCISAOff() : -1, 0);
-        if (lastInst)
-        {
-            movInst->setLocation(lastInst->getLocation());
-        }
-        instList.push_back(movInst);
+        movInst->setLocation(lastInst->getLocation());
     }
-    else
-    {
-        dcl = builder->getBuiltinR0();
-    }
+    instList.push_back(movInst);
 
     int exdesc = (0x1 << 5) + SFID_SPAWNER;
     // response len = 0, msg len = 1
@@ -4365,11 +4354,8 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     // need to make sure builder list is empty since later phases do a splice on the entire list
     builder->instList.pop_back();
     // createSendInst incorrectly sets its cisa offset to the last value of the counter.
-    if (lastInst)
-    {
-        sendInst->setCISAOff(lastInst->getCISAOff());
-        sendInst->setLocation(lastInst->getLocation());
-    }
+    sendInst->setCISAOff(movInst->getCISAOff());
+    sendInst->setLocation(movInst->getLocation());
     instList.push_back(sendInst);
 }
 
