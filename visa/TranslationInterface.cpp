@@ -710,97 +710,101 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
         G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
         inst = createInst(predicateFlagReg, G4_if, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
 
-        // madm (4) r9.acc3 r0.noacc r6.noacc r8.acc2 {Align16, N1/N2}
-        G4_SrcRegRegion *t0SrcOpnd = createSrcRegRegion(tsrc0);
-        t9DstOpnd0->setAccRegSel( ACC3 );
-        t0SrcOpnd->setAccRegSel( NOACC );
-        t6SrcOpnd1->setAccRegSel( NOACC );
-        t8SrcOpnd0x0->setAccRegSel( ACC2 );
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, t9DstOpnd0, t0SrcOpnd,
-            t6SrcOpnd1, t8SrcOpnd0x0, madmInstOpt, line_no);
-
-        // madm (4) r10.acc4 r1.noacc -r7.noacc r8.acc2 {Align16, N1/N2}
-        G4_SrcRegRegion *t1SrcOpnd0 = createSrcRegRegion(tsrc1);
-        t10DstOpnd0->setAccRegSel( ACC4 );
-        t1SrcOpnd0->setAccRegSel( NOACC );
-        t7SrcOpndNeg0->setAccRegSel( NOACC );
-        t8SrcOpnd0x1->setAccRegSel( ACC2 );
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, t10DstOpnd0, t1SrcOpnd0,
-            t7SrcOpndNeg0, t8SrcOpnd0x1, madmInstOpt, line_no);
-
-        // madm (4) r11.acc5 r6.noacc -r7.noacc r9.acc3 {Align16, N1/N2}
-        t11DstOpnd0->setAccRegSel( ACC5 );
-        t6SrcOpnd2->setAccRegSel( NOACC );
-        t7SrcOpndNeg1->setAccRegSel( NOACC );
-        t9SrcOpnd0x0->setAccRegSel( ACC3 );
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, t11DstOpnd0, t6SrcOpnd2,
-            t7SrcOpndNeg1, t9SrcOpnd0x0, madmInstOpt, line_no);
-
-        // madm (4) r12.acc6 r8.acc2 r10.acc4 r8.acc2 {Align16, N1/N2}
-        t12DstOpnd0->setAccRegSel( ACC6 );
-        t8SrcOpnd0x2->setAccRegSel( ACC2 );
-        t10SrcOpnd0->setAccRegSel( ACC4 );
-        t8SrcOpnd0x3->setAccRegSel( ACC2 );
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, t12DstOpnd0, t8SrcOpnd0x2,
-            t10SrcOpnd0, t8SrcOpnd0x3, madmInstOpt, line_no);
-
-        // madm (4) r13.acc7 r1.noacc -r7.noacc r12.acc6 {Align16, N1/N2}
-        G4_SrcRegRegion *t1SrcOpnd1 = createSrcRegRegion(tsrc1);
-        t13DstOpnd0->setAccRegSel( ACC7 );
-        t1SrcOpnd1->setAccRegSel( NOACC );
-        t7SrcOpndNeg2->setAccRegSel( NOACC );
-        t12SrcOpnd0x0->setAccRegSel( ACC6 );
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, t13DstOpnd0, t1SrcOpnd1,
-            t7SrcOpndNeg2, t12SrcOpnd0x0, madmInstOpt, line_no);
-
-        // madm (4) r8.acc8 r8.acc2 r10.acc4 r12.acc6 {Align16, N1/N2}
-        t8DstOpnd1->setAccRegSel( ACC8 );
-        t8SrcOpnd0x4->setAccRegSel( ACC2 );
-        t10SrcOpnd1->setAccRegSel( ACC4 );
-        t12SrcOpnd0x1->setAccRegSel( ACC6 );
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, t8DstOpnd1, t8SrcOpnd0x4,
-            t10SrcOpnd1, t12SrcOpnd0x1, madmInstOpt, line_no);
-
-        // madm (4) r9.acc9 r9.acc3 r11.acc5 r12.acc6 {Align16, N1/N2}
-        t9DstOpnd1->setAccRegSel( ACC9 );
-        t9SrcOpnd0x1->setAccRegSel( ACC3 );
-        t11SrcOpnd0->setAccRegSel( ACC5 );
-        t12SrcOpnd0x2->setAccRegSel( ACC6 );
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, t9DstOpnd1, t9SrcOpnd0x1,
-            t11SrcOpnd0, t12SrcOpnd0x2, madmInstOpt, line_no);
-
-        // madm (4) r12.acc2 r12.acc6 r8.acc8 r13.acc7 {Align16, N1/N2}
-        t12DstOpnd1->setAccRegSel( ACC2 );
-        t12SrcOpnd0x3->setAccRegSel( ACC6 );
-        t8SrcOpnd1->setAccRegSel( ACC8 );
-        t13SrcOpnd0->setAccRegSel( ACC7 );
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, t12DstOpnd1, t12SrcOpnd0x3,
-            t8SrcOpnd1, t13SrcOpnd0, madmInstOpt, line_no);
-
-        // madm (4) r11.acc3 r6.noacc -r7.noacc r9.acc9 {Align16, N1/N2}
-        t11DstOpnd1->setAccRegSel( ACC3 );
-        t6SrcOpnd3->setAccRegSel( NOACC );
-        t7SrcOpndNeg3->setAccRegSel( NOACC );
-        t9SrcOpnd1x0->setAccRegSel( ACC9 );
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, t11DstOpnd1, t6SrcOpnd3,
-            t7SrcOpndNeg3, t9SrcOpnd1x0, madmInstOpt, line_no);
-
-        if (!hasDefaultRoundDenorm)
         {
-            G4_DstRegRegion *cr0DstRegOpndForRestoreIfInst = createDstRegRegion(regDstCR0);
-            auto tmpSrcOpndForCR0OnIf = Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar());
-            // restore cr0.0
-            inst = createInst(NULL, G4_mov, NULL, false, 1, cr0DstRegOpndForRestoreIfInst, tmpSrcOpndForCR0OnIf,
-                NULL, InstOpt_WriteEnable, line_no);
-        }
 
-        // madm (4) r8.noacc r9.acc9 r11.acc3 r12.acc2 {Align16, N1/N2}
-        t8DstOpnd2->setAccRegSel( NOACC );
-        t9SrcOpnd1x1->setAccRegSel( ACC9 );
-        t11SrcOpnd1->setAccRegSel( ACC3 );
-        t12SrcOpnd1->setAccRegSel( ACC2 );
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, t8DstOpnd2, t9SrcOpnd1x1,
-            t11SrcOpnd1, t12SrcOpnd1, madmInstOpt, line_no);
+
+            // madm (4) r9.acc3 r0.noacc r6.noacc r8.acc2 {Align16, N1/N2}
+            G4_SrcRegRegion *t0SrcOpnd = createSrcRegRegion(tsrc0);
+            t9DstOpnd0->setAccRegSel(ACC3);
+            t0SrcOpnd->setAccRegSel(NOACC);
+            t6SrcOpnd1->setAccRegSel(NOACC);
+            t8SrcOpnd0x0->setAccRegSel(ACC2);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, t9DstOpnd0, t0SrcOpnd,
+                t6SrcOpnd1, t8SrcOpnd0x0, madmInstOpt, line_no);
+
+            // madm (4) r10.acc4 r1.noacc -r7.noacc r8.acc2 {Align16, N1/N2}
+            G4_SrcRegRegion *t1SrcOpnd0 = createSrcRegRegion(tsrc1);
+            t10DstOpnd0->setAccRegSel(ACC4);
+            t1SrcOpnd0->setAccRegSel(NOACC);
+            t7SrcOpndNeg0->setAccRegSel(NOACC);
+            t8SrcOpnd0x1->setAccRegSel(ACC2);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, t10DstOpnd0, t1SrcOpnd0,
+                t7SrcOpndNeg0, t8SrcOpnd0x1, madmInstOpt, line_no);
+
+            // madm (4) r11.acc5 r6.noacc -r7.noacc r9.acc3 {Align16, N1/N2}
+            t11DstOpnd0->setAccRegSel(ACC5);
+            t6SrcOpnd2->setAccRegSel(NOACC);
+            t7SrcOpndNeg1->setAccRegSel(NOACC);
+            t9SrcOpnd0x0->setAccRegSel(ACC3);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, t11DstOpnd0, t6SrcOpnd2,
+                t7SrcOpndNeg1, t9SrcOpnd0x0, madmInstOpt, line_no);
+
+            // madm (4) r12.acc6 r8.acc2 r10.acc4 r8.acc2 {Align16, N1/N2}
+            t12DstOpnd0->setAccRegSel(ACC6);
+            t8SrcOpnd0x2->setAccRegSel(ACC2);
+            t10SrcOpnd0->setAccRegSel(ACC4);
+            t8SrcOpnd0x3->setAccRegSel(ACC2);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, t12DstOpnd0, t8SrcOpnd0x2,
+                t10SrcOpnd0, t8SrcOpnd0x3, madmInstOpt, line_no);
+
+            // madm (4) r13.acc7 r1.noacc -r7.noacc r12.acc6 {Align16, N1/N2}
+            G4_SrcRegRegion *t1SrcOpnd1 = createSrcRegRegion(tsrc1);
+            t13DstOpnd0->setAccRegSel(ACC7);
+            t1SrcOpnd1->setAccRegSel(NOACC);
+            t7SrcOpndNeg2->setAccRegSel(NOACC);
+            t12SrcOpnd0x0->setAccRegSel(ACC6);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, t13DstOpnd0, t1SrcOpnd1,
+                t7SrcOpndNeg2, t12SrcOpnd0x0, madmInstOpt, line_no);
+
+            // madm (4) r8.acc8 r8.acc2 r10.acc4 r12.acc6 {Align16, N1/N2}
+            t8DstOpnd1->setAccRegSel(ACC8);
+            t8SrcOpnd0x4->setAccRegSel(ACC2);
+            t10SrcOpnd1->setAccRegSel(ACC4);
+            t12SrcOpnd0x1->setAccRegSel(ACC6);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, t8DstOpnd1, t8SrcOpnd0x4,
+                t10SrcOpnd1, t12SrcOpnd0x1, madmInstOpt, line_no);
+
+            // madm (4) r9.acc9 r9.acc3 r11.acc5 r12.acc6 {Align16, N1/N2}
+            t9DstOpnd1->setAccRegSel(ACC9);
+            t9SrcOpnd0x1->setAccRegSel(ACC3);
+            t11SrcOpnd0->setAccRegSel(ACC5);
+            t12SrcOpnd0x2->setAccRegSel(ACC6);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, t9DstOpnd1, t9SrcOpnd0x1,
+                t11SrcOpnd0, t12SrcOpnd0x2, madmInstOpt, line_no);
+
+            // madm (4) r12.acc2 r12.acc6 r8.acc8 r13.acc7 {Align16, N1/N2}
+            t12DstOpnd1->setAccRegSel(ACC2);
+            t12SrcOpnd0x3->setAccRegSel(ACC6);
+            t8SrcOpnd1->setAccRegSel(ACC8);
+            t13SrcOpnd0->setAccRegSel(ACC7);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, t12DstOpnd1, t12SrcOpnd0x3,
+                t8SrcOpnd1, t13SrcOpnd0, madmInstOpt, line_no);
+
+            // madm (4) r11.acc3 r6.noacc -r7.noacc r9.acc9 {Align16, N1/N2}
+            t11DstOpnd1->setAccRegSel(ACC3);
+            t6SrcOpnd3->setAccRegSel(NOACC);
+            t7SrcOpndNeg3->setAccRegSel(NOACC);
+            t9SrcOpnd1x0->setAccRegSel(ACC9);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, t11DstOpnd1, t6SrcOpnd3,
+                t7SrcOpndNeg3, t9SrcOpnd1x0, madmInstOpt, line_no);
+
+            if (!hasDefaultRoundDenorm)
+            {
+                G4_DstRegRegion *cr0DstRegOpndForRestoreIfInst = createDstRegRegion(regDstCR0);
+                auto tmpSrcOpndForCR0OnIf = Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar());
+                // restore cr0.0
+                inst = createInst(NULL, G4_mov, NULL, false, 1, cr0DstRegOpndForRestoreIfInst, tmpSrcOpndForCR0OnIf,
+                    NULL, InstOpt_WriteEnable, line_no);
+            }
+
+            // madm (4) r8.noacc r9.acc9 r11.acc3 r12.acc2 {Align16, N1/N2}
+            t8DstOpnd2->setAccRegSel(NOACC);
+            t9SrcOpnd1x1->setAccRegSel(ACC9);
+            t11SrcOpnd1->setAccRegSel(ACC3);
+            t12SrcOpnd1->setAccRegSel(ACC2);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, t8DstOpnd2, t9SrcOpnd1x1,
+                t11SrcOpnd1, t12SrcOpnd1, madmInstOpt, line_no);
+        }
 
         if (!hasDefaultRoundDenorm)
         {
@@ -816,7 +820,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
 
         // endif (8) {Q1/Q2}
         inst = createInst(NULL, G4_endif, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
-    };
+    }; //for loop
 
     // make final copy to dst
     // dst = r8:df     mov (instExecSize) dstOpnd, t8_src_opnd_final {Q1/N1}
@@ -1442,6 +1446,8 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     G4_SrcRegRegion *src1 = nullptr;
     G4_SrcRegRegion *src2 = nullptr;
     G4_SrcRegRegion *neg_src1 = nullptr;
+    G4_SrcRegRegion *neg_src0 = nullptr;
+
     G4_Imm *immData = nullptr;
 
     G4_INST* lastInst = instList.empty() ? nullptr : instList.back();
@@ -1598,135 +1604,138 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
         G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
         inst = createInst(predicateFlagReg, G4_if, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
         
-
-        // madm (4) r9.acc3 r0.noacc r2(r8).noacc r7.acc2 {Align16, N1/N2}
-        dst0 = createDstRegRegion(tdst9); dst0->setAccRegSel(ACC3);
-        src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
-        src1 = createSrcRegRegion(csrc2); src1->setAccRegSel(NOACC);
-        src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC2);
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-        
-
-        // madm (4) r11.acc4 r0.noacc r6.noacc r7.acc2 {Align16, N1/N2}
-        dst0 = createDstRegRegion(tdst11); dst0->setAccRegSel(ACC4);
-        src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
-        if (IsSrc0Moved)
         {
-            src1 = createSrcRegRegion(tsrc6);
+            // madm (4) r9.acc3 r0.noacc r2(r8).noacc r7.acc2 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst9); dst0->setAccRegSel(ACC3);
+            src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
+            src1 = createSrcRegRegion(csrc2); src1->setAccRegSel(NOACC);
+            src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC2);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
+
+
+            // madm (4) r11.acc4 r0.noacc r6.noacc r7.acc2 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst11); dst0->setAccRegSel(ACC4);
+            src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
+            if (IsSrc0Moved)
+            {
+                src1 = createSrcRegRegion(tsrc6);
+            }
+            else
+            {
+                src1 = createSrcRegRegion(fsrc0);
+            }
+            src1->setAccRegSel(NOACC);
+            src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC2);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
+
+
+            // madm (4) r10.acc5 r2(r8).noacc -r11.acc4 r9.acc3 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst10); dst0->setAccRegSel(ACC5);
+            src0 = createSrcRegRegion(csrc2); src0->setAccRegSel(NOACC);
+            src1 = createSrcRegRegion(tsrc11); src1->setAccRegSel(ACC4);
+            src2 = createSrcRegRegion(tsrc9); src2->setAccRegSel(ACC3);
+            G4_SrcRegRegion neg_srcRegion(Mod_Minus,
+                src1->asSrcRegRegion()->getRegAccess(),
+                src1->asSrcRegRegion()->getBase(),
+                src1->asSrcRegRegion()->getRegOff(),
+                src1->asSrcRegRegion()->getSubRegOff(),
+                src1->asSrcRegRegion()->getRegion(),
+                src1->getType());
+            neg_src1 = createSrcRegRegion(neg_srcRegion);
+            neg_src1->setAccRegSel(src1->getAccRegSel());
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, neg_src1, src2, madmInstOpt, line_no);
+
+
+            // madm (4) r8.acc6 r1.noacc r2(r8).noacc r1.noacc {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst8); dst0->setAccRegSel(ACC6);
+            src0 = createSrcRegRegion(csrc1); src0->setAccRegSel(NOACC);
+            src1 = createSrcRegRegion(csrc2); src1->setAccRegSel(NOACC);
+            src2 = createSrcRegRegion(csrc1); src2->setAccRegSel(NOACC);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
+
+
+            // madm (4) r8.acc7 r1.noacc r8.acc6 r10.acc5 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst8); dst0->setAccRegSel(ACC7);
+            src0 = createSrcRegRegion(csrc1); src0->setAccRegSel(NOACC);
+            src1 = createSrcRegRegion(tsrc8); src1->setAccRegSel(ACC6);
+            src2 = createSrcRegRegion(tsrc10); src2->setAccRegSel(ACC5);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
+
+
+            // madm (4) r7.acc8 r0.noacc r10.acc5 r11.acc4 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(ACC8);
+            src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
+            src1 = createSrcRegRegion(tsrc10); src1->setAccRegSel(ACC5);
+            src2 = createSrcRegRegion(tsrc11); src2->setAccRegSel(ACC4);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
+
+
+            // madm (4) r10.acc9 r0.noacc r10.acc5 r9.acc3 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst10); dst0->setAccRegSel(ACC9);
+            src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
+            src1 = createSrcRegRegion(tsrc10); src1->setAccRegSel(ACC5);
+            src2 = createSrcRegRegion(tsrc9); src2->setAccRegSel(ACC3);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
+
+
+            // madm (4) r7.acc8 r11.acc4 r8.acc7 r7.acc8 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(ACC8);
+            src0 = createSrcRegRegion(tsrc11); src0->setAccRegSel(ACC4);
+            src1 = createSrcRegRegion(tsrc8); src1->setAccRegSel(ACC7);
+            src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC8);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
+
+
+            // madm (4) r8.acc7 r9.acc3 r8.acc7 r10.acc9 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst8); dst0->setAccRegSel(ACC7);
+            src0 = createSrcRegRegion(tsrc9); src0->setAccRegSel(ACC3);
+            src1 = createSrcRegRegion(tsrc8); src1->setAccRegSel(ACC7);
+            src2 = createSrcRegRegion(tsrc10); src2->setAccRegSel(ACC9);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
+
+
+            // madm (4) r9.acc3 r6.noacc -r7.acc8 r7.acc8 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst9); dst0->setAccRegSel(ACC3);
+            if (IsSrc0Moved)
+            {
+                src0 = createSrcRegRegion(tsrc6);
+            }
+            else
+            {
+                src0 = createSrcRegRegion(fsrc0);
+            }
+            src0->setAccRegSel(NOACC);
+            src1 = createSrcRegRegion(tsrc7); src1->setAccRegSel(ACC8);
+            src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC8);
+            G4_SrcRegRegion neg_srcRegion1(Mod_Minus,
+                src1->asSrcRegRegion()->getRegAccess(),
+                src1->asSrcRegRegion()->getBase(),
+                src1->asSrcRegRegion()->getRegOff(),
+                src1->asSrcRegRegion()->getSubRegOff(),
+                src1->asSrcRegRegion()->getRegion(),
+                src1->getType());
+            neg_src1 = createSrcRegRegion(neg_srcRegion1);
+            neg_src1->setAccRegSel(src1->getAccRegSel());
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, neg_src1, src2, madmInstOpt, line_no);
+
+            if (!hasDefaultRoundDenorm)
+            {
+                // restore cr0.0
+                dst0 = createDstRegRegion(regDstCR0);
+                src0 = Create_Src_Opnd_From_Dcl(tmpRegCR0, getRegionScalar());
+                // mov (1) cr0.0<0;1,0>:ud r108.0<1>:ud {NoMask}
+                inst = createInst(NULL, G4_mov, NULL, false, 1, dst0, src0, NULL, InstOpt_WriteEnable, line_no);
+            }
+
+            // madm (4) r7.noacc r7.acc8 r9.acc3 r8.acc7 {Align16, N1/N2}
+            dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(NOACC);
+            src0 = createSrcRegRegion(tsrc7); src0->setAccRegSel(ACC8);
+            src1 = createSrcRegRegion(tsrc9); src1->setAccRegSel(ACC3);
+            src2 = createSrcRegRegion(tsrc8); src2->setAccRegSel(ACC7);
+            inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
+
         }
-        else
-        {
-            src1 = createSrcRegRegion(fsrc0);
-        }
-        src1->setAccRegSel(NOACC);
-        src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC2);
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-        
 
-        // madm (4) r10.acc5 r2(r8).noacc -r11.acc4 r9.acc3 {Align16, N1/N2}
-        dst0 = createDstRegRegion(tdst10); dst0->setAccRegSel(ACC5);
-        src0 = createSrcRegRegion(csrc2); src0->setAccRegSel(NOACC);
-        src1 = createSrcRegRegion(tsrc11); src1->setAccRegSel(ACC4);
-        src2 = createSrcRegRegion(tsrc9); src2->setAccRegSel(ACC3);
-        G4_SrcRegRegion neg_srcRegion(Mod_Minus,
-            src1->asSrcRegRegion()->getRegAccess(),
-            src1->asSrcRegRegion()->getBase(),
-            src1->asSrcRegRegion()->getRegOff(),
-            src1->asSrcRegRegion()->getSubRegOff(),
-            src1->asSrcRegRegion()->getRegion(),
-            src1->getType());
-        neg_src1 = createSrcRegRegion(neg_srcRegion);
-        neg_src1->setAccRegSel(src1->getAccRegSel());
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, neg_src1, src2, madmInstOpt, line_no);
-        
-
-        // madm (4) r8.acc6 r1.noacc r2(r8).noacc r1.noacc {Align16, N1/N2}
-        dst0 = createDstRegRegion(tdst8); dst0->setAccRegSel(ACC6);
-        src0 = createSrcRegRegion(csrc1); src0->setAccRegSel(NOACC);
-        src1 = createSrcRegRegion(csrc2); src1->setAccRegSel(NOACC);
-        src2 = createSrcRegRegion(csrc1); src2->setAccRegSel(NOACC);
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-        
-
-        // madm (4) r8.acc7 r1.noacc r8.acc6 r10.acc5 {Align16, N1/N2}
-        dst0 = createDstRegRegion(tdst8); dst0->setAccRegSel(ACC7);
-        src0 = createSrcRegRegion(csrc1); src0->setAccRegSel(NOACC);
-        src1 = createSrcRegRegion(tsrc8); src1->setAccRegSel(ACC6);
-        src2 = createSrcRegRegion(tsrc10); src2->setAccRegSel(ACC5);
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-        
-
-        // madm (4) r7.acc8 r0.noacc r10.acc5 r11.acc4 {Align16, N1/N2}
-        dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(ACC8);
-        src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
-        src1 = createSrcRegRegion(tsrc10); src1->setAccRegSel(ACC5);
-        src2 = createSrcRegRegion(tsrc11); src2->setAccRegSel(ACC4);
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-        
-
-        // madm (4) r10.acc9 r0.noacc r10.acc5 r9.acc3 {Align16, N1/N2}
-        dst0 = createDstRegRegion(tdst10); dst0->setAccRegSel(ACC9);
-        src0 = createSrcRegRegion(csrc0); src0->setAccRegSel(NOACC);
-        src1 = createSrcRegRegion(tsrc10); src1->setAccRegSel(ACC5);
-        src2 = createSrcRegRegion(tsrc9); src2->setAccRegSel(ACC3);
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-        
-
-        // madm (4) r7.acc8 r11.acc4 r8.acc7 r7.acc8 {Align16, N1/N2}
-        dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(ACC8);
-        src0 = createSrcRegRegion(tsrc11); src0->setAccRegSel(ACC4);
-        src1 = createSrcRegRegion(tsrc8); src1->setAccRegSel(ACC7);
-        src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC8);
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-        
-
-        // madm (4) r8.acc7 r9.acc3 r8.acc7 r10.acc9 {Align16, N1/N2}
-        dst0 = createDstRegRegion(tdst8); dst0->setAccRegSel(ACC7);
-        src0 = createSrcRegRegion(tsrc9); src0->setAccRegSel(ACC3);
-        src1 = createSrcRegRegion(tsrc8); src1->setAccRegSel(ACC7);
-        src2 = createSrcRegRegion(tsrc10); src2->setAccRegSel(ACC9);
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
-        
-
-        // madm (4) r9.acc3 r6.noacc -r7.acc8 r7.acc8 {Align16, N1/N2}
-        dst0 = createDstRegRegion(tdst9); dst0->setAccRegSel(ACC3);
-        if (IsSrc0Moved)
-        {
-            src0 = createSrcRegRegion(tsrc6);
-        }
-        else
-        {
-            src0 = createSrcRegRegion(fsrc0);
-        }
-        src0->setAccRegSel(NOACC);
-        src1 = createSrcRegRegion(tsrc7); src1->setAccRegSel(ACC8);
-        src2 = createSrcRegRegion(tsrc7); src2->setAccRegSel(ACC8);
-        G4_SrcRegRegion neg_srcRegion1(Mod_Minus,
-            src1->asSrcRegRegion()->getRegAccess(),
-            src1->asSrcRegRegion()->getBase(),
-            src1->asSrcRegRegion()->getRegOff(),
-            src1->asSrcRegRegion()->getSubRegOff(),
-            src1->asSrcRegRegion()->getRegion(),
-            src1->getType());
-        neg_src1 = createSrcRegRegion(neg_srcRegion1);
-        neg_src1->setAccRegSel(src1->getAccRegSel());
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, neg_src1, src2, madmInstOpt, line_no);
-           
-        if (!hasDefaultRoundDenorm)
-        {
-            // restore cr0.0
-            dst0 = createDstRegRegion(regDstCR0);
-            src0 = Create_Src_Opnd_From_Dcl(tmpRegCR0, getRegionScalar());
-            // mov (1) cr0.0<0;1,0>:ud r108.0<1>:ud {NoMask}
-            inst = createInst(NULL, G4_mov, NULL, false, 1, dst0, src0, NULL, InstOpt_WriteEnable, line_no);
-        }
-
-        // madm (4) r7.noacc r7.acc8 r9.acc3 r8.acc7 {Align16, N1/N2}
-        dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(NOACC);
-        src0 = createSrcRegRegion(tsrc7); src0->setAccRegSel(ACC8);
-        src1 = createSrcRegRegion(tsrc9); src1->setAccRegSel(ACC3);
-        src2 = createSrcRegRegion(tsrc8); src2->setAccRegSel(ACC7);
-        inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
         
         if (!hasDefaultRoundDenorm)
         {
