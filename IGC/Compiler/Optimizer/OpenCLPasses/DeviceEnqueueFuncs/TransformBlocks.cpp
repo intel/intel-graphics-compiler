@@ -147,6 +147,21 @@ namespace //Anonymous
             return IGC::IGCMD::FunctionInfoMetaDataHandle(nullptr);
         }
 
+        bool eraseKernelMetadata(llvm::Function* func, IGC::ModuleMetaData* modMD) {
+            bool changed = false;
+            auto it = _pMdUtils->findFunctionsInfoItem(func);
+            if (it != _pMdUtils->end_FunctionsInfo()) {
+                _pMdUtils->eraseFunctionsInfoItem(it);
+                _pMdUtils->save(func->getContext());
+                changed = true;
+            }
+            if (modMD->FuncMD.find(func) != modMD->FuncMD.end()) {
+                modMD->FuncMD.erase(func);
+                changed = true;
+            }
+            return changed;
+        }
+
         /// Return kernel argument type name from metadata
         IGC::IGCMD::FunctionInfoMetaData::OpenCLArgBaseTypesList::item_type getKernelArgTypeName(const llvm::Function* func, unsigned argNum)
         {
@@ -1257,6 +1272,8 @@ namespace //Anonymous
             // kernel void k2(sampler, image) { doEnc(image, sampler); }
             changed = InlineEnqueueKernelCalls(M, dataContext) || changed;
 
+            changed = HandleIvokeKernelWrappers(M, dataContext, modMD) || changed;
+
             // Run mem2reg pass to make the processing simpler
             bool isOptDisabled = modMD->compOpt.OptDisable;
             if (!isOptDisabled)
@@ -1329,6 +1346,31 @@ namespace //Anonymous
             return inlined;
         }
 
+        // Clang might insert a kernel wrapper around invoke function, details and motivation can be found
+        // here: https://reviews.llvm.org/D38134
+        bool isInvokeFunctionKernelWrapper(const Function* invokeFunc, DataContext& dataContext) {
+            return dataContext.getKindQuery().isKernel(invokeFunc);
+        }
+
+        Function* getInvokeFunctionFromKernelWrapper(const Function* invokeFunc, DataContext& dataContext) {
+            assert(isInvokeFunctionKernelWrapper(invokeFunc, dataContext));
+            const CallInst* inst = dyn_cast<CallInst>(*(invokeFunc->arg_begin())->user_begin());
+            if (inst) {
+                return inst->getCalledFunction();
+            } else {
+                return nullptr;
+            }
+        }
+
+        bool isEnqueueKernelFunction(StringRef funcName) {
+            return funcName.startswith(FNAME_ENQUEUE_KERNEL) ||
+                funcName.startswith(FNAME_SPIRV_ENQUEUE_KERNEL) ||
+                funcName.startswith(FNAME_ENQUEUE_KERNEL_BASIC) ||
+                funcName.startswith(FNAME_ENQUEUE_KERNEL_VAARGS) ||
+                funcName.startswith(FNAME_ENQUEUE_KERNEL_EVENTS_VAARGS);
+        }
+
+
         // All functions which call enqueue_kernel should be inlined up to
         // kernel or block_invoke level to proper argument number detection of
         // captured images and samplers
@@ -1344,11 +1386,7 @@ namespace //Anonymous
                 }
 
                 auto funcName = func.getName();
-                if (!funcName.startswith(FNAME_ENQUEUE_KERNEL) && 
-                    !funcName.startswith(FNAME_SPIRV_ENQUEUE_KERNEL) &&
-                    !funcName.startswith(FNAME_ENQUEUE_KERNEL_BASIC) &&
-                    !funcName.startswith(FNAME_ENQUEUE_KERNEL_VAARGS) &&
-                    !funcName.startswith(FNAME_ENQUEUE_KERNEL_EVENTS_VAARGS))
+                if (!isEnqueueKernelFunction(funcName))
                 {
                     continue;
                 }
@@ -1371,6 +1409,42 @@ namespace //Anonymous
 
                 } while (inlined); // if callers are inlined, restart loop with new users list
             }
+            return changed;
+        }
+
+        // Clang might insert a kernel wrapper around invoke function, details and motivation can be found
+        // here: https://reviews.llvm.org/D38134
+        // As we want to generate our own enqueue kernel with possibly different arguments, 
+        // we need to treat this kernel as a regular invoke function. 
+        // To achieve this, we need to: 
+        // 1. Inline the inner invoke function called by this kernel - analyzeInvokeFunction assumes that.
+        // 2. Remove the metadata related to this kernel, so that codegen does not treat it as a regular kernel.
+        bool HandleIvokeKernelWrappers(llvm::Module &M, DataContext& dataContext, IGC::ModuleMetaData* modMD)
+        {
+            bool changed = false;
+            for (auto &func : M.functions()) {
+                if (!isEnqueueKernelFunction(func.getName())) continue;
+                for (auto user : func.users()) {
+                    auto callInst = dyn_cast<CallInst>(user);
+                    if (!callInst) continue;
+
+                    for (auto& arg : callInst->arg_operands()) {
+                        if (Function* invoke = dyn_cast<Function>(arg)) {
+                            if (isInvokeFunctionKernelWrapper(invoke, dataContext)) {
+                                // Inline the wrapped invoke function.
+                                Function* innerInvoke = getInvokeFunctionFromKernelWrapper(invoke, dataContext);
+                                if (innerInvoke) {
+                                    changed = InlineToParents(innerInvoke, dataContext) || changed;
+                                }
+
+                                // Remove the kernel metadata.
+                                changed = dataContext.getMetaDataBuilder().eraseKernelMetadata(invoke, modMD) || changed;
+                            }
+                        }
+                    }
+                }
+            }
+
             return changed;
         }
 
