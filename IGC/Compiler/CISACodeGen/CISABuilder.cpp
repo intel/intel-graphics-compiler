@@ -2041,11 +2041,16 @@ void CEncoder::Send(CVariable* dst, CVariable* src, uint exDesc, CVariable* mess
         dstOpnd));
 }
 
-void CEncoder::Send(CVariable* dst, CVariable* src, uint ffid, CVariable* exDesc, CVariable* messDescriptor,  bool isSendc)
+void CEncoder::Send(CVariable* dst, CVariable* src, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc)
 {
-    if(exDesc->IsImmediate())
+    Sends(dst, src, nullptr, ffid, exDesc, messDescriptor, isSendc);
+}
+
+void CEncoder::Sends(CVariable* dst, CVariable* src0, CVariable* src1, uint ffid, CVariable* exDesc, CVariable* messDescriptor,  bool isSendc)
+{
+    if(exDesc->IsImmediate() && src1 == nullptr)
     {
-        Send(dst, src, (uint)exDesc->GetImmediateValue(), messDescriptor, isSendc);
+        Send(dst, src0, (uint)exDesc->GetImmediateValue(), messDescriptor, isSendc);
         return;
     }
     if(dst && dst->IsUniform())
@@ -2053,10 +2058,12 @@ void CEncoder::Send(CVariable* dst, CVariable* src, uint ffid, CVariable* exDesc
         m_encoderState.m_simdSize = m_encoderState.m_uniformSIMDSize;
     }
     unsigned char sendc = isSendc ? 1 : 0;
-    unsigned char srcSize = src->GetSize()/SIZE_GRF;
+    unsigned char src0Size = src0->GetSize()/SIZE_GRF;
+    unsigned char src1Size = src1 ? src1->GetSize() / SIZE_GRF : 0;
     unsigned char dstSize = dst ? dst->GetSize()/SIZE_GRF : 0;
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
-    VISA_RawOpnd *srcOpnd0    = GetRawSource(src);
+    VISA_RawOpnd *srcOpnd0 = GetRawSource(src0);
+    VISA_RawOpnd *srcOpnd1 = GetRawSource(src1);
     VISA_RawOpnd *dstOpnd     = GetRawDestination(dst);
     VISA_VectorOpnd *exMessDesc = GetUniformSource(exDesc);
     VISA_VectorOpnd *desc = GetUniformSource(messDescriptor);
@@ -2068,12 +2075,12 @@ void CEncoder::Send(CVariable* dst, CVariable* src, uint ffid, CVariable* exDesc
         sendc,
         ffid,
         exMessDesc,
-        srcSize,
-        0, // right now only one source
+        src0Size,
+        src1Size, // right now only one source
         dstSize,
         desc,
         srcOpnd0,
-        GetRawSource(nullptr),
+        srcOpnd1,
         dstOpnd));
 }
 

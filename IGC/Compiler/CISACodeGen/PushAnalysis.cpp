@@ -1261,6 +1261,7 @@ bool PushAnalysis::runOnModule(llvm::Module& M)
 	// Update IGC Metadata and shaders map
 	// Function declarations are changing, this needs to be reflected in the metadata.
 	MetadataBuilder mbuilder(&M);
+    auto &FuncMD = m_context->getModuleMetaData()->FuncMD;
 	for (auto i : funcsMapping)
 	{
 		auto oldFuncIter = m_pMdUtils->findFunctionsInfoItem(i.first);
@@ -1268,6 +1269,13 @@ bool PushAnalysis::runOnModule(llvm::Module& M)
 		m_pMdUtils->eraseFunctionsInfoItem(oldFuncIter);
 
 		mbuilder.UpdateShadingRate(i.first, i.second);
+        auto loc = FuncMD.find(i.first);
+        if(loc != FuncMD.end())
+        {
+            auto funcInfo = loc->second;
+            FuncMD.erase(i.first);
+            FuncMD[i.second] = funcInfo;
+        }
 	}
 	m_pMdUtils->save(M.getContext());
 

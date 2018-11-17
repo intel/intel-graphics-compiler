@@ -913,10 +913,14 @@ void CodeGenCommon(ContextType* ctx)
     DIPass.add(new DebugInfoPass(shaders));
     DIPass.run(*(ctx->getModule()));
 
-
     // gather data to send back to the driver
-    CShaderProgram* shaderProgram = shaders.begin()->second;
-    shaderProgram->FillProgram(&(ctx->programOutput));
+    for(auto it = shaders.begin(), ie = shaders.end(); it != ie; ++it)
+    {
+        CShaderProgram* shaderProgram = it->second;
+        {
+            shaderProgram->FillProgram(&(ctx->programOutput));
+        }
+    }
 
 
     destroyShaderMap(shaders);
