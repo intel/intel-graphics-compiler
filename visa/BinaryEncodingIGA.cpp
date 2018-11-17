@@ -411,6 +411,7 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
     return igaOp;
 }
 
+
 void BinaryEncodingIGA::DoAll()
 {
     FixInst();
@@ -643,7 +644,6 @@ void BinaryEncodingIGA::DoAll()
                         if (!opSpec->isSendOrSendsFamily())
                         {
                             type = getIGAType(src->getType());
-
                         }
                         else if (i == 0 &&
                             getGenxPlatform() >= GENX_SKL   &&
@@ -756,6 +756,7 @@ void BinaryEncodingIGA::DoAll()
     {
         autoCompact = false;
     }
+
 
     bool dontCompactProlog = kernel.fg.builder->needsToLoadLocalID();
 

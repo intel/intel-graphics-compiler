@@ -10362,6 +10362,7 @@ void Optimizer::changeMoveType()
                             changeType(inst, Type_HF);
                         }
                     }
+                    
                 }
                 else if (src0->isImm())
                 {

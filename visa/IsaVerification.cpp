@@ -920,6 +920,7 @@ static void verifyInstructionMove(const common_isa_header& isaHeader, const kern
                                */
              break;
         }
+
         case ISA_MOVS:
         {
              REPORT_INSTRUCTION(options,operand_class_dst == OPERAND_GENERAL ||
@@ -934,7 +935,6 @@ static void verifyInstructionMove(const common_isa_header& isaHeader, const kern
                                "Source0 operand of CISA MOVS instruction only "
                                "supports general, indirect, and immediate operands.");
             break;
-
         }
         case ISA_SETP:
         {

@@ -298,6 +298,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
     }
 #endif
 
+
     // FIXME: If isImm() condition is removed then some assertions are hit.
     // This means somewhere in Jitter operand sharing is happening for
     // immediate type operands. This should be fixed.

@@ -1016,7 +1016,6 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
             node->MarkAsUnresolvedIndirAddressBarrier();
         }
 
-
         DepType  depType;
         if ((depType = node->isLabel()) || (depType = node->isBarrier()))
         {

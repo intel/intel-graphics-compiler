@@ -154,6 +154,7 @@ namespace vISA
         bool fixMov(INST_LIST_ITER i, G4_BB* bb);
         bool fixRotate(INST_LIST_ITER i, G4_BB* bb);
 
+
         void helperGenerateTempDst(
             G4_BB *bb,
             INST_LIST_ITER instIter,
