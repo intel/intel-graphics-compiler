@@ -1,5 +1,4 @@
 
-/* @(#)fdlibm.h 1.5 04/04/22 */
 /*===================== begin_copyright_notice ==================================
 
 Copyright (C) 2004 by Sun Microsystems, Inc. All rights reserved.

@@ -709,6 +709,7 @@ void VectorMessage::getInfo(Type *Ty, uint32_t Align, bool useA32,
         defaultKind = useA32
             ? MESSAGE_A32_UNTYPED_SURFACE_RW
             : MESSAGE_A64_SCATTERED_RW;
+
         MB = useA32
             ? A32_UNTYPED_MAX_BYTES
             : ((has_8DW_A64_SM && SM == SIMDMode::SIMD8)

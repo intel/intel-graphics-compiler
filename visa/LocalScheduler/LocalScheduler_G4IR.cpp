@@ -210,11 +210,13 @@ void LocalScheduler::localScheduling()
     int buildDDD = 0, listSch = 0;
     uint32_t totalCycle = 0;
 
+    CM_BB_INFO* bbInfo = (CM_BB_INFO *)mem.alloc(fg.BBs.size() * sizeof(CM_BB_INFO));
+    memset(bbInfo, 0, fg.BBs.size() * sizeof(CM_BB_INFO));
+    int i = 0;
+
     const Options *m_options = fg.builder->getOptions();
     LatencyTable LT(m_options);
 
-    uint32_t staticCycle = 0;
-    uint32_t sendStallCycle = 0;
 
     for (; ib != bend; ++ib)
     {
@@ -251,8 +253,6 @@ void LocalScheduler::localScheduling()
                     G4_BB_Schedule schedule(fg.getKernel(), bbMem, tempBB, buildDDD, listSch,
                         totalCycle, m_options, LT);
 
-                    staticCycle += schedule.sequentialCycle;
-                    sendStallCycle += schedule.sendStallCycle;
                     count = 0;
                 }
                 count++;
@@ -272,15 +272,17 @@ void LocalScheduler::localScheduling()
         {
             G4_BB_Schedule schedule(fg.getKernel(), bbMem, *ib, buildDDD, listSch, totalCycle,
                 m_options, LT);
-
-            staticCycle += schedule.sequentialCycle;
-            sendStallCycle += schedule.sendStallCycle;
+            bbInfo[i].id = (*ib)->getId();
+            bbInfo[i].staticCycle = schedule.sequentialCycle;
+            bbInfo[i].sendStallCycle = schedule.sendStallCycle;
+            bbInfo[i].loopNestLevel = (*ib)->getNestLevel();
         }
-    }
 
+        i++;
+    }
     FINALIZER_INFO* jitInfo = fg.builder->getJitInfo();
-    jitInfo->staticCycle = staticCycle;
-    jitInfo->sendStallCycle = sendStallCycle;
+    jitInfo->BBInfo = bbInfo;
+    jitInfo->BBNum = i;
 }
 
 void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
@@ -403,41 +405,59 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
         ddd.DumpDotFile(sstr.str().c_str(), "nodes");
     }
 
+#ifdef _DEBUG
+    // Find the label if there is
+    std::list<std::string> labelList;
+    bool firstNonLabelInst = true;
+    for (INST_LIST_ITER i = bb->begin(); i != bb->end(); ++i)
+    {
+        G4_INST* inst = *i;
+        MUST_BE_TRUE(inst != NULL, ERROR_UNKNOWN);
+        if (inst->isLabel())
+        {
+            MUST_BE_TRUE(firstNonLabelInst, ERROR_UNKNOWN);
+            continue;
+        }
+        firstNonLabelInst = false;
+    }
+#endif
+
     // Update the listing of the basic block with the reordered code.
     size_t scheduleSize = scheduledNodes.size();
+    size_t scheduleInstSize = 0;
 
-    size_t origSize = bb->size();
-    bb->clear();
-    Node * prevNode = nullptr;
-    unsigned int HWThreadsPerEU = kernel->fg.builder->getNumThreadPerEU();
-    for (size_t i = 0; i < scheduleSize; i++)
-    {
+    INST_LIST_ITER inst_it = bb->begin();
+    Node * prevNode = NULL;
+    unsigned int HWThreadsPerEU
+        = m_options->getuInt32Option(vISA_HWThreadNumberPerEU);
+    for (size_t i = 0; i < scheduleSize; i++) {
         Node *currNode = scheduledNodes[i];
-        for (G4_INST *inst : *currNode->getInstructions())
-        {
-            bb->push_back(inst);
-            if (prevNode && !prevNode->isLabel())
-            {
+        for (G4_INST *inst : *currNode->getInstructions()) {
+            (*inst_it) = inst;
+            scheduleInstSize++;
+            if (prevNode && !prevNode->isLabel()) {
                 int32_t stallCycle = (int32_t)currNode->schedTime
                     - (int32_t)prevNode->schedTime;
 
-                if (stallCycle > (int32_t)(prevNode->getOccupancy() * HWThreadsPerEU))
-                {
+                if (stallCycle > 0
+                    && stallCycle > (int32_t)(prevNode->getOccupancy()
+                    * HWThreadsPerEU)) {
                     sendStallCycle += (stallCycle + HWThreadsPerEU - 1)
                         / HWThreadsPerEU;
                     sequentialCycle += (stallCycle + HWThreadsPerEU - 1)
                         / HWThreadsPerEU;
                 }
             }
+            sequentialCycle += currNode->getOccupancy();
+            prevNode = currNode;
+            inst_it++;
         }
-        sequentialCycle += currNode->getOccupancy();
-        prevNode = currNode;
     }
 
     size_t bbInstsSize = bb->size();
-    MUST_BE_TRUE(origSize == bbInstsSize,
+    MUST_BE_TRUE(scheduleInstSize == bbInstsSize,
         "Size of inst list is different before/after scheduling");
-
+    
 }
 
 bool Node::isTransitiveDep(Node* edgeDst)
@@ -958,7 +978,7 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
 {
     Node* lastBarrier = NULL;
     totalGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
-    HWthreadsPerEU = kernel->fg.builder->getNumThreadPerEU();
+    HWthreadsPerEU = m_options->getuInt32Option(vISA_HWThreadNumberPerEU);
     useMTLatencies = m_options->getOption(vISA_useMultiThreadedLatencies);
     bool BTIIsRestrict = m_options->getOption(vISA_ReorderDPSendToDifferentBti);
 

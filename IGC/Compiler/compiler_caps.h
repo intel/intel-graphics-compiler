@@ -72,6 +72,7 @@ STRUCT: S3DHardwareCapabilities
 struct SCompilerHwCaps
 {
     unsigned int   VertexShaderThreads;
+    unsigned int   VertexShaderThreadsPosh;
     unsigned int   HullShaderThreads;
     unsigned int   DomainShaderThreads;
     unsigned int   GeometryShaderThreads;

@@ -27,10 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/LegacyPassManager.h>
-#include <llvm/IR/Function.h>
-#include <llvm/IR/Argument.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "common/Types.hpp"
 #include <vector>
 #include "Stats.hpp"
 #include <string.h>
@@ -64,11 +61,3 @@ namespace IGC
 }
 
 void DumpLLVMIR(IGC::CodeGenContext* pContext, const char* dumpName);
-std::vector<llvm::Argument *> SpliceFuncWithNewArguments(
-    llvm::Function* &pSourceFunc,
-    const std::vector<llvm::Type*>& newArgs,
-    const std::vector<std::string>& newArgsNames = std::vector<std::string>());
-llvm::Argument* SpliceFuncWithNewArgument(
-    llvm::Function* &pSourceFunc,
-    llvm::Type* newArg,
-    std::string newArgName = "");

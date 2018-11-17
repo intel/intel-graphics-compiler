@@ -1,3 +1,0 @@
-ifeq ($(UFO_IGC),y)
-    INTERNAL_UFO_NDK=y
-endif # UFO_IGC==y

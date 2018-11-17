@@ -54,7 +54,7 @@ Example command:
 $ git clone -b release_40 https://github.com/llvm-mirror/clang clang_source
 $ git clone https://github.com/intel/opencl-clang common_clang
 $ git clone https://github.com/intel/llvm-patches llvm_patches
-$ git clone -b release_40 https://github.com/llvm-mirror/llvm llvm_source
+$ git clone -b release_70 https://github.com/llvm-mirror/llvm llvm_source
 $ git clone https://github.com/intel/intel-graphics-compiler igc
 $ git clone https://github.com/KhronosGroup/OpenCL-Headers opencl_headers
 ```

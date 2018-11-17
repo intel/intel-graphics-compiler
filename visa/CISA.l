@@ -56,7 +56,6 @@ VISA_Type str2type(char *str, int str_len);
 Common_ISA_Cond_Mod str2cond(char *str);
 VISAAtomicOps str2atomic_opcode(char *op_str);
 ISA_Opcode str2opcode(char* op_str);
-GenPrecision str2Precision(char *str, int str_len);
 VISASampler3DSubOpCode str2SampleOpcode(char* str);
 int64_t hexToint(char *hex_str, int str_len);
 MEDIA_LD_mod mediaMode(char* str);
@@ -896,43 +895,6 @@ VISA_Type str2type(char *str, int str_len)
     }
 
     return ISA_TYPE_NUM;
-}
-
-GenPrecision str2Precision(char *str, int str_len)
-{
-    if (str_len == 2)
-    {
-        char c0 = tolower(str[0]);
-        char c1 = str[1];
-        if (c0 == 's')
-        {
-            switch (c1) {
-            default: break; // fall-thru
-            case '1' : return GenPrecision::S1;
-            case '2' : return GenPrecision::S2;
-            case '4' : return GenPrecision::S4;
-            case '8' : return GenPrecision::S8;
-            }
-        } else if (c0 == 'u') {
-            switch (c1) {
-            default: break; // fall-thru
-            case '1' : return GenPrecision::U1;
-            case '2' : return GenPrecision::U2;
-            case '4' : return GenPrecision::U4;
-            case '8' : return GenPrecision::U8;
-            }
-        } else if (c0 == 'b') {
-		    c1 = tolower(c1);
-			if (c1 == 'f') {
-			   // Ignore precision
-			   return GenPrecision::INVALID;
-			}
-		}
-    }
-
-    YY_FATAL_ERROR("Invalid Gen Precision");
-
-	return GenPrecision::INVALID;
 }
 
 // convert "z" to Mod_z

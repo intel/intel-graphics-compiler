@@ -138,6 +138,7 @@ static uint32_t buildDescForScatter(uint32_t msgType, Common_ISA_SVM_Block_Num n
 {
     uint32_t MD = (msgType & 0x1F) << 14;
     MD |= numBlocks << 10;
+    MD |= 1 << 9;
     MD |= simdMode << 8;
     return MD;
 }

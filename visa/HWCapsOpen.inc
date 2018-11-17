@@ -415,11 +415,6 @@
         return false;
     }
 
-    uint32_t getNumThreadPerEU() const
-    {
-        return 7;
-    }
-
     bool hasVxHFloat64b() const
     {
         return true;

@@ -81,6 +81,8 @@ static void CreateCompilerCapsString(const GT_SYSTEM_INFO* sysinfo, PLATFORM pla
     outputString.append("\n");
     outputString.append("TotalVsThreads \t\t= \t");
     outputString.append(stringFrom<unsigned int>(sysinfo->TotalVsThreads));
+    outputString.append("TotalVsThreads_Pocs \t\t= \t");
+    outputString.append(stringFrom<unsigned int>(sysinfo->TotalVsThreads_Pocs));
     outputString.append("\n");
     outputString.append("TotalGsThreads \t\t= \t");
     outputString.append(stringFrom<unsigned int>(sysinfo->TotalGsThreads));
@@ -147,6 +149,7 @@ void SetCompilerCaps(SKU_FEATURE_TABLE* pSkuFeatureTable, CPlatform* platform)
 
     caps.PixelShaderThreadsWindowerRange = sysinfo.TotalPsThreadsWindowerRange;
     caps.VertexShaderThreads = sysinfo.TotalVsThreads;
+    caps.VertexShaderThreadsPosh = sysinfo.TotalVsThreads_Pocs;
     caps.GeometryShaderThreads = sysinfo.TotalGsThreads;
     caps.DomainShaderThreads = sysinfo.TotalDsThreads;
     caps.HullShaderThreads = sysinfo.TotalHsThreads;

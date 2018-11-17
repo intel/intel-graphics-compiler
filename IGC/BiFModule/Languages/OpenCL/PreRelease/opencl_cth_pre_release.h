@@ -1488,3 +1488,4 @@ float __attribute__((overloadable)) intel_atomic_xchg   (image2d_array_depth_t i
 #ifdef cl_intel_subgroups_ballot
 uint intel_sub_group_ballot(bool p);
 #endif
+

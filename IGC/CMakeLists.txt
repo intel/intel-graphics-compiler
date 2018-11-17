@@ -53,27 +53,6 @@ endif()
 
 
 
-
-if(NOT DEFINED LLVM_VERSION_MAJOR)
-  set(LLVM_VERSION_MAJOR 4)
-  #set(LLVM_VERSION_MAJOR 7)  
-endif()
-if(NOT DEFINED LLVM_VERSION_MINOR)
-  set(LLVM_VERSION_MINOR 0)
-endif()
-if(NOT DEFINED LLVM_VERSION_PATCH)
-  set(LLVM_VERSION_PATCH 0)
-endif()
-if(NOT DEFINED LLVM_VERSION_SUFFIX)
-  set(LLVM_VERSION_SUFFIX "")
-endif()
-
-if (NOT PACKAGE_VERSION)
-  set(PACKAGE_VERSION
-    "${LLVM_VERSION_MAJOR}.${LLVM_VERSION_MINOR}.${LLVM_VERSION_PATCH}${LLVM_VERSION_SUFFIX}")
-endif()
-
-
 # ======================================================================================================
 # ================================================ UTILS ===============================================
 # ======================================================================================================

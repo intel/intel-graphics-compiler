@@ -68,6 +68,7 @@ typedef struct _SUscGTSystemInfo
     
     unsigned int   TotalPsThreadsWindowerRange;
     unsigned int   TotalVsThreads;
+    unsigned int   TotalVsThreads_Pocs;
     unsigned int   TotalGsThreads;
     unsigned int   TotalDsThreads;
     unsigned int   TotalHsThreads;
@@ -216,6 +217,7 @@ inline void InitializeUscAdapterInfo(
     uscAdpaterInfo.UscGTSystemInfo.SubSliceCount = bigGTSystemInfo.SubSliceCount;
     uscAdpaterInfo.UscGTSystemInfo.TotalPsThreadsWindowerRange = bigGTSystemInfo.TotalPsThreadsWindowerRange;
     uscAdpaterInfo.UscGTSystemInfo.TotalVsThreads = bigGTSystemInfo.TotalVsThreads;
+    uscAdpaterInfo.UscGTSystemInfo.TotalVsThreads_Pocs = bigGTSystemInfo.TotalVsThreads_Pocs;
     uscAdpaterInfo.UscGTSystemInfo.TotalDsThreads = bigGTSystemInfo.TotalDsThreads;
     uscAdpaterInfo.UscGTSystemInfo.TotalGsThreads = bigGTSystemInfo.TotalGsThreads;
     uscAdpaterInfo.UscGTSystemInfo.TotalHsThreads = bigGTSystemInfo.TotalHsThreads;

@@ -620,18 +620,4 @@ typedef struct _vISA_RT_CONTROLS
     unsigned isHeaderMaskfromCe0 : 1;
 } vISA_RT_CONTROLS;
 
-enum class GenPrecision : unsigned char
-{
-    INVALID,
-
-    U1,
-    U2,
-    U4,
-    U8,
-    S1,
-    S2,
-    S4,
-    S8
-};
-
 #endif

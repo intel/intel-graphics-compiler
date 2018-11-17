@@ -147,6 +147,9 @@ void CShaderProgram::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
 
 void CVertexShader::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
 {
+    assert(entry && entry->getParent());
+    const bool isPositionOnlyShader = (entry->getParent()->getModuleFlag("IGC::PositionOnlyVertexShader") != nullptr);
+
     ProgramOutput()->m_scratchSpaceUsedByShader = m_ScratchSpaceSize;
     pKernelProgram->simd8 = *ProgramOutput();
     pKernelProgram->MaxNumInputRegister              = GetMaxNumInputRegister();
@@ -157,7 +160,7 @@ void CVertexShader::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
     pKernelProgram->SBEURBReadOffset                 = GetVertexURBEntryOutputReadOffset();
     pKernelProgram->URBAllocationSize                = GetURBAllocationSize(); 
     pKernelProgram->hasControlFlow                   = m_numBlocks > 1 ? true : false;
-    pKernelProgram->MaxNumberOfThreads               = m_Platform->getMaxVertexShaderThreads();
+    pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxVertexShaderThreads(isPositionOnlyShader);
     pKernelProgram->ConstantBufferLoaded             = m_constantBufferLoaded;
     pKernelProgram->hasVertexID                      = m_properties.m_HasVertexID;
     pKernelProgram->vertexIdLocation                 = m_properties.m_VID;

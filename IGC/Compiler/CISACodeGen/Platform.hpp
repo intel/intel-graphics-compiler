@@ -110,6 +110,7 @@ public:
         m_GTSystemInfo.SubSliceCount = gtSystemInfo.SubSliceCount;
         m_GTSystemInfo.TotalPsThreadsWindowerRange = gtSystemInfo.TotalPsThreadsWindowerRange;
         m_GTSystemInfo.TotalVsThreads = gtSystemInfo.TotalVsThreads;
+        m_GTSystemInfo.TotalVsThreads_Pocs = gtSystemInfo.TotalVsThreads_Pocs;
         m_GTSystemInfo.TotalDsThreads = gtSystemInfo.TotalDsThreads;
         m_GTSystemInfo.TotalGsThreads = gtSystemInfo.TotalGsThreads;
         m_GTSystemInfo.TotalHsThreads = gtSystemInfo.TotalHsThreads;
@@ -136,7 +137,11 @@ public:
         return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
     bool supportSamplerCacheResinfo() const { return m_platformInfo.eRenderCoreFamily == IGFX_GEN8_CORE; }
 
-    unsigned int getMaxVertexShaderThreads() const { return m_caps.VertexShaderThreads - 1; }
+    unsigned int getMaxVertexShaderThreads(const bool isPositionOnlyShader) const 
+    { 
+        const unsigned int maxVertexShaderThreads = isPositionOnlyShader ? m_caps.VertexShaderThreadsPosh : m_caps.VertexShaderThreads;
+        return maxVertexShaderThreads - 1;
+    }
     unsigned int getMaxGeometryShaderThreads() const { return m_caps.GeometryShaderThreads - 1; }
     unsigned int getMaxHullShaderThreads() const { return m_caps.HullShaderThreads - 1; }
     unsigned int getMaxDomainShaderThreads() const { return m_caps.DomainShaderThreads - 1; }
