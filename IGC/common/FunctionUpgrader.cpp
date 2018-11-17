@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "FunctionUpgrader.h"
+#include "IGCIRBuilder.h"
 
 using namespace llvm;
 
@@ -37,18 +38,26 @@ void FunctionUpgrader::Clean()
 {
 	m_pFunction = nullptr;
 	m_pNewArguments.clear();
+    m_placeHolders.clear();
 }
 
 llvm::Value* FunctionUpgrader::AddArgument(llvm::StringRef argName, llvm::Type* argType)
 {
-	// Get from first basic block first instruction
-	auto firstInstInFuncOld = m_pFunction->begin()->begin();
-	// Create place holder alloc for the arg purposes
-	auto pPlaceHolderArgAlloc = new llvm::AllocaInst(argType, 0, "", &*firstInstInFuncOld);
+    llvm::IGCIRBuilder<> builder(m_pFunction->getContext());
+    if (m_pFunction->begin()->empty())
+    {
+        builder.SetInsertPoint(&*m_pFunction->begin());
+    }
+    else
+    {
+        builder.SetInsertPoint(&*m_pFunction->begin()->begin());
+    }
+    llvm::AllocaInst* pPlaceHolderArgAlloc = builder.CreateAlloca(argType, 0, "");
 	// Create place holder load, which will simulate the argument for now
-	auto PlaceHolderArg = new llvm::LoadInst(pPlaceHolderArgAlloc, argName, pPlaceHolderArgAlloc->getNextNode());
+    llvm::LoadInst* PlaceHolderArg = builder.CreateLoad(pPlaceHolderArgAlloc, argName);
 
 	m_pNewArguments[PlaceHolderArg] = nullptr;
+    m_placeHolders.push_back(PlaceHolderArg);
 
 	return PlaceHolderArg;
 }
@@ -82,6 +91,16 @@ Argument* FunctionUpgrader::GetArgumentFromRebuild(llvm::LoadInst* pPlaceHolderA
 		assert(false && "Didn't found new argument!");
 		return nullptr;
 	}
+}
+
+std::vector<LoadInst*> FunctionUpgrader::GetPlaceholderVec()
+{
+    return m_placeHolders;
+}
+
+uint32_t FunctionUpgrader::GetArgumentsSize()
+{
+    return m_placeHolders.size() + m_pFunction->arg_size();
 }
 
 Function* FunctionUpgrader::RebuildFunction()

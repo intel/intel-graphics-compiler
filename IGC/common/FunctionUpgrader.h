@@ -41,6 +41,7 @@ private:
 
 	// map place holder argument with the real argument
 	llvm::MapVector<llvm::LoadInst*, llvm::Argument*> m_pNewArguments;
+    std::vector<llvm::LoadInst*> m_placeHolders;
 
 	llvm::FunctionType* UpgradeFunctionTypeWithNewArgs();
 
@@ -58,9 +59,11 @@ public:
 
 	llvm::Argument* GetArgumentFromRebuild(llvm::Value* pPlaceHolderArg);
 	llvm::Argument* GetArgumentFromRebuild(llvm::LoadInst* pPlaceHolderArg);
+    std::vector<llvm::LoadInst*> GetPlaceholderVec();
 
 	llvm::Value* AddArgument(llvm::StringRef argName, llvm::Type* argType);
 
+    uint32_t GetArgumentsSize();
 	llvm::Function* RebuildFunction();
 
 	bool NeedToRebuild();
