@@ -1122,7 +1122,7 @@ bool CodeSinking::loopSink(BasicBlock* BBWithPressure, bool SinkMultipleLevel)
             if (I->mayWriteToMemory()) {
                 stores.insert(I);
             }
-            if (!canLoopSink(I, L0, BBWithPressure))
+            if (!canLoopSink(I, L, BBWithPressure))
                 continue;
 
             // Sink noOp instruction.
@@ -1136,7 +1136,7 @@ bool CodeSinking::loopSink(BasicBlock* BBWithPressure, bool SinkMultipleLevel)
             sinkCandidates.push_back(I);
         }
 
-        bool t = LoopSinkInstructions(sinkCandidates, L0);
+        bool t = LoopSinkInstructions(sinkCandidates, L);
         changed |= t;
     }
 
