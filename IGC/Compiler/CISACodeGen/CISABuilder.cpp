@@ -3498,7 +3498,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
     if (context->type == ShaderType::PIXEL_SHADER || context->type == ShaderType::OPENCL_SHADER ||
         context->type == ShaderType::COMPUTE_SHADER)
     {
-        vbuilder->SetOption(vISA_clearScratchWritesBeforeEOT, true);
+        vbuilder->SetOption(vISA_clearScratchWritesBeforeEOT, false);
     }
     else
     {

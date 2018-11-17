@@ -1,4 +1,5 @@
 
+/* @(#)fdlibm.h 1.5 04/04/22 */
 /*===================== begin_copyright_notice ==================================
 
 Copyright (c) 2017 Intel Corporation

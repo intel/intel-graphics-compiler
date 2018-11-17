@@ -22,7 +22,8 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-======================= end_copyright_notice ==================================*/#include "DebugInfo.hpp"
+======================= end_copyright_notice ==================================*/
+#include "DebugInfo.hpp"
 #include "GenCodeGenModule.h"
 #include "common/Types.hpp"
 

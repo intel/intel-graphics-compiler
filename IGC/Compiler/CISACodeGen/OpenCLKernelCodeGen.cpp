@@ -1279,6 +1279,7 @@ void COpenCLKernel::ParseShaderSpecificOpcode( llvm::Instruction* inst )
     default:
         break;
     }
+
 }
 
 void COpenCLKernel::AllocatePayload()

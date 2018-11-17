@@ -2849,7 +2849,7 @@ static bool isSafeToEliminateVarargsCast(const CallSite CS,
   // statepoint reconstruction in SelectionDAG.
   // TODO: This is probably something which should be expanded to all
   // intrinsics since the entire point of intrinsics is that
-  // they are understood by the optimizer.
+  // they are understandable by the optimizer.
   if (isStatepoint(CS) || isGCRelocate(CS) || isGCResult(CS))
     return false;
 
