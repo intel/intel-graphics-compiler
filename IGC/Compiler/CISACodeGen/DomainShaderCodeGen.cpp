@@ -298,14 +298,13 @@ void CDomainShader::AddEpilogue(llvm::ReturnInst* pRet)
     {
         CVariable* channelMask = ImmToVariable(0xFF, ISA_TYPE_D);
         CVariable* URBHandle = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
-	    encoder.SetNoMask();
-        encoder.SetSrcRegion(0, 0, 1, 0);
-        encoder.Or(URBHandle, GetURBOutputHandle(), ImmToVariable(0x0000FFFF, ISA_TYPE_D));
+	encoder.SetNoMask();
+        encoder.Copy(URBHandle, ImmToVariable(0xFFFFFFFF, ISA_TYPE_D));
         encoder.Push();
         CVariable* offset = ImmToVariable(0, ISA_TYPE_D);
         CVariable* payload = GetNewVariable(8*numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF);
         encoder.SetNoMask();
-        encoder.URBWrite(payload, 0, offset, URBHandle, channelMask);
+	encoder.URBWrite(payload, 0, offset, URBHandle, channelMask);
         encoder.Push();
     }
     else
