@@ -72,8 +72,6 @@ protected:
     CVariable*             m_pThread_ID_in_Group_Y;
     CVariable*             m_pThread_ID_in_Group_Z;
 
-    CVariable*             m_pGlobalBuffer = nullptr;
-
     uint                   m_numberOfUntypedAccess;
     uint                   m_numberOfTypedAccess;
 	uint				   m_num1DAccesses;

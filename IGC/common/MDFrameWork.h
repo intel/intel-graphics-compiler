@@ -25,8 +25,13 @@ namespace IGC
     enum FunctionTypeMD
     {
         UnknownFunction,
-        KernelFunction,
-        CallableShader,
+        VertexShaderFunction,
+        HullShaderFunction,
+        DomainShaderFunction,
+        GeometryShaderFunction,
+        PixelShaderFunction,
+        ComputeShaderFunction,
+        OpenCLFunction,
         UserFunction,
         NumberOfFunctionType,
     };

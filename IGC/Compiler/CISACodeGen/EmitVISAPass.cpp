@@ -266,6 +266,11 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext *ctx, MetaDataUtils *pMdUtil
                 {
                     m_shaders[pFunc] = new CShaderProgram(ctx, pFunc);
                     COMPILER_SHADER_STATS_INIT(m_shaders[pFunc]->m_shaderStats);
+#if defined( _DEBUG ) || defined( _INTERNAL )
+                    std::stringstream ss;
+                    ss << "kernel_" << pFunc->getName().str();
+                    static_cast<OpenCLProgramContext*>(ctx)->SetFuncStr(pFunc, ss.str());
+#endif
                 }
             }
         }
@@ -320,9 +325,11 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext *ctx, MetaDataUtils *pMdUtil
                 {
                     continue;
                 }
+
                 m_shaders[pFunc] = new CShaderProgram(ctx, pFunc);
                 COMPILER_SHADER_STATS_INIT(m_shaders[pFunc]->m_shaderStats);
             }
+            assert(m_shaders.size() == 1 && "Shader program is expected to contain 1 shader");
         }
     }
 }

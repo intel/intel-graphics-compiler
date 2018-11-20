@@ -254,6 +254,13 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
                 << std::dec
                 << std::setfill(' ');
         }
+
+        if(m_postfixStr.hasValue() && !m_postfixStr.getValue().empty())
+        {
+            ss << "_"
+                << m_postfixStr.getValue();
+        }
+
         underscore = true;
     }
     if(m_pass.hasValue())
@@ -306,18 +313,6 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
             underscore = true;
         }
     }
-
-    if(m_postfixStr.hasValue() && !m_postfixStr.getValue().empty())
-    {
-        std::string s = m_postfixStr.getValue();
-        // sanitize the function name
-        std::replace(s.begin(), s.end(), (char)1, '_');
-        std::replace(s.begin(), s.end(), '?', '_');
-        ss << "_"
-            << s;
-    }
-
-
     if(m_extension.hasValue())
     {
         ss << "." << m_extension.getValue();
@@ -640,11 +635,12 @@ DumpName GetDumpNameObj(IGC::CShader* pProgram, const char* ext)
         .Type(context->type)
         .Hash(context->hash);
 
-    if(pProgram->entry->getName() != "entry")
+    if (pProgram->GetShaderType() == ShaderType::OPENCL_SHADER)
     {
-        dumpName = dumpName.PostFix(pProgram->entry->getName());
+        IGC::OpenCLProgramContext* pOCLCtx = static_cast<IGC::OpenCLProgramContext*>(context);
+        dumpName = dumpName.PostFix(pOCLCtx->GetStr(pProgram->entry));
     }
-    if (pProgram->GetShaderType() == ShaderType::PIXEL_SHADER)
+    else if (pProgram->GetShaderType() == ShaderType::PIXEL_SHADER)
     {
         IGC::CPixelShader* psProgram = static_cast<IGC::CPixelShader*>(pProgram);
         dumpName = dumpName.PSPhase(psProgram->GetPhase());

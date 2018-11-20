@@ -491,6 +491,19 @@ float ComputeShaderContext::GetSpillThreshold() const
     return m_slmSize ? spillThresholdSLM : spillThresholdNoSLM;
 }
 
+
+void OpenCLProgramContext::SetFuncStr(llvm::Function* pFunc, std::string str)
+{
+    m_hashes_per_kernel[pFunc] = str;
+}
+
+std::string OpenCLProgramContext::GetStr(llvm::Function* pFunc)
+{
+    assert(m_hashes_per_kernel.find(pFunc) != m_hashes_per_kernel.end() &&
+        "Hash for function hasn't been computed yet");
+    return m_hashes_per_kernel[pFunc];
+}
+
 bool OpenCLProgramContext::isSPIRV() const
 {
     return isSpirV;
