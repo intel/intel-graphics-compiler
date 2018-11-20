@@ -162,6 +162,7 @@ namespace IGC
         bool isStateless = false;
 	};
 
+
     struct SKernelProgram
     {
         SProgramOutput simd8;
@@ -196,6 +197,7 @@ namespace IGC
         
         // GTPin requests
         gtpin::igc::igc_init_t m_GTPinRequest = {0};
+
     };
 
     struct SPixelShaderKernelProgram : SKernelProgram
@@ -1008,8 +1010,6 @@ namespace IGC
 			m_ShouldUseNonCoherentStatelessBTI(shouldUseNonCoherentStatelessBTI)
         {
         }
-        void SetFuncStr(llvm::Function* pFunc, std::string str);
-        std::string GetStr(llvm::Function* pFunc);
         bool isSPIRV() const;
         void setAsSPIRV();
         float getProfilingTimerResolution();

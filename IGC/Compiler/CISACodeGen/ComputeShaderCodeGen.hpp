@@ -35,17 +35,17 @@ public:
     CComputeShader(llvm::Function *pFunc, CShaderProgram* pProgram);
     ~CComputeShader();
 
-    virtual void        AllocatePayload();
-    virtual void        AddPrologue();
-    virtual bool        CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F);
-    virtual void        InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE);
+    virtual void        AllocatePayload() override;
+    virtual void        AddPrologue() override;
+    virtual bool        CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F) override;
+    virtual void        InitEncoder(SIMDMode simdMode, bool canAbortOnSpill, ShaderDispatchMode shaderMode = ShaderDispatchMode::NOT_APPLICABLE) override;
 
     void        FillProgram(SComputeShaderKernelProgram* pKernelProgram);
-    void        PreCompile();
-    void        ExtractGlobalVariables();
+    void        PreCompile() override;
+    void        ExtractGlobalVariables() override;
     void        CreateThreadPayloadData(void* & pThreadPayload, uint& threadPayloadSize);
     uint        GetNumberOfId();
-    void        ParseShaderSpecificOpcode(llvm::Instruction* inst);
+    void        ParseShaderSpecificOpcode(llvm::Instruction* inst) override;
 
     /// Get the Thread ID's in Group
     CVariable*  CreateThreadIDinGroup(uint channelNum);
@@ -58,7 +58,7 @@ public:
     }
 
     bool        HasSLM() const { return m_hasSLM; }
-    bool        HasFullDispatchMask();
+    bool        HasFullDispatchMask() override;
 
 protected:
     /// Size of a thread group (X x Y x Z) provided by the front-end.
@@ -71,6 +71,8 @@ protected:
     CVariable*             m_pThread_ID_in_Group_X;
     CVariable*             m_pThread_ID_in_Group_Y;
     CVariable*             m_pThread_ID_in_Group_Z;
+
+    CVariable*             m_pGlobalBuffer = nullptr;
 
     uint                   m_numberOfUntypedAccess;
     uint                   m_numberOfTypedAccess;

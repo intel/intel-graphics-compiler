@@ -2979,31 +2979,33 @@ CShader* CShaderProgram::GetOrCreateShader(SIMDMode simd, ShaderDispatchMode mod
 CShader* CShaderProgram::CreateNewShader(SIMDMode simd)
 {
     CShader* pShader = nullptr;
-    switch(m_context->type)
     {
-    case ShaderType::OPENCL_SHADER:
-        pShader = new COpenCLKernel((OpenCLProgramContext*)m_context, m_kernel, this);
-        break;
-    case ShaderType::PIXEL_SHADER:
-        pShader = new CPixelShader(m_kernel, this);
-        break;
-    case ShaderType::VERTEX_SHADER:
-        pShader = new CVertexShader(m_kernel, this);
-        break;
-    case ShaderType::GEOMETRY_SHADER:
-        pShader = new CGeometryShader(m_kernel, this);
-        break;
-    case ShaderType::HULL_SHADER:
-        pShader = new CHullShader(m_kernel, this);
-        break;
-    case ShaderType::DOMAIN_SHADER:
-        pShader = new CDomainShader(m_kernel, this);
-        break;
-    case ShaderType::COMPUTE_SHADER:
-        pShader = new CComputeShader(m_kernel, this);
-        break;
-    default:
-        assert(0 && "wrong shader type");
+        switch(m_context->type)
+        {
+        case ShaderType::OPENCL_SHADER:
+            pShader = new COpenCLKernel((OpenCLProgramContext*)m_context, m_kernel, this);
+            break;
+        case ShaderType::PIXEL_SHADER:
+            pShader = new CPixelShader(m_kernel, this);
+            break;
+        case ShaderType::VERTEX_SHADER:
+            pShader = new CVertexShader(m_kernel, this);
+            break;
+        case ShaderType::GEOMETRY_SHADER:
+            pShader = new CGeometryShader(m_kernel, this);
+            break;
+        case ShaderType::HULL_SHADER:
+            pShader = new CHullShader(m_kernel, this);
+            break;
+        case ShaderType::DOMAIN_SHADER:
+            pShader = new CDomainShader(m_kernel, this);
+            break;
+        case ShaderType::COMPUTE_SHADER:
+            pShader = new CComputeShader(m_kernel, this);
+            break;
+        default:
+            assert(0 && "wrong shader type");
+        }
     }
     pShader->m_shaderStats = m_shaderStats;
     pShader->m_DriverInfo = &m_context->m_DriverInfo;

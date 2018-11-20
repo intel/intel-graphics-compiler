@@ -666,4 +666,5 @@ bool CComputeShader::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Func
     return true;
 }
 
+
 }
