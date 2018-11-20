@@ -1377,6 +1377,10 @@ void OptimizeIR(CodeGenContext* pContext)
         }
         //mpm.add(llvm::createDeadCodeEliminationPass());       // this should be done both before/after constant propagation
 
+        if (pContext->m_instrTypes.hasLoop)
+        {
+            mpm.add(createDeadPHINodeEliminationPass());
+        }
         mpm.run(*pContext->getModule());
     }
     COMPILER_TIME_END( pContext, TIME_OptimizationPasses );

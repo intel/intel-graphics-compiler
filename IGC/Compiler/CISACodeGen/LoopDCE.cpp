@@ -56,6 +56,34 @@ private:
   bool processLoop(Loop *L);
 };
 
+/// This is to remove any recursive PHINode. For example,
+///   Bx:
+///     x = phi [] ...[y, By]
+///   By:
+///     y = phi [] ... [x, Bx]
+/// Both x and y are only used by PHINode, thus they can be
+/// removed.  This recursive PHINodes happens only if there
+/// are loops, and could be introduced in SROA.
+///
+/// This pass detects the cases above and remove those PHINodes
+class DeadPHINodeElimination : public FunctionPass {
+public:
+    static char ID;
+
+    DeadPHINodeElimination() : FunctionPass(ID)
+    {
+        initializeDeadPHINodeEliminationPass(*PassRegistry::getPassRegistry());
+    }
+
+    bool runOnFunction(Function &) override;
+
+    void getAnalysisUsage(AnalysisUsage &AU) const override {
+        AU.setPreservesCFG();
+        AU.addRequired<CodeGenContextWrapper>();
+        AU.addRequired<MetaDataUtilsWrapper>();
+    }
+};
+
 } // End anonymous namespace
 
 char LoopDeadCodeElimination::ID = 0;
@@ -166,4 +194,132 @@ bool LoopDeadCodeElimination::processLoop(Loop *L) {
     }
   }
   return Changed;
+}
+
+
+/// DeadPHINodeElimination
+char DeadPHINodeElimination::ID = 0;
+
+#undef PASS_FLAG
+#undef PASS_DESC
+#undef PASS_CFG_ONLY
+#undef PASS_ANALYSIS
+
+#define PASS_FLAG     "igc-phielimination"
+#define PASS_DESC     "Remove dead recurisive PHINode"
+#define PASS_CFG_ONLY false
+#define PASS_ANALYSIS false
+namespace IGC {
+    IGC_INITIALIZE_PASS_BEGIN(DeadPHINodeElimination, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+        IGC_INITIALIZE_PASS_DEPENDENCY(CodeGenContextWrapper)
+        IGC_INITIALIZE_PASS_DEPENDENCY(MetaDataUtilsWrapper)
+        IGC_INITIALIZE_PASS_END(DeadPHINodeElimination, PASS_FLAG, PASS_DESC, PASS_CFG_ONLY, PASS_ANALYSIS)
+}
+
+FunctionPass *IGC::createDeadPHINodeEliminationPass() {
+    return new DeadPHINodeElimination();
+}
+
+bool DeadPHINodeElimination::runOnFunction(Function &F)
+{
+    // This is to eliminate potential recurive phi like the following:
+    //  Bx:   x = phi [y0, B0], ...[z, Bz]
+    //  Bz:   z = phi [x, Bx], ...[]
+    //  x and z are recursive phi's that are not used anywhere but in those phi's.
+    //  Thus, they can be eliminated.
+    auto phiUsedOnlyByPhi = [](PHINode *P) {
+        bool ret = true;
+        for (auto U : P->users())
+        {
+            Instruction* Inst = dyn_cast<Instruction>(U);
+            if (!Inst || !isa<PHINode>(Inst)) {
+                ret = false;
+                break;
+            }
+        }
+        return ret;
+    };
+
+    DenseMap<PHINode*, int> candidates;
+    for (auto& BI : F)
+    {
+        BasicBlock* BB = &BI;
+        for (auto& II : *BB)
+        {
+            PHINode *Phi = dyn_cast<PHINode>(&II);
+            if (Phi && phiUsedOnlyByPhi(Phi)) {
+                candidates[Phi] = 1;
+            }
+            else if (!Phi) {
+                // No more phi, stop looping.
+                break;
+            }
+        }
+    }
+
+    /// Iteratively removing non-candidate PHINode by
+    /// setting its map value to zero.
+    bool changed;
+    do
+    {
+        changed = false;
+        for (auto MI = candidates.begin(), ME = candidates.end(); MI != ME; ++MI)
+        {
+            PHINode *P = MI->first;
+            if (MI->second == 0)
+                continue;
+
+            for (auto U : P->users()) {
+                PHINode *phiUser = dyn_cast<PHINode>(U);
+                assert(phiUser && "ICE: all candidates should have phi as its users!");
+                auto iter = candidates.find(phiUser);
+                if (iter == candidates.end())
+                {
+                    // not candidate as its user is not in the map.
+                    MI->second = 0;
+                    changed = true;
+                    break;
+                }
+
+                // If it is the user of itself, skip.
+                if (iter->first == MI->first) {
+                    continue;
+                }
+
+                if (iter->second == 0)
+                {
+                    // not candidate as being used by a non-candidate phi
+                    MI->second = 0;
+                    changed = true;
+                    break;
+                }
+            }
+        }
+    } while (changed);
+
+    // Prepare phi for deletion by setting its operands to null
+    SmallVector<PHINode*, 8> toBeDeleted;
+    for (auto& MI : candidates)
+    {
+        PHINode *P = MI.first;
+        if (MI.second == 0)
+            continue;
+        // reset its operands to zero, which will eventually
+        // make all dead Phi's uses to be empty!
+        Value *nilVal = Constant::getNullValue(P->getType());
+        for (int i = 0, e = (int)P->getNumIncomingValues(); i < e; ++i)
+        {
+            P->setIncomingValue(i, nilVal);
+        }
+        toBeDeleted.push_back(P);
+    }
+
+    // Actually delete them.
+    for (int i = 0, e = (int)toBeDeleted.size(); i < e; ++i)
+    {
+        PHINode* P = toBeDeleted[i];
+        P->eraseFromParent();
+    }
+
+    return (toBeDeleted.size() > 0);
 }

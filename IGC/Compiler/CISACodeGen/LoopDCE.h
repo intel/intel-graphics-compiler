@@ -9,4 +9,7 @@
 namespace IGC {
   llvm::FunctionPass *createLoopDeadCodeEliminationPass();
   void initializeLoopDeadCodeEliminationPass(llvm::PassRegistry &);
+
+  llvm::FunctionPass* createDeadPHINodeEliminationPass();
+  void initializeDeadPHINodeEliminationPass(llvm::PassRegistry &);
 } // End namespace IGC
