@@ -1253,6 +1253,7 @@ class G4_Kernel
     const char* name;
     unsigned numRegTotal;
     unsigned int simdSize;
+    bool hasAddrTaken;
     Options *m_options;
 
 	RA_Type RAType;
@@ -1278,8 +1279,6 @@ class G4_Kernel
     uint32_t bank_good_num;
     uint32_t bank_ok_num;
     uint32_t bank_bad_num;
-
-	uint32_t maxAddrTakenSize;
 
     unsigned int callerSaveLastGRF;
 
@@ -1317,6 +1316,7 @@ public:
         numRegTotal = UNDEFINED_VAL;
         name = NULL;
         simdSize = 0;
+        hasAddrTaken = false;
         kernelDbgInfo = nullptr;
         if (options->getOption(vISAOptions::vISA_ReRAPostSchedule) ||
             options->getOption(vISAOptions::vISA_GetFreeGRFInfo))
@@ -1330,7 +1330,6 @@ public:
 
         unsigned int totalGRFs = options->getuInt32Option(vISA_TotalGRFNum);
         callerSaveLastGRF = ((totalGRFs - 8) / 2) - 1;
-		maxAddrTakenSize = 0;
     }
 
     ~G4_Kernel();
@@ -1392,11 +1391,8 @@ public:
     void calculateSimdSize();
     unsigned int getSimdSize() { return simdSize; }
 
-	void setMaxAddrTakenSize(uint32_t val) { 
-		if (val > maxAddrTakenSize) 
-			maxAddrTakenSize = val; 
-	}
-	uint32_t getMaxAddrTakenSize() { return maxAddrTakenSize; }
+    void setHasAddrTaken(bool val) { hasAddrTaken = val; }
+    bool getHasAddrTaken() { return hasAddrTaken;  }
 
     void setNumRegTotal(unsigned num)     {numRegTotal = num;}
     void setName(const char* n)                  {name = n;}
