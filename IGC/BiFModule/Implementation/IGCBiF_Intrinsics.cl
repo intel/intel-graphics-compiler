@@ -678,5 +678,15 @@ double __builtin_IB_sub_group_scan_OpGroupFAdd_f64(double x) __attribute__((cons
 double __builtin_IB_sub_group_scan_OpGroupFMax_f64(double x) __attribute__((const));
 double __builtin_IB_sub_group_scan_OpGroupFMin_f64(double x) __attribute__((const));
 
+// The following mul/fma with rtz is used internally for int div/rem emulation
+// x * y, using round-to-zero
+double __builtin_IB_mul_rtz_f64(double x, double y) __attribute__((const));
+float __builtin_IB_mul_rtz_f32(float x, float y) __attribute__((const));
+// x * y + z, using round-to-zero
+double __builtin_IB_fma_rtz_f64(double x, double y, double z) __attribute__((const));
+float __builtin_IB_fma_rtz_f32(float x, float y, float z) __attribute__((const));
+// x + y, using round-to-zero
+double __builtin_IB_add_rtz_f64(double x, double y) __attribute__((const));
+float __builtin_IB_add_rtz_f32(float x, float y) __attribute__((const));
 
 #endif // IGCBIF_INTRINSICS_CL
