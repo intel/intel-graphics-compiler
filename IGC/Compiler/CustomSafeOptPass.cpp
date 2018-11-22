@@ -634,11 +634,14 @@ bool CustomSafeOptPass::isEmulatedAdd(BinaryOperator &I)
                 {
                     if (ConstantInt *pConstOrVal = dyn_cast<ConstantInt>(I.getOperand(1)))
                     {
-                        DWORD const_or_val = int_cast<DWORD>(pConstOrVal->getZExtValue());
-                        DWORD nextPowerOfTwo = iSTD::RoundPower2(const_or_val + 1);
-                        if (pConstMul->getZExtValue() % nextPowerOfTwo == 0)
+                        if (pConstOrVal->isNegative() == false)
                         {
-                            return true;
+                            DWORD const_or_val = int_cast<DWORD>(pConstOrVal->getZExtValue());
+                            DWORD nextPowerOfTwo = iSTD::RoundPower2(const_or_val + 1);
+                            if (nextPowerOfTwo && (pConstMul->getZExtValue() % nextPowerOfTwo == 0))
+                            {
+                                return true;
+                            }
                         }
                     }
                 }
