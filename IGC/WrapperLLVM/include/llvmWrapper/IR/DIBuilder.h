@@ -61,6 +61,11 @@ namespace IGCLLVM
 			llvm::Instruction *InsertBefore) {
 			return llvm::DIBuilder::insertDbgValueIntrinsic(V, VarInfo, Expr, DL, InsertBefore);
 		}
+        inline llvm::DINamespace* createNameSpace(llvm::DIScope *Scope, llvm::StringRef Name, llvm::DIFile *File,
+            unsigned LineNo, bool ExportSymbols)
+        {
+            return llvm::DIBuilder::createNameSpace(Scope, Name, ExportSymbols);
+        }
 	};
 #endif
 }
