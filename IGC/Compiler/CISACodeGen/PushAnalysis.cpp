@@ -213,6 +213,12 @@ bool PushAnalysis::IsStatelessCBLoad(
 
     bool searchForRetBBBeforeDiscard = false;
     BasicBlock* retBB = m_PDT->getRootNode()->getBlock();
+    if (!retBB)
+    {
+        auto& roots = m_PDT->getRoots();
+        assert(roots.size() == 1 && "Unexpected multiple roots");
+        retBB = roots[0];
+    }
 
     for (auto& II : m_pFunction->getEntryBlock())
     {
