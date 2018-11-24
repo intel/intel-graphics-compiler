@@ -1,4 +1,3 @@
-
 /*===================== begin_copyright_notice ==================================
 
 Copyright (C) 2004 by Sun Microsystems, Inc. All rights reserved.
