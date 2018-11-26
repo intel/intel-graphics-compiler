@@ -145,7 +145,9 @@ void ImplicitGlobalId::insertComputeIds(Function* pFunc)
     //
     llvm::DIScope* scope = nullptr;
     DebugLoc loc;
-    getBBScope(entry_block, scope, loc);
+    auto gotScope = getBBScope(entry_block, scope, loc);
+    if (!gotScope)
+        return;
 
     llvm::DIType* gid_di_type = getOrCreateUlongDIType();
     AllocaInst *gid_alloca[3];
