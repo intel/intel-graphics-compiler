@@ -34,7 +34,7 @@ IGC is supported on the following 32/64 bits Linux operating systems:
 
 1. Install prerequisites
 
-Building IGC need flxe, bision, clang 4.0, cmake version later than 3.4.3 and
+Building IGC needs flex, bison, clang 4.0, cmake version later than 3.4.3 and
  libz.  You can install required packages on ubuntu 16.04 like below:
 ```
 $ sudo apt-get install flex bison clang-4.0 libz-dev cmake
