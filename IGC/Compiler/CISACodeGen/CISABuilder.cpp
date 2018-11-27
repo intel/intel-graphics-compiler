@@ -639,7 +639,7 @@ uint64_t CalculateImmediateValue(CVariable* var, e_modifier mod)
     {
         if(mod == EMOD_ABS)
         {
-            immediate |= (uint64_t)(1)<<GetSignBit(var->GetType());
+            immediate &= ~((uint64_t)(1)<<GetSignBit(var->GetType()));
         }
         else if(mod == EMOD_NEG)
         {
@@ -647,7 +647,7 @@ uint64_t CalculateImmediateValue(CVariable* var, e_modifier mod)
         }
         else if(mod == EMOD_NEGABS)
         {
-             immediate &= ~((uint64_t)(1)<<GetSignBit(var->GetType()));
+             immediate |= ((uint64_t)(1)<<GetSignBit(var->GetType()));
         }
     }
     else
