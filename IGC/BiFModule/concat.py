@@ -47,6 +47,6 @@ with open(outfilename, 'wb') as outfile:
   for fname in infilenames:
     if not os.path.exists(fname):
       sys.exit("Error: no such file: " + fname)
-    with open(fname) as infile:
+    with open(fname, "rb") as infile:
       outfile.write(infile.read())
-  outfile.write("\0")
+  outfile.write(b"\0")
