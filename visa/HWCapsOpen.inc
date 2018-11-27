@@ -430,4 +430,9 @@
         return false;
     }
 
+    bool balanceIntFloatMoves() const
+    {
+        return false;
+    }
+
     // end HW capabilities

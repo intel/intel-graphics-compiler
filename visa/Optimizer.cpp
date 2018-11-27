@@ -10304,16 +10304,31 @@ void Optimizer::split4GRFVars()
 //
 void Optimizer::changeMoveType()
 {
-    if (!builder.favorFloatMov())
+    if (!builder.favorFloatMov() && !builder.balanceIntFloatMoves())
     {
         return;
     }
+
+    auto changeType = [this](G4_INST* movInst, G4_Type newTy)
+    {
+        movInst->getDst()->setType(newTy);
+        auto src0 = movInst->getSrc(0);
+        if (src0->isImm())
+        {
+            uint32_t mask = getTypeSize(newTy) == 4 ? 0xFFFFFFFF : 0xFFFF;
+            movInst->setSrc(fg.builder->createImm(src0->asImm()->getImm() & mask, newTy), 0);
+        }
+        else
+        {
+            movInst->getSrc(0)->asSrcRegRegion()->setType(newTy);
+        }
+    };
+
 
     for (auto bb : fg.BBs)
     {
         for (auto inst : *bb)
         {
-
             if (inst->opcode() != G4_mov)
             {
                 continue;
@@ -10328,21 +10343,6 @@ void Optimizer::changeMoveType()
                (src0->isImm() || (src0->isSrcRegRegion() && src0->asSrcRegRegion()->getModifier() == Mod_src_undef));
 
             // it may be unsafe to change the move type for acc as it has higher precision
-            auto changeType = [this](G4_INST* movInst, G4_Type newTy)
-            {
-                movInst->getDst()->setType(newTy);
-                auto src0 = movInst->getSrc(0);
-                if (src0->isImm())
-                {
-                    uint32_t mask = getTypeSize(newTy) == 4 ? 0xFFFFFFFF : 0xFFFF;
-                    movInst->setSrc(fg.builder->createImm(src0->asImm()->getImm() & mask, newTy), 0);
-                }
-                else
-                {
-                    movInst->getSrc(0)->asSrcRegRegion()->setType(newTy);
-                }
-            };
-
             if (inst->getDst()->isGreg() && hasNoModifier)
             {
                 if (src0->isGreg())
@@ -10360,7 +10360,6 @@ void Optimizer::changeMoveType()
                             changeType(inst, Type_HF);
                         }
                     }
-                    
                 }
                 else if (src0->isImm())
                 {
