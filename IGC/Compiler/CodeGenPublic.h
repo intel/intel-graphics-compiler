@@ -643,8 +643,6 @@ namespace IGC
         uint32_t     m_numGradientSinked = 0;
         std::vector<unsigned> m_indexableTempSize;
         bool         m_highPsRegisterPressure = 0;
-        // Initialized to true by default, in case of FE didn't check shader for it
-        bool         m_shaderHasLoadStore = true;
 
         // For IR dump after pass
         unsigned     m_numPasses = 0;

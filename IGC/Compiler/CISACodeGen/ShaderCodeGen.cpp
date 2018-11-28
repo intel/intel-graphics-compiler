@@ -453,7 +453,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
 
     // Run MemOpt
     if (!isOptDisabled &&
-        ctx.m_instrTypes.hasLoadStore && ctx.m_shaderHasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt)) {
+        ctx.m_instrTypes.hasLoadStore && IGC_IS_FLAG_DISABLED(DisableMemOpt)) {
         if (IGC_IS_FLAG_ENABLED(EnableAdvMemOpt))
           mpm.add(createAdvMemOptPass());
         mpm.add(createMemOptPass());
@@ -462,7 +462,6 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
 
     if (!isOptDisabled &&
         ctx.m_instrTypes.hasLoadStore && 
-        ctx.m_shaderHasLoadStore &&
         ctx.m_DriverInfo.SupportsStatelessToStatefullBufferTransformation() &&
         !ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
         IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull))
@@ -1163,10 +1162,10 @@ void OptimizeIR(CodeGenContext* pContext)
             mpm.add(createSROAPass());
         }
 
-        if (pContext->m_instrTypes.hasMultipleBB)
+        if(pContext->m_instrTypes.hasMultipleBB)
         {
             // disable loop unroll for excessive large shaders
-            if( pContext->m_instrTypes.hasLoop )
+            if(pContext->m_instrTypes.hasLoop)
             {
                 mpm.add(createLoopDeadCodeEliminationPass());
                 mpm.add(createLoopCanonicalization());
@@ -1176,7 +1175,7 @@ void OptimizeIR(CodeGenContext* pContext)
                 mpm.add(llvm::createLCSSAPass());
                 mpm.add(llvm::createLoopSimplifyPass());
 
-                if (pContext->m_retryManager.AllowLICM() && IGC_IS_FLAG_ENABLED(allowLICM))
+                if(pContext->m_retryManager.AllowLICM() && IGC_IS_FLAG_ENABLED(allowLICM))
                 {
                     mpm.add(llvm::createLICMPass());
                     mpm.add(llvm::createLICMPass());
@@ -1184,7 +1183,7 @@ void OptimizeIR(CodeGenContext* pContext)
 
                 mpm.add(CreateHoistFMulInLoopPass());
 
-                if (IGC_IS_FLAG_ENABLED(EnableCustomLoopVersioning) &&
+                if(IGC_IS_FLAG_ENABLED(EnableCustomLoopVersioning) &&
                     pContext->type == ShaderType::PIXEL_SHADER &&
                     pContext->m_retryManager.AllowUnroll())
                 {
@@ -1193,20 +1192,20 @@ void OptimizeIR(CodeGenContext* pContext)
                 }
 
                 mpm.add(createIGCInstructionCombiningPass());
-                if (IGC_IS_FLAG_ENABLED(EnableAdvCodeMotion) &&
+                if(IGC_IS_FLAG_ENABLED(EnableAdvCodeMotion) &&
                     pContext->type == ShaderType::OPENCL_SHADER &&
                     !pContext->m_instrTypes.hasSwitch)
-                  mpm.add(createAdvCodeMotionPass(IGC_GET_FLAG_VALUE(AdvCodeMotionControl)));
+                    mpm.add(createAdvCodeMotionPass(IGC_GET_FLAG_VALUE(AdvCodeMotionControl)));
 
                 int LoopUnrollThreshold = pContext->m_DriverInfo.GetLoopUnrollThreshold();
 
                 // override the LoopUnrollThreshold if the registry key is set
-                if (IGC_GET_FLAG_VALUE(SetLoopUnrollThreshold) != 0)
+                if(IGC_GET_FLAG_VALUE(SetLoopUnrollThreshold) != 0)
                 {
                     LoopUnrollThreshold = IGC_GET_FLAG_VALUE(SetLoopUnrollThreshold);
                 }
 
-                if (LoopUnrollThreshold > 0 && pContext->m_retryManager.AllowUnroll() && !IGC_IS_FLAG_ENABLED(DisableLoopUnroll))
+                if(LoopUnrollThreshold > 0 && pContext->m_retryManager.AllowUnroll() && !IGC_IS_FLAG_ENABLED(DisableLoopUnroll))
                 {
                     mpm.add(createLoopUnrollPass());
                 }
@@ -1215,13 +1214,13 @@ void OptimizeIR(CodeGenContext* pContext)
                 // LoopUnroll and LICM.
                 mpm.add(createBarrierNoopPass());
 
-                if (pContext->m_retryManager.AllowLICM() && IGC_IS_FLAG_ENABLED(allowLICM))
+                if(pContext->m_retryManager.AllowLICM() && IGC_IS_FLAG_ENABLED(allowLICM))
                 {
                     mpm.add(llvm::createLICMPass());
                 }
 
                 // Second unrolling with the same threshold.
-                if (LoopUnrollThreshold > 0 &&
+                if(LoopUnrollThreshold > 0 &&
                     pContext->m_retryManager.AllowUnroll() &&
                     !IGC_IS_FLAG_ENABLED(DisableLoopUnroll))
                 {
@@ -1234,24 +1233,23 @@ void OptimizeIR(CodeGenContext* pContext)
                 }
             }
 
-            if (pContext->m_shaderHasLoadStore)
-            {
-              // Note: call reassociation pass before IGCConstProp(EnableSimplifyGEP) to preserve the
-              // the expr evaluation order that IGCConstProp creates.
-              //
-              // Do not apply reordering on VS as CustomUnsafeOptPass does.
-              //
-              if (IGC_IS_FLAG_ENABLED(EnableReasso) && (pContext->type != ShaderType::VERTEX_SHADER))
-              {
-                  mpm.add(createReassociatePass());
-              }
 
-              if (IGC_IS_FLAG_ENABLED(EnableGVN))
-              {
-                  mpm.add(llvm::createGVNPass());
-              }
-              mpm.add(createGenOptLegalizer());
+            // Note: call reassociation pass before IGCConstProp(EnableSimplifyGEP) to preserve the
+            // the expr evaluation order that IGCConstProp creates.
+            //
+            // Do not apply reordering on VS as CustomUnsafeOptPass does.
+            //
+            if(IGC_IS_FLAG_ENABLED(EnableReasso) && (pContext->type != ShaderType::VERTEX_SHADER))
+            {
+                mpm.add(createReassociatePass());
             }
+
+            if(IGC_IS_FLAG_ENABLED(EnableGVN))
+            {
+                mpm.add(llvm::createGVNPass());
+            }
+            mpm.add(createGenOptLegalizer());
+
 
             mpm.add(llvm::createSCCPPass());
 
@@ -1260,17 +1258,17 @@ void OptimizeIR(CodeGenContext* pContext)
             mpm.add(new BreakConstantExpr());
             mpm.add(new IGCConstProp(!pContext->m_DriverInfo.SupportsPreciseMath(), IGC_IS_FLAG_ENABLED(EnableSimplifyGEP)));
 
-            if (IGC_IS_FLAG_DISABLED(DisableImmConstantOpt))
+            if(IGC_IS_FLAG_DISABLED(DisableImmConstantOpt))
             {
                 mpm.add(createIGCIndirectICBPropagaionPass());
             }
 
-            if (pContext->m_DriverInfo.AllowGenUpdateCB() && IGC_IS_FLAG_ENABLED(EnableGenUpdateCB))
+            if(pContext->m_DriverInfo.AllowGenUpdateCB() && IGC_IS_FLAG_ENABLED(EnableGenUpdateCB))
             {
                 mpm.add(new GenUpdateCB());
             }
 
-            if (!pContext->m_instrTypes.hasAtomics)
+            if(!pContext->m_instrTypes.hasAtomics)
             {
                 // jump threading currently causes the atomic_flag test from c11 conformance to fail.  Right now,
                 // only do jump threading if we don't have atomics as using atomics as locks seems to be the most common
@@ -1279,7 +1277,7 @@ void OptimizeIR(CodeGenContext* pContext)
             }
             mpm.add(llvm::createCFGSimplificationPass());
             mpm.add(llvm::createEarlyCSEPass());
-            if( pContext->m_instrTypes.hasNonPrimitiveAlloca )
+            if(pContext->m_instrTypes.hasNonPrimitiveAlloca)
             {
                 mpm.add(createSROAPass());
             }
@@ -1287,7 +1285,7 @@ void OptimizeIR(CodeGenContext* pContext)
             // Use CFGSimplification to do clean-up. Needs to be invoked before lowerSwitch.
             mpm.add(llvm::createCFGSimplificationPass());
 
-            if (IGC_IS_FLAG_DISABLED(DisableFlattenSmallSwitch))
+            if(IGC_IS_FLAG_DISABLED(DisableFlattenSmallSwitch))
             {
                 mpm.add(createFlattenSmallSwitchPass());
             }
@@ -1310,7 +1308,7 @@ void OptimizeIR(CodeGenContext* pContext)
                 mpm.add(createBlendToDiscardPass());
             }
             mpm.add(new CustomSafeOptPass());
-            if (!pContext->m_DriverInfo.WADisableCustomPass())
+            if(!pContext->m_DriverInfo.WADisableCustomPass())
             {
                 mpm.add(new CustomUnsafeOptPass());
             }
@@ -1354,7 +1352,7 @@ void OptimizeIR(CodeGenContext* pContext)
         }
         mpm.add(createGenSimplificationPass());
 
-        if (pContext->m_instrTypes.hasLoadStore && pContext->m_shaderHasLoadStore)
+        if (pContext->m_instrTypes.hasLoadStore)
         {
             mpm.add(llvm::createDeadStoreEliminationPass());
             mpm.add(llvm::createMemCpyOptPass());
