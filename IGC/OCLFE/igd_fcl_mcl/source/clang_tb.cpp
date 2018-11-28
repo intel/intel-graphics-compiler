@@ -1207,6 +1207,7 @@ namespace TC
 							(strcmp(pParam, "-gline-tables-only") == 0) ||
 							(strcmp(pParam, "-triple") == 0) || //used in NEO
 							(strcmp(pParam, "-dwarf-column-info") == 0) ||
+							(strcmp(pParam, "-cl-intel-no-prera-scheduling") == 0) || //temporary options
 							(strcmp(pParam, "-cl-intel-debug-info") == 0) ||
 							(strncmp(pParam, "-dump-opt-llvm", 14) == 0) ||
 							(strcmp(pParam, "-cl-no-subgroup-ifp") == 0);
