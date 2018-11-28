@@ -7331,9 +7331,6 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_WaveAll:
         emitWaveAll(inst);
         break;
-
-    case GenISAIntrinsic::GenISA_OUTPUTPSMASK:
-        break;
     case GenISAIntrinsic::GenISA_InitDiscardMask:
         emitInitDiscardMask(inst);
         break;

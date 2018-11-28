@@ -2993,8 +2993,7 @@ void EarlyOutPatterns::MoveOutputToConvergeBlock(BasicBlock* divergeBlock, Basic
         if(GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(I))
         {
             auto id = intr->getIntrinsicID();
-            if (id == GenISAIntrinsic::GenISA_OUTPUT ||
-                id == GenISAIntrinsic::GenISA_OUTPUTPSMASK)
+            if (id == GenISAIntrinsic::GenISA_OUTPUT)
             {
                 intr->moveBefore(convergeBlock->getTerminator());
             }

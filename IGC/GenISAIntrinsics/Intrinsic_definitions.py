@@ -150,7 +150,6 @@ Imported_Intrinsics = \
     "GenISA_DCL_GSsystemValue": ["float",["int","int"],"NoMem"],
     "GenISA_DCL_input": ["int",["int","int"],"None"],
     "GenISA_OUTPUT": ["void",["anyfloat",0,0,0,"int","int"],"NoDuplicate"],
-    "GenISA_OUTPUTPSMASK": ["void",["bool"],"NoDuplicate"],
     "GenISA_PatchConstantOutput": ["void",["anyfloat",0,0,0,"int","int"],"None"],
     "GenISA_PHASE_OUTPUT": ["void",["float","int"],"None"],
     "GenISA_PHASE_INPUT": ["float",["int"],"NoMem"],
