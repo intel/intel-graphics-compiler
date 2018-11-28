@@ -57,8 +57,8 @@ VLOAD_MACRO(addressSpace, scalarType, 3,  ulong, i64_##mang) \
 VLOAD_MACRO(addressSpace, scalarType, 3,  uint,  i32_##mang) \
 VLOAD_MACRO(addressSpace, scalarType, 4,  ulong, i64_##mang) \
 VLOAD_MACRO(addressSpace, scalarType, 4,  uint,  i32_##mang) \
-VLOAD_MACRO(addressSpace, scalarType, 8,  ulong, i32_##mang) \
-VLOAD_MACRO(addressSpace, scalarType, 8,  uint,  i64_##mang) \
+VLOAD_MACRO(addressSpace, scalarType, 8,  ulong, i64_##mang) \
+VLOAD_MACRO(addressSpace, scalarType, 8,  uint,  i32_##mang) \
 VLOAD_MACRO(addressSpace, scalarType, 16, ulong, i64_##mang) \
 VLOAD_MACRO(addressSpace, scalarType, 16, uint,  i32_##mang)
 
@@ -97,8 +97,8 @@ VSTORE_MACRO(addressSpace, scalarType, 3,  ulong, v3##typemang##_i64_##mang)  \
 VSTORE_MACRO(addressSpace, scalarType, 3,  uint,  v3##typemang##_i32_##mang)  \
 VSTORE_MACRO(addressSpace, scalarType, 4,  ulong, v4##typemang##_i64_##mang)  \
 VSTORE_MACRO(addressSpace, scalarType, 4,  uint,  v4##typemang##_i32_##mang)  \
-VSTORE_MACRO(addressSpace, scalarType, 8,  ulong, v8##typemang##_i32_##mang)  \
-VSTORE_MACRO(addressSpace, scalarType, 8,  uint,  v8##typemang##_i64_##mang)  \
+VSTORE_MACRO(addressSpace, scalarType, 8,  ulong, v8##typemang##_i64_##mang)  \
+VSTORE_MACRO(addressSpace, scalarType, 8,  uint,  v8##typemang##_i32_##mang)  \
 VSTORE_MACRO(addressSpace, scalarType, 16, ulong, v16##typemang##_i64_##mang) \
 VSTORE_MACRO(addressSpace, scalarType, 16, uint,  v16##typemang##_i32_##mang)
 
