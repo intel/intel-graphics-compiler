@@ -5935,8 +5935,6 @@ void HWConformity::conformBB( BB_LIST_ITER it)
             continue;
         }
 
-        fixStridedRegion(i, bb);
-
         fixLine(i, bb);
         fixRotate(i, bb);
 
@@ -7614,30 +7612,6 @@ void HWConformity::fixSrc2(INST_LIST_ITER it, G4_BB* bb, bool swapSrc0and2)
         if (dstEltSz != G4_Type_Table[srcTy].byteSize)
         {
             inst->setDest(insertMovAfter(it, inst->getDst(), inst->getDst()->getType(), bb, Sixteen_Word));
-        }
-    }
-}
-
-void HWConformity::fixStridedRegion(INST_LIST_ITER it, G4_BB* bb)
-{
-    G4_INST* inst = *it;
-    if (builder.hasStrideFloatRegions() || inst->opcode() == G4_mov)
-    {
-        return;
-    }
-
-    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
-    {
-        G4_SrcRegRegion* src = inst->getSrc(i) && inst->getSrc(i)->isSrcRegRegion() ? 
-            inst->getSrc(i)->asSrcRegRegion() : nullptr;
-        if (src && !src->getRegion()->isScalar() && !src->getRegion()->isContiguous(inst->getExecSize()))
-        {
-            auto type = src->getType();
-            if (IS_TYPE_FLOAT_ALL(type) || getTypeSize(type) == 8)
-            {
-                auto newSrc = insertMovBefore(it, i, type, bb);
-                inst->setSrc(newSrc, i);
-            }
         }
     }
 }

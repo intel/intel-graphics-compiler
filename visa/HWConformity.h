@@ -209,8 +209,6 @@ namespace vISA
 
         void fixSrc2(INST_LIST_ITER it, G4_BB* bb, bool swapSrc0and2);
 
-        void fixStridedRegion(INST_LIST_ITER it, G4_BB* bb);
-
         void fixVxHFloat64b(INST_LIST_ITER it, G4_BB* bb);
 
     public:
