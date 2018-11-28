@@ -54,6 +54,11 @@ float __attribute__((overloadable)) atomic_cmpxchg(volatile __local float *p, fl
 #define CLK_YVYU_INTEL 0x4078
 #define CLK_VYUY_INTEL 0x4079
 
+// Device side VME not defined in Clang.
+#define CLK_AVC_ME_SEARCH_WINDOW_16x12_RADIUS_INTEL        0x9
+#define CLK_AVC_ME_SEARCH_WINDOW_4x4_RADIUS_INTEL          0x2
+#define CLK_AVC_ME_SEARCH_WINDOW_2x2_RADIUS_INTEL          0xa
+
 // These types are built-in in Clang 5.0
 #ifndef __CLANG_50__
 // Externally exposed device side VME.
@@ -92,9 +97,6 @@ float __attribute__((overloadable)) atomic_cmpxchg(volatile __local float *p, fl
 #define CLK_AVC_ME_SEARCH_WINDOW_RESERVED0_INTEL           0x6
 #define CLK_AVC_ME_SEARCH_WINDOW_RESERVED1_INTEL           0x7
 #define CLK_AVC_ME_SEARCH_WINDOW_CUSTOM_INTEL              0x8
-#define CLK_AVC_ME_SEARCH_WINDOW_16x12_RADIUS_INTEL        0x9
-#define CLK_AVC_ME_SEARCH_WINDOW_4x4_RADIUS_INTEL          0x2
-#define CLK_AVC_ME_SEARCH_WINDOW_2x2_RADIUS_INTEL          0xa
 
 #define CLK_AVC_ME_SAD_ADJUST_MODE_NONE_INTEL              0x0
 #define CLK_AVC_ME_SAD_ADJUST_MODE_HAAR_INTEL              0x2
