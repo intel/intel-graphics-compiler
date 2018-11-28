@@ -1684,10 +1684,12 @@ SPIRVToLLVM::postProcessFunctionsReturnStruct(Function *F) {
       const auto ptrSize = DL.getPointerSize();
 
       for (auto RetInst : Returns) {
-          Value* ReturnedValPtr = cast<LoadInst>(RetInst->getReturnValue())->getPointerOperand();
           IGCLLVM::IRBuilder<> builder(RetInst);
-          auto size = DL.getTypeAllocSize(RetInst->getReturnValue()->getType());
-          builder.CreateMemCpy(&*NewF->arg_begin(), ReturnedValPtr, size, ptrSize);
+          Type* retTy = RetInst->getReturnValue()->getType();
+          Value* returnedValPtr = builder.CreateAlloca(retTy);
+          builder.CreateStore(RetInst->getReturnValue(), returnedValPtr);
+          auto size = DL.getTypeAllocSize(retTy);
+          builder.CreateMemCpy(&*NewF->arg_begin(), returnedValPtr, size, ptrSize);
           builder.CreateRetVoid();
           RetInst->eraseFromParent();
       }
@@ -1721,24 +1723,28 @@ SPIRVToLLVM::postProcessFunctionsWithAggregateArguments(Function* F) {
 
   mutateFunction (F, [=](CallInst *CI, std::vector<Value *> &Args) {
     auto FBegin = CI->getParent()->getParent()->begin()->getFirstInsertionPt();
-	IGCLLVM::IRBuilder<> builder_begin(&(*FBegin));
+    IGCLLVM::IRBuilder<> builder(&(*FBegin));
+
     for (auto &I:Args) {
       auto T = I->getType();
       if (!T->isAggregateType())
         continue;
       
       if (auto constVal = dyn_cast<Constant>(I)) {
-          I = new GlobalVariable(*M, T, true, GlobalValue::InternalLinkage, constVal);
-      } else if (auto loadInst = dyn_cast<LoadInst>(I)) {
-          I = loadInst->getPointerOperand();
+        I = new GlobalVariable(*M, T, true, GlobalValue::InternalLinkage, constVal);
+      } else {
+        builder.SetInsertPoint(CI);
+        Value* allocaInst = builder.CreateAlloca(T);
+        builder.CreateStore(I, allocaInst);
+        I = allocaInst;
       }
 
-      //auto Alloca = new AllocaInst(T, &(*FBegin));
-	  auto Alloca = builder_begin.CreateAlloca(T);
+      builder.SetInsertPoint(&*FBegin);
+      auto Alloca = builder.CreateAlloca(T);
       Alloca->setAlignment(ptrSize);
-      
-	  IGCLLVM::IRBuilder<> builder(CI);
+
       auto size = DL.getTypeAllocSize(T);
+      builder.SetInsertPoint(CI);
       builder.CreateMemCpy(Alloca, I, size, ptrSize);
       if (T->isArrayTy()) {
         I = ptrSize > 4
