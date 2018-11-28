@@ -117,6 +117,7 @@ unsigned int VertexShaderLowering::InsertInEmptySlot(Instruction* sgv)
         arguments, 
         "",
         sgv);
+    urbRead->setDebugLoc(sgv->getDebugLoc());
     Value* channel = ConstantInt::get(Type::getInt32Ty(sgv->getContext()), index%4);
     Instruction* newExt = ExtractElementInst::Create(urbRead, channel, "", sgv);
     sgv->replaceAllUsesWith(newExt);
@@ -489,6 +490,7 @@ void VertexShaderLowering::AddURBRead(Value* index, Value* offset, Instruction* 
         arguments, 
         "",
         prev);
+    urbRead->setDebugLoc(prev->getDebugLoc());
 
     Value* vec4 = nullptr;
     while(!prev->use_empty())
@@ -559,10 +561,12 @@ void VertexShaderLowering::AddURBWrite(Value* offset, uint mask, Value* data[8],
         data[7]
     };
 
-    GenIntrinsicInst::Create(GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBWrite), 
+    CallInst* urbWrite = GenIntrinsicInst::Create(GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBWrite),
         arguments, 
         "",
         prev);
+    urbWrite->setDebugLoc(prev->getDebugLoc());
+
     if(ConstantInt* immOffset = dyn_cast<ConstantInt>(offset))
     {
         uint offset = int_cast<unsigned int>(immOffset->getZExtValue() + (mask <= 0xF ? 1 : 2));
