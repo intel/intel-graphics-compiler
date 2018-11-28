@@ -1310,23 +1310,40 @@ void COpenCLKernel::ParseShaderSpecificOpcode( llvm::Instruction* inst )
 
     if (CallInst* CallI = dyn_cast<CallInst>(inst))
     {
-
-        // Checking stateless access info
-        if (!isa<IntrinsicInst>(CallI) && !isa<GenIntrinsicInst>(CallI)) {
-            // function/subroutine call. Give up
-            SetHasConstantStatelessAccess();
-            SetHasGlobalStatelessAccess();
-        }
-        else
+        bool mayHasMemoryAccess = true;  // for checking stateless access
+        if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(CallI))
         {
-            for (int i = 0, e = (int)CallI->getNumArgOperands(); i < e; ++i)
+            GenISAIntrinsic::ID id = GII->getIntrinsicID();
+            switch (id)
             {
-                Value* arg = CallI->getArgOperand(i);
-                PointerType* PTy = dyn_cast<PointerType>(arg->getType());
-                if (!PTy)
-                    continue;
-                unsigned AS = PTy->getAddressSpace();
-                setStatelessAccess(AS);
+            default:
+                break;
+            case GenISAIntrinsic::GenISA_ptr_to_pair:
+            case GenISAIntrinsic::GenISA_pair_to_ptr:
+                mayHasMemoryAccess = false;
+                break;
+            } // End of switch
+        }
+
+        if (mayHasMemoryAccess)
+        {
+            // Checking stateless access info
+            if (!isa<IntrinsicInst>(CallI) && !isa<GenIntrinsicInst>(CallI)) {
+                // function/subroutine call. Give up
+                SetHasConstantStatelessAccess();
+                SetHasGlobalStatelessAccess();
+            }
+            else
+            {
+                for (int i = 0, e = (int)CallI->getNumArgOperands(); i < e; ++i)
+                {
+                    Value* arg = CallI->getArgOperand(i);
+                    PointerType* PTy = dyn_cast<PointerType>(arg->getType());
+                    if (!PTy)
+                        continue;
+                    unsigned AS = PTy->getAddressSpace();
+                    setStatelessAccess(AS);
+                }
             }
         }
     }
