@@ -268,8 +268,6 @@ void ModuleAllocaInfo::analyze(Function *F, unsigned &Offset,
   for (auto &BB : F->getBasicBlockList()) {
     for (auto &Inst : BB.getInstList()) {
       if (AllocaInst *AI = dyn_cast<AllocaInst>(&Inst)) {
-        if (AI->use_empty())
-          continue;
         Allocas.push_back(AI);
       }
     }
@@ -757,7 +755,6 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
         Instruction *simdSize = CallInst::Create(simdSizeFunc, VALUE_NAME("simdSize"), pEntryPoint);
         for (auto pAI : allocaInsts)
         {
-            assert(!pAI->use_empty() && "Should not reach here with alloca instruction that has no usage!");
             bool isUniform = pAI->getMetadata("uniform") != nullptr;
             llvm::IRBuilder<> builder(pAI);
             IF_DEBUG_INFO(builder.SetCurrentDebugLocation(emptyDebugLoc));
@@ -800,7 +797,6 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 
         for (auto pAI : allocaInsts)
         {
-            assert(!pAI->use_empty() && "Should not reach here with alloca instruction that has no usage!");
             bool isUniform = pAI->getMetadata("uniform") != nullptr;
             llvm::IRBuilder<> builder(pAI);
             // Post upgrade to LLVM 3.5.1, it was found that inliner propagates debug info of callee
@@ -935,8 +931,6 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
 
     for (auto pAI : allocaInsts)
     {
-        assert(!pAI->use_empty() && "Should not reach here with alloca instruction that has no usage!");
-
         // %bufferOffset                = mul i32 %simdSize, <scalarBufferOffset>
         // %bufferOffsetForThread       = add i32 %perThreadOffset, %bufferOffset
         // %perLaneOffset               = mul i32 %simdLaneId, <bufferSize>
