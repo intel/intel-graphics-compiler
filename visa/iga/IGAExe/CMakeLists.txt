@@ -84,10 +84,6 @@ else()
   target_link_libraries(IGA_EXE PUBLIC IGA_SLIB)
 endif()
 
-if(MEDIA_IGA)
-    copy_exe(IGA_EXE)
-endif()
-
 INSTALL(TARGETS IGA_EXE
     RUNTIME DESTINATION .
     LIBRARY DESTINATION .

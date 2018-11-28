@@ -2,6 +2,8 @@
 ##############################################
 # IGA dynamic and static library generation
 
+set (CMAKE_CXX_STANDARD 11)
+
 # add GED libraries and includes
 if (CMAKE_SIZEOF_VOID_P EQUAL 4)
   set(GED_INCLUDE "../GEDLibrary/${GED_BRANCH}/build/autogen-ia32")
@@ -319,18 +321,6 @@ source_group("IR" FILES ${IGA_IR})
 source_group("MemManager" FILES ${IGA_MemManager})
 source_group("Models" FILES ${IGA_Models})
 source_group("Misc" FILES ${IGA_Misc} ${IGA_Timer})
-
-
-if(MEDIA_IGA)
-# copies iga#.dll
-    copy_dll(IGA_DLL)
-# copies iga#.lib and iga#.pdb
-    copy_lib(IGA_DLL)
-# copies iga_s#.lib
-    copy_lib(IGA_SLIB)
-# copies iga_enc#.lib
-    copy_lib(IGA_ENC_LIB)
-endif(MEDIA_IGA)
 
 if(ANDROID AND MEDIA_IGA)
   target_link_libraries(IGA_DLL c++_static)

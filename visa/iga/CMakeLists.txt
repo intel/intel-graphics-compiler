@@ -10,6 +10,9 @@ include (BuildFunctions.cmake)
 # set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 # set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
+set (CMAKE_CXX_STANDARD 11)
+
+
 set(GED_BRANCH GED_external)
 add_subdirectory(GEDLibrary/${GED_BRANCH})
 add_subdirectory(IGALibrary)
