@@ -420,7 +420,7 @@
         return true;
     }
 
-    bool hasStrideFloatRegions() const
+    bool supportFloatRegioning() const
     {
         return true;
     }
