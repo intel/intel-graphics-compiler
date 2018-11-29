@@ -188,9 +188,7 @@ DECLARE_IGC_REGKEY(bool, InitializeRegistersEnable,     false, "Setting this to 
 DECLARE_IGC_GROUP("IGC Features")
 DECLARE_IGC_REGKEY(bool, EnableOCLSIMD16,               true,  "Enable OCL SIMD16 mode")
 DECLARE_IGC_REGKEY(bool, EnableOCLSIMD32,               true,  "Enable OCL SIMD32 mode")
-
-DECLARE_IGC_REGKEY(DWORD, ForceOCLSIMDWidth,            0,     "Force using SIMD width specified. 0 : no forcing. ")
-
+DECLARE_IGC_REGKEY(DWORD, ForceOCLSIMDWidth,            0,     "Force using SIMD width specified. 0 : no forcing. This overrides driver forced SIMD value(if any) and runtime behaviour could be different if driver expects something fixed")
 DECLARE_IGC_REGKEY(bool, SendMultipleSIMDModesCS,       true,  "Send multiple SIMD modes for CS")
 DECLARE_IGC_REGKEY(DWORD, OCLSIMD16SelectionMask,       6,     "Select SIMD 16 heuristics. Valid values are 0, 1, 2 and 3")
 DECLARE_IGC_REGKEY(bool, EnableHSEightPatchDispatch,    false, "Setting this to 1/true enables SIMD8 8-patch dispatch in HullShader. Default is SIMD8 single patch dispatch")
