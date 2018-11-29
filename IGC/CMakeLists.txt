@@ -3211,6 +3211,43 @@ endif()
 
 # ==================================== LLVM package ====================================================
 
+# Start with preparing lists of libraries to link. Correct list will be selected
+# depending on the source of package (build from sources vs system library).
+
+# Use dynamic libraries when linking with system libraries.
+set(IGC_BUILD__LLVM_DYNAMIC_LIBS_TO_LINK "LLVM")
+if(UNIX)
+  # Include dynamic linker for POSIX systems
+  list(APPEND IGC_BUILD__LLVM_DYNAMIC_LIBS_TO_LINK "dl")
+endif()
+
+# Link targets/dependencies (in required link order).
+# NOTE: Since the libraries are grouped in the same link group (in GCC/CLANG),
+#       there is no longer need to order in most dependant first manner.
+set(IGC_BUILD__LLVM_STATIC_LIBS_TO_LINK
+    "LLVMipo"
+    "LLVMIRReader"
+    "LLVMBitWriter"
+    "LLVMAsmParser"
+    "LLVMBitReader"
+    "LLVMLinker"
+    "LLVMCodeGen"
+    "LLVMScalarOpts"
+    "LLVMTransformUtils"
+    "LLVMAnalysis"
+    "LLVMTarget"
+    "LLVMObjCARCOpts"
+    "LLVMVectorize"
+    "LLVMInstrumentation"
+    "LLVMObject"
+    "LLVMMCParser"
+    "LLVMProfileData"
+    "LLVMMC"
+    "LLVMCore"
+    "LLVMSupport"
+    "LLVMDemangle"
+    )
+
 if(TARGET LLVMCore)
     # LLVM targets have been already defined.
     if(LLVM_USE_PREBUILT)
@@ -3221,33 +3258,49 @@ if(TARGET LLVMCore)
     endif()
 
     message(STATUS "[IGC] Using LLVM includes from: ${LLVM_INCLUDE_DIRS}")
-elseif(IGC_LLVM_LINK_WITH_SYSTEM_LIBS)
-    find_package(LLVM REQUIRED CONFIG)
-    message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-    add_definitions(${LLVM_DEFINITIONS})
+
+    # Link with static libraries if we are builing the sources: 
+    set(IGC_BUILD__LLVM_LIBS_TO_LINK ${IGC_BUILD__LLVM_STATIC_LIBS_TO_LINK})
 else()
-    message(STATUS "[IGC] LLVM targets are not defined. Try to use LLVM from standard known locations")
-
-    # Detect LLVM module location
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm_patches)
-        set(IGC_LLVM_HOME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm_patches)
-    elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm)
-        set(IGC_LLVM_HOME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm)
+    message(STATUS "[IGC] LLVM targets are not defined. Searching for LLVM.")
+    set(IGC_PREFERRED_LLVM_VERSION "7.0.0")
+    # Try finding installed system package.
+    find_package(LLVM ${IGC_PREFERRED_LLVM_VERSION})
+    if(LLVM_FOUND)
+        message(STATUS "[IGC] Using system LLVM ${LLVM_PACKAGE_VERSION}")
+        add_definitions(${LLVM_DEFINITIONS})
+        # Check if found package has dynamic library and select them if possible.
+        list(FIND LLVM_FIND_COMPONENTS "LLVM" DYN_LIB_INDEX)
+        if(${DYN_LIB_INDEX} GREATER -1)
+          message(STATUS "[IGC] Using dynamic LLVM.")
+          set(IGC_BUILD__LLVM_LIBS_TO_LINK ${IGC_BUILD__LLVM_DYNAMIC_LIBS_TO_LINK})
+        else()
+          message(STATUS "[IGC] Using static LLVM.")
+          set(IGC_BUILD__LLVM_LIBS_TO_LINK ${IGC_BUILD__LLVM_STATIC_LIBS_TO_LINK})
+        endif()
+    # If we failed to get sytem libraries go look for a source directory that
+    # we can use.
     else()
-        message(FATAL_ERROR "[IGC] Unknown location of LLVM component")
-    endif()
+      if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm_patches)
+          set(IGC_LLVM_HOME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../llvm_patches)
+      elseif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm)
+          set(IGC_LLVM_HOME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../external/llvm)
+      else()
+          message(FATAL_ERROR "[IGC] Unknown location of LLVM component")
+      endif()
 
-    if(IGC_OPTION__LLVM_DUMP_DIR)
-       set(LLVM_PREBUILT_PATH ${IGC_OPTION__LLVM_DUMP_DIR})
-       include(${IGC_LLVM_HOME_DIR}/llvm_prebuilt.cmake)
-    else()
-        message(STATUS "[IGC] LLVM compilation from ${IGC_LLVM_HOME_DIR}")
-
-        # Place LLVM build directory inside IGC build directory
-        add_subdirectory(${IGC_LLVM_HOME_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llvm/build)
+      if(IGC_OPTION__LLVM_DUMP_DIR)
+         set(LLVM_PREBUILT_PATH ${IGC_OPTION__LLVM_DUMP_DIR})
+         include(${IGC_LLVM_HOME_DIR}/llvm_prebuilt.cmake)
+      else()
+          message(STATUS "[IGC] LLVM compilation from ${IGC_LLVM_HOME_DIR}")
+          # Place LLVM build directory inside IGC build directory
+          add_subdirectory(${IGC_LLVM_HOME_DIR} ${CMAKE_CURRENT_BINARY_DIR}/llvm/build)
+      endif()
+      # Link with static libraries if we are builing the sources: 
+      set(IGC_BUILD__LLVM_LIBS_TO_LINK ${IGC_BUILD__LLVM_STATIC_LIBS_TO_LINK})
     endif()
 endif()
-
 
 # ==================================== WrapperLLVM package =============================================
 
@@ -3301,43 +3354,6 @@ if(LLVM_ON_WIN32)
       "${IGC_BUILD__COMMON_COMPILER_DIR}/adapters/d3d10/API"
     )
 endif()
-
-if(IGC_LLVM_LINK_WITH_SYSTEM_LIBS)
-  # Use dynamic libraries when linking with system libraries.
-  set(IGC_BUILD__LLVM_LIBS_TO_LINK
-      "LLVM"
-      "dl"
-     )
-else()
-  # Link targets/dependencies (in required link order).
-  # NOTE: Since the libraries are grouped in the same link group (in GCC/CLANG),
-  #       there is no longer need to order in most dependant first manner.
-  set(IGC_BUILD__LLVM_LIBS_TO_LINK
-      "LLVMipo"
-      "LLVMIRReader"
-      "LLVMBitWriter"
-      "LLVMAsmParser"
-      "LLVMBitReader"
-      "LLVMLinker"
-      "LLVMCodeGen"
-      "LLVMScalarOpts"
-      "LLVMTransformUtils"
-      "LLVMAnalysis"
-      "LLVMTarget"
-      "LLVMObjCARCOpts"
-      "LLVMVectorize"
-      "LLVMInstrumentation"
-      "LLVMObject"
-      "LLVMMCParser"
-      "LLVMProfileData"
-      "LLVMMC"
-      "LLVMCore"
-      "LLVMSupport"
-      "LLVMDemangle"
-      )
-endif()
-
-
 
 
 # ===================================== Projects and source groups =====================================
