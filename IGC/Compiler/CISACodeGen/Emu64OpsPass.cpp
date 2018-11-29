@@ -1749,6 +1749,28 @@ bool InstExpander::visitPHI(PHINode &PN) {
 
 bool InstExpander::visitCall(CallInst &Call) {
   const Function *F = Call.getCalledFunction();
+
+    // lambdas for splitting and combining i64 to <2 x i32>
+    auto Combine2xi32Toi64 = [this] (Value* val)->Value*
+    {
+        assert(Emu->isInt64(val));
+        Value *InputLo, *InputHi;
+        std::tie(InputLo, InputHi) = Emu->getExpandedValues(val);
+        Type *V2I32Ty = Emu->getV2Int32Ty();
+        Value *NewVal = UndefValue::get(V2I32Ty);
+        NewVal = IRB->CreateInsertElement(NewVal, InputLo, IRB->getInt32(0));
+        NewVal = IRB->CreateInsertElement(NewVal, InputHi, IRB->getInt32(1));
+        NewVal = IRB->CreateBitCast(NewVal, IRB->getInt64Ty());
+        return NewVal;
+    };
+    auto Spliti64To2xi32 = [this] (Value* retVal, Value* &OutputLo, Value* &OutputHi)->void
+    {
+        assert(Emu->isInt64(retVal));
+        Value *V = IRB->CreateBitCast(retVal, Emu->getV2Int32Ty());
+        OutputLo = IRB->CreateExtractElement(V, IRB->getInt32(0));
+        OutputHi = IRB->CreateExtractElement(V, IRB->getInt32(1));
+    };
+
   if (F && F->isDeclaration()) {
     switch (F->getIntrinsicID()) {
     default:
@@ -1791,9 +1813,9 @@ Emu64BitCall:
         {
             auto *GenCopy = Call.clone();
             GenCopy->insertBefore(&Call);
-            Value *V = IRB->CreateBitCast(GenCopy, Emu->getV2Int32Ty());
-            Value *Lo = IRB->CreateExtractElement(V, IRB->getInt32(0));
-            Value *Hi = IRB->CreateExtractElement(V, IRB->getInt32(1));
+            IRB->SetInsertPoint(&Call);
+            Value *Lo, *Hi;
+            Spliti64To2xi32(GenCopy, Lo, Hi);
             Call.replaceAllUsesWith(GenCopy);
             Emu->setExpandedValues(GenCopy, Lo, Hi);
             return true;
@@ -1820,13 +1842,7 @@ Emu64BitCall:
             {
                 if (Emu->isInt64(Op.get()))
                 {
-                    Value *Lo, *Hi;
-                    std::tie(Lo, Hi) = Emu->getExpandedValues(Op.get());
-                    Type *V2I32Ty = Emu->getV2Int32Ty();
-                    Value *NewVal = UndefValue::get(V2I32Ty);
-                    NewVal = IRB->CreateInsertElement(NewVal, Lo, IRB->getInt32(0));
-                    NewVal = IRB->CreateInsertElement(NewVal, Hi, IRB->getInt32(1));
-                    NewVal = IRB->CreateBitCast(NewVal, Type::getInt64Ty(Call.getContext()));
+                    Value* NewVal = Combine2xi32Toi64(Op.get());
                     GenCopy->setOperand(opNum, NewVal);
                 }
                 opNum++;
@@ -1839,22 +1855,16 @@ Emu64BitCall:
         {
             auto *GenCopy = Call.clone();
             GenCopy->insertBefore(&Call);
-            // bitcast arg from 2xi32 to i64
             IRB->SetInsertPoint(GenCopy);
-            Value *InputLo, *InputHi;
-            std::tie(InputLo, InputHi) = Emu->getExpandedValues(Call.getArgOperand(0));
-            Type *V2I32Ty = Emu->getV2Int32Ty();
-            Value *NewVal = UndefValue::get(V2I32Ty);
-            NewVal = IRB->CreateInsertElement(NewVal, InputLo, IRB->getInt32(0));
-            NewVal = IRB->CreateInsertElement(NewVal, InputHi, IRB->getInt32(1));
-            NewVal = IRB->CreateBitCast(NewVal, Type::getInt64Ty(Call.getContext()));
+
+            // bitcast arg from 2xi32 to i64
+            Value* NewVal = Combine2xi32Toi64(Call.getArgOperand(0));
             GenCopy->setOperand(0, NewVal);
 
             // bitcast output from i64 to 2xi32
             IRB->SetInsertPoint(&Call);
-            Value *V = IRB->CreateBitCast(GenCopy, Emu->getV2Int32Ty());
-            Value *OutputLo = IRB->CreateExtractElement(V, IRB->getInt32(0));
-            Value *OutputHi = IRB->CreateExtractElement(V, IRB->getInt32(1));
+            Value *OutputLo, *OutputHi;
+            Spliti64To2xi32(GenCopy, OutputLo, OutputHi);
             Call.replaceAllUsesWith(GenCopy);
             Emu->setExpandedValues(GenCopy, OutputLo, OutputHi);
             return true;
@@ -1863,6 +1873,33 @@ Emu64BitCall:
             break;
         }
     }
+    // Support for subroutine calls
+    else if (F->hasFnAttribute("UserSubroutine"))
+    {
+        auto *CallCopy = Call.clone();
+        CallCopy->insertBefore(&Call);
+        IRB->SetInsertPoint(CallCopy);
+        unsigned argNo = 0;
+        for (auto &Op : Call.operands())
+        {
+            if (Emu->isInt64(Op.get()))
+            {
+                Value* NewVal = Combine2xi32Toi64(Op.get());
+                CallCopy->setOperand(argNo, NewVal);
+            }
+            argNo++;
+        }
+        if (Emu->isInt64(&Call))
+        {
+            IRB->SetInsertPoint(&Call);
+            Value *OutputLo, *OutputHi;
+            Spliti64To2xi32(CallCopy, OutputLo, OutputHi);
+            Emu->setExpandedValues(CallCopy, OutputLo, OutputHi);
+        }
+        Call.replaceAllUsesWith(CallCopy);
+        return true;
+    }
+
   // TODO: Add i64 emulation support.
   llvm_unreachable("TODO: NOT IMPLEMENTED YET!");
   return false;
