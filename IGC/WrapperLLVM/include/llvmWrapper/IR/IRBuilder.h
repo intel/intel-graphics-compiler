@@ -39,7 +39,6 @@ namespace IGCLLVM
 		class IRBuilder : public llvm::IRBuilder<T, Inserter>
 	{
 	public:
-
 		IRBuilder(llvm::LLVMContext &C, const T &F, Inserter I = Inserter(),
 			llvm::MDNode *FPMathTag = nullptr,
 			llvm::ArrayRef<llvm::OperandBundleDef> OpBundles = llvm::None)
@@ -87,6 +86,11 @@ namespace IGCLLVM
 				isVolatile, TBAATag, TBAAStructTag, ScopeTag,
 				NoAliasTag);
 		}
+
+        inline llvm::AllocaInst *CreateAlloca(llvm::Type *Ty, llvm::Value *ArraySize = nullptr, const llvm::Twine &Name = "") 
+        {
+            return llvm::IRBuilder<T, Inserter>::CreateAlloca(Ty, 0/*for IGC addrSpace in alloca is always 0*/, ArraySize, Name);
+        }
 	};
 #endif
 }
