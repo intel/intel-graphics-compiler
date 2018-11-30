@@ -6016,6 +6016,7 @@ bool HWConformity::fixAddcSubb(G4_BB* bb)
             if (carryMov == NULL)
             {
                 // can't find the move using acc, skip this addc/subb
+                assert(false && "expect a carry move instruction");
                 continue;
             }
 

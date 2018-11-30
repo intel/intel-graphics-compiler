@@ -1514,8 +1514,9 @@ G4_INST::MovType G4_INST::canPropagate(const IR_Builder* builder)
         return SuperMov;
     }
 
-    // Do not propagate through copy of `acc0` with NoMask.
-    if (src->isAccReg() && isWriteEnableInst()) {
+    // Do not propagate through copy of `acc0`, as some later phases (e.g., fixAddc) rely on finding this move
+    if (src->isAccReg()) 
+    {
         return SuperMov;
     }
 
