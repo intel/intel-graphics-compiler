@@ -60,6 +60,14 @@ public:
     // Gen10+ HW supports adding vertex start to vertex ID
     bool hasVertexOffsetEnable() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
 
+    // Gen10+ HW supports sending base instance, base vertex and draw index with
+    // VF, this is programmed using 3DSTATE_VF_SGVS2 command.
+    bool hasSGVS2Command() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
+
+    // Sampler supports normalization of coordinates during sampling from
+    // rectangle textures.
+    bool supportsCoordinateNormalizationForRectangleTextures() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
+
     /// On some platforms ld sources order is: u lod v r
     bool hasOldLdOrder() const { return m_platformInfo.eRenderCoreFamily <= IGFX_GEN8_CORE; }
     bool supportSampleAndLd_lz() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
@@ -77,6 +85,7 @@ public:
     bool supportDSDualPatchDispatch() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
     bool needsHSBarrierIDWorkaround() const { return m_platformInfo.eRenderCoreFamily <= IGFX_GEN10_CORE; }
     bool supportBindless() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
+    bool supportsBindlessSamplers() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
 
     bool SupportSurfaceInfoMessage() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
     bool SupportHDCUnormFormats() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE; }
@@ -204,6 +213,12 @@ public:
     {
         return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
     }
+
+    bool hasSLMFence() const
+    {
+        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
+    }
+
     bool supportRotateInstruction() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE; }
     bool supportLRPInstruction() const { return m_platformInfo.eRenderCoreFamily < IGFX_GEN11_CORE; }
     bool support16bitMSAAPayload() const { return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE; }
