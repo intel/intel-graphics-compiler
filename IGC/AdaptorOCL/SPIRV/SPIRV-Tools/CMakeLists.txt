@@ -74,7 +74,7 @@ endif()
 
 option(SPIRV_BUILD_COMPRESSION "Build SPIR-V compressing codec" OFF)
 
-option(SPIRV_WERROR "Enable error on warning" ON)
+option(SPIRV_WERROR "Enable error on warning" OFF)
 if(("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU") OR (("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang") AND (NOT CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")))
   set(COMPILER_IS_LIKE_GNU TRUE)
 endif()
@@ -100,6 +100,8 @@ if(${COMPILER_IS_LIKE_GNU})
 
   if(${SPIRV_WERROR})
     set(SPIRV_WARNINGS ${SPIRV_WARNINGS} -Werror)
+  else()
+    set(SPIRV_WARNINGS ${SPIRV_WARNINGS} -Wno-error)
   endif()
 elseif(MSVC)
   set(SPIRV_WARNINGS -D_CRT_SECURE_NO_WARNINGS -D_SCL_SECURE_NO_WARNINGS /wd4800)
