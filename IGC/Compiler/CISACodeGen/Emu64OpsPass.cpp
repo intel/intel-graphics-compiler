@@ -673,9 +673,9 @@ bool InstExpander::visitAdd(BinaryOperator &BinOp) {
   if (!Emu->isInt64(&BinOp))
     return false;
 
-  Value *L0, *H0;
+  Value *L0 = nullptr, *H0 = nullptr;
   std::tie(L0, H0) = Emu->getExpandedValues(BinOp.getOperand(0));
-  Value *L1, *H1;
+  Value *L1 = nullptr, *H1 = nullptr;
   std::tie(L1, H1) = Emu->getExpandedValues(BinOp.getOperand(1));
 
   GenISAIntrinsic::ID GIID = GenISAIntrinsic::GenISA_add_pair;
@@ -758,9 +758,9 @@ bool InstExpander::visitShl(BinaryOperator &BinOp) {
   if (!Emu->isInt64(&BinOp))
     return false;
 
-  Value *Lo, *Hi;
+  Value *Lo = nullptr, *Hi = nullptr;
   std::tie(Lo, Hi) = Emu->getExpandedValues(BinOp.getOperand(0));
-  Value *ShAmt;
+  Value *ShAmt = nullptr;
   std::tie(ShAmt, std::ignore) = Emu->getExpandedValues(BinOp.getOperand(1));
 
   BasicBlock *OldBB = BinOp.getParent();
@@ -986,9 +986,9 @@ bool InstExpander::visitAShr(BinaryOperator &BinOp) {
   if (!Emu->isInt64(&BinOp))
     return false;
 
-  Value *Lo, *Hi;
+  Value *Lo = nullptr, *Hi = nullptr;
   std::tie(Lo, Hi) = Emu->getExpandedValues(BinOp.getOperand(0));
-  Value *ShAmt;
+  Value *ShAmt = nullptr;
   std::tie(ShAmt, std::ignore) = Emu->getExpandedValues(BinOp.getOperand(1));
 
   BasicBlock *OldBB = BinOp.getParent();
@@ -1100,9 +1100,9 @@ bool InstExpander::visitAnd(BinaryOperator &BinOp) {
   if (!Emu->isInt64(&BinOp))
     return false;
 
-  Value *L0, *H0;
+  Value *L0 = nullptr, *H0 = nullptr;
   std::tie(L0, H0) = Emu->getExpandedValues(BinOp.getOperand(0));
-  Value *L1, *H1;
+  Value *L1 = nullptr, *H1 = nullptr;
   std::tie(L1, H1) = Emu->getExpandedValues(BinOp.getOperand(1));
 
   Value *Lo = IRB->CreateAnd(L0, L1);
@@ -1208,7 +1208,7 @@ bool InstExpander::visitTrunc(TruncInst &TI) {
   if (!Emu->isInt64(Src))
     return false;
 
-  Value *Lo;
+  Value *Lo = nullptr;
   std::tie(Lo, std::ignore) = Emu->getExpandedValues(Src);
   assert(Lo->getType()->getScalarSizeInBits() >=
       TI.getType()->getScalarSizeInBits());
@@ -1488,7 +1488,7 @@ bool InstExpander::visitUIToFP(UIToFPInst &U2F) {
   if (!Emu->isInt64(Src))
     return false;
 
-  Value *Lo, *Hi;
+  Value *Lo = nullptr, *Hi = nullptr;
   std::tie(Lo, Hi) = Emu->getExpandedValues(Src);
 
   Type *DstTy = U2F.getType();
@@ -1863,7 +1863,7 @@ Emu64BitCall:
 
             // bitcast output from i64 to 2xi32
             IRB->SetInsertPoint(&Call);
-            Value *OutputLo, *OutputHi;
+            Value *OutputLo = nullptr, *OutputHi = nullptr;
             Spliti64To2xi32(GenCopy, OutputLo, OutputHi);
             Call.replaceAllUsesWith(GenCopy);
             Emu->setExpandedValues(GenCopy, OutputLo, OutputHi);
@@ -1910,9 +1910,9 @@ bool InstExpander::visitSelect(SelectInst &SI) {
     return false;
 
   Value *Cond = SI.getOperand(0);
-  Value *L0, *H0;
+  Value *H0 = nullptr, *L0 = nullptr;
   std::tie(L0, H0) = Emu->getExpandedValues(SI.getOperand(1));
-  Value *L1, *H1;
+  Value *L1 = nullptr, *H1 = nullptr;
   std::tie(L1, H1) = Emu->getExpandedValues(SI.getOperand(2));
 
   Value *Lo = IRB->CreateSelect(Cond, L0, L1);

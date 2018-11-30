@@ -768,8 +768,8 @@ bool CodeGenPatternMatch::MatchIntegerSatModifier(llvm::SelectInst &I) {
     // Only match BYTE or WORD.
     if (!I.getType()->isIntegerTy(8) && !I.getType()->isIntegerTy(16))
         return false;
-    Value *Src;
-    bool isSignedDst, isSignedSrc;
+    Value *Src = nullptr;
+    bool isSignedDst = false, isSignedSrc = false;
     std::tie(Src, isSignedDst, isSignedSrc) = isIntegerSatTrunc(&I);
     if (!Src)
         return false;

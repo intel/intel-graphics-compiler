@@ -5259,6 +5259,7 @@ void CEncoder::GetRowAndColOffset(CVariable* var, unsigned int subVar, unsigned 
     unsigned int offset = var->GetAliasOffset() + subVar * SIZE_GRF + subReg * varTypeSize;
     assert((offset%SIZE_GRF) % varTypeSize == 0 && "offset has to be aligned on element size");
     rowOff = int_cast<unsigned char>(offset / SIZE_GRF);
+    assert(varTypeSize != 0);
     colOff = int_cast<unsigned char>((offset%SIZE_GRF) / varTypeSize);
 }
 

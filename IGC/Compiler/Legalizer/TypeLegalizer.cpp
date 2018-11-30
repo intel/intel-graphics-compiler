@@ -496,7 +496,8 @@ bool TypeLegalizer::legalizeArguments(Function &F) {
   // - llvm.val.trim.<OriginalTy>(...)
   for (auto AI = F.arg_begin(), AE = F.arg_end(); AI != AE; ++AI) {
     Argument *Arg = &(*AI);
-    TypeSeq *TySeq; LegalizeAction Act;
+    TypeSeq *TySeq = nullptr; 
+    LegalizeAction Act;
     Type *Ty = Arg->getType();
     std::tie(TySeq, Act) = getLegalizedTypes(Ty);
 
