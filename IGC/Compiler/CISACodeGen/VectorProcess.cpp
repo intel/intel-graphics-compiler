@@ -355,22 +355,6 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
                                              LI->isVolatile(),
                                              "vCastload");
 
-        // Revise the insert point if there's local usage.
-        Instruction *NewInsertPt = LI;
-        for (auto *U : LI->users()) {
-            auto User = dyn_cast<Instruction>(U);
-            if (!User)
-                continue;
-            if (User->getParent() != LI->getParent())
-                continue;
-            BasicBlock::iterator BI = LI->getIterator();
-            for (++BI; &*BI != NewInsertPt && &*BI != User; ++BI)
-                /* EMPTY */;
-            if (&*BI != NewInsertPt)
-                NewInsertPt = &*BI;
-        }
-        Builder.SetInsertPoint(NewInsertPt);
-
         if (eTy->isPointerTy())
         {
             // cannot bitcast int to ptr; need to use intToptr.
