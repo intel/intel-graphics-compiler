@@ -1315,6 +1315,11 @@ void OptimizeIR(CodeGenContext* pContext)
         }
         else
         {
+            if(IGC_IS_FLAG_DISABLED(DisableImmConstantOpt))
+            {
+                mpm.add(createIGCIndirectICBPropagaionPass());
+            }
+
             if(pContext->type == ShaderType::PIXEL_SHADER)
             {
                 mpm.add(CreateEarlyOutPatternsPass());
