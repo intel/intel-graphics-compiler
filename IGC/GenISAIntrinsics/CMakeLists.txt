@@ -51,6 +51,8 @@ if(MSVC)
     set_target_properties(${IGC_BUILD__PROJ__GenISAIntrinsics} PROPERTIES VS_TARGET_PLATFORM_VERSION "")
 endif()
 
+
+# add dependency for generating llvm intrinsics
 if(TARGET intrinsics_gen)
     add_dependencies("${IGC_BUILD__PROJ__GenISAIntrinsics}" intrinsics_gen)
 endif()

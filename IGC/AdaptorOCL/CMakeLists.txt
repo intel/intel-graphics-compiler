@@ -135,7 +135,8 @@ add_library("${IGC_BUILD__PROJ__AdaptorOCL}" STATIC
     ${IGC_BUILD__HDR__AdaptorOCL}
   )
 
-  
+add_dependencies("${IGC_BUILD__PROJ__AdaptorOCL}" "${IGC_BUILD__PROJ__GenISAIntrinsics}")
+
 set_property(TARGET "${IGC_BUILD__PROJ__AdaptorOCL}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__AdaptorOCL}")
 
 

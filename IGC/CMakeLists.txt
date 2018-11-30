@@ -3596,13 +3596,10 @@ endforeach()
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__BiFModule_OCL}")
 add_dependencies("${IGC_BUILD__PROJ__fcl_dll}"     "${IGC_BUILD__PROJ__ElfPackager}")
 
+
 if(LLVM_ON_WIN32)
   if(IGC_OPTION__USCLAUNCHER_TOOL)
     add_dependencies("${IGC_BUILD__PROJ__ILAdapter}"           "${IGC_BUILD__PROJ__GenISAIntrinsics}")
-  endif()
-  add_dependencies("${IGC_BUILD__PROJ__AdaptorOCL}"           "${IGC_BUILD__PROJ__GenISAIntrinsics}")
-  if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
-    add_dependencies("${IGC_BUILD__PROJ__VulkanFrontend}"       "${IGC_BUILD__PROJ__GenISAIntrinsics}")
   endif()
 endif()
 
