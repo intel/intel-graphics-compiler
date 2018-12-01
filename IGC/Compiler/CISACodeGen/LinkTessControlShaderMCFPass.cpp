@@ -171,7 +171,7 @@ namespace IGC
             }
 
             void MoveAllocas(Instruction* pInsert);
-            void CreateGlobalAllocas(llvm::IRBuilder<>& builder, uint32_t count);
+            void CreateGlobalAllocas(llvm::IGCIRBuilder<>& builder, uint32_t count);
         };
 
         GlobalAllocas mGlobalAllocas;
@@ -1316,7 +1316,7 @@ namespace IGC
     /// @param arraySize - number of elements in allocas.
     /// @note Caller should set IRBuilder insert point.
     void LinkTessControlShaderMCF::GlobalAllocas::CreateGlobalAllocas(
-        llvm::IRBuilder<>& builder,
+        llvm::IGCIRBuilder<>& builder,
         uint32_t arraySize)
     {
         std::string suffix = "[" + std::to_string(arraySize) + "]";
