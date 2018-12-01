@@ -2258,7 +2258,6 @@ void DDD::DumpDotFile(const char *name, const char* appendix){
             std::replace_if(dotStr.begin(), dotStr.end(), bind2nd(equal_to<char>(), '{'), '[');
             std::replace_if(dotStr.begin(), dotStr.end(), bind2nd(equal_to<char>(), '}'), ']');
             ofile << dotStr;
-            ofile << "//%" << inst->getId();
             ofile << "\\l";
             ofile << "} \"];" << std::endl;
         }

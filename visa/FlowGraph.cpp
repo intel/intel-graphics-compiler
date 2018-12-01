@@ -639,135 +639,52 @@ bool FlowGraph::matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it)
 //
 void FlowGraph::preprocess(INST_LIST& instlist)
 {
-    std::map<std::string, G4_INST*> kernel_map;  // map label to its corresponding instruction
 
-    //
-    // First pass: (1) Set up the label map; (2) check the labels;
-    //
-    std::map<std::string, G4_INST*> label_map;  // map label to its corresponding instruction
-    INST_LIST_ITER it1 = instlist.begin();
-    while (it1 != instlist.end() && (*it1)->isLabel())                                   // remove the repeated labels at the beginning
-    {
-        std::string label_string = (*it1)->getLabelStr();
-        if (label_map.find(label_string) != label_map.end())
-        {
-            it1 = instlist.erase(it1);
-        }
-        else
-        {
-            label_map[label_string] = *it1;
-            it1++;
-        }
-    }
+    std::unordered_set<G4_Label*> labels;   // label inst we have seen so far
 
-    while (it1 != instlist.end())
+    // Mark goto/jmpi/call as either forward or backward
+    for (auto it1 = instlist.begin(), itEnd = instlist.end(); it1 != itEnd; ++it1)
     {
         G4_INST* i = *it1;
-        if (i->isDead())
-        {
-            INST_LIST_ITER curr_iter = it1;
-            ++it1;
-            instlist.erase(curr_iter);
-            continue;
-        }
         if (i->isLabel())
         {
-            std::string label_string = i->getLabelStr();
-            if (label_map.find(label_string) != label_map.end())
-            {
-                MUST_BE_TRUE(false, "ERROR: Redefined label \"" << label_string << "\"");
-            }
-            else
-                label_map[label_string] = i;
+            labels.emplace(i->getLabel());
         }
-        it1++;
+        else if (i->opcode() == G4_goto)
+        {
+            if (labels.count((G4_Label *)i->asCFInst()->getUip()))
+            {
+                i->asCFInst()->setBackward(true);
+            }
+        }
+        else if ((i->opcode() == G4_jmpi || i->isCall()) && i->getSrc(0) && i->getSrc(0)->isLabel())
+        {
+            if (labels.count((G4_Label *)i->getSrc(0)))
+            {
+                i->asCFInst()->setBackward(true);
+            }
+        }
     }
-    //
-    // Second pass: Check the label used by jmp, call, cont, break, etc.
-    //
-    uint16_t numGoto = 0;
-    INST_LIST_ITER II = instlist.begin();
-    while (II != instlist.end())
+
+#ifdef _DEBUG
+    // sanity check to make sure we don't have undefined labels
+    for (auto I = instlist.begin(), E = instlist.end(); I != E; ++I)
     {
-        G4_INST* i = *II;
-        INST_LIST_ITER currIter = II;
-        ++II;
-
-        std::string label_string;
+        G4_INST* i = *I;
         if (i->opcode() == G4_goto)
-        {
-            label_string = ((G4_Label *)i->asCFInst()->getUip())->getLabel();
-            std::map<std::string, G4_INST*>::iterator labelIter = label_map.find(label_string);
-            MUST_BE_TRUE2(labelIter != label_map.end(), "ERROR: Undefined label \"" << label_string << "\"", i);
-            // check if it is forward or backward goto
-            if (i->getId() > (*labelIter).second->getId())
-            {
-                i->asCFInst()->setBackward(true);
-            }
-
-            INST_LIST_ITER tmpIter = currIter;
-            ++tmpIter;
-
-            if (tmpIter != instlist.end())
-            {
-                G4_INST *nextInst = *tmpIter;
-                // sanity check, make sure goto is indeed needed.
-                if (nextInst->isLabel() && label_string == nextInst->getLabelStr())
-                {
-                    instlist.erase(currIter);
-                    continue;
-                }
-            }
-
-            // ??? Why is this necessary ???
-            // add label instruction after goto
-            bool  insertLabel = false;
-            if (tmpIter != instlist.end())
-            {
-                INST_LIST_ITER nextIter = tmpIter;
-                nextIter++;
-                if (!(*tmpIter)->isLabel() ||
-                    (i->asCFInst()->isBackward() && nextIter != instlist.end() && G4_Inst_Table[(*nextIter)->opcode()].instType == InstTypeFlow))
-                {
-                    insertLabel = true;
-                }
-            }
-            else
-            {
-                insertLabel = true;
-                // create a dummy inst
-                //srcFileName is NULL
-                G4_INST* nopInst = builder->createInternalInst(NULL, G4_nop, NULL, false, 1, NULL, NULL, NULL, 0,
-                    i->getLineNo(), i->getCISAOff(), NULL);
-                instlist.insert(tmpIter, nopInst);
-                tmpIter--;
-            }
-
-            if (insertLabel)
-            {
-                std::string name = "_BW_GOTO_JIP_" + std::to_string(numGoto++);
-                G4_Label* lbl = builder->createLabel(name, LABEL_BLOCK);
-                G4_INST* lInst = createNewLabelInst(lbl, i->getLineNo(), i->getCISAOff());
-                instlist.insert(tmpIter, lInst);
-                tmpIter--;
-            }
+        {   
+            G4_Label* target = (G4_Label *)i->asCFInst()->getUip();
+            assert(labels.count(target) && "undefined goto label"); 
         }
-        else if ((i->opcode() == G4_jmpi || i->isCall()) &&
-            i->getSrc(0) &&
-            i->getSrc(0)->isLabel())
+        else if ((i->opcode() == G4_jmpi || i->isCall()) && i->getSrc(0) && i->getSrc(0)->isLabel())
         {
-            label_string = ((G4_Label *)i->getSrc(0))->getLabel();
-            std::map<std::string, G4_INST*>::iterator labelIter = label_map.find(label_string);
-            MUST_BE_TRUE2(labelIter != label_map.end(), "ERROR: Undefined label \"" << label_string << "\"", i);
-            if (i->getId() > (*labelIter).second->getId())
-            {
-                i->asCFInst()->setBackward(true);
-            }
-        } // fi
-    } // for
+            assert(labels.count((G4_Label *)i->getSrc(0)) && "undefined jmpi/call label");
+        }     
+    }
+#endif
 
     //
-    // 3. Process the non-label "if-else-endif" cases as following
+    // Process the non-label "if-else-endif" cases as following
     //
     {
         int sn = 0;
@@ -786,7 +703,7 @@ void FlowGraph::preprocess(INST_LIST& instlist)
     }
 
     //
-    // 4. Match up the while/break/cont instructions and generate labels for them
+    // Match up the while/break/cont instructions and generate labels for them
     //
     matchLoop(instlist);
 }
@@ -884,7 +801,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         // remove inst i from instlist and relink it to curr_BB's instList
         //
         curr_BB->splice(curr_BB->end(), instlist, iter);
-        G4_INST* next_i = (instlist.empty()) ? NULL : *instlist.begin();
+        G4_INST* next_i = (instlist.empty()) ? NULL : instlist.front();
 
         // If this block is a start of the function
         if (i->isLabel() && ((G4_Label*)i->getSrc(0))->isFuncLabel() && fstartBB->getId() != curr_BB->getId())
@@ -914,7 +831,9 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         if (i->isFlowControl() && i->opcode() != G4_endif)
         {
             G4_BB* next_BB = beginBB(labelMap, next_i);
-
+            // next_BB may be null if the kernel ends on an CF inst (e.g., backwward goto/jmpi)
+            // This should be ok because we should not fall-through to next_BB in such case 
+            // (i.e., goto/jmpi must not be predicated)
             {
                 if (i->opcode() == G4_jmpi || i->isCall())
                 {

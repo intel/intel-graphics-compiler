@@ -3186,17 +3186,15 @@ void Optimizer::cselPeepHoleOpt()
         INST_LIST_ITER ii;
         INST_LIST_ITER nextIter;
         INST_LIST_ITER iiEnd;
-        if( ( bb->begin() == bb->end() ) ){
-            continue;
-        }
-
-        ii = bb->begin();
-        iiEnd = bb->end();
-
-        if (ii == iiEnd)
+        if (bb->empty())
         {
             continue;
         }
+
+        bb->resetLocalId();
+        ii = bb->begin();
+        iiEnd = bb->end();
+
         nextIter = ii;
 
         do
@@ -3219,7 +3217,7 @@ void Optimizer::cselPeepHoleOpt()
                 continue;
 
             cmpSrc0 = inst->getSrc(0)->asSrcRegRegion();
-            cmpSrc1 = inst->getSrc(1)->asSrcRegRegion();
+            cmpSrc1 = inst->getSrc(1);
 
             G4_CondMod *cModifier = inst->getCondMod();
 
@@ -3234,7 +3232,6 @@ void Optimizer::cselPeepHoleOpt()
             only supports floats
             no predication
             */
-
 
             if(!cmpSrc1->isImm()                                                                            ||
                 (cmpSrc1->asImm()->getImm() != 0 &&
@@ -3282,12 +3279,8 @@ void Optimizer::cselPeepHoleOpt()
                     canOpt = false;
                     break;
                 }
-                //assumes instructions are created in order
-                //through APIs. I think it's a safe assumption
-                //since internally we are not creating select instructions.
-                if(useInst->getId() >= maxInstID)
-                    maxInstID = useInst->getId();
 
+                maxInstID = std::max(useInst->getLocalId(), maxInstID);
                 G4_Operand *dstUse = useInst->getDst();
                 G4_Operand *selSrc0 = useInst->getSrc(0);
                 G4_Operand *selSrc1 = useInst->getSrc(1);
@@ -3373,8 +3366,10 @@ void Optimizer::cselPeepHoleOpt()
             {
                 G4_INST *tempInst = *tempInstIter;
 
-                if(tempInst->getId() == maxInstID)
+                if (tempInst->getLocalId() == maxInstID)
+                {
                     break;
+                }
 
                 if(!tempInst->getDst())
                     continue;
@@ -3440,8 +3435,6 @@ void Optimizer::cselPeepHoleOpt()
                 inst->removeAllDefs();
                 bb->erase( ii );
             }
-
-
         }while( nextIter != iiEnd );
     }
 }
@@ -7791,7 +7784,7 @@ public:
 
         INST_LIST_ITER backwardIter = endIter;
         backwardIter--;
-        while( (*backwardIter)->getId() != startInst->getId() )
+        while (*backwardIter != startInst)
         {
             if( endInst->isWAWdep(*backwardIter) ||
                 /*
@@ -7806,7 +7799,7 @@ public:
             backwardIter--;
         }
 
-        if( (*backwardIter)->getId() != startInst->getId() )
+        if (*backwardIter != startInst)
         {
             return true;
         }
@@ -7825,9 +7818,9 @@ public:
 
         INST_LIST_ITER backwardIter = endIter;
         backwardIter--;
-        while ((*backwardIter)->getId() != startInst->getId())
+        while (*backwardIter != startInst)
         {
-            if (skipInst->getId() == (*backwardIter)->getId())
+            if (skipInst == *backwardIter)
             {
                 --backwardIter;
                 continue;
@@ -7846,7 +7839,7 @@ public:
             --backwardIter;
         }
 
-        if ((*backwardIter)->getId() != startInst->getId())
+        if (*backwardIter != startInst)
         {
             return true;
         }
