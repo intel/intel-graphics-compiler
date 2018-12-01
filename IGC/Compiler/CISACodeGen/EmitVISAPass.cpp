@@ -11127,7 +11127,7 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
             for (uint i = 0; i < 2; ++i)
             {
                 CVariable* pPayload = m_currShader->GetNewVariable(
-                    parameterLength * numLanes(m_currShader->m_SIMDSize),
+                    parameterLength * numLanes(SIMDMode::SIMD8),
                     ISA_TYPE_F,
                     IGC::EALIGN_GRF);
                 m_encoder->SetSimdSize(SIMDMode::SIMD8);
