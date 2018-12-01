@@ -144,6 +144,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <llvmWrapper/Transforms/Utils.h>
 #include <llvmWrapper/Transforms/Scalar/InstSimplifyPass.h>
+#include <llvmWrapper/Transforms/Scalar.h>
 
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -353,7 +354,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         if (LoopUnrollThreshold > 0 && ctx.m_retryManager.AllowUnroll() &&
             (ctx.m_tempCount < 64))
         {
-            mpm.add(llvm::createLoopUnrollPass(LoopUnrollThreshold, -1, 1));
+            mpm.add(IGCLLVM::createLoopUnrollPass(2, LoopUnrollThreshold, -1, 1));
         }
 
         mpm.add(createBarrierNoopPass());
@@ -1207,7 +1208,7 @@ void OptimizeIR(CodeGenContext* pContext)
 
                 if(LoopUnrollThreshold > 0 && pContext->m_retryManager.AllowUnroll() && !IGC_IS_FLAG_ENABLED(DisableLoopUnroll))
                 {
-                    mpm.add(createLoopUnrollPass());
+                    mpm.add(IGCLLVM::createLoopUnrollPass());
                 }
 
                 // Due to what looks like a bug in LICM, we need to break the LoopPassManager between 
@@ -1224,7 +1225,7 @@ void OptimizeIR(CodeGenContext* pContext)
                     pContext->m_retryManager.AllowUnroll() &&
                     !IGC_IS_FLAG_ENABLED(DisableLoopUnroll))
                 {
-                    mpm.add(createLoopUnrollPass());
+                    mpm.add(IGCLLVM::createLoopUnrollPass());
                 }
 
                 if(pContext->m_instrTypes.hasNonPrimitiveAlloca)

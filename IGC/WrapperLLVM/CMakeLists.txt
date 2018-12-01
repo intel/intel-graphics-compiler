@@ -42,6 +42,7 @@ set(IGC_WrapperLLVM_HDR
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/ToolOutputFile.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Bitcode/BitcodeWriter.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/IPO.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/AsmParser/Parser.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/Debug.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/KnownBits.h"
