@@ -1400,7 +1400,11 @@ void appendToUsed(llvm::Module &M, ArrayRef<GlobalValue *> Values)
 
     Type *Int8PtrTy = llvm::Type::getInt8PtrTy(M.getContext());
     for (auto *V : Values) {
-        Constant *C = ConstantExpr::getAddrSpaceCast(V, Int8PtrTy);
+        Constant *C = V;
+        if(V->getType()->getAddressSpace() != 0)
+            C = ConstantExpr::getAddrSpaceCast(V, Int8PtrTy);
+        else
+            C = ConstantExpr::getBitCast(V, Int8PtrTy);
         if (InitAsSet.insert(C).second)
             Init.push_back(C);
     }

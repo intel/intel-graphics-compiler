@@ -312,7 +312,16 @@ std::string DumpName::AbsolutePath(OutputFolderName folder) const
         std::string s = m_postfixStr.getValue();
         // sanitize the function name
         std::replace(s.begin(), s.end(), (char)1, '_');
+        std::replace(s.begin(), s.end(), '/', '_');
+        std::replace(s.begin(), s.end(), '\\', '_');
+        std::replace(s.begin(), s.end(), ':', '_');
+        std::replace(s.begin(), s.end(), '*', '_');
         std::replace(s.begin(), s.end(), '?', '_');
+        std::replace(s.begin(), s.end(), '\"', '_');
+        std::replace(s.begin(), s.end(), '<', '_');
+        std::replace(s.begin(), s.end(), '>', '_');
+        std::replace(s.begin(), s.end(), '|', '_');
+
         ss << "_"
             << s;
     }
