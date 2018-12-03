@@ -1419,10 +1419,10 @@ void COpenCLKernel::AllocatePayload()
         KernelArg arg = *i;
         prevOffset = offset;
 
-		// For now, only check BUFFER_OFFSET arguments (may move it into KernelArg class)
-		bool IsUnusedArg = (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET &&
-			                IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset) &&
-			                arg.getArg()->use_empty());
+        // skip unused arguments
+        bool IsUnusedArg = (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET ||
+            arg.getArgType() == KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER) &&
+            arg.getArg()->use_empty();
 
         // Runtime Values should not be processed any further. No annotations shall be created for them.
         // Only added to KernelArgs to enforce correct allocation order.
