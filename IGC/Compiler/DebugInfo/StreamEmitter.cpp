@@ -541,7 +541,7 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& da
 	std::unique_ptr<MCELFObjectTargetWriter> pTargetObjectWriter
 		= llvm::make_unique<VISAELFObjectWriter>(is64Bit, osABI, eMachine, hasRelocationAddend);
 	std::unique_ptr<MCObjectWriter> pObjectWriter
-		= createELFObjectWriter(std::move(pTargetObjectWriter), outStream, false);
+		= createELFObjectWriter(std::move(pTargetObjectWriter), outStream, true);
 	std::unique_ptr<MCCodeEmitter> pCodeEmitter
 		= llvm::make_unique<VISAMCCodeEmitter>();
 
@@ -701,7 +701,7 @@ void StreamEmitter::EmitULEB128(uint64_t value, llvm::StringRef /*desc*/, unsign
 {
 #if LLVM_VERSION_MAJOR == 4
     m_pMCStreamer->EmitULEB128IntValue(value, padTo);
-#elif LLVM_VERSION_MAJOR == 4
+#elif LLVM_VERSION_MAJOR == 7
     m_pMCStreamer->EmitULEB128IntValue(value);
 #endif
 }
