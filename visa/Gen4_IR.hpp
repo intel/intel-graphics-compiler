@@ -393,7 +393,7 @@ public:
     bool isHDC() const
     {
         auto funcID = extDesc.layout.funcID;
-        return funcID == SFID_DP_DC || funcID == SFID_DP_DC1 || SFID_DP_DC2;
+        return funcID == SFID_DP_DC || funcID == SFID_DP_DC1 || funcID == SFID_DP_DC2;
     }
 
     bool isThreadMessage() const
