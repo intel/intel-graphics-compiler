@@ -1263,10 +1263,7 @@ void OptimizeIR(CodeGenContext* pContext)
                 mpm.add(createIGCIndirectICBPropagaionPass());
             }
 
-            if(pContext->m_DriverInfo.AllowGenUpdateCB() && IGC_IS_FLAG_ENABLED(EnableGenUpdateCB))
-            {
-                mpm.add(new GenUpdateCB());
-            }
+            mpm.add(new GenUpdateCB());
 
             if(!pContext->m_instrTypes.hasAtomics)
             {

@@ -78,7 +78,7 @@ public:
     virtual bool CodeSinkingBeforeCFGSimplification() const { return false; }
 
     /// allow executing constant buffer on the CPU
-    virtual bool AllowGenUpdateCB() const { return false; }
+    virtual bool AllowGenUpdateCB(ShaderType shaderType) const { return false; }
     
     /// The driver implements single instance vertex dispatch feature
     virtual bool SupportsSingleInstanceVertexDispatch() const { return false; }

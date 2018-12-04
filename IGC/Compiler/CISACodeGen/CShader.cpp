@@ -513,9 +513,7 @@ void  CShader::CreateConstantBufferOutput(SKernelProgram *pKernelProgram)
         pKernelProgram->simplePushInfoArr[i].isStateless = pushInfo.simplePushInfoArr[i].isStateless;
     }
 
-    if (m_DriverInfo->AllowGenUpdateCB() &&
-        IGC_IS_FLAG_ENABLED(EnableGenUpdateCB) &&
-        GetContext()->m_ConstantBufferReplaceShaderPatterns)
+    if (GetContext()->m_ConstantBufferReplaceShaderPatterns)
     {
         pKernelProgram->m_ConstantBufferReplaceShaderPatterns = GetContext()->m_ConstantBufferReplaceShaderPatterns;
         pKernelProgram->m_ConstantBufferReplaceShaderPatternsSize = GetContext()->m_ConstantBufferReplaceShaderPatternsSize;

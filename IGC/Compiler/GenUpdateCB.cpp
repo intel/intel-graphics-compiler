@@ -294,6 +294,14 @@ Instruction* GenUpdateCB::CreateModule(Module* M)
 
 bool GenUpdateCB::runOnFunction(Function &F)
 {
+    m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
+    if (!m_ctx->m_DriverInfo.AllowGenUpdateCB(m_ctx->type) ||
+        IGC_IS_FLAG_DISABLED(EnableGenUpdateCB))
+    {
+        return false;
+    }
+
     m_CbUpdateMap.clear();
     bool foundCases = false;
     bool changed = false;
@@ -301,7 +309,6 @@ bool GenUpdateCB::runOnFunction(Function &F)
     // travel through instructions and mark the ones that are calculated with CB or imm
     DominatorTree &dom_tree = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
-    m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     bool hasChange = true;
     while (hasChange)
