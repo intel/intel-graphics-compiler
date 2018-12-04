@@ -1308,7 +1308,6 @@ void CEncoder::DataMov(ISA_Opcode opcode, CVariable* dst, CVariable* src)
         bool Need64BitEmu =
             m_program->GetContext()->platform.hasNo64BitInst() &&
             (Is64BitDst || Is64BitSrc);
-
         // If DP is not supported, need to split mov as well.
         if (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
             !m_program->GetContext()->platform.supportFP64())
@@ -1615,7 +1614,6 @@ void CEncoder::Arithmetic(ISA_Opcode opcode, CVariable* dst, CVariable* src0, CV
         VISA_VectorOpnd* srcOpnd2 = GetSourceOperand(src2, m_encoderState.m_srcOperand[2]);
         VISA_VectorOpnd* dstOpnd = GetDestinationOperand(dst, m_encoderState.m_dstOperand);
         VISA_PredOpnd* predOpnd  = GetFlagOperand(m_encoderState.m_flag);
-
         V(vKernel->AppendVISAArithmeticInst(
             opcode,
             predOpnd,
@@ -2577,52 +2575,37 @@ void CEncoder::SetVectorMask(bool VMask)
         src1_Opnd));
 }
 
-void CEncoder::SetCr0FromRneModeTo(uint roundingMode)
+void CEncoder::SetFloatRoundingMode(RoundingMode actualMode, RoundingMode newMode)
 {
-    assert (roundingMode != RoundingMode::RoundToNearestEven &&
-        "Changing to same rounding mode is probably a bug");
-    VISA_VectorOpnd* src0_Opnd = nullptr;
-    VISA_VectorOpnd* src1_Opnd = nullptr;
-    VISA_VectorOpnd* dst_Opnd = nullptr;
-    VISA_GenVar* cr0_var;
-    V(vKernel->GetPredefinedVar(cr0_var, PREDEFINED_CR0));
-    V(vKernel->CreateVISASrcOperand(src0_Opnd, cr0_var, MODIFIER_NONE, 0, 1, 0, 0, 0));
-    V(vKernel->CreateVISAImmediate(src1_Opnd, &roundingMode, ISA_TYPE_UD));
-    V(vKernel->CreateVISADstOperand(dst_Opnd, cr0_var, 1, 0, 0));
-    V(vKernel->AppendVISAArithmeticInst(
-        ISA_OR,
-        nullptr,
-        false,
-        vISA_EMASK_M1_NM,
-        EXEC_SIZE_1,
-        dst_Opnd,
-        src0_Opnd,
-        src1_Opnd));
+    if (actualMode != newMode)
+    {
+        VISA_VectorOpnd* src0_Opnd = nullptr;
+        VISA_VectorOpnd* src1_Opnd = nullptr;
+        VISA_VectorOpnd* dst_Opnd = nullptr;
+        VISA_GenVar* cr0_var;
+        uint roundingMode = actualMode ^ newMode;
+        V(vKernel->GetPredefinedVar(cr0_var, PREDEFINED_CR0));
+        V(vKernel->CreateVISASrcOperand(src0_Opnd, cr0_var, MODIFIER_NONE, 0, 1, 0, 0, 0));
+        V(vKernel->CreateVISAImmediate(src1_Opnd, &roundingMode, ISA_TYPE_UD));
+        V(vKernel->CreateVISADstOperand(dst_Opnd, cr0_var, 1, 0, 0));
+        V(vKernel->AppendVISAArithmeticInst(
+            ISA_XOR,
+            nullptr,
+            false,
+            vISA_EMASK_M1_NM,
+            EXEC_SIZE_1,
+            dst_Opnd,
+            src0_Opnd,
+            src1_Opnd));
+    }
 }
 
-void CEncoder::SetCr0RneMode()
+void CEncoder::SetFloatRoundingModeDefault(RoundingMode actualMode)
 {
-    VISA_VectorOpnd* src0_Opnd = nullptr;
-    VISA_VectorOpnd* src1_Opnd = nullptr;
-    VISA_VectorOpnd* dst_Opnd = nullptr;
-    VISA_GenVar* cr0_var;
+    const RoundingMode defaultRoundingMode = getEncoderRoundingMode(static_cast<Float_RoundingMode>(
+        m_program->GetContext()->getModuleMetaData()->compOpt.FloatRoundingMode));
 
-    // Note that this will set RNE for FP and rtz for float->int
-    uint imm_data = ~IntAndFPRoundingModeMask;
-
-    V(vKernel->GetPredefinedVar(cr0_var, PREDEFINED_CR0));
-    V(vKernel->CreateVISASrcOperand(src0_Opnd, cr0_var, MODIFIER_NONE, 0, 1, 0, 0, 0));
-    V(vKernel->CreateVISAImmediate(src1_Opnd, &imm_data, ISA_TYPE_UD));
-    V(vKernel->CreateVISADstOperand(dst_Opnd, cr0_var, 1, 0, 0));
-    V(vKernel->AppendVISAArithmeticInst(
-        ISA_AND,
-        nullptr,
-        false,
-        vISA_EMASK_M1_NM,
-        EXEC_SIZE_1,
-        dst_Opnd,
-        src0_Opnd,
-        src1_Opnd));
+    SetFloatRoundingMode(actualMode, defaultRoundingMode);
 }
 
 CEncoder::RoundingMode CEncoder::getEncoderRoundingMode(Float_RoundingMode FP_RM)
@@ -3956,6 +3939,11 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
                                           context->m_floatDenormMode32,
                                           context->m_floatDenormMode64);
 
+    // The instruction is generated only if mode != FLOAT_ROUND_TO_NEAREST_EVEN
+    CEncoder::SetFloatRoundingMode(
+        getEncoderRoundingMode(FLOAT_ROUND_TO_NEAREST_EVEN),
+        getEncoderRoundingMode(static_cast<Float_RoundingMode>(
+            context->getModuleMetaData()->compOpt.FloatRoundingMode)));
 }
 
 void CEncoder::SetKernelStackPointer64()

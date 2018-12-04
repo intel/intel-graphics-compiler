@@ -366,12 +366,11 @@ public:
         IntAndFPRoundingModeMask = 0x1030
     };
 
-    // SetCr0FromRneModeTo - Assumes that current rounding mode is RNE. Switches to mode
-    // specified by 'roundingMode'.
-    void SetCr0FromRneModeTo(uint roundingMode);
-    // SetCr0RneMode - Sets the rounding mode to RNE
-    void SetCr0RneMode();
-    // Get rouding mode of encoder
+    // Switches from actualMode to newMode
+    void SetFloatRoundingMode(RoundingMode actualMode, RoundingMode newMode);
+    // Switches from actualMode to default rounding mode
+    void SetFloatRoundingModeDefault(RoundingMode actualMode);
+    // Get rounding mode of encoder
     RoundingMode getEncoderRoundingMode(Float_RoundingMode FP_RM);
 
     static uint GetCISADataTypeSize(VISA_Type type);

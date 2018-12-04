@@ -75,6 +75,7 @@ namespace IGC
         bool OptDisable                                 = false;
         bool MadEnable                                  = false;
         bool NoSignedZeros                              = false;
+        unsigned FloatRoundingMode                      = 0; // default mode: IGC::Float_RoundingMode::FLOAT_ROUND_TO_NEAREST_EVEN
         bool UnsafeMathOptimizations                    = false;
         bool FiniteMathOnly                             = false;
         bool FastRelaxedMath                            = false;

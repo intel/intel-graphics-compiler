@@ -389,6 +389,8 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         }
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
         m_encoder->InitEncoder(m_canAbortOnSpill);
+        m_roundingMode = m_encoder->getEncoderRoundingMode(
+            static_cast<Float_RoundingMode>(ctx->getModuleMetaData()->compOpt.FloatRoundingMode));
         m_currShader->PreCompile();
         if (m_FGA && m_FGA->getGroup(&F)->hasStackCall())
         {
@@ -11794,7 +11796,10 @@ bool EmitPass::ignoreRoundingMode(llvm::Instruction* inst) const
 
 void EmitPass::ResetRoundingMode(llvm::GenIntrinsicInst* inst)
 {
-    if (m_roundingMode == CEncoder::RoundToNearestEven) {
+    const CEncoder::RoundingMode defaultRoundingMode = m_encoder->getEncoderRoundingMode(static_cast<Float_RoundingMode>(
+        getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData()->compOpt.FloatRoundingMode));
+
+    if (m_roundingMode == defaultRoundingMode) {
         // Already in default mode.
         return;
     }
@@ -11815,8 +11820,8 @@ void EmitPass::ResetRoundingMode(llvm::GenIntrinsicInst* inst)
         break;
     }
 
-    m_encoder->SetCr0RneMode();
-    m_roundingMode = CEncoder::RoundToNearestEven;
+    m_encoder->SetFloatRoundingModeDefault(m_roundingMode);
+    m_roundingMode = defaultRoundingMode;
 }
 
 void EmitPass::emitf32tof16_rtz(llvm::GenIntrinsicInst* inst)
@@ -11827,7 +11832,7 @@ void EmitPass::emitf32tof16_rtz(llvm::GenIntrinsicInst* inst)
 
     if (m_roundingMode != GetRoundingMode(inst))
     {
-        m_encoder->SetCr0FromRneModeTo(CEncoder::RoundToZero);
+        m_encoder->SetFloatRoundingMode(m_roundingMode, CEncoder::RoundToZero);
         m_roundingMode = CEncoder::RoundToZero;
     }
 
@@ -11859,7 +11864,7 @@ void EmitPass::emititof(llvm::GenIntrinsicInst* inst)
 
     if (RM != m_roundingMode)
     {
-        m_encoder->SetCr0FromRneModeTo(RM);
+        m_encoder->SetFloatRoundingMode(m_roundingMode, RM);
         m_roundingMode = RM;
     }
     m_encoder->Cast(dst, src);
@@ -11881,7 +11886,7 @@ void EmitPass::emitFPOrtz(llvm::GenIntrinsicInst* inst)
 
     if (RM != m_roundingMode)
     {
-        m_encoder->SetCr0FromRneModeTo(RM);
+        m_encoder->SetFloatRoundingMode(m_roundingMode, RM);
         m_roundingMode = RM;
     }
 
@@ -11927,7 +11932,7 @@ void EmitPass::emitfptrunc(llvm::GenIntrinsicInst* inst)
 
     if (RM != m_roundingMode)
     {
-        m_encoder->SetCr0FromRneModeTo(RM);
+        m_encoder->SetFloatRoundingMode(m_roundingMode, RM);
         m_roundingMode = RM;
     }
     m_encoder->Cast(dst, src);
@@ -14095,5 +14100,4 @@ void EmitPass::emitDP4A(GenIntrinsicInst* GII) {
     m_encoder->dp4a(dst, src0, src1, src2);
     m_encoder->Push();
 }
-
 
