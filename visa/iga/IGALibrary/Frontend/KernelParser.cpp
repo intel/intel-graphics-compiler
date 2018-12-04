@@ -1219,14 +1219,15 @@ private:
             ParseSendSrcOp(0, false);
             ParseSendDescs();
             break;
-        case OpSpec::SEND_BINARY:
+        case OpSpec::SEND_BINARY: {
             ParseSendDstOp();
             ParseSendSrcOp(0, false);
-            ParseSendSrcOp(1,
-                m_model.supportsUnarySend() &&
-                m_parseOpts.supportLegacyDirectives);
-            ParseSendDescs();
+                ParseSendSrcOp(1,
+                    m_model.supportsUnarySend() &&
+                    m_parseOpts.supportLegacyDirectives);
+                ParseSendDescs();
             break;
+        }
         case OpSpec::BASIC_BINARY_REG_IMM:
         case OpSpec::BASIC_BINARY_REG_REG:
         case OpSpec::BASIC_BINARY_REG_REGIMM:
@@ -2694,6 +2695,7 @@ private:
     }
 
 
+
     // e.g. "r13" or "r13:f"
     void ParseSendSrcOp(int srcOpIx, bool enableImplicitOperand) {
         m_srcLocs[srcOpIx] = NextLoc();
@@ -2821,6 +2823,7 @@ private:
     void ParseSendDescs() {
         const Loc exDescLoc = NextLoc();
         SendDescArg exDesc;
+        exDesc.init();
         if (ParseAddrRegRefOpt(exDesc.reg)) {
             exDesc.type = SendDescArg::REG32A;
         } else {
@@ -2843,6 +2846,7 @@ private:
 
         const Loc descLoc = NextLoc();
         SendDescArg desc;
+        desc.init();
         if (ParseAddrRegRefOpt(desc.reg)) {
             desc.type = SendDescArg::REG32A;
         } else {

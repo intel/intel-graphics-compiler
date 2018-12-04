@@ -759,6 +759,7 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
 
     // ex_desc
     SendDescArg extMsgDesc = inst.getExtMsgDescriptor();
+    // Exdesc.IsReg == false
     if (extMsgDesc.type == SendDescArg::IMM) {
         if (supportsExDescReg) {
             GED_ENCODE(ExDescRegFile, GED_REG_FILE_IMM);
@@ -767,7 +768,7 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
             extMsgDesc.imm = extMsgDesc.imm & ~(1 << 5); // strip out EOT
         }
         GED_ENCODE(ExMsgDesc, extMsgDesc.imm);
-    } else {
+    } else {  // ExDesc.IsReg == true
         if (!supportsExDescReg) {
             error("ex_desc register not supported on this platform for "
                 "this instruction");
@@ -777,6 +778,7 @@ void EncoderBase::encodeSendInstruction(const Instruction& inst)
         // SetSelReg32ExDesc for sends
         GED_ENCODE(ExDescRegFile, GED_REG_FILE_ARF);
         GED_ENCODE(ExDescAddrSubRegNum, 2 * extMsgDesc.reg.subRegNum);
+
     }
 
     // desc

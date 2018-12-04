@@ -307,6 +307,7 @@ namespace iga
 
 
         void decodeOptions(Instruction *inst);
+
     protected:
         GED_MODEL                     m_gedModel;
 

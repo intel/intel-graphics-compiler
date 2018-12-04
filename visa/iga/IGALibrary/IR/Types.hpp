@@ -319,6 +319,8 @@ struct SendDescArg {
         RegRef         reg;
         uint32_t       imm;
     };
+    void init() {
+    }
 };
 } // namespace
 #endif

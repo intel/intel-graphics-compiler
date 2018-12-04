@@ -591,9 +591,11 @@ static void encodeDescriptors(
 
     // set the descriptors!
     SendDescArg exDescArg;
+    exDescArg.init();
     exDescArg.type = SendDescArg::IMM;
     exDescArg.imm = exDesc;
     SendDescArg descArg;
+    descArg.init();
     descArg.type = SendDescArg::IMM;
     descArg.imm = desc;
     handler.InstSendDescs(

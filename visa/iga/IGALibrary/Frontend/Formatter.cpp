@@ -670,8 +670,7 @@ private:
                     //    desc.imm,
                     //    ss);
                 }
-
-            } // else not a send
+            }
         }
 
         if (ss.tellp() > 0) {
@@ -757,6 +756,7 @@ void Formatter::formatDstType(const OpSpec &os, Type type)
         emit(ToSyntax(type));
     }
 }
+
 
 void Formatter::formatRegister(
     RegName rnm,
@@ -949,7 +949,8 @@ void Formatter::formatInstOpts(
     const auto &iopts = i.getInstOpts();
 
     bool hasDepInfo = false;
-    if (iopts.empty() && !hasDepInfo && extraInstOpts.empty()) {
+    bool hasSendInfo = false;
+    if (iopts.empty() && !hasDepInfo && !hasSendInfo && extraInstOpts.empty()) {
         return; // early out (no braces)
     }
 
