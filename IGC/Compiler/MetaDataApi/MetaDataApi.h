@@ -36,9 +36,6 @@ namespace IGC { namespace IGCMD
 class InlineSamplerMetaData;
 typedef MetaObjectHandle<InlineSamplerMetaData> InlineSamplerMetaDataHandle; 
                     
-class InputLangInfoMetaData;
-typedef MetaObjectHandle<InputLangInfoMetaData> InputLangInfoMetaDataHandle; 
-                    
 class ArgAllocMetaData;
 typedef MetaObjectHandle<ArgAllocMetaData> ArgAllocMetaDataHandle; 
                     
@@ -71,15 +68,9 @@ typedef MetaObjectHandle<ThreadGroupSizeMetaData> ThreadGroupSizeMetaDataHandle;
                                             
 class FunctionInfoMetaData;
 typedef MetaObjectHandle<FunctionInfoMetaData> FunctionInfoMetaDataHandle; 
-                                                                                    
-class VersionMetaData;
-typedef MetaObjectHandle<VersionMetaData> VersionMetaDataHandle;
 
 typedef MetaDataList<InlineSamplerMetaDataHandle> InlineSamplersMetaDataList;
-typedef MetaObjectHandle<InlineSamplersMetaDataList> InlineSamplersMetaDataListHandle; 
-                                
-typedef MetaDataList<InputLangInfoMetaDataHandle> InputLangsInfoMetaDataList;
-typedef MetaObjectHandle<InputLangsInfoMetaDataList> InputLangsInfoMetaDataListHandle; 
+typedef MetaObjectHandle<InlineSamplersMetaDataList> InlineSamplersMetaDataListHandle;
                                 
 typedef MetaDataList<ArgAllocMetaDataHandle> ArgAllocsMetaDataList;
 typedef MetaObjectHandle<ArgAllocsMetaDataList> ArgAllocsMetaDataListHandle; 
@@ -122,9 +113,6 @@ typedef MetaObjectHandle<ArgTypeQualifiersMetaDataList> ArgTypeQualifiersMetaDat
                                 
 typedef MetaDataList<std::string> ArgNamesMetaDataList;
 typedef MetaObjectHandle<ArgNamesMetaDataList> ArgNamesMetaDataListHandle; 
-                                
-typedef MetaDataList<VersionMetaDataHandle> VersionsMetaDataList;
-typedef MetaObjectHandle<VersionsMetaDataList> VersionsMetaDataListHandle;
 
 ///
 // Read/Write the InlineSampler structure from/to LLVM metadata
@@ -480,145 +468,7 @@ private:
     // parent node
     const llvm::MDNode* m_pNode;
 };
-                    
-///
-// Read/Write the InputLangInfo structure from/to LLVM metadata
-//
-class InputLangInfoMetaData:public IMetaDataObject
-{
-public:
-    typedef InputLangInfoMetaData _Myt;
-    typedef IMetaDataObject _Mybase;
-    // typedefs for data member types
-    typedef MetaDataValue<std::string>::value_type NameType;        
-    typedef MetaDataValue<int32_t>::value_type MajorType;        
-    typedef MetaDataValue<int32_t>::value_type MinorType;
 
-public:
-    ///
-    // Factory method - creates the InputLangInfoMetaData from the given metadata node
-    //
-    static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
-    {
-        return new _Myt(pNode, hasId);
-    }
-
-    ///
-    // Factory method - create the default empty InputLangInfoMetaData object
-    static _Myt* get()
-    {
-        return new _Myt();
-    }
-
-    ///
-    // Factory method - create the default empty named InputLangInfoMetaData object
-    static _Myt* get(const char* name)
-    {
-        return new _Myt(name);
-    }
-
-    ///
-    // Ctor - loads the InputLangInfoMetaData from the given metadata node
-    //
-    InputLangInfoMetaData(const llvm::MDNode* pNode, bool hasId);
-
-    ///
-    // Default Ctor - creates the empty, not named InputLangInfoMetaData object
-    //
-    InputLangInfoMetaData();
-
-    ///
-    // Ctor - creates the empty, named InputLangInfoMetaData object
-    //
-    InputLangInfoMetaData(const char* name);
-
-    /// Name related methods
-    NameType getName() const
-    {
-        return m_Name.get();
-    }
-    void setName( const NameType& val)
-    {
-        m_Name.set(val);
-    }
-    bool isNameHasValue() const
-    {
-        return m_Name.hasValue();
-    }
-        
-    
-    /// Major related methods
-    MajorType getMajor() const
-    {
-        return m_Major.get();
-    }
-    void setMajor( const MajorType& val)
-    {
-        m_Major.set(val);
-    }
-    bool isMajorHasValue() const
-    {
-        return m_Major.hasValue();
-    }
-        
-    
-    /// Minor related methods
-    MinorType getMinor() const
-    {
-        return m_Minor.get();
-    }
-    void setMinor( const MinorType& val)
-    {
-        m_Minor.set(val);
-    }
-    bool isMinorHasValue() const
-    {
-        return m_Minor.hasValue();
-    }
-
-    ///
-    // Returns true if any of the InputLangInfoMetaData`s members has changed
-    bool dirty() const;
-
-    ///
-    // Returns true if the structure was loaded from the metadata or was changed
-    bool hasValue() const;
-
-    ///
-    // Discards the changes done to the InputLangInfoMetaData instance
-    void discardChanges();
-
-    ///
-    // Generates the new MDNode hierarchy for the given structure
-    llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
-
-    ///
-    // Saves the structure changes to the given MDNode
-    void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
-
-private:
-    ///
-    // Returns true if the given MDNode could be saved to without replacement
-    bool compatibleWith( const llvm::MDNode* pNode) const
-    {
-        return false;
-    }
-
-private:
-    typedef MetaDataIterator<llvm::MDNode> NodeIterator;
-
-    llvm::Metadata* getNameNode( const llvm::MDNode* pParentNode) const;    
-    llvm::Metadata* getMajorNode( const llvm::MDNode* pParentNode) const;    
-    llvm::Metadata* getMinorNode( const llvm::MDNode* pParentNode) const;
-
-private:
-    // data members
-    MetaDataValue<std::string> m_Name;        
-    MetaDataValue<int32_t> m_Major;        
-    MetaDataValue<int32_t> m_Minor;
-    // parent node
-    const llvm::MDNode* m_pNode;
-};
      
 ///
 // Read/Write the ArgAlloc structure from/to LLVM metadata
@@ -3234,135 +3084,11 @@ private:
     const llvm::MDNode* m_pNode;
 };
                                                                                     
-///
-// Read/Write the Version structure from/to LLVM metadata
-//
-class VersionMetaData:public IMetaDataObject
-{
-public:
-    typedef VersionMetaData _Myt;
-    typedef IMetaDataObject _Mybase;
-    // typedefs for data member types
-    typedef MetaDataValue<int32_t>::value_type MajorType;        
-    typedef MetaDataValue<int32_t>::value_type MinorType;
-
-public:
-    ///
-    // Factory method - creates the VersionMetaData from the given metadata node
-    //
-    static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
-    {
-        return new _Myt(pNode, hasId);
-    }
-
-    ///
-    // Factory method - create the default empty VersionMetaData object
-    static _Myt* get()
-    {
-        return new _Myt();
-    }
-
-    ///
-    // Factory method - create the default empty named VersionMetaData object
-    static _Myt* get(const char* name)
-    {
-        return new _Myt(name);
-    }
-
-    ///
-    // Ctor - loads the VersionMetaData from the given metadata node
-    //
-    VersionMetaData(const llvm::MDNode* pNode, bool hasId);
-
-    ///
-    // Default Ctor - creates the empty, not named VersionMetaData object
-    //
-    VersionMetaData();
-
-    ///
-    // Ctor - creates the empty, named VersionMetaData object
-    //
-    VersionMetaData(const char* name);
-
-    /// Major related methods
-    MajorType getMajor() const
-    {
-        return m_Major.get();
-    }
-    void setMajor( const MajorType& val)
-    {
-        m_Major.set(val);
-    }
-    bool isMajorHasValue() const
-    {
-        return m_Major.hasValue();
-    }
-        
-    
-    /// Minor related methods
-    MinorType getMinor() const
-    {
-        return m_Minor.get();
-    }
-    void setMinor( const MinorType& val)
-    {
-        m_Minor.set(val);
-    }
-    bool isMinorHasValue() const
-    {
-        return m_Minor.hasValue();
-    }
-
-    ///
-    // Returns true if any of the VersionMetaData`s members has changed
-    bool dirty() const;
-
-    ///
-    // Returns true if the structure was loaded from the metadata or was changed
-    bool hasValue() const;
-
-    ///
-    // Discards the changes done to the VersionMetaData instance
-    void discardChanges();
-
-    ///
-    // Generates the new MDNode hierarchy for the given structure
-    llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
-
-    ///
-    // Saves the structure changes to the given MDNode
-    void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
-
-private:
-    ///
-    // Returns true if the given MDNode could be saved to without replacement
-    bool compatibleWith( const llvm::MDNode* pNode) const
-    {
-        return false;
-    }
-
-private:
-    typedef MetaDataIterator<llvm::MDNode> NodeIterator;
-
-    llvm::Metadata* getMajorNode( const llvm::MDNode* pParentNode) const;    
-    llvm::Metadata* getMinorNode( const llvm::MDNode* pParentNode) const;
-
-private:
-    // data members
-    MetaDataValue<int32_t> m_Major;        
-    MetaDataValue<int32_t> m_Minor;
-    // parent node
-    const llvm::MDNode* m_pNode;
-};
-
-
 class MetaDataUtils
 {
 public:
-    // typedefs for the data members types
-    typedef NamedMDNodeList<VersionMetaDataHandle> VersionsList;        
-    typedef NamedMDNodeList<InputIRVersionMetaDataHandle> InputIRVersionsList;        
-    typedef NamedMDNodeList<InputLangInfoMetaDataHandle> InputLangsInfoList;        
+    // typedefs for the data members types        
+    typedef NamedMDNodeList<InputIRVersionMetaDataHandle> InputIRVersionsList;              
     typedef NamedMetaDataMap<llvm::Function, FunctionInfoMetaDataHandle> FunctionsInfoMap;     
 
 public:
