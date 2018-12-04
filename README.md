@@ -56,7 +56,11 @@ $ git clone https://github.com/intel/opencl-clang common_clang
 $ git clone https://github.com/intel/llvm-patches llvm_patches
 $ git clone -b release_40 https://github.com/llvm-mirror/llvm llvm_source
 $ git clone -b release_70 https://github.com/llvm-mirror/llvm llvm7.0.0_source
+[Using latest repo]
 $ git clone https://github.com/intel/intel-graphics-compiler igc
+[Or Using specific release]
+$ git clone -b igc_release_2018-12-12 https://github.com/intel/intel-graphics-compiler igc;\
+  git checkout -b igc_release_2018-12-12
 $ git clone https://github.com/KhronosGroup/OpenCL-Headers opencl_headers
 ```
 
@@ -68,10 +72,13 @@ $ mkdir build
 4. Build IGC using commands:
 ```
 $ cd build
-$ cmake -DIGC_OPTION__OUTPUT_DIR=../igc-install/Release \
-    -DCMAKE_BUILD_TYPE=Release -DIGC_OPTION__ARCHITECTURE_TARGET=Linux64 \
-    ../igc/IGC
+$ cmake -DIGC_OPTION__OUTPUT_DIR=../igc-install/Release ../igc/IGC
 $ make -j`nproc`
+```
+
+4. Install IGC
+```
+$ sudo make install
 ```
 
 ## Supported Platforms
