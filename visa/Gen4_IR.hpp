@@ -1181,6 +1181,12 @@ public:
         return isSplitSend() ? srcs[2] : srcs[1];
     }
 
+    G4_Operand* getMsgExtDescOperand() const
+    {
+        assert(isSplitSend() && "must be a split send instruction");
+        return srcs[3];
+    }
+
     void setNoSrcDepSet(bool val)
     {
          if (val)

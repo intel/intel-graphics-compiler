@@ -6522,17 +6522,23 @@ void GraphColor::saveSubRegs(
     //  send (8) null<1>:uw r126 0xa desc:ud
     //
     {
+        builder.instList.clear();
         uint8_t execSize = 8;
         unsigned owordSize = ROUND(size, 16) / 16;
         G4_DstRegRegion *postDst = builder.createNullDst(Type_UD);
         G4_SrcRegRegion *payload = builder.Create_Src_Opnd_From_Dcl(scratchRegDcl, builder.getRegionStride1());
         G4_Imm* exDesc = builder.createImm(0xa, Type_UD);
         G4_Imm* desc = gra.createMsgDesc(owordSize, true, false);
-        auto msgDesc = builder.createSendMsgDesc((uint32_t) desc->getInt(), (uint32_t) exDesc->getInt(), false, true);
-        auto sendInst = builder.createSendInst(
-            NULL, G4_send, execSize, postDst, payload, exDesc, desc, InstOpt_WriteEnable, msgDesc);
-        sendInst->setCISAOff(UNMAPPABLE_VISA_INDEX);
-        bb->insert(insertIt, sendInst);
+        auto msgDesc = builder.createSendMsgDesc((uint32_t) desc->getInt(), (uint32_t) exDesc->getInt(), false, true, 
+            getScratchSurface());
+        auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, payload, builder.createNullSrc(Type_UD), execSize, 
+            msgDesc, InstOpt_WriteEnable, false);
+        auto exDescOpnd = sendInst->getMsgExtDescOperand();
+        if (exDescOpnd->isSrcRegRegion())
+        {
+            exDescOpnd->asSrcRegRegion()->getTopDcl()->getRegVar()->setPhyReg(builder.phyregpool.getAddrReg(), 0);
+        }
+        bb->splice(insertIt, builder.instList);
     }
 }
 
@@ -6543,195 +6549,67 @@ void GraphColor::saveRegs(
     unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
     unsigned frameOwordOffset, G4_BB* bb, INST_LIST_ITER insertIt)
 {
-    if (getGenxPlatform() >= GENX_SKL)
+
+    assert(getGenxPlatform() >= GENX_SKL && "stack call only supported on SKL+");
+
+    if (owordSize == 8 || owordSize == 4 || owordSize == 2)
     {
-        if (owordSize == 8 || owordSize == 4 || owordSize == 2)
+        // Cannot use r0 as src of send, so we emit following instead:
+        // mov (8) r126.0<1>:ud    r0.0<8;8,1>:ud
+        // add (1) r126.2<1>:ud    r125.7<0;1,0>:ud    0x2:ud
+        // sends (8) null<1>:ud    r126.0    r1.0 ...
+        uint8_t execSize = (owordSize > 2) ? 16 : 8;
+        auto dstRgn = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 0, 1, Type_UD);
+        auto srcRgn = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.getBuiltinR0()->getRegVar(), 0,
+            0, builder.rgnpool.createRegion(8, 8, 1), Type_UD);
+        G4_INST* mov = builder.createInternalInst(NULL, G4_mov, NULL, false, 8, dstRgn, srcRgn, NULL, InstOpt_WriteEnable);
+
+        bb->insert(insertIt, mov);
+
+        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
+        G4_Operand* src0 = NULL;
+        G4_Imm* src1 = NULL;
+        G4_opcode op;
+        if (framePtr)
         {
-            // Cannot use r0 as src of send, so we emit following instead:
-            // mov (8) r126.0<1>:ud    r0.0<8;8,1>:ud
-            // add (1) r126.2<1>:ud    r125.7<0;1,0>:ud    0x2:ud
-            // sends (8) null<1>:ud    r126.0    r1.0 ...
-            uint8_t execSize = (owordSize > 2) ? 16 : 8;
-            auto dstRgn = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 0, 1, Type_UD);
-            auto srcRgn = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.getBuiltinR0()->getRegVar(), 0,
-                0, builder.rgnpool.createRegion(8, 8, 1), Type_UD);
-            G4_INST* mov = builder.createInternalInst(NULL, G4_mov, NULL, false, 8, dstRgn, srcRgn, NULL, InstOpt_WriteEnable);
-
-            bb->insert(insertIt, mov);
-
-            G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
-            G4_Operand* src0 = NULL;
-            G4_Imm* src1 = NULL;
-            G4_opcode op;
-            if (framePtr)
-            {
-                src0 = builder.createSrcRegRegion(
-                    Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UD);
-                src1 = builder.createImm(frameOwordOffset, Type_UD);
-                op = G4_add;
-            }
-            else
-            {
-                src0 = builder.createImm(frameOwordOffset, Type_UD);
-                op = G4_mov;
-            }
-            G4_INST* hdrSetInst = builder.createInternalInst(NULL, op, NULL, false, 1,
-                dst, src0, src1, InstOpt_WriteEnable);
-
-            bb->insert(insertIt, hdrSetInst);
-
-            G4_DstRegRegion * postDst = builder.createNullDst((execSize > 8) ? Type_UW : Type_UD);
-            auto sendSrc1 = builder.createSrcRegRegion(Mod_src_undef, Direct, scratchRegDcl->getRegVar(),
-                0, 0, builder.rgnpool.createRegion(8, 8, 1), Type_UD);
-            unsigned messageLength = owordSize / 2;
-            G4_Declare *msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
-                Type_UD, Either, Sixteen_Word, StackCallStr);
-            msgDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
-            auto sendSrc2 = builder.createSrcRegRegion(Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0,
-                builder.rgnpool.createRegion(8, 8, 1), Type_UD);
-
-            G4_Imm* descImm = gra.createMsgDesc(owordSize, true, true);
-            G4_SendMsgDescriptor* desc = builder.createSendMsgDesc((uint32_t)descImm->getImm() & 0x0007FFFFu, 0, 1, SFID_DP_DC,
-                false, messageLength, 0, false, true);
-
-            G4_INST* sendsInst = builder.createSplitSendInst(NULL, G4_sends, execSize, postDst, sendSrc1, sendSrc2, descImm, InstOpt_WriteEnable, desc, NULL);
-            sendsInst->setCISAOff(UNMAPPABLE_VISA_INDEX);
-
-            bb->insert(insertIt, sendsInst);
-
-            builder.instList.clear();
-
-        }
-        else if (owordSize > 8)
-        {
-            saveRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-            saveRegs(startReg + 4, owordSize - 8, scratchRegDcl, framePtr, frameOwordOffset + 8, bb, insertIt);
-        }
-        //
-        // Split into chunks of sizes 4 and remaining owords.
-        //
-        else if (owordSize > 4)
-        {
-            saveRegs(startReg, 4, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-            saveRegs(startReg + 2, owordSize - 4, scratchRegDcl, framePtr, frameOwordOffset + 4, bb, insertIt);
-        }
-        //
-        // Split into chunks of sizes 2 and remaining owords.
-        //
-        else if (owordSize > 2)
-        {
-            saveRegs(startReg, 2, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
-            saveRegs(startReg + 1, owordSize - 2, scratchRegDcl, framePtr, frameOwordOffset + 2, bb, insertIt);
+            src0 = builder.createSrcRegRegion(
+                Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, builder.getRegionScalar(), Type_UD);
+            src1 = builder.createImm(frameOwordOffset, Type_UD);
+            op = G4_add;
         }
         else
         {
-            MUST_BE_TRUE(false, ERROR_REGALLOC);
+            src0 = builder.createImm(frameOwordOffset, Type_UD);
+            op = G4_mov;
         }
+        G4_INST* hdrSetInst = builder.createInternalInst(NULL, op, NULL, false, 1,
+            dst, src0, src1, InstOpt_WriteEnable);
 
-        return;
-    }
-
-    //
-    // Process chunks of size 8, 4, 2 and 1.
-    //
-    if (owordSize == 8 || owordSize == 4 || owordSize == 2)
-    {
-        unsigned messageLength = ROUND(owordSize, 2) / 2 + 1;
-        G4_Declare *msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
-            Type_UD, Either, Sixteen_Word, StackCallStr);
-        msgDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg - 1), 0);
-
-        G4_DstRegRegion* dstOpnd = builder.createDstRegRegion(Direct, msgDcl->getRegVar(), 0, 0, 1, Type_UD);
-        G4_INST* killInst = builder.createInternalInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd,
-            NULL, NULL, 0);
-        bb->insert(insertIt, killInst);
-
-        //
-        // mov (8) r126.0<1>:d r[startReg-1]<8;8,1>:d
-        //
-        if (startReg >= 1)
-        {
-            G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 0, 1, Type_UD);
-            RegionDesc* rDesc = builder.rgnpool.createRegion(8, 8, 1);
-            G4_Operand* src = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0, rDesc, Type_UD);
-            G4_INST* saveHdrInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8,
-                dst, src, NULL, InstOpt_WriteEnable);
-            bb->insert(insertIt, saveHdrInst);
-        }
-        //
-        // mov (8) r[startReg-1]<1>:d r0<8;8,1>:d
-        //
-        if (startReg > 1)
-        {
-            G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, msgDcl->getRegVar(), 0, 0, 1, Type_UD);
-            RegionDesc* rDesc = builder.rgnpool.createRegion(8, 8, 1);
-            G4_Operand* src = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, builder.getBuiltinR0()->getRegVar(), 0, 0, rDesc, Type_UD);
-            G4_INST* hdrInitInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8,
-                dst, src, NULL, InstOpt_WriteEnable);
-            bb->insert(insertIt, hdrInitInst);
-        }
-        //
-        // add (1) r[startReg-1, 2]<1>:d FP<0;1,0>:d offset
-        //
-        {
-            G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, msgDcl->getRegVar(), 0, 2, 1, Type_UD);
-            RegionDesc* rDesc = builder.getRegionScalar();
-            G4_Operand* src0;
-            G4_Imm* src1;
-            G4_opcode op;
-            if (framePtr)
-            {
-                src0 = builder.createSrcRegRegion(
-                    Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, rDesc, Type_UD);
-                src1 = builder.createImm(frameOwordOffset, Type_UD);
-                op = G4_add;
-            }
-            else
-            {
-                src0 = builder.createImm(frameOwordOffset, Type_UD);
-                src1 = NULL;
-                op = G4_mov;
-            }
-            G4_INST* hdrSetInst = builder.createInternalInst(NULL, op, NULL, false, 1,
-                dst, src0, src1, InstOpt_WriteEnable);
-            bb->insert(insertIt, hdrSetInst);
-        }
-        //
-        //  send (16) null<1>:uw r[startReg] 0xa desc:ud
-        //
-        {
-            uint8_t execSize = (owordSize > 2) ? 16 : 8;
-            G4_DstRegRegion * postDst = builder.createNullDst((execSize > 8) ? Type_UW : Type_UD);
-            G4_SrcRegRegion* payload = builder.Create_Src_Opnd_From_Dcl(msgDcl, builder.getRegionStride1());
-            G4_Imm* exDesc = builder.createImm(0xa, Type_UD);
-            G4_Imm* desc = gra.createMsgDesc(owordSize, true, false);
-            auto msgDesc = builder.createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), false, true);
-            auto sendInst = builder.createSendInst(
-                NULL, G4_send, execSize, postDst, payload, exDesc, desc, InstOpt_WriteEnable, msgDesc);
-            sendInst->setCISAOff(UNMAPPABLE_VISA_INDEX);
-            bb->insert(insertIt, sendInst);
-        }
-        //
-        // mov (8) [startReg-1]<1>:d r126.0<8;8,1>:d
-        //
-        if (startReg >= 1)
-        {
-            G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, msgDcl->getRegVar(), 0, 0, 1, Type_UD);
-            RegionDesc* rDesc = builder.rgnpool.createRegion(8, 8, 1);
-            G4_Operand* src = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, scratchRegDcl->getRegVar(), 0, 0, rDesc, Type_UD);
-            G4_INST* restoreHdrInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8,
-                dst, src, NULL, InstOpt_WriteEnable);
-            bb->insert(insertIt, restoreHdrInst);
-        }
+        bb->insert(insertIt, hdrSetInst);
 
         builder.instList.clear();
+        G4_DstRegRegion * postDst = builder.createNullDst((execSize > 8) ? Type_UW : Type_UD);
+        auto sendSrc1 = builder.createSrcRegRegion(Mod_src_undef, Direct, scratchRegDcl->getRegVar(),
+            0, 0, builder.rgnpool.createRegion(8, 8, 1), Type_UD);
+        unsigned messageLength = owordSize / 2;
+        G4_Declare *msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
+            Type_UD, Either, Sixteen_Word, StackCallStr);
+        msgDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
+        auto sendSrc2 = builder.createSrcRegRegion(Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0,
+            builder.rgnpool.createRegion(8, 8, 1), Type_UD);
+        G4_Imm* descImm = gra.createMsgDesc(owordSize, true, true);
+        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID_DP_DC, false, messageLength);
+        auto msgDesc = builder.createSendMsgDesc((uint32_t)descImm->getInt(), extDesc, false, true, 
+            getScratchSurface());
+        auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, sendSrc1, sendSrc2, execSize, msgDesc, 
+            InstOpt_WriteEnable, false);
+        auto exDescOpnd = sendInst->getMsgExtDescOperand();
+        if (exDescOpnd->isSrcRegRegion())
+        {
+            exDescOpnd->asSrcRegRegion()->getTopDcl()->getRegVar()->setPhyReg(builder.phyregpool.getAddrReg(), 0);
+        }
+        bb->splice(insertIt, builder.instList);
     }
-    //
-    // Split into chunks of sizes 8 and remaining owords.
-    //
     else if (owordSize > 8)
     {
         saveRegs(startReg, 8, scratchRegDcl, framePtr, frameOwordOffset, bb, insertIt);
@@ -6786,6 +6664,11 @@ void GraphColor::saveActiveRegs(
     }
 }
 
+G4_SrcRegRegion* GraphColor::getScratchSurface() const
+{
+    return nullptr; // use stateless access
+}
+
 //
 // Generate the restore code for startReg.startSubReg to startReg.startSubReg+size.
 //
@@ -6833,6 +6716,7 @@ void GraphColor::restoreSubRegs(
     //  send (16) r126<1>:uw r127 0xa desc:ud
     //
     {
+        builder.instList.clear();
         unsigned owordSize = ROUND(size, 16) / 16;
         uint8_t execSize = 8;
         G4_DstRegRegion* postDst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 0, 1, Type_UD);
@@ -6840,11 +6724,16 @@ void GraphColor::restoreSubRegs(
             scratchRegDcl->getRegVar(), 1, 0, builder.getRegionStride1(), Type_UD);
         G4_Imm* exDesc = builder.createImm(0xa, Type_UD);
         G4_Imm* desc = gra.createMsgDesc(owordSize, false, false);
-        auto msgDesc = builder.createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), true, false);
-        auto sendInst = builder.createSendInst(
-            NULL, G4_send, execSize, postDst, payload, exDesc, desc, InstOpt_WriteEnable, msgDesc);
-        sendInst->setCISAOff(UNMAPPABLE_VISA_INDEX);
-        bb->insert(insertIt, sendInst);
+        auto msgDesc = builder.createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), true, false, 
+            getScratchSurface());
+        auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, payload, builder.createNullSrc(Type_UD), execSize, 
+            msgDesc, InstOpt_WriteEnable, false);
+        auto exDescOpnd = sendInst->getMsgExtDescOperand();
+        if (exDescOpnd->isSrcRegRegion())
+        {
+            exDescOpnd->asSrcRegRegion()->getTopDcl()->getRegVar()->setPhyReg(builder.phyregpool.getAddrReg(), 0);
+        }
+        bb->splice(insertIt, builder.instList);
     }
     //
     // mov (size) startReg.startSubReg<1>:b r126<1;1,1>:b
@@ -6918,22 +6807,27 @@ void GraphColor::restoreRegs(
         //  send (16) r[startReg]<1>:uw r126 0xa desc:ud
         //
         {
+            builder.instList.clear();
             uint8_t execSize = (owordSize > 2) ? 16 : 8;
 
             unsigned responseLength = ROUND(owordSize, 2) / 2;
             G4_Declare *dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
                 Type_UD, Either, Sixteen_Word, GraphColor::StackCallStr);
             dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
-
             G4_DstRegRegion* postDst = builder.createDstRegRegion(Direct, dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
             G4_SrcRegRegion* payload = builder.Create_Src_Opnd_From_Dcl(scratchRegDcl, builder.getRegionStride1());
             G4_Imm* exDesc = builder.createImm(0xa, Type_UD);
             G4_Imm* desc = gra.createMsgDesc(owordSize, false, false);
-            auto msgDesc = builder.createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), true, false);
-            auto sendInst = builder.createSendInst(
-                NULL, G4_send, execSize, postDst, payload, exDesc, desc, InstOpt_WriteEnable, msgDesc);
-            sendInst->setCISAOff(UNMAPPABLE_VISA_INDEX);
-            bb->insert(insertIt, sendInst);
+            auto msgDesc = builder.createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), true, false, 
+                getScratchSurface());
+            auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, payload, builder.createNullSrc(Type_UD), execSize, 
+                msgDesc, InstOpt_WriteEnable, false);
+            auto exDescOpnd = sendInst->getMsgExtDescOperand();
+            if (exDescOpnd->isSrcRegRegion())
+            {
+                exDescOpnd->asSrcRegRegion()->getTopDcl()->getRegVar()->setPhyReg(builder.phyregpool.getAddrReg(), 0);
+            }
+            bb->splice(insertIt, builder.instList);
         }
 
         builder.instList.clear();

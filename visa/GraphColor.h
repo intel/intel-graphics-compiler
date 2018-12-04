@@ -771,6 +771,7 @@ namespace vISA
         void restoreFileScopeVar(G4_RegVar* filescopeVar, G4_BB* bb, INST_LIST_ITER insertIt);
         void dumpRegisterPressure();
         GlobalRA & getGRA() { return gra; }
+        G4_SrcRegRegion* getScratchSurface() const;
     };
 
     class RAVarInfo
