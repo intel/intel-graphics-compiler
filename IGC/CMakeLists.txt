@@ -961,18 +961,11 @@ function(igc_arch_get_os retVarName arch)
   endif()
 endfunction()
 
-
-# Gets CPU platform used in specified architecture. If it cannot be determined
-# the "Unknown-NOTFOUND" will be returned.
-#
-# @param retValName Name of variable placeholder where result will be returned.
-# @param arch       Architecture name to get info from.
-function(igc_arch_get_cpu retVarName arch)
-  if(arch MATCHES "${_os_detect_list}")
-    set("${retVarName}" "${CMAKE_MATCH_2}" PARENT_SCOPE)
+function(igc_arch_get_cpu retVarName)
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set("${retVarName}" "64" PARENT_SCOPE)
   else()
-    message(WARNING "oops, unable to get CPU platform for '${arch}'")
-    set("${retVarName}" "Unknown-NOTFOUND" PARENT_SCOPE)
+    set("${retVarName}" "32" PARENT_SCOPE)
   endif()
 endfunction()
 
@@ -1219,7 +1212,7 @@ function(igc_tool_get_activity_commandline retVarName targetName activityName)
 
   # Select most matching activity (with most matching architecture - most specific first, most generic last).
   igc_arch_get_os(_archOs   "${${__hostArchVarName}}")
-  igc_arch_get_cpu(_archCpu "${${__hostArchVarName}}")
+  igc_arch_get_cpu(_archCpu)
 
   string(REPLACE ";" "\;" _activityName "${activityName}")
   set(_activityPropNames
@@ -2101,7 +2094,7 @@ set(IGC_OPTION__BUILD_IGC_OPT ON CACHE BOOL "Build project igc_opt.")
 set(IGC_OPTION__USCLAUNCHER_TOOL OFF CACHE BOOL
     "Building USCLauncher tool for ILAdapter")
 
-igc_arch_get_cpu(_cpuSuffix "${IGC_OPTION__ARCHITECTURE_TARGET}")
+igc_arch_get_cpu(_cpuSuffix)
 if(NOT DEFINED IGC_OPTION__OUTPUT_DIR)
 set(IGC_OPTION__OUTPUT_DIR "${IGC_SOURCE_DIR}/../../dump${_cpuSuffix}/igc" CACHE PATH "Output directory path where the final libraries will be stored.")
 endif()
@@ -3094,19 +3087,17 @@ set(IGC_BUID__VISA_COMPILE_DEFINITIONS
     DLL_MODE
   )
 
-igc_arch_get_cpu(_cpuSuffix "${IGC_OPTION__ARCHITECTURE_TARGET}")
-  if(_cpuSuffix MATCHES "^64$")
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
         _AMD64_
         AMD64
       )
-  elseif(_cpuSuffix MATCHES "^32$")
+  elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
     set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
         _X86_=1
         i386=1
       )
   endif()
-unset(_cpuSuffix)
 
 if(LLVM_ON_WIN32)
   # NOTE: _WIN32 should be defined by compiler.
@@ -3120,7 +3111,7 @@ if(LLVM_ON_WIN32)
     )
 
   # NOTE: _WIN64 should be defined by compiler.
-  if(IGC_OPTION__ARCHITECTURE_TARGET MATCHES "^Windows64$")
+  if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
         _WIN64
         WIN64
@@ -3572,7 +3563,8 @@ endif()
 if(LLVM_ON_UNIX)
   set(_cpuSuffix "")
 else()
-  igc_arch_get_cpu(_cpuSuffix "${IGC_OPTION__ARCHITECTURE_TARGET}")
+
+  igc_arch_get_cpu(_cpuSuffix)
 endif()
 set_target_properties("${IGC_BUILD__PROJ__igc_dll}" PROPERTIES OUTPUT_NAME "${IGC_LIBRARY_NAME}${_cpuSuffix}")
 unset(_cpuSuffix)
@@ -3581,7 +3573,7 @@ unset(_cpuSuffix)
 if(LLVM_ON_UNIX)
   set(_cpuSuffix "")
 else()
-  igc_arch_get_cpu(_cpuSuffix "${IGC_OPTION__ARCHITECTURE_TARGET}")
+  igc_arch_get_cpu(_cpuSuffix)
 endif()
 set_target_properties("${IGC_BUILD__PROJ__fcl_dll}" PROPERTIES OUTPUT_NAME "${FCL_LIBRARY_NAME}${_cpuSuffix}")
 unset(_cpuSuffix)

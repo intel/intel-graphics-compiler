@@ -38,7 +38,7 @@
   add_executable(IGC_TARGET__TOOLS_CLANG    IMPORTED)
 
   # Detect CPU architecture
-  igc_arch_get_cpu(_cpuSuffix "${IGC_OPTION__ARCHITECTURE_TARGET}")
+  igc_arch_get_cpu(_cpuSuffix)
   if(NOT _cpuSuffix MATCHES "^32$|^64$")
     message(STATUS "Unknown host CPU architecture ('" ${_cpuSuffix} "'), defaulting to using 64-bit Clang")
     set(_cpuSuffix "64")
