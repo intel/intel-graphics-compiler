@@ -63,6 +63,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPop.hpp"
 
 #include <algorithm>
+#include <map>
 
 using namespace llvm;
 using namespace IGC;
@@ -108,22 +109,42 @@ namespace //Anonymous
         SAMPLER
     };
 
-    const auto FNAME_ENQUEUE_KERNEL                     = "_Z14enqueue_kernel";
-    const auto FNAME_ENQUEUE_KERNEL_BASIC               = "__enqueue_kernel_basic";
-    const auto FNAME_ENQUEUE_KERNEL_VAARGS              = "__enqueue_kernel_vaargs";
-    const auto FNAME_ENQUEUE_KERNEL_EVENTS_VAARGS       = "__enqueue_kernel_events_vaargs";
-    const auto FNAME_WORK_GROUP_SIZE_IMPL               = "__get_kernel_work_group_size_impl";
-    const auto FNAME_PREFERRED_WORK_GROUP_SIZE_MULTIPLE = "_Z45get_kernel_preferred_work_group_size_multiple";
-    const auto FNAME_PREFERRED_WORK_GROUP_MULTIPLE_IMPL = "__get_kernel_preferred_work_group_multiple_impl";
-    const auto FNAME_MAX_SUB_GROUP_SIZE_FOR_NDRANGE     = "_Z41get_kernel_max_sub_group_size_for_ndrange";
-    const auto FNAME_SUB_GROUP_COUNT_FOR_NDRANGE        = "_Z38get_kernel_sub_group_count_for_ndrange";
-    
-    const auto FNAME_SPIRV_ENQUEUE_KERNEL                     = "__builtin_spirv_OpEnqueueKernel";
-    const auto FNAME_SPIRV_SUB_GROUP_COUNT_FOR_NDRANGE        = "__builtin_spirv_OpGetKernelNDrangeSubGroupCount";
-    const auto FNAME_SPIRV_MAX_SUB_GROUP_SIZE_FOR_NDRANGE     = "__builtin_spirv_OpGetKernelNDrangeMaxSubGroupSize";
-    const auto FNAME_SPIRV_PREFERRED_WORK_GROUP_SIZE_MULTIPLE = "__builtin_spirv_OpGetKernelPreferredWorkGroupSizeMultiple";
-    const auto FNAME_SPIRV_LOCAL_SIZE_FOR_SUB_GROUP_COUNT     = "__builtin_spirv_OpGetKernelLocalSizeForSubgroupCount";
-    const auto FNAME_SPIRV_MAX_NUM_SUB_GROUPS                 = "__builtin_spirv_OpGetKernelMaxNumSubgroups";
+    enum class DeviceEnqueueFunction {
+        ENQUEUE_KERNEL,
+        ENQUEUE_KERNEL_BASIC,
+        ENQUEUE_KERNEL_VAARGS,
+        ENQUEUE_KERNEL_EVENTS_VAARGS,
+        WORK_GROUP_SIZE_IMPL,
+        PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
+        PREFERRED_WORK_GROUP_MULTIPLE_IMPL,
+        MAX_SUB_GROUP_SIZE_FOR_NDRANGE,
+        SUB_GROUP_COUNT_FOR_NDRANGE,
+        SPIRV_ENQUEUE_KERNEL,
+        SPIRV_SUB_GROUP_COUNT_FOR_NDRANGE,
+        SPIRV_MAX_SUB_GROUP_SIZE_FOR_NDRANGE,
+        SPIRV_PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
+        SPIRV_LOCAL_SIZE_FOR_SUB_GROUP_COUNT,
+        SPIRV_MAX_NUM_SUB_GROUPS,
+        NUM_FUNCTIONS_WITH_BLOCK_ARGS
+    };
+
+    const std::map<DeviceEnqueueFunction, const char*>  DeviceEnqueueFunctionNames = {
+        { DeviceEnqueueFunction::ENQUEUE_KERNEL, "_Z14enqueue_kernel" },
+        { DeviceEnqueueFunction::ENQUEUE_KERNEL_BASIC, "__enqueue_kernel_basic" },
+        { DeviceEnqueueFunction::ENQUEUE_KERNEL_VAARGS, "__enqueue_kernel_vaargs" },
+        { DeviceEnqueueFunction::ENQUEUE_KERNEL_EVENTS_VAARGS, "__enqueue_kernel_events_vaargs" },
+        { DeviceEnqueueFunction::WORK_GROUP_SIZE_IMPL, "__get_kernel_work_group_size_impl" },
+        { DeviceEnqueueFunction::PREFERRED_WORK_GROUP_SIZE_MULTIPLE, "_Z45get_kernel_preferred_work_group_size_multiple" },
+        { DeviceEnqueueFunction::PREFERRED_WORK_GROUP_MULTIPLE_IMPL, "__get_kernel_preferred_work_group_multiple_impl" },
+        { DeviceEnqueueFunction::MAX_SUB_GROUP_SIZE_FOR_NDRANGE, "_Z41get_kernel_max_sub_group_size_for_ndrange" },
+        { DeviceEnqueueFunction::SUB_GROUP_COUNT_FOR_NDRANGE, "_Z38get_kernel_sub_group_count_for_ndrange" },
+        { DeviceEnqueueFunction::SPIRV_ENQUEUE_KERNEL, "__builtin_spirv_OpEnqueueKernel" },
+        { DeviceEnqueueFunction::SPIRV_SUB_GROUP_COUNT_FOR_NDRANGE, "__builtin_spirv_OpGetKernelNDrangeSubGroupCount" },
+        { DeviceEnqueueFunction::SPIRV_MAX_SUB_GROUP_SIZE_FOR_NDRANGE, "__builtin_spirv_OpGetKernelNDrangeMaxSubGroupSize" },
+        { DeviceEnqueueFunction::SPIRV_PREFERRED_WORK_GROUP_SIZE_MULTIPLE, "__builtin_spirv_OpGetKernelPreferredWorkGroupSizeMultiple" },
+        { DeviceEnqueueFunction::SPIRV_LOCAL_SIZE_FOR_SUB_GROUP_COUNT, "__builtin_spirv_OpGetKernelLocalSizeForSubgroupCount" },
+        { DeviceEnqueueFunction::SPIRV_MAX_NUM_SUB_GROUPS, "__builtin_spirv_OpGetKernelMaxNumSubgroups" }
+    };
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
     /// helper class to build and query llvm metadata of kernel/dispatcher
@@ -727,10 +748,10 @@ namespace //Anonymous
             return invokeFunc;
         }
 
-        std::vector<llvm::Value*> getLocaSizes() const { return _local_sizes; }
+        std::vector<llvm::Value*> getLocalSizes() const { return _local_sizes; }
 
         bool hasEvents() const { return getNumWaitEvents() != nullptr; }
-        bool hasLocals() const { return getLocaSizes().size() > 0; }
+        bool hasLocals() const { return getLocalSizes().size() > 0; }
     };
 
     //////////////////////////////////////////////////////////////////////////
@@ -885,6 +906,11 @@ namespace //Anonymous
             for (unsigned i = localSizesStartArgNum; i < argsNum; i++)
             {
                 auto arg = _call.getArgOperand(i);
+                if (arg->getType()->isPointerTy()) {
+                    IRBuilder<> builder(&_call);
+                    arg = builder.CreateLoad(arg);
+                }
+
                 if (!arg->getType()->isIntegerTy(64) && !arg->getType()->isIntegerTy(32)) 
                     report_fatal_error("OpEnqueueKernel signature does not match");
 
@@ -1354,7 +1380,7 @@ namespace //Anonymous
 
         Function* getInvokeFunctionFromKernelWrapper(const Function* invokeFunc, DataContext& dataContext) {
             assert(isInvokeFunctionKernelWrapper(invokeFunc, dataContext));
-            const CallInst* inst = dyn_cast<CallInst>(*(invokeFunc->arg_begin())->user_begin());
+            const CallInst* inst = dyn_cast<CallInst>(&*(invokeFunc->begin()->begin()));
             if (inst) {
                 return inst->getCalledFunction();
             } else {
@@ -1363,11 +1389,21 @@ namespace //Anonymous
         }
 
         bool isEnqueueKernelFunction(StringRef funcName) {
-            return funcName.startswith(FNAME_ENQUEUE_KERNEL) ||
-                funcName.startswith(FNAME_SPIRV_ENQUEUE_KERNEL) ||
-                funcName.startswith(FNAME_ENQUEUE_KERNEL_BASIC) ||
-                funcName.startswith(FNAME_ENQUEUE_KERNEL_VAARGS) ||
-                funcName.startswith(FNAME_ENQUEUE_KERNEL_EVENTS_VAARGS);
+
+            return funcName.startswith(DeviceEnqueueFunctionNames.at(DeviceEnqueueFunction::ENQUEUE_KERNEL)) ||
+                funcName.startswith(DeviceEnqueueFunctionNames.at(DeviceEnqueueFunction::SPIRV_ENQUEUE_KERNEL)) ||
+                funcName.startswith(DeviceEnqueueFunctionNames.at(DeviceEnqueueFunction::ENQUEUE_KERNEL_BASIC)) ||
+                funcName.startswith(DeviceEnqueueFunctionNames.at(DeviceEnqueueFunction::ENQUEUE_KERNEL_VAARGS)) ||
+                funcName.startswith(DeviceEnqueueFunctionNames.at(DeviceEnqueueFunction::ENQUEUE_KERNEL_EVENTS_VAARGS));
+        }
+
+        bool isDeviceEnqueueFunction(StringRef funcName) {
+            for (auto el : DeviceEnqueueFunctionNames) {
+                if (funcName.startswith(el.second)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
 
@@ -1423,7 +1459,8 @@ namespace //Anonymous
         {
             bool changed = false;
             for (auto &func : M.functions()) {
-                if (!isEnqueueKernelFunction(func.getName())) continue;
+                if (!isDeviceEnqueueFunction(func.getName())) continue;
+
                 for (auto user : func.users()) {
                     auto callInst = dyn_cast<CallInst>(user);
                     if (!callInst) continue;
@@ -1737,69 +1774,71 @@ namespace //Anonymous
     CallHandler* DataContext::registerCallHandler(llvm::CallInst& call)
     {
         // device enqueue call handlers factories registry
-        const std::pair<StringRef, std::function<CallHandler*(llvm::CallInst&, DataContext& dm)>> handlers[] =
+        const std::pair<DeviceEnqueueFunction, std::function<CallHandler*(llvm::CallInst&, DataContext& dm)>> handlers[] =
         {
             {
-                FNAME_MAX_SUB_GROUP_SIZE_FOR_NDRANGE,
+                DeviceEnqueueFunction::MAX_SUB_GROUP_SIZE_FOR_NDRANGE,
                 [](llvm::CallInst& call, DataContext& dm){ return new KernelSubGroupSizeCall(new ObjCNDRangeAndBlockCallArgs(call, dm)); }
             },
             {
-                FNAME_PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
+                DeviceEnqueueFunction::PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
                 [](llvm::CallInst& call, DataContext& dm){ return new KernelSubGroupSizeCall(new ObjCBlockCallArgs(call, dm)); }
             },
             {
-                FNAME_PREFERRED_WORK_GROUP_MULTIPLE_IMPL,
+                DeviceEnqueueFunction::PREFERRED_WORK_GROUP_MULTIPLE_IMPL,
                 [](llvm::CallInst& call, DataContext& dm) { return new KernelSubGroupSizeCall(new ObjCBlockCallArgs(call, dm)); }
             },
             {
-                FNAME_WORK_GROUP_SIZE_IMPL,
+                DeviceEnqueueFunction::WORK_GROUP_SIZE_IMPL,
                 [](llvm::CallInst& call, DataContext& dm) { return new KernelMaxWorkGroupSizeCall(new ObjCBlockCallArgs(call, dm)); }
             },
             {
-                FNAME_SUB_GROUP_COUNT_FOR_NDRANGE,
+                DeviceEnqueueFunction::SUB_GROUP_COUNT_FOR_NDRANGE,
                 [](llvm::CallInst& call, DataContext& dm){ return new KernelSubGroupCountForNDRangeCall(new ObjCNDRangeAndBlockCallArgs(call, dm)); }
             },
             {
-                FNAME_ENQUEUE_KERNEL,
+                DeviceEnqueueFunction::ENQUEUE_KERNEL,
                 [](llvm::CallInst& call, DataContext& dm){ return new EnqueueKernelCall(new ObjCEnqueueKernelArgs(call, dm)); }
             },
             {
-                FNAME_ENQUEUE_KERNEL_BASIC,
+                DeviceEnqueueFunction::ENQUEUE_KERNEL_BASIC,
                 [](llvm::CallInst& call, DataContext& dm){ return new EnqueueKernelCall(new ObjCEnqueueKernelArgs(call, dm)); }
             },
             {
-                FNAME_ENQUEUE_KERNEL_VAARGS,
+                DeviceEnqueueFunction::ENQUEUE_KERNEL_VAARGS,
                 [](llvm::CallInst& call, DataContext& dm){ return new EnqueueKernelCall(new ObjCEnqueueKernelArgs(call, dm)); }
             },
             {
-                FNAME_ENQUEUE_KERNEL_EVENTS_VAARGS,
+                DeviceEnqueueFunction::ENQUEUE_KERNEL_EVENTS_VAARGS,
                 [](llvm::CallInst& call, DataContext& dm){ return new EnqueueKernelCall(new ObjCEnqueueKernelArgs(call, dm)); }
             },
             {
-                FNAME_SPIRV_MAX_SUB_GROUP_SIZE_FOR_NDRANGE,
+                DeviceEnqueueFunction::SPIRV_MAX_SUB_GROUP_SIZE_FOR_NDRANGE,
                 [](llvm::CallInst& call, DataContext& dm){ return new KernelSubGroupSizeCall(new SPIRVNDRangeAndInvokeCallArgs(call, dm)); }
             },
             {
-                FNAME_SPIRV_PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
+                DeviceEnqueueFunction::SPIRV_PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
                 [](llvm::CallInst& call, DataContext& dm){ return new KernelSubGroupSizeCall(new SPIRVInvokeCallArgs(call, dm)); }
             },
             {
-                FNAME_SPIRV_LOCAL_SIZE_FOR_SUB_GROUP_COUNT,
+                DeviceEnqueueFunction::SPIRV_LOCAL_SIZE_FOR_SUB_GROUP_COUNT,
                 [](llvm::CallInst& call, DataContext& dm){ return new KernelLocalSizeForSubgroupCount(new SPIRVSubgroupCountAndInvokeCallArgs(call, dm)); }
             },
             {
-                FNAME_SPIRV_MAX_NUM_SUB_GROUPS,
+                DeviceEnqueueFunction::SPIRV_MAX_NUM_SUB_GROUPS,
                 [](llvm::CallInst& call, DataContext& dm){ return new KernelMaxNumSubgroups(new SPIRVInvokeCallArgs(call, dm)); }
             },
             {
-                FNAME_SPIRV_SUB_GROUP_COUNT_FOR_NDRANGE,
+                DeviceEnqueueFunction::SPIRV_SUB_GROUP_COUNT_FOR_NDRANGE,
                 [](llvm::CallInst& call, DataContext& dm){ return new KernelSubGroupCountForNDRangeCall(new SPIRVNDRangeAndInvokeCallArgs(call, dm)); }
             },
             {
-                FNAME_SPIRV_ENQUEUE_KERNEL,
+                DeviceEnqueueFunction::SPIRV_ENQUEUE_KERNEL,
                 [](llvm::CallInst& call, DataContext& dm){ return new EnqueueKernelCall(new SPIRVOpEnqueueKernelCallArgs(call, dm)); }
             },
         };
+
+        static_assert(sizeof(handlers) == sizeof(decltype(handlers[0])) * (size_t)DeviceEnqueueFunction::NUM_FUNCTIONS_WITH_BLOCK_ARGS, "Not all enqueue functions have handlers!");
 
         auto calledFunction = call.getCalledFunction();
         //fail indirect calls
@@ -1814,7 +1853,7 @@ namespace //Anonymous
         for (auto& handler_pair : handlers)
         {
             // if called function name matches one of known
-            if (calledFunctionName.startswith(handler_pair.first))
+            if (calledFunctionName.startswith(DeviceEnqueueFunctionNames.at(handler_pair.first)))
             {
                 // use appropriate factory to construct CallHandler
                 auto callHandler = handler_pair.second(call, *this);
@@ -2178,16 +2217,20 @@ namespace //Anonymous
     llvm::CallInst* BlockInvoke::EmitBlockInvokeCall(IGCLLVM::IRBuilder<>& builder, llvm::ArrayRef<llvm::Argument*> captures, llvm::ArrayRef<llvm::Argument*> tailingArgs) const
     {
         //IRBuilder: allocate structure
-        auto block_descriptor_val = builder.CreateAlloca(_captureStructType, nullptr, ".block_struct");
-        auto dl = getFunction()->getParent()->getDataLayout();
-        auto blockStructAlign = getPrefStructAlignment(_captureStructType, &dl);
-        block_descriptor_val->setAlignment(blockStructAlign);
-        //IRBuilder: store arguments to structure
-        StoreInstBuilder storeBuilder(builder);
-        for (unsigned argIdx = 0; argIdx < getCaptureIndicies().size(); ++argIdx)
-        {
-            auto srcArg = captures[argIdx];
-            storeBuilder.Store(block_descriptor_val, srcArg, getCaptureIndicies()[argIdx]);
+        // If we didn't track the capturedStructType, it might have been not used in the kernel.
+        Value* block_descriptor_val = ConstantPointerNull::get(builder.getInt8PtrTy());
+        if (_captureStructType) {
+            block_descriptor_val = builder.CreateAlloca(_captureStructType, nullptr, ".block_struct");
+            auto dl = getFunction()->getParent()->getDataLayout();
+            auto blockStructAlign = getPrefStructAlignment(_captureStructType, &dl);
+            cast<AllocaInst>(block_descriptor_val)->setAlignment(blockStructAlign);
+            //IRBuilder: store arguments to structure
+            StoreInstBuilder storeBuilder(builder);
+            for (unsigned argIdx = 0; argIdx < getCaptureIndicies().size(); ++argIdx)
+            {
+                auto srcArg = captures[argIdx];
+                storeBuilder.Store(block_descriptor_val, srcArg, getCaptureIndicies()[argIdx]);
+            }
         }
 
         //IRBuilder: call block_invoke
@@ -2533,14 +2576,14 @@ namespace //Anonymous
         if (_deviceExecCall->hasLocals())
         {
             auto int32ptrty = Type::getInt32PtrTy(context);
-            auto localsBuf = AllocateBuffer(int32ty, _deviceExecCall->getLocaSizes().size(), "local_size_buf");
+            auto localsBuf = AllocateBuffer(int32ty, _deviceExecCall->getLocalSizes().size(), "local_size_buf");
             uint64_t localSizeOffset = 0;
-            for (auto localSizeValue : _deviceExecCall->getLocaSizes())
+            for (auto localSizeValue : _deviceExecCall->getLocalSizes())
             {
                 auto storedSize = storeBuilder.Store(localsBuf, localSizeValue, localSizeOffset);
                 localSizeOffset += sizeInBlocks(storedSize, int32ty);
             }
-            assert(_deviceExecCall->getLocaSizes().size() == localSizeOffset);
+            assert(_deviceExecCall->getLocalSizes().size() == localSizeOffset);
 
             localSizesBuf = builder.CreatePointerCast(localsBuf, int32ptrty);
             localSizesNumValue = llvm::ConstantInt::get(int32ty, localSizeOffset);
