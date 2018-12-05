@@ -458,7 +458,6 @@ bool G4_SendMsgDescriptor::isSLMMessage() const
 }
 
 G4_INST::G4_INST(USE_DEF_ALLOCATOR& allocator,
-    std::vector<G4_INST*>& instList,
     G4_Predicate* prd,
     G4_opcode o,
     G4_CondMod* m,
@@ -472,7 +471,7 @@ G4_INST::G4_INST(USE_DEF_ALLOCATOR& allocator,
     local_id(0),
     srcCISAoff(-1),
     sat(s), scratch(false), evenlySplitInst(false),
-    execSize(size), bin(0), global_id(-1),
+    execSize(size), bin(0), 
     useInstList(allocator),
     defInstList(allocator),
     location(NULL)
@@ -482,7 +481,6 @@ G4_INST::G4_INST(USE_DEF_ALLOCATOR& allocator,
     srcs[2] = nullptr;
     srcs[3] = nullptr;
 
-    m_Transient.ra.lexicalId = 0;
     dead = false;
     implAccSrc = nullptr;
     implAccDst = nullptr;
@@ -496,14 +494,10 @@ G4_INST::G4_INST(USE_DEF_ALLOCATOR& allocator,
     associateOpndWithInst(dst, this);
     associateOpndWithInst(s0, this);
     associateOpndWithInst(s1, this);
-
-    id = (int)instList.size();
-    instList.push_back(this);
 }
 
 G4_INST::G4_INST(
     USE_DEF_ALLOCATOR& allocator,
-    std::vector<G4_INST*>& instList,
     G4_Predicate* prd,
     G4_opcode o,
     G4_CondMod* m,
@@ -516,7 +510,6 @@ G4_INST::G4_INST(
     unsigned int opt) :
     op(o), dst(d), predicate(prd), mod(m), option(opt), msgDesc(NULL),
     local_id(0),
-    global_id(-1),
     srcCISAoff(-1),
     sat(s), scratch(false), evenlySplitInst(false),
     execSize(size), bin(0),
@@ -529,7 +522,6 @@ G4_INST::G4_INST(
     srcs[2] = s2;
     srcs[3] = nullptr;
 
-    m_Transient.ra.lexicalId = 0;
     dead = false;
     implAccSrc = nullptr;
     implAccDst = nullptr;
@@ -547,9 +539,6 @@ G4_INST::G4_INST(
     associateOpndWithInst(s2, this);
     associateOpndWithInst((G4_Operand*)predicate, this);
     associateOpndWithInst((G4_Operand*)mod, this);
-
-    id = (int)instList.size();
-    instList.push_back(this);
 }
 
 void G4_INST::setOpcode(G4_opcode opcd)

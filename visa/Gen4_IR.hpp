@@ -648,7 +648,6 @@ protected:
     // use-def chain: list of <inst, opndPos> such that inst[dst/condMod] defines this[opndPos]
     DEF_EDGE_LIST defInstList;
 
-    int       id; // Instruction's unique id -- assigned once at construction
     // instruction's id in BB. Each optimization should re-initialize before using
     int32_t   local_id;
 
@@ -672,22 +671,13 @@ protected:
 
     BinInst *bin;
 
-    union _transient
-    {
-        struct
-        {
-            unsigned int lexicalId;
-        } ra;
-    } m_Transient;
-
     // make it private so only the IR_Builder can create new instructions
     void *operator new(size_t sz, Mem_Manager& m){ return m.alloc(sz); }
-    int global_id;
+    uint32_t global_id = (uint32_t) -1;
 
 
 public:
     G4_INST(USE_DEF_ALLOCATOR& allocator,
-        std::vector<G4_INST*>& instList,
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
@@ -700,7 +690,6 @@ public:
 
     G4_INST(
         USE_DEF_ALLOCATOR& allocator,
-        std::vector<G4_INST*>& instList,
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
@@ -714,16 +703,13 @@ public:
 
     virtual ~G4_INST() {}
 
-    unsigned int  getLexicalId() const { return m_Transient.ra.lexicalId; }
-    void setLexicalId(unsigned int id) { m_Transient.ra.lexicalId = id; }
+    uint32_t getLexicalId() const { return global_id; }
+    void setLexicalId(uint32_t id) { global_id = id; }
     void setPredicate(G4_Predicate* p);
     G4_Predicate* getPredicate() const {return predicate;}
     void setSaturate(bool s)              {sat = s;}
     bool getSaturate() const {return sat;}
     G4_opcode opcode()  const {return op;}
-    int getId() const {return id; }
-    void setGlobalID(int i) { global_id = i; }
-    int getGlobalID() const { return global_id; }
 
     void setOpcode(G4_opcode opcd);
 
@@ -1250,7 +1236,6 @@ public:
 
     G4_InstMath(
         USE_DEF_ALLOCATOR& allocator,
-        std::vector<G4_INST*>& instList,
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
@@ -1261,7 +1246,7 @@ public:
         G4_Operand* s1,
         unsigned int opt,
         G4_MathOp mOp = MATH_RESERVED) :
-        G4_INST(allocator, instList, prd, o, m, sat, size, d, s0, s1, opt),
+        G4_INST(allocator, prd, o, m, sat, size, d, s0, s1, opt),
         mathOp(mOp)
     {
 
@@ -1307,7 +1292,6 @@ public:
 
     G4_InstCF(
         USE_DEF_ALLOCATOR& allocator,
-        std::vector<G4_INST*>& instList,
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
@@ -1317,7 +1301,7 @@ public:
         G4_Operand* s0,
         G4_Operand* s1,
         unsigned int opt) :
-        G4_INST(allocator, instList, prd, o, m, sat, size, d, s0, s1, opt),
+        G4_INST(allocator, prd, o, m, sat, size, d, s0, s1, opt),
         jip(NULL), uip(NULL), isBackwardBr(false), calleeIndex(unknownCallee),
         assocPseudoVCA(nullptr), assocPseudoA0Save(nullptr), assocPseudoFlagSave(nullptr)
     {
@@ -1341,7 +1325,6 @@ public:
 
     G4_InstCF(
         USE_DEF_ALLOCATOR& allocator,
-        std::vector<G4_INST*>& instList,
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
@@ -1352,7 +1335,7 @@ public:
         G4_Operand* s1,
         G4_Operand* s2,
         unsigned int opt) :
-        G4_INST(allocator, instList, prd, o, m, sat, size, d, s0, s1, s2, opt),
+        G4_INST(allocator, prd, o, m, sat, size, d, s0, s1, s2, opt),
         jip(NULL), uip(NULL), isBackwardBr(false), calleeIndex(0),
         assocPseudoVCA(nullptr), assocPseudoA0Save(nullptr), assocPseudoFlagSave(nullptr)
     {
@@ -1536,7 +1519,6 @@ public:
 
     G4_InstIntrinsic(
         USE_DEF_ALLOCATOR& allocator,
-        std::vector<G4_INST*>& instList,
         G4_Predicate* prd,
         Intrinsic intrinId,
         uint8_t size,
@@ -1545,7 +1527,7 @@ public:
         G4_Operand* s1,
         G4_Operand* s2,
         unsigned int opt) :
-        G4_INST(allocator, instList, prd, G4_intrinsic, nullptr, false, size, d, s0, s1, s2, opt),
+        G4_INST(allocator, prd, G4_intrinsic, nullptr, false, size, d, s0, s1, s2, opt),
         intrinsicId(intrinId), tmpGRFStart(-1), tmpAddrStart(-1), tmpFlagStart(-1)
     {
 

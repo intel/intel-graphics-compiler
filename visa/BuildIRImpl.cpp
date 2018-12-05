@@ -231,11 +231,11 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
     G4_INST* i = NULL;
     if (G4_Inst_Table[op].instType == InstTypeFlow)
     {
-        i = new (mem)G4_InstCF(useDefAllocator, instAllocList, prd, op, mod, sat, size, dst, src0, src1, option);
+        i = new (mem)G4_InstCF(useDefAllocator, prd, op, mod, sat, size, dst, src0, src1, option);
     }
     else
     {
-        i = new (mem)G4_INST(useDefAllocator, instAllocList, prd, op, mod, sat, size, dst, src0, src1, option);
+        i = new (mem)G4_INST(useDefAllocator, prd, op, mod, sat, size, dst, src0, src1, option);
     }
 
     i->setCISAOff(curCISAOffset);
@@ -245,6 +245,7 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
         i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
     }
 
+    instAllocList.push_back(i);
     instList.push_back(i);
 
     return i;
@@ -282,11 +283,11 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
 
     if (G4_Inst_Table[op].instType == InstTypeFlow)
     {
-        i = new (mem)G4_InstCF(useDefAllocator, instAllocList, prd, op, mod, sat, size, dst, src0, src1, option);
+        i = new (mem)G4_InstCF(useDefAllocator, prd, op, mod, sat, size, dst, src0, src1, option);
     }
     else
     {
-        i = new (mem)G4_INST(useDefAllocator, instAllocList, prd, op, mod, sat, size, dst, src0, src1, option);
+        i = new (mem)G4_INST(useDefAllocator, prd, op, mod, sat, size, dst, src0, src1, option);
     }
 
     i->setCISAOff(CISAoff);
@@ -296,6 +297,7 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
         i->setLocation(new (mem) MDLocation(lineno, curFile));
     }
 
+    instAllocList.push_back(i);
     return i;
 }
 
@@ -314,7 +316,7 @@ G4_INST* IR_Builder::createInternalCFInst(
     MUST_BE_TRUE(G4_Inst_Table[op].instType == InstTypeFlow,
                  "IR_Builder::createInternalCFInst must be used with InstTypeFlow instruction class");
 
-    G4_InstCF* i = new (mem)G4_InstCF(useDefAllocator, instAllocList, prd, op, NULL, false, size, NULL, NULL, NULL, option);
+    G4_InstCF* i = new (mem)G4_InstCF(useDefAllocator, prd, op, NULL, false, size, NULL, NULL, NULL, option);
 
     i->setJip( jip );
     i->setUip( uip );
@@ -326,6 +328,7 @@ G4_INST* IR_Builder::createInternalCFInst(
         i->setLocation(new (mem) MDLocation(lineno, curFile));
     }
 
+    instAllocList.push_back(i);
     return i;
 }
 
@@ -361,11 +364,11 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
 
     if (G4_Inst_Table[op].instType == InstTypeFlow)
     {
-        i = new (mem)G4_InstCF(useDefAllocator, instAllocList, prd, op, mod, sat, size, dst, src0, src1, src2, option);
+        i = new (mem)G4_InstCF(useDefAllocator, prd, op, mod, sat, size, dst, src0, src1, src2, option);
     }
     else
     {
-        i = new (mem)G4_INST(useDefAllocator, instAllocList, prd, op, mod, sat, size, dst, src0, src1, src2, option);
+        i = new (mem)G4_INST(useDefAllocator, prd, op, mod, sat, size, dst, src0, src1, src2, option);
     }
 
     i->setCISAOff(curCISAOffset);
@@ -375,6 +378,7 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
         i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
     }
 
+    instAllocList.push_back(i);
     instList.push_back(i);
 
     return i;
@@ -411,11 +415,11 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
     G4_INST* i = NULL;
     if (G4_Inst_Table[op].instType == InstTypeFlow)
     {
-        i = new (mem)G4_InstCF(useDefAllocator, instAllocList, prd, op, mod, sat, size, dst, src0, src1, src2, option);
+        i = new (mem)G4_InstCF(useDefAllocator, prd, op, mod, sat, size, dst, src0, src1, src2, option);
     }
     else
     {
-        i = new (mem)G4_INST(useDefAllocator, instAllocList, prd, op, mod, sat, size, dst, src0, src1, src2, option);
+        i = new (mem)G4_INST(useDefAllocator, prd, op, mod, sat, size, dst, src0, src1, src2, option);
     }
 
     i->setCISAOff(CISAoff);
@@ -425,6 +429,7 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
         i->setLocation(new (mem) MDLocation(lineno, curFile));
     }
 
+    instAllocList.push_back(i);
     return i;
 }
 
@@ -441,7 +446,7 @@ G4_INST* IR_Builder::createSendInst(G4_Predicate* prd,
 {
 
     assert (msgDesc && "msgDesc must not be null");
-    G4_INST* m = new (mem)G4_INST(useDefAllocator, instAllocList, prd, op, NULL, false, size, postDst, currSrc, msg, option);
+    G4_INST* m = new (mem)G4_INST(useDefAllocator, prd, op, NULL, false, size, postDst, currSrc, msg, option);
 
     ///used in binary encoding
     m->setMsgDesc( msgDesc );
@@ -453,6 +458,7 @@ G4_INST* IR_Builder::createSendInst(G4_Predicate* prd,
         m->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
     }
 
+    instAllocList.push_back(m);
     instList.push_back(m);
     return m;
 }
@@ -482,7 +488,7 @@ G4_INST* IR_Builder::createSplitSendInst(G4_Predicate* prd,
         MUST_BE_TRUE(msgDesc->extMessageLength() == 0, "src1 length must be 0 if it is null");
         src1 = createNullSrc(Type_UD);
     }
-    G4_INST* m = new (mem)G4_INST(useDefAllocator, instAllocList, prd, op, NULL, false, size, dst, src0, src1, msg, option);
+    G4_INST* m = new (mem)G4_INST(useDefAllocator, prd, op, NULL, false, size, dst, src0, src1, msg, option);
 
     m->setMsgDesc( msgDesc );
 
@@ -492,16 +498,11 @@ G4_INST* IR_Builder::createSplitSendInst(G4_Predicate* prd,
     {
         m->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
     }
+    m->setSrc(src3 ? src3 : createImm(msgDesc->getExtendedDesc(), Type_UD), 3);
 
+    instAllocList.push_back(m);
     instList.push_back(m);
-    if (src3 != NULL)
-    {
-        m->setSrc(src3, 3);
-    }
-    else
-    {
-        m->setSrc(createImm(msgDesc->getExtendedDesc(), Type_UD), 3);
-    }
+
     return m;
 }
 //
@@ -520,7 +521,7 @@ G4_INST* IR_Builder::createMathInst(G4_Predicate* prd,
                                     unsigned int option,
                                     int lineno)
 {
-    G4_INST* i = new (mem)G4_InstMath(useDefAllocator, instAllocList, prd, G4_math, NULL, sat, size, dst, src0, src1, option, mathOp);
+    G4_INST* i = new (mem)G4_InstMath(useDefAllocator, prd, G4_math, NULL, sat, size, dst, src0, src1, option, mathOp);
 
     i->setCISAOff(curCISAOffset);
     
@@ -529,6 +530,7 @@ G4_INST* IR_Builder::createMathInst(G4_Predicate* prd,
         i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
     }
 
+    instAllocList.push_back(i);
     instList.push_back(i);
     return i;
 }
@@ -538,7 +540,7 @@ G4_INST* IR_Builder::createIntrinsicInst(G4_Predicate* prd, Intrinsic intrinId,
     G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
     unsigned int option, int lineno)
 {
-    G4_INST* i = new (mem) G4_InstIntrinsic(useDefAllocator, instAllocList, prd, intrinId, size, dst, src0, src1, src2, option);
+    G4_INST* i = new (mem) G4_InstIntrinsic(useDefAllocator, prd, intrinId, size, dst, src0, src1, src2, option);
 
     i->setCISAOff(curCISAOffset);
     
@@ -547,6 +549,7 @@ G4_INST* IR_Builder::createIntrinsicInst(G4_Predicate* prd, Intrinsic intrinId,
         i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
     }
 
+    instAllocList.push_back(i);
     instList.push_back(i);
     return i;
 }
@@ -556,7 +559,7 @@ G4_INST* IR_Builder::createInternalIntrinsicInst(G4_Predicate* prd, Intrinsic in
     G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
     unsigned int option, int lineno)
 {
-    G4_INST* i = new (mem) G4_InstIntrinsic(useDefAllocator, instAllocList, prd, intrinId, size, dst, src0, src1, src2, option);
+    G4_INST* i = new (mem) G4_InstIntrinsic(useDefAllocator, prd, intrinId, size, dst, src0, src1, src2, option);
 
     i->setCISAOff(curCISAOffset);
     
@@ -565,6 +568,7 @@ G4_INST* IR_Builder::createInternalIntrinsicInst(G4_Predicate* prd, Intrinsic in
         i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
     }
 
+    instAllocList.push_back(i);
     return i;
 }
 

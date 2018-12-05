@@ -3836,7 +3836,6 @@ void G4_Kernel::dumpDotFileInternal(const char* appendix)
                 std::replace_if(dotStr.begin(), dotStr.end(), bind2nd(equal_to<char>(), '&'), '$');
                 ofile << dotStr;
 
-                ofile << " %" << (*i)->getId();
                 ofile << "</FONT></TD></TR>" << std::endl;
                 //ofile << "\\l"; // left adjusted
             }
@@ -4637,7 +4636,7 @@ void G4_BB::emitBankConflict(std::ostream& output, G4_INST *inst)
 
 
 
-static void emitInstId(std::ostream& output, int srcLine, int vISAId, int genId, uint64_t pc)
+static void emitInstId(std::ostream& output, int srcLine, int vISAId, uint32_t genId, uint64_t pc)
 {
     if (srcLine != 0)
     {
@@ -4666,7 +4665,7 @@ void G4_BB::emitBasicInstructionIga(char* instSyntax, std::ostream& output, INST
     if (!inst->isLabel() && inst->opcode() < G4_NUM_OPCODE)
     {
         output << " //";
-        emitInstId(output, inst->getLineNo(), inst->getCISAOff(), inst->getGlobalID(), inst->getGenOffset());
+        emitInstId(output, inst->getLineNo(), inst->getCISAOff(), inst->getLexicalId(), inst->getGenOffset());
 
          emitBankConflict(output, inst);
     }
@@ -4684,7 +4683,7 @@ void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)
         SendInst->emit_send(output);
 
         output << " //";
-        emitInstId(output, SendInst->getLineNo(), SendInst->getCISAOff(), SendInst->getGlobalID(), SendInst->getGenOffset());
+        emitInstId(output, SendInst->getLineNo(), SendInst->getCISAOff(), SendInst->getLexicalId(), SendInst->getGenOffset());
         (*it)->emit_send_desc(output);
     }
     else
@@ -4697,7 +4696,7 @@ void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)
         if ((*it)->isLabel() == false)
         {
             output << " //";
-            emitInstId(output, inst->getLineNo(), inst->getCISAOff(), inst->getGlobalID(), inst->getGenOffset());
+            emitInstId(output, inst->getLineNo(), inst->getCISAOff(), inst->getLexicalId(), inst->getGenOffset());
             emitBankConflict(output, inst);
         }
     }

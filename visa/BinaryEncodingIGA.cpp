@@ -452,7 +452,6 @@ void BinaryEncodingIGA::DoAll()
                 IGAKernel->appendBlock(currBB);
                 continue;
             }
-            ++IGAInstId;
             Instruction  *igaInst = nullptr;
             auto igaOpcode = getIGAOp(inst->opcode(), inst);
             // common fields: op, predicate, flag reg, exec size, exec mask offset, mask ctrl, conditional modifier
@@ -535,7 +534,7 @@ void BinaryEncodingIGA::DoAll()
                     condModifier);
             }
 
-            igaInst->setID(inst->getId());
+            igaInst->setID(IGAInstId++);
             if (opSpec->supportsDestination())
             {
                 assert(inst->getDst() && "dst must not be null");
