@@ -31,6 +31,13 @@ import sys
 import re
 import importlib
 
+# Compatibility with Python 3.X
+if sys.version_info[0] >= 3:
+    global reduce
+    import functools
+    reduce = functools.reduce
+
+
 OverloadedTypes = ["any","anyint","anyfloat","anyptr","anyvector"]
 VectorTypes = ["2","4","8","16"]
 DestSizes = ["","","21","22","23","24"]

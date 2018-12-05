@@ -517,7 +517,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         mpm.add(createDeadCodeEliminationPass());
     }
 
-    if(!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion))
+    if(IGC_IS_FLAG_ENABLED(ForceHalfPromotion) || (!ctx.platform.supportFP16() && IGC_IS_FLAG_ENABLED(EnableHalfPromotion)))
     {
         mpm.add(new HalfPromotion());
         mpm.add(createGVNPass());
