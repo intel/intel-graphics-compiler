@@ -504,8 +504,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     G4_SrcRegRegion regSrcCR0(Mod_src_undef, Direct, phyregpool.getCr0Reg() ,0, 0, getRegionScalar(), Type_UD );
 
     // r0 = 0.0:df, r1 = 1.0:df
-    G4_Declare *t0  = getImmDcl(dbl_constant_0, 4);
-    G4_Declare *t1  = getImmDcl(dbl_constant_1, 4);
+    G4_Declare *t0  = getImmDcl(dbl_constant_0, element_size);
+    G4_Declare *t1  = getImmDcl(dbl_constant_1, element_size);
 
 	inst = createPseudoKills({ t6, t7, t8, t9, t10, t11, t12, t13, tmpFlag });
 
@@ -1482,9 +1482,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     G4_Predicate_Control predCtrlValue = PRED_DEFAULT;
 
     // temp registers
-    G4_Declare *t0 = getImmDcl(createDFImm(0.0), 4);
-    G4_Declare *t1 = getImmDcl(createDFImm(1.0), 4);
-    G4_Declare *t2 = getImmDcl(createDFImm(0.5), 4);
+    G4_Declare *t0 = getImmDcl(createDFImm(0.0), element_size);
+    G4_Declare *t1 = getImmDcl(createDFImm(1.0), element_size);
+    G4_Declare *t2 = getImmDcl(createDFImm(0.5), element_size);
     G4_Declare *t6  = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
     G4_Declare *t7  = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
     G4_Declare *t8  = createTempVarWithNoSpill(element_size, Type_DF, reg_align, Any);
