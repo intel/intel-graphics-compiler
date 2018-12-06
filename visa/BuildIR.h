@@ -537,6 +537,8 @@ public:
 
     std::list <int> callees;
 
+    const USE_DEF_ALLOCATOR& getAllocator() const { return useDefAllocator; }
+
     enum SubRegs_SP_FP
     {
         FE_SP = 0, // Can be either :ud or :uq

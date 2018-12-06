@@ -1896,7 +1896,7 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
     for (auto I = inst->def_begin(), E = inst->def_end(); I != E; ++I)
     {
         ASSERT_USER(I->second == Opnd_src0, "invalid use-def chain");
-        if (!inst->canHoistTo(I->first, bb->isInSimdFlow(), fg.builder))
+        if (!inst->canHoistTo(I->first, bb->isInSimdFlow()))
             return false;
 
         // Further check data-dependency, that is, no other instruction
@@ -2838,7 +2838,7 @@ void Optimizer::newLocalCopyPropagation()
             doConsFolding(inst);
             doSimplification(inst);
 
-            G4_INST::MovType MT = inst->canPropagate(fg.builder);
+            G4_INST::MovType MT = inst->canPropagate();
             // Skip super mov.
             if (MT == G4_INST::SuperMov) {
                 ii++;
@@ -3829,7 +3829,7 @@ bool Optimizer::foldCmpToCondMod(G4_BB* bb, INST_LIST_ITER& iter)
         if (inst->use_size() == 1)
         {
             // see if we can replace dst with null
-            if (inst->supportsNullDst(builder) && !fg.globalOpndHT.isOpndGlobal(inst->getDst()))
+            if (inst->supportsNullDst() && !fg.globalOpndHT.isOpndGlobal(inst->getDst()))
             {
                 inst->setDest(builder.createDstRegRegion(
                     Direct,
@@ -4366,7 +4366,7 @@ void Optimizer::optimizeLogicOperation()
                 }
                 continue;
             }
-            else if (inst->getPredicate() == NULL && inst->canSupportCondMod(builder))
+            else if (inst->getPredicate() == NULL && inst->canSupportCondMod())
             {
                 // FIXME: why this condition?
                 if (op == G4_pseudo_mad && inst->getExecSize()==1)
@@ -7267,7 +7267,7 @@ public:
                             {
                                 srcRegion->rewriteContiguousRegion(builder, i);
                             }
-                            else if (inst->isAlign1Ternary(builder))
+                            else if (inst->isAlign1Ternary())
                             {
                                 // special checks for 3src inst with single non-unit stride region
                                 // rewrite it as <s*2;s>
@@ -9443,7 +9443,7 @@ bool MadSequenceInfo::checkACCDependency(G4_INST *defInst, G4_INST *useInst)
     ASSERT_USER(iter != bb->end(), "no instruction found?");
 
     for (++iter; (*iter) != useInst; ++iter) {
-        if ((*iter)->defAcc() || (*iter)->useAcc() || (*iter)->mayExpandToAccMacro(builder))
+        if ((*iter)->defAcc() || (*iter)->useAcc() || (*iter)->mayExpandToAccMacro())
             return false;
     }
     return true;

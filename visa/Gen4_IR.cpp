@@ -457,7 +457,7 @@ bool G4_SendMsgDescriptor::isSLMMessage() const
     return false;
 }
 
-G4_INST::G4_INST(USE_DEF_ALLOCATOR& allocator,
+G4_INST::G4_INST(const IR_Builder& irb,
     G4_Predicate* prd,
     G4_opcode o,
     G4_CondMod* m,
@@ -472,9 +472,10 @@ G4_INST::G4_INST(USE_DEF_ALLOCATOR& allocator,
     srcCISAoff(-1),
     sat(s), scratch(false), evenlySplitInst(false),
     execSize(size), bin(0), 
-    useInstList(allocator),
-    defInstList(allocator),
-    location(NULL)
+    useInstList(irb.getAllocator()),
+    defInstList(irb.getAllocator()),
+    location(NULL),
+    builder(irb)
 {
     srcs[0] = s0;
     srcs[1] = s1;
@@ -496,8 +497,7 @@ G4_INST::G4_INST(USE_DEF_ALLOCATOR& allocator,
     associateOpndWithInst(s1, this);
 }
 
-G4_INST::G4_INST(
-    USE_DEF_ALLOCATOR& allocator,
+G4_INST::G4_INST(const IR_Builder& irb,
     G4_Predicate* prd,
     G4_opcode o,
     G4_CondMod* m,
@@ -513,9 +513,10 @@ G4_INST::G4_INST(
     srcCISAoff(-1),
     sat(s), scratch(false), evenlySplitInst(false),
     execSize(size), bin(0),
-    useInstList(allocator),
-    defInstList(allocator),
-    location(NULL)
+    useInstList(irb.getAllocator()),
+    defInstList(irb.getAllocator()),
+    location(NULL),
+    builder(irb)
 {
     srcs[0] = s0;
     srcs[1] = s1;
@@ -1449,7 +1450,7 @@ static G4_INST::MovType getMovType(G4_INST* Inst, G4_Type dstTy, G4_Type srcTy,
 }
 
 // check if this instruction can be propagated
-G4_INST::MovType G4_INST::canPropagate(const IR_Builder* builder)
+G4_INST::MovType G4_INST::canPropagate()
 {
     G4_Declare* topDcl = NULL;
 
@@ -1476,8 +1477,8 @@ G4_INST::MovType G4_INST::canPropagate(const IR_Builder* builder)
     if (topDcl)
     {
         G4_Declare* rootDcl = topDcl->getRootDeclare();
-        if (builder->isPreDefFEStackVar(rootDcl) || builder->isPreDefArg(rootDcl) || 
-            builder->isPreDefRet(rootDcl))
+        if (builder.isPreDefFEStackVar(rootDcl) || builder.isPreDefArg(rootDcl) || 
+            builder.isPreDefRet(rootDcl))
         {
             return SuperMov;
         }
@@ -1509,7 +1510,7 @@ G4_INST::MovType G4_INST::canPropagate(const IR_Builder* builder)
         return SuperMov;
     }
 
-    if (builder->kernel.fg.globalOpndHT.isOpndGlobal(dst))
+    if (builder.kernel.fg.globalOpndHT.isOpndGlobal(dst))
     {
         return SuperMov;
     }
@@ -1525,7 +1526,7 @@ G4_INST::MovType G4_INST::canPropagate(const IR_Builder* builder)
     MovType MT = getMovType(this, dstType, srcType, srcMod);
 
     //Disabling mix mode copy propogation
-    if (!builder->hasMixMode() &&
+    if (!builder.hasMixMode() &&
         ((IS_TYPE_F32_F64(srcType) && IS_HFTYPE(dstType)) ||
         (IS_HFTYPE(srcType) && IS_TYPE_F32_F64(dstType))))
     {
@@ -1568,7 +1569,7 @@ G4_INST::MovType G4_INST::canPropagate(const IR_Builder* builder)
     {
         if (IS_TYPE_F32_F64(srcType)                  &&
             IS_HFTYPE(dstType)                     &&
-            builder->getOption(vISA_enableUnsafeCP_DF)  &&
+            builder.getOption(vISA_enableUnsafeCP_DF)  &&
             useInstList.size() == 1)
             return FPDownConvSafe;
         break;
@@ -2210,7 +2211,7 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt)
 }
 
 // check if this instruction can be hoisted to defInst
-bool G4_INST::canHoistTo( G4_INST *defInst, bool simdBB, const IR_Builder* builder)
+bool G4_INST::canHoistTo( G4_INST *defInst, bool simdBB)
 {
 
     bool indirect_dst = (dst->getRegAccess() != Direct);
@@ -2248,7 +2249,7 @@ bool G4_INST::canHoistTo( G4_INST *defInst, bool simdBB, const IR_Builder* build
         {
             return false;
         }
-        if (!builder->hasMixMode())
+        if (!builder.hasMixMode())
         {
             // normally we should disable the opt, but for the special case where 
             // defInst is a move with integer source, we can still hoist since it 
@@ -2413,8 +2414,8 @@ bool G4_INST::canHoistTo( G4_INST *defInst, bool simdBB, const IR_Builder* build
     if (defInst->getDst() && defInst->getDst()->getTopDcl())
     {
         G4_Declare* defDstDcl = defInst->getDst()->getTopDcl()->getRootDeclare();
-        if (builder->isPreDefFEStackVar(defDstDcl) || builder->isPreDefArg(defDstDcl) ||
-            builder->isPreDefRet(defDstDcl))
+        if (builder.isPreDefFEStackVar(defDstDcl) || builder.isPreDefArg(defDstDcl) ||
+            builder.isPreDefRet(defDstDcl))
         {
             return false;
         }
@@ -7017,7 +7018,7 @@ bool G4_INST::canSupportSaturate() const
     return true;
 }
 
-bool G4_INST::canSupportCondMod(const IR_Builder& builder) const
+bool G4_INST::canSupportCondMod() const
 {
     if (!builder.hasCondModForTernary() && getNumSrc() == 3)
     {
@@ -7390,7 +7391,7 @@ void LiveIntervalInfo::liveAt(uint32_t cisaOff)
     }
 }
 
-bool G4_INST::supportsNullDst(const IR_Builder& builder) const
+bool G4_INST::supportsNullDst() const
 {
     if (isSend())
     {
@@ -7399,7 +7400,7 @@ bool G4_INST::supportsNullDst(const IR_Builder& builder) const
     return getNumSrc() != 3 && !(op == G4_pln && !builder.doPlane());
 }
 
-bool G4_INST::isAlign1Ternary(IR_Builder& builder) const
+bool G4_INST::isAlign1Ternary() const
 {
     return builder.hasAlign1Ternary() && getNumSrc() == 3 && !isSend();
 }
@@ -7466,7 +7467,7 @@ void G4_Declare::prepareForRealloc(G4_Kernel* kernel)
     }
 }
 
-bool G4_INST::mayExpandToAccMacro(const IR_Builder& builder) const
+bool G4_INST::mayExpandToAccMacro() const
 {
     auto isDMul = [](const G4_INST *Inst) {
         return Inst->opcode() == G4_mul && (IS_QTYPE(Inst->getDst()->getType()) ||
@@ -7495,9 +7496,9 @@ bool G4_INST::mayExpandToAccMacro(const IR_Builder& builder) const
 // -- dst must be GRF
 // -- contiguous regions
 // -- simd8 for D/UD, simd8/16 for F, simd16 for HF/W, other types not allowed
-bool G4_INST::canDstBeAcc(const IR_Builder& builder) const
+bool G4_INST::canDstBeAcc() const
 {
-    if (mayExpandToAccMacro(builder))
+    if (mayExpandToAccMacro())
     {
         // while this should not prevent dst from becoming acc (mul/plane macros use
         // acc as temp so should not affect final dst), later HW conformity is not equipped
@@ -7618,7 +7619,7 @@ bool G4_INST::canDstBeAcc(const IR_Builder& builder) const
 // in addition to opcode-specific checks, we require
 // -- contiguous regions
 // -- simd8 for D/UD, simd8/16 for F, simd16 for HF/W, other types not allowed
-bool G4_INST::canSrcBeAcc(int srcId, const IR_Builder& builder) const
+bool G4_INST::canSrcBeAcc(int srcId) const
 {
     assert((srcId == 0 || srcId == 1) && "must be either src0 or src1");
     if (getSrc(srcId) == nullptr || !getSrc(srcId)->isSrcRegRegion())
@@ -7626,7 +7627,7 @@ bool G4_INST::canSrcBeAcc(int srcId, const IR_Builder& builder) const
         return false;
     }
 
-    if (mayExpandToAccMacro(builder))
+    if (mayExpandToAccMacro())
     {
         return false;
     }

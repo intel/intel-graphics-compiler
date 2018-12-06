@@ -4285,7 +4285,7 @@ static bool isAccCandidate(G4_INST* inst, G4_Kernel& kernel, int& lastUse, bool&
 {
     mustBeAcc0 = false;
     G4_DstRegRegion* dst = inst->getDst();
-    if (!dst || kernel.fg.globalOpndHT.isOpndGlobal(dst) || !inst->canDstBeAcc(*kernel.fg.builder))
+    if (!dst || kernel.fg.globalOpndHT.isOpndGlobal(dst) || !inst->canDstBeAcc())
     {
         return false;
     }
@@ -4383,7 +4383,7 @@ static bool isAccCandidate(G4_INST* inst, G4_Kernel& kernel, int& lastUse, bool&
         {
             return false;
         }
-        if (!useInst->canSrcBeAcc(srcId, *kernel.fg.builder))
+        if (!useInst->canSrcBeAcc(srcId))
         {
             return false;
         }
@@ -4857,7 +4857,7 @@ void HWConformity::accSubstitution(G4_BB* bb)
         for (int instId = inst->getLocalId() + 1; instId != lastUseId; ++subIter, ++instId)
         {
             G4_INST* anInst = *subIter;
-            if (anInst->useAcc() || anInst->mayExpandToAccMacro(builder))
+            if (anInst->useAcc() || anInst->mayExpandToAccMacro())
             {
                 canDoAccSub = false;
                 break;
@@ -4914,7 +4914,7 @@ bool HWConformity::findHoistLocation(
         while ((*end) != boundary)
         {
             G4_INST *curInst = *end;
-            if (curInst->hasACCOpnd() || curInst->mayExpandToAccMacro(builder))
+            if (curInst->hasACCOpnd() || curInst->mayExpandToAccMacro())
             {
                 canMov = false;
                 break;
@@ -4938,7 +4938,7 @@ bool HWConformity::findHoistLocation(
             for (; (*in_between_iter) != boundary; --in_between_iter)
             {
                 G4_INST *curInst = *in_between_iter;
-                if (curInst->hasACCOpnd() || curInst->mayExpandToAccMacro(builder))
+                if (curInst->hasACCOpnd() || curInst->mayExpandToAccMacro())
                 {
                     canMov = false;
                     break;

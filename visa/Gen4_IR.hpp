@@ -675,9 +675,11 @@ protected:
     void *operator new(size_t sz, Mem_Manager& m){ return m.alloc(sz); }
     uint32_t global_id = (uint32_t) -1;
 
+    const IR_Builder& builder;  // link to builder to access the various compilation options
+
 
 public:
-    G4_INST(USE_DEF_ALLOCATOR& allocator,
+    G4_INST(const IR_Builder& builder, 
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
@@ -689,7 +691,7 @@ public:
         unsigned int opt);
 
     G4_INST(
-        USE_DEF_ALLOCATOR& allocator,
+        const IR_Builder& builder,
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
@@ -714,7 +716,7 @@ public:
     void setOpcode(G4_opcode opcd);
 
     G4_DstRegRegion* getDst() const   { return dst; }
-    bool supportsNullDst(const IR_Builder &builder) const;
+    bool supportsNullDst() const;
 
     bool isPseudoKill() const { return op == G4_pseudo_kill; }
     bool isLifeTimeEnd() const { return op == G4_pseudo_lifetime_end; }
@@ -998,7 +1000,7 @@ public:
        return op == G4_mac || op == G4_mach || op == G4_sada2;
     }
 
-    bool mayExpandToAccMacro(const IR_Builder& builder) const;
+    bool mayExpandToAccMacro() const;
 
     Gen4_Operand_Number getSrcOperandNum(int srcPos) const
     {
@@ -1127,7 +1129,7 @@ public:
     bool hasACCSrc();
     bool hasACCOpnd();
     G4_Type getOpExecType( int& extypesize );
-    bool canHoistTo( G4_INST *defInst, bool simdBB, const IR_Builder* builder);
+    bool canHoistTo( G4_INST *defInst, bool simdBB);
     enum MovType {
         Copy        = 0,        // MOV is a copy.
         ZExt        = 1,        // MOV is a zero extension.
@@ -1142,7 +1144,7 @@ public:
         FPDownConvSafe  = 8,        // Float down conversion for DX shaders.
         SuperMov        = 9,        // MOV is a mov with other effects.
     };
-    MovType canPropagate(const IR_Builder* builder);
+    MovType canPropagate();
     bool canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovType MT, bool inSimdFlow);
     G4_Type getPropType(Gen4_Operand_Number opndNum, MovType MT, G4_INST *mov);
     bool isSignSensitive(Gen4_Operand_Number opndNum) const;
@@ -1190,7 +1192,7 @@ public:
         return (option & InstOpt_NoSrcDepSet) != 0;
     }
     bool isMixedMode() const;
-    bool canSupportCondMod(const IR_Builder& builder) const;
+    bool canSupportCondMod() const;
     bool canSwapSource() const;
     bool canSupportSaturate() const;
 
@@ -1205,7 +1207,7 @@ public:
     }
     bool isFastHFInstruction(void) const;
 
-    bool isAlign1Ternary(IR_Builder& builder) const;
+    bool isAlign1Ternary() const;
 
     // if instruction requries operansd to have DW (D/UD) type
     bool needsDWType() const
@@ -1213,8 +1215,8 @@ public:
         return op == G4_mulh;
     }
 
-    bool canDstBeAcc(const IR_Builder& builder) const;
-    bool canSrcBeAcc(int srcId, const IR_Builder& builder) const;
+    bool canDstBeAcc() const;
+    bool canSrcBeAcc(int srcId) const;
 
 private:
     bool detectComprInst() const;
@@ -1235,7 +1237,7 @@ class G4_InstMath : public G4_INST
 public:
 
     G4_InstMath(
-        USE_DEF_ALLOCATOR& allocator,
+        const IR_Builder& builder,
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
@@ -1246,7 +1248,7 @@ public:
         G4_Operand* s1,
         unsigned int opt,
         G4_MathOp mOp = MATH_RESERVED) :
-        G4_INST(allocator, prd, o, m, sat, size, d, s0, s1, opt),
+        G4_INST(builder, prd, o, m, sat, size, d, s0, s1, opt),
         mathOp(mOp)
     {
 
@@ -1291,7 +1293,7 @@ public:
     static const uint32_t unknownCallee = 0xFFFF;
 
     G4_InstCF(
-        USE_DEF_ALLOCATOR& allocator,
+        const IR_Builder& builder,
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
@@ -1301,7 +1303,7 @@ public:
         G4_Operand* s0,
         G4_Operand* s1,
         unsigned int opt) :
-        G4_INST(allocator, prd, o, m, sat, size, d, s0, s1, opt),
+        G4_INST(builder, prd, o, m, sat, size, d, s0, s1, opt),
         jip(NULL), uip(NULL), isBackwardBr(false), calleeIndex(unknownCallee),
         assocPseudoVCA(nullptr), assocPseudoA0Save(nullptr), assocPseudoFlagSave(nullptr)
     {
@@ -1324,7 +1326,7 @@ public:
     }
 
     G4_InstCF(
-        USE_DEF_ALLOCATOR& allocator,
+        const IR_Builder& builder,
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
@@ -1335,7 +1337,7 @@ public:
         G4_Operand* s1,
         G4_Operand* s2,
         unsigned int opt) :
-        G4_INST(allocator, prd, o, m, sat, size, d, s0, s1, s2, opt),
+        G4_INST(builder, prd, o, m, sat, size, d, s0, s1, s2, opt),
         jip(NULL), uip(NULL), isBackwardBr(false), calleeIndex(0),
         assocPseudoVCA(nullptr), assocPseudoA0Save(nullptr), assocPseudoFlagSave(nullptr)
     {
@@ -1518,7 +1520,7 @@ class G4_InstIntrinsic : public G4_INST
 public:
 
     G4_InstIntrinsic(
-        USE_DEF_ALLOCATOR& allocator,
+        const IR_Builder& builder,
         G4_Predicate* prd,
         Intrinsic intrinId,
         uint8_t size,
@@ -1527,7 +1529,7 @@ public:
         G4_Operand* s1,
         G4_Operand* s2,
         unsigned int opt) :
-        G4_INST(allocator, prd, G4_intrinsic, nullptr, false, size, d, s0, s1, s2, opt),
+        G4_INST(builder, prd, G4_intrinsic, nullptr, false, size, d, s0, s1, s2, opt),
         intrinsicId(intrinId), tmpGRFStart(-1), tmpAddrStart(-1), tmpFlagStart(-1)
     {
 
