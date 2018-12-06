@@ -329,6 +329,25 @@ CShader* RetryManager::PickCSEntryFinally(SIMDMode& simdMode)
         }
 }
 
+void RetryManager::FreeAllocatedMemForNotPickedCS(SIMDMode simdMode)
+{
+    if (simdMode != SIMDMode::SIMD8 && m_simdEntries[0] != nullptr)
+    {
+        if (m_simdEntries[0]->ProgramOutput()->m_programBin != nullptr)
+            aligned_free(m_simdEntries[0]->ProgramOutput()->m_programBin);
+    }
+    if (simdMode != SIMDMode::SIMD16 && m_simdEntries[1] != nullptr)
+    {
+        if (m_simdEntries[1]->ProgramOutput()->m_programBin != nullptr)
+            aligned_free(m_simdEntries[1]->ProgramOutput()->m_programBin);
+    }
+    if (simdMode != SIMDMode::SIMD32 && m_simdEntries[2] != nullptr)
+    {
+        if (m_simdEntries[2]->ProgramOutput()->m_programBin != nullptr)
+            aligned_free(m_simdEntries[2]->ProgramOutput()->m_programBin);
+    }
+}
+
 bool RetryManager::PickupCS(ComputeShaderContext* cgCtx)
 {
     SIMDMode simdMode;
@@ -376,6 +395,9 @@ bool RetryManager::PickupCS(ComputeShaderContext* cgCtx)
             assert(false && "Invalie SIMDMode");
         }
         shader->FillProgram(pKernelProgram);
+
+        // free allocated memory for the remaining kernels
+        FreeAllocatedMemForNotPickedCS(simdMode);
 
         return true;
     }

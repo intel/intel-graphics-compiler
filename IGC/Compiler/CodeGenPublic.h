@@ -583,7 +583,7 @@ namespace IGC
         CShader* PickCSEntryEarly(SIMDMode& simdMode,
             ComputeShaderContext* cgCtx);
         CShader* PickCSEntryFinally(SIMDMode& simdMode);
-
+        void FreeAllocatedMemForNotPickedCS(SIMDMode simdMode);
         bool PickupCS(ComputeShaderContext* cgCtx);
     };
 
