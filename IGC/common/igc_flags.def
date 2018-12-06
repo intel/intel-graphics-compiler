@@ -137,6 +137,7 @@ DECLARE_IGC_REGKEY(bool, EnableGVN, true,
     "Enable LLVM global value numbering")
 DECLARE_IGC_REGKEY(bool, EnableLogicalAndToBranch, true,
     "Enable convert logical AND to conditional branch")
+DECLARE_IGC_REGKEY(bool, EnableWAInstanceIDIndexOfVS,   false,   "Enable WA of chaning index of InstanceID in VS. ICL only")
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, ShaderDebugHashCodeInKernel,   false, "Append hash code to the binary")

@@ -99,8 +99,9 @@ private:
     void AddURBRead(llvm::Value* index, llvm::Value* offset, llvm::Instruction* prev);
     unsigned int GetURBOffset(ShaderOutputType type, llvm::Value* attribute, llvm::Instruction* inst);
     void CalculateVertexHeaderSize(llvm::Function& F);
-    unsigned int InsertInEmptySlot(llvm::Instruction* sgv);
+    unsigned int InsertInEmptySlot(llvm::Instruction* sgv, bool bInsertAfterLastUsedSlot = false);
     unsigned int GetUnusedInputSlot();
+    unsigned int GetUnusedInputSlotAFterLastUsedOne();
     //HACK: to remove once we don't need header anymore
     void AddInitializedHeader(llvm::Instruction* prev);
 

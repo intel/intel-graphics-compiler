@@ -85,9 +85,9 @@ bool VertexShaderLowering::runOnFunction(llvm::Function &F)
     return false;
 }
 
-unsigned int VertexShaderLowering::InsertInEmptySlot(Instruction* sgv)
+unsigned int VertexShaderLowering::InsertInEmptySlot(Instruction* sgv, bool bInsertAfterLastUsedSlot)
 {
-    unsigned int index = GetUnusedInputSlot();
+    unsigned int index = bInsertAfterLastUsedSlot ? GetUnusedInputSlotAFterLastUsedOne() : GetUnusedInputSlot();
     m_inputUsed[index] = true;
     uint usage =
         (uint)llvm::cast<llvm::ConstantInt>(sgv->getOperand(0))->getZExtValue();
@@ -136,6 +136,21 @@ unsigned int VertexShaderLowering::GetUnusedInputSlot()
     }
     assert(0 && "All input slots are already used, cannot find an empty one");
     return 32*4-1;
+}
+
+unsigned int VertexShaderLowering::GetUnusedInputSlotAFterLastUsedOne()
+{
+    unsigned int idx = 0;
+    for (unsigned int i = 0; i < ARRAY_COUNT(m_inputUsed); i++)
+    {
+        if (m_inputUsed[i])
+        {
+            idx = i + 1;
+        }
+    }
+
+    assert(idx < ARRAY_COUNT(m_inputUsed) && "All input slots are already used, cannot find an empty one");
+    return idx;
 }
 
 /// this is the heuristic pattern for IGC to tell driver to use single-instance vertex shader
@@ -329,11 +344,6 @@ void VertexShaderLowering::LowerIntrinsicInputOutput(Function& F)
         unsigned int slot = InsertInEmptySlot(vertexId);
         m_vsPropsPass->SetVertexIdSlot(slot);
     }
-    if(InstanceId)
-    {
-        unsigned int slot = InsertInEmptySlot(InstanceId);
-        m_vsPropsPass->SetInstanceIdSlot(slot);
-    }
 	for (size_t paramIndex = 0; paramIndex < vertexFetchSGVExtendedParameters.size(); ++paramIndex)
 	{
 		if (vertexFetchSGVExtendedParameters[paramIndex])
@@ -342,6 +352,11 @@ void VertexShaderLowering::LowerIntrinsicInputOutput(Function& F)
 			m_vsPropsPass->SetShaderDrawParameter(paramIndex, slot);
 		}
 	}
+    if (InstanceId)
+    {
+        unsigned int slot = InsertInEmptySlot(InstanceId, IGC_IS_FLAG_ENABLED(EnableWAInstanceIDIndexOfVS));
+        m_vsPropsPass->SetInstanceIdSlot(slot);
+    }
 
     //URB padding to 32Byte offsets
     for(unsigned int i = 0; i < MaxNumOfOutput + m_headerSize.Count(); i++)
