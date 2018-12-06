@@ -479,6 +479,11 @@ kill(std::vector<T, AllocatorTy>& Elts,
 //
 static void processReadOpnds(G4_BB *BB, G4_INST *Inst, LocalLivenessInfo &LLI)
 {
+    if (Inst->isPseudoKill())
+    {
+        return;
+    }
+
     // (1) Indirect dst operand reads address.
     G4_DstRegRegion* Dst = Inst->getDst();
     if (Dst && Dst->isIndirect()) {
@@ -508,6 +513,10 @@ static void processReadOpnds(G4_BB *BB, G4_INST *Inst, LocalLivenessInfo &LLI)
 //
 static void processWriteOpnds(G4_BB *BB, G4_INST *Inst, LocalLivenessInfo &LLI)
 {
+    if (Inst->isPseudoKill())
+    {
+        return;
+    }
     for (auto OpNum : { Gen4_Operand_Number::Opnd_dst,
                         Gen4_Operand_Number::Opnd_condMod,
                         Gen4_Operand_Number::Opnd_implAccDst }) {

@@ -3821,6 +3821,10 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         {
             vbuilder->SetOption(vISA_accSubDF, true);
         }
+        if (IGC_IS_FLAG_ENABLED(EnableAccSubMadm))
+        {
+            vbuilder->SetOption(vISA_accSubMadm, true);
+        }
     }
     else
     {

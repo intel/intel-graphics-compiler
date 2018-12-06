@@ -2970,7 +2970,6 @@ bool G4_INST::isAccSrcInst() const
 // Check if this instruction has an explicit acc destination
 bool G4_INST::isAccDstInst() const
 {
-
     if (dst != NULL && dst->getBase()->isAccReg() )
     {
         return true;
@@ -7547,7 +7546,7 @@ bool G4_INST::canDstBeAcc() const
     	 {
     	     return false;
     	 }
-        if (getExecSize() != 32 && getExecSize() != 8)
+        if (getExecSize() != 8 && getExecSize() != 4)
         {
             return false;
         }
@@ -7606,6 +7605,11 @@ bool G4_INST::canDstBeAcc() const
         // we can't use acc if plane will be expanded
         return builder.doPlane();
     case G4_mad:
+    case G4_madm:
+         if (!builder.getOption(vISA_accSubMadm))
+         {
+             return false;
+         }
     case G4_csel:
         return builder.canMadHaveAcc();
     case G4_dp4a:
@@ -7665,7 +7669,7 @@ bool G4_INST::canSrcBeAcc(int srcId) const
     	     return false;
     	 }
     	
-        if (getExecSize() != 32 && getExecSize() != 8)
+        if (getExecSize() != 8 && getExecSize() != 4)
         {
             return false;
         }
@@ -7740,10 +7744,15 @@ bool G4_INST::canSrcBeAcc(int srcId) const
         return true;
     case G4_mov:
         return builder.relaxedACCRestrictions() || !getDst()->isAccReg();
+    case G4_madm:
+    	 if (!builder.getOption(vISA_accSubMadm))
+    	 {
+    	     return false;
+    	 }
     case G4_mad:
         // no int acc if it's used as mul operand
         return builder.canMadHaveAcc() &&
-            ((srcId == 1 && IS_FTYPE(src->getType())) || (srcId == 0 && src->getModifier() == Mod_src_undef));
+            ((srcId == 1 && (IS_FTYPE(src->getType()) || (src->getType() == Type_DF))) || (srcId == 0 && src->getModifier() == Mod_src_undef));
     case G4_csel:
         return builder.canMadHaveAcc();
     case G4_mul:

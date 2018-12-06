@@ -284,6 +284,7 @@ DECLARE_IGC_REGKEY(bool, EnableTCSHWBarriers, false,  "Enable TCS pass with HW b
 DECLARE_IGC_REGKEY(bool, ForceMCFBarriers, false,  "Force TCS pass with MCF (SW) barriers support. Default TCS pass is TCS pass with multiple continuation functions.")
 DECLARE_IGC_REGKEY(bool, EnableAccSub, true, "Enable accumulator substitution")
 DECLARE_IGC_REGKEY(bool, EnableAccSubDF, false, "Enable accumulator substitution for DF type")
+DECLARE_IGC_REGKEY(bool, EnableAccSubMadm, false, "Enable accumulator substitution for madm")
 DECLARE_IGC_REGKEY(DWORD, NumGeneralAcc, 0, "set the number [1-8] of general acc for accumulator substitution. 0 means using the platform-default value")
 DECLARE_IGC_REGKEY(bool, ForceSWCoalescingOfAtomicCounter, false, "Force software coalescing of atomic counter")
 DECLARE_IGC_REGKEY(bool, EnableNoDD, false, "Enable NoDD flags")

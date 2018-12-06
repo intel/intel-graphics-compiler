@@ -4259,6 +4259,8 @@ struct AccInterval
             return inst->getExecSize() == 16;
         case Type_HF:
             return false;
+        case Type_DF:
+            return inst->getExecSize() > 4;
         default:
             return true;
         }
@@ -4485,6 +4487,7 @@ static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
     G4_Areg* accReg = useAcc1 ? builder.phyregpool.getAcc1Reg() : builder.phyregpool.getAcc0Reg(); 
     G4_DstRegRegion* accDst = builder.createDstRegRegion(Direct, accReg,
         (short)accNum, 0, 1, dst->getType());
+    accDst->setAccRegSel(inst->getDst()->getAccRegSel());
     inst->setDest(accDst);
     for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I)
     {
@@ -4494,6 +4497,7 @@ static bool replaceDstWithAcc(G4_INST* inst, int accNum, IR_Builder& builder)
         G4_SrcRegRegion* oldSrc = useInst->getSrc(srcId)->asSrcRegRegion();
         G4_SrcRegRegion* accSrc = builder.createSrcRegRegion(oldSrc->getModifier(), Direct,
             accReg, (short)accNum, 0, builder.getRegionStride1(), dst->getType());
+        accSrc->setAccRegSel(oldSrc->getAccRegSel());
         if (useInst->opcode() == G4_mad && srcId == 0 && !builder.canMadHaveSrc0Acc())
         {
             // change mad to mac as src0 of 3-src does not support acc

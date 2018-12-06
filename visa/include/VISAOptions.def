@@ -55,6 +55,7 @@ DEF_VISA_OPTION(vISA_EnableSplitVariables,  ET_BOOL, "-noSplitVariables", UNUSED
 DEF_VISA_OPTION(vISA_ChangeMoveType,        ET_BOOL, "-ALTMode",         UNUSED, true)
 DEF_VISA_OPTION(vISA_accSubstitution,       ET_BOOL, "-noAccSub",          UNUSED, true)
 DEF_VISA_OPTION(vISA_accSubDF,              ET_BOOL, "-accSubDF",          UNUSED, false)
+DEF_VISA_OPTION(vISA_accSubMadm,              ET_BOOL, "-accSubMadm",          UNUSED, false)
 DEF_VISA_OPTION(vISA_doAccSubAfterSchedule, ET_BOOL, "-accSubPostSchedule",	UNUSED, true)
 DEF_VISA_OPTION(vISA_ifCvt,                 ET_BOOL, "-noifcvt",     UNUSED, true)
 DEF_VISA_OPTION(vISA_LVN,                   ET_BOOL, "-nolvn",       UNUSED, true)
@@ -80,7 +81,7 @@ DEF_VISA_OPTION(vISA_UseSends,              ET_BOOL, "-nosends",         UNUSED,
 DEF_VISA_OPTION(vISA_doAlign1Ternary,       ET_BOOL, "-noalign1ternary", UNUSED, true)
 DEF_VISA_OPTION(vISA_loadThreadPayload,     ET_BOOL, "-noLoadPayload",   UNUSED, true)
 DEF_VISA_OPTION(vISA_foldEOTtoPrevSend,     ET_BOOL, "-foldEOT",         UNUSED, false)
-DEF_VISA_OPTION(vISA_hasRNEandDenorm,       ET_BOOL, NULLSTR,            UNUSED, false)
+DEF_VISA_OPTION(vISA_hasRNEandDenorm,       ET_BOOL, "-hasRNEandDenorm", UNUSED, false)
 DEF_VISA_OPTION(vISA_forceNoFP64bRegioning, ET_BOOL, "-noFP64bRegion",   UNUSED, false)
 
 //=== RA options ===
