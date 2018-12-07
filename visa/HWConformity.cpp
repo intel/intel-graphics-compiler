@@ -163,7 +163,7 @@ G4_DstRegRegion* HWConformity::insertMovAfter( INST_LIST_ITER& it, G4_DstRegRegi
         mad (8) r56.0.xyzw:hf -r37.0.xyzw:f r59.0.xyzw:hf r58.0.xyzw:hf {Align16, NoMask}
         mov (16) r44.0<2>:hf r56.0<16;8,2>:hf {Align1, H1} // #??:$39:%66
     */
-    if( scale == 0 || (getGenxPlatform() >= GENX_CHV && execType == Type_F && type == Type_HF))
+    if (scale == 0 || (getGenxPlatform() >= GENX_CHV && execType == Type_F && type == builder.getMixModeType()))
     {
         scale = 1;
     }
@@ -985,8 +985,7 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB *bb)
         {
             continue;
         }
-        if (IS_FTYPE(inst->getSrc(i)->getType()) ||
-            IS_VFTYPE(inst->getSrc(i)->getType()))
+        if (IS_FTYPE(inst->getSrc(i)->getType()) || IS_VFTYPE(inst->getSrc(i)->getType()))
         {
             has_float = true;
         }
@@ -1452,13 +1451,13 @@ bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB* bb)
         inst->setDest(insertMovAfter(i, inst->getDst(), Type_W, bb));
         return true;
     }
-    else if (IS_HFTYPE(dstType) && (IS_DFTYPE(srcType) || IS_QTYPE(srcType)))
+    else if (isLowPrecisionFloatTy(dstType) && (IS_DFTYPE(srcType) || IS_QTYPE(srcType)))
     {
         // mov HF Q/DF
         inst->setDest(insertMovAfter(i, inst->getDst(), Type_F, bb));
         return true;
     }
-    else if (IS_HFTYPE(srcType) && (IS_DFTYPE(dstType) || IS_QTYPE(dstType)))
+    else if (isLowPrecisionFloatTy(srcType) && (IS_DFTYPE(dstType) || IS_QTYPE(dstType)))
     {
         // mov Q/DF HF
         inst->setDest(insertMovAfter(i, inst->getDst(), Type_F, bb));
@@ -1598,7 +1597,7 @@ bool HWConformity::fixDstAlignment( INST_LIST_ITER i, G4_BB* bb, G4_Type extype,
         return true;
     }
 
-    bool dstHFMixModeInst = inst->getDst()->getType() == Type_HF && extype == Type_F;
+    bool dstHFMixModeInst = inst->getDst()->getType() == builder.getMixModeType() && extype == Type_F;
     bool dstNotAlignedToExecType = exec_size > 1 && (dst_elsize * h_stride) < extypesize &&
         !(builder.hasMixMode() && dstHFMixModeInst);
     unsigned short dst_byte_offset;
@@ -1647,11 +1646,11 @@ bool HWConformity::fixDstAlignment( INST_LIST_ITER i, G4_BB* bb, G4_Type extype,
          {
              bool intHFConversion = false;
              G4_Operand* src0 = inst->getSrc(0);
-             if (IS_HFTYPE(dst->getType()) && IS_TYPE_INT(src0->getType()))
+             if (isLowPrecisionFloatTy(dst->getType()) && IS_TYPE_INT(src0->getType()))
              {
                  intHFConversion = true;
              }
-             else if (IS_HFTYPE(src0->getType()) && IS_TYPE_INT(dst->getType()))
+             else if (isLowPrecisionFloatTy(src0->getType()) && IS_TYPE_INT(dst->getType()))
              {
                  intHFConversion = true;
              }
@@ -3325,7 +3324,6 @@ static bool isGoodMadType(G4_Type type)
     {
     case Type_F:
     case Type_HF:
-        return true;
     case Type_DF:
         return true;
     default:
@@ -3343,7 +3341,7 @@ bool HWConformity::isGoodAlign1TernaryDst(G4_INST* inst) const
     MUST_BE_TRUE(!IS_QTYPE(dst->getType()) && !IS_BTYPE(dst->getType()), "3Src inst don't support Q and B dst types");
 
     if (!builder.hasMixMode() &&
-        (dst->getType() == Type_HF && execType != Type_HF))
+        isLowPrecisionFloatTy(dst->getType()) && !isLowPrecisionFloatTy(execType))
     {
         return false;
     }
@@ -3399,7 +3397,7 @@ bool HWConformity::isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeI
     if (!builder.hasMixMode())
     {
         G4_Type execType = inst->getExecType();
-        if (src->getType() == Type_HF && execType != Type_HF)
+        if (isLowPrecisionFloatTy(src->getType()) && !isLowPrecisionFloatTy(execType))
         {
             return false;
         }
@@ -3622,7 +3620,8 @@ bool HWConformity::isGoodAlign16Src(G4_INST* inst, int srcPos)
                 return false;
             }
 
-            if (opnd_type == Type_HF && getGenxPlatform() == GENX_BDW) {
+            if (opnd_type == Type_HF && getGenxPlatform() == GENX_BDW) 
+            {
                 return false;
             }
         }
@@ -3891,8 +3890,6 @@ bool HWConformity::generateFPMad(G4_BB* bb, INST_LIST_ITER iter)
     MUST_BE_TRUE(inst->opcode() == G4_pseudo_mad, "expect pseudo mad");
     uint8_t execSize = inst->getExecSize();
     G4_DstRegRegion *dst = inst->getDst();
-    MUST_BE_TRUE(dst->getType() == Type_HF || dst->getType() == Type_F ||
-        dst->getType() == Type_DF, "inst must have FP type");
 
     // Align16 MAD requirements:
     // -- dst and all 3 srcs have the same F/HF/DF type (mixed F/HF is allowed on CHV+)
@@ -3930,8 +3927,6 @@ bool HWConformity::generateFPMad(G4_BB* bb, INST_LIST_ITER iter)
     for (int k = 0; k < inst->getNumSrc(); k++)
     {
         G4_Type type = inst->getSrc(k)->getType();
-        MUST_BE_TRUE(type == Type_HF || type == Type_F || type == Type_DF,
-            "expect FP type");
         bool goodSrc = isGoodAlign16Src(inst, k);
         if (!goodSrc && preferFpMad)
         {
@@ -4024,7 +4019,6 @@ void HWConformity::fixMADInst( BB_LIST_ITER it )
             {
             case Type_F:
             case Type_HF:
-                break;
             case Type_DF:
                 break;
             case Type_W:
@@ -7258,7 +7252,7 @@ void HWConformity::helperGenerateTempDst(
     //create a move to dst.
 
     uint32_t numElt = execSize == 1 ? 1 : execSize * hStride;
-    if (numElt > 1 && tempDstType == Type_HF && hStride == 1 && subAlign < Eight_Word)
+    if (numElt > 1 && isLowPrecisionFloatTy(tempDstType) && hStride == 1 && subAlign < Eight_Word)
         subAlign = Eight_Word;
     G4_Align align = getDclAlignment( dstSize, inst, execSize == 1, subAlign );
 
@@ -7328,23 +7322,23 @@ void HWConformity::fixMixedHFInst( BB_LIST_ITER it )
         {
             continue;
         }
-        //In case of invalid ISA
+
         if (inst->isMath() && (inst->isMixedMode() || builder.getOption(vISA_DisableHFMath)))
         {
             auto src0 = inst->getSrc(0);
             auto src1 = inst->getSrc(1);
             auto dst = inst->getDst();
-            if (src0 && src0->getType() == Type_HF)
+            if (src0 && src0->getType() == builder.getMixModeType())
             {
                 inst->setSrc(insertMovBefore(instIter, 0, Type_F, bb), 0);
             }
 
-            if (src1 && src1->getType() == Type_HF)
+            if (src1 && src1->getType() == builder.getMixModeType())
             {
                 inst->setSrc(insertMovBefore(instIter, 1, Type_F, bb), 1);
             }
 
-            if (dst && dst->getType() == Type_HF)
+            if (dst && dst->getType() == builder.getMixModeType())
             {
                 inst->setDest(insertMovAfter(instIter, dst, inst->getExecType2(), bb));
             }
@@ -7400,7 +7394,7 @@ void HWConformity::fixMixedHFInst( BB_LIST_ITER it )
         }
 
         G4_DstRegRegion *dst = inst->getDst();
-        if (INST_FLOAT_SRC_ONLY(inst->opcode()) && dst && !dst->isNullReg() && dst->getType() == Type_HF)
+        if (INST_FLOAT_SRC_ONLY(inst->opcode()) && dst && !dst->isNullReg() && isLowPrecisionFloatTy(dst->getType()))
         {
             helperGenerateTempDst(bb, instIter, inst, 1, Type_F);
         }

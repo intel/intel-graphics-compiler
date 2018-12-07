@@ -435,4 +435,9 @@
         return false;
     }
 
+    G4_Type getMixModeType() const
+    {
+        return Type_HF;
+    }
+
     // end HW capabilities

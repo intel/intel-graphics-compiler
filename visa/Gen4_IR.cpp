@@ -138,7 +138,7 @@ bool isPow2( uint8_t n )
 }
 
 // check if type1 can be represented by type2
-bool Is_Type_Included(G4_Type type1, G4_Type type2, const Options *opt)
+bool Is_Type_Included(G4_Type type1, G4_Type type2, const IR_Builder& builder)
 {
     if( type1 == type2 )
     {
@@ -150,7 +150,8 @@ bool Is_Type_Included(G4_Type type1, G4_Type type2, const Options *opt)
     {
         return false;
     }
-    if (type1 == Type_F && type2 == Type_HF && getGenxPlatform() > GENX_BDW && opt->getOption(vISA_enableUnsafeCP_DF))
+    if (type1 == Type_F && type2 == builder.getMixModeType() && 
+        getGenxPlatform() > GENX_BDW && builder.getOption(vISA_enableUnsafeCP_DF))
     {
         return true;
     }
@@ -171,7 +172,7 @@ bool Is_Type_Included(G4_Type type1, G4_Type type2, const Options *opt)
         {
             return true;
         }
-        else if( (type1 == Type_HF) && (type2 == Type_F) )
+        else if (type1 == builder.getMixModeType() && type2 == Type_F )
         {
             return true;
         }
@@ -639,15 +640,7 @@ G4_Type G4_INST::getExecType() const
                 {
                     execType = Type_Q;
                 }
-                else if (srcType == Type_HF)
-                {
-                    execType = Type_HF;
-                }
-                else if (IS_FTYPE(srcType))
-                {
-                    execType = Type_F;
-                }
-                else if (IS_DFTYPE(srcType))
+                else if (IS_TYPE_FLOAT_ALL(srcType))
                 {
                     execType = srcType;
                 }
@@ -693,11 +686,10 @@ G4_Type G4_INST::getExecType2() const
             continue;
         }
         G4_Type srcType = srcs[i]->getType();
-        if( srcType == Type_HF &&
-            G4_Type_Table[srcType].byteSize >= G4_Type_Table[execType].byteSize &&
-            !IS_DFTYPE(execType) && !IS_FTYPE(execType) )
+        if (isLowPrecisionFloatTy(srcType) &&
+            G4_Type_Table[srcType].byteSize >= G4_Type_Table[execType].byteSize)
         {
-            execType = Type_HF;
+            execType = srcType;
             break;
         }
         else if (srcType == Type_V)
@@ -1527,8 +1519,8 @@ G4_INST::MovType G4_INST::canPropagate()
 
     //Disabling mix mode copy propogation
     if (!builder.hasMixMode() &&
-        ((IS_TYPE_F32_F64(srcType) && IS_HFTYPE(dstType)) ||
-        (IS_HFTYPE(srcType) && IS_TYPE_F32_F64(dstType))))
+        ((IS_TYPE_F32_F64(srcType) && isLowPrecisionFloatTy(dstType)) ||
+        (isLowPrecisionFloatTy(srcType) && IS_TYPE_F32_F64(dstType))))
     {
         return SuperMov;
     }
@@ -1561,14 +1553,13 @@ G4_INST::MovType G4_INST::canPropagate()
     }
     case FPUpConv:
         // For FPUpConv, only HF -> F is allowed.
-        if (!(srcType == Type_HF    &&
-            dstType == Type_F))
+        if (!(srcType == builder.getMixModeType() && dstType == Type_F))
             return SuperMov;
         break;
-    case G4_INST::FPDownConv:
+    case FPDownConv:
     {
         if (IS_TYPE_F32_F64(srcType)                  &&
-            IS_HFTYPE(dstType)                     &&
+            builder.getMixModeType() == dstType &&
             builder.getOption(vISA_enableUnsafeCP_DF)  &&
             useInstList.size() == 1)
             return FPDownConvSafe;
@@ -1836,20 +1827,6 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
             return false;
         }
     }
-
-#if 0
-    // Cannot propagate immediate src into send/sends GRF operands
-    // special checks for send/sends GRF operands, which don't support
-    // immediates and regions
-    if ((opndNum == Opnd_src0 && useInst->isSend()) ||
-        (opndNum == Opnd_src1 && useInst->isSplitSend()))
-    {
-        if (src->isImm() || MT != Copy)
-        {
-            return false;
-        }
-    }
-#endif
 
     // The following are copied from local dataflow analysis.
     // TODO: re-examine..
@@ -2182,12 +2159,12 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt)
 
 
     // no dst type promotion after hoisting
-    if (!Is_Type_Included(dstType, srcType, opt) ||
+    if (!Is_Type_Included(dstType, srcType, builder) ||
         // if multi def, src and dst should have the same type size
-        ( ( defInstList.size() > 1 ) &&
-        ( ( Operand_Type_Rank( srcType ) != Operand_Type_Rank( dstType ) ) ||
+        ( defInstList.size() > 1 &&
+        ( Operand_Type_Rank(srcType) != Operand_Type_Rank(dstType) ||
         // if multidef and used as a scalar, execution size should be one.
-        ( src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar() && ( execSize > 1 ) ) ) ) )
+        ( src->isSrcRegRegion() && src->asSrcRegRegion()->isScalar() && execSize > 1 ) ) ) )
     {
         return false;
     }
@@ -3546,7 +3523,7 @@ bool G4_INST::isMixedMode() const
 	{
 		return false;
 	}
-    for(int i = 0; i < G4_Inst_Table[opcode()].n_srcs; ++i)
+    for (int i = 0; i < G4_Inst_Table[opcode()].n_srcs; ++i)
     {
         G4_Operand *tOpnd = getSrc(i);
         if(!tOpnd)
@@ -3556,9 +3533,8 @@ bool G4_INST::isMixedMode() const
 
         G4_Type srcType = tOpnd->getType();
 
-        if(getDst() &&
-            (getDst()->getType() == Type_HF ||
-            srcType == Type_HF ) &&
+        if (getDst() &&
+            (getDst()->getType() == builder.getMixModeType() || srcType == builder.getMixModeType()) &&
             getDst()->getType() != srcType)
         {
             mixedMode =  true;
@@ -7569,7 +7545,7 @@ bool G4_INST::canDstBeAcc() const
 
     if (!builder.relaxedACCRestrictions())
     {
-        if (dst->getType() == Type_HF && isMixedMode())
+        if (dst->getType() == builder.getMixModeType() && isMixedMode())
         {
             // acc can't be used as packed f16 for mix mode instruction as it doesn't support regioning
             return false;
@@ -7701,7 +7677,7 @@ bool G4_INST::canSrcBeAcc(int srcId) const
     {
         return false;
     }
-    else if (getDst()->getType() == Type_HF && src->getType() == Type_F &&
+    else if (getDst()->getType() == builder.getMixModeType() && src->getType() == Type_F &&
         dstEltSize == 2)
     {
         // no acc for mix mode inst with packed HF dst

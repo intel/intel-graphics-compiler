@@ -243,7 +243,7 @@ extern CM_INLINE void checkHFMixModeRule4_11(vISA::G4_INST *inst, bool & rule4, 
     rule4 = (inst->getExecSize() > 8
              && inst->getDst()
              && inst->getDst()->getType() == Type_HF
-             && getGenxPlatform() >= GENX_CHV ) ? true : false ;
+             && getGenxPlatform() >= GENX_CHV ) ? true : false;
 
     rule11 = (inst->getExecSize() > 8 && inst->opcode() != G4_mov &&
               inst->getDst() && inst->getDst()->getType() == Type_F &&

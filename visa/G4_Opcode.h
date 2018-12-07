@@ -57,7 +57,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IS_TYPE_INT(type)        (IS_SIGNED_INT(type) || IS_UNSIGNED_INT(type))
 #define IS_TYPE_F32_F64(type)         (type == Type_F ||type == Type_DF || type == Type_NF)
 #define IS_TYPE_FLOAT_ALL(type)     (type == Type_F ||type == Type_DF || type == Type_HF || type == Type_NF)
-
 // added defs for CISA inst translation
 
 #define GENX_GEN8P_MAX_WIDTH      64  // # 
@@ -419,4 +418,8 @@ extern short Operand_Type_Rank(G4_Type type);
 uint8_t roundDownPow2(uint8_t n);
 bool isPow2(uint8_t n);
 inline uint32_t getTypeSize(G4_Type ty) { return G4_Type_Table[ty].byteSize; }
+inline bool isLowPrecisionFloatTy(G4_Type ty)
+{
+    return ty == Type_HF;
+}
 #endif  // _G4_OPCODE_H_
