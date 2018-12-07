@@ -1846,7 +1846,8 @@ G4_DstRegRegion* HWConformity::createSubDstOperand( G4_DstRegRegion* dst, uint16
             subRegOff = newSubRegOff;
         }
         // create a new one
-        return builder.createDstRegRegion(Direct, dst->getBase(), regOff, subRegOff, hs, dst->getType());
+        return builder.createDstRegRegion(Direct, dst->getBase(), regOff, subRegOff, hs, dst->getType(), 
+            dst->getAccRegSel());
     }
     else
     {
@@ -1861,22 +1862,15 @@ G4_SrcRegRegion* HWConformity::createSubSrcOperand( G4_SrcRegRegion* src, uint16
 {
     RegionDesc *rd = NULL;
     uint16_t vs = src->getRegion()->vertStride, hs = src->getRegion()->horzStride, wd = src->getRegion()->width;
-    if( !src->getRegion()->isRegionWH() )
+    if (!src->getRegion()->isRegionWH())
     {
         // r[a0.0,0]<4;2,1> and size is 4 or 1
         if (size < newWd)
         {
             newWd = size;
         }
-        if (size == 1)
-        {
-            rd = builder.getRegionScalar();
-        }
-        else
-        {
-            rd = builder.createRegionDesc(size == newWd ? newWd * hs : newVs, newWd, hs);
-        }
-
+        rd = size == 1 ? builder.getRegionScalar() : 
+            builder.createRegionDesc(size == newWd ? newWd * hs : newVs, newWd, hs);
     }
 
     if( src->getRegAccess() != Direct )
@@ -1886,14 +1880,12 @@ G4_SrcRegRegion* HWConformity::createSubSrcOperand( G4_SrcRegRegion* src, uint16
             // just handle <1,0>
             if( start > 0 )
             {
-                {
-                    // just change immediate offset
-                    uint16_t subRegOff = src->getSubRegOff() + start;
-                    G4_SrcRegRegion* newSrc = builder.createSrcRegRegion( src->getModifier(), src->getRegAccess(), src->getBase(),
-                        src->getRegOff(), subRegOff, src->getRegion(), src->getType() );
-                    newSrc->setImmAddrOff( src->getAddrImm() );
-                    return newSrc;
-                }
+                // just change immediate offset
+                uint16_t subRegOff = src->getSubRegOff() + start;
+                G4_SrcRegRegion* newSrc = builder.createSrcRegRegion(src->getModifier(), src->getRegAccess(), src->getBase(),
+                    src->getRegOff(), subRegOff, src->getRegion(), src->getType(), src->getAccRegSel());
+                newSrc->setImmAddrOff(src->getAddrImm());
+                return newSrc;
             }
             else
             {
@@ -1904,18 +1896,15 @@ G4_SrcRegRegion* HWConformity::createSubSrcOperand( G4_SrcRegRegion* src, uint16
 
         if( start > 0 )
         {
-            {
-                // just change immediate offset
+            short numRows = start / wd;
+            short numCols = start % wd;
+            short newOff = (numRows * vs + numCols * hs) * G4_Type_Table[src->getType()].byteSize;
 
-                short numRows = start / wd;
-                short numCols = start % wd;
-                short newOff = (numRows * vs + numCols * hs ) * G4_Type_Table[src->getType()].byteSize;
+            G4_SrcRegRegion* newSrc = builder.createSrcRegRegion(src->getModifier(), src->getRegAccess(), src->getBase(),
+                src->getRegOff(), src->getSubRegOff(), rd, src->getType(), src->getAccRegSel());
+            newSrc->setImmAddrOff(src->getAddrImm() + newOff);
+            return newSrc;
 
-                G4_SrcRegRegion* newSrc = builder.createSrcRegRegion( src->getModifier(), src->getRegAccess(), src->getBase(),
-                    src->getRegOff(), src->getSubRegOff(), rd, src->getType() );
-                newSrc->setImmAddrOff( src->getAddrImm() + newOff );
-                return newSrc;
-            }
         }
         else
         {
@@ -1959,7 +1948,7 @@ G4_SrcRegRegion* HWConformity::createSubSrcOperand( G4_SrcRegRegion* src, uint16
 
         uint16_t newSubRegOff = src->getSubRegOff() + newEleOff;
         bool crossGRF = newSubRegOff * G4_Type_Table[srcType].byteSize >= G4_GRF_REG_NBYTES;
-        if( crossGRF )
+        if (crossGRF)
         {
             regOff = src->getRegOff() + 1;
             subRegOff = newSubRegOff - G4_GRF_REG_NBYTES / G4_Type_Table[srcType].byteSize;
@@ -1971,7 +1960,8 @@ G4_SrcRegRegion* HWConformity::createSubSrcOperand( G4_SrcRegRegion* src, uint16
         }
 
         // create a new one
-        return builder.createSrcRegRegion(src->getModifier(), Direct, src->getBase(), regOff, subRegOff, rd, srcType);
+        return builder.createSrcRegRegion(src->getModifier(), Direct, src->getBase(), regOff, subRegOff, rd, 
+            srcType, src->getAccRegSel());
     }
     else
     {

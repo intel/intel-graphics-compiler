@@ -485,9 +485,13 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb)
 
     MUST_BE_TRUE(inst->isMath(), "Expect math instruction");
 
-    if (inst->asMathInst()->getMathCtrl() == MATH_INVM ||
-        inst->asMathInst()->getMathCtrl() == MATH_RSQRTM)
+    if (inst->asMathInst()->getMathCtrl() == MATH_INVM || inst->asMathInst()->getMathCtrl() == MATH_RSQRTM)
     {
+        if (IS_DFTYPE(inst->getDst()->getType()) && inst->getExecSize() == 8)
+        {
+            evenlySplitInst(it, bb);
+            return true;
+        }
         return false;
     }
 
