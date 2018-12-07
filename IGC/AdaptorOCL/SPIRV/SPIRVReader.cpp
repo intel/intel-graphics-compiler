@@ -79,6 +79,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SPIRVInternal.h"
 #include "common/MDFrameWork.h"
 #include "../../AdaptorCommon/TypesLegalizationPass.hpp"
+#include <llvm/Transforms/Scalar.h>
 
 #include <iostream>
 #include <fstream>
@@ -3593,6 +3594,7 @@ bool ReadSPIRV(LLVMContext &C, std::istream &IS, Module *&M,
 
   llvm::legacy::PassManager PM;
   PM.add( new TypesLegalizationPass() );
+  PM.add( createDeadCodeEliminationPass() );
   PM.run( *M );
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
