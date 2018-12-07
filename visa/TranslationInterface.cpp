@@ -524,73 +524,31 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
     G4_SrcRegRegion* src0RR = operandToDirectSrcRegRegion(*this, src0Opnd, element_size);
     G4_SrcRegRegion* src1RR = operandToDirectSrcRegRegion(*this, src1Opnd, element_size);
 
+    // src operand registers
+    G4_DstRegRegion tdst_src0(Direct, t6->getRegVar(), 0, 0, 1, Type_DF );
+    G4_DstRegRegion tdst_src1(Direct, t7->getRegVar(), 0, 0, 1, Type_DF );
+
     bool needsSrc0Move = src0RR->isScalar() || src0RR->getModifier() != Mod_src_undef;
     if (needsSrc0Move)
     {
         if (opcode == ISA_DIV || opcode == ISA_DIVM)
         {
-            G4_DstRegRegion *t6_dst_src0_opnd = Create_Dst_Opnd_From_Dcl(t6, 1);
+            G4_DstRegRegion *t6_dst_src0_opnd = createDstRegRegion(tdst_src0);
             inst = createInst(NULL, G4_mov, NULL, false, element_size, t6_dst_src0_opnd, src0RR,
-                NULL, instOpt, line_no);
+                NULL, instOpt, line_no); // mov (element_size) t6_dst_src0_opnd, src0RR {Q1/N1}
         }
     }
     bool needsSrc1Move = src1RR->isScalar() || src1RR->getModifier() != Mod_src_undef;
     if (needsSrc1Move)
     {
-        G4_DstRegRegion *t7_dst_src1_opnd = Create_Dst_Opnd_From_Dcl(t7, 1);
+        G4_DstRegRegion *t7_dst_src1_opnd = createDstRegRegion(tdst_src1);
         inst = createInst(NULL, G4_mov, NULL, false, element_size, t7_dst_src1_opnd, src1RR,
-            NULL, instOpt, line_no);
+            NULL, instOpt, line_no); // mov (element_size) t7_dst_src1_opnd, src1RR {Q1/N1}
     }
 
     // final result is at r8.noacc
     G4_SrcRegRegion tsrc8_final(Mod_src_undef, Direct, t8->getRegVar(), 0, 0, getRegionStride1(), t8->getElemType() );
     G4_SrcRegRegion *t8_src_opnd_final = createSrcRegRegion(tsrc8_final);
-
-    if (!hasDefaultRoundDenorm)
-    {
-        G4_DstRegRegion *cr0DstRegOpndForAndInst = createDstRegRegion(regDstCR0);
-        G4_DstRegRegion *cr0DstRegOpndForOrInst = createDstRegRegion(regDstCR0);
-        G4_SrcRegRegion *cr0SrcRegOpndForSaveInst = createSrcRegRegion(regSrcCR0);
-        G4_SrcRegRegion *cr0SrcRegOpndForAndInst = createSrcRegRegion(regSrcCR0);
-        G4_SrcRegRegion *cr0SrcRegOpndForOrInst = createSrcRegRegion(regSrcCR0);
-        auto tmpDstRegOpndForCR0 = Create_Dst_Opnd_From_Dcl(regCR0, 1);
-
-        // save cr0.0
-        inst = createInst(NULL, G4_mov, NULL, false, 1, tmpDstRegOpndForCR0, cr0SrcRegOpndForSaveInst,
-            NULL, InstOpt_WriteEnable, line_no);
-
-        // set rounding mod in CR0 to RNE
-        inst = createInst(NULL, G4_and, NULL, false, 1, cr0DstRegOpndForAndInst, cr0SrcRegOpndForAndInst,
-            createImm(0xffffffcf, Type_UD), InstOpt_WriteEnable, line_no);
-
-        // set double precision denorm mode to 1
-        inst = createInst(NULL, G4_or, NULL, false, 1, cr0DstRegOpndForOrInst, cr0SrcRegOpndForOrInst,
-            createImm(0x40, Type_UD), InstOpt_WriteEnable, line_no);
-    }
-
-    // DF math div is simd4 only
-    int mathLoopCount = instExecSize <= 4 ? 1 : 2;
-    Common_VISA_EMask_Ctrl mathMask = emask;
-    for (int regIndex = 0; regIndex < mathLoopCount; ++regIndex, mathMask = Get_Next_EMask(mathMask, 4))
-    {
-        // math.e0.f0.0 (4) r8.acc2 r6.noacc r7.noacc 0xe {Align16, N1/N2}
-        G4_SrcRegRegion tsrc6_0(Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, rdAlign16, Type_DF, NOACC);
-        G4_SrcRegRegion tsrc7_0(Mod_src_undef, Direct, t7->getRegVar(), regIndex, 0, rdAlign16, Type_DF, NOACC);
-        G4_SrcRegRegion fsrc0_0(Mod_src_undef, Direct, src0RR->getBase(), regIndex, 0, rdAlign16, Type_DF, NOACC);
-        G4_SrcRegRegion fsrc1_0(Mod_src_undef, Direct, src1RR->getBase(), 
-            src1RR->getRegOff() + regIndex, 0, rdAlign16, Type_DF, NOACC);
-
-        G4_DstRegRegion* tdst8 = createDstRegRegion(Direct, t8->getRegVar(), regIndex, 0, 1, Type_DF, ACC2);
-
-        auto t6SrcOpnd0 = createSrcRegRegion(needsSrc0Move && opcode != ISA_INV ? tsrc6_0 : fsrc0_0);
-        auto t7SrcOpnd0 = createSrcRegRegion(needsSrc1Move ? tsrc7_0 : fsrc1_0);
-
-        auto mathOpt = Get_Gen4_Emask(mathMask, 4);
-        inst = createMathInst(NULL, false, 4, tdst8, t6SrcOpnd0,
-            t7SrcOpnd0, MATH_INVM, mathOpt, line_no);
-        G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
-        inst->setCondMod(condModOverflow);
-    }
 
     // each madm only handles 4 channel double data
     Common_VISA_EMask_Ctrl currEMask = emask;
@@ -623,6 +581,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
         G4_SrcRegRegion tsrc12(Mod_src_undef, Direct, t12->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF );
         G4_SrcRegRegion tsrc13(Mod_src_undef, Direct, t13->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF );
 
+        G4_DstRegRegion *t8DstOpnd0 = createDstRegRegion(tdst8);
         G4_DstRegRegion *t8DstOpnd1 = createDstRegRegion(tdst8);
         G4_DstRegRegion *t8DstOpnd2 = createDstRegRegion(tdst8);
         G4_DstRegRegion *t9DstOpnd0 = createDstRegRegion(tdst9);
@@ -643,9 +602,11 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
         G4_SrcRegRegion fsrc0(Mod_src_undef, Direct, src0RR->getBase(), src0RR->asSrcRegRegion()->getRegOff() + ((opcode == ISA_INV) ? 0 : regIndex), 0, srcRegionDesc, Type_DF);
         G4_SrcRegRegion fsrc1(Mod_src_undef, Direct, src1RR->getBase(), src1RR->asSrcRegRegion()->getRegOff() + regIndex, 0, srcRegionDesc, Type_DF);
 
+        G4_SrcRegRegion *t6SrcOpnd0 = NULL;
         G4_SrcRegRegion *t6SrcOpnd1 = NULL;
         G4_SrcRegRegion *t6SrcOpnd2 = NULL;
         G4_SrcRegRegion *t6SrcOpnd3 = NULL;
+        G4_SrcRegRegion *t7SrcOpnd0 = NULL;
         G4_SrcRegRegion *t8SrcOpnd0x0 = createSrcRegRegion(tsrc8);
         G4_SrcRegRegion *t8SrcOpnd0x1 = createSrcRegRegion(tsrc8);
         G4_SrcRegRegion *t8SrcOpnd0x2 = createSrcRegRegion(tsrc8);
@@ -667,16 +628,40 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
         G4_SrcRegRegion *t12SrcOpnd1 = createSrcRegRegion(tsrc12);
         G4_SrcRegRegion *t13SrcOpnd0 = createSrcRegRegion(tsrc13);
 
+        if (!hasDefaultRoundDenorm)
+        {
+            G4_DstRegRegion *cr0DstRegOpndForAndInst = createDstRegRegion(regDstCR0);
+            G4_DstRegRegion *cr0DstRegOpndForOrInst = createDstRegRegion(regDstCR0);
+            G4_SrcRegRegion *cr0SrcRegOpndForSaveInst = createSrcRegRegion(regSrcCR0);
+            G4_SrcRegRegion *cr0SrcRegOpndForAndInst = createSrcRegRegion(regSrcCR0);
+            G4_SrcRegRegion *cr0SrcRegOpndForOrInst = createSrcRegRegion(regSrcCR0);
+            auto tmpDstRegOpndForCR0 = Create_Dst_Opnd_From_Dcl(regCR0, 1);
+
+            // save cr0.0
+            inst = createInst(NULL, G4_mov, NULL, false, 1, tmpDstRegOpndForCR0, cr0SrcRegOpndForSaveInst,
+                NULL, InstOpt_WriteEnable, line_no); 
+
+            // set rounding mod in CR0 to RNE
+            inst = createInst(NULL, G4_and, NULL, false, 1, cr0DstRegOpndForAndInst, cr0SrcRegOpndForAndInst,
+                createImm(0xffffffcf, Type_UD), InstOpt_WriteEnable, line_no); 
+
+            // set double precision denorm mode to 1
+            inst = createInst(NULL, G4_or, NULL, false, 1, cr0DstRegOpndForOrInst, cr0SrcRegOpndForOrInst,
+                createImm(0x40, Type_UD), InstOpt_WriteEnable, line_no); 
+        }
+
         if (needsSrc0Move)
         {
             if (opcode == ISA_INV)
             {
+                t6SrcOpnd0 = createSrcRegRegion(fsrc0_0);
                 t6SrcOpnd1 = createSrcRegRegion(fsrc0);
                 t6SrcOpnd2 = createSrcRegRegion(fsrc0);
                 t6SrcOpnd3 = createSrcRegRegion(fsrc0);
             }
             else
             {
+                t6SrcOpnd0 = createSrcRegRegion(tsrc6_0);
                 t6SrcOpnd1 = createSrcRegRegion(tsrc6);
                 t6SrcOpnd2 = createSrcRegRegion(tsrc6);
                 t6SrcOpnd3 = createSrcRegRegion(tsrc6);
@@ -684,27 +669,50 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
         }
         else
         {
+            t6SrcOpnd0 = createSrcRegRegion(fsrc0_0);
             t6SrcOpnd1 = createSrcRegRegion(fsrc0);
             t6SrcOpnd2 = createSrcRegRegion(fsrc0);
             t6SrcOpnd3 = createSrcRegRegion(fsrc0);
         }
 
-        G4_SrcRegRegion *t7SrcOpnd0 = createSrcRegRegion(needsSrc1Move ? tsrc7_0 : fsrc1_0);
+        if (needsSrc1Move)
+        {
+            t7SrcOpnd0 = createSrcRegRegion(tsrc7_0);
+        }
+        else
+        {
+            t7SrcOpnd0 = createSrcRegRegion(fsrc1_0);
+        }
+
         // create -r7.noacc
         G4_SrcRegRegion tsrc7_neg( Mod_Minus,
-            t7SrcOpnd0->getRegAccess(),
-            t7SrcOpnd0->getBase(),
-            t7SrcOpnd0->getRegOff(),
-            t7SrcOpnd0->getSubRegOff(),
-            t7SrcOpnd0->getRegion(),
+            t7SrcOpnd0->asSrcRegRegion()->getRegAccess(),
+            t7SrcOpnd0->asSrcRegRegion()->getBase(),
+            t7SrcOpnd0->asSrcRegRegion()->getRegOff(),
+            t7SrcOpnd0->asSrcRegRegion()->getSubRegOff(),
+            t7SrcOpnd0->asSrcRegRegion()->getRegion(),
             t7SrcOpnd0->getType() );
         G4_SrcRegRegion *t7SrcOpndNeg0 = createSrcRegRegion( tsrc7_neg );
+        G4_SrcRegRegion *t7SrcOpndNeg1 = createSrcRegRegion( tsrc7_neg );
+        G4_SrcRegRegion *t7SrcOpndNeg2 = createSrcRegRegion( tsrc7_neg );
+        G4_SrcRegRegion *t7SrcOpndNeg3 = createSrcRegRegion( tsrc7_neg );
+
+        // math.e0.f0.0 (4) r8.acc2 r6.noacc r7.noacc 0xe {Align16, N1/N2}
+        t8DstOpnd0->setAccRegSel( ACC2 );
+        t6SrcOpnd0->setAccRegSel( NOACC );
+        t7SrcOpnd0->setAccRegSel( NOACC );
+        inst = createMathInst(NULL, false, exsize, t8DstOpnd0, t6SrcOpnd0,
+            t7SrcOpnd0, MATH_INVM, madmInstOpt, line_no);
+        G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
+        inst->setCondMod(condModOverflow);
 
         // if
         G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
         inst = createInst(predicateFlagReg, G4_if, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
 
         {
+
+
             // madm (4) r9.acc3 r0.noacc r6.noacc r8.acc2 {Align16, N1/N2}
             G4_SrcRegRegion *t0SrcOpnd = createSrcRegRegion(tsrc0);
             t9DstOpnd0->setAccRegSel(ACC3);
@@ -724,7 +732,6 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
                 t7SrcOpndNeg0, t8SrcOpnd0x1, madmInstOpt, line_no);
 
             // madm (4) r11.acc5 r6.noacc -r7.noacc r9.acc3 {Align16, N1/N2}
-            G4_SrcRegRegion *t7SrcOpndNeg1 = createSrcRegRegion(tsrc7_neg);
             t11DstOpnd0->setAccRegSel(ACC5);
             t6SrcOpnd2->setAccRegSel(NOACC);
             t7SrcOpndNeg1->setAccRegSel(NOACC);
@@ -742,7 +749,6 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
 
             // madm (4) r13.acc7 r1.noacc -r7.noacc r12.acc6 {Align16, N1/N2}
             G4_SrcRegRegion *t1SrcOpnd1 = createSrcRegRegion(tsrc1);
-            G4_SrcRegRegion *t7SrcOpndNeg2 = createSrcRegRegion(tsrc7_neg);
             t13DstOpnd0->setAccRegSel(ACC7);
             t1SrcOpnd1->setAccRegSel(NOACC);
             t7SrcOpndNeg2->setAccRegSel(NOACC);
@@ -775,13 +781,21 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
                 t8SrcOpnd1, t13SrcOpnd0, madmInstOpt, line_no);
 
             // madm (4) r11.acc3 r6.noacc -r7.noacc r9.acc9 {Align16, N1/N2}
-            G4_SrcRegRegion *t7SrcOpndNeg3 = createSrcRegRegion(tsrc7_neg);
             t11DstOpnd1->setAccRegSel(ACC3);
             t6SrcOpnd3->setAccRegSel(NOACC);
             t7SrcOpndNeg3->setAccRegSel(NOACC);
             t9SrcOpnd1x0->setAccRegSel(ACC9);
             inst = createInst(NULL, G4_madm, NULL, false, exsize, t11DstOpnd1, t6SrcOpnd3,
                 t7SrcOpndNeg3, t9SrcOpnd1x0, madmInstOpt, line_no);
+
+            if (!hasDefaultRoundDenorm)
+            {
+                G4_DstRegRegion *cr0DstRegOpndForRestoreIfInst = createDstRegRegion(regDstCR0);
+                auto tmpSrcOpndForCR0OnIf = Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar());
+                // restore cr0.0
+                inst = createInst(NULL, G4_mov, NULL, false, 1, cr0DstRegOpndForRestoreIfInst, tmpSrcOpndForCR0OnIf,
+                    NULL, InstOpt_WriteEnable, line_no);
+            }
 
             // madm (4) r8.noacc r9.acc9 r11.acc3 r12.acc2 {Align16, N1/N2}
             t8DstOpnd2->setAccRegSel(NOACC);
@@ -792,18 +806,21 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
                 t11SrcOpnd1, t12SrcOpnd1, madmInstOpt, line_no);
         }
 
+        if (!hasDefaultRoundDenorm)
+        {
+            // else (8) {Q1/Q2}
+            inst = createInst(NULL, G4_else, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
+
+            // restore cr0.0 {NoMask}
+            G4_DstRegRegion *cr0DstRegOpndForRestoreElseInst = createDstRegRegion(regDstCR0);
+            auto tmpSrcOpndForCR0OnElse = Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar());
+            inst = createInst(NULL, G4_mov, NULL, false, 1, cr0DstRegOpndForRestoreElseInst, tmpSrcOpndForCR0OnElse,
+                NULL, InstOpt_WriteEnable, line_no);
+        }
+
         // endif (8) {Q1/Q2}
         inst = createInst(NULL, G4_endif, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
     }; //for loop
-
-    if (!hasDefaultRoundDenorm)
-    {
-        G4_DstRegRegion *cr0DstRegOpndForRestoreIfInst = createDstRegRegion(regDstCR0);
-        auto tmpSrcOpndForCR0OnIf = Create_Src_Opnd_From_Dcl(regCR0, getRegionScalar());
-        // restore cr0.0
-        inst = createInst(NULL, G4_mov, NULL, false, 1, cr0DstRegOpndForRestoreIfInst, tmpSrcOpndForCR0OnIf,
-            NULL, InstOpt_WriteEnable, line_no);
-    }
 
     // make final copy to dst
     // dst = r8:df     mov (instExecSize) dstOpnd, t8_src_opnd_final {Q1/N1}
@@ -1496,6 +1513,13 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     // temporary reg for saving/restoring cr0.0
     G4_Declare *tmpRegCR0 = createTempVarWithNoSpill(1, Type_UD, reg_align, Any);
 
+    // constants
+
+    // r0 = 0.0:df, r1 = 1.0:df, r2(r8) = 0.5:df
+    // NOTE: 'NoMask' is required as constants are required for splitting
+    // parts. Once they are in diverged branches, it won't be properly
+    // initialized without 'NoMask'.
+
     // one GRF
     G4_SrcRegRegion csrc0(Mod_src_undef, Direct, t0->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
     G4_SrcRegRegion csrc1(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
@@ -1504,54 +1528,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     // final result is at r7.noacc
     G4_SrcRegRegion tsrc7_final(Mod_src_undef, Direct, t7->getRegVar(), 0, 0, getRegionStride1(), 
         t7->getElemType());
-
-    if (!hasDefaultRoundDenorm)
-    {
-        // save cr0.0
-        dst0 = Create_Dst_Opnd_From_Dcl(tmpRegCR0, 1);
-        src0 = createSrcRegRegion(regSrcCR0);
-        // mov (1) r108.0<1>:ud cr0.0<0;1,0>:ud {NoMask}
-        inst = createInst(NULL, G4_mov, NULL, false, 1, dst0, src0, NULL, InstOpt_WriteEnable, line_no);
-
-        // set rounding mod in CR0 to RNE
-        dst0 = createDstRegRegion(regDstCR0);
-        src0 = createSrcRegRegion(regSrcCR0);
-        immData = createImm(0xffffffcf, Type_UD);
-        // and (1) cr0.0<0;1,0>:ud cr0.0<0;1,0>:ud 0xffffffcf:ud {NoMask}
-        inst = createInst(NULL, G4_and, NULL, false, 1, dst0, src0, immData, InstOpt_WriteEnable, line_no);
-
-        // set double precision denorm mode to 1
-        dst0 = createDstRegRegion(regDstCR0);
-        src0 = createSrcRegRegion(regSrcCR0);
-        immData = createImm(0x40, Type_UD);
-        // or (1) cr0.0<0;1,0>:ud cr0.0<0;1,0>:ud 0x40:ud {NoMask}
-        inst = createInst(NULL, G4_or, NULL, false, 1, dst0, src0, immData, InstOpt_WriteEnable, line_no);
-    }
-
-    // DF sqrt is simd4 only
-    Common_VISA_EMask_Ctrl mathMask = emask;
-    int mathLoopCount = instExecSize <= 4 ? 1 : 2;
-    for (int regIndex = 0; regIndex < mathLoopCount; ++regIndex, mathMask = Get_Next_EMask(mathMask, 4))
-    {
-        auto mathOpt = Get_Gen4_Emask(mathMask, 4);
-        // math.e0.f0.0 (4) r7.acc2 r6.noacc NULL 0xf {Align16, N1/N2}
-        auto dst = createDstRegRegion(Direct, t7->getRegVar(), regIndex, 0, 1, Type_DF, ACC2);
-        G4_SrcRegRegion fsrc0_math(Mod_src_undef, Direct, src0RR->getBase(), src0RR->asSrcRegRegion()->getRegOff() + regIndex, 0, rdAlign16, Type_DF);
-
-        if (IsSrc0Moved)
-        {
-            // use t6, but need to adjust the offset since unlike the orig source t6 is zero-based.
-            src0 = createSrcRegRegion(Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, rdAlign16, Type_DF, NOACC);
-        }
-        else
-        {
-            src0 = createSrcRegRegion(Mod_src_undef, Direct, src0RR->getBase(), 
-                src0RR->asSrcRegRegion()->getRegOff() + regIndex, 0, rdAlign16, Type_DF, NOACC);
-        }
-        G4_CondMod* condModOverflow = createCondMod(Mod_o, flagReg->getRegVar(), 0);
-        inst = createMathInst(nullptr, false, 4, dst, src0, createNullSrc(Type_DF), MATH_RSQRTM, mathOpt, line_no);
-        inst->setCondMod(condModOverflow);
-    }
 
     // each madm only handles 4 channel double data
     Common_VISA_EMask_Ctrl currEMask = emask;
@@ -1572,6 +1548,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
         // source of inst.
         G4_SrcRegRegion fsrc0_math(Mod_src_undef, Direct, src0RR->getBase(), src0RR->asSrcRegRegion()->getRegOff() + regIndex, 0, rdAlign16, Type_DF);
       
+
         // src : 6, 7, 8, 9, 10, 11
         G4_SrcRegRegion fsrc0(Mod_src_undef, Direct, src0RR->getBase(), src0RR->asSrcRegRegion()->getRegOff() + regIndex, 0, srcRegionDesc, Type_DF);
         G4_SrcRegRegion tsrc6(Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
@@ -1580,6 +1557,48 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
         G4_SrcRegRegion tsrc9(Mod_src_undef, Direct, t9->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
         G4_SrcRegRegion tsrc10(Mod_src_undef, Direct, t10->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
         G4_SrcRegRegion tsrc11(Mod_src_undef, Direct, t11->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+
+        if (!hasDefaultRoundDenorm)
+        {
+            // save cr0.0
+            dst0 = Create_Dst_Opnd_From_Dcl(tmpRegCR0, 1);
+            src0 = createSrcRegRegion(regSrcCR0);
+            // mov (1) r108.0<1>:ud cr0.0<0;1,0>:ud {NoMask}
+            inst = createInst(NULL, G4_mov, NULL, false, 1, dst0, src0, NULL, InstOpt_WriteEnable, line_no);
+        
+
+            // set rounding mod in CR0 to RNE
+            dst0 = createDstRegRegion(regDstCR0);
+            src0 = createSrcRegRegion(regSrcCR0);
+            immData = createImm(0xffffffcf, Type_UD);
+            // and (1) cr0.0<0;1,0>:ud cr0.0<0;1,0>:ud 0xffffffcf:ud {NoMask}
+            inst = createInst(NULL, G4_and, NULL, false, 1, dst0, src0, immData, InstOpt_WriteEnable, line_no);
+        
+
+            // set double precision denorm mode to 1
+            dst0 = createDstRegRegion(regDstCR0);
+            src0 = createSrcRegRegion(regSrcCR0);
+            immData = createImm(0x40, Type_UD);
+            // or (1) cr0.0<0;1,0>:ud cr0.0<0;1,0>:ud 0x40:ud {NoMask}
+            inst = createInst(NULL, G4_or, NULL, false, 1, dst0, src0, immData, InstOpt_WriteEnable, line_no);
+        }
+        
+        // math.e0.f0.0 (4) r7.acc2 r6.noacc NULL 0xf {Align16, N1/N2}
+        dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(ACC2);
+        if (IsSrc0Moved)
+        {
+            // use t6, but need to adjust the offset since unlike the orig source t6 is zero-based.
+            src0 = createSrcRegRegion(Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, rdAlign16, Type_DF);
+        }
+        else
+        {
+            src0 = createSrcRegRegion(fsrc0_math);
+        }
+        src0->setAccRegSel(NOACC);
+        src1 = createNullSrc(Type_DF);
+        G4_CondMod* condModOverflow = createCondMod(Mod_o, flagReg->getRegVar(), 0);
+        inst = createMathInst(NULL, false, exsize, dst0, src0, src1, MATH_RSQRTM, madmInstOpt, line_no);
+        inst->setCondMod(condModOverflow);
 
         // if
         G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
@@ -1699,6 +1718,15 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
             neg_src1->setAccRegSel(src1->getAccRegSel());
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, neg_src1, src2, madmInstOpt, line_no);
 
+            if (!hasDefaultRoundDenorm)
+            {
+                // restore cr0.0
+                dst0 = createDstRegRegion(regDstCR0);
+                src0 = Create_Src_Opnd_From_Dcl(tmpRegCR0, getRegionScalar());
+                // mov (1) cr0.0<0;1,0>:ud r108.0<1>:ud {NoMask}
+                inst = createInst(NULL, G4_mov, NULL, false, 1, dst0, src0, NULL, InstOpt_WriteEnable, line_no);
+            }
+
             // madm (4) r7.noacc r7.acc8 r9.acc3 r8.acc7 {Align16, N1/N2}
             dst0 = createDstRegRegion(tdst7); dst0->setAccRegSel(NOACC);
             src0 = createSrcRegRegion(tsrc7); src0->setAccRegSel(ACC8);
@@ -1707,20 +1735,24 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
             inst = createInst(NULL, G4_madm, NULL, false, exsize, dst0, src0, src1, src2, madmInstOpt, line_no);
 
         }
+
+        
+        if (!hasDefaultRoundDenorm)
+        {
+            // else (8) {Q1/Q2}
+            inst = createInst(NULL, G4_else, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
+
+            // restore cr0.0 {NoMask}
+            dst0 = createDstRegRegion(regDstCR0);
+            src0 = Create_Src_Opnd_From_Dcl(tmpRegCR0, getRegionScalar());
+            // mov (1) cr0.0<0;1,0>:ud r108.0<1>:ud {NoMask}
+            inst = createInst(NULL, G4_mov, NULL, false, 1, dst0, src0, NULL, InstOpt_WriteEnable, line_no);
+        }
+
         // endif (8) {Q1/Q2}
         inst = createInst(NULL, G4_endif, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
         
     };
-
-    //TODO: do we restore before or after final calculation?
-    if (!hasDefaultRoundDenorm)
-    {
-        // restore cr0.0
-        dst0 = createDstRegRegion(regDstCR0);
-        src0 = Create_Src_Opnd_From_Dcl(tmpRegCR0, getRegionScalar());
-        // mov (1) cr0.0<0;1,0>:ud r108.0<1>:ud {NoMask}
-        inst = createInst(NULL, G4_mov, NULL, false, 1, dst0, src0, NULL, InstOpt_WriteEnable, line_no);
-    }
 
     // make final copy to dst
     // src = r7:df
