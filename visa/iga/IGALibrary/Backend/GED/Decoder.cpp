@@ -374,8 +374,6 @@ Instruction *DecoderBase::decodeNextInstruction(Kernel &kernel)
     return inst;
 }
 
-// only indicates that the hazard for a 64b imm overlapping with flagmod
-// exists, caller still has to check that src0 is an imm
 bool DecoderBase::hasImm64Src0Overlap()
 {
     bool imm64Src0Overlap = false;

@@ -188,6 +188,7 @@ namespace iga
 
         // opcode, math function control, and branch control
         Op                 getOp()             const { return m_opSpec.op; }
+        Op                 getGroupOp()        const { return m_opSpec.groupOp; }
         BranchCntrl        getBranchCtrl()     const { return m_brnch; }
         // true for madm or math.invm and math.rsqrtm
         bool               isMacro()           const{ return getOpSpec().isMacro(); }
