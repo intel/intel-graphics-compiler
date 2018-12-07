@@ -1,6 +1,5 @@
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
-
 set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/AddImplicitArgs.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/customApi.cpp"
@@ -9,6 +8,7 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/ProcessFuncAttributes.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/TypesLegalizationPass.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/IRUpgrader/UpgraderResourceAccess.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/AddCopyIntrinsic.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/LoadBuffer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/Patch/patch_parser.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/Platform/cmd_media_caps_g8.cpp"
@@ -44,7 +44,7 @@ endif(IGC_BUILD__SPIRV_ENABLED)
 
 
 if(LLVM_ON_WIN32)
-  set(IGC_BUILD__SRC_Win__DriverInterface            
+  set(IGC_BUILD__SRC_Win__DriverInterface
 
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/sp_debug.cpp"
     )
@@ -55,7 +55,7 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/SurfaceFormats.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/ShaderTypesEnum.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/IRUpgrader/IRUpgrader.hpp"
-
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/AddCopyIntrinsic.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/KernelAnnotations.hpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/CommandStream/SamplerTypes.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/CommandStream/SurfaceTypes.h"
