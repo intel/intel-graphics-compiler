@@ -3534,7 +3534,8 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
 
     auto enableScheduler = [=]() {
         // Check if preRA scheduler is disabled from input.
-        if (context->getModuleMetaData()->csInfo.forcedVISAPreRASchedulerOff)
+        if (context->getModuleMetaData()->csInfo.forcedVISAPreRASchedulerOff ||
+            isOptDisabled)
             return false;
         if (context->type == ShaderType::OPENCL_SHADER) {
             auto ClContext = static_cast<OpenCLProgramContext*>(context);
