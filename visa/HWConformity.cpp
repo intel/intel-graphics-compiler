@@ -711,7 +711,7 @@ bool HWConformity::hasSameSubregOffset(G4_INST* inst) const
 void HWConformity::fixImmAndARFSrc(INST_LIST_ITER it, G4_BB *bb)
 {
     G4_INST* inst = *it;
-    if (inst->isSend())
+    if (inst->mayExceedTwoGRF())
     {
         return;
     }
@@ -974,8 +974,7 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB *bb)
     bool has_float = false;
     bool has_int = false;
 
-    bool toSkip = (inst->isSend());
-    if (toSkip)
+    if (inst->mayExceedTwoGRF())
     {
         return false;
     }
@@ -1216,7 +1215,7 @@ void HWConformity::fixAlign13SrcInst(INST_LIST_ITER iter, G4_BB* bb)
 void HWConformity::fix3SrcInst(INST_LIST_ITER iter, G4_BB* bb)
 {
     G4_INST* inst = *iter;
-    if (inst->getNumSrc() != 3 || inst->isSend() || inst->opcode() == G4_madm)
+    if (inst->getNumSrc() != 3 || inst->mayExceedTwoGRF() || inst->opcode() == G4_madm)
     {
         return;
     }
@@ -2873,7 +2872,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
     bool isDWMultiply = false;
     uint8_t execSize = inst->getExecSize();
 
-    if (inst->isSend())
+    if (inst->mayExceedTwoGRF())
     {
         return;
     }
@@ -6643,7 +6642,7 @@ bool HWConformity::markPackedByteReference(G4_Kernel& kernel, G4_Operand* opnd, 
         topdcl->getRegFile() == G4_GRF &&
         !(topdcl->getAddressed()))
     {
-        if (topdcl->doNotWiden() || inst->isSend())
+        if (topdcl->doNotWiden() || inst->mayExceedTwoGRF())
         {
             //send has no regioning so it is certainly illegal to change data layout
             setAccessPattern(topdcl, ACCESS_PATTERN_INVALID);
@@ -7325,7 +7324,7 @@ void HWConformity::fixMixedHFInst( BB_LIST_ITER it )
     {
         G4_INST *inst = *instIter;
 
-        if (inst->isSend())
+        if (inst->mayExceedTwoGRF())
         {
             continue;
         }

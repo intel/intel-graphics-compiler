@@ -377,8 +377,8 @@ bool LiveNode::alignedWithChannelMask(
         return DefOffset == UseOffset;
     }
 
-    // Do not analyze sends.
-    if (DefInst->isSend() || UseInst->isSend())
+    // Do not analyze instructions that may exceed two GRF boundary
+    if (DefInst->mayExceedTwoGRF() || UseInst->mayExceedTwoGRF())
         return true;
 
     // Check that all uses are defined under the righ emask, if defined.

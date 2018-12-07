@@ -3542,7 +3542,7 @@ void G4_INST::emitDefUse(std::ostream& output)
 bool G4_INST::isMixedMode() const
 {
     bool mixedMode = false;
-	if (isSend())
+	if (mayExceedTwoGRF())
 	{
 		return false;
 	}
@@ -7401,7 +7401,7 @@ bool G4_INST::supportsNullDst() const
 
 bool G4_INST::isAlign1Ternary() const
 {
-    return builder.hasAlign1Ternary() && getNumSrc() == 3 && !isSend();
+    return builder.hasAlign1Ternary() && getNumSrc() == 3 && !mayExceedTwoGRF();
 }
 
 // Detect packed low-precision instruction. This is used by the scheduler.

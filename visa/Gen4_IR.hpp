@@ -789,6 +789,11 @@ public:
         return op == G4_pseudo_and || op == G4_pseudo_or || op == G4_pseudo_xor || op == G4_pseudo_not;
     }
 
+    virtual bool mayExceedTwoGRF() const
+    {
+        return isSend();
+    }
+
     // restrictions on whether a send may be EOT:
     // -- The posted destination operand must be null
     // -- A thread must terminate with a send instruction with message to a shared function on the output message bus;
