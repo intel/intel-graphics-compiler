@@ -1231,6 +1231,10 @@ void SendFusion::doFusion(
 		}
 
         // Delete I0 and I1 and updating defuse info
+        I0->removeAllUses();
+        I0->removeAllDefs();
+        I1->removeAllUses();
+        I1->removeAllDefs();
         CurrBB->erase(IT0);
         CurrBB->erase(IT1);
         return;
