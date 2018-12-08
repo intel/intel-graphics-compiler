@@ -62,6 +62,8 @@ namespace TC
 
         unsigned int GetLoopUnrollThreshold() const override { return  1280; }
         bool Enable64BitEmu() const override { return true; }
+
+        bool NeedIEEESPDiv() const override { return true; }
     };
 
     // In case some cpas are specific to NEO

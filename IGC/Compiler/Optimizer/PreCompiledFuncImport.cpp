@@ -338,9 +338,11 @@ bool PreCompiledFuncImport::preProcessDouble()
     return (toBeDeleted.size() > 0);
 }
 
-inline bool isInt32DivRemEmulationFunction(Function* func)
+inline bool isPrecompiledEmulationFunction(Function* func)
 {
-    return func->getName().contains("precompiled_s32divrem") || func->getName().contains("precompiled_u32divrem");
+    return func->getName().contains("precompiled_s32divrem") ||
+    func->getName().contains("precompiled_u32divrem") ||
+    func->getName().contains("__igcbuiltin_sp_div");
 }
 
 bool PreCompiledFuncImport::runOnModule(Module &M)
@@ -467,7 +469,7 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
             // is set, do not inline any of them.
 			if (m_enableSubroutineCallForEmulation &&
                 (IGC_IS_FLAG_ENABLED(ForceSubroutineForEmulation) ||
-				 (Func->hasNUsesOrMore(4) && !isDPConvFunc(Func) && !isInt32DivRemEmulationFunction(Func))))
+				 (Func->hasNUsesOrMore(4) && !isDPConvFunc(Func) && !isPrecompiledEmulationFunction(Func))))
 			{
 				Func->addFnAttr(llvm::Attribute::NoInline);
 			}
@@ -885,6 +887,8 @@ Function* PreCompiledFuncImport::getOrCreateFunction(FunctionIDs FID)
 	case FUNCTION_SP_DIV:
 		argTypes.push_back(spTy);
 		argTypes.push_back(spTy);
+        argTypes.push_back(intTy);
+        argTypes.push_back(intTy);
 		retTy = spTy;
 		break;
 
@@ -1228,9 +1232,15 @@ void PreCompiledFuncImport::visitCallInst(llvm::CallInst& I)
 		GII && GII->getIntrinsicID() == GenISAIntrinsic::GenISA_IEEE_Divide)
 	{
 		Function *newFunc = getOrCreateFunction(FUNCTION_SP_DIV);
-		Value* args[2];
+		Value* args[4];
 		args[0] = I.getOperand(0);
 		args[1] = I.getOperand(1);
+
+        auto pMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        int ftz = (m_pCtx->m_floatDenormMode32 == FLOAT_DENORM_FLUSH_TO_ZERO) ? 1 : 0;
+        int daz = (pMD->compOpt.DenormsAreZero) ? 1 : 0;
+        args[2] = ConstantInt::get(Type::getInt32Ty(I.getContext()), ftz);
+        args[3] = ConstantInt::get(Type::getInt32Ty(I.getContext()), daz);
 
 		Instruction* newVal = CallInst::Create(newFunc, args, I.getName(), &I);
 		newVal->setDebugLoc(I.getDebugLoc());
