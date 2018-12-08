@@ -1348,12 +1348,20 @@ void ConstantCoalescing::AdjustChunk( BufChunk *cov_chunk, uint start_adj, uint 
             }
             else
             {
-                Value *eac = cast<Instruction>(addr_ptr)->getOperand(0);
-                assert(isa<Instruction>(eac));
-                assert(cast<Instruction>(eac)->getOpcode() == Instruction::Add ||
-                    cast<Instruction>(eac)->getOpcode() == Instruction::Or);
-                Value *cv_start = ConstantInt::get(irBuilder->getInt32Ty(), cov_chunk->chunkStart << 2);
-                cast<Instruction>(eac)->setOperand(1, cv_start);
+                Value *op = cast<Instruction>(addr_ptr)->getOperand(0);
+                assert(isa<Instruction>(op));
+                Instruction* eac = cast<Instruction>(op);
+                assert(eac->getOpcode() == Instruction::Add ||
+                    eac->getOpcode() == Instruction::Or);
+                ConstantInt *cv_start = ConstantInt::get(irBuilder->getInt32Ty(), cov_chunk->chunkStart << 2);
+                if (cv_start->isZero())
+                {
+                    cast<Instruction>(addr_ptr)->setOperand(0, eac->getOperand(0));
+                }
+                else
+                {
+                    eac->setOperand(1, cv_start);
+                }
             }
         }
     }
