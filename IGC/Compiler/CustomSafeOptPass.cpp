@@ -2819,6 +2819,7 @@ bool LogicalAndToBranch::runOnFunction(Function& F)
                 Instruction* s0 = dyn_cast<Instruction>(inst->getOperand(0));
                 Instruction* s1 = dyn_cast<Instruction>(inst->getOperand(1));
                 if (s0 && s1 &&
+                    !isa<PHINode>(s0) && !isa<PHINode>(s1) &&
                     s0->getNumUses() == 1 && s1->getNumUses() == 1 &&
                     s0->getParent() == bb && s1->getParent() == bb)
                 {
