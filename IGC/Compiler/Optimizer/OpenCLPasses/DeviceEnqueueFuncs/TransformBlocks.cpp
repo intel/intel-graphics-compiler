@@ -64,6 +64,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <algorithm>
 #include <map>
+#include <unordered_set>
 
 using namespace llvm;
 using namespace IGC;
@@ -1431,15 +1432,19 @@ namespace //Anonymous
                 do
                 {
                     inlined = false;
-                    std::vector<llvm::User*> users(func.user_begin(), func.user_end());
-                    for (auto user : users)
-                    {
-                        //for each call to enqueue_kernel
-                        if (auto callInst = dyn_cast<llvm::CallInst>(user))
-                        {
-                            //try to inline the caller
-                            inlined = InlineToParents(callInst->getParent()->getParent(), dataContext) || inlined;
+                    std::unordered_set<llvm::Function*> functionsToInline;;
+
+                    for (auto user : func.users()) {
+                        if (auto callInst = dyn_cast<llvm::CallInst>(user)) {
+                            //for each call to enqueue_kernel
+                            functionsToInline.insert(callInst->getParent()->getParent());
                         }
+                    }
+
+                    for (auto func : functionsToInline)
+                    {
+                        //try to inline the caller
+                        inlined = InlineToParents(func, dataContext) || inlined;
                     }
                     changed = inlined || changed;
 
