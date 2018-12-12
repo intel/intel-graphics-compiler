@@ -47,7 +47,8 @@ static std::string disassembleInst(
     Platform platform,
     bool useNativeDecoder,
     size_t fromPc,
-    const void *bits)
+    const void *bits
+)
 {
     ErrorHandler eh;
     std::stringstream ss;
@@ -55,7 +56,6 @@ static std::string disassembleInst(
     fopts.numericLabels = true;
     // fopts.hexFloats = opts.printHexFloats;
     fopts.hexFloats = false;
-
     FormatInstruction(eh, ss, fopts, fromPc, bits, useNativeDecoder);
 
     return ss.str();

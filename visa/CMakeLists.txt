@@ -95,8 +95,8 @@ else()
     # In gfx_Development depo, GNUTools is in media/cmrtlib/proprietary
     if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../GNUTools)
       set(GNUTOOLS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../GNUTools)
-    elseif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../media/cmrtlib/proprietary/GNUTools)
-      set(GNUTOOLS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../media/cmrtlib/proprietary/GNUTools)
+    elseif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../../../media/cmrtlib/GNUTools)
+      set(GNUTOOLS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../media/cmrtlib/GNUTools)
     else ()
       message( FATAL_ERROR "No GNUTools folder found.")
     endif ()
@@ -358,7 +358,9 @@ if (UNIX OR WIN32)
   bs_set_wdk(GenX_IR_Exe)
   endif()
   
-  install(TARGETS GenX_IR_Exe DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/bin COMPONENT igc-media)
+  if(UNIX)
+    install(TARGETS GenX_IR_Exe DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/bin COMPONENT igc-media)
+  endif(UNIX)
 
   # Copy executable
   if (NOT IGC_BUILD)

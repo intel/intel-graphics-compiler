@@ -114,6 +114,9 @@ spv_ext_inst_type_t spvExtInstImportTypeGet(const char* name) {
   if (!strcmp("DebugInfo", name)) {
     return SPV_EXT_INST_TYPE_DEBUGINFO;
   }
+  if (!strcmp("SPIRV.debug", name)) {
+      return SPV_EXT_INST_TYPE_DEBUGINFO;
+  }
   return SPV_EXT_INST_TYPE_NONE;
 }
 

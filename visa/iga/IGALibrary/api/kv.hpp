@@ -76,7 +76,8 @@ public:
             bytesLength,
             &m_disasm_status,
             decodeLog,
-            decodeLogLen);
+            decodeLogLen
+            );
     }
 
 
@@ -237,7 +238,8 @@ public:
             sBuf,
             sBufCapacity,
             labeler,
-            env);
+            env
+        );
     }
 
 

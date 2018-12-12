@@ -821,6 +821,51 @@ namespace spv {
         bool inlinedAtPresent() { return getNumArgs() > SPIRVDebug::Operand::InlinedAt::MinOperandCount; }
         SPIRVId getInlinedAt() { return arg<SPIRVId>(SPIRVDebug::Operand::InlinedAt::InlinedIdx); }
     };
-}
 
+    class OpDebugTypeTemplate : OpDebugInfoBase
+    {
+    public:
+        OpDebugTypeTemplate(SPIRVExtInst* extInst) : OpDebugInfoBase(extInst) {}
+        SPIRVId getTarget() { return arg<SPIRVId>(SPIRVDebug::Operand::Template::TargetIdx); }
+        SPIRVId getParm(unsigned int i) { return arg<SPIRVId>(i+SPIRVDebug::Operand::Template::FirstParameterIdx); }
+        unsigned int getNumParms() { return (getNumArgs() - SPIRVDebug::Operand::Template::FirstParameterIdx); }
+    };
+
+    class OpDebugTypeTemplateParm : OpDebugInfoBase
+    {
+    public:
+        OpDebugTypeTemplateParm(SPIRVExtInst* extInst) : OpDebugInfoBase(extInst) {}
+        SPIRVString* getName() { return str(SPIRVDebug::Operand::TemplateParameter::NameIdx); }
+        SPIRVId getActualType() { return arg<SPIRVId>(SPIRVDebug::Operand::TemplateParameter::TypeIdx); }
+        bool hasValue() { return const_val(SPIRVDebug::Operand::TemplateParameter::ValueIdx) != (uint64_t)-1; }
+        uint64_t getValue() { return const_val(SPIRVDebug::Operand::TemplateParameter::ValueIdx); }
+        SPIRVId getSource() { return arg<SPIRVId>(SPIRVDebug::Operand::TemplateParameter::SourceIdx); }
+        SPIRVWord getLine() { return arg<SPIRVWord>(SPIRVDebug::Operand::TemplateParameter::LineIdx); }
+        SPIRVWord getColumn() { return arg<SPIRVWord>(SPIRVDebug::Operand::TemplateParameter::ColumnIdx); }
+    };
+
+    class OpDebugTypeTemplateParmPack : OpDebugInfoBase
+    {
+    public:
+        OpDebugTypeTemplateParmPack(SPIRVExtInst* extInst) : OpDebugInfoBase(extInst) {}
+        SPIRVString* getName() { return str(SPIRVDebug::Operand::TemplateParameterPack::NameIdx); }
+        SPIRVId getSource() { return arg<SPIRVId>(SPIRVDebug::Operand::TemplateParameterPack::SourceIdx); }
+        SPIRVWord getLine() { return arg<SPIRVWord>(SPIRVDebug::Operand::TemplateParameterPack::LineIdx); }
+        SPIRVWord getColumn() { return arg<SPIRVWord>(SPIRVDebug::Operand::TemplateParameterPack::ColumnIdx); }
+        SPIRVId getParm(unsigned int i) { return arg<SPIRVId>(i + SPIRVDebug::Operand::TemplateParameterPack::FirstParameterIdx); }
+        unsigned int getNumParms() { return (getNumArgs() - SPIRVDebug::Operand::TemplateParameterPack::FirstParameterIdx); }
+
+    };
+
+    class OpDebugTypeTemplateTemplateParm : OpDebugInfoBase
+    {
+    public:
+        OpDebugTypeTemplateTemplateParm(SPIRVExtInst* extInst) : OpDebugInfoBase(extInst) {}
+        SPIRVString* getName() { return str(SPIRVDebug::Operand::TemplateTemplateParameter::NameIdx); }
+        SPIRVString* getTemplateName() { return str(SPIRVDebug::Operand::TemplateTemplateParameter::TemplateNameIdx); }
+        SPIRVId getSource() { return arg<SPIRVId>(SPIRVDebug::Operand::TemplateTemplateParameter::SourceIdx); }
+        SPIRVWord getLine() { return arg<SPIRVWord>(SPIRVDebug::Operand::TemplateTemplateParameter::LineIdx); }
+        SPIRVWord getColumn() { return arg<SPIRVWord>(SPIRVDebug::Operand::TemplateTemplateParameter::ColumnIdx); }
+    };
+}
 #endif

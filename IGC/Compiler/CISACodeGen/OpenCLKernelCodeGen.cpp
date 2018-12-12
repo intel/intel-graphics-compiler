@@ -1982,10 +1982,10 @@ bool COpenCLKernel::hasReadWriteImage(llvm::Function &F)
 
 bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)
 {
-    //If the driver has forced a specific SIMD mode, then:
-    // 1. compile only that SIMD mode and nothing else
-    // 2. Compille that SIMD mode even if it is not profitable, i.e. even if compileThisSIMD = false for it.
-    //    Don't bother checking profitability for it  
+    //If forced SIMD Mode (by driver or regkey), then:
+    // 1. Compile only that SIMD mode and nothing else
+    // 2. Compile that SIMD mode even if it is not profitable, i.e. even if compileThisSIMD() returns false for it.
+    //    So, don't bother checking profitability for it
     if (m_Context->getModuleMetaData()->csInfo.forcedSIMDSize != 0)
     {
         //Entered here means driver has requested a specific SIMD mode
@@ -1999,9 +1999,8 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
         return false;
     }
 
-    bool compileThisSIMD = CompileThisSIMD(simdMode, EP, F);
-    CodeGenContext *pCtx = GetContext();
-    
+    // Code reaching here means - nothing is forced. 
+    bool compileThisSIMD = CompileThisSIMD(simdMode, EP, F);    
     SIMDMode origSIMDMode = m_Context->getDefaultSIMDMode();
 
     //if compilation SIMD mode is true then we are guaranteed to compile this mode.
@@ -2023,42 +2022,43 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
         if (simdMode == SIMDMode::SIMD8 && m_Context->getDefaultSIMDMode() == SIMDMode::BEGIN)
             m_Context->setDefaultSIMDMode(simdMode);
 
-        if(m_Context->m_DriverInfo.sendMultipleSIMDModes() && (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)) {
+        if(m_Context->m_DriverInfo.sendMultipleSIMDModes()) 
+        {
             compileThisSIMD = true; //in this case continue to compile unless below condition is observed
         }
     }
     
     //check if we want to proceed further based on whether any existing shader has spilled
     //we also want to make sure there is another retry that will be attempted
-    //Note for this check to work the order must he ascending. Becuase in descending
-    //order that is simd32 -> simd16--> simd8 we still have chance that one of hte lower
+    //Note for this check to work the order must he ascending. Because in descending
+    //order that is simd32 -> simd16--> simd8 we still have chance that one of the lower
     //simd modes will compile.
-    if (compileThisSIMD && m_Context->m_DriverInfo.sendMultipleSIMDModes() && (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)) {
-        //Here are some of the assumptions
+    if (compileThisSIMD && m_Context->m_DriverInfo.sendMultipleSIMDModes()) 
+    {
+        //Here are the assumptions
         //1. if m_Context->m_DriverInfo.sendMultipleSIMDModes() is true that means the order is always ascending.
         //   This will be cleaned up as a separate interface in CodeGen for compute path.
         //2. origSIMDMode will always have a valid value 8, 16 or 32
         //3. For SIMD8 VISA always returns a shader, and if it has spill GetLastSpillSize will be set
         //4. For SIM16 if ForceOCLSIMDWidth is set to 16  then VISA will compile without abort, hence
         //   we need to evaluate LastSpillSize
-        if(origSIMDMode  ==  SIMDMode::SIMD8 && m_Context->m_retryManager.GetLastSpillSize())
+        if(origSIMDMode == SIMDMode::SIMD8 && m_Context->m_retryManager.GetLastSpillSize())
         {
-            //if any one of these are set, we need to try compiling SIMD
-           if ((simdMode == SIMDMode::SIMD32 && pCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 32) ||
-               (simdMode == SIMDMode::SIMD16 && pCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 16))
+           //If SIMD8 compiled and spilled, then don't compile 16 and 32
+           if ((simdMode == SIMDMode::SIMD32) || (simdMode == SIMDMode::SIMD16))
            {
                compileThisSIMD = false;
            }
         }
-        else if(simdMode == SIMDMode::SIMD32 && pCtx->getModuleMetaData()->csInfo.forcedSIMDSize != 32) {
-            //SIMD32 if not forced must see if SIMD16 has been generated without force or without spill
+        else if(simdMode == SIMDMode::SIMD32) 
+        {
+            //Compile SIMD32 iff SIMD16 compiled, and it compiled without spill
             auto simd16Shader = m_parent->GetShader(SIMDMode::SIMD16);
             bool hasSIMD16 = simd16Shader && simd16Shader->ProgramOutput()->m_programSize > 0;
-            if(!hasSIMD16 ||
-               (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 16 && m_Context->m_retryManager.GetLastSpillSize()))
-           {
-                compileThisSIMD = false;
-           }
+            if(!hasSIMD16 || (m_Context->m_retryManager.GetLastSpillSize()))
+            {
+                compileThisSIMD = false; //Don't compile SIMD32 since SIMD16 had spilled
+            }
         }
         if(!compileThisSIMD)
             m_Context->setDefaultSIMDMode(origSIMDMode);

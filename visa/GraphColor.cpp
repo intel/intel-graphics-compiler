@@ -930,7 +930,11 @@ void BankConflictPass::setupBankConflictsforTwoGRFs(G4_INST* inst)
 }
 
 
-void BankConflictPass::setupBankConflictsForBB(G4_BB* bb, unsigned int &threeSourceInstNum, unsigned int &sendInstNum, unsigned int numRegLRA, unsigned int & internalConflict)
+void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
+    unsigned int &threeSourceInstNum,
+    unsigned int &sendInstNum,
+    unsigned int numRegLRA,
+    unsigned int & internalConflict)
 {
     int bank1RegNum = 0;
     int bank2RegNum = 0;
@@ -1039,7 +1043,8 @@ bool BankConflictPass::setupBankConflictsForKernel(G4_Kernel& kernel, bool doLoc
         G4_BB* bb = (*it);
         unsigned int loopNestLevel = 0;
 
-        setupBankConflictsForBB(bb, threeSourceInstNum, sendInstNum, numRegLRA, conflicts);
+        setupBankConflictsForBB(bb, threeSourceInstNum, sendInstNum,
+        	                                    numRegLRA, conflicts);
         loopNestLevel = bb->getNestLevel() + 1;
 
         if (threeSourceInstNum)
@@ -1078,7 +1083,8 @@ bool BankConflictPass::setupBankConflictsForKernel(G4_Kernel& kernel, bool doLoc
 
     if (doLocalRR && sendInstNumInKernel)
     {
-        if (sendInstNumInKernel > threeSourceInstNumInKernel)
+        if (
+            (sendInstNumInKernel > threeSourceInstNumInKernel))
         {
             return false;
         }

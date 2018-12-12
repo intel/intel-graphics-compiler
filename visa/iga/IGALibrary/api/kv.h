@@ -95,7 +95,8 @@ IGA_API kv_t *kv_create(
     size_t bytes_len,
     iga_status_t *status,
     char *errbuf,
-    size_t errbuf_cap);
+    size_t errbuf_cap
+    );
 
 /* destroys a kernel view */
 IGA_API void kv_delete(kv_t *);
@@ -151,7 +152,8 @@ IGA_API size_t kv_get_inst_syntax(
     char *sbuf,
     size_t sbuf_cap,
     const char *(*get_label_name)(int32_t, void *),
-    void *env);
+    void *env
+);
 
 /*
  * This function returns the default label name if custom labeler is not used.

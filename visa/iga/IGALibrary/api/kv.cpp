@@ -59,7 +59,8 @@ public:
     KernelViewImpl(
         iga::Platform platf,
         const void *bytes,
-        size_t bytesLength)
+        size_t bytesLength
+    )
         : m_model(*iga::Model::LookupModel(platf))
         , m_kernel(nullptr)
 
@@ -112,7 +113,8 @@ kv_t *kv_create(
     size_t bytes_len,
     iga_status_t *status,
     char *errbuf,
-    size_t errbuf_cap)
+    size_t errbuf_cap
+)
 {
     if (errbuf && errbuf_cap > 0)
         *errbuf = 0;
@@ -129,7 +131,8 @@ kv_t *kv_create(
 
     KernelViewImpl *kvImpl = nullptr;
     try {
-        kvImpl = new (std::nothrow)KernelViewImpl(p, bytes, bytes_len);
+        kvImpl = new (std::nothrow)KernelViewImpl(p, bytes, bytes_len
+        );
         if (!kvImpl) {
             if (errbuf)
                 formatTo(errbuf, errbuf_cap, "%s", "failed to allocate");
@@ -253,7 +256,8 @@ size_t kv_get_inst_syntax(
     char *sbuf,
     size_t sbuf_cap,
     const char *(*labeler)(int32_t, void *),
-    void *labeler_env)
+    void *labeler_env
+)
 {
     if (!kv) {
         if (sbuf && sbuf_cap > 0)

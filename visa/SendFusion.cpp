@@ -284,14 +284,6 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
 		return false;
 	}
 
-    // If rspLen > 1, skip.
-    // Reason for doing this is that seeing more mov instructions as untype is
-    // fused. Hopefully this will not cause any perf regression. If so, need
-    // to improve copy propagation.
-    if (rspLen > 1) {
-        return false;
-    }
-
     // Unless we can prove there are no aliases of two sends, we will not be
     // able to do fusion (or we know for sure that the first addr's value or
     // last addr's value is taken). For now, disable it.

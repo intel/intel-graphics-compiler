@@ -60,8 +60,8 @@ namespace vISA
         void setupBankConflictsOneGRFOld(G4_INST* inst, int &bank1RegNum, int &bank2RegNum, float GRFRatio, unsigned int &internalConflict);
 
         void setupBankConflictsforTwoGRFs(G4_INST* inst);
-        void setupBankConflictsForBB(G4_BB* bb, unsigned int &threeSourceInstNum, unsigned int &sendInstNum, unsigned int numRegLRA,
-            unsigned int & internalConflict);
+        void setupBankConflictsForBB(G4_BB* bb, unsigned int &threeSourceInstNum, unsigned int &sendInstNum,
+        unsigned int numRegLRA, unsigned int & internalConflict);
         bool hasInternalConflict3Srcs(BankConflict *srcBC);
         void setupBankForSrc0(G4_INST* inst, G4_INST* prevInst);
         void setupToEvenBank(G4_INST* inst);

@@ -371,7 +371,8 @@ public:
     FormatOpts formatterOpts(
         const iga_disassemble_options_t &dopts,
         const char *(*formatLabel)(int32_t, void *),
-        void *formatLabelEnv)
+        void *formatLabelEnv
+    )
     {
         FormatOpts fopts(
             m_model.platform,

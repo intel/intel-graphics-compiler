@@ -423,6 +423,9 @@ public:
       auto flagRaw = compositeType.getFlags();
       auto scope = createScope(BM->get<SPIRVExtInst>(compositeType.getParent()));
 
+      if (!scope)
+          scope = cu;
+
 #if 0
       // SPIRV spec has single parent field whereas LLVM DIBuilder API requires Scope as well as DerivedFrom.
       // What is expected behavior?
@@ -440,6 +443,26 @@ public:
           from = createCompositeType(parentInst);
 #endif
 
+      DIType* derivedFrom = nullptr;
+      DICompositeType* newNode = nullptr;
+      if (tag == SPIRVDebug::CompositeTypeTag::Structure)
+      {
+          newNode = addMDNode(inst, Builder.createStructType(scope, name, 
+              file, line, size, 0, (llvm::DINode::DIFlags)flagRaw, 
+              derivedFrom, DINodeArray()));
+      }
+      else if (tag == SPIRVDebug::CompositeTypeTag::Union)
+      {
+          newNode = addMDNode(inst, Builder.createUnionType(scope, name, file,
+              line, size, 0, (llvm::DINode::DIFlags)flagRaw, DINodeArray()));
+      }
+      else if (tag == SPIRVDebug::CompositeTypeTag::Class)
+      {
+          newNode = addMDNode(inst, Builder.createClassType(scope, name, 
+              file, line, size, 0, 0, (llvm::DINode::DIFlags)flagRaw, 
+              derivedFrom, DINodeArray()));
+      }
+
       SmallVector<Metadata*, 6> elements;
       for (unsigned int i = 0; i != compositeType.getNumItems(); i++)
       {
@@ -449,19 +472,20 @@ public:
               auto md = createMember(member);
               elements.push_back(md);
           }
-      }
-      auto nodeArray = Builder.getOrCreateArray(llvm::makeArrayRef(elements));
-
-      if (tag == SPIRVDebug::CompositeTypeTag::Structure)
-      {
-          return addMDNode(inst, Builder.createStructType(scope, name, file, line, size, 0, (llvm::DINode::DIFlags)flagRaw, nullptr, nodeArray));
-      }
-      else if (tag == SPIRVDebug::CompositeTypeTag::Union)
-      {
-          return addMDNode(inst, Builder.createUnionType(scope, name, file, line, size, 0, (llvm::DINode::DIFlags)flagRaw, nodeArray));
+          else if (member->getExtOp() == OCLExtOpDbgKind::TypeInheritance)
+          {
+              elements.push_back(createTypeInherit(member));
+          }
+          else if (member->getExtOp() == OCLExtOpDbgKind::FuncDecl)
+          {
+              elements.push_back(createFunctionDecl(member));
+          }
       }
 
-      return nullptr;
+      DINodeArray Elements = Builder.getOrCreateArray(elements);
+      Builder.replaceArrays(newNode, Elements);
+
+      return newNode;
   }
 
   DIType* createTypeInherit(SPIRVExtInst* inst)
@@ -491,6 +515,84 @@ public:
       auto size = M->getDataLayout().getPointerSizeInBits();
 
       return addMDNode(inst, Builder.createMemberPointerType(pointee, Class, size));
+  }
+
+  DITemplateParameter* createTemplateParm(SPIRVExtInst* inst)
+  {
+      if (auto n = getExistingNode<DITemplateParameter*>(inst))
+          return n;
+
+      auto templateOp = inst->getExtOp();
+
+      if (templateOp == OCLExtOpDbgKind::TypeTemplateParameter)
+      {
+          OpDebugTypeTemplateParm parm(inst);
+          auto actualType = createType(BM->get<SPIRVExtInst>(parm.getActualType()));
+          if (!parm.hasValue())
+          {
+              return addMDNode(inst, Builder.createTemplateTypeParameter(cu, parm.getName()->getStr(),
+                  actualType));
+          }
+          else
+          {
+              auto val = parm.getValue();
+              auto constant = ConstantInt::get(Type::getInt64Ty(M->getContext()), val);
+              return addMDNode(inst, Builder.createTemplateValueParameter(cu, parm.getName()->getStr(),
+                  actualType, constant));
+          }
+      }
+      else if (templateOp == OCLExtOpDbgKind::TypeTemplateTemplateParameter)
+      {
+          OpDebugTypeTemplateParmPack parmPack(inst);
+          auto& name = parmPack.getName()->getStr();
+          SmallVector<llvm::Metadata *, 8> Elts;
+          for (unsigned int i = 0; i != parmPack.getNumParms(); i++) {
+              Elts.push_back(createTemplateParm(BM->get<SPIRVExtInst>(parmPack.getParm(i))));
+          }
+          DINodeArray pack = Builder.getOrCreateArray(Elts);
+
+          return addMDNode(inst, Builder.createTemplateParameterPack(cu, name, nullptr, pack));
+      }
+      else if (templateOp == OCLExtOpDbgKind::TypeTemplateParameterPack)
+      {
+          OpDebugTypeTemplateTemplateParm tempTempParm(inst);
+          auto& name = tempTempParm.getName()->getStr();
+          auto& templName = tempTempParm.getTemplateName()->getStr();
+          return addMDNode(inst, Builder.createTemplateTemplateParameter(cu, name, nullptr, templName));
+      }
+      return nullptr;
+  }
+
+  MDNode* createTypeTemplate(SPIRVExtInst* inst)
+  {
+      if (auto n = getExistingNode<DITemplateParameter*>(inst))
+          return n;
+
+      OpDebugTypeTemplate typeTemplate(inst);
+
+      auto target = createType(BM->get<SPIRVExtInst>(typeTemplate.getTarget()));
+      SmallVector<llvm::Metadata *, 8> Elts;
+      for (unsigned int i = 0; i != typeTemplate.getNumParms(); i++)
+      {
+          auto parm = BM->get<SPIRVExtInst>(typeTemplate.getParm(i));
+          
+          Elts.push_back(createTemplateParm(parm));
+      }
+      DINodeArray TParams = Builder.getOrCreateArray(Elts);
+
+      if (DICompositeType *Comp = dyn_cast<DICompositeType>(target)) {
+          Builder.replaceArrays(Comp, Comp->getElements(), TParams);
+          return Comp;
+      }
+      if (isa<DISubprogram>(target)) {
+          // This constant matches with one used in
+          // DISubprogram::getRawTemplateParams()
+          const unsigned TemplateParamsIndex = 9;
+          target->replaceOperandWith(TemplateParamsIndex, TParams.get());
+          return target;
+      }
+
+      return nullptr;
   }
 
   DIType* createType(SPIRVExtInst* type)
@@ -526,6 +628,12 @@ public:
           return createTypeInherit(type);
       case OCLExtOpDbgKind::TypePtrToMember:
           return createPtrToMember(type);
+      case OCLExtOpDbgKind::TypeFunction:
+          return createSubroutineType(type);
+      case OCLExtOpDbgKind::TypeTemplate:
+          return (DIType*)createTypeTemplate(type);
+      case OCLExtOpDbgKind::Function:
+          return (DIType*)createFunction(type);
       default:
           break;
       }
@@ -564,7 +672,17 @@ public:
       auto line = funcDcl.getLine();
       auto type = createSubroutineType(BM->get<SPIRVExtInst>(funcDcl.getType()));
 
-      return addMDNode(inst, Builder.createTempFunctionFwdDecl(scope, name, linkageName, file, (unsigned int)line, type, true, true, (unsigned int)line));
+      if (isa<DICompositeType>(scope) || isa<DINamespace>(scope))
+          return addMDNode(inst, Builder.createMethod(scope, name, linkageName, file, line, type,
+              true, true));
+      else
+        return addMDNode(inst, Builder.createTempFunctionFwdDecl(scope, name, linkageName, file, (unsigned int)line, type, 
+          true, true, (unsigned int)line));
+  }
+
+  bool isTemplateType(SPIRVExtInst* inst)
+  {
+      return (inst->getExtOp() == OCLExtOpDbgKind::TypeTemplate);
   }
 
   DISubroutineType* createSubroutineType(SPIRVExtInst* inst)
@@ -583,7 +701,10 @@ public:
       for (unsigned int i = 0; i != spType.getNumParms(); i++)
       {
           auto parmType = spType.getParmType(i);
-          Args.push_back(createType(static_cast<SPIRVExtInst*>(BM->getValue(parmType))));
+          if (!isTemplateType(static_cast<SPIRVExtInst*>(BM->getValue(parmType))))
+              Args.push_back(createType(static_cast<SPIRVExtInst*>(BM->getValue(parmType))));
+          else
+              Args.push_back(createTypeTemplate(static_cast<SPIRVExtInst*>(BM->getValue(parmType))));
       }
 
       return addMDNode(inst, Builder.createSubroutineType(Builder.getOrCreateTypeArray(Args)));
@@ -602,19 +723,40 @@ public:
       auto file = getDIFile(BM->get<SPIRVExtInst>(sp.getSource()));
       auto spType = createSubroutineType(BM->get<SPIRVExtInst>(sp.getType()));
       auto flags = (DINode::DIFlags)(sp.getFlags());
+      bool isDefinition = (SPIRVWord)flags & SPIRVDebug::FlagIsDefinition;
+      bool isOptimized = (SPIRVWord)flags & SPIRVDebug::FlagIsOptimized;
+      bool isLocal = (SPIRVWord)flags & SPIRVDebug::FlagIsLocal;
 
-      return addMDNode(inst, Builder.createFunction(scope, name, linkageName, file, sp.getLine(), spType, false, true, sp.getScopeLine(), flags));
+      SmallVector<llvm::Metadata *, 8> Elts;
+      DINodeArray TParams = Builder.getOrCreateArray(Elts);
+      llvm::DITemplateParameterArray TParamsArray = TParams.get();
+      if ((isa<DICompositeType>(scope) || isa<DINamespace>(scope)) && !isDefinition)
+      {
+          return addMDNode(inst, Builder.createMethod(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition,
+              0, 0, 0, nullptr, flags, isOptimized, TParamsArray));
+      }
+      else
+      {
+          return addMDNode(inst, Builder.createFunction(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition, 
+              sp.getScopeLine(), flags, isOptimized, TParamsArray));
+      }
   }
 
-  DILexicalBlock* createLexicalBlock(SPIRVExtInst* inst)
+  DIScope* createLexicalBlock(SPIRVExtInst* inst)
   {
-      if (auto n = getExistingNode<DILexicalBlock*>(inst))
+      if (auto n = getExistingNode<DIScope*>(inst))
           return n;
 
       OpDebugLexicalBlock lb(inst);
 
       auto scope = createScope(BM->get<SPIRVExtInst>(lb.getParent()));
       auto file = getDIFile(BM->get<SPIRVExtInst>(lb.getSource()));
+
+      if (!scope || isa<DIFile>(scope))
+          return nullptr;
+
+      if(lb.hasNameSpace() || isa<DICompileUnit>(scope))
+          return addMDNode(inst, Builder.createNameSpace(scope, lb.getNameSpace()->getStr(), file, lb.getLine(), false));
 
       return addMDNode(inst, Builder.createLexicalBlock(scope, file, lb.getLine(), lb.getColumn()));
   }
@@ -670,11 +812,30 @@ public:
       {
           return createLexicalBlock(inst);
       }
+      else if (inst->getExtOp() == OCLExtOpDbgKind::LexicalBlockDiscriminator)
+      {
+          return createLexicalBlockDiscriminator(inst);
+      }
       else if (inst->getExtOp() == OCLExtOpDbgKind::CompileUnit)
       {
           return createCompileUnit();
       }
-
+      else if (inst->getExtOp() == OCLExtOpDbgKind::TypeComposite)
+      {
+          return createCompositeType(inst);
+      }
+      else if (inst->getExtOp() == OCLExtOpDbgKind::TypeTemplate)
+      {
+          return (DIScope*)createTypeTemplate(inst);
+      }
+      else if(inst->isString())
+      {
+          return getDIFile(((SPIRVString*)inst)->getStr());
+      }
+      else
+      {
+          return getDIFile("unexpected path in getScope()");
+      }
       return nullptr;
   }
 
@@ -745,6 +906,9 @@ public:
 
   DILocation* createLocation(SPIRVWord line, SPIRVWord column, DIScope* scope, DILocation* inlinedAt = nullptr)
   {
+      if (scope && isa<DIFile>(scope))
+          return nullptr;
+
       return DILocation::get(M->getContext(), (unsigned int)line, (unsigned int)column, scope, inlinedAt);
   }
 
@@ -754,10 +918,14 @@ public:
       // 8  12   <id>  Result Type  Result <id>  <id> Set  28  <id> Local Variable <id> Variable  <id> Expression
       OpDebugDeclare dbgDcl(inst);
       
+      auto scope = createScope(inst->getDIScope());
+      auto iat = getInlinedAtFromScope(inst->getDIScope());
+      if (!scope)
+          return nullptr;
       auto dbgDclInst = Builder.insertDeclare(localVar, 
           createLocalVar(BM->get<SPIRVExtInst>(dbgDcl.getVar())),
           createExpression(BM->get<SPIRVExtInst>(dbgDcl.getExpression())),
-          createLocation(inst->getLine()->getLine(), inst->getLine()->getColumn(), createScope(inst->getDIScope())), 
+          createLocation(inst->getLine()->getLine(), inst->getLine()->getColumn(), scope, iat), 
           insertAtEnd);
       return dbgDclInst;
   }
@@ -766,10 +934,14 @@ public:
   {
       OpDebugValue dbgValue(inst);
 
+      auto scope = createScope(inst->getDIScope());
+      auto iat = getInlinedAtFromScope(inst->getDIScope());
+      if (!scope)
+          nullptr;
 	  auto dbgValueInst = Builder.insertDbgValueIntrinsic(localVar, 0,
 		  createLocalVar(BM->get<SPIRVExtInst>(dbgValue.getVar())),
 		  createExpression(BM->get<SPIRVExtInst>(dbgValue.getExpression())),
-		  createLocation(inst->getLine()->getLine(), inst->getLine()->getColumn(), createScope(inst->getDIScope())),
+		  createLocation(inst->getLine()->getLine(), inst->getLine()->getColumn(), scope, iat),
 		  insertAtEnd);
 
       return dbgValueInst;
@@ -892,7 +1064,7 @@ public:
   /// Post-process translated LLVM module for OpenCL.
   bool postProcessOCL();
 
-  void transDebugInfo(SPIRVExtInst*, llvm::BasicBlock*);
+  Instruction* transDebugInfo(SPIRVExtInst*, llvm::BasicBlock*);
   SPIRVToLLVMDbgTran& getDbgTran() { return DbgTran; }
 
   /// \brief Post-process OpenCL builtin functions returning struct type.
@@ -1044,8 +1216,9 @@ void SPIRVToLLVMDbgTran::transDbgInfo(SPIRVValue *SV, Value *V) {
         SPIRVTranslator->getDbgTran().createLocation(Line->getLine(),
             Line->getColumn(), scope, iat);
 
-        I->setDebugLoc(DebugLoc::get(Line->getLine(), Line->getColumn(),
-            scope));
+        if(scope && !isa<DIFile>(scope))
+            I->setDebugLoc(DebugLoc::get(Line->getLine(), Line->getColumn(),
+                scope, iat));
     }
 }
 
@@ -1539,7 +1712,7 @@ SPIRVToLLVM::transLifetimeInst(SPIRVInstTemplateBase* BI, BasicBlock* BB, Functi
         Intrinsic::lifetime_start :
         Intrinsic::lifetime_end;
 #if LLVM_VERSION_MAJOR == 7
-    ArrayRef<Type*> IntrinArgTypes = {
+    Type* IntrinArgTypes[] = {
         Type::getVoidTy(*Context),
         Type::getInt64Ty(*Context),
         PointerType::getInt8PtrTy(*Context)
@@ -3394,10 +3567,10 @@ SPIRVToLLVM::transOCLVectorLoadStore(std::string& UnmangledName,
    }
 }
 
-void SPIRVToLLVM::transDebugInfo(SPIRVExtInst* BC, BasicBlock* BB)
+Instruction* SPIRVToLLVM::transDebugInfo(SPIRVExtInst* BC, BasicBlock* BB)
 {
     if (!BC)
-        return;
+        return nullptr;
 
     auto extOp = (OCLExtOpDbgKind)BC->getExtOp();
 
@@ -3411,7 +3584,7 @@ void SPIRVToLLVM::transDebugInfo(SPIRVExtInst* BC, BasicBlock* BB)
         SPIRVToLLVMValueMap::iterator Loc = ValueMap.find(spirvVal);
         if (Loc != ValueMap.end())
         {
-            DbgTran.createDbgDeclare(BC, Loc->second, BB);
+            return DbgTran.createDbgDeclare(BC, Loc->second, BB);
         }
         break;
     }
@@ -3424,7 +3597,7 @@ void SPIRVToLLVM::transDebugInfo(SPIRVExtInst* BC, BasicBlock* BB)
         SPIRVToLLVMValueMap::iterator Loc = ValueMap.find(spirvVal);
         if (Loc != ValueMap.end())
         {
-            DbgTran.createDbgValue(BC, Loc->second, BB);
+            return DbgTran.createDbgValue(BC, Loc->second, BB);
         }
         break;
     }
@@ -3432,6 +3605,8 @@ void SPIRVToLLVM::transDebugInfo(SPIRVExtInst* BC, BasicBlock* BB)
     default:
         break;
     }
+
+    return nullptr;
 }
 
 Instruction *
@@ -3444,8 +3619,7 @@ SPIRVToLLVM::transOCLBuiltinFromExtInst(SPIRVExtInst *BC, BasicBlock *BB) {
 
   if (Set == SPIRVEIS_DebugInfo)
   {
-      transDebugInfo(BC, BB);
-      return nullptr;
+      return transDebugInfo(BC, BB);
   }
 
   assert (Set == SPIRVEIS_OpenCL && "Not OpenCL extended instruction");

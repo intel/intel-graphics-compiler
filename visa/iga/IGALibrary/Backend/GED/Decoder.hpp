@@ -58,6 +58,7 @@ namespace iga
             const void *binary,
             size_t binarySize);
 
+
     private:
         Kernel *decodeKernel(
             const void *binary,

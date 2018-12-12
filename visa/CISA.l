@@ -897,6 +897,7 @@ VISA_Type str2type(char *str, int str_len)
     return ISA_TYPE_NUM;
 }
 
+
 // convert "z" to Mod_z
 Common_ISA_Cond_Mod str2cond(char *str)
 {

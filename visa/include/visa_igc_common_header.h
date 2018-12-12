@@ -620,4 +620,5 @@ typedef struct _vISA_RT_CONTROLS
     unsigned isHeaderMaskfromCe0 : 1;
 } vISA_RT_CONTROLS;
 
+
 #endif

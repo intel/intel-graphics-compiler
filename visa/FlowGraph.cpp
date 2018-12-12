@@ -1168,9 +1168,9 @@ void IR_Builder::materializeGlobalImm(G4_BB* entryBB)
     {
         auto&& immVal = immPool.getImmVal(i);
         auto dcl = immPool.getImmDcl(i);
-        G4_INST* inst = createInternalInst(nullptr, G4_mov, nullptr, false, immVal.numElt, 
+        G4_INST* inst = createInternalInst(nullptr, G4_mov, nullptr, false, immVal.numElt,
             Create_Dst_Opnd_From_Dcl(dcl, 1), immVal.imm, nullptr, InstOpt_WriteEnable);
-        auto iter = std::find_if(entryBB->begin(), entryBB->end(), 
+        auto iter = std::find_if(entryBB->begin(), entryBB->end(),
             [](G4_INST* inst) { return !inst->isLabel(); });
         entryBB->insert(iter, inst);
     }
@@ -4039,7 +4039,8 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
         char* errBuf = new char[ERROR_STRING_MAX_LENGTH];
 
 
-        KernelView kView(getIGAPlatform(), binary, binarySize, errBuf, ERROR_STRING_MAX_LENGTH);
+        KernelView kView(getIGAPlatform(), binary, binarySize,
+                         errBuf, ERROR_STRING_MAX_LENGTH);
         dissasemblyFailed = !kView.decodeSucceeded();
 
         std::string igaErrMsgs;
@@ -4189,7 +4190,8 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
                     output << "// Text representation might not be correct" << std::endl;
                 }
 
-                kView.getInstSyntax(pc, stringBuffer, 512, labelerLambda, (void*)&lambdaArg);
+                kView.getInstSyntax(pc, stringBuffer, 512,
+                    labelerLambda, (void*)&lambdaArg);
                 pc += kView.getInstSize(pc);
 
                 (*itBB)->emitBasicInstructionIga(stringBuffer, output, itInst, suppressRegs, lastRegs);

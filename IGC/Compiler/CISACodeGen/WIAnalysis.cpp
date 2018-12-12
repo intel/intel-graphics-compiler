@@ -1561,5 +1561,3 @@ extern "C"
     return new WIAnalysis();
   }
 }
-
-

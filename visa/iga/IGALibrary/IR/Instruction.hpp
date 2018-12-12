@@ -227,7 +227,8 @@ namespace iga
         bool             isBranching() const { return getOpSpec().isBranching(); }
 
         void             validate() const; // asserts on malformed IR
-        std::string      str(Platform pltfm) const; // returns syntax of this instruction
+        std::string      str(Platform pltfm
+                              ) const; // returns syntax of this instruction
     private:
         unsigned         getSourceCountBrc() const;
 
