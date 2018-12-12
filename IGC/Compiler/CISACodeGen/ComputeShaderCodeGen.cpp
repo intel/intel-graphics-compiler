@@ -73,10 +73,10 @@ void CComputeShader::ParseShaderSpecificOpcode(llvm::Instruction* inst)
         {
             m_hasSLM = true;
         }
-		if (bufType == RESOURCE || bufType == UAV)
-		{
-			m_num1DAccesses++;
-		}
+        if (bufType == RESOURCE || bufType == UAV)
+        {
+            m_num1DAccesses++;
+        }
     }
     else if(StoreInst* store = dyn_cast<StoreInst>(inst))
     {
