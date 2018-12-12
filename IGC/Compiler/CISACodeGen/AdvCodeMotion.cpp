@@ -276,9 +276,9 @@ static bool hasMemoryWrite(BasicBlock *BB) {
 static bool isDummyBasicBlock(BasicBlock *BB) {
   if (BB->size() != 1)
     return false;
-  if (std::next(pred_begin(BB)) != pred_end(BB))
+  if ((++pred_begin(BB)) != pred_end(BB))
     return false;
-  if (std::next(succ_begin(BB)) != succ_end(BB))
+  if ((++succ_begin(BB)) != succ_end(BB))
     return false;
   return true;
 }
