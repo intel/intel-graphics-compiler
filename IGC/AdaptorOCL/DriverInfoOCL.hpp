@@ -34,7 +34,7 @@ namespace TC
     public:
         bool AllowUnsafeHalf() const override { return false; }
 
-        bool AllowSendFusion() const override { return false; }
+        //bool AllowSendFusion() const override { return false; }
 
         bool SupportsIEEEMinMax() const override { return true; }
 
