@@ -354,6 +354,33 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L,
     UP.MaxCount = UP.Count;
     // The following is only available and required from LLVM 3.7+.
     UP.AllowExpensiveTripCount = true;
+
+    if (MDNode *LoopID = L->getLoopID())
+    {
+        const llvm::StringRef maxIterMetadataNames = "spv.loop.iterations.max";
+        const llvm::StringRef peelCountMetadataNames = "spv.loop.peel.count";
+
+        for (unsigned i = 0; i < LoopID->getNumOperands(); ++i)
+        {
+            if (MDNode *MD = llvm::dyn_cast<MDNode>(LoopID->getOperand(i)))
+            {
+                if (MDString *S = llvm::dyn_cast<MDString>(MD->getOperand(0)))
+                {
+                    if (maxIterMetadataNames.equals(S->getString()))
+                    {
+                        UP.MaxCount = static_cast<unsigned>(
+                            mdconst::extract<ConstantInt>(MD->getOperand(1))->getZExtValue());
+                    }
+                    else if (peelCountMetadataNames.equals(S->getString()))
+                    {
+                        UP.AllowPeeling = true;
+                        UP.PeelCount = static_cast<unsigned>(
+                            mdconst::extract<ConstantInt>(MD->getOperand(1))->getZExtValue());
+                    }
+                }
+            }
+        }
+    }
 }
 
 
