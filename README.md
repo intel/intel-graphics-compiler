@@ -76,7 +76,7 @@ $ cmake -DIGC_OPTION__OUTPUT_DIR=../igc-install/Release ../igc/IGC
 $ make -j`nproc`
 ```
 
-4. Install IGC
+5. Install IGC
 ```
 $ sudo make install
 ```
