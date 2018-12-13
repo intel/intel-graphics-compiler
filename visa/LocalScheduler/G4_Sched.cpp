@@ -1338,6 +1338,18 @@ unsigned LatencyQueue::calculatePriority(preNode* N)
         return false;
     };
 
+    // Check if this is a prefetch read or not.
+    auto isPrefetchRead = [](preNode *N, preEdge &E) {
+        if (N->getInst()->isSend()) {
+            if (E.getType() == DepType::OPT_BARRIER ||
+                E.getType() == DepType::DEP_LABEL) {
+                G4_SendMsgDescriptor *msgDesc = N->getInst()->getMsgDesc();
+                return msgDesc && msgDesc->isDataPortRead();
+            }
+        }
+        return false;
+    };
+
     unsigned Priority = 0;
     for (auto I = N->succ_begin(), E = N->succ_end(); I != E; ++I) {
         // Recurse on the successors.
@@ -1345,7 +1357,8 @@ unsigned LatencyQueue::calculatePriority(preNode* N)
         unsigned SuccPriority = calculatePriority(Edge.getNode());
         unsigned Latency = 0;
 
-        if (Inst && !Inst->isPseudoKill() && Edge.isDataDep()) {
+        if (Inst && !Inst->isPseudoKill() && (Edge.isDataDep() ||
+                                              isPrefetchRead(N, Edge))) {
             switch (Edge.getType()) {
             case RAW:
                 // By setting Latency to 0, this moves address initializations
@@ -1353,11 +1366,23 @@ unsigned LatencyQueue::calculatePriority(preNode* N)
                 if (isHeaderOnAddr(N, Edge))
                    break;
                 // fall through
+            case OPT_BARRIER:
+            case DEP_LABEL:
+#if defined(_DEBUG)
+                if (Edge.getType() == OPT_BARRIER || Edge.getType() == DEP_LABEL)
+                    assert(isPrefetchRead(N, Edge));
+#endif
+                // fall through
             case RAW_MEMORY:
             case WAW:
                 if (Inst->isSend()) {
-                    if (G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc())
+                    if (G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc()) {
                         Latency = MsgDesc->getFFLatency();
+                        // Lower latency for SLM messages.
+                        // TODO: Take into account the GEN target.
+                        if (MsgDesc->isSLMMessage())
+                            Latency /= 4;
+                    }
                 } else if (Inst->isMath()) {
                     Latency = EDGE_LATENCY_MATH;
                     if (Inst->asMathInst()->getMathCtrl() == MATH_FDIV ||
