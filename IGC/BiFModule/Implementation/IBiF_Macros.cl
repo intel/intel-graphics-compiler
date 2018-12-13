@@ -31,10 +31,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Use this to grab a pointer to local memory whenever you
 // are treating the local memory as automatic storage.
-#define GET_MEMPOOL_PTR(_ptr, _type, _nelems)                               \
+#define GET_MEMPOOL_PTR(_ptr, _type, _allocAllWorkgroups, _additionalElems) \
   __local _type* _ptr =                                                     \
     (__local _type*)__builtin_IB_AllocLocalMemPool(                         \
-        (_nelems) * sizeof(_type),                                          \
+        _allocAllWorkgroups,                                                \
+        _additionalElems,                                                   \
         sizeof(_type));
 
 // Macro for async work copy implementation.

@@ -108,7 +108,7 @@ void     __builtin_IB_write_2darr_f(int, int4, float4, int);
 void     __builtin_IB_write_2d_f(int, int2, float4, int);
 
 // Workgroup functions
-local uchar* __builtin_IB_AllocLocalMemPool(uint, uint);
+local uchar* __builtin_IB_AllocLocalMemPool(bool allocAllWorkgroups, uint numAdditionalElements, uint elementSize);
 
 // Memory fences
 // See GenISAIntrinsics.td for documentation

@@ -563,7 +563,7 @@ atomic_flag_clear_function()
 
 INLINE int OVERLOADABLE work_group_any(int predicate)
 {
-    GET_MEMPOOL_PTR(tmp, int, 1)
+    GET_MEMPOOL_PTR(tmp, int, false, 1)
     *tmp = 0;
         barrier(CLK_LOCAL_MEM_FENCE); // Wait for tmp to be initialized
         atomic_or(tmp, predicate != 0); // Set to true if predicate is non-zero
@@ -573,7 +573,7 @@ INLINE int OVERLOADABLE work_group_any(int predicate)
 
 INLINE int OVERLOADABLE work_group_all(int predicate)
 {
-    GET_MEMPOOL_PTR(tmp, int, 1)
+    GET_MEMPOOL_PTR(tmp, int, false, 1)
     *tmp = 0;
         barrier(CLK_LOCAL_MEM_FENCE); // Wait for tmp to be initialized
         atomic_or(tmp, predicate == 0); // Set to true if predicate is zero

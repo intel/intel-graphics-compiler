@@ -976,7 +976,7 @@ bool __builtin_spirv_OpGroupAll_i32_i1(uint Execution, bool Predicate)
 {
     if (Execution == Workgroup)
     {
-        GET_MEMPOOL_PTR(tmp, int, 1)
+        GET_MEMPOOL_PTR(tmp, int, false, 1)
         *tmp = 0;
         __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         __builtin_spirv_OpAtomicOr_p3i32_i32_i32_i32((volatile local uint*)tmp, Device, Relaxed, Predicate == 0); // Set to true if predicate is zero
@@ -1000,7 +1000,7 @@ bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate)
 {
     if (Execution == Workgroup)
     {
-        GET_MEMPOOL_PTR(tmp, int, 1)
+        GET_MEMPOOL_PTR(tmp, int, false, 1)
         *tmp = 0;
         __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution, 0, AcquireRelease | WorkgroupMemory); // Wait for tmp to be initialized
         __builtin_spirv_OpAtomicOr_p3i32_i32_i32_i32((volatile local uint*)tmp, Device, Relaxed, Predicate != 0); // Set to true if predicate is non-zero
@@ -1027,7 +1027,7 @@ bool __builtin_spirv_OpGroupAny_i32_i1(uint Execution, bool Predicate)
 
 #define BROADCAST_WORKGROUP(type)                                                       \
 {                                                                                       \
-    GET_MEMPOOL_PTR(tmp, type, 1)                                                       \
+    GET_MEMPOOL_PTR(tmp, type, false, 1)                                                       \
     if( (__spirv_LocalID(0) == LocalId.s0) &                                            \
         (__spirv_LocalID(1) == LocalId.s1) &                                            \
         (__spirv_LocalID(2) == LocalId.s2) )                                            \
@@ -1356,7 +1356,7 @@ static double   OVERLOADABLE __intel_add(double lhs, double rhs) { return lhs + 
 
 #define DEFN_WORK_GROUP_REDUCE(type, op, identity, X)             				 		 \
 {            	                                                                     	 \
-    GET_MEMPOOL_PTR(data, type, 448)                                    				 \
+    GET_MEMPOOL_PTR(data, type, true, 0)                                    				 \
     uint lid = __spirv_BuiltInLocalInvocationIndex();              				 		 \
     uint lsize = __spirv_WorkgroupSize();   			 								 \
     data[lid] = X;                                                      				 \
@@ -1380,7 +1380,7 @@ static double   OVERLOADABLE __intel_add(double lhs, double rhs) { return lhs + 
 
 #define DEFN_WORK_GROUP_SCAN_INCL(type, op, identity, X)          						 \
 {																					 	 \
-    GET_MEMPOOL_PTR(data, type, 448)                                    				 \
+    GET_MEMPOOL_PTR(data, type, true, 0)                                    				 \
     uint lid = __spirv_BuiltInLocalInvocationIndex();                        				 \
     uint lsize = __spirv_WorkgroupSize();   			 								 \
     data[lid] = X;                                                      				 \
@@ -1403,7 +1403,7 @@ static double   OVERLOADABLE __intel_add(double lhs, double rhs) { return lhs + 
 
 #define DEFN_WORK_GROUP_SCAN_EXCL(type, op, identity, X)          						 \
 {																						 \
-    GET_MEMPOOL_PTR(data, type, 448 + 1)                                				 \
+    GET_MEMPOOL_PTR(data, type, true, 1)                                				 \
     uint lid = __spirv_BuiltInLocalInvocationIndex();                        				 \
     uint lsize = __spirv_WorkgroupSize();   			 								 \
     data[0] = identity;                                                 				 \

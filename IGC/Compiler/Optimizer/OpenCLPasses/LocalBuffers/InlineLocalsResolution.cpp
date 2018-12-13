@@ -219,6 +219,9 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
     // first we collect SLM usage on GET_MEMPOOL_PTR
     if (M.getFunction(BUILTIN_MEMPOOL) != nullptr)
     {
+        const auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        const GT_SYSTEM_INFO platform = pCtx->platform.GetGTSystemInfo();
+
         SmallVector<CallInst*, 8> callsToReplace;
         unsigned maxBytesOnModule = 0;
         unsigned maxAlignOnModule = 0;
@@ -244,9 +247,27 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
                         // should always be called with constant operands
                         assert(isa<ConstantInt>(CI->getArgOperand(0)));
                         assert(isa<ConstantInt>(CI->getArgOperand(1)));
+                        assert(isa<ConstantInt>(CI->getArgOperand(2)));
 
-                        unsigned int size = unsigned(cast<ConstantInt>(CI->getArgOperand(0))->getZExtValue());
-                        unsigned int align = unsigned(cast<ConstantInt>(CI->getArgOperand(1))->getZExtValue());
+                        const unsigned int allocAllWorkgroups = unsigned(cast<ConstantInt>(CI->getArgOperand(0))->getZExtValue());
+                        const unsigned int numAdditionalElements = unsigned(cast<ConstantInt>(CI->getArgOperand(1))->getZExtValue());
+                        const unsigned int elementSize = unsigned(cast<ConstantInt>(CI->getArgOperand(2))->getZExtValue());
+
+                        unsigned int numElements = numAdditionalElements;
+                        if (allocAllWorkgroups)
+                        {
+                            if (platform.ThreadCount != 0)
+                            {
+                                numElements += platform.ThreadCount;
+                            }
+                            else
+                            {
+                                //workaround for cloc offline compiler, which currently does not pass any platform data
+                                numElements += 448;
+                            }
+                        }
+                        const unsigned int size = numElements * elementSize;
+                        const unsigned int align = elementSize;
 
                         maxBytesOnFunc = std::max(maxBytesOnFunc, size);
                         maxBytesOnModule = std::max(maxBytesOnModule, size);

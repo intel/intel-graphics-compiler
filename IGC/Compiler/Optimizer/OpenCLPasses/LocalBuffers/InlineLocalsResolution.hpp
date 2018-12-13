@@ -70,6 +70,7 @@ namespace IGC
         {
             AU.setPreservesCFG();
             AU.addRequired<MetaDataUtilsWrapper>();
+            AU.addRequired<CodeGenContextWrapper>();
             AU.addRequired<llvm::CallGraphWrapperPass>();
         }
 
