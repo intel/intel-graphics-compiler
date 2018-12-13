@@ -243,6 +243,7 @@ bool PixelShaderLowering::runOnFunction(llvm::Function &F)
 
     m_module = F.getParent();
     ColorOutputArray colors;
+    DebugLocArray debugLocs;
     Value* depth = nullptr;
     Value* mask = nullptr;
     Value* src0Alpha = nullptr;
@@ -268,7 +269,7 @@ bool PixelShaderLowering::runOnFunction(llvm::Function &F)
     m_hasDiscard = (m_module->getNamedMetadata("KillPixel") != nullptr);
 
     // In case we are using intrinsic retrieve the output
-    FindIntrinsicOutput(colors, depth, stencil, mask, src0Alpha);
+    FindIntrinsicOutput(colors, depth, stencil, mask, src0Alpha, debugLocs);
 
     if (uavPixelSync)
     {
@@ -278,7 +279,7 @@ bool PixelShaderLowering::runOnFunction(llvm::Function &F)
     }
 
     // EmitRender target write intrinsic
-    EmitRTWrite(colors, depth, stencil, mask, src0Alpha);
+    EmitRTWrite(colors, depth, stencil, mask, src0Alpha, debugLocs);
 
     Function* samplePhase = nullptr;
     Function* pixelPhase = nullptr;
@@ -312,7 +313,8 @@ void PixelShaderLowering::FindIntrinsicOutput(
     Value*& depth,
     Value*& stencil,
     Value*& mask,
-    Value*& src0Alpha)
+    Value*& src0Alpha,
+    DebugLocArray& debugLocs)
 {
     bool inputUsed[MAX_INPUTS] = {0};
     llvm::Instruction* primId = nullptr;
@@ -401,6 +403,9 @@ void PixelShaderLowering::FindIntrinsicOutput(
                     {
                         mask = inst->getOperand(0);
                     }
+                    //Need to save debug location
+                    debugLocs.push_back(((Instruction*)inst)->getDebugLoc());
+
                     // delete the output
                     instructionToRemove.push_back(inst);
                 }
@@ -456,7 +461,7 @@ void PixelShaderLowering::FindIntrinsicOutput(
             ConstantInt::get(Type::getInt32Ty(m_module->getContext()), location),
             ConstantInt::get(Type::getInt32Ty(m_module->getContext()), EINTERPOLATION_CONSTANT),
         };
-        Value* in = GenIntrinsicInst::Create(
+        CallInst* in = GenIntrinsicInst::Create(
             GenISAIntrinsic::getDeclaration(
                 m_module,
                 GenISAIntrinsic::GenISA_DCL_inputVec,
@@ -464,6 +469,7 @@ void PixelShaderLowering::FindIntrinsicOutput(
             arguments,
             "",
             primId);
+        in->setDebugLoc(primId->getDebugLoc());
         primId->replaceAllUsesWith(in);
         NamedMDNode* primIdMD = m_module->getOrInsertNamedMetadata("PrimIdLocation");
 
@@ -638,6 +644,7 @@ CallInst* PixelShaderLowering::addRTWrite(
             GenISAIntrinsic::GenISA_RTWrite,
             Type::getFloatTy(this->m_module->getContext()));
     }
+
     return GenIntrinsicInst::Create(frtw, arguments, "",
         bbToAdd->getTerminator());
 }
@@ -681,7 +688,7 @@ static void dbgPrintBlendOptMode(uint64_t hash,
 
 void PixelShaderLowering::EmitRTWrite(
     ColorOutputArray& colors, Value* depth, Value* stencil,
-    Value* oMask, Value* src0Alpha)
+    Value* oMask, Value* src0Alpha, DebugLocArray& debugLocs)
 {
     if (!m_hasDiscard)
     {
@@ -759,6 +766,7 @@ void PixelShaderLowering::EmitRTWrite(
             colors[RTindexVal],
             colors[1 - RTindexVal],
             depth, stencil, 0);
+        colors[RTindexVal].inst->setDebugLoc(debugLocs[RTindexVal]);
 
         //Single source RTWrite
         colors[1 - RTindexVal].inst = addRTWrite(
@@ -767,6 +775,7 @@ void PixelShaderLowering::EmitRTWrite(
             oMask, colors[1 - RTindexVal],
             depth,
             stencil);
+        colors[1 - RTindexVal].inst->setDebugLoc(debugLocs[1 - RTindexVal]);
     }
     else
     {
@@ -778,6 +787,8 @@ void PixelShaderLowering::EmitRTWrite(
                 oMask, colors[i],
                 depth,
                 stencil);
+
+            colors[i].inst->setDebugLoc(debugLocs[i]);
         }
     }
 

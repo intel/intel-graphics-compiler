@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/PassManager.h>
+#include <llvm/IR/DebugLoc.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC
@@ -101,6 +102,7 @@ private:
 
     };
     typedef smallvector<ColorOutput, 4> ColorOutputArray;
+    typedef smallvector<llvm::DebugLoc, 4> DebugLocArray;
 
     // For multirate PS, output & discard will be lowered to RTWrite during
     // unification.  Some optimization (GVN) may convert the pixel mask in
@@ -110,12 +112,13 @@ private:
 
     void FindIntrinsicOutput(ColorOutputArray& color,
         llvm::Value*& depth, llvm::Value*& stencil,
-        llvm::Value*& mask, llvm::Value*& src0Alpha);
+        llvm::Value*& mask, llvm::Value*& src0Alpha,
+        DebugLocArray& debugLocs);
 
     void EmitMemoryFence(llvm::IRBuilder<> builder);
     void EmitRTWrite(ColorOutputArray& color, llvm::Value* depth,
         llvm::Value* stencil, llvm::Value* mask,
-        llvm::Value* src0Alpha);
+        llvm::Value* src0Alpha, DebugLocArray& debugLocs);
     void EmitCoarseMask(llvm::Value* mask);
 
     llvm::Value* fcmpUNEConst(llvm::IGCIRBuilder<>& irb,
