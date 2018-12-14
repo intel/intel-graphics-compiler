@@ -335,7 +335,7 @@ static Type* GetBaseType(Type* pType)
     if(pType->isStructTy())
     {
         int num_elements = pType->getStructNumElements();
-        if(num_elements > 1)
+        if(num_elements != 1)
             return nullptr;
 
         pType = pType->getStructElementType(0);

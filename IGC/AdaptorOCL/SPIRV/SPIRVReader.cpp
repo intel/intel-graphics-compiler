@@ -1490,26 +1490,16 @@ SPIRVToLLVM::transType(SPIRVType *T) {
   }
   default: {
     auto OC = T->getOpCode();
-    if (isOpaqueGenericTypeOpCode(OC))
+    if (isOpaqueGenericTypeOpCode(OC) ||
+        isSubgroupAvcINTELTypeOpCode(OC))
     {
-        auto name = BuiltinOpaqueGenericTypeOpCodeMap::rmap(OC);
+        auto name = isSubgroupAvcINTELTypeOpCode(OC) ? 
+            OCLSubgroupINTELTypeOpCodeMap::rmap(OC) : 
+            BuiltinOpaqueGenericTypeOpCodeMap::rmap(OC);
         auto *pST = M->getTypeByName(name);
         pST = pST ? pST : StructType::create(*Context, name);
 
         return mapType(T, PointerType::get(pST, getOCLOpaqueTypeAddrSpace(OC)));
-    }
-    else if (isSubgroupAvcINTELTypeOpCode(OC)) {
-        StructType* avcType = nullptr;
-        std::string typeName = OCLSubgroupINTELTypeOpCodeMap::rmap(T->getOpCode());
-        unsigned vectorWidth = getSubgroupAvcINTELTypeVectorWidth(OC);
-        if (vectorWidth == 1) {
-          avcType = StructType::create({ Type::getInt32Ty(*Context) }, typeName);
-        }
-        else {
-            spirv_assert(vectorWidth > 1);
-            avcType = StructType::create({ VectorType::get(Type::getInt32Ty(*Context), vectorWidth) }, typeName);
-        }
-        return mapType(T, avcType);
     }
     llvm_unreachable("Not implemented");
     }
@@ -3139,6 +3129,22 @@ SPIRVToLLVM::transSPIRVBuiltinFromInst(SPIRVInstruction *BI, BasicBlock *BB) {
   }
 
   std::string builtinName(getSPIRVBuiltinName(OC, BI, ArgTys, suffix));
+
+  // Fix mangling of VME builtins.
+  if (isIntelVMEOpCode(OC)) {
+    decltype(ArgTys) ArgTysWithVME_WA;
+    for (auto t : ArgTys) {
+      if (isa<PointerType>(t) &&
+        t->getPointerElementType()->isStructTy()) {
+        ArgTysWithVME_WA.push_back(t->getPointerElementType());
+      }
+
+      else {
+        ArgTysWithVME_WA.push_back(t);
+      }
+    }
+    builtinName = getSPIRVBuiltinName(OC, BI, ArgTysWithVME_WA, suffix);
+  }
 
   if (hasReturnTypeInTypeList)
   {

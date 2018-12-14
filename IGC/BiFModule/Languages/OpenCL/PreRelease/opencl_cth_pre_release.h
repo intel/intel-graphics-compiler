@@ -59,8 +59,7 @@ float __attribute__((overloadable)) atomic_cmpxchg(volatile __local float *p, fl
 #define CLK_AVC_ME_SEARCH_WINDOW_4x4_RADIUS_INTEL          0x2
 #define CLK_AVC_ME_SEARCH_WINDOW_2x2_RADIUS_INTEL          0xa
 
-// These types are built-in in Clang 5.0
-#ifndef __CLANG_50__
+#ifndef __VME_TYPES_DEFINED__
 // Externally exposed device side VME.
 
 // ... Defines ...
@@ -221,71 +220,45 @@ float __attribute__((overloadable)) atomic_cmpxchg(volatile __local float *p, fl
 
 // ... Types ...
 
-typedef struct
-{
-    uint4 x;
-} intel_sub_group_avc_mce_payload_t;
+struct intel_sub_group_avc_mce_payload_t;
+typedef __private struct intel_sub_group_avc_mce_payload_t* intel_sub_group_avc_mce_payload_t;
 
-typedef struct
-{
-    uint4 x;
-} intel_sub_group_avc_ime_payload_t;
+struct intel_sub_group_avc_ime_payload_t;
+typedef __private struct intel_sub_group_avc_ime_payload_t* intel_sub_group_avc_ime_payload_t;
 
-typedef struct
-{
-    uint4 x;
-} intel_sub_group_avc_ref_payload_t;
+struct intel_sub_group_avc_ref_payload_t;
+typedef __private struct intel_sub_group_avc_ref_payload_t* intel_sub_group_avc_ref_payload_t;
 
-typedef struct
-{
-    uint4 x;
-} intel_sub_group_avc_sic_payload_t;
+struct intel_sub_group_avc_sic_payload_t;
+typedef __private struct intel_sub_group_avc_sic_payload_t* intel_sub_group_avc_sic_payload_t;
 
-typedef struct
-{
-    uint4 x;
-} intel_sub_group_avc_idm_payload_t;
+struct intel_sub_group_avc_idm_payload_t;
+typedef __private struct intel_sub_group_avc_idm_payload_t* intel_sub_group_avc_idm_payload_t;
 
-typedef struct
-{
-    uint4 x;
-} intel_sub_group_avc_mce_result_t;
+struct intel_sub_group_avc_mce_result_t;
+typedef __private struct intel_sub_group_avc_mce_result_t* intel_sub_group_avc_mce_result_t;
 
-typedef struct
-{
-    uint4 x;
-} intel_sub_group_avc_ime_result_t;
+struct intel_sub_group_avc_ime_result_t;
+typedef __private struct intel_sub_group_avc_ime_result_t* intel_sub_group_avc_ime_result_t;
 
-typedef struct
-{
-    uint8 x;
-} intel_sub_group_avc_ime_result_single_reference_streamout_t;
+struct intel_sub_group_avc_ime_result_single_reference_streamout_t;
+typedef __private struct intel_sub_group_avc_ime_result_single_reference_streamout_t* intel_sub_group_avc_ime_result_single_reference_streamout_t;
 
-typedef struct
-{
-    uint8 x;
-} intel_sub_group_avc_ime_result_dual_reference_streamout_t;
+struct intel_sub_group_avc_ime_result_dual_reference_streamout_t;
+typedef __private struct intel_sub_group_avc_ime_result_dual_reference_streamout_t* intel_sub_group_avc_ime_result_dual_reference_streamout_t;
 
-typedef struct
-{
-    uint x;
-} intel_sub_group_avc_ime_single_reference_streamin_t;
+struct intel_sub_group_avc_ime_single_reference_streamin_t;
+typedef __private struct intel_sub_group_avc_ime_single_reference_streamin_t* intel_sub_group_avc_ime_single_reference_streamin_t;
 
-typedef struct
-{
-    uint2 x;
-} intel_sub_group_avc_ime_dual_reference_streamin_t;
+struct intel_sub_group_avc_ime_dual_reference_streamin_t;
+typedef __private struct intel_sub_group_avc_ime_dual_reference_streamin_t* intel_sub_group_avc_ime_dual_reference_streamin_t;
 
-typedef struct
-{
-    uint4 x;
-} intel_sub_group_avc_ref_result_t;
+struct intel_sub_group_avc_ref_result_t;
+typedef __private struct intel_sub_group_avc_ref_result_t* intel_sub_group_avc_ref_result_t;
 
-typedef struct
-{
-    uint4 x;
-} intel_sub_group_avc_sic_result_t;
-#endif // !__CLANG_50__
+struct intel_sub_group_avc_sic_result_t;
+typedef __private struct intel_sub_group_avc_sic_result_t* intel_sub_group_avc_sic_result_t;
+#endif // !__VME_TYPES_DEFINED__
 
 // ... Common VME operations ...
 #pragma OPENCL EXTENSION cl_intel_device_side_avc_motion_estimation : enable

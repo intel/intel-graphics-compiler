@@ -87,6 +87,34 @@ void ExtensionFuncsResolution::visitCallInst(CallInst &CI)
     {
         argType = ImplicitArg::VME_SEARCH_PATH_TYPE;
     } 
+    else if (funcName.startswith(ExtensionFuncsAnalysis::VME_HELPER_GET_HANDLE)) {
+        // Load from the opaque vme pointer and return the a vector with values.
+        assert(CI.getNumArgOperands() == 1);
+        IRBuilder<> builder(&CI);
+        Type* retType = CI.getType();
+        assert(retType->isVectorTy() || retType->isIntegerTy());
+        PointerType* ptrType = PointerType::get(retType, 0);
+        auto bitcastInst = builder.CreateBitCast(CI.getArgOperand(0), ptrType);
+        auto ret = builder.CreateLoad(bitcastInst);
+        CI.replaceAllUsesWith(ret);
+        CI.eraseFromParent();
+        return;
+    }
+    else if (funcName.startswith(ExtensionFuncsAnalysis::VME_HELPER_GET_AS)) {
+        // Store the VME values and return an opaque vme pointer.
+        assert(CI.getNumArgOperands() == 1);
+        IRBuilder<> builder(&*CI.getParent()->getParent()->begin()->getFirstInsertionPt());
+        Type* retType = CI.getType();
+        Value* arg = CI.getArgOperand(0);
+        assert(arg->getType()->isVectorTy() || arg->getType()->isIntegerTy());
+        AllocaInst* allocaInst = builder.CreateAlloca(arg->getType());
+        builder.SetInsertPoint(&CI);
+        builder.CreateStore(arg, allocaInst);
+        Value* bitcastInst = builder.CreateBitCast(allocaInst, retType);
+        CI.replaceAllUsesWith(bitcastInst);
+        CI.eraseFromParent();
+        return;
+    }
     else {
         // Non VME function, do nothing
         return;

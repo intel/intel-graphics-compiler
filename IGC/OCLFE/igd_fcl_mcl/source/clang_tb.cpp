@@ -804,6 +804,23 @@ namespace TC
 #endif
 	}
 
+  /*****************************************************************************\
+
+  Function:
+  AreVMETypesDefined
+
+  Description:
+  Returns true if Clang used on current OS has VME types defined.
+
+  \*****************************************************************************/
+  bool AreVMETypesDefined() 
+  {
+#if defined __linux__
+    return false;
+#endif
+    return true;
+  }
+
 	/*****************************************************************************\
 
 	Function:
@@ -1318,6 +1335,10 @@ namespace TC
 		default:
 			break;
 		}
+
+    if (AreVMETypesDefined()) {
+      optionsEx += " -D__VME_TYPES_DEFINED__";
+    }
 
 		if (options.find("-triple") == std::string::npos) {
 			// if target triple not explicitly set

@@ -51,6 +51,8 @@ const StringRef ExtensionFuncsAnalysis::VME_MB_BLOCK_TYPE = "__builtin_IB_vme_mb
 const StringRef ExtensionFuncsAnalysis::VME_SUBPIXEL_MODE = "__builtin_IB_vme_subpixel_mode";
 const StringRef ExtensionFuncsAnalysis::VME_SAD_ADJUST_MODE = "__builtin_IB_vme_sad_adjust_mode";
 const StringRef ExtensionFuncsAnalysis::VME_SEARCH_PATH_TYPE = "__builtin_IB_vme_search_path_type";
+const StringRef ExtensionFuncsAnalysis::VME_HELPER_GET_HANDLE = "__builtin_IB_vme_helper_get_handle";
+const StringRef ExtensionFuncsAnalysis::VME_HELPER_GET_AS = "__builtin_IB_vme_helper_get_as";
 
 bool ExtensionFuncsAnalysis::runOnModule(Module &M)
 {
@@ -103,7 +105,9 @@ void ExtensionFuncsAnalysis::visitCallInst(CallInst &CI)
         if (funcName.equals(VME_MB_BLOCK_TYPE) ||
             funcName.equals(VME_SUBPIXEL_MODE) ||
             funcName.equals(VME_SAD_ADJUST_MODE) ||
-            funcName.equals(VME_SEARCH_PATH_TYPE))
+            funcName.equals(VME_SEARCH_PATH_TYPE) ||
+            funcName.startswith(VME_HELPER_GET_HANDLE) ||
+            funcName.startswith(VME_HELPER_GET_AS))
         {
             m_hasVME = true;
         }

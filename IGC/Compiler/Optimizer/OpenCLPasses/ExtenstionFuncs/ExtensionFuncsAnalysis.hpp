@@ -85,6 +85,8 @@ namespace IGC
         static const llvm::StringRef VME_SUBPIXEL_MODE;
         static const llvm::StringRef VME_SAD_ADJUST_MODE;
         static const llvm::StringRef VME_SEARCH_PATH_TYPE;
+        static const llvm::StringRef VME_HELPER_GET_HANDLE;
+        static const llvm::StringRef VME_HELPER_GET_AS;
 
     private:
         /// @brief  Marks whether VME information is needed by the current function

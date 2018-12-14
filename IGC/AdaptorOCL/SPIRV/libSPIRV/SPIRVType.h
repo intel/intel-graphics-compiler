@@ -690,7 +690,7 @@ class SPIRVTypeSubgroupINTEL;
 template<> inline void
 SPIRVMap<std::string, Op, SPIRVTypeSubgroupINTEL>::init() {
 #define _SPIRV_OP(x,y) \
-  add("opencl.intel_sub_group_avc_"#x, OpTypeAvc##y##INTEL);
+  add("struct.intel_sub_group_avc_"#x, OpTypeAvc##y##INTEL);
 _SPIRV_OP(mce_payload_t, McePayload)
 _SPIRV_OP(mce_result_t, MceResult)
 _SPIRV_OP(sic_payload_t, SicPayload)

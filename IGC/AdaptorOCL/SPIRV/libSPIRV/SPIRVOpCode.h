@@ -232,6 +232,11 @@ inline bool isIntelSubgroupOpCode(Op OpCode) {
   return OpSubgroupShuffleINTEL <= OC && OC <= OpSubgroupImageMediaBlockWriteINTEL;
 }
 
+inline bool isIntelVMEOpCode(Op OpCode) {
+  unsigned OC = OpCode;
+  return OpVmeImageINTEL <= OC && OC <= OpSubgroupAvcSicGetInterRawSadsINTEL;
+}
+
 }
 
 #endif /* SPIRVOPCODE_HPP_ */

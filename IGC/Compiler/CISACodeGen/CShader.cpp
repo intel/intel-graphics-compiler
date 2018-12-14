@@ -1056,14 +1056,6 @@ uint CShader::GetNbElementAndMask(llvm::Value* value, uint32_t& mask)
         GenISAIntrinsic::ID IID = inst->getIntrinsicID();
         switch (IID)
         {
-            // The VME intrinsics can have sizes that don't correspond
-            // to a legal llvm type (i.e., an 11 GRF payload).
-        case GenISAIntrinsic::GenISA_vmeSendIME2:
-            // Number elements = {num GRFs} * {num DWords in GRF} = {num GRFs} * 8;
-            return GetIMEReturnPayloadSize(inst) * (SIZE_GRF / SIZE_DWORD);
-        case GenISAIntrinsic::GenISA_vmeSendFBR2:
-        case GenISAIntrinsic::GenISA_vmeSendSIC2:
-            return 7 * (SIZE_GRF / SIZE_DWORD);
         case GenISAIntrinsic::GenISA_createMessagePhases:
         case GenISAIntrinsic::GenISA_createMessagePhasesNoInit:
         case GenISAIntrinsic::GenISA_createMessagePhasesV:
@@ -1100,9 +1092,6 @@ uint CShader::GetNbElementAndMask(llvm::Value* value, uint32_t& mask)
                 case GenISAIntrinsic::GenISA_createMessagePhasesNoInit:
                 case GenISAIntrinsic::GenISA_createMessagePhasesV:
                 case GenISAIntrinsic::GenISA_createMessagePhasesNoInitV:
-                case GenISAIntrinsic::GenISA_vmeSendIME2:
-                case GenISAIntrinsic::GenISA_vmeSendFBR2:
-                case GenISAIntrinsic::GenISA_vmeSendSIC2:
                     return GetNbElementAndMask(inst, mask);
                 default:
                     break;
