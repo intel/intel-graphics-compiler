@@ -796,6 +796,329 @@ PushConstantMode PushAnalysis::GetPushConstantMode()
     return pushConstantMode;
 }
 
+// process gather constants, update PushInfo.constants
+void PushAnalysis::processGather(Instruction* inst, uint bufId, uint eltId)
+{
+    PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
+
+    eltId = eltId >> 2;
+    if (!m_context->m_DriverInfo.Uses3DSTATE_DX9_CONSTANT() &&
+        (eltId + inst->getType()->getPrimitiveSizeInBits() / 8) >= (MaxConstantBufferIndexSize * 4))
+    {
+        // Hardware supports pushing more than 256 constants
+        // in case 3DSTATE_DX9_CONSTANT mode is used
+        return;
+    }
+    else if (bufId > 15)
+    {
+        // resource streamer cannot push above buffer slot 15 and driver doesn't allow
+        // pushing inlined constant buffer
+        // should not be pushed and should always be pulled
+        return;
+    }
+
+    unsigned int num_elms =
+        inst->getType()->isVectorTy() ? inst->getType()->getVectorNumElements() : 1;
+    llvm::Type *pTypeToPush = inst->getType();
+    llvm::Value *replaceVector = nullptr;
+    unsigned int numberChannelReplaced = 0;
+    SmallVector< SmallVector<ExtractElementInst*, 1>, 4> extracts(num_elms);
+    bool allExtract = false;
+    if (inst->getType()->isVectorTy())
+    {
+        allExtract = LoadUsedByConstExtractOnly(cast<LoadInst>(inst), extracts);
+        pTypeToPush = inst->getType()->getVectorElementType();
+    }
+
+    for (unsigned int i = 0; i < num_elms; ++i)
+    {
+        if (allExtract && extracts[i].empty())
+            continue;
+        ConstantAddress address;
+        address.bufId = bufId;
+        address.eltId = eltId + i;
+
+        auto it = pushInfo.constants.find(address);
+        if (it != pushInfo.constants.end() ||
+            (pushInfo.constantReg.size() + pushInfo.constants.size() < m_pullConstantHeuristics->getPushConstantThreshold(m_pFunction) * 8))
+        {
+            llvm::Value *value = nullptr;
+
+            // The sum of all the 4 constant buffer read lengths must be <= size of 64 units.
+            // Each unit is of size 256-bit units. In some UMDs we program the
+            // ConstantRegisters and Constant Buffers in the ConstantBuffer0ReadLength. And this causes
+            // shaders to crash when the read length is > 64 units. To be safer we program the total number of
+            // GRF's used to 32 registers.
+            if (it == pushInfo.constants.end())
+            {
+                // We now put the Value as an argument to make sure its liveness starts
+                // at the beginning of the function and then we remove the instruction
+                // We now put the Value as an argument to make sure its liveness starts
+                // at the beginning of the function and then we remove the instruction
+                value = addArgumentAndMetadata(pTypeToPush,
+                    VALUE_NAME(std::string("cb_") + to_string(bufId) + std::string("_") + to_string(eltId) + std::string("_elm") + to_string(i)),
+                    WIAnalysis::UNIFORM);
+                if (pTypeToPush != value->getType())
+                    value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", inst);
+
+                pushInfo.constants[address] = m_argIndex;
+            }
+            else
+            {
+                assert((it->second <= m_argIndex) &&
+                    "Function arguments list and metadata are out of sync!");
+                value = m_argList[it->second];
+                if (pTypeToPush != value->getType())
+                    value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", inst);
+            }
+
+            if (inst->getType()->isVectorTy())
+            {
+                if (!allExtract)
+                {
+                    numberChannelReplaced++;
+                    if (replaceVector == nullptr)
+                    {
+                        replaceVector = llvm::UndefValue::get(inst->getType());
+                    }
+                    replaceVector = llvm::InsertElementInst::Create(
+                        replaceVector, value, llvm::ConstantInt::get(llvm::IntegerType::get(inst->getContext(), 32), i), "", inst);
+                }
+                else
+                {
+                    for (auto II : extracts[i])
+                    {
+                        II->replaceAllUsesWith(value);
+                    }
+                }
+            }
+            else
+            {
+                inst->replaceAllUsesWith(value);
+            }
+        }
+        if (replaceVector != nullptr && numberChannelReplaced == num_elms)
+        {
+            // for vector replace, we only replace the load if we were going to push
+            // all the channels
+            inst->replaceAllUsesWith(replaceVector);
+        }
+    }
+}
+
+void PushAnalysis::processInput(Instruction* inst, bool gsInstancingUsed)
+{
+    PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
+    e_interpolation mode = (e_interpolation)llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
+    if (
+        mode == EINTERPOLATION_VERTEX)
+    {
+        // inputs which get pushed are set as function arguments in order to have the correct liveness
+        if (llvm::ConstantInt* pIndex = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0)))
+        {
+            SInputDesc input;
+            input.index = static_cast<uint>(pIndex->getZExtValue());
+            input.interpolationMode = mode;
+            // if we know input is uniform, update WI analysis results.
+            const bool uniformInput =
+                (mode == EINTERPOLATION_CONSTANT) || gsInstancingUsed;
+
+            auto it = pushInfo.inputs.find(input.index);
+            if (it == pushInfo.inputs.end())
+            {
+                assert(inst->getType()->isHalfTy() || inst->getType()->isFloatTy());
+                llvm::Type* floatTy = Type::getFloatTy(m_pFunction->getContext());
+                addArgumentAndMetadata(floatTy, VALUE_NAME(std::string("input_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
+                input.argIndex = m_argIndex;
+                pushInfo.inputs[input.index] = input;
+            }
+            else
+            {
+                assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                input.argIndex = it->second.argIndex;
+            }
+            llvm::Value* replacementValue = m_argList[input.argIndex];
+            if (inst->getType()->isHalfTy() && replacementValue->getType()->isFloatTy())
+            {
+                // Input is accessed using the half version of intrinsic, e.g.:
+                //     call half @llvm.genx.GenISA.DCL.inputVec.f16 (i32 13, i32 2)
+                replacementValue = CastInst::CreateFPCast(replacementValue, inst->getType(), "", inst);
+            }
+            inst->replaceAllUsesWith(replacementValue);
+        }
+    }
+}
+
+void PushAnalysis::processInputVec(Instruction* inst, bool gsInstancingUsed)
+{
+    PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
+
+    // If the input index of llvm_shaderinputvec is a constant
+    if (llvm::ConstantInt* pIndex = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0)))
+    {
+        uint inputIndex = static_cast<uint>(pIndex->getZExtValue());
+        e_interpolation mode = (e_interpolation)llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
+
+        // If the input index of llvm_shaderinputvec is a constant then we pull inputs if inputIndex <= MaxNumOfPushedInputs
+        if (pIndex && inputIndex <= MaxNumOfPushedInputs)
+        {
+            if (mode == EINTERPOLATION_CONSTANT || mode == EINTERPOLATION_VERTEX)
+            {
+                for (auto I = inst->user_begin(), E = inst->user_end(); I != E; ++I)
+                {
+                    if (llvm::ExtractElementInst* extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I))
+                    {
+                        SInputDesc input;
+                        // if input is i1.xyzw, inputIndex = 1*4, extract->getIndexOperand() is the component
+                        input.index = inputIndex * 4 +
+                            int_cast<uint>(llvm::cast<ConstantInt>(extract->getIndexOperand())->getZExtValue());
+                        input.interpolationMode = mode;
+                        // if we know input is uniform, update WI analysis results.
+                        const bool uniformInput =
+                            (mode == EINTERPOLATION_CONSTANT) || gsInstancingUsed;
+
+                        auto it = pushInfo.inputs.find(input.index);
+                        if (it == pushInfo.inputs.end())
+                        {
+                            addArgumentAndMetadata(extract->getType(), VALUE_NAME(std::string("pushedinput_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
+                            input.argIndex = m_argIndex;
+                            pushInfo.inputs[input.index] = input;
+                        }
+                        else
+                        {
+                            assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                            input.argIndex = it->second.argIndex;
+                        }
+
+                        extract->replaceAllUsesWith(m_argList[input.argIndex]);
+                    }
+                }
+            }
+        }
+        else
+        {
+            // This should never happen for geometry shader since we leave GS specific
+            // intrinsic if we want pull model earlier in GS lowering.
+            assert(m_context->type != ShaderType::GEOMETRY_SHADER);
+        }
+    }
+}
+
+void PushAnalysis::processURBRead(Instruction* inst, bool gsInstancingUsed,
+    bool vsHasConstantBufferIndexedWithInstanceId,
+    uint32_t vsUrbReadIndexForInstanceIdSGV)
+{
+    PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
+
+    if (llvm::ConstantInt* pVertexIndex = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0)))
+    {
+        uint vertexIndex = static_cast<uint>(pVertexIndex->getZExtValue());
+        uint numberOfElementsPerVertexThatAreGoingToBePushed = GetMaxNumberOfPushedInputs();
+
+        // If the input index of llvm_shaderinputvec is a constant
+        if (llvm::ConstantInt* pElementIndex = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(1)))
+        {
+            int urbOffset = static_cast<int>(pElementIndex->getZExtValue());
+            int urbReadOffsetForPush = 0;
+
+            if (m_context->type == ShaderType::HULL_SHADER)
+            {
+                urbReadOffsetForPush = m_context->getModuleMetaData()->URBInfo.hasVertexHeader ?
+                    (m_hsProps->GetProperties().m_HasClipCullAsInput ? 4 : 2)
+                    : 0;
+            }
+
+            bool pushCondition = ((urbOffset >= urbReadOffsetForPush) && (urbOffset - urbReadOffsetForPush) < (int)numberOfElementsPerVertexThatAreGoingToBePushed);
+
+            // If the attribute index of URBRead is a constant then we pull
+            // inputs if elementIndex <= minElementsPerVertexThatCanBePushed
+            if (pElementIndex && pushCondition)
+            {
+                uint elementIndex = urbOffset - urbReadOffsetForPush;
+                uint currentElementIndex = (vertexIndex * numberOfElementsPerVertexThatAreGoingToBePushed * 4) + (elementIndex * 4);
+
+                for (auto I = inst->user_begin(), E = inst->user_end(); I != E; ++I)
+                {
+                    llvm::ExtractElementInst* extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I);
+                    if (extract && llvm::isa<ConstantInt>(extract->getIndexOperand()))
+                    {
+                        SInputDesc input;
+                        // if input is i1.xyzw, elementIndex = 1*4, extract->getIndexOperand() is the component
+                        input.index =
+                            currentElementIndex +
+                            int_cast<uint>(cast<ConstantInt>(extract->getIndexOperand())->getZExtValue());
+                        input.interpolationMode = AreUniformInputsBasedOnDispatchMode() ?
+                            EINTERPOLATION_CONSTANT : EINTERPOLATION_VERTEX;
+
+                        const bool uniformInput =
+                            AreUniformInputsBasedOnDispatchMode() ||
+                            (vsHasConstantBufferIndexedWithInstanceId &&
+                                vsUrbReadIndexForInstanceIdSGV == input.index) ||
+                            gsInstancingUsed;
+
+                        auto it = pushInfo.inputs.find(input.index);
+                        if (it == pushInfo.inputs.end())
+                        {
+                            addArgumentAndMetadata(extract->getType(), VALUE_NAME(std::string("urb_read_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
+                            input.argIndex = m_argIndex;
+                            pushInfo.inputs[input.index] = input;
+                        }
+                        else
+                        {
+                            assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
+                            input.argIndex = it->second.argIndex;
+                        }
+                        extract->replaceAllUsesWith(m_argList[input.argIndex]);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// process runtimve value, update PushInfo.constantReg
+void PushAnalysis::processRuntimeValue(GenIntrinsicInst* intrinsic)
+{
+    PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
+
+    uint index = (uint)llvm::cast<llvm::ConstantInt>(intrinsic->getOperand(0))->getZExtValue();
+    auto it = pushInfo.constantReg.find(index);
+    Value* arg = nullptr;
+    Value* runtimeValue = intrinsic;
+    if (it == pushInfo.constantReg.end())
+    {
+        while (runtimeValue->hasOneUse() &&
+            (isa<BitCastInst>(runtimeValue->user_back()) ||
+                isa<IntToPtrInst>(runtimeValue->user_back())))
+        {
+            runtimeValue = runtimeValue->user_back();
+        }
+        arg = addArgumentAndMetadata(
+            runtimeValue->getType(),
+            VALUE_NAME(std::string("runtime_value_") + to_string(index)),
+            WIAnalysis::UNIFORM);
+        pushInfo.constantReg[index] = m_argIndex;
+    }
+    else
+    {
+        assert((it->second <= m_argIndex) &&
+            "Function arguments list and metadata are out of sync!");
+        arg = m_argList[it->second];
+        while (arg->getType() != runtimeValue->getType() &&
+            runtimeValue->hasOneUse() &&
+            (isa<BitCastInst>(runtimeValue->user_back()) ||
+                isa<IntToPtrInst>(runtimeValue->user_back())))
+        {
+            runtimeValue = runtimeValue->user_back();
+        }
+        if (arg->getType() != runtimeValue->getType())
+        {
+            arg = CastInst::CreateBitOrPointerCast(
+                arg, runtimeValue->getType(), "", cast<Instruction>(runtimeValue));
+        }
+    }
+    runtimeValue->replaceAllUsesWith(arg);
+}
 
 //// Max number of control point inputs in 8 patch beyond which we always pull
 /// and do not try to use a hybrid approach of pull and push
@@ -837,7 +1160,6 @@ void PushAnalysis::ProcessFunction()
         m_dsProps->SetDomainPointWArgu(valueW);
     }
 
-	PushInfo &pushInfo = m_context->getModuleMetaData()->pushInfo;
     if (pushConstantMode == PushConstantMode::SIMPLE_PUSH)
     {
         BlockPushConstants();
@@ -885,198 +1207,15 @@ void PushAnalysis::ProcessFunction()
                 IsPushableShaderConstant(inst, bufId, eltId, isStateless) && 
                 !isStateless)
             {
-                eltId = eltId >> 2;
-                if (!m_context->m_DriverInfo.Uses3DSTATE_DX9_CONSTANT() && (eltId + inst->getType()->getPrimitiveSizeInBits() / 8) >= (MaxConstantBufferIndexSize * 4))
-                {
-                    // Hardware supports pushing more than 256 constants
-                    // in case 3DSTATE_DX9_CONSTANT mode is used
-                    continue;
-                }
-                else if (bufId > 15)
-                {
-                    // resource streamer cannot push above buffer slot 15 and driver doesn't allow 
-                    // pushing inlined constant buffer
-                    //should not be pushed and should always be pulled
-                    continue;
-                }
-
-                unsigned int num_elms = 
-                    inst->getType()->isVectorTy() ? inst->getType()->getVectorNumElements() : 1;
-                llvm::Type *pTypeToPush = inst->getType();
-                llvm::Value *replaceVector = nullptr;
-                unsigned int numberChannelReplaced = 0;
-                SmallVector< SmallVector<ExtractElementInst*, 1>, 4> extracts(num_elms);
-                bool allExtract = false;
-                if (inst->getType()->isVectorTy())
-                {
-                    allExtract = LoadUsedByConstExtractOnly(cast<LoadInst>(inst), extracts);
-                    pTypeToPush = inst->getType()->getVectorElementType();
-                }
-
-                for (unsigned int i = 0; i < num_elms; ++i)
-                {
-                    if(allExtract && extracts[i].empty())
-                        continue;
-					ConstantAddress address;
-					address.bufId = bufId;
-					address.eltId = eltId + i;
-
-                    auto it = pushInfo.constants.find(address);
-                    if (it != pushInfo.constants.end() || (pushInfo.constantReg.size() + pushInfo.constants.size() < m_pullConstantHeuristics->getPushConstantThreshold(m_pFunction) * 8))
-                    {
-                        llvm::Value *value = nullptr;
-
-                        // The sum of all the 4 constant buffer read lengths must be <= size of 64 units. 
-                        // Each unit is of size 256-bit units. In some UMDs we program the 
-                        // ConstantRegisters and Constant Buffers in the ConstantBuffer0ReadLength. And this causes
-                        // shaders to crash when the read length is > 64 units. To be safer we program the total number of 
-                        // GRF's used to 32 registers.
-                        if (it == pushInfo.constants.end())
-                        {
-                            // We now put the Value as an argument to make sure its liveness starts 
-                            // at the beginning of the function and then we remove the instruction
-                            // We now put the Value as an argument to make sure its liveness starts 
-                            // at the beginning of the function and then we remove the instruction
-                            value = addArgumentAndMetadata(pTypeToPush,
-                                VALUE_NAME(std::string("cb_") + to_string(bufId) + std::string("_") + to_string(eltId) + std::string("_elm") + to_string(i)),
-                                WIAnalysis::UNIFORM);
-                            if (pTypeToPush != value->getType())
-                                value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", inst);
-
-                            pushInfo.constants[address] = m_argIndex;
-                        }
-                        else
-                        {
-							assert((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
-                            value = m_argList[it->second];
-                            if (pTypeToPush != value->getType())
-                                value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", inst);
-                        }
-
-                        if(inst->getType()->isVectorTy())
-                        {
-                            if(!allExtract)
-                            {
-                                numberChannelReplaced++;
-                                if(replaceVector == nullptr)
-                                {
-                                    replaceVector = llvm::UndefValue::get(inst->getType());
-                                }
-                                replaceVector = llvm::InsertElementInst::Create(replaceVector, value, llvm::ConstantInt::get(llvm::IntegerType::get(inst->getContext(), 32), i), "", inst);
-                            }
-                            else
-                            {
-                                for(auto II : extracts[i])
-                                {
-                                    II->replaceAllUsesWith(value);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            inst->replaceAllUsesWith(value);
-                        }
-                    }
-                    if(replaceVector != nullptr && numberChannelReplaced == num_elms)
-                    {
-                        // for vector replace, we only replace the load if we were going to push
-                        // all the channels
-                        inst->replaceAllUsesWith(replaceVector);
-                    }
-                }
+                processGather(inst, bufId, eltId);
             }
             else if(GetOpCode(inst) == llvm_input)
             {
-                e_interpolation mode = (e_interpolation) llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
-                if(
-                    mode == EINTERPOLATION_VERTEX)
-                {
-                    // inputs which get pushed are set as function arguments in order to have the correct liveness
-                    if (llvm::ConstantInt* pIndex = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0)))
-                    {
-                        SInputDesc input;
-                        input.index = static_cast<uint>(pIndex->getZExtValue());
-                        input.interpolationMode = mode;
-                        // if we know input is uniform, update WI analysis results.
-                        const bool uniformInput =
-                            (mode == EINTERPOLATION_CONSTANT) || gsInstancingUsed;
-
-                        auto it = pushInfo.inputs.find(input.index);
-                        if( it == pushInfo.inputs.end())
-                        {
-                            assert(inst->getType()->isHalfTy() || inst->getType()->isFloatTy());
-                            llvm::Type* floatTy = Type::getFloatTy(m_pFunction->getContext());
-                            addArgumentAndMetadata(floatTy, VALUE_NAME(std::string("input_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
-							input.argIndex = m_argIndex;
-                            pushInfo.inputs[input.index] = input;
-                        }
-                        else
-                        {
-							assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
-                            input.argIndex = it->second.argIndex;
-                        }
-						llvm::Value* replacementValue = m_argList[input.argIndex];
-                        if (inst->getType()->isHalfTy() && replacementValue->getType()->isFloatTy())
-                        {
-                            // Input is accessed using the half version of intrinsic, e.g.:
-                            //     call half @llvm.genx.GenISA.DCL.inputVec.f16 (i32 13, i32 2)
-                            replacementValue = CastInst::CreateFPCast(replacementValue, inst->getType(), "",  inst);
-                        }
-                        inst->replaceAllUsesWith(replacementValue);
-                    }
-                }
+                processInput(inst, gsInstancingUsed);
             }
             else if(GetOpCode(inst) == llvm_shaderinputvec)
             {
-                // If the input index of llvm_shaderinputvec is a constant
-                if( llvm::ConstantInt* pIndex = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0)) )
-                {
-                    uint inputIndex = static_cast<uint>(pIndex->getZExtValue());
-                    e_interpolation mode = (e_interpolation) llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
-
-                    // If the input index of llvm_shaderinputvec is a constant then we pull inputs if inputIndex <= MaxNumOfPushedInputs
-                    if( pIndex && inputIndex <= MaxNumOfPushedInputs )
-                    {
-                        if(mode==EINTERPOLATION_CONSTANT || mode == EINTERPOLATION_VERTEX)
-                        {
-                            for(auto I = inst->user_begin(), E = inst->user_end(); I!=E; ++I)
-                            {
-                                if(llvm::ExtractElementInst* extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I))
-                                {
-                                    SInputDesc input;
-                                    // if input is i1.xyzw, inputIndex = 1*4, extract->getIndexOperand() is the component
-                                    input.index = inputIndex * 4 +
-                                        int_cast<uint>(llvm::cast<ConstantInt>(extract->getIndexOperand())->getZExtValue());
-                                    input.interpolationMode = mode;
-                                    // if we know input is uniform, update WI analysis results.
-                                    const bool uniformInput =
-                                        (mode == EINTERPOLATION_CONSTANT) || gsInstancingUsed;
-
-                                    auto it = pushInfo.inputs.find(input.index);
-                                    if( it == pushInfo.inputs.end())
-                                    {
-                                        addArgumentAndMetadata(extract->getType(), VALUE_NAME(std::string("pushedinput_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
-										input.argIndex = m_argIndex;
-                                        pushInfo.inputs[input.index] = input;
-                                    }
-                                    else
-                                    {
-										assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
-                                        input.argIndex = it->second.argIndex;
-                                    }
-
-                                    extract->replaceAllUsesWith(m_argList[input.argIndex]);
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // This should never happen for geometry shader since we leave GS specific
-                        // intrinsic if we want pull model earlier in GS lowering.
-                        assert(m_context->type != ShaderType::GEOMETRY_SHADER);
-                    }
-                }
+                processInputVec(inst, gsInstancingUsed);
             }
             else if(GenIntrinsicInst* intrinsic = dyn_cast<GenIntrinsicInst>(inst))
             {
@@ -1084,109 +1223,13 @@ void PushAnalysis::ProcessFunction()
                      (intrinsic->getIntrinsicID() == GenISAIntrinsic::GenISA_URBRead) && 
                      (m_context->type != ShaderType::DOMAIN_SHADER))
                 {
-                    if( llvm::ConstantInt* pVertexIndex = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0)) )
-                    {
-                        uint vertexIndex = static_cast<uint>(pVertexIndex->getZExtValue());
-                        uint numberOfElementsPerVertexThatAreGoingToBePushed = GetMaxNumberOfPushedInputs();
-
-                        // If the input index of llvm_shaderinputvec is a constant
-                        if(llvm::ConstantInt* pElementIndex = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(1)))
-                        {
-							int urbOffset = static_cast<int>(pElementIndex->getZExtValue());
-							int urbReadOffsetForPush = 0;
-
-							if (m_context->type == ShaderType::HULL_SHADER)
-							{
-								urbReadOffsetForPush = m_context->getModuleMetaData()->URBInfo.hasVertexHeader ?
-									(m_hsProps->GetProperties().m_HasClipCullAsInput ? 4 : 2)
-									: 0;
-							}
-
-							bool pushCondition = ((urbOffset >= urbReadOffsetForPush) && (urbOffset - urbReadOffsetForPush) < (int)numberOfElementsPerVertexThatAreGoingToBePushed);
-
-							// If the attribute index of URBRead is a constant then we pull 
-							// inputs if elementIndex <= minElementsPerVertexThatCanBePushed
-							if (pElementIndex && pushCondition)
-							{
-								uint elementIndex = urbOffset - urbReadOffsetForPush;
-								uint currentElementIndex = (vertexIndex * numberOfElementsPerVertexThatAreGoingToBePushed * 4) + (elementIndex * 4);
-
-                                for(auto I = inst->user_begin(), E = inst->user_end(); I != E; ++I)
-                                {
-                                    llvm::ExtractElementInst* extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I);
-                                    if (extract && llvm::isa<ConstantInt>(extract->getIndexOperand()))
-                                    {
-                                        SInputDesc input;
-                                        // if input is i1.xyzw, elementIndex = 1*4, extract->getIndexOperand() is the component
-                                        input.index =
-                                            currentElementIndex +
-                                            int_cast<uint>(cast<ConstantInt>(extract->getIndexOperand())->getZExtValue());
-                                        input.interpolationMode = AreUniformInputsBasedOnDispatchMode() ?
-                                            EINTERPOLATION_CONSTANT : EINTERPOLATION_VERTEX;
-
-                                        const bool uniformInput =
-                                            AreUniformInputsBasedOnDispatchMode() ||
-                                            (vsHasConstantBufferIndexedWithInstanceId &&
-                                            vsUrbReadIndexForInstanceIdSGV == input.index) ||
-                                            gsInstancingUsed;
-
-                                        auto it = pushInfo.inputs.find(input.index);
-                                        if(it == pushInfo.inputs.end())
-                                        {	
-                                            addArgumentAndMetadata(extract->getType(), VALUE_NAME(std::string("urb_read_") + to_string(input.index)), uniformInput ? WIAnalysis::UNIFORM : WIAnalysis::RANDOM);
-											input.argIndex = m_argIndex;
-                                            pushInfo.inputs[input.index] = input;
-                                        }
-                                        else
-                                        {
-											assert((it->second.argIndex <= m_argIndex) && "Function arguments list and metadata are out of sync!");
-                                            input.argIndex = it->second.argIndex;
-                                        }
-                                        extract->replaceAllUsesWith(m_argList[input.argIndex]);
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    processURBRead(inst, gsInstancingUsed,
+                        vsHasConstantBufferIndexedWithInstanceId,
+                        vsUrbReadIndexForInstanceIdSGV);
                 }
                 else if(intrinsic->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue)
                 {
-                    uint index = (uint)llvm::cast<llvm::ConstantInt>(intrinsic->getOperand(0))->getZExtValue();
-                    auto it = pushInfo.constantReg.find(index);
-                    Value* arg = nullptr;
-                    Value* runtimeValue = intrinsic;
-                    if(it == pushInfo.constantReg.end())
-                    {
-                        while(runtimeValue->hasOneUse() &&
-                            (isa<BitCastInst>(runtimeValue->user_back()) || 
-                             isa<IntToPtrInst>(runtimeValue->user_back())))
-                        {
-                            runtimeValue = runtimeValue->user_back();
-                        }
-                        arg = addArgumentAndMetadata(
-                            runtimeValue->getType(), 
-                            VALUE_NAME(std::string("runtime_value_") + to_string(index)), 
-                            WIAnalysis::UNIFORM);
-                        pushInfo.constantReg[index] = m_argIndex;
-                    }
-                    else
-                    {
-						assert((it->second <= m_argIndex) && "Function arguments list and metadata are out of sync!");
-                        arg = m_argList[it->second];
-                        while(arg->getType() != runtimeValue->getType() &&
-                            runtimeValue->hasOneUse() &&
-                            (isa<BitCastInst>(runtimeValue->user_back()) ||
-                             isa<IntToPtrInst>(runtimeValue->user_back())))
-                        {
-                            runtimeValue = runtimeValue->user_back();
-                        }
-                        if(arg->getType() != runtimeValue->getType())
-                        {
-                            arg = CastInst::CreateBitOrPointerCast(
-                                arg, runtimeValue->getType(), "", cast<Instruction>(runtimeValue));
-                        }
-                    }
-                    runtimeValue->replaceAllUsesWith(arg);
+                    processRuntimeValue(intrinsic);
                 }
             }
         }

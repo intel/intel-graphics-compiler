@@ -118,9 +118,17 @@ class PushAnalysis : public llvm::ModulePass
     unsigned int GetHSMaxNumberOfPushedInputs();
     bool DispatchGRFHardwareWAForHSAndGSDisabled();
 
-
     /// return the push constant mode supported based on driver and platform support
     PushConstantMode GetPushConstantMode();
+
+    void processGather(llvm::Instruction* inst, uint bufId, uint eltId);
+    void processInput(llvm::Instruction* inst, bool gsInstancingUsed);
+    void processInputVec(llvm::Instruction* inst, bool gsInstancingUsed);
+    void processURBRead(llvm::Instruction* inst, bool gsInstancingUsed,
+        bool vsHasConstantBufferIndexedWithInstanceId,
+        uint32_t vsUrbReadIndexForInstanceIdSGV);
+    void processRuntimeValue(llvm::GenIntrinsicInst* intrinsic);
+
 public:
     static char ID;
     PushAnalysis();
