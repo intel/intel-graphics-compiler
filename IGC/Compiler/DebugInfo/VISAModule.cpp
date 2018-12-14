@@ -704,6 +704,7 @@ void VISAModule::Reset()
 void VISAModule::buildDirectElfMaps()
 {
     VISAIndexToInst.clear();
+    VISAIndexToSize.clear();
     for (VISAModule::const_iterator II = begin(), IE = end(); II != IE; ++II)
     {
         const Instruction *pInst = *II;
@@ -714,6 +715,10 @@ void VISAModule::buildDirectElfMaps()
 
         unsigned int currOffset = itr->second.m_offset;
         VISAIndexToInst.insert(std::make_pair(currOffset, pInst));
+        unsigned int currSize = itr->second.m_size;
+        for(auto index = currOffset; index != (currOffset+currSize); index++)
+            VISAIndexToSize.insert(std::make_pair(index, 
+                std::make_pair(currOffset, currSize)));
     }
 
     GenISAToVISAIndex.clear();

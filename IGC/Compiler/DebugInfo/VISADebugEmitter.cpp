@@ -209,7 +209,8 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
         // Emit src line mapping directly instead of
         // relying on dbgmerge. elf generated will have
         // text section and debug_line sections populated.
-        std::map<unsigned int, const llvm::Instruction*>& VISAIndexToInst = m_pVISAModule->VISAIndexToInst;
+        auto& VISAIndexToInst = m_pVISAModule->VISAIndexToInst;
+        auto& VISAIndexToSize = m_pVISAModule->VISAIndexToSize;
         std::vector<std::pair<unsigned int, unsigned int>> GenISAToVISAIndex;
         unsigned int subEnd = m_pVISAModule->GetCurrentVISAId();
         unsigned int prevLastGenOff = lastGenOff;
@@ -244,7 +245,30 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
 
             pc = item.first;
 
-            auto instIt = VISAIndexToInst.find(item.second);
+            auto instIt = VISAIndexToInst.end();
+            auto sizeIt = VISAIndexToSize.find(item.second);
+            if (sizeIt != VISAIndexToSize.end())
+            {
+                // Lookup all VISA instructions that may
+                // map to an llvm::Instruction. This is useful
+                // when an llvm::Instruction leads to multiple
+                // VISA instructions, and VISA optimizer
+                // optimizes some of those away. Src line
+                // mapping for all VISA instructions is the
+                // same. So lookup any one that still exists.
+                auto startIdx = (*sizeIt).second.first;
+                auto numVISAInsts = (*sizeIt).second.second;
+                for (unsigned int visaId = startIdx;
+                    visaId != (startIdx + numVISAInsts); visaId++)
+                {
+                    instIt = VISAIndexToInst.find(visaId);
+                    // Loop till at least one VISA instruction
+                    // is found.
+                    if(instIt != VISAIndexToInst.end())
+                        break;
+                }
+            }
+
             if (instIt != VISAIndexToInst.end())
             {
                 auto loc = (*instIt).second->getDebugLoc();
