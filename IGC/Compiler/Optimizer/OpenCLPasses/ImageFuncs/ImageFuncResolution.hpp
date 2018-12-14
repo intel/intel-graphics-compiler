@@ -154,9 +154,6 @@ namespace IGC
         /// @brief  The implicit arguments of the current function
         ImplicitArgs m_implicitArgs;
 
-        /// @brief The input IR version metadata information.
-        IGCMD::InputIRVersionMetaDataHandle m_InputIRVersionMD;
-
         /// @brief  Indicates if the pass changed the processed function
         bool m_changed;
     };

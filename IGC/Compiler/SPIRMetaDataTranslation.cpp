@@ -157,35 +157,6 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         }
     }
 
-    // Handling Input IR format.
-    IGCMD::InputIRVersionMetaDataHandle iirvHandle = IGCMD::InputIRVersionMetaDataHandle(IGCMD::InputIRVersionMetaData::get());
-    if(llvm::StringRef(M.getTargetTriple()).startswith("igil") || llvm::StringRef(M.getTargetTriple()).startswith("gpu_64"))
-    {
-        iirvHandle->setName("ocl");
-        iirvHandle->setMajor(oclMajor);
-        iirvHandle->setMinor(oclMinor);
-    } 
-    else if (StringRef(M.getTargetTriple()).startswith("vISA_"))
-    {
-        iirvHandle->setName("spir");
-        if (spirMDUtils.isSpirVersionsHasValue())
-        {
-            SPIRMD::VersionMetaDataHandle spirVersion = spirMDUtils.getSpirVersionsItem(0);
-            iirvHandle->setMajor(spirVersion->getMajor());
-            iirvHandle->setMinor(spirVersion->getMinor());
-        }
-        else
-        {
-            iirvHandle->setMajor(2);
-            iirvHandle->setMinor(0);
-        }
-    }
-    else
-    {
-        assert(0 && "Expected SPIR or OCL");
-    }
-    pIgcMDUtils->addInputIRVersionsItem(iirvHandle);
-
     // Handling Functions
     SPIRMD::SpirMetaDataUtils::KernelsList::const_iterator ki = spirMDUtils.begin_Kernels();
     SPIRMD::SpirMetaDataUtils::KernelsList::const_iterator ke = spirMDUtils.end_Kernels();

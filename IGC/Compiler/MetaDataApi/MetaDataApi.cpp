@@ -1006,160 +1006,6 @@ llvm::Metadata* ArgInfoMetaData::getImgAccessIntCoordsNode( const llvm::MDNode* 
 }
 
 ///
-// Ctor - loads the InputIRVersionMetaData from the given metadata node
-//
-InputIRVersionMetaData::InputIRVersionMetaData(const llvm::MDNode* pNode, bool hasId):
-    _Mybase(pNode, hasId),
-    m_Name(getNameNode(pNode)),        
-    m_Major(getMajorNode(pNode)),        
-    m_Minor(getMinorNode(pNode)),
-    m_pNode(pNode)
-{}
-
-///
-// Default Ctor - creates the empty, not named InputIRVersionMetaData object
-//
-InputIRVersionMetaData::InputIRVersionMetaData():    
-    m_pNode(NULL)
-{}
-
-///
-// Ctor - creates the empty, named InputIRVersionMetaData object
-//
-InputIRVersionMetaData::InputIRVersionMetaData(const char* name):
-    _Mybase(name),    
-    m_pNode(NULL)
-{}
-
-bool InputIRVersionMetaData::hasValue() const
-{
-    if (m_Name.hasValue())
-    {
-        return true;
-    }
-        
-    
-    if (m_Major.hasValue())
-    {
-        return true;
-    }
-        
-    
-    if (m_Minor.hasValue())
-    {
-        return true;
-    }
-    return NULL != m_pNode || dirty();
-}
-
-///
-// Returns true if any of the InputIRVersionMetaData`s members has changed
-bool InputIRVersionMetaData::dirty() const
-{
-    if( m_Name.dirty() )
-    {
-        return true;
-    }        
-    if( m_Major.dirty() )
-    {
-        return true;
-    }        
-    if( m_Minor.dirty() )
-    {
-        return true;
-    }
-    return false;
-}
-
-///
-// Discards the changes done to the InputIRVersionMetaData instance
-void InputIRVersionMetaData::discardChanges()
-{
-    m_Name.discardChanges();        
-    m_Major.discardChanges();        
-    m_Minor.discardChanges();
-}
-
-///
-// Generates the new MDNode hierarchy for the given structure
-llvm::Metadata* InputIRVersionMetaData::generateNode(llvm::LLVMContext& context) const
-{
-    llvm::SmallVector<llvm::Metadata*, 5> args;
-
-    llvm::Metadata* pIDNode = _Mybase::generateNode(context);
-    if( NULL != pIDNode )
-    {
-        args.push_back(pIDNode);
-    }
-
-    args.push_back( m_Name.generateNode(context));        
-    args.push_back( m_Major.generateNode(context));        
-    args.push_back( m_Minor.generateNode(context));
-
-    return llvm::MDNode::get(context, args);
-}
-
-///
-// Saves the structure changes to the given MDNode
-void InputIRVersionMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
-{
-    assert( pNode && "The target node should be valid pointer");
-
-    // we assume that underlying metadata node has not changed under our foot
-    if( pNode == m_pNode && !dirty() )
-    {
-        return;
-    }
-#if 0
-    // check that we could save the new information to the given node without regenerating it
-    if( !compatibleWith(pNode) )
-    {
-        pNode->replaceAllUsesWith(generateNode(context));
-        return;
-    }
-#endif
-
-    m_Name.save(context, llvm::cast<llvm::MDNode>(getNameNode(pNode)));        
-    m_Major.save(context, llvm::cast<llvm::MDNode>(getMajorNode(pNode)));        
-    m_Minor.save(context, llvm::cast<llvm::MDNode>(getMinorNode(pNode)));
-}
-
-llvm::Metadata* InputIRVersionMetaData::getNameNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    return pParentNode->getOperand(0 + offset).get();
-}
-    
-llvm::Metadata* InputIRVersionMetaData::getMajorNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    return pParentNode->getOperand(1 + offset).get();
-}
-    
-llvm::Metadata* InputIRVersionMetaData::getMinorNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    return pParentNode->getOperand(2 + offset).get();
-}
-
-                    
-
-///
 // Ctor - loads the LocalOffsetMetaData from the given metadata node
 //
 LocalOffsetMetaData::LocalOffsetMetaData(const llvm::MDNode* pNode, bool hasId):
@@ -1286,7 +1132,6 @@ llvm::Metadata* LocalOffsetMetaData::getOffsetNode( const llvm::MDNode* pParentN
     return pParentNode->getOperand(1 + offset).get();
 }
 
-                    
 
 ///
 // Ctor - loads the ArgDependencyInfoMetaData from the given metadata node
@@ -3355,14 +3200,6 @@ llvm::MDNode* FunctionInfoMetaData::getOpenCLArgNamesNode(const llvm::MDNode* pP
     }
     return NULL;
 }
-
-///
-// dtor
-//MetaDataUtils::~MetaDataUtils()
-//{
-   // //  assert(!dirty() && "There were changes in the metadata hierarchy. Either save or discardChanges should be called");
- //
-//}
 
 static bool isNamedNode(const llvm::Metadata* pNode, const char* name)
 {

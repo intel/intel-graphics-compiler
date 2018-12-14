@@ -472,22 +472,6 @@ void UnifyIRSPIR(
     std::unique_ptr<llvm::Module> BuiltinGenericModule,
     std::unique_ptr<llvm::Module> BuiltinSizeModule)
 {
-    int pointerSize = getPointerSize(*pContext->getModule());
-
-    // Replace SPIR triple with IGC triple.
-    if(pointerSize == 4)
-    {
-        pContext->getModule()->setTargetTriple("vISA_32");
-		BuiltinGenericModule->setTargetTriple("vISA_32");
-		BuiltinSizeModule->setTargetTriple("vISA_32");
-    }
-    else // pointer size 64bit
-    {
-        pContext->getModule()->setTargetTriple("vISA_64");
-		BuiltinGenericModule->setTargetTriple("vISA_64");
-		BuiltinSizeModule->setTargetTriple("vISA_64");
-    }
-
     CommonOCLBasedPasses(pContext, std::move(BuiltinGenericModule), std::move(BuiltinSizeModule));
 }
 }

@@ -42,9 +42,6 @@ typedef MetaObjectHandle<ArgAllocMetaData> ArgAllocMetaDataHandle;
 class ArgInfoMetaData;
 typedef MetaObjectHandle<ArgInfoMetaData> ArgInfoMetaDataHandle; 
                     
-class InputIRVersionMetaData;
-typedef MetaObjectHandle<InputIRVersionMetaData> InputIRVersionMetaDataHandle; 
-                    
 class LocalOffsetMetaData;
 typedef MetaObjectHandle<LocalOffsetMetaData> LocalOffsetMetaDataHandle; 
             
@@ -77,9 +74,6 @@ typedef MetaObjectHandle<ArgAllocsMetaDataList> ArgAllocsMetaDataListHandle;
                                 
 typedef MetaDataList<ArgInfoMetaDataHandle> ArgInfoListMetaDataList;
 typedef MetaObjectHandle<ArgInfoListMetaDataList> ArgInfoListMetaDataListHandle; 
-                                
-typedef MetaDataList<InputIRVersionMetaDataHandle> InputIRVersionsMetaDataList;
-typedef MetaObjectHandle<InputIRVersionsMetaDataList> InputIRVersionsMetaDataListHandle; 
                                 
 typedef MetaDataList<LocalOffsetMetaDataHandle> LocalOffsetsMetaDataList;
 typedef MetaObjectHandle<LocalOffsetsMetaDataList> LocalOffsetsMetaDataListHandle; 
@@ -780,145 +774,6 @@ private:
     NamedMetaDataValue<int32_t> m_StructArgOffset;        
     NamedMetaDataValue<bool> m_ImgAccessFloatCoords;        
     NamedMetaDataValue<bool> m_ImgAccessIntCoords;
-    // parent node
-    const llvm::MDNode* m_pNode;
-};
-                    
-///
-// Read/Write the InputIRVersion structure from/to LLVM metadata
-//
-class InputIRVersionMetaData:public IMetaDataObject
-{
-public:
-    typedef InputIRVersionMetaData _Myt;
-    typedef IMetaDataObject _Mybase;
-    // typedefs for data member types
-    typedef MetaDataValue<std::string>::value_type NameType;        
-    typedef MetaDataValue<int32_t>::value_type MajorType;        
-    typedef MetaDataValue<int32_t>::value_type MinorType;
-
-public:
-    ///
-    // Factory method - creates the InputIRVersionMetaData from the given metadata node
-    //
-    static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
-    {
-        return new _Myt(pNode, hasId);
-    }
-
-    ///
-    // Factory method - create the default empty InputIRVersionMetaData object
-    static _Myt* get()
-    {
-        return new _Myt();
-    }
-
-    ///
-    // Factory method - create the default empty named InputIRVersionMetaData object
-    static _Myt* get(const char* name)
-    {
-        return new _Myt(name);
-    }
-
-    ///
-    // Ctor - loads the InputIRVersionMetaData from the given metadata node
-    //
-    InputIRVersionMetaData(const llvm::MDNode* pNode, bool hasId);
-
-    ///
-    // Default Ctor - creates the empty, not named InputIRVersionMetaData object
-    //
-    InputIRVersionMetaData();
-
-    ///
-    // Ctor - creates the empty, named InputIRVersionMetaData object
-    //
-    InputIRVersionMetaData(const char* name);
-
-    /// Name related methods
-    NameType getName() const
-    {
-        return m_Name.get();
-    }
-    void setName( const NameType& val)
-    {
-        m_Name.set(val);
-    }
-    bool isNameHasValue() const
-    {
-        return m_Name.hasValue();
-    }
-        
-    
-    /// Major related methods
-    MajorType getMajor() const
-    {
-        return m_Major.get();
-    }
-    void setMajor( const MajorType& val)
-    {
-        m_Major.set(val);
-    }
-    bool isMajorHasValue() const
-    {
-        return m_Major.hasValue();
-    }
-        
-    
-    /// Minor related methods
-    MinorType getMinor() const
-    {
-        return m_Minor.get();
-    }
-    void setMinor( const MinorType& val)
-    {
-        m_Minor.set(val);
-    }
-    bool isMinorHasValue() const
-    {
-        return m_Minor.hasValue();
-    }
-
-    ///
-    // Returns true if any of the InputIRVersionMetaData`s members has changed
-    bool dirty() const;
-
-    ///
-    // Returns true if the structure was loaded from the metadata or was changed
-    bool hasValue() const;
-
-    ///
-    // Discards the changes done to the InputIRVersionMetaData instance
-    void discardChanges();
-
-    ///
-    // Generates the new MDNode hierarchy for the given structure
-    llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
-
-    ///
-    // Saves the structure changes to the given MDNode
-    void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
-
-private:
-    ///
-    // Returns true if the given MDNode could be saved to without replacement
-    bool compatibleWith( const llvm::MDNode* pNode) const
-    {
-        return false;
-    }
-
-private:
-    typedef MetaDataIterator<llvm::MDNode> NodeIterator;
-
-    llvm::Metadata* getNameNode( const llvm::MDNode* pParentNode) const;    
-    llvm::Metadata* getMajorNode( const llvm::MDNode* pParentNode) const;    
-    llvm::Metadata* getMinorNode( const llvm::MDNode* pParentNode) const;
-
-private:
-    // data members
-    MetaDataValue<std::string> m_Name;        
-    MetaDataValue<int32_t> m_Major;        
-    MetaDataValue<int32_t> m_Minor;
     // parent node
     const llvm::MDNode* m_pNode;
 };
@@ -3087,99 +2942,25 @@ private:
 class MetaDataUtils
 {
 public:
-    // typedefs for the data members types        
-    typedef NamedMDNodeList<InputIRVersionMetaDataHandle> InputIRVersionsList;              
+    // typedefs for the data members types                   
     typedef NamedMetaDataMap<llvm::Function, FunctionInfoMetaDataHandle> FunctionsInfoMap;     
 
 public:
     // If using this constructor, setting the llvm module by the setModule 
     // function is needed for correct operation.
     MetaDataUtils(){}
-
-
-
     MetaDataUtils(llvm::Module* pModule):
-        m_InputIRVersions(pModule->getOrInsertNamedMetadata("igc.input.ir")),
         m_FunctionsInfo(pModule->getOrInsertNamedMetadata("igc.functions")),    
         m_pModule(pModule)
     {
     }
 
     void setModule(llvm::Module* pModule) {
-        m_InputIRVersions = pModule->getOrInsertNamedMetadata("igc.input.ir");
         m_FunctionsInfo = pModule->getOrInsertNamedMetadata("igc.functions");    
         m_pModule = pModule;
     }
 
     ~MetaDataUtils(){}
-
-    /// InputIRVersions related methods
-    void clearInputIRVersions()
-    {
-        m_InputIRVersions.clear();
-    }
-
-    void deleteInputIRVersions()
-    {
-        llvm::NamedMDNode* InputIRVersionsNode = m_pModule->getNamedMetadata("igc.input.ir");
-        if (InputIRVersionsNode)
-        {
-            m_nodesToDelete.push_back(InputIRVersionsNode);
-        }
-    }
-
-    InputIRVersionsList::iterator begin_InputIRVersions()
-    {
-        return m_InputIRVersions.begin();
-    }
-    InputIRVersionsList::iterator end_InputIRVersions()
-    {
-        return m_InputIRVersions.end();
-    }
-
-    InputIRVersionsList::const_iterator begin_InputIRVersions() const
-    {
-        return m_InputIRVersions.begin();
-    }
-
-    InputIRVersionsList::const_iterator end_InputIRVersions() const
-    {
-        return m_InputIRVersions.end();
-    }
-
-    size_t size_InputIRVersions()  const
-    {
-        return m_InputIRVersions.size();
-    }
-
-    bool empty_InputIRVersions()  const
-    {
-        return m_InputIRVersions.empty();
-    }
-
-    bool isInputIRVersionsHasValue() const
-    {
-        return m_InputIRVersions.hasValue();
-    }
-     
-    InputIRVersionsList::item_type getInputIRVersionsItem( size_t index ) const
-    {
-        return m_InputIRVersions.getItem(index);
-    }
-    void setInputIRVersionsItem( size_t index, const InputIRVersionsList::item_type& item  )
-    {
-        return m_InputIRVersions.setItem(index, item);
-    }
-
-    void addInputIRVersionsItem(const InputIRVersionsList::item_type& val)
-    {
-        m_InputIRVersions.push_back(val);
-    }
-
-    InputIRVersionsList::iterator eraseInputIRVersionsItem(InputIRVersionsList::iterator it)
-    {
-        return m_InputIRVersions.erase(it);
-    }
 
     /// FunctionsInfo related methods
     void clearFunctionsInfo()
@@ -3258,27 +3039,9 @@ public:
     {
         m_FunctionsInfo.erase(it);
     }       
-    
-    bool dirty()
-    {
-        if (m_InputIRVersions.dirty())
-        {
-            return true;
-        }
-        if( m_FunctionsInfo.dirty() )
-        {
-            return true;
-        }
-        return false;
-    }
 
     void save(llvm::LLVMContext& context)
     {
-		if (m_InputIRVersions.dirty())
-		{
-			llvm::NamedMDNode* pNode = m_pModule->getOrInsertNamedMetadata("igc.input.ir");
-			m_InputIRVersions.save(context, pNode);
-		}
         if( m_FunctionsInfo.dirty() )
         {
             llvm::NamedMDNode* pNode = m_pModule->getOrInsertNamedMetadata("igc.functions");
@@ -3296,19 +3059,12 @@ public:
 
     void discardChanges()
     {
-		m_InputIRVersions.discardChanges();
         m_FunctionsInfo.discardChanges();
         m_nodesToDelete.clear();
     }
 
     void deleteMetadata()
     {
-		llvm::NamedMDNode* InputIRVersionsNode = m_pModule->getNamedMetadata("igc.input.ir");
-		if (InputIRVersionsNode)
-		{
-			m_nodesToDelete.push_back(InputIRVersionsNode);
-		}
-
         llvm::NamedMDNode* FunctionsInfoNode = m_pModule->getNamedMetadata("igc.functions");
         if (FunctionsInfoNode)
         {
@@ -3318,7 +3074,6 @@ public:
 
 private:
     // data members
-	NamedMDNodeList<InputIRVersionMetaDataHandle> m_InputIRVersions;
     NamedMetaDataMap<llvm::Function, FunctionInfoMetaDataHandle> m_FunctionsInfo;
     llvm::Module* m_pModule;
     std::vector<llvm::NamedMDNode*> m_nodesToDelete;

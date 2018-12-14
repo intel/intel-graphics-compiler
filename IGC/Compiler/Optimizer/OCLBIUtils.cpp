@@ -752,7 +752,8 @@ public:
     void CreateInlineSamplerAnnotations(InlineSamplerMetaDataHandle inlineSamplerMD, int samplerValue)
     {
         inlineSamplerMD->setValue(samplerValue);
-        if (llvm::StringRef(m_pMdUtils->getInputIRVersionsItem(0)->getName()).startswith("ocl"))
+		Module* M = m_pCallInst->getParent()->getModule();
+		if (llvm::StringRef(M->getTargetTriple()).startswith("igil") || llvm::StringRef(M->getTargetTriple()).startswith("gpu_64"))
         {
             inlineSamplerMD->setAddressMode(samplerValue & LEGACY_SAMPLER_ADDRESS_MASK);
             switch (samplerValue & LEGACY_SAMPLER_ADDRESS_MASK)
@@ -818,7 +819,7 @@ public:
             inlineSamplerMD->setBorderColorB(0.0f);
             inlineSamplerMD->setBorderColorA(0.0f);
         }
-        else if (llvm::StringRef(m_pMdUtils->getInputIRVersionsItem(0)->getName()).startswith("spir"))
+		else if (llvm::StringRef(M->getTargetTriple()).startswith("spir"))
         {
             switch (samplerValue & SPIR_SAMPLER_ADDRESS_MASK)
             {
@@ -988,7 +989,7 @@ protected:
 class COCL_sample_l: public COCL_sample 
 {
 public:
-    COCL_sample_l(ParamMap* paramMap, InlineMap* inlineMap, int* nextSampler, Dimension Dim, MetaDataUtils* pMdUtils) : COCL_sample(paramMap, inlineMap, nextSampler, Dim ,pMdUtils) {}
+	COCL_sample_l(ParamMap* paramMap, InlineMap* inlineMap, int* nextSampler, Dimension Dim, MetaDataUtils* pMdUtils) : COCL_sample(paramMap, inlineMap, nextSampler, Dim, pMdUtils) {}
 
     void createIntrinsic()
     {
@@ -1010,7 +1011,7 @@ public:
 class COCL_sample_d: public COCL_sample 
 {
 public:
-    COCL_sample_d(ParamMap* paramMap, InlineMap* inlineMap, int* nextSampler, Dimension Dim, MetaDataUtils* pMdUtils) : COCL_sample(paramMap, inlineMap, nextSampler, Dim ,pMdUtils) {}
+	COCL_sample_d(ParamMap* paramMap, InlineMap* inlineMap, int* nextSampler, Dimension Dim, MetaDataUtils* pMdUtils) : COCL_sample(paramMap, inlineMap, nextSampler, Dim, pMdUtils) {}
 
     void createIntrinsic()
     {
@@ -1515,16 +1516,16 @@ CBuiltinsResolver::CBuiltinsResolver(CImagesBI::ParamMap* paramMap, CImagesBI::I
     m_CommandMap["__builtin_IB_OCL_2darr_ld2dms"]   = initImageClass<COCL_ld2dms>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
     m_CommandMap["__builtin_IB_OCL_2d_ld2dmsui"]    = initImageClass<COCL_ld2dmsui>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D);
     m_CommandMap["__builtin_IB_OCL_2darr_ld2dmsui"] = initImageClass<COCL_ld2dmsui>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY);
-    m_CommandMap["__builtin_IB_OCL_1d_sample_l"]    = initSamplerClass<COCL_sample_l>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D, pMdUtils);
+	m_CommandMap["__builtin_IB_OCL_1d_sample_l"] = initSamplerClass<COCL_sample_l>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D, pMdUtils);
     m_CommandMap["__builtin_IB_OCL_1darr_sample_l"] = initSamplerClass<COCL_sample_l>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY, pMdUtils);
-    m_CommandMap["__builtin_IB_OCL_2d_sample_l"]    = initSamplerClass<COCL_sample_l>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D, pMdUtils);
+	m_CommandMap["__builtin_IB_OCL_2d_sample_l"] = initSamplerClass<COCL_sample_l>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D, pMdUtils);
     m_CommandMap["__builtin_IB_OCL_2darr_sample_l"] = initSamplerClass<COCL_sample_l>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY, pMdUtils);
-    m_CommandMap["__builtin_IB_OCL_3d_sample_l"]    = initSamplerClass<COCL_sample_l>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D, pMdUtils);
-    m_CommandMap["__builtin_IB_OCL_1d_sample_d"]    = initSamplerClass<COCL_sample_d>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D, pMdUtils);
+	m_CommandMap["__builtin_IB_OCL_3d_sample_l"] = initSamplerClass<COCL_sample_l>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D, pMdUtils);
+	m_CommandMap["__builtin_IB_OCL_1d_sample_d"] = initSamplerClass<COCL_sample_d>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D, pMdUtils);
     m_CommandMap["__builtin_IB_OCL_1darr_sample_d"] = initSamplerClass<COCL_sample_d>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY, pMdUtils);
-    m_CommandMap["__builtin_IB_OCL_2d_sample_d"]    = initSamplerClass<COCL_sample_d>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D, pMdUtils);
+	m_CommandMap["__builtin_IB_OCL_2d_sample_d"] = initSamplerClass<COCL_sample_d>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D, pMdUtils);
     m_CommandMap["__builtin_IB_OCL_2darr_sample_d"] = initSamplerClass<COCL_sample_d>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D_ARRAY, pMdUtils);
-    m_CommandMap["__builtin_IB_OCL_3d_sample_d"]    = initSamplerClass<COCL_sample_d>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D, pMdUtils);
+	m_CommandMap["__builtin_IB_OCL_3d_sample_d"] = initSamplerClass<COCL_sample_d>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_3D, pMdUtils);
     m_CommandMap["__builtin_IB_OCL_1d_sample_lui"] = initSamplerClass<COCL_sample_l>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D, pMdUtils);
     m_CommandMap["__builtin_IB_OCL_1darr_sample_lui"] = initSamplerClass<COCL_sample_l>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_1D_ARRAY, pMdUtils);
     m_CommandMap["__builtin_IB_OCL_2d_sample_lui"] = initSamplerClass<COCL_sample_l>(paramMap, inlineMap, nextSampler, CImagesBI::Dimension::DIM_2D, pMdUtils);

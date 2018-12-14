@@ -149,18 +149,16 @@ llvm::Metadata* VectorTypeHintMetaData::getVecTypeNode( const llvm::MDNode* pPar
     return pParentNode->getOperand(0 + offset).get();
 }
     
-llvm::Metadata* VectorTypeHintMetaData::getSignNode( const llvm::MDNode* pParentNode) const
+llvm::Metadata* VectorTypeHintMetaData::getSignNode(const llvm::MDNode* pParentNode) const
 {
-    if( !pParentNode )
-    {
-        return NULL;
-    }
+	if (!pParentNode)
+	{
+		return NULL;
+	}
 
-    unsigned int offset = _Mybase::getStartIndex();
-    return pParentNode->getOperand(1 + offset).get();
+	unsigned int offset = _Mybase::getStartIndex();
+	return pParentNode->getOperand(1 + offset).get();
 }
-
-                            
 
 ///
 // Ctor - loads the VersionMetaData from the given metadata node

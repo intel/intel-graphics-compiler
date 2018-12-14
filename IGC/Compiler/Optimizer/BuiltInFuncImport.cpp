@@ -772,7 +772,6 @@ void BIImport::removeFunctionBitcasts(Module &M)
 
 void BIImport::InitializeBIFlags(Module &M)
 {
-    auto mdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     auto MD = *(getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData());
     auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
@@ -797,7 +796,7 @@ void BIImport::InitializeBIFlags(Module &M)
     initializeVarWithValue("__CRMacros",
         pCtx->platform.hasCorrectlyRoundedMacros() ? 1 : 0);
 
-    if (mdUtils->isInputIRVersionsHasValue() && mdUtils->size_InputIRVersions() > 0)
+	if (StringRef(pCtx->getModule()->getTargetTriple()).size() > 0)
     {
         initializeVarWithValue("__APIRS", false);
     }
