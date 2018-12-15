@@ -93,6 +93,8 @@ namespace vISA
         // Check if this instruction is a candidate, might do simplification.
         // Return true if it is an candidate for send fusion.
         bool simplifyAndCheckCandidate(INST_LIST_ITER Iter);
+        // Check if two send insts can be fused, return true if so.
+        // Note that IT0 appears before IT1 in the same BB.
         bool canFusion(INST_LIST_ITER IT0, INST_LIST_ITER IT1);
         void doFusion(
             INST_LIST_ITER IT0, INST_LIST_ITER IT1, bool IsSink);
@@ -484,6 +486,8 @@ void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
     changed = true;
 }
 
+// Note that IT0 appears prior to IT1 in the same BB.
+// Return true if they can be fused.
 bool SendFusion::canFusion(INST_LIST_ITER IT0, INST_LIST_ITER IT1)
 {
     G4_INST* I0 = *IT0;
@@ -491,12 +495,6 @@ bool SendFusion::canFusion(INST_LIST_ITER IT0, INST_LIST_ITER IT1)
     G4_opcode opc = I0->opcode();
     assert( (opc == G4_send || opc == G4_sends) && opc == I1->opcode() &&
             "Arguments to canFusion must be the same kind of Send Messages!");
-
-	// Only RAW (two loads) prevents fusing, WAW or WAR do not!
-	if (I0->isRAWdep(I1))
-	{
-		return false;
-	}
 
     // Current implementation uses split send to replace two sends. For simplicity,
     // here make sure their payload does not overlap!
@@ -510,14 +508,49 @@ bool SendFusion::canFusion(INST_LIST_ITER IT0, INST_LIST_ITER IT1)
         }
     }
 
-    // Consider Send with Imm constant as descriptor, so
-    // no need to check desc->getBti().
+    // Here two descriptors should be constant, and we fuse
+    // the two sends only if their descriptors are identical.
+    // 
+    // To be able to fuse two sends, the following conditions
+    // must be met :
+    //
+    //   1. no fusion if there is RAW
+    //      x = load y
+    //      z = load x
+    //   2. it's okay to fuse if there is WAW
+    //      x = load (8) y
+    //      x = load (8) z
+    //     --> new_x = load (16) (y,z);
+    //         x = new_x.1stHalf;
+    //         x = new_x.2ndHalf  (later optimization will clean this up)
+    //   3. it's okay to fuse if there is WAR
+    //      x = load (8) y
+    //      y = load (8) z
+    //      --> new_x = load (16) (y,z);
+    //          x = new_x.1stHalf
+    //          y = new_x.2ndHalf
+    //
+    //  ***Thus, ONLY RAW CANNOT BE FUSED ***
+    //
+    //    Note that write is not allowed for fusion as the following might
+    //    have an unknown behavior if fused:
+    //        store (8) x, data0
+    //        store (8) x, data1
+    //      if fused, they become:
+    //        store (16) {x, x} {data0, data1}
+    //
+    //        and hardware does not have deterministic behavior about which data,
+    //        data0 or data1, will be stored into x! For this reason, no write
+    //        will be fused if they have common address. Since we don't know (for now)
+    //        if addresses of two sends can point to the same address, we just
+    //        conservatively do not fuse any write messages.
+    //       
     G4_SendMsgDescriptor* desc0 = I0->getMsgDesc();
     G4_SendMsgDescriptor* desc1 = I1->getMsgDesc();
     bool fusion = I0->getOption() == I1->getOption() &&
                   (desc0->getDesc() == desc1->getDesc() &&
                    desc0->getExtendedDesc() == desc1->getExtendedDesc()) &&
-                  !I0->isWAWdep(I1) && !I0->isRAWdep(I1);
+                  !I1->isRAWdep(I0);
     return fusion;
 }
 
@@ -567,6 +600,10 @@ bool SendFusion::canMoveOver(
        G4_INST* tmp = *II;
 	   for (int i = 0; i < numToBeMoved; ++i)
 	   {
+           // Here check if instToBeMoved and tmp
+           // are dependent upon each other no matter
+           // if instToBEMoved appears before or after
+           // tmp in the BB.
 		   G4_INST *instToBeMoved = toBeMoved[i];
 		   if (instToBeMoved->isWARdep(tmp) ||
 			   instToBeMoved->isWAWdep(tmp) ||
