@@ -1056,7 +1056,7 @@ TRANSLATION_BLOCK_API void Register(
 TRANSLATION_BLOCK_API CTranslationBlock* Create( 
     STB_CreateArgs* pCreateArgs)
 {
-    CIGCTranslationBlock*  pIGCTranslationBlock;
+    CIGCTranslationBlock*  pIGCTranslationBlock = nullptr;
 
     CIGCTranslationBlock::Create(
         pCreateArgs,

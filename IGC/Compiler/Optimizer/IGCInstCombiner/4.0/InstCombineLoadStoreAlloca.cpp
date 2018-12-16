@@ -800,7 +800,7 @@ static bool canReplaceGEPIdxWithZero(InstCombiner &IC, GetElementPtrInst *GEPI,
   // first non-zero index.
   auto IsAllNonNegative = [&]() {
     for (unsigned i = Idx+1, e = GEPI->getNumOperands(); i != e; ++i) {
-      bool KnownNonNegative, KnownNegative;
+      bool KnownNonNegative = false, KnownNegative = false;
       IC.ComputeSignBit(GEPI->getOperand(i), KnownNonNegative,
                         KnownNegative, 0, MemI);
       if (KnownNonNegative)

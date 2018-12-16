@@ -90,7 +90,7 @@ static Value *decomposeSimpleLinearExpr(Value *Val, unsigned &Scale,
       if (I->getOpcode() == Instruction::Add) {
         // We have X+C.  Check to see if we really have (X*C2)+C1,
         // where C1 is divisible by C2.
-        unsigned SubScale;
+        unsigned SubScale = 0;
         Value *SubVal =
           decomposeSimpleLinearExpr(I->getOperand(0), SubScale, Offset);
         Offset += RHS->getZExtValue();
@@ -479,8 +479,8 @@ Instruction *InstCombiner::shrinkBitwiseLogic(TruncInst &Trunc) {
   if (isa<IntegerType>(SrcTy) && !ShouldChangeType(SrcTy, DestTy))
     return nullptr;
 
-  BinaryOperator *LogicOp;
-  Constant *C;
+  BinaryOperator *LogicOp = nullptr;
+  Constant *C = nullptr;
   if (!match(Trunc.getOperand(0), m_OneUse(m_BinOp(LogicOp))) ||
       !LogicOp->isBitwiseLogicOp() ||
       !match(LogicOp->getOperand(1), m_Constant(C)))
@@ -500,7 +500,7 @@ Instruction *InstCombiner::visitTrunc(TruncInst &CI) {
   // minimum or maximum operation. If so, don't do any more simplification.
   // Even simplifying demanded bits can break the canonical form of a
   // min/max.
-  Value *LHS, *RHS;
+  Value *LHS = nullptr, *RHS = nullptr;
   if (SelectInst *SI = dyn_cast<SelectInst>(CI.getOperand(0)))
     if (matchSelectPattern(SI, LHS, RHS).Flavor != SPF_UNKNOWN)
       return nullptr;
@@ -879,7 +879,7 @@ Instruction *InstCombiner::visitZExt(ZExtInst &CI) {
   // type.   Only do this if the dest type is a simple type, don't convert the
   // expression tree to something weird like i93 unless the source is also
   // strange.
-  unsigned BitsToClear;
+  unsigned BitsToClear = 0;
   if ((DestTy->isVectorTy() || ShouldChangeType(SrcTy, DestTy)) &&
       canEvaluateZExtd(Src, DestTy, BitsToClear, *this, &CI)) {
     assert(BitsToClear < SrcTy->getScalarSizeInBits() &&
@@ -974,8 +974,8 @@ Instruction *InstCombiner::visitZExt(ZExtInst &CI) {
   }
 
   // zext(trunc(X) & C) -> (X & zext(C)).
-  Constant *C;
-  Value *X;
+  Constant *C = nullptr;
+  Value *X = nullptr;
   if (SrcI &&
       match(SrcI, m_OneUse(m_And(m_Trunc(m_Value(X)), m_Constant(C)))) &&
       X->getType() == CI.getType())
@@ -1163,7 +1163,7 @@ Instruction *InstCombiner::visitSExt(SExtInst &CI) {
 
   // If we know that the value being extended is positive, we can use a zext
   // instead.
-  bool KnownZero, KnownOne;
+  bool KnownZero = false, KnownOne = false;
   ComputeSignBit(Src, KnownZero, KnownOne, 0, &CI);
   if (KnownZero) {
     Value *ZExt = Builder->CreateZExt(Src, DestTy);
@@ -1246,7 +1246,7 @@ Instruction *InstCombiner::visitSExt(SExtInst &CI) {
 /// Return a Constant* for the specified floating-point constant if it fits
 /// in the specified FP type without changing its value.
 static Constant *fitsInFPType(ConstantFP *CFP, const fltSemantics &Sem) {
-  bool losesInfo;
+  bool losesInfo = false;
   APFloat F = CFP->getValueAPF();
   (void)F.convert(Sem, APFloat::rmNearestTiesToEven, &losesInfo);
   if (!losesInfo)
@@ -1405,7 +1405,7 @@ Instruction *InstCombiner::visitFPTrunc(FPTruncInst &CI) {
   //  - but only if this isn't part of a min/max operation, else we'll
   // ruin min/max canonical form which is to have the select and
   // compare's operands be of the same type with no casts to look through.
-  Value *LHS, *RHS;
+  Value *LHS = nullptr, *RHS = nullptr;
   SelectInst *SI = dyn_cast<SelectInst>(CI.getOperand(0));
   if (SI &&
       (isa<ConstantFP>(SI->getOperand(1)) ||
@@ -1614,7 +1614,7 @@ static Instruction *optimizeVectorResize(Value *InVal, VectorType *DestTy,
   // shuffle to use, which depends on whether we're increasing or decreasing the
   // size of the input.
   SmallVector<uint32_t, 16> ShuffleMask;
-  Value *V2;
+  Value *V2 = nullptr;
 
   if (SrcTy->getNumElements() > DestTy->getNumElements()) {
     // If we're shrinking the number of elements, just shuffle in the low
@@ -1823,7 +1823,7 @@ static Instruction *canonicalizeBitCastExtElt(BitCastInst &BitCast,
 static Instruction *foldBitCastBitwiseLogic(BitCastInst &BitCast,
                                             InstCombiner::BuilderTy &Builder) {
   Type *DestTy = BitCast.getType();
-  BinaryOperator *BO;
+  BinaryOperator *BO = nullptr;
   if (!DestTy->getScalarType()->isIntegerTy() ||
       !match(BitCast.getOperand(0), m_OneUse(m_BinOp(BO))) ||
       !BO->isBitwiseLogicOp())
@@ -1835,7 +1835,7 @@ static Instruction *foldBitCastBitwiseLogic(BitCastInst &BitCast,
   if (!DestTy->isVectorTy() || !BO->getType()->isVectorTy())
     return nullptr;
   
-  Value *X;
+  Value *X = nullptr;
   if (match(BO->getOperand(0), m_OneUse(m_BitCast(m_Value(X)))) &&
       X->getType() == DestTy && !isa<Constant>(X)) {
     // bitcast(logic(bitcast(X), Y)) --> logic'(X, bitcast(Y))
@@ -1856,7 +1856,7 @@ static Instruction *foldBitCastBitwiseLogic(BitCastInst &BitCast,
 /// Change the type of a select if we can eliminate a bitcast.
 static Instruction *foldBitCastSelect(BitCastInst &BitCast,
                                       InstCombiner::BuilderTy &Builder) {
-  Value *Cond, *TVal, *FVal;
+  Value *Cond = nullptr, *TVal = nullptr, *FVal = nullptr;
   if (!match(BitCast.getOperand(0),
              m_OneUse(m_Select(m_Value(Cond), m_Value(TVal), m_Value(FVal)))))
     return nullptr;
@@ -1879,7 +1879,7 @@ static Instruction *foldBitCastSelect(BitCastInst &BitCast,
     return nullptr;
 
   auto *Sel = cast<Instruction>(BitCast.getOperand(0));
-  Value *X;
+  Value *X = nullptr;
   if (match(TVal, m_OneUse(m_BitCast(m_Value(X)))) && X->getType() == DestTy &&
       !isa<Constant>(X)) {
     // bitcast(select(Cond, bitcast(X), Y)) --> select'(Cond, X, bitcast(Y))

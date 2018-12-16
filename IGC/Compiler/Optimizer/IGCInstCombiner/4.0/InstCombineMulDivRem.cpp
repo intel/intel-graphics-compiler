@@ -106,7 +106,7 @@ static Value *simplifyValueKnownNonZero(Value *V, InstCombiner &IC,
 /// True if the multiply can not be expressed in an int this size.
 static bool MultiplyOverflows(const APInt &C1, const APInt &C2, APInt &Product,
                               bool IsSigned) {
-  bool Overflow;
+  bool Overflow = false;
   if (IsSigned)
     Product = C1.smul_ov(C2, Overflow);
   else
@@ -144,7 +144,7 @@ static bool IsMultiple(const APInt &C1, const APInt &C2, APInt &Quotient,
 /// a new vector obtained from C replacing each element with its logBase2.
 /// Return a null pointer otherwise.
 static Constant *getLogBase2Vector(ConstantDataVector *CV) {
-  const APInt *IVal;
+  const APInt *IVal = nullptr;
   SmallVector<Constant *, 4> Elts;
 
   for (unsigned I = 0, E = CV->getNumElements(); I != E; ++I) {
@@ -222,9 +222,9 @@ Instruction *InstCombiner::visitMul(BinaryOperator &I) {
 
   // Also allow combining multiply instructions on vectors.
   {
-    Value *NewOp;
-    Constant *C1, *C2;
-    const APInt *IVal;
+    Value *NewOp = nullptr;
+    Constant *C1 = nullptr, *C2 = nullptr;
+    const APInt *IVal = nullptr;
     if (match(&I, m_Mul(m_Shl(m_Value(NewOp), m_Constant(C2)),
                         m_Constant(C1))) &&
         match(C1, m_APInt(IVal))) {
@@ -299,8 +299,8 @@ Instruction *InstCombiner::visitMul(BinaryOperator &I) {
 
     // Canonicalize (X+C1)*CI -> X*CI+C1*CI.
     {
-      Value *X;
-      Constant *C1;
+      Value *X = nullptr;
+      Constant *C1 = nullptr;
       if (match(Op0, m_OneUse(m_Add(m_Value(X), m_Constant(C1))))) {
         Value *Mul = Builder->CreateMul(C1, Op1);
         // Only go forward with the transform if C1*CI simplifies to a tidier
@@ -348,7 +348,7 @@ Instruction *InstCombiner::visitMul(BinaryOperator &I) {
           return BinaryOperator::CreateNeg(Op0BO);
         }
 
-      Value *Rem;
+      Value *Rem = nullptr;
       if (BO->getOpcode() == Instruction::UDiv)
         Rem = Builder->CreateURem(Op0BO, Op1BO);
       else
@@ -368,7 +368,7 @@ Instruction *InstCombiner::visitMul(BinaryOperator &I) {
   // X*(1 << Y) --> X << Y
   // (1 << Y)*X --> X << Y
   {
-    Value *Y;
+    Value *Y = nullptr;
     BinaryOperator *BO = nullptr;
     bool ShlNSW = false;
     if (match(Op0, m_Shl(m_One(), m_Value(Y)))) {
@@ -1078,11 +1078,11 @@ static Instruction *foldUDivNegCst(Value *Op0, Value *Op1,
 // X udiv (zext (C1 << N)), where C1 is "1<<C2"  -->  X >> (N+C2)
 static Instruction *foldUDivShl(Value *Op0, Value *Op1, const BinaryOperator &I,
                                 InstCombiner &IC) {
-  Value *ShiftLeft;
+  Value *ShiftLeft = nullptr;
   if (!match(Op1, m_ZExt(m_Value(ShiftLeft))))
     ShiftLeft = Op1;
 
-  const APInt *CI;
+  const APInt *CI = nullptr;
   Value *N;
   if (!match(ShiftLeft, m_Shl(m_APInt(CI), m_Value(N))))
     llvm_unreachable("match should never fail here!");
@@ -1155,8 +1155,8 @@ Instruction *InstCombiner::visitUDiv(BinaryOperator &I) {
 
   // (x lshr C1) udiv C2 --> x udiv (C2 << C1)
   {
-    Value *X;
-    const APInt *C1, *C2;
+    Value *X = nullptr;
+    const APInt *C1 = nullptr, *C2 = nullptr;
     if (match(Op0, m_LShr(m_Value(X), m_APInt(C1))) &&
         match(Op1, m_APInt(C2))) {
       bool Overflow;
@@ -1226,7 +1226,7 @@ Instruction *InstCombiner::visitSDiv(BinaryOperator &I) {
   if (Instruction *Common = commonIDivTransforms(I))
     return Common;
 
-  const APInt *Op1C;
+  const APInt *Op1C = nullptr;
   if (match(Op1, m_APInt(Op1C))) {
     // sdiv X, -1 == -X
     if (Op1C->isAllOnesValue())
@@ -1241,7 +1241,7 @@ Instruction *InstCombiner::visitSDiv(BinaryOperator &I) {
     // If the dividend is sign-extended and the constant divisor is small enough
     // to fit in the source type, shrink the division to the narrower type:
     // (sext X) sdiv C --> sext (X sdiv C)
-    Value *Op0Src;
+    Value *Op0Src = nullptr;
     if (match(Op0, m_OneUse(m_SExt(m_Value(Op0Src)))) &&
         Op0Src->getType()->getScalarSizeInBits() >= Op1C->getMinSignedBits()) {
 
@@ -1262,7 +1262,7 @@ Instruction *InstCombiner::visitSDiv(BinaryOperator &I) {
       return new ZExtInst(Builder->CreateICmpEQ(Op0, Op1), I.getType());
 
     // -X/C  -->  X/-C  provided the negation doesn't overflow.
-    Value *X;
+    Value *X = nullptr;
     if (match(Op0, m_NSWSub(m_Zero(), m_Value(X)))) {
       auto *BO = BinaryOperator::CreateSDiv(X, ConstantExpr::getNeg(RHS));
       BO->setIsExact(I.isExact());
@@ -1322,7 +1322,7 @@ static Instruction *CvtFDivConstToReciprocal(Value *Dividend, Constant *Divisor,
   if (!Cvt)
     return nullptr;
 
-  ConstantFP *R;
+  ConstantFP *R = nullptr;
   R = ConstantFP::get(Dividend->getType()->getContext(), Reciprocal);
   return BinaryOperator::CreateFMul(Dividend, R);
 }
@@ -1353,7 +1353,7 @@ Instruction *InstCombiner::visitFDiv(BinaryOperator &I) {
     if (AllowReassociate) {
       Constant *C1 = nullptr;
       Constant *C2 = Op1C;
-      Value *X;
+      Value *X = nullptr;
       Instruction *Res = nullptr;
 
       if (match(Op0, m_FMul(m_Value(X), m_Constant(C1)))) {
@@ -1391,7 +1391,7 @@ Instruction *InstCombiner::visitFDiv(BinaryOperator &I) {
   if (AllowReassociate && isa<Constant>(Op0)) {
     Constant *C1 = cast<Constant>(Op0), *C2;
     Constant *Fold = nullptr;
-    Value *X;
+    Value *X = nullptr;
     bool CreateDiv = true;
 
     // C1 / (X*C2) => (C1/C2) / X
@@ -1416,7 +1416,7 @@ Instruction *InstCombiner::visitFDiv(BinaryOperator &I) {
   }
 
   if (AllowReassociate) {
-    Value *X, *Y;
+    Value *X = nullptr, *Y = nullptr;
     Value *NewInst = nullptr;
     Instruction *SimpR = nullptr;
 
@@ -1454,8 +1454,8 @@ Instruction *InstCombiner::visitFDiv(BinaryOperator &I) {
     }
   }
 
-  Value *LHS;
-  Value *RHS;
+  Value *LHS = nullptr;
+  Value *RHS = nullptr;
 
   // -x / -y -> x / y
   if (match(Op0, m_FNeg(m_Value(LHS))) && match(Op1, m_FNeg(m_Value(RHS)))) {
@@ -1491,7 +1491,7 @@ Instruction *InstCombiner::commonIRemTransforms(BinaryOperator &I) {
           return R;
       } else if (isa<PHINode>(Op0I)) {
         using namespace llvm::PatternMatch;
-        const APInt *Op1Int;
+        const APInt *Op1Int = nullptr;
         if (match(Op1, m_APInt(Op1Int)) && !Op1Int->isMinValue() &&
             (I.getOpcode() == Instruction::URem ||
              !Op1Int->isMinSignedValue())) {
@@ -1569,7 +1569,7 @@ Instruction *InstCombiner::visitSRem(BinaryOperator &I) {
     return Common;
 
   {
-    const APInt *Y;
+    const APInt *Y = nullptr;
     // X % -Y -> X % Y
     if (match(Op1, m_APInt(Y)) && Y->isNegative() && !Y->isMinSignedValue()) {
       Worklist.AddValue(I.getOperand(1));

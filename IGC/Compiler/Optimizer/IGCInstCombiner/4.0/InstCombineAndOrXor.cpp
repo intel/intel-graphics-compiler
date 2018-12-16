@@ -98,7 +98,7 @@ static unsigned getFCmpCode(FCmpInst::Predicate CC) {
 /// use in the new icmp instruction.
 static Value *getNewICmpValue(bool Sign, unsigned Code, Value *LHS, Value *RHS,
                               InstCombiner::BuilderTy *Builder) {
-  ICmpInst::Predicate NewPred;
+  ICmpInst::Predicate NewPred = ICmpInst::Predicate::BAD_ICMP_PREDICATE;
   if (Value *NewConstant = getICmpValue(Sign, Code, LHS, RHS, NewPred))
     return NewConstant;
   return Builder->CreateICmp(NewPred, LHS, RHS);
@@ -545,7 +545,7 @@ static unsigned foldLogOpOfMaskedICmpsHelper(Value*& A,
   // above.
   Value *L1 = LHS->getOperand(0);
   Value *L2 = LHS->getOperand(1);
-  Value *L11,*L12,*L21,*L22;
+  Value *L11 = nullptr,*L12 = nullptr,*L21 = nullptr,*L22 = nullptr;
   // Check whether the icmp can be decomposed into a bit test.
   if (decomposeBitTestICmp(LHS, LHSCC, L11, L12, L2)) {
     L21 = L22 = L1 = nullptr;
@@ -576,7 +576,7 @@ static unsigned foldLogOpOfMaskedICmpsHelper(Value*& A,
 
   Value *R1 = RHS->getOperand(0);
   Value *R2 = RHS->getOperand(1);
-  Value *R11,*R12;
+  Value *R11 = nullptr,*R12 = nullptr;
   bool ok = false;
   if (decomposeBitTestICmp(RHS, RHSCC, R11, R12, R2)) {
     if (R11 == L11 || R11 == L12 || R11 == L21 || R11 == L22) {
@@ -785,7 +785,7 @@ Value *InstCombiner::simplifyRangeCheck(ICmpInst *Cmp0, ICmpInst *Cmp1,
                                Cmp1->getPredicate());
 
   Value *Input = Cmp0->getOperand(0);
-  Value *RangeEnd;
+  Value *RangeEnd = nullptr;
   if (Cmp1->getOperand(0) == Input) {
     // For the upper range compare we have: icmp x, n
     RangeEnd = Cmp1->getOperand(1);
@@ -798,7 +798,7 @@ Value *InstCombiner::simplifyRangeCheck(ICmpInst *Cmp0, ICmpInst *Cmp1,
   }
 
   // Check the upper range comparison, e.g. x < n
-  ICmpInst::Predicate NewPred;
+  ICmpInst::Predicate NewPred = ICmpInst::Predicate::BAD_ICMP_PREDICATE;
   switch (Pred1) {
     case ICmpInst::ICMP_SLT: NewPred = ICmpInst::ICMP_ULT; break;
     case ICmpInst::ICMP_SLE: NewPred = ICmpInst::ICMP_ULE; break;
@@ -806,7 +806,7 @@ Value *InstCombiner::simplifyRangeCheck(ICmpInst *Cmp0, ICmpInst *Cmp1,
   }
 
   // This simplification is only valid if the upper range is not negative.
-  bool IsNegative, IsNotNegative;
+  bool IsNegative = false, IsNotNegative = false;
   ComputeSignBit(RangeEnd, IsNotNegative, IsNegative, /*Depth=*/0, Cmp1);
   if (!IsNotNegative)
     return nullptr;
@@ -1165,7 +1165,7 @@ static Instruction *foldLogicCastConstant(BinaryOperator &Logic, CastInst *Cast,
   // If the first operand is bitcast, move the logic operation ahead of the
   // bitcast (do the logic operation in the original type). This can eliminate
   // bitcasts and allow combines that would otherwise be impeded by the bitcast.
-  Value *X;
+  Value *X = nullptr;
   if (match(Cast, m_BitCast(m_Value(X)))) {
     Value *NewConstant = ConstantExpr::getBitCast(C, SrcTy);
     Value *NewOp = Builder->CreateBinOp(LogicOpc, X, NewConstant);
@@ -1598,7 +1598,7 @@ static Value *getSelectCondition(Value *A, Value *B,
     return A;
 
   // If A and B are sign-extended, look through the sexts to find the booleans.
-  Value *Cond;
+  Value *Cond = nullptr;
   if (match(A, m_SExt(m_Value(Cond))) &&
       Cond->getType()->getScalarType()->isIntegerTy(1) &&
       match(B, m_CombineOr(m_Not(m_SExt(m_Specific(Cond))),
@@ -1611,7 +1611,7 @@ static Value *getSelectCondition(Value *A, Value *B,
     return nullptr;
 
   // If both operands are constants, see if the constants are inverse bitmasks.
-  Constant *AC, *BC;
+  Constant *AC = nullptr, *BC = nullptr;
   if (match(A, m_Constant(AC)) && match(B, m_Constant(BC)) &&
       areInverseVectorBitmasks(AC, BC))
     return ConstantExpr::getTrunc(AC, CmpInst::makeCmpResultType(Ty));
@@ -2589,8 +2589,8 @@ Instruction *InstCombiner::visitXor(BinaryOperator &I) {
         } else if (Op0I->getOpcode() == Instruction::LShr) {
           // ((X^C1) >> C2) ^ C3 -> (X>>C2) ^ ((C1>>C2)^C3)
           // E1 = "X ^ C1"
-          BinaryOperator *E1;
-          ConstantInt *C1;
+          BinaryOperator *E1 = nullptr;
+          ConstantInt *C1 = nullptr;
           if (Op0I->hasOneUse() &&
               (E1 = dyn_cast<BinaryOperator>(Op0I->getOperand(0))) &&
               E1->getOpcode() == Instruction::Xor &&
@@ -2617,7 +2617,7 @@ Instruction *InstCombiner::visitXor(BinaryOperator &I) {
 
   BinaryOperator *Op1I = dyn_cast<BinaryOperator>(Op1);
   if (Op1I) {
-    Value *A, *B;
+    Value *A = nullptr, *B = nullptr;
     if (match(Op1I, m_Or(m_Value(A), m_Value(B)))) {
       if (A == Op0) {              // B^(B|A) == (A|B)^B
         Op1I->swapOperands();
@@ -2642,7 +2642,7 @@ Instruction *InstCombiner::visitXor(BinaryOperator &I) {
 
   BinaryOperator *Op0I = dyn_cast<BinaryOperator>(Op0);
   if (Op0I) {
-    Value *A, *B;
+    Value *A = nullptr, *B = nullptr;
     if (match(Op0I, m_Or(m_Value(A), m_Value(B))) &&
         Op0I->hasOneUse()) {
       if (A == Op1)                                  // (B|A)^B == (A|B)^B
@@ -2661,7 +2661,7 @@ Instruction *InstCombiner::visitXor(BinaryOperator &I) {
   }
 
   if (Op0I && Op1I) {
-    Value *A, *B, *C, *D;
+    Value *A = nullptr, *B = nullptr, *C = nullptr, *D = nullptr;
     // (A & B)^(A | B) -> A ^ B
     if (match(Op0I, m_And(m_Value(A), m_Value(B))) &&
         match(Op1I, m_Or(m_Value(C), m_Value(D)))) {
@@ -2728,7 +2728,7 @@ Instruction *InstCombiner::visitXor(BinaryOperator &I) {
 
   // (A & ~B) ^ ~A -> ~(A & B)
   // (~B & A) ^ ~A -> ~(A & B)
-  Value *A, *B;
+  Value *A = nullptr, *B = nullptr;
   if (match(Op0, m_c_And(m_Value(A), m_Not(m_Value(B)))) &&
       match(Op1, m_Not(m_Specific(A))))
     return BinaryOperator::CreateNot(Builder->CreateAnd(A, B));

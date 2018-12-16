@@ -208,7 +208,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
               II->getIntrinsicID() == GenISAIntrinsic::GenISA_storerawvector_indexed)))
          && "Inst should be either load or store");
 
-    Value *Ptr;
+    Value *Ptr = nullptr;
     if (LI != nullptr)
     {
         Ptr = LI->getPointerOperand();

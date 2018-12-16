@@ -1071,15 +1071,15 @@ Instruction *InstCombiner::visitAdd(BinaryOperator &I) {
   if (Value *V = SimplifyUsingDistributiveLaws(I))
     return replaceInstUsesWith(I, V);
 
-  const APInt *Val;
+  const APInt *Val = nullptr;
   if (match(RHS, m_APInt(Val))) {
     // X + (signbit) --> X ^ signbit
     if (Val->isSignBit())
       return BinaryOperator::CreateXor(LHS, RHS);
 
     // Is this add the last step in a convoluted sext?
-    Value *X;
-    const APInt *C;
+    Value *X = nullptr;
+    const APInt *C = nullptr;
     if (match(LHS, m_ZExt(m_Xor(m_Value(X), m_APInt(C)))) &&
         C->isMinSignedValue() &&
         C->sext(LHS->getType()->getScalarSizeInBits()) == *Val) {
@@ -1199,7 +1199,7 @@ Instruction *InstCombiner::visitAdd(BinaryOperator &I) {
     return BinaryOperator::CreateOr(LHS, RHS);
 
   if (Constant *CRHS = dyn_cast<Constant>(RHS)) {
-    Value *X;
+    Value *X = nullptr;
     if (match(LHS, m_Not(m_Value(X)))) // ~X + C --> (C-1) - X
       return BinaryOperator::CreateSub(SubOne(CRHS), X);
   }
@@ -1209,8 +1209,8 @@ Instruction *InstCombiner::visitAdd(BinaryOperator &I) {
   // removal.
   if (ConstantInt *CRHS = dyn_cast<ConstantInt>(RHS)) {
     // (X & FF00) + xx00  -> (X+xx00) & FF00
-    Value *X;
-    ConstantInt *C2;
+    Value *X = nullptr;
+    ConstantInt *C2 = nullptr;
     if (LHS->hasOneUse() &&
         match(LHS, m_And(m_Value(X), m_ConstantInt(C2))) &&
         CRHS->getValue() == (CRHS->getValue() & C2->getValue())) {
@@ -1248,7 +1248,7 @@ Instruction *InstCombiner::visitAdd(BinaryOperator &I) {
     if (SI && SI->hasOneUse()) {
       Value *TV = SI->getTrueValue();
       Value *FV = SI->getFalseValue();
-      Value *N;
+      Value *N = nullptr;
 
       // Can we fold the add into the argument of the select?
       // We check both true and false select arguments for a matching subtract.
@@ -1461,12 +1461,13 @@ Instruction *InstCombiner::visitFAdd(BinaryOperator &I) {
 
   // select C, 0, B + select C, A, 0 -> select C, A, B
   {
-    Value *A1, *B1, *C1, *A2, *B2, *C2;
+      Value *A1 = nullptr, *B1 = nullptr, *C1 = nullptr;
+      Value *A2 = nullptr, *B2 = nullptr, *C2 = nullptr;
     if (match(LHS, m_Select(m_Value(C1), m_Value(A1), m_Value(B1))) &&
         match(RHS, m_Select(m_Value(C2), m_Value(A2), m_Value(B2)))) {
       if (C1 == C2) {
         Constant *Z1=nullptr, *Z2=nullptr;
-        Value *A, *B, *C=C1;
+        Value *A = nullptr, *B = nullptr, *C=C1;
         if (match(A1, m_AnyZero()) && match(B2, m_AnyZero())) {
             Z1 = dyn_cast<Constant>(A1); A = A2;
             Z2 = dyn_cast<Constant>(B2); B = B1;
@@ -1610,7 +1611,7 @@ Instruction *InstCombiner::visitSub(BinaryOperator &I) {
         return R;
 
     // C-(X+C2) --> (C-C2)-X
-    Constant *C2;
+    Constant *C2 = nullptr;
     if (match(Op1, m_Add(m_Value(X), m_Constant(C2))))
       return BinaryOperator::CreateSub(ConstantExpr::getSub(C, C2), X);
 
@@ -1628,7 +1629,7 @@ Instruction *InstCombiner::visitSub(BinaryOperator &I) {
         return CastInst::CreateZExtOrBitCast(X, Op1->getType());
   }
 
-  const APInt *Op0C;
+  const APInt *Op0C = nullptr;
   if (match(Op0, m_APInt(Op0C))) {
     unsigned BitWidth = I.getType()->getScalarSizeInBits();
 
@@ -1661,7 +1662,7 @@ Instruction *InstCombiner::visitSub(BinaryOperator &I) {
   }
 
   {
-    Value *Y;
+    Value *Y = nullptr;
     // X-(X+Y) == -Y    X-(Y+X) == -Y
     if (match(Op1, m_Add(m_Specific(Op0), m_Value(Y))) ||
         match(Op1, m_Add(m_Value(Y), m_Specific(Op0))))
@@ -1730,7 +1731,7 @@ Instruction *InstCombiner::visitSub(BinaryOperator &I) {
 
     // X - A*-B -> X + A*B
     // X - -A*B -> X + A*B
-    Value *A, *B;
+    Value *A = nullptr, *B = nullptr;
     if (match(Op1, m_Mul(m_Value(A), m_Neg(m_Value(B)))) ||
         match(Op1, m_Mul(m_Neg(m_Value(A)), m_Value(B))))
       return BinaryOperator::CreateAdd(Op0, Builder->CreateMul(A, B));
@@ -1746,7 +1747,7 @@ Instruction *InstCombiner::visitSub(BinaryOperator &I) {
 
   // Optimize pointer differences into the same array into a size.  Consider:
   //  &A[10] - &A[0]: we should compile this to "10".
-  Value *LHSOp, *RHSOp;
+  Value *LHSOp = nullptr, *RHSOp = nullptr;
   if (match(Op0, m_PtrToInt(m_Value(LHSOp))) &&
       match(Op1, m_PtrToInt(m_Value(RHSOp))))
     if (Value *Res = OptimizePointerDifference(LHSOp, RHSOp, I.getType()))

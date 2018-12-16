@@ -682,8 +682,8 @@ static Instruction *foldConstantInsEltIntoShuffle(InsertElementInst &InsElt) {
   if (auto *Shuf = dyn_cast<ShuffleVectorInst>(InsElt.getOperand(0))) {
     // The shuffle must have a constant vector operand. The insertelt must have
     // a constant scalar being inserted at a constant position in the vector.
-    Constant *ShufConstVec, *InsEltScalar;
-    uint64_t InsEltIndex;
+    Constant *ShufConstVec = nullptr, *InsEltScalar = nullptr;
+    uint64_t InsEltIndex = 0;
     if (!match(Shuf->getOperand(1), m_Constant(ShufConstVec)) ||
         !match(InsElt.getOperand(1), m_Constant(InsEltScalar)) ||
         !match(InsElt.getOperand(2), m_ConstantInt(InsEltIndex)))
@@ -731,8 +731,8 @@ static Instruction *foldConstantInsEltIntoShuffle(InsertElementInst &InsElt) {
     // a single shuffle op.
     unsigned NumElts = InsElt.getType()->getNumElements();
 
-    uint64_t InsertIdx[2];
-    Constant *Val[2];
+    uint64_t InsertIdx[2] = { 0, 0 };
+    Constant *Val[2] = { nullptr, nullptr };
     if (!match(InsElt.getOperand(2), m_ConstantInt(InsertIdx[0])) ||
         !match(InsElt.getOperand(1), m_Constant(Val[0])) ||
         !match(IEI->getOperand(2), m_ConstantInt(InsertIdx[1])) ||
@@ -1190,7 +1190,7 @@ Instruction *InstCombiner::visitShuffleVectorInst(ShuffleVectorInst &SVI) {
 
   if (VWidth == LHSWidth) {
     // Analyze the shuffle, are the LHS or RHS and identity shuffles?
-    bool isLHSID, isRHSID;
+    bool isLHSID = false, isRHSID = false;
     recognizeIdentityMask(Mask, isLHSID, isRHSID);
 
     // Eliminate identity shuffles.
@@ -1476,7 +1476,7 @@ Instruction *InstCombiner::visitShuffleVectorInst(ShuffleVectorInst &SVI) {
 
   // If the result mask is an identity, replace uses of this instruction with
   // corresponding argument.
-  bool isLHSID, isRHSID;
+  bool isLHSID = false, isRHSID = false;
   recognizeIdentityMask(newMask, isLHSID, isRHSID);
   if (isLHSID && VWidth == LHSOp0Width) return replaceInstUsesWith(SVI, newLHS);
   if (isRHSID && VWidth == RHSOp0Width) return replaceInstUsesWith(SVI, newRHS);

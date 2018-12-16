@@ -198,7 +198,7 @@ Instruction *InstCombiner::foldSelectOpOp(SelectInst &SI, Instruction *TI,
     return nullptr;
 
   // Figure out if the operations have any operands in common.
-  Value *MatchOp, *OtherOpT, *OtherOpF;
+  Value *MatchOp = nullptr, *OtherOpT = nullptr, *OtherOpF = nullptr;
   bool MatchIsOpZero;
   if (TI->getOperand(0) == FI->getOperand(0)) {
     MatchOp  = TI->getOperand(0);
@@ -342,12 +342,12 @@ static Value *foldSelectICmpAndOr(const SelectInst &SI, Value *TrueVal,
   if (!match(CmpRHS, m_Zero()))
     return nullptr;
 
-  Value *X;
-  const APInt *C1;
+  Value *X = nullptr;
+  const APInt *C1 = nullptr;
   if (!match(CmpLHS, m_And(m_Value(X), m_Power2(C1))))
     return nullptr;
 
-  const APInt *C2;
+  const APInt *C2 = nullptr;
   bool OrOnTrueVal = false;
   bool OrOnFalseVal = match(FalseVal, m_Or(m_Specific(TrueVal), m_Power2(C2)));
   if (!OrOnFalseVal)
@@ -542,7 +542,7 @@ canonicalizeMinMaxWithConstant(SelectInst &Sel, ICmpInst &Cmp,
     return nullptr;
 
   // Canonicalize the compare predicate based on whether we have min or max.
-  Value *LHS, *RHS;
+  Value *LHS = nullptr, *RHS = nullptr;
   ICmpInst::Predicate NewPred;
   SelectPatternResult SPR = matchSelectPattern(&Sel, LHS, RHS);
   switch (SPR.Flavor) {
@@ -630,9 +630,9 @@ Instruction *InstCombiner::foldSelectInstWithICmp(SelectInst &SI,
     unsigned BitWidth =
         DL.getTypeSizeInBits(TrueVal->getType()->getScalarType());
     APInt MinSignedValue = APInt::getSignBit(BitWidth);
-    Value *X;
-    const APInt *Y, *C;
-    bool TrueWhenUnset;
+    Value *X = nullptr;
+    const APInt *Y = nullptr, *C = nullptr;
+    bool TrueWhenUnset = false;
     bool IsBitTest = false;
     if (ICmpInst::isEquality(Pred) &&
         match(CmpLHS, m_And(m_Value(X), m_Power2(Y))) &&
@@ -802,7 +802,7 @@ Instruction *InstCombiner::foldSPFofSPF(Instruction *Inner,
     return false;
   };
 
-  Value *NotA, *NotB, *NotC;
+  Value *NotA = nullptr, *NotB = nullptr, *NotC = nullptr;
   bool ElidesXor = false;
 
   // MIN(MIN(~A, ~B), ~C) == ~MAX(MAX(A, B), C)
@@ -847,7 +847,7 @@ static Value *foldSelectICmpAnd(const SelectInst &SI, ConstantInt *TrueVal,
   if (!match(IC->getOperand(1), m_Zero()))
     return nullptr;
 
-  ConstantInt *AndRHS;
+  ConstantInt *AndRHS = nullptr;
   Value *LHS = IC->getOperand(0);
   if (!match(LHS, m_And(m_Value(), m_ConstantInt(AndRHS))))
     return nullptr;
@@ -981,7 +981,7 @@ static Instruction *foldAddSubSelect(SelectInst &SI,
 }
 
 Instruction *InstCombiner::foldSelectExtConst(SelectInst &Sel) {
-  Instruction *ExtInst;
+  Instruction *ExtInst = nullptr;
   if (!match(Sel.getTrueValue(), m_Instruction(ExtInst)) &&
       !match(Sel.getFalseValue(), m_Instruction(ExtInst)))
     return nullptr;
@@ -996,7 +996,7 @@ Instruction *InstCombiner::foldSelectExtConst(SelectInst &Sel) {
   if (!SmallType->getScalarType()->isIntegerTy(1))
     return nullptr;
 
-  Constant *C;
+  Constant *C = nullptr;
   if (!match(Sel.getTrueValue(), m_Constant(C)) &&
       !match(Sel.getFalseValue(), m_Constant(C)))
     return nullptr;
@@ -1042,7 +1042,7 @@ Instruction *InstCombiner::foldSelectExtConst(SelectInst &Sel) {
 /// shuffle for easier combining with other shuffles and insert/extract.
 static Instruction *canonicalizeSelectToShuffle(SelectInst &SI) {
   Value *CondVal = SI.getCondition();
-  Constant *CondC;
+  Constant *CondC = nullptr;
   if (!CondVal->getType()->isVectorTy() || !match(CondVal, m_Constant(CondC)))
     return nullptr;
 
@@ -1084,7 +1084,7 @@ static Instruction *foldSelectCmpBitcasts(SelectInst &Sel,
   Value *FVal = Sel.getFalseValue();
 
   CmpInst::Predicate Pred;
-  Value *A, *B;
+  Value *A = nullptr, *B = nullptr;
   if (!match(Cond, m_Cmp(Pred, m_Value(A), m_Value(B))))
     return nullptr;
 
@@ -1093,12 +1093,12 @@ static Instruction *foldSelectCmpBitcasts(SelectInst &Sel,
   if (TVal == A || TVal == B || FVal == A || FVal == B)
     return nullptr;
 
-  Value *C, *D;
+  Value *C = nullptr, *D = nullptr;
   if (!match(A, m_BitCast(m_Value(C))) || !match(B, m_BitCast(m_Value(D))))
     return nullptr;
 
   // select (cmp (bitcast C), (bitcast D)), (bitcast TSrc), (bitcast FSrc)
-  Value *TSrc, *FSrc;
+  Value *TSrc = nullptr, *FSrc = nullptr;
   if (!match(TVal, m_BitCast(m_Value(TSrc))) ||
       !match(FVal, m_BitCast(m_Value(FSrc))))
     return nullptr;
@@ -1106,7 +1106,7 @@ static Instruction *foldSelectCmpBitcasts(SelectInst &Sel,
   // If the select true/false values are *different bitcasts* of the same source
   // operands, make the select operands the same as the compare operands and
   // cast the result. This is the canonical select form for min/max.
-  Value *NewSel;
+  Value *NewSel = nullptr;
   if (TSrc == C && FSrc == D) {
     // select (cmp (bitcast C), (bitcast D)), (bitcast' C), (bitcast' D) -->
     // bitcast (select (cmp A, B), A, B)
@@ -1211,7 +1211,7 @@ Instruction *InstCombiner::visitSelectInst(SelectInst &SI) {
         // This is not safe in general for floating point:
         // consider X== -0, Y== +0.
         // It becomes safe if either operand is a nonzero constant.
-        ConstantFP *CFPt, *CFPf;
+        ConstantFP *CFPt = nullptr, *CFPf = nullptr;
         if (((CFPt = dyn_cast<ConstantFP>(TrueVal)) &&
               !CFPt->getValueAPF().isZero()) ||
             ((CFPf = dyn_cast<ConstantFP>(FalseVal)) &&
@@ -1223,7 +1223,7 @@ Instruction *InstCombiner::visitSelectInst(SelectInst &SI) {
         // This is not safe in general for floating point:
         // consider X== -0, Y== +0.
         // It becomes safe if either operand is a nonzero constant.
-        ConstantFP *CFPt, *CFPf;
+        ConstantFP *CFPt = nullptr, *CFPf = nullptr;
         if (((CFPt = dyn_cast<ConstantFP>(TrueVal)) &&
               !CFPt->getValueAPF().isZero()) ||
             ((CFPf = dyn_cast<ConstantFP>(FalseVal)) &&
@@ -1254,7 +1254,7 @@ Instruction *InstCombiner::visitSelectInst(SelectInst &SI) {
         // This is not safe in general for floating point:
         // consider X== -0, Y== +0.
         // It becomes safe if either operand is a nonzero constant.
-        ConstantFP *CFPt, *CFPf;
+        ConstantFP *CFPt = nullptr, *CFPf = nullptr;
         if (((CFPt = dyn_cast<ConstantFP>(TrueVal)) &&
               !CFPt->getValueAPF().isZero()) ||
             ((CFPf = dyn_cast<ConstantFP>(FalseVal)) &&
@@ -1318,7 +1318,7 @@ Instruction *InstCombiner::visitSelectInst(SelectInst &SI) {
     if (Instruction *FoldI = foldSelectIntoOp(SI, TrueVal, FalseVal))
       return FoldI;
 
-    Value *LHS, *RHS, *LHS2, *RHS2;
+    Value *LHS = nullptr, *RHS = nullptr, *LHS2 = nullptr, *RHS2 = nullptr;
     Instruction::CastOps CastOp;
     SelectPatternResult SPR = matchSelectPattern(&SI, LHS, RHS, &CastOp);
     auto SPF = SPR.Flavor;
@@ -1329,7 +1329,7 @@ Instruction *InstCombiner::visitSelectInst(SelectInst &SI) {
           SelType->getPrimitiveSizeInBits()) {
         CmpInst::Predicate Pred = getCmpPredicateForMinMax(SPF, SPR.Ordered);
 
-        Value *Cmp;
+        Value *Cmp = nullptr;
         if (CmpInst::isIntPredicate(Pred)) {
           Cmp = Builder->CreateICmp(Pred, LHS, RHS);
         } else {

@@ -646,9 +646,9 @@ CodeGenPatternMatch::isFPToUnsignedIntSatWithInexactConstant( llvm::SelectInst *
 }
 
 bool CodeGenPatternMatch::MatchFPToIntegerWithSaturation(llvm::Instruction &I) {
-    Value *X;
-    unsigned Opcode;
-    VISA_Type type;
+    Value *X = nullptr;
+    unsigned Opcode = 0;
+    VISA_Type type = ISA_TYPE_NUM;
 
     if (CastInst *CI = dyn_cast<CastInst>(&I)) {
         std::tie(X, Opcode, type) = isFPToIntegerSatWithExactConstant(CI);
