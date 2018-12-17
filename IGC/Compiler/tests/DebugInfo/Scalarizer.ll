@@ -23,13 +23,12 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: opt -igc-scalarize -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-scalarize -S %s -o - | FileCheck %s
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This LIT test checks that Scalarizer pass handles line debug info.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a64:64:64-f80:128:128-n8:16:32:64"
 target triple = "igil_32_GEN8"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -42,7 +41,7 @@ target triple = "igil_32_GEN8"
 define void @test_general(<4 x float> addrspace(1)* %dst, <4 x float> %x, <4 x float> %y) #0 {
 entry:
   %res = fadd <4 x float> %x, %y, !dbg !1
-  %z = load <4 x float> addrspace(1)* %dst, !dbg !2
+  %z = load <4 x float>, <4 x float> addrspace(1)* %dst, !dbg !2
   %res1 = shufflevector <4 x float> %res, <4 x float> %z, <4 x i32> <i32 0, i32 1, i32 4, i32 5>, !dbg !3
   store <4 x float> %res1, <4 x float> addrspace(1)* %dst, align 16, !dbg !4
   ret void
@@ -63,7 +62,7 @@ entry:
 ; CHECK-NEXT: [[res2:%[a-zA-Z0-9_.]+]] = fadd float [[x2]], [[y2]], !dbg !1
 ; CHECK-NEXT: [[res3:%[a-zA-Z0-9_.]+]] = fadd float [[x3]], [[y3]], !dbg !1
 
-; CHECK-NEXT: [[z:%[a-zA-Z0-9_.]+]] = load <4 x float> addrspace(1)* %dst, !dbg !2
+; CHECK-NEXT: [[z:%[a-zA-Z0-9_.]+]] = load <4 x float>, <4 x float> addrspace(1)* %dst, !dbg !2
 ; CHECK-NEXT: [[z0:%[a-zA-Z0-9_.]+]] = extractelement <4 x float> [[z]], i32 0, !dbg !2
 ; CHECK-NEXT: [[z1:%[a-zA-Z0-9_.]+]] = extractelement <4 x float> [[z]], i32 1, !dbg !2
 ; CHECK-NEXT: [[z2:%[a-zA-Z0-9_.]+]] = extractelement <4 x float> [[z]], i32 2, !dbg !2
@@ -212,7 +211,7 @@ entry:
 
 define void @test_ExtractElementInst(float addrspace(1)* %dst, <4 x float> addrspace(1)* %src) #0 {
 entry:
-  %x = load <4 x float> addrspace(1)* %src, !dbg !1
+  %x = load <4 x float>, <4 x float> addrspace(1)* %src, !dbg !1
   %res = extractelement <4 x float> %x, i32 1, !dbg !2
   store float %res, float addrspace(1)* %dst, align 4, !dbg !3
   ret void
@@ -220,7 +219,7 @@ entry:
 ; CHECK: @test_ExtractElementInst
 ; CHECK-NEXT: entry:
 
-; CHECK-NEXT: [[ExtractElementInst_x:%[a-zA-Z0-9_.]+]] = load <4 x float> addrspace(1)* %src, !dbg !1
+; CHECK-NEXT: [[ExtractElementInst_x:%[a-zA-Z0-9_.]+]] = load <4 x float>, <4 x float> addrspace(1)* %src, !dbg !1
 
 ; CHECK-NEXT: [[ExtractElementInst_x0:%[a-zA-Z0-9_.]+]] = extractelement <4 x float> [[ExtractElementInst_x]], i32 0, !dbg !1
 ; CHECK-NEXT: [[ExtractElementInst_x1:%[a-zA-Z0-9_.]+]] = extractelement <4 x float> [[ExtractElementInst_x]], i32 1, !dbg !1
@@ -298,8 +297,8 @@ attributes #0 = { alwaysinline nounwind }
 !hack_order = !{!0, !1, !2, !3, !4}
 
 
-!0 = metadata !{}
-!1 = metadata !{i32 3, i32 0, metadata !0, null}
-!2 = metadata !{i32 4, i32 0, metadata !0, null}
-!3 = metadata !{i32 5, i32 0, metadata !0, null}
-!4 = metadata !{i32 6, i32 0, metadata !0, null}
+!0 = !{}
+!1 = !{i32 3, i32 0, !0, null}
+!2 = !{i32 4, i32 0, !0, null}
+!3 = !{i32 5, i32 0, !0, null}
+!4 = !{i32 6, i32 0, !0, null}

@@ -23,7 +23,7 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: opt -analyze -igc-test-spir-metadata-api-get -S %s -o %t.ll 
+; RUN: igc_opt -analyze -igc-test-spir-metadata-api-get -S %s -o %t.ll 
 ; RUN: FileCheck %s --input-file=%t.ll
 
 define void @main(i32 %x) nounwind {
@@ -39,22 +39,22 @@ define void @main(i32 %x) nounwind {
 !opencl.spir.version = !{!14}
 !opencl.ocl.version = !{!15}
 
-!0 = metadata !{void (i32)* @main, metadata !1, metadata !2, metadata !3, metadata !4, metadata !5, metadata !6, metadata !7, metadata !8, metadata !9}
-!1 = metadata !{metadata !"work_group_size_hint", i32 1, i32 6, i32 4}
-!2 = metadata !{metadata !"reqd_work_group_size", i32 4, i32 5, i32 1}
-!3 = metadata !{metadata !"vec_type_hint", double undef, i1 true}
-!4 = metadata !{metadata !"kernel_arg_addr_space", i32 2, i32 2}
-!5 = metadata !{metadata !"kernel_arg_access_qual", metadata !"none", metadata !"read_write"}
-!6 = metadata !{metadata !"kernel_arg_type", metadata !"char*", metadata !"char*"}
-!7 = metadata !{metadata !"kernel_arg_base_type", metadata !"char*", metadata !"char*"}
-!8 = metadata !{metadata !"kernel_arg_type_qual", metadata !"const", metadata !"restrict"}
-!9 = metadata !{metadata !"kernel_arg_name", metadata !"gooni", metadata !"googoo"}
-!10 = metadata !{metadata !"-cl-mad-enable", metadata !"-cl-denorms-are-zero"}
-!11 = metadata !{metadata !"-opt-arch-pdp11"}
-!12 = metadata !{metadata !"cl_doubles", metadata !"cl_images"}
-!13 = metadata !{metadata !"cl_khr_fp16", metadata !"cl_khr_int64_base_atomics"}
-!14 = metadata !{i32 1, i32 2}
-!15 = metadata !{i32 1, i32 1}
+!0 = !{void (i32)* @main, !1, !2, !3, !4, !5, !6, !7, !8, !9}
+!1 = !{!"work_group_size_hint", i32 1, i32 6, i32 4}
+!2 = !{!"reqd_work_group_size", i32 4, i32 5, i32 1}
+!3 = !{!"vec_type_hint", double undef, i1 true}
+!4 = !{!"kernel_arg_addr_space", i32 2, i32 2}
+!5 = !{!"kernel_arg_access_qual", !"none", !"read_write"}
+!6 = !{!"kernel_arg_type", !"char*", !"char*"}
+!7 = !{!"kernel_arg_base_type", !"char*", !"char*"}
+!8 = !{!"kernel_arg_type_qual", !"const", !"restrict"}
+!9 = !{!"kernel_arg_name", !"gooni", !"googoo"}
+!10 = !{!"-cl-mad-enable", !"-cl-denorms-are-zero"}
+!11 = !{!"-opt-arch-pdp11"}
+!12 = !{!"cl_doubles", !"cl_images"}
+!13 = !{!"cl_khr_fp16", !"cl_khr_int64_base_atomics"}
+!14 = !{i32 1, i32 2}
+!15 = !{i32 1, i32 1}
 
 ; CHECK: Kernels
 ; CHECK-NEXT: main

@@ -23,7 +23,7 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: opt -analyze -igc-test-metadata-api-get -S %s -o %t.ll 
+; RUN: igc_opt -analyze -igc-test-metadata-api-get -S %s -o %t.ll 
 ; RUN: FileCheck %s --input-file=%t.ll
 
 @globalVar = external global i32
@@ -44,50 +44,50 @@ define void @main(i32 %x) nounwind {
 !igc.constant.pointer.info = !{!47}
 !igc.enable.FP_CONTRACT = !{}
 
-!0 = metadata !{i32 1, i32 1}
-!1 = metadata !{metadata !"ocl", i32 1, i32 1}
-!2 = metadata !{metadata !"ocl", i32 1, i32 0}
-!3 = metadata !{metadata !"ogl", i32 1, i32 1}
-!4 = metadata !{void (i32)* @main, metadata !21}
-!21 = metadata !{metadata !7, metadata !8, metadata !40, metadata !9, metadata !10, metadata !22, metadata !23, metadata !29, metadata !39, metadata !11, metadata !15, metadata !16, metadata !17, metadata !18, metadata !19, metadata !20}
-!7 = metadata !{metadata !"function_type", i32 5}
-!8 = metadata !{metadata !"arg_desc", metadata !12}
-!12 = metadata !{i32 1}
-!40 = metadata !{metadata !"implicit_arg_desc", metadata !13}
-!13 = metadata !{i32 2, metadata !14}
-!14 = metadata !{metadata !"explicit_arg_num", i32 4}
-!9 = metadata !{metadata !"thread_group_size", i32 1, i32 2, i32 3}
-!10 = metadata !{metadata !"thread_group_size_hint", i32 3, i32 2, i32 1}
-!22 = metadata !{metadata !"local_size", i32 100}
-!23 = metadata !{metadata !"local_offsets", metadata !24}
-!24 = metadata !{i32* @globalVar, i32 10}
-!29 = metadata !{metadata !"resource_alloc", metadata !30, metadata !31, metadata !32, metadata !33, metadata !36}
-!30 = metadata !{metadata !"uavs_num", i32 4}
-!31 = metadata !{metadata !"srvs_num", i32 1}
-!32 = metadata !{metadata !"samplers_num", i32 7}
-!33 = metadata !{metadata !"arg_allocs", metadata !34, metadata !35}
-!34 = metadata !{i32 2, i32 0, i32 4}
-!35 = metadata !{i32 1, i32 1, i32 2}
-!36 = metadata !{metadata !"inline_samplers", metadata !37, metadata !38}
-!37 = metadata !{i32 7, i32 1}
-!38 = metadata !{i32 4, i32 2}
-!39 = metadata !{metadata !"private_memory_per_wi", i32 123}
-!11 = metadata !{metadata !"opencl_vec_type_hint", double undef, i1 true}
-!15 = metadata !{metadata !"opencl_kernel_arg_addr_space", i32 2, i32 2}
-!16 = metadata !{metadata !"opencl_kernel_arg_access_qual", metadata !"none", metadata !"read_write"}
-!17 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"char*", metadata !"char*"}
-!18 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"char*", metadata !"char*"}
-!19 = metadata !{metadata !"opencl_kernel_arg_type_qual", metadata !"const", metadata !"restrict"}
-!20 = metadata !{metadata !"opencl_kernel_arg_name", metadata !"gooni", metadata !"googoo"}
-!5 = metadata !{metadata !"-cl-mad-enable"}
-!6 = metadata !{metadata !"-cl-denorms-are-zero"}
-!25 = metadata !{metadata !26, i32 6}
-!26 = metadata !{i8 4, i8 7}
-!27 = metadata !{i32* @globalVar, i32 20}
-!28 = metadata !{metadata !45, i32 4}
-!45 = metadata !{i8 7, i8 8}
-!46 = metadata !{i32 0, i32 20, i32 2, i32 0}
-!47 = metadata !{i32 0, i32 40, i32 2, i32 0}
+!0 = !{i32 1, i32 1}
+!1 = !{!"ocl", i32 1, i32 1}
+!2 = !{!"ocl", i32 1, i32 0}
+!3 = !{!"ogl", i32 1, i32 1}
+!4 = !{void (i32)* @main, !21}
+!21 = !{!7, !8, !40, !9, !10, !22, !23, !29, !39, !11, !15, !16, !17, !18, !19, !20}
+!7 = !{!"function_type", i32 5}
+!8 = !{!"arg_desc", !12}
+!12 = !{i32 1}
+!40 = !{!"implicit_arg_desc", !13}
+!13 = !{i32 2, !14}
+!14 = !{!"explicit_arg_num", i32 4}
+!9 = !{!"thread_group_size", i32 1, i32 2, i32 3}
+!10 = !{!"thread_group_size_hint", i32 3, i32 2, i32 1}
+!22 = !{!"local_size", i32 100}
+!23 = !{!"local_offsets", !24}
+!24 = !{i32* @globalVar, i32 10}
+!29 = !{!"resource_alloc", !30, !31, !32, !33, !36}
+!30 = !{!"uavs_num", i32 4}
+!31 = !{!"srvs_num", i32 1}
+!32 = !{!"samplers_num", i32 7}
+!33 = !{!"arg_allocs", !34, !35}
+!34 = !{i32 2, i32 0, i32 4}
+!35 = !{i32 1, i32 1, i32 2}
+!36 = !{!"inline_samplers", !37, !38}
+!37 = !{i32 7, i32 1}
+!38 = !{i32 4, i32 2}
+!39 = !{!"private_memory_per_wi", i32 123}
+!11 = !{!"opencl_vec_type_hint", double undef, i1 true}
+!15 = !{!"opencl_kernel_arg_addr_space", i32 2, i32 2}
+!16 = !{!"opencl_kernel_arg_access_qual", !"none", !"read_write"}
+!17 = !{!"opencl_kernel_arg_type", !"char*", !"char*"}
+!18 = !{!"opencl_kernel_arg_base_type", !"char*", !"char*"}
+!19 = !{!"opencl_kernel_arg_type_qual", !"const", !"restrict"}
+!20 = !{!"opencl_kernel_arg_name", !"gooni", !"googoo"}
+!5 = !{!"-cl-mad-enable"}
+!6 = !{!"-cl-denorms-are-zero"}
+!25 = !{!26, i32 6}
+!26 = !{i8 4, i8 7}
+!27 = !{i32* @globalVar, i32 20}
+!28 = !{!45, i32 4}
+!45 = !{i8 7, i8 8}
+!46 = !{i32 0, i32 20, i32 2, i32 0}
+!47 = !{i32 0, i32 40, i32 2, i32 0}
 
 ; CHECK: IGC Version
 ; CHECK-NEXT: 1.1

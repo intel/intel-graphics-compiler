@@ -23,13 +23,12 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: opt -igc-priv-mem-to-reg -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-priv-mem-to-reg -S %s -o - | FileCheck %s
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This LIT test checks that LowerGEPForPrivMem pass handles variable and line debug info.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a64:64:64-f80:128:128-n8:16:32:64"
 target triple = "igil_32_GEN8"
 
 
@@ -49,23 +48,23 @@ target triple = "igil_32_GEN8"
 define void @test(float addrspace(1)* %dst, float addrspace(1)* %src, i32 %i, i32 %j, i32 %k) #0 {
 entry:
   %a = alloca [5 x [3 x float]], i32 2, align 4, !dbg !1
-  call void @llvm.dbg.declare(metadata !{[5 x [3 x float]]* %a}, metadata !10), !dbg !2
-  %arrayidx = getelementptr inbounds [5 x [3 x float]]* %a, i32 %i, i32 %j, i32 %k, !dbg !3
-  %res = load float* %arrayidx, align 4, !dbg !4
-  %arrayidx2 = getelementptr inbounds [5 x [3 x float]]* %a, i32 1, i32 2, i32 3, !dbg !5
+  call void @llvm.dbg.declare(metadata [5 x [3 x float]]* %a,  metadata !10), !dbg !2
+  %arrayidx = getelementptr inbounds [5 x [3 x float]], [5 x [3 x float]]* %a, i32 %i, i32 %j, i32 %k, !dbg !3
+  %res = load float, float* %arrayidx, align 4, !dbg !4
+  %arrayidx2 = getelementptr inbounds [5 x [3 x float]], [5 x [3 x float]]* %a, i32 1, i32 2, i32 3, !dbg !5
   store float %res, float* %arrayidx2, align 4, !dbg !6
-  %arrayidx3 = getelementptr inbounds [5 x [3 x float]]* %a, i32 1, i32 2, i32 %k, !dbg !7
+  %arrayidx3 = getelementptr inbounds [5 x [3 x float]], [5 x [3 x float]]* %a, i32 1, i32 2, i32 %k, !dbg !7
   ret void
 
 ; CHECK: [[alloca:%[a-zA-Z0-9]+]] = alloca <30 x float>, !dbg !1
-; CHECK: call void @llvm.dbg.declare(metadata !{<30 x float>* [[alloca]]}, metadata !10), !dbg !2
+; CHECK: call void @llvm.dbg.declare(metadata !{<30 x float>* [[alloca]]}, !10), !dbg !2
 ; CHECK: [[mul_size1:%[a-zA-Z0-9]+]] = mul i32 %i, 5, !dbg !3
 ; CHECK: [[add_index2:%[a-zA-Z0-9]+]] = add i32 [[mul_size1]], %j, !dbg !3
 ; CHECK: [[mul_size2:%[a-zA-Z0-9]+]] = mul i32 [[add_index2]], 3, !dbg !3
 ; CHECK: [[add_index3:%[a-zA-Z0-9]+]] = add i32 [[mul_size2]], %k, !dbg !3
-; CHECK: [[load1:%[a-zA-Z0-9]+]] = load <30 x float>* [[alloca]], !dbg !4
+; CHECK: [[load1:%[a-zA-Z0-9]+]] = load <30 x float>, <30 x float>* [[alloca]], !dbg !4
 ; CHECK: [[extract:%[a-zA-Z0-9]+]] = extractelement <30 x float> [[load1]], i32 [[add_index3]], !dbg !4
-; CHECK: [[load2:%[a-zA-Z0-9]+]] = load <30 x float>* [[alloca]], !dbg !6
+; CHECK: [[load2:%[a-zA-Z0-9]+]] = load <30 x float>, <30 x float>* [[alloca]], !dbg !6
 ; CHECK: [[insert:%[a-zA-Z0-9]+]] = insertelement <30 x float> [[load2]], float [[extract]], i32 24, !dbg !6
 ; CHECK: store <30 x float> [[insert]], <30 x float>* [[alloca]], !dbg !6
 ; CHECK-NEXT: ret void
@@ -82,7 +81,7 @@ define void @testBad1(float addrspace(1)* %dst) #0 {
 entry:
   %a = alloca [10 x float], align 4, !dbg !8
   %arrayidx = bitcast [10 x float]* %a to float*, !dbg !8
-  %res = load float* %arrayidx, align 4, !dbg !8
+  %res = load float, float* %arrayidx, align 4, !dbg !8
   store float %res, float addrspace(1)* %dst, align 4, !dbg !8
   ret void
 
@@ -90,7 +89,7 @@ entry:
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT: %a = alloca [10 x float], align 4, !dbg !8
 ; CHECK-NEXT: %arrayidx = bitcast [10 x float]* %a to float*, !dbg !8
-; CHECK-NEXT: %res = load float* %arrayidx, align 4, !dbg !8
+; CHECK-NEXT: %res = load float, float* %arrayidx, align 4, !dbg !8
 ; CHECK-NEXT: store float %res, float addrspace(1)* %dst, align 4, !dbg !8
 ; CHECK-NEXT: ret void
 }
@@ -108,7 +107,7 @@ define void @testBad2() #0 {
 entry:
   %a = alloca [10 x float], align 4, !dbg !9
   %b = alloca float*, align 4, !dbg !9
-  %resPtr = getelementptr inbounds [10 x float]* %a, i32 0, i32 0, !dbg !9
+  %resPtr = getelementptr inbounds [10 x float], [10 x float]* %a, i32 0, i32 0, !dbg !9
   store float* %resPtr, float** %b, align 4, !dbg !9
   ret void
 
@@ -116,7 +115,7 @@ entry:
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT: %a = alloca [10 x float], align 4, !dbg !9
 ; CHECK-NEXT: %b = alloca float*, align 4, !dbg !9
-; CHECK-NEXT: %resPtr = getelementptr inbounds [10 x float]* %a, i32 0, i32 0, !dbg !9
+; CHECK-NEXT: %resPtr = getelementptr inbounds [10 x float], [10 x float]* %a, i32 0, i32 0, !dbg !9
 ; CHECK-NEXT: store float* %resPtr, float** %b, align 4, !dbg !9
 ; CHECK-NEXT: ret void
 }
@@ -131,19 +130,19 @@ attributes #1 = { nounwind readnone }
 
 !igc.functions = !{!13, !14, !15}
 
-!0 = metadata !{}
-!1 = metadata !{i32 3, i32 0, metadata !0, null}
-!2 = metadata !{i32 4, i32 0, metadata !0, null}
-!3 = metadata !{i32 5, i32 0, metadata !0, null}
-!4 = metadata !{i32 6, i32 0, metadata !0, null}
-!5 = metadata !{i32 7, i32 0, metadata !0, null}
-!6 = metadata !{i32 8, i32 0, metadata !0, null}
-!7 = metadata !{i32 9, i32 0, metadata !0, null}
-!8 = metadata !{i32 10, i32 0, metadata !0, null}
-!9 = metadata !{i32 11, i32 0, metadata !0, null}
-!10 = metadata !{i32 786688, metadata !0, metadata !"a", metadata !0, i32 3, metadata !0, i32 0, i32 0}
-!11 = metadata !{metadata !"function_type", i32 0}
-!12 = metadata !{metadata !11}
-!13 = metadata !{void (float addrspace(1)*, float addrspace(1)*, i32, i32, i32)* @test, metadata !12}
-!14 = metadata !{void (float addrspace(1)*)* @testBad1, metadata !12}
-!15 = metadata !{void ()* @testBad2, metadata !12}
+!0 = !{}
+!1 = !{i32 3, i32 0, !0, null}
+!2 = !{i32 4, i32 0, !0, null}
+!3 = !{i32 5, i32 0, !0, null}
+!4 = !{i32 6, i32 0, !0, null}
+!5 = !{i32 7, i32 0, !0, null}
+!6 = !{i32 8, i32 0, !0, null}
+!7 = !{i32 9, i32 0, !0, null}
+!8 = !{i32 10, i32 0, !0, null}
+!9 = !{i32 11, i32 0, !0, null}
+!10 = !{i32 786688, !0, !"a", !0, i32 3, !0, i32 0, i32 0}
+!11 = !{!"function_type", i32 0}
+!12 = !{!11}
+!13 = !{void (float addrspace(1)*, float addrspace(1)*, i32, i32, i32)* @test, !12}
+!14 = !{void (float addrspace(1)*)* @testBad1, !12}
+!15 = !{void ()* @testBad2, !12}

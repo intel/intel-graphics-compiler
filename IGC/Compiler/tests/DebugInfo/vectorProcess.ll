@@ -23,23 +23,22 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: opt -igc-vectorprocess -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-vectorprocess -S %s -o - | FileCheck %s
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This LIT test checks that vector process pass handles line debug info.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a64:64:64-f80:128:128-n8:16:32:64"
 target triple = "igil_32_GEN9"
 
 ; Function Attrs: alwaysinline nounwind
 define void @vectorProcess_test(<4 x i16> addrspace(1)* %src1, <4 x i16> addrspace(1)* %src2, <4 x i16> addrspace(1)* %dst) #0 {
-  %1 = load <4 x i16> addrspace(1)* %src1, align 8, !dbg !3
+  %1 = load <4 x i16>, <4 x i16> addrspace(1)* %src1, align 8, !dbg !3
   %scalar = extractelement <4 x i16> %1, i32 0
   %scalar1 = extractelement <4 x i16> %1, i32 1
   %scalar2 = extractelement <4 x i16> %1, i32 2
   %scalar3 = extractelement <4 x i16> %1, i32 3
-  %2 = load <4 x i16> addrspace(1)* %src2, align 8, !dbg !4
+  %2 = load <4 x i16>, <4 x i16> addrspace(1)* %src2, align 8, !dbg !4
   %scalar4 = extractelement <4 x i16> %2, i32 0
   %scalar5 = extractelement <4 x i16> %2, i32 1
   %scalar6 = extractelement <4 x i16> %2, i32 2
@@ -56,10 +55,10 @@ define void @vectorProcess_test(<4 x i16> addrspace(1)* %src1, <4 x i16> addrspa
   ret void
   
 ; CHECK: [[vptrcast:%[a-zA-Z0-9]+]] = bitcast <4 x i16> addrspace(1)* %src1 to <2 x i32> addrspace(1)*, !dbg !3
-; CHECK-NEXT: [[vCastload:%[a-zA-Z0-9]+]] = load <2 x i32> addrspace(1)* [[vptrcast]], align 8, !dbg !3
+; CHECK-NEXT: [[vCastload:%[a-zA-Z0-9]+]] = load <2 x i32>, <2 x i32> addrspace(1)* [[vptrcast]], align 8, !dbg !3
 ; CHECK-NEXT: [[inst1:%[a-zA-Z0-9]+]] = bitcast <2 x i32> [[vCastload]] to <4 x i16>, !dbg !3
 ; CHECK: [[vptrcast1:%[a-zA-Z0-9]+]] = bitcast <4 x i16> addrspace(1)* %src2 to <2 x i32> addrspace(1)*, !dbg !4
-; CHECK-NEXT: [[vCastload2:%[a-zA-Z0-9]+]] = load <2 x i32> addrspace(1)* [[vptrcast1]], align 8, !dbg !4
+; CHECK-NEXT: [[vCastload2:%[a-zA-Z0-9]+]] = load <2 x i32>, <2 x i32> addrspace(1)* [[vptrcast1]], align 8, !dbg !4
 ; CHECK-NEXT: [[inst2:%[a-zA-Z0-9]+]] = bitcast <2 x i32> [[vCastload2]] to <4 x i16>, !dbg !4
 ; CHECK: [[vptrcast3:%[a-zA-Z0-9]+]] = bitcast <4 x i16> addrspace(1)* %dst to <2 x i32> addrspace(1)*, !dbg !5
 ; CHECK-NEXT: [[inst3:%[a-zA-Z0-9]+]] = bitcast <4 x i16> [[inst4:%[a-zA-Z0-9.]+]] to <2 x i32>, !dbg !5
@@ -74,10 +73,10 @@ attributes #0 = { alwaysinline nounwind "less-precise-fpmad"="false" "no-frame-p
 
 !igc.functions = !{!2}
 
-!0 = metadata !{}
-!1 = metadata !{metadata !0}
-!2 = metadata !{void (<4 x i16> addrspace(1)*, <4 x i16> addrspace(1)*, <4 x i16> addrspace(1)*)*@vectorProcess_test, metadata !1}
-!3 = metadata !{i32 2, i32 0, metadata !0, null}
-!4 = metadata !{i32 4, i32 0, metadata !0, null}
-!5 = metadata !{i32 7, i32 0, metadata !0, null}
+!0 = !{}
+!1 = !{!0}
+!2 = !{void (<4 x i16> addrspace(1)*, <4 x i16> addrspace(1)*, <4 x i16> addrspace(1)*)*@vectorProcess_test, !1}
+!3 = !{i32 2, i32 0, !0, null}
+!4 = !{i32 4, i32 0, !0, null}
+!5 = !{i32 7, i32 0, !0, null}
 

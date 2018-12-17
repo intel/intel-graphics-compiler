@@ -23,7 +23,7 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: opt -igc-add-implicit-gid -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-add-implicit-gid -S %s -o - | FileCheck %s
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This LIT test checks that ImplicitGID pass handles generates the following:
@@ -32,7 +32,6 @@
 ;;      __ocl_dbg_gid0, __ocl_dbg_gid1, __ocl_dbg_gid2
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a64:64:64-f80:128:128-n8:16:32:64"
 target triple = "igil_32_GEN9"
 
 ; Function Attrs: nounwind
@@ -66,20 +65,20 @@ attributes #0 = { nounwind }
 !llvm.dbg.cu = !{!0}
 !igc.functions = !{!8}
 
-!0 = metadata !{i32 786449, metadata !1, i32 12, metadata !"clang version 3.4 ", i1 false, metadata !"", i32 0, metadata !2, metadata !2, metadata !3, metadata !2, metadata !2, metadata !""} ; [ DW_TAG_compile_unit ] [dir/path] [DW_LANG_C99]
-!1 = metadata !{metadata !"filname", metadata !"dir"}
-!2 = metadata !{i32 0}
-!3 = metadata !{metadata !4}
-!4 = metadata !{i32 786478, metadata !1, metadata !5, metadata !"foo", metadata !"foo", metadata !"", i32 1, metadata !6, i1 false, i1 true, i32 0, i32 0, null, i32 0, i1 false, void ()* @foo, null, null, metadata !2, i32 2} ; [ DW_TAG_subprogram ] [line 1] [def] [scope 2] [foo]
-!5 = metadata !{i32 786473, metadata !1}          ; [ DW_TAG_file_type ] [dir/filename]
-!6 = metadata !{i32 786453, i32 0, i32 0, metadata !"", i32 0, i64 0, i64 0, i64 0, i32 0, null, metadata !7, i32 0, i32 0} ; [ DW_TAG_subroutine_type ] [line 0, size 0, align 0, offset 0] [from ]
-!7 = metadata !{null}
-!8 = metadata !{void ()* @foo, metadata !9}
-!9 = metadata !{metadata !10}
-!10 = metadata !{metadata !"function_type", i32 0}
-!11 = metadata !{i32 3, i32 0, metadata !4, null}
+!0 = !{i32 786449, !1, i32 12, !"clang version 3.4 ", i1 false, !"", i32 0, !2, !2, !3, !2, !2, !""} ; [ DW_TAG_compile_unit ] [dir/path] [DW_LANG_C99]
+!1 = !{!"filname", !"dir"}
+!2 = !{i32 0}
+!3 = !{!4}
+!4 = !{i32 786478, !1, !5, !"foo", !"foo", !"", i32 1, !6, i1 false, i1 true, i32 0, i32 0, null, i32 0, i1 false, void ()* @foo, null, null, !2, i32 2} ; [ DW_TAG_subprogram ] [line 1] [def] [scope 2] [foo]
+!5 = !{i32 786473, !1}          ; [ DW_TAG_file_type ] [dir/filename]
+!6 = !{i32 786453, i32 0, i32 0, !"", i32 0, i64 0, i64 0, i64 0, i32 0, null, !7, i32 0, i32 0} ; [ DW_TAG_subroutine_type ] [line 0, size 0, align 0, offset 0] [from ]
+!7 = !{null}
+!8 = !{void ()* @foo, !9}
+!9 = !{!10}
+!10 = !{!"function_type", i32 0}
+!11 = !{i32 3, i32 0, !4, null}
 
-; CHECK: [[m12]] = metadata !{i32 786688, metadata !4, metadata !"__ocl_dbg_gid0", null, i32 1, metadata [[m13:![0-9]+]], i32 64, i32 0}
-; CHECK: [[m13]] = metadata !{i32 786468, null, null, metadata !"long unsigned int", i32 0, i64 64, i64 64, i64 0, i32 0, i32 7}
-; CHECK: [[m14]] = metadata !{i32 786688, metadata !4, metadata !"__ocl_dbg_gid1", null, i32 1, metadata [[m13]], i32 64, i32 0}
-; CHECK: [[m15]] = metadata !{i32 786688, metadata !4, metadata !"__ocl_dbg_gid2", null, i32 1, metadata [[m13]], i32 64, i32 0}
+; CHECK: [[m12]] = !{i32 786688, !4, !"__ocl_dbg_gid0", null, i32 1, [[m13:![0-9]+]], i32 64, i32 0}
+; CHECK: [[m13]] = !{i32 786468, null, null, !"long unsigned int", i32 0, i64 64, i64 64, i64 0, i32 0, i32 7}
+; CHECK: [[m14]] = !{i32 786688, !4, !"__ocl_dbg_gid1", null, i32 1, [[m13]], i32 64, i32 0}
+; CHECK: [[m15]] = !{i32 786688, !4, !"__ocl_dbg_gid2", null, i32 1, [[m13]], i32 64, i32 0}

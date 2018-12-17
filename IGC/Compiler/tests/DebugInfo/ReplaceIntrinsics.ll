@@ -23,13 +23,12 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: opt -igc-replace-intrinsics -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-replace-unsupported-intrinsics -S %s -o - | FileCheck %s
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This LIT test checks that ReplaceIntrinsics pass handles line debug info.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a64:64:64-f80:128:128-n8:16:32:64"
 target triple = "igil_32_GEN8"
 
 define void @testMemcpy1(i32 addrspace(1)* %dst, i32 addrspace(1)* %src, i32 %count) #0 {
@@ -46,10 +45,10 @@ entry:
 ; CHECK: br i1 [[cond1]], label %[[memcpy_body:[a-zA-Z0-9_.]+]], label %[[memcpy_post:[a-zA-Z0-9_.]+]], !dbg !1
 
 ; CHECK: [[memcpy_body]]:                                      ; preds = %[[memcpy_body]], %entry
-; CHECK: [[IV1:%[a-zA-Z0-9_.]+]] = load i32* [[pIV1]], !dbg !1
-; CHECK: [[src_gep1:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memcpy_src1]], i32 [[IV1]], !dbg !1
-; CHECK: [[dst_gep1:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memcpy_dst1]], i32 [[IV1]], !dbg !1
-; CHECK: [[res1:%[a-zA-Z0-9_.]+]] = load i8 addrspace(1)* [[src_gep1]], align 16, !dbg !1
+; CHECK: [[IV1:%[a-zA-Z0-9_.]+]] = load i32, i32* [[pIV1]], !dbg !1
+; CHECK: [[src_gep1:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memcpy_src1]], i32 [[IV1]], !dbg !1
+; CHECK: [[dst_gep1:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memcpy_dst1]], i32 [[IV1]], !dbg !1
+; CHECK: [[res1:%[a-zA-Z0-9_.]+]] = load i8, i8 addrspace(1)* [[src_gep1]], align 16, !dbg !1
 ; CHECK: store i8 [[res1]], i8 addrspace(1)* [[dst_gep1]], align 16, !dbg !1
 ; CHECK: [[inc1:%[a-zA-Z0-9_.]+]] = add i32 %IV, 1, !dbg !1
 ; CHECK: store i32 [[inc1]], i32* [[pIV1]], !dbg !1
@@ -68,33 +67,33 @@ entry:
 ; CHECK: @testMemcpy2
 ; CHECK: [[memcpy_vsrc:%[a-zA-Z0-9_.]+]] = bitcast i32 addrspace(1)* %src to <8 x i32> addrspace(1)*, !dbg !2
 ; CHECK: [[memcpy_vdst:%[a-zA-Z0-9_.]+]] = bitcast i32 addrspace(1)* %dst to <8 x i32> addrspace(1)*, !dbg !2
-; CHECK: [[memcpy2_src_gep1:%[a-zA-Z0-9_.]+]] = getelementptr <8 x i32> addrspace(1)* [[memcpy_vsrc]], i32 0, !dbg !2
-; CHECK: [[memcpy2_dst_gep1:%[a-zA-Z0-9_.]+]] = getelementptr <8 x i32> addrspace(1)* [[memcpy_vdst]], i32 0, !dbg !2
-; CHECK: [[memcpy2_res1:%[a-zA-Z0-9_.]+]] = load <8 x i32> addrspace(1)* [[memcpy2_src_gep1]], align 16, !dbg !2
+; CHECK: [[memcpy2_src_gep1:%[a-zA-Z0-9_.]+]] = getelementptr <8 x i32>, <8 x i32> addrspace(1)* [[memcpy_vsrc]], i32 0, !dbg !2
+; CHECK: [[memcpy2_dst_gep1:%[a-zA-Z0-9_.]+]] = getelementptr <8 x i32>, <8 x i32> addrspace(1)* [[memcpy_vdst]], i32 0, !dbg !2
+; CHECK: [[memcpy2_res1:%[a-zA-Z0-9_.]+]] = load <8 x i32>, <8 x i32> addrspace(1)* [[memcpy2_src_gep1]], align 16, !dbg !2
 ; CHECK: store <8 x i32> [[memcpy2_res1]], <8 x i32> addrspace(1)* [[memcpy2_dst_gep1]], align 16, !dbg !2
 ; CHECK: [[memcpy_src:%[a-zA-Z0-9_.]+]] = bitcast i32 addrspace(1)* %src to i8 addrspace(1)*, !dbg !2
 ; CHECK: [[memcpy_dst:%[a-zA-Z0-9_.]+]] = bitcast i32 addrspace(1)* %dst to i8 addrspace(1)*, !dbg !2
-; CHECK: [[memcpy2_src_gep2:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memcpy_src]], i32 32, !dbg !2
-; CHECK: [[memcpy2_dst_gep2:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memcpy_dst]], i32 32, !dbg !2
+; CHECK: [[memcpy2_src_gep2:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memcpy_src]], i32 32, !dbg !2
+; CHECK: [[memcpy2_dst_gep2:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memcpy_dst]], i32 32, !dbg !2
 ; CHECK: [[memcpy_rem:%[a-zA-Z0-9_.]+]] = bitcast i8 addrspace(1)* [[memcpy2_src_gep2]] to <4 x i32> addrspace(1)*, !dbg !2
 ; CHECK: [[memcpy_rem1:%[a-zA-Z0-9_.]+]] = bitcast i8 addrspace(1)* [[memcpy2_dst_gep2]] to <4 x i32> addrspace(1)*, !dbg !2
-; CHECK: [[memcpy2_res2:%[a-zA-Z0-9_.]+]] = load <4 x i32> addrspace(1)* [[memcpy_rem]], align 16, !dbg !2
+; CHECK: [[memcpy2_res2:%[a-zA-Z0-9_.]+]] = load <4 x i32>, <4 x i32> addrspace(1)* [[memcpy_rem]], align 16, !dbg !2
 ; CHECK: store <4 x i32> [[memcpy2_res2]], <4 x i32> addrspace(1)* [[memcpy_rem1]], align 16, !dbg !2
-; CHECK: [[memcpy2_src_gep3:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memcpy_src]], i32 48, !dbg !2
-; CHECK: [[memcpy2_dst_gep3:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memcpy_dst]], i32 48, !dbg !2
+; CHECK: [[memcpy2_src_gep3:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memcpy_src]], i32 48, !dbg !2
+; CHECK: [[memcpy2_dst_gep3:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memcpy_dst]], i32 48, !dbg !2
 ; CHECK: [[memcpy_rem2:%[a-zA-Z0-9_.]+]] = bitcast i8 addrspace(1)* [[memcpy2_src_gep3]] to <3 x i32> addrspace(1)*, !dbg !2
 ; CHECK: [[memcpy_rem3:%[a-zA-Z0-9_.]+]] = bitcast i8 addrspace(1)* [[memcpy2_dst_gep3]] to <3 x i32> addrspace(1)*, !dbg !2
-; CHECK: [[memcpy2_res3:%[a-zA-Z0-9_.]+]] = load <3 x i32> addrspace(1)* [[memcpy_rem2]], align 4, !dbg !2
+; CHECK: [[memcpy2_res3:%[a-zA-Z0-9_.]+]] = load <3 x i32>, <3 x i32> addrspace(1)* [[memcpy_rem2]], align 4, !dbg !2
 ; CHECK: store <3 x i32> [[memcpy2_res3]], <3 x i32> addrspace(1)* [[memcpy_rem3]], align 4, !dbg !2
-; CHECK: [[memcpy2_src_gep5:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memcpy_src]], i32 60, !dbg !2
-; CHECK: [[memcpy2_dst_gep5:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memcpy_dst]], i32 60, !dbg !2
+; CHECK: [[memcpy2_src_gep5:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memcpy_src]], i32 60, !dbg !2
+; CHECK: [[memcpy2_dst_gep5:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memcpy_dst]], i32 60, !dbg !2
 ; CHECK: [[memcpy_rem6:%[a-zA-Z0-9_.]+]] = bitcast i8 addrspace(1)* [[memcpy2_src_gep5]] to <2 x i8> addrspace(1)*, !dbg !2
 ; CHECK: [[memcpy_rem7:%[a-zA-Z0-9_.]+]] = bitcast i8 addrspace(1)* [[memcpy2_dst_gep5]] to <2 x i8> addrspace(1)*, !dbg !2
-; CHECK: [[memcpy2_res5:%[a-zA-Z0-9_.]+]] = load <2 x i8> addrspace(1)* [[memcpy_rem6]], align 2, !dbg !2
+; CHECK: [[memcpy2_res5:%[a-zA-Z0-9_.]+]] = load <2 x i8>, <2 x i8> addrspace(1)* [[memcpy_rem6]], align 2, !dbg !2
 ; CHECK: store <2 x i8> [[memcpy2_res5]], <2 x i8> addrspace(1)* [[memcpy_rem7]], align 2, !dbg !2
-; CHECK: [[memcpy2_src_gep6:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memcpy_src]], i32 62, !dbg !2
-; CHECK: [[memcpy2_dst_gep6:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memcpy_dst]], i32 62, !dbg !2
-; CHECK: [[memcpy2_res6:%[a-zA-Z0-9_.]+]] = load i8 addrspace(1)* [[memcpy2_src_gep6]], align 1, !dbg !2
+; CHECK: [[memcpy2_src_gep6:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memcpy_src]], i32 62, !dbg !2
+; CHECK: [[memcpy2_dst_gep6:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memcpy_dst]], i32 62, !dbg !2
+; CHECK: [[memcpy2_res6:%[a-zA-Z0-9_.]+]] = load i8, i8 addrspace(1)* [[memcpy2_src_gep6]], align 1, !dbg !2
 ; CHECK: store i8 [[memcpy2_res6]], i8 addrspace(1)* [[memcpy2_dst_gep6]], align 1, !dbg !2
 }
 
@@ -111,8 +110,8 @@ entry:
 ; CHECK: br i1 [[memset1_cond1]], label %[[memset_body:[a-zA-Z0-9_.]+]], label %[[memset_post:[a-zA-Z0-9_.]+]], !dbg !3
 
 ; CHECK: [[memset_body]]:                                      ; preds = %[[memset_body]], %entry
-; CHECK: [[memset1_IV:%[a-zA-Z0-9_.]+]] = load i32* [[memset1_pIV]], !dbg !3
-; CHECK: [[memset1_gep1:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memset_dst]], i32 [[memset1_IV]], !dbg !3
+; CHECK: [[memset1_IV:%[a-zA-Z0-9_.]+]] = load i32, i32* [[memset1_pIV]], !dbg !3
+; CHECK: [[memset1_gep1:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memset_dst]], i32 [[memset1_IV]], !dbg !3
 ; CHECK: store i8 %src, i8 addrspace(1)* [[memset1_gep1]], align 16, !dbg !3
 ; CHECK: [[memset1_inc1:%[a-zA-Z0-9_.]+]] = add i32 [[memset1_IV]], 1, !dbg !3
 ; CHECK: store i32 [[memset1_inc1]], i32* [[memset1_pIV]], !dbg !3
@@ -145,12 +144,12 @@ entry:
 ; CHECK: [[memset2_v8_insert7:%[a-zA-Z0-9_.]+]] = insertelement <8 x i32> [[memset2_v8_insert6]], i32 [[memset2_v8_ssrc]], i32 6, !dbg !4
 ; CHECK: [[memset2_v8_vsrc:%[a-zA-Z0-9_.]+]] = insertelement <8 x i32> [[memset2_v8_insert7]], i32 [[memset2_v8_ssrc]], i32 7, !dbg !4
 ; CHECK: [[memset2_v8_vdst:%[a-zA-Z0-9_.]+]] = bitcast i32 addrspace(1)* %dst to <8 x i32> addrspace(1)*, !dbg !4
-; CHECK: [[memset2_v8_gep:%[a-zA-Z0-9_.]+]] = getelementptr <8 x i32> addrspace(1)* [[memset2_v8_vdst]], i32 0, !dbg !4
+; CHECK: [[memset2_v8_gep:%[a-zA-Z0-9_.]+]] = getelementptr <8 x i32>, <8 x i32> addrspace(1)* [[memset2_v8_vdst]], i32 0, !dbg !4
 ; CHECK: store <8 x i32> [[memset2_v8_vsrc]], <8 x i32> addrspace(1)* [[memset2_v8_gep]], align 16, !dbg !4
 
 ; CHECK: [[memset2_dst:%[a-zA-Z0-9_.]+]] = bitcast i32 addrspace(1)* %dst to i8 addrspace(1)*, !dbg !4
 
-; CHECK: [[memset2_v4_gep:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memset2_dst]], i32 32, !dbg !4
+; CHECK: [[memset2_v4_gep:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memset2_dst]], i32 32, !dbg !4
 ; CHECK: [[memset2_v4_zext:%[a-zA-Z0-9_.]+]] = zext i8 %src to i32, !dbg !4
 ; CHECK: [[memset2_v4_shl1:%[a-zA-Z0-9_.]+]] = shl i32 [[memset2_v4_zext]], 8, !dbg !4
 ; CHECK: [[memset2_v4_add1:%[a-zA-Z0-9_.]+]] = add i32 [[memset2_v4_shl1]], [[memset2_v4_zext]], !dbg !4
@@ -165,7 +164,7 @@ entry:
 ; CHECK: [[memset2_v4_vdst:%[a-zA-Z0-9_.]+]] = bitcast i8 addrspace(1)* [[memset2_v4_gep]] to <4 x i32> addrspace(1)*, !dbg !4
 ; CHECK: store <4 x i32> [[memset2_v4_vsrc]], <4 x i32> addrspace(1)* [[memset2_v4_vdst]], align 16, !dbg !4
 
-; CHECK: [[memset2_v2_gep:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memset2_dst]], i32 48, !dbg !4
+; CHECK: [[memset2_v2_gep:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memset2_dst]], i32 48, !dbg !4
 ; CHECK: [[memset2_v2_zext:%[a-zA-Z0-9_.]+]] = zext i8 %src to i32, !dbg !4
 ; CHECK: [[memset2_v2_shl1:%[a-zA-Z0-9_.]+]] = shl i32 [[memset2_v2_zext]], 8, !dbg !4
 ; CHECK: [[memset2_v2_add1:%[a-zA-Z0-9_.]+]] = add i32 [[memset2_v2_shl1]], [[memset2_v2_zext]], !dbg !4
@@ -179,13 +178,13 @@ entry:
 ; CHECK: [[memset2_v2_vdst:%[a-zA-Z0-9_.]+]] = bitcast i8 addrspace(1)* [[memset2_v2_gep]] to <3 x i32> addrspace(1)*, !dbg !4
 ; CHECK: store <3 x i32> [[memset2_v2_vsrc]], <3 x i32> addrspace(1)* [[memset2_v2_vdst]], align 4, !dbg !4
 
-; CHECK: [[memset2_c2_gep:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memset_dst]], i32 60, !dbg !4
+; CHECK: [[memset2_c2_gep:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memset_dst]], i32 60, !dbg !4
 ; CHECK: [[memset2_c2_insert1:%[a-zA-Z0-9_.]+]] = insertelement <2 x i8> undef, i8 %src, i32 0, !dbg !4
 ; CHECK: [[memset2_c2_vsrc:%[a-zA-Z0-9_.]+]] = insertelement <2 x i8> [[memset2_c2_insert1]], i8 %src, i32 1, !dbg !4
 ; CHECK: [[memset2_c2_vdst:%[a-zA-Z0-9_.]+]] = bitcast i8 addrspace(1)* [[memset2_c2_gep]] to <2 x i8> addrspace(1)*, !dbg !4
 ; CHECK: store <2 x i8> [[memset2_c2_vsrc]], <2 x i8> addrspace(1)* [[memset2_c2_vdst]], align 2, !dbg !4
 
-; CHECK: [[memset2_c1_gep:%[a-zA-Z0-9_.]+]] = getelementptr i8 addrspace(1)* [[memset_dst]], i32 62, !dbg !4
+; CHECK: [[memset2_c1_gep:%[a-zA-Z0-9_.]+]] = getelementptr i8, i8 addrspace(1)* [[memset_dst]], i32 62, !dbg !4
 ; CHECK: store i8 %src, i8 addrspace(1)* [[memset2_c1_gep]], align 1, !dbg !4
 }
 
@@ -199,8 +198,8 @@ attributes #1 = { nounwind }
 ;; This hack named metadata is needed to assure metadata order
 !hack_order = !{!0, !1, !2, !3, !4}
 
-!0 = metadata !{}
-!1 = metadata !{i32 5, i32 0, metadata !0, null}
-!2 = metadata !{i32 9, i32 0, metadata !0, null}
-!3 = metadata !{i32 13, i32 0, metadata !0, null}
-!4 = metadata !{i32 17, i32 0, metadata !0, null}
+!0 = !{}
+!1 = !{i32 5, i32 0, !0, null}
+!2 = !{i32 9, i32 0, !0, null}
+!3 = !{i32 13, i32 0, !0, null}
+!4 = !{i32 17, i32 0, !0, null}

@@ -28,11 +28,10 @@
 ;; 			   When handeleing the instruction and replacing it with another.
 ;;			   the mapping needs to be updated with the new instruction
 
-; RUN: opt -igc-vectorpreprocess -S %s -o %t.ll
+; RUN: igc_opt -igc-vectorpreprocess -S %s -o %t.ll
 
 ; CHECK: target
 
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a64:64:64-f80:128:128-n8:16:32:64"
 target triple = "igil_32_GEN9"
 
 %struct.sSin_Table_Type = type { [256 x [4 x i32]], i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32 }
@@ -74,26 +73,26 @@ define void @calculateFaceNormals(i32 addrspace(1)* %indexes, <4 x float> addrsp
   %3 = add i32 %1, %2
   %4 = add i32 %3, %scalar
   %5 = mul i32 %4, 3
-  %6 = getelementptr inbounds i32 addrspace(1)* %indexes, i32 %5
-  %7 = load i32 addrspace(1)* %6, align 4, !tbaa !79
+  %6 = getelementptr inbounds i32, i32 addrspace(1)* %indexes, i32 %5
+  %7 = load i32, i32 addrspace(1)* %6, align 4, !tbaa !79
   %8 = add i32 %5, 1
-  %9 = getelementptr inbounds i32 addrspace(1)* %indexes, i32 %8
-  %10 = load i32 addrspace(1)* %9, align 4, !tbaa !79
+  %9 = getelementptr inbounds i32, i32 addrspace(1)* %indexes, i32 %8
+  %10 = load i32, i32 addrspace(1)* %9, align 4, !tbaa !79
   %11 = add i32 %5, 2
-  %12 = getelementptr inbounds i32 addrspace(1)* %indexes, i32 %11
-  %13 = load i32 addrspace(1)* %12, align 4, !tbaa !79
-  %14 = getelementptr inbounds <4 x float> addrspace(1)* %positions, i32 %7
-  %15 = load <4 x float> addrspace(1)* %14, align 16, !tbaa !77
+  %12 = getelementptr inbounds i32, i32 addrspace(1)* %indexes, i32 %11
+  %13 = load i32, i32 addrspace(1)* %12, align 4, !tbaa !79
+  %14 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %positions, i32 %7
+  %15 = load <4 x float>, <4 x float> addrspace(1)* %14, align 16, !tbaa !77
   %scalar12 = extractelement <4 x float> %15, i32 0
   %scalar13 = extractelement <4 x float> %15, i32 1
   %scalar14 = extractelement <4 x float> %15, i32 2
-  %16 = getelementptr inbounds <4 x float> addrspace(1)* %positions, i32 %10
-  %17 = load <4 x float> addrspace(1)* %16, align 16, !tbaa !77
+  %16 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %positions, i32 %10
+  %17 = load <4 x float>, <4 x float> addrspace(1)* %16, align 16, !tbaa !77
   %scalar16 = extractelement <4 x float> %17, i32 0
   %scalar17 = extractelement <4 x float> %17, i32 1
   %scalar18 = extractelement <4 x float> %17, i32 2
-  %18 = getelementptr inbounds <4 x float> addrspace(1)* %positions, i32 %13
-  %19 = load <4 x float> addrspace(1)* %18, align 16, !tbaa !77
+  %18 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %positions, i32 %13
+  %19 = load <4 x float>, <4 x float> addrspace(1)* %18, align 16, !tbaa !77
   %scalar8 = extractelement <4 x float> %19, i32 0
   %scalar9 = extractelement <4 x float> %19, i32 1
   %scalar10 = extractelement <4 x float> %19, i32 2
@@ -118,7 +117,7 @@ define void @calculateFaceNormals(i32 addrspace(1)* %indexes, <4 x float> addrsp
   %38 = fadd float %37, %36
   %39 = fmul float %32, %32
   %40 = fadd float %39, %38
-  %41 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %40)
+  %41 = call float @genx.GenISA.sqrt.f32(float %40)
   %42 = fdiv float 1.000000e+00, %41, !fpmath !80
   %43 = fmul float %42, %32
   %44 = fmul float %42, %33
@@ -142,7 +141,7 @@ define void @calculateFaceNormals(i32 addrspace(1)* %indexes, <4 x float> addrsp
   %assembled.vect36 = insertelement <4 x float> %assembled.vect, float %.sink1.i.i25, i32 1
   %assembled.vect37 = insertelement <4 x float> %assembled.vect36, float %.sink2.i.i30, i32 2
   %assembled.vect38 = insertelement <4 x float> %assembled.vect37, float 0.000000e+00, i32 3
-  %58 = getelementptr inbounds <4 x float> addrspace(1)* %faceNormals, i32 %4
+  %58 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %faceNormals, i32 %4
   store <4 x float> %assembled.vect38, <4 x float> addrspace(1)* %58, align 16, !tbaa !77
   ret void
 }
@@ -157,8 +156,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   %3 = add i32 %1, %2
   %4 = add i32 %3, %scalar
   %5 = shl i32 %4, 3
-  %6 = getelementptr inbounds i32 addrspace(1)* %faceIndexes, i32 %5
-  %7 = load i32 addrspace(1)* %6, align 4, !tbaa !79
+  %6 = getelementptr inbounds i32, i32 addrspace(1)* %faceIndexes, i32 %5
+  %7 = load i32, i32 addrspace(1)* %6, align 4, !tbaa !79
   %8 = icmp eq i32 %7, -1
   br i1 %8, label %.._crit_edge_crit_edge, label %9
 
@@ -166,8 +165,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   br label %._crit_edge
 
 ; <label>:9                                       ; preds = %0
-  %10 = getelementptr inbounds <4 x float> addrspace(1)* %faceNormals, i32 %7
-  %11 = load <4 x float> addrspace(1)* %10, align 16, !tbaa !77
+  %10 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %faceNormals, i32 %7
+  %11 = load <4 x float>, <4 x float> addrspace(1)* %10, align 16, !tbaa !77
   %scalar12 = extractelement <4 x float> %11, i32 0
   %scalar13 = extractelement <4 x float> %11, i32 1
   %scalar14 = extractelement <4 x float> %11, i32 2
@@ -184,8 +183,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   %normal.118 = phi float [ %14, %9 ], [ 0.000000e+00, %.._crit_edge_crit_edge ]
   %normal.119 = phi float [ %15, %9 ], [ 0.000000e+00, %.._crit_edge_crit_edge ]
   %16 = or i32 %5, 1
-  %17 = getelementptr inbounds i32 addrspace(1)* %faceIndexes, i32 %16
-  %18 = load i32 addrspace(1)* %17, align 4, !tbaa !79
+  %17 = getelementptr inbounds i32, i32 addrspace(1)* %faceIndexes, i32 %16
+  %18 = load i32, i32 addrspace(1)* %17, align 4, !tbaa !79
   %19 = icmp eq i32 %18, -1
   br i1 %19, label %._crit_edge.._crit_edge.1_crit_edge, label %20
 
@@ -193,8 +192,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   br label %._crit_edge.1
 
 ; <label>:20                                      ; preds = %._crit_edge
-  %21 = getelementptr inbounds <4 x float> addrspace(1)* %faceNormals, i32 %18
-  %22 = load <4 x float> addrspace(1)* %21, align 16, !tbaa !77
+  %21 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %faceNormals, i32 %18
+  %22 = load <4 x float>, <4 x float> addrspace(1)* %21, align 16, !tbaa !77
   %scalar12.1 = extractelement <4 x float> %22, i32 0
   %scalar13.1 = extractelement <4 x float> %22, i32 1
   %scalar14.1 = extractelement <4 x float> %22, i32 2
@@ -211,8 +210,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   %normal.118.1 = phi float [ %25, %20 ], [ %normal.118, %._crit_edge.._crit_edge.1_crit_edge ]
   %normal.119.1 = phi float [ %26, %20 ], [ %normal.119, %._crit_edge.._crit_edge.1_crit_edge ]
   %27 = or i32 %5, 2
-  %28 = getelementptr inbounds i32 addrspace(1)* %faceIndexes, i32 %27
-  %29 = load i32 addrspace(1)* %28, align 4, !tbaa !79
+  %28 = getelementptr inbounds i32, i32 addrspace(1)* %faceIndexes, i32 %27
+  %29 = load i32, i32 addrspace(1)* %28, align 4, !tbaa !79
   %30 = icmp eq i32 %29, -1
   br i1 %30, label %._crit_edge.1.._crit_edge.2_crit_edge, label %31
 
@@ -220,8 +219,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   br label %._crit_edge.2
 
 ; <label>:31                                      ; preds = %._crit_edge.1
-  %32 = getelementptr inbounds <4 x float> addrspace(1)* %faceNormals, i32 %29
-  %33 = load <4 x float> addrspace(1)* %32, align 16, !tbaa !77
+  %32 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %faceNormals, i32 %29
+  %33 = load <4 x float>, <4 x float> addrspace(1)* %32, align 16, !tbaa !77
   %scalar12.2 = extractelement <4 x float> %33, i32 0
   %scalar13.2 = extractelement <4 x float> %33, i32 1
   %scalar14.2 = extractelement <4 x float> %33, i32 2
@@ -238,8 +237,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   %normal.118.2 = phi float [ %36, %31 ], [ %normal.118.1, %._crit_edge.1.._crit_edge.2_crit_edge ]
   %normal.119.2 = phi float [ %37, %31 ], [ %normal.119.1, %._crit_edge.1.._crit_edge.2_crit_edge ]
   %38 = or i32 %5, 3
-  %39 = getelementptr inbounds i32 addrspace(1)* %faceIndexes, i32 %38
-  %40 = load i32 addrspace(1)* %39, align 4, !tbaa !79
+  %39 = getelementptr inbounds i32, i32 addrspace(1)* %faceIndexes, i32 %38
+  %40 = load i32, i32 addrspace(1)* %39, align 4, !tbaa !79
   %41 = icmp eq i32 %40, -1
   br i1 %41, label %._crit_edge.2.._crit_edge.3_crit_edge, label %42
 
@@ -247,8 +246,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   br label %._crit_edge.3
 
 ; <label>:42                                      ; preds = %._crit_edge.2
-  %43 = getelementptr inbounds <4 x float> addrspace(1)* %faceNormals, i32 %40
-  %44 = load <4 x float> addrspace(1)* %43, align 16, !tbaa !77
+  %43 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %faceNormals, i32 %40
+  %44 = load <4 x float>, <4 x float> addrspace(1)* %43, align 16, !tbaa !77
   %scalar12.3 = extractelement <4 x float> %44, i32 0
   %scalar13.3 = extractelement <4 x float> %44, i32 1
   %scalar14.3 = extractelement <4 x float> %44, i32 2
@@ -265,8 +264,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   %normal.118.3 = phi float [ %47, %42 ], [ %normal.118.2, %._crit_edge.2.._crit_edge.3_crit_edge ]
   %normal.119.3 = phi float [ %48, %42 ], [ %normal.119.2, %._crit_edge.2.._crit_edge.3_crit_edge ]
   %49 = or i32 %5, 4
-  %50 = getelementptr inbounds i32 addrspace(1)* %faceIndexes, i32 %49
-  %51 = load i32 addrspace(1)* %50, align 4, !tbaa !79
+  %50 = getelementptr inbounds i32, i32 addrspace(1)* %faceIndexes, i32 %49
+  %51 = load i32, i32 addrspace(1)* %50, align 4, !tbaa !79
   %52 = icmp eq i32 %51, -1
   br i1 %52, label %._crit_edge.3.._crit_edge.4_crit_edge, label %53
 
@@ -274,8 +273,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   br label %._crit_edge.4
 
 ; <label>:53                                      ; preds = %._crit_edge.3
-  %54 = getelementptr inbounds <4 x float> addrspace(1)* %faceNormals, i32 %51
-  %55 = load <4 x float> addrspace(1)* %54, align 16, !tbaa !77
+  %54 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %faceNormals, i32 %51
+  %55 = load <4 x float>, <4 x float> addrspace(1)* %54, align 16, !tbaa !77
   %scalar12.4 = extractelement <4 x float> %55, i32 0
   %scalar13.4 = extractelement <4 x float> %55, i32 1
   %scalar14.4 = extractelement <4 x float> %55, i32 2
@@ -292,8 +291,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   %normal.118.4 = phi float [ %58, %53 ], [ %normal.118.3, %._crit_edge.3.._crit_edge.4_crit_edge ]
   %normal.119.4 = phi float [ %59, %53 ], [ %normal.119.3, %._crit_edge.3.._crit_edge.4_crit_edge ]
   %60 = or i32 %5, 5
-  %61 = getelementptr inbounds i32 addrspace(1)* %faceIndexes, i32 %60
-  %62 = load i32 addrspace(1)* %61, align 4, !tbaa !79
+  %61 = getelementptr inbounds i32, i32 addrspace(1)* %faceIndexes, i32 %60
+  %62 = load i32, i32 addrspace(1)* %61, align 4, !tbaa !79
   %63 = icmp eq i32 %62, -1
   br i1 %63, label %._crit_edge.4.._crit_edge.5_crit_edge, label %64
 
@@ -301,8 +300,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   br label %._crit_edge.5
 
 ; <label>:64                                      ; preds = %._crit_edge.4
-  %65 = getelementptr inbounds <4 x float> addrspace(1)* %faceNormals, i32 %62
-  %66 = load <4 x float> addrspace(1)* %65, align 16, !tbaa !77
+  %65 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %faceNormals, i32 %62
+  %66 = load <4 x float>, <4 x float> addrspace(1)* %65, align 16, !tbaa !77
   %scalar12.5 = extractelement <4 x float> %66, i32 0
   %scalar13.5 = extractelement <4 x float> %66, i32 1
   %scalar14.5 = extractelement <4 x float> %66, i32 2
@@ -319,8 +318,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   %normal.118.5 = phi float [ %69, %64 ], [ %normal.118.4, %._crit_edge.4.._crit_edge.5_crit_edge ]
   %normal.119.5 = phi float [ %70, %64 ], [ %normal.119.4, %._crit_edge.4.._crit_edge.5_crit_edge ]
   %71 = or i32 %5, 6
-  %72 = getelementptr inbounds i32 addrspace(1)* %faceIndexes, i32 %71
-  %73 = load i32 addrspace(1)* %72, align 4, !tbaa !79
+  %72 = getelementptr inbounds i32, i32 addrspace(1)* %faceIndexes, i32 %71
+  %73 = load i32, i32 addrspace(1)* %72, align 4, !tbaa !79
   %74 = icmp eq i32 %73, -1
   br i1 %74, label %._crit_edge.5.._crit_edge.6_crit_edge, label %75
 
@@ -328,8 +327,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   br label %._crit_edge.6
 
 ; <label>:75                                      ; preds = %._crit_edge.5
-  %76 = getelementptr inbounds <4 x float> addrspace(1)* %faceNormals, i32 %73
-  %77 = load <4 x float> addrspace(1)* %76, align 16, !tbaa !77
+  %76 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %faceNormals, i32 %73
+  %77 = load <4 x float>, <4 x float> addrspace(1)* %76, align 16, !tbaa !77
   %scalar12.6 = extractelement <4 x float> %77, i32 0
   %scalar13.6 = extractelement <4 x float> %77, i32 1
   %scalar14.6 = extractelement <4 x float> %77, i32 2
@@ -346,8 +345,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   %normal.118.6 = phi float [ %80, %75 ], [ %normal.118.5, %._crit_edge.5.._crit_edge.6_crit_edge ]
   %normal.119.6 = phi float [ %81, %75 ], [ %normal.119.5, %._crit_edge.5.._crit_edge.6_crit_edge ]
   %82 = or i32 %5, 7
-  %83 = getelementptr inbounds i32 addrspace(1)* %faceIndexes, i32 %82
-  %84 = load i32 addrspace(1)* %83, align 4, !tbaa !79
+  %83 = getelementptr inbounds i32, i32 addrspace(1)* %faceIndexes, i32 %82
+  %84 = load i32, i32 addrspace(1)* %83, align 4, !tbaa !79
   %85 = icmp eq i32 %84, -1
   br i1 %85, label %._crit_edge.6.._crit_edge.7_crit_edge, label %86
 
@@ -355,8 +354,8 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   br label %._crit_edge.7
 
 ; <label>:86                                      ; preds = %._crit_edge.6
-  %87 = getelementptr inbounds <4 x float> addrspace(1)* %faceNormals, i32 %84
-  %88 = load <4 x float> addrspace(1)* %87, align 16, !tbaa !77
+  %87 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %faceNormals, i32 %84
+  %88 = load <4 x float>, <4 x float> addrspace(1)* %87, align 16, !tbaa !77
   %scalar12.7 = extractelement <4 x float> %88, i32 0
   %scalar13.7 = extractelement <4 x float> %88, i32 1
   %scalar14.7 = extractelement <4 x float> %88, i32 2
@@ -379,7 +378,7 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   %97 = fadd float %96, %95
   %98 = fmul float %normal.116.7, %normal.116.7
   %99 = fadd float %98, %97
-  %100 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %99)
+  %100 = call float @genx.GenISA.sqrt.f32(float %99)
   %101 = fdiv float 1.000000e+00, %100, !fpmath !80
   %102 = fmul float %101, %normal.116.7
   %103 = fmul float %101, %normal.117.7
@@ -399,13 +398,13 @@ define void @averageFaceNormals(float addrspace(1)* %vbo, <4 x float> addrspace(
   %115 = call i32 @llvm.ctlz.i32(i32 %110, i1 false)
   %116 = icmp eq i32 %115, 0
   %.sink2.i.i30 = select i1 %116, float %normal.118.7, float %104
-  %117 = getelementptr inbounds float addrspace(1)* %vbo, i32 %49
+  %117 = getelementptr inbounds float, float addrspace(1)* %vbo, i32 %49
   store float %.sink.i.i20, float addrspace(1)* %117, align 4, !tbaa !81
-  %118 = getelementptr inbounds float addrspace(1)* %vbo, i32 %60
+  %118 = getelementptr inbounds float, float addrspace(1)* %vbo, i32 %60
   store float %.sink1.i.i25, float addrspace(1)* %118, align 4, !tbaa !81
-  %119 = getelementptr inbounds float addrspace(1)* %vbo, i32 %71
+  %119 = getelementptr inbounds float, float addrspace(1)* %vbo, i32 %71
   store float %.sink2.i.i30, float addrspace(1)* %119, align 4, !tbaa !81
-  %120 = getelementptr inbounds float addrspace(1)* %vbo, i32 %82
+  %120 = getelementptr inbounds float, float addrspace(1)* %vbo, i32 %82
   store float 0.000000e+00, float addrspace(1)* %120, align 4, !tbaa !81
   ret void
 }
@@ -420,23 +419,23 @@ define void @updateVBO(<4 x float> addrspace(1)* %positions, float addrspace(1)*
   %3 = add i32 %1, %2
   %4 = add i32 %3, %scalar
   %5 = shl i32 %4, 3
-  %6 = getelementptr inbounds <4 x float> addrspace(1)* %positions, i32 %4
-  %7 = load <4 x float> addrspace(1)* %6, align 16
+  %6 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %positions, i32 %4
+  %7 = load <4 x float>, <4 x float> addrspace(1)* %6, align 16
   %scalar8 = extractelement <4 x float> %7, i32 0
-  %8 = getelementptr inbounds float addrspace(1)* %vbo, i32 %5
+  %8 = getelementptr inbounds float, float addrspace(1)* %vbo, i32 %5
   store float %scalar8, float addrspace(1)* %8, align 4, !tbaa !81
-  %9 = load <4 x float> addrspace(1)* %6, align 16
+  %9 = load <4 x float>, <4 x float> addrspace(1)* %6, align 16
   %scalar13 = extractelement <4 x float> %9, i32 1
   %10 = or i32 %5, 1
-  %11 = getelementptr inbounds float addrspace(1)* %vbo, i32 %10
+  %11 = getelementptr inbounds float, float addrspace(1)* %vbo, i32 %10
   store float %scalar13, float addrspace(1)* %11, align 4, !tbaa !81
-  %12 = load <4 x float> addrspace(1)* %6, align 16
+  %12 = load <4 x float>, <4 x float> addrspace(1)* %6, align 16
   %scalar18 = extractelement <4 x float> %12, i32 2
   %13 = or i32 %5, 2
-  %14 = getelementptr inbounds float addrspace(1)* %vbo, i32 %13
+  %14 = getelementptr inbounds float, float addrspace(1)* %vbo, i32 %13
   store float %scalar18, float addrspace(1)* %14, align 4, !tbaa !81
   %15 = or i32 %5, 3
-  %16 = getelementptr inbounds float addrspace(1)* %vbo, i32 %15
+  %16 = getelementptr inbounds float, float addrspace(1)* %vbo, i32 %15
   store float 0.000000e+00, float addrspace(1)* %16, align 4, !tbaa !81
   ret void
 }
@@ -450,14 +449,14 @@ define void @integrateSoftBody(<4 x float> addrspace(1)* %positions, <4 x float>
   %2 = zext i16 %localIdX to i32
   %3 = add i32 %1, %2
   %4 = add i32 %3, %scalar
-  %5 = getelementptr inbounds <4 x float> addrspace(1)* %positions, i32 %4
-  %6 = load <4 x float> addrspace(1)* %5, align 16, !tbaa !77
+  %5 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %positions, i32 %4
+  %6 = load <4 x float>, <4 x float> addrspace(1)* %5, align 16, !tbaa !77
   %scalar8 = extractelement <4 x float> %6, i32 0
   %scalar9 = extractelement <4 x float> %6, i32 1
   %scalar10 = extractelement <4 x float> %6, i32 2
   %scalar11 = extractelement <4 x float> %6, i32 3
-  %7 = getelementptr inbounds <4 x float> addrspace(1)* %oldPositions, i32 %4
-  %8 = load <4 x float> addrspace(1)* %7, align 16, !tbaa !77
+  %7 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %oldPositions, i32 %4
+  %8 = load <4 x float>, <4 x float> addrspace(1)* %7, align 16, !tbaa !77
   %scalar12 = extractelement <4 x float> %8, i32 0
   %scalar13 = extractelement <4 x float> %8, i32 1
   %scalar14 = extractelement <4 x float> %8, i32 2
@@ -470,8 +469,8 @@ define void @integrateSoftBody(<4 x float> addrspace(1)* %positions, <4 x float>
   %14 = fmul float %10, 0x3FEDC28F60000000
   %15 = fmul float %11, 0x3FEDC28F60000000
   %16 = fmul float %12, 0x3FEDC28F60000000
-  %17 = getelementptr inbounds <4 x float> addrspace(1)* %forces, i32 %4
-  %18 = load <4 x float> addrspace(1)* %17, align 16, !tbaa !77
+  %17 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %forces, i32 %4
+  %18 = load <4 x float>, <4 x float> addrspace(1)* %17, align 16, !tbaa !77
   %scalar16 = extractelement <4 x float> %18, i32 0
   %scalar17 = extractelement <4 x float> %18, i32 1
   %scalar18 = extractelement <4 x float> %18, i32 2
@@ -510,16 +509,16 @@ define void @satisfyConstraints(<4 x float> addrspace(1)* %positions, i32 addrsp
   %2 = zext i16 %localIdX to i32
   %3 = add i32 %1, %2
   %4 = add i32 %3, %scalar
-  %5 = getelementptr inbounds i32 addrspace(1)* %offsets, i32 %4
-  %6 = load i32 addrspace(1)* %5, align 4, !tbaa !79
+  %5 = getelementptr inbounds i32, i32 addrspace(1)* %offsets, i32 %4
+  %6 = load i32, i32 addrspace(1)* %5, align 4, !tbaa !79
   %7 = add nsw i32 %6, %startOffset
   %8 = shl nsw i32 %7, 3
-  %9 = getelementptr inbounds <4 x float> addrspace(1)* %positions, i32 %7
+  %9 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %positions, i32 %7
   br label %10
 
 ._crit_edge:                                      ; preds = %._crit_edge97.3
   %castcollisionObjectPositionArray6 = bitcast i8 addrspace(2)* %constBase to [36 x float] addrspace(2)*
-  %.pre = load <4 x float> addrspace(1)* %9, align 16, !tbaa !77
+  %.pre = load <4 x float>, <4 x float> addrspace(1)* %9, align 16, !tbaa !77
   br label %69
 
 ; <label>:10                                      ; preds = %._crit_edge97.3, %0
@@ -540,8 +539,8 @@ define void @satisfyConstraints(<4 x float> addrspace(1)* %positions, i32 addrsp
   %18 = phi i32 [ %13, %12 ], [ %16, %14 ]
   %19 = sub nsw i32 7, %18
   %20 = add nsw i32 %8, %19
-  %21 = getelementptr inbounds i32 addrspace(1)* %neighbours, i32 %20
-  %22 = load i32 addrspace(1)* %21, align 4, !tbaa !79
+  %21 = getelementptr inbounds i32, i32 addrspace(1)* %neighbours, i32 %20
+  %22 = load i32, i32 addrspace(1)* %21, align 4, !tbaa !79
   %23 = icmp sgt i32 %22, -1
   br i1 %23, label %24, label %._crit_edge97
 
@@ -550,7 +549,7 @@ define void @satisfyConstraints(<4 x float> addrspace(1)* %positions, i32 addrsp
   br i1 %25, label %26, label %._crit_edge98
 
 ; <label>:26                                      ; preds = %24
-  %27 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
+  %27 = call float @genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
   br label %._crit_edge98
 
 ._crit_edge98:                                    ; preds = %24, %26
@@ -563,18 +562,18 @@ define void @satisfyConstraints(<4 x float> addrspace(1)* %positions, i32 addrsp
   %31 = fmul float %30, %30
   %32 = fmul float %rest.0, %rest.0
   %33 = fadd float %31, %32
-  %34 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %33)
+  %34 = call float @genx.GenISA.sqrt.f32(float %33)
   br label %._crit_edge99
 
 ._crit_edge99:                                    ; preds = %._crit_edge98, %29
   %rest.1 = phi float [ %34, %29 ], [ %rest.0, %._crit_edge98 ]
-  %35 = load <4 x float> addrspace(1)* %9, align 16, !tbaa !77
+  %35 = load <4 x float>, <4 x float> addrspace(1)* %9, align 16, !tbaa !77
   %scalar38 = extractelement <4 x float> %35, i32 0
   %scalar39 = extractelement <4 x float> %35, i32 1
   %scalar40 = extractelement <4 x float> %35, i32 2
   %scalar41 = extractelement <4 x float> %35, i32 3
-  %36 = getelementptr inbounds <4 x float> addrspace(1)* %positions, i32 %22
-  %37 = load <4 x float> addrspace(1)* %36, align 16, !tbaa !77
+  %36 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %positions, i32 %22
+  %37 = load <4 x float>, <4 x float> addrspace(1)* %36, align 16, !tbaa !77
   %scalar42 = extractelement <4 x float> %37, i32 0
   %scalar43 = extractelement <4 x float> %37, i32 1
   %scalar44 = extractelement <4 x float> %37, i32 2
@@ -590,7 +589,7 @@ define void @satisfyConstraints(<4 x float> addrspace(1)* %positions, i32 addrsp
   %46 = fadd float %45, %44
   %47 = fmul float %38, %38
   %48 = fadd float %47, %46
-  %49 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %48)
+  %49 = call float @genx.GenISA.sqrt.f32(float %48)
   %50 = fsub float %49, %rest.1
   %51 = fdiv float %50, %49, !fpmath !80
   %52 = fmul float %51, 5.000000e-01
@@ -608,7 +607,7 @@ define void @satisfyConstraints(<4 x float> addrspace(1)* %positions, i32 addrsp
   %assembled.vect71 = insertelement <4 x float> %assembled.vect70, float %60, i32 2
   %assembled.vect72 = insertelement <4 x float> %assembled.vect71, float %61, i32 3
   store <4 x float> %assembled.vect72, <4 x float> addrspace(1)* %9, align 16, !tbaa !77
-  %62 = load <4 x float> addrspace(1)* %36, align 16, !tbaa !77
+  %62 = load <4 x float>, <4 x float> addrspace(1)* %36, align 16, !tbaa !77
   %scalar50 = extractelement <4 x float> %62, i32 0
   %scalar51 = extractelement <4 x float> %62, i32 1
   %scalar52 = extractelement <4 x float> %62, i32 2
@@ -633,18 +632,18 @@ define void @satisfyConstraints(<4 x float> addrspace(1)* %positions, i32 addrsp
   %70 = phi <4 x float> [ %.pre, %._crit_edge ], [ %274, %_Z6lengthDv4_f.exit._crit_edge ]
   %n.0118 = phi i32 [ 0, %._crit_edge ], [ %275, %_Z6lengthDv4_f.exit._crit_edge ]
   %71 = shl nsw i32 %n.0118, 2
-  %72 = getelementptr inbounds [36 x float] addrspace(2)* %castcollisionObjectPositionArray6, i32 0, i32 %71
-  %73 = load float addrspace(2)* %72, align 1, !tbaa !81
+  %72 = getelementptr inbounds [36 x float], [36 x float] addrspace(2)* %castcollisionObjectPositionArray6, i32 0, i32 %71
+  %73 = load float, float addrspace(2)* %72, align 1, !tbaa !81
   %74 = add i32 %71, 1
-  %75 = getelementptr inbounds [36 x float] addrspace(2)* %castcollisionObjectPositionArray6, i32 0, i32 %74
-  %76 = load float addrspace(2)* %75, align 1, !tbaa !81
+  %75 = getelementptr inbounds [36 x float], [36 x float] addrspace(2)* %castcollisionObjectPositionArray6, i32 0, i32 %74
+  %76 = load float, float addrspace(2)* %75, align 1, !tbaa !81
   %77 = add i32 %71, 2
-  %78 = getelementptr inbounds [36 x float] addrspace(2)* %castcollisionObjectPositionArray6, i32 0, i32 %77
-  %79 = load float addrspace(2)* %78, align 1, !tbaa !81
+  %78 = getelementptr inbounds [36 x float], [36 x float] addrspace(2)* %castcollisionObjectPositionArray6, i32 0, i32 %77
+  %79 = load float, float addrspace(2)* %78, align 1, !tbaa !81
   %80 = fadd float %79, 7.000000e+00
   %81 = add i32 %71, 3
-  %82 = getelementptr inbounds [36 x float] addrspace(2)* %castcollisionObjectPositionArray6, i32 0, i32 %81
-  %83 = load float addrspace(2)* %82, align 1, !tbaa !81
+  %82 = getelementptr inbounds [36 x float], [36 x float] addrspace(2)* %castcollisionObjectPositionArray6, i32 0, i32 %81
+  %83 = load float, float addrspace(2)* %82, align 1, !tbaa !81
   %scalar54 = extractelement <4 x float> %70, i32 0
   %scalar55 = extractelement <4 x float> %70, i32 1
   %scalar56 = extractelement <4 x float> %70, i32 2
@@ -713,12 +712,12 @@ _Z4fabsf.exit2.i.i:                               ; preds = %_Z4fabsf.exit.i.i, 
 _Z4fabsf.exit2.i.i._crit_edge:                    ; preds = %_Z4fabsf.exit2.i.i, %113
   %115 = phi i1 [ %114, %113 ], [ false, %_Z4fabsf.exit2.i.i ]
   %116 = fadd float %109, %111
-  %117 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %116)
+  %117 = call float @genx.GenISA.sqrt.f32(float %116)
   %118 = fmul float %109, %111
   %119 = fmul float %118, 2.000000e+00
   %120 = fdiv float %119, %116, !fpmath !80
   %121 = fsub float %116, %120
-  %122 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %121)
+  %122 = call float @genx.GenISA.sqrt.f32(float %121)
   %123 = fmul float %117, %122
   br i1 %112, label %._crit_edge101, label %124
 
@@ -731,12 +730,12 @@ _Z4fabsf.exit2.i.i._crit_edge:                    ; preds = %_Z4fabsf.exit2.i.i,
   %127 = fdiv float %111, %109, !fpmath !80
   %128 = fmul float %127, %127
   %129 = fadd float %128, 1.000000e+00
-  %130 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %129)
+  %130 = call float @genx.GenISA.sqrt.f32(float %129)
   %131 = fmul float %109, %130
   %132 = fmul float %109, %109
   %133 = fmul float %111, %111
   %134 = fadd float %132, %133
-  %135 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %134)
+  %135 = call float @genx.GenISA.sqrt.f32(float %134)
   %136 = fcmp oeq float %109, 0.000000e+00
   br i1 %136, label %_Z5hypotff.exit.i, label %137
 
@@ -822,12 +821,12 @@ _Z4fabsf.exit2.i4.i:                              ; preds = %_Z4fabsf.exit.i3.i,
 _Z4fabsf.exit2.i4.i._crit_edge:                   ; preds = %_Z4fabsf.exit2.i4.i, %170
   %172 = phi i1 [ %171, %170 ], [ false, %_Z4fabsf.exit2.i4.i ]
   %173 = fadd float %166, %168
-  %174 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %173)
+  %174 = call float @genx.GenISA.sqrt.f32(float %173)
   %175 = fmul float %166, %168
   %176 = fmul float %175, 2.000000e+00
   %177 = fdiv float %176, %173, !fpmath !80
   %178 = fsub float %173, %177
-  %179 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %178)
+  %179 = call float @genx.GenISA.sqrt.f32(float %178)
   %180 = fmul float %174, %179
   br i1 %169, label %._crit_edge107, label %181
 
@@ -840,12 +839,12 @@ _Z4fabsf.exit2.i4.i._crit_edge:                   ; preds = %_Z4fabsf.exit2.i4.i
   %184 = fdiv float %168, %166, !fpmath !80
   %185 = fmul float %184, %184
   %186 = fadd float %185, 1.000000e+00
-  %187 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %186)
+  %187 = call float @genx.GenISA.sqrt.f32(float %186)
   %188 = fmul float %166, %187
   %189 = fmul float %166, %166
   %190 = fmul float %168, %168
   %191 = fadd float %189, %190
-  %192 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %191)
+  %192 = call float @genx.GenISA.sqrt.f32(float %191)
   %193 = fcmp oeq float %166, 0.000000e+00
   br i1 %193, label %_Z5hypotff.exit7.i, label %194
 
@@ -931,12 +930,12 @@ _Z4fabsf.exit2.i11.i:                             ; preds = %_Z4fabsf.exit.i10.i
 _Z4fabsf.exit2.i11.i._crit_edge:                  ; preds = %_Z4fabsf.exit2.i11.i, %227
   %229 = phi i1 [ %228, %227 ], [ false, %_Z4fabsf.exit2.i11.i ]
   %230 = fadd float %223, %225
-  %231 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %230)
+  %231 = call float @genx.GenISA.sqrt.f32(float %230)
   %232 = fmul float %223, %225
   %233 = fmul float %232, 2.000000e+00
   %234 = fdiv float %233, %230, !fpmath !80
   %235 = fsub float %230, %234
-  %236 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %235)
+  %236 = call float @genx.GenISA.sqrt.f32(float %235)
   %237 = fmul float %231, %236
   br i1 %226, label %._crit_edge113, label %238
 
@@ -949,12 +948,12 @@ _Z4fabsf.exit2.i11.i._crit_edge:                  ; preds = %_Z4fabsf.exit2.i11.
   %241 = fdiv float %225, %223, !fpmath !80
   %242 = fmul float %241, %241
   %243 = fadd float %242, 1.000000e+00
-  %244 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %243)
+  %244 = call float @genx.GenISA.sqrt.f32(float %243)
   %245 = fmul float %223, %244
   %246 = fmul float %223, %223
   %247 = fmul float %225, %225
   %248 = fadd float %246, %247
-  %249 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %248)
+  %249 = call float @genx.GenISA.sqrt.f32(float %248)
   %250 = fcmp oeq float %223, 0.000000e+00
   br i1 %250, label %_Z6lengthDv4_f.exit, label %251
 
@@ -1083,16 +1082,16 @@ _Z6lengthDv4_f.exit._crit_edge:                   ; preds = %_Z6lengthDv4_f.exit
   %333 = lshr i32 %295, 23
   %334 = and i32 %333, 255
   %335 = mul i32 %334, 3
-  %off__ocl_svml_trig_reduction_data29 = getelementptr i8 addrspace(2)* %constBase, i32 4308
+  %off__ocl_svml_trig_reduction_data29 = getelementptr i8, i8 addrspace(2)* %constBase, i32 4308
   %336 = bitcast i8 addrspace(2)* %off__ocl_svml_trig_reduction_data29 to float addrspace(2)*
-  %337 = getelementptr inbounds float addrspace(2)* %336, i32 %335
-  %338 = load float addrspace(2)* %337, align 1, !tbaa !81
+  %337 = getelementptr inbounds float, float addrspace(2)* %336, i32 %335
+  %338 = load float, float addrspace(2)* %337, align 1, !tbaa !81
   %.sum.i.i = add i32 %335, 1
-  %339 = getelementptr inbounds float addrspace(2)* %336, i32 %.sum.i.i
-  %340 = load float addrspace(2)* %339, align 1, !tbaa !81
+  %339 = getelementptr inbounds float, float addrspace(2)* %336, i32 %.sum.i.i
+  %340 = load float, float addrspace(2)* %339, align 1, !tbaa !81
   %.sum4.i.i = add i32 %335, 2
-  %341 = getelementptr inbounds float addrspace(2)* %336, i32 %.sum4.i.i
-  %342 = load float addrspace(2)* %341, align 1, !tbaa !81
+  %341 = getelementptr inbounds float, float addrspace(2)* %336, i32 %.sum4.i.i
+  %342 = load float, float addrspace(2)* %341, align 1, !tbaa !81
   %343 = bitcast float %338 to i32
   %344 = bitcast float %340 to i32
   %345 = bitcast float %342 to i32
@@ -1198,19 +1197,19 @@ _Z6lengthDv4_f.exit._crit_edge:                   ; preds = %_Z6lengthDv4_f.exit
   %445 = fmul float %443, %443
   %446 = shl i32 %400, 2
   %447 = and i32 %446, 1020
-  %off__ocl_svml_ssin_data19 = getelementptr i8 addrspace(2)* %constBase, i32 144
+  %off__ocl_svml_ssin_data19 = getelementptr i8, i8 addrspace(2)* %constBase, i32 144
   %448 = bitcast i8 addrspace(2)* %off__ocl_svml_ssin_data19 to float addrspace(2)*
-  %449 = getelementptr inbounds float addrspace(2)* %448, i32 %447
-  %450 = load float addrspace(2)* %449, align 1, !tbaa !81
+  %449 = getelementptr inbounds float, float addrspace(2)* %448, i32 %447
+  %450 = load float, float addrspace(2)* %449, align 1, !tbaa !81
   %.sum56.i.i = or i32 %447, 1
-  %451 = getelementptr inbounds float addrspace(2)* %448, i32 %.sum56.i.i
-  %452 = load float addrspace(2)* %451, align 1, !tbaa !81
+  %451 = getelementptr inbounds float, float addrspace(2)* %448, i32 %.sum56.i.i
+  %452 = load float, float addrspace(2)* %451, align 1, !tbaa !81
   %.sum78.i.i = or i32 %447, 2
-  %453 = getelementptr inbounds float addrspace(2)* %448, i32 %.sum78.i.i
-  %454 = load float addrspace(2)* %453, align 1, !tbaa !81
+  %453 = getelementptr inbounds float, float addrspace(2)* %448, i32 %.sum78.i.i
+  %454 = load float, float addrspace(2)* %453, align 1, !tbaa !81
   %.sum910.i.i = or i32 %447, 3
-  %455 = getelementptr inbounds float addrspace(2)* %448, i32 %.sum910.i.i
-  %456 = load float addrspace(2)* %455, align 1, !tbaa !81
+  %455 = getelementptr inbounds float, float addrspace(2)* %448, i32 %.sum910.i.i
+  %456 = load float, float addrspace(2)* %455, align 1, !tbaa !81
   %457 = fmul float %450, %443
   %458 = fmul float %456, %443
   %459 = fadd float %452, %458
@@ -1292,16 +1291,16 @@ _Z3sinf.exit:                                     ; preds = %329, %.thread.i.i
   %525 = lshr i32 %487, 23
   %526 = and i32 %525, 255
   %527 = mul i32 %526, 3
-  %off__ocl_svml_trig_reduction_data23 = getelementptr i8 addrspace(2)* %constBase, i32 4308
+  %off__ocl_svml_trig_reduction_data23 = getelementptr i8, i8 addrspace(2)* %constBase, i32 4308
   %528 = bitcast i8 addrspace(2)* %off__ocl_svml_trig_reduction_data23 to float addrspace(2)*
-  %529 = getelementptr inbounds float addrspace(2)* %528, i32 %527
-  %530 = load float addrspace(2)* %529, align 1, !tbaa !81
+  %529 = getelementptr inbounds float, float addrspace(2)* %528, i32 %527
+  %530 = load float, float addrspace(2)* %529, align 1, !tbaa !81
   %.sum.i.i2 = add i32 %527, 1
-  %531 = getelementptr inbounds float addrspace(2)* %528, i32 %.sum.i.i2
-  %532 = load float addrspace(2)* %531, align 1, !tbaa !81
+  %531 = getelementptr inbounds float, float addrspace(2)* %528, i32 %.sum.i.i2
+  %532 = load float, float addrspace(2)* %531, align 1, !tbaa !81
   %.sum4.i.i3 = add i32 %527, 2
-  %533 = getelementptr inbounds float addrspace(2)* %528, i32 %.sum4.i.i3
-  %534 = load float addrspace(2)* %533, align 1, !tbaa !81
+  %533 = getelementptr inbounds float, float addrspace(2)* %528, i32 %.sum4.i.i3
+  %534 = load float, float addrspace(2)* %533, align 1, !tbaa !81
   %535 = bitcast float %530 to i32
   %536 = bitcast float %532 to i32
   %537 = bitcast float %534 to i32
@@ -1407,19 +1406,19 @@ _Z3sinf.exit:                                     ; preds = %329, %.thread.i.i
   %637 = fmul float %635, %635
   %638 = shl i32 %592, 2
   %639 = and i32 %638, 1020
-  %off__ocl_svml_ssin_data11 = getelementptr i8 addrspace(2)* %constBase, i32 144
+  %off__ocl_svml_ssin_data11 = getelementptr i8, i8 addrspace(2)* %constBase, i32 144
   %640 = bitcast i8 addrspace(2)* %off__ocl_svml_ssin_data11 to float addrspace(2)*
-  %641 = getelementptr inbounds float addrspace(2)* %640, i32 %639
-  %642 = load float addrspace(2)* %641, align 1, !tbaa !81
+  %641 = getelementptr inbounds float, float addrspace(2)* %640, i32 %639
+  %642 = load float, float addrspace(2)* %641, align 1, !tbaa !81
   %.sum56.i.i4 = or i32 %639, 1
-  %643 = getelementptr inbounds float addrspace(2)* %640, i32 %.sum56.i.i4
-  %644 = load float addrspace(2)* %643, align 1, !tbaa !81
+  %643 = getelementptr inbounds float, float addrspace(2)* %640, i32 %.sum56.i.i4
+  %644 = load float, float addrspace(2)* %643, align 1, !tbaa !81
   %.sum78.i.i5 = or i32 %639, 2
-  %645 = getelementptr inbounds float addrspace(2)* %640, i32 %.sum78.i.i5
-  %646 = load float addrspace(2)* %645, align 1, !tbaa !81
+  %645 = getelementptr inbounds float, float addrspace(2)* %640, i32 %.sum78.i.i5
+  %646 = load float, float addrspace(2)* %645, align 1, !tbaa !81
   %.sum910.i.i6 = or i32 %639, 3
-  %647 = getelementptr inbounds float addrspace(2)* %640, i32 %.sum910.i.i6
-  %648 = load float addrspace(2)* %647, align 1, !tbaa !81
+  %647 = getelementptr inbounds float, float addrspace(2)* %640, i32 %.sum910.i.i6
+  %648 = load float, float addrspace(2)* %647, align 1, !tbaa !81
   %649 = fmul float %642, %635
   %650 = fmul float %648, %635
   %651 = fadd float %644, %650
@@ -1466,7 +1465,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %assembled.vect94 = insertelement <4 x float> %assembled.vect93, float 2.850000e+01, i32 1
   %assembled.vect95 = insertelement <4 x float> %assembled.vect94, float %677, i32 2
   %assembled.vect96 = insertelement <4 x float> %assembled.vect95, float 0.000000e+00, i32 3
-  %681 = getelementptr inbounds <4 x float> addrspace(1)* %positions, i32 127
+  %681 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %positions, i32 127
   store <4 x float> %assembled.vect96, <4 x float> addrspace(1)* %681, align 16, !tbaa !77
   ret void
 
@@ -1483,8 +1482,8 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %688 = phi i32 [ %686, %685 ], [ %684, %682 ]
   %689 = sub nsw i32 7, %688
   %690 = add nsw i32 %8, %689
-  %691 = getelementptr inbounds i32 addrspace(1)* %neighbours, i32 %690
-  %692 = load i32 addrspace(1)* %691, align 4, !tbaa !79
+  %691 = getelementptr inbounds i32, i32 addrspace(1)* %neighbours, i32 %690
+  %692 = load i32, i32 addrspace(1)* %691, align 4, !tbaa !79
   %693 = icmp sgt i32 %692, -1
   br i1 %693, label %694, label %._crit_edge97.1
 
@@ -1493,7 +1492,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   br i1 %695, label %696, label %._crit_edge98.1
 
 ; <label>:696                                     ; preds = %694
-  %697 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
+  %697 = call float @genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
   br label %._crit_edge98.1
 
 ._crit_edge98.1:                                  ; preds = %694, %696
@@ -1506,18 +1505,18 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %701 = fmul float %700, %700
   %702 = fmul float %rest.0.1, %rest.0.1
   %703 = fadd float %701, %702
-  %704 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %703)
+  %704 = call float @genx.GenISA.sqrt.f32(float %703)
   br label %._crit_edge99.1
 
 ._crit_edge99.1:                                  ; preds = %._crit_edge98.1, %699
   %rest.1.1 = phi float [ %704, %699 ], [ %rest.0.1, %._crit_edge98.1 ]
-  %705 = load <4 x float> addrspace(1)* %9, align 16, !tbaa !77
+  %705 = load <4 x float>, <4 x float> addrspace(1)* %9, align 16, !tbaa !77
   %scalar38.1 = extractelement <4 x float> %705, i32 0
   %scalar39.1 = extractelement <4 x float> %705, i32 1
   %scalar40.1 = extractelement <4 x float> %705, i32 2
   %scalar41.1 = extractelement <4 x float> %705, i32 3
-  %706 = getelementptr inbounds <4 x float> addrspace(1)* %positions, i32 %692
-  %707 = load <4 x float> addrspace(1)* %706, align 16, !tbaa !77
+  %706 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %positions, i32 %692
+  %707 = load <4 x float>, <4 x float> addrspace(1)* %706, align 16, !tbaa !77
   %scalar42.1 = extractelement <4 x float> %707, i32 0
   %scalar43.1 = extractelement <4 x float> %707, i32 1
   %scalar44.1 = extractelement <4 x float> %707, i32 2
@@ -1533,7 +1532,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %716 = fadd float %715, %714
   %717 = fmul float %708, %708
   %718 = fadd float %717, %716
-  %719 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %718)
+  %719 = call float @genx.GenISA.sqrt.f32(float %718)
   %720 = fsub float %719, %rest.1.1
   %721 = fdiv float %720, %719, !fpmath !80
   %722 = fmul float %721, 5.000000e-01
@@ -1551,7 +1550,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %assembled.vect71.1 = insertelement <4 x float> %assembled.vect70.1, float %730, i32 2
   %assembled.vect72.1 = insertelement <4 x float> %assembled.vect71.1, float %731, i32 3
   store <4 x float> %assembled.vect72.1, <4 x float> addrspace(1)* %9, align 16, !tbaa !77
-  %732 = load <4 x float> addrspace(1)* %706, align 16, !tbaa !77
+  %732 = load <4 x float>, <4 x float> addrspace(1)* %706, align 16, !tbaa !77
   %scalar50.1 = extractelement <4 x float> %732, i32 0
   %scalar51.1 = extractelement <4 x float> %732, i32 1
   %scalar52.1 = extractelement <4 x float> %732, i32 2
@@ -1585,8 +1584,8 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %745 = phi i32 [ %743, %742 ], [ %741, %739 ]
   %746 = sub nsw i32 7, %745
   %747 = add nsw i32 %8, %746
-  %748 = getelementptr inbounds i32 addrspace(1)* %neighbours, i32 %747
-  %749 = load i32 addrspace(1)* %748, align 4, !tbaa !79
+  %748 = getelementptr inbounds i32, i32 addrspace(1)* %neighbours, i32 %747
+  %749 = load i32, i32 addrspace(1)* %748, align 4, !tbaa !79
   %750 = icmp sgt i32 %749, -1
   br i1 %750, label %751, label %._crit_edge97.2
 
@@ -1595,7 +1594,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   br i1 %752, label %753, label %._crit_edge98.2
 
 ; <label>:753                                     ; preds = %751
-  %754 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
+  %754 = call float @genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
   br label %._crit_edge98.2
 
 ._crit_edge98.2:                                  ; preds = %751, %753
@@ -1608,18 +1607,18 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %758 = fmul float %757, %757
   %759 = fmul float %rest.0.2, %rest.0.2
   %760 = fadd float %758, %759
-  %761 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %760)
+  %761 = call float @genx.GenISA.sqrt.f32(float %760)
   br label %._crit_edge99.2
 
 ._crit_edge99.2:                                  ; preds = %._crit_edge98.2, %756
   %rest.1.2 = phi float [ %761, %756 ], [ %rest.0.2, %._crit_edge98.2 ]
-  %762 = load <4 x float> addrspace(1)* %9, align 16, !tbaa !77
+  %762 = load <4 x float>, <4 x float> addrspace(1)* %9, align 16, !tbaa !77
   %scalar38.2 = extractelement <4 x float> %762, i32 0
   %scalar39.2 = extractelement <4 x float> %762, i32 1
   %scalar40.2 = extractelement <4 x float> %762, i32 2
   %scalar41.2 = extractelement <4 x float> %762, i32 3
-  %763 = getelementptr inbounds <4 x float> addrspace(1)* %positions, i32 %749
-  %764 = load <4 x float> addrspace(1)* %763, align 16, !tbaa !77
+  %763 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %positions, i32 %749
+  %764 = load <4 x float>, <4 x float> addrspace(1)* %763, align 16, !tbaa !77
   %scalar42.2 = extractelement <4 x float> %764, i32 0
   %scalar43.2 = extractelement <4 x float> %764, i32 1
   %scalar44.2 = extractelement <4 x float> %764, i32 2
@@ -1635,7 +1634,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %773 = fadd float %772, %771
   %774 = fmul float %765, %765
   %775 = fadd float %774, %773
-  %776 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %775)
+  %776 = call float @genx.GenISA.sqrt.f32(float %775)
   %777 = fsub float %776, %rest.1.2
   %778 = fdiv float %777, %776, !fpmath !80
   %779 = fmul float %778, 5.000000e-01
@@ -1653,7 +1652,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %assembled.vect71.2 = insertelement <4 x float> %assembled.vect70.2, float %787, i32 2
   %assembled.vect72.2 = insertelement <4 x float> %assembled.vect71.2, float %788, i32 3
   store <4 x float> %assembled.vect72.2, <4 x float> addrspace(1)* %9, align 16, !tbaa !77
-  %789 = load <4 x float> addrspace(1)* %763, align 16, !tbaa !77
+  %789 = load <4 x float>, <4 x float> addrspace(1)* %763, align 16, !tbaa !77
   %scalar50.2 = extractelement <4 x float> %789, i32 0
   %scalar51.2 = extractelement <4 x float> %789, i32 1
   %scalar52.2 = extractelement <4 x float> %789, i32 2
@@ -1687,8 +1686,8 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %802 = phi i32 [ %800, %799 ], [ %798, %796 ]
   %803 = sub nsw i32 7, %802
   %804 = add nsw i32 %8, %803
-  %805 = getelementptr inbounds i32 addrspace(1)* %neighbours, i32 %804
-  %806 = load i32 addrspace(1)* %805, align 4, !tbaa !79
+  %805 = getelementptr inbounds i32, i32 addrspace(1)* %neighbours, i32 %804
+  %806 = load i32, i32 addrspace(1)* %805, align 4, !tbaa !79
   %807 = icmp sgt i32 %806, -1
   br i1 %807, label %808, label %._crit_edge97.3
 
@@ -1697,7 +1696,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   br i1 %809, label %810, label %._crit_edge98.3
 
 ; <label>:810                                     ; preds = %808
-  %811 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
+  %811 = call float @genx.GenISA.sqrt.f32(float 0x3F947AE160000000)
   br label %._crit_edge98.3
 
 ._crit_edge98.3:                                  ; preds = %808, %810
@@ -1710,18 +1709,18 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %815 = fmul float %814, %814
   %816 = fmul float %rest.0.3, %rest.0.3
   %817 = fadd float %815, %816
-  %818 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %817)
+  %818 = call float @genx.GenISA.sqrt.f32(float %817)
   br label %._crit_edge99.3
 
 ._crit_edge99.3:                                  ; preds = %._crit_edge98.3, %813
   %rest.1.3 = phi float [ %818, %813 ], [ %rest.0.3, %._crit_edge98.3 ]
-  %819 = load <4 x float> addrspace(1)* %9, align 16, !tbaa !77
+  %819 = load <4 x float>, <4 x float> addrspace(1)* %9, align 16, !tbaa !77
   %scalar38.3 = extractelement <4 x float> %819, i32 0
   %scalar39.3 = extractelement <4 x float> %819, i32 1
   %scalar40.3 = extractelement <4 x float> %819, i32 2
   %scalar41.3 = extractelement <4 x float> %819, i32 3
-  %820 = getelementptr inbounds <4 x float> addrspace(1)* %positions, i32 %806
-  %821 = load <4 x float> addrspace(1)* %820, align 16, !tbaa !77
+  %820 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %positions, i32 %806
+  %821 = load <4 x float>, <4 x float> addrspace(1)* %820, align 16, !tbaa !77
   %scalar42.3 = extractelement <4 x float> %821, i32 0
   %scalar43.3 = extractelement <4 x float> %821, i32 1
   %scalar44.3 = extractelement <4 x float> %821, i32 2
@@ -1737,7 +1736,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %830 = fadd float %829, %828
   %831 = fmul float %822, %822
   %832 = fadd float %831, %830
-  %833 = call float @llvm.llvm.genx.GenISA.sqrt.f32(float %832)
+  %833 = call float @genx.GenISA.sqrt.f32(float %832)
   %834 = fsub float %833, %rest.1.3
   %835 = fdiv float %834, %833, !fpmath !80
   %836 = fmul float %835, 5.000000e-01
@@ -1755,7 +1754,7 @@ _Z3sinf.exit8:                                    ; preds = %521, %.thread.i.i1
   %assembled.vect71.3 = insertelement <4 x float> %assembled.vect70.3, float %844, i32 2
   %assembled.vect72.3 = insertelement <4 x float> %assembled.vect71.3, float %845, i32 3
   store <4 x float> %assembled.vect72.3, <4 x float> addrspace(1)* %9, align 16, !tbaa !77
-  %846 = load <4 x float> addrspace(1)* %820, align 16, !tbaa !77
+  %846 = load <4 x float>, <4 x float> addrspace(1)* %820, align 16, !tbaa !77
   %scalar50.3 = extractelement <4 x float> %846, i32 0
   %scalar51.3 = extractelement <4 x float> %846, i32 1
   %scalar52.3 = extractelement <4 x float> %846, i32 2
@@ -1786,8 +1785,8 @@ define void @applyForces(<4 x float> addrspace(1)* %forces, <8 x i32> %r0, <8 x 
   %2 = zext i16 %localIdX to i32
   %3 = add i32 %1, %2
   %4 = add i32 %3, %scalar
-  %5 = getelementptr inbounds <4 x float> addrspace(1)* %forces, i32 %4
-  %6 = load <4 x float> addrspace(1)* %5, align 16
+  %5 = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %forces, i32 %4
+  %6 = load <4 x float>, <4 x float> addrspace(1)* %5, align 16
   %scalar8 = extractelement <4 x float> %6, i32 0
   %assembled.vect = insertelement <4 x float> undef, float %scalar8, i32 0
   %assembled.vect12 = insertelement <4 x float> %assembled.vect, float -2.500000e+02, i32 1
@@ -1809,7 +1808,7 @@ declare i32 @__builtin_IB_get_local_size(i32)
 declare i32 @__builtin_IB_get_group_id(i32)
 
 ; Function Attrs: nounwind readnone
-declare float @llvm.llvm.genx.GenISA.sqrt.f32(float) #1
+declare float @genx.GenISA.sqrt.f32(float) #1
 
 ; Function Attrs: nounwind readnone
 declare i32 @llvm.ctlz.i32(i32, i1) #1
@@ -1830,85 +1829,85 @@ attributes #1 = { nounwind readnone }
 !igc.inline.programscope.offsets = !{}
 !printf.strings.resetFaceNormals = !{}
 
-!0 = metadata !{i32 1, i32 0}
-!1 = metadata !{metadata !"ocl", i32 1, i32 2}
-!2 = metadata !{void (<4 x float> addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @resetFaceNormals, metadata !3}
-!3 = metadata !{metadata !4, metadata !5, metadata !12, metadata !20, metadata !21, metadata !22, metadata !23, metadata !24, metadata !25}
-!4 = metadata !{metadata !"function_type", i32 0}
-!5 = metadata !{metadata !"implicit_arg_desc", metadata !6, metadata !7, metadata !8, metadata !9, metadata !10, metadata !11}
-!6 = metadata !{i32 0}
-!7 = metadata !{i32 1}
-!8 = metadata !{i32 6}
-!9 = metadata !{i32 7}
-!10 = metadata !{i32 8}
-!11 = metadata !{i32 9}
-!12 = metadata !{metadata !"resource_alloc", metadata !13, metadata !14, metadata !15, metadata !16}
-!13 = metadata !{metadata !"uavs_num", i32 2}
-!14 = metadata !{metadata !"srvs_num", i32 0}
-!15 = metadata !{metadata !"samplers_num", i32 0}
-!16 = metadata !{metadata !"arg_allocs", metadata !17, metadata !18, metadata !18, metadata !18, metadata !18, metadata !18, metadata !19}
-!17 = metadata !{i32 1, null, i32 0}
-!18 = metadata !{i32 0, null, null}
-!19 = metadata !{i32 1, null, i32 1}
-!20 = metadata !{metadata !"opencl_kernel_arg_addr_space", i32 1}
-!21 = metadata !{metadata !"opencl_kernel_arg_access_qual", metadata !"none"}
-!22 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"float4*"}
-!23 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"float4*"}
-!24 = metadata !{metadata !"opencl_kernel_arg_type_qual", metadata !""}
-!25 = metadata !{metadata !"opencl_kernel_arg_name", metadata !"faceNormals"}
-!26 = metadata !{void (i32 addrspace(1)*, <4 x float> addrspace(1)*, <4 x float> addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @calculateFaceNormals, metadata !27}
-!27 = metadata !{metadata !4, metadata !5, metadata !28, metadata !33, metadata !34, metadata !35, metadata !36, metadata !37, metadata !38}
-!28 = metadata !{metadata !"resource_alloc", metadata !29, metadata !14, metadata !15, metadata !30}
-!29 = metadata !{metadata !"uavs_num", i32 4}
-!30 = metadata !{metadata !"arg_allocs", metadata !17, metadata !19, metadata !31, metadata !18, metadata !18, metadata !18, metadata !18, metadata !18, metadata !32}
-!31 = metadata !{i32 1, null, i32 2}
-!32 = metadata !{i32 1, null, i32 3}
-!33 = metadata !{metadata !"opencl_kernel_arg_addr_space", i32 1, i32 1, i32 1}
-!34 = metadata !{metadata !"opencl_kernel_arg_access_qual", metadata !"none", metadata !"none", metadata !"none"}
-!35 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"uint*", metadata !"float4*", metadata !"float4*"}
-!36 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"uint*", metadata !"float4*", metadata !"float4*"}
-!37 = metadata !{metadata !"opencl_kernel_arg_type_qual", metadata !"", metadata !"", metadata !""}
-!38 = metadata !{metadata !"opencl_kernel_arg_name", metadata !"indexes", metadata !"positions", metadata !"faceNormals"}
-!39 = metadata !{void (float addrspace(1)*, <4 x float> addrspace(1)*, i32 addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @averageFaceNormals, metadata !40}
-!40 = metadata !{metadata !4, metadata !5, metadata !28, metadata !33, metadata !34, metadata !41, metadata !42, metadata !37, metadata !43}
-!41 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"float*", metadata !"float4*", metadata !"int*"}
-!42 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"float*", metadata !"float4*", metadata !"int*"}
-!43 = metadata !{metadata !"opencl_kernel_arg_name", metadata !"vbo", metadata !"faceNormals", metadata !"faceIndexes"}
-!44 = metadata !{void (<4 x float> addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @updateVBO, metadata !45}
-!45 = metadata !{metadata !4, metadata !5, metadata !46, metadata !49, metadata !50, metadata !51, metadata !52, metadata !53, metadata !54}
-!46 = metadata !{metadata !"resource_alloc", metadata !47, metadata !14, metadata !15, metadata !48}
-!47 = metadata !{metadata !"uavs_num", i32 3}
-!48 = metadata !{metadata !"arg_allocs", metadata !17, metadata !19, metadata !18, metadata !18, metadata !18, metadata !18, metadata !18, metadata !31}
-!49 = metadata !{metadata !"opencl_kernel_arg_addr_space", i32 1, i32 1}
-!50 = metadata !{metadata !"opencl_kernel_arg_access_qual", metadata !"none", metadata !"none"}
-!51 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"float4*", metadata !"float*"}
-!52 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"float4*", metadata !"float*"}
-!53 = metadata !{metadata !"opencl_kernel_arg_type_qual", metadata !"", metadata !""}
-!54 = metadata !{metadata !"opencl_kernel_arg_name", metadata !"positions", metadata !"vbo"}
-!55 = metadata !{void (<4 x float> addrspace(1)*, <4 x float> addrspace(1)*, <4 x float> addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @integrateSoftBody, metadata !56}
-!56 = metadata !{metadata !4, metadata !5, metadata !28, metadata !33, metadata !34, metadata !57, metadata !58, metadata !37, metadata !59}
-!57 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"float4*", metadata !"float4*", metadata !"float4*"}
-!58 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"float4*", metadata !"float4*", metadata !"float4*"}
-!59 = metadata !{metadata !"opencl_kernel_arg_name", metadata !"positions", metadata !"oldPositions", metadata !"forces"}
-!60 = metadata !{void (<4 x float> addrspace(1)*, i32 addrspace(1)*, i32 addrspace(1)*, float, i32, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @satisfyConstraints, metadata !61}
-!61 = metadata !{metadata !4, metadata !5, metadata !62, metadata !64, metadata !65, metadata !66, metadata !67, metadata !68, metadata !69}
-!62 = metadata !{metadata !"resource_alloc", metadata !29, metadata !14, metadata !15, metadata !63}
-!63 = metadata !{metadata !"arg_allocs", metadata !17, metadata !19, metadata !31, metadata !18, metadata !18, metadata !18, metadata !18, metadata !18, metadata !18, metadata !18, metadata !32}
-!64 = metadata !{metadata !"opencl_kernel_arg_addr_space", i32 1, i32 1, i32 1, i32 0, i32 0}
-!65 = metadata !{metadata !"opencl_kernel_arg_access_qual", metadata !"none", metadata !"none", metadata !"none", metadata !"none", metadata !"none"}
-!66 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"float4*", metadata !"int*", metadata !"int*", metadata !"float", metadata !"int"}
-!67 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"float4*", metadata !"int*", metadata !"int*", metadata !"float", metadata !"int"}
-!68 = metadata !{metadata !"opencl_kernel_arg_type_qual", metadata !"", metadata !"", metadata !"", metadata !"", metadata !""}
-!69 = metadata !{metadata !"opencl_kernel_arg_name", metadata !"positions", metadata !"neighbours", metadata !"offsets", metadata !"tick", metadata !"startOffset"}
-!70 = metadata !{void (<4 x float> addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @applyForces, metadata !71}
-!71 = metadata !{metadata !4, metadata !5, metadata !12, metadata !20, metadata !21, metadata !22, metadata !23, metadata !24, metadata !72}
-!72 = metadata !{metadata !"opencl_kernel_arg_name", metadata !"forces"}
-!73 = metadata !{metadata !"-std=CL1.2"}
-!74 = metadata !{metadata !"-kernel-arg-info"}
-!75 = metadata !{metadata !76, i32 4}
-!76 = metadata !{i8 0, i8 0, i8 0, i8 64, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 51, i8 51, i8 -125, i8 -64, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -102, i8 -103, i8 -39, i8 -65, i8 0, i8 0, i8 96, i8 64, i8 -51, i8 -52, i8 76, i8 -66, i8 0, i8 0, i8 0, i8 0, i8 -102, i8 -103, i8 -39, i8 -65, i8 0, i8 0, i8 0, i8 0, i8 51, i8 51, i8 115, i8 64, i8 0, i8 0, i8 0, i8 0, i8 -102, i8 -103, i8 -39, i8 -65, i8 0, i8 0, i8 0, i8 0, i8 -82, i8 71, i8 113, i8 -64, i8 0, i8 0, i8 0, i8 0, i8 51, i8 51, i8 -125, i8 -64, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -16, i8 -64, i8 0, i8 0, i8 0, i8 0, i8 51, i8 51, i8 -125, i8 -64, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 72, i8 -63, i8 0, i8 0, i8 0, i8 0, i8 51, i8 51, i8 -101, i8 -64, i8 0, i8 0, i8 96, i8 64, i8 -82, i8 71, i8 65, i8 64, i8 0, i8 0, i8 0, i8 0, i8 51, i8 51, i8 -101, i8 -64, i8 -92, i8 112, i8 -51, i8 64, i8 -102, i8 -103, i8 -103, i8 -66, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -128, i8 63, i8 -33, i8 -25, i8 -99, i8 -71, i8 -80, i8 10, i8 -55, i8 60, i8 -104, i8 -55, i8 5, i8 -80, i8 0, i8 0, i8 -128, i8 63, i8 -56, i8 -31, i8 -99, i8 -70, i8 48, i8 -5, i8 72, i8 61, i8 127, i8 34, i8 -17, i8 -80, i8 0, i8 0, i8 -128, i8 63, i8 -104, i8 -110, i8 49, i8 -69, i8 5, i8 -87, i8 -106, i8 61, i8 97, i8 30, i8 83, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 113, i8 -55, i8 -99, i8 -69, i8 54, i8 -67, i8 -56, i8 61, i8 -11, i8 -110, i8 117, i8 -80, i8 0, i8 0, i8 -128, i8 63, i8 60, i8 110, i8 -10, i8 -69, i8 115, i8 -78, i8 -6, i8 61, i8 -49, i8 104, i8 21, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 2, i8 85, i8 49, i8 -68, i8 -125, i8 64, i8 22, i8 62, i8 20, i8 -26, i8 -24, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 11, i8 54, i8 113, i8 -68, i8 -94, i8 16, i8 47, i8 62, i8 -7, i8 103, i8 17, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 48, i8 104, i8 -99, i8 -68, i8 -62, i8 -59, i8 71, i8 62, i8 125, i8 -106, i8 -27, i8 -80, i8 0, i8 0, i8 -128, i8 63, i8 84, i8 12, i8 -57, i8 -68, i8 19, i8 92, i8 96, i8 62, i8 -10, i8 -28, i8 -89, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 4, i8 -127, i8 -11, i8 -68, i8 -52, i8 -49, i8 120, i8 62, i8 29, i8 -44, i8 27, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 -116, i8 95, i8 20, i8 -67, i8 -109, i8 -114, i8 -120, i8 62, i8 -98, i8 125, i8 44, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 85, i8 95, i8 48, i8 -67, i8 49, i8 -96, i8 -108, i8 62, i8 -16, i8 89, i8 109, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -118, i8 -69, i8 78, i8 -67, i8 -27, i8 -102, i8 -96, i8 62, i8 -96, i8 -119, i8 62, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 126, i8 111, i8 111, i8 -67, i8 -44, i8 124, i8 -84, i8 62, i8 2, i8 78, i8 37, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 18, i8 59, i8 -119, i8 -67, i8 42, i8 68, i8 -72, i8 62, i8 -90, i8 91, i8 112, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 12, i8 -27, i8 -101, i8 -67, i8 21, i8 -17, i8 -61, i8 62, i8 44, i8 -43, i8 -43, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 -52, i8 -78, i8 -81, i8 -67, i8 -54, i8 123, i8 -49, i8 62, i8 99, i8 59, i8 106, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 67, i8 -95, i8 -60, i8 -67, i8 -128, i8 -24, i8 -38, i8 62, i8 -52, i8 21, i8 30, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 56, i8 -83, i8 -38, i8 -67, i8 117, i8 51, i8 -26, i8 62, i8 116, i8 -57, i8 -39, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 68, i8 -45, i8 -15, i8 -67, i8 -22, i8 90, i8 -15, i8 62, i8 57, i8 33, i8 -1, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 -22, i8 7, i8 5, i8 -66, i8 39, i8 93, i8 -4, i8 62, i8 -87, i8 -20, i8 -128, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 -105, i8 -81, i8 17, i8 -66, i8 61, i8 -100, i8 3, i8 63, i8 2, i8 -96, i8 91, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 -75, i8 -34, i8 30, i8 -66, i8 -101, i8 -11, i8 8, i8 63, i8 78, i8 75, i8 -66, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 59, i8 -109, i8 44, i8 -66, i8 -38, i8 57, i8 14, i8 63, i8 -25, i8 50, i8 74, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 12, i8 -53, i8 58, i8 -66, i8 42, i8 104, i8 19, i8 63, i8 46, i8 -47, i8 -51, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -9, i8 -125, i8 73, i8 -66, i8 -64, i8 127, i8 24, i8 63, i8 -13, i8 -93, i8 -57, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 -73, i8 -69, i8 88, i8 -66, i8 -47, i8 127, i8 29, i8 63, i8 12, i8 5, i8 -110, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -13, i8 111, i8 104, i8 -66, i8 -103, i8 103, i8 34, i8 63, i8 -69, i8 35, i8 33, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 63, i8 -98, i8 120, i8 -66, i8 86, i8 54, i8 39, i8 63, i8 67, i8 -125, i8 3, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 14, i8 -94, i8 -124, i8 -66, i8 74, i8 -21, i8 43, i8 63, i8 54, i8 49, i8 -73, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 125, i8 47, i8 -115, i8 -66, i8 -69, i8 -123, i8 48, i8 63, i8 50, i8 45, i8 -82, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 26, i8 -10, i8 -107, i8 -66, i8 -13, i8 4, i8 53, i8 63, i8 122, i8 -25, i8 79, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -21, i8 22, i8 66, i8 62, i8 66, i8 104, i8 57, i8 63, i8 7, i8 0, i8 -127, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 39, i8 -83, i8 47, i8 62, i8 -7, i8 -82, i8 61, i8 63, i8 -20, i8 -85, i8 -102, i8 49, i8 0, i8 0, i8 0, i8 63, i8 87, i8 -39, i8 28, i8 62, i8 112, i8 -40, i8 65, i8 63, i8 119, i8 -7, i8 -65, i8 50, i8 0, i8 0, i8 0, i8 63, i8 101, i8 -98, i8 9, i8 62, i8 3, i8 -28, i8 69, i8 63, i8 116, i8 81, i8 -79, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -118, i8 -2, i8 -21, i8 61, i8 18, i8 -47, i8 73, i8 63, i8 64, i8 38, i8 -103, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -1, i8 -3, i8 -61, i8 61, i8 2, i8 -97, i8 77, i8 63, i8 -24, i8 112, i8 126, i8 50, i8 0, i8 0, i8 0, i8 63, i8 83, i8 65, i8 -101, i8 61, i8 61, i8 77, i8 81, i8 63, i8 4, i8 79, i8 12, i8 48, i8 0, i8 0, i8 0, i8 63, i8 -99, i8 -99, i8 99, i8 61, i8 49, i8 -37, i8 84, i8 63, i8 26, i8 -22, i8 -112, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -86, i8 89, i8 15, i8 61, i8 83, i8 72, i8 88, i8 63, i8 -64, i8 95, i8 125, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 50, i8 15, i8 103, i8 60, i8 26, i8 -108, i8 91, i8 63, i8 -56, i8 45, i8 35, i8 50, i8 0, i8 0, i8 0, i8 63, i8 72, i8 -74, i8 -24, i8 -69, i8 5, i8 -66, i8 94, i8 63, i8 83, i8 -7, i8 -58, i8 50, i8 0, i8 0, i8 0, i8 63, i8 100, i8 81, i8 -22, i8 -68, i8 -104, i8 -59, i8 97, i8 63, i8 37, i8 -12, i8 -25, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 90, i8 100, i8 78, i8 -67, i8 89, i8 -86, i8 100, i8 63, i8 -6, i8 8, i8 26, i8 49, i8 0, i8 0, i8 0, i8 63, i8 -1, i8 93, i8 -108, i8 -67, i8 -40, i8 107, i8 103, i8 63, i8 -119, i8 51, i8 -68, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 -40, i8 16, i8 -62, i8 -67, i8 -89, i8 9, i8 106, i8 63, i8 108, i8 35, i8 -21, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 -85, i8 67, i8 -16, i8 -67, i8 94, i8 -125, i8 108, i8 63, i8 -44, i8 40, i8 -13, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -83, i8 119, i8 15, i8 -66, i8 -98, i8 -40, i8 110, i8 63, i8 -36, i8 51, i8 -109, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 79, i8 -13, i8 -79, i8 61, i8 8, i8 9, i8 113, i8 63, i8 -35, i8 -48, i8 30, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 -109, i8 107, i8 -126, i8 61, i8 71, i8 20, i8 115, i8 63, i8 17, i8 -114, i8 -60, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 -116, i8 1, i8 37, i8 61, i8 11, i8 -6, i8 116, i8 63, i8 34, i8 -99, i8 -109, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 49, i8 -23, i8 -120, i8 60, i8 7, i8 -70, i8 118, i8 63, i8 44, i8 9, i8 109, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 -123, i8 6, i8 -26, i8 -69, i8 -8, i8 83, i8 120, i8 63, i8 -27, i8 -71, i8 13, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 101, i8 31, i8 -3, i8 -68, i8 -99, i8 -57, i8 121, i8 63, i8 89, i8 78, i8 -58, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 -8, i8 -24, i8 96, i8 -67, i8 -66, i8 20, i8 123, i8 63, i8 -53, i8 117, i8 -1, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 -119, i8 66, i8 60, i8 61, i8 40, i8 59, i8 124, i8 63, i8 -117, i8 -42, i8 49, i8 -78, i8 0, i8 0, i8 0, i8 62, i8 28, i8 4, i8 -78, i8 60, i8 -84, i8 58, i8 125, i8 63, i8 -23, i8 90, i8 -9, i8 -80, i8 0, i8 0, i8 0, i8 62, i8 -87, i8 -79, i8 41, i8 -69, i8 36, i8 19, i8 126, i8 63, i8 3, i8 -26, i8 -15, i8 -78, i8 0, i8 0, i8 0, i8 62, i8 40, i8 11, i8 -35, i8 -68, i8 109, i8 -60, i8 126, i8 63, i8 73, i8 73, i8 -12, i8 49, i8 0, i8 0, i8 0, i8 62, i8 37, i8 72, i8 53, i8 60, i8 109, i8 78, i8 127, i8 63, i8 -124, i8 24, i8 -48, i8 50, i8 0, i8 0, i8 -128, i8 61, i8 66, i8 19, i8 92, i8 -68, i8 15, i8 -79, i8 127, i8 63, i8 95, i8 91, i8 -34, i8 49, i8 0, i8 0, i8 -128, i8 61, i8 65, i8 -43, i8 -37, i8 -69, i8 67, i8 -20, i8 127, i8 63, i8 13, i8 -51, i8 -124, i8 48, i8 0, i8 0, i8 0, i8 61, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -128, i8 63, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 65, i8 -43, i8 -37, i8 59, i8 67, i8 -20, i8 127, i8 63, i8 13, i8 -51, i8 -124, i8 48, i8 0, i8 0, i8 0, i8 -67, i8 66, i8 19, i8 92, i8 60, i8 15, i8 -79, i8 127, i8 63, i8 95, i8 91, i8 -34, i8 49, i8 0, i8 0, i8 -128, i8 -67, i8 37, i8 72, i8 53, i8 -68, i8 109, i8 78, i8 127, i8 63, i8 -124, i8 24, i8 -48, i8 50, i8 0, i8 0, i8 -128, i8 -67, i8 40, i8 11, i8 -35, i8 60, i8 109, i8 -60, i8 126, i8 63, i8 73, i8 73, i8 -12, i8 49, i8 0, i8 0, i8 0, i8 -66, i8 -87, i8 -79, i8 41, i8 59, i8 36, i8 19, i8 126, i8 63, i8 3, i8 -26, i8 -15, i8 -78, i8 0, i8 0, i8 0, i8 -66, i8 28, i8 4, i8 -78, i8 -68, i8 -84, i8 58, i8 125, i8 63, i8 -23, i8 90, i8 -9, i8 -80, i8 0, i8 0, i8 0, i8 -66, i8 -119, i8 66, i8 60, i8 -67, i8 40, i8 59, i8 124, i8 63, i8 -117, i8 -42, i8 49, i8 -78, i8 0, i8 0, i8 0, i8 -66, i8 -8, i8 -24, i8 96, i8 61, i8 -66, i8 20, i8 123, i8 63, i8 -53, i8 117, i8 -1, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 101, i8 31, i8 -3, i8 60, i8 -99, i8 -57, i8 121, i8 63, i8 89, i8 78, i8 -58, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 -123, i8 6, i8 -26, i8 59, i8 -8, i8 83, i8 120, i8 63, i8 -27, i8 -71, i8 13, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 49, i8 -23, i8 -120, i8 -68, i8 7, i8 -70, i8 118, i8 63, i8 44, i8 9, i8 109, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 -116, i8 1, i8 37, i8 -67, i8 11, i8 -6, i8 116, i8 63, i8 34, i8 -99, i8 -109, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 -109, i8 107, i8 -126, i8 -67, i8 71, i8 20, i8 115, i8 63, i8 17, i8 -114, i8 -60, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 79, i8 -13, i8 -79, i8 -67, i8 8, i8 9, i8 113, i8 63, i8 -35, i8 -48, i8 30, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 -83, i8 119, i8 15, i8 62, i8 -98, i8 -40, i8 110, i8 63, i8 -36, i8 51, i8 -109, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -85, i8 67, i8 -16, i8 61, i8 94, i8 -125, i8 108, i8 63, i8 -44, i8 40, i8 -13, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 -40, i8 16, i8 -62, i8 61, i8 -89, i8 9, i8 106, i8 63, i8 108, i8 35, i8 -21, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -1, i8 93, i8 -108, i8 61, i8 -40, i8 107, i8 103, i8 63, i8 -119, i8 51, i8 -68, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 90, i8 100, i8 78, i8 61, i8 89, i8 -86, i8 100, i8 63, i8 -6, i8 8, i8 26, i8 49, i8 0, i8 0, i8 0, i8 -65, i8 100, i8 81, i8 -22, i8 60, i8 -104, i8 -59, i8 97, i8 63, i8 37, i8 -12, i8 -25, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 72, i8 -74, i8 -24, i8 59, i8 5, i8 -66, i8 94, i8 63, i8 83, i8 -7, i8 -58, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 50, i8 15, i8 103, i8 -68, i8 26, i8 -108, i8 91, i8 63, i8 -56, i8 45, i8 35, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 -86, i8 89, i8 15, i8 -67, i8 83, i8 72, i8 88, i8 63, i8 -64, i8 95, i8 125, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -99, i8 -99, i8 99, i8 -67, i8 49, i8 -37, i8 84, i8 63, i8 26, i8 -22, i8 -112, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 83, i8 65, i8 -101, i8 -67, i8 61, i8 77, i8 81, i8 63, i8 4, i8 79, i8 12, i8 48, i8 0, i8 0, i8 0, i8 -65, i8 -1, i8 -3, i8 -61, i8 -67, i8 2, i8 -97, i8 77, i8 63, i8 -24, i8 112, i8 126, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 -118, i8 -2, i8 -21, i8 -67, i8 18, i8 -47, i8 73, i8 63, i8 64, i8 38, i8 -103, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 101, i8 -98, i8 9, i8 -66, i8 3, i8 -28, i8 69, i8 63, i8 116, i8 81, i8 -79, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 87, i8 -39, i8 28, i8 -66, i8 112, i8 -40, i8 65, i8 63, i8 119, i8 -7, i8 -65, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 39, i8 -83, i8 47, i8 -66, i8 -7, i8 -82, i8 61, i8 63, i8 -20, i8 -85, i8 -102, i8 49, i8 0, i8 0, i8 0, i8 -65, i8 -21, i8 22, i8 66, i8 -66, i8 66, i8 104, i8 57, i8 63, i8 7, i8 0, i8 -127, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 26, i8 -10, i8 -107, i8 62, i8 -13, i8 4, i8 53, i8 63, i8 122, i8 -25, i8 79, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 125, i8 47, i8 -115, i8 62, i8 -69, i8 -123, i8 48, i8 63, i8 50, i8 45, i8 -82, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 14, i8 -94, i8 -124, i8 62, i8 74, i8 -21, i8 43, i8 63, i8 54, i8 49, i8 -73, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 63, i8 -98, i8 120, i8 62, i8 86, i8 54, i8 39, i8 63, i8 67, i8 -125, i8 3, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -13, i8 111, i8 104, i8 62, i8 -103, i8 103, i8 34, i8 63, i8 -69, i8 35, i8 33, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 -73, i8 -69, i8 88, i8 62, i8 -47, i8 127, i8 29, i8 63, i8 12, i8 5, i8 -110, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 -9, i8 -125, i8 73, i8 62, i8 -64, i8 127, i8 24, i8 63, i8 -13, i8 -93, i8 -57, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 12, i8 -53, i8 58, i8 62, i8 42, i8 104, i8 19, i8 63, i8 46, i8 -47, i8 -51, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 59, i8 -109, i8 44, i8 62, i8 -38, i8 57, i8 14, i8 63, i8 -25, i8 50, i8 74, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -75, i8 -34, i8 30, i8 62, i8 -101, i8 -11, i8 8, i8 63, i8 78, i8 75, i8 -66, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -105, i8 -81, i8 17, i8 62, i8 61, i8 -100, i8 3, i8 63, i8 2, i8 -96, i8 91, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -22, i8 7, i8 5, i8 62, i8 39, i8 93, i8 -4, i8 62, i8 -87, i8 -20, i8 -128, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 68, i8 -45, i8 -15, i8 61, i8 -22, i8 90, i8 -15, i8 62, i8 57, i8 33, i8 -1, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 56, i8 -83, i8 -38, i8 61, i8 117, i8 51, i8 -26, i8 62, i8 116, i8 -57, i8 -39, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 67, i8 -95, i8 -60, i8 61, i8 -128, i8 -24, i8 -38, i8 62, i8 -52, i8 21, i8 30, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 -52, i8 -78, i8 -81, i8 61, i8 -54, i8 123, i8 -49, i8 62, i8 99, i8 59, i8 106, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 12, i8 -27, i8 -101, i8 61, i8 21, i8 -17, i8 -61, i8 62, i8 44, i8 -43, i8 -43, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 18, i8 59, i8 -119, i8 61, i8 42, i8 68, i8 -72, i8 62, i8 -90, i8 91, i8 112, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 126, i8 111, i8 111, i8 61, i8 -44, i8 124, i8 -84, i8 62, i8 2, i8 78, i8 37, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -118, i8 -69, i8 78, i8 61, i8 -27, i8 -102, i8 -96, i8 62, i8 -96, i8 -119, i8 62, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 85, i8 95, i8 48, i8 61, i8 49, i8 -96, i8 -108, i8 62, i8 -16, i8 89, i8 109, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 -116, i8 95, i8 20, i8 61, i8 -109, i8 -114, i8 -120, i8 62, i8 -98, i8 125, i8 44, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 4, i8 -127, i8 -11, i8 60, i8 -52, i8 -49, i8 120, i8 62, i8 29, i8 -44, i8 27, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 84, i8 12, i8 -57, i8 60, i8 19, i8 92, i8 96, i8 62, i8 -10, i8 -28, i8 -89, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 48, i8 104, i8 -99, i8 60, i8 -62, i8 -59, i8 71, i8 62, i8 125, i8 -106, i8 -27, i8 -80, i8 0, i8 0, i8 -128, i8 -65, i8 11, i8 54, i8 113, i8 60, i8 -94, i8 16, i8 47, i8 62, i8 -7, i8 103, i8 17, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 2, i8 85, i8 49, i8 60, i8 -125, i8 64, i8 22, i8 62, i8 20, i8 -26, i8 -24, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 60, i8 110, i8 -10, i8 59, i8 115, i8 -78, i8 -6, i8 61, i8 -49, i8 104, i8 21, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 113, i8 -55, i8 -99, i8 59, i8 54, i8 -67, i8 -56, i8 61, i8 -11, i8 -110, i8 117, i8 -80, i8 0, i8 0, i8 -128, i8 -65, i8 -104, i8 -110, i8 49, i8 59, i8 5, i8 -87, i8 -106, i8 61, i8 97, i8 30, i8 83, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 -56, i8 -31, i8 -99, i8 58, i8 48, i8 -5, i8 72, i8 61, i8 127, i8 34, i8 -17, i8 -80, i8 0, i8 0, i8 -128, i8 -65, i8 -33, i8 -25, i8 -99, i8 57, i8 -80, i8 10, i8 -55, i8 60, i8 -104, i8 -55, i8 5, i8 -80, i8 0, i8 0, i8 -128, i8 -65, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -128, i8 -65, i8 -33, i8 -25, i8 -99, i8 57, i8 -80, i8 10, i8 -55, i8 -68, i8 -104, i8 -55, i8 5, i8 48, i8 0, i8 0, i8 -128, i8 -65, i8 -56, i8 -31, i8 -99, i8 58, i8 48, i8 -5, i8 72, i8 -67, i8 127, i8 34, i8 -17, i8 48, i8 0, i8 0, i8 -128, i8 -65, i8 -104, i8 -110, i8 49, i8 59, i8 5, i8 -87, i8 -106, i8 -67, i8 97, i8 30, i8 83, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 113, i8 -55, i8 -99, i8 59, i8 54, i8 -67, i8 -56, i8 -67, i8 -11, i8 -110, i8 117, i8 48, i8 0, i8 0, i8 -128, i8 -65, i8 60, i8 110, i8 -10, i8 59, i8 115, i8 -78, i8 -6, i8 -67, i8 -49, i8 104, i8 21, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 2, i8 85, i8 49, i8 60, i8 -125, i8 64, i8 22, i8 -66, i8 20, i8 -26, i8 -24, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 11, i8 54, i8 113, i8 60, i8 -94, i8 16, i8 47, i8 -66, i8 -7, i8 103, i8 17, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 48, i8 104, i8 -99, i8 60, i8 -62, i8 -59, i8 71, i8 -66, i8 125, i8 -106, i8 -27, i8 48, i8 0, i8 0, i8 -128, i8 -65, i8 84, i8 12, i8 -57, i8 60, i8 19, i8 92, i8 96, i8 -66, i8 -10, i8 -28, i8 -89, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 4, i8 -127, i8 -11, i8 60, i8 -52, i8 -49, i8 120, i8 -66, i8 29, i8 -44, i8 27, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 -116, i8 95, i8 20, i8 61, i8 -109, i8 -114, i8 -120, i8 -66, i8 -98, i8 125, i8 44, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 85, i8 95, i8 48, i8 61, i8 49, i8 -96, i8 -108, i8 -66, i8 -16, i8 89, i8 109, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -118, i8 -69, i8 78, i8 61, i8 -27, i8 -102, i8 -96, i8 -66, i8 -96, i8 -119, i8 62, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 126, i8 111, i8 111, i8 61, i8 -44, i8 124, i8 -84, i8 -66, i8 2, i8 78, i8 37, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 18, i8 59, i8 -119, i8 61, i8 42, i8 68, i8 -72, i8 -66, i8 -90, i8 91, i8 112, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 12, i8 -27, i8 -101, i8 61, i8 21, i8 -17, i8 -61, i8 -66, i8 44, i8 -43, i8 -43, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 -52, i8 -78, i8 -81, i8 61, i8 -54, i8 123, i8 -49, i8 -66, i8 99, i8 59, i8 106, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 67, i8 -95, i8 -60, i8 61, i8 -128, i8 -24, i8 -38, i8 -66, i8 -52, i8 21, i8 30, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 56, i8 -83, i8 -38, i8 61, i8 117, i8 51, i8 -26, i8 -66, i8 116, i8 -57, i8 -39, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 68, i8 -45, i8 -15, i8 61, i8 -22, i8 90, i8 -15, i8 -66, i8 57, i8 33, i8 -1, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 -22, i8 7, i8 5, i8 62, i8 39, i8 93, i8 -4, i8 -66, i8 -87, i8 -20, i8 -128, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 -105, i8 -81, i8 17, i8 62, i8 61, i8 -100, i8 3, i8 -65, i8 2, i8 -96, i8 91, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 -75, i8 -34, i8 30, i8 62, i8 -101, i8 -11, i8 8, i8 -65, i8 78, i8 75, i8 -66, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 59, i8 -109, i8 44, i8 62, i8 -38, i8 57, i8 14, i8 -65, i8 -25, i8 50, i8 74, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 12, i8 -53, i8 58, i8 62, i8 42, i8 104, i8 19, i8 -65, i8 46, i8 -47, i8 -51, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -9, i8 -125, i8 73, i8 62, i8 -64, i8 127, i8 24, i8 -65, i8 -13, i8 -93, i8 -57, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 -73, i8 -69, i8 88, i8 62, i8 -47, i8 127, i8 29, i8 -65, i8 12, i8 5, i8 -110, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -13, i8 111, i8 104, i8 62, i8 -103, i8 103, i8 34, i8 -65, i8 -69, i8 35, i8 33, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 63, i8 -98, i8 120, i8 62, i8 86, i8 54, i8 39, i8 -65, i8 67, i8 -125, i8 3, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 14, i8 -94, i8 -124, i8 62, i8 74, i8 -21, i8 43, i8 -65, i8 54, i8 49, i8 -73, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 125, i8 47, i8 -115, i8 62, i8 -69, i8 -123, i8 48, i8 -65, i8 50, i8 45, i8 -82, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 26, i8 -10, i8 -107, i8 62, i8 -13, i8 4, i8 53, i8 -65, i8 122, i8 -25, i8 79, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -21, i8 22, i8 66, i8 -66, i8 66, i8 104, i8 57, i8 -65, i8 7, i8 0, i8 -127, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 39, i8 -83, i8 47, i8 -66, i8 -7, i8 -82, i8 61, i8 -65, i8 -20, i8 -85, i8 -102, i8 -79, i8 0, i8 0, i8 0, i8 -65, i8 87, i8 -39, i8 28, i8 -66, i8 112, i8 -40, i8 65, i8 -65, i8 119, i8 -7, i8 -65, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 101, i8 -98, i8 9, i8 -66, i8 3, i8 -28, i8 69, i8 -65, i8 116, i8 81, i8 -79, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -118, i8 -2, i8 -21, i8 -67, i8 18, i8 -47, i8 73, i8 -65, i8 64, i8 38, i8 -103, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -1, i8 -3, i8 -61, i8 -67, i8 2, i8 -97, i8 77, i8 -65, i8 -24, i8 112, i8 126, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 83, i8 65, i8 -101, i8 -67, i8 61, i8 77, i8 81, i8 -65, i8 4, i8 79, i8 12, i8 -80, i8 0, i8 0, i8 0, i8 -65, i8 -99, i8 -99, i8 99, i8 -67, i8 49, i8 -37, i8 84, i8 -65, i8 26, i8 -22, i8 -112, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -86, i8 89, i8 15, i8 -67, i8 83, i8 72, i8 88, i8 -65, i8 -64, i8 95, i8 125, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 50, i8 15, i8 103, i8 -68, i8 26, i8 -108, i8 91, i8 -65, i8 -56, i8 45, i8 35, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 72, i8 -74, i8 -24, i8 59, i8 5, i8 -66, i8 94, i8 -65, i8 83, i8 -7, i8 -58, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 100, i8 81, i8 -22, i8 60, i8 -104, i8 -59, i8 97, i8 -65, i8 37, i8 -12, i8 -25, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 90, i8 100, i8 78, i8 61, i8 89, i8 -86, i8 100, i8 -65, i8 -6, i8 8, i8 26, i8 -79, i8 0, i8 0, i8 0, i8 -65, i8 -1, i8 93, i8 -108, i8 61, i8 -40, i8 107, i8 103, i8 -65, i8 -119, i8 51, i8 -68, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 -40, i8 16, i8 -62, i8 61, i8 -89, i8 9, i8 106, i8 -65, i8 108, i8 35, i8 -21, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 -85, i8 67, i8 -16, i8 61, i8 94, i8 -125, i8 108, i8 -65, i8 -44, i8 40, i8 -13, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -83, i8 119, i8 15, i8 62, i8 -98, i8 -40, i8 110, i8 -65, i8 -36, i8 51, i8 -109, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 79, i8 -13, i8 -79, i8 -67, i8 8, i8 9, i8 113, i8 -65, i8 -35, i8 -48, i8 30, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 -109, i8 107, i8 -126, i8 -67, i8 71, i8 20, i8 115, i8 -65, i8 17, i8 -114, i8 -60, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 -116, i8 1, i8 37, i8 -67, i8 11, i8 -6, i8 116, i8 -65, i8 34, i8 -99, i8 -109, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 49, i8 -23, i8 -120, i8 -68, i8 7, i8 -70, i8 118, i8 -65, i8 44, i8 9, i8 109, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 -123, i8 6, i8 -26, i8 59, i8 -8, i8 83, i8 120, i8 -65, i8 -27, i8 -71, i8 13, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 101, i8 31, i8 -3, i8 60, i8 -99, i8 -57, i8 121, i8 -65, i8 89, i8 78, i8 -58, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 -8, i8 -24, i8 96, i8 61, i8 -66, i8 20, i8 123, i8 -65, i8 -53, i8 117, i8 -1, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 -119, i8 66, i8 60, i8 -67, i8 40, i8 59, i8 124, i8 -65, i8 -117, i8 -42, i8 49, i8 50, i8 0, i8 0, i8 0, i8 -66, i8 28, i8 4, i8 -78, i8 -68, i8 -84, i8 58, i8 125, i8 -65, i8 -23, i8 90, i8 -9, i8 48, i8 0, i8 0, i8 0, i8 -66, i8 -87, i8 -79, i8 41, i8 59, i8 36, i8 19, i8 126, i8 -65, i8 3, i8 -26, i8 -15, i8 50, i8 0, i8 0, i8 0, i8 -66, i8 40, i8 11, i8 -35, i8 60, i8 109, i8 -60, i8 126, i8 -65, i8 73, i8 73, i8 -12, i8 -79, i8 0, i8 0, i8 0, i8 -66, i8 37, i8 72, i8 53, i8 -68, i8 109, i8 78, i8 127, i8 -65, i8 -124, i8 24, i8 -48, i8 -78, i8 0, i8 0, i8 -128, i8 -67, i8 66, i8 19, i8 92, i8 60, i8 15, i8 -79, i8 127, i8 -65, i8 95, i8 91, i8 -34, i8 -79, i8 0, i8 0, i8 -128, i8 -67, i8 65, i8 -43, i8 -37, i8 59, i8 67, i8 -20, i8 127, i8 -65, i8 13, i8 -51, i8 -124, i8 -80, i8 0, i8 0, i8 0, i8 -67, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -128, i8 -65, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 65, i8 -43, i8 -37, i8 -69, i8 67, i8 -20, i8 127, i8 -65, i8 13, i8 -51, i8 -124, i8 -80, i8 0, i8 0, i8 0, i8 61, i8 66, i8 19, i8 92, i8 -68, i8 15, i8 -79, i8 127, i8 -65, i8 95, i8 91, i8 -34, i8 -79, i8 0, i8 0, i8 -128, i8 61, i8 37, i8 72, i8 53, i8 60, i8 109, i8 78, i8 127, i8 -65, i8 -124, i8 24, i8 -48, i8 -78, i8 0, i8 0, i8 -128, i8 61, i8 40, i8 11, i8 -35, i8 -68, i8 109, i8 -60, i8 126, i8 -65, i8 73, i8 73, i8 -12, i8 -79, i8 0, i8 0, i8 0, i8 62, i8 -87, i8 -79, i8 41, i8 -69, i8 36, i8 19, i8 126, i8 -65, i8 3, i8 -26, i8 -15, i8 50, i8 0, i8 0, i8 0, i8 62, i8 28, i8 4, i8 -78, i8 60, i8 -84, i8 58, i8 125, i8 -65, i8 -23, i8 90, i8 -9, i8 48, i8 0, i8 0, i8 0, i8 62, i8 -119, i8 66, i8 60, i8 61, i8 40, i8 59, i8 124, i8 -65, i8 -117, i8 -42, i8 49, i8 50, i8 0, i8 0, i8 0, i8 62, i8 -8, i8 -24, i8 96, i8 -67, i8 -66, i8 20, i8 123, i8 -65, i8 -53, i8 117, i8 -1, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 101, i8 31, i8 -3, i8 -68, i8 -99, i8 -57, i8 121, i8 -65, i8 89, i8 78, i8 -58, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 -123, i8 6, i8 -26, i8 -69, i8 -8, i8 83, i8 120, i8 -65, i8 -27, i8 -71, i8 13, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 49, i8 -23, i8 -120, i8 60, i8 7, i8 -70, i8 118, i8 -65, i8 44, i8 9, i8 109, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 -116, i8 1, i8 37, i8 61, i8 11, i8 -6, i8 116, i8 -65, i8 34, i8 -99, i8 -109, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 -109, i8 107, i8 -126, i8 61, i8 71, i8 20, i8 115, i8 -65, i8 17, i8 -114, i8 -60, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 79, i8 -13, i8 -79, i8 61, i8 8, i8 9, i8 113, i8 -65, i8 -35, i8 -48, i8 30, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 -83, i8 119, i8 15, i8 -66, i8 -98, i8 -40, i8 110, i8 -65, i8 -36, i8 51, i8 -109, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -85, i8 67, i8 -16, i8 -67, i8 94, i8 -125, i8 108, i8 -65, i8 -44, i8 40, i8 -13, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 -40, i8 16, i8 -62, i8 -67, i8 -89, i8 9, i8 106, i8 -65, i8 108, i8 35, i8 -21, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -1, i8 93, i8 -108, i8 -67, i8 -40, i8 107, i8 103, i8 -65, i8 -119, i8 51, i8 -68, i8 50, i8 0, i8 0, i8 0, i8 63, i8 90, i8 100, i8 78, i8 -67, i8 89, i8 -86, i8 100, i8 -65, i8 -6, i8 8, i8 26, i8 -79, i8 0, i8 0, i8 0, i8 63, i8 100, i8 81, i8 -22, i8 -68, i8 -104, i8 -59, i8 97, i8 -65, i8 37, i8 -12, i8 -25, i8 50, i8 0, i8 0, i8 0, i8 63, i8 72, i8 -74, i8 -24, i8 -69, i8 5, i8 -66, i8 94, i8 -65, i8 83, i8 -7, i8 -58, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 50, i8 15, i8 103, i8 60, i8 26, i8 -108, i8 91, i8 -65, i8 -56, i8 45, i8 35, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 -86, i8 89, i8 15, i8 61, i8 83, i8 72, i8 88, i8 -65, i8 -64, i8 95, i8 125, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -99, i8 -99, i8 99, i8 61, i8 49, i8 -37, i8 84, i8 -65, i8 26, i8 -22, i8 -112, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 83, i8 65, i8 -101, i8 61, i8 61, i8 77, i8 81, i8 -65, i8 4, i8 79, i8 12, i8 -80, i8 0, i8 0, i8 0, i8 63, i8 -1, i8 -3, i8 -61, i8 61, i8 2, i8 -97, i8 77, i8 -65, i8 -24, i8 112, i8 126, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 -118, i8 -2, i8 -21, i8 61, i8 18, i8 -47, i8 73, i8 -65, i8 64, i8 38, i8 -103, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 101, i8 -98, i8 9, i8 62, i8 3, i8 -28, i8 69, i8 -65, i8 116, i8 81, i8 -79, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 87, i8 -39, i8 28, i8 62, i8 112, i8 -40, i8 65, i8 -65, i8 119, i8 -7, i8 -65, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 39, i8 -83, i8 47, i8 62, i8 -7, i8 -82, i8 61, i8 -65, i8 -20, i8 -85, i8 -102, i8 -79, i8 0, i8 0, i8 0, i8 63, i8 -21, i8 22, i8 66, i8 62, i8 66, i8 104, i8 57, i8 -65, i8 7, i8 0, i8 -127, i8 50, i8 0, i8 0, i8 0, i8 63, i8 26, i8 -10, i8 -107, i8 -66, i8 -13, i8 4, i8 53, i8 -65, i8 122, i8 -25, i8 79, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 125, i8 47, i8 -115, i8 -66, i8 -69, i8 -123, i8 48, i8 -65, i8 50, i8 45, i8 -82, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 14, i8 -94, i8 -124, i8 -66, i8 74, i8 -21, i8 43, i8 -65, i8 54, i8 49, i8 -73, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 63, i8 -98, i8 120, i8 -66, i8 86, i8 54, i8 39, i8 -65, i8 67, i8 -125, i8 3, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -13, i8 111, i8 104, i8 -66, i8 -103, i8 103, i8 34, i8 -65, i8 -69, i8 35, i8 33, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 -73, i8 -69, i8 88, i8 -66, i8 -47, i8 127, i8 29, i8 -65, i8 12, i8 5, i8 -110, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 -9, i8 -125, i8 73, i8 -66, i8 -64, i8 127, i8 24, i8 -65, i8 -13, i8 -93, i8 -57, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 12, i8 -53, i8 58, i8 -66, i8 42, i8 104, i8 19, i8 -65, i8 46, i8 -47, i8 -51, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 59, i8 -109, i8 44, i8 -66, i8 -38, i8 57, i8 14, i8 -65, i8 -25, i8 50, i8 74, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -75, i8 -34, i8 30, i8 -66, i8 -101, i8 -11, i8 8, i8 -65, i8 78, i8 75, i8 -66, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -105, i8 -81, i8 17, i8 -66, i8 61, i8 -100, i8 3, i8 -65, i8 2, i8 -96, i8 91, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -22, i8 7, i8 5, i8 -66, i8 39, i8 93, i8 -4, i8 -66, i8 -87, i8 -20, i8 -128, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 68, i8 -45, i8 -15, i8 -67, i8 -22, i8 90, i8 -15, i8 -66, i8 57, i8 33, i8 -1, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 56, i8 -83, i8 -38, i8 -67, i8 117, i8 51, i8 -26, i8 -66, i8 116, i8 -57, i8 -39, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 67, i8 -95, i8 -60, i8 -67, i8 -128, i8 -24, i8 -38, i8 -66, i8 -52, i8 21, i8 30, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 -52, i8 -78, i8 -81, i8 -67, i8 -54, i8 123, i8 -49, i8 -66, i8 99, i8 59, i8 106, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 12, i8 -27, i8 -101, i8 -67, i8 21, i8 -17, i8 -61, i8 -66, i8 44, i8 -43, i8 -43, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 18, i8 59, i8 -119, i8 -67, i8 42, i8 68, i8 -72, i8 -66, i8 -90, i8 91, i8 112, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 126, i8 111, i8 111, i8 -67, i8 -44, i8 124, i8 -84, i8 -66, i8 2, i8 78, i8 37, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -118, i8 -69, i8 78, i8 -67, i8 -27, i8 -102, i8 -96, i8 -66, i8 -96, i8 -119, i8 62, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 85, i8 95, i8 48, i8 -67, i8 49, i8 -96, i8 -108, i8 -66, i8 -16, i8 89, i8 109, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 -116, i8 95, i8 20, i8 -67, i8 -109, i8 -114, i8 -120, i8 -66, i8 -98, i8 125, i8 44, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 4, i8 -127, i8 -11, i8 -68, i8 -52, i8 -49, i8 120, i8 -66, i8 29, i8 -44, i8 27, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 84, i8 12, i8 -57, i8 -68, i8 19, i8 92, i8 96, i8 -66, i8 -10, i8 -28, i8 -89, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 48, i8 104, i8 -99, i8 -68, i8 -62, i8 -59, i8 71, i8 -66, i8 125, i8 -106, i8 -27, i8 48, i8 0, i8 0, i8 -128, i8 63, i8 11, i8 54, i8 113, i8 -68, i8 -94, i8 16, i8 47, i8 -66, i8 -7, i8 103, i8 17, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 2, i8 85, i8 49, i8 -68, i8 -125, i8 64, i8 22, i8 -66, i8 20, i8 -26, i8 -24, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 60, i8 110, i8 -10, i8 -69, i8 115, i8 -78, i8 -6, i8 -67, i8 -49, i8 104, i8 21, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 113, i8 -55, i8 -99, i8 -69, i8 54, i8 -67, i8 -56, i8 -67, i8 -11, i8 -110, i8 117, i8 48, i8 0, i8 0, i8 -128, i8 63, i8 -104, i8 -110, i8 49, i8 -69, i8 5, i8 -87, i8 -106, i8 -67, i8 97, i8 30, i8 83, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 -56, i8 -31, i8 -99, i8 -70, i8 48, i8 -5, i8 72, i8 -67, i8 127, i8 34, i8 -17, i8 48, i8 0, i8 0, i8 -128, i8 63, i8 -33, i8 -25, i8 -99, i8 -71, i8 -80, i8 10, i8 -55, i8 -68, i8 -104, i8 -55, i8 5, i8 48, i8 0, i8 0, i8 -128, i8 63, i8 -1, i8 -1, i8 -1, i8 127, i8 0, i8 64, i8 28, i8 70, i8 0, i8 0, i8 -128, i8 127, i8 -85, i8 -86, i8 42, i8 -66, i8 92, i8 -120, i8 8, i8 60, i8 0, i8 0, i8 0, i8 -65, i8 124, i8 -86, i8 42, i8 61, i8 0, i8 0, i8 73, i8 64, i8 0, i8 -96, i8 125, i8 58, i8 0, i8 32, i8 34, i8 52, i8 26, i8 97, i8 -76, i8 44, i8 -90, i8 -86, i8 42, i8 -66, i8 106, i8 -121, i8 8, i8 60, i8 -1, i8 -73, i8 79, i8 -71, i8 -8, i8 -34, i8 46, i8 54, i8 -125, i8 -7, i8 -94, i8 62, i8 0, i8 0, i8 64, i8 75, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 1, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 2, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 5, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 10, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 20, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 40, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 81, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -94, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 69, i8 1, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -117, i8 2, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 23, i8 5, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 47, i8 10, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 95, i8 20, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -66, i8 40, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 124, i8 81, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -7, i8 -94, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -13, i8 69, i8 1, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -26, i8 -117, i8 2, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -52, i8 23, i8 5, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -104, i8 47, i8 10, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 48, i8 95, i8 20, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 96, i8 -66, i8 40, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -63, i8 124, i8 81, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -125, i8 -7, i8 -94, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 6, i8 -13, i8 69, i8 1, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 13, i8 -26, i8 -117, i8 2, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 27, i8 -52, i8 23, i8 5, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 54, i8 -104, i8 47, i8 10, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 109, i8 48, i8 95, i8 20, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -37, i8 96, i8 -66, i8 40, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -73, i8 -63, i8 124, i8 81, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 110, i8 -125, i8 -7, i8 -94, i8 0, i8 0, i8 0, i8 0, i8 1, i8 0, i8 0, i8 0, i8 -36, i8 6, i8 -13, i8 69, i8 0, i8 0, i8 0, i8 0, i8 2, i8 0, i8 0, i8 0, i8 -71, i8 13, i8 -26, i8 -117, i8 0, i8 0, i8 0, i8 0, i8 5, i8 0, i8 0, i8 0, i8 114, i8 27, i8 -52, i8 23, i8 0, i8 0, i8 0, i8 0, i8 10, i8 0, i8 0, i8 0, i8 -28, i8 54, i8 -104, i8 47, i8 0, i8 0, i8 0, i8 0, i8 20, i8 0, i8 0, i8 0, i8 -55, i8 109, i8 48, i8 95, i8 0, i8 0, i8 0, i8 0, i8 40, i8 0, i8 0, i8 0, i8 -109, i8 -37, i8 96, i8 -66, i8 0, i8 0, i8 0, i8 0, i8 81, i8 0, i8 0, i8 0, i8 39, i8 -73, i8 -63, i8 124, i8 0, i8 0, i8 0, i8 0, i8 -94, i8 0, i8 0, i8 0, i8 78, i8 110, i8 -125, i8 -7, i8 0, i8 0, i8 0, i8 0, i8 69, i8 1, i8 0, i8 0, i8 -100, i8 -36, i8 6, i8 -13, i8 0, i8 0, i8 0, i8 0, i8 -117, i8 2, i8 0, i8 0, i8 57, i8 -71, i8 13, i8 -26, i8 0, i8 0, i8 0, i8 0, i8 23, i8 5, i8 0, i8 0, i8 114, i8 114, i8 27, i8 -52, i8 0, i8 0, i8 0, i8 0, i8 47, i8 10, i8 0, i8 0, i8 -28, i8 -28, i8 54, i8 -104, i8 0, i8 0, i8 0, i8 0, i8 95, i8 20, i8 0, i8 0, i8 -56, i8 -55, i8 109, i8 48, i8 0, i8 0, i8 0, i8 0, i8 -66, i8 40, i8 0, i8 0, i8 -111, i8 -109, i8 -37, i8 96, i8 0, i8 0, i8 0, i8 0, i8 124, i8 81, i8 0, i8 0, i8 34, i8 39, i8 -73, i8 -63, i8 0, i8 0, i8 0, i8 0, i8 -7, i8 -94, i8 0, i8 0, i8 68, i8 78, i8 110, i8 -125, i8 0, i8 0, i8 0, i8 0, i8 -13, i8 69, i8 1, i8 0, i8 -120, i8 -100, i8 -36, i8 6, i8 0, i8 0, i8 0, i8 0, i8 -26, i8 -117, i8 2, i8 0, i8 16, i8 57, i8 -71, i8 13, i8 0, i8 0, i8 0, i8 0, i8 -52, i8 23, i8 5, i8 0, i8 32, i8 114, i8 114, i8 27, i8 0, i8 0, i8 0, i8 0, i8 -104, i8 47, i8 10, i8 0, i8 65, i8 -28, i8 -28, i8 54, i8 0, i8 0, i8 0, i8 0, i8 48, i8 95, i8 20, i8 0, i8 -126, i8 -56, i8 -55, i8 109, i8 0, i8 0, i8 0, i8 0, i8 96, i8 -66, i8 40, i8 0, i8 5, i8 -111, i8 -109, i8 -37, i8 0, i8 0, i8 0, i8 0, i8 -63, i8 124, i8 81, i8 0, i8 10, i8 34, i8 39, i8 -73, i8 0, i8 0, i8 0, i8 0, i8 -125, i8 -7, i8 -94, i8 0, i8 21, i8 68, i8 78, i8 110, i8 0, i8 0, i8 0, i8 0, i8 6, i8 -13, i8 69, i8 1, i8 42, i8 -120, i8 -100, i8 -36, i8 0, i8 0, i8 0, i8 0, i8 13, i8 -26, i8 -117, i8 2, i8 84, i8 16, i8 57, i8 -71, i8 0, i8 0, i8 0, i8 0, i8 27, i8 -52, i8 23, i8 5, i8 -87, i8 32, i8 114, i8 114, i8 0, i8 0, i8 0, i8 0, i8 54, i8 -104, i8 47, i8 10, i8 82, i8 65, i8 -28, i8 -28, i8 0, i8 0, i8 0, i8 0, i8 109, i8 48, i8 95, i8 20, i8 -91, i8 -126, i8 -56, i8 -55, i8 0, i8 0, i8 0, i8 0, i8 -37, i8 96, i8 -66, i8 40, i8 74, i8 5, i8 -111, i8 -109, i8 0, i8 0, i8 0, i8 0, i8 -73, i8 -63, i8 124, i8 81, i8 -108, i8 10, i8 34, i8 39, i8 0, i8 0, i8 0, i8 0, i8 110, i8 -125, i8 -7, i8 -94, i8 41, i8 21, i8 68, i8 78, i8 1, i8 0, i8 0, i8 0, i8 -36, i8 6, i8 -13, i8 69, i8 83, i8 42, i8 -120, i8 -100, i8 2, i8 0, i8 0, i8 0, i8 -71, i8 13, i8 -26, i8 -117, i8 -89, i8 84, i8 16, i8 57, i8 5, i8 0, i8 0, i8 0, i8 114, i8 27, i8 -52, i8 23, i8 79, i8 -87, i8 32, i8 114, i8 10, i8 0, i8 0, i8 0, i8 -28, i8 54, i8 -104, i8 47, i8 -97, i8 82, i8 65, i8 -28, i8 20, i8 0, i8 0, i8 0, i8 -55, i8 109, i8 48, i8 95, i8 63, i8 -91, i8 -126, i8 -56, i8 40, i8 0, i8 0, i8 0, i8 -109, i8 -37, i8 96, i8 -66, i8 127, i8 74, i8 5, i8 -111, i8 81, i8 0, i8 0, i8 0, i8 39, i8 -73, i8 -63, i8 124, i8 -2, i8 -108, i8 10, i8 34, i8 -94, i8 0, i8 0, i8 0, i8 78, i8 110, i8 -125, i8 -7, i8 -4, i8 41, i8 21, i8 68, i8 69, i8 1, i8 0, i8 0, i8 -100, i8 -36, i8 6, i8 -13, i8 -8, i8 83, i8 42, i8 -120, i8 -117, i8 2, i8 0, i8 0, i8 57, i8 -71, i8 13, i8 -26, i8 -16, i8 -89, i8 84, i8 16, i8 23, i8 5, i8 0, i8 0, i8 114, i8 114, i8 27, i8 -52, i8 -31, i8 79, i8 -87, i8 32, i8 47, i8 10, i8 0, i8 0, i8 -28, i8 -28, i8 54, i8 -104, i8 -62, i8 -97, i8 82, i8 65, i8 95, i8 20, i8 0, i8 0, i8 -56, i8 -55, i8 109, i8 48, i8 -124, i8 63, i8 -91, i8 -126, i8 -66, i8 40, i8 0, i8 0, i8 -111, i8 -109, i8 -37, i8 96, i8 9, i8 127, i8 74, i8 5, i8 124, i8 81, i8 0, i8 0, i8 34, i8 39, i8 -73, i8 -63, i8 19, i8 -2, i8 -108, i8 10, i8 -7, i8 -94, i8 0, i8 0, i8 68, i8 78, i8 110, i8 -125, i8 39, i8 -4, i8 41, i8 21, i8 -13, i8 69, i8 1, i8 0, i8 -120, i8 -100, i8 -36, i8 6, i8 78, i8 -8, i8 83, i8 42, i8 -26, i8 -117, i8 2, i8 0, i8 16, i8 57, i8 -71, i8 13, i8 -99, i8 -16, i8 -89, i8 84, i8 -52, i8 23, i8 5, i8 0, i8 32, i8 114, i8 114, i8 27, i8 58, i8 -31, i8 79, i8 -87, i8 -104, i8 47, i8 10, i8 0, i8 65, i8 -28, i8 -28, i8 54, i8 117, i8 -62, i8 -97, i8 82, i8 48, i8 95, i8 20, i8 0, i8 -126, i8 -56, i8 -55, i8 109, i8 -22, i8 -124, i8 63, i8 -91, i8 96, i8 -66, i8 40, i8 0, i8 5, i8 -111, i8 -109, i8 -37, i8 -43, i8 9, i8 127, i8 74, i8 -63, i8 124, i8 81, i8 0, i8 10, i8 34, i8 39, i8 -73, i8 -85, i8 19, i8 -2, i8 -108, i8 -125, i8 -7, i8 -94, i8 0, i8 21, i8 68, i8 78, i8 110, i8 87, i8 39, i8 -4, i8 41, i8 6, i8 -13, i8 69, i8 1, i8 42, i8 -120, i8 -100, i8 -36, i8 -81, i8 78, i8 -8, i8 83, i8 13, i8 -26, i8 -117, i8 2, i8 84, i8 16, i8 57, i8 -71, i8 95, i8 -99, i8 -16, i8 -89, i8 27, i8 -52, i8 23, i8 5, i8 -87, i8 32, i8 114, i8 114, i8 -66, i8 58, i8 -31, i8 79, i8 54, i8 -104, i8 47, i8 10, i8 82, i8 65, i8 -28, i8 -28, i8 125, i8 117, i8 -62, i8 -97, i8 109, i8 48, i8 95, i8 20, i8 -91, i8 -126, i8 -56, i8 -55, i8 -6, i8 -22, i8 -124, i8 63, i8 -37, i8 96, i8 -66, i8 40, i8 74, i8 5, i8 -111, i8 -109, i8 -12, i8 -43, i8 9, i8 127, i8 -73, i8 -63, i8 124, i8 81, i8 -108, i8 10, i8 34, i8 39, i8 -24, i8 -85, i8 19, i8 -2, i8 110, i8 -125, i8 -7, i8 -94, i8 41, i8 21, i8 68, i8 78, i8 -47, i8 87, i8 39, i8 -4, i8 -36, i8 6, i8 -13, i8 69, i8 83, i8 42, i8 -120, i8 -100, i8 -93, i8 -81, i8 78, i8 -8, i8 -71, i8 13, i8 -26, i8 -117, i8 -89, i8 84, i8 16, i8 57, i8 71, i8 95, i8 -99, i8 -16, i8 114, i8 27, i8 -52, i8 23, i8 79, i8 -87, i8 32, i8 114, i8 -113, i8 -66, i8 58, i8 -31, i8 -28, i8 54, i8 -104, i8 47, i8 -97, i8 82, i8 65, i8 -28, i8 31, i8 125, i8 117, i8 -62, i8 -55, i8 109, i8 48, i8 95, i8 63, i8 -91, i8 -126, i8 -56, i8 62, i8 -6, i8 -22, i8 -124, i8 -109, i8 -37, i8 96, i8 -66, i8 127, i8 74, i8 5, i8 -111, i8 125, i8 -12, i8 -43, i8 9, i8 39, i8 -73, i8 -63, i8 124, i8 -2, i8 -108, i8 10, i8 34, i8 -6, i8 -24, i8 -85, i8 19, i8 78, i8 110, i8 -125, i8 -7, i8 -4, i8 41, i8 21, i8 68, i8 -11, i8 -47, i8 87, i8 39, i8 -100, i8 -36, i8 6, i8 -13, i8 -8, i8 83, i8 42, i8 -120, i8 -22, i8 -93, i8 -81, i8 78, i8 57, i8 -71, i8 13, i8 -26, i8 -16, i8 -89, i8 84, i8 16, i8 -44, i8 71, i8 95, i8 -99, i8 114, i8 114, i8 27, i8 -52, i8 -31, i8 79, i8 -87, i8 32, i8 -87, i8 -113, i8 -66, i8 58, i8 -28, i8 -28, i8 54, i8 -104, i8 -62, i8 -97, i8 82, i8 65, i8 83, i8 31, i8 125, i8 117, i8 -56, i8 -55, i8 109, i8 48, i8 -124, i8 63, i8 -91, i8 -126, i8 -90, i8 62, i8 -6, i8 -22, i8 -111, i8 -109, i8 -37, i8 96, i8 9, i8 127, i8 74, i8 5, i8 77, i8 125, i8 -12, i8 -43, i8 34, i8 39, i8 -73, i8 -63, i8 19, i8 -2, i8 -108, i8 10, i8 -102, i8 -6, i8 -24, i8 -85, i8 68, i8 78, i8 110, i8 -125, i8 39, i8 -4, i8 41, i8 21, i8 52, i8 -11, i8 -47, i8 87, i8 -120, i8 -100, i8 -36, i8 6, i8 78, i8 -8, i8 83, i8 42, i8 105, i8 -22, i8 -93, i8 -81, i8 16, i8 57, i8 -71, i8 13, i8 -99, i8 -16, i8 -89, i8 84, i8 -45, i8 -44, i8 71, i8 95, i8 32, i8 114, i8 114, i8 27, i8 58, i8 -31, i8 79, i8 -87, i8 -90, i8 -87, i8 -113, i8 -66, i8 65, i8 -28, i8 -28, i8 54, i8 117, i8 -62, i8 -97, i8 82, i8 77, i8 83, i8 31, i8 125, i8 -126, i8 -56, i8 -55, i8 109, i8 -22, i8 -124, i8 63, i8 -91, i8 -101, i8 -90, i8 62, i8 -6, i8 5, i8 -111, i8 -109, i8 -37, i8 -43, i8 9, i8 127, i8 74, i8 55, i8 77, i8 125, i8 -12, i8 10, i8 34, i8 39, i8 -73, i8 -85, i8 19, i8 -2, i8 -108, i8 110, i8 -102, i8 -6, i8 -24, i8 21, i8 68, i8 78, i8 110, i8 87, i8 39, i8 -4, i8 41, i8 -35, i8 52, i8 -11, i8 -47, i8 42, i8 -120, i8 -100, i8 -36, i8 -81, i8 78, i8 -8, i8 83, i8 -69, i8 105, i8 -22, i8 -93, i8 84, i8 16, i8 57, i8 -71, i8 95, i8 -99, i8 -16, i8 -89, i8 119, i8 -45, i8 -44, i8 71, i8 -87, i8 32, i8 114, i8 114, i8 -66, i8 58, i8 -31, i8 79, i8 -18, i8 -90, i8 -87, i8 -113, i8 82, i8 65, i8 -28, i8 -28, i8 125, i8 117, i8 -62, i8 -97, i8 -36, i8 77, i8 83, i8 31, i8 -91, i8 -126, i8 -56, i8 -55, i8 -6, i8 -22, i8 -124, i8 63, i8 -72, i8 -101, i8 -90, i8 62, i8 74, i8 5, i8 -111, i8 -109, i8 -12, i8 -43, i8 9, i8 127, i8 112, i8 55, i8 77, i8 125, i8 -108, i8 10, i8 34, i8 39, i8 -24, i8 -85, i8 19, i8 -2, i8 -32, i8 110, i8 -102, i8 -6, i8 41, i8 21, i8 68, i8 78, i8 -47, i8 87, i8 39, i8 -4, i8 -64, i8 -35, i8 52, i8 -11, i8 83, i8 42, i8 -120, i8 -100, i8 -93, i8 -81, i8 78, i8 -8, i8 -127, i8 -69, i8 105, i8 -22, i8 -89, i8 84, i8 16, i8 57, i8 71, i8 95, i8 -99, i8 -16, i8 3, i8 119, i8 -45, i8 -44, i8 79, i8 -87, i8 32, i8 114, i8 -113, i8 -66, i8 58, i8 -31, i8 6, i8 -18, i8 -90, i8 -87, i8 -97, i8 82, i8 65, i8 -28, i8 31, i8 125, i8 117, i8 -62, i8 13, i8 -36, i8 77, i8 83, i8 63, i8 -91, i8 -126, i8 -56, i8 62, i8 -6, i8 -22, i8 -124, i8 27, i8 -72, i8 -101, i8 -90, i8 127, i8 74, i8 5, i8 -111, i8 125, i8 -12, i8 -43, i8 9, i8 54, i8 112, i8 55, i8 77, i8 -2, i8 -108, i8 10, i8 34, i8 -6, i8 -24, i8 -85, i8 19, i8 109, i8 -32, i8 110, i8 -102, i8 -4, i8 41, i8 21, i8 68, i8 -11, i8 -47, i8 87, i8 39, i8 -37, i8 -64, i8 -35, i8 52, i8 -8, i8 83, i8 42, i8 -120, i8 -22, i8 -93, i8 -81, i8 78, i8 -74, i8 -127, i8 -69, i8 105, i8 -16, i8 -89, i8 84, i8 16, i8 -44, i8 71, i8 95, i8 -99, i8 109, i8 3, i8 119, i8 -45, i8 -31, i8 79, i8 -87, i8 32, i8 -87, i8 -113, i8 -66, i8 58, i8 -37, i8 6, i8 -18, i8 -90, i8 -62, i8 -97, i8 82, i8 65, i8 83, i8 31, i8 125, i8 117, i8 -74, i8 13, i8 -36, i8 77, i8 -124, i8 63, i8 -91, i8 -126, i8 -90, i8 62, i8 -6, i8 -22, i8 108, i8 27, i8 -72, i8 -101, i8 9, i8 127, i8 74, i8 5, i8 77, i8 125, i8 -12, i8 -43, i8 -40, i8 54, i8 112, i8 55, i8 19, i8 -2, i8 -108, i8 10, i8 -102, i8 -6, i8 -24, i8 -85, i8 -79, i8 109, i8 -32, i8 110, i8 39, i8 -4, i8 41, i8 21, i8 52, i8 -11, i8 -47, i8 87, i8 98, i8 -37, i8 -64, i8 -35, i8 78, i8 -8, i8 83, i8 42, i8 105, i8 -22, i8 -93, i8 -81, i8 -59, i8 -74, i8 -127, i8 -69, i8 -99, i8 -16, i8 -89, i8 84, i8 -45, i8 -44, i8 71, i8 95, i8 -118, i8 109, i8 3, i8 119, i8 58, i8 -31, i8 79, i8 -87, i8 -90, i8 -87, i8 -113, i8 -66, i8 20, i8 -37, i8 6, i8 -18, i8 117, i8 -62, i8 -97, i8 82, i8 77, i8 83, i8 31, i8 125, i8 41, i8 -74, i8 13, i8 -36, i8 -22, i8 -124, i8 63, i8 -91, i8 -101, i8 -90, i8 62, i8 -6, i8 82, i8 108, i8 27, i8 -72, i8 -43, i8 9, i8 127, i8 74, i8 55, i8 77, i8 125, i8 -12, i8 -91, i8 -40, i8 54, i8 112, i8 -85, i8 19, i8 -2, i8 -108, i8 110, i8 -102, i8 -6, i8 -24, i8 74, i8 -79, i8 109, i8 -32, i8 87, i8 39, i8 -4, i8 41, i8 -35, i8 52, i8 -11, i8 -47, i8 -107, i8 98, i8 -37, i8 -64, i8 -81, i8 78, i8 -8, i8 83, i8 -69, i8 105, i8 -22, i8 -93, i8 43, i8 -59, i8 -74, i8 -127, i8 95, i8 -99, i8 -16, i8 -89, i8 119, i8 -45, i8 -44, i8 71, i8 86, i8 -118, i8 109, i8 3, i8 -66, i8 58, i8 -31, i8 79, i8 -18, i8 -90, i8 -87, i8 -113, i8 -84, i8 20, i8 -37, i8 6, i8 125, i8 117, i8 -62, i8 -97, i8 -36, i8 77, i8 83, i8 31, i8 89, i8 41, i8 -74, i8 13, i8 -6, i8 -22, i8 -124, i8 63, i8 -72, i8 -101, i8 -90, i8 62, i8 -77, i8 82, i8 108, i8 27, i8 -12, i8 -43, i8 9, i8 127, i8 112, i8 55, i8 77, i8 125, i8 102, i8 -91, i8 -40, i8 54, i8 -24, i8 -85, i8 19, i8 -2, i8 -32, i8 110, i8 -102, i8 -6, i8 -52, i8 74, i8 -79, i8 109, i8 -47, i8 87, i8 39, i8 -4, i8 -64, i8 -35, i8 52, i8 -11, i8 -103, i8 -107, i8 98, i8 -37, i8 -93, i8 -81, i8 78, i8 -8, i8 -127, i8 -69, i8 105, i8 -22, i8 50, i8 43, i8 -59, i8 -74, i8 71, i8 95, i8 -99, i8 -16, i8 3, i8 119, i8 -45, i8 -44, i8 100, i8 86, i8 -118, i8 109, i8 -113, i8 -66, i8 58, i8 -31, i8 6, i8 -18, i8 -90, i8 -87, i8 -55, i8 -84, i8 20, i8 -37, i8 31, i8 125, i8 117, i8 -62, i8 13, i8 -36, i8 77, i8 83, i8 -109, i8 89, i8 41, i8 -74, i8 62, i8 -6, i8 -22, i8 -124, i8 27, i8 -72, i8 -101, i8 -90, i8 39, i8 -77, i8 82, i8 108, i8 125, i8 -12, i8 -43, i8 9, i8 54, i8 112, i8 55, i8 77, i8 79, i8 102, i8 -91, i8 -40, i8 -6, i8 -24, i8 -85, i8 19, i8 109, i8 -32, i8 110, i8 -102, i8 -98, i8 -52, i8 74, i8 -79, i8 -11, i8 -47, i8 87, i8 39, i8 -37, i8 -64, i8 -35, i8 52, i8 60, i8 -103, i8 -107, i8 98, i8 -22, i8 -93, i8 -81, i8 78, i8 -74, i8 -127, i8 -69, i8 105, i8 120, i8 50, i8 43, i8 -59, i8 -44, i8 71, i8 95, i8 -99, i8 109, i8 3, i8 119, i8 -45, i8 -15, i8 100, i8 86, i8 -118, i8 -87, i8 -113, i8 -66, i8 58, i8 -37, i8 6, i8 -18, i8 -90, i8 -30, i8 -55, i8 -84, i8 20, i8 83, i8 31, i8 125, i8 117, i8 -74, i8 13, i8 -36, i8 77, i8 -60, i8 -109, i8 89, i8 41, i8 -90, i8 62, i8 -6, i8 -22, i8 108, i8 27, i8 -72, i8 -101, i8 -120, i8 39, i8 -77, i8 82, i8 77, i8 125, i8 -12, i8 -43, i8 -40, i8 54, i8 112, i8 55, i8 16, i8 79, i8 102, i8 -91, i8 -102, i8 -6, i8 -24, i8 -85, i8 -79, i8 109, i8 -32, i8 110, i8 33, i8 -98, i8 -52, i8 74, i8 52, i8 -11, i8 -47, i8 87, i8 98, i8 -37, i8 -64, i8 -35, i8 67, i8 60, i8 -103, i8 -107, i8 105, i8 -22, i8 -93, i8 -81, i8 -59, i8 -74, i8 -127, i8 -69, i8 -121, i8 120, i8 50, i8 43, i8 -45, i8 -44, i8 71, i8 95, i8 -118, i8 109, i8 3, i8 119, i8 14, i8 -15, i8 100, i8 86, i8 -90, i8 -87, i8 -113, i8 -66, i8 20, i8 -37, i8 6, i8 -18, i8 28, i8 -30, i8 -55, i8 -84, i8 77, i8 83, i8 31, i8 125, i8 41, i8 -74, i8 13, i8 -36, i8 57, i8 -60, i8 -109, i8 89, i8 -101, i8 -90, i8 62, i8 -6, i8 82, i8 108, i8 27, i8 -72, i8 114, i8 -120, i8 39, i8 -77, i8 55, i8 77, i8 125, i8 -12, i8 -91, i8 -40, i8 54, i8 112, i8 -28, i8 16, i8 79, i8 102, i8 110, i8 -102, i8 -6, i8 -24, i8 74, i8 -79, i8 109, i8 -32, i8 -56, i8 33, i8 -98, i8 -52, i8 -35, i8 52, i8 -11, i8 -47, i8 -107, i8 98, i8 -37, i8 -64, i8 -112, i8 67, i8 60, i8 -103, i8 -69, i8 105, i8 -22, i8 -93, i8 43, i8 -59, i8 -74, i8 -127, i8 32, i8 -121, i8 120, i8 50, i8 119, i8 -45, i8 -44, i8 71, i8 86, i8 -118, i8 109, i8 3, i8 65, i8 14, i8 -15, i8 100, i8 -18, i8 -90, i8 -87, i8 -113, i8 -84, i8 20, i8 -37, i8 6, i8 -126, i8 28, i8 -30, i8 -55, i8 -36, i8 77, i8 83, i8 31, i8 89, i8 41, i8 -74, i8 13, i8 4, i8 57, i8 -60, i8 -109, i8 -72, i8 -101, i8 -90, i8 62, i8 -77, i8 82, i8 108, i8 27, i8 8, i8 114, i8 -120, i8 39, i8 112, i8 55, i8 77, i8 125, i8 102, i8 -91, i8 -40, i8 54, i8 16, i8 -28, i8 16, i8 79, i8 -32, i8 110, i8 -102, i8 -6, i8 -52, i8 74, i8 -79, i8 109, i8 32, i8 -56, i8 33, i8 -98, i8 -64, i8 -35, i8 52, i8 -11, i8 -103, i8 -107, i8 98, i8 -37, i8 65, i8 -112, i8 67, i8 60, i8 -127, i8 -69, i8 105, i8 -22, i8 50, i8 43, i8 -59, i8 -74, i8 -125, i8 32, i8 -121, i8 120, i8 3, i8 119, i8 -45, i8 -44, i8 100, i8 86, i8 -118, i8 109, i8 7, i8 65, i8 14, i8 -15, i8 6, i8 -18, i8 -90, i8 -87, i8 -55, i8 -84, i8 20, i8 -37, i8 15, i8 -126, i8 28, i8 -30, i8 13, i8 -36, i8 77, i8 83, i8 -109, i8 89, i8 41, i8 -74, i8 31, i8 4, i8 57, i8 -60, i8 27, i8 -72, i8 -101, i8 -90, i8 39, i8 -77, i8 82, i8 108, i8 63, i8 8, i8 114, i8 -120, i8 54, i8 112, i8 55, i8 77, i8 79, i8 102, i8 -91, i8 -40, i8 127, i8 16, i8 -28, i8 16, i8 109, i8 -32, i8 110, i8 -102, i8 -98, i8 -52, i8 74, i8 -79, i8 -1, i8 32, i8 -56, i8 33}
-!77 = metadata !{metadata !"omnipotent char", metadata !78}
-!78 = metadata !{metadata !"Simple C/C++ TBAA"}
-!79 = metadata !{metadata !"int", metadata !77}
-!80 = metadata !{float 2.500000e+00}
-!81 = metadata !{metadata !"float", metadata !77}
+!0 = !{i32 1, i32 0}
+!1 = !{!"ocl", i32 1, i32 2}
+!2 = !{void (<4 x float> addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @resetFaceNormals, !3}
+!3 = !{!4, !5, !12, !20, !21, !22, !23, !24, !25}
+!4 = !{!"function_type", i32 0}
+!5 = !{!"implicit_arg_desc", !6, !7, !8, !9, !10, !11}
+!6 = !{i32 0}
+!7 = !{i32 1}
+!8 = !{i32 6}
+!9 = !{i32 7}
+!10 = !{i32 8}
+!11 = !{i32 9}
+!12 = !{!"resource_alloc", !13, !14, !15, !16}
+!13 = !{!"uavs_num", i32 2}
+!14 = !{!"srvs_num", i32 0}
+!15 = !{!"samplers_num", i32 0}
+!16 = !{!"arg_allocs", !17, !18, !18, !18, !18, !18, !19}
+!17 = !{i32 1, null, i32 0}
+!18 = !{i32 0, null, null}
+!19 = !{i32 1, null, i32 1}
+!20 = !{!"opencl_kernel_arg_addr_space", i32 1}
+!21 = !{!"opencl_kernel_arg_access_qual", !"none"}
+!22 = !{!"opencl_kernel_arg_type", !"float4*"}
+!23 = !{!"opencl_kernel_arg_base_type", !"float4*"}
+!24 = !{!"opencl_kernel_arg_type_qual", !""}
+!25 = !{!"opencl_kernel_arg_name", !"faceNormals"}
+!26 = !{void (i32 addrspace(1)*, <4 x float> addrspace(1)*, <4 x float> addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @calculateFaceNormals, !27}
+!27 = !{!4, !5, !28, !33, !34, !35, !36, !37, !38}
+!28 = !{!"resource_alloc", !29, !14, !15, !30}
+!29 = !{!"uavs_num", i32 4}
+!30 = !{!"arg_allocs", !17, !19, !31, !18, !18, !18, !18, !18, !32}
+!31 = !{i32 1, null, i32 2}
+!32 = !{i32 1, null, i32 3}
+!33 = !{!"opencl_kernel_arg_addr_space", i32 1, i32 1, i32 1}
+!34 = !{!"opencl_kernel_arg_access_qual", !"none", !"none", !"none"}
+!35 = !{!"opencl_kernel_arg_type", !"uint*", !"float4*", !"float4*"}
+!36 = !{!"opencl_kernel_arg_base_type", !"uint*", !"float4*", !"float4*"}
+!37 = !{!"opencl_kernel_arg_type_qual", !"", !"", !""}
+!38 = !{!"opencl_kernel_arg_name", !"indexes", !"positions", !"faceNormals"}
+!39 = !{void (float addrspace(1)*, <4 x float> addrspace(1)*, i32 addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @averageFaceNormals, !40}
+!40 = !{!4, !5, !28, !33, !34, !41, !42, !37, !43}
+!41 = !{!"opencl_kernel_arg_type", !"float*", !"float4*", !"int*"}
+!42 = !{!"opencl_kernel_arg_base_type", !"float*", !"float4*", !"int*"}
+!43 = !{!"opencl_kernel_arg_name", !"vbo", !"faceNormals", !"faceIndexes"}
+!44 = !{void (<4 x float> addrspace(1)*, float addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @updateVBO, !45}
+!45 = !{!4, !5, !46, !49, !50, !51, !52, !53, !54}
+!46 = !{!"resource_alloc", !47, !14, !15, !48}
+!47 = !{!"uavs_num", i32 3}
+!48 = !{!"arg_allocs", !17, !19, !18, !18, !18, !18, !18, !31}
+!49 = !{!"opencl_kernel_arg_addr_space", i32 1, i32 1}
+!50 = !{!"opencl_kernel_arg_access_qual", !"none", !"none"}
+!51 = !{!"opencl_kernel_arg_type", !"float4*", !"float*"}
+!52 = !{!"opencl_kernel_arg_base_type", !"float4*", !"float*"}
+!53 = !{!"opencl_kernel_arg_type_qual", !"", !""}
+!54 = !{!"opencl_kernel_arg_name", !"positions", !"vbo"}
+!55 = !{void (<4 x float> addrspace(1)*, <4 x float> addrspace(1)*, <4 x float> addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @integrateSoftBody, !56}
+!56 = !{!4, !5, !28, !33, !34, !57, !58, !37, !59}
+!57 = !{!"opencl_kernel_arg_type", !"float4*", !"float4*", !"float4*"}
+!58 = !{!"opencl_kernel_arg_base_type", !"float4*", !"float4*", !"float4*"}
+!59 = !{!"opencl_kernel_arg_name", !"positions", !"oldPositions", !"forces"}
+!60 = !{void (<4 x float> addrspace(1)*, i32 addrspace(1)*, i32 addrspace(1)*, float, i32, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @satisfyConstraints, !61}
+!61 = !{!4, !5, !62, !64, !65, !66, !67, !68, !69}
+!62 = !{!"resource_alloc", !29, !14, !15, !63}
+!63 = !{!"arg_allocs", !17, !19, !31, !18, !18, !18, !18, !18, !18, !18, !32}
+!64 = !{!"opencl_kernel_arg_addr_space", i32 1, i32 1, i32 1, i32 0, i32 0}
+!65 = !{!"opencl_kernel_arg_access_qual", !"none", !"none", !"none", !"none", !"none"}
+!66 = !{!"opencl_kernel_arg_type", !"float4*", !"int*", !"int*", !"float", !"int"}
+!67 = !{!"opencl_kernel_arg_base_type", !"float4*", !"int*", !"int*", !"float", !"int"}
+!68 = !{!"opencl_kernel_arg_type_qual", !"", !"", !"", !"", !""}
+!69 = !{!"opencl_kernel_arg_name", !"positions", !"neighbours", !"offsets", !"tick", !"startOffset"}
+!70 = !{void (<4 x float> addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i8 addrspace(2)*)* @applyForces, !71}
+!71 = !{!4, !5, !12, !20, !21, !22, !23, !24, !72}
+!72 = !{!"opencl_kernel_arg_name", !"forces"}
+!73 = !{!"-std=CL1.2"}
+!74 = !{!"-kernel-arg-info"}
+!75 = !{!76, i32 4}
+!76 = !{i8 0, i8 0, i8 0, i8 64, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 51, i8 51, i8 -125, i8 -64, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -102, i8 -103, i8 -39, i8 -65, i8 0, i8 0, i8 96, i8 64, i8 -51, i8 -52, i8 76, i8 -66, i8 0, i8 0, i8 0, i8 0, i8 -102, i8 -103, i8 -39, i8 -65, i8 0, i8 0, i8 0, i8 0, i8 51, i8 51, i8 115, i8 64, i8 0, i8 0, i8 0, i8 0, i8 -102, i8 -103, i8 -39, i8 -65, i8 0, i8 0, i8 0, i8 0, i8 -82, i8 71, i8 113, i8 -64, i8 0, i8 0, i8 0, i8 0, i8 51, i8 51, i8 -125, i8 -64, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -16, i8 -64, i8 0, i8 0, i8 0, i8 0, i8 51, i8 51, i8 -125, i8 -64, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 72, i8 -63, i8 0, i8 0, i8 0, i8 0, i8 51, i8 51, i8 -101, i8 -64, i8 0, i8 0, i8 96, i8 64, i8 -82, i8 71, i8 65, i8 64, i8 0, i8 0, i8 0, i8 0, i8 51, i8 51, i8 -101, i8 -64, i8 -92, i8 112, i8 -51, i8 64, i8 -102, i8 -103, i8 -103, i8 -66, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -128, i8 63, i8 -33, i8 -25, i8 -99, i8 -71, i8 -80, i8 10, i8 -55, i8 60, i8 -104, i8 -55, i8 5, i8 -80, i8 0, i8 0, i8 -128, i8 63, i8 -56, i8 -31, i8 -99, i8 -70, i8 48, i8 -5, i8 72, i8 61, i8 127, i8 34, i8 -17, i8 -80, i8 0, i8 0, i8 -128, i8 63, i8 -104, i8 -110, i8 49, i8 -69, i8 5, i8 -87, i8 -106, i8 61, i8 97, i8 30, i8 83, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 113, i8 -55, i8 -99, i8 -69, i8 54, i8 -67, i8 -56, i8 61, i8 -11, i8 -110, i8 117, i8 -80, i8 0, i8 0, i8 -128, i8 63, i8 60, i8 110, i8 -10, i8 -69, i8 115, i8 -78, i8 -6, i8 61, i8 -49, i8 104, i8 21, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 2, i8 85, i8 49, i8 -68, i8 -125, i8 64, i8 22, i8 62, i8 20, i8 -26, i8 -24, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 11, i8 54, i8 113, i8 -68, i8 -94, i8 16, i8 47, i8 62, i8 -7, i8 103, i8 17, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 48, i8 104, i8 -99, i8 -68, i8 -62, i8 -59, i8 71, i8 62, i8 125, i8 -106, i8 -27, i8 -80, i8 0, i8 0, i8 -128, i8 63, i8 84, i8 12, i8 -57, i8 -68, i8 19, i8 92, i8 96, i8 62, i8 -10, i8 -28, i8 -89, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 4, i8 -127, i8 -11, i8 -68, i8 -52, i8 -49, i8 120, i8 62, i8 29, i8 -44, i8 27, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 -116, i8 95, i8 20, i8 -67, i8 -109, i8 -114, i8 -120, i8 62, i8 -98, i8 125, i8 44, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 85, i8 95, i8 48, i8 -67, i8 49, i8 -96, i8 -108, i8 62, i8 -16, i8 89, i8 109, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -118, i8 -69, i8 78, i8 -67, i8 -27, i8 -102, i8 -96, i8 62, i8 -96, i8 -119, i8 62, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 126, i8 111, i8 111, i8 -67, i8 -44, i8 124, i8 -84, i8 62, i8 2, i8 78, i8 37, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 18, i8 59, i8 -119, i8 -67, i8 42, i8 68, i8 -72, i8 62, i8 -90, i8 91, i8 112, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 12, i8 -27, i8 -101, i8 -67, i8 21, i8 -17, i8 -61, i8 62, i8 44, i8 -43, i8 -43, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 -52, i8 -78, i8 -81, i8 -67, i8 -54, i8 123, i8 -49, i8 62, i8 99, i8 59, i8 106, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 67, i8 -95, i8 -60, i8 -67, i8 -128, i8 -24, i8 -38, i8 62, i8 -52, i8 21, i8 30, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 56, i8 -83, i8 -38, i8 -67, i8 117, i8 51, i8 -26, i8 62, i8 116, i8 -57, i8 -39, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 68, i8 -45, i8 -15, i8 -67, i8 -22, i8 90, i8 -15, i8 62, i8 57, i8 33, i8 -1, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 -22, i8 7, i8 5, i8 -66, i8 39, i8 93, i8 -4, i8 62, i8 -87, i8 -20, i8 -128, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 -105, i8 -81, i8 17, i8 -66, i8 61, i8 -100, i8 3, i8 63, i8 2, i8 -96, i8 91, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 -75, i8 -34, i8 30, i8 -66, i8 -101, i8 -11, i8 8, i8 63, i8 78, i8 75, i8 -66, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 59, i8 -109, i8 44, i8 -66, i8 -38, i8 57, i8 14, i8 63, i8 -25, i8 50, i8 74, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 12, i8 -53, i8 58, i8 -66, i8 42, i8 104, i8 19, i8 63, i8 46, i8 -47, i8 -51, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -9, i8 -125, i8 73, i8 -66, i8 -64, i8 127, i8 24, i8 63, i8 -13, i8 -93, i8 -57, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 -73, i8 -69, i8 88, i8 -66, i8 -47, i8 127, i8 29, i8 63, i8 12, i8 5, i8 -110, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -13, i8 111, i8 104, i8 -66, i8 -103, i8 103, i8 34, i8 63, i8 -69, i8 35, i8 33, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 63, i8 -98, i8 120, i8 -66, i8 86, i8 54, i8 39, i8 63, i8 67, i8 -125, i8 3, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 14, i8 -94, i8 -124, i8 -66, i8 74, i8 -21, i8 43, i8 63, i8 54, i8 49, i8 -73, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 125, i8 47, i8 -115, i8 -66, i8 -69, i8 -123, i8 48, i8 63, i8 50, i8 45, i8 -82, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 26, i8 -10, i8 -107, i8 -66, i8 -13, i8 4, i8 53, i8 63, i8 122, i8 -25, i8 79, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -21, i8 22, i8 66, i8 62, i8 66, i8 104, i8 57, i8 63, i8 7, i8 0, i8 -127, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 39, i8 -83, i8 47, i8 62, i8 -7, i8 -82, i8 61, i8 63, i8 -20, i8 -85, i8 -102, i8 49, i8 0, i8 0, i8 0, i8 63, i8 87, i8 -39, i8 28, i8 62, i8 112, i8 -40, i8 65, i8 63, i8 119, i8 -7, i8 -65, i8 50, i8 0, i8 0, i8 0, i8 63, i8 101, i8 -98, i8 9, i8 62, i8 3, i8 -28, i8 69, i8 63, i8 116, i8 81, i8 -79, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -118, i8 -2, i8 -21, i8 61, i8 18, i8 -47, i8 73, i8 63, i8 64, i8 38, i8 -103, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -1, i8 -3, i8 -61, i8 61, i8 2, i8 -97, i8 77, i8 63, i8 -24, i8 112, i8 126, i8 50, i8 0, i8 0, i8 0, i8 63, i8 83, i8 65, i8 -101, i8 61, i8 61, i8 77, i8 81, i8 63, i8 4, i8 79, i8 12, i8 48, i8 0, i8 0, i8 0, i8 63, i8 -99, i8 -99, i8 99, i8 61, i8 49, i8 -37, i8 84, i8 63, i8 26, i8 -22, i8 -112, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -86, i8 89, i8 15, i8 61, i8 83, i8 72, i8 88, i8 63, i8 -64, i8 95, i8 125, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 50, i8 15, i8 103, i8 60, i8 26, i8 -108, i8 91, i8 63, i8 -56, i8 45, i8 35, i8 50, i8 0, i8 0, i8 0, i8 63, i8 72, i8 -74, i8 -24, i8 -69, i8 5, i8 -66, i8 94, i8 63, i8 83, i8 -7, i8 -58, i8 50, i8 0, i8 0, i8 0, i8 63, i8 100, i8 81, i8 -22, i8 -68, i8 -104, i8 -59, i8 97, i8 63, i8 37, i8 -12, i8 -25, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 90, i8 100, i8 78, i8 -67, i8 89, i8 -86, i8 100, i8 63, i8 -6, i8 8, i8 26, i8 49, i8 0, i8 0, i8 0, i8 63, i8 -1, i8 93, i8 -108, i8 -67, i8 -40, i8 107, i8 103, i8 63, i8 -119, i8 51, i8 -68, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 -40, i8 16, i8 -62, i8 -67, i8 -89, i8 9, i8 106, i8 63, i8 108, i8 35, i8 -21, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 -85, i8 67, i8 -16, i8 -67, i8 94, i8 -125, i8 108, i8 63, i8 -44, i8 40, i8 -13, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -83, i8 119, i8 15, i8 -66, i8 -98, i8 -40, i8 110, i8 63, i8 -36, i8 51, i8 -109, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 79, i8 -13, i8 -79, i8 61, i8 8, i8 9, i8 113, i8 63, i8 -35, i8 -48, i8 30, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 -109, i8 107, i8 -126, i8 61, i8 71, i8 20, i8 115, i8 63, i8 17, i8 -114, i8 -60, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 -116, i8 1, i8 37, i8 61, i8 11, i8 -6, i8 116, i8 63, i8 34, i8 -99, i8 -109, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 49, i8 -23, i8 -120, i8 60, i8 7, i8 -70, i8 118, i8 63, i8 44, i8 9, i8 109, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 -123, i8 6, i8 -26, i8 -69, i8 -8, i8 83, i8 120, i8 63, i8 -27, i8 -71, i8 13, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 101, i8 31, i8 -3, i8 -68, i8 -99, i8 -57, i8 121, i8 63, i8 89, i8 78, i8 -58, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 -8, i8 -24, i8 96, i8 -67, i8 -66, i8 20, i8 123, i8 63, i8 -53, i8 117, i8 -1, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 -119, i8 66, i8 60, i8 61, i8 40, i8 59, i8 124, i8 63, i8 -117, i8 -42, i8 49, i8 -78, i8 0, i8 0, i8 0, i8 62, i8 28, i8 4, i8 -78, i8 60, i8 -84, i8 58, i8 125, i8 63, i8 -23, i8 90, i8 -9, i8 -80, i8 0, i8 0, i8 0, i8 62, i8 -87, i8 -79, i8 41, i8 -69, i8 36, i8 19, i8 126, i8 63, i8 3, i8 -26, i8 -15, i8 -78, i8 0, i8 0, i8 0, i8 62, i8 40, i8 11, i8 -35, i8 -68, i8 109, i8 -60, i8 126, i8 63, i8 73, i8 73, i8 -12, i8 49, i8 0, i8 0, i8 0, i8 62, i8 37, i8 72, i8 53, i8 60, i8 109, i8 78, i8 127, i8 63, i8 -124, i8 24, i8 -48, i8 50, i8 0, i8 0, i8 -128, i8 61, i8 66, i8 19, i8 92, i8 -68, i8 15, i8 -79, i8 127, i8 63, i8 95, i8 91, i8 -34, i8 49, i8 0, i8 0, i8 -128, i8 61, i8 65, i8 -43, i8 -37, i8 -69, i8 67, i8 -20, i8 127, i8 63, i8 13, i8 -51, i8 -124, i8 48, i8 0, i8 0, i8 0, i8 61, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -128, i8 63, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 65, i8 -43, i8 -37, i8 59, i8 67, i8 -20, i8 127, i8 63, i8 13, i8 -51, i8 -124, i8 48, i8 0, i8 0, i8 0, i8 -67, i8 66, i8 19, i8 92, i8 60, i8 15, i8 -79, i8 127, i8 63, i8 95, i8 91, i8 -34, i8 49, i8 0, i8 0, i8 -128, i8 -67, i8 37, i8 72, i8 53, i8 -68, i8 109, i8 78, i8 127, i8 63, i8 -124, i8 24, i8 -48, i8 50, i8 0, i8 0, i8 -128, i8 -67, i8 40, i8 11, i8 -35, i8 60, i8 109, i8 -60, i8 126, i8 63, i8 73, i8 73, i8 -12, i8 49, i8 0, i8 0, i8 0, i8 -66, i8 -87, i8 -79, i8 41, i8 59, i8 36, i8 19, i8 126, i8 63, i8 3, i8 -26, i8 -15, i8 -78, i8 0, i8 0, i8 0, i8 -66, i8 28, i8 4, i8 -78, i8 -68, i8 -84, i8 58, i8 125, i8 63, i8 -23, i8 90, i8 -9, i8 -80, i8 0, i8 0, i8 0, i8 -66, i8 -119, i8 66, i8 60, i8 -67, i8 40, i8 59, i8 124, i8 63, i8 -117, i8 -42, i8 49, i8 -78, i8 0, i8 0, i8 0, i8 -66, i8 -8, i8 -24, i8 96, i8 61, i8 -66, i8 20, i8 123, i8 63, i8 -53, i8 117, i8 -1, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 101, i8 31, i8 -3, i8 60, i8 -99, i8 -57, i8 121, i8 63, i8 89, i8 78, i8 -58, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 -123, i8 6, i8 -26, i8 59, i8 -8, i8 83, i8 120, i8 63, i8 -27, i8 -71, i8 13, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 49, i8 -23, i8 -120, i8 -68, i8 7, i8 -70, i8 118, i8 63, i8 44, i8 9, i8 109, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 -116, i8 1, i8 37, i8 -67, i8 11, i8 -6, i8 116, i8 63, i8 34, i8 -99, i8 -109, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 -109, i8 107, i8 -126, i8 -67, i8 71, i8 20, i8 115, i8 63, i8 17, i8 -114, i8 -60, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 79, i8 -13, i8 -79, i8 -67, i8 8, i8 9, i8 113, i8 63, i8 -35, i8 -48, i8 30, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 -83, i8 119, i8 15, i8 62, i8 -98, i8 -40, i8 110, i8 63, i8 -36, i8 51, i8 -109, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -85, i8 67, i8 -16, i8 61, i8 94, i8 -125, i8 108, i8 63, i8 -44, i8 40, i8 -13, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 -40, i8 16, i8 -62, i8 61, i8 -89, i8 9, i8 106, i8 63, i8 108, i8 35, i8 -21, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -1, i8 93, i8 -108, i8 61, i8 -40, i8 107, i8 103, i8 63, i8 -119, i8 51, i8 -68, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 90, i8 100, i8 78, i8 61, i8 89, i8 -86, i8 100, i8 63, i8 -6, i8 8, i8 26, i8 49, i8 0, i8 0, i8 0, i8 -65, i8 100, i8 81, i8 -22, i8 60, i8 -104, i8 -59, i8 97, i8 63, i8 37, i8 -12, i8 -25, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 72, i8 -74, i8 -24, i8 59, i8 5, i8 -66, i8 94, i8 63, i8 83, i8 -7, i8 -58, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 50, i8 15, i8 103, i8 -68, i8 26, i8 -108, i8 91, i8 63, i8 -56, i8 45, i8 35, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 -86, i8 89, i8 15, i8 -67, i8 83, i8 72, i8 88, i8 63, i8 -64, i8 95, i8 125, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -99, i8 -99, i8 99, i8 -67, i8 49, i8 -37, i8 84, i8 63, i8 26, i8 -22, i8 -112, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 83, i8 65, i8 -101, i8 -67, i8 61, i8 77, i8 81, i8 63, i8 4, i8 79, i8 12, i8 48, i8 0, i8 0, i8 0, i8 -65, i8 -1, i8 -3, i8 -61, i8 -67, i8 2, i8 -97, i8 77, i8 63, i8 -24, i8 112, i8 126, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 -118, i8 -2, i8 -21, i8 -67, i8 18, i8 -47, i8 73, i8 63, i8 64, i8 38, i8 -103, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 101, i8 -98, i8 9, i8 -66, i8 3, i8 -28, i8 69, i8 63, i8 116, i8 81, i8 -79, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 87, i8 -39, i8 28, i8 -66, i8 112, i8 -40, i8 65, i8 63, i8 119, i8 -7, i8 -65, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 39, i8 -83, i8 47, i8 -66, i8 -7, i8 -82, i8 61, i8 63, i8 -20, i8 -85, i8 -102, i8 49, i8 0, i8 0, i8 0, i8 -65, i8 -21, i8 22, i8 66, i8 -66, i8 66, i8 104, i8 57, i8 63, i8 7, i8 0, i8 -127, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 26, i8 -10, i8 -107, i8 62, i8 -13, i8 4, i8 53, i8 63, i8 122, i8 -25, i8 79, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 125, i8 47, i8 -115, i8 62, i8 -69, i8 -123, i8 48, i8 63, i8 50, i8 45, i8 -82, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 14, i8 -94, i8 -124, i8 62, i8 74, i8 -21, i8 43, i8 63, i8 54, i8 49, i8 -73, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 63, i8 -98, i8 120, i8 62, i8 86, i8 54, i8 39, i8 63, i8 67, i8 -125, i8 3, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -13, i8 111, i8 104, i8 62, i8 -103, i8 103, i8 34, i8 63, i8 -69, i8 35, i8 33, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 -73, i8 -69, i8 88, i8 62, i8 -47, i8 127, i8 29, i8 63, i8 12, i8 5, i8 -110, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 -9, i8 -125, i8 73, i8 62, i8 -64, i8 127, i8 24, i8 63, i8 -13, i8 -93, i8 -57, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 12, i8 -53, i8 58, i8 62, i8 42, i8 104, i8 19, i8 63, i8 46, i8 -47, i8 -51, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 59, i8 -109, i8 44, i8 62, i8 -38, i8 57, i8 14, i8 63, i8 -25, i8 50, i8 74, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -75, i8 -34, i8 30, i8 62, i8 -101, i8 -11, i8 8, i8 63, i8 78, i8 75, i8 -66, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -105, i8 -81, i8 17, i8 62, i8 61, i8 -100, i8 3, i8 63, i8 2, i8 -96, i8 91, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -22, i8 7, i8 5, i8 62, i8 39, i8 93, i8 -4, i8 62, i8 -87, i8 -20, i8 -128, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 68, i8 -45, i8 -15, i8 61, i8 -22, i8 90, i8 -15, i8 62, i8 57, i8 33, i8 -1, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 56, i8 -83, i8 -38, i8 61, i8 117, i8 51, i8 -26, i8 62, i8 116, i8 -57, i8 -39, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 67, i8 -95, i8 -60, i8 61, i8 -128, i8 -24, i8 -38, i8 62, i8 -52, i8 21, i8 30, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 -52, i8 -78, i8 -81, i8 61, i8 -54, i8 123, i8 -49, i8 62, i8 99, i8 59, i8 106, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 12, i8 -27, i8 -101, i8 61, i8 21, i8 -17, i8 -61, i8 62, i8 44, i8 -43, i8 -43, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 18, i8 59, i8 -119, i8 61, i8 42, i8 68, i8 -72, i8 62, i8 -90, i8 91, i8 112, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 126, i8 111, i8 111, i8 61, i8 -44, i8 124, i8 -84, i8 62, i8 2, i8 78, i8 37, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -118, i8 -69, i8 78, i8 61, i8 -27, i8 -102, i8 -96, i8 62, i8 -96, i8 -119, i8 62, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 85, i8 95, i8 48, i8 61, i8 49, i8 -96, i8 -108, i8 62, i8 -16, i8 89, i8 109, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 -116, i8 95, i8 20, i8 61, i8 -109, i8 -114, i8 -120, i8 62, i8 -98, i8 125, i8 44, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 4, i8 -127, i8 -11, i8 60, i8 -52, i8 -49, i8 120, i8 62, i8 29, i8 -44, i8 27, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 84, i8 12, i8 -57, i8 60, i8 19, i8 92, i8 96, i8 62, i8 -10, i8 -28, i8 -89, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 48, i8 104, i8 -99, i8 60, i8 -62, i8 -59, i8 71, i8 62, i8 125, i8 -106, i8 -27, i8 -80, i8 0, i8 0, i8 -128, i8 -65, i8 11, i8 54, i8 113, i8 60, i8 -94, i8 16, i8 47, i8 62, i8 -7, i8 103, i8 17, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 2, i8 85, i8 49, i8 60, i8 -125, i8 64, i8 22, i8 62, i8 20, i8 -26, i8 -24, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 60, i8 110, i8 -10, i8 59, i8 115, i8 -78, i8 -6, i8 61, i8 -49, i8 104, i8 21, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 113, i8 -55, i8 -99, i8 59, i8 54, i8 -67, i8 -56, i8 61, i8 -11, i8 -110, i8 117, i8 -80, i8 0, i8 0, i8 -128, i8 -65, i8 -104, i8 -110, i8 49, i8 59, i8 5, i8 -87, i8 -106, i8 61, i8 97, i8 30, i8 83, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 -56, i8 -31, i8 -99, i8 58, i8 48, i8 -5, i8 72, i8 61, i8 127, i8 34, i8 -17, i8 -80, i8 0, i8 0, i8 -128, i8 -65, i8 -33, i8 -25, i8 -99, i8 57, i8 -80, i8 10, i8 -55, i8 60, i8 -104, i8 -55, i8 5, i8 -80, i8 0, i8 0, i8 -128, i8 -65, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -128, i8 -65, i8 -33, i8 -25, i8 -99, i8 57, i8 -80, i8 10, i8 -55, i8 -68, i8 -104, i8 -55, i8 5, i8 48, i8 0, i8 0, i8 -128, i8 -65, i8 -56, i8 -31, i8 -99, i8 58, i8 48, i8 -5, i8 72, i8 -67, i8 127, i8 34, i8 -17, i8 48, i8 0, i8 0, i8 -128, i8 -65, i8 -104, i8 -110, i8 49, i8 59, i8 5, i8 -87, i8 -106, i8 -67, i8 97, i8 30, i8 83, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 113, i8 -55, i8 -99, i8 59, i8 54, i8 -67, i8 -56, i8 -67, i8 -11, i8 -110, i8 117, i8 48, i8 0, i8 0, i8 -128, i8 -65, i8 60, i8 110, i8 -10, i8 59, i8 115, i8 -78, i8 -6, i8 -67, i8 -49, i8 104, i8 21, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 2, i8 85, i8 49, i8 60, i8 -125, i8 64, i8 22, i8 -66, i8 20, i8 -26, i8 -24, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 11, i8 54, i8 113, i8 60, i8 -94, i8 16, i8 47, i8 -66, i8 -7, i8 103, i8 17, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 48, i8 104, i8 -99, i8 60, i8 -62, i8 -59, i8 71, i8 -66, i8 125, i8 -106, i8 -27, i8 48, i8 0, i8 0, i8 -128, i8 -65, i8 84, i8 12, i8 -57, i8 60, i8 19, i8 92, i8 96, i8 -66, i8 -10, i8 -28, i8 -89, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 4, i8 -127, i8 -11, i8 60, i8 -52, i8 -49, i8 120, i8 -66, i8 29, i8 -44, i8 27, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 -116, i8 95, i8 20, i8 61, i8 -109, i8 -114, i8 -120, i8 -66, i8 -98, i8 125, i8 44, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 85, i8 95, i8 48, i8 61, i8 49, i8 -96, i8 -108, i8 -66, i8 -16, i8 89, i8 109, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -118, i8 -69, i8 78, i8 61, i8 -27, i8 -102, i8 -96, i8 -66, i8 -96, i8 -119, i8 62, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 126, i8 111, i8 111, i8 61, i8 -44, i8 124, i8 -84, i8 -66, i8 2, i8 78, i8 37, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 18, i8 59, i8 -119, i8 61, i8 42, i8 68, i8 -72, i8 -66, i8 -90, i8 91, i8 112, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 12, i8 -27, i8 -101, i8 61, i8 21, i8 -17, i8 -61, i8 -66, i8 44, i8 -43, i8 -43, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 -52, i8 -78, i8 -81, i8 61, i8 -54, i8 123, i8 -49, i8 -66, i8 99, i8 59, i8 106, i8 -79, i8 0, i8 0, i8 -128, i8 -65, i8 67, i8 -95, i8 -60, i8 61, i8 -128, i8 -24, i8 -38, i8 -66, i8 -52, i8 21, i8 30, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 56, i8 -83, i8 -38, i8 61, i8 117, i8 51, i8 -26, i8 -66, i8 116, i8 -57, i8 -39, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 68, i8 -45, i8 -15, i8 61, i8 -22, i8 90, i8 -15, i8 -66, i8 57, i8 33, i8 -1, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 -22, i8 7, i8 5, i8 62, i8 39, i8 93, i8 -4, i8 -66, i8 -87, i8 -20, i8 -128, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 -105, i8 -81, i8 17, i8 62, i8 61, i8 -100, i8 3, i8 -65, i8 2, i8 -96, i8 91, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 -75, i8 -34, i8 30, i8 62, i8 -101, i8 -11, i8 8, i8 -65, i8 78, i8 75, i8 -66, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 59, i8 -109, i8 44, i8 62, i8 -38, i8 57, i8 14, i8 -65, i8 -25, i8 50, i8 74, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 12, i8 -53, i8 58, i8 62, i8 42, i8 104, i8 19, i8 -65, i8 46, i8 -47, i8 -51, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -9, i8 -125, i8 73, i8 62, i8 -64, i8 127, i8 24, i8 -65, i8 -13, i8 -93, i8 -57, i8 49, i8 0, i8 0, i8 -128, i8 -65, i8 -73, i8 -69, i8 88, i8 62, i8 -47, i8 127, i8 29, i8 -65, i8 12, i8 5, i8 -110, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -13, i8 111, i8 104, i8 62, i8 -103, i8 103, i8 34, i8 -65, i8 -69, i8 35, i8 33, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 63, i8 -98, i8 120, i8 62, i8 86, i8 54, i8 39, i8 -65, i8 67, i8 -125, i8 3, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 14, i8 -94, i8 -124, i8 62, i8 74, i8 -21, i8 43, i8 -65, i8 54, i8 49, i8 -73, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 125, i8 47, i8 -115, i8 62, i8 -69, i8 -123, i8 48, i8 -65, i8 50, i8 45, i8 -82, i8 50, i8 0, i8 0, i8 -128, i8 -65, i8 26, i8 -10, i8 -107, i8 62, i8 -13, i8 4, i8 53, i8 -65, i8 122, i8 -25, i8 79, i8 -78, i8 0, i8 0, i8 -128, i8 -65, i8 -21, i8 22, i8 66, i8 -66, i8 66, i8 104, i8 57, i8 -65, i8 7, i8 0, i8 -127, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 39, i8 -83, i8 47, i8 -66, i8 -7, i8 -82, i8 61, i8 -65, i8 -20, i8 -85, i8 -102, i8 -79, i8 0, i8 0, i8 0, i8 -65, i8 87, i8 -39, i8 28, i8 -66, i8 112, i8 -40, i8 65, i8 -65, i8 119, i8 -7, i8 -65, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 101, i8 -98, i8 9, i8 -66, i8 3, i8 -28, i8 69, i8 -65, i8 116, i8 81, i8 -79, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -118, i8 -2, i8 -21, i8 -67, i8 18, i8 -47, i8 73, i8 -65, i8 64, i8 38, i8 -103, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -1, i8 -3, i8 -61, i8 -67, i8 2, i8 -97, i8 77, i8 -65, i8 -24, i8 112, i8 126, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 83, i8 65, i8 -101, i8 -67, i8 61, i8 77, i8 81, i8 -65, i8 4, i8 79, i8 12, i8 -80, i8 0, i8 0, i8 0, i8 -65, i8 -99, i8 -99, i8 99, i8 -67, i8 49, i8 -37, i8 84, i8 -65, i8 26, i8 -22, i8 -112, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -86, i8 89, i8 15, i8 -67, i8 83, i8 72, i8 88, i8 -65, i8 -64, i8 95, i8 125, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 50, i8 15, i8 103, i8 -68, i8 26, i8 -108, i8 91, i8 -65, i8 -56, i8 45, i8 35, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 72, i8 -74, i8 -24, i8 59, i8 5, i8 -66, i8 94, i8 -65, i8 83, i8 -7, i8 -58, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 100, i8 81, i8 -22, i8 60, i8 -104, i8 -59, i8 97, i8 -65, i8 37, i8 -12, i8 -25, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 90, i8 100, i8 78, i8 61, i8 89, i8 -86, i8 100, i8 -65, i8 -6, i8 8, i8 26, i8 -79, i8 0, i8 0, i8 0, i8 -65, i8 -1, i8 93, i8 -108, i8 61, i8 -40, i8 107, i8 103, i8 -65, i8 -119, i8 51, i8 -68, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 -40, i8 16, i8 -62, i8 61, i8 -89, i8 9, i8 106, i8 -65, i8 108, i8 35, i8 -21, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 -85, i8 67, i8 -16, i8 61, i8 94, i8 -125, i8 108, i8 -65, i8 -44, i8 40, i8 -13, i8 -78, i8 0, i8 0, i8 0, i8 -65, i8 -83, i8 119, i8 15, i8 62, i8 -98, i8 -40, i8 110, i8 -65, i8 -36, i8 51, i8 -109, i8 50, i8 0, i8 0, i8 0, i8 -65, i8 79, i8 -13, i8 -79, i8 -67, i8 8, i8 9, i8 113, i8 -65, i8 -35, i8 -48, i8 30, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 -109, i8 107, i8 -126, i8 -67, i8 71, i8 20, i8 115, i8 -65, i8 17, i8 -114, i8 -60, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 -116, i8 1, i8 37, i8 -67, i8 11, i8 -6, i8 116, i8 -65, i8 34, i8 -99, i8 -109, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 49, i8 -23, i8 -120, i8 -68, i8 7, i8 -70, i8 118, i8 -65, i8 44, i8 9, i8 109, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 -123, i8 6, i8 -26, i8 59, i8 -8, i8 83, i8 120, i8 -65, i8 -27, i8 -71, i8 13, i8 50, i8 0, i8 0, i8 -128, i8 -66, i8 101, i8 31, i8 -3, i8 60, i8 -99, i8 -57, i8 121, i8 -65, i8 89, i8 78, i8 -58, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 -8, i8 -24, i8 96, i8 61, i8 -66, i8 20, i8 123, i8 -65, i8 -53, i8 117, i8 -1, i8 -78, i8 0, i8 0, i8 -128, i8 -66, i8 -119, i8 66, i8 60, i8 -67, i8 40, i8 59, i8 124, i8 -65, i8 -117, i8 -42, i8 49, i8 50, i8 0, i8 0, i8 0, i8 -66, i8 28, i8 4, i8 -78, i8 -68, i8 -84, i8 58, i8 125, i8 -65, i8 -23, i8 90, i8 -9, i8 48, i8 0, i8 0, i8 0, i8 -66, i8 -87, i8 -79, i8 41, i8 59, i8 36, i8 19, i8 126, i8 -65, i8 3, i8 -26, i8 -15, i8 50, i8 0, i8 0, i8 0, i8 -66, i8 40, i8 11, i8 -35, i8 60, i8 109, i8 -60, i8 126, i8 -65, i8 73, i8 73, i8 -12, i8 -79, i8 0, i8 0, i8 0, i8 -66, i8 37, i8 72, i8 53, i8 -68, i8 109, i8 78, i8 127, i8 -65, i8 -124, i8 24, i8 -48, i8 -78, i8 0, i8 0, i8 -128, i8 -67, i8 66, i8 19, i8 92, i8 60, i8 15, i8 -79, i8 127, i8 -65, i8 95, i8 91, i8 -34, i8 -79, i8 0, i8 0, i8 -128, i8 -67, i8 65, i8 -43, i8 -37, i8 59, i8 67, i8 -20, i8 127, i8 -65, i8 13, i8 -51, i8 -124, i8 -80, i8 0, i8 0, i8 0, i8 -67, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -128, i8 -65, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 65, i8 -43, i8 -37, i8 -69, i8 67, i8 -20, i8 127, i8 -65, i8 13, i8 -51, i8 -124, i8 -80, i8 0, i8 0, i8 0, i8 61, i8 66, i8 19, i8 92, i8 -68, i8 15, i8 -79, i8 127, i8 -65, i8 95, i8 91, i8 -34, i8 -79, i8 0, i8 0, i8 -128, i8 61, i8 37, i8 72, i8 53, i8 60, i8 109, i8 78, i8 127, i8 -65, i8 -124, i8 24, i8 -48, i8 -78, i8 0, i8 0, i8 -128, i8 61, i8 40, i8 11, i8 -35, i8 -68, i8 109, i8 -60, i8 126, i8 -65, i8 73, i8 73, i8 -12, i8 -79, i8 0, i8 0, i8 0, i8 62, i8 -87, i8 -79, i8 41, i8 -69, i8 36, i8 19, i8 126, i8 -65, i8 3, i8 -26, i8 -15, i8 50, i8 0, i8 0, i8 0, i8 62, i8 28, i8 4, i8 -78, i8 60, i8 -84, i8 58, i8 125, i8 -65, i8 -23, i8 90, i8 -9, i8 48, i8 0, i8 0, i8 0, i8 62, i8 -119, i8 66, i8 60, i8 61, i8 40, i8 59, i8 124, i8 -65, i8 -117, i8 -42, i8 49, i8 50, i8 0, i8 0, i8 0, i8 62, i8 -8, i8 -24, i8 96, i8 -67, i8 -66, i8 20, i8 123, i8 -65, i8 -53, i8 117, i8 -1, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 101, i8 31, i8 -3, i8 -68, i8 -99, i8 -57, i8 121, i8 -65, i8 89, i8 78, i8 -58, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 -123, i8 6, i8 -26, i8 -69, i8 -8, i8 83, i8 120, i8 -65, i8 -27, i8 -71, i8 13, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 49, i8 -23, i8 -120, i8 60, i8 7, i8 -70, i8 118, i8 -65, i8 44, i8 9, i8 109, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 -116, i8 1, i8 37, i8 61, i8 11, i8 -6, i8 116, i8 -65, i8 34, i8 -99, i8 -109, i8 50, i8 0, i8 0, i8 -128, i8 62, i8 -109, i8 107, i8 -126, i8 61, i8 71, i8 20, i8 115, i8 -65, i8 17, i8 -114, i8 -60, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 79, i8 -13, i8 -79, i8 61, i8 8, i8 9, i8 113, i8 -65, i8 -35, i8 -48, i8 30, i8 -78, i8 0, i8 0, i8 -128, i8 62, i8 -83, i8 119, i8 15, i8 -66, i8 -98, i8 -40, i8 110, i8 -65, i8 -36, i8 51, i8 -109, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -85, i8 67, i8 -16, i8 -67, i8 94, i8 -125, i8 108, i8 -65, i8 -44, i8 40, i8 -13, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 -40, i8 16, i8 -62, i8 -67, i8 -89, i8 9, i8 106, i8 -65, i8 108, i8 35, i8 -21, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -1, i8 93, i8 -108, i8 -67, i8 -40, i8 107, i8 103, i8 -65, i8 -119, i8 51, i8 -68, i8 50, i8 0, i8 0, i8 0, i8 63, i8 90, i8 100, i8 78, i8 -67, i8 89, i8 -86, i8 100, i8 -65, i8 -6, i8 8, i8 26, i8 -79, i8 0, i8 0, i8 0, i8 63, i8 100, i8 81, i8 -22, i8 -68, i8 -104, i8 -59, i8 97, i8 -65, i8 37, i8 -12, i8 -25, i8 50, i8 0, i8 0, i8 0, i8 63, i8 72, i8 -74, i8 -24, i8 -69, i8 5, i8 -66, i8 94, i8 -65, i8 83, i8 -7, i8 -58, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 50, i8 15, i8 103, i8 60, i8 26, i8 -108, i8 91, i8 -65, i8 -56, i8 45, i8 35, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 -86, i8 89, i8 15, i8 61, i8 83, i8 72, i8 88, i8 -65, i8 -64, i8 95, i8 125, i8 50, i8 0, i8 0, i8 0, i8 63, i8 -99, i8 -99, i8 99, i8 61, i8 49, i8 -37, i8 84, i8 -65, i8 26, i8 -22, i8 -112, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 83, i8 65, i8 -101, i8 61, i8 61, i8 77, i8 81, i8 -65, i8 4, i8 79, i8 12, i8 -80, i8 0, i8 0, i8 0, i8 63, i8 -1, i8 -3, i8 -61, i8 61, i8 2, i8 -97, i8 77, i8 -65, i8 -24, i8 112, i8 126, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 -118, i8 -2, i8 -21, i8 61, i8 18, i8 -47, i8 73, i8 -65, i8 64, i8 38, i8 -103, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 101, i8 -98, i8 9, i8 62, i8 3, i8 -28, i8 69, i8 -65, i8 116, i8 81, i8 -79, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 87, i8 -39, i8 28, i8 62, i8 112, i8 -40, i8 65, i8 -65, i8 119, i8 -7, i8 -65, i8 -78, i8 0, i8 0, i8 0, i8 63, i8 39, i8 -83, i8 47, i8 62, i8 -7, i8 -82, i8 61, i8 -65, i8 -20, i8 -85, i8 -102, i8 -79, i8 0, i8 0, i8 0, i8 63, i8 -21, i8 22, i8 66, i8 62, i8 66, i8 104, i8 57, i8 -65, i8 7, i8 0, i8 -127, i8 50, i8 0, i8 0, i8 0, i8 63, i8 26, i8 -10, i8 -107, i8 -66, i8 -13, i8 4, i8 53, i8 -65, i8 122, i8 -25, i8 79, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 125, i8 47, i8 -115, i8 -66, i8 -69, i8 -123, i8 48, i8 -65, i8 50, i8 45, i8 -82, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 14, i8 -94, i8 -124, i8 -66, i8 74, i8 -21, i8 43, i8 -65, i8 54, i8 49, i8 -73, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 63, i8 -98, i8 120, i8 -66, i8 86, i8 54, i8 39, i8 -65, i8 67, i8 -125, i8 3, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -13, i8 111, i8 104, i8 -66, i8 -103, i8 103, i8 34, i8 -65, i8 -69, i8 35, i8 33, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 -73, i8 -69, i8 88, i8 -66, i8 -47, i8 127, i8 29, i8 -65, i8 12, i8 5, i8 -110, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 -9, i8 -125, i8 73, i8 -66, i8 -64, i8 127, i8 24, i8 -65, i8 -13, i8 -93, i8 -57, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 12, i8 -53, i8 58, i8 -66, i8 42, i8 104, i8 19, i8 -65, i8 46, i8 -47, i8 -51, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 59, i8 -109, i8 44, i8 -66, i8 -38, i8 57, i8 14, i8 -65, i8 -25, i8 50, i8 74, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -75, i8 -34, i8 30, i8 -66, i8 -101, i8 -11, i8 8, i8 -65, i8 78, i8 75, i8 -66, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -105, i8 -81, i8 17, i8 -66, i8 61, i8 -100, i8 3, i8 -65, i8 2, i8 -96, i8 91, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -22, i8 7, i8 5, i8 -66, i8 39, i8 93, i8 -4, i8 -66, i8 -87, i8 -20, i8 -128, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 68, i8 -45, i8 -15, i8 -67, i8 -22, i8 90, i8 -15, i8 -66, i8 57, i8 33, i8 -1, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 56, i8 -83, i8 -38, i8 -67, i8 117, i8 51, i8 -26, i8 -66, i8 116, i8 -57, i8 -39, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 67, i8 -95, i8 -60, i8 -67, i8 -128, i8 -24, i8 -38, i8 -66, i8 -52, i8 21, i8 30, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 -52, i8 -78, i8 -81, i8 -67, i8 -54, i8 123, i8 -49, i8 -66, i8 99, i8 59, i8 106, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 12, i8 -27, i8 -101, i8 -67, i8 21, i8 -17, i8 -61, i8 -66, i8 44, i8 -43, i8 -43, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 18, i8 59, i8 -119, i8 -67, i8 42, i8 68, i8 -72, i8 -66, i8 -90, i8 91, i8 112, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 126, i8 111, i8 111, i8 -67, i8 -44, i8 124, i8 -84, i8 -66, i8 2, i8 78, i8 37, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 -118, i8 -69, i8 78, i8 -67, i8 -27, i8 -102, i8 -96, i8 -66, i8 -96, i8 -119, i8 62, i8 50, i8 0, i8 0, i8 -128, i8 63, i8 85, i8 95, i8 48, i8 -67, i8 49, i8 -96, i8 -108, i8 -66, i8 -16, i8 89, i8 109, i8 -78, i8 0, i8 0, i8 -128, i8 63, i8 -116, i8 95, i8 20, i8 -67, i8 -109, i8 -114, i8 -120, i8 -66, i8 -98, i8 125, i8 44, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 4, i8 -127, i8 -11, i8 -68, i8 -52, i8 -49, i8 120, i8 -66, i8 29, i8 -44, i8 27, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 84, i8 12, i8 -57, i8 -68, i8 19, i8 92, i8 96, i8 -66, i8 -10, i8 -28, i8 -89, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 48, i8 104, i8 -99, i8 -68, i8 -62, i8 -59, i8 71, i8 -66, i8 125, i8 -106, i8 -27, i8 48, i8 0, i8 0, i8 -128, i8 63, i8 11, i8 54, i8 113, i8 -68, i8 -94, i8 16, i8 47, i8 -66, i8 -7, i8 103, i8 17, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 2, i8 85, i8 49, i8 -68, i8 -125, i8 64, i8 22, i8 -66, i8 20, i8 -26, i8 -24, i8 -79, i8 0, i8 0, i8 -128, i8 63, i8 60, i8 110, i8 -10, i8 -69, i8 115, i8 -78, i8 -6, i8 -67, i8 -49, i8 104, i8 21, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 113, i8 -55, i8 -99, i8 -69, i8 54, i8 -67, i8 -56, i8 -67, i8 -11, i8 -110, i8 117, i8 48, i8 0, i8 0, i8 -128, i8 63, i8 -104, i8 -110, i8 49, i8 -69, i8 5, i8 -87, i8 -106, i8 -67, i8 97, i8 30, i8 83, i8 49, i8 0, i8 0, i8 -128, i8 63, i8 -56, i8 -31, i8 -99, i8 -70, i8 48, i8 -5, i8 72, i8 -67, i8 127, i8 34, i8 -17, i8 48, i8 0, i8 0, i8 -128, i8 63, i8 -33, i8 -25, i8 -99, i8 -71, i8 -80, i8 10, i8 -55, i8 -68, i8 -104, i8 -55, i8 5, i8 48, i8 0, i8 0, i8 -128, i8 63, i8 -1, i8 -1, i8 -1, i8 127, i8 0, i8 64, i8 28, i8 70, i8 0, i8 0, i8 -128, i8 127, i8 -85, i8 -86, i8 42, i8 -66, i8 92, i8 -120, i8 8, i8 60, i8 0, i8 0, i8 0, i8 -65, i8 124, i8 -86, i8 42, i8 61, i8 0, i8 0, i8 73, i8 64, i8 0, i8 -96, i8 125, i8 58, i8 0, i8 32, i8 34, i8 52, i8 26, i8 97, i8 -76, i8 44, i8 -90, i8 -86, i8 42, i8 -66, i8 106, i8 -121, i8 8, i8 60, i8 -1, i8 -73, i8 79, i8 -71, i8 -8, i8 -34, i8 46, i8 54, i8 -125, i8 -7, i8 -94, i8 62, i8 0, i8 0, i8 64, i8 75, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 1, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 2, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 5, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 10, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 20, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 40, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 81, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -94, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 69, i8 1, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -117, i8 2, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 23, i8 5, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 47, i8 10, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 95, i8 20, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -66, i8 40, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 124, i8 81, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -7, i8 -94, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -13, i8 69, i8 1, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -26, i8 -117, i8 2, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -52, i8 23, i8 5, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -104, i8 47, i8 10, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 48, i8 95, i8 20, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 96, i8 -66, i8 40, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -63, i8 124, i8 81, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -125, i8 -7, i8 -94, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 6, i8 -13, i8 69, i8 1, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 13, i8 -26, i8 -117, i8 2, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 27, i8 -52, i8 23, i8 5, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 54, i8 -104, i8 47, i8 10, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 109, i8 48, i8 95, i8 20, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -37, i8 96, i8 -66, i8 40, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 -73, i8 -63, i8 124, i8 81, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 0, i8 110, i8 -125, i8 -7, i8 -94, i8 0, i8 0, i8 0, i8 0, i8 1, i8 0, i8 0, i8 0, i8 -36, i8 6, i8 -13, i8 69, i8 0, i8 0, i8 0, i8 0, i8 2, i8 0, i8 0, i8 0, i8 -71, i8 13, i8 -26, i8 -117, i8 0, i8 0, i8 0, i8 0, i8 5, i8 0, i8 0, i8 0, i8 114, i8 27, i8 -52, i8 23, i8 0, i8 0, i8 0, i8 0, i8 10, i8 0, i8 0, i8 0, i8 -28, i8 54, i8 -104, i8 47, i8 0, i8 0, i8 0, i8 0, i8 20, i8 0, i8 0, i8 0, i8 -55, i8 109, i8 48, i8 95, i8 0, i8 0, i8 0, i8 0, i8 40, i8 0, i8 0, i8 0, i8 -109, i8 -37, i8 96, i8 -66, i8 0, i8 0, i8 0, i8 0, i8 81, i8 0, i8 0, i8 0, i8 39, i8 -73, i8 -63, i8 124, i8 0, i8 0, i8 0, i8 0, i8 -94, i8 0, i8 0, i8 0, i8 78, i8 110, i8 -125, i8 -7, i8 0, i8 0, i8 0, i8 0, i8 69, i8 1, i8 0, i8 0, i8 -100, i8 -36, i8 6, i8 -13, i8 0, i8 0, i8 0, i8 0, i8 -117, i8 2, i8 0, i8 0, i8 57, i8 -71, i8 13, i8 -26, i8 0, i8 0, i8 0, i8 0, i8 23, i8 5, i8 0, i8 0, i8 114, i8 114, i8 27, i8 -52, i8 0, i8 0, i8 0, i8 0, i8 47, i8 10, i8 0, i8 0, i8 -28, i8 -28, i8 54, i8 -104, i8 0, i8 0, i8 0, i8 0, i8 95, i8 20, i8 0, i8 0, i8 -56, i8 -55, i8 109, i8 48, i8 0, i8 0, i8 0, i8 0, i8 -66, i8 40, i8 0, i8 0, i8 -111, i8 -109, i8 -37, i8 96, i8 0, i8 0, i8 0, i8 0, i8 124, i8 81, i8 0, i8 0, i8 34, i8 39, i8 -73, i8 -63, i8 0, i8 0, i8 0, i8 0, i8 -7, i8 -94, i8 0, i8 0, i8 68, i8 78, i8 110, i8 -125, i8 0, i8 0, i8 0, i8 0, i8 -13, i8 69, i8 1, i8 0, i8 -120, i8 -100, i8 -36, i8 6, i8 0, i8 0, i8 0, i8 0, i8 -26, i8 -117, i8 2, i8 0, i8 16, i8 57, i8 -71, i8 13, i8 0, i8 0, i8 0, i8 0, i8 -52, i8 23, i8 5, i8 0, i8 32, i8 114, i8 114, i8 27, i8 0, i8 0, i8 0, i8 0, i8 -104, i8 47, i8 10, i8 0, i8 65, i8 -28, i8 -28, i8 54, i8 0, i8 0, i8 0, i8 0, i8 48, i8 95, i8 20, i8 0, i8 -126, i8 -56, i8 -55, i8 109, i8 0, i8 0, i8 0, i8 0, i8 96, i8 -66, i8 40, i8 0, i8 5, i8 -111, i8 -109, i8 -37, i8 0, i8 0, i8 0, i8 0, i8 -63, i8 124, i8 81, i8 0, i8 10, i8 34, i8 39, i8 -73, i8 0, i8 0, i8 0, i8 0, i8 -125, i8 -7, i8 -94, i8 0, i8 21, i8 68, i8 78, i8 110, i8 0, i8 0, i8 0, i8 0, i8 6, i8 -13, i8 69, i8 1, i8 42, i8 -120, i8 -100, i8 -36, i8 0, i8 0, i8 0, i8 0, i8 13, i8 -26, i8 -117, i8 2, i8 84, i8 16, i8 57, i8 -71, i8 0, i8 0, i8 0, i8 0, i8 27, i8 -52, i8 23, i8 5, i8 -87, i8 32, i8 114, i8 114, i8 0, i8 0, i8 0, i8 0, i8 54, i8 -104, i8 47, i8 10, i8 82, i8 65, i8 -28, i8 -28, i8 0, i8 0, i8 0, i8 0, i8 109, i8 48, i8 95, i8 20, i8 -91, i8 -126, i8 -56, i8 -55, i8 0, i8 0, i8 0, i8 0, i8 -37, i8 96, i8 -66, i8 40, i8 74, i8 5, i8 -111, i8 -109, i8 0, i8 0, i8 0, i8 0, i8 -73, i8 -63, i8 124, i8 81, i8 -108, i8 10, i8 34, i8 39, i8 0, i8 0, i8 0, i8 0, i8 110, i8 -125, i8 -7, i8 -94, i8 41, i8 21, i8 68, i8 78, i8 1, i8 0, i8 0, i8 0, i8 -36, i8 6, i8 -13, i8 69, i8 83, i8 42, i8 -120, i8 -100, i8 2, i8 0, i8 0, i8 0, i8 -71, i8 13, i8 -26, i8 -117, i8 -89, i8 84, i8 16, i8 57, i8 5, i8 0, i8 0, i8 0, i8 114, i8 27, i8 -52, i8 23, i8 79, i8 -87, i8 32, i8 114, i8 10, i8 0, i8 0, i8 0, i8 -28, i8 54, i8 -104, i8 47, i8 -97, i8 82, i8 65, i8 -28, i8 20, i8 0, i8 0, i8 0, i8 -55, i8 109, i8 48, i8 95, i8 63, i8 -91, i8 -126, i8 -56, i8 40, i8 0, i8 0, i8 0, i8 -109, i8 -37, i8 96, i8 -66, i8 127, i8 74, i8 5, i8 -111, i8 81, i8 0, i8 0, i8 0, i8 39, i8 -73, i8 -63, i8 124, i8 -2, i8 -108, i8 10, i8 34, i8 -94, i8 0, i8 0, i8 0, i8 78, i8 110, i8 -125, i8 -7, i8 -4, i8 41, i8 21, i8 68, i8 69, i8 1, i8 0, i8 0, i8 -100, i8 -36, i8 6, i8 -13, i8 -8, i8 83, i8 42, i8 -120, i8 -117, i8 2, i8 0, i8 0, i8 57, i8 -71, i8 13, i8 -26, i8 -16, i8 -89, i8 84, i8 16, i8 23, i8 5, i8 0, i8 0, i8 114, i8 114, i8 27, i8 -52, i8 -31, i8 79, i8 -87, i8 32, i8 47, i8 10, i8 0, i8 0, i8 -28, i8 -28, i8 54, i8 -104, i8 -62, i8 -97, i8 82, i8 65, i8 95, i8 20, i8 0, i8 0, i8 -56, i8 -55, i8 109, i8 48, i8 -124, i8 63, i8 -91, i8 -126, i8 -66, i8 40, i8 0, i8 0, i8 -111, i8 -109, i8 -37, i8 96, i8 9, i8 127, i8 74, i8 5, i8 124, i8 81, i8 0, i8 0, i8 34, i8 39, i8 -73, i8 -63, i8 19, i8 -2, i8 -108, i8 10, i8 -7, i8 -94, i8 0, i8 0, i8 68, i8 78, i8 110, i8 -125, i8 39, i8 -4, i8 41, i8 21, i8 -13, i8 69, i8 1, i8 0, i8 -120, i8 -100, i8 -36, i8 6, i8 78, i8 -8, i8 83, i8 42, i8 -26, i8 -117, i8 2, i8 0, i8 16, i8 57, i8 -71, i8 13, i8 -99, i8 -16, i8 -89, i8 84, i8 -52, i8 23, i8 5, i8 0, i8 32, i8 114, i8 114, i8 27, i8 58, i8 -31, i8 79, i8 -87, i8 -104, i8 47, i8 10, i8 0, i8 65, i8 -28, i8 -28, i8 54, i8 117, i8 -62, i8 -97, i8 82, i8 48, i8 95, i8 20, i8 0, i8 -126, i8 -56, i8 -55, i8 109, i8 -22, i8 -124, i8 63, i8 -91, i8 96, i8 -66, i8 40, i8 0, i8 5, i8 -111, i8 -109, i8 -37, i8 -43, i8 9, i8 127, i8 74, i8 -63, i8 124, i8 81, i8 0, i8 10, i8 34, i8 39, i8 -73, i8 -85, i8 19, i8 -2, i8 -108, i8 -125, i8 -7, i8 -94, i8 0, i8 21, i8 68, i8 78, i8 110, i8 87, i8 39, i8 -4, i8 41, i8 6, i8 -13, i8 69, i8 1, i8 42, i8 -120, i8 -100, i8 -36, i8 -81, i8 78, i8 -8, i8 83, i8 13, i8 -26, i8 -117, i8 2, i8 84, i8 16, i8 57, i8 -71, i8 95, i8 -99, i8 -16, i8 -89, i8 27, i8 -52, i8 23, i8 5, i8 -87, i8 32, i8 114, i8 114, i8 -66, i8 58, i8 -31, i8 79, i8 54, i8 -104, i8 47, i8 10, i8 82, i8 65, i8 -28, i8 -28, i8 125, i8 117, i8 -62, i8 -97, i8 109, i8 48, i8 95, i8 20, i8 -91, i8 -126, i8 -56, i8 -55, i8 -6, i8 -22, i8 -124, i8 63, i8 -37, i8 96, i8 -66, i8 40, i8 74, i8 5, i8 -111, i8 -109, i8 -12, i8 -43, i8 9, i8 127, i8 -73, i8 -63, i8 124, i8 81, i8 -108, i8 10, i8 34, i8 39, i8 -24, i8 -85, i8 19, i8 -2, i8 110, i8 -125, i8 -7, i8 -94, i8 41, i8 21, i8 68, i8 78, i8 -47, i8 87, i8 39, i8 -4, i8 -36, i8 6, i8 -13, i8 69, i8 83, i8 42, i8 -120, i8 -100, i8 -93, i8 -81, i8 78, i8 -8, i8 -71, i8 13, i8 -26, i8 -117, i8 -89, i8 84, i8 16, i8 57, i8 71, i8 95, i8 -99, i8 -16, i8 114, i8 27, i8 -52, i8 23, i8 79, i8 -87, i8 32, i8 114, i8 -113, i8 -66, i8 58, i8 -31, i8 -28, i8 54, i8 -104, i8 47, i8 -97, i8 82, i8 65, i8 -28, i8 31, i8 125, i8 117, i8 -62, i8 -55, i8 109, i8 48, i8 95, i8 63, i8 -91, i8 -126, i8 -56, i8 62, i8 -6, i8 -22, i8 -124, i8 -109, i8 -37, i8 96, i8 -66, i8 127, i8 74, i8 5, i8 -111, i8 125, i8 -12, i8 -43, i8 9, i8 39, i8 -73, i8 -63, i8 124, i8 -2, i8 -108, i8 10, i8 34, i8 -6, i8 -24, i8 -85, i8 19, i8 78, i8 110, i8 -125, i8 -7, i8 -4, i8 41, i8 21, i8 68, i8 -11, i8 -47, i8 87, i8 39, i8 -100, i8 -36, i8 6, i8 -13, i8 -8, i8 83, i8 42, i8 -120, i8 -22, i8 -93, i8 -81, i8 78, i8 57, i8 -71, i8 13, i8 -26, i8 -16, i8 -89, i8 84, i8 16, i8 -44, i8 71, i8 95, i8 -99, i8 114, i8 114, i8 27, i8 -52, i8 -31, i8 79, i8 -87, i8 32, i8 -87, i8 -113, i8 -66, i8 58, i8 -28, i8 -28, i8 54, i8 -104, i8 -62, i8 -97, i8 82, i8 65, i8 83, i8 31, i8 125, i8 117, i8 -56, i8 -55, i8 109, i8 48, i8 -124, i8 63, i8 -91, i8 -126, i8 -90, i8 62, i8 -6, i8 -22, i8 -111, i8 -109, i8 -37, i8 96, i8 9, i8 127, i8 74, i8 5, i8 77, i8 125, i8 -12, i8 -43, i8 34, i8 39, i8 -73, i8 -63, i8 19, i8 -2, i8 -108, i8 10, i8 -102, i8 -6, i8 -24, i8 -85, i8 68, i8 78, i8 110, i8 -125, i8 39, i8 -4, i8 41, i8 21, i8 52, i8 -11, i8 -47, i8 87, i8 -120, i8 -100, i8 -36, i8 6, i8 78, i8 -8, i8 83, i8 42, i8 105, i8 -22, i8 -93, i8 -81, i8 16, i8 57, i8 -71, i8 13, i8 -99, i8 -16, i8 -89, i8 84, i8 -45, i8 -44, i8 71, i8 95, i8 32, i8 114, i8 114, i8 27, i8 58, i8 -31, i8 79, i8 -87, i8 -90, i8 -87, i8 -113, i8 -66, i8 65, i8 -28, i8 -28, i8 54, i8 117, i8 -62, i8 -97, i8 82, i8 77, i8 83, i8 31, i8 125, i8 -126, i8 -56, i8 -55, i8 109, i8 -22, i8 -124, i8 63, i8 -91, i8 -101, i8 -90, i8 62, i8 -6, i8 5, i8 -111, i8 -109, i8 -37, i8 -43, i8 9, i8 127, i8 74, i8 55, i8 77, i8 125, i8 -12, i8 10, i8 34, i8 39, i8 -73, i8 -85, i8 19, i8 -2, i8 -108, i8 110, i8 -102, i8 -6, i8 -24, i8 21, i8 68, i8 78, i8 110, i8 87, i8 39, i8 -4, i8 41, i8 -35, i8 52, i8 -11, i8 -47, i8 42, i8 -120, i8 -100, i8 -36, i8 -81, i8 78, i8 -8, i8 83, i8 -69, i8 105, i8 -22, i8 -93, i8 84, i8 16, i8 57, i8 -71, i8 95, i8 -99, i8 -16, i8 -89, i8 119, i8 -45, i8 -44, i8 71, i8 -87, i8 32, i8 114, i8 114, i8 -66, i8 58, i8 -31, i8 79, i8 -18, i8 -90, i8 -87, i8 -113, i8 82, i8 65, i8 -28, i8 -28, i8 125, i8 117, i8 -62, i8 -97, i8 -36, i8 77, i8 83, i8 31, i8 -91, i8 -126, i8 -56, i8 -55, i8 -6, i8 -22, i8 -124, i8 63, i8 -72, i8 -101, i8 -90, i8 62, i8 74, i8 5, i8 -111, i8 -109, i8 -12, i8 -43, i8 9, i8 127, i8 112, i8 55, i8 77, i8 125, i8 -108, i8 10, i8 34, i8 39, i8 -24, i8 -85, i8 19, i8 -2, i8 -32, i8 110, i8 -102, i8 -6, i8 41, i8 21, i8 68, i8 78, i8 -47, i8 87, i8 39, i8 -4, i8 -64, i8 -35, i8 52, i8 -11, i8 83, i8 42, i8 -120, i8 -100, i8 -93, i8 -81, i8 78, i8 -8, i8 -127, i8 -69, i8 105, i8 -22, i8 -89, i8 84, i8 16, i8 57, i8 71, i8 95, i8 -99, i8 -16, i8 3, i8 119, i8 -45, i8 -44, i8 79, i8 -87, i8 32, i8 114, i8 -113, i8 -66, i8 58, i8 -31, i8 6, i8 -18, i8 -90, i8 -87, i8 -97, i8 82, i8 65, i8 -28, i8 31, i8 125, i8 117, i8 -62, i8 13, i8 -36, i8 77, i8 83, i8 63, i8 -91, i8 -126, i8 -56, i8 62, i8 -6, i8 -22, i8 -124, i8 27, i8 -72, i8 -101, i8 -90, i8 127, i8 74, i8 5, i8 -111, i8 125, i8 -12, i8 -43, i8 9, i8 54, i8 112, i8 55, i8 77, i8 -2, i8 -108, i8 10, i8 34, i8 -6, i8 -24, i8 -85, i8 19, i8 109, i8 -32, i8 110, i8 -102, i8 -4, i8 41, i8 21, i8 68, i8 -11, i8 -47, i8 87, i8 39, i8 -37, i8 -64, i8 -35, i8 52, i8 -8, i8 83, i8 42, i8 -120, i8 -22, i8 -93, i8 -81, i8 78, i8 -74, i8 -127, i8 -69, i8 105, i8 -16, i8 -89, i8 84, i8 16, i8 -44, i8 71, i8 95, i8 -99, i8 109, i8 3, i8 119, i8 -45, i8 -31, i8 79, i8 -87, i8 32, i8 -87, i8 -113, i8 -66, i8 58, i8 -37, i8 6, i8 -18, i8 -90, i8 -62, i8 -97, i8 82, i8 65, i8 83, i8 31, i8 125, i8 117, i8 -74, i8 13, i8 -36, i8 77, i8 -124, i8 63, i8 -91, i8 -126, i8 -90, i8 62, i8 -6, i8 -22, i8 108, i8 27, i8 -72, i8 -101, i8 9, i8 127, i8 74, i8 5, i8 77, i8 125, i8 -12, i8 -43, i8 -40, i8 54, i8 112, i8 55, i8 19, i8 -2, i8 -108, i8 10, i8 -102, i8 -6, i8 -24, i8 -85, i8 -79, i8 109, i8 -32, i8 110, i8 39, i8 -4, i8 41, i8 21, i8 52, i8 -11, i8 -47, i8 87, i8 98, i8 -37, i8 -64, i8 -35, i8 78, i8 -8, i8 83, i8 42, i8 105, i8 -22, i8 -93, i8 -81, i8 -59, i8 -74, i8 -127, i8 -69, i8 -99, i8 -16, i8 -89, i8 84, i8 -45, i8 -44, i8 71, i8 95, i8 -118, i8 109, i8 3, i8 119, i8 58, i8 -31, i8 79, i8 -87, i8 -90, i8 -87, i8 -113, i8 -66, i8 20, i8 -37, i8 6, i8 -18, i8 117, i8 -62, i8 -97, i8 82, i8 77, i8 83, i8 31, i8 125, i8 41, i8 -74, i8 13, i8 -36, i8 -22, i8 -124, i8 63, i8 -91, i8 -101, i8 -90, i8 62, i8 -6, i8 82, i8 108, i8 27, i8 -72, i8 -43, i8 9, i8 127, i8 74, i8 55, i8 77, i8 125, i8 -12, i8 -91, i8 -40, i8 54, i8 112, i8 -85, i8 19, i8 -2, i8 -108, i8 110, i8 -102, i8 -6, i8 -24, i8 74, i8 -79, i8 109, i8 -32, i8 87, i8 39, i8 -4, i8 41, i8 -35, i8 52, i8 -11, i8 -47, i8 -107, i8 98, i8 -37, i8 -64, i8 -81, i8 78, i8 -8, i8 83, i8 -69, i8 105, i8 -22, i8 -93, i8 43, i8 -59, i8 -74, i8 -127, i8 95, i8 -99, i8 -16, i8 -89, i8 119, i8 -45, i8 -44, i8 71, i8 86, i8 -118, i8 109, i8 3, i8 -66, i8 58, i8 -31, i8 79, i8 -18, i8 -90, i8 -87, i8 -113, i8 -84, i8 20, i8 -37, i8 6, i8 125, i8 117, i8 -62, i8 -97, i8 -36, i8 77, i8 83, i8 31, i8 89, i8 41, i8 -74, i8 13, i8 -6, i8 -22, i8 -124, i8 63, i8 -72, i8 -101, i8 -90, i8 62, i8 -77, i8 82, i8 108, i8 27, i8 -12, i8 -43, i8 9, i8 127, i8 112, i8 55, i8 77, i8 125, i8 102, i8 -91, i8 -40, i8 54, i8 -24, i8 -85, i8 19, i8 -2, i8 -32, i8 110, i8 -102, i8 -6, i8 -52, i8 74, i8 -79, i8 109, i8 -47, i8 87, i8 39, i8 -4, i8 -64, i8 -35, i8 52, i8 -11, i8 -103, i8 -107, i8 98, i8 -37, i8 -93, i8 -81, i8 78, i8 -8, i8 -127, i8 -69, i8 105, i8 -22, i8 50, i8 43, i8 -59, i8 -74, i8 71, i8 95, i8 -99, i8 -16, i8 3, i8 119, i8 -45, i8 -44, i8 100, i8 86, i8 -118, i8 109, i8 -113, i8 -66, i8 58, i8 -31, i8 6, i8 -18, i8 -90, i8 -87, i8 -55, i8 -84, i8 20, i8 -37, i8 31, i8 125, i8 117, i8 -62, i8 13, i8 -36, i8 77, i8 83, i8 -109, i8 89, i8 41, i8 -74, i8 62, i8 -6, i8 -22, i8 -124, i8 27, i8 -72, i8 -101, i8 -90, i8 39, i8 -77, i8 82, i8 108, i8 125, i8 -12, i8 -43, i8 9, i8 54, i8 112, i8 55, i8 77, i8 79, i8 102, i8 -91, i8 -40, i8 -6, i8 -24, i8 -85, i8 19, i8 109, i8 -32, i8 110, i8 -102, i8 -98, i8 -52, i8 74, i8 -79, i8 -11, i8 -47, i8 87, i8 39, i8 -37, i8 -64, i8 -35, i8 52, i8 60, i8 -103, i8 -107, i8 98, i8 -22, i8 -93, i8 -81, i8 78, i8 -74, i8 -127, i8 -69, i8 105, i8 120, i8 50, i8 43, i8 -59, i8 -44, i8 71, i8 95, i8 -99, i8 109, i8 3, i8 119, i8 -45, i8 -15, i8 100, i8 86, i8 -118, i8 -87, i8 -113, i8 -66, i8 58, i8 -37, i8 6, i8 -18, i8 -90, i8 -30, i8 -55, i8 -84, i8 20, i8 83, i8 31, i8 125, i8 117, i8 -74, i8 13, i8 -36, i8 77, i8 -60, i8 -109, i8 89, i8 41, i8 -90, i8 62, i8 -6, i8 -22, i8 108, i8 27, i8 -72, i8 -101, i8 -120, i8 39, i8 -77, i8 82, i8 77, i8 125, i8 -12, i8 -43, i8 -40, i8 54, i8 112, i8 55, i8 16, i8 79, i8 102, i8 -91, i8 -102, i8 -6, i8 -24, i8 -85, i8 -79, i8 109, i8 -32, i8 110, i8 33, i8 -98, i8 -52, i8 74, i8 52, i8 -11, i8 -47, i8 87, i8 98, i8 -37, i8 -64, i8 -35, i8 67, i8 60, i8 -103, i8 -107, i8 105, i8 -22, i8 -93, i8 -81, i8 -59, i8 -74, i8 -127, i8 -69, i8 -121, i8 120, i8 50, i8 43, i8 -45, i8 -44, i8 71, i8 95, i8 -118, i8 109, i8 3, i8 119, i8 14, i8 -15, i8 100, i8 86, i8 -90, i8 -87, i8 -113, i8 -66, i8 20, i8 -37, i8 6, i8 -18, i8 28, i8 -30, i8 -55, i8 -84, i8 77, i8 83, i8 31, i8 125, i8 41, i8 -74, i8 13, i8 -36, i8 57, i8 -60, i8 -109, i8 89, i8 -101, i8 -90, i8 62, i8 -6, i8 82, i8 108, i8 27, i8 -72, i8 114, i8 -120, i8 39, i8 -77, i8 55, i8 77, i8 125, i8 -12, i8 -91, i8 -40, i8 54, i8 112, i8 -28, i8 16, i8 79, i8 102, i8 110, i8 -102, i8 -6, i8 -24, i8 74, i8 -79, i8 109, i8 -32, i8 -56, i8 33, i8 -98, i8 -52, i8 -35, i8 52, i8 -11, i8 -47, i8 -107, i8 98, i8 -37, i8 -64, i8 -112, i8 67, i8 60, i8 -103, i8 -69, i8 105, i8 -22, i8 -93, i8 43, i8 -59, i8 -74, i8 -127, i8 32, i8 -121, i8 120, i8 50, i8 119, i8 -45, i8 -44, i8 71, i8 86, i8 -118, i8 109, i8 3, i8 65, i8 14, i8 -15, i8 100, i8 -18, i8 -90, i8 -87, i8 -113, i8 -84, i8 20, i8 -37, i8 6, i8 -126, i8 28, i8 -30, i8 -55, i8 -36, i8 77, i8 83, i8 31, i8 89, i8 41, i8 -74, i8 13, i8 4, i8 57, i8 -60, i8 -109, i8 -72, i8 -101, i8 -90, i8 62, i8 -77, i8 82, i8 108, i8 27, i8 8, i8 114, i8 -120, i8 39, i8 112, i8 55, i8 77, i8 125, i8 102, i8 -91, i8 -40, i8 54, i8 16, i8 -28, i8 16, i8 79, i8 -32, i8 110, i8 -102, i8 -6, i8 -52, i8 74, i8 -79, i8 109, i8 32, i8 -56, i8 33, i8 -98, i8 -64, i8 -35, i8 52, i8 -11, i8 -103, i8 -107, i8 98, i8 -37, i8 65, i8 -112, i8 67, i8 60, i8 -127, i8 -69, i8 105, i8 -22, i8 50, i8 43, i8 -59, i8 -74, i8 -125, i8 32, i8 -121, i8 120, i8 3, i8 119, i8 -45, i8 -44, i8 100, i8 86, i8 -118, i8 109, i8 7, i8 65, i8 14, i8 -15, i8 6, i8 -18, i8 -90, i8 -87, i8 -55, i8 -84, i8 20, i8 -37, i8 15, i8 -126, i8 28, i8 -30, i8 13, i8 -36, i8 77, i8 83, i8 -109, i8 89, i8 41, i8 -74, i8 31, i8 4, i8 57, i8 -60, i8 27, i8 -72, i8 -101, i8 -90, i8 39, i8 -77, i8 82, i8 108, i8 63, i8 8, i8 114, i8 -120, i8 54, i8 112, i8 55, i8 77, i8 79, i8 102, i8 -91, i8 -40, i8 127, i8 16, i8 -28, i8 16, i8 109, i8 -32, i8 110, i8 -102, i8 -98, i8 -52, i8 74, i8 -79, i8 -1, i8 32, i8 -56, i8 33}
+!77 = !{!"omnipotent char", !78}
+!78 = !{!"Simple C/C++ TBAA"}
+!79 = !{!"int", !77}
+!80 = !{float 2.500000e+00}
+!81 = !{!"float", !77}

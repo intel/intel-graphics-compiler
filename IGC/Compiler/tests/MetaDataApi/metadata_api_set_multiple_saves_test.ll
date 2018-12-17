@@ -23,6 +23,6 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: opt -igc-test-metadata-api-set -md-multiple-saves -S %S/metadata_api_set_test.ll -o %t.ll 
+; RUN: igc_opt -igc-test-metadata-api-set -md-multiple-saves -S %S/metadata_api_set_test.ll -o %t.ll 
 ; RUN: FileCheck %S/metadata_api_set_test.ll --input-file=%t.ll
 

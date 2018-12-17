@@ -23,18 +23,19 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: opt -igc-opencl-printf-resolution -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-opencl-printf-resolution -S %s -o - | FileCheck %s
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This LIT test checks that OpenCLPrintfResolution pass handles line debug info.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a64:64:64-f80:128:128-n8:16:32:64"
 target triple = "igil_64_GEN8"
 
-@.str = private addrspace(2) unnamed_addr constant [30 x i8] c"%v4f, %p, %d, %ld, %d, %d, %s\00", align 1
-@.str1 = private addrspace(2) unnamed_addr constant [12 x i8] c"string-test\00", align 1
-@.str2 = private addrspace(2) unnamed_addr constant [14 x i8] c"second printf\00", align 1
+@.str = private addrspace(2) constant [30 x i8] c"%v4f, %p, %d, %ld, %d, %d, %s\00", align 1
+@.str1 = private addrspace(2) constant [12 x i8] c"string-test\00", align 1
+@.str2 = private addrspace(2) constant [14 x i8] c"second printf\00", align 1
+
+declare i32 @printf(i8 addrspace(2)*, ...)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Check these cases:
@@ -46,13 +47,13 @@ target triple = "igil_64_GEN8"
 
 define void @test(<4 x float> %src1, i32 addrspace(1)* %src2, i64 %src3, i8 signext %src4, i16 signext %src5, i8 addrspace(1)* %printfBuffer) #0 {
 entry:
-  %arrayidx = getelementptr inbounds i32 addrspace(1)* %src2, i32 0, !dbg !1
-  %0 = load i32 addrspace(1)* %arrayidx, align 4, !dbg !1
+  %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %src2, i32 0, !dbg !1
+  %0 = load i32, i32 addrspace(1)* %arrayidx, align 4, !dbg !1
   %conv = sext i8 %src4 to i32, !dbg !1
   %conv1 = sext i16 %src5 to i32, !dbg !1
-  %1 = getelementptr inbounds [30 x i8] addrspace(2)* @.str, i32 0, i32 0
-  %2 = getelementptr inbounds [12 x i8] addrspace(2)* @.str1, i32 0, i32 0
-  %call = call i32 (i8 addrspace(2)*, ...)* @printf(i8 addrspace(2)* %1, <4 x float> %src1, i32 addrspace(1)* %src2, i32 %0, i64 %src3, i32 %conv, i32 %conv1, i8 addrspace(2)* %2), !dbg !2
+  %1 = getelementptr inbounds [30 x i8], [30 x i8] addrspace(2)* @.str, i32 0, i32 0
+  %2 = getelementptr inbounds [12 x i8], [12 x i8] addrspace(2)* @.str1, i32 0, i32 0
+  %call = call i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %1, <4 x float> %src1, i32 addrspace(1)* %src2, i32 %0, i64 %src3, i32 %conv, i32 %conv1, i8 addrspace(2)* %2), !dbg !2
   br label %BB
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -192,14 +193,14 @@ entry:
 
 ; CHECK: BB:
 BB:
-  %3 = getelementptr inbounds [14 x i8] addrspace(2)* @.str2, i32 0, i32 0
-  %call2 = call i32 (i8 addrspace(2)*, ...)* @printf(i8 addrspace(2)* %3), !dbg !3
+  %3 = getelementptr inbounds [14 x i8], [14 x i8] addrspace(2)* @.str2, i32 0, i32 0
+  %call2 = call i32 (i8 addrspace(2)*, ...) @printf(i8 addrspace(2)* %3), !dbg !3
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; 2nd printf checks
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; CHECK-NOT: call i32 (i8 addrspace(2)*, ...)* @printf
-; CHECK: [[inst6:%[a-zA-Z0-9_]+]] = getelementptr inbounds [14 x i8] addrspace(2)* @.str2, i32 0, i32 0
+; CHECK: [[inst6:%[a-zA-Z0-9_]+]] = getelementptr inbounds [14 x i8], [14 x i8] addrspace(2)* @.str2, i32 0, i32 0
 ; CHECK: [[write_offset49:%[a-zA-Z0-9_]+]] = call i32 @__builtin_IB_atomic_add_global_u32(i8 addrspace(1)* %printfBuffer, i32 4), !dbg !3
 ; CHECK: [[end_offset50:%[a-zA-Z0-9_]+]] = add i32 [[write_offset49]], 4, !dbg !3
 ; CHECK: [[write_offset51:%[a-zA-Z0-9_]+]] = zext i32 [[write_offset49]] to i64, !dbg !3
@@ -241,8 +242,6 @@ BB:
   ret void
 }
 
-declare i32 @printf(i8 addrspace(2)*, ...)
-
 attributes #0 = { nounwind }
 
 
@@ -252,25 +251,25 @@ attributes #0 = { nounwind }
 !igc.functions = !{!8}
 !igc.inline.programscope.offsets = !{!9, !10, !11}
 
-!0 = metadata !{}
-!1 = metadata !{i32 5, i32 0, metadata !0, null}
-!2 = metadata !{i32 6, i32 0, metadata !0, null}
-!3 = metadata !{i32 7, i32 0, metadata !0, null}
-!4 = metadata !{metadata !"function_type", i32 0}
-!5 = metadata !{i32 13} ;; PRINTF_BUFFER
-!6 = metadata !{metadata !"implicit_arg_desc", metadata !5}
-!7 = metadata !{metadata !4, metadata !6}
-!8 = metadata !{void (<4 x float>, i32 addrspace(1)*, i64, i8, i16, i8 addrspace(1)*)* @test, metadata !7}
-!9 = metadata !{[12 x i8] addrspace(2)* @.str1, i32 30}
-!10 = metadata !{[30 x i8] addrspace(2)* @.str, i32 0}
-!11 = metadata !{[14 x i8] addrspace(2)* @.str2, i32 42}
+!0 = !{}
+!1 = !{i32 5, i32 0, !0, null}
+!2 = !{i32 6, i32 0, !0, null}
+!3 = !{i32 7, i32 0, !0, null}
+!4 = !{!"function_type", i32 0}
+!5 = !{i32 13} ;; PRINTF_BUFFER
+!6 = !{!"implicit_arg_desc", !5}
+!7 = !{!4, !6}
+!8 = !{void (<4 x float>, i32 addrspace(1)*, i64, i8, i16, i8 addrspace(1)*)* @test, !7}
+!9 = !{[12 x i8] addrspace(2)* @.str1, i32 30}
+!10 = !{[30 x i8] addrspace(2)* @.str, i32 0}
+!11 = !{[14 x i8] addrspace(2)* @.str2, i32 42}
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; metadata describes the strings used in the above printfs
+;; describes the strings used in the above printfs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; CHECK: !printf.strings.test = !{[[metadata12:![a-zA-Z0-9_]+]], [[metadata13:![a-zA-Z0-9_]+]], [[metadata14:![a-zA-Z0-9_]+]]}
 
-; CHECK: [[metadata12]] = metadata !{i32 0, metadata !"%v4f, %p, %d, %ld, %d, %d, %s"}
-; CHECK: [[metadata13]] = metadata !{i32 1, metadata !"string-test"}
-; CHECK: [[metadata14]] = metadata !{i32 2, metadata !"second printf"}
+; CHECK: [[metadata12]] = !{i32 0, !"%v4f, %p, %d, %ld, %d, %d, %s"}
+; CHECK: [[metadata13]] = !{i32 1, !"string-test"}
+; CHECK: [[metadata14]] = !{i32 2, !"second printf"}

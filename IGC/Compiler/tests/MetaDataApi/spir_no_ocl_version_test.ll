@@ -23,7 +23,7 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: opt -igc-spir-metadata-translation -S %s -o %t.ll 
+; RUN: igc_opt -igc-spir-metadata-translation -S %s -o %t.ll 
 ; RUN: FileCheck %s --input-file=%t.ll
 
 target triple = "igil_32_GEN9"
@@ -35,9 +35,9 @@ define void @main(i32 %x) nounwind {
 !opencl.kernels = !{!0}
 !opencl.compiler.options = !{!10}
 
-!0 = metadata !{void (i32)* @main}
-!10 = metadata !{}
+!0 = !{void (i32)* @main}
+!10 = !{}
 
-; CHECK: igc.input.lang.info = !{![[IIR:[0-9]+]]}
+; CHECK: igc.input.ir = !{![[IIR:[0-9]+]]}
 
-; CHECK: ![[IIR]] = metadata !{metadata !"ocl", i32 1, i32 2}
+; CHECK: ![[IIR]] = !{!"ocl", i32 1, i32 2}

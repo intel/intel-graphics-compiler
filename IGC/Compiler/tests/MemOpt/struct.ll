@@ -31,16 +31,16 @@ target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f1
 %struct.S1 = type { <2 x float>, <2 x i32> }
 
 define float @f0(%struct.S* %src) {
-  %p0 = getelementptr inbounds %struct.S* %src, i32 0, i32 0
-  %x = load float* %p0, align 4
-  %p1 = getelementptr inbounds %struct.S* %src, i32 0, i32 1
-  %y = load float* %p1, align 4
+  %p0 = getelementptr inbounds %struct.S, %struct.S* %src, i32 0, i32 0
+  %x = load float, float* %p0, align 4
+  %p1 = getelementptr inbounds %struct.S, %struct.S* %src, i32 0, i32 1
+  %y = load float, float* %p1, align 4
   %s0 = fadd float %x, %y
-  %p2 = getelementptr inbounds %struct.S* %src, i32 0, i32 2
-  %z = load float* %p2, align 4
+  %p2 = getelementptr inbounds %struct.S, %struct.S* %src, i32 0, i32 2
+  %z = load float, float* %p2, align 4
   %s1 = fadd float %s0, %z
-  %p3 = getelementptr inbounds %struct.S* %src, i32 0, i32 3
-  %iw = load i32* %p3, align 4
+  %p3 = getelementptr inbounds %struct.S, %struct.S* %src, i32 0, i32 3
+  %iw = load i32, i32* %p3, align 4
   %w = uitofp i32 %iw to float
   %s2 = fadd float %s1, %w
   ret float %s2
@@ -48,27 +48,27 @@ define float @f0(%struct.S* %src) {
 
 ; CHECK-LABEL: define float @f0
 ; CHECK: %1 = bitcast %struct.S* %src to <4 x float>*
-; CHECK: %2 = load <4 x float>* %1, align 4
+; CHECK: %2 = load <4 x float>, <4 x float>* %1, align 4
 ; CHECK: %3 = extractelement <4 x float> %2, i32 0
 ; CHECK: %4 = extractelement <4 x float> %2, i32 1
 ; CHECK: %5 = extractelement <4 x float> %2, i32 2
-; CHECK: %6 = extractelement <4 x float> %2, i32 3
-; CHECK: %7 = bitcast float %6 to i32
+; CHECK: %bc = bitcast <4 x float> %2 to <4 x i32>
+; CHECK: %6 = extractelement <4 x i32> %bc, i32 3
 ; CHECK: %s0 = fadd float %3, %4
 ; CHECK: %s1 = fadd float %s0, %5
-; CHECK: %w = uitofp i32 %7 to float
+; CHECK: %w = uitofp i32 %6 to float
 ; CHECK: %s2 = fadd float %s1, %w
 ; CHECK: ret float %s2
 
 
 define void @f1(%struct.S* %dst, float %x, float %y, float %z, float %w) {
-  %p0 = getelementptr inbounds %struct.S* %dst, i32 0, i32 0
+  %p0 = getelementptr inbounds %struct.S, %struct.S* %dst, i32 0, i32 0
   store float %x, float* %p0, align 4
-  %p1 = getelementptr inbounds %struct.S* %dst, i32 0, i32 1
+  %p1 = getelementptr inbounds %struct.S, %struct.S* %dst, i32 0, i32 1
   store float %y, float* %p1, align 4
-  %p2 = getelementptr inbounds %struct.S* %dst, i32 0, i32 2
+  %p2 = getelementptr inbounds %struct.S, %struct.S* %dst, i32 0, i32 2
   store float %z, float* %p2, align 4
-  %p3 = getelementptr inbounds %struct.S* %dst, i32 0, i32 3
+  %p3 = getelementptr inbounds %struct.S, %struct.S* %dst, i32 0, i32 3
   %iw = fptoui float %w to i32
   store i32 %iw, i32* %p3, align 4
   ret void
@@ -87,47 +87,47 @@ define void @f1(%struct.S* %dst, float %x, float %y, float %z, float %w) {
 
 
 define float @f2(%struct.S1* %src) {
-  %p0 = getelementptr inbounds %struct.S1* %src, i32 0, i32 0, i32 0
-  %x = load float* %p0, align 4
-  %p1 = getelementptr inbounds %struct.S1* %src, i32 0, i32 0, i32 1
-  %y = load float* %p1, align 4
+  %p0 = getelementptr inbounds %struct.S1, %struct.S1* %src, i32 0, i32 0, i32 0
+  %x = load float, float* %p0, align 4
+  %p1 = getelementptr inbounds %struct.S1, %struct.S1* %src, i32 0, i32 0, i32 1
+  %y = load float, float* %p1, align 4
   %s0 = fadd float %x, %y
-  %p2 = getelementptr inbounds %struct.S1* %src, i32 0, i32 1, i32 0
-  %iz = load i32* %p2, align 4
+  %p2 = getelementptr inbounds %struct.S1, %struct.S1* %src, i32 0, i32 1, i32 0
+  %iz = load i32, i32* %p2, align 4
   %z = uitofp i32 %iz to float
   %s1 = fadd float %s0, %z
-  %p3 = getelementptr inbounds %struct.S1* %src, i32 0, i32 1, i32 1
-  %iw = load i32* %p3, align 4
+  %p3 = getelementptr inbounds %struct.S1, %struct.S1* %src, i32 0, i32 1, i32 1
+  %iw = load i32, i32* %p3, align 4
   %w = uitofp i32 %iw to float
   %s2 = fadd float %s1, %w
   ret float %s2
 }
 
 ; CHECK-LABEL: define float @f2
-; CHECK:  %1 = bitcast %struct.S1* %src to <4 x float>*
-; CHECK:  %2 = load <4 x float>* %1, align 4
-; CHECK:  %3 = extractelement <4 x float> %2, i32 0
-; CHECK:  %4 = extractelement <4 x float> %2, i32 1
-; CHECK:  %5 = extractelement <4 x float> %2, i32 2
-; CHECK:  %6 = bitcast float %5 to i32
-; CHECK:  %7 = extractelement <4 x float> %2, i32 3
-; CHECK:  %8 = bitcast float %7 to i32
-; CHECK:  %s0 = fadd float %3, %4
-; CHECK:  %z = uitofp i32 %6 to float
-; CHECK:  %s1 = fadd float %s0, %z
-; CHECK:  %w = uitofp i32 %8 to float
-; CHECK:  %s2 = fadd float %s1, %w
-; CHECK:  ret float %s2
+; CHECK: %1 = bitcast %struct.S1* %src to <4 x float>*
+; CHECK: %2 = load <4 x float>, <4 x float>* %1, align 4
+; CHECK: %3 = extractelement <4 x float> %2, i32 0
+; CHECK: %4 = extractelement <4 x float> %2, i32 1
+; CHECK: %bc = bitcast <4 x float> %2 to <4 x i32>
+; CHECK: %5 = extractelement <4 x i32> %bc, i32 2
+; CHECK: %bc1 = bitcast <4 x float> %2 to <4 x i32>
+; CHECK: %6 = extractelement <4 x i32> %bc1, i32 3
+; CHECK: %s0 = fadd float %3, %4
+; CHECK: %z = uitofp i32 %5 to float
+; CHECK: %s1 = fadd float %s0, %z
+; CHECK: %w = uitofp i32 %6 to float
+; CHECK: %s2 = fadd float %s1, %w
+; CHECK: ret float %s2
 
 
 define void @f3(%struct.S1* %dst, float %x, float %y, i32 %z, i32 %w) {
-  %p0 = getelementptr inbounds %struct.S1* %dst, i32 0, i32 0, i32 0
+  %p0 = getelementptr inbounds %struct.S1, %struct.S1* %dst, i32 0, i32 0, i32 0
   store float %x, float* %p0, align 4
-  %p1 = getelementptr inbounds %struct.S1* %dst, i32 0, i32 0, i32 1
+  %p1 = getelementptr inbounds %struct.S1, %struct.S1* %dst, i32 0, i32 0, i32 1
   store float %y, float* %p1, align 4
-  %p2 = getelementptr inbounds %struct.S1* %dst, i32 0, i32 1, i32 0
+  %p2 = getelementptr inbounds %struct.S1, %struct.S1* %dst, i32 0, i32 1, i32 0
   store i32 %z, i32* %p2, align 4
-  %p3 = getelementptr inbounds %struct.S1* %dst, i32 0, i32 1, i32 1
+  %p3 = getelementptr inbounds %struct.S1, %struct.S1* %dst, i32 0, i32 1, i32 1
   store i32 %w, i32* %p3, align 4
   ret void
 }
@@ -142,3 +142,13 @@ define void @f3(%struct.S1* %dst, float %x, float %y, i32 %z, i32 %w) {
 ; CHECK: %7 = bitcast %struct.S1* %dst to <4 x float>*
 ; CHECK: store <4 x float> %6, <4 x float>* %7, align 4
 ; CHECK: ret void
+
+!igc.functions = !{!0, !3, !4, !5}
+
+!0 = !{float (%struct.S*)* @f0, !1}
+!3 = !{void (%struct.S*, float, float, float, float)* @f1, !1}
+!4 = !{float (%struct.S1*)* @f2, !1}
+!5 = !{void (%struct.S1*, float, float, i32, i32)* @f3, !1}
+
+!1 = !{!2}
+!2 = !{!"function_type", i32 0}

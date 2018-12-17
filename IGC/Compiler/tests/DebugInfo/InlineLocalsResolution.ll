@@ -23,44 +23,43 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: opt -igc-resolve-inline-locals -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-resolve-inline-locals -S %s -o - | FileCheck %s
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This LIT test checks that InlineLocalsResolution pass handles variable debug info.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a64:64:64-f80:128:128-n8:16:32:64"
 target triple = "igil_32_GEN8"
 
 define void @test1(float addrspace(3)* %dst) #0 {
 entry:
-  call void @llvm.dbg.value(metadata !{float addrspace(3)* %dst}, i64 0, metadata !3), !dbg !1
+  call void @llvm.dbg.value(metadata float addrspace(3)* %dst, i64 0, metadata !3), !dbg !1
   store float 1.000000e+00, float addrspace(3)* %dst, align 4, !dbg !2
   ret void
 
 ; CHECK: [[localToChar:%[a-zA-Z0-9_]+]] = bitcast float addrspace(3)* %dst to i8 addrspace(3)*
-; CHECK: [[movedLocal:%[a-zA-Z0-9_]+]] = getelementptr i8 addrspace(3)* [[localToChar]], i32 0
+; CHECK: [[movedLocal:%[a-zA-Z0-9_]+]] = getelementptr i8, i8 addrspace(3)* [[localToChar]], i32 0
 ; CHECK: [[charToLocal:%[a-zA-Z0-9_]+]] = bitcast i8 addrspace(3)* [[movedLocal]] to float addrspace(3)*
-; CHECK: call void @llvm.dbg.value(metadata !{float addrspace(3)* [[charToLocal]]}, i64 0, metadata !3), !dbg !1
+; CHECK: call void @llvm.dbg.value(metadata float addrspace(3)* [[charToLocal]], i64 0, metadata !3), !dbg !1
 ; CHECK: store float 1.000000e+00, float addrspace(3)* [[charToLocal]], align 4, !dbg !2
 }
 
 
 define void @test2(float addrspace(3)* %dst, i8 addrspace(1)* %localMemStatelessWindowStartAddr, i8 addrspace(1)* %localMemStatelessWindowSize) #0 {
 entry:
-  call void @llvm.dbg.value(metadata !{float addrspace(3)* %dst}, i64 0, metadata !6), !dbg !4
+  call void @llvm.dbg.value(metadata float addrspace(3)* %dst, i64 0, metadata !6), !dbg !4
   %intval = ptrtoint float addrspace(3)* %dst to i32
   %floatval = bitcast i32 %intval to float
   store float %floatval, float addrspace(3)* %dst, align 4, !dbg !5
   ret void
 
 ; CHECK: [[localToChar:%[a-zA-Z0-9_]+]] = bitcast float addrspace(3)* %dst to i8 addrspace(3)*
-; CHECK: [[movedLocal:%[a-zA-Z0-9_]+]] = getelementptr i8 addrspace(3)* [[localToChar]], i32 0
+; CHECK: [[movedLocal:%[a-zA-Z0-9_]+]] = getelementptr i8, i8 addrspace(3)* [[localToChar]], i32 0
 ; CHECK: [[startPtrToInt:%[a-zA-Z0-9_]+]] = ptrtoint i8 addrspace(1)* %localMemStatelessWindowStartAddr to i32
 ; CHECK: [[varPtrToInt:%[a-zA-Z0-9_]+]] = ptrtoint i8 addrspace(3)* [[movedLocal]] to i32
 ; CHECK: [[addStartPtr:%[a-zA-Z0-9_]+]] = add i32 [[startPtrToInt]], [[varPtrToInt]]
 ; CHECK: [[argWithBase:%[a-zA-Z0-9_]+]] = inttoptr i32 [[addStartPtr]] to float addrspace(3)*
-; CHECK: call void @llvm.dbg.value(metadata !{float addrspace(3)* [[argWithBase]]}, i64 0, metadata !6), !dbg !4
+; CHECK: call void @llvm.dbg.value(metadata float addrspace(3)* [[argWithBase]], i64 0, metadata !6), !dbg !4
 ; CHECK: store float %floatval, float addrspace(3)* [[argWithBase]], align 4, !dbg !5
 }
 
@@ -75,22 +74,22 @@ attributes #1 = { nounwind readnone }
 
 !igc.functions = !{!12, !14}
 
-!0 = metadata !{}
-!1 = metadata !{i32 1, i32 0, metadata !0, null}
-!2 = metadata !{i32 3, i32 0, metadata !0, null}
-!3 = metadata !{i32 786689, metadata !0, metadata !"dst", metadata !0, i32 16777217, metadata !0, i32 0, i32 0}
+!0 = !{}
+!1 = !{i32 1, i32 0, !0, null}
+!2 = !{i32 3, i32 0, !0, null}
+!3 = !{i32 786689, !0, !"dst", !0, i32 16777217, !0, i32 0, i32 0}
 
-!4 = metadata !{i32 5, i32 0, metadata !0, null}
-!5 = metadata !{i32 7, i32 0, metadata !0, null}
-!6 = metadata !{i32 786689, metadata !0, metadata !"dst2", metadata !0, i32 16777217, metadata !0, i32 0, i32 0}
+!4 = !{i32 5, i32 0, !0, null}
+!5 = !{i32 7, i32 0, !0, null}
+!6 = !{i32 786689, !0, !"dst2", !0, i32 16777217, !0, i32 0, i32 0}
 
-!7 = metadata !{metadata !"function_type", i32 0}
-!8 = metadata !{i32 39} ;; LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS
-!9 = metadata !{i32 40} ;; LOCAL_MEMORY_STATELESS_WINDOW_SIZE
-!10 = metadata !{metadata !"implicit_arg_desc", metadata !8, metadata !9}
-!11 = metadata !{metadata !7, metadata !10}
-!12 = metadata !{void (float addrspace(3)*, i8 addrspace(1)*, i8 addrspace(1)*)* @test2, metadata !11}
-!13 = metadata !{metadata !7}
-!14 = metadata !{void (float addrspace(3)*)* @test1, metadata !13}
+!7 = !{!"function_type", i32 0}
+!8 = !{i32 39} ;; LOCAL_MEMORY_STATELESS_WINDOW_START_ADDRESS
+!9 = !{i32 40} ;; LOCAL_MEMORY_STATELESS_WINDOW_SIZE
+!10 = !{!"implicit_arg_desc", !8, !9}
+!11 = !{!7, !10}
+!12 = !{void (float addrspace(3)*, i8 addrspace(1)*, i8 addrspace(1)*)* @test2, !11}
+!13 = !{!7}
+!14 = !{void (float addrspace(3)*)* @test1, !13}
 
 

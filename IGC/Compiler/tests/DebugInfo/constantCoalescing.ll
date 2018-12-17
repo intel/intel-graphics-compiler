@@ -23,18 +23,17 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: opt -igc-constant-coalescing -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-constant-coalescing -S %s -o - | FileCheck %s
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This LIT test checks that Constant Coalescing pass handles line debug info.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a64:64:64-f80:128:128-n8:16:32:64"
 target triple = "igil_32_GEN9"
 
 ; Function Attrs: alwaysinline nounwind
 define void @constantCoalescing_test(<4 x float> addrspace(1)* %results, <4 x float> addrspace(2)* %src1)  {
-  %1 = load <4 x float> addrspace(2)* %src1, align 16, !dbg !4
+  %1 = load <4 x float>, <4 x float> addrspace(2)* %src1, align 16, !dbg !4
   %scalar = extractelement <4 x float> %1, i32 0, !dbg !5
   %scalar10 = extractelement <4 x float> %1, i32 1, !dbg !6
   %scalar11 = extractelement <4 x float> %1, i32 2, !dbg !7
@@ -42,21 +41,21 @@ define void @constantCoalescing_test(<4 x float> addrspace(1)* %results, <4 x fl
   %2 = ptrtoint <4 x float> addrspace(2)* %src1 to i32, !dbg !9
   %3 = add i32 %2, 16, !dbg !10
   %4 = inttoptr i32 %3 to <4 x float> addrspace(2)*, !dbg !11
-  %5 = load <4 x float> addrspace(2)* %4, align 16, !dbg !12
+  %5 = load <4 x float>, <4 x float> addrspace(2)* %4, align 16, !dbg !12
   %scalar13 = extractelement <4 x float> %5, i32 0, !dbg !13
   %scalar14 = extractelement <4 x float> %5, i32 1, !dbg !14
   %scalar15 = extractelement <4 x float> %5, i32 2, !dbg !15
   %scalar16 = extractelement <4 x float> %5, i32 3, !dbg !16
   %6 = add i32 %2, 32, !dbg !17
   %7 = inttoptr i32 %6 to <4 x float> addrspace(2)*, !dbg !18
-  %8 = load <4 x float> addrspace(2)* %7, align 16, !dbg !19
+  %8 = load <4 x float>, <4 x float> addrspace(2)* %7, align 16, !dbg !19
   %scalar17 = extractelement <4 x float> %8, i32 0, !dbg !20
   %scalar18 = extractelement <4 x float> %8, i32 1, !dbg !21
   %scalar19 = extractelement <4 x float> %8, i32 2, !dbg !22
   %scalar20 = extractelement <4 x float> %8, i32 3, !dbg !23
   %9 = add i32 %2, 48, !dbg !24
   %10 = inttoptr i32 %9 to <4 x float> addrspace(2)*
-  %11 = load <4 x float> addrspace(2)* %10, align 16
+  %11 = load <4 x float>, <4 x float> addrspace(2)* %10, align 16
   %scalar21 = extractelement <4 x float> %11, i32 0
   %scalar22 = extractelement <4 x float> %11, i32 1
   %scalar23 = extractelement <4 x float> %11, i32 2
@@ -108,8 +107,8 @@ define void @constantCoalescing_test(<4 x float> addrspace(1)* %results, <4 x fl
   
 ; CHECK: [[inst1:%[a-zA-Z0-9]+]] = ptrtoint <4 x float> addrspace(2)* %src1 to i32, !dbg !4
 ; CHECK: [[inst2:%[a-zA-Z0-9]+]] = inttoptr i32 [[inst1]] to <16 x float> addrspace(2)*, !dbg !4
-; CHECK: [[inst3:%[a-zA-Z0-9]+]] = load <16 x float> addrspace(2)* [[inst2]], align 4, !dbg !4
-; CHECK: [[inst4:%[a-zA-Z0-9]+]] = load <4 x float> addrspace(2)* %src1, align 16, !dbg !4
+; CHECK: [[inst3:%[a-zA-Z0-9]+]] = load <16 x float>, <16 x float> addrspace(2)* [[inst2]], align 4, !dbg !4
+; CHECK: [[inst4:%[a-zA-Z0-9]+]] = load <4 x float>, <4 x float> addrspace(2)* %src1, align 16, !dbg !4
 ; CHECK: [[scalar1:%[a-zA-Z0-9]+]] = extractelement <16 x float> [[inst3]], i32 0, !dbg !5
 ; CHECK-NOT: [[scalar2:%[a-zA-Z0-9]+]] = extractelement <4 x float> [[inst4]]
 ; CHECK: [[scalar13:%[a-zA-Z0-9]+]] = extractelement <16 x float> [[inst3]], i32 4, !dbg !13
@@ -120,28 +119,28 @@ define void @constantCoalescing_test(<4 x float> addrspace(1)* %results, <4 x fl
 !hack_order = !{!0, !1, !2, !3, !4, !5, !6, !7, !8, !9, !10, !11, !12, !13, !14, !15, !16, !17, !18, !19, !20, !21, !22, !23, !24}
 
 !igc.functions = !{!3}
-!0 = metadata !{}
-!1 = metadata !{metadata !"function_type", i32 0}
-!2 = metadata !{metadata !1}
-!3 = metadata !{void (<4 x float> addrspace(1)*, <4 x float> addrspace(2)*)* @constantCoalescing_test, metadata !2}
-!4 = metadata !{i32 1, i32 0, metadata !0, null}
-!5 = metadata !{i32 3, i32 0, metadata !0, null}
-!6 = metadata !{i32 5, i32 0, metadata !0, null}
-!7 = metadata !{i32 6, i32 0, metadata !0, null}
-!8 = metadata !{i32 11, i32 0, metadata !0, null}
-!9 = metadata !{i32 13, i32 0, metadata !0, null}
-!10 = metadata !{i32 15, i32 0, metadata !0, null}
-!11 = metadata !{i32 16, i32 0, metadata !0, null}
-!12 = metadata !{i32 21, i32 0, metadata !0, null}
-!13 = metadata !{i32 23, i32 0, metadata !0, null}
-!14 = metadata !{i32 25, i32 0, metadata !0, null}
-!15 = metadata !{i32 26, i32 0, metadata !0, null}
-!16 = metadata !{i32 31, i32 0, metadata !0, null}
-!17 = metadata !{i32 33, i32 0, metadata !0, null}
-!18 = metadata !{i32 35, i32 0, metadata !0, null}
-!19 = metadata !{i32 36, i32 0, metadata !0, null}
-!20 = metadata !{i32 41, i32 0, metadata !0, null}
-!21 = metadata !{i32 43, i32 0, metadata !0, null}
-!22 = metadata !{i32 45, i32 0, metadata !0, null}
-!23 = metadata !{i32 46, i32 0, metadata !0, null}
-!24 = metadata !{i32 51, i32 0, metadata !0, null}
+!0 = !{}
+!1 = !{!"function_type", i32 0}
+!2 = !{!1}
+!3 = !{void (<4 x float> addrspace(1)*, <4 x float> addrspace(2)*)* @constantCoalescing_test, !2}
+!4 = !{i32 1, i32 0, !0, null}
+!5 = !{i32 3, i32 0, !0, null}
+!6 = !{i32 5, i32 0, !0, null}
+!7 = !{i32 6, i32 0, !0, null}
+!8 = !{i32 11, i32 0, !0, null}
+!9 = !{i32 13, i32 0, !0, null}
+!10 = !{i32 15, i32 0, !0, null}
+!11 = !{i32 16, i32 0, !0, null}
+!12 = !{i32 21, i32 0, !0, null}
+!13 = !{i32 23, i32 0, !0, null}
+!14 = !{i32 25, i32 0, !0, null}
+!15 = !{i32 26, i32 0, !0, null}
+!16 = !{i32 31, i32 0, !0, null}
+!17 = !{i32 33, i32 0, !0, null}
+!18 = !{i32 35, i32 0, !0, null}
+!19 = !{i32 36, i32 0, !0, null}
+!20 = !{i32 41, i32 0, !0, null}
+!21 = !{i32 43, i32 0, !0, null}
+!22 = !{i32 45, i32 0, !0, null}
+!23 = !{i32 46, i32 0, !0, null}
+!24 = !{i32 51, i32 0, !0, null}

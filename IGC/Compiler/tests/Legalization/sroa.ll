@@ -28,7 +28,7 @@
 target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a:64:64-f80:128:128-n8:16:32:64"
 
 define void @sroa(<4 x i64> addrspace(1)* %src, <4 x i64> addrspace(1)* %dst) {
-  %s0 = load <4 x i64> addrspace(1)* %src, align 32
+  %s0 = load <4 x i64>, <4 x i64> addrspace(1)* %src, align 32
   %s1 = bitcast <4 x i64> %s0 to i256
   %s2 = and i256 %s1, -280375465082881
   %s3 = or i256 %s2, 72567767433216
@@ -40,11 +40,11 @@ define void @sroa(<4 x i64> addrspace(1)* %src, <4 x i64> addrspace(1)* %dst) {
 
 ; CHECK-LABEL: define void @sroa
 ; CHECK: %src.sclr0.ptrcast = bitcast <4 x i64> addrspace(1)* %src to <2 x i64> addrspace(1)*
-; CHECK: %s0.vec0 = load <2 x i64> addrspace(1)* %src.sclr0.ptrcast, align 32
+; CHECK: %s0.vec0 = load <2 x i64>, <2 x i64> addrspace(1)* %src.sclr0.ptrcast, align 32
 ; CHECK: %s0.sclr0 = extractelement <2 x i64> %s0.vec0, i32 0
 ; CHECK: %src.sclr2 = getelementptr inbounds <4 x i64> addrspace(1)* %src, i32 0, i32 2
 ; CHECK: %src.sclr2.ptrcast = bitcast i64 addrspace(1)* %src.sclr2 to <2 x i64> addrspace(1)*
-; CHECK: %s0.vec2 = load <2 x i64> addrspace(1)* %src.sclr2.ptrcast, align 32
+; CHECK: %s0.vec2 = load <2 x i64>, <2 x i64> addrspace(1)* %src.sclr2.ptrcast, align 32
 ; CHECK: %s2.ex0 = and i64 %s0.sclr0, -280375465082881
 ; CHECK: %s3.ex0.or = or i64 %s2.ex0, 72567767433216
 ; CHECK: %dst.sclr0.ptrcast = bitcast <4 x i64> addrspace(1)* %dst to <2 x i64> addrspace(1)*

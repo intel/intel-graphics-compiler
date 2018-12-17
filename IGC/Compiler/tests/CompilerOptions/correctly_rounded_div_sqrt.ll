@@ -73,42 +73,42 @@ define float @testdiv1(float %in1, float %in2) {
   ret float %retVal
 }
 ; CHECK: testdiv1
-; CHECK: divide_cr
+; CHECK: call float @genx.GenISA.IEEE.Divide.f32
 
 define <2 x float> @testdiv2(<2 x float> %in1, <2 x float> %in2) {
   %retVal = fdiv <2 x float> %in1, %in2
   ret <2 x float> %retVal
 }
 ; CHECK: testdiv2
-; CHECK: divide_cr
+; CHECK: call float @genx.GenISA.IEEE.Divide.f32
 
 define <3 x float> @testdiv3(<3 x float> %in1, <3 x float> %in2) {
   %retVal = fdiv <3 x float> %in1, %in2
   ret <3 x float> %retVal
 }
 ; CHECK: testdiv3
-; CHECK: divide_cr
+; CHECK: call float @genx.GenISA.IEEE.Divide.f32
 
 define <4 x float> @testdiv4(<4 x float> %in1, <4 x float> %in2) {
   %retVal = fdiv <4 x float> %in1, %in2
   ret <4 x float> %retVal
 }
 ; CHECK: testdiv4
-; CHECK: divide_cr
+; CHECK: call float @genx.GenISA.IEEE.Divide.f32
 
 define <8 x float> @testdiv8(<8 x float> %in1, <8 x float> %in2) {
   %retVal = fdiv <8 x float> %in1, %in2
   ret <8 x float> %retVal
 }
 ; CHECK: testdiv8
-; CHECK: divide_cr
+; CHECK: call float @genx.GenISA.IEEE.Divide.f32
 
 define <16 x float> @testdiv16(<16 x float> %in1, <16 x float> %in2) {
   %retVal = fdiv <16 x float> %in1, %in2
   ret <16 x float> %retVal
 }
 ; CHECK: testdiv16
-; CHECK: divide_cr
+; CHECK: call float @genx.GenISA.IEEE.Divide.f32
 
 declare float @_Z4sqrtf(float)
 declare <2 x float> @_Z4sqrtDv2_f(<2 x float>)

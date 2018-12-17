@@ -24,19 +24,18 @@
 
 ;======================= end_copyright_notice ==================================
 ; Ensure that there are no calls to the llvm.memcpy intrinsics
-; RUN: opt -igc-replace-intrinsics -strip-dead-prototypes -verify -S < %s | FileCheck %s
+; RUN: igc_opt -igc-replace-unsupported-intrinsics -verify -S < %s | FileCheck %s
 
-; CHECK: target datalayout
 ; CHECK-NOT: "llvm.memcpy"
 ; CHECK: attributes
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a64:64:64-f80:128:128-n8:16:32:64"
+
 target triple = "igil_32_GEN8"
 
 @main_function_ocl.path_reference = private unnamed_addr constant [1 x i8] c"\0B", align 1
-@.str = private unnamed_addr constant [4 x i8] c"ocl\00", align 1
-@.str1 = private unnamed_addr constant [4 x i8] c"c99\00", align 1
-@.str2 = private unnamed_addr constant [4 x i8] c"gcc\00", align 1
-@ocl_test_kernel.args = private unnamed_addr constant [3 x i8 addrspace(2)*] [i8 addrspace(2)* bitcast ([4 x i8]* @.str to i8 addrspace(2)*), i8 addrspace(2)* bitcast ([4 x i8]* @.str1 to i8 addrspace(2)*), i8 addrspace(2)* bitcast ([4 x i8]* @.str2 to i8 addrspace(2)*)], align 4
+@.str = private addrspace(2) constant [4 x i8] c"ocl\00", align 1
+@.str1 = private addrspace(2) constant [4 x i8] c"c99\00", align 1
+@.str2 = private addrspace(2) constant [4 x i8] c"gcc\00", align 1
+@ocl_test_kernel.args = private unnamed_addr constant [3 x i8 addrspace(2)*] [i8 addrspace(2)* bitcast ([4 x i8] addrspace(2)* @.str to i8 addrspace(2)*), i8 addrspace(2)* bitcast ([4 x i8] addrspace(2)* @.str1 to i8 addrspace(2)*), i8 addrspace(2)* bitcast ([4 x i8] addrspace(2)* @.str2 to i8 addrspace(2)*)], align 4
 
 ; Function Attrs: nounwind
 declare void @llvm.memcpy.p0i8.p0i8.i32(i8* nocapture, i8* nocapture, i32, i32, i1) #0
@@ -49,12 +48,12 @@ entry:
   %0 = bitcast [3 x i8 addrspace(2)*]* %args to i8*
   %1 = bitcast [3 x i8 addrspace(2)*]* @ocl_test_kernel.args to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %0, i8* %1, i32 12, i32 4, i1 false)
-  %arrayidx = getelementptr inbounds i32 addrspace(1)* %ocl_test_results, i32 0
+  %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %ocl_test_results, i32 0
   store i32 1, i32 addrspace(1)* %arrayidx, align 4, !tbaa !15
   %2 = bitcast [1 x i8]* %path_reference.i to i8*
   call void @llvm.lifetime.start(i64 1, i8* %2) #0
   %3 = bitcast [1 x i8]* %path_reference.i to i8*
-  %4 = getelementptr inbounds [1 x i8]* @main_function_ocl.path_reference, i32 0, i32 0
+  %4 = getelementptr inbounds [1 x i8], [1 x i8]* @main_function_ocl.path_reference, i32 0, i32 0
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %3, i8* %4, i32 1, i32 1, i1 false) #0
   %cmp.i = icmp eq i32 1, 0
   br i1 %cmp.i, label %if.then.i, label %if.end212.i
@@ -76,8 +75,8 @@ if.end.i:                                         ; preds = %if.then4.i, %if.the
   br i1 %cmp5.i, label %land.lhs.true.i, label %if.end12.i
 
 land.lhs.true.i:                                  ; preds = %if.end.i
-  %arrayidx.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 0
-  %5 = load i8* %arrayidx.i, align 1, !tbaa !16
+  %arrayidx.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 0
+  %5 = load i8, i8* %arrayidx.i, align 1, !tbaa !16
   %conv.i = zext i8 %5 to i32
   %cmp6.i = icmp ne i32 %conv.i, 1
   br i1 %cmp6.i, label %land.lhs.true8.i, label %if.end12.i
@@ -117,8 +116,8 @@ if.end23.i:                                       ; preds = %if.then22.i, %if.th
   br i1 %cmp24.i, label %land.lhs.true26.i, label %if.end36.i
 
 land.lhs.true26.i:                                ; preds = %if.end23.i
-  %arrayidx27.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc.i
-  %6 = load i8* %arrayidx27.i, align 1, !tbaa !16
+  %arrayidx27.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc.i
+  %6 = load i8, i8* %arrayidx27.i, align 1, !tbaa !16
   %conv28.i = zext i8 %6 to i32
   %cmp29.i = icmp ne i32 %conv28.i, 2
   br i1 %cmp29.i, label %land.lhs.true31.i, label %if.end36.i
@@ -157,8 +156,8 @@ if.end45.i:                                       ; preds = %if.then44.i, %if.th
   br i1 %cmp46.i, label %land.lhs.true48.i, label %if.end58.i
 
 land.lhs.true48.i:                                ; preds = %if.end45.i
-  %arrayidx49.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc.i
-  %7 = load i8* %arrayidx49.i, align 1, !tbaa !16
+  %arrayidx49.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc.i
+  %7 = load i8, i8* %arrayidx49.i, align 1, !tbaa !16
   %conv50.i = zext i8 %7 to i32
   %cmp51.i = icmp ne i32 %conv50.i, 3
   br i1 %cmp51.i, label %land.lhs.true53.i, label %if.end58.i
@@ -203,8 +202,8 @@ if.end71.i:                                       ; preds = %if.then70.i, %if.th
   br i1 %cmp72.i, label %land.lhs.true74.i, label %if.end84.i
 
 land.lhs.true74.i:                                ; preds = %if.end71.i
-  %arrayidx75.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.0
-  %8 = load i8* %arrayidx75.i, align 1, !tbaa !16
+  %arrayidx75.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.0
+  %8 = load i8, i8* %arrayidx75.i, align 1, !tbaa !16
   %conv76.i = zext i8 %8 to i32
   %cmp77.i = icmp ne i32 %conv76.i, 4
   br i1 %cmp77.i, label %land.lhs.true79.i, label %if.end84.i
@@ -244,8 +243,8 @@ if.end96.i:                                       ; preds = %if.then95.i, %if.th
   br i1 %cmp97.i, label %land.lhs.true99.i, label %if.end109.i
 
 land.lhs.true99.i:                                ; preds = %if.end96.i
-  %arrayidx100.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc86.i
-  %9 = load i8* %arrayidx100.i, align 1, !tbaa !16
+  %arrayidx100.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc86.i
+  %9 = load i8, i8* %arrayidx100.i, align 1, !tbaa !16
   %conv101.i = zext i8 %9 to i32
   %cmp102.i = icmp ne i32 %conv101.i, 5
   br i1 %cmp102.i, label %land.lhs.true104.i, label %if.end109.i
@@ -295,8 +294,8 @@ if.end123.i:                                      ; preds = %if.then122.i, %if.t
   br i1 %cmp124.i, label %land.lhs.true126.i, label %if.end136.i
 
 land.lhs.true126.i:                               ; preds = %if.end123.i
-  %arrayidx127.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.2
-  %10 = load i8* %arrayidx127.i, align 1, !tbaa !16
+  %arrayidx127.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.2
+  %10 = load i8, i8* %arrayidx127.i, align 1, !tbaa !16
   %conv128.i = zext i8 %10 to i32
   %cmp129.i = icmp ne i32 %conv128.i, 6
   br i1 %cmp129.i, label %land.lhs.true131.i, label %if.end136.i
@@ -336,8 +335,8 @@ if.end148.i:                                      ; preds = %if.then147.i, %if.t
   br i1 %cmp149.i, label %land.lhs.true151.i, label %if.end161.i
 
 land.lhs.true151.i:                               ; preds = %if.end148.i
-  %arrayidx152.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc138.i
-  %11 = load i8* %arrayidx152.i, align 1, !tbaa !16
+  %arrayidx152.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc138.i
+  %11 = load i8, i8* %arrayidx152.i, align 1, !tbaa !16
   %conv153.i = zext i8 %11 to i32
   %cmp154.i = icmp ne i32 %conv153.i, 8
   br i1 %cmp154.i, label %land.lhs.true156.i, label %if.end161.i
@@ -376,8 +375,8 @@ if.end171.i:                                      ; preds = %if.then170.i, %if.t
   br i1 %cmp172.i, label %land.lhs.true174.i, label %if.end184.i
 
 land.lhs.true174.i:                               ; preds = %if.end171.i
-  %arrayidx175.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc138.i
-  %12 = load i8* %arrayidx175.i, align 1, !tbaa !16
+  %arrayidx175.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc138.i
+  %12 = load i8, i8* %arrayidx175.i, align 1, !tbaa !16
   %conv176.i = zext i8 %12 to i32
   %cmp177.i = icmp ne i32 %conv176.i, 9
   br i1 %cmp177.i, label %land.lhs.true179.i, label %if.end184.i
@@ -421,8 +420,8 @@ if.end195.i:                                      ; preds = %if.then194.i, %if.t
   br i1 %cmp196.i, label %land.lhs.true198.i, label %if.end208.i
 
 land.lhs.true198.i:                               ; preds = %if.end195.i
-  %arrayidx199.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.2
-  %13 = load i8* %arrayidx199.i, align 1, !tbaa !16
+  %arrayidx199.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.2
+  %13 = load i8, i8* %arrayidx199.i, align 1, !tbaa !16
   %conv200.i = zext i8 %13 to i32
   %cmp201.i = icmp ne i32 %conv200.i, 7
   br i1 %cmp201.i, label %land.lhs.true203.i, label %if.end208.i
@@ -472,8 +471,8 @@ if.end222.i:                                      ; preds = %if.then221.i, %if.t
   br i1 %cmp223.i, label %land.lhs.true225.i, label %if.end235.i
 
 land.lhs.true225.i:                               ; preds = %if.end222.i
-  %arrayidx226.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.5
-  %14 = load i8* %arrayidx226.i, align 1, !tbaa !16
+  %arrayidx226.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.5
+  %14 = load i8, i8* %arrayidx226.i, align 1, !tbaa !16
   %conv227.i = zext i8 %14 to i32
   %cmp228.i = icmp ne i32 %conv227.i, 10
   br i1 %cmp228.i, label %land.lhs.true230.i, label %if.end235.i
@@ -513,8 +512,8 @@ if.end247.i:                                      ; preds = %if.then246.i, %if.t
   br i1 %cmp248.i, label %land.lhs.true250.i, label %if.end260.i
 
 land.lhs.true250.i:                               ; preds = %if.end247.i
-  %arrayidx251.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc237.i
-  %15 = load i8* %arrayidx251.i, align 1, !tbaa !16
+  %arrayidx251.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc237.i
+  %15 = load i8, i8* %arrayidx251.i, align 1, !tbaa !16
   %conv252.i = zext i8 %15 to i32
   %cmp253.i = icmp ne i32 %conv252.i, 12
   br i1 %cmp253.i, label %land.lhs.true255.i, label %if.end260.i
@@ -554,8 +553,8 @@ if.end271.i:                                      ; preds = %if.then270.i, %if.t
   br i1 %cmp272.i, label %land.lhs.true274.i, label %if.end284.i
 
 land.lhs.true274.i:                               ; preds = %if.end271.i
-  %arrayidx275.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc262.i
-  %16 = load i8* %arrayidx275.i, align 1, !tbaa !16
+  %arrayidx275.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc262.i
+  %16 = load i8, i8* %arrayidx275.i, align 1, !tbaa !16
   %conv276.i = zext i8 %16 to i32
   %cmp277.i = icmp ne i32 %conv276.i, 13
   br i1 %cmp277.i, label %land.lhs.true279.i, label %if.end284.i
@@ -611,8 +610,8 @@ if.end300.i:                                      ; preds = %if.then299.i, %if.t
   br i1 %cmp301.i, label %land.lhs.true303.i, label %if.end313.i
 
 land.lhs.true303.i:                               ; preds = %if.end300.i
-  %arrayidx304.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.8
-  %17 = load i8* %arrayidx304.i, align 1, !tbaa !16
+  %arrayidx304.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.8
+  %17 = load i8, i8* %arrayidx304.i, align 1, !tbaa !16
   %conv305.i = zext i8 %17 to i32
   %cmp306.i = icmp ne i32 %conv305.i, 14
   br i1 %cmp306.i, label %land.lhs.true308.i, label %if.end313.i
@@ -652,8 +651,8 @@ if.end325.i:                                      ; preds = %if.then324.i, %if.t
   br i1 %cmp326.i, label %land.lhs.true328.i, label %if.end338.i
 
 land.lhs.true328.i:                               ; preds = %if.end325.i
-  %arrayidx329.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc315.i
-  %18 = load i8* %arrayidx329.i, align 1, !tbaa !16
+  %arrayidx329.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc315.i
+  %18 = load i8, i8* %arrayidx329.i, align 1, !tbaa !16
   %conv330.i = zext i8 %18 to i32
   %cmp331.i = icmp ne i32 %conv330.i, 15
   br i1 %cmp331.i, label %land.lhs.true333.i, label %if.end338.i
@@ -693,8 +692,8 @@ if.end350.i:                                      ; preds = %if.then349.i, %if.t
   br i1 %cmp351.i, label %land.lhs.true353.i, label %if.end363.i
 
 land.lhs.true353.i:                               ; preds = %if.end350.i
-  %arrayidx354.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc340.i
-  %19 = load i8* %arrayidx354.i, align 1, !tbaa !16
+  %arrayidx354.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc340.i
+  %19 = load i8, i8* %arrayidx354.i, align 1, !tbaa !16
   %conv355.i = zext i8 %19 to i32
   %cmp356.i = icmp ne i32 %conv355.i, 16
   br i1 %cmp356.i, label %land.lhs.true358.i, label %if.end363.i
@@ -733,8 +732,8 @@ if.end373.i:                                      ; preds = %if.then372.i, %if.t
   br i1 %cmp374.i, label %land.lhs.true376.i, label %if.end386.i
 
 land.lhs.true376.i:                               ; preds = %if.end373.i
-  %arrayidx377.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc340.i
-  %20 = load i8* %arrayidx377.i, align 1, !tbaa !16
+  %arrayidx377.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc340.i
+  %20 = load i8, i8* %arrayidx377.i, align 1, !tbaa !16
   %conv378.i = zext i8 %20 to i32
   %cmp379.i = icmp ne i32 %conv378.i, 17
   br i1 %cmp379.i, label %land.lhs.true381.i, label %if.end386.i
@@ -784,8 +783,8 @@ if.end401.i:                                      ; preds = %if.then400.i, %if.t
   br i1 %cmp402.i, label %land.lhs.true404.i, label %if.end414.i
 
 land.lhs.true404.i:                               ; preds = %if.end401.i
-  %arrayidx405.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.9
-  %21 = load i8* %arrayidx405.i, align 1, !tbaa !16
+  %arrayidx405.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.9
+  %21 = load i8, i8* %arrayidx405.i, align 1, !tbaa !16
   %conv406.i = zext i8 %21 to i32
   %cmp407.i = icmp ne i32 %conv406.i, 101
   br i1 %cmp407.i, label %land.lhs.true409.i, label %if.end414.i
@@ -825,8 +824,8 @@ if.end426.i:                                      ; preds = %if.then425.i, %if.t
   br i1 %cmp427.i, label %land.lhs.true429.i, label %if.end439.i
 
 land.lhs.true429.i:                               ; preds = %if.end426.i
-  %arrayidx430.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc416.i
-  %22 = load i8* %arrayidx430.i, align 1, !tbaa !16
+  %arrayidx430.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc416.i
+  %22 = load i8, i8* %arrayidx430.i, align 1, !tbaa !16
   %conv431.i = zext i8 %22 to i32
   %cmp432.i = icmp ne i32 %conv431.i, 102
   br i1 %cmp432.i, label %land.lhs.true434.i, label %if.end439.i
@@ -866,8 +865,8 @@ if.end451.i:                                      ; preds = %if.then450.i, %if.t
   br i1 %cmp452.i, label %land.lhs.true454.i, label %if.end464.i
 
 land.lhs.true454.i:                               ; preds = %if.end451.i
-  %arrayidx455.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc441.i
-  %23 = load i8* %arrayidx455.i, align 1, !tbaa !16
+  %arrayidx455.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc441.i
+  %23 = load i8, i8* %arrayidx455.i, align 1, !tbaa !16
   %conv456.i = zext i8 %23 to i32
   %cmp457.i = icmp ne i32 %conv456.i, 104
   br i1 %cmp457.i, label %land.lhs.true459.i, label %if.end464.i
@@ -906,8 +905,8 @@ if.end474.i:                                      ; preds = %if.then473.i, %if.t
   br i1 %cmp475.i, label %land.lhs.true477.i, label %if.end487.i
 
 land.lhs.true477.i:                               ; preds = %if.end474.i
-  %arrayidx478.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc441.i
-  %24 = load i8* %arrayidx478.i, align 1, !tbaa !16
+  %arrayidx478.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc441.i
+  %24 = load i8, i8* %arrayidx478.i, align 1, !tbaa !16
   %conv479.i = zext i8 %24 to i32
   %cmp480.i = icmp ne i32 %conv479.i, 105
   br i1 %cmp480.i, label %land.lhs.true482.i, label %if.end487.i
@@ -947,8 +946,8 @@ if.end499.i:                                      ; preds = %if.then498.i, %if.t
   br i1 %cmp500.i, label %land.lhs.true502.i, label %if.end512.i
 
 land.lhs.true502.i:                               ; preds = %if.end499.i
-  %arrayidx503.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc489.i
-  %25 = load i8* %arrayidx503.i, align 1, !tbaa !16
+  %arrayidx503.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc489.i
+  %25 = load i8, i8* %arrayidx503.i, align 1, !tbaa !16
   %conv504.i = zext i8 %25 to i32
   %cmp505.i = icmp ne i32 %conv504.i, 106
   br i1 %cmp505.i, label %land.lhs.true507.i, label %if.end512.i
@@ -988,8 +987,8 @@ if.end524.i:                                      ; preds = %if.then523.i, %if.t
   br i1 %cmp525.i, label %land.lhs.true527.i, label %if.end537.i
 
 land.lhs.true527.i:                               ; preds = %if.end524.i
-  %arrayidx528.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc514.i
-  %26 = load i8* %arrayidx528.i, align 1, !tbaa !16
+  %arrayidx528.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc514.i
+  %26 = load i8, i8* %arrayidx528.i, align 1, !tbaa !16
   %conv529.i = zext i8 %26 to i32
   %cmp530.i = icmp ne i32 %conv529.i, 107
   br i1 %cmp530.i, label %land.lhs.true532.i, label %if.end537.i
@@ -1029,8 +1028,8 @@ if.end549.i:                                      ; preds = %if.then548.i, %if.t
   br i1 %cmp550.i, label %land.lhs.true552.i, label %if.end562.i
 
 land.lhs.true552.i:                               ; preds = %if.end549.i
-  %arrayidx553.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc539.i
-  %27 = load i8* %arrayidx553.i, align 1, !tbaa !16
+  %arrayidx553.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc539.i
+  %27 = load i8, i8* %arrayidx553.i, align 1, !tbaa !16
   %conv554.i = zext i8 %27 to i32
   %cmp555.i = icmp ne i32 %conv554.i, 108
   br i1 %cmp555.i, label %land.lhs.true557.i, label %if.end562.i
@@ -1078,8 +1077,8 @@ if.end576.i:                                      ; preds = %if.then575.i, %if.t
   br i1 %cmp577.i, label %land.lhs.true579.i, label %if.end589.i
 
 land.lhs.true579.i:                               ; preds = %if.end576.i
-  %arrayidx580.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc514.i
-  %28 = load i8* %arrayidx580.i, align 1, !tbaa !16
+  %arrayidx580.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc514.i
+  %28 = load i8, i8* %arrayidx580.i, align 1, !tbaa !16
   %conv581.i = zext i8 %28 to i32
   %cmp582.i = icmp ne i32 %conv581.i, 109
   br i1 %cmp582.i, label %land.lhs.true584.i, label %if.end589.i
@@ -1124,8 +1123,8 @@ if.end602.i:                                      ; preds = %if.then601.i, %if.t
   br i1 %cmp603.i, label %land.lhs.true605.i, label %if.end615.i
 
 land.lhs.true605.i:                               ; preds = %if.end602.i
-  %arrayidx606.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc416.i
-  %29 = load i8* %arrayidx606.i, align 1, !tbaa !16
+  %arrayidx606.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc416.i
+  %29 = load i8, i8* %arrayidx606.i, align 1, !tbaa !16
   %conv607.i = zext i8 %29 to i32
   %cmp608.i = icmp ne i32 %conv607.i, 103
   br i1 %cmp608.i, label %land.lhs.true610.i, label %if.end615.i
@@ -1181,8 +1180,8 @@ if.end634.i:                                      ; preds = %if.then633.i, %if.t
   br i1 %cmp635.i, label %land.lhs.true637.i, label %if.end647.i
 
 land.lhs.true637.i:                               ; preds = %if.end634.i
-  %arrayidx638.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.13
-  %30 = load i8* %arrayidx638.i, align 1, !tbaa !16
+  %arrayidx638.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.13
+  %30 = load i8, i8* %arrayidx638.i, align 1, !tbaa !16
   %conv639.i = zext i8 %30 to i32
   %cmp640.i = icmp ne i32 %conv639.i, 110
   br i1 %cmp640.i, label %land.lhs.true642.i, label %if.end647.i
@@ -1222,8 +1221,8 @@ if.end659.i:                                      ; preds = %if.then658.i, %if.t
   br i1 %cmp660.i, label %land.lhs.true662.i, label %if.end672.i
 
 land.lhs.true662.i:                               ; preds = %if.end659.i
-  %arrayidx663.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc649.i
-  %31 = load i8* %arrayidx663.i, align 1, !tbaa !16
+  %arrayidx663.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc649.i
+  %31 = load i8, i8* %arrayidx663.i, align 1, !tbaa !16
   %conv664.i = zext i8 %31 to i32
   %cmp665.i = icmp ne i32 %conv664.i, 111
   br i1 %cmp665.i, label %land.lhs.true667.i, label %if.end672.i
@@ -1269,8 +1268,8 @@ if.end686.i:                                      ; preds = %if.then685.i, %if.t
   br i1 %cmp687.i, label %land.lhs.true689.i, label %if.end699.i
 
 land.lhs.true689.i:                               ; preds = %if.end686.i
-  %arrayidx690.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.14
-  %32 = load i8* %arrayidx690.i, align 1, !tbaa !16
+  %arrayidx690.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.14
+  %32 = load i8, i8* %arrayidx690.i, align 1, !tbaa !16
   %conv691.i = zext i8 %32 to i32
   %cmp692.i = icmp ne i32 %conv691.i, 112
   br i1 %cmp692.i, label %land.lhs.true694.i, label %if.end699.i
@@ -1316,8 +1315,8 @@ if.end713.i:                                      ; preds = %if.then712.i, %if.t
   br i1 %cmp714.i, label %land.lhs.true716.i, label %if.end726.i
 
 land.lhs.true716.i:                               ; preds = %if.end713.i
-  %arrayidx717.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.15
-  %33 = load i8* %arrayidx717.i, align 1, !tbaa !16
+  %arrayidx717.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.15
+  %33 = load i8, i8* %arrayidx717.i, align 1, !tbaa !16
   %conv718.i = zext i8 %33 to i32
   %cmp719.i = icmp ne i32 %conv718.i, 113
   br i1 %cmp719.i, label %land.lhs.true721.i, label %if.end726.i
@@ -1357,8 +1356,8 @@ if.end738.i:                                      ; preds = %if.then737.i, %if.t
   br i1 %cmp739.i, label %land.lhs.true741.i, label %if.end751.i
 
 land.lhs.true741.i:                               ; preds = %if.end738.i
-  %arrayidx742.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc728.i
-  %34 = load i8* %arrayidx742.i, align 1, !tbaa !16
+  %arrayidx742.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc728.i
+  %34 = load i8, i8* %arrayidx742.i, align 1, !tbaa !16
   %conv743.i = zext i8 %34 to i32
   %cmp744.i = icmp ne i32 %conv743.i, 114
   br i1 %cmp744.i, label %land.lhs.true746.i, label %if.end751.i
@@ -1397,8 +1396,8 @@ if.end761.i:                                      ; preds = %if.then760.i, %if.t
   br i1 %cmp762.i, label %land.lhs.true764.i, label %if.end774.i
 
 land.lhs.true764.i:                               ; preds = %if.end761.i
-  %arrayidx765.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc728.i
-  %35 = load i8* %arrayidx765.i, align 1, !tbaa !16
+  %arrayidx765.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc728.i
+  %35 = load i8, i8* %arrayidx765.i, align 1, !tbaa !16
   %conv766.i = zext i8 %35 to i32
   %cmp767.i = icmp ne i32 %conv766.i, 115
   br i1 %cmp767.i, label %land.lhs.true769.i, label %if.end774.i
@@ -1444,8 +1443,8 @@ if.end788.i:                                      ; preds = %if.then787.i, %if.t
   br i1 %cmp789.i, label %land.lhs.true791.i, label %if.end801.i
 
 land.lhs.true791.i:                               ; preds = %if.end788.i
-  %arrayidx792.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.16
-  %36 = load i8* %arrayidx792.i, align 1, !tbaa !16
+  %arrayidx792.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.16
+  %36 = load i8, i8* %arrayidx792.i, align 1, !tbaa !16
   %conv793.i = zext i8 %36 to i32
   %cmp794.i = icmp ne i32 %conv793.i, 116
   br i1 %cmp794.i, label %land.lhs.true796.i, label %if.end801.i
@@ -1485,8 +1484,8 @@ if.end813.i:                                      ; preds = %if.then812.i, %if.t
   br i1 %cmp814.i, label %land.lhs.true816.i, label %if.end826.i
 
 land.lhs.true816.i:                               ; preds = %if.end813.i
-  %arrayidx817.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc803.i
-  %37 = load i8* %arrayidx817.i, align 1, !tbaa !16
+  %arrayidx817.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc803.i
+  %37 = load i8, i8* %arrayidx817.i, align 1, !tbaa !16
   %conv818.i = zext i8 %37 to i32
   %cmp819.i = icmp ne i32 %conv818.i, 117
   br i1 %cmp819.i, label %land.lhs.true821.i, label %if.end826.i
@@ -1526,8 +1525,8 @@ if.end838.i:                                      ; preds = %if.then837.i, %if.t
   br i1 %cmp839.i, label %land.lhs.true841.i, label %if.end851.i
 
 land.lhs.true841.i:                               ; preds = %if.end838.i
-  %arrayidx842.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc828.i
-  %38 = load i8* %arrayidx842.i, align 1, !tbaa !16
+  %arrayidx842.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc828.i
+  %38 = load i8, i8* %arrayidx842.i, align 1, !tbaa !16
   %conv843.i = zext i8 %38 to i32
   %cmp844.i = icmp ne i32 %conv843.i, 118
   br i1 %cmp844.i, label %land.lhs.true846.i, label %if.end851.i
@@ -1566,8 +1565,8 @@ if.end861.i:                                      ; preds = %if.then860.i, %if.t
   br i1 %cmp862.i, label %land.lhs.true864.i, label %if.end874.i
 
 land.lhs.true864.i:                               ; preds = %if.end861.i
-  %arrayidx865.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc828.i
-  %39 = load i8* %arrayidx865.i, align 1, !tbaa !16
+  %arrayidx865.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc828.i
+  %39 = load i8, i8* %arrayidx865.i, align 1, !tbaa !16
   %conv866.i = zext i8 %39 to i32
   %cmp867.i = icmp ne i32 %conv866.i, 119
   br i1 %cmp867.i, label %land.lhs.true869.i, label %if.end874.i
@@ -1610,8 +1609,8 @@ if.end887.i:                                      ; preds = %if.then886.i, %if.t
   br i1 %cmp888.i, label %land.lhs.true890.i, label %if.end900.i
 
 land.lhs.true890.i:                               ; preds = %if.end887.i
-  %arrayidx891.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc803.i
-  %40 = load i8* %arrayidx891.i, align 1, !tbaa !16
+  %arrayidx891.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc803.i
+  %40 = load i8, i8* %arrayidx891.i, align 1, !tbaa !16
   %conv892.i = zext i8 %40 to i32
   %cmp893.i = icmp ne i32 %conv892.i, 120
   br i1 %cmp893.i, label %land.lhs.true895.i, label %if.end900.i
@@ -1651,8 +1650,8 @@ if.end912.i:                                      ; preds = %if.then911.i, %if.t
   br i1 %cmp913.i, label %land.lhs.true915.i, label %if.end925.i
 
 land.lhs.true915.i:                               ; preds = %if.end912.i
-  %arrayidx916.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc902.i
-  %41 = load i8* %arrayidx916.i, align 1, !tbaa !16
+  %arrayidx916.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc902.i
+  %41 = load i8, i8* %arrayidx916.i, align 1, !tbaa !16
   %conv917.i = zext i8 %41 to i32
   %cmp918.i = icmp ne i32 %conv917.i, 121
   br i1 %cmp918.i, label %land.lhs.true920.i, label %if.end925.i
@@ -1691,8 +1690,8 @@ if.end935.i:                                      ; preds = %if.then934.i, %if.t
   br i1 %cmp936.i, label %land.lhs.true938.i, label %if.end948.i
 
 land.lhs.true938.i:                               ; preds = %if.end935.i
-  %arrayidx939.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc902.i
-  %42 = load i8* %arrayidx939.i, align 1, !tbaa !16
+  %arrayidx939.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc902.i
+  %42 = load i8, i8* %arrayidx939.i, align 1, !tbaa !16
   %conv940.i = zext i8 %42 to i32
   %cmp941.i = icmp ne i32 %conv940.i, 122
   br i1 %cmp941.i, label %land.lhs.true943.i, label %if.end948.i
@@ -1746,8 +1745,8 @@ if.end964.i:                                      ; preds = %if.then963.i, %if.t
   br i1 %cmp965.i, label %land.lhs.true967.i, label %if.end977.i
 
 land.lhs.true967.i:                               ; preds = %if.end964.i
-  %arrayidx968.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.18
-  %43 = load i8* %arrayidx968.i, align 1, !tbaa !16
+  %arrayidx968.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.18
+  %43 = load i8, i8* %arrayidx968.i, align 1, !tbaa !16
   %conv969.i = zext i8 %43 to i32
   %cmp970.i = icmp ne i32 %conv969.i, 125
   br i1 %cmp970.i, label %land.lhs.true972.i, label %if.end977.i
@@ -1805,8 +1804,8 @@ if.end997.i:                                      ; preds = %if.then996.i, %if.t
   br i1 %cmp998.i, label %land.lhs.true1000.i, label %if.end1010.i
 
 land.lhs.true1000.i:                              ; preds = %if.end997.i
-  %arrayidx1001.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.14
-  %44 = load i8* %arrayidx1001.i, align 1, !tbaa !16
+  %arrayidx1001.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.14
+  %44 = load i8, i8* %arrayidx1001.i, align 1, !tbaa !16
   %conv1002.i = zext i8 %44 to i32
   %cmp1003.i = icmp ne i32 %conv1002.i, 126
   br i1 %cmp1003.i, label %land.lhs.true1005.i, label %if.end1010.i
@@ -1845,8 +1844,8 @@ if.end1020.i:                                     ; preds = %if.then1019.i, %if.
   br i1 %cmp1021.i, label %land.lhs.true1023.i, label %if.end1033.i
 
 land.lhs.true1023.i:                              ; preds = %if.end1020.i
-  %arrayidx1024.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.14
-  %45 = load i8* %arrayidx1024.i, align 1, !tbaa !16
+  %arrayidx1024.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.14
+  %45 = load i8, i8* %arrayidx1024.i, align 1, !tbaa !16
   %conv1025.i = zext i8 %45 to i32
   %cmp1026.i = icmp ne i32 %conv1025.i, 127
   br i1 %cmp1026.i, label %land.lhs.true1028.i, label %if.end1033.i
@@ -1886,8 +1885,8 @@ if.end1045.i:                                     ; preds = %if.then1044.i, %if.
   br i1 %cmp1046.i, label %land.lhs.true1048.i, label %if.end1058.i
 
 land.lhs.true1048.i:                              ; preds = %if.end1045.i
-  %arrayidx1049.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %inc1035.i
-  %46 = load i8* %arrayidx1049.i, align 1, !tbaa !16
+  %arrayidx1049.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %inc1035.i
+  %46 = load i8, i8* %arrayidx1049.i, align 1, !tbaa !16
   %conv1050.i = zext i8 %46 to i32
   %cmp1051.i = icmp ne i32 %conv1050.i, 128
   br i1 %cmp1051.i, label %land.lhs.true1053.i, label %if.end1058.i
@@ -1932,8 +1931,8 @@ if.end1073.i:                                     ; preds = %if.then1072.i, %if.
   br i1 %cmp1074.i, label %land.lhs.true1076.i, label %if.end1086.i
 
 land.lhs.true1076.i:                              ; preds = %if.end1073.i
-  %arrayidx1077.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.21
-  %47 = load i8* %arrayidx1077.i, align 1, !tbaa !16
+  %arrayidx1077.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.21
+  %47 = load i8, i8* %arrayidx1077.i, align 1, !tbaa !16
   %conv1078.i = zext i8 %47 to i32
   %cmp1079.i = icmp ne i32 %conv1078.i, 129
   br i1 %cmp1079.i, label %land.lhs.true1081.i, label %if.end1086.i
@@ -1992,8 +1991,8 @@ if.end1102.i:                                     ; preds = %if.then1101.i, %if.
   br i1 %cmp1103.i, label %land.lhs.true1105.i, label %if.end1115.i
 
 land.lhs.true1105.i:                              ; preds = %if.end1102.i
-  %arrayidx1106.i = getelementptr inbounds [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.5
-  %48 = load i8* %arrayidx1106.i, align 1, !tbaa !16
+  %arrayidx1106.i = getelementptr inbounds [1 x i8], [1 x i8]* %path_reference.i, i32 0, i32 %path_length.i.5
+  %48 = load i8, i8* %arrayidx1106.i, align 1, !tbaa !16
   %conv1107.i = zext i8 %48 to i32
   %cmp1108.i = icmp ne i32 %conv1107.i, 11
   br i1 %cmp1108.i, label %land.lhs.true1110.i, label %if.end1115.i
@@ -2031,9 +2030,9 @@ main_function_ocl.exit:                           ; preds = %if.then1121.i, %if.
   %retval.i.0 = phi i32 [ 1, %if.then1121.i ], [ %result.i.158, %if.end1122.i ]
   %49 = bitcast [1 x i8]* %path_reference.i to i8*
   call void @llvm.lifetime.end(i64 1, i8* %49) #0
-  %arrayidx1 = getelementptr inbounds i32 addrspace(1)* %ocl_test_results, i32 3
+  %arrayidx1 = getelementptr inbounds i32, i32 addrspace(1)* %ocl_test_results, i32 3
   store i32 %retval.i.0, i32 addrspace(1)* %arrayidx1, align 4, !tbaa !15
-  %arrayidx2 = getelementptr inbounds i32 addrspace(1)* %ocl_test_results, i32 0
+  %arrayidx2 = getelementptr inbounds i32, i32 addrspace(1)* %ocl_test_results, i32 0
   store i32 2, i32 addrspace(1)* %arrayidx2, align 4, !tbaa !15
   ret void
 }
@@ -2059,21 +2058,21 @@ attributes #1 = { alwaysinline nounwind }
 !image.implicit.args.ocl_test_kernel = !{!9, !9, !9}
 !opencl.resource.alloc.ocl_test_kernel = !{!10, !11, !11, !12}
 
-!0 = metadata !{void (i32 addrspace(1)*, <8 x i32>, <8 x i32>)* @ocl_test_kernel, metadata !1, metadata !2, metadata !3, metadata !4, metadata !5, metadata !6}
-!1 = metadata !{metadata !"kernel_arg_addr_space", i32 1}
-!2 = metadata !{metadata !"kernel_arg_access_qual", metadata !"none"}
-!3 = metadata !{metadata !"kernel_arg_type", metadata !"int*"}
-!4 = metadata !{metadata !"kernel_arg_type_qual", metadata !""}
-!5 = metadata !{metadata !"kernel_arg_base_type", metadata !"int*"}
-!6 = metadata !{metadata !"kernel_arg_name", metadata !"ocl_test_results"}
-!7 = metadata !{metadata !"-cl-std=CL1.2", metadata !"-cl-kernel-arg-info"}
-!8 = metadata !{i32 0, i32 1}
-!9 = metadata !{}
-!10 = metadata !{i32 1}
-!11 = metadata !{i32 0}
-!12 = metadata !{metadata !13, metadata !14, metadata !14}
-!13 = metadata !{metadata !"u", i32 0}
-!14 = metadata !{metadata !"", i32 0}
-!15 = metadata !{metadata !"int", metadata !16}
-!16 = metadata !{metadata !"omnipotent char", metadata !17}
-!17 = metadata !{metadata !"Simple C/C++ TBAA"}
+!0 =  !{void (i32 addrspace(1)*, <8 x i32>, <8 x i32>)* @ocl_test_kernel,  !1,  !2,  !3,  !4,  !5,  !6}
+!1 =  !{ !"kernel_arg_addr_space", i32 1}
+!2 =  !{ !"kernel_arg_access_qual",  !"none"}
+!3 =  !{ !"kernel_arg_type",  !"int*"}
+!4 =  !{ !"kernel_arg_type_qual",  !""}
+!5 =  !{ !"kernel_arg_base_type",  !"int*"}
+!6 =  !{ !"kernel_arg_name",  !"ocl_test_results"}
+!7 =  !{ !"-cl-std=CL1.2",  !"-cl-kernel-arg-info"}
+!8 =  !{i32 0, i32 1}
+!9 =  !{}
+!10 =  !{i32 1}
+!11 =  !{i32 0}
+!12 =  !{ !13,  !14,  !14}
+!13 =  !{ !"u", i32 0}
+!14 =  !{ !"", i32 0}
+!15 =  !{ !"int",  !16}
+!16 =  !{ !"omnipotent char",  !17}
+!17 =  !{ !"Simple C/C++ TBAA"}

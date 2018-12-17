@@ -23,7 +23,7 @@
 
 
 ;======================= end_copyright_notice ==================================
-; RUN: opt -igc-conv-ocl-to-common -S %s -o - | FileCheck %s
+; RUN: igc_opt -igc-conv-ocl-to-common -S %s -o - | FileCheck %s
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This LIT test checks that BuiltinsConverter pass handles images/samplers rights.
@@ -39,7 +39,6 @@
 ;; Note: this test was semi-auto generated from cl file below.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f16:16:16-f32:32:32-f64:64:64-f80:128:128-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64-v96:128:128-v128:128:128-v192:256:256-v256:256:256-v512:512:512-v1024:1024:1024-a64:64:64-f80:128:128-n8:16:32:64"
 target triple = "igil_32_GEN8"
 
 %opencl.image2d_t = type opaque
@@ -50,7 +49,7 @@ target triple = "igil_32_GEN8"
 define void @test_image_width(i32 addrspace(1)* %dst, %opencl.image2d_t addrspace(1)* %img, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %imageWidth, i8* %privateBase) #0 {
 entry:
   %0 = zext i16 %localIdX to i32
-  %arrayidx = getelementptr inbounds i32 addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %dst, i32 %0
   store i32 %imageWidth, i32 addrspace(1)* %arrayidx, align 4
   ret void
 }
@@ -59,7 +58,7 @@ entry:
 define void @test_image_height(i32 addrspace(1)* %dst, %opencl.image2d_t addrspace(1)* %img, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %imageHeigt, i8* %privateBase) #0 {
 entry:
   %0 = zext i16 %localIdX to i32
-  %arrayidx = getelementptr inbounds i32 addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %dst, i32 %0
   store i32 %imageHeigt, i32 addrspace(1)* %arrayidx, align 4
   ret void
 }
@@ -68,7 +67,7 @@ entry:
 define void @test_image_depth(i32 addrspace(1)* %dst, %opencl.image3d_t addrspace(1)* %img, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %imageDepth, i8* %privateBase) #0 {
 entry:
   %0 = zext i16 %localIdX to i32
-  %arrayidx = getelementptr inbounds i32 addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %dst, i32 %0
   store i32 %imageDepth, i32 addrspace(1)* %arrayidx, align 4
   ret void
 }
@@ -77,7 +76,7 @@ entry:
 define void @test_image_channel_data_type(i32 addrspace(1)* %dst, %opencl.image2d_t addrspace(1)* %img, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %imageDataType, i8* %privateBase) #0 {
 entry:
   %0 = zext i16 %localIdX to i32
-  %arrayidx = getelementptr inbounds i32 addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %dst, i32 %0
   store i32 %imageDataType, i32 addrspace(1)* %arrayidx, align 4
   ret void
 }
@@ -86,7 +85,7 @@ entry:
 define void @test_image_channel_order(i32 addrspace(1)* %dst, %opencl.image2d_t addrspace(1)* %img, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %imageOrder, i8* %privateBase) #0 {
 entry:
   %0 = zext i16 %localIdX to i32
-  %arrayidx = getelementptr inbounds i32 addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %dst, i32 %0
   store i32 %imageOrder, i32 addrspace(1)* %arrayidx, align 4
   ret void
 }
@@ -97,7 +96,7 @@ entry:
   %0 = zext i16 %localIdX to i32
   %1 = insertelement <2 x i32> undef, i32 %imageWidth, i32 0
   %2 = insertelement <2 x i32> %1, i32 %imageHeigt, i32 1
-  %arrayidx = getelementptr inbounds <2 x i32> addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds <2 x i32>, <2 x i32> addrspace(1)* %dst, i32 %0
   store <2 x i32> %2, <2 x i32> addrspace(1)* %arrayidx, align 8
   ret void
 }
@@ -106,7 +105,7 @@ entry:
 define void @test_image_array_size(i32 addrspace(1)* %dst, %opencl.image2d_array_t addrspace(1)* %img, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i32 %imageArrSize, i8* %privateBase) #0 {
 entry:
   %0 = zext i16 %localIdX to i32
-  %arrayidx = getelementptr inbounds i32 addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds i32, i32 addrspace(1)* %dst, i32 %0
   store i32 %imageArrSize, i32 addrspace(1)* %arrayidx, align 4
   ret void
 }
@@ -132,19 +131,23 @@ entry:
   %15 = insertelement <2 x float> %12, float %14, i32 1
   %16 = call <4 x float> @__builtin_IB_OCL_2d_sample_l(i32 %9, i32 0, <2 x float> %15, float 0.000000e+00) #1
   %add = fadd <4 x float> %8, %16
-  %arrayidx = getelementptr inbounds <4 x float> addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %dst, i32 %0
   store <4 x float> %add, <4 x float> addrspace(1)* %arrayidx, align 16
   ret void
 
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_sample_l
   ; CHECK: [[RIF1_CoordX:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIF1_Coord:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RIF1_CoordY:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIF1_Coord]], i32 1
-  ; CHECK: call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIF1_CoordX]], float [[RIF1_CoordY]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0)
+  ; CHECK: [[BuffPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x float> @genx.GenISA.sampleLptr.v4f32.f32.p196608f32.p524288i32(float 0.000000e+00, float [[RIF1_CoordX]], float [[RIF1_CoordY]], float 0.000000e+00, float 0.000000e+00, float addrspace(196608)* [[BuffPtr]], i32 addrspace(524288)* null, i32 0, i32 0, i32 0)
+  ; C HECK: call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIF1_CoordX]], float [[RIF1_CoordY]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0)
 
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_sample_l
   ; CHECK: [[RIF1_CoordX1:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIF1_Coord1:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RIF1_CoordY1:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIF1_Coord1]], i32 1
-  ; CHECK: call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIF1_CoordX1]], float [[RIF1_CoordY1]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 1, i32 0, i32 0, i32 0)
+  ; CHECK: [[BuffPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x float> @genx.GenISA.sampleLptr.v4f32.f32.p196608f32.p524289i32(float 0.000000e+00, float [[RIF1_CoordX1]], float [[RIF1_CoordY1]], float 0.000000e+00, float 0.000000e+00, float addrspace(196608)* [[BuffPtr]], i32 addrspace(524289)* null, i32 0, i32 0, i32 0)
+  ; C HECK: call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIF1_CoordX1]], float [[RIF1_CoordY1]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 1, i32 0, i32 0, i32 0)
 
   ; CHECK: ret void
 }
@@ -190,7 +193,7 @@ _Z11read_imagef11ocl_image2d11ocl_samplerDv2_f.exit2: ; preds = %_Z11read_imagef
   %.0.i1 = phi <2 x float> [ %23, %15 ], [ %coord, %_Z11read_imagef11ocl_image2d11ocl_samplerDv2_f.exit ]
   %24 = call <4 x float> @__builtin_IB_OCL_2d_sample_l(i32 %13, i32 0, <2 x float> %.0.i1, float 0.000000e+00) #1
   %add = fadd <4 x float> %12, %24
-  %arrayidx = getelementptr inbounds <4 x float> addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %dst, i32 %0
   store <4 x float> %add, <4 x float> addrspace(1)* %arrayidx, align 16
   ret void
 
@@ -198,13 +201,17 @@ _Z11read_imagef11ocl_image2d11ocl_samplerDv2_f.exit2: ; preds = %_Z11read_imagef
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_sample_l
   ; CHECK: [[RIF2_CoordX:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIF2_Coord:%[a-zA-Z0-9.]+]], i32 0
   ; CHECK: [[RIF2_CoordY:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIF2_Coord]], i32 1
-  ; CHECK: call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIF2_CoordX]], float [[RIF2_CoordY]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0)
+  ; CHECK: [[BuffPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x float> @genx.GenISA.sampleLptr.v4f32.f32.p196608f32.p524288i32(float 0.000000e+00, float [[RIF2_CoordX]], float [[RIF2_CoordY]], float 0.000000e+00, float 0.000000e+00, float addrspace(196608)* [[BuffPtr]], i32 addrspace(524288)* null, i32 0, i32 0, i32 0)
+  ; C HECK: call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIF2_CoordX]], float [[RIF2_CoordY]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0)
 
   ; CHECK: _Z11read_imagef11ocl_image2d11ocl_samplerDv2_f.exit2: ; preds
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_sample_l
   ; CHECK: [[RIF2_CoordX1:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIF2_Coord:%[a-zA-Z0-9.]+]], i32 0
   ; CHECK: [[RIF2_CoordY1:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIF2_Coord]], i32 1
-  ; CHECK: call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIF2_CoordX1]], float [[RIF2_CoordY1]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 1, i32 0, i32 0, i32 0)
+  ; CHECK: [[BuffPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x float> @genx.GenISA.sampleLptr.v4f32.f32.p196608f32.p524289i32(float 0.000000e+00, float [[RIF2_CoordX1]], float [[RIF2_CoordY1]], float 0.000000e+00, float 0.000000e+00, float addrspace(196608)* [[BuffPtr]], i32 addrspace(524289)* null, i32 0, i32 0, i32 0)
+  ; C HECK: call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIF2_CoordX1]], float [[RIF2_CoordY1]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 1, i32 0, i32 0, i32 0)
 
   ; CHECK: ret void
 }
@@ -213,8 +220,8 @@ _Z11read_imagef11ocl_image2d11ocl_samplerDv2_f.exit2: ; preds = %_Z11read_imagef
 define void @test_read_imagef_3(<4 x float> addrspace(1)* %dst, %opencl.image2d_t addrspace(1)* %img, <2 x i32> %coord, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i8* %privateBase) #0 {
 entry:
   %0 = zext i16 %localIdX to i32
-  %1 = bitcast %opencl.image2d_t addrspace(1)* %img to i8*
-  %2 = ptrtoint i8* %1 to i32
+  %1 = bitcast %opencl.image2d_t addrspace(1)* %img to i8 addrspace(1)*
+  %2 = ptrtoint i8 addrspace(1)* %1 to i32
   %3 = call <4 x float> @__builtin_IB_OCL_2d_ld(i32 %2, <2 x i32> %coord, i32 0) #1
   %4 = bitcast <4 x float> %3 to <4 x i32>
   %5 = and <4 x i32> %4, <i32 -2139095041, i32 -2139095041, i32 -2139095041, i32 -2139095041>
@@ -224,15 +231,15 @@ entry:
   %9 = bitcast <4 x i32> %8 to <4 x float>
   %10 = icmp slt <4 x i32> %7, zeroinitializer
   %11 = select <4 x i1> %10, <4 x float> %9, <4 x float> %3
-  %arrayidx = getelementptr inbounds <4 x float> addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %dst, i32 %0
   store <4 x float> %11, <4 x float> addrspace(1)* %arrayidx, align 16
   ret void
 
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_ld
   ; CHECK: [[RIF3_CoordX:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RIF3_Coord:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RIF3_CoordY:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RIF3_Coord]], i32 1
-  ; CHECK: [[RIF3_GetBufferPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-  ; CHECK: call <4 x float> @llvm.genx.GenISA.ldptr.v4f32.p196608f32(i32 [[RIF3_CoordX]], i32 [[RIF3_CoordY]], i32 0, i32 0, float addrspace(196608)* [[RIF3_GetBufferPtr]], i32 0, i32 0, i32 0)
+  ; CHECK: [[RIF3_GetBufferPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x float> @genx.GenISA.ldptr.v4f32.p196608f32(i32 [[RIF3_CoordX]], i32 [[RIF3_CoordY]], i32 0, i32 0, float addrspace(196608)* [[RIF3_GetBufferPtr]], i32 0, i32 0, i32 0)
 
   ; CHECK: ret void
 }
@@ -286,31 +293,35 @@ _Z11read_imagei11ocl_image2d11ocl_samplerDv2_i.exit: ; preds = %4, %13
 _Z11read_imagei11ocl_image2d11ocl_samplerDv2_i.exit2: ; preds = %18, %27
   %.0.i.i1 = phi <4 x i32> [ %26, %18 ], [ %28, %27 ]
   %add = add <4 x i32> %.0.i.i, %.0.i.i1
-  %arrayidx = getelementptr inbounds <4 x i32> addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* %dst, i32 %0
   store <4 x i32> %add, <4 x i32> addrspace(1)* %arrayidx, align 16
   ret void
 
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_sample_l
   ; CHECK: [[RII1_CoordX1:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RII1_Coord1:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RII1_CoordY1:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RII1_Coord1]], i32 1
-  ; CHECK: call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RII1_CoordX1]], float [[RII1_CoordY1]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0)
+  ; CHECK: [[BuffPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x float> @genx.GenISA.sampleLptr.v4f32.f32.p196608f32.p524288i32(float 0.000000e+00, float [[RII1_CoordX1]], float [[RII1_CoordY1]], float 0.000000e+00, float 0.000000e+00, float addrspace(196608)* [[BuffPtr]], i32 addrspace(524288)* null, i32 0, i32 0, i32 0)
+  ; C HECK: call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RII1_CoordX1]], float [[RII1_CoordY1]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0)
 
   ; CHECK-NOT: call <4 x i32> @__builtin_IB_OCL_2d_ldui
   ; CHECK: [[RII1_CoordX2:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RII1_Coord2:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RII1_CoordY2:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RII1_Coord2]], i32 1
-  ; CHECK: [[RII1_GetBufferPtr2:%[a-zA-Z0-9]+]]  = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-  ; CHECK: call <4 x i32> @llvm.genx.GenISA.ldui.ptr.p196608f32(i32 [[RII1_CoordX2]], i32 [[RII1_CoordY2]], i32 0, i32 0, float addrspace(196608)* [[RII1_GetBufferPtr2]], i32 0, i32 0, i32 0)
+  ; CHECK: [[RII1_GetBufferPtr2:%[a-zA-Z0-9]+]]  = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x i32> @genx.GenISA.ldptr.v4i32.p196608f32(i32 [[RII1_CoordX2]], i32 [[RII1_CoordY2]], i32 0, i32 0, float addrspace(196608)* [[RII1_GetBufferPtr2]], i32 0, i32 0, i32 0)
 
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_sample_l
   ; CHECK: [[RII1_CoordX3:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RII1_Coord3:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RII1_CoordY3:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RII1_Coord3]], i32 1
-  ; CHECK: call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RII1_CoordX3]], float [[RII1_CoordY3]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 1, i32 0, i32 0, i32 0)
+  ; CHECK: [[BuffPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x float> @genx.GenISA.sampleLptr.v4f32.f32.p196608f32.p524289i32(float 0.000000e+00, float [[RII1_CoordX3]], float [[RII1_CoordY3]], float 0.000000e+00, float 0.000000e+00, float addrspace(196608)* [[BuffPtr]], i32 addrspace(524289)* null, i32 0, i32 0, i32 0)
+  ; C HECK: call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RII1_CoordX3]], float [[RII1_CoordY3]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 1, i32 0, i32 0, i32 0)
 
   ; CHECK-NOT: call <4 x i32> @__builtin_IB_OCL_2d_ldui
   ; CHECK: [[RII1_CoordX4:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RII1_Coord4:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RII1_CoordY4:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RII1_Coord4]], i32 1
-  ; CHECK: [[RII1_GetBufferPtr4:%[a-zA-Z0-9]+]]  = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-  ; CHECK: call <4 x i32> @llvm.genx.GenISA.ldui.ptr.p196608f32(i32 [[RII1_CoordX4]], i32 [[RII1_CoordY4]], i32 0, i32 0, float addrspace(196608)* [[RII1_GetBufferPtr4]], i32 0, i32 0, i32 0)
+  ; CHECK: [[RII1_GetBufferPtr4:%[a-zA-Z0-9]+]]  = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x i32> @genx.GenISA.ldptr.v4i32.p196608f32(i32 [[RII1_CoordX4]], i32 [[RII1_CoordY4]], i32 0, i32 0, float addrspace(196608)* [[RII1_GetBufferPtr4]], i32 0, i32 0, i32 0)
 
   ; CHECK: ret void
 }
@@ -410,31 +421,35 @@ _Z11read_imagei11ocl_image2d11ocl_samplerDv2_f.exit: ; preds = %16, %30
 _Z11read_imagei11ocl_image2d11ocl_samplerDv2_f.exit3: ; preds = %48, %62
   %.0.i.i2 = phi <4 x i32> [ %61, %48 ], [ %64, %62 ]
   %add = add <4 x i32> %.0.i.i, %.0.i.i2
-  %arrayidx = getelementptr inbounds <4 x i32> addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* %dst, i32 %0
   store <4 x i32> %add, <4 x i32> addrspace(1)* %arrayidx, align 16
   ret void
 
   ; CHECK-NOT: call <4 x i32> @__builtin_IB_OCL_2d_ldui
   ; CHECK: [[RII2_CoordX1:%Coord[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RII2_Coord1:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RII2_CoordY1:%Coord[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RII2_Coord1]], i32 1
-  ; CHECK: [[RII2_GetBufferPtr1:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-  ; CHECK: call <4 x i32> @llvm.genx.GenISA.ldui.ptr.p196608f32(i32 [[RII2_CoordX1]], i32 [[RII2_CoordY1]], i32 0, i32 0, float addrspace(196608)* [[RII2_GetBufferPtr1]], i32 0, i32 0, i32 0)
+  ; CHECK: [[RII2_GetBufferPtr1:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x i32> @genx.GenISA.ldptr.v4i32.p196608f32(i32 [[RII2_CoordX1]], i32 [[RII2_CoordY1]], i32 0, i32 0, float addrspace(196608)* [[RII2_GetBufferPtr1]], i32 0, i32 0, i32 0)
 
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_sample_l
   ; CHECK: [[RII2_CoordX2:%Coord[a-zA-Z0-9]+]] = extractelement <2 x float> [[RII2_Coord2:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RII2_CoordY2:%Coord[a-zA-Z0-9]+]] = extractelement <2 x float> [[RII2_Coord2]], i32 1
-  ; CHECK: call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RII2_CoordX2]], float [[RII2_CoordY2]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0)
+  ; CHECK: [[BuffPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x float> @genx.GenISA.sampleLptr.v4f32.f32.p196608f32.p524288i32(float 0.000000e+00, float [[RII2_CoordX2]], float [[RII2_CoordY2]], float 0.000000e+00, float 0.000000e+00, float addrspace(196608)* [[BuffPtr]], i32 addrspace(524288)* null, i32 0, i32 0, i32 0)
+  ; C HECK: call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RII2_CoordX2]], float [[RII2_CoordY2]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0)
 
   ; CHECK-NOT: call <4 x i32> @__builtin_IB_OCL_2d_ldui
   ; CHECK: [[RII2_CoordX3:%Coord[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RII2_Coord3:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RII2_CoordY3:%Coord[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RII2_Coord3]], i32 1
-  ; CHECK: [[RII2_GetBufferPtr3:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-  ; CHECK: call <4 x i32> @llvm.genx.GenISA.ldui.ptr.p196608f32(i32 [[RII2_CoordX3]], i32 [[RII2_CoordY3]], i32 0, i32 0, float addrspace(196608)* [[RII2_GetBufferPtr3]], i32 0, i32 0, i32 0)
+  ; CHECK: [[RII2_GetBufferPtr3:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x i32> @genx.GenISA.ldptr.v4i32.p196608f32(i32 [[RII2_CoordX3]], i32 [[RII2_CoordY3]], i32 0, i32 0, float addrspace(196608)* [[RII2_GetBufferPtr3]], i32 0, i32 0, i32 0)
 
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_sample_l
   ; CHECK: [[RII2_CoordX4:%Coord[a-zA-Z0-9]+]] = extractelement <2 x float> [[RII2_Coord4:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RII2_CoordY4:%Coord[a-zA-Z0-9]+]] = extractelement <2 x float> [[RII2_Coord4]], i32 1
-  ; CHECK: call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RII2_CoordX4]], float [[RII2_CoordY4]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 1, i32 0, i32 0, i32 0)
+  ; CHECK: [[BuffPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x float> @genx.GenISA.sampleLptr.v4f32.f32.p196608f32.p524289i32(float 0.000000e+00, float [[RII2_CoordX4]], float [[RII2_CoordY4]], float 0.000000e+00, float 0.000000e+00, float addrspace(196608)* [[BuffPtr]], i32 addrspace(524289)* null, i32 0, i32 0, i32 0)
+  ; C HECK: call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RII2_CoordX4]], float [[RII2_CoordY4]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 1, i32 0, i32 0, i32 0)
 
   ; CHECK: ret void
 }
@@ -445,15 +460,15 @@ entry:
   %0 = zext i16 %localIdX to i32
   %1 = ptrtoint %opencl.image2d_t addrspace(1)* %img to i32
   %2 = call <4 x i32> @__builtin_IB_OCL_2d_ldui(i32 %1, <2 x i32> %coord, i32 0) #1
-  %arrayidx = getelementptr inbounds <4 x i32> addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* %dst, i32 %0
   store <4 x i32> %2, <4 x i32> addrspace(1)* %arrayidx, align 16
   ret void
 
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_ldui
   ; CHECK: [[RII3_CoordX:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RII3_Coord:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RII3_CoordY:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RII3_Coord]], i32 1
-  ; CHECK: [[RII3_GetBufferPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-  ; CHECK: call <4 x i32> @llvm.genx.GenISA.ldui.ptr.p196608f32(i32 [[RII3_CoordX]], i32 [[RII3_CoordY]], i32 0, i32 0, float addrspace(196608)* [[RII3_GetBufferPtr]], i32 0, i32 0, i32 0)
+  ; CHECK: [[RII3_GetBufferPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x i32> @genx.GenISA.ldptr.v4i32.p196608f32(i32 [[RII3_CoordX]], i32 [[RII3_CoordY]], i32 0, i32 0, float addrspace(196608)* [[RII3_GetBufferPtr]], i32 0, i32 0, i32 0)
 
   ; CHECK: ret void
 }
@@ -507,31 +522,35 @@ _Z12read_imageui11ocl_image2d11ocl_samplerDv2_i.exit: ; preds = %4, %13
 _Z12read_imageui11ocl_image2d11ocl_samplerDv2_i.exit2: ; preds = %18, %27
   %.0.i1 = phi <4 x i32> [ %26, %18 ], [ %28, %27 ]
   %add = add <4 x i32> %.0.i, %.0.i1
-  %arrayidx = getelementptr inbounds <4 x i32> addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* %dst, i32 %0
   store <4 x i32> %add, <4 x i32> addrspace(1)* %arrayidx, align 16
   ret void
 
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_sample_l
   ; CHECK: [[RIUI1_CoordX1:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIUI1_Coord1:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RIUI1_CoordY1:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIUI1_Coord1]], i32 1
-  ; CHECK: call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIUI1_CoordX1]], float [[RIUI1_CoordY1]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0)
+  ; CHECK: [[BuffPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x float> @genx.GenISA.sampleLptr.v4f32.f32.p196608f32.p524288i32(float 0.000000e+00, float [[RIUI1_CoordX1]], float [[RIUI1_CoordY1]], float 0.000000e+00, float 0.000000e+00, float addrspace(196608)* [[BuffPtr]], i32 addrspace(524288)* null, i32 0, i32 0, i32 0)
+  ; C HECK: call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIUI1_CoordX1]], float [[RIUI1_CoordY1]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0)
 
   ; CHECK-NOT: call <4 x i32> @__builtin_IB_OCL_2d_ldui
   ; CHECK: [[RIUI1_CoordX2:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RIUI1_Coord2:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RIUI1_CoordY2:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RIUI1_Coord2]], i32 1
-  ; CHECK: [[RIUI1_GetBufferPtr2:%[a-zA-Z0-9]+]]  = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-  ; CHECK: call <4 x i32> @llvm.genx.GenISA.ldui.ptr.p196608f32(i32 [[RIUI1_CoordX2]], i32 [[RIUI1_CoordY2]], i32 0, i32 0, float addrspace(196608)* [[RIUI1_GetBufferPtr2]], i32 0, i32 0, i32 0)
+  ; CHECK: [[RIUI1_GetBufferPtr2:%[a-zA-Z0-9]+]]  = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x i32> @genx.GenISA.ldptr.v4i32.p196608f32(i32 [[RIUI1_CoordX2]], i32 [[RIUI1_CoordY2]], i32 0, i32 0, float addrspace(196608)* [[RIUI1_GetBufferPtr2]], i32 0, i32 0, i32 0)
 
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_sample_l
   ; CHECK: [[RIUI1_CoordX3:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIUI1_Coord3:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RIUI1_CoordY3:%[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIUI1_Coord3]], i32 1
-  ; CHECK: call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIUI1_CoordX3]], float [[RIUI1_CoordY3]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 1, i32 0, i32 0, i32 0)
+  ; CHECK: [[BuffPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x float> @genx.GenISA.sampleLptr.v4f32.f32.p196608f32.p524289i32(float 0.000000e+00, float [[RIUI1_CoordX3]], float [[RIUI1_CoordY3]], float 0.000000e+00, float 0.000000e+00, float addrspace(196608)* [[BuffPtr]], i32 addrspace(524289)* null, i32 0, i32 0, i32 0)
+  ; C HECK: call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIUI1_CoordX3]], float [[RIUI1_CoordY3]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 1, i32 0, i32 0, i32 0)
 
   ; CHECK-NOT: call <4 x i32> @__builtin_IB_OCL_2d_ldui
   ; CHECK: [[RIUI1_CoordX4:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RIUI1_Coord4:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RIUI1_CoordY4:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RIUI1_Coord4]], i32 1
-  ; CHECK: [[RIUI1_GetBufferPtr4:%[a-zA-Z0-9]+]]  = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-  ; CHECK: call <4 x i32> @llvm.genx.GenISA.ldui.ptr.p196608f32(i32 [[RIUI1_CoordX4]], i32 [[RIUI1_CoordY4]], i32 0, i32 0, float addrspace(196608)* [[RIUI1_GetBufferPtr4]], i32 0, i32 0, i32 0)
+  ; CHECK: [[RIUI1_GetBufferPtr4:%[a-zA-Z0-9]+]]  = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x i32> @genx.GenISA.ldptr.v4i32.p196608f32(i32 [[RIUI1_CoordX4]], i32 [[RIUI1_CoordY4]], i32 0, i32 0, float addrspace(196608)* [[RIUI1_GetBufferPtr4]], i32 0, i32 0, i32 0)
 
   ; CHECK: ret void
 }
@@ -631,31 +650,35 @@ _Z12read_imageui11ocl_image2d11ocl_samplerDv2_f.exit: ; preds = %16, %30
 _Z12read_imageui11ocl_image2d11ocl_samplerDv2_f.exit3: ; preds = %48, %62
   %.0.i2 = phi <4 x i32> [ %61, %48 ], [ %64, %62 ]
   %add = add <4 x i32> %.0.i, %.0.i2
-  %arrayidx = getelementptr inbounds <4 x i32> addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* %dst, i32 %0
   store <4 x i32> %add, <4 x i32> addrspace(1)* %arrayidx, align 16
   ret void
 
   ; CHECK-NOT: call <4 x i32> @__builtin_IB_OCL_2d_ldui
   ; CHECK: [[RIUI2_CoordX1:%Coord[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RIUI2_Coord1:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RIUI2_CoordY1:%Coord[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RIUI2_Coord1]], i32 1
-  ; CHECK: [[RIUI2_GetBufferPtr1:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-  ; CHECK: call <4 x i32> @llvm.genx.GenISA.ldui.ptr.p196608f32(i32 [[RIUI2_CoordX1]], i32 [[RIUI2_CoordY1]], i32 0, i32 0, float addrspace(196608)* [[RIUI2_GetBufferPtr1]], i32 0, i32 0, i32 0)
+  ; CHECK: [[RIUI2_GetBufferPtr1:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x i32> @genx.GenISA.ldptr.v4i32.p196608f32(i32 [[RIUI2_CoordX1]], i32 [[RIUI2_CoordY1]], i32 0, i32 0, float addrspace(196608)* [[RIUI2_GetBufferPtr1]], i32 0, i32 0, i32 0)
 
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_sample_l
   ; CHECK: [[RIUI2_CoordX2:%Coord[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIUI2_Coord2:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RIUI2_CoordY2:%Coord[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIUI2_Coord2]], i32 1
-  ; CHECK: call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIUI2_CoordX2]], float [[RIUI2_CoordY2]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0)
+  ; CHECK: [[BuffPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x float> @genx.GenISA.sampleLptr.v4f32.f32.p196608f32.p524288i32(float 0.000000e+00, float [[RIUI2_CoordX2]], float [[RIUI2_CoordY2]], float 0.000000e+00, float 0.000000e+00, float addrspace(196608)* [[BuffPtr]], i32 addrspace(524288)* null, i32 0, i32 0, i32 0)
+  ; C HECK: call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIUI2_CoordX2]], float [[RIUI2_CoordY2]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 0, i32 0, i32 0, i32 0)
 
   ; CHECK-NOT: call <4 x i32> @__builtin_IB_OCL_2d_ldui
   ; CHECK: [[RIUI2_CoordX3:%Coord[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RIUI2_Coord3:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RIUI2_CoordY3:%Coord[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RIUI2_Coord3]], i32 1
-  ; CHECK: [[RIUI2_GetBufferPtr3:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-  ; CHECK: call <4 x i32> @llvm.genx.GenISA.ldui.ptr.p196608f32(i32 [[RIUI2_CoordX3]], i32 [[RIUI2_CoordY3]], i32 0, i32 0, float addrspace(196608)* [[RIUI2_GetBufferPtr3]], i32 0, i32 0, i32 0)
+  ; CHECK: [[RIUI2_GetBufferPtr3:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x i32> @genx.GenISA.ldptr.v4i32.p196608f32(i32 [[RIUI2_CoordX3]], i32 [[RIUI2_CoordY3]], i32 0, i32 0, float addrspace(196608)* [[RIUI2_GetBufferPtr3]], i32 0, i32 0, i32 0)
 
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_sample_l
   ; CHECK: [[RIUI2_CoordX4:%Coord[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIUI2_Coord4:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RIUI2_CoordY4:%Coord[a-zA-Z0-9]+]] = extractelement <2 x float> [[RIUI2_Coord4]], i32 1
-  ; CHECK: call <4 x float> @llvm.genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIUI2_CoordX4]], float [[RIUI2_CoordY4]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 1, i32 0, i32 0, i32 0)
+  ; CHECK: [[BuffPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x float> @genx.GenISA.sampleLptr.v4f32.f32.p196608f32.p524289i32(float 0.000000e+00, float [[RIUI2_CoordX4]], float [[RIUI2_CoordY4]], float 0.000000e+00, float 0.000000e+00, float addrspace(196608)* [[BuffPtr]], i32 addrspace(524289)* null, i32 0, i32 0, i32 0)
+  ; C HECK: call <4 x float> @genx.GenISA.sampleL.v4f32.f32(float 0.000000e+00, float [[RIUI2_CoordX4]], float [[RIUI2_CoordY4]], float 0.000000e+00, float 0.000000e+00, i32 0, i32 1, i32 0, i32 0, i32 0)
 
   ; CHECK: ret void
 }
@@ -666,15 +689,15 @@ entry:
   %0 = zext i16 %localIdX to i32
   %1 = ptrtoint %opencl.image2d_t addrspace(1)* %img to i32
   %2 = call <4 x i32> @__builtin_IB_OCL_2d_ldui(i32 %1, <2 x i32> %coord, i32 0) #1
-  %arrayidx = getelementptr inbounds <4 x i32> addrspace(1)* %dst, i32 %0
+  %arrayidx = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* %dst, i32 %0
   store <4 x i32> %2, <4 x i32> addrspace(1)* %arrayidx, align 16
   ret void
 
   ; CHECK-NOT: call <4 x float> @__builtin_IB_OCL_2d_ldui
   ; CHECK: [[RIUI3_CoordX:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RIUI3_Coord:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[RIUI3_CoordY:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[RIUI3_Coord]], i32 1
-  ; CHECK: [[RIUI3_GetBufferPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @llvm.genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
-  ; CHECK: call <4 x i32> @llvm.genx.GenISA.ldui.ptr.p196608f32(i32 [[RIUI3_CoordX]], i32 [[RIUI3_CoordY]], i32 0, i32 0, float addrspace(196608)* [[RIUI3_GetBufferPtr]], i32 0, i32 0, i32 0)
+  ; CHECK: [[RIUI3_GetBufferPtr:%[a-zA-Z0-9]+]] = call float addrspace(196608)* @genx.GenISA.GetBufferPtr.p196608f32(i32 0, i32 2)
+  ; CHECK: call <4 x i32> @genx.GenISA.ldptr.v4i32.p196608f32(i32 [[RIUI3_CoordX]], i32 [[RIUI3_CoordY]], i32 0, i32 0, float addrspace(196608)* [[RIUI3_GetBufferPtr]], i32 0, i32 0, i32 0)
 
   ; CHECK: ret void
 }
@@ -683,45 +706,21 @@ entry:
 define void @test_write_imagef_1(<4 x float> addrspace(1)* %src, %opencl.image2d_t addrspace(1)* %img, <2 x i32> %coord, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i8* %privateBase) #0 {
 entry:
   %0 = zext i16 %localIdX to i32
-  %arrayidx = getelementptr inbounds <4 x float> addrspace(1)* %src, i32 %0
-  %1 = load <4 x float> addrspace(1)* %arrayidx, align 16
+  %arrayidx = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %src, i32 %0
+  %1 = load <4 x float>, <4 x float> addrspace(1)* %arrayidx, align 16
   %2 = ptrtoint %opencl.image2d_t addrspace(1)* %img to i32
-  call void @__builtin_IB_write_2d_f(i32 %2, i32 1, i32 0, <2 x i32> %coord, <4 x float> %1, i32 0) #1
+  call void @__builtin_IB_write_2d_f(i32 %2, <2 x i32> %coord, <4 x float> %1, i32 0) #1
   ret void
 
-  ; CHECK-NOT: call <4 x float> @__builtin_IB_write_2d_f
-  ; CHECK: [[WIF1_GetBufferPtr:%[a-zA-Z0-9]+]] = call float addrspace(131074)* @llvm.genx.GenISA.GetBufferPtr.p131074f32(i32 2, i32 1)
+  ; CHECK-NOT: call void @__builtin_IB_write_2d_f
+  ; CHECK: [[WIF1_GetBufferPtr:%[a-zA-Z0-9]+]] = call float addrspace(131074)* @genx.GenISA.GetBufferPtr.p131074f32(i32 2, i32 1)
   ; CHECK: [[WIF1_CoordX:%[a-zA-Z0-9]+]] = extractelement <2 x i32>  [[WIF1_Coord:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[WIF1_CoordY:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[WIF1_Coord]], i32 1
   ; CHECK: [[WIF1_ColorX:%[a-zA-Z0-9]+]] = extractelement <4 x float> %1, i32 0
   ; CHECK: [[WIF1_ColorY:%[a-zA-Z0-9]+]] = extractelement <4 x float> %1, i32 1
   ; CHECK: [[WIF1_ColorZ:%[a-zA-Z0-9]+]] = extractelement <4 x float> %1, i32 2
   ; CHECK: [[WIF1_ColorW:%[a-zA-Z0-9]+]] = extractelement <4 x float> %1, i32 3
-  ; CHECK: call void @llvm.genx.GenISA.typedwrite.p131074f32(float addrspace(131074)* [[WIF1_GetBufferPtr]], i32 [[WIF1_CoordX]], i32 [[WIF1_CoordY]], i32 0, i32 0, float [[WIF1_ColorX]], float [[WIF1_ColorY]], float [[WIF1_ColorZ]], float [[WIF1_ColorW]])
-
-  ; CHECK: ret void
-}
-
-; Function Attrs: alwaysinline nounwind
-define void @test_write_imagei_1(<4 x i32> addrspace(1)* %src, %opencl.image2d_t addrspace(1)* %img, <2 x i32> %coord, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i8* %privateBase) #0 {
-entry:
-  %0 = zext i16 %localIdX to i32
-  %arrayidx = getelementptr inbounds <4 x i32> addrspace(1)* %src, i32 %0
-  %1 = load <4 x i32> addrspace(1)* %arrayidx, align 16
-  %2 = ptrtoint %opencl.image2d_t addrspace(1)* %img to i32
-  call void @__builtin_IB_write_2d_i(i32 %2, i32 1, i32 1, <2 x i32> %coord, <4 x i32> %1, i32 0) #1
-  ret void
-
-  ; CHECK-NOT: call <4 x float> @__builtin_IB_write_2d_i
-  ; CHECK: [[WII1_GetBufferPtr:%[a-zA-Z0-9]+]] = call float addrspace(131074)* @llvm.genx.GenISA.GetBufferPtr.p131074f32(i32 2, i32 1)
-  ; CHECK: [[WII1_CoordX:%[a-zA-Z0-9]+]] = extractelement <2 x i32>  [[WII1_Coord:%[a-zA-Z0-9]+]], i32 0
-  ; CHECK: [[WII1_CoordY:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[WII1_Coord]], i32 1
-  ; CHECK: [[WII1_floatColor:%[a-zA-Z0-9]+]] = bitcast <4 x i32> %1 to <4 x float>
-  ; CHECK: [[WII1_ColorX:%[a-zA-Z0-9]+]] = extractelement <4 x float> [[WII1_floatColor]], i32 0
-  ; CHECK: [[WII1_ColorY:%[a-zA-Z0-9]+]] = extractelement <4 x float> [[WII1_floatColor]], i32 1
-  ; CHECK: [[WII1_ColorZ:%[a-zA-Z0-9]+]] = extractelement <4 x float> [[WII1_floatColor]], i32 2
-  ; CHECK: [[WII1_ColorW:%[a-zA-Z0-9]+]] = extractelement <4 x float> [[WII1_floatColor]], i32 3
-  ; CHECK: call void @llvm.genx.GenISA.typedwrite.p131074f32(float addrspace(131074)* [[WII1_GetBufferPtr]], i32 [[WII1_CoordX]], i32 [[WII1_CoordY]], i32 0, i32 0, float [[WII1_ColorX]], float [[WII1_ColorY]], float [[WII1_ColorZ]], float [[WII1_ColorW]])
+  ; CHECK: call void @genx.GenISA.typedwrite.p131074f32(float addrspace(131074)* [[WIF1_GetBufferPtr]], i32 [[WIF1_CoordX]], i32 [[WIF1_CoordY]], i32 0, i32 0, float [[WIF1_ColorX]], float [[WIF1_ColorY]], float [[WIF1_ColorZ]], float [[WIF1_ColorW]])
 
   ; CHECK: ret void
 }
@@ -730,14 +729,14 @@ entry:
 define void @test_write_imageui_1(<4 x i32> addrspace(1)* %src, %opencl.image2d_t addrspace(1)* %img, <2 x i32> %coord, <8 x i32> %r0, <8 x i32> %payloadHeader, i16 %localIdX, i16 %localIdY, i16 %localIdZ, i8* %privateBase) #0 {
 entry:
   %0 = zext i16 %localIdX to i32
-  %arrayidx = getelementptr inbounds <4 x i32> addrspace(1)* %src, i32 %0
-  %1 = load <4 x i32> addrspace(1)* %arrayidx, align 16
+  %arrayidx = getelementptr inbounds <4 x i32>, <4 x i32> addrspace(1)* %src, i32 %0
+  %1 = load <4 x i32>, <4 x i32> addrspace(1)* %arrayidx, align 16
   %2 = ptrtoint %opencl.image2d_t addrspace(1)* %img to i32
-  call void @__builtin_IB_write_2d_ui(i32 %2, i32 1, i32 2, <2 x i32> %coord, <4 x i32> %1, i32 0) #1
+  call void @__builtin_IB_write_2d_ui(i32 %2, <2 x i32> %coord, <4 x i32> %1, i32 0) #1
   ret void
 
-  ; CHECK-NOT: call <4 x float> @__builtin_IB_write_2d_ui
-  ; CHECK: [[WIUI1_GetBufferPtr:%[a-zA-Z0-9]+]] = call float addrspace(131074)* @llvm.genx.GenISA.GetBufferPtr.p131074f32(i32 2, i32 1)
+  ; CHECK-NOT: call void @__builtin_IB_write_2d_ui
+  ; CHECK: [[WIUI1_GetBufferPtr:%[a-zA-Z0-9]+]] = call float addrspace(131074)* @genx.GenISA.GetBufferPtr.p131074f32(i32 2, i32 1)
   ; CHECK: [[WIUI1_CoordX:%[a-zA-Z0-9]+]] = extractelement <2 x i32>  [[WIUI1_Coord:%[a-zA-Z0-9]+]], i32 0
   ; CHECK: [[WIUI1_CoordY:%[a-zA-Z0-9]+]] = extractelement <2 x i32> [[WIUI1_Coord]], i32 1
   ; CHECK: [[WIUI1_floatColor:%[a-zA-Z0-9]+]] = bitcast <4 x i32> %1 to <4 x float>
@@ -745,16 +744,16 @@ entry:
   ; CHECK: [[WIUI1_ColorY:%[a-zA-Z0-9]+]] = extractelement <4 x float> [[WIUI1_floatColor]], i32 1
   ; CHECK: [[WIUI1_ColorZ:%[a-zA-Z0-9]+]] = extractelement <4 x float> [[WIUI1_floatColor]], i32 2
   ; CHECK: [[WIUI1_ColorW:%[a-zA-Z0-9]+]] = extractelement <4 x float> [[WIUI1_floatColor]], i32 3
-  ; CHECK: call void @llvm.genx.GenISA.typedwrite.p131074f32(float addrspace(131074)* [[WIUI1_GetBufferPtr]], i32 [[WIUI1_CoordX]], i32 [[WIUI1_CoordY]], i32 0, i32 0, float [[WIUI1_ColorX]], float [[WIUI1_ColorY]], float [[WIUI1_ColorZ]], float [[WIUI1_ColorW]])
+  ; CHECK: call void @genx.GenISA.typedwrite.p131074f32(float addrspace(131074)* [[WIUI1_GetBufferPtr]], i32 [[WIUI1_CoordX]], i32 [[WIUI1_CoordY]], i32 0, i32 0, float [[WIUI1_ColorX]], float [[WIUI1_ColorY]], float [[WIUI1_ColorZ]], float [[WIUI1_ColorW]])
 
   ; CHECK: ret void
 }
 
-declare void @__builtin_IB_write_2d_ui(i32, i32, i32, <2 x i32>, <4 x i32>, i32)
+declare void @__builtin_IB_write_2d_ui(i32, <2 x i32>, <4 x i32>, i32)
 
-declare void @__builtin_IB_write_2d_i(i32, i32, i32, <2 x i32>, <4 x i32>, i32)
+declare void @__builtin_IB_write_2d_i(i32, <2 x i32>, <4 x i32>, i32)
 
-declare void @__builtin_IB_write_2d_f(i32, i32, i32, <2 x i32>, <4 x float>, i32)
+declare void @__builtin_IB_write_2d_f(i32, <2 x i32>, <4 x float>, i32)
 
 declare <4 x i32> @__builtin_IB_OCL_2d_ldui(i32, <2 x i32>, i32)
 
@@ -790,7 +789,7 @@ attributes #1 = { nounwind }
 !igc.version = !{!0}
 !igc.input.ir = !{!1}
 !igc.input.lang.info = !{!1}
-!igc.functions = !{!2, !27, !42, !53, !57, !68, !70, !72, !81, !84, !90, !94, !98, !105, !111, !117, !123, !125, !129}
+!igc.functions = !{!2, !27, !42, !53, !57, !70, !72, !81, !84, !90, !94, !98, !105, !111, !117, !123, !125, !129}
 !igc.compiler.options = !{!133, !134, !135}
 !igc.inline.constants = !{}
 !igc.inline.globals = !{}
@@ -799,142 +798,141 @@ attributes #1 = { nounwind }
 !igc.constant.pointer.info = !{}
 !igc.enable.FP_CONTRACT = !{}
 
-!0 = metadata !{i32 1, i32 0}
-!1 = metadata !{metadata !"ocl", i32 1, i32 2}
-!2 = metadata !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i8*)* @test_read_imagei_3, metadata !3}
-!3 = metadata !{metadata !4, metadata !5, metadata !12, metadata !21, metadata !22, metadata !23, metadata !24, metadata !25, metadata !26}
-!4 = metadata !{metadata !"function_type", i32 0}
-!5 = metadata !{metadata !"implicit_arg_desc", metadata !6, metadata !7, metadata !8, metadata !9, metadata !10, metadata !11}
-!6 = metadata !{i32 0}
-!7 = metadata !{i32 1}
-!8 = metadata !{i32 5}
-!9 = metadata !{i32 6}
-!10 = metadata !{i32 7}
-!11 = metadata !{i32 10}
-!12 = metadata !{metadata !"resource_alloc", metadata !13, metadata !14, metadata !15, metadata !16}
-!13 = metadata !{metadata !"uavs_num", i32 2}
-!14 = metadata !{metadata !"srvs_num", i32 1}
-!15 = metadata !{metadata !"samplers_num", i32 0}
-!16 = metadata !{metadata !"arg_allocs", metadata !17, metadata !18, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !20}
-!17 = metadata !{i32 1, null, i32 0}
-!18 = metadata !{i32 2, i32 0, i32 0}
-!19 = metadata !{i32 0, null, null}
-!20 = metadata !{i32 1, null, i32 1}
-!21 = metadata !{metadata !"opencl_kernel_arg_addr_space", i32 1, i32 1, i32 0}
-!22 = metadata !{metadata !"opencl_kernel_arg_access_qual", metadata !"none", metadata !"read_only", metadata !"none"}
-!23 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"int4*", metadata !"image2d_t", metadata !"int2"}
-!24 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"int4*", metadata !"image2d_t", metadata !"int2"}
-!25 = metadata !{metadata !"opencl_kernel_arg_type_qual", metadata !"", metadata !"", metadata !""}
-!26 = metadata !{metadata !"opencl_kernel_arg_name", metadata !"dst", metadata !"img", metadata !"coord"}
-!27 = metadata !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, i32, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_read_imageui_1, metadata !28}
-!28 = metadata !{metadata !4, metadata !29, metadata !32, metadata !36, metadata !37, metadata !38, metadata !39, metadata !40, metadata !41}
-!29 = metadata !{metadata !"implicit_arg_desc", metadata !6, metadata !7, metadata !8, metadata !9, metadata !10, metadata !30, metadata !11}
-!30 = metadata !{i32 24, metadata !31}
-!31 = metadata !{metadata !"explicit_arg_num", i32 2}
-!32 = metadata !{metadata !"resource_alloc", metadata !13, metadata !14, metadata !33, metadata !34}
-!33 = metadata !{metadata !"samplers_num", i32 1}
-!34 = metadata !{metadata !"arg_allocs", metadata !17, metadata !18, metadata !35, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !20}
-!35 = metadata !{i32 3, i32 0, i32 0}
-!36 = metadata !{metadata !"opencl_kernel_arg_addr_space", i32 1, i32 1, i32 0, i32 0}
-!37 = metadata !{metadata !"opencl_kernel_arg_access_qual", metadata !"none", metadata !"read_only", metadata !"none", metadata !"none"}
-!38 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"uint4*", metadata !"image2d_t", metadata !"sampler_t", metadata !"int2"}
-!39 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"uint4*", metadata !"image2d_t", metadata !"sampler_t", metadata !"int2"}
-!40 = metadata !{metadata !"opencl_kernel_arg_type_qual", metadata !"", metadata !"", metadata !"", metadata !""}
-!41 = metadata !{metadata !"opencl_kernel_arg_name", metadata !"dst", metadata !"img", metadata !"sampler", metadata !"coord"}
-!42 = metadata !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, i32, <2 x float>, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i32, i32, i32, i8*)* @test_read_imageui_2, metadata !43}
-!43 = metadata !{metadata !4, metadata !44, metadata !49, metadata !36, metadata !37, metadata !51, metadata !52, metadata !40, metadata !41}
-!44 = metadata !{metadata !"implicit_arg_desc", metadata !6, metadata !7, metadata !8, metadata !9, metadata !10, metadata !45, metadata !47, metadata !30, metadata !48, metadata !11}
-!45 = metadata !{i32 17, metadata !46}
-!46 = metadata !{metadata !"explicit_arg_num", i32 1}
-!47 = metadata !{i32 18, metadata !46}
-!48 = metadata !{i32 25, metadata !31}
-!49 = metadata !{metadata !"resource_alloc", metadata !13, metadata !14, metadata !33, metadata !50}
-!50 = metadata !{metadata !"arg_allocs", metadata !17, metadata !18, metadata !35, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !20}
-!51 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"uint4*", metadata !"image2d_t", metadata !"sampler_t", metadata !"float2"}
-!52 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"uint4*", metadata !"image2d_t", metadata !"sampler_t", metadata !"float2"}
-!53 = metadata !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i8*)* @test_read_imageui_3, metadata !54}
-!54 = metadata !{metadata !4, metadata !5, metadata !12, metadata !21, metadata !22, metadata !55, metadata !56, metadata !25, metadata !26}
-!55 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"uint4*", metadata !"image2d_t", metadata !"int2"}
-!56 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"uint4*", metadata !"image2d_t", metadata !"int2"}
-!57 = metadata !{void (<4 x float> addrspace(1)*, %opencl.image2d_t addrspace(1)*, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i8*)* @test_write_imagef_1, metadata !58}
-!58 = metadata !{metadata !4, metadata !5, metadata !59, metadata !21, metadata !64, metadata !65, metadata !66, metadata !25, metadata !67}
-!59 = metadata !{metadata !"resource_alloc", metadata !60, metadata !61, metadata !15, metadata !62}
-!60 = metadata !{metadata !"uavs_num", i32 3}
-!61 = metadata !{metadata !"srvs_num", i32 0}
-!62 = metadata !{metadata !"arg_allocs", metadata !17, metadata !63, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !20}
-!63 = metadata !{i32 1, i32 0, i32 2}
-!64 = metadata !{metadata !"opencl_kernel_arg_access_qual", metadata !"none", metadata !"write_only", metadata !"none"}
-!65 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"float4*", metadata !"image2d_t", metadata !"int2"}
-!66 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"float4*", metadata !"image2d_t", metadata !"int2"}
-!67 = metadata !{metadata !"opencl_kernel_arg_name", metadata !"src", metadata !"img", metadata !"coord"}
-!68 = metadata !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i8*)* @test_write_imagei_1, metadata !69}
-!69 = metadata !{metadata !4, metadata !5, metadata !59, metadata !21, metadata !64, metadata !23, metadata !24, metadata !25, metadata !67}
-!70 = metadata !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i8*)* @test_write_imageui_1, metadata !71}
-!71 = metadata !{metadata !4, metadata !5, metadata !59, metadata !21, metadata !64, metadata !55, metadata !56, metadata !25, metadata !67}
-!72 = metadata !{void (i32 addrspace(1)*, %opencl.image2d_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_image_width, metadata !73}
-!73 = metadata !{metadata !4, metadata !74, metadata !12, metadata !75, metadata !76, metadata !77, metadata !78, metadata !79, metadata !80}
-!74 = metadata !{metadata !"implicit_arg_desc", metadata !6, metadata !7, metadata !8, metadata !9, metadata !10, metadata !47, metadata !11}
-!75 = metadata !{metadata !"opencl_kernel_arg_addr_space", i32 1, i32 1}
-!76 = metadata !{metadata !"opencl_kernel_arg_access_qual", metadata !"none", metadata !"read_only"}
-!77 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"int*", metadata !"image2d_t"}
-!78 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"int*", metadata !"image2d_t"}
-!79 = metadata !{metadata !"opencl_kernel_arg_type_qual", metadata !"", metadata !""}
-!80 = metadata !{metadata !"opencl_kernel_arg_name", metadata !"dst", metadata !"img"}
-!81 = metadata !{void (i32 addrspace(1)*, %opencl.image2d_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_image_height, metadata !82}
-!82 = metadata !{metadata !4, metadata !83, metadata !12, metadata !75, metadata !76, metadata !77, metadata !78, metadata !79, metadata !80}
-!83 = metadata !{metadata !"implicit_arg_desc", metadata !6, metadata !7, metadata !8, metadata !9, metadata !10, metadata !45, metadata !11}
-!84 = metadata !{void (i32 addrspace(1)*, %opencl.image3d_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_image_depth, metadata !85}
-!85 = metadata !{metadata !4, metadata !86, metadata !12, metadata !75, metadata !76, metadata !88, metadata !89, metadata !79, metadata !80}
-!86 = metadata !{metadata !"implicit_arg_desc", metadata !6, metadata !7, metadata !8, metadata !9, metadata !10, metadata !87, metadata !11}
-!87 = metadata !{i32 19, metadata !46}
-!88 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"int*", metadata !"image3d_t"}
-!89 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"int*", metadata !"image3d_t"}
-!90 = metadata !{void (i32 addrspace(1)*, %opencl.image2d_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_image_channel_data_type, metadata !91}
-!91 = metadata !{metadata !4, metadata !92, metadata !12, metadata !75, metadata !76, metadata !77, metadata !78, metadata !79, metadata !80}
-!92 = metadata !{metadata !"implicit_arg_desc", metadata !6, metadata !7, metadata !8, metadata !9, metadata !10, metadata !93, metadata !11}
-!93 = metadata !{i32 21, metadata !46}
-!94 = metadata !{void (i32 addrspace(1)*, %opencl.image2d_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_image_channel_order, metadata !95}
-!95 = metadata !{metadata !4, metadata !96, metadata !12, metadata !75, metadata !76, metadata !77, metadata !78, metadata !79, metadata !80}
-!96 = metadata !{metadata !"implicit_arg_desc", metadata !6, metadata !7, metadata !8, metadata !9, metadata !10, metadata !97, metadata !11}
-!97 = metadata !{i32 22, metadata !46}
-!98 = metadata !{void (<2 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i32, i8*)* @test_image_dim, metadata !99}
-!99 = metadata !{metadata !4, metadata !100, metadata !101, metadata !75, metadata !76, metadata !103, metadata !104, metadata !79, metadata !80}
-!100 = metadata !{metadata !"implicit_arg_desc", metadata !6, metadata !7, metadata !8, metadata !9, metadata !10, metadata !45, metadata !47, metadata !11}
-!101 = metadata !{metadata !"resource_alloc", metadata !13, metadata !14, metadata !15, metadata !102}
-!102 = metadata !{metadata !"arg_allocs", metadata !17, metadata !18, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !20}
-!103 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"int2*", metadata !"image2d_t"}
-!104 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"int2*", metadata !"image2d_t"}
-!105 = metadata !{void (i32 addrspace(1)*, %opencl.image2d_array_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_image_array_size, metadata !106}
-!106 = metadata !{metadata !4, metadata !107, metadata !12, metadata !75, metadata !76, metadata !109, metadata !110, metadata !79, metadata !80}
-!107 = metadata !{metadata !"implicit_arg_desc", metadata !6, metadata !7, metadata !8, metadata !9, metadata !10, metadata !108, metadata !11}
-!108 = metadata !{i32 23, metadata !46}
-!109 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"size_t*", metadata !"image2d_array_t"}
-!110 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"uint*", metadata !"image2d_array_t"}
-!111 = metadata !{void (<4 x float> addrspace(1)*, %opencl.image2d_t addrspace(1)*, i32, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i8*)* @test_read_imagef_1, metadata !112}
-!112 = metadata !{metadata !4, metadata !5, metadata !113, metadata !36, metadata !37, metadata !115, metadata !116, metadata !40, metadata !41}
-!113 = metadata !{metadata !"resource_alloc", metadata !13, metadata !14, metadata !33, metadata !114}
-!114 = metadata !{metadata !"arg_allocs", metadata !17, metadata !18, metadata !35, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !19, metadata !20}
-!115 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"float4*", metadata !"image2d_t", metadata !"sampler_t", metadata !"int2"}
-!116 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"float4*", metadata !"image2d_t", metadata !"sampler_t", metadata !"int2"}
-!117 = metadata !{void (<4 x float> addrspace(1)*, %opencl.image2d_t addrspace(1)*, i32, <2 x float>, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_read_imagef_2, metadata !118}
-!118 = metadata !{metadata !4, metadata !119, metadata !32, metadata !36, metadata !37, metadata !121, metadata !122, metadata !40, metadata !41}
-!119 = metadata !{metadata !"implicit_arg_desc", metadata !6, metadata !7, metadata !8, metadata !9, metadata !10, metadata !120, metadata !11}
-!120 = metadata !{i32 26, metadata !31}
-!121 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"float4*", metadata !"image2d_t", metadata !"sampler_t", metadata !"float2"}
-!122 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"float4*", metadata !"image2d_t", metadata !"sampler_t", metadata !"float2"}
-!123 = metadata !{void (<4 x float> addrspace(1)*, %opencl.image2d_t addrspace(1)*, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i8*)* @test_read_imagef_3, metadata !124}
-!124 = metadata !{metadata !4, metadata !5, metadata !12, metadata !21, metadata !22, metadata !65, metadata !66, metadata !25, metadata !26}
-!125 = metadata !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, i32, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_read_imagei_1, metadata !126}
-!126 = metadata !{metadata !4, metadata !29, metadata !32, metadata !36, metadata !37, metadata !127, metadata !128, metadata !40, metadata !41}
-!127 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"int4*", metadata !"image2d_t", metadata !"sampler_t", metadata !"int2"}
-!128 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"int4*", metadata !"image2d_t", metadata !"sampler_t", metadata !"int2"}
-!129 = metadata !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, i32, <2 x float>, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i32, i32, i32, i8*)* @test_read_imagei_2, metadata !130}
-!130 = metadata !{metadata !4, metadata !44, metadata !49, metadata !36, metadata !37, metadata !131, metadata !132, metadata !40, metadata !41}
-!131 = metadata !{metadata !"opencl_kernel_arg_type", metadata !"int4*", metadata !"image2d_t", metadata !"sampler_t", metadata !"float2"}
-!132 = metadata !{metadata !"opencl_kernel_arg_base_type", metadata !"int4*", metadata !"image2d_t", metadata !"sampler_t", metadata !"float2"}
-!133 = metadata !{metadata !"-opt-disable"}
-!134 = metadata !{metadata !"-std=CL1.2"}
-!135 = metadata !{metadata !"-kernel-arg-info"}
+!0 = !{i32 1, i32 0}
+!1 = !{!"ocl", i32 1, i32 2}
+!2 = !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i8*)* @test_read_imagei_3, !3}
+!3 = !{!4, !5, !12, !21, !22, !23, !24, !25, !26}
+!4 = !{!"function_type", i32 0}
+!5 = !{!"implicit_arg_desc", !6, !7, !8, !9, !10, !11}
+!6 = !{i32 0}
+!7 = !{i32 1}
+!8 = !{i32 5}
+!9 = !{i32 6}
+!10 = !{i32 7}
+!11 = !{i32 10}
+!12 = !{!"resource_alloc", !13, !14, !15, !16}
+!13 = !{!"uavs_num", i32 2}
+!14 = !{!"srvs_num", i32 1}
+!15 = !{!"samplers_num", i32 0}
+!16 = !{!"arg_allocs", !17, !18, !19, !19, !19, !19, !19, !19, !20}
+!17 = !{i32 1, null, i32 0}
+!18 = !{i32 2, i32 0, i32 0}
+!19 = !{i32 0, null, null}
+!20 = !{i32 1, null, i32 1}
+!21 = !{!"opencl_kernel_arg_addr_space", i32 1, i32 1, i32 0}
+!22 = !{!"opencl_kernel_arg_access_qual", !"none", !"read_only", !"none"}
+!23 = !{!"opencl_kernel_arg_type", !"int4*", !"image2d_t", !"int2"}
+!24 = !{!"opencl_kernel_arg_base_type", !"int4*", !"image2d_t", !"int2"}
+!25 = !{!"opencl_kernel_arg_type_qual", !"", !"", !""}
+!26 = !{!"opencl_kernel_arg_name", !"dst", !"img", !"coord"}
+!27 = !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, i32, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_read_imageui_1, !28}
+!28 = !{!4, !29, !32, !36, !37, !38, !39, !40, !41}
+!29 = !{!"implicit_arg_desc", !6, !7, !8, !9, !10, !30, !11}
+!30 = !{i32 24, !31}
+!31 = !{!"explicit_arg_num", i32 2}
+!32 = !{!"resource_alloc", !13, !14, !33, !34}
+!33 = !{!"samplers_num", i32 1}
+!34 = !{!"arg_allocs", !17, !18, !35, !19, !19, !19, !19, !19, !19, !19, !20}
+!35 = !{i32 3, i32 0, i32 0}
+!36 = !{!"opencl_kernel_arg_addr_space", i32 1, i32 1, i32 0, i32 0}
+!37 = !{!"opencl_kernel_arg_access_qual", !"none", !"read_only", !"none", !"none"}
+!38 = !{!"opencl_kernel_arg_type", !"uint4*", !"image2d_t", !"sampler_t", !"int2"}
+!39 = !{!"opencl_kernel_arg_base_type", !"uint4*", !"image2d_t", !"sampler_t", !"int2"}
+!40 = !{!"opencl_kernel_arg_type_qual", !"", !"", !"", !""}
+!41 = !{!"opencl_kernel_arg_name", !"dst", !"img", !"sampler", !"coord"}
+!42 = !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, i32, <2 x float>, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i32, i32, i32, i8*)* @test_read_imageui_2, !43}
+!43 = !{!4, !44, !49, !36, !37, !51, !52, !40, !41}
+!44 = !{!"implicit_arg_desc", !6, !7, !8, !9, !10, !45, !47, !30, !48, !11}
+!45 = !{i32 17, !46}
+!46 = !{!"explicit_arg_num", i32 1}
+!47 = !{i32 18, !46}
+!48 = !{i32 25, !31}
+!49 = !{!"resource_alloc", !13, !14, !33, !50}
+!50 = !{!"arg_allocs", !17, !18, !35, !19, !19, !19, !19, !19, !19, !19, !19, !19, !19, !20}
+!51 = !{!"opencl_kernel_arg_type", !"uint4*", !"image2d_t", !"sampler_t", !"float2"}
+!52 = !{!"opencl_kernel_arg_base_type", !"uint4*", !"image2d_t", !"sampler_t", !"float2"}
+!53 = !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i8*)* @test_read_imageui_3, !54}
+!54 = !{!4, !5, !12, !21, !22, !55, !56, !25, !26}
+!55 = !{!"opencl_kernel_arg_type", !"uint4*", !"image2d_t", !"int2"}
+!56 = !{!"opencl_kernel_arg_base_type", !"uint4*", !"image2d_t", !"int2"}
+!57 = !{void (<4 x float> addrspace(1)*, %opencl.image2d_t addrspace(1)*, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i8*)* @test_write_imagef_1, !58}
+!58 = !{!4, !5, !59, !21, !64, !65, !66, !25, !67}
+!59 = !{!"resource_alloc", !60, !61, !15, !62}
+!60 = !{!"uavs_num", i32 3}
+!61 = !{!"srvs_num", i32 0}
+!62 = !{!"arg_allocs", !17, !63, !19, !19, !19, !19, !19, !19, !20}
+!63 = !{i32 1, i32 0, i32 2}
+!64 = !{!"opencl_kernel_arg_access_qual", !"none", !"write_only", !"none"}
+!65 = !{!"opencl_kernel_arg_type", !"float4*", !"image2d_t", !"int2"}
+!66 = !{!"opencl_kernel_arg_base_type", !"float4*", !"image2d_t", !"int2"}
+!67 = !{!"opencl_kernel_arg_name", !"src", !"img", !"coord"}
+!69 = !{!4, !5, !59, !21, !64, !23, !24, !25, !67}
+!70 = !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i8*)* @test_write_imageui_1, !71}
+!71 = !{!4, !5, !59, !21, !64, !55, !56, !25, !67}
+!72 = !{void (i32 addrspace(1)*, %opencl.image2d_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_image_width, !73}
+!73 = !{!4, !74, !12, !75, !76, !77, !78, !79, !80}
+!74 = !{!"implicit_arg_desc", !6, !7, !8, !9, !10, !47, !11}
+!75 = !{!"opencl_kernel_arg_addr_space", i32 1, i32 1}
+!76 = !{!"opencl_kernel_arg_access_qual", !"none", !"read_only"}
+!77 = !{!"opencl_kernel_arg_type", !"int*", !"image2d_t"}
+!78 = !{!"opencl_kernel_arg_base_type", !"int*", !"image2d_t"}
+!79 = !{!"opencl_kernel_arg_type_qual", !"", !""}
+!80 = !{!"opencl_kernel_arg_name", !"dst", !"img"}
+!81 = !{void (i32 addrspace(1)*, %opencl.image2d_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_image_height, !82}
+!82 = !{!4, !83, !12, !75, !76, !77, !78, !79, !80}
+!83 = !{!"implicit_arg_desc", !6, !7, !8, !9, !10, !45, !11}
+!84 = !{void (i32 addrspace(1)*, %opencl.image3d_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_image_depth, !85}
+!85 = !{!4, !86, !12, !75, !76, !88, !89, !79, !80}
+!86 = !{!"implicit_arg_desc", !6, !7, !8, !9, !10, !87, !11}
+!87 = !{i32 19, !46}
+!88 = !{!"opencl_kernel_arg_type", !"int*", !"image3d_t"}
+!89 = !{!"opencl_kernel_arg_base_type", !"int*", !"image3d_t"}
+!90 = !{void (i32 addrspace(1)*, %opencl.image2d_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_image_channel_data_type, !91}
+!91 = !{!4, !92, !12, !75, !76, !77, !78, !79, !80}
+!92 = !{!"implicit_arg_desc", !6, !7, !8, !9, !10, !93, !11}
+!93 = !{i32 21, !46}
+!94 = !{void (i32 addrspace(1)*, %opencl.image2d_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_image_channel_order, !95}
+!95 = !{!4, !96, !12, !75, !76, !77, !78, !79, !80}
+!96 = !{!"implicit_arg_desc", !6, !7, !8, !9, !10, !97, !11}
+!97 = !{i32 22, !46}
+!98 = !{void (<2 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i32, i8*)* @test_image_dim, !99}
+!99 = !{!4, !100, !101, !75, !76, !103, !104, !79, !80}
+!100 = !{!"implicit_arg_desc", !6, !7, !8, !9, !10, !45, !47, !11}
+!101 = !{!"resource_alloc", !13, !14, !15, !102}
+!102 = !{!"arg_allocs", !17, !18, !19, !19, !19, !19, !19, !19, !19, !20}
+!103 = !{!"opencl_kernel_arg_type", !"int2*", !"image2d_t"}
+!104 = !{!"opencl_kernel_arg_base_type", !"int2*", !"image2d_t"}
+!105 = !{void (i32 addrspace(1)*, %opencl.image2d_array_t addrspace(1)*, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_image_array_size, !106}
+!106 = !{!4, !107, !12, !75, !76, !109, !110, !79, !80}
+!107 = !{!"implicit_arg_desc", !6, !7, !8, !9, !10, !108, !11}
+!108 = !{i32 23, !46}
+!109 = !{!"opencl_kernel_arg_type", !"size_t*", !"image2d_array_t"}
+!110 = !{!"opencl_kernel_arg_base_type", !"uint*", !"image2d_array_t"}
+!111 = !{void (<4 x float> addrspace(1)*, %opencl.image2d_t addrspace(1)*, i32, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i8*)* @test_read_imagef_1, !112}
+!112 = !{!4, !5, !113, !36, !37, !115, !116, !40, !41}
+!113 = !{!"resource_alloc", !13, !14, !33, !114}
+!114 = !{!"arg_allocs", !17, !18, !35, !19, !19, !19, !19, !19, !19, !20}
+!115 = !{!"opencl_kernel_arg_type", !"float4*", !"image2d_t", !"sampler_t", !"int2"}
+!116 = !{!"opencl_kernel_arg_base_type", !"float4*", !"image2d_t", !"sampler_t", !"int2"}
+!117 = !{void (<4 x float> addrspace(1)*, %opencl.image2d_t addrspace(1)*, i32, <2 x float>, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_read_imagef_2, !118}
+!118 = !{!4, !119, !32, !36, !37, !121, !122, !40, !41}
+!119 = !{!"implicit_arg_desc", !6, !7, !8, !9, !10, !120, !11}
+!120 = !{i32 26, !31}
+!121 = !{!"opencl_kernel_arg_type", !"float4*", !"image2d_t", !"sampler_t", !"float2"}
+!122 = !{!"opencl_kernel_arg_base_type", !"float4*", !"image2d_t", !"sampler_t", !"float2"}
+!123 = !{void (<4 x float> addrspace(1)*, %opencl.image2d_t addrspace(1)*, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i8*)* @test_read_imagef_3, !124}
+!124 = !{!4, !5, !12, !21, !22, !65, !66, !25, !26}
+!125 = !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, i32, <2 x i32>, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i8*)* @test_read_imagei_1, !126}
+!126 = !{!4, !29, !32, !36, !37, !127, !128, !40, !41}
+!127 = !{!"opencl_kernel_arg_type", !"int4*", !"image2d_t", !"sampler_t", !"int2"}
+!128 = !{!"opencl_kernel_arg_base_type", !"int4*", !"image2d_t", !"sampler_t", !"int2"}
+!129 = !{void (<4 x i32> addrspace(1)*, %opencl.image2d_t addrspace(1)*, i32, <2 x float>, <8 x i32>, <8 x i32>, i16, i16, i16, i32, i32, i32, i32, i8*)* @test_read_imagei_2, !130}
+!130 = !{!4, !44, !49, !36, !37, !131, !132, !40, !41}
+!131 = !{!"opencl_kernel_arg_type", !"int4*", !"image2d_t", !"sampler_t", !"float2"}
+!132 = !{!"opencl_kernel_arg_base_type", !"int4*", !"image2d_t", !"sampler_t", !"float2"}
+!133 = !{!"-opt-disable"}
+!134 = !{!"-std=CL1.2"}
+!135 = !{!"-kernel-arg-info"}
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
