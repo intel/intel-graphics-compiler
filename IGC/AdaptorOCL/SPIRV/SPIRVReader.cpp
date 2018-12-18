@@ -587,8 +587,13 @@ public:
       if (isa<DISubprogram>(target)) {
           // This constant matches with one used in
           // DISubprogram::getRawTemplateParams()
+#if LLVM_VERSION_MAJOR == 4
+          const unsigned TemplateParamsIndex = 8;
+#elif LLVM_VERSION_MAJOR == 7
           const unsigned TemplateParamsIndex = 9;
+#endif
           target->replaceOperandWith(TemplateParamsIndex, TParams.get());
+          assert(cast<DISubprogram>(target)->getRawTemplateParams() == TParams.get() && "Invalid template parameters");
           return target;
       }
 
