@@ -198,11 +198,15 @@ bool CodeGenPatternMatch::SIMDConstExpr(Instruction* C)
     {
         switch(op->getOpcode())
         {
-        case Instruction::Sub:
         case Instruction::Add:
+            isConstExpr = IsConstOrSimdConstExpr(op->getOperand(0)) && IsConstOrSimdConstExpr(op->getOperand(1));
+            break;
         case Instruction::Mul:
+            isConstExpr = IsConstOrSimdConstExpr(op->getOperand(0)) && IsConstOrSimdConstExpr(op->getOperand(1));
+            break;
         case Instruction::Shl:
             isConstExpr = IsConstOrSimdConstExpr(op->getOperand(0)) && IsConstOrSimdConstExpr(op->getOperand(1));
+            break;
         default:
             break;
         }
@@ -373,7 +377,6 @@ void CodeGenPatternMatch::SetPatternRoot(llvm::Instruction& inst)
 {
     m_root = &inst;
     m_rootIsSubspanUse = IsSubspanUse(m_root);
-    HandleNoMaskIntrinsic(&inst);
 }
 
 template<typename Op_t, typename ConstTy>
@@ -865,25 +868,6 @@ bool CodeGenPatternMatch::HasUseOutsideLoop(llvm::Value* v)
     return false;
 }
 
-bool CodeGenPatternMatch::IsWaveReduction(llvm::Value* v)
-{
-    if(GenIntrinsicInst* genIntrinsic = dyn_cast<GenIntrinsicInst>(v))
-    {
-        switch(genIntrinsic->getIntrinsicID())
-        {
-        case GenISAIntrinsic::GenISA_WavePrefix:
-        case GenISAIntrinsic::GenISA_QuadPrefix:
-        case GenISAIntrinsic::GenISA_WaveAll:
-        case GenISAIntrinsic::GenISA_WaveBallot:
-            return true;
-            break;
-        default:
-            break;
-        }
-    }
-    return false;
-}
-
 void CodeGenPatternMatch::HandleSubspanUse(llvm::Value* v)
 {
     assert(m_root!=nullptr);
@@ -893,11 +877,7 @@ void CodeGenPatternMatch::HandleSubspanUse(llvm::Value* v)
     }
     if(!isa<Constant>(v) && m_WI->whichDepend(v) != WIAnalysis::UNIFORM)
     {
-        if(IsWaveReduction(v))
-        {
-            // do nothing
-        }
-        else if(isa<PHINode>(v) || HasUseOutsideLoop(v))
+        if(isa<PHINode>(v) || HasUseOutsideLoop(v))
         {
             // If a phi is used in a subspan we cannot propagate the subspan use and need to use VMask
             m_NeedVMask = true;
@@ -917,27 +897,6 @@ void CodeGenPatternMatch::HandleSubspanUse(llvm::Value* v)
                 // \todo, more accurate condition for force-isolation
                 ForceIsolate(v);
             }
-        }
-    }
-}
-
-/// Intrinsics not honoring the SIMD mask need to be force isolated
-/// so that they don't get coalesced in a divergent phi
-void CodeGenPatternMatch::HandleNoMaskIntrinsic(Value* v)
-{
-    if(GenIntrinsicInst* genIntrinsic = dyn_cast<GenIntrinsicInst>(v))
-    {
-        switch(genIntrinsic->getIntrinsicID())
-        {
-        case GenISAIntrinsic::GenISA_WavePrefix:
-        case GenISAIntrinsic::GenISA_QuadPrefix:
-            if(HasPhiUse(*v) && m_WI->insideDivergentCF(m_root))
-            {
-                ForceIsolate(v);
-            }
-            break;
-        default:
-            break;
         }
     }
 }

@@ -69,7 +69,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
-#include "Compiler/CISACodeGen/GenLLVMPasses.h"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
@@ -87,7 +86,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/RectListOptimizationPass.hpp"
 #include "Compiler/Optimizer/GatingSimilarSamples.hpp"
 #include "Compiler/MetaDataApi/PurgeMetaDataUtils.hpp"
-
 
 #include "Compiler/HandleLoadStoreInstructions.hpp"
 #include "Compiler/CustomSafeOptPass.hpp"
@@ -271,10 +269,6 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, const CShaderProgram::KernelS
     if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescing))
     {
         mpm.add(new ConstantCoalescing());
-    }
-    if(ctx.m_instrTypes.hasAtomics)
-    {
-        mpm.add(createUniformAtomicPass());
     }
     if( !isOptDisabled )
     {

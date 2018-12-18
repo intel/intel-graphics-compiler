@@ -1646,7 +1646,6 @@ static bool IsRawAtomicIntrinsic(llvm::Value *V) {
     case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
     case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
     case GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
-    case GenISAIntrinsic::GenISA_WaveUniformAtomic:
         return true;
     }
 
@@ -1685,7 +1684,7 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value *V, WIAnalysis *WIA,
         }
         
         if (IsRawAtomicIntrinsic(GII)) {
-            Value *Ptr = V;
+            Value *Ptr = GII->getArgOperand(1);
             if (WIA->whichDepend(Ptr) == WIAnalysis::UNIFORM) {
                 if (PointerType *PtrTy = dyn_cast<PointerType>(Ptr->getType())) {
                     if (IGC::isA64Ptr(PtrTy, pContext))
@@ -2147,8 +2146,6 @@ unsigned int CShader::EvaluateSIMDConstExpr(Value* C)
     {
         switch(op->getOpcode())
         {
-        case Instruction::Sub:
-            return EvaluateSIMDConstExpr(op->getOperand(0)) - EvaluateSIMDConstExpr(op->getOperand(1));
         case Instruction::Add:
             return EvaluateSIMDConstExpr(op->getOperand(0)) + EvaluateSIMDConstExpr(op->getOperand(1));
         case Instruction::Mul:

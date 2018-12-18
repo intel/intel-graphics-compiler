@@ -240,11 +240,9 @@ public:
     void CreateBasicBlocks(llvm::Function * pLLVMFunc);
     uint GetBlockId(llvm::BasicBlock* bb);
     void HandleSubspanUse(llvm::Value* v);
-    void HandleNoMaskIntrinsic(llvm::Value* v);
     void HandleSampleDerivative(llvm::GenIntrinsicInst & I);
     bool IsSubspanUse(llvm::Value* v);
     bool HasUseOutsideLoop(llvm::Value* v);
-    bool IsWaveReduction(llvm::Value* v);
     bool NeedVMask();
 
     //helper function

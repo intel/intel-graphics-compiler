@@ -229,7 +229,14 @@ public:
 
     void emitUAVSerialize();
 
-    void emitScalarAtomics(llvm::Instruction* pInst);
+    void emitScalarAtomics(
+        llvm::Instruction* pInst,
+        const ResourceDescriptor& resource,
+        AtomicOp atomic_op,
+        CVariable* pDstAddr,
+        CVariable* pSrc,
+        bool isA64,
+        bool is16Bit);
     /// do reduction and accummulate all the activate channels, return a uniform
     void emitReductionAll(
         e_opcode op,
