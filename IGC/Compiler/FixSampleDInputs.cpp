@@ -46,14 +46,14 @@ namespace IGC
             FunctionPass(ID)
         { }
 
-        virtual bool runOnFunction(Function &F);
+        virtual bool runOnFunction(Function &F) override;
 
         virtual void getAnalysisUsage(AnalysisUsage &AU) const override
         {
             AU.setPreservesCFG();
         }
 
-        virtual StringRef getPassName() const { return "FixSampleDInputs"; }
+        virtual StringRef getPassName() const override { return "FixSampleDInputs"; }
         static char ID;
     };
 
