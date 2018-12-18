@@ -508,6 +508,18 @@ void VectorPreProcess::createSplitVectorTypes(
     {
         ebytes = m_DL->getPointerTypeSize(ETy);
     }
+
+    if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
+    {
+        if (ebytes > SplitSize)
+        {
+            SVCounts[0] = NElts * ebytes / SplitSize;
+            SVTypes[0] = IntegerType::get(ETy->getContext(), SplitSize * 8);
+            Len = 1;
+            return;
+        }
+    }
+
     assert((SplitSize % ebytes) == 0 &&
            "Internal Error: Wrong split size!");
 
@@ -571,7 +583,17 @@ bool VectorPreProcess::splitStore(AbstractStoreInst& ASI, V2SMap& vecToSubVec)
     uint32_t len;
     // Generate splitted loads and save them in the map
     bool isStoreInst = isa<StoreInst>(SI);
-    createSplitVectorTypes(ETy, nelts, isStoreInst ? VP_SPLIT_SIZE : VP_RAW_SPLIT_SIZE, tys, tycnts, len);
+
+    if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
+    {
+        // byte and word-aligned stores can only store a dword at a time.
+        const uint32_t splitSize = ASI.getAlignment() < 4 ? 4 : (isStoreInst ? VP_SPLIT_SIZE : VP_RAW_SPLIT_SIZE);
+        createSplitVectorTypes(ETy, nelts, splitSize, tys, tycnts, len);
+    }
+    else
+    {
+        createSplitVectorTypes(ETy, nelts, isStoreInst ? VP_SPLIT_SIZE : VP_RAW_SPLIT_SIZE, tys, tycnts, len);
+    }
 
     // return if no split
     if (len == 1 && tycnts[0] == 1)
@@ -589,6 +611,30 @@ bool VectorPreProcess::splitStore(AbstractStoreInst& ASI, V2SMap& vecToSubVec)
                              StoredVal, scalars, insertBeforeInst);
         insertBeforeInst = insertBeforeInst ? insertBeforeInst : SI;
         IRBuilder<> aBuilder(insertBeforeInst);
+
+        if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
+        {
+            if (ETy->getPrimitiveSizeInBits() > tys[0]->getScalarSizeInBits())
+            {
+                std::vector<Value*> splitScalars;
+                const uint32_t vectorSize = ETy->getPrimitiveSizeInBits() / tys[0]->getScalarSizeInBits();
+                Type* splitType = llvm::VectorType::get(tys[0], vectorSize);
+                for (uint32_t i = 0; i < nelts; i++)
+                {
+                    Value* splitInst = aBuilder.CreateBitCast(scalars[i], splitType);
+                    for (uint32_t j = 0; j < vectorSize; j++)
+                    {
+                        splitScalars.push_back(aBuilder.CreateExtractElement(splitInst, j));
+                    }
+                }
+                assert(splitScalars.size() < VP_MAX_VECTOR_SIZE);
+                for (uint32_t i = 0; i < splitScalars.size(); i++)
+                {
+                    scalars[i] = splitScalars[i];
+                }
+            }
+        }
+
         // Now generate svals
         for (uint32_t i = 0, Idx = 0; i < len; ++i)
         {
@@ -678,7 +724,13 @@ bool VectorPreProcess::splitLoad(AbstractLoadInst& ALI, V2SMap& vecToSubVec)
     uint32_t tycnts[6];
     uint32_t len;
     // Generate splitted loads and save them in the map
-    const uint32_t splitSize = isLdRaw ? VP_RAW_SPLIT_SIZE : VP_SPLIT_SIZE;
+    uint32_t splitSize = isLdRaw ? VP_RAW_SPLIT_SIZE : VP_SPLIT_SIZE;
+    if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
+    {
+        // byte and word-aligned loads can only load a dword at a time.
+        splitSize = ALI.getAlignment() < 4 ? 4 : (isLdRaw ? VP_RAW_SPLIT_SIZE : VP_SPLIT_SIZE);
+    }
+
     createSplitVectorTypes(ETy, nelts, splitSize, tys, tycnts, len);
 
     // return if no split
@@ -717,6 +769,33 @@ bool VectorPreProcess::splitLoad(AbstractLoadInst& ALI, V2SMap& vecToSubVec)
         }
     }
 
+    if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
+    {
+        if (svals[0]->getType()->getPrimitiveSizeInBits() < ETy->getPrimitiveSizeInBits())
+        {
+            uint32_t scalarsPerElement = ETy->getPrimitiveSizeInBits() / svals[0]->getType()->getPrimitiveSizeInBits();
+            assert(svals.size() % scalarsPerElement == 0 && scalarsPerElement > 1);
+            ValVector mergedScalars;
+            IRBuilder<> builder(LI->getParent());
+            Instruction* nextInst = LI->getNextNode();
+            if (nextInst)
+            {
+                builder.SetInsertPoint(nextInst);
+            }
+            Value* undef = UndefValue::get(VectorType::get(svals[0]->getType(), scalarsPerElement));
+            for (uint32_t i = 0; i < svals.size() / scalarsPerElement; i++)
+            {
+                Value* newElement = undef;
+                for (uint32_t j = 0; j < scalarsPerElement; j++)
+                {
+                    newElement = builder.CreateInsertElement(newElement, svals[i * scalarsPerElement + j], j);
+                }
+                mergedScalars.push_back(builder.CreateBitCast(newElement, ETy));
+            }
+            svals.clear();
+            svals.append(mergedScalars.begin(), mergedScalars.end());
+        }
+    }
     // Put LI in m_Temps for post-processing.
     //
     // LI may be used only in store. If so, no need to re-generate the original
