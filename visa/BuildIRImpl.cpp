@@ -850,7 +850,6 @@ G4_INST *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
         {
             needsA0ExDesc = true;
             // set T252 as BTI
-            // FIXME: move this to part of G4_SendMsgDescriptor once we clean up code to not call this function directly
             if ((desc & 0xFF) != PREDEF_SURF_252)
             {
                 desc = (desc & ~0xFF) | PREDEF_SURF_252;
