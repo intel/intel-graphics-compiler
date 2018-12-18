@@ -89,6 +89,7 @@ Imported_Intrinsics = \
     "GenISA_ldrawvector_indexed": ["anyvector",["anyptr","int", "int"],"ReadArgMem"],
     "GenISA_storeraw_indexed": ["void",["anyptr","int","any:float"],"None"],
     "GenISA_storerawvector_indexed": ["void",["anyptr","int","anyvector"],"None"],
+    "GenISA_WaveUniformAtomic": ["anyint",["anyptr","int",0,"int"],"Convergent"],
     "GenISA_intatomicraw": ["anyint",["anyptr","int",0,"int"],"ReadWriteArgMem"],
     "GenISA_floatatomicraw": ["anyfloat",["anyptr","int",0,"int"],"ReadWriteArgMem"],
     "GenISA_intatomicrawA64": ["anyint",["anyptr","anyptr",0,"int"],"ReadWriteArgMem"],
