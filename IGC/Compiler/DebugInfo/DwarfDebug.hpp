@@ -571,6 +571,9 @@ namespace IGC
 
         void gatherDISubprogramNodes();
 
+        // line#, vector<inlinedAt>
+        std::map<unsigned int, std::vector<llvm::DILocation*>> isStmtSet;
+
     public:
         std::map<llvm::DISubprogram*, const llvm::Function*>* getDISPToFunction()
         {

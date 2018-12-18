@@ -1202,7 +1202,33 @@ void DwarfDebug::beginInstruction(const Instruction *MI, bool recordSrcLine)
             }
             if (!PrologEndLoc)
             {
-                Flags |= DWARF2_FLAG_IS_STMT;
+                bool setIsStmt = true;
+                auto line = DL.getLine();
+                auto inlinedAt = DL.getInlinedAt();
+                auto it = isStmtSet.find(line);
+
+                if (it != isStmtSet.end())
+                {
+                    // is_stmt is set only if line#,
+                    // inlinedAt combination is
+                    // never seen before.
+                    auto& iat = (*it).second;
+                    for (auto& item : iat)
+                    {
+                        if (item == inlinedAt)
+                        {
+                            setIsStmt = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (setIsStmt)
+                {
+                    Flags |= DWARF2_FLAG_IS_STMT;
+                    
+                    isStmtSet[line].push_back(inlinedAt);
+                }
             }
 
             const MDNode *Scope = DL.getScope();
