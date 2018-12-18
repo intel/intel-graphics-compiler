@@ -172,7 +172,7 @@ bool Is_Type_Included(G4_Type type1, G4_Type type2, const IR_Builder& builder)
         {
             return true;
         }
-        else if (type1 == builder.getMixModeType() && type2 == Type_F )
+        else if (builder.hasMixMode() && type1 == builder.getMixModeType() && type2 == Type_F )
         {
             return true;
         }
@@ -1485,7 +1485,6 @@ G4_INST::MovType G4_INST::canPropagate()
 
     G4_Operand *src = srcs[0];
 
-
     if (src->isRelocImm())
     {
         return SuperMov;
@@ -1802,12 +1801,26 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
     {
         return false;
     }
-
-    //disabling mixMode for MATH instruction
-    if (isMixedMode() && useInst->isMath())
+ 
+    if (isMixedMode())
     {
-        return false;
+        if (getExecSize() > 8 || useInst->getExecSize() > 8)
+        {
+            return false;
+        }
+        G4_opcode useOp = useInst->opcode();
+
+        if (useOp != G4_mov &&
+            useOp != G4_mul &&
+            useOp != G4_pseudo_mad &&
+            useOp != G4_add &&
+            useOp != G4_sel &&
+            useOp != G4_cmp)
+        {
+            return false;
+        }
     }
+  
 
     // special checks for message desc/extended desc, which must be either a0 or imm
     if (useInst->isSend())
@@ -1873,27 +1886,6 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
     // FIXME: to add specific checks for other instructions.
     G4_opcode useInst_op = useInst->opcode();
 
-    // Only few instructions allow hf mixed mode.
-    if (this->isMixedMode() &&
-        !(useInst_op == G4_mov ||
-          useInst_op == G4_mul ||
-          useInst_op == G4_mad ||
-          useInst_op == G4_pseudo_mad   ||
-          useInst_op == G4_add ||
-          useInst_op == G4_sel ||
-          useInst_op == G4_math))
-    {
-        return false;
-    }
-    if (this->isMixedMode()     &&
-        execSize < 16           &&
-        MT == FPDownConvSafe    &&
-        useInst->execSize == 16 &&
-        !useInst->isMixedMode())
-    {
-        return false;
-    }
-
     if ((useInst_op == G4_line && opndNum == Opnd_src0) ||
         ((useInst_op == G4_if || useInst_op == G4_while) && !src->isImm() && IS_BTYPE(srcType)) ||
         (hasModifier && G4_Inst_Table[useInst_op].instType == InstTypeLogic) ||
@@ -1949,12 +1941,6 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
     G4_CmpRelation rel = dst->compareOperand(use);
     if (rel != Rel_eq)
     {
-        // TODO: When dst Rel_gt use, we still have chance to copy propagate
-        // the src by splitting it accordingly.
-        // E.g.
-        // mov (16) r3.0<1>:ud ...
-        // mul (8) r5.0<1>:ud r3.0<8;8,1>:ud ...
-        // mul (8) r6.0<1>:ud r4.0<8;8,1>:ud ...
         return false;
     }
 
@@ -2157,7 +2143,6 @@ bool G4_INST::canHoist(bool simdBB, const Options *opt)
     dstType = dst->getType();
     srcType = src->getType();
 
-
     // no dst type promotion after hoisting
     if (!Is_Type_Included(dstType, srcType, builder) ||
         // if multi def, src and dst should have the same type size
@@ -2222,7 +2207,18 @@ bool G4_INST::canHoistTo( G4_INST *defInst, bool simdBB)
 
     if (isMixedMode())
     {
-        if (defInst->isMath())
+        if (getExecSize() > 8 || defInst->getExecSize() > 8)
+        {
+            return false;
+        }
+        G4_opcode defOp = defInst->opcode();
+
+        if (defOp != G4_mov &&
+            defOp != G4_mul &&
+            defOp != G4_pseudo_mad &&
+            defOp != G4_add &&
+            defOp != G4_sel &&
+            defOp != G4_cmp)
         {
             return false;
         }
@@ -2282,23 +2278,10 @@ bool G4_INST::canHoistTo( G4_INST *defInst, bool simdBB)
 		return false;
 	}
 
-    if (defInst->isSend()) {
-        // 'mov' following 'send' could be hoisted if and only if
-        // - that 'mov' is raw move,
-        // - that 'mov' is not predicated,
-        // - dst of 'mov' is aligned to GRF.
-        // - execution size is 8 or 16.
-        if (!rawMovInst)
-            return false;
-        if (getPredicate() || defInst->getPredicate())
-            return false;
-        if (dst->getLeftBound() % G4_GRF_REG_NBYTES != 0)
-            return false;
-#if 0
-        return (execSize == 8 || execSize == 16 || execSize == 32);
-#else
+    // no def hoisting for sends for now
+    if (defInst->isSend()) 
+    {
         return false;
-#endif
     }
 
     if (defInst->opcode() == G4_mov && defInst->getSrc(0)->isFlag())
@@ -2328,8 +2311,8 @@ bool G4_INST::canHoistTo( G4_INST *defInst, bool simdBB)
         return false;
     }
 
-    bool same_type_size = ( G4_Type_Table[def_dst->getType()].byteSize == G4_Type_Table[srcType].byteSize );
-    bool scalarSrc = ( srcs[0]->asSrcRegRegion()->isScalar() );
+    bool same_type_size = G4_Type_Table[def_dst->getType()].byteSize == G4_Type_Table[srcType].byteSize;
+    bool scalarSrc = srcs[0]->asSrcRegRegion()->isScalar();
     // handle predicated MOV and float def
     if( ( getPredicate() && ( execSize > 1 ) && !same_type_size ) ||
         ( IS_FTYPE( defDstType ) && ( defDstType != srcType ) && ( dstType != srcType ) ) )
@@ -2413,7 +2396,7 @@ bool G4_INST::canHoistTo( G4_INST *defInst, bool simdBB)
     // After (invalid optimization):
     // or (8) V100(0,0)<1>:d ...
     // or (8) V100(0,4)<1>:d ...
-    if(defDstType != srcType)
+    if (defDstType != srcType)
     {
         if(isRawMov() == false)
         {
@@ -3518,7 +3501,6 @@ void G4_INST::emitDefUse(std::ostream& output)
 
 bool G4_INST::isMixedMode() const
 {
-    bool mixedMode = false;
 	if (mayExceedTwoGRF())
 	{
 		return false;
@@ -3537,12 +3519,11 @@ bool G4_INST::isMixedMode() const
             (getDst()->getType() == builder.getMixModeType() || srcType == builder.getMixModeType()) &&
             getDst()->getType() != srcType)
         {
-            mixedMode =  true;
-            break;
+            return true;
         }
     }
 
-    return mixedMode;
+    return false;
 }
 
 // print r#

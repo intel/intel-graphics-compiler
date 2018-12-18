@@ -495,8 +495,6 @@ bool HWConformity::fixMathInst(INST_LIST_ITER it, G4_BB *bb)
         return false;
     }
 
-    // SKIP mixed mode instructions which are already handled by fixMixedHFInst.
-
     // covers MATH_INT_DIV, MATH_INT_DIV_QUOT, MATH_INT_DIV_REM
     bool isIntDivide = inst->asMathInst()->isMathIntDiv();
     bool hasSameOffset = hasSameSubregOffset(inst);
@@ -985,11 +983,12 @@ bool HWConformity::fixOpndType(INST_LIST_ITER it, G4_BB *bb)
         {
             continue;
         }
-        if (IS_FTYPE(inst->getSrc(i)->getType()) || IS_VFTYPE(inst->getSrc(i)->getType()))
+        G4_Type ty = inst->getSrc(i)->getType();
+        if (IS_TYPE_FLOAT_ALL(ty))
         {
             has_float = true;
         }
-        else if (!IS_DFTYPE(inst->getSrc(i)->getType()) && !IS_HFTYPE(inst->getSrc(i)->getType()))
+        else
         {
             has_int = true;
         }
@@ -7323,29 +7322,29 @@ void HWConformity::fixMixedHFInst( BB_LIST_ITER it )
             continue;
         }
 
-        if (inst->isMath() && (inst->isMixedMode() || builder.getOption(vISA_DisableHFMath)))
+        if (inst->isMath() && builder.getOption(vISA_DisableHFMath))
         {
             auto src0 = inst->getSrc(0);
             auto src1 = inst->getSrc(1);
             auto dst = inst->getDst();
-            if (src0 && src0->getType() == builder.getMixModeType())
+            if (src0 && src0->getType() == Type_HF)
             {
                 inst->setSrc(insertMovBefore(instIter, 0, Type_F, bb), 0);
             }
 
-            if (src1 && src1->getType() == builder.getMixModeType())
+            if (src1 && src1->getType() == Type_HF)
             {
                 inst->setSrc(insertMovBefore(instIter, 1, Type_F, bb), 1);
             }
 
-            if (dst && dst->getType() == builder.getMixModeType())
+            if (dst && dst->getType() == Type_HF)
             {
                 inst->setDest(insertMovAfter(instIter, dst, inst->getExecType2(), bb));
             }
             continue;
         }
 
-        if (VISA_WA_CHECK(builder.getPWaTable(), WaSrc1ImmHfNotAllowed) && !inst->isSend())
+        if (VISA_WA_CHECK(builder.getPWaTable(), WaSrc1ImmHfNotAllowed))
         {
             G4_Operand *tSrc1 = inst->getSrc(1);
             if (tSrc1 && tSrc1->isImm() && tSrc1->getType() == Type_HF)
@@ -7355,41 +7354,16 @@ void HWConformity::fixMixedHFInst( BB_LIST_ITER it )
         }
 
 
-        // Restriction :
         // The execution size must be no more than 8 when half-floats are used in source or destination operand.
+        // ToDO: move this to fixmathinst
         if (inst->getExecSize() == 16)
         {
-            if (inst->opcode() == G4_math               &&
-                inst->getDst()->getType() == Type_HF    &&
+            if (inst->opcode() == G4_math &&
+                inst->getDst()->getType() == Type_HF &&
                 inst->getSrc(0)->getType() == Type_HF &&
                 (!inst->getSrc(1) || inst->getSrc(1)->getType() == Type_HF))
             {
                 evenlySplitInst(instIter, bb);
-            }
-        }
-      
-        if (inst->isMath() &&
-            VISA_WA_CHECK(builder.getPWaTable(), WaDstSubRegNumNotAllowedWithLowPrecPacked))
-        {
-            G4_DstRegRegion* dst = inst->getDst();
-            if (dst                         &&
-                dst->getType() == Type_HF   &&
-                dst->getSubRegOff() == 8)
-            {
-                helperGenerateTempDst(bb, instIter, inst, 1, Type_HF, Sixteen_Word);
-            }
-        }
-
-        if (inst->isMath() && inst->isMixedMode()) 
-        {
-            // For `math`, additional GRF alignment checking for non-scalar
-            // destination.
-            G4_DstRegRegion* dst = inst->getDst();
-            if (dst->getType() == Type_F &&
-                inst->getExecSize() != 1 &&
-                !builder.isOpndAligned(dst, G4_GRF_REG_NBYTES)) 
-            {
-                helperGenerateTempDst(bb, instIter, inst, 1, Type_F, Sixteen_Word);
             }
         }
 
@@ -7417,124 +7391,16 @@ void HWConformity::fixMixedHFInst( BB_LIST_ITER it )
 
         if (!inst->isMixedMode())
             continue;
-        /*
-        Checks for mix mode HW conformity violations.
-        */
+
         if (getGenxPlatform() >= GENX_CHV)
         {
-            if(checkMixMode(instIter, bb))
+            if (checkMixMode(instIter, bb))
             {
                 //instruction was split, and new instruction inserted before
                 //going back to previous instruction to double check it still confirms.
                 --instIter;
                 inst = *instIter;
             }
-        }
-
-        if (VISA_WA_CHECK(builder.getPWaTable(), WaDstSubRegNumNotAllowedWithLowPrecPacked) &&
-            dst                                                                             &&
-            dst->getType() == Type_HF                                                       &&
-            dst->getSubRegOff() == 8                                                        &&
-            inst->getExecSize() == 8)
-        {
-            helperGenerateTempDst(bb, instIter, inst, 1, dst->getType());
-        }
-
-        if( inst->isMath()       &&
-            ((VISA_WA_CHECK(builder.getPWaTable(), WaDisableMixedModeLog) && inst->asMathInst()->getMathCtrl() == MATH_LOG) ||
-            (VISA_WA_CHECK(builder.getPWaTable(), WaDisableMixedModeFdiv) && inst->asMathInst()->getMathCtrl() == MATH_FDIV) ||
-            (VISA_WA_CHECK(builder.getPWaTable(), WaDisableMixedModePow) && inst->asMathInst()->getMathCtrl() == MATH_POW)))
-        {
-            if (dst && dst->getType() == Type_HF)
-            {
-                helperGenerateTempDst(bb, instIter, inst, 1, Type_F);
-            }
-
-            for (uint8_t i = 0; i < inst->getNumSrc(); ++i)
-            {
-                G4_Operand *tOpnd = inst->getSrc(i);
-
-                if (tOpnd == NULL || !tOpnd->isSrcRegRegion() ||
-                    tOpnd->asSrcRegRegion()->getType() != Type_HF)
-                {
-                    continue;
-                }
-
-                inst->setSrc(insertMovBefore(instIter, i, Type_F, bb), i);
-            }
-        }
-
-        // - In Align1, f16 inputs need to be strided
-        // math(8) r3<1>:hf r4.0<8;8,1>:f r6.0<8;4,2>:hf
-        if (inst->isMath())
-        {
-            for (uint8_t i = 0; i < inst->getNumSrc(); ++i)
-            {
-                G4_Operand *tOpnd = inst->getSrc(i);
-
-                if (tOpnd == NULL                                       ||
-                    !tOpnd->isSrcRegRegion()                            ||
-                    tOpnd->asSrcRegRegion()->getType() != Type_HF       ||
-                    !tOpnd->asSrcRegRegion()->isNativePackedSrcRegion())
-                {
-                    continue;
-                }
-
-                inst->setSrc(insertMovBefore(instIter, i, Type_F, bb), i);
-            }
-        }
-
-        if (inst->isMath() && inst->getSrc(0)->isImm())
-        {
-            bool nullSrc1 = inst->getSrc(1) == nullptr || inst->getSrc(1)->isNullReg();
-            if (!nullSrc1)
-            {
-                inst->setSrc(insertMovBefore(instIter, 0, inst->getSrc(0)->getType(), bb), 0);
-            }
-        }
-
-        for (uint8_t i = 0; i < inst->getNumSrc(); ++i)
-        {
-            G4_Operand *tOpnd = inst->getSrc(i);
-
-            if (tOpnd == NULL || !tOpnd->isSrcRegRegion())
-                continue;
-
-            G4_SrcRegRegion *srcOpnd = tOpnd->asSrcRegRegion();
-
-            // `math` instruction requires non-scalar float operand to be
-            // GRF aligned.
-            if (inst->isMath() &&
-                srcOpnd->getType() == Type_F &&
-                !srcOpnd->isScalar() &&
-                !builder.isOpndAligned(tOpnd, G4_GRF_REG_NBYTES)) {
-                inst->setSrc(insertMovBefore(instIter, i, Type_F, bb), i);
-            }
-            /*
-
-            8: Math operations for mixed mode,
-            - In Align1, f16 inputs need to be strided
-            math(8) r3<1>:hf r4.0<8;8,1>:f r6.0<8;4,2>:hf
-
-            If type is hf, and stride is 1, assume it is packed, generate move with stride 2.
-            */
-            if (inst->isMath() &&
-                srcOpnd->getType() == Type_HF &&
-                srcOpnd->getRegion()->horzStride == 1)
-            {
-                inst->setSrc(insertMovBefore(instIter, i, Type_F, bb), i);
-            }
-        }
-        /*
-            10. [DevCHV:A]: When packed f16 is used as destination datatype, the subregister MUST be 0.
-        */
-        if(getGenxPlatform() == GENX_CHV    &&
-            GetStepping() == Step_A         &&
-            dst                             &&
-            dst->getHorzStride() ==1        &&
-            dst->getSubRegOff() != 0)
-        {
-            helperGenerateTempDst(bb, instIter, inst, 1, dst->getType());
         }
 
         /*
@@ -7557,10 +7423,7 @@ void HWConformity::fixMixedHFInst( BB_LIST_ITER it )
             inst->getDst()->getType() == Type_HF                    &&
             inst->getDst()->getHorzStride() == 1)
         {
-            if (VISA_WA_CHECK(builder.getPWaTable(), WaDstSubRegNumNotAllowedWithLowPrecPacked))
-                inst->getDst()->getBase()->asRegVar()->getDeclare()->setSubRegAlign(Sixteen_Word);
-            else
-                inst->getDst()->getBase()->asRegVar()->getDeclare()->setSubRegAlign(Eight_Word);
+            inst->getDst()->getBase()->asRegVar()->getDeclare()->setSubRegAlign(Eight_Word);
         }
     }
 }
