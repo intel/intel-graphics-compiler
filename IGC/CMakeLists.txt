@@ -3261,7 +3261,7 @@ else()
     find_package(LLVM ${IGC_PREFERRED_LLVM_VERSION})
     if(LLVM_FOUND)
         message(STATUS "[IGC] Using system LLVM ${LLVM_PACKAGE_VERSION}")
-        add_definitions(${LLVM_DEFINITIONS})
+        set(IGC_BUILD__USING_SYSTEM_LLVM TRUE)
         # Check if found package has dynamic library and select them if possible.
         llvm_map_components_to_libnames(llvm_libs all)       
         list(FIND llvm_libs "LLVM" DYN_LIB_INDEX)
