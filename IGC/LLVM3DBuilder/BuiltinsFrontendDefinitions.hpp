@@ -2081,6 +2081,9 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prep
     llvm::Value* float_abs_t = this->CreateFAbs(float_src_t);
 
     {
+        llvm::BasicBlock* currentBlock = this->GetInsertBlock();
+        bool shouldSplitBB = this->GetInsertPoint() != currentBlock->end();
+        
         // Create basic blocks.
         llvm::BasicBlock* block_final = llvm::BasicBlock::Create(this->getContext(), VALUE_NAME("cubefinal_block"));
 
@@ -2105,6 +2108,14 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prep
         llvm::Value* int1_tgesr = this->CreateAnd(int1_cmp_tger, int1_cmp_tges);
 
         // Major coordinate is T, faces could be +Z or -Z
+        llvm::BasicBlock* splitBlock = nullptr;
+        if (shouldSplitBB)
+        {
+            assert(currentBlock->getTerminator());
+            splitBlock = currentBlock->splitBasicBlock(this->GetInsertPoint());
+            currentBlock->getTerminator()->eraseFromParent();
+            this->SetInsertPoint(currentBlock);
+        }
         this->CreateCondBr(int1_tgesr, block_major_t, block_not_t);
         this->SetInsertPoint(block_major_t);
         parentFunc->getBasicBlockList().push_back(block_major_t);
@@ -2425,6 +2436,11 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prep
         phi_face_id->addIncoming(float_face_zp_id, block_zp);
         phi_face_id->addIncoming(float_face_zm_id, block_zm);
 
+        if (shouldSplitBB)
+        {
+            llvm::BranchInst* brInst = this->CreateBr(splitBlock);
+            this->SetInsertPoint(brInst);
+        }
 
         SampleD_DC_FromCubeParams D_DC_CUBE_params;
 
