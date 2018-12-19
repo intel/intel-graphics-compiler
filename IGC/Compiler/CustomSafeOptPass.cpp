@@ -1129,7 +1129,7 @@ void GenSpecificPattern::visitCastInst(CastInst &I)
     }
     if(srcVal && srcVal->getOperand(0)->getType() == I.getType())
     {
-        if(srcVal = dyn_cast<Instruction>(srcVal->getOperand(0)))
+        if((srcVal = dyn_cast<Instruction>(srcVal->getOperand(0))))
         {
             // need fast math to know that we can ignore Nan
             if(srcVal->isFast())
