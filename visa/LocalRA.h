@@ -334,6 +334,8 @@ public:
 	inline bool isWordBusy( int whichgrf, int word );
 	inline bool isWordBusy( int whichgrf, int word, int howmany );
 
+    bool findFreeMultipleRegsForward(int regIdx, G4_Align align, int & regnum, int nrows, int lastRowSize, int endReg, unsigned short occupiedBundles, int instID, bool isHybridAlloc);
+
 	void markPhyRegs( G4_Declare* topdcl );
 
 	// Available/unavailable is different from busy/free
@@ -420,7 +422,6 @@ public:
     void setSimpleGRFAvailable(bool simple) {simpleGRFAvailable = simple; }
     void setR0Forbidden() {r0Forbidden = true;}
     void setR1Forbidden() {r1Forbidden = true;}
-    bool findFreeMultipleRegsForward(int regIdx, G4_Align align, int &regnum, int nrows, int lastRowSize, int endReg, int instID, bool isHybridAlloc);
     bool findFreeMultipleRegsBackward(int regIdx, G4_Align align, int &regnum, int nrows, int lastRowSize, int endReg, int instID, bool isHybridAlloc);
     bool findFreeSingleReg( int regIdx, G4_SubReg_Align subalign, int &regnum, int &subregnum, int size);
     bool findFreeSingleReg(int regIdx, int size, G4_Align align, G4_SubReg_Align subalign, int &regnum, int &subregnum, int endReg, int instID, bool isHybridAlloc, bool forward);
@@ -439,10 +440,9 @@ public:
 	    availableRegs.setTwoBanksRA(_twoBanksRA);
 	}
 
-	int findFreeRegs( int numwords, G4_Align align, G4_SubReg_Align subalign, int& regnum, int& subregnum,
-                       int startRegNum, int endRegNum, unsigned int instID, bool isHybridAlloc);
+    int findFreeRegs(int size, G4_Align align, G4_SubReg_Align subalign, int & regnum, int & subregnum, int startRegNum, int endRegNum, unsigned short occupiedBundles, unsigned int instID, bool isHybridAlloc);
 
-	void freeRegs( int regnum, int subregnum, int numwords, int instID);
+    void freeRegs( int regnum, int subregnum, int numwords, int instID);
     PhyRegsLocalRA * getAvaialableRegs() { return &availableRegs; }
 };
 

@@ -129,15 +129,9 @@ class PhyRegUsage
 	void freeGRFSubReg(unsigned regNum, unsigned regOff, unsigned nwords, G4_Type ty);
 	void freeContiguous(bool availRegs[], unsigned start, unsigned numReg, unsigned maxRegs);
 	bool canGRFSubRegAlloc(G4_Declare* decl);
-	bool findContiguousNoWrapGRF(bool availRegs[],
-                                 const bool forbidden[],
-								 G4_Align align,
-								 unsigned numRegNeeded,
-								 unsigned startPos,
-								 unsigned endPos,
-								 unsigned& idx);
+    bool findContiguousNoWrapGRF(bool availRegs[], const bool forbidden[], unsigned short occupiedBundles, G4_Align align, unsigned numRegNeeded, unsigned startPos, unsigned endPos, unsigned & idx);
 
-	bool findContiguousNoWrapAddrFlag(bool availRegs[],
+    bool findContiguousNoWrapAddrFlag(bool availRegs[],
 		  					     const bool forbidden[],
 								 G4_SubReg_Align subAlign,
 								 unsigned numRegNeeded,
@@ -315,15 +309,6 @@ private:
 
 	void freeRegs(LiveRange* var);
 
-	bool findContiguousGRF(bool availRegs[],
-	 					   const bool forbidden[],
-						   G4_Align align,
-						   unsigned numRegNeeded,
-						   unsigned maxRegs,
-						   unsigned& startReg, // inout
-						   unsigned& idx,      // output
-                           bool isCalleeSaveBias = false,
-                           bool isEOTSrc = false);
 	bool findContiguousAddrFlag(bool availRegs[],
 	 					   const bool forbidden[],
                            G4_SubReg_Align subAlign,
@@ -342,6 +327,7 @@ private:
 
     // find contiguous free words in a registers
     int findContiguousWords(uint16_t words, G4_SubReg_Align alignment, int numWord) const;
+    bool findContiguousGRF(bool availRegs[], const bool forbidden[], unsigned occupiedBundles, G4_Align align, unsigned numRegNeeded, unsigned maxRegs, unsigned & startPos, unsigned & idx, bool isCalleeSaveBias, bool isEOTSrc);
 };
 }
 #endif // __PHYREGUSAGE_H__

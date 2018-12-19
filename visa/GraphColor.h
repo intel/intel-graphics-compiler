@@ -789,6 +789,8 @@ namespace vISA
         AugmentationMasks maskType = AugmentationMasks::Undetermined;
         std::vector<G4_Declare*> subDclList;
         unsigned int subOff = 0;
+        std::vector<G4_Declare*> bundleConflictDcls;
+        std::vector<int> bundleConflictoffsets;
     };
 
     class VerifyAugmentation
@@ -1153,6 +1155,37 @@ namespace vISA
         bool getHasNonDefaultMaskDef(G4_Declare* dcl) const
         {
             return (getAugmentationMask(dcl) == AugmentationMasks::NonDefault);
+        }
+
+        void addBundleConflictDcl(G4_Declare *dcl, G4_Declare* subDcl, int offset)
+        {
+            auto dclid = dcl->getDeclId();
+            resize(dclid);
+            vars[dclid].bundleConflictDcls.push_back(subDcl);
+            vars[dclid].bundleConflictoffsets.push_back(offset);
+        }
+
+        void clearBundleConflictDcl(G4_Declare* dcl)
+        {
+            auto dclid = dcl->getDeclId();
+            resize(dclid);
+            vars[dclid].bundleConflictDcls.clear();
+            vars[dclid].bundleConflictoffsets.clear();
+        }
+
+        G4_Declare* getBundleConflictDcl(G4_Declare* dcl, unsigned i, int &offset)
+        {
+            auto dclid = dcl->getDeclId();
+            resize(dclid);
+            offset = vars[dclid].bundleConflictoffsets[i];
+            return vars[dclid].bundleConflictDcls[i];
+        }
+
+        unsigned getBundleConflictDclSize(G4_Declare* dcl)
+        {
+            auto dclid = dcl->getDeclId();
+            resize(dclid);
+            return (unsigned)(vars[dclid].bundleConflictDcls.size());
         }
 
         void addSubDcl(G4_Declare *dcl, G4_Declare* subDcl)

@@ -261,6 +261,7 @@ int PhyRegUsage::findContiguousWords(
 //
 bool PhyRegUsage::findContiguousGRF(bool availRegs[],
     const bool forbidden[],
+    unsigned occupiedBundles,
     G4_Align align,
     unsigned numRegNeeded,
     unsigned maxRegs,
@@ -282,7 +283,7 @@ bool PhyRegUsage::findContiguousGRF(bool availRegs[],
     }
     bool found =
         findContiguousNoWrapGRF(
-        availRegs, forbidden, align, numRegNeeded, startPosRunOne, endPosRunOne, idx);
+        availRegs, forbidden, occupiedBundles, align, numRegNeeded, startPosRunOne, endPosRunOne, idx);
 
     if (startPosRunOne > 0 && found == false && !isEOTSrc && !isCalleeSaveBias)
     {
@@ -292,7 +293,7 @@ bool PhyRegUsage::findContiguousGRF(bool availRegs[],
         MUST_BE_TRUE(endPosRunTwo > 0 && endPosRunTwo <= maxRegs, ERROR_UNKNOWN);
         found =
             findContiguousNoWrapGRF(
-            availRegs, forbidden, align, numRegNeeded, startPosRunTwo, endPosRunTwo, idx);
+            availRegs, forbidden, occupiedBundles, align, numRegNeeded, startPosRunTwo, endPosRunTwo, idx);
     }
 
     if (found)
@@ -495,11 +496,14 @@ bool PhyRegUsage::isOverlapValid(unsigned int reg, unsigned int numRegs)
     return true;
 }
 
+#define GET_BUNDLE(r, o)  (((r + o) % 64) / 4)
+
 //
 // look for contiguous available regs from startPos to maxRegs
 //
 bool PhyRegUsage::findContiguousNoWrapGRF(bool availRegs[],
     const bool forbidden[],
+    unsigned short occupiedBundles, 
     G4_Align align,
     unsigned numRegNeeded,
     unsigned startPos,
@@ -539,6 +543,10 @@ bool PhyRegUsage::findContiguousNoWrapGRF(bool availRegs[],
             unsigned j = i;
             if (overlapTest &&
                 !isOverlapValid(i, numRegNeeded))
+            {
+                i++;
+            }
+            else if (occupiedBundles & (1 << GET_BUNDLE(i, 0)))
             {
                 i++;
             }
@@ -977,7 +985,7 @@ bool PhyRegUsage::assignGRFRegsFromBanks(LiveRange*	 varBasis,
         if (varBasis->getEOTSrc() && builder.hasEOTGRFBinding())
         {
             startGRFReg = totalGRFNum - 16;
-            success = findContiguousGRF(availableGregs, forbidden, align, decl->getNumRows(), maxGRFCanBeUsed,
+            success = findContiguousGRF(availableGregs, forbidden, 0, align, decl->getNumRows(), maxGRFCanBeUsed,
                 startGRFReg, i, false, true);
         }
         else
@@ -1127,8 +1135,20 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
                 startGRFReg = totalGRFNum - 16;
             }
 
+            unsigned short occupiedBundles = 0;
+            for (size_t i = 0; i < gra.getBundleConflictDclSize(decl); i++)
+            {
+                int offset = 0;
+                G4_Declare *bDcl = gra.getBundleConflictDcl(decl, i, offset);
+                if (bDcl->getRegVar()->isPhyRegAssigned())
+                {
+                    unsigned int reg = bDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+                    unsigned int bundle = GET_BUNDLE(reg, offset);
+                    occupiedBundles |= (unsigned short)1 << bundle;
+                }
+            }
 
-            bool success = findContiguousGRF(availableGregs, forbidden, bankAlign != Either ? bankAlign : align, decl->getNumRows(), endGRFReg,
+            bool success = findContiguousGRF(availableGregs, forbidden, occupiedBundles, bankAlign != Either ? bankAlign : align, decl->getNumRows(), endGRFReg,
                 startGRFReg, i, varBasis->getCalleeSaveBias(), varBasis->getEOTSrc());
             if (success) {
                 varBasis->setPhyReg(regPool.getGreg(i), 0);

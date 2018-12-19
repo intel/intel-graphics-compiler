@@ -3281,6 +3281,7 @@ void GlobalRA::resetGlobalRAStates()
         {
             setBankConflict(dcl, BANK_CONFLICT_NONE);
         }
+        clearBundleConflictDcl(dcl);
     }
 
     return;

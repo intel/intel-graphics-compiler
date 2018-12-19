@@ -44,6 +44,8 @@ using namespace vISA;
 #define SPLIT_USE_CNT_THRESHOLD 2
 #define SPLIT_USE_DISTANCE_THRESHOLD 100
 
+#define GET_BUNDLE(r, o)  (((r + o) % 64) / 4)
+
 extern unsigned int getStackCallRegSize(bool reserveStackCallRegs);
 extern void getForbiddenGRFs(vector<unsigned int>& regNum, const Options *opt, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned reservedRegNum);
 extern void getCallerSaveGRF(vector<unsigned int>& regNum, G4_Kernel* kernel);
@@ -825,13 +827,25 @@ bool LocalRA::assignUniqueRegisters(bool twoBanksRA, bool twoDirectionsAssign)
 
             if (assignFromFront)
             {
+                unsigned short occupiedBundles = 0;
+                for (size_t i = 0; i < gra.getBundleConflictDclSize(dcl); i++)
+                {
+                    int offset = 0;
+                    G4_Declare *bDcl = gra.getBundleConflictDcl(dcl, i, offset);
+                    if (bDcl->getRegVar()->isPhyRegAssigned())
+                    {
+                        unsigned int reg = bDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+                        unsigned int bundle = GET_BUNDLE(reg, offset);
+                        occupiedBundles |= (unsigned short)1 << bundle;
+                    }
+                }
                 nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != Either) ? bankAlign : align, subAlign,
-                    regNum, subregNum, 0, numRegLRA - 1, 0, false);
+                    regNum, subregNum, 0, numRegLRA - 1, occupiedBundles, 0, false);
             }
             else
             {
                 nrows = phyRegMgr.findFreeRegs(sizeInWords, (bankAlign != Either) ? bankAlign : align, subAlign,
-                    regNum, subregNum, numRegLRA - 1, 0, 0, false);
+                    regNum, subregNum, numRegLRA - 1, 0, 0, 0, false);
             }
 
             if (nrows)
@@ -1970,7 +1984,7 @@ inline bool PhyRegsLocalRA::isWordBusy(int whichgrf, int word, int howmany)
     return retval;
 }
 
-bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, G4_Align align, int &regnum, int nrows, int lastRowSize, int endReg, int instID, bool isHybridAlloc)
+bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, G4_Align align, int &regnum, int nrows, int lastRowSize, int endReg, unsigned short occupiedBundles, int instID, bool isHybridAlloc)
 {
     int foundItem = 0;
     int startReg = 0;
@@ -1989,8 +2003,13 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, G4_Align align, int
 
     LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
 
-    startReg = i;
+    while (occupiedBundles & (1 << GET_BUNDLE(i, 0)))
+    {
+        i++;
+        LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
+    }
 
+    startReg = i;
     while (i <= endReg + nrows - 1)
     {
         if (isGRFAvailable(i) &&
@@ -2004,6 +2023,11 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, G4_Align align, int
             foundItem = 0;
             i++;
             LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
+            while (occupiedBundles & (1 << GET_BUNDLE(i, 0)))
+            {
+                i++;
+                LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
+            }
             startReg = i;
             continue;
         }
@@ -2030,6 +2054,11 @@ bool PhyRegsLocalRA::findFreeMultipleRegsForward(int regIdx, G4_Align align, int
                     foundItem = 0;
                     i++;
                     LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
+                    while (occupiedBundles & (1 << GET_BUNDLE(i, 0)))
+                    {
+                        i++;
+                        LocalRA::findRegisterCandiateWithAlignForward(i, align, multiSteps);
+                    }
                     startReg = i;
                     continue;
                 }
@@ -2305,7 +2334,7 @@ bool PhyRegsLocalRA::findFreeSingleReg(int regIdx, G4_SubReg_Align subalign, int
 }
 
 int PhyRegsManager::findFreeRegs(int size, G4_Align align, G4_SubReg_Align subalign, int& regnum, int& subregnum,
-    int startRegNum, int endRegNum, unsigned int instID, bool isHybridAlloc)
+    int startRegNum, int endRegNum, unsigned short occupiedBundles, unsigned int instID, bool isHybridAlloc)
 {
     int nrows = 0;
     int lastRowSize = 0;
@@ -2321,7 +2350,7 @@ int PhyRegsManager::findFreeRegs(int size, G4_Align align, G4_SubReg_Align subal
     {
         if (forward)
         {
-            found = availableRegs.findFreeMultipleRegsForward(startReg, align, regnum, nrows, lastRowSize, endReg, instID, isHybridAlloc);
+            found = availableRegs.findFreeMultipleRegsForward(startReg, align, regnum, nrows, lastRowSize, endReg, occupiedBundles, instID, isHybridAlloc);
         }
         else
         {
@@ -2577,6 +2606,7 @@ void LinearScan::expireInputRanges(unsigned int global_idx, unsigned int local_i
     }
 }
 
+
 // Allocate registers to live range. It makes a decision whether to spill
 // a currently active range or the range passed as parameter. The range
 // that has larger size and is longer is the spill candidate.
@@ -2595,9 +2625,23 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
     // spill cost.
     int nrows = 0;
     int size = lr->getSizeInWords();
-    G4_Align align = lr->getTopDcl()->getRegVar()->getAlignment();
-    G4_SubReg_Align subalign = lr->getTopDcl()->getRegVar()->getSubRegAlignment();
+    G4_Declare *dcl = lr->getTopDcl();
+    G4_Align align = dcl->getRegVar()->getAlignment();
+    G4_SubReg_Align subalign = dcl->getRegVar()->getSubRegAlignment();
     G4_Align bankAlign = Either;
+    unsigned short occupiedBundles = 0;
+
+    for (size_t i = 0; i < gra.getBundleConflictDclSize(dcl); i++)
+    {
+        int offset = 0;
+        G4_Declare *bDcl = gra.getBundleConflictDcl(dcl, i, offset);
+        if (bDcl->getRegVar()->isPhyRegAssigned())
+        {
+            unsigned int reg = bDcl->getRegVar()->getPhyReg()->asGreg()->getRegNum();
+            unsigned int bundle = GET_BUNDLE(reg, offset);
+            occupiedBundles |= (unsigned short)1 << bundle;
+        }
+    }
 
     localRABound = numRegLRA - globalLRSize - 1;  //-1, localRABound will be counted in findFreeRegs()
 
@@ -2616,6 +2660,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
             subregnum,
             *startGRFReg,
             localRABound,
+            occupiedBundles,
             instID,
             false);
     }
@@ -2628,6 +2673,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
             subregnum,
             *startGRFReg,
             localRABound,
+            occupiedBundles,
             instID,
             true);
 
@@ -2640,6 +2686,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                 subregnum,
                 *startGRFReg,
                 localRABound,
+                occupiedBundles,
                 instID,
                 false);
         }
@@ -2663,6 +2710,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                 subregnum,
                 0,
                 endGRFReg,
+                occupiedBundles,
                 instID,
                 false);
 
@@ -2994,6 +3042,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
             subregnum,
             *startGRFReg,
             tmpLocalRABound,
+            0,
             instID,
             false);
 
@@ -3042,6 +3091,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
                 subregnum,
                 *startGRFReg,
                 tmpLocalRABound,
+                0,
                 instID,
                 false);
 
@@ -3067,6 +3117,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
                     subregnum,
                     *startGRFReg,
                     tmpLocalRABound,
+                    0,
                     instID,
                     false);
             }
@@ -3081,6 +3132,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
             subregnum,
             *startGRFReg,
             tmpLocalRABound,
+            0,
             instID,
             true);
 
@@ -3093,6 +3145,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
                 subregnum,
                 *startGRFReg,
                 tmpLocalRABound,
+                0,
                 instID,
                 false);
         }
@@ -3118,6 +3171,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
                 subregnum,
                 *startGRFReg,
                 tmpLocalRABound,
+                0,
                 instID,
                 false);
         }
