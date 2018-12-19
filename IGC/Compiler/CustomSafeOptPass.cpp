@@ -1116,6 +1116,37 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
 
 }
 
+void GenSpecificPattern::visitCastInst(CastInst &I)
+{
+    Instruction* srcVal = nullptr;
+    if(isa<SIToFPInst>(&I))
+    {
+        srcVal = dyn_cast<FPToSIInst>(I.getOperand(0));
+    }
+    else if(isa<UIToFPInst>(&I))
+    {
+        srcVal = dyn_cast<FPToUIInst>(I.getOperand(0));
+    }
+    if(srcVal && srcVal->getOperand(0)->getType() == I.getType())
+    {
+        if(srcVal = dyn_cast<Instruction>(srcVal->getOperand(0)))
+        {
+            // need fast math to know that we can ignore Nan
+            if(srcVal->isFast())
+            {
+                IRBuilder<> builder(&I);
+                Function* func = Intrinsic::getDeclaration(
+                    I.getParent()->getParent()->getParent(),
+                    Intrinsic::trunc,
+                    I.getType());
+                Value* newVal = builder.CreateCall(func, srcVal);
+                I.replaceAllUsesWith(newVal);
+                I.eraseFromParent();
+            }
+        }
+    }
+}
+
 void GenSpecificPattern::visitZExtInst(ZExtInst &ZEI)
 {
     CmpInst *Cmp = dyn_cast<CmpInst>(ZEI.getOperand(0));

@@ -122,6 +122,7 @@ namespace IGC
         void visitSelectInst(llvm::SelectInst &I);
         void visitCmpInst(llvm::CmpInst &I);
         void visitZExtInst(llvm::ZExtInst &I);
+        void visitCastInst(llvm::CastInst &I);
         void visitIntToPtr(llvm::IntToPtrInst& I);
         void visitSDiv(llvm::BinaryOperator& I);
     };
