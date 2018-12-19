@@ -4,6 +4,7 @@ add_subdirectory(IGC)
 
 list(APPEND IGC__IGC_TARGETS "igc_dll")
 list(APPEND IGC__IGC_TARGETS "IGA_DLL")
+list(APPEND IGC__IGC_TARGETS "IGA_EXE")
 list(APPEND IGC__IGC_TARGETS "fcl_dll")
 list(APPEND IGC__IGC_TARGETS "common_clang_dll")
 
