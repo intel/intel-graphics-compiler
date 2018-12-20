@@ -10087,6 +10087,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
 
     switch (src->getElemSize()) 
     {
+        case 1:
         case 2: 
             sources[len].execSize = 16 * srcNumGRF; 
             movExecSize = 16;
