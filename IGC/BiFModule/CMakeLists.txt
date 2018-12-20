@@ -183,7 +183,7 @@ endif()
       message(STATUS "Trigger common clang compilation from ${IGC_CCLANG_HOME_DIR} to ${CCLANG_INSTALL_ARTIFACTS_DIR}")
 
       if(NOT OCL_HEADERS_DIR)
-        get_filename_component(OCL_HEADERS_DIR "${IGC_BUILD__GFX_DEV_SRC_DIR}/../opencl_headers" ABSOLUTE)
+        get_filename_component(OCL_HEADERS_DIR "${IGC_BUILD__GFX_DEV_SRC_DIR}/third_party/opencl_headers" ABSOLUTE)
       endif()
       add_subdirectory(${IGC_CCLANG_HOME_DIR} ${IGC_CCLANG_BUILD_DIR})
       add_dependencies(GetClang "${CCLANG_LIB_NAME}")
