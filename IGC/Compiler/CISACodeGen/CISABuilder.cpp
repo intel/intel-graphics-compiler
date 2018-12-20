@@ -3829,14 +3829,25 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         vbuilder->SetOption(vISA_FuseTypedWrites, true);
     }
 
-    // Enable SendFusion for SIMD8 
+    // Enable SendFusion for SIMD8
     if (IGC_IS_FLAG_ENABLED(EnableSendFusion) &&
-		m_program->GetContext()->platform.supportSplitSend() &&
+        m_program->GetContext()->platform.supportSplitSend() &&
         m_program->m_dispatchSize == SIMDMode::SIMD8 &&
         (IGC_GET_FLAG_VALUE(EnableSendFusion) == FLAG_LEVEL_2 ||   // 2: force send fusion
          context->m_DriverInfo.AllowSendFusion()))
     {
         vbuilder->SetOption(vISA_EnableSendFusion, true);
+        if (IGC_IS_FLAG_ENABLED(EnableAtomicFusion) &&
+            context->type == ShaderType::OPENCL_SHADER)
+        {
+            vbuilder->SetOption(vISA_EnableAtomicFusion, true);
+        }
+    }
+
+    if (context->getModuleMetaData()->compOpt.FastRelaxedMath ||
+        context->getModuleMetaData()->compOpt.UnsafeMathOptimizations)
+    {
+        vbuilder->SetOption(vISA_unsafeMath, true);
     }
 
     // With statelessToStatefull on, it is possible that two different BTI messages

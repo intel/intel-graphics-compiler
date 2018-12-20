@@ -130,6 +130,7 @@ namespace vISA
         G4_VarBase* getVarBase(G4_VarBase* RegVar, G4_Type Ty);
         uint32_t getFuncCtrlWithSimd16(G4_SendMsgDescriptor* Desc);
         void simplifyMsg(INST_LIST_ITER SendIter);
+        bool isAtomicCandidate(G4_SendMsgDescriptor* msgDesc);
 
 		bool WAce0Read;
 
@@ -190,6 +191,11 @@ uint32_t SendFusion::getFuncCtrlWithSimd16(G4_SendMsgDescriptor* Desc)
             // bit13-12: SM3
             FC = ((FC & ~0x3000) | (MDC_SM3_SIMD16 << 12));
             break;
+        case DC1_UNTYPED_ATOMIC:
+        case DC1_UNTYPED_FLOAT_ATOMIC:
+            // bit12: SM2R
+            FC = ((FC & ~0x1000) | (MDC_SM2R_SIMD16 << 12));
+            break;
         }
     }
     else if (funcID == SFID_DP_DC2)
@@ -220,9 +226,74 @@ uint32_t SendFusion::getFuncCtrlWithSimd16(G4_SendMsgDescriptor* Desc)
     return FC;
 }
 
+bool SendFusion::isAtomicCandidate(G4_SendMsgDescriptor* msgDesc)
+{
+    uint32_t funcID = msgDesc->getFuncId();
+    if (funcID != SFID_DP_DC1) {
+        return false;
+    }
+
+    // Right now, the following atomic messages are DW per simd-lane.
+    uint16_t msgType = msgDesc->getMessageType();
+    bool intAtomic = true; // true: int; false : float
+    switch (msgType) {
+    default:
+        return false;
+    case DC1_UNTYPED_ATOMIC:
+        break;
+    case DC1_UNTYPED_FLOAT_ATOMIC:
+        intAtomic = false;
+        break;
+    }
+
+    // Had right atomic type, now check AtomicOp
+    uint16_t atomicOp = msgDesc->getAtomicOp();
+    if (intAtomic)
+    {
+        switch (atomicOp)
+        {
+        default:
+            return false;
+        case GEN_ATOMIC_AND:
+        case GEN_ATOMIC_OR:
+        case GEN_ATOMIC_XOR:
+        case GEN_ATOMIC_INC:
+        case GEN_ATOMIC_DEC:
+        case GEN_ATOMIC_ADD:
+        case GEN_ATOMIC_SUB:
+        case GEN_ATOMIC_REVSUB:
+        case GEN_ATOMIC_IMAX:
+        case GEN_ATOMIC_IMIN:
+        case GEN_ATOMIC_UMAX:
+        case GEN_ATOMIC_UMIN:
+        case GEN_ATOMIC_PREDEC:
+            break;
+        }
+    }
+    else
+    {
+        if (!Builder->getOption(vISA_unsafeMath))
+        {
+            return false;
+        }
+
+        switch (atomicOp)
+        {
+        default:
+            return false;
+        case GEN_ATOMIC_FMAX:
+        case GEN_ATOMIC_FMIN:
+            break;
+        }
+    }
+    return true;
+
+    // Need to check if it is packed half integer/float ?
+}
+
 // We will do send fusion for a few messages. Those messages all
-// have the address payload for each channel, thus address payload
-// is 1 GRF for exec_size=8 (no A64 messages for now).
+// have DW-sized address for each lane, thus address payload is
+// 1 GRF for exec_size=8 (no A64 messages for now).
 //
 // The optimization is performed for the following cases:
 //    1) [(w)] send(8) + send(8) --> (W&flag) send(16), and
@@ -286,10 +357,52 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
 		return false;
 	}
 
-    // Unless we can prove there are no aliases of two sends, we will not be
-    // able to do fusion (or we know for sure that the first addr's value or
-    // last addr's value is taken). For now, disable it.
-    if  (msgDesc->isDataPortWrite())
+    // For write messages:
+    //   unless we can prove there are no aliases of two sends's address payload,
+    //   we will not be able to do fusion as hardware does not have deterministic
+    //   behavior if the same address appear more than once. For example,
+    //
+    //     send (8)  (a1_0, C, a1_2, ..., a1_7) (d1_0, d1_1, d1_2, ..., d1_7)
+    //     send (8)  (a2_0, C, a2_2, ..., a2_7) (d2_0, d2_1, d2_2, ..., d2_7)
+    //
+    //   Both sends have the same addr 'C' in lane 1, and C's value is d2_1 after
+    //   two sends. However, if they are fused, they become:
+    //
+    //     send (16) (a1_0, C,    ..., a2_0, C,    ..., a2_7)
+    //               (d1_0, d1_1, ..., d2_0, d2_1, ..., d2_7)
+    //
+    //   The hardware cannot guarantee that d2_1 will be the value written to addr 'C'.
+    //   Thus, we have to disallow fusion for writes
+    //
+    // But we can do it for atomic messages if certain conditions meet:
+    // (Checked in isAtomicCandidate().)
+    //    1. Can fuse if no return value.
+    //       Atomic messages has both read/write. Let us take a look at atomic_add
+    //       for example: let's assume atomic_add returns the old value and does updating.
+    //
+    //          location at p :  10 (original value)
+    //          x = atomic_add p, 1
+    //          y = atomic_add p, 2
+    //       then, x = 10  & y = 11
+    //
+    //       If fused them, it becomes:
+    //          {x, y} = atomic_add {p, p}, {1, 2}
+    //            it's possible that we have x = 12 & y = 10 as the 2nd atomic operations
+    //            could be performed first. This does change the behavior of the program.
+    //
+    //       Since we don't know if two sends share the same address, we will conservatively
+    //       avoid fusing two sends with return values for now.
+    //    2. Assume unsafe math is present for float atomic.
+    //       As two sends might share the same location, and fused send might change the order
+    //       of float atomic operations.  We need to have unsafe-math to perform fusing legally.
+    //
+    bool isAtomicCand = false;
+    if (Builder->getOption(vISA_EnableAtomicFusion))
+    {
+        isAtomicCand = isAtomicCandidate(msgDesc);
+    }
+    if  ((!isAtomicCand && msgDesc->isDataPortWrite()) ||
+         (isAtomicCand && rspLen > 0))
     {
         return false;
     }
@@ -315,6 +428,14 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
     if (!descOpnd->isImm() || (extDescOpnd && !extDescOpnd->isImm()))
     {
         return false;
+    }
+
+    // Only handling the following messages that have DW as data element.
+    // Untyped with up to 4 DW per lane is handled.
+
+    // special handling of atomic
+    if (isAtomicCand) {
+        return true;
     }
 
     uint32_t funcID = msgDesc->getFuncId();
@@ -542,9 +663,12 @@ bool SendFusion::canFusion(INST_LIST_ITER IT0, INST_LIST_ITER IT1)
     //        and hardware does not have deterministic behavior about which data,
     //        data0 or data1, will be stored into x! For this reason, no write
     //        will be fused if they have common address. Since we don't know (for now)
-    //        if addresses of two sends can point to the same address, we just
+    //        if addresses of two sends can point to the same location, we just
     //        conservatively do not fuse any write messages.
-    //       
+    //
+    // Atomic messages:
+    //    As only no-return-value atomic can be fused, RAW will be false always.
+    //
     G4_SendMsgDescriptor* desc0 = I0->getMsgDesc();
     G4_SendMsgDescriptor* desc1 = I1->getMsgDesc();
     bool fusion = I0->getOption() == I1->getOption() &&
@@ -1382,25 +1506,31 @@ bool SendFusion::run(G4_BB* BB)
             ++II0;
             continue;
         }
- 
+
         G4_INST* inst1 = nullptr;
         INST_LIST_ITER II1 = II0;
         ++II1;
         while(II1 != IE)
         {
             G4_INST* tmp = *II1;
-            if (tmp->opcode() == inst0->opcode() &&
-				tmp->getExecSize() == inst0->getExecSize() &&
-                simplifyAndCheckCandidate(II1))
+            if (simplifyAndCheckCandidate(II1))
             {
-                if (canFusion(II0, II1))
+                // possible 2nd send to be fused
+                if (tmp->opcode() == inst0->opcode() &&
+                    tmp->getExecSize() == inst0->getExecSize())
                 {
-                    // Found
-                    inst1 = tmp;
+                    if (canFusion(II0, II1))
+                    {
+                        // Found
+                        inst1 = tmp;
+                    }
                 }
 
-                // Don't advance II1 as II1 might be the first send
-                // for the next pair of candidates.
+                // If found (inst1 != null), exit the inner loop to start fusing;
+                // if not found, exit the inner loop and use this one (II1) as
+                // the 1st send of possible next pair to start the outer loop again.
+                //
+                // In both case, don't advance II1.
                 break;
             }
 
@@ -1408,7 +1538,7 @@ bool SendFusion::run(G4_BB* BB)
             if (tmp->isSend() || tmp->isFence() || tmp->isOptBarrier())
             {
                 // Don't try to fusion two sends that are separated
-                // by other memory/barrier instructions.             
+                // by other memory/barrier instructions.
                 break;
             }
         }
@@ -1457,9 +1587,8 @@ bool SendFusion::run(G4_BB* BB)
 //
 //    [(w)] send(8) + send(8) --> (W&flag) send(16)
 //
-//      Either noMask or not. When no NoMask
-//
-// Note that (w) send(1|2|4) is also supported.
+// Either noMask or not. When no NoMask, send insts with
+// execsize=1|2|4 are also supported.
 //
 bool vISA::doSendFusion(FlowGraph* aCFG, Mem_Manager* aMMgr)
 {

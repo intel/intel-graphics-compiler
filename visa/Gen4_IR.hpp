@@ -409,26 +409,59 @@ public:
             funcID == SFID_SPAWNER || funcID == SFID_URB || funcID == SFID_NUM;
     }
 
-    bool isAtomicMessage() const
+    bool isIntAtomicMessage() const
     {
         auto funcID = extDesc.layout.funcID;
         if (funcID != SFID_DP_DC1)
             return false;
 
-        uint32_t funcCtrl = getFuncCtrl();
-        uint16_t msgType = (funcCtrl >> 14) & 0xF;
+        uint16_t msgType = getMessageType();
         if (msgType == DC1_UNTYPED_ATOMIC || msgType == DC1_A64_ATOMIC)
         {
             return true;
         }
         if (getGenxPlatform() >= GENX_SKL)
         {
-            if (msgType == DC1_UNTYPED_FLOAT_ATOMIC ||
-                msgType == DC1_A64_UNTYPED_FLOAT_ATOMIC ||
-                msgType == DC1_TYPED_ATOMIC)
+            if (msgType == DC1_TYPED_ATOMIC)
                 return true;
         }
         return false;
+    }
+
+    bool isFloatAtomicMessage() const
+    {
+        auto funcID = extDesc.layout.funcID;
+        if (funcID != SFID_DP_DC1)
+            return false;
+
+        uint16_t msgType = getMessageType();
+        if (getGenxPlatform() >= GENX_SKL)
+        {
+            if (msgType == DC1_UNTYPED_FLOAT_ATOMIC ||
+                msgType == DC1_A64_UNTYPED_FLOAT_ATOMIC)
+                return true;
+        }
+        return false;
+    }
+
+    bool isAtomicMessage() const
+    {
+        return isIntAtomicMessage() || isFloatAtomicMessage();
+    }
+
+    uint16_t getAtomicOp() const
+    {
+        assert(isAtomicMessage() && "ICE: getting atomicOp from non-atomic message!");
+        uint32_t funcCtrl = getFuncCtrl();
+        if (isIntAtomicMessage())
+        {
+            // bits: 11:8
+            return (uint16_t)((funcCtrl >> 8) & 0xF);
+        }
+
+        // must be float Atomic
+        // bits: 10:8
+        return (int16_t)((funcCtrl >> 8) & 0x7);
     }
 
     bool isBarrierMsg() const

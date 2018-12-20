@@ -56,6 +56,7 @@ DECLARE_IGC_REGKEY(bool, ExpandPlane,                   0,     "Enable pln to ma
 DECLARE_IGC_REGKEY(bool, EnableBCR,                     false,  "Enable bank conflict reduction.")
 DECLARE_IGC_REGKEY(bool, GlobalSendVarSplit, false, "Enable global send variable splitting when we are about to spill")
 DECLARE_IGC_REGKEY(DWORD,EnableSendFusion,              1,     "Enable(!=0)/disable(0)/force(2) send fusion. Valid for simd8 shader/kernel only.")
+DECLARE_IGC_REGKEY(bool, EnableAtomicFusion,            false, "To enable/disable atomic send fusion (simd8 shaders). Valid if EnableSendFusion is on.")
 
 DECLARE_IGC_GROUP("IGC Optimization")
 DECLARE_IGC_REGKEY(bool, DisableIGCOptimizations,       false, "Setting this to 1/true adds a compiler switch to disables all the above IGC optimizations")
