@@ -217,6 +217,13 @@ public:
     bool CanTreatAsAlias(llvm::ExtractElementInst *inst);
     bool CanTreatScalarSourceAsAlias(llvm::InsertElementInst *);
 
+    bool HasBecomeNoop(llvm::Instruction *inst);
+
+    // If V is not in any congruent class, not aliased to any other
+    // variables,  not payload-coalesced, it is a simple variable
+    // and this function returns true.
+    bool IsSimpleVariable(llvm::Value* V);
+
     bool VMECoalescePattern(llvm::GenIntrinsicInst*);
 
     bool isUnpacked(llvm::Value* value);

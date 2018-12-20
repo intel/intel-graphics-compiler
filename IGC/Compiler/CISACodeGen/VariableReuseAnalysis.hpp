@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/TinyPtrVector.h"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstIterator.h>
@@ -46,10 +47,21 @@ namespace IGC {
 
 struct SSubVector
 {
-	// BaseVector is a vector type. It denotes a sub-vector
-	// of BaseVector starting at StartElementOffset.
+	// Denote a sub-vector of BaseVector starting at StartElementOffset.
+    //
+    // It is used as an aliasee in the pair <Value, SSubVector>, thus the
+    // size of the sub-vector is the size of Value (aliaser) of this pair.
+    // (If needed, add the number of elements in SSubVector.)
 	llvm::Value* BaseVector;
 	short  StartElementOffset;
+};
+
+//  Represent a Vector's element at index = EltIx.
+struct SVecElement {
+    llvm::Value* Vec;
+    int          EltIx;
+
+    SVecElement() : Vec(nullptr), EltIx(-1) {}
 };
 
 /// RPE based analysis for querying variable reuse status.
@@ -82,6 +94,9 @@ public:
   ~VariableReuseAnalysis() {}
 
   typedef llvm::DenseMap<llvm::Value*, SSubVector> ValueAliasMapTy;
+  typedef llvm::DenseMap<llvm::Value*, llvm::TinyPtrVector<llvm::Value*> > AliasRootMapTy;
+  typedef llvm::SmallVector<SVecElement, 32> VecEltTy;
+  typedef llvm::SmallVector<llvm::Value*, 32> ValueVectorTy;
 
   virtual bool runOnFunction(llvm::Function &F) override;
 
@@ -143,18 +158,30 @@ public:
 
   bool isLocalValue(llvm::Value* V);
  
+  bool aliasHasInterference(llvm::Value* Aliaser, llvm::Value* Aliasee);
   bool hasInterference(llvm::Value* V0, llvm::Value* V1);
 
   // Visitor
   void visitCallInst(llvm::CallInst& I);
   void visitCastInst(llvm::CastInst& I);
+  void visitInsertElementInst(llvm::InsertElementInst& I);
+  void visitExtractElementInst(llvm::ExtractElementInst& I);
 
+  bool isAliasedValue(llvm::Value *V) {
+      return (isAliaser(V) || isAliasee(V));
+  }
+  bool isAliaser(llvm::Value* V);
+  bool isAliasee(llvm::Value* V);
+  int getCongruentClassSize(llvm::Value* V);
+  bool isSameSizeValue(llvm::Value* V0, llvm::Value* V1);
 
-  // Collect aliases from subVector to base vector. The map's key is
-  // assumed to be an independent value (not in any congruent class)
-  // originally. Of course, after aliasing, it must be in a congruent
-  // class.
-  ValueAliasMapTy m_ValueAliasMap;
+  // Collect aliases from subVector to base vector.
+  ValueAliasMapTy m_ValueAliasMap; // aliaser -> aliasee
+  // Reverse of m_ValueAliasMap.
+  AliasRootMapTy    m_AliasRootMap;    // aliasee -> all its aliasers.
+
+  // No need to emit code for instructions in this map due to aliasing
+  llvm::DenseMap <llvm::Instruction*, int > m_HasBecomeNoopInsts;
 
 private:
   void reset() {
@@ -162,6 +189,8 @@ private:
     m_IsFunctionPressureLow = Status::Undef;
     m_IsBlockPressureLow = Status::Undef;
 	m_ValueAliasMap.clear();
+    m_AliasRootMap.clear();
+    m_HasBecomeNoopInsts.clear();
   }
 
   // Initialize per-block states. In particular, check if the entire block has a
@@ -193,12 +222,47 @@ private:
       return (m_coalescingEngine->GetValueCCTupleMapping(V) != nullptr);
   }
 
+  void mergeVariables(llvm::Function *F);
+
+  // Add entry to alias map.
+  bool addAlias(
+      llvm::Value* Aliaser,
+      SSubVector& SVD);
+
+  // Returns true for the following pattern:
+  //   a = extractElement <vectorType> EEI_Vec, <constant EEI_ix>
+  //   b = insertElement  <vectorType> V1,  E,  <constant IEI_ix>
+  // where EEI_ix and IEI_ix are constants; Return false otherwise.
+  bool getVectorIndicesIfConstant(
+      llvm::InsertElementInst* IEI,
+      int& IEI_ix,
+      llvm::Value*& EEI_Vec,
+      int&EEI_ix);
+
+  bool checkAndGetAllInsertElements(
+      llvm::InsertElementInst* FirstIEI,
+      ValueVectorTy& AllIEIs,
+      VecEltTy& AllElts);
+
+  bool IsExtractFrom(
+      VecEltTy& AllElts,
+      llvm::InsertElementInst* FirstIEI,
+      llvm::InsertElementInst* LastIEI,
+      SSubVector& SV);
+
+  bool IsInsertTo(
+      VecEltTy& AllElts,
+      llvm::InsertElementInst* FirstIEI,
+      llvm::InsertElementInst* LastIEI,
+      llvm::SmallVector<SSubVector, 4>& SVs);
+
   CodeGenContext* m_pCtx;
   WIAnalysis* m_WIA;
   LiveVars* m_LV;
   DeSSA* m_DeSSA;
   CodeGenPatternMatch* m_PatternMatch;
   CoalescingEngine* m_coalescingEngine;
+  const llvm::DataLayout* m_DL;
 
   // The register pressure estimator (optional).
   RegisterEstimator *m_RPE;
@@ -222,6 +286,11 @@ private:
   // When this block has low register pressure, reuse can be applied
   // aggressively without checking each individual def-use pair.
   Status m_IsBlockPressureLow;
+
+  // Temporaries
+  //SmallPtrSet<llvm::Instruction*, 16> m_Visited;
+  ValueAliasMapTy m_ExtractFrom;
+  ValueAliasMapTy m_insertTo;
 };
 
 llvm::FunctionPass *createVariableReuseAnalysisPass();

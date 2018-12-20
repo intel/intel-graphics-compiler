@@ -4822,7 +4822,6 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst, llvm::Value* ptrVal 
 
             bytesToRead = getBlockMsgSize(bytesRemaining, canDo256Byte);
             bytesRemaining -= bytesToRead;
-
             m_encoder->OWStore( data, resource.m_surfaceType, resource.m_resource, src0shifted, bytesToRead, srcOffset );
             srcOffset = srcOffset + bytesToRead;
             m_encoder->Push();
@@ -7354,6 +7353,10 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_dp4a_us:
         emitDP4A(inst);
         break;
+    case GenISAIntrinsic::GenISA_Copy:
+    {
+        emitGenISACopy(inst);
+    }
     case GenISAIntrinsic::GenISA_evaluateSampler:
         // nothing to do
         break;
@@ -8011,6 +8014,14 @@ void EmitPass::emitLoad(LoadInst* inst)
 
 void EmitPass::EmitNoModifier(llvm::Instruction* inst)
 {
+    // This is a single instruction pattern emitter
+    // Check if this inst has been turned into noop due to alias.
+    // If so, no code shall be emitted for this instruction.
+    if (m_currShader->HasBecomeNoop(inst))
+    {
+        return;
+    }
+
     switch(inst->getOpcode())
     {
     case Instruction::Ret:
@@ -13054,6 +13065,15 @@ void EmitPass::emitVectorCopy(CVariable *Dst, CVariable *Src, uint32_t nElts,
         m_encoder->Copy(Dst, Src);
         m_encoder->Push();
     }
+}
+
+// Handle Copy intrinsic
+void EmitPass::emitGenISACopy(GenIntrinsicInst *GenCopyInst)
+{
+    CVariable *Dst = m_destination;
+    CVariable *Src = GetSymbol(GenCopyInst->getArgOperand(0));
+    Type* Ty = GenCopyInst->getType();
+    emitCopyAll(Dst, Src, Ty);
 }
 
 /// \brief Emulate the 64-bit addition of uniform `Src` with vector immediate

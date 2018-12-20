@@ -2085,7 +2085,7 @@ CVariable *CShader::GetSymbolFromSource(Instruction *UseInst,
             if (!DefInst || GetIsUniform(DefInst))
                 continue;
 
-            if (m_deSSA && m_deSSA->getRootValue(DefInst))
+            if (!IsSimpleVariable(DefInst))
             {
                 continue;
             }
@@ -2106,7 +2106,7 @@ CVariable *CShader::GetSymbolFromSource(Instruction *UseInst,
         if (!DefInst)
             return nullptr;
 
-        if (m_deSSA && m_deSSA->getRootValue(DefInst))
+        if (!IsSimpleVariable(DefInst))
         {
             return nullptr;
         }
@@ -2470,6 +2470,7 @@ bool CShader::CanTreatAsAlias(llvm::ExtractElementInst *inst)
     {
         return false;
     }
+
     if (m_deSSA)
     {
         if (m_deSSA->getRootValue(inst))
@@ -2483,6 +2484,7 @@ bool CShader::CanTreatAsAlias(llvm::ExtractElementInst *inst)
         }
 
     }
+
     for (auto I = vecSrc->user_begin(), E = vecSrc->user_end(); I != E; ++I)
     {
         llvm::ExtractElementInst* extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I);
@@ -2579,6 +2581,20 @@ bool CShader::CanTreatScalarSourceAsAlias(llvm::InsertElementInst *IEI) {
             return false;
         if (IdxOp->getZExtValue() == Idx)
             return false;
+    }
+    return true;
+}
+
+bool CShader::HasBecomeNoop(Instruction *inst) {
+    return m_VRA->m_HasBecomeNoopInsts.count(inst);
+}
+
+bool CShader::IsSimpleVariable(Value* V) {
+    if ((m_VRA && m_VRA->isAliasedValue(V)) ||
+        (m_deSSA && m_deSSA->getRootValue(V)) ||
+        (m_coalescingEngine && m_coalescingEngine->GetValueCCTupleMapping(V)))
+    {
+        return false;
     }
     return true;
 }

@@ -273,6 +273,7 @@ Imported_Intrinsics = \
     "GenISA_InitDiscardMask": ["bool",[],"None"],
     "GenISA_UpdateDiscardMask": ["bool",["bool","bool"],"None"],
     "GenISA_GetPixelMask": ["bool",["bool"],"None"],
+    "GenISA_Copy": ["anyvector",[0],"None"],
     "GenISA_dp4a_ss": ["int",["int","int","int"],"NoMem"],
     "GenISA_dp4a_uu": ["int",["int","int","int"],"NoMem"],
     "GenISA_dp4a_su": ["int",["int","int","int"],"NoMem"],
