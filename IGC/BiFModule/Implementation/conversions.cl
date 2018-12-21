@@ -341,6 +341,10 @@ half   __builtin_spirv_OpConvertUToF_f16_i8(uchar UnsignedValue)
 {
 	return UnsignedValue;
 }
+float  __builtin_spirv_OpConvertUToF_f32_i1(bool BoolValue)
+{
+	return BoolValue ? 1.0 : 0.0;
+}
 
 float  __builtin_spirv_OpConvertUToF_f32_i8(uchar UnsignedValue)
 {
