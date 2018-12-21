@@ -1568,11 +1568,13 @@ void LivenessAnalysis::defAnalysis(FuncInfo* subroutine)
             auto phyPredBB = (bb == fg.getEntryBB()) ? nullptr : bb->getPhysicalPred();
             if (phyPredBB && (phyPredBB->getBBType() & G4_BB_CALL_TYPE))
             {
-                // this is the return BB
+                // this is the return BB, we take the def_out of the callBB + the predecessors
                 G4_BB* callBB = bb->getPhysicalPred();
-                G4_BB* calleeExitBB = bb->Preds.front();
                 def_in[bbid] |= def_out[callBB->getId()];
-                def_in[bbid] |= def_out[calleeExitBB->getId()];
+                for (auto&& pred : bb->Preds)
+                {
+                    def_in[bbid] |= def_out[pred->getId()];
+                }
             }
             else if (bb->getBBType() & G4_BB_INIT_TYPE)
             {
@@ -1585,6 +1587,7 @@ void LivenessAnalysis::defAnalysis(FuncInfo* subroutine)
                     def_in[bbid] |= def_out[pred->getId()];
                 }
             }
+
             if (def_in[bbid] != oldDefIn)
             {
                 changed = true;
@@ -1694,51 +1697,6 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
         }
     }
 
-#if 0
-    std::vector<G4_Declare*> idToDecl;
-    idToDecl.resize(numVarId);
-    for (auto dcl : fg.getKernel()->Declares)
-    {
-        auto id = dcl->getRegVar()->getId();
-        if (id < numVarId)
-        {
-            idToDecl[id] = dcl;
-        }
-    }
-    for (auto FI = fg.sortedFuncTable.begin(), FE = fg.sortedFuncTable.end(); FI != FE; ++FI)
-    {
-        auto subroutine = *FI;
-        auto printVal = [&idToDecl](const BitSet& bs)
-        {
-            for (int i = 0, size = (int)bs.getSize(); i < size; ++i)
-            {
-                if (bs.isSet(i))
-                {
-                    std::cerr << idToDecl[i]->getName() << "(" << i << ") ";
-                }
-            }
-        };
-
-        subroutine->dump();
-      
-        if (subroutine != fg.kernelInfo)
-        {
-            std::cerr << "\tArgs: ";
-            printVal(args[subroutine->getId()]);
-            std::cerr << "\n";
-
-            std::cerr << "\tRetVal: ";
-            printVal(retVal[subroutine->getId()]);
-            std::cerr << "\n";
-            std::cerr << "\tLiveThrough: ";
-            BitSet liveThrough = use_in[subroutine->getInitBB()->getId()];
-            liveThrough &= use_out[subroutine->getExitBB()->getId()];
-            printVal(liveThrough);
-            std::cerr << "\n";
-        }
-    }
-#endif
-
     maydefAnalysis();   // must be done before defAnalysis!
 
     // algorithm sketch for def-in/def-out:
@@ -1779,14 +1737,55 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
         }
     }
 
-    //
-    // dump vectors for debugging
-    //
 #if 0
-        dump_bb_vector("DEF IN", fg.BBs, def_in);
-        dump_bb_vector("DEF OUT", fg.BBs, def_out);
-        dump_bb_vector("USE IN", fg.BBs, use_in);
-        dump_bb_vector("USE OUT", fg.BBs, use_out);
+    std::vector<G4_Declare*> idToDecl;
+    idToDecl.resize(numVarId);
+    for (auto dcl : fg.getKernel()->Declares)
+    {
+        auto id = dcl->getRegVar()->getId();
+        if (id < numVarId)
+        {
+            idToDecl[id] = dcl;
+        }
+    }
+    for (auto FI = fg.sortedFuncTable.begin(), FE = fg.sortedFuncTable.end(); FI != FE; ++FI)
+    {
+        auto subroutine = *FI;
+        auto printVal = [&idToDecl](const BitSet& bs)
+        {
+            for (int i = 0, size = (int)bs.getSize(); i < size; ++i)
+            {
+                if (bs.isSet(i))
+                {
+                    std::cerr << idToDecl[i]->getName() << "(" << i << ") ";
+                }
+            }
+        };
+
+        subroutine->dump();
+
+        if (subroutine != fg.kernelInfo)
+        {
+            std::cerr << "\tArgs: ";
+            printVal(args[subroutine->getId()]);
+            std::cerr << "\n";
+
+            std::cerr << "\tRetVal: ";
+            printVal(retVal[subroutine->getId()]);
+            std::cerr << "\n";
+            std::cerr << "\tLiveThrough: ";
+            BitSet liveThrough = use_in[subroutine->getInitBB()->getId()];
+            liveThrough &= use_out[subroutine->getExitBB()->getId()];
+            printVal(liveThrough);
+            //std::cerr << "\n";
+            //std::cerr << "\tDef in: ";
+            //printVal(def_in[subroutine->getInitBB()->getId()]);
+            //std::cerr << "\n";
+            //std::cerr << "\tDef out: ";
+            //printVal(def_out[subroutine->getInitBB()->getId()]);
+            std::cerr << "\n";
+        }
+    }
 #endif
  }
 
