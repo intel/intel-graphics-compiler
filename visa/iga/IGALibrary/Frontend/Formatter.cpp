@@ -577,7 +577,7 @@ private:
     void EmitSendDescriptorInfoGED(
         Platform p,
         const OpSpec &i,
-        uint32_t ex_desc,
+        const SendDescArg& ex_desc,
         uint32_t desc,
         std::stringstream &ss);
 
@@ -659,7 +659,7 @@ private:
                     EmitSendDescriptorInfoGED(
                         model->platform,
                         i.getOpSpec(),
-                        exDesc.imm,
+                        exDesc,
                         desc.imm,
                         ss);
                     // manual descriptor decoding on our side
@@ -670,6 +670,14 @@ private:
                     //    desc.imm,
                     //    ss);
                 }
+            } else if (desc.type == SendDescArg::IMM) {
+                // try to get the imm send desc info
+                EmitSendDescriptorInfoGED(
+                    model->platform,
+                    i.getOpSpec(),
+                    exDesc,
+                    desc.imm,
+                    ss);
             }
         }
 
@@ -1355,7 +1363,7 @@ extern const char* GED_CALLCONV GED_GetSFIDString(GED_SFID SFIDValue);
 void Formatter::EmitSendDescriptorInfoGED(
     Platform p,
     const OpSpec &os,
-    uint32_t exDesc,
+    const SendDescArg& ex_desc,
     uint32_t desc,
     std::stringstream &ss)
 {
@@ -1373,35 +1381,38 @@ void Formatter::EmitSendDescriptorInfoGED(
     }
 
     ged_ins_t gedInst;
-
-    getRetVal = constructPartialGEDSendInstruction(
-        &gedInst, gedP, gedOP, os.isSendsFamily(), exDesc, desc);
-    IGA_ASSERT(getRetVal == GED_RETURN_VALUE_SUCCESS, "Cannot construct GED Send Instruction");
-
+    bool has_ged_inst = false;
     GED_SFID gedSFID = GED_SFID_INVALID;
-    if (getRetVal == GED_RETURN_VALUE_SUCCESS) {
+
+    if (p <= Platform::GEN11) {
+        // if ex_desc is imm, construct the entire GED inst
+        if (ex_desc.type == SendDescArg::IMM)
+            getRetVal = constructPartialGEDSendInstruction(
+                &gedInst, gedP, gedOP, os.isSendsFamily(), ex_desc.imm, desc);
+        if (getRetVal == GED_RETURN_VALUE_SUCCESS)
+            has_ged_inst = true;
+    }
+
+    // try to get sfid from gedInst
+    if (has_ged_inst && gedSFID != GED_SFID_INVALID) {
         gedSFID = GED_GetSFID(&gedInst, &getRetVal);
     }
+
+    // try to get sfid string
     const char *gedsfidString = nullptr;
     if (gedSFID != GED_SFID_INVALID) {
         gedsfidString = GED_GetSFIDString(gedSFID);
     }
-    ss << " ";
 
+    // emit sfid string
+    // Note that <=GEN11 if the exmsg is not imm, we're not able to
+    // extract the sfid
+    ss << " ";
     if (gedsfidString && gedSFID != GED_SFID_INVALID) {
         ss << gedsfidString;
-    } else {
-        // FIXME: This is the fall back path in case that it failed on getting SFID from gedInst,
-        //        which should not happen
-        uint32_t sfid = getSFID(exDesc);
-        const char * sfidString = getSFIDString(p, sfid);
-        if (sfidString) {
-            ss << sfidString;
-        } else {
-            ss << "sf:" << sfid;
-        }
     }
 
+    // emit desc message
     uint32_t msgLength = GED_GetMessageLength(desc, gedP, &getRetVal);
     if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
         ss << "  wr:" << "INVALID";
@@ -1420,11 +1431,15 @@ void Formatter::EmitSendDescriptorInfoGED(
     }
 
     if (os.isSendsFamily()) {
-        uint32_t exLength = GED_GetExMsgLength(&gedInst, &getRetVal);
-        if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
-            exLength = getSplitSendMsgLength(exDesc);
+        if (has_ged_inst) {
+            uint32_t exLength = GED_GetExMsgLength(&gedInst, &getRetVal);
+            if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
+                // in the case that we're able to construct ged inst, the
+                // ex_dess must be imm
+                exLength = getSplitSendMsgLength(ex_desc.imm);
+            }
+            ss << "+" << exLength;
         }
-        ss << "+" << exLength;
     }
 
     uint32_t respLength = GED_GetResponseLength(desc, gedP, &getRetVal);
@@ -1499,10 +1514,10 @@ void Formatter::EmitSendDescriptorInfoGED(
             break;
         }
     }
-    else
+    else if (ex_desc.type == SendDescArg::IMM)
     {
-
-        uint32_t sfid = getSFID(exDesc);
+        // Fail to get GED SFID, try to extract from the ex message
+        uint32_t sfid = getSFID(ex_desc.imm);
         if (sfid == SFID_SAMPLER_CACHE && p < iga::Platform::GEN9) {
             msgType = GED_GetMessageTypeDP_SAMPLER(desc, gedP, &getRetVal);
         } else if (sfid == SFID_DP_RC) {
@@ -1579,15 +1594,17 @@ void Formatter::EmitSendDescriptorInfoGED(
                 ss << "SLM";
             // 255 - A32_A64 Specifies a A32 or A64 Stateless access that is locally coherent (coherent within a thread group)
             // 253 - A32_A64_NC Specifies a A32 or A64 Stateless access that is non-coherent (coherent within a thread).
-            else if (surf == 255 || surf == 253)
-                fmtHex(ss, getStatelessAddress(exDesc));
+            else if ((surf == 255 || surf == 253) && ex_desc.type == SendDescArg::IMM)
+                fmtHex(ss, getStatelessAddress(ex_desc.imm));
             // Bindless Surface Base address bits 25:6 in extMsgDes[12:31]
-            else if (surf == 252)
-                fmtHex(ss, getBindlessSurfaceBaseAddress(exDesc));
+            else if (surf == 252 && ex_desc.type == SendDescArg::IMM)
+                fmtHex(ss, getBindlessSurfaceBaseAddress(ex_desc.imm));
             else
                 ss << "#" << surf;
         }
     }
+
+
     return;
 }
 
