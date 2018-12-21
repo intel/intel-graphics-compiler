@@ -1104,12 +1104,18 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
         break;
 
     case KernelArg::ArgType::IMPLICIT_LOCAL_IDS:
-        m_kernelInfo.m_threadPayload.HasLocalIDx    = true;
-        m_kernelInfo.m_threadPayload.HasLocalIDy    = true;
-        m_kernelInfo.m_threadPayload.HasLocalIDz    = true;
-        if (funcInfoMD->isLocalIDPresentHasValue() && funcInfoMD->getLocalIDPresent() == 1)
         {
-            m_kernelInfo.m_threadPayload.HasLocalID = true;
+            m_kernelInfo.m_threadPayload.HasLocalIDx = true;
+            m_kernelInfo.m_threadPayload.HasLocalIDy = true;
+            m_kernelInfo.m_threadPayload.HasLocalIDz = true;
+
+            ModuleMetaData *modMD = m_Context->getModuleMetaData();
+            auto it = modMD->FuncMD.find(entry);
+            if (it != modMD->FuncMD.end())
+            {
+                if (it->second.localIDPresent == true)
+                    m_kernelInfo.m_threadPayload.HasLocalID = true;
+            }
         }
         break;
 

@@ -859,9 +859,8 @@ bool PreBIImportAnalysis::runOnModule(Module &M)
             funcName == OCL_GET_GROUP_ID)
         {
             MetaDataUtils *pMdUtil = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-
-
-
+            ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+            
             // Breadth-first search
 
             std::set<llvm::Function*>   visited;
@@ -919,7 +918,9 @@ bool PreBIImportAnalysis::runOnModule(Module &M)
                     }
                     else if (funcName == OCL_GET_LOCAL_ID)
                     {
-                        pMdUtil->getFunctionsInfoItem(f)->setLocalIDPresent(1);
+                        //localIDPresent info will be added to new framework here
+                        //and extracted from new framework later
+                        modMD->FuncMD[f].localIDPresent = true;
                     }
                     else if (funcName == OCL_GET_GROUP_ID)
                     {

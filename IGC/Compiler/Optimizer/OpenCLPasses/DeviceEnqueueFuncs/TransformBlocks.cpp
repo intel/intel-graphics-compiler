@@ -1670,6 +1670,8 @@ namespace //Anonymous
         //link dispatchMd to dispatch kernel
         IGC::IGCMD::FunctionInfoMetaDataHandle dispatchMd = _pMdUtils->getOrInsertFunctionsInfoItem(const_cast<llvm::Function*>(kernelFunc));
 
+
+
         //set function type for dispatch
         dispatchMd->setType(IGC::IGCMD::FunctionTypeEnum::EntryFunctionType);
 
