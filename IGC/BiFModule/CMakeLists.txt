@@ -31,6 +31,12 @@
 
 # =============================================== Tools ================================================
 
+# In new Clang versions VME types are built-in. Keep this flag until all OS's update Clang version
+set(VME_TYPES_DEFINED FALSE)
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+    set(VME_TYPES_DEFINED TRUE)
+endif()
+
 # Decompress Clang
   # Add bogus targets to identify the .7z file and the decompressed .exe file
   add_library(CLANG_7Z        UNKNOWN IMPORTED)
@@ -156,6 +162,7 @@
   else()
     # Do not use precompiled common clang.
     message(STATUS "Precompiled common clang bundle ${_clang7zLocation} does not exist. Try to compile from sources.")
+    set(VME_TYPES_DEFINED FALSE)
     # if not specified from outside
     # try to use common clang component from one of fixed locations
     if(NOT IGC_CCLANG_HOME_DIR)
@@ -895,6 +902,10 @@ file(GLOB_RECURSE _MATH_SRC_BC      "${IGC_OPTION__BIF_SRC_OCL_DIR}/*.bc")
 file(GLOB_RECURSE SVML_FILES "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/BinaryReleaseOnly/*.cl" )
 
 set(FLAG "")
+if(${VME_TYPES_DEFINED})
+    list(APPEND FLAG "__VME_TYPES_DEFINED__")
+endif(VME_TYPES_DEFINED)
+
 
 igc_bif_find_cl_files(IGC_BUILD__BIF_OCL_COMMON_DEPENDS ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS} "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation")
 
