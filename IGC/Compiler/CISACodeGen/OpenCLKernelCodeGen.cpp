@@ -1551,12 +1551,13 @@ unsigned int COpenCLKernel::getSumFixedTGSMSizes(Function* F)
 {
     // Find whether we have size information for this kernel.
     // If not, then the total TGSM is 0, otherwise pull it from the MD
-    auto i = m_pMdUtils->findFunctionsInfoItem(F);
-    if (i == m_pMdUtils->end_FunctionsInfo())
+    ModuleMetaData *modMD = m_Context->getModuleMetaData();
+    auto funcMD = modMD->FuncMD.find(F);
+    if (funcMD == modMD->FuncMD.end())
     {
         return 0;
     }
-    return i->second->getLocalSize();
+    return funcMD->second.localSize;
 }
 
 void COpenCLKernel::FillKernel()

@@ -1942,7 +1942,6 @@ public:
     typedef NamedMetaDataValue<int32_t>::value_type LocalIDPresentType;        
     typedef NamedMetaDataValue<int32_t>::value_type GroupIDPresentType;        
     typedef NamedMetaDataValue<int32_t>::value_type GlobalOffsetPresentType;        
-    typedef NamedMetaDataValue<int32_t>::value_type LocalSizeType;        
     typedef MetaDataList<LocalOffsetMetaDataHandle> LocalOffsetsList;        
         
     typedef NamedMetaDataValue<int32_t>::value_type PrivateMemoryPerWIType;        
@@ -2205,23 +2204,7 @@ public:
     {
         return m_GlobalOffsetPresent.hasValue();
     }
-        
-    
-    /// LocalSize related methods
-    LocalSizeType getLocalSize() const
-    {
-        return m_LocalSize.get();
-    }
-    void setLocalSize( const LocalSizeType& val)
-    {
-        m_LocalSize.set(val);
-    }
-    bool isLocalSizeHasValue() const
-    {
-        return m_LocalSize.hasValue();
-    }
-        
-    
+   
     /// LocalOffsets related methods
     LocalOffsetsList::iterator begin_LocalOffsets()
     {
@@ -2921,7 +2904,6 @@ private:
     NamedMetaDataValue<int32_t> m_LocalIDPresent;        
     NamedMetaDataValue<int32_t> m_GroupIDPresent;        
     NamedMetaDataValue<int32_t> m_GlobalOffsetPresent;        
-    NamedMetaDataValue<int32_t> m_LocalSize;        
     MetaDataList<LocalOffsetMetaDataHandle> m_LocalOffsets;        
     ResourceAllocMetaDataHandle m_ResourceAlloc;        
     NamedMetaDataValue<int32_t> m_PrivateMemoryPerWI;        

@@ -370,6 +370,7 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
 {
     std::map<Function*, std::map<GlobalVariable*, unsigned int>> offsetMap;
     MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     DataLayout DL = M.getDataLayout();
     CallGraph &CG = getAnalysis<CallGraphWrapperPass>().getCallGraph();
 
@@ -443,7 +444,7 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
         iter->second = iSTD::Align(iter->second, 32);
 
         // Add the size information of this function
-        pMdUtils->getFunctionsInfoItem(iter->first)->setLocalSize(iter->second);
+        modMD->FuncMD[iter->first].localSize = iter->second;
 
         // And now the offsets.
         for (auto offsetIter = offsetMap[iter->first].begin(), offsetEnd = offsetMap[iter->first].end(); offsetIter != offsetEnd; ++offsetIter)

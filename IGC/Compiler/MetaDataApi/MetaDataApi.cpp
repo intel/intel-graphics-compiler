@@ -2245,7 +2245,6 @@ FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode* pNode, bool hasId
     m_LocalIDPresent(getLocalIDPresentNode(pNode)),        
     m_GroupIDPresent(getGroupIDPresentNode(pNode)),        
     m_GlobalOffsetPresent(getGlobalOffsetPresentNode(pNode)),        
-    m_LocalSize(getLocalSizeNode(pNode)),        
     m_LocalOffsets(getLocalOffsetsNode(pNode), true),        
     m_ResourceAlloc(ResourceAllocMetaData::get(getResourceAllocNode(pNode), true)),        
     m_PrivateMemoryPerWI(getPrivateMemoryPerWINode(pNode)),        
@@ -2274,7 +2273,6 @@ FunctionInfoMetaData::FunctionInfoMetaData():    m_Type("function_type"),
     m_LocalIDPresent("local_id_present"),        
     m_GroupIDPresent("group_id_present"),        
     m_GlobalOffsetPresent("global_offset_present"),        
-    m_LocalSize("local_size"),        
     m_LocalOffsets("local_offsets"),        
     m_ResourceAlloc(ResourceAllocMetaDataHandle::ObjectType::get("resource_alloc")),        
     m_PrivateMemoryPerWI("private_memory_per_wi"),        
@@ -2305,7 +2303,6 @@ FunctionInfoMetaData::FunctionInfoMetaData(const char* name):
     m_LocalIDPresent("local_id_present"),        
     m_GroupIDPresent("group_id_present"),        
     m_GlobalOffsetPresent("global_offset_present"),        
-    m_LocalSize("local_size"),        
     m_LocalOffsets("local_offsets"),        
     m_ResourceAlloc(ResourceAllocMetaDataHandle::ObjectType::get("resource_alloc")),        
     m_PrivateMemoryPerWI("private_memory_per_wi"),        
@@ -2379,12 +2376,6 @@ bool FunctionInfoMetaData::hasValue() const
         
     
     if (m_GlobalOffsetPresent.hasValue())
-    {
-        return true;
-    }
-        
-    
-    if (m_LocalSize.hasValue())
     {
         return true;
     }
@@ -2506,11 +2497,7 @@ bool FunctionInfoMetaData::dirty() const
     if( m_GlobalOffsetPresent.dirty() )
     {
         return true;
-    }        
-    if( m_LocalSize.dirty() )
-    {
-        return true;
-    }        
+    }             
     if( m_LocalOffsets.dirty() )
     {
         return true;
@@ -2576,7 +2563,6 @@ void FunctionInfoMetaData::discardChanges()
     m_LocalIDPresent.discardChanges();        
     m_GroupIDPresent.discardChanges();        
     m_GlobalOffsetPresent.discardChanges();        
-    m_LocalSize.discardChanges();        
     m_LocalOffsets.discardChanges();        
     m_ResourceAlloc.discardChanges();        
     m_PrivateMemoryPerWI.discardChanges();        
@@ -2648,11 +2634,6 @@ llvm::Metadata* FunctionInfoMetaData::generateNode(llvm::LLVMContext& context) c
     if (isGlobalOffsetPresentHasValue())
     {
         args.push_back(m_GlobalOffsetPresent.generateNode(context));
-    }
-
-    if (isLocalSizeHasValue())
-    {
-        args.push_back(m_LocalSize.generateNode(context));
     }
 
     if (isLocalOffsetsHasValue())
@@ -2753,7 +2734,6 @@ void FunctionInfoMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode)
     m_LocalIDPresent.save(context, llvm::cast<llvm::MDNode>(getLocalIDPresentNode(pNode)));        
     m_GroupIDPresent.save(context, llvm::cast<llvm::MDNode>(getGroupIDPresentNode(pNode)));        
     m_GlobalOffsetPresent.save(context, llvm::cast<llvm::MDNode>(getGlobalOffsetPresentNode(pNode)));        
-    m_LocalSize.save(context, llvm::cast<llvm::MDNode>(getLocalSizeNode(pNode)));        
     m_LocalOffsets.save(context, llvm::cast<llvm::MDNode>(getLocalOffsetsNode(pNode)));        
     m_ResourceAlloc.save(context, llvm::cast<llvm::MDNode>(getResourceAllocNode(pNode)));        
     m_PrivateMemoryPerWI.save(context, llvm::cast<llvm::MDNode>(getPrivateMemoryPerWINode(pNode)));        

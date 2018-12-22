@@ -56,6 +56,7 @@ namespace IGC
         unsigned CompiledSubGroupsNumber = 0;
         bool isCloned = false;
         bool hasInlineVmeSamplers = false;
+        int localSize = 0;
     };
 
     // isCloned member is added to mark whether a function is clone
