@@ -256,13 +256,12 @@ void InlineLocalsResolution::collectInfoOnSharedLocalMem(Module& M)
                         unsigned int numElements = numAdditionalElements;
                         if (allocAllWorkgroups)
                         {
-                            if (platform.ThreadCount != 0)
+                            if (platform.ThreadCount > 448)
                             {
                                 numElements += platform.ThreadCount;
                             }
                             else
                             {
-                                //workaround for cloc offline compiler, which currently does not pass any platform data
                                 numElements += 448;
                             }
                         }
