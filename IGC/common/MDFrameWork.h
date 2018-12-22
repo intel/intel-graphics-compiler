@@ -58,6 +58,7 @@ namespace IGC
         bool hasInlineVmeSamplers = false;
         int localSize = 0;
         bool localIDPresent = false;
+        bool groupIDPresent = false;
     };
 
     // isCloned member is added to mark whether a function is clone

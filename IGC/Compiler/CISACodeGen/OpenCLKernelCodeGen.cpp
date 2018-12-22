@@ -618,9 +618,12 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
                     if (value == 1 || value == 6 || value == 7)
                     {
                         // group ids x/y/z
-                        if (funcInfoMD->isGroupIDPresentHasValue() && funcInfoMD->getGroupIDPresent() == 1)
+                        ModuleMetaData *modMD = m_Context->getModuleMetaData();
+                        auto it = modMD->FuncMD.find(entry);
+                        if (it != modMD->FuncMD.end())
                         {
-                            m_kernelInfo.m_threadPayload.HasGroupID = true;
+                            if (it->second.groupIDPresent == true)
+                                m_kernelInfo.m_threadPayload.HasGroupID = true;
                         }
                         break;
                     }

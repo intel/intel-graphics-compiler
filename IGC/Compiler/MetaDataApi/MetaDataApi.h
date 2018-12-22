@@ -1937,9 +1937,6 @@ public:
     typedef MetaDataList<ArgInfoMetaDataHandle> ArgInfoListList;        
     typedef MetaDataList<ArgInfoMetaDataHandle> ImplicitArgInfoListList;        
         
-        
-        
-    typedef NamedMetaDataValue<int32_t>::value_type GroupIDPresentType;        
     typedef NamedMetaDataValue<int32_t>::value_type GlobalOffsetPresentType;        
     typedef MetaDataList<LocalOffsetMetaDataHandle> LocalOffsetsList;        
         
@@ -2159,21 +2156,6 @@ public:
 		return m_WorkgroupWalkOrder;
 	}
 
-    /// GroupIDPresent related methods
-    GroupIDPresentType getGroupIDPresent() const
-    {
-        return m_GroupIDPresent.get();
-    }
-    void setGroupIDPresent( const GroupIDPresentType& val)
-    {
-        m_GroupIDPresent.set(val);
-    }
-    bool isGroupIDPresentHasValue() const
-    {
-        return m_GroupIDPresent.hasValue();
-    }
-        
-    
     /// GlobalOffsetPresent related methods
     GlobalOffsetPresentType getGlobalOffsetPresent() const
     {
@@ -2857,7 +2839,6 @@ private:
     llvm::MDNode* getThreadGroupSizeHintNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getSubGroupSizeNode( const llvm::MDNode* pParentNode) const;    
 	llvm::MDNode* getWorkgroupWalkOrderNode(const llvm::MDNode* pParentNode) const;
-    llvm::Metadata* getGroupIDPresentNode( const llvm::MDNode* pParentNode) const;    
     llvm::Metadata* getGlobalOffsetPresentNode( const llvm::MDNode* pParentNode) const;    
     llvm::Metadata* getLocalSizeNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getLocalOffsetsNode( const llvm::MDNode* pParentNode) const;    
@@ -2883,7 +2864,6 @@ private:
     ThreadGroupSizeMetaDataHandle m_ThreadGroupSizeHint;        
     SubGroupSizeMetaDataHandle m_SubGroupSize;        
 	WorkgroupWalkOrderMetaDataHandle m_WorkgroupWalkOrder;
-    NamedMetaDataValue<int32_t> m_GroupIDPresent;        
     NamedMetaDataValue<int32_t> m_GlobalOffsetPresent;        
     MetaDataList<LocalOffsetMetaDataHandle> m_LocalOffsets;        
     ResourceAllocMetaDataHandle m_ResourceAlloc;        

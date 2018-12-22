@@ -924,7 +924,9 @@ bool PreBIImportAnalysis::runOnModule(Module &M)
                     }
                     else if (funcName == OCL_GET_GROUP_ID)
                     {
-                        pMdUtil->getFunctionsInfoItem(f)->setGroupIDPresent(1);
+                        //groupIDPresent info will be added to new framework here
+                        //and extracted from new framework later
+                        modMD->FuncMD[f].groupIDPresent = true;
                     }
                 }
             }
