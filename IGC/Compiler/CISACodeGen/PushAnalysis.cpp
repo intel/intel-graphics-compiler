@@ -519,7 +519,6 @@ bool PushAnalysis::CanPushConstants()
     {
         return false;
     }
-
    
     switch(m_context->type)
     {
@@ -796,6 +795,40 @@ PushConstantMode PushAnalysis::GetPushConstantMode()
     return pushConstantMode;
 }
 
+// if multiple entries fall into cb[].xyzw, we need to insert in order
+static void insertGatherEntry(std::vector<ConstantAddress>& constants,
+    ConstantAddress& address)
+{
+    bool hasSameSlot = false;
+    bool inserted = false;
+
+    for (unsigned i = 0; i < constants.size(); i++)
+    {
+        if (constants[i].eltId / 4 == address.eltId / 4)
+        {
+            hasSameSlot = true;
+            if (constants[i].eltId > address.eltId)
+            {
+                constants.insert(constants.begin() + i, address);
+                inserted = true;
+                break;
+            }
+        }
+        else
+            if (hasSameSlot)
+            {
+                constants.insert(constants.begin() + i, address);
+                inserted = true;
+                break;
+            }
+    }
+
+    if (!inserted)
+    {
+        constants.push_back(address);
+    }
+}
+
 // process gather constants, update PushInfo.constants
 void PushAnalysis::processGather(Instruction* inst, uint bufId, uint eltId)
 {
@@ -838,7 +871,8 @@ void PushAnalysis::processGather(Instruction* inst, uint bufId, uint eltId)
         address.bufId = bufId;
         address.eltId = eltId + i;
 
-        auto it = pushInfo.constants.find(address);
+        auto it = std::find(pushInfo.constants.begin(),
+            pushInfo.constants.end(), address);
         if (it != pushInfo.constants.end() ||
             (pushInfo.constantReg.size() + pushInfo.constants.size() < m_pullConstantHeuristics->getPushConstantThreshold(m_pFunction) * 8))
         {
@@ -861,13 +895,14 @@ void PushAnalysis::processGather(Instruction* inst, uint bufId, uint eltId)
                 if (pTypeToPush != value->getType())
                     value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", inst);
 
-                pushInfo.constants[address] = m_argIndex;
+                address.argIndex = m_argIndex;
+                insertGatherEntry(pushInfo.constants, address);
             }
             else
             {
-                assert((it->second <= m_argIndex) &&
+                assert((it->argIndex <= m_argIndex) &&
                     "Function arguments list and metadata are out of sync!");
-                value = m_argList[it->second];
+                value = m_argList[it->argIndex];
                 if (pTypeToPush != value->getType())
                     value = CastInst::CreateZExtOrBitCast(value, pTypeToPush, "", inst);
             }

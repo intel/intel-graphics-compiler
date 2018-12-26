@@ -143,14 +143,16 @@ namespace IGC
 		std::map<unsigned int, int> simplePushLoads;
 	};
 
-	struct ConstantAddress
-	{
-		unsigned int bufId = 0;
-		unsigned int eltId = 0;
+    struct ConstantAddress
+    {
+        unsigned int bufId = 0;
+        unsigned int eltId = 0;
         int size = 0;
-	};
+        int argIndex = 0;
+    };
 
-	bool operator < (const ConstantAddress &a, const ConstantAddress &b);
+    bool operator < (const ConstantAddress &a, const ConstantAddress &b);
+    bool operator == (const ConstantAddress &a, const ConstantAddress &b);
 
     struct StatelessPushInfo
     {
@@ -168,7 +170,7 @@ namespace IGC
         unsigned int inlineConstantBufferSlot = INVALID_CONSTANT_BUFFER_INVALID_ADDR; // slot of the inlined constant buffer
         unsigned int inlineConstantBufferOffset = INVALID_CONSTANT_BUFFER_INVALID_ADDR;    // offset of the inlined constant buffer
 
-		std::map<ConstantAddress, int> constants;
+		std::vector<ConstantAddress> constants;
 		std::map<unsigned int, SInputDesc> inputs;
 		std::map<unsigned int, int> constantReg;
 		std::array<SimplePushInfo, g_c_maxNumberOfBufferPushed> simplePushInfoArr;
