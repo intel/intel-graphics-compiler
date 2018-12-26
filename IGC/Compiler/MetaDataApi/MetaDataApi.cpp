@@ -2242,7 +2242,6 @@ FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode* pNode, bool hasId
     m_ThreadGroupSizeHint(ThreadGroupSizeMetaData::get(getThreadGroupSizeHintNode(pNode), true)),        
     m_SubGroupSize(SubGroupSizeMetaData::get(getSubGroupSizeNode(pNode), true)),        
 	m_WorkgroupWalkOrder(WorkgroupWalkOrderMetaData::get(getWorkgroupWalkOrderNode(pNode), true)),
-    m_GlobalOffsetPresent(getGlobalOffsetPresentNode(pNode)),        
     m_LocalOffsets(getLocalOffsetsNode(pNode), true),        
     m_ResourceAlloc(ResourceAllocMetaData::get(getResourceAllocNode(pNode), true)),        
     m_OpenCLVectorTypeHint(VectorTypeHintMetaData::get(getOpenCLVectorTypeHintNode(pNode), true)),        
@@ -2267,7 +2266,6 @@ FunctionInfoMetaData::FunctionInfoMetaData():    m_Type("function_type"),
     m_ThreadGroupSizeHint(ThreadGroupSizeMetaDataHandle::ObjectType::get("thread_group_size_hint")),        
     m_SubGroupSize(SubGroupSizeMetaDataHandle::ObjectType::get("sub_group_size")),        
 	m_WorkgroupWalkOrder(WorkgroupWalkOrderMetaDataHandle::ObjectType::get("intel_reqd_workgroup_walk_order")),
-    m_GlobalOffsetPresent("global_offset_present"),        
     m_LocalOffsets("local_offsets"),        
     m_ResourceAlloc(ResourceAllocMetaDataHandle::ObjectType::get("resource_alloc")),        
     m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),        
@@ -2294,7 +2292,6 @@ FunctionInfoMetaData::FunctionInfoMetaData(const char* name):
     m_ThreadGroupSizeHint(ThreadGroupSizeMetaDataHandle::ObjectType::get("thread_group_size_hint")),        
     m_SubGroupSize(SubGroupSizeMetaDataHandle::ObjectType::get("sub_group_size")),        
 	m_WorkgroupWalkOrder(WorkgroupWalkOrderMetaDataHandle::ObjectType::get("intel_reqd_workgroup_walk_order")),
-    m_GlobalOffsetPresent("global_offset_present"),        
     m_LocalOffsets("local_offsets"),        
     m_ResourceAlloc(ResourceAllocMetaDataHandle::ObjectType::get("resource_alloc")),        
     m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),        
@@ -2351,13 +2348,7 @@ bool FunctionInfoMetaData::hasValue() const
 	if (m_WorkgroupWalkOrder->hasValue())
 	{
 		return true;
-	}
-
-    if (m_GlobalOffsetPresent.hasValue())
-    {
-        return true;
-    }
-        
+	} 
     
     if (m_LocalOffsets.hasValue())
     {
@@ -2456,11 +2447,7 @@ bool FunctionInfoMetaData::dirty() const
 	if (m_WorkgroupWalkOrder.dirty())
 	{
 		return true;
-	}         
-    if( m_GlobalOffsetPresent.dirty() )
-    {
-        return true;
-    }             
+	}                     
     if( m_LocalOffsets.dirty() )
     {
         return true;
@@ -2519,7 +2506,6 @@ void FunctionInfoMetaData::discardChanges()
     m_ThreadGroupSizeHint.discardChanges();        
     m_SubGroupSize.discardChanges();        
 	m_WorkgroupWalkOrder.discardChanges();
-    m_GlobalOffsetPresent.discardChanges();        
     m_LocalOffsets.discardChanges();        
     m_ResourceAlloc.discardChanges();        
     m_OpenCLVectorTypeHint.discardChanges();        
@@ -2576,11 +2562,6 @@ llvm::Metadata* FunctionInfoMetaData::generateNode(llvm::LLVMContext& context) c
 	{
 		args.push_back(m_WorkgroupWalkOrder.generateNode(context));
 	}
-
-    if (isGlobalOffsetPresentHasValue())
-    {
-        args.push_back(m_GlobalOffsetPresent.generateNode(context));
-    }
 
     if (isLocalOffsetsHasValue())
     {
@@ -2672,7 +2653,6 @@ void FunctionInfoMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode)
     m_ThreadGroupSizeHint.save(context, llvm::cast<llvm::MDNode>(getThreadGroupSizeHintNode(pNode)));        
     m_SubGroupSize.save(context, llvm::cast<llvm::MDNode>(getSubGroupSizeNode(pNode)));        
 	m_WorkgroupWalkOrder.save(context, llvm::cast<llvm::MDNode>(getSubGroupSizeNode(pNode)));
-    m_GlobalOffsetPresent.save(context, llvm::cast<llvm::MDNode>(getGlobalOffsetPresentNode(pNode)));        
     m_LocalOffsets.save(context, llvm::cast<llvm::MDNode>(getLocalOffsetsNode(pNode)));        
     m_ResourceAlloc.save(context, llvm::cast<llvm::MDNode>(getResourceAllocNode(pNode)));        
     m_OpenCLVectorTypeHint.save(context, llvm::cast<llvm::MDNode>(getOpenCLVectorTypeHintNode(pNode)));        
@@ -2811,24 +2791,6 @@ llvm::MDNode* FunctionInfoMetaData::getWorkgroupWalkOrderNode(const llvm::MDNode
 		}
 	}
 	return NULL;
-}
-    
-llvm::Metadata* FunctionInfoMetaData::getGlobalOffsetPresentNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    for(NodeIterator i = NodeIterator(pParentNode, 0+offset), e = NodeIterator(pParentNode); i != e; ++i )
-    {
-        if( isNamedNode(i.get(), "global_offset_present") )
-        {
-            return i.get();
-        }
-    }
-    return NULL;
 }
     
 llvm::Metadata* FunctionInfoMetaData::getLocalSizeNode( const llvm::MDNode* pParentNode) const

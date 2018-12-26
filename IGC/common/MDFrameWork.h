@@ -57,6 +57,7 @@ namespace IGC
         bool isCloned = false;
         bool hasInlineVmeSamplers = false;
         int localSize = 0;
+        bool globalIDPresent = false;
         bool localIDPresent = false;
         bool groupIDPresent = false;
         int privateMemoryPerWI = 0;

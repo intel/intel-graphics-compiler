@@ -914,7 +914,7 @@ bool PreBIImportAnalysis::runOnModule(Module &M)
                     // It is kernel Function, set metaData
                     if (funcName == OCL_GET_GLOBAL_OFFSET)
                     {
-                        pMdUtil->getFunctionsInfoItem(f)->setGlobalOffsetPresent(1);
+                        modMD->FuncMD[f].globalIDPresent = true;
                     }
                     else if (funcName == OCL_GET_LOCAL_ID)
                     {

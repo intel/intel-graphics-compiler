@@ -667,9 +667,12 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
                     if (value == 0 || value == 1 || value == 2)
                     {
                         // global offset x/y/z
-                        if (funcInfoMD->isGlobalOffsetPresentHasValue() && funcInfoMD->getGlobalOffsetPresent() == 1)
+                        ModuleMetaData *modMD = m_Context->getModuleMetaData();
+                        auto it = modMD->FuncMD.find(entry);
+                        if (it != modMD->FuncMD.end())
                         {
-                            m_kernelInfo.m_threadPayload.HasGlobalIDOffset = true;
+                            if(it->second.globalIDPresent)
+                                m_kernelInfo.m_threadPayload.HasGlobalIDOffset = true;
                         }
                         break;
                     }

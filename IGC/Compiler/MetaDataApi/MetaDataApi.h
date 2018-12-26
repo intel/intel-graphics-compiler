@@ -1937,7 +1937,6 @@ public:
     typedef MetaDataList<ArgInfoMetaDataHandle> ArgInfoListList;        
     typedef MetaDataList<ArgInfoMetaDataHandle> ImplicitArgInfoListList;        
         
-    typedef NamedMetaDataValue<int32_t>::value_type GlobalOffsetPresentType;        
     typedef MetaDataList<LocalOffsetMetaDataHandle> LocalOffsetsList;        
         
     typedef NamedMetaDataValue<int32_t>::value_type PrivateMemoryPerWIType;        
@@ -2156,20 +2155,6 @@ public:
 		return m_WorkgroupWalkOrder;
 	}
 
-    /// GlobalOffsetPresent related methods
-    GlobalOffsetPresentType getGlobalOffsetPresent() const
-    {
-        return m_GlobalOffsetPresent.get();
-    }
-    void setGlobalOffsetPresent( const GlobalOffsetPresentType& val)
-    {
-        m_GlobalOffsetPresent.set(val);
-    }
-    bool isGlobalOffsetPresentHasValue() const
-    {
-        return m_GlobalOffsetPresent.hasValue();
-    }
-   
     /// LocalOffsets related methods
     LocalOffsetsList::iterator begin_LocalOffsets()
     {
@@ -2823,7 +2808,6 @@ private:
     llvm::MDNode* getThreadGroupSizeHintNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getSubGroupSizeNode( const llvm::MDNode* pParentNode) const;    
 	llvm::MDNode* getWorkgroupWalkOrderNode(const llvm::MDNode* pParentNode) const;
-    llvm::Metadata* getGlobalOffsetPresentNode( const llvm::MDNode* pParentNode) const;    
     llvm::Metadata* getLocalSizeNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getLocalOffsetsNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getResourceAllocNode( const llvm::MDNode* pParentNode) const;    
@@ -2847,7 +2831,6 @@ private:
     ThreadGroupSizeMetaDataHandle m_ThreadGroupSizeHint;        
     SubGroupSizeMetaDataHandle m_SubGroupSize;        
 	WorkgroupWalkOrderMetaDataHandle m_WorkgroupWalkOrder;
-    NamedMetaDataValue<int32_t> m_GlobalOffsetPresent;        
     MetaDataList<LocalOffsetMetaDataHandle> m_LocalOffsets;        
     ResourceAllocMetaDataHandle m_ResourceAlloc;        
     VectorTypeHintMetaDataHandle m_OpenCLVectorTypeHint;        
