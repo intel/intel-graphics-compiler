@@ -2236,23 +2236,7 @@ public:
     {
         return m_ResourceAlloc;
     }
-        
-    
-    /// PrivateMemoryPerWI related methods
-    PrivateMemoryPerWIType getPrivateMemoryPerWI() const
-    {
-        return m_PrivateMemoryPerWI.get();
-    }
-    void setPrivateMemoryPerWI( const PrivateMemoryPerWIType& val)
-    {
-        m_PrivateMemoryPerWI.set(val);
-    }
-    bool isPrivateMemoryPerWIHasValue() const
-    {
-        return m_PrivateMemoryPerWI.hasValue();
-    }
-        
-    
+   
     /// OpenCLVectorTypeHint related methods
     
     VectorTypeHintMetaDataHandle getOpenCLVectorTypeHint()
@@ -2843,7 +2827,6 @@ private:
     llvm::Metadata* getLocalSizeNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getLocalOffsetsNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getResourceAllocNode( const llvm::MDNode* pParentNode) const;    
-    llvm::Metadata* getPrivateMemoryPerWINode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getOpenCLVectorTypeHintNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getOpenCLArgAddressSpacesNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getBufferLocationIndexNode( const llvm::MDNode* pParentNode) const;    
@@ -2867,7 +2850,6 @@ private:
     NamedMetaDataValue<int32_t> m_GlobalOffsetPresent;        
     MetaDataList<LocalOffsetMetaDataHandle> m_LocalOffsets;        
     ResourceAllocMetaDataHandle m_ResourceAlloc;        
-    NamedMetaDataValue<int32_t> m_PrivateMemoryPerWI;        
     VectorTypeHintMetaDataHandle m_OpenCLVectorTypeHint;        
     MetaDataList<int32_t> m_OpenCLArgAddressSpaces;        
     MetaDataList<int32_t> m_BufferLocationIndex;        

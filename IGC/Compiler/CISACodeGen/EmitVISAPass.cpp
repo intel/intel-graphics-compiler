@@ -8761,14 +8761,14 @@ void EmitPass::emitStackFuncEntry(Function *F, bool ptr64bits)
     // save SP before allocation
     m_currShader->SaveSP();
 
-    FunctionInfoMetaDataHandle funcInfoMD = m_currShader->GetMetaDataUtils()->getFunctionsInfoItem(F);
     // reserve space for all the alloca in the function subgroup
-    if (funcInfoMD->isPrivateMemoryPerWIHasValue())
+    auto funcMDItr = m_currShader->m_ModuleMetadata->FuncMD.find(F);
+    if (funcMDItr != m_currShader->m_ModuleMetadata->FuncMD.end())
     {
-        if (funcInfoMD->getPrivateMemoryPerWI())
+        if (funcMDItr->second.privateMemoryPerWI != 0)
         {
             CVariable *pSP = m_currShader->GetSP();
-            unsigned totalAllocaSize = funcInfoMD->getPrivateMemoryPerWI() * numLanes(m_currShader->m_dispatchSize);
+            unsigned totalAllocaSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_currShader->m_dispatchSize);
             m_encoder->Add(pSP, pSP, m_currShader->ImmToVariable(totalAllocaSize, ISA_TYPE_UD));
             m_encoder->Push();
         }

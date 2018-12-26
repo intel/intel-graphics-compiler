@@ -59,6 +59,7 @@ namespace IGC
         int localSize = 0;
         bool localIDPresent = false;
         bool groupIDPresent = false;
+        int privateMemoryPerWI = 0;
     };
 
     // isCloned member is added to mark whether a function is clone

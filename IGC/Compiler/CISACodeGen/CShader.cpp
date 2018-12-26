@@ -118,14 +118,19 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
 void CShader::PreAnalysisPass()
 {
     ExtractGlobalVariables();
-
-    FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(entry);
-    if (funcInfoMD->isPrivateMemoryPerWIHasValue()) {
-        if (GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory) {
-            m_ScratchSpaceSize = funcInfoMD->getPrivateMemoryPerWI() * numLanes(m_dispatchSize);
-            // Round up to GENX_GRF_REG_SIZ-byte aligned.
-            m_ScratchSpaceSize =
-                ((GENX_GRF_REG_SIZ + m_ScratchSpaceSize - 1) / GENX_GRF_REG_SIZ) * GENX_GRF_REG_SIZ;
+    
+    auto funcMDItr = m_ModuleMetadata->FuncMD.find(entry);
+    if (funcMDItr != m_ModuleMetadata->FuncMD.end())
+    {
+        if (funcMDItr->second.privateMemoryPerWI != 0)
+        {
+            if (GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory) 
+            {
+                m_ScratchSpaceSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_dispatchSize);
+                // Round up to GENX_GRF_REG_SIZ-byte aligned.
+                m_ScratchSpaceSize =
+                    ((GENX_GRF_REG_SIZ + m_ScratchSpaceSize - 1) / GENX_GRF_REG_SIZ) * GENX_GRF_REG_SIZ;
+            }
         }
     }
 
@@ -273,17 +278,21 @@ void CShader::InitKernelStack(bool ptr64bits)
     CVariable* pTemp = GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true, 1);
     encoder.Mul(pTemp, pHWTID, pSize);
     encoder.Push();
-    FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(entry);
     // reserve space for alloca
-    if (funcInfoMD->isPrivateMemoryPerWIHasValue()) {
-        if (funcInfoMD->getPrivateMemoryPerWI()) {
-            unsigned totalAllocaSize = funcInfoMD->getPrivateMemoryPerWI() * numLanes(m_dispatchSize);
+
+    auto funcMDItr = m_ModuleMetadata->FuncMD.find(entry);
+    if (funcMDItr != m_ModuleMetadata->FuncMD.end())
+    {
+        if (funcMDItr->second.privateMemoryPerWI != 0)
+        {
+            unsigned totalAllocaSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_dispatchSize);
             encoder.Add(pTemp, pTemp, ImmToVariable(totalAllocaSize, ISA_TYPE_UD));
             encoder.Push();
         }
     }
+
     // modify private-memory size to a large setting
-    funcInfoMD->setPrivateMemoryPerWI(8192);
+    m_ModuleMetadata->FuncMD[entry].privateMemoryPerWI = 8192;
     CVariable* pBase = GetSymbol(kerArg);
     encoder.Add(m_SP, pBase, pTemp);
     encoder.Push();

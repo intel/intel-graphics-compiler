@@ -1393,11 +1393,10 @@ void COpenCLKernel::AllocatePayload()
     // Set the amount of the private memory used by the kernel
     // Set only if the private memory metadata actually exists and we don't use
     // scratch space for private memory.
-    FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(entry);
     bool noScratchSpacePrivMem = !m_Context->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory;
-    if (noScratchSpacePrivMem && funcInfoMD->isPrivateMemoryPerWIHasValue()) 
+    if (noScratchSpacePrivMem && m_Context->getModuleMetaData()->privateMemoryPerWI) 
     {
-        m_perWIPrivateMemSize = funcInfoMD->getPrivateMemoryPerWI();
+        m_perWIPrivateMemSize = m_Context->getModuleMetaData()->privateMemoryPerWI;
     }
 
     m_ConstantBufferLength  = 0;

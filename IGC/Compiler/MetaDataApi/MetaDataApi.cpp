@@ -2245,7 +2245,6 @@ FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode* pNode, bool hasId
     m_GlobalOffsetPresent(getGlobalOffsetPresentNode(pNode)),        
     m_LocalOffsets(getLocalOffsetsNode(pNode), true),        
     m_ResourceAlloc(ResourceAllocMetaData::get(getResourceAllocNode(pNode), true)),        
-    m_PrivateMemoryPerWI(getPrivateMemoryPerWINode(pNode)),        
     m_OpenCLVectorTypeHint(VectorTypeHintMetaData::get(getOpenCLVectorTypeHintNode(pNode), true)),        
     m_OpenCLArgAddressSpaces(getOpenCLArgAddressSpacesNode(pNode), true),        
     m_BufferLocationIndex(getBufferLocationIndexNode(pNode), true),        
@@ -2271,7 +2270,6 @@ FunctionInfoMetaData::FunctionInfoMetaData():    m_Type("function_type"),
     m_GlobalOffsetPresent("global_offset_present"),        
     m_LocalOffsets("local_offsets"),        
     m_ResourceAlloc(ResourceAllocMetaDataHandle::ObjectType::get("resource_alloc")),        
-    m_PrivateMemoryPerWI("private_memory_per_wi"),        
     m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),        
     m_OpenCLArgAddressSpaces("opencl_kernel_arg_addr_space"),        
     m_BufferLocationIndex("buffer_location_index"),        
@@ -2299,7 +2297,6 @@ FunctionInfoMetaData::FunctionInfoMetaData(const char* name):
     m_GlobalOffsetPresent("global_offset_present"),        
     m_LocalOffsets("local_offsets"),        
     m_ResourceAlloc(ResourceAllocMetaDataHandle::ObjectType::get("resource_alloc")),        
-    m_PrivateMemoryPerWI("private_memory_per_wi"),        
     m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),        
     m_OpenCLArgAddressSpaces("opencl_kernel_arg_addr_space"),        
     m_BufferLocationIndex("buffer_location_index"),        
@@ -2372,14 +2369,7 @@ bool FunctionInfoMetaData::hasValue() const
     {
         return true;
     }
-        
-    
-    if (m_PrivateMemoryPerWI.hasValue())
-    {
-        return true;
-    }
-        
-    
+
     if (m_OpenCLVectorTypeHint->hasValue())
     {
         return true;
@@ -2478,11 +2468,7 @@ bool FunctionInfoMetaData::dirty() const
     if( m_ResourceAlloc.dirty() )
     {
         return true;
-    }        
-    if( m_PrivateMemoryPerWI.dirty() )
-    {
-        return true;
-    }        
+    }              
     if( m_OpenCLVectorTypeHint.dirty() )
     {
         return true;
@@ -2536,7 +2522,6 @@ void FunctionInfoMetaData::discardChanges()
     m_GlobalOffsetPresent.discardChanges();        
     m_LocalOffsets.discardChanges();        
     m_ResourceAlloc.discardChanges();        
-    m_PrivateMemoryPerWI.discardChanges();        
     m_OpenCLVectorTypeHint.discardChanges();        
     m_OpenCLArgAddressSpaces.discardChanges();        
     m_BufferLocationIndex.discardChanges();        
@@ -2605,11 +2590,6 @@ llvm::Metadata* FunctionInfoMetaData::generateNode(llvm::LLVMContext& context) c
     if (m_ResourceAlloc->hasValue())
     {
         args.push_back(m_ResourceAlloc.generateNode(context));
-    }
-
-    if (isPrivateMemoryPerWIHasValue())
-    {
-        args.push_back(m_PrivateMemoryPerWI.generateNode(context));
     }
 
     if (m_OpenCLVectorTypeHint->hasValue())
@@ -2695,7 +2675,6 @@ void FunctionInfoMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode)
     m_GlobalOffsetPresent.save(context, llvm::cast<llvm::MDNode>(getGlobalOffsetPresentNode(pNode)));        
     m_LocalOffsets.save(context, llvm::cast<llvm::MDNode>(getLocalOffsetsNode(pNode)));        
     m_ResourceAlloc.save(context, llvm::cast<llvm::MDNode>(getResourceAllocNode(pNode)));        
-    m_PrivateMemoryPerWI.save(context, llvm::cast<llvm::MDNode>(getPrivateMemoryPerWINode(pNode)));        
     m_OpenCLVectorTypeHint.save(context, llvm::cast<llvm::MDNode>(getOpenCLVectorTypeHintNode(pNode)));        
     m_OpenCLArgAddressSpaces.save(context, llvm::cast<llvm::MDNode>(getOpenCLArgAddressSpacesNode(pNode)));        
     m_BufferLocationIndex.save(context, llvm::cast<llvm::MDNode>(getBufferLocationIndexNode(pNode)));        
@@ -2901,24 +2880,6 @@ llvm::MDNode* FunctionInfoMetaData::getResourceAllocNode( const llvm::MDNode* pP
         if( isNamedNode(i.get(), "resource_alloc") )
         {
             return llvm::dyn_cast<llvm::MDNode>(i.get());
-        }
-    }
-    return NULL;
-}
-    
-llvm::Metadata* FunctionInfoMetaData::getPrivateMemoryPerWINode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    for(NodeIterator i = NodeIterator(pParentNode, 0+offset), e = NodeIterator(pParentNode); i != e; ++i )
-    {
-        if( isNamedNode(i.get(), "private_memory_per_wi") )
-        {
-            return i.get();
         }
     }
     return NULL;

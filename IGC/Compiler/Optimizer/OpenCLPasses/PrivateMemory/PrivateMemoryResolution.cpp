@@ -686,12 +686,12 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
     // It is possible that there is no alloca instruction in the caller but there
     // is alloca in the callee. Save the total private memory to the metadata.
     unsigned int totalPrivateMemPerWI = m_ModAllocaInfo->getTotalPrivateMemPerWI(m_currFunction);
-    m_pMdUtils->getFunctionsInfoItem(m_currFunction)->setPrivateMemoryPerWI(totalPrivateMemPerWI);
 
 	// This change is only till the FuncMD is ported to new MD framework
     ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     assert(modMD && "Invalid metadata utils wrapper");
-    modMD->privateMemoryPerWI = totalPrivateMemPerWI;
+    modMD->FuncMD[m_currFunction].privateMemoryPerWI = totalPrivateMemPerWI;
+    modMD->privateMemoryPerWI = totalPrivateMemPerWI;//redundant ?
 
     SmallVector<AllocaInst *, 8> &allocaInsts = m_ModAllocaInfo->getAllocaInsts(m_currFunction);
     if (allocaInsts.empty())
