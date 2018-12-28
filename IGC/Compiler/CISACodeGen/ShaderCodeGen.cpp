@@ -1256,6 +1256,7 @@ void OptimizeIR(CodeGenContext* pContext)
             mpm.add(llvm::createSCCPPass());
 
             mpm.add(llvm::createDeadCodeEliminationPass());
+            mpm.add(llvm::createAggressiveDCEPass());
 
             mpm.add(new BreakConstantExpr());
             mpm.add(new IGCConstProp(!pContext->m_DriverInfo.SupportsPreciseMath(), IGC_IS_FLAG_ENABLED(EnableSimplifyGEP)));
