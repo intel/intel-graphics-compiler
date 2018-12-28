@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <string>
 #include <iomanip>
+#include <unordered_set>
 #include <unordered_map>
 #include <set>
 #include <unordered_set>
@@ -1582,6 +1583,25 @@ public:
             SCC.dump();
         }
     }
+};
+
+class PostDom
+{
+public:
+    PostDom(G4_Kernel&);
+    std::unordered_set<G4_BB*>& getPostDom(G4_BB*);
+    std::vector<G4_BB*>& getImmPostDom(G4_BB*);
+    void run();
+    void dumpImmDom();
+    G4_BB* getCommonImmDom(std::unordered_set<G4_BB*>&);
+
+private:
+    const G4_Kernel& kernel;
+    G4_BB* exitBB = nullptr;
+    std::vector<std::unordered_set<G4_BB*>> postDoms;
+    std::vector<std::vector<G4_BB*>> immPostDoms;
+
+    void updateImmPostDom();
 };
 }
 #endif

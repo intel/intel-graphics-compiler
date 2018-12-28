@@ -1127,6 +1127,7 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
                 startGRFReg = totalGRFNum - 16;
             }
 
+
             bool success = findContiguousGRF(availableGregs, forbidden, bankAlign != Either ? bankAlign : align, decl->getNumRows(), endGRFReg,
                 startGRFReg, i, varBasis->getCalleeSaveBias(), varBasis->getEOTSrc());
             if (success) {

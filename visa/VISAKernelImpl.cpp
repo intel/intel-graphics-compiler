@@ -63,6 +63,7 @@ using namespace vISA;
 #define IS_VISA_BOTH_PATH (mBuildOption == CM_CISA_BUILDER_CISA || mBuildOption ==  CM_CISA_BUILDER_BOTH)
 #endif
 
+
 static CM_INLINE void PACK_EXEC_SIZE( unsigned int &size, Common_VISA_EMask_Ctrl eMask )
 {
     size |= eMask << 4;
@@ -367,11 +368,13 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
         m_builder->getJitInfo()->numAsmCount = m_kernel->getAsmCount();
     }
 
+
     return binary;
 }
 
 int VISAKernelImpl::InitializeFastPath()
 {
+
     m_kernelMem = new vISA::Mem_Manager(4096);
     m_globalMem = new vISA::Mem_Manager(4096);
 

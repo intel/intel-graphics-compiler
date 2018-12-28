@@ -40,7 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SpillCleanup.h"
 #include "Rematerialization.h"
 #include "RPE.h"
-
+#include "Optimizer.h"
 #include <cmath>  // sqrt
 
 using namespace std;
@@ -99,6 +99,7 @@ static const unsigned IN_LOOP_REFERENCE_COUNT_FACTOR = 4;
 #define BANK_CONFLICT_SIMD8_OVERHEAD_CYCLE     1
 #define BANK_CONFLICT_SIMD16_OVERHEAD_CYCLE    2
 #define INTERNAL_CONFLICT_RATIO_HEURISTIC 0.25
+
 
 Interference::Interference(LivenessAnalysis* l, LiveRange**& lr, unsigned n, unsigned ns, unsigned nm,
     GlobalRA& g) : maxId(n),
@@ -4615,11 +4616,13 @@ void Augmentation::buildInterferenceIncompatibleMask()
 
 void Augmentation::augmentIntfGraph()
 {
-    if (!(kernel.getOptions()->getTarget() == VISA_3D &&
-        !liveAnalysis.livenessClass(G4_ADDRESS) &&
-        kernel.fg.BBs.size() > 2))
     {
-        return;
+        if (!(kernel.getOptions()->getTarget() == VISA_3D &&
+            !liveAnalysis.livenessClass(G4_ADDRESS) &&
+            kernel.fg.BBs.size() > 2))
+        {
+            return;
+        }
     }
 
     if (liveAnalysis.livenessClass(G4_FLAG))

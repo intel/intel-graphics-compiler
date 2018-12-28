@@ -359,6 +359,7 @@ public:
     int optimization();
 
 };
+
 }
 
 #endif // __OPTIMIZER_H__

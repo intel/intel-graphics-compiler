@@ -37,6 +37,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <chrono>
 #include "FlowGraph.h"
 #include "SendFusion.h"
+#include "Common_BinaryEncoding.h"
+#include <tuple>
 
 using namespace std;
 using namespace vISA;
@@ -1146,6 +1148,7 @@ int Optimizer::optimization()
     // so when these passes are active we have to defer removeRedundMov until after the passes
     // ToDo: study the perf impact of moving this post scheduling
     bool preserveVirtualDefUse = kernel.getOption(vISA_ReRAPostSchedule) || builder.doAccSub();
+
     if (!preserveVirtualDefUse)
     {
         runPass(PI_removeRedundMov);
@@ -1184,7 +1187,8 @@ int Optimizer::optimization()
 
     runPass(PI_reRAPostSchedule);
 
-    if (preserveVirtualDefUse)
+    if (preserveVirtualDefUse 
+        )
     {
         runPass(PI_removeRedundMov);
     }
@@ -11018,4 +11022,4 @@ void Optimizer::clearSendDependencies()
             emitRetiringMov(builder, BB, SI, InsertBefore);
         }
     }
-}
+}
