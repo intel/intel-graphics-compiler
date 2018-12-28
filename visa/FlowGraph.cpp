@@ -5733,6 +5733,7 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
 {
     gtpin::igc::igc_init_t t;
     t = *gtpin_init;
+    t.version = gtpin::igc::GTPIN_IGC_INTERFACE_VERSION;
 
     void* rerabuffer = nullptr;
     unsigned int rerasize = 0;
