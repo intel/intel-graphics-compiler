@@ -768,6 +768,16 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
     std::vector<std::pair<unsigned int, unsigned int>> GenISARange;
     bool endNextInst = false;
 
+    auto getNextInst = [](const llvm::Instruction* start)
+    {
+        // Return consecutive instruction in llvm IR.
+        // Iterate to next BB if required.
+        if (start->getNextNode())
+            return start->getNextNode();
+        else
+            return &(start->getParent()->getNextNode()->front());
+    };
+
     while (1)
     {
         if (!start || !end || endNextInst)
@@ -780,7 +790,7 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
         InstInfoMap::const_iterator itr = m_instInfoMap.find(start);
         if (itr == m_instInfoMap.end())
         {
-            start = start->getNextNode();
+            start = getNextInst(start);
             continue;
         }
         auto startVISAOffset = itr->second.m_offset;
@@ -815,7 +825,7 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
             }
         }
 
-        start = start->getNextNode();
+        start = getNextInst(start);
     }
 
     class Comp

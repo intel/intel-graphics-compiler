@@ -332,7 +332,8 @@ public:
     {
         auto n = new VISAModule(s);
 
-        if (n->m_pShader->GetContext()->m_DriverInfo.SupportElfFormat())
+        if (n->m_pShader->GetContext()->m_DriverInfo.SupportElfFormat() ||
+            IGC_GET_FLAG_VALUE(EnableOneStepElf))
         {
             n->isDirectElfInput = true;
         }
