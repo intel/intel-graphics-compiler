@@ -7453,8 +7453,8 @@ void HWConformity::fixSrc2(INST_LIST_ITER it, G4_BB* bb, bool swapSrc0and2)
     {
         auto src = inst->getSrc(srcPos);
         // we have to make sure src2 and dst are aligned 
-        // Promote src2's type to f if necessary.
-        //
+        // Promote src2's type to f if mix mode is supported.
+        // e.g.,
         // mad (4) r10.0<1>:f src0 src1 r12.0<1>:hf  --> f
         // mad (4) r10.0<2>:hf src0 src1 r12.0<1>:hf --> f
         // mad (4) r10.0<1>:hf src0 src1 r12.0<2>:hf --> hf
@@ -7464,11 +7464,14 @@ void HWConformity::fixSrc2(INST_LIST_ITER it, G4_BB* bb, bool swapSrc0and2)
         unsigned short dstEltSz = inst->getDst()->getExecTypeSize();
         if (dstEltSz >= 4)
         {
-            srcTy = IS_TYPE_FLOAT_ALL(srcTy) ? Type_F : Type_D;
-            if (!builder.hasMixMode() && srcTy == Type_F)
+            if (IS_TYPE_INT(srcTy))
             {
-                // we can't change the srcType
-                srcTy = src->getType();
+                srcTy = Type_D;
+            }
+            else if (builder.hasMixMode() && builder.getMixModeType() == srcTy)
+            {
+                // we can change operand type to F to save one move
+                srcTy = Type_F;
             }
         }
         inst->setSrc(insertMovBefore(it, srcPos, srcTy, bb, Sixteen_Word), srcPos);
