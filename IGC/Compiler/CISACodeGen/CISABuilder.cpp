@@ -3495,14 +3495,10 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         vbuilder->SetOption(vISA_foldEOTtoPrevSend, true);
     }
 
-    if (context->type == ShaderType::PIXEL_SHADER || context->type == ShaderType::OPENCL_SHADER ||
-        context->type == ShaderType::COMPUTE_SHADER)
+    if (m_program->m_DriverInfo->clearScratchWriteBeforeEOT() &&
+        (context->type == ShaderType::PIXEL_SHADER || context->type == ShaderType::OPENCL_SHADER))
     {
-        vbuilder->SetOption(vISA_clearScratchWritesBeforeEOT, false);
-    }
-    else
-    {
-        vbuilder->SetOption(vISA_clearScratchWritesBeforeEOT, false);
+        vbuilder->SetOption(vISA_clearScratchWritesBeforeEOT, true);
     }
 
     // Disable multi-threaded latencies in the vISA scheduler when not in 3D
@@ -3858,7 +3854,6 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
     {
         vbuilder->SetOption(vISA_ReorderDPSendToDifferentBti, false);
     }
-
 
     vKernel = nullptr;
 

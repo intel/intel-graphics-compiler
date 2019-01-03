@@ -222,6 +222,10 @@ public:
 
     /// Disables dual patch dispatch for APIs that don't use it
     virtual bool APIDisableDSDualPatchDispatch() const { return false; }
+
+    /// WA to make sure scratch writes are globally observed before EOT
+    virtual bool clearScratchWriteBeforeEOT() const { return false; }
+
 };
 
 }//namespace IGC
