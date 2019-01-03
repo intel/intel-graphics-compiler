@@ -226,7 +226,7 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                 {
                     // for each BB handle OutputHSControlPoint intrinsic instructions
                     Value* undef = llvm::UndefValue::get(Type::getFloatTy(F.getContext()));
-                    Value* data[8] = 
+                    Value* data[8] =
                     {
                         inst->getOperand(0),
                         inst->getOperand(1),
@@ -253,7 +253,7 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                         // Parse all instructions within BB and count the Inner,Outer ScalarTessFactors factors
                         // and get the domain type.
                         BasicBlock* bb = dyn_cast<BasicBlock>(BI);
-                        uint32_t tessShaderDomain = GetDomainType(bb, numTEFactorsInDomain);                            
+                        uint32_t tessShaderDomain = GetDomainType(bb, numTEFactorsInDomain);
 
                         if ((numTEFactorsInDomain == 2 && tessShaderDomain == USC::TESSELLATOR_DOMAIN_ISOLINE) ||
                             (numTEFactorsInDomain == 4 && tessShaderDomain == USC::TESSELLATOR_DOMAIN_TRI) ||
@@ -273,20 +273,20 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
 
                             isTEFactorURBMsgPadded = true;
                         }
-                    }                    
+                    }
                 }
 
                 if ((IID == GenISAIntrinsic::GenISA_OuterScalarTessFactors) ||
                     (IID == GenISAIntrinsic::GenISA_InnerScalarTessFactors))
                 {
-                    // The URB Location for tessellation factors spans the first two offsets 
+                    // The URB Location for tessellation factors spans the first two offsets
                     // offset 0 and 1. The tessellation factors occupy the two offsets as mentioned below
                     // Quad domain has 4 outer and 2 inner tessellation factors
                     // Triangle domain has 3 outer and 1 inner tessellation factor
                     // Isolines have 2 outer tessellation factors
                     //
                     //----------------------------------------------------------------------------------
-                    //| URB Offset 1.3    | URB Offset 1.2     | URB Offset 1.1    | URB Offset 1.0     | 
+                    //| URB Offset 1.3    | URB Offset 1.2     | URB Offset 1.1    | URB Offset 1.0     |
                     //----------------------------------------------------------------------------------
                     //| OUTER_QUAD_U_EQ_0 | OUTER_QUAD_V_EQ_0  | OUTER_QUAD_U_EQ_1 | OUTER_QUAD_V_EQ_1  |
                     //----------------------------------------------------------------------------------
@@ -316,7 +316,7 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                         }
                     }
 
-                    // offset into URB is 1 for outerScalarTessFactors and 
+                    // offset into URB is 1 for outerScalarTessFactors and
                     // 1 if its triangle domain and inner scalar tessellation factor
                     // 0 if its the quad domain inner tessellation factor
                     int offset = (IID == GenISAIntrinsic::GenISA_OuterScalarTessFactors) ? 1 :
@@ -339,8 +339,19 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                     {
                         unsigned int tessFactor = int_cast<unsigned int>(llvm::cast<ConstantInt>(inst->getOperand(0))->getZExtValue());
 
-                        tessFactor = ((IID == GenISAIntrinsic::GenISA_InnerScalarTessFactors)
-                            && (tessShaderDomain == USC::TESSELLATOR_DOMAIN_TRI)) ? 3 : tessFactor;
+                        if (tessShaderDomain == USC::TESSELLATOR_DOMAIN_ISOLINE)
+                        {
+                            // For isolines first tessellation factor(0) is line-density. The second one(1)
+                            // is line-detail tessellation factor. To store them properly in patch header
+                            // we need to set correct bits in URB write mask i.e. 0x4 for line-density
+                            // and 0x8 for line-detail. Swap the indexes.
+                            tessFactor ^= 1;
+                        }
+                        else
+                        {
+                            tessFactor = ((IID == GenISAIntrinsic::GenISA_InnerScalarTessFactors) &&
+                                          (tessShaderDomain == USC::TESSELLATOR_DOMAIN_TRI)) ? 3 : tessFactor;
+                        }
 
                         AddURBWrite(pOffsetVal,
                             builder.getInt32(1 << (3 - tessFactor)),
@@ -351,6 +362,7 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                     {
                         builder.SetInsertPoint(inst);
                         Value* pSubRes = nullptr;
+                        Value* pSubResRHS = nullptr;
                         if ((IID == GenISAIntrinsic::GenISA_InnerScalarTessFactors)
                             && (tessShaderDomain == USC::TESSELLATOR_DOMAIN_TRI))
                         {
@@ -358,9 +370,18 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                         }
                         else
                         {
+                            if (tessShaderDomain == USC::TESSELLATOR_DOMAIN_ISOLINE)
+                            {
+                                pSubResRHS = builder.CreateXor(inst->getOperand(0), builder.getInt32(1));
+                            }
+                            else
+                            {
+                                pSubResRHS = inst->getOperand(0);
+                            }
+
                             pSubRes = builder.CreateSub(
                                 builder.getInt32(3),
-                                inst->getOperand(0));
+                                pSubResRHS);
                         }
 
                         Value* pShiftVal = builder.CreateShl(
