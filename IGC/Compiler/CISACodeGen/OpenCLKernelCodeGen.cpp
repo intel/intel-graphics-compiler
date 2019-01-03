@@ -403,7 +403,7 @@ void COpenCLKernel::CreateKernelArgInfo()
 void COpenCLKernel::CreateKernelAttributeInfo()
 {
     FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(entry);
-    
+
     // We need to concatenate 2 things:
     // (a) LLVM attributes, except nounwind. Why? Because that's how IGIL does it.
     // (b) The attributes that get translated into SPIR metadata:
@@ -439,11 +439,17 @@ void COpenCLKernel::CreateKernelAttributeInfo()
     {
         m_kernelInfo.m_kernelAttributeInfo += " " + getSubGroupSizeString(subGroupSize);
     }
-	WorkgroupWalkOrderMetaDataHandle workgroupWalkOrder = funcInfoMD->getWorkgroupWalkOrder();
-	if (workgroupWalkOrder->hasValue())
-	{
-		m_kernelInfo.m_kernelAttributeInfo += " " + getWorkgroupWalkOrderString(workgroupWalkOrder);
-	}
+
+    auto it = m_Context->getModuleMetaData()->FuncMD.find(entry);
+    if (it != m_Context->getModuleMetaData()->FuncMD.end())
+    {
+        WorkGroupWalkOrderMD workgroupWalkOrder = it->second.workGroupWalkOrder;
+        if (workgroupWalkOrder.dim0 || workgroupWalkOrder.dim1 || workgroupWalkOrder.dim2)
+        {
+            m_kernelInfo.m_kernelAttributeInfo += " " + getWorkgroupWalkOrderString(workgroupWalkOrder);
+        }
+    }
+    
     ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
     if (threadGroupSize->hasValue())
     {
@@ -483,12 +489,12 @@ std::string COpenCLKernel::getSubGroupSizeString(SubGroupSizeMetaDataHandle& sub
     subTypeString += ")";
     return subTypeString;
 }
-std::string COpenCLKernel::getWorkgroupWalkOrderString(WorkgroupWalkOrderMetaDataHandle& workgroupWalkOrder)
+std::string COpenCLKernel::getWorkgroupWalkOrderString(const IGC::WorkGroupWalkOrderMD& workgroupWalkOrder)
 {
 	std::string subTypeString = "intel_reqd_workgroup_walk_order(";
-	subTypeString += utostr(workgroupWalkOrder->getDim0()) + ",";
-	subTypeString += utostr(workgroupWalkOrder->getDim1()) + ",";
-	subTypeString += utostr(workgroupWalkOrder->getDim2()) + ",";
+	subTypeString += utostr(workgroupWalkOrder.dim0) + ",";
+	subTypeString += utostr(workgroupWalkOrder.dim1) + ",";
+	subTypeString += utostr(workgroupWalkOrder.dim2) + ",";
 	subTypeString += ")";
 	return subTypeString;
 }
@@ -1601,7 +1607,10 @@ void COpenCLKernel::FillKernel()
     FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(entry);
     ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
     SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();
-	WorkgroupWalkOrderMetaDataHandle workgroupWalkOrder = funcInfoMD->getWorkgroupWalkOrder();
+
+    ModuleMetaData *modMD = m_Context->getModuleMetaData();
+    auto funcMD = modMD->FuncMD.find(entry);
+  
     if(threadGroupSize->hasValue())
     {
         m_kernelInfo.m_executionEnivronment.HasFixedWorkGroupSize = true;
@@ -1614,13 +1623,19 @@ void COpenCLKernel::FillKernel()
         m_kernelInfo.m_executionEnivronment.CompiledSIMDSize = subGroupSize->getSIMD_size();
     }
 
-	if (workgroupWalkOrder->hasValue())
-	{
-		m_kernelInfo.m_executionEnivronment.WorkgroupWalkOrder[0] = workgroupWalkOrder->getDim0();
-		m_kernelInfo.m_executionEnivronment.WorkgroupWalkOrder[1] = workgroupWalkOrder->getDim1();
-		m_kernelInfo.m_executionEnivronment.WorkgroupWalkOrder[2] = workgroupWalkOrder->getDim2();
-	}
- 
+    if (funcMD != modMD->FuncMD.end())
+    {
+        WorkGroupWalkOrderMD workGroupWalkOrder = funcMD->second.workGroupWalkOrder;
+
+        if (workGroupWalkOrder.dim0 || workGroupWalkOrder.dim1 || workGroupWalkOrder.dim2)
+        {
+            m_kernelInfo.m_executionEnivronment.WorkgroupWalkOrder[0] = workGroupWalkOrder.dim0;
+            m_kernelInfo.m_executionEnivronment.WorkgroupWalkOrder[1] = workGroupWalkOrder.dim1;
+            m_kernelInfo.m_executionEnivronment.WorkgroupWalkOrder[2] = workGroupWalkOrder.dim2;
+        }
+
+    }
+
     auto &FuncMap = m_Context->getModuleMetaData()->FuncMD;
     auto FuncIter = FuncMap.find(entry);
     if (FuncIter != FuncMap.end())

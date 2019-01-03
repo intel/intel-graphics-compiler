@@ -1364,15 +1364,20 @@ void WIAnalysis::checkLocalIdUniform(
 
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     FunctionInfoMetaDataHandle funcInfoMD = pMdUtils->getFunctionsInfoItem(F);
-
+    ModuleMetaData *modMD = pCtx->getModuleMetaData();
+    auto funcMD = modMD->FuncMD.find(F);
+    
     int32_t WO_0 = -1, WO_1 = -1, WO_2 = -1;
-    WorkgroupWalkOrderMetaDataHandle workgroupWalkOrder = funcInfoMD->getWorkgroupWalkOrder();
-    if (workgroupWalkOrder->hasValue())
+    if (funcMD != modMD->FuncMD.end())
     {
-        WO_0 = workgroupWalkOrder->getDim0();
-        WO_1 = workgroupWalkOrder->getDim1();
-        WO_2 = workgroupWalkOrder->getDim2();
-    }
+        WorkGroupWalkOrderMD workGroupWalkOrder = funcMD->second.workGroupWalkOrder;
+        if (workGroupWalkOrder.dim0 || workGroupWalkOrder.dim1 || workGroupWalkOrder.dim2)
+        {
+            WO_0 = workGroupWalkOrder.dim0;
+            WO_1 = workGroupWalkOrder.dim1;
+            WO_2 = workGroupWalkOrder.dim2;
+        }
+    }    
 
     uint32_t simdSize = 0;
     SubGroupSizeMetaDataHandle subGroupSize = funcInfoMD->getSubGroupSize();

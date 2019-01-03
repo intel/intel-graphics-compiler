@@ -66,7 +66,6 @@ char CodeAssumption::ID = 0;
 bool CodeAssumption::runOnModule(Module& M)
 {
     m_pMDUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-
     // Add code assist uniform analysis.
     uniformHelper(&M);
 
@@ -80,14 +79,18 @@ bool CodeAssumption::runOnModule(Module& M)
 
 void CodeAssumption::uniformHelper(Module *M)
 {
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+
     for (Module::iterator I = M->begin(), E = M->end(); I != E; ++I)
     {
         Function *F = &(*I);
         if (F->isDeclaration())
             continue;
 
+
+
         if (!IGC_IS_FLAG_ENABLED(DispatchOCLWGInLinearOrder) &&
-            !IsSGIdUniform(m_pMDUtils, F))
+            !IsSGIdUniform(m_pMDUtils, modMD, F))
         {
             continue;
         }
@@ -317,7 +320,7 @@ bool CodeAssumption::addAssumption(Function* F, AssumptionCache* AC)
 }
 
 // Return true if SubGroupID is uniform
-bool CodeAssumption::IsSGIdUniform(MetaDataUtils* pMDU, Function* F)
+bool CodeAssumption::IsSGIdUniform(MetaDataUtils* pMDU, ModuleMetaData *modMD, Function* F)
 {
     if (!isEntryFunc(pMDU, F)) {
         return false;
@@ -325,7 +328,6 @@ bool CodeAssumption::IsSGIdUniform(MetaDataUtils* pMDU, Function* F)
 
     FunctionInfoMetaDataHandle funcInfoMD = pMDU->getFunctionsInfoItem(F);
     ThreadGroupSizeMetaDataHandle threadGroupSize = funcInfoMD->getThreadGroupSize();
-    WorkgroupWalkOrderMetaDataHandle workgroupWalkOrder = funcInfoMD->getWorkgroupWalkOrder();
 
     // WO (Walk Order): it is a triple (d0, d1, d2), where each d0/d1/d2 are 0|1|2.
     // This WO indicates that the work-items are dispatched along d0 first, then d1,
@@ -339,18 +341,26 @@ bool CodeAssumption::IsSGIdUniform(MetaDataUtils* pMDU, Function* F)
     //   2nd thread of simd8: (4, 0, 0) (4, 1, 0), (5, 0, 0), (5, 1, 0), ......, (7, 1, 0)
     //
     int32_t WO_0 = -1, WO_1 = -1, WO_2 = -1;
-    if (workgroupWalkOrder->hasValue())
-    {
-        WO_0 = workgroupWalkOrder->getDim0();
-        WO_1 = workgroupWalkOrder->getDim1();
-        WO_2 = workgroupWalkOrder->getDim2();
 
-        if (WO_0 == 0 && WO_1 == 1 && WO_2 == 2)
+    auto funcMD = modMD->FuncMD.find(F);
+    if (funcMD != modMD->FuncMD.end())
+    {
+        WorkGroupWalkOrderMD workGroupWalkOrder = funcMD->second.workGroupWalkOrder;
+
+        if (workGroupWalkOrder.dim0 || workGroupWalkOrder.dim1 || workGroupWalkOrder.dim2)
         {
-            // order (0, 1, 2): linear order
-            return true;
+            WO_0 = workGroupWalkOrder.dim0;
+            WO_1 = workGroupWalkOrder.dim1;
+            WO_2 = workGroupWalkOrder.dim2;
+
+            if (WO_0 == 0 && WO_1 == 1 && WO_2 == 2)
+            {
+                // order (0, 1, 2): linear order
+                return true;
+            }
         }
     }
+   
 
     if (threadGroupSize->hasValue())
     {

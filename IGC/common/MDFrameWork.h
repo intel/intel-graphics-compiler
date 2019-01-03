@@ -46,9 +46,17 @@ namespace IGC
         int numChannelsUsed = 0;
     };
 
+    struct WorkGroupWalkOrderMD
+    {
+        int dim0 = 0;
+        int dim1 = 0;
+        int dim2 = 0;
+    };
+
     //to hold metadata of every function
     struct FunctionMetaData
     {
+        WorkGroupWalkOrderMD workGroupWalkOrder;
         FunctionTypeMD functionType = UnknownFunction;
         std::vector<unsigned> maxByteOffsets;
         bool IsInitializer = false;

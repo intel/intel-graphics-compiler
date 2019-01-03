@@ -163,6 +163,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
     for (; ki != ke; ++ki) 
     {
         IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
+        IGC::FunctionMetaData funcMD;
         SPIRMD::KernelMetaDataHandle spirKernel = *ki;
         fHandle->setType(IGCMD::FunctionTypeEnum::EntryFunctionType); 
 
@@ -203,14 +204,14 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
 		// Handling Sub Group Size
 		SPIRMD::WorkgroupWalkOrderMetaDataHandle workgroupWalkOrder = spirKernel->getWorkgroupWalkOrder();
 		if (workgroupWalkOrder->hasValue())
-		{
-			IGCMD::WorkgroupWalkOrderMetaDataHandle woHandle = fHandle->getWorkgroupWalkOrder();
+		{            
+            WorkGroupWalkOrderMD &igc_workGroupWalkOrder = funcMD.workGroupWalkOrder;
 			int dim0 = workgroupWalkOrder->getDim0();
 			int dim1 = workgroupWalkOrder->getDim1();
 			int dim2 = workgroupWalkOrder->getDim2();
-			woHandle->setDim0(dim0);
-			woHandle->setDim1(dim1);
-			woHandle->setDim2(dim2);
+            igc_workGroupWalkOrder.dim0 = dim0;
+            igc_workGroupWalkOrder.dim1 = dim1;
+            igc_workGroupWalkOrder.dim2 = dim2;
 		}
 
         // Handling OpenCL Vector Type Hint
@@ -289,6 +290,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         }
 
         pIgcMDUtils->setFunctionsInfoItem(spirKernel->getFunction(), fHandle);
+        modMD->FuncMD[spirKernel->getFunction()] = funcMD;
     }
 
     // Handling Compiler Options

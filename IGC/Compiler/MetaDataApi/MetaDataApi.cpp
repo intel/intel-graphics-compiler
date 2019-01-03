@@ -1360,163 +1360,7 @@ llvm::Metadata* SubGroupSizeMetaData::getSIMD_sizeNode( const llvm::MDNode* pPar
 
     unsigned int offset = _Mybase::getStartIndex();
     return pParentNode->getOperand(0 + offset).get();
-}
-
-
-
-///
-// Ctor - loads the WorkgroupWalkOrderMetaData from the given metadata node
-//
-WorkgroupWalkOrderMetaData::WorkgroupWalkOrderMetaData(const llvm::MDNode* pNode, bool hasId) :
-	_Mybase(pNode, hasId),
-	m_Dim0(getDim0Node(pNode)),
-	m_Dim1(getDim1Node(pNode)),
-	m_Dim2(getDim2Node(pNode)),
-	m_pNode(pNode)
-{}
-
-///
-// Default Ctor - creates the empty, not named SubGroupSizeMetaData object
-//
-WorkgroupWalkOrderMetaData::WorkgroupWalkOrderMetaData() :
-	m_pNode(NULL)
-{}
-
-///
-// Ctor - creates the empty, named SubGroupSizeMetaData object
-//
-WorkgroupWalkOrderMetaData::WorkgroupWalkOrderMetaData(const char* name) :
-	_Mybase(name),
-	m_pNode(NULL)
-{}
-
-bool WorkgroupWalkOrderMetaData::hasValue() const
-{
-	if (m_Dim0.hasValue())
-	{
-		return true;
-	}
-
-	if (m_Dim1.hasValue())
-	{
-		return true;
-	}
-
-	if (m_Dim2.hasValue())
-	{
-		return true;
-	}
-
-	return NULL != m_pNode || dirty();
-}
-
-///
-// Returns true if any of the SubGroupSizeMetaData`s members has changed
-bool WorkgroupWalkOrderMetaData::dirty() const
-{
-	if (m_Dim0.dirty())
-	{
-		return true;
-	}
-
-	if (m_Dim1.dirty())
-	{
-		return true;
-	}
-
-	if (m_Dim2.dirty())
-	{
-		return true;
-	}
-	return false;
-}
-
-///
-// Discards the changes done to the SubGroupSizeMetaData instance
-void WorkgroupWalkOrderMetaData::discardChanges()
-{
-	m_Dim0.discardChanges();
-	m_Dim1.discardChanges();
-	m_Dim2.discardChanges();
-}
-
-///
-// Generates the new MDNode hierarchy for the given structure
-llvm::Metadata* WorkgroupWalkOrderMetaData::generateNode(llvm::LLVMContext& context) const
-{
-	llvm::SmallVector<llvm::Metadata*, 5> args;
-
-	llvm::Metadata* pIDNode = _Mybase::generateNode(context);
-	if (NULL != pIDNode)
-	{
-		args.push_back(pIDNode);
-	}
-
-	args.push_back(m_Dim0.generateNode(context));
-	args.push_back(m_Dim1.generateNode(context));
-	args.push_back(m_Dim2.generateNode(context));
-
-	return llvm::MDNode::get(context, args);
-}
-
-///
-// Saves the structure changes to the given MDNode
-void WorkgroupWalkOrderMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
-{
-	assert(pNode && "The target node should be valid pointer");
-
-	// we assume that underlying metadata node has not changed under our foot
-	if (pNode == m_pNode && !dirty())
-	{
-		return;
-	}
-#if 0
-	// check that we could save the new information to the given node without regenerating it
-	if (!compatibleWith(pNode))
-	{
-		pNode->replaceAllUsesWith(generateNode(context));
-		return;
-	}
-#endif
-
-	m_Dim0.save(context, llvm::cast<llvm::MDNode>(getDim0Node(pNode)));
-	m_Dim1.save(context, llvm::cast<llvm::MDNode>(getDim1Node(pNode)));
-	m_Dim2.save(context, llvm::cast<llvm::MDNode>(getDim2Node(pNode)));
-}
-
-llvm::Metadata* WorkgroupWalkOrderMetaData::getDim0Node(const llvm::MDNode* pParentNode) const
-{
-	if (!pParentNode)
-	{
-		return NULL;
-	}
-
-	unsigned int offset = _Mybase::getStartIndex();
-	return pParentNode->getOperand(0 + offset).get();
-}
-
-llvm::Metadata* WorkgroupWalkOrderMetaData::getDim1Node(const llvm::MDNode* pParentNode) const
-{
-	if (!pParentNode)
-	{
-		return NULL;
-	}
-
-	unsigned int offset = _Mybase::getStartIndex();
-	return pParentNode->getOperand(1 + offset).get();
-}
-
-llvm::Metadata* WorkgroupWalkOrderMetaData::getDim2Node(const llvm::MDNode* pParentNode) const
-{
-	if (!pParentNode)
-	{
-		return NULL;
-	}
-
-	unsigned int offset = _Mybase::getStartIndex();
-	return pParentNode->getOperand(2 + offset).get();
-}
-            
+}         
 
 ///
 // Ctor - loads the VectorTypeHintMetaData from the given metadata node
@@ -2241,7 +2085,6 @@ FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode* pNode, bool hasId
     m_ThreadGroupSize(ThreadGroupSizeMetaData::get(getThreadGroupSizeNode(pNode), true)),        
     m_ThreadGroupSizeHint(ThreadGroupSizeMetaData::get(getThreadGroupSizeHintNode(pNode), true)),        
     m_SubGroupSize(SubGroupSizeMetaData::get(getSubGroupSizeNode(pNode), true)),        
-	m_WorkgroupWalkOrder(WorkgroupWalkOrderMetaData::get(getWorkgroupWalkOrderNode(pNode), true)),
     m_LocalOffsets(getLocalOffsetsNode(pNode), true),        
     m_ResourceAlloc(ResourceAllocMetaData::get(getResourceAllocNode(pNode), true)),        
     m_OpenCLVectorTypeHint(VectorTypeHintMetaData::get(getOpenCLVectorTypeHintNode(pNode), true)),        
@@ -2265,7 +2108,6 @@ FunctionInfoMetaData::FunctionInfoMetaData():    m_Type("function_type"),
     m_ThreadGroupSize(ThreadGroupSizeMetaDataHandle::ObjectType::get("thread_group_size")),        
     m_ThreadGroupSizeHint(ThreadGroupSizeMetaDataHandle::ObjectType::get("thread_group_size_hint")),        
     m_SubGroupSize(SubGroupSizeMetaDataHandle::ObjectType::get("sub_group_size")),        
-	m_WorkgroupWalkOrder(WorkgroupWalkOrderMetaDataHandle::ObjectType::get("intel_reqd_workgroup_walk_order")),
     m_LocalOffsets("local_offsets"),        
     m_ResourceAlloc(ResourceAllocMetaDataHandle::ObjectType::get("resource_alloc")),        
     m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),        
@@ -2291,7 +2133,6 @@ FunctionInfoMetaData::FunctionInfoMetaData(const char* name):
     m_ThreadGroupSize(ThreadGroupSizeMetaDataHandle::ObjectType::get("thread_group_size")),        
     m_ThreadGroupSizeHint(ThreadGroupSizeMetaDataHandle::ObjectType::get("thread_group_size_hint")),        
     m_SubGroupSize(SubGroupSizeMetaDataHandle::ObjectType::get("sub_group_size")),        
-	m_WorkgroupWalkOrder(WorkgroupWalkOrderMetaDataHandle::ObjectType::get("intel_reqd_workgroup_walk_order")),
     m_LocalOffsets("local_offsets"),        
     m_ResourceAlloc(ResourceAllocMetaDataHandle::ObjectType::get("resource_alloc")),        
     m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),        
@@ -2344,12 +2185,6 @@ bool FunctionInfoMetaData::hasValue() const
         return true;
     }
 
-
-	if (m_WorkgroupWalkOrder->hasValue())
-	{
-		return true;
-	} 
-    
     if (m_LocalOffsets.hasValue())
     {
         return true;
@@ -2443,11 +2278,7 @@ bool FunctionInfoMetaData::dirty() const
     if( m_SubGroupSize.dirty() )
     {
         return true;
-    }   
-	if (m_WorkgroupWalkOrder.dirty())
-	{
-		return true;
-	}                     
+    }                       
     if( m_LocalOffsets.dirty() )
     {
         return true;
@@ -2505,7 +2336,6 @@ void FunctionInfoMetaData::discardChanges()
     m_ThreadGroupSize.discardChanges();        
     m_ThreadGroupSizeHint.discardChanges();        
     m_SubGroupSize.discardChanges();        
-	m_WorkgroupWalkOrder.discardChanges();
     m_LocalOffsets.discardChanges();        
     m_ResourceAlloc.discardChanges();        
     m_OpenCLVectorTypeHint.discardChanges();        
@@ -2557,11 +2387,6 @@ llvm::Metadata* FunctionInfoMetaData::generateNode(llvm::LLVMContext& context) c
     {
         args.push_back(m_SubGroupSize.generateNode(context));
     }
-
-	if (m_WorkgroupWalkOrder->hasValue())
-	{
-		args.push_back(m_WorkgroupWalkOrder.generateNode(context));
-	}
 
     if (isLocalOffsetsHasValue())
     {
@@ -2652,7 +2477,6 @@ void FunctionInfoMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode)
     m_ThreadGroupSize.save(context, llvm::cast<llvm::MDNode>(getThreadGroupSizeNode(pNode)));        
     m_ThreadGroupSizeHint.save(context, llvm::cast<llvm::MDNode>(getThreadGroupSizeHintNode(pNode)));        
     m_SubGroupSize.save(context, llvm::cast<llvm::MDNode>(getSubGroupSizeNode(pNode)));        
-	m_WorkgroupWalkOrder.save(context, llvm::cast<llvm::MDNode>(getSubGroupSizeNode(pNode)));
     m_LocalOffsets.save(context, llvm::cast<llvm::MDNode>(getLocalOffsetsNode(pNode)));        
     m_ResourceAlloc.save(context, llvm::cast<llvm::MDNode>(getResourceAllocNode(pNode)));        
     m_OpenCLVectorTypeHint.save(context, llvm::cast<llvm::MDNode>(getOpenCLVectorTypeHintNode(pNode)));        
@@ -2775,24 +2599,6 @@ llvm::MDNode* FunctionInfoMetaData::getSubGroupSizeNode( const llvm::MDNode* pPa
     return NULL;
 }
 
-llvm::MDNode* FunctionInfoMetaData::getWorkgroupWalkOrderNode(const llvm::MDNode* pParentNode) const
-{
-	if (!pParentNode)
-	{
-		return NULL;
-	}
-
-	unsigned int offset = _Mybase::getStartIndex();
-	for (NodeIterator i = NodeIterator(pParentNode, 0 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-	{
-		if (isNamedNode(i.get(), "sub_group_size"))
-		{
-			return llvm::dyn_cast<llvm::MDNode>(i.get());
-		}
-	}
-	return NULL;
-}
-    
 llvm::Metadata* FunctionInfoMetaData::getLocalSizeNode( const llvm::MDNode* pParentNode) const
 {
     if( !pParentNode )

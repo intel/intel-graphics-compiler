@@ -69,7 +69,7 @@ namespace IGC
 			llvm::Function* F,
 			llvm::AssumptionCache *AC);
 
-        static bool IsSGIdUniform(IGCMD::MetaDataUtils* pMDU, llvm::Function* F);
+        static bool IsSGIdUniform(IGCMD::MetaDataUtils* pMDU, ModuleMetaData *modMD, llvm::Function* F);
 
 	private:
 		bool m_changed;
