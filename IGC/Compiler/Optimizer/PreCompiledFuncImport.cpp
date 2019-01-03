@@ -1460,6 +1460,12 @@ void PreCompiledFuncImport::createFuncWithIA()
 		m_pMdUtils->setFunctionsInfoItem(pNewFunc, oldFuncIter->second);
 		m_pMdUtils->eraseFunctionsInfoItem(oldFuncIter);
 
+        if (m_pCtx->getModuleMetaData()->FuncMD.find(pFunc) != m_pCtx->getModuleMetaData()->FuncMD.end())
+        {
+            m_pCtx->getModuleMetaData()->FuncMD[pNewFunc] = m_pCtx->getModuleMetaData()->FuncMD[pFunc];
+            m_pCtx->getModuleMetaData()->FuncMD.erase(pFunc);
+        }
+
 		// Map old func to new func
 		NewFuncWithIA.push_back(pNewFunc);
 	}

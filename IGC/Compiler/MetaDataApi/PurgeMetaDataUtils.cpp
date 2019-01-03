@@ -108,7 +108,12 @@ bool PurgeMetaDataUtils::runOnModule(Module &M)
         {
             pMdUtils->eraseFunctionsInfoItem(Iter);
         }
-    }
+
+        if (pContext->getModuleMetaData()->FuncMD.find(F) != pContext->getModuleMetaData()->FuncMD.end())
+        {
+            pContext->getModuleMetaData()->FuncMD.erase(F);
+        }
+    }  
 
     // Update when there is any change.
     if (!ToBeDeleted.empty())
