@@ -1804,10 +1804,13 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
  
     if (isMixedMode())
     {
-        if (getExecSize() > 8 || useInst->getExecSize() > 8)
+        // FIXME: what's this for?
+        if (execSize < 16 && MT == FPDownConvSafe && useInst->execSize == 16 &&
+            !useInst->isMixedMode())
         {
             return false;
         }
+
         G4_opcode useOp = useInst->opcode();
 
         if (useOp != G4_mov &&
@@ -2207,10 +2210,6 @@ bool G4_INST::canHoistTo( G4_INST *defInst, bool simdBB)
 
     if (isMixedMode())
     {
-        if (getExecSize() > 8 || defInst->getExecSize() > 8)
-        {
-            return false;
-        }
         G4_opcode defOp = defInst->opcode();
 
         if (defOp != G4_mov &&
@@ -3501,7 +3500,7 @@ void G4_INST::emitDefUse(std::ostream& output)
 
 bool G4_INST::isMixedMode() const
 {
-	if (mayExceedTwoGRF())
+	if (mayExceedTwoGRF() || !getDst())
 	{
 		return false;
 	}
@@ -3515,8 +3514,8 @@ bool G4_INST::isMixedMode() const
 
         G4_Type srcType = tOpnd->getType();
 
-        if (getDst() &&
-            (getDst()->getType() == builder.getMixModeType() || srcType == builder.getMixModeType()) &&
+        // FIXME: this includes int <-> HF type conversion, which is probably not the intention of the function..
+        if ((getDst()->getType() == builder.getMixModeType() || srcType == builder.getMixModeType()) &&
             getDst()->getType() != srcType)
         {
             return true;
