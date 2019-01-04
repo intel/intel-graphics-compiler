@@ -1967,6 +1967,8 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
         patch.NumGRFRequired = annotations.m_executionEnivronment.NumGRFRequired;
 
+        patch.HasGlobalAtomics = annotations.m_executionEnivronment.HasGlobalAtomics;
+
 
 
         retValue = AddPatchItem(

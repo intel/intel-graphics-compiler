@@ -1652,6 +1652,8 @@ void COpenCLKernel::FillKernel()
             FuncInfo.CompiledSubGroupsNumber;
     }
 
+    m_kernelInfo.m_executionEnivronment.HasGlobalAtomics = GetHasGlobalAtomics();
+
 }
 
 void COpenCLKernel::RecomputeBTLayout()

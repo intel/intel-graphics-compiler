@@ -362,6 +362,8 @@ public:
     bool GetHasGlobalStatelessAccess() const { return m_HasGlobalStatelessMemoryAccess; }
     void SetHasConstantStatelessAccess() { m_HasConstantStatelessMemoryAccess = true; }
     bool GetHasConstantStatelessAccess() const { return m_HasConstantStatelessMemoryAccess; }
+    void SetHasGlobalAtomics() { m_HasGlobalAtomics = true; }
+    bool GetHasGlobalAtomics() const { return m_HasGlobalAtomics; }
 
 private:
     // Return DefInst's CVariable if it could be reused for UseInst, and return
@@ -463,6 +465,8 @@ protected:
     // this two fields shall be retired.
     bool m_HasGlobalStatelessMemoryAccess;
     bool m_HasConstantStatelessMemoryAccess;
+
+    bool m_HasGlobalAtomics = false;
 
 
 };

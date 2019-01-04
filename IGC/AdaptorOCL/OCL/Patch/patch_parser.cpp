@@ -861,6 +861,9 @@ void DebugPatchList(
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tCompiledForGreaterThan4GBBuffers = %s\n",
                     pPatchItem->CompiledForGreaterThan4GBBuffers ? "true" : "false"  );
+                ICBE_DPF_STR( output, GFXDBG_HARDWARE,
+                    "\tHasGlobalAtomics = %s\n",
+                    pPatchItem->HasGlobalAtomics ? "true" : "false");
             }
             break;
 

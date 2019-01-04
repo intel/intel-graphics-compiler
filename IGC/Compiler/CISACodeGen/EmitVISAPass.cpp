@@ -10250,6 +10250,11 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
     ResourceDescriptor resource = GetResourceVariable(pllbuffer);
     AtomicOp atomic_op = EATOMIC_UNDEF;
 
+    if (pllbuffer->getType()->getPointerAddressSpace() == ADDRESS_SPACE_GLOBAL)
+    {
+        m_currShader->SetHasGlobalAtomics();
+    }
+
     CVariable* pSrc0 = nullptr;
     CVariable* pSrc1 = nullptr;
     llvm::GenIntrinsicInst* pIntrinCall = llvm::cast<llvm::GenIntrinsicInst>(pInsn);

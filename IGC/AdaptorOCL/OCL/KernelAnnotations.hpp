@@ -295,6 +295,7 @@ struct ExecutionEnivronment
     DWORD  FixedWorkgroupSize[3];
     DWORD  NumGRFRequired;
 	DWORD  WorkgroupWalkOrder[3] = { 3, 3, 3 };
+    bool   HasGlobalAtomics                           = false;
 };
 
 struct KernelTypeProgramBinaryInfo
