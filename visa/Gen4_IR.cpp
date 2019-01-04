@@ -1860,7 +1860,6 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
         return false;
     };
 
-
     //     mov (16|M0) r47.0 1:w
     // (W) add (16|M0) r49.0 r47.0 r45.0
     //
@@ -1969,18 +1968,9 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
         return false;
     }
 
-    unsigned numDef = 0;
-    for (DEF_EDGE_LIST_ITER DI = useInst->defInstList.begin(),
-                            DE = useInst->defInstList.end(); DI != DE; ++DI)
+    if (useInst->getSingleDef(opndNum) == nullptr)
     {
-        if (DI->second == opndNum)
-        {
-            numDef++;
-            if (numDef > 1)
-            {
-                return false;
-            }
-        }
+        return false;
     }
 
     // Cannot generally safely propagate replicated vectors.
@@ -2000,9 +1990,12 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
 
     // Skip propagate scalar copies into the additive operand (src2) of integer
     // pseudo mad.
-    if (opndNum == Opnd_src2 && useInst->opcode() == G4_pseudo_mad &&
-        IS_TYPE_INT(useType) && rd && rd->isScalar())
-      return false;
+    if (!builder.hasAlign1Ternary())
+    {
+        if (opndNum == Opnd_src2 && useInst->opcode() == G4_pseudo_mad &&
+            IS_TYPE_INT(useType) && rd && rd->isScalar())
+            return false;
+    }
 
     // Check repeat region
     bool sameDefUseELSize = (dstElSize == useElSize);
