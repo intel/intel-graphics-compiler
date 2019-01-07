@@ -5729,37 +5729,66 @@ void gtPinData::setGTPinInit(void* buffer)
         kernel.getOptions()->setOption(vISA_GetFreeGRFInfo, true);
 }
 
+template<typename T>
+void writeBuffer(std::vector<unsigned char>& buffer, unsigned int& bufferSize, const T* t, unsigned int numBytes)
+{
+    const unsigned char* data = (const unsigned char*)t;
+    for (unsigned int i = 0; i != numBytes; i++)
+    {
+        buffer.push_back(data[i]);
+    }
+    bufferSize += numBytes;
+}
+
 void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
 {
     gtpin::igc::igc_init_t t;
-    t = *gtpin_init;
+    std::vector<unsigned char> buffer;
+    unsigned int numTokens = 0;
+    bufferSize = 0;
+
+    memset(&t, 0, sizeof(t));
+
     t.version = gtpin::igc::GTPIN_IGC_INTERFACE_VERSION;
+    if (gtpin_init->grf_info)
+    {
+        t.grf_info = 1;
+        numTokens++;
+    }
 
-    void* rerabuffer = nullptr;
-    unsigned int rerasize = 0;
+    if (gtpin_init->re_ra)
+        t.re_ra = 1;
 
-    rerabuffer = getFreeGRFInfo(rerasize);
+    if (gtpin_init->srcline_mapping && kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
+        t.srcline_mapping = 1;
 
-    gtpin::igc::igc_token_header_t th;
-    th.token = gtpin::igc::GTPIN_IGC_TOKEN::GTPIN_IGC_TOKEN_GRF_INFO;
-    th.token_size = sizeof(gtpin::igc::igc_token_header_t) + rerasize;
+    writeBuffer(buffer, bufferSize, &t, sizeof(t));
+    writeBuffer(buffer, bufferSize, &numTokens, sizeof(uint32_t));
 
-    bufferSize = sizeof(gtpin::igc::igc_init_t) + sizeof(uint32_t) + sizeof(gtpin::igc::igc_token_header_t) + rerasize;
+    if (t.grf_info)
+    {
+        // create token
+        void* rerabuffer = nullptr;
+        unsigned int rerasize = 0;
+
+        rerabuffer = getFreeGRFInfo(rerasize);
+
+        gtpin::igc::igc_token_header_t th;
+        th.token = gtpin::igc::GTPIN_IGC_TOKEN::GTPIN_IGC_TOKEN_GRF_INFO;
+        th.token_size = sizeof(gtpin::igc::igc_token_header_t) + rerasize;
+
+        // write token and data to buffer
+        writeBuffer(buffer, bufferSize, &th, sizeof(th));
+        writeBuffer(buffer, bufferSize, rerabuffer, rerasize);
+
+        free(rerabuffer);
+    }
 
     void* gtpinBuffer = allocCodeBlock(bufferSize);
-    unsigned int numTokens = 1;
 
-    memcpy_s(gtpinBuffer, sizeof(gtpin::igc::igc_init_t), &t, sizeof(gtpin::igc::igc_init_t));
-    memcpy_s((char*)gtpinBuffer + sizeof(gtpin::igc::igc_init_t), sizeof(uint32_t),
-        &numTokens, sizeof(uint32_t));
-    memcpy_s((char*)gtpinBuffer + sizeof(gtpin::igc::igc_init_t) + sizeof(uint32_t), sizeof(gtpin::igc::igc_token_header_t),
-        &th, sizeof(gtpin::igc::igc_token_header_t));
-    memcpy_s((char*)gtpinBuffer + sizeof(gtpin::igc::igc_init_t) + sizeof(uint32_t) + sizeof(gtpin::igc::igc_token_header_t), rerasize,
-        rerabuffer, rerasize);
+    memcpy_s(gtpinBuffer, bufferSize, (const void*)(buffer.data()), bufferSize);
 
-    free(rerabuffer);
-
-    return (void*)gtpinBuffer;
+    return gtpinBuffer;
 }
 
 void gtPinData::markInsts()

@@ -1426,6 +1426,12 @@ public:
     void setKernelDebugInfo(KernelDebugInfo* k) { kernelDbgInfo = k; }
     KernelDebugInfo* getKernelDebugInfo();
 
+    bool hasGTPinInit()
+    {
+        return gtPinInfo &&
+            gtPinInfo->getGTPinInit();
+    }
+
     gtPinData* getGTPinData()
     { 
         if(!gtPinInfo)

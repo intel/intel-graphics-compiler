@@ -7993,7 +7993,7 @@ int VISAKernelImpl::GetGTPinBuffer(void*& buffer, unsigned int& size)
     buffer = nullptr;
     size = 0;
 
-    if (getOptions()->getOption(vISA_GetFreeGRFInfo))
+    if (m_kernel->hasGTPinInit())
     {
         auto gtpin = m_kernel->getGTPinData();
         if (gtpin)
