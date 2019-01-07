@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 #include "common/igc_regkeys.hpp"
+#include "common/Types.hpp"
 /*
 This provides hook to query whether a feature is supported by the runtime we are compiling for
 This file has default value, then each adapter can overload any of the query to tell the backend
