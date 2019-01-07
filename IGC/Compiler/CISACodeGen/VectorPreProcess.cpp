@@ -1342,6 +1342,20 @@ bool VectorPreProcess::runOnFunction(Function& F)
         Instruction* inst = &*I;
         if (isAbstractStoreInst(inst) || isAbstractLoadInst(inst))
         {
+            // We skip splitting of i1 vectors, since they will be legalized
+            // later, at Legalization Pass.
+            Type* ptrOperandType = nullptr;
+            if (auto* load = dyn_cast<LoadInst>(inst)) ptrOperandType = load->getPointerOperand()->getType();
+            if (auto* store = dyn_cast<StoreInst>(inst)) ptrOperandType = store->getPointerOperand()->getType();
+            if (ptrOperandType)
+            {
+                if (ptrOperandType->isPointerTy() && 
+                    ptrOperandType->getPointerElementType()->isVectorTy() &&
+                    ptrOperandType->getPointerElementType()->getScalarType()->isIntegerTy(1))
+                {
+                    continue;
+                }
+            }
             m_WorkList.push_back(inst);
         }
     }

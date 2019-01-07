@@ -170,6 +170,14 @@ void Legalization::unifyReturnInsts(llvm::Function &F)
     }
 }
 
+void Legalization::markToRemove(llvm::Instruction* I)
+{
+    m_instructionsToRemove.insert(I);
+
+    // Let go all the operands, so we can later remove also their definitions.
+    I->dropAllReferences();
+}
+
 void Legalization::visitInstruction(llvm::Instruction &I)
 {
     if (!llvm::isa<llvm::DbgInfoIntrinsic>(&I))
@@ -352,7 +360,7 @@ void Legalization::visitCallInst(llvm::CallInst &I)
 static bool
 LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL,
                           BitCastInst &I,
-                          std::vector<Instruction *> *m_instructionsToRemove)
+                          std::unordered_set<Instruction *> *m_instructionsToRemove)
 {
     IntegerType *DstTy = dyn_cast<IntegerType>(I.getType());
     VectorType *SrcTy = dyn_cast<VectorType>(I.getOperand(0)->getType());
@@ -514,13 +522,13 @@ LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL,
                 BI->replaceAllUsesWith(V);
                 if (m_instructionsToRemove)
                 {
-                    m_instructionsToRemove->push_back(BI);
+                    m_instructionsToRemove->insert(BI);
                 }
 
                 TI->replaceAllUsesWith(UndefValue::get(TI->getType()));
                 if (m_instructionsToRemove)
                 {
-                    m_instructionsToRemove->push_back(TI);
+                    m_instructionsToRemove->insert(TI);
                 }
             }
             else
@@ -534,7 +542,7 @@ LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL,
                 TI->replaceAllUsesWith(V);
                 if (m_instructionsToRemove)
                 {
-                    m_instructionsToRemove->push_back(TI);
+                    m_instructionsToRemove->insert(TI);
                 }
             }
 
@@ -543,7 +551,7 @@ LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL,
                 BO->replaceAllUsesWith(UndefValue::get(BO->getType()));
                 if (m_instructionsToRemove)
                 {
-                    m_instructionsToRemove->push_back(BO);
+                    m_instructionsToRemove->insert(BO);
                 }
             }
         }
@@ -563,7 +571,7 @@ LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL,
                 EEI->replaceAllUsesWith(V);
                 if (m_instructionsToRemove)
                 {
-                    m_instructionsToRemove->push_back(EEI);
+                    m_instructionsToRemove->insert(EEI);
                 }
             }
         }
@@ -589,14 +597,14 @@ LegalizeGVNBitCastPattern(IRBuilder<> *Builder, const DataLayout *DL,
             TI->replaceAllUsesWith(EE);
             if (m_instructionsToRemove)
             {
-                m_instructionsToRemove->push_back(TI);
+                m_instructionsToRemove->insert(TI);
             }
             if (BO)
             {
                 BO->replaceAllUsesWith(UndefValue::get(BO->getType()));
                 if (m_instructionsToRemove)
                 {
-                    m_instructionsToRemove->push_back(BO);
+                    m_instructionsToRemove->insert(BO);
                 }
             }
         }
@@ -642,7 +650,7 @@ void Legalization::visitBitCastInst(llvm::BitCastInst &I)
     {
         if (I.use_empty())
         {
-            m_instructionsToRemove.push_back(&I);
+            m_instructionsToRemove.insert(&I);
         }
         return;
     }
@@ -1155,6 +1163,8 @@ void Legalization::visitFCmpInstUndorderedFlushNan(FCmpInst & FC)
 void Legalization::visitStoreInst(StoreInst &I)
 {
     m_ctx->m_instrTypes.numInsts++;
+    if (m_instructionsToRemove.find(&I) != m_instructionsToRemove.end()) return;
+
     if(ConstantDataVector* vec = dyn_cast<ConstantDataVector>(I.getOperand(0)))
     {
         Value* newVec = UndefValue::get(vec->getType());
@@ -1296,31 +1306,42 @@ void Legalization::visitLoadInst(LoadInst &I)
     }
 }
 
-void Legalization::PromoteInsertElement(Value *I, Value *newVec)
+void Legalization::RecursivelyPromoteInsertElementUses(Value *I, Value *packedVec)
 {
     if (InsertElementInst *IEinst = dyn_cast<InsertElementInst>(I))
     {
         m_builder->SetInsertPoint(IEinst);
-        newVec = InsertElementInst::Create(
-            newVec,
-            m_builder->CreateSExt(IEinst->getOperand(1), Type::getInt32Ty(I->getContext())),
-            IEinst->getOperand(2),
-            "",
-            IEinst);
 
-        for (Value::user_iterator useI = I->user_begin(), useE = I->user_end(); useI != useE; ++useI)
+        Value* bitVal = m_builder->CreateZExt(IEinst->getOperand(1), m_builder->getInt8Ty());
+        bitVal = m_builder->CreateShl(bitVal, m_builder->CreateTrunc(IEinst->getOperand(2), m_builder->getInt8Ty()));
+        packedVec = m_builder->CreateOr(packedVec, bitVal);
+
+        // We can modify user list of current instruction in RecursivelyPromoteInsertElementsUses
+        // by removing users, so we need to cache users not to invalidate iterators.
+        SmallVector<Value*, 8> users(I->users());
+        for (auto user : users)
         {
-            PromoteInsertElement(*useI, newVec);
+            RecursivelyPromoteInsertElementUses(user, packedVec);
         }
-        
+
+        // After recursively promoting all the subsequent values in the def-use chain to something else
+        // than i1, this particular use should have no further uses.
+        if (IEinst->getNumUses() == 0)
+        {
+            markToRemove(IEinst);
+        }
+        else
+        {
+            // ...otherwise it means we haven't been able to legalize some instruction
+            // down the chain.
+            assert(0 && "Unable to legalize some of i1 uses!");
+        }
     }
     else if (ExtractElementInst* EEinst = dyn_cast<ExtractElementInst>(I))
     {
-        newVec = ExtractElementInst::Create(
-            newVec,
-            EEinst->getOperand(1),
-            "",
-            EEinst);
+        m_builder->SetInsertPoint(EEinst);
+        Value* newVal = m_builder->CreateAShr(packedVec, m_builder->CreateTrunc(EEinst->getOperand(1), m_builder->getInt8Ty()));
+        newVal = m_builder->CreateAnd(newVal, m_builder->getInt8(1));
 
         for (Value::user_iterator useI = I->user_begin(), useE = I->user_end(); useI != useE; ++useI)
         {
@@ -1330,21 +1351,42 @@ void Legalization::PromoteInsertElement(Value *I, Value *newVec)
                 castI->getSrcTy()->isIntegerTy(1) &&
                 castI->getDestTy()->isIntegerTy(32))
             {
-                castI->replaceAllUsesWith(newVec);
+                newVal = m_builder->CreateSExt(newVal, m_builder->getInt32Ty());
+                castI->replaceAllUsesWith(newVal);
             }
             else
             {
                 llvm::Instruction* pSrc1ZExt =
-                    llvm::CastInst::CreateTruncOrBitCast(newVec, Type::getInt1Ty(I->getContext()), "", EEinst);
+                    llvm::CastInst::CreateTruncOrBitCast(newVal, Type::getInt1Ty(I->getContext()), "", EEinst);
                 I->replaceAllUsesWith(pSrc1ZExt);
             }
         }
+
+        // At this point we replaced all uses of extractelement uses (sic!) with extracted bit.
+        // EEinst should have no uses left.
+        assert(EEinst->getNumUses() == 0);
+        markToRemove(EEinst);
+    }
+    else if (StoreInst *SI = dyn_cast<StoreInst>(I))
+    {
+        m_builder->SetInsertPoint(SI);
+
+        PointerType *ptrTy = cast<PointerType>(SI->getPointerOperand()->getType());
+        unsigned addressSpace = ptrTy->getAddressSpace();
+        PointerType *I8PtrTy = m_builder->getInt8PtrTy(addressSpace);
+        Value *I8PtrOp = m_builder->CreateBitCast(SI->getPointerOperand(), I8PtrTy);
+
+        IGC::cloneStore(SI, packedVec, I8PtrOp);
+        markToRemove(SI);
     }
 }
 
 void Legalization::visitInsertElementInst(InsertElementInst &I)
 {
     m_ctx->m_instrTypes.numInsts++;
+
+    if (m_instructionsToRemove.find(&I) != m_instructionsToRemove.end()) return;
+
     if(ConstantDataVector* vec = dyn_cast<ConstantDataVector>(I.getOperand(0)))
     {
         Value* newVec = UndefValue::get(vec->getType());
@@ -1404,10 +1446,21 @@ void Legalization::visitInsertElementInst(InsertElementInst &I)
     }
     else if (I.getOperand(1)->getType()->isIntegerTy(1))
     {
-        // This promotes i1 insertelement to i32
-        unsigned int nbElement = I.getOperand(0)->getType()->getVectorNumElements();
-        Value* newVec = UndefValue::get(VectorType::get(m_builder->getInt32Ty(), nbElement));
-        PromoteInsertElement(&I, newVec);
+        Value* vecOperand = I.getOperand(0);
+
+        // Assumption here is, that we're legalizing chain of insertelements that fills single vector and
+        // ends with extract element or store to memory. Given this, first insertelement should come with
+        // undef vector as its source. If that's not true, it would mean we have some other instructions
+        // generating our source vector that we should legalize, yet we don't know how.
+        assert(vecOperand == UndefValue::get(VectorType::get(m_builder->getInt1Ty(), I.getOperand(0)->getType()->getVectorNumElements())));
+
+        // We'll be converting insertelements to bitinserts to i8 value. To keep this reasonably simple
+        // let's assume we can pack whole vector to i8:
+        assert(vecOperand->getType()->getVectorNumElements() <= 8);
+        
+        Value* packedVec = m_builder->getInt8(0);
+
+        RecursivelyPromoteInsertElementUses(&I, packedVec);
     }
 }
 
@@ -1559,7 +1612,7 @@ void Legalization::RecursivelyChangePointerType(Instruction* oldPtr, Instruction
             cast->replaceAllUsesWith(newCast);
         }
         // We cannot delete any instructions as the visitor
-        m_instructionsToRemove.push_back(cast<Instruction>(*II));
+        m_instructionsToRemove.insert(cast<Instruction>(*II));
     }
 }
 
@@ -1627,7 +1680,7 @@ void Legalization::visitAlloca(AllocaInst& I)
         // Remaining alloca of i1 need to be promoted
         AllocaInst* newAlloca = new AllocaInst(legalAllocaType, 0, "", &I);
         RecursivelyChangePointerType(&I, newAlloca);
-        m_instructionsToRemove.push_back(&I);
+        m_instructionsToRemove.insert(&I);
     }
 }
 
@@ -1670,14 +1723,14 @@ void Legalization::visitIntrinsicInst(llvm::IntrinsicInst &I)
                     assert(0 && "Unexpected index when handling uadd_with_overflow");
                 }
                 
-                m_instructionsToRemove.push_back(extract);
+                m_instructionsToRemove.insert(extract);
             }
 
-            m_instructionsToRemove.push_back(&I);
+            m_instructionsToRemove.insert(&I);
             break;
         }
         case Intrinsic::assume:
-            m_instructionsToRemove.push_back(&I);
+            m_instructionsToRemove.insert(&I);
             break;
         case Intrinsic::sadd_with_overflow:
         case Intrinsic::usub_with_overflow:
