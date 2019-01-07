@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPop.hpp"
 
+
 typedef union _gfxResourceAddressSpace
 {
     struct _bits
@@ -84,6 +85,7 @@ unsigned LLVM3DBuilder<preserveNames, T, Inserter>::EncodeASForGFXResource(
     temp.bits.indirect = 1;
     return temp.u32Val;
 }
+
 
 template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Function* LLVM3DBuilder<preserveNames, T, Inserter>::llvm_GenISA_ubfe() const
