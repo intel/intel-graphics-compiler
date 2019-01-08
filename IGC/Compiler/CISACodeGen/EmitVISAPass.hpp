@@ -263,6 +263,7 @@ public:
     void emitAtomicStructured(llvm::Instruction* pInst);
     void emitAtomicTyped(llvm::GenIntrinsicInst* pInst);
     void emitAtomicCounter(llvm::GenIntrinsicInst* pInst);
+    void emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInst);
     void emitRenderTargetRead(llvm::GenIntrinsicInst* inst);
 
     void emitDiscard(llvm::Instruction* inst);

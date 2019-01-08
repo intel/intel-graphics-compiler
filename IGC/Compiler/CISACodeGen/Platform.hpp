@@ -310,6 +310,8 @@ public:
     }
     bool DSPrimitiveIDPayloadPhaseCanBeSkipped() const { return false; }
     bool hasAtomicPreDec() const { return true; }
+    bool needsHeaderForAtomicCounter() const { return false; }
+
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const

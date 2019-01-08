@@ -9794,7 +9794,6 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
             IGC::EALIGN_GRF,
             false);
 
-
         // Set the GRF to 0 with no mask. This will set all the registers to 0
         CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
         m_encoder->SetNoMask();
@@ -11392,7 +11391,7 @@ void EmitPass::emitPhaseInput(llvm::GenIntrinsicInst* inst)
      m_encoder->Push();
 }
 
-void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
+void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
 {
     ForceDMask();
     assert(pInsn->getNumOperands() == 2);
@@ -11401,67 +11400,163 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
     /// needs to be set for this.
     bool returnsImmValue = !pInsn->user_empty();
 
+    llvm::Value* pllbuffer = pInsn->getOperand(0);
+    ResourceDescriptor resource = GetResourceVariable(pllbuffer);
+
+    CVariable* prefixVar[2] = { nullptr, nullptr };
+    CVariable* dst = m_destination;
+    bool hasheader = m_currShader->m_Platform->needsHeaderForAtomicCounter();
+
+    EU_DATA_PORT_ATOMIC_OPERATION_TYPE atomicType = EU_DATA_PORT_ATOMIC_OPERATION_ADD;
+    // for SIMD dispatch greater than 8 it is more efficient to emit a SIMD1 atomic
+    CVariable* src = m_currShader->ImmToVariable(
+        IID == GenISAIntrinsic::GenISA_atomiccounterinc ? 1 : -1, ISA_TYPE_D);
+    emitPreOrPostFixOp(EOPCODE_ADD, 0, ISA_TYPE_D, false, src, prefixVar);
+    CVariable *pSrcCopy = prefixVar[0];
+    if (m_currShader->m_dispatchSize == SIMDMode::SIMD32)
+        pSrcCopy = prefixVar[1];
+
+   CVariable* pHeader = nullptr;
+   if (hasheader)
+   {
+       pHeader = m_currShader->GetNewVariable(
+           numLanes(SIMDMode::SIMD8),
+           ISA_TYPE_UD,
+           IGC::EALIGN_GRF);
+
+       m_encoder->SetNoMask();
+       m_encoder->SetSimdSize(SIMDMode::SIMD1);
+       m_encoder->SetDstSubReg(7);
+       m_encoder->Copy(pHeader, m_currShader->ImmToVariable(0xFFFF, ISA_TYPE_UD));
+       m_encoder->Push();
+   }
+
+   CVariable* pPayload = m_currShader->GetNewVariable(
+       8,
+       ISA_TYPE_D,
+       IGC::EALIGN_GRF,
+       true);
+   m_encoder->SetSimdSize(SIMDMode::SIMD1);
+   m_encoder->SetSrcRegion(0, 0, 1, 0);
+   m_encoder->SetSrcSubReg(0, numLanes(m_currShader->m_SIMDSize) - 1);
+   m_encoder->Copy(pPayload, pSrcCopy);
+   m_encoder->Push();
+   dst = m_currShader->GetNewVariable(
+       8,
+       ISA_TYPE_D,
+       IGC::EALIGN_GRF,
+       true);
+
+   uint messageDescriptor = encodeMessageDescriptorForAtomicUnaryOp(
+       1,
+       returnsImmValue ? 1 : 0,
+       hasheader,
+       EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_ATOMIC_COUNTER_OPERATION,
+       returnsImmValue,
+       SIMDMode::SIMD8,
+       atomicType,
+       resource.m_surfaceType == ESURFACE_BINDLESS ? BINDLESS_BTI : (uint)resource.m_resource->GetImmediateValue());
+
+   CVariable* pMessDesc = m_currShader->ImmToVariable(messageDescriptor, ISA_TYPE_D);
+   // src1 len = 1, SFID = DC1
+   uint32_t src1Len = hasheader ? 1 : 0;
+   uint32_t exDescVal = (src1Len << 6) | EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1;
+   CVariable* exDesc =
+       m_currShader->ImmToVariable(exDescVal, ISA_TYPE_D);
+
+   if (resource.m_surfaceType == ESURFACE_BINDLESS)
+   {
+       CVariable* temp = m_currShader->GetNewVariable(resource.m_resource);
+       m_encoder->Add(temp, resource.m_resource, exDesc);
+       m_encoder->Push();
+       exDesc = temp;
+   }
+
+   m_encoder->SetSimdSize(SIMDMode::SIMD1);
+   m_encoder->SetNoMask();
+
+   if (hasheader)
+   {
+       m_encoder->Sends(returnsImmValue ? dst : nullptr, pHeader, pPayload,
+           EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1, exDesc, pMessDesc);
+   }
+   else
+   {
+       m_encoder->Send(
+           returnsImmValue ? dst : NULL,
+           pPayload,
+           EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1,
+           exDesc,
+           pMessDesc);
+   }
+   m_encoder->Push();
+
+   if (returnsImmValue)
+   {
+       unsigned int counter = m_currShader->m_dispatchSize == SIMDMode::SIMD32 ? 2 : 1;
+       for (unsigned int i = 0; i < counter; ++i)
+       {
+           m_encoder->SetSecondHalf(i == 1);
+           m_encoder->Add(m_destination, prefixVar[i], dst);
+           m_encoder->Push();
+
+           if (IID == GenISAIntrinsic::GenISA_atomiccounterinc)
+           {
+               CVariable* src = m_currShader->ImmToVariable(-1, ISA_TYPE_D);
+               m_encoder->Add(m_destination, m_destination, src);
+               m_encoder->Push();
+           }
+       }
+   }
+
+   ResetVMask();
+   m_currShader->isMessageTargetDataCacheDataPort = true;
+}
+
+void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
+{
+    ForceDMask();
+    assert(pInsn->getNumOperands() == 2);
+    
+    bool uniformAtomic = IsUniformAtomic(pInsn) &&
+        (m_currShader->m_SIMDSize != SIMDMode::SIMD8 || !m_currShader->m_Platform->HDCCoalesceAtomicCounterAccess());
+    if (uniformAtomic)
+    {
+        emitUniformAtomicCounter(pInsn);
+        return;
+    }
+
+    GenISAIntrinsic::ID IID = pInsn->getIntrinsicID();
+    /// Immediate Atomics return the value before the atomic operation is performed. So that flag
+    /// needs to be set for this.
+    bool returnsImmValue = !pInsn->user_empty();
+
     llvm::Value* pllbuffer     = pInsn->getOperand(0);
     ResourceDescriptor resource = GetResourceVariable(pllbuffer);
 
-    EU_DATA_PORT_ATOMIC_OPERATION_TYPE atomicType;
-    CVariable* pPayload = nullptr;
-    CVariable* prefixVar[2] = { nullptr, nullptr };
     CVariable* dst = m_destination;
-    bool uniformAtomic = IsUniformAtomic(pInsn) && 
-        (m_currShader->m_SIMDSize != SIMDMode::SIMD8 || !m_currShader->m_Platform->HDCCoalesceAtomicCounterAccess());
-    bool hasheader = false;
-    unsigned int  num_split = 1;
-    if (!uniformAtomic)
+  
+    bool hasheader = true;
+    unsigned int num_split = m_currShader->m_SIMDSize == SIMDMode::SIMD16 ? 2 : 1;
+
+    // header
+    CVariable* pPayload = m_currShader->GetNewVariable(
+        numLanes(SIMDMode::SIMD8),
+        ISA_TYPE_UD,
+        IGC::EALIGN_GRF);
+    m_encoder->SetNoMask();
+    m_encoder->SetSimdSize(SIMDMode::SIMD1);
+    m_encoder->SetDstSubReg(7);
+    m_encoder->Copy(pPayload, m_currShader->ImmToVariable(0xFFFF, ISA_TYPE_UD));
+    m_encoder->Push();
+
+    EU_DATA_PORT_ATOMIC_OPERATION_TYPE atomicType = EU_DATA_PORT_ATOMIC_OPERATION_INC;
+    if (IID == GenISAIntrinsic::GenISA_atomiccounterpredec)
     {
-        // header
-         pPayload = m_currShader->GetNewVariable(
-            numLanes(SIMDMode::SIMD8),
-            ISA_TYPE_UD,
-            IGC::EALIGN_GRF);
-
-        m_encoder->SetNoMask();
-        m_encoder->SetSimdSize(SIMDMode::SIMD1);
-        m_encoder->SetDstSubReg(7);
-        m_encoder->Copy(pPayload, m_currShader->ImmToVariable(0xFFFF, ISA_TYPE_UD));
-        m_encoder->Push();
-        hasheader = true;
-        atomicType = EU_DATA_PORT_ATOMIC_OPERATION_INC;
-        num_split = m_currShader->m_SIMDSize == SIMDMode::SIMD16 ? 2 : 1;
-        if(IID == GenISAIntrinsic::GenISA_atomiccounterpredec)
-        {
-            atomicType = m_currShader->m_Platform->hasAtomicPreDec() ? 
-                EU_DATA_PORT_ATOMIC_OPERATION_PREDEC : EU_DATA_PORT_ATOMIC_OPERATION_DEC;
-        }
+        atomicType = m_currShader->m_Platform->hasAtomicPreDec() ?
+            EU_DATA_PORT_ATOMIC_OPERATION_PREDEC : EU_DATA_PORT_ATOMIC_OPERATION_DEC;
     }
-    else
-    {
-        atomicType = EU_DATA_PORT_ATOMIC_OPERATION_ADD;
-        // for SIMD dispatch greater than 8 it is more efficient to emit a SIMD1 atomic
-        CVariable* src = m_currShader->ImmToVariable(
-            IID == GenISAIntrinsic::GenISA_atomiccounterinc ? 1 : -1, ISA_TYPE_D);
-        emitPreOrPostFixOp(EOPCODE_ADD, 0, ISA_TYPE_D, false, src, prefixVar);
-        CVariable *pSrcCopy = prefixVar[0];
-        if(m_currShader->m_dispatchSize == SIMDMode::SIMD32)
-            pSrcCopy = prefixVar[1];
 
-        pPayload = m_currShader->GetNewVariable(
-            8,
-            ISA_TYPE_D,
-            IGC::EALIGN_GRF,
-            true);
-
-        m_encoder->SetSimdSize(SIMDMode::SIMD1);
-        m_encoder->SetSrcRegion(0, 0, 1, 0);
-        m_encoder->SetSrcSubReg(0, numLanes(m_currShader->m_SIMDSize) - 1);
-        m_encoder->Copy(pPayload, pSrcCopy);
-        m_encoder->Push();
-        dst =  m_currShader->GetNewVariable(
-            8,
-            ISA_TYPE_D,
-            IGC::EALIGN_GRF,
-            true);
-    }
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, flag, label);
@@ -11489,19 +11584,11 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
         exDesc = temp;
     }
 
-    for(uint32_t i = 0; i < num_split; ++i)
+    for (uint32_t i = 0; i < num_split; ++i)
     {
-        if(uniformAtomic)
-        {
-            m_encoder->SetSimdSize(SIMDMode::SIMD1);
-            m_encoder->SetNoMask();
-        }
-        else
-        {
-            m_encoder->SetSimdSize(SIMDMode::SIMD8);
-            m_encoder->SetDstSubVar(i);
-            m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
-        }
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->SetDstSubVar(i);
+        m_encoder->SetMask((i == 0) ? EMASK_Q1 : EMASK_Q2);
 
         m_encoder->Send(
             returnsImmValue ? dst : NULL,
@@ -11511,26 +11598,8 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
             pMessDesc);
         m_encoder->Push();
     }
-    
-    if (returnsImmValue && prefixVar[0] != nullptr)
-    {
-        unsigned int counter = m_currShader->m_dispatchSize == SIMDMode::SIMD32 ? 2 : 1;
-        for(unsigned int i = 0; i < counter; ++i)
-        {
-            m_encoder->SetSecondHalf(i == 1);
-            m_encoder->Add(m_destination, prefixVar[i], dst);
-            m_encoder->Push();
-            
-            if (IID == GenISAIntrinsic::GenISA_atomiccounterinc)
-            {
-                CVariable* src = m_currShader->ImmToVariable(-1, ISA_TYPE_D);
-                m_encoder->Add(m_destination, m_destination, src);
-                m_encoder->Push();
-            }
-        }
-    }
 
-    if (IID == GenISAIntrinsic::GenISA_atomiccounterpredec && !uniformAtomic &&
+    if (IID == GenISAIntrinsic::GenISA_atomiccounterpredec &&
         !m_currShader->m_Platform->hasAtomicPreDec())
     {
         unsigned int counter = m_currShader->m_dispatchSize == SIMDMode::SIMD32 ? 2 : 1;
