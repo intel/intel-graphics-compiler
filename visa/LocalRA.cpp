@@ -1536,9 +1536,10 @@ void LocalRA::calculateLiveIntervals(G4_BB* bb, std::vector<LocalLiveRange*>& li
 
                         MUST_BE_TRUE(idx > 0, "Candidate use found in first inst of basic block");
 
-                        if (VISA_WA_CHECK(builder.getPWaTable(), WaDisableSendSrcDstOverlap) &&
+                        if ((VISA_WA_CHECK(builder.getPWaTable(), WaDisableSendSrcDstOverlap) &&
                             ((curInst->isSend() && i == 0) ||
                             (curInst->isSplitSend() && i == 1)))
+                           )
                         {
                             lr->setLastRef(curInst, idx + 1);
                         }

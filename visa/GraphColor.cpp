@@ -2208,6 +2208,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live, G4_Declare
             }
         }
 
+
         //
         // process each source operand
         //
