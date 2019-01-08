@@ -3866,7 +3866,6 @@ void __builtin_spirv_OpAtomicFlagClear_p3i32_i32_i32(volatile local uint *Pointe
 #if (__OPENCL_C_VERSION__ >= CL_VERSION_2_0)
 void __builtin_spirv_OpAtomicFlagClear_p4i32_i32_i32(volatile generic uint *Pointer, uint Scope, uint Semantics);
 #endif // __OPENCL_C_VERSION__ >= CL_VERSION_2_0
-
 // Barrier Instructions
 
 void __builtin_spirv_OpControlBarrier_i32_i32_i32(Scope_t Execution, Scope_t Memory, uint Semantics);

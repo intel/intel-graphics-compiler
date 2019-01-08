@@ -10316,7 +10316,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
     else
     {
         CVariable* pDst = returnsImmValue ?
-            m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), m_destination->GetType(), EALIGN_GRF) :
+            m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), bitwidth != 64 ? ISA_TYPE_UD : ISA_TYPE_UQ, EALIGN_GRF) :
             nullptr;
 
         PointerType *PtrTy = dyn_cast<PointerType>(pllDstAddr->getType());
@@ -10339,7 +10339,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
                 m_encoder->Push();
             }
            
-            if (returnsImmValue)
+            if (returnsImmValue) //This is needed for repacking of 16bit atomics otherwise it will be a vanilla mov
             {
                 m_encoder->Cast(
                     m_currShader->BitCast(m_destination, GetUnsignedIntegerType(m_destination->GetType())),

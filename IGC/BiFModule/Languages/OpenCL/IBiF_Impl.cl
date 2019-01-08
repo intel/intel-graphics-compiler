@@ -306,7 +306,7 @@ atomic_init_function(float)
 
 // atomic_fetch()
 
-#define atomic_fetch_function_addrspace(KEY, TYPE, OPTYPE, FUNC, ADDRSPACE, ABBR_ADDRSPACE) \
+#define atomic_fetch_function_addrspace(KEY, TYPE, OPTYPE, FUNC, ADDRSPACE, ABBR_ADDRSPACE, ABBR_TYPE, PTR_TYPE) \
 INLINE TYPE OVERLOADABLE atomic_fetch_##KEY(volatile ADDRSPACE atomic_##TYPE *object, OPTYPE operand) \
 { \
   return atomic_fetch_##KEY##_explicit(object, operand, memory_order_seq_cst); \
@@ -317,11 +317,11 @@ INLINE TYPE OVERLOADABLE atomic_fetch_##KEY##_explicit(volatile ADDRSPACE atomic
 } \
 INLINE TYPE OVERLOADABLE atomic_fetch_##KEY##_explicit(volatile ADDRSPACE atomic_##TYPE *object, OPTYPE operand, memory_order order, memory_scope scope) \
 { \
-  return __builtin_spirv_##FUNC##_##ABBR_ADDRSPACE##i32_i32_i32_i32((volatile ADDRSPACE uint*)object, get_spirv_mem_scope(scope), get_spirv_mem_order(order) | get_spirv_mem_fence(get_fence((const ADDRSPACE void*)object)), operand);\
+  return __builtin_spirv_##FUNC##_##ABBR_ADDRSPACE##ABBR_TYPE##_i32_i32_##ABBR_TYPE((volatile ADDRSPACE PTR_TYPE*)object, get_spirv_mem_scope(scope), get_spirv_mem_order(order) | get_spirv_mem_fence(get_fence((const ADDRSPACE void*)object)), operand);\
 }
 
 #define atomic_fetch_function(KEY, TYPE, OPTYPE, FUNC) \
-atomic_fetch_function_addrspace(KEY, TYPE, OPTYPE, FUNC, generic, p4)
+atomic_fetch_function_addrspace(KEY, TYPE, OPTYPE, FUNC, generic, p4, i32, uint)
 
 #define atomic_fetch_supported_types(KEY, FUNC) \
 atomic_fetch_function(KEY, int, int, FUNC) \
