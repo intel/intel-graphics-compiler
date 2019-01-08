@@ -660,7 +660,8 @@ namespace spv {
     public:
         OpDebugTypeArray(SPIRVExtInst* extInst) : OpDebugInfoBase(extInst) {}
         SPIRVId getBaseType() { return arg<SPIRVId>(SPIRVDebug::Operand::TypeArray::BaseTypeIdx); }
-        SPIRVId getComponentCount() { return arg<SPIRVId>(SPIRVDebug::Operand::TypeArray::ComponentCountIdx); }
+        SPIRVWord getNumDims() { return (getNumArgs() - SPIRVDebug::Operand::TypeArray::ComponentCountIdx); }
+        SPIRVId getComponentCount(unsigned int i) { return arg<SPIRVId>(i + SPIRVDebug::Operand::TypeArray::ComponentCountIdx); }
     };
 
     class OpDebugTypeVector : OpDebugInfoBase

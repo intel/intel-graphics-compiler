@@ -318,14 +318,22 @@ public:
 
       OpDebugTypeArray arrayType(inst);
 
-      auto size = BM->get<SPIRVConstant>(arrayType.getComponentCount())->getZExtIntValue();
       auto baseType = createType(BM->get<SPIRVExtInst>(arrayType.getBaseType()));
+      auto numDims = arrayType.getNumDims();
 
-      auto sr = Builder.getOrCreateSubrange(0, size-1);
-      auto mds = llvm::makeArrayRef(llvm::cast<llvm::Metadata>(sr));
-      llvm::DINodeArray subscripts = llvm::MDTuple::get(M->getContext(), mds);
+      SmallVector<llvm::Metadata *, 8> subscripts;
+      uint64_t totalCount = 1;
 
-      return addMDNode(inst, Builder.createArrayType(size * baseType->getSizeInBits(), 0, baseType, subscripts));
+      for (unsigned int i = 0; i != numDims; i++)
+      {
+          auto val = BM->get<SPIRVConstant>(arrayType.getComponentCount(i))->getZExtIntValue();
+          subscripts.push_back(Builder.getOrCreateSubrange(0, val));
+          totalCount *= (uint64_t)(val);
+      }
+
+      DINodeArray subscriptArray = Builder.getOrCreateArray(subscripts);
+
+      return addMDNode(inst, Builder.createArrayType(totalCount * baseType->getSizeInBits(), 0, baseType, subscriptArray));
   }
 
   DIType* createTypeVector(SPIRVExtInst* inst)
@@ -338,11 +346,11 @@ public:
       auto size = vectorType.getNumComponents();
       auto type = createType(BM->get<SPIRVExtInst>(vectorType.getBaseType()));
 
-      auto sr = Builder.getOrCreateSubrange(0, size);
-      auto mds = llvm::makeArrayRef(llvm::cast<llvm::Metadata>(sr));
-      llvm::DINodeArray subscripts = llvm::MDTuple::get(M->getContext(), mds);
+      SmallVector<llvm::Metadata *, 8> subscripts;
+      subscripts.push_back(Builder.getOrCreateSubrange(0, size));
+      DINodeArray subscriptArray = Builder.getOrCreateArray(subscripts);
 
-      return addMDNode(inst, Builder.createVectorType(size, 0, type, subscripts));
+      return addMDNode(inst, Builder.createVectorType(size * type->getSizeInBits(), 0, type, subscriptArray));
   }
 
   DIType* createTypeDef(SPIRVExtInst* inst)
