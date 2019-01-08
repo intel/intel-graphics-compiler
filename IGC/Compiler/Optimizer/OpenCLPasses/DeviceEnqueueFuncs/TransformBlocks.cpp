@@ -1291,6 +1291,20 @@ namespace //Anonymous
             // dataContext "owns" all created objects in internal "database"
             DataContext dataContext(pMdUtils);
 
+            // Remove function blocks which are not called/enqueued from kernels.
+            // Such a situation can occur, when there are enqueues with blocks
+            // that call their immediate parents, but those parents
+            // are not called anywhere else:
+            //
+            // void FuncA() { enqueue_kernel(..., ^{ FuncA(); }); // or:
+            // void FuncB_1() { enqueue_kernel(..., ^{ FuncB_2(); }
+            // void FuncB_2() { enqueue_kernel(..., ^{ FuncB_1(); }
+            // kernel void main() { } // Important: FuncA and FuncBs are not called here in main
+            //
+            // Those 3 functions would not be removed, neither
+            // would their respective block_invoke functions causing problems
+            changed = RemoveDetachedFunctions(M, dataContext, modMD) || changed;
+
             // Inline functions which have device exec calls up to kernel or block_invoke level
             // to properly resolve parent argument number for the following case:
             //
@@ -1373,10 +1387,14 @@ namespace //Anonymous
             return inlined;
         }
 
+        bool isInvokeFunction(const Function* func, DataContext& dataContext) {
+            return !dataContext.getKindQuery().isKernel(func) && func->getName().endswith("_block_invoke");
+        }
+
         // Clang might insert a kernel wrapper around invoke function, details and motivation can be found
         // here: https://reviews.llvm.org/D38134
         bool isInvokeFunctionKernelWrapper(const Function* invokeFunc, DataContext& dataContext) {
-            return dataContext.getKindQuery().isKernel(invokeFunc);
+            return dataContext.getKindQuery().isKernel(invokeFunc) && invokeFunc->getName().endswith("_block_invoke_kernel");
         }
 
         Function* getInvokeFunctionFromKernelWrapper(const Function* invokeFunc, DataContext& dataContext) {
@@ -1407,6 +1425,70 @@ namespace //Anonymous
             return false;
         }
 
+        // Function traverses through functions in the module from the kernel
+        // outwards flagging each function visited, then it erases those not flagged.
+        bool RemoveDetachedFunctions(llvm::Module &M, DataContext& dataContext, IGC::ModuleMetaData* modMD) {
+            bool changed = false;
+            std::map<llvm::Function*, bool> flaggedFunctions = std::map<llvm::Function*, bool>();
+
+            for (auto &func : M.functions()) {
+                flaggedFunctions[&func] = false;
+            }
+
+            // Traverse through every kernel while ignoring the block_invoke wrappers
+            for (auto func : flaggedFunctions) {
+                if (dataContext.getKindQuery().isKernel(func.first) && !isInvokeFunctionKernelWrapper(func.first, dataContext)) {
+                    TraverseAndFlagFunction(*func.first, flaggedFunctions);
+                }
+            }
+
+            for (auto func : flaggedFunctions) {
+                if (!func.second && (isInvokeFunction(func.first, dataContext) || isInvokeFunctionKernelWrapper(func.first, dataContext))) {
+
+                    // Delete function's users...
+                    SmallVector<User*, 1> toErase(func.first->users());
+                    for (auto user : toErase) {
+                        if (auto callinst = dyn_cast<CallInst>(user)) {
+                            callinst->eraseFromParent();
+                        }
+                    }
+
+                    // ...for kernel wrappers - delete metadata...
+                    if (isInvokeFunctionKernelWrapper(func.first, dataContext)) {
+                        dataContext.getMetaDataBuilder().eraseKernelMetadata(func.first, modMD);
+                    }
+
+                    // ...and delete the function itself
+                    func.first->eraseFromParent();
+                    changed = true;
+                }
+            }
+
+            return changed;
+        }
+
+        void TraverseAndFlagFunction(llvm::Function& func, std::map<llvm::Function*, bool>& flags) {
+            // Flag function as visited or quit if already flagged
+            if(flags[&func]) return;
+            else flags[&func] = true;
+
+            // Look for calls to functions or enqueues with block_invoke functions references
+            for (inst_iterator I = inst_begin(func), E = inst_end(func); I != E; I++) {
+
+                if (auto callInst = dyn_cast<llvm::CallInst>(&*I)) {
+                    if (isEnqueueKernelFunction(callInst->getCalledFunction()->getName())) {
+
+                        // Get block_invoke reference argument
+                        for (auto &arg : callInst->arg_operands()) {
+                            if (auto argFunc = dyn_cast<llvm::Function>(arg.get())) {
+                                TraverseAndFlagFunction(*argFunc, flags);
+                            }
+                        }
+                    }
+                    TraverseAndFlagFunction(*(callInst->getCalledFunction()), flags);
+                }
+            }
+        }
 
         // All functions which call enqueue_kernel should be inlined up to
         // kernel or block_invoke level to proper argument number detection of
