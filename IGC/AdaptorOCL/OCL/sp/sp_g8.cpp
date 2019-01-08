@@ -1182,7 +1182,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
     if( retValue.Success )
     {
       const DWORD perThreadScratchSpaceSizeInBytes = annotations.m_executionEnivronment.PerThreadSpillFillSize
-        + annotations.m_executionEnivronment.PerThreadScratchSpace;
+        + annotations.m_executionEnivronment.PerThreadScratchSpace + annotations.m_executionEnivronment.PerThreadScratchUseGtpin;
       if (perThreadScratchSpaceSizeInBytes > 0)
         {
             iOpenCL::SPatchMediaVFEState    patch;
@@ -1956,7 +1956,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
 
 
         patch.UsesStatelessSpillFill = (annotations.m_executionEnivronment.PerThreadSpillFillSize > 0)
-          || (annotations.m_executionEnivronment.PerThreadScratchSpace > 0);
+          || (annotations.m_executionEnivronment.PerThreadScratchSpace > 0) || (annotations.m_executionEnivronment.PerThreadScratchUseGtpin > 0);
 
         patch.HasDeviceEnqueue = (bool)hasDeviceEnqueue;
 

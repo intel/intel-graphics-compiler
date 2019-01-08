@@ -280,6 +280,7 @@ struct ExecutionEnivronment
     DWORD  CompiledSubGroupsNumber                    = 0;
     DWORD  PerThreadSpillFillSize                     = 0;
     DWORD  PerThreadScratchSpace                      = 0;
+    DWORD  PerThreadScratchUseGtpin                   = 0;
     DWORD  SumFixedTGSMSizes                          = 0;
     bool   HasDeviceEnqueue                           = false;
     bool   HasBarriers                                = false;

@@ -5510,6 +5510,12 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
     if (gtpin_init->srcline_mapping && kernel.getOptions()->getOption(vISA_GenerateDebugInfo))
         t.srcline_mapping = 1;
 
+    if (gtpin_init->num_scratch_slots > 0)
+    {
+        t.num_scratch_slots = 1;
+        numTokens++;
+    }
+
     writeBuffer(buffer, bufferSize, &t, sizeof(t));
     writeBuffer(buffer, bufferSize, &numTokens, sizeof(uint32_t));
 
@@ -5530,6 +5536,19 @@ void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
         writeBuffer(buffer, bufferSize, rerabuffer, rerasize);
 
         free(rerabuffer);
+    }
+
+    if (t.num_scratch_slots)
+    {
+        gtpin::igc::igc_token_scratch_area_info_t scratchSlotData;
+        scratchSlotData.num_scratch_slots = t.num_scratch_slots;
+        scratchSlotData.scratch_area_offset = nextScratchFree;
+
+        // gtpin scratch slots are beyond spill memory
+        scratchSlotData.token = gtpin::igc::GTPIN_IGC_TOKEN_SCRATCH_AREA_INFO;
+        scratchSlotData.token_size = sizeof(scratchSlotData);
+
+        writeBuffer(buffer, bufferSize, &scratchSlotData, sizeof(scratchSlotData));
     }
 
     void* gtpinBuffer = allocCodeBlock(bufferSize);

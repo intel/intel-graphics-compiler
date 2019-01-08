@@ -72,6 +72,7 @@ typedef struct _CM_JIT_INFO {
 
     void* freeGRFInfo;
     unsigned int freeGRFInfoSize;
+    unsigned char numBytesScratchGtpin;
 } FINALIZER_INFO;
 
 #define MAX_ERROR_MSG_LEN               511

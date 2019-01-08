@@ -1595,6 +1595,7 @@ void COpenCLKernel::FillKernel()
 {
     m_kernelInfo.m_executionEnivronment.PerThreadSpillFillSize = ProgramOutput()->m_scratchSpaceUsedBySpills;
     m_kernelInfo.m_executionEnivronment.PerThreadScratchSpace = ProgramOutput()->m_scratchSpaceUsedByShader;
+    m_kernelInfo.m_executionEnivronment.PerThreadScratchUseGtpin = ProgramOutput()->m_scratchSpaceUsedByGtpin;
     m_kernelInfo.m_kernelProgram.NOSBufferSize = m_NOSBufferSize / SIZE_GRF; // in 256 bits
     m_kernelInfo.m_kernelProgram.ConstantBufferLength = m_ConstantBufferLength / SIZE_GRF; // in 256 bits
     m_kernelInfo.m_kernelProgram.MaxNumberOfThreads = m_Platform->getMaxGPGPUShaderThreads();

@@ -9935,7 +9935,10 @@ int GlobalRA::coloringRegAlloc()
         jitInfo->isSpill = spillMemUsed > 0;
         jitInfo->spillMemUsed = spillMemUsed;
         jitInfo->numGRFSpillFill = GRFSpillFillCount;
+        jitInfo->numBytesScratchGtpin = kernel.getGTPinData()->getNumBytesScratchUse();
     }
+
+    kernel.getGTPinData()->setScratchNextFree(spillMemUsed);
 
     if (builder.getOption(vISA_LocalDeclareSplitInGlobalRA))
     {

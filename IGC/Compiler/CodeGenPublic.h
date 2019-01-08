@@ -92,6 +92,7 @@ namespace IGC
         unsigned int    m_startReg;                 //<! Which GRF to start with
         unsigned int    m_scratchSpaceUsedBySpills; //<! amount of scratch space needed for shader spilling
         unsigned int    m_scratchSpaceUsedByShader; //<! amount of scratch space needed by shader
+        unsigned int    m_scratchSpaceUsedByGtpin; //<! amount of scratch space used by gtpin
         void*           m_debugDataVISA;            //<! VISA debug data (source -> VISA)
         unsigned int    m_debugDataVISASize;        //<! Number of bytes of VISA debug data
         void*           m_debugDataGenISA;          //<! GenISA debug data (VISA -> GenISA)
@@ -114,6 +115,11 @@ namespace IGC
             {
                 IGC::aligned_free(m_debugDataGenISA);
             }
+        }
+        
+        unsigned int getScratchSpaceUsage() const
+        {
+            return m_scratchSpaceUsedBySpills + m_scratchSpaceUsedByShader + m_scratchSpaceUsedByGtpin;
         }
     };
 

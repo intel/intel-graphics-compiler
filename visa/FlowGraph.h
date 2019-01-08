@@ -39,7 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Gen4_IR.hpp"
 
-#include "gtpin_IGC_interface.h"
+#include "include/gtpin_IGC_interface.h"
 
 namespace vISA
 {
@@ -1155,6 +1155,14 @@ public:
     // return igc_info_t format buffer. caller casts it to igc_info_t.
     void* getGTPinInfoBuffer(unsigned int &bufferSize);
 
+    void setScratchNextFree(unsigned int next) { nextScratchFree = next; }
+    uint8_t getNumBytesScratchUse()
+    {
+        if (gtpin_init)
+            return gtpin_init->num_scratch_slots;
+        return 0;
+    }
+
 private:
     G4_Kernel& kernel;
     std::set<G4_INST*> markedInsts;
@@ -1163,6 +1171,8 @@ private:
     // Data is assumed to be sorted in ascending order during insertion.
     // Duplicates are not allowed.
     std::vector<unsigned int> globalFreeRegs;
+    // Member stores next free scratch slot
+    unsigned int nextScratchFree = 0;
 
     gtpin::igc::igc_init_t* gtpin_init = nullptr;
 };
