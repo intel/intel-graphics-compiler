@@ -118,9 +118,13 @@ public:
   }
   bool isVolatile()const;
   bool hasAlignment(SPIRVWord *Result=0)const;
+  bool hasNoSignedWrap() const;
+  bool hasNoUnsignedWrap() const;
 
   void setAlignment(SPIRVWord);
   void setVolatile(bool IsVolatile);
+  void setNoSignedWrap(bool HasNoSignedWrap);
+  void setNoUnsignedWrap(bool HasNoUnsignedWrap);
 
   void validate()const {
     SPIRVEntry::validate();

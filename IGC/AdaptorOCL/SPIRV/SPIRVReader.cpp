@@ -1705,6 +1705,15 @@ BinaryOperator *SPIRVToLLVM::transShiftLogicalBitwiseInst(SPIRVValue* BV,
   auto Inst = BinaryOperator::Create(BO,
       transValue(BBN->getOperand(0), F, BB),
       transValue(BBN->getOperand(1), F, BB), BV->getName(), BB);
+
+  if (BV->hasDecorate(DecorationNoSignedWrap)) {
+    Inst->setHasNoSignedWrap(true);
+  }
+
+  if (BV->hasDecorate(DecorationNoUnsignedWrap)) {
+    Inst->setHasNoUnsignedWrap(true);
+  }
+
   return Inst;
 }
 

@@ -400,6 +400,8 @@ enum Decoration {
     DecorationInputTargetIndex = 43,
     DecorationAlignment = 44,
     DecorationMaxByteOffset = 45,
+    DecorationNoSignedWrap = 4469,
+    DecorationNoUnsignedWrap = 4470,
 };
 
 enum BuiltIn {
