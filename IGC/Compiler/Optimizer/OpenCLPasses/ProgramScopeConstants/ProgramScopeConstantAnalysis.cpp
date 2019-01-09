@@ -110,38 +110,6 @@ bool ProgramScopeConstantAnalysis::runOnModule(Module &M)
             continue;
         }
 
-        // For the constant address space, handle only composite types.
-        // Scalar constants can be propagated, and putting them in the constant memory
-        // breaks inline samplers.
-        // With LLVM 4.0 PointerType is derived directly from Type, instead of SequentialType
-        // Thus we need to check for !PointerType as well
-        TODO("Handle scalars in constant address space more gracefully");
-        if (AS == ADDRESS_SPACE_CONSTANT && 
-            !isa<CompositeType>(ptrType->getElementType()) &&
-            !isa<PointerType>(ptrType->getElementType()))
-        {
-            // Scalar constants are _usually_ propagated, but they won't be if they were
-            // marked as volatile.  Samplers won't be marked as volatile, so if we see
-            // a volatile load then this i32 was actually an int rather than an
-            // inline sampler.
-            bool volatileUse = false;
-            for (auto U : globalVar->users())
-            {
-                if (auto *LI = dyn_cast<LoadInst>(U))
-                {
-                    if (LI->isVolatile())
-                    {
-                        volatileUse = true;
-                        break;
-                    }
-                }
-            }
-            if (!volatileUse)
-            {
-                continue;
-            }
-        }
-
         // If this variable isn't used, don't add it to the buffer.
         if (globalVar->use_empty())
         {
