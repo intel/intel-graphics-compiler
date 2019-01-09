@@ -48,7 +48,6 @@ workspace
       |- llvm_patches           https://github.com/intel/llvm-patches
       |- llvm_source            https://github.com/llvm-mirror/llvm
       |- igc                    https://github.com/intel/intel-graphics-compiler
-      |- opencl_headers         https://github.com/KhronosGroup/OpenCL-Headers
 
 Example command:
 $ git clone -b release_40 https://github.com/llvm-mirror/clang clang_source
@@ -59,9 +58,8 @@ $ git clone -b release_70 https://github.com/llvm-mirror/llvm llvm7.0.0_source
 [Using latest repo]
 $ git clone https://github.com/intel/intel-graphics-compiler igc
 [Or Using specific release]
-$ git clone -b igc_release_2018-12-12 https://github.com/intel/intel-graphics-compiler igc;\
-  git checkout -b igc_release_2018-12-12
-$ git clone https://github.com/KhronosGroup/OpenCL-Headers opencl_headers
+$ git clone -b igc_release_2019-01-05 https://github.com/intel/intel-graphics-compiler igc;\
+  git checkout -b igc_release_2019-01-05
 ```
 
 3. Under workspace create a build folder.  For example:
