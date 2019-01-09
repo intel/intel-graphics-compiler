@@ -902,20 +902,7 @@ public:
       }
   }
 
-  DIGlobalVariableExpression* createGlobalVar(SPIRVExtInst* inst)
-  {
-      if (auto n = getExistingNode<DIGlobalVariableExpression*>(inst))
-          return n;
-
-      OpDebugGlobalVar var(inst);
-      auto ctxt = createScope(BM->get<SPIRVExtInst>(var.getParent()));
-      auto& name = var.getName()->getStr();
-      auto& linkageName = var.getLinkageName()->getStr();
-      auto file = getDIFile(BM->get<SPIRVExtInst>(var.getSource()));
-      auto type = createType(BM->get<SPIRVExtInst>(var.getType()));
-
-      return addMDNode(inst, Builder.createGlobalVariableExpression(ctxt, name, linkageName, file, var.getLine(), type, true));
-  }
+  DIGlobalVariableExpression* createGlobalVar(SPIRVExtInst* inst);
 
   DILocation* createLocation(SPIRVWord line, SPIRVWord column, DIScope* scope, DILocation* inlinedAt = nullptr)
   {
@@ -1103,6 +1090,8 @@ public:
   // which are supposed to be replaced by the real values later.
   typedef std::map<SPIRVValue *, LoadInst*> SPIRVToLLVMPlaceholderMap;
 
+  Value *getTranslatedValue(SPIRVValue *BV);
+
 private:
   Module *M;
   BuiltinVarMap BuiltinGVMap;
@@ -1169,7 +1158,6 @@ private:
     return F;
   }
 
-  Value *getTranslatedValue(SPIRVValue *BV);
   Type *getTranslatedType(SPIRVType *BT);
 
   SPIRVErrorLog &getErrorLog() {
@@ -1204,6 +1192,35 @@ private:
   Value *truncBool(Value *pVal, BasicBlock *BB);
   Type  *truncBoolType(SPIRVType *SPVType, Type *LLType);
 };
+
+DIGlobalVariableExpression* SPIRVToLLVMDbgTran::createGlobalVar(SPIRVExtInst* inst)
+{
+    if (auto n = getExistingNode<DIGlobalVariableExpression*>(inst))
+        return n;
+
+    OpDebugGlobalVar var(inst);
+    auto ctxt = createScope(BM->get<SPIRVExtInst>(var.getParent()));
+    auto& name = var.getName()->getStr();
+    auto& linkageName = var.getLinkageName()->getStr();
+    auto file = getDIFile(BM->get<SPIRVExtInst>(var.getSource()));
+    auto type = createType(BM->get<SPIRVExtInst>(var.getType()));
+    auto varValue = static_cast<SPIRVValue*>(BM->getEntry(var.getVariable()));
+
+    auto globalVarMD = addMDNode(inst, Builder.createGlobalVariableExpression(ctxt, name, linkageName, file, var.getLine(), type, true));
+
+    llvm::Value* llvmValue = nullptr;
+    if (varValue)
+    {
+        llvmValue = SPIRVTranslator->getTranslatedValue(varValue);
+
+        if (llvmValue && dyn_cast_or_null<GlobalVariable>(llvmValue))
+        {
+            dyn_cast<GlobalVariable>(llvmValue)->addDebugInfo(globalVarMD);
+        }
+    }
+
+    return globalVarMD;
+}
 
 void SPIRVToLLVMDbgTran::transDbgInfo(SPIRVValue *SV, Value *V) {
     if (!SV)

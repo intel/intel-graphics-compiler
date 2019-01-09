@@ -124,28 +124,29 @@ void IGC::insertOCLMissingDebugConstMetadata(CodeGenContext* ctx)
                 auto init = g->getInitializer();
 
                 bool isConstForThisFunc = false;
-                if (GlobalValue::isInternalLinkage(g->getLinkage()))
+                llvm::SmallVector<llvm::DIGlobalVariableExpression *, 1> GVs;
+                g->getDebugInfo(GVs);
+                for (unsigned int j = 0; j < GVs.size(); j++)
                 {
-					llvm::SmallVector<llvm::DIGlobalVariableExpression *, 1> GVs;
-					g->getDebugInfo(GVs);
-					for (unsigned int j = 0; j < GVs.size(); j++)
-					{
-						llvm::DIGlobalVariable* GV = llvm::cast<llvm::DIGlobalVariable>(GVs[j]);
-						auto gblNodeScope = GV->getScope();
-						if (isa<DISubprogram>(gblNodeScope))
-						{
-							auto subprogramName = cast<DISubprogram>(gblNodeScope)->getName().data();
+                    auto GVExp = llvm::dyn_cast_or_null<llvm::DIGlobalVariableExpression>(GVs[j]);
+                    if (GVExp)
+                    {
+                        auto GV = GVExp->getVariable();
+                        auto gblNodeScope = GV->getScope();
+                        if (isa<DISubprogram>(gblNodeScope))
+                        {
+                            auto subprogramName = cast<DISubprogram>(gblNodeScope)->getName().data();
 
-							if (subprogramName == func.getName())
-							{
-								isConstForThisFunc = true;
-								break;
-							}
-						}
-					}
+                            if (subprogramName == func.getName())
+                            {
+                                isConstForThisFunc = true;
+                                break;
+                            }
+                        }
+                    }
                 }
 
-                if (GlobalValue::isExternalLinkage(g->getLinkage()) || isConstForThisFunc)
+                if (!GlobalValue::isLocalLinkage(g->getLinkage()) || isConstForThisFunc)
                 {
                     DebugInfoUtils::UpdateGlobalVarDebugInfo(g, init, &func.getEntryBlock().getInstList().front(), false);
                 }

@@ -77,35 +77,9 @@ public:
         }
 
         llvm::DINode::DIFlags flags = llvm::DINode::FlagZero;
-        // Fix debug info
-        llvm::MDNode* descriptor = userFunc->getSubprogram();
-        if (!descriptor)
-            return nullptr;
-
-#if 0
-        llvm::DICompileUnit* CUNode = userFunc->getSubprogram()->getUnit();
-        for (unsigned int i = 0; i < CU_Nodes->getNumOperands(); i++)
-        {
-            llvm::DICompileUnit* CUNode = llvm::cast<llvm::DICompileUnit>(CU_Nodes->getOperand(i));
-            llvm::DISubprogramArray SPs = CUNode->getSubprograms();
-            llvm::MDNode* descriptor = nullptr;
-            for (auto &F : )
-            {
-                llvm::DISubprogram* SP = llvm::cast<llvm::DISubprogram>(SPs[j]);
-                if (SP->getName() == userFunc->getName())
-                {
-                    descriptor = SP;
-                    break;
-                }
-            }
-            if (descriptor == nullptr)
-            {
-                continue;
-            }
-#endif
-
+        llvm::DIScope* spScope = nullptr;
+        llvm::DILocation* loc = nullptr;
         bool done = false;
-        llvm::DILocation* locToUse = nullptr;
         for (auto bbIt = userFunc->begin();
             bbIt != userFunc->end() && !done;
             bbIt++)
@@ -122,21 +96,35 @@ public:
                 if (instIt->getDebugLoc() &&
                     !instIt->getDebugLoc().getInlinedAt())
                 {
-                    locToUse = instIt->getDebugLoc().get();
+                    loc = instIt->getDebugLoc().get();
+                    spScope = loc->getScope()->getSubprogram();
                     done = true;
                     break;
                 }
             }
         }
 
-        //auto GVs = CUNode->getGlobalVariables();
         llvm::SmallVector<llvm::DIGlobalVariableExpression *, 1> GVs;
         pGlobalVar->getDebugInfo(GVs);
         for (unsigned int j = 0; j < GVs.size(); j++)
         {
-			llvm::DIGlobalVariable* GV = GVs[j]->getVariable();
             IGCLLVM::DIBuilder Builder(M);
-            llvm::DIVariable *Var = Builder.createAutoVariable(llvm::cast<llvm::DIScope>(descriptor),
+			llvm::DIGlobalVariable* GV = GVs[j]->getVariable();
+            llvm::DIScope* scopeToUse = GV->getScope();
+            llvm::DILocation* locToUse = llvm::DebugLoc::get(GV->getLine(), 0, scopeToUse);
+            if (llvm::isa<llvm::DICompileUnit>(GV->getScope()))
+            {
+                // Function has no DebugLoc so it is either internal
+                // or optimized. So there is no point inserting
+                // global var metadata as "local" to function.
+                if (!done)
+                    continue;
+
+                // Use scope of current sub-program
+                scopeToUse = spScope;
+                locToUse = loc;
+            }
+            llvm::DIVariable *Var = Builder.createAutoVariable(scopeToUse,
                 GV->getDisplayName(),
                 Builder.createFile(GV->getFilename(), GV->getDirectory()),
                 GV->getLine(),
