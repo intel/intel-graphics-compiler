@@ -136,6 +136,7 @@ namespace IGC
         std::vector<int> colorOutputMask;
     };
 
+
 	struct SInputDesc
 	{
 		unsigned int index = 0;
@@ -194,7 +195,7 @@ namespace IGC
 		int alignment;
 		std::vector<unsigned char> Buffer;
 	};
-	
+
 	struct ImmConstantInfo
 	{
 		std::vector<char> data;
@@ -244,7 +245,7 @@ namespace IGC
 
         // When true compiler can assume that resources bound to two different
         // bindings do not alias.
-        bool statefullResourcesNotAliased = false; 
+        bool statefullResourcesNotAliased = false;
 
         unsigned int privateMemoryPerWI = 0;
         std::array<uint64_t, NUM_SHADER_RESOURCE_VIEW_SIZE> m_ShaderResourceViewMcsMask;

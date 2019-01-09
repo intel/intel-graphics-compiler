@@ -32,7 +32,7 @@ import errno
 
 # usage: autogen.py <path_to_MDFrameWork.h> <path_to_MDNodeFuncs.gen>
 __MDFrameWorkFile__ = sys.argv[1]
-__genFile__         = sys.argv[2] 
+__genFile__         = sys.argv[2]
 
 __genDir__ = os.path.dirname(__genFile__)
 if not os.path.exists(__genDir__):
@@ -60,7 +60,7 @@ with inputFile as file:
                 line = next(file, None)
             insideIGCNameSpace = True
         if insideIGCNameSpace:
-            line = line.split("//")[0]            
+            line = line.split("//")[0]
             if line.find("struct") != -1:
                 words = line.split()
                 structureNames.append(words[1])
@@ -78,6 +78,9 @@ with inputFile as file:
                 line = line.split("//")[0]
             if line.find("};") != -1:
                 insideIGCNameSpace = False
+
+def skipLine(line):
+    return False
 
 def storeVars(line):
     vars = line.split()
@@ -198,7 +201,7 @@ def genCode():
                             foundStruct = False
                             insideStruct = False
         output.write("}\n\n")
-    
+
     for item in structureNames:
         foundStruct = False
         insideStruct = False
@@ -222,18 +225,20 @@ def genCode():
                         inputFile.close()
                         continue
                     else:
-                        if line:
+                        if skipLine(line) == False:
                             line = line.split("//")[0]
                             while line.find("};") == -1:
                                 extractVars(line)
                                 line = next(file, None)
+                                while skipLine(line) == True:
+                                    line = next(file, None)
                                 line = line.split("//")[0]
                             printCalls(item)
                             del structDataMembers[:]
                             foundStruct = False
                             insideStruct = False
         output.write("}\n\n")
-        
+
     for item in enumNames:
         foundStruct = False
         insideStruct = False
@@ -294,11 +299,13 @@ def genCode():
                         inputFile.close()
                         continue
                     else:
-                        if line:
+                        if skipLine(line) == False:
                             line = line.split("//")[0]
                             while line.find("};") == -1:
                                 extractVars(line)
                                 line = next(file, None)
+                                while skipLine(line) == True:
+                                    line = next(file, None)
                                 line = line.split("//")[0]
                             printReadCalls(item)
                             del structDataMembers[:]

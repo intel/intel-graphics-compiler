@@ -176,8 +176,8 @@ bool RetryManager::PickupKernels(CodeGenContext* cgCtx)
 }
 
 unsigned RetryManager::getStateCnt()
-{ 
-    return sizeof(RetryTable) / sizeof(RetryState); 
+{
+    return sizeof(RetryTable) / sizeof(RetryState);
 };
 
 CShader* RetryManager::PickCSEntryForcedFromDriver(SIMDMode& simdMode, unsigned char forcedSIMDModeFromDriver)
@@ -284,7 +284,7 @@ CShader* RetryManager::PickCSEntryEarly(SIMDMode& simdMode,
                 simdMode = SIMDMode::SIMD16;
                 return m_simdEntries[1];
             }
-            assert((m_simdEntries[0] == NULL) || simd8NoSpill == true); // If SIMD16 doesn't spill, SIMD8 shouldn't, if it exists        
+            assert((m_simdEntries[0] == NULL) || simd8NoSpill == true); // If SIMD16 doesn't spill, SIMD8 shouldn't, if it exists
         }
     }
 
@@ -412,9 +412,9 @@ LLVMContextWrapper::LLVMContextWrapper(bool createResourceDimTypes)
     }
 }
 
-void LLVMContextWrapper::AddRef() 
+void LLVMContextWrapper::AddRef()
 {
-    refCount++; 
+    refCount++;
 }
 
 void LLVMContextWrapper::Release()
@@ -702,5 +702,7 @@ bool CodeGenContext::isPOSH() const
     return this->getModule()->getModuleFlag(
         "IGC::PositionOnlyVertexShader") != nullptr;
 }
+
+
 
 }

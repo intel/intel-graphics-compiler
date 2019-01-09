@@ -820,7 +820,7 @@ VISA_PredOpnd* CEncoder::GetFlagOperand(const SFlag& flag)
     VISA_PREDICATE_STATE predState = (flag.invertFlag)
         ? PredState_INVERSE : PredState_NO_INVERSE;
     VISA_PREDICATE_CONTROL predCtrl = PRED_CTRL_NON;
-    
+
     switch (flag.mode)
     {
     case EPRED_ALL:     predCtrl = PRED_CTRL_ALL;   break;
@@ -889,7 +889,7 @@ Common_VISA_EMask_Ctrl CEncoder::GetAluEMask(CVariable* dst)
                 noMask = true;
             }
         }
-    } 
+    }
 
     return ConvertMaskToVisaType(mask, noMask);
 }
@@ -1515,7 +1515,7 @@ void CEncoder::LogicOp(
         if(src1 != NULL)
             src1Dcl = src1->visaPredVariable;
 
-        // Try to use NOT instruction for predicate, we won't have phi on 
+        // Try to use NOT instruction for predicate, we won't have phi on
         // predicate since Legalization pass convert i1 phi to i32.
         if (opcode == ISA_NOT)
             SetNoMask();
@@ -2424,7 +2424,7 @@ void CEncoder::Gather4Inst(
     if (!isIdxLT16)
     {
         uint16_t aoffimmiVal = (uint16_t)offset->GetImmediateValue() | BIT(15);
-        V(vKernel->CreateVISAImmediate(aoffimmi, &aoffimmiVal, ISA_TYPE_UW));    
+        V(vKernel->CreateVISAImmediate(aoffimmi, &aoffimmiVal, ISA_TYPE_UW));
     }
 
     V(vKernel->AppendVISA3dGather4(
@@ -2498,7 +2498,7 @@ void CEncoder::Fence(bool CommitEnable,
         ( L3_Flush_Constant_Data << 3 ) |
         ( L3_Flush_RW_Data << 4 ) |
         ( (!Global_Mem_Fence) << 5 ) | // bit 5: 1 -- local, 0 -- global
-        ( L1_Flush_Constant_Data << 6 ) | 
+        ( L1_Flush_Constant_Data << 6 ) |
         ( SWFence << 7 ) |
         ( CommitEnable << 0 );
 
@@ -3472,10 +3472,10 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
     SetVISAWaTable(m_program->m_Platform->getWATable());
 
     bool enableVISADump = IGC_IS_FLAG_ENABLED(EnableVISASlowpath) || IGC_IS_FLAG_ENABLED(ShaderDumpEnable);
-    V(CreateVISABuilder(vbuilder, vISA_3D, enableVISADump ? CM_CISA_BUILDER_BOTH : CM_CISA_BUILDER_GEN, 
+    V(CreateVISABuilder(vbuilder, vISA_3D, enableVISADump ? CM_CISA_BUILDER_BOTH : CM_CISA_BUILDER_GEN,
         VISAPlatform, params.size(), params.data(), &m_WaTable));
 
-    // Set up options. This must be done before creating any variable/instructions 
+    // Set up options. This must be done before creating any variable/instructions
     // since some of the options affect IR building.
 
     if (IGC_IS_FLAG_ENABLED(ForceNoFP64bRegioning))
@@ -3483,7 +3483,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         vbuilder->SetOption(vISA_forceNoFP64bRegioning, true);
     }
 
-    if (context->type == ShaderType::OPENCL_SHADER && context->m_floatDenormMode32 == FLOAT_DENORM_RETAIN && 
+    if (context->type == ShaderType::OPENCL_SHADER && context->m_floatDenormMode32 == FLOAT_DENORM_RETAIN &&
         context->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
     {
         vbuilder->SetOption(vISA_hasRNEandDenorm, true);
@@ -3736,7 +3736,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
     {
         /* Some tools only use 32bits hash, to maintain compatibility
         across lot of unknown tool chains doing Compare for only LowerPart
-        */ 
+        */
         if (IGC_GET_FLAG_VALUE(ShaderDebugHashCode) == (DWORD)context->hash.getAsmHash())
         {
             vbuilder->SetOption(vISA_setStartBreakPoint, true);
@@ -4216,9 +4216,9 @@ void CEncoder::Compile()
     {
         context->m_retryManager.SetSpillSize(jitInfo->numGRFSpillFill);
         m_program->m_spillSize = jitInfo->numGRFSpillFill;
-        m_program->m_spillCost = 
+        m_program->m_spillCost =
             float(jitInfo->numGRFSpillFill) / jitInfo->numAsmCount;
-        
+
         context->m_retryManager.numInstructions = jitInfo->numAsmCount;
     }
     COMPILER_TIME_END(m_program->GetContext(), TIME_CG_vISACompile);
@@ -4269,9 +4269,7 @@ void CEncoder::Compile()
         MEM_SNAPSHOT( IGC::SMS_AFTER_vISACompile_SIMD32 );
     }
 
-    if ((context->type == ShaderType::PIXEL_SHADER ||
-        context->type == ShaderType::COMPUTE_SHADER )&&
-        m_program->m_dispatchSize == SIMDMode::SIMD16)
+    if (m_program->m_dispatchSize == SIMDMode::SIMD16)
     {
         uint sendStallCycle = 0;
         uint staticCycle = 0;

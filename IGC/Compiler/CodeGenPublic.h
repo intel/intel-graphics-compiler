@@ -226,7 +226,7 @@ namespace IGC
         bool isPerSample;
         bool oMask;
         bool VectorMask;
-        
+
         bool hasPrimID;
         bool isCoarsePS;
         bool hasCoarsePixelSize;
@@ -258,7 +258,7 @@ namespace IGC
         OctEltUnit VertexURBEntryReadLength;
         /// corresponds to 3DSTATE_VS Vertex URB Entry Read Offset
         OctEltUnit VertexURBEntryReadOffset;
-        /// corresponds to 3DSTATE_VS VS Vertex URB Entry Output Length 
+        /// corresponds to 3DSTATE_VS VS Vertex URB Entry Output Length
         OctEltUnit VertexURBEntryOutputReadLength;
         /// corresponds to 3DSTATE_VS VS Vertex URB Entry Output Offset
         OctEltUnit VertexURBEntryOutputReadOffset;
@@ -500,7 +500,7 @@ namespace IGC
 
         CBTILayout(
             const USC::SShaderStageBTLayout* pLayout,
-            const std::vector<unsigned char>& colorBufferMappings) : 
+            const std::vector<unsigned char>& colorBufferMappings) :
                 m_pLayout(pLayout),
                 m_ColorBufferMappings(colorBufferMappings)
         {}
@@ -544,10 +544,10 @@ namespace IGC
         bool IsFirstTry();
         bool IsLastTry(CodeGenContext* cgCtx);
         unsigned GetRetryId() const;
-        
+
         void Enable();
         void Disable();
-        
+
         void SetSpillSize(unsigned int spillSize);
         unsigned int GetLastSpillSize();
         unsigned int numInstructions = 0;
@@ -577,7 +577,7 @@ namespace IGC
         // cache the compiled kernel during retry
         CShader* m_simdEntries[3];
 
-        CShader* PickCSEntryForcedFromDriver(SIMDMode& simdMode, 
+        CShader* PickCSEntryForcedFromDriver(SIMDMode& simdMode,
             unsigned char forcedSIMDModeFromDriver);
         CShader* PickCSEntryByRegKey(SIMDMode& simdMode);
         CShader* PickCSEntryEarly(SIMDMode& simdMode,
@@ -673,7 +673,7 @@ namespace IGC
             const CPlatform&    _platform,  ///< IGC HW platform description
             const CDriverInfo&  driverInfo, ///< Queries to know runtime features support
             const bool          createResourceDimTypes = true,
-            LLVMContextWrapper* LLVMContext = nullptr)///< LLVM context to use, if null a new one will be created           
+            LLVMContextWrapper* LLVMContext = nullptr)///< LLVM context to use, if null a new one will be created
             : type(_type), platform(_platform), btiLayout(_bitLayout), m_DriverInfo(driverInfo), llvmCtxWrapper(LLVMContext)
         {
             if (llvmCtxWrapper == nullptr)
@@ -989,7 +989,7 @@ namespace IGC
 			const COCLBTILayout& btiLayout,
 			const CPlatform& platform,
 			const TC::STB_TranslateInputArgs* pInputArgs,
-            const CDriverInfo& driverInfo,           
+            const CDriverInfo& driverInfo,
             LLVMContextWrapper* llvmContext = nullptr,
             bool shouldUseNonCoherentStatelessBTI = false,
             const bool createResourceDimTypes = true)
