@@ -311,6 +311,8 @@ struct RegisterPressure
         p2a = new PointsToAnalysis(kernel.Declares, kernel.fg.getNumBB());
         p2a->doPointsToAnalysis(kernel.fg);
         gra = new GlobalRA(kernel, kernel.fg.builder->phyregpool, *p2a);
+        // To properly track liveness for partially-written local variables.
+        gra->markGraphBlockLocalVars(/*doLocalRA*/false);
         liveness = new LivenessAnalysis(*gra, G4_GRF | G4_ADDRESS | G4_INPUT | G4_FLAG);
         liveness->computeLiveness(true);
         rpe = new RPE(*gra, liveness);

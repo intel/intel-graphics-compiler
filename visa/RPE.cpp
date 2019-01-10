@@ -42,9 +42,12 @@ namespace vISA
     void RPE::run()
     {
         startTimer(TIMER_RPE);
-        for (auto& bb : gra.kernel.fg.BBs)
+        if (!vars.empty())
         {
-            runBB(bb);
+            for (auto& bb : gra.kernel.fg.BBs)
+            {
+                runBB(bb);
+            }
         }
         stopTimer(TIMER_RPE);
     }
