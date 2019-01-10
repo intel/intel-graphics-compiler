@@ -8984,16 +8984,16 @@ void EmitPass::emitStore3DInner(Value *pllValToStore, Value *pllDstPtr, Value *p
         }
         else
         {
-            // using byte scatter
-            uint elementSize = 8;
-            uint numElems = 4;
-            setPredicateForDiscard();
-            m_encoder->ByteScatter(
-                storedVal,
-                resource,
-                ptr,
-                elementSize,
-                numElems);
+                // using byte scatter
+                uint elementSize = 8;
+                uint numElems = 4;
+                setPredicateForDiscard();
+                m_encoder->ByteScatter(
+                    storedVal,
+                    resource,
+                    ptr,
+                    elementSize,
+                    numElems);
             m_encoder->Push();
         }
     }
@@ -12798,7 +12798,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
         {
             m_encoder->SetNoMask();
             m_encoder->SetUniformSIMDSize(simdmode);
-            m_encoder->ByteGather(gatherDst, resource, gatherOff, blkBits, nBlks);
+                m_encoder->ByteGather(gatherDst, resource, gatherOff, blkBits, nBlks);
         }
         else
         {
