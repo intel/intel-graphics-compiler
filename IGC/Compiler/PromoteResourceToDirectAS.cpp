@@ -111,12 +111,14 @@ Value* GetBufferOperand(Instruction* inst)
             case GenISAIntrinsic::GenISA_ldrawvector_indexed:
             case GenISAIntrinsic::GenISA_storeraw_indexed:
             case GenISAIntrinsic::GenISA_ldraw_indexed:
-                pBuffer = intr->getOperand(0);
-                break;
             case GenISAIntrinsic::GenISA_intatomicraw:
+            case GenISAIntrinsic::GenISA_intatomictyped:
+            case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
             case GenISAIntrinsic::GenISA_floatatomicraw:
             case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
             case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
+                pBuffer = intr->getOperand(0);
+                break;
             case GenISAIntrinsic::GenISA_intatomicrawA64:
             case GenISAIntrinsic::GenISA_floatatomicrawA64:
             case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
@@ -151,6 +153,8 @@ Type* GetBufferAccessType(Instruction *inst)
             case GenISAIntrinsic::GenISA_ldrawvector_indexed:
             case GenISAIntrinsic::GenISA_ldraw_indexed:
             case GenISAIntrinsic::GenISA_intatomicraw:
+            case GenISAIntrinsic::GenISA_intatomictyped:
+            case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
             case GenISAIntrinsic::GenISA_floatatomicraw:
             case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
             case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
@@ -531,6 +535,8 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
                 {
                     case GenISAIntrinsic::GenISA_intatomicraw:
                     case GenISAIntrinsic::GenISA_floatatomicraw:
+                    case GenISAIntrinsic::GenISA_intatomictyped:
+                    case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
                     case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
                     case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
                         is64BitPtr = false;
@@ -569,13 +575,13 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
                 }
                 else
                 {
+                    bufferAddress = pIntr->getArgOperand(1);
                     if (!isa<ConstantPointerNull>(pBuffer))
                     {
+                        assert(isa<ConstantInt>(bufferAddress) && cast<ConstantInt>(bufferAddress)->getZExtValue() == 0);
+                        assert(pIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_intatomictyped &&
+                               pIntr->getIntrinsicID() != GenISAIntrinsic::GenISA_icmpxchgatomictyped);
                         bufferAddress = builder.CreatePtrToInt(pBuffer, builder.getInt32Ty());
-                    }
-                    else
-                    {
-                        bufferAddress = builder.getInt32(0);
                     }
                 }
 
@@ -613,30 +619,30 @@ void PromoteResourceToDirectAS::PromoteBufferToDirectAS(Instruction* inst, Value
 
 void PromoteResourceToDirectAS::GetAccessInstToSrcPointerMap(Instruction* inst, Value* resourcePtr)
 {
-	unsigned addrSpace = resourcePtr->getType()->getPointerAddressSpace();
+    unsigned addrSpace = resourcePtr->getType()->getPointerAddressSpace();
 
-	if (addrSpace != 1 && addrSpace != 2)
-	{
-		// Only try to promote stateless buffer pointers ( as(1) or as(2) )
+    if (addrSpace != 1 && addrSpace != 2)
+    {
+        // Only try to promote stateless buffer pointers ( as(1) or as(2) )
         return;
-	}
+    }
 
-	if (!isa<LoadInst>(inst) && !isa<StoreInst>(inst))
-	{
-		// Do we need to support other instructions besides load/store?
-		return;
-	}
+    if (!isa<LoadInst>(inst) && !isa<StoreInst>(inst))
+    {
+        // Do we need to support other instructions besides load/store?
+        return;
+    }
 
-	Value* srcPtr = IGC::TracePointerSource(resourcePtr);
+    Value* srcPtr = IGC::TracePointerSource(resourcePtr);
 
-	if (!srcPtr ||
-		!srcPtr->getType()->isPointerTy() ||
-		!isa<Argument>(srcPtr))
-	{
-		// Cannot trace the resource pointer back to it's source, cannot promote
+    if (!srcPtr ||
+        !srcPtr->getType()->isPointerTy() ||
+        !isa<Argument>(srcPtr))
+    {
+        // Cannot trace the resource pointer back to it's source, cannot promote
         assert(0 && "Stateless buffer pointer not tracable, cannot promote stateless to bindless");
-		return;
-	}
+        return;
+    }
 
     m_AccessToSrcPtrMap[inst] = srcPtr;
     return;
@@ -720,11 +726,11 @@ void PromoteResourceToDirectAS::visitInstruction(Instruction &I)
             if (isStatelessToBindlessPromotion(m_pCodeGenContext))
             {
                 GetAccessInstToSrcPointerMap(&I, bufptr);
-			}
-			else
-			{
-				PromoteBufferToDirectAS(&I, bufptr);
-			}
+            }
+            else
+            {
+                PromoteBufferToDirectAS(&I, bufptr);
+            }
             resourceAccessed = true;
         }
     }
