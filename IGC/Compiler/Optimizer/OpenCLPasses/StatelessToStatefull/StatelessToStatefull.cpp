@@ -353,7 +353,7 @@ bool StatelessToStatefull::pointerIsPositiveOffsetFromKernelArgument(
 
     // stripPointerCasts might skip addrSpaceCast, thus check if AS is still
     // the original one. Also, if base is still instruction, skip.
-    if ((gep && gep->getAddressSpace() == ptrAS) && !isa<Instruction>(base))
+    if (gep && cast<PointerType>(base->getType())->getAddressSpace() == ptrAS && !isa<Instruction>(base))
     {
         if (const KernelArg* arg = getKernelArg(base))
         {
