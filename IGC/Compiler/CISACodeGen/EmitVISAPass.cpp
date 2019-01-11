@@ -11515,7 +11515,7 @@ void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
 
 void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
 {
-    ForceDMask();
+
     assert(pInsn->getNumOperands() == 2);
     
     bool uniformAtomic = IsUniformAtomic(pInsn) &&
@@ -11526,6 +11526,7 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
         return;
     }
 
+    ForceDMask();
     GenISAIntrinsic::ID IID = pInsn->getIntrinsicID();
     /// Immediate Atomics return the value before the atomic operation is performed. So that flag
     /// needs to be set for this.
