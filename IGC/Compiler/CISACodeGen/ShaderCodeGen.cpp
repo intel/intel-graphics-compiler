@@ -265,11 +265,6 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, const CShaderProgram::KernelS
     // need this before WIAnalysis:
     // insert phi to prevent changing of WIAnalysis result by later code-motion 
     mpm.add(llvm::createLCSSAPass());
-    // coalesce scalar loads into loads of larger quantity
-    if (IGC_IS_FLAG_DISABLED(DisableConstantCoalescing))
-    {
-        mpm.add(new ConstantCoalescing());
-    }
     if( !isOptDisabled )
     {
         // If you want to clean up the dead-code after push optimization
@@ -553,6 +548,15 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
 
     // Scalarizer in codegen to handle the vector instructions
     mpm.add(new ScalarizerCodeGen());
+    
+    // coalesce scalar loads into loads of larger quantity
+    // This require and preserves uniform analysis we should keep
+    // other passes using uniformness together to avoid re-running it several times
+    if(IGC_IS_FLAG_DISABLED(DisableConstantCoalescing))
+    {
+        mpm.add(createBreakCriticalEdgesPass());
+        mpm.add(new ConstantCoalescing());
+    }
 
     // When needDPEmu is true, enable Emu64Ops as well for now until
     // DPEmu is able to get rid of all 64bit integer ops fully.
