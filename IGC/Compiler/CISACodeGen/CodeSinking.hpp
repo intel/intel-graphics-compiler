@@ -107,6 +107,17 @@ private:
     typedef std::pair<llvm::Instruction*, llvm::Instruction*> InstPair;
     typedef smallvector<llvm::Instruction*, 4> InstVec;
 
+    // this vector maps all instructions leading to source0 of phi instruction to
+    // the corresponding instructions of source1
+    std::vector<InstPair> instMap;
+
+    void appendIfNotExist(InstPair src)
+    {
+        if (std::find(instMap.begin(), instMap.end(), src) == instMap.end())
+        {
+            instMap.push_back(src);
+        }
+    }
     void appendIfNotExist(InstVec& dst, llvm::Instruction* inst)
     {
         if (std::find(dst.begin(), dst.end(), inst) == dst.end())
@@ -124,11 +135,7 @@ private:
 
     // check if two values are congruent (derived from same values), and
     // record all intermediate results in vector.
-    bool checkCongruent(const InstPair& values,
-        InstVec& src0Chain, InstVec& src1Chain, InstVec& leaves,
-        unsigned depth);
-
-    void sortInsts(InstVec& iv);
+    bool checkCongruent(const InstPair& values, InstVec& leaves, unsigned depth);
 
     /**
      * Detech phi with congruent incoming values, and try to hoist them to
