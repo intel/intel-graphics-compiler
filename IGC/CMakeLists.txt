@@ -3841,6 +3841,34 @@ if(UNIX)
       FILES_MATCHING PATTERN "*.h" PATTERN "CLElfLib" EXCLUDE)
   install(FILES ${IGC_BUILD__IGC_BIN_DIR}/igc-opencl.pc DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib/pkgconfig COMPONENT igc-opencl-devel)
   install(FILES ${IGC_BUILD__IGC_BIN_DIR}/igc.opencl.h DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/include/igc COMPONENT igc-opencl-devel)
+elseif (WIN32)
+  install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
+          RUNTIME DESTINATION Release/lh64          CONFIGURATIONS Release)
+  install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
+          RUNTIME DESTINATION Release-Internal/lh64 CONFIGURATIONS ReleaseInternal)
+  install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
+          RUNTIME DESTINATION Debug/lh64            CONFIGURATIONS Debug)
+
+  install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
+          DESTINATION Release/lh64/pdb              CONFIGURATIONS Release)
+  install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
+          DESTINATION Release-Internal/lh64/pdb     CONFIGURATIONS ReleaseInternal)
+  install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
+          DESTINATION Debug/lh64/pdb                CONFIGURATIONS Debug)
+
+  install(TARGETS ${IGC_BUILD__PROJ__fcl_dll}
+          RUNTIME DESTINATION Release/lh64          CONFIGURATIONS Release)
+  install(TARGETS ${IGC_BUILD__PROJ__fcl_dll}
+          RUNTIME DESTINATION Release-Internal/lh64 CONFIGURATIONS ReleaseInternal)
+  install(TARGETS ${IGC_BUILD__PROJ__fcl_dll}
+          RUNTIME DESTINATION Debug/lh64            CONFIGURATIONS Debug)
+
+  install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__fcl_dll}>
+          DESTINATION Release/lh64/pdb              CONFIGURATIONS Release)
+  install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__fcl_dll}>
+          DESTINATION Release-Internal/lh64/pdb     CONFIGURATIONS ReleaseInternal)
+  install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__fcl_dll}>
+          DESTINATION Debug/lh64/pdb                CONFIGURATIONS Debug)
 endif()
 
 if(UNIX)

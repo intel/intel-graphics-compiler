@@ -92,9 +92,30 @@ if(IGC_BUILD)
     )
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "")
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "")
+
+    install(TARGETS IGA_EXE RUNTIME
+        DESTINATION Release/x64/Standalones              CONFIGURATIONS Release)
+    install(TARGETS IGA_EXE RUNTIME
+        DESTINATION Release-Internal/x64/Standalones     CONFIGURATIONS ReleaseInternal)
+    install(TARGETS IGA_EXE RUNTIME
+        DESTINATION Debug/x64/Standalones                CONFIGURATIONS Debug)
+
+    install(FILES $<TARGET_PDB_FILE:IGA_EXE>
+        DESTINATION Release/x64/Standalones/pdb          CONFIGURATIONS Release)
+    install(FILES $<TARGET_PDB_FILE:IGA_EXE>
+        DESTINATION Release-Internal/x64/Standalones/pdb CONFIGURATIONS ReleaseInternal)
+    install(FILES $<TARGET_PDB_FILE:IGA_EXE>
+        DESTINATION Debug/x64/Standalones/pdb            CONFIGURATIONS Debug)
+
   elseif (UNIX)
     install(TARGETS IGA_EXE DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/bin COMPONENT igc-media)
   endif (MSVC)
+else()
+    INSTALL(TARGETS IGA_EXE
+            RUNTIME DESTINATION .
+            LIBRARY DESTINATION .
+            ARCHIVE DESTINATION .
+    )
 endif(IGC_BUILD)
 
 # Set release build specific defines
@@ -113,9 +134,3 @@ if(NOT WIN32)
 else()
   target_link_libraries(IGA_EXE PUBLIC IGA_SLIB)
 endif()
-
-INSTALL(TARGETS IGA_EXE
-    RUNTIME DESTINATION .
-    LIBRARY DESTINATION .
-    ARCHIVE DESTINATION .
-)

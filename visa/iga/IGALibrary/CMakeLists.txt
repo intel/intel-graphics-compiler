@@ -335,4 +335,18 @@ endif(ANDROID AND MEDIA_IGA)
         LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib COMPONENT igc-core
         ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/.   COMPONENT igc-core
     )
+  elseif(WIN32)
+    install(TARGETS IGA_DLL RUNTIME
+            DESTINATION Release/lh64              CONFIGURATIONS Release)
+    install(TARGETS IGA_DLL RUNTIME
+            DESTINATION Release-Internal/lh64     CONFIGURATIONS ReleaseInternal)
+    install(TARGETS IGA_DLL RUNTIME
+            DESTINATION Debug/lh64                CONFIGURATIONS Debug)
+
+    install(FILES $<TARGET_PDB_FILE:IGA_DLL>
+            DESTINATION Release/lh64/pdb          CONFIGURATIONS Release)
+    install(FILES $<TARGET_PDB_FILE:IGA_DLL>
+            DESTINATION Release-Internal/lh64/pdb CONFIGURATIONS ReleaseInternal)
+    install(FILES $<TARGET_PDB_FILE:IGA_DLL>
+            DESTINATION Debug/lh64/pdb            CONFIGURATIONS Debug)
   endif(UNIX)
