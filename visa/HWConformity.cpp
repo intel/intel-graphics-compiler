@@ -2565,7 +2565,28 @@ void HWConformity::fixMULHInst( INST_LIST_ITER &i, G4_BB *bb )
         src1 = inst->getSrc(1);
     }
 
+    bool useMulQDD = false;
     if (exec_size <= 8 && !builder.no64bitRegioning())
+    {
+        useMulQDD = true;
+        if (!IS_DTYPE(src0->getType()) || !IS_DTYPE(src1->getType()))
+        {
+            if (src1->isImm() &&
+                IS_DTYPE(src0->getType()) &&
+                (IS_WTYPE(src1->getType()) || IS_BTYPE(src1->getType())))
+            {
+                // Ensure src1 has the same type size as src0.
+                const G4_Imm *oldImm = src1->asImm();
+                G4_Imm *newImm = builder.createImm(oldImm->getInt(), src0->getType());
+                inst->setSrc(newImm, 1);
+            }
+            else
+            {
+                useMulQDD = false;
+            }
+        }
+    }
+    if (useMulQDD)
     {
         // use mul Q D D to get the upper 32-bit
         // note that we don't do this for CHV/BXT due to the 64-bit type restrictions
