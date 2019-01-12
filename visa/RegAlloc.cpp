@@ -377,7 +377,8 @@ LivenessAnalysis::LivenessAnalysis(
 LivenessAnalysis::LivenessAnalysis(
         GlobalRA& g,
         unsigned char kind,
-        bool verifyRA) :
+        bool verifyRA,
+        bool forceRun) :
         numVarId(0), numSplitVar(0), numSplitStartID(0), numUnassignedVarId(0), numAddrId(0), selectedRF(kind), m(4096),
 		fg(g.kernel.fg), pointsToAnalysis(g.pointsToAnalysis), gra(g)
 {
@@ -388,7 +389,7 @@ LivenessAnalysis::LivenessAnalysis(
 	//
 	// Go over each reg var if it's a liveness candidate, assign id for bitset.
 	//
-    bool areAllPhyRegAssigned = true;
+    bool areAllPhyRegAssigned = !forceRun;
 
     DECLARE_LIST_ITER di = gra.kernel.Declares.begin();
     while (di != gra.kernel.Declares.end())

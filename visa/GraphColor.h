@@ -342,7 +342,7 @@ namespace vISA
         unsigned maxId;
         unsigned splitStartId;
         unsigned splitNum;
-        unsigned int* matrix;
+        unsigned int* matrix = nullptr;
         LivenessAnalysis* liveAnalysis = nullptr;
 
         std::vector<std::vector<unsigned int>> sparseIntf;

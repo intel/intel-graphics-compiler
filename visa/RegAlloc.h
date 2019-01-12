@@ -468,7 +468,7 @@ public:
     std::vector<BitSet> maydef;
 
     LivenessAnalysis(GlobalRA& gra, uint8_t kind);
-	LivenessAnalysis(GlobalRA& gra, unsigned char kind, bool verifyRA);
+	LivenessAnalysis(GlobalRA& gra, unsigned char kind, bool verifyRA, bool forceRun = false);
 	~LivenessAnalysis();
 	void computeLiveness(bool computePseudoKill);
 	bool isLiveAtEntry(G4_BB* bb, unsigned var_id) const;

@@ -6395,7 +6395,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     nextIter++;
                     G4_DstRegRegion* dst = inst->getDst();
                     G4_Declare* fenceDcl = dst->getBase()->asRegVar()->getDeclare();
-                    G4_DstRegRegion* movDst = builder.Create_Dst_Opnd_From_Dcl(fenceDcl, 1);
+                    G4_DstRegRegion* movDst = builder.createDstRegRegion(
+                        Direct, builder.phyregpool.getNullReg(), 0, 0, 1, fenceDcl->getElemType());
                     G4_SrcRegRegion* movSrc = builder.Create_Src_Opnd_From_Dcl(fenceDcl, builder.createRegionDesc(8,8,1));
                     G4_INST* movInst = builder.createInternalInst( NULL, G4_mov, NULL, false, 8, movDst, movSrc, NULL, InstOpt_WriteEnable);
                     bb->insert(nextIter, movInst);
@@ -11022,4 +11023,4 @@ void Optimizer::clearSendDependencies()
             emitRetiringMov(builder, BB, SI, InsertBefore);
         }
     }
-}
+}
