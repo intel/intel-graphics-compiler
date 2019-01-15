@@ -723,8 +723,7 @@ bool CodeSinking::LocalSink(BasicBlock *blk)
 }
 
 ///////////////////////////////////////////////////////////////////////////
-bool CodeSinking::checkCongruent(const InstPair& values,
-    InstVec& src0Chain, InstVec& src1Chain, InstVec& leaves, unsigned depth)
+bool CodeSinking::checkCongruent(const InstPair& values, InstVec& leaves, unsigned depth)
 {
     Instruction* src0 = values.first;
     Instruction* src1 = values.second;
@@ -771,8 +770,6 @@ bool CodeSinking::checkCongruent(const InstPair& values,
     }
 
     bool equals = true;
-    InstVec tSrc0Chain;
-    InstVec tSrc1Chain;
     InstVec tmpVec;
 
     unsigned nopnds = src0->getNumOperands();
@@ -823,10 +820,7 @@ bool CodeSinking::checkCongruent(const InstPair& values,
         if (iv0 && iv0->getParent() == src0->getParent() &&
             iv1 && iv1->getParent() == src1->getParent())
         {
-            appendIfNotExist(tSrc0Chain, iv0);
-            appendIfNotExist(tSrc1Chain, iv1);
-            if (!checkCongruent(std::make_pair(iv0, iv1),
-                    tSrc0Chain, tSrc1Chain, tmpVec, depth+1))
+            if (!checkCongruent(std::make_pair(iv0, iv1), tmpVec, depth+1))
             {
                 equals = false;
                 break;
@@ -840,11 +834,8 @@ bool CodeSinking::checkCongruent(const InstPair& values,
     }
     if (equals)
     {
+        appendIfNotExist(std::make_pair(src0, src1));
         appendIfNotExist(leaves, tmpVec);
-        appendIfNotExist(src0Chain, src0);
-        appendIfNotExist(src0Chain, tSrc0Chain);
-        appendIfNotExist(src1Chain, src1);
-        appendIfNotExist(src1Chain, tSrc1Chain);
         return equals;
     }
 
@@ -854,8 +845,6 @@ bool CodeSinking::checkCongruent(const InstPair& values,
 
     equals = true;
     tmpVec.clear();
-    tSrc0Chain.clear();
-    tSrc1Chain.clear();
     for (unsigned i = 0; i < src0->getNumOperands(); i++)
     {
         Value *v0, *v1;
@@ -891,10 +880,7 @@ bool CodeSinking::checkCongruent(const InstPair& values,
         if (iv0 && iv0->getParent() == src0->getParent() &&
             iv1 && iv1->getParent() == src1->getParent())
         {
-            appendIfNotExist(tSrc0Chain, iv0);
-            appendIfNotExist(tSrc1Chain, iv1);
-            if (!checkCongruent(std::make_pair(iv0, iv1),
-                    tSrc0Chain, tSrc1Chain, leaves, depth+1))
+            if (!checkCongruent(std::make_pair(iv0, iv1), leaves, depth+1))
             {
                 equals = false;
                 break;
@@ -908,34 +894,10 @@ bool CodeSinking::checkCongruent(const InstPair& values,
     }
     if (equals)
     {
+        appendIfNotExist(std::make_pair(src0, src1));
         appendIfNotExist(leaves, tmpVec);
-        appendIfNotExist(src0Chain, src0);
-        appendIfNotExist(src0Chain, tSrc0Chain);
-        appendIfNotExist(src1Chain, src1);
-        appendIfNotExist(src1Chain, tSrc1Chain);
     }
     return equals;
-}
-
-void CodeSinking::sortInsts(InstVec& iv)
-{
-    bool swapped = true;
-    int j = 0;
-    while (swapped)
-    {
-        swapped = false;
-        j++;
-        for (unsigned i = 0; i < iv.size() - j; i++)
-        {
-            if (isInstPrecede(iv[i], iv[i + 1]))
-            {
-                auto tmp = iv[i];
-                iv[i] = iv[i + 1];
-                iv[i + 1] = tmp;
-                swapped = true;
-            }
-        }
-    }
 }
 
 bool CodeSinking::hoistCongruentPhi(PHINode* phi)
@@ -945,16 +907,13 @@ bool CodeSinking::hoistCongruentPhi(PHINode* phi)
 
     bool changed = false;
     InstVec leaves;
-    InstVec src0Chain;
-    InstVec src1Chain;
 
     Instruction *src0, *src1;
     src0 = dyn_cast<Instruction>(phi->getIncomingValue(0));
     src1 = dyn_cast<Instruction>(phi->getIncomingValue(1));
     if (src0 && src1 && src0 != src1)
     {
-        if (checkCongruent(std::make_pair(src0, src1),
-                src0Chain, src1Chain, leaves, 0))
+        if (checkCongruent(std::make_pair(src0, src1), leaves, 0))
         {
             BasicBlock* predBB = nullptr;
             Instruction* insertPos = nullptr;
@@ -1016,29 +975,31 @@ bool CodeSinking::hoistCongruentPhi(PHINode* phi)
 
             if (apply)
             {
-                assert(src0Chain.size() == src1Chain.size());
+                auto compareFunc = [](const InstPair& a, const InstPair& b) {
+                    return isInstPrecede(a.first, b.first);
+                };
+                std::sort(instMap.begin(), instMap.end(), compareFunc);
 
-                sortInsts(src0Chain);
-                sortInsts(src1Chain);
-                for (unsigned i = src0Chain.size(); i > 0; i--)
+                for (auto& insts : instMap)
                 {
-                    Instruction* I = src0Chain[i - 1];
+                    Instruction* I = insts.first;
                     Instruction* ni = I->clone();
                     ni->insertBefore(insertPos);
                     ni->setName(ni->getName() + ".hoist");
-                    I->replaceAllUsesWith(ni);
-                    src1Chain[i - 1]->replaceAllUsesWith(ni);
 
-                    if (i == 1)
+                    if (phi->getIncomingValue(0) == I)
                     {
                         // replace phi also
                         phi->replaceAllUsesWith(ni);
                     }
+                    I->replaceAllUsesWith(ni);
+                    insts.second->replaceAllUsesWith(ni);
                 }
                 changed = true;
             }
         }
     }
+    instMap.clear();
     return changed;
 }
 

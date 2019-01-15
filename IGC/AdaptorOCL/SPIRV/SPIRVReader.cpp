@@ -1741,12 +1741,7 @@ SPIRVToLLVM::transLifetimeInst(SPIRVInstTemplateBase* BI, BasicBlock* BB, Functi
         Intrinsic::lifetime_start :
         Intrinsic::lifetime_end;
 #if LLVM_VERSION_MAJOR == 7
-    Type* IntrinArgTypes[] = {
-        Type::getVoidTy(*Context),
-        Type::getInt64Ty(*Context),
-        PointerType::getInt8PtrTy(*Context)
-    };
-    auto *pFunc = Intrinsic::getDeclaration(M, ID, IntrinArgTypes);
+    auto *pFunc = Intrinsic::getDeclaration(M, ID, llvm::ArrayRef<llvm::Type*>(PointerType::getInt8PtrTy(*Context)));
 #else
     auto *pFunc = Intrinsic::getDeclaration(M, ID);
 #endif

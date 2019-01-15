@@ -2626,7 +2626,6 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
           ALL_PATTERN ""
           SET
             CompileAsDefault
-            DebugInfoProgramDatabase
             DisableSpecificWarnings
             ExceptionsDisabled
             MultiProcessorCompilation
@@ -2640,7 +2639,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
           ALL_PATTERN ""
           SET
             CompileAsDefault
-            DebugInfoProgramDatabase
+            
             DisableSpecificWarnings
             ExceptionsDisabled
             MultiProcessorCompilation
@@ -2661,6 +2660,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
       "${_compilerFlagName}"
       PATTERN "${IGC_BUILD__DEBUG_PATTERN}"
       SET
+        DebugInfoProgramDatabase
         OptimizeDisabled
         RtMultiThreadedStaticDebug
         UnreferencedVariable
@@ -2680,6 +2680,7 @@ foreach(_compilerFlagName IN ITEMS "CMAKE_CXX_FLAGS" "CMAKE_C_FLAGS")
       "${_compilerFlagName}"
       PATTERN "${IGC_BUILD__RELINT_PATTERN}"
       SET
+        DebugInfoProgramDatabase
         OptimizeSpeed
         ControlFlowGuard
     )
@@ -3901,18 +3902,18 @@ if(UNIX)
 
   set(CPACK_DEBIAN_IGC-CORE_FILE_NAME "intel-igc-core_${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}_${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}.deb")
   set(CPACK_DEBIAN_IGC-MEDIA_FILE_NAME "intel-igc-media_${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}_${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}.deb")
-  set(CPACK_DEBIAN_IGC-MEDIA_PACKAGE_DEPENDS "intel-igc-core(=${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION})")
+  set(CPACK_DEBIAN_IGC-MEDIA_PACKAGE_DEPENDS "intel-igc-core")
   set(CPACK_DEBIAN_IGC-OPENCL_FILE_NAME "intel-igc-opencl_${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}_${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}.deb")
-  set(CPACK_DEBIAN_IGC-OPENCL_PACKAGE_DEPENDS "intel-igc-core(=${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION})")
+  set(CPACK_DEBIAN_IGC-OPENCL_PACKAGE_DEPENDS "intel-igc-core")
   set(CPACK_DEBIAN_IGC-OPENCL-DEVEL_FILE_NAME "intel-igc-opencl-devel_${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}_${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}.deb")
-  set(CPACK_DEBIAN_IGC-OPENCL-DEVEL_PACKAGE_DEPENDS "intel-igc-opencl(=${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION})")
+  set(CPACK_DEBIAN_IGC-OPENCL-DEVEL_PACKAGE_DEPENDS "intel-igc-opencl")
   set(CPACK_RPM_IGC-CORE_FILE_NAME "intel-igc-core-${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}.${CPACK_RPM_PACKAGE_ARCHITECTURE}.rpm")
   set(CPACK_RPM_IGC-MEDIA_FILE_NAME "intel-igc-media-${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}.${CPACK_RPM_PACKAGE_ARCHITECTURE}.rpm")
-  set(CPACK_RPM_IGC-MEDIA_PACKAGE_DEPENDS "intel-igc-core(=${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION})")
+  set(CPACK_RPM_IGC-MEDIA_PACKAGE_DEPENDS "intel-igc-core")
   set(CPACK_RPM_IGC-OPENCL_FILE_NAME "intel-igc-opencl-${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}.${CPACK_RPM_PACKAGE_ARCHITECTURE}.rpm")
-  set(CPACK_RPM_IGC-OPENCL_PACKAGE_DEPENDS "intel-igc-core(=${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION})")
+  set(CPACK_RPM_IGC-OPENCL_PACKAGE_DEPENDS "intel-igc-core")
   set(CPACK_RPM_IGC-OPENCL-DEVEL_FILE_NAME "intel-igc-opencl-devel-${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}.${CPACK_RPM_PACKAGE_ARCHITECTURE}.rpm")
-  set(CPACK_RPM_IGC-OPENCL-DEVEL_PACKAGE_DEPENDS "intel-igc-opencl(=${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION})")
+  set(CPACK_RPM_IGC-OPENCL-DEVEL_PACKAGE_DEPENDS "intel-igc-opencl")
   set(CPACK_ARCHIVE_IGC-CORE_FILE_NAME "intel-igc-core-${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}.${CPACK_PACKAGE_ARCHITECTURE}")
   set(CPACK_ARCHIVE_IGC-MEDIA_FILE_NAME "intel-igc-media-${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}.${CPACK_PACKAGE_ARCHITECTURE}")
   set(CPACK_ARCHIVE_IGC-OPENCL_FILE_NAME "intel-igc-opencl-${MAJOR_VERSION}.${MINOR_VERSION}-${PATCH_VERSION}.${CPACK_PACKAGE_ARCHITECTURE}")

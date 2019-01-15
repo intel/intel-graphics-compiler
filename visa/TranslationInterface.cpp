@@ -481,7 +481,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
         }
     }
 
-    bool noDstMove = instExecSize >= 4 && !saturate && !predOpnd && isOpndAligned(dstOpnd, 32) && 
+    bool noDstMove = exsize == 8 && !saturate && !predOpnd && isOpndAligned(dstOpnd, 32) && 
         dstOpnd->getRegAccess() == Direct && dstOpnd->getHorzStride() == 1;
 
     unsigned int instOpt = Get_Gen4_Emask(emask, exsize);

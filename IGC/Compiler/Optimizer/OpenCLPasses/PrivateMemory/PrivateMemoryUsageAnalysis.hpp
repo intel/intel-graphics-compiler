@@ -73,6 +73,11 @@ namespace IGC
         /// @param  AI The alloca instruction.
         void visitAllocaInst(llvm::AllocaInst &AI);
 
+        /// @brief  BinaryOperator instructions visitor.
+        ///         Analyzes if there are private memory allocation.
+        /// @param  I The binary op
+        void visitBinaryOperator(llvm::BinaryOperator& I);
+
     private:
         /// @brief  Function entry point.
         ///         Finds all alloca instructions in this function, analyzes them and adds 

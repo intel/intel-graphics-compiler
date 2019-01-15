@@ -41,145 +41,6 @@ using namespace vISA;
 #define SCH_THRESHOLD 2
 #define BITS_PER_FLAG_REG 16
 
-void LocalScheduler::isolateBarrierBBs()
-{
-    // If an inst if a barrier, splice inst list and push it to a new BB.
-    // This way scheduler will see only indirect accesses as barriers.
-    //
-    // Before (All in BB1):
-    // inst1
-    // inst2
-    // inst3 <-- Barrier
-    // inst4
-    //
-    // After:
-    // BB1:
-    // inst1
-    // inst2
-    //
-    // BB2:
-    // inst3 <-- Barrier
-    //
-    // BB3:
-    // inst4
-    //
-    //
-    for (BB_LIST_ITER bb_it = fg.BBs.begin();
-        bb_it != fg.BBs.end();
-        bb_it++)
-    {
-        G4_BB* curBB = (*bb_it);
-
-        // If number of instructions are < SCH_THRESHOLD then
-        // no need to split inst list since it wont be
-        // scheduled anyway
-        if (curBB->size() <= SCH_THRESHOLD)
-        {
-            continue;
-        }
-
-        bool isFirstInst = true;
-        for (INST_LIST_ITER inst_it = curBB->begin();
-            inst_it != curBB->end();
-            inst_it++, isFirstInst = false)
-        {
-            G4_INST* curInst = (*inst_it);
-            bool isLabel = curInst->isLabel();
-
-            DepType depType = CheckBarrier(curInst);
-
-            if (depType != NODEP || isLabel)
-            {
-                // Current inst is a barrier so splice inst and
-                // push barrier to new BB. Insts post barrier are
-                // moved to yet another BB. CFG edges are adjusted
-                // accordingly.
-                G4_BB* barrierInstBB = NULL;
-                G4_BB* succEdgeInheritor = barrierInstBB;
-                if (isFirstInst == false)
-                {
-                    // If current inst is a label then it is
-                    // guaranteed to be first inst so no need to
-                    // create a new BB
-                    BB_LIST_ITER nextBB_it = bb_it;
-                    nextBB_it++;
-                    barrierInstBB = fg.createNewBB();
-                    fg.BBs.insert(nextBB_it, barrierInstBB);
-                    succEdgeInheritor = barrierInstBB;
-                }
-                INST_LIST_ITER nextInst_it = inst_it;
-                nextInst_it++;
-
-                if (isFirstInst == false)
-                {
-                    // Move barrier inst to its BB's instList
-                    barrierInstBB->splice(barrierInstBB->begin(), curBB, inst_it);
-                }
-
-                if (nextInst_it != curBB->end())
-                {
-                    BB_LIST_ITER nextBB_it = bb_it;
-                    nextBB_it++;
-
-                    if (succEdgeInheritor != NULL)
-                    {
-                        nextBB_it++;
-                    }
-
-                    G4_BB* postBarrierInstBB = fg.createNewBB();
-                    fg.BBs.insert(nextBB_it, postBarrierInstBB);
-
-                    // Move remaining instructions to post barrier BB
-                    postBarrierInstBB->splice(postBarrierInstBB->begin(), curBB, nextInst_it, curBB->end());
-
-                    if (isFirstInst == false)
-                    {
-                        // Connect BBs
-                        fg.addPredSuccEdges(barrierInstBB, postBarrierInstBB);
-                    }
-
-                    succEdgeInheritor = postBarrierInstBB;
-                }
-
-                // Connect succEdgeInheritor with all successors of current BB
-                for (BB_LIST_ITER succs_it = curBB->Succs.begin();
-                    succs_it != curBB->Succs.end();
-                    succs_it++)
-                {
-                    G4_BB* succ = (*succs_it);
-
-                    succEdgeInheritor->Succs.push_back(succ);
-
-                    // Iterate over preds list of successor, replacing
-                    // current BB with succEdgeInheritor
-                    for (BB_LIST_ITER pred_it = succ->Preds.begin();
-                        pred_it != succ->Preds.end();
-                        pred_it++)
-                    {
-                        if ((*pred_it) == curBB)
-                        {
-                            (*pred_it) = succEdgeInheritor;
-                        }
-                    }
-                }
-
-                curBB->Succs.clear();
-
-                if (isFirstInst == false)
-                {
-                    // Connect current BB with new BB with barrier
-                    fg.addPredSuccEdges(curBB, barrierInstBB);
-                }
-                else
-                {
-                    fg.addPredSuccEdges(curBB, succEdgeInheritor);
-                }
-
-                break;
-            }
-        }
-    }
-}
 
 // check if two operands occupy overlapping GRFs
 // we put them here instead of inside G4_Operand since this is only valid till after RA
@@ -198,13 +59,7 @@ static bool operandOverlap(G4_Operand* opnd1, G4_Operand* opnd2)
 void LocalScheduler::localScheduling()
 {
     DEBUG_VERBOSE("[Scheduling]: Starting...");
-
-    //#define ISOLATE_ON
-#ifdef ISOLATE_ON
-    isolateBarrierBBs();
-#endif
     BB_LIST_ITER ib(fg.BBs.begin()), bend(fg.BBs.end());
-
     MUST_BE_TRUE(ib != bend, ERROR_SCHEDULER);
 
     int buildDDD = 0, listSch = 0;
@@ -412,7 +267,7 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
     for (INST_LIST_ITER i = bb->begin(); i != bb->end(); ++i)
     {
         G4_INST* inst = *i;
-        MUST_BE_TRUE(inst != NULL, ERROR_UNKNOWN);
+        MUST_BE_TRUE(inst != nullptr, ERROR_UNKNOWN);
         if (inst->isLabel())
         {
             MUST_BE_TRUE(firstNonLabelInst, ERROR_UNKNOWN);
@@ -427,9 +282,8 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
     size_t scheduleInstSize = 0;
 
     INST_LIST_ITER inst_it = bb->begin();
-    Node * prevNode = NULL;
-    unsigned int HWThreadsPerEU
-        = m_options->getuInt32Option(vISA_HWThreadNumberPerEU);
+    Node * prevNode = nullptr;
+    unsigned HWThreadsPerEU = getBuilder()->getHWThreadNumberPerEU();
     for (size_t i = 0; i < scheduleSize; i++) {
         Node *currNode = scheduledNodes[i];
         for (G4_INST *inst : *currNode->getInstructions()) {
@@ -454,10 +308,8 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
         }
     }
 
-    size_t bbInstsSize = bb->size();
-    MUST_BE_TRUE(scheduleInstSize == bbInstsSize,
-        "Size of inst list is different before/after scheduling");
-    
+    assert(scheduleInstSize == bb->size() &&
+           "Size of inst list is different before/after scheduling");
 }
 
 bool Node::isTransitiveDep(Node* edgeDst)
@@ -692,38 +544,38 @@ static inline bool hasIndirection(G4_Operand *opnd, Gen4_Operand_Number opndNum)
 bool DDD::getBucketDescrs(Node *node, std::vector<BucketDescr>& BDvec)
 {
     bool hasIndir = false;
-
-    for (G4_INST *inst : node->instVec) 
+    for (G4_INST *inst : node->instVec)
     {
-	    // Iterate over all operands and create buckets.
-	    for (Gen4_Operand_Number opndNum
-	        : {Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3,
-	        Opnd_pred, Opnd_condMod, Opnd_implAccSrc, Opnd_implAccDst}) {
-	        G4_Operand *opnd = inst->getOperand(opndNum);
-	        // Skip if no operand or the operand is not touched by the instruction
-	        if (!opnd || !opnd->getBase()) {
-	            continue;
-	        }
-	        // FIXME: This is to emulate the original code. Not sure if it is OK
-	        if (opndNum == Opnd_src3 && inst->isSplitSend()) {
-	            getBucketsForOperand(inst, Opnd_src2, opnd, BDvec);
-	        } else {
-	            getBucketsForOperand(inst, opndNum, opnd, BDvec);
-	        }
-	        // Check if this operand is an indirect access
-	        hasIndir |= hasIndirection(opnd, opndNum);
-	    }
+        // Iterate over all operands and create buckets.
+        for (Gen4_Operand_Number opndNum
+            : {Opnd_dst, Opnd_src0, Opnd_src1, Opnd_src2, Opnd_src3,
+            Opnd_pred, Opnd_condMod, Opnd_implAccSrc, Opnd_implAccDst}) {
+            G4_Operand *opnd = inst->getOperand(opndNum);
+            // Skip if no operand or the operand is not touched by the instruction
+            if (!opnd || !opnd->getBase()) {
+                continue;
+            }
+            // FIXME: This is to emulate the original code. Not sure if it is OK
+            if (opndNum == Opnd_src3 && inst->isSplitSend()) {
+                getBucketsForOperand(inst, Opnd_src2, opnd, BDvec);
+            }
+            else {
+                getBucketsForOperand(inst, opndNum, opnd, BDvec);
+            }
+            // Check if this operand is an indirect access
+            hasIndir |= hasIndirection(opnd, opndNum);
+        }
 
-	    // Sends need an additional bucket
-	    if (inst->isSend()) {
-	        if (inst->getMsgDesc()->isScratchRW()) {
-	            BDvec.push_back(BucketDescr(SCRATCH_SEND_BUCKET, Mask(), Opnd_dst));
-	        } else {
-	            BDvec.push_back(BucketDescr(SEND_BUCKET, Mask(), Opnd_dst));
-	        }
-	    }
+        // Sends need an additional bucket
+        if (inst->isSend()) {
+            if (inst->getMsgDesc()->isScratchRW()) {
+                BDvec.push_back(BucketDescr(SCRATCH_SEND_BUCKET, Mask(), Opnd_dst));
+            }
+            else {
+                BDvec.push_back(BucketDescr(SEND_BUCKET, Mask(), Opnd_dst));
+            }
+        }
     }
-
 
     return hasIndir;
 }
@@ -976,9 +828,9 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
     const LatencyTable &lt, G4_Kernel *k)
     : mem(m), m_options(options), LT(lt), kernel(k)
 {
-    Node* lastBarrier = NULL;
+    Node* lastBarrier = nullptr;
+    HWthreadsPerEU = kernel->fg.builder->getHWThreadNumberPerEU();
     totalGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
-    HWthreadsPerEU = m_options->getuInt32Option(vISA_HWThreadNumberPerEU);
     useMTLatencies = m_options->getOption(vISA_useMultiThreadedLatencies);
     bool BTIIsRestrict = m_options->getOption(vISA_ReorderDPSendToDifferentBti);
 
@@ -1126,7 +978,7 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
                 }
             }
 
-            if (transitiveEdgeToBarrier == false && lastBarrier != NULL)
+            if (transitiveEdgeToBarrier == false && lastBarrier != nullptr)
             {
                 // Insert edge to barrier and set flag
                 createAddEdge(node, lastBarrier, lastBarrier->isBarrier());
@@ -1505,8 +1357,6 @@ void DDD::createAddEdge(Node* pred, Node* succ, DepType d)
     succ->predsNotScheduled++;
 
     succ->preds.emplace_back(pred, d, edgeLatency);
-
-    return;
 }
 
 
@@ -1520,7 +1370,7 @@ Edge *getDepBetween(Node *pro, Node *con)
             return &dep;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 // Debug function for generating the dependency graph in dot format
@@ -1668,17 +1518,9 @@ void DDD::dumpNodes(G4_BB *bb)
 
 // Helper comparator for priority queue. Queue top is for lowest earliest cycle.
 struct earlyCmp {
-    bool sequentialSched;
-    earlyCmp(bool SS) : sequentialSched(SS) { }
+    earlyCmp() = default;
     bool operator()(const Node *n1, const Node *n2)
     {
-#if (defined(_DEBUG) || defined(_INTERNAL))
-        if (sequentialSched)
-        {
-            return ((*n1->getInstructions()).front()->getLocalId()
-                > (*n2->getInstructions()).front()->getLocalId());
-        }
-#endif
         return n1->getEarliest() > n2->getEarliest();
     }
 };
@@ -1686,22 +1528,9 @@ struct earlyCmp {
 // Helper comparator for priority queue. Top has highest priority (critical path).
 struct criticalCmp
 {
-    bool sequentialSched;
-    criticalCmp(bool SS)
-    {
-        sequentialSched = SS;
-    }
+    criticalCmp() = default;
     bool operator()(const Node *n1, const Node *n2)
     {
-#if (defined(_DEBUG) || defined(_INTERNAL))
-        // If we want to produce the original order we choose instructions
-        // with the lowermost number.
-        if (sequentialSched)
-        {
-            return ((*n1->getInstructions()).front()->getLocalId()
-                > (*n2->getInstructions()).front()->getLocalId());
-        }
-#endif
         // Critical Path Heuristic
         int prio1 = n1->getPriority();
         int prio2 = n2->getPriority();
@@ -1752,13 +1581,12 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
     // All nodes in root set have no dependency 
     // so they can be immediately scheduled,
     // and hence are added to readyList.
-    bool SS = m_options->getOption(vISA_SequentialScheduling);
-    std::priority_queue<Node *, std::vector<Node *>, criticalCmp> readyList(SS);
+    std::priority_queue<Node *, std::vector<Node *>, criticalCmp> readyList;
 
     // Nodes with their predecessors scheduled are pushed into the preReadyQueue
     // They only get pushed into the real readyList if they are ready to issue,
     // that is their earliest cycle is >= than the current schedule cycle.
-    std::priority_queue<Node *, std::vector<Node *>, earlyCmp> preReadyQueue(SS);
+    std::priority_queue<Node *, std::vector<Node *>, earlyCmp> preReadyQueue;
 
     collectRoots();
     for (auto N : Roots) {
@@ -1784,16 +1612,11 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
             readyList.push(readyCandidate);
             preReadyQueue.pop();
             readyCandidate = preReadyQueue.empty() ? nullptr : preReadyQueue.top();
-            // Insert only 1 node if we are building a sequential schedule
-#if (defined(_DEBUG) || defined(_INTERNAL))
-            if (m_options->getOption(vISA_SequentialScheduling))
-                break;
-#endif
         }
         // Nothing to issue at this cycle, increment scheduler clock
         if (readyList.empty())
         {
-            // readyCandidate is non-NULL. Proof: If it was NULL, then both
+            // readyCandidate is not nullptr. Proof: If it was nullptr, then both
             // preReadyQueue and readyList would be empty. But this cannot
             // happen because the while() loop will only enter if at least
             // one of them is non-empty.
@@ -1841,7 +1664,6 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
                     readyList.push(nodes);
                 }
             }
-            //std::cout << "\n";
         }
         // Avoid WAW subreg hazard by skipping nodes that cause a WAW subreg
         // hazard with the lastScheduled instruction.
@@ -1898,12 +1720,9 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
         // Set the cycle at which this node is scheduled.
         scheduled->schedTime = currCycle;
 
-        for (int i = 0; i < (int)(scheduled->succs.size()); i++)
+        for (auto &curSucc : scheduled->succs)
         {
-
-            Edge& curSucc = scheduled->succs[i];
             Node *succ = curSucc.getNode();
-
             // Recompute the earliest time for each successor.
             if (scheduled->isLabel())
             {
@@ -1938,10 +1757,12 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
     }
 
     // Sanity check: Make sure all nodes are scheduled
+#if defined(_DEBUG)
     for (auto node : allNodes)
     {
         assert(node->schedTime != UINT_MAX && "Node not scheduled!");
     }
+#endif
     return currCycle;
 }
 
@@ -2176,7 +1997,7 @@ static uint16_t calculateOccupancy(G4_INST *inst) {
 Node::Node(uint32_t id, G4_INST *inst, Edge_Allocator& depEdgeAllocator,
     const LatencyTable &LT)
     : nodeID(id), priority(PRIORITY_UNINIT), earliest(0),
-    occupancy(0), lastSchedPred(NULL),
+    occupancy(0), lastSchedPred(nullptr),
     schedTime(0), predsNotScheduled(0)
 {
     schedTime = UINT_MAX;
@@ -2271,9 +2092,6 @@ void DDD::DumpDotFile(const char *name, const char* appendix){
         for (; iEdge != endEdges; ++iEdge)
         {
             ofile << "\tID_" << node->nodeID << " -> " << "ID_" << (*iEdge).getNode()->nodeID;
-#ifdef _DEBUG
-            //ofile << "\t[label = \"" << (*iEdge)->dt << "\"]" << endl;
-#endif
         }
     }
     ofile << " }" << std::endl;

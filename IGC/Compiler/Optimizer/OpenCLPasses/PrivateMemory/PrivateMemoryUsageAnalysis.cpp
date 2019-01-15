@@ -48,6 +48,7 @@ PrivateMemoryUsageAnalysis::PrivateMemoryUsageAnalysis()
   : ModulePass(ID), m_hasPrivateMem(false)
 {
     initializePrivateMemoryUsageAnalysisPass(*PassRegistry::getPassRegistry());
+    
 }
 
 bool PrivateMemoryUsageAnalysis::runOnModule(Module &M)
@@ -115,7 +116,6 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function &F)
     if (!m_hasPrivateMem)
     {
         CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
         // This is the condition that double emulation is used.
         if ((IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
              (pCtx->m_DriverInfo.NeedFP64() && !pCtx->platform.supportFP64())))
@@ -123,7 +123,8 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function &F)
             m_hasPrivateMem = true;
         }
     }
-        
+
+
     if (m_hasPrivateMem)
     {
         implicitArgs.push_back(ImplicitArg::PRIVATE_BASE);
@@ -139,4 +140,8 @@ void PrivateMemoryUsageAnalysis::visitAllocaInst(llvm::AllocaInst &AI)
 
     // If we encountered Alloca, then the function uses private memory
     m_hasPrivateMem = true;
+}
+
+void PrivateMemoryUsageAnalysis::visitBinaryOperator(llvm::BinaryOperator &I)
+{
 }

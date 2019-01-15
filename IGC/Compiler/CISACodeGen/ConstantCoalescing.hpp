@@ -54,9 +54,10 @@ struct BufChunk
 {
     llvm::Value*       bufIdxV;     // buffer index when it is indirect
     llvm::Value*       baseIdxV;    // base-address index when it is indirect
-    uint         addrSpace;         // resource address space when it is direct 
-    uint         chunkStart;        // The offset of the first dword in chunk
-    uint         chunkSize;
+    uint         addrSpace;         // resource address space when it is direct
+    uint         elementSize;       // size in bytes of the basic data element
+    uint         chunkStart;        // offset of the first data element in chunk in units of elementSize
+    uint         chunkSize;         // chunk size in elements
     llvm::Instruction* chunkIO;     // coalesced load
 };
 
@@ -64,7 +65,7 @@ class ConstantCoalescing : public llvm::FunctionPass
 {
 public:
     static char ID;
-    ConstantCoalescing();     
+    ConstantCoalescing();
 
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
     {
@@ -243,7 +244,7 @@ private:
     void   MoveExtracts(BufChunk *cov_chunk, llvm::Instruction *load, uint start_adj);
     llvm::Value* FormChunkAddress(BufChunk *chunk);
     void   CombineTwoLoads(BufChunk *cov_chunk, llvm::Instruction *load, uint eltid, uint numelt);
-    llvm::Instruction *CreateChunkLoad(llvm::Instruction *load, BufChunk *chunk, uint eltid);
+    llvm::Instruction *CreateChunkLoad(llvm::Instruction *load, BufChunk *chunk, uint eltid, uint alignment);
     llvm::Instruction *AddChunkExtract(llvm::Instruction *load, uint offset);
     llvm::Instruction *FindOrAddChunkExtract(BufChunk *cov_chunk, uint eltid);
     llvm::Instruction *EnlargeChunkAddExtract(BufChunk *cov_chunk, uint size_adj, uint eltid);
@@ -251,12 +252,12 @@ private:
     llvm::Instruction *CreateSamplerLoad(llvm::Value* index, uint addrSpace);
     void MergeUniformLoad(llvm::Instruction *load,
         llvm::Value *bufIdxV, uint addrSpace,
-        llvm::Value *eltIdxV, uint eltid,
+        llvm::Value *eltIdxV, uint offsetInBytes,
         uint maxEltPlus,
         std::vector<BufChunk*> &chunk_vec);
     void MergeScatterLoad(llvm::Instruction *load,
         llvm::Value *bufIdxV, uint bufid,
-        llvm::Value *eltIdxV, uint eltid,
+        llvm::Value *eltIdxV, uint offsetInBytes,
         uint maxEltPlus,
         std::vector<BufChunk*> &chunk_vec);
     void ScatterToSampler(llvm::Instruction *load,
@@ -272,6 +273,9 @@ private:
 
     bool   IsSamplerAlignedAddress(Value* addr) const;
     Value* GetSamplerAlignedAddress(Value* inst);
+
+    uint GetAlignment(Instruction* load) const;
+    void SetAlignment(Instruction* load, uint alignment);
 };
 
 }

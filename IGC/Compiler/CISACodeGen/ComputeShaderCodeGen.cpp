@@ -136,10 +136,9 @@ void CComputeShader::CreateThreadPayloadData(void* & pThreadPayload, uint& threa
     typedef uint ThreadPayloadEntry;
 
     uint alignedVal = EltUnit(SIZE_OF_DQWORD).Count() * sizeof(DWORD); // Oct Element is 8 DWORDS
-    threadPayloadSize = iSTD::Align(dimX * dimY * sizeof(ThreadPayloadEntry), alignedVal);
 
-    // Allocate additional space for cross-thread constant data (constants set by driver).
-    threadPayloadSize += m_NOSBufferSize;
+    // m_NOSBufferSize is the additional space for cross-thread constant data (constants set by driver).
+    threadPayloadSize = iSTD::Align( dimX * dimY * sizeof( ThreadPayloadEntry ) + m_NOSBufferSize, alignedVal );
 
     assert(pThreadPayload == nullptr && "Thread payload should be a null variable");
 

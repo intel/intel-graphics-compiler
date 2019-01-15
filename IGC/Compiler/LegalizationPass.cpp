@@ -1330,12 +1330,6 @@ void Legalization::RecursivelyPromoteInsertElementUses(Value *I, Value *packedVe
         {
             markToRemove(IEinst);
         }
-        else
-        {
-            // ...otherwise it means we haven't been able to legalize some instruction
-            // down the chain.
-            assert(0 && "Unable to legalize some of i1 uses!");
-        }
     }
     else if (ExtractElementInst* EEinst = dyn_cast<ExtractElementInst>(I))
     {

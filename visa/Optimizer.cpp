@@ -5012,6 +5012,29 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
             if (inst->isOptBarrier())
             {
                 values.clear();
+                return;
+            }
+
+            auto hasIndirectGather = [](G4_INST *inst)
+            {
+                for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
+                {
+                    auto src = inst->getSrc(i);
+                    if (src && src->isSrcRegRegion() && src->asSrcRegRegion()->isIndirect()
+                        && src->asSrcRegRegion()->getRegion()->isRegionWH())
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            if (hasIndirectGather(inst))
+            {
+                // optimization is likely unprofitable due to high address register pressure in this case.
+                // more importantly, it may actually cause RA to fail since we don't spill physical a0.0
+                values.clear();
+                return;
             }
 
             G4_DstRegRegion* dst = inst->getDst();
@@ -5264,8 +5287,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         }
                         auto use = inst->use_front();
                         G4_INST* useInst = use.first;
-                        Gen4_Operand_Number num = use.second;
-                        if (useInst->isSplitSend() && num == Opnd_src3)
+                        if (useInst->isSend())
                         {
                             return true;
                         }
@@ -5278,7 +5300,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     G4_INST* valInst = values.findValue(inst);
                     if (valInst != nullptr)
                     {
-#ifdef DEBUG_VERBOSE_ON
+#if 0
                         std::cout << "can replace \n";
                         inst->emit(std::cout);
                         std::cout << "\n with \n";
@@ -5287,16 +5309,14 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 #endif
                         for (auto I = inst->use_begin(), E = inst->use_end(); I != E; ++I)
                         {
-                            // each use is in the form of A0(0,0)<0;1,0>:ud,
-                            // in src3 of a split send
+                            // each use is in the form of A0(0,0)<0;1,0>:ud in a send
                             G4_INST* useInst = I->first;
                             Gen4_Operand_Number num = I->second;
-                            MUST_BE_TRUE(useInst->isSplitSend() && num == Opnd_src3,
-                                "use inst must be a split send inst");
+                            assert(useInst->isSend() && "use inst must be a send");
                             G4_SrcRegRegion* newExDesc = builder.createSrcRegRegion(
                                 Mod_src_undef, Direct, valInst->getDst()->getBase(), 0, 0,
                                 builder.getRegionScalar(), Type_UD);
-                            useInst->setSrc(newExDesc, 3);
+                            useInst->setSrc(newExDesc, useInst->getSrcNum(num));
                         }
                         iter = bb->erase(iter);
                         continue;
@@ -5308,6 +5328,9 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                         inst->emit(std::cout);
                         std::cout << "\n";
 #endif
+                        // this is necessary since for msg desc we always the physical a0.0,
+                        // so a new inst will invalidate the previous one
+                        values.deleteValue(inst);
                         values.addValue(inst);
                     }
                 }

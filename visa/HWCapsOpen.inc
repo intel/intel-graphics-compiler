@@ -285,14 +285,14 @@
     }
 
     bool doAccSub() const
-	{
-		return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN11;
-	}
+    {
+        return getPlatformGeneration(getGenxPlatform()) >= PlatformGen::GEN11;
+    }
 
     bool hasNFType() const
-	{
-		return getGenxPlatform() >= GENX_ICL;
-	}
+    {
+        return getGenxPlatform() >= GENX_ICL;
+    }
 
     void getSSIDBits(uint32_t& width, uint32_t& start) const
     {
@@ -309,15 +309,15 @@
     }
 
     bool encodeAccRegSelAsAlign1() const
-	{
-		return getGenxPlatform() >= GENX_ICL;
-	}
+    {
+        return getGenxPlatform() >= GENX_ICL;
+    }
 
     bool fuseTypedWrites() const
-	{
-		return getOption(vISA_FuseTypedWrites) || 
-			getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN11;
-	}
+    {
+        return getOption(vISA_FuseTypedWrites) || 
+               getPlatformGeneration(getGenxPlatform()) == PlatformGen::GEN11;
+    }
 
     bool hasSIMD16TypedRW() const
     {
@@ -445,5 +445,11 @@
         return getGenxPlatform() == GENX_SKL && getOption(vISA_alignBindlessSampler);
     }
 
+
+    unsigned getHWThreadNumberPerEU() const
+    {
+        unsigned Val = getOptions()->getuInt32Option(vISA_HWThreadNumberPerEU);
+        return (Val != 0) ? Val : 7;
+    }
 
     // end HW capabilities

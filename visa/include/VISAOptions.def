@@ -126,7 +126,6 @@ DEF_VISA_OPTION(vISA_VerifyAugmentation,    ET_BOOL, "-verifyaugmentation", UNUS
 
 //=== scheduler options ===
 DEF_VISA_OPTION(vISA_LocalScheduling,       ET_BOOL, "-noschedule",      UNUSED, true)
-DEF_VISA_OPTION(vISA_SequentialScheduling,  ET_BOOL, "-seqschedule",     UNUSED, false)
 DEF_VISA_OPTION(vISA_preRA_Schedule,        ET_BOOL, "-nopresched",      UNUSED, true)
 DEF_VISA_OPTION(vISA_preRA_ScheduleForce,   ET_BOOL, "-presched",        UNUSED, false)
 DEF_VISA_OPTION(vISA_preRA_ScheduleCtrl,      ET_INT32, "-presched-ctrl",      "USAGE: -presched-ctrl <ctrl>\n", 4)
@@ -147,7 +146,7 @@ DEF_VISA_OPTION(vISA_WAWSubregHazardAvoidance,    ET_BOOL, "-noWAWSubregHazardAv
 DEF_VISA_OPTION(vISA_useMultiThreadedLatencies,   ET_BOOL, "-dontUseMultiThreadedLatencies", UNUSED, true)
 DEF_VISA_OPTION(vISA_SchedulerWindowSize,         ET_INT32, "-schedulerwindow", "USAGE: -schedulerwindow <window-size>\n", 4096)
 DEF_VISA_OPTION(vISA_UnifiedSendCycle,  ET_INT32, "-unifiedSendCycle",      "USAGE: -unifiedSendCycle <cycle>\n", 0)
-DEF_VISA_OPTION(vISA_HWThreadNumberPerEU, ET_INT32, "-HWThreadNumberPerEU", "USAGE: -HWThreadNumberPerEU <num>\n",  7)
+DEF_VISA_OPTION(vISA_HWThreadNumberPerEU, ET_INT32, "-HWThreadNumberPerEU", "USAGE: -HWThreadNumberPerEU <num>\n",  0)
 DEF_VISA_OPTION(vISA_NoAtomicSend, ET_BOOL, "-noAtomicSend", UNUSED, false)
 
 

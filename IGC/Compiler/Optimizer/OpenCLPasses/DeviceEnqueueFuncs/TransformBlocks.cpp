@@ -128,7 +128,7 @@ namespace //Anonymous
         SPIRV_MAX_NUM_SUB_GROUPS,
         NUM_FUNCTIONS_WITH_BLOCK_ARGS
     };
-
+    
     const std::map<DeviceEnqueueFunction, const char*>  DeviceEnqueueFunctionNames = {
         { DeviceEnqueueFunction::ENQUEUE_KERNEL, "_Z14enqueue_kernel" },
         { DeviceEnqueueFunction::ENQUEUE_KERNEL_BASIC, "__enqueue_kernel_basic" },
@@ -1436,16 +1436,16 @@ namespace //Anonymous
 
                     for (auto user : func.users()) {
                         if (auto callInst = dyn_cast<llvm::CallInst>(user)) {
-                            //for each call to enqueue_kernel
+                        //for each call to enqueue_kernel
                             functionsToInline.insert(callInst->getParent()->getParent());
                         }
                     }
 
                     for (auto func : functionsToInline)
-                    {
-                        //try to inline the caller
+                        {
+                            //try to inline the caller
                         inlined = InlineToParents(func, dataContext) || inlined;
-                    }
+                        }
                     changed = inlined || changed;
 
                 } while (inlined); // if callers are inlined, restart loop with new users list
@@ -2228,16 +2228,16 @@ namespace //Anonymous
         Value* block_descriptor_val = ConstantPointerNull::get(builder.getInt8PtrTy());
         if (_captureStructType) {
             block_descriptor_val = builder.CreateAlloca(_captureStructType, nullptr, ".block_struct");
-            auto dl = getFunction()->getParent()->getDataLayout();
-            auto blockStructAlign = getPrefStructAlignment(_captureStructType, &dl);
+        auto dl = getFunction()->getParent()->getDataLayout();
+        auto blockStructAlign = getPrefStructAlignment(_captureStructType, &dl);
             cast<AllocaInst>(block_descriptor_val)->setAlignment(blockStructAlign);
-            //IRBuilder: store arguments to structure
-            StoreInstBuilder storeBuilder(builder);
-            for (unsigned argIdx = 0; argIdx < getCaptureIndicies().size(); ++argIdx)
-            {
-                auto srcArg = captures[argIdx];
-                storeBuilder.Store(block_descriptor_val, srcArg, getCaptureIndicies()[argIdx]);
-            }
+        //IRBuilder: store arguments to structure
+        StoreInstBuilder storeBuilder(builder);
+        for (unsigned argIdx = 0; argIdx < getCaptureIndicies().size(); ++argIdx)
+        {
+            auto srcArg = captures[argIdx];
+            storeBuilder.Store(block_descriptor_val, srcArg, getCaptureIndicies()[argIdx]);
+        }
         }
 
         //IRBuilder: call block_invoke

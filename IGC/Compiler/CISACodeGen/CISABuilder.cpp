@@ -37,7 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/secure_mem.h"
 #include "common/secure_string.h"
 #include "common/shaderOverride.hpp"
-
+#include "inc/common/sku_wa.h" 
 #include <iStdLib/utility.h>
 
 #if !defined(_WIN32)
@@ -3627,7 +3627,8 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         vbuilder->SetOption(vISA_ifCvt, false);
     }
 
-    if (IGC_IS_FLAG_DISABLED(EnableVISAStructurizer))
+    if (IGC_IS_FLAG_DISABLED(EnableVISAStructurizer) || 
+        m_program->m_Platform->getWATable().Wa_1407528679 != 0)
     {
         vbuilder->SetOption(vISA_EnableStructurizer, false);
     }

@@ -255,7 +255,7 @@ bool WIAnalysis::runOnFunction(Function &F) {
   if (!IGC_IS_FLAG_ENABLED(DisableUniformAnalysis))
   {
     // Compute the  first iteration of the WI-dep according to ordering
-    // intstructions this ordering is generally good (as it ususally correlates
+    // instructions this ordering is generally good (as it ususally correlates
     // well with dominance).
     inst_iterator it = inst_begin(F);
     inst_iterator  e = inst_end(F);

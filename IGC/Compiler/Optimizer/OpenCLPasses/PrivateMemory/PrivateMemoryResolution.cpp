@@ -948,7 +948,7 @@ bool PrivateMemoryResolution::resolveAllocaInstuctions(bool stackCall)
         Value* bufferOffset = builder.CreateMul(simdSize, ConstantInt::get(typeInt32, scalarBufferOffset), VALUE_NAME(pAI->getName() + ".SIMDBufferOffset"));
         Value* bufferOffsetForThread = builder.CreateAdd(perThreadOffset, bufferOffset, VALUE_NAME(pAI->getName() + ".bufferOffsetForThread"));
         Value* perLaneOffset = isUniform ? builder.getInt32(0) : simdLaneId;
-        perLaneOffset = builder.CreateMul(simdLaneId, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
+        perLaneOffset = builder.CreateMul(perLaneOffset, ConstantInt::get(typeInt32, bufferSize), VALUE_NAME("perLaneOffset"));
         Value* totalOffset = builder.CreateAdd(bufferOffsetForThread, perLaneOffset, VALUE_NAME(pAI->getName() + ".totalOffset"));
         Value* privateBufferGEP = builder.CreateGEP(privateMemArg, totalOffset, VALUE_NAME(pAI->getName() + ".privateBufferGEP"));
         Value* privateBuffer = builder.CreatePointerCast(privateBufferGEP, pAI->getType(), VALUE_NAME(pAI->getName() + ".privateBuffer"));

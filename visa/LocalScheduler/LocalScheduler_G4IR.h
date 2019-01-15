@@ -323,6 +323,7 @@ public:
     void dumpSchedule(G4_BB *bb);
     G4_BB *getBB() const { return bb; };
     G4_Kernel *getKernel() const { return kernel; }
+    IR_Builder *getBuilder() const { return kernel->fg.builder; }
 };
 
 class LocalScheduler {
@@ -331,7 +332,6 @@ class LocalScheduler {
 
     // send latencies are now defined in FFLatency in LIR.cpp
     void EmitNode(Node *);
-    void isolateBarrierBBs();
 
 public:
     LocalScheduler(FlowGraph &flowgraph, Mem_Manager &m)

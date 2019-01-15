@@ -288,12 +288,12 @@ public:
 
 class LdMSIntrinsic : public SamplerLoadIntrinsic {
 public:
-    inline Value* getImmOffset(unsigned int i) 
-    { 
-        return getOperand(getNumArgOperands() - 3 + i); 
+    inline Value* getImmOffset(unsigned int i)
+    {
+        return getOperand(getNumArgOperands() - 3 + i);
     }
-    inline void setImmOffset(unsigned int i, Value* val) 
-    { 
+    inline void setImmOffset(unsigned int i, Value* val)
+    {
         return setOperand(getNumArgOperands() - 3 + i, val);
     }
     inline Value* getCoordinate(unsigned int i)
@@ -358,17 +358,17 @@ public:
 class SampleIntrinsic : public GenIntrinsicInst {
 public:
     inline Value* getSamplerValue() const
-    { 
+    {
         unsigned int index = getNumOperands() - 5;
         if(IsLODInst())
         {
             index = getNumOperands() - 2;
         }
-        return getOperand(index); 
+        return getOperand(index);
     }
 
     inline Value* getTextureValue() const
-    { 
+    {
         unsigned int index = getTextureIndex();
         return getOperand(index);
     }
@@ -430,7 +430,7 @@ public:
         default:
             break;
         }
-        return false; 
+        return false;
     }
 
     // Methods for support type inquiry through isa, cast, and dyn_cast:
@@ -484,6 +484,12 @@ public:
     }
     inline unsigned int getAlignment() const {
         return static_cast<unsigned int>(cast<ConstantInt>(getAlignmentValue())->getZExtValue());
+    }
+
+    inline void setAlignment(unsigned int alignment)
+    {
+        Value* newAlignment = ConstantInt::get(getOperand(2)->getType(), alignment);
+        setOperand(2, newAlignment);
     }
 
     inline void setOffsetValue(Value* V){

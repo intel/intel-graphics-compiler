@@ -2114,7 +2114,7 @@ inline SampleD_DC_FromCubeParams LLVM3DBuilder<preserveNames, T, Inserter>::Prep
         if (shouldSplitBB)
         {
             assert(currentBlock->getTerminator());
-            splitBlock = currentBlock->splitBasicBlock(this->GetInsertPoint());
+            splitBlock = currentBlock->splitBasicBlock(this->GetInsertPoint()->getNextNode());
             currentBlock->getTerminator()->eraseFromParent();
             this->SetInsertPoint(currentBlock);
         }
