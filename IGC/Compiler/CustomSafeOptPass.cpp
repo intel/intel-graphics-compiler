@@ -367,6 +367,23 @@ void CustomSafeOptPass::visitCallInst(CallInst &C)
 // %45 = insertelement <2 x half>undef, %43, 0
 // %46 = insertelement <2 x half>%45, %44, 1
 // %51 = bitcast <2 x half> %46 to float
+//
+// or if the f32tof16 are from fpext half:
+//
+// % src0_s = fpext half %res_s to float
+// % src0_s2 = fpext half %res_s1 to float
+// % 2 = call fast float @llvm.genx.GenISA.f32tof16.rtz(float %src0_s)
+// % 3 = call fast float @llvm.genx.GenISA.f32tof16.rtz(float %src0_s2)
+// % 4 = bitcast float %2 to i32
+// % 5 = bitcast float %3 to i32
+// % addres_s = shl i32 % 4, 16
+// % mulres_s = add i32 %addres_s, % 5
+// % 6 = bitcast i32 %mulres_s to float
+// into
+// % 2 = insertelement <2 x half> undef, half %res_s1, i32 0, !dbg !113
+// % 3 = insertelement <2 x half> % 2, half %res_s, i32 1, !dbg !113
+// % 4 = bitcast <2 x half> % 3 to float, !dbg !113
+
 void CustomSafeOptPass::visitf32tof16(llvm::CallInst* inst)
 {
     if (!inst->hasOneUse())
@@ -417,13 +434,30 @@ void CustomSafeOptPass::visitf32tof16(llvm::CallInst* inst)
         return;
     }
 
+    Value* loVal = nullptr;
+    Value* hiVal = nullptr;
+
+    FPExtInst* extInstLo = dyn_cast<FPExtInst>(inst->getOperand(0));
+    FPExtInst* extInstHi = dyn_cast<FPExtInst>(valueHi->getOperand(0));
+
     IRBuilder<> builder(lastValue);
     Type* funcType[] = { Type::getHalfTy(builder.getContext()), Type::getFloatTy(builder.getContext()) };
-    Function* f32tof16_rtz = GenISAIntrinsic::getDeclaration(inst->getParent()->getParent()->getParent(),
-        GenISAIntrinsic::GenISA_ftof_rtz, funcType);
-    Value* loVal = builder.CreateCall(f32tof16_rtz, inst->getArgOperand(0));
-    Value* hiVal = builder.CreateCall(f32tof16_rtz, valueHi->getArgOperand(0));
     Type* halfx2 = VectorType::get(Type::getHalfTy(builder.getContext()), 2);
+
+    if (extInstLo && extInstHi &&
+        extInstLo->getOperand(0)->getType()->isHalfTy() &&
+        extInstHi->getOperand(0)->getType()->isHalfTy())
+    {
+        loVal = extInstLo->getOperand(0);
+        hiVal = extInstHi->getOperand(0);
+    }
+    else
+    {
+        Function* f32tof16_rtz = GenISAIntrinsic::getDeclaration(inst->getParent()->getParent()->getParent(),
+            GenISAIntrinsic::GenISA_ftof_rtz, funcType);
+        loVal = builder.CreateCall(f32tof16_rtz, inst->getArgOperand(0));
+        hiVal = builder.CreateCall(f32tof16_rtz, valueHi->getArgOperand(0));
+    }
     Value* vector = builder.CreateInsertElement(UndefValue::get(halfx2), loVal, builder.getInt32(0));
     vector = builder.CreateInsertElement(vector, hiVal, builder.getInt32(1));
     vector = builder.CreateBitCast(vector, lastValue->getType());
