@@ -2447,13 +2447,13 @@ int VISAKernelImpl::AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *p
                ( opcode == ISA_DIVM ) ) )
         {
             status = m_builder->translateVISAArithmeticDoubleInst(opcode, executionSize, emask, g4Pred,
-                satMode, NULL, (G4_DstRegRegion *)tmpDst->g4opnd, src0->g4opnd, src1->g4opnd);   // IEEE
+                satMode, (G4_DstRegRegion *)tmpDst->g4opnd, src0->g4opnd, src1->g4opnd);   // IEEE
         }
         else if ( tmpDst->g4opnd->getType() == Type_DF && opcode == ISA_INV )
         {
             // src0_opnd is divisor
             status = m_builder->translateVISAArithmeticDoubleInst(opcode, executionSize, emask, g4Pred,
-                satMode, NULL, (G4_DstRegRegion *)tmpDst->g4opnd, NULL, src0->g4opnd); // IEEE
+                satMode, (G4_DstRegRegion *)tmpDst->g4opnd, NULL, src0->g4opnd); // IEEE
         }
         else if ( tmpDst->g4opnd->getType() == Type_F && opcode == ISA_DIVM )
         {

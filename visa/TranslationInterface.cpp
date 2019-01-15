@@ -440,7 +440,7 @@ G4_Declare* IR_Builder::getImmDcl(G4_Imm* val, int numElt)
 
 int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_Exec_Size executionSize,
                                                   Common_VISA_EMask_Ctrl emask, G4_Predicate *predOpnd,
-                                                  bool saturate, G4_CondMod* condMod, G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd)
+                                                  bool saturate, G4_DstRegRegion *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd)
 {
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -480,6 +480,9 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
             loopCount = 2;
         }
     }
+
+    bool noDstMove = instExecSize >= 4 && !saturate && !predOpnd && isOpndAligned(dstOpnd, 32) && 
+        dstOpnd->getRegAccess() == Direct && dstOpnd->getHorzStride() == 1;
 
     unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
  
@@ -546,10 +549,6 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
             NULL, instOpt, line_no); // mov (element_size) t7_dst_src1_opnd, src1RR {Q1/N1}
     }
 
-    // final result is at r8.noacc
-    G4_SrcRegRegion tsrc8_final(Mod_src_undef, Direct, t8->getRegVar(), 0, 0, getRegionStride1(), t8->getElemType() );
-    G4_SrcRegRegion *t8_src_opnd_final = createSrcRegRegion(tsrc8_final);
-
     // each madm only handles 4 channel double data
     Common_VISA_EMask_Ctrl currEMask = emask;
     for (uint16_t regIndex = 0; currEMask != vISA_NUM_EMASK && regIndex < loopCount;
@@ -561,7 +560,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
 
         G4_DstRegRegion tdst6(Direct, t6->getRegVar(), regIndex, 0, 1, Type_DF);
         G4_DstRegRegion tdst7(Direct, t7->getRegVar(), regIndex, 0, 1, Type_DF );
-        G4_DstRegRegion tdst8(Direct, t8->getRegVar(), regIndex, 0, 1, Type_DF );
+        G4_DstRegRegion tdst8(Direct, noDstMove ? dstOpnd->getBase() : t8->getRegVar(), 
+            noDstMove ? dstOpnd->getRegOff() + regIndex : regIndex, 0, 1, Type_DF );
         G4_DstRegRegion tdst9(Direct, t9->getRegVar(), regIndex, 0, 1, Type_DF );
         G4_DstRegRegion tdst10(Direct, t10->getRegVar(), regIndex, 0, 1, Type_DF );
         G4_DstRegRegion tdst11(Direct, t11->getRegVar(), regIndex, 0, 1, Type_DF );
@@ -574,7 +574,8 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
 
         G4_SrcRegRegion tsrc6(Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF );
         G4_SrcRegRegion tsrc7(Mod_src_undef, Direct, t7->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF );
-        G4_SrcRegRegion tsrc8(Mod_src_undef, Direct, t8->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF );
+        G4_SrcRegRegion tsrc8(Mod_src_undef, Direct, noDstMove ? dstOpnd->getBase() : t8->getRegVar(), 
+            noDstMove ? dstOpnd->getRegOff() + regIndex : regIndex, 0, srcRegionDesc, Type_DF);
         G4_SrcRegRegion tsrc9(Mod_src_undef, Direct, t9->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF );
         G4_SrcRegRegion tsrc10(Mod_src_undef, Direct, t10->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF );
         G4_SrcRegRegion tsrc11(Mod_src_undef, Direct, t11->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF );
@@ -583,7 +584,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
 
         G4_DstRegRegion *t8DstOpnd0 = createDstRegRegion(tdst8);
         G4_DstRegRegion *t8DstOpnd1 = createDstRegRegion(tdst8);
-        G4_DstRegRegion *t8DstOpnd2 = createDstRegRegion(tdst8);
+        G4_DstRegRegion *t8DstOpnd2 = createDstRegRegion(tdst8); 
         G4_DstRegRegion *t9DstOpnd0 = createDstRegRegion(tdst9);
         G4_DstRegRegion *t9DstOpnd1 = createDstRegRegion(tdst9);
         G4_DstRegRegion *t10DstOpnd0 = createDstRegRegion(tdst10);
@@ -592,6 +593,7 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
         G4_DstRegRegion *t12DstOpnd0 = createDstRegRegion(tdst12);
         G4_DstRegRegion *t12DstOpnd1 = createDstRegRegion(tdst12);
         G4_DstRegRegion *t13DstOpnd0 = createDstRegRegion(tdst13);
+
 
         // src oprands passed by function calls
         // for INV instruction, src0 should be 1, contant value.
@@ -822,11 +824,17 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
         inst = createInst(NULL, G4_endif, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
     }; //for loop
 
-    // make final copy to dst
-    // dst = r8:df     mov (instExecSize) dstOpnd, t8_src_opnd_final {Q1/N1}
-    t8_src_opnd_final->setAccRegSel(ACC_UNDEFINED);
-    inst = createInst(predOpnd, G4_mov, condMod, saturate, instExecSize, dstOpnd, t8_src_opnd_final,
-        NULL, Get_Gen4_Emask(emask, instExecSize), line_no);
+    if (!noDstMove)
+    { 
+        // make final copy to dst
+        // dst = r8:df     mov (instExecSize) dstOpnd, t8_src_opnd_final {Q1/N1}
+        // final result is at r8.noacc
+        G4_SrcRegRegion tsrc8_final(Mod_src_undef, Direct, t8->getRegVar(), 0, 0, getRegionStride1(), Type_DF);
+        G4_SrcRegRegion *t8_src_opnd_final = createSrcRegRegion(tsrc8_final);
+        t8_src_opnd_final->setAccRegSel(ACC_UNDEFINED);
+        inst = createInst(predOpnd, G4_mov, nullptr, saturate, instExecSize, dstOpnd, t8_src_opnd_final,
+            NULL, Get_Gen4_Emask(emask, instExecSize), line_no);
+    }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);

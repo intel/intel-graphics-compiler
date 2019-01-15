@@ -1779,7 +1779,6 @@ public:
                         Common_VISA_EMask_Ctrl emask,
                         G4_Predicate *predOpnd,
                         bool saturate,
-                        G4_CondMod* condMod,
                         G4_DstRegRegion *dstOpnd,
                         G4_Operand *src0Opnd,
                         G4_Operand *src1Opnd);
