@@ -27,6 +27,17 @@ source_group("SourceFiles" FILES ${IGA_EXE_CPP})
 
 set(IGA_EXE_DEFINITIONS _CONSOLE _LIB ${GED_BRANCH})
 
+if(MSVC)
+  add_compile_options(/EHsc)
+else(MSVC)
+  add_compile_options(-fexceptions)
+endif(MSVC)
+
+if(IGC_BUILD AND MSVC)
+    Set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${IGC_BUILD__TOOLS_OUTPUT_DIR})
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${IGC_BUILD__TOOLS_OUTPUT_DIR})
+endif(IGC_BUILD AND MSVC)
+
 add_executable(IGA_EXE ${IGA_EXE_CPP} ${IGA_EXE_HPP})
 if(MSVC_GENERATOR)
   # Due to all files being built in same directory (see upper-level cmake)
@@ -66,6 +77,25 @@ else()
   # This doesn't impact non-MSVC compilers.
   set(IGA_EXE_LINK_FLAGS "")
 endif()
+
+if(IGC_BUILD)
+  if (MSVC)
+    # Set up standard defines from the common WDK path.
+    # Without calling bs_set_wdk(), we might be getting these errors randomly between builds
+    #   error MSB4064: The "SpectreMitigation" parameter is not supported by the "CL" task.
+    #   error MSB4063: The "CL" task could not be initialized with its input parameters.
+    bs_set_wdk(IGA_EXE)
+    add_custom_command( TARGET IGA_EXE
+                        POST_BUILD
+                        COMMAND "${CMAKE_COMMAND}" -E copy $<TARGET_FILE:IGA_EXE> $<TARGET_FILE_DIR:IGA_DLL>
+                        COMMAND "${CMAKE_COMMAND}" -E copy $<TARGET_PDB_FILE:IGA_EXE> $<TARGET_FILE_DIR:IGA_DLL>
+    )
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "")
+  elseif (UNIX)
+    install(TARGETS IGA_EXE DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/bin COMPONENT igc-media)
+  endif (MSVC)
+endif(IGC_BUILD)
 
 # Set release build specific defines
 set_target_properties( IGA_EXE PROPERTIES
