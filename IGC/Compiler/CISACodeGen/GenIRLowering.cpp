@@ -524,6 +524,7 @@ bool GenIRLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
   unsigned pointerSizeInBits = m_ctx->getRegisterPointerSizeInBits(PtrTy->getAddressSpace());
   unsigned pointerMathSizeInBits = pointerSizeInBits;
   bool reducePointerArith = false;
+  bool canReduceNegativeOffset = false;
 
   // Detect if we can do intermediate pointer arithmetic in 32bits
   if (pointerMathSizeInBits == 64 && GEP->isInBounds()) {
@@ -548,6 +549,7 @@ bool GenIRLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
       }
       else if(GEP->getAddressSpace() == ADDRESS_SPACE_CONSTANT || !modMD->compOpt.GreaterThan2GBBufferRequired) 
       {
+          canReduceNegativeOffset = true;
           pointerMathSizeInBits = 32;
           reducePointerArith = true;
       }
@@ -743,7 +745,7 @@ bool GenIRLowering::lowerGetElementPtrInst(GetElementPtrInst *GEP,
   if(reducePointerArith)
   {
       assert(GEP->isInBounds() && "we can only do a zext if the GEP is inbound");
-      if(modMD->compOpt.GreaterThan2GBBufferRequired)
+      if(!canReduceNegativeOffset)
       {
           PointerValue = Builder->CreateZExt(PointerValue, BasePointer->getType());
       }
