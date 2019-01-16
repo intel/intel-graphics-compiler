@@ -456,18 +456,21 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
         // Check if it is argument of image or sampler
         IGC::IGCMD::MetaDataUtils::FunctionsInfoMap::iterator itr =
             m_pShader->GetMetaDataUtils()->findFunctionsInfoItem(const_cast<Function*>(m_pEntryFunc));
-        if (itr != m_pShader->GetMetaDataUtils()->end_FunctionsInfo())
+        CodeGenContext *pCtx = m_pShader->GetContext();
+        ModuleMetaData* modMD = pCtx->getModuleMetaData();
+        if (itr != m_pShader->GetMetaDataUtils()->end_FunctionsInfo() 
+            && modMD->FuncMD.find(const_cast<Function*>(m_pEntryFunc)) != modMD->FuncMD.end())
         {
             unsigned int explicitArgsNum = IGCLLVM::GetFuncArgSize(m_pEntryFunc) - itr->second->size_ImplicitArgInfoList();
             if (pArgument->getArgNo() < explicitArgsNum)
             {
                 const std::string typeStr = itr->second->getOpenCLArgBaseTypesItem(pArgument->getArgNo());
                 KernelArg::ArgType argType = KernelArg::calcArgType(pArgument, typeStr);
-
-                IGC::IGCMD::ResourceAllocMetaDataHandle resAllocMD = itr->second->getResourceAlloc();
-                assert(resAllocMD->size_ArgAllocs() == IGCLLVM::GetFuncArgSize(m_pEntryFunc) && "invalid argument allocs list");
-                IGC::IGCMD::ArgAllocMetaDataHandle argInfo = resAllocMD->getArgAllocsItem(pArgument->getArgNo());
-                unsigned int index = argInfo->isIndexHasValue() ? argInfo->getIndex() : 0;
+                FunctionMetaData *funcMD = &modMD->FuncMD[const_cast<Function*>(m_pEntryFunc)];
+                ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+                assert(resourceAlloc->argAllocMDList.size() == IGCLLVM::GetFuncArgSize(m_pEntryFunc) && "Invalid ArgAllocMDList");
+                ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[pArgument->getArgNo()];
+                unsigned int index = argAlloc->indexType;
 
                 switch (argType)
                 {
@@ -489,7 +492,7 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
                 case KernelArg::ArgType::IMAGE_2D_MSAA_ARRAY:
                 case KernelArg::ArgType::IMAGE_2D_MSAA_DEPTH_ARRAY:
                     // Found write image
-                    switch (argInfo->getType())
+                    switch (argAlloc->type)
                     {
                     case IGC::IGCMD::UAVResourceType:
                         // Found write image

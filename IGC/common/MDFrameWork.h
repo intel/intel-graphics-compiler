@@ -36,6 +36,21 @@ namespace IGC
 		int argDependency = 0;
 	};
 
+    struct ArgAllocMD
+    {
+        int type = -1;
+        int extensionType = -1;
+        int indexType = -1;
+    };
+
+    struct ResourceAllocMD
+    {
+        int uavsNumType = 0; //unused
+        int srvsNumType = 0; //unused
+        int samplersNumType = 0; //unused
+        std::vector<ArgAllocMD> argAllocMDList;
+    };
+
     struct ComputeShaderSecondCompileInputInfoMD
     {
         int runtimeVal_ResWidthHeight = 0;
@@ -58,6 +73,7 @@ namespace IGC
     {
         WorkGroupWalkOrderMD workGroupWalkOrder;
         FunctionTypeMD functionType = UnknownFunction;
+        ResourceAllocMD resourceAlloc;
         std::vector<unsigned> maxByteOffsets;
         bool IsInitializer = false;
         bool IsFinalizer = false;

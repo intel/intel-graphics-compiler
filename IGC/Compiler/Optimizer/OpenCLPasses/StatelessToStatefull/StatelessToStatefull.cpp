@@ -422,14 +422,15 @@ void StatelessToStatefull::visitCallInst(CallInst &I)
 			Value* offset = nullptr;
 			unsigned int baseArgNumber = 0;
 			if (pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber))
-			{
-
-				MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-				ResourceAllocMetaDataHandle resAllocMD = pMdUtils->getFunctionsInfoItem(F)->getResourceAlloc();
-				assert(resAllocMD->hasValue() && "Resource Allocation Information not present");
-				ArgAllocMetaDataHandle argInfo = resAllocMD->getArgAllocsItem(baseArgNumber);
-				Constant* resourceNumber = ConstantInt::get(int32Ty, argInfo->getIndex());
-				unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV, 0);
+			{		
+                ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+                FunctionMetaData *funcMD = &modMD->FuncMD[F];
+                ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+                assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+                ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[baseArgNumber];
+				
+                Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
+                unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV, 0);
                 setPointerSizeTo32bit(addrSpace, I.getParent()->getParent()->getParent());
 
 				if (Inst->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead)
@@ -481,13 +482,13 @@ void StatelessToStatefull::visitLoadInst(LoadInst &I)
     unsigned int baseArgNumber = 0;
     if(pointerIsPositiveOffsetFromKernelArgument(F, ptr, offset, baseArgNumber))
     {
+        ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+        FunctionMetaData *funcMD = &modMD->FuncMD[F];
+        ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+        assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+        ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[baseArgNumber];
 
-        MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-        ResourceAllocMetaDataHandle resAllocMD = pMdUtils->getFunctionsInfoItem(F)->getResourceAlloc();
-        assert(resAllocMD->hasValue() && "Resource Allocation Information not present");
-        ArgAllocMetaDataHandle argInfo = resAllocMD->getArgAllocsItem(baseArgNumber);
-
-        Constant* resourceNumber = ConstantInt::get(int32Ty, argInfo->getIndex());
+        Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
 
         unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV, 0);
         setPointerSizeTo32bit(addrSpace, I.getParent()->getParent()->getParent());
@@ -532,12 +533,12 @@ void StatelessToStatefull::visitStoreInst(StoreInst &I)
 
         if (dataVal != nullptr)
         {
-            MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-            ResourceAllocMetaDataHandle resAllocMD = pMdUtils->getFunctionsInfoItem(F)->getResourceAlloc();
-            assert(resAllocMD->hasValue() && "Resource Allocation Information not present");
-            ArgAllocMetaDataHandle argInfo = resAllocMD->getArgAllocsItem(baseArgNumber);
-
-            Constant* resourceNumber = ConstantInt::get(int32Ty, argInfo->getIndex());
+            ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+            FunctionMetaData *funcMD = &modMD->FuncMD[F];
+            ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+            assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+            ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[baseArgNumber];
+            Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
 
             unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV, 0);
             setPointerSizeTo32bit(addrSpace, I.getParent()->getParent()->getParent());

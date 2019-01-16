@@ -59,20 +59,23 @@ bool BuiltinsConverter::fillIndexMap(Function &F)
     MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
     ResourceAllocMetaDataHandle resourceAllocInfo = pMdUtils->getFunctionsInfoItem(&F)->getResourceAlloc();
     assert(resourceAllocInfo->hasValue() && "Resource Allocation Information not present");
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     for (Function::arg_iterator arg = F.arg_begin(), e = F.arg_end(); arg != e; ++arg)
     {
         int argNo = (*arg).getArgNo();
-        ArgAllocMetaDataHandle argAllocaInfo = resourceAllocInfo->getArgAllocsItem(argNo);
-        ResourceTypeEnum argType = (ResourceTypeEnum) argAllocaInfo->getType();
-        if (argType == OtherResourceType)
+        FunctionMetaData *funcMD = &modMD->FuncMD[&F];
+        ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+        assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+        ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[argNo];
+        if (argAlloc->type == OtherResourceType)
         {
             // Other resource type has no valid index and is not needed in the map.
             continue;
         }
-        m_argIndexMap[&(*arg)] = CImagesBI::ParamInfo(
-            argAllocaInfo->getIndex(),
-            argType,
-            (ResourceExtensionTypeEnum)argAllocaInfo->getExtenstionType());
+            m_argIndexMap[&(*arg)] = CImagesBI::ParamInfo(
+	            argAlloc->indexType,
+	            (ResourceTypeEnum)argAlloc->type,
+	            (ResourceExtensionTypeEnum)argAlloc->extensionType);
     }
 
     // The sampler arguments have already been allocated indices by the ResourceAllocator.
@@ -102,7 +105,10 @@ bool BuiltinsConverter::runOnFunction(Function &F)
 
     // Make sure we are running on a kernel.
     auto ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (ctx->getMetaDataUtils()->findFunctionsInfoItem(&F) == ctx->getMetaDataUtils()->end_FunctionsInfo())
+    ModuleMetaData* modMD = ctx->getModuleMetaData();
+
+    if (ctx->getMetaDataUtils()->findFunctionsInfoItem(&F) == ctx->getMetaDataUtils()->end_FunctionsInfo() ||
+            modMD->FuncMD.find(&F) == modMD->FuncMD.end())
     {
         return false;
     }

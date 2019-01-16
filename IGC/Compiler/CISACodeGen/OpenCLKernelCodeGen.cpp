@@ -243,11 +243,15 @@ void COpenCLKernel::PreCompile()
 
 SOpenCLKernelInfo::SResourceInfo COpenCLKernel::getResourceInfo(int argNo)
 {
+    CodeGenContext *pCtx = GetContext();
+    ModuleMetaData* modMD = pCtx->getModuleMetaData();
+    FunctionMetaData *funcMD = &modMD->FuncMD[entry];
+    ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+    assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMD List Out of Bounds");
+    ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[argNo];
+
     SOpenCLKernelInfo::SResourceInfo resInfo;
-    ResourceAllocMetaDataHandle resAllocMD = m_pMdUtils->getFunctionsInfoItem(entry)->getResourceAlloc();
-    assert(resAllocMD->hasValue() && "Resource Allocation Information not present");
-    ArgAllocMetaDataHandle argInfo = resAllocMD->getArgAllocsItem(argNo);
-    ResourceTypeEnum type = (ResourceTypeEnum)argInfo->getType();
+    ResourceTypeEnum type = (ResourceTypeEnum) argAlloc->type;
 
     if (type == ResourceTypeEnum::UAVResourceType ||
         type == ResourceTypeEnum::BindlessUAVResourceType)
@@ -262,16 +266,19 @@ SOpenCLKernelInfo::SResourceInfo COpenCLKernel::getResourceInfo(int argNo)
     {
         resInfo.Type = SOpenCLKernelInfo::SResourceInfo::RES_OTHER;
     }
-    resInfo.Index = argInfo->getIndex();
+    resInfo.Index = argAlloc->indexType;
     return resInfo;
 }
 
 ResourceExtensionTypeEnum COpenCLKernel::getExtensionInfo(int argNo)
 {
-    ResourceAllocMetaDataHandle resAllocMD = m_pMdUtils->getFunctionsInfoItem(entry)->getResourceAlloc();
-    assert(resAllocMD->hasValue() && "Resource Allocation Information not present");
-    ArgAllocMetaDataHandle argInfo = resAllocMD->getArgAllocsItem(argNo);
-    return (ResourceExtensionTypeEnum)argInfo->getExtenstionType();
+    CodeGenContext *pCtx = GetContext();
+    ModuleMetaData* modMD = pCtx->getModuleMetaData();
+    FunctionMetaData *funcMD = &modMD->FuncMD[entry];
+    ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+    assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMD List Out of Bounds");
+    ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[argNo];
+    return (ResourceExtensionTypeEnum) argAlloc->extensionType;
 }
 
 void COpenCLKernel::CreateInlineSamplerAnnotations()
@@ -703,11 +710,16 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
             int argNo = kernelArg->getAssociatedArgNo();
             SOpenCLKernelInfo::SResourceInfo resInfo = getResourceInfo(argNo);
             m_kernelInfo.m_argIndexMap[argNo] = getBTI(resInfo);
+            CodeGenContext *pCtx = GetContext();
+            ModuleMetaData* modMD = pCtx->getModuleMetaData();
+            FunctionMetaData *funcMD = &modMD->FuncMD[entry];
+            ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+            assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+            ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[argNo];
     
             iOpenCL::PointerArgumentAnnotation *ptrAnnotation = new iOpenCL::PointerArgumentAnnotation();
 
-			IGCMD::ArgAllocMetaDataHandle argInfo = funcInfoMD->getResourceAlloc()->getArgAllocsItem(argNo);
-			if (argInfo->getType() == IGCMD::ResourceTypeEnum::BindlessUAVResourceType)
+			if (argAlloc->type == IGCMD::ResourceTypeEnum::BindlessUAVResourceType)
 			{
 				ptrAnnotation->IsStateless = false;
 				ptrAnnotation->IsBindlessAccess = true;

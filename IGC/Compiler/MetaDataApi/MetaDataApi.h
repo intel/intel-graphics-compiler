@@ -36,9 +36,6 @@ namespace IGC { namespace IGCMD
 class InlineSamplerMetaData;
 typedef MetaObjectHandle<InlineSamplerMetaData> InlineSamplerMetaDataHandle; 
                     
-class ArgAllocMetaData;
-typedef MetaObjectHandle<ArgAllocMetaData> ArgAllocMetaDataHandle; 
-                    
 class ArgInfoMetaData;
 typedef MetaObjectHandle<ArgInfoMetaData> ArgInfoMetaDataHandle; 
                     
@@ -68,9 +65,6 @@ typedef MetaObjectHandle<FunctionInfoMetaData> FunctionInfoMetaDataHandle;
 
 typedef MetaDataList<InlineSamplerMetaDataHandle> InlineSamplersMetaDataList;
 typedef MetaObjectHandle<InlineSamplersMetaDataList> InlineSamplersMetaDataListHandle;
-                                
-typedef MetaDataList<ArgAllocMetaDataHandle> ArgAllocsMetaDataList;
-typedef MetaObjectHandle<ArgAllocsMetaDataList> ArgAllocsMetaDataListHandle; 
                                 
 typedef MetaDataList<ArgInfoMetaDataHandle> ArgInfoListMetaDataList;
 typedef MetaObjectHandle<ArgInfoListMetaDataList> ArgInfoListMetaDataListHandle; 
@@ -459,146 +453,6 @@ private:
     NamedMetaDataValue<float> m_BorderColorG;        
     NamedMetaDataValue<float> m_BorderColorB;        
     NamedMetaDataValue<float> m_BorderColorA;
-    // parent node
-    const llvm::MDNode* m_pNode;
-};
-
-     
-///
-// Read/Write the ArgAlloc structure from/to LLVM metadata
-//
-class ArgAllocMetaData:public IMetaDataObject
-{
-public:
-    typedef ArgAllocMetaData _Myt;
-    typedef IMetaDataObject _Mybase;
-    // typedefs for data member types
-    typedef MetaDataValue<int32_t>::value_type TypeType;        
-    typedef MetaDataValue<int32_t>::value_type ExtenstionTypeType;        
-    typedef MetaDataValue<int32_t>::value_type IndexType;
-
-public:
-    ///
-    // Factory method - creates the ArgAllocMetaData from the given metadata node
-    //
-    static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
-    {
-        return new _Myt(pNode, hasId);
-    }
-
-    ///
-    // Factory method - create the default empty ArgAllocMetaData object
-    static _Myt* get()
-    {
-        return new _Myt();
-    }
-
-    ///
-    // Factory method - create the default empty named ArgAllocMetaData object
-    static _Myt* get(const char* name)
-    {
-        return new _Myt(name);
-    }
-
-    ///
-    // Ctor - loads the ArgAllocMetaData from the given metadata node
-    //
-    ArgAllocMetaData(const llvm::MDNode* pNode, bool hasId);
-
-    ///
-    // Default Ctor - creates the empty, not named ArgAllocMetaData object
-    //
-    ArgAllocMetaData();
-
-    ///
-    // Ctor - creates the empty, named ArgAllocMetaData object
-    //
-    ArgAllocMetaData(const char* name);
-
-    /// Type related methods
-    TypeType getType() const
-    {
-        return m_Type.get();
-    }
-    void setType( const TypeType& val)
-    {
-        m_Type.set(val);
-    }
-    bool isTypeHasValue() const
-    {
-        return m_Type.hasValue();
-    }
-        
-    
-    /// ExtenstionType related methods
-    ExtenstionTypeType getExtenstionType() const
-    {
-        return m_ExtenstionType.get();
-    }
-    void setExtenstionType( const ExtenstionTypeType& val)
-    {
-        m_ExtenstionType.set(val);
-    }
-    bool isExtenstionTypeHasValue() const
-    {
-        return m_ExtenstionType.hasValue();
-    }
-        
-    
-    /// Index related methods
-    IndexType getIndex() const
-    {
-        return m_Index.get();
-    }
-    void setIndex( const IndexType& val)
-    {
-        m_Index.set(val);
-    }
-    bool isIndexHasValue() const
-    {
-        return m_Index.hasValue();
-    }
-
-    ///
-    // Returns true if any of the ArgAllocMetaData`s members has changed
-    bool dirty() const;
-
-    ///
-    // Returns true if the structure was loaded from the metadata or was changed
-    bool hasValue() const;
-
-    ///
-    // Discards the changes done to the ArgAllocMetaData instance
-    void discardChanges();
-
-    ///
-    // Generates the new MDNode hierarchy for the given structure
-    llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
-
-    ///
-    // Saves the structure changes to the given MDNode
-    void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
-
-private:
-    ///
-    // Returns true if the given MDNode could be saved to without replacement
-    bool compatibleWith( const llvm::MDNode* pNode) const
-    {
-        return false;
-    }
-
-private:
-    typedef MetaDataIterator<llvm::MDNode> NodeIterator;
-
-    llvm::Metadata* getTypeNode( const llvm::MDNode* pParentNode) const;    
-    llvm::Metadata* getExtenstionTypeNode( const llvm::MDNode* pParentNode) const;    
-    llvm::Metadata* getIndexNode( const llvm::MDNode* pParentNode) const;
-
-private:
-    // data members
-    MetaDataValue<int32_t> m_Type;        
-    MetaDataValue<int32_t> m_ExtenstionType;        
-    MetaDataValue<int32_t> m_Index;
     // parent node
     const llvm::MDNode* m_pNode;
 };
@@ -1412,8 +1266,7 @@ public:
     // typedefs for data member types
     typedef NamedMetaDataValue<int32_t>::value_type UAVsNumType;        
     typedef NamedMetaDataValue<int32_t>::value_type SRVsNumType;        
-    typedef NamedMetaDataValue<int32_t>::value_type SamplersNumType;        
-    typedef MetaDataList<ArgAllocMetaDataHandle> ArgAllocsList;        
+    typedef NamedMetaDataValue<int32_t>::value_type SamplersNumType;
     typedef MetaDataList<InlineSamplerMetaDataHandle> InlineSamplersList;
 
 public:
@@ -1497,67 +1350,7 @@ public:
     {
         return m_SamplersNum.hasValue();
     }
-        
-    
-    /// ArgAllocs related methods
-    ArgAllocsList::iterator begin_ArgAllocs()
-    {
-        return m_ArgAllocs.begin();
-    }
 
-    ArgAllocsList::iterator end_ArgAllocs()
-    {
-        return m_ArgAllocs.end();
-    }
-    ArgAllocsList::const_iterator begin_ArgAllocs() const
-    {
-        return m_ArgAllocs.begin();
-    }
-
-    ArgAllocsList::const_iterator end_ArgAllocs() const
-    {
-        return m_ArgAllocs.end();
-    }
-
-    size_t size_ArgAllocs()  const
-    {
-        return m_ArgAllocs.size();
-    }
-
-    bool empty_ArgAllocs()  const
-    {
-        return m_ArgAllocs.empty();
-    }
-
-    bool isArgAllocsHasValue() const
-    {
-        return m_ArgAllocs.hasValue();
-    }
-    
-    ArgAllocsList::item_type getArgAllocsItem( size_t index ) const
-    {
-        return m_ArgAllocs.getItem(index);
-    }
-    void clearArgAllocs()
-    {
-        m_ArgAllocs.clear();
-    }
-
-    void setArgAllocsItem( size_t index, const ArgAllocsList::item_type& item  )
-    {
-        return m_ArgAllocs.setItem(index, item);
-    }
-
-    void addArgAllocsItem(const ArgAllocsList::item_type& val)
-    {
-        m_ArgAllocs.push_back(val);
-    }
-
-    ArgAllocsList::iterator eraseArgAllocsItem(ArgAllocsList::iterator i)
-    {
-        return m_ArgAllocs.erase(i);
-    }
-        
     
     /// InlineSamplers related methods
     InlineSamplersList::iterator begin_InlineSamplers()
@@ -1651,16 +1444,14 @@ private:
 
     llvm::Metadata* getUAVsNumNode( const llvm::MDNode* pParentNode) const;    
     llvm::Metadata* getSRVsNumNode( const llvm::MDNode* pParentNode) const;    
-    llvm::Metadata* getSamplersNumNode( const llvm::MDNode* pParentNode) const;    
-    llvm::MDNode* getArgAllocsNode( const llvm::MDNode* pParentNode) const;    
+    llvm::Metadata* getSamplersNumNode( const llvm::MDNode* pParentNode) const;       
     llvm::MDNode* getInlineSamplersNode( const llvm::MDNode* pParentNode) const;
 
 private:
     // data members
     NamedMetaDataValue<int32_t> m_UAVsNum;        
     NamedMetaDataValue<int32_t> m_SRVsNum;        
-    NamedMetaDataValue<int32_t> m_SamplersNum;        
-    MetaDataList<ArgAllocMetaDataHandle> m_ArgAllocs;        
+    NamedMetaDataValue<int32_t> m_SamplersNum;            
     MetaDataList<InlineSamplerMetaDataHandle> m_InlineSamplers;
     // parent node
     const llvm::MDNode* m_pNode;

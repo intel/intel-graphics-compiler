@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace llvm;
 using namespace IGC;
+using namespace IGC::IGCMD;
 
 // Register pass to igc-opt
 #define PASS_FLAG "igc-sub-group-func-resolution"
@@ -201,18 +202,19 @@ static void updateDebugLoc( Instruction *pOrigin, Instruction *pNew )
 void SubGroupFuncsResolution::BTIHelper( llvm::CallInst &CI )
 {
     Function *F = CI.getParent()->getParent();
-    IGC::IGCMD::MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    IGC::IGCMD::ResourceAllocMetaDataHandle resourceAllocInfo = pMdUtils->getFunctionsInfoItem( F )->getResourceAlloc();
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     for ( Function::arg_iterator arg = F->arg_begin(), e = F->arg_end(); arg != e; ++arg )
     {
         int argNo = ( *arg ).getArgNo();
-        IGC::IGCMD::ArgAllocMetaDataHandle argAllocaInfo = resourceAllocInfo->getArgAllocsItem( argNo );
-        IGC::IGCMD::ResourceTypeEnum argType = ( IGC::IGCMD::ResourceTypeEnum ) argAllocaInfo->getType();
+        FunctionMetaData *funcMD = &modMD->FuncMD[F];
+        ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+        assert((size_t) argNo < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
+        ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[argNo];
         m_argIndexMap[ &(*arg) ] = CImagesBI::ParamInfo(
-            argAllocaInfo->getIndex(),
-            argType,
-            (IGC::IGCMD::ResourceExtensionTypeEnum)argAllocaInfo->getExtenstionType());
+            argAlloc->indexType,
+            (ResourceTypeEnum) argAlloc->type,
+            (ResourceExtensionTypeEnum) argAlloc->extensionType);
     }
 }
 

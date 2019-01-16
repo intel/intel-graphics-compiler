@@ -59,6 +59,7 @@ bool Image3dToImage2darray::createImageAnnotations(
     GenIntrinsicInst *pCall,
     unsigned imageIdx,
     const MetaDataUtils* pMdUtils,
+    const ModuleMetaData* modMD,
     const Value* pCoord)
 {
     uint argNum = 0;
@@ -69,7 +70,7 @@ bool Image3dToImage2darray::createImageAnnotations(
     // Find the arg number of the image so we can look up its ArgInfoList metadata.
     if (pImgOp->getType()->isPointerTy())
     {
-        auto *pImg = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(pCall, imageIdx, pMdUtils);
+        auto *pImg = CImagesBI::CImagesUtils::traceImageOrSamplerArgument(pCall, imageIdx, pMdUtils, modMD);
         if (pImg == nullptr)
             return false;
 
@@ -80,7 +81,7 @@ bool Image3dToImage2darray::createImageAnnotations(
     else if (auto *Idx = dyn_cast<ConstantInt>(pImgOp))
     {
         uint64_t IdxVal = Idx->getZExtValue();
-        auto *arg = CImagesBI::CImagesUtils::findImageFromBufferPtr(*pMdUtils, pFunc, RESOURCE, IdxVal);
+        auto *arg = CImagesBI::CImagesUtils::findImageFromBufferPtr(*pMdUtils, pFunc, RESOURCE, IdxVal, modMD);
 
         if (!arg)
             return false;
@@ -150,14 +151,14 @@ void Image3dToImage2darray::visitCallInst(CallInst &CI)
     {
         auto *pLoad = cast<SamplerLoadIntrinsic>(pCall);
         auto *pCoord = pCall->getArgOperand(3);
-        m_Changed |= createImageAnnotations(pCall, pLoad->getTextureIndex(), m_MetadataUtils, pCoord);
+        m_Changed |= createImageAnnotations(pCall, pLoad->getTextureIndex(), m_MetadataUtils, m_modMD, pCoord);
         break;
     }
     case GenISAIntrinsic::GenISA_sampleLptr:
     {
         auto *pSample = cast<SampleIntrinsic>(pCall);
         auto *pCoord = pCall->getArgOperand(3);
-        m_Changed |= createImageAnnotations(pCall, pSample->getTextureIndex(), m_MetadataUtils, pCoord);
+        m_Changed |= createImageAnnotations(pCall, pSample->getTextureIndex(), m_MetadataUtils, m_modMD, pCoord);
         break;
     }
     default:
@@ -168,6 +169,7 @@ void Image3dToImage2darray::visitCallInst(CallInst &CI)
 bool Image3dToImage2darray::runOnFunction(Function &F)
 {
     m_MetadataUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    m_modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     if (m_MetadataUtils->findFunctionsInfoItem(&F) == m_MetadataUtils->end_FunctionsInfo())
     {

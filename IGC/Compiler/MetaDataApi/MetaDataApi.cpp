@@ -599,159 +599,6 @@ llvm::Metadata* InlineSamplerMetaData::getBorderColorANode( const llvm::MDNode* 
     }
     return NULL;
 }
-               
-///
-// Ctor - loads the ArgAllocMetaData from the given metadata node
-//
-ArgAllocMetaData::ArgAllocMetaData(const llvm::MDNode* pNode, bool hasId):
-    _Mybase(pNode, hasId),
-    m_Type(getTypeNode(pNode)),        
-    m_ExtenstionType(getExtenstionTypeNode(pNode)),        
-    m_Index(getIndexNode(pNode)),
-    m_pNode(pNode)
-{}
-
-///
-// Default Ctor - creates the empty, not named ArgAllocMetaData object
-//
-ArgAllocMetaData::ArgAllocMetaData():    
-    m_pNode(NULL)
-{}
-
-///
-// Ctor - creates the empty, named ArgAllocMetaData object
-//
-ArgAllocMetaData::ArgAllocMetaData(const char* name):
-    _Mybase(name),    
-    m_pNode(NULL)
-{}
-
-bool ArgAllocMetaData::hasValue() const
-{
-    if (m_Type.hasValue())
-    {
-        return true;
-    }
-        
-    
-    if (m_ExtenstionType.hasValue())
-    {
-        return true;
-    }
-        
-    
-    if (m_Index.hasValue())
-    {
-        return true;
-    }
-    return NULL != m_pNode || dirty();
-}
-
-///
-// Returns true if any of the ArgAllocMetaData`s members has changed
-bool ArgAllocMetaData::dirty() const
-{
-    if( m_Type.dirty() )
-    {
-        return true;
-    }        
-    if( m_ExtenstionType.dirty() )
-    {
-        return true;
-    }        
-    if( m_Index.dirty() )
-    {
-        return true;
-    }
-    return false;
-}
-
-///
-// Discards the changes done to the ArgAllocMetaData instance
-void ArgAllocMetaData::discardChanges()
-{
-    m_Type.discardChanges();        
-    m_ExtenstionType.discardChanges();        
-    m_Index.discardChanges();
-}
-
-///
-// Generates the new MDNode hierarchy for the given structure
-llvm::Metadata* ArgAllocMetaData::generateNode(llvm::LLVMContext& context) const
-{
-    llvm::SmallVector<llvm::Metadata*, 5> args;
-
-    llvm::Metadata* pIDNode = _Mybase::generateNode(context);
-    if( NULL != pIDNode )
-    {
-        args.push_back(pIDNode);
-    }
-
-    args.push_back( m_Type.generateNode(context));        
-    args.push_back( m_ExtenstionType.generateNode(context));        
-    args.push_back( m_Index.generateNode(context));
-
-    return llvm::MDNode::get(context, args);
-}
-
-///
-// Saves the structure changes to the given MDNode
-void ArgAllocMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
-{
-    assert( pNode && "The target node should be valid pointer");
-
-    // we assume that underlying metadata node has not changed under our foot
-    if( pNode == m_pNode && !dirty() )
-    {
-        return;
-    }
-#if 0
-    // check that we could save the new information to the given node without regenerating it
-    if( !compatibleWith(pNode) )
-    {
-        pNode->replaceAllUsesWith(generateNode(context));
-        return;
-    }
-#endif
-
-    m_Type.save(context, llvm::cast<llvm::MDNode>(getTypeNode(pNode)));        
-    m_ExtenstionType.save(context, llvm::cast<llvm::MDNode>(getExtenstionTypeNode(pNode)));        
-    m_Index.save(context, llvm::cast<llvm::MDNode>(getIndexNode(pNode)));
-}
-
-llvm::Metadata* ArgAllocMetaData::getTypeNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    return pParentNode->getOperand(0 + offset).get();
-}
-    
-llvm::Metadata* ArgAllocMetaData::getExtenstionTypeNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    return pParentNode->getOperand(1 + offset).get();
-}
-    
-llvm::Metadata* ArgAllocMetaData::getIndexNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    return pParentNode->getOperand(2 + offset).get();
-}
-
                     
 
 ///
@@ -1677,8 +1524,7 @@ ResourceAllocMetaData::ResourceAllocMetaData(const llvm::MDNode* pNode, bool has
     _Mybase(pNode, hasId),
     m_UAVsNum(getUAVsNumNode(pNode)),        
     m_SRVsNum(getSRVsNumNode(pNode)),        
-    m_SamplersNum(getSamplersNumNode(pNode)),        
-    m_ArgAllocs(getArgAllocsNode(pNode), true),        
+    m_SamplersNum(getSamplersNumNode(pNode)),  
     m_InlineSamplers(getInlineSamplersNode(pNode), true),
     m_pNode(pNode)
 {}
@@ -1688,8 +1534,7 @@ ResourceAllocMetaData::ResourceAllocMetaData(const llvm::MDNode* pNode, bool has
 //
 ResourceAllocMetaData::ResourceAllocMetaData():    m_UAVsNum("uavs_num"),        
     m_SRVsNum("srvs_num"),        
-    m_SamplersNum("samplers_num"),        
-    m_ArgAllocs("arg_allocs"),        
+    m_SamplersNum("samplers_num"),       
     m_InlineSamplers("inline_samplers"),
     m_pNode(NULL)
 {}
@@ -1701,7 +1546,6 @@ ResourceAllocMetaData::ResourceAllocMetaData(const char* name):
     _Mybase(name),    m_UAVsNum("uavs_num"),        
     m_SRVsNum("srvs_num"),        
     m_SamplersNum("samplers_num"),        
-    m_ArgAllocs("arg_allocs"),        
     m_InlineSamplers("inline_samplers"),
     m_pNode(NULL)
 {}
@@ -1725,13 +1569,7 @@ bool ResourceAllocMetaData::hasValue() const
         return true;
     }
         
-    
-    if (m_ArgAllocs.hasValue())
-    {
-        return true;
-    }
-        
-    
+
     if (m_InlineSamplers.hasValue())
     {
         return true;
@@ -1754,11 +1592,7 @@ bool ResourceAllocMetaData::dirty() const
     if( m_SamplersNum.dirty() )
     {
         return true;
-    }        
-    if( m_ArgAllocs.dirty() )
-    {
-        return true;
-    }        
+    }             
     if( m_InlineSamplers.dirty() )
     {
         return true;
@@ -1772,8 +1606,7 @@ void ResourceAllocMetaData::discardChanges()
 {
     m_UAVsNum.discardChanges();        
     m_SRVsNum.discardChanges();        
-    m_SamplersNum.discardChanges();        
-    m_ArgAllocs.discardChanges();        
+    m_SamplersNum.discardChanges();
     m_InlineSamplers.discardChanges();
 }
 
@@ -1791,8 +1624,7 @@ llvm::Metadata* ResourceAllocMetaData::generateNode(llvm::LLVMContext& context) 
 
     args.push_back( m_UAVsNum.generateNode(context));        
     args.push_back( m_SRVsNum.generateNode(context));        
-    args.push_back( m_SamplersNum.generateNode(context));        
-    args.push_back( m_ArgAllocs.generateNode(context));        
+    args.push_back( m_SamplersNum.generateNode(context));
     if (isInlineSamplersHasValue())
     {
         args.push_back( m_InlineSamplers.generateNode(context));
@@ -1823,8 +1655,7 @@ void ResourceAllocMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode
 
     m_UAVsNum.save(context, llvm::cast<llvm::MDNode>(getUAVsNumNode(pNode)));        
     m_SRVsNum.save(context, llvm::cast<llvm::MDNode>(getSRVsNumNode(pNode)));        
-    m_SamplersNum.save(context, llvm::cast<llvm::MDNode>(getSamplersNumNode(pNode)));        
-    m_ArgAllocs.save(context, llvm::cast<llvm::MDNode>(getArgAllocsNode(pNode)));        
+    m_SamplersNum.save(context, llvm::cast<llvm::MDNode>(getSamplersNumNode(pNode)));
     m_InlineSamplers.save(context, llvm::cast<llvm::MDNode>(getInlineSamplersNode(pNode)));
 }
 
@@ -1877,24 +1708,6 @@ llvm::Metadata* ResourceAllocMetaData::getSamplersNumNode( const llvm::MDNode* p
         if( isNamedNode(i.get(), "samplers_num") )
         {
             return i.get();
-        }
-    }
-    return NULL;
-}
-    
-llvm::MDNode* ResourceAllocMetaData::getArgAllocsNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    for(NodeIterator i = NodeIterator(pParentNode, 0+offset), e = NodeIterator(pParentNode); i != e; ++i )
-    {
-        if( isNamedNode(i.get(), "arg_allocs") )
-        {
-            return llvm::dyn_cast<llvm::MDNode>(i.get());
         }
     }
     return NULL;

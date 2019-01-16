@@ -180,7 +180,7 @@ namespace IGC
             /// @brief  trace back the base value that belongs to a given image or sampler
             /// @param  paramIndex  the index of the image or sampler parameter in the call instruction
             /// @returns  the image or sampler base value (Argument for image, Argument or ConstInt for sampler)
-            static llvm::Value* traceImageOrSamplerArgument(llvm::CallInst* pCallInst, unsigned int paramIndex, const IGC::IGCMD::MetaDataUtils *pMdUtils = nullptr);
+            static llvm::Value* traceImageOrSamplerArgument(llvm::CallInst* pCallInst, unsigned int paramIndex, const IGC::IGCMD::MetaDataUtils *pMdUtils = nullptr, const IGC::ModuleMetaData *modMD = nullptr);
 
             /// @brief  find the BTI of the image argumant
             /// @param  paramIndex  the index of the image paramtere in the call isntruciton
@@ -193,7 +193,7 @@ namespace IGC
 
             /// @brief  find the image argument associated with the given bufType and idx
             /// @returns the image argument
-            static llvm::Argument* findImageFromBufferPtr(const IGC::IGCMD::MetaDataUtils &MdUtils, llvm::Function *F, BufferType bufType, uint64_t idx);
+            static llvm::Argument* findImageFromBufferPtr(const IGC::IGCMD::MetaDataUtils &MdUtils, llvm::Function *F, BufferType bufType, uint64_t idx, const IGC::ModuleMetaData *modMD);
         };
 
         CImagesBI(ParamMap* paramMap, InlineMap* inlineMap, int* nextSampler, Dimension Dim) :

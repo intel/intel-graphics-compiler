@@ -92,20 +92,25 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     assert(ctx);
 
+    ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    if (modMD->FuncMD.find(&F) == modMD->FuncMD.end())
+        assert("Function was not found.");
+    FunctionMetaData *funcMD = &modMD->FuncMD[&F];
+    ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+
     // Go over all of the kernel args.
     // For each kernel arg, if it represents an explicit image or buffer argument, 
     // add appropriate metadata.
-    auto defParam = ArgAllocMetaDataHandle(ArgAllocMetaData::get());
-    defParam->setType(ResourceTypeEnum::OtherResourceType);
-    std::vector<ArgAllocMetaDataHandle> paramAllocations(F.arg_size(), defParam);
+    ArgAllocMD defaultArgAlloc;
+    defaultArgAlloc.type = ResourceTypeEnum::OtherResourceType;
+    std::vector<ArgAllocMD> paramAllocations(F.arg_size(), defaultArgAlloc);
     int numUAVs = 0, numResources = 0, numSamplers = 0;
 
     // Since bindless textures/samplers could potentially be promoted to bindful later, we allocate these
     // first to minimize "holes" in the BT index
     for (auto arg : kernelArgs)
     {
-        auto argAlloc = ArgAllocMetaDataHandle(ArgAllocMetaData::get());
-
+        ArgAllocMD argAlloc;
         switch (arg.getArgType())
         {
         case KernelArg::ArgType::BINDLESS_IMAGE_1D:
@@ -130,8 +135,8 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
 
             if (IGC_IS_FLAG_ENABLED(EnableFallbackToBindless) && ctx->platform.supportBindless())
             {
-                argAlloc->setType(ResourceTypeEnum::BindlessUAVResourceType);
-                argAlloc->setIndex(numUAVs);
+                argAlloc.type = ResourceTypeEnum::BindlessUAVResourceType;
+                argAlloc.indexType = numUAVs;
             }
             else
             {
@@ -143,8 +148,8 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
                 DecodeAS4GFXResource(address_space, directIdx, bufId);
                 assert(directIdx == true && "Expected a direct index for address space decoded images");
 
-                argAlloc->setType(ResourceTypeEnum::UAVResourceType);
-                argAlloc->setIndex(bufId);
+                argAlloc.type = ResourceTypeEnum::UAVResourceType;
+                argAlloc.indexType = bufId;
             }
             numUAVs++;
         }
@@ -157,8 +162,8 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
 
             if (IGC_IS_FLAG_ENABLED(EnableFallbackToBindless) && ctx->platform.supportBindless())
             {
-                argAlloc->setType(ResourceTypeEnum::BindlessSamplerResourceType);
-                argAlloc->setIndex(numSamplers);
+                argAlloc.type = ResourceTypeEnum::BindlessSamplerResourceType;
+                argAlloc.indexType = numSamplers;
             }
             else
             {
@@ -170,8 +175,8 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
                 DecodeAS4GFXResource(address_space, directIdx, bufId);
                 assert(directIdx == true && "Expected a direct index for address space decoded sampler");
 
-                argAlloc->setType(ResourceTypeEnum::SamplerResourceType);
-                argAlloc->setIndex(bufId);
+                argAlloc.type = ResourceTypeEnum::SamplerResourceType;
+                argAlloc.indexType = bufId;
             }
             numSamplers++;
         }
@@ -190,7 +195,7 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
 
     for( auto arg : kernelArgs )
     {
-        auto argAlloc = ArgAllocMetaDataHandle(ArgAllocMetaData::get());
+        ArgAllocMD argAlloc;
 
         switch( arg.getArgType() )
         {
@@ -214,14 +219,14 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
             if( arg.getAccessQual() == KernelArg::WRITE_ONLY ||
                 arg.getAccessQual() == KernelArg::READ_WRITE )
             {
-                argAlloc->setType(ResourceTypeEnum::UAVResourceType);
-                argAlloc->setIndex(numUAVs);
+                argAlloc.type = ResourceTypeEnum::UAVResourceType;
+                argAlloc.indexType = numUAVs;
                 numUAVs++;
             }
             else
             {
-                argAlloc->setType(ResourceTypeEnum::SRVResourceType);
-                argAlloc->setIndex(numResources);
+                argAlloc.type = ResourceTypeEnum::SRVResourceType;
+                argAlloc.indexType = numResources;
                 numResources++;
             }
             
@@ -229,15 +234,15 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
 
             if( EAA.isMediaArg( arg.getArg( ) ) || EAA.isVaArg( arg.getArg( ) ) )
             {
-                argAlloc->setExtenstionType( ResourceExtensionTypeEnum::MediaResourceType );
+                argAlloc.extensionType = ResourceExtensionTypeEnum::MediaResourceType;
             }
             else if( EAA.isMediaBlockArg( arg.getArg( ) ) )
             {
-                argAlloc->setExtenstionType( ResourceExtensionTypeEnum::MediaResourceBlockType );
+                argAlloc.extensionType = ResourceExtensionTypeEnum::MediaResourceBlockType;
             }
             else
             {
-                argAlloc->setExtenstionType( ResourceExtensionTypeEnum::NonExtensionType );
+                argAlloc.extensionType = ResourceExtensionTypeEnum::NonExtensionType;
             }
             break;
 
@@ -248,37 +253,37 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
         case KernelArg::ArgType::IMPLICIT_GLOBAL_BASE:
         case KernelArg::ArgType::IMPLICIT_PRIVATE_BASE:
         case KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER:
-            argAlloc->setType(ResourceTypeEnum::UAVResourceType);
-            argAlloc->setIndex(numUAVs);
+            argAlloc.type = ResourceTypeEnum::UAVResourceType;
+            argAlloc.indexType = numUAVs;
             numUAVs++;
             break;
         
         case KernelArg::ArgType::SAMPLER:
-            argAlloc->setType(ResourceTypeEnum::SamplerResourceType);
+            argAlloc.type = ResourceTypeEnum::SamplerResourceType;
 
             assert( !(EAA.isMediaSamplerArg( arg.getArg( ) ) && EAA.isVaArg( arg.getArg( ) )) );
 
             if( EAA.isMediaSamplerArg( arg.getArg( ) ) )
             {
-                argAlloc->setExtenstionType( ResourceExtensionTypeEnum::MediaSamplerType );
+                argAlloc.extensionType = ResourceExtensionTypeEnum::MediaSamplerType;
             }
             else if( EAA.isVaArg( arg.getArg() ) )
             {
-                argAlloc->setExtenstionType( EAA.GetExtensionSamplerType() );
+                argAlloc.extensionType = EAA.GetExtensionSamplerType();
             }
             else
             {
-                argAlloc->setExtenstionType( ResourceExtensionTypeEnum::NonExtensionType );
+                argAlloc.extensionType = ResourceExtensionTypeEnum::NonExtensionType;
             }
             
-            argAlloc->setIndex(numSamplers);
+            argAlloc.indexType = numSamplers;
             numSamplers++;
             break;
 
         case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_EVENT_POOL:
         case KernelArg::ArgType::IMPLICIT_DEVICE_ENQUEUE_DEFAULT_DEVICE_QUEUE:
-            argAlloc->setType(ResourceTypeEnum::UAVResourceType);
-            argAlloc->setIndex(numUAVs);
+            argAlloc.type = ResourceTypeEnum::UAVResourceType;
+            argAlloc.indexType = numUAVs;
             numUAVs++;
             break;
 
@@ -298,7 +303,7 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
     auto funcResourceAllocInfo = pMdUtils->getFunctionsInfoItem(&F)->getResourceAlloc();
     for( auto i : paramAllocations )
     {
-        funcResourceAllocInfo->addArgAllocsItem(i);
+        resourceAlloc->argAllocMDList.push_back(i);
     }
 
     funcResourceAllocInfo->setUAVsNum(numUAVs);

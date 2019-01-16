@@ -209,21 +209,26 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
             if (isEntryFunc(m_pMdUtils, function))
             {
                 assert(m_pCodeGenContext->type == ShaderType::OPENCL_SHADER);
-
-                IGCMD::ResourceAllocMetaDataHandle resAllocMD = m_pMdUtils->getFunctionsInfoItem(function)->getResourceAlloc();
-                IGCMD::ArgAllocMetaDataHandle argInfo = resAllocMD->getArgAllocsItem(argPtr->getArgNo());
-
-                if (argInfo->getType() == IGCMD::ResourceTypeEnum::BindlessUAVResourceType)
+                ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+                if (modMD->FuncMD.find(function) != modMD->FuncMD.end()) 
                 {
-                    bufID = (unsigned) argInfo->getIndex();
-                    bufTy = BufferType::UAV;
-                    canPromote = true;
-                }
-                else if (argInfo->getType() == IGCMD::ResourceTypeEnum::BindlessSamplerResourceType)
-                {
-                    bufID = (unsigned) argInfo->getIndex();
-                    bufTy = BufferType::SAMPLER;
-                    canPromote = true;
+                    FunctionMetaData *funcMD = &modMD->FuncMD[function];
+                    ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+                    ArgAllocMD *argInfo = &resourceAlloc->argAllocMDList[argPtr->getArgNo()];
+                    assert((size_t) argPtr->getArgNo() < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds Error");
+
+                    if (argInfo->type == IGCMD::ResourceTypeEnum::BindlessUAVResourceType)
+                    {
+                        bufID = (unsigned)argInfo->indexType;
+                        bufTy = BufferType::UAV;
+                        canPromote = true;
+                    }
+                    else if (argInfo->type == IGCMD::ResourceTypeEnum::BindlessSamplerResourceType)
+                    {
+                        bufID = (unsigned)argInfo->indexType;
+                        bufTy = BufferType::SAMPLER;
+                        canPromote = true;
+	                }
                 }
             }
         }
@@ -657,13 +662,18 @@ void PromoteResourceToDirectAS::PromoteStatelessToBindlessBuffers(Function& F)
         {
             Value* nullSrcPtr = ConstantPointerNull::get(cast<PointerType>(srcPtr->getType()));
             srcPtr->replaceAllUsesWith(nullSrcPtr);
-
-            IGCMD::ResourceAllocMetaDataHandle resAllocMD = m_pMdUtils->getFunctionsInfoItem(&F)->getResourceAlloc();
-            IGCMD::ArgAllocMetaDataHandle argInfo = resAllocMD->getArgAllocsItem(srcPtr->getArgNo());
-            if (argInfo->getType() == IGCMD::ResourceTypeEnum::UAVResourceType)
+            ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+            if (modMD->FuncMD.find(&F) != modMD->FuncMD.end())
             {
-                // Update metadata to show bindless resource type
-                argInfo->setType(IGCMD::ResourceTypeEnum::BindlessUAVResourceType);
+                FunctionMetaData *funcMD = &modMD->FuncMD[&F];
+                ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+                ArgAllocMD *argInfo = &resourceAlloc->argAllocMDList[srcPtr->getArgNo()];
+                assert((size_t) srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
+                if (argInfo->type == IGCMD::ResourceTypeEnum::UAVResourceType)
+                {
+                    // Update metadata to show bindless resource type
+                    argInfo->type = IGCMD::ResourceTypeEnum::BindlessUAVResourceType;
+                }
             }
         }
     }

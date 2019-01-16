@@ -1018,10 +1018,12 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
         if (moduleMD && moduleMD->UseBindlessImage)
         {
             // Check for bindless images which require allocation
-            ResourceAllocMetaDataHandle resAllocMD = funcInfoMD->getResourceAlloc();
-            ArgAllocMetaDataHandle argInfo = resAllocMD->getArgAllocsItem(funcArg->getArgNo());
-            if (argInfo->getType() == ResourceTypeEnum::BindlessUAVResourceType ||
-                argInfo->getType() == ResourceTypeEnum::BindlessSamplerResourceType)
+            FunctionMetaData *funcMD = &moduleMD->FuncMD[const_cast<llvm::Function*>(&F)];
+            ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+            ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[funcArg->getArgNo()];
+            assert((size_t) funcArg->getArgNo() < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
+            if (argAlloc->type == ResourceTypeEnum::BindlessUAVResourceType ||
+                argAlloc->type == ResourceTypeEnum::BindlessSamplerResourceType)
             {
                 needAllocation = funcArg->getNumUses() > 0;
             }
