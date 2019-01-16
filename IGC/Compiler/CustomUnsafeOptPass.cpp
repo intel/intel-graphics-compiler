@@ -650,19 +650,28 @@ bool CustomUnsafeOptPass::visitBinaryOperatorToFmad(BinaryOperator &I)
         return false;
     }
 
-    ConstantFP* C0 = dyn_cast<ConstantFP>(addInst->getOperand(1));
-    ConstantFP* C1 = dyn_cast<ConstantFP>(mulInst->getOperand(1));
+    ConstantFP* add_C[2];
+    add_C[0] = dyn_cast<ConstantFP>(addInst->getOperand(0));
+    add_C[1] = dyn_cast<ConstantFP>(addInst->getOperand(1));
+    ConstantFP* mul_C1 = dyn_cast<ConstantFP>(mulInst->getOperand(1));
 
-    if(!C0 || !C1 || !addInst->hasOneUse())
+    if (!mul_C1 || !addInst->hasOneUse())
     {
         return false;
     }
 
-    Value *op0 = copyIRFlags(BinaryOperator::CreateFMul(addInst->getOperand(0), C1, "", &I), &I);
+    if (!add_C[0] && !add_C[1])
+    {
+        return false;
+    }
 
-    APFloat C0Float = C0->getValueAPF();
-    C0Float.multiply(C1->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
-    Value *op1 = ConstantFP::get(C0->getContext(), C0Float);
+    uint addConstantIndex = add_C[0] ? 0: 1;
+
+    Value *op0 = copyIRFlags(BinaryOperator::CreateFMul(addInst->getOperand(1- addConstantIndex), mul_C1, "", &I), &I);
+
+    APFloat add_Float = add_C[addConstantIndex]->getValueAPF();
+    add_Float.multiply(mul_C1->getValueAPF(), llvm::APFloat::rmNearestTiesToEven);
+    Value *op1 = ConstantFP::get(add_C[addConstantIndex]->getContext(), add_Float);
 
     if (addInst->getOpcode() == Instruction::FAdd)
     {
@@ -670,7 +679,14 @@ bool CustomUnsafeOptPass::visitBinaryOperatorToFmad(BinaryOperator &I)
     }
     else
     {
-        I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(op0, op1, "", &I), &I));
+        if (addConstantIndex == 1)
+        {
+            I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(op0, op1, "", &I), &I));
+        }
+        else
+        {
+            I.replaceAllUsesWith(copyIRFlags(BinaryOperator::CreateFSub(op1, op0, "", &I), &I));
+        }
     }
 
     m_isChanged = true;
