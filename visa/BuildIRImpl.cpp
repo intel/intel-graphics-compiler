@@ -840,7 +840,9 @@ G4_INST *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
     G4_Operand* descOpnd = NULL;
     G4_SrcRegRegion* extDescOpnd = nullptr;
 
-    bool needsSamplerMove = sti && !sti->isImm() && !isBindlessSampler(sti);
+    bool doAlignBindlessSampler = alignBindlessSampler() && sti && isBindlessSampler(sti);
+    bool needsSamplerMove = (sti && !sti->isImm() && !isBindlessSampler(sti)) || doAlignBindlessSampler;
+
     bool needsSurfaceMove = false;
     bool needsA0ExDesc = false;
 
@@ -873,11 +875,28 @@ G4_INST *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
     if (needsSamplerMove)
     {
         G4_Declare *dcl1 = createTempVar(1, Type_UD, Either, Any);
-        G4_DstRegRegion* tmpDstOpnd = Create_Dst_Opnd_From_Dcl(dcl1, 1);
-
-        // shl (1) tmp:ud sti:ud 0x8:uw
-        createInst(nullptr, G4_shl, nullptr, false, 1, tmpDstOpnd, sti,
-            createImm(8, Type_UD), InstOpt_WriteEnable, 0);
+       
+        if (doAlignBindlessSampler)
+        {
+            // check if address is 32-byte aligned
+            // use STI = 0 for 32-byte aligned address, STI = 1 otherwise
+            // (W) and (1) (nz)f0.0 null S31 0x10:uw
+            G4_Declare* tmpFlag = createTempFlag(1);
+            G4_CondMod* condMod = createCondMod(Mod_nz, tmpFlag->getRegVar(), 0);
+            createInst(nullptr, G4_and, condMod, false, 1, createNullDst(Type_UD), 
+                createSrcRegRegion(*(sti->asSrcRegRegion())), createImm(0x10, Type_UW), InstOpt_WriteEnable);
+            // (W) (f0.0) sel (1) tmp:ud 0x100 0x0 
+            G4_Predicate* pred = createPredicate(PredState_Plus, tmpFlag->getRegVar(), 0);
+            createInst(pred, G4_sel, nullptr, false, 1, Create_Dst_Opnd_From_Dcl(dcl1, 1), 
+                createImm(0x100, Type_UW), createImm(0x0, Type_UW), InstOpt_WriteEnable);
+        }
+        else
+        {
+            // shl (1) tmp:ud sti:ud 0x8:uw
+            G4_DstRegRegion* tmpDstOpnd = Create_Dst_Opnd_From_Dcl(dcl1, 1);
+            createInst(nullptr, G4_shl, nullptr, false, 1, tmpDstOpnd, sti,
+                createImm(8, Type_UD), InstOpt_WriteEnable, 0);
+        }
 
         G4_SrcRegRegion* tmpSrcOpnd = Create_Src_Opnd_From_Dcl(dcl1, getRegionScalar());
         G4_DstRegRegion* addrDstOpnd = Create_Dst_Opnd_From_Dcl(builtinA0, 1);

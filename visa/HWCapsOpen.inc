@@ -439,5 +439,11 @@
     {
         return Type_HF;
     }
+    
+    bool alignBindlessSampler() const 
+    {
+        return getGenxPlatform() == GENX_SKL && getOption(vISA_alignBindlessSampler);
+    }
+
 
     // end HW capabilities

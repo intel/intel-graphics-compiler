@@ -3855,6 +3855,11 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         vbuilder->SetOption(vISA_ReorderDPSendToDifferentBti, false);
     }
 
+    if (m_program->m_Platform->alignBindlessSampler())
+    {
+        vbuilder->SetOption(vISA_alignBindlessSampler, true);
+    }
+
     vKernel = nullptr;
 
     const char* kernelName = m_program->entry->getName().data();
