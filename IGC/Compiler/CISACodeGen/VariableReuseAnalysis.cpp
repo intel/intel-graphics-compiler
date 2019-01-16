@@ -27,6 +27,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "VariableReuseAnalysis.hpp"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
+#include "Compiler/CodeGenPublic.h"
+
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/Support/Debug.h>
+#include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
 using namespace IGC;
@@ -61,6 +66,8 @@ VariableReuseAnalysis::VariableReuseAnalysis()
 
 bool VariableReuseAnalysis::runOnFunction(Function &F)
 {
+  m_F = &F;
+
   m_WIA = &(getAnalysis<WIAnalysis>());
   if (IGC_IS_FLAG_DISABLED(DisableDeSSA))
   {
@@ -98,8 +105,20 @@ bool VariableReuseAnalysis::runOnFunction(Function &F)
       visitLiveInstructions(&F);
 
       postProcessing();
+
+      if (IGC_IS_FLAG_ENABLED(DumpVariableAlias))
+      {
+          auto name =
+              Debug::DumpName(Debug::GetShaderOutputName())
+              .Hash(m_pCtx->hash)
+              .Type(m_pCtx->type)
+              .Pass("VariableAlias")
+              .Extension("txt");
+          printAlias(Debug::Dump(name, Debug::DumpType::DBG_MSG_TEXT).stream(), m_F);
+      }
   }
 
+  m_F = nullptr;
   return false;
 }
 
@@ -996,4 +1015,30 @@ bool VariableReuseAnalysis::IsInsertTo(
         }
     }
     return true;
+}
+
+void VariableReuseAnalysis::printAlias(raw_ostream & OS, const Function* F) const
+{
+    OS << "\nSummary of Variable Alias Info: "
+       << (F ? F->getName().str() : "Function")
+       << "\n";
+
+    for (auto& MI : m_AliasRootMap)
+    {
+        Value *aliasee = MI.first; // root value
+        TinyPtrVector<llvm::Value*> aliasers = MI.second;
+        OS << "Aliasee : " << *aliasee << "\n";
+        for (auto VI : aliasers)
+        {
+            Value *aliaser = VI;
+            OS << "    " << *aliaser << "\n";
+        }
+        OS << "\n";
+    }
+    OS << "\n";
+}
+
+void VariableReuseAnalysis::dumpAlias() const
+{
+    printAlias(dbgs(), m_F);
 }

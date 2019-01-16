@@ -175,6 +175,11 @@ public:
   int getCongruentClassSize(llvm::Value* V);
   bool isSameSizeValue(llvm::Value* V0, llvm::Value* V1);
 
+  /// printAlias - print value aliasing info in human readable form
+  void printAlias(llvm::raw_ostream &OS, const llvm::Function* F = nullptr) const;
+  /// dumpAalias - dump alias info to dbgs().
+  void dumpAlias() const;
+
   // Collect aliases from subVector to base vector.
   ValueAliasMapTy m_ValueAliasMap; // aliaser -> aliasee
   // Reverse of m_ValueAliasMap.
@@ -263,6 +268,10 @@ private:
   CodeGenPatternMatch* m_PatternMatch;
   CoalescingEngine* m_coalescingEngine;
   const llvm::DataLayout* m_DL;
+
+  /// Current Function; set on entry to runOnFunction
+  /// and unset on exit to runOnFunction
+  llvm::Function* m_F;
 
   // The register pressure estimator (optional).
   RegisterEstimator *m_RPE;
