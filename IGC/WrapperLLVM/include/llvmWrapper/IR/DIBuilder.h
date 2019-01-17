@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGCLLVM_IR_DIBUILDER_H
 
 #include <llvm/IR/DIBuilder.h>
+#include <llvmWrapper/IR/DebugInfoMetadata.h>
 
 namespace IGCLLVM
 {
@@ -65,6 +66,19 @@ namespace IGCLLVM
             unsigned LineNo, bool ExportSymbols)
         {
             return llvm::DIBuilder::createNameSpace(Scope, Name, ExportSymbols);
+        }
+
+        inline IGCLLVM::DISubprogram* createFunction(
+            llvm::DIScope *Scope, llvm::StringRef Name, llvm::StringRef LinkageName, llvm::DIFile *File,
+            unsigned LineNo, llvm::DISubroutineType *Ty, bool isLocalToUnit,
+            bool isDefinition, unsigned ScopeLine,
+            llvm::DINode::DIFlags Flags = llvm::DINode::FlagZero, bool isOptimized = false,
+            llvm::DITemplateParameterArray TParams = nullptr,
+            llvm::DISubprogram *Decl = nullptr, llvm::DITypeArray ThrownTypes = nullptr)
+        {
+            return (IGCLLVM::DISubprogram*)llvm::DIBuilder::createFunction(
+                Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, isDefinition,
+                ScopeLine, Flags, isOptimized, TParams, Decl, ThrownTypes);
         }
 	};
 #endif
