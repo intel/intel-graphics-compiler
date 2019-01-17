@@ -344,11 +344,11 @@ public:
         Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_VectorOpnd* funcAddr,
         unsigned char argSize, unsigned char returnSize) = 0;
 
-    /// AppendVISACFFuncAddrInst -- stores the address of function <funcId> into <dst>
-    /// faddr funcId dst
-    /// funcId is the id of the function whose address is taken
+    /// AppendVISACFFuncAddrInst -- stores the address of a symbol <symbolName> into <dst>
+    /// faddr symbolName dst
+    /// symbolName is the unique string to identify the symbol whose address is taken
     /// dst must have UD type with scalar region
-    CM_BUILDER_API virtual int AppendVISACFFuncAddrInst(uint32_t funcId, VISA_VectorOpnd* dst) = 0;
+    CM_BUILDER_API virtual int AppendVISACFSymbolInst(std::string symbolName, VISA_VectorOpnd* dst) = 0;
 
     /// AppendVISACFFunctionRetInst -- append a function return instruction to this kernel
     /// [pred] fret (emask, execSize)

@@ -177,7 +177,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     { ALL, ISA_RESERVED_0, ISA_Inst_Reserved, "RESERVED_0", 0, 0,
     {
     },
-   
+
     },
 
     /// 0x1
@@ -189,7 +189,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER | TYPE_FLOAT_ALL, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER | TYPE_FLOAT_ALL, 0},
     },
-   
+
     },
 
     /// 0x2
@@ -201,7 +201,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER, 0},
     },
-   
+
     },
 
     /// 0x3
@@ -213,7 +213,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER | TYPE_FLOAT_ALL, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER | TYPE_FLOAT_ALL, 0},
     },
-   
+
     },
 
     /// 0x4
@@ -225,7 +225,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, HORIZON_STRIDE_1},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, HORIZON_STRIDE_1},
     },
-   
+
     },
 
     /// 5
@@ -237,7 +237,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, HORIZON_STRIDE_1},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, HORIZON_STRIDE_1},
     },
-   
+
     },
 
     /// 6
@@ -249,7 +249,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, HORIZON_STRIDE_1},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, HORIZON_STRIDE_1},
     },
-   
+
     },
 
     /// 7
@@ -261,7 +261,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, HORIZON_STRIDE_1},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, HORIZON_STRIDE_1},
     },
-   
+
     },
 
     /// 8
@@ -272,7 +272,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, TYPE_FLOAT_ALL, SAT_C | HORIZON_STRIDE_1},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, HORIZON_STRIDE_1},
     },
-   
+
     },
 
     /// 9
@@ -283,7 +283,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, TYPE_FLOAT, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, 0},
     },
-   
+
     },
 
     /// 10
@@ -295,7 +295,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_SRC_GEN, TYPE_INTEGER | TYPE_FLOAT, HORIZON_VERTICAL_STRIDE_0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER | TYPE_FLOAT, 0},
     },
-   
+
     },
 
     /// 11
@@ -306,7 +306,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, TYPE_FLOAT_ALL, SAT_C},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, 0},
     },
-   
+
     },
 
     /// 12
@@ -319,7 +319,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, 0},
     },
-   
+
     },
 
     /// 13
@@ -331,7 +331,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD | ISA_TYPE_D, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD | ISA_TYPE_D, 0},
     },
-   
+
     },
 
      /// 14
@@ -344,7 +344,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, 0},
     },
-   
+
     },
 
     /// 15
@@ -356,7 +356,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER, 0},
     },
-   
+
     },
 
     /// 16
@@ -368,7 +368,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL | TYPE_INTEGER, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL | TYPE_INTEGER, 0},
     },
-   
+
     },
 
     /// 17
@@ -380,7 +380,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, 0},
     },
-   
+
     },
 
     /// 18
@@ -391,7 +391,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, TYPE_FLOAT, SAT_C},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, 0},
     },
-   
+
     },
 
     /// 19
@@ -402,7 +402,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, TYPE_FLOAT, SAT_C},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, 0},
     },
-   
+
     },
 
     /// 20
@@ -413,7 +413,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, TYPE_FLOAT, SAT_C},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, 0},
     },
-   
+
     },
 
     /// 21
@@ -424,7 +424,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, TYPE_FLOAT, SAT_C},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT, 0},
     },
-   
+
     },
 
     /// 22
@@ -436,7 +436,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_B | ISA_TYPE_UB, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_B | ISA_TYPE_UB, 0},
     },
-   
+
     },
 
     /// 23
@@ -447,7 +447,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, TYPE_FLOAT_ALL, SAT_C},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, 0},
     },
-   
+
     },
 
     /// 24
@@ -458,7 +458,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, TYPE_FLOAT_ALL, SAT_C},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, 0},
     },
-   
+
     },
 
     /// 25
@@ -469,7 +469,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, TYPE_FLOAT_ALL, SAT_C},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, 0},
     },
-   
+
     },
 
     /// 26
@@ -480,7 +480,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, TYPE_FLOAT_ALL, SAT_C},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, 0},
     },
-   
+
     },
 
     /// 27
@@ -491,7 +491,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, TYPE_FLOAT_ALL, SAT_C},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_FLOAT_ALL, 0},
     },
-   
+
     },
 
     /// 28
@@ -514,7 +514,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, ISA_TYPE_UD, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, 0},
     },
-   
+
     },
 
     /// 32
@@ -526,7 +526,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_P_AO, TYPE_INTEGER, 0},
         {OPND_VECTOR_SRC_G_I_IMM_P_AO, TYPE_INTEGER, 0},
     },
-   
+
     },
 
     /// 33
@@ -538,7 +538,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_P_AO, TYPE_INTEGER, 0},
         {OPND_VECTOR_SRC_G_I_IMM_P_AO, TYPE_INTEGER, 0},
     },
-   
+
     },
 
     /// 34
@@ -550,7 +550,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_P_AO, TYPE_INTEGER, 0},
         {OPND_VECTOR_SRC_G_I_IMM_P_AO, TYPE_INTEGER, 0},
     },
-   
+
     },
 
     /// 35
@@ -561,7 +561,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I_P, TYPE_INTEGER, 0},
         {OPND_VECTOR_SRC_G_I_IMM_P_AO, TYPE_INTEGER, 0},
     },
-   
+
     },
 
     /// 36
@@ -573,7 +573,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER, 0},
     },
-   
+
     },
 
     /// 37
@@ -585,7 +585,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER, 0},
     },
-   
+
     },
 
     /// 38
@@ -597,7 +597,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_B | ISA_TYPE_W | ISA_TYPE_D, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER, 0},
     },
-   
+
     },
 
     /// 39
@@ -608,7 +608,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, ISA_TYPE_UD, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER, 0},
     },
-   
+
     },
 
     /// 40
@@ -619,7 +619,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_A_AO, 0, SCALAR_REGION},
         {OPND_VECTOR_SRC_G_IMM_AO, ISA_TYPE_UW, 0},
     },
-   
+
     },
 
     /// 41
@@ -630,7 +630,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, 0, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, 0, 0},
     },
-   
+
     },
 
     /// 42
@@ -642,7 +642,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, 0, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, 0, 0},
     },
-   
+
     },
 
     /// 43
@@ -652,7 +652,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_DST_PRED, 0, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, TYPE_INTEGER, 0},
     },
-   
+
     },
 
     /// 44
@@ -664,7 +664,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, 0, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, 0, 0},
     },
-   
+
     },
 
     /// 45
@@ -674,7 +674,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_SPECIAL, ISA_TYPE_UW, 0},
         {OPND_SPECIAL, ISA_TYPE_UW, 0},
     },
-   
+
     },
 
     /// 46
@@ -685,7 +685,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, ISA_TYPE_UD, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, 0},
     },
-   
+
     },
 
     /// 47
@@ -696,7 +696,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, ISA_TYPE_UD, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD | ISA_TYPE_D, 0},
     },
-   
+
     },
 
     /// 48
@@ -704,7 +704,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     {
         {OPND_LABEL, ISA_TYPE_UW, 0},
     },
-   
+
     },
 
     /// 49
@@ -712,7 +712,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     {
         {OPND_LABEL, ISA_TYPE_UW, 0},
     },
-   
+
     },
 
     /// 50
@@ -722,7 +722,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_PRED, ISA_TYPE_UW, 0},
         {OPND_LABEL, ISA_TYPE_UW, LABEL_BLOCK_C},
     },
-   
+
     },
 
     /// 51
@@ -732,7 +732,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_PRED, ISA_TYPE_UW, 0},
         {OPND_LABEL, ISA_TYPE_UW, LABEL_FUNC_C},
     },
-   
+
     },
 
     /// 52
@@ -741,7 +741,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_EXECSIZE, ISA_TYPE_UB, SIZE_1},
         {OPND_PRED, ISA_TYPE_UW, 0},
     },
-   
+
     },
 
     /// 53
@@ -753,7 +753,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION},
         {OPND_RAW, 0, GE_READSIZE},
     },
-   
+
     },
 
     /// 54
@@ -764,7 +764,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION},
         {OPND_RAW, 0, GE_WRITESIZE},
     },
-   
+
     },
 
     /// 55
@@ -779,7 +779,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION},
         {OPND_RAW, 0, GRF_ALIGNED |SIZE_GE_WIDTH_M_HIEGH},
     },
-   
+
     },
 
     /// 56
@@ -794,7 +794,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION},
         {OPND_RAW, 0, GRF_ALIGNED |SIZE_GE_WIDTH_M_HIEGH},
     },
-   
+
     },
 
     /// 57
@@ -808,7 +808,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW,  ISA_TYPE_UD, GRF_ALIGNED},
         {OPND_RAW,  ISA_TYPE_UD | ISA_TYPE_D | ISA_TYPE_F, GRF_ALIGNED},
     },
-   
+
     },
 
     /// 58
@@ -821,7 +821,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW,  ISA_TYPE_UD, GRF_ALIGNED},
         {OPND_RAW,  ISA_TYPE_UD | ISA_TYPE_D | ISA_TYPE_F, GRF_ALIGNED},
     },
-   
+
     },
 
     /// 59
@@ -836,7 +836,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW,  ISA_TYPE_UD | ISA_TYPE_D, GRF_ALIGNED},
         {OPND_RAW,  ISA_TYPE_UD | ISA_TYPE_D, GRF_ALIGNED},
     },
-   
+
     },
 
     /// 60
@@ -848,7 +848,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION},
         {OPND_RAW,  ISA_TYPE_UD, GRF_ALIGNED | GE_READSIZE},
     },
-   
+
     },
 
     /// 61
@@ -862,7 +862,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW,  ISA_TYPE_UD, GRF_ALIGNED},
         {OPND_RAW,  ISA_TYPE_UD | ISA_TYPE_D | ISA_TYPE_F, GRF_ALIGNED},
     },
-   
+
     },
 
     /// 62
@@ -875,7 +875,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW,  ISA_TYPE_UD, GRF_ALIGNED},
         {OPND_RAW,  ISA_TYPE_UD | ISA_TYPE_D | ISA_TYPE_F, GRF_ALIGNED},
     },
-   
+
     },
 
     /// 63
@@ -888,7 +888,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION},
         {OPND_RAW, 0, GRF_ALIGNED |SIZE_GE_WIDTH_M_HIEGH},
     },
-   
+
     },
 
     /// 64
@@ -902,7 +902,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW,  ISA_TYPE_F, GRF_ALIGNED},
         {OPND_RAW,  ISA_TYPE_F, GRF_ALIGNED},
     },
-   
+
     },
 
     /// 65
@@ -916,7 +916,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO,  ISA_TYPE_F, SCALAR_REGION},
         {OPND_RAW,  ISA_TYPE_UW, GRF_ALIGNED},
     },
-   
+
     },
 
     /// 66
@@ -929,7 +929,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW,  ISA_TYPE_F, GRF_ALIGNED},
         {OPND_RAW,  ISA_TYPE_F, GRF_ALIGNED},
     },
-   
+
     },
 
     /// 67
@@ -951,7 +951,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM,  ISA_TYPE_UW | ISA_TYPE_UD, SCALAR_REGION},  //IEFBypass
         {OPND_RAW,  ISA_TYPE_F, GRF_ALIGNED},                   //dst
     },
-   
+
     },
 
     /// 68
@@ -970,9 +970,9 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, 0, 0},
         {OPND_VECTOR_SRC_G_I_IMM, 0, 0},
         {OPND_VECTOR_SRC_G_I_IMM, 0, 0},
-       
+
     },
-   
+
     },
 
     /// 70
@@ -984,9 +984,9 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UD|ISA_TYPE_D, GRF_ALIGNED},
         {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UD|ISA_TYPE_D, GRF_ALIGNED},
         {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UD|ISA_TYPE_D, GRF_ALIGNED},
-       
+
     },
-   
+
     },
 
     /// 71
@@ -999,9 +999,9 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UD|ISA_TYPE_D, GRF_ALIGNED},
         {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UD|ISA_TYPE_D, GRF_ALIGNED},
         {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UD|ISA_TYPE_D, GRF_ALIGNED},
-       
+
     },
-   
+
     },
 
     /// 72
@@ -1012,7 +1012,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, ISA_TYPE_UD|ISA_TYPE_D, GRF_ALIGNED},
         {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UD|ISA_TYPE_D, GRF_ALIGNED},
     },
-   
+
     },
 
     /// 73
@@ -1024,9 +1024,9 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, ISA_TYPE_UD, GRF_ALIGNED},
         {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UD, GRF_ALIGNED},
         {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UD, GRF_ALIGNED},
-       
+
     },
-   
+
     },
 
     /// 74
@@ -1038,9 +1038,9 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, ISA_TYPE_UD, GRF_ALIGNED},
         {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UD, GRF_ALIGNED},
         {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UD, GRF_ALIGNED},
-       
+
     },
-   
+
     },
 
     /// 75
@@ -1056,7 +1056,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW, ISA_TYPE_UD, 0}, /// lod
         {OPND_RAW, ISA_TYPE_UD|ISA_TYPE_D|ISA_TYPE_F, 0}, /// dst
     },
-   
+
     },
 
     /// 76
@@ -1072,7 +1072,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW, ISA_TYPE_UD, 0}, /// lod
         {OPND_RAW, ISA_TYPE_UD|ISA_TYPE_D|ISA_TYPE_F, 0}, /// dst
     },
-   
+
     },
 
     /// 77
@@ -1100,16 +1100,16 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         { OPND_KIND, ISA_TYPE_UB, 0 }, /// arg_size
         { OPND_KIND, ISA_TYPE_UB, 0 }, /// return_size
     },
-   
+
     },
 
     /// 80
     { ALL, ISA_FADDR, ISA_Inst_Flow, "faddr", 2, 0,
     {
-        { OPND_KIND, ISA_TYPE_UW, 0 }, /// func_id
+        { OPND_KIND, ISA_TYPE_UW, 0 }, /// symbol name: index to string table
         { OPND_VECTOR_DST_G_I, ISA_TYPE_UD, 0 },
     },
-   
+
     },
 
     /// 81
@@ -1117,7 +1117,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     {
         {OPND_STRING,  ISA_TYPE_UD, LENGHT_LESS_256},
     },
-   
+
     },
 
     /// 82
@@ -1125,13 +1125,13 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     {
         {OPND_IMM,  ISA_TYPE_UD, 0}, /// NOT finished
     },
-   
+
     },
 
     /// 83
     { ALL, ISA_RESERVED_53, ISA_Inst_Reserved, "reserved_53", 0, 0,
     {
-        
+
     },
     },
 
@@ -1148,7 +1148,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW,  ISA_TYPE_UB, ELEM_NUM_4},
         {OPND_RAW,  ISA_TYPE_UB, SIZE_STREAM_MODE_DEPENDENT_2},
     },
-   
+
     },
 
     /// 85
@@ -1159,7 +1159,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_SURFACE, ISA_TYPE_UB, 0},
         {OPND_RAW,  ISA_TYPE_UB, ELEM_NUM_224},
     },
-   
+
     },
 
     /// 86
@@ -1173,7 +1173,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_SUBPRE_SHAPE, ISA_TYPE_UB, 0},
         {OPND_RAW,  ISA_TYPE_UB, ELEM_NUM_224},
     },
-   
+
     },
 
     /// 87
@@ -1185,28 +1185,28 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_SURFACE, ISA_TYPE_UB, 0},
         {OPND_RAW,  ISA_TYPE_UB, ELEM_NUM_GE_32},
     },
-   
+
     },
 
     /// 88
     { ALL, ISA_RESERVED_58, ISA_Inst_Reserved, "reserved_58", 0, 0,
     {
     },
-   
+
     },
 
     /// 89
     { ALL, ISA_BARRIER, ISA_Inst_Sync, "barrier", 0, 0,
     {
     },
-   
+
     },
 
     /// 90
     { ALL, ISA_SAMPLR_CACHE_FLUSH, ISA_Inst_Sync, "samplr_cache_flush", 0, 0,
     {
     },
-   
+
     },
 
     /// 91
@@ -1214,7 +1214,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     {
     {OPND_VECTOR_SRC_G_I_IMM,  ISA_TYPE_UB, 0} // mask
     },
-   
+
     },
 
     /// 92
@@ -1222,7 +1222,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     {
     {OPND_IMM,  ISA_TYPE_UB, 0}, /// mode
     },
-   
+
     },
 
     /// 93
@@ -1238,69 +1238,69 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     {OPND_RAW,  ISA_TYPE_UB, GRF_ALIGNED}, /// src
     {OPND_RAW,  ISA_TYPE_UB, GRF_ALIGNED} /// dst
     },
-   
+
     },
 
     /// 94
     { ALL, ISA_RESERVED_5E, ISA_Inst_Reserved, "reserved_5e", 0, 0,
     {
     },
-   
+
     },
 
     /// 95
     { ALL, ISA_YIELD, ISA_Inst_Sync, "yield", 0, 0,
     {
     },
-   
+
     },
 
     /// 96
     { ALL, ISA_RESERVED_60, ISA_Inst_Reserved, "reserved_60", 0, 0,
     {
     },
-   
+
     },
 
     /// 97
     { ALL, ISA_RESERVED_61, ISA_Inst_Reserved, "reserved_61", 0, 0,
     {
     },
-   
+
     },
 
     /// 98
     { ALL, ISA_RESERVED_62, ISA_Inst_Reserved, "reserved_62", 0, 0,
     {
     },
-   
+
     },
 
     /// 99
     { ALL, ISA_RESERVED_63, ISA_Inst_Reserved, "reserved_63", 0, 0,
     {
     },
-   
+
     },
 
     /// 100
     { ALL, ISA_RESERVED_64, ISA_Inst_Reserved, "reserved_64", 0, 0,
     {
     },
-   
+
     },
 
     /// 101
     { ALL, ISA_RESERVED_65, ISA_Inst_Reserved, "reserved_65", 0, 0,
     {
     },
-   
+
     },
 
     /// 102
     { ALL, ISA_RESERVED_66, ISA_Inst_Reserved, "reserved_66", 0, 0,
     {
-    },   
+    },
     },
 
     /// 103
@@ -1313,7 +1313,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_KIND, ISA_TYPE_UB, 0}, /// arg_size
         {OPND_KIND, ISA_TYPE_UB, 0}, /// return_size
     },
-   
+
     },
 
     /// 104
@@ -1322,7 +1322,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_EXECSIZE, ISA_TYPE_UB, 0},
         {OPND_PRED, ISA_TYPE_UW, 0},
     },
-   
+
     },
 
     /// 105
@@ -1333,7 +1333,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO,  ISA_TYPE_F, SCALAR_REGION},
         {OPND_LABEL, ISA_TYPE_UW, LABEL_BLOCK_C}, /// actual number of labels can be [1, 32]
     },
-   
+
     },
 
     /// 106
@@ -1346,7 +1346,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_B | ISA_TYPE_UB, 0},
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_B | ISA_TYPE_UB, 0},
     },
-   
+
     },
 
     /// 107
@@ -1358,7 +1358,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_SRC_G_I_IMM,  ISA_TYPE_F, 0},
         {OPND_VECTOR_SRC_G_I_IMM,  ISA_TYPE_F, 0},
     },
-   
+
     },
 
     /// 108
@@ -1368,7 +1368,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_PRED, ISA_TYPE_UW, 0},
         {OPND_LABEL, ISA_TYPE_UW, LABEL_BLOCK_C},
     },
-   
+
     },
 
      /// 109
@@ -1384,7 +1384,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW, ISA_TYPE_F, GRF_ALIGNED}, /// Destination
         {OPND_OTHER, ISA_TYPE_UB, 0}, ///  numberMsgSpecific Operands
     },
-   
+
     },
 
      /// 110
@@ -1399,7 +1399,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW, ISA_TYPE_F | ISA_TYPE_UD | ISA_TYPE_D, 0}, /// Destination
         {OPND_OTHER, ISA_TYPE_UB, 0}, ///  numberMsgSpecific Operands
     },
-   
+
     },
 
      /// 111
@@ -1415,7 +1415,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW, ISA_TYPE_F | ISA_TYPE_UD | ISA_TYPE_D, 0}, /// Destination
         {OPND_OTHER, ISA_TYPE_UB, 0}, ///  numberMsgSpecific Operands
     },
-   
+
     },
 
      /// 112
@@ -1429,7 +1429,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         //LOD is only for one of the opcodes, it will be handled in the builder interface, and operand number incremented.
         {OPND_RAW,  ISA_TYPE_UD, 0} /// dst
     },
-   
+
     },
 
     /// 113
@@ -1440,7 +1440,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_OTHER, ISA_TYPE_UW, 0}, /// mode
         {OPND_SURFACE, ISA_TYPE_UB, 0}, /// Surface
     },
-   
+
     },
 
     /// 114
@@ -1455,7 +1455,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW,  ISA_TYPE_UD, 0}, /// per slot offset
         {OPND_RAW,  ISA_TYPE_UD | ISA_TYPE_D | ISA_TYPE_F, 0}  ///  vertex data
     },
-   
+
     },
 
     /// 115
@@ -1473,7 +1473,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_RAW,  ISA_TYPE_UD, 0}, /// Src1
         {OPND_RAW,  ISA_TYPE_UD | ISA_TYPE_D, 0}  /// dst
     },
-   
+
     },
 
     /// 116
@@ -1491,7 +1491,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
                                       ISA_TYPE_D |
                                       ISA_TYPE_UD, GRF_ALIGNED}    /// dst
         },
-       
+
     },
 
     /// 117
@@ -1509,7 +1509,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
                                       ISA_TYPE_D |
                                       ISA_TYPE_UD, GRF_ALIGNED}    /// dst
         },
-       
+
     },
 
     /// 118
@@ -1542,7 +1542,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
                                       ISA_TYPE_D |
                                       ISA_TYPE_UD, GRF_ALIGNED}    /// dst
         },
-       
+
     },
 
     /// 121 (0x79)
@@ -1561,7 +1561,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
                                       ISA_TYPE_D |
                                       ISA_TYPE_UD, GRF_ALIGNED}    /// dst
         },
-       
+
     },
 
     /// 122
@@ -1580,7 +1580,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     {OPND_RAW,  ISA_TYPE_UB, GRF_ALIGNED}, /// src1
     {OPND_RAW,  ISA_TYPE_UB, GRF_ALIGNED} /// dst
     },
-   
+
     },
 
     /// 123 (0x7B)
@@ -1598,7 +1598,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {
             {OPND_IMM,     ISA_TYPE_UB, 0}, // signal/wait
         },
-       
+
     },
 
     /// 125 (0x7D)
@@ -1620,7 +1620,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
                                 ISA_TYPE_F |
                                 ISA_TYPE_UD,    GRF_ALIGNED},
     },
-   
+
     },
 
     /// 126 (0x7E)
@@ -1631,7 +1631,7 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
         {OPND_VECTOR_DST_G_I, ISA_TYPE_DF, SAT_C},
         {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_DF, 0},
     },
-   
+
     },
 
     /// 127 (0x7F)

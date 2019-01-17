@@ -692,7 +692,7 @@ public:
         unsigned return_size,
         int line_no);
 
-    bool CISA_create_faddr_instruction(uint32_t funcID, VISA_opnd* dst, int line_no);
+    bool CISA_create_faddr_instruction(char* sym_name, VISA_opnd* dst, int line_no);
 
     bool CISA_create_raw_send_instruction(ISA_Opcode opcode,
                                             unsigned char modifier,

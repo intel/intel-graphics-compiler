@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_set>
 #include <unordered_map>
 #include <set>
+#include <string>
 #include <unordered_set>
 
 #include "cm_portability.h"
@@ -351,7 +352,7 @@ public:
     {
         instList.splice(pos, otherBB->getInstList(), it);
     }
-    void splice(INST_LIST::const_iterator pos, INST_LIST& other, 
+    void splice(INST_LIST::const_iterator pos, INST_LIST& other,
         INST_LIST::const_iterator first, INST_LIST::const_iterator last)
     {
         instList.splice(pos, other, first, last);
@@ -375,7 +376,7 @@ public:
         traversal(0), idom(NULL), beforeCall(NULL),
         afterCall(NULL), calleeInfo(NULL), BBType(G4_BB_NONE_TYPE),
         inNaturalLoop(false), loopNestLevel(0), scopeID(0), inSimdFlow(false),
-        start_block(NULL), physicalPred(NULL), physicalSucc(NULL), parent(fg), 
+        start_block(NULL), physicalPred(NULL), physicalSucc(NULL), parent(fg),
         instList(alloc), hasSendInBB(false)
     {
     }
@@ -692,7 +693,7 @@ public:
     // If you need to change the block ordering for any reason, create another data structure instead of
     // modifying this one
     BB_LIST BBs;
-   
+
     std::list<Edge> backEdges;                  // list of all backedges (tail->head)
     Loop naturalLoops;
 
@@ -780,9 +781,9 @@ public:
     G4_Declare*& getStackPtrDcl()                   {return stackPtrDcl;}
     G4_Declare*& getScratchRegDcl()                 {return scratchRegDcl;}
 
-    bool isPseudoVCADcl(G4_Declare* dcl) const 
-    { 
-        return std::find(pseudoVCADclList.begin(), pseudoVCADclList.end(), dcl) != std::end(pseudoVCADclList); 
+    bool isPseudoVCADcl(G4_Declare* dcl) const
+    {
+        return std::find(pseudoVCADclList.begin(), pseudoVCADclList.end(), dcl) != std::end(pseudoVCADclList);
     }
     bool isPseudoVCEDcl(G4_Declare* dcl) const { return dcl == pseudoVCEDcl; }
     bool isPseudoA0Dcl(G4_Declare* dcl) const
@@ -972,7 +973,7 @@ public:
             G4_BB* curBB = *bb_it;
             G4_INST* last_inst = NULL;
 
-            if (!curBB->empty()) 
+            if (!curBB->empty())
             {
                 last_inst = curBB->back();
 
@@ -1150,9 +1151,9 @@ public:
     // of free GRFs. It is meant to be freed by caller after
     // last use of the buffer.
     void* getFreeGRFInfo(unsigned int& size);
-    
+
     void setGTPinInit(void* buffer);
-    
+
     gtpin::igc::igc_init_t* getGTPinInit() { return gtpin_init; }
 
     // return igc_info_t format buffer. caller casts it to igc_info_t.
@@ -1182,34 +1183,23 @@ private:
 
 enum class RelocationType
 {
-    IndirectCall, // patched value is the address of an indirect call inst
-    FunctionAddr, // patched value is the address of a function
+    R_SYM_ADDR  // patched value is the address of a symbol
 };
 
 class RelocationEntry
 {
-    G4_INST* inst;  // instruction to be relocated
-    int opndPos;    // operand to be relocated. This should be a RelocImm
+    G4_INST* inst;             // instruction to be relocated
+    int opndPos;               // operand to be relocated. This should be a RelocImm
     RelocationType relocType;
-    G4_INST* indirectCallInst = nullptr;   // the call inst for the indirect call relocation
-    uint32_t funcId = (uint32_t) -1;    // the function id for function address relocation
+    std::string symName;       // the symbol name that it's address to be resolved
 
-    RelocationEntry(G4_INST* i, int pos, RelocationType type, G4_INST* call) :
-        inst(i), opndPos(pos), relocType(type), indirectCallInst(call) {}
-
-    RelocationEntry(G4_INST* i, int pos, RelocationType type, uint32_t functionId) :
-        inst(i), opndPos(pos), relocType(type), funcId(functionId) {}
+    RelocationEntry(G4_INST* i, int pos, RelocationType type, const std::string& symbolName) :
+        inst(i), opndPos(pos), relocType(type), symName(symbolName) {}
 
 public:
-    static RelocationEntry createIndirectCallReloc(G4_INST* inst, int opndPos, G4_INST* callInst)
+    static RelocationEntry createSymbolAddrReloc(G4_INST* inst, int opndPos, const std::string& symbolName)
     {
-        RelocationEntry entry(inst, opndPos, RelocationType::IndirectCall, callInst);
-        return entry;
-    }
-
-    static RelocationEntry createFuncAddrReloc(G4_INST* inst, int opndPos, uint32_t funcId)
-    {
-        RelocationEntry entry(inst, opndPos, RelocationType::FunctionAddr, funcId);
+        RelocationEntry entry(inst, opndPos, RelocationType::R_SYM_ADDR, symbolName);
         return entry;
     }
 
@@ -1227,12 +1217,10 @@ public:
     {
         switch (relocType)
         {
-            case RelocationType::IndirectCall:
-                return "IndirectCall";
-            case RelocationType::FunctionAddr:
-                return "FunctionAddress";
+            case RelocationType::R_SYM_ADDR:
+                return "R_SYM_ADDR";
             default:
-                assert(false && "unhanlded relocation type");
+                assert(false && "unhandled relocation type");
                 return "";
         }
     }
@@ -1242,16 +1230,10 @@ public:
         return opndPos;
     }
 
-    G4_INST* getIndirectCallInst() const
+    const std::string& getSymbolName() const
     {
-        assert(relocType == RelocationType::IndirectCall && "invalid relocation type");
-        return indirectCallInst;
-    }
-
-    uint32_t getFunctionId() const
-    {
-        assert(relocType == RelocationType::FunctionAddr && "invalid relocation type");
-        return funcId;
+        assert(relocType == RelocationType::R_SYM_ADDR && "invalid relocation type");
+        return symName;
     }
 
     void doRelocation(const G4_Kernel& k, void* binary, uint32_t binarySize);
@@ -1300,9 +1282,9 @@ class G4_Kernel
     std::vector<RelocationEntry> relocationTable;
 
     // id -> function map for all functions (transitively) called by this kernel
-    // this differs from the "callees" in IR_Builder as the one in builder only contain 
+    // this differs from the "callees" in IR_Builder as the one in builder only contain
     // functions directly called by this kernel
-    // this is populated for kernel only 
+    // this is populated for kernel only
     std::unordered_map<uint32_t, G4_Kernel*> allCallees;
 
 public:
@@ -1314,8 +1296,8 @@ public:
 
     G4_Kernel(INST_LIST_NODE_ALLOCATOR& alloc,
               Mem_Manager &m, Options *options, unsigned char major, unsigned char minor)
-              : m_options(options), RAType(RA_Type::UNKNOWN_RA), fg(alloc, this, m), 
-              major_version(major), minor_version(minor), asmInstCount(0), kernelID(0), 
+              : m_options(options), RAType(RA_Type::UNKNOWN_RA), fg(alloc, this, m),
+              major_version(major), minor_version(minor), asmInstCount(0), kernelID(0),
               tokenInstructionCount(0), tokenReuseCount(0), AWTokenReuseCount(0),
               ARTokenReuseCount(0), AATokenReuseCount(0), mathInstCount(0), syncInstCount(0),mathReuseCount(0),
               ARSyncInstCount(0), AWSyncInstCount(0),
@@ -1361,7 +1343,7 @@ public:
 
     void setTokenReuseCount(int count) {tokenReuseCount= count; }
     uint32_t getTokenReuseCount() {return tokenReuseCount; }
-    
+
     void setAWTokenReuseCount(int count) {AWTokenReuseCount= count; }
     uint32_t getAWTokenReuseCount() {return AWTokenReuseCount; }
 
@@ -1394,7 +1376,7 @@ public:
 
     void setBankBadNum(int num) {bank_bad_num = num; }
     uint32_t getBankBadNum() {return bank_bad_num; }
-    
+
     void setKernelID(uint64_t ID) { kernelID = ID; }
     uint64_t getKernelID() const { return kernelID; }
 
@@ -1413,7 +1395,7 @@ public:
     unsigned getNumRegTotal()             {return numRegTotal;}
     void emit_asm(std::ostream& output, bool beforeRegAlloc, void * binary, uint32_t binarySize);
     void emit_dep(std::ostream& output);
-    
+
     void evalAddrExp(void);
     void dumpDotFile(const char* appendix);
 
@@ -1444,7 +1426,7 @@ public:
     }
 
     gtPinData* getGTPinData()
-    { 
+    {
         if(!gtPinInfo)
             allocGTPinData();
 
@@ -1506,7 +1488,7 @@ class SCCAnalysis
     // implements Tarjan's SCC algorithm
     //
     const FlowGraph& cfg;
-    
+
     // node used during the SCC algorithm
     struct SCCNode
     {
@@ -1531,7 +1513,7 @@ class SCCAnalysis
         G4_BB* root;
         // list of BBs belonging to the SCC (including root as last BB)
         // assumption is SCC is small (10s of BBs) so membership test is cheap
-        std::vector<G4_BB*> body; 
+        std::vector<G4_BB*> body;
 
     public:
         SCC(G4_BB* bb) : root(bb) {} // root gets pushed to body just like other BBs in SCC
@@ -1545,9 +1527,9 @@ class SCCAnalysis
         }
         // get earliest BB in program order (this is not necessarily the root depending on DFS order)
         // assumption is reassingBBId() is called
-        G4_BB* getEarliestBB() const 
+        G4_BB* getEarliestBB() const
         {
-            auto result = std::min_element(body.begin(), body.end(), 
+            auto result = std::min_element(body.begin(), body.end(),
                 [](G4_BB* bb1, G4_BB* bb2) {return bb1->getId() < bb2->getId(); });
             return *result;
         }

@@ -630,7 +630,7 @@ static void printAtomicSubOpc(stringstream &sstr, uint8_t value)
     {
         sstr << ".16";
     }
-    else if ((value >> 6) == 1) 
+    else if ((value >> 6) == 1)
     {
         sstr << ".64";
     }
@@ -844,7 +844,7 @@ static string printInstructionCommon(const common_isa_header& isaHeader, const k
         {
             sstr << printOperand(isaHeader, header, inst, 0, opt);
         }
-        else if (opcode == ISA_SBARRIER) 
+        else if (opcode == ISA_SBARRIER)
         {
             uint8_t mode = getPrimitiveOperand<uint8_t>(inst, i);
             sstr << (mode ? ".signal" : ".wait");
@@ -940,7 +940,9 @@ static string printInstructionControlFlow(const common_isa_header& isaHeader, co
             }
             case ISA_FADDR:
             {
-                sstr << getPrimitiveOperand<uint16_t>(inst, i++);
+                /// symbol name in string
+                sstr << header->strings[getPrimitiveOperand<uint16_t>(inst, i++)];
+                /// dst
                 sstr << printOperand(isaHeader, header, inst, i++, opt);
                 break;
             }
@@ -1361,7 +1363,7 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
 
             sstr << SAMPLE_OP_3D_NAME[subop.opcode] << ".";
             // Print the pixel null mask if it is enabled.
-            if (subop.pixelNullMask) 
+            if (subop.pixelNullMask)
             {
                 sstr << "pixel_null_mask.";
             }
@@ -1412,7 +1414,7 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
             sstr << SAMPLE_OP_3D_NAME[subop.opcode] << ".";
             // Print the pixel null mask if it is enabled.
             // The last '.' is for the channels.
-            if (subop.pixelNullMask) 
+            if (subop.pixelNullMask)
             {
                 sstr << "pixel_null_mask.";
             }
@@ -1450,7 +1452,7 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
             sstr << SAMPLE_OP_3D_NAME[subop.opcode] << ".";
             // Print the pixel null mask if it is enabled.
             // The last '.' is for the channels.
-            if (subop.pixelNullMask) 
+            if (subop.pixelNullMask)
             {
                 sstr << "pixel_null_mask.";
             }

@@ -61,7 +61,7 @@ static const char* SrcModifierStr[Mod_src_undef] =
 
 G4_InstOptInfo InstOptInfo[] =
 {
-    {InstOpt_Align16, "Align16"}, 
+    {InstOpt_Align16, "Align16"},
     {InstOpt_M0, "M0"},
     {InstOpt_M4, "M4"},
     {InstOpt_M8, "M8"},
@@ -70,18 +70,18 @@ G4_InstOptInfo InstOptInfo[] =
     {InstOpt_M20, "M20"},
     {InstOpt_M24, "M24"},
     {InstOpt_M28, "M28"},
-    {InstOpt_Switch, "Switch"}, 
-    {InstOpt_Atomic, "Atomic"}, 
-    {InstOpt_NoDDChk, "NoDDChk"}, 
-    {InstOpt_NoDDClr, "NoDDClr"}, 
-    {InstOpt_WriteEnable, "NoMask"}, 
-    {InstOpt_BreakPoint, "BreakPoint"}, 
-    {InstOpt_EOT, "EOT"}, 
+    {InstOpt_Switch, "Switch"},
+    {InstOpt_Atomic, "Atomic"},
+    {InstOpt_NoDDChk, "NoDDChk"},
+    {InstOpt_NoDDClr, "NoDDClr"},
+    {InstOpt_WriteEnable, "NoMask"},
+    {InstOpt_BreakPoint, "BreakPoint"},
+    {InstOpt_EOT, "EOT"},
     {InstOpt_AccWrCtrl, "AccWrEn"},
     {InstOpt_Compacted, "Compacted"},
     {InstOpt_NoSrcDepSet, "NoSrcDepSet"},
     {InstOpt_NoPreempt, "NoPreempt"},
-    {InstOpt_END, "END"}  
+    {InstOpt_END, "END"}
 };
 
 #define HANDLE_INST( op, nsrc, ndst, type, plat, attr ) \
@@ -150,7 +150,7 @@ bool Is_Type_Included(G4_Type type1, G4_Type type2, const IR_Builder& builder)
     {
         return false;
     }
-    if (type1 == Type_F && type2 == builder.getMixModeType() && 
+    if (type1 == Type_F && type2 == builder.getMixModeType() &&
         getGenxPlatform() > GENX_BDW && builder.getOption(vISA_enableUnsafeCP_DF))
     {
         return true;
@@ -267,9 +267,9 @@ G4_SendMsgDescriptor::G4_SendMsgDescriptor( uint32_t fCtrl, uint32_t regs2rcv,
     }
 
     uint32_t totalMaxLength = builder.getMaxSendMessageLength();
-    MUST_BE_TRUE(extDesc.layout.extMsgLength + desc.layout.msgLength < totalMaxLength, 
+    MUST_BE_TRUE(extDesc.layout.extMsgLength + desc.layout.msgLength < totalMaxLength,
         "combined message length may not exceed the maximum");
-  
+
     if (extDesc.layout.extMsgLength + desc.layout.msgLength >= 16)
     {
         MUST_BE_TRUE(!isEot, "cm_sends can't set eot if message length is greater than 16");
@@ -421,7 +421,7 @@ const char* G4_SendMsgDescriptor::getDescType()
     return NULL;
 }
 
-bool G4_SendMsgDescriptor::isSLMMessage() const 
+bool G4_SendMsgDescriptor::isSLMMessage() const
 {
     if (getFuncId() == SFID_DP_DC2)
     {
@@ -447,7 +447,7 @@ bool G4_SendMsgDescriptor::isSLMMessage() const
     {
         return true;
     }
-   
+
     return false;
 }
 
@@ -879,7 +879,7 @@ void G4_INST::removeAllUses()
 }
 
 //
-// remove def/use for opndNum, which must be a source 
+// remove def/use for opndNum, which must be a source
 // (i.e., not Opnd_dst/Opnd_condMod/Opnd_implAccDst)
 void G4_INST::removeDefUse( Gen4_Operand_Number opndNum )
 {
@@ -1057,7 +1057,7 @@ void G4_INST::transferUse( G4_INST *inst2, bool keepExisting)
     {
         inst2->removeAllUses();
     }
-    
+
     copyUsesTo(inst2, false);
     removeAllUses();
 }
@@ -1517,7 +1517,7 @@ G4_INST::MovType G4_INST::canPropagate()
 
     topDcl = dst->getTopDcl();
 
-    if (op != G4_mov 
+    if (op != G4_mov
         // Do not eliminate if either sat or condMod is present.
         || getSaturate() || getCondMod()
         // Do not eliminate if there's no use (dead or side-effect code?)
@@ -1533,7 +1533,7 @@ G4_INST::MovType G4_INST::canPropagate()
     if (topDcl)
     {
         G4_Declare* rootDcl = topDcl->getRootDeclare();
-        if (builder.isPreDefFEStackVar(rootDcl) || builder.isPreDefArg(rootDcl) || 
+        if (builder.isPreDefFEStackVar(rootDcl) || builder.isPreDefArg(rootDcl) ||
             builder.isPreDefRet(rootDcl))
         {
             return SuperMov;
@@ -1542,7 +1542,7 @@ G4_INST::MovType G4_INST::canPropagate()
 
 
     // Do not eliminate MOV/COPY to Acc/flag registers.
-    if (dst->isAccReg() || dst->isFlag()) 
+    if (dst->isAccReg() || dst->isFlag())
     {
         return SuperMov;
     }
@@ -1560,7 +1560,7 @@ G4_INST::MovType G4_INST::canPropagate()
     }
 
     // Do not propagate through copy of `acc0`, as some later phases (e.g., fixAddc) rely on finding this move
-    if (src->isAccReg()) 
+    if (src->isAccReg())
     {
         return SuperMov;
     }
@@ -1865,7 +1865,7 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
     {
         return false;
     }
- 
+
     if (isMixedMode())
     {
         // FIXME: what's this for?
@@ -1887,7 +1887,7 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
             return false;
         }
     }
-  
+
 
     // special checks for message desc/extended desc, which must be either a0 or imm
     if (useInst->isSend())
@@ -1901,9 +1901,9 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
             }
         }
         if (opndNum == Opnd_src3)
-        {    
+        {
             // there are some HW restrictions that prevent imm exdesc (e.g., on MRT write),
-            // so we conservatively disable copy prop here   
+            // so we conservatively disable copy prop here
             return false;
         }
     }
@@ -2285,10 +2285,10 @@ bool G4_INST::canHoistTo( G4_INST *defInst, bool simdBB)
         }
         if (!builder.hasMixMode())
         {
-            // normally we should disable the opt, but for the special case where 
-            // defInst is a move with integer source, we can still hoist since it 
+            // normally we should disable the opt, but for the special case where
+            // defInst is a move with integer source, we can still hoist since it
             // won't produce a mixed mode inst
-            if (!(defInst->isMov() && IS_TYPE_INT(defInst->getSrc(0)->getType())))     
+            if (!(defInst->isMov() && IS_TYPE_INT(defInst->getSrc(0)->getType())))
             {
                 return false;
             }
@@ -2340,7 +2340,7 @@ bool G4_INST::canHoistTo( G4_INST *defInst, bool simdBB)
 	}
 
     // no def hoisting for sends for now
-    if (defInst->isSend()) 
+    if (defInst->isSend())
     {
         return false;
     }
@@ -3286,10 +3286,10 @@ void G4_InstSend::emit_send(std::ostream& output, bool dotStyle)
                 output << std::endl;
             }
         }
-        emit_send(output, dst_valid, srcs_valid); 
+        emit_send(output, dst_valid, srcs_valid);
     }
     else
-        emit_send(output, false, NULL);  
+        emit_send(output, false, NULL);
 }
 
 //
@@ -4496,7 +4496,7 @@ unsigned G4_DstRegRegion::computeRightBound( uint8_t exec_size )
     else
     {
         // For call, the return addr is always set as if simd2.
-        if (inst->isCall())
+        if (inst->isCall() || inst->isFCall())
         {
             exec_size = 2;
         }
@@ -4557,7 +4557,7 @@ unsigned G4_DstRegRegion::computeRightBound( uint8_t exec_size )
 
 /// compare regRegion to opnd
 /// regRegion is either a SrcRegRegion or DstRegRegion, opnd can be any G4_operand
-/// We put this in a separate function since G4_DstRegRegion and G4_SrcRegRegion 
+/// We put this in a separate function since G4_DstRegRegion and G4_SrcRegRegion
 /// should have (nearly) identical code for compareOperand
 static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operand* opnd)
 {
@@ -4601,11 +4601,11 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
     {
         // direct v. indirect
         // the two may inteferce if the direct operand is either an address-taken GRF or an address operand
-        // we could make the check tighter by considering the offsets of the address operand, 
+        // we could make the check tighter by considering the offsets of the address operand,
         // but it won't much difference in practice
         auto mayInterfereWithIndirect = [](G4_Operand* direct, G4_Operand* indirect)
-        { 
-            assert((direct->getRegAccess() == Direct && indirect->getRegAccess() == IndirGRF) && 
+        {
+            assert((direct->getRegAccess() == Direct && indirect->getRegAccess() == IndirGRF) &&
                 "first opereand should be direct and second indirect");
             return (direct->getTopDcl() && direct->getTopDcl()->getAddressed()) ||
                 (direct->isAddress() && direct->getTopDcl() == indirect->getTopDcl());
@@ -4945,7 +4945,7 @@ bool G4_DstRegRegion::checkGRFAlign()
 //
 // returns true if this operand (must be either Src or DstRegRegion) has a fixed subreg offset.
 // This is true only if
-// -- operand is direct, 
+// -- operand is direct,
 // -- operand has assigned GRF (i.e., input), or
 // -- base declare is a GRF variable that is GRF-aligned
 // if true, the subreg offset is also returned via offset in bytes
@@ -5233,7 +5233,7 @@ bool G4_CondMod::sameCondMod(G4_CondMod& m)
 //
 // create all physical register operands
 //
-PhyRegPool::PhyRegPool(Mem_Manager& m, unsigned int maxRegisterNumber) 
+PhyRegPool::PhyRegPool(Mem_Manager& m, unsigned int maxRegisterNumber)
 {
     maxGRFNum = maxRegisterNumber;
 
@@ -5242,7 +5242,7 @@ PhyRegPool::PhyRegPool(Mem_Manager& m, unsigned int maxRegisterNumber)
     for (unsigned int i = 0; i < maxGRFNum; i++)
         GRF_Table[i] = new (m) G4_Greg(i);
 
-    for( unsigned i = 0; i < AREG_LAST; i++ ) 
+    for( unsigned i = 0; i < AREG_LAST; i++ )
     {
         ARF_Table[i] = nullptr;
     }
@@ -5702,7 +5702,7 @@ static G4_CmpRelation compareBound(uint32_t myLB, uint32_t myRB, uint32_t otherL
 
 /// compare flag to opnd
 /// flag is either a G4_Predicate or G4_CondMod, opnd can be any G4_operand
-/// We put this in a separate function since G4_Predicate and G4_CondMod 
+/// We put this in a separate function since G4_Predicate and G4_CondMod
 /// should have identical code for compareOperand
 static G4_CmpRelation compareFlagToOperand(G4_Operand* flag, G4_Operand* opnd)
 {
@@ -7070,7 +7070,7 @@ G4_InstOption G4_INST::offsetToMask(int execSize, int offset, bool nibOk)
     switch (execSize)
     {
     case 32:
-        return InstOpt_M0; 
+        return InstOpt_M0;
     case 16:
         switch (offset)
         {
@@ -7384,7 +7384,7 @@ bool G4_INST::isAlign1Ternary() const
 // (src is also packed when it is replicated scalar).
 // Two cases are possible:
 // 1)   add (16)    r1.0<1>:hf   r2.0<8;8,1>:hf   r3.0<8;8,1>:hf    { Align1, H1 }
-// 2)   add (16)    r1.0<1>:hf   r2.0<8;8,1>:hf   r3.0<0;1,0>:hf    { Align1, H1 } 
+// 2)   add (16)    r1.0<1>:hf   r2.0<8;8,1>:hf   r3.0<0;1,0>:hf    { Align1, H1 }
 bool G4_INST::isFastHFInstruction(void) const {
     if (getExecSize() < 16) {
         return false;
@@ -7640,7 +7640,7 @@ bool G4_INST::canSrcBeAcc(int srcId) const
     	 {
     	     return false;
     	 }
-    	
+
         if (getExecSize() != 8 && getExecSize() != 4)
         {
             return false;
@@ -7682,7 +7682,7 @@ bool G4_INST::canSrcBeAcc(int srcId) const
 
     if (opcode() == G4_mad && srcId == 0)
     {
-        // mac's implicit acc gets its region from dst, so we have to check src and 
+        // mac's implicit acc gets its region from dst, so we have to check src and
         // dst have the same type
         if (src->getType() != dst->getType())
         {

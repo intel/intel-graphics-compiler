@@ -602,8 +602,8 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& com
     ASSERT_USER( kernel != NULL, "Valid kernel not found when stitching compiled units");
 
     if (hasIndirectCall)
-    { 
-        // we have to include every function  
+    {
+        // we have to include every function
         for (auto&& cu : compilation_units)
         {
             if (!cu->fg.builder->getIsKernel())
@@ -613,7 +613,7 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& com
         }
     }
     else
-    { 
+    {
         Enumerate_Callees(header, kernel, compilation_units, callee_index);
     }
 
@@ -696,11 +696,11 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& com
     }
 
     // Append declarations and color attributes from all callees to kernel
-    for (auto it = callee_index.begin(); it != callee_index.end(); ++it ) 
+    for (auto it = callee_index.begin(); it != callee_index.end(); ++it )
     {
         G4_Kernel* callee = Get_Resolved_Compilation_Unit( header, compilation_units, (*it) );
 
-        for (auto curDcl : callee->Declares) 
+        for (auto curDcl : callee->Declares)
         {
             kernel->Declares.push_back( curDcl );
         }
@@ -1978,7 +1978,7 @@ bool CISA_IR_Builder::CISA_create_sync_instruction(ISA_Opcode opcode)
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_sbarrier_instruction(bool isSignal) 
+bool CISA_IR_Builder::CISA_create_sbarrier_instruction(bool isSignal)
 {
     int ret = m_kernel->AppendVISASplitBarrierInst(isSignal);
     return ret == CM_SUCCESS;
@@ -2340,7 +2340,7 @@ bool CISA_IR_Builder::CISA_create_rtwrite_3d_instruction(VISA_opnd* pred,
     APPEND_NON_NULL_RAW_OPND( Z );
     APPEND_NON_NULL_RAW_OPND( Stencil );
     Common_ISA_Exec_Size executionSize = Get_Common_ISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISA3dRTWriteCPS((VISA_PredOpnd*)pred, emask, executionSize, (VISA_VectorOpnd*)rti, 
+    m_kernel->AppendVISA3dRTWriteCPS((VISA_PredOpnd*)pred, emask, executionSize, (VISA_VectorOpnd*)rti,
         cntrls, surface, (VISA_RawOpnd*)r1Header, (VISA_VectorOpnd*)SamplerIndex, (VISA_VectorOpnd*)CPSCounter, numMsgSpecificOpnd, rawOpnds);
 
     return true;
@@ -2674,15 +2674,14 @@ bool CISA_IR_Builder::CISA_create_ifcall_instruction(VISA_opnd *pred_opnd,
     int line_no) //last index
 {
     Common_ISA_Exec_Size executionSize = Get_Common_ISA_Exec_Size_From_Raw_Size(exec_size);
-    m_kernel->AppendVISACFIndirectFuncCallInst((VISA_PredOpnd *)pred_opnd, emask, executionSize, 
+    m_kernel->AppendVISACFIndirectFuncCallInst((VISA_PredOpnd *)pred_opnd, emask, executionSize,
         (VISA_VectorOpnd*) funcAddr, (uint8_t) arg_size, (uint8_t) return_size);
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_faddr_instruction(uint32_t funcId,
-    VISA_opnd* dst, int line_no) 
+bool CISA_IR_Builder::CISA_create_faddr_instruction(char* sym_name, VISA_opnd* dst, int line_no)
 {
-    m_kernel->AppendVISACFFuncAddrInst(funcId, (VISA_VectorOpnd*) dst);
+    m_kernel->AppendVISACFSymbolInst(std::string(sym_name), (VISA_VectorOpnd*) dst);
     return true;
 }
 

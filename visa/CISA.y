@@ -427,6 +427,7 @@ VISA_RawOpnd* rawOperandArray[16];
 //%type <string> KERNEL_NAME
 %type <string> PredCntrl
 %type <string> FUNCTION_NAME
+%type <string> SymbolName
 
 %type <number> PlaneID
 %type <number> SIMDMode
@@ -838,7 +839,7 @@ GEN_ATTR : /* Empty */
               $$.value = (int)$4;
               $$.attr_set = true;
             };
-            | DIRECTIVE_ATTR VAR '=' 
+            | DIRECTIVE_ATTR VAR '='
             {
               $$.name = $2;
               $$.isInt = false;
@@ -1072,13 +1073,13 @@ ScatterTypedInstruction :  Predicate   SCATTER_TYPED_OP  SAMPLER_CHANNEL  ExecSi
             pCisaBuilder->CISA_create_scatter4_typed_instruction($2, $1.cisa_gen_opnd, ChannelMask::createFromAPI($3), $4.emask, $4.exec_size, $5, $6.cisa_gen_opnd, $7.cisa_gen_opnd, $8.cisa_gen_opnd, $9.cisa_gen_opnd, $10.cisa_gen_opnd, CISAlineno);
         };
 
-//                              1           2               3               4      5        6                   7            8         
+//                              1           2               3               4      5        6                   7            8
 Scatter4ScaledInstruction : Predicate SCATTER4_SCALED_OP SAMPLER_CHANNEL  ExecSize VAR VecSrcOperand_G_I_IMM RawOperand RawOperand
         {
             pCisaBuilder->CISA_create_scatter4_scaled_instruction($2, $1.cisa_gen_opnd, $4.emask, $4.exec_size, ChannelMask::createFromAPI($3), $5, $6.cisa_gen_opnd, $7.cisa_gen_opnd, $8.cisa_gen_opnd, CISAlineno);
         };
-            
-//                                 1                 2   3      4   5      6   7                        8        9                      
+
+//                                 1                 2   3      4   5      6   7                        8        9
 ScatterScaledInstruction : Predicate SCATTER_SCALED_OP '.' NUMBER ExecSize VAR VecSrcOperand_G_I_IMM RawOperand RawOperand
         {
             pCisaBuilder->CISA_create_scatter_scaled_instruction($2, $1.cisa_gen_opnd, $5.emask, $5.exec_size, (uint32_t) $4, $6, $7.cisa_gen_opnd, $8.cisa_gen_opnd, $9.cisa_gen_opnd, CISAlineno);
@@ -1175,7 +1176,7 @@ RTWriteOperandParse: /* empty */
             {
 			    RTWriteOperands.push_back($2.cisa_gen_opnd);
             }
-            //          1           2               3               4         5     6           
+            //          1           2               3               4         5     6
 RTWriteInstruction: Predicate    RTWRITE_OP_3D    RTWRITE_MODE    ExecSize    VAR   RTWriteOperandParse
            {
                pCisaBuilder->CISA_create_rtwrite_3d_instruction( $1.cisa_gen_opnd, $3, $4.emask, (unsigned int)$4.exec_size, $5,
@@ -1259,12 +1260,12 @@ SVM_OP ExecSize VecSrcOperand_G_I_IMM RawOperand
 {
     pCisaBuilder->CISA_create_svm_atomic_instruction($1.cisa_gen_opnd, $5.emask, $5.exec_size, $3, $4, $6.cisa_gen_opnd, $8.cisa_gen_opnd, $9.cisa_gen_opnd, $7.cisa_gen_opnd, CISAlineno);
 }
-//        1                    2               3   4      5                         6          7         
+//        1                    2               3   4      5                         6          7
 | Predicate SVM_GATHER4SCALED_OP SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM RawOperand RawOperand
 {
     pCisaBuilder->CISA_create_svm_gather4_scaled($1.cisa_gen_opnd, $4.emask, $4.exec_size, ChannelMask::createFromAPI($3), $5.cisa_gen_opnd, $6.cisa_gen_opnd, $7.cisa_gen_opnd, CISAlineno);
 }
-//        1                     2               3   4      5                        6          7          
+//        1                     2               3   4      5                        6          7
 | Predicate SVM_SCATTER4SCALED_OP SAMPLER_CHANNEL ExecSize VecSrcOperand_G_I_IMM RawOperand RawOperand
 {
     pCisaBuilder->CISA_create_svm_scatter4_scaled($1.cisa_gen_opnd, $4.emask, $4.exec_size, ChannelMask::createFromAPI($3), $5.cisa_gen_opnd, $6.cisa_gen_opnd, $7.cisa_gen_opnd, CISAlineno);
@@ -1311,13 +1312,13 @@ BranchInstruction : Predicate BRANCH_OP ExecSize TargetLabel
          // 1           2       3       4                   5       6
          | Predicate IFCALL ExecSize VecSrcOperand_G_I_IMM NUMBER NUMBER
          {
-            pCisaBuilder->CISA_create_ifcall_instruction($1.cisa_gen_opnd, $3.emask, $3.exec_size, 
+            pCisaBuilder->CISA_create_ifcall_instruction($1.cisa_gen_opnd, $3.emask, $3.exec_size,
             $4.cisa_gen_opnd, (unsigned)$5, (unsigned)$6, CISAlineno);
          }
-         // 1       2       3    
-         | FADDR  NUMBER VecDstOperand_G_I
+         // 1       2          3
+         | FADDR  SymbolName VecDstOperand_G_I
          {
-            pCisaBuilder->CISA_create_faddr_instruction((uint32_t) $2, $3.cisa_gen_opnd, CISAlineno);
+            pCisaBuilder->CISA_create_faddr_instruction($2, $3.cisa_gen_opnd, CISAlineno);
          }
 
                       // 1        2         3
@@ -1415,6 +1416,9 @@ OwordModifier:  {$$ = false;}
 TargetLabel: VAR
             { $$ = $1; };
            | F_NAME
+            { $$ = $1; };
+
+SymbolName: VAR
             { $$ = $1; };
 
 
@@ -1561,7 +1565,7 @@ VecSrcOpndSimple :   VAR TwoDimOffset
                      $$.type = OPERAND_GENERAL;
                      $$.cisa_gen_opnd = pCisaBuilder->CISA_create_gen_src_operand($1, 1, 1, 0, $2.row, $2.elem, MODIFIER_NONE, CISAlineno);
                    };
-        
+
          //   1     2    3     4    5
 VMEOpndIME : '(' NUMBER ',' NUMBER ')'
             {

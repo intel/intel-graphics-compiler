@@ -487,14 +487,14 @@ void FlowGraph::preprocess(INST_LIST& instlist)
     {
         G4_INST* i = *I;
         if (i->opcode() == G4_goto)
-        {   
+        {
             G4_Label* target = i->asCFInst()->getUip()->asLabel();
-            assert(labels.count(target) && "undefined goto label"); 
+            assert(labels.count(target) && "undefined goto label");
         }
         else if ((i->opcode() == G4_jmpi || i->isCall()) && i->getSrc(0) && i->getSrc(0)->isLabel())
         {
             assert(labels.count((G4_Label *)i->getSrc(0)) && "undefined jmpi/call label");
-        }     
+        }
     }
 #endif
 
@@ -643,7 +643,7 @@ void FlowGraph::constructFlowGraph(INST_LIST& instlist)
         {
             G4_BB* next_BB = beginBB(labelMap, next_i);
             // next_BB may be null if the kernel ends on an CF inst (e.g., backwward goto/jmpi)
-            // This should be ok because we should not fall-through to next_BB in such case 
+            // This should be ok because we should not fall-through to next_BB in such case
             // (i.e., goto/jmpi must not be predicated)
             {
                 if (i->opcode() == G4_jmpi || i->isCall())
@@ -4096,7 +4096,7 @@ void G4_BB::emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it)
     char* curFilename = (*it)->getSrcFilename();
     int curSrcLineNo = (*it)->getLineNo();
 
-    if ((*it)->isLabel()) 
+    if ((*it)->isLabel())
     {
         return;
     }
@@ -4106,7 +4106,7 @@ void G4_BB::emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it)
         emitFile = true;
     }
 
-    if (prevSrcLineNo != curSrcLineNo && curSrcLineNo != 0) 
+    if (prevSrcLineNo != curSrcLineNo && curSrcLineNo != 0)
     {
         emitLineNo = true;
     }
@@ -5490,7 +5490,7 @@ void writeBuffer(std::vector<unsigned char>& buffer, unsigned int& bufferSize, c
 void* gtPinData::getGTPinInfoBuffer(unsigned int &bufferSize)
 {
     gtpin::igc::igc_init_t t;
-    std::vector<unsigned char> buffer; 
+    std::vector<unsigned char> buffer;
     unsigned int numTokens = 0;
     bufferSize = 0;
 
@@ -5628,54 +5628,8 @@ unsigned int G4_Kernel::getNumCalleeSaveRegs()
 
 void RelocationEntry::doRelocation(const G4_Kernel& kernel, void* binary, uint32_t binarySize)
 {
-    uint32_t instOffset = (uint32_t)inst->getGenOffset();
-    assert(instOffset < binarySize && "invalid offset for relocation instruction");
-    switch (relocType)
-    {
-        case RelocationType::IndirectCall:
-        {
-            uint32_t relocVal = (uint32_t)indirectCallInst->getGenOffset();
-            assert(relocVal < binarySize && "invalid relocation offset");
-
-            iga::ImmVal iga_imm;
-            iga_imm.kind = iga::ImmVal::U32;
-            iga_imm.u32 = relocVal;
-            bool status = KernelEncoder::patchImmValue(
-                *iga::Model::LookupModel(BinaryEncodingIGA::getIGAInternalPlatform(getGenxPlatform())),
-                (unsigned char*)binary + instOffset,
-                BinaryEncodingIGA::getIGAType(Type_UD),
-                iga_imm);
-            assert(status == true);
-            break;
-        }
-        case RelocationType::FunctionAddr:
-        {
-            G4_Kernel* callee = kernel.getCallee(funcId);
-            assert(callee && "callee not found");
-            if (callee)
-            {
-                auto firstInst = callee->getFirstNonLabelInst();
-                if (firstInst)
-                {
-                    uint32_t relocVal = (uint32_t) firstInst->getGenOffset();
-                    assert(relocVal < binarySize && "invalid relocation offset");
-
-                    iga::ImmVal iga_imm;
-                    iga_imm.kind = iga::ImmVal::U32;
-                    iga_imm.u32 = relocVal;
-                    bool status = KernelEncoder::patchImmValue(
-                        *iga::Model::LookupModel(BinaryEncodingIGA::getIGAInternalPlatform(getGenxPlatform())),
-                        (unsigned char*)binary + instOffset,
-                        BinaryEncodingIGA::getIGAType(Type_UD),
-                        iga_imm);
-                    assert(status == true);
-                }
-            }
-            break;
-        }
-        default:
-            assert(false && "unhandled relocation type");
-    }
+    // FIXME: nothing to do here
+    // we have only dynamic relocations now, which cannot be resolved at compilation time
 }
 
 void RelocationEntry::dump() const
@@ -5685,11 +5639,8 @@ void RelocationEntry::dump() const
     inst->dump();
     switch (relocType)
     {
-        case RelocationType::IndirectCall:
-            std::cerr << "call inst (offset=" << indirectCallInst->getGenOffset() << "):\t";
-            indirectCallInst->dump();
-        case RelocationType::FunctionAddr:
-            std::cerr << "function id = " << funcId;
+        case RelocationType::R_SYM_ADDR:
+            std::cerr << "R_SYM_ADDR: symbol name = " << symName;
     }
     std::cerr << "\n";
 }

@@ -780,8 +780,8 @@ static void readInstructionCommonNG(unsigned& bytePos, const char* buf, ISA_Opco
                     kernelBuilder->CreateVISAImmediate(mask, &value, ISA_TYPE_UW);
                 }
                 kernelBuilder->AppendVISAWaitInst(mask);
-            } 
-            else if (opcode == ISA_SBARRIER) 
+            }
+            else if (opcode == ISA_SBARRIER)
             {
                 uint32_t mode = readOtherOperandNG(bytePos, buf, ISA_TYPE_UB);
                 kernelBuilder->AppendVISASplitBarrierInst(mode != 0);
@@ -1238,9 +1238,9 @@ static void readInstructionControlFlow(unsigned& bytePos, const char* buf, ISA_O
     }
     case ISA_FADDR:
     {
-        uint16_t funcId = readPrimitiveOperandNG<uint16_t>(bytePos, buf);
+        uint16_t sym_name_idx = readPrimitiveOperandNG<uint16_t>(bytePos, buf);
         VISA_VectorOpnd* dst = readVectorOperandNG(bytePos, buf, container, true);
-        kernelBuilder->AppendVISACFFuncAddrInst(funcId, dst);
+        kernelBuilder->AppendVISACFSymbolInst(container.stringPool[sym_name_idx], dst);
         return;
     }
     case ISA_SWITCHJMP:
@@ -1727,7 +1727,7 @@ static void readInstructionSampler(unsigned& bytePos, const char* buf, ISA_Opcod
         {
             // 0x6D <op> <pixel_null_mask> <cps_enable> <exec_size> <pred>
             // <channels> <aoffimmi> <sampler> <surface> <dst> <numParams> <params>
-            auto op = readSubOpcodeByteNG(bytePos, buf); 
+            auto op = readSubOpcodeByteNG(bytePos, buf);
 
             Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
             Common_ISA_Exec_Size  esize = EXEC_SIZE_ILLEGAL;

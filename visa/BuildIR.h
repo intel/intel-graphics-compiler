@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <list>
 #include <map>
 #include <set>
+#include <string>
 
 #include "Gen4_IR.hpp"
 #include "FlowGraph.h"
@@ -525,7 +526,7 @@ public:
     // number of predefined variables are included.
     int                 num_general_dcl;
     unsigned            num_temp_dcl;
-    // number of temp GRF vars created to hold spilled addr/flag  
+    // number of temp GRF vars created to hold spilled addr/flag
     uint32_t            numAddrFlagSpillLoc = 0;
     std::vector<input_info_t*> m_inputVect;
 
@@ -612,7 +613,7 @@ public:
     bool isOpndAligned( G4_Operand *opnd, unsigned short &offset, int align_byte );
 
     // check if opnd is or can be made "alignByte"-byte aligned. This function will change the underlying
-    // variable's alignment (e.g., make a scalar variable GRF-aligned) when possible to satisfy 
+    // variable's alignment (e.g., make a scalar variable GRF-aligned) when possible to satisfy
     // the alignment
     bool isOpndAligned(G4_Operand* opnd, int alignByte)
     {
@@ -1053,7 +1054,7 @@ public:
 
     //
     // Create a declare that is hardwired to some phyiscal GRF.
-    // It is useful to implement various workarounds post RA where we want to directly 
+    // It is useful to implement various workarounds post RA where we want to directly
     // address some physical GRF.
     // regOff is in unit of the declare type.
     // caller is responsible for ensuring the resulting variable does not violate any HW restrictions
@@ -1064,7 +1065,7 @@ public:
         G4_Declare* dcl = createTempVar(numElements, type, Either, Any);
         unsigned int linearizedStart = (regNum * G4_GRF_REG_NBYTES) + (regOff * getTypeSize(type));
         // since it's called post RA (specifically post computePReg) we have to manually set the GRF's byte offset
-        dcl->setGRFBaseOffset(linearizedStart); 
+        dcl->setGRFBaseOffset(linearizedStart);
         dcl->getRegVar()->setPhyReg(phyregpool.getGreg(regNum), regOff);
         return dcl;
     }
@@ -1339,19 +1340,19 @@ public:
         case Type_D:
             // It is legal to change a positive imm's type from signed to unsigned if it fits
             // in the unsigned type. We do prefer signed type however for readability.
-            if (imm >= MIN_WORD_VALUE && imm <= MAX_WORD_VALUE) 
+            if (imm >= MIN_WORD_VALUE && imm <= MAX_WORD_VALUE)
             {
                 return Type_W;
-            } 
-            else if (imm >= MIN_UWORD_VALUE && imm <= MAX_UWORD_VALUE) 
+            }
+            else if (imm >= MIN_UWORD_VALUE && imm <= MAX_UWORD_VALUE)
             {
                 return Type_UW;
-            } 
-            else if (imm >= int(MIN_DWORD_VALUE) && imm <= int(MAX_DWORD_VALUE)) 
+            }
+            else if (imm >= int(MIN_DWORD_VALUE) && imm <= int(MAX_DWORD_VALUE))
             {
                 return Type_D;
-            } 
-            else if (imm >= unsigned(MIN_UDWORD_VALUE) && imm <= unsigned(MAX_UDWORD_VALUE)) 
+            }
+            else if (imm >= unsigned(MIN_UDWORD_VALUE) && imm <= unsigned(MAX_UDWORD_VALUE))
             {
                 return Type_UD;
             }
@@ -1361,11 +1362,11 @@ public:
             {
                 // unsigned imm must stay as unsigned
                 uint64_t immU = static_cast<uint64_t>(imm);
-                if (immU <= MAX_UWORD_VALUE) 
+                if (immU <= MAX_UWORD_VALUE)
                 {
                     return Type_UW;
                 }
-                else if (immU <= unsigned(MAX_UDWORD_VALUE)) 
+                else if (immU <= unsigned(MAX_UDWORD_VALUE))
                 {
                     return Type_UD;
                 }
@@ -1420,7 +1421,7 @@ public:
     {
         // Create new lab string with name of compilation unit
         // to ensure unique label names across compilation units.
-        if (getOptions()->isTargetCM() && kind != LABEL_FC) 
+        if (getOptions()->isTargetCM() && kind != LABEL_FC)
         {
             lab += std::string("_") + kernel.getName();
 #if _DEBUG
@@ -1905,7 +1906,8 @@ public:
         uint8_t argSize,
         uint8_t returnSize);
 
-    int translateVISACFFuncAddrInst(uint32_t funcId, G4_DstRegRegion* dst);
+    int translateVISACFSymbolInst(const std::string& symbolName,
+                        G4_DstRegRegion* dst);
 
     int translateVISACFFretInst(Common_ISA_Exec_Size execsize,
                         Common_VISA_EMask_Ctrl emask,
@@ -2313,7 +2315,7 @@ public:
                         VISASampler3DSubOpCode actualop,
                         bool pixelNullMask,
                         bool cpsEnable,
-                        bool uniformSampler,           
+                        bool uniformSampler,
                         G4_Predicate* pred,
                         Common_ISA_Exec_Size executionSize,
                         Common_VISA_EMask_Ctrl emask,
