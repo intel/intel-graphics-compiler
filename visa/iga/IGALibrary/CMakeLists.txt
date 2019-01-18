@@ -349,4 +349,18 @@ endif(ANDROID AND MEDIA_IGA)
             DESTINATION Release-Internal/lh64/pdb CONFIGURATIONS ReleaseInternal)
     install(FILES $<TARGET_PDB_FILE:IGA_DLL>
             DESTINATION Debug/lh64/pdb            CONFIGURATIONS Debug)
+
+    install(TARGETS IGA_DLL RUNTIME
+            DESTINATION Release/x64/Standalones          CONFIGURATIONS Release)
+    install(TARGETS IGA_DLL RUNTIME
+            DESTINATION Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
+    install(TARGETS IGA_DLL RUNTIME
+            DESTINATION Debug/x64/Standalones            CONFIGURATIONS Debug)
+
+    install(FILES $<TARGET_PDB_FILE:IGA_DLL>
+            DESTINATION Release/x64/Standalones          CONFIGURATIONS Release)
+    install(FILES $<TARGET_PDB_FILE:IGA_DLL>
+            DESTINATION Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
+    install(FILES $<TARGET_PDB_FILE:IGA_DLL>
+            DESTINATION Debug/x64/Standalones            CONFIGURATIONS Debug)
   endif(UNIX)

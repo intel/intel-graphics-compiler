@@ -3857,6 +3857,20 @@ elseif (WIN32)
   install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
           DESTINATION Debug/lh64/pdb                CONFIGURATIONS Debug)
 
+  install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
+          RUNTIME DESTINATION Release/x64/Standalones          CONFIGURATIONS Release)
+  install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
+          RUNTIME DESTINATION Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
+  install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
+          RUNTIME DESTINATION Debug/x64/Standalones            CONFIGURATIONS Debug)
+
+  install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
+          DESTINATION Release/x64/Standalones                  CONFIGURATIONS Release)
+  install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
+          DESTINATION Release-Internal/x64/Standalones         CONFIGURATIONS ReleaseInternal)
+  install(FILES $<TARGET_PDB_FILE:${IGC_BUILD__PROJ__igc_dll}>
+          DESTINATION Debug/x64/Standalones                    CONFIGURATIONS Debug)
+
   install(TARGETS ${IGC_BUILD__PROJ__fcl_dll}
           RUNTIME DESTINATION Release/lh64          CONFIGURATIONS Release)
   install(TARGETS ${IGC_BUILD__PROJ__fcl_dll}
