@@ -624,6 +624,8 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
     // call functions part of this compilation unit.
 
     bool done = false;
+    unsigned int maxVISAIndex = 0;
+    uint64_t maxGenIsaOffset = 0;
     // Now traverse CFG, create pair of CISA byte offset, gen binary offset and push to vector
     for (BB_LIST_ITER bb_it = kernel->fg.BBs.begin(); bb_it != kernel->fg.BBs.end(); bb_it++)
     {
@@ -665,11 +667,14 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
             if (inst->getGenOffset() != UNDEFINED_GEN_OFFSET)
             {
                 int cisaByteIndex = inst->getCISAOff();
-
+                maxGenIsaOffset = std::max(maxGenIsaOffset, (uint64_t)inst->getGenOffset()) +
+                    (inst->isCompactedInst() ? 8 : 16);
                 if(cisaByteIndex == -1)
                 {
                     continue;
                 }
+
+                maxVISAIndex = std::max(maxVISAIndex, (unsigned int)cisaByteIndex);
 
                 if(isaPrevByteOffset != cisaByteIndex)
                 {
@@ -683,6 +688,9 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
             }
         }
     }
+
+    // Insert out-of-sequence entry in to VISA index->Gen offset map
+    mapCISAIndexGenOffset.push_back(std::make_pair(++maxVISAIndex, (unsigned int)maxGenIsaOffset));
 }
 
 void KernelDebugInfo::emitRegisterMapping()
