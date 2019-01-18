@@ -143,7 +143,7 @@ TypeLegalizer::getTypeLegalizeAction(Type *Ty) const {
 
   // Vector type!
   if (Ty->isVectorTy())
-    return Scalarize;
+    return getTypeLegalizeAction(Ty->getVectorElementType());
 
   // Floating point types always need native support; otherwise, they needs
   // software emulation.
@@ -334,19 +334,21 @@ TypeLegalizer::getLegalizedValues(Value *V, bool isSigned) {
   if (Act == Legal)
     return std::make_pair(nullptr, Legal);
 
-  if (isa<Constant>(V))
-      ValueMap.erase(V);
+   auto C = dyn_cast<Constant>(V);
+   if (C != nullptr)
+    ValueMap.erase(V);
 
   ValueMapTy::iterator VMI; bool New;
   std::tie(VMI, New) = ValueMap.insert(std::make_pair(V, ValueSeq()));
   if (!New)
-      return std::make_pair(&VMI->second, Act);
+    return std::make_pair(&VMI->second, Act);
+
+  if (!C)
+    return std::make_pair(nullptr, Act);
 
   // We visit instructions in topological order and we handle phis and
   // arguments specially, so we shouldn't see a use before a def here except
   // constants.
-  Constant *C = cast<Constant>(V);
-
   TypeSeq *TySeq;
   std::tie(TySeq, Act) = getLegalizedTypes(C->getType());
 

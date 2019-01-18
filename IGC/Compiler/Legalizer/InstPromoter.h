@@ -82,6 +82,7 @@ namespace Legalizer {
 
     bool visitTruncInst(TruncInst &I);
     bool visitZExtInst(ZExtInst &I);
+    bool visitBitCastInst(BitCastInst &I);
 
     /// Other operators
 

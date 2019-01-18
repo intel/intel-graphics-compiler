@@ -379,6 +379,44 @@ bool InstPromoter::visitZExtInst(ZExtInst &I) {
   return true;
 }
 
+bool InstPromoter::visitBitCastInst(BitCastInst &I) {
+    ValueSeq *ValSeq;
+    LegalizeAction ValAct;
+    std::tie(ValSeq, ValAct) = TL->getLegalizedValues(I.getOperand(0));
+    Value *Val = I.getOperand(0);
+    if (ValAct != Legal && ValSeq != nullptr)
+      Val = ValSeq->front();
+
+    TypeSeq *TySeq;
+    LegalizeAction Act;
+    std::tie(TySeq, Act) = TL->getLegalizedTypes(I.getDestTy());
+    assert(TySeq->size() == 1);
+
+    // Promote bitcast <3 x i8> %0 to i24
+    // %1 = shufflevector <3 x i8> %0, <3 x i8> zeroinitializer, <i32 0, i32
+    // 1, i32 2, i32 3> %2 = bitcast <4 x i8> %1 to i32 bail out for other
+    // cases for now.
+    if (Act == Promote && Val->getType()->isVectorTy() &&
+        I.getType()->isIntegerTy()) {
+      Type *PromotedTy = TySeq->front();
+      unsigned N = PromotedTy->getScalarSizeInBits() /
+                   Val->getType()->getScalarSizeInBits();
+      std::vector<Constant *> Vals;
+      for (unsigned i = 0; i < N; i++)
+        Vals.push_back(IRB->getInt32(i));
+
+      Value *Mask = ConstantVector::get(Vals);
+      Value *Zero = Constant::getNullValue(Val->getType());
+      Value *NewVal = IRB->CreateShuffleVector(Val, Zero, Mask,
+                                               Twine(I.getName(), getSuffix()));
+      Promoted = IRB->CreateBitCast(NewVal, PromotedTy);
+      return true;
+    }
+
+  // Unsupported legalization action.
+  return false;
+}
+
 /// Other operators
 
 bool InstPromoter::visitGenIntrinsicInst(GenIntrinsicInst &I) {
