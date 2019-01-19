@@ -4023,7 +4023,8 @@ void G4_Kernel::emit_asm(std::ostream& output, bool beforeRegAlloc, void * binar
 
 
     // Set this to NULL to always print filename for each kernel
-    prevFilename = NULL;
+    prevFilename = nullptr;
+    prevSrcLineNo = 0;
 
     if (!newAsm)
     {
@@ -4286,126 +4287,64 @@ void G4_BB::emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it)
     bool emitFile = false, emitLineNo = false;
     char* curFilename = (*it)->getSrcFilename();
     int curSrcLineNo = (*it)->getLineNo();
-    const int maxLineLen = 256;
-    char curSrcLine[maxLineLen];
 
-    if (prevFilename == NULL && curFilename != NULL) {
-        // emit filename and line no
-        emitFile = true;
-        emitLineNo = true;
-    }
-
-    if (prevFilename != NULL && curFilename != NULL) {
-        if (strcmp(prevFilename, curFilename) != 0) {
-            emitFile = true;
-            emitLineNo = true;
-        }
-    }
-
-    if (prevSrcLineNo != curSrcLineNo) {
-        emitLineNo = true;
-    }
-
-    if ((*it)->isLabel() == true) {
-        emitFile = false;
-        emitLineNo = false;
-    }
-
-    // don't emit lineno 0 (used for instructions without corresponding src locations)
-    if (curSrcLineNo == 0) {
-        emitLineNo = false;
-    }
-
-    // always emit filename with lineno if there is one
-    emitFile = emitLineNo && (curFilename != NULL);
-
-    if (emitLineNo == true)
+    if ((*it)->isLabel()) 
     {
-        FILE* fp;
-        int current_src_line = 0;
+        return;
+    }
 
-        if (curFilename != NULL)
+    if (curFilename && (prevFilename == nullptr || strcmp(prevFilename, curFilename) != 0))
+    {
+        emitFile = true;
+    }
+
+    if (prevSrcLineNo != curSrcLineNo && curSrcLineNo != 0) 
+    {
+        emitLineNo = true;
+    }
+
+    if (emitFile)
+    {
+        output << "// File: " << curFilename << "\n";
+    }
+
+    auto getSrcLine = [](std::string fileName, int srcLine)
+    {
+        std::ifstream ifs(fileName);
+        if (!ifs)
         {
-            // Get src line to print
-            fp = fopen(curFilename, "r");
-            if (fp != NULL)
-            {
-                while (current_src_line < curSrcLineNo)
-                {
-                    if (fgets(curSrcLine, maxLineLen, fp) == nullptr)
-                    {
-                        strcpy_s(curSrcLine, maxLineLen, " Line could not be read\n");
-                        break;
-                    }
-                    int length = (int)strlen(curSrcLine);
-                    if (length && curSrcLine[length - 1] != '\n')
-                    {
-                        // source line exceeds 255 characters, skips rest of the line
-                        char buf[maxLineLen];
-                        char* s = nullptr;
-                        do
-                        {
-                            s = fgets(buf, maxLineLen, fp);
-                        } while (s != nullptr && buf[strlen(buf) - 1] != '\n');
-                    }
-                    current_src_line++;
-                }
-                fclose(fp);
-            }
-            else
-            {
-                curSrcLine[0] = 0;
-                if (parent->getKernel()->getOptions()->getTarget() != VISATarget::VISA_3D)
-                {
-                    strcpy_s(curSrcLine, maxLineLen, " Cannot parse because src file not found\n");
-                }
-            }
+            return std::string("Can't find src file");
         }
-        else
+        std::string line;
+        int i = 0;
+        for (; i < srcLine && std::getline(ifs, line); i++)
         {
-            curSrcLine[0] = 0;
-            if (parent->getKernel()->getOptions()->getTarget() != VISATarget::VISA_3D)
-            {
-                strcpy_s(curSrcLine, maxLineLen, " Cannot parse because src file not found\n");
-            }
+        }
+        return i == srcLine ? line : "Invalid line no";
+    };
+
+    if (emitLineNo)
+    {
+        output << "\n// Line " << curSrcLineNo << ":\t";
+        if (curFilename)
+        {
+            std::string curLine = getSrcLine(std::string(curFilename), curSrcLineNo);
+            auto isNotSpace = [](int ch) { return !std::isspace(ch); };
+            curLine.erase(curLine.begin(), std::find_if(curLine.begin(), curLine.end(), isNotSpace));
+            curLine.erase(std::find_if(curLine.rbegin(), curLine.rend(), isNotSpace).base(), curLine.end());
+            output << curLine;
         }
     }
 
-    // remove leading whitespace from source line for comment
-    char* curSrcLineTextPtr = curSrcLine;
-    if (emitLineNo) {
-        while (*curSrcLineTextPtr == ' ' || *curSrcLineTextPtr == '\t')
-        {
-            ++curSrcLineTextPtr;
-        }
-    }
-
-    if (emitFile == true && emitLineNo == false) {
-        output << std::endl;
-        output << "// " << (const char*)curFilename << std::endl;
-    }
-    else if (emitLineNo == true && curSrcLine[0] != 0) {
-        output << std::endl;
-        if (emitFile) {
-            output << "// " << (const char*)curFilename;
-        }
-        else {
-            output << "// ??";
-        }
-        output << "(" << curSrcLineNo << "): " << curSrcLineTextPtr;
-        int len = (int)strlen(curSrcLine);
-        if (len == 0 || curSrcLine[len - 1] != '\n')
-        {
-            // Print line feed if not found at end of line
-            output << std::endl;
-        }
-    }
-
-    if (emitFile == true)
+    if (emitFile)
+    {
         prevFilename = curFilename;
+    }
 
-    if (emitLineNo == true)
+    if (emitLineNo)
+    {
         prevSrcLineNo = curSrcLineNo;
+    }
 }
 
 void G4_BB::emitBankConflict(std::ostream& output, G4_INST *inst)
