@@ -3825,6 +3825,11 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
         vbuilder->SetOption(vISA_FuseTypedWrites, true);
     }
 
+    if(IGC_IS_FLAG_ENABLED(ShaderDumpEnable) && IGC_IS_FLAG_ENABLED(InterleaveSourceShader))
+    {
+        vbuilder->SetOption(vISA_EmitLocation, true);
+    }
+
     // Enable SendFusion for SIMD8
     if (IGC_IS_FLAG_ENABLED(EnableSendFusion) &&
         m_program->GetContext()->platform.supportSplitSend() &&
