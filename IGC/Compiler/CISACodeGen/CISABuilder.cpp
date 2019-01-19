@@ -3492,7 +3492,9 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
     // need to fold ret into the previous RTWrite/URBWrite/etc
     if (context->type != ShaderType::OPENCL_SHADER && context->type != ShaderType::COMPUTE_SHADER)
     {
-        vbuilder->SetOption(vISA_foldEOTtoPrevSend, true);
+        {
+            vbuilder->SetOption(vISA_foldEOTtoPrevSend, true);
+        }
     }
 
     if (m_program->m_DriverInfo->clearScratchWriteBeforeEOT() &&

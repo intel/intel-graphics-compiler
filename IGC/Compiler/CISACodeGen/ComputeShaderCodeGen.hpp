@@ -49,7 +49,6 @@ public:
 
     /// Get the Thread ID's in Group
     CVariable*  CreateThreadIDinGroup(uint channelNum);
-    
     uint        GetThreadGroupSize() const { return m_threadGroupSize; }
     bool        GetDispatchAlongY() const { return m_dispatchAlongY; }
     void        SetDisableMidthreadPreemption()
@@ -71,8 +70,6 @@ protected:
     CVariable*             m_pThread_ID_in_Group_X;
     CVariable*             m_pThread_ID_in_Group_Y;
     CVariable*             m_pThread_ID_in_Group_Z;
-
-    CVariable*             m_pGlobalBuffer = nullptr;
 
     uint                   m_numberOfUntypedAccess;
     uint                   m_numberOfTypedAccess;
