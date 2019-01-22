@@ -163,8 +163,6 @@ namespace vISA
             G4_Type tempDstType,
             G4_SubReg_Align subAlign = Any);
 
-        bool checkMixMode(INST_LIST_ITER &i, G4_BB* bb);
-
         bool isGoodAlign16Src(G4_INST* inst, int srcPos);
         bool isGoodAlign1TernarySrc(G4_INST* inst, int srcPos, bool canBeImm);
         bool isGoodAlign1TernaryDst(G4_INST* inst) const;
@@ -226,32 +224,5 @@ namespace vISA
 }
 //single entry point for HW conformity checks
 extern void HWConformityChk(vISA::IR_Builder& builder, vISA::G4_Kernel& kernel, vISA::Mem_Manager& mem);
-
-extern CM_INLINE void checkHFMixModeRule4_11(vISA::G4_INST *inst, bool & rule4, bool & rule11) {
-    /*
-     * Also need to split for HF restrictions:
-     *
-     * 4. No simd16 in mixed mode when destination is packed f16 for
-     *    both Align1 and Align16.  mad(8) r3.xyzw:hf r4.xyzw:f
-     *    r6.xyzw:hf r7.xyzw:hf add(8) r20.0<1>:hf r3<8;8,1>:f
-     *    r6.0<8;8,1>:hf {Q1}
-     *
-     * 11. [DevCHV, DevSKL, DevBXT]: No simd16 in mixed mode when
-     *     destination is f32. Instruction Execution size must be no more
-     *     than 8.
-     */
-    rule4 = (inst->getExecSize() > 8
-             && inst->getDst()
-             && inst->getDst()->getType() == Type_HF
-             && getGenxPlatform() >= GENX_CHV ) ? true : false;
-
-    rule11 = (inst->getExecSize() > 8 && inst->opcode() != G4_mov &&
-              inst->getDst() && inst->getDst()->getType() == Type_F &&
-              (getGenxPlatform() == GENX_CHV || getGenxPlatform() == GENX_SKL ||
-               getGenxPlatform() == GENX_BXT))
-                 ? true
-                 : false;
-}
-
 
 #endif /* _HWCONFORMITY_H_ */

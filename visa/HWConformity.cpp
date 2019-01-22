@@ -4032,9 +4032,6 @@ void HWConformity::fixMADInst( BB_LIST_ITER it )
         }
         else
         {
-            // since copy prop and def-hoisting are not allowed to Align16 instructions,
-            // sources of psuedo mad should use the same data type as in CISA input
-            // so we only check dst type
             switch (dst->getType())
             {
             case Type_F:
@@ -4076,14 +4073,13 @@ void HWConformity::fixMADInst( BB_LIST_ITER it )
             generate_genx_mac = false;
         }
 
-        bool dstPackedHF = false ;
-        bool dstIsFloat = false;
-        checkHFMixModeRule4_11(*i, dstPackedHF, dstIsFloat);
-        //not dealing with that mess. Shouldn't be a common code sequence.
-        if(dstPackedHF || dstIsFloat)
+        if (IS_TYPE_FLOAT_ALL(dst->getType()) && exec_size > 8)
+        {
+            // no float mac following the original code
             generate_genx_mac = false;
+        }
 
-        if( generate_genx_mac )
+        if (generate_genx_mac)
         {
             int emask = inst->getMaskOption();
             if (emask != InstOpt_WriteEnable && inst->getMaskOffset() != 0)
@@ -4100,7 +4096,7 @@ void HWConformity::fixMADInst( BB_LIST_ITER it )
                 generate_genx_mac = false;
             }
 
-            // If there is a modifer for src2, or src2 is accessed somewhere indirectly then we will
+            // If there is a modifier for src2, or src2 is accessed somewhere indirectly then we will
             // not generate a MAC.
             if (generate_genx_mac)
             {
@@ -4222,7 +4218,7 @@ void HWConformity::fixMADInst( BB_LIST_ITER it )
         }
 
         // translate MAD into MUL/ADD
-        if( !generate_genx_mac )
+        if (!generate_genx_mac)
         {
             convertMAD2MulAdd(i, bb);
             i++;
@@ -7415,8 +7411,10 @@ void HWConformity::fixMixedHFInst( BB_LIST_ITER it )
 
         if (getGenxPlatform() >= GENX_CHV)
         {
-            if (checkMixMode(instIter, bb))
+            // no SIMD16 mix mode instruction
+            if (inst->getExecSize() > 8)
             {
+                evenlySplitInst(instIter, bb, false);
                 //instruction was split, and new instruction inserted before
                 //going back to previous instruction to double check it still confirms.
                 --instIter;

@@ -2142,35 +2142,3 @@ bool HWConformity::checkInstRegions( G4_INST *inst, G4_BB *bb, bool &evenSplit )
     }
     return splitOp;
 }
-
-bool HWConformity::checkMixMode( INST_LIST_ITER &iter, G4_BB* bb )
-{
-    bool status = false;
-
-    G4_INST* inst = *iter;
-
-    bool rule4 = false;
-    bool rule11 = false;
-    /*
-        CHV, SKL+
-        No SIMD16 in mixed mode when destination is packed f16 for both Align1 and Align16.
-
-        mad(8) r3.xyzw:hf r4.xyzw:f r6.xyzw:hf r7.xyzw:hf
-        add(8) r20.0<1>:hf r3<8;8,1>:f r6.0<8;8,1>:hf {Q1}
-    */
-
-    /*
-        CHV, SKL    No SIMD16 in mixed mode when destination is f32. Instruction Execution size must be no more than 8.
-    */
-
-    checkHFMixModeRule4_11(inst, rule4, rule11);
-
-    //lrp supports only F, and will be fixed in HW conformity
-    if ((rule4 || rule11) && inst->opcode() != G4_lrp)
-    {
-        status = true;
-        evenlySplitInst(iter, bb, false);
-    }
-
-    return status;
-}
