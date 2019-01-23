@@ -104,7 +104,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/Local.h"
 #include "Compiler/InitializePasses.h"
 
-#include "IGCInstructionCombining.hpp"
+#include "../IGCInstructionCombining.hpp"
 
 #include <algorithm>
 #include <climits>

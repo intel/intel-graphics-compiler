@@ -169,7 +169,7 @@ uint EmitPass::DecideInstanceAndSlice(llvm::BasicBlock &blk, SDAG &sdag, bool &s
                 numInstance = 1;
             slicing = false;
         }
-        else if (isa<TerminatorInst>(sdag.m_root))
+        else if (sdag.m_root->isTerminator())
         {
             numInstance = 1;
             slicing = false;
@@ -870,7 +870,7 @@ bool EmitPass::isCandidateIfStmt(
     }
 
     llvm::BasicBlock *S0 = Br->getSuccessor(0), *S1 = Br->getSuccessor(1);
-    llvm::TerminatorInst *T0 = S0->getTerminator(), *T1 = S1->getTerminator();
+    IGCLLVM::TerminatorInst *T0 = S0->getTerminator(), *T1 = S1->getTerminator();
     assert(T1 && T0 && "BB is missing a terminator!");
     bool  isMatch =
         S0->getSinglePredecessor() == ifBB && S1->getSinglePredecessor() == ifBB &&
@@ -902,7 +902,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
     std::vector<std::pair<CVariable*, CVariable*>> emitList;
     std::map<CVariable*, unsigned int> dstVTyMap;
     llvm::BasicBlock *bb = aBB;
-    llvm::TerminatorInst *TI = aBB->getTerminator();
+    IGCLLVM::TerminatorInst *TI = aBB->getTerminator();
     assert(TI);
 
     if (IGC_IS_FLAG_ENABLED(EnableOptimPhiMov))
@@ -955,7 +955,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
         else if (TI->getNumSuccessors() == 2 && isCandidateIfStmt(bb, otherBB, emptyBB))
         {
             // Check if this bb is the BB ("ifBB") that all phi-mov's are relocated to.
-            llvm::TerminatorInst *T0 = emptyBB->getTerminator();
+            IGCLLVM::TerminatorInst *T0 = emptyBB->getTerminator();
             assert(T0->getNumSuccessors() == 1 && "Something wrong in if-then-else pattern!");
             llvm::BasicBlock *phiB = T0->getSuccessor(0);
             if (canRelocatePhiMov(otherBB, emptyBB, phiB))

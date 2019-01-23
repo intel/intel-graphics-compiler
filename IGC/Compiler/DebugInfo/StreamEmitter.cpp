@@ -78,7 +78,7 @@ public:
     VISAMCAsmInfo(unsigned int pointerSize) : MCAsmInfoELF()
     {
         DwarfUsesRelocationsAcrossSections = true;
-#if LLVM_VERSION_MAJOR == 7
+#if LLVM_VERSION_MAJOR >= 7
         CodePointerSize = pointerSize;
 #else
         PointerSize = pointerSize;
@@ -356,7 +356,7 @@ public:
 			pData[fixup.getOffset() + i] = uint8_t(value >> (i * 8));
 		}
 	}
-#elif LLVM_VERSION_MAJOR == 7    
+#elif LLVM_VERSION_MAJOR >= 7    
 	void applyFixup(const MCAssembler &Asm, const MCFixup &fixup,
   	                const MCValue &Target, MutableArrayRef<char> Data,
   	                uint64_t value, bool IsResolved,
@@ -383,7 +383,7 @@ public:
 
 #if LLVM_VERSION_MAJOR == 4
     bool mayNeedRelaxation(const MCInst &inst) const override
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
     bool mayNeedRelaxation(const MCInst &inst, const MCSubtargetInfo &STI) const override
 #endif
     {
@@ -418,7 +418,7 @@ public:
         }
         return true;
     }
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
     bool writeNopData(raw_ostream &OS, uint64_t Count) const override
     {
 		const char nop = (char) 0x90;
@@ -443,7 +443,7 @@ public:
         MCELFObjectTargetWriter *pMOTW = new VISAELFObjectWriter(m_is64Bit, osABI, eMachine, hasRelocationAddend);
         return createELFObjectWriter(pMOTW, os,  /*IsLittleEndian=*/true);
     }
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 	std::unique_ptr<MCObjectWriter> createObjectWriter(llvm::raw_pwrite_stream &os) const
 	{
 		Triple triple(m_targetTriple);
@@ -457,7 +457,7 @@ public:
 	}
 #endif
 
-#if LLVM_VERSION_MAJOR == 7
+#if LLVM_VERSION_MAJOR >= 7
 	std::unique_ptr<MCObjectTargetWriter> createObjectTargetWriter() const override
 	{
         assert(false && "TODO: implement this");
@@ -518,7 +518,7 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& da
         *pAsmBackend, outStream, pCodeEmitter, isRelaxAll);        
 
     m_pMCStreamer->InitSections(isNoExecStack);
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 	m_pDataLayout = new DataLayout(dataLayout);
 	m_pSrcMgr = new SourceMgr();
 	m_pAsmInfo = new VISAMCAsmInfo(GetPointerSize());
@@ -701,7 +701,7 @@ void StreamEmitter::EmitULEB128(uint64_t value, llvm::StringRef /*desc*/, unsign
 {
 #if LLVM_VERSION_MAJOR == 4
     m_pMCStreamer->EmitULEB128IntValue(value, padTo);
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
     m_pMCStreamer->EmitULEB128IntValue(value);
 #endif
 }
@@ -846,7 +846,7 @@ bool StreamEmitter::EmitDwarfFileDirective(unsigned fileNo, StringRef directory,
 {
 #if LLVM_VERSION_MAJOR == 4
     return (m_pMCStreamer->EmitDwarfFileDirective(fileNo, directory, filename, cuID) != 0);
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
     return (m_pMCStreamer->EmitDwarfFileDirective(fileNo, directory, filename, nullptr, llvm::None, cuID) != 0);
 #endif
 }

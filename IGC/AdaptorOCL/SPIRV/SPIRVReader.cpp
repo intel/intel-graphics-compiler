@@ -597,7 +597,7 @@ public:
           // DISubprogram::getRawTemplateParams()
 #if LLVM_VERSION_MAJOR == 4
           const unsigned TemplateParamsIndex = 8;
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
           const unsigned TemplateParamsIndex = 9;
 #endif
           target->replaceOperandWith(TemplateParamsIndex, TParams.get());
@@ -1740,7 +1740,7 @@ SPIRVToLLVM::transLifetimeInst(SPIRVInstTemplateBase* BI, BasicBlock* BB, Functi
     auto ID = (BI->getOpCode() == OpLifetimeStart) ?
         Intrinsic::lifetime_start :
         Intrinsic::lifetime_end;
-#if LLVM_VERSION_MAJOR == 7
+#if LLVM_VERSION_MAJOR >= 7
     auto *pFunc = Intrinsic::getDeclaration(M, ID, llvm::ArrayRef<llvm::Type*>(PointerType::getInt8PtrTy(*Context)));
 #else
     auto *pFunc = Intrinsic::getDeclaration(M, ID);

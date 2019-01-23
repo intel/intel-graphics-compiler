@@ -35,8 +35,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/CommandLine.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/InstIterator.h>
-#include <llvm/IR/InstrTypes.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include <llvmWrapper/IR/InstrTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
@@ -211,8 +211,8 @@ void Legalization::visitBinaryOperator(llvm::BinaryOperator &I)
 		// then remove the negate by flipping all the uses (select or branch)
 		Value *src0 = I.getOperand(0);
 		Value *src1 = I.getOperand(1);
-		if (llvm::BinaryOperator::isNot(src0) &&
-			llvm::BinaryOperator::isNot(src1) &&
+		if (IGCLLVM::BinaryOperator::isNot(src0) &&
+            IGCLLVM::BinaryOperator::isNot(src1) &&
 			src0->hasOneUse() && src1->hasOneUse()) {
 			// check all uses are select or branch
 			bool flippable = true;

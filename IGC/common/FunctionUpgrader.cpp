@@ -115,7 +115,7 @@ Function* FunctionUpgrader::RebuildFunction()
 	{
 #if LLVM_VERSION_MAJOR == 4
 		i_arg_old->replaceAllUsesWith(&*i_arg_new);
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 		i_arg_old->replaceAllUsesWith(i_arg_new);
 #endif
 		++i_arg_old;
@@ -183,7 +183,7 @@ Function* FunctionUpgrader::UpgradeFunctionWithNewArgs()
 	{
 #if LLVM_VERSION_MAJOR == 4
 		auto arg_it = &*i_arg_old;
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 		auto arg_it = i_arg_old;
 #endif
 		i_arg_new->takeName(arg_it);
@@ -193,7 +193,7 @@ Function* FunctionUpgrader::UpgradeFunctionWithNewArgs()
 	{
 #if LLVM_VERSION_MAJOR == 4
 		auto arg_it = &*i_arg_new;
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 		auto arg_it = i_arg_new;
 #endif
 		//add to map pointer of the new argument

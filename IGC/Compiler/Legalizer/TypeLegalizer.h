@@ -27,6 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/LLVMWarningsPush.hpp"
 
 #include "llvmWrapper/IR/Instructions.h"
+#include "llvmWrapper/Analysis/InlineCost.h"
+#include "llvmWrapper/IR/InstrTypes.h"
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"

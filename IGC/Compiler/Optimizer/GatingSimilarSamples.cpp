@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/ADT/ilist.h>
+#include <llvmWrapper/IR/InstrTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -470,7 +471,7 @@ bool GatingSimilarSamples::runOnFunction(llvm::Function &F)
     Value* gatingVal2 = IRB.CreateBitCast(gatingValue_mul2, IRB.getFloatTy());
     Value* cnd2 = IRB.CreateFCmpONE(gatingVal2, ConstantFP::get(IRB.getFloatTy(), 0.0f)); 
     Value* isGatingValueNotZero = IRB.CreateOr(cnd1, cnd2);
-    TerminatorInst* thenBlockTerminator = SplitBlockAndInsertIfThen(isGatingValueNotZero, similarSampleInsts[0], false);
+    IGCLLVM::TerminatorInst* thenBlockTerminator = SplitBlockAndInsertIfThen(isGatingValueNotZero, similarSampleInsts[0], false);
     BasicBlock* thenBlock = thenBlockTerminator->getParent();
     if (thenBlockTerminator->getNumSuccessors() != 1)
     {

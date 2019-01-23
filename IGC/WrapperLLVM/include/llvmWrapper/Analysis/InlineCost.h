@@ -24,13 +24,29 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef IGCLLVM_BINARYFORMAT_DWARF_H
-#define IGCLLVM_BINARYFORMAT_DWARF_H
+#ifndef IGCLLVM_ANALYSIS_INLINECOST_H
+#define IGCLLVM_ANALYSIS_INLINECOST_H
 
-#if LLVM_VERSION_MAJOR == 4
-#include "llvm/Support/Dwarf.h"
-#elif LLVM_VERSION_MAJOR >= 7
-#include "llvm/BinaryFormat/Dwarf.h"
+#include <llvm/Analysis/InlineCost.h>
+
+namespace IGCLLVM
+{
+#if LLVM_VERSION_MAJOR <= 7
+    using llvm::InlineCost;
+#elif LLVM_VERSION_MAJOR == 8
+    class InlineCost : public llvm::InlineCost
+	{
+	public:	
+		static inline llvm::InlineCost getAlways() 
+		{
+			return llvm::InlineCost::getAlways("");
+		}
+		static inline llvm::InlineCost getNever() 
+		{
+			return llvm::InlineCost::getNever("");
+		}
+	};
 #endif
+}
 
 #endif

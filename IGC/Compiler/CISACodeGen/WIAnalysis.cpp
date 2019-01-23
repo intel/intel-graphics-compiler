@@ -197,7 +197,7 @@ void WIAnalysis::print(raw_ostream & OS, const Module*) const
       {
           OS << "  unknown " << *I;
       }
-      if (TerminatorInst *TI = dyn_cast<TerminatorInst>(I)) {
+      if (IGCLLVM::TerminatorInst *TI = dyn_cast<IGCLLVM::TerminatorInst>(I)) {
         OS << " [";
         for (unsigned i = 0, e = TI->getNumSuccessors(); i < e; ++i) {
           BasicBlock *succ = TI->getSuccessor(i);
@@ -591,7 +591,7 @@ void WIAnalysis::calculate_dep(const Value* val)
   else if (const PHINode *Phi = dyn_cast<PHINode>(inst))                      dep = calculate_dep(Phi); 
   else if (isa<ShuffleVectorInst>(inst))                                      dep = calculate_dep_simple(inst); 
   else if (isa<StoreInst>(inst))                                              dep = calculate_dep_simple(inst);
-  else if (const TerminatorInst *TI = dyn_cast<TerminatorInst>(inst))         dep = calculate_dep(TI);
+  else if (const IGCLLVM::TerminatorInst *TI = dyn_cast<IGCLLVM::TerminatorInst>(inst))         dep = calculate_dep(TI);
   else if (const SelectInst *SI = dyn_cast<SelectInst>(inst))                 dep = calculate_dep(SI);
   else if (const AllocaInst *AI = dyn_cast<AllocaInst>(inst))                 dep = calculate_dep(AI);
   else if (const CastInst *CI = dyn_cast<CastInst>(inst))                     dep = calculate_dep(CI);
@@ -610,9 +610,9 @@ void WIAnalysis::calculate_dep(const Value* val)
     // Save the new value of this instruction
     updateDepMap(inst, dep);
     // divergent branch, trigger updates due to control-dependence
-    if ( isa<TerminatorInst>(inst) && dep != WIAnalysis::UNIFORM)
+    if ( inst->isTerminator() && dep != WIAnalysis::UNIFORM)
     {
-      update_cf_dep(dyn_cast<TerminatorInst>(inst));
+      update_cf_dep(dyn_cast<IGCLLVM::TerminatorInst>(inst));
     }
   }
 }
@@ -647,7 +647,7 @@ bool WIAnalysis::isRegionInvariant(const llvm::Instruction *defi, BranchInfo *br
     return true;
 }
 
-void WIAnalysis::update_cf_dep(const TerminatorInst *inst)
+void WIAnalysis::update_cf_dep(const IGCLLVM::TerminatorInst *inst)
 {
   BasicBlock *blk = (BasicBlock *)(inst->getParent());
   BasicBlock *ipd = PDT->getNode(blk)->getIDom()->getBlock();
@@ -1133,7 +1133,7 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const PHINode* inst)
   return totalDep;
 }
 
-WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const TerminatorInst* inst)
+WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const IGCLLVM::TerminatorInst* inst)
 {
   // Instruction has no return value
   // Just need to know if this inst is uniform or not
@@ -1448,7 +1448,7 @@ void WIAnalysis::checkLocalIdUniform(
     }
 }
 
-BranchInfo::BranchInfo(const TerminatorInst *inst, const BasicBlock *ipd) 
+BranchInfo::BranchInfo(const IGCLLVM::TerminatorInst *inst, const BasicBlock *ipd) 
   : cbr(inst),
     full_join(ipd)
 {

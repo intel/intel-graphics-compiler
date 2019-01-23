@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/TranslationTable.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvmWrapper/IR/InstrTypes.h>
 #include <llvm/Pass.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -62,11 +63,11 @@ namespace IGC
 class BranchInfo
 {
 public:
-    BranchInfo(const llvm::TerminatorInst *inst, const llvm::BasicBlock *ipd);
+    BranchInfo(const IGCLLVM::TerminatorInst *inst, const llvm::BasicBlock *ipd);
 
     void print(llvm::raw_ostream &OS) const;
 
-    const llvm::TerminatorInst *cbr;
+    const IGCLLVM::TerminatorInst *cbr;
     const llvm::BasicBlock *full_join;
     llvm::DenseSet<llvm::BasicBlock*> influence_region;
     llvm::SmallPtrSet<llvm::BasicBlock*, 4> partial_joins;
@@ -198,7 +199,7 @@ private:
     WIDependancy calculate_dep(const llvm::CallInst* inst);
     WIDependancy calculate_dep(const llvm::GetElementPtrInst* inst);
     WIDependancy calculate_dep(const llvm::PHINode* inst);
-    WIDependancy calculate_dep(const llvm::TerminatorInst* inst);
+    WIDependancy calculate_dep(const IGCLLVM::TerminatorInst* inst);
     WIDependancy calculate_dep(const llvm::SelectInst* inst);
     WIDependancy calculate_dep(const llvm::AllocaInst* inst);
     WIDependancy calculate_dep(const llvm::CastInst* inst);
@@ -215,7 +216,7 @@ private:
     /// @brief update the WI-dep from a divergent branch,
     ///        affected instructions are added to m_pChangedNew
     /// @param the divergent branch
-    void update_cf_dep(const llvm::TerminatorInst *TI);
+    void update_cf_dep(const IGCLLVM::TerminatorInst *TI);
 
     /// @brief update the WI-dep for a sequence of insert-elements forming a vector
     ///        affected instructions are added to m_pChangedNew

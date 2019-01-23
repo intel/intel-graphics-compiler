@@ -24,13 +24,31 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef IGCLLVM_BINARYFORMAT_DWARF_H
-#define IGCLLVM_BINARYFORMAT_DWARF_H
+#ifndef IGCLLVM_IR_INSTRTYPES_H
+#define IGCLLVM_IR_INSTRTYPES_H
 
-#if LLVM_VERSION_MAJOR == 4
-#include "llvm/Support/Dwarf.h"
-#elif LLVM_VERSION_MAJOR >= 7
-#include "llvm/BinaryFormat/Dwarf.h"
+#include <llvm/IR/InstrTypes.h>
+#if LLVM_VERSION_MAJOR == 8
+#include <llvm/IR/PatternMatch.h>
 #endif
+
+namespace IGCLLVM
+{
+#if LLVM_VERSION_MAJOR <= 7
+    using llvm::TerminatorInst;
+	using llvm::BinaryOperator;
+#elif LLVM_VERSION_MAJOR == 8
+    using TerminatorInst = llvm::Instruction;
+	
+	class BinaryOperator : public llvm::BinaryOperator
+	{
+	public:
+		 static inline bool isNot(const llvm::Value *V)
+		 {
+			 return llvm::PatternMatch::match(V, llvm::PatternMatch::m_Not(llvm::PatternMatch::m_Value()));
+		 }
+	};
+#endif
+}
 
 #endif

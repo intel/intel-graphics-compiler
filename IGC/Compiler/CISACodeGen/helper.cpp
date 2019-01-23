@@ -1372,7 +1372,7 @@ bool valueIsPositive(
 		AC,
 		CxtI);
 	return isKnownPositive;
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 	return computeKnownBits(
 		V,
 		*DL,

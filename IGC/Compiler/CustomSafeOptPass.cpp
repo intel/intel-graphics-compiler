@@ -2557,7 +2557,7 @@ bool FlattenSmallSwitch::processSwitchInst(SwitchInst *SI)
 		const auto *CaseSucc = 
 #if LLVM_VERSION_MAJOR == 4
 			SI->case_begin().getCaseSuccessor();
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
             SI->case_begin()->getCaseSuccessor();
 #endif
 		auto *BI = dyn_cast<BranchInst>(CaseSucc->getTerminator());

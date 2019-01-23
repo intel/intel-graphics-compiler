@@ -37,10 +37,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvmWrapper/IR/Argument.h"
 #include "llvmWrapper/IR/Attributes.h"
+#include "llvmWrapper/Analysis/InlineCost.h"
 
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SCCIterator.h"
-#include "llvm/Analysis/InlineCost.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/IR/Module.h"
@@ -755,20 +755,20 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
     if (Callee && !Callee->isDeclaration() && isInlineViable(*Callee)) 
     {
         if (CS.hasFnAttr(llvm::Attribute::AlwaysInline))
-            return InlineCost::getAlways();
+            return IGCLLVM::InlineCost::getAlways();
 
         int FCtrl = IGC_GET_FLAG_VALUE(FunctionControl);
 
         if (FCtrl == FLAG_FCALL_FORCE_INLINE)
-            return InlineCost::getAlways();
+            return IGCLLVM::InlineCost::getAlways();
 
         // If m_enableSubroutine is disabled by EstimateFunctionCost pass, always inline
         if (getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->m_enableSubroutine == false)
-            return InlineCost::getAlways();
+            return IGCLLVM::InlineCost::getAlways();
 
         if (Callee->hasFnAttribute("UserSubroutine") &&
             Callee->hasFnAttribute(llvm::Attribute::NoInline))
-            return InlineCost::getNever();
+            return IGCLLVM::InlineCost::getNever();
 
         if (FCtrl != FLAG_FCALL_FORCE_SUBROUTINE &&
             FCtrl != FLAG_FCALL_FORCE_STACKCALL)
@@ -784,11 +784,11 @@ InlineCost SubroutineInliner::getInlineCost(CallSite CS)
 
             if (FSA->getExpandedSize(Caller) <= Threshold ||
                 FSA->onlyCalledOnce(Callee) || isTrivialCall(Callee))
-              return InlineCost::getAlways();
+              return IGCLLVM::InlineCost::getAlways();
         }
     }
 
-    return InlineCost::getNever();
+    return IGCLLVM::InlineCost::getNever();
 }
 
 Pass *IGC::createSubroutineInlinerPass() 

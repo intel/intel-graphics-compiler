@@ -62,7 +62,7 @@ namespace Legalizer {
     /// Terminator instructions
     ///
 
-    bool visitTerminatorInst(TerminatorInst &I);
+    bool visitTerminatorInst(IGCLLVM::TerminatorInst &I);
 
     /// Standard binary operators
     ///

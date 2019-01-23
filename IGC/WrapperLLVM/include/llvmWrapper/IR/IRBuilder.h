@@ -33,7 +33,7 @@ namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR == 4
 	using llvm::IRBuilder;
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 	template <typename T = llvm::ConstantFolder,
 		typename Inserter = llvm::IRBuilderDefaultInserter>
 		class IRBuilder : public llvm::IRBuilder<T, Inserter>

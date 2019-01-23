@@ -33,7 +33,7 @@ namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR == 4
 using llvm::tool_output_file;
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 using tool_output_file = llvm::ToolOutputFile;
 #endif
 }

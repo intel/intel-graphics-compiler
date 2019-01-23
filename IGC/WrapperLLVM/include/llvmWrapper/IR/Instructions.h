@@ -36,7 +36,7 @@ namespace IGCLLVM
 	{
 #if LLVM_VERSION_MAJOR == 4
 		LHS->setSynchScope(RHS->getSynchScope());
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 		LHS->setSyncScopeID(RHS->getSyncScopeID());
 #endif
 	}
@@ -45,14 +45,14 @@ namespace IGCLLVM
 	inline 
 #if LLVM_VERSION_MAJOR == 4
 		llvm::SynchronizationScope
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 		llvm::SyncScope::ID
 #endif
 		getSyncScopeID(T* I)
 	{
 #if LLVM_VERSION_MAJOR == 4
 		return I->getSynchScope();
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 		return I->getSyncScopeID();
 #endif
 	}
@@ -62,7 +62,7 @@ namespace IGCLLVM
 	{
 #if LLVM_VERSION_MAJOR == 4
 		delete I;
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 		I->deleteValue();
 #endif
 	}
@@ -72,7 +72,7 @@ namespace IGCLLVM
 	{
 #if LLVM_VERSION_MAJOR == 4
 		return I->getAlignment();
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 		return I->getDestAlignment();
 #endif
 	}

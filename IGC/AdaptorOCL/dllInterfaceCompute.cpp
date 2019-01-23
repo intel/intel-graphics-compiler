@@ -38,11 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorOCL/OCL/BuiltinResource.h"
 #include "AdaptorOCL/OCL/TB/igc_tb.h"
 
-#if LLVM_VERSION_MAJOR == 4
-#include "AdaptorOCL/Upgrader/llvm4/Upgrader.h"
-#elif LLVM_VERSION_MAJOR == 7
-#include "AdaptorOCL/Upgrader/llvm7/Upgrader.h"
-#endif
+#include "AdaptorOCL/Upgrader/Upgrader.h"
 #include "AdaptorOCL/UnifyIROCL.hpp"
 #include "AdaptorOCL/DriverInfoOCL.hpp"
 

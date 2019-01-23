@@ -19,7 +19,6 @@ set(IGC_BUILD__SRC__IGCInstCombiner_7_0 ${IGC_BUILD__SRC__7_0} PARENT_SCOPE)
 
 set(IGC_BUILD__HDR__7_0
     "${CMAKE_CURRENT_SOURCE_DIR}/InstCombineInternal.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/IGCInstructionCombining.hpp"
   )
 set(IGC_BUILD__HDR__IGCInstCombiner_7_0 ${IGC_BUILD__HDR__7_0} PARENT_SCOPE)
 

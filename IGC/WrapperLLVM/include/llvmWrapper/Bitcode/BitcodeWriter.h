@@ -33,7 +33,7 @@ namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR == 4
 	using llvm::WriteBitcodeToFile;
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 	inline void WriteBitcodeToFile(const llvm::Module *M, llvm::raw_ostream &Out,
 		bool ShouldPreserveUseListOrder = false,
 		const llvm::ModuleSummaryIndex *Index = nullptr,

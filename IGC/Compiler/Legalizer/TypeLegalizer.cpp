@@ -714,7 +714,7 @@ bool TypeLegalizer::legalizeInsts(Function &F) {
       Instruction *I = &(*BI);
 
       // Skip terminator insts which are handled specially.
-      if (isa<TerminatorInst>(I))
+      if (I->isTerminator())
         continue;
 
       // Skip PHI nodes which are populated later.
@@ -758,7 +758,7 @@ bool TypeLegalizer::legalizeTerminators(Function &F) {
   bool Changed = false;
 
   for (auto &BB : F) {
-    TerminatorInst *TI = BB.getTerminator();
+    IGCLLVM::TerminatorInst *TI = BB.getTerminator();
     assert(TI);
 
     ReturnInst *RI = dyn_cast<ReturnInst>(TI);

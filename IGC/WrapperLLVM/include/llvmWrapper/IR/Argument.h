@@ -40,7 +40,7 @@ namespace IGCLLVM
 			Attr);
 #if LLVM_VERSION_MAJOR == 4
 		Arg.addAttr(attrSet);
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 		Arg.addAttr(attrSet.getAttribute(Index, Attr));
 #endif
 	}

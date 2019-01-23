@@ -72,7 +72,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 
 #include "common/LLVMWarningsPush.hpp"
-#include "IGCInstructionCombining.hpp"
+#include "../IGCInstructionCombining.hpp"
 
 #include "InstCombineInternal.h"
 #include "llvm-c/Initialization.h"

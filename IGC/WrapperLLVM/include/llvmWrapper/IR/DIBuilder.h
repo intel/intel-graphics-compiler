@@ -34,7 +34,7 @@ namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR == 4
 	using llvm::DIBuilder;
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 	class DIBuilder : public llvm::DIBuilder
 	{
 	public:
@@ -77,8 +77,51 @@ namespace IGCLLVM
             llvm::DISubprogram *Decl = nullptr, llvm::DITypeArray ThrownTypes = nullptr)
         {
             return (IGCLLVM::DISubprogram*)llvm::DIBuilder::createFunction(
+#if LLVM_VERSION_MAJOR == 7
                 Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, isDefinition,
                 ScopeLine, Flags, isOptimized, TParams, Decl, ThrownTypes);
+#elif LLVM_VERSION_MAJOR == 8
+                Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, Flags, 
+                llvm::DISubprogram::SPFlagZero, TParams, Decl, ThrownTypes);
+#endif
+        }
+
+        inline llvm::DISubprogram *createMethod(
+            llvm::DIScope *Scope, llvm::StringRef Name, llvm::StringRef LinkageName, llvm::DIFile *File,
+            unsigned LineNo, llvm::DISubroutineType *Ty, bool isLocalToUnit,
+            bool isDefinition, unsigned Virtuality = 0, unsigned VTableIndex = 0,
+            int ThisAdjustment = 0, llvm::DIType *VTableHolder = nullptr,
+            llvm::DINode::DIFlags Flags = llvm::DINode::FlagZero, bool isOptimized = false,
+            llvm::DITemplateParameterArray TParams = nullptr,
+            llvm::DITypeArray ThrownTypes = nullptr)
+        {
+            return llvm::DIBuilder::createMethod(
+#if LLVM_VERSION_MAJOR == 7
+                Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, isDefinition,
+                Virtuality, VTableIndex, ThisAdjustment, VTableHolder, Flags, isOptimized, TParams, ThrownTypes);
+#elif LLVM_VERSION_MAJOR == 8
+                Scope, Name, LinkageName, File, LineNo, Ty, Virtuality, ThisAdjustment,
+                VTableHolder, Flags, llvm::DISubprogram::SPFlagZero, TParams, ThrownTypes);
+#endif
+        }
+
+
+        inline llvm::DISubprogram *createTempFunctionFwdDecl(
+            llvm::DIScope *Scope, llvm::StringRef Name, llvm::StringRef LinkageName, llvm::DIFile *File,
+            unsigned LineNo, llvm::DISubroutineType *Ty, bool isLocalToUnit,
+            bool isDefinition, unsigned ScopeLine,
+            llvm::DINode::DIFlags Flags = llvm::DINode::FlagZero, bool isOptimized = false,
+            llvm::DITemplateParameterArray TParams = nullptr,
+            llvm::DISubprogram *Decl = nullptr, llvm::DITypeArray ThrownTypes = nullptr)
+        {
+            return llvm::DIBuilder::createTempFunctionFwdDecl(
+#if LLVM_VERSION_MAJOR == 7
+                Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, isDefinition,
+                ScopeLine, Flags, isOptimized, TParams, Decl, ThrownTypes);
+#elif LLVM_VERSION_MAJOR == 8
+                Scope, Name, LinkageName, File, LineNo, Ty, ScopeLine,
+                Flags, llvm::DISubprogram::SPFlagZero, TParams, Decl, ThrownTypes);
+#endif
         }
 	};
 #endif

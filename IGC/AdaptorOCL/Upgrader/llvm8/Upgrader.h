@@ -24,13 +24,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef IGCLLVM_BINARYFORMAT_DWARF_H
-#define IGCLLVM_BINARYFORMAT_DWARF_H
+// vim:ts=2:sw=2:et:
+#ifndef __DRIVERINTERFACE_UPGRADER_H__
+#define __DRIVERINTERFACE_UPGRADER_H__
 
-#if LLVM_VERSION_MAJOR == 4
-#include "llvm/Support/Dwarf.h"
-#elif LLVM_VERSION_MAJOR >= 7
-#include "llvm/BinaryFormat/Dwarf.h"
-#endif
+#include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/Support/ErrorOr.h>
+#include <llvm/Support/Error.h>
+#include <llvm/Support/MemoryBuffer.h>
+#include "common/LLVMWarningsPop.hpp"
 
-#endif
+namespace upgrader {
+
+llvm::Expected<std::unique_ptr<llvm::Module>> parseBitcodeFile(llvm::MemoryBufferRef Buffer, llvm::LLVMContext &Context);
+
+std::unique_ptr<llvm::MemoryBuffer> upgradeBitcodeFile(llvm::MemoryBufferRef, llvm::LLVMContext &);
+
+llvm::Expected<std::unique_ptr<llvm::Module>> upgradeAndParseBitcodeFile(llvm::MemoryBufferRef, llvm::LLVMContext &);
+
+} // End upgrader namespace
+
+#endif // __DRIVERINTERFACE_UPGRADER_H__

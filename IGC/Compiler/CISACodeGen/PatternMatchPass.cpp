@@ -142,7 +142,7 @@ bool CodeGenPatternMatch::runOnFunction(llvm::Function &F)
 
 inline bool HasSideEffect(llvm::Instruction& inst)
 {
-    if(inst.mayWriteToMemory() || llvm::isa<llvm::TerminatorInst>(&inst))
+    if(inst.mayWriteToMemory() || inst.isTerminator())
     {
         return true;
     }

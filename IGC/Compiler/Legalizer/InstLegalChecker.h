@@ -60,7 +60,7 @@ namespace Legalizer {
     ///
 
     LegalizeAction visitReturnInst(ReturnInst &I);
-    LegalizeAction visitTerminatorInst(TerminatorInst &);
+    LegalizeAction visitTerminatorInst(IGCLLVM::TerminatorInst &);
 
     /// Standard binary operators
     ///

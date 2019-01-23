@@ -121,7 +121,7 @@ unsigned countTotalInstructions(const Function *F, bool CheckSendMsg = true) {
 }
 
 void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L, 
-#if LLVM_VERSION_MAJOR == 7
+#if LLVM_VERSION_MAJOR >= 7
 	ScalarEvolution &SE, 
 #endif
 	TTI::UnrollingPreferences &UP)
@@ -166,7 +166,7 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L,
     // Do not enable partial unrolling if the loop counter is float. It can cause precision issue.
     if (ExitingBlock) {
         if (UP.Partial) {
-            TerminatorInst *Term = ExitingBlock->getTerminator();
+            IGCLLVM::TerminatorInst *Term = ExitingBlock->getTerminator();
             if (BranchInst *BI = dyn_cast<BranchInst>(Term))
             {
                 if (dyn_cast<FCmpInst>(BI->getCondition()))

@@ -37,8 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 #include <llvmWrapper/IR/Function.h>
-
-
+#include <llvmWrapper/IR/InstrTypes.h>
 
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -1434,7 +1433,7 @@ namespace IGC
 
             if (pPrevStateCheckBlock != nullptr)
             {
-                TerminatorInst* pTerminator = pPrevStateCheckBlock->getTerminator();
+                IGCLLVM::TerminatorInst* pTerminator = pPrevStateCheckBlock->getTerminator();
                 BranchInst* pCondBranch = cast<BranchInst>(pTerminator);
                 assert(pCondBranch->isConditional());
 

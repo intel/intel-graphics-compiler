@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if LLVM_VERSION_MAJOR == 4
 #include <llvm/Transforms/Scalar.h>
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 #include <llvm/Transforms/Scalar/InstSimplifyPass.h>
 #endif
 
@@ -40,7 +40,7 @@ namespace IGCLLVM
 	{
 		return llvm::createInstructionSimplifierPass();
 	}
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 using llvm::createInstSimplifyLegacyPass;
 #endif
 }

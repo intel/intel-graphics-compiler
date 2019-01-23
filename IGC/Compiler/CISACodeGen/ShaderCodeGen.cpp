@@ -158,7 +158,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/SetMathPrecisionForPositionOutput.hpp"
 #include "Compiler/DebugInfo/VISADebugEmitter.hpp"
 #include "Compiler/SampleCmpToDiscard.h"
-#include "Compiler/Optimizer/IGCInstCombiner/4.0/IGCInstructionCombining.hpp"
+#include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 
 #include "DebugInfo.hpp"
 

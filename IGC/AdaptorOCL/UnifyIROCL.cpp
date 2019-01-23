@@ -113,7 +113,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/SpirMetaDataApi.h"
 #include "Compiler/Optimizer/FixFastMathFlags.hpp"
 #include "MoveStaticAllocas.h"
-#include "Compiler/Optimizer/IGCInstCombiner/4.0/IGCInstructionCombining.hpp"
+#include "Compiler/Optimizer/IGCInstCombiner/IGCInstructionCombining.hpp"
 
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"

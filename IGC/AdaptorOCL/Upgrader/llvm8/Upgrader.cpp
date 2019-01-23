@@ -23,40 +23,43 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#ifndef IGC_INSTCOMBINE_INSTCOMBINE_H
-#define IGC_INSTCOMBINE_INSTCOMBINE_H
 
-#include <llvm/PassRegistry.h>
-#include "llvm/Transforms/InstCombine/InstCombineWorklist.h"
-#include "llvm/IR/PassManager.h"
+// vim:ts=2:sw=2:et:
 
-#include "Compiler/InitializePasses.h"
+#pragma warning(disable:4141)
+#pragma warning(disable:4146)
+#pragma warning(disable:4244)
+#pragma warning(disable:4624)
+#pragma warning(disable:4800)
 
-namespace llvm {
-	class FunctionPass;
+#include "Upgrader.h"
+
+#include "common/LLVMWarningsPush.hpp"
+#include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
+#include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/raw_ostream.h>
+#include "common/LLVMWarningsPop.hpp"
+
+using namespace llvm;
+
+std::unique_ptr<MemoryBuffer>
+upgrader::upgradeBitcodeFile(MemoryBufferRef Buffer, LLVMContext &Context) {
+  auto ErrM = upgrader::parseBitcodeFile(Buffer, Context);
+  Module *M = ErrM.get().get();
+  if (!M)
+    return nullptr;
+
+  SmallVector<char, 0> Buf;
+  Buf.reserve(1024*1024);
+
+  raw_svector_ostream OS(Buf);
+  WriteBitcodeToFile(*M, OS);
+
+  return MemoryBuffer::getMemBufferCopy(OS.str());
 }
 
-namespace IGC
-{
-    class IGCInstructionCombiningPass : public llvm::FunctionPass {
-        llvm::InstCombineWorklist Worklist;
-        const bool ExpensiveCombines;
-
-    public:
-        static char ID; // Pass identification, replacement for typeid
-
-        IGCInstructionCombiningPass(bool ExpensiveCombines = true)
-            : FunctionPass(ID), ExpensiveCombines(ExpensiveCombines) {
-            initializeIGCInstructionCombiningPassPass(*llvm::PassRegistry::getPassRegistry());
-        }
-
-        void getAnalysisUsage(llvm::AnalysisUsage &AU) const override;
-        bool runOnFunction(llvm::Function &F) override;
-    };
-
-
-	llvm::FunctionPass* createIGCInstructionCombiningPass();
-} // namespace IGC
-
-#endif //IGC_INSTCOMBINE_INSTCOMBINE_H
-
+Expected<std::unique_ptr<Module>>
+upgrader::upgradeAndParseBitcodeFile(MemoryBufferRef Buffer, LLVMContext &Context) {
+  return upgrader::parseBitcodeFile(Buffer, Context);
+}

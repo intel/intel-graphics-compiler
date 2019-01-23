@@ -33,7 +33,7 @@ namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR == 4
 using llvm::MCAsmBackend;
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 class MCAsmBackend : public llvm::MCAsmBackend
 {
 public:

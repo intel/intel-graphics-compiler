@@ -55,7 +55,7 @@ LegalizeAction InstLegalChecker::visitReturnInst(ReturnInst &I) {
   return Legal;
 }
 
-LegalizeAction InstLegalChecker::visitTerminatorInst(TerminatorInst &) {
+LegalizeAction InstLegalChecker::visitTerminatorInst(IGCLLVM::TerminatorInst &) {
   // FIXME: Shall we treat all terminator insts as legal, e.g. do we
   // support 'indirectbr' or 'resume'.
   return Legal;

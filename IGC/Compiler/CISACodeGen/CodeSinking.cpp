@@ -387,7 +387,7 @@ bool CodeSinking::ProcessBlock(BasicBlock &blk)
             prevLoca = inst;
         }
         // intrinsic like discard has no explict use, gets skipped here
-        else if (isa<DbgInfoIntrinsic>(inst) || isa<TerminatorInst>(inst) || 
+        else if (isa<DbgInfoIntrinsic>(inst) || inst->isTerminator() || 
                  isa<PHINode>(inst) || inst->use_empty() )
         {
             prevLoca = inst;

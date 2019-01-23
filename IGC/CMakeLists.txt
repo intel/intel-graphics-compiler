@@ -3241,6 +3241,15 @@ set(IGC_BUILD__LLVM_STATIC_LIBS_TO_LINK
     "LLVMSupport"
     "LLVMDemangle"
     )
+	
+
+if(LLVM_VERSION_MAJOR EQUAL 8)
+set(IGC_BUILD__LLVM_STATIC_LIBS_TO_LINK
+	"${IGC_BUILD__LLVM_STATIC_LIBS_TO_LINK}"
+	"LLVMInstCombine"
+	)
+endif()
+	
 
 if(TARGET LLVMCore)
     # LLVM targets have been already defined.

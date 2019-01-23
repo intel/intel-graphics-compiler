@@ -40,6 +40,7 @@ set(IGC_WrapperLLVM_HDR
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/Function.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/GlobalValue.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/ValueHandle.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/IR/InstrTypes.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Support/ToolOutputFile.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Bitcode/BitcodeWriter.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/IPO.h"
@@ -52,6 +53,8 @@ set(IGC_WrapperLLVM_HDR
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Transforms/Scalar/InstSimplifyPass.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/BinaryFormat/Dwarf.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/MC/MCAsmBackend.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/InlineCost.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/llvmWrapper/Analysis/InlineCost.h"
   )
 
 include_directories(

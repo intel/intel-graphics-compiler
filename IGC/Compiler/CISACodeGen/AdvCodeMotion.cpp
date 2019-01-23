@@ -366,7 +366,7 @@ bool AdvCodeMotion::hoistMost(bool InvPred, BasicBlock *IfBB,
   Pos = &Lower->front();
   for (auto BI = Exit->begin(), BE = Exit->end(); BI != BE; /*EMPTY*/) {
     Instruction *Inst = &*BI++;
-    if (isa<TerminatorInst>(Inst))
+    if (Inst->isTerminator())
       break;
     Inst->moveBefore(Pos);
   }

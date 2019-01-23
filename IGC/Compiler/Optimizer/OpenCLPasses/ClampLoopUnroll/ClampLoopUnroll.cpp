@@ -58,7 +58,7 @@ ClampLoopUnroll::ClampLoopUnroll(unsigned maxUnrollFactor) :
     initializeClampLoopUnrollPass(*PassRegistry::getPassRegistry());
 }
 
-static MDNode* GetUnrollCountMD(const TerminatorInst &I, unsigned unroll)
+static MDNode* GetUnrollCountMD(const IGCLLVM::TerminatorInst &I, unsigned unroll)
 {
     LLVMContext &Context = I.getContext();
     SmallVector<Metadata *, 2> UnrollMD;
@@ -75,7 +75,7 @@ static MDNode* GetUnrollCountMD(const TerminatorInst &I, unsigned unroll)
     return NewUnrollMD;
 }
 
-void ClampLoopUnroll::visitTerminatorInst(TerminatorInst &I)
+void ClampLoopUnroll::visitTerminatorInst(IGCLLVM::TerminatorInst &I)
 {
     MDNode* MD = I.getMetadata(LoopMDName);
 

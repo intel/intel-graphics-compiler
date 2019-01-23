@@ -61,7 +61,7 @@ namespace llvm
          void *getAdjustedAnalysisPointer(const void *ID);
 
 		 void getUnrollingPreferences(Loop *L,
-#if LLVM_VERSION_MAJOR == 7
+#if LLVM_VERSION_MAJOR >= 7
          ScalarEvolution &SE, 
 #endif
          TTI::UnrollingPreferences &UP);

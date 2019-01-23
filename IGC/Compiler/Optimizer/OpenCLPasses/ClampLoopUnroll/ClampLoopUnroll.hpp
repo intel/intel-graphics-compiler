@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Pass.h>
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/Instruction.h>
+#include <llvmWrapper/IR/InstrTypes.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC
@@ -58,7 +59,7 @@ namespace IGC
             AU.setPreservesCFG();
         }
 
-        void visitTerminatorInst(llvm::TerminatorInst &I);
+        void visitTerminatorInst(IGCLLVM::TerminatorInst &I);
 
     private:
         unsigned m_MaxUnrollFactor;

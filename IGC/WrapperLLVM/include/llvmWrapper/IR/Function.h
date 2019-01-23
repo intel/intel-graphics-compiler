@@ -35,7 +35,7 @@ namespace IGCLLVM
 	{
 #if LLVM_VERSION_MAJOR == 4
 		return F->getArgumentList().size();
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 		return F->arg_size();
 #endif
 	}	
@@ -44,7 +44,7 @@ namespace IGCLLVM
 	{
 #if LLVM_VERSION_MAJOR == 4
 		return F->getArgumentList().size();
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 		return F->arg_size();
 #endif
 	}
@@ -53,7 +53,7 @@ namespace IGCLLVM
 	{
 #if LLVM_VERSION_MAJOR == 4
 		return F.getArgumentList().size();
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 		return F.arg_size();
 #endif
 	}

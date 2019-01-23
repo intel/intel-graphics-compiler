@@ -24,13 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ======================= end_copyright_notice ==================================*/
 
-#ifndef IGCLLVM_BINARYFORMAT_DWARF_H
-#define IGCLLVM_BINARYFORMAT_DWARF_H
-
 #if LLVM_VERSION_MAJOR == 4
-#include "llvm/Support/Dwarf.h"
-#elif LLVM_VERSION_MAJOR >= 7
-#include "llvm/BinaryFormat/Dwarf.h"
-#endif
-
+#include "llvm4/Upgrader.h"
+#elif LLVM_VERSION_MAJOR == 7
+#include "llvm7/Upgrader.h"
+#elif LLVM_VERSION_MAJOR == 8
+#include "llvm8/Upgrader.h"
 #endif

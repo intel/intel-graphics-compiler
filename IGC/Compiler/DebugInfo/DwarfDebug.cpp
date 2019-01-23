@@ -835,7 +835,7 @@ void DwarfDebug::collectDeadVariables()
             }
 #if LLVM_VERSION_MAJOR == 4 
             DILocalVariableArray Variables = SP->getVariables();
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 			auto Variables = SP->getRetainedNodes();
 #endif
             if (Variables.size() == 0)
@@ -1167,7 +1167,7 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
     LexicalScope *FnScope = LScopes.getCurrentFunctionScope();
 #if LLVM_VERSION_MAJOR == 4 
 	DILocalVariableArray Variables = cast<DISubprogram>(FnScope->getScopeNode())->getVariables();
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 	auto Variables = cast<DISubprogram>(FnScope->getScopeNode())->getRetainedNodes();
 #endif
     
@@ -1523,7 +1523,7 @@ void DwarfDebug::endFunction(const Function *MF)
             // Collect info for variables that were optimized out.
 #if LLVM_VERSION_MAJOR == 4 
 			DILocalVariableArray Variables = SP->getVariables();
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
 			auto Variables = SP->getRetainedNodes();
 #endif
             

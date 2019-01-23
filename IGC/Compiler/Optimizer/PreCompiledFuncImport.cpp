@@ -57,11 +57,7 @@ const unsigned char igcbuiltin_emu_sp_div[] = {0};
 #include "common/LLVMUtils.h"
 #include "AdaptorOCL/OCL/BuiltinResource.h"
 #include "AdaptorOCL/OCL/LoadBuffer.h"
-#if LLVM_VERSION_MAJOR == 4
-#include "AdaptorOCL/Upgrader/llvm4/Upgrader.h"
-#elif LLVM_VERSION_MAJOR == 7
-#include "AdaptorOCL/Upgrader/llvm7/Upgrader.h"
-#endif
+#include "AdaptorOCL/Upgrader/Upgrader.h"
 
 using namespace llvm;
 using namespace IGC;

@@ -33,7 +33,7 @@ namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR == 4
     using llvm::WeakVH;
-#elif LLVM_VERSION_MAJOR == 7
+#elif LLVM_VERSION_MAJOR >= 7
     using WeakVH = llvm::WeakTrackingVH;
 #endif
 }

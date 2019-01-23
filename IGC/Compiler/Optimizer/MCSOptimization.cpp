@@ -242,7 +242,7 @@ void MCSOptimization::visitCallInst(llvm::CallInst &I)
                     //split the block into a new then block 
                     BasicBlock* ldmsUseBB = nullptr; //second entry to the phi node
                     BasicBlock* thenBlock = nullptr;
-                    TerminatorInst* thenBlockTerminator = nullptr;
+                    IGCLLVM::TerminatorInst* thenBlockTerminator = nullptr;
                     if (ldmsInstsToClub.size() != 0)
                     {
                         LdmsInstrinsic* ldmsUse = ldmsInstsToClub[0];

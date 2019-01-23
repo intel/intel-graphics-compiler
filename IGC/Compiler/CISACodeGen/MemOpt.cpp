@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/STLExtras.h>
+#include <llvmWrapper/Analysis/MemoryLocation.h>
 #include <llvm/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/Analysis/ScalarEvolution.h>
@@ -124,7 +125,7 @@ namespace {
         return MemoryLocation::get(SI);
 
       if (isa<LdRawIntrinsic>(I))
-          return MemoryLocation::getForArgument(ImmutableCallSite(I), 0, *TLI);
+          return IGCLLVM::MemoryLocation::getForArgument(I, 0, TLI);
 
       // TODO: Do coarse-grained thing so far. Need better checking for
       // non load or store instructions which may read/write memory.
@@ -1160,7 +1161,7 @@ public:
   bool isZExt() const { return getOpcode() == Instruction::ZExt; }
   bool isSExt() const { return getOpcode() == Instruction::SExt; }
 
-#if LLVM_VERSION_MAJOR == 7
+#if LLVM_VERSION_MAJOR >= 7
   ~ExtOperator() = delete;
 #endif
 };
@@ -1187,20 +1188,20 @@ public:
     return cast<OverflowingBinaryOperator>(this)->hasNoSignedWrap();
   }
 
-#if LLVM_VERSION_MAJOR == 7
+#if LLVM_VERSION_MAJOR >= 7
   ~OverflowingAdditiveOperator() = delete;
 #endif
 };
 
 class OrOperator : public ConcreteOperator<BinaryOperator, Instruction::Or> 
 {
-#if LLVM_VERSION_MAJOR == 7
+#if LLVM_VERSION_MAJOR >= 7
 	~OrOperator() = delete;
 #endif
 };
 class BitCastOperator : public ConcreteOperator<Operator, Instruction::BitCast> 
 {
-#if LLVM_VERSION_MAJOR == 7
+#if LLVM_VERSION_MAJOR >= 7
 	~BitCastOperator() = delete;
 #endif
 };
@@ -1431,7 +1432,7 @@ SymbolicPointer::getLinearExpression(Value *V, APInt &Scale, APInt &Offset,
 class IntToPtrOperator :
     public ConcreteOperator<Operator, Instruction::IntToPtr> 
 {
-#if LLVM_VERSION_MAJOR == 7
+#if LLVM_VERSION_MAJOR >= 7
 	~IntToPtrOperator() = delete;
 #endif
 };
