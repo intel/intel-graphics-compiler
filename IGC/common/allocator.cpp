@@ -44,7 +44,7 @@ using namespace std;
 
 #endif
 
-#if defined( _WIN32 ) || ( defined ( _DEBUG ) || defined ( _INTERNAL ) )
+#if ( defined ( _DEBUG ) || defined ( _INTERNAL ) )
 /*****************************************************************************\
 
 Class:
@@ -279,16 +279,17 @@ inline void* CAllocator::Malloc(size_t size)
 #ifdef _DEBUG
     if(ptr)
     {
-#ifdef _IGC_
         // does not introduce dependencies, is into memset by compiler
         for(unsigned int t = 0; t<size; ++t)
             static_cast< unsigned char* >(ptr)[t] = 0xcc;
-#else
-        ::memset(ptr, 0xcc, size);
-#endif
     }
 #endif
-
+#ifdef _WIN32
+    if(ptr == nullptr)
+    {
+        throw std::bad_alloc();
+    }
+#endif
     return ptr;
 }
 
@@ -386,7 +387,7 @@ inline void operator delete[](void* ptr)
 #define __NOTAGNUC__ 
 #endif // __GNUC__
 
-#if defined( _WIN32 ) || ( ( defined ( _DEBUG ) || defined ( _INTERNAL ) ) && (defined __NOTAGNUC__ ) )
+#if ( ( defined ( _DEBUG ) || defined ( _INTERNAL ) ) && (defined __NOTAGNUC__ ) )
 /*****************************************************************************\
  operator new
 \*****************************************************************************/
@@ -422,26 +423,4 @@ void __cdecl operator delete[]( void* ptr )
 {
     CAllocator::Deallocate( ptr );
 }
-#endif // defined( _WIN32 ) || ( ( defined ( _DEBUG ) || defined ( _INTERNAL ) ) && (defined __NOTAGNUC__) )
-
-#if defined( _WIN32 )
-void* __cdecl operator new( size_t size, const std::nothrow_t& ) throw()
-{
-    return CAllocator::Allocate( size );
-}
-
-void __cdecl operator delete( void* ptr, const std::nothrow_t& ) throw()
-{
-    CAllocator::Deallocate( ptr );
-}
-
-void* __cdecl operator new[]( size_t size, const std::nothrow_t& ) throw()
-{
-    return CAllocator::Allocate( size );
-}
-
-void __cdecl operator delete[]( void* ptr, const std::nothrow_t& ) throw()
-{
-    CAllocator::Deallocate( ptr );
-}
-#endif // defined( _WIN32 )
+#endif // ( ( defined ( _DEBUG ) || defined ( _INTERNAL ) ) && (defined __NOTAGNUC__) )
