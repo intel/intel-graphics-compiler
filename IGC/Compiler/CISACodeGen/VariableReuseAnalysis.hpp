@@ -234,6 +234,9 @@ private:
       llvm::Value* Aliaser,
       SSubVector& SVD);
 
+  // Insert entry in maps and update maps. Invoked by addAlias().
+  void insertAliasPair(llvm::Value* Aliaser, SSubVector& SV);
+
   // Returns true for the following pattern:
   //   a = extractElement <vectorType> EEI_Vec, <constant EEI_ix>
   //   b = insertElement  <vectorType> V1,  E,  <constant IEI_ix>

@@ -113,6 +113,7 @@ bool VariableReuseAnalysis::runOnFunction(Function &F)
               .Hash(m_pCtx->hash)
               .Type(m_pCtx->type)
               .Pass("VariableAlias")
+              .PostFix(F.getName())
               .Extension("txt");
           printAlias(Debug::Dump(name, Debug::DumpType::DBG_MSG_TEXT).stream(), m_F);
       }
@@ -209,13 +210,62 @@ bool VariableReuseAnalysis::checkDefInst(Instruction *DefInst,
   return UseLoc <= DefLoc + FarDefDistance;
 }
 
-bool VariableReuseAnalysis::isAliaser(llvm::Value* V)
+bool VariableReuseAnalysis::isAliaser(Value* V)
 {
     return m_ValueAliasMap.count(V) > 0;
 }
-bool VariableReuseAnalysis::isAliasee(llvm::Value*V)
+bool VariableReuseAnalysis::isAliasee(Value*V)
 {
     return m_AliasRootMap.count(V) > 0;
+}
+
+// insertAliasPair:
+//    insert alias pair NewAliaser -> RootSV into Value map.
+//    It also updates root map. Note that Value map has no chain 
+//    alias relation (like a --> b, b-->c). Therefore, if
+//    'NewAliaser' is a alias root, all its aliasers are adjust
+//    to be aliased to the 'RootSV', and it is removed from root
+//    map.
+//
+// Assumption:
+//    NewAliaser : must not in value map
+//    SVRoot     : maybe in root map,
+//                 thus RootSV.BaseVector must not in value map
+void VariableReuseAnalysis::insertAliasPair(Value* NewAliaser, SSubVector& RootSV)
+{
+    Value* Aliasee = RootSV.BaseVector;
+    assert(m_ValueAliasMap.count(NewAliaser) == 0 &&
+           m_ValueAliasMap.count(Aliasee) == 0 &&
+           "ICE: Aliaser already in map");
+    m_ValueAliasMap.insert(std::make_pair(NewAliaser, RootSV));
+
+    // Update aliasRoot map
+    TinyPtrVector<Value*>& TPV = m_AliasRootMap[Aliasee];
+#if defined( _DEBUG ) || defined( _INTERNAL )
+    for (int i = 0, sz = (int)TPV.size(); i < sz; ++i) {
+        assert(TPV[i] != NewAliaser && "Alias Root already has this aliaser!");
+    }
+#endif
+    TPV.push_back(NewAliaser);
+
+    // If 'NewAliaser' is a root, remove it as it is no longer a root.
+    // All its aliasers are moved to be aliasers of 'Aliasee'.
+    auto II = m_AliasRootMap.find(NewAliaser);
+    if (II != m_AliasRootMap.end())
+    {
+        TinyPtrVector<Value*>& TPV1 = II->second;
+        for (int i = 0, sz = TPV1.size(); i < sz; ++i) {
+            Value *oldAliaser = TPV1[i];
+            auto II1 = m_ValueAliasMap.find(oldAliaser);
+            assert(II1 != m_ValueAliasMap.end() &&
+                   "ICE: alias not in value alias map");
+            II1->second.BaseVector = Aliasee;
+            II1->second.StartElementOffset += RootSV.StartElementOffset;
+
+            TPV.push_back(oldAliaser);
+        }
+        m_AliasRootMap.erase(II);
+    }
 }
 
 int VariableReuseAnalysis::getCongruentClassSize(Value* V)
@@ -339,6 +389,10 @@ void VariableReuseAnalysis::postProcessing()
             --sz;
             continue;
         }
+        if (k == 0) {
+            // already resolved.
+            continue;
+        }
         SV.BaseVector = aliasee;
         SV.StartElementOffset = off;
 
@@ -357,8 +411,8 @@ void VariableReuseAnalysis::postProcessing()
 // [Todo] rename SSubVector to SSubVecDesc (sub-vector descriptor)
 bool VariableReuseAnalysis::addAlias(Value* Aliaser, SSubVector& SVD)
 {
-    // In case, aliasee is an "aliaser" to the other value.
-    // the other value shall be the final baseVector.
+    // In case, aliasee is an "aliaser" to the other a root value,
+    // the other value shall be the new aliasee.
     SSubVector tSVD = SVD;
     auto AliaseeII = m_ValueAliasMap.find(tSVD.BaseVector);
     if (AliaseeII != m_ValueAliasMap.end()) {
@@ -372,57 +426,29 @@ bool VariableReuseAnalysis::addAlias(Value* Aliaser, SSubVector& SVD)
         return false;
     }
 
+    // Now, 'Aliasee' may be in root map, it must not in value map.
     auto II = m_ValueAliasMap.find(Aliaser);
     if (II == m_ValueAliasMap.end())
     {
-        m_ValueAliasMap.insert(std::make_pair(Aliaser, tSVD));
+        // both 'Aliaser' and 'Aliasee' are not in value map.
+        insertAliasPair(Aliaser, tSVD);
     }
     else {
-        // todo: might merge alias(aliaser, aliasee) with alias(aliaser, existingV)
-        // if size(aliaser) == size(existingV) or size(aliaser) == size(aliasee)
-        // do merging
-        // Note that it's possible to have a conflicting alias !
-        SSubVector& existingSV = II->second;
-        Value *existingV = existingSV.BaseVector;
+        SSubVector& existingRSV = II->second;
+        Value *existingRV = existingRSV.BaseVector;
         if (isSameSizeValue(Aliaser, Aliasee) &&
             tSVD.StartElementOffset == 0) {
-            // add alias(Aliasee, existingV)
-            Aliaser = Aliasee;
-            Aliasee = existingV;
-            m_ValueAliasMap.insert(std::make_pair(Aliasee, existingSV));
+            // add alias(Aliasee, existingRV)
+            insertAliasPair(Aliasee, existingRSV);
         }
-        else if (isSameSizeValue(Aliaser, existingV) &&
-                 existingSV.StartElementOffset == 0)
+        else if (isSameSizeValue(Aliaser, existingRV) &&
+                 existingRSV.StartElementOffset == 0)
         {
-            m_ValueAliasMap.insert(std::make_pair(existingV, tSVD));
-            Aliaser = existingV;
+            insertAliasPair(existingRV, tSVD);
         }
         else {
             return false;
         }
-    }
-
-    // Update aliasRoot map
-    auto II0 = m_AliasRootMap.find(Aliasee);
-    if (II0 == m_AliasRootMap.end())
-    {
-        TinyPtrVector<Value*> TPV;
-        TPV.push_back(Aliaser);
-        m_AliasRootMap.insert(std::make_pair(Aliasee, TPV));
-    }
-    else {
-        II0->second.push_back(Aliaser);
-    }
-
-    // Aliaser is no longer a root anymore
-    auto II1 = m_AliasRootMap.find(Aliaser);
-    if (II1 != m_AliasRootMap.end())
-    {
-        TinyPtrVector<Value*>& TPV = II1->second;
-        for (int i = 0, sz = TPV.size(); i < sz; ++i) {
-            m_AliasRootMap[Aliasee].push_back(TPV[i]);
-        }
-        m_AliasRootMap.erase(II1);
     }
     return true;
 }
@@ -1031,7 +1057,15 @@ void VariableReuseAnalysis::printAlias(raw_ostream & OS, const Function* F) cons
         for (auto VI : aliasers)
         {
             Value *aliaser = VI;
-            OS << "    " << *aliaser << "\n";
+            auto II = m_ValueAliasMap.find(aliaser);
+            if (II == m_ValueAliasMap.end()) {
+                OS << "    " << *aliaser << "  [Wrong Value Alias]\n";
+                assert(false && "ICE VariableAlias: wrong Value alias map!");
+            }
+            else {
+                const SSubVector& SV = II->second;
+                OS << "    " << *aliaser << "  [" << SV.StartElementOffset << "]\n";
+            }
         }
         OS << "\n";
     }
