@@ -1,5 +1,7 @@
 if(NOT TARGET igc_opt)
-  message(INFO "LIT tests not enabled. Missing igc_opt target.")
+  message("[check-igc] LIT tests disabled. Missing igc_opt target.")
+elseif(NOT BS_ENABLE_ULT)
+  message("[check-igc] LIT tests disabled. Set `BS_ENABLE_ULT` to enable.")
 else()
   # Canonicalization will set undefined variable to false. This step is to make
   # sure that `configure_file` called later on will generate a correct Python
@@ -66,6 +68,9 @@ else()
     PARAMS llvm_site_config=${IGC_LIT_CONFIG_FILE}
     DEPENDS copy_igc_lit_tools
     )
+
+  # Tests should not be excluded from "Build Solution" in VS.
+  set_target_properties(check-igc PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD OFF)
 
   # Two lines below are just used to group LIT reated targets in single directory
   # in IDE. They are completely optional.

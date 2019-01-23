@@ -41,9 +41,9 @@ class CPlatform
     GT_SYSTEM_INFO      m_GTSystemInfo;
 
 public:
-    CPlatform(PLATFORM platform) { 
-        m_platformInfo = platform; 
-        m_GTSystemInfo = { 0 }; 
+    CPlatform(PLATFORM platform) {
+        m_platformInfo = platform;
+        m_GTSystemInfo = { 0 };
     }
     CPlatform() {}
 
@@ -103,7 +103,7 @@ public:
     {
         return m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE;
     }
-   
+
     bool support16BitImmSrcForMad() const {
         return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE);
     }
@@ -146,8 +146,8 @@ public:
         return m_platformInfo.eRenderCoreFamily >= IGFX_GEN9_CORE; }
     bool supportSamplerCacheResinfo() const { return m_platformInfo.eRenderCoreFamily == IGFX_GEN8_CORE; }
 
-    unsigned int getMaxVertexShaderThreads(const bool isPositionOnlyShader) const 
-    { 
+    unsigned int getMaxVertexShaderThreads(const bool isPositionOnlyShader) const
+    {
         const unsigned int maxVertexShaderThreads = isPositionOnlyShader ? m_caps.VertexShaderThreadsPosh : m_caps.VertexShaderThreads;
         return maxVertexShaderThreads - 1;
     }
@@ -275,10 +275,10 @@ public:
             m_platformInfo.eProductFamily != IGFX_LAKEFIELD;
     }
 
-    //all the platforms which do not support 64 bit operations and 
+    //all the platforms which do not support 64 bit operations and
     //needs int64 emulation support. Except also for BXT where
-    //64-bit inst has much lower throughput compared to SKL. 
-    //Emulating it improves performance on some benchmarks and 
+    //64-bit inst has much lower throughput compared to SKL.
+    //Emulating it improves performance on some benchmarks and
     //won't have impact on the overall performance.
     bool need64BitEmulation() const {
         return (m_platformInfo.eProductFamily == IGFX_GEMINILAKE ||
@@ -374,7 +374,7 @@ public:
 
     bool WaConservativeRasterization() const
     {
-        return (m_WaTable.WaConservativeRasterization != 0 && 
+        return (m_WaTable.WaConservativeRasterization != 0 &&
 			IGC_IS_FLAG_ENABLED(ApplyConservativeRastWAHeader));
     }
 
