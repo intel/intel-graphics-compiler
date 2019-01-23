@@ -4165,6 +4165,25 @@ unsigned int Augmentation::getEnd(G4_Declare*& dcl)
 // Re-entrant function.
 void Augmentation::handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, bool isCall)
 {
+    auto markIntfWithLRAAssignment = [](G4_Declare* firstDcl, G4_Declare* lraAssigned, Interference& intf)
+    {
+        unsigned int numRows = lraAssigned->getNumRows();
+        G4_VarBase* preg = lraAssigned->getRegVar()->getPhyReg();
+        MUST_BE_TRUE(preg->isGreg(), "Expecting a physical register during building interference among incompatible masks");
+        unsigned int start = preg->asGreg()->getRegNum();
+
+        for (unsigned int i = start; i < (start + numRows); i++)
+        {
+            auto GRFDcl = intf.getGRFDclForHRA(i);
+            intf.checkAndSetIntf(firstDcl->getRegVar()->getId(), GRFDcl->getRegVar()->getId());
+
+#ifdef DEBUG_VERBOSE_ON
+            DEBUG_VERBOSE("Marking interference between " << firstDcl->getName() <<
+                " and " << GRFDcl->getName() << std::endl);
+#endif
+        }
+    };
+
     if (firstDcl->getRegFile() == G4_INPUT &&
         firstDcl->getRegVar()->getPhyReg() != NULL &&
         secondDcl->getRegFile() == G4_INPUT &&
@@ -4193,11 +4212,19 @@ void Augmentation::handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, b
         // then graph coloring will do this for us. In this
         // case however we need to rely on augmentation.
         FCALL_RET_MAP_ITER retIter = kernel.fg.isPseudoVCADcl(firstDcl) ? fcallRetMap.find(firstDcl) : fcallRetMap.find(secondDcl);
+        LocalLiveRange* otherDclLR = nullptr;
         if (retIter != fcallRetMap.end())
         {
             G4_Declare* retVar = retIter->second;
             G4_Declare* otherDcl = kernel.fg.isPseudoVCADcl(firstDcl) ? secondDcl : firstDcl;
-            intf.checkAndSetIntf(otherDcl->getRegVar()->getId(), retVar->getRegVar()->getId());
+            if(otherDcl->getRegVar()->isRegAllocPartaker())
+                intf.checkAndSetIntf(otherDcl->getRegVar()->getId(), retVar->getRegVar()->getId());
+            else if((otherDclLR = gra.getLocalLR(otherDcl)) &&
+                otherDclLR->getAssigned() &&
+                !otherDclLR->isEOT())
+            {
+                markIntfWithLRAAssignment(retVar, otherDcl, intf);
+            }
         }
     }
 
@@ -4227,21 +4254,7 @@ void Augmentation::handleSIMDIntf(G4_Declare* firstDcl, G4_Declare* secondDcl, b
             !secondDclLR->isEOT())
         {
             // secondDcl was assigned by local RA and it uses
-            unsigned int numRows = secondDcl->getNumRows();
-            G4_VarBase* preg = secondDcl->getRegVar()->getPhyReg();
-            MUST_BE_TRUE(preg->isGreg(), "Expecting a physical register during building interference among incompatible masks");
-            unsigned int start = preg->asGreg()->getRegNum();
-
-            for (unsigned int i = start; i < (start + numRows); i++)
-            {
-                auto GRFDcl = intf.getGRFDclForHRA(i);
-                intf.checkAndSetIntf(firstDcl->getRegVar()->getId(), GRFDcl->getRegVar()->getId());
-
-#ifdef DEBUG_VERBOSE_ON
-                DEBUG_VERBOSE("Marking interference between " << firstDcl->getName() <<
-                    " and " << GRFDcl->getName() << std::endl);
-#endif
-            }
+            markIntfWithLRAAssignment(firstDcl, secondDcl, intf);
         }
         else if (secondDcl->getRegVar()->isRegAllocPartaker() &&
             (firstDclLR = gra.getLocalLR(firstDcl)) &&
