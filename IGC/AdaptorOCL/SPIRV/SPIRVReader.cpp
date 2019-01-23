@@ -2597,13 +2597,23 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpCompositeExtract: {
     SPIRVCompositeExtract *CE = static_cast<SPIRVCompositeExtract *>(BV);
+    auto Type = CE->getComposite()->getType();
     assert(BB && "Invalid BB");
-    assert(CE->getComposite()->getType()->isTypeVector() && "Invalid type");
     assert(CE->getIndices().size() == 1 && "Invalid index");
-    return mapValue(BV, ExtractElementInst::Create(
-      transValue(CE->getComposite(), F, BB),
-      ConstantInt::get(*Context, APInt(32, CE->getIndices()[0])),
-      BV->getName(), BB));
+    if (Type->isTypeVector()) 
+    {
+        return mapValue(BV, ExtractElementInst::Create(
+            transValue(CE->getComposite(), F, BB),
+            ConstantInt::get(*Context, APInt(32, CE->getIndices()[0])),
+            BV->getName(), BB));
+    }
+    else
+    {
+        return mapValue(BV, ExtractValueInst::Create(
+            transValue(CE->getComposite(), F, BB),
+            CE->getIndices(),
+            BV->getName(), BB));
+    }
     }
     break;
 
@@ -2619,14 +2629,25 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   case OpCompositeInsert: {
     auto CI = static_cast<SPIRVCompositeInsert *>(BV);
+    auto Type = CI->getComposite()->getType();
     assert(BB && "Invalid BB");
-    assert(CI->getComposite()->getType()->isTypeVector() && "Invalid type");
     assert(CI->getIndices().size() == 1 && "Invalid index");
-    return mapValue(BV, InsertElementInst::Create(
-      transValue(CI->getComposite(), F, BB),
-      transValue(CI->getObject(), F, BB),
-      ConstantInt::get(*Context, APInt(32, CI->getIndices()[0])),
-      BV->getName(), BB));
+    if (Type->isTypeVector()) 
+    {
+        return mapValue(BV, InsertElementInst::Create(
+            transValue(CI->getComposite(), F, BB),
+            transValue(CI->getObject(), F, BB),
+            ConstantInt::get(*Context, APInt(32, CI->getIndices()[0])),
+            BV->getName(), BB));
+    }
+    else
+    {
+        return mapValue(BV, InsertValueInst::Create(
+            transValue(CI->getComposite(), F, BB),
+            transValue(CI->getObject(), F, BB),
+            CI->getIndices(),
+            BV->getName(), BB));
+    }
     }
     break;
 
