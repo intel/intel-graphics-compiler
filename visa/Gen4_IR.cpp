@@ -1887,7 +1887,12 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
 
     // FIXME: to add specific checks for other instructions.
     G4_opcode useInst_op = useInst->opcode();
-
+    
+    if (useInst_op == G4_madm ||
+        (useInst->isMath() && (useInst->asMathInst()->getMathCtrl() == MATH_INVM || useInst->asMathInst()->getMathCtrl() == MATH_RSQRTM)))
+    {
+        return false;
+    }
     if ((useInst_op == G4_line && opndNum == Opnd_src0) ||
         ((useInst_op == G4_if || useInst_op == G4_while) && !src->isImm() && IS_BTYPE(srcType)) ||
         (hasModifier && G4_Inst_Table[useInst_op].instType == InstTypeLogic) ||
