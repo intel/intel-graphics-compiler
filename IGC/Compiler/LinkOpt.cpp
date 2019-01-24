@@ -1225,15 +1225,17 @@ static ShaderType ltoToGs(LinkOptContext* ltoCtx)
         preGsNonDefaultOuts = &ltoCtx->vs.outNonDefaultInsts;
     }
 
-    ltoCtx->m_abortLTO = false;
-    runPasses(preGsCtx,
-        new ShaderIOAnalysis(ltoCtx, prevType, s_doOut),
-        nullptr);
-    runPasses(gsCtx,
-        llvm::createDeadCodeEliminationPass(),
-        new ShaderIOAnalysis(ltoCtx, s_gsType, s_doIn),
-        nullptr);
-
+    if(preGsCtx != nullptr)
+    {
+        ltoCtx->m_abortLTO = false;
+        runPasses(preGsCtx,
+            new ShaderIOAnalysis(ltoCtx, prevType, s_doOut),
+            nullptr);
+        runPasses(gsCtx,
+            llvm::createDeadCodeEliminationPass(),
+            new ShaderIOAnalysis(ltoCtx, s_gsType, s_doIn),
+            nullptr);
+    }
     if (!ltoCtx->m_abortLTO)
     {
         LTODumpLLVMIR(gsCtx, "beLTOI");    LTODumpLLVMIR(preGsCtx, "beLTOO");
