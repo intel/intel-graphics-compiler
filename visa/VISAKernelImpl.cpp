@@ -2441,39 +2441,39 @@ int VISAKernelImpl::AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *p
     int status = CM_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         if ( ( tmpDst->g4opnd->getType() == Type_DF ) &&
              ( ( opcode == ISA_DIV ) ||  // keeping ISA_DIV at the moment for IGC
                ( opcode == ISA_DIVM ) ) )
         {
             status = m_builder->translateVISAArithmeticDoubleInst(opcode, executionSize, emask, g4Pred,
-                satMode, (G4_DstRegRegion *)tmpDst->g4opnd, src0->g4opnd, src1->g4opnd);   // IEEE
+                satMode, tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd, src1->g4opnd);   // IEEE
         }
         else if ( tmpDst->g4opnd->getType() == Type_DF && opcode == ISA_INV )
         {
             // src0_opnd is divisor
             status = m_builder->translateVISAArithmeticDoubleInst(opcode, executionSize, emask, g4Pred,
-                satMode, (G4_DstRegRegion *)tmpDst->g4opnd, NULL, src0->g4opnd); // IEEE
+                satMode, tmpDst->g4opnd->asDstRegRegion(), NULL, src0->g4opnd); // IEEE
         }
         else if ( tmpDst->g4opnd->getType() == Type_F && opcode == ISA_DIVM )
         {
             status = m_builder->translateVISAArithmeticSingleDivideIEEEInst(opcode, executionSize, emask, g4Pred,
-                satMode, NULL, (G4_DstRegRegion *)tmpDst->g4opnd, src0->g4opnd, src1->g4opnd);  // IEEE
+                satMode, NULL, tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd, src1->g4opnd);  // IEEE
         }
         else if ( tmpDst->g4opnd->getType() == Type_F && opcode == ISA_SQRTM )
         {
             status = m_builder->translateVISAArithmeticSingleSQRTIEEEInst(opcode, executionSize, emask, g4Pred,
-                satMode, NULL, (G4_DstRegRegion *)tmpDst->g4opnd, src0->g4opnd);  // IEEE
+                satMode, NULL, tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd);  // IEEE
         }
         else if (tmpDst->g4opnd->getType() == Type_DF && (opcode == ISA_SQRT || opcode == ISA_SQRTM))
         {
             status = m_builder->translateVISAArithmeticDoubleSQRTInst(opcode, executionSize, emask, g4Pred,
-                satMode, NULL, (G4_DstRegRegion *)tmpDst->g4opnd, src0->g4opnd);
+                satMode, NULL, tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd);
         }
         else
         {
             status =  m_builder->translateVISAArithmeticInst(opcode, executionSize, emask, g4Pred, satMode,
-                NULL, (G4_DstRegRegion *)tmpDst->g4opnd, src0->g4opnd, GET_G4_OPNG(src1), GET_G4_OPNG(src2), NULL);
+                NULL, tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd, GET_G4_OPNG(src1), GET_G4_OPNG(src2), NULL);
         }
     }
     if(IS_VISA_BOTH_PATH)
@@ -2547,9 +2547,10 @@ int VISAKernelImpl::AppendVISAArithmeticInst(ISA_Opcode opcode, VISA_PredOpnd *p
 
     if(IS_GEN_BOTH_PATH)
     {
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISAArithmeticInst(opcode, executionSize, emask, g4Pred,
-            false, NULL, (G4_DstRegRegion *) dst1->g4opnd, src0->g4opnd, src1->g4opnd, NULL, (G4_DstRegRegion*)carry_borrow->g4opnd);
+            false, NULL, dst1->g4opnd->asDstRegRegion(), src0->g4opnd, src1->g4opnd, NULL, 
+            carry_borrow->g4opnd->asDstRegRegion());
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -2623,9 +2624,9 @@ int VISAKernelImpl::AppendVISALogicOrShiftInst(ISA_Opcode opcode, VISA_PredOpnd 
 
     if(IS_GEN_BOTH_PATH)
     {
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISALogicInst(opcode, g4Pred,
-            satMode, executionSize, emask, (G4_DstRegRegion *)tmpDst->g4opnd, src0->g4opnd, GET_G4_OPNG(src1), GET_G4_OPNG(src2), GET_G4_OPNG(src3));
+            satMode, executionSize, emask, tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd, GET_G4_OPNG(src1), GET_G4_OPNG(src2), GET_G4_OPNG(src3));
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -2691,7 +2692,7 @@ int VISAKernelImpl::AppendVISAAddrAddInst(Common_VISA_EMask_Ctrl emask, Common_I
     int status = CM_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
-        status = m_builder->translateVISAAddrInst(ISA_ADDR_ADD, executionSize, emask, (G4_DstRegRegion *)dst->g4opnd, src0->g4opnd, src1->g4opnd);
+        status = m_builder->translateVISAAddrInst(ISA_ADDR_ADD, executionSize, emask, dst->g4opnd->asDstRegRegion(), src0->g4opnd, src1->g4opnd);
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -2746,7 +2747,7 @@ int VISAKernelImpl::AppendVISAMinMaxInst(CISA_MIN_MAX_SUB_OPCODE subOpcode, bool
 
     if(IS_GEN_BOTH_PATH)
     {
-        status = m_builder->translateVISADataMovementInst(ISA_FMINMAX, subOpcode, NULL, executionSize, emask, satMode, (G4_DstRegRegion *)tmpDst->g4opnd, src0->g4opnd, src1->g4opnd);
+        status = m_builder->translateVISADataMovementInst(ISA_FMINMAX, subOpcode, NULL, executionSize, emask, satMode, tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd, src1->g4opnd);
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -2829,9 +2830,9 @@ int VISAKernelImpl::AppendVISADataMovementInst(ISA_Opcode opcode, VISA_PredOpnd 
 
     if(IS_GEN_BOTH_PATH)
     {
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISADataMovementInst(opcode, CISA_DM_FMIN /*ignored */,
-            g4Pred, executionSize, emask, satMode, (G4_DstRegRegion *)tmpDst->g4opnd, src0->g4opnd, GET_G4_OPNG(src1));
+            g4Pred, executionSize, emask, satMode, tmpDst->g4opnd->asDstRegRegion(), src0->g4opnd, GET_G4_OPNG(src1));
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -2893,7 +2894,8 @@ int VISAKernelImpl::AppendVISAComparisonInst(Common_ISA_Cond_Mod sub_op, Common_
 
     if(IS_GEN_BOTH_PATH)
     {
-        status = m_builder->translateVISACompareInst(ISA_CMP, executionSize, emask, sub_op, (G4_DstRegRegion*)dstOpnd->g4opnd, src0->g4opnd, src1->g4opnd);
+        status = m_builder->translateVISACompareInst(ISA_CMP, executionSize, emask, sub_op, 
+            dstOpnd->g4opnd->asDstRegRegion(), src0->g4opnd, src1->g4opnd);
     }
 
     if(IS_VISA_BOTH_PATH)
@@ -2941,7 +2943,7 @@ int VISAKernelImpl::AppendVISAComparisonInst(Common_ISA_Cond_Mod sub_op, Common_
     CreateVISAPredicateDstOperand(dst, dstDcl, exSize);
     if(IS_GEN_BOTH_PATH)
     {
-        G4_Predicate * g4Pred = (dst != NULL)? (G4_Predicate *)dst->g4opnd : NULL;
+        G4_Predicate * g4Pred = (dst != NULL)? dst->g4opnd->asPredicate() : NULL;
         if (g4Pred != NULL)
         {
            status = m_builder->translateVISACompareInst(ISA_CMP, executionSize, emask, sub_op, g4Pred, src0->g4opnd, src1->g4opnd);
@@ -2990,7 +2992,7 @@ int VISAKernelImpl::AppendVISACFSIMDInst(ISA_Opcode opcode, VISA_PredOpnd *pred,
 
     if(IS_GEN_BOTH_PATH)
     {
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
 
         G4_Label * g4Lbl = (opcode != ISA_GOTO)? NULL: (G4_Label *)label->g4opnd;
         status = m_builder->translateVISASimdInst(opcode, g4Pred, executionSize, emask, g4Lbl);
@@ -3038,7 +3040,7 @@ int VISAKernelImpl::AppendVISACFJmpInst(VISA_PredOpnd *pred, VISA_LabelOpnd *lab
     int status = CM_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISACFJumpInst(g4Pred, (G4_Label*)label->g4opnd);
     }
     if(IS_VISA_BOTH_PATH)
@@ -3086,7 +3088,7 @@ int VISAKernelImpl::AppendVISACFCallInst(VISA_PredOpnd *pred, Common_VISA_EMask_
         {
             m_builder->getFCPatchInfo()->setHasFCCalls(true);
         }
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISACFCallInst(executionSize, emask, g4Pred, (G4_Label*)label->g4opnd);
     }
     if(IS_VISA_BOTH_PATH)
@@ -3129,7 +3131,7 @@ int VISAKernelImpl::AppendVISACFRetInst(VISA_PredOpnd *pred, Common_VISA_EMask_C
     int status = CM_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         if(isFCCallableKernel())
         {
             m_builder->getFCPatchInfo()->setIsCallableKernel(true);
@@ -3197,7 +3199,7 @@ int VISAKernelImpl::AppendVISACFFunctionCallInst(VISA_PredOpnd *pred, Common_VIS
     int status = CM_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISACFFCallInst(executionSize, emask, g4Pred, functionID, argSize, returnSize);
     }
     if(IS_VISA_BOTH_PATH)
@@ -3249,7 +3251,7 @@ int VISAKernelImpl::AppendVISACFIndirectFuncCallInst(VISA_PredOpnd *pred, Common
     int status = CM_SUCCESS;
     if (IS_GEN_BOTH_PATH)
     {
-        G4_Predicate * g4Pred = pred ? (G4_Predicate *)pred->g4opnd : nullptr;
+        G4_Predicate * g4Pred = pred ? pred->g4opnd->asPredicate() : nullptr;
         status = m_builder->translateVISACFIFCallInst(executionSize, emask, g4Pred, funcAddr->g4opnd, 
             argSize, returnSize);
     }
@@ -3298,7 +3300,7 @@ int VISAKernelImpl::AppendVISACFFuncAddrInst(uint32_t funcID, VISA_VectorOpnd* d
     int status = CM_SUCCESS;
     if (IS_GEN_BOTH_PATH)
     {
-        status = m_builder->translateVISACFFuncAddrInst(funcID, (G4_DstRegRegion*) dst->g4opnd);
+        status = m_builder->translateVISACFFuncAddrInst(funcID, dst->g4opnd->asDstRegRegion());
     }
     if (IS_VISA_BOTH_PATH)
     {
@@ -3333,7 +3335,7 @@ int VISAKernelImpl::AppendVISACFFunctionRetInst(VISA_PredOpnd *pred, Common_VISA
     int status = CM_SUCCESS;
     if(IS_GEN_BOTH_PATH)
     {
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISACFFretInst(executionSize, emask, g4Pred);
     }
     if(IS_VISA_BOTH_PATH)
@@ -3456,9 +3458,9 @@ int VISAKernelImpl::AppendVISASurfAccessDwordAtomicInst(
         CreateGenRawDstOperand(dst);
         status = m_builder->translateVISADwordAtomicInst(
             subOp, is16Bit, emask, executionSize, surface->g4opnd,
-            globalOffset->g4opnd, (G4_SrcRegRegion *)elementOffset->g4opnd,
-            (G4_SrcRegRegion *)src0->g4opnd, (G4_SrcRegRegion *)src1->g4opnd,
-            (G4_DstRegRegion *)dst->g4opnd);
+            globalOffset->g4opnd, elementOffset->g4opnd->asSrcRegRegion(),
+            src0->g4opnd->asSrcRegRegion(), src1->g4opnd->asSrcRegRegion(),
+            dst->g4opnd->asDstRegRegion());
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -3584,16 +3586,18 @@ int VISAKernelImpl::AppendVISASurfAccessGatherScatterInst(ISA_Opcode opcode, Com
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(elementOffset);
+        auto offset = elementOffset->g4opnd->asSrcRegRegion();
         if(opcode == ISA_GATHER)
         {
             CreateGenRawDstOperand(srcDst); //gather: srcDst is dst
             status = m_builder->translateVISAGatherInst(emask, false, elementSize, executionSize,
-                surface->g4opnd, globalOffset->g4opnd, (G4_SrcRegRegion*)elementOffset->g4opnd, (G4_DstRegRegion*)srcDst->g4opnd);
-        }else
+                surface->g4opnd, globalOffset->g4opnd, offset, srcDst->g4opnd->asDstRegRegion());
+        }
+        else
         {
             CreateGenRawSrcOperand(srcDst); //scatter: srcDst is src
             status = m_builder->translateVISAScatterInst(emask, elementSize, executionSize,
-                surface->g4opnd, globalOffset->g4opnd, (G4_SrcRegRegion*)elementOffset->g4opnd, (G4_SrcRegRegion*)srcDst->g4opnd);
+                surface->g4opnd, globalOffset->g4opnd, offset, srcDst->g4opnd->asSrcRegRegion());
         }
     }
     if(IS_VISA_BOTH_PATH)
@@ -3674,16 +3678,17 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4Inst(ISA_Opcode opcode, V
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(elementOffset);
+        auto offset = elementOffset->g4opnd->asSrcRegRegion();
         if(opcode == ISA_GATHER4)
         {
             CreateGenRawDstOperand(srcDst); // gather4: srcDst is dst
             status = m_builder->translateVISAGather4Inst(emask, false, chMask, executionSize,
-                surface->g4opnd, globalOffset->g4opnd, (G4_SrcRegRegion*)elementOffset->g4opnd, (G4_DstRegRegion*)srcDst->g4opnd);
+                surface->g4opnd, globalOffset->g4opnd, offset, srcDst->g4opnd->asDstRegRegion());
         }else
         {
             CreateGenRawSrcOperand(srcDst); // scatter4: srcDst is src
             status = m_builder->translateVISAScatter4Inst(emask, chMask, executionSize,
-                surface->g4opnd, globalOffset->g4opnd, (G4_SrcRegRegion*)elementOffset->g4opnd, (G4_SrcRegRegion*)srcDst->g4opnd);
+                surface->g4opnd, globalOffset->g4opnd, offset, srcDst->g4opnd->asSrcRegRegion());
         }
     }
     if(IS_VISA_BOTH_PATH)
@@ -3759,7 +3764,7 @@ int VISAKernelImpl::AppendVISASurfAccessGather4Scatter4TypedInst(ISA_Opcode opco
 
     if(IS_GEN_BOTH_PATH)
     {
-        G4_Predicate * g4Pred = (pred != NULL) ? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL) ? pred->g4opnd->asPredicate() : NULL;
         CreateGenRawSrcOperand(uOffset);
         CreateGenRawSrcOperand(vOffset);
         CreateGenRawSrcOperand(rOffset);
@@ -3993,8 +3998,9 @@ int VISAKernelImpl::AppendVISASurfAccessMediaLoadStoreInst(ISA_Opcode opcode, ME
         {
             CreateGenRawDstOperand(srcDst); //srcDst: dst
             status = m_builder->translateVISAMediaLoadInst(modifier, surface->g4opnd, plane, blockWidth, blockHeight,
-                (G4_SrcRegRegion*)xOffset->g4opnd, (G4_SrcRegRegion*)yOffset->g4opnd, (G4_DstRegRegion*)srcDst->g4opnd);
-        }else
+                xOffset->g4opnd->asSrcRegRegion(), yOffset->g4opnd->asSrcRegRegion(), srcDst->g4opnd->asDstRegRegion());
+        }
+        else
         {
             if ( opcode!=ISA_MEDIA_ST )
             {
@@ -4005,7 +4011,7 @@ int VISAKernelImpl::AppendVISASurfAccessMediaLoadStoreInst(ISA_Opcode opcode, ME
                 CreateGenRawSrcOperand(srcDst); //srcDst: src
             }
             status = m_builder->translateVISAMediaStoreInst((MEDIA_ST_mod)modifier, surface->g4opnd, plane, blockWidth,
-                blockHeight, (G4_SrcRegRegion*)xOffset->g4opnd, (G4_SrcRegRegion*)yOffset->g4opnd, (G4_SrcRegRegion*)srcDst->g4opnd);
+                blockHeight, xOffset->g4opnd->asSrcRegRegion(), yOffset->g4opnd->asSrcRegRegion(), srcDst->g4opnd->asSrcRegRegion());
         }
     }
     if(IS_VISA_BOTH_PATH)
@@ -4120,7 +4126,8 @@ int VISAKernelImpl::AppendVISASvmBlockLoadInst(Common_ISA_Oword_Num size, bool u
     if (IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(srcDst); //dst for load
-        status = m_builder->translateVISASVMBlockReadInst(size, unaligned, (G4_SrcRegRegion*)address->g4opnd, (G4_DstRegRegion*)srcDst->g4opnd);
+        status = m_builder->translateVISASVMBlockReadInst(size, unaligned, address->g4opnd->asSrcRegRegion(), 
+            srcDst->g4opnd->asDstRegRegion());
     }
     if (IS_VISA_BOTH_PATH)
     {
@@ -4143,7 +4150,8 @@ int VISAKernelImpl::AppendVISASvmBlockStoreInst(Common_ISA_Oword_Num size, bool 
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawSrcOperand(srcDst); //src for store
-        status = m_builder->translateVISASVMBlockWriteInst(size, (G4_SrcRegRegion*)address->g4opnd, (G4_SrcRegRegion*)srcDst->g4opnd);
+        status = m_builder->translateVISASVMBlockWriteInst(size, address->g4opnd->asSrcRegRegion(), 
+            srcDst->g4opnd->asSrcRegRegion());
     }
 
     if (IS_VISA_BOTH_PATH)
@@ -4173,8 +4181,9 @@ int VISAKernelImpl::AppendVISASvmGatherInst(VISA_PredOpnd *pred,
     {
         CreateGenRawSrcOperand(address);
         CreateGenRawDstOperand(srcDst); // dst for gather
-        G4_Predicate * g4Pred = (pred != NULL) ? (G4_Predicate *)pred->g4opnd : NULL;
-        status = m_builder->translateVISASVMScatterReadInst(executionSize, emask, g4Pred, blockType, numBlocks, (G4_SrcRegRegion*)address->g4opnd, (G4_DstRegRegion*)srcDst->g4opnd);
+        G4_Predicate * g4Pred = (pred != NULL) ? pred->g4opnd->asPredicate() : NULL;
+        status = m_builder->translateVISASVMScatterReadInst(executionSize, emask, g4Pred, blockType, numBlocks, 
+            address->g4opnd->asSrcRegRegion(), srcDst->g4opnd->asDstRegRegion());
     }
 
     if (IS_VISA_BOTH_PATH)
@@ -4204,8 +4213,9 @@ int VISAKernelImpl::AppendVISASvmScatterInst(VISA_PredOpnd *pred,
     {
         CreateGenRawSrcOperand(address);
         CreateGenRawSrcOperand(srcDst); // src for scatter
-        G4_Predicate * g4Pred = (pred != NULL) ? (G4_Predicate *)pred->g4opnd : NULL;
-        status = m_builder->translateVISASVMScatterWriteInst(executionSize, emask, g4Pred, blockType, numBlocks, (G4_SrcRegRegion*)address->g4opnd, (G4_SrcRegRegion*)srcDst->g4opnd);
+        G4_Predicate * g4Pred = (pred != NULL) ? pred->g4opnd->asPredicate() : NULL;
+        status = m_builder->translateVISASVMScatterWriteInst(executionSize, emask, g4Pred, blockType, numBlocks, 
+            address->g4opnd->asSrcRegRegion(), srcDst->g4opnd->asSrcRegRegion());
     }
 
     if (IS_VISA_BOTH_PATH)
@@ -4240,12 +4250,12 @@ int VISAKernelImpl::AppendVISASvmAtomicInst(VISA_PredOpnd *pred,
         CreateGenRawSrcOperand(src0);
         CreateGenRawSrcOperand(src1);
         CreateGenRawDstOperand(dst);
-        G4_Predicate * g4Pred = (pred != NULL) ? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL) ? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISASVMAtomicInst(
             static_cast<VISAAtomicOps>(op), bitwidth, executionSize, emask,
-            g4Pred, (G4_SrcRegRegion *)address->g4opnd,
-            (G4_SrcRegRegion *)src0->g4opnd, (G4_SrcRegRegion *)src1->g4opnd,
-            (G4_DstRegRegion *)dst->g4opnd);
+            g4Pred, address->g4opnd->asSrcRegRegion(),
+            src0->g4opnd->asSrcRegRegion(), src1->g4opnd->asSrcRegRegion(),
+            dst->g4opnd->asDstRegRegion());
     }
 
     if (IS_VISA_BOTH_PATH)
@@ -4425,11 +4435,13 @@ int VISAKernelImpl::AppendVISASurfAccessOwordLoadStoreInst(ISA_Opcode opcode, Co
         if(opcode == ISA_OWORD_ST)
         {
             CreateGenRawSrcOperand(srcDst);
-            status = m_builder->translateVISAOwordStoreInst(surface->g4opnd, size, offset->g4opnd, (G4_SrcRegRegion*)srcDst->g4opnd);
+            status = m_builder->translateVISAOwordStoreInst(surface->g4opnd, size, offset->g4opnd, 
+                srcDst->g4opnd->asSrcRegRegion());
         }else
         {
             CreateGenRawDstOperand(srcDst); //srcDst: dst
-            status = m_builder->translateVISAOwordLoadInst(opcode, false, surface->g4opnd, size, offset->g4opnd, (G4_DstRegRegion*)srcDst->g4opnd);
+            status = m_builder->translateVISAOwordLoadInst(opcode, false, surface->g4opnd, size, offset->g4opnd, 
+                srcDst->g4opnd->asDstRegRegion());
         }
     }
     if(IS_VISA_BOTH_PATH)
@@ -4483,7 +4495,7 @@ int VISAKernelImpl::AppendVISASurfAccessTransposeLoadInst(VISA_StateOpndHandle *
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
-        status = m_builder->translateTransposeVISALoadInst(surface->g4opnd, blockWidth, blockHeight, xOffset->g4opnd, yOffset->g4opnd, (G4_DstRegRegion*)dst->g4opnd);
+        status = m_builder->translateTransposeVISALoadInst(surface->g4opnd, blockWidth, blockHeight, xOffset->g4opnd, yOffset->g4opnd, dst->g4opnd->asDstRegRegion());
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -4537,7 +4549,7 @@ int VISAKernelImpl::AppendVISASILoad(VISA_StateOpndHandle *surface, VISAChannelM
         CreateGenRawSrcOperand(vOffset);
         CreateGenRawSrcOperand(rOffset);
         CreateGenRawDstOperand(dst);
-        status = m_builder->translateVISASamplerInst(simdMode, surface->g4opnd, NULL, channel, channel.getNumEnabledChannels(), uOffset->g4opnd, vOffset->g4opnd, rOffset->g4opnd, (G4_DstRegRegion*)dst->g4opnd);
+        status = m_builder->translateVISASamplerInst(simdMode, surface->g4opnd, NULL, channel, channel.getNumEnabledChannels(), uOffset->g4opnd, vOffset->g4opnd, rOffset->g4opnd, dst->g4opnd->asDstRegRegion());
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -4593,7 +4605,7 @@ int VISAKernelImpl::AppendVISASISample(Common_VISA_EMask_Ctrl emask, VISA_StateO
         CreateGenRawSrcOperand(vOffset);
         CreateGenRawSrcOperand(rOffset);
         CreateGenRawDstOperand(dst); //srcDst: src
-        status = m_builder->translateVISASamplerInst(simdMode, surface->g4opnd, sampler->g4opnd, channel, channel.getNumEnabledChannels(), uOffset->g4opnd, vOffset->g4opnd, rOffset->g4opnd, (G4_DstRegRegion*)dst->g4opnd);
+        status = m_builder->translateVISASamplerInst(simdMode, surface->g4opnd, sampler->g4opnd, channel, channel.getNumEnabledChannels(), uOffset->g4opnd, vOffset->g4opnd, rOffset->g4opnd, dst->g4opnd->asDstRegRegion());
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -4643,7 +4655,7 @@ int VISAKernelImpl::AppendVISASISampleUnorm(VISA_StateOpndHandle *surface, VISA_
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst); //srcDst: src
-        status = m_builder->translateVISASamplerNormInst(surface->g4opnd, sampler->g4opnd, channel, channel.getNumEnabledChannels(), deltaU->g4opnd, uOffset->g4opnd, deltaV->g4opnd, vOffset->g4opnd, (G4_DstRegRegion*)dst->g4opnd);
+        status = m_builder->translateVISASamplerNormInst(surface->g4opnd, sampler->g4opnd, channel, channel.getNumEnabledChannels(), deltaU->g4opnd, uOffset->g4opnd, deltaV->g4opnd, vOffset->g4opnd, dst->g4opnd->asDstRegRegion());
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -4888,11 +4900,12 @@ int VISAKernelImpl::AppendVISAMiscRawSend(VISA_PredOpnd *pred, Common_VISA_EMask
     {
         CreateGenRawSrcOperand(src);
         CreateGenRawDstOperand(dst);
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         dst->g4opnd->asDstRegRegion()->setType( executionSize == EXEC_SIZE_16 ? Type_UW : Type_UD );
 
         status = m_builder->translateVISARawSendInst(g4Pred, executionSize,
-            emask, modifiers, exMsgDesc, srcSize, dstSize, desc->g4opnd, (G4_SrcRegRegion*) src->g4opnd, (G4_DstRegRegion*)dst->g4opnd);
+            emask, modifiers, exMsgDesc, srcSize, dstSize, desc->g4opnd, 
+            src->g4opnd->asSrcRegRegion(), dst->g4opnd->asDstRegRegion());
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -4958,11 +4971,11 @@ int VISAKernelImpl::AppendVISAMiscRawSends(VISA_PredOpnd *pred, Common_VISA_EMas
         CreateGenRawSrcOperand(src0);
         CreateGenRawSrcOperand(src1);
         CreateGenRawDstOperand(dst);
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         dst->g4opnd->asDstRegRegion()->setType(Type_UD);
 
         status = m_builder->translateVISARawSendsInst(g4Pred, executionSize,
-            emask, modifiers, exMsgDesc->g4opnd, src0Size, src1Size, dstSize, desc->g4opnd, src0->g4opnd, src1->g4opnd, (G4_DstRegRegion*)dst->g4opnd, ffid);
+            emask, modifiers, exMsgDesc->g4opnd, src0Size, src1Size, dstSize, desc->g4opnd, src0->g4opnd, src1->g4opnd, dst->g4opnd->asDstRegRegion(), ffid);
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -5034,7 +5047,7 @@ int VISAKernelImpl::AppendVISAMiscVME_FBR(VISA_StateOpndHandle *surface, VISA_Ra
         CreateGenRawSrcOperand(FBRInput);
         CreateGenRawDstOperand(output);
         status = m_builder->translateVISAVmeFbrInst(surface->g4opnd, UNIInput->g4opnd, FBRInput->g4opnd,
-            FBRMbMode->g4opnd, FBRSubMbShape->g4opnd, FBRSubPredMode->g4opnd, (G4_DstRegRegion*)output->g4opnd);
+            FBRMbMode->g4opnd, FBRSubMbShape->g4opnd, FBRSubPredMode->g4opnd, output->g4opnd->asDstRegRegion());
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -5092,7 +5105,7 @@ int VISAKernelImpl::AppendVISAMiscVME_IME(VISA_StateOpndHandle *surface, unsigne
         CreateGenRawSrcOperand(costCenter);
         CreateGenRawDstOperand(output);
         status = m_builder->translateVISAVmeImeInst(streamMode, searchControlMode, surface->g4opnd,
-            UNIInput->g4opnd, IMEInput->g4opnd, ref0->g4opnd, ref1->g4opnd, costCenter->g4opnd, (G4_DstRegRegion*)output->g4opnd);
+            UNIInput->g4opnd, IMEInput->g4opnd, ref0->g4opnd, ref1->g4opnd, costCenter->g4opnd, output->g4opnd->asDstRegRegion());
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -5149,7 +5162,7 @@ int VISAKernelImpl::AppendVISAMiscVME_SIC(VISA_StateOpndHandle *surface, VISA_Ra
         CreateGenRawSrcOperand(UNIInput);
         CreateGenRawSrcOperand(SICInput);
         CreateGenRawDstOperand(output);
-        status = m_builder->translateVISAVmeSicInst(surface->g4opnd, UNIInput->g4opnd, SICInput->g4opnd, (G4_DstRegRegion*)output->g4opnd);
+        status = m_builder->translateVISAVmeSicInst(surface->g4opnd, UNIInput->g4opnd, SICInput->g4opnd, output->g4opnd->asDstRegRegion());
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -5193,7 +5206,7 @@ int VISAKernelImpl::AppendVISAMiscVME_IDM(VISA_StateOpndHandle *surface, VISA_Ra
         CreateGenRawSrcOperand(UNIInput);
         CreateGenRawSrcOperand(IDMInput);
         CreateGenRawDstOperand(output);
-        status = m_builder->translateVISAVmeIdmInst(surface->g4opnd, UNIInput->g4opnd, IDMInput->g4opnd, (G4_DstRegRegion*)output->g4opnd);
+        status = m_builder->translateVISAVmeIdmInst(surface->g4opnd, UNIInput->g4opnd, IDMInput->g4opnd, output->g4opnd->asDstRegRegion());
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -5240,8 +5253,10 @@ int VISAKernelImpl::AppendVISAMEAVS(VISA_StateOpndHandle *surface,  VISA_StateOp
         unsigned numChannelsEnabled = 0;
         numChannelsEnabled = chMask.getNumEnabledChannels();
 
-        status = m_builder->translateVISAAvsInst(surface->g4opnd, sampler->g4opnd, chMask, numChannelsEnabled, GET_G4_OPNG(deltaU), uOffset->g4opnd, GET_G4_OPNG(deltaV), GET_G4_OPNG(vOffset),
-            GET_G4_OPNG(u2d), GET_G4_OPNG(groupID), GET_G4_OPNG(verticalBlockNumber), cntrl, GET_G4_OPNG(v2d), execMode, GET_G4_OPNG(iefBypass), (G4_DstRegRegion *)dst->g4opnd);
+        status = m_builder->translateVISAAvsInst(surface->g4opnd, sampler->g4opnd, chMask, numChannelsEnabled, 
+            GET_G4_OPNG(deltaU), uOffset->g4opnd, GET_G4_OPNG(deltaV), GET_G4_OPNG(vOffset),
+            GET_G4_OPNG(u2d), GET_G4_OPNG(groupID), GET_G4_OPNG(verticalBlockNumber), cntrl, GET_G4_OPNG(v2d), 
+            execMode, GET_G4_OPNG(iefBypass), dst->g4opnd->asDstRegRegion());
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -5325,9 +5340,9 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
             }
 #endif
             CreateGenRawSrcOperand(opndArray[i]);
-            g4params[i] = (G4_SrcRegRegion*)opndArray[i]->g4opnd;
+            g4params[i] = opndArray[i]->g4opnd->asSrcRegRegion();
         }
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
 
         if (isLoad)
         {
@@ -5335,7 +5350,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
                                                         g4Pred, executionSize,
                                                         emask, srcChannel,
                                                         aoffimmi->g4opnd, surface->g4opnd,
-                                                        (G4_DstRegRegion*)dst->g4opnd,
+                                                        dst->g4opnd->asDstRegRegion(),
                                                         (uint8_t)numMsgSpecificOpnds,
                                                         g4params);
         }
@@ -5346,7 +5361,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
                                                           emask, srcChannel,
                                                           aoffimmi->g4opnd, sampler->g4opnd,
                                                           surface->g4opnd,
-                                                          (G4_DstRegRegion *)dst->g4opnd,
+                                                          dst->g4opnd->asDstRegRegion(),
                                                           numMsgSpecificOpnds, g4params);
         }
         else
@@ -5356,7 +5371,7 @@ int VISAKernelImpl::AppendVISA3dSamplerMsgGeneric(ISA_Opcode opcode,
                                                            emask, srcChannel,
                                                            aoffimmi->g4opnd, sampler->g4opnd,
                                                            surface->g4opnd,
-                                                           (G4_DstRegRegion*)dst->g4opnd,
+                                                           dst->g4opnd->asDstRegRegion(),
                                                            numMsgSpecificOpnds, g4params);
         }
     }
@@ -5516,12 +5531,14 @@ int VISAKernelImpl::AppendVISA3dInfo(VISASampler3DSubOpCode subOpcode, Common_VI
         if(subOpcode == VISA_3D_RESINFO)
         {
             CreateGenRawSrcOperand(lod);
-            lodg4 = (G4_SrcRegRegion*)lod->g4opnd;
-            status = m_builder->translateVISAResInfoInst(executionSize, emask, channels, surface->g4opnd, lodg4, (G4_DstRegRegion*)dst->g4opnd);
+            lodg4 = lod->g4opnd->asSrcRegRegion();
+            status = m_builder->translateVISAResInfoInst(executionSize, emask, channels, surface->g4opnd, lodg4, 
+                dst->g4opnd->asDstRegRegion());
         }
         else
         {
-            status = m_builder->translateVISASampleInfoInst(executionSize, emask, channels, surface->g4opnd, (G4_DstRegRegion*)dst->g4opnd);
+            status = m_builder->translateVISASampleInfoInst(executionSize, emask, channels, surface->g4opnd, 
+                dst->g4opnd->asDstRegRegion());
         }
     }
     if(IS_VISA_BOTH_PATH)
@@ -5616,7 +5633,7 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, Common_VISA_EMas
             }
 #endif
             CreateGenRawSrcOperand(opndArray[i]);
-            g4params[i] = (G4_SrcRegRegion*)opndArray[i]->g4opnd;
+            g4params[i] = opndArray[i]->g4opnd->asSrcRegRegion();
         }
 
 #if START_ASSERT_CHECK
@@ -5626,18 +5643,18 @@ int VISAKernelImpl::AppendVISA3dRTWriteCPS(VISA_PredOpnd *pred, Common_VISA_EMas
             return CM_FAILURE;
         }
 #endif
-        G4_SrcRegRegion *cPSCounterOpnd = (cPSCounter)?(G4_SrcRegRegion*)cPSCounter->g4opnd: NULL;
-        G4_SrcRegRegion *sampleIndexOpnd = (cntrls.isSampleIndex) ? (G4_SrcRegRegion*)sampleIndex->g4opnd : NULL;
+        G4_SrcRegRegion *cPSCounterOpnd = (cPSCounter) ? cPSCounter->g4opnd->asSrcRegRegion(): NULL;
+        G4_SrcRegRegion *sampleIndexOpnd = (cntrls.isSampleIndex) ? sampleIndex->g4opnd->asSrcRegRegion() : NULL;
         G4_Operand *renderTargetIndexOpnd = (cntrls.RTIndexPresent) ? renderTargetIndex->g4opnd : NULL;
         G4_SrcRegRegion *r1HeaderOpnd = NULL;
 
         if (r1Header)
         {
             CreateGenRawSrcOperand(r1Header);
-            r1HeaderOpnd = (G4_SrcRegRegion*)r1Header->g4opnd;
+            r1HeaderOpnd = r1Header->g4opnd->asSrcRegRegion();
         }
 
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISARTWrite3DInst(g4Pred, executionSize, emask,
             surface->g4opnd, r1HeaderOpnd, renderTargetIndexOpnd, cntrls, sampleIndexOpnd, cPSCounterOpnd, numMsgSpecificOpnds, g4params);
     }
@@ -5729,10 +5746,10 @@ int VISAKernelImpl::AppendVISA3dURBWrite(VISA_PredOpnd *pred, Common_VISA_EMask_
         CreateGenRawSrcOperand(URBHandle);
         CreateGenRawSrcOperand(perSlotOffset);
         CreateGenRawSrcOperand(vertexData);
-        G4_Predicate * g4Pred = (pred != NULL)? (G4_Predicate *)pred->g4opnd : NULL;
+        G4_Predicate * g4Pred = (pred != NULL)? pred->g4opnd->asPredicate() : NULL;
         status = m_builder->translateVISAURBWrite3DInst(g4Pred, executionSize, emask,
-            numberOutputParams, globalOffset, (G4_SrcRegRegion*)channelMask->g4opnd, (G4_SrcRegRegion*)URBHandle->g4opnd,
-            (G4_SrcRegRegion*)perSlotOffset->g4opnd, (G4_SrcRegRegion*)vertexData->g4opnd);
+            numberOutputParams, globalOffset, channelMask->g4opnd->asSrcRegRegion(), URBHandle->g4opnd->asSrcRegRegion(),
+            perSlotOffset->g4opnd->asSrcRegRegion(), vertexData->g4opnd->asSrcRegRegion());
     }
     if(IS_VISA_BOTH_PATH)
     {
@@ -5803,7 +5820,7 @@ int VISAKernelImpl::AppendVISA3dTypedAtomic(
         CreateGenRawSrcOperand(src0);
         CreateGenRawSrcOperand(src1);
         CreateGenRawDstOperand(dst);
-        G4_Predicate * g4Pred = (pred != nullptr) ? (G4_Predicate *)pred->g4opnd : nullptr;
+        G4_Predicate * g4Pred = (pred != nullptr) ? pred->g4opnd->asPredicate() : nullptr;
         status = m_builder->translateVISATypedAtomicInst(
             subOp, is16Bit, g4Pred, emask, executionSize, surface->g4opnd,
             u->g4opnd->asSrcRegRegion(), v->g4opnd->asSrcRegRegion(),
@@ -5878,7 +5895,7 @@ int VISAKernelImpl::AppendVISAVABooleanCentroid(VISA_StateOpndHandle *surface, V
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
-        G4_DstRegRegion *dstOpnd = (G4_DstRegRegion*)dst->g4opnd;
+        G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
         status = m_builder->translateVISASamplerVAGenericInst(surface->g4opnd, NULL, uOffset->g4opnd,
             vOffset->g4opnd, vSize->g4opnd, hSize->g4opnd, NULL, 0, 0, subOp,
             dstOpnd, dstOpnd->getType(), 16 * G4_Type_Table[dstOpnd->getBase()->asRegVar()->getDeclare()->getElemType()].byteSize);
@@ -5929,7 +5946,7 @@ int VISAKernelImpl::AppendVISAVACentroid(VISA_StateOpndHandle *surface, VISA_Vec
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
-        G4_DstRegRegion *dstOpnd = (G4_DstRegRegion*)dst->g4opnd;
+        G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
         status = m_builder->translateVISASamplerVAGenericInst(surface->g4opnd, NULL, uOffset->g4opnd,
             vOffset->g4opnd, vSize->g4opnd, NULL, NULL, 0, 0, subOp,
             dstOpnd, dstOpnd->getType(), 32 * G4_Type_Table[dstOpnd->getBase()->asRegVar()->getDeclare()->getElemType()].byteSize);
@@ -5979,7 +5996,7 @@ int VISAKernelImpl::AppendVISAVAConvolve(VISA_StateOpndHandle *sampler, VISA_Sta
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
-        G4_DstRegRegion *dstOpnd = (G4_DstRegRegion*)dst->g4opnd;
+        G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
         unsigned int dstSize = conv_exec_mode_size[execMode] * G4_Type_Table[dstOpnd->getBase()->asRegVar()->getDeclare()->getElemType()].byteSize;
         status = m_builder->translateVISASamplerVAGenericInst(surface->g4opnd, sampler->g4opnd, uOffset->g4opnd,
             vOffset->g4opnd, NULL, NULL, NULL, 0, execMode, subOp,
@@ -6039,7 +6056,7 @@ int VISAKernelImpl::AppendVISAVAErodeDilate(EDMode mode, VISA_StateOpndHandle *s
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
-        G4_DstRegRegion *dstOpnd = (G4_DstRegRegion*)dst->g4opnd;
+        G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
         unsigned int dstSize = ed_exec_mode_byte_size[execMode];
         status = m_builder->translateVISASamplerVAGenericInst(surface->g4opnd, sampler->g4opnd, uOffset->g4opnd,
             vOffset->g4opnd, NULL, NULL, NULL, 0, execMode, subOp,
@@ -6093,7 +6110,7 @@ int VISAKernelImpl::AppendVISAVAMinMax(VISA_StateOpndHandle *surface, VISA_Vecto
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
-        G4_DstRegRegion *dstOpnd = (G4_DstRegRegion*)dst->g4opnd;
+        G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
         status = m_builder->translateVISASamplerVAGenericInst(surface->g4opnd, NULL, uOffset->g4opnd,
             vOffset->g4opnd, NULL, NULL, mmMode->g4opnd, 0, 0, subOp,
             dstOpnd, dstOpnd->getType(), 32, false);
@@ -6150,7 +6167,7 @@ int VISAKernelImpl::AppendVISAVAMinMaxFilter(VISA_StateOpndHandle *sampler, VISA
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
-        G4_DstRegRegion *dstOpnd = (G4_DstRegRegion*)dst->g4opnd;
+        G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
         unsigned dstSize = (CM_MMF_1x1 == execMode) ? 4 : ( mmf_exec_mode_size[execMode] * format_control_byteSize2[cntrl] ) ;
         status = m_builder->translateVISASamplerVAGenericInst(surface->g4opnd, sampler->g4opnd, uOffset->g4opnd,
             vOffset->g4opnd, NULL, NULL, mmfMode->g4opnd, cntrl, execMode, subOp,
@@ -6208,7 +6225,7 @@ int VISAKernelImpl::AppendVISAVACorrelationSearch(VISA_StateOpndHandle *surface,
     if(IS_GEN_BOTH_PATH)
     {
         CreateGenRawDstOperand(dst);
-        G4_DstRegRegion *dstOpnd = (G4_DstRegRegion*)dst->g4opnd;
+        G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
 
         G4_Declare* dstDcl = dstOpnd->getBase()->asRegVar()->getDeclare();
         G4_Type dstType = dstDcl->getElemType();
@@ -6237,7 +6254,7 @@ int VISAKernelImpl::AppendVISAVACorrelationSearch(VISA_StateOpndHandle *surface,
                         xDirectionSearchSize->g4opnd , yDirectionSearchSize->g4opnd ,
 
                         //general
-                        (G4_DstRegRegion*)dstOpnd, dstType, dstSize,
+                        dstOpnd, dstType, dstSize,
 
                         //hdc
                         0 /*pixelSize*/                 , NULL /*dstSurfaceOpnd*/,
@@ -6298,7 +6315,7 @@ int VISAKernelImpl::AppendVISAVAFloodFill(bool is8Connect, VISA_RawOpnd *pixelMa
     {
         CreateGenRawSrcOperand(pixelMaskHDirection);
         CreateGenRawDstOperand(dst);
-        G4_DstRegRegion *dstOpnd = (G4_DstRegRegion*)dst->g4opnd;
+        G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
 
         G4_Declare* dstDcl = dstOpnd->getBase()->asRegVar()->getDeclare();
         G4_Type dstType = dstDcl->getElemType();
@@ -6328,7 +6345,7 @@ int VISAKernelImpl::AppendVISAVAFloodFill(bool is8Connect, VISA_RawOpnd *pixelMa
                         NULL        ,   NULL ,
 
                         //general
-                        (G4_DstRegRegion*)dstOpnd, dstType, dstSize,
+                        dstOpnd, dstType, dstSize,
 
                         //hdc
                         0 /*pixelSize*/                 , NULL /*dstSurfaceOpnd*/,
@@ -6387,7 +6404,7 @@ int VISAKernelImpl::AppendVISAVALBPCorrelation(VISA_StateOpndHandle *surface, VI
         uint8_t functionality = 0x3; /*reserved*/
 
         CreateGenRawDstOperand(dst);
-        G4_DstRegRegion *dstOpnd = (G4_DstRegRegion*)dst->g4opnd;
+        G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
 
         G4_Declare* dstDcl = dstOpnd->getBase()->asRegVar()->getDeclare();
         G4_Type dstType = dstDcl->getElemType();
@@ -6416,7 +6433,7 @@ int VISAKernelImpl::AppendVISAVALBPCorrelation(VISA_StateOpndHandle *surface, VI
                         NULL        ,   NULL ,
 
                         //general
-                        (G4_DstRegRegion*)dstOpnd, dstType, dstSize,
+                        dstOpnd, dstType, dstSize,
 
                         //hdc
                         0 /*pixelSize*/                 , NULL /*dstSurfaceOpnd*/,
@@ -6474,7 +6491,7 @@ int VISAKernelImpl::AppendVISAVALBPCreation(VISA_StateOpndHandle *surface, VISA_
         uint8_t functionality = mode; /*reserved*/
 
         CreateGenRawDstOperand(dst);
-        G4_DstRegRegion *dstOpnd = (G4_DstRegRegion*)dst->g4opnd;
+        G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
 
         G4_Declare* dstDcl = dstOpnd->getBase()->asRegVar()->getDeclare();
         G4_Type dstType = dstDcl->getElemType();
@@ -6503,7 +6520,7 @@ int VISAKernelImpl::AppendVISAVALBPCreation(VISA_StateOpndHandle *surface, VISA_
                         NULL        ,   NULL ,
 
                         //general
-                        (G4_DstRegRegion*)dstOpnd, dstType, dstSize,
+                        dstOpnd, dstType, dstSize,
 
                         //hdc
                         0 /*pixelSize*/                 , NULL /*dstSurfaceOpnd*/,
@@ -6563,7 +6580,7 @@ int VISAKernelImpl::AppendVISAVAConvolve1D(VISA_StateOpndHandle *sampler, VISA_S
         uint8_t functionality = 0x3; /*reserved*/
 
         CreateGenRawDstOperand(dst);
-        G4_DstRegRegion *dstOpnd = (G4_DstRegRegion*)dst->g4opnd;
+        G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
 
         G4_Declare* dstDcl = dstOpnd->getBase()->asRegVar()->getDeclare();
         G4_Type dstType = dstDcl->getElemType();
@@ -6592,7 +6609,7 @@ int VISAKernelImpl::AppendVISAVAConvolve1D(VISA_StateOpndHandle *sampler, VISA_S
                         NULL        ,   NULL ,
 
                         //general
-                        (G4_DstRegRegion*)dstOpnd, dstType, dstSize,
+                        dstOpnd, dstType, dstSize,
 
                         //hdc
                         0 /*pixelSize*/                 , NULL /*dstSurfaceOpnd*/,
@@ -6651,7 +6668,7 @@ int VISAKernelImpl::AppendVISAVAConvolve1Pixel(VISA_StateOpndHandle *sampler, VI
 
         CreateGenRawSrcOperand(offsets);
         CreateGenRawDstOperand(dst);
-        G4_DstRegRegion *dstOpnd = (G4_DstRegRegion*)dst->g4opnd;
+        G4_DstRegRegion *dstOpnd = dst->g4opnd->asDstRegRegion();
 
         G4_Declare* dstDcl = dstOpnd->getBase()->asRegVar()->getDeclare();
         G4_Type dstType = dstDcl->getElemType();
@@ -6680,7 +6697,7 @@ int VISAKernelImpl::AppendVISAVAConvolve1Pixel(VISA_StateOpndHandle *sampler, VI
                         NULL        ,   NULL ,
 
                         //general
-                        (G4_DstRegRegion*)dstOpnd, dstType, dstSize,
+                        dstOpnd, dstType, dstSize,
 
                         //hdc
                         0 /*pixelSize*/                 , NULL /*dstSurfaceOpnd*/,

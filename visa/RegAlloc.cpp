@@ -339,7 +339,7 @@ void PointsToAnalysis::doPointsToAnalysis(FlowGraph & fg)
                     continue;
                 }
 
-                G4_SrcRegRegion* src = (G4_SrcRegRegion*)inst->getSrc(j);
+                G4_SrcRegRegion* src = inst->getSrc(j)->asSrcRegRegion();
 
                 if( src->getRegAccess() == IndirGRF )
                 {
@@ -2065,7 +2065,7 @@ void LivenessAnalysis::computeGenKill(G4_BB* bb,
 
 		if (dst != NULL)
 		{
-			G4_DstRegRegion* dstrgn = (G4_DstRegRegion*)dst;
+			G4_DstRegRegion* dstrgn = dst;
 
 			if (dstrgn->getBase()->isRegAllocPartaker())
 			{
@@ -3774,7 +3774,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
                         }
                     }
                 }
-                else if (src->isSrcRegRegion() && ((G4_SrcRegRegion*)src)->getBase()->isRegAllocPartaker())
+                else if (src->isSrcRegRegion() && src->asSrcRegRegion()->getBase()->isRegAllocPartaker())
                 {
                     G4_SrcRegRegion* srcrgn = src->asSrcRegRegion();
                     G4_RegVar* var = srcrgn->getBase()->asRegVar();

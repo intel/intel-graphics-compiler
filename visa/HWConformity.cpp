@@ -2212,8 +2212,8 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
     // At this point, src0 and src1 are both DW, so we simply make
     // acc's type (i.e. dst_type) be DW/UD
 
-    G4_CondMod *condmod = (G4_CondMod *)builder.duplicateOperand(inst->getCondMod());
-    G4_Predicate *pred = (G4_Predicate *)builder.duplicateOperand(inst->getPredicate());
+    G4_CondMod *condmod = builder.duplicateOperand(inst->getCondMod());
+    G4_Predicate *pred = builder.duplicateOperand(inst->getPredicate());
 
     // check if the following inst is mulh and uses the same srcs as this mul.
     // if true, translate them into
@@ -6357,9 +6357,9 @@ G4_INST* HWConformity::splitInstWithByteDst( G4_INST *expand_op )
         expand_op->getCondMod()->splitCondMod();
     }
     G4_INST *expand_sec_half_op = builder.createInternalInst(
-        (G4_Predicate *)builder.duplicateOperand( expand_op->getPredicate() ),
+        builder.duplicateOperand( expand_op->getPredicate() ),
         expand_op->opcode(),
-        (G4_CondMod *)builder.duplicateOperand( expand_op->getCondMod() ),
+        builder.duplicateOperand( expand_op->getCondMod() ),
         expand_op->getSaturate(),
         newExecSize,
         NULL,

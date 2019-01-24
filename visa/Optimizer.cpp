@@ -3395,7 +3395,7 @@ void Optimizer::cselPeepHoleOpt()
                     G4_CondMod *mod = inst->getCondMod();
                     useInst->setOpcode(G4_csel);
                     useInst->setSrc(builder.duplicateOperand(inst->getSrc(0)), 2);
-                    useInst->setCondMod((G4_CondMod*)builder.duplicateOperand(mod));
+                    useInst->setCondMod(builder.duplicateOperand(mod));
                     useInst->setPredicate(NULL);
 
                     G4_SrcRegRegion * opnd2 = useInst->getSrc(2)->asSrcRegRegion();
@@ -4619,7 +4619,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     curr_inst->getPredicate()->getSubRegOff() != curr_subreg) &&
                 curr_inst->getPredicate()->compareOperand(second_def) == Rel_eq)
             {
-                curr_inst->setPredicate((G4_Predicate*)builder.duplicateOperand(new_pred));
+                curr_inst->setPredicate(builder.duplicateOperand(new_pred));
             }
 
             for (int k = 0; k < G4_Inst_Table[curr_inst->opcode()].n_srcs; k++)
@@ -4657,7 +4657,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         }
         else
         {
-            first_inst->setDest((G4_DstRegRegion*)builder.duplicateOperand(inst->getDst()));
+            first_inst->setDest(builder.duplicateOperand(inst->getDst()));
         }
         for (USE_EDGE_LIST_ITER iter = first_inst->use_begin();
             iter != first_inst->use_end();
@@ -4673,7 +4673,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     curr_inst->getPredicate()->getSubRegOff() != curr_subreg) &&
                 curr_inst->getPredicate()->compareOperand(first_def) == Rel_eq)
             {
-                curr_inst->setPredicate((G4_Predicate*)builder.duplicateOperand(new_pred));
+                curr_inst->setPredicate(builder.duplicateOperand(new_pred));
             }
 
             for (int k = 0; k < G4_Inst_Table[curr_inst->opcode()].n_srcs; k++)
@@ -6252,7 +6252,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     G4_VarBase* flag = inst->getPredicate()->getBase();
 					if (flag->isRegVar())
 					{
-						G4_Areg* areg = (G4_Areg*) flag->asRegVar()->getPhyReg();
+						G4_Areg* areg = flag->asRegVar()->getPhyReg()->asAreg();
 						unusedFlagLocal[flagToInt(areg)] = false;
 					}
 				}
@@ -6266,7 +6266,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 							G4_SrcRegRegion* src = inst->getSrc(i)->asSrcRegRegion();
 							if (src->getBase()->isRegVar())
 							{
-								G4_Areg* flag = (G4_Areg*)src->getBase()->asRegVar()->getPhyReg();
+								G4_Areg* flag = src->getBase()->asRegVar()->getPhyReg()->asAreg();
 								unusedFlagLocal[flagToInt(flag)] = false;
 							}
 						}
@@ -6280,7 +6280,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
 					G4_DstRegRegion* dst = inst->getDst();
 					if (dst->getBase()->isRegVar())
 					{
-						G4_Areg* flag = (G4_Areg*)dst->getBase()->asRegVar()->getPhyReg();
+						G4_Areg* flag = dst->getBase()->asRegVar()->getPhyReg()->asAreg();
 						unusedFlagLocal[flagToInt(flag)] = true;
 					}
 				}
@@ -6290,7 +6290,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     G4_VarBase* flag = inst->getCondMod()->getBase();
 					if (flag->isRegVar())
 					{
-						G4_Areg* areg = (G4_Areg*)flag->asRegVar()->getPhyReg();
+						G4_Areg* areg = flag->asRegVar()->getPhyReg()->asAreg();
 						unusedFlagLocal[flagToInt(areg)] = true;
 					}
 				}

@@ -490,8 +490,8 @@ G4_INST::G4_INST(const IR_Builder& irb,
     resetRightBound(dst);
     resetRightBound(s0);
     resetRightBound(s1);
-    computeRightBound((G4_Operand*)predicate);
-    computeRightBound((G4_Operand*)mod);
+    computeRightBound(predicate);
+    computeRightBound(mod);
 
     associateOpndWithInst(dst, this);
     associateOpndWithInst(s0, this);
@@ -532,15 +532,15 @@ G4_INST::G4_INST(const IR_Builder& irb,
     resetRightBound(s0);
     resetRightBound(s1);
     resetRightBound(s2);
-    computeRightBound((G4_Operand*)predicate);
-    computeRightBound((G4_Operand*)mod);
+    computeRightBound(predicate);
+    computeRightBound(mod);
 
     associateOpndWithInst(dst, this);
     associateOpndWithInst(s0, this);
     associateOpndWithInst(s1, this);
     associateOpndWithInst(s2, this);
-    associateOpndWithInst((G4_Operand*)predicate, this);
-    associateOpndWithInst((G4_Operand*)mod, this);
+    associateOpndWithInst(predicate, this);
+    associateOpndWithInst(mod, this);
 }
 
 void G4_INST::setOpcode(G4_opcode opcd)
@@ -578,10 +578,10 @@ void G4_INST::setOpcode(G4_opcode opcd)
         resetRightBound(srcs[0]);
         resetRightBound(srcs[1]);
         resetRightBound(srcs[2]);
-        resetRightBound((G4_Operand*)predicate);
-        resetRightBound((G4_Operand*)mod);
-        resetRightBound((G4_Operand*)implAccDst);
-        resetRightBound((G4_Operand*)implAccSrc);
+        resetRightBound(predicate);
+        resetRightBound(mod);
+        resetRightBound(implAccDst);
+        resetRightBound(implAccSrc);
     }
 }
 
@@ -602,10 +602,10 @@ void G4_INST::setExecSize(unsigned char s)
         resetRightBound(srcs[0]);
         resetRightBound(srcs[1]);
         resetRightBound(srcs[2]);
-        resetRightBound((G4_Operand*)predicate);
-        resetRightBound((G4_Operand*)mod);
-        resetRightBound((G4_Operand*)implAccDst);
-        resetRightBound((G4_Operand*)implAccSrc);
+        resetRightBound(predicate);
+        resetRightBound(mod);
+        resetRightBound(implAccDst);
+        resetRightBound(implAccSrc);
     }
 }
 
@@ -3140,7 +3140,7 @@ void G4_INST::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_srcs
         //
         // only output reg var & reg off; don't output region desc and type
         //
-        ((G4_SrcRegRegion*)currSrc)->emitRegVarOff(output, false);
+        currSrc->asSrcRegRegion()->emitRegVarOff(output, false);
     }
     else
     {
@@ -4326,7 +4326,7 @@ void G4_DstRegRegion::computeLeftBound()
 			{
 				left_bound = base->asRegVar()->getPhyRegOff() * 16;   // the bound of flag register is in unit of BIT
 				left_bound += subRegOff * 16;
-				if (((G4_Areg*)(base->asRegVar()->getPhyReg()))->getArchRegType() == AREG_F1)
+				if (base->asRegVar()->getPhyReg()->asAreg()->getArchRegType() == AREG_F1)
 				{
 					left_bound += 32;
 				}
@@ -4339,7 +4339,7 @@ void G4_DstRegRegion::computeLeftBound()
 		else
 		{
             left_bound = subRegOff * 16;
-            if( ((G4_Areg*)(base))->getArchRegType() == AREG_F1 ){
+            if( base->asAreg()->getArchRegType() == AREG_F1 ){
                 left_bound += 32;
             }
         }
@@ -4349,7 +4349,7 @@ void G4_DstRegRegion::computeLeftBound()
     else if ( base != NULL && base->isAccReg())
     {
         left_bound = subRegOff * G4_Type_Table[type].byteSize;
-        if( ((G4_Areg*)(base))->getArchRegType() == AREG_ACC1 || regOff == 1 )
+        if( base->asAreg()->getArchRegType() == AREG_ACC1 || regOff == 1 )
         {
             left_bound += 32;  // TODO: size of ACC is assumed to be 32 BYTEs.
         }
@@ -6058,7 +6058,7 @@ void G4_SrcRegRegion::computeLeftBound()
             {
                 left_bound = base->asRegVar()->getPhyRegOff() * 16;   // the bound of flag register is in unit of BIT
 				left_bound += subRegOff * 16;
-                if( ((G4_Areg*)(base->asRegVar()->getPhyReg()))->getArchRegType() == AREG_F1 )
+                if (base->asRegVar()->getPhyReg()->asAreg()->getArchRegType() == AREG_F1 )
                 {
                     left_bound += 32;
                 }
@@ -6071,7 +6071,7 @@ void G4_SrcRegRegion::computeLeftBound()
         else
         {
             left_bound = subRegOff * 16;
-            if( ((G4_Areg*)(base))->getArchRegType() == AREG_F1 )
+            if (base->asAreg()->getArchRegType() == AREG_F1 )
             {
                 left_bound += 32;
             }
@@ -6082,7 +6082,7 @@ void G4_SrcRegRegion::computeLeftBound()
     else if (base != NULL && base->isAccReg())
     {
         left_bound = subRegOff * G4_Type_Table[type].byteSize;
-        if( ((G4_Areg*)(base))->getArchRegType() == AREG_ACC1 )
+        if (base->asAreg()->getArchRegType() == AREG_ACC1 )
         {
             left_bound += 32;  // TODO: size of ACC is assumed to be 32 BYTEs.
         }
@@ -6834,8 +6834,8 @@ void G4_INST::setPredicate(G4_Predicate* p)
 
 	predicate = p;
 
-    associateOpndWithInst((G4_Operand*)p, this);
-    computeRightBound((G4_Operand*)p);
+    associateOpndWithInst(p, this);
+    computeRightBound(p);
 }
 
 void G4_INST::setSrc(G4_Operand* opnd, unsigned i)
@@ -6890,8 +6890,8 @@ void G4_INST::setCondMod(G4_CondMod* m)
 
     mod = m;
 
-    associateOpndWithInst((G4_Operand*)m, this);
-    computeRightBound((G4_Operand*)m);
+    associateOpndWithInst(m, this);
+    computeRightBound(m);
 }
 
 void G4_INST::setImplAccSrc(G4_Operand* opnd)

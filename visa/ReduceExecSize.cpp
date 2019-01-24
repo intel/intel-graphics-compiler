@@ -1012,7 +1012,7 @@ void HWConformity::splitSIMD32Inst( INST_LIST_ITER iter, G4_BB* bb )
                 }
                 else
                 {
-                    newInst->setSrc( createSubSrcOperand( (G4_SrcRegRegion*)srcs[j], (uint16_t) i,
+                    newInst->setSrc( createSubSrcOperand(srcs[j]->asSrcRegRegion(), (uint16_t) i,
                         currExSize, (uint8_t)(srcs[j]->asSrcRegRegion()->getRegion()->vertStride),
                         (uint8_t)(srcs[j]->asSrcRegRegion()->getRegion()->width) ), j );
                 }
@@ -1084,7 +1084,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
             tmpMaskOpnd, builder.createImm(0, Type_UW), NULL, inst->getOption(), inst->getLineNo(),
             inst->getCISAOff(), inst->getSrcFilename());
 
-        G4_Predicate* pred = (G4_Predicate *)builder.duplicateOperand(inst->getPredicate());
+        G4_Predicate* pred = builder.duplicateOperand(inst->getPredicate());
         builder.createInternalInst(pred, G4_mov, NULL, false, instExSize,
             tmpMaskOpnd, builder.createImm(1, Type_UW), NULL, inst->getOption(), inst->getLineNo(),
             inst->getCISAOff(), inst->getSrcFilename());
@@ -1104,8 +1104,8 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
             currExSize = numInFirstMov;
             G4_INST *newInst = makeSplittingInst(inst, instExSize);
             newInst->setDest(builder.duplicateOperand(inst->getDst()));
-            newInst->setPredicate((G4_Predicate *)builder.duplicateOperand(inst->getPredicate()));
-            newInst->setCondMod((G4_CondMod *)builder.duplicateOperand(inst->getCondMod()));
+            newInst->setPredicate(builder.duplicateOperand(inst->getPredicate()));
+            newInst->setCondMod(builder.duplicateOperand(inst->getCondMod()));
             for (int j = 0; j < G4_Inst_Table[op].n_srcs; j++)
             {
                 newInst->setSrc(builder.duplicateOperand(srcs[j]), j);
@@ -1212,8 +1212,8 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
         {
             newInst = makeSplittingInst(inst, currExSize);
             newInst->setDest( newDst );
-            newInst->setPredicate((G4_Predicate *)builder.duplicateOperand(inst->getPredicate()));
-            newInst->setCondMod((G4_CondMod *)builder.duplicateOperand(inst->getCondMod()) );
+            newInst->setPredicate(builder.duplicateOperand(inst->getPredicate()));
+            newInst->setCondMod(builder.duplicateOperand(inst->getCondMod()) );
             bb->insert( iter, newInst );
             newInstIter = iter;
             newInstIter--;
@@ -1251,7 +1251,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
                     else
                     {
                         uint16_t start = i;
-                        newInst->setSrc( createSubSrcOperand( (G4_SrcRegRegion*)srcs[j], start, currExSize, vs[j], wd[j]), j );
+                        newInst->setSrc( createSubSrcOperand(srcs[j]->asSrcRegRegion(), start, currExSize, vs[j], wd[j]), j );
                     }
                 }
             }
@@ -1263,7 +1263,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
         {
             if( instPred )
             {
-                G4_Predicate *tPred = (G4_Predicate *)builder.duplicateOperand(instPred);
+                G4_Predicate *tPred = builder.duplicateOperand(instPred);
                 tPred->setInst(newInst);
                 newInst->setPredicate(tPred);
             }
@@ -1413,8 +1413,8 @@ void HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
             newInst->setImplAccDst( builder.duplicateOperand(accDstRegion) );
             newInst->setImplAccSrc( builder.duplicateOperand(accSrcRegion) );
             newInst->setDest( newDst );
-            newInst->setPredicate( (G4_Predicate*)builder.duplicateOperand(newPred) );
-            newInst->setCondMod( (G4_CondMod*)builder.duplicateOperand(newCond) );
+            newInst->setPredicate(builder.duplicateOperand(newPred) );
+            newInst->setCondMod(builder.duplicateOperand(newCond) );
             newInst->setEvenlySplitInst(true);
             bb->insert( iter, newInst );
         }
@@ -1426,11 +1426,11 @@ void HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
             newInst->setDest( newDst );
             if( newPred )
             {
-                inst->setPredicate( (G4_Predicate *)builder.duplicateOperand( newPred ) );
+                inst->setPredicate(builder.duplicateOperand( newPred ) );
             }
             if( newCond )
             {
-                inst->setCondMod( (G4_CondMod *)builder.duplicateOperand( newCond ) );
+                inst->setCondMod(builder.duplicateOperand( newCond ) );
             }
             if( accSrcRegion )
             {
@@ -1458,7 +1458,7 @@ void HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
                 }
                 else
                 {
-                    newInst->setSrc( createSubSrcOperand( (G4_SrcRegRegion*)srcs[j], (uint16_t) i,
+                    newInst->setSrc( createSubSrcOperand(srcs[j]->asSrcRegRegion(), (uint16_t) i,
                         currExSize, (uint8_t)(srcs[j]->asSrcRegRegion()->getRegion()->vertStride),
                         (uint8_t)(srcs[j]->asSrcRegRegion()->getRegion()->width) ), j );
                 }
@@ -1690,7 +1690,7 @@ void HWConformity::saveDst( INST_LIST_ITER& it, uint8_t stride, G4_BB *bb )
         newInst->setOptions( ( inst->getOption() & ~InstOpt_Masks ) | InstOpt_WriteEnable );
     }
     bb->insert( it, newInst );
-    inst->setDest( (G4_DstRegRegion *)builder.duplicateOperand( tmpDstOpnd ) );
+    inst->setDest(builder.duplicateOperand( tmpDstOpnd ) );
 }
 
 void HWConformity::restoreDst( INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_BB *bb )
@@ -1788,13 +1788,13 @@ G4_DstRegRegion* HWConformity::createSubDstOperand( G4_DstRegRegion* dst, uint16
         {
             // just change immediate offset
             uint16_t newOff = start * G4_Type_Table[dst->getType()].byteSize * dst->getHorzStride();
-            G4_DstRegRegion* newDst = (G4_DstRegRegion*)( builder.duplicateOperand( dst ) );
+            G4_DstRegRegion* newDst = builder.duplicateOperand( dst );
             newDst->setImmAddrOff( dst->getAddrImm() + newOff );
             return newDst;
         }
         else
         {
-            return (G4_DstRegRegion*)( builder.duplicateOperand( dst ) );
+            return builder.duplicateOperand( dst );
         }
     }
 
@@ -1851,7 +1851,7 @@ G4_DstRegRegion* HWConformity::createSubDstOperand( G4_DstRegRegion* dst, uint16
     }
     else
     {
-        G4_DstRegRegion *newDst = (G4_DstRegRegion*)( builder.duplicateOperand( dst ) );
+        G4_DstRegRegion *newDst = builder.duplicateOperand( dst );
         return newDst;
     }
 }
@@ -1889,7 +1889,7 @@ G4_SrcRegRegion* HWConformity::createSubSrcOperand( G4_SrcRegRegion* src, uint16
             }
             else
             {
-                G4_SrcRegRegion *newSrc = (G4_SrcRegRegion*)( builder.duplicateOperand( src ) );
+                G4_SrcRegRegion *newSrc = builder.duplicateOperand(src);
                 return newSrc;
             }
         }
@@ -1908,7 +1908,7 @@ G4_SrcRegRegion* HWConformity::createSubSrcOperand( G4_SrcRegRegion* src, uint16
         }
         else
         {
-            G4_SrcRegRegion *newSrc = (G4_SrcRegRegion*)( builder.duplicateOperand( src ) );
+            G4_SrcRegRegion *newSrc = builder.duplicateOperand( src );
             newSrc->setRegion( rd );
             return newSrc;
         }
@@ -1965,7 +1965,7 @@ G4_SrcRegRegion* HWConformity::createSubSrcOperand( G4_SrcRegRegion* src, uint16
     }
     else
     {
-        G4_SrcRegRegion *newSrc = (G4_SrcRegRegion*)( builder.duplicateOperand( src ) );
+        G4_SrcRegRegion *newSrc = builder.duplicateOperand( src );
         newSrc->setRegion( rd );
         return newSrc;
     }

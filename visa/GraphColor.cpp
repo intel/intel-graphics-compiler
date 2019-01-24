@@ -1785,7 +1785,7 @@ void Interference::markInterferenceForSend(G4_BB* bb,
     {
         if (dst->getBase()->isRegAllocPartaker())
         {
-            G4_DstRegRegion* dstRgn = (G4_DstRegRegion*)dst;
+            G4_DstRegRegion* dstRgn = dst;
             isDstRegAllocPartaker = true;
             dstId = ((G4_RegVar*)dstRgn->getBase())->getId();
         }
@@ -5530,7 +5530,7 @@ void PhyRegUsage::updateRegUsage(LiveRange* lr)
     {
         markBusyFlag(0,
             PhyRegUsage::offsetAllocUnit(
-            ((G4_Areg*)lr->getPhyReg())->getArchRegType() == AREG_F0 ?
+            lr->getPhyReg()->asAreg()->getArchRegType() == AREG_F0 ?
                 lr->getPhyRegOff() : (2 + lr->getPhyRegOff()),
                 dcl->getElemType()),
             PhyRegUsage::numAllocUnit(dcl->getNumElems(), dcl->getElemType()),
@@ -8899,7 +8899,7 @@ void VarSplit::localSplit(IR_Builder& builder,
     for (INST_LIST::reverse_iterator rit = bb->rbegin(); rit != bb->rend(); ++rit)
     {
         G4_INST* i = (*rit);
-        G4_Operand* dst = i->getDst();
+        G4_DstRegRegion* dst = i->getDst();
 
         if (i->opcode() == G4_pseudo_lifetime_end || i->opcode() == G4_pseudo_kill)
         {
@@ -8911,7 +8911,7 @@ void VarSplit::localSplit(IR_Builder& builder,
         //
         if (dst != NULL)
         {
-            G4_DstRegRegion* dstrgn = (G4_DstRegRegion*)dst;
+            G4_DstRegRegion* dstrgn = dst;
 
             //It's RA candidate
             G4_Declare* topdcl = GetTopDclFromRegRegion(dstrgn);
@@ -9993,9 +9993,7 @@ void  FlagSpillCleanup::FlagLineraizedStartAndEnd(G4_Declare*  topdcl,
     unsigned int& linearizedStart,
     unsigned int& linearizedEnd)
 {
-    G4_Areg* areg = NULL;
-
-    areg = (G4_Areg*)topdcl->getRegVar()->getPhyReg();
+    G4_Areg* areg = topdcl->getRegVar()->getPhyReg()->asAreg();
     if (areg->getArchRegType() == AREG_F0)
     {
         linearizedStart = 0;
@@ -10596,7 +10594,7 @@ bool FlagSpillCleanup::initializeFlagScratchAccess(SCRATCH_PTR_VEC* scratchAcces
             initializeScratchAccess(scratchAccess, inst_it);
             //Fill
 #ifdef _DEBUG
-            scratchAccess->regNum = ((G4_Areg*)topDcl_1->getRegVar()->getPhyReg())->getArchRegType();
+            scratchAccess->regNum = topDcl_1->getRegVar()->getPhyReg()->asAreg()->getArchRegType();
 #endif
             scratchAccess->dcl = topDcl_2;  //Spill location
 
@@ -10618,7 +10616,7 @@ bool FlagSpillCleanup::initializeFlagScratchAccess(SCRATCH_PTR_VEC* scratchAcces
             scratchAccessList->push_back(scratchAccess);
             initializeScratchAccess(scratchAccess, inst_it);
 #ifdef _DEBUG
-            scratchAccess->regNum = ((G4_Areg*)topDcl_2->getRegVar()->getPhyReg())->getArchRegType();
+            scratchAccess->regNum = topDcl_2->getRegVar()->getPhyReg()->asAreg()->getArchRegType();
 #endif
             scratchAccess->dcl = topDcl_1;
 

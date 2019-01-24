@@ -2252,31 +2252,76 @@ public:
 
     G4_AddrExp* asAddrExp()
     {
-        MUST_BE_TRUE(kind == addrExp, ERROR_UNKNOWN);
-        return ((G4_AddrExp*) this);
+#ifdef _DEBUG
+        if (!isAddrExp())
+        {
+            return nullptr;
+        }
+#endif
+        return reinterpret_cast<G4_AddrExp*>(this);
     }
 
-    G4_DstRegRegion* asDstRegRegion() { return ((G4_DstRegRegion*) this); }
-    G4_SrcRegRegion* asSrcRegRegion() { return ((G4_SrcRegRegion*) this); }
+    G4_DstRegRegion* asDstRegRegion() 
+    { 
+#ifdef _DEBUG
+        if (!isDstRegRegion())
+        {
+            return nullptr;
+        }
+#endif
+        return reinterpret_cast<G4_DstRegRegion*>(this); 
+    }
+
+    G4_SrcRegRegion* asSrcRegRegion() 
+    { 
+#ifdef _DEBUG
+        if (!isSrcRegRegion())
+        {
+            return nullptr;
+        }
+#endif
+        return reinterpret_cast<G4_SrcRegRegion*>(this);
+    }
     G4_Imm* asImm()
     {
-        MUST_BE_TRUE(kind == immediate, ERROR_UNKNOWN);
-        return ((G4_Imm*) this);
+#ifdef _DEBUG
+        if (!isImm())
+        {
+            return nullptr;
+        }
+#endif
+        return reinterpret_cast<G4_Imm*>(this);
     }
+
     G4_Predicate* asPredicate()
     {
-        MUST_BE_TRUE(kind==predicate, ERROR_UNKNOWN);
-        return ((G4_Predicate*) this);
+#ifdef _DEBUG
+        if (!isPredicate())
+        {
+            return nullptr;
+        }
+#endif
+        return reinterpret_cast<G4_Predicate*>(this);
     }
     G4_CondMod*    asCondMod()
     {
-        MUST_BE_TRUE(kind == condMod, ERROR_UNKNOWN);
-        return ((G4_CondMod*) this);
+#ifdef _DEBUG
+        if (!isCondMod())
+        {
+            return nullptr;
+        }
+#endif
+        return reinterpret_cast<G4_CondMod*>(this);
     }
     G4_Label *asLabel()
     {
-        MUST_BE_TRUE(kind == label, ERROR_UNKNOWN);
-        return ((G4_Label *)this);
+#ifdef _DEBUG
+        if (!isLabel())
+        {
+            return nullptr;
+        }
+#endif
+        return reinterpret_cast<G4_Label*>(this);
     }
 
     bool crossGRF()
@@ -3338,13 +3383,13 @@ class G4_Predicate final : public G4_Operand
     {
         top_dcl = getBase()->asRegVar()->getDeclare();
 
-        if ((G4_Areg*)getBase()->asRegVar()->getPhyReg())
+        if (getBase()->asRegVar()->getPhyReg())
         {
             left_bound = srOff * 16;
             MUST_BE_TRUE(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
             byteOffset = srOff * 2;
 
-            if (((G4_Areg*)getBase()->asRegVar()->getPhyReg())->getArchRegType() == AREG_F1)
+            if (getBase()->asRegVar()->getPhyReg()->asAreg()->getArchRegType() == AREG_F1)
             {
                 left_bound += 32;
                 byteOffset += 4;
@@ -3367,9 +3412,8 @@ public:
     unsigned short getRegOff()
     {
         MUST_BE_TRUE(getBase()->isAreg(), ERROR_INTERNAL_ARGUMENT);
-        MUST_BE_TRUE((G4_Areg*)getBase()->asRegVar()->getPhyReg(), "getRegOff is called for non-PhyReg");
 
-        if (((G4_Areg*)getBase()->asRegVar()->getPhyReg())->getArchRegType() == AREG_F0)
+        if (getBase()->asRegVar()->getPhyReg()->asAreg()->getArchRegType() == AREG_F0)
         {
             return 0;
         }
@@ -3462,11 +3506,12 @@ class G4_CondMod final : public G4_Operand
         {
             top_dcl = getBase()->asRegVar()->getDeclare();
 
-            if ((G4_Areg*)getBase()->asRegVar()->getPhyReg()) {
+            if (getBase()->asRegVar()->getPhyReg()) 
+            {
                 left_bound = off * 16;
                 MUST_BE_TRUE(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
                 byteOffset = off * 2;
-                if (((G4_Areg*)(flag))->getArchRegType() == AREG_F1) {
+                if (flag->asAreg()->getArchRegType() == AREG_F1) {
                     left_bound += 32;
                     byteOffset += 4;
                 }
@@ -3486,12 +3531,14 @@ public:
     G4_CondModifier getMod() { return mod; }
     unsigned short getRegOff() {
         MUST_BE_TRUE(getBase()->isAreg(), ERROR_INTERNAL_ARGUMENT);
-        MUST_BE_TRUE((G4_Areg*)getBase()->asRegVar()->getPhyReg(), "getRegOff is called for non-PhyReg");
+        MUST_BE_TRUE(getBase()->asRegVar()->getPhyReg(), "getRegOff is called for non-PhyReg");
 
-        if (((G4_Areg*)getBase()->asRegVar()->getPhyReg())->getArchRegType() == AREG_F0) {
+        if (getBase()->asRegVar()->getPhyReg()->asAreg()->getArchRegType() == AREG_F0) 
+        {
             return 0;
         }
-        else {
+        else 
+        {
             return 1;
         }
     }
