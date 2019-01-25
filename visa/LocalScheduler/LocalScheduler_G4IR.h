@@ -89,24 +89,26 @@ class Node
     std::list<G4_INST *> instVec;
 
     // Longest distance to the end of the DAG.
-    int priority;
+    int priority = PRIORITY_UNINIT;
 
     // Earliest time an instruction can be issue.
-    uint32_t earliest;
+    uint32_t earliest = 0;
 
     // Number of consecutive cycles this instruction occupies in the pipeline
     // (This is typically 2 for SIMD8 and 4 for SIMD16 8 for SIMD32)
     // This is *NOT* the dependency latency. That is part of the Edge.
-    uint16_t occupancy;
+    uint16_t occupancy = 0;
 
     // Indicates whether or not this node is a barrier (NONE, SEND, CONTROL).
-    DepType barrier;
+    DepType barrier = DepType::NODEP;
 
-    Node *lastSchedPred;
+    Node *lastSchedPred = nullptr;
 
     // Indicates that this Node is writing to a subreg.
     // This is used to avoid WAW hazzards during scheduling.
-    int wSubreg;
+    int wSubreg = NO_SUBREG;
+
+    bool hasTransitiveEdgeToBarrier = false;
 
 public:
     static const uint32_t SCHED_CYCLE_UNINIT = UINT_MAX;
@@ -114,13 +116,11 @@ public:
     static const int PRIORITY_UNINIT = -1;
 
     unsigned getNodeID() const{ return nodeID; };
-    bool isTransitiveDep(Node *edgeDst);
-    bool hasTransitiveEdgeToBarrier;
 
-    uint32_t schedTime;
+    uint32_t schedTime = 0;
 
     // Number of predecessor nodes not scheduled
-    uint16_t predsNotScheduled;
+    uint16_t predsNotScheduled = 0;
 
     // A list of instruction's predecessors
     EdgeVector preds;
@@ -324,9 +324,8 @@ public:
     unsigned sequentialCycle;
 
     // Constructor
-    G4_BB_Schedule(G4_Kernel *kernel, Mem_Manager &m, G4_BB *bb, int t1,
-                   int t2, uint32_t &totalCycle, const Options *options,
-                   const LatencyTable &LT);
+    G4_BB_Schedule(G4_Kernel *kernel, Mem_Manager &m, G4_BB *bb,
+                   const Options *options, const LatencyTable &LT);
     void *operator new(size_t sz, Mem_Manager &m){ return m.alloc(sz); }
     // Dumps the schedule
     void emit(std::ostream &);

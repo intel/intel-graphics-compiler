@@ -47,16 +47,12 @@ void LocalScheduler::localScheduling()
     BB_LIST_ITER ib(fg.BBs.begin()), bend(fg.BBs.end());
     MUST_BE_TRUE(ib != bend, ERROR_SCHEDULER);
 
-    int buildDDD = 0, listSch = 0;
-    uint32_t totalCycle = 0;
-
     CM_BB_INFO* bbInfo = (CM_BB_INFO *)mem.alloc(fg.BBs.size() * sizeof(CM_BB_INFO));
     memset(bbInfo, 0, fg.BBs.size() * sizeof(CM_BB_INFO));
     int i = 0;
 
     const Options *m_options = fg.builder->getOptions();
     LatencyTable LT(m_options);
-
 
     for (; ib != bend; ++ib)
     {
@@ -90,9 +86,7 @@ void LocalScheduler::localScheduling()
                     sections.push_back(tempBB);
                     tempBB->splice(tempBB->begin(),
                         (*ib), (*ib)->begin(), inst_it);
-                    G4_BB_Schedule schedule(fg.getKernel(), bbMem, tempBB, buildDDD, listSch,
-                        totalCycle, m_options, LT);
-
+                    G4_BB_Schedule schedule(fg.getKernel(), bbMem, tempBB, m_options, LT);
                     count = 0;
                 }
                 count++;
@@ -110,8 +104,7 @@ void LocalScheduler::localScheduling()
         }
         else
         {
-            G4_BB_Schedule schedule(fg.getKernel(), bbMem, *ib, buildDDD, listSch, totalCycle,
-                m_options, LT);
+            G4_BB_Schedule schedule(fg.getKernel(), bbMem, *ib, m_options, LT);
             bbInfo[i].id = (*ib)->getId();
             bbInfo[i].staticCycle = schedule.sequentialCycle;
             bbInfo[i].sendStallCycle = schedule.sendStallCycle;
@@ -212,7 +205,6 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
 //      - creates a new instruction listing within a BBB
 //
 G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
-    int dddTimer, int schTimer, uint32_t& totalCycle,
     const Options *options, const LatencyTable &LT)
     : kernel(k), mem(m), bb(block),
     lastCycle(0), sendStallCycle(0),
@@ -232,7 +224,6 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
     }
 
     lastCycle = ddd.listSchedule(this);
-    totalCycle += lastCycle;
 
     if (m_options->getOption(vISA_DumpSchedule))
     {
@@ -247,7 +238,7 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
 
     // Update the listing of the basic block with the reordered code.
     INST_LIST_ITER inst_it = bb->begin();
-    Node * prevNode = nullptr;
+    Node *prevNode = nullptr;
     unsigned HWThreadsPerEU = getBuilder()->getHWThreadNumberPerEU();
     size_t scheduleInstSize = 0;
     for (Node *currNode : scheduledNodes) {
@@ -269,45 +260,6 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
 
     assert(scheduleInstSize == bb->size() &&
            "Size of inst list is different before/after scheduling");
-}
-
-bool Node::isTransitiveDep(Node* edgeDst)
-{
-    bool isTransitive = false;
-
-    // Check for duplicate edge
-    for (int i = 0; i < (int)succs.size() && isTransitive == false; i++)
-    {
-        Edge& curDepItem = succs[i];
-        Node* dst = curDepItem.getNode();
-
-        if (dst == edgeDst)
-        {
-            isTransitive = true;
-            break;
-        }
-    }
-
-    // First-level transitive
-    for (int i = 0; i < (int)succs.size() && isTransitive == false; i++)
-    {
-        Edge curDepItemI = succs[i];
-        Node* dst = curDepItemI.getNode();
-
-        for (int j = 0; j < (int)(dst)->succs.size(); j++)
-        {
-            Edge curDepItemJ = (dst)->succs[j];
-            Node* dstOfDst = curDepItemJ.getNode();
-
-            if (dstOfDst == edgeDst)
-            {
-                isTransitive = true;
-                break;
-            }
-        }
-    }
-
-    return isTransitive;
 }
 
 void Node::dump() {
@@ -817,15 +769,9 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
 
         // Get buckets for all physical registers assigned in curInst
         hasIndir = getBucketDescrs(node, BDvec);
-        if (hasIndir)
+        if (hasIndir || curInst->isFence())
         {
-            // If inst has indirect src/dst then treat it
-            // as a barrier
-            node->MarkAsUnresolvedIndirAddressBarrier();
-        }
-
-        if (curInst->isFence())
-        {
+            // If inst has indirect src/dst then treat it as a barrier.
             node->MarkAsUnresolvedIndirAddressBarrier();
         }
 
@@ -950,25 +896,6 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
     }
 }
 
-// Return TRUE if there is a dependency fromNode->toNode
-static bool immDepBetween(Node *fromNode, Node *toNode) {
-    for (Edge &succE : fromNode->succs) {
-        if (succE.getNode() == toNode) {
-            return true;
-        }
-    }
-    return false;
-}
-
-static bool succEdgeAlreadyExists(Node *fromNode, Node *toNode) {
-    for (Edge &succE : fromNode->succs) {
-        if (succE.getNode() == toNode) {
-            return true;
-        }
-    }
-    return false;
-}
-
 void Node::deletePred(Node* pred)
 {
     for (int i = 0, size = (int)preds.size(); i < size; ++i)
@@ -1060,7 +987,6 @@ void DDD::moveDeps(Node *fromNode, Node *toNode)
 // Note that firstNode->secondNode is ok if there are no instructions in between
 static bool canAvoidDepCycles(Node *firstNode, Node *secondNode, bool isFirstLevel) 
 {
-
     // assumption is firstNode is close to secondNode so this will be fast
     // and we don't need to cache intermediate nodes
     for (const Edge& succE : firstNode->succs)
@@ -1311,20 +1237,6 @@ void DDD::createAddEdge(Node* pred, Node* succ, DepType d)
     succ->preds.emplace_back(pred, d, edgeLatency);
 }
 
-
-// Return the dependency edge between PRO and CON
-Edge *getDepBetween(Node *pro, Node *con)
-{
-    for (Edge &dep : pro->succs)
-    {
-        if (dep.getNode() == con)
-        {
-            return &dep;
-        }
-    }
-    return nullptr;
-}
-
 // Debug function for generating the dependency graph in dot format
 void DDD::dumpDagDot(G4_BB *bb)
 {
@@ -1520,7 +1432,6 @@ struct criticalCmp
     }
 };
 
-
 // Perform local list scheduling
 uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
 {
@@ -1715,7 +1626,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
     return currCycle;
 }
 
-bool isMemSend(G4_SendMsgDescriptor *msgDesc)
+static bool isMemSend(G4_SendMsgDescriptor *msgDesc)
 {
     auto funcID = msgDesc->getFuncId();
     switch (funcID)
@@ -1940,15 +1851,11 @@ static uint16_t calculateOccupancy(G4_INST *inst) {
     return (uint16_t)latency;
 }
 
-Node::Node(uint32_t id, G4_INST *inst, Edge_Allocator& depEdgeAllocator,
-    const LatencyTable &LT)
-    : nodeID(id), priority(PRIORITY_UNINIT), earliest(0),
-    occupancy(0), lastSchedPred(nullptr),
-    schedTime(0), predsNotScheduled(0)
+Node::Node(uint32_t id, G4_INST* inst, Edge_Allocator& depEdgeAllocator,
+    const LatencyTable& LT)
+    : nodeID(id)
 {
-    schedTime = UINT_MAX;
     instVec.push_back(inst);
-    wSubreg = NO_SUBREG;
     uint16_t occupancy_old = calculateOccupancy(inst);
     // uint16_t occupancy_new = LT.getLatency(inst).getOccupancyOnly();
     // assert(occupancy_new == occupancy_old);
@@ -1957,13 +1864,7 @@ Node::Node(uint32_t id, G4_INST *inst, Edge_Allocator& depEdgeAllocator,
     // Set the initial node priority
     priority = occupancy;
 
-    if (inst->isLabel())
-    {
-        return;
-    }
-
     barrier = CheckBarrier(inst);
-    hasTransitiveEdgeToBarrier = false;
 }
 
 void LocalScheduler::EmitNode(Node *node) {
