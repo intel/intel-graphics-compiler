@@ -175,23 +175,33 @@ typedef std::list<Node *>::iterator NODE_LIST_ITER;
 struct Mask {
     unsigned short LeftB;
     unsigned short RightB;
-    bool nonContiguousStride;
-    Mask() : LeftB(0), RightB(0), nonContiguousStride(false) { ; }
-    Mask(unsigned short LB, unsigned short RB, bool NCS)
-        : LeftB(LB), RightB(RB), nonContiguousStride(NCS) {}
+    bool nonContiguousStride = false;
+    G4_AccRegSel specialAcc = G4_AccRegSel::ACC_UNDEFINED;
+
+    Mask() : LeftB(0), RightB(0) {}
+    Mask(unsigned short LB, unsigned short RB, bool NCS, G4_AccRegSel Acc)
+        : LeftB(LB), RightB(RB), nonContiguousStride(NCS), specialAcc(Acc) {
+    }
 
     bool killsBucket(unsigned int bucket) const {
         unsigned short bucketLB = bucket * G4_GRF_REG_NBYTES;
         unsigned short bucketRB = (bucket + 1) * G4_GRF_REG_NBYTES - 1;
-        return !nonContiguousStride && LeftB <= bucketLB && RightB >= bucketRB;
+        return !nonContiguousStride && !withSpecialAcc() &&
+               LeftB <= bucketLB && RightB >= bucketRB;
     }
 
     bool kills(const Mask &mask2) const {
-        return LeftB <= mask2.LeftB && RightB >= mask2.RightB;
+        return LeftB <= mask2.LeftB && RightB >= mask2.RightB &&
+               specialAcc == mask2.specialAcc;
+    }
+
+    bool withSpecialAcc() const {
+        return specialAcc != G4_AccRegSel::ACC_UNDEFINED;
     }
 
     bool hasOverlap(const Mask &mask2) const {
-        return LeftB <= mask2.RightB && RightB >= mask2.LeftB;
+        return (LeftB <= mask2.RightB && RightB >= mask2.LeftB) ||
+               (mask2.withSpecialAcc() && mask2.specialAcc == specialAcc);
     }
 };
 

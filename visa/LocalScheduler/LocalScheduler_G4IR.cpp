@@ -435,7 +435,7 @@ static Mask getMaskForOp(G4_Operand * opnd, Gen4_Operand_Number opnd_num,
     default:
         assert(0 && "Bad opnd");
     }
-    return Mask(LB, RB, nonContiguousStride);
+    return Mask(LB, RB, nonContiguousStride, opnd->getAccRegSel());
 }
 
 void DDD::getBucketsForOperand(G4_INST* inst, Gen4_Operand_Number opnd_num,
@@ -449,7 +449,6 @@ void DDD::getBucketsForOperand(G4_INST* inst, Gen4_Operand_Number opnd_num,
     int startingBucket = UNINIT_BUCKET;
     G4_VarBase* base = opnd->getBase();
     bool canSpanMultipleBuckets = false;
-
     assert(base && "If no base, then the operand is not touched by the instr.");
 
     // If a register allocated regvar, then get the physical register
@@ -457,7 +456,6 @@ void DDD::getBucketsForOperand(G4_INST* inst, Gen4_Operand_Number opnd_num,
 
     switch (phyReg->getKind()) {
     case G4_VarBase::VK_phyGReg:
-        // Handle GRFs - fast path
         startingBucket = opnd->getLinearizedStart() / G4_GRF_REG_NBYTES;
         canSpanMultipleBuckets = true;
         break;
@@ -496,11 +494,9 @@ void DDD::getBucketsForOperand(G4_INST* inst, Gen4_Operand_Number opnd_num,
     // Create one or more buckets and push them into the vector
     if (startingBucket != UNINIT_BUCKET) {
         if (canSpanMultipleBuckets) {
-            unsigned int divisor;
-            int baseBucket;
             assert(base->isGreg());
-            divisor = G4_GRF_REG_NBYTES;
-            baseBucket = GRF_BUCKET;
+            unsigned divisor = G4_GRF_REG_NBYTES;
+            int baseBucket = GRF_BUCKET;
             int endingBucket = baseBucket + opnd->getLinearizedEnd() / divisor;
             MUST_BE_TRUE(endingBucket >= startingBucket, "Ending bucket less than starting bucket");
             int numBuckets = endingBucket - startingBucket + 1;

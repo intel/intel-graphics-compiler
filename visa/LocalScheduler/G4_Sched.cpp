@@ -1819,9 +1819,34 @@ getDep(G4_Operand* Opnd, const preDDD::LiveNode& LN)
     else
         Rel = Opnd->compareOperand(Other);
 
-    // No dependency.
-    if (Rel == G4_CmpRelation::Rel_disjoint)
+    if (Rel == G4_CmpRelation::Rel_disjoint) {
+        // Check if there is any acc dependency on acc registers.
+        G4_AccRegSel AccOpnd = Opnd->getAccRegSel();
+        G4_AccRegSel AccOther = Other->getAccRegSel();
+
+        // Normalize NOACC to ACC_UNDEFINED
+        if (AccOpnd == G4_AccRegSel::NOACC)
+            AccOpnd = G4_AccRegSel::ACC_UNDEFINED;
+        if (AccOther == G4_AccRegSel::NOACC)
+            AccOther = G4_AccRegSel::ACC_UNDEFINED;
+
+        if (AccOther == AccOpnd &&
+            AccOther != G4_AccRegSel::ACC_UNDEFINED) {
+            // While compairing V3:Acc2 to V4:Acc2, we cannot kill this live
+            // node, as there is no overlap on V3 and V4. So only returns
+            // Rel_interfere relation, not Rel_eq.
+            //
+            if (LN.isWrite() && Opnd->isDstRegRegion())
+                return std::make_pair(DepType::WAW, Rel_interfere);
+            if (LN.isWrite())
+                return std::make_pair(DepType::WAR, Rel_interfere);
+            if (Opnd->isDstRegRegion())
+                return std::make_pair(DepType::RAW, Rel_interfere);
+        }
+
+        // No dependency.
         return std::make_pair(DepType::NODEP, Rel);
+    }
 
     DepType Deps[] = { DepType::NODEP, DepType::RAW, DepType::WAR, DepType::WAW };
     int i = int(LN.isWrite());
