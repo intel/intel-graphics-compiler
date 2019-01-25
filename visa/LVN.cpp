@@ -603,6 +603,11 @@ void LVN::replaceAllUses(G4_INST* defInst, bool negate, UseList& uses, G4_INST* 
                 type);
         }
 
+        if (srcToReplace->isAccRegValid())
+        {
+            srcRgn->setAccRegSel(srcToReplace->getAccRegSel());
+        }
+
         unsigned int srcIndex = G4_INST::getSrcNum(use.second);
         useInst->setSrc(srcRgn, srcIndex);
     }
