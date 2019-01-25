@@ -88,7 +88,7 @@ private:
     void handleAllocaInst(llvm::AllocaInst *pAlloca);
 
     bool CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca);
-
+    bool IsNativeType(Type* type);
     /// Conservatively check if a store allow an Alloca to be uniform
     bool IsUniformStore(llvm::StoreInst* pStore);
 public:
@@ -225,6 +225,16 @@ static void GetAllocaLiverange(Instruction* I, unsigned int& liverangeStart, uns
     }
 }
 
+bool LowerGEPForPrivMem::IsNativeType(Type* type)
+{
+    if((type->isDoubleTy() && !m_ctx->platform.supportFP64()) ||
+        (type->isIntegerTy(64) && !m_ctx->platform.hasNo64BitInst()))
+    {
+        return false;
+    }
+    return true;
+}
+
 bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
 {
     auto WI = &getAnalysis<WIAnalysis>();
@@ -252,6 +262,10 @@ bool LowerGEPForPrivMem::CheckIfAllocaPromotable(llvm::AllocaInst* pAlloca)
     }
     Type* baseType = nullptr;
     if(!CanUseSOALayout(pAlloca, baseType))
+    {
+        return false;
+    }
+    if(!IsNativeType(baseType))
     {
         return false;
     }
