@@ -96,6 +96,7 @@ namespace FCL
 
 	int32_t FCLShDumpEn = 0;
 	int32_t FCLDumpToCurrDir = 0;
+    int32_t FCLDumpToCustomDir = 0;
 	int32_t FCLShDumpPidDis = 0;
 	int32_t FCLEnvKeysRead = 0;
 
@@ -193,7 +194,7 @@ namespace FCL
 			sizeof(value));
 		isSet = isSet;
 
-		return(value[0] == 1);
+		return(value[0] != 0);
 	}
 
 
@@ -203,6 +204,7 @@ namespace FCL
 		{
 			FCLShDumpEn			= getFCLIGCBinaryKey("ShaderDumpEnable");
 			FCLDumpToCurrDir	= getFCLIGCBinaryKey("DumpToCurrentDir");
+            FCLDumpToCustomDir  = getFCLIGCBinaryKey("DumpToCustomDir");
 			FCLShDumpPidDis		= getFCLIGCBinaryKey("ShaderDumpPidDisable");
 
 			FCLEnvKeysRead = 1;
@@ -227,6 +229,12 @@ namespace FCL
 		return FCLDumpToCurrDir;
 	}
 
+    bool GetFCLDumpToCustomDir()
+    {
+        FCLReadKeysFromEnv();
+        return FCLDumpToCustomDir;
+    }
+
 
 
 #define FCL_IGC_IS_FLAG_ENABLED(name) FCL::GetFCL##name()
@@ -246,7 +254,7 @@ namespace FCL
 			return IGCBaseFolder.c_str();
 		}
 #   if defined(_WIN64) || defined(_WIN32)
-		if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && IGCBaseFolder == "")
+		if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && !FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir))
 		{
 			bool needMkdir = 1;
 			char dumpPath[256];
@@ -286,6 +294,24 @@ namespace FCL
 
 			IGCBaseFolder = dumpPath;
 		}
+        else if (FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir))
+        {
+            // no mkdir if custom dir defined
+            std::string dumpPath = "c:\\Intel\\IGC\\";        // default if something goes wrong
+            char custom_dir[256];
+            FCLReadIGCRegistry("DumpToCustomDir", custom_dir, sizeof(custom_dir));
+            if (custom_dir != nullptr && strlen(custom_dir) > 0)
+            {
+                dumpPath = custom_dir;
+            }
+
+            if (dumpPath.back() != '\\')
+            {
+                dumpPath += '\\';
+            }
+
+            IGCBaseFolder = dumpPath;
+    }
 #elif defined __linux__
 		IGCBaseFolder = "/tmp/IntelIGC/";
 #endif
@@ -305,7 +331,7 @@ namespace FCL
 			return g_shaderOutputFolder.c_str();
 		}
 #   if defined(_WIN64) || defined(_WIN32)
-		if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "")
+		if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && !FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir))
 		{
 			char dumpPath[256];
 			sprintf_s(dumpPath, "%s", GetBaseIGCOutputFolder());
@@ -338,6 +364,11 @@ namespace FCL
 
 			g_shaderOutputFolder = dumpPath;
 		}
+        else if (FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir))
+        {
+            // Do not add procID, if custom dump directory defined:
+            g_shaderOutputFolder = GetBaseIGCOutputFolder();
+        }
 #elif defined __linux__
 		if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "")
 		{

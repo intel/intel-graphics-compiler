@@ -383,10 +383,8 @@ namespace IGC
                 return IGCBaseFolder.c_str();
             }
 #   if defined(_WIN64) || defined(_WIN32)
-            if(!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && IGCBaseFolder == "")
-
+            if (!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && !IGC_IS_FLAG_ENABLED(DumpToCustomDir))
             {
-
                 bool needMkdir = 
                     IGC_IS_FLAG_ENABLED(DumpLLVMIR) ||
                     IGC_IS_FLAG_ENABLED(EnableCosDump) ||
@@ -400,17 +398,13 @@ namespace IGC
                     IGC_IS_FLAG_ENABLED(EnableCapsDump) ||
                     IGC_IS_FLAG_ENABLED(ShaderOverride);
 
-
                 char dumpPath[256];
 
                 sprintf_s(dumpPath, "c:\\Intel\\IGC\\");
 
                 if(GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY && needMkdir)
-
                 {
-
                     _mkdir(dumpPath);
-
                 }
 
                 // Make sure we can write in the dump folder as the app may be sandboxed
@@ -435,11 +429,25 @@ namespace IGC
                 }
 
                 if(GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY && needMkdir)
-
                 {
-
                     _mkdir(dumpPath);
+                }
 
+                IGCBaseFolder = dumpPath;
+            }
+            else if (IGC_IS_FLAG_ENABLED(DumpToCustomDir))
+            {
+                // no mkdir if custom dir defined
+                std::string dumpPath = "c:\\Intel\\IGC\\";        // default if something goes wrong
+                const char* custom_dir = IGC_GET_REGKEYSTRING(DumpToCustomDir);
+                if (custom_dir != nullptr && strlen(custom_dir) > 0)
+                {
+                    dumpPath = custom_dir;
+                }
+
+                if (dumpPath.back() != '\\')
+                {
+                    dumpPath += '\\';
                 }
 
                 IGCBaseFolder = dumpPath;
@@ -485,7 +493,7 @@ namespace IGC
                 return g_shaderOutputFolder.c_str();
             }
 #   if defined(_WIN64) || defined(_WIN32)
-            if (!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "")
+            if (!IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && !IGC_IS_FLAG_ENABLED(DumpToCustomDir))
             {
                 char dumpPath[256];
                 sprintf_s(dumpPath, "%s", GetBaseIGCOutputFolder());
@@ -493,51 +501,35 @@ namespace IGC
                 // check a process id and make an adequate directory for it:
 
                 if (::GetModuleFileNameA(NULL, appPath, sizeof(appPath)-1))
-
                 {
-
                     std::string appPathStr = std::string(appPath);
-
                     int pos = appPathStr.find_last_of("\\") + 1;
 
                     if (IGC_IS_FLAG_ENABLED(ShaderDumpPidDisable))
-
                     {
-
                         sprintf_s(dumpPath, "%s%s\\", dumpPath, appPathStr.substr(pos, MAX_PATH).c_str());
-
                     }
-
                     else
-
                     {
-
                         sprintf_s(dumpPath, "%s%s_%d\\", dumpPath, appPathStr.substr(pos, MAX_PATH).c_str(), _getpid());
-
                     }
-
                 }
-
                 else
-
                 {
-
                     sprintf_s(dumpPath, "%sunknownProcess_%d\\", dumpPath, _getpid());
-
                 }
-
-
 
                 if (GetFileAttributesA(dumpPath) != FILE_ATTRIBUTE_DIRECTORY)
-
                 {
-
                     _mkdir(dumpPath);
-
                 }
 
                 g_shaderOutputFolder = dumpPath;
-
+            }
+            else if (IGC_IS_FLAG_ENABLED(DumpToCustomDir))
+            {
+                // Do not add procID, if custom dump directory defined:
+                g_shaderOutputFolder = GetBaseIGCOutputFolder();
             }
 #elif defined ANDROID
 
