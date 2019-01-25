@@ -2424,14 +2424,7 @@ static void verifyInstructionSIMDFlow(const common_isa_header& isaHeader, const 
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     switch (opcode)
     {
-        case ISA_IF:
-        case ISA_DO:
-        case ISA_ELSE:
-        case ISA_CONT:
         case ISA_GOTO:
-        case ISA_WHILE:
-        case ISA_BREAK:
-        case ISA_ENDIF:
              break;
         default: REPORT_INSTRUCTION(options,false, "Illegal SIMD CF Instruction Opcode: %d, %s.", opcode, ISA_Inst_Table[opcode].str);
     }

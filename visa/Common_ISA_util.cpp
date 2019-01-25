@@ -237,20 +237,6 @@ G4_opcode Get_G4_Opcode_From_Common_ISA_Opcode( ISA_Opcode opcode )
         case ISA_LOC:
         case ISA_DWORD_ATOMIC:
             break;
-        case ISA_IF:
-            return G4_if;
-        case ISA_ELSE:
-            return G4_else;
-        case ISA_ENDIF:
-            return G4_endif;
-        case ISA_DO:
-            return G4_do;
-        case ISA_WHILE:
-            return G4_while;
-        case ISA_BREAK:
-            return G4_break;
-        case ISA_CONT:
-            return G4_cont;
         case ISA_GOTO:
             return G4_goto;
         default:
@@ -457,7 +443,7 @@ bool hasPredicate(ISA_Opcode op)
     case ISA_Inst_Flow:
         return !(op == ISA_SUBROUTINE || op == ISA_LABEL || op == ISA_SWITCHJMP);
     case ISA_Inst_SIMD_Flow:
-        return op == ISA_IF || op == ISA_WHILE || op == ISA_CONT || op == ISA_BREAK || op == ISA_GOTO;
+        return op == ISA_GOTO;
     default:
         return false;
     }

@@ -133,13 +133,13 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_RAW_SEND,           ISA_Inst_Misc,       "raw_send",            0, 0 },
     { ISA_RESERVED_5E,        ISA_Inst_Reserved,   "reserved5E",          0, 0 },
     { ISA_YIELD,              ISA_Inst_Sync,       "yield",               0, 0 },
-    { ISA_IF,                 ISA_Inst_SIMD_Flow,  "if",                  0, 0 },
-    { ISA_ELSE,               ISA_Inst_SIMD_Flow,  "else",                0, 0 },
-    { ISA_ENDIF,              ISA_Inst_SIMD_Flow,  "endif",               0, 0 },
-    { ISA_DO,                 ISA_Inst_SIMD_Flow,  "do",                  0, 0 },
-    { ISA_WHILE,              ISA_Inst_SIMD_Flow,  "while",               0, 0 },
-    { ISA_BREAK,              ISA_Inst_SIMD_Flow,  "break",               0, 0 },
-    { ISA_CONT,               ISA_Inst_SIMD_Flow,  "cont",                0, 0 },
+    { ISA_RESERVED_60,        ISA_Inst_Reserved,   "reserved60",          0, 0 },
+    { ISA_RESERVED_61,        ISA_Inst_Reserved,   "reserved61",          0, 0 },
+    { ISA_RESERVED_62,        ISA_Inst_Reserved,   "reserved62",          0, 0 },
+    { ISA_RESERVED_63,        ISA_Inst_Reserved,   "reserved63",          0, 0 },
+    { ISA_RESERVED_64,        ISA_Inst_Reserved,   "reserved64",          0, 0 },
+    { ISA_RESERVED_65,        ISA_Inst_Reserved,   "reserved65",          0, 0 },
+    { ISA_RESERVED_66,        ISA_Inst_Reserved,   "reserved66",          0, 0 },
     { ISA_FCALL,              ISA_Inst_Flow,       "fcall",               3, 0 },
     { ISA_FRET,               ISA_Inst_Flow,       "fret",                0, 0 },
     { ISA_SWITCHJMP,          ISA_Inst_Flow,       "switchjmp",           0, 0 },
@@ -1256,63 +1256,51 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 96
-    { ALL, ISA_IF, ISA_Inst_SIMD_Flow, "if", 2, 0,
+    { ALL, ISA_RESERVED_60, ISA_Inst_Reserved, "reserved_60", 0, 0,
     {
-        {OPND_EXECSIZE, ISA_TYPE_UB, 0},
-        {OPND_PRED, ISA_TYPE_UW, 0},
     },
    
     },
 
     /// 97
-    { ALL, ISA_ELSE, ISA_Inst_SIMD_Flow, "else", 1, 0,
+    { ALL, ISA_RESERVED_61, ISA_Inst_Reserved, "reserved_61", 0, 0,
     {
-        {OPND_EXECSIZE, ISA_TYPE_UB, 0},
     },
    
     },
 
     /// 98
-    { ALL, ISA_ENDIF, ISA_Inst_SIMD_Flow, "endif", 1, 0,
+    { ALL, ISA_RESERVED_62, ISA_Inst_Reserved, "reserved_62", 0, 0,
     {
-        {OPND_EXECSIZE, ISA_TYPE_UB, 0},
     },
    
     },
 
     /// 99
-    { ALL, ISA_DO, ISA_Inst_SIMD_Flow, "do", 1, 0,
+    { ALL, ISA_RESERVED_63, ISA_Inst_Reserved, "reserved_63", 0, 0,
     {
-        {OPND_EXECSIZE, ISA_TYPE_UB, 0},
     },
    
     },
 
     /// 100
-    { ALL, ISA_WHILE, ISA_Inst_SIMD_Flow, "while", 2, 0,
+    { ALL, ISA_RESERVED_64, ISA_Inst_Reserved, "reserved_64", 0, 0,
     {
-        {OPND_EXECSIZE, ISA_TYPE_UB, 0},
-        {OPND_PRED, ISA_TYPE_UW, 0},
     },
    
     },
 
     /// 101
-    { ALL, ISA_BREAK, ISA_Inst_SIMD_Flow, "break", 2, 0,
+    { ALL, ISA_RESERVED_65, ISA_Inst_Reserved, "reserved_65", 0, 0,
     {
-        {OPND_EXECSIZE, ISA_TYPE_UB, 0},
-        {OPND_PRED, ISA_TYPE_UW, 0},
     },
    
     },
 
     /// 102
-    { ALL, ISA_CONT, ISA_Inst_SIMD_Flow, "cont", 2, 0,
+    { ALL, ISA_RESERVED_66, ISA_Inst_Reserved, "reserved_66", 0, 0,
     {
-        {OPND_EXECSIZE, ISA_TYPE_UB, 0},
-        {OPND_PRED, ISA_TYPE_UW, 0},
-    },
-   
+    },   
     },
 
     /// 103

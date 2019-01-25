@@ -655,7 +655,6 @@ private:
     bool     doIPA;                             // requires inter-procedural liveness analysis
     bool     hasStackCalls;                     // indicates that the flowgraph contains STACK_CALL calls
     bool     isStackCallFunc;                    // indicates the function itself is a STACK_CALL function
-    unsigned loopLabelId;                       // used by matchLoop to assign loop label id
     unsigned int autoLabelId;
     G4_Kernel* pKernel;                         // back pointer to the kernel object
 
@@ -852,7 +851,7 @@ public:
     void preprocess(INST_LIST& instlist);
 
     FlowGraph(INST_LIST_NODE_ALLOCATOR& alloc, G4_Kernel* kernel, Mem_Manager& m) : entryBB(NULL), traversalNum(0), numBBId(0), reducible(true),
-      doIPA(false), hasStackCalls(false), isStackCallFunc(false), loopLabelId(0), autoLabelId(0),
+      doIPA(false), hasStackCalls(false), isStackCallFunc(false), autoLabelId(0),
       pKernel(kernel), mem(m), instListAlloc(alloc),
       builder(NULL), globalOpndHT(m), framePtrDcl(NULL), stackPtrDcl(NULL),
       scratchRegDcl(NULL), pseudoVCEDcl(NULL) {}
@@ -948,7 +947,6 @@ public:
 
     void constructFlowGraph(INST_LIST& instlist);
     bool matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it);
-    void matchLoop(INST_LIST& instlist);
     void localDataFlowAnalysis();
     unsigned getNumBB() const      {return numBBId;}
     G4_BB* getEntryBB()        {return entryBB;}

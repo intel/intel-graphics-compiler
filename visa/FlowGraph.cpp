@@ -225,193 +225,6 @@ G4_BB* FlowGraph::beginBB(Label_BB_Map& map, G4_INST* first)
     return bb;
 }
 
-void FlowGraph::matchLoop(INST_LIST& instlist)
-{
-    int numLoopNest = 0;
-    // global stack the do instructions (converted to a label ) as well as
-    // break/cont that do not yet have a matching while
-    std::stack<G4_INST*> loopInsts;
-    // queue for break/continue for innermost loop that do not have their
-    // JIPs assigned yet
-    std::queue<G4_INST*> innerBreakCont;
-    std::string labelName;
-
-    for (INST_LIST_ITER it = instlist.begin(); it != instlist.end(); ++it)
-    {
-        G4_INST* inst = *it;
-        switch (inst->opcode())
-        {
-        case G4_do:
-        {
-            while (!innerBreakCont.empty())
-            {
-                G4_INST* breakContInst = innerBreakCont.front();
-                innerBreakCont.pop();
-                loopInsts.push(breakContInst);
-            }
-            numLoopNest++;
-            // replace do with a new loop label
-            labelName = "_LOOP_START" + std::to_string(loopLabelId++);
-            G4_Label* loopLabel = builder->createLabel(labelName, LABEL_BLOCK);
-            loopLabel->setStartLoopLabel();
-            inst->setOpcode(G4_label);
-            inst->setSrc(loopLabel, 0);
-            loopInsts.push(inst);
-            break;
-        }
-        case G4_break:
-        case G4_cont:
-            innerBreakCont.push(inst);
-            break;
-        case G4_while:
-        {
-            // add the unprocessed break/cont to the global stack
-            while (!innerBreakCont.empty())
-            {
-                G4_INST* breakContInst = innerBreakCont.front();
-                innerBreakCont.pop();
-                loopInsts.push(breakContInst);
-            }
-            bool foundLoopStart = false;
-            while (!loopInsts.empty())
-            {
-                G4_INST* loopInst = loopInsts.top();
-                loopInsts.pop();
-                if (loopInst->isLabel())
-                {
-                    // find loop start, assign while label to it
-                    inst->asCFInst()->setJip(loopInst->getSrc(0));
-                    foundLoopStart = true;
-                    break;
-                }
-                else if (loopInst->opcode() == G4_break)
-                {
-
-                    G4_Label* breakLabel = NULL;
-                    INST_LIST_ITER labelIter = it;
-                    //break's UIP should be the while instruction itself
-                    --labelIter;
-
-                    if ((*labelIter)->isLabel())
-                    {
-                        // a label is already there after the while, use it
-                        breakLabel = (G4_Label*)(*labelIter)->getSrc(0);
-                    }
-                    else
-                    {
-                        // insert label after while
-                        labelName = "_LOOP_BREAK" + std::to_string(loopLabelId++);
-                        breakLabel = builder->createLabel(labelName, LABEL_BLOCK);
-                        G4_INST* labelInst = createNewLabelInst(breakLabel, inst->getLineNo(), inst->getCISAOff());
-                        instlist.insert(std::next(it), labelInst);
-                    }
-                    loopInst->asCFInst()->setUip(breakLabel);
-                    if (loopInst->asCFInst()->getJip() == NULL)
-                    {
-                        loopInst->asCFInst()->setJip(breakLabel);
-                    }
-                }
-                else
-                {
-                    MUST_BE_TRUE(loopInst->opcode() == G4_cont, "expect cont instruction");
-
-                    // cont's UIP should be the while instruction
-                    G4_Label* contLabel = NULL;
-                    INST_LIST_ITER prev = it;
-                    --prev;
-                    if ((*prev)->isLabel())
-                    {
-                        // a label is already there before the while, use it
-                        contLabel = (G4_Label*)(*prev)->getSrc(0);
-                    }
-                    else
-                    {
-                        // insert label before while
-                        labelName = "_LOOP_CONT_" + std::to_string(loopLabelId++);
-                        contLabel = builder->createLabel(labelName, LABEL_BLOCK);
-                        G4_INST* labelInst = createNewLabelInst(contLabel, inst->getLineNo(), inst->getCISAOff());
-                        instlist.insert(it, labelInst);
-                    }
-                    loopInst->asCFInst()->setUip(contLabel);
-                    if (loopInst->asCFInst()->getJip() == NULL)
-                    {
-                        loopInst->asCFInst()->setJip(contLabel);
-                    }
-                }
-            }
-            ASSERT_USER(foundLoopStart, "while without matching do");
-            break;
-        }
-        case G4_if:
-        {
-            // add the unprocessed break/cont to the global stack
-            while (!innerBreakCont.empty())
-            {
-                G4_INST* breakContInst = innerBreakCont.front();
-                innerBreakCont.pop();
-                loopInsts.push(breakContInst);
-            }
-            break;
-        }
-        case G4_endif:
-        {
-            INST_LIST_ITER prev = it;
-            --prev;
-            //matchBranch should've inserted a label before the endif
-            MUST_BE_TRUE((*prev)->isLabel(), "Expect label before endif");
-            G4_Label* endifLabel = (G4_Label*)(*prev)->getSrc(0);
-            while (!innerBreakCont.empty())
-            {
-                // break/cont's JIP should point to this endif
-                G4_INST* breakContInst = innerBreakCont.front();
-                innerBreakCont.pop();
-                breakContInst->asCFInst()->setJip(endifLabel);
-                loopInsts.push(breakContInst);
-            }
-            break;
-        }
-        case G4_else:
-        {
-            G4_Label* elseLabel = NULL;
-            if (!innerBreakCont.empty())
-            {
-                INST_LIST_ITER prev = it;
-                --prev;
-                if ((*prev)->isLabel())
-                {
-                    elseLabel = (G4_Label*)(*prev)->getSrc(0);
-                }
-                else
-                {
-                    // insert label before else
-                    labelName = "_LOOP_ELSE_" + std::to_string(loopLabelId++);
-                    elseLabel = builder->createLabel(labelName, LABEL_BLOCK);
-                    G4_INST* labelInst = createNewLabelInst(elseLabel, inst->getLineNo(), inst->getCISAOff());
-                    instlist.insert(it, labelInst);
-                }
-            }
-
-            while (!innerBreakCont.empty())
-            {
-                // break/cont's JIP should point to this else
-
-                G4_INST* breakContInst = innerBreakCont.front();
-                innerBreakCont.pop();
-                breakContInst->asCFInst()->setJip(elseLabel);
-                loopInsts.push(breakContInst);
-            }
-            break;
-        }
-        default:
-            break; // Prevent gcc warning
-        }
-    }
-
-    ASSERT_USER(loopInsts.empty() && innerBreakCont.empty(),
-        "unmatched do/break/cont instruction");
-
-}
-
 G4_INST* FlowGraph::createNewLabelInst(G4_Label* label, int lineNo = 0, int CISAOff = UNMAPPABLE_VISA_INDEX)
 {
     //srcFileName is NULL
@@ -686,7 +499,8 @@ void FlowGraph::preprocess(INST_LIST& instlist)
 #endif
 
     //
-    // Process the non-label "if-else-endif" cases as following
+    // Process the non-label "if-else-endif" cases as following.
+    // ToDo: remove this once we stop generating if-else-endif for the IEEE macros
     //
     {
         int sn = 0;
@@ -703,11 +517,6 @@ void FlowGraph::preprocess(INST_LIST& instlist)
             }   // fi
         }   // for
     }
-
-    //
-    // Match up the while/break/cont instructions and generate labels for them
-    //
-    matchLoop(instlist);
 }
 
 void FlowGraph::NormalizeFlowGraph()
