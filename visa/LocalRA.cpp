@@ -2879,6 +2879,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     newSrc->setRegOff(oldSrc->getRegOff());
                                     newSrc->setSubRegOff(oldSrc->getSubRegOff());
                                     newSrc->setModifier(oldSrc->getModifier());
+                                    newSrc->setType(oldSrc->getType());
                                     useInst->setSrc(newSrc, pos);
                                     while (aliasOldSrcDcl && aliasOldSrcDcl != oldDcl)
                                     {
@@ -2913,6 +2914,7 @@ bool LinearScan::allocateRegs(LocalLiveRange* lr, G4_BB* bb, IR_Builder& builder
                                     newSrc->setRegOff(oldSrc->getRegOff());
                                     newSrc->setSubRegOff(oldSrc->getSubRegOff());
                                     newSrc->setModifier(oldSrc->getModifier());
+                                    newSrc->setType(oldSrc->getType());
                                     useInst->setSrc(newSrc, pos);
                                     while (aliasOldSrcDcl && aliasOldSrcDcl != oldDcl)
                                     {
