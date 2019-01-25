@@ -70,7 +70,7 @@ $ mkdir build
 4. Build IGC using commands:
 ```
 $ cd build
-$ cmake -DIGC_OPTION__OUTPUT_DIR=../igc-install/Release ../igc/IGC
+$ cmake ../igc/IGC
 $ make -j`nproc`
 ```
 
