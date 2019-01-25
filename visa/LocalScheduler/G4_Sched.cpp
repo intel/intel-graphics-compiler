@@ -540,13 +540,6 @@ bool preRA_Scheduler::run()
         auto tryRPReduction = [=]() {
             if (!config.UseSethiUllman)
                  return false;
-
-            // For SIMD32 kernels, use a higher threshold for rp reduction,
-            // as it may not be beneficial.
-            if (this->kernel.getSimdSize() == 32)
-                return MaxPressure >= PRESSURE_REDUCTION_THRESHOLD_SIMD32;
-
-            // For all other kernels, use the default threshold.
             return MaxPressure >= Threshold;
         };
 

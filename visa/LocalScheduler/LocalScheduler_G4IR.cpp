@@ -39,23 +39,8 @@ using namespace std;
 using namespace vISA;
 
 #define SCH_THRESHOLD 2
-#define BITS_PER_FLAG_REG 16
 
-
-// check if two operands occupy overlapping GRFs
-// we put them here instead of inside G4_Operand since this is only valid till after RA
-// It's the caller's responsibilty to ensure that opnd1 and opnd2 are both GRF allocated
-static bool operandOverlap(G4_Operand* opnd1, G4_Operand* opnd2)
-{
-    return (opnd1->getLinearizedStart() <= opnd2->getLinearizedStart() &&
-        opnd1->getLinearizedEnd() > opnd2->getLinearizedStart()) ||
-        (opnd2->getLinearizedStart() <= opnd1->getLinearizedStart() &&
-        opnd2->getLinearizedEnd() > opnd1->getLinearizedStart());
-}
-
-/*
-    Entry to the local scheduling.
-    */
+/* Entry to the local scheduling. */
 void LocalScheduler::localScheduling()
 {
     DEBUG_VERBOSE("[Scheduling]: Starting...");
@@ -241,18 +226,18 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
     bool doMessageFuse = (k->fg.builder->fuseTypedWrites() && k->getSimdSize() >= 16) ||
         k->fg.builder->fuseURBMessage();
 
-    if (doMessageFuse) 
+    if (doMessageFuse)
     {
         ddd.pairTypedWriteOrURBWriteNodes(bb);
     }
 
     lastCycle = ddd.listSchedule(this);
+    totalCycle += lastCycle;
+
     if (m_options->getOption(vISA_DumpSchedule))
     {
         dumpSchedule(bb);
     }
-    totalCycle += lastCycle;
-
     if (m_options->getOption(vISA_DumpDot))
     {
         std::stringstream sstr;
@@ -260,46 +245,20 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
         ddd.DumpDotFile(sstr.str().c_str(), "nodes");
     }
 
-#ifdef _DEBUG
-    // Find the label if there is
-    std::list<std::string> labelList;
-    bool firstNonLabelInst = true;
-    for (INST_LIST_ITER i = bb->begin(); i != bb->end(); ++i)
-    {
-        G4_INST* inst = *i;
-        MUST_BE_TRUE(inst != nullptr, ERROR_UNKNOWN);
-        if (inst->isLabel())
-        {
-            MUST_BE_TRUE(firstNonLabelInst, ERROR_UNKNOWN);
-            continue;
-        }
-        firstNonLabelInst = false;
-    }
-#endif
-
     // Update the listing of the basic block with the reordered code.
-    size_t scheduleSize = scheduledNodes.size();
-    size_t scheduleInstSize = 0;
-
     INST_LIST_ITER inst_it = bb->begin();
     Node * prevNode = nullptr;
     unsigned HWThreadsPerEU = getBuilder()->getHWThreadNumberPerEU();
-    for (size_t i = 0; i < scheduleSize; i++) {
-        Node *currNode = scheduledNodes[i];
+    size_t scheduleInstSize = 0;
+    for (Node *currNode : scheduledNodes) {
         for (G4_INST *inst : *currNode->getInstructions()) {
             (*inst_it) = inst;
-            scheduleInstSize++;
+            ++scheduleInstSize;
             if (prevNode && !prevNode->isLabel()) {
-                int32_t stallCycle = (int32_t)currNode->schedTime
-                    - (int32_t)prevNode->schedTime;
-
-                if (stallCycle > 0
-                    && stallCycle > (int32_t)(prevNode->getOccupancy()
-                    * HWThreadsPerEU)) {
-                    sendStallCycle += (stallCycle + HWThreadsPerEU - 1)
-                        / HWThreadsPerEU;
-                    sequentialCycle += (stallCycle + HWThreadsPerEU - 1)
-                        / HWThreadsPerEU;
+                int32_t stallCycle = (int32_t)currNode->schedTime - (int32_t)prevNode->schedTime;
+                if (stallCycle > 0 && stallCycle > int32_t(prevNode->getOccupancy() * HWThreadsPerEU)) {
+                    sendStallCycle += (stallCycle + HWThreadsPerEU - 1) / HWThreadsPerEU;
+                    sequentialCycle += (stallCycle + HWThreadsPerEU - 1) / HWThreadsPerEU;
                 }
             }
             sequentialCycle += currNode->getOccupancy();
@@ -375,13 +334,21 @@ void Node::dump() {
     std::cerr << "\n";
 }
 
-
 // Compute the range of registers touched by OPND.
 static Mask getMaskForOp(G4_Operand * opnd, Gen4_Operand_Number opnd_num,
     unsigned execSize)
 {
     unsigned short LB, RB;
-    bool nonContiguousStride;
+    bool nonContiguousStride = false;
+
+    auto getFlagBounds = [&](G4_Operand *opnd) {
+        const unsigned BITS_PER_FLAG_REG = 16;
+        bool valid = true;
+        unsigned subRegOff = opnd->getBase()->ExSubRegNum(valid);
+        LB = (unsigned short)(opnd->getLeftBound() + subRegOff * BITS_PER_FLAG_REG);
+        RB = (unsigned short)(opnd->getRightBound() + subRegOff * BITS_PER_FLAG_REG);
+    };
+
     switch (opnd_num) {
     case Opnd_src0:
     case Opnd_src1:
@@ -389,20 +356,16 @@ static Mask getMaskForOp(G4_Operand * opnd, Gen4_Operand_Number opnd_num,
     case Opnd_src3:
     case Opnd_pred:
     case Opnd_implAccSrc: {
-        if (opnd->isFlag()) {
-            // FIXME: Why does this require special treatment?
-            bool valid;
-            unsigned int subRegOff = opnd->getBase()->ExSubRegNum(valid);
-            LB = (unsigned short)(opnd->getLeftBound() + subRegOff * BITS_PER_FLAG_REG);
-            RB = (unsigned short)(opnd->getRightBound() + subRegOff * BITS_PER_FLAG_REG);
-            nonContiguousStride = false;
+        if (opnd->isFlag())
+        {
+            getFlagBounds(opnd);
         }
         else
         {
             LB = (unsigned short)opnd->getLinearizedStart();
             RB = (unsigned short)opnd->getLinearizedEnd();
             G4_SrcRegRegion *srcOpnd = opnd->asSrcRegRegion();
-            RegionDesc *rd = srcOpnd->getRegion(); 
+            RegionDesc *rd = srcOpnd->getRegion();
             nonContiguousStride = !rd->isContiguous(execSize);
         }
         break;
@@ -410,13 +373,9 @@ static Mask getMaskForOp(G4_Operand * opnd, Gen4_Operand_Number opnd_num,
     case Opnd_dst:
     case Opnd_condMod:
     case Opnd_implAccDst: {
-        if (opnd->isFlag()) {
-            // FIXME: Why does this require special treatment?
-            bool valid;
-            unsigned int subRegOff = opnd->getBase()->ExSubRegNum(valid);
-            LB = (unsigned short)(opnd->getLeftBound() + subRegOff * BITS_PER_FLAG_REG);
-            RB = (unsigned short)(opnd->getRightBound() + subRegOff * BITS_PER_FLAG_REG);
-            nonContiguousStride = false;
+        if (opnd->isFlag())
+        {
+            getFlagBounds(opnd);
         }
         else
         {
@@ -575,7 +534,6 @@ bool DDD::getBucketDescrs(Node *node, std::vector<BucketDescr>& BDvec)
 
     return hasIndir;
 }
-
 
 // This class hides the internals of dependence tracking using buckets
 class LiveBuckets
@@ -846,7 +804,6 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
     // order, to naturally take care of the liveness of operands.
     std::list<G4_INST*>::reverse_iterator iInst(bb->rbegin()), iInstEnd(bb->rend());
     std::vector<BucketDescr> BDvec;
-
 
     for (int nodeId = (int)(bb->size() - 1); iInst != iInstEnd; ++iInst, nodeId--)
     {
@@ -1228,7 +1185,6 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
         }
     }
 
-    
     Node* leadingURB = nullptr;
     for (auto it = allNodes.rbegin(), ite = allNodes.rend(); it != ite; ++it)
     {
@@ -1629,8 +1585,6 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
         if (scheduled->getInstructions()->front()->isMath() &&
             lastScheduled && lastScheduled->getInstructions()->front()->isMath())
         {
-            //std::cout << "b2b math:\t";
-            //lastScheduled->getInstructions()->front()->emit(std::cout);
             // pick another node on the ready list if it's not math and won't cause a longer stall
             // to save compile time we currently limit search size to 2
             if (readyList.size() > 0)
@@ -1646,7 +1600,6 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
                     {
                         readyList.push(scheduled);
                         scheduled = next;
-                        //std::cout << "\tavoid b2b math!!!!";
                         break;
                     }
                     else
@@ -1656,7 +1609,7 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
                     }
                 }
                 for (auto nodes : popped)
-                { 
+                {
                     readyList.push(nodes);
                 }
             }
@@ -1780,7 +1733,6 @@ bool isMemSend(G4_SendMsgDescriptor *msgDesc)
     }
 }
 
-
 // This comment is moved from DDD::Latency()
 // Given two instructions, this function returns latency
 // in number of cycles. If there is a RAW dependency
@@ -1871,7 +1823,6 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT)
         break;
     }
     latency = latency > node->getOccupancy() ? latency : node->getOccupancy();
-
     return latency;
 }
 
@@ -1986,7 +1937,6 @@ static uint16_t calculateOccupancy(G4_INST *inst) {
     }
 
     latency += passes * instLatency;
-
     return (uint16_t)latency;
 }
 
