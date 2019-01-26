@@ -414,7 +414,6 @@ void ShaderIOAnalysis::onGenIntrinsic(GenIntrinsicInst* inst)
         assert(false);
         break;
 
-    case GenISAIntrinsic::GenISA_ScalarTessFactors:
     case GenISAIntrinsic::GenISA_InnerScalarTessFactors:
     case GenISAIntrinsic::GenISA_OuterScalarTessFactors:
     case GenISAIntrinsic::GenISA_DCL_DSInputTessFactor:

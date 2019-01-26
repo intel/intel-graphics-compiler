@@ -682,10 +682,6 @@ GenISA_firstbitLo,,
 GenISA_ftof_rtn,,
 ,anyfloat,result
 ,anyfloat,input
-GenISA_ScalarTessFactors,,
-,void,
-,int,enum for the type of Tess factor
-,float,tess factor value
 GenISA_URBRead,,
 ,float8,result
 ,int,vertex index

@@ -245,8 +245,7 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                 if (IGC_IS_FLAG_ENABLED(EnableTEFactorsPadding) &&
                     ctx->platform.applyTEFactorsPadding() &&
                     ((IID == GenISAIntrinsic::GenISA_OuterScalarTessFactors) ||
-                     (IID == GenISAIntrinsic::GenISA_InnerScalarTessFactors) ||
-                     (IID == GenISAIntrinsic::GenISA_ScalarTessFactors)))
+                     (IID == GenISAIntrinsic::GenISA_InnerScalarTessFactors)))
                 {
                     if (!isTEFactorURBMsgPadded)
                     {
@@ -392,148 +391,6 @@ void HullShaderLowering::LowerIntrinsicInputOutput(Function& F)
                     }
                     instructionToRemove.push_back(inst);
                 }
-
-                // Tessellation factors can be written individually so we have scalar output
-                // We will try to merge them into a a single URB write if possible
-                if(IID == GenISAIntrinsic::GenISA_ScalarTessFactors)
-                {
-                    // extract tessellation factors and store in m_ScalarTessFactors
-                    const unsigned int tessFactor = int_cast<unsigned int>(llvm::cast<ConstantInt>(inst->getOperand(0))->getZExtValue());
-                    Value* undef = llvm::UndefValue::get(Type::getFloatTy(F.getContext()));
-                    Value* offsetVal = builder.getInt32(0);
-                    Value* offsetVal1 = builder.getInt32(1);
-
-                    switch(tessFactor)
-                    {
-                    case SHADER_OUTPUT_TYPE_FINAL_QUAD_U_EQ_0_EDGE_TESSFACTOR:
-                    case SHADER_OUTPUT_TYPE_FINAL_TRI_U_EQ_0_EDGE_TESSFACTOR:
-                    case SHADER_OUTPUT_TYPE_FINAL_LINE_DETAIL_TESSFACTOR:
-                    {
-                        Value* data[8] =
-                        {
-                            undef,
-                            undef,
-                            undef,
-                            inst->getArgOperand(1),
-                            undef,
-                            undef,
-                            undef,
-                            undef
-                        };
-                        AddURBWrite(
-                            offsetVal1,
-                            builder.getInt32(0x8),
-                            data,
-                            inst);
-                        break;
-                    }
-                    case SHADER_OUTPUT_TYPE_FINAL_QUAD_V_EQ_0_EDGE_TESSFACTOR:
-                    case SHADER_OUTPUT_TYPE_FINAL_TRI_V_EQ_0_EDGE_TESSFACTOR:
-                    case SHADER_OUTPUT_TYPE_FINAL_LINE_DENSITY_TESSFACTOR:
-                    {
-                        Value* data[8] =
-                        {
-                            undef,
-                            undef,
-                            inst->getArgOperand(1),
-                            undef,
-                            undef,
-                            undef,
-                            undef,
-                            undef,
-                        };
-                        AddURBWrite(
-                            offsetVal1,
-                            builder.getInt32(0x4),
-                            data,
-                            inst);
-                        break;
-                    }
-                    case SHADER_OUTPUT_TYPE_FINAL_QUAD_U_EQ_1_EDGE_TESSFACTOR:
-                    case SHADER_OUTPUT_TYPE_FINAL_TRI_W_EQ_0_EDGE_TESSFACTOR:
-                    {
-                        Value* data[8] =
-                        {
-                            undef,
-                            inst->getArgOperand(1),
-                            undef,
-                            undef,
-                            undef,
-                            undef,
-                            undef,
-                            undef,
-                        };
-                        AddURBWrite(
-                            offsetVal1,
-                            builder.getInt32(0x2),
-                            data,
-                            inst);
-                        break;
-                    }
-                    case SHADER_OUTPUT_TYPE_FINAL_QUAD_V_EQ_1_EDGE_TESSFACTOR:
-                    case SHADER_OUTPUT_TYPE_FINAL_TRI_INSIDE_TESSFACTOR:
-                    {
-                        Value* data[8] =
-                        {
-                            inst->getArgOperand(1),
-                            undef,
-                            undef,
-                            undef,
-                            undef,
-                            undef,
-                            undef,
-                            undef,
-                        };
-                        AddURBWrite(
-                            offsetVal1,
-                            builder.getInt32(0x1),
-                            data,
-                            inst);
-                        break;
-                    }
-                    case SHADER_OUTPUT_TYPE_FINAL_QUAD_U_INSIDE_TESSFACTOR:
-                    {
-                        Value* data[8] =
-                        {
-                            undef,
-                            undef,
-                            undef,
-                            inst->getArgOperand(1),
-                            undef,
-                            undef,
-                            undef,
-                            undef,
-                        };
-                        AddURBWrite(
-                            offsetVal,
-                            builder.getInt32(0x8),
-                            data,
-                            inst);
-                        break;
-                    }
-                    case SHADER_OUTPUT_TYPE_FINAL_QUAD_V_INSIDE_TESSFACTOR:
-                    {
-                        Value* data[8] =
-                        {
-                            undef,
-                            undef,
-                            inst->getArgOperand(1),
-                            undef,
-                            undef,
-                            undef,
-                            undef,
-                            undef,
-                        };
-                        AddURBWrite(
-                            offsetVal,
-                            builder.getInt32(0x4),
-                            data,
-                            inst);
-                        break;
-                    }
-                    }
-                    instructionToRemove.push_back(inst);
-                }
             }
         }
     }
@@ -564,32 +421,6 @@ unsigned int HullShaderLowering::GetDomainType(llvm::BasicBlock* bb, unsigned &n
                         tessShaderDomain = int_cast<uint32_t>(
                             mdconst::dyn_extract<ConstantInt>(pTessShaderDomain->getOperand(0))->getZExtValue());
                     }
-                }
-                numTEFactorsInDomain++;
-            }
-            else if (IID == GenISAIntrinsic::GenISA_ScalarTessFactors)
-            {
-                const unsigned int tessFactor = int_cast<unsigned int>(llvm::cast<ConstantInt>(inst->getOperand(0))->getZExtValue());
-                switch (tessFactor)
-                {
-                case SHADER_OUTPUT_TYPE_FINAL_QUAD_U_EQ_0_EDGE_TESSFACTOR:
-                case SHADER_OUTPUT_TYPE_FINAL_QUAD_V_EQ_0_EDGE_TESSFACTOR:
-                case SHADER_OUTPUT_TYPE_FINAL_QUAD_U_EQ_1_EDGE_TESSFACTOR:
-                case SHADER_OUTPUT_TYPE_FINAL_QUAD_V_EQ_1_EDGE_TESSFACTOR:
-                case SHADER_OUTPUT_TYPE_FINAL_QUAD_U_INSIDE_TESSFACTOR:
-                case SHADER_OUTPUT_TYPE_FINAL_QUAD_V_INSIDE_TESSFACTOR:
-                    tessShaderDomain = USC::TESSELLATOR_DOMAIN_QUAD;
-                    break;
-                case SHADER_OUTPUT_TYPE_FINAL_TRI_U_EQ_0_EDGE_TESSFACTOR:
-                case SHADER_OUTPUT_TYPE_FINAL_TRI_V_EQ_0_EDGE_TESSFACTOR:
-                case SHADER_OUTPUT_TYPE_FINAL_TRI_W_EQ_0_EDGE_TESSFACTOR:
-                case SHADER_OUTPUT_TYPE_FINAL_TRI_INSIDE_TESSFACTOR:
-                    tessShaderDomain = USC::TESSELLATOR_DOMAIN_TRI;
-                    break;
-                case SHADER_OUTPUT_TYPE_FINAL_LINE_DETAIL_TESSFACTOR:
-                case SHADER_OUTPUT_TYPE_FINAL_LINE_DENSITY_TESSFACTOR:
-                    tessShaderDomain = USC::TESSELLATOR_DOMAIN_ISOLINE;
-                    break;
                 }
                 numTEFactorsInDomain++;
             }

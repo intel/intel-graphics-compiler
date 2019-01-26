@@ -178,7 +178,6 @@ Imported_Intrinsics = \
     "GenISA_OutputTessControlPoint": ["void",["float","float","float","float","int","int","int"],"None"],
     "GenISA_OutputTessFactors": ["void",["float","float","float","float","float","float"],"None"],
     "GenISA_DCL_HSPatchConstInputVec": ["float4",["int"],"ReadMem"],
-    "GenISA_ScalarTessFactors": ["void",["int","float"],"None"],
     "GenISA_OuterScalarTessFactors": ["void",["int","float"],"None"],
     "GenISA_InnerScalarTessFactors": ["void",["int","float"],"None"],
     "GenISA_DCL_DSPatchConstInputVec": ["float4",["int"],"NoMem"],
