@@ -205,6 +205,9 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
 
     if (m_pVISAModule->isDirectElfInput)
     {
+        auto decodedDbg = new DbgDecoder(m_pVISAModule->m_pShader->ProgramOutput()->m_debugDataGenISA);
+        m_pDwarfDebug->setDecodedDbg(decodedDbg);
+
         m_pVISAModule->buildDirectElfMaps();
 
         // Emit src line mapping directly instead of
@@ -391,6 +394,7 @@ void DebugEmitter::ResetVISAModule()
     toFree.push_back(m_pVISAModule);
     m_pVISAModule->Reset();
     m_pVISAModule->setDISPToFuncMap(m_pDwarfDebug->getDISPToFunction());
+    m_pVISAModule->SetDwarfDebug(m_pDwarfDebug);
 }
 
 /*static*/ bool DebugMetadataInfo::hasDashgOption(CodeGenContext* ctx)

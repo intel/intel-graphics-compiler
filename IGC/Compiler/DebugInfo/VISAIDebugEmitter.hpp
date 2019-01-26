@@ -29,8 +29,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 #include "common/LLVMWarningsPop.hpp"
-
-#include "VISAModule.hpp"
+#include "common/Types.hpp"
+#include <string>
 
 namespace llvm
 {
@@ -42,6 +42,7 @@ namespace IGC
 {
 // Forward declaration
 class CShader;
+class VISAModule;
 
 /// @brief IDebugEmitter is an interface for debug info emitter class.
 ///        It can be used by IGC VISA emitter pass to emit debug info.
@@ -96,6 +97,233 @@ public:
     virtual IGC::VISAModule* GetVISAModule() = 0;
 
     virtual void SetVISAModule(IGC::VISAModule*) = 0;
+};
+
+// Decode Gen debug info data structure
+class DbgDecoder
+{
+public:
+    class Mapping
+    {
+    public:
+        class Register
+        {
+        public:
+            uint16_t regNum;
+            uint16_t subRegNum; // for GRF, in byte offset
+        };
+        class Memory
+        {
+        public:
+            uint32_t isBaseOffBEFP : 1; // MSB of 32-bit field denotes whether base if off BE_FP (0) or absolute (1)
+            int32_t memoryOffset : 31; // memory offset
+        };
+        union {
+            Register r;
+            Memory m;
+        };
+    };
+    class VarAlloc
+    {
+    public:
+        enum VirtualVarType
+        {
+            VirTypeAddress = 0,
+            VirTypeFlag = 1,
+            VirTypeGRF = 2
+        };
+        enum PhysicalVarType
+        {
+            PhyTypeAddress = 0,
+            PhyTypeFlag = 1,
+            PhyTypeGRF = 2,
+            PhyTypeMemory = 3
+        };
+        VirtualVarType virtualType;
+        PhysicalVarType physicalType;
+        Mapping mapping;
+    };
+    class LiveIntervalsVISA
+    {
+    public:
+        uint16_t start = 0;
+        uint16_t end = 0;
+        VarAlloc var;
+    };
+    class VarInfo
+    {
+    public:
+        std::string name;
+        std::vector<LiveIntervalsVISA> lrs;
+
+        // Assume JIT always assigned same GRF/scratch slot for entire
+        // lifetime for variable
+        bool isGRF()
+        {
+            if (lrs.size() == 0)
+                return false;
+
+            if (lrs.front().var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeGRF)
+                return true;
+
+            return false;
+        }
+
+        bool isSpill()
+        {
+            if (lrs.size() == 0)
+                return false;
+
+            if (lrs.front().var.physicalType == DbgDecoder::VarAlloc::PhysicalVarType::PhyTypeMemory)
+                return true;
+
+            return false;
+        }
+
+        Mapping::Register getGRF()
+        {
+            return lrs.front().var.mapping.r;
+        }
+
+        Mapping::Memory getSpillOffset()
+        {
+            return lrs.front().var.mapping.m;
+        }
+    };
+    class DbgInfoFormat
+    {
+    public:
+        std::string kernelName;
+        uint32_t relocOffset = 0;
+        std::vector<std::pair<unsigned int, unsigned int>> CISAOffsetMap;
+        std::vector<std::pair<unsigned int, unsigned int>> CISAIndexMap;
+        std::vector<VarInfo> Vars;
+    };
+
+    std::vector<DbgInfoFormat> compiledObjs;
+
+private:
+    void* dbg;
+    uint16_t numCompiledObj = 0;
+    uint32_t magic = 0;
+
+    template<typename T> T read()
+    {
+        T* dbgT = (T*)dbg;
+        T data = *dbgT;
+        dbg = ++dbgT;
+        return data;
+    }
+
+    VarAlloc readVarAlloc()
+    {
+        VarAlloc data;
+        const unsigned int phyRefGRF = 2;
+        const unsigned int phyRefMem = 3;
+
+        data.virtualType = (VarAlloc::VirtualVarType)read<uint8_t>();
+        data.physicalType = (VarAlloc::PhysicalVarType)read<uint8_t>();
+
+        if (data.physicalType == phyRefGRF)
+        {
+            data.mapping.r.regNum = read<uint16_t>();
+            data.mapping.r.subRegNum = read<uint16_t>();
+        }
+        else if (data.physicalType == phyRefMem)
+        {
+            uint32_t temp = read<uint32_t>();
+            data.mapping.m.memoryOffset = (temp & 0x7fffffff);
+            data.mapping.m.isBaseOffBEFP = (temp & 0x80000000);
+        }
+        return data;
+    }
+
+    void decode()
+    {
+        magic = read<uint32_t>();
+        numCompiledObj = read<uint16_t>();
+
+        for (unsigned int i = 0; i != numCompiledObj; i++)
+        {
+            DbgInfoFormat f;
+            uint8_t nameLen = read<uint8_t>();
+            for (unsigned int j = 0; j != nameLen; j++)
+                f.kernelName += read<char>();
+            f.relocOffset = read<uint32_t>();
+
+            // cisa offsets map
+            uint32_t count = read<uint32_t>();
+            for (unsigned int j = 0; j != count; j++)
+            {
+                uint32_t cisaOffset = read<uint32_t>();
+                uint32_t genOffset = read<uint32_t>();
+                f.CISAOffsetMap.push_back(std::make_pair(cisaOffset, genOffset));
+            }
+
+            // cisa index map
+            count = read<uint32_t>();
+            for (unsigned int j = 0; j != count; j++)
+            {
+                uint32_t cisaIndex = read<uint32_t>();
+                uint32_t genOffset = read<uint32_t>();
+                f.CISAIndexMap.push_back(std::make_pair(cisaIndex, genOffset));
+            }
+
+            // var info
+            count = read<uint32_t>();
+            for (unsigned int j = 0; j != count; j++)
+            {
+                VarInfo v;
+
+                nameLen = read<uint8_t>();
+                for (unsigned int k = 0; k != nameLen; k++)
+                    v.name += read<char>();
+
+                auto countLRs = read<uint16_t>();
+                for (unsigned int k = 0; k != countLRs; k++)
+                {
+                    LiveIntervalsVISA lv;
+                    lv.start = read<uint16_t>();
+                    lv.end = read<uint16_t>();
+                    lv.var = readVarAlloc();
+
+                    v.lrs.push_back(lv);
+                }
+
+                f.Vars.push_back(v);
+            }
+
+            compiledObjs.push_back(f);
+        }
+    }
+
+public:
+    DbgDecoder(void* buf) : dbg(buf)
+    {
+        if (buf)
+            decode();
+    }
+
+    bool getVarInfo(std::string& kernelName, std::string& name, VarInfo& var)
+    {
+        for (auto& k : compiledObjs)
+        {
+            if (compiledObjs.size() > 1 &&
+                k.kernelName.compare(kernelName) != 0)
+                continue;
+
+            for (auto& v : k.Vars)
+            {
+                if (v.name.compare(name) == 0)
+                {
+                    var = v;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 };
 
 } // namespace IGC

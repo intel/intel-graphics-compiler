@@ -77,6 +77,8 @@ namespace IGC
     class DIEEntry;
     class DwarfDebug;
 
+    class DbgDecoder;
+
     /// \brief This struct describes location entries emitted in the .debug_loc
     /// section.
     class DotDebugLocEntry
@@ -490,6 +492,15 @@ namespace IGC
         //
         DwarfDebug(IGC::StreamEmitter *A, ::IGC::VISAModule *M);
 
+        ~DwarfDebug()
+        {
+            if (decodedDbg)
+            {
+                delete decodedDbg;
+                decodedDbg = nullptr;
+            }
+        }
+
         void insertDIE(const llvm::MDNode *TypeMD, DIE *Die)
         {
             MDTypeNodeToDieMap.insert(std::make_pair(TypeMD, Die));
@@ -574,6 +585,8 @@ namespace IGC
         // line#, vector<inlinedAt>
         std::map<unsigned int, std::vector<llvm::DILocation*>> isStmtSet;
 
+        DbgDecoder* decodedDbg = nullptr;
+
     public:
         std::map<llvm::DISubprogram*, const llvm::Function*>* getDISPToFunction()
         {
@@ -581,6 +594,9 @@ namespace IGC
         }
 
         unsigned int lowPc = 0, highPc = 0;
+
+        DbgDecoder* getDecodedDbg() { return decodedDbg; }
+        void setDecodedDbg(DbgDecoder* d) { decodedDbg = d; }
     };
 } // namespace IGC
 

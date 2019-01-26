@@ -169,6 +169,7 @@ DwarfDebug::DwarfDebug(StreamEmitter *A, VISAModule *M) :
     DwarfVersion = getDwarfVersionFromModule(M->GetModule());
 
     gatherDISubprogramNodes();
+    M->SetDwarfDebug(this);
 }
 
 MCSymbol *DwarfDebug::getStringPoolSym()
@@ -325,6 +326,9 @@ bool DwarfDebug::isLexicalScopeDIENull(LexicalScope *Scope)
     if (Ranges.size() > 1)
         return false;
 
+    if (m_pModule->isDirectElfInput)
+        return false;
+
     // We don't create a DIE if we have a single Range and the end label
     // is null.
     SmallVectorImpl<InsnRange>::const_iterator RI = Ranges.begin();
@@ -343,11 +347,26 @@ DIE *DwarfDebug::constructLexicalScopeDIE(CompileUnit *TheCU, LexicalScope *Scop
     if (Scope->isAbstractScope())
         return ScopeDIE;
 
-    if (m_pModule->isDirectElfInput)
-        return ScopeDIE;
-
     const SmallVectorImpl<InsnRange> &Ranges = Scope->getRanges();
     assert(Ranges.empty() == false && "LexicalScope does not have instruction markers!");
+
+    if (m_pModule->isDirectElfInput)
+    {
+        // This makes sense only for full debug info.
+        // Resolve VISA index to Gen IP here.
+        auto start = Ranges.front().first;
+        auto end = Ranges.back().second;
+        InsnRange RI(start, end);
+        auto GenISARanges = m_pModule->getGenISARange(RI);
+
+        if (GenISARanges.size() > 0)
+        {
+            // Emit loc/high_pc
+            TheCU->addUInt(ScopeDIE, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, GenISARanges.front().first);
+            TheCU->addUInt(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, GenISARanges.back().second);
+        }
+        return ScopeDIE;
+    }
 
     // CQ#: 21731
     // Emit lowpc/highpc only
@@ -2092,3 +2111,29 @@ void DwarfDebug::gatherDISubprogramNodes()
     m_pModule->setDISPToFuncMap(&DISPToFunction);
 }
 
+bool VISAModule::getVarInfo(std::string prefix, unsigned int vreg, DbgDecoder::VarInfo& var)
+{
+    std::string name = prefix + std::to_string(vreg);
+    if (VirToPhyMap.size() == 0)
+    {
+        // populate map one time
+        for (auto& co : dd->getDecodedDbg()->compiledObjs)
+        {
+            if (co.kernelName.compare(m_pEntryFunc->getName().str()) == 0)
+            {
+                for (auto& v : co.Vars)
+                {
+                    VirToPhyMap.insert(std::make_pair(v.name, v));
+                }
+                break;
+            }
+        }
+    }
+
+    auto it = VirToPhyMap.find(name);
+    if (it == VirToPhyMap.end())
+        return false;
+
+    var = (*it).second;
+    return true;
+}

@@ -68,7 +68,7 @@ using namespace ::IGC;
 
 /// CompileUnit - Compile unit constructor.
 CompileUnit::CompileUnit(unsigned UID, DIE *D, DICompileUnit* Node,
-    StreamEmitter *A, const VISAModule *M, IGC::DwarfDebug *DW)
+    StreamEmitter *A, VISAModule *M, IGC::DwarfDebug *DW)
     : UniqueID(UID), Node(Node), CUDie(D), Asm(A), m_pModule(M), DD(DW),
       IndexTyDie(0), DebugInfoOffset(0)
 {
@@ -1456,85 +1456,238 @@ DIE *CompileUnit::constructVariableDIE(DbgVariable &DV, bool isScopeAbstract)
         return VariableDie;
     }
 
-    // Variable which is not immediate can have surface, location or both.
-    if (Loc.HasSurface())
+    if (m_pModule->isDirectElfInput)
     {
-        DIEBlock *Block = new (DIEValueAllocator)DIEBlock();
-        addRegisterOp(Block, Loc.GetSurface());
-        // Now attach the surface information to the DIE.
-        addBlock(VariableDie, dwarf::DW_AT_segment, Block);
-        if (!Loc.HasLocation())
+        if (Loc.HasSurface())
         {
-            // Make sure there is always a location attribute when there is a surface attribute.
-            // In this case, attach an zero address opcode location information to the DIE.
-            DIEBlock *nBlock = new (DIEValueAllocator)DIEBlock();
-            addUInt(nBlock, dwarf::DW_FORM_data1, dwarf::DW_OP_addr);
-            dwarf::Form form = (Asm->GetPointerSize() == 8) ? dwarf::DW_FORM_data8 : dwarf::DW_FORM_data4;
-            addUInt(nBlock, form, 0);
-            addBlock(VariableDie, dwarf::DW_AT_location, nBlock);
+            DIEBlock *Block = new (DIEValueAllocator)DIEBlock();
+            addRegisterOp(Block, Loc.GetSurface());
+            // Now attach the surface information to the DIE.
+            addBlock(VariableDie, dwarf::DW_AT_segment, Block);
         }
+
+        if (Loc.IsSLM())
+            buildSLM(DV, VariableDie, &Loc);
+        else if (Loc.IsSampler())
+            buildSampler(DV, VariableDie, &Loc);
+        else if (Loc.HasSurface() &&
+            (DV.getType() && DV.getType()->getTag() == dwarf::DW_TAG_pointer_type))
+            buildPointer(DV, VariableDie, &Loc);
+        else
+            buildGeneral(DV, VariableDie, &Loc);
     }
-
-    if (Loc.HasLocation())
+    else
     {
-#if 0
-        /* This has been disabled because of following kind of metadata node generated:
-        !98 = metadata !{i32 786688, metadata !11, metadata !"adder", metadata !6, i32 4, metadata !14, i32 0, metadata !56, i64
-        2, i64 1, i64 32}
+        // Variable which is not immediate can have surface, location or both.
+        if (Loc.HasSurface())
+        {
+            DIEBlock *Block = new (DIEValueAllocator)DIEBlock();
+            addRegisterOp(Block, Loc.GetSurface());
+            // Now attach the surface information to the DIE.
+            addBlock(VariableDie, dwarf::DW_AT_segment, Block);
+            if (!Loc.HasLocation())
+            {
+                // Make sure there is always a location attribute when there is a surface attribute.
+                // In this case, attach an zero address opcode location information to the DIE.
+                DIEBlock *nBlock = new (DIEValueAllocator)DIEBlock();
+                addUInt(nBlock, dwarf::DW_FORM_data1, dwarf::DW_OP_addr);
+                dwarf::Form form = (Asm->GetPointerSize() == 8) ? dwarf::DW_FORM_data8 : dwarf::DW_FORM_data4;
+                addUInt(nBlock, form, 0);
+                addBlock(VariableDie, dwarf::DW_AT_location, nBlock);
+            }
+        }
 
-        numOperands here indicates complex addressing is used. But for complex addressing,
-        9th operand should be a metadata node whereas here integer nodes are added.
-        */
-        assert(!(DV.variableHasComplexAddress() || DV.isBlockByrefVariable()) &&
-            "Should handle complex address");
+        if (Loc.HasLocation())
+        {
+#if 0
+            /* This has been disabled because of following kind of metadata node generated:
+            !98 = metadata !{i32 786688, metadata !11, metadata !"adder", metadata !6, i32 4, metadata !14, i32 0, metadata !56, i64
+            2, i64 1, i64 32}
+
+            numOperands here indicates complex addressing is used. But for complex addressing,
+            9th operand should be a metadata node whereas here integer nodes are added.
+            */
+            assert(!(DV.variableHasComplexAddress() || DV.isBlockByrefVariable()) &&
+                "Should handle complex address");
 #endif
 
-        DIEBlock *Block = new (DIEValueAllocator)DIEBlock();
+            DIEBlock *Block = new (DIEValueAllocator)DIEBlock();
 
-        if (!Loc.IsInMemory())
-        {
-            assert(Loc.IsRegister() && "Direct location must be register");
-            addRegisterOp(Block, Loc.GetRegister());
-        }
-        else
-        {
-            if (Loc.IsRegister())
+            if (!Loc.IsInMemory())
             {
-                addRegisterOffset(Block, Loc.GetRegister(), Loc.GetOffset());
+                assert(Loc.IsRegister() && "Direct location must be register");
+                addRegisterOp(Block, Loc.GetRegister());
             }
             else
             {
-                addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_constu);
-                addSInt(Block, dwarf::DW_FORM_udata, Loc.GetOffset());
+                if (Loc.IsRegister())
+                {
+                    addRegisterOffset(Block, Loc.GetRegister(), Loc.GetOffset());
+                }
+                else
+                {
+                    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_constu);
+                    addSInt(Block, dwarf::DW_FORM_udata, Loc.GetOffset());
+                }
+
+                if (Loc.IsInMemory())
+                {
+                    // TODO: Seems as this is not needed!
+                    //addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref);
+                }
             }
 
-            if (Loc.IsInMemory())
+            // Now attach the location information to the DIE.
+            addBlock(VariableDie, dwarf::DW_AT_location, Block);
+
+            if (Loc.IsVectorized())
             {
-                // TODO: Seems as this is not needed!
-                //addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref);
+                // Add description stating whether variable was vectorized in VISA
+                addString(VariableDie, dwarf::DW_AT_description, "vectorized");
+                uint16_t simdSize = m_pModule->GetSIMDSize();
+                addString(VariableDie, dwarf::DW_AT_description,
+                    simdSize == 8 ? "simd8" : simdSize == 16 ? "simd16" : "???");
+            }
+
+            if (Loc.IsInGlobalAddrSpace())
+            {
+                addString(VariableDie, dwarf::DW_AT_description, "global");
             }
         }
 
-        // Now attach the location information to the DIE.
-        addBlock(VariableDie, dwarf::DW_AT_location, Block);
-
-        if (Loc.IsVectorized())
-        {
-            // Add description stating whether variable was vectorized in VISA
-            addString(VariableDie, dwarf::DW_AT_description, "vectorized");
-			uint16_t simdSize = m_pModule->GetSIMDSize();
-			addString(VariableDie, dwarf::DW_AT_description, 
-				simdSize == 8 ? "simd8" : simdSize == 16 ? "simd16" : "???");
-        }
-
-        if (Loc.IsInGlobalAddrSpace())
-        {
-            addString(VariableDie, dwarf::DW_AT_description, "global");
-        }
+        DV.setDIE(VariableDie);
     }
-
-    DV.setDIE(VariableDie);
     return VariableDie;
+}
+
+void CompileUnit::buildPointer(DbgVariable& var, DIE* die, VISAVariableLocation* loc)
+{
+    auto bti = loc->GetSurface() - VISAModule::TEXTURE_REGISTER_BEGIN;
+    
+    DIEBlock *Block = new (DIEValueAllocator)DIEBlock();
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const4u);
+    addUInt(Block, dwarf::DW_FORM_data4, 0);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_stack_value);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
+    addUInt(Block, dwarf::DW_FORM_data1, 32);
+    addUInt(Block, dwarf::DW_FORM_data1, 0);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit0);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_stack_value);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
+    addUInt(Block, dwarf::DW_FORM_data1, 16);
+    addUInt(Block, dwarf::DW_FORM_data1, 0);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const2u);
+    addUInt(Block, dwarf::DW_FORM_data2, bti & 0xffff);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_stack_value);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
+    addUInt(Block, dwarf::DW_FORM_data1, 8);
+    addUInt(Block, dwarf::DW_FORM_data1, 0);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_lit2);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_stack_value);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
+    addUInt(Block, dwarf::DW_FORM_data1, 8);
+    addUInt(Block, dwarf::DW_FORM_data1, 0);
+
+    addBlock(die, dwarf::DW_AT_location, Block);
+}
+
+void CompileUnit::buildSampler(DbgVariable& var, DIE* die, VISAVariableLocation* loc)
+{
+    Address addr;
+    addr.Set(Address::Space::eSampler, loc->GetSurface() - VISAModule::SAMPLER_REGISTER_BEGIN, loc->GetOffset());
+
+    DIEBlock *Block = new (DIEValueAllocator)DIEBlock();
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const8u);
+    addUInt(Block, dwarf::DW_FORM_data8, addr.GetAddress());
+
+    addBlock(die, dwarf::DW_AT_location, Block);
+}
+
+void CompileUnit::buildSLM(DbgVariable& var, DIE* die, VISAVariableLocation* loc)
+{
+    DbgDecoder::VarInfo varInfo;
+    auto regNum = loc->GetRegister();
+    m_pModule->getVarInfo("V", regNum, varInfo);
+
+    Address addr;
+    addr.Set(Address::Space::eLocal, 0, 0);
+
+    static const uint32_t local_memory_space_mask = 0xffff;
+
+    DIEBlock *Block = new (DIEValueAllocator)DIEBlock();
+    addRegisterOffset(Block, varInfo.getGRF().regNum, 0);
+    
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_deref_size);
+    addUInt(Block, dwarf::DW_FORM_data1, 4);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const2u);
+    addUInt(Block, dwarf::DW_FORM_data2, 0xffff);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_and);
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const8u);
+    addUInt(Block, dwarf::DW_FORM_data8, addr.GetAddress());
+
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_plus);
+    
+    addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_stack_value);
+
+    addBlock(die, dwarf::DW_AT_location, Block);
+}
+
+void CompileUnit::buildGeneral(DbgVariable& var, DIE* die, VISAVariableLocation* loc)
+{
+    DbgDecoder::VarInfo varInfo;
+    auto regNum = loc->GetRegister();
+    m_pModule->getVarInfo("V", regNum, varInfo);
+
+    if (varInfo.isGRF())
+    {
+        DIEBlock *Block = new (DIEValueAllocator)DIEBlock();
+        addRegisterOffset(Block, varInfo.getGRF().regNum, 0);
+
+        if (varInfo.getGRF().subRegNum != 0)
+        {
+            enum
+            {
+                REG_SIZE_BITS = 256
+            };
+
+            unsigned int subReg = varInfo.getGRF().subRegNum;
+            auto offsetInBits = subReg * 8;
+            auto sizeInBits = REG_SIZE_BITS - offsetInBits;
+
+            addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_bit_piece);
+            addUInt(Block, dwarf::DW_FORM_data1, sizeInBits);
+            addUInt(Block, dwarf::DW_FORM_data1, offsetInBits);
+        }
+        addBlock(die, dwarf::DW_AT_location, Block);
+    }
+    else if(varInfo.isSpill())
+    {
+        // handle spill
+        Address addr;
+        addr.Set(Address::Space::eScratch, 0, varInfo.getSpillOffset().memoryOffset);
+
+        DIEBlock *Block = new (DIEValueAllocator)DIEBlock();
+        addUInt(Block, dwarf::DW_FORM_data1, dwarf::DW_OP_const8u);
+        addUInt(Block, dwarf::DW_FORM_data8, addr.GetAddress());
+        addUInt(Block, dwarf::DW_FORM_data1 , dwarf::DW_OP_deref);
+        addBlock(die, dwarf::DW_AT_location, Block);
+    }
 }
 
 /// constructMemberDIE - Construct member DIE from DIDerivedType.

@@ -52,7 +52,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace llvm;
 using namespace IGC;
 
-
 VISAModule::VISAModule(CShader* pShader)
 {
     m_pShader = pShader;
@@ -864,4 +863,39 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
     }
 
     return GenISARange;
+}
+
+bool VISAVariableLocation::IsSampler() const
+{
+    if (!HasSurface())
+        return false;
+
+    auto surface = GetSurface();
+    if (surface >= VISAModule::SAMPLER_REGISTER_BEGIN &&
+        surface < VISAModule::SAMPLER_REGISTER_BEGIN + VISAModule::SAMPLER_REGISTER_NUM)
+        return true;
+    return false;
+}
+
+bool VISAVariableLocation::IsTexture() const
+{
+    if (!HasSurface())
+        return false;
+
+    auto surface = GetSurface();
+    if (surface >= VISAModule::TEXTURE_REGISTER_BEGIN &&
+        surface < VISAModule::TEXTURE_REGISTER_BEGIN + VISAModule::TEXTURE_REGISTER_NUM)
+        return true;
+    return false;
+}
+
+bool VISAVariableLocation::IsSLM() const
+{
+    if (!HasSurface())
+            return false;
+
+    auto surface = GetSurface();
+    if (surface == VISAModule::LOCAL_SURFACE_BTI)
+        return true;
+    return false;
 }

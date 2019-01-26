@@ -35,6 +35,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <string>
 #include <unordered_set>
+#include <unordered_map>
+#include "Compiler/DebugInfo/VISAIDebugEmitter.hpp"
 #include "Compiler/DebugInfo/LexicalScopes.hpp"
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
 
@@ -56,6 +58,8 @@ namespace IGC
 {
 class CShader;
 class CVariable;
+class VISAModule;
+class DwarfDebug;
 
 /// @brief VISAVariableLocation holds information on the source variable
 ///        location with respect to the VISA virtual machine.
@@ -127,19 +131,21 @@ public:
     }
 
     // Getter methods
-    bool IsImmediate() { return m_isImmediate; }
-    bool HasSurface() { return m_hasSurface; }
-    bool HasLocation() { return m_hasLocation; }
-    bool IsInMemory() { return m_isInMemory; }
-    bool IsRegister() { return m_isRegister; }
-    bool IsVectorized() { return m_IsVectorized; }
-    bool IsInGlobalAddrSpace() { return m_isGlobalAddrSpace; }
-
+    bool IsImmediate() const { return m_isImmediate; }
+    bool HasSurface() const { return m_hasSurface; }
+    bool HasLocation() const { return m_hasLocation; }
+    bool IsInMemory() const { return m_isInMemory; }
+    bool IsRegister() const { return m_isRegister; }
+    bool IsVectorized() const { return m_IsVectorized; }
+    bool IsInGlobalAddrSpace() const { return m_isGlobalAddrSpace; }
 
     const llvm::Constant* GetImmediate() { return m_pConstVal; }
-    unsigned int GetSurface() { return m_surfaceReg; }
-    unsigned int GetRegister() { return m_locationReg; }
-    unsigned int GetOffset() { return m_locationOffset; }
+    unsigned int GetSurface() const { return m_surfaceReg; }
+    unsigned int GetRegister() const { return m_locationReg; }
+    unsigned int GetOffset() const { return m_locationOffset; }
+    bool IsSampler() const;
+    bool IsTexture() const;
+    bool IsSLM() const;
 
 private:
     /// @brief Initialize all class members to default (empty location).
@@ -172,6 +178,132 @@ private:
     unsigned int m_locationReg;
     unsigned int m_locationOffset;
 
+};
+
+typedef uint64_t GfxAddress;
+
+/*
+* Encoder/decoder for manipulating 64-bit GFX addresses.
+*
+*  63            56 55                   48  47            0
+*  ---------------------------------------------------------
+* | Address Space  |   Index (BTI/Sampler)  |    Offset     |
+*  ---------------------------------------------------------
+*
+*  Upper      8 bits represent the address space (flat, sampler, surface, etc).
+*  Following  8 bits represent the index (valid only for surfaces/sampler), and
+*  Following 48 bits respesent the offset within a memory region.
+*
+*/
+class Address
+{
+public:
+    enum class Space : GfxAddress
+    {
+        eContextFlat = 0,
+        eContextFlat2 = 255,
+        eSampler = 1,
+        eSurface = 2,
+        eGRF = 3,
+        eSurfaceRelocated = 4,
+        eMMIO = 5,
+        ePhysical = 6,
+        eVirtual = 7,
+        ePCI = 8,
+        eScratch = 9,
+        eLocal = 10
+    };
+
+private:
+    static const uint32_t c_space_shift = 56;
+
+    static const uint32_t c_index_shift = 48;
+    static const uint32_t c_offset_shift = 0;
+
+    static const uint32_t c_space_size = 8;
+    static const uint32_t c_index_size = 8;
+    static const uint32_t c_offset_size = 64 - c_index_size - c_space_size;
+
+    static const GfxAddress c_offset_mask = ((1ull << c_offset_size) - 1);
+    static const GfxAddress c_space_mask = ((1ull << c_space_size) - 1);
+    static const GfxAddress c_index_mask = ((1ull << c_index_size) - 1);
+
+public:
+    Address(GfxAddress addr = 0)
+        : m_addr(addr)
+    {
+    }
+
+    Space
+        GetSpace() const
+    {
+        return (Space)((m_addr >> c_space_shift) & c_space_mask);
+    }
+
+    uint32_t
+        GetIndex() const
+    {
+        return (uint32_t)((m_addr >> c_index_shift) & c_index_mask);
+    }
+
+    uint64_t
+        GetOffset() const
+    {
+        return ((m_addr >> c_offset_shift) & c_offset_mask);
+    }
+
+    uint64_t
+        GetAddress() const
+    {
+        return m_addr;
+    }
+
+    uint64_t
+        GetCanonicalizedAddress() const
+    {
+        bool isSignBitSet = ((1ull << 47) & m_addr) != 0;
+
+        return isSignBitSet ? (~c_offset_mask) | m_addr : c_offset_mask & m_addr;
+    }
+
+    void
+        SetSpace(Space space)
+    {
+        GfxAddress s = static_cast<GfxAddress>(space);
+        assert(s == (s & c_space_mask));
+        m_addr = (m_addr & ~(c_space_mask << c_space_shift)) | ((s & c_space_mask) << c_space_shift);
+    }
+
+    void
+        SetIndex(uint32_t index)
+    {
+        assert(index == (index & c_index_mask));
+        m_addr = (m_addr & ~(c_index_mask << c_index_shift)) | ((index & c_index_mask) << c_index_shift);
+    }
+
+    void
+        SetOffset(uint64_t offset)
+    {
+        assert(offset == (offset & c_offset_mask));
+        m_addr = (m_addr & ~(c_offset_mask << c_offset_shift)) | ((offset & c_offset_mask) << c_offset_shift);
+    }
+
+    void
+        Set(Space space, uint32_t index, uint64_t offset)
+    {
+        SetSpace(space);
+        SetIndex(index);
+        SetOffset(offset);
+    }
+
+    void
+        Set(GfxAddress address)
+    {
+        m_addr = address;
+    }
+
+private:
+    uint64_t m_addr;
 };
 
 const unsigned int INVALID_SIZE = (~0);
@@ -313,6 +445,17 @@ public:
     std::vector<std::pair<unsigned int, unsigned int>> GenISAToVISAIndex;
     std::map<unsigned int, std::vector<unsigned int>> VISAIndexToAllGenISAOff;
     std::map<unsigned int, unsigned int> GenISAInstSizeBytes;
+    class comparer
+    {
+    public:
+        bool operator()(const std::string& v1, const std::string& v2) const
+        {
+            return v1.compare(v2) < 0;
+        }
+    };
+    std::map<std::string, DbgDecoder::VarInfo, comparer> VirToPhyMap;
+    
+    bool getVarInfo(std::string prefix, unsigned int vreg, DbgDecoder::VarInfo& var);
 
     void buildDirectElfMaps();
 
@@ -343,6 +486,13 @@ public:
 
     unsigned int GetCurrentVISAId() { return m_currentVisaId; }
 
+    void SetDwarfDebug(DwarfDebug* d)
+    {
+        dd = d;
+    }
+
+    DwarfDebug* GetDwarfDebug() { return dd; }
+
 private:
     /// @brief Default Constructor.
     ///        Defined as private to prevent creation of default constructor.
@@ -370,6 +520,7 @@ private:
     std::map<const llvm::Function*, unsigned int> FuncIDMap;
     mutable std::unordered_set<const CVariable*> m_outputVals;
     std::map<llvm::DISubprogram*, const llvm::Function*>* DISPToFunc = nullptr;
+    DwarfDebug* dd = nullptr;
 
     unsigned int m_currentVisaId;
 
@@ -377,6 +528,7 @@ private:
 
     InstInfoMap m_instInfoMap;
 
+public:
     /// Constants represents VISA register encoding in DWARF
     static const unsigned int LOCAL_SURFACE_BTI = (254);
     static const unsigned int GENERAL_REGISTER_BEGIN = (0);

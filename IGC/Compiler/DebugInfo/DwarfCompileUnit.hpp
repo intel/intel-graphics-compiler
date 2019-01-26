@@ -81,7 +81,7 @@ class CompileUnit {
     /// Asm - Target of Dwarf emission.
     StreamEmitter *Asm;
     /// m_pModule - VISA processed module
-    const VISAModule *m_pModule;
+    VISAModule *m_pModule;
 
     // Holders for some common dwarf information.
     IGC::DwarfDebug *DD;
@@ -116,7 +116,7 @@ class CompileUnit {
 
 public:
     CompileUnit(unsigned UID, DIE *D, llvm::DICompileUnit* CU,
-        StreamEmitter *A, const VISAModule *M, IGC::DwarfDebug *DW);
+        StreamEmitter *A, VISAModule *M, IGC::DwarfDebug *DW);
     ~CompileUnit();
 
     // Accessors.
@@ -361,6 +361,12 @@ private:
     {
         return DD->resolve(Ref);
     }
+
+    // Added for 1-step elf
+    void buildPointer(DbgVariable&, DIE*, VISAVariableLocation*);
+    void buildSampler(DbgVariable&, DIE*, VISAVariableLocation*);
+    void buildSLM(DbgVariable&, DIE*, VISAVariableLocation*);
+    void buildGeneral(DbgVariable&, DIE*, VISAVariableLocation*);
 };
 
 } // namespace IGC
