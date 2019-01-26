@@ -531,18 +531,17 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
             if (I != E)
             {
+                auto llvmInst = (*I).m_root;
+                IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginInstruction(llvmInst);)
+
                 // before inserting the terminator, initialize constant pool & insert the de-ssa moves
                 if (isa<BranchInst>((*I).m_root))
                 {
                     m_encoder->SetSecondHalf(false);
                     // insert constant initializations.
-                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
                     InitConstant(block.bb);
-                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
                     // insert the de-ssa movs.
-                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
                     MovPhiSources(block.bb);
-                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
                 }
 
                 // If slicing happens, then recalculate the number of instances.
@@ -560,21 +559,18 @@ bool EmitPass::runOnFunction(llvm::Function &F)
                 if (numInstance < 2)
                 {
                     m_encoder->SetSecondHalf(false);
-                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginInstruction((*I).m_root);)
                     (*I).m_pattern->Emit(this, init);
-                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndInstruction((*I).m_root);)
                     ++I;
                 }
                 else
                 {
-                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginInstruction((*I).m_root);)
                     m_encoder->SetSecondHalf(false);
                     (*I).m_pattern->Emit(this, init);
                     m_encoder->SetSecondHalf(true);
                     (*I).m_pattern->Emit(this, init);
-                    IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndInstruction((*I).m_root);)
                     ++I;
                 }
+                IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndInstruction(llvmInst);)
             }
         }
         if (llvmtoVISADump)
