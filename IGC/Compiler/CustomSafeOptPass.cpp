@@ -1217,10 +1217,6 @@ void GenSpecificPattern::visitCastInst(CastInst &I)
     {
         srcVal = dyn_cast<FPToSIInst>(I.getOperand(0));
     }
-    else if(isa<UIToFPInst>(&I))
-    {
-        srcVal = dyn_cast<FPToUIInst>(I.getOperand(0));
-    }
     if(srcVal && srcVal->getOperand(0)->getType() == I.getType())
     {
         if((srcVal = dyn_cast<Instruction>(srcVal->getOperand(0))))
