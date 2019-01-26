@@ -248,6 +248,7 @@ class DDD {
     Mem_Manager &mem;
     Edge_Allocator depEdgeAllocator;
     int HWthreadsPerEU;
+    bool useMTLatencies;
     const LatencyTable LT;
 
     int GRF_BUCKET;
@@ -260,7 +261,6 @@ class DDD {
     int OTHER_ARF_BUCKET;
     int TOTAL_BUCKETS;
     int totalGRFNum;
-    bool useMTLatencies;
     G4_Kernel* kernel;
 
     // Gather all initial ready nodes.
@@ -274,8 +274,7 @@ public:
     void pairTypedWriteOrURBWriteNodes(G4_BB *bb);
 
 
-    DDD(Mem_Manager &m, G4_BB *bb, const Options *options,
-        const LatencyTable &lt, G4_Kernel *k);
+    DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k);
     ~DDD()
     {
         if (Nodes.size())
@@ -295,7 +294,7 @@ public:
     uint32_t listSchedule(G4_BB_Schedule*);
     void setPriority(Node *pred, const Edge &edge);
     void createAddEdge(Node* pred, Node* succ, DepType d);
-    void  DumpDotFile(const char*, const char*);
+    void DumpDotFile(const char*, const char*);
 
     void getBucketsForOperand(G4_INST *inst, Gen4_Operand_Number opnd_num,
                               G4_Operand *opnd,
@@ -303,29 +302,30 @@ public:
     // Returns true if instruction has any indirect operands (dst or src)
     bool getBucketDescrs(Node *inst, std::vector<BucketDescr> &bucketDescrs);
 
-    const Options *m_options;
+
     uint32_t getEdgeLatency_old(Node *node, DepType depT);
     uint32_t getEdgeLatency_new(Node *node, DepType depT);
     uint32_t getEdgeLatency(Node *node, DepType depT);
-    Mem_Manager *get_mem() { return &mem; }
+    Mem_Manager* get_mem() { return &mem; }
+    IR_Builder* getBuilder() const { return kernel->fg.builder; }
+    const Options* getOptions() const { return kernel->getOptions(); }
 };
 
 class G4_BB_Schedule {
     Mem_Manager &mem;
     G4_BB *bb;
     DDD *ddd;
-    const Options *m_options;
     G4_Kernel *kernel;
 
 public:
     std::vector<Node *> scheduledNodes;
-    unsigned lastCycle;
-    unsigned sendStallCycle;
-    unsigned sequentialCycle;
+    unsigned lastCycle = 0;
+    unsigned sendStallCycle = 0;
+    unsigned sequentialCycle  = 0;
 
     // Constructor
-    G4_BB_Schedule(G4_Kernel *kernel, Mem_Manager &m, G4_BB *bb,
-                   const Options *options, const LatencyTable &LT);
+    G4_BB_Schedule(G4_Kernel* kernel, Mem_Manager& m, G4_BB* bb,
+        const LatencyTable& LT);
     void *operator new(size_t sz, Mem_Manager &m){ return m.alloc(sz); }
     // Dumps the schedule
     void emit(std::ostream &);
@@ -333,6 +333,7 @@ public:
     G4_BB *getBB() const { return bb; };
     G4_Kernel *getKernel() const { return kernel; }
     IR_Builder *getBuilder() const { return kernel->fg.builder; }
+    const Options* getOptions() const { return kernel->getOptions(); }
 };
 
 class LocalScheduler {

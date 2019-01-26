@@ -34,11 +34,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "visa_wa.h"
 #include <queue>
 
-#define COISSUE_UNITS 2
 using namespace std;
 using namespace vISA;
-
-#define SCH_THRESHOLD 2
 
 /* Entry to the local scheduling. */
 void LocalScheduler::localScheduling()
@@ -56,16 +53,15 @@ void LocalScheduler::localScheduling()
 
     for (; ib != bend; ++ib)
     {
-        unsigned int instCountBefore = (uint32_t)(*ib)->size();
-        // mem pool for each BB
-        Mem_Manager bbMem(4096);
-
+        unsigned instCountBefore = (uint32_t)(*ib)->size();
+        #define SCH_THRESHOLD 2
         if (instCountBefore < SCH_THRESHOLD)
         {
             continue;
         }
 
-        unsigned int schedulerWindowSize = m_options->getuInt32Option(vISA_SchedulerWindowSize);
+        Mem_Manager bbMem(4096);
+        unsigned schedulerWindowSize = m_options->getuInt32Option(vISA_SchedulerWindowSize);
         if (schedulerWindowSize > 0 && instCountBefore > schedulerWindowSize)
         {
             // If BB has a lot of instructions then when recursively
@@ -86,7 +82,7 @@ void LocalScheduler::localScheduling()
                     sections.push_back(tempBB);
                     tempBB->splice(tempBB->begin(),
                         (*ib), (*ib)->begin(), inst_it);
-                    G4_BB_Schedule schedule(fg.getKernel(), bbMem, tempBB, m_options, LT);
+                    G4_BB_Schedule schedule(fg.getKernel(), bbMem, tempBB, LT);
                     count = 0;
                 }
                 count++;
@@ -104,7 +100,7 @@ void LocalScheduler::localScheduling()
         }
         else
         {
-            G4_BB_Schedule schedule(fg.getKernel(), bbMem, *ib, m_options, LT);
+            G4_BB_Schedule schedule(fg.getKernel(), bbMem, *ib, LT);
             bbInfo[i].id = (*ib)->getId();
             bbInfo[i].staticCycle = schedule.sequentialCycle;
             bbInfo[i].sendStallCycle = schedule.sendStallCycle;
@@ -121,7 +117,7 @@ void LocalScheduler::localScheduling()
 void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
 {
     const char *asmName = nullptr;
-    m_options->getOption(VISA_AsmFileName, asmName);
+    getOptions()->getOption(VISA_AsmFileName, asmName);
     char dumpFileName[MAX_OPTION_STR_LENGTH];
     SNPRINTF(dumpFileName, MAX_OPTION_STR_LENGTH, "%s.bb%d.schedule",
         asmName, bb->getId());
@@ -204,16 +200,17 @@ void G4_BB_Schedule::dumpSchedule(G4_BB *bb)
 //      - dumps the DAG (optional)
 //      - creates a new instruction listing within a BBB
 //
-G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
-    const Options *options, const LatencyTable &LT)
-    : kernel(k), mem(m), bb(block),
-    lastCycle(0), sendStallCycle(0),
-    sequentialCycle(0), m_options(options)
+G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager& m, G4_BB* block,
+    const LatencyTable& LT)
+    : kernel(k)
+    , mem(m)
+    , bb(block)
+
 {
     // we use local id in the scheduler for determining two instructions' original ordering
     bb->resetLocalId();
 
-    DDD ddd(mem, bb, m_options, LT, k);
+    DDD ddd(mem, bb, LT, k);
     // Generate pairs of TypedWrites
     bool doMessageFuse = (k->fg.builder->fuseTypedWrites() && k->getSimdSize() >= 16) ||
         k->fg.builder->fuseURBMessage();
@@ -225,11 +222,11 @@ G4_BB_Schedule::G4_BB_Schedule(G4_Kernel* k, Mem_Manager &m, G4_BB *block,
 
     lastCycle = ddd.listSchedule(this);
 
-    if (m_options->getOption(vISA_DumpSchedule))
+    if (getOptions()->getOption(vISA_DumpSchedule))
     {
         dumpSchedule(bb);
     }
-    if (m_options->getOption(vISA_DumpDot))
+    if (getOptions()->getOption(vISA_DumpDot))
     {
         std::stringstream sstr;
         sstr << "BB" << bb->getId();
@@ -726,15 +723,16 @@ static DepType getDepForOpnd(Gen4_Operand_Number cur,
 // dependencies with all insts in live set. After analyzing
 // dependencies and creating necessary edges, current inst 
 // is inserted in all buckets it touches.
-DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
-    const LatencyTable &lt, G4_Kernel *k)
-    : mem(m), m_options(options), LT(lt), kernel(k)
+DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
+    : mem(m)
+    , LT(lt)
+    , kernel(k)
 {
     Node* lastBarrier = nullptr;
-    HWthreadsPerEU = kernel->fg.builder->getHWThreadNumberPerEU();
-    totalGRFNum = m_options->getuInt32Option(vISA_TotalGRFNum);
-    useMTLatencies = m_options->getOption(vISA_useMultiThreadedLatencies);
-    bool BTIIsRestrict = m_options->getOption(vISA_ReorderDPSendToDifferentBti);
+    HWthreadsPerEU = getBuilder()->getHWThreadNumberPerEU();
+    useMTLatencies = getBuilder()->useMultiThreadLatency();
+    totalGRFNum = getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    bool BTIIsRestrict = getOptions()->getOption(vISA_ReorderDPSendToDifferentBti);
 
     GRF_BUCKET = 0;
     ACC_BUCKET = GRF_BUCKET + totalGRFNum;
@@ -833,7 +831,7 @@ DDD::DDD(Mem_Manager &m, G4_BB* bb, const Options *options,
                         dep = getDepForOpnd(curOpnd, liveOpnd);
                         curKillsBucket = false;
                     } else if (curBucket == SEND_BUCKET) {
-                        dep = getDepSend(curInst, liveInst, m_options, BTIIsRestrict);
+                        dep = getDepSend(curInst, liveInst, getOptions(), BTIIsRestrict);
                         hasOverlap = (dep != NODEP);
                         curKillsBucket = false;
                         curKillsLive = (dep == WAW_MEMORY || dep == RAW_MEMORY);
@@ -1237,7 +1235,7 @@ void DDD::createAddEdge(Node* pred, Node* succ, DepType d)
 void DDD::dumpDagDot(G4_BB *bb)
 {
     const char *asmName = nullptr;
-    m_options->getOption(VISA_AsmFileName, asmName);
+    getOptions()->getOption(VISA_AsmFileName, asmName);
     char dumpFileName[MAX_OPTION_STR_LENGTH];
     SNPRINTF(dumpFileName, MAX_OPTION_STR_LENGTH, "%s.bb%d.dag.dot",
         asmName, bb->getId());
@@ -1328,7 +1326,7 @@ void DDD::dumpDagDot(G4_BB *bb)
 void DDD::dumpNodes(G4_BB *bb)
 {
     const char *asmName = nullptr;
-    m_options->getOption(VISA_AsmFileName, asmName);
+    getOptions()->getOption(VISA_AsmFileName, asmName);
     char dumpFileName[MAX_OPTION_STR_LENGTH];
     SNPRINTF(dumpFileName, MAX_OPTION_STR_LENGTH, "%s.bb%d.nodes",
         asmName, bb->getId());
@@ -1431,7 +1429,7 @@ struct criticalCmp
 // Perform local list scheduling
 uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
 {
-    if (m_options->getOption(vISA_DumpDagDot))
+    if (getOptions()->getOption(vISA_DumpDagDot))
     {
         dumpDagDot(schedule->getBB());
         dumpNodes(schedule->getBB());
@@ -1684,7 +1682,7 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT)
             if (msgDesc)
             {
                 // FF latencies are in cycles
-                latency = m_options->getuInt32Option(vISA_UnifiedSendCycle);
+                latency = getOptions()->getuInt32Option(vISA_UnifiedSendCycle);
                 if (latency)
                 {
                     if (!isMemSend(msgDesc))
@@ -1769,7 +1767,8 @@ uint32_t DDD::getEdgeLatency(Node *node, DepType depT) {
     uint32_t latency = oldLatency;
     if (useMTLatencies) 
     {
-        latency = (int)(latency / ((float)HWthreadsPerEU / COISSUE_UNITS)); // /3.5
+        float scale = float(HWthreadsPerEU) / getBuilder()->getCoIssueUints();
+        latency = int(latency / scale);
     }
     return latency;
 }

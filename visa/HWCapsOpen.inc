@@ -452,4 +452,14 @@
         return (Val != 0) ? Val : 7;
     }
 
+    unsigned getCoIssueUints() const
+    {
+        return 2;
+    }
+
+    bool useMultiThreadLatency() const
+    {
+        return getOptions()->getOption(vISA_useMultiThreadedLatencies);
+    }
+
     // end HW capabilities
