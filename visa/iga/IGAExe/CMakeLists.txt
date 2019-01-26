@@ -93,16 +93,17 @@ if(IGC_BUILD)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "")
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "")
 
-    install(TARGETS IGA_EXE RUNTIME
-            DESTINATION Release/x64/Standalones          CONFIGURATIONS Release)
-    install(TARGETS IGA_EXE RUNTIME
-            DESTINATION Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
-    install(TARGETS IGA_EXE RUNTIME
-            DESTINATION Debug/x64/Standalones            CONFIGURATIONS Debug)
-
-    # Only copy pdb for Debug mode
-    install(FILES $<TARGET_PDB_FILE:IGA_EXE>
-            DESTINATION Debug/x64/Standalones            CONFIGURATIONS Debug)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8) # Only copy 64 build
+        install(TARGETS IGA_EXE RUNTIME
+                DESTINATION ../Test_Tools/Release/x64/Standalones          CONFIGURATIONS Release)
+        install(TARGETS IGA_EXE RUNTIME
+                DESTINATION ../Test_Tools/Release-Internal/x64/Standalones CONFIGURATIONS ReleaseInternal)
+        install(TARGETS IGA_EXE RUNTIME
+                DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
+        # Only copy pdb for Debug mode
+        install(FILES $<TARGET_PDB_FILE:IGA_EXE>
+                DESTINATION ../Test_Tools/Debug/x64/Standalones            CONFIGURATIONS Debug)
+    endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
 
   elseif (UNIX)
     install(TARGETS IGA_EXE DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/bin COMPONENT igc-media)
