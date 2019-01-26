@@ -41,6 +41,13 @@ using namespace llvm;
 
 void IGCPassManager::add(Pass *P)
 {
+    if (IGC_IS_FLAG_ENABLED(ShaderDisableOptPassesAfter)
+            && m_pContext->m_numPasses > IGC_GET_FLAG_VALUE(ShaderDisableOptPassesAfter)
+            && m_name == "OPT") {
+        errs() << "Skipping optimization pass: '" << P->getPassName()
+               << "' (threshold: " << IGC_GET_FLAG_VALUE(ShaderDisableOptPassesAfter) << ").\n";
+        return;
+    }
     PassManager::add(P);
     if(IGC_IS_FLAG_ENABLED(ShaderDumpEnableAll))
     {
