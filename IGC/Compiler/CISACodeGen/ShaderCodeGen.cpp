@@ -69,6 +69,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
 #include "Compiler/CISACodeGen/LowerGEPForPrivMem.hpp"
 #include "Compiler/CISACodeGen/POSH_RemoveNonPositionOutput.h"
+#include "Compiler/CISACodeGen/RegisterEstimator.hpp"
 
 #include "Compiler/CISACodeGen/SLMConstProp.hpp"
 #include "Compiler/Optimizer/OpenCLPasses/GenericAddressResolution/GenericAddressDynamicResolution.hpp"
@@ -273,6 +274,13 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, const CShaderProgram::KernelS
     }
     // Fixup extract value pairs.
     mpm.add(createExtractValuePairFixupPass());
+
+#if defined(_DEBUG) || defined(_INTERNAL)
+    // This is for dumping register pressure info
+    if (IGC_IS_FLAG_ENABLED(ForceRPE)) {
+        mpm.add(new RegisterEstimator());
+    }
+#endif
 
     mpm.add(new Layout());
 }
