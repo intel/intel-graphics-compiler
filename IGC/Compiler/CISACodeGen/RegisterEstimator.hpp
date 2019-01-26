@@ -257,6 +257,9 @@ namespace IGC
         // can be skipped completedly.
         ValueToRegUseMap m_ValueRegUses;
 
+        // Temporary use.
+        llvm::DenseMap<llvm::BasicBlock*, int> m_pBB2ID;
+
         void addRegUsage(RegUsage& RUsage, SBitVector& BV);
 
         uint32_t getNumGRF(RegUsage& rusage, uint16_t simdsize = 16) {

@@ -451,7 +451,20 @@ void RegisterEstimator::print(raw_ostream& OS, BasicBlock *BB, int dumpLevel)
                << getNumRegs(grfuse, 16) << ", "
                << getNumRegs(grfuse, 32) << "} ";
         }
-        OS << *I << '\n';
+        OS << *I;
+        if (!m_pBB2ID.empty()) {
+            if (BranchInst *BrI = dyn_cast<BranchInst>(I))
+            {
+                OS << "  (";
+                for (int i = 0, e = (int)BrI->getNumSuccessors(); i < e; ++i)
+                {
+                    BasicBlock* b = BrI->getSuccessor(i);
+                    OS << " BB[" << m_pBB2ID[b] << "]";
+                }
+                OS << " )";
+            }
+        }
+        OS << "\n";
     }
 }
 
@@ -464,17 +477,24 @@ void RegisterEstimator::print(raw_ostream& OS, int dumpLevel)
     Debug::Banner(OS, ss.str());
 
     int bid = 0;
+    m_pBB2ID.clear();
+    for (Function::iterator I = m_F->begin(), E = m_F->end(); I != E; ++I) {
+        BasicBlock *BB = &*I;
+        m_pBB2ID[BB] = bid;
+        ++bid;
+    }
     for (Function::iterator I = m_F->begin(), E = m_F->end(); I != E; ++I) {
         BasicBlock *BB = &*I;
         if (dumpLevel > FLAG_LEVEL_1)
         {
             OS << "\n";
         }
-        OS << "BB[" << bid << "]:";
+        OS << "BB[" << m_pBB2ID[BB] << "]:";
         print(OS, BB, dumpLevel);
         ++bid;
     }
     OS << "\n\n";
+    m_pBB2ID.clear();
 }
 
 RegPressureTracker::RegPressureTracker(RegisterEstimator* RPE) :
