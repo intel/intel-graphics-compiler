@@ -118,10 +118,10 @@ DECLARE_IGC_REGKEY(bool, EnableStatelessToStatefull,    true,  "Enable Stateless
 DECLARE_IGC_REGKEY(bool, EnableStatefulToken,           true,  "Enable generating patch token to indicate a ptr argument is fully converted to stateful (temporary)")
 DECLARE_IGC_REGKEY(bool, EnableGenUpdateCB,             false,   "Enable SLM constant propagation (compute shader only).")
 DECLARE_IGC_REGKEY(bool, EnableHighestSIMDForNoSpill,   false,   "When there is no spill choose highest SIMD (compute shader only).")
-DECLARE_IGC_REGKEY(DWORD,FoldsToZeroPropThreshold,      2,     "Set the threshold for finding interesting constant. This is for the number of instructions that gets folded to zero when propagating a dynamic constant value")
-DECLARE_IGC_REGKEY(DWORD,FoldsToConstPropThreshold,     2,     "Set the threshold for finding interesting constant. This is for the number of instructions that gets folded to constant or gets simplified incase of select instruction, when propagating a dynamic constant value")
-DECLARE_IGC_REGKEY(DWORD,FoldsToSourceThreshold,        10,     "Set the threshold for finding interesting constant. This is for the number of instructions that translate to a mov. i.e., Multiplication or Division by 1")
-DECLARE_IGC_REGKEY(bool, DisableDynamicConstantFolding, true,  "Disable Dynamic Constant Folding")
+DECLARE_IGC_REGKEY(DWORD,FoldsToZeroPropThreshold,      1,     "Set the threshold for finding interesting constant. This is for the number of instructions that gets folded to zero when propagating a dynamic constant value")
+DECLARE_IGC_REGKEY(DWORD,FoldsToConstPropThreshold,     1,     "Set the threshold for finding interesting constant. This is for the number of instructions that gets folded to constant or gets simplified incase of select instruction, when propagating a dynamic constant value")
+DECLARE_IGC_REGKEY(DWORD,FoldsToSourceThreshold,        1,     "Set the threshold for finding interesting constant. This is for the number of instructions that translate to a mov. i.e., Multiplication or Division by 1")
+DECLARE_IGC_REGKEY(bool, DisableDynamicConstantFolding, false,  "Disable Dynamic Constant Folding")
 DECLARE_IGC_REGKEY(bool, DisableRectListOpt,            false, "Disable Rect List optimization")
 
 DECLARE_IGC_REGKEY(bool, DispatchOCLWGInLinearOrder,    false, "If set, dispatch HW threads based on the linearized order of WI in a WG; \
