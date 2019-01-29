@@ -1440,8 +1440,7 @@ void COpenCLKernel::AllocatePayload()
         prevOffset = offset;
 
         // skip unused arguments
-        bool IsUnusedArg = (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET ||
-            arg.getArgType() == KernelArg::ArgType::IMPLICIT_PRINTF_BUFFER) &&
+        bool IsUnusedArg = (arg.getArgType() == KernelArg::ArgType::IMPLICIT_BUFFER_OFFSET) &&
             arg.getArg()->use_empty();
 
         // Runtime Values should not be processed any further. No annotations shall be created for them.
