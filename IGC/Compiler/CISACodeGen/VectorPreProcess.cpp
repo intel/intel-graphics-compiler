@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/InstIterator.h>
 #include <llvm/Support/MathExtras.h>
+#include <llvm/Transforms/Utils/Local.h>
 #include "common/LLVMWarningsPop.hpp"
 
 using namespace llvm;
@@ -119,6 +120,17 @@ namespace
         unsigned int getAlignment() const
         {
             return isa<LoadInst>(m_inst) ? getLoad()->getAlignment() : getLdRaw()->getAlignment();
+        }
+        void setAlignment(unsigned int alignment)
+        {
+            if (isa<LoadInst>(m_inst))
+            {
+                getLoad()->setAlignment(alignment);
+            }
+            else
+            {
+                getLdRaw()->setAlignment(alignment);
+            }
         }
         Value* getPointerOperand() const
         {
@@ -212,6 +224,13 @@ namespace
         unsigned int getAlignment() const
         {
             return isa<StoreInst>(m_inst) ? getStore()->getAlignment() : getStoreRaw()->getArgOperand(2)->getType()->getPrimitiveSizeInBits() / 8;
+        }
+        void setAlignment(unsigned int alignment)
+        {
+            if (isa<StoreInst>(m_inst))
+            {
+                getStore()->setAlignment(alignment);
+            }
         }
         Value* getValueOperand() const
         {
@@ -587,6 +606,11 @@ bool VectorPreProcess::splitStore(AbstractStoreInst& ASI, V2SMap& vecToSubVec)
     if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
     {
         // byte and word-aligned stores can only store a dword at a time.
+        unsigned int alignment = ASI.getAlignment();
+        if (isStoreInst && alignment < 4)
+        {
+            ASI.setAlignment(std::max(getKnownAlignment(ASI.getPointerOperand(), *m_DL), alignment));
+        }
         const uint32_t splitSize = ASI.getAlignment() < 4 ? 4 : (isStoreInst ? VP_SPLIT_SIZE : VP_RAW_SPLIT_SIZE);
         createSplitVectorTypes(ETy, nelts, splitSize, tys, tycnts, len);
     }
@@ -728,6 +752,11 @@ bool VectorPreProcess::splitLoad(AbstractLoadInst& ALI, V2SMap& vecToSubVec)
     if (IGC_IS_FLAG_ENABLED(EnableSplitUnalignedVector))
     {
         // byte and word-aligned loads can only load a dword at a time.
+        unsigned int alignment = ALI.getAlignment();
+        if (!isLdRaw && alignment < 4)
+        {
+            ALI.setAlignment(std::max(getKnownAlignment(ALI.getPointerOperand(), *m_DL), alignment));
+        }
         splitSize = ALI.getAlignment() < 4 ? 4 : (isLdRaw ? VP_RAW_SPLIT_SIZE : VP_SPLIT_SIZE);
     }
 
