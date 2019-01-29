@@ -27,7 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
-#include <unordered_set>
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
@@ -58,7 +57,7 @@ class Legalization : public llvm::FunctionPass, public llvm::InstVisitor<Legaliz
     bool m_preserveNanCheck;
 
     const llvm::DataLayout *m_DL;
-    std::unordered_set<llvm::Instruction*> m_instructionsToRemove;
+    std::vector<llvm::Instruction*> m_instructionsToRemove;
     llvm::IRBuilder<>* m_builder;
     IGC::CodeGenContext* m_ctx;
 public:
@@ -111,12 +110,10 @@ protected:
 
     void RecursivelyChangePointerType(llvm::Instruction* oldPtr, llvm::Instruction* newPtr);
     void PromoteFp16ToFp32OnGenSampleCall(llvm::CallInst &I);    
-    void RecursivelyPromoteInsertElementUses(llvm::Value *I, llvm::Value *newVec);
+    void PromoteInsertElement(llvm::Value *I, llvm::Value *newVec);
 
     /// \brief Ensure a function have a unique return instruction.
     void unifyReturnInsts(llvm::Function &F);
-
-    void markToRemove(llvm::Instruction* I);
 
 private:
     llvm::DenseMap<llvm::Value*, llvm::Value*>fpMap;
