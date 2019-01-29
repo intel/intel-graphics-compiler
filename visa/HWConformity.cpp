@@ -1280,25 +1280,6 @@ void HWConformity::fix3SrcInst(INST_LIST_ITER iter, G4_BB* bb)
         }
     }
 }
-// return 1: packed word
-bool HWConformity::isPackedWord( G4_Operand *src )
-{
-    if( !src || src->isSrcRegRegion() == false ||
-        src->asSrcRegRegion()->getBase()->isNullReg() ){
-            return false;
-    }
-    RegionDesc *rd = src->asSrcRegRegion()->getRegion();
-
-    if( src->asSrcRegRegion()->getRegAccess() != Direct ||
-        ( src->asSrcRegRegion()->getType() != Type_W && src->asSrcRegRegion()->getType() != Type_UW ) ||
-        src->asSrcRegRegion()->getSubRegOff() != 0 ||
-        rd->horzStride != 1 ||
-        ( !( rd->width == 8 && rd->vertStride == 8 ) &&
-        !( rd->width == 16 && rd->vertStride == 16 ) ) ){
-            return false;
-    }
-    return true;
-}
 
 void HWConformity::fixCompareInst(
                                   INST_LIST_ITER i,

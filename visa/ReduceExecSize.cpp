@@ -1031,13 +1031,6 @@ void HWConformity::splitSIMD32Inst( INST_LIST_ITER iter, G4_BB* bb )
             inst->copyDefsTo(newInst, true);
             inst->copyUsesTo(newInst, true);
         }
-
-        if( builder.getOption(vISA_OptReport) )
-        {
-            newInst->emit( std::cout );
-std::cout << std::endl;
-
-        }
     }
 }
 
@@ -1505,13 +1498,6 @@ void HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
 // assumption: the input math function is a compressed instruction and need split
 bool HWConformity::reduceExecSizeForMath( INST_LIST_ITER iter, G4_BB* bb )
 {
-    if( builder.getOption(vISA_OptReport) )
-    {
-        G4_INST *inst = *iter;
-        printf( "\nFix Inst Size for:\n" );
-        inst->emit( std::cout );
-        printf( "\nsplit into: \n" );
-    }
     // split the instruction into two first
     evenlySplitInst( iter, bb );
     // fix execution size for each one
@@ -1563,11 +1549,6 @@ void HWConformity::checkSrcDstOverlap( INST_LIST_ITER iter, G4_BB* bb, bool comp
                 INST_LIST_ITER newMovIter = iter;
                 newMovIter--;
                 reduceExecSize( newMovIter, bb );
-                if( builder.getOption(vISA_OptReport) )
-                {
-                    (*newMovIter)->emit( std::cout );
-                    std::cout << std::endl;
-                }
             }
         }
     }
@@ -2004,141 +1985,4 @@ void  HWConformity::removeBadSrc( INST_LIST_ITER& iter, G4_BB *bb, bool crossGRF
             }
         }
     }
-}
-
-// check if an inst need spliting
-// this is not called by reduceExecSize, because there are two many parameters to pass
-// Currently is only called by fixMADInst to check if an instruction need to be split
-// return false if instruction does not need split; otherwise return true
-bool HWConformity::checkInstRegions( G4_INST *inst, G4_BB *bb, bool &evenSplit )
-{
-    evenSplit = false;
-    if( !inst || inst->isSend() || inst->getExecSize() == 1 )
-        return false;
-
-    G4_DstRegRegion *dst = inst->getDst();
-    bool nullDst = inst->hasNULLDst();
-    bool packedByteDst = false;
-    if( !nullDst && dst )
-    {
-        packedByteDst = IS_BTYPE( dst->getType() ) && ( dst->getHorzStride() == 1 );
-    }
-
-    unsigned char execSize = inst->getExecSize();
-    bool splitOp = false, goodOneGRFDst = false;
-    bool crossGRFDst = dst && dst->isCrossGRFDst();
-    bool goodTwoGRFDst = false;
-    // for all platforms, if execution size is 8 or less and the destination register is 2, flag updates are not supported.
-    bool specialCondForComprInst = ( execSize < 8 && dst && dst->getHorzStride() != 1 &&
-        inst->getCondMod() && inst->opcode() != G4_sel );
-
-    // Check if the instruction will use int ACC later. if yes, compressed instruction is 
-    // split into 2 one-GRF instructions.
-    G4_opcode op = inst->opcode();
-    bool mayUseIntAcc = op == G4_pseudo_sada2;
-
-    bool evenSplitDst;
-    if( crossGRFDst )
-    {
-        // rule 3D
-        goodTwoGRFDst = inst->goodTwoGRFDst( evenSplitDst ) && !specialCondForComprInst && !mayUseIntAcc;
-        splitOp = !goodTwoGRFDst;
-    }
-
-    if( dst && !crossGRFDst )
-    {
-        // rule 3C
-        goodOneGRFDst = dst->goodOneGRFDst( execSize );
-    }
-
-    // rules specific to instructions
-    // INT DIV function does not support SIMD16
-    if (inst->isMath() && inst->asMathInst()->isMathIntDiv() && (execSize == 16 || crossGRFDst))
-    {
-        evenSplit = true;
-        return true;
-    }
-
-    bool twoGRFSrc[3] = { false, false, false };
-    bool badTwoGRFSrc[3] = { false, false, false };
-    bool evenTwoGRFSrc[3] = { false, false, false };
-    bool fullTwoGRFSrc[3] = { false, false, false };
-    bool hasBadTwoGRFSrc = false;
-    bool forceEvenSplit = ( execSize == 32 && inst->opcode() == G4_sel && inst->getCondMod() ) || packedByteDst;
-    G4_Operand *srcs[3];
-    uint8_t eleInFirstGRF[3];
-    bool useFlag = inst->getPredicate() || inst->getCondMod() || ( bb->isInSimdFlow() && !inst->isWriteEnableInst() );
-    for( int i = 0; i < G4_Inst_Table[inst->opcode()].n_srcs; i++ )
-    {
-        srcs[i] = inst->getSrc(i);
-
-        if( srcs[i] && srcs[i]->isSrcRegRegion() &&
-            !( inst->opcode() == G4_math && i == 1 && srcs[i]->isNullReg() ) )
-        {
-            bool indirectSrc = ( srcs[i]->isSrcRegRegion() &&
-                srcs[i]->asSrcRegRegion()->getRegAccess() != Direct );
-
-            if( !indirectSrc && srcs[i]->asSrcRegRegion()->isScalar() )
-            {
-                continue;
-            }
-
-            if( srcs[i]->crossGRF() )
-            {
-                twoGRFSrc[i] = true;
-                if( inst->opcode() == G4_pln && i == 1 )
-                {
-                   
-                }
-                else
-                {
-                    bool sameSubregOff, vertCrossGRF, contRegion;
-                    evenTwoGRFSrc[i] = srcs[i]->asSrcRegRegion()->evenlySplitCrossGRF(
-                        execSize, sameSubregOff, vertCrossGRF, contRegion, eleInFirstGRF[i] );
-                    bool coverTwoGRF = srcs[i]->asSrcRegRegion()->coverTwoGRF();
-                    RegionDesc *rd = srcs[i]->asSrcRegRegion()->getRegion();
-                    fullTwoGRFSrc[i] = coverTwoGRF && rd->horzStride == 1 &&
-                        ( rd->vertStride == rd->horzStride * rd->width );
-
-                    // region can be fixed later in fixCompressedInst().
-                    // rule 3E and 3F
-                    // 2-GRF src should follow below implicit rules, no matter the dst size:
-                    // pre-BDW
-                    // 1. Data must be evenly split between source registers.
-                    // 2. Same subregister number in the two GRFs( occupy whole two GRFs ) if dst is two-GRF.
-                    // BDW+:
-                    // 1. if 1GRF dst and occupies two halves or 2GRF dst,
-                    //    src data must be evenly split between source registers
-
-                    if (!evenTwoGRFSrc[i])
-                    {
-                        splitOp = true;
-                        hasBadTwoGRFSrc = true;
-                        badTwoGRFSrc[i] = true;
-                    }
-                }
-            }
-        }
-    }
-
-    // the only reason for split is due to 32-bit flag
-    // split inst into two SIMD 16 instructions
-    if( execSize == 32 &&
-        (inst->getPredicate() || inst->getCondMod()) )
-    {
-        if( forceEvenSplit )
-        {
-            splitOp = true;
-        }
-    }
-
-    if( splitOp && !evenSplit && crossGRFDst && evenSplitDst && !hasBadTwoGRFSrc && ( execSize >= 16 || !useFlag ) )
-    {
-        uint8_t minExSize = checkMinExecSize( inst->opcode() );
-        if( minExSize == 1 || execSize > minExSize )
-        {
-            evenSplit = true;
-        }
-    }
-    return splitOp;
 }

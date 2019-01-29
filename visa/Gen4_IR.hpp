@@ -1151,7 +1151,6 @@ public:
         useInstList.sort(Cmp);
     }
 
-    void trimACCDefUse();
     void fixMACSrc2DefUse();
     void setImplAccSrc( G4_Operand* opnd );
     void setImplAccDst( G4_DstRegRegion* opnd );
@@ -3309,7 +3308,6 @@ public:
     bool isNativePackedRowRegion();
     bool isNativePackedRegion();
     bool coverGRF(uint16_t numGRF, uint8_t execSize);
-    bool goodAlign16Dst();
     bool goodOneGRFDst(uint8_t execSize);
     bool goodtwoGRFDst(uint8_t execSize);
     bool evenlySplitCrossGRF(uint8_t execSize);

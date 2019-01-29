@@ -1151,22 +1151,6 @@ void G4_INST::addDefUse(G4_INST* inst, Gen4_Operand_Number srcPos)
     inst->defInstList.push_back(std::pair<G4_INST*, Gen4_Operand_Number>(this, srcPos));
 }
 
-// find the ACC use inst of this instruction and trim their def chains
-// this is called when some ACC def instruction is split into two instructions.
-void G4_INST::trimACCDefUse()
-{
-    // trim def list
-    USE_EDGE_LIST_ITER iter = this->useInstList.begin();
-    // since ACC is only exposed in ARCTAN intrinsic translation, there is no instruction split with ACC
-    while (iter != this->useInstList.end())
-    {
-        if ((*iter).second == Opnd_implAccSrc)
-        {
-            (*iter).first->trimDefInstList();
-        }
-        iter++;
-    }
-}
 // exchange def/use info of src0 and src1 after they are swapped.
 void G4_INST::swapDefUse()
 {
@@ -4778,56 +4762,6 @@ bool G4_DstRegRegion::coverGRF( uint16_t numGRF, uint8_t execSize )
         }
     }
     return false;
-}
-
-bool G4_DstRegRegion::goodAlign16Dst( )
-{
-    bool isAlign16 = false;
-    unsigned byteSubRegOff =
-        subRegOff * G4_Type_Table[type].byteSize;
-
-    if( byteSubRegOff  % 16 != 0 )
-    {
-        return false;
-    }
-
-    if( base )
-    {
-        if( base->isRegVar() )
-        {
-            G4_Declare *dcl = base->asRegVar()->getDeclare();
-
-            if( dcl )
-            {
-                G4_Declare *aliasDcl = dcl;
-
-                unsigned aliasOffset = 0;
-                while( aliasDcl->getAliasDeclare() )
-                {
-                    aliasOffset += aliasDcl->getAliasOffset();
-                    aliasDcl = aliasDcl->getAliasDeclare();
-                }
-                if( aliasOffset % 16 != 0 )
-                {
-                    return false;
-                }
-
-                if( aliasDcl->getSubRegAlign() >= Eight_Word ||
-                    aliasDcl->getNumRows() * aliasDcl->getElemSize() * aliasDcl->getElemSize() >= 16 )
-                {
-                    return true;
-                }
-            }
-            else if( base->asRegVar()->isGreg() &&
-                     base->asRegVar()->isPhyRegAssigned() &&
-                     base->asRegVar()->getByteAddr() % 16 == 0 )
-            {
-                return true;
-            }
-        }
-    }
-
-    return isAlign16;
 }
 
 // Check if dst satisfies the following conditions( for platforms before BDW ):

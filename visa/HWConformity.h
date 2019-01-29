@@ -86,7 +86,6 @@ namespace vISA
 
         G4_INST *splitInstWithByteDst(G4_INST *expand_op);
         G4_Align getDclAlignment(int opndBytes, G4_INST *inst, bool isScalar, G4_SubReg_Align &subAlign);
-        bool isPackedWord(G4_Operand *src);
 
         // HW conformity check functions
         void fixPackedSource(INST_LIST_ITER it, G4_BB *bb, G4_Type extype);
@@ -135,7 +134,6 @@ namespace vISA
         uint8_t checkMinExecSize(G4_opcode op);
         // Create a new instrution for instruction splitting.
         G4_INST *makeSplittingInst(G4_INST *inst, uint8_t ExSize);
-        bool checkInstRegions(G4_INST *inst, G4_BB *bb, bool &evenSplit);
         bool convertMAD2MAC(INST_LIST_ITER it, std::vector<G4_INST*> &madList, G4_BB *bb);
         void convertMAD2MulAdd(INST_LIST_ITER iter, G4_BB *bb);
         G4_Type getAccType(G4_Type ty);
