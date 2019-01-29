@@ -1365,7 +1365,7 @@ auto sizeToSIMDMode = [](uint32_t size)
     }
 };
 
-CVariable* CShader::GetConstant(llvm::Value* V)
+CVariable* CShader::GetConstant(llvm::Value* V, CVariable* dstVar)
 {
     llvm::Constant *C = llvm::dyn_cast<llvm::Constant>(V);
     assert (C && "V must be Constant");
@@ -1383,8 +1383,8 @@ CVariable* CShader::GetConstant(llvm::Value* V)
             return GetScalarConstant(EC);
         }
 
-        CVariable *CVar = GetNewVariable(elts, GetType(eTy), EALIGN_GRF, true);
-        unsigned i = 0;
+        CVariable* CVar = (dstVar == nullptr) ? 
+            GetNewVariable(elts, GetType(eTy), EALIGN_GRF, true) : dstVar;
 
         // Emit a scalar move to load the element of index k.
         auto copyScalar = [=](int k)
@@ -1413,52 +1413,6 @@ CVariable* CShader::GetConstant(llvm::Value* V)
         uint remainElts = elts;
         uint currentEltsOffset = 0;
         uint size = 8;
-        unsigned NBits = VTy->getScalarSizeInBits();
-
-        // case 1: Pack multiple elements into a single 64 bit immediate.
-        if (VTy->isIntOrIntVectorTy() && NBits < 64 && !m_Platform->hasNo64BitInst())
-        {
-            assert(64 % NBits == 0 && "unsupported scalar type");
-            unsigned Step = 64 / NBits;
-            unsigned End = (int_cast<unsigned>(VTy->getNumElements()) / Step) * Step;
-            for (; i < End; i += Step)
-            {
-                // Pack bits: <i16 1, i16 2, i16 3, i16 4> ==> 0x 0004 0003 0002 0001
-                uint64_t PVal = 0;
-                bool AllUndef = true;
-                for (unsigned j = 0; j < Step; ++j)
-                {
-                    Constant *Elt = C->getAggregateElement(i + j);
-                    if (auto CI = dyn_cast<ConstantInt>(Elt))
-                    {
-                        uint64_t Bits = CI->getZExtValue();
-                        PVal |= Bits << (j * VTy->getScalarSizeInBits());
-                        AllUndef = false;
-                    }
-                    else
-                    {
-                        assert(isa<UndefValue>(Elt));
-                    }
-                }
-
-                if (AllUndef)
-                    continue;
-
-                CVariable *PVar = ImmToVariable(PVal, ISA_TYPE_UQ);
-                unsigned OffsetInBytes = i * VTy->getScalarSizeInBits() / 8;
-                CVariable *AliasVar =
-                    GetNewAlias(CVar, ISA_TYPE_UQ, (uint16_t)OffsetInBytes, 1);
-                GetEncoder().Copy(AliasVar, PVar);
-                GetEncoder().Push();
-            }
-
-            // Element-wise copy or trailing elements copy if partially packed.
-            for (; i < VTy->getNumElements(); ++i)
-            {
-                copyScalar(i);
-            }
-            return CVar;
-        }
 
         while (remainElts != 0)
         {
