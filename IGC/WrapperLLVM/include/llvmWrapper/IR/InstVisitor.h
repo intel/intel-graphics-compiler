@@ -23,47 +23,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ======================= end_copyright_notice ==================================*/
-#pragma once
 
-#include "common/LLVMWarningsPush.hpp"
-#include <llvm/Pass.h>
-#include "llvmWrapper/IR/InstVisitor.h"
-#include <llvm/IR/Instruction.h>
-#include <llvmWrapper/IR/InstrTypes.h>
-#include "common/LLVMWarningsPop.hpp"
+#ifndef IGCLLVM_IR_INSTVISITOR_H
+#define IGCLLVM_IR_INSTVISITOR_H
 
-namespace IGC
-{
-    /// @brief  Cap full unrolls of big loops to bound compile time.
-    class ClampLoopUnroll : public llvm::FunctionPass, public llvm::InstVisitor<ClampLoopUnroll>
-    {
-    public:
-        /// @brief  Pass identification.
-        static char ID;
+#include <llvm/IR/InstVisitor.h>
 
-        ClampLoopUnroll();
 
-        ClampLoopUnroll(unsigned maxUnrollFactor);
+#if LLVM_VERSION_MAJOR == 8
 
-        ~ClampLoopUnroll() {}
+// Convert visitTerminatorInst delegate name (from llvm version < 7) to new signature visitTerminator
+#define visitTerminatorInst(ARG) visitTerminator(##ARG##)
 
-        virtual llvm::StringRef getPassName() const override
-        {
-            return "ClampLoopUnroll";
-        }
+#endif
 
-        virtual bool runOnFunction(llvm::Function &F) override;
 
-        virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
-        {
-            AU.setPreservesCFG();
-        }
-
-        void visitTerminatorInst(IGCLLVM::TerminatorInst &I);
-
-    private:
-        unsigned m_MaxUnrollFactor;
-        bool m_Changed;
-    };
-
-} // namespace IGC
+#endif

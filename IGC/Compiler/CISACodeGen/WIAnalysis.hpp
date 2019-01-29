@@ -199,12 +199,13 @@ private:
     WIDependancy calculate_dep(const llvm::CallInst* inst);
     WIDependancy calculate_dep(const llvm::GetElementPtrInst* inst);
     WIDependancy calculate_dep(const llvm::PHINode* inst);
-    WIDependancy calculate_dep(const IGCLLVM::TerminatorInst* inst);
     WIDependancy calculate_dep(const llvm::SelectInst* inst);
     WIDependancy calculate_dep(const llvm::AllocaInst* inst);
     WIDependancy calculate_dep(const llvm::CastInst* inst);
     WIDependancy calculate_dep(const llvm::VAArgInst* inst);
     WIDependancy calculate_dep(const llvm::LoadInst* inst);
+
+    WIDependancy calculate_dep_terminator(const IGCLLVM::TerminatorInst* inst);
     /*! \} */
 
     /// @brief do the trivial checking WI-dep

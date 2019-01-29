@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "TypeLegalizer.h"
 #include "common/LLVMWarningsPush.hpp"
-#include "llvm/IR/InstVisitor.h"
+#include "llvmWrapper/IR/InstVisitor.h"
 #include "common/LLVMWarningsPop.hpp"
 
 namespace IGC {
