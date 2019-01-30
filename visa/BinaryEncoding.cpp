@@ -3148,7 +3148,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
     {
         // find the label's IP count
         G4_Operand *opnd = inst->getSrc(0);
-        std::string jmpLabel = ((G4_Label *) opnd)->getLabel();
+        std::string jmpLabel = opnd->asLabel()->getLabel();
         BinInst * mybin = inst->getBinInst();
         // Calculate the address offset
         // Label has the same IP count as the following instruction,
@@ -3198,7 +3198,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
         if (inst->getSrc(0)->isLabel())
         {
             G4_Operand *opnd = inst->getSrc(0);
-            std::string jmpLabel = ((G4_Label*)opnd)->getLabel();
+            std::string jmpLabel = opnd->asLabel()->getLabel();
             int32_t info = GetLabelInfo(this->LabelMap, jmpLabel);
             if (info == -1)
             {

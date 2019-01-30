@@ -229,9 +229,11 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
 {
     MUST_BE_TRUE(op != G4_math, "IR_Builder::createInst should not be used to create math instructions");
     G4_INST* i = NULL;
+
+    // ToDo: have separate functions to create call/jmp/ret
     if (G4_Inst_Table[op].instType == InstTypeFlow)
     {
-        i = new (mem)G4_InstCF(*this, prd, op, mod, sat, size, dst, src0, src1, option);
+        i = new (mem)G4_InstCF(*this, prd, op, mod, sat, size, dst, src0, option);
     }
     else
     {
@@ -281,9 +283,10 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
 
     G4_INST* i = NULL;
 
+    // ToDo: have separate functions to create call/jmp/ret
     if (G4_Inst_Table[op].instType == InstTypeFlow)
     {
-        i = new (mem)G4_InstCF(*this, prd, op, mod, sat, size, dst, src0, src1, option);
+        i = new (mem)G4_InstCF(*this, prd, op, mod, sat, size, dst, src0, option);
     }
     else
     {
@@ -301,6 +304,26 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
     return i;
 }
 
+G4_INST* IR_Builder::createIf(G4_Predicate* prd, uint8_t size, uint32_t option)
+{
+    auto inst = createInternalCFInst(prd, G4_if, size, nullptr, nullptr, option);
+    instList.push_back(inst);
+    return inst;
+}
+
+G4_INST* IR_Builder::createElse(uint8_t size, uint32_t option)
+{
+    auto inst = createInternalCFInst(nullptr, G4_else, size, nullptr, nullptr, option);
+    instList.push_back(inst);
+    return inst;
+}
+
+G4_INST* IR_Builder::createEndif(uint8_t size, uint32_t option)
+{
+    auto inst = createInternalCFInst(nullptr, G4_endif, size, nullptr, nullptr, option);
+    instList.push_back(inst);
+    return inst;
+}
 
 G4_INST* IR_Builder::createInternalCFInst(
     G4_Predicate* prd,
@@ -316,13 +339,8 @@ G4_INST* IR_Builder::createInternalCFInst(
     MUST_BE_TRUE(G4_Inst_Table[op].instType == InstTypeFlow,
                  "IR_Builder::createInternalCFInst must be used with InstTypeFlow instruction class");
 
-    G4_InstCF* i = new (mem)G4_InstCF(*this, prd, op, NULL, false, size, NULL, NULL, NULL, option);
-
-    i->setJip( jip );
-    i->setUip( uip );
-
+    G4_InstCF* i = new (mem)G4_InstCF(*this, prd, op, size, jip, uip, option);
     i->setCISAOff(CISAoff);
-
     if (m_options->getOption(vISA_EmitLocation))
     {
         i->setLocation(new (mem) MDLocation(lineno, curFile));
@@ -342,35 +360,13 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
                                 G4_Operand* src0,
                                 G4_Operand* src1,
                                 G4_Operand* src2,
-                                unsigned int option)
-{
-    return createInst(prd, op, mod, sat, size, dst, src0, src1, src2, option, 0);
-}
-G4_INST* IR_Builder::createInst(G4_Predicate* prd,
-                                G4_opcode op,
-                                G4_CondMod* mod,
-                                bool sat,
-                                unsigned char size,
-                                G4_DstRegRegion* dst,
-                                G4_Operand* src0,
-                                G4_Operand* src1,
-                                G4_Operand* src2,
                                 unsigned int option,
                                 int lineno)
 {
-    MUST_BE_TRUE(op != G4_math, "IR_Builder::createInst should not be used to create math instructions");
+    MUST_BE_TRUE(op != G4_math && G4_Inst_Table[op].instType != InstTypeFlow, 
+        "IR_Builder::createInst should not be used to create math/CF instructions");
 
-    G4_INST* i = NULL;
-
-    if (G4_Inst_Table[op].instType == InstTypeFlow)
-    {
-        i = new (mem)G4_InstCF(*this, prd, op, mod, sat, size, dst, src0, src1, src2, option);
-    }
-    else
-    {
-        i = new (mem)G4_INST(*this, prd, op, mod, sat, size, dst, src0, src1, src2, option);
-    }
-
+    G4_INST* i = new (mem)G4_INST(*this, prd, op, mod, sat, size, dst, src0, src1, src2, option);
     i->setCISAOff(curCISAOffset);
 
     if (m_options->getOption(vISA_EmitLocation))
@@ -411,17 +407,9 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
                                         int lineno, int CISAoff,
                                         char* srcFilename)
 {
-    MUST_BE_TRUE(op != G4_math, "IR_Builder::createInternalInst should not be used to create math instructions");
-    G4_INST* i = NULL;
-    if (G4_Inst_Table[op].instType == InstTypeFlow)
-    {
-        i = new (mem)G4_InstCF(*this, prd, op, mod, sat, size, dst, src0, src1, src2, option);
-    }
-    else
-    {
-        i = new (mem)G4_INST(*this, prd, op, mod, sat, size, dst, src0, src1, src2, option);
-    }
-
+    MUST_BE_TRUE(op != G4_math && G4_Inst_Table[op].instType != InstTypeFlow, 
+        "IR_Builder::createInternalInst should not be used to create math/CF instructions");
+    G4_INST* i = new (mem)G4_INST(*this, prd, op, mod, sat, size, dst, src0, src1, src2, option);
     i->setCISAOff(CISAoff);
 
     if (m_options->getOption(vISA_EmitLocation))

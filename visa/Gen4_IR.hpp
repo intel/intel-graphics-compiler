@@ -1308,9 +1308,17 @@ public:
 
 class G4_InstCF : public G4_INST
 {
-    G4_Operand*         jip; // GT JIP
-    G4_Operand*         uip; // GT UIP
-    // list of labels that this instruction could jump to.  Only for indirect jmps
+    // operands for CF instructions
+    // -- if, else, endif, while, break, cont, goto: JIP and UIP are used for the branch target.
+    // -- jmpi: src0 stores the branch target, and it can be either a label (direct) or a SrcRegRegion (indirect)
+    // -- call: src0 stores the callee address, and it must be a label
+    // -- fcall: src0 stores the callee address, and it can be either a label (direct) or a SrcRegRegion (indirect).
+    //           dst contains the ret IP and call mask.
+    // -- ret, fret: src0 contains the ret IP and call mask
+    // Note that for call/ret the retIP variable is not created till RA
+    G4_Label*       jip; // GT JIP. 
+    G4_Label*         uip; // GT UIP. 
+    // list of labels that this instruction could jump to.  Only used for switch jmps
     std::list<G4_Label*> indirectJmpTarget;
 
     // Ture if this is a backward branch.
@@ -1326,6 +1334,22 @@ public:
 
     static const uint32_t unknownCallee = 0xFFFF;
 
+    // used by non jmp/call/ret instructions
+    G4_InstCF(const IR_Builder& builder,
+        G4_Predicate* prd,
+        G4_opcode op,
+        unsigned char size,
+        G4_Label* jipLabel,
+        G4_Label* uipLabel,
+        uint32_t instOpt) :
+        G4_INST(builder, prd, op, nullptr, false, size, nullptr, nullptr, nullptr, instOpt),
+        jip(jipLabel), uip(uipLabel), isBackwardBr(false), calleeIndex(unknownCallee),
+        assocPseudoVCA(nullptr), assocPseudoA0Save(nullptr), assocPseudoFlagSave(nullptr)
+    {
+
+    }
+
+    // used by jump/call/ret
     G4_InstCF(
         const IR_Builder& builder,
         G4_Predicate* prd,
@@ -1335,67 +1359,29 @@ public:
         unsigned char size,
         G4_DstRegRegion* d,
         G4_Operand* s0,
-        G4_Operand* s1,
         unsigned int opt) :
-        G4_INST(builder, prd, o, m, sat, size, d, s0, s1, opt),
+        G4_INST(builder, prd, o, m, sat, size, d, s0, nullptr, opt),
         jip(NULL), uip(NULL), isBackwardBr(false), calleeIndex(unknownCallee),
         assocPseudoVCA(nullptr), assocPseudoA0Save(nullptr), assocPseudoFlagSave(nullptr)
     {
-        if( o == G4_break || o == G4_cont || o == G4_halt )
-        {
-            srcs[0] = NULL;
-            srcs[1] = NULL;
-            srcs[2] = NULL;
-            jip = s0;
-            uip = s1;
-        }
-        else if( o == G4_else )
-        {
-            srcs[0] = NULL;
-            srcs[1] = NULL;
-            srcs[2] = NULL;
-            jip = s0;
-            uip = NULL;
-        }
     }
 
-    G4_InstCF(
-        const IR_Builder& builder,
-        G4_Predicate* prd,
-        G4_opcode o,
-        G4_CondMod* m,
-        bool sat,
-        unsigned char size,
-        G4_DstRegRegion* d,
-        G4_Operand* s0,
-        G4_Operand* s1,
-        G4_Operand* s2,
-        unsigned int opt) :
-        G4_INST(builder, prd, o, m, sat, size, d, s0, s1, s2, opt),
-        jip(NULL), uip(NULL), isBackwardBr(false), calleeIndex(0),
-        assocPseudoVCA(nullptr), assocPseudoA0Save(nullptr), assocPseudoFlagSave(nullptr)
-    {
-        if (o == G4_if || o == G4_while)
-        {
-            jip = s2;
-            srcs[2] = NULL;
-        }
-    }
 
-    void setJip(G4_Operand* opnd)
+
+    void setJip(G4_Label* opnd)
     {
         jip = opnd;
     }
-    G4_Operand* getJip()
+    G4_Label* getJip()
     {
         return jip;
     }
 
-    void setUip(G4_Operand* opnd)
+    void setUip(G4_Label* opnd)
     {
         uip = opnd;
     }
-    G4_Operand* getUip()
+    G4_Label* getUip()
     {
         return uip;
     }
@@ -3939,7 +3925,7 @@ inline bool G4_INST::isPseudoUse() const
 inline char* G4_INST::getLabelStr()
 {
     MUST_BE_TRUE(srcs[0] != NULL && srcs[0]->isLabel(), ERROR_UNKNOWN);
-    return ((G4_Label*)srcs[0])->getLabel();
+    return srcs[0]->asLabel()->getLabel();
 }
 
 inline bool G4_InstCF::isUniformGoto(unsigned KernelSimdSize) const
@@ -3961,13 +3947,13 @@ inline bool G4_InstCF::isIndirectJmp() const
 inline const char* G4_InstCF::getJipLabelStr() const
 {
     MUST_BE_TRUE(jip != NULL && jip->isLabel(), ERROR_UNKNOWN);
-    return ((G4_Label*)jip)->getLabel();
+    return jip->asLabel()->getLabel();
 }
 
 inline const char* G4_InstCF::getUipLabelStr() const
 {
     MUST_BE_TRUE(uip != NULL && uip->isLabel(), ERROR_UNKNOWN);
-    return ((G4_Label*)uip)->getLabel();
+    return uip->asLabel()->getLabel();
 }
 
 } // namespace vISA

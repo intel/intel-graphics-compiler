@@ -467,14 +467,14 @@ void FlowGraph::preprocess(INST_LIST& instlist)
         }
         else if (i->opcode() == G4_goto)
         {
-            if (labels.count((G4_Label *)i->asCFInst()->getUip()))
+            if (labels.count(i->asCFInst()->getUip()->asLabel()))
             {
                 i->asCFInst()->setBackward(true);
             }
         }
         else if ((i->opcode() == G4_jmpi || i->isCall()) && i->getSrc(0) && i->getSrc(0)->isLabel())
         {
-            if (labels.count((G4_Label *)i->getSrc(0)))
+            if (labels.count(i->getSrc(0)->asLabel()))
             {
                 i->asCFInst()->setBackward(true);
             }
@@ -488,7 +488,7 @@ void FlowGraph::preprocess(INST_LIST& instlist)
         G4_INST* i = *I;
         if (i->opcode() == G4_goto)
         {   
-            G4_Label* target = (G4_Label *)i->asCFInst()->getUip();
+            G4_Label* target = i->asCFInst()->getUip()->asLabel();
             assert(labels.count(target) && "undefined goto label"); 
         }
         else if ((i->opcode() == G4_jmpi || i->isCall()) && i->getSrc(0) && i->getSrc(0)->isLabel())
@@ -1197,7 +1197,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
             if (retInst->getExecSize() == 1)
             {
                 G4_INST* jmpInst = builder->createInternalInst(retInst->getPredicate(), G4_jmpi,
-                    NULL, false, 1, NULL, exitLabel, NULL, NULL, InstOpt_NoOpt);
+                    NULL, false, 1, NULL, exitLabel, NULL, InstOpt_NoOpt);
                 retBB->push_back(jmpInst);
             }
             else
@@ -5380,7 +5380,7 @@ bool FlowGraph::convertJmpiToGoto()
             inst->setExecSize((unsigned char)predSize);
             if (newPred)
                 inst->setPredicate(newPred);
-            inst->asCFInst()->setUip(inst->getSrc(0));
+            inst->asCFInst()->setUip(inst->getSrc(0)->asLabel());
             inst->setSrc(nullptr, 0);
             inst->setOptions(InstOpt_M0);
             Changed = true;

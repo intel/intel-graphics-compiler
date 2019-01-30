@@ -3216,7 +3216,7 @@ G4_Declare* SpillManagerGMRF::createSLMSpillAddr(int numReg, uint32_t spillOffse
         uint32_t numChannels = getChMaskForSpill(numReg).getNumEnabledChannels();
         G4_Imm* madSrc2 = builder_->createImm(numChannels - 1, Type_UW);
         G4_DstRegRegion *dst = builder_->Create_Dst_Opnd_From_Dcl(sendSrc, 1);
-        builder_->createInst(nullptr, G4_mad, nullptr, false, numAddr, dst, madSrc0, madSrc1, madSrc2, InstOpt_WriteEnable);
+        builder_->createInst(nullptr, G4_mad, nullptr, false, numAddr, dst, madSrc0, madSrc1, madSrc2, InstOpt_WriteEnable, 0);
     }
     G4_SrcRegRegion* src = builder_->Create_Src_Opnd_From_Dcl(numReg > 2 ? sendSrc : SLMSpillBase, builder_->getRegionStride1());
     G4_Imm* offset = builder_->createImm(spillOffset, Type_UW);

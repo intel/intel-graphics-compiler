@@ -1515,22 +1515,8 @@ public:
         G4_CondMod* mod, bool sat,
         unsigned char size, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-        unsigned int option);
-    G4_INST* createInst(G4_Predicate* prd, G4_opcode op,
-        G4_CondMod* mod, bool sat,
-        unsigned char size, G4_DstRegRegion* dst,
-        G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
         unsigned int option, int lineno);
-    template <typename T>
-    G4_INST* createInst(G4_Predicate* prd, G4_opcode op,
-        G4_CondMod* mod, bool sat,
-        T size, G4_DstRegRegion* dst,
-        G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-        unsigned int option)
-    {
-        unsigned char sz = static_cast<unsigned char>(size);
-        return createInst(prd, op, mod, sat, sz, dst, src0, src1, src2, option);
-    }
+
     template <typename T>
     G4_INST* createInst(G4_Predicate* prd, G4_opcode op,
         G4_CondMod* mod, bool sat,
@@ -1541,6 +1527,10 @@ public:
         unsigned char sz = static_cast<unsigned char>(size);
         return createInst(prd, op, mod, sat, sz, dst, src0, src1, src2, option, lineno);
     }
+
+    G4_INST* createIf(G4_Predicate* prd, uint8_t size, uint32_t option);
+    G4_INST* createElse(uint8_t size, uint32_t option);
+    G4_INST* createEndif(uint8_t size, uint32_t option);
 
     G4_INST* createInternalInst(G4_Predicate* prd, G4_opcode op,
         G4_CondMod* mod, bool sat,

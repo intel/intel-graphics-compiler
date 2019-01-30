@@ -708,10 +708,14 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
         G4_CondMod *condModOverflow = createCondMod(Mod_o, tmpFlag->getRegVar(), 0);
         inst->setCondMod(condModOverflow);
 
-        // if
-        G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-        inst = createInst(predicateFlagReg, G4_if, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
+        bool generateIf = true;
 
+        if (generateIf)
+        {
+            // if
+            G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
+            inst = createIf(predicateFlagReg, exsize, instOpt);
+        }
         {
 
 
@@ -808,10 +812,10 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
                 t11SrcOpnd1, t12SrcOpnd1, madmInstOpt, line_no);
         }
 
-        if (!hasDefaultRoundDenorm)
+        if (generateIf && !hasDefaultRoundDenorm)
         {
             // else (8) {Q1/Q2}
-            inst = createInst(NULL, G4_else, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
+            inst = createElse(exsize, instOpt);
 
             // restore cr0.0 {NoMask}
             G4_DstRegRegion *cr0DstRegOpndForRestoreElseInst = createDstRegRegion(regDstCR0);
@@ -820,8 +824,11 @@ int IR_Builder::translateVISAArithmeticDoubleInst(ISA_Opcode opcode, Common_ISA_
                 NULL, InstOpt_WriteEnable, line_no);
         }
 
-        // endif (8) {Q1/Q2}
-        inst = createInst(NULL, G4_endif, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
+        if (generateIf)
+        {
+            // endif (8) {Q1/Q2}
+            inst = createEndif(exsize, instOpt);
+        }
     }; //for loop
 
     if (!noDstMove)
@@ -1048,7 +1055,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
 
         // (-f0.1) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
         G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-        inst = createInst(predicateFlagReg, G4_if, NULL, false, 8, NULL, NULL, NULL, NULL, instOpt, line_no);
+        inst = createIf(predicateFlagReg, 8, instOpt);
 
         // madm (8) r9.acc3 r2.noacc r6.noacc r8.acc2 {Align16, Q1/Q2}
         G4_SrcRegRegion *t2SrcOpnd = createSrcRegRegion(tsrc2);
@@ -1121,7 +1128,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
         if (!hasDefaultRoundDenorm)
         { 
             // else (8) k0__AUTO_GENERATED_ELSE_LABEL__1 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
-            inst = createInst(NULL, G4_else, NULL, false, 8, NULL, NULL, NULL, NULL, instOpt, line_no);
+            inst = createElse(8, instOpt);
         
             // restore cr0.0: mov (1) cr0.0<1>:ud r116.2<0;1,0>:ud {NoMask}
             inst = createInst(NULL, G4_mov, NULL, false, 1, createDstRegRegion(regDstCR0), 
@@ -1129,7 +1136,7 @@ int IR_Builder::translateVISAArithmeticSingleDivideIEEEInst(ISA_Opcode opcode, C
         }
         
         // endif (8) {Q1/Q2}
-        inst = createInst(NULL, G4_endif, NULL, false, 8, NULL, NULL, NULL, NULL, instOpt, line_no);
+        inst = createEndif(8, instOpt);
     };
 
     // make final copy to dst
@@ -1313,7 +1320,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
 
         // (-f1.0) if (8) k0__AUTO_GENERATED_IF_LABEL__0 k0__AUTO_GENERATED_IF_LABEL__0 {Q1/Q2}
         G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, tmpFlag->getRegVar(), 0, predCtrlValue);
-        inst = createInst(predicateFlagReg, G4_if, NULL, false, 8, NULL, NULL, NULL, NULL, instOpt, line_no);
+        inst = createIf(predicateFlagReg, 8, instOpt);
         
 
         //madm (8) r9.acc3 r0.noacc r8.noacc r7.acc2 {Aligned16, Q1/Q2}
@@ -1409,7 +1416,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
         if (!hasDefaultRoundDenorm)
         {
             // else (8) k0__AUTO_GENERATED_ELSE_LABEL__1 k0__AUTO_GENERATED_ELSE_LABEL__1 {Q1/Q2}
-            inst = createInst(NULL, G4_else, NULL, false, 8, NULL, NULL, NULL, NULL, instOpt, line_no);
+            inst = createElse(8, instOpt);
 
             // restore cr0.0: mov (1) cr0.0<1>:ud r116.2<0;1,0>:ud {NoMask}
             inst = createInst(NULL, G4_mov, NULL, false, 1, createDstRegRegion(regDstCR0),
@@ -1417,7 +1424,7 @@ int IR_Builder::translateVISAArithmeticSingleSQRTIEEEInst(ISA_Opcode opcode, Com
         }
 
         // endif (8) {Q1/Q2}
-        inst = createInst(NULL, G4_endif, NULL, false, 8, NULL, NULL, NULL, NULL, instOpt, line_no);
+        inst = createEndif(8, instOpt);
     };
 
     // make final copy to dst
@@ -1610,7 +1617,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
 
         // if
         G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
-        inst = createInst(predicateFlagReg, G4_if, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
+        inst = createIf(predicateFlagReg, exsize, instOpt);
         
         {
             // madm (4) r9.acc3 r0.noacc r2(r8).noacc r7.acc2 {Align16, N1/N2}
@@ -1748,7 +1755,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
         if (!hasDefaultRoundDenorm)
         {
             // else (8) {Q1/Q2}
-            inst = createInst(NULL, G4_else, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
+            inst = createElse(exsize, instOpt);
 
             // restore cr0.0 {NoMask}
             dst0 = createDstRegRegion(regDstCR0);
@@ -1758,7 +1765,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
         }
 
         // endif (8) {Q1/Q2}
-        inst = createInst(NULL, G4_endif, NULL, false, exsize, NULL, NULL, NULL, NULL, instOpt, line_no);
+        inst = createEndif(exsize, instOpt);
         
     };
 
