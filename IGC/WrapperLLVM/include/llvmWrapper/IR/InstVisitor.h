@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if LLVM_VERSION_MAJOR == 8
 
 // Convert visitTerminatorInst delegate name (from llvm version < 7) to new signature visitTerminator
-#define visitTerminatorInst(ARG) visitTerminator(##ARG##)
+#define visitTerminatorInst(ARG) visitTerminator(ARG)
 
 #endif
 
