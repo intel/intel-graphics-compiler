@@ -3384,10 +3384,22 @@ static bool transKernelArgTypeMedataFromString(
     std::vector<Metadata *> TypeMDs;
     TypeMDs.push_back(MDString::get(*Ctx, SPIR_MD_KERNEL_ARG_TYPE));
 
-    std::string::size_type Start = 0, End = 0;
-    while ((Start = ArgTypeStr.find(',', End)) != std::string::npos) {
-        TypeMDs.push_back(MDString::get(*Ctx, ArgTypeStr.substr(End, Start - End)));
-        End = ++Start;
+    int countBraces = 0;
+    std::string::size_type start = 0;
+    for (std::string::size_type i = 0; i < ArgTypeStr.length(); i++) {
+        switch (ArgTypeStr[i]) {
+        case '<':
+            countBraces++;
+            break;
+        case '>':
+            countBraces--;
+            break;
+        case ',':
+            if (countBraces == 0) {
+                TypeMDs.push_back(MDString::get(*Ctx, ArgTypeStr.substr(start, i - start)));
+                start = i + 1;
+            }
+        }
     }
 
     KernelMD.push_back(MDNode::get(*Ctx, TypeMDs));
