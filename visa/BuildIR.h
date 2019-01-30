@@ -1814,7 +1814,7 @@ public:
                         Common_ISA_Exec_Size execSize,
                         Common_VISA_EMask_Ctrl emask,
                         Common_ISA_Cond_Mod relOp,
-                        G4_Predicate *dst_opnd,
+                        G4_Declare* predDst,
                         G4_Operand *src0_opnd,
                         G4_Operand *src1_opnd);
 

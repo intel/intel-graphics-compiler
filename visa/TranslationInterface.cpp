@@ -2107,7 +2107,7 @@ int IR_Builder::translateVISACompareInst(ISA_Opcode opcode, Common_ISA_Exec_Size
 }
 
 int IR_Builder::translateVISACompareInst(ISA_Opcode opcode, Common_ISA_Exec_Size execsize, Common_VISA_EMask_Ctrl emask, Common_ISA_Cond_Mod relOp,
-                                         G4_Predicate *dstOpnd, G4_Operand *src0Opnd, G4_Operand *src1Opnd)
+                                         G4_Declare* predDst, G4_Operand *src0Opnd, G4_Operand *src1Opnd)
 {
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -2130,7 +2130,7 @@ int IR_Builder::translateVISACompareInst(ISA_Opcode opcode, Common_ISA_Exec_Size
 
     G4_CondMod* condMod = createCondMod(
         Get_G4_CondModifier_From_Common_ISA_CondModifier(relOp),
-        dstOpnd->asDstRegRegion()->getBase(), 0);
+        predDst->getRegVar(), 0);
 
     createInst(
         NULL,

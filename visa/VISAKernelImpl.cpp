@@ -2931,7 +2931,8 @@ int VISAKernelImpl::AppendVISAComparisonInst(Common_ISA_Cond_Mod sub_op, Common_
 #endif
     return status;
 }
-int VISAKernelImpl::AppendVISAComparisonInst(Common_ISA_Cond_Mod sub_op, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize, VISA_PredVar *dstDcl, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1)
+int VISAKernelImpl::AppendVISAComparisonInst(Common_ISA_Cond_Mod sub_op, Common_VISA_EMask_Ctrl emask, 
+    Common_ISA_Exec_Size executionSize, VISA_PredVar *dstDcl, VISA_VectorOpnd *src0, VISA_VectorOpnd *src1)
 {
     AppendVISAInstCommon();
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
@@ -2943,11 +2944,7 @@ int VISAKernelImpl::AppendVISAComparisonInst(Common_ISA_Cond_Mod sub_op, Common_
     CreateVISAPredicateDstOperand(dst, dstDcl, exSize);
     if(IS_GEN_BOTH_PATH)
     {
-        G4_Predicate * g4Pred = (dst != NULL)? dst->g4opnd->asPredicate() : NULL;
-        if (g4Pred != NULL)
-        {
-           status = m_builder->translateVISACompareInst(ISA_CMP, executionSize, emask, sub_op, g4Pred, src0->g4opnd, src1->g4opnd);
-        }
+        status = m_builder->translateVISACompareInst(ISA_CMP, executionSize, emask, sub_op, dstDcl->predVar.dcl, src0->g4opnd, src1->g4opnd);
     }
     if(IS_VISA_BOTH_PATH)
     {
