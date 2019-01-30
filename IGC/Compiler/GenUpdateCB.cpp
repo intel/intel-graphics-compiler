@@ -287,8 +287,6 @@ Instruction* GenUpdateCB::CreateModule(Module* M)
 
     Instruction* ret = cb_builder.CreateRetVoid();
 
-    cb_builder.SetInsertPoint(ret);
-
     return ret;
 }
 
@@ -405,11 +403,10 @@ bool GenUpdateCB::runOnFunction(Function &F)
                 }
                 llvm::IRBuilder<> cb_builder(m_ConstantBufferReplaceShaderPatterns->getContext());
 
+                cb_builder.SetInsertPoint(ret);
                 // add inst and its sources to the CB mini shader
                 AllocaInst* storeAlloca = cb_builder.CreateAlloca(inst->getType());
                 StoreInst *store = cb_builder.CreateStore(inst, storeAlloca);
-                storeAlloca->insertBefore(ret);
-                store->insertBefore(ret);
                 InsertInstTree(inst, store);
                 store->setOperand(0, vmap[inst]);
 
