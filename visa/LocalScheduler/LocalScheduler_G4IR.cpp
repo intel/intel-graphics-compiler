@@ -335,11 +335,7 @@ static Mask getMaskForOp(G4_Operand * opnd, Gen4_Operand_Number opnd_num,
             RB = (unsigned short)opnd->getLinearizedEnd();
             G4_DstRegRegion *dstOpnd = opnd->asDstRegRegion();
             nonContiguousStride = (execSize != 1
-                && dstOpnd->getHorzStride() != 1
-                // FIXME: Is this correct ?
-                && dstOpnd->getWriteMask() != ChannelEnable_XYZW
-                && dstOpnd->getHorzStride() != 4
-                );
+                && dstOpnd->getHorzStride() != 1);
         }
         break;
     }
