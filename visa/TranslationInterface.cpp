@@ -8944,7 +8944,7 @@ int IR_Builder::translateVISARTWrite3DInst(
             G4_Imm *immedOpnd = createImm(msgDescValue, Type_UD);
 
             ///setting lower bits
-            createInst(NULL, G4_or, NULL, false, 1, dstMove2, cpsCounter, immedOpnd, NULL, InstOpt_WriteEnable, 0);
+            createInst(NULL, G4_or, NULL, false, 1, dstMove2, cpsCounter, immedOpnd, NULL, InstOpt_WriteEnable, 0, true);
             indirectExDesc = true;
         }
 
@@ -9057,7 +9057,7 @@ static G4_Operand* createSampleHeader(IR_Builder* builder, G4_Declare* header, V
     {
         // mov (1) payload(0,2) immOpndSecondDword
         builder->createInst(NULL, G4_mov, NULL, false, 1, payloadDstRgn,
-            immOpndSecondDword, NULL, NULL, InstOpt_WriteEnable, 0);
+            immOpndSecondDword, NULL, NULL, InstOpt_WriteEnable, 0, true);
     }
     else
     {
@@ -9421,7 +9421,7 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
 
                 // Copy the write mask message W4.0 into the dst. (No mask?)
                 builder->createInst(pred, G4_mov, NULL, false, 1, origDstPtr, src0Ptr,
-                    NULL, NULL, InstOpt_WriteEnable, 0);
+                    NULL, NULL, InstOpt_WriteEnable, 0, true);
                 // Skip the remaining part of the loop.
                 break;
             }
@@ -11190,7 +11190,7 @@ void IR_Builder::Copy_SrcRegRegion_To_Payload( G4_Declare* payload, unsigned int
 
     G4_SrcRegRegion* srcRgn = createSrcRegRegion( *src );
     srcRgn->setType( payload->getElemType() );
-    G4_INST* refCopy = createInst( NULL, G4_mov, NULL, false, exec_size, payloadDstRgn, srcRgn, NULL, NULL, 0, 0 );
+    G4_INST* refCopy = createInst( NULL, G4_mov, NULL, false, exec_size, payloadDstRgn, srcRgn, NULL, NULL, 0, 0, true );
     refCopy->setOptionOn(emask);
     if (G4_Type_Table[payload->getElemType()].byteSize == 2)
     {

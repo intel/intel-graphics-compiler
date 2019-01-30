@@ -177,18 +177,10 @@ namespace vISA
                 if (samplerHeaderInstIt != samplerHeaderMap.end())
                 {
                     auto samplerHeaderMov = (*samplerHeaderInstIt).second;
-                    auto dupOp = kernel.fg.builder->createInternalInst(nullptr, samplerHeaderMov->opcode(), nullptr, samplerHeaderMov->getSaturate(),
-                        samplerHeaderMov->getExecSize(), kernel.fg.builder->duplicateOperand(samplerHeaderMov->getDst()),
-                        kernel.fg.builder->duplicateOperand(samplerHeaderMov->getSrc(0)),
-                        kernel.fg.builder->duplicateOperand(samplerHeaderMov->getSrc(1)),
-                        kernel.fg.builder->duplicateOperand(samplerHeaderMov->getSrc(2)),
-                        samplerHeaderMov->getOption());
-                    dupOp->setCISAOff(samplerHeaderMov->getCISAOff());
-                    dupOp->setLineNo(samplerHeaderMov->getLineNo());
+
+                    auto dupOp = samplerHeaderMov->cloneInst();
 
                     bb->insert(instIt, dupOp);
-                    dupOp->setCISAOff(samplerHeaderMov->getCISAOff());
-                    dupOp->setLineNo(samplerHeaderMov->getLineNo());
                 }
             }
 
@@ -823,19 +815,8 @@ namespace vISA
                 dst->getHorzStride(), dst->getType());
             G4_INST* dupOp = nullptr;
 
-            if (dstInst->isMath())
-            {
-                dupOp = kernel.fg.builder->createMathInst(dstInst->getPredicate(), dstInst->getSaturate(), dstInst->getExecSize(),
-                    newDst, kernel.fg.builder->duplicateOperand(dstInst->getSrc(0)), kernel.fg.builder->duplicateOperand(dstInst->getSrc(1)),
-                    dstInst->asMathInst()->getMathCtrl(), dstInst->getOption());
-            }
-            else
-            {
-                dupOp = kernel.fg.builder->createInternalInst(dstInst->getPredicate(), dstInst->opcode(), dstInst->getCondMod(),
-                    dstInst->getSaturate(), dstInst->getExecSize(), newDst, kernel.fg.builder->duplicateOperand(dstInst->getSrc(0)),
-                    kernel.fg.builder->duplicateOperand(dstInst->getSrc(1)), kernel.fg.builder->duplicateOperand(dstInst->getSrc(2)),
-                    dstInst->getOption());
-            }
+            dupOp = dstInst->cloneInst();
+            dupOp->setDest(newDst);
 
             dupOp->setLineNo(dstInst->getLineNo());
             dupOp->setCISAOff(dstInst->getCISAOff());
@@ -869,14 +850,7 @@ namespace vISA
                 auto prevHeaderMov = (*samplerDefIt).second;
 
                 // Duplicate sampler header setup instruction
-                auto dupOp = kernel.fg.builder->createInternalInst(nullptr, prevHeaderMov->opcode(), nullptr, prevHeaderMov->getSaturate(),
-                    prevHeaderMov->getExecSize(), kernel.fg.builder->duplicateOperand(prevHeaderMov->getDst()),
-                    kernel.fg.builder->duplicateOperand(prevHeaderMov->getSrc(0)),
-                    kernel.fg.builder->duplicateOperand(prevHeaderMov->getSrc(1)),
-                    kernel.fg.builder->duplicateOperand(prevHeaderMov->getSrc(2)),
-                    prevHeaderMov->getOption());
-                dupOp->setCISAOff(prevHeaderMov->getCISAOff());
-                dupOp->setLineNo(prevHeaderMov->getLineNo());
+                auto dupOp = prevHeaderMov->cloneInst();
                 newInst.push_back(dupOp);
             }
 

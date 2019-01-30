@@ -7717,3 +7717,78 @@ bool G4_INST::canSrcBeAcc(int srcId) const
     }
 }
 
+G4_INST* G4_INST::cloneInst()
+{
+    // return nullptr if new derived class hasnt implemented
+    // its own cloneInst()
+    if (!isBaseInst() && !isCFInst())
+        return nullptr;
+
+    // Return a clone of current instruction.
+    // This functionality is expected to be used by optimizations
+    // such as rematerialization that require creating a copy
+    // of instructions.
+    auto nonConstBuilder = const_cast<IR_Builder*>(&builder);
+    G4_INST* newInst = nullptr;
+    auto prd = nonConstBuilder->duplicateOperand(getPredicate());
+    auto condMod = nonConstBuilder->duplicateOperand(getCondMod());
+    auto dst = nonConstBuilder->duplicateOperand(getDst());
+    auto src0 = nonConstBuilder->duplicateOperand(getSrc(0));
+    auto src1 = nonConstBuilder->duplicateOperand(getSrc(1));
+    auto src2 = nonConstBuilder->duplicateOperand(getSrc(2));
+    auto accSrc = nonConstBuilder->duplicateOperand(getImplAccSrc());
+    auto accDst = nonConstBuilder->duplicateOperand(getImplAccDst());
+
+    if (isSend())
+    {
+        MUST_BE_TRUE(false, "cloning send not yet supported");
+    }
+    else
+    {
+        newInst = nonConstBuilder->createInternalInst(prd, op, condMod, getSaturate(), getExecSize(),
+            dst, src0, src1, option, getLineNo(), getCISAOff(), getSrcFilename());
+
+        if (src2)
+            newInst->setSrc(src2, 2);
+
+        if (accSrc)
+            newInst->setImplAccSrc(accSrc);
+
+        if (accDst)
+            newInst->setImplAccDst(accDst);
+    }
+
+    return newInst;
+}
+
+G4_INST* G4_InstIntrinsic::cloneInst()
+{
+    if (!isIntrinsicInst())
+        return nullptr;
+
+    auto nonConstBuilder = const_cast<IR_Builder*>(&builder);
+    auto prd = nonConstBuilder->duplicateOperand(getPredicate());
+    auto dst = nonConstBuilder->duplicateOperand(getDst());
+    auto src0 = nonConstBuilder->duplicateOperand(getSrc(0));
+    auto src1 = nonConstBuilder->duplicateOperand(getSrc(1));
+    auto src2 = nonConstBuilder->duplicateOperand(getSrc(2));
+
+    return nonConstBuilder->createInternalIntrinsicInst(prd, getIntrinsicId(), getExecSize(), dst,
+        src0, src1, src2, option, getLineNo(), getCISAOff(), getSrcFilename());
+}
+
+G4_INST* G4_InstMath::cloneInst()
+{
+    if (!isMathInst())
+        return nullptr;
+
+    auto nonConstBuilder = const_cast<IR_Builder*>(&builder);
+    auto prd = nonConstBuilder->duplicateOperand(getPredicate());
+    auto dst = nonConstBuilder->duplicateOperand(getDst());
+    auto src0 = nonConstBuilder->duplicateOperand(getSrc(0));
+    auto src1 = nonConstBuilder->duplicateOperand(getSrc(1));
+
+    return nonConstBuilder->createInternalMathInst(prd, getSaturate(), getExecSize(), dst,
+        src0, src1, getMathCtrl(), option, getLineNo(), getCISAOff(), getSrcFilename());
+}
+

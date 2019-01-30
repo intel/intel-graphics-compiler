@@ -212,9 +212,10 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
                                 G4_DstRegRegion* dst,
                                 G4_Operand* src0,
                                 G4_Operand* src1,
-                                unsigned int option)
+                                unsigned int option,
+                                bool addToInstList)
 {
-    return createInst(prd, op, mod, sat, size, dst, src0, src1, option, 0);
+    return createInst(prd, op, mod, sat, size, dst, src0, src1, option, 0, addToInstList);
 }
 G4_INST* IR_Builder::createInst(G4_Predicate* prd,
                                 G4_opcode op,
@@ -225,7 +226,8 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
                                 G4_Operand* src0,
                                 G4_Operand* src1,
                                 unsigned int option,
-                                int lineno)
+                                int lineno,
+                                bool addToInstList)
 {
     MUST_BE_TRUE(op != G4_math, "IR_Builder::createInst should not be used to create math instructions");
     G4_INST* i = NULL;
@@ -240,15 +242,19 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
         i = new (mem)G4_INST(*this, prd, op, mod, sat, size, dst, src0, src1, option);
     }
 
-    i->setCISAOff(curCISAOffset);
+    if (addToInstList)
+    {
+        i->setCISAOff(curCISAOffset);
 
-    if (m_options->getOption(vISA_EmitLocation))
-    {      
-        i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+        if (m_options->getOption(vISA_EmitLocation))
+        {
+            i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+        }
+        
+        instList.push_back(i);
     }
 
     instAllocList.push_back(i);
-    instList.push_back(i);
 
     return i;
 }
@@ -281,27 +287,16 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
 {
     MUST_BE_TRUE(op != G4_math, "IR_Builder::createInternalInst should not be used to create math instructions");
 
-    G4_INST* i = NULL;
+    auto ii = createInst(prd, op, mod, sat, size, dst, src0, src1, option, false);
 
-    // ToDo: have separate functions to create call/jmp/ret
-    if (G4_Inst_Table[op].instType == InstTypeFlow)
-    {
-        i = new (mem)G4_InstCF(*this, prd, op, mod, sat, size, dst, src0, option);
-    }
-    else
-    {
-        i = new (mem)G4_INST(*this, prd, op, mod, sat, size, dst, src0, src1, option);
-    }
-
-    i->setCISAOff(CISAoff);
+    ii->setCISAOff(CISAoff);
 
     if (m_options->getOption(vISA_EmitLocation))
     {
-        i->setLocation(new (mem) MDLocation(lineno, curFile));
+        ii->setLocation(new (mem) MDLocation(lineno, curFile));
     }
 
-    instAllocList.push_back(i);
-    return i;
+    return ii;
 }
 
 G4_INST* IR_Builder::createIf(G4_Predicate* prd, uint8_t size, uint32_t option)
@@ -339,15 +334,18 @@ G4_INST* IR_Builder::createInternalCFInst(
     MUST_BE_TRUE(G4_Inst_Table[op].instType == InstTypeFlow,
                  "IR_Builder::createInternalCFInst must be used with InstTypeFlow instruction class");
 
-    G4_InstCF* i = new (mem)G4_InstCF(*this, prd, op, size, jip, uip, option);
-    i->setCISAOff(CISAoff);
+    G4_InstCF* ii = new (mem)G4_InstCF(*this, prd, op, size, jip, uip, option);
+
+    ii->setCISAOff(CISAoff);
+
     if (m_options->getOption(vISA_EmitLocation))
     {
-        i->setLocation(new (mem) MDLocation(lineno, curFile));
+        ii->setLocation(new (mem) MDLocation(lineno, srcFilename));
     }
 
-    instAllocList.push_back(i);
-    return i;
+    instAllocList.push_back(ii);
+
+    return ii;
 }
 
 
@@ -361,21 +359,43 @@ G4_INST* IR_Builder::createInst(G4_Predicate* prd,
                                 G4_Operand* src1,
                                 G4_Operand* src2,
                                 unsigned int option,
-                                int lineno)
+                                bool addToInstList)
 {
-    MUST_BE_TRUE(op != G4_math && G4_Inst_Table[op].instType != InstTypeFlow, 
+    return createInst(prd, op, mod, sat, size, dst, src0, src1, src2, option, 0);
+}
+G4_INST* IR_Builder::createInst(G4_Predicate* prd,
+                                G4_opcode op,
+                                G4_CondMod* mod,
+                                bool sat,
+                                unsigned char size,
+                                G4_DstRegRegion* dst,
+                                G4_Operand* src0,
+                                G4_Operand* src1,
+                                G4_Operand* src2,
+                                unsigned int option,
+                                int lineno,
+                                bool addToInstList)
+{
+    MUST_BE_TRUE(op != G4_math && G4_Inst_Table[op].instType != InstTypeFlow,
         "IR_Builder::createInst should not be used to create math/CF instructions");
 
-    G4_INST* i = new (mem)G4_INST(*this, prd, op, mod, sat, size, dst, src0, src1, src2, option);
-    i->setCISAOff(curCISAOffset);
+    G4_INST* i = NULL;
 
-    if (m_options->getOption(vISA_EmitLocation))
+    i = new (mem)G4_INST(*this, prd, op, mod, sat, size, dst, src0, src1, src2, option);
+
+    if (addToInstList)
     {
-        i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+        i->setCISAOff(curCISAOffset);
+
+        if (m_options->getOption(vISA_EmitLocation))
+        {
+            i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+        }
+
+        instList.push_back(i);
     }
 
     instAllocList.push_back(i);
-    instList.push_back(i);
 
     return i;
 }
@@ -407,18 +427,17 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
                                         int lineno, int CISAoff,
                                         char* srcFilename)
 {
-    MUST_BE_TRUE(op != G4_math && G4_Inst_Table[op].instType != InstTypeFlow, 
-        "IR_Builder::createInternalInst should not be used to create math/CF instructions");
-    G4_INST* i = new (mem)G4_INST(*this, prd, op, mod, sat, size, dst, src0, src1, src2, option);
-    i->setCISAOff(CISAoff);
+    auto ii = createInst(prd, op, mod, sat, size, dst, src0, src1, src2, option,
+        lineno, false);
+
+    ii->setCISAOff(CISAoff);
 
     if (m_options->getOption(vISA_EmitLocation))
     {
-        i->setLocation(new (mem) MDLocation(lineno, curFile));
+        ii->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, srcFilename));
     }
 
-    instAllocList.push_back(i);
-    return i;
+    return ii;
 }
 
 G4_INST* IR_Builder::createSendInst(G4_Predicate* prd,
@@ -430,7 +449,8 @@ G4_INST* IR_Builder::createSendInst(G4_Predicate* prd,
                                     G4_Operand* msg,
                                     unsigned int option,
                                     G4_SendMsgDescriptor *msgDesc,
-                                    int lineno)
+                                    int lineno,
+                                    bool addToInstList)
 {
 
     assert (msgDesc && "msgDesc must not be null");
@@ -439,18 +459,48 @@ G4_INST* IR_Builder::createSendInst(G4_Predicate* prd,
     ///used in binary encoding
     m->setMsgDesc( msgDesc );
 
-    m->setCISAOff(curCISAOffset);
-
-    if (m_options->getOption(vISA_EmitLocation))
+    if (addToInstList)
     {
-        m->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+        m->setCISAOff(curCISAOffset);
+
+        if (m_options->getOption(vISA_EmitLocation))
+        {
+            m->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+        }
+
+        instList.push_back(m);
     }
 
     instAllocList.push_back(m);
-    instList.push_back(m);
+
     return m;
 }
 
+G4_INST* IR_Builder::createInternalSendInst(G4_Predicate* prd,
+    G4_opcode op,
+    unsigned char size,
+    G4_DstRegRegion* postDst,
+    G4_SrcRegRegion* currSrc,
+    G4_Operand* extDesc,
+    G4_Operand* msg,
+    unsigned int option,
+    G4_SendMsgDescriptor *msgDesc,
+    int lineno,
+    int CISAoff,
+    char* srcFilename)
+{
+    auto ii = createSendInst(prd, op, size, postDst, currSrc, extDesc,
+        msg, option, msgDesc, lineno, false);
+
+    ii->setCISAOff(CISAoff);
+
+    if (m_options->getOption(vISA_EmitLocation))
+    {
+        ii->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, srcFilename));
+    }
+
+    return ii;
+}
 
 //
 // Create a split send (sends) instruction
@@ -467,7 +517,8 @@ G4_INST* IR_Builder::createSplitSendInst(G4_Predicate* prd,
                                          unsigned int option,
                                          G4_SendMsgDescriptor *msgDesc,
                                          G4_Operand* src3,      // ext msg desciptor: imm or vec
-                                         int lineno)
+                                         int lineno,
+                                         bool addToInstList)
 {
 
     if (src1 == NULL)
@@ -480,19 +531,51 @@ G4_INST* IR_Builder::createSplitSendInst(G4_Predicate* prd,
 
     m->setMsgDesc( msgDesc );
 
-    m->setCISAOff(curCISAOffset);
-    
-    if (m_options->getOption(vISA_EmitLocation))
-    {
-        m->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
-    }
     m->setSrc(src3 ? src3 : createImm(msgDesc->getExtendedDesc(), Type_UD), 3);
 
+    if (addToInstList)
+    {
+        m->setCISAOff(curCISAOffset);
+
+        if (m_options->getOption(vISA_EmitLocation))
+        {
+            m->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+        }
+        instList.push_back(m);
+    }
+
     instAllocList.push_back(m);
-    instList.push_back(m);
 
     return m;
 }
+
+G4_INST* IR_Builder::createInternalSplitSendInst(G4_Predicate* prd,
+    G4_opcode op,
+    unsigned char size,
+    G4_DstRegRegion* dst,
+    G4_SrcRegRegion* src0, // can be header
+    G4_SrcRegRegion* src1,
+    G4_Operand* msg,       // msg descriptor: imm or vec
+    unsigned int option,
+    G4_SendMsgDescriptor *msgDesc,
+    G4_Operand* src3,      // ext msg desciptor: imm or vec
+    int lineno,
+    int CISAoff,
+    char* srcFilename)
+{
+    auto ii = createSplitSendInst(prd, op, size, dst, src0, src1, msg, option,
+        msgDesc, src3, lineno, false);
+
+    ii->setCISAOff(CISAoff);
+
+    if (m_options->getOption(vISA_EmitLocation))
+    {
+        ii->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, srcFilename));
+    }
+
+    return ii;
+}
+
 //
 // Math instruction is like a generic one except:
 // -- it takes a G4_MathOp to specify the function control
@@ -507,57 +590,91 @@ G4_INST* IR_Builder::createMathInst(G4_Predicate* prd,
                                     G4_Operand* src1,
                                     G4_MathOp mathOp,
                                     unsigned int option,
-                                    int lineno)
+                                    int lineno,
+                                    bool addToInstList)
 {
     G4_INST* i = new (mem)G4_InstMath(*this, prd, G4_math, NULL, sat, size, dst, src0, src1, option, mathOp);
 
-    i->setCISAOff(curCISAOffset);
-    
-    if (m_options->getOption(vISA_EmitLocation))
+    if (addToInstList)
     {
-        i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+        i->setCISAOff(curCISAOffset);
+
+        if (m_options->getOption(vISA_EmitLocation))
+        {
+            i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+        }
+        instList.push_back(i);
     }
 
     instAllocList.push_back(i);
-    instList.push_back(i);
+
     return i;
+}
+
+G4_INST* IR_Builder::createInternalMathInst(G4_Predicate* prd,
+    bool sat,
+    unsigned char size,
+    G4_DstRegRegion* dst,
+    G4_Operand* src0,
+    G4_Operand* src1,
+    G4_MathOp mathOp,
+    unsigned int option,
+    int lineno,
+    int CISAoff,
+    char* srcFilename)
+{
+    auto ii = createMathInst(prd, sat, size, dst, src0, src1, mathOp, option, lineno, false);
+
+    ii->setCISAOff(CISAoff);
+
+    if (m_options->getOption(vISA_EmitLocation))
+    {
+        ii->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, srcFilename));
+    }
+
+    return ii;
 }
 
 G4_INST* IR_Builder::createIntrinsicInst(G4_Predicate* prd, Intrinsic intrinId,
     uint8_t size, G4_DstRegRegion* dst,
     G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-    unsigned int option, int lineno)
+    unsigned int option, int lineno, bool addToInstList)
 {
     G4_INST* i = new (mem) G4_InstIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, option);
 
-    i->setCISAOff(curCISAOffset);
-    
-    if (m_options->getOption(vISA_EmitLocation))
+    if (addToInstList)
     {
-        i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+        i->setCISAOff(curCISAOffset);
+
+        if (m_options->getOption(vISA_EmitLocation))
+        {
+            i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+        }
+
+        instList.push_back(i);
     }
 
     instAllocList.push_back(i);
-    instList.push_back(i);
+
     return i;
 }
 
 G4_INST* IR_Builder::createInternalIntrinsicInst(G4_Predicate* prd, Intrinsic intrinId,
     uint8_t size, G4_DstRegRegion* dst,
     G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-    unsigned int option, int lineno)
+    unsigned int option, int lineno, int CISAoff, char* srcFilename)
 {
-    G4_INST* i = new (mem) G4_InstIntrinsic(*this, prd, intrinId, size, dst, src0, src1, src2, option);
+    auto ii = createIntrinsicInst(prd, intrinId, size, dst, src0, src1, src2, option,
+        lineno, false);
 
-    i->setCISAOff(curCISAOffset);
-    
+    ii->setCISAOff(CISAoff);
+
     if (m_options->getOption(vISA_EmitLocation))
     {
-        i->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, curFile));
+        ii->setLocation(new (mem) MDLocation(lineno == 0 ? curLine : lineno, srcFilename));
     }
 
-    instAllocList.push_back(i);
-    return i;
+    return ii;
 }
 
 G4_MathOp IR_Builder::Get_MathFuncCtrl(ISA_Opcode op, G4_Type type)

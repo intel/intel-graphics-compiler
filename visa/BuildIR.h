@@ -1472,18 +1472,18 @@ public:
                         G4_CondMod* mod, bool sat,
                         unsigned char size, G4_DstRegRegion* dst,
                         G4_Operand* src0, G4_Operand* src1,
-                        unsigned int option);
+                        unsigned int option, bool addToInstList = true);
     G4_INST* createInst(G4_Predicate* prd, G4_opcode op,
                         G4_CondMod* mod, bool sat,
                         unsigned char size, G4_DstRegRegion* dst,
                         G4_Operand* src0, G4_Operand* src1,
-                        unsigned int option, int lineno);
+                        unsigned int option, int lineno, bool addToInstList = true);
     template <typename T>
     G4_INST* createInst(G4_Predicate* prd, G4_opcode op,
                         G4_CondMod* mod, bool sat,
                         T size, G4_DstRegRegion* dst,
                         G4_Operand* src0, G4_Operand* src1,
-                        unsigned int option, int lineno)
+                        unsigned int option, int lineno, bool addToInstList = true)
     {
         unsigned char sz = static_cast<unsigned char>(size);
         return createInst(prd, op, mod, sat, sz, dst, src0, src1, option, lineno);
@@ -1493,7 +1493,7 @@ public:
                         G4_CondMod* mod, bool sat,
                         T size, G4_DstRegRegion* dst,
                         G4_Operand* src0, G4_Operand* src1,
-                        unsigned int option)
+                        unsigned int option, bool addToInstList = true)
     {
         unsigned char sz = static_cast<unsigned char>(size);
         return createInst(prd, op, mod, sat, sz, dst, src0, src1, option);
@@ -1515,14 +1515,29 @@ public:
         G4_CondMod* mod, bool sat,
         unsigned char size, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-        unsigned int option, int lineno);
+        unsigned int option, bool addToInstList = true);
+    G4_INST* createInst(G4_Predicate* prd, G4_opcode op,
+        G4_CondMod* mod, bool sat,
+        unsigned char size, G4_DstRegRegion* dst,
+        G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
+        unsigned int option, int lineno, bool addToInstList = true);
+    template <typename T>
+    G4_INST* createInst(G4_Predicate* prd, G4_opcode op,
+        G4_CondMod* mod, bool sat,
+        T size, G4_DstRegRegion* dst,
+        G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
+        unsigned int option, bool addToInstList = true)
+    {
+        unsigned char sz = static_cast<unsigned char>(size);
+        return createInst(prd, op, mod, sat, sz, dst, src0, src1, src2, option);
+    }
 
     template <typename T>
     G4_INST* createInst(G4_Predicate* prd, G4_opcode op,
         G4_CondMod* mod, bool sat,
         T size, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-        unsigned int option, int lineno)
+        unsigned int option, int lineno, bool addToInstList = true)
     {
         unsigned char sz = static_cast<unsigned char>(size);
         return createInst(prd, op, mod, sat, sz, dst, src0, src1, src2, option, lineno);
@@ -1555,7 +1570,16 @@ public:
                             G4_SrcRegRegion* payload, G4_Operand* src,
                             G4_Operand* msg, unsigned int option,
                             G4_SendMsgDescriptor *msgDesc,
-                            int lineno = 0);
+                            int lineno = 0, bool addToInstList = true);
+
+    G4_INST* createInternalSendInst(G4_Predicate* prd, G4_opcode op,
+        unsigned char size, G4_DstRegRegion* postDst,
+        G4_SrcRegRegion* payload, G4_Operand* src,
+        G4_Operand* msg, unsigned int option,
+        G4_SendMsgDescriptor *msgDesc,
+        int lineno = 0,
+        int CISAoff = -1,
+        char* srcFilename = NULL);
 
     G4_INST* createSplitSendInst(G4_Predicate* prd, G4_opcode op,
                                  unsigned char size, G4_DstRegRegion* dst,
@@ -1563,22 +1587,40 @@ public:
                                  G4_Operand* msg, unsigned int option,
                                  G4_SendMsgDescriptor *msgDesc,
                                  G4_Operand* src3,
-                                 int lineno = 0);
+                                 int lineno = 0,
+                                 bool addToInstList = true);
+
+    G4_INST* createInternalSplitSendInst(G4_Predicate* prd, G4_opcode op,
+        unsigned char size, G4_DstRegRegion* dst,
+        G4_SrcRegRegion* src1, G4_SrcRegRegion* src2,
+        G4_Operand* msg, unsigned int option,
+        G4_SendMsgDescriptor *msgDesc,
+        G4_Operand* src3,
+        int lineno = 0,
+        int CISAoff = -1,
+        char* srcFilename = NULL);
 
     G4_INST* createMathInst(G4_Predicate* prd, bool sat,
                             unsigned char size, G4_DstRegRegion* dst,
                             G4_Operand* src0, G4_Operand* src1, G4_MathOp mathOp,
-                            unsigned int option, int lineno = 0);
+                            unsigned int option, int lineno = 0, bool addToInstList = true);
+
+    G4_INST* createInternalMathInst(G4_Predicate* prd, bool sat,
+        unsigned char size, G4_DstRegRegion* dst,
+        G4_Operand* src0, G4_Operand* src1, G4_MathOp mathOp,
+        unsigned int option, int lineno = 0, int CISAoff = -1,
+        char* srcFilename = NULL);
 
     G4_INST* createIntrinsicInst(G4_Predicate* prd, Intrinsic intrinId,
         unsigned char size, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-        unsigned int option, int lineno = 0);
+        unsigned int option, int lineno = 0, bool addToInstList = true);
 
     G4_INST* createInternalIntrinsicInst(G4_Predicate* prd, Intrinsic intrinId,
         unsigned char size, G4_DstRegRegion* dst,
         G4_Operand* src0, G4_Operand* src1, G4_Operand* src2,
-        unsigned int option, int lineno = 0);
+        unsigned int option, int lineno = 0, int CISAoff = -1,
+        char* srcFilename = NULL);
 
     G4_MathOp Get_MathFuncCtrl(ISA_Opcode op, G4_Type type);
     void resizePredefinedStackVars();

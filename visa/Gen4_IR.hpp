@@ -762,6 +762,15 @@ public:
 
     virtual ~G4_INST() {}
 
+    // The method is declared virtual so subclasses of G4_INST
+    // should also implement this method to populate members
+    // unique to them.
+    virtual G4_INST* cloneInst();
+    virtual bool isBaseInst() { return true; }
+    virtual bool isCFInst() { return false; }
+    virtual bool isIntrinsicInst() { return false; }
+    virtual bool isMathInst() { return false; }
+
     uint32_t getLexicalId() const { return global_id; }
     void setLexicalId(uint32_t id) { global_id = id; }
     void setPredicate(G4_Predicate* p);
@@ -1313,6 +1322,9 @@ public:
 
     }
 
+    G4_INST* cloneInst() override;
+    bool isMathInst() override { return true; }
+
     bool isIEEEMath() const { return mathOp == MATH_INVM || mathOp == MATH_RSQRTM; }
     bool isMathIntDiv() const { return mathOp >= MATH_INT_DIV && mathOp < MATH_INVM; }
     bool isOneSrcMath() const
@@ -1391,9 +1403,10 @@ public:
     {
     }
 
-
+    bool isCFInst() override { return true; }
 
     void setJip(G4_Label* opnd)
+
     {
         jip = opnd;
     }
@@ -1579,6 +1592,9 @@ public:
     {
 
     }
+
+    G4_INST* cloneInst() override;
+    bool isIntrinsicInst() override { return true; }
 
     int getNumDst() const { return G4_Intrinsics[(int) intrinsicId].numDst; }
     int getNumSrc() const { return G4_Intrinsics[(int) intrinsicId].numSrc; }
