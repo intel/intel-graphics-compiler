@@ -192,7 +192,7 @@ private:
         const bool normalizedCoords,
         const SAMPLER_COMPARE_FUNC_TYPE& compareFunc,
         const DWORD borderColorOffset,
-        Util::BinaryStream& membuf ) const;
+        Util::BinaryStream& membuf );
 
     DWORD AllocateSamplerIndirectState(
         const G6HWC::SGfxSamplerIndirectState& borderColor,
@@ -203,7 +203,7 @@ private:
         const SURFACE_FORMAT& surfaceFormat,
         const DWORD bufferLength,
         bool isMultiSampleImage,
-        Util::BinaryStream& membuf ) const;
+        Util::BinaryStream& membuf );
 
     RETVAL AddKernelAttributePatchItems(
         const IGC::SOpenCLKernelInfo& annotations,

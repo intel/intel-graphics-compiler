@@ -260,10 +260,10 @@ void CGen8OpenCLStateProcessor::CreateKernelBinary(
 
     const bool gtpinEnabled = GTPIN_IGC_OCL_IsEnabled();
 
-    ICBE_DPF(GFXDBG_HARDWARE, "\n");
-    ICBE_DPF(GFXDBG_HARDWARE,
+    ICBE_DPF_STR(m_oclStateDebugMessagePrintOut, GFXDBG_HARDWARE, "\n");
+    ICBE_DPF_STR(m_oclStateDebugMessagePrintOut, GFXDBG_HARDWARE,
         "** Kernel Patch Lists : Kernel Name = %s **\n", annotations.m_kernelName.c_str());
-    ICBE_DPF(GFXDBG_HARDWARE, "\n");
+    ICBE_DPF_STR(m_oclStateDebugMessagePrintOut, GFXDBG_HARDWARE, "\n");
 
     if( retValue.Success )
     {
@@ -340,9 +340,10 @@ void CGen8OpenCLStateProcessor::CreateProgramScopePatchStream(const IGC::SOpenCL
 {
     RETVAL retValue = g_cInitRetValue;
 
-    ICBE_DPF(GFXDBG_HARDWARE, "\n");
-    ICBE_DPF(GFXDBG_HARDWARE, "** Program Scope patch lists **\n");
-    ICBE_DPF(GFXDBG_HARDWARE, "\n");
+    std::string &output = m_oclStateDebugMessagePrintOut;
+    ICBE_DPF_STR(output, GFXDBG_HARDWARE, "\n");
+    ICBE_DPF_STR(output, GFXDBG_HARDWARE, "** Program Scope patch lists **\n");
+    ICBE_DPF_STR(output, GFXDBG_HARDWARE, "\n");
 
     for (auto &iter : annotations.m_initConstantAnnotation)
     {
@@ -850,7 +851,8 @@ RETVAL CGen8OpenCLStateProcessor::CreateSurfaceStateHeap(
             G6HWC::DebugBindingTableStateCommand(
                 membuf.GetLinearPointer() + context.Surface.BindingTableOffset,
                 btiCount,
-                m_Platform );
+                m_Platform,
+                m_oclStateDebugMessagePrintOut );
         }
 #endif
     }
@@ -1101,7 +1103,8 @@ RETVAL CGen8OpenCLStateProcessor::CreateDynamicStateHeap(
             {
                 G6HWC::DebugInterfaceDescriptorDataCommand(
                     &ifdd,
-                    m_Platform );
+                    m_Platform,
+                    m_oclStateDebugMessagePrintOut );
             }
 #endif
         }
@@ -1129,7 +1132,8 @@ DWORD CGen8OpenCLStateProcessor::AllocateSamplerIndirectState(
     {
         G6HWC::DebugSamplerIndirectStateCommand(
             &samplerIndirectStateOffset,
-            m_Platform);
+            m_Platform,
+            m_oclStateDebugMessagePrintOut );
     }
 #endif
 
@@ -1278,7 +1282,7 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
                 patch.LocationIndex = samplerAnnotation->LocationIndex;
                 patch.LocationIndex2 = samplerAnnotation->LocationCount;
                 patch.Type = samplerAnnotation->SamplerType;
-				patch.needBindlessHandle = samplerAnnotation->IsBindlessAccess;
+                patch.needBindlessHandle = samplerAnnotation->IsBindlessAccess;
                 patch.IsEmulationArgument = samplerAnnotation->IsEmulationArgument;
 
                 if(samplerAnnotation->IsBindlessAccess)
@@ -1355,13 +1359,13 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.Token = iOpenCL::PATCH_TOKEN_IMAGE_MEMORY_OBJECT_KERNEL_ARGUMENT;
             patch.Size = sizeof( patch );
             patch.ArgumentNumber = imageInput->ArgumentNumber;
-			patch.Offset = imageInput->IsBindlessAccess ? imageInput->PayloadPosition : context.Surface.SurfaceOffset[bti];
+            patch.Offset = imageInput->IsBindlessAccess ? imageInput->PayloadPosition : context.Surface.SurfaceOffset[bti];
             patch.btiOffset = context.Surface.SurfaceOffset[bti];
             patch.Type =  imageInput->ImageType;
             patch.Writeable = imageInput->Writeable;
             patch.LocationIndex = imageInput->LocationIndex;
             patch.LocationIndex2 = imageInput->LocationCount;
-			patch.needBindlessHandle = imageInput->IsBindlessAccess;
+            patch.needBindlessHandle = imageInput->IsBindlessAccess;
             patch.IsEmulationArgument = imageInput->IsEmulationArgument;
 
             if(imageInput->IsBindlessAccess)
@@ -1931,10 +1935,10 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
             patch.RequiredWorkGroupSizeZ = annotations.m_executionEnivronment.FixedWorkgroupSize[2];
         }
 
-		patch.WorkgroupWalkOrderDims = 0;
-		patch.WorkgroupWalkOrderDims |= annotations.m_executionEnivronment.WorkgroupWalkOrder[0];
-		patch.WorkgroupWalkOrderDims |= annotations.m_executionEnivronment.WorkgroupWalkOrder[1] << 2;
-		patch.WorkgroupWalkOrderDims |= annotations.m_executionEnivronment.WorkgroupWalkOrder[2] << 4;
+        patch.WorkgroupWalkOrderDims = 0;
+        patch.WorkgroupWalkOrderDims |= annotations.m_executionEnivronment.WorkgroupWalkOrder[0];
+        patch.WorkgroupWalkOrderDims |= annotations.m_executionEnivronment.WorkgroupWalkOrder[1] << 2;
+        patch.WorkgroupWalkOrderDims |= annotations.m_executionEnivronment.WorkgroupWalkOrder[2] << 4;
 
         patch.CompiledSIMD32 = ( annotations.m_executionEnivronment.CompiledSIMDSize == 32 );
         patch.CompiledSIMD16 = ( annotations.m_executionEnivronment.CompiledSIMDSize == 16 );
@@ -2320,7 +2324,8 @@ RETVAL CGen8OpenCLStateProcessor::CombineKernelBinary(
 
     header.KernelUnpaddedSize = (DWORD)unpaddedBinarySize;
 
-    ICBE_DPF( GFXDBG_HARDWARE, "Kernel Name: %s\n", annotations.m_kernelName.c_str() );
+    ICBE_DPF_STR( m_oclStateDebugMessagePrintOut,
+        GFXDBG_HARDWARE, "Kernel Name: %s\n", annotations.m_kernelName.c_str() );
 
     kernelBinary.Write( header );
     kernelBinary.Write( annotations.m_kernelName.c_str(), annotations.m_kernelName.size() + 1 );
@@ -2384,7 +2389,7 @@ RETVAL CGen8OpenCLStateProcessor::AddSamplerState(
     const bool normalizedCoords,
     const SAMPLER_COMPARE_FUNC_TYPE& compareFunc,
     const DWORD borderColorOffset,
-    Util::BinaryStream& membuf) const
+    Util::BinaryStream& membuf)
 {
 
     RETVAL  retValue = g_cInitRetValue;
@@ -2466,7 +2471,8 @@ RETVAL CGen8OpenCLStateProcessor::AddSamplerState(
         {
             G6HWC::DebugSamplerStateCommand(
                 &samplerState,
-                m_Platform );
+                m_Platform,
+                m_oclStateDebugMessagePrintOut );
         }
 #endif
     }
@@ -2479,7 +2485,7 @@ RETVAL CGen8OpenCLStateProcessor::AddSurfaceState(
     const SURFACE_FORMAT& surfaceFormat,
     const DWORD bufferLength,
     bool isMultiSampleImage,
-    Util::BinaryStream& membuf ) const
+    Util::BinaryStream& membuf )
 {
     RETVAL  retValue = g_cInitRetValue;
 
@@ -2533,7 +2539,8 @@ RETVAL CGen8OpenCLStateProcessor::AddSurfaceState(
 
         G6HWC::DebugSurfaceStateCommand(
             &surf,
-            m_Platform );
+            m_Platform,
+            m_oclStateDebugMessagePrintOut );
 
         if( membuf.Write( surf ) == false )
         {

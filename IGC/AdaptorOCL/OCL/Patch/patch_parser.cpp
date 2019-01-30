@@ -198,10 +198,10 @@ void DebugPatchList(
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tTransformable = %s\n",
                     pPatchItem->Transformable ? "true" : "false");
-				ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-					"\tNeedBindlessHandle = %s\n",
-					pPatchItem->needBindlessHandle ? "true" : "false");
-                ICBE_DPF(GFXDBG_HARDWARE,
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tNeedBindlessHandle = %s\n",
+                    pPatchItem->needBindlessHandle ? "true" : "false");
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tIsEmulationArgument = %s\n",
                     pPatchItem->IsEmulationArgument ? "true" : "false");
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
@@ -225,10 +225,10 @@ void DebugPatchList(
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tOffset = %d\n",
                     pPatchItem->Offset );
-                ICBE_DPF(GFXDBG_HARDWARE,
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tLocationIndex1 = %d\n",
                     pPatchItem->LocationIndex);
-                ICBE_DPF(GFXDBG_HARDWARE,
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tLocationIndex2 = %d\n",
                     pPatchItem->LocationIndex2);
             }
@@ -333,16 +333,16 @@ void DebugPatchList(
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tOffset = %d\n",
                     pPatchItem->Offset );
-                ICBE_DPF(GFXDBG_HARDWARE,
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tLocationIndex1 = %d\n",
                     pPatchItem->LocationIndex);
-                ICBE_DPF(GFXDBG_HARDWARE,
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tLocationIndex2 = %d\n",
                     pPatchItem->LocationIndex2);
-				ICBE_DPF(GFXDBG_HARDWARE,
-					"\tNeedBindlessHandle = %s\n",
-					pPatchItem->needBindlessHandle ? "true" : "false");
-                ICBE_DPF(GFXDBG_HARDWARE,
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tNeedBindlessHandle = %s\n",
+                    pPatchItem->needBindlessHandle ? "true" : "false");
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tIsEmulationArgument = %s\n",
                     pPatchItem->IsEmulationArgument ? "true" : "false");
                 ICBE_DPF_STR(output, GFXDBG_HARDWARE,
@@ -547,7 +547,7 @@ void DebugPatchList(
                     ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                         "\tLocationIndex2 = %d\n",
                         pPatchItem->LocationIndex2 );
-                    ICBE_DPF(GFXDBG_HARDWARE,
+                    ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                         "\tIsEmulationArgument = %s\n",
                         pPatchItem->IsEmulationArgument ? "true" : "false");
             }
@@ -1003,13 +1003,13 @@ void DebugPatchList(
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tDataParamSize = %d\n",
                     pPatchItem->DataParamSize );
-                ICBE_DPF(GFXDBG_HARDWARE,
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tLocationIndex = %d\n",
                     pPatchItem->LocationIndex);
-                ICBE_DPF(GFXDBG_HARDWARE,
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tLocationIndex2 = %d\n",
                     pPatchItem->LocationIndex2);
-                ICBE_DPF(GFXDBG_HARDWARE,
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tIsEmulationArgument = %s\n",
                     pPatchItem->IsEmulationArgument ? "true" : "false");
             }
@@ -1036,7 +1036,7 @@ void DebugPatchList(
                 ICBE_DPF_STR( output, GFXDBG_HARDWARE,
                     "\tDataParamSize = %d\n",
                     pPatchItem->DataParamSize );
-                ICBE_DPF(GFXDBG_HARDWARE,
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                     "\tIsEmulationArgument = %s\n",
                     pPatchItem->IsEmulationArgument ? "true" : "false");
             }
@@ -1233,17 +1233,17 @@ void DebugPatchList(
             const iOpenCL::SPatchAllocateStatelessDefaultDeviceQueueSurface*  pPatchItem =
                 (const iOpenCL::SPatchAllocateStatelessDefaultDeviceQueueSurface*)pHeader;
 
-            ICBE_DPF(GFXDBG_HARDWARE,
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                 "PATCH_TOKEN_ALLOCATE_STATELESS_DEFAULT_DEVICE_QUEUE_SURFACE (%08X) (size = %d)\n",
                 pPatchItem->Token,
                 pPatchItem->Size);
-            ICBE_DPF(GFXDBG_HARDWARE,
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                 "\tSurfaceStateHeapOffset = %d\n",
                 pPatchItem->SurfaceStateHeapOffset);
-            ICBE_DPF(GFXDBG_HARDWARE,
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                 "\tDataParamOffset = %d\n",
                 pPatchItem->DataParamOffset);
-            ICBE_DPF(GFXDBG_HARDWARE,
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                 "\tDataParamSize = %d\n",
                 pPatchItem->DataParamSize);
 
@@ -1255,23 +1255,23 @@ void DebugPatchList(
             const iOpenCL::SPatchStatelessDeviceQueueKernelArgument*  pPatchItem =
                 (const iOpenCL::SPatchStatelessDeviceQueueKernelArgument*)pHeader;
 
-            ICBE_DPF(GFXDBG_HARDWARE,
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                 "PATCH_TOKEN_STATELESS_DEVICE_QUEUE_KERNEL_ARGUMENT (%08X) (size = %d)\n",
                 pPatchItem->Token,
                 pPatchItem->Size);
-            ICBE_DPF(GFXDBG_HARDWARE,
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                 "\tArgumentNumber = %d\n",
                 pPatchItem->ArgumentNumber);
-            ICBE_DPF(GFXDBG_HARDWARE,
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                 "\tSurfaceStateHeapOffset = %d\n",
                 pPatchItem->SurfaceStateHeapOffset);
-            ICBE_DPF(GFXDBG_HARDWARE,
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                 "\tDataParamOffset = %d\n",
                 pPatchItem->DataParamOffset);
-            ICBE_DPF(GFXDBG_HARDWARE,
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                 "\tDataParamSize = %d\n",
                 pPatchItem->DataParamSize);
-            ICBE_DPF(GFXDBG_HARDWARE,
+            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
                 "\tIsEmulationArgument = %s\n",
                 pPatchItem->IsEmulationArgument ? "true" : "false");
         }
