@@ -7900,6 +7900,7 @@ public:
             G4_BB* bb = (*ib);
 
             bb->resetLocalId();
+            std::unordered_set<G4_INST *> Seen;
 
             INST_LIST_ITER ii = bb->begin(), iend(bb->end());
             while ( ii != iend )
@@ -7908,7 +7909,7 @@ public:
 
                 if( !inst->isRawMov() ||
                     inst->getPredicate() ||
-                    inst->getScratch() ||
+                    Seen.count(inst) > 0 ||
                     inst->def_size() != 1 ||
                     !inst->canHoist(bb->isInSimdFlow(), fg.builder->getOptions()) )
                 {
@@ -7940,7 +7941,7 @@ public:
                 }
 
                 G4_DstRegRegion* defDstRegion = defInst->getDst();
-                if (defInst->getScratch() ||
+                if (Seen.count(defInst) > 0 ||
                     src->compareOperand( defDstRegion ) != Rel_eq )
                 {
                     ii++;
@@ -8015,7 +8016,7 @@ public:
                 for (auto iter = defInst->use_begin(), E = defInst->use_end(); iter != E; ++iter)
                 {
                     G4_INST* useInst = (*iter).first;
-                    useInst->setScratch(true);
+                    Seen.insert(useInst);
                 }
 
                 if( !canRename )

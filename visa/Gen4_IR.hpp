@@ -698,7 +698,6 @@ protected:
     unsigned short sat : 1;
     // during optimization, an inst may become redundant and be marked dead
     unsigned short dead : 1;
-    unsigned short scratch : 1;
     unsigned short evenlySplitInst : 1;
     unsigned char    execSize; 
 
@@ -1025,8 +1024,6 @@ public:
 
     void setEvenlySplitInst(bool val) { evenlySplitInst = val; }
     bool getEvenlySplitInst() { return evenlySplitInst; }
-    void setScratch(bool val) { scratch = val; }
-    bool getScratch() const { return scratch; }
 
     void setCISAOff(int offset) { srcCISAoff = offset; }
     int getCISAOff() { return srcCISAoff; }
