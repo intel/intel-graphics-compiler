@@ -327,11 +327,7 @@ void FindInterestingConstants::visitLoadInst(llvm::LoadInst &I)
 template<typename ContextT>
 void FindInterestingConstants::copyInterestingConstants(ContextT* pShaderCtx)
 {
-    pShaderCtx->programOutput.m_InterestingConstantsSize = m_InterestingConstants.size();
-    pShaderCtx->programOutput.m_pInterestingConstants = new USC::ConstantAddrValue[m_InterestingConstants.size()];
-    memcpy_s(pShaderCtx->programOutput.m_pInterestingConstants, m_InterestingConstants.size() * sizeof(USC::ConstantAddrValue),
-        &m_InterestingConstants[0],
-        m_InterestingConstants.size() * sizeof(USC::ConstantAddrValue));
+    pShaderCtx->programOutput.m_pInterestingConstants = m_InterestingConstants;
 }
 
 bool FindInterestingConstants::doFinalization(llvm::Module &M)

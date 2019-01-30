@@ -191,8 +191,8 @@ namespace IGC
 		SSimplePushInfo simplePushInfoArr[g_c_maxNumberOfBufferPushed];
 
         // Interesting constants for dynamic constant folding
-        USC::ConstantAddrValue* m_pInterestingConstants = nullptr;
-        unsigned int            m_InterestingConstantsSize = 0;
+        std::vector<USC::ConstantAddrValue> m_pInterestingConstants;
+
     };
 
     struct SPixelShaderKernelProgram : SKernelProgram
