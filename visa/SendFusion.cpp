@@ -409,6 +409,11 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
         return false;
     }
 
+    // If rspLen > 1, skip.
+    if (rspLen > 1) {
+        return false;
+    }
+
     // Send might have a0 as its descriptor, if we know a0 is
     // a compile-time constant, replace a0 with the constant.
     simplifyMsg(Iter);
