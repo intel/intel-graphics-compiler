@@ -204,7 +204,7 @@ inline void AddURBWriteRelatedPass(CodeGenContext &ctx, IGCPassManager& mpm)
     }
 }
 
-inline void AddAnalysisPasses(CodeGenContext &ctx, const CShaderProgram::KernelShaderMap &shaders, IGCPassManager& mpm)
+inline void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager& mpm)
 {
     bool isOptDisabled = ctx.getModuleMetaData()->compOpt.OptDisable;
     TODO("remove the following once all IGC passes are registered to PassRegistery in their constructor")
@@ -302,7 +302,7 @@ static void UpdateInstTypeHint(CodeGenContext& ctx)
 // forward declaration.
 llvm::ModulePass *createPruneUnusedArgumentsPass();
 
-inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::KernelShaderMap& shaders, IGCPassManager& mpm)
+inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
 {
     // update type of instructions to know what passes are needed.
     UpdateInstTypeHint(ctx);
@@ -575,7 +575,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, const CShaderProgram::Ker
         mpm.add(createEmu64OpsPass());
     }
 
-        mpm.add(IGCLLVM::createInstSimplifyLegacyPass());
+    mpm.add(IGCLLVM::createInstSimplifyLegacyPass());
     // This pass inserts bitcasts for vector loads/stores.
     // This pass could be moved further toward EmitPass.
     mpm.add(createVectorProcessPass());
@@ -631,9 +631,9 @@ void CodeGen(DomainShaderContext *ctx, CShaderProgram::KernelShaderMap &shaders)
     
     IGCPassManager Passes(ctx, "CG");
 
-    AddLegalizationPasses(*ctx, shaders, Passes);
+    AddLegalizationPasses(*ctx, Passes);
 
-    AddAnalysisPasses(*ctx, shaders, Passes);
+    AddAnalysisPasses(*ctx, Passes);
 
     AddCodeGenPasses(*ctx, shaders, Passes, SIMDMode::SIMD8, false, ShaderDispatchMode::SINGLE_PATCH);
 
@@ -655,9 +655,9 @@ void PSCodeGen(PixelShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders
     IGCPassManager PassMgr(ctx, "CG");
     const PixelShaderInfo &psInfo = ctx->getModuleMetaData()->psInfo;
 
-    AddLegalizationPasses(*ctx, shaders, PassMgr);
+    AddLegalizationPasses(*ctx, PassMgr);
 
-    AddAnalysisPasses(*ctx, shaders, PassMgr);
+    AddAnalysisPasses(*ctx, PassMgr);
 
     bool useRegKeySimd = false;
     uint32_t pixelShaderSIMDMode =
@@ -732,9 +732,9 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders
     
     IGCPassManager PassMgr(ctx, "CG");
 
-    AddLegalizationPasses(*ctx, shaders, PassMgr);
+    AddLegalizationPasses(*ctx, PassMgr);
 
-    AddAnalysisPasses(*ctx, shaders, PassMgr);
+    AddAnalysisPasses(*ctx, PassMgr);
 
     SIMDMode simdModeAllowed = ctx->GetLeastSIMDModeAllowed();
     SIMDMode maxSimdMode = ctx->GetMaxSIMDMode();
@@ -855,9 +855,9 @@ void CodeGen(ContextType* ctx, CShaderProgram::KernelShaderMap &shaders)
         
     IGCPassManager PassMgr(ctx, "CG");
 
-    AddLegalizationPasses(*ctx, shaders, PassMgr);
+    AddLegalizationPasses(*ctx, PassMgr);
 
-    AddAnalysisPasses(*ctx, shaders, PassMgr);
+    AddAnalysisPasses(*ctx, PassMgr);
 
     AddCodeGenPasses(*ctx, shaders, PassMgr, SIMDMode::SIMD8, false);
 
@@ -876,9 +876,9 @@ void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &kernels
 
     IGCPassManager Passes(ctx, "CG");
 
-    AddLegalizationPasses(*ctx, kernels, Passes);
+    AddLegalizationPasses(*ctx, Passes);
 
-    AddAnalysisPasses(*ctx, kernels, Passes);
+    AddAnalysisPasses(*ctx, Passes);
     //Below orders vary based on the usage models. In case of multiple SIMD mode
     //We want to start from lower to high if we want to build all simd modes
     //However the default mechanism which is handled by else condition tries to find

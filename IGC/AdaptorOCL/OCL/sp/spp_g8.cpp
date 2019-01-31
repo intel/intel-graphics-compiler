@@ -198,7 +198,6 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
 
             // Create the kernel binary streams
             KernelData data;
-            data.pKernelInfo = &(kernel->m_kernelInfo);
             data.kernelBinary = new Util::BinaryStream();
 
             m_StateProcessor.CreateKernelBinary(

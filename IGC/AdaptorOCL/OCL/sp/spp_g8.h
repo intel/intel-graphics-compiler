@@ -41,7 +41,6 @@ namespace iOpenCL
 
 struct KernelData
 {
-    const IGC::SOpenCLKernelInfo* pKernelInfo = nullptr;
     Util::BinaryStream* kernelBinary = nullptr;
     Util::BinaryStream* kernelDebugData = nullptr;
 };
