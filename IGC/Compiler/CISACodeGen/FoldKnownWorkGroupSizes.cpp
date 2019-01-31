@@ -93,7 +93,7 @@ void FoldKnownWorkGroupSizes::visitCallInst(llvm::CallInst &I)
         }
         return;
     }
-    else if (funcName.equals("__builtin_IB_get_enqueued_local_size"))
+    else if (funcName.equals("__builtin_IB_get_enqueued_local_size") || funcName.equals("__builtin_IB_get_local_size"))
     {
         
         auto itr = ctx->getMetaDataUtils()->findFunctionsInfoItem(I.getParent()->getParent());
