@@ -5251,7 +5251,7 @@ parseWholeProgramDevirtResolutionByArg(ArrayRef<uint64_t> Record, size_t &Slot,
   uint64_t ArgNum = Record[Slot++];
   WholeProgramDevirtResolution::ByArg &B =
       Wpd.ResByArg[{Record.begin() + Slot, Record.begin() + Slot + ArgNum}];
-  Slot += ArgNum;
+  Slot += (size_t)ArgNum;
 
   B.TheKind =
       static_cast<WholeProgramDevirtResolution::ByArg::Kind>(Record[Slot++]);

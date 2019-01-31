@@ -2976,6 +2976,19 @@ foreach(_linkerFlagName IN ITEMS "CMAKE_EXE_LINKER_FLAGS" "CMAKE_SHARED_LINKER_F
 endforeach()
 
 if(MSVC)
+if(${LLVM_VERSION_MAJOR} EQUAL 8)
+message("WA For LLVM8 : Igonre warning 4199 - Need to fix it")
+  igc_config_flag_apply_settings(
+      LinkerOptions
+      CMAKE_SHARED_LINKER_FLAGS
+      ALL_PATTERN ""
+      SET_RAW
+        "/MANIFEST:NO"
+        "/ignore:4099"
+        "/ignore:4197"
+        "/ignore:4199"
+      )
+else()
   igc_config_flag_apply_settings(
       LinkerOptions
       CMAKE_SHARED_LINKER_FLAGS
@@ -2985,6 +2998,7 @@ if(MSVC)
         "/ignore:4099"
         "/ignore:4197"
       )
+endif()
   # Disable LTCG due to release build time increase
   #igc_config_flag_apply_settings(
   #    LinkerOptions
