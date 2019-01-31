@@ -455,7 +455,7 @@ bool G4_SendMsgDescriptor::isSLMMessage() const
         getFuncId() == SFID_DP_DC1 ||
         getFuncId() == SFID_DP_DC)
     {
-        if ((getDesc() & 0xFE) == 0xFE)
+        if ((getDesc() & 0xFF) == 0xFE)
         {
             return true;
         }
