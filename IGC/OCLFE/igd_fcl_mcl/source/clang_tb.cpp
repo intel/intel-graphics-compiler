@@ -978,23 +978,16 @@ namespace TC
 		return output.str();
 	}
 
-	std::string GetListOfExtensionsFromInternalOptions(const char *pInternalOptions) {
-		if (pInternalOptions == nullptr) {
-			return std::string{};
-		}
+	std::string GetListOfExtensionsFromInternalOptions(const std::string& internalOptions) {
+    size_t start_pos = 0, end_pos = 0;
+    std::string clextString = "";
+    
+    while ((start_pos = internalOptions.find("-cl-ext=", end_pos)) != std::string::npos) {
+      end_pos = internalOptions.find(" ", start_pos);
+      clextString += internalOptions.substr(start_pos, end_pos - start_pos) + " ";
+    }
 
-		const char * beg = strstr(pInternalOptions, "-cl-ext=");
-		if (beg == nullptr) {
-			return std::string{};
-		}
-
-		const char * end = strstr(beg, " ");
-		if (end == nullptr) {
-			// cl-ext fills the rest of the string
-			return std::string(beg);
-		}
-
-		return std::string{ beg, end };
+    return clextString;
 	}
 
 	std::string GetCDefinesFromInternalOptions(const char *pInternalOptions) {
