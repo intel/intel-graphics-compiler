@@ -274,7 +274,7 @@ bool LiveNode::addDefinition(G4_INST* DefInst, Gen4_Operand_Number DefOpNum,
             if (DefInst->opcode() != G4_opcode::G4_sel) {
                 // The following case is a full definition, when predicates
                 // have the same value.
-                // (+P1) mov (8, M1) V33(0,0)<1>:d 1
+                // (+P1) mov (8, M1) V33(0,0)<1>:d 1  // DefInst
                 // (+P1) add (8, M1) V34(0,0)<1>:d V33(0,0)<1;1,0>:d V32(0,0)<1;1,0>:d
                 G4_Predicate *UsePred = this->Inst->getPredicate();
                 if (UsePred == nullptr || !DefPred->samePredicate(*UsePred))
@@ -291,7 +291,7 @@ bool LiveNode::addDefinition(G4_INST* DefInst, Gen4_Operand_Number DefOpNum,
                 auto NI = std::find_if(Iter->second.begin(), Iter->second.end(),
                                        [=](const LiveNode &LN) {
                                            return LN.Inst == this->Inst &&
-                                                  LN.OpNum == this->OpNum;
+                                                  LN.OpNum == Opnd_pred;
                                        });
 
                 // Not alive or alive but partially defined.
