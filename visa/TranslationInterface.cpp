@@ -6549,15 +6549,17 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
     }
 
     uint32_t desc = 0;
+    bool isRead = true, isWrite = true;
     if (msgDescOpnd->isImm())
     {
         desc = (uint32_t) msgDescOpnd->asImm()->getImm();
+        isWrite = !G4_SendMsgDescriptor::isReadOnlyMessage(desc, exDesc);
     }
     else
     {
         desc = G4_SendMsgDescriptor::createDesc(0, false, numSrc, numDst);
     }
-    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(desc, exDesc, true, true);
+    G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(desc, exDesc, isRead, isWrite);
 
     // sanity check on srcLen/dstLen
     MUST_BE_TRUE(sendMsgDesc->MessageLength() <= numSrc, "message length mismatch for raw send");

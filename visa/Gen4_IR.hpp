@@ -353,13 +353,35 @@ public:
         return data.value;
     }
 
+    static CISA_SHARED_FUNCTION_ID getFuncId(uint32_t extDesc)
+    {
+        ExtDescData data;
+        data.value = extDesc;
+        return static_cast<CISA_SHARED_FUNCTION_ID>(data.layout.funcID);
+    }
     CISA_SHARED_FUNCTION_ID getFuncId() const
     {
         return static_cast<CISA_SHARED_FUNCTION_ID>(extDesc.layout.funcID);
     }
+
+    static uint32_t getFuncCtrl(uint32_t msgDesc)
+    {
+        DescData data;
+        data.value = msgDesc;
+        return data.layout.funcCtrl;
+    }
     uint32_t getFuncCtrl() const { return desc.layout.funcCtrl; }
+
     // bit 14-18 of the message descriptor
-    uint32_t getMessageType() const { return (getFuncCtrl() >> 14) & 0x1F; }
+    static uint32_t getMessageType(uint32_t msgDesc)
+    {
+        return (getFuncCtrl(msgDesc) >> 14) & 0x1F;
+    }
+    uint32_t getMessageType() const
+    {
+        return G4_SendMsgDescriptor::getMessageType(desc.value);
+    }
+
     bool isEOTInst() const { return extDesc.layout.eot; }
     void setEOT() { extDesc.layout.eot = true; }
     uint16_t getExtFuncCtrl() const { return extDesc.layout.extFuncCtrl; }
@@ -558,6 +580,9 @@ public:
         //SFID = data cache, bit 14-17= 0 or 1
         return funcID == SFID_DP_DC && ( msgType == 0 || msgType == 1);
     }
+
+    static bool isReadOnlyMessage(uint32_t msgDesc, uint32_t exDesc);
+
     uint16_t getFFLatency() const
     {
         auto funcID = extDesc.layout.funcID;

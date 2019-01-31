@@ -469,6 +469,55 @@ bool G4_SendMsgDescriptor::isSLMMessage() const
     return false;
 }
 
+bool G4_SendMsgDescriptor::isReadOnlyMessage(uint32_t msgDesc,
+                                             uint32_t extDesc)
+{
+    CISA_SHARED_FUNCTION_ID funcID = G4_SendMsgDescriptor::getFuncId(extDesc);
+    unsigned subFuncID = G4_SendMsgDescriptor::getMessageType(msgDesc);
+
+    switch (funcID) {
+    default:
+        break;
+    case SFID_DP_DC:
+        switch (subFuncID) {
+        case DC_OWORD_BLOCK_READ:
+        case DC_UNALIGNED_OWORD_BLOCK_READ:
+        case DC_DWORD_SCATTERED_READ:
+        case DC_BYTE_SCATTERED_READ:
+            return true;
+        default:
+            return false;
+        }
+    case SFID_DP_DC1:
+        switch (subFuncID) {
+        case DC1_UNTYPED_SURFACE_READ:
+        case DC1_MEDIA_BLOCK_READ:
+        case DC1_TYPED_SURFACE_READ:
+        case DC1_A64_SCATTERED_READ:
+        case DC1_A64_UNTYPED_SURFACE_READ:
+        case DC1_A64_BLOCK_READ:
+            return true;
+        default:
+            return false;
+        }
+    case SFID_DP_DC2:
+        switch (subFuncID) {
+        case DC2_UNTYPED_SURFACE_READ:
+        case DC2_A64_SCATTERED_READ:
+        case DC2_A64_UNTYPED_SURFACE_READ:
+        case DC2_BYTE_SCATTERED_READ:
+            return true;
+        default:
+            return false;
+        }
+    case SFID_SAMPLER:
+        return true;
+    }
+
+    // Unknown.
+    return false;
+}
+
 G4_INST::G4_INST(const IR_Builder& irb,
     G4_Predicate* prd,
     G4_opcode o,
