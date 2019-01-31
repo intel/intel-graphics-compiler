@@ -953,26 +953,6 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
             }
         }
     }
-    else if (I.getOpcode() == Instruction::Shl)
-    {
-        auto op0 = dyn_cast<ZExtInst>(I.getOperand(0));
-        auto offset = llvm::dyn_cast<llvm::ConstantInt>(I.getOperand(1));
-        if (op0 && 
-            op0->getType()->isIntegerTy(64) &&
-            op0->getOperand(0)->getType()->isIntegerTy(32) &&
-            offset &&
-            offset->getZExtValue() == 32)
-        {
-            llvm::IRBuilder<> builder(&I);
-            auto vec2 = VectorType::get(builder.getInt32Ty(), 2);
-            Value* vec = UndefValue::get(vec2);
-            vec = builder.CreateInsertElement(vec, builder.getInt32(0), builder.getInt32(0));
-            vec = builder.CreateInsertElement(vec, op0->getOperand(0), builder.getInt32(1));
-            vec = builder.CreateBitCast(vec, builder.getInt64Ty());
-            I.replaceAllUsesWith(vec);
-            I.eraseFromParent();
-        }
-    }
 }
 
 void GenSpecificPattern::visitCmpInst(CmpInst &I)

@@ -157,7 +157,7 @@ public:
     void        AllocateInput(CVariable* var, uint offset, uint instance = 0);
     void        AllocateOutput(CVariable* var, uint offset, uint instance = 0);
     CVariable*  ImmToVariable(uint64_t immediate, VISA_Type type);
-    CVariable*  GetConstant(llvm::Value* c, CVariable* dstVar = nullptr);
+    CVariable*  GetConstant(llvm::Value* c);
     CVariable*  GetScalarConstant(llvm::Value* c);
     CVariable*  GetUndef(VISA_Type type);
     llvm::Constant*  findCommonConstant(llvm::Constant *C, uint elts, uint currentEmitElts, bool &allSame);
