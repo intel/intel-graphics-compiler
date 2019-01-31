@@ -197,19 +197,19 @@ class FastValueMapImpl<llvm::DenseMap<const llvm::Value*, T>, T, AttributeInfoT>
 {
 public:
 
-    FastValueMapImpl(TranslationTable* TT) : FastValueMapBase(TT)
+    FastValueMapImpl(TranslationTable* table) : FastValueMapBase(table)
     {
-        Initialize(TT);
+        Initialize(table);
     }
 
     FastValueMapImpl()
     {
     }
 
-    void Initialize(TranslationTable* TT)
+    void Initialize(TranslationTable* table)
     {
         //DenseMap should be kept at less than 75% of its capacity.
-        unsigned int preferredSize = (unsigned int) (TT->GetNumIDs() * 1.4); //be little bit conservative
+        unsigned int preferredSize = (unsigned int) (table->GetNumIDs() * 1.4); //be little bit conservative
 
         //Add some more space for growing.
         preferredSize = (unsigned int)(preferredSize * 1.1);
