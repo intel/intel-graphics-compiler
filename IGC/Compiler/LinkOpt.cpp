@@ -289,9 +289,15 @@ void ShaderIOAnalysis::addVSInputDecl(GenIntrinsicInst* inst)
 void ShaderIOAnalysis::addHSInputDecl(GenIntrinsicInst* inst)
 {
     assert(m_shaderType == ShaderType::HULL_SHADER);
-
-    uint elemIdx = getImmValueU32(inst->getOperand(HSGSINPUT_ATTR_ARG));
-    getContext()->addHSInput(inst, elemIdx);
+    if (isa<ConstantInt>(inst->getOperand(HSGSINPUT_ATTR_ARG)))
+    {
+        uint elemIdx = getImmValueU32(inst->getOperand(HSGSINPUT_ATTR_ARG));
+        getContext()->addHSInput(inst, elemIdx);
+    }
+    else
+    {
+        getContext()->m_abortLTO = true;
+    }
 }
 
 void ShaderIOAnalysis::addGSSVInputDecl(GenIntrinsicInst* inst)
