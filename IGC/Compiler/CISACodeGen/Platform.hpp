@@ -401,11 +401,6 @@ public:
                 m_platformInfo.eProductFamily == IGFX_COFFEELAKE);
     }
 
-    bool needsWAInstanceIDIndexOfVS() const
-    {
-        return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP;
-    }
-
     const SCompilerHwCaps& GetCaps(){return m_caps;}
 };
 

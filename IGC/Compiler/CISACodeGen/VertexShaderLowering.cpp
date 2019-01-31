@@ -354,7 +354,7 @@ void VertexShaderLowering::LowerIntrinsicInputOutput(Function& F)
 	}
     if (InstanceId)
     {
-        unsigned int slot = InsertInEmptySlot(InstanceId, IGC_IS_FLAG_ENABLED(EnableWAInstanceIDIndexOfVS));
+        unsigned int slot = InsertInEmptySlot(InstanceId, (!IGC_IS_FLAG_ENABLED(DisableMovingInstanceIDIndexOfVS)));
         m_vsPropsPass->SetInstanceIdSlot(slot);
     }
 

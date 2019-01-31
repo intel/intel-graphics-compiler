@@ -138,7 +138,7 @@ DECLARE_IGC_REGKEY(bool, EnableGVN, true,
     "Enable LLVM global value numbering")
 DECLARE_IGC_REGKEY(bool, EnableLogicalAndToBranch, true,
     "Enable convert logical AND to conditional branch")
-DECLARE_IGC_REGKEY(bool, EnableWAInstanceIDIndexOfVS,   false,   "Enable WA of chaning index of InstanceID in VS. ICL only")
+DECLARE_IGC_REGKEY(bool, DisableMovingInstanceIDIndexOfVS,  false,   "Disable moving index of InstanceID in VS to last location.")
 DECLARE_IGC_REGKEY(bool, EnableSplitUnalignedVector,    true,    "Enable Splitting of unaligned vectors for loads and stores")
 
 
