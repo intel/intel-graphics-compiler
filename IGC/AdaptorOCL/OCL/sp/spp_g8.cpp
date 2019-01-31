@@ -29,7 +29,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../../Compiler/CodeGenPublic.h"
 #include "program_debug_data.h"
 #include "../../../common/Types.hpp"
+#include "../../../common/shaderOverride.hpp"
 #include "../../../Compiler/CISACodeGen/OpenCLKernelCodeGen.hpp"
+
+#include <iomanip>
+#include <fstream>
 
 namespace iOpenCL
 {
@@ -138,6 +142,75 @@ RETVAL CGen8OpenCLProgram::GetProgramDebugData(Util::BinaryStream& programDebugD
     return retValue;
 }
 
+void dumpOCLKernelBinary(
+    const IGC::COpenCLKernel *Kernel,
+    const KernelData &data)
+{
+#if LLVM_VERSION_MAJOR >= 7
+    using namespace IGC;
+    using namespace IGC::Debug;
+
+    auto *Ctx = Kernel->GetContext();
+
+    auto &kernelName = Kernel->m_kernelInfo.m_kernelName;
+
+    auto name = DumpName(IGC::Debug::GetShaderOutputName())
+        .Hash(Ctx->hash)
+        .Type(ShaderType::OPENCL_SHADER)
+        .PostFix(kernelName)
+        .Extension("kernbin");
+
+    auto *KernBin = data.kernelBinary;
+
+    std::error_code EC;
+    llvm::raw_fd_ostream f(name.str(), EC);
+    if (!EC)
+        f.write(KernBin->GetLinearPointer(), (size_t)KernBin->Size());
+#endif
+}
+
+void overrideOCLKernelBinary(
+    const IGC::COpenCLKernel *Kernel,
+    KernelData &data)
+{
+    using namespace IGC;
+    using namespace IGC::Debug;
+
+    auto *Ctx = Kernel->GetContext();
+
+    auto &kernelName = Kernel->m_kernelInfo.m_kernelName;
+
+    auto name = DumpName(IGC::Debug::GetShaderOutputName())
+        .Hash(Ctx->hash)
+        .Type(ShaderType::OPENCL_SHADER)
+        .PostFix(kernelName)
+        .Extension("kernbin");
+
+    std::string Path = name.overridePath();
+
+    std::ifstream f(Path, std::ios::binary);
+    if (!f.is_open())
+        return;
+
+    appendToShaderOverrideLogFile(Path, "OVERRIDDEN: ");
+
+    f.seekg(0, f.end);
+    int newBinarySize = (int)f.tellg();
+    f.seekg(0, f.beg);
+
+    auto *&KernBin = data.kernelBinary;
+
+    delete KernBin;
+    KernBin = new Util::BinaryStream();
+
+    std::unique_ptr<char[]> Buf(new char[newBinarySize]);
+    f.read(Buf.get(), newBinarySize);
+
+    assert(f && "Not fully read!");
+
+    KernBin->Write(Buf.get(), newBinarySize);
+}
+
 void CGen8OpenCLProgram::CreateKernelBinaries()
 {
     auto isValidShader = [&](IGC::COpenCLKernel* shader)->bool
@@ -190,6 +263,12 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
                 *(data.kernelBinary),
                 m_pSystemThreadKernelOutput,
                 pOutput->m_unpaddedProgramSize);
+
+            if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable))
+                dumpOCLKernelBinary(kernel, data);
+
+            if (IGC_IS_FLAG_ENABLED(ShaderOverride))
+                overrideOCLKernelBinary(kernel, data);
 
             assert(data.kernelBinary && data.kernelBinary->Size() > 0);
 
