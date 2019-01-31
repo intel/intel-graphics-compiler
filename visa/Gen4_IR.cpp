@@ -450,6 +450,17 @@ bool G4_SendMsgDescriptor::isSLMMessage() const
             return true;
         }
     }
+
+    if (getFuncId() == SFID_DP_DC2 ||
+        getFuncId() == SFID_DP_DC1 ||
+        getFuncId() == SFID_DP_DC)
+    {
+        if ((getDesc() & 0xFE) == 0xFE)
+        {
+            return true;
+        }
+    }
+
     if (m_bti && m_bti->isImm() && m_bti->asImm()->getInt() == SLMIndex)
     {
         return true;
