@@ -157,10 +157,10 @@ DumpName DumpName::Pass(std::string const& name, llvm::Optional<unsigned int> in
     //remove spaces
     newName.erase(remove_if(
         newName.begin(),
-        newName.end(), 
+        newName.end(),
         [](char c) {
         return isspace(static_cast<unsigned char>(c));
-    }), 
+    }),
         newName.end());
 
     assert(newName.find(" ") == std::string::npos && "Pass name must not contain spaces");

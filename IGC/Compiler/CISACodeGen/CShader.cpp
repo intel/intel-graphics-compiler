@@ -118,13 +118,13 @@ void CShader::InitEncoder(SIMDMode simdSize, bool canAbortOnSpill, ShaderDispatc
 void CShader::PreAnalysisPass()
 {
     ExtractGlobalVariables();
-    
+
     auto funcMDItr = m_ModuleMetadata->FuncMD.find(entry);
     if (funcMDItr != m_ModuleMetadata->FuncMD.end())
     {
         if (funcMDItr->second.privateMemoryPerWI != 0)
         {
-            if (GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory) 
+            if (GetContext()->getModuleMetaData()->compOpt.UseScratchSpacePrivateMemory)
             {
                 m_ScratchSpaceSize = funcMDItr->second.privateMemoryPerWI * numLanes(m_dispatchSize);
                 // Round up to GENX_GRF_REG_SIZ-byte aligned.
@@ -194,7 +194,7 @@ void CShader::EOTRenderTarget()
     {
         perCoarse = (static_cast<CPixelShader*>(this)->GetPhase() != PSPHASE_LEGACY);
     }
-        
+
     uint Desc = PixelDataPort(
         false,
         m_SIMDSize == SIMDMode::SIMD8 ? 4 : 8,
@@ -552,7 +552,7 @@ void CShader::MapPushedInputs()
        }
        CVariable* var = GetSymbol(m_argListCache[I->second.argIndex]);
        AddSetup(I->second.index, var);
-   }   
+   }
 }
 
 CVariable* CShader::GetR0()
@@ -703,7 +703,7 @@ CVariable* CShader::ImmToVariable(uint64_t immediate, VISA_Type type)
         encoder.Push();
         return dst;
     }
-    
+
     CVariable* var = new (Allocator) CVariable(immediate, immType);
     return var;
 }
@@ -727,7 +727,7 @@ CVariable* CShader::GetNewVariable(uint16_t nbElement, VISA_Type type, e_alignme
 
 CVariable*  CShader::GetNewVariable(const CVariable* from)
 {
-    return GetNewVariable(from->GetNumberElement(), from->GetType(), 
+    return GetNewVariable(from->GetNumberElement(), from->GetType(),
                           from->GetAlign(), from->IsUniform());
 }
 
@@ -783,7 +783,7 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)
                         elemCnt++;
                         assert( index->getZExtValue() < 5 );
                         mask |= (1 << index->getZExtValue());
-                        continue; 
+                        continue;
                     }
                 }
                 // if the vector is accessed by anything else than direct Extract we cannot prune it
@@ -837,10 +837,10 @@ uint CShader::GetNbVectorElementAndMask(llvm::Value* val, uint32_t& mask)
                 }
             }
 
-            // TODO: there are some issues in EmitVISAPass prevents enabling 
+            // TODO: there are some issues in EmitVISAPass prevents enabling
             // selected channel return for info intrinsics.
             if (!allExtract ||
-                gpgpuPreemptionWANeeded || 
+                gpgpuPreemptionWANeeded ||
                 IGC_IS_FLAG_DISABLED(EnableSamplerChannelReturn) ||
                 isInfoInstruction(inst) ||
                 maskExtract > 0xf)
@@ -1219,9 +1219,9 @@ unsigned int CShader::GetGlobalMappingValue(llvm::Value* c)
 CVariable* CShader::GetGlobalMapping(llvm::Value* c)
 {
     assert(0 && "The global variables are not handled");
-    
+
     VISA_Type type = GetType(c->getType());
-    return ImmToVariable(0, type); 
+    return ImmToVariable(0, type);
 }
 
 CVariable* CShader::GetScalarConstant(llvm::Value* c)
@@ -1264,7 +1264,7 @@ static bool getByteFloatEncoding(ConstantFP *fp, uint8_t& value)
         {
             value = fp->isNegative() ? 0x80 : 0;
             return true;
-        } 
+        }
         APInt api = fp->getValueAPF().bitcastToAPInt();
         FLOAT32 bitFloat;
         bitFloat.value.u = int_cast<unsigned int>(api.getZExtValue());
@@ -1330,7 +1330,7 @@ llvm::Constant* CShader::findCommonConstant(llvm::Constant *C, uint elts, uint c
 
     constMap.clear();
     allSame = (mostUsedCount == elts);
-    
+
     if (allSame)
     {
         return mostUsedValue;
@@ -1691,7 +1691,7 @@ static e_alignment GetPreferredAlignmentOnUse(llvm::Value *V, WIAnalysis *WIA,
         if (!GII) {
             continue;
         }
-        
+
         if (IsRawAtomicIntrinsic(GII)) {
             Value *Ptr = GII->getArgOperand(1);
             if (WIA->whichDepend(Ptr) == WIAnalysis::UNIFORM) {
@@ -1785,8 +1785,8 @@ CVariable* CShader::LazyCreateCCTupleBackingVariable(
         var = GetNewVariable(
             (uint16_t)numElts,
             ISA_TYPE_F,
-            EALIGN_GRF, 
-            false, 
+            EALIGN_GRF,
+            false,
             m_numberInstance);
         ccTupleMapping.insert(std::pair<CoalescingEngine::CCTuple*, CVariable*>(ccTuple, var));
     }
@@ -1859,7 +1859,7 @@ void CShader::BeginFunction(llvm::Function *F)
 
 }
 
-/// This method is used to create the vISA variable for function F's formal return value 
+/// This method is used to create the vISA variable for function F's formal return value
 CVariable *CShader::getOrCreateReturnSymbol(llvm::Function *F)
 {
     assert(F && "null function");
@@ -1886,7 +1886,7 @@ CVariable *CShader::getOrCreateReturnSymbol(llvm::Function *F)
     return var;
 }
 
-/// This method is used to create the vISA variable for function F's formal argument 
+/// This method is used to create the vISA variable for function F's formal argument
 CVariable* CShader::getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStackCall)
 {
     llvm::DenseMap<llvm::Value*, CVariable*> *pSymMap = &globalSymbolMapping;
@@ -2292,7 +2292,7 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
 
             // see if distinct CVariables were created during vector bitcast copy
             if (auto vectorBCI = dyn_cast<BitCastInst>(vecOperand))
-            { 
+            {
                 CVariable* EEIVar = getCVarForVectorBCI(vectorBCI, element);
                 if (EEIVar)
                 {
@@ -2357,7 +2357,7 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
             }
 
             //FIXME: Could improve by copying types from value
-                
+
             unsigned EltSz = CEncoder::GetCISADataTypeSize(type);
             int offset = int_cast<int>(mult * (m_coalescingEngine->GetValueOffsetInCCTuple(value) - ccTuple->GetLeftBound()) *
                 numLanes(m_SIMDSize) * EltSz);
@@ -2383,7 +2383,7 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
     // simple de-ssa, always creates a new svar, and return
     if (!m_deSSA)
     {
-        var = GetNewVector(value, preferredAlign);  
+        var = GetNewVector(value, preferredAlign);
         symbolMapping.insert(std::pair<llvm::Value*,CVariable*>(value, var));
         return var;
     }
@@ -2397,8 +2397,8 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
         if (it != rootMapping.end())
         {
             var = it->second;
-            symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));          
-            /* 
+            symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
+            /*
                 *  When we don't scalarize vectors, vector may come from phi/insert-element
                 *  We cannot adjust extract-mask
                 */
@@ -2407,7 +2407,7 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
                 extractMasks.erase(value);
             }
             return var;
-        } 
+        }
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableVariableReuse))
@@ -2429,7 +2429,7 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
     }
 
     symbolMapping.insert(std::pair<llvm::Value*,CVariable*>(value, var));
-    if (rootValue) 
+    if (rootValue)
     {
         rootMapping.insert(std::pair<llvm::Value*, CVariable*>(rootValue, var));
     }
@@ -2454,7 +2454,7 @@ CVariable* CShader::GetPhiTemp(llvm::PHINode* node)
     else
     {
         // return the mapping of the dest-value
-        var = GetSymbol(node);    
+        var = GetSymbol(node);
     }
     phiMapping.insert(std::pair<llvm::PHINode*,CVariable*>(node, var));
     return var;
@@ -2718,7 +2718,7 @@ bool CShader::isUnpacked(llvm::Value* value)
     {
         if(isa<SampleIntrinsic>(value) || isa<LdmcsInstrinsic>(value))
         {
-            if(value->getType()->getVectorElementType()->isHalfTy() || 
+            if(value->getType()->getVectorElementType()->isHalfTy() ||
                 value->getType()->getVectorElementType()->isIntegerTy(16))
             {
                 isUnpacked = true;
@@ -2804,12 +2804,12 @@ CVariable* CShader::GetVarHalf(CVariable* var, unsigned int half)
 {
     assert(!var->IsImmediate() && "Trying to create an alias of an immediate");
     CVariable* alias = new (Allocator) CVariable(
-        var->GetNumberElement(), 
-        var->IsUniform(), 
-        var->GetType(), 
-        var->GetVarType(), 
-        var->GetAlign(), 
-        var->IsVectorUniform(), 
+        var->GetNumberElement(),
+        var->IsUniform(),
+        var->GetType(),
+        var->GetVarType(),
+        var->GetAlign(),
+        var->IsVectorUniform(),
         1);
     alias->visaGenVariable[0] = var->visaGenVariable[half];
     return alias;
@@ -2825,7 +2825,7 @@ void CShader::GetPayloadElementSymbols(llvm::Value *inst, CVariable *payload[], 
         }
         return;
     }
-    
+
     llvm::InsertElementInst *ie = llvm::dyn_cast<llvm::InsertElementInst>(inst);
     assert(ie);
 
@@ -2838,13 +2838,13 @@ void CShader::GetPayloadElementSymbols(llvm::Value *inst, CVariable *payload[], 
     while (ie != NULL) {
         int64_t iOffset =  llvm::dyn_cast<llvm::ConstantInt>(ie->getOperand(2))->getSExtValue();
         assert(iOffset >= 0 && iOffset < vecWidth);
-        
+
         // Get the scalar value from this insert
         if (payload[iOffset] == NULL) {
             payload[iOffset] = GetSymbol(ie->getOperand(1));
             count++;
         }
-        
+
         // Do we have another insert?
         llvm::Value *insertBase = ie->getOperand(0);
         ie = llvm::dyn_cast<llvm::InsertElementInst>(insertBase);
@@ -2895,10 +2895,10 @@ void CShader::ConstantBufferAccesed(uint index)
 
 // Helper function to copy raw register
 void CShader::CopyVariable(
-    CVariable* dst, 
-    CVariable* src, 
+    CVariable* dst,
+    CVariable* src,
     uint dstSubVar,
-    uint srcSubVar)    
+    uint srcSubVar)
 {
     CVariable* rawDst = dst;
     // The source have to match for a raw copy
@@ -2914,9 +2914,9 @@ void CShader::CopyVariable(
 
 // Helper function to copy and pack raw register
 void CShader::PackAndCopyVariable(
-    CVariable* dst, 
-    CVariable* src, 
-    uint subVar)    
+    CVariable* dst,
+    CVariable* src,
+    uint subVar)
 {
     CVariable* rawDst = dst;
     // The source have to match for a raw copy

@@ -167,7 +167,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /***********************************************************************************
 This file contains the generic code generation functions for all the shaders
-The class CShader is inherited for each specific type of shaders to add specific 
+The class CShader is inherited for each specific type of shaders to add specific
 information
 ************************************************************************************/
 
@@ -222,7 +222,7 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     // The 1st thing we do when getting into the IGC middle end is to split critical-edges:
     // PushAnalysis requires WIAnalysis
     // WIAnalysis requires dominator and post-dominator analysis
-    // WIAnalysis also requires BreakCriticalEdge because it assumes that 
+    // WIAnalysis also requires BreakCriticalEdge because it assumes that
     // potential phi-moves will be placed at those blocks
     mpm.add(llvm::createBreakCriticalEdgesPass());
 
@@ -230,7 +230,7 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     // to avoid URBRead/URBWrite interference
     AddURBWriteRelatedPass(ctx, mpm);
 
-    // moving the scheduling and sample clustering passes right before code-sinking. 
+    // moving the scheduling and sample clustering passes right before code-sinking.
     // Need to merge the scheduling, code-sinking and clustering passes better to avoid redundancy and better optimization
     if (IGC_IS_FLAG_DISABLED(DisablePreRAScheduler) &&
         ctx.type == ShaderType::PIXEL_SHADER &&
@@ -248,7 +248,7 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     }
 
     // only limited code-sinking to several shader-type
-    // vs input has the URB-reuse issue to be resolved. 
+    // vs input has the URB-reuse issue to be resolved.
     // Also need to understand the performance benefit better.
     mpm.add(new CodeSinking(true));
 
@@ -264,7 +264,7 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     mpm.add(new Legalizer::PeepholeTypeLegalizer());
 
     // need this before WIAnalysis:
-    // insert phi to prevent changing of WIAnalysis result by later code-motion 
+    // insert phi to prevent changing of WIAnalysis result by later code-motion
     mpm.add(llvm::createLCSSAPass());
     if( !isOptDisabled )
     {
@@ -386,7 +386,6 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
 		  (ctx.m_DriverInfo.NeedIEEESPDiv() && !ctx.platform.hasCorrectlyRoundedMacros()))
 	    ? EmuKind::EMU_SP_DIV : 0);
 
-
     if (theEmuKind > 0 || IGC_IS_FLAG_ENABLED(EnableTestIGCBuiltin))
     {
         // Need to break constant expr as PreCompiledFuncImport does not handle it.
@@ -464,7 +463,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     }
 
     if (!isOptDisabled &&
-        ctx.m_instrTypes.hasLoadStore && 
+        ctx.m_instrTypes.hasLoadStore &&
         ctx.m_DriverInfo.SupportsStatelessToStatefullBufferTransformation() &&
         !ctx.getModuleMetaData()->compOpt.GreaterThan4GBBufferRequired &&
         IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull))
@@ -485,7 +484,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
         mpm.add(createConstantPropagationPass());
         mpm.add(createDeadCodeEliminationPass());
         mpm.add(createCFGSimplificationPass());
-    }    
+    }
     // Since we don't support switch statements, switch lowering is needed after the last CFG simplication
     mpm.add(llvm::createLowerSwitchPass());
 
@@ -554,7 +553,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
 
     // Scalarizer in codegen to handle the vector instructions
     mpm.add(new ScalarizerCodeGen());
-    
+
     // coalesce scalar loads into loads of larger quantity
     // This require and preserves uniform analysis we should keep
     // other passes using uniformness together to avoid re-running it several times
@@ -628,7 +627,7 @@ template<>
 void CodeGen(DomainShaderContext *ctx, CShaderProgram::KernelShaderMap &shaders)
 {
     COMPILER_TIME_START( ctx, TIME_CodeGen );
-    
+
     IGCPassManager Passes(ctx, "CG");
 
     AddLegalizationPasses(*ctx, Passes);
@@ -729,7 +728,7 @@ void CodeGen(ComputeShaderContext* ctx, CShaderProgram::KernelShaderMap &shaders
     COMPILER_TIME_START(ctx, TIME_CodeGen);
 
     bool setEarlyExit16Stat = false;
-    
+
     IGCPassManager PassMgr(ctx, "CG");
 
     AddLegalizationPasses(*ctx, PassMgr);
@@ -852,7 +851,7 @@ template<typename ContextType>
 void CodeGen(ContextType* ctx, CShaderProgram::KernelShaderMap &shaders)
 {
     COMPILER_TIME_START( ctx, TIME_CodeGen );
-        
+
     IGCPassManager PassMgr(ctx, "CG");
 
     AddLegalizationPasses(*ctx, PassMgr);
@@ -1002,7 +1001,7 @@ void unify_opt_PreProcess(CodeGenContext* pContext)
 
     pContext->m_instrTypes.hasLoadStore    = true;
 
-    pContext->m_instrTypes.CorrelatedValuePropagationEnable = 
+    pContext->m_instrTypes.CorrelatedValuePropagationEnable =
         ( pContext->m_instrTypes.hasMultipleBB &&
           ( pContext->m_instrTypes.hasSel ||
             pContext->m_instrTypes.hasCmp ||
@@ -1051,7 +1050,7 @@ void OptimizeIR(CodeGenContext* pContext)
 {
     MetaDataUtils *pMdUtils = pContext->getMetaDataUtils();
     bool NoOpt = pContext->getModuleMetaData()->compOpt.OptDisable;
-    pContext->m_highPsRegisterPressure = (pContext->type == ShaderType::PIXEL_SHADER && 
+    pContext->m_highPsRegisterPressure = (pContext->type == ShaderType::PIXEL_SHADER &&
                                           ((pContext->m_inputCount + pContext->m_ConstantBufferCount/8 + pContext->m_tempCount) > 60));
 
     // Remove inline attribute if subroutine is enabled.
@@ -1076,7 +1075,7 @@ void OptimizeIR(CodeGenContext* pContext)
         // maybe we want to support some at some point to take advantage of LLVM optimizations
         TargetLibraryInfoImpl TLI;
         TLI.disableAllFunctions();
-        
+
         mpm.add(new MetaDataUtilsWrapper(pMdUtils, pContext->getModuleMetaData()));
 
         mpm.add(new CodeGenContextWrapper(pContext));
@@ -1086,7 +1085,7 @@ void OptimizeIR(CodeGenContext* pContext)
             GenIntrinsicsTTIImpl GTTI(pContext, dummypass);
             return TargetTransformInfo(GTTI);
         });
-        
+
         mpm.add(new TargetTransformInfoWrapperPass(GenTTgetIIRAnalysis));
 #if defined( _DEBUG )
         // IGC IR Verification pass checks that we get a correct IR after the Unification.
@@ -1222,7 +1221,7 @@ void OptimizeIR(CodeGenContext* pContext)
                     mpm.add(IGCLLVM::createLoopUnrollPass());
                 }
 
-                // Due to what looks like a bug in LICM, we need to break the LoopPassManager between 
+                // Due to what looks like a bug in LICM, we need to break the LoopPassManager between
                 // LoopUnroll and LICM.
                 mpm.add(createBarrierNoopPass());
 

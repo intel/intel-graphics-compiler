@@ -275,7 +275,7 @@ inline RangeWrapper<EnumIter<TEnum>> eRange( TEnum begin = TEnum::BEGIN, TEnum e
 }
 
 /// Template that should be used when a static_cast of a larger integer
-/// type to a smaller one is required. 
+/// type to a smaller one is required.
 /// In debug, this will check if the source argument doesn't exceed the target type range.
 /// In release, it is just static_cast with no check.
 ///
