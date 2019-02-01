@@ -485,6 +485,43 @@ void ScalarizeFunction::scalarizeInstruction(PHINode *PI)
         }
     }
 
+    {
+        // If PHI is used in insts that take vector as operands, keep this vector phi.
+        // With the vector phi, variable alias can do a better job. Otherwise, more mov
+        // insts could be generated.
+        DenseMap<PHINode*, int> visited;
+        SmallVector<PHINode*, 8> phis;
+        phis.push_back(PI);
+        while (!phis.empty())
+        {
+            PHINode * PN = phis.back();
+            phis.pop_back();
+            for (auto U : PN->users())
+            {
+                if (GenIntrinsicInst* GII = dyn_cast<GenIntrinsicInst>(U))
+                {
+                    switch (GII->getIntrinsicID())
+                    {
+                    default:
+                        break;
+                    case GenISAIntrinsic::GenISA_simdBlockWrite:
+                        recoverNonScalarizableInst(PI);
+                        return;
+                    }
+                }
+                else if (PHINode* N = dyn_cast<PHINode>(U))
+                {
+                    if (visited.count(N) == 0) {
+                        visited[N] = 1;
+                        phis.push_back(N);
+                    }
+                }
+            }
+        }
+        visited.clear();
+        phis.clear();
+    }
+
 
     // Prepare empty SCM entry for the instruction
     SCMEntry *newEntry = getSCMEntry(PI);
