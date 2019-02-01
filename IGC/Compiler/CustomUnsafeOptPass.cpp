@@ -2420,42 +2420,47 @@ bool EarlyOutPatterns::runOnFunction(Function &F)
 // evaluate to zero.
 bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, const DenseSet<const Value*> &FoldedVals)
 {
-	auto isZero = [](const Value* V)
-	{
-		return isa<ConstantFP>(V) && cast<ConstantFP>(V)->isZero();
-	};
-
-	auto geZero = [](const Value* V)
-	{
-		if (auto *CFP = dyn_cast<ConstantFP>(V))
-		{
-			auto &APF = CFP->getValueAPF();
-			if (CFP->getType()->isDoubleTy())
-				return APF.convertToDouble() >= 0.0;
-			else if (CFP->getType()->isFloatTy())
-				return APF.convertToFloat() >= 0.0f;
-		}
-
-		return false;
-	};
-
-    if(auto *binInst = dyn_cast<BinaryOperator>(use))
+    auto isZero = [](const Value* V)
     {
-		switch (binInst->getOpcode())
-		{
-		case Instruction::FMul:
-			return true;
-			// watch out for the zero in the denominator
-		case Instruction::FDiv:
-			return inst != binInst->getOperand(1);
-		case Instruction::FSub:
-			return isZero(binInst->getOperand(0)) ||
-				   isZero(binInst->getOperand(1));
-		default:
-			return false;
-		}
+        return isa<ConstantFP>(V) && cast<ConstantFP>(V)->isZero();
+    };
+
+    auto geZero = [](const Value* V)
+    {
+        if (auto *CFP = dyn_cast<ConstantFP>(V))
+        {
+            auto &APF = CFP->getValueAPF();
+            if (CFP->getType()->isDoubleTy())
+                return APF.convertToDouble() >= 0.0;
+            else if (CFP->getType()->isFloatTy())
+                return APF.convertToFloat() >= 0.0f;
+        }
+
+        return false;
+    };
+
+    if (auto *binInst = dyn_cast<BinaryOperator>(use))
+    {
+        switch (binInst->getOpcode())
+        {
+        case Instruction::FMul:
+        case Instruction::And:
+            return true;
+            // watch out for the zero in the denominator
+        case Instruction::FDiv:
+            return inst != binInst->getOperand(1);
+        case Instruction::FSub:
+            return isZero(binInst->getOperand(0)) ||
+                isZero(binInst->getOperand(1));
+        default:
+            return false;
+        }
     }
-	else if (auto *SI = dyn_cast<SelectInst>(use))
+    else if (auto *BI = dyn_cast<BitCastInst>(use))
+    {
+        return true;
+    }
+    else if (auto *SI = dyn_cast<SelectInst>(use))
 	{
 		// Assuming %x is 0, if the other operand is also
 		// 0 the result of the select must be 0 as well.
@@ -2597,15 +2602,27 @@ void EarlyOutPatterns::foldFromAdd(SmallVector<Instruction*, 4> &Values, Instruc
 
 Instruction* EarlyOutPatterns::moveToDef(Instruction *Def, ArrayRef<Instruction*> Users)
 {
-	Instruction *insertPoint = Def;
-	for (auto it : Users)
-	{
-		// move all the users right after the def instruction for simplicity
-		it->moveBefore(insertPoint->getNextNode());
-		insertPoint = it;
-	}
+    Instruction *insertPoint = Def;
+    
+    for (auto it : Users)
+    {
+        // has a bitcast between extractelement and sample* instruction.
+        // need to move the bitcast too.
+        if (it->getOperand(0) != Def)
+        {
+            auto bitcast = cast<Instruction>(it->getOperand(0));
+            bitcast->moveBefore(insertPoint->getNextNode());
+            insertPoint = bitcast;
+        }
+    }
+    for ( auto it : Users)
+    {
+        // move all the users right after the def instruction for simplicity
+        it->moveBefore(insertPoint->getNextNode());
+        insertPoint = it;
+    }
 
-	return insertPoint;
+    return insertPoint;
 }
 
 bool EarlyOutPatterns::isSplitProfitable(
@@ -2636,13 +2653,31 @@ BasicBlock* EarlyOutPatterns::cmpAndSplitAtPoint(
 	const DenseSet<const Value*> &FoldedVals)
 {
     IRBuilder<> builder(Root->getNextNode());
-    auto *splitCondition = cast<Instruction>(
-        builder.CreateFCmpOEQ(Values[0], ConstantFP::get(Values[0]->getType(), 0.0)));
+    Instruction *splitCondition = nullptr;
+
+    if (Values[0]->getType()->isIntOrIntVectorTy())
+    {
+        splitCondition = cast<Instruction>(
+            builder.CreateICmp(ICmpInst::ICMP_EQ, Values[0], ConstantInt::get(Values[0]->getType(), 0)));
+    }
+    else
+    {
+        splitCondition = cast<Instruction>(
+            builder.CreateFCmpOEQ(Values[0], ConstantFP::get(Values[0]->getType(), 0.0)));
+    }
 
     for (unsigned int i = 1; i < Values.size(); i++)
     {
-        Value* cmp = builder.CreateFCmpOEQ(Values[i], ConstantFP::get(Values[i]->getType(), 0.0));
-        splitCondition = cast<Instruction>(builder.CreateAnd(splitCondition, cmp));
+        if (Values[i]->getType()->isIntOrIntVectorTy())
+        {
+            Value* cmp = builder.CreateICmp(ICmpInst::ICMP_EQ, Values[i], ConstantInt::get(Values[i]->getType(), 0));
+            splitCondition = cast<Instruction>(builder.CreateAnd(splitCondition, cmp));
+        }
+        else
+        {
+            Value* cmp = builder.CreateFCmpOEQ(Values[i], ConstantFP::get(Values[i]->getType(), 0.0));
+            splitCondition = cast<Instruction>(builder.CreateAnd(splitCondition, cmp));
+        }
     }
 
     auto* BB = SplitBasicBlock(splitCondition, FoldedVals);
@@ -2717,52 +2752,65 @@ bool EarlyOutPatterns::DotProductSourceMatch(const Instruction *I)
 
 bool EarlyOutPatterns::canOptimizeSampleInst(SmallVector<Instruction*, 4> &Channels, GenIntrinsicInst *GII)
 {
-	auto ID = GII->getIntrinsicID();
+    auto ID = GII->getIntrinsicID();
 
-	// -- Pattern, we are looking for sample instructions followed
-	// by a large number of instructions which can be folded
-	if (ID == GenISAIntrinsic::GenISA_sampleLptr ||
-		ID == GenISAIntrinsic::GenISA_sampleLCptr ||
-		ID == GenISAIntrinsic::GenISA_sampleptr)
-	{
-		bool canOptimize = false;
+    // -- Pattern, we are looking for sample instructions followed
+    // by a large number of instructions which can be folded
+    if (ID == GenISAIntrinsic::GenISA_sampleLptr ||
+        ID == GenISAIntrinsic::GenISA_sampleLCptr ||
+        ID == GenISAIntrinsic::GenISA_sampleptr)
+    {
+        bool canOptimize = false;
+        for (auto I : GII->users())
+        {
+            // check patterns:
+            // % 281 = call fast <4 x float> @llvm.genx.GenISA.sampleptr....
+            // % bc1 = bitcast <4 x float> % 281 to <4 x i32>, !dbg !187
+            // % 287 = extractelement <4 x i32> %bc1, i32 1, !dbg !187
+            //                or
+            // % 280 = call fast <4 x float> @llvm.genx.GenISA.sampleptr....
+            // % 285 = extractelement <4 x float> % 280, i32 0, !dbg !182
+            if (auto *bitCast = dyn_cast<BitCastInst>(I))
+            {
+                if (bitCast->hasOneUse())
+                {
+                    I = *bitCast->user_begin();
+                }
+            }
+            if (auto *extract = dyn_cast<ExtractElementInst>(I))
+            {
+                if (GII->getParent() == extract->getParent() &&
+                    isa<ConstantInt>(extract->getIndexOperand()))
+                {
+                    Channels.push_back(extract);
+                    canOptimize = true;
+                    continue;
+                }
+            }
+            canOptimize = false;
+            break;
+        }
 
-		for (auto I : GII->users())
-		{
-			if (auto *extract = dyn_cast<ExtractElementInst>(I))
-			{
-				if (GII->getParent() == extract->getParent() &&
-					isa<ConstantInt>(extract->getIndexOperand()))
-				{
-					Channels.push_back(extract);
-					canOptimize = true;
-					continue;
-				}
-			}
-			canOptimize = false;
-			break;
-		}
+        if (ID == GenISAIntrinsic::GenISA_sampleLCptr)
+        {
+            if (Channels.size() != 1 || !cast<ConstantInt>(Channels[0]->getOperand(1))->isZero())
+            {
+                // for now allow multiple channels for everything except SampleLCptr
+                // to reduce the scope
+                canOptimize = false;
+            }
+        }
 
-		if (ID == GenISAIntrinsic::GenISA_sampleLCptr)
-		{
-			if (Channels.size() != 1 || !cast<ConstantInt>(Channels[0]->getOperand(1))->isZero())
-			{
-				// for now allow multiple channels for everything except SampleLCptr
-				// to reduce the scope
-				canOptimize = false;
-			}
-		}
+        // limit the number of channles to check to 3 for now
+        if (Channels.size() > 3)
+        {
+            canOptimize = false;
+        }
 
-		// limit the number of channles to check to 3 for now
-		if (Channels.size() > 3)
-		{
-			canOptimize = false;
-		}
+        return canOptimize;
+    }
 
-		return canOptimize;
-	}
-
-	return false;
+    return false;
 }
 
 bool EarlyOutPatterns::processBlock(BasicBlock* BB)
@@ -2889,9 +2937,9 @@ DenseSet<const Value*> EarlyOutPatterns::tryAndFoldValues(ArrayRef<Instruction*>
 	{
 		for (auto UI : inst->users())
 		{
-			if (auto* useInst = dyn_cast<Instruction>(UI))
+            if (auto* useInst = dyn_cast<Instruction>(UI))
 			{
-				if (useInst->getParent() == inst->getParent())
+                if (useInst->getParent() == inst->getParent())
 				{
 					if (FoldsToZero(inst, useInst, FoldedVals))
 					{
@@ -2974,7 +3022,15 @@ BasicBlock* EarlyOutPatterns::SplitBasicBlock(Instruction* inst, const DenseSet<
     // replace the folded values with 0
     for(auto it : FoldedVals)
     {
-        VMap[it]->replaceAllUsesWith(ConstantFP::get(it->getType(), 0.0));
+        if (it->getType()->isIntOrIntVectorTy())
+        {
+            VMap[it]->replaceAllUsesWith(ConstantInt::get(it->getType(), 0));
+        }
+        else
+        {
+
+            VMap[it]->replaceAllUsesWith(ConstantFP::get(it->getType(), 0.0));
+        }
     }
 
     // branching
