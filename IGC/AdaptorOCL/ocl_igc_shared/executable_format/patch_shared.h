@@ -205,7 +205,7 @@ struct SPatchExecutionEnvironment :
     uint32_t    SubgroupIndependentForwardProgressRequired;
     uint32_t    CompiledForGreaterThan4GBBuffers;
     uint32_t    NumGRFRequired;
-	uint32_t    WorkgroupWalkOrderDims; // dim0 : [0 : 1]; dim1 : [2 : 3]; dim2 : [4 : 5]
+    uint32_t    WorkgroupWalkOrderDims; // dim0 : [0 : 1]; dim1 : [2 : 3]; dim2 : [4 : 5]
     uint32_t    HasGlobalAtomics;
     uint32_t    reserved;
 };
@@ -399,7 +399,7 @@ static_assert( sizeof( SPatchAllocateConstantMemorySurfaceProgramBinaryInfo ) ==
 /*****************************************************************************\
 STRUCT: SPatchGlobalPointerProgramBinaryInfo
 \*****************************************************************************/
-struct SPatchGlobalPointerProgramBinaryInfo : 
+struct SPatchGlobalPointerProgramBinaryInfo :
     SPatchItemHeader
 {
     uint32_t   GlobalBufferIndex;
@@ -414,7 +414,7 @@ static_assert( sizeof( SPatchGlobalPointerProgramBinaryInfo ) == ( 20 + sizeof( 
 /*****************************************************************************\
 STRUCT: SPatchConstantPointerProgramBinaryInfo
 \*****************************************************************************/
-struct SPatchConstantPointerProgramBinaryInfo : 
+struct SPatchConstantPointerProgramBinaryInfo :
     SPatchItemHeader
 {
     uint32_t   ConstantBufferIndex;
