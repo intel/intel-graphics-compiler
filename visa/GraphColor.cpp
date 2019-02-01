@@ -9612,6 +9612,10 @@ int GlobalRA::coloringRegAlloc()
 
         LivenessAnalysis liveAnalysis(*this, G4_GRF | G4_INPUT);
         liveAnalysis.computeLiveness(iterationNo == 0);
+        if (builder.getOption(vISA_dumpLiveness))
+        {
+            liveAnalysis.dump();
+        }
 
 #ifdef DEBUG_VERBOSE_ON
         emitFGWithLiveness(liveAnalysis);
