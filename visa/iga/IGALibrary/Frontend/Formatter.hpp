@@ -282,7 +282,7 @@ namespace iga {
             , sendDstOp(7) // null:ud
                            // r120.4<4;4,1>:ub
             , srcOp(16)
-            , sendSrcOp(4) // r120
+            , sendSrcOp(6) // r120#1
             , sendDesc(10)
         {
         }

@@ -61,6 +61,11 @@ public:
 
     inline bool intersects(const BitSet<N,I> &rhs) const;
 
+    // If the bitSets have intersects in given range, start from off and with legnth len
+    // off: bit offset
+    // len: range length in bits
+    inline bool intersects(const BitSet<N,I> &rhs, size_t off, size_t len) const;
+
     // THERE EXISTS WORD w such that ((w & mask) == eq)
     // bool testAnyEq(size_t off, size_t len, const I &mask, const I &eq) const;
     // FOR ALL ...
@@ -137,6 +142,41 @@ inline bool BitSet<N, I>::intersects(const BitSet<N, I> &rhs) const {
         if (words[i] & rhs.words[i]) {
             return true;
         }
+    }
+    return false;
+}
+
+template <size_t N, typename I>
+inline bool BitSet<N, I>::intersects(
+    const BitSet<N, I> &rhs, size_t off, size_t len) const {
+
+    IGA_ASSERT(off >= 0 && off + len <= N,
+        "BitSet::intersects: index out of bounds");
+
+    // check the first word (may misaligned)
+    auto w_ix = off / BITS_PER_WORD;  // idx of the first word
+    auto w_off = off % BITS_PER_WORD; // length from w_ix to off
+    size_t misaligned_len = std::min<size_t>(BITS_PER_WORD - w_off, len);
+    I misaligned_mask = makeMask(misaligned_len);
+    if (((words[w_ix] >> w_off) & misaligned_mask) &
+        ((rhs.words[w_ix] >> w_off) & misaligned_mask)) {
+        return true;
+    }
+
+    // check successive words (all aligned now)
+    len -= misaligned_len;
+    off += misaligned_len;
+    while (len > 0) {
+        w_ix++; // next word
+
+        auto aligned_len = len >= 32 ? 32 : len % BITS_PER_WORD; // last will be <32
+        auto aligned_mask = makeMask(aligned_len);
+        if ((words[w_ix] & aligned_mask) &
+            (rhs.words[w_ix] & aligned_mask)) {
+            return true;
+        }
+        len -= aligned_len;
+        off += aligned_len;
     }
     return false;
 }
