@@ -566,6 +566,9 @@ namespace IGC
 
     private:
         unsigned stateId;
+        // For debugging purposes, it can be useful to start on a particular
+        // ID rather than id 0.
+        unsigned firstStateId;
 
         unsigned getStateCnt();
 

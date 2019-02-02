@@ -50,9 +50,12 @@ static const RetryState RetryTable[] = {
     { false, false, true, true, false, false, false, 500 }
 };
 
-RetryManager::RetryManager() : stateId(0), enabled(false)
+RetryManager::RetryManager() : enabled(false)
 {
     memset(m_simdEntries, 0, sizeof(m_simdEntries));
+    firstStateId = IGC_GET_FLAG_VALUE(RetryManagerFirstStateId);
+    stateId = firstStateId;
+    assert(stateId < getStateCnt());
 }
 
 bool RetryManager::AdvanceState() {
@@ -93,7 +96,7 @@ bool RetryManager::AllowLargeURBWrite() {
     return RetryTable[stateId].allowLargeURBWrite;
 }
 bool RetryManager::IsFirstTry() {
-    return (stateId == 0);
+    return (stateId == firstStateId);
 }
 bool RetryManager::IsLastTry(CodeGenContext* cgCtx) {
     return (!enabled ||

@@ -169,6 +169,8 @@ DECLARE_IGC_REGKEY(bool, ForceCSSIMD16, false, "Force computer shader SIMD16 mod
 DECLARE_IGC_REGKEY(bool, ForceCSLeastSIMD, false, "Force computer shader to the lowest allowed SIMD mode")
 DECLARE_IGC_REGKEY(bool, EnableTrivialEmulateSinCos,   false, "Enable Emulation for Sine and Cosine instructions")
 DECLARE_IGC_REGKEY(DWORD, ld2dmsInstsClubbingThreshold, 3, "Do not club more than these ld2dms insts into the new BB during MCSOpt")
+DECLARE_IGC_REGKEY(DWORD, ForcePerThreadPrivateMemorySize, 0, "Useful for ensuring a certain amount of private memory when doing a shader override.")
+DECLARE_IGC_REGKEY(DWORD, RetryManagerFirstStateId, 0, "For debugging purposes, it can be useful to start on a particular id rather than id 0.")
 
 DECLARE_IGC_GROUP("Shader dumping")
 DECLARE_IGC_REGKEY(bool, EnableCosDump, false, "Enable cos dump")
