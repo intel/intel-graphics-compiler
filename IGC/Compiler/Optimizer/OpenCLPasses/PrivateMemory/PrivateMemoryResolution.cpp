@@ -358,7 +358,7 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module &M) const
    if (modMD.compOpt.OptDisable
        || !Ctx.m_DriverInfo.usesScratchSpacePrivateMemory()
        || (Ctx.type == ShaderType::OPENCL_SHADER
-           && !Ctx.platform.useScratchSpaceForOCL()))
+           && !IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory)))
    {
      return false;
    }

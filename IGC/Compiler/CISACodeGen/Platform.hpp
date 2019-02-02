@@ -312,11 +312,6 @@ public:
     bool hasAtomicPreDec() const { return true; }
     bool needsHeaderForAtomicCounter() const { return false; }
 
-    bool useScratchSpaceForOCL() const
-    {
-        return IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory);
-    }
-
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const
