@@ -6,22 +6,22 @@ namespace vISA {
 class LatencyTable {
 public:
     struct Latency {
-        Latency(uint32_t EL, uint32_t ND)
+        Latency(uint16_t EL, uint16_t ND)
             : latency(EL)
             , occupancy(ND)
         {
         }
 
-        uint32_t getLatency() const
+        uint16_t getLatency() const
         {
             return latency;
         }
-        uint32_t getOccupancy() const
+        uint16_t getOccupancy() const
         {
             return occupancy;
         }
-        uint32_t latency = 0;
-        uint32_t occupancy = 0;
+        uint16_t latency = 0;
+        uint16_t occupancy = 0;
     };
 
 public:
@@ -30,11 +30,13 @@ public:
     {
     }
 
-    unsigned getLatencyPostRA(G4_INST* Inst) const;
-    unsigned getLatencyPreRA(G4_INST* Inst) const;
+    uint16_t getOccupany(G4_INST* inst) const;
+    uint16_t getLatencyPostRA(G4_INST* Inst) const;
+    uint16_t getLatencyPreRA(G4_INST* Inst) const;
 
 private:
-    unsigned getLatencyLegacy(G4_INST* inst) const;
+    uint16_t getLatencyLegacy(G4_INST* inst) const;
+    uint16_t getOccupanyLegacy(G4_INST* inst) const;
 
     const IR_Builder* m_builder;
     std::map<G4_opcode, Latency> InstLatTable;
