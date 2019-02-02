@@ -49,7 +49,7 @@ void LocalScheduler::localScheduling()
     int i = 0;
 
     const Options *m_options = fg.builder->getOptions();
-    LatencyTable LT(m_options);
+    LatencyTable LT(fg.builder);
 
     for (; ib != bend; ++ib)
     {
@@ -1620,24 +1620,6 @@ uint32_t DDD::listSchedule(G4_BB_Schedule *schedule)
     return currCycle;
 }
 
-static bool isMemSend(G4_SendMsgDescriptor *msgDesc)
-{
-    auto funcID = msgDesc->getFuncId();
-    switch (funcID)
-    {
-    case SFID_SAMPLER:
-    case SFID_DP_DC2:
-    case SFID_VME:
-    case SFID_DP_CC:
-    case SFID_DP_DC:
-    case SFID_DP_PI:
-    case SFID_DP_DC1:
-        return true;
-    default:
-        return false;
-    }
-}
-
 // This comment is moved from DDD::Latency()
 // Given two instructions, this function returns latency
 // in number of cycles. If there is a RAW dependency
@@ -1674,47 +1656,7 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT)
     {
     case RAW:
     case RAW_MEMORY:
-        if (inst->isSend())
-        {
-            latency = G4_SendMsgDescriptor::getDefaultFFLatency();
-
-            G4_SendMsgDescriptor *msgDesc = inst->getMsgDesc();
-            if (msgDesc)
-            {
-                // FF latencies are in cycles
-                latency = getOptions()->getuInt32Option(vISA_UnifiedSendCycle);
-                if (latency)
-                {
-                    if (!isMemSend(msgDesc))
-                    {
-                        latency = msgDesc->getFFLatency();
-                    }
-                }
-                else
-                {
-                    latency = msgDesc->getFFLatency();
-                }
-            }
-        }
-        else if (inst->isMath())
-        {
-            // Use EdgeLatencyMathType2 for FDIV, FPOW functions.
-            if (inst->asMathInst()->getMathCtrl() == MATH_FDIV ||
-                inst->asMathInst()->getMathCtrl() == MATH_POW)
-            {
-                latency = EDGE_LATENCY_MATH_TYPE2;
-            }
-            // Used EdgeLatencyMath for other functions.
-            else
-            {
-                latency = EDGE_LATENCY_MATH;
-            }
-        }
-        else
-        {
-            latency = IVB_PIPELINE_LENGTH;
-        }
-        break;
+        latency = LT.getLatencyPostRA(inst);
 
     case WAR:
     case WAR_MEMORY:
@@ -1724,7 +1666,6 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT)
         break;
 
     default:
-        assert(0);
         break;
     }
     latency = latency > node->getOccupancy() ? latency : node->getOccupancy();
@@ -1736,24 +1677,17 @@ uint32_t DDD::getEdgeLatency_new(Node *node, DepType depT) {
     {
         return node->getOccupancy();
     }
-    uint32_t latency = 0;
 
+    uint32_t latency = UNCOMPR_LATENCY;
     switch (depT)
     {
     case RAW:
     case RAW_MEMORY: {
         G4_INST *inst = (*node->getInstructions()).front();
-        latency = LT.getLatency(inst).getSumOldStyle();
+        latency = LT.getLatencyPostRA(inst);
         break;
     }
-    case WAR:
-    case WAR_MEMORY:
-    case WAW:
-    case WAW_MEMORY:
-        latency = UNCOMPR_LATENCY;
-        break;
     default:
-        assert(0);
         break;
     }
     latency = latency > node->getOccupancy() ? latency : node->getOccupancy();

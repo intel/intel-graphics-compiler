@@ -435,12 +435,16 @@ class BB_Scheduler {
     // Options to customize scheduler.
     SchedConfig config;
 
+    const LatencyTable &LT;
+
 public:
-    BB_Scheduler(G4_Kernel& kernel, preDDD& ddd, RegisterPressure& rp, SchedConfig config)
+    BB_Scheduler(G4_Kernel& kernel, preDDD& ddd, RegisterPressure& rp,
+        SchedConfig config, const LatencyTable& LT)
         : kernel(kernel)
         , ddd(ddd)
         , rp(rp)
         , config(config)
+        , LT(LT)
     {
     }
 
@@ -516,6 +520,7 @@ bool preRA_Scheduler::run()
     unsigned Threshold = getRPReductionThreshold(m_options, kernel);
     unsigned SchedCtrl = m_options->getuInt32Option(vISA_preRA_ScheduleCtrl);
 
+    LatencyTable LT(kernel.fg.builder);
     SchedConfig config(SchedCtrl);
     RegisterPressure rp(kernel, mem, rpe);
     bool Changed = false;
@@ -535,7 +540,7 @@ bool preRA_Scheduler::run()
 
         SCHED_DUMP(rp.dump(bb, "Before scheduling, "));
         preDDD ddd(mem, kernel, bb);
-        BB_Scheduler S(kernel, ddd, rp, config);
+        BB_Scheduler S(kernel, ddd, rp, config, LT);
 
         auto tryRPReduction = [=]() {
             if (!config.UseSethiUllman)
@@ -1054,9 +1059,14 @@ class LatencyQueue : public QueueBase {
     // group will be scheduled for latency.
     std::map<G4_INST *, unsigned> GroupInfo;
 
+    // Instrction latency information.
+    const LatencyTable &LT;
+
 public:
-    LatencyQueue(preDDD& ddd, RegisterPressure& rp, SchedConfig config)
+    LatencyQueue(preDDD& ddd, RegisterPressure& rp, SchedConfig config,
+        const LatencyTable& LT)
         : QueueBase(ddd, rp, config)
+        , LT(LT)
     {
         init();
     }
@@ -1108,7 +1118,7 @@ private:
 void BB_Scheduler::LatencyScheduling()
 {
     schedule.clear();
-    LatencyQueue Q(ddd, rp, config);
+    LatencyQueue Q(ddd, rp, config, LT);
     Q.push(ddd.getEntryNode());
 
     while (!Q.empty()) {
@@ -1350,18 +1360,7 @@ unsigned LatencyQueue::calculatePriority(preNode* N)
                 // fall through
             case RAW_MEMORY:
             case WAW:
-                if (Inst->isSend()) {
-                    if (G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc())
-                        Latency = MsgDesc->getFFLatency();
-                } else if (Inst->isMath()) {
-                    Latency = EDGE_LATENCY_MATH;
-                    if (Inst->asMathInst()->getMathCtrl() == MATH_FDIV ||
-                        Inst->asMathInst()->getMathCtrl() == MATH_POW)
-                        Latency = EDGE_LATENCY_MATH_TYPE2;
-                } else {
-                    Latency = IVB_PIPELINE_LENGTH;
-                }
-                break;
+                return LT.getLatencyPreRA(Inst);
             default:
                 break;
             }

@@ -29,10 +29,12 @@ endif(ANDROID AND MEDIA_IGA)
   set(LocalScheduler_SOURCES
     Dependencies_G4IR.cpp
     LocalScheduler_G4IR.cpp
+    LatencyTable.cpp
     G4_Sched.cpp)
 
   set(LocalScheduler_HEADERS
     Dependencies_G4IR.h
+    LatencyTable.h
     LocalScheduler_G4IR.h)
 
 if (WIN32 AND NOT IGC_BUILD)
