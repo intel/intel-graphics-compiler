@@ -1359,7 +1359,8 @@ unsigned LatencyQueue::calculatePriority(preNode* N)
                 // fall through
             case RAW_MEMORY:
             case WAW:
-                return LT.getLatencyPreRA(Inst);
+                Latency = LT.getLatencyPreRA(Inst);
+                break;
             default:
                 break;
             }
