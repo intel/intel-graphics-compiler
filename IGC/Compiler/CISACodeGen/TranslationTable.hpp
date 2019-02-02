@@ -96,7 +96,7 @@ public:
     {
     }
 
-    FastValueMapBase(TranslationTable* TT) : m_pTT(TT)
+    FastValueMapBase(TranslationTable* table) : m_pTT(table)
     {
     }
 
@@ -123,9 +123,9 @@ template<typename T, typename AttributeInfoT>
 class FastValueMapImpl<std::vector<T>, T, AttributeInfoT> : public FastValueMapBase
 {
 public:
-    FastValueMapImpl(TranslationTable* TT) : FastValueMapBase(TT)
+    FastValueMapImpl(TranslationTable* table) : FastValueMapBase(table)
     {
-        Initialize(TT);
+        Initialize(table);
     }
 
     FastValueMapImpl()
@@ -137,10 +137,10 @@ public:
         m_containerVector.push_back(AttributeInfoT::getEmptyAttribute());
     }
 
-    void Initialize(TranslationTable* TT)
+    void Initialize(TranslationTable* table)
     {
-        m_pTT = TT;
-        const unsigned int numIDS = TT->GetNumIDs();
+        m_pTT = table;
+        const unsigned int numIDS = table->GetNumIDs();
         m_containerVector.reserve(numIDS + (unsigned int)(numIDS * 0.3));
         m_containerVector.resize(numIDS, AttributeInfoT::getEmptyAttribute());
         assert(m_containerVector.size() == numIDS);
