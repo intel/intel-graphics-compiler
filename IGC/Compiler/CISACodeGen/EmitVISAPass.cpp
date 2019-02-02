@@ -9050,10 +9050,18 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
     llvm::Type* pVecType = inst->getType();
     if (!isa<UndefValue>(pVec))
     {
-        pVecVar = GetSymbol(pVec);
-        if (pVecVar != pInstVar)
+        if (isa<ConstantVector>(pVec))
         {
-            emitVectorCopy(pInstVar, pVecVar, int_cast<unsigned>(dyn_cast<VectorType>(pVecType)->getNumElements()));
+            auto CV = cast<ConstantVector>(pVec);
+            pInstVar = m_currShader->GetConstant(CV, pInstVar);
+        }
+        else
+        {
+            pVecVar = GetSymbol(pVec);
+            if (pVecVar != pInstVar)
+            {
+                emitVectorCopy(pInstVar, pVecVar, int_cast<unsigned>(dyn_cast<VectorType>(pVecType)->getNumElements()));
+            }
         }
     }
 
