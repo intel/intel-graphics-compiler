@@ -229,8 +229,6 @@ namespace vISA
 class G4_SendMsgDescriptor
 {
 private:
-    static const uint16_t FFLatency[SFID_NUM + 1];
-
     /// Structure describes a send message descriptor. Only expose
     /// several data fields; others are unnamed.
     struct MsgDescLayout {
@@ -259,7 +257,7 @@ private:
         uint32_t unnamed1 : 1;     // bit 4
         uint32_t eot : 1;          // bit 5
         uint32_t extMsgLength : 5; // bit 6:10
-        uint32_t cps : 1;     // bit 11
+        uint32_t cps : 1;          // bit 11
         uint32_t RTIndex : 3;      // bit 12-14
         uint32_t src0Alpha : 1;    // bit 15
         uint32_t extFuncCtrl : 16; // bit 16:31
@@ -573,16 +571,6 @@ public:
 
     static bool isReadOnlyMessage(uint32_t msgDesc, uint32_t exDesc);
 
-    uint16_t getFFLatency() const
-    {
-        auto funcID = extDesc.layout.funcID;
-        return FFLatency[funcID];
-    }
-
-    static uint16_t getDefaultFFLatency()
-    {
-        return FFLatency[SFID_NUM];
-    }
     // return offset in unit of GRF
     uint16_t getScratchRWOffset() const
     {

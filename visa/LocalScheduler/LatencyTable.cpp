@@ -4,6 +4,24 @@
 
 using namespace vISA;
 
+static const uint16_t LegacyFFLatency[] = {
+    2,   // 0: SFID_NULL
+    2,   // 1: Useless
+    300, // 2: SFID_SAMPLER
+    200, // 3: SFID_GATEWAY
+    400, // 4: SFID_DP_READ, SFID_DP_DC2
+    200, // 5: SFID_DP_WRITE
+    50,  // 6: SFID_URB
+    50,  // 7: SFID_SPAWNER
+    50,  // 8: SFID_VME
+    60,  // 9: SFID_DP_CC
+    400, //10: SFID_DP_DC
+    50,  //11: SFID_DP_PI
+    400, //12: SFID_DP_DC1
+    200, //13: SFID_CRE
+    200  //14: unknown, SFID_NUM
+};
+
 uint16_t LatencyTable::getLatencyPreRA(G4_INST* Inst) const
 {
     return getLatencyLegacy(Inst);
@@ -18,7 +36,7 @@ uint16_t LatencyTable::getLatencyLegacy(G4_INST* Inst) const
 {
     if (Inst->isSend()) {
         G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc();
-        return MsgDesc->getFFLatency();
+        return LegacyFFLatency[MsgDesc->getFuncId()];
     } else if (Inst->isMath()) {
         if (Inst->asMathInst()->getMathCtrl() == MATH_FDIV ||
             Inst->asMathInst()->getMathCtrl() == MATH_POW)
