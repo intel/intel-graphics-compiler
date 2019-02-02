@@ -568,12 +568,11 @@ bool preRA_Scheduler::run()
             unsigned NumOfHighLatencyInsts = 0;
             for (auto Inst : *bb) {
                 if (Inst->isSend()) {
-                    if (G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc()) {
-                        if (MsgDesc->isDataPortRead() ||
-                            MsgDesc->isSampler() ||
-                            MsgDesc->isAtomicMessage())
-                            NumOfHighLatencyInsts++;
-                    }
+                    G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc();
+                    if (MsgDesc->isDataPortRead() ||
+                        MsgDesc->isSampler() ||
+                        MsgDesc->isAtomicMessage())
+                        NumOfHighLatencyInsts++;
                 }
             }
 

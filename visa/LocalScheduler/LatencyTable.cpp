@@ -17,9 +17,8 @@ unsigned LatencyTable::getLatencyPostRA(G4_INST* Inst) const
 unsigned LatencyTable::getLatencyLegacy(G4_INST* Inst) const
 {
     if (Inst->isSend()) {
-        if (G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc())
-            return MsgDesc->getFFLatency();
-        return G4_SendMsgDescriptor::getDefaultFFLatency();
+        G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc();
+        return MsgDesc->getFFLatency();
     } else if (Inst->isMath()) {
         if (Inst->asMathInst()->getMathCtrl() == MATH_FDIV ||
             Inst->asMathInst()->getMathCtrl() == MATH_POW)

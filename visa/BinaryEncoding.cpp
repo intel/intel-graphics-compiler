@@ -288,14 +288,11 @@ inline void BinaryEncoding::EncodeSendMsgDesc29_30(G4_INST* inst)
 
     BinInst *mybin = inst->getBinInst();
     G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
-    if (msgDesc != nullptr)
+    G4_Operand* descOpnd = inst->isSplitSend() ? inst->getSrc(2) : inst->getSrc(1);
+    if (!descOpnd->isImm())
     {
-        G4_Operand* descOpnd = inst->isSplitSend() ? inst->getSrc(2) : inst->getSrc(1);
-        if (!descOpnd->isImm())
-        {
-            uint32_t bitValue = (msgDesc->is16BitReturn() << 1) + msgDesc->is16BitInput();
-            mybin->SetBits(bitsSendDesc_30, bitsSendDesc_29, bitValue);
-        }
+        uint32_t bitValue = (msgDesc->is16BitReturn() << 1) + msgDesc->is16BitInput();
+        mybin->SetBits(bitsSendDesc_30, bitsSendDesc_29, bitValue);
     }
 }
 

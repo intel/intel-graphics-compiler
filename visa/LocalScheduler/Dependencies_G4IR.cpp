@@ -41,13 +41,6 @@ static DepType DoMemoryInterfereSend(G4_INST *send1, G4_INST *send2, retDepType 
         return NODEP;
     }
 
-    // If it was not possible to decode either send's message descriptor we return
-    // a conservative dependency.
-    if (!send1->getMsgDesc() || !send2->getMsgDesc())
-    {
-        return INVALID_MSG_DESC;
-    }
-
     if (send1->getMsgDesc()->isSendBarrier() || send2->getMsgDesc()->isSendBarrier())
     {
         return MSG_BARRIER;
@@ -154,13 +147,6 @@ static DepType DoMemoryInterfereScratchSend(G4_INST *send1, G4_INST *send2, retD
         return NODEP;
     }
 
-    // If it was not possible to decode either send's message descriptor we return
-    // a conservative dependency.
-    if (!send1->getMsgDesc() || !send2->getMsgDesc())
-    {
-        return INVALID_MSG_DESC;
-    }
-
     // scratch RW may only conflict with other scratch RW
     if (send1->getMsgDesc()->isScratchRW() != send2->getMsgDesc()->isScratchRW())
     {
@@ -247,17 +233,14 @@ DepType vISA::CheckBarrier(G4_INST *inst)
             // sendc may imply synchronization
             return SEND_BARRIER;
         }
-        if (inst->getMsgDesc())
+        if (inst->getMsgDesc()->isEOTInst())
         {
-            if (inst->getMsgDesc()->isEOTInst())
-            {
-                // Send with the EOT message desciptor is a barrier.
-                return SEND_BARRIER;
-            }
-            else if (inst->getMsgDesc()->isThreadMessage())
-            {
-                return MSG_BARRIER;
-            }
+            // Send with the EOT message desciptor is a barrier.
+            return SEND_BARRIER;
+        }
+        else if (inst->getMsgDesc()->isThreadMessage())
+        {
+            return MSG_BARRIER;
         }
     }
     else if (inst->opcode() == G4_wait || inst->isYieldInst())

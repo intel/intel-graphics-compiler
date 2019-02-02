@@ -1287,22 +1287,7 @@ SpillManagerGMRF::createPostDstSpillRangeDeclare (
 	unsigned short nRows;
 
     G4_SendMsgDescriptor* msgDesc = sendOut->getMsgDesc();
-    if( msgDesc ) {
-        nRows = msgDesc->ResponseLength();
-    }
-
-	// Otherwise assume all following grfs (limited to 8) in the virtual
-	// register
-
-	else {
-		nRows =
-			spilledRegVar->getDeclare ()->getNumRows () -
-			spilledRegion->getRegOff ();
-
-		if (nRows > getSendMaxResponseLength ()) {
-			nRows = (unsigned short) getSendMaxResponseLength ();
-		}
-	}
+    nRows = msgDesc->ResponseLength();
 
     G4_DstRegRegion * normalizedPostDst = builder_->createDstRegRegion(
 		Direct, spilledRegVar, spilledRegion->getRegOff (), SUBREG_ORIGIN,
@@ -1389,28 +1374,15 @@ SpillManagerGMRF::createMRFFillRangeDeclare (
 	unsigned short nRows = 0;
 
     G4_SendMsgDescriptor* msgDesc = sendInst->getMsgDesc();
-    if( msgDesc )
+    if (sendInst->isSplitSend() &&
+        (sendInst->getSrc(1)->asSrcRegRegion() == filledRegion))
     {
-        if (sendInst->isSplitSend() &&
-            (sendInst->getSrc(1)->asSrcRegRegion () == filledRegion))
-        {
-            nRows = msgDesc->extMessageLength();
-        }
-        else
-        {
-            nRows = msgDesc->MessageLength();
-        }
+        nRows = msgDesc->extMessageLength();
     }
-	else
+    else
     {
-		nRows =
-			filledRegVar->getDeclare ()->getNumRows () -
-			filledRegion->getRegOff ();
-
-		if (nRows > getSendMaxMessageLength ()) {
-			nRows = (unsigned short) getSendMaxMessageLength ();
-		}
-	}
+        nRows = msgDesc->MessageLength();
+    }
 
     G4_SrcRegRegion * normalizedMRFSrc =
         builder_->createSrcRegRegion(

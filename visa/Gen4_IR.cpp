@@ -3232,31 +3232,27 @@ void G4_INST::emit_send_desc(std::ostream& output)
 
     // Emit a text description of the descriptor if it is available
      G4_SendMsgDescriptor* msgDesc = sendInst->getMsgDesc();
-    if (msgDesc)
-    {
-        output << " // ";
+     output << " // ";
 
-        if (msgDesc->getDescType() != NULL)
-        {
-            output << msgDesc->getDescType();
-        }
+     if (msgDesc->getDescType() != NULL)
+     {
+         output << msgDesc->getDescType();
+     }
 
-        output << ", resLen=" << msgDesc->ResponseLength();
-        output << ", msgLen=" << msgDesc->MessageLength();
-        if (isSplitSend())
-        {
-			output << ", extMsgLen=" << msgDesc->extMessageLength();
-        }
+     output << ", resLen=" << msgDesc->ResponseLength();
+     output << ", msgLen=" << msgDesc->MessageLength();
+     if (isSplitSend())
+     {
+         output << ", extMsgLen=" << msgDesc->extMessageLength();
+     }
 
-        if (msgDesc->isBarrierMsg())
-        {
-            output << ", barrier";
-        }
-    }
+     if (msgDesc->isBarrierMsg())
+     {
+         output << ", barrier";
+     }
 }
 
-void
-G4_INST::emit_send(std::ostream& output, bool dotStyle)
+void G4_INST::emit_send(std::ostream& output, bool dotStyle)
 {
 
     if (pCisaBuilder->m_options.getOption(vISA_SymbolReg))

@@ -244,15 +244,12 @@ void LocalRA::preLocalRAAnalysis()
                 {
                     if (inst->isSend() || inst->isSplitSend())
                     {
-                        if (inst->getMsgDesc())
-                        {
-                            maxSendReg = (inst->getMsgDesc()->ResponseLength() > maxSendReg) ?
-                                (inst->getMsgDesc()->ResponseLength()) : maxSendReg;
-                            maxSendReg = (inst->getMsgDesc()->MessageLength() > maxSendReg) ?
-                                (inst->getMsgDesc()->MessageLength()) : maxSendReg;
-                            maxSendReg = (inst->getMsgDesc()->extMessageLength() > maxSendReg) ?
-                                (inst->getMsgDesc()->extMessageLength()) : maxSendReg;
-                        }
+                        maxSendReg = (inst->getMsgDesc()->ResponseLength() > maxSendReg) ?
+                            (inst->getMsgDesc()->ResponseLength()) : maxSendReg;
+                        maxSendReg = (inst->getMsgDesc()->MessageLength() > maxSendReg) ?
+                            (inst->getMsgDesc()->MessageLength()) : maxSendReg;
+                        maxSendReg = (inst->getMsgDesc()->extMessageLength() > maxSendReg) ?
+                            (inst->getMsgDesc()->extMessageLength()) : maxSendReg;
                     }
                 }
             }

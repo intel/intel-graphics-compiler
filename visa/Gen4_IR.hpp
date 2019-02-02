@@ -284,16 +284,6 @@ private:
     G4_Operand *m_bti;
 
 public:
-    G4_SendMsgDescriptor()
-    {
-        desc.value = 0;
-        extDesc.value = 0;
-        readMsg = false;
-        writeMsg = false;
-        m_bti = NULL;
-        m_sti = NULL;
-    };
-
     static const int SLMIndex = 0xFE;
 
     G4_SendMsgDescriptor( uint32_t fCtrl, uint32_t regs2rcv, uint32_t regs2snd,
@@ -830,9 +820,6 @@ public:
             return false;
 
         G4_SendMsgDescriptor *MD = getMsgDesc();
-        if (!MD)
-            return false;
-
         CISA_SHARED_FUNCTION_ID SFID = MD->getFuncId();
         unsigned FC = MD->getFuncCtrl();
 
@@ -1117,14 +1104,18 @@ public:
         return NULL;
     }
 
-    void setMsgDesc( G4_SendMsgDescriptor *in )
+    void setMsgDesc(G4_SendMsgDescriptor *in)
     {
+        assert(in && "null descriptor not expected");
         msgDesc = in;
-
         resetRightBound((G4_Operand*) dst);
         resetRightBound(srcs[0]);
     }
-    G4_SendMsgDescriptor *getMsgDesc() const { return msgDesc; }
+    G4_SendMsgDescriptor *getMsgDesc() const
+    {
+        assert(msgDesc && "null descriptor not expected");
+        return msgDesc;
+    }
     /// Remove all definitons that contribute to this[opndNum] and remove all
     /// uses from their corresponding definitions. To maintain def-use's, this
     /// is required while resetting a source operand.

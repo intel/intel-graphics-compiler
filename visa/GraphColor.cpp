@@ -5920,7 +5920,6 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
             if (curInst->isSend())
             {
                 G4_SendMsgDescriptor* msgDesc = curInst->getMsgDesc();
-                ASSERT_USER(msgDesc != NULL, "send has invalid msg descriptor!");
 
                 unsigned dstSpillRegSize = 0;
                 dstSpillRegSize = msgDesc->ResponseLength();

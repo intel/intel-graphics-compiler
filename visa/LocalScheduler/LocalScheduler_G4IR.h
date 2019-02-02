@@ -304,7 +304,6 @@ public:
 
 
     uint32_t getEdgeLatency_old(Node *node, DepType depT);
-    uint32_t getEdgeLatency_new(Node *node, DepType depT);
     uint32_t getEdgeLatency(Node *node, DepType depT);
     Mem_Manager* get_mem() { return &mem; }
     IR_Builder* getBuilder() const { return kernel->fg.builder; }

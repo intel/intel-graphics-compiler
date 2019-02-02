@@ -1642,11 +1642,11 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT)
         G4_SendMsgDescriptor *msgDesc = inst->getMsgDesc();
         if (msgDesc->isDataPortRead())
         {
-            return msgDesc->getFFLatency();
+            return LT.getLatencyPostRA(inst);
         }
     }
 
-    if (depT <= NODEP || depT >= INVALID_MSG_DESC)
+    if (depT <= NODEP || depT >= CONTROL_FLOW_BARRIER)
     {
         return node->getOccupancy();
     }
@@ -1672,33 +1672,8 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT)
     return latency;
 }
 
-uint32_t DDD::getEdgeLatency_new(Node *node, DepType depT) {
-    if (depT <= NODEP || depT >= INVALID_MSG_DESC)
-    {
-        return node->getOccupancy();
-    }
-
-    uint32_t latency = UNCOMPR_LATENCY;
-    switch (depT)
-    {
-    case RAW:
-    case RAW_MEMORY: {
-        G4_INST *inst = (*node->getInstructions()).front();
-        latency = LT.getLatencyPostRA(inst);
-        break;
-    }
-    default:
-        break;
-    }
-    latency = latency > node->getOccupancy() ? latency : node->getOccupancy();
-    return latency;
-}
-
 uint32_t DDD::getEdgeLatency(Node *node, DepType depT) {
-    uint32_t oldLatency = getEdgeLatency_old(node, depT);
-    // uint32_t newLatency = getEdgeLatency_new(node, depT);
-    // assert(oldLatency == newLatency);
-    uint32_t latency = oldLatency;
+    uint32_t latency = getEdgeLatency_old(node, depT);
     if (useMTLatencies) 
     {
         float scale = float(HWthreadsPerEU) / getBuilder()->getCoIssueUints();

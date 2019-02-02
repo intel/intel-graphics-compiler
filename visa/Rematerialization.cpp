@@ -961,7 +961,6 @@ namespace vISA
             for (auto inst : *bb)
             {
                 if (inst->isSplitSend() &&
-                    inst->getMsgDesc() &&
                     inst->getMsgDesc()->getFuncId() == CISA_SHARED_FUNCTION_ID::SFID_SAMPLER)
                 {
                     numSampler++;
