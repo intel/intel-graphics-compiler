@@ -597,7 +597,10 @@ namespace TC
 				}
 #else
 				// Both 32 and 64 bit for non-Windows OS
-				CCModule.pModule = dlopen(CCModule.pModuleName, RTLD_NOW);
+                                // Avoid sumbol conflicts if some LLVM is already loaded in the project.
+                                // CCModule will use its own symbols in preference to global symbols with the same name 
+                                // contained in libraries that have already been loaded
+				CCModule.pModule = dlopen(CCModule.pModuleName, RTLD_NOW | RTLD_DEEPBIND);
 				if (NULL == CCModule.pModule)
 				{
 					// Try to load with old name. See header file for explanation.
@@ -844,7 +847,7 @@ namespace TC
   Returns true if Clang used on current OS has VME types defined.
 
   \*****************************************************************************/
-  bool AreVMETypesDefined() 
+  bool AreVMETypesDefined()
   {
     return false;
   }
@@ -1211,7 +1214,7 @@ namespace TC
 						// If "spir" does not follow the -x option, we must fail
 						if ((strcmp(pParam, "spir") && strcmp(pParam, "spir64")))
 						{
-							// Invalid option - break out of the loop and return 
+							// Invalid option - break out of the loop and return
 							// CL_INVALID_BUILD_OPTIONS
 							retVal = -43;
 							std::string invalidOption(pParam);
@@ -1257,13 +1260,9 @@ namespace TC
 							(strncmp(pParam, "-dump-opt-llvm", 14) == 0) ||
 							(strcmp(pParam, "-cl-no-subgroup-ifp") == 0);
 
-           
-					
-
-
 						if (isCommonOption)
 						{
-							// check to see if they used a space immediately after 
+							// check to see if they used a space immediately after
 							// the define/include. If they did...
 							if ((strcmp(pParam, "-D") == 0) ||
 								(strcmp(pParam, "-I") == 0))
@@ -1282,7 +1281,7 @@ namespace TC
 							}
 						}
 						// Check for Intel OpenCL CPU options
-						// OCL Kernel Profiler requires "-g" to create debug information for instrumented kernels. 
+						// OCL Kernel Profiler requires "-g" to create debug information for instrumented kernels.
 						// Without those information OCL Profiler is unable to associate OpenC code with IL instructions.
 						else if ((strcmp(pParam, "-g") == 0) ||
 							(strcmp(pParam, "-profiler") == 0) ||
@@ -1296,7 +1295,7 @@ namespace TC
 						}
 						else
 						{
-							// Invalid option - break out of the loop and return 
+							// Invalid option - break out of the loop and return
 							// CL_INVALID_BUILD_OPTIONS
 							retVal = -43;
 							std::string invalidOption(pParam);
@@ -1354,9 +1353,9 @@ namespace TC
 		case TB_DATA_FORMAT_SPIR_V:
 			optionsEx += " -emit-spirv";
 
-			// There's no way to get Clang version from the DLL, 
+			// There's no way to get Clang version from the DLL,
 			// so in the transition period we must rely on the fact that
-			// we will emit spirv as intermediate only with Clang5.0 (and later). 
+			// we will emit spirv as intermediate only with Clang5.0 (and later).
 			// TODO: Remove this and related code in cth after all platforms switch to 5.0 from 4.0.
 			optionsEx += " -D__CLANG_50__";
 			break;
@@ -1438,7 +1437,7 @@ namespace TC
 		if (0 != BuildOptionsAreValid(options.c_str(), exceptString)) res = -43;
 
 		Utils::FillOutputArgs(pResultPtr, pOutputArgs, exceptString);
-		if (!exceptString.empty()) // str != "" => there was an exception. skip further code and return. 
+		if (!exceptString.empty()) // str != "" => there was an exception. skip further code and return.
 		{
 			return false;
 		}
