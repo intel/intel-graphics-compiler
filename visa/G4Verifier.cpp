@@ -681,8 +681,15 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                 (opnd->isDstRegRegion() && inst->getExecSize() > 2);
             bool isAssigned = opnd->isRegRegion() && opnd->getBase()->isRegVar() &&
                 opnd->getBase()->asRegVar()->isPhyRegAssigned();
+			// allow replicated DF source opnd with <2;2,0> region
+			bool isReplicated = (opnd->getType() == Type_DF) &&
+				opnd->isSrcRegRegion() &&
+			    (opnd->asSrcRegRegion()->getRegion()->width == 2) &&
+			    (opnd->asSrcRegRegion()->getRegion()->horzStride == 0) &&
+				(opnd->asSrcRegRegion()->getRegion()->vertStride == 2);
             if (threeSrcAlign16 && nonScalar && isAssigned &&
-                opnd->getLinearizedStart() % 16 != 0)
+                opnd->getLinearizedStart() % 16 != 0 &&
+				!isReplicated)
             {
                 MUST_BE_TRUE(false, "dp2/dp3/dp4/dph and non-scalar 3src op must be align16!");
             }

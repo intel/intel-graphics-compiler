@@ -236,7 +236,9 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST* inst)
 		{
 			MUST_BE_TRUE(inst->getSrc(i)->isSrcRegRegion(), "source must have a region");
 			G4_SrcRegRegion* src = inst->getSrc(i)->asSrcRegRegion();
-			if (src->isScalar())
+			RegionDesc *rd = src->getRegion();
+			if (src->isScalar() ||
+				(rd->width == 2 && rd->horzStride == 0 && rd->vertStride == 2))
 			{
 				int subRegOffset = src->getLinearizedStart() % 16;
 				MUST_BE_TRUE(subRegOffset == 0 || subRegOffset == 8, "double source must be 8 byte aligned");
