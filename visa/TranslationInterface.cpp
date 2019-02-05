@@ -112,7 +112,7 @@ static bool IsStatelessSurface(G4_Operand *surface) {
         (surface->asImm()->getImm() == PREDEF_SURF_255 || surface->asImm()->getImm() == PREDEF_SURF_253);
 }
 
-static bool IsBindlessSurface(IR_Builder& builder, G4_Operand* surface)
+static bool ForceSplitSend(IR_Builder& builder, G4_Operand* surface)
 {
     return surface->isSrcRegRegion() &&
         surface->asSrcRegRegion()->getBase()->asRegVar()->getDeclare() == builder.getBuiltinT252();
@@ -2728,7 +2728,7 @@ int IR_Builder::translateVISAOwordLoadInst(
     CISA_SHARED_FUNCTION_ID tf_id =  SFID_DP_DC;
 
     unsigned send_exec_size = FIX_OWORD_SEND_EXEC_SIZE(num_oword);
-    bool forceSplitSend = IsBindlessSurface(*this, surface);
+    bool forceSplitSend = ForceSplitSend(*this, surface);
 
     if (!forceSplitSend) 
     {
@@ -4614,7 +4614,7 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
     MD |= subOpc << 8;
 
     unsigned resLen = hasRet ? (exSize / GENX_DATAPORT_IO_SZ) : 0;
-    bool forceSplitSend = IsBindlessSurface(*this, surface);
+    bool forceSplitSend = ForceSplitSend(*this, surface);
     if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
         Create_Send_Inst_For_CISA(pred, dst,
@@ -5023,7 +5023,7 @@ int IR_Builder::translateVISAGather4TypedInst(G4_Predicate           *pred,
     msgDesc |= MDC_SG3_SG8L << 12;
     sfId = SFID_DP_DC1;
 
-	bool forceSplitSend = IsBindlessSurface(*this, surface);
+	bool forceSplitSend = ForceSplitSend(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
         Create_Send_Inst_For_CISA(pred, dstOpnd,
@@ -5125,7 +5125,7 @@ int IR_Builder::translateVISAScatter4TypedInst(G4_Predicate           *pred,
 
     G4_DstRegRegion* dstOpnd = createNullDst(Type_UD);
 
-	bool forceSplitSend = IsBindlessSurface(*this, surface);
+	bool forceSplitSend = ForceSplitSend(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
         Create_Send_Inst_For_CISA(pred, dstOpnd,
@@ -5235,7 +5235,7 @@ int IR_Builder::translateVISATypedAtomicInst(
         msgDesc |= DC1_TYPED_ATOMIC << 14;
     }
 
-    bool forceSplitSend = IsBindlessSurface(*this, surface);
+    bool forceSplitSend = ForceSplitSend(*this, surface);
     if (msgs[1] == 0 && !forceSplitSend)
     {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
@@ -5516,7 +5516,7 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
     unsigned resLen = (exSize / GENX_DATAPORT_IO_SZ) *
                       chMask.getNumEnabledChannels();
 
-	bool forceSplitSend = IsBindlessSurface(*this, surface);
+	bool forceSplitSend = ForceSplitSend(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
         Create_Send_Inst_For_CISA(pred, dst,
@@ -5615,7 +5615,7 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
     MD |= chMask.getHWEncoding() << 8;
 
     G4_DstRegRegion *dst = createNullDst(Type_UD);
-	bool forceSplitSend = IsBindlessSurface(*this, surface);
+	bool forceSplitSend = ForceSplitSend(*this, surface);
     if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
         Create_Send_Inst_For_CISA(pred, dst,
@@ -5877,7 +5877,7 @@ int IR_Builder::translateByteGatherInst(G4_Predicate *pred,
     MD |= (execSize == EXEC_SIZE_8 ? MDC_SM2_SIMD8 : MDC_SM2_SIMD16) << 8;
 
     unsigned resLen = (exSize / GENX_DATAPORT_IO_SZ) * numBatch;
-	bool forceSplitSend = IsBindlessSurface(*this, surface);
+	bool forceSplitSend = ForceSplitSend(*this, surface);
     if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
         Create_Send_Inst_For_CISA(pred, dst,
@@ -5998,7 +5998,7 @@ int IR_Builder::translateByteScatterInst(G4_Predicate *pred,
     MD |= (execSize == EXEC_SIZE_8 ? MDC_SM2_SIMD8 : MDC_SM2_SIMD16) << 8;
 
     G4_DstRegRegion *dst = createNullDst(Type_UD);
-	bool forceSplitSend = IsBindlessSurface(*this, surface);
+	bool forceSplitSend = ForceSplitSend(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend) {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
         Create_Send_Inst_For_CISA(pred, dst,
@@ -7910,7 +7910,7 @@ int IR_Builder::translateVISASampleInfoInst(
     bool useFakeHeader = (getGenxPlatform() < GENX_SKL) ? false :
         (channels == CHANNEL_MASK_R);
     bool preEmption = forceSamplerHeader();
-    bool forceSplitSend = IsBindlessSurface(*this, surface);
+    bool forceSplitSend = ForceSplitSend(*this, surface);
     bool useHeader = true;
     // SAMPLEINFO has 0 parameters so its only header
 
@@ -9252,7 +9252,7 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
     G4_SendMsgDescriptor *msgDesc = builder->createSendMsgDesc(desc, extDesc, true, false, surface, sampler);
 
     G4_INST* sendInst = nullptr;
-    bool forceSplitSend = IsBindlessSurface(*builder, surface);
+    bool forceSplitSend = ForceSplitSend(*builder, surface);
 
     if (forceSplitSend)
     {
@@ -9710,7 +9710,7 @@ int IR_Builder::translateVISASampler3DInst(
     uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, useHeader, sizes[0], responseLength);
 
     G4_INST* sendInst = nullptr;
-	bool forceSplitSend = IsBindlessSurface(*this, surface);
+	bool forceSplitSend = ForceSplitSend(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend)
     {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
@@ -9833,7 +9833,7 @@ int IR_Builder::translateVISALoad3DInst(
     uint32_t responseLength = getSamplerResponseLength(numChannels, halfReturn, execSize,
         hasPixelNullMask() && pixelNullMask, dst->isNullReg());
 
-	bool forceSplitSend = IsBindlessSurface(*this, surface);
+	bool forceSplitSend = ForceSplitSend(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend)
     {
         Create_Send_Inst_For_CISA(pred_opnd, dst,
@@ -9961,7 +9961,7 @@ int IR_Builder::translateVISAGather3dInst(
     uint32_t responseLength = getSamplerResponseLength(4, FP16Return, execSize,
         hasPixelNullMask() && pixelNullMask, dst->isNullReg());
 
-	bool forceSplitSend = IsBindlessSurface(*this, surface);
+	bool forceSplitSend = ForceSplitSend(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend)
     {
         Create_Send_Inst_For_CISA(pred, dst, msgs[0], sizes[0],
