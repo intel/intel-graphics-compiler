@@ -597,7 +597,10 @@ namespace TC
 				}
 #else
 				// Both 32 and 64 bit for non-Windows OS
-				CCModule.pModule = dlopen(CCModule.pModuleName, RTLD_NOW);
+				// Avoid sumbol conflicts if some LLVM is already loaded in the project.
+				// CCModule will use its own symbols in preference to global symbols with the same name 
+				// contained in libraries that have already been loaded
+				CCModule.pModule = dlopen(CCModule.pModuleName, RTLD_NOW | RTLD_DEEPBIND);
 				if (NULL == CCModule.pModule)
 				{
 					// Try to load with old name. See header file for explanation.
