@@ -1085,7 +1085,9 @@ llvm::Value* ElementToVector(llvm::Value *elem[], llvm::Type *int32Ty, llvm::Ins
 
     for (int i = 0; i < vsize; ++i)
     {
+
         vecValue = llvm::InsertElementInst::Create(vecValue, elem[i], llvm::ConstantInt::get(int32Ty, i), "", insert_before);
+        ((Instruction*)vecValue)->setDebugLoc(insert_before->getDebugLoc());
     }
     return vecValue;
 }

@@ -100,6 +100,10 @@ private:
         llvm::Value* oldOp)
     {
         newOp->copyIRFlags(oldOp);
+
+        llvm::DebugLoc dbg = ((llvm::Instruction*)oldOp)->getDebugLoc();
+        newOp->setDebugLoc(dbg);
+
         return newOp;
     }
 

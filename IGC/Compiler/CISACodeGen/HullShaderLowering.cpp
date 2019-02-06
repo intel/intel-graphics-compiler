@@ -530,12 +530,13 @@ llvm::GenIntrinsicInst* HullShaderLowering::AddURBWrite(
         data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7]
     };
 
-    Value* write = GenIntrinsicInst::Create(
+    CallInst* write = GenIntrinsicInst::Create(
         GenISAIntrinsic::getDeclaration(m_module, GenISAIntrinsic::GenISA_URBWrite), 
         arguments, 
         "",
         prev);
 
+    write->setDebugLoc(prev->getDebugLoc());
     return (llvm::GenIntrinsicInst*)write;
 }
 
@@ -553,6 +554,8 @@ void HullShaderLowering::AddURBRead(Value* index, Value* offset, Instruction* pr
         "",
         prev);
 
+    urbRead->setDebugLoc(prev->getDebugLoc());
+
     Value* vec4 = nullptr;
     while(!prev->use_empty())
     {
@@ -560,6 +563,8 @@ void HullShaderLowering::AddURBRead(Value* index, Value* offset, Instruction* pr
         if(ExtractElementInst* elem = dyn_cast<ExtractElementInst>(*I))
         {
             Instruction* newExt = ExtractElementInst::Create(urbRead, elem->getIndexOperand(), "", elem);
+            newExt->setDebugLoc(prev->getDebugLoc());
+
             elem->replaceAllUsesWith(newExt);
             elem->eraseFromParent();
         }
