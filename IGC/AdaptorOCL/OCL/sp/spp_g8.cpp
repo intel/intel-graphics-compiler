@@ -56,7 +56,7 @@ CGen8OpenCLProgram::~CGen8OpenCLProgram()
 
     for (auto p : m_ShaderProgramList)
     {
-        delete p.second;
+        delete p;
     }
     m_ShaderProgramList.clear();
 
@@ -147,9 +147,9 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
 
     for (auto pKernel : m_ShaderProgramList)
     {
-        IGC::COpenCLKernel* simd8Shader = static_cast<IGC::COpenCLKernel*>(pKernel.second->GetShader(SIMDMode::SIMD8));
-        IGC::COpenCLKernel* simd16Shader = static_cast<IGC::COpenCLKernel*>(pKernel.second->GetShader(SIMDMode::SIMD16));
-        IGC::COpenCLKernel* simd32Shader = static_cast<IGC::COpenCLKernel*>(pKernel.second->GetShader(SIMDMode::SIMD32));
+        IGC::COpenCLKernel* simd8Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
+        IGC::COpenCLKernel* simd16Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
+        IGC::COpenCLKernel* simd32Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
 
         // Determine how many simd modes we have per kernel
         std::vector<IGC::COpenCLKernel*> kernelVec;

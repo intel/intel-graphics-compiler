@@ -26,8 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include <map>
-
 #include "../util/BinaryStream.h"
 #include "usc.h"
 #include "sp_g8.h"
@@ -65,11 +63,7 @@ public:
     void CreateProgramScopePatchStream(const IGC::SOpenCLProgramInfo& programInfo);
 
     // Used to track the kernel info from CodeGen
-    // std::map is used, so that the programs are sorted by name.
-    // This makes a difference in case of device enqueue functionality:
-    // TransformBlocks pass creates _dispatch_0, _dispatch_1 etc. child kernels,
-    // which need to be passed to runtime in order.
-    std::map<std::string, IGC::CShaderProgram*> m_ShaderProgramList;
+    std::vector<IGC::CShaderProgram*> m_ShaderProgramList;
     USC::SSystemThreadKernelOutput* m_pSystemThreadKernelOutput = nullptr;
 
     // Used to store per-kernel binary streams and kernelInfo
