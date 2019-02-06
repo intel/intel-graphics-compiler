@@ -1390,7 +1390,16 @@ CVariable* CShader::GetConstant(llvm::Constant* C, CVariable* dstVar)
                 return;
 
             CVariable *eVal = GetScalarConstant(EC);
-            GetEncoder().SetDstSubReg(k);
+            if (Var->IsUniform())
+            {
+                GetEncoder().SetDstSubReg(k);
+            }
+            else 
+            {
+                auto input_size = eTy->getScalarSizeInBits() / 8;
+                auto var_num = (input_size * numLanes(m_SIMDSize)) / SIZE_GRF;
+                GetEncoder().SetDstSubVar(k * var_num);
+            }
             GetEncoder().Copy(Var, eVal);
             GetEncoder().Push();
         };
