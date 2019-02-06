@@ -113,10 +113,10 @@ static bool allowUnsafeMathOpt(CodeGenContext* ctx, llvm::BinaryOperator& op)
         return true;
     }
 
-	if (IGC_IS_FLAG_ENABLED(EnableFastMath))
-	{
-		return true;
-	}
+    if (IGC_IS_FLAG_ENABLED(EnableFastMath))
+    {
+        return true;
+    }
 
     return false;
 }
@@ -2355,40 +2355,40 @@ public:
     }
 private:
     static bool processBlock(BasicBlock* BB);
-	static bool canOptimizeSampleInst(SmallVector<Instruction*, 4> &Channels, GenIntrinsicInst *GII);
-	static bool canOptimizeDotProduct(SmallVector<Instruction*, 4> &Values, Instruction *I);
-	static bool DotProductMatch(const Instruction *I);
-	static bool DotProductSourceMatch(const Instruction *I);
-	static BasicBlock* tryFoldAndSplit(
-		ArrayRef<Instruction*> Values,
-		Instruction *Root,
-		const unsigned FoldThreshold,
-		const unsigned FoldThresholdMultiChannel,
-		const unsigned RatioNeeded);
+    static bool canOptimizeSampleInst(SmallVector<Instruction*, 4> &Channels, GenIntrinsicInst *GII);
+    static bool canOptimizeDotProduct(SmallVector<Instruction*, 4> &Values, Instruction *I);
+    static bool DotProductMatch(const Instruction *I);
+    static bool DotProductSourceMatch(const Instruction *I);
+    static BasicBlock* tryFoldAndSplit(
+        ArrayRef<Instruction*> Values,
+        Instruction *Root,
+        const unsigned FoldThreshold,
+        const unsigned FoldThresholdMultiChannel,
+        const unsigned RatioNeeded);
     static bool trackAddSources(BinaryOperator* addInst);
     static DenseSet<const Value*> tryAndFoldValues(ArrayRef<Instruction*> Values);
     static BasicBlock* SplitBasicBlock(Instruction* inst, const DenseSet<const Value*> &FoldedVals);
     static bool FoldsToZero(const Instruction* inst, const Value* use, const DenseSet<const Value*> &FoldedVals);
     static void MoveOutputToConvergeBlock(BasicBlock* divergeBlock, BasicBlock* convergeBlock);
     static bool EarlyOutBenefit(
-		const Instruction* earlyOutInst,
-		const DenseSet<const Value*> &FoldedVals,
-		const unsigned int ratioNeeded);
-	static void foldFromAdd(SmallVector<Instruction*, 4> &Values, Instruction *&NewInsertPoint);
-	static Instruction* moveToDef(Instruction *Def, ArrayRef<Instruction*> Users);
-	static bool isSplitProfitable(
-		const Instruction *Root,
-		ArrayRef<Instruction*> Values,
-		const DenseSet<const Value*> &FoldedVals,
-		// Number of instructions which needs to be folded in order for the optimization to be worth it
-		const unsigned FoldThreshold,
-		// For cases where we need to AND several channels we have a higher threshold
-		const unsigned FoldThresholdMultiChannel,
-		const unsigned RatioNeeded);
-	static BasicBlock* cmpAndSplitAtPoint(
-		Instruction *Root,
-		ArrayRef<Instruction*> Values,
-		const DenseSet<const Value*> &FoldedVals);
+        const Instruction* earlyOutInst,
+        const DenseSet<const Value*> &FoldedVals,
+        const unsigned int ratioNeeded);
+    static void foldFromAdd(SmallVector<Instruction*, 4> &Values, Instruction *&NewInsertPoint);
+    static Instruction* moveToDef(Instruction *Def, ArrayRef<Instruction*> Users);
+    static bool isSplitProfitable(
+        const Instruction *Root,
+        ArrayRef<Instruction*> Values,
+        const DenseSet<const Value*> &FoldedVals,
+        // Number of instructions which needs to be folded in order for the optimization to be worth it
+        const unsigned FoldThreshold,
+        // For cases where we need to AND several channels we have a higher threshold
+        const unsigned FoldThresholdMultiChannel,
+        const unsigned RatioNeeded);
+    static BasicBlock* cmpAndSplitAtPoint(
+        Instruction *Root,
+        ArrayRef<Instruction*> Values,
+        const DenseSet<const Value*> &FoldedVals);
 };
 
 char EarlyOutPatterns::ID = 0;
@@ -2461,27 +2461,27 @@ bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, co
         return true;
     }
     else if (auto *SI = dyn_cast<SelectInst>(use))
-	{
-		// Assuming %x is 0, if the other operand is also
-		// 0 the result of the select must be 0 as well.
+    {
+        // Assuming %x is 0, if the other operand is also
+        // 0 the result of the select must be 0 as well.
 
-		// select i1 %p, float 0.0, float %x
-		bool zero0 = isZero(SI->getTrueValue());
-		// select i1 %p, float %x, float 0.0
-		bool zero1 = isZero(SI->getFalseValue());
+        // select i1 %p, float 0.0, float %x
+        bool zero0 = isZero(SI->getTrueValue());
+        // select i1 %p, float %x, float 0.0
+        bool zero1 = isZero(SI->getFalseValue());
 
-		if (zero0 || zero1)
-			return true;
+        if (zero0 || zero1)
+            return true;
 
-		// If we have previously visited this select with a
-		// folded value, check the map and allow the
-		// select to be folded.
-		auto *OtherOp = (inst == SI->getTrueValue()) ?
-			SI->getFalseValue() :
-			SI->getTrueValue();
+        // If we have previously visited this select with a
+        // folded value, check the map and allow the
+        // select to be folded.
+        auto *OtherOp = (inst == SI->getTrueValue()) ?
+            SI->getFalseValue() :
+            SI->getTrueValue();
 
-		return FoldedVals.count(OtherOp) != 0;
-	}
+        return FoldedVals.count(OtherOp) != 0;
+    }
     else if (auto* CI = dyn_cast<CallInst>(use))
     {
         // if x == 0
@@ -2509,9 +2509,9 @@ bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, co
 // Count the number of instruction in the new block created if the ratio of instruction duplicated
 // by instruction skipped is greater than the threshold return false
 bool EarlyOutPatterns::EarlyOutBenefit(
-	const Instruction* earlyOutInst,
-	const DenseSet<const Value*> &FoldedVals,
-	const unsigned int ratioNeeded)
+    const Instruction* earlyOutInst,
+    const DenseSet<const Value*> &FoldedVals,
+    const unsigned int ratioNeeded)
 {
     auto* BB = earlyOutInst->getParent();
 
@@ -2531,7 +2531,7 @@ bool EarlyOutPatterns::EarlyOutBenefit(
 
         bool instNeeded = false;
 
-		// We can't throw away side effects
+        // We can't throw away side effects
         if(inst->mayWriteToMemory())
         {
             instNeeded = true;
@@ -2542,9 +2542,9 @@ bool EarlyOutPatterns::EarlyOutBenefit(
             {
                 if (auto *useInst = dyn_cast<Instruction>(UI))
                 {
-					// We must also keep the instruction if its use has
-					// escaped into another BB or, transitively, because
-					// its user must be kept.
+                    // We must also keep the instruction if its use has
+                    // escaped into another BB or, transitively, because
+                    // its user must be kept.
                     if(useInst->getParent() != BB || instDuplicated.count(useInst) != 0)
                     {
                         instNeeded = true;
@@ -2559,10 +2559,10 @@ bool EarlyOutPatterns::EarlyOutBenefit(
             bool noOp = false;
             if(inst->getOpcode() == Instruction::FAdd)
             {
-				// x + 0 = x, should be folded so don't add it
-				// to the count.
+                // x + 0 = x, should be folded so don't add it
+                // to the count.
                 if(FoldedVals.count(inst->getOperand(0)) != 0 ||
-				   FoldedVals.count(inst->getOperand(1)) != 0)
+                   FoldedVals.count(inst->getOperand(1)) != 0)
                 {
                     noOp = true;
                 }
@@ -2580,24 +2580,24 @@ bool EarlyOutPatterns::EarlyOutBenefit(
 
 void EarlyOutPatterns::foldFromAdd(SmallVector<Instruction*, 4> &Values, Instruction *&NewInsertPoint)
 {
-	// if the sample has only one channel
-	if (Values.size() == 1)
-	{
-		// if it has one use which is a add then try to fold from the add
-		if (Values[0]->hasOneUse())
-		{
-			BinaryOperator* bin = dyn_cast<BinaryOperator>(*Values[0]->user_begin());
-			if (bin && bin->getOpcode() == Instruction::FAdd)
-			{
-				if (trackAddSources(bin))
-				{
-					// try to fold the result of the add instead of the sample_C
-					Values[0] = bin;
-					NewInsertPoint = bin;
-				}
-			}
-		}
-	}
+    // if the sample has only one channel
+    if (Values.size() == 1)
+    {
+        // if it has one use which is a add then try to fold from the add
+        if (Values[0]->hasOneUse())
+        {
+            BinaryOperator* bin = dyn_cast<BinaryOperator>(*Values[0]->user_begin());
+            if (bin && bin->getOpcode() == Instruction::FAdd)
+            {
+                if (trackAddSources(bin))
+                {
+                    // try to fold the result of the add instead of the sample_C
+                    Values[0] = bin;
+                    NewInsertPoint = bin;
+                }
+            }
+        }
+    }
 }
 
 Instruction* EarlyOutPatterns::moveToDef(Instruction *Def, ArrayRef<Instruction*> Users)
@@ -2626,31 +2626,31 @@ Instruction* EarlyOutPatterns::moveToDef(Instruction *Def, ArrayRef<Instruction*
 }
 
 bool EarlyOutPatterns::isSplitProfitable(
-	const Instruction *Root,
-	ArrayRef<Instruction*> Values,
-	const DenseSet<const Value*> &FoldedVals,
-	const unsigned FoldThreshold,
-	const unsigned FoldThresholdMultiChannel,
-	const unsigned RatioNeeded)
+    const Instruction *Root,
+    ArrayRef<Instruction*> Values,
+    const DenseSet<const Value*> &FoldedVals,
+    const unsigned FoldThreshold,
+    const unsigned FoldThresholdMultiChannel,
+    const unsigned RatioNeeded)
 {
-	const unsigned NumInstFolded = FoldedVals.size();
+    const unsigned NumInstFolded = FoldedVals.size();
 
-	const bool SplitProfitable =
-		(NumInstFolded > FoldThreshold) &&
-		// Check if we folded, we need a higher threshold if we have to check more channels
-		(Values.size() == 1 || NumInstFolded > FoldThresholdMultiChannel) &&
-		EarlyOutBenefit(Root, FoldedVals, RatioNeeded);
+    const bool SplitProfitable =
+        (NumInstFolded > FoldThreshold) &&
+        // Check if we folded, we need a higher threshold if we have to check more channels
+        (Values.size() == 1 || NumInstFolded > FoldThresholdMultiChannel) &&
+        EarlyOutBenefit(Root, FoldedVals, RatioNeeded);
 
-	return SplitProfitable;
+    return SplitProfitable;
 }
 
 // Once a candidate position 'Root' has been determined to be
 // a profitable splitting point, generate the == 0 comparison
 // and split the basic block at that point.
 BasicBlock* EarlyOutPatterns::cmpAndSplitAtPoint(
-	Instruction *Root,
-	ArrayRef<Instruction*> Values,
-	const DenseSet<const Value*> &FoldedVals)
+    Instruction *Root,
+    ArrayRef<Instruction*> Values,
+    const DenseSet<const Value*> &FoldedVals)
 {
     IRBuilder<> builder(Root->getNextNode());
     Instruction *splitCondition = nullptr;
@@ -2681,46 +2681,46 @@ BasicBlock* EarlyOutPatterns::cmpAndSplitAtPoint(
     }
 
     auto* BB = SplitBasicBlock(splitCondition, FoldedVals);
-	return BB;
+    return BB;
 }
 
 BasicBlock* EarlyOutPatterns::tryFoldAndSplit(
-	ArrayRef<Instruction*> Values,
-	Instruction *Root,
-	const unsigned FoldThreshold,
-	const unsigned FoldThresholdMultiChannel,
-	const unsigned RatioNeeded)
+    ArrayRef<Instruction*> Values,
+    Instruction *Root,
+    const unsigned FoldThreshold,
+    const unsigned FoldThresholdMultiChannel,
+    const unsigned RatioNeeded)
 {
-	if (Values.empty())
-		return nullptr;
+    if (Values.empty())
+        return nullptr;
 
-	auto FoldedVals = tryAndFoldValues(Values);
+    auto FoldedVals = tryAndFoldValues(Values);
 
-	const bool SplitProfitable = isSplitProfitable(
-		Root,
-		Values,
-		FoldedVals,
-		FoldThreshold,
-		FoldThresholdMultiChannel,
-		RatioNeeded);
+    const bool SplitProfitable = isSplitProfitable(
+        Root,
+        Values,
+        FoldedVals,
+        FoldThreshold,
+        FoldThresholdMultiChannel,
+        RatioNeeded);
 
-	return SplitProfitable ?
-		cmpAndSplitAtPoint(Root, Values, FoldedVals) :
-		nullptr;
+    return SplitProfitable ?
+        cmpAndSplitAtPoint(Root, Values, FoldedVals) :
+        nullptr;
 }
 
 bool EarlyOutPatterns::canOptimizeDotProduct(SmallVector<Instruction*, 4> &Values, Instruction *I)
 {
-	Values.push_back(I);
-	return true;
+    Values.push_back(I);
+    return true;
 }
 
 // Matches the llvm instruction pattern we generate after decomposing
 // a dot product.
 bool EarlyOutPatterns::DotProductMatch(const Instruction *I)
 {
-	if (I->getOpcode() != Instruction::FAdd)
-		return false;
+    if (I->getOpcode() != Instruction::FAdd)
+        return false;
 
     using namespace PatternMatch;
 
@@ -2731,23 +2731,23 @@ bool EarlyOutPatterns::DotProductMatch(const Instruction *I)
     Value *Y2 = nullptr;
     Value *Z2 = nullptr;
 
-	// dp3
+    // dp3
 
-	return match(I,
-		m_FAdd(
-			m_FMul(m_Value(Z1), m_Value(Z2)),
-			m_FAdd(
-				m_FMul(m_Value(X1), m_Value(X2)),
-				m_FMul(m_Value(Y1), m_Value(Y2)))));
+    return match(I,
+        m_FAdd(
+            m_FMul(m_Value(Z1), m_Value(Z2)),
+            m_FAdd(
+                m_FMul(m_Value(X1), m_Value(X2)),
+                m_FMul(m_Value(Y1), m_Value(Y2)))));
 }
 
 // Does is a dot product pattern the source of this instruction?
 bool EarlyOutPatterns::DotProductSourceMatch(const Instruction *I)
 {
-	if (auto *Src = dyn_cast<Instruction>(I->getOperand(0)))
-		return DotProductMatch(Src);
+    if (auto *Src = dyn_cast<Instruction>(I->getOperand(0)))
+        return DotProductMatch(Src);
 
-	return false;
+    return false;
 }
 
 bool EarlyOutPatterns::canOptimizeSampleInst(SmallVector<Instruction*, 4> &Channels, GenIntrinsicInst *GII)
@@ -2815,42 +2815,42 @@ bool EarlyOutPatterns::canOptimizeSampleInst(SmallVector<Instruction*, 4> &Chann
 
 bool EarlyOutPatterns::processBlock(BasicBlock* BB)
 {
-	bool Changed = false;
-	bool BBSplit = true;
+    bool Changed = false;
+    bool BBSplit = true;
 
-	// Each pattern below is given a bit to toggle on/off
-	// to isolate the performance for each individual pattern.
-	const bool SamplePatternEnable =
-		(IGC_GET_FLAG_VALUE(EarlyOutPatternSelect) & 0x1) != 0;
-	const bool DPMaxPatternEnable =
-		(IGC_GET_FLAG_VALUE(EarlyOutPatternSelect) & 0x2) != 0;
-	const bool DPFSatPatternEnable =
-		(IGC_GET_FLAG_VALUE(EarlyOutPatternSelect) & 0x4) != 0;
+    // Each pattern below is given a bit to toggle on/off
+    // to isolate the performance for each individual pattern.
+    const bool SamplePatternEnable =
+        (IGC_GET_FLAG_VALUE(EarlyOutPatternSelect) & 0x1) != 0;
+    const bool DPMaxPatternEnable =
+        (IGC_GET_FLAG_VALUE(EarlyOutPatternSelect) & 0x2) != 0;
+    const bool DPFSatPatternEnable =
+        (IGC_GET_FLAG_VALUE(EarlyOutPatternSelect) & 0x4) != 0;
 
-	while (BBSplit)
-	{
-		BBSplit = false;
-		for (auto &II : *BB)
-		{
-			SmallVector<Instruction*, 4> Values;
-			bool OptCandidate = false;
-			Instruction *Root = &II;
+    while (BBSplit)
+    {
+        BBSplit = false;
+        for (auto &II : *BB)
+        {
+            SmallVector<Instruction*, 4> Values;
+            bool OptCandidate = false;
+            Instruction *Root = &II;
 
-			unsigned FoldThreshold = 5;
-			unsigned FoldThresholdMultiChannel = 10;
-			unsigned RatioNeeded = 10;
+            unsigned FoldThreshold = 5;
+            unsigned FoldThresholdMultiChannel = 10;
+            unsigned RatioNeeded = 10;
 
-			if (auto *SI = dyn_cast<SampleIntrinsic>(&II))
-			{
-				OptCandidate = SamplePatternEnable && canOptimizeSampleInst(Values, SI);
+            if (auto *SI = dyn_cast<SampleIntrinsic>(&II))
+            {
+                OptCandidate = SamplePatternEnable && canOptimizeSampleInst(Values, SI);
 
-				if (!OptCandidate)
-					continue;
+                if (!OptCandidate)
+                    continue;
 
-				Root = moveToDef(SI, Values);
-				foldFromAdd(Values, Root);
-			}
-			else if (GetOpCode(&II) == llvm_max)
+                Root = moveToDef(SI, Values);
+                foldFromAdd(Values, Root);
+            }
+            else if (GetOpCode(&II) == llvm_max)
             {
                 auto* CI = dyn_cast<CallInst>(&II);
                 OptCandidate = DPMaxPatternEnable &&
@@ -2860,33 +2860,33 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
                 RatioNeeded = 3;
             }
             else if (auto *GII = dyn_cast<GenIntrinsicInst>(&II))
-			{
-				switch (GII->getIntrinsicID())
-				{
-				case GenISAIntrinsic::GenISA_fsat:
-					OptCandidate = DPFSatPatternEnable &&
-						DotProductSourceMatch(GII) && canOptimizeDotProduct(Values, &II);
-					break;
-				default:
-					break;
-				}
-			}
+            {
+                switch (GII->getIntrinsicID())
+                {
+                case GenISAIntrinsic::GenISA_fsat:
+                    OptCandidate = DPFSatPatternEnable &&
+                        DotProductSourceMatch(GII) && canOptimizeDotProduct(Values, &II);
+                    break;
+                default:
+                    break;
+                }
+            }
 
-			if (OptCandidate)
-			{
-				BB = tryFoldAndSplit(Values, Root,
-					FoldThreshold, FoldThresholdMultiChannel, RatioNeeded);
-				BBSplit = (BB != nullptr);
+            if (OptCandidate)
+            {
+                BB = tryFoldAndSplit(Values, Root,
+                    FoldThreshold, FoldThresholdMultiChannel, RatioNeeded);
+                BBSplit = (BB != nullptr);
 
-				if (BBSplit)
-					break;
-			}
-		}
+                if (BBSplit)
+                    break;
+            }
+        }
 
-		Changed |= BBSplit;
-	}
+        Changed |= BBSplit;
+    }
 
-	return Changed;
+    return Changed;
 }
 
 bool EarlyOutPatterns::trackAddSources(BinaryOperator* addInst)
@@ -2932,35 +2932,35 @@ bool EarlyOutPatterns::trackAddSources(BinaryOperator* addInst)
 // == 0, determine which other instructions could be folded away to 0 as well.
 DenseSet<const Value*> EarlyOutPatterns::tryAndFoldValues(ArrayRef<Instruction*> Values)
 {
-	std::function<void(const Instruction*, DenseSet<const Value*> &)> fold =
-		[&fold](const Instruction* inst, DenseSet<const Value*> &FoldedVals) -> void
-	{
-		for (auto UI : inst->users())
-		{
+    std::function<void(const Instruction*, DenseSet<const Value*> &)> fold =
+        [&fold](const Instruction* inst, DenseSet<const Value*> &FoldedVals) -> void
+    {
+        for (auto UI : inst->users())
+        {
             if (auto* useInst = dyn_cast<Instruction>(UI))
-			{
+            {
                 if (useInst->getParent() == inst->getParent())
-				{
-					if (FoldsToZero(inst, useInst, FoldedVals))
-					{
-						FoldedVals.insert(useInst);
-						fold(useInst, FoldedVals);
-					}
-				}
-			}
-		}
-	};
+                {
+                    if (FoldsToZero(inst, useInst, FoldedVals))
+                    {
+                        FoldedVals.insert(useInst);
+                        fold(useInst, FoldedVals);
+                    }
+                }
+            }
+        }
+    };
 
-	// try to fold assuming all the channels are 0.f
+    // try to fold assuming all the channels are 0.f
     // right now only fold with 0, to replace with a map in case we want to
-	// support more values
-	DenseSet<const Value*> FoldedVals;
-	for (auto I : Values)
-	{
-		fold(I, FoldedVals);
-	}
+    // support more values
+    DenseSet<const Value*> FoldedVals;
+    for (auto I : Values)
+    {
+        fold(I, FoldedVals);
+    }
 
-	return FoldedVals;
+    return FoldedVals;
 }
 
 // return the new block where the code after inst was moved
@@ -3220,14 +3220,14 @@ protected:
         return (node && node->hasInvariant && isLeafNode(node));
     }
 
-	void combineNode(MulNode* node,
-		MulToNodeMapTy& nodeMap, bool isRoot = false);
+    void combineNode(MulNode* node,
+        MulToNodeMapTy& nodeMap, bool isRoot = false);
 
     void combineInvariant(MulNodeVecTy& roots, MulToNodeMapTy& nodeMap)
     {
         for (auto& NI : roots)
         {
-			combineNode(NI.root, nodeMap, true);
+            combineNode(NI.root, nodeMap, true);
         }
     }
 
@@ -3235,26 +3235,26 @@ protected:
     {
         if (!isLeafNode(node))
         {
-			Instruction* inst;
-			if (node->replace)
-				inst = cast<Instruction>(node->replace);
-			else
-				inst = cast<Instruction>(node->value);
-			updateMulNode(node->left, inst);
-			updateMulNode(node->right, inst);
+            Instruction* inst;
+            if (node->replace)
+                inst = cast<Instruction>(node->replace);
+            else
+                inst = cast<Instruction>(node->value);
+            updateMulNode(node->left, inst);
+            updateMulNode(node->right, inst);
         }
 
         if (node->replace)
             use->replaceUsesOfWith(node->replace, node->value);
     }
 
-	// get rid of multiply with loop invariants
+    // get rid of multiply with loop invariants
     void updateMul(MulNodeVecTy& roots)
     {
         for (auto& NI : roots)
         {
             if (NI.root->hasInvariant ||
-				(isLeafNode(NI.root) && NI.root->replace))
+                (isLeafNode(NI.root) && NI.root->replace))
             {
                 updateMulNode(NI.root, NI.fsum);
             }
@@ -3363,7 +3363,7 @@ HoistFMulInLoopPass::MulNode* HoistFMulInLoopPass::visitFMul(
         pp = i == 0 ? &ret->left : &ret->right;
 
         Value* src = fmul->getOperand(i);
-		BinaryOperator* bop = dynCastFMul(src);
+        BinaryOperator* bop = dynCastFMul(src);
         if (bop && loop->contains(bop))
         {
             *pp = visitFMul(loop, bop, nodeMap);
@@ -3416,7 +3416,7 @@ HoistFMulInLoopPass::MulNode* HoistFMulInLoopPass::visitFMul(
 //      [%inv]     \
 //                %inv
 void HoistFMulInLoopPass::combineNode(MulNode* node,
-	MulToNodeMapTy& nodeMap, bool isRoot)
+    MulToNodeMapTy& nodeMap, bool isRoot)
 {
     if (node->visited)
         return;
@@ -3430,9 +3430,9 @@ void HoistFMulInLoopPass::combineNode(MulNode* node,
     }
 
     if (node->left)
-		combineNode(node->left, nodeMap);
+        combineNode(node->left, nodeMap);
     if (node->right)
-		combineNode(node->right, nodeMap);
+        combineNode(node->right, nodeMap);
 
     appendInvariants(node, node->left);
     appendInvariants(node, node->right);
