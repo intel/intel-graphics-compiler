@@ -258,6 +258,15 @@ public:
         bool isPrefix = false,
         bool isQuad = false);
 
+    void emitPreOrPostFixOpScalar(
+        e_opcode op,
+        uint64_t identityValue,
+        VISA_Type type,
+        bool negateSrc,
+        CVariable* src,
+        CVariable* result[2],
+        bool isPrefix = false);
+
     bool IsUniformAtomic(llvm::Instruction* pInst);
     void emitAtomicRaw(llvm::GenIntrinsicInst* pInst);
     void emitAtomicStructured(llvm::Instruction* pInst);

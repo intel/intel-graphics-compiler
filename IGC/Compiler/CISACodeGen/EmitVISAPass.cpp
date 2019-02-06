@@ -58,24 +58,24 @@ char EmitPass::ID = 0;
 
 EmitPass::EmitPass(CShaderProgram::KernelShaderMap &shaders, SIMDMode mode, bool canAbortOnSpill, ShaderDispatchMode shaderMode, PSSignature* pSignature)
     : FunctionPass(ID),
-      m_SimdMode(mode),
-      m_ShaderMode(shaderMode),
-      m_shaders(shaders),
-      m_currShader(nullptr),
-      m_encoder(nullptr),
-      m_canAbortOnSpill(canAbortOnSpill),
-      m_roundingMode(CEncoder::RoundingMode::RoundToNearestEven),
-      m_pSignature(pSignature)
+    m_SimdMode(mode),
+    m_ShaderMode(shaderMode),
+    m_shaders(shaders),
+    m_currShader(nullptr),
+    m_encoder(nullptr),
+    m_canAbortOnSpill(canAbortOnSpill),
+    m_roundingMode(CEncoder::RoundingMode::RoundToNearestEven),
+    m_pSignature(pSignature)
 {
     //Before calling getAnalysisUsage() for EmitPass, the passes that it depends on need to be initialized
-    initializeDominatorTreeWrapperPassPass( *PassRegistry::getPassRegistry() );
-    initializeWIAnalysisPass( *PassRegistry::getPassRegistry() );
-    initializeCodeGenPatternMatchPass( *PassRegistry::getPassRegistry() );
-    initializeDeSSAPass( *PassRegistry::getPassRegistry() );
-    initializeBlockCoalescingPass( *PassRegistry::getPassRegistry() );
-    initializeCoalescingEnginePass( *PassRegistry::getPassRegistry() );
-    initializeMetaDataUtilsWrapperPass( *PassRegistry::getPassRegistry() );
-    initializeSimd32ProfitabilityAnalysisPass( *PassRegistry::getPassRegistry() );
+    initializeDominatorTreeWrapperPassPass(*PassRegistry::getPassRegistry());
+    initializeWIAnalysisPass(*PassRegistry::getPassRegistry());
+    initializeCodeGenPatternMatchPass(*PassRegistry::getPassRegistry());
+    initializeDeSSAPass(*PassRegistry::getPassRegistry());
+    initializeBlockCoalescingPass(*PassRegistry::getPassRegistry());
+    initializeCoalescingEnginePass(*PassRegistry::getPassRegistry());
+    initializeMetaDataUtilsWrapperPass(*PassRegistry::getPassRegistry());
+    initializeSimd32ProfitabilityAnalysisPass(*PassRegistry::getPassRegistry());
     initializeVariableReuseAnalysisPass(*PassRegistry::getPassRegistry());
     initializeLiveVariablesPass(*PassRegistry::getPassRegistry());
 }
@@ -301,7 +301,7 @@ void EmitPass::CreateKernelShaderMap(CodeGenContext *ctx, MetaDataUtils *pMdUtil
             {
                 // Single PS
                 // Assuming single shader information in metadata
-				Function *pFunc = getUniqueEntryFunc(pMdUtils);
+                Function *pFunc = getUniqueEntryFunc(pMdUtils);
 
                 CShaderProgram* pProgram = new CShaderProgram(ctx, pFunc);
                 m_shaders[pFunc] = pProgram;
@@ -361,7 +361,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     COMPILER_TIME_START(m_currShader->GetContext(), TIME_vISAEmitInit);
 
     m_DL = &F.getParent()->getDataLayout();
-    m_pattern = &getAnalysis<CodeGenPatternMatch>( );
+    m_pattern = &getAnalysis<CodeGenPatternMatch>();
     m_deSSA = &getAnalysis<DeSSA>();
     m_blockCoalescing = &getAnalysis<BlockCoalescing>();
     m_currShader->SetUniformHelper(&getAnalysis<WIAnalysis>());
@@ -372,7 +372,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     m_currShader->SetDataLayout(m_DL);
     m_currShader->SetFunctionGroupAnalysis(m_FGA);
     m_currShader->SetPushInfoHelper(&(m_moduleMD->pushInfo));
-    if(IGC_IS_FLAG_DISABLED(DisableDeSSA))
+    if (IGC_IS_FLAG_DISABLED(DisableDeSSA))
     {
         m_currShader->SetDeSSAHelper(m_deSSA);
     }
@@ -383,9 +383,9 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         m_currShader->InitEncoder(m_SimdMode, m_canAbortOnSpill, m_ShaderMode);
         // Pre-analysis pass to be executed before call to visa builder so we can pass scratch space offset
         m_currShader->PreAnalysisPass();
-        if(!m_currShader->CompileSIMDSize(m_SimdMode, *this, F))
+        if (!m_currShader->CompileSIMDSize(m_SimdMode, *this, F))
         {
-			return false;
+            return false;
         }
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
         m_encoder->InitEncoder(m_canAbortOnSpill);
@@ -400,9 +400,9 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     }
     else
     {
-        if(!m_currShader->CompileSIMDSize(m_SimdMode, *this, F))
+        if (!m_currShader->CompileSIMDSize(m_SimdMode, *this, F))
         {
-			return false;
+            return false;
         }
         m_currShader->BeginFunction(&F);
         if (m_FGA && m_FGA->useStackCall(&F))
@@ -413,7 +413,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
     //Add CCtuple root variables.
     m_CE = &getAnalysis<CoalescingEngine>();
-    if(IGC_IS_FLAG_DISABLED(DisablePayloadCoalescing)) {
+    if (IGC_IS_FLAG_DISABLED(DisablePayloadCoalescing)) {
         m_currShader->SetCoalescingEngineHelper(m_CE);
     }
 
@@ -423,27 +423,27 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
-		IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
-        IF_DEBUG_INFO(m_pDebugEmitter->Initialize(m_currShader, DebugInfoData::hasDebugInfo(m_currShader));)
+        IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
+            IF_DEBUG_INFO(m_pDebugEmitter->Initialize(m_currShader, DebugInfoData::hasDebugInfo(m_currShader));)
     }
 
 
-	if (DebugInfoData::hasDebugInfo(m_currShader))
-	{
+    if (DebugInfoData::hasDebugInfo(m_currShader))
+    {
         if (!m_currShader->diData)
             m_currShader->diData = new ::DebugInfoData;
 
         m_currShader->diData->m_pShader = m_currShader;
         m_currShader->diData->m_pDebugEmitter = m_pDebugEmitter;
 
-		IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->ResetVISAModule();)
-		IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->setFunction(&F, isCloned);)
+        IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->ResetVISAModule();)
+            IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->setFunction(&F, isCloned);)
     }
 
     // We only invoke EndEncodingMark() to update last VISA id.
     IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
 
-    COMPILER_TIME_END(m_currShader->GetContext(), TIME_vISAEmitInit);
+        COMPILER_TIME_END(m_currShader->GetContext(), TIME_vISAEmitInit);
     COMPILER_TIME_START(m_currShader->GetContext(), TIME_vISAEmitLoop);
 
     phiMovToBB.clear();
@@ -466,10 +466,10 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
     StringRef curSrcFile, curSrcDir;
 
-    for(uint i = 0; i < m_pattern->m_numBlocks; i++)
+    for (uint i = 0; i < m_pattern->m_numBlocks; i++)
     {
         SBasicBlock& block = m_pattern->m_blocks[i];
-        if(m_blockCoalescing->IsEmptyBlock(block.bb))
+        if (m_blockCoalescing->IsEmptyBlock(block.bb))
         {
             continue;
         }
@@ -477,8 +477,8 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         if (i != 0)
         {
             IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
-            // create a label
-            m_encoder->Label(block.id);
+                // create a label
+                m_encoder->Label(block.id);
             m_encoder->Push();
             IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
         }
@@ -505,7 +505,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
                     curSrcFile = srcFile;
                     curSrcDir = srcDir;
                     IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
-                    std::string fileName = std::string(curSrcDir);
+                        std::string fileName = std::string(curSrcDir);
                     fileName += std::string(curSrcFile);
                     m_encoder->File(fileName);
                     IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
@@ -513,9 +513,9 @@ bool EmitPass::runOnFunction(llvm::Function &F)
                 if (curLineNumber != lineNo)
                 {
                     IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
-                    m_encoder->Loc(curLineNumber);
+                        m_encoder->Loc(curLineNumber);
                     IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
-                    lineNo = curLineNumber;
+                        lineNo = curLineNumber;
                 }
             }
 
@@ -525,7 +525,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
             if (slicing && !disableSlicing)
             {
                 IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
-                I = emitInSlice(block, I);
+                    I = emitInSlice(block, I);
                 IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
             }
 
@@ -534,15 +534,15 @@ bool EmitPass::runOnFunction(llvm::Function &F)
                 auto llvmInst = (*I).m_root;
                 IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginInstruction(llvmInst);)
 
-                // before inserting the terminator, initialize constant pool & insert the de-ssa moves
-                if (isa<BranchInst>((*I).m_root))
-                {
-                    m_encoder->SetSecondHalf(false);
-                    // insert constant initializations.
-                    InitConstant(block.bb);
-                    // insert the de-ssa movs.
-                    MovPhiSources(block.bb);
-                }
+                    // before inserting the terminator, initialize constant pool & insert the de-ssa moves
+                    if (isa<BranchInst>((*I).m_root))
+                    {
+                        m_encoder->SetSecondHalf(false);
+                        // insert constant initializations.
+                        InitConstant(block.bb);
+                        // insert the de-ssa movs.
+                        MovPhiSources(block.bb);
+                    }
 
                 // If slicing happens, then recalculate the number of instances.
                 if (slicing)
@@ -609,8 +609,8 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
-		// Cache the arguments list into a vector for faster access
-		m_currShader->CacheArgumentsList();
+        // Cache the arguments list into a vector for faster access
+        m_currShader->CacheArgumentsList();
         // Associates values pushed to CVariable
         m_currShader->MapPushedInputs();
         // Allocate the thread payload
@@ -624,10 +624,10 @@ bool EmitPass::runOnFunction(llvm::Function &F)
     COMPILER_TIME_END(m_currShader->GetContext(), TIME_CG_vISAEmitPass);
 
     IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->markOutput(F, m_currShader);)
-    IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->addVISAModule(&F, m_pDebugEmitter->GetVISAModule());)
+        IF_DEBUG_INFO_IF(m_currShader->diData, m_currShader->diData->addVISAModule(&F, m_pDebugEmitter->GetVISAModule());)
 
-    // Compile only when this is the last function for this kernel.
-    bool destroyVISABuilder = false;
+        // Compile only when this is the last function for this kernel.
+        bool destroyVISABuilder = false;
     if (finalize)
     {
         destroyVISABuilder = true;
@@ -647,9 +647,9 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         {
             IF_DEBUG_INFO(IDebugEmitter::Release(m_pDebugEmitter);)
 
-            // Postpone destroying VISA builder to
-            // after emitting debug info
-            m_encoder->DestroyVISABuilder();
+                // Postpone destroying VISA builder to
+                // after emitting debug info
+                m_encoder->DestroyVISABuilder();
         }
     }
 
@@ -731,14 +731,14 @@ void EmitPass::MovPhiDestination(llvm::BasicBlock* bb)
             continue;
         }
         IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginInstruction(PHI);)
-        // insert a move from phi-temp to phi-dst
-        CVariable* dst = m_currShader->GetSymbol(PHI);
+            // insert a move from phi-temp to phi-dst
+            CVariable* dst = m_currShader->GetSymbol(PHI);
         CVariable* src = m_currShader->GetPhiTemp(PHI);
         if (dst != src) {
-            for(uint instance = 0; instance<dst->GetNumberInstance(); instance++)
+            for (uint instance = 0; instance < dst->GetNumberInstance(); instance++)
             {
-                m_encoder->SetSecondHalf(instance==1 ? true : false);
-                if(VectorType *vTy = dyn_cast<VectorType>(PHI->getType()))
+                m_encoder->SetSecondHalf(instance == 1 ? true : false);
+                if (VectorType *vTy = dyn_cast<VectorType>(PHI->getType()))
                 {
                     emitVectorCopy(dst, src, int_cast<unsigned>(vTy->getNumElements()));
                 }
@@ -1080,7 +1080,7 @@ std::pair<Value *, Value *> EmitPass::getPairOutput(Value *V) const {
 void EmitPass::emitGradientX(const SSource& source, const DstModifier& modifier)
 {
     CVariable* src = GetSrcVariable(source);
-    if(src->IsUniform())
+    if (src->IsUniform())
     {
         m_encoder->SetSrcModifier(1, EMOD_NEG);
         m_encoder->Add(m_destination, src, src);
@@ -1109,7 +1109,7 @@ void EmitPass::emitGradientX(const SSource& source, const DstModifier& modifier)
 void EmitPass::emitGradientY(const SSource& source, const DstModifier& modifier)
 {
     CVariable* src = GetSrcVariable(source);
-    if(src->IsUniform())
+    if (src->IsUniform())
     {
         m_encoder->SetSrcModifier(1, EMOD_NEG);
         m_encoder->Add(m_destination, src, src);
@@ -1136,7 +1136,7 @@ void EmitPass::emitGradientY(const SSource& source, const DstModifier& modifier)
 void EmitPass::emitGradientXFine(const SSource& source, const DstModifier& modifier)
 {
     CVariable* src = GetSrcVariable(source);
-    if(src->IsUniform())
+    if (src->IsUniform())
     {
         m_encoder->SetSrcModifier(1, EMOD_NEG);
         m_encoder->Add(m_destination, src, src);
@@ -1203,7 +1203,7 @@ void EmitPass::emitGradientXFine(const SSource& source, const DstModifier& modif
 void EmitPass::emitGradientYFine(const SSource& source, const DstModifier& modifier)
 {
     CVariable* src = GetSrcVariable(source);
-    if(src->IsUniform())
+    if (src->IsUniform())
     {
         m_encoder->SetSrcModifier(1, EMOD_NEG);
         m_encoder->Add(m_destination, src, src);
@@ -1246,7 +1246,7 @@ void EmitPass::emitGradientYFine(const SSource& source, const DstModifier& modif
         m_encoder->Add(temp, src, src);
         m_encoder->Push();
 
-        if(m_currShader->m_SIMDSize == SIMDMode::SIMD16)
+        if (m_currShader->m_SIMDSize == SIMDMode::SIMD16)
         {
             m_encoder->SetSimdSize(SIMDMode::SIMD4);
             m_encoder->SetSrcModifier(0, src_mod0);
@@ -1285,9 +1285,9 @@ void EmitPass::emitGradientYFine(const SSource& source, const DstModifier& modif
 
 void EmitPass::EmitAluIntrinsic(llvm::CallInst* I, const SSource source[2], const DstModifier& modifier)
 {
-    if(GenIntrinsicInst *CI = dyn_cast<GenIntrinsicInst>(I))
+    if (GenIntrinsicInst *CI = dyn_cast<GenIntrinsicInst>(I))
     {
-        switch(CI->getIntrinsicID())
+        switch (CI->getIntrinsicID())
         {
         case GenISAIntrinsic::GenISA_GradientX:
             emitGradientX(source[0], modifier);
@@ -1307,9 +1307,9 @@ void EmitPass::EmitAluIntrinsic(llvm::CallInst* I, const SSource source[2], cons
             break;
         }
     }
-    else if(IntrinsicInst *CI = dyn_cast<IntrinsicInst>(I))
+    else if (IntrinsicInst *CI = dyn_cast<IntrinsicInst>(I))
     {
-        switch(CI->getIntrinsicID())
+        switch (CI->getIntrinsicID())
         {
         case Intrinsic::ctlz:
             //Throw away source[1], since for ctlz, this is a flag we don't care about.
@@ -1365,7 +1365,7 @@ static e_predicate GetPredicate(llvm::CmpInst::Predicate predicate)
 
 static VISA_Type GetUnsignedType(VISA_Type type)
 {
-    switch(type)
+    switch (type)
     {
     case ISA_TYPE_Q:
     case ISA_TYPE_UQ:
@@ -1455,7 +1455,7 @@ CVariable* EmitPass::GetSrcVariable(const SSource& source, bool fromConstPool)
 {
     CVariable* src = m_currShader->GetSymbol(source.value, fromConstPool);
     // Change the type of source if needed.
-    if(source.type != ISA_TYPE_NUM && source.type != src->GetType())
+    if (source.type != ISA_TYPE_NUM && source.type != src->GetType())
     {
         if (src->IsImmediate()) {
             src = m_currShader->ImmToVariable(src->GetImmediateValue(), source.type);
@@ -1486,7 +1486,7 @@ void EmitPass::SetSourceModifiers(unsigned int sourceIndex, const SSource& sourc
     int calculated_offset = source.SIMDOffset * numberOfLanes + source.elementOffset;
     m_encoder->SetSrcSubReg(sourceIndex, calculated_offset);
 
-    if(source.region_set)
+    if (source.region_set)
     {
         m_encoder->SetSrcRegion(sourceIndex, source.region[0], source.region[1], source.region[2]);
     }
@@ -1504,12 +1504,12 @@ void EmitPass::EmitSimpleAlu(Instruction* inst, CVariable* dst, CVariable* src0,
 
 void EmitPass::EmitSimpleAlu(EOPCODE opCode, const SSource sources[2], const DstModifier& modifier)
 {
-    CVariable* srcs[2] = {nullptr, nullptr};
+    CVariable* srcs[2] = { nullptr, nullptr };
 
     srcs[0] = GetSrcVariable(sources[0], sources[0].fromConstantPool);
     SetSourceModifiers(0, sources[0]);
 
-    if(sources[1].value)
+    if (sources[1].value)
     {
         srcs[1] = GetSrcVariable(sources[1], sources[1].fromConstantPool);
         SetSourceModifiers(1, sources[1]);
@@ -1524,32 +1524,32 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
     {
     case llvm_fmul:
     case llvm_mul:
-        m_encoder->Mul(dst,src0,src1);
+        m_encoder->Mul(dst, src0, src1);
         break;
     case llvm_fdiv:
-        m_encoder->Div(dst,src0,src1);
+        m_encoder->Div(dst, src0, src1);
         break;
     case llvm_fadd:
     case llvm_add:
-        m_encoder->Add(dst,src0,src1);
+        m_encoder->Add(dst, src0, src1);
         break;
     case llvm_cos:
-        m_encoder->Cos(dst,src0);
+        m_encoder->Cos(dst, src0);
         break;
     case llvm_sin:
-        m_encoder->Sin(dst,src0);
+        m_encoder->Sin(dst, src0);
         break;
     case llvm_log:
-        m_encoder->Log(dst,src0);
+        m_encoder->Log(dst, src0);
         break;
     case llvm_exp:
-        m_encoder->Exp(dst,src0);
+        m_encoder->Exp(dst, src0);
         break;
     case llvm_pow:
         m_encoder->Pow(dst, src0, src1);
         break;
     case llvm_sqrt:
-        m_encoder->Sqrt(dst,src0);
+        m_encoder->Sqrt(dst, src0);
         break;
     case llvm_rsq:
         m_encoder->Rsqrt(dst, src0);
@@ -1567,78 +1567,78 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
         m_encoder->RoundNE(dst, src0);
         break;
     case llvm_imulh:
-        m_encoder->MulH( dst, src0, src1 );
+        m_encoder->MulH(dst, src0, src1);
         break;
     case llvm_umulh:
+    {
+        src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
+        src1 = m_currShader->BitCast(src1, GetUnsignedType(src1->GetType()));
+        dst = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
+        m_encoder->MulH(dst, src0, src1);
+    }
+    break;
+    case llvm_sext:
+    {
+        if (src0->GetType() == ISA_TYPE_BOOL)
+        {
+            CVariable* minusone = m_currShader->ImmToVariable(-1, dst->GetType());
+            CVariable* zero = m_currShader->ImmToVariable(0, dst->GetType());
+            m_encoder->Select(src0, dst, minusone, zero);
+        }
+        else
+        {
+            m_encoder->Cast(dst, src0);
+        }
+    }
+    break;
+    case llvm_zext:
+    {
+        if (src0->GetType() == ISA_TYPE_BOOL)
+        {
+            CVariable* one = m_currShader->ImmToVariable(1, dst->GetType());
+            CVariable* zero = m_currShader->ImmToVariable(0, dst->GetType());
+            m_encoder->Select(src0, dst, one, zero);
+        }
+        else
         {
             src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
-            src1 = m_currShader->BitCast(src1, GetUnsignedType(src1->GetType()));
-            dst  = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
-            m_encoder->MulH( dst, src0, src1 );
+            m_encoder->Cast(dst, src0);
         }
-        break;
-    case llvm_sext:
-        {
-            if( src0->GetType() == ISA_TYPE_BOOL )
-            {
-                CVariable* minusone = m_currShader->ImmToVariable(-1, dst->GetType());
-                CVariable* zero = m_currShader->ImmToVariable(0, dst->GetType());
-                m_encoder->Select(src0, dst, minusone, zero );
-            }
-            else
-            {
-                m_encoder->Cast( dst, src0 );
-            }
-        }
-        break;
-    case llvm_zext:
-        {
-            if( src0->GetType() == ISA_TYPE_BOOL )
-            {
-                CVariable* one = m_currShader->ImmToVariable(1, dst->GetType());
-                CVariable* zero = m_currShader->ImmToVariable(0, dst->GetType());
-                m_encoder->Select(src0, dst, one, zero );
-            }
-            else
-            {
-                src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
-                m_encoder->Cast( dst, src0 );
-            }
-        }
-        break;
+    }
+    break;
     case llvm_trunc:
     case llvm_fptrunc:
     case llvm_fpext:
     case llvm_fptosi:
     case llvm_fptoui:
-        if(dst->GetType() == ISA_TYPE_BOOL)
+        if (dst->GetType() == ISA_TYPE_BOOL)
         {
             m_encoder->Cmp(EPREDICATE_NE, dst, src0, m_currShader->ImmToVariable(0, src0->GetType()));
         }
         else
         {
-            if(opCode == llvm_fptoui)
+            if (opCode == llvm_fptoui)
             {
-                dst = m_currShader->BitCast(dst,GetUnsignedType(dst->GetType()));
+                dst = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
             }
-            m_encoder->Cast(dst,src0);
+            m_encoder->Cast(dst, src0);
         }
         break;
     case llvm_sitofp:
     case llvm_uitofp:
-        if( src0->GetType() == ISA_TYPE_BOOL )
+        if (src0->GetType() == ISA_TYPE_BOOL)
         {
             CVariable* one = m_currShader->ImmToVariable(getFPOne(dst->GetType()), dst->GetType());
             CVariable* zero = m_currShader->ImmToVariable(0, dst->GetType());
-            m_encoder->Select(src0, dst, one, zero );
+            m_encoder->Select(src0, dst, one, zero);
         }
         else
         {
-            if(opCode == llvm_uitofp)
+            if (opCode == llvm_uitofp)
             {
-                src0 = m_currShader->BitCast(src0,GetUnsignedType(src0->GetType()));
+                src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
             }
-            m_encoder->Cast(dst,src0);
+            m_encoder->Cast(dst, src0);
         }
         break;
     case llvm_xor:
@@ -1651,61 +1651,61 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
         m_encoder->And(dst, src0, src1);
         break;
     case llvm_udiv:
-        {
-            src0 = m_currShader->BitCast( src0, GetUnsignedType( src0->GetType() ) );
-            src1 = m_currShader->BitCast( src1, GetUnsignedType( src1->GetType() ) );
-            dst  = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
-            m_encoder->Div( dst, src0, src1 );
-        }
-        break;
+    {
+        src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
+        src1 = m_currShader->BitCast(src1, GetUnsignedType(src1->GetType()));
+        dst = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
+        m_encoder->Div(dst, src0, src1);
+    }
+    break;
     case llvm_sdiv:
-        m_encoder->Div( dst, src0, src1 );
+        m_encoder->Div(dst, src0, src1);
         break;
     case llvm_urem:
-        {
-            src0 = m_currShader->BitCast( src0, GetUnsignedType( src0->GetType() ) );
-            src1 = m_currShader->BitCast( src1, GetUnsignedType( src1->GetType() ) );
-            dst  = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
-            m_encoder->Mod( dst, src0, src1 );
-        }
-        break;
+    {
+        src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
+        src1 = m_currShader->BitCast(src1, GetUnsignedType(src1->GetType()));
+        dst = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
+        m_encoder->Mod(dst, src0, src1);
+    }
+    break;
     case llvm_srem:
-        m_encoder->Mod( dst, src0, src1 );
+        m_encoder->Mod(dst, src0, src1);
         break;
     case llvm_shl:
         m_encoder->Shl(dst, src0, src1);
         break;
     case llvm_ishr:
-        m_encoder->IShr( dst, src0, src1 );
+        m_encoder->IShr(dst, src0, src1);
         break;
     case llvm_ushr:
-        {
-            src0 = m_currShader->BitCast( src0, GetUnsignedType( src0->GetType() ) );
-            m_encoder->Shr( dst, src0, src1 );
-        }
-        break;
+    {
+        src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
+        m_encoder->Shr(dst, src0, src1);
+    }
+    break;
     case llvm_min:
-        m_encoder->Min( dst, src0, src1 );
+        m_encoder->Min(dst, src0, src1);
         break;
     case llvm_max:
-        m_encoder->Max( dst, src0, src1 );
+        m_encoder->Max(dst, src0, src1);
         break;
     case llvm_uaddc:
-        {
-            src0 = m_currShader->BitCast( src0, GetUnsignedType( src0->GetType() ) );
-            src1 = m_currShader->BitCast( src1, GetUnsignedType( src1->GetType() ) );
-            dst = m_currShader->BitCast( dst, GetUnsignedType( dst->GetType() ) );
-            m_encoder->UAddC( dst, src0, src1 );
-        }
-        break;
+    {
+        src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
+        src1 = m_currShader->BitCast(src1, GetUnsignedType(src1->GetType()));
+        dst = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
+        m_encoder->UAddC(dst, src0, src1);
+    }
+    break;
     case llvm_usubb:
-        {
-            src0 = m_currShader->BitCast( src0, GetUnsignedType( src0->GetType() ) );
-            src1 = m_currShader->BitCast( src1, GetUnsignedType( src1->GetType() ) );
-            dst = m_currShader->BitCast( dst, GetUnsignedType( dst->GetType() ) );
-            m_encoder->USubB( dst, src0, src1 );
-        }
-        break;
+    {
+        src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
+        src1 = m_currShader->BitCast(src1, GetUnsignedType(src1->GetType()));
+        dst = m_currShader->BitCast(dst, GetUnsignedType(dst->GetType()));
+        m_encoder->USubB(dst, src0, src1);
+    }
+    break;
     case llvm_bfrev:
         m_encoder->Bfrev(dst, src0);
         break;
@@ -1721,9 +1721,9 @@ void EmitPass::EmitSimpleAlu(EOPCODE opCode, CVariable* dst, CVariable* src0, CV
             // from it.
             CVariable* tmp
                 = m_currShader->GetNewVariable(dst->GetNumberElement(),
-                        ISA_TYPE_UD,
-                        dst->IsUniform() ? EALIGN_DWORD : EALIGN_GRF,
-                        dst->IsUniform());
+                    ISA_TYPE_UD,
+                    dst->IsUniform() ? EALIGN_DWORD : EALIGN_GRF,
+                    dst->IsUniform());
             m_encoder->CBit(tmp, src0);
             m_encoder->Push();
             m_encoder->Cast(dst, tmp);
@@ -1770,7 +1770,7 @@ void EmitPass::EmitMinMax(bool isMin, bool isUnsigned, const SSource sources[2],
 }
 
 void EmitPass::EmitFullMul32(bool isUnsigned, const SSource sources[2], const DstModifier& dstMod) {
-    CVariable* srcs[2] = {nullptr, nullptr};
+    CVariable* srcs[2] = { nullptr, nullptr };
     srcs[0] = GetSrcVariable(sources[0]);
     srcs[1] = GetSrcVariable(sources[1]);
     SetSourceModifiers(0, sources[0]);
@@ -1790,7 +1790,8 @@ void EmitPass::EmitFPToIntWithSat(bool isUnsigned, bool needBitCast, VISA_Type t
     CVariable *dst = m_destination;
     if (type != m_destination->GetType()) {
         dst = m_currShader->GetNewVariable(dst->GetNumberElement(), type, EALIGN_GRF, dst->IsUniform());
-    } else if (needBitCast) {
+    }
+    else if (needBitCast) {
         dst = m_currShader->BitCast(dst, GetUnsignedIntegerType(dst->GetType()));
     }
     DstModifier satDstMod = dstMod;
@@ -1840,7 +1841,7 @@ void EmitPass::EmitAddPair(GenIntrinsicInst *GII, const SSource Sources[4], cons
     CVariable *H0 = GetSrcVariable(Sources[1]);
     CVariable *L1 = GetSrcVariable(Sources[2]);
     CVariable *H1 = GetSrcVariable(Sources[3]);
-    for(unsigned srcId = 0; srcId < 4; ++srcId) {
+    for (unsigned srcId = 0; srcId < 4; ++srcId) {
         SetSourceModifiers(srcId, Sources[srcId]);
     }
 
@@ -1927,7 +1928,8 @@ void EmitPass::EmitPtrToPair(GenIntrinsicInst *GII, const SSource Sources[1], co
         if (isPtr32) {
             m_encoder->Cast(Lo, Src);
             m_encoder->Push();
-        } else {
+        }
+        else {
             m_encoder->SetSrcRegion(0, 2, 1, 0);
             m_encoder->SetSrcSubReg(0, 0);
             m_encoder->Copy(Lo, Src);
@@ -1940,7 +1942,8 @@ void EmitPass::EmitPtrToPair(GenIntrinsicInst *GII, const SSource Sources[1], co
             Src = m_currShader->ImmToVariable(0, m_destination->GetType());
             m_encoder->Cast(Hi, Src);
             m_encoder->Push();
-        } else {
+        }
+        else {
             m_encoder->SetSrcRegion(0, 2, 1, 0);
             m_encoder->SetSrcSubReg(0, 1);
             m_encoder->Copy(Hi, Src);
@@ -1961,80 +1964,80 @@ void EmitPass::EmitSIToFPZExt(const SSource &source, const DstModifier& dstMod) 
 
 void EmitPass::emitCtlz(const SSource& source)
 {
-     // This does not go through the standard EmitAluIntrinsic pass because
-     // that creates a redundant SetP due to an unused i1 literal.
-     CVariable* src = GetSrcVariable(source);
-     src = m_currShader->BitCast( src, GetUnsignedType( src->GetType() ) );
-     CVariable* dst = m_currShader->BitCast( m_destination, GetUnsignedType( m_destination->GetType() ) );
-     SetSourceModifiers(0, source);
-     m_encoder->Ctlz(dst, src);
-     m_encoder->Push();
+    // This does not go through the standard EmitAluIntrinsic pass because
+    // that creates a redundant SetP due to an unused i1 literal.
+    CVariable* src = GetSrcVariable(source);
+    src = m_currShader->BitCast(src, GetUnsignedType(src->GetType()));
+    CVariable* dst = m_currShader->BitCast(m_destination, GetUnsignedType(m_destination->GetType()));
+    SetSourceModifiers(0, source);
+    m_encoder->Ctlz(dst, src);
+    m_encoder->Push();
 }
 
 void EmitPass::emitVMESendIME2(GenIntrinsicInst* inst) {
-  CVariable* inputVar = GetSymbol(inst->getArgOperand(0));
-  CVariable* srcImgBTI = GetSymbol(inst->getArgOperand(1));
-  CVariable* refImgBTI = GetSymbol(inst->getArgOperand(2));
-  CVariable* bwdRefImgBTI = GetSymbol(inst->getArgOperand(3));
-  const COMMON_ISA_VME_STREAM_MODE streamMode = (COMMON_ISA_VME_STREAM_MODE)(cast<ConstantInt>(inst->getArgOperand(4))->getZExtValue());
+    CVariable* inputVar = GetSymbol(inst->getArgOperand(0));
+    CVariable* srcImgBTI = GetSymbol(inst->getArgOperand(1));
+    CVariable* refImgBTI = GetSymbol(inst->getArgOperand(2));
+    CVariable* bwdRefImgBTI = GetSymbol(inst->getArgOperand(3));
+    const COMMON_ISA_VME_STREAM_MODE streamMode = (COMMON_ISA_VME_STREAM_MODE)(cast<ConstantInt>(inst->getArgOperand(4))->getZExtValue());
 
-  const bool isDualRef = refImgBTI->GetImmediateValue() != bwdRefImgBTI->GetImmediateValue();
-  // If the BTIs aren't consecutive then we can't do VME.
-  if (isDualRef)
-  {
-      assert(refImgBTI->GetImmediateValue() + 1 == bwdRefImgBTI->GetImmediateValue() && "refImg BTI and bwdRefImg BTI are not consecutive!");
-  }
+    const bool isDualRef = refImgBTI->GetImmediateValue() != bwdRefImgBTI->GetImmediateValue();
+    // If the BTIs aren't consecutive then we can't do VME.
+    if (isDualRef)
+    {
+        assert(refImgBTI->GetImmediateValue() + 1 == bwdRefImgBTI->GetImmediateValue() && "refImg BTI and bwdRefImg BTI are not consecutive!");
+    }
 
-  uint32_t regs2snd = 4 + 2;
-  uint32_t regs2rcv = CShader::GetIMEReturnPayloadSize(inst);
+    uint32_t regs2snd = 4 + 2;
+    uint32_t regs2rcv = CShader::GetIMEReturnPayloadSize(inst);
 
-  if ((streamMode == VME_STREAM_IN) || (streamMode == VME_STREAM_IN_OUT))
-  {
-      regs2snd += 2;
-      if (isDualRef)
-      {
-          regs2snd += 2;
-      }
-  }
+    if ((streamMode == VME_STREAM_IN) || (streamMode == VME_STREAM_IN_OUT))
+    {
+        regs2snd += 2;
+        if (isDualRef)
+        {
+            regs2snd += 2;
+        }
+    }
 
-  // TODO: this may waste registers. We can allocate payload during evaluation
-  //       stage, but that needs to initialize and copy payload.
-  //       Need to revisit when VME initial support is done.
-  if (inputVar->GetSize() > (regs2snd * SIZE_GRF))
-  {
-    inputVar = m_currShader->GetNewAlias(inputVar, ISA_TYPE_UD, 0, regs2snd * 8);
-  }
+    // TODO: this may waste registers. We can allocate payload during evaluation
+    //       stage, but that needs to initialize and copy payload.
+    //       Need to revisit when VME initial support is done.
+    if (inputVar->GetSize() > (regs2snd * SIZE_GRF))
+    {
+        inputVar = m_currShader->GetNewAlias(inputVar, ISA_TYPE_UD, 0, regs2snd * 8);
+    }
 
-  CVariable *outputVar = m_destination;
+    CVariable *outputVar = m_destination;
 
-  if (outputVar->GetSize() > (regs2rcv * SIZE_GRF))
-  {
-    outputVar = m_currShader->GetNewAlias(outputVar, ISA_TYPE_UD, 0, regs2rcv * 8);
-  }
+    if (outputVar->GetSize() > (regs2rcv * SIZE_GRF))
+    {
+        outputVar = m_currShader->GetNewAlias(outputVar, ISA_TYPE_UD, 0, regs2rcv * 8);
+    }
 
-  const uint32_t desc = VMEDescriptor(streamMode, (uint32_t)(srcImgBTI->GetImmediateValue()),
-                                      EU_GEN7_5_VME_MESSAGE_IME, regs2snd, regs2rcv);
+    const uint32_t desc = VMEDescriptor(streamMode, (uint32_t)(srcImgBTI->GetImmediateValue()),
+        EU_GEN7_5_VME_MESSAGE_IME, regs2snd, regs2rcv);
 
-  CVariable* messDesc = m_currShader->ImmToVariable(desc, ISA_TYPE_UD);
+    CVariable* messDesc = m_currShader->ImmToVariable(desc, ISA_TYPE_UD);
 
-  m_encoder->Send(outputVar, inputVar, EU_MESSAGE_TARGET_SFID_VME, messDesc, false);
-  m_encoder->Push();
+    m_encoder->Send(outputVar, inputVar, EU_MESSAGE_TARGET_SFID_VME, messDesc, false);
+    m_encoder->Push();
 }
 
 void EmitPass::emitVMESendIME(GenIntrinsicInst* inst) {
     const bool has_bwd_ref_image = inst->getIntrinsicID() == GenISAIntrinsic::GenISA_vmeSendIME2;
-    CVariable* outputVar        = GetSymbol(inst->getArgOperand(0));
+    CVariable* outputVar = GetSymbol(inst->getArgOperand(0));
 
-    CVariable* uniInputVar      = GetSymbol(inst->getArgOperand(1));
-    CVariable* imeInputVar      = GetSymbol(inst->getArgOperand(2));
+    CVariable* uniInputVar = GetSymbol(inst->getArgOperand(1));
+    CVariable* imeInputVar = GetSymbol(inst->getArgOperand(2));
 
-    CVariable* srcImgBTI        = GetSymbol(inst->getArgOperand(3));
-    CVariable* refImgBTI        = GetSymbol(inst->getArgOperand(4));
-    CVariable* bwdRefImgBTI     = has_bwd_ref_image ? GetSymbol(inst->getArgOperand(5)) : nullptr;
+    CVariable* srcImgBTI = GetSymbol(inst->getArgOperand(3));
+    CVariable* refImgBTI = GetSymbol(inst->getArgOperand(4));
+    CVariable* bwdRefImgBTI = has_bwd_ref_image ? GetSymbol(inst->getArgOperand(5)) : nullptr;
     // If the BTIs aren't consecutive then we can't do VME.
     assert(srcImgBTI->GetImmediateValue() + 1 == refImgBTI->GetImmediateValue() && "srcImg BTI and refImg BTI are not consecutive!");
     if (bwdRefImgBTI != nullptr) {
-      assert(srcImgBTI->GetImmediateValue() + 2 == bwdRefImgBTI->GetImmediateValue() && "srcImg BTI and bwdRefImg BTI are not consecutive!");
+        assert(srcImgBTI->GetImmediateValue() + 2 == bwdRefImgBTI->GetImmediateValue() && "srcImg BTI and bwdRefImg BTI are not consecutive!");
     }
 
     uint rest_opnd_idx_base = has_bwd_ref_image ? 6 : 5;
@@ -2063,7 +2066,7 @@ void EmitPass::emitVMESendIME(GenIntrinsicInst* inst) {
         costCenterVar = newVar;
     }
 
-    unsigned char streamMode        = VME_STREAM_DISABLE;
+    unsigned char streamMode = VME_STREAM_DISABLE;
     unsigned char searchControlMode = VME_SEARCH_SINGLE_REF_SINGLE_REC_SINGLE_START;
 
     // Force write the costCenter here.  I'd like to have uniInputVar setup before calling
@@ -2080,26 +2083,26 @@ void EmitPass::emitVMESendIME(GenIntrinsicInst* inst) {
 
     m_encoder->SetNoMask();
     m_encoder->SendVmeIme(srcImgBTI,
-                          streamMode,
-                          searchControlMode,
-                          uniInputVar,
-                          imeInputVar,
-                          ref0Var,
-                          ref1Var,
-                          costCenterVar,
-                          outputVar);
+        streamMode,
+        searchControlMode,
+        uniInputVar,
+        imeInputVar,
+        ref0Var,
+        ref1Var,
+        costCenterVar,
+        outputVar);
     m_encoder->Push();
     return;
 }
 
 void EmitPass::emitVMESendFBR(GenIntrinsicInst* inst) {
-    CVariable* outputVar            = GetSymbol(inst->getArgOperand(0));
+    CVariable* outputVar = GetSymbol(inst->getArgOperand(0));
 
-    CVariable* uniInputVar          = GetSymbol(inst->getArgOperand(1));
-    CVariable* fbrInputVar          = GetSymbol(inst->getArgOperand(2));
+    CVariable* uniInputVar = GetSymbol(inst->getArgOperand(1));
+    CVariable* fbrInputVar = GetSymbol(inst->getArgOperand(2));
 
-    CVariable* srcImgBTI            = GetSymbol(inst->getArgOperand(3));
-    CVariable* refImgBTI            = GetSymbol(inst->getArgOperand(4));
+    CVariable* srcImgBTI = GetSymbol(inst->getArgOperand(3));
+    CVariable* refImgBTI = GetSymbol(inst->getArgOperand(4));
     // If the BTIs aren't consecutive then we can't do VME.
     assert(srcImgBTI->GetImmediateValue() + 1 == refImgBTI->GetImmediateValue() && "srcImg BTI and refImg BTI are not consecutive!");
 
@@ -2114,45 +2117,45 @@ void EmitPass::emitVMESendFBR(GenIntrinsicInst* inst) {
 }
 
 void EmitPass::emitVMESendFBR2(GenIntrinsicInst* inst) {
-  CVariable* inputVar = GetSymbol(inst->getArgOperand(0));
-  CVariable* srcImgBTI = GetSymbol(inst->getArgOperand(1));
-  CVariable* refImgBTI = GetSymbol(inst->getArgOperand(2));
-  CVariable* bwdRefImgBTI = GetSymbol(inst->getArgOperand(3));
+    CVariable* inputVar = GetSymbol(inst->getArgOperand(0));
+    CVariable* srcImgBTI = GetSymbol(inst->getArgOperand(1));
+    CVariable* refImgBTI = GetSymbol(inst->getArgOperand(2));
+    CVariable* bwdRefImgBTI = GetSymbol(inst->getArgOperand(3));
 
-  const bool isDualRef = refImgBTI->GetImmediateValue() != bwdRefImgBTI->GetImmediateValue();
-  // If the BTIs aren't consecutive then we can't do VME.
-  if (isDualRef)
-  {
-      assert(refImgBTI->GetImmediateValue() + 1 == bwdRefImgBTI->GetImmediateValue() && "refImg BTI and bwdRefImg BTI are not consecutive!");
-  }
+    const bool isDualRef = refImgBTI->GetImmediateValue() != bwdRefImgBTI->GetImmediateValue();
+    // If the BTIs aren't consecutive then we can't do VME.
+    if (isDualRef)
+    {
+        assert(refImgBTI->GetImmediateValue() + 1 == bwdRefImgBTI->GetImmediateValue() && "refImg BTI and bwdRefImg BTI are not consecutive!");
+    }
 
-  const uint32_t regs2rcv = (7 + 0), regs2snd = (4 + 4);
-  const uint32_t desc = VMEDescriptor(VME_STREAM_DISABLE, (uint32_t)(srcImgBTI->GetImmediateValue()),
-                                      EU_GEN7_5_VME_MESSAGE_FBR, regs2snd, regs2rcv);
+    const uint32_t regs2rcv = (7 + 0), regs2snd = (4 + 4);
+    const uint32_t desc = VMEDescriptor(VME_STREAM_DISABLE, (uint32_t)(srcImgBTI->GetImmediateValue()),
+        EU_GEN7_5_VME_MESSAGE_FBR, regs2snd, regs2rcv);
 
-  CVariable* messDesc = m_currShader->ImmToVariable(desc, ISA_TYPE_UD);
+    CVariable* messDesc = m_currShader->ImmToVariable(desc, ISA_TYPE_UD);
 
-  CVariable *outputVar = m_destination;
+    CVariable *outputVar = m_destination;
 
-  if (outputVar->GetSize() > (regs2rcv * SIZE_GRF))
-  {
-    outputVar = m_currShader->GetNewAlias(outputVar, ISA_TYPE_UD, 0, regs2rcv * 8);
-  }
+    if (outputVar->GetSize() > (regs2rcv * SIZE_GRF))
+    {
+        outputVar = m_currShader->GetNewAlias(outputVar, ISA_TYPE_UD, 0, regs2rcv * 8);
+    }
 
-  m_encoder->Send(outputVar, inputVar, EU_MESSAGE_TARGET_SFID_CRE, messDesc, false);
-  m_encoder->Push();
+    m_encoder->Send(outputVar, inputVar, EU_MESSAGE_TARGET_SFID_CRE, messDesc, false);
+    m_encoder->Push();
 
-  return;
+    return;
 }
 
 void EmitPass::emitVMESendSIC(GenIntrinsicInst* inst)
 {
-    CVariable* outputVar   = GetSymbol(inst->getArgOperand(0));
+    CVariable* outputVar = GetSymbol(inst->getArgOperand(0));
     CVariable* uniInputVar = GetSymbol(inst->getArgOperand(1));
     CVariable* sicInputVar = GetSymbol(inst->getArgOperand(2));
-    CVariable* srcImgBTI   = GetSymbol(inst->getArgOperand(3));
-    CVariable* ref0ImgBTI  = GetSymbol(inst->getArgOperand(4));
-    CVariable* ref1ImgBTI  = GetSymbol(inst->getArgOperand(5));
+    CVariable* srcImgBTI = GetSymbol(inst->getArgOperand(3));
+    CVariable* ref0ImgBTI = GetSymbol(inst->getArgOperand(4));
+    CVariable* ref1ImgBTI = GetSymbol(inst->getArgOperand(5));
     // If the BTIs aren't consecutive then we can't do VME.
     assert(srcImgBTI->GetImmediateValue() + 1 == ref0ImgBTI->GetImmediateValue() && "srcImg BTI and ref0Img BTI are not consecutive!");
     // In the non-bidirectional case, we just pass the same reference image into the
@@ -2168,53 +2171,53 @@ void EmitPass::emitVMESendSIC(GenIntrinsicInst* inst)
 
 void EmitPass::emitVMESendSIC2(GenIntrinsicInst* inst)
 {
-  CVariable* inputVar = GetSymbol(inst->getArgOperand(0));
-  CVariable* srcImgBTI = GetSymbol(inst->getArgOperand(1));
-  CVariable* fwdRefImgBTI = GetSymbol(inst->getArgOperand(2));
-  CVariable* bwdRefImgBTI = GetSymbol(inst->getArgOperand(3));
+    CVariable* inputVar = GetSymbol(inst->getArgOperand(0));
+    CVariable* srcImgBTI = GetSymbol(inst->getArgOperand(1));
+    CVariable* fwdRefImgBTI = GetSymbol(inst->getArgOperand(2));
+    CVariable* bwdRefImgBTI = GetSymbol(inst->getArgOperand(3));
 
-  const bool isDualRef = fwdRefImgBTI->GetImmediateValue() != bwdRefImgBTI->GetImmediateValue();
-  // If the BTIs aren't consecutive then we can't do VME.
-  if (isDualRef)
-  {
-      assert(fwdRefImgBTI->GetImmediateValue() + 1 == bwdRefImgBTI->GetImmediateValue() && "refImg BTI and bwdRefImg BTI are not consecutive!");
-  }
+    const bool isDualRef = fwdRefImgBTI->GetImmediateValue() != bwdRefImgBTI->GetImmediateValue();
+    // If the BTIs aren't consecutive then we can't do VME.
+    if (isDualRef)
+    {
+        assert(fwdRefImgBTI->GetImmediateValue() + 1 == bwdRefImgBTI->GetImmediateValue() && "refImg BTI and bwdRefImg BTI are not consecutive!");
+    }
 
-  // If the BTIs aren't consecutive then we can't do VME. And this only applies to case
-  // when either fwdRefImg or bwdRefImg is presented.
-  if (srcImgBTI->GetImmediateValue() != fwdRefImgBTI->GetImmediateValue()) {
-    assert(srcImgBTI->GetImmediateValue() + 1 == fwdRefImgBTI->GetImmediateValue() && "srcImg BTI and refImg BTI are not consecutive!");
-    if (fwdRefImgBTI->GetImmediateValue() != bwdRefImgBTI->GetImmediateValue())
-      assert(srcImgBTI->GetImmediateValue() + 2 == bwdRefImgBTI->GetImmediateValue() && "srcImg BTI and bwdRefImg BTI are not consecutive!");
-  }
+    // If the BTIs aren't consecutive then we can't do VME. And this only applies to case
+    // when either fwdRefImg or bwdRefImg is presented.
+    if (srcImgBTI->GetImmediateValue() != fwdRefImgBTI->GetImmediateValue()) {
+        assert(srcImgBTI->GetImmediateValue() + 1 == fwdRefImgBTI->GetImmediateValue() && "srcImg BTI and refImg BTI are not consecutive!");
+        if (fwdRefImgBTI->GetImmediateValue() != bwdRefImgBTI->GetImmediateValue())
+            assert(srcImgBTI->GetImmediateValue() + 2 == bwdRefImgBTI->GetImmediateValue() && "srcImg BTI and bwdRefImg BTI are not consecutive!");
+    }
 
-  const uint32_t regs2rcv = (7 + 0), regs2snd = (4 + 4);
-  const uint32_t desc = VMEDescriptor(VME_STREAM_DISABLE, (uint32_t)(srcImgBTI->GetImmediateValue()),
-                                      EU_GEN7_5_VME_MESSAGE_SIC, regs2snd, regs2rcv);
+    const uint32_t regs2rcv = (7 + 0), regs2snd = (4 + 4);
+    const uint32_t desc = VMEDescriptor(VME_STREAM_DISABLE, (uint32_t)(srcImgBTI->GetImmediateValue()),
+        EU_GEN7_5_VME_MESSAGE_SIC, regs2snd, regs2rcv);
 
-  CVariable* messDesc = m_currShader->ImmToVariable(desc, ISA_TYPE_UD);
+    CVariable* messDesc = m_currShader->ImmToVariable(desc, ISA_TYPE_UD);
 
-  CVariable *outputVar = m_destination;
+    CVariable *outputVar = m_destination;
 
-  if (outputVar->GetSize() > (regs2rcv * SIZE_GRF))
-  {
-    outputVar = m_currShader->GetNewAlias(outputVar, ISA_TYPE_UD, 0, regs2rcv * 8);
-  }
+    if (outputVar->GetSize() > (regs2rcv * SIZE_GRF))
+    {
+        outputVar = m_currShader->GetNewAlias(outputVar, ISA_TYPE_UD, 0, regs2rcv * 8);
+    }
 
-  m_encoder->Send(outputVar, inputVar, EU_MESSAGE_TARGET_SFID_CRE, messDesc, false);
-  m_encoder->Push();
+    m_encoder->Send(outputVar, inputVar, EU_MESSAGE_TARGET_SFID_CRE, messDesc, false);
+    m_encoder->Push();
 
-  return;
+    return;
 }
 
 void EmitPass::emitCreateMessagePhases(GenIntrinsicInst* inst) {
-    assert((m_destination->GetType() == ISA_TYPE_UD || m_destination->GetType() == ISA_TYPE_D)  && "Destination type is expected to be UD or D!");
+    assert((m_destination->GetType() == ISA_TYPE_UD || m_destination->GetType() == ISA_TYPE_D) && "Destination type is expected to be UD or D!");
     assert(isa<ConstantInt>(inst->getArgOperand(0)) && "Num phases expected to be const!");
     unsigned int numPhases = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(0))->getZExtValue());
 
-    uint16_t     numSimdLanes       = numLanes(m_SimdMode);
-    unsigned int numWideSimdIters   = numPhases * 8 / numSimdLanes;
-    unsigned int remSimd8Iters      = (numPhases * 8 % numSimdLanes) / 8;
+    uint16_t     numSimdLanes = numLanes(m_SimdMode);
+    unsigned int numWideSimdIters = numPhases * 8 / numSimdLanes;
+    unsigned int remSimd8Iters = (numPhases * 8 % numSimdLanes) / 8;
 
     // Zero as many message phases as possible using the widest SIMD
     for (unsigned int i = 0; i < numWideSimdIters; ++i) {
@@ -2257,18 +2260,18 @@ static VISA_Type GetTypeFromSize(unsigned size)
 
 void EmitPass::emitSimdMediaRegionCopy(llvm::GenIntrinsicInst* inst)
 {
-    CVariable *pDst      = GetSymbol(inst->getArgOperand(0));
+    CVariable *pDst = GetSymbol(inst->getArgOperand(0));
     unsigned dbyteoffset = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(1))->getZExtValue());
-    unsigned dstride     = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(2))->getZExtValue());
-    unsigned dnumelem    = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(3))->getZExtValue());
-    CVariable *pSrc      = GetSymbol(inst->getArgOperand(4));
-    Value *sbyteoffset   = inst->getArgOperand(5);
-    unsigned vstride     = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(6))->getZExtValue());
-    unsigned width       = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(7))->getZExtValue());
-    unsigned hstride     = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(8))->getZExtValue());
-    unsigned typesize    = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(9))->getZExtValue());
-    unsigned execsize    = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(10))->getZExtValue());
-    unsigned snumelem    = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(11))->getZExtValue());
+    unsigned dstride = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(2))->getZExtValue());
+    unsigned dnumelem = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(3))->getZExtValue());
+    CVariable *pSrc = GetSymbol(inst->getArgOperand(4));
+    Value *sbyteoffset = inst->getArgOperand(5);
+    unsigned vstride = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(6))->getZExtValue());
+    unsigned width = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(7))->getZExtValue());
+    unsigned hstride = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(8))->getZExtValue());
+    unsigned typesize = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(9))->getZExtValue());
+    unsigned execsize = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(10))->getZExtValue());
+    unsigned snumelem = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(11))->getZExtValue());
 
     CVariable* pDstOffset = m_currShader->GetNewAlias(pDst, GetTypeFromSize(typesize), (uint16_t)dbyteoffset, (uint16_t)dnumelem);
 
@@ -2309,9 +2312,9 @@ void EmitPass::emitSimdMediaRegionCopy(llvm::GenIntrinsicInst* inst)
 
 void EmitPass::emitExtractMVAndSAD(llvm::GenIntrinsicInst* inst)
 {
-    CVariable *pMV        = GetSymbol(inst->getArgOperand(0));
-    CVariable *pSAD       = GetSymbol(inst->getArgOperand(1));
-    CVariable *pResult    = GetSymbol(inst->getArgOperand(2));
+    CVariable *pMV = GetSymbol(inst->getArgOperand(0));
+    CVariable *pSAD = GetSymbol(inst->getArgOperand(1));
+    CVariable *pResult = GetSymbol(inst->getArgOperand(2));
     CVariable *pBlockType = GetSymbol(inst->getArgOperand(3));
 
     // W5.0 - W5.7 from Return Data Message Phases (InterDistortion)
@@ -2396,10 +2399,10 @@ void EmitPass::emitCmpSADs(llvm::GenIntrinsicInst* inst)
     // When called, this builtin will compare two SAD values
     // and take the minimum of the two.  The minimum MV associated
     // with the minimum SAD is also selected.
-    CVariable *pMVCurr  = GetSymbol(inst->getArgOperand(0));
+    CVariable *pMVCurr = GetSymbol(inst->getArgOperand(0));
     CVariable *pSADCurr = GetSymbol(inst->getArgOperand(1));
-    CVariable *pMVMin   = GetSymbol(inst->getArgOperand(2));
-    CVariable *pSADMin  = GetSymbol(inst->getArgOperand(3));
+    CVariable *pMVMin = GetSymbol(inst->getArgOperand(2));
+    CVariable *pSADMin = GetSymbol(inst->getArgOperand(3));
 
     CVariable* pFlag = m_currShader->GetNewVariable(
         16,
@@ -2474,7 +2477,8 @@ void EmitPass::emitCmpSADs(llvm::GenIntrinsicInst* inst)
         m_encoder->SetDstSubReg(1);
         m_encoder->Select(pFlag, pMVMinAlias, pMVCurrAlias, pMVMinAlias);
         m_encoder->Push();
-    } else {
+    }
+    else {
         CVariable* pMVCurrAlias = m_currShader->GetNewAlias(pMVCurr, ISA_TYPE_UQ, 0, 16);
         CVariable* pMVMinAlias = m_currShader->GetNewAlias(pMVMin, ISA_TYPE_UQ, 0, 16);
 
@@ -2494,80 +2498,80 @@ static bool SameVar(CVariable *A, CVariable *B)
 }
 
 void EmitPass::emitSimdSetMessagePhase(llvm::GenIntrinsicInst* inst) {
-  CVariable* messagePhases = GetSymbol(inst->getArgOperand(0));
-  const uint32_t phaseIndex = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(1))->getZExtValue());
-  const uint32_t numPhases  = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(2))->getZExtValue());
-  const uint32_t dstSubReg  = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(3))->getZExtValue());
-  const uint32_t numLanesPerPhase = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(4))->getZExtValue());
-  const SIMDMode simdMode = lanesToSIMDMode(numLanesPerPhase);
-  Value *value = inst->getArgOperand(5);
-  const uint16_t eltSizeInBytes = (uint16_t)m_DL->getTypeSizeInBits(value->getType()) / 8;
-  const uint16_t numEltsPerPhase = SIZE_GRF / eltSizeInBytes;
-  const VISA_Type type = GetTypeFromSize(eltSizeInBytes);
+    CVariable* messagePhases = GetSymbol(inst->getArgOperand(0));
+    const uint32_t phaseIndex = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(1))->getZExtValue());
+    const uint32_t numPhases = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(2))->getZExtValue());
+    const uint32_t dstSubReg = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(3))->getZExtValue());
+    const uint32_t numLanesPerPhase = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(4))->getZExtValue());
+    const SIMDMode simdMode = lanesToSIMDMode(numLanesPerPhase);
+    Value *value = inst->getArgOperand(5);
+    const uint16_t eltSizeInBytes = (uint16_t)m_DL->getTypeSizeInBits(value->getType()) / 8;
+    const uint16_t numEltsPerPhase = SIZE_GRF / eltSizeInBytes;
+    const VISA_Type type = GetTypeFromSize(eltSizeInBytes);
 
-  CVariable *val = GetSymbol(value);
+    CVariable *val = GetSymbol(value);
 
-  if (!SameVar(m_destination, messagePhases))
-  {
-      emitCopyAll(m_destination, messagePhases, inst->getArgOperand(0)->getType());
-  }
+    if (!SameVar(m_destination, messagePhases))
+    {
+        emitCopyAll(m_destination, messagePhases, inst->getArgOperand(0)->getType());
+    }
 
-  for (uint32_t i = 0; i < numPhases; ++i) {
-    CVariable* src = val->IsUniform() ? val : m_currShader->GetNewAlias(val, type, i * SIZE_GRF, numEltsPerPhase);
-    CVariable* dst = m_currShader->GetNewAlias(m_destination, type, (i + phaseIndex) * SIZE_GRF, numEltsPerPhase);
+    for (uint32_t i = 0; i < numPhases; ++i) {
+        CVariable* src = val->IsUniform() ? val : m_currShader->GetNewAlias(val, type, i * SIZE_GRF, numEltsPerPhase);
+        CVariable* dst = m_currShader->GetNewAlias(m_destination, type, (i + phaseIndex) * SIZE_GRF, numEltsPerPhase);
 
-    m_encoder->SetNoMask();
-    m_encoder->SetSimdSize(simdMode);
-    m_encoder->SetDstSubReg(dstSubReg);
-    if (!val->IsUniform())
-        m_encoder->SetSrcRegion(0, 0, numEltsPerPhase, 1);
-    m_encoder->Copy(dst, src);
-    m_encoder->Push();
-  }
+        m_encoder->SetNoMask();
+        m_encoder->SetSimdSize(simdMode);
+        m_encoder->SetDstSubReg(dstSubReg);
+        if (!val->IsUniform())
+            m_encoder->SetSrcRegion(0, 0, numEltsPerPhase, 1);
+        m_encoder->Copy(dst, src);
+        m_encoder->Push();
+    }
 
-  return;
+    return;
 }
 
 void EmitPass::emitBroadcastMessagePhase(llvm::GenIntrinsicInst* inst) {
-  const uint16_t eltSizeInBytes = (uint16_t)m_DL->getTypeSizeInBits(inst->getType()) / 8;
-  const uint32_t width = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(3))->getZExtValue());
-  emitGetMessagePhaseType(inst, GetTypeFromSize(eltSizeInBytes), width);
+    const uint16_t eltSizeInBytes = (uint16_t)m_DL->getTypeSizeInBits(inst->getType()) / 8;
+    const uint32_t width = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(3))->getZExtValue());
+    emitGetMessagePhaseType(inst, GetTypeFromSize(eltSizeInBytes), width);
 }
 
 void EmitPass::emitSimdGetMessagePhase(llvm::GenIntrinsicInst* inst) {
-  CVariable* messagePhases = GetSymbol(inst->getArgOperand(0));
-  const uint32_t phaseIndex = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(1))->getZExtValue());
-  const uint32_t numPhases  = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(2))->getZExtValue());
-  const uint16_t eltSizeInBytes = (uint16_t)m_DL->getTypeSizeInBits(inst->getType()) / 8;
-  const uint16_t numEltsPerPhase = SIZE_GRF / eltSizeInBytes;
-  const VISA_Type type = GetTypeFromSize(eltSizeInBytes);
-  SIMDMode simdMode = SIMDMode::UNKNOWN;
+    CVariable* messagePhases = GetSymbol(inst->getArgOperand(0));
+    const uint32_t phaseIndex = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(1))->getZExtValue());
+    const uint32_t numPhases = int_cast<uint32_t>(cast<ConstantInt>(inst->getArgOperand(2))->getZExtValue());
+    const uint16_t eltSizeInBytes = (uint16_t)m_DL->getTypeSizeInBits(inst->getType()) / 8;
+    const uint16_t numEltsPerPhase = SIZE_GRF / eltSizeInBytes;
+    const VISA_Type type = GetTypeFromSize(eltSizeInBytes);
+    SIMDMode simdMode = SIMDMode::UNKNOWN;
 
-  if (eltSizeInBytes == 8) {
-    simdMode = SIMDMode::SIMD4;
-  }
-  else if (eltSizeInBytes == 4) {
-    simdMode = SIMDMode::SIMD8;
-  }
-  else if (eltSizeInBytes == 2) {
-    simdMode = SIMDMode::SIMD16;
-  }
-  else {
-    assert(false && "Unhandled data type");
-  }
+    if (eltSizeInBytes == 8) {
+        simdMode = SIMDMode::SIMD4;
+    }
+    else if (eltSizeInBytes == 4) {
+        simdMode = SIMDMode::SIMD8;
+    }
+    else if (eltSizeInBytes == 2) {
+        simdMode = SIMDMode::SIMD16;
+    }
+    else {
+        assert(false && "Unhandled data type");
+    }
 
-  for (uint32_t i = 0; i < numPhases; ++i) {
-    CVariable* src = m_currShader->GetNewAlias(messagePhases, type, (i + phaseIndex) * SIZE_GRF, numEltsPerPhase);
-    CVariable* dst = m_currShader->GetNewAlias(m_destination, type, i * SIZE_GRF, numEltsPerPhase);
+    for (uint32_t i = 0; i < numPhases; ++i) {
+        CVariable* src = m_currShader->GetNewAlias(messagePhases, type, (i + phaseIndex) * SIZE_GRF, numEltsPerPhase);
+        CVariable* dst = m_currShader->GetNewAlias(m_destination, type, i * SIZE_GRF, numEltsPerPhase);
 
-    m_encoder->SetNoMask();
-    m_encoder->SetSimdSize(simdMode);
-    m_encoder->SetSrcRegion(0, 0, numEltsPerPhase, 1);
-    m_encoder->Copy(dst, src);
-    m_encoder->Push();
-  }
+        m_encoder->SetNoMask();
+        m_encoder->SetSimdSize(simdMode);
+        m_encoder->SetSrcRegion(0, 0, numEltsPerPhase, 1);
+        m_encoder->Copy(dst, src);
+        m_encoder->Push();
+    }
 
-  return;
+    return;
 }
 
 void EmitPass::emitGetMessagePhaseType(llvm::GenIntrinsicInst* inst, VISA_Type type, uint32_t width) {
@@ -2645,9 +2649,9 @@ void EmitPass::emitSetMessagePhaseX(GenIntrinsicInst* inst) {
 
 void EmitPass::emitGetMessagePhase(llvm::GenIntrinsicInst* inst) {
     if (isa<UndefValue>(inst->getArgOperand(0)))
-      return;
+        return;
 
-    CVariable* messagePhases =  GetSymbol(inst->getArgOperand(0));
+    CVariable* messagePhases = GetSymbol(inst->getArgOperand(0));
     unsigned int phaseIndex = int_cast<unsigned>(cast<ConstantInt>(inst->getArgOperand(1))->getZExtValue());
 
     assert((phaseIndex * SIZE_GRF < messagePhases->GetSize()) && "out of bounds!");
@@ -2692,29 +2696,29 @@ void EmitPass::emitSetMessagePhase(llvm::GenIntrinsicInst* inst) {
 }
 
 // VA
-void EmitPass::emitVideoAnalyticSLM( llvm::GenIntrinsicInst* inst, const DWORD responseLen )
+void EmitPass::emitVideoAnalyticSLM(llvm::GenIntrinsicInst* inst, const DWORD responseLen)
 {
     int argNum = 0;
-    CVariable* outputVar = GetSymbol( inst->getArgOperand( argNum++ ) );
-    CVariable* coords = GetSymbol( inst->getArgOperand( argNum++ ) );
+    CVariable* outputVar = GetSymbol(inst->getArgOperand(argNum++));
+    CVariable* coords = GetSymbol(inst->getArgOperand(argNum++));
     CVariable* size = NULL;
 
     assert(!(m_currShader->m_dispatchSize == SIMDMode::SIMD32 && m_encoder->IsSecondHalf()) && "VA Intrinsics are simd independent");
     GenISAIntrinsic::ID id = inst->getIntrinsicID();
-    if( id == GenISAIntrinsic::GenISA_vaCentroid ||
+    if (id == GenISAIntrinsic::GenISA_vaCentroid ||
         id == GenISAIntrinsic::GenISA_vaBoolCentroid ||
-        id == GenISAIntrinsic::GenISA_vaBoolSum )
+        id == GenISAIntrinsic::GenISA_vaBoolSum)
     {
-        size = GetSymbol( inst->getArgOperand( argNum++ ) );
+        size = GetSymbol(inst->getArgOperand(argNum++));
     }
 
-    CVariable* srcImg = GetSymbol( inst->getArgOperand( argNum++ ) );
+    CVariable* srcImg = GetSymbol(inst->getArgOperand(argNum++));
 
     // So far we support only one VA function per kernel, and other sample
     // messages are not supported when there is VA function within the kernel.
     // So, for now it should be fine to always use sampler 0 for VA functions.
     DWORD samplerIndex = 0;
-    CVariable* sampler = m_currShader->ImmToVariable( samplerIndex, ISA_TYPE_UD );
+    CVariable* sampler = m_currShader->ImmToVariable(samplerIndex, ISA_TYPE_UD);
 
     uint16_t newNumElems = int_cast<uint16_t>(responseLen * SIZE_GRF / SIZE_DWORD);
 
@@ -2722,21 +2726,21 @@ void EmitPass::emitVideoAnalyticSLM( llvm::GenIntrinsicInst* inst, const DWORD r
         newNumElems,
         ISA_TYPE_UD,
         outputVar->GetAlign(),
-        false );
+        false);
 
-    if( inst->getIntrinsicID( ) == GenISAIntrinsic::GenISA_vaConvolve )
+    if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_vaConvolve)
     {
         CVariable* convResult = m_currShader->GetNewAlias(
             vaResult,
             ISA_TYPE_UW,
             0,
-            newNumElems * 2 );
+            newNumElems * 2);
 
-        m_encoder->SendVideoAnalytic( inst, convResult, coords, size, srcImg, sampler );
+        m_encoder->SendVideoAnalytic(inst, convResult, coords, size, srcImg, sampler);
     }
     else
     {
-        m_encoder->SendVideoAnalytic( inst, vaResult, coords, size, srcImg, sampler );
+        m_encoder->SendVideoAnalytic(inst, vaResult, coords, size, srcImg, sampler);
     }
     m_encoder->Push();
 
@@ -2748,7 +2752,7 @@ void EmitPass::emitVideoAnalyticSLM( llvm::GenIntrinsicInst* inst, const DWORD r
     DWORD messageSpecificControl = encodeMessageSpecificControlForReadWrite(
         EU_DATA_PORT_WRITE_MESSAGE_TYPE_UNTYPED_SURFACE_WRITE,
         CHANNEL_MASK_R,
-        SIMDMode::SIMD8 );
+        SIMDMode::SIMD8);
     bool invalidateAfterReadEnable = false;
     DWORD btiIndex = SLM_BTI;
 
@@ -2760,43 +2764,43 @@ void EmitPass::emitVideoAnalyticSLM( llvm::GenIntrinsicInst* inst, const DWORD r
         EU_DATA_PORT_WRITE_MESSAGE_TYPE_UNTYPED_SURFACE_WRITE,
         messageSpecificControl,
         invalidateAfterReadEnable,
-        btiIndex );
+        btiIndex);
 
     DWORD exDescValue = EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1;
 
-    CVariable* desc = m_currShader->ImmToVariable( descValue, ISA_TYPE_UD );
-    CVariable* exdesc = m_currShader->ImmToVariable( exDescValue, ISA_TYPE_UD );
+    CVariable* desc = m_currShader->ImmToVariable(descValue, ISA_TYPE_UD);
+    CVariable* exdesc = m_currShader->ImmToVariable(exDescValue, ISA_TYPE_UD);
 
     CVariable* storeMessage = m_currShader->GetNewVariable(
         2 * SIZE_GRF / SIZE_DWORD,
         ISA_TYPE_UD,
         outputVar->GetAlign(),
-        false );
+        false);
 
-    m_encoder->SetSimdSize( SIMDMode::SIMD8 );
-    m_encoder->SetNoMask( );
-    m_encoder->Cast( storeMessage, m_currShader->ImmToVariable( 0x76543210, ISA_TYPE_V ) );
-    m_encoder->Shl( storeMessage, storeMessage, m_currShader->ImmToVariable( 2, ISA_TYPE_UD ) );
+    m_encoder->SetSimdSize(SIMDMode::SIMD8);
+    m_encoder->SetNoMask();
+    m_encoder->Cast(storeMessage, m_currShader->ImmToVariable(0x76543210, ISA_TYPE_V));
+    m_encoder->Shl(storeMessage, storeMessage, m_currShader->ImmToVariable(2, ISA_TYPE_UD));
     m_encoder->Push();
 
-    for( DWORD i = 0; i < responseLen; i++ )
+    for (DWORD i = 0; i < responseLen; i++)
     {
-        if( i > 0 )
+        if (i > 0)
         {
-            m_encoder->SetSimdSize( SIMDMode::SIMD8 );
-            m_encoder->SetNoMask( );
-            m_encoder->Add( storeMessage, storeMessage, m_currShader->ImmToVariable( 0x20, ISA_TYPE_UD ) );
+            m_encoder->SetSimdSize(SIMDMode::SIMD8);
+            m_encoder->SetNoMask();
+            m_encoder->Add(storeMessage, storeMessage, m_currShader->ImmToVariable(0x20, ISA_TYPE_UD));
             m_encoder->Push();
         }
 
-        m_encoder->SetSimdSize( SIMDMode::SIMD8 );
-        m_encoder->SetNoMask( );
-        m_encoder->SetDstSubVar( 1 );
-        m_encoder->SetSrcSubVar( 0, i );
-        m_encoder->Copy( storeMessage, vaResult );
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->SetNoMask();
+        m_encoder->SetDstSubVar(1);
+        m_encoder->SetSrcSubVar(0, i);
+        m_encoder->Copy(storeMessage, vaResult);
 
-        m_encoder->Send( NULL, storeMessage,
-            EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1, exdesc, desc, false );
+        m_encoder->Send(NULL, storeMessage,
+            EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1, exdesc, desc, false);
         m_encoder->Push();
     }
 
@@ -2821,7 +2825,7 @@ void EmitPass::emitVideoAnalyticGRF(llvm::GenIntrinsicInst* inst, const DWORD re
 
 void EmitPass::BinaryUnary(llvm::Instruction* inst, const SSource source[2], const DstModifier& modifier)
 {
-    switch(inst->getOpcode())
+    switch (inst->getOpcode())
     {
     case Instruction::FCmp:
     case Instruction::ICmp:
@@ -2872,15 +2876,15 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2]) const
     // Mul64 does not write to m_destination!
 
     assert((src[1]->GetType() == ISA_TYPE_Q || src[1]->GetType() == ISA_TYPE_UQ)
-               && "Cannot multiply a qword by a non-qword type");
+        && "Cannot multiply a qword by a non-qword type");
 
     // The signedness of the hi-part type should be the same as that
     // of the original destination type.
     VISA_Type hiType;
     if (dst->GetType() == ISA_TYPE_Q)
-      hiType = ISA_TYPE_D;
+        hiType = ISA_TYPE_D;
     else
-      hiType = ISA_TYPE_UD;
+        hiType = ISA_TYPE_UD;
 
     // Figure out what the hi and what the lo part of each source is.
     // For non-uniforms, this requires an unpack.
@@ -2927,11 +2931,11 @@ void EmitPass::Mul64(CVariable* dst, CVariable* src[2]) const
 
     CVariable *dstLo, *dstHi, *dstTemp;
     dstLo = m_currShader->GetNewVariable(dst->GetNumberElement(),
-                ISA_TYPE_UD, m_destination->GetAlign(), m_destination->IsUniform());
+        ISA_TYPE_UD, m_destination->GetAlign(), m_destination->IsUniform());
     dstHi = m_currShader->GetNewVariable(dst->GetNumberElement(),
-                hiType, m_destination->GetAlign(), m_destination->IsUniform());
+        hiType, m_destination->GetAlign(), m_destination->IsUniform());
     dstTemp = m_currShader->GetNewVariable(dst->GetNumberElement(),
-                hiType, m_destination->GetAlign(), m_destination->IsUniform());
+        hiType, m_destination->GetAlign(), m_destination->IsUniform());
 
 
     //
@@ -3008,7 +3012,7 @@ void EmitPass::Mul(const SSource sources[2], const DstModifier &modifier)
 
 void EmitPass::FDiv(const SSource sources[2], const DstModifier& modifier)
 {
-    if(isOne(sources[0].value))
+    if (isOne(sources[0].value))
     {
         Unary(EOPCODE_INV, &sources[1], modifier);
     }
@@ -3049,28 +3053,28 @@ void EmitPass::Cmp(llvm::CmpInst::Predicate pred, const SSource sources[2], cons
     CVariable* src0 = GetSrcVariable(sources[0]);
     CVariable* src1 = GetSrcVariable(sources[1]);
 
-    if(IsUnsignedCmp(pred))
+    if (IsUnsignedCmp(pred))
     {
         src0 = m_currShader->BitCast(src0, GetUnsignedType(src0->GetType()));
         src1 = m_currShader->BitCast(src1, GetUnsignedType(src1->GetType()));
     }
-    else if(IsSignedCmp(pred))
+    else if (IsSignedCmp(pred))
     {
         src0 = m_currShader->BitCast(src0, GetSignedType(src0->GetType()));
         src1 = m_currShader->BitCast(src1, GetSignedType(src1->GetType()));
     }
 
     CVariable* dst = m_destination;
-    if(m_destination->GetType() != ISA_TYPE_BOOL && dst->GetType() != src0->GetType())
+    if (m_destination->GetType() != ISA_TYPE_BOOL && dst->GetType() != src0->GetType())
     {
         assert(CEncoder::GetCISADataTypeSize(dst->GetType()) == CEncoder::GetCISADataTypeSize(src0->GetType()) &&
             "Cmp to GRF must have the same size for source and destination");
-        dst = m_currShader->BitCast( m_destination, src0->GetType() );
+        dst = m_currShader->BitCast(m_destination, src0->GetType());
     }
 
     SetSourceModifiers(0, sources[0]);
     SetSourceModifiers(1, sources[1]);
-    m_encoder->Cmp(predicate,dst,src0,src1);
+    m_encoder->Cmp(predicate, dst, src0, src1);
     m_encoder->Push();
 }
 
@@ -3114,7 +3118,7 @@ void EmitPass::Avg(const SSource sources[2], const DstModifier& modifier)
     Binary(EOPCODE_AVG, sources, modifier);
 }
 
-void EmitPass::Tenary(e_opcode opCode,  const SSource sources[3], const DstModifier& modifier)
+void EmitPass::Tenary(e_opcode opCode, const SSource sources[3], const DstModifier& modifier)
 {
     Alu<3>(opCode, sources, modifier);
 }
@@ -3133,8 +3137,8 @@ template<int N>
 void EmitPass::Alu(e_opcode opCode, const SSource sources[N], const DstModifier& modifier)
 {
 
-    CVariable* srcs[3] = {nullptr, nullptr, nullptr};
-    for(uint i=0;i<N;i++)
+    CVariable* srcs[3] = { nullptr, nullptr, nullptr };
+    for (uint i = 0; i < N; i++)
     {
         bool fromConstantPool = sources[i].fromConstantPool;
         srcs[i] = GetSrcVariable(sources[i], fromConstantPool);
@@ -3167,12 +3171,12 @@ void EmitPass::emitOutput(llvm::GenIntrinsicInst* inst)
 {
     ShaderOutputType outputType =
         (ShaderOutputType)llvm::cast<llvm::ConstantInt>(inst->getOperand(4))->getZExtValue();
-    if(outputType == SHADER_OUTPUT_TYPE_OMASK)
+    if (outputType == SHADER_OUTPUT_TYPE_OMASK)
     {
         CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
         assert(psProgram->GetPhase() == PSPHASE_COARSE &&
             "oMask intrinsics should be left only for coarse phase");
-        if(!psProgram->IsLastPhase())
+        if (!psProgram->IsLastPhase())
         {
             CVariable* oMask = GetSymbol(inst->getOperand(0));
             CVariable* temp =
@@ -3257,11 +3261,11 @@ void EmitPass::emitPSInputCst(llvm::Instruction* inst)
 void EmitPass::emitPSInput(llvm::Instruction* inst)
 {
     e_interpolation mode = (e_interpolation)llvm::cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
-    if(mode == EINTERPOLATION_CONSTANT)
+    if (mode == EINTERPOLATION_CONSTANT)
     {
         emitPSInputCst(inst);
     }
-    else if(inst->getType()->isHalfTy()
+    else if (inst->getType()->isHalfTy()
         )
     {
         emitPSInputMAD(inst);
@@ -3278,7 +3282,7 @@ void EmitPass::emitPlnInterpolation(CVariable* baryVar, unsigned int delatIndex)
     unsigned int numPln = 1;
     // temp variable should be the same type as the destination
     CVariable* inputVar = psProgram->GetInputDelta(delatIndex);
-    for(unsigned int i = 0; i < numPln; i++)
+    for (unsigned int i = 0; i < numPln; i++)
     {
         // plane will access 4 operands
         m_encoder->SetSrcRegion(0, 0, 4, 1);
@@ -3305,19 +3309,19 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
     bool perspective = cast<ConstantInt>(inst->getOperand(inst->getNumArgOperands() - 1))->getZExtValue() != 0;
     EU_PIXEL_INTERPOLATOR_INTERPOLATION_MODE interpolationMode =
         perspective ? EU_PI_MESSAGE_PERSPECTIVE_INTERPOLATION : EU_PI_MESSAGE_LINEAR_INTERPOLATION;
-    if(interpolationMode == EU_PI_MESSAGE_LINEAR_INTERPOLATION)
+    if (interpolationMode == EU_PI_MESSAGE_LINEAR_INTERPOLATION)
     {
         // workaround driver interface; tell the driver we use noperspective barys to turn on noperspective interpolation
         psProgram->GetBaryReg(EINTERPOLATION_LINEARNOPERSPECTIVE);
     }
     uint exDesc = EU_GEN7_MESSAGE_TARGET_PIXEL_INTERPOLATOR;
     EU_PIXEL_INTERPOLATOR_SIMD_MODE executionMode = pixelInterpolatorSimDMode(m_currShader->m_SIMDSize);
-    uint responseLength = executionMode? 4 : 2;
+    uint responseLength = executionMode ? 4 : 2;
     uint messageLength = 1;
     CVariable* payload = nullptr;
     uint desc = 0;
     CVariable* messDesc = nullptr;
-    switch(inst->getIntrinsicID())
+    switch (inst->getIntrinsicID())
     {
     case GenISAIntrinsic::GenISA_PullSampleIndexBarys:
     {
@@ -3370,49 +3374,49 @@ void EmitPass::emitEvalAttribute(llvm::GenIntrinsicInst* inst)
     break;
 
     case GenISAIntrinsic::GenISA_PullSnappedBarys:
+    {
+        ConstantInt* xCstOffset = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0));
+        ConstantInt* yCstOffset = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(1));
+        if (xCstOffset && yCstOffset && psProgram->GetPhase() != PSPHASE_COARSE)
         {
-            ConstantInt* xCstOffset = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(0));
-            ConstantInt* yCstOffset = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(1));
-            if(xCstOffset && yCstOffset && psProgram->GetPhase() != PSPHASE_COARSE)
-            {
-                payload = m_currShader->GetNewVariable(messageLength*(SIZE_GRF >> 2), ISA_TYPE_D, EALIGN_GRF);
-                desc = PixelInterpolator(
-                    messageLength,
-                    responseLength,
-                    m_encoder->IsSecondHalf() ? 1 : 0,
-                    executionMode,
-                    EU_PI_MESSAGE_EVAL_PER_MESSAGE_OFFSET,
-                    interpolationMode,
-                    (uint)xCstOffset->getZExtValue(),
-                    (uint)yCstOffset->getZExtValue());
-            }
-            else
-            {
-                messageLength = 2 * numLanes(m_currShader->m_SIMDSize) / 8;
-                payload = m_currShader->GetNewVariable(messageLength*(SIZE_GRF >> 2), ISA_TYPE_D, EALIGN_GRF);
-                desc = PixelInterpolator(
-                    messageLength,
-                    responseLength,
-                    m_encoder->IsSecondHalf() ? 1 : 0,
-                    psProgram->GetPhase() == PSPHASE_COARSE,
-                    executionMode,
-                    EU_PI_MESSAGE_EVAL_PER_SLOT_OFFSET,
-                    interpolationMode);
-                CVariable* XOffset = GetSymbol(inst->getOperand(0));
-                CVariable* YOffset = GetSymbol(inst->getOperand(1));
-                m_encoder->Copy(payload, XOffset);
-                m_encoder->Push();
-
-                m_encoder->SetDstSubVar(numLanes(m_currShader->m_SIMDSize) / 8);
-                m_encoder->Copy(payload, YOffset);
-                m_encoder->Push();
-            }
-            messDesc = psProgram->ImmToVariable(desc, ISA_TYPE_UD);
+            payload = m_currShader->GetNewVariable(messageLength*(SIZE_GRF >> 2), ISA_TYPE_D, EALIGN_GRF);
+            desc = PixelInterpolator(
+                messageLength,
+                responseLength,
+                m_encoder->IsSecondHalf() ? 1 : 0,
+                executionMode,
+                EU_PI_MESSAGE_EVAL_PER_MESSAGE_OFFSET,
+                interpolationMode,
+                (uint)xCstOffset->getZExtValue(),
+                (uint)yCstOffset->getZExtValue());
         }
+        else
+        {
+            messageLength = 2 * numLanes(m_currShader->m_SIMDSize) / 8;
+            payload = m_currShader->GetNewVariable(messageLength*(SIZE_GRF >> 2), ISA_TYPE_D, EALIGN_GRF);
+            desc = PixelInterpolator(
+                messageLength,
+                responseLength,
+                m_encoder->IsSecondHalf() ? 1 : 0,
+                psProgram->GetPhase() == PSPHASE_COARSE,
+                executionMode,
+                EU_PI_MESSAGE_EVAL_PER_SLOT_OFFSET,
+                interpolationMode);
+            CVariable* XOffset = GetSymbol(inst->getOperand(0));
+            CVariable* YOffset = GetSymbol(inst->getOperand(1));
+            m_encoder->Copy(payload, XOffset);
+            m_encoder->Push();
 
-        m_encoder->Send(m_destination, payload, exDesc, messDesc, false);
-        m_encoder->Push();
-        break;
+            m_encoder->SetDstSubVar(numLanes(m_currShader->m_SIMDSize) / 8);
+            m_encoder->Copy(payload, YOffset);
+            m_encoder->Push();
+        }
+        messDesc = psProgram->ImmToVariable(desc, ISA_TYPE_UD);
+    }
+
+    m_encoder->Send(m_destination, payload, exDesc, messDesc, false);
+    m_encoder->Push();
+    break;
 
     default:
         assert(0);
@@ -3429,7 +3433,7 @@ void EmitPass::emitInterpolate(llvm::GenIntrinsicInst* inst)
 
 void EmitPass::emitDSInput(llvm::Instruction* pInst)
 {
-    assert(m_currShader->GetShaderType()==ShaderType::DOMAIN_SHADER);
+    assert(m_currShader->GetShaderType() == ShaderType::DOMAIN_SHADER);
     CVariable* dst = m_destination;
 
     CDomainShader* dsProgram = static_cast<CDomainShader*>(m_currShader);
@@ -3461,7 +3465,7 @@ void EmitPass::emitDSInput(llvm::Instruction* pInst)
 
 void EmitPass::emitInput(llvm::Instruction* inst)
 {
-    switch(m_currShader->GetShaderType())
+    switch (m_currShader->GetShaderType())
     {
     case ShaderType::PIXEL_SHADER:
         emitPSInput(inst);
@@ -3480,7 +3484,7 @@ void EmitPass::emitcycleCounter(llvm::Instruction* inst)
     CVariable* dst = m_destination;
     m_encoder->Copy(dst, m_currShader->GetTSC());
     m_encoder->Push();
-    m_encoder->SetSrcSubReg(0,1);
+    m_encoder->SetSrcSubReg(0, 1);
     m_encoder->SetDstSubReg(1);
     m_encoder->Copy(dst, m_currShader->GetTSC());
     m_encoder->Push();
@@ -3500,7 +3504,7 @@ void EmitPass::emitSetDebugReg(llvm::Instruction* inst)
     }
 
     // read dbg0.1
-    m_encoder->SetSrcSubReg(0,1);
+    m_encoder->SetSrcSubReg(0, 1);
     m_encoder->SetSrcRegion(0, 0, 1, 0);
     m_encoder->Copy(m_destination, m_currShader->GetDBG());
     m_encoder->Push();
@@ -3510,9 +3514,9 @@ CVariable* EmitPass::ComputeSampleIntOffset(llvm::Instruction* sample, uint sour
 {
     uint offset = 0;
     bool dynamicOffset = false;
-    for(uint i = 0; i < 3; i++)
+    for (uint i = 0; i < 3; i++)
     {
-        if(ConstantInt* immOffset = dyn_cast<ConstantInt>(sample->getOperand(sourceIndex + i)))
+        if (ConstantInt* immOffset = dyn_cast<ConstantInt>(sample->getOperand(sourceIndex + i)))
         {
             uint channelOffset = static_cast<uint>(immOffset->getZExtValue());
             offset = (offset << 4) | (channelOffset & 0xf);
@@ -3523,15 +3527,15 @@ CVariable* EmitPass::ComputeSampleIntOffset(llvm::Instruction* sample, uint sour
         }
     }
     CVariable* packedOffset = m_currShader->ImmToVariable(offset, ISA_TYPE_UW);
-    if(dynamicOffset)
+    if (dynamicOffset)
     {
         CVariable* tempPackedOffset = m_currShader->GetNewVariable(1, ISA_TYPE_UW, EALIGN_WORD, true);
-        for(uint i = 0; i < 3; i++)
+        for (uint i = 0; i < 3; i++)
         {
-            if(!isa<ConstantInt>(sample->getOperand(sourceIndex + i)))
+            if (!isa<ConstantInt>(sample->getOperand(sourceIndex + i)))
             {
                 CVariable* offsetV = GetSymbol(sample->getOperand(sourceIndex + i));
-                if(!offsetV->IsUniform())
+                if (!offsetV->IsUniform())
                 {
                     offsetV = UniformCopy(offsetV);
                 }
@@ -3539,11 +3543,11 @@ CVariable* EmitPass::ComputeSampleIntOffset(llvm::Instruction* sample, uint sour
                 // Offset is only 4 bits, mask off remaining bits
                 CVariable* offsetBits = m_currShader->GetNewVariable(1, ISA_TYPE_UW, EALIGN_WORD, true);
                 m_encoder->And(offsetBits, offsetV, m_currShader->ImmToVariable(0xF, ISA_TYPE_UW));
-                if(i>0)
+                if (i > 0)
                 {
                     m_encoder->Shl(offsetBits, offsetBits, m_currShader->ImmToVariable(i * 4, ISA_TYPE_UW));
                 }
-                if(packedOffset->IsImmediate() && packedOffset->GetImmediateValue() == 0)
+                if (packedOffset->IsImmediate() && packedOffset->GetImmediateValue() == 0)
                 {
                     packedOffset = offsetBits;
                 }
@@ -3562,15 +3566,15 @@ CVariable* EmitPass::ComputeSampleIntOffset(llvm::Instruction* sample, uint sour
 uint CorrectLdIndex(uint i, bool oldLoad)
 {
     uint index = i;
-    if(oldLoad)
+    if (oldLoad)
     {
-        if(i == 1)
+        if (i == 1)
         {
             index = 2;
         }
-        else if(i == 2)
+        else if (i == 2)
         {
-            index =1;
+            index = 1;
         }
     }
     return index;
@@ -3604,7 +3608,7 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     assert(numOperands > 7 && numOperands < 10 && "Wrong number of operands");
 
     uint writeMask = m_currShader->GetExtractMask(inst);
-    assert(writeMask!=0 && "Wrong write mask");
+    assert(writeMask != 0 && "Wrong write mask");
 
     EOPCODE opCode = GetOpCode(inst);
     //Subtract the offsets, resource sources to get
@@ -3615,16 +3619,16 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     ResourceDescriptor resource;
     Value* ptr = inst->getOperand(textureArgIdx);
     resource = GetResourceVariable(ptr);
-    uint offsetSourceIndex = numSources+1;
+    uint offsetSourceIndex = numSources + 1;
     CVariable* offset = ComputeSampleIntOffset(inst, offsetSourceIndex);
 
     SmallVector<CVariable*, 4> payload;
 
-    for( uint i = numSources - 1; i > 0; i-- )
+    for (uint i = numSources - 1; i > 0; i--)
     {
         uint index = CorrectLdIndex(i, m_currShader->m_Platform->hasOldLdOrder());
-        CVariable* src = GetSymbol( inst->getOperand( index ) );
-        if( !(src->IsImmediate() && src->GetImmediateValue() == 0) )
+        CVariable* src = GetSymbol(inst->getOperand(index));
+        if (!(src->IsImmediate() && src->GetImmediateValue() == 0))
         {
             break;
         }
@@ -3633,11 +3637,11 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
 
     bool zeroLOD = false;
     //SKL+ new message ld_lz
-    if(numSources > 2 && m_currShader->m_Platform->supportSampleAndLd_lz())
+    if (numSources > 2 && m_currShader->m_Platform->supportSampleAndLd_lz())
     {
         // Check if lod is 0
         CVariable* src = GetSymbol(inst->getOperand(2));
-        if(src->IsImmediate() && src->GetImmediateValue() == 0)
+        if (src->IsImmediate() && src->GetImmediateValue() == 0)
         {
             zeroLOD = true;
             numSources--;
@@ -3645,21 +3649,21 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
     }
 
     //create send payload for numSources
-    for( uint i = 0; i < numSources; i++ )
+    for (uint i = 0; i < numSources; i++)
     {
         uint index = i;
         //no difference in ld_lz between SKL+ and BDW
-        if(!zeroLOD)
+        if (!zeroLOD)
         {
             index = CorrectLdIndex(i, m_currShader->m_Platform->hasOldLdOrder());
         }
-        if(zeroLOD && index==2)
+        if (zeroLOD && index == 2)
         {
             //3D resources skip lod and read z coordinate
             index = 3;
         }
         CVariable* src = GetSymbol(inst->getOperand(index));
-        if(src->IsUniform())
+        if (src->IsUniform())
         {
             uint16_t size = m_destination->IsUniform() ? 8 : numLanes(m_currShader->m_SIMDSize);
             CVariable* newSource = m_currShader->GetNewVariable(
@@ -3699,12 +3703,12 @@ void EmitPass::emitLdInstruction(llvm::Instruction* inst)
         }
     }
 
-    bool feedbackEnable = (writeMask & (1<<4))? true : false;
+    bool feedbackEnable = (writeMask & (1 << 4)) ? true : false;
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, flag, label);
     m_encoder->SetPredicate(flag);
-    if(m_destination->IsUniform())
+    if (m_destination->IsUniform())
     {
         m_encoder->SetUniformSIMDSize(SIMDMode::SIMD8);
     }
@@ -3815,10 +3819,10 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
         {
             return false;
         }
-		if (payloadToCCTupleRelativeOffset)
-		{
-			return false;
-		}
+        if (payloadToCCTupleRelativeOffset)
+        {
+            return false;
+        }
     }
 
     assert(ccTuple);
@@ -3886,10 +3890,10 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
         }
     }
 
-	assert(dummyValPtr);
+    assert(dummyValPtr);
 
-	offset += payloadToCCTupleRelativeOffset *
-		m_CE->GetSingleElementWidth(m_currShader->m_SIMDSize, m_DL, dummyValPtr);
+    offset += payloadToCCTupleRelativeOffset *
+        m_CE->GetSingleElementWidth(m_currShader->m_SIMDSize, m_DL, dummyValPtr);
 
 
     SmallPtrSet<Value*, 8> touchedValuesSet;
@@ -3900,7 +3904,7 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
         assert(val && "Val cannot be NULL");
         VISA_Type type = m_currShader->GetType(val->getType());
 
-        if (touchedValuesSet.count(val)){
+        if (touchedValuesSet.count(val)) {
             src[index] = m_currShader->GetNewAlias(rootPayloadVar, type, (uint16_t)(offset), 0);
             m_encoder->Copy(src[index], GetSymbol(val));
             m_encoder->Push();
@@ -3912,7 +3916,7 @@ bool EmitPass::interceptRenderTargetWritePayloadCoalescing(
         }
 
         bool needsCopy = false;
-        if (m_CE->IsValConstOrIsolated(val)){
+        if (m_CE->IsValConstOrIsolated(val)) {
             needsCopy = true;
         }
         else
@@ -3996,7 +4000,7 @@ void EmitPass::prepareRenderTargetWritePayload(
     CVariable*& varSource0Alpha,
     CVariable*& varMaskOpnd,
     CVariable*& varDepthOpnd,
-    CVariable*& varStencilOpnd )
+    CVariable*& varStencilOpnd)
 {
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
 
@@ -4016,13 +4020,13 @@ void EmitPass::prepareRenderTargetWritePayload(
     }
 
     if (interceptRenderTargetWritePayloadCoalescing(
-            inst,
-            src,
-            varSource0Alpha,
-            varMaskOpnd,
-            varDepthOpnd,
-            varStencilOpnd,
-            valueToVariableMap))
+        inst,
+        src,
+        varSource0Alpha,
+        varMaskOpnd,
+        varDepthOpnd,
+        varStencilOpnd,
+        valueToVariableMap))
     {
         return;
     }
@@ -4091,7 +4095,7 @@ void EmitPass::prepareRenderTargetWritePayload(
     {
         varStencilOpnd = GetSymbol(inst->getStencil());
         /*4 bytes are needed for the final destination per element*/
-        CVariable * temp = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize)*4, ISA_TYPE_UB, EALIGN_GRF);
+        CVariable * temp = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize) * 4, ISA_TYPE_UB, EALIGN_GRF);
         CVariable* ubSrc = m_currShader->BitCast(varStencilOpnd, ISA_TYPE_UB);
         if (varStencilOpnd->IsUniform())
         {
@@ -4151,26 +4155,26 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
     Value* vSample = inst->getSampleIndex();
     Value* vColor[4] = { inst->getRed(), inst->getGreen(), inst->getBlue(), inst->getAlpha() };
 
-    if(outputDepth)
+    if (outputDepth)
     {
         psProgram->OutputDepth();
     }
-    if(outputStencil)
+    if (outputStencil)
     {
         psProgram->OutputStencil();
     }
-    if(oMask)
+    if (oMask)
     {
         psProgram->OutputMask();
     }
     uint bindingTableIndex = 0;
-    if(RTIndex != -1)
+    if (RTIndex != -1)
     {
         bindingTableIndex = m_currShader->m_pBtiLayout->GetRenderTargetIndex(RTIndex);
     }
     else
     {
-        if(!psProgram->IsLastPhase())
+        if (!psProgram->IsLastPhase())
         {
             return;
         }
@@ -4180,7 +4184,7 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
     bool directIdx = inst->isImmRTIndex();
     m_currShader->SetBindingTableEntryCountAndBitmap(directIdx, bindingTableIndex);
 
-    if(EOT)
+    if (EOT)
     {
         assert(psProgram->m_hasEOT == false);
         psProgram->m_hasEOT = true;
@@ -4196,16 +4200,16 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
     CVariable* pMaskOpnd = nullptr;
 
     DenseMap<Value*, CVariable**> valueToVariableMap;
-    if(!isa<UndefValue>(vSrc0Alpha)) {
+    if (!isa<UndefValue>(vSrc0Alpha)) {
         valueToVariableMap[vSrc0Alpha] = &source0Alpha;
     }
     if (oMask) {
         valueToVariableMap[vMask] = &oMaskOpnd;
     }
-    if (outputDepth){
+    if (outputDepth) {
         valueToVariableMap[vDepth] = &outputDepthOpnd;
     }
-    if (outputStencil){
+    if (outputStencil) {
         valueToVariableMap[vStencil] = &stencilOpnd;
     }
 
@@ -4225,16 +4229,16 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
         source0Alpha,
         oMaskOpnd,
         outputDepthOpnd,
-        stencilOpnd );
+        stencilOpnd);
 
     CVariable* cpsCounter = nullptr;
-    if(psProgram->GetPhase() == PSPHASE_PIXEL)
+    if (psProgram->GetPhase() == PSPHASE_PIXEL)
     {
         cpsCounter = psProgram->GetCurrentPhaseCounter();
     }
 
     bool coarseMode = false;
-    if(psProgram->GetPhase() == PSPHASE_COARSE)
+    if (psProgram->GetPhase() == PSPHASE_COARSE)
     {
         coarseMode = true;
     }
@@ -4242,10 +4246,10 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
     CVariable* bti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_D);
 
     CVariable* sampleIndex = nullptr;
-    if(perSample)
+    if (perSample)
     {
         sampleIndex = GetSymbol(vSample);
-        if(!sampleIndex->IsUniform())
+        if (!sampleIndex->IsUniform())
         {
             sampleIndex = UniformCopy(sampleIndex);
 
@@ -4304,12 +4308,12 @@ void EmitPass::emitRenderTargetWrite(llvm::RTWritIntrinsic* inst, bool fromRet)
     m_encoder->Push();
 }
 
-void EmitPass::emitSimdLaneId( llvm::Instruction* inst )
+void EmitPass::emitSimdLaneId(llvm::Instruction* inst)
 {
-    m_currShader->GetSimdOffsetBase( m_destination );
+    m_currShader->GetSimdOffsetBase(m_destination);
 }
 
-void EmitPass::emitPatchInstanceId( llvm::Instruction* inst )
+void EmitPass::emitPatchInstanceId(llvm::Instruction* inst)
 {
     assert(m_currShader->GetShaderType() == ShaderType::HULL_SHADER);
     CHullShader* hsProgram = static_cast<CHullShader*>(m_currShader);
@@ -4332,7 +4336,7 @@ void EmitPass::emitPatchInstanceId( llvm::Instruction* inst )
     m_encoder->Push();
 }
 
-void EmitPass::emitSimdSize( llvm::Instruction* inst )
+void EmitPass::emitSimdSize(llvm::Instruction* inst)
 {
     //CVariable* simdSize = m_currShader->ImmToVariable( numLanes( m_SimdMode ), ISA_TYPE_UD );
     //m_encoder->Cast( m_destination, simdSize );
@@ -4340,16 +4344,16 @@ void EmitPass::emitSimdSize( llvm::Instruction* inst )
 }
 
 /// Emits VISA instructions for SIMD_SHUFFLE.
-void EmitPass::emitSimdShuffle( llvm::Instruction* inst )
+void EmitPass::emitSimdShuffle(llvm::Instruction* inst)
 {
-    CVariable* data        = GetSymbol( inst->getOperand( 0 ) );
-    CVariable* simdChannel = GetSymbol( inst->getOperand( 1 ) );
+    CVariable* data = GetSymbol(inst->getOperand(0));
+    CVariable* simdChannel = GetSymbol(inst->getOperand(1));
 
     const bool isSimd32 = (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
 
-    if ( data->IsUniform())
+    if (data->IsUniform())
     {
-        m_encoder->Copy( m_destination, data );
+        m_encoder->Copy(m_destination, data);
         m_encoder->Push();
         if (isSimd32 && !m_destination->IsUniform())
         {
@@ -4429,11 +4433,11 @@ void EmitPass::emitSimdShuffle( llvm::Instruction* inst )
         int shtAmt;
         switch (m_encoder->GetCISADataTypeSize(m_destination->GetType()))
         {
-            case 1:  shtAmt = 0; break;
-            case 2:  shtAmt = 1; break;
-            case 4:  shtAmt = 2; break;
-            case 8:  shtAmt = 3; break;
-            default: assert(false && "Unexpected data type size.");
+        case 1:  shtAmt = 0; break;
+        case 2:  shtAmt = 1; break;
+        case 4:  shtAmt = 2; break;
+        case 8:  shtAmt = 3; break;
+        default: assert(false && "Unexpected data type size.");
         }
 
         CVariable* simdChannelUW = m_currShader->BitCast(simdChannel, ISA_TYPE_UW);
@@ -4531,14 +4535,14 @@ void EmitPass::emitSimdShuffle( llvm::Instruction* inst )
     }
 }
 
-void EmitPass::emitSimdShuffleDown( llvm::Instruction* inst )
+void EmitPass::emitSimdShuffleDown(llvm::Instruction* inst)
 {
-    CVariable* pCurrentData = GetSymbol( inst->getOperand( 0 ) );
-    CVariable* pNextData    = GetSymbol( inst->getOperand( 1 ) );
-    CVariable* pDelta       = m_currShader->GetSymbol( inst->getOperand( 2 ) );
+    CVariable* pCurrentData = GetSymbol(inst->getOperand(0));
+    CVariable* pNextData = GetSymbol(inst->getOperand(1));
+    CVariable* pDelta = m_currShader->GetSymbol(inst->getOperand(2));
 
     // temp size is the sum of src0 and src1
-    uint16_t nbElements = numLanes( m_SimdMode ) * 2;
+    uint16_t nbElements = numLanes(m_SimdMode) * 2;
 
     // Join current and Next Data
     CVariable* pCombinedData = m_currShader->GetNewVariable(
@@ -4548,14 +4552,14 @@ void EmitPass::emitSimdShuffleDown( llvm::Instruction* inst )
 
     // copy current data
     m_encoder->SetNoMask();
-    m_encoder->Copy( pCombinedData, pCurrentData );
+    m_encoder->Copy(pCombinedData, pCurrentData);
     m_encoder->Push();
 
     // Copy next data
     uint  dstSubRegOffset = numLanes(m_SimdMode);
-    m_encoder->SetDstSubReg( dstSubRegOffset );
+    m_encoder->SetDstSubReg(dstSubRegOffset);
     m_encoder->SetNoMask();
-    m_encoder->Copy( pCombinedData, pNextData );
+    m_encoder->Copy(pCombinedData, pNextData);
     m_encoder->Push();
 
     // Emits below instructions:
@@ -4568,57 +4572,57 @@ void EmitPass::emitSimdShuffleDown( llvm::Instruction* inst )
     // mov (16) r49.0<1>:d r[a0.0, 0]<1,0>:d {Align1, H1}
 
     CVariable *pLaneId = m_currShader->GetNewVariable(
-        numLanes( m_SimdMode ),
+        numLanes(m_SimdMode),
         ISA_TYPE_UD,
-        EALIGN_GRF );
+        EALIGN_GRF);
 
-    m_encoder->SetSimdSize( SIMDMode::SIMD8 );
+    m_encoder->SetSimdSize(SIMDMode::SIMD8);
     m_encoder->SetNoMask();
-    CVariable* imm0 = m_currShader->ImmToVariable( 0x76543210, ISA_TYPE_V );
-    m_encoder->Cast(pLaneId, imm0 );
+    CVariable* imm0 = m_currShader->ImmToVariable(0x76543210, ISA_TYPE_V);
+    m_encoder->Cast(pLaneId, imm0);
     m_encoder->Push();
 
-    if ( m_SimdMode == SIMDMode::SIMD16 )
+    if (m_SimdMode == SIMDMode::SIMD16)
     {
-        m_encoder->SetDstSubVar( 1 );
-        m_encoder->SetSimdSize( SIMDMode::SIMD8 );
+        m_encoder->SetDstSubVar(1);
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
         m_encoder->SetNoMask();
-        CVariable* imm1 = m_currShader->ImmToVariable( 0x8, ISA_TYPE_UD );
-        m_encoder->Add(pLaneId, pLaneId, imm1 );
+        CVariable* imm1 = m_currShader->ImmToVariable(0x8, ISA_TYPE_UD);
+        m_encoder->Add(pLaneId, pLaneId, imm1);
         m_encoder->Push();
     }
 
     CVariable *pShuffleIdx = m_currShader->GetNewVariable(
-        numLanes( m_SimdMode ),
+        numLanes(m_SimdMode),
         ISA_TYPE_UD,
-        EALIGN_GRF );
+        EALIGN_GRF);
 
     m_encoder->SetNoMask();
-    m_encoder->Add( pShuffleIdx, pLaneId, pDelta );
+    m_encoder->Add(pShuffleIdx, pLaneId, pDelta);
     m_encoder->Push();
 
     CVariable *pByteOffset = m_currShader->GetNewVariable(
-        numLanes( m_SimdMode ),
+        numLanes(m_SimdMode),
         ISA_TYPE_UD,
-        EALIGN_GRF );
+        EALIGN_GRF);
 
     uint shift = m_destination->GetElemSize() / 2;
     m_encoder->SetNoMask();
-    m_encoder->Shl( pByteOffset, pShuffleIdx, m_currShader->ImmToVariable( shift, ISA_TYPE_UD ) );
+    m_encoder->Shl(pByteOffset, pShuffleIdx, m_currShader->ImmToVariable(shift, ISA_TYPE_UD));
     m_encoder->Push();
 
     CVariable* pDstArrElm = m_currShader->GetNewAddressVariable(
-        numLanes( m_SimdMode ),
+        numLanes(m_SimdMode),
         m_destination->GetType(),
         false,
-        false );
+        false);
 
     m_encoder->SetNoMask();
-    m_encoder->SetSrcRegion( 1, 16, 8, 2 );
-    m_encoder->AddrAdd( pDstArrElm, pCombinedData, m_currShader->BitCast( pByteOffset, ISA_TYPE_UW ) );
+    m_encoder->SetSrcRegion(1, 16, 8, 2);
+    m_encoder->AddrAdd(pDstArrElm, pCombinedData, m_currShader->BitCast(pByteOffset, ISA_TYPE_UW));
     m_encoder->Push();
 
-    m_encoder->Copy( m_destination, pDstArrElm );
+    m_encoder->Copy(m_destination, pDstArrElm);
     m_encoder->Push();
 }
 
@@ -4651,12 +4655,12 @@ static uint32_t getBlockMsgSize(uint32_t bytesRemaining, bool do256Byte)
     }
 }
 
-void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst, llvm::Value* ptrVal )
+void EmitPass::emitSimdBlockWrite(llvm::Instruction* inst, llvm::Value* ptrVal)
 {
-    Value* llPtr    = inst->getOperand( 0 );
-    Value* dataPtr  = inst->getOperand( 1 );
+    Value* llPtr = inst->getOperand(0);
+    Value* dataPtr = inst->getOperand(1);
 
-    PointerType* ptrType = cast<PointerType>( llPtr->getType() );
+    PointerType* ptrType = cast<PointerType>(llPtr->getType());
     ResourceDescriptor resource = GetResourceVariable(llPtr);
 
     CVariable* src = nullptr;
@@ -4674,7 +4678,7 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst, llvm::Value* ptrVal 
     bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
 
     Type* Ty = dataPtr->getType();
-    VectorType* VTy = dyn_cast< VectorType >(Ty);
+    VectorType* VTy = dyn_cast<VectorType>(Ty);
     uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
 
     uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
@@ -4739,7 +4743,7 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst, llvm::Value* ptrVal 
     if (useA64)
     {
         uint32_t bytesRemaining = totalBytes;
-        uint32_t srcOffset   = 0;
+        uint32_t srcOffset = 0;
         uint32_t bytesToRead = 0;
 
         // Emits instructions generating one or more A64 OWORD block write instructions
@@ -4748,37 +4752,38 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst, llvm::Value* ptrVal 
         // but since this is a SIMD opcode and we're  compiling SIMD8, SIMD16,
         // we don't expect to see a 1 OWORD write.
 
-        m_encoder->SetSimdSize( SIMDMode::SIMD1 );
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
-        m_encoder->SetSrcRegion( 0, 0, 1, 0 );
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
 
         CVariable* pTempVar = m_currShader->GetNewVariable(
-            numLanes( SIMDMode::SIMD1 ),
+            numLanes(SIMDMode::SIMD1),
             ISA_TYPE_UQ,
-            EALIGN_QWORD, true );
+            EALIGN_QWORD, true);
 
         m_encoder->Copy(pTempVar, m_currShader->BitCast(src, ISA_TYPE_UQ));
         m_encoder->Push();
 
-        while ( bytesRemaining )
+        while (bytesRemaining)
         {
             bytesToRead = getBlockMsgSize(bytesRemaining, false);
             bytesRemaining -= bytesToRead;
 
-            m_encoder->OWStoreA64( data, pTempVar, bytesToRead, srcOffset );
+            m_encoder->OWStoreA64(data, pTempVar, bytesToRead, srcOffset);
             srcOffset = srcOffset + bytesToRead;
             m_encoder->Push();
 
-            if ( bytesRemaining )
+            if (bytesRemaining)
             {
                 if (m_currShader->m_Platform->hasNo64BitInst()) {
                     CVariable *ImmVar = m_currShader->ImmToVariable(bytesToRead, ISA_TYPE_UD);
                     emitAddPairWithImm(pTempVar, pTempVar, ImmVar);
-                } else {
-                    m_encoder->SetSimdSize( SIMDMode::SIMD1 );
+                }
+                else {
+                    m_encoder->SetSimdSize(SIMDMode::SIMD1);
                     m_encoder->SetNoMask();
-                    m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-                    m_encoder->Add( pTempVar, pTempVar, m_currShader->ImmToVariable( ( bytesToRead ), ISA_TYPE_UQ ) );
+                    m_encoder->SetSrcRegion(0, 0, 1, 0);
+                    m_encoder->Add(pTempVar, pTempVar, m_currShader->ImmToVariable((bytesToRead), ISA_TYPE_UQ));
                     m_encoder->Push();
                 }
             }
@@ -4800,44 +4805,44 @@ void EmitPass::emitSimdBlockWrite( llvm::Instruction* inst, llvm::Value* ptrVal 
         // send( 16 ) null<1>:uw r64 0xa 0x60a03ff:ud{ Align1, NoMask } oword block write
 
         CVariable* src0shifted = m_currShader->GetNewVariable(
-            numLanes( SIMDMode::SIMD1 ),
+            numLanes(SIMDMode::SIMD1),
             ISA_TYPE_UD,
-            EALIGN_DWORD );
+            EALIGN_DWORD);
 
-        m_encoder->SetSimdSize( SIMDMode::SIMD1 );
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
-        m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-        m_encoder->Shr( src0shifted, src, m_currShader->ImmToVariable( 4, ISA_TYPE_UD ) );
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->Shr(src0shifted, src, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
         m_encoder->Push();
 
-        uint32_t srcOffset   = 0;
+        uint32_t srcOffset = 0;
         uint32_t bytesToRead = 0;
-        while ( bytesRemaining )
+        while (bytesRemaining)
         {
             bool canDo256Byte = false;
 
             bytesToRead = getBlockMsgSize(bytesRemaining, canDo256Byte);
             bytesRemaining -= bytesToRead;
-            m_encoder->OWStore( data, resource.m_surfaceType, resource.m_resource, src0shifted, bytesToRead, srcOffset );
+            m_encoder->OWStore(data, resource.m_surfaceType, resource.m_resource, src0shifted, bytesToRead, srcOffset);
             srcOffset = srcOffset + bytesToRead;
             m_encoder->Push();
 
-            if ( bytesRemaining )
+            if (bytesRemaining)
             {
-                m_encoder->SetSimdSize( SIMDMode::SIMD1 );
+                m_encoder->SetSimdSize(SIMDMode::SIMD1);
                 m_encoder->SetNoMask();
-                m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-                m_encoder->Add(src0shifted, src0shifted, m_currShader->ImmToVariable( ( bytesToRead / 16 ), ISA_TYPE_UD ) ); // (bytesToRead / 16) is units of OWORDS
+                m_encoder->SetSrcRegion(0, 0, 1, 0);
+                m_encoder->Add(src0shifted, src0shifted, m_currShader->ImmToVariable((bytesToRead / 16), ISA_TYPE_UD)); // (bytesToRead / 16) is units of OWORDS
                 m_encoder->Push();
             }
         }
     }
 }
 
-void EmitPass::emitSimdBlockRead( llvm::Instruction* inst, llvm::Value* ptrVal )
+void EmitPass::emitSimdBlockRead(llvm::Instruction* inst, llvm::Value* ptrVal)
 {
-    Value* llPtr          = inst->getOperand( 0 );
-    PointerType* ptrType  = cast<PointerType>( llPtr->getType() );
+    Value* llPtr = inst->getOperand(0);
+    PointerType* ptrType = cast<PointerType>(llPtr->getType());
     ResourceDescriptor resource = GetResourceVariable(llPtr);
 
     CVariable* src = nullptr;
@@ -4851,13 +4856,13 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst, llvm::Value* ptrVal )
         src = GetSymbol(llPtr);
     }
 
-	// If it is SLM, use OW-aligned OW address. The byte address (default)
-	// must be right-shifted by 4 bits to be OW address!
-	bool isToSLM = (ptrType->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL);
+    // If it is SLM, use OW-aligned OW address. The byte address (default)
+    // must be right-shifted by 4 bits to be OW address!
+    bool isToSLM = (ptrType->getPointerAddressSpace() == ADDRESS_SPACE_LOCAL);
     bool useA64 = isA64Ptr(ptrType, m_currShader->GetContext());
 
     Type* Ty = inst->getType();
-    VectorType* VTy = dyn_cast< VectorType >(Ty);
+    VectorType* VTy = dyn_cast<VectorType>(Ty);
     uint32_t nbElements = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
 
     uint32_t typeSizeInBytes = Ty->getScalarSizeInBits() / 8;
@@ -4921,44 +4926,45 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst, llvm::Value* ptrVal )
 
     if (useA64)
     {
-		assert(!isToSLM && "SLM's ptr size should be 32!");
+        assert(!isToSLM && "SLM's ptr size should be 32!");
 
         uint32_t dstOffset = 0;
         uint32_t bytesRemaining = totalBytes;
-        uint32_t bytesToRead    = 0;
+        uint32_t bytesToRead = 0;
 
         // Emits instructions generating one or more A64 OWORD block read instructions
-        m_encoder->SetSimdSize( SIMDMode::SIMD1 );
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
-        m_encoder->SetSrcRegion( 0, 0, 1, 0 );
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
 
         CVariable* pTempVar = m_currShader->GetNewVariable(
-            numLanes( SIMDMode::SIMD1 ),
+            numLanes(SIMDMode::SIMD1),
             ISA_TYPE_UQ,
-            EALIGN_QWORD, true );
+            EALIGN_QWORD, true);
 
-        m_encoder->Copy( pTempVar, src );
+        m_encoder->Copy(pTempVar, src);
         m_encoder->Push();
 
-        while ( bytesRemaining )
+        while (bytesRemaining)
         {
             bytesToRead = getBlockMsgSize(bytesRemaining, false);
             bytesRemaining -= bytesToRead;
 
-            m_encoder->OWLoadA64( m_destination, pTempVar, bytesToRead, dstOffset);
+            m_encoder->OWLoadA64(m_destination, pTempVar, bytesToRead, dstOffset);
             m_encoder->Push();
             dstOffset += bytesToRead;
 
-            if ( bytesRemaining )
+            if (bytesRemaining)
             {
                 if (m_currShader->m_Platform->hasNo64BitInst()) {
                     CVariable *ImmVar = m_currShader->ImmToVariable(bytesToRead, ISA_TYPE_UD);
                     emitAddPairWithImm(pTempVar, pTempVar, ImmVar);
-                } else {
-                    m_encoder->SetSimdSize( SIMDMode::SIMD1 );
+                }
+                else {
+                    m_encoder->SetSimdSize(SIMDMode::SIMD1);
                     m_encoder->SetNoMask();
-                    m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-                    m_encoder->Add( pTempVar, pTempVar,  m_currShader->ImmToVariable( bytesToRead, ISA_TYPE_UQ ) );
+                    m_encoder->SetSrcRegion(0, 0, 1, 0);
+                    m_encoder->Add(pTempVar, pTempVar, m_currShader->ImmToVariable(bytesToRead, ISA_TYPE_UQ));
                     m_encoder->Push();
                 }
             }
@@ -4972,28 +4978,28 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst, llvm::Value* ptrVal )
         // mov (1)   r21.2<1>:ud r20.0<0;1,0>:ud {Align1, NoMask, Compacted}
         // send (16) r12.0<1>:w  r21 0xa 0x24844ff:ud{Align1, NoMask}// unaligned oword block read
 
-        m_encoder->SetSimdSize( SIMDMode::SIMD1 );
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
-        m_encoder->SetSrcRegion( 0, 0, 1, 0 );
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
 
         CVariable* pTempVar = m_currShader->GetNewVariable(
-            numLanes( SIMDMode::SIMD1 ),
+            numLanes(SIMDMode::SIMD1),
             ISA_TYPE_UD,
-            EALIGN_DWORD );
+            EALIGN_DWORD);
 
-		if (isToSLM)
+        if (isToSLM)
         {
-			// It is OW-aligned OW address
-			m_encoder->Shr(pTempVar, src, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
-		}
+            // It is OW-aligned OW address
+            m_encoder->Shr(pTempVar, src, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
+        }
 
         m_encoder->Push();
 
         uint32_t dstOffset = 0;
-        uint32_t bytesToRead    = 0;
+        uint32_t bytesToRead = 0;
         uint32_t bytesRemaining = totalBytes;
         bool isFirstIter = true;
-        while ( bytesRemaining )
+        while (bytesRemaining)
         {
             bool canDo256Byte = false;
 
@@ -5001,17 +5007,17 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst, llvm::Value* ptrVal )
             bytesRemaining -= bytesToRead;
 
             bool useSrc = isFirstIter && !isToSLM;
-            m_encoder->OWLoad( m_destination, resource, useSrc ? src : pTempVar, isToSLM, bytesToRead, dstOffset );
+            m_encoder->OWLoad(m_destination, resource, useSrc ? src : pTempVar, isToSLM, bytesToRead, dstOffset);
             m_encoder->Push();
             dstOffset += bytesToRead;
 
-            if ( bytesRemaining )
+            if (bytesRemaining)
             {
-				uint32_t offset = (isToSLM ? bytesToRead / 16 : bytesToRead);
-                m_encoder->SetSimdSize( SIMDMode::SIMD1 );
+                uint32_t offset = (isToSLM ? bytesToRead / 16 : bytesToRead);
+                m_encoder->SetSimdSize(SIMDMode::SIMD1);
                 m_encoder->SetNoMask();
-                m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-                m_encoder->Add( pTempVar, useSrc ? src : pTempVar,  m_currShader->ImmToVariable(  offset, ISA_TYPE_UD ) );
+                m_encoder->SetSrcRegion(0, 0, 1, 0);
+                m_encoder->Add(pTempVar, useSrc ? src : pTempVar, m_currShader->ImmToVariable(offset, ISA_TYPE_UD));
                 m_encoder->Push();
             }
             isFirstIter = false;
@@ -5021,7 +5027,7 @@ void EmitPass::emitSimdBlockRead( llvm::Instruction* inst, llvm::Value* ptrVal )
 
 void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
 {
-    uint ImgArgIndex    = (uint)GetImmediateVal(inst->getOperand(0));
+    uint ImgArgIndex = (uint)GetImmediateVal(inst->getOperand(0));
     uint isImageTypeUAV = (uint)GetImmediateVal(inst->getOperand(3));
 
     uint32_t BTI = isImageTypeUAV ?
@@ -5034,10 +5040,10 @@ void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
     CVariable *pImgBTI = m_currShader->ImmToVariable(BTI, ISA_TYPE_UD);
 
     // width and height must be supplied as compile time constants.
-    uint blockWidth  = (uint)cast<ConstantInt>(inst->getOperand(4))->getZExtValue();
+    uint blockWidth = (uint)cast<ConstantInt>(inst->getOperand(4))->getZExtValue();
     uint blockHeight = (uint)cast<ConstantInt>(inst->getOperand(5))->getZExtValue();
 
-    auto *pFunc     = inst->getCalledFunction();
+    auto *pFunc = inst->getCalledFunction();
     auto *pDataType = isRead ? pFunc->getReturnType() : inst->getOperand(6)->getType();
 
     uint typeSize = isa<VectorType>(pDataType) ?
@@ -5085,8 +5091,8 @@ void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
         {
             for (uint32_t i = 0; i < nElts; ++i)
             {
-                m_encoder->SetSrcSubReg(0, srcStride*16*i);
-                m_encoder->SetDstSubReg(dstStride*16*i);
+                m_encoder->SetSrcSubReg(0, srcStride * 16 * i);
+                m_encoder->SetDstSubReg(dstStride * 16 * i);
                 m_encoder->Copy(pDst, pSrc);
                 m_encoder->Push();
             }
@@ -5137,7 +5143,7 @@ void EmitPass::emitMediaBlockIO(const llvm::GenIntrinsicInst* inst, bool isRead)
 void EmitPass::emitMediaBlockRectangleRead(llvm::Instruction* inst)
 {
     int SrcImgBTI = int_cast<int>(GetImmediateVal(inst->getOperand(0)));
-    int isImageTypeUAV =  int_cast<int>(GetImmediateVal(inst->getOperand(3)));
+    int isImageTypeUAV = int_cast<int>(GetImmediateVal(inst->getOperand(3)));
 
     CVariable *xOffset = GetSymbol(inst->getOperand(1));
     CVariable *yOffset = GetSymbol(inst->getOperand(2));
@@ -5154,7 +5160,7 @@ void EmitPass::emitMediaBlockRectangleRead(llvm::Instruction* inst)
     CVariable *pDst = GetSymbol(inst->getOperand(6));
 
     // width and height must be supplied as compile time constants.
-    uint64_t blockWidth  = cast<ConstantInt>(inst->getOperand(4))->getZExtValue();
+    uint64_t blockWidth = cast<ConstantInt>(inst->getOperand(4))->getZExtValue();
     uint64_t blockHeight = cast<ConstantInt>(inst->getOperand(5))->getZExtValue();
 
     assert(blockWidth * blockHeight == pDst->GetSize());
@@ -5174,7 +5180,7 @@ void EmitPass::emitMediaBlockRectangleRead(llvm::Instruction* inst)
     m_encoder->Push();
 }
 
-void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
+void EmitPass::emitSimdMediaBlockRead(llvm::Instruction* inst)
 {
     uint32_t nbElements = 1;
     if (inst->getType()->isVectorTy())
@@ -5183,35 +5189,35 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
     }
     assert(nbElements <= 8 && "InValid Vector Size");
 
-    int SrcImgBTI      = int_cast<int>(GetImmediateVal( inst->getOperand( 0 ) ));
-    int isImageTypeUAV = int_cast<int>(GetImmediateVal( inst->getOperand( 3 ) ));
+    int SrcImgBTI = int_cast<int>(GetImmediateVal(inst->getOperand(0)));
+    int isImageTypeUAV = int_cast<int>(GetImmediateVal(inst->getOperand(3)));
 
-    Value* xOffset = inst->getOperand( 1 );
-    Value* yOffset = inst->getOperand( 2 );
+    Value* xOffset = inst->getOperand(1);
+    Value* yOffset = inst->getOperand(2);
 
     uint32_t typeSizeInBytes = inst->getType()->getScalarType()->getScalarSizeInBits() / 8;
     uint32_t totalWidth = typeSizeInBytes * numLanes(m_SimdMode);
 
-    uint32_t   pass              = 0;
-    uint32_t   numPasses         = 0;
+    uint32_t   pass = 0;
+    uint32_t   numPasses = 0;
     uint32_t   bindingTableIndex = 0;
 
-    uint32_t dstSubReg   = 0;
-    uint32_t blockWidth  = 0;
+    uint32_t dstSubReg = 0;
+    uint32_t blockWidth = 0;
     uint32_t blockHeight = nbElements;
 
-    if ( isImageTypeUAV )
+    if (isImageTypeUAV)
     {
-        bindingTableIndex = m_currShader->m_pBtiLayout->GetUavIndex( SrcImgBTI );
+        bindingTableIndex = m_currShader->m_pBtiLayout->GetUavIndex(SrcImgBTI);
     }
     else // elseif imageType is Resource
     {
-        bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex( SrcImgBTI );
+        bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(SrcImgBTI);
     }
 
     m_currShader->SetBindingTableEntryCountAndBitmap(true, bindingTableIndex);
 
-    CVariable* srcbti = m_currShader->ImmToVariable( bindingTableIndex, ISA_TYPE_UD );
+    CVariable* srcbti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
 
     if (totalWidth < 32)
     {
@@ -5227,17 +5233,17 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
 
 
     CVariable* pTempVar0 = nullptr;
-    CVariable* pTempVar  = nullptr;
+    CVariable* pTempVar = nullptr;
 
     uint32_t blockRegSize = numPasses * blockHeight * numLanes(SIMDMode::SIMD8);
 
     CVariable* pTempDest = m_currShader->GetNewVariable(
         blockRegSize,
         m_destination->GetType(),
-        EALIGN_GRF );
+        EALIGN_GRF);
 
-    CVariable* xVar = GetSymbol( xOffset );
-    CVariable* yVar = GetSymbol( yOffset );
+    CVariable* xVar = GetSymbol(xOffset);
+    CVariable* yVar = GetSymbol(yOffset);
 
     // Emits a MEDIA_BLOCK_READ instruction.
     // Considering block width as x-axis and block height as y axis:
@@ -5254,7 +5260,7 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
 
     int scale = (blockWidth == 64) ? 2 : 1;
 
-    for ( pass = 0; pass < numPasses; pass++ )
+    for (pass = 0; pass < numPasses; pass++)
     {
         m_encoder->SetSimdSize(SIMDMode::SIMD1);
         m_encoder->SetNoMask();
@@ -5300,14 +5306,14 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
             pTempVar0,
             pTempVar,
             0,
-            ( unsigned char )blockWidth,
-            ( unsigned char )blockHeight,
+            (unsigned char)blockWidth,
+            (unsigned char)blockHeight,
             0);
 
         m_encoder->Push();
     }
 
-    if ( numPasses > 1 )
+    if (numPasses > 1)
     {
         dstSubReg = 0;
 
@@ -5322,7 +5328,7 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
         // mov (8) r26.0<1>:ud r31.0<8;8,1>:ud {Align1, Q1}
         // mov (8) r27.0<1>:ud r35.0<8;8,1>:ud {Align1, Q2}
 
-        for ( uint32_t i = 0; i < blockHeight; i++ )
+        for (uint32_t i = 0; i < blockHeight; i++)
         {
             for (uint32_t pass = 0; pass < numPasses; pass++)
             {
@@ -5339,14 +5345,14 @@ void EmitPass::emitSimdMediaBlockRead( llvm::Instruction* inst  )
     }
 }
 
-void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
+void EmitPass::emitSimdMediaBlockWrite(llvm::Instruction* inst)
 {
-    int SrcImgBTI = int_cast<int>(GetImmediateVal( inst->getOperand( 0 ) ));
-    int isImageTypeUAV = int_cast<int>(GetImmediateVal( inst->getOperand( 3 ) ));
+    int SrcImgBTI = int_cast<int>(GetImmediateVal(inst->getOperand(0)));
+    int isImageTypeUAV = int_cast<int>(GetImmediateVal(inst->getOperand(3)));
 
-    Value* xOffset = inst->getOperand( 1 );
-    Value* yOffset = inst->getOperand( 2 );
-    Value* dataPtr = inst->getOperand( 4 );
+    Value* xOffset = inst->getOperand(1);
+    Value* yOffset = inst->getOperand(2);
+    Value* dataPtr = inst->getOperand(4);
 
     uint32_t nbElements = 1;
     if (dataPtr->getType()->isVectorTy())
@@ -5356,30 +5362,30 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
     assert(nbElements <= 8 && "InValid Vector Size");
 
     CVariable *data = GetSymbol(dataPtr);
-    data            = BroadcastIfUniform( data );
+    data = BroadcastIfUniform(data);
 
     uint32_t typeSizeInBytes = dataPtr->getType()->getScalarType()->getScalarSizeInBits() / 8;
     uint32_t totalWidth = typeSizeInBytes * numLanes(m_SimdMode);
 
-    uint32_t   pass      = 0;
+    uint32_t   pass = 0;
     uint32_t   numPasses = 0;
 
-    uint32_t blockWidth        = 0;
-    uint32_t blockHeight       = nbElements;
+    uint32_t blockWidth = 0;
+    uint32_t blockHeight = nbElements;
     uint32_t bindingTableIndex = 0;
 
-    if ( isImageTypeUAV )
+    if (isImageTypeUAV)
     {
-        bindingTableIndex = m_currShader->m_pBtiLayout->GetUavIndex( SrcImgBTI );
+        bindingTableIndex = m_currShader->m_pBtiLayout->GetUavIndex(SrcImgBTI);
     }
     else // elseif imageType is Resource
     {
-        bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex( SrcImgBTI );
+        bindingTableIndex = m_currShader->m_pBtiLayout->GetTextureIndex(SrcImgBTI);
     }
 
     m_currShader->SetBindingTableEntryCountAndBitmap(true, bindingTableIndex);
 
-    CVariable* srcbti = m_currShader->ImmToVariable( bindingTableIndex, ISA_TYPE_UD );
+    CVariable* srcbti = m_currShader->ImmToVariable(bindingTableIndex, ISA_TYPE_UD);
 
     if (totalWidth < 32)
     {
@@ -5395,38 +5401,38 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
 
 
     CVariable* pTempVar0 = nullptr;
-    CVariable* pTempVar  = nullptr;
+    CVariable* pTempVar = nullptr;
 
     uint32_t dstSubReg = 0;
 
     int scale = (blockWidth == 64) ? 2 : 1;
-    for ( pass = 0; pass < numPasses; pass++ )
+    for (pass = 0; pass < numPasses; pass++)
     {
         uint32_t srcSubVar = pass * scale;
         uint32_t dstSubVar = 0;
 
         CVariable* tempdst = m_currShader->GetNewVariable(
-            ( nbElements * numLanes( SIMDMode::SIMD8 ) ),
+            (nbElements * numLanes(SIMDMode::SIMD8)),
             data->GetType(),
-            EALIGN_GRF );
+            EALIGN_GRF);
 
         // Split the data.
         // mov (8) r22.0<1>:d r14.0<8;8,1>:d {Align1, Q1, Compacted}
         // mov (8) r23.0<1>:d r16.0<8;8,1>:d {Align1, Q1, Compacted}
         // mov (8) r24.0<1>:d r18.0<8;8,1>:d {Align1, Q1, Compacted}
         // mov (8) r25.0<1>:d r20.0<8;8,1>:d {Align1, Q1, Compacted}
-        if ( numPasses > 1 )
+        if (numPasses > 1)
         {
-            for ( uint i = 0; i < nbElements; ++i )
+            for (uint i = 0; i < nbElements; ++i)
             {
                 SIMDMode mode = (typeSizeInBytes == 8 && blockWidth != 64) ? SIMDMode::SIMD4 : SIMDMode::SIMD8;
                 m_encoder->SetSimdSize(mode);
                 m_encoder->SetNoMask();
-                m_encoder->SetSrcSubVar( 0, srcSubVar );
-                m_encoder->SetDstSubVar( dstSubVar );
+                m_encoder->SetSrcSubVar(0, srcSubVar);
+                m_encoder->SetDstSubVar(dstSubVar);
                 dstSubVar += scale;
                 srcSubVar = srcSubVar + scale * numPasses;
-                m_encoder->Copy( tempdst, data );
+                m_encoder->Copy(tempdst, data);
                 m_encoder->Push();
             }
         }
@@ -5445,44 +5451,44 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
         // mov (16) r29.0<1>:ud r22.0<8;8,1>:ud {Align1, NoMask, Compacted}
         // mov (16) r31.0<1>:ud r24.0<8;8,1>:ud {Align1, NoMask, Compacted}
         // send (8) null<1>:ud r28 0xc 0xa0a8002:ud{Align1, NoMask} // media block write
-        if ( pass == 0 )
+        if (pass == 0)
         {
-            CVariable* xVar = GetSymbol( xOffset );
-            CVariable* yVar = GetSymbol( yOffset );
-            m_encoder->SetSimdSize( SIMDMode::SIMD1 );
+            CVariable* xVar = GetSymbol(xOffset);
+            CVariable* yVar = GetSymbol(yOffset);
+            m_encoder->SetSimdSize(SIMDMode::SIMD1);
             m_encoder->SetNoMask();
-            m_encoder->SetSrcRegion( 0, 0, 1, 0 );
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
 
             pTempVar0 = m_currShader->GetNewVariable(
-                numLanes( m_SimdMode ),
+                numLanes(m_SimdMode),
                 ISA_TYPE_D,
-                EALIGN_DWORD );
+                EALIGN_DWORD);
 
-            m_encoder->Cast( pTempVar0, xVar );
+            m_encoder->Cast(pTempVar0, xVar);
             m_encoder->Push();
-            m_encoder->SetSimdSize( SIMDMode::SIMD1 );
+            m_encoder->SetSimdSize(SIMDMode::SIMD1);
             m_encoder->SetNoMask();
-            m_encoder->SetSrcRegion( 0, 0, 1, 0 );
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
 
             pTempVar = m_currShader->GetNewVariable(
-                numLanes( m_SimdMode ),
+                numLanes(m_SimdMode),
                 ISA_TYPE_D,
-                EALIGN_DWORD );
+                EALIGN_DWORD);
 
-            m_encoder->Cast( pTempVar, yVar );
+            m_encoder->Cast(pTempVar, yVar);
             m_encoder->Push();
         }
         else
         {
-            m_encoder->SetSimdSize( SIMDMode::SIMD1 );
+            m_encoder->SetSimdSize(SIMDMode::SIMD1);
             m_encoder->SetNoMask();
-            m_encoder->SetSrcRegion( 0, 0, 1, 0 );
-            m_encoder->Add( pTempVar0, pTempVar0, m_currShader->ImmToVariable( blockWidth, ISA_TYPE_UD ) );
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->Add(pTempVar0, pTempVar0, m_currShader->ImmToVariable(blockWidth, ISA_TYPE_UD));
             m_encoder->Push();
             dstSubReg = dstSubReg + scale * blockHeight;
         }
 
-        m_encoder->SetDstSubVar( dstSubReg );
+        m_encoder->SetDstSubVar(dstSubReg);
 
         m_encoder->MediaBlockMessage(
             ISA_Opcode::ISA_MEDIA_ST,
@@ -5493,7 +5499,7 @@ void EmitPass::emitSimdMediaBlockWrite( llvm::Instruction* inst )
             0,
             (unsigned char)blockWidth,
             (unsigned char)blockHeight,
-            0 );
+            0);
         m_encoder->Push();
     }
 }
@@ -5536,32 +5542,32 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
     }
 
     uint responseLength = 0;
-    if(outputDepth)
+    if (outputDepth)
     {
         messageLength += 1;
     }
-    if(outputStencil)
+    if (outputStencil)
     {
         messageLength += 1;
     }
-    if(oMask)
+    if (oMask)
     {
         messageLength += 1;
     }
     // Need a header in case we write per sample
     bool needHeader = perSample;
-    if(needHeader)
+    if (needHeader)
     {
         messageLength += 2;
     }
     int nbMessage = m_SimdMode == SIMDMode::SIMD8 ? 1 : 2;
-    for(int i=0; i<nbMessage; i++)
+    for (int i = 0; i < nbMessage; i++)
     {
         uint payloadOffset = 0;
         bool lastRenderTarget = psProgram->IsLastRTWrite(inst);
 
         bool EOT = lastRenderTarget &&
-            i == nbMessage-1 &&
+            i == nbMessage - 1 &&
             (m_encoder->IsSecondHalf() || m_currShader->m_numberInstance == 1);
 
         if (EOT)
@@ -5571,9 +5577,9 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
         }
 
         CVariable* payload =
-            m_currShader->GetNewVariable(messageLength*(SIZE_GRF>>2), ISA_TYPE_D, EALIGN_GRF);
+            m_currShader->GetNewVariable(messageLength*(SIZE_GRF >> 2), ISA_TYPE_D, EALIGN_GRF);
 
-        if(needHeader)
+        if (needHeader)
         {
             m_encoder->SetNoMask();
             m_encoder->SetSimdSize(SIMDMode::SIMD8);
@@ -5585,10 +5591,10 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
             m_encoder->SetSimdSize(SIMDMode::SIMD8);
             m_encoder->Copy(payload, psProgram->GetR1());
             m_encoder->Push();
-            if(perSample)
+            if (perSample)
             {
                 CVariable* sampleIndex = GetSymbol(vSample);
-                if(!sampleIndex->IsUniform())
+                if (!sampleIndex->IsUniform())
                 {
                     sampleIndex = UniformCopy(sampleIndex);
 
@@ -5614,18 +5620,18 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
                 m_encoder->Push();
             }
             else
-            if (!isa<ReturnInst>(inst->getParent()->getTerminator()))
-            {
-                m_encoder->SetNoMask();
-                m_encoder->SetSimdSize(SIMDMode::SIMD1);
-                m_encoder->Cast(pixelEnable, GetExecutionMask());
-                m_encoder->Push();
-            }
+                if (!isa<ReturnInst>(inst->getParent()->getTerminator()))
+                {
+                    m_encoder->SetNoMask();
+                    m_encoder->SetSimdSize(SIMDMode::SIMD1);
+                    m_encoder->Cast(pixelEnable, GetExecutionMask());
+                    m_encoder->Push();
+                }
 
             payloadOffset += 2;
         }
 
-        if(oMask)
+        if (oMask)
         {
             //oMask has to be packed since the hardware ignores the upper half
             CVariable* src = GetSymbol(vMask);
@@ -5653,18 +5659,18 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
             inst->getRed1(), inst->getGreen1(), inst->getBlue1(), inst->getAlpha1()
         };
 
-        for(uint srcIdx = 0; srcIdx<8; srcIdx++)
+        for (uint srcIdx = 0; srcIdx < 8; srcIdx++)
         {
             m_encoder->SetSimdSize(SIMDMode::SIMD8);
             m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
             CVariable* src = GetSymbol(colors[srcIdx]);
 
-            if(!src->IsUniform())
+            if (!src->IsUniform())
             {
-                m_encoder->SetSrcSubReg(0, i*8);
+                m_encoder->SetSrcSubReg(0, i * 8);
             }
 
-            if ( isHF )
+            if (isHF)
             {
                 // half message has src0 and src1 interleaved
                 if (srcIdx / 4 != 0)
@@ -5683,12 +5689,12 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
         }
         payloadOffset += isHF ? 4 : 8;
 
-        if(outputDepth)
+        if (outputDepth)
         {
             m_encoder->SetSimdSize(SIMDMode::SIMD8);
             m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
             CVariable* src = GetSymbol(inst->getDepth());
-            if(!src->IsUniform())
+            if (!src->IsUniform())
             {
                 m_encoder->SetSrcSubVar(0, i);
             }
@@ -5697,14 +5703,14 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
             m_encoder->Push();
         }
 
-        if(outputStencil)
+        if (outputStencil)
         {
             m_encoder->SetSimdSize(SIMDMode::SIMD8);
             m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
             CVariable* src = GetSymbol(inst->getStencil());
             CVariable* ubSrc = m_currShader->BitCast(src, ISA_TYPE_UB);
-            m_encoder->SetSrcRegion(0,32,8,4);
-            if(!ubSrc->IsUniform())
+            m_encoder->SetSrcRegion(0, 32, 8, 4);
+            if (!ubSrc->IsUniform())
             {
                 m_encoder->SetSrcSubVar(0, i);
             }
@@ -5714,7 +5720,7 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
         }
 
         EU_GEN6_DATA_PORT_RENDER_TARGET_WRITE_CONTROL messageType =
-            ( i == 0 )
+            (i == 0)
             ? EU_GEN6_DATA_PORT_RENDER_TARGET_WRITE_CONTROL_SIMD8_DUAL_SOURCE_LOW :
             EU_GEN6_DATA_PORT_RENDER_TARGET_WRITE_CONTROL_SIMD8_DUAL_SOURCE_HIGH;
 
@@ -5735,7 +5741,7 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
         CVariable* exDesc =
             psProgram->ImmToVariable(EU_MESSAGE_TARGET_DATA_PORT_WRITE | (EOT ? 1 << 5 : 0), ISA_TYPE_UD);
         CVariable* messDesc = psProgram->ImmToVariable(Desc, ISA_TYPE_UD);
-        if(psProgram->GetPhase() == PSPHASE_PIXEL)
+        if (psProgram->GetPhase() == PSPHASE_PIXEL)
         {
             CVariable* temp = psProgram->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true);
             m_encoder->Or(temp, psProgram->GetCurrentPhaseCounter(), exDesc);
@@ -5748,7 +5754,7 @@ void EmitPass::emitDualBlendRT(llvm::RTDualBlendSourceIntrinsic* inst, bool from
             m_encoder->SetPredicate(pMaskOpnd);
         m_encoder->SetSimdSize(SIMDMode::SIMD8);
         m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
-        m_encoder->SendC(NULL,payload, EU_MESSAGE_TARGET_DATA_PORT_WRITE, exDesc,messDesc);
+        m_encoder->SendC(NULL, payload, EU_MESSAGE_TARGET_DATA_PORT_WRITE, exDesc, messDesc);
         m_encoder->Push();
     }
 }
@@ -5759,7 +5765,7 @@ void EmitPass::emitURBRead(llvm::GenIntrinsicInst* inst)
     CVariable* pVertexIndex = GetSymbol(inst->getOperand(0));
 
     QuadEltUnit globalOffset(0);
-    if(ConstantInt* offset = dyn_cast<ConstantInt>(inst->getOperand(1)))
+    if (ConstantInt* offset = dyn_cast<ConstantInt>(inst->getOperand(1)))
     {
         globalOffset = QuadEltUnit(int_cast<unsigned>(offset->getZExtValue()));
     }
@@ -5767,18 +5773,18 @@ void EmitPass::emitURBRead(llvm::GenIntrinsicInst* inst)
     {
         pPerSlotOffset = m_currShader->GetSymbol(inst->getOperand(1));
     }
-    const EltUnit payloadSize( ( pPerSlotOffset != nullptr ) ? 2 : 1 );
+    const EltUnit payloadSize((pPerSlotOffset != nullptr) ? 2 : 1);
     CVariable* pPayload =
         m_currShader->GetNewVariable(payloadSize.Count() * numLanes(m_SimdMode), ISA_TYPE_UD, EALIGN_GRF);
 
     TODO("Have VISA define the URBRead interface instead of using a raw send");
     Unit<Element> messageLength = payloadSize;
-    Unit<Element> responseLength(m_destination->GetNumberElement()/numLanes(m_SimdMode));
+    Unit<Element> responseLength(m_destination->GetNumberElement() / numLanes(m_SimdMode));
 
     m_encoder->Copy(pPayload, m_currShader->GetURBInputHandle(pVertexIndex));
     m_encoder->Push();
 
-    if( pPerSlotOffset != nullptr  )
+    if (pPerSlotOffset != nullptr)
     {
         m_encoder->SetDstSubVar(1);
         m_encoder->Copy(pPayload, pPerSlotOffset);
@@ -5789,7 +5795,7 @@ void EmitPass::emitURBRead(llvm::GenIntrinsicInst* inst)
         messageLength.Count(),
         responseLength.Count(),
         false,
-        pPerSlotOffset!=nullptr,
+        pPerSlotOffset != nullptr,
         false,
         m_currShader->GetFinalGlobalOffet(globalOffset).Count(),
         EU_GEN8_URB_OPCODE_SIMD8_READ);
@@ -5858,7 +5864,7 @@ void EmitPass::interceptSamplePayloadCoalescing(
         //out:
         payloadToCCTupleRelativeOffset,
         representativeValPtr
-        );
+    );
 
     payloadCovered = m_CE->IsPayloadCovered(inst,
         ccTuple,
@@ -5889,7 +5895,7 @@ void EmitPass::interceptSamplePayloadCoalescing(
         int byteOffset = payloadToCCTupleRelativeOffset *
             m_CE->GetSingleElementWidth(m_currShader->m_SIMDSize, m_DL, representativeValPtr);
 
-        if(ccTuple->HasNonHomogeneousElements())
+        if (ccTuple->HasNonHomogeneousElements())
         {
             byteOffset += m_CE->GetLeftReservedOffset(ccTuple->GetRoot(), m_currShader->m_SIMDSize);
         }
@@ -5906,7 +5912,7 @@ void EmitPass::interceptSamplePayloadCoalescing(
             {
                 //We have a copy of an element used at least twice in a payload.
                 src = m_currShader->GetNewAlias(rootPayloadVar, type, (uint16_t)byteOffset, 0);
-                if(inst->IsDerivative())
+                if (inst->IsDerivative())
                 {
                     m_encoder->SetNoMask();
                 }
@@ -5987,9 +5993,9 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     const uint numOperands = inst->getNumOperands();
     // offset
     CVariable* immOffset = m_currShader->ImmToVariable(0, ISA_TYPE_UW);
-    if(!inst->IsLODInst())
+    if (!inst->IsLODInst())
     {
-        uint offsetSourceIndex = numOperands-4;
+        uint offsetSourceIndex = numOperands - 4;
         immOffset = ComputeSampleIntOffset(inst, offsetSourceIndex);
     }
 
@@ -6008,7 +6014,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     // Skip sample_d* instructions in SIMD16 and SIMD32.
     if ((m_currShader->m_SIMDSize > SIMDMode::SIMD8 &&
         (opCode == llvm_sample_dptr ||
-        opCode == llvm_sample_dcptr)))
+            opCode == llvm_sample_dcptr)))
     {
         doIntercept = false;
     }
@@ -6050,7 +6056,7 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
         }
     }
 
-	// the responses to the sample + killpix and feedback messages have an extra register that contains a mask.
+    // the responses to the sample + killpix and feedback messages have an extra register that contains a mask.
     bool hasMaskResponse = (writeMask & (1 << 4)) ? true : false;
 
     CVariable* dst = m_destination;
@@ -6058,10 +6064,10 @@ void EmitPass::emitSampleInstruction(SampleIntrinsic* inst)
     //Hence the movs to handle this layout in SIMD8 mode
     bool simd8HFRet = isSIMD8_16bitReturn(m_destination, m_SimdMode);
 
-    if (simd8HFRet)
-    {
-        dst = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, false);
-    }
+        if (simd8HFRet)
+        {
+            dst = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, false);
+        }
     uint label = 0;
     CVariable* flag = nullptr;
     bool zeroLOD = m_currShader->m_Platform->supportSampleAndLd_lz() && inst->ZeroLOD();
@@ -6202,7 +6208,7 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
     {
         lod = GetSymbol(inst->getOperand(1));
     }
-    if(lod && lod->IsUniform())
+    if (lod && lod->IsUniform())
     {
         CVariable* srcReg = m_currShader->GetNewVariable(
             m_destination->IsUniform() ? 8 : numLanes(m_currShader->m_SIMDSize),
@@ -6216,7 +6222,7 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
     }
 
     CVariable* tempDest = m_destination;
-    if(m_destination->IsUniform())
+    if (m_destination->IsUniform())
     {
         tempDest = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 8, ISA_TYPE_UD, EALIGN_GRF, true);
         m_encoder->SetUniformSIMDSize(SIMDMode::SIMD8);
@@ -6233,14 +6239,14 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
 
     ResourceLoop(needLoop, flag, label);
 
-    if(tempDest != m_destination)
+    if (tempDest != m_destination)
     {
         unsigned int writemask = 0;
-        for(auto I = inst->user_begin(), E = inst->user_end(); I != E; ++I)
+        for (auto I = inst->user_begin(), E = inst->user_end(); I != E; ++I)
         {
-            if(llvm::ExtractElementInst* extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I))
+            if (llvm::ExtractElementInst* extract = llvm::dyn_cast<llvm::ExtractElementInst>(*I))
             {
-                if(llvm::ConstantInt* index = llvm::dyn_cast<ConstantInt>(extract->getIndexOperand()))
+                if (llvm::ConstantInt* index = llvm::dyn_cast<ConstantInt>(extract->getIndexOperand()))
                 {
                     writemask |= BIT(static_cast<uint>(index->getZExtValue()));
                     continue;
@@ -6249,9 +6255,9 @@ void EmitPass::emitInfoInstruction(InfoIntrinsic* inst)
             writemask = 0xF;
             break;
         }
-        for(uint i = 0; i < 4; i++)
+        for (uint i = 0; i < 4; i++)
         {
-            if(BIT(i) & writemask)
+            if (BIT(i) & writemask)
             {
                 m_encoder->SetSrcSubVar(0, i);
                 m_encoder->SetDstSubReg(i);
@@ -6289,7 +6295,7 @@ void EmitPass::emitSurfaceInfo(GenIntrinsicInst* inst)
 
     CVariable* exDesc =
         m_currShader->ImmToVariable(messageTarget, ISA_TYPE_D);
-    if(resource.m_surfaceType == ESURFACE_BINDLESS)
+    if (resource.m_surfaceType == ESURFACE_BINDLESS)
     {
         CVariable* temp = m_currShader->GetNewVariable(resource.m_resource);
         m_encoder->Add(temp, resource.m_resource, exDesc);
@@ -6335,10 +6341,10 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     sampler = GetSamplerVariable(samplerValue);
 
     //Check for valid number of sources from the end of the list
-    for(uint i = (numOperands - 7 - 1); i >= 1 ; i--)
+    for (uint i = (numOperands - 7 - 1); i >= 1; i--)
     {
         CVariable* validSrc = GetSymbol(inst->getOperand(i));
-        if(validSrc->IsImmediate() &&
+        if (validSrc->IsImmediate() &&
             validSrc->GetImmediateValue() == 0)
         {
             numSources--;
@@ -6350,18 +6356,18 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     }
 
     // offset
-    uint offsetSourceIndex = numOperands-5;
+    uint offsetSourceIndex = numOperands - 5;
     CVariable* offset = ComputeSampleIntOffset(inst, offsetSourceIndex);
 
-    uint channelIndx = numOperands-2;
+    uint channelIndx = numOperands - 2;
     uint channel = int_cast<uint>(GetImmediateVal(inst->getOperand(channelIndx)));
     SmallVector<CVariable*, 4> payload;
 
     //create send payload for numSources
-    for( uint i = 0; i < numSources; i++ )
+    for (uint i = 0; i < numSources; i++)
     {
         CVariable* src = GetSymbol(inst->getOperand(i));
-        if(src->IsUniform())
+        if (src->IsUniform())
         {
             CVariable* srcReg = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize), ISA_TYPE_F, EALIGN_GRF);
             m_encoder->Copy(srcReg, src);
@@ -6375,12 +6381,12 @@ void EmitPass::emitGather4Instruction(SamplerGatherIntrinsic* inst)
     //When sampler output is 16 bit float, hardware doesnt pack the output in SIMD8 mode.
     //Hence the movs to handle this layout in SIMD8 mode
     bool simd8HFRet = isSIMD8_16bitReturn(m_destination, m_SimdMode);
-    if (simd8HFRet)
-    {
-        dst = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, false);
-    }
+        if (simd8HFRet)
+        {
+            dst = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, false);
+        }
 
-    bool feedbackEnable = (m_destination->GetNumberElement()/numLanes(m_currShader->m_SIMDSize) == 5)? true : false;
+    bool feedbackEnable = (m_destination->GetNumberElement() / numLanes(m_currShader->m_SIMDSize) == 5) ? true : false;
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, sampler, flag, label);
@@ -6431,10 +6437,10 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
     uint numSources = numOperands - 5;
     uint textureArgIdx = numOperands - 5;
 
-    for(uint i = numSources-1; i > 0 ; i--)
+    for (uint i = numSources - 1; i > 0; i--)
     {
         CVariable* validSrc = GetSymbol(inst->getOperand(i));
-        if(!(validSrc->IsImmediate() && validSrc->GetImmediateValue() == 0))
+        if (!(validSrc->IsImmediate() && validSrc->GetImmediateValue() == 0))
         {
             break;
         }
@@ -6443,18 +6449,18 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
 
     // Figure out the write mask from the size of the destination we want to write
     uint writeMask = m_currShader->GetExtractMask(inst);
-    assert(writeMask!=0 && "Wrong write mask");
+    assert(writeMask != 0 && "Wrong write mask");
 
     Value* texOperand = inst->getOperand(textureArgIdx);
     ResourceDescriptor resource = GetResourceVariable(texOperand);
 
-    uint offsetSourceIndex = numOperands-4;
+    uint offsetSourceIndex = numOperands - 4;
     CVariable* offset = ComputeSampleIntOffset(inst, offsetSourceIndex);
 
     SmallVector<CVariable*, 4> payload;
 
     //create send payload for numSources
-    for( uint i = 0; i < numSources; i++ )
+    for (uint i = 0; i < numSources; i++)
     {
         CVariable* src = GetSymbol(inst->getOperand(i));
         src = BroadcastIfUniform(src);
@@ -6470,7 +6476,7 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
         dst = m_currShader->GetNewVariable(m_destination->GetNumberElement() * 2, ISA_TYPE_HF, EALIGN_GRF, false);
     }
 
-    bool feedbackEnable = (writeMask & (1<<4))? true : false;
+    bool feedbackEnable = (writeMask & (1 << 4)) ? true : false;
     uint label = 0;
     CVariable* flag = nullptr;
     bool needLoop = ResourceLoopHeader(resource, flag, label);
@@ -6491,7 +6497,7 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
         PackSIMD8HFRet(dst);
     }
 
-    if(feedbackEnable)
+    if (feedbackEnable)
     {
         CVariable* flag = m_currShader->GetNewVariable(numLanes(m_currShader->m_dispatchSize), ISA_TYPE_BOOL, EALIGN_BYTE);
         uint subvar = numLanes(m_currShader->m_SIMDSize) / (SIZE_GRF >> 2) * 4;
@@ -6501,10 +6507,10 @@ void EmitPass::emitLdmsInstruction(llvm::Instruction* inst)
         m_encoder->SetP(flag, newdestination);
         m_encoder->Push();
 
-        CVariable* pred =  m_currShader->ImmToVariable(0xFFFFFFFF, m_destination->GetType());
-        CVariable* zero =  m_currShader->ImmToVariable(0x0, m_destination->GetType());
+        CVariable* pred = m_currShader->ImmToVariable(0xFFFFFFFF, m_destination->GetType());
+        CVariable* zero = m_currShader->ImmToVariable(0x0, m_destination->GetType());
         m_encoder->SetDstSubVar(subvar);
-        m_encoder->Select(flag, m_destination, pred, zero );
+        m_encoder->Select(flag, m_destination, pred, zero);
         m_encoder->Push();
     }
 }
@@ -6515,64 +6521,64 @@ void EmitPass::emitCSSGV(GenIntrinsicInst* inst)
     SGVUsage usage =
         static_cast<SGVUsage>(llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue());
     CVariable* pThreadIdInGroup = nullptr;
-    switch(usage)
+    switch (usage)
     {
     case THREAD_GROUP_ID_X:
+    {
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        if (csProgram->GetDispatchAlongY())
         {
-            m_encoder->SetSrcRegion(0, 0, 1, 0);
-            if(csProgram->GetDispatchAlongY())
-            {
-                m_encoder->SetSrcSubReg(0, 6);
-            }
-            else
-            {
-            m_encoder->SetSrcSubReg(0,1);
-            }
-            m_encoder->Copy(m_destination, csProgram->GetR0());
-            m_encoder->Push();
-            break;
+            m_encoder->SetSrcSubReg(0, 6);
         }
+        else
+        {
+            m_encoder->SetSrcSubReg(0, 1);
+        }
+        m_encoder->Copy(m_destination, csProgram->GetR0());
+        m_encoder->Push();
+        break;
+    }
     case THREAD_GROUP_ID_Y:
+    {
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        if (csProgram->GetDispatchAlongY())
         {
-            m_encoder->SetSrcRegion(0, 0, 1, 0);
-            if(csProgram->GetDispatchAlongY())
-            {
-                m_encoder->SetSrcSubReg(0, 1);
-            }
-            else
-            {
-            m_encoder->SetSrcSubReg(0,6);
-            }
-            m_encoder->Copy(m_destination, csProgram->GetR0());
-            m_encoder->Push();
-            break;
+            m_encoder->SetSrcSubReg(0, 1);
         }
+        else
+        {
+            m_encoder->SetSrcSubReg(0, 6);
+        }
+        m_encoder->Copy(m_destination, csProgram->GetR0());
+        m_encoder->Push();
+        break;
+    }
     case THREAD_GROUP_ID_Z:
-        {
-            m_encoder->SetSrcRegion(0, 0, 1, 0);
-            m_encoder->SetSrcSubReg(0,7);
-            m_encoder->Copy(m_destination, csProgram->GetR0());
-            m_encoder->Push();
-            break;
-        }
+    {
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->SetSrcSubReg(0, 7);
+        m_encoder->Copy(m_destination, csProgram->GetR0());
+        m_encoder->Push();
+        break;
+    }
     case THREAD_ID_IN_GROUP_X:
-        {
-            pThreadIdInGroup = csProgram->CreateThreadIDinGroup(0);
-            m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
-            break;
-        }
+    {
+        pThreadIdInGroup = csProgram->CreateThreadIDinGroup(0);
+        m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
+        break;
+    }
     case THREAD_ID_IN_GROUP_Y:
-        {
-            pThreadIdInGroup = csProgram->CreateThreadIDinGroup(1);
-            m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
-            break;
-        }
+    {
+        pThreadIdInGroup = csProgram->CreateThreadIDinGroup(1);
+        m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
+        break;
+    }
     case THREAD_ID_IN_GROUP_Z:
-        {
-            pThreadIdInGroup = csProgram->CreateThreadIDinGroup(2);
-            m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
-            break;
-        }
+    {
+        pThreadIdInGroup = csProgram->CreateThreadIDinGroup(2);
+        m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
+        break;
+    }
     default:
         break;
     }
@@ -6582,99 +6588,99 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
 {
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
     CVariable* dst = m_destination;
-    SGVUsage usage = (SGVUsage) llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
-    switch(usage)
+    SGVUsage usage = (SGVUsage)llvm::cast<llvm::ConstantInt>(inst->getOperand(0))->getZExtValue();
+    switch (usage)
     {
     case POSITION_Z:
     case POSITION_W:
-        {
+    {
         if (psProgram->GetPhase() == PSPHASE_PIXEL || psProgram->GetPhase() == PSPHASE_COARSE)
-            {
-                e_interpolation mode = EINTERPOLATION_LINEAR;
-                CVariable* bary = psProgram->GetBaryReg(mode);
-                CVariable* delta =
-                    (usage == POSITION_Z) ? psProgram->GetZDelta() : psProgram->GetWDelta();
-                m_encoder->SetSrcRegion(0, 0, 4, 1);
-                m_encoder->Pln(m_destination, delta, bary);
-                m_encoder->Push();
-            }
-            else
-            {
-                CVariable* pPositionZW =
-                    (usage == POSITION_Z) ? psProgram->GetPositionZ() : psProgram->GetPositionW();
-                m_encoder->Copy(dst, pPositionZW);
-                m_encoder->Push();
-            }
-            break;
-        }
-    case POSITION_X_OFFSET:
-    case POSITION_Y_OFFSET:
         {
-            //This returns to you the register value in the payload containing PSXYPositionOffset
-            CVariable* pPositionXYOffset = psProgram->GetPositionXYOffset();
-            //Access the correct subregion for the interleaved XY follow Spec
-            m_encoder->SetSrcRegion(0, 16, 8, 2);
-            m_encoder->SetSrcSubReg(0, usage == POSITION_X_OFFSET ? 0 : 1);
-
-            //U4.4 encoding= upper 4 bits represent integer part and lower 4 bits represent decimal part
-            //Extract integer part by AND with 11110000 and right shifting 4 bits
-            CVariable* intVal_B = m_currShader->GetNewVariable(
-                numLanes(m_currShader->m_SIMDSize),
-                ISA_TYPE_B,
-                EALIGN_GRF);
-            m_encoder->And(intVal_B, pPositionXYOffset, m_currShader->ImmToVariable(0xf0, ISA_TYPE_B));
+            e_interpolation mode = EINTERPOLATION_LINEAR;
+            CVariable* bary = psProgram->GetBaryReg(mode);
+            CVariable* delta =
+                (usage == POSITION_Z) ? psProgram->GetZDelta() : psProgram->GetWDelta();
+            m_encoder->SetSrcRegion(0, 0, 4, 1);
+            m_encoder->Pln(m_destination, delta, bary);
             m_encoder->Push();
-
-            CVariable* intVal_F = m_currShader->GetNewVariable(
-                numLanes(m_currShader->m_SIMDSize),
-                ISA_TYPE_F,
-                EALIGN_GRF);
-            m_encoder->Shr(intVal_B, intVal_B, m_currShader->ImmToVariable(0x04, ISA_TYPE_B));
-            m_encoder->Cast(intVal_F, intVal_B);
-            m_encoder->Push();
-
-            //Extract decimal part by AND with 00001111 and divide by 16
-            CVariable* deciVal_B = m_currShader->GetNewVariable(
-                numLanes(m_currShader->m_SIMDSize),
-                ISA_TYPE_B,
-                EALIGN_GRF);
-
-            m_encoder->SetSrcRegion(0, 16, 8, 2);
-            m_encoder->SetSrcSubReg(0, usage == POSITION_X_OFFSET ? 0 : 1);
-            m_encoder->And(deciVal_B, pPositionXYOffset, m_currShader->ImmToVariable(0x0f, ISA_TYPE_B));
-            m_encoder->Push();
-
-            CVariable* deciVal_F = m_currShader->GetNewVariable(
-                numLanes(m_currShader->m_SIMDSize),
-                ISA_TYPE_F,
-                EALIGN_GRF);
-            m_encoder->Cast(deciVal_F, deciVal_B);
-            //Divide lower 4 bits decimal value  by 16 = cheaper operation of cheaper Mul Op by 0.0625
-            CVariable* temp = m_currShader->GetNewVariable(
-                numLanes(m_currShader->m_SIMDSize),
-                ISA_TYPE_F,
-                EALIGN_GRF);
-            m_encoder->Mul(temp, deciVal_F, m_currShader->ImmToVariable(0x3d800000, ISA_TYPE_F));
-            m_encoder->Push();
-
-            //Add decimal and integer to compute our PSXYOffsetValue
-            m_encoder->Add(dst, intVal_F, temp);
+        }
+        else
+        {
+            CVariable* pPositionZW =
+                (usage == POSITION_Z) ? psProgram->GetPositionZ() : psProgram->GetPositionW();
+            m_encoder->Copy(dst, pPositionZW);
             m_encoder->Push();
         }
         break;
+    }
+    case POSITION_X_OFFSET:
+    case POSITION_Y_OFFSET:
+    {
+        //This returns to you the register value in the payload containing PSXYPositionOffset
+        CVariable* pPositionXYOffset = psProgram->GetPositionXYOffset();
+        //Access the correct subregion for the interleaved XY follow Spec
+        m_encoder->SetSrcRegion(0, 16, 8, 2);
+        m_encoder->SetSrcSubReg(0, usage == POSITION_X_OFFSET ? 0 : 1);
+
+        //U4.4 encoding= upper 4 bits represent integer part and lower 4 bits represent decimal part
+        //Extract integer part by AND with 11110000 and right shifting 4 bits
+        CVariable* intVal_B = m_currShader->GetNewVariable(
+            numLanes(m_currShader->m_SIMDSize),
+            ISA_TYPE_B,
+            EALIGN_GRF);
+        m_encoder->And(intVal_B, pPositionXYOffset, m_currShader->ImmToVariable(0xf0, ISA_TYPE_B));
+        m_encoder->Push();
+
+        CVariable* intVal_F = m_currShader->GetNewVariable(
+            numLanes(m_currShader->m_SIMDSize),
+            ISA_TYPE_F,
+            EALIGN_GRF);
+        m_encoder->Shr(intVal_B, intVal_B, m_currShader->ImmToVariable(0x04, ISA_TYPE_B));
+        m_encoder->Cast(intVal_F, intVal_B);
+        m_encoder->Push();
+
+        //Extract decimal part by AND with 00001111 and divide by 16
+        CVariable* deciVal_B = m_currShader->GetNewVariable(
+            numLanes(m_currShader->m_SIMDSize),
+            ISA_TYPE_B,
+            EALIGN_GRF);
+
+        m_encoder->SetSrcRegion(0, 16, 8, 2);
+        m_encoder->SetSrcSubReg(0, usage == POSITION_X_OFFSET ? 0 : 1);
+        m_encoder->And(deciVal_B, pPositionXYOffset, m_currShader->ImmToVariable(0x0f, ISA_TYPE_B));
+        m_encoder->Push();
+
+        CVariable* deciVal_F = m_currShader->GetNewVariable(
+            numLanes(m_currShader->m_SIMDSize),
+            ISA_TYPE_F,
+            EALIGN_GRF);
+        m_encoder->Cast(deciVal_F, deciVal_B);
+        //Divide lower 4 bits decimal value  by 16 = cheaper operation of cheaper Mul Op by 0.0625
+        CVariable* temp = m_currShader->GetNewVariable(
+            numLanes(m_currShader->m_SIMDSize),
+            ISA_TYPE_F,
+            EALIGN_GRF);
+        m_encoder->Mul(temp, deciVal_F, m_currShader->ImmToVariable(0x3d800000, ISA_TYPE_F));
+        m_encoder->Push();
+
+        //Add decimal and integer to compute our PSXYOffsetValue
+        m_encoder->Add(dst, intVal_F, temp);
+        m_encoder->Push();
+    }
+    break;
     case RENDER_TARGET_ARRAY_INDEX:
     case VFACE:
-        {
+    {
         unsigned int numTri = 1;
         SIMDMode simdSize = psProgram->m_SIMDSize;
         unsigned int subReg = 0;
         CVariable* reg = psProgram->GetR0();
-        if(usage == VFACE)
+        if (usage == VFACE)
         {
-            for(unsigned int i = 0; i < numTri; i++)
+            for (unsigned int i = 0; i < numTri; i++)
             {
                 CVariable* src = m_currShader->BitCast(reg, ISA_TYPE_W);
-                m_encoder->SetSrcSubReg(0, 2*(subReg + i * 5));
+                m_encoder->SetSrcSubReg(0, 2 * (subReg + i * 5));
                 m_encoder->SetSrcRegion(0, 0, 1, 0);
                 m_encoder->SetSimdSize(simdSize);
                 m_encoder->SetMask(i == 0 ? EMASK_Q1 : EMASK_Q2);
@@ -6683,11 +6689,11 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
                 m_encoder->Push();
             }
         }
-        else if(usage == RENDER_TARGET_ARRAY_INDEX)
+        else if (usage == RENDER_TARGET_ARRAY_INDEX)
         {
             dst = m_currShader->BitCast(dst, ISA_TYPE_UD);
             CVariable* temp = m_currShader->GetNewVariable(dst);
-            for(unsigned int i = 0; i < numTri; i++)
+            for (unsigned int i = 0; i < numTri; i++)
             {
                 m_encoder->SetSrcRegion(0, 0, 1, 0);
                 m_encoder->SetSrcSubReg(0, subReg + i * 5);
@@ -6701,58 +6707,58 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
             m_encoder->Push();
         }
         break;
-        }
+    }
     case SAMPLEINDEX:
-        {
-            //Sample index is stored in one half byte per subspan. we shift right
-            //each lane with a different value to get the right number for each subspan
-            //shr (8) r9.0<1>:uw   r1.0<0;1,0>:uw   0x0c080400:uv    { Align1, NoMask, Q1 }
-            //and (16) r9.0<1>:ud   r9.0<1;4,0>:ud   0x0000000f:uw       { Align1, Q1 }
-            CVariable* r1 = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UW);
-            CVariable* imm = m_currShader->ImmToVariable(0x0C080400, ISA_TYPE_UV);
-            CVariable* temp = m_currShader->GetNewVariable(8, ISA_TYPE_UW, EALIGN_GRF);
-            m_encoder->SetSrcRegion(0, 0, 1, 0);
-            m_encoder->SetSimdSize(SIMDMode::SIMD8);
-            m_encoder->SetNoMask();
-            m_encoder->Shr(temp, r1, imm);
-            m_encoder->Push();
+    {
+        //Sample index is stored in one half byte per subspan. we shift right
+        //each lane with a different value to get the right number for each subspan
+        //shr (8) r9.0<1>:uw   r1.0<0;1,0>:uw   0x0c080400:uv    { Align1, NoMask, Q1 }
+        //and (16) r9.0<1>:ud   r9.0<1;4,0>:ud   0x0000000f:uw       { Align1, Q1 }
+        CVariable* r1 = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UW);
+        CVariable* imm = m_currShader->ImmToVariable(0x0C080400, ISA_TYPE_UV);
+        CVariable* temp = m_currShader->GetNewVariable(8, ISA_TYPE_UW, EALIGN_GRF);
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->SetSimdSize(SIMDMode::SIMD8);
+        m_encoder->SetNoMask();
+        m_encoder->Shr(temp, r1, imm);
+        m_encoder->Push();
 
-            dst = m_currShader->BitCast(dst, ISA_TYPE_UD);
-            temp = m_currShader->BitCast(temp, ISA_TYPE_UD);
+        dst = m_currShader->BitCast(dst, ISA_TYPE_UD);
+        temp = m_currShader->BitCast(temp, ISA_TYPE_UD);
 
-            imm = m_currShader->ImmToVariable(0x0000000F, ISA_TYPE_UD);
-            m_encoder->SetSrcRegion(0, 1, 4, 0);
-            m_encoder->And(dst,temp,imm);
-            m_encoder->Push();
-        }
-        break;
+        imm = m_currShader->ImmToVariable(0x0000000F, ISA_TYPE_UD);
+        m_encoder->SetSrcRegion(0, 1, 4, 0);
+        m_encoder->And(dst, temp, imm);
+        m_encoder->Push();
+    }
+    break;
     case INPUT_COVERAGE_MASK:
-        {
-             CVariable* pInputCoverageMask = psProgram->GetInputCoverageMask();
-             m_encoder->Copy(dst, pInputCoverageMask);
-             m_encoder->Push();
-        }
-        break;
+    {
+        CVariable* pInputCoverageMask = psProgram->GetInputCoverageMask();
+        m_encoder->Copy(dst, pInputCoverageMask);
+        m_encoder->Push();
+    }
+    break;
     case ACTUAL_COARSE_SIZE_X:
     case ACTUAL_COARSE_SIZE_Y:
-        {
-            CVariable* CPSize = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UB);
-            m_encoder->SetSrcRegion(0, 0, 1, 0);
-            m_encoder->SetSrcSubReg(0, usage==ACTUAL_COARSE_SIZE_X? 0:1);
-            m_encoder->Cast(m_destination, CPSize);
-            m_encoder->Push();
-        }
-        break;
+    {
+        CVariable* CPSize = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UB);
+        m_encoder->SetSrcRegion(0, 0, 1, 0);
+        m_encoder->SetSrcSubReg(0, usage == ACTUAL_COARSE_SIZE_X ? 0 : 1);
+        m_encoder->Cast(m_destination, CPSize);
+        m_encoder->Push();
+    }
+    break;
     case REQUESTED_COARSE_SIZE_X:
     case REQUESTED_COARSE_SIZE_Y:
-        {
-            CVariable* requestedSize = (usage == REQUESTED_COARSE_SIZE_X) ?
-                psProgram->GetCPSRequestedSizeX() : psProgram->GetCPSRequestedSizeY();
-            m_encoder->SetSrcRegion(0, 1, 4, 0);
-            m_encoder->Cast(m_destination, requestedSize);
-            m_encoder->Push();
-        }
-        break;
+    {
+        CVariable* requestedSize = (usage == REQUESTED_COARSE_SIZE_X) ?
+            psProgram->GetCPSRequestedSizeX() : psProgram->GetCPSRequestedSizeY();
+        m_encoder->SetSrcRegion(0, 1, 4, 0);
+        m_encoder->Cast(m_destination, requestedSize);
+        m_encoder->Push();
+    }
+    break;
     case MSAA_RATE:
     {
         dst = m_currShader->BitCast(dst, ISA_TYPE_UD);
@@ -6764,7 +6770,7 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
             m_currShader->ImmToVariable(BITMASK(4), ISA_TYPE_UW));
         m_encoder->Push();
     }
-        break;
+    break;
     default:
         assert(0);
         break;
@@ -6774,10 +6780,10 @@ void EmitPass::emitPSSGV(GenIntrinsicInst* inst)
 
 void EmitPass::emitDSSGV(llvm::GenIntrinsicInst* pInst)
 {
-    assert(m_currShader->GetShaderType()==ShaderType::DOMAIN_SHADER);
+    assert(m_currShader->GetShaderType() == ShaderType::DOMAIN_SHADER);
     CDomainShader* dsProgram = static_cast<CDomainShader*>(m_currShader);
     SGVUsage usage = static_cast<SGVUsage>(llvm::dyn_cast<llvm::ConstantInt>(pInst->getOperand(0))->getZExtValue());
-    if(PRIMITIVEID == usage)
+    if (PRIMITIVEID == usage)
     {
         if (dsProgram->m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH)
         {
@@ -6798,15 +6804,15 @@ void EmitPass::emitDSSGV(llvm::GenIntrinsicInst* pInst)
 
 void EmitPass::emitHSSGV(llvm::GenIntrinsicInst* pInst)
 {
-    assert(m_currShader->GetShaderType()==ShaderType::HULL_SHADER);
+    assert(m_currShader->GetShaderType() == ShaderType::HULL_SHADER);
     CHullShader* hsProgram = static_cast<CHullShader*>(m_currShader);
     SGVUsage usage = static_cast<SGVUsage>(llvm::dyn_cast<llvm::ConstantInt>(pInst->getOperand(0))->getZExtValue());
     if (PRIMITIVEID == usage)
     {
-        if(hsProgram->GetShaderDispatchMode() == SINGLE_PATCH_DISPATCH_MODE )
+        if (hsProgram->GetShaderDispatchMode() == SINGLE_PATCH_DISPATCH_MODE)
         {
             m_encoder->SetSrcRegion(0, 0, 1, 0);
-            m_encoder->SetSrcSubReg(0,1);
+            m_encoder->SetSrcSubReg(0, 1);
             m_encoder->Copy(m_destination, hsProgram->GetR0());
             m_encoder->Push();
         }
@@ -6830,7 +6836,7 @@ void EmitPass::emitPixelPosition(llvm::GenIntrinsicInst* inst)
     CVariable* imm = m_currShader->ImmToVariable(
         IID == GenISAIntrinsic::GenISA_PixelPositionX ? 0x10101010 : 0x11001100, ISA_TYPE_V);
     CVariable* pixelSize = nullptr;
-    if(psProgram->GetPhase() == PSPHASE_COARSE)
+    if (psProgram->GetPhase() == PSPHASE_COARSE)
     {
         CVariable* CPSize = m_currShader->BitCast(psProgram->GetR1(), ISA_TYPE_UB);
         pixelSize =
@@ -6854,7 +6860,7 @@ void EmitPass::emitPixelPosition(llvm::GenIntrinsicInst* inst)
 
 void EmitPass::emitSGV(SGVIntrinsic* inst)
 {
-    switch(m_currShader->GetShaderType())
+    switch (m_currShader->GetShaderType())
     {
     case ShaderType::PIXEL_SHADER:
         emitPSSGV(inst);
@@ -6884,16 +6890,16 @@ void EmitPass::emitAluNoModifier(llvm::GenIntrinsicInst* inst)
     CVariable* pSrc2;
     CVariable* dst;
 
-    switch(inst->getIntrinsicID())
+    switch (inst->getIntrinsicID())
     {
     case GenISAIntrinsic::GenISA_bfi:
-        {
-            pSrc1 = GetSymbol(inst->getOperand(1));
-            pSrc2 = GetSymbol(inst->getOperand(2));
-            CVariable* pSrc3 = GetSymbol(inst->getOperand(3));
-            m_encoder->Bfi(m_destination, pSrc0, pSrc1, pSrc2, pSrc3);
-        }
-        break;
+    {
+        pSrc1 = GetSymbol(inst->getOperand(1));
+        pSrc2 = GetSymbol(inst->getOperand(2));
+        CVariable* pSrc3 = GetSymbol(inst->getOperand(3));
+        m_encoder->Bfi(m_destination, pSrc0, pSrc1, pSrc2, pSrc3);
+    }
+    break;
     case GenISAIntrinsic::GenISA_ibfe:
         pSrc1 = GetSymbol(inst->getOperand(1));
         pSrc2 = GetSymbol(inst->getOperand(2));
@@ -6929,7 +6935,7 @@ void EmitPass::emitAluNoModifier(llvm::GenIntrinsicInst* inst)
 
 void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
 {
-    switch(inst->getIntrinsicID())
+    switch (inst->getIntrinsicID())
     {
     case GenISAIntrinsic::GenISA_OUTPUT:
         emitOutput(inst);
@@ -6949,7 +6955,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_simdSize:
         emitSimdSize(inst);
         break;
-      break;
+        break;
     case GenISAIntrinsic::GenISA_simdShuffleDown:
         emitSimdShuffleDown(inst);
         break;
@@ -6990,16 +6996,16 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_SetDebugReg:
         emitSetDebugReg(inst);
         break;
-     case GenISAIntrinsic::GenISA_vmeSendIME:
+    case GenISAIntrinsic::GenISA_vmeSendIME:
         emitVMESendIME(inst);
         break;
-     case GenISAIntrinsic::GenISA_vmeSendIME2:
-       emitVMESendIME2(inst);
-       break;
-     case GenISAIntrinsic::GenISA_vmeSendFBR:
-         emitVMESendFBR(inst);
-         break;
-     case GenISAIntrinsic::GenISA_vmeSendFBR2:
+    case GenISAIntrinsic::GenISA_vmeSendIME2:
+        emitVMESendIME2(inst);
+        break;
+    case GenISAIntrinsic::GenISA_vmeSendFBR:
+        emitVMESendFBR(inst);
+        break;
+    case GenISAIntrinsic::GenISA_vmeSendFBR2:
         emitVMESendFBR2(inst);
         break;
     case GenISAIntrinsic::GenISA_vmeSendSIC2:
@@ -7011,14 +7017,14 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_vaErode:
     case GenISAIntrinsic::GenISA_vaDilate:
     case GenISAIntrinsic::GenISA_vaMinMax:
-        emitVideoAnalyticSLM( inst, 1 );
+        emitVideoAnalyticSLM(inst, 1);
         break;
     case GenISAIntrinsic::GenISA_vaMinMaxFilter:
-        emitVideoAnalyticSLM( inst, 8 );
+        emitVideoAnalyticSLM(inst, 8);
         break;
     case GenISAIntrinsic::GenISA_vaConvolve:
     case GenISAIntrinsic::GenISA_vaCentroid:
-        emitVideoAnalyticSLM( inst, 4 );
+        emitVideoAnalyticSLM(inst, 4);
         break;
     case GenISAIntrinsic::GenISA_vaConvolveGRF_16x1:
     case GenISAIntrinsic::GenISA_vaConvolveGRF_16x4:
@@ -7026,7 +7032,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         break;
     case GenISAIntrinsic::GenISA_vaBoolSum:
     case GenISAIntrinsic::GenISA_vaBoolCentroid:
-        emitVideoAnalyticSLM( inst, 2 );
+        emitVideoAnalyticSLM(inst, 2);
         break;
     case GenISAIntrinsic::GenISA_createMessagePhasesNoInit:
     case GenISAIntrinsic::GenISA_createMessagePhasesNoInitV:
@@ -7254,26 +7260,26 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
         emitGetBufferPtr(inst);
         break;
     case GenISAIntrinsic::GenISA_readsurfaceinfoptr:
-		emitSurfaceInfo(inst);
+        emitSurfaceInfo(inst);
         break;
 
-    case GenISAIntrinsic::GenISA_source_value:{
+    case GenISAIntrinsic::GenISA_source_value: {
         m_encoder->Copy(m_currShader->GetNULL(), GetSymbol(inst->getOperand(0)));
         m_encoder->Push();
         break;
     }
-    case GenISAIntrinsic::GenISA_movcr:{
+    case GenISAIntrinsic::GenISA_movcr: {
         m_encoder->SetSrcSubReg(0, static_cast<uint16_t>(GetImmediateVal(inst->getOperand(0))));
         m_encoder->Copy(m_destination, m_currShader->GetCR0());
         m_encoder->Push();
         break;
     }
-    case GenISAIntrinsic::GenISA_hw_thread_id:{
+    case GenISAIntrinsic::GenISA_hw_thread_id: {
         m_encoder->Copy(m_destination, m_currShader->GetHWTID());
         m_encoder->Push();
         break;
     }
-    case GenISAIntrinsic::GenISA_slice_id:{
+    case GenISAIntrinsic::GenISA_slice_id: {
         if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE ||
             m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
             emitStateRegID(0x0000C000, 0x0000000E);
@@ -7281,7 +7287,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             emitStateRegID(0x00001C00, 0x0000000A);
         break;
     }
-    case GenISAIntrinsic::GenISA_subslice_id:{
+    case GenISAIntrinsic::GenISA_subslice_id: {
         if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE ||
             m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
             emitStateRegID(0x00003000, 0x0000000C);
@@ -7289,7 +7295,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
             emitStateRegID(0x00000300, 0x00000008);
         break;
     }
-    case GenISAIntrinsic::GenISA_eu_id:{
+    case GenISAIntrinsic::GenISA_eu_id: {
         if (m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN8_CORE ||
             m_currShader->m_Platform->GetPlatformFamily() == IGFX_GEN9_CORE)
             emitStateRegID(0x00000F00, 0x00000008);
@@ -7374,7 +7380,7 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
 
 void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
 {
-    switch(inst->getIntrinsicID())
+    switch (inst->getIntrinsicID())
     {
     case Intrinsic::lifetime_start:
     case Intrinsic::lifetime_end:
@@ -7436,8 +7442,9 @@ CVariable *EmitPass::Mul(CVariable *Src0, CVariable *Src1, const CVariable *DstP
     {
         m_encoder->Mul(Dst, Src0, Src1);
         m_encoder->Push();
-    } else {
-        CVariable *src[] = {Src0, Src1};
+    }
+    else {
+        CVariable *src[] = { Src0, Src1 };
         Mul64(Dst, src);
     }
     return Dst;
@@ -7503,12 +7510,13 @@ void EmitPass::emitGEP(llvm::Instruction* I)
             }
             vElemOffset = m_currShader->ImmToVariable(Offset, ISA_TYPE_UD);
             Ty = StTy->getElementType(Field);
-        } else {
+        }
+        else {
             Ty = GTI.getIndexedType();
             // vElemOffset = vIdx * vElemSize
             CVariable* vElemSize = m_currShader->ImmToVariable(m_DL->getTypeAllocSize(Ty), PtrTy);
             CVariable *vIdx = GetSymbol(Idx);
-             // The Mul does a push and takes care of constant folding
+            // The Mul does a push and takes care of constant folding
             vElemOffset = Mul(vIdx, vElemSize, vTmp);
         }
         // vOffset = vN + vElemOffset
@@ -7554,14 +7562,14 @@ void EmitPass::emitBitCast(llvm::BitCastInst* btCst)
         assert(dstType->isPointerTy() && "Expected both src and dst have pointer type.");
     }
 
-    if(btCst->getOperand(0)->getType()->isVectorTy() ||
-         btCst->getType()->isVectorTy())
+    if (btCst->getOperand(0)->getType()->isVectorTy() ||
+        btCst->getType()->isVectorTy())
     {
         emitVectorBitCast(btCst);
         return;
     }
 
-    CVariable* src = GetSymbol( btCst->getOperand(0) );
+    CVariable* src = GetSymbol(btCst->getOperand(0));
     CVariable* dst = m_destination;
     assert(numSrcElement == 1 && numDstElement == 1 && "vector to vector bitcast not supported");
     src = m_currShader->BitCast(src, dst->GetType());
@@ -7587,7 +7595,7 @@ void EmitPass::emitAddrSpaceCast(llvm::AddrSpaceCastInst* addrSpaceCast)
 void EmitPass::emitExtract(llvm::Instruction* inst)
 {
     assert(llvm::isa<llvm::ExtractElementInst>(inst));
-    llvm::ExtractElementInst *Extract =  llvm::cast<llvm::ExtractElementInst>(inst);
+    llvm::ExtractElementInst *Extract = llvm::cast<llvm::ExtractElementInst>(inst);
     llvm::Value* vecOperand = Extract->getVectorOperand();
     auto vectorBCI = dyn_cast<BitCastInst>(vecOperand);
     CVariable* vector = m_currShader->GetSymbol(vecOperand, true);
@@ -7609,7 +7617,7 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
                 return;
             }
             uint offset = 0;
-            if( m_currShader->GetIsUniform( inst->getOperand(0) ) )
+            if (m_currShader->GetIsUniform(inst->getOperand(0)))
             {
                 offset = element * eltBytes;
             }
@@ -7620,8 +7628,8 @@ void EmitPass::emitExtract(llvm::Instruction* inst)
             // the symbol table should have coalesced those two values;
             // TODO: clean up when we get generic coalescing
             assert((vector == m_destination->GetAlias() ||
-                    vector->GetAlias() == m_destination->GetAlias()) &&
-                   m_destination->GetAliasOffset() == (offset + vector->GetAliasOffset()));
+                vector->GetAlias() == m_destination->GetAlias()) &&
+                m_destination->GetAliasOffset() == (offset + vector->GetAliasOffset()));
         }
         else
         {
@@ -7766,14 +7774,14 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
     IGC::e_predefSurface predDefSurface = resource.m_surfaceType;
     CVariable* gOffset = m_currShader->ImmToVariable(0x0, ISA_TYPE_UD);
 
-    CVariable* src_offset = GetSymbol( elem_idxv );
+    CVariable* src_offset = GetSymbol(elem_idxv);
 
     // still collect buffer type here to work around some alignment problem with different messages
     BufferType bufType = GetBufferType(inst->getOperand(0)->getType()->getPointerAddressSpace());
 
     // generate oword_load if it is uniform
     // otherwise, generate gather/gather4
-    if( m_currShader->GetIsUniform( inst ) )
+    if (m_currShader->GetIsUniform(inst))
     {
         assert(predDefSurface != ESURFACE_STATELESS);  // scratch cannot be uniform
         Type* loadType = inst->getType();
@@ -7946,7 +7954,7 @@ void EmitPass::emitLoad3DInner(LdRawIntrinsic* inst, ResourceDescriptor& resourc
             // constant-buffer cannot go this way due to driver surface-state setting to RGBA-F32
             assert(!UsesTypedConstantBuffer(m_currShader->GetContext()) || bufType != CONSTANT_BUFFER);
 
-            m_encoder->Gather4ScaledNd(m_destination, resource, visaOffset, sizeInBits/32);
+            m_encoder->Gather4ScaledNd(m_destination, resource, visaOffset, sizeInBits / 32);
             m_encoder->Push();
         }
         else if (sizeInBits == 8 || sizeInBits == 16)
@@ -8015,17 +8023,17 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
         return;
     }
 
-    switch(inst->getOpcode())
+    switch (inst->getOpcode())
     {
     case Instruction::Ret:
         emitReturn(cast<ReturnInst>(inst));
         break;
     case Instruction::Call:
-        if(GenIntrinsicInst* I = dyn_cast<GenIntrinsicInst>(inst))
+        if (GenIntrinsicInst* I = dyn_cast<GenIntrinsicInst>(inst))
         {
             EmitGenIntrinsicMessage(I);
         }
-        else if(IntrinsicInst* I = dyn_cast<IntrinsicInst>(inst))
+        else if (IntrinsicInst* I = dyn_cast<IntrinsicInst>(inst))
         {
             EmitIntrinsicMessage(I);
         }
@@ -8035,14 +8043,14 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
         }
         break;
     case Instruction::Store:
-         emitStore(cast<StoreInst>(inst));
-         break;
+        emitStore(cast<StoreInst>(inst));
+        break;
     case Instruction::Load:
         emitLoad(cast<LoadInst>(inst));
         break;
     case Instruction::GetElementPtr:
-         emitGEP(cast<GetElementPtrInst>(inst));
-         break;
+        emitGEP(cast<GetElementPtrInst>(inst));
+        break;
     case Instruction::BitCast:
         emitBitCast(cast<BitCastInst>(inst));
         break;
@@ -8081,7 +8089,7 @@ void EmitPass::emitPairToPtr(GenIntrinsicInst* GII) {
     }
 
     assert(m_currShader->GetContext()->getRegisterPointerSizeInBits(AS) == 64
-           && "Pointer size should be either 32 or 64!");
+        && "Pointer size should be either 32 or 64!");
 
     CVariable *Dst32 = m_currShader->BitCast(m_destination, ISA_TYPE_UD);
     // Lo
@@ -8412,7 +8420,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         }
     }
     unsigned char retSizeInGRF = retOnStack ? 0 : (retSize + SIZE_GRF - 1) / SIZE_GRF;
-    m_encoder->StackCall(nullptr, F, (offsetA + SIZE_GRF - 1)/SIZE_GRF, retSizeInGRF);
+    m_encoder->StackCall(nullptr, F, (offsetA + SIZE_GRF - 1) / SIZE_GRF, retSizeInGRF);
     m_encoder->Push();
 
     // Emit the return value if used.
@@ -8578,7 +8586,7 @@ void EmitPass::emitStackFuncEntry(Function *F, bool ptr64bits)
             argSize = numLanes(m_currShader->m_dispatchSize) * SIZE_WORD;
         }
         // check if an argument can be written to ARGV based upon offset + arg-size
-        bool overflow = ((offsetA +argSize) > ArgBlkVar->GetSize());
+        bool overflow = ((offsetA + argSize) > ArgBlkVar->GetSize());
         if (!overflow)
         {
             CVariable *Src = ArgBlkVar;
@@ -8641,7 +8649,7 @@ void EmitPass::emitStackFuncEntry(Function *F, bool ptr64bits)
             } while (RmnBytes > 0);
         }
     }
-    m_encoder->SetStackFunctionArgSize((offsetA + SIZE_GRF - 1)/SIZE_GRF);
+    m_encoder->SetStackFunctionArgSize((offsetA + SIZE_GRF - 1) / SIZE_GRF);
     if (offsetS > 0)
     {
         CVariable *pSP = m_currShader->GetSP();
@@ -9071,7 +9079,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
 
         uint element = int_cast<uint>(pConstElem->getZExtValue());
         uint eStartBytes;
-        if( m_currShader->GetIsUniform( inst ) && m_currShader->GetIsUniform( pVec ) )
+        if (m_currShader->GetIsUniform(inst) && m_currShader->GetIsUniform(pVec))
         {
             eStartBytes = eBytes * element;
         }
@@ -9093,7 +9101,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
         llvm::Value* pElement = inst->getOperand(1);       // element to insert
         llvm::Value* pIndex = inst->getOperand(2);         // index to insert at
         CVariable* pIndexVar = m_currShader->BitCast(GetSymbol(pIndex), ISA_TYPE_UW);
-        CVariable* pElemVar  = GetSymbol(pElement);
+        CVariable* pElemVar = GetSymbol(pElement);
 
         // size of vector entry
         const uint vectorEntrySimdWidth = pInstVar->IsUniform() ?
@@ -9112,7 +9120,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
             EALIGN_WORD,
             pIndexVar->IsUniform());
 
-        if(!pIndexVar->IsUniform())
+        if (!pIndexVar->IsUniform())
         {
             m_encoder->SetSrcRegion(0, 16, 8, 2);
         }
@@ -9142,7 +9150,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
             // for each simd lane.
             // Since HW doesn't support writing to more than two consecutive GRFs, we need to simulate
             // scattered write by a sequence of instructions, each one writing to a single simd-lane.
-            for(uint lane = 0; lane < numLanes(m_currShader->m_SIMDSize); ++lane)
+            for (uint lane = 0; lane < numLanes(m_currShader->m_SIMDSize); ++lane)
             {
                 CVariable* immMask = m_currShader->ImmToVariable(1ULL << lane, ISA_TYPE_UD);
                 CVariable* dstPred = m_currShader->GetNewVariable(
@@ -9170,7 +9178,7 @@ void EmitPass::emitInsert(llvm::Instruction* inst)
 void EmitPass::emitBranch(llvm::BranchInst* branch, const SSource& cond, e_predMode predMode)
 {
     llvm::BasicBlock* next = m_blockCoalescing->SkipEmptyBasicBlock(branch->getParent()->getNextNode());
-    if(branch->isConditional())
+    if (branch->isConditional())
     {
         CVariable* flag = GetSrcVariable(cond);
         bool inversePred = cond.mod == EMOD_NOT;;
@@ -9183,7 +9191,7 @@ void EmitPass::emitBranch(llvm::BranchInst* branch, const SSource& cond, e_predM
         m_encoder->SetPredicateMode(predMode);
         m_encoder->SetInversePredicate(inversePred);
 
-        if(next == NULL || (next != succ0 && next != succ1))
+        if (next == NULL || (next != succ0 && next != succ1))
         {
             // Both succ0 and succ1 are not next. Thus, need one conditional jump and
             // one unconditional jump. There are three cases for selecting the target
@@ -9206,9 +9214,9 @@ void EmitPass::emitBranch(llvm::BranchInst* branch, const SSource& cond, e_predM
             //       (making sense in this way ?)
             //    3. one is backward and one is forward, select the backward one as target.
             //
-            uint label  = m_pattern->GetBlockId(branch->getParent());
+            uint label = m_pattern->GetBlockId(branch->getParent());
             uint condTarget, uncondTarget;
-            if( (label0 <= label && label1 <= label) || (label0 > label && label1 > label) )
+            if ((label0 <= label && label1 <= label) || (label0 > label && label1 > label))
             {
                 // case 1 & 2
                 condTarget = (label0 < label1) ? label1 : label0;
@@ -9221,14 +9229,14 @@ void EmitPass::emitBranch(llvm::BranchInst* branch, const SSource& cond, e_predM
                 uncondTarget = (label0 <= label) ? label1 : label0;
             }
 
-            if(condTarget == uncondTarget)
+            if (condTarget == uncondTarget)
             {   // sanity check. label0 == label1 (we don't expect it, but it's legal)
                 m_encoder->Jump(condTarget);
                 m_encoder->Push();
             }
             else
             {
-                if(condTarget != label0)
+                if (condTarget != label0)
                 {
                     m_encoder->SetInversePredicate(!inversePred);
                 }
@@ -9239,7 +9247,7 @@ void EmitPass::emitBranch(llvm::BranchInst* branch, const SSource& cond, e_predM
                 m_encoder->Push();
             }
         }
-        else if(next != succ0)
+        else if (next != succ0)
         {
             assert(next == succ1 && "next should be succ1!");
 
@@ -9258,7 +9266,7 @@ void EmitPass::emitBranch(llvm::BranchInst* branch, const SSource& cond, e_predM
     else
     {
         BasicBlock* succ = m_blockCoalescing->FollowEmptyBlock(branch->getSuccessor(0));
-        if((next == NULL) || (next != succ))
+        if ((next == NULL) || (next != succ))
         {
             uint label = m_pattern->GetBlockId(succ);
             m_encoder->Jump(label);
@@ -9282,20 +9290,20 @@ void EmitPass::emitDiscardBranch(
 
 void EmitPass::SplitSIMD(llvm::Instruction* inst, uint numSources, uint headerSize, CVariable* payload, SIMDMode mode, uint half)
 {
-    for(uint i = 0; i < numSources; ++i)
+    for (uint i = 0; i < numSources; ++i)
     {
         uint subVarIdx = numLanes(mode) / (SIZE_GRF >> 2) * i + headerSize;
 
         CVariable* rawDst = payload;
         CVariable* src = GetSymbol(inst->getOperand(i));
         // The source have to match for a raw copy
-        if(src->GetType() != payload->GetType())
+        if (src->GetType() != payload->GetType())
         {
             rawDst = m_currShader->BitCast(payload, src->GetType());
         }
         m_encoder->SetSimdSize(mode);
         m_encoder->SetDstSubVar(subVarIdx);
-        m_encoder->SetSrcSubVar(0,half);
+        m_encoder->SetSrcSubVar(0, half);
         m_encoder->SetMask(half == 0 ? EMASK_Q1 : EMASK_Q2);
         m_encoder->Copy(rawDst, src);
         m_encoder->Push();
@@ -9304,15 +9312,15 @@ void EmitPass::SplitSIMD(llvm::Instruction* inst, uint numSources, uint headerSi
 
 void EmitPass::JoinSIMD(CVariable* tempdst[], uint responseLength)
 {
-    uint iterationCount =  numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8);
-    for(uint half = 0; half < iterationCount; half++)
+    uint iterationCount = numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8);
+    for (uint half = 0; half < iterationCount; half++)
     {
-        for(uint i = 0; i < responseLength; ++i)
+        for (uint i = 0; i < responseLength; ++i)
         {
             m_encoder->SetSimdSize(SIMDMode::SIMD8);
             uint subVarIdx = numLanes(SIMDMode::SIMD16) / (SIZE_GRF >> 2) * i;
-            m_encoder->SetSrcSubVar(0,i);
-            m_encoder->SetDstSubVar(subVarIdx+half);
+            m_encoder->SetSrcSubVar(0, i);
+            m_encoder->SetDstSubVar(subVarIdx + half);
             m_encoder->SetMask(half == 0 ? EMASK_Q1 : EMASK_Q2);
             m_encoder->Copy(m_destination, tempdst[half]);
             m_encoder->Push();
@@ -9343,7 +9351,8 @@ CVariable* EmitPass::BroadcastIfUniform(CVariable* pVar)
                 uint64_t Imm = pVar->GetImmediateValue();
                 ImmLo = m_currShader->ImmToVariable(Imm & 0xFFFFFFFFULL, ISA_TYPE_UD);
                 ImmHi = m_currShader->ImmToVariable(Imm >> 32, ISA_TYPE_UD);
-            } else {
+            }
+            else {
                 Src = m_currShader->GetNewAlias(pVar, ISA_TYPE_UD, 0, 0);
             }
             Stride = 2;
@@ -9383,7 +9392,7 @@ CVariable* EmitPass::GetExecutionMask()
     m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
     m_encoder->Push();
 
-    if(m_currShader->m_dispatchSize > SIMDMode::SIMD16)
+    if (m_currShader->m_dispatchSize > SIMDMode::SIMD16)
     {
         m_encoder->SetSecondHalf(true);
         m_encoder->Cmp(EPREDICATE_EQ, flag, dummyVar, dummyVar);
@@ -9415,7 +9424,7 @@ CVariable* EmitPass::UniformCopy(CVariable *var, CVariable*& off)
 {
     assert(!var->IsUniform() && "Expect non-uniform source!");
 
-    if(off == nullptr)
+    if (off == nullptr)
     {
         CVariable* eMask = GetExecutionMask();
         // Get offset to any 1s. For simplicity, use 'fbl' to find the lowest 1s.
@@ -9425,7 +9434,7 @@ CVariable* EmitPass::UniformCopy(CVariable *var, CVariable*& off)
 
         // Calculate byte offset
         CVariable *shAmt = nullptr;
-        switch(var->GetElemSize()) {
+        switch (var->GetElemSize()) {
         case 1:
             // No need to shift.
             break;
@@ -9442,7 +9451,7 @@ CVariable* EmitPass::UniformCopy(CVariable *var, CVariable*& off)
             assert(false && "Unsupported element size!");
             break;
         }
-        if(shAmt) {
+        if (shAmt) {
             m_encoder->Shl(off, off, shAmt);
             m_encoder->Push();
         }
@@ -9516,20 +9525,22 @@ CVariable* EmitPass::ExtendVariable(CVariable *pVar, e_alignment uniformAlign) {
     CVariable *NewVar = 0;
     if (pVar->IsUniform()) {
         NewVar = m_currShader->GetNewVariable(1, NewType, uniformAlign, true);
-    } else {
+    }
+    else {
         NewVar = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize),
-                                           NewType, EALIGN_GRF);
+            NewType, EALIGN_GRF);
     }
 
     if (pVar->IsImmediate()) {
         pVar =
             m_currShader->ImmToVariable(pVar->GetImmediateValue(),
-                                        GetUnsignedIntegerType(pVar->GetType()));
-    } else {
+                GetUnsignedIntegerType(pVar->GetType()));
+    }
+    else {
         pVar =
             m_currShader->GetNewAlias(pVar,
-                                      GetUnsignedIntegerType(pVar->GetType()),
-                                      0, 0);
+                GetUnsignedIntegerType(pVar->GetType()),
+                0, 0);
     }
 
     m_encoder->Cast(NewVar, pVar);
@@ -9573,7 +9584,7 @@ CVariable* EmitPass::BroadcastAndExtend(CVariable* pVar)
 
 CVariable* EmitPass::TruncatePointer(CVariable* pVar) {
     assert((pVar->GetElemSize() == 4 || pVar->GetElemSize() == 8) &&
-           "It's expected that pointer is either 32-bit or 64-bit integer!");
+        "It's expected that pointer is either 32-bit or 64-bit integer!");
 
     // 32-bit integer
     if (pVar->GetElemSize() == 4) {
@@ -9590,9 +9601,10 @@ CVariable* EmitPass::TruncatePointer(CVariable* pVar) {
     CVariable *NewVar = 0;
     if (pVar->IsUniform()) {
         NewVar = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true);
-    } else {
+    }
+    else {
         NewVar = m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize),
-                                           ISA_TYPE_UD, EALIGN_GRF);
+            ISA_TYPE_UD, EALIGN_GRF);
     }
     m_encoder->Cast(NewVar, pVar);
     m_encoder->Push();
@@ -9643,23 +9655,23 @@ CVariable* EmitPass::BroadcastAndTruncPointer(CVariable* pVar)
 // Only two cases exist: PrimitiveID, GSInstanceID
 void EmitPass::emitGS_SGV(SGVIntrinsic* pInst)
 {
-    assert(m_currShader->GetShaderType()==ShaderType::GEOMETRY_SHADER);
+    assert(m_currShader->GetShaderType() == ShaderType::GEOMETRY_SHADER);
     CGeometryShader* gsProgram = static_cast<CGeometryShader*>(m_currShader);
     switch (pInst->getUsage())
     {
     case PRIMITIVEID:
-        {
-            CVariable* pPrimitiveID = gsProgram->GetPrimitiveID();
-            m_currShader->CopyVariable(m_destination, pPrimitiveID);
-            break;
-        }
+    {
+        CVariable* pPrimitiveID = gsProgram->GetPrimitiveID();
+        m_currShader->CopyVariable(m_destination, pPrimitiveID);
+        break;
+    }
     case GS_INSTANCEID:
-        {
-            CVariable* pInstanceID = gsProgram->GetInstanceID();
-            assert (pInstanceID != nullptr);
-            m_currShader->CopyVariable(m_destination, pInstanceID);
-            break;
-        }
+    {
+        CVariable* pInstanceID = gsProgram->GetInstanceID();
+        assert(pInstanceID != nullptr);
+        m_currShader->CopyVariable(m_destination, pInstanceID);
+        break;
+    }
     default:
         assert(0 && "This should not happen after lowering to URB reads.");
     }
@@ -9670,7 +9682,7 @@ void EmitPass::emitSampleOffset(GenIntrinsicInst* inst)
     assert(m_currShader->GetShaderType() == ShaderType::PIXEL_SHADER);
     CPixelShader* psProgram = static_cast<CPixelShader*>(m_currShader);
     CVariable* offsets = nullptr;
-    if(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_SampleOffsetX)
+    if (inst->getIntrinsicID() == GenISAIntrinsic::GenISA_SampleOffsetX)
     {
         offsets = psProgram->GetSampleOffsetX();
     }
@@ -9687,7 +9699,7 @@ void EmitPass::emitSampleOffset(GenIntrinsicInst* inst)
     CVariable* index = GetSymbol(inst->getOperand(0));
 
     CVariable* pIndexVar = m_currShader->BitCast(index, ISA_TYPE_UW);
-    if(!pIndexVar->IsUniform())
+    if (!pIndexVar->IsUniform())
     {
         m_encoder->SetSrcRegion(1, 16, 8, 2);
     }
@@ -9731,14 +9743,14 @@ void EmitPass::emitReductionAll(
     m_encoder->Copy(srcH1, pIdentityValue);
     m_encoder->Push();
 
-    if(negate)
+    if (negate)
     {
         m_encoder->SetSrcModifier(0, EMOD_NEG);
     }
     m_encoder->Copy(srcH1, pSrc);
     m_encoder->Push();
     CVariable* temp = srcH1;
-    if(m_currShader->m_dispatchSize == SIMDMode::SIMD32)
+    if (m_currShader->m_dispatchSize == SIMDMode::SIMD32)
     {
         CVariable* srcH2 = m_currShader->GetNewVariable(
             numLanes(m_currShader->m_SIMDSize),
@@ -9750,7 +9762,7 @@ void EmitPass::emitReductionAll(
         m_encoder->Push();
 
         m_encoder->SetSecondHalf(true);
-        if(negate)
+        if (negate)
         {
             m_encoder->SetSrcModifier(0, EMOD_NEG);
         }
@@ -9768,7 +9780,7 @@ void EmitPass::emitReductionAll(
         m_encoder->GenericAlu(op, temp, srcH1, srcH2);
         m_encoder->Push();
     }
-    if(m_currShader->m_dispatchSize >= SIMDMode::SIMD16)
+    if (m_currShader->m_dispatchSize >= SIMDMode::SIMD16)
     {
         temp = ReduceHelper(op, type, SIMDMode::SIMD8, temp);
     }
@@ -9785,12 +9797,19 @@ void EmitPass::emitReductionAll(
 void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type type, bool negateSrc, CVariable* pSrc, CVariable* pSrcsArr[2], bool isPrefix, bool isQuad)
 {
     // This is to handle cases when not all lanes are enabled. In that case we fill the lanes with 0.
+
+    if (m_currShader->m_Platform->doScalar64bScan() && CEncoder::GetCISADataTypeSize(type) == 8 && !isQuad)
+    {
+        emitPreOrPostFixOpScalar(op, identityValue, type, negateSrc, pSrc, pSrcsArr, isPrefix);
+        return;
+    }
+
     bool isSimd32 = (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
     int counter = 1;
-    if(isSimd32)
+    if (isSimd32)
         counter = 2;
     CVariable* maskedSrc[2] = { 0 };
-    for(int i = 0; i < counter; ++i)
+    for (int i = 0; i < counter; ++i)
     {
         CVariable* pSrcCopy = m_currShader->GetNewVariable(
             numLanes(m_currShader->m_SIMDSize),
@@ -9805,7 +9824,7 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
         m_encoder->Push();
 
         // Now copy the src with a mask so the disabled lanes still keep their 0
-        if(negateSrc)
+        if (negateSrc)
         {
             m_encoder->SetSrcModifier(0, EMOD_NEG);
         }
@@ -9814,32 +9833,32 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
         m_encoder->Push();
 
         // For case where we need the prefix shift the source by 1 lane
-        if(isPrefix)
+        if (isPrefix)
         {
             maskedSrc[i] = pSrcCopy;
             pSrcCopy = m_currShader->GetNewVariable(pSrcCopy);
             // Copy identity
             m_encoder->SetSimdSize(SIMDMode::SIMD1);
             m_encoder->SetNoMask();
-            if(i == 0)
+            if (i == 0)
             {
                 m_encoder->Copy(pSrcCopy, pIdentityValue);
             }
             else
             {
                 m_encoder->SetSrcSubReg(0, 15);
-                m_encoder->Copy(pSrcCopy, maskedSrc[i-1]);
+                m_encoder->Copy(pSrcCopy, maskedSrc[i - 1]);
             }
             m_encoder->Push();
             // Copy remained data
             unsigned int simdsize = numLanes(m_currShader->m_SIMDSize);
             unsigned int offset = 1;
-            while(simdsize > 1)
+            while (simdsize > 1)
             {
                 simdsize = simdsize >> 1;
                 int numInst = m_encoder->GetCISADataTypeSize(type) == 8 &&
                     simdsize == 8 ? 2 : 1;
-                for(int instNum = 0; instNum < numInst; ++instNum)
+                for (int instNum = 0; instNum < numInst; ++instNum)
                 {
                     m_encoder->SetSimdSize(lanesToSIMDMode(simdsize / numInst));
                     m_encoder->SetDstSubReg(offset + instNum * 4);
@@ -9853,7 +9872,7 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
         }
         pSrcsArr[i] = pSrcCopy;
     }
-    for(int i = 0; i < counter; ++i)
+    for (int i = 0; i < counter; ++i)
     {
         /*
         Copy the adjacent elements.
@@ -9875,12 +9894,12 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
             {
                 m_encoder->SetSimdSize(simdSize);
                 m_encoder->SetNoMask();
-                m_encoder->SetSrcSubVar(0, instNum*2);
+                m_encoder->SetSrcSubVar(0, instNum * 2);
                 m_encoder->SetSrcRegion(0, 2, 1, 0);
-                m_encoder->SetSrcSubVar(1, instNum*2);
+                m_encoder->SetSrcSubVar(1, instNum * 2);
                 m_encoder->SetSrcRegion(1, 2, 1, 0);
                 m_encoder->SetSrcSubReg(1, 1);
-                m_encoder->SetDstSubVar(instNum*2);
+                m_encoder->SetDstSubVar(instNum * 2);
                 m_encoder->SetDstRegion(2);
                 m_encoder->SetDstSubReg(1);
                 m_encoder->GenericAlu(op, pSrcsArr[i], pSrcsArr[i], pSrcsArr[i]);
@@ -9906,11 +9925,11 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
             {
                 m_encoder->SetSimdSize(simdSize);
                 m_encoder->SetNoMask();
-                m_encoder->SetSrcSubVar(0, instNum*2);
+                m_encoder->SetSrcSubVar(0, instNum * 2);
                 m_encoder->SetSrcSubReg(0, 2);
-                m_encoder->SetSrcSubVar(1, instNum*2);
+                m_encoder->SetSrcSubVar(1, instNum * 2);
                 m_encoder->SetSrcSubReg(1, 1);
-                m_encoder->SetDstSubVar(instNum*2);
+                m_encoder->SetDstSubVar(instNum * 2);
                 m_encoder->SetDstSubReg(2);
                 m_encoder->SetSrcRegion(0, 4, 1, 0);
                 m_encoder->SetSrcRegion(1, 4, 1, 0);
@@ -9937,11 +9956,11 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
             {
                 m_encoder->SetSimdSize(simdSize);
                 m_encoder->SetNoMask();
-                m_encoder->SetSrcSubVar(0, instNum*2);
+                m_encoder->SetSrcSubVar(0, instNum * 2);
                 m_encoder->SetSrcSubReg(0, 3);
-                m_encoder->SetSrcSubVar(1, instNum*2);
+                m_encoder->SetSrcSubVar(1, instNum * 2);
                 m_encoder->SetSrcSubReg(1, 1);
-                m_encoder->SetDstSubVar(instNum*2);
+                m_encoder->SetDstSubVar(instNum * 2);
                 m_encoder->SetDstSubReg(3);
                 m_encoder->SetSrcRegion(0, 4, 1, 0);
                 m_encoder->SetSrcRegion(1, 4, 1, 0);
@@ -9982,7 +10001,7 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
         // 2 SIMD4's.
         uint numTimesToLoop = numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8);
 
-        for(uint loop_counter = 0; loop_counter < numTimesToLoop; ++loop_counter)
+        for (uint loop_counter = 0; loop_counter < numTimesToLoop; ++loop_counter)
         {
             m_encoder->SetSimdSize(SIMDMode::SIMD4);
             m_encoder->SetSrcSubReg(0, loop_counter * 8 + 3);
@@ -9996,7 +10015,7 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
             m_encoder->Push();
         }
 
-        if(m_currShader->m_SIMDSize == SIMDMode::SIMD16 || isSimd32)
+        if (m_currShader->m_SIMDSize == SIMDMode::SIMD16 || isSimd32)
         {
             // Add the last element of the 1st GRF to all the elements of the 2nd GRF
             m_encoder->SetSimdSize(SIMDMode::SIMD8);
@@ -10011,7 +10030,7 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
         }
     }
 
-    if(isSimd32 && !isQuad)
+    if (isSimd32 && !isQuad)
     {
         // For SIMD32 we need to write the last element of the prev element to the next 16 elements
         m_encoder->SetSimdSize(SIMDMode::SIMD16);
@@ -10023,6 +10042,103 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
     }
     // reset second half state
     m_encoder->SetSecondHalf(false);
+}
+
+// scalar version of the scan operation for 64b types
+void EmitPass::emitPreOrPostFixOpScalar(
+    e_opcode op,
+    uint64_t identityValue,
+    VISA_Type type,
+    bool negateSrc,
+    CVariable* src,
+    CVariable* result[2],
+    bool isPrefix)
+{
+    // This is to handle cases when not all lanes are enabled. In that case we fill the lanes with 0.
+    bool isSimd32 = (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
+    int counter = isSimd32 ? 2 : 1;
+    for (int i = 0; i < counter; ++i)
+    {
+        CVariable* pSrcCopy = m_currShader->GetNewVariable(
+            numLanes(m_currShader->m_SIMDSize),
+            type,
+            IGC::EALIGN_GRF,
+            false);
+
+        result[i] = m_currShader->GetNewVariable(
+            numLanes(m_currShader->m_SIMDSize),
+            type,
+            IGC::EALIGN_GRF,
+            false);
+
+        // Set the GRF to 0 with no mask. This will set all the registers to 0
+        CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
+        m_encoder->SetNoMask();
+        m_encoder->Copy(pSrcCopy, pIdentityValue);
+        m_encoder->Push();
+
+        // Now copy the src with a mask so the disabled lanes still keep their 0
+        if (negateSrc)
+        {
+            m_encoder->SetSrcModifier(0, EMOD_NEG);
+        }
+        m_encoder->SetSecondHalf(i == 1);
+        m_encoder->Copy(pSrcCopy, src);
+        m_encoder->Push();
+
+        int srcIdx = 0;
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetNoMask();
+        if (isPrefix)
+        {
+            // For case where we need the prefix shift the source by 1 lane
+            // (W) mov (1) result[0] identity
+            m_encoder->Copy(result[i], pIdentityValue);
+        }
+        else
+        {
+            // (W) mov (1) result[0]:ty srcCopy[0/16]:ty
+            m_encoder->SetSrcSubReg(0, i == 0 ? 0 : 16);
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->Copy(result[i], pSrcCopy);
+            srcIdx = 1;
+        }
+        m_encoder->Push();
+        for (int dstIdx = 1; dstIdx < numLanes(m_currShader->m_SIMDSize); ++dstIdx, ++srcIdx)
+        {
+            // do the scan one by one
+            // (W) op (1) result[dstIdx] srcCopy[srcIdx] result[dstIdx-1]
+            m_encoder->SetSimdSize(SIMDMode::SIMD1);
+            m_encoder->SetNoMask();
+            m_encoder->SetSrcSubReg(0, srcIdx);
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->SetSrcRegion(1, 0, 1, 0);
+            m_encoder->SetSrcSubReg(1, dstIdx - 1);
+            m_encoder->SetDstRegion(1);
+            m_encoder->SetDstSubReg(dstIdx);
+            m_encoder->GenericAlu(op, result[i], pSrcCopy, result[i]);
+            m_encoder->Push();
+        }
+    }
+
+    if (isSimd32)
+    {
+        // For SIMD32 we need to write the last element of the prev element to the next 16 elements
+        for (int i = 0; i < 2; ++i)
+        {
+            m_encoder->SetSimdSize(SIMDMode::SIMD8);
+            m_encoder->SetNoMask();
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
+            m_encoder->SetSrcSubReg(0, 15);
+            m_encoder->SetSrcSubReg(1, i == 0 ? 0 : 8);
+            m_encoder->SetDstSubReg(i == 0 ? 0 : 8);
+            m_encoder->GenericAlu(op, result[1], result[0], result[1]);
+            m_encoder->Push();
+        }
+    }
+    // reset second half state
+    m_encoder->SetSecondHalf(false);
+
 }
 
 /*
@@ -10044,7 +10160,7 @@ void EmitPass::emitScalarAtomics(
     e_opcode op = EOPCODE_ADD;
     // find the value for which opcode(x, identity) == x
     unsigned int identityValue = 0;
-    switch(atomic_op)
+    switch (atomic_op)
     {
     case EATOMIC_IADD:
     case EATOMIC_SUB:
@@ -10088,13 +10204,13 @@ void EmitPass::emitScalarAtomics(
 
         pSrc = m_currShader->ImmToVariable(1, type);
     }
-    if(atomic_op == EATOMIC_UMAX || atomic_op == EATOMIC_UMIN)
+    if (atomic_op == EATOMIC_UMAX || atomic_op == EATOMIC_UMIN)
     {
         type = GetUnsignedType(type);
     }
     AtomicOp uniformAtomicOp = atomic_op;
     bool negateSrc = false;
-    if(atomic_op == EATOMIC_SUB)
+    if (atomic_op == EATOMIC_SUB)
     {
         negateSrc = true;
         uniformAtomicOp = EATOMIC_IADD;
@@ -10106,13 +10222,13 @@ void EmitPass::emitScalarAtomics(
         isA64 ? IGC::EALIGN_2GRF : IGC::EALIGN_GRF,
         true);
     CVariable *pSrcsArr[2] = { nullptr, nullptr };
-    if(returnsImmValue)
+    if (returnsImmValue)
     {
         // sum all the lanes
         emitPreOrPostFixOp(op, identityValue, type, negateSrc, pSrc, pSrcsArr);
 
         CVariable *pSrcCopy = pSrcsArr[0];
-        if(m_currShader->m_dispatchSize == SIMDMode::SIMD32)
+        if (m_currShader->m_dispatchSize == SIMDMode::SIMD32)
             pSrcCopy = pSrcsArr[1];
 
         m_encoder->SetSrcRegion(0, 0, 1, 0);
@@ -10151,7 +10267,7 @@ void EmitPass::emitScalarAtomics(
         pFinalAtomicSrcVal = pCastAtomicSrcVal;
     }
 
-    if(isA64)
+    if (isA64)
     {
         m_encoder->AtomicRawA64(uniformAtomicOp, pReturnVal, pDstAddr, pFinalAtomicSrcVal, nullptr, is16Bit ? 16 : 32);
     }
@@ -10193,7 +10309,7 @@ bool EmitPass::IsUniformAtomic(llvm::Instruction* pInst)
         if (id == GenISAIntrinsic::GenISA_intatomicraw ||
             id == GenISAIntrinsic::GenISA_intatomicrawA64)
         {
-            if(IGC_IS_FLAG_ENABLED(DisableScalarAtomics) || m_currShader->m_DriverInfo->WASLMPointersDwordUnit())
+            if (IGC_IS_FLAG_ENABLED(DisableScalarAtomics) || m_currShader->m_DriverInfo->WASLMPointersDwordUnit())
                 return false;
             llvm::Value* pllDstAddr = pInst->getOperand(1);
             CVariable* pDstAddr = GetSymbol(pllDstAddr);
@@ -10262,7 +10378,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
     CVariable* pSrc1 = nullptr;
     llvm::GenIntrinsicInst* pIntrinCall = llvm::cast<llvm::GenIntrinsicInst>(pInsn);
     GenISAIntrinsic::ID IID = pIntrinCall->getIntrinsicID();
-    if(IID == GenISAIntrinsic::GenISA_icmpxchgatomicraw ||
+    if (IID == GenISAIntrinsic::GenISA_icmpxchgatomicraw ||
         IID == GenISAIntrinsic::GenISA_fcmpxchgatomicraw ||
         IID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
         IID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64)
@@ -10270,7 +10386,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
         llvm::Value* pllSrc1 = pInsn->getOperand(3);
         pSrc1 = GetSymbol(pllSrc1);
         pSrc1 = UnpackOrBroadcastIfUniform(pSrc1);
-        if(IID == GenISAIntrinsic::GenISA_fcmpxchgatomicraw ||
+        if (IID == GenISAIntrinsic::GenISA_fcmpxchgatomicraw ||
             IID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64)
         {
             atomic_op = EATOMIC_FCMPWR;
@@ -10290,7 +10406,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
 
 
     // atomic_inc and atomic_dec don't have both src0 and src1.
-    if(atomic_op != EATOMIC_INC && atomic_op != EATOMIC_DEC)
+    if (atomic_op != EATOMIC_INC && atomic_op != EATOMIC_DEC)
     {
         pSrc0 = GetSymbol(pllSrc0);
     }
@@ -10301,14 +10417,14 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
     // don't enable scalar atomics, also do not enable for 64 bit
     if (IsUniformAtomic(pInsn) && bitwidth != 64)
     {
-            PointerType *PtrTy = dyn_cast<PointerType>(pllDstAddr->getType());
-            bool isA64 = PtrTy && isA64Ptr(PtrTy, m_currShader->GetContext());
-            e_alignment uniformAlign = isA64 ? EALIGN_2GRF : EALIGN_GRF;
-            // Re-align the pointer if it's not GRF aligned.
-            pDstAddr = ReAlignUniformVariable(pDstAddr, uniformAlign);
-            emitScalarAtomics(pInsn, resource, atomic_op, pDstAddr, pSrc0, isA64, is16Bit);
-            ResetVMask();
-            return;
+        PointerType *PtrTy = dyn_cast<PointerType>(pllDstAddr->getType());
+        bool isA64 = PtrTy && isA64Ptr(PtrTy, m_currShader->GetContext());
+        e_alignment uniformAlign = isA64 ? EALIGN_2GRF : EALIGN_GRF;
+        // Re-align the pointer if it's not GRF aligned.
+        pDstAddr = ReAlignUniformVariable(pDstAddr, uniformAlign);
+        emitScalarAtomics(pInsn, resource, atomic_op, pDstAddr, pSrc0, isA64, is16Bit);
+        ResetVMask();
+        return;
     }
 
     pDstAddr = BroadcastIfUniform(pDstAddr);
@@ -10330,7 +10446,7 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
         PointerType *PtrTy = dyn_cast<PointerType>(pllDstAddr->getType());
         bool isA64 = PtrTy && isA64Ptr(PtrTy, m_currShader->GetContext());
         bool extendPointer = (bitwidth == 64 && !isA64);
-        if(isA64 || extendPointer)
+        if (isA64 || extendPointer)
         {
             if (extendPointer)
             {
@@ -10359,11 +10475,11 @@ void EmitPass::emitAtomicRaw(llvm::GenIntrinsicInst* pInsn)
         {
             // TODO: SEND SLM OFFSET IN BYTES
             CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-            if(resource.m_surfaceType == ESURFACE_SLM && ctx->m_DriverInfo.WASLMPointersDwordUnit())
+            if (resource.m_surfaceType == ESURFACE_SLM && ctx->m_DriverInfo.WASLMPointersDwordUnit())
             {
                 CVariable* pDwordAddr =
                     m_currShader->GetNewVariable(numLanes(m_currShader->m_SIMDSize),
-                    ISA_TYPE_D, IGC::EALIGN_GRF);
+                        ISA_TYPE_D, IGC::EALIGN_GRF);
 
                 m_encoder->Shl(pDwordAddr, pDstAddr,
                     m_currShader->ImmToVariable(0x2, ISA_TYPE_D));
@@ -10417,10 +10533,10 @@ void EmitPass::emitAtomicStructured(llvm::Instruction* pInsn)
     /// needs to be set for this.
     bool returnsImmValue = !pInsn->use_empty();
 
-    llvm::Value* pllbuffer     = pInsn->getOperand(0);
-    llvm::Value* pllArrayIdx   = pInsn->getOperand(1);
+    llvm::Value* pllbuffer = pInsn->getOperand(0);
+    llvm::Value* pllArrayIdx = pInsn->getOperand(1);
     llvm::Value* pllByteOffset = pInsn->getOperand(2);
-    llvm::Value* pllSrc0       = pInsn->getOperand(3);
+    llvm::Value* pllSrc0 = pInsn->getOperand(3);
 
     AtomicOp atomic_op = EATOMIC_UNDEF;
 
@@ -10428,14 +10544,14 @@ void EmitPass::emitAtomicStructured(llvm::Instruction* pInsn)
 
     llvm::CallInst* pCallInst = llvm::cast<llvm::CallInst>(pInsn);
 
-    GenISAIntrinsic::ID IID  = llvm::cast<llvm::GenIntrinsicInst>(pCallInst)->getIntrinsicID();
-    if ( (IID == GenISAIntrinsic::GenISA_cmpxchgatomicstructured)||
-        (IID == GenISAIntrinsic::GenISA_fcmpxchgatomicstructured) )
+    GenISAIntrinsic::ID IID = llvm::cast<llvm::GenIntrinsicInst>(pCallInst)->getIntrinsicID();
+    if ((IID == GenISAIntrinsic::GenISA_cmpxchgatomicstructured) ||
+        (IID == GenISAIntrinsic::GenISA_fcmpxchgatomicstructured))
     {
         llvm::Value* pllSrc1 = pInsn->getOperand(4);
         pSrc1 = GetSymbol(pllSrc1);
         pSrc1 = BroadcastIfUniform(pSrc1);
-        if(IID == GenISAIntrinsic::GenISA_fcmpxchgatomicstructured)
+        if (IID == GenISAIntrinsic::GenISA_fcmpxchgatomicstructured)
         {
             atomic_op = EATOMIC_FCMPWR;
         }
@@ -10520,13 +10636,13 @@ void EmitPass::emitAtomicStructured(llvm::Instruction* pInsn)
         }
 
         auto hw_atomic_op_enum = getHwAtomicOpEnum(atomic_op);
-        uint messageLength = parameterLength * (numLanes(m_currShader->m_SIMDSize)/numLanes(SIMDMode::SIMD8));
+        uint messageLength = parameterLength * (numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8));
         uint responseLength = 0;
 
         CVariable* pDst = nullptr;
         if (returnsImmValue == true)
         {
-            responseLength = (numLanes(m_currShader->m_SIMDSize)/numLanes(SIMDMode::SIMD8));
+            responseLength = (numLanes(m_currShader->m_SIMDSize) / numLanes(SIMDMode::SIMD8));
             pDst = m_destination;
         }
 
@@ -10561,11 +10677,11 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
     /// needs to be set for this.
     bool returnsImmValue = !pInsn->user_empty();
 
-    llvm::Value* pllbuffer     = pInsn->getOperand(0);
-    llvm::Value* pllU          = pInsn->getOperand(1);
-    llvm::Value* pllV          = pInsn->getOperand(2);
-    llvm::Value* pllR          = pInsn->getOperand(3);
-    llvm::Value* pllSrc0       = pInsn->getOperand(4);
+    llvm::Value* pllbuffer = pInsn->getOperand(0);
+    llvm::Value* pllU = pInsn->getOperand(1);
+    llvm::Value* pllV = pInsn->getOperand(2);
+    llvm::Value* pllR = pInsn->getOperand(3);
+    llvm::Value* pllSrc0 = pInsn->getOperand(4);
 
     AtomicOp atomic_op = EATOMIC_UNDEF;
 
@@ -10607,7 +10723,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
     else
     {
         uint addrDimension = 3;
-        while(addrDimension > 1 && isUndefOrConstInt0(pInsn->getOperand(addrDimension)))
+        while (addrDimension > 1 && isUndefOrConstInt0(pInsn->getOperand(addrDimension)))
         {
             addrDimension--;
         }
@@ -10622,11 +10738,11 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
         uint responseLength = returnsImmValue;
 
         unsigned int bti = 0;
-        if(resource.m_surfaceType == ESURFACE_BINDLESS)
+        if (resource.m_surfaceType == ESURFACE_BINDLESS)
         {
             bti = BINDLESS_BTI;
         }
-        else if(resource.m_resource->IsImmediate())
+        else if (resource.m_resource->IsImmediate())
         {
             bti = (uint)resource.m_resource->GetImmediateValue();
         }
@@ -10646,7 +10762,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
         CVariable* pMessDesc = m_currShader->ImmToVariable(messageSpecificControl, ISA_TYPE_D);
         CVariable* exDesc =
             m_currShader->ImmToVariable(EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1, ISA_TYPE_D);
-        if(resource.m_surfaceType == ESURFACE_BINDLESS)
+        if (resource.m_surfaceType == ESURFACE_BINDLESS)
         {
             CVariable* temp = m_currShader->GetNewVariable(resource.m_resource);
             m_encoder->Add(temp, resource.m_resource, exDesc);
@@ -10710,14 +10826,14 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
         uint label = 0;
         CVariable* flag = nullptr;
         bool needLoop = ResourceLoopHeader(resource, flag, label);
-        if(resource.m_surfaceType == ESURFACE_NORMAL && !resource.m_resource->IsImmediate())
+        if (resource.m_surfaceType == ESURFACE_NORMAL && !resource.m_resource->IsImmediate())
         {
             CVariable* indirectMess = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_DWORD, true);
             m_encoder->Or(indirectMess, pMessDesc, resource.m_resource);
             m_encoder->Push();
             pMessDesc = indirectMess;
         }
-        for(uint i = 0; i < loopIter; ++i)
+        for (uint i = 0; i < loopIter; ++i)
         {
             m_encoder->SetPredicate(flag);
             m_encoder->SetSimdSize(SIMDMode::SIMD8);
@@ -10729,7 +10845,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
         }
         ResourceLoop(needLoop, flag, label);
 
-        if(returnsImmValue)
+        if (returnsImmValue)
         {
             m_encoder->Cast(
                 m_currShader->BitCast(m_destination, GetUnsignedIntegerType(m_destination->GetType())),
@@ -10743,7 +10859,7 @@ void EmitPass::emitAtomicTyped(GenIntrinsicInst* pInsn)
 
 void EmitPass::emitLdStructured(llvm::Instruction* pInsn)
 {
-    llvm::Value* pllArrIdx     = pInsn->getOperand(1);
+    llvm::Value* pllArrIdx = pInsn->getOperand(1);
     llvm::Value* pllByteOffset = pInsn->getOperand(2);
 
     llvm::Value* pllbuffer = pInsn->getOperand(0);
@@ -10756,7 +10872,7 @@ void EmitPass::emitLdStructured(llvm::Instruction* pInsn)
     CVariable* pByteOffset = GetSymbol(pllByteOffset);
 
     pByteOffset = BroadcastIfUniform(pByteOffset);
-    pArrIdx     = BroadcastIfUniform(pArrIdx);
+    pArrIdx = BroadcastIfUniform(pArrIdx);
 
     uint btiIndex = 0;
     if (bufType == UAV)
@@ -10787,11 +10903,11 @@ void EmitPass::emitLdStructured(llvm::Instruction* pInsn)
         uint parameterLength = 2;
         CVariable* pPayload =
             m_currShader->GetNewVariable(
-            (parameterLength) * numLanes(m_currShader->m_SIMDSize),
-            ISA_TYPE_D,
-            IGC::EALIGN_GRF);
+            (parameterLength)* numLanes(m_currShader->m_SIMDSize),
+                ISA_TYPE_D,
+                IGC::EALIGN_GRF);
 
-        uint responseLength = m_destination->GetNumberElement()/numLanes(m_currShader->m_SIMDSize);
+        uint responseLength = m_destination->GetNumberElement() / numLanes(m_currShader->m_SIMDSize);
         if (m_currShader->m_SIMDSize == SIMDMode::SIMD8)
         {
             m_currShader->CopyVariable(pPayload, pArrIdx, 0);
@@ -10833,13 +10949,13 @@ void EmitPass::emitStoreStructured(llvm::Instruction* pInsn)
     ForceDMask(false);
 
     llvm::GenIntrinsicInst* pIntrinsicInst = llvm::cast<llvm::GenIntrinsicInst>(pInsn);
-    llvm::Value* pllArrIdx     = pInsn->getOperand(1);
+    llvm::Value* pllArrIdx = pInsn->getOperand(1);
     llvm::Value* pllByteOffset = pInsn->getOperand(2);
 
-    llvm::Value* pllSrc1       = pInsn->getOperand(3);
-    llvm::Value* pllSrc2       = nullptr;
-    llvm::Value* pllSrc3       = nullptr;
-    llvm::Value* pllSrc4       = nullptr;
+    llvm::Value* pllSrc1 = pInsn->getOperand(3);
+    llvm::Value* pllSrc2 = nullptr;
+    llvm::Value* pllSrc3 = nullptr;
+    llvm::Value* pllSrc4 = nullptr;
 
     llvm::Value* pllbuffer = pInsn->getOperand(0);
     uint as = cast<PointerType>(pllbuffer->getType())->getAddressSpace();
@@ -10847,13 +10963,13 @@ void EmitPass::emitStoreStructured(llvm::Instruction* pInsn)
     bool directIdx;
     BufferType bufType = DecodeAS4GFXResource(as, directIdx, bufferIndex);
 
-    CVariable* pArrIdx     = GetSymbol(pllArrIdx);
+    CVariable* pArrIdx = GetSymbol(pllArrIdx);
     CVariable* pByteOffset = GetSymbol(pllByteOffset);
-    CVariable* pSrc1       = GetSymbol(pllSrc1);
+    CVariable* pSrc1 = GetSymbol(pllSrc1);
 
     pByteOffset = BroadcastIfUniform(pByteOffset);
-    pArrIdx     = BroadcastIfUniform(pArrIdx);
-    pSrc1       = BroadcastIfUniform(pSrc1);
+    pArrIdx = BroadcastIfUniform(pArrIdx);
+    pSrc1 = BroadcastIfUniform(pSrc1);
 
     CVariable* pSrc2 = nullptr;
     CVariable* pSrc3 = nullptr;
@@ -11017,19 +11133,19 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
     uint writeMask = m_currShader->GetExtractMask(pInsn);
     assert(writeMask != 0 && "Wrong write mask");
 
-    llvm::Value* pllSrcBuffer  = pInsn->getOperand(0);
-    llvm::Value* pllU    = pInsn->getOperand(1);
-    llvm::Value* pllV    = pInsn->getOperand(2);
-    llvm::Value* pllR    = pInsn->getOperand(3);
-    llvm::Value* pllLOD  = pInsn->getOperand(4);
+    llvm::Value* pllSrcBuffer = pInsn->getOperand(0);
+    llvm::Value* pllU = pInsn->getOperand(1);
+    llvm::Value* pllV = pInsn->getOperand(2);
+    llvm::Value* pllR = pInsn->getOperand(3);
+    llvm::Value* pllLOD = pInsn->getOperand(4);
 
     CVariable* pLOD = isUndefOrConstInt0(pllLOD) ? nullptr : GetSymbol(pllLOD);
     CVariable* pR = (pLOD == nullptr && isUndefOrConstInt0(pllR)) ? nullptr : GetSymbol(pllR);
     CVariable* pV = (pR == nullptr && isUndefOrConstInt0(pllV)) ? nullptr : GetSymbol(pllV);
-    CVariable* pU   = GetSymbol(pllU);
+    CVariable* pU = GetSymbol(pllU);
 
-    pU   = BroadcastIfUniform(pU);
-    pV   = pV ? BroadcastIfUniform(pV) : nullptr;
+    pU = BroadcastIfUniform(pU);
+    pV = pV ? BroadcastIfUniform(pV) : nullptr;
     pR = pR ? BroadcastIfUniform(pR) : nullptr;
     pLOD = pLOD ? BroadcastIfUniform(pLOD) : nullptr;
 
@@ -11075,7 +11191,7 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
             }
         }
         ResourceLoop(needLoop, flag, label);
-        if(m_currShader->m_SIMDSize != SIMDMode::SIMD8)
+        if (m_currShader->m_SIMDSize != SIMDMode::SIMD8)
         {
             JoinSIMD(tempdst, numChannels);
         }
@@ -11086,30 +11202,30 @@ void EmitPass::emitTypedRead(llvm::Instruction* pInsn)
 void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
 {
     ForceDMask();
-    llvm::Value* pllDstBuffer  = pInsn->getOperand(0);
-    llvm::Value* pllU          = pInsn->getOperand(1);
-    llvm::Value* pllV          = pInsn->getOperand(2);
-    llvm::Value* pllR          = pInsn->getOperand(3);
-    llvm::Value* pllLOD        = pInsn->getOperand(4);
-    llvm::Value* pllSrc_X      = pInsn->getOperand(5);
-    llvm::Value* pllSrc_Y      = pInsn->getOperand(6);
-    llvm::Value* pllSrc_Z      = pInsn->getOperand(7);
-    llvm::Value* pllSrc_W      = pInsn->getOperand(8);
+    llvm::Value* pllDstBuffer = pInsn->getOperand(0);
+    llvm::Value* pllU = pInsn->getOperand(1);
+    llvm::Value* pllV = pInsn->getOperand(2);
+    llvm::Value* pllR = pInsn->getOperand(3);
+    llvm::Value* pllLOD = pInsn->getOperand(4);
+    llvm::Value* pllSrc_X = pInsn->getOperand(5);
+    llvm::Value* pllSrc_Y = pInsn->getOperand(6);
+    llvm::Value* pllSrc_Z = pInsn->getOperand(7);
+    llvm::Value* pllSrc_W = pInsn->getOperand(8);
 
-    CVariable* pLOD   = isUndefOrConstInt0(pllLOD) ? nullptr : GetSymbol(pllLOD);
-    CVariable* pR     = (pLOD == nullptr && isUndefOrConstInt0(pllR)) ? nullptr : GetSymbol(pllR);
-    CVariable* pV     = (pR == nullptr && isUndefOrConstInt0(pllV)) ? nullptr : GetSymbol(pllV);
-    CVariable* pU     = GetSymbol(pllU);
+    CVariable* pLOD = isUndefOrConstInt0(pllLOD) ? nullptr : GetSymbol(pllLOD);
+    CVariable* pR = (pLOD == nullptr && isUndefOrConstInt0(pllR)) ? nullptr : GetSymbol(pllR);
+    CVariable* pV = (pR == nullptr && isUndefOrConstInt0(pllV)) ? nullptr : GetSymbol(pllV);
+    CVariable* pU = GetSymbol(pllU);
 
     CVariable* pSrc_X = GetSymbol(pllSrc_X);
     CVariable* pSrc_Y = GetSymbol(pllSrc_Y);
     CVariable* pSrc_Z = GetSymbol(pllSrc_Z);
     CVariable* pSrc_W = GetSymbol(pllSrc_W);
 
-    pU     = BroadcastIfUniform(pU);
-    pV     = pV ? BroadcastIfUniform(pV) : nullptr;
-    pR     = pR ? BroadcastIfUniform(pR) : nullptr;
-    pLOD   = pLOD ? BroadcastIfUniform(pLOD) : nullptr;
+    pU = BroadcastIfUniform(pU);
+    pV = pV ? BroadcastIfUniform(pV) : nullptr;
+    pR = pR ? BroadcastIfUniform(pR) : nullptr;
+    pLOD = pLOD ? BroadcastIfUniform(pLOD) : nullptr;
 
     ResourceDescriptor resource = GetResourceVariable(pllDstBuffer);
 
@@ -11133,10 +11249,10 @@ void EmitPass::emitTypedWrite(llvm::Instruction* pInsn)
                 ISA_TYPE_F,
                 IGC::EALIGN_GRF);
             // pSrcX, Y, Z & W are broadcast to uniform by this function itself.
-            m_currShader->CopyVariable(pPayload, pSrc_X,   0);
-            m_currShader->CopyVariable(pPayload, pSrc_Y,   1);
-            m_currShader->CopyVariable(pPayload, pSrc_Z,   2);
-            m_currShader->CopyVariable(pPayload, pSrc_W,   3);
+            m_currShader->CopyVariable(pPayload, pSrc_X, 0);
+            m_currShader->CopyVariable(pPayload, pSrc_Y, 1);
+            m_currShader->CopyVariable(pPayload, pSrc_Z, 2);
+            m_currShader->CopyVariable(pPayload, pSrc_W, 3);
             m_encoder->SetPredicate(flag);
             m_encoder->TypedWrite4(resource, pU, pV, pR, pLOD, pPayload);
             m_encoder->Push();
@@ -11222,7 +11338,7 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
         {
             // move barrier id into bits 27:24 of R0.2 in the payload to match with GPGPU payload for barrier id
             // VISA assumes barrier id is found in bits 27:24 as in GPGPU payload and to avoid any IGC/VISA change
-			// this is a simple WA which needs to be applied
+            // this is a simple WA which needs to be applied
 
             CVariable* masklower24bit = m_currShader->ImmToVariable(0xf000000, ISA_TYPE_UD);
             m_encoder->SetSrcRegion(0, 0, 1, 0);
@@ -11236,8 +11352,8 @@ void EmitPass::emitThreadGroupBarrier(llvm::Instruction* inst)
         }
         else
         {
-			// If barrier - id bits match GPGPU payload
-			m_encoder->SetSrcRegion(0, 0, 1, 0);
+            // If barrier - id bits match GPGPU payload
+            m_encoder->SetSrcRegion(0, 0, 1, 0);
             m_encoder->SetSrcSubReg(0, 2);
             m_encoder->Or(tmpVar, hsProgram->GetR0(), m_currShader->ImmToVariable(counterBits, ISA_TYPE_UD));
             m_encoder->Push();
@@ -11308,12 +11424,12 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
     if (ConstantInt* globalConst = llvm::dyn_cast<llvm::ConstantInt>(inst->getOperand(5)))
     {
         Global_Mem_Fence = globalConst->getValue().getBoolValue();
-        if ( globalConst->isZero() )
+        if (globalConst->isZero())
         {
             // Check whether we know this is a local fence. If we do, don't emit fence for a BDW+SKL/BXT only.
             // case CLK_LOCAL_MEM_FENCE:
 
-            if ( ctx->platform.localMemFenceSupress() )
+            if (ctx->platform.localMemFenceSupress())
             {
                 EmitFence = false;
             }
@@ -11321,13 +11437,13 @@ void EmitPass::emitMemoryFence(llvm::Instruction* inst)
     }
 
     m_encoder->Fence(CommitEnable,
-            L3_Flush_RW_Data,
-            L3_Flush_Constant_Data,
-            L3_Flush_Texture_Data,
-            L3_Flush_Instructions,
-            Global_Mem_Fence,
-            L1_Invalidate,
-            !EmitFence);
+        L3_Flush_RW_Data,
+        L3_Flush_Constant_Data,
+        L3_Flush_Texture_Data,
+        L3_Flush_Instructions,
+        Global_Mem_Fence,
+        L1_Invalidate,
+        !EmitFence);
     m_encoder->Push();
 }
 
@@ -11359,7 +11475,7 @@ void EmitPass::emitPhaseOutput(llvm::GenIntrinsicInst* inst)
     unsigned int outputIndex = (unsigned int)cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue();
     CVariable* output = GetSymbol(inst->getOperand(0));
     CVariable* temp =
-          m_currShader->GetNewVariable(numLanes(m_SimdMode), output->GetType(), EALIGN_GRF);
+        m_currShader->GetNewVariable(numLanes(m_SimdMode), output->GetType(), EALIGN_GRF);
     m_encoder->Copy(temp, output);
     output = temp;
 
@@ -11388,11 +11504,11 @@ void EmitPass::emitPhaseInput(llvm::GenIntrinsicInst* inst)
     m_encoder->Shl(byteAddress, index, psProgram->ImmToVariable(2, ISA_TYPE_UW));
     m_encoder->Push();
 
-     m_encoder->AddrAdd(pDstArrElm, input, byteAddress);
-     m_encoder->Push();
+    m_encoder->AddrAdd(pDstArrElm, input, byteAddress);
+    m_encoder->Push();
 
-     m_encoder->Copy(m_destination, pDstArrElm);
-     m_encoder->Push();
+    m_encoder->Copy(m_destination, pDstArrElm);
+    m_encoder->Push();
 }
 
 void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
@@ -11420,101 +11536,101 @@ void EmitPass::emitUniformAtomicCounter(llvm::GenIntrinsicInst* pInsn)
     if (m_currShader->m_dispatchSize == SIMDMode::SIMD32)
         pSrcCopy = prefixVar[1];
 
-   CVariable* pHeader = nullptr;
-   if (hasheader)
-   {
-       pHeader = m_currShader->GetNewVariable(
-           numLanes(SIMDMode::SIMD8),
-           ISA_TYPE_UD,
-           IGC::EALIGN_GRF);
+    CVariable* pHeader = nullptr;
+    if (hasheader)
+    {
+        pHeader = m_currShader->GetNewVariable(
+            numLanes(SIMDMode::SIMD8),
+            ISA_TYPE_UD,
+            IGC::EALIGN_GRF);
 
-       m_encoder->SetNoMask();
-       m_encoder->SetSimdSize(SIMDMode::SIMD1);
-       m_encoder->SetDstSubReg(7);
-       m_encoder->Copy(pHeader, m_currShader->ImmToVariable(0xFFFF, ISA_TYPE_UD));
-       m_encoder->Push();
-   }
+        m_encoder->SetNoMask();
+        m_encoder->SetSimdSize(SIMDMode::SIMD1);
+        m_encoder->SetDstSubReg(7);
+        m_encoder->Copy(pHeader, m_currShader->ImmToVariable(0xFFFF, ISA_TYPE_UD));
+        m_encoder->Push();
+    }
 
-   CVariable* pPayload = m_currShader->GetNewVariable(
-       8,
-       ISA_TYPE_D,
-       IGC::EALIGN_GRF,
-       true);
-   m_encoder->SetSimdSize(SIMDMode::SIMD1);
-   m_encoder->SetSrcRegion(0, 0, 1, 0);
-   m_encoder->SetSrcSubReg(0, numLanes(m_currShader->m_SIMDSize) - 1);
-   m_encoder->Copy(pPayload, pSrcCopy);
-   m_encoder->Push();
-   dst = m_currShader->GetNewVariable(
-       8,
-       ISA_TYPE_D,
-       IGC::EALIGN_GRF,
-       true);
+    CVariable* pPayload = m_currShader->GetNewVariable(
+        8,
+        ISA_TYPE_D,
+        IGC::EALIGN_GRF,
+        true);
+    m_encoder->SetSimdSize(SIMDMode::SIMD1);
+    m_encoder->SetSrcRegion(0, 0, 1, 0);
+    m_encoder->SetSrcSubReg(0, numLanes(m_currShader->m_SIMDSize) - 1);
+    m_encoder->Copy(pPayload, pSrcCopy);
+    m_encoder->Push();
+    dst = m_currShader->GetNewVariable(
+        8,
+        ISA_TYPE_D,
+        IGC::EALIGN_GRF,
+        true);
 
-   uint messageDescriptor = encodeMessageDescriptorForAtomicUnaryOp(
-       1,
-       returnsImmValue ? 1 : 0,
-       hasheader,
-       EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_ATOMIC_COUNTER_OPERATION,
-       returnsImmValue,
-       SIMDMode::SIMD8,
-       atomicType,
-       resource.m_surfaceType == ESURFACE_BINDLESS ? BINDLESS_BTI : (uint)resource.m_resource->GetImmediateValue());
+    uint messageDescriptor = encodeMessageDescriptorForAtomicUnaryOp(
+        1,
+        returnsImmValue ? 1 : 0,
+        hasheader,
+        EU_GEN7_5_DATA_CACHE_1_MESSAGE_TYPE_ATOMIC_COUNTER_OPERATION,
+        returnsImmValue,
+        SIMDMode::SIMD8,
+        atomicType,
+        resource.m_surfaceType == ESURFACE_BINDLESS ? BINDLESS_BTI : (uint)resource.m_resource->GetImmediateValue());
 
-   CVariable* pMessDesc = m_currShader->ImmToVariable(messageDescriptor, ISA_TYPE_D);
-   // src1 len = 1, SFID = DC1
-   uint32_t src1Len = hasheader ? 1 : 0;
-   uint32_t exDescVal = (src1Len << 6) | EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1;
-   CVariable* exDesc =
-       m_currShader->ImmToVariable(exDescVal, ISA_TYPE_D);
+    CVariable* pMessDesc = m_currShader->ImmToVariable(messageDescriptor, ISA_TYPE_D);
+    // src1 len = 1, SFID = DC1
+    uint32_t src1Len = hasheader ? 1 : 0;
+    uint32_t exDescVal = (src1Len << 6) | EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1;
+    CVariable* exDesc =
+        m_currShader->ImmToVariable(exDescVal, ISA_TYPE_D);
 
-   if (resource.m_surfaceType == ESURFACE_BINDLESS)
-   {
-       CVariable* temp = m_currShader->GetNewVariable(resource.m_resource);
-       m_encoder->Add(temp, resource.m_resource, exDesc);
-       m_encoder->Push();
-       exDesc = temp;
-   }
+    if (resource.m_surfaceType == ESURFACE_BINDLESS)
+    {
+        CVariable* temp = m_currShader->GetNewVariable(resource.m_resource);
+        m_encoder->Add(temp, resource.m_resource, exDesc);
+        m_encoder->Push();
+        exDesc = temp;
+    }
 
-   m_encoder->SetSimdSize(SIMDMode::SIMD1);
-   m_encoder->SetNoMask();
+    m_encoder->SetSimdSize(SIMDMode::SIMD1);
+    m_encoder->SetNoMask();
 
-   if (hasheader)
-   {
-       m_encoder->Sends(returnsImmValue ? dst : nullptr, pHeader, pPayload,
-           EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1, exDesc, pMessDesc);
-   }
-   else
-   {
-       m_encoder->Send(
-           returnsImmValue ? dst : NULL,
-           pPayload,
-           EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1,
-           exDesc,
-           pMessDesc);
-   }
-   m_encoder->Push();
+    if (hasheader)
+    {
+        m_encoder->Sends(returnsImmValue ? dst : nullptr, pHeader, pPayload,
+            EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1, exDesc, pMessDesc);
+    }
+    else
+    {
+        m_encoder->Send(
+            returnsImmValue ? dst : NULL,
+            pPayload,
+            EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1,
+            exDesc,
+            pMessDesc);
+    }
+    m_encoder->Push();
 
-   if (returnsImmValue)
-   {
-       unsigned int counter = m_currShader->m_dispatchSize == SIMDMode::SIMD32 ? 2 : 1;
-       for (unsigned int i = 0; i < counter; ++i)
-       {
-           m_encoder->SetSecondHalf(i == 1);
-           m_encoder->Add(m_destination, prefixVar[i], dst);
-           m_encoder->Push();
+    if (returnsImmValue)
+    {
+        unsigned int counter = m_currShader->m_dispatchSize == SIMDMode::SIMD32 ? 2 : 1;
+        for (unsigned int i = 0; i < counter; ++i)
+        {
+            m_encoder->SetSecondHalf(i == 1);
+            m_encoder->Add(m_destination, prefixVar[i], dst);
+            m_encoder->Push();
 
-           if (IID == GenISAIntrinsic::GenISA_atomiccounterinc)
-           {
-               CVariable* src = m_currShader->ImmToVariable(-1, ISA_TYPE_D);
-               m_encoder->Add(m_destination, m_destination, src);
-               m_encoder->Push();
-           }
-       }
-   }
+            if (IID == GenISAIntrinsic::GenISA_atomiccounterinc)
+            {
+                CVariable* src = m_currShader->ImmToVariable(-1, ISA_TYPE_D);
+                m_encoder->Add(m_destination, m_destination, src);
+                m_encoder->Push();
+            }
+        }
+    }
 
-   ResetVMask();
-   m_currShader->isMessageTargetDataCacheDataPort = true;
+    ResetVMask();
+    m_currShader->isMessageTargetDataCacheDataPort = true;
 }
 
 void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
@@ -11536,7 +11652,7 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
     /// needs to be set for this.
     bool returnsImmValue = !pInsn->user_empty();
 
-    llvm::Value* pllbuffer     = pInsn->getOperand(0);
+    llvm::Value* pllbuffer = pInsn->getOperand(0);
     ResourceDescriptor resource = GetResourceVariable(pllbuffer);
 
     CVariable* dst = m_destination;
@@ -11580,7 +11696,7 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
     CVariable* exDesc =
         m_currShader->ImmToVariable(EU_GEN7_5_MESSAGE_TARGET_DATA_PORT_DATA_CACHE_1, ISA_TYPE_D);
 
-    if(resource.m_surfaceType == ESURFACE_BINDLESS)
+    if (resource.m_surfaceType == ESURFACE_BINDLESS)
     {
         CVariable* temp = m_currShader->GetNewVariable(resource.m_resource);
         m_encoder->Add(temp, resource.m_resource, exDesc);
@@ -11623,10 +11739,10 @@ void EmitPass::emitAtomicCounter(llvm::GenIntrinsicInst* pInsn)
 }
 
 void EmitPass::CmpBoolOp(llvm::BinaryOperator* inst,
-                         llvm::CmpInst::Predicate predicate,
-                         const SSource cmpSources[2],
-                         const SSource& bitSource,
-                         const DstModifier&  modifier)
+    llvm::CmpInst::Predicate predicate,
+    const SSource cmpSources[2],
+    const SSource& bitSource,
+    const DstModifier&  modifier)
 {
 
     DstModifier init;
@@ -11649,42 +11765,42 @@ void EmitPass::emitAluConditionMod(Pattern* aluPattern, llvm::Instruction* alu, 
     aluPattern->Emit(this, init);
 
     e_predicate predicate = GetPredicate(cmp->getPredicate());
-    if(IsUnsignedCmp(cmp->getPredicate()))
+    if (IsUnsignedCmp(cmp->getPredicate()))
     {
         temp = m_currShader->BitCast(temp, GetUnsignedType(temp->GetType()));
     }
-    m_encoder->Cmp(predicate,dst, temp, m_currShader->ImmToVariable(0, temp->GetType()));
+    m_encoder->Cmp(predicate, dst, temp, m_currShader->ImmToVariable(0, temp->GetType()));
     m_encoder->Push();
     m_destination = dst;
 }
 
 void EmitPass::emitHSPatchConstantInput(llvm::Instruction* pInst)
 {
-    assert(m_currShader->GetShaderType()==ShaderType::HULL_SHADER);
+    assert(m_currShader->GetShaderType() == ShaderType::HULL_SHADER);
     CHullShader* hsProgram = static_cast<CHullShader*>(m_currShader);
     hsProgram->EmitPatchConstantInput(pInst, m_destination);
 }
 
 void EmitPass::emitHSOutputControlPtInput(llvm::Instruction* pInst)
 {
-    assert(m_currShader->GetShaderType()==ShaderType::HULL_SHADER);
+    assert(m_currShader->GetShaderType() == ShaderType::HULL_SHADER);
     CHullShader* hsProgram = static_cast<CHullShader*>(m_currShader);
     hsProgram->EmitOutputControlPointInput(pInst, m_destination);
 }
 
 void EmitPass::emitHSTessFactors(llvm::Instruction* pInst)
 {
-    assert(m_currShader->GetShaderType()==ShaderType::HULL_SHADER);
+    assert(m_currShader->GetShaderType() == ShaderType::HULL_SHADER);
     CHullShader* hsProgram = static_cast<CHullShader*>(m_currShader);
     CVariable* payload[8];
 
-    for(uint32_t channel = 2 ;channel < 8; channel++)
+    for (uint32_t channel = 2; channel < 8; channel++)
     {
-        payload[channel] = GetSymbol(pInst->getOperand(channel-2));
+        payload[channel] = GetSymbol(pInst->getOperand(channel - 2));
     }
 
     bool endOfThread = llvm::isa<llvm::ReturnInst>(pInst->getNextNode());
-    hsProgram->EmitPatchConstantHeader(payload, endOfThread );
+    hsProgram->EmitPatchConstantHeader(payload, endOfThread);
 }
 
 void EmitPass::emitRenderTargetRead(llvm::GenIntrinsicInst* inst)
@@ -11715,7 +11831,7 @@ void EmitPass::emitRenderTargetRead(llvm::GenIntrinsicInst* inst)
         else
         {
             CVariable* SampleIndex = GetSymbol(inst->getOperand(1));
-            if(!SampleIndex->IsUniform())
+            if (!SampleIndex->IsUniform())
             {
                 SampleIndex = UniformCopy(SampleIndex);
             }
@@ -11758,7 +11874,7 @@ void EmitPass::emitRenderTargetRead(llvm::GenIntrinsicInst* inst)
     // but we don't want to declare R0 and R1 as one variable in V-ISA
     // The problem could be fixed by moving away from raw_send for this message
     CVariable* payload =
-        m_currShader->GetNewVariable(messageLength*(SIZE_GRF>>2), ISA_TYPE_D, EALIGN_GRF);
+        m_currShader->GetNewVariable(messageLength*(SIZE_GRF >> 2), ISA_TYPE_D, EALIGN_GRF);
     m_encoder->SetNoMask();
     m_encoder->SetSimdSize(SIMDMode::SIMD8);
     m_encoder->Copy(payload, (hasSampleIndex ? pSampleIndexR0 : psProgram->GetR0()));
@@ -11783,7 +11899,7 @@ void EmitPass::emitRenderTargetRead(llvm::GenIntrinsicInst* inst)
     m_encoder->Push();
 
     uint msgControl =
-        ( m_SimdMode == SIMDMode::SIMD8 )
+        (m_SimdMode == SIMDMode::SIMD8)
         ? EU_GEN9_DATA_PORT_RENDER_TARGET_READ_CONTROL_SIMD8_SINGLE_SOURCE_LOW
         : EU_GEN9_DATA_PORT_RENDER_TARGET_READ_CONTROL_SIMD16_SINGLE_SOURCE;
     msgControl |=
@@ -11813,7 +11929,7 @@ void EmitPass::emitRenderTargetRead(llvm::GenIntrinsicInst* inst)
         m_encoder->Push();
     }
     //sendc
-    m_encoder->SendC(m_destination,payload,exDesc,messDesc);
+    m_encoder->SendC(m_destination, payload, exDesc, messDesc);
     m_encoder->Push();
 }
 
@@ -11992,12 +12108,12 @@ void EmitPass::emitFPOrtz(llvm::GenIntrinsicInst* inst)
         m_encoder->Push();
         break;
     case GenISAIntrinsic::GenISA_fma_rtz:
-      {
+    {
         CVariable* src2 = GetSymbol(inst->getOperand(2));
         m_encoder->Mad(dst, src0, src1, src2);
         m_encoder->Push();
         break;
-      }
+    }
     }
 
     ResetRoundingMode(inst);
@@ -12049,7 +12165,7 @@ bool EmitPass::isUniformStoreOCL(llvm::StoreInst* SI)
     // size must be 4 or 8. Also, note that if totalBytes = 4, elts must be 1.
     bool doUniformStore = (elts == 1 ||
         (m_currShader->GetIsUniform(SI->getValueOperand()) &&
-         (totalBytes == 8 || totalBytes == 12 || totalBytes == 16)));
+        (totalBytes == 8 || totalBytes == 12 || totalBytes == 16)));
     return doUniformStore;
 }
 
@@ -12057,46 +12173,46 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
 {
     uint destMask = m_currShader->GetExtractMask(BCI);
 
-    CVariable* src = GetSymbol( BCI->getOperand(0) );
+    CVariable* src = GetSymbol(BCI->getOperand(0));
     llvm::Type *srcTy = BCI->getOperand(0)->getType();
     llvm::Type *dstTy = BCI->getType();
     llvm::Type *srcEltTy, *dstEltTy;
     uint32_t srcNElts, dstNElts;
 
-    assert( (srcTy->isVectorTy() || dstTy->isVectorTy()) &&
-             "No vector type !");
+    assert((srcTy->isVectorTy() || dstTy->isVectorTy()) &&
+        "No vector type !");
 
-    if( srcTy->isVectorTy() )
+    if (srcTy->isVectorTy())
     {
         srcEltTy = srcTy->getVectorElementType();
-        srcNElts  = srcTy->getVectorNumElements();
+        srcNElts = srcTy->getVectorNumElements();
     }
     else
     {
         srcEltTy = srcTy;
-        srcNElts  = 1;
+        srcNElts = 1;
     }
-    if( dstTy->isVectorTy() )
+    if (dstTy->isVectorTy())
     {
         dstEltTy = dstTy->getVectorElementType();
-        dstNElts  = dstTy->getVectorNumElements();
+        dstNElts = dstTy->getVectorNumElements();
     }
     else
     {
         dstEltTy = dstTy;
-        dstNElts  = 1;
+        dstNElts = 1;
     }
 
-    if( src->IsImmediate() )
+    if (src->IsImmediate())
     {
         CVariable *reg = m_currShader->GetNewVariable(
             1,
             src->GetType(),
-            m_encoder->GetCISADataTypeAlignment( src->GetType() ),
+            m_encoder->GetCISADataTypeAlignment(src->GetType()),
             true,
-            1 );
+            1);
 
-        m_encoder->Copy( reg, src );
+        m_encoder->Copy(reg, src);
         m_encoder->Push();
 
         src = reg;
@@ -12115,43 +12231,43 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         src->GetAlign() >= CEncoder::GetCISADataTypeAlignment(m_destination->GetType()) &&
         /* Exclude bitcast from/to 16-bit */
         srcEltBytes != 2 && dstEltBytes != 2) {
-      // TODO; Add uniform vector bitcast support. A simple copy is enough but
-      // the ideal resolution is to teach DeSSA to handle that.
-      CVariable* dst = m_destination;
-      src = m_currShader->BitCast(src, dst->GetType());
-      m_encoder->SetNoMask();
-      m_encoder->SetUniformSIMDSize(lanesToSIMDMode(dstNElts));
-      m_encoder->SetSrcRegion(0, dstNElts, dstNElts, 1);
-      m_encoder->Copy(dst, src);
-      m_encoder->Push();
-      return;
+        // TODO; Add uniform vector bitcast support. A simple copy is enough but
+        // the ideal resolution is to teach DeSSA to handle that.
+        CVariable* dst = m_destination;
+        src = m_currShader->BitCast(src, dst->GetType());
+        m_encoder->SetNoMask();
+        m_encoder->SetUniformSIMDSize(lanesToSIMDMode(dstNElts));
+        m_encoder->SetSrcRegion(0, dstNElts, dstNElts, 1);
+        m_encoder->Copy(dst, src);
+        m_encoder->Push();
+        return;
     }
-    if( srcEltBytes == dstEltBytes )
+    if (srcEltBytes == dstEltBytes)
     {
         // This should not happen now, but generate code anyway.
         // CISABuilder does split if there is any spliting.
 
         // Special case for: 1 element vectors to scalars
         //    %15 = bitcast <1 x i64> %4 to i64
-        if( ( srcEltTy == dstEltTy) &&
-            ( srcNElts == dstNElts ) && (srcNElts == 1) )
+        if ((srcEltTy == dstEltTy) &&
+            (srcNElts == dstNElts) && (srcNElts == 1))
         {
             m_encoder->Copy(m_destination, src);
             m_encoder->Push();
         }
-        else if( m_destination != src )
+        else if (m_destination != src)
         {
-            for( uint32_t i = 0, offset = 0; i < dstNElts; ++i )
+            for (uint32_t i = 0, offset = 0; i < dstNElts; ++i)
             {
-                if(BIT(i) & destMask)
+                if (BIT(i) & destMask)
                 {
                     m_encoder->SetSrcRegion(0,
                         srcUniform ? 0 : 1,
                         srcUniform ? 1 : 1,
                         srcUniform ? 0 : 0);
-                    m_encoder->SetSrcSubReg(0, srcUniform ? i : i*width);
+                    m_encoder->SetSrcSubReg(0, srcUniform ? i : i * width);
                     m_encoder->SetDstRegion(1);
-                    m_encoder->SetDstSubReg(dstUniform ? offset : offset*width);
+                    m_encoder->SetDstSubReg(dstUniform ? offset : offset * width);
                     m_encoder->Copy(m_destination, src);
                     m_encoder->Push();
                     offset++;
@@ -12159,18 +12275,18 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
             }
         }
     }
-    else if( dstEltBytes > srcEltBytes )
+    else if (dstEltBytes > srcEltBytes)
     {
-        CVariable *aliasDst =  m_currShader->GetNewAlias(m_destination, src->GetType(), 0, 0);
+        CVariable *aliasDst = m_currShader->GetNewAlias(m_destination, src->GetType(), 0, 0);
         uint32_t N = dstEltBytes / srcEltBytes;
-        assert( (dstEltBytes % srcEltBytes) == 0 && "Basic types should be power of 2");
+        assert((dstEltBytes % srcEltBytes) == 0 && "Basic types should be power of 2");
         // Since srcEltBytes can be the second largest element type (32bit)
         // and region hstride == 1, Src will not need splitting!
         // Only dst might need spliting.
         bool splitDst = (!dstUniform && (dstEltBytes * width > 64U));
-        assert( (!splitDst || (width == 16)) &&
-                "Internal Error: Dst needs splitting only under SIMD16!");
-        if( N > 4 )
+        assert((!splitDst || (width == 16)) &&
+            "Internal Error: Dst needs splitting only under SIMD16!");
+        if (N > 4)
         {
             // Special case for N = 8 as dst's stride can be 1/2/4, not 8.
             //   for example, <1xi64> Y = bitcast <8xi8> X
@@ -12206,7 +12322,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
             //   mov (8, Q1) Y_alias.1<2>   V1(0,0)<8;8,1>
             //   mov (8, Q2) Y_alias.17<2>  V1(1,0)<8;8,1>
             //
-            assert ((N == 8) && (srcEltBytes == 1) && "Unexpected N value");
+            assert((N == 8) && (srcEltBytes == 1) && "Unexpected N value");
             const uint32_t N2 = N / 2; // 4
             VISA_Type TyD = (src->GetType() == ISA_TYPE_UB) ? ISA_TYPE_UD : ISA_TYPE_D;
             CVariable *V0 = m_currShader->GetNewVariable(dstUniform ? 1 : width, TyD, EALIGN_GRF, dstUniform);
@@ -12214,11 +12330,11 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
             CVariable *V0_alias = m_currShader->GetNewAlias(V0, src->GetType(), 0, 0);
             CVariable *V1_alias = m_currShader->GetNewAlias(V1, src->GetType(), 0, 0);
             CVariable *dst_alias = m_currShader->GetNewAlias(m_destination, V0->GetType(), 0, 0);
-            for(unsigned i = 0, offset = 0; i < dstNElts; ++i)
+            for (unsigned i = 0, offset = 0; i < dstNElts; ++i)
             {
                 if (BIT(i) & destMask)
                 {
-                    for(unsigned j = 0; j < N; ++j)
+                    for (unsigned j = 0; j < N; ++j)
                     {
                         bool useV0 = (j < N2);
                         uint32_t oft = useV0 ? j : j - N2;
@@ -12230,7 +12346,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
                         m_encoder->Push();
                     }
                     // combine V0 and V1 into dst
-                    if(splitDst)
+                    if (splitDst)
                     {
                         // Dst must not be uniform and it must be SIMD16!
                         // first simd8 : dst_alias = V0
@@ -12282,13 +12398,13 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
         }
         else
         {
-            for( unsigned i=0, offset=0; i < dstNElts; ++i )
+            for (unsigned i = 0, offset = 0; i < dstNElts; ++i)
             {
-                if(BIT(i) & destMask)
+                if (BIT(i) & destMask)
                 {
-                    for(unsigned j = 0; j < N; ++j)
+                    for (unsigned j = 0; j < N; ++j)
                     {
-                        if(splitDst)
+                        if (splitDst)
                         {
                             // width must be 16 & !dstUniform
                             // first simd8
@@ -12323,20 +12439,20 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
                     }
                     offset++;
                 }
-             }
+            }
         }
     }
     else
     {   // srcEltBytes > dstEltBytes
         // Create an aliase to src and mov the alias to the dst
-        CVariable *aliasSrc =  m_currShader->GetNewAlias(src, m_destination->GetType(), 0, 0);
+        CVariable *aliasSrc = m_currShader->GetNewAlias(src, m_destination->GetType(), 0, 0);
         uint32_t N = srcEltBytes / dstEltBytes;
         // Similar to dstEltBytes > srcEltBytes, dstEltBytes can be 32bit
         // at most and dst's stride == 1, so it will not need spliting.
         bool splitSrc = (!srcUniform && (srcEltBytes * width > 64U));
-        assert( (!splitSrc || (width == 16)) &&
-                "Internal Error: Src needs splitting only under SIMD16!");
-        assert( (srcEltBytes % dstEltBytes) == 0 && "Basic types should be power of 2");
+        assert((!splitSrc || (width == 16)) &&
+            "Internal Error: Src needs splitting only under SIMD16!");
+        assert((srcEltBytes % dstEltBytes) == 0 && "Basic types should be power of 2");
         // avoid coalescing the dst variable if all of its uses are EEI with constant index
         // this give RA more freedom (e.g. for bank conflict assignments)
         auto allUsesAreEEwithImm = [this](BitCastInst* BCI)
@@ -12360,9 +12476,9 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
             !dstUniform && srcNElts == 1 && N <= 8 &&
             allUsesAreEEwithImm(BCI);
 
-        for( unsigned i=0, offset = 0; i < srcNElts; ++i )
+        for (unsigned i = 0, offset = 0; i < srcNElts; ++i)
         {
-            for( unsigned j=0; j < N; ++j )
+            for (unsigned j = 0; j < N; ++j)
             {
                 if (BIT(i * N + j) & destMask)
                 {
@@ -12373,7 +12489,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
                         VectorBCICVars.push_back(newDst);
                         m_destination = newDst;
                     }
-                    if(splitSrc)
+                    if (splitSrc)
                     {
                         // SIMD16 && !srcUniform
                         // first simd8
@@ -12424,7 +12540,7 @@ void EmitPass::emitVectorBitCast(llvm::BitCastInst* BCI)
 unsigned int EmitPass::GetScalarTypeSizeInRegister(Type *Ty) const
 {
     unsigned int sizeInBites = Ty->getScalarSizeInBits();
-    if(Ty->isPointerTy())
+    if (Ty->isPointerTy())
     {
         sizeInBites =
             m_currShader->GetContext()->getRegisterPointerSizeInBits(Ty->getPointerAddressSpace());
@@ -12454,7 +12570,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
         eltBytes == 2 ||
         eltBytes == 4 ||
         eltBytes == 8) &&
-           "Load's type (element type if vector) must be 1/2/4/8-byte long");
+        "Load's type (element type if vector) must be 1/2/4/8-byte long");
 
     uint32_t elts = VTy ? int_cast<uint32_t>(VTy->getNumElements()) : 1;
     uint32_t totalBytes = eltBytes * elts;
@@ -12463,7 +12579,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
     bool srcUniform = eOffset->IsUniform();
     // Not possible to have uniform dest AND non-uniform src.
     assert(!(destUniform && !srcUniform) &&
-           "If ld's dest is uniform, ld's src must be uniform");
+        "If ld's dest is uniform, ld's src must be uniform");
 
     unsigned align = inst->getAlignment();
     VISA_Type destType = m_destination->GetType();
@@ -12477,14 +12593,14 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
     {
         // totalBytes is either 1 or 2, and it must be scalar or (1-element vector)
         assert((elts == 1) && (totalBytes != 3) &&
-               "Internal Error: do not expect <2 x i8> or <3 x i8>");
+            "Internal Error: do not expect <2 x i8> or <3 x i8>");
 
         uint16_t nbelts = srcUniform ? 1 : width;
         eOffset = ReAlignUniformVariable(eOffset, EALIGN_GRF);
 
         bool needTemporary = (totalBytes < 4) || !m_destination->IsGRFAligned();
         CVariable *gatherDst = m_destination;
-        if(needTemporary)
+        if (needTemporary)
         {
             gatherDst = m_currShader->GetNewVariable(nbelts, ISA_TYPE_UD, EALIGN_GRF, srcUniform);
         }
@@ -12504,7 +12620,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
         }
         m_encoder->Push();
 
-        if(needTemporary)
+        if (needTemporary)
         {
             gatherDst = m_currShader->GetNewAlias(gatherDst, destType, 0, 0);
             uint32_t vStride = srcUniform ? 0 : ((totalBytes == 1) ? 4 : 2);
@@ -12520,26 +12636,26 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
     {
         //uint32_t totalBytes = eltBytes * VTy->getNumElements();
         bool rightBlockSize = (totalBytes == 16 || totalBytes == 32 || totalBytes == 64 || totalBytes == 128);
-		bool useDWAligned = (resource.m_surfaceType != ESURFACE_SLM && align && align >= 4);
-		bool useOWAligned = false;
+        bool useDWAligned = (resource.m_surfaceType != ESURFACE_SLM && align && align >= 4);
+        bool useOWAligned = false;
         if (rightBlockSize && (useDWAligned || useOWAligned))
         {
             bool needTemp = (!destUniform || !m_destination->IsGRFAligned());
             CVariable *loadDest = m_destination;
 
-			if (useOWAligned)
-			{
-				// Offset needs to be in OW!
-				m_encoder->Shr(eOffset, eOffset, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
-				m_encoder->Push();
-			}
+            if (useOWAligned)
+            {
+                // Offset needs to be in OW!
+                m_encoder->Shr(eOffset, eOffset, m_currShader->ImmToVariable(4, ISA_TYPE_UD));
+                m_encoder->Push();
+            }
             eOffset = ReAlignUniformVariable(eOffset, EALIGN_GRF);
             if (needTemp)
             {
                 loadDest = m_currShader->GetNewVariable(int_cast<uint16_t>(VTy->getNumElements()),
-                                                        m_destination->GetType(),
-                                                        EALIGN_GRF,
-                                                        true);
+                    m_destination->GetType(),
+                    EALIGN_GRF,
+                    true);
             }
 
             if (useA32)
@@ -12548,7 +12664,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
             }
             else
             {
-				assert(!useOWAligned && "SLM's pointer size must be 32 bit!");
+                assert(!useOWAligned && "SLM's pointer size must be 32 bit!");
                 // emit svm block read
                 m_encoder->OWLoadA64(loadDest, eOffset, loadDest->GetSize());
             }
@@ -12564,16 +12680,16 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
 
     // Only handle 4/8/12/16/32 bytes here. For aligned 16/32 bytes, it should've been handled
     // by oword already (except for SLM).  We have 12 bytes for load of int3 (either aligned or
-	// unaligned[vload]).
-	//
-	// Note that for simplicity, don't do it if totalBytes=32 and 64bit integer adds are needed
-	// on platform that does not support 64bit integer add.
+    // unaligned[vload]).
+    //
+    // Note that for simplicity, don't do it if totalBytes=32 and 64bit integer adds are needed
+    // on platform that does not support 64bit integer add.
     if (srcUniform && (totalBytes == 4 || totalBytes == 8 || totalBytes == 12 || totalBytes == 16 ||
-		               (totalBytes == 32 && (useA32 || !m_currShader->m_Platform->hasNo64BitInst()))))
+        (totalBytes == 32 && (useA32 || !m_currShader->m_Platform->hasNo64BitInst()))))
     {
         bool needTemp = !destUniform ||
-                        !m_destination->IsGRFAligned() ||
-                        totalBytes == 12;
+            !m_destination->IsGRFAligned() ||
+            totalBytes == 12;
         // For uniform src, we can map value to messages (vector re-layout) as follows
         //   1. A64:
         //      <1 x i64> for align=8 && totalBytes=8 (eltBytes == 4 or 8);
@@ -12590,7 +12706,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
         // use A64 scattered RW with QW block size; Note that totalBytes == 16 with align >=4
         // should be handled by oword already (except for SLM).
         bool useQW = (!useA32) && (totalBytes == 8 || totalBytes == 16) &&
-                     (align >= 8 || eltBytes == 8);
+            (align >= 8 || eltBytes == 8);
 
         // activelanes is the number of lanes that are needed.
         // nbelts is activelanes rounded up to the power of 2.
@@ -12599,7 +12715,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
 
         // For scattered RW
         uint32_t blkBits = useA32 ? 8 : (align < 4 ? 8 : (useQW ? 64 : 32));
-        uint32_t nBlks   = useA32 ? 4 : (align < 4 ? (useQW ? 8 : 4) : 1);
+        uint32_t nBlks = useA32 ? 4 : (align < 4 ? (useQW ? 8 : 4) : 1);
 
         VISA_Type ldType = useQW ? ISA_TYPE_UQ : ISA_TYPE_UD;
         CVariable *gatherDst;
@@ -12623,41 +12739,42 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
         if (nbelts > 1)
         {
             gatherOff = m_currShader->GetNewVariable(
-                nbelts, eOffset->GetType(), eOffset->GetAlign(), true /*srcUniform*/ );
+                nbelts, eOffset->GetType(), eOffset->GetAlign(), true /*srcUniform*/);
             // May have the following
             //   lane   0   1   2   3   4    5   6   7
             //   eOff   0   4   8   C   10   14  18  1C // DW per lane
             //   eOff   0   8                           // QW per lane
             // When nbelts = 3, lane 3 is not used. Since we don't have simd3,
             // use simd4 and set lane3 to lane2.
-			uint32_t incImm;
-			uint32_t incImm1;  // for activelanes=8
-			switch (activelanes) {
-			default:
-				assert(false && "ICE: something wrong happened in computing activelanes!");
-				break;
-			case 2:
-				// only can have QW in this case
-				incImm = useQW ? 0x80 : 0x40;
-				break;
-			case 3:
-				// set lane3 to be the same as lane2 (it is 8)
-				incImm = 0x8840;
-				break;
-			case 4:
-				incImm = 0xC840;
-				break;
-			case 8:
-				// Make sure incImm + incImm1 = {0  4  8  C  10   14  18  1C}
-				incImm  = 0xD951C840;
-				incImm1 = 0xFFFF0000;
-				break;
-			}
+            uint32_t incImm;
+            uint32_t incImm1;  // for activelanes=8
+            switch (activelanes) {
+            default:
+                assert(false && "ICE: something wrong happened in computing activelanes!");
+                break;
+            case 2:
+                // only can have QW in this case
+                incImm = useQW ? 0x80 : 0x40;
+                break;
+            case 3:
+                // set lane3 to be the same as lane2 (it is 8)
+                incImm = 0x8840;
+                break;
+            case 4:
+                incImm = 0xC840;
+                break;
+            case 8:
+                // Make sure incImm + incImm1 = {0  4  8  C  10   14  18  1C}
+                incImm = 0xD951C840;
+                incImm1 = 0xFFFF0000;
+                break;
+            }
 
             CVariable* immVar = m_currShader->ImmToVariable(incImm, ISA_TYPE_UV);
             if (!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
                 emitAddPairWithImm(gatherOff, eOffset, immVar);
-            } else {
+            }
+            else {
                 m_encoder->SetNoMask();
                 m_encoder->SetUniformSIMDSize(simdmode);
                 m_encoder->SetSrcRegion(0, 0, 1, 0);
@@ -12665,14 +12782,14 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
                 m_encoder->Push();
             }
 
-			if (activelanes == 8) {
-				CVariable* immVar1 = m_currShader->ImmToVariable(incImm1, ISA_TYPE_UV);
-				m_encoder->SetNoMask();
-				m_encoder->SetUniformSIMDSize(simdmode);
-				m_encoder->SetSrcRegion(0, 8, 8, 1);
-				m_encoder->Add(gatherOff, gatherOff, immVar1);
-				m_encoder->Push();
-			}
+            if (activelanes == 8) {
+                CVariable* immVar1 = m_currShader->ImmToVariable(incImm1, ISA_TYPE_UV);
+                m_encoder->SetNoMask();
+                m_encoder->SetUniformSIMDSize(simdmode);
+                m_encoder->SetSrcRegion(0, 8, 8, 1);
+                m_encoder->Add(gatherOff, gatherOff, immVar1);
+                m_encoder->Push();
+            }
         }
 
         m_encoder->SetNoMask();
@@ -12709,13 +12826,13 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
     VecMessInfo.getInfo(Ty, align, useA32, forceByteScatteredRW);
 
     // Handle uniform case in general
-    if( srcUniform )
+    if (srcUniform)
     {
         // Use width of 8 always, and only the value of the first lane is
         // used. Need to set noMask in order to have the valid value in
         // the first lane.
         uint32_t width8 = 8;
-        for( uint32_t i=0; i < VecMessInfo.numInsts; ++i )
+        for (uint32_t i = 0; i < VecMessInfo.numInsts; ++i)
         {
             // raw operand, eltOffBytes is in bytes.
             uint32_t eltOffBytes = VecMessInfo.insts[i].startByte;
@@ -12728,14 +12845,15 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
             uint32_t instElts = instTotalBytes / eltBytes;
             uint32_t nbelts = instElts * width8;
 
-            if( i > 0 )
+            if (i > 0)
             {
                 // Calculate the new element offset
                 rawAddrVar = m_currShader->GetNewVariable(eOffset);
                 CVariable *ImmVar = m_currShader->ImmToVariable(eltOffBytes, ISA_TYPE_UD);
                 if (!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
                     emitAddPairWithImm(rawAddrVar, eOffset, ImmVar);
-                } else {
+                }
+                else {
                     m_encoder->SetNoMask();
                     m_encoder->Add(rawAddrVar, eOffset, ImmVar);
                     m_encoder->Push();
@@ -12754,7 +12872,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
             m_encoder->SetNoMask();
             m_encoder->SetSimdSize(SIMDMode::SIMD8);
             VectorMessage::MESSAGE_KIND messageType = VecMessInfo.insts[i].kind;
-            switch(messageType) {
+            switch (messageType) {
             case VectorMessage::MESSAGE_A32_BYTE_SCATTERED_RW:
                 m_encoder->ByteGather(subLoadDst, resource, addrVarSIMD8, blkBits, numBlks);
                 break;
@@ -12776,7 +12894,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
             {
                 m_encoder->SetSrcRegion(0, 0, 1, 0);
                 m_encoder->SetSrcSubReg(0, n * width8);
-                m_encoder->SetDstSubReg(eltOff + (destUniform ? n : n * width) );
+                m_encoder->SetDstSubReg(eltOff + (destUniform ? n : n * width));
                 m_encoder->Copy(m_destination, subLoadDst);
                 m_encoder->Push();
             }
@@ -12786,7 +12904,7 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
     }
 
     // Second, src isn't uniform
-    for( uint32_t i=0; i < VecMessInfo.numInsts; ++i )
+    for (uint32_t i = 0; i < VecMessInfo.numInsts; ++i)
     {
         // raw operand, eltOffBytes is in bytes.
         uint32_t eltOffBytes = VecMessInfo.insts[i].startByte * width;
@@ -12798,14 +12916,15 @@ void EmitPass::emitVectorLoad(LoadInst* inst, Value* offset)
         uint32_t instElts = instTotalBytes / eltBytes;
         uint32_t nbelts = instElts * width;
 
-        if( i > 0 )
+        if (i > 0)
         {
             // Calculate the new element offset
             rawAddrVar = m_currShader->GetNewVariable(eOffset);
             CVariable *ImmVar = m_currShader->ImmToVariable(VecMessInfo.insts[i].startByte, ISA_TYPE_UD);
             if (!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
                 emitAddPairWithImm(rawAddrVar, eOffset, ImmVar);
-            } else {
+            }
+            else {
                 m_encoder->Add(rawAddrVar, eOffset, ImmVar);
                 m_encoder->Push();
             }
@@ -12859,14 +12978,14 @@ void EmitPass::emitVectorStore(StoreInst* inst)
     PointerType* ptrType = cast<PointerType>(Ptr->getType());
 
     ResourceDescriptor resource = GetResourceVariable(Ptr);
-    if(ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
+    if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
     {
         ForceDMask(false);
     }
     // As 2/19/14, eOffset is in bytes !
     CVariable *eOffset = GetSymbol(Ptr);
     bool useA32 = !isA64Ptr(ptrType, m_currShader->GetContext());
-    if(useA32)
+    if (useA32)
     {
         eOffset = TruncatePointer(eOffset);
     }
@@ -12901,8 +13020,8 @@ void EmitPass::emitVectorStore(StoreInst* inst)
     if (totalBytes < 4 || isUniformStoreOCL(inst))
     {
         assert((totalBytes == 1 || totalBytes == 2 ||
-                totalBytes == 4 || totalBytes == 8 ||
-                totalBytes == 12 || totalBytes == 16) && "Wrong total Bytes!");
+            totalBytes == 4 || totalBytes == 8 ||
+            totalBytes == 12 || totalBytes == 16) && "Wrong total Bytes!");
 
         SIMDMode simdmode = SIMDMode::SIMD1;
         e_alignment grfAlign = useA32 ? EALIGN_GRF : EALIGN_2GRF;
@@ -12919,10 +13038,10 @@ void EmitPass::emitVectorStore(StoreInst* inst)
             // makes sense only if the final is a scalar (a single QW).
             bool useQW = (!useA32) &&
                 (eltBytes == 8 ||        // requested by vector layout
-                 (eltBytes == 4 && totalBytes == 8 && align >= 8)); // convert DW to QW
+                (eltBytes == 4 && totalBytes == 8 && align >= 8)); // convert DW to QW
 
-            // activelanes is the number of lanes that are needed.
-            // nbelts is activelanes rounded up to the power of 2.
+           // activelanes is the number of lanes that are needed.
+           // nbelts is activelanes rounded up to the power of 2.
             uint16_t activelanes = useQW ? (totalBytes / 8) : (totalBytes / 4);
             uint16_t nbelts = (activelanes == 3 ? 4 : activelanes);
 
@@ -12961,7 +13080,8 @@ void EmitPass::emitVectorStore(StoreInst* inst)
                 // must use storvedVar[0] for those extra lanes.
                 if (!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
                     emitAddPairWithImm(NewOff, eOffset, immVar);
-                } else {
+                }
+                else {
                     m_encoder->SetNoMask();
                     m_encoder->SetUniformSIMDSize(simdmode);
                     m_encoder->SetSrcRegion(0, 0, 1, 0);
@@ -13043,7 +13163,7 @@ void EmitPass::emitVectorStore(StoreInst* inst)
 
             // each lane will store either DW or QW
             blkBits = useQW ? (align >= 8 ? 64 : 8)
-                            : (!useA32 && align >= 4) ? 32 : 8;
+                : (!useA32 && align >= 4) ? 32 : 8;
             nBlks = useQW ? (64 / blkBits) : (32 / blkBits);
         }
         else
@@ -13099,7 +13219,7 @@ void EmitPass::emitVectorStore(StoreInst* inst)
         VectorMessage VecMessInfo(this);
         VecMessInfo.getInfo(Ty, align, useA32);
 
-        for(uint32_t i = 0; i < VecMessInfo.numInsts; ++i)
+        for (uint32_t i = 0; i < VecMessInfo.numInsts; ++i)
         {
             // raw operand, eltOff is in bytes
             uint32_t eltOffBytes = VecMessInfo.insts[i].startByte * width;
@@ -13111,12 +13231,12 @@ void EmitPass::emitVectorStore(StoreInst* inst)
             uint32_t nbelts = instElts * width;
 
             CVariable *rawAddrVar;
-            if(i > 0)
+            if (i > 0)
             {
                 // Calculate the new element offset
                 rawAddrVar = m_currShader->GetNewVariable(eOffset);
                 CVariable *ImmVar = m_currShader->ImmToVariable(VecMessInfo.insts[i].startByte, ISA_TYPE_UD);
-                if(!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
+                if (!useA32 && m_currShader->m_Platform->hasNo64BitInst()) {
                     emitAddPairWithImm(rawAddrVar, eOffset, ImmVar);
                 }
                 else {
@@ -13133,7 +13253,7 @@ void EmitPass::emitVectorStore(StoreInst* inst)
             assert((eltOffBytes < (UINT16_MAX)) && "eltOffBytes > higher than 64k");
             assert((nbelts < (UINT16_MAX)) && "nbelts > higher than 64k");
             CVariable *subStoredVar = m_currShader->GetNewAlias(storedVar, storedType, (uint16_t)eltOffBytes, (uint16_t)nbelts);
-            switch(VecMessInfo.insts[i].kind) {
+            switch (VecMessInfo.insts[i].kind) {
             case VectorMessage::MESSAGE_A32_BYTE_SCATTERED_RW:
                 m_encoder->ByteScatter(subStoredVar, resource, rawAddrVar, blkBits, numBlks);
                 break;
@@ -13152,14 +13272,14 @@ void EmitPass::emitVectorStore(StoreInst* inst)
             m_encoder->Push();
         }
     }
-    if(ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
+    if (ptrType->getPointerAddressSpace() != ADDRESS_SPACE_PRIVATE)
     {
         ResetVMask(false);
     }
 }
 
 void EmitPass::emitVectorCopy(CVariable *Dst, CVariable *Src, uint32_t nElts,
-                              uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset)
+    uint32_t DstSubRegOffset, uint32_t SrcSubRegOffset)
 {
     unsigned int width = numLanes(m_currShader->m_SIMDSize);
     bool srcUniform = Src->IsUniform();
@@ -13200,13 +13320,13 @@ void EmitPass::emitVectorCopy(CVariable *Dst, CVariable *Src, uint32_t nElts,
         return;
     }
 
-    for( uint32_t i = 0; i < nElts; ++i )
+    for (uint32_t i = 0; i < nElts; ++i)
     {
-        uint SrcSubReg = srcUniform ? soff + i : soff + width*i;
-        uint DstSubReg = dstUniform ? doff + i : doff + width*i;
+        uint SrcSubReg = srcUniform ? soff + i : soff + width * i;
+        uint DstSubReg = dstUniform ? doff + i : doff + width * i;
 
-        uint SrcWidth  = srcUniform ? 1 : width;
-        uint DstWidth  = dstUniform ? 1 : width;
+        uint SrcWidth = srcUniform ? 1 : width;
+        uint DstWidth = dstUniform ? 1 : width;
 
         if (SrcSubReg >= Src->GetNumberElement() ||
             DstSubReg >= Dst->GetNumberElement())
@@ -13295,7 +13415,7 @@ void EmitPass::emitGenISACopy(GenIntrinsicInst *GenCopyInst)
 /// \brief Emulate the 64-bit addition of uniform `Src` with vector immediate
 /// value `Imm`. `Imm` should be in type of Type_UV.
 void EmitPass::emitAddPairWithImm(CVariable *Dst, CVariable *Src,
-                                  CVariable *Imm) {
+    CVariable *Imm) {
     assert(Dst->GetType() == ISA_TYPE_Q || Dst->GetType() == ISA_TYPE_UQ);
     assert(Src->GetType() == ISA_TYPE_Q || Src->GetType() == ISA_TYPE_UQ);
 
@@ -13419,12 +13539,12 @@ void EmitPass::emitLLVMbswap(IntrinsicInst* inst)
     bool dstUniform = Dst->IsUniform();
 
     CVariable *SrcB = m_currShader->GetNewAlias(Src, ISA_TYPE_UB, 0, 0);
-    if ( nBytes == 2 || nBytes == 4 )
+    if (nBytes == 2 || nBytes == 4)
     {
         CVariable *DstB = m_currShader->GetNewAlias(Dst, ISA_TYPE_UB, 0, 0);
 
         // Generating byte mov
-        for(unsigned i = 0; i < nBytes/2; ++i)
+        for (unsigned i = 0; i < nBytes / 2; ++i)
         {
             // swap bytes[i] with bytes[j].
             uint32_t j = (nBytes - 1) - i;
@@ -13444,31 +13564,31 @@ void EmitPass::emitLLVMbswap(IntrinsicInst* inst)
             m_encoder->Push();
         }
     }
-    else if( nBytes == 8 )
+    else if (nBytes == 8)
     {
         // Need to so lower DW and upper DW separately first.
         m_currShader->GetNewAlias(Src, ISA_TYPE_UD, 0, 0);
         CVariable* DstH = m_currShader->GetNewVariable(Src->GetNumberElement(),
-                                                    ISA_TYPE_UD,
-                                                    Src->GetAlign(),
-                                                    srcUniform);
+            ISA_TYPE_UD,
+            Src->GetAlign(),
+            srcUniform);
         CVariable* DstL = m_currShader->GetNewVariable(Src->GetNumberElement(),
-                                                    ISA_TYPE_UD,
-                                                    Src->GetAlign(),
-                                                    srcUniform);
+            ISA_TYPE_UD,
+            Src->GetAlign(),
+            srcUniform);
         CVariable *DstHB = m_currShader->GetNewAlias(DstH, ISA_TYPE_UB, 0, 0);
         CVariable *DstLB = m_currShader->GetNewAlias(DstL, ISA_TYPE_UB, 0, 0);
 
         bool split = (width == 16);
-        for(unsigned n=0; n < 2; ++n)
+        for (unsigned n = 0; n < 2; ++n)
         {
-            for(unsigned i=0; i < 4; ++i)
+            for (unsigned i = 0; i < 4; ++i)
             {
                 // swap bytes[i] and bytes[j]
                 uint32_t j = 3 - i;
-                if( split && !srcUniform)
+                if (split && !srcUniform)
                 {
-                    m_encoder->SetSrcSubReg(0, 4*n + i);
+                    m_encoder->SetSrcSubReg(0, 4 * n + i);
                     m_encoder->SetSrcRegion(0, 8, 1, 0);
                     m_encoder->SetDstSubReg(j);
                     m_encoder->SetDstRegion(4);
@@ -13477,7 +13597,7 @@ void EmitPass::emitLLVMbswap(IntrinsicInst* inst)
                     m_encoder->Copy(n == 0 ? DstHB : DstLB, SrcB);
                     m_encoder->Push();
 
-                    m_encoder->SetSrcSubReg(0, 2*SIZE_GRF + 4*n + i);
+                    m_encoder->SetSrcSubReg(0, 2 * SIZE_GRF + 4 * n + i);
                     m_encoder->SetSrcRegion(0, 8, 1, 0);
                     m_encoder->SetDstSubReg(SIZE_GRF + j);
                     m_encoder->SetDstRegion(4);
@@ -13489,7 +13609,7 @@ void EmitPass::emitLLVMbswap(IntrinsicInst* inst)
                 else
                 {
                     // DstH[B]/DstL[B] have the same uniformness as Src !
-                    m_encoder->SetSrcSubReg(0, 4*n + i);
+                    m_encoder->SetSrcSubReg(0, 4 * n + i);
                     m_encoder->SetSrcRegion(0, srcUniform ? 0 : 8, 1, 0);
                     m_encoder->SetDstSubReg(j);
                     m_encoder->SetDstRegion(srcUniform ? 1 : 4);
@@ -13500,10 +13620,10 @@ void EmitPass::emitLLVMbswap(IntrinsicInst* inst)
         }
 
         // Now, mov DstH and DstL to Dst
-        CVariable* DstD  = m_currShader->GetNewAlias(Dst, ISA_TYPE_UD, 0, 0);
+        CVariable* DstD = m_currShader->GetNewAlias(Dst, ISA_TYPE_UD, 0, 0);
 
         // When dst is uniform, dst does not cross 2 GRFs, split isn't needed.
-        if( split && !dstUniform)
+        if (split && !dstUniform)
         {
             m_encoder->SetSimdSize(SIMDMode::SIMD8);
             m_encoder->SetMask(EMASK_Q1);
@@ -13673,7 +13793,7 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
 
         bufType = DecodeAS4GFXResource(as, directIndexing, bufferIndex);
 
-        if(IsBindless(bufType) || !directIndexing)
+        if (IsBindless(bufType) || !directIndexing)
         {
             if (isa<IntToPtrInst>(resourcePtr))
             {
@@ -13725,12 +13845,12 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
     {
         resource.m_surfaceType = ESURFACE_BINDLESS;
     }
-    else if(bufType == SLM)
+    else if (bufType == SLM)
     {
         resource.m_surfaceType = ESURFACE_SLM;
     }
     else if (bufType == CONSTANT_BUFFER || bufType == UAV ||
-            bufType == RESOURCE || bufType == RENDER_TARGET)
+        bufType == RESOURCE || bufType == RENDER_TARGET)
     {
         resource.m_surfaceType = ESURFACE_NORMAL;
     }
@@ -13747,7 +13867,7 @@ SamplerDescriptor EmitPass::GetSamplerVariable(Value* sampleOp)
     unsigned int samplerIdx;
     BufferType sampType = BUFFER_TYPE_UNKNOWN;
 
-    if(isa<GenIntrinsicInst>(sampleOp)) // from GetBufferPtr
+    if (isa<GenIntrinsicInst>(sampleOp)) // from GetBufferPtr
     {
         Value *bufTyVal = cast<GenIntrinsicInst>(sampleOp)->getOperand(1);
         assert(isa<ConstantInt>(bufTyVal));
@@ -13768,7 +13888,7 @@ SamplerDescriptor EmitPass::GetSamplerVariable(Value* sampleOp)
         sampler.m_samplerType =
             isBindless ? ESAMPLER_BINDLESS : ESAMPLER_NORMAL;
 
-        if(isBindless || !directIdx)
+        if (isBindless || !directIdx)
         {
             sampler.m_sampler = GetSymbol(sampleOp);
         }
@@ -13798,14 +13918,14 @@ bool EmitPass::ResourceLoopHeader(
     CVariable*& flag,
     uint& label)
 {
-    if(resource.m_surfaceType != ESURFACE_BINDLESS && resource.m_surfaceType != ESURFACE_NORMAL)
+    if (resource.m_surfaceType != ESURFACE_BINDLESS && resource.m_surfaceType != ESURFACE_NORMAL)
     {
         // Loop only needed for access with surface state
         return false;
     }
     bool uniformResource = resource.m_resource == nullptr || resource.m_resource->IsUniform();
     bool uniformSampler = sampler.m_sampler == nullptr || sampler.m_sampler->IsUniform();
-    if(uniformResource && uniformSampler)
+    if (uniformResource && uniformSampler)
     {
         return false;
     }
@@ -13815,7 +13935,7 @@ bool EmitPass::ResourceLoopHeader(
     label = m_encoder->GetNewLabelID();
     m_encoder->Label(label);
     m_encoder->Push();
-    if(!uniformResource)
+    if (!uniformResource)
     {
         ResourceDescriptor uniformResource;
         resourceFlag = m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE);
@@ -13825,7 +13945,7 @@ bool EmitPass::ResourceLoopHeader(
         m_encoder->Push();
         resource = uniformResource;
     }
-    if(!uniformSampler)
+    if (!uniformSampler)
     {
         SamplerDescriptor uniformSampler;
         samplerFlag = m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE);
@@ -13835,7 +13955,7 @@ bool EmitPass::ResourceLoopHeader(
         m_encoder->Push();
         sampler = uniformSampler;
     }
-    if(resourceFlag && samplerFlag)
+    if (resourceFlag && samplerFlag)
     {
         flag = m_currShader->GetNewVariable(numLanes(m_SimdMode), ISA_TYPE_BOOL, EALIGN_BYTE);
         m_encoder->And(flag, resourceFlag, samplerFlag);
@@ -13845,7 +13965,7 @@ bool EmitPass::ResourceLoopHeader(
     {
         flag = resourceFlag != nullptr ? resourceFlag : samplerFlag;
     }
-    if(m_SimdMode == SIMDMode::SIMD32)
+    if (m_SimdMode == SIMDMode::SIMD32)
     {
         // For SIMD32 need to initialize to 1 the other half of the flag
         m_encoder->SetSecondHalf(!m_encoder->IsSecondHalf());
@@ -13858,7 +13978,7 @@ bool EmitPass::ResourceLoopHeader(
 
 void EmitPass::ResourceLoop(bool needLoop, CVariable* flag, uint label)
 {
-    if(needLoop)
+    if (needLoop)
     {
         m_encoder->SetInversePredicate(true);
         m_encoder->Jump(flag, label);
@@ -13951,17 +14071,17 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
     }
 
 
-    if(!m_currShader->InsideDivergentCF(inst))
+    if (!m_currShader->InsideDivergentCF(inst))
     {
         CVariable *f0 = GetSymbol(inst->getOperand(0));
 
-        if(m_currShader->m_dispatchSize == SIMDMode::SIMD8 && m_currShader->HasFullDispatchMask())
+        if (m_currShader->m_dispatchSize == SIMDMode::SIMD8 && m_currShader->HasFullDispatchMask())
         {
             // for SIMD8 make sure the higher 8 bits of the flag are not copied
             destination = m_currShader->GetNewVariable(1, ISA_TYPE_UB, EALIGN_BYTE, true);
         }
         m_encoder->BoolToInt(destination, f0);
-        if(!m_currShader->HasFullDispatchMask())
+        if (!m_currShader->HasFullDispatchMask())
         {
             m_encoder->And(destination, GetDispatchMask(), destination);
         }
@@ -13969,7 +14089,7 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
     else
     {
         CVariable* exeMask = GetExecutionMask();
-        if(!uniform_active_lane)
+        if (!uniform_active_lane)
         {
             // (W)     and (1|M0)   r1.0:ud r0.0<0;1;0>:ud f0.0:uw
             CVariable *f0 = GetSymbol(inst->getOperand(0));
@@ -14069,7 +14189,7 @@ static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcod
         }
     };
 
-    switch(op)
+    switch (op)
     {
     case WaveOps::SUM:
         identity = 0;
