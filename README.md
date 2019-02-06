@@ -28,43 +28,47 @@ https://opensource.org/licenses/MIT
 
 IGC is supported on the following 32/64 bits Linux operating systems:
 
-* Ubuntu 14.04, 16.04, 17.04
+* Ubuntu 14.04, 16.04, 17.04, 18.04
 
 ## Building
 
 1. Install prerequisites
 
-Building IGC needs flex, bison, clang 4.0, cmake version later than 3.4.3 and
- libz.  You can install required packages on ubuntu 16.04 like below:
+Building IGC needs flex, bison, cmake version later than 3.4.3 and
+ libz.  You can install required packages on ubuntu 18.04 like below:
 ```
-$ sudo apt-get install flex bison clang-4.0 libz-dev cmake
+$ sudo apt-get install flex bison libz-dev cmake
 ```
 
 2. Download all dependencies and create workspace folder as below:
 ```
-workspace
-      |- clang_source           https://github.com/llvm-mirror/clang
-      |- common_clang           https://github.com/intel/opencl-clang
-      |- llvm_patches           https://github.com/intel/llvm-patches
-      |- llvm_source            https://github.com/llvm-mirror/llvm
-      |- igc                    https://github.com/intel/intel-graphics-compiler
+<workspace>
+      |- igc                          https://github.com/intel/intel-graphics-compiler
+      |- llvm_patches                 https://github.com/intel/llvm-patches
+      |- llvm_source                  https://github.com/llvm-mirror/llvm
+            |- projects/opencl-clang  https://github.com/intel/opencl-clang
+            |- projects/llvm-spirv    https://github.com/KhronosGroup/SPIRV-LLVM-Translator
+            |- tools/clang            https://github.com/llvm-mirror/clang
+```
 
-Example command:
-$ git clone -b release_40 https://github.com/llvm-mirror/clang clang_source
-$ git clone -b ocl-open-40 https://github.com/intel/opencl-clang common_clang
+This can be done using the following commands:
+
+```
+$ cd <workspace>
+$ git clone -b release_70 https://github.com/llvm-mirror/llvm llvm_source
+$ git clone -b release_70 https://github.com/llvm-mirror/clang llvm_source/tools/clang
+$ git clone -b release_70 https://github.com/intel/opencl-clang llvm_source/projects/opencl-clang
+$ git clone -b release_70 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm_source/projects/llvm-spirv
 $ git clone https://github.com/intel/llvm-patches llvm_patches
-  [If seeing LLVM7.1.0 issue, please do following]
-  In CMakeLists.txt
-  Change set(EXPECTED_LLVM_VERSION "7.0.0") to set(EXPECTED_LLVM_VERSION "7.1.0")
-$ git clone -b release_40 https://github.com/llvm-mirror/llvm llvm_source
-$ git clone -b release_70 https://github.com/llvm-mirror/llvm llvm7.1.0_source
 $ git clone https://github.com/intel/intel-graphics-compiler igc
   [If using specific release]
-  git checkout -b tag igc_release_2019-01-15
+$ cd igc && git checkout -b tag igc_release_2019-01-15
 ```
+
 
 3. Under workspace create a build folder.  For example:
 ```
+$ cd <workspace>
 $ mkdir build
 ```
 

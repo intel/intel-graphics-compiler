@@ -297,6 +297,8 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
     // In SPIR, compiler options are represented by a named node with a single item pointing to a list.
     // since the name node is a list, this creates a list of lists where the first item in the outer list
     // is the actual compiler options list.
+    if (!spirMDUtils.empty_CompilerOptions())
+    {
     SPIRMD::InnerCompilerOptionsMetaDataListHandle compilerOptions = spirMDUtils.getCompilerOptionsItem(0);
     SPIRMD::InnerCompilerOptionsMetaDataList::const_iterator coi = compilerOptions->begin();
     SPIRMD::InnerCompilerOptionsMetaDataList::const_iterator coe = compilerOptions->end();
@@ -363,6 +365,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         default:
             break;
         }
+    }
     }
 
     // Handling Floating Point Contractions
