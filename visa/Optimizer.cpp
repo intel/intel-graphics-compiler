@@ -10296,7 +10296,7 @@ void Optimizer::split4GRFVars()
                 if (src && src->getTopDcl())
                 {
                     G4_SrcRegRegion* srcRegion = src->asSrcRegRegion();
-                    G4_Declare* srcRootDcl = src->getTopDcl()->getRootDeclare();;
+                    G4_Declare* srcRootDcl = src->getTopDcl()->getRootDeclare();
                     if (DclMap.count(srcRootDcl))
                     {
                         bool isLow = src->getLeftBound() < 2 * GENX_GRF_REG_SIZ;

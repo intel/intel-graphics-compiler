@@ -1642,7 +1642,7 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT)
         G4_SendMsgDescriptor *msgDesc = inst->getMsgDesc();
         if (msgDesc->isDataPortRead())
         {
-            return LT.getLatencyPostRA(inst);
+            return LT.getLatency(inst);
         }
     }
 
@@ -1656,7 +1656,7 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT)
     {
     case RAW:
     case RAW_MEMORY:
-        latency = LT.getLatencyPostRA(inst);
+        latency = LT.getLatency(inst);
         break;
 
     case WAR:
@@ -1688,7 +1688,7 @@ Node::Node(uint32_t id, G4_INST* inst, Edge_Allocator& depEdgeAllocator,
     : nodeID(id)
 {
     instVec.push_back(inst);
-    occupancy = LT.getOccupany(inst);;
+    occupancy = LT.getOccupancy(inst);
 
     // Set the initial node priority
     priority = occupancy;

@@ -4,6 +4,17 @@
 
 using namespace vISA;
 
+uint16_t LatencyTable::getLatency(G4_INST* Inst) const
+{
+    return getLatencyLegacy(Inst);
+}
+
+// This calculates the node's pipeline occupancy (node delay)
+uint16_t LatencyTable::getOccupancy(G4_INST* Inst) const
+{
+    return getOccupancyLegacy(Inst);
+}
+
 static const uint16_t LegacyFFLatency[] = {
     2,   // 0: SFID_NULL
     2,   // 1: Useless
@@ -22,16 +33,6 @@ static const uint16_t LegacyFFLatency[] = {
     200  //14: unknown, SFID_NUM
 };
 
-uint16_t LatencyTable::getLatencyPreRA(G4_INST* Inst) const
-{
-    return getLatencyLegacy(Inst);
-}
-
-uint16_t LatencyTable::getLatencyPostRA(G4_INST* Inst) const
-{
-    return getLatencyLegacy(Inst);
-}
-
 uint16_t LatencyTable::getLatencyLegacy(G4_INST* Inst) const
 {
     if (Inst->isSend()) {
@@ -46,17 +47,11 @@ uint16_t LatencyTable::getLatencyLegacy(G4_INST* Inst) const
     return IVB_PIPELINE_LENGTH;
 }
 
-// This calculates the node's pipeline occupancy (node delay)
-uint16_t LatencyTable::getOccupany(G4_INST* inst) const
-{
-    return getOccupanyLegacy(inst);
-}
-
-uint16_t LatencyTable::getOccupanyLegacy(G4_INST* inst) const
+uint16_t LatencyTable::getOccupancyLegacy(G4_INST* Inst) const
 {
     int divisor = 8;
-    int instLatency = UNCOMPR_LATENCY;
-    if (inst->isFastHFInstruction()) {
+    int InstLatency = UNCOMPR_LATENCY;
+    if (Inst->isFastHFInstruction()) {
         divisor = 16;
     }
 
@@ -64,27 +59,27 @@ uint16_t LatencyTable::getOccupanyLegacy(G4_INST* inst) const
     // "n" is:
     //      16 for BDW+ HalfFloatDoublePerf instructions,
     //      8 for other instructions.
-    int passes = std::max(1, inst->getExecSize() / divisor);
+    int passes = std::max(1, Inst->getExecSize() / divisor);
 
     // InstLatency is:
     //      4 for EM/FPU1 POW and FDIV instrutions ( HSW; for BDW+ it is 2 times higher ),
     //      2 for other EM/FPU1 instructions ( HSW; for BDW+ it is 2 times higher ),
     //      2 for other instructions.
     // Update DagNode latency for math.
-    G4_opcode opCode = inst->opcode();
+    G4_opcode opCode = Inst->opcode();
     switch (opCode) {
     case G4_math: {
         // Use EdgeLatencyMathType2 for FDIV, FPOW functions.
-        if (inst->asMathInst()->getMathCtrl() == MATH_FDIV ||
-            inst->asMathInst()->getMathCtrl() == MATH_POW) {
-            instLatency = 4;
+        if (Inst->asMathInst()->getMathCtrl() == MATH_FDIV ||
+            Inst->asMathInst()->getMathCtrl() == MATH_POW) {
+            InstLatency = 4;
         } else {
             // Used EdgeLatencyMath for other functions.
-            instLatency = 2;
+            InstLatency = 2;
         }
 
         // BDW+ platforms have lower math TPT and longer latency (all math functions).
-        instLatency *= 2;
+        InstLatency *= 2;
         break;
     }
     case G4_bfe:
@@ -102,17 +97,18 @@ uint16_t LatencyTable::getOccupanyLegacy(G4_INST* inst) const
     case G4_mac:
     case G4_mach:
     case G4_pln:
-        instLatency *= 2;
+        InstLatency *= 2;
         break;
     case G4_label:
         // Labels need special care. They should have a latency of 1.
         // But their execSize is 255, which sets passes=31.
         passes = 1;
-        instLatency = 1;
+        InstLatency = 1;
         break;
     default:
         break;
     }
 
-    return uint16_t(passes * instLatency);
+    return uint16_t(passes * InstLatency);
 }
+
