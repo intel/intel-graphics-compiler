@@ -418,7 +418,7 @@ void CShader::AllocateConstants(uint& offset)
 {
     m_ConstantBufferLength = 0;
     for (auto I = pushInfo.constants.begin(), E = pushInfo.constants.end(); I != E; I++) {
-        CVariable* var = GetSymbol(m_argListCache[I->argIndex]);
+        CVariable* var = GetSymbol(m_argListCache[I->second]);
         AllocateInput(var, offset + m_ConstantBufferLength);
         m_ConstantBufferLength += var->GetSize();
     }
@@ -462,7 +462,7 @@ void CShader::CreateGatherMap()
     gatherMap.reserve(pushInfo.constants.size());
     for(auto I = pushInfo.constants.begin(), E = pushInfo.constants.end();I!=E;I++)
     {
-		unsigned int address = (I->bufId * 256 * 4) + (I->eltId);
+		unsigned int address = (I->first.bufId * 256 * 4) + (I->first.eltId);
 		unsigned int cstOffset = address / 4;
 		unsigned int cstChannel = address % 4;
         if(cstOffset!=index)

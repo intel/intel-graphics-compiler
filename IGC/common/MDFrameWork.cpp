@@ -65,14 +65,6 @@ namespace IGC
 
 		return false;
 	}
-
-    bool operator == (const ConstantAddress &a, const ConstantAddress &b)
-    {
-        if (a.bufId == b.bufId && a.eltId == b.eltId)
-            return true;
-
-        return false;
-    }
 }
 
 // non-autogen functions implementations below
