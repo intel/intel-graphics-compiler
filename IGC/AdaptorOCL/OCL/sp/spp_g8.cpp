@@ -213,7 +213,7 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
             assert(data.kernelBinary && data.kernelBinary->Size() > 0);
 
             // Create the debug data binary streams
-            if (pOutput->m_debugDataVISASize > 0 && pOutput->m_debugDataGenISASize > 0)
+            if (pOutput->m_debugDataVISASize > 0 || pOutput->m_debugDataGenISASize > 0)
             {
                 data.kernelDebugData = new Util::BinaryStream();
 

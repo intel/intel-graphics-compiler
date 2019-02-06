@@ -409,7 +409,7 @@ void DebugEmitter::ResetVISAModule()
     fullDebugInfo = false;
     lineNumbersOnly = false;
 
-    if (hasDashgOption(ctx))
+    if (DebugInfoUtils::HasDebugInfo(*ctx->getModule()))
     {
         bool hasDbgIntrinsic = false;
         bool hasDbgLoc = false;
@@ -481,4 +481,12 @@ std::string DebugMetadataInfo::getUniqueFuncName(Function& F)
     }
 
     return F.getName().str() + "$dup" + "$" + std::to_string(numClones);
+}
+
+/* static */ bool VISAModule::isLineTableOnly(CShader* s)
+{
+    bool lineTableOnly = false, fullDebugInfo = false;
+    DebugMetadataInfo::hasAnyDebugInfo(s->GetContext(), fullDebugInfo, lineTableOnly);
+
+    return lineTableOnly && !fullDebugInfo;
 }

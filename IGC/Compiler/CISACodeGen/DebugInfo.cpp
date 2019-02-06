@@ -59,6 +59,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
 {
     std::vector<CShader*> units;
     auto moduleMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    bool isOneStepElf = false;
 
     auto isCandidate = [](CShaderProgram* shaderProgram, SIMDMode m)
     {
@@ -124,6 +125,7 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
 
         for (auto& m : sortedVISAModules)
         {
+            isOneStepElf |= m.second.second->isDirectElfInput;
             m_pDebugEmitter->SetVISAModule(m.second.second);
             m_pDebugEmitter->setFunction(m.second.first, isCloned);
 
@@ -140,6 +142,16 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
             // destroy VISA builder
             auto encoder = &(m_currShader->GetEncoder());
             encoder->DestroyVISABuilder();
+
+            // set VISA dbg info to nullptr to indicate 1-step debug is enabled
+            if (isOneStepElf)
+            {
+                for (auto& sp : units)
+                {
+                    sp->ProgramOutput()->m_debugDataGenISASize = 0;
+                    sp->ProgramOutput()->m_debugDataGenISA = nullptr;
+                }
+            }
         }
     }
 

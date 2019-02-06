@@ -468,6 +468,7 @@ public:
 
     const InstInfoMap* GetInstInfoMap() { return &m_instInfoMap; }
 
+    static bool isLineTableOnly(CShader* s);
 
     VISAModule& operator=(VISAModule& other) = default;
 
@@ -476,6 +477,7 @@ public:
         auto n = new VISAModule(s);
 
         if (n->m_pShader->GetContext()->m_DriverInfo.SupportElfFormat() ||
+            isLineTableOnly(s) || 
             IGC_GET_FLAG_VALUE(EnableOneStepElf))
         {
             n->isDirectElfInput = true;
