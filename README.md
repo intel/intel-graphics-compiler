@@ -53,13 +53,14 @@ Example command:
 $ git clone -b release_40 https://github.com/llvm-mirror/clang clang_source
 $ git clone -b ocl-open-40 https://github.com/intel/opencl-clang common_clang
 $ git clone https://github.com/intel/llvm-patches llvm_patches
+  [If seeing LLVM7.1.0 issue, please do following]
+  In CMakeLists.txt
+  Change set(EXPECTED_LLVM_VERSION "7.0.0") to set(EXPECTED_LLVM_VERSION "7.1.0")
 $ git clone -b release_40 https://github.com/llvm-mirror/llvm llvm_source
-$ git clone -b release_70 https://github.com/llvm-mirror/llvm llvm7.0.0_source
-[Using latest repo]
+$ git clone -b release_70 https://github.com/llvm-mirror/llvm llvm7.1.0_source
 $ git clone https://github.com/intel/intel-graphics-compiler igc
-[Or Using specific release]
-$ git clone -b igc_release_2019-01-05 https://github.com/intel/intel-graphics-compiler igc;\
-  git checkout -b igc_release_2019-01-05
+  [If using specific release]
+  git checkout -b tag igc_release_2019-01-15
 ```
 
 3. Under workspace create a build folder.  For example:
