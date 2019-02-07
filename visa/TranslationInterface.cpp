@@ -1615,9 +1615,14 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
         inst = createMathInst(NULL, false, exsize, dst0, src0, src1, MATH_RSQRTM, madmInstOpt, line_no);
         inst->setCondMod(condModOverflow);
 
-        // if
-        G4_Predicate* predicateFlagReg = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
-        inst = createIf(predicateFlagReg, exsize, instOpt);
+        bool generateIf = true;
+
+        if (generateIf)
+        {
+            // if
+            G4_Predicate *predicateFlagReg = createPredicate(PredState_Minus, flagReg->getRegVar(), 0, predCtrlValue);
+            inst = createIf(predicateFlagReg, exsize, instOpt);
+        }
         
         {
             // madm (4) r9.acc3 r0.noacc r2(r8).noacc r7.acc2 {Align16, N1/N2}
@@ -1752,7 +1757,7 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
         }
 
         
-        if (!hasDefaultRoundDenorm)
+        if (generateIf && !hasDefaultRoundDenorm)
         {
             // else (8) {Q1/Q2}
             inst = createElse(exsize, instOpt);
@@ -1764,9 +1769,11 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
             inst = createInst(NULL, G4_mov, NULL, false, 1, dst0, src0, NULL, InstOpt_WriteEnable, line_no);
         }
 
-        // endif (8) {Q1/Q2}
-        inst = createEndif(exsize, instOpt);
-        
+        if (generateIf)
+        {
+            // endif (8) {Q1/Q2}
+            inst = createEndif(exsize, instOpt);
+        }
     };
 
     // make final copy to dst
