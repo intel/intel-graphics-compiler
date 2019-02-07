@@ -846,8 +846,6 @@ uint ConstantCoalescing::GetAlignment(Instruction* load) const
         alignment = cast<LdRawIntrinsic>(load)->getAlignment();
     }
 
-    assert(isPowerOf2_32(alignment));
-
     return alignment;
 }
 
@@ -877,6 +875,13 @@ void ConstantCoalescing::MergeUniformLoad( Instruction *load,
 {
     const uint scalarSizeInBytes = load->getType()->getScalarSizeInBits() / 8;
     const uint alignment = GetAlignment(load);
+
+    if (alignment == 0)
+    {
+        return;
+    }
+
+    assert(isPowerOf2_32(alignment));
 
     assert((offsetInBytes % scalarSizeInBytes) == 0);
     const uint eltid = offsetInBytes / scalarSizeInBytes;
