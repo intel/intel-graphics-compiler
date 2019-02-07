@@ -183,6 +183,7 @@ DECLARE_IGC_REGKEY(bool, ShaderDumpEnableAll,           false, "dump all LLVM IR
 DECLARE_IGC_REGKEY(bool, ShaderDumpPidDisable,          false, "disabled adding PID to the name of shader dump directory" )
 DECLARE_IGC_REGKEY(bool, DumpToCurrentDir,              false, "dump shaders to the current directory")
 DECLARE_IGC_REGKEY(bool, PrintToConsole,                false, "dump to console")
+DECLARE_IGC_REGKEY(bool, DumpCompilerStats,             false, "dump compiler statistics")
 DECLARE_IGC_REGKEY(bool, EnableCapsDump,                false, "Enable hardware caps dump")
 DECLARE_IGC_REGKEY(bool, EnableLivenessDump,            false, "Enable dumping out liveness info on stderr.")
 DECLARE_IGC_REGKEY(DWORD, ForceRPE,                     0,     "Force RPE (RegisterEstimator) computation if > 0. If 2, force RPE per inst.")

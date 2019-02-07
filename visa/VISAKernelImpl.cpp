@@ -389,6 +389,10 @@ int VISAKernelImpl::InitializeFastPath()
         m_kernel->getKernelDebugInfo()->setVISAKernel(this);
     }
 
+    if (getOptions()->getOption(vISA_DumpCompilerStats))
+    {
+        m_compilerStats.Enable(false);
+    }
     m_jitInfo = (FINALIZER_INFO*)m_mem.alloc(sizeof(FINALIZER_INFO));
 
     int value = 32;
@@ -411,6 +415,8 @@ int VISAKernelImpl::InitializeFastPath()
     m_builder->setIsKernel(m_isKernel);
     m_builder->setCUnitId(m_kernelID);
     m_builder->num_general_dcl = this->m_num_pred_vars;
+    m_builder->getcompilerStats().Link(m_compilerStats);
+    initCompilerStats();
     /*
     I don't think this is necessary. Through loader metadata will be maintained on it's side
     through regular vISA builder pass the links will be created explicitly
@@ -452,6 +458,22 @@ int VISAKernelImpl::InitializeKernel(const char *kernel_name)
     }
 
     return status;
+}
+
+// This is done for all vISA Compiler Statistics. This is done so that a statistic is
+// initialized to false/0 even if the corresponding optimization did not execute.
+// This enables the the statistic to be printed out even If the optimization did not happen.
+void VISAKernelImpl::initCompilerStats()
+{
+#if COMPILER_STATS_ENABLE
+    m_compilerStats.Init("PreRASchedulerForPressure", CompilerStats::type_bool);
+    m_compilerStats.Init("PreRASchedulerForLatency", CompilerStats::type_bool);
+    m_compilerStats.Init("IsRAsuccessful", CompilerStats::type_bool);
+    m_compilerStats.Init("IsTrivialRA", CompilerStats::type_bool);
+    m_compilerStats.Init("IsLocalRA", CompilerStats::type_bool);
+    m_compilerStats.Init("IsHybridRA", CompilerStats::type_bool);
+    m_compilerStats.Init("IsGlobalRA", CompilerStats::type_bool);
+#endif // COMPILER_STATS_ENABLE
 }
 
 int VISAKernelImpl::CISABuildPreDefinedDecls()
@@ -7973,6 +7995,12 @@ int VISAKernelImpl::GetGenxDebugInfo(void *&buffer, unsigned int &size, void*& m
 int VISAKernelImpl::GetJitInfo(FINALIZER_INFO *&jitInfo)
 {
     jitInfo = this->m_jitInfo;
+    return CM_SUCCESS;
+}
+
+int VISAKernelImpl::GetCompilerStats(CompilerStats &compilerStats)
+{
+    compilerStats.Link(this->m_compilerStats);
     return CM_SUCCESS;
 }
 

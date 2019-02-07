@@ -249,6 +249,13 @@ public:
                 (double)m_freq * 1000000000.0);
     }
 
+    /// Get the time elapsed in milliseconds
+    double getCompileTimeMS(COMPILE_TIME_INTERVALS compileInterval) const
+    {
+        return getCompileTime(compileInterval) /
+                (double)m_freq * 1000.0;
+    }
+
 private:
     /// \deprecated Print aggregate times for multiple shaders in csv format
     void printSumTimeCSV( const char* fileName ) const;

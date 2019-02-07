@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DebugInfo.h"
 #include "visa_wa.h"
 
+#include "CompilerStats.h"
 
 #define vISA_NUMBER_OF_OPNDS_IN_POOL 47
 
@@ -660,6 +661,7 @@ public:
     /********** MISC APIs START *************************/
     CM_BUILDER_API int GetGenxBinary(void *&buffer, int &size);
     CM_BUILDER_API int GetJitInfo(FINALIZER_INFO *&jitInfo);
+    CM_BUILDER_API int GetCompilerStats(CompilerStats &compilerStats);
     CM_BUILDER_API int GetErrorMessage(const char *&errorMsg);
     CM_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size, void*&, unsigned int&);
     CM_BUILDER_API int GetGenReloc(BasicRelocEntry*& relocs, unsigned int& numRelocs);
@@ -878,6 +880,7 @@ private:
     void dumpDebugFormatFile(std::vector<vISA::DebugInfoFormat>& debugSymbols, std::string filename);
     void patchLabels();
     int InitializeFastPath();
+    void initCompilerStats();
     int predefinedVarRegAssignment();
     int calculateTotalInputSize();
     int compileTillOptimize();
@@ -926,6 +929,7 @@ private:
     unsigned long m_genx_debug_info_size;
     char * m_genx_debug_info_buffer;
     FINALIZER_INFO* m_jitInfo;
+    CompilerStats m_compilerStats;
 
     unsigned long m_cisa_binary_size;
     char * m_cisa_binary_buffer;

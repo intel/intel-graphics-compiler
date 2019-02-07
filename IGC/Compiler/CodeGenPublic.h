@@ -64,6 +64,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/MDFrameWork.h"
 
+#include "CompilerStats.h"
+
 /************************************************************************
 This file contains the interface structure and functions to communicate
 between front ends and code generator
@@ -668,6 +670,8 @@ namespace IGC
 
         void* gtpin_init = nullptr;
 
+        CompilerStats m_Stats;
+
     protected:
         // Objects pointed to by these pointers are owned by this class.
         LLVMContextWrapper *llvmCtxWrapper;
@@ -723,6 +727,11 @@ namespace IGC
         virtual void resetOnRetry();
         virtual uint32_t getNumGRFPerThread() const;
         bool isPOSH() const;
+        
+        CompilerStats& Stats()
+        {
+            return m_Stats;
+        }
     };
 
     class VertexShaderContext : public CodeGenContext

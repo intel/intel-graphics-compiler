@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/secure_mem.h"
 #include "common/secure_string.h"
 #include "common/shaderOverride.hpp"
+#include "common/CompilerStatsUtils.hpp"
 #include "inc/common/sku_wa.h"
 #include <iStdLib/utility.h>
 
@@ -3483,6 +3484,11 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
         vbuilder->SetOption(vISA_forceNoFP64bRegioning, true);
     }
 
+    if (IGC_IS_FLAG_ENABLED(DumpCompilerStats))
+    {
+        vbuilder->SetOption(vISA_DumpCompilerStats, true);
+    }
+ 
     if (context->type == ShaderType::OPENCL_SHADER && context->m_floatDenormMode32 == FLOAT_DENORM_RETAIN &&
         context->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
     {
@@ -4242,6 +4248,13 @@ void CEncoder::Compile()
         context->m_compilerTimeStats->recordVISATimers();
     }
 #endif
+
+    if (IGC_IS_FLAG_ENABLED(DumpCompilerStats))
+    {
+        CompilerStats CompilerStats;
+        vMainKernel->GetCompilerStats(CompilerStats);
+        CompilerStatsUtils::RecordCodeGenCompilerStats(context, m_program->m_dispatchSize, CompilerStats, jitInfo);
+    }
 
     if( vIsaCompile == -1 )
     {

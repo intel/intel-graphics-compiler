@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RT_Jitter_Interface.h"
 #include "visa_wa.h"
 #include "PreDefinedVars.h"
+#include "CompilerStats.h"
 
 
 #define MAX_DWORD_VALUE  0x7fffffff
@@ -402,6 +403,7 @@ public:
 
     int                 func_id;
     FINALIZER_INFO*        metaData;
+    CompilerStats       compilerStats;
 
     bool isKernel;
     int cunit;
@@ -992,6 +994,7 @@ public:
     {
         return metaData;
     }
+    CompilerStats &getcompilerStats() {return compilerStats;}
 
     // create a new temp GRF with the specified type/size and undefined regions
     G4_Declare* createTempVar(unsigned int numElements, G4_Type type, G4_Align align, G4_SubReg_Align subAlign, const char* prefix = "TV", bool appendIdToName = true )

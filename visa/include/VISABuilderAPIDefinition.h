@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define VISA_BUILDER_DEFINITION_H
 
 #include "VISAOptions.h"
+#include "CompilerStats.h"
 
 typedef enum
 {
@@ -747,6 +748,7 @@ public:
     /// vISA Builder is responsible for managing this memory.
     /// it will be freed when vISA builder is destroyed.
     CM_BUILDER_API virtual int GetJitInfo(FINALIZER_INFO *&jitInfo) = 0;
+    CM_BUILDER_API virtual int GetCompilerStats(CompilerStats &compilerStats) = 0;
 
     /// GetErrorMessage -- returns the error message during finalization
     CM_BUILDER_API virtual int GetErrorMessage(const char *&errorMsg) = 0;

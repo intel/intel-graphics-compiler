@@ -554,6 +554,8 @@ bool preRA_Scheduler::run()
             if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ false)) {
                 SCHED_DUMP(rp.dump(bb, "After scheduling for presssure, "));
                 Changed = true;
+                kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForPressure",
+                                                              this->kernel.getSimdSize());
             }
         }
 
@@ -585,6 +587,8 @@ bool preRA_Scheduler::run()
             if (S.commitIfBeneficial(MaxPressure, /*IsTopDown*/ true)) {
                 SCHED_DUMP(rp.dump(bb, "After scheduling for latency, "));
                 Changed = true;
+                kernel.fg.builder->getcompilerStats().SetFlag("PreRASchedulerForLatency",
+                                                              this->kernel.getSimdSize());
             }
         }
     }
