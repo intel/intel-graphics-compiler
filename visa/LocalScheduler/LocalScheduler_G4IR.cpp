@@ -1657,6 +1657,7 @@ uint32_t DDD::getEdgeLatency_old(Node *node, DepType depT)
     case RAW:
     case RAW_MEMORY:
         latency = LT.getLatencyPostRA(inst);
+        break;
 
     case WAR:
     case WAR_MEMORY:
