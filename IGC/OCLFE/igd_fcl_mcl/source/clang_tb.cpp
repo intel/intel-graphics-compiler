@@ -606,6 +606,15 @@ namespace TC
 					// Try to load with old name. See header file for explanation.
 					CCModule.pModule = dlopen(CCModule.pModuleOldName, RTLD_NOW);
 				}
+				if (NULL == CCModule.pModule)
+				{
+					CCModule.pModule = dlopen("/usr/local/lib/libopencl_clang.so", RTLD_NOW | RTLD_DEEPBIND);
+					if (NULL == CCModule.pModule)
+					{
+						// Try to load with old name. See header file for explanation.
+						CCModule.pModule = dlopen("/usr/local/lib/libcommon_clang.so", RTLD_NOW);
+					}
+				}
 				if (NULL != CCModule.pModule)
 				{
 					CCModule.pCompile = (CCModuleStruct::PFcnCCCompile)dlsym(CCModule.pModule, "Compile");
