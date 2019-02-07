@@ -87,6 +87,7 @@ instead if the structure is small.
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/InstIterator.h>
+#include <llvm/IR/PatternMatch.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Analysis/ValueTracking.h>
@@ -888,35 +889,85 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
 
     if (I.getOpcode() == Instruction::Or)
     {
-        /*
-        from
-            % 22 = shl i32 % 14, 2
-            % 23 = or i32 % 22, 3
-        to
-            % 22 = shl i32 % 14, 2
-            % 23 = add i32 % 22, 3
-        */
-        ConstantInt *OrConstant = dyn_cast<ConstantInt>(I.getOperand(1));
-        if (OrConstant)
+        using namespace llvm::PatternMatch;
+        Value *AndOp1, *EltOp1;
+        auto pattern1 = m_Or(
+            m_And(m_Value(AndOp1), m_SpecificInt(0xFFFFFFFF)),
+            m_Shl(m_Value(EltOp1), m_SpecificInt(32)));
+
+    #if LLVM_VERSION_MAJOR >= 7
+        Value *AndOp2, *EltOp2, *VecOp;
+        auto pattern2 = m_Or(
+            m_And(m_Value(AndOp2), m_SpecificInt(0xFFFFFFFF)),
+            m_BitCast(m_InsertElement(m_Value(VecOp),m_Value(EltOp2),m_SpecificInt(1))));
+    #endif // LLVM_VERSION_MAJOR >= 7
+        // Transforms pattern1 or pattern2 to a bitcast,extract,insert,insert,bitcast
+        auto transformPattern = [=](BinaryOperator &I, Value* Op1, Value* Op2)
         {
-            llvm::Instruction* ShlInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
-            if (ShlInst && ShlInst->getOpcode() == Instruction::Shl)
+            llvm::IRBuilder<> builder(&I);
+            VectorType* vec2 = VectorType::get(builder.getInt32Ty(), 2);
+            Value* vec_undef = UndefValue::get(vec2);
+            Value* BC = builder.CreateBitCast(Op1, vec2);
+            Value* EE = builder.CreateExtractElement(BC, builder.getInt32(0));
+            Value* vec = builder.CreateInsertElement(vec_undef, EE, builder.getInt32(0));
+            vec = builder.CreateInsertElement(vec, Op2, builder.getInt32(1));
+            vec = builder.CreateBitCast(vec, builder.getInt64Ty());
+            I.replaceAllUsesWith(vec);
+            I.eraseFromParent();
+        };
+
+        if (match(&I, pattern1) && AndOp1->getType()->isIntegerTy(64))
+        {
+            transformPattern(I, AndOp1, EltOp1);
+        }
+    #if LLVM_VERSION_MAJOR >= 7
+        else if (match(&I, pattern2) && AndOp2->getType()->isIntegerTy(64))
+        {
+            ConstantVector* cVec = dyn_cast<ConstantVector>(VecOp);
+            VectorType * vector_type = dyn_cast<VectorType>(VecOp->getType());
+            if (cVec && vector_type &&
+                isa<ConstantInt>(cVec->getOperand(0)) &&
+                cast<ConstantInt>(cVec->getOperand(0))->isZero() &&
+                vector_type->getElementType()->isIntegerTy(32) &&
+                vector_type->getNumElements() == 2)
             {
-                ConstantInt *ShlConstant = dyn_cast<ConstantInt>(ShlInst->getOperand(1));
-                if (ShlConstant)
+                transformPattern(I, AndOp2, EltOp2);
+            }
+        }
+    #endif // LLVM_VERSION_MAJOR >= 7
+        else
+        {
+
+            /*
+            from
+                % 22 = shl i32 % 14, 2
+                % 23 = or i32 % 22, 3
+            to
+                % 22 = shl i32 % 14, 2
+                % 23 = add i32 % 22, 3
+            */
+            ConstantInt *OrConstant = dyn_cast<ConstantInt>(I.getOperand(1));
+            if (OrConstant)
+            {
+                llvm::Instruction* ShlInst = llvm::dyn_cast<llvm::Instruction>(I.getOperand(0));
+                if (ShlInst && ShlInst->getOpcode() == Instruction::Shl)
                 {
-                    // if the constant bit width is larger than 64, we cannot store ShlIntValue and OrIntValue rawdata as uint64_t.
-                    // will need a fix then
-                    assert(ShlConstant->getBitWidth() <= 64);
-                    assert(OrConstant->getBitWidth() <= 64);
-
-                    uint64_t ShlIntValue = *(ShlConstant->getValue()).getRawData();
-                    uint64_t OrIntValue = *(OrConstant->getValue()).getRawData();
-
-                    if (OrIntValue < pow(2, ShlIntValue))
+                    ConstantInt *ShlConstant = dyn_cast<ConstantInt>(ShlInst->getOperand(1));
+                    if (ShlConstant)
                     {
-                        Value * newAdd = BinaryOperator::CreateAdd(I.getOperand(0), I.getOperand(1), "", &I);
-                        I.replaceAllUsesWith(newAdd);
+                        // if the constant bit width is larger than 64, we cannot store ShlIntValue and OrIntValue rawdata as uint64_t.
+                        // will need a fix then
+                        assert(ShlConstant->getBitWidth() <= 64);
+                        assert(OrConstant->getBitWidth() <= 64);
+
+                        uint64_t ShlIntValue = *(ShlConstant->getValue()).getRawData();
+                        uint64_t OrIntValue = *(OrConstant->getValue()).getRawData();
+
+                        if (OrIntValue < pow(2, ShlIntValue))
+                        {
+                            Value * newAdd = BinaryOperator::CreateAdd(I.getOperand(0), I.getOperand(1), "", &I);
+                            I.replaceAllUsesWith(newAdd);
+                        }
                     }
                 }
             }
@@ -1278,6 +1329,21 @@ void GenSpecificPattern::visitIntToPtr(llvm::IntToPtrInst& I)
         IRBuilder<> builder(&I);
         Value* newV = builder.CreateIntToPtr(zext->getOperand(0), I.getType());
         I.replaceAllUsesWith(newV);
+        I.eraseFromParent();
+    }
+}
+
+void GenSpecificPattern::visitTruncInst(llvm::TruncInst &I) 
+{
+    using namespace llvm::PatternMatch;
+    Value *LHS;
+    if (match(&I, m_Trunc(m_LShr(m_Value(LHS), m_SpecificInt(32))))) 
+    {
+        llvm::IRBuilder<> builder(&I);
+        VectorType* vec2 = VectorType::get(builder.getInt32Ty(), 2);
+        Value* new_Val = builder.CreateBitCast(LHS, vec2);
+        new_Val = builder.CreateExtractElement(new_Val, builder.getInt32(1));
+        I.replaceAllUsesWith(new_Val);
         I.eraseFromParent();
     }
 }
