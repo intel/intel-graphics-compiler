@@ -57,8 +57,8 @@ This can be done using the following commands:
 $ cd <workspace>
 $ git clone -b release_70 https://github.com/llvm-mirror/llvm llvm_source
 $ git clone -b release_70 https://github.com/llvm-mirror/clang llvm_source/tools/clang
-$ git clone -b release_70 https://github.com/intel/opencl-clang llvm_source/projects/opencl-clang
-$ git clone -b release_70 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm_source/projects/llvm-spirv
+$ git clone -b ocl-open-70 https://github.com/intel/opencl-clang llvm_source/projects/opencl-clang
+$ git clone -b llvm_release_70 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm_source/projects/llvm-spirv
 $ git clone https://github.com/intel/llvm-patches llvm_patches
 $ git clone https://github.com/intel/intel-graphics-compiler igc
   [If using specific release]
