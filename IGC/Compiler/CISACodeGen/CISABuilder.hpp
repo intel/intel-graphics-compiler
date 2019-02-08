@@ -128,7 +128,7 @@ struct SEncoderState
 class CEncoder
 {
 public:
-    void InitEncoder( bool canAbortOnSpill );
+    void InitEncoder( bool canAbortOnSpill, bool hasStackCall);
     SEncoderState CopyEncoderState();
     void SetEncoderState(SEncoderState &newState);
 

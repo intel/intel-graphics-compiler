@@ -1714,11 +1714,7 @@ void Interference::addCalleeSaveBias(BitSet& live)
 {
     for (unsigned i = 0; i < maxId; i++)
     {
-        if (live.isSet(i) &&
-            !lrs[i]->getDcl()->getHasFileScope() &&
-            !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
-                lrs[i]->getDcl() == kernel.fg.builder->getBuiltinR0() &&
-                kernel.fg.getIsStackCallFunc()))
+        if (live.isSet(i) && !lrs[i]->getDcl()->getHasFileScope())
         {
             lrs[i]->setCallerSaveBias(false);
             lrs[i]->setCalleeSaveBias(true);
@@ -5071,14 +5067,6 @@ void GraphColor::createLiveRanges(unsigned reserveSpillSize)
         {
             lrs[var->getId()]->allocForbiddenCallerSave(mem, &builder.kernel);
         }
-        else if (builder.getOption(vISA_enablePreemption) &&
-            varDcl == builder.getBuiltinR0() &&
-            builder.kernel.fg.getIsStackCallFunc())
-        {
-            lrs[var->getId()]->setCallerSaveBias(true);
-            lrs[var->getId()]->setCalleeSaveBias(false);
-            lrs[var->getId()]->allocForbiddenCallerSave(mem, &builder.kernel);
-        }
     }
 }
 
@@ -6497,7 +6485,7 @@ void GraphColor::saveSubRegs(
         G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 0, 1, Type_UD);
         RegionDesc* rDesc = builder.rgnpool.createRegion(8, 8, 1);
         G4_Operand* src = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, builder.getBuiltinR0()->getRegVar(), 0, 0, rDesc, Type_UD);
+            Mod_src_undef, Direct, builder.getRealR0()->getRegVar(), 0, 0, rDesc, Type_UD);
         G4_INST* hdrInitInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8, dst, src,
             NULL, InstOpt_WriteEnable);
         bb->insert(insertIt, hdrInitInst);
@@ -6582,7 +6570,7 @@ void GraphColor::saveRegs(
         // sends (8) null<1>:ud    r126.0    r1.0 ...
         uint8_t execSize = (owordSize > 2) ? 16 : 8;
         auto dstRgn = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 0, 1, Type_UD);
-        auto srcRgn = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.getBuiltinR0()->getRegVar(), 0,
+        auto srcRgn = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.getRealR0()->getRegVar(), 0,
             0, builder.rgnpool.createRegion(8, 8, 1), Type_UD);
         G4_INST* mov = builder.createInternalInst(NULL, G4_mov, NULL, false, 8, dstRgn, srcRgn, NULL, InstOpt_WriteEnable);
 
@@ -6705,7 +6693,7 @@ void GraphColor::restoreSubRegs(
         G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 1, 0, 1, Type_UD);
         RegionDesc* rDesc = builder.rgnpool.createRegion(8, 8, 1);
         G4_Operand* src = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, builder.getBuiltinR0()->getRegVar(), 0, 0, rDesc, Type_UD);
+            Mod_src_undef, Direct, builder.getRealR0()->getRegVar(), 0, 0, rDesc, Type_UD);
         G4_INST* hdrInitInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8,
             dst, src, NULL, InstOpt_WriteEnable);
         bb->insert(insertIt, hdrInitInst);

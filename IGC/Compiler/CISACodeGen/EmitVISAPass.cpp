@@ -387,12 +387,13 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         {
             return false;
         }
+        bool hasStackCall = m_FGA && m_FGA->getGroup(&F)->hasStackCall();
         // call builder after pre-analysis pass where scratchspace offset to VISA is calculated
-        m_encoder->InitEncoder(m_canAbortOnSpill);
+        m_encoder->InitEncoder(m_canAbortOnSpill, hasStackCall);
         m_roundingMode = m_encoder->getEncoderRoundingMode(
             static_cast<Float_RoundingMode>(ctx->getModuleMetaData()->compOpt.FloatRoundingMode));
         m_currShader->PreCompile();
-        if (m_FGA && m_FGA->getGroup(&F)->hasStackCall())
+        if (hasStackCall)
         {
             m_currShader->InitKernelStack(ptr64bits);
         }

@@ -3381,7 +3381,7 @@ void CEncoder::BeginStackFunction(llvm::Function *F)
     V(vKernel->AppendVISACFLabelInst(visaLabel));
 }
 
-void CEncoder::InitEncoder( bool canAbortOnSpill )
+void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
 {
     m_aliasesMap.clear();
     m_encoderState.m_SubSpanDestination = false;
@@ -3591,7 +3591,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill )
     }
 
     if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
-        VISAPlatform >= GENX_SKL && IGC_IS_FLAG_ENABLED(EnablePreemption))
+        VISAPlatform >= GENX_SKL && IGC_IS_FLAG_ENABLED(EnablePreemption) && !hasStackCall)
     {
         vbuilder->SetOption(vISA_enablePreemption, true);
     }
