@@ -76,28 +76,23 @@ BOOL WINAPI DllMain(
     _In_  HINSTANCE hinstDLL,
     _In_  DWORD fdwReason,
     _In_  LPVOID lpvReserved
-    )
+)
 {
-    TCHAR path[MAX_PATH];
-    GetModuleFileName(NULL, path, MAX_PATH);
-    //_splitpath_s((LPCWSTR *)path, NULL, 0, NULL, 0, (LPCWSTR *)name, MAX_PATH, NULL, 0);
-    // temporary force the crash for both standalone and driver
-    //if(!_stricmp("IGCStandalone", name) || !_stricmp("IGCStandalone64", name))
-    {
-        _CrtSetReportHook(CatchAssert);
-        _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
-        _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDOUT);
-        _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
-        _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDOUT);
-        _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
-        _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDOUT);
-        _set_error_mode(_OUT_TO_STDERR);
-    }
-    switch (fdwReason) {
+
+    _CrtSetReportHook(CatchAssert);
+    _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
+    _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDOUT);
+    _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
+    _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDOUT);
+    _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+    _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDOUT);
+    _set_error_mode(_OUT_TO_STDERR);
+
+    switch(fdwReason) {
     case DLL_PROCESS_DETACH:
         llvm_shutdown();
         break;
-        
+
     case DLL_PROCESS_ATTACH:
         break;
 
