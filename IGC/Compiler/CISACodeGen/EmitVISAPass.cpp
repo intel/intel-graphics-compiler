@@ -13882,6 +13882,18 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
                 resource.m_resource = GetSymbol(resourcePtr);
             }
 
+            if (resource.m_resource->GetElemSize() < 4)
+            {
+                // vISA assumes all BTIs to be 32 bit. Need to cast, otherwise higher bits would be uninitialized.
+                CVariable* newResource = m_currShader->GetNewVariable(
+                    resource.m_resource->GetNumberElement(),
+                    ISA_TYPE_UD,
+                    resource.m_resource->GetAlign(),
+                    resource.m_resource->IsUniform());
+                m_encoder->Cast(newResource, resource.m_resource);
+                resource.m_resource = newResource;
+            }
+
             if (!directIndexing)
             {
                 m_currShader->SetBindingTableEntryCountAndBitmap(false);

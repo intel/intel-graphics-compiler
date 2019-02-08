@@ -73,6 +73,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasSubroutines = false;
     instrList->hasPrimitiveAlloca = false;
     instrList->hasNonPrimitiveAlloca = false;
+    instrList->hasReadOnlyArray = false;
     instrList->hasBuiltin = false;
     instrList->psHasSideEffect = false;
     instrList->hasDebugInfo = false;
@@ -252,6 +253,11 @@ void CheckInstrTypes::visitAllocaInst(AllocaInst &I)
     else
     {
         g_InstrTypes->hasPrimitiveAlloca = true;
+    }
+
+    if (auto md = I.getMetadata("igc.read_only_array"))
+    {
+        g_InstrTypes->hasReadOnlyArray = true;
     }
 
     auto PT = dyn_cast<PointerType>(I.getAllocatedType());

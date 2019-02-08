@@ -142,6 +142,7 @@ namespace IGC
         bool hasSubroutines;
         bool hasPrimitiveAlloca;
         bool hasNonPrimitiveAlloca;
+        bool hasReadOnlyArray;
         bool hasBuiltin;
         bool psHasSideEffect;     //<! only relevant to pixel shader, has other memory writes besides RTWrite
         bool hasGenericAddressSpacePointers;

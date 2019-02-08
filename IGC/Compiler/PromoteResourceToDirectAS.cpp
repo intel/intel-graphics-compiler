@@ -172,6 +172,83 @@ Type* GetBufferAccessType(Instruction *inst)
     return inst->getType();
 }
 
+Argument* FindArrayBaseArg(AllocaInst* alloca)
+{
+    // Search for argument that is first element of this local array, starting from alloca.
+    // This is pattern match and is relying on a way array is lowered.
+
+    // First, find GEP taking first element of an array. It is assumed to be immediate user of alloca.
+    Argument* arg = nullptr;
+    GetElementPtrInst* baseGep = nullptr;
+    for(Value::user_iterator use_it = alloca->user_begin(), use_e = alloca->user_end(); use_it != use_e; ++use_it)
+    {
+        if(auto gep = dyn_cast<GetElementPtrInst>(*use_it))
+        {
+            if (gep->getNumIndices() == 2)
+            {
+                if (auto gepIndexValue = dyn_cast<llvm::ConstantInt>(gep->getOperand(2)))
+                {
+                    if (gepIndexValue->getZExtValue() == 0)
+                    {
+                        // Pointer to first element found.
+                        baseGep = gep;
+                    }
+                }
+            }
+        }
+    }
+
+    // The only user for this GEP should be a store, which is storing function argument to an array.
+    // Note that this is assuming OCL approach, which is using KernelArgs.
+    if (baseGep && baseGep->hasOneUse())
+    {
+        if (auto store = dyn_cast<StoreInst>(*baseGep->user_begin()))
+        {
+            if (auto elem = dyn_cast<Argument>(store->getValueOperand()))
+            {
+                arg = elem;
+            }
+        }
+    }
+
+    return arg;
+}
+
+Value* FindArrayIndex(const std::vector<Value*>& instList, IGCIRBuilder<>& builder)
+{
+    // Find GEP instruction in the list and get arrayIndex from it, depending on GEP type.
+    Value* arrayIndex = nullptr;
+    for (Value* V : instList)
+    {
+        if (auto gep = dyn_cast<GetElementPtrInst>(V))
+        {
+            if (arrayIndex != nullptr || gep->getPointerAddressSpace() != 0)
+            {
+                // It's not expected to see multiple GEPs on this path or GEPs to addrspace other than 0.
+                arrayIndex = nullptr;
+                break;
+            }
+            auto pointerElementTy = gep->getPointerOperandType()->getPointerElementType();
+            if (pointerElementTy->isStructTy())
+            {
+                // Example: %1 = getelementptr inbounds %"struct.texture", %"struct.texture"* %aot, i64 %arrayIndex, i32 0
+                arrayIndex = gep->getOperand(1);
+            }
+            else if(pointerElementTy->isArrayTy() && gep->getOperand(1) == builder.getInt64(0))
+            {
+                // Example: %2 = getelementptr inbounds [8 x %"struct.texture"], [8 x %"struct.texture"]* %aot, i64 0, i64 %arrayIndex, i32 0
+                arrayIndex = gep->getOperand(2);
+            }
+            else if(pointerElementTy->isPointerTy() && pointerElementTy->getPointerElementType()->isStructTy() && gep->getOperand(1) == builder.getInt64(0))
+            {
+                // Example: %3 = getelementptr inbounds %"struct.texture", %"struct.texture"** %aot, i64 0, i64 %arrayIndex, i32 0
+                arrayIndex = gep->getOperand(2);
+            }
+        }
+    }
+    return arrayIndex;
+}
+
 void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst *&pIntr, Value* resourcePtr)
 {
     IGCIRBuilder<> builder(pIntr);
@@ -188,10 +265,30 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
     BufferType bufTy;
     BufferAccessType accTy;
     bool canPromote = false;
-
-    Value* srcPtr = IGC::TracePointerSource(resourcePtr);
+    Value* arrayIndex = nullptr;
+    
+    std::vector<Value*> instList;
+    Value* srcPtr = IGC::TracePointerSource(resourcePtr, false, true, instList);
+    
     if (srcPtr)
     {
+        if (auto alloca = llvm::dyn_cast<AllocaInst>(srcPtr))
+        {
+            arrayIndex = FindArrayIndex(instList, builder);
+            if (arrayIndex != nullptr)
+            {
+                // TODO: We could read igc.read_only_array metadata attached to alloca. 
+                // If not -1, it should contain base index of this array. In this case, 
+                // FindArrayBaseArg would not be needed.
+
+                // Find input argument for the first element in this array.
+                srcPtr = FindArrayBaseArg(alloca);
+            }
+        }
+    }
+
+    if (srcPtr)
+    {   
         // Trace the resource pointer.
         // If we can find it, we can promote the indirect access to direct access
         // by encoding the BTI as a direct addrspace
@@ -236,9 +333,30 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
 
     if (canPromote)
     {
-        addrSpace = IGC::EncodeAS4GFXResource(*builder.getInt32(bufID), bufTy, 0);
+        Value* bufferId = builder.getInt32(bufID);
+        if (arrayIndex != nullptr)
+        {
+            // Add base array index:
+            if (arrayIndex->getType() != bufferId->getType())
+            {
+                arrayIndex = builder.CreateZExtOrTrunc(arrayIndex, bufferId->getType());
+            }
+            bufferId = builder.CreateAdd(bufferId, arrayIndex);
+        }
+
+        addrSpace = IGC::EncodeAS4GFXResource(*bufferId, bufTy, 0);
         PointerType* newptrType = PointerType::get(resourcePtr->getType()->getPointerElementType(), addrSpace);
-        Constant* mutePtr = ConstantPointerNull::get(newptrType);
+        
+        Value* mutePtr = nullptr;
+        if (llvm::isa<llvm::ConstantInt>(bufferId))
+        {
+            mutePtr = ConstantPointerNull::get(newptrType);
+        }
+        else
+        {
+            // Index is not a constant:
+            mutePtr = builder.CreateIntToPtr(builder.CreateZExt(bufferId, builder.getInt64Ty()), newptrType);
+        }
         IGC::ChangePtrTypeInIntrinsic(pIntr, resourcePtr, mutePtr);
     }
 }

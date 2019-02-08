@@ -341,6 +341,15 @@ Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList,
             srcPtr = baseValue;
             break;
         }
+        else if (auto allocaInst = dyn_cast<AllocaInst>(baseValue))
+        {
+            if (auto md = allocaInst->getMetadata("igc.read_only_array"))
+            {
+                // Found alloca marked as read_only array.
+                srcPtr = baseValue;
+            }
+            break;
+        }
         else if (CastInst* inst = dyn_cast<CastInst>(baseValue))
         {
             baseValue = inst->getOperand(0);
@@ -405,6 +414,18 @@ Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList,
                 break;
             }
             return nullptr;
+        }
+        else if(LoadInst *inst = dyn_cast<LoadInst>(baseValue)) 
+        {
+            if (inst->getPointerAddressSpace() == 0)
+            {
+                // May be local array of resources:
+                baseValue = inst->getPointerOperand();
+            }
+            else
+            {
+                break;
+            }
         }
         else
         {

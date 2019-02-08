@@ -411,6 +411,11 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
 
     // Promotes indirect resource access to direct
     mpm.add(new PromoteResourceToDirectAS());
+    if (ctx.m_instrTypes.hasReadOnlyArray)
+    {
+        mpm.add(createDeadCodeEliminationPass());
+        mpm.add(createSROAPass());
+    }
 
     if (ctx.m_instrTypes.hasGenericAddressSpacePointers)
     {
