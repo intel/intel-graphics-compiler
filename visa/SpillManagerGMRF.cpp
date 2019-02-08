@@ -1286,8 +1286,10 @@ SpillManagerGMRF::createPostDstSpillRangeDeclare (
 			"SP_GRF", spilledRegVar, getSpillIndex (spilledRegVar));
 	unsigned short nRows;
 
-    G4_SendMsgDescriptor* msgDesc = sendOut->getMsgDesc();
-    nRows = msgDesc->ResponseLength();
+    {
+        G4_SendMsgDescriptor* msgDesc = sendOut->getMsgDesc();
+        nRows = msgDesc->ResponseLength();
+    }
 
     G4_DstRegRegion * normalizedPostDst = builder_->createDstRegRegion(
 		Direct, spilledRegVar, spilledRegion->getRegOff (), SUBREG_ORIGIN,
@@ -1373,15 +1375,17 @@ SpillManagerGMRF::createMRFFillRangeDeclare (
 			"FL_MRF", filledRegVar, getFillIndex (filledRegVar));
 	unsigned short nRows = 0;
 
-    G4_SendMsgDescriptor* msgDesc = sendInst->getMsgDesc();
-    if (sendInst->isSplitSend() &&
-        (sendInst->getSrc(1)->asSrcRegRegion() == filledRegion))
     {
-        nRows = msgDesc->extMessageLength();
-    }
-    else
-    {
-        nRows = msgDesc->MessageLength();
+        G4_SendMsgDescriptor* msgDesc = sendInst->getMsgDesc();
+        if (sendInst->isSplitSend() &&
+            (sendInst->getSrc(1)->asSrcRegRegion() == filledRegion))
+        {
+            nRows = msgDesc->extMessageLength();
+        }
+        else
+        {
+            nRows = msgDesc->MessageLength();
+        }
     }
 
     G4_SrcRegRegion * normalizedMRFSrc =
