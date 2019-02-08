@@ -50,6 +50,7 @@ void initializeCustomSafeOptPassPass(llvm::PassRegistry&);
 void initializeCustomUnsafeOptPassPass(llvm::PassRegistry&);
 void initializeHoistFMulInLoopPassPass(llvm::PassRegistry&);
 void initializeDeSSAPass(llvm::PassRegistry&);
+void initializeDynamicTextureFoldingPass(llvm::PassRegistry&);
 void initializeExtensionArgAnalysisPass(llvm::PassRegistry&);
 void initializeExtensionFuncsAnalysisPass(llvm::PassRegistry&);
 void initializeExtensionFuncsResolutionPass(llvm::PassRegistry&);

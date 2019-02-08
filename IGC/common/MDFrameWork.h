@@ -238,19 +238,20 @@ namespace IGC
     //metadata for the entire module
     struct ModuleMetaData
     {
-		bool isPrecise = false;
+        bool isPrecise = false;
         CompOptions compOpt;
         std::map<llvm::Function*, IGC::FunctionMetaData>   FuncMD;
         PushInfo pushInfo;
         VertexShaderInfo vsInfo;
         PixelShaderInfo psInfo;
         ComputeShaderInfo csInfo;
-        std::map<ConstantAddress, uint32_t>    inlineDynConstants;
-		ImmConstantInfo immConstant;
-		std::vector<InlineProgramScopeBuffer> inlineConstantBuffers;
-		std::vector<InlineProgramScopeBuffer> inlineGlobalBuffers;
-		std::vector<PointerProgramBinaryInfo> GlobalPointerProgramBinaryInfos;
-		std::vector<PointerProgramBinaryInfo> ConstantPointerProgramBinaryInfos;
+        std::map<ConstantAddress, uint32_t>   inlineDynConstants;
+        std::map<uint32_t, uint32_t>          inlineDynTextures;
+        ImmConstantInfo immConstant;
+        std::vector<InlineProgramScopeBuffer> inlineConstantBuffers;
+        std::vector<InlineProgramScopeBuffer> inlineGlobalBuffers;
+        std::vector<PointerProgramBinaryInfo> GlobalPointerProgramBinaryInfos;
+        std::vector<PointerProgramBinaryInfo> ConstantPointerProgramBinaryInfos;
         unsigned int MinNOSPushConstantSize = 0;
         std::map<llvm::GlobalVariable*, int> inlineProgramScopeOffsets;
         ShaderData shaderData;

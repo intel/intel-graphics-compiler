@@ -122,6 +122,7 @@ DECLARE_IGC_REGKEY(DWORD,FoldsToZeroPropThreshold,      1,     "Set the threshol
 DECLARE_IGC_REGKEY(DWORD,FoldsToConstPropThreshold,     1,     "Set the threshold for finding interesting constant. This is for the number of instructions that gets folded to constant or gets simplified incase of select instruction, when propagating a dynamic constant value")
 DECLARE_IGC_REGKEY(DWORD,FoldsToSourceThreshold,        1,     "Set the threshold for finding interesting constant. This is for the number of instructions that translate to a mov. i.e., Multiplication or Division by 1")
 DECLARE_IGC_REGKEY(bool, DisableDynamicConstantFolding, false,  "Disable Dynamic Constant Folding")
+DECLARE_IGC_REGKEY(bool, DisableDynamicTextureFolding,  false,  "Disable Dynamic Texture Folding")
 DECLARE_IGC_REGKEY(bool, DisableRectListOpt,            false, "Disable Rect List optimization")
 
 DECLARE_IGC_REGKEY(bool, DispatchOCLWGInLinearOrder,    false, "If set, dispatch HW threads based on the linearized order of WI in a WG; \

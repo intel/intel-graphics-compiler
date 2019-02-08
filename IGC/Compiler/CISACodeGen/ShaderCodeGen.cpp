@@ -108,6 +108,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
 #include "Compiler/CodeGenContextWrapper.hpp"
 #include "Compiler/FindInterestingConstants.h"
+#include "Compiler/DynamicTextureFolding.h"
 #include "Compiler/ThreadCombining.hpp"
 #include "Compiler/InitializePasses.h"
 #include "Compiler/Optimizer/Scalarizer.h"
@@ -1116,6 +1117,11 @@ void OptimizeIR(CodeGenContext* pContext)
             mpm.add(new ThreadCombining());
             mpm.add(createAlwaysInlinerLegacyPass());
             mpm.add(createPromoteMemoryToRegisterPass());
+        }
+
+        if (!IGC_IS_FLAG_ENABLED(DisableDynamicTextureFolding) && pContext->getModuleMetaData()->inlineDynTextures.size() > 0)
+        {
+            mpm.add(new DynamicTextureFolding());
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableSLMConstProp) &&
