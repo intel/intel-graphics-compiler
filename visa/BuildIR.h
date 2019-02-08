@@ -1927,8 +1927,8 @@ public:
                         unsigned planeID,
                         unsigned blockWidth,
                         unsigned blockHeight,
-                        G4_SrcRegRegion* xOffOpnd,
-                        G4_SrcRegRegion* yOffOpnd,
+                        G4_Operand* xOffOpnd,
+                        G4_Operand* yOffOpnd,
                         G4_DstRegRegion* dst_opnd );
 
     int translateVISAMediaStoreInst(
@@ -1937,8 +1937,8 @@ public:
                         unsigned planeID,
                         unsigned blockWidth,
                         unsigned blockHeight,
-                        G4_SrcRegRegion* xOffOpnd,
-                        G4_SrcRegRegion* yOffOpnd,
+                        G4_Operand* xOffOpnd,
+                        G4_Operand* yOffOpnd,
                         G4_SrcRegRegion* srcOpnd );
 
     int translateVISAGatherInst(

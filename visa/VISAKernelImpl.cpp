@@ -3995,7 +3995,7 @@ int VISAKernelImpl::AppendVISASurfAccessMediaLoadStoreInst(ISA_Opcode opcode, ME
         {
             CreateGenRawDstOperand(srcDst); //srcDst: dst
             status = m_builder->translateVISAMediaLoadInst(modifier, surface->g4opnd, plane, blockWidth, blockHeight,
-                xOffset->g4opnd->asSrcRegRegion(), yOffset->g4opnd->asSrcRegRegion(), srcDst->g4opnd->asDstRegRegion());
+                xOffset->g4opnd, yOffset->g4opnd, srcDst->g4opnd->asDstRegRegion());
         }
         else
         {
@@ -4008,7 +4008,7 @@ int VISAKernelImpl::AppendVISASurfAccessMediaLoadStoreInst(ISA_Opcode opcode, ME
                 CreateGenRawSrcOperand(srcDst); //srcDst: src
             }
             status = m_builder->translateVISAMediaStoreInst((MEDIA_ST_mod)modifier, surface->g4opnd, plane, blockWidth,
-                blockHeight, xOffset->g4opnd->asSrcRegRegion(), yOffset->g4opnd->asSrcRegRegion(), srcDst->g4opnd->asSrcRegRegion());
+                blockHeight, xOffset->g4opnd, yOffset->g4opnd, srcDst->g4opnd->asSrcRegRegion());
         }
     }
     if(IS_VISA_BOTH_PATH)
