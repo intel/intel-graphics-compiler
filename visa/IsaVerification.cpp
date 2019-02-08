@@ -1344,10 +1344,10 @@ static void verifyInstructionArith(const common_isa_header& isaHeader, const ker
     if (dstType == ISA_TYPE_DF)
     {
         if (opcode != ISA_MUL && opcode != ISA_ADD && opcode != ISA_MAD && opcode != ISA_DIV &&
-            opcode != ISA_INV && opcode != ISA_SQRTM && opcode != ISA_DIVM)
+            opcode != ISA_INV && opcode != ISA_SQRTM && opcode != ISA_SQRT && opcode != ISA_DIVM)
         {
             REPORT_INSTRUCTION(options, false,
-                "Only mul/add/mad/div/divm/sqrtm are allowed to use double precision floating point operands.");
+                "Only mul/add/mad/div/inv/sqrtm/sqrt/divm are allowed to use double precision floating point operands.");
         }
     }
 
@@ -1359,8 +1359,6 @@ static void verifyInstructionArith(const common_isa_header& isaHeader, const ker
         case ISA_LOG:
         case ISA_POW:
         case ISA_SIN:
-        case ISA_SQRT:
-        case ISA_RSQRT:
            /// float and half float
             REPORT_INSTRUCTION(options,dstType == ISA_TYPE_F || dstType == ISA_TYPE_HF,
                 "%s only supports single and half float type", ISA_Inst_Table[opcode].str);
@@ -1436,10 +1434,10 @@ static void verifyInstructionArith(const common_isa_header& isaHeader, const ker
         if (srcType == ISA_TYPE_DF)
         {
             if (opcode != ISA_MUL && opcode != ISA_ADD && opcode != ISA_MAD && opcode != ISA_DIV &&
-                opcode != ISA_INV && opcode != ISA_SQRTM && opcode != ISA_DIVM)
+                opcode != ISA_INV && opcode != ISA_SQRTM && opcode != ISA_SQRT && opcode != ISA_DIVM)
             {
                 REPORT_INSTRUCTION(options, false,
-                    "Only mul/add/mad/div/inv/sqrt are allowed to use double precision floating point operands.");
+                    "Only mul/add/mad/div/inv/sqrtm/sqrt/divm are allowed to use double precision floating point operands.");
             }
         }
 

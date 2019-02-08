@@ -1490,6 +1490,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
         }
     }
 
+    bool noDstMove = exsize == 8 && !saturate && !predOpnd && isOpndAligned(dstOpnd, 32) &&
+        dstOpnd->getRegAccess() == Direct && dstOpnd->getHorzStride() == 1;
+
     unsigned int instOpt = Get_Gen4_Emask(emask, exsize);
 
     // pred and conModifier
@@ -1540,10 +1543,6 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
     G4_SrcRegRegion csrc1(Mod_src_undef, Direct, t1->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
     G4_SrcRegRegion csrc2(Mod_src_undef, Direct, t2->getRegVar(), 0, 0, srcRegionDesc, Type_DF);
 
-    // final result is at r7.noacc
-    G4_SrcRegRegion tsrc7_final(Mod_src_undef, Direct, t7->getRegVar(), 0, 0, getRegionStride1(), 
-        t7->getElemType());
-
     // each madm only handles 4 channel double data
     Common_VISA_EMask_Ctrl currEMask = emask;
     for (uint16_t regIndex = 0; currEMask != vISA_NUM_EMASK && regIndex < loopCount;
@@ -1553,8 +1552,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
         instOpt |= IsNoMask(emask) ? InstOpt_WriteEnable : 0; // setting channels for non-mad insts
         unsigned int madmInstOpt = instOpt; // setting channels for mad insts
 
-        // dst : 7, 8, 9, 10 11
-        G4_DstRegRegion tdst7(Direct, t7->getRegVar(), regIndex, 0, 1, Type_DF);
+        // dst : 7, 8, 9, 10 11        
+        G4_DstRegRegion tdst7(Direct, noDstMove ? dstOpnd->getBase() : t7->getRegVar(),
+            noDstMove ? dstOpnd->getRegOff() + regIndex : regIndex, 0, 1, Type_DF);
         G4_DstRegRegion tdst8(Direct, t8->getRegVar(), regIndex, 0, 1, Type_DF);
         G4_DstRegRegion tdst9(Direct, t9->getRegVar(), regIndex, 0, 1, Type_DF);
         G4_DstRegRegion tdst10(Direct, t10->getRegVar(), regIndex, 0, 1, Type_DF);
@@ -1566,8 +1566,9 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
 
         // src : 6, 7, 8, 9, 10, 11
         G4_SrcRegRegion fsrc0(Mod_src_undef, Direct, src0RR->getBase(), src0RR->getRegOff() + regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc6(Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
-        G4_SrcRegRegion tsrc7(Mod_src_undef, Direct, t7->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
+        G4_SrcRegRegion tsrc6(Mod_src_undef, Direct, t6->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);        
+        G4_SrcRegRegion tsrc7(Mod_src_undef, Direct, noDstMove ? dstOpnd->getBase() : t7->getRegVar(),
+            noDstMove ? dstOpnd->getRegOff() + regIndex : regIndex, 0, srcRegionDesc, Type_DF);
         G4_SrcRegRegion tsrc8(Mod_src_undef, Direct, t8->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
         G4_SrcRegRegion tsrc9(Mod_src_undef, Direct, t9->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
         G4_SrcRegRegion tsrc10(Mod_src_undef, Direct, t10->getRegVar(), regIndex, 0, srcRegionDesc, Type_DF);
@@ -1776,12 +1777,17 @@ int IR_Builder::translateVISAArithmeticDoubleSQRTInst(ISA_Opcode opcode, Common_
         }
     };
 
-    // make final copy to dst
-    // src = r7:df
-    src0 = createSrcRegRegion(tsrc7_final); src0->setAccRegSel(ACC_UNDEFINED);
-    // mov (instExecSize) r20.0<1>:df r7.0<8;8,1>:df {Q1/H1}
-    inst = createInst(predOpnd, G4_mov, condMod, saturate, instExecSize, dstOpnd, src0, NULL, Get_Gen4_Emask(emask, instExecSize), line_no);
-
+    if (!noDstMove)
+    {
+        // make final copy to dst
+        // src = r7:df
+        // final result is at r7.noacc
+        G4_SrcRegRegion tsrc7_final(Mod_src_undef, Direct, t7->getRegVar(), 0, 0, getRegionStride1(), t7->getElemType());
+        G4_SrcRegRegion *t7_src_opnd_final = createSrcRegRegion(tsrc7_final); t7_src_opnd_final->setAccRegSel(ACC_UNDEFINED);
+        // mov (instExecSize) r20.0<1>:df r7.0<8;8,1>:df {Q1/H1}
+        inst = createInst(predOpnd, G4_mov, condMod, saturate, instExecSize, dstOpnd, t7_src_opnd_final,
+            NULL, Get_Gen4_Emask(emask, instExecSize), line_no);
+    }
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
