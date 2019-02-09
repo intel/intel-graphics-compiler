@@ -417,9 +417,9 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         m_currShader->SetCoalescingEngineHelper(m_CE);
     }
 
-    auto VRA = &getAnalysis<VariableReuseAnalysis>();
-    m_currShader->SetVariableReuseAnalysis(VRA);
-    VRA->BeginFunction(&F, numLanes(m_SimdMode));
+    m_VRA = &getAnalysis<VariableReuseAnalysis>();
+    m_currShader->SetVariableReuseAnalysis(m_VRA);
+    m_VRA->BeginFunction(&F, numLanes(m_SimdMode));
 
     if (!m_FGA || m_FGA->isGroupHead(&F))
     {
@@ -474,6 +474,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
             continue;
         }
 
+        m_destination = nullptr;
         if (i != 0)
         {
             IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
@@ -489,17 +490,18 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         PerLaneOffsetVars.clear();
 
         // Variable reuse per-block states.
-        VariableReuseAnalysis::EnterBlockRAII EnterBlock(VRA, block.bb);
+        VariableReuseAnalysis::EnterBlockRAII EnterBlock(m_VRA, block.bb);
 
         // go through the list in reverse order
         auto I = block.m_dags.rbegin(), E = block.m_dags.rend();
         while (I != E)
         {
-            if ((*I).m_root->getDebugLoc())
+            Instruction* llvmInst = (*I).m_root;
+            if (llvmInst->getDebugLoc())
             {
-                unsigned int curLineNumber = (*I).m_root->getDebugLoc().getLine();
-                auto&& srcFile = (*I).m_root->getDebugLoc()->getScope()->getFilename();
-                auto&& srcDir = (*I).m_root->getDebugLoc()->getScope()->getDirectory();
+                unsigned int curLineNumber = llvmInst->getDebugLoc().getLine();
+                auto&& srcFile = llvmInst->getDebugLoc()->getScope()->getFilename();
+                auto&& srcDir = llvmInst->getDebugLoc()->getScope()->getDirectory();
                 if (!curSrcFile.equals(srcFile) || !curSrcDir.equals(srcDir))
                 {
                     curSrcFile = srcFile;
@@ -522,27 +524,38 @@ bool EmitPass::runOnFunction(llvm::Function &F)
             bool slicing = false;
             uint numInstance = DecideInstanceAndSlice(*(block.bb), (*I), slicing);
             assert(numInstance == 1 || numInstance == 2);
+
+            // m_destination shall be created if this inst has dst.
+            // It is time to insert lifetime start if it can.
+            if (m_destination)
+            {
+                IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
+                emitLifetimeStart(m_destination, block.bb, llvmInst);
+                IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
+            }
+
             if (slicing && !disableSlicing)
             {
                 IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginEncodingMark();)
-                    I = emitInSlice(block, I);
+                I = emitInSlice(block, I);
                 IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
             }
 
             if (I != E)
             {
-                auto llvmInst = (*I).m_root;
                 IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginInstruction(llvmInst);)
 
-                    // before inserting the terminator, initialize constant pool & insert the de-ssa moves
-                    if (isa<BranchInst>((*I).m_root))
-                    {
-                        m_encoder->SetSecondHalf(false);
-                        // insert constant initializations.
-                        InitConstant(block.bb);
-                        // insert the de-ssa movs.
-                        MovPhiSources(block.bb);
-                    }
+                // before inserting the terminator, initialize constant pool & insert the de-ssa moves
+                if (isa<BranchInst>(llvmInst))
+                {
+                    m_encoder->SetSecondHalf(false);
+                    // insert constant initializations.
+                    InitConstant(block.bb);
+                    // insert the de-ssa movs.
+                    MovPhiSources(block.bb);
+                    // Insert lifetime start if there are any
+                    emitLifetimeStartAtEndOfBB(block.bb);
+                }
 
                 // If slicing happens, then recalculate the number of instances.
                 if (slicing)
@@ -1068,6 +1081,27 @@ void EmitPass::InitConstant(llvm::BasicBlock *BB)
             m_encoder->Push();
         }
         m_currShader->addConstantInPool(C, Dst);
+    }
+}
+
+void EmitPass::emitLifetimeStartAtEndOfBB(BasicBlock* BB)
+{
+    if (IGC_IS_FLAG_DISABLED(EnableVATemp)) {
+        return;
+    }
+
+    auto II = m_VRA->m_LifetimeAtEndOfBB.find(BB);
+    if (II != m_VRA->m_LifetimeAtEndOfBB.end())
+    {
+        TinyPtrVector<Value*>& ARVs = II->second;
+        for (int i = 0, sz = (int)ARVs.size(); i < sz; ++i)
+        {
+            Value* RootVal = ARVs[i];
+            CVariable* Var = GetSymbol(RootVal);
+
+            // vISA info inst, no m_encoder->Push() needed.
+            m_encoder->Lifetime(LIFETIME_START, Var);
+        }
     }
 }
 
@@ -7468,6 +7502,29 @@ CVariable *EmitPass::Add(CVariable *Src0, CVariable *Src1, const CVariable *DstP
     m_encoder->Add(Dst, Src0, Src1);
     m_encoder->Push();
     return Dst;
+}
+
+// Insert lifetime start right before instruction I if it is a candidate.
+void EmitPass::emitLifetimeStart(CVariable* Var, BasicBlock* BB, Instruction* I)
+{
+    if (IGC_IS_FLAG_DISABLED(EnableVATemp)) {
+        return;
+    }
+
+    Value* ARV = m_VRA->getAliasRootValue(I);
+    auto II = m_VRA->m_LifetimeAt1stDefOfBB.find(ARV);
+    if (II != m_VRA->m_LifetimeAt1stDefOfBB.end())
+    {
+        // Insert lifetime start on the root value
+        // Note that lifetime is a kind of info directive,
+        // thus no m_encoder->Push() is needed.
+        CVariable* RootVar = GetSymbol(ARV);
+        m_encoder->Lifetime(LIFETIME_START, RootVar);
+
+        // Once inserted, remove it from map to
+        // prevent from inserting again.
+        m_VRA->m_LifetimeAt1stDefOfBB.erase(II);
+    }
 }
 
 void EmitPass::emitGEP(llvm::Instruction* I)
