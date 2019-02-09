@@ -863,14 +863,6 @@ endfunction()
 
 # ======================================== Precompiled headers =========================================
 
-set(IGC_BUILD__BIF_OCL_PCH_SRC "${IGC_TARGET__TOOLS_CLANG_DIR}/opencl-c.h")
-if(NOT ${CCLANG_BUILD_INTREE_LLVM})
-add_custom_command(
-    OUTPUT ${IGC_BUILD__BIF_OCL_PCH_SRC}
-    DEPENDS GetClang
-)
-endif()
-
 set(IGC_BUILD__BIF_RS_PCH_SRC "${IGC_OPTION__BIF_SRC_RS_DIR}/rs_pch.h")
 set(IGC_BUILD__BIF_RS_PCH32   "${IGC_BUILD__BIF_DIR}/rs32.pch")
 set(IGC_BUILD__BIF_RS_PCH64   "${IGC_BUILD__BIF_DIR}/rs64.pch")
@@ -880,14 +872,14 @@ igc_bif_build_pch(
     TRIPLE  spir
     HEADERS "${IGC_BUILD__BIF_RS_PCH_SRC}"
     DEFINES "__32bit__=1" "cl_khr_fp64"
-    OPTIONS -include ${IGC_BUILD__BIF_OCL_PCH_SRC}
+    OPTIONS -finclude-default-header
   )
   
 igc_bif_build_pch(
     OUTPUT  "${IGC_BUILD__BIF_RS_PCH64}"
     TRIPLE  spir64
     HEADERS "${IGC_BUILD__BIF_RS_PCH_SRC}"
-    OPTIONS -include ${IGC_BUILD__BIF_OCL_PCH_SRC}
+    OPTIONS -finclude-default-header
   )
 
 # ======================================================================================================
@@ -965,92 +957,93 @@ igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
     TRIPLE               spir64
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/IBiF_Impl.cl"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_FORCE_INC}
     INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-    OPTIONS CL           -cl-std=CL2.0
+    OPTIONS CL           -cl-std=CL2.0 -finclude-default-header
   )
 
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
     TRIPLE               spir64
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/IBiF_Impl.cl"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC}
-    INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_SPIRV_COMMON_INC_DIRS}
+    INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_SPIRV_COMMON_INC_DIRS} # ??
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-    OPTIONS CL           -cl-std=CL2.0
+    OPTIONS CL           -cl-std=CL2.0 -finclude-default-header
   )
   if ( NOT "${_PRE_RELEASE_CL}" STREQUAL "" )
    igc_bif_build_bc(
       OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_PreRelease_int.bc"
       TRIPLE               spir64
       SOURCES              ${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PreRelease/IBIF_PreRelease_Impl.cl
-      FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+      FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_FORCE_INC}
       INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
       DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} "cl_intel_device_side_avc_vme_enable" ${FLAG}
       DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-      OPTIONS CL           -cl-std=CL2.0
+      OPTIONS CL           -cl-std=CL2.0 -finclude-default-header
      )
  endif()
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_spirv_size_t_32.bc"
     TRIPLE               spir
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/pointersize.cl"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC}  ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_FORCE_INC}
     INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
     DEFINES              "__32bit__=1" "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-    OPTIONS CL           -cl-std=CL2.0
+    OPTIONS CL           -cl-std=CL2.0 -finclude-default-header
   )
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_spirv_size_t_64.bc"
     TRIPLE               spir64
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/pointersize.cl"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_FORCE_INC}
     INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-    OPTIONS CL           -cl-std=CL2.0
+    OPTIONS CL           -cl-std=CL2.0 -finclude-default-header
   )
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IGCsize_t_32_int.bc"
     TRIPLE               spir
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PointerSize/IBiF_size_t.cl"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC}  ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_FORCE_INC}
     INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
     DEFINES              "__32bit__=1" "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-    OPTIONS CL           -cl-std=CL2.0
+    OPTIONS CL           -cl-std=CL2.0 -finclude-default-header
   )
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IGCsize_t_64_int.bc"
     TRIPLE               spir64
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PointerSize/IBiF_size_t.cl"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_FORCE_INC}
     INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-    OPTIONS CL           -cl-std=CL2.0
+    OPTIONS CL           -cl-std=CL2.0 -finclude-default-header
   )
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc"
     TRIPLE               spir
     SOURCES              "${IGC_BUILD__BIF_DIR}/IGCsize_t_32_int.bc"
                          "${IGC_BUILD__BIF_DIR}/IBiF_spirv_size_t_32.bc"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_FORCE_INC}
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=120" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
+    OPTIONS CL           -finclude-default-header
   )
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc"
     TRIPLE               spir64
     SOURCES              "${IGC_BUILD__BIF_DIR}/IGCsize_t_64_int.bc"
                          "${IGC_BUILD__BIF_DIR}/IBiF_spirv_size_t_64.bc"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_FORCE_INC}
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=120" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
+    OPTIONS CL           -finclude-default-header
   )
 
 if ("${FLAG}" STREQUAL "")
@@ -1071,8 +1064,9 @@ endif()
 		SOURCES              "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
                              "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
 							 "${IGC_BUILD__BIF_DIR}/IBiF_Math_Src_spirv.bc"
-		FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+		FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_FORCE_INC}
 		DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=120" ${KHR_DEFINES}
+		OPTIONS CL           -finclude-default-header
 	)
 else()
 	igc_bif_build_bc(
@@ -1081,8 +1075,9 @@ else()
 		SOURCES              "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
                              "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
 						     "${IGC_BUILD__BIF_DIR}/IBiF_PreRelease_int.bc"
-		FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+		FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_FORCE_INC}
 		DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=120" ${KHR_DEFINES}
+		OPTIONS CL           -finclude-default-header
 	)
 endif()
 
