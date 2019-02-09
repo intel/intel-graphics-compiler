@@ -174,6 +174,7 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
     HMODULE hModule = NULL;
     pIGACreateContext           fCreateContext;
     pIGAGetErrors               fIGAGetErrors;
+    pIGAGetWarnings             fIGAGetWarnings;
     pIGADiagnosticGetMessage    fIGADiagnosticGetMessage;
     pIGAAssemble                fIGAAssemble;
     pIGAReleaseContext          fIGAReleaseContext;
@@ -210,6 +211,7 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
 
     fCreateContext = (pIGACreateContext)GetProcAddress(hModule, IGA_CREATE_CONTEXT_STR);
     fIGAGetErrors = (pIGAGetErrors)GetProcAddress(hModule, IGA_GET_ERRORS_STR);
+    fIGAGetWarnings = (pIGAGetWarnings)GetProcAddress(hModule, IGA_GET_WARNINGS_STR);
     fIGADiagnosticGetMessage = (pIGADiagnosticGetMessage)GetProcAddress(hModule, IGA_DIAGNOSTIC_GET_MESSAGE_STR);
     fIGAAssemble = (pIGAAssemble)GetProcAddress(hModule, IGA_ASSEMBLE_STR);
     fIGAReleaseContext = (pIGAReleaseContext)GetProcAddress(hModule, IGA_RELEASE_CONTEXT_STR);
@@ -217,6 +219,7 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
     if (fCreateContext == nullptr ||
         fCreateContext == nullptr ||
         fIGAGetErrors == nullptr ||
+        fIGAGetWarnings == nullptr ||
         fIGADiagnosticGetMessage == nullptr ||
         fIGAAssemble == nullptr ||
         fIGAReleaseContext == nullptr)
@@ -238,9 +241,35 @@ void overrideShaderIGA(const IGC::CodeGenContext* context, void *& genxbin, int 
 
     iga_assemble_options_t asmOpts = IGA_ASSEMBLE_OPTIONS_INIT();
 
-    if(fIGAAssemble(ctx, &asmOpts, asmContext.c_str(), &overrideBinary, &overrideBinarySize) != IGA_SUCCESS) {
+    iga_status_t assembleRes = fIGAAssemble(ctx, &asmOpts, asmContext.c_str(), &overrideBinary, &overrideBinarySize);
+    if (assembleRes != IGA_SUCCESS) {
         binOverride = false;
-		appendToShaderOverrideLogFile(binFileName, "OVERRIDE FAILED DUE TO SHADER ASSEMBLY FAILURE: ");
+
+        std::stringstream msgss;
+        msgss <<  "OVERRIDE FAILED DUE TO SHADER ASSEMBLY FAILURE (" << assembleRes << ") : ";
+        appendToShaderOverrideLogFile(binFileName, msgss.str().c_str());
+
+        const iga_diagnostic_t * errors;
+        uint32_t count;
+        if (fIGAGetErrors(ctx, &errors, &count) == IGA_SUCCESS)
+        {
+            for (uint32_t i = 0; i < count; i++)
+            {
+                std::stringstream errorss;
+                errorss <<  "error (" << i+1 << "/"<< count << "): Line " << errors[i].line <<": Col: " << errors[i].column  << " " << errors[i].message << " ";
+                appendToShaderOverrideLogFile(binFileName, errorss.str().c_str());
+            }
+        }
+        if (fIGAGetWarnings(ctx, &errors, &count) == IGA_SUCCESS)
+        {
+            for (uint32_t i = 0; i < count; i++)
+            {
+                std::stringstream errorss;
+                errorss << "warning (" << i + 1 << "/" << count << "): Line " << errors[i].line << ": Col: " << errors[i].column << " " << errors[i].message << " ";
+                appendToShaderOverrideLogFile(binFileName, errorss.str().c_str());
+            }
+        }
+
         return;
     }
 
