@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace llvm {
     class FunctionPass;
 }
-#elif LLVM_VERSION_MAJOR == 8
+#elif LLVM_VERSION_MAJOR >= 8
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #endif
 
@@ -60,7 +60,7 @@ namespace IGC
 
 
 	llvm::FunctionPass* createIGCInstructionCombiningPass();
-#elif LLVM_VERSION_MAJOR == 8
+#elif LLVM_VERSION_MAJOR >= 8
     inline llvm::FunctionPass* createIGCInstructionCombiningPass()
     {
         return llvm::createInstructionCombiningPass(false);

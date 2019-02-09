@@ -33,7 +33,7 @@ namespace IGCLLVM
 {
 #if LLVM_VERSION_MAJOR <= 7
     using llvm::InlineCost;
-#elif LLVM_VERSION_MAJOR == 8
+#elif LLVM_VERSION_MAJOR >= 8
     class InlineCost : public llvm::InlineCost
 	{
 	public:	
