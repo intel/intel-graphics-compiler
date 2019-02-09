@@ -48,7 +48,7 @@ endif()
   # Add bogus targets to identify the .7z file and the decompressed .exe file
   add_library(CLANG_7Z        UNKNOWN IMPORTED)
   add_library(CLANG_7Z_OUTPUT UNKNOWN IMPORTED)
-  add_executable(IGC_TARGET__TOOLS_CLANG    IMPORTED)
+  add_executable(clang IMPORTED)
 
   # Detect CPU architecture
   igc_arch_get_cpu(_cpuSuffix)
@@ -107,7 +107,7 @@ endif()
     set_property(TARGET CLANG_7Z_OUTPUT
         PROPERTY "${locPropName}" "${IGC_TARGET__TOOLS_CLANG_DIR}"
     )
-    set_property(TARGET IGC_TARGET__TOOLS_CLANG
+    set_property(TARGET clang
         PROPERTY "${locPropName}" "${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}"
     )
     unset(locPropName)
@@ -367,7 +367,7 @@ function(igc_bif_build_pch)
   add_custom_command(
       OUTPUT "${_pchTempFilePath}"
       COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outPchFileDir}"
-      COMMAND IGC_TARGET__TOOLS_CLANG -cc1 -x cl -fblocks -fpreserve-vec3-type -Os -opencl-builtins "-triple=${_archTriple}" -cl-std=CL2.0 -emit-pch -o "${_pchTempFilePath}" ${_chainedPchFlags} ${_defineFlags} ${_options} ${_srcHeaderFilePaths}
+      COMMAND clang -cc1 -x cl -fblocks -fpreserve-vec3-type -Os -opencl-builtins "-triple=${_archTriple}" -cl-std=CL2.0 -emit-pch -o "${_pchTempFilePath}" ${_chainedPchFlags} ${_defineFlags} ${_options} ${_srcHeaderFilePaths}
       DEPENDS GetClang ${_chainedPchFilePath} ${_srcHeaderFilePaths}
       COMMENT "BiF: Building OpenCL precompiled header: \"${_outPchFileName}\""
     )
@@ -726,7 +726,7 @@ function(igc_bif_build_bc)
     add_custom_command(
         OUTPUT "${_bcTempFilePath}"
         COMMAND "${CMAKE_COMMAND}" -E make_directory "${_outBcFileDir}"
-        COMMAND IGC_TARGET__TOOLS_CLANG -cc1 -x cl -fblocks -fpreserve-vec3-type -opencl-builtins "-triple=${_archTriple}" -w -emit-llvm-bc -o "${_bcTempFilePath}" ${_pchFlags} ${_incFileFlags} ${_includeDirsFlags} ${_defineFlags} ${_options_DEFAULT} ${_options_CL} "${_srcFilePath}"
+        COMMAND clang -cc1 -x cl -fblocks -fpreserve-vec3-type -opencl-builtins "-triple=${_archTriple}" -w -emit-llvm-bc -o "${_bcTempFilePath}" ${_pchFlags} ${_incFileFlags} ${_includeDirsFlags} ${_defineFlags} ${_options_DEFAULT} ${_options_CL} "${_srcFilePath}"
         DEPENDS GetClang ${_pchFilePath} ${_incFilePaths} "${_srcFilePath}" ${_dependencies}
         COMMENT "BiF: \"${_outBcFileName}\": Compiling OpenCL source: \"${_srcFileName}\""
       )
