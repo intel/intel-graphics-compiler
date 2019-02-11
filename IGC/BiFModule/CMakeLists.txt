@@ -44,6 +44,12 @@ if(EXISTS ${LLVM_SOURCE_DIR}/projects/opencl-clang)
   set(CLANG_SOURCE_DIR ${LLVM_SOURCE_DIR}/tools/clang)
 endif()
 
+find_library(COMMON_CLANG common_clang)
+if(COMMON_CLANG)
+  message(STATUS "[IGC] Using system common_clang: ${COMMON_CLANG}")
+  find_package(Clang REQUIRED)
+  add_custom_target(GetClang) # to satisfy the below dependencies
+else()
 # Decompress Clang
   # Add bogus targets to identify the .7z file and the decompressed .exe file
   add_library(CLANG_7Z        UNKNOWN IMPORTED)
@@ -246,7 +252,7 @@ endif()
   if(UNIX)
     install(FILES $<TARGET_FILE:common_clang_dll> DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib COMPONENT igc-opencl)
   endif(UNIX)
-
+endif()
 # End Clang section
 
 
