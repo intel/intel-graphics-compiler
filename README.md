@@ -2,12 +2,14 @@
 
 ## Introduction
 
-The Intel(R) Graphics Compiler for OpenCL(TM) is an llvm based compiler for
-OpenCL(TM) targeting Intel Gen graphics hardware architecture.
+The Intel(R) Graphics Compiler for OpenCL(TM) provides few features:
+1. LLVM based runtime compiler ("online" compiler) for OpenCL(TM)
+targeting Intel Gen graphics hardware architecture.
+2. Compiler tools to generate shaders for Intel Gen graphics hardware architecture from
+different representations including, but not limited to, Gen Assembler Code.
 
 Please refer to http://01.org/compute-runtime for additional details regarding
- Intel's motivation and intentions wrt OpenCL support in the open source.
-
+Intel's motivation and intentions wrt OpenCL support in the open source.
 
 ## License
 
@@ -19,70 +21,70 @@ https://opensource.org/licenses/MIT
 
 ## Dependencies
 
+* Cmake (>=3.4.3) - https://cmake.org
 * Common Clang - https://github.com/intel/opencl-clang
-* Clang Source - https://github.com/llvm-mirror/clang
-* Khronos OpenCL Headers - https://github.com/KhronosGroup/OpenCL-Headers
-* LLVM Source -  https://github.com/llvm-mirror/llvm
-
-## Supported Linux versions
-
-IGC is supported on the following 32/64 bits Linux operating systems:
-
-* Ubuntu 14.04, 16.04, 17.04, 18.04
+* LLVM and Clang - https://github.com/llvm/llvm-project
 
 ## Building
 
-1. Install prerequisites
+1. Install LLVM and Clang
 
-Building IGC needs flex, bison, cmake version later than 3.4.3 and
- libz.  You can install required packages on ubuntu 18.04 like below:
-```
-$ sudo apt-get install flex bison libz-dev cmake
-```
+Building IGC requires LLVM infrastructure and Clang installed on the system. In case
+of self-building of these projects, the minimal build to satisfy IGC dependencies would be:
 
-2. Download all dependencies and create workspace folder as below:
-```
-<workspace>
-      |- igc                          https://github.com/intel/intel-graphics-compiler
-      |- llvm_patches                 https://github.com/intel/llvm-patches
-      |- llvm_source                  https://github.com/llvm-mirror/llvm
-            |- projects/opencl-clang  https://github.com/intel/opencl-clang
-            |- projects/llvm-spirv    https://github.com/KhronosGroup/SPIRV-LLVM-Translator
-            |- tools/clang            https://github.com/llvm-mirror/clang
+```sh
+git clone https://github.com/llvm/llvm-project.git
+mkdir llvm-projects/build && cd llvm-projects/build
+cmake -DLLVM_ENABLE_PROJECTS="clang" -DCMAKE_INSTALL_PREFIX=/path/to/install ..
+make
+make install
 ```
 
-This can be done using the following commands:
+If LLVM and Clang were installed into custom location, you may need to provide some environment
+and/or build variables to properly detect them on the system. For more details, refer to LLVM
+documentation: http://llvm.org/docs/GettingStarted.html 
 
-```
-$ cd <workspace>
-$ git clone -b release_70 https://github.com/llvm-mirror/llvm llvm_source
-$ git clone -b release_70 https://github.com/llvm-mirror/clang llvm_source/tools/clang
-$ git clone -b ocl-open-70 https://github.com/intel/opencl-clang llvm_source/projects/opencl-clang
-$ git clone -b llvm_release_70 https://github.com/KhronosGroup/SPIRV-LLVM-Translator llvm_source/projects/llvm-spirv
-$ git clone https://github.com/intel/llvm-patches llvm_patches
-$ git clone https://github.com/intel/intel-graphics-compiler igc
-  [If using specific release]
-$ cd igc && git checkout -b tag igc_release_2019-01-15
+For IGC build powered by cmake, consider to provide:
+* LLVM_DIR pointing to the location of LLVMConfig.cmake, typically $PREFIX/lib/cmake/llvm
+* PATH pointing to the location of clang-X, where X equals ${LLVM_VERSION_MAJOR} obtained from cmake find_package(LLVM)
+
+2. Install Common Clang
+
+Comon Clang is another major IGC dependency to present on the system. In case of self-building
+follow this instruction:
+
+```sh
+# build and install common clang dependency
+git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator.git
+mkdir SPIRV-LLVM-Translator/build && cd SPIRV-LLVM-Translator
+cmake -DLLVM_DIR=$PREFIX/lib/cmake/llvm -DCMAKE_CXX_FLAGS="-fPIC" -DCMAKE_INSTALL_PREFIX=/path/to/install ..
+make && make install
+
+# build and install common clang
+git clone https://github.com/intel/opencl-clang
+mkdir opencl-clang/build && cd opencl-clang/build
+cmake -DLLVM_DIR=$PREFIX/lib/cmake/llvm -DCMAKE_INSTALL_PREFIX=/path/to/install ..
+make && make install
 ```
 
+For more details refer to common clang documentation: https://github.com/intel/opencl-clang
 
-3. Under workspace create a build folder.  For example:
-```
-$ cd <workspace>
-$ mkdir build
+3. Build and install IGC
+
+Finally, build and install IGC with:
+
+```sh
+git clone https://github.com/intel/intel-graphics-compiler
+mkdir intel-graphics-compiler/build && cd intel-graphics-compiler/build
+export PATH=$PREFIX/bin:$PATH  # to fetch clang-X
+cmake \
+  -DLLVM_DIR=$PREFIX/lib/cmake/llvm \
+  -DCMAKE_INSTALL_PREFIX=/path/to/install \
+  ..
+make && make install
 ```
 
-4. Build IGC using commands:
-```
-$ cd build
-$ cmake ../igc/IGC
-$ make -j`nproc`
-```
-
-5. Install IGC
-```
-$ sudo make install
-```
+In case of standard system-wide installation of LLVM and clang, `-DLLVM_DIR` and `export PATH` can be skipped.
 
 ## Supported Platforms
 
@@ -98,4 +100,3 @@ Please submit an issue using native github.com interface: https://github.com/int
 
 Create a pull request on github.com with your patch. Make sure your change is
 cleanly building. A maintainer will contact you if there are questions or concerns.
-
