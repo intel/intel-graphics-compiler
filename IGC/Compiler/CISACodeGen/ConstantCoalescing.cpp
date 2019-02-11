@@ -819,7 +819,7 @@ void ConstantCoalescing::CombineTwoLoads( BufChunk *cov_chunk, Instruction *load
     splitter = AddChunkExtract( cov_chunk->chunkIO, eltid0 - cov_chunk->chunkStart );
     load0->replaceAllUsesWith( splitter );
     wiAns->incUpdateDepend( splitter, WIAnalysis::RANDOM );
-    if (numelt <= 1)
+    if (!load->getType()->isVectorTy())
     {
         splitter = AddChunkExtract(cov_chunk->chunkIO, eltid - cov_chunk->chunkStart);
         load->replaceAllUsesWith(splitter);
