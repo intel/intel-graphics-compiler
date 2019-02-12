@@ -6471,85 +6471,20 @@ G4_Imm* GlobalRA::createMsgDesc(unsigned owordSize, bool writeType, bool isSplit
     return builder.createImm(message, Type_UD);
 }
 
-//
-// Generate the save code for startReg.startSubReg to startReg.startSubReg+size.
-//
-void GraphColor::saveSubRegs(
-    unsigned startReg, unsigned startSubReg, unsigned size, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-    unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt)
+void GraphColor::stackCallProlog()
 {
-    //
-    // mov (8) r126<1>:d r0<8;8,1>:d
-    //
-    {
-        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 0, 1, Type_UD);
-        RegionDesc* rDesc = builder.rgnpool.createRegion(8, 8, 1);
-        G4_Operand* src = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, builder.getRealR0()->getRegVar(), 0, 0, rDesc, Type_UD);
-        G4_INST* hdrInitInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8, dst, src,
-            NULL, InstOpt_WriteEnable);
-        bb->insert(insertIt, hdrInitInst);
-    }
-    //
-    // add (1) r126<1>:d FP<0;1,0>:d offset
-    //
-    {
-        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
-        RegionDesc* rDesc = builder.getRegionScalar();
-        G4_Operand* src0 = NULL;
-        G4_INST* hdrSetInst = NULL;
-        if (framePtr)
-        {
-            src0 = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, rDesc, Type_UD);
-            G4_Imm* src1 = builder.createImm(frameOffset, Type_UD);
-            hdrSetInst = builder.createInternalInst(NULL, G4_add, NULL, false, 1, dst, src0, src1, InstOpt_WriteEnable);
-        }
-        else
-        {
-            src0 = builder.createImm(frameOffset, Type_UD);
-            hdrSetInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1, dst, src0,
-                NULL, InstOpt_WriteEnable);
-        }
-        bb->insert(insertIt, hdrSetInst);
-    }
-    //
-    // mov (size) r127<1>:b startReg.startSubReg<size;size,1>:b
-    //
-    {
-        // TODO: Handle sizes not in power of 2
-        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 1, 0, 1, Type_UB);
-        RegionDesc* rDesc = builder.rgnpool.createRegion((uint16_t)size, (uint16_t)size, 1);
-        G4_Declare *srcDcl = builder.createTempVar((uint16_t)size, Type_UB, Either, Any, StackCallStr);
-        srcDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), startSubReg);
-        G4_Operand* src = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, srcDcl->getRegVar(), 0, 0, rDesc, Type_UB);
-        G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false, (uint8_t)size,
-            dst, src, NULL, InstOpt_WriteEnable);
-        bb->insert(insertIt, movInst);
-    }
-    //
-    //  send (8) null<1>:uw r126 0xa desc:ud
-    //
-    {
-        builder.instList.clear();
-        uint8_t execSize = 8;
-        unsigned owordSize = ROUND(size, 16) / 16;
-        G4_DstRegRegion *postDst = builder.createNullDst(Type_UD);
-        G4_SrcRegRegion *payload = builder.Create_Src_Opnd_From_Dcl(scratchRegDcl, builder.getRegionStride1());
-        G4_Imm* exDesc = builder.createImm(0xa, Type_UD);
-        G4_Imm* desc = gra.createMsgDesc(owordSize, true, false);
-        auto msgDesc = builder.createSendMsgDesc((uint32_t) desc->getInt(), (uint32_t) exDesc->getInt(), false, true, 
-            getScratchSurface());
-        auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, payload, builder.createNullSrc(Type_UD), execSize, 
-            msgDesc, InstOpt_WriteEnable, false);
-        auto exDescOpnd = sendInst->getMsgExtDescOperand();
-        if (exDescOpnd->isSrcRegRegion())
-        {
-            exDescOpnd->asSrcRegRegion()->getTopDcl()->getRegVar()->setPhyReg(builder.phyregpool.getAddrReg(), 0);
-        }
-        bb->splice(insertIt, builder.instList);
-    }
+    // mov (8) r126.0<1>:ud    r0.0<8;8,1>:ud
+    // This sets up the header for oword block r/w used for caller/callee-save
+
+    auto dstRgn = builder.Create_Dst_Opnd_From_Dcl(builder.kernel.fg.scratchRegDcl, 1);
+    auto srcRgn = builder.Create_Src_Opnd_From_Dcl(builder.getRealR0(), builder.getRegionStride1());
+
+    G4_INST* mov = builder.createInternalInst(nullptr, G4_mov, nullptr, false, 8, dstRgn, srcRgn, nullptr, 
+        InstOpt_WriteEnable);
+
+   G4_BB* entryBB = builder.kernel.fg.getEntryBB();
+   auto iter = std::find_if(entryBB->begin(), entryBB->end(), [](G4_INST* inst) { return !inst->isLabel(); });
+   entryBB->insert(iter, mov);
 }
 
 //
@@ -6564,18 +6499,9 @@ void GraphColor::saveRegs(
 
     if (owordSize == 8 || owordSize == 4 || owordSize == 2)
     {
-        // Cannot use r0 as src of send, so we emit following instead:
-        // mov (8) r126.0<1>:ud    r0.0<8;8,1>:ud
         // add (1) r126.2<1>:ud    r125.7<0;1,0>:ud    0x2:ud
         // sends (8) null<1>:ud    r126.0    r1.0 ...
         uint8_t execSize = (owordSize > 2) ? 16 : 8;
-        auto dstRgn = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 0, 1, Type_UD);
-        auto srcRgn = builder.createSrcRegRegion(Mod_src_undef, Direct, builder.getRealR0()->getRegVar(), 0,
-            0, builder.rgnpool.createRegion(8, 8, 1), Type_UD);
-        G4_INST* mov = builder.createInternalInst(NULL, G4_mov, NULL, false, 8, dstRgn, srcRgn, NULL, InstOpt_WriteEnable);
-
-        bb->insert(insertIt, mov);
-
         G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 2, 1, Type_UD);
         G4_Operand* src0 = NULL;
         G4_Imm* src1 = NULL;
@@ -6680,89 +6606,6 @@ G4_SrcRegRegion* GraphColor::getScratchSurface() const
 }
 
 //
-// Generate the restore code for startReg.startSubReg to startReg.startSubReg+size.
-//
-void GraphColor::restoreSubRegs(
-    unsigned startReg, unsigned startSubReg, unsigned size, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-    unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt)
-{
-    //
-    // mov (8) r127<1>:d r0<8;8,1>:d
-    //
-    {
-        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 1, 0, 1, Type_UD);
-        RegionDesc* rDesc = builder.rgnpool.createRegion(8, 8, 1);
-        G4_Operand* src = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, builder.getRealR0()->getRegVar(), 0, 0, rDesc, Type_UD);
-        G4_INST* hdrInitInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8,
-            dst, src, NULL, InstOpt_WriteEnable);
-        bb->insert(insertIt, hdrInitInst);
-    }
-    //
-    // add (1) r127<1>:d FP<0;1,0>:d offset
-    //
-    {
-        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 1, 2, 1, Type_UD);
-        RegionDesc* rDesc = builder.getRegionScalar();
-        G4_Operand* src0 = NULL;
-        G4_INST* hdrSetInst = NULL;
-        if (framePtr)
-        {
-            src0 = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, framePtr->getRegVar(), 0, 0, rDesc, Type_UD);
-            G4_Imm* src1 = builder.createImm(frameOffset, Type_UD);
-            hdrSetInst = builder.createInternalInst(NULL, G4_add, NULL, false, 1,
-                dst, src0, src1, InstOpt_WriteEnable);
-        }
-        else
-        {
-            src0 = builder.createImm(frameOffset, Type_UD);
-            hdrSetInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
-                dst, src0, NULL, InstOpt_WriteEnable);
-        }
-        bb->insert(insertIt, hdrSetInst);
-    }
-    //
-    //  send (16) r126<1>:uw r127 0xa desc:ud
-    //
-    {
-        builder.instList.clear();
-        unsigned owordSize = ROUND(size, 16) / 16;
-        uint8_t execSize = 8;
-        G4_DstRegRegion* postDst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 0, 1, Type_UD);
-        G4_SrcRegRegion* payload = builder.createSrcRegRegion(Mod_src_undef, Direct,
-            scratchRegDcl->getRegVar(), 1, 0, builder.getRegionStride1(), Type_UD);
-        G4_Imm* exDesc = builder.createImm(0xa, Type_UD);
-        G4_Imm* desc = gra.createMsgDesc(owordSize, false, false);
-        auto msgDesc = builder.createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), true, false, 
-            getScratchSurface());
-        auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, payload, builder.createNullSrc(Type_UD), execSize, 
-            msgDesc, InstOpt_WriteEnable, false);
-        auto exDescOpnd = sendInst->getMsgExtDescOperand();
-        if (exDescOpnd->isSrcRegRegion())
-        {
-            exDescOpnd->asSrcRegRegion()->getTopDcl()->getRegVar()->setPhyReg(builder.phyregpool.getAddrReg(), 0);
-        }
-        bb->splice(insertIt, builder.instList);
-    }
-    //
-    // mov (size) startReg.startSubReg<1>:b r126<1;1,1>:b
-    //
-    {
-        G4_Declare *dstDcl = builder.createTempVar((uint16_t)size,
-            Type_UB, Either, Any, StackCallStr);
-        dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), startSubReg);
-        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, dstDcl->getRegVar(), 0, 0, 1, Type_UB);
-        RegionDesc* rDesc = builder.rgnpool.createRegion((uint16_t)size, (uint16_t)size, 1);
-        G4_Operand* src = builder.createSrcRegRegion(
-            Mod_src_undef, Direct, scratchRegDcl->getRegVar(), 0, 0, rDesc, Type_UB);
-        G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false, (uint8_t)size,
-            dst, src, NULL, InstOpt_WriteEnable);
-        bb->insert(insertIt, movInst);
-    }
-}
-
-//
 // Generate the restore code for startReg to startReg+owordSize/2.
 //
 void GraphColor::restoreRegs(
@@ -6774,18 +6617,7 @@ void GraphColor::restoreRegs(
     //
     if (owordSize == 8 || owordSize == 4 || owordSize == 2)
     {
-        //
-        // mov (8) r126<1>:d r0<8;8,1>:d
-        //
-        {
-            G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, scratchRegDcl->getRegVar(), 0, 0, 1, Type_UD);
-            RegionDesc* rDesc = builder.rgnpool.createRegion(8, 8, 1);
-            G4_Operand* src = builder.createSrcRegRegion(
-                Mod_src_undef, Direct, builder.getRealR0()->getRegVar(), 0, 0, rDesc, Type_UD);
-            G4_INST* hdrInitInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8,
-                dst, src, NULL, InstOpt_WriteEnable);
-            bb->insert(insertIt, hdrInitInst);
-        }
+
         //
         // add (1) r126<1>:d FP<0;1,0>:d offset
         //
@@ -7014,8 +6846,8 @@ void GraphColor::saveFileScopeVar(G4_RegVar* filescopeVar, G4_BB* bb, INST_LIST_
 
     if (size < G4_GRF_REG_NBYTES)
     {
-        unsigned startSubReg = filescopeVar->getPhyRegOff() * filescopeVar->getDeclare()->getElemSize();
-        saveSubRegs(startReg, startSubReg, size, scratchRegDcl, NULL, frameOwordPos, bb, insertIt);
+        // always do full-GRF save
+        saveRegs(startReg, 2, scratchRegDcl, NULL, frameOwordPos, bb, insertIt);
     }
     else
     {
@@ -7040,8 +6872,8 @@ void GraphColor::restoreFileScopeVar(G4_RegVar* filescopeVar, G4_BB* bb, INST_LI
 
     if (size < G4_GRF_REG_NBYTES)
     {
-        unsigned startSubReg = filescopeVar->getPhyRegOff() * filescopeVar->getDeclare()->getElemSize();
-        restoreSubRegs(startReg, startSubReg, size, scratchRegDcl, NULL, frameOwordPos, bb, insertIt);
+        // always restore full-GRF
+        restoreRegs(startReg, 2, scratchRegDcl, NULL, frameOwordPos, bb, insertIt);
     }
     else
     {
@@ -7373,16 +7205,14 @@ void GraphColor::addFileScopeSaveRestoreCode()
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
                     builder.kernel.getKernelDebugInfo()->clearOldInstList();
-                    builder.kernel.getKernelDebugInfo()->setOldInstList
-                    ((*it));
+                    builder.kernel.getKernelDebugInfo()->setOldInstList((*it));
                 }
 
                 saveFileScopeVar(fileScopeVar, (*it), insertSaveIt);
 
                 if (builder.kernel.getOption(vISA_GenerateDebugInfo))
                 {
-                    auto deltaInstList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions
-                    ((*it));
+                    auto deltaInstList = builder.kernel.getKernelDebugInfo()->getDeltaInstructions((*it));
                     auto fcallInst = (*it)->back();
                     for (auto it : deltaInstList)
                     {
@@ -7421,7 +7251,6 @@ void GraphColor::addFileScopeSaveRestoreCode()
                         builder.kernel.getKernelDebugInfo()->addCallerSaveInst(fcallInst, it);
                     }
                 }
-                /*}*/
             }
         }
     }
@@ -7850,7 +7679,7 @@ void GraphColor::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
         addCalleeSaveRestoreCode();
     }
     addCallerSaveRestoreCode();
-    if (builder.getIsKernel() == true)
+    if (builder.getIsKernel())
     {
         addGenxMainStackSetupCode();
     }
@@ -7858,6 +7687,7 @@ void GraphColor::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
     {
         addCalleeStackSetupCode();
     }
+    stackCallProlog();
     builder.instList.clear();
 }
 

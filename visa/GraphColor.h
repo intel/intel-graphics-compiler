@@ -747,17 +747,11 @@ namespace vISA
         void addFileScopeSaveRestoreCode();
         void addGenxMainStackSetupCode();
         void addCalleeStackSetupCode();
-        void saveSubRegs(
-            unsigned startReg, unsigned startSubReg, unsigned size, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
-            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
         void saveRegs(
             unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
             unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
         void saveActiveRegs(
             std::vector<bool>& saveRegs, unsigned startReg,
-            unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
-        void restoreSubRegs(
-            unsigned startReg, unsigned startSubReg, unsigned size, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
             unsigned frameOffset, G4_BB* bb, INST_LIST_ITER insertIt);
         void restoreRegs(
             unsigned startReg, unsigned owordSize, G4_Declare* scratchRegDcl, G4_Declare* framePtr,
@@ -772,6 +766,7 @@ namespace vISA
         void dumpRegisterPressure();
         GlobalRA & getGRA() { return gra; }
         G4_SrcRegRegion* getScratchSurface() const;
+        void stackCallProlog();
     };
 
     class RAVarInfo
