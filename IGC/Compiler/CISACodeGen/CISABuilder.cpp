@@ -3515,17 +3515,16 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
 
     auto enableScheduler = [=]() {
         // Check if preRA scheduler is disabled from input.
-        if (context->getModuleMetaData()->csInfo.forcedVISAPreRASchedulerOff ||
-            isOptDisabled)
-            return false;
+        if (isOptDisabled)
+           return false;
         if (context->type == ShaderType::OPENCL_SHADER) {
             auto ClContext = static_cast<OpenCLProgramContext*>(context);
             if (!ClContext->m_InternalOptions.IntelEnablePreRAScheduling)
                 return false;
         }
 
-        // Check reg-key.
-        if (IGC_IS_FLAG_ENABLED(ForceVISAPreSched))
+        // Check reg-key or compiler input
+        if (IGC_IS_FLAG_ENABLED(ForceVISAPreSched) || context->getModuleMetaData()->csInfo.forcedVISAPreRAScheduler)
             return true;
 
         // API check.

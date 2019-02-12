@@ -128,7 +128,7 @@ namespace IGC
         unsigned int waveSize = 0; // force a wave size
         std::vector<ComputeShaderSecondCompileInputInfoMD> ComputeShaderSecondCompile;
         unsigned char forcedSIMDSize = 0;  // 0 means not forced
-		bool forcedVISAPreRASchedulerOff = false;
+        bool forcedVISAPreRAScheduler = false;
     };
 
     struct VertexShaderInfo
