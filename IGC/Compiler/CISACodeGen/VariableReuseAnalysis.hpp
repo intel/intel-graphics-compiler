@@ -28,12 +28,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/PatternMatchPass.hpp"
 #include "Compiler/CISACodeGen/DeSSA.hpp"
 #include "Compiler/CISACodeGen/CoalescingEngine.hpp"
-#include "Compiler/CISACodeGen/BlockCoalescing.hpp"
 
 
 #include "common/LLVMWarningsPush.hpp"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/IR/Dominators.h"
 #include "llvm/ADT/TinyPtrVector.h"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -107,13 +105,11 @@ public:
   virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override {
     // AU.addRequired<RegisterEstimator>();
     AU.setPreservesAll();
-    AU.addRequired<llvm::DominatorTreeWrapperPass>();
 	AU.addRequired<WIAnalysis>();
 	AU.addRequired<LiveVarsAnalysis>();
 	AU.addRequired<CodeGenPatternMatch>();
 	AU.addRequired<DeSSA>();
     AU.addRequired<CoalescingEngine>();
-    AU.addRequired<BlockCoalescing>();
     AU.addRequired<CodeGenContextWrapper>();
   }
 
@@ -179,14 +175,6 @@ public:
   int getCongruentClassSize(llvm::Value* V);
   bool isSameSizeValue(llvm::Value* V0, llvm::Value* V1);
 
-  // getRootValue():
-  //   return dessa root value; if dessa root value
-  //   is null, return itself.
-  llvm::Value* getRootValue(llvm::Value* V);
-  // getAliasRootValue()
-  //   return alias root value if it exists, itself otherwise.   
-  llvm::Value *getAliasRootValue(llvm::Value* V);
-
   /// printAlias - print value aliasing info in human readable form
   void printAlias(llvm::raw_ostream &OS, const llvm::Function* F = nullptr) const;
   /// dumpAalias - dump alias info to dbgs().
@@ -198,16 +186,7 @@ public:
   AliasRootMapTy    m_AliasRootMap;    // aliasee -> all its aliasers.
 
   // No need to emit code for instructions in this map due to aliasing
-  llvm::DenseMap <llvm::Instruction*, int> m_HasBecomeNoopInsts;
-
-  // For emitting livetime start to visa to assist liveness analysis
-  //   1. m_LifetimeAt1stDefInBB :  aliasee -> BB
-  //        Once a first def is encounted, add lifetime start and clear
-  //        this map entry afterwards.
-  //   2. m_LifetimeAtEndOfBB :  BB -> set of values
-  //        Add lifetime start for all values in the set at the end of BB.
-  llvm::DenseMap<llvm::Value*, llvm::BasicBlock*> m_LifetimeAt1stDefOfBB;
-  llvm::DenseMap<llvm::BasicBlock*, llvm::TinyPtrVector<llvm::Value*> > m_LifetimeAtEndOfBB;
+  llvm::DenseMap <llvm::Instruction*, int > m_HasBecomeNoopInsts;
 
 private:
   void reset() {
@@ -285,19 +264,13 @@ private:
       llvm::InsertElementInst* LastIEI,
       llvm::SmallVector<SSubVector, 4>& SVs);
 
-  void getAllValues(
-      llvm::SmallVector<llvm::Value*, 8>& AllValues,
-      llvm::Value* Aliasee);
-
   CodeGenContext* m_pCtx;
   WIAnalysis* m_WIA;
   LiveVars* m_LV;
   DeSSA* m_DeSSA;
   CodeGenPatternMatch* m_PatternMatch;
   CoalescingEngine* m_coalescingEngine;
-  llvm::DominatorTree *m_DT;
   const llvm::DataLayout* m_DL;
-
 
   /// Current Function; set on entry to runOnFunction
   /// and unset on exit to runOnFunction
