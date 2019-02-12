@@ -159,6 +159,10 @@ public:
     // Only remaining GEPs are for scratch in GFX path
     void emitGEP(llvm::Instruction* inst);
 
+    // Emit lifetime start right before inst V. If ForAllInstance is true, emit lifestart
+    // for both instances; otherwise, just the current instance set in the calling context.
+    void emitLifetimeStart(CVariable* Var, llvm::BasicBlock* BB, llvm::Instruction* I, bool ForAllInstance);
+ 
     // set the predicate with current active channels
     void emitPredicateFromChannelIP(CVariable* dst, CVariable* alias = NULL);
 
@@ -386,6 +390,7 @@ public:
     void MovPhiSources(llvm::BasicBlock* bb);
 
     void InitConstant(llvm::BasicBlock *BB);
+    void emitLifetimeStartAtEndOfBB(llvm::BasicBlock* BB);
 
     std::pair<llvm::Value *, llvm::Value *> getPairOutput(llvm::Value *) const;
 
@@ -467,6 +472,7 @@ public:
     CEncoder* m_encoder;
     const llvm::DataLayout* m_DL;
     CoalescingEngine* m_CE;
+    VariableReuseAnalysis* m_VRA;
     ModuleMetaData* m_moduleMD;
 
     bool m_canAbortOnSpill;

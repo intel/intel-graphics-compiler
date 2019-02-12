@@ -5284,5 +5284,14 @@ void CEncoder::File(std::string& s)
     V(vKernel->AppendVISAMiscFileInst(s.c_str()));
 }
 
+void CEncoder::Lifetime(VISAVarLifetime StartOrEnd, CVariable* dst)
+{
+    SModifier noMod; // Default is no mod.
+    noMod.init();
+    VISA_VectorOpnd* srcOpnd = GetSourceOperand(dst, noMod);
+    V(vKernel->AppendVISALifetime(StartOrEnd, srcOpnd));
+}
+
+
 
 }
