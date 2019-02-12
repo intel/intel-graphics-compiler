@@ -1159,7 +1159,7 @@ public:
     uint8_t getNumBytesScratchUse()
     {
         if (gtpin_init)
-            return gtpin_init->num_scratch_slots;
+            return gtpin_init->scratch_area_size;
         return 0;
     }
 

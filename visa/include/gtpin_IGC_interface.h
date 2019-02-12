@@ -80,7 +80,7 @@ namespace gtpin
 
         typedef struct igc_init_v1_s : igc_init_v0_t
         {
-            uint8_t     num_scratch_slots;      // Number of slots in the Scratch Space to be reserved for GTPin
+            uint8_t     scratch_area_size;      // Number of bytes in the Scratch Space to be reserved for GTPin
         } igc_init_v1_t;
 
         typedef struct igc_init_s : igc_init_v1_t {} igc_init_t;
@@ -173,8 +173,9 @@ namespace gtpin
         */
         typedef struct igc_token_scratch_area_info_t : igc_token_header_t
         {
-            uint32_t    scratch_area_offset;    // Offset of the GTPin's scratch area in the System Scratch Memory Space
-            uint8_t     num_scratch_slots;      // Actual number of slots in the GTPin's scratch area
+            uint32_t    scratch_area_offset;    // Offset of the GTPin's scratch area in the System Scratch Memory Space.
+                                                // It is assumed to be 32-byte aligned value.
+            uint8_t     scratch_area_size;      // Actual number of bytes in the Scratch Space, reserved for GTPin
         } igc_token_scratch_area_info_t;
 
 
