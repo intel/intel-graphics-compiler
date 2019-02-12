@@ -1397,8 +1397,7 @@ CVariable* CShader::GetConstant(llvm::Constant* C, CVariable* dstVar)
             else 
             {
                 auto input_size = eTy->getScalarSizeInBits() / 8;
-                auto var_num = (input_size * numLanes(m_SIMDSize)) / SIZE_GRF;
-                GetEncoder().SetDstSubVar(k * var_num);
+                Var = GetNewAlias(Var, Var->GetType(), k * input_size * numLanes(m_SIMDSize),0);
             }
             GetEncoder().Copy(Var, eVal);
             GetEncoder().Push();
