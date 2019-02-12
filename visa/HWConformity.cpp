@@ -1425,24 +1425,25 @@ bool HWConformity::fixMov(INST_LIST_ITER i, G4_BB* bb)
         inst->setDest(insertMovAfter(i, inst->getDst(), Type_W, bb));
         return true;
     }
-    else if (IS_BTYPE(srcType) && (IS_DFTYPE(dstType) || IS_QTYPE(dstType)))
+    if (IS_BTYPE(srcType) && (IS_DFTYPE(dstType) || IS_QTYPE(dstType)))
     {
         // mov Q/DF B
         inst->setDest(insertMovAfter(i, inst->getDst(), Type_W, bb));
         return true;
     }
-    else if (isLowPrecisionFloatTy(dstType) && (IS_DFTYPE(srcType) || IS_QTYPE(srcType)))
+    if (isLowPrecisionFloatTy(dstType) && (IS_DFTYPE(srcType) || IS_QTYPE(srcType)))
     {
         // mov HF Q/DF
         inst->setDest(insertMovAfter(i, inst->getDst(), Type_F, bb));
         return true;
     }
-    else if (isLowPrecisionFloatTy(srcType) && (IS_DFTYPE(dstType) || IS_QTYPE(dstType)))
+    if (isLowPrecisionFloatTy(srcType) && (IS_DFTYPE(dstType) || IS_QTYPE(dstType)))
     {
         // mov Q/DF HF
         inst->setDest(insertMovAfter(i, inst->getDst(), Type_F, bb));
         return true;
     }
+
     return false;
 }
 
