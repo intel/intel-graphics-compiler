@@ -265,14 +265,17 @@ INLINE void OVERLOADABLE atomic_work_item_fence( cl_mem_fence_flags flags, memor
 //*****************************************************************************/
 INLINE void OVERLOADABLE wait_group_events( int num_events, __private event_t *event_list )
 {
-    barrier( CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE );
+    barrier( CLK_GLOBAL_MEM_FENCE );
+    barrier( CLK_LOCAL_MEM_FENCE );
+
 }
 
 // here for backwards compatibility with clang/llvm 3.0
 // wait_group_events().
 INLINE void OVERLOADABLE wait_group_events( int num_events, __private uint *event_list )
 {
-    barrier( CLK_GLOBAL_MEM_FENCE | CLK_LOCAL_MEM_FENCE );
+    barrier( CLK_GLOBAL_MEM_FENCE );
+    barrier( CLK_LOCAL_MEM_FENCE );
 }
 
 ///////////////////////////////////////////////////////////////////////////////

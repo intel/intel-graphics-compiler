@@ -24,6 +24,24 @@
 
 #======================= end_copyright_notice ==================================
 
+# import argparse
+# import os
+# def concat(file1,file2,new_file):
+# 	f1,f2 = "",""
+# 	if os.path.exists(file1):
+# 		f1 = open(file1).read()
+# 	if os.path.exists(file2):
+# 		f2 = open(file2).read()
+# 	with open(new_file,"wb") as f_concat:
+# 		f_concat.write(f1+f2)
+# 		f_concat.write("\0")
+# parser = argparse.ArgumentParser()
+# parser.add_argument('-top', help='top file for concat')
+# parser.add_argument('-bottom', help='bottom file for concat')
+# parser.add_argument('-new', help='new file for concat')
+# args = parser.parse_args()
+# concat(args.top,args.bottom,args.new)
+
 import os
 import sys
 

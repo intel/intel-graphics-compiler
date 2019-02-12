@@ -948,7 +948,8 @@ void __builtin_spirv_OpGroupWaitEvents_i32_i32_p0i64(uint Execution, uint NumEve
 {
     if (Execution == Workgroup)
     {
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, AcquireRelease | WorkgroupMemory | CrossWorkgroupMemory);
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, AcquireRelease | CrossWorkgroupMemory);
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, AcquireRelease | WorkgroupMemory );
     }
     else if (Execution == Subgroup)
     {
@@ -962,7 +963,8 @@ void __builtin_spirv_OpGroupWaitEvents_i32_i32_p4i64(uint Execution, uint NumEve
 {
     if (Execution == Workgroup)
     {
-        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, AcquireRelease | WorkgroupMemory | CrossWorkgroupMemory);
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, AcquireRelease | CrossWorkgroupMemory);
+        __builtin_spirv_OpControlBarrier_i32_i32_i32(Execution,0, AcquireRelease | WorkgroupMemory);
     }
     else if (Execution == Subgroup)
     {
