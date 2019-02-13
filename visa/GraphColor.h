@@ -1355,8 +1355,8 @@ namespace vISA
 #ifdef _DEBUG
         int            regNum;
 #endif
-        vISA::G4_Declare*    dcl;
-        vISA::G4_Operand*    tgtOpnd;
+        vISA::G4_Declare*    scratchDcl;       //The scrach access
+        vISA::G4_Operand*    flagOpnd;
         INST_LIST_ITER inst_it;
 
         unsigned int   linearizedStart; //linearized start regsiter address
@@ -1403,35 +1403,36 @@ namespace vISA
         GlobalRA& gra;
 
         void FlagLineraizedStartAndEnd(G4_Declare*  topdcl, unsigned int& linearizedStart, unsigned int& linearizedEnd);
-        bool replaceWithPreDcl(IR_Builder& builder, SCRATCH_ACCESS* scratchAccess, SCRATCH_ACCESS* preScratchAccess,
-            G4_RegFileKind  regKind);
+        bool replaceWithPreDcl(IR_Builder& builder, SCRATCH_ACCESS* scratchAccess, SCRATCH_ACCESS* preScratchAccess);
         bool scratchKilledByPartial(SCRATCH_ACCESS* scratchAccess, SCRATCH_ACCESS* preScratchAccess);
         bool addKilledGRFRanges(unsigned int linearizedStart, unsigned int linearizedEnd, SCRATCH_ACCESS* scratchAccess,
-            G4_RegFileKind  regKind, G4_Predicate*   predicate);
+            G4_Predicate*   predicate);
         bool regFullyKilled(SCRATCH_ACCESS* scratchAccess, unsigned int linearizedStart, unsigned int linearizedEnd,
-            unsigned short maskFlag, G4_RegFileKind regKind, G4_Predicate* predicate);
+            unsigned short maskFlag);
         bool inRangePartialKilled(SCRATCH_ACCESS* scratchAccess, unsigned int linearizedStart, unsigned int linearizedEnd,
             unsigned short maskFlag);
         bool regDefineAnalysis(SCRATCH_ACCESS* scratchAccess, unsigned int linearizedStart, unsigned int linearizedEnd,
-            unsigned short maskFlag, G4_RegFileKind regKind, G4_Predicate* predicate);
-        void regDefineFlag(SCRATCH_PTR_LIST* scratchTraceList, G4_INST* inst, G4_Operand* opnd, G4_RegFileKind regKind);
+            unsigned short maskFlag, G4_Predicate* predicate);
+        void regDefineFlag(SCRATCH_PTR_LIST* scratchTraceList, G4_INST* inst, G4_Operand* opnd);
         bool regUseAnalysis(SCRATCH_ACCESS* scratchAccess, unsigned int linearizedStart, unsigned int linearizedEnd);
-        void regUseFlag(SCRATCH_PTR_LIST* scratchTraceList, G4_INST* inst, G4_Operand* opnd, int opndIndex, G4_RegFileKind regKind);
+        void regUseFlag(SCRATCH_PTR_LIST* scratchTraceList, G4_INST* inst, G4_Operand* opnd, int opndIndex);
+        void regUseScratch(SCRATCH_PTR_LIST * scratchTraceList, G4_INST * inst, G4_Operand * opnd, int opndIndex);
         void initializeScratchAccess(SCRATCH_ACCESS *scratchAccess, INST_LIST_ITER inst_it);
         bool initializeFlagScratchAccess(SCRATCH_PTR_VEC* scratchAccessList, SCRATCH_ACCESS*& scratchAccess, INST_LIST_ITER inst_it);
         void freeScratchAccess(SCRATCH_PTR_VEC *scratchAccessList);
         void flagDefine(SCRATCH_PTR_LIST& scratchTraceList, G4_INST* inst);
+        void scratchUse(SCRATCH_PTR_LIST & scratchTraceList, G4_INST * inst);
         void flagUse(SCRATCH_PTR_LIST& scratchTraceList, G4_INST* inst);
         bool flagScratchDefineUse(G4_BB* bb, SCRATCH_PTR_LIST* scratchTraceList, SCRATCH_PTR_VEC* candidateList,
             SCRATCH_ACCESS* scratchAccess, CLEAN_NUM_PROFILE* clean_num_profile);
         void flagSpillFillClean(G4_BB* bb, INST_LIST_ITER inst_it, SCRATCH_PTR_VEC& scratchAccessList,
             SCRATCH_PTR_LIST& scratchTraceList, SCRATCH_PTR_VEC& candidateList, CLEAN_NUM_PROFILE* clean_num_profile);
-        void regFillClean(IR_Builder& builder, G4_BB* bb, SCRATCH_PTR_VEC& candidateList, G4_RegFileKind regKind,
+        void regFillClean(IR_Builder& builder, G4_BB* bb, SCRATCH_PTR_VEC& candidateList,
             CLEAN_NUM_PROFILE* clean_num_profile);
         void regSpillClean(IR_Builder& builder, G4_BB* bb, SCRATCH_PTR_VEC& candidateList, CLEAN_NUM_PROFILE* clean_num_profile);
 
     public:
-        void spillFillCodeCleanFlag(IR_Builder& builder, G4_Kernel& kernel, G4_RegFileKind regKind, CLEAN_NUM_PROFILE* clean_num_profile);
+        void spillFillCodeCleanFlag(IR_Builder& builder, G4_Kernel& kernel, CLEAN_NUM_PROFILE* clean_num_profile);
         FlagSpillCleanup(GlobalRA& g) : gra(g)
         {
 

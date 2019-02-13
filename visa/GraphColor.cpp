@@ -9256,8 +9256,9 @@ void GlobalRA::flagRegAlloc()
                         clean_num_profile.fill_clean_num[i] = 0;
                     }
 #endif
+
                     FlagSpillCleanup f(*this);
-                    f.spillFillCodeCleanFlag(builder, kernel, G4_FLAG, &clean_num_profile);
+                    f.spillFillCodeCleanFlag(builder, kernel, &clean_num_profile);
 
 #ifdef DEBUG_VERBOSE_ON1
                     for (int i = 0; i < 3; i++)
@@ -9948,6 +9949,7 @@ int GlobalRA::coloringRegAlloc()
 
 #define IS_FLAG_MOVE(inst)  (\
     inst->opcode() == G4_mov &&  \
+    (inst->getDst() && inst->getSrc(0)) && \
     (inst->getDst()->getTopDcl() && inst->getSrc(0)->getTopDcl()) && \
     (inst->getDst()->getTopDcl()->getRegFile() == G4_FLAG && inst->getSrc(0)->getTopDcl()->getRegFile() == G4_GRF || \
     inst->getDst()->getTopDcl()->getRegFile() == G4_GRF && inst->getSrc(0)->getTopDcl()->getRegFile() == G4_FLAG) \
@@ -10007,8 +10009,7 @@ void  FlagSpillCleanup::FlagLineraizedStartAndEnd(G4_Declare*  topdcl,
  */
 bool FlagSpillCleanup::replaceWithPreDcl(IR_Builder&     builder,
     SCRATCH_ACCESS* scratchAccess,
-    SCRATCH_ACCESS* preScratchAccess,
-    G4_RegFileKind  regKind)
+    SCRATCH_ACCESS* preScratchAccess)
 {
     int preRegOff = 0;
     int payloadHeaderSize = 0;
@@ -10019,32 +10020,13 @@ bool FlagSpillCleanup::replaceWithPreDcl(IR_Builder&     builder,
     if (preScratchAccess->isSpill)
     {
         reuseOpnd = preInst->getSrc(0);
-        if (regKind == G4_GRF)
-        {
-            if (!preInst->isSplitSend())
-            {
-                payloadHeaderSize = G4_GRF_REG_NBYTES;
-                reuseOpnd = preInst->getSrc(0);
-            }
-            else
-            {
-                reuseOpnd = preInst->getSrc(1);
-            }
-            preRegOff = reuseOpnd->asSrcRegRegion()->getRegOff();
-        }
-        else
-        {
-            preRegOff = reuseOpnd->asSrcRegRegion()->getSubRegOff();
-            reuseOpnd = preInst->getSrc(0);
-        }
+        preRegOff = reuseOpnd->asSrcRegRegion()->getSubRegOff();
+        reuseOpnd = preInst->getSrc(0);
     }
     else
     {
         reuseOpnd = preInst->getDst();
-        if (regKind == G4_GRF)
-            preRegOff = reuseOpnd->asDstRegRegion()->getRegOff();
-        else
-            preRegOff = reuseOpnd->asDstRegRegion()->getSubRegOff();//For flag register, only subRegOff
+        preRegOff = reuseOpnd->asDstRegRegion()->getSubRegOff();//For flag register, only subRegOff
     }
     G4_Declare *dcl = reuseOpnd->getBase()->asRegVar()->getDeclare();
 
@@ -10135,8 +10117,8 @@ bool FlagSpillCleanup::replaceWithPreDcl(IR_Builder&     builder,
 }
 
 /*
- *  The reuse target register in pre scratch access may be partial killed,
- *  and the corresponding scracth memory range is overlap with the memory of current scratch access.
+ *  1) The reuse target register in pre scratch access may be partial killed,
+ *  2) and the corresponding scracth memory range is overlap with the memory of current scratch access.
  *  In both cases, the current fill can not be removed
  */
 bool FlagSpillCleanup::scratchKilledByPartial(SCRATCH_ACCESS* scratchAccess,
@@ -10176,7 +10158,6 @@ bool FlagSpillCleanup::scratchKilledByPartial(SCRATCH_ACCESS* scratchAccess,
 bool FlagSpillCleanup::addKilledGRFRanges(unsigned int    linearizedStart,
     unsigned int    linearizedEnd,
     SCRATCH_ACCESS* scratchAccess,
-    G4_RegFileKind  regKind,
     G4_Predicate*   predicate)
 {
     REG_RANGE range;
@@ -10184,8 +10165,7 @@ bool FlagSpillCleanup::addKilledGRFRanges(unsigned int    linearizedStart,
     range.linearizedEnd = MIN(scratchAccess->linearizedEnd, linearizedEnd);
     range.predicate = predicate ? true : false;
 
-    if (scratchAccess->killedRegRange.size() == 0 ||
-        (regKind == G4_GRF && range.predicate)) //With predicate, the range can not be merged with others
+    if (scratchAccess->killedRegRange.size() == 0)
     {
         scratchAccess->killedRegRange.push_back(range);
     }
@@ -10244,19 +10224,11 @@ bool FlagSpillCleanup::addKilledGRFRanges(unsigned int    linearizedStart,
 bool FlagSpillCleanup::regFullyKilled(SCRATCH_ACCESS* scratchAccess,
     unsigned int        linearizedStart,
     unsigned int        linearizedEnd,
-    unsigned short      maskFlag,
-    G4_RegFileKind      regKind,
-    G4_Predicate*       predicate)
+    unsigned short      maskFlag)
 {
 
-    if (((regKind == G4_GRF) && IS_GRF_RANGE_OVERWRITE(scratchAccess, linearizedStart, linearizedEnd)) ||
-        ((regKind == G4_FLAG) && IS_FLAG_RANGE_OVERWRITE(scratchAccess, linearizedStart, linearizedEnd)))
+    if (IS_FLAG_RANGE_OVERWRITE(scratchAccess, linearizedStart, linearizedEnd))
     {
-        if (regKind == G4_GRF && predicate) //If there is predicate for GRF, can not gaurantee it's fully killed
-        {
-            return false;
-        }
-
         if (maskFlag & InstOpt_WriteEnable)  // No mask == all range killed
         {
             return true;
@@ -10308,10 +10280,9 @@ bool FlagSpillCleanup::regDefineAnalysis(SCRATCH_ACCESS* scratchAccess,
     unsigned int       linearizedStart,
     unsigned int       linearizedEnd,
     unsigned short     maskFlag,
-    G4_RegFileKind     regKind,
     G4_Predicate*      predicate)
 {
-    if (regFullyKilled(scratchAccess, linearizedStart, linearizedEnd, maskFlag, regKind, predicate))
+    if (regFullyKilled(scratchAccess, linearizedStart, linearizedEnd, maskFlag))
     {
         return true;
     }
@@ -10319,7 +10290,7 @@ bool FlagSpillCleanup::regDefineAnalysis(SCRATCH_ACCESS* scratchAccess,
     {
         // Handle partial overlap
         // What about the mask?
-        if (addKilledGRFRanges(linearizedStart, linearizedEnd, scratchAccess, regKind, predicate))
+        if (addKilledGRFRanges(linearizedStart, linearizedEnd, scratchAccess, predicate))
         {
             //The register range is killed by accumulated partial range kills
             return true;
@@ -10332,8 +10303,7 @@ bool FlagSpillCleanup::regDefineAnalysis(SCRATCH_ACCESS* scratchAccess,
 
 void FlagSpillCleanup::regDefineFlag(SCRATCH_PTR_LIST* scratchTraceList,
     G4_INST*          inst,
-    G4_Operand*       opnd,
-    G4_RegFileKind    regKind)
+    G4_Operand*       opnd)
 {
     //Get the linearized address in GRF register file
     unsigned int linearizedStart = 0;
@@ -10374,7 +10344,7 @@ void FlagSpillCleanup::regDefineFlag(SCRATCH_PTR_LIST* scratchTraceList,
             //E mask
             unsigned maskFlag = (inst->getOption() & 0xFFF010C);
 
-            if (regDefineAnalysis(scratchAccess, linearizedStart, linearizedEnd, (unsigned short)maskFlag, regKind, predicate))
+            if (regDefineAnalysis(scratchAccess, linearizedStart, linearizedEnd, (unsigned short)maskFlag, predicate))
             {
                 //Fully killed
                 scratchAccess->regKilled = true;
@@ -10395,7 +10365,7 @@ void FlagSpillCleanup::regDefineFlag(SCRATCH_PTR_LIST* scratchTraceList,
             // 4. Otherwise, the (pre)fill instruction can not be removed, and no reuse will happen.
             // 5. For pure fill, it's no killed by same declare
             G4_Declare *preDcl = NULL;
-            preDcl = scratchAccess->tgtOpnd->getTopDcl();
+            preDcl = scratchAccess->flagOpnd->getTopDcl();
 
             if (topdcl == preDcl)
             {
@@ -10425,18 +10395,20 @@ bool FlagSpillCleanup::regUseAnalysis(SCRATCH_ACCESS* scratchAccess,
 {
     //GRF in previous fill is used as part of current reg,
     //In this case, the fill can not be removed since the reuse can not happen.
+    //Caller gauranteed the overlap of the registers
     if (linearizedEnd > scratchAccess->linearizedEnd ||
         linearizedStart < scratchAccess->linearizedStart)
     {
         return true;
     }
 
-    //Can not be removed when previous scratch access is killed or partial killed
+    //Can not be removed when the previous scratch access is killed or partial killed
     //before the use of current scratch access register
+    //b
     SCRATCH_ACCESS * preScratchAccess = scratchAccess->preScratchAccess;
     if (preScratchAccess &&
         (preScratchAccess->regKilled ||
-            scratchKilledByPartial(scratchAccess, preScratchAccess)))
+         scratchKilledByPartial(scratchAccess, preScratchAccess)))
     {
         return true;
     }
@@ -10465,8 +10437,7 @@ bool FlagSpillCleanup::regUseAnalysis(SCRATCH_ACCESS* scratchAccess,
 void FlagSpillCleanup::regUseFlag(SCRATCH_PTR_LIST*  scratchTraceList,
     G4_INST*           inst,
     G4_Operand*        opnd,
-    int                opndIndex,
-    G4_RegFileKind     regKind)
+    int                opndIndex)
 {
     //Get the linearized address in GRF register file
     unsigned int linearizedStart = 0;
@@ -10497,22 +10468,11 @@ void FlagSpillCleanup::regUseFlag(SCRATCH_PTR_LIST*  scratchTraceList,
                 continue;
             }
 
-            //Declare
-            G4_Declare *preDcl = NULL;
-            if (regKind == G4_FLAG)
-            {
-                preDcl = scratchAccess->tgtOpnd->getTopDcl();
-            }
-            else
-            {
-                preDcl = scratchAccess->dcl;
-            }
-
-            //Use should have same top declare
-            if (preDcl == topdcl)
+            if (scratchAccess->flagOpnd->getTopDcl() == topdcl)  //Same declare
             {
                 if (regUseAnalysis(scratchAccess, linearizedStart, linearizedEnd))
                 {
+                    //The filled register is in use
                     scratchAccess->removeable = false;
                 }
                 else if (scratchAccess->inRangePartialKilled || !scratchAccess->regKilled)
@@ -10526,13 +10486,38 @@ void FlagSpillCleanup::regUseFlag(SCRATCH_PTR_LIST*  scratchTraceList,
     }
 }
 
+void FlagSpillCleanup::regUseScratch(SCRATCH_PTR_LIST*  scratchTraceList,
+    G4_INST*           inst,
+    G4_Operand*        opnd,
+    int                opndIndex)
+{
+    G4_Declare *topdcl = NULL;
+    topdcl = opnd->getTopDcl();
+
+    //Impact on previous scratch access
+    SCRATCH_PTR_LIST_ITER it = scratchTraceList->begin();
+    SCRATCH_PTR_LIST_ITER itEnd = scratchTraceList->end();
+    while (it != itEnd)
+    {
+        SCRATCH_PTR_LIST_ITER kt = it;
+        kt++;
+        SCRATCH_ACCESS * scratchAccess = *it;
+        if (topdcl == scratchAccess->scratchDcl)
+        {
+            scratchAccess->removeable = false;
+        }
+
+        it = kt;
+    }
+}
+
 void FlagSpillCleanup::initializeScratchAccess(SCRATCH_ACCESS *scratchAccess, INST_LIST_ITER inst_it)
 {
 #ifdef _DEBUG
     scratchAccess->regNum = -1;
 #endif
-    scratchAccess->dcl = NULL;
-    scratchAccess->tgtOpnd = NULL;
+    scratchAccess->scratchDcl = NULL;
+    scratchAccess->flagOpnd = NULL;
 
     scratchAccess->linearizedStart = 0;
     scratchAccess->linearizedEnd = 0;
@@ -10590,14 +10575,14 @@ bool FlagSpillCleanup::initializeFlagScratchAccess(SCRATCH_PTR_VEC* scratchAcces
 #ifdef _DEBUG
             scratchAccess->regNum = topDcl_1->getRegVar()->getPhyReg()->asAreg()->getArchRegType();
 #endif
-            scratchAccess->dcl = topDcl_2;  //Spill location
+            scratchAccess->scratchDcl = topDcl_2;  //Spill location
 
             if (gra.isBlockLocal(topDcl_2))
             {
                 scratchAccess->isBlockLocal = true;
             }
             FlagLineraizedStartAndEnd(topDcl_1, scratchAccess->linearizedStart, scratchAccess->linearizedEnd);
-            scratchAccess->tgtOpnd = dst;
+            scratchAccess->flagOpnd = dst;
             return true;
         }
     }
@@ -10612,7 +10597,7 @@ bool FlagSpillCleanup::initializeFlagScratchAccess(SCRATCH_PTR_VEC* scratchAcces
 #ifdef _DEBUG
             scratchAccess->regNum = topDcl_2->getRegVar()->getPhyReg()->asAreg()->getArchRegType();
 #endif
-            scratchAccess->dcl = topDcl_1;
+            scratchAccess->scratchDcl = topDcl_1;
 
             if (gra.isBlockLocal(topDcl_1))
             {
@@ -10621,7 +10606,7 @@ bool FlagSpillCleanup::initializeFlagScratchAccess(SCRATCH_PTR_VEC* scratchAcces
 
             scratchAccess->isSpill = true;
             FlagLineraizedStartAndEnd(topDcl_2, scratchAccess->linearizedStart, scratchAccess->linearizedEnd);
-            scratchAccess->tgtOpnd = src;
+            scratchAccess->flagOpnd = src;
             return true;
         }
     }
@@ -10648,14 +10633,10 @@ void FlagSpillCleanup::freeScratchAccess(SCRATCH_PTR_VEC *scratchAccessList)
     return;
 }
 
+//Check the flag define instruction.
 void FlagSpillCleanup::flagDefine(SCRATCH_PTR_LIST& scratchTraceList,
     G4_INST*          inst)
 {
-    if (inst->opcode() == G4_pseudo_kill)
-    {
-        return;
-    }
-
     G4_DstRegRegion* dst = inst->getDst();
 
     if (dst)
@@ -10665,7 +10646,8 @@ void FlagSpillCleanup::flagDefine(SCRATCH_PTR_LIST& scratchTraceList,
 
         if (topdcl && topdcl->getRegFile() == G4_FLAG)
         {
-            regDefineFlag(&scratchTraceList, inst, dst, G4_FLAG);
+            //Flag register define
+            regDefineFlag(&scratchTraceList, inst, dst);
         }
     }
 
@@ -10700,9 +10682,9 @@ void FlagSpillCleanup::flagDefine(SCRATCH_PTR_LIST& scratchTraceList,
         SCRATCH_ACCESS *preScratchAccess = *it;
         if (IS_FLAG_RANGE_OVERLAP(linearizedStart, linearizedEnd, preScratchAccess))
         {
-            G4_Declare *preDcl = preScratchAccess->tgtOpnd->getTopDcl();
+            G4_Declare *preDcl = preScratchAccess->flagOpnd->getTopDcl();
 
-            if (regDefineAnalysis(preScratchAccess, linearizedStart, linearizedEnd, (unsigned short)maskFlag, G4_FLAG, NULL))
+            if (regDefineAnalysis(preScratchAccess, linearizedStart, linearizedEnd, (unsigned short)maskFlag, NULL))
             {
                 preScratchAccess->regKilled = true;
                 if (preScratchAccess->evicted)  //Not in use
@@ -10728,15 +10710,8 @@ void FlagSpillCleanup::flagDefine(SCRATCH_PTR_LIST& scratchTraceList,
     return;
 }
 
-void FlagSpillCleanup::flagUse(SCRATCH_PTR_LIST& scratchTraceList,
-    G4_INST*          inst)
+void FlagSpillCleanup::scratchUse(SCRATCH_PTR_LIST& scratchTraceList, G4_INST* inst)
 {
-    if (inst->opcode() == G4_pseudo_kill)
-    {
-        return;
-    }
-
-    // Src
     for (unsigned i = 0; i < G4_MAX_SRCS; i++)
     {
         G4_Operand* src = inst->getSrc(i);
@@ -10749,18 +10724,42 @@ void FlagSpillCleanup::flagUse(SCRATCH_PTR_LIST& scratchTraceList,
             {
                 topdcl = GetTopDclFromRegRegion(src);
             }
-            if (!topdcl)
+
+            if (!topdcl || (topdcl->getRegFile() == G4_FLAG))
             {
                 continue;
             }
 
-            if (topdcl->getRegFile() == G4_FLAG)
+            regUseScratch(&scratchTraceList, inst, src, i);
+        }
+    }
+}
+
+void FlagSpillCleanup::flagUse(SCRATCH_PTR_LIST& scratchTraceList, G4_INST* inst)
+{
+    for (unsigned i = 0; i < G4_MAX_SRCS; i++)
+    {
+        G4_Operand* src = inst->getSrc(i);
+
+        if (src && src->isSrcRegRegion())
+        {
+            G4_Declare* topdcl = NULL;
+
+            if (inst->getSrc(i)->asSrcRegRegion()->getBase()->isRegVar())
             {
-                regUseFlag(&scratchTraceList, inst, src, i, G4_FLAG);
+                topdcl = GetTopDclFromRegRegion(src);
             }
+
+            if (!topdcl || (topdcl->getRegFile() != G4_FLAG))
+            {
+                continue;
+            }
+
+            regUseFlag(&scratchTraceList, inst, src, i);
         }
     }
 
+    //Flag register is used as predicate
     G4_Predicate* predicate = inst->getPredicate();
     if (!predicate)
     {
@@ -10788,7 +10787,7 @@ void FlagSpillCleanup::flagUse(SCRATCH_PTR_LIST& scratchTraceList,
         SCRATCH_ACCESS *preScratchAccess = *it;
         if (IS_FLAG_RANGE_OVERLAP(linearizedStart, linearizedEnd, preScratchAccess))
         {
-            G4_Declare *preDcl = preScratchAccess->tgtOpnd->getTopDcl();
+            G4_Declare *preDcl = preScratchAccess->flagOpnd->getTopDcl();
             //Use should have same top declare
             if (preDcl == topdcl)
             {
@@ -10809,7 +10808,7 @@ void FlagSpillCleanup::flagUse(SCRATCH_PTR_LIST& scratchTraceList,
     return;
 }
 
-bool FlagSpillCleanup::flagScratchDefineUse(G4_BB*             bb,
+bool FlagSpillCleanup::flagScratchDefineUse(G4_BB* bb,
     SCRATCH_PTR_LIST*  scratchTraceList,
     SCRATCH_PTR_VEC*  candidateList,
     SCRATCH_ACCESS*    scratchAccess,
@@ -10824,48 +10823,43 @@ bool FlagSpillCleanup::flagScratchDefineUse(G4_BB*             bb,
         kt++;
 
         SCRATCH_ACCESS * preScratchAccess = *it;
+
+        //Evicted
         if (preScratchAccess->evicted)
         {
             it = kt;
             continue;
         }
 
-        if (preScratchAccess->dcl == scratchAccess->dcl)
+        //Same scratch declare
+        if (preScratchAccess->scratchDcl == scratchAccess->scratchDcl) //Same scratch location
         {
-
-            if (scratchAccess->isSpill)
+            if (scratchAccess->isSpill)  //Current is spill
             {
-                if (IS_SPILL_KILL_CANDIDATE(preScratchAccess))
+                if (IS_SPILL_KILL_CANDIDATE(preScratchAccess))  //previoius is spill as well and previous spill is not used
                 {
+                    //kill the previous spill
                     bb->erase(preScratchAccess->inst_it);
                     preScratchAccess->instKilled = true;
                     clean_num_profile->spill_clean_num[0]++;
                     scratchTraceList->erase(it); //The previous one is not candidate for reuse
                     it = kt;
+
                     continue;
                 }
-                /* More optimizatoin? :
-                 * There is case like following.
-                 * The second fill can be removed also, although it's killed before use.
-                 *   fill  f1.0   <--  SM_1
-                 *   use   f1.0
-                 *   kill  f1.0(H1)
-                 *   fill  f1.0   <--  SM_1
-                 *   kill  f1.0(H1)
-                 *   use   f1.0
-                 *   spill f1.0   -->  SM_1
-                 */
+
                 preScratchAccess->evicted = true;
-                scratchTraceList->erase(it); //The previous one is not candidate for reuse any more
+                scratchTraceList->erase(it); //The previous one is not a good candidate for reuse any more
             }
-            else
+            else  //Current is fill
             {
                 preScratchAccess->fillInUse = true;
                 preScratchAccess->useCount++;
-                if (IS_USE_KILL_CANDIDATE(preScratchAccess))
+
+                if (IS_USE_KILL_CANDIDATE(preScratchAccess))   //Is not used before
                 {
-                    scratchAccess->preScratchAccess = preScratchAccess;
-                    candidateList->push_back(scratchAccess);
+                    scratchAccess->preScratchAccess = preScratchAccess;   //set previous scrach location define
+                    candidateList->push_back(scratchAccess);  //Add to candidate list
                     if (IS_FLAG_RANGE_OVERWRITE(scratchAccess, preScratchAccess->linearizedStart, preScratchAccess->linearizedEnd))
                     {
                         //Exactly same GRF, it's useless fill, since prevous fill or spill not been killed
@@ -10884,7 +10878,7 @@ bool FlagSpillCleanup::flagScratchDefineUse(G4_BB*             bb,
     return false;
 }
 
-void FlagSpillCleanup::flagSpillFillClean(G4_BB*             bb,
+void FlagSpillCleanup::flagSpillFillClean(G4_BB* bb,
     INST_LIST_ITER     inst_it,
     SCRATCH_PTR_VEC&  scratchAccessList,
     SCRATCH_PTR_LIST&  scratchTraceList,
@@ -10892,20 +10886,36 @@ void FlagSpillCleanup::flagSpillFillClean(G4_BB*             bb,
     CLEAN_NUM_PROFILE* clean_num_profile)
 {
     G4_INST* inst = (*inst_it);
+    if (inst->opcode() == G4_pseudo_kill)
+    {
+        return;
+    }
+
     bool noDefineAnalysis = false;
 
+    //Check if there is flag use
     flagUse(scratchTraceList, inst);
 
+    //Check if it's spill/fill of the flag
     if (IS_FLAG_MOVE(inst))
     {
         SCRATCH_ACCESS *scratchAccess = NULL;
 
         if (initializeFlagScratchAccess(&scratchAccessList, scratchAccess, inst_it))
         {
+            //Build the trace list and the candidate list
+            //Trace list includes all spill/fill
+            //Candidate includues ??
+            //Checking if the spill/fill can be removed at the same time by comparing previous one.
             noDefineAnalysis = flagScratchDefineUse(bb, &scratchTraceList, &candidateList, scratchAccess, clean_num_profile);
         }
     }
+    else
+    {
+        scratchUse(scratchTraceList, inst);
+    }
 
+    //Check if there is flag define
     if (!noDefineAnalysis)
     {
         flagDefine(scratchTraceList, inst);
@@ -10922,7 +10932,6 @@ void FlagSpillCleanup::flagSpillFillClean(G4_BB*             bb,
 void FlagSpillCleanup::regFillClean(IR_Builder&        builder,
     G4_BB*             bb,
     SCRATCH_PTR_VEC&  candidateList,
-    G4_RegFileKind     regKind,
     CLEAN_NUM_PROFILE* clean_num_profile)
 {
     if (candidateList.size())
@@ -10982,7 +10991,7 @@ void FlagSpillCleanup::regFillClean(IR_Builder&        builder,
                         }
                         else if (!preScratchAccess->instKilled)
                         {
-                            if (replaceWithPreDcl(builder, scratchAccess, preScratchAccess, regKind))
+                            if (replaceWithPreDcl(builder, scratchAccess, preScratchAccess))
                             {
                                 bb->erase(scratchAccess->inst_it);
                                 scratchAccess->instKilled = true;
@@ -10996,7 +11005,7 @@ void FlagSpillCleanup::regFillClean(IR_Builder&        builder,
                 {
                     if (preScratchAccess && !preScratchAccess->instKilled)
                     {
-                        if (replaceWithPreDcl(builder, scratchAccess, preScratchAccess, regKind))
+                        if (replaceWithPreDcl(builder, scratchAccess, preScratchAccess))
                         {
                             bb->erase(scratchAccess->inst_it);
                             scratchAccess->instKilled = true;
@@ -11065,7 +11074,6 @@ void FlagSpillCleanup::regSpillClean(IR_Builder&        builder,
 // For spill code clean up, clean target may exist in all WAW, RAR, RAW, WAR.
 void FlagSpillCleanup::spillFillCodeCleanFlag(IR_Builder&        builder,
     G4_Kernel&         kernel,
-    G4_RegFileKind     regKind,
     CLEAN_NUM_PROFILE* clean_num_profile)
 {
     SCRATCH_PTR_VEC scratchAccessList;
@@ -11073,15 +11081,14 @@ void FlagSpillCleanup::spillFillCodeCleanFlag(IR_Builder&        builder,
     SCRATCH_PTR_VEC candidateList;
     FlowGraph& fg = kernel.fg;
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
     int candidate_size = 0;
-#endif
+//#endif
     for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end(); it++)
     {
         G4_BB* bb = (*it);
 
         INST_LIST_ITER inst_it = bb->begin();
-        INST_LIST_RITER inst_rit = bb->rbegin();
 
         scratchTraceList.clear();
         candidateList.clear();
@@ -11102,7 +11109,7 @@ void FlagSpillCleanup::spillFillCodeCleanFlag(IR_Builder&        builder,
         candidate_size += (int)candidateList.size();
 #endif
         //Clean the fills.
-        regFillClean(builder, bb, candidateList, regKind, clean_num_profile);
+        regFillClean(builder, bb, candidateList, clean_num_profile);
 
 #ifdef _DEBUG
         if (clean_num_profile->fill_clean_num[0] > FILL_DEBUG_THRESHOLD)
