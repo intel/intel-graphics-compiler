@@ -52,7 +52,6 @@ DynamicTextureFolding::DynamicTextureFolding() : FunctionPass(ID)
 
 void DynamicTextureFolding::FoldSingleTextureValue(CallInst &I)
 {
-    llvm::Value* textureArgValue = nullptr;
     CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     ModuleMetaData *modMD = ctx->getModuleMetaData();
 
@@ -62,7 +61,7 @@ void DynamicTextureFolding::FoldSingleTextureValue(CallInst &I)
         return;
     }
 
-    textureArgValue = cast<SampleIntrinsic>(&I)->getTextureValue();
+    llvm::Value* textureArgValue = cast<SampleIntrinsic>(&I)->getTextureValue();
     assert(textureArgValue);
 
     uint addrSpace = textureArgValue->getType()->getPointerAddressSpace();
@@ -87,10 +86,17 @@ void DynamicTextureFolding::FoldSingleTextureValue(CallInst &I)
 
 void DynamicTextureFolding::visitCallInst(CallInst &I)
 {
-    if (isSampleInstruction(&I))
+    if (GenIntrinsicInst *pCall = dyn_cast<GenIntrinsicInst>(&I))
     {
-        FoldSingleTextureValue(I);
-        //todo: FoldUNormTexture(I);
+        auto ID = pCall->getIntrinsicID();
+        if (ID == GenISAIntrinsic::GenISA_sampleptr ||
+            ID == GenISAIntrinsic::GenISA_sampleLptr ||
+            ID == GenISAIntrinsic::GenISA_sampleBptr ||
+            ID == GenISAIntrinsic::GenISA_sampleDptr)
+        {
+            FoldSingleTextureValue(I);
+            //todo: FoldUNormTexture(I);
+        }
     }
 }
 
