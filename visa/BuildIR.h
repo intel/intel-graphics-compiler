@@ -1631,6 +1631,11 @@ public:
         return static_cast<T *>(duplicateOpndImpl(opnd));
     }
 
+
+    G4_DstRegRegion *createSubDstOperand( G4_DstRegRegion* dst, uint16_t start, uint8_t size);
+    G4_SrcRegRegion *createSubSrcOperand( G4_SrcRegRegion* src, uint16_t start, uint8_t size, uint16_t newVs, uint16_t newWd);
+    G4_INST *makeSplittingInst(G4_INST *inst, uint8_t ExSize);
+
     G4_INST *Create_Send_Inst_For_CISA(G4_Predicate *pred,
                                        G4_DstRegRegion *postDst,
                                        G4_SrcRegRegion *payload,

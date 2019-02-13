@@ -31,38 +31,6 @@ using namespace vISA;
 
 using std::printf;
 
-G4_INST *HWConformity::makeSplittingInst(G4_INST *inst, uint8_t ExSize)
-{
-    // Instruction's option is reused. Call sites should reset this field
-    // properly. FIXME: fix all call sites.
-    G4_INST *newInst = NULL;
-    G4_opcode op = inst->opcode();
-    if( inst->isMath() )
-    {
-        newInst = builder.createMathInst(NULL, inst->getSaturate(), ExSize,
-            NULL, NULL, NULL, inst->asMathInst()->getMathCtrl(),
-            inst->getOption(), inst->getLineNo());
-        newInst->setCISAOff(inst->getCISAOff());
-        newInst->setSrcFilename(inst->getSrcFilename());
-    }
-    else if( G4_Inst_Table[op].n_srcs < 3 )
-    {
-        newInst = builder.createInternalInst(
-            NULL, op, NULL, inst->getSaturate(), ExSize, NULL, NULL, NULL,
-            inst->getOption(), inst->getLineNo(), inst->getCISAOff(),
-            inst->getSrcFilename());
-    }
-    else
-    {
-        newInst = builder.createInternalInst(
-            NULL, op, NULL, inst->getSaturate(), ExSize, NULL, NULL, NULL,
-            NULL, inst->getOption(), inst->getLineNo(), inst->getCISAOff(),
-            inst->getSrcFilename());
-    }
-
-    return newInst;
-}
-
 G4_Type HWConformity::getNonVectorType( G4_Type srcType )
 {
     if( srcType == Type_V )
@@ -970,7 +938,7 @@ void HWConformity::splitSIMD32Inst( INST_LIST_ITER iter, G4_BB* bb )
         G4_DstRegRegion *newDst;
         if( !nullDst )
         {
-            newDst = createSubDstOperand( dst, (uint16_t) i, currExSize);
+            newDst = builder.createSubDstOperand( dst, (uint16_t) i, currExSize);
         }
         else
         {
@@ -980,7 +948,7 @@ void HWConformity::splitSIMD32Inst( INST_LIST_ITER iter, G4_BB* bb )
         G4_INST* newInst;
         if( ( i + currExSize ) < instExSize )
         {
-            newInst = makeSplittingInst( inst, currExSize );
+            newInst = builder.makeSplittingInst( inst, currExSize );
             newInst->setDest( newDst );
             newInst->setPredicate( newPredOpnd );
             newInst->setCondMod( newCondMod );
@@ -1012,7 +980,7 @@ void HWConformity::splitSIMD32Inst( INST_LIST_ITER iter, G4_BB* bb )
                 }
                 else
                 {
-                    newInst->setSrc( createSubSrcOperand(srcs[j]->asSrcRegRegion(), (uint16_t) i,
+                    newInst->setSrc( builder.createSubSrcOperand(srcs[j]->asSrcRegRegion(), (uint16_t) i,
                         currExSize, (uint8_t)(srcs[j]->asSrcRegRegion()->getRegion()->vertStride),
                         (uint8_t)(srcs[j]->asSrcRegRegion()->getRegion()->width) ), j );
                 }
@@ -1095,7 +1063,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
         if (compOpt && i == 0)
         {
             currExSize = numInFirstMov;
-            G4_INST *newInst = makeSplittingInst(inst, instExSize);
+            G4_INST *newInst = builder.makeSplittingInst(inst, instExSize);
             newInst->setDest(builder.duplicateOperand(inst->getDst()));
             newInst->setPredicate(builder.duplicateOperand(inst->getPredicate()));
             newInst->setCondMod(builder.duplicateOperand(inst->getCondMod()));
@@ -1196,14 +1164,14 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
         MUST_BE_TRUE(currExSize != 0, "illegal execution size in instruction splitting");
         // create new Oprands. Acc should not be split since we generate it in jitter and
         // can control this.
-        G4_DstRegRegion *newDst = !nullDst ? createSubDstOperand(dst, (uint16_t)i, currExSize) : dst;
+        G4_DstRegRegion *newDst = !nullDst ? builder.createSubDstOperand(dst, (uint16_t)i, currExSize) : dst;
 
         // generate new inst
         G4_INST* newInst;
         INST_LIST_ITER newInstIter;
         if( ( i + currExSize ) < instExSize )
         {
-            newInst = makeSplittingInst(inst, currExSize);
+            newInst = builder.makeSplittingInst(inst, currExSize);
             newInst->setDest( newDst );
             newInst->setPredicate(builder.duplicateOperand(inst->getPredicate()));
             newInst->setCondMod(builder.duplicateOperand(inst->getCondMod()) );
@@ -1244,7 +1212,7 @@ void HWConformity::splitInstruction(INST_LIST_ITER iter, G4_BB* bb, bool compOpt
                     else
                     {
                         uint16_t start = i;
-                        newInst->setSrc( createSubSrcOperand(srcs[j]->asSrcRegRegion(), start, currExSize, vs[j], wd[j]), j );
+                        newInst->setSrc( builder.createSubSrcOperand(srcs[j]->asSrcRegRegion(), start, currExSize, vs[j], wd[j]), j );
                     }
                 }
             }
@@ -1392,7 +1360,7 @@ void HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
         G4_DstRegRegion *newDst;
         if( !nullDst )
         {
-            newDst = createSubDstOperand(dst, (uint16_t) i, currExSize );
+            newDst = builder.createSubDstOperand(dst, (uint16_t) i, currExSize );
         }
         else
         {
@@ -1402,7 +1370,7 @@ void HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
         G4_INST* newInst;
         if( ( i + currExSize ) < instExSize )
         {
-            newInst = makeSplittingInst(inst, currExSize);
+            newInst = builder.makeSplittingInst(inst, currExSize);
             newInst->setImplAccDst( builder.duplicateOperand(accDstRegion) );
             newInst->setImplAccSrc( builder.duplicateOperand(accSrcRegion) );
             newInst->setDest( newDst );
@@ -1451,7 +1419,7 @@ void HWConformity::evenlySplitInst( INST_LIST_ITER iter, G4_BB* bb, bool checkOv
                 }
                 else
                 {
-                    newInst->setSrc( createSubSrcOperand(srcs[j]->asSrcRegRegion(), (uint16_t) i,
+                    newInst->setSrc( builder.createSubSrcOperand(srcs[j]->asSrcRegRegion(), (uint16_t) i,
                         currExSize, (uint8_t)(srcs[j]->asSrcRegRegion()->getRegion()->vertStride),
                         (uint8_t)(srcs[j]->asSrcRegRegion()->getRegion()->width) ), j );
                 }
@@ -1756,200 +1724,6 @@ void HWConformity::insertMovAfter( INST_LIST_ITER& it, uint16_t stride, G4_BB* b
 
     inst->transferUse(newInst);
     inst->addDefUse(newInst, Opnd_src0);
-}
-
-
-// create a new operand as part of the original operand
-// handle explicit acc source
-G4_DstRegRegion* HWConformity::createSubDstOperand( G4_DstRegRegion* dst, uint16_t start, uint8_t size)
-{
-    if( dst->getRegAccess() != Direct )
-    {
-        if( start > 0 )
-        {
-            // just change immediate offset
-            uint16_t newOff = start * G4_Type_Table[dst->getType()].byteSize * dst->getHorzStride();
-            G4_DstRegRegion* newDst = builder.duplicateOperand( dst );
-            newDst->setImmAddrOff( dst->getAddrImm() + newOff );
-            return newDst;
-        }
-        else
-        {
-            return builder.duplicateOperand( dst );
-        }
-    }
-
-    uint16_t regOff, subRegOff;
-    if( start > 0 )
-    {
-        G4_Type dstType = dst->getType();
-        uint16_t hs = dst->getHorzStride();
-        if( dst->isAccReg() )
-        {
-            switch (dstType)
-            {
-            case Type_F:
-                // must be acc1.0 as result of simd16 -> 8 split
-                assert(size == 8 && "only support simd16->simd8 for now");
-                return builder.createDstRegRegion(
-                    Direct,
-                    builder.phyregpool.getAcc1Reg(),
-                    0,
-                    0,
-                    hs,
-                    dstType);
-            case Type_HF:
-            {
-                // can be one of acc0.8, acc1.0, acc1.8
-                G4_Areg* accReg = start >= 16 ? builder.phyregpool.getAcc1Reg() : builder.phyregpool.getAcc0Reg();
-                return builder.createDstRegRegion(
-                    Direct, accReg, 0, start % 16, hs, dstType);
-            }
-            default:
-
-                // other types do not support acc1, we have to continue to use acc0
-                // whoever doing the split must fix the dependencies later by shuffling instructions
-                // so that acc0 does not get overwritten
-                return builder.createDstRegRegion(*dst);
-            }
-        }
-
-        uint16_t newSubRegOff = dst->getSubRegOff() + start * hs;
-        bool crossGRF = newSubRegOff * G4_Type_Table[dstType].byteSize >= G4_GRF_REG_NBYTES;
-        if( crossGRF )
-        {
-            regOff = dst->getRegOff() + 1;
-            subRegOff = newSubRegOff - G4_GRF_REG_NBYTES / G4_Type_Table[dstType].byteSize;
-        }
-        else
-        {
-            regOff = dst->getRegOff();
-            subRegOff = newSubRegOff;
-        }
-        // create a new one
-        return builder.createDstRegRegion(Direct, dst->getBase(), regOff, subRegOff, hs, dst->getType(), 
-            dst->getAccRegSel());
-    }
-    else
-    {
-        G4_DstRegRegion *newDst = builder.duplicateOperand( dst );
-        return newDst;
-    }
-}
-
-// create a new operand as part of the orginal operand
-// assumption: no explicit ACC source
-G4_SrcRegRegion* HWConformity::createSubSrcOperand( G4_SrcRegRegion* src, uint16_t start, uint8_t size, uint16_t newVs, uint16_t newWd)
-{
-    RegionDesc *rd = NULL;
-    uint16_t vs = src->getRegion()->vertStride, hs = src->getRegion()->horzStride, wd = src->getRegion()->width;
-    if (!src->getRegion()->isRegionWH())
-    {
-        // r[a0.0,0]<4;2,1> and size is 4 or 1
-        if (size < newWd)
-        {
-            newWd = size;
-        }
-        rd = size == 1 ? builder.getRegionScalar() : 
-            builder.createRegionDesc(size == newWd ? newWd * hs : newVs, newWd, hs);
-    }
-
-    if( src->getRegAccess() != Direct )
-    {
-        if( src->getRegion()->isRegionWH() )
-        {
-            // just handle <1,0>
-            if( start > 0 )
-            {
-                // just change immediate offset
-                uint16_t subRegOff = src->getSubRegOff() + start;
-                G4_SrcRegRegion* newSrc = builder.createSrcRegRegion(src->getModifier(), src->getRegAccess(), src->getBase(),
-                    src->getRegOff(), subRegOff, src->getRegion(), src->getType(), src->getAccRegSel());
-                newSrc->setImmAddrOff(src->getAddrImm());
-                return newSrc;
-            }
-            else
-            {
-                G4_SrcRegRegion *newSrc = builder.duplicateOperand(src);
-                return newSrc;
-            }
-        }
-
-        if( start > 0 )
-        {
-            short numRows = start / wd;
-            short numCols = start % wd;
-            short newOff = (numRows * vs + numCols * hs) * G4_Type_Table[src->getType()].byteSize;
-
-            G4_SrcRegRegion* newSrc = builder.createSrcRegRegion(src->getModifier(), src->getRegAccess(), src->getBase(),
-                src->getRegOff(), src->getSubRegOff(), rd, src->getType(), src->getAccRegSel());
-            newSrc->setImmAddrOff(src->getAddrImm() + newOff);
-            return newSrc;
-
-        }
-        else
-        {
-            G4_SrcRegRegion *newSrc = builder.duplicateOperand( src );
-            newSrc->setRegion( rd );
-            return newSrc;
-        }
-    }
-
-    // direct access oprand
-    uint16_t regOff, subRegOff;
-    if( start > 0 )
-    {
-        G4_Type srcType = src->getType();
-        uint16_t newEleOff;
-        uint16_t vs = src->getRegion()->vertStride, hs = src->getRegion()->horzStride, wd = src->getRegion()->width;
-
-        if (src->isAccReg()) 
-        {
-            switch (srcType)
-            {
-            case Type_F:
-                // must be acc1.0 as result of simd16 -> 8 split
-                assert(size == 8 && "only support simd16->simd8 for now");
-                return builder.createSrcRegRegion(src->getModifier(), Direct, builder.phyregpool.getAcc1Reg(), 0, 0, src->getRegion(), srcType);
-            case Type_HF:
-            {
-                // can be one of acc0.8, acc1.0, acc1.8
-                G4_Areg* accReg = start >= 16 ? builder.phyregpool.getAcc1Reg() : builder.phyregpool.getAcc0Reg();
-                return builder.createSrcRegRegion(src->getModifier(), Direct, accReg, 0, start % 16, src->getRegion(), srcType);
-
-            }
-            default:
-                // Keep using acc0 for other types.
-                return builder.duplicateOperand(src);
-            }
-        }
-
-        newEleOff = start * hs +
-            (start >= wd && vs != wd * hs ? (start / wd * (vs - wd * hs)) : 0);
-
-        uint16_t newSubRegOff = src->getSubRegOff() + newEleOff;
-        bool crossGRF = newSubRegOff * G4_Type_Table[srcType].byteSize >= G4_GRF_REG_NBYTES;
-        if (crossGRF)
-        {
-            regOff = src->getRegOff() + 1;
-            subRegOff = newSubRegOff - G4_GRF_REG_NBYTES / G4_Type_Table[srcType].byteSize;
-        }
-        else
-        {
-            regOff = src->getRegOff();
-            subRegOff = newSubRegOff;
-        }
-
-        // create a new one
-        return builder.createSrcRegRegion(src->getModifier(), Direct, src->getBase(), regOff, subRegOff, rd, 
-            srcType, src->getAccRegSel());
-    }
-    else
-    {
-        G4_SrcRegRegion *newSrc = builder.duplicateOperand( src );
-        newSrc->setRegion( rd );
-        return newSrc;
-    }
 }
 
 

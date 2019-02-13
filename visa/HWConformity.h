@@ -129,11 +129,7 @@ namespace vISA
         void restoreDst(INST_LIST_ITER& it, G4_DstRegRegion *origDst, G4_BB *bb);
         void insertMovAfter(INST_LIST_ITER& it, uint16_t stride, G4_BB* bb);
         void removeBadSrc(INST_LIST_ITER& it, G4_BB *bb, bool crossGRFDst, bool oneGRFSrc[3], bool badTwoGRFSrc[3]);
-        G4_DstRegRegion* createSubDstOperand(G4_DstRegRegion* dst, uint16_t start, uint8_t size);
-        G4_SrcRegRegion* createSubSrcOperand(G4_SrcRegRegion* src, uint16_t start, uint8_t size, uint16_t newVs, uint16_t newWd);
         uint8_t checkMinExecSize(G4_opcode op);
-        // Create a new instrution for instruction splitting.
-        G4_INST *makeSplittingInst(G4_INST *inst, uint8_t ExSize);
         bool convertMAD2MAC(INST_LIST_ITER it, std::vector<G4_INST*> &madList, G4_BB *bb);
         void convertMAD2MulAdd(INST_LIST_ITER iter, G4_BB *bb);
         G4_Type getAccType(G4_Type ty);

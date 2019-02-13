@@ -6480,6 +6480,7 @@ G4_INST* HWConformity::splitInstWithByteDst( G4_INST *expand_op )
     return expand_sec_half_op;
 }
 
+
 // Fix up src regions in instructions:
 //    In the component uncompressed instruction uop,
 //       if exec size(uop) == width(src(uop)) && hstride(src(uop)) != 0
