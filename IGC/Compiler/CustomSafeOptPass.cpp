@@ -1337,7 +1337,9 @@ void GenSpecificPattern::visitTruncInst(llvm::TruncInst &I)
 {
     using namespace llvm::PatternMatch;
     Value *LHS;
-    if (match(&I, m_Trunc(m_LShr(m_Value(LHS), m_SpecificInt(32))))) 
+    if (match(&I, m_Trunc(m_LShr(m_Value(LHS), m_SpecificInt(32)))) &&
+        I.getType()->isIntegerTy(32) &&
+        LHS->getType()->isIntegerTy(64))
     {
         llvm::IRBuilder<> builder(&I);
         VectorType* vec2 = VectorType::get(builder.getInt32Ty(), 2);
