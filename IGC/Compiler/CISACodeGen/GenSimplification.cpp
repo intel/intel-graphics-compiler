@@ -252,7 +252,7 @@ void GenSimplification::visitExtractElement(ExtractElementInst &EEI) {
   // Collect all scalar values forming this 2-element vector.
   SmallVector<Value *, 2> Values(2);
   unsigned Mask = 0;
-  InsertElementInst *IEI;
+  InsertElementInst *IEI = nullptr;
   while ((IEI = dyn_cast<InsertElementInst>(Vec))) {
     ConstantInt *Idx = dyn_cast<ConstantInt>(IEI->getOperand(2));
     if (!Idx)
