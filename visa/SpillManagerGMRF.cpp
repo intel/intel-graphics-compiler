@@ -1268,6 +1268,19 @@ SpillManagerGMRF::createTransientGRFRangeDeclare (
 	return transientRangeDeclare;
 }
 
+static unsigned short getSpillRowSizeForSendDst(
+	G4_INST *         inst,
+	G4_DstRegRegion * spilledRegion
+)
+{
+	unsigned short nRows;
+
+    G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
+    nRows = msgDesc->ResponseLength();
+
+    return nRows;
+}
+
 // Create a regvar and its declare directive to represent the spill live
 // range that appears as a send instruction post destination GRF.
 // The type of the regvar is set as dword and its width 8. The type of
@@ -1284,14 +1297,9 @@ SpillManagerGMRF::createPostDstSpillRangeDeclare (
 	const char * name =
 		createImplicitRangeName (
 			"SP_GRF", spilledRegVar, getSpillIndex (spilledRegVar));
-	unsigned short nRows;
+	unsigned short nRows = getSpillRowSizeForSendDst(sendOut, spilledRegion);
 
-    {
-        G4_SendMsgDescriptor* msgDesc = sendOut->getMsgDesc();
-        nRows = msgDesc->ResponseLength();
-    }
-
-    G4_DstRegRegion * normalizedPostDst = builder_->createDstRegRegion(
+      G4_DstRegRegion * normalizedPostDst = builder_->createDstRegRegion(
 		Direct, spilledRegVar, spilledRegion->getRegOff (), SUBREG_ORIGIN,
 		DEF_HORIZ_STRIDE, Type_UD);
 
@@ -1355,6 +1363,28 @@ SpillManagerGMRF::createGRFFillRangeDeclare (
 	return fillRangeDecl;
 }
 
+static unsigned short getSpillRowSizeForSendSrc(
+	G4_INST *         inst,
+	G4_SrcRegRegion * filledRegion
+)
+{
+	unsigned short nRows;
+
+    G4_SendMsgDescriptor* msgDesc = inst->getMsgDesc();
+    if (inst->isSplitSend() &&
+        (inst->getSrc(1)->asSrcRegRegion() == filledRegion))
+    {
+        nRows = msgDesc->extMessageLength();
+    }
+    else
+    {
+       nRows = msgDesc->MessageLength();
+    }
+
+    return nRows;
+}
+
+
 // Create a regvar and its declare directive to represent the MRF fill live
 // range.
 
@@ -1373,20 +1403,7 @@ SpillManagerGMRF::createMRFFillRangeDeclare (
 	const char * name =
 		createImplicitRangeName (
 			"FL_MRF", filledRegVar, getFillIndex (filledRegVar));
-	unsigned short nRows = 0;
-
-    {
-        G4_SendMsgDescriptor* msgDesc = sendInst->getMsgDesc();
-        if (sendInst->isSplitSend() &&
-            (sendInst->getSrc(1)->asSrcRegRegion() == filledRegion))
-        {
-            nRows = msgDesc->extMessageLength();
-        }
-        else
-        {
-            nRows = msgDesc->MessageLength();
-        }
-    }
+	unsigned short nRows = getSpillRowSizeForSendSrc(sendInst, filledRegion);
 
     G4_SrcRegRegion * normalizedMRFSrc =
         builder_->createSrcRegRegion(
