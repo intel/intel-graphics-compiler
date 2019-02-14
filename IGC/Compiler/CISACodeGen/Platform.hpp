@@ -247,6 +247,16 @@ public:
     {
         return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE);
     }
+
+    unsigned int GetLogBindlessSamplerSize() const
+    {
+        // On Gen10+ bindless sampler are 16Bytes instead of 32bytes before
+        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE) ? 4 : 5;
+    }
+    bool SupportCPS() const
+    {
+        return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE);
+    }
     bool supportsSIMD16TypedRW() const
     {
         return false;
