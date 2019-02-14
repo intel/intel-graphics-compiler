@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CodeGenPublicEnums.h"
+#include "Compiler/CISACodeGen/Platform.hpp"
 #include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/MDFrameWork.h"
@@ -322,5 +323,34 @@ inline float GetThreadOccupancyPerSubslice(SIMDMode simdMode, unsigned threadGro
 // Duplicate of the LLVM function in llvm/Transforms/Utils/ModuleUtils.h
 // Global can now be any pointer type that uses addrspace
 void appendToUsed(llvm::Module &M, llvm::ArrayRef<llvm::GlobalValue *> Values);
+
+inline unsigned GetHwThreadsPerWG(const IGC::CPlatform& platform)
+{
+    unsigned hwThreadPerWorkgroup = platform.getMaxNumberThreadPerSubslice();
+
+    if (platform.supportPooledEU())
+    {
+        hwThreadPerWorkgroup = platform.getMaxNumberThreadPerWorkgroupPooledMax();
+    }
+    return hwThreadPerWorkgroup;
+}
+
+inline SIMDMode getLeastSIMDAllowed(unsigned int threadGroupSize, unsigned int hwThreadPerWorkgroup)
+{
+    if ((threadGroupSize <= hwThreadPerWorkgroup * 8) &&
+        threadGroupSize <= 512)
+    {
+        return SIMDMode::SIMD8;
+    }
+    else
+        if (threadGroupSize <= hwThreadPerWorkgroup * 16)
+        {
+            return SIMDMode::SIMD16;
+        }
+        else
+        {
+            return SIMDMode::SIMD32;
+        }
+}
 
 } // namespace IGC

@@ -633,7 +633,7 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
     float currentThreadOccupancy = csCtx->GetThreadOccupancy(simdMode);
     unsigned x = (threadGroupSize_X % 2 == 0) ? threadGroupSize_X / 2 : threadGroupSize_X;
     unsigned y = (threadGroupSize_Y % 2 == 0) ? threadGroupSize_Y / 2 : threadGroupSize_Y;
-    float newThreadOccupancy = GetThreadOccupancyPerSubslice(simdMode, x*y, csCtx->GetHwThreadPerWorkgroup(), csCtx->m_slmSize, csCtx->GetSlmSizePerSubslice());
+    float newThreadOccupancy = GetThreadOccupancyPerSubslice(simdMode, x*y, GetHwThreadsPerWG(csCtx->platform), csCtx->m_slmSize, csCtx->GetSlmSizePerSubslice());
 
     unsigned int newSizeX = threadGroupSize_X;
     unsigned int newSizeY = threadGroupSize_Y;
@@ -651,7 +651,7 @@ bool ThreadCombining::runOnModule(llvm::Module& M)
         currentThreadOccupancy = newThreadOccupancy;
         x = (x % 2 == 0) ? x / 2 : x;
         y = (y % 2 == 0) ? y / 2 : y;
-        newThreadOccupancy = GetThreadOccupancyPerSubslice(simdMode, x*y, csCtx->GetHwThreadPerWorkgroup(), csCtx->m_slmSize, csCtx->GetSlmSizePerSubslice());
+        newThreadOccupancy = GetThreadOccupancyPerSubslice(simdMode, x*y, GetHwThreadsPerWG(csCtx->platform), csCtx->m_slmSize, csCtx->GetSlmSizePerSubslice());
         if (x*y >= minTGSizeHeuristic && newThreadOccupancy > currentThreadOccupancy)
         {
             newSizeX = x;

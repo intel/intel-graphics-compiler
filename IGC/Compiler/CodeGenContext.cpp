@@ -444,18 +444,6 @@ unsigned ComputeShaderContext::GetThreadGroupSize()
     return threadGroupSize_X * threadGroupSize_Y * threadGroupSize_Z;
 }
 
-/** get hardware thread size per workgroup */
-unsigned ComputeShaderContext::GetHwThreadPerWorkgroup()
-{
-    unsigned hwThreadPerWorkgroup = platform.getMaxNumberThreadPerSubslice();
-
-    if(platform.supportPooledEU())
-    {
-        hwThreadPerWorkgroup = platform.getMaxNumberThreadPerWorkgroupPooledMax();
-    }
-    return hwThreadPerWorkgroup;
-}
-
 unsigned ComputeShaderContext::GetSlmSizePerSubslice()
 {
     return 65536; // TODO: should get this from GTSysInfo instead of hardcoded value
@@ -463,29 +451,13 @@ unsigned ComputeShaderContext::GetSlmSizePerSubslice()
 
 float ComputeShaderContext::GetThreadOccupancy(SIMDMode simdMode)
 {
-    return GetThreadOccupancyPerSubslice(simdMode, GetThreadGroupSize(), GetHwThreadPerWorkgroup(), m_slmSize, GetSlmSizePerSubslice());
+    return GetThreadOccupancyPerSubslice(simdMode, GetThreadGroupSize(), GetHwThreadsPerWG(platform), m_slmSize, GetSlmSizePerSubslice());
 }
 
 /** get smallest SIMD mode allowed based on thread group size */
 SIMDMode ComputeShaderContext::GetLeastSIMDModeAllowed()
 {
-    unsigned threadGroupSize = GetThreadGroupSize();
-    unsigned hwThreadPerWorkgroup = GetHwThreadPerWorkgroup();
-
-    if((threadGroupSize <= hwThreadPerWorkgroup * 8) &&
-        threadGroupSize <= 512)
-    {
-        return SIMDMode::SIMD8;
-    }
-    else
-        if(threadGroupSize <= hwThreadPerWorkgroup * 16)
-        {
-            return SIMDMode::SIMD16;
-        }
-        else
-        {
-            return SIMDMode::SIMD32;
-        }
+    return getLeastSIMDAllowed(GetThreadGroupSize(), GetHwThreadsPerWG(platform));
 }
 
 /** get largest SIMD mode for performance based on thread group size */

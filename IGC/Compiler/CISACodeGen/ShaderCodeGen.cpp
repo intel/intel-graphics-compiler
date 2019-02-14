@@ -879,17 +879,23 @@ void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &kernels
     AddLegalizationPasses(*ctx, Passes);
 
     AddAnalysisPasses(*ctx, Passes);
-    //Below orders vary based on the usage models. In case of multiple SIMD mode
-    //We want to start from lower to high if we want to build all simd modes
-    //However the default mechanism which is handled by else condition tries to find
-    //the best SIMD mode. In that case we must start from higher simd width.
-    if(ctx->m_DriverInfo.sendMultipleSIMDModes()) {
-        // If Multiple SIMD mode is enabled start with lower SIMD mode first.
-        // Idea here is if a give SIMD mode spill all SIMD modes above that will definetly fail.
-        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
-        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
+    
+    if (ctx->m_DriverInfo.sendMultipleSIMDModes())
+    {
+        unsigned int leastSIMD = 8;
+        if (ctx->getModuleMetaData()->csInfo.maxWorkGroupSize)
+        {
+            const SIMDMode leastSIMDMode = getLeastSIMDAllowed(ctx->getModuleMetaData()->csInfo.maxWorkGroupSize, GetHwThreadsPerWG(ctx->platform));
+            leastSIMD = numLanes(leastSIMDMode);
+        }
+        if (leastSIMD <= 8)
+            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
+        if (leastSIMD <= 16)
+            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
         AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
-    } else {
+    }
+    else
+    {
         // The order in which we call AddCodeGenPasses matters, please to not change order
         AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
         AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));

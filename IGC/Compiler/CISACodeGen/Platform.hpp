@@ -160,7 +160,9 @@ public:
     unsigned int getMaxNumberThreadPerSubslice() const
     {
         //total number of threads per subslice
-        return m_caps.KernelHwCaps.ThreadCount / m_caps.KernelHwCaps.SubSliceCount;
+        if(m_caps.KernelHwCaps.SubSliceCount != 0)
+            return m_caps.KernelHwCaps.ThreadCount / m_caps.KernelHwCaps.SubSliceCount;
+        return 0;
     }
     unsigned int getMaxNumberThreadPerWorkgroupPooledMax() const
     {
