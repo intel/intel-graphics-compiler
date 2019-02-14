@@ -661,6 +661,10 @@ void BankConflictPass::getBanks(G4_INST* inst, BankConflict *srcBC, G4_Declare *
         }
 
         dcls[i] = GetTopDclFromRegRegion(src);
+        if (!dcls[i])
+        {
+            continue;
+        }
         opndDcls[i] = src->getBase()->asRegVar()->getDeclare();
 
         offset[i] = (opndDcls[i]->getOffsetFromBase() + src->getLeftBound()) / G4_GRF_REG_NBYTES;
