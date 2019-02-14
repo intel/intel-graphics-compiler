@@ -501,32 +501,45 @@ void AddCopyIntrinsic::convertCopyBuiltin(CallInst* CI)
         return;
 
     // Valid names are in the form:
-    //   __builtin_IB_RegCopy_[s|u][c|s|i|l][1|2|3|4|8|16]  // int
-    //   __builtin_IB_RegCopy_[d|f|h][1|2|3|4|8|16]         // float
+    //   __builtin_IB_RegCopy_[pg|pl][s|u][c|s|i|l][1|2|3|4|8|16]  // int
+    //   __builtin_IB_RegCopy_[pg|pl][d|f|h][1|2|3|4|8|16]         // float
+    //   For pointer, pg:  global pointer;  pl: local pointer.
     StringRef funcName = func->getName();
     if (funcName.startswith("__builtin_IB_RegCopy_"))
     {
         int sz = (int)funcName.size();
         int pos = (int)sizeof("__builtin_IB_RegCopy_") - 1;
         int rem = sz - pos;
+        if (rem < 2 || rem > 6) {
+            return;
+        }
+
+        if (funcName[pos] == 'p') {
+            --rem;
+            ++pos;
+            if (funcName[pos] == 'g' || funcName[pos] == 'l') {
+                --rem;
+                ++pos;
+            }
+            else
+                return;
+        }
+
         if (rem < 2 || rem > 4) {
             return;
         }
 
-        if (rem == 2)
+        switch (funcName[pos]) {
+        case 'f':
+        case 'd':
+        case 'h':
         {
-            switch (funcName[pos]) {
-            case 'f':
-            case 'd':
-            case 'h':
-                --rem;
-                ++pos;
-                break;
-            default:
-                return;
-            }
+            --rem;
+            ++pos;
+            break;
         }
-        else if (funcName[pos] == 'u' || funcName[pos] == 's')
+        case 'u':
+        case 's':
         {
             ++pos;
             --rem;
@@ -542,11 +555,15 @@ void AddCopyIntrinsic::convertCopyBuiltin(CallInst* CI)
             default:
                 return;
             }
+            break;
         }
-        else {
+        default:
             return;
         }
 
+        if (rem != 1 && rem != 2) {
+            return;
+        }
         // rem == 1 || rem == 2
         int vsize = 0;
         for (int i = 0; i < rem; ++i)
