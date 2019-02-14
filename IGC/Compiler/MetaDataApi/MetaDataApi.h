@@ -81,12 +81,6 @@ typedef MetaObjectHandle<InlineBufferMetaDataList> InlineBufferMetaDataListHandl
 typedef MetaDataList<int32_t> ArgAddressSpacesMetaDataList;
 typedef MetaObjectHandle<ArgAddressSpacesMetaDataList> ArgAddressSpacesMetaDataListHandle; 
                                 
-typedef MetaDataList<int32_t> BufferLocationIndexMetaDataList;
-typedef MetaObjectHandle<BufferLocationIndexMetaDataList> BufferLocationIndexMetaDataListHandle; 
-                                
-typedef MetaDataList<int32_t> BufferLocationCountMetaDataList;
-typedef MetaObjectHandle<BufferLocationCountMetaDataList> BufferLocationCountMetaDataListHandle; 
-                                
 typedef MetaDataList<std::string> ArgAccessQualifiersMetaDataList;
 typedef MetaObjectHandle<ArgAccessQualifiersMetaDataList> ArgAccessQualifiersMetaDataListHandle; 
                                 
@@ -1614,9 +1608,6 @@ public:
     typedef NamedMetaDataValue<int32_t>::value_type PrivateMemoryPerWIType;        
         
     typedef MetaDataList<int32_t> OpenCLArgAddressSpacesList;        
-    typedef MetaDataList<int32_t> BufferLocationIndexList;        
-    typedef MetaDataList<int32_t> BufferLocationCountList;
-    typedef MetaDataList<bool> IsEmulationArgumentList;
 	typedef NamedMetaDataValue<int32_t>::value_type NeedBindlessHandleType;
     typedef MetaDataList<std::string> OpenCLArgAccessQualifiersList;        
     typedef MetaDataList<std::string> OpenCLArgTypesList;        
@@ -1954,188 +1945,6 @@ public:
         return m_OpenCLArgAddressSpaces.erase(i);
     }
         
-    
-    /// BufferLocationIndex related methods
-    BufferLocationIndexList::iterator begin_BufferLocationIndex()
-    {
-        return m_BufferLocationIndex.begin();
-    }
-
-    BufferLocationIndexList::iterator end_BufferLocationIndex()
-    {
-        return m_BufferLocationIndex.end();
-    }
-    BufferLocationIndexList::const_iterator begin_BufferLocationIndex() const
-    {
-        return m_BufferLocationIndex.begin();
-    }
-
-    BufferLocationIndexList::const_iterator end_BufferLocationIndex() const
-    {
-        return m_BufferLocationIndex.end();
-    }
-
-    size_t size_BufferLocationIndex()  const
-    {
-        return m_BufferLocationIndex.size();
-    }
-
-    bool empty_BufferLocationIndex()  const
-    {
-        return m_BufferLocationIndex.empty();
-    }
-
-    bool isBufferLocationIndexHasValue() const
-    {
-        return m_BufferLocationIndex.hasValue();
-    }
-    
-    BufferLocationIndexList::item_type getBufferLocationIndexItem( size_t index ) const
-    {
-        return m_BufferLocationIndex.getItem(index);
-    }
-    void clearBufferLocationIndex()
-    {
-        m_BufferLocationIndex.clear();
-    }
-
-    void setBufferLocationIndexItem( size_t index, const BufferLocationIndexList::item_type& item  )
-    {
-        return m_BufferLocationIndex.setItem(index, item);
-    }
-
-    void addBufferLocationIndexItem(const BufferLocationIndexList::item_type& val)
-    {
-        m_BufferLocationIndex.push_back(val);
-    }
-
-    BufferLocationIndexList::iterator eraseBufferLocationIndexItem(BufferLocationIndexList::iterator i)
-    {
-        return m_BufferLocationIndex.erase(i);
-    }
-        
-    
-    /// BufferLocationCount related methods
-    BufferLocationCountList::iterator begin_BufferLocationCount()
-    {
-        return m_BufferLocationCount.begin();
-    }
-
-    BufferLocationCountList::iterator end_BufferLocationCount()
-    {
-        return m_BufferLocationCount.end();
-    }
-    BufferLocationCountList::const_iterator begin_BufferLocationCount() const
-    {
-        return m_BufferLocationCount.begin();
-    }
-
-    BufferLocationCountList::const_iterator end_BufferLocationCount() const
-    {
-        return m_BufferLocationCount.end();
-    }
-
-    size_t size_BufferLocationCount()  const
-    {
-        return m_BufferLocationCount.size();
-    }
-
-    bool empty_BufferLocationCount()  const
-    {
-        return m_BufferLocationCount.empty();
-    }
-
-    bool isBufferLocationCountHasValue() const
-    {
-        return m_BufferLocationCount.hasValue();
-    }
-    
-    BufferLocationCountList::item_type getBufferLocationCountItem( size_t index ) const
-    {
-        return m_BufferLocationCount.getItem(index);
-    }
-    void clearBufferLocationCount()
-    {
-        m_BufferLocationCount.clear();
-    }
-
-    void setBufferLocationCountItem( size_t index, const BufferLocationCountList::item_type& item  )
-    {
-        return m_BufferLocationCount.setItem(index, item);
-    }
-
-    void addBufferLocationCountItem(const BufferLocationCountList::item_type& val)
-    {
-        m_BufferLocationCount.push_back(val);
-    }
-
-    BufferLocationCountList::iterator eraseBufferLocationCountItem(BufferLocationCountList::iterator i)
-    {
-        return m_BufferLocationCount.erase(i);
-    }
-
-    /// IsEmulationArgument related methods
-    IsEmulationArgumentList::iterator begin_IsEmulationArgument()
-    {
-        return m_IsEmulationArgument.begin();
-    }
-
-    IsEmulationArgumentList::iterator end_IsEmulationArgument()
-    {
-        return m_IsEmulationArgument.end();
-    }
-	
-    IsEmulationArgumentList::const_iterator begin_IsEmulationArgument() const
-    {
-        return m_IsEmulationArgument.begin();
-    }
-
-    IsEmulationArgumentList::const_iterator end_IsEmulationArgument() const
-    {
-        return m_IsEmulationArgument.end();
-    }
-
-    size_t size_IsEmulationArgument()  const
-    {
-        return m_IsEmulationArgument.size();
-    }
-
-    bool empty_IsEmulationArgument()  const
-    {
-        return m_IsEmulationArgument.empty();
-    }
-
-    bool isIsEmulationArgumentHasValue() const
-    {
-        return m_IsEmulationArgument.hasValue();
-    }
-
-    IsEmulationArgumentList::item_type getIsEmulationArgumentItem(size_t index) const
-    {
-        return m_IsEmulationArgument.getItem(index);
-    }
-	
-    void clearIsEmulationArgument()
-    {
-        m_IsEmulationArgument.clear();
-    }
-
-    void setIsEmulationArgumentItem(size_t index, const IsEmulationArgumentList::item_type& item)
-    {
-        return m_IsEmulationArgument.setItem(index, item);
-    }
-
-    void addIsEmulationArgumentItem(const IsEmulationArgumentList::item_type& val)
-    {
-        m_IsEmulationArgument.push_back(val);
-    }
-
-    IsEmulationArgumentList::iterator eraseIsEmulationArgumentItem(IsEmulationArgumentList::iterator i)
-    {
-        return m_IsEmulationArgument.erase(i);
-    }
-
-           
     /// OpenCLArgAccessQualifiers related methods
     OpenCLArgAccessQualifiersList::iterator begin_OpenCLArgAccessQualifiers()
     {
@@ -2478,9 +2287,6 @@ private:
     llvm::MDNode* getResourceAllocNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getOpenCLVectorTypeHintNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getOpenCLArgAddressSpacesNode( const llvm::MDNode* pParentNode) const;    
-    llvm::MDNode* getBufferLocationIndexNode( const llvm::MDNode* pParentNode) const;    
-    llvm::MDNode* getBufferLocationCountNode( const llvm::MDNode* pParentNode) const;    
-    llvm::MDNode* getIsEmulationArgumentNode(const llvm::MDNode* pParentNode) const;
     llvm::MDNode* getOpenCLArgAccessQualifiersNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getOpenCLArgTypesNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getOpenCLArgBaseTypesNode( const llvm::MDNode* pParentNode) const;    
@@ -2499,9 +2305,6 @@ private:
     ResourceAllocMetaDataHandle m_ResourceAlloc;        
     VectorTypeHintMetaDataHandle m_OpenCLVectorTypeHint;        
     MetaDataList<int32_t> m_OpenCLArgAddressSpaces;        
-    MetaDataList<int32_t> m_BufferLocationIndex;        
-    MetaDataList<int32_t> m_BufferLocationCount;
-    MetaDataList<bool> m_IsEmulationArgument;
     MetaDataList<std::string> m_OpenCLArgAccessQualifiers;        
     MetaDataList<std::string> m_OpenCLArgTypes;        
     MetaDataList<std::string> m_OpenCLArgBaseTypes;        

@@ -1901,9 +1901,7 @@ FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode* pNode, bool hasId
     m_LocalOffsets(getLocalOffsetsNode(pNode), true),        
     m_ResourceAlloc(ResourceAllocMetaData::get(getResourceAllocNode(pNode), true)),        
     m_OpenCLVectorTypeHint(VectorTypeHintMetaData::get(getOpenCLVectorTypeHintNode(pNode), true)),        
-    m_OpenCLArgAddressSpaces(getOpenCLArgAddressSpacesNode(pNode), true),        
-    m_BufferLocationIndex(getBufferLocationIndexNode(pNode), true),        
-    m_BufferLocationCount(getBufferLocationCountNode(pNode), true),        
+    m_OpenCLArgAddressSpaces(getOpenCLArgAddressSpacesNode(pNode), true),                
     m_OpenCLArgAccessQualifiers(getOpenCLArgAccessQualifiersNode(pNode), true),        
     m_OpenCLArgTypes(getOpenCLArgTypesNode(pNode), true),        
     m_OpenCLArgBaseTypes(getOpenCLArgBaseTypesNode(pNode), true),        
@@ -1925,9 +1923,6 @@ FunctionInfoMetaData::FunctionInfoMetaData():    m_Type("function_type"),
     m_ResourceAlloc(ResourceAllocMetaDataHandle::ObjectType::get("resource_alloc")),        
     m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),        
     m_OpenCLArgAddressSpaces("opencl_kernel_arg_addr_space"),        
-    m_BufferLocationIndex("buffer_location_index"),        
-    m_BufferLocationCount("buffer_location_count"),        
-    m_IsEmulationArgument("is_emulation_argument"),
     m_OpenCLArgAccessQualifiers("opencl_kernel_arg_access_qual"),        
     m_OpenCLArgTypes("opencl_kernel_arg_type"),        
     m_OpenCLArgBaseTypes("opencl_kernel_arg_base_type"),        
@@ -1950,9 +1945,6 @@ FunctionInfoMetaData::FunctionInfoMetaData(const char* name):
     m_ResourceAlloc(ResourceAllocMetaDataHandle::ObjectType::get("resource_alloc")),        
     m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),        
     m_OpenCLArgAddressSpaces("opencl_kernel_arg_addr_space"),        
-    m_BufferLocationIndex("buffer_location_index"),        
-    m_BufferLocationCount("buffer_location_count"),        
-    m_IsEmulationArgument("is_emulation_argument"),
     m_OpenCLArgAccessQualifiers("opencl_kernel_arg_access_qual"),        
     m_OpenCLArgTypes("opencl_kernel_arg_type"),        
     m_OpenCLArgBaseTypes("opencl_kernel_arg_base_type"),        
@@ -2019,20 +2011,7 @@ bool FunctionInfoMetaData::hasValue() const
     {
         return true;
     }
-        
-    
-    if (m_BufferLocationIndex.hasValue())
-    {
-        return true;
-    }
-        
-    
-    if (m_BufferLocationCount.hasValue())
-    {
-        return true;
-    }
-        
-    
+
     if (m_OpenCLArgAccessQualifiers.hasValue())
     {
         return true;
@@ -2107,15 +2086,7 @@ bool FunctionInfoMetaData::dirty() const
     if( m_OpenCLArgAddressSpaces.dirty() )
     {
         return true;
-    }        
-    if( m_BufferLocationIndex.dirty() )
-    {
-        return true;
-    }        
-    if( m_BufferLocationCount.dirty() )
-    {
-        return true;
-    }        
+    }              
     if( m_OpenCLArgAccessQualifiers.dirty() )
     {
         return true;
@@ -2153,9 +2124,6 @@ void FunctionInfoMetaData::discardChanges()
     m_ResourceAlloc.discardChanges();        
     m_OpenCLVectorTypeHint.discardChanges();        
     m_OpenCLArgAddressSpaces.discardChanges();        
-    m_BufferLocationIndex.discardChanges();        
-    m_BufferLocationCount.discardChanges();        
-    m_IsEmulationArgument.discardChanges();
     m_OpenCLArgAccessQualifiers.discardChanges();        
     m_OpenCLArgTypes.discardChanges();        
     m_OpenCLArgBaseTypes.discardChanges();        
@@ -2220,21 +2188,6 @@ llvm::Metadata* FunctionInfoMetaData::generateNode(llvm::LLVMContext& context) c
     {
         args.push_back(m_OpenCLArgAddressSpaces.generateNode(context));
     }
-
-    if (isBufferLocationIndexHasValue())
-    {
-        args.push_back(m_BufferLocationIndex.generateNode(context));
-    }
-
-    if (isBufferLocationCountHasValue())
-    {
-        args.push_back(m_BufferLocationCount.generateNode(context));
-    }
-
-    if (isIsEmulationArgumentHasValue())
-    {
-        args.push_back(m_IsEmulationArgument.generateNode(context));
-    }
         
     if (isOpenCLArgAccessQualifiersHasValue())
     {
@@ -2294,9 +2247,6 @@ void FunctionInfoMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode)
     m_ResourceAlloc.save(context, llvm::cast<llvm::MDNode>(getResourceAllocNode(pNode)));        
     m_OpenCLVectorTypeHint.save(context, llvm::cast<llvm::MDNode>(getOpenCLVectorTypeHintNode(pNode)));        
     m_OpenCLArgAddressSpaces.save(context, llvm::cast<llvm::MDNode>(getOpenCLArgAddressSpacesNode(pNode)));        
-    m_BufferLocationIndex.save(context, llvm::cast<llvm::MDNode>(getBufferLocationIndexNode(pNode)));        
-    m_BufferLocationCount.save(context, llvm::cast<llvm::MDNode>(getBufferLocationCountNode(pNode)));        
-    m_IsEmulationArgument.save(context, llvm::cast<llvm::MDNode>(getIsEmulationArgumentNode(pNode)));        
     m_OpenCLArgAccessQualifiers.save(context, llvm::cast<llvm::MDNode>(getOpenCLArgAccessQualifiersNode(pNode)));        
     m_OpenCLArgTypes.save(context, llvm::cast<llvm::MDNode>(getOpenCLArgTypesNode(pNode)));        
     m_OpenCLArgBaseTypes.save(context, llvm::cast<llvm::MDNode>(getOpenCLArgBaseTypesNode(pNode)));        
@@ -2495,60 +2445,6 @@ llvm::MDNode* FunctionInfoMetaData::getOpenCLArgAddressSpacesNode( const llvm::M
     for(NodeIterator i = NodeIterator(pParentNode, 0+offset), e = NodeIterator(pParentNode); i != e; ++i )
     {
         if( isNamedNode(i.get(), "opencl_kernel_arg_addr_space") )
-        {
-            return llvm::dyn_cast<llvm::MDNode>(i.get());
-        }
-    }
-    return NULL;
-}
-    
-llvm::MDNode* FunctionInfoMetaData::getBufferLocationIndexNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    for(NodeIterator i = NodeIterator(pParentNode, 0+offset), e = NodeIterator(pParentNode); i != e; ++i )
-    {
-        if( isNamedNode(i.get(), "buffer_location_index") )
-        {
-            return llvm::dyn_cast<llvm::MDNode>(i.get());
-        }
-    }
-    return NULL;
-}
-    
-llvm::MDNode* FunctionInfoMetaData::getBufferLocationCountNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    for(NodeIterator i = NodeIterator(pParentNode, 0+offset), e = NodeIterator(pParentNode); i != e; ++i )
-    {
-        if( isNamedNode(i.get(), "buffer_location_count") )
-        {
-            return llvm::dyn_cast<llvm::MDNode>(i.get());
-        }
-    }
-    return NULL;
-}
-
-llvm::MDNode* FunctionInfoMetaData::getIsEmulationArgumentNode(const llvm::MDNode* pParentNode) const
-{
-    if (!pParentNode)
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    for (NodeIterator i = NodeIterator(pParentNode, 0 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-    {
-        if (isNamedNode(i.get(), "is_emulation_argument"))
         {
             return llvm::dyn_cast<llvm::MDNode>(i.get());
         }

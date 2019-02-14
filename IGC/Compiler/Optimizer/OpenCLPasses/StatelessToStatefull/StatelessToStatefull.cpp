@@ -164,6 +164,7 @@ StatelessToStatefull::StatelessToStatefull(bool hasBufOff)
 bool StatelessToStatefull::runOnFunction(llvm::Function &F)
 {
     MetaDataUtils* pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
+    ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
     // skip device enqueue tests for now to avoid tracking binding tables acorss
     // enqueued blocks.
@@ -190,7 +191,7 @@ bool StatelessToStatefull::runOnFunction(llvm::Function &F)
 		(m_hasBufferOffsetArg && IGC_IS_FLAG_ENABLED(EnableOptionalBufferOffset));
 
     m_pImplicitArgs = new ImplicitArgs(F, pMdUtils);
-	m_pKernelArgs = new KernelArgs(F, &(F.getParent()->getDataLayout()), pMdUtils);
+	m_pKernelArgs = new KernelArgs(F, &(F.getParent()->getDataLayout()), pMdUtils, modMD);
 
     visit(F);
 

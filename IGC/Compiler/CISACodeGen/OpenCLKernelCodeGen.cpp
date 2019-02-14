@@ -1439,7 +1439,7 @@ void COpenCLKernel::AllocatePayload()
             KernelArgsOrder::InputType::INDIRECT :
             KernelArgsOrder::InputType::CURBE;
 
-    KernelArgs kernelArgs(*entry, m_DL, m_pMdUtils, layout, m_ModuleMetadata);
+    KernelArgs kernelArgs(*entry, m_DL, m_pMdUtils, m_ModuleMetadata, layout);
 
     if (layout == KernelArgsOrder::InputType::INDIRECT && !loadThreadPayload)
     {
@@ -2008,7 +2008,7 @@ bool COpenCLKernel::hasReadWriteImage(llvm::Function &F)
         return false;
     }
 
-    KernelArgs kernelArgs(F, m_DL, m_pMdUtils, KernelArgsOrder::InputType::INDEPENDENT, m_ModuleMetadata);
+    KernelArgs kernelArgs(F, m_DL, m_pMdUtils, m_ModuleMetadata, KernelArgsOrder::InputType::INDEPENDENT);
     for (auto KA : kernelArgs)
     {
         // RenderScript annotation sets "read_write" qualifier 

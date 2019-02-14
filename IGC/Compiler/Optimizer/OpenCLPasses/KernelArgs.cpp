@@ -1000,7 +1000,7 @@ bool KernelArgs::const_iterator::operator!=(const const_iterator& iterator)
     return (m_major != iterator.m_major) || (m_minor != iterator.m_minor); 
 }
 
-KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* pMdUtils, KernelArgsOrder::InputType layout, ModuleMetaData* moduleMD)
+KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* pMdUtils, ModuleMetaData* moduleMD, KernelArgsOrder::InputType layout)
     : m_KernelArgsOrder( layout ), 
       m_args( m_KernelArgsOrder )
 {
@@ -1020,24 +1020,31 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
             // Check for bindless images which require allocation
             FunctionMetaData *funcMD = &moduleMD->FuncMD[const_cast<llvm::Function*>(&F)];
             ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
-            ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[funcArg->getArgNo()];
-            assert((size_t) funcArg->getArgNo() < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
-            if (argAlloc->type == ResourceTypeEnum::BindlessUAVResourceType ||
-                argAlloc->type == ResourceTypeEnum::BindlessSamplerResourceType)
+            if (resourceAlloc->argAllocMDList.size() > funcArg->getArgNo())
             {
-                needAllocation = funcArg->getNumUses() > 0;
+                ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[funcArg->getArgNo()];
+                if (argAlloc->type == ResourceTypeEnum::BindlessUAVResourceType ||
+                    argAlloc->type == ResourceTypeEnum::BindlessSamplerResourceType)
+                {
+                    needAllocation = funcArg->getNumUses() > 0;
+                }
             }
         }
 
         int location_index = -1;
         int location_count = -1;
         bool is_emulation_argument = false;
-        if (funcInfoMD->isBufferLocationIndexHasValue())
-            location_index = funcInfoMD->getBufferLocationIndexItem(i);
-        if (funcInfoMD->isBufferLocationCountHasValue())
-            location_count = funcInfoMD->getBufferLocationCountItem(i);
-        if (funcInfoMD->isIsEmulationArgumentHasValue())
-            is_emulation_argument = funcInfoMD->getIsEmulationArgumentItem(i);
+
+        auto it = moduleMD->FuncMD.find(const_cast<Function*>(&F));
+        if (it != moduleMD->FuncMD.end())
+        {
+            if (it->second.funcArgs.size() > (unsigned)i)
+            {
+                location_index = it->second.funcArgs[i].bufferLocationIndex;
+                location_count = it->second.funcArgs[i].bufferLocationCount;
+                is_emulation_argument = it->second.funcArgs[i].isEmulationArg;
+            }
+        }
 
         KernelArg kernelArg = KernelArg(
             &(*funcArg), 

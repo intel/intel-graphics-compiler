@@ -63,15 +63,23 @@ namespace IGC
 
     struct WorkGroupWalkOrderMD
     {
-        int dim0 = 0;
-        int dim1 = 0;
-        int dim2 = 0;
+    int dim0 = 0;
+    int dim1 = 0;
+    int dim2 = 0;
+    };
+
+    struct FuncArgMD
+    {
+        int bufferLocationIndex = -1;
+        int bufferLocationCount = -1;
+        bool isEmulationArg = 0;
     };
 
     //to hold metadata of every function
     struct FunctionMetaData
     {
         WorkGroupWalkOrderMD workGroupWalkOrder;
+        std::vector<FuncArgMD> funcArgs;
         FunctionTypeMD functionType = UnknownFunction;
         ResourceAllocMD resourceAlloc;
         std::vector<unsigned> maxByteOffsets;
@@ -81,10 +89,10 @@ namespace IGC
         bool isCloned = false;
         bool hasInlineVmeSamplers = false;
         int localSize = 0;
-        bool globalIDPresent = false;
         bool localIDPresent = false;
         bool groupIDPresent = false;
         int privateMemoryPerWI = 0;
+        bool globalIDPresent = false;
     };
 
     // isCloned member is added to mark whether a function is clone
