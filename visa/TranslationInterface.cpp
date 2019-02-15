@@ -1921,7 +1921,6 @@ void IR_Builder::generateBarrierSend()
         1,
         createNullDst(Type_UD),
         Create_Src_Opnd_From_Dcl(dcl, getRegionStride1()),
-        createImm(exdesc, Type_UD),
         createImm(desc, Type_UD),
         InstOpt_WriteEnable,
         msgDesc,
@@ -1965,7 +1964,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
 
             auto msgDesc = createSendMsgDesc(desc, SFID_SAMPLER, true, true);
             createSendInst( NULL, G4_send, 8, sendDstOpnd, sendMsgOpnd,
-                createImm(SFID_SAMPLER, Type_UD), createImm(desc, Type_UD), 0, msgDesc, 0);
+                createImm(desc, Type_UD), 0, msgDesc, 0);
 
             G4_SrcRegRegion* moveSrcOpnd = createSrcRegRegion(Mod_src_undef, Direct, dstDcl->getRegVar(), 0, 0, getRegionStride1(), Type_UD);
             Create_MOV_Inst( dstDcl, 0, 0, 8, NULL, NULL, moveSrcOpnd);
@@ -6584,7 +6583,6 @@ int IR_Builder::translateVISARawSendInst(G4_Predicate *predOpnd, Common_ISA_Exec
         exsize,
         dstOpnd,
         msgOpnd,
-        createImm( exDesc, Type_UD ),
         msgDescOpnd,
         inst_opt,
         sendMsgDesc,
@@ -9131,9 +9129,8 @@ static uint8_t getUPosition(VISASampler3DSubOpCode opcode)
     return position;
 }
 
-static void setUniformSampler(G4_INST* sendInst, bool uniformSampler)
+static void setUniformSampler(G4_InstSend* sendInst, bool uniformSampler)
 {
-    assert(sendInst->isSend() && "expect send inst");
 }
 
 /*
@@ -9251,7 +9248,7 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
     }
     G4_SendMsgDescriptor *msgDesc = builder->createSendMsgDesc(desc, extDesc, true, false, surface, sampler);
 
-    G4_INST* sendInst = nullptr;
+    G4_InstSend* sendInst = nullptr;
     bool forceSplitSend = ForceSplitSend(*builder, surface);
 
     if (forceSplitSend)
@@ -9709,7 +9706,7 @@ int IR_Builder::translateVISASampler3DInst(
     uint32_t fc = createSamplerMsgDesc(actualop, execSize, FP16Return, FP16Input);
     uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, useHeader, sizes[0], responseLength);
 
-    G4_INST* sendInst = nullptr;
+    G4_InstSend* sendInst = nullptr;
 	bool forceSplitSend = ForceSplitSend(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend)
     {

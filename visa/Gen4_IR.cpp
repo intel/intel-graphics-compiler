@@ -510,7 +510,7 @@ G4_INST::G4_INST(const IR_Builder& irb,
     G4_Operand* s0,
     G4_Operand* s1,
     unsigned int opt) :
-    op(o), dst(d), predicate(prd), mod(m), option(opt), msgDesc(NULL),
+    op(o), dst(d), predicate(prd), mod(m), option(opt), 
     local_id(0),
     srcCISAoff(-1),
     sat(s),
@@ -553,7 +553,7 @@ G4_INST::G4_INST(const IR_Builder& irb,
     G4_Operand* s1,
     G4_Operand* s2,
     unsigned int opt) :
-    op(o), dst(d), predicate(prd), mod(m), option(opt), msgDesc(NULL),
+    op(o), dst(d), predicate(prd), mod(m), option(opt), 
     local_id(0),
     srcCISAoff(-1),
     sat(s),
@@ -587,6 +587,40 @@ G4_INST::G4_INST(const IR_Builder& irb,
     associateOpndWithInst(s2, this);
     associateOpndWithInst(predicate, this);
     associateOpndWithInst(mod, this);
+}
+
+G4_InstSend::G4_InstSend(
+    const IR_Builder& builder,
+    G4_Predicate* prd,
+    G4_opcode o,
+    unsigned char size,
+    G4_DstRegRegion* dst,
+    G4_SrcRegRegion* payload,
+    G4_Operand* desc,
+    uint32_t opt,
+    G4_SendMsgDescriptor* md) :
+    G4_INST(builder, prd, o, nullptr, false, size, dst, payload, desc, opt),
+    msgDesc(md)
+{
+
+}
+
+G4_InstSend::G4_InstSend(
+    const IR_Builder& builder,
+    G4_Predicate* prd,
+    G4_opcode o,
+    unsigned char size,
+    G4_DstRegRegion* dst,
+    G4_SrcRegRegion* payload,
+    G4_SrcRegRegion* src1,
+    G4_Operand* desc,
+    G4_Operand* extDesc,
+    uint32_t opt,
+    G4_SendMsgDescriptor* md) :
+    G4_INST(builder, prd, o, nullptr, false, size, dst, payload, src1, desc, opt),
+    msgDesc(md)
+{
+    setSrc(extDesc, 3);
 }
 
 void G4_INST::setOpcode(G4_opcode opcd)
@@ -3061,13 +3095,9 @@ bool G4_INST::isOptBarrier()
     return false;
 }
 
-bool G4_INST::isDirectSplittableSend()
+bool G4_InstSend::isDirectSplittableSend()
 {
-    if (!isSend())
-    {
-        return false;
-    }
-    
+
     unsigned short elemSize = dst->getElemSize();
     CISA_SHARED_FUNCTION_ID funcID = msgDesc->getFuncId();
     unsigned subFuncID = msgDesc->getMessageType();
@@ -3137,9 +3167,9 @@ bool G4_INST::isDirectSplittableSend()
 //
 // emit send instruction with symbolic/physical register operand depending on the operand check
 //
-void G4_INST::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_srcs)
+void G4_InstSend::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_srcs)
 {
-    G4_INST* sendInst = this;
+    G4_InstSend* sendInst = this;
 
     if (sendInst->predicate)
     {
@@ -3208,7 +3238,7 @@ void G4_INST::emit_send(std::ostream& output, bool symbol_dst, bool *symbol_srcs
     sendInst->emit_options(output);
 }
 
-void G4_INST::emit_send_desc(std::ostream& output)
+void G4_InstSend::emit_send_desc(std::ostream& output)
 {
     G4_INST* sendInst = this;
 
@@ -3234,7 +3264,7 @@ void G4_INST::emit_send_desc(std::ostream& output)
      }
 }
 
-void G4_INST::emit_send(std::ostream& output, bool dotStyle)
+void G4_InstSend::emit_send(std::ostream& output, bool dotStyle)
 {
 
     if (pCisaBuilder->m_options.getOption(vISA_SymbolReg))
@@ -6605,82 +6635,7 @@ void G4_INST::computeRightBound(G4_Operand* opnd)
     {
 		bool done = false;
 
-        if(isSend())
-		{
-            auto computeSendOperandBound = [](G4_Operand* opnd, int numReg)
-            {
-                if (numReg == 0)
-                {
-                    return;
-                }
-
-                // Sends read/write in units of GRF. With a narrower simd width,
-                // the variable may have size smaller than one GRF, or smaller
-                // the reponse or message length. In this case, limit the right
-                // bound up to the variable size.
-                unsigned LB = opnd->left_bound;
-                unsigned RB = std::min(opnd->getTopDcl()->getByteSize(),
-                                       LB + numReg * G4_GRF_REG_NBYTES) - 1;
-
-                unsigned NBytes = RB - LB + 1;
-                if (NBytes <= 32)
-                {
-                    uint32_t Mask = uint32_t(-1) >> (32 - NBytes);
-                    opnd->setBitVecL(Mask);
-                }
-                else if (NBytes <= 64)
-                {
-                    opnd->setBitVecL(0xFFFFFFFF);
-                    uint32_t Mask = uint32_t(-1) >> (64 - NBytes);
-                    opnd->setBitVecH(Mask);
-                }
-                else
-                {
-                    // NBytes > 64
-                    opnd->setBitVecL(0xFFFFFFFF);
-                    opnd->setBitVecH(0xFFFFFFFF);
-
-                    // GRF level tracking, up to 32 + 2 GRFs.
-                    unsigned NGrfs = (NBytes - 64 + 31) / 32;
-                    uint32_t Mask = uint32_t(-1) >> (32 - NGrfs);
-                    opnd->setBitVecS(Mask);
-                }
-                opnd->setRightBound(RB);
-            };
-
-			if (done == false &&
-                (srcs[0] == opnd ||
-                 (isSplitSend() && srcs[1] == opnd )))
-			{
-			    // For send instruction's msg operand rightbound depends
-				// on msg descriptor
-				uint16_t numReg = (srcs[0] == opnd) ? getMsgDesc()->MessageLength() : getMsgDesc()->extMessageLength();
-                computeSendOperandBound(opnd, numReg);
-					done = true;
-			    }
-			else if( done == false && dst == opnd )
-			{
-			    // Compute right bound for dst operand
-				uint16_t numReg = getMsgDesc()->ResponseLength();
-
-                if (msgDesc != NULL &&
-                	msgDesc->isScratchRW() == false &&
-                    msgDesc->isOwordLoad() &&
-                    (msgDesc->getFuncCtrl() & 0x700) == 0)
-                {
-                    //1 oword read
-                    opnd->setBitVecL(0xFFFF);
-                    opnd->setRightBound( opnd->left_bound + 15 );
-                }
-                else
-                {
-                    computeSendOperandBound(opnd, numReg);
-                }
-
-				done = true;
-			}
-		}
-		else if( done == false && op == G4_pln && opnd == srcs[1] )
+		if( done == false && op == G4_pln && opnd == srcs[1] )
 		{
 			opnd->computeRightBound( execSize > 8 ? execSize : execSize * 2 );
             if( execSize > 8 )
@@ -6755,6 +6710,96 @@ void G4_INST::computeRightBound(G4_Operand* opnd)
 		}
 	}
 }
+
+void G4_InstSend::computeRightBound(G4_Operand* opnd)
+{
+    associateOpndWithInst(opnd, this);
+
+    if (opnd && !opnd->isImm() && !opnd->isNullReg())
+    {
+
+        auto computeSendOperandBound = [](G4_Operand* opnd, int numReg)
+        {
+            if (numReg == 0)
+            {
+                return;
+            }
+
+            // Sends read/write in units of GRF. With a narrower simd width,
+            // the variable may have size smaller than one GRF, or smaller
+            // the reponse or message length. In this case, limit the right
+            // bound up to the variable size.
+            unsigned LB = opnd->left_bound;
+            unsigned RB = std::min(opnd->getTopDcl()->getByteSize(),
+                LB + numReg * G4_GRF_REG_NBYTES) - 1;
+
+            unsigned NBytes = RB - LB + 1;
+            if (NBytes <= 32)
+            {
+                uint32_t Mask = uint32_t(-1) >> (32 - NBytes);
+                opnd->setBitVecL(Mask);
+            }
+            else if (NBytes <= 64)
+            {
+                opnd->setBitVecL(0xFFFFFFFF);
+                uint32_t Mask = uint32_t(-1) >> (64 - NBytes);
+                opnd->setBitVecH(Mask);
+            }
+            else
+            {
+                // NBytes > 64
+                opnd->setBitVecL(0xFFFFFFFF);
+                opnd->setBitVecH(0xFFFFFFFF);
+
+                // GRF level tracking, up to 32 + 2 GRFs.
+                unsigned NGrfs = (NBytes - 64 + 31) / 32;
+                uint32_t Mask = uint32_t(-1) >> (32 - NGrfs);
+                opnd->setBitVecS(Mask);
+            }
+            opnd->setRightBound(RB);
+        };
+
+        if (srcs[0] == opnd || (isSplitSend() && srcs[1] == opnd))
+        {
+            // For send instruction's msg operand rightbound depends
+            // on msg descriptor
+            uint16_t numReg = (srcs[0] == opnd) ? getMsgDesc()->MessageLength() : getMsgDesc()->extMessageLength();
+            computeSendOperandBound(opnd, numReg);
+        }
+        else if (dst == opnd)
+        {
+            // Compute right bound for dst operand
+            uint16_t numReg = getMsgDesc()->ResponseLength();
+
+            if (msgDesc->isScratchRW() == false &&
+                msgDesc->isOwordLoad() &&
+                (msgDesc->getFuncCtrl() & 0x700) == 0)
+            {
+                //1 oword read
+                opnd->setBitVecL(0xFFFF);
+                opnd->setRightBound(opnd->left_bound + 15);
+            }
+            else
+            {
+                computeSendOperandBound(opnd, numReg);
+            }
+        }
+        else
+        {
+            opnd->computeRightBound(execSize);
+        }
+    }
+
+}
+
+void G4_INST::computeARFRightBound()
+{
+    computeRightBound(predicate);
+    computeRightBound(mod);
+    computeRightBound(implAccSrc);
+    computeRightBound(implAccDst);
+}
+
 
 // This function should only be invoked after computePReg() function
 // has been invoked. The function computePReg() is invoked by computePhyReg()
@@ -7741,9 +7786,6 @@ G4_INST* G4_INST::cloneInst()
 
 G4_INST* G4_InstIntrinsic::cloneInst()
 {
-    if (!isIntrinsicInst())
-        return nullptr;
-
     auto nonConstBuilder = const_cast<IR_Builder*>(&builder);
     auto prd = nonConstBuilder->duplicateOperand(getPredicate());
     auto dst = nonConstBuilder->duplicateOperand(getDst());
@@ -7757,9 +7799,6 @@ G4_INST* G4_InstIntrinsic::cloneInst()
 
 G4_INST* G4_InstMath::cloneInst()
 {
-    if (!isMathInst())
-        return nullptr;
-
     auto nonConstBuilder = const_cast<IR_Builder*>(&builder);
     auto prd = nonConstBuilder->duplicateOperand(getPredicate());
     auto dst = nonConstBuilder->duplicateOperand(getDst());

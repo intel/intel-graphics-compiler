@@ -100,11 +100,10 @@ G4_DstRegRegion* CoalesceSpillFills::generateCoalescedFill(unsigned int scratchO
         sample->getBti(), sample->getSti());
 
     G4_Imm* msgDescImm = kernel.fg.builder->createImm(msgDesc->getDesc(), Type_UD);
-    G4_Imm* extDesc = kernel.fg.builder->createImm(sample->getExtendedDesc(), Type_UD);
 
     // Create send instruction with payloadSize starting at scratch offset min
     auto fillInst = kernel.fg.builder->createSendInst(nullptr, G4_send, 16,
-        fillDst, header, extDesc, msgDescImm, InstOpt_WriteEnable, msgDesc);
+        fillDst, header, msgDescImm, InstOpt_WriteEnable, msgDesc);
     fillInst->setCISAOff(srcCISAOff);
 
 #if 0

@@ -659,6 +659,7 @@ public:
 class G4_InstMath;
 class G4_InstCF;
 class G4_InstIntrinsic;
+class G4_InstSend;
 
 
 class G4_INST
@@ -673,7 +674,6 @@ protected:
     G4_Predicate*    predicate;
     G4_CondMod*      mod;
     unsigned int     option;     // inst option
-    G4_SendMsgDescriptor*   msgDesc;
     G4_Operand*             implAccSrc;
     G4_DstRegRegion*        implAccDst;
 
@@ -746,8 +746,6 @@ public:
     virtual G4_INST* cloneInst();
     virtual bool isBaseInst() { return true; }
     virtual bool isCFInst() { return false; }
-    virtual bool isIntrinsicInst() { return false; }
-    virtual bool isMathInst() { return false; }
 
     uint32_t getLexicalId() const { return global_id; }
     void setLexicalId(uint32_t id) { global_id = id; }
@@ -790,69 +788,31 @@ public:
     bool isFReturn() const { return (op == G4_pseudo_fret); }
     bool isMath() const { return op == G4_math; }
 	bool isIntrinsic() const { return op == G4_intrinsic; }
-    bool isSend() const
-    {
-        return op == G4_send || op == G4_sendc || op == G4_sends ||
-               op == G4_sendsc;
-    }
+    bool isSend() const { return op == G4_send || op == G4_sendc || op == G4_sends || op == G4_sendsc; }
     bool isSplitSend() const { return op == G4_sends || op == G4_sendsc; }
+
+    // ToDo: get rid of these functions which don't make sense for non-sends
+    virtual bool isEOT() const { return false;}
+    virtual G4_SendMsgDescriptor* getMsgDesc() const { return nullptr; }
+
+    virtual bool mayExceedTwoGRF() const
+    {
+        return false;
+    }
+    // special instructions(e.g., send) should override
+    virtual void computeRightBound(G4_Operand* opnd);
+
     bool isWait() const { return op == G4_wait; }
-    bool isEOT() const { return msgDesc != NULL && msgDesc->isEOTInst(); }
     bool isPartialWrite() const
     {
         return (predicate != NULL && op != G4_sel) || op == G4_smov;
     }
-    bool isFence() const
-    {
-        if (!isSend())
-            return false;
-
-        G4_SendMsgDescriptor *MD = getMsgDesc();
-        CISA_SHARED_FUNCTION_ID SFID = MD->getFuncId();
-        unsigned FC = MD->getFuncCtrl();
-
-        // Memory Fence
-        if (SFID == SFID_DP_DC && ((FC >> 14) & 0x1F) == DC_MEMORY_FENCE) {
-            return true;
-        }
-
-        // Sampler cache flush
-        if (SFID == SFID_SAMPLER && ((FC >> 12) & 0x1F) == 0x1F) {
-            return true;
-        }
-
-        return false;
-    }
-
 
     bool isPseudoLogic() const
     {
         return op == G4_pseudo_and || op == G4_pseudo_or || op == G4_pseudo_xor || op == G4_pseudo_not;
     }
 
-    virtual bool mayExceedTwoGRF() const
-    {
-        return isSend();
-    }
-
-    // restrictions on whether a send may be EOT:
-    // -- The posted destination operand must be null
-    // -- A thread must terminate with a send instruction with message to a shared function on the output message bus;
-    //    therefore, it cannot terminate with a send instruction with message to the following shared functions: Sampler unit, NULL function
-    //    For example, a thread may terminate with a URB write message or a render cache write message.
-    // -- A root thread originated from the media (generic) pipeline must terminate
-    //    with a send instruction with message to the Thread Spawner unit. A child
-    //    thread should also terminate with a send to TS.
-    bool canBeEOT()
-    {
-        bool canEOT = msgDesc != NULL && msgDesc->ResponseLength() == 0 &&
-                              (msgDesc->getFuncId() != SFID_NULL &&
-                              msgDesc->getFuncId() != SFID_SAMPLER);
-
-        return canEOT;
-    }
-
-    bool isSendc() const    { return op == G4_sendc || op == G4_sendsc; }
     bool isMovAddr();
     bool isArithAddr();
     bool isAccSrcInst() const;
@@ -874,6 +834,15 @@ public:
     {
         MUST_BE_TRUE(isIntrinsic(), ERROR_UNKNOWN);
         return (G4_InstIntrinsic*) this;
+    }
+    
+    G4_InstSend* asSendInst()
+    {
+        if (!isSend())
+        {
+            return nullptr;
+        }
+        return reinterpret_cast<G4_InstSend*>(this);
     }
 
 
@@ -925,13 +894,7 @@ public:
     void setDest(G4_DstRegRegion* opnd);
     void setExecSize(unsigned char s);
 
-    void computeARFRightBound()
-    {
-        computeRightBound((G4_Operand*)predicate);
-        computeRightBound((G4_Operand*)mod);
-        computeRightBound((G4_Operand*)implAccSrc);
-        computeRightBound((G4_Operand*)implAccDst);
-    }
+    void computeARFRightBound();
 
     void setOptions(unsigned int o)
     {
@@ -991,12 +954,9 @@ public:
 
     void emit_inst(std::ostream& output, bool symbol_dst, bool *symbol_srcs);
     void emit(std::ostream& output, bool symbolreg = false, bool dotStyle = false);
-    void emit_send(std::ostream& output, bool symbol_dst, bool *symbol_srcs);
-    void emit_send_desc(std::ostream& output);
     void emitDefUse(std::ostream& output);
     void dump() const;
     bool isValidSymbolOperand(bool &dst_valid, bool *srcs_valid);
-    void emit_send(std::ostream& output, bool dotStyle = false);
     char *getLabelStr();
 
     unsigned char  getExecSize() const {return execSize;}
@@ -1027,7 +987,6 @@ public:
     void setCompacted() { option = option | InstOpt_Compacted; }
     bool isCompactedInst() { return (option & InstOpt_Compacted)  ? true : false; }
 
-
     void setLocalId(int32_t lid)  { local_id = lid; }
     int32_t getLocalId() const { return local_id; }
 
@@ -1038,7 +997,6 @@ public:
     int getCISAOff() { return srcCISAoff; }
 
     bool isOptBarrier();
-    bool isDirectSplittableSend();
     bool hasImplicitAccSrc()
     {
        return op == G4_mac || op == G4_mach || op == G4_sada2;
@@ -1092,18 +1050,6 @@ public:
         return NULL;
     }
 
-    void setMsgDesc(G4_SendMsgDescriptor *in)
-    {
-        assert(in && "null descriptor not expected");
-        msgDesc = in;
-        resetRightBound((G4_Operand*) dst);
-        resetRightBound(srcs[0]);
-    }
-    G4_SendMsgDescriptor *getMsgDesc() const
-    {
-        assert(msgDesc && "null descriptor not expected");
-        return msgDesc;
-    }
     /// Remove all definitons that contribute to this[opndNum] and remove all
     /// uses from their corresponding definitions. To maintain def-use's, this
     /// is required while resetting a source operand.
@@ -1207,20 +1153,7 @@ public:
     void setGenOffset(int64_t off) { genOffset = off; }
     int64_t getGenOffset() { return genOffset; }
 
-    void computeRightBound(G4_Operand* opnd);
     void computeLeftBoundForImplAcc(G4_Operand* opnd);
-
-    G4_Operand* getMsgDescOperand() const
-    {
-        MUST_BE_TRUE(isSend(), "must be a send instruction");
-        return isSplitSend() ? srcs[2] : srcs[1];
-    }
-
-    G4_Operand* getMsgExtDescOperand() const
-    {
-        assert(isSplitSend() && "must be a split send instruction");
-        return srcs[3];
-    }
 
     void setNoSrcDepSet(bool val)
     {
@@ -1302,7 +1235,6 @@ public:
     }
 
     G4_INST* cloneInst() override;
-    bool isMathInst() override { return true; }
 
     bool isIEEEMath() const { return mathOp == MATH_INVM || mathOp == MATH_RSQRTM; }
     bool isMathIntDiv() const { return mathOp >= MATH_INT_DIV && mathOp < MATH_INVM; }
@@ -1492,6 +1424,125 @@ public:
         return assocPseudoFlagSave;
     }
 };
+
+class G4_InstSend : public G4_INST
+{   
+    G4_SendMsgDescriptor* msgDesc;
+    
+public:
+
+    // send (one source)
+    // desc is either imm or a0.0 and in src1
+    // extDesc is always immediate and encoded in md
+    G4_InstSend(
+        const IR_Builder& builder,
+        G4_Predicate* prd,
+        G4_opcode o,    
+        unsigned char size,
+        G4_DstRegRegion* dst,
+        G4_SrcRegRegion* payload,
+        G4_Operand* desc,
+        uint32_t opt,
+        G4_SendMsgDescriptor* md);
+
+    // split send (two source)
+    // desc is either imm or a0.0 and in src2
+    // extDesc is either imm or a0.N and in src3
+    G4_InstSend(
+        const IR_Builder& builder,
+        G4_Predicate* prd,
+        G4_opcode o,
+        unsigned char size,
+        G4_DstRegRegion* dst,
+        G4_SrcRegRegion* payload,
+        G4_SrcRegRegion* src1,
+        G4_Operand* desc,
+        G4_Operand* extDesc,
+        uint32_t opt,
+        G4_SendMsgDescriptor* md);
+
+    bool isSendc() const { return op == G4_sendc || op == G4_sendsc; }
+    bool mayExceedTwoGRF() const override { return true; }
+
+    G4_Operand* getMsgDescOperand() const
+    {
+        return isSplitSend() ? srcs[2] : srcs[1];
+    }
+
+    G4_Operand* getMsgExtDescOperand() const
+    {
+        assert(isSplitSend() && "must be a split send instruction");
+        return srcs[3];
+    }
+
+    G4_SendMsgDescriptor *getMsgDesc() const
+    {
+        return msgDesc;
+    }
+
+    void setMsgDesc(G4_SendMsgDescriptor *in)
+    {
+        assert(in && "null descriptor not expected");
+        msgDesc = in;
+        resetRightBound((G4_Operand*)dst);
+        resetRightBound(srcs[0]);
+    }
+
+    // restrictions on whether a send may be EOT:
+    // -- The posted destination operand must be null
+    // -- A thread must terminate with a send instruction with message to a shared function on the output message bus;
+    //    therefore, it cannot terminate with a send instruction with message to the following shared functions: Sampler unit, NULL function
+    //    For example, a thread may terminate with a URB write message or a render cache write message.
+    // -- A root thread originated from the media (generic) pipeline must terminate
+    //    with a send instruction with message to the Thread Spawner unit. A child
+    //    thread should also terminate with a send to TS.
+    bool canBeEOT()
+    {
+        bool canEOT = msgDesc->ResponseLength() == 0 &&
+            (msgDesc->getFuncId() != SFID_NULL &&
+                msgDesc->getFuncId() != SFID_SAMPLER);
+
+        return canEOT;
+    }
+
+    bool isFence() const
+    {
+        G4_SendMsgDescriptor *MD = getMsgDesc();
+        CISA_SHARED_FUNCTION_ID SFID = MD->getFuncId();
+        unsigned FC = MD->getFuncCtrl();
+
+        // Memory Fence
+        if (SFID == SFID_DP_DC && ((FC >> 14) & 0x1F) == DC_MEMORY_FENCE) 
+        {
+            return true;
+        }
+
+        // Sampler cache flush
+        if (SFID == SFID_SAMPLER && ((FC >> 12) & 0x1F) == 0x1F) 
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    bool isEOT() const override
+    {
+        return msgDesc->isEOTInst();
+    }
+
+    bool isDirectSplittableSend();
+
+    void computeRightBound(G4_Operand* opnd);
+
+    void emit_send(std::ostream& output, bool symbol_dst, bool *symbol_srcs);
+    void emit_send(std::ostream& output, bool dotStyle = false);
+    void emit_send_desc(std::ostream& output);
+
+
+};
+
+
 }
 // a special intrinsic instruction for any pseudo operations. An intrinsic inst has the following characteristics
 // -- it is modeled as a call to some unknown function
@@ -1573,7 +1624,6 @@ public:
     }
 
     G4_INST* cloneInst() override;
-    bool isIntrinsicInst() override { return true; }
 
     int getNumDst() const { return G4_Intrinsics[(int) intrinsicId].numDst; }
     int getNumSrc() const { return G4_Intrinsics[(int) intrinsicId].numSrc; }
@@ -2148,6 +2198,7 @@ class G4_VarBase;
 class G4_Operand
 {
     friend class G4_INST;
+    friend class G4_InstSend;
 
 public:
     enum Kind {

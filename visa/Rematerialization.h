@@ -190,7 +190,8 @@ namespace vISA
 
         bool isRematCandidateOp(G4_INST* inst)
         {
-            if (inst->isFlowControl() || inst->isWait() || inst->isFence() ||
+            if (inst->isFlowControl() || inst->isWait() || 
+                (inst->isSend() && inst->asSendInst()->isFence()) ||
                 inst->isLifeTimeEnd() || inst->isAccDstInst() || inst->isAccSrcInst() ||
                 inst->getImplAccDst() || inst->getImplAccSrc())
             {

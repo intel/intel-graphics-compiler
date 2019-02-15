@@ -763,7 +763,7 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
 
         // Get buckets for all physical registers assigned in curInst
         hasIndir = getBucketDescrs(node, BDvec);
-        if (hasIndir || curInst->isFence())
+        if (hasIndir || (curInst->isSend() && curInst->asSendInst()->isFence()))
         {
             // If inst has indirect src/dst then treat it as a barrier.
             node->MarkAsUnresolvedIndirAddressBarrier();
@@ -1698,8 +1698,9 @@ Node::Node(uint32_t id, G4_INST* inst, Edge_Allocator& depEdgeAllocator,
 
 void LocalScheduler::EmitNode(Node *node) {
     for (G4_INST *inst : *node->getInstructions()) {
-        if (inst->isSend()) {
-            inst->emit_send(cerr);
+        if (inst->isSend()) 
+        {
+            inst->asSendInst()->emit_send(cerr);
         } else {
             DEBUG_EMIT(inst);
         }
@@ -1741,7 +1742,7 @@ void DDD::DumpDotFile(const char *name, const char* appendix){
             std::ostringstream os;
             if (inst->isSend())
             {
-                inst->emit_send(os);
+                inst->asSendInst()->emit_send(os);
             }
             else
             {
@@ -1783,7 +1784,7 @@ void G4_BB_Schedule::emit(std::ostream &out) {
                 if (!inst->isSend()) {
                     inst->emit(out);
                 } else {
-                    inst->emit_send(out);
+                    inst->asSendInst()->emit_send(out);
                 }
                 out << endl;
             }

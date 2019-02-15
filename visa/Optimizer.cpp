@@ -5258,7 +5258,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
                     // clear header def
                     instVector.clear();
                 }
-                else if (inst->isSend() || inst->isSendc())
+                else if (inst->isSend())
                 {
                     instVector.clear();
                 }
@@ -6775,7 +6775,8 @@ void Optimizer::evenlySplitInst(INST_LIST_ITER iter, G4_BB* bb)
             {
                 G4_INST *inst = *ii;
 
-                if (inst->isFence() && inst->getMsgDesc()->ResponseLength() > 0)
+                G4_InstSend* sendInst = inst->asSendInst();
+                if (sendInst && sendInst->isFence() && sendInst->getMsgDesc()->ResponseLength() > 0)
                 {
                     // commit is enabled for the fence, need to generate a move after to make sure the fence is complete
                     // mov (8) r1.0<1>:ud r1.0<8;8,1>:ud {NoMask}
@@ -8078,7 +8079,7 @@ public:
                     auto src = builder.Create_Src_Opnd_From_Dcl(builder.getBuiltinR0(), builder.getRegionStride1());
                     auto dst = builder.Create_Dst_Opnd_From_Dcl(builder.getBuiltinR0(), 1);
                     G4_INST* inst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
-                        builder.createImm(extDesc, Type_UD), builder.createImm(fenceDesc, Type_UD), InstOpt_WriteEnable, msgDesc);
+                        builder.createImm(fenceDesc, Type_UD), InstOpt_WriteEnable, msgDesc);
                     bb->insert(iter, inst);
                 }
                 else
@@ -8090,7 +8091,7 @@ public:
                     auto dstDcl = builder.createHardwiredDeclare(8, Type_UD, 1, 0);
                     auto dst = builder.Create_Dst_Opnd_From_Dcl(dstDcl, 1);
                     G4_INST* sendInst = builder.createSendInst(nullptr, G4_send, 8, dst, src,
-                        builder.createImm(extDesc, Type_UD), builder.createImm(desc.value, Type_UD), InstOpt_WriteEnable, msgDesc);
+                        builder.createImm(desc.value, Type_UD), InstOpt_WriteEnable, msgDesc);
                     bb->insert(iter, sendInst);
                 }
 

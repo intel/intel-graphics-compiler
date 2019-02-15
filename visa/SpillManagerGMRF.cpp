@@ -2488,12 +2488,11 @@ SpillManagerGMRF::createSendInst(
 )
 {
     G4_INST* sendInst;
-
     G4_Imm *exDesc = builder_->createImm(funcID, Type_UD);
     auto msgDesc = builder_->createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), !isWrite, isWrite);
     sendInst = builder_->createSendInst(
         NULL, G4_send, execSize, postDst,
-        payload, exDesc, desc, option, msgDesc);
+        payload, desc, option, msgDesc);
     sendInst->setCISAOff(curInst->getCISAOff());
 
     return sendInst;
@@ -4478,7 +4477,7 @@ SpillManagerGMRF::fixSpillFillCode (
                         0, inst->getMsgDesc()->getExtFuncCtrl(), true, false);
 
                     inst->setSrc( msg, 1 );
-                    inst->setMsgDesc( msgDesc );
+                    inst->asSendInst()->setMsgDesc( msgDesc );
                     inst->setExecSize( execSize );
                 }
                 else  if( inst->getMsgDesc()->isScratchWrite() )
@@ -4520,7 +4519,7 @@ SpillManagerGMRF::fixSpillFillCode (
                         inst->getMsgDesc()->getExtFuncCtrl(), false, true);
 
                     inst->setSrc( msg, 1 );
-                    inst->setMsgDesc( msgDesc );
+                    inst->asSendInst()->setMsgDesc( msgDesc );
                     inst->setExecSize( execSize );
                 }
 			}

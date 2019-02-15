@@ -440,24 +440,20 @@ G4_INST* IR_Builder::createInternalInst(G4_Predicate* prd,
     return ii;
 }
 
-G4_INST* IR_Builder::createSendInst(G4_Predicate* prd,
-                                    G4_opcode op,
-                                    unsigned char size,
-                                    G4_DstRegRegion* postDst,
-                                    G4_SrcRegRegion* currSrc,
-                                    G4_Operand* extDesc,
-                                    G4_Operand* msg,
-                                    unsigned int option,
-                                    G4_SendMsgDescriptor *msgDesc,
-                                    int lineno,
-                                    bool addToInstList)
+G4_InstSend* IR_Builder::createSendInst(G4_Predicate* prd,
+    G4_opcode op,
+    unsigned char size,
+    G4_DstRegRegion* postDst,
+    G4_SrcRegRegion* currSrc,
+    G4_Operand* msg,
+    unsigned int option,
+    G4_SendMsgDescriptor *msgDesc,
+    int lineno,
+    bool addToInstList)
 {
 
     assert (msgDesc && "msgDesc must not be null");
-    G4_INST* m = new (mem)G4_INST(*this, prd, op, NULL, false, size, postDst, currSrc, msg, option);
-
-    ///used in binary encoding
-    m->setMsgDesc( msgDesc );
+    G4_InstSend* m = new (mem)G4_InstSend(*this, prd, op, size, postDst, currSrc, msg, option, msgDesc);
 
     if (addToInstList)
     {
@@ -476,12 +472,11 @@ G4_INST* IR_Builder::createSendInst(G4_Predicate* prd,
     return m;
 }
 
-G4_INST* IR_Builder::createInternalSendInst(G4_Predicate* prd,
+G4_InstSend* IR_Builder::createInternalSendInst(G4_Predicate* prd,
     G4_opcode op,
     unsigned char size,
     G4_DstRegRegion* postDst,
     G4_SrcRegRegion* currSrc,
-    G4_Operand* extDesc,
     G4_Operand* msg,
     unsigned int option,
     G4_SendMsgDescriptor *msgDesc,
@@ -489,7 +484,7 @@ G4_INST* IR_Builder::createInternalSendInst(G4_Predicate* prd,
     int CISAoff,
     char* srcFilename)
 {
-    auto ii = createSendInst(prd, op, size, postDst, currSrc, extDesc,
+    auto ii = createSendInst(prd, op, size, postDst, currSrc,
         msg, option, msgDesc, lineno, false);
 
     ii->setCISAOff(CISAoff);
@@ -507,7 +502,7 @@ G4_INST* IR_Builder::createInternalSendInst(G4_Predicate* prd,
 // sends (size) dst src0 src1 exDesc msgDesc
 //
 
-G4_INST* IR_Builder::createSplitSendInst(G4_Predicate* prd,
+G4_InstSend* IR_Builder::createSplitSendInst(G4_Predicate* prd,
                                          G4_opcode op,
                                          unsigned char size,
                                          G4_DstRegRegion* dst,
@@ -521,17 +516,17 @@ G4_INST* IR_Builder::createSplitSendInst(G4_Predicate* prd,
                                          bool addToInstList)
 {
 
-    if (src1 == NULL)
+    if (!src1)
     {
         // src1 may be null if we need to force generate split send (e.g., for bindless surfaces)
         MUST_BE_TRUE(msgDesc->extMessageLength() == 0, "src1 length must be 0 if it is null");
         src1 = createNullSrc(Type_UD);
     }
-    G4_INST* m = new (mem)G4_INST(*this, prd, op, NULL, false, size, dst, src0, src1, msg, option);
-
-    m->setMsgDesc( msgDesc );
-
-    m->setSrc(src3 ? src3 : createImm(msgDesc->getExtendedDesc(), Type_UD), 3);
+    if (!src3)
+    {
+        src3 = createImm(msgDesc->getExtendedDesc(), Type_UD);
+    }
+    G4_InstSend* m = new (mem) G4_InstSend(*this, prd, op, size, dst, src0, src1, msg, src3, option, msgDesc);
 
     if (addToInstList)
     {
@@ -549,7 +544,7 @@ G4_INST* IR_Builder::createSplitSendInst(G4_Predicate* prd,
     return m;
 }
 
-G4_INST* IR_Builder::createInternalSplitSendInst(G4_Predicate* prd,
+G4_InstSend* IR_Builder::createInternalSplitSendInst(G4_Predicate* prd,
     G4_opcode op,
     unsigned char size,
     G4_DstRegRegion* dst,
@@ -721,7 +716,7 @@ void IR_Builder::resizePredefinedStackVars()
 * bti: surface id
 * sti: sampler id
 */
-G4_INST* IR_Builder::Create_Send_Inst_For_CISA(
+G4_InstSend* IR_Builder::Create_Send_Inst_For_CISA(
     G4_Predicate* pred,
     G4_DstRegRegion *postDst,
     G4_SrcRegRegion *payload,
@@ -771,7 +766,7 @@ G4_SrcRegRegion* IR_Builder::createBindlessExDesc(uint32_t exdesc)
     return Create_Src_Opnd_From_Dcl(exDescDecl, getRegionScalar());
 }
 
-G4_INST *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
+G4_InstSend *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
                                                G4_DstRegRegion *postDst,
                                                G4_SrcRegRegion *payload,
                                                unsigned execsize,
@@ -783,7 +778,6 @@ G4_INST *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
 
     fixSendDstType(postDst, (uint8_t) execsize);
 
-    uint32_t exdesc = msgDesc->getExtendedDesc();
     uint32_t desc = msgDesc->getDesc();
     G4_Operand *bti = msgDesc->getBti();
     G4_Operand *sti = msgDesc->getSti();
@@ -871,15 +865,12 @@ G4_INST *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
         descOpnd = createImm(desc, Type_UD);
     }
 
-    G4_Imm* exdescOpnd = createImm(exdesc, Type_UD);
-
     return createSendInst(
         pred,
         send_opcode,
         (uint8_t)execsize,
         postDst,
         payload,
-        exdescOpnd,
         descOpnd,
         option,
         msgDesc,
@@ -892,7 +883,7 @@ G4_INST *IR_Builder::Create_Send_Inst_For_CISA(G4_Predicate *pred,
 * sti: sampler id
 * Gen9: sends (execsize)     dst,  src1,  src2,  ex_desc,  desc
 */
-G4_INST* IR_Builder::Create_SplitSend_Inst_For_CISA(
+G4_InstSend* IR_Builder::Create_SplitSend_Inst_For_CISA(
     G4_Predicate* pred,
     G4_DstRegRegion *dst,
     G4_SrcRegRegion *src1,
@@ -924,7 +915,7 @@ G4_INST* IR_Builder::Create_SplitSend_Inst_For_CISA(
 }
 
 // desc, if indirect, is constructed from the BTI/STI values in msgDesc and is always a0.0
-G4_INST *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
+G4_InstSend *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
     G4_DstRegRegion *dst,
     G4_SrcRegRegion *src1,
     G4_SrcRegRegion *src2,
@@ -1049,7 +1040,7 @@ G4_INST *IR_Builder::Create_SplitSend_Inst(G4_Predicate *pred,
 // for RTWrite,
 // desc has a constant BTI value (i.e., no bindless) and no STI
 // extDesc may be indirect (MRT and other bits) and is passed in
-G4_INST *IR_Builder::Create_SplitSend_Inst_For_RTWrite(G4_Predicate *pred,
+G4_InstSend *IR_Builder::Create_SplitSend_Inst_For_RTWrite(G4_Predicate *pred,
     G4_DstRegRegion *dst,
     G4_SrcRegRegion *src1,
     G4_SrcRegRegion *src2,

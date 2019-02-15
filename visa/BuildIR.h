@@ -1565,32 +1565,32 @@ public:
         char* srcFilename = NULL);
 
 
-    G4_INST* createSendInst(G4_Predicate* prd, G4_opcode op,
+    G4_InstSend* createSendInst(G4_Predicate* prd, G4_opcode op,
                             unsigned char size, G4_DstRegRegion* postDst,
-                            G4_SrcRegRegion* payload, G4_Operand* src,
+                            G4_SrcRegRegion* payload,
                             G4_Operand* msg, unsigned int option,
                             G4_SendMsgDescriptor *msgDesc,
                             int lineno = 0, bool addToInstList = true);
 
-    G4_INST* createInternalSendInst(G4_Predicate* prd, G4_opcode op,
+    G4_InstSend* createInternalSendInst(G4_Predicate* prd, G4_opcode op,
         unsigned char size, G4_DstRegRegion* postDst,
-        G4_SrcRegRegion* payload, G4_Operand* src,
+        G4_SrcRegRegion* payload,
         G4_Operand* msg, unsigned int option,
         G4_SendMsgDescriptor *msgDesc,
         int lineno = 0,
         int CISAoff = -1,
         char* srcFilename = NULL);
 
-    G4_INST* createSplitSendInst(G4_Predicate* prd, G4_opcode op,
-                                 unsigned char size, G4_DstRegRegion* dst,
-                                 G4_SrcRegRegion* src1, G4_SrcRegRegion* src2,
-                                 G4_Operand* msg, unsigned int option,
-                                 G4_SendMsgDescriptor *msgDesc,
-                                 G4_Operand* src3,
-                                 int lineno = 0,
-                                 bool addToInstList = true);
+    G4_InstSend* createSplitSendInst(G4_Predicate* prd, G4_opcode op,
+        unsigned char size, G4_DstRegRegion* dst,
+        G4_SrcRegRegion* src1, G4_SrcRegRegion* src2,
+        G4_Operand* msg, unsigned int option,
+        G4_SendMsgDescriptor *msgDesc,
+        G4_Operand* src3,
+        int lineno = 0,
+        bool addToInstList = true);
 
-    G4_INST* createInternalSplitSendInst(G4_Predicate* prd, G4_opcode op,
+    G4_InstSend* createInternalSplitSendInst(G4_Predicate* prd, G4_opcode op,
         unsigned char size, G4_DstRegRegion* dst,
         G4_SrcRegRegion* src1, G4_SrcRegRegion* src2,
         G4_Operand* msg, unsigned int option,
@@ -1636,7 +1636,7 @@ public:
     G4_SrcRegRegion *createSubSrcOperand( G4_SrcRegRegion* src, uint16_t start, uint8_t size, uint16_t newVs, uint16_t newWd);
     G4_INST *makeSplittingInst(G4_INST *inst, uint8_t ExSize);
 
-    G4_INST *Create_Send_Inst_For_CISA(G4_Predicate *pred,
+    G4_InstSend *Create_Send_Inst_For_CISA(G4_Predicate *pred,
                                        G4_DstRegRegion *postDst,
                                        G4_SrcRegRegion *payload,
                                        unsigned execSize,
@@ -1644,7 +1644,7 @@ public:
                                        unsigned option,
                                        bool is_sendc);
 
-    G4_INST *Create_SplitSend_Inst(G4_Predicate *pred,
+    G4_InstSend *Create_SplitSend_Inst(G4_Predicate *pred,
         G4_DstRegRegion *dst,
         G4_SrcRegRegion *src1,
         G4_SrcRegRegion *src2,
@@ -1653,7 +1653,7 @@ public:
         unsigned option,
         bool is_sendc);
 
-    G4_INST *Create_SplitSend_Inst_For_RTWrite(G4_Predicate *pred,
+    G4_InstSend *Create_SplitSend_Inst_For_RTWrite(G4_Predicate *pred,
         G4_DstRegRegion *dst,
         G4_SrcRegRegion *src1,
         G4_SrcRegRegion *src2,
@@ -1662,7 +1662,7 @@ public:
         G4_SendMsgDescriptor *msgDesc,
         unsigned option);
 
-    G4_INST* Create_Send_Inst_For_CISA(
+    G4_InstSend* Create_Send_Inst_For_CISA(
                         G4_Predicate* pred,
                         G4_DstRegRegion *postDst,
                         G4_SrcRegRegion *payload,
@@ -1680,19 +1680,19 @@ public:
                         unsigned int option,
                         bool is_sendc);
 
-    G4_INST* Create_SplitSend_Inst_For_CISA(G4_Predicate* pred, G4_DstRegRegion *dst,
-                                            G4_SrcRegRegion *src1, unsigned regs2snd1,
-                                            G4_SrcRegRegion *src2, unsigned regs2snd2,
-                                            unsigned regs2rcv,
-                                            unsigned execsize,
-                                            unsigned fc, unsigned exFuncCtrl,
-                                            CISA_SHARED_FUNCTION_ID tf_id, bool eot,
-                                            bool head_present,
-                                            bool isRead,
-                                            bool isWrite,
-                                            G4_Operand *bti, G4_Operand *sti,
-                                            unsigned option,
-                                            bool is_sendc);
+    G4_InstSend* Create_SplitSend_Inst_For_CISA(G4_Predicate* pred, G4_DstRegRegion *dst,
+        G4_SrcRegRegion *src1, unsigned regs2snd1,
+        G4_SrcRegRegion *src2, unsigned regs2snd2,
+        unsigned regs2rcv,
+        unsigned execsize,
+        unsigned fc, unsigned exFuncCtrl,
+        CISA_SHARED_FUNCTION_ID tf_id, bool eot,
+        bool head_present,
+        bool isRead,
+        bool isWrite,
+        G4_Operand *bti, G4_Operand *sti,
+        unsigned option,
+        bool is_sendc);
 
     // helper functions
     G4_Declare *Create_MRF_Dcl( unsigned num_elt, G4_Type type );

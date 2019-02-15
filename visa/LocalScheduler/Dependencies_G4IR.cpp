@@ -32,7 +32,7 @@ using namespace vISA;
 enum retDepType { RET_RAW = 1, RET_WAW, RET_WAR };
 
 // Checks for memory interferences created with the "send" instruction for data port.
-static DepType DoMemoryInterfereSend(G4_INST *send1, G4_INST *send2, retDepType depT, const Options *m_options,
+static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, retDepType depT, const Options *m_options,
                                      bool BTIIsRestrict)
 {
     // If either instruction is not a send then there cannot be a memory interference.
@@ -202,7 +202,7 @@ DepType vISA::getDepSend(G4_INST *curInst, G4_INST *liveInst, const Options *m_o
 {
     for (auto RDEP : { RET_RAW, RET_WAR, RET_WAW })
     {
-        DepType dep = DoMemoryInterfereSend(curInst, liveInst, RDEP, m_options, BTIIsRestrict);
+        DepType dep = DoMemoryInterfereSend(curInst->asSendInst(), liveInst->asSendInst(), RDEP, m_options, BTIIsRestrict);
         if (dep != NODEP)
             return dep;
     }
@@ -228,7 +228,7 @@ DepType vISA::CheckBarrier(G4_INST *inst)
     }
     if (inst->isSend())
     {
-        if (inst->isSendc())
+        if (inst->asSendInst()->isSendc())
         {
             // sendc may imply synchronization
             return SEND_BARRIER;

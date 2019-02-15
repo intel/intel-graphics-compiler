@@ -502,7 +502,7 @@ G4_VarBase* SendFusion::getVarBase(G4_VarBase* Var, G4_Type Ty)
 // simplifyMsg() tries to replace a0 with a constant if possible.
 void SendFusion::simplifyMsg(INST_LIST_ITER SendIter)
 {
-    G4_INST* Send = *SendIter;
+    G4_InstSend* Send = (*SendIter)->asSendInst();
     Gen4_Operand_Number opn = Send->isSplitSend() ? Opnd_src2 : Opnd_src1;
     G4_Operand* descOpnd = Send->getSrc(opn - 1);
     if (descOpnd->isImm())
@@ -1448,7 +1448,6 @@ void SendFusion::doFusion(
     {
         sendInst = Builder->createSendInst(
             Pred, G4_send, ExecSize*2, Dst, Src0,
-            Builder->createImm(newDesc->getExtendedDesc(), Type_UD),
             Builder->createImm(newDesc->getDesc(), Type_UD),
             InstOpt_WriteEnable,
             newDesc);
@@ -1542,7 +1541,7 @@ bool SendFusion::run(G4_BB* BB)
             }
 
             ++II1;
-            if (tmp->isSend() || tmp->isFence() || tmp->isOptBarrier())
+            if (tmp->isSend() || tmp->isOptBarrier())
             {
                 // Don't try to fusion two sends that are separated
                 // by other memory/barrier instructions.

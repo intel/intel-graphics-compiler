@@ -1579,7 +1579,7 @@ void preNode::setBarrier()
         Barrier = DepType::DEP_LABEL;
     else if (hasIndirectOpnd(Inst))
         Barrier = DepType::INDIRECT_ADDR_BARRIER;
-    else if (Inst->isFence())
+    else if (Inst->isSend() && Inst->asSendInst()->isFence())
         Barrier = DepType::OPT_BARRIER;
     else
         Barrier = CheckBarrier(Inst);

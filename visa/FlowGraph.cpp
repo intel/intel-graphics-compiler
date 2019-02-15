@@ -1087,8 +1087,8 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
                     // that supports EOT
                     if (builder->getOption(vISA_foldEOTtoPrevSend) && bb->size() > 1)
                     {
-                        G4_INST* secondToLastInst = bb->back();
-                        if (secondToLastInst->canBeEOT() &&
+                        G4_InstSend* secondToLastInst = bb->back()->asSendInst();
+                        if (secondToLastInst && secondToLastInst->canBeEOT() &&
                             !(secondToLastInst->getMsgDesc()->extMessageLength() > 2 &&
                                 VISA_WA_CHECK(builder->getPWaTable(), WaSendsSrc1SizeLimitWhenEOT)))
                         {
@@ -1117,7 +1117,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
                                 auto msgDesc = builder->createSendMsgDesc(desc, SFID_SAMPLER, true, true);
                                 G4_INST* samplerFlushInst = builder->createSendInst(nullptr, G4_send,
                                     8, builder->createNullDst(Type_UD), sendMsgOpnd,
-                                    builder->createImm(SFID_SAMPLER, Type_UD), builder->createImm(desc, Type_UD),
+                                    builder->createImm(desc, Type_UD),
                                     0, msgDesc, 0);
                                 auto iter = bb->end();
                                 --iter;
@@ -4078,7 +4078,6 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
         8,
         sendDst,
         sendSrc,
-        builder->createImm(exdesc, Type_UD),
         builder->createImm(desc, Type_UD),
         InstOpt_WriteEnable,
         msgDesc,
@@ -4431,12 +4430,12 @@ void G4_BB::emitBasicInstruction(std::ostream& output, INST_LIST_ITER &it)
         //
         // emit send instruction
         //
-        G4_INST* SendInst = *it;
+        G4_InstSend* SendInst = (*it)->asSendInst();
         SendInst->emit_send(output);
 
         output << " //";
         emitInstId(output, SendInst->getLineNo(), SendInst->getCISAOff(), SendInst->getLexicalId(), SendInst->getGenOffset());
-        (*it)->emit_send_desc(output);
+        SendInst->emit_send_desc(output);
     }
     else
     {

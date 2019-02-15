@@ -8547,7 +8547,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
             //
             if (inst->isSend() &&
                 inst->getMsgDesc()->ResponseLength() > splitSize &&
-                inst->isDirectSplittableSend())
+                inst->asSendInst()->isDirectSplittableSend())
             {
                 G4_DstRegRegion* dstrgn = dst;
                 G4_Declare* topdcl = GetTopDclFromRegRegion(dstrgn);

@@ -871,7 +871,7 @@ namespace vISA
             dupOp = kernel.fg.builder->createSplitSendInst(nullptr, dstInst->opcode(), dstInst->getExecSize(), samplerDstRgn,
                 kernel.fg.builder->duplicateOperand(dstInst->getSrc(0))->asSrcRegRegion(),
                 kernel.fg.builder->duplicateOperand(dstInst->getSrc(1))->asSrcRegRegion(),
-                kernel.fg.builder->duplicateOperand(dstInst->getMsgDescOperand()), dstInst->getOption(),
+                kernel.fg.builder->duplicateOperand(dstInst->asSendInst()->getMsgDescOperand()), dstInst->getOption(),
                 newMsgDesc, kernel.fg.builder->duplicateOperand(dstInst->getSrc(3)), dstInst->getLineNo());
             dupOp->setLineNo(dstInst->getLineNo());
             dupOp->setCISAOff(dstInst->getCISAOff());
