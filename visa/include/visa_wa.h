@@ -199,6 +199,10 @@ typedef struct _VISA_WA_TABLE
     "Split simd16 to two simd8 if src0 is scalar and src1 and src2 have bundle conflict.",
     VISA_WA_BUG_TYPE_UNKNOWN)
 	
+	VISA_WA_DECLARE(
+    WaSwapForSrc1Replicate,
+    "swap src1 with src2 or src0 when src1 is replicate, there is no scalar mux in src1.",
+    VISA_WA_BUG_TYPE_UNKNOWN)
 
     _VISA_WA_TABLE()
     {
@@ -230,6 +234,7 @@ typedef struct _VISA_WA_TABLE
         VISA_WA_INIT(Wa_2201674230)
         VISA_WA_INIT(Wa_1406950495)
         VISA_WA_INIT(WaSplitSIMD16WithSrc1Src2BundleConflictSrc0Scalar)
+        VISA_WA_INIT(WaSwapForSrc1Replicate)
     }
 } VISA_WA_TABLE, *PVISA_WA_TABLE;
 
