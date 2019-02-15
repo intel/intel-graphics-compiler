@@ -2836,18 +2836,21 @@ bool CodeGenPatternMatch::MatchBoolOp(llvm::BinaryOperator& I)
     {
         for(uint i=0;i<2;i++)
         {
-            
             if(CmpInst* cmp = llvm::dyn_cast<CmpInst>(I.getOperand(i)))
             {
-                BoolOpPattern *pattern = new (m_allocator) BoolOpPattern();
-                pattern->boolOp = &I;
-                pattern->predicate = cmp->getPredicate();
-                pattern->cmpSource[0] = GetSource(cmp->getOperand(0), true, false);
-                pattern->cmpSource[1] = GetSource(cmp->getOperand(1), true, false);
-                pattern->binarySource = GetSource(I.getOperand(1 - i), false, false);
-                AddPattern(pattern);
-                found = true;
-                break;                
+                // only beneficial if the other operand only have one use
+                if(I.getOperand(1 - i)->hasOneUse())
+                {
+                    BoolOpPattern *pattern = new (m_allocator) BoolOpPattern();
+                    pattern->boolOp = &I;
+                    pattern->predicate = cmp->getPredicate();
+                    pattern->cmpSource[0] = GetSource(cmp->getOperand(0), true, false);
+                    pattern->cmpSource[1] = GetSource(cmp->getOperand(1), true, false);
+                    pattern->binarySource = GetSource(I.getOperand(1 - i), false, false);
+                    AddPattern(pattern);
+                    found = true;
+                    break;
+                }
             }
         }
     }
