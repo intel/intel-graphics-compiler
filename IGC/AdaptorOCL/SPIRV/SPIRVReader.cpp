@@ -93,7 +93,7 @@ const char* kPlaceholderPrefix = "placeholder.";
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 // Save the translated LLVM before validation for debugging purpose.
-static bool DbgSaveTmpLLVM = true;
+static bool DbgSaveTmpLLVM = false;
 static const char *DbgTmpLLVMFileName = "_tmp_llvmspirv_module.ll";
 #endif
 
