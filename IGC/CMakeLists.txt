@@ -2192,12 +2192,6 @@ set(IGC_BUILD__PROJ_NAME_PREFIX "")
 
   set(IGC_BUILD__SPIRV_ENABLED ON)
 
-if(NOT DEFINED UFO_VK)
-  message(WARNING "not defined, defaulting to y: UFO_VK")
-  set(UFO_VK "y")
-endif(NOT DEFINED UFO_VK)
-
-# Vulkan Frontend compilation is enabled on Android, Linux and Windows
 
 # ======================================== Path helper variables =======================================
 
