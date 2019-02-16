@@ -70,11 +70,7 @@ bool ResourceAllocator::runOnModule(Module &M)
     // FunctionsInfo contains kernels only.
     for( auto i = pMdUtils->begin_FunctionsInfo(), e = pMdUtils->end_FunctionsInfo(); i != e; ++i )
     {
-        Function* func = i->first;
-        // Bypass subroutines. Resources only need to be allocated once for the kernel functions
-        if (func->hasFnAttribute("UserSubroutine"))
-            continue;
-        runOnFunction(*func);
+        runOnFunction(*(i->first));
     }
 
     return true;

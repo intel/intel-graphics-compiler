@@ -169,6 +169,7 @@ public:
     void        MapPushedInputs();
     void        CreateGatherMap();
     void        CreateConstantBufferOutput(SKernelProgram *pKernelProgram);
+    void        CreateFuncSymbolToRegisterMap(llvm::Function* pFunc);
 
     void        CreateImplicitArgs();
     uint        GetBlockId(llvm::BasicBlock* block);
@@ -291,6 +292,7 @@ public:
     CVariable* getOrCreateReturnSymbol(llvm::Function *F);
     /// This method is used to create the vISA variable for function F's formal argument 
     CVariable* getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStackCall = false);
+    CVariable* getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, unsigned argIdx);
     VISA_Type GetType(llvm::Type* type);       
 
     /// Evaluate constant expression and return the result immediate value.

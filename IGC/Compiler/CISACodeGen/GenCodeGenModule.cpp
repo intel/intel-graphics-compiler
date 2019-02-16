@@ -171,18 +171,41 @@ Function *GenXCodeGenModule::cloneFunc(Function *F)
     return ClonedFunc;
 }
 
+inline Function* getCallerFunc(Value* user)
+{
+    Function* caller = nullptr;
+    if (CallInst* CI = dyn_cast<CallInst>(user))
+    {
+        caller = CI->getParent()->getParent();
+    }
+    else if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+    {
+        if (Instruction* II = dyn_cast<Instruction>(user))
+        {
+            caller = II->getParent()->getParent();
+        }
+        else if (ConstantExpr* CE = dyn_cast<ConstantExpr>(user))
+        {
+            return getCallerFunc(CE->user_back());
+        }
+    }
+    assert(caller && "Function Pointer use not supported");
+    return caller;
+}
+
 void GenXCodeGenModule::processFunction(Function &F)
 {
     // force stack-call for self-recursion
     for (auto U : F.users())
     {
-        CallInst *CI = dyn_cast<CallInst>(U);
-        assert(CI && "user is a not a call");
-        Function *Caller = CI->getParent()->getParent();
-        if (Caller == &F)
-        { 
-            F.addFnAttr("visaStackCall");
-            break;
+        if (CallInst *CI = dyn_cast<CallInst>(U))
+        {
+            Function *Caller = CI->getParent()->getParent();
+            if (Caller == &F)
+            {
+                F.addFnAttr("visaStackCall");
+                break;
+            }
         }
     }
 
@@ -190,9 +213,7 @@ void GenXCodeGenModule::processFunction(Function &F)
     SetVector<std::pair<FunctionGroup*, Function*>> CallerFGs;
     for (auto U : F.users()) 
     {
-        CallInst *CI = dyn_cast<CallInst>(U);
-        assert(CI && "user is a not a call");
-        Function *Caller = CI->getParent()->getParent();
+        Function* Caller = getCallerFunc(U);
         FunctionGroup *FG = FGA->getGroup(Caller);
         Function *SubGrpH = FGA->useStackCall(&F) ? (&F) : FGA->getSubGroupMap(Caller);
         if (FG == nullptr || SubGrpH == nullptr)
@@ -249,9 +270,7 @@ void GenXCodeGenModule::processSCC(std::vector<llvm::CallGraphNode *> *SCCNodes)
         Function *F = Node->getFunction();
         for (auto U : F->users())
         {
-            CallInst *CI = dyn_cast<CallInst>(U);
-            assert(CI && "user is a not a call");
-            Function *Caller = CI->getParent()->getParent();
+            Function *Caller = getCallerFunc(U);
             FunctionGroup *FG = FGA->getGroup(Caller);
             if (FG == nullptr)
                 continue;
@@ -486,9 +505,7 @@ bool GenXFunctionGroupAnalysis::verify()
                 // deleted, that is fine.
                 for (auto U : F->users()) 
                 {
-                    CallInst *CI = dyn_cast<CallInst>(U);
-                    assert(CI && "user is a not a call");
-                    Function *Caller = CI->getParent()->getParent();
+                    Function *Caller = getCallerFunc(U);
                     FunctionGroup *CallerFG = getGroup(Caller);
                     // Caller's FG should be the same as FG. Otherwise, something is wrong.
                     if (CallerFG != (*GI)) 

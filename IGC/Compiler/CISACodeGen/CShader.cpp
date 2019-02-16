@@ -531,6 +531,16 @@ void  CShader::CreateConstantBufferOutput(SKernelProgram *pKernelProgram)
     }
 }
 
+void CShader::CreateFuncSymbolToRegisterMap(llvm::Function* pFunc)
+{
+    CVariable* funcAddr = GetSymbol(pFunc);
+    //CVariable* funcAddr32bit = GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true);
+    //encoder.Cast(funcAddr32bit, funcAddr);
+    //encoder.Push();
+    encoder.AddFunctionSymbol(pFunc, funcAddr);
+    encoder.Push();
+}
+
 void CShader::CacheArgumentsList()
 {
 	m_argListCache.clear();
@@ -1798,7 +1808,7 @@ void CShader::BeginFunction(llvm::Function *F)
     ccTupleMapping.clear();
     ConstantPool.clear();
 
-    bool useStackCall = m_FGA->useStackCall(F);
+    bool useStackCall = m_FGA && m_FGA->useStackCall(F);
     if (useStackCall)
     {
         m_R0 = nullptr;
@@ -1946,6 +1956,72 @@ CVariable* CShader::getOrCreateArgumentSymbol(llvm::Argument *Arg, bool useStack
         e_alignment align = EALIGN_GRF;
         var = GetNewVariable(nElts, type, align, /*isUniform*/ false, m_numberInstance);
     }
+    pSymMap->insert(std::make_pair(Arg, var));
+    return var;
+}
+
+CVariable* CShader::getOrCreateArgSymbolForIndirectCall(llvm::CallInst* cInst, unsigned argIdx)
+{
+    assert(cInst->getCalledFunction() == nullptr);
+    assert(argIdx < cInst->getNumArgOperands());
+
+    CVariable* var = nullptr;
+    Value* Arg = cInst->getArgOperand(argIdx);
+
+    llvm::DenseMap<llvm::Value*, CVariable*> *pSymMap = &globalSymbolMapping;
+    auto it = pSymMap->find(Arg);
+    if (it != pSymMap->end())
+    {
+        return it->second;
+    }
+
+    // Last 3 operands for an indirect call are always R0, PayloadHeader, and PrivateBase
+    unsigned numImplicitArgs = 3;
+    unsigned numExplicitArgs = cInst->getNumArgOperands() - numImplicitArgs;
+    if (argIdx < numExplicitArgs)
+    {
+        VISA_Type type = GetType(Arg->getType());
+        uint16_t nElts = numLanes(m_SIMDSize);
+        if (Arg->getType()->isVectorTy())
+        {
+            assert(Arg->getType()->getVectorElementType()->isIntegerTy() ||
+                   Arg->getType()->getVectorElementType()->isFloatingPointTy());
+            nElts *= (uint16_t)Arg->getType()->getVectorNumElements();
+        }
+
+        // GetPreferredAlignment treats all arguments as kernel ones, which have
+        // predefined alignments; but this is not true for subroutines.
+        // Conservatively use GRF aligned.
+        e_alignment align = EALIGN_GRF;
+        var = GetNewVariable(nElts, type, align, /*isUniform*/ false, m_numberInstance);
+    }
+    else
+    {
+        // Can be mapped to the parent's implicit arg
+        Function* parentFunc = cInst->getParent()->getParent();
+        ImplicitArgs implicitArgs(*parentFunc, m_pMdUtils);
+        for (unsigned i = 0; i < implicitArgs.size(); i++)
+        {
+            ImplicitArg implictArg = implicitArgs[i];
+            auto argType = implictArg.getArgType();
+            if (argType == ImplicitArg::ArgType::R0 ||
+                argType == ImplicitArg::ArgType::PAYLOAD_HEADER ||
+                argType == ImplicitArg::ArgType::PRIVATE_BASE)
+            {
+                Argument* implicitArgInFunc = implicitArgs.getImplicitArg(*parentFunc, argType);
+                if (Arg == implicitArgInFunc)
+                {
+                    bool isUniform = implictArg.getDependency() == WIAnalysis::UNIFORM;
+                    var = GetNewVariable((uint16_t)implictArg.getNumberElements(),
+                                         implictArg.getVISAType(*m_DL),
+                                         implictArg.getAlignType(*m_DL), isUniform,
+                                         isUniform ? 1 : m_numberInstance);
+                    break;
+                }
+            }
+        }
+    }
+    assert(var && "Argument not matched!");
     pSymMap->insert(std::make_pair(Arg, var));
     return var;
 }
@@ -2152,8 +2228,24 @@ unsigned int CShader::EvaluateSIMDConstExpr(Value* C)
 CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
 {
     CVariable* var = nullptr;
+
     if (Constant *C = llvm::dyn_cast<llvm::Constant>(value))
     {
+        // Function Pointer
+        if (isa<GlobalValue>(value) &&
+            value->getType()->isPointerTy() &&
+            value->getType()->getPointerElementType()->isFunctionTy())
+        {
+            auto it = symbolMapping.find(value);
+            if( it != symbolMapping.end() )
+            {
+                return it->second;
+            }
+            var = GetNewVariable(1, ISA_TYPE_UQ, EALIGN_QWORD, true, 1);
+            symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, var));
+            return var;
+        }
+
         if (fromConstantPool) {
             CVariable *cvar = ConstantPool.lookup(C);
             if (cvar)

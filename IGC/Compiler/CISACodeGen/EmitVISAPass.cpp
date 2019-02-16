@@ -340,6 +340,14 @@ bool EmitPass::runOnFunction(llvm::Function &F)
 
     CreateKernelShaderMap(ctx, pMdUtils, F);
 
+    bool hasIndirectCall = IGC_IS_FLAG_ENABLED(EnableFunctionPointer) && ctx->m_instrTypes.hasIndirectCall;
+
+    // Only try SIMD8 for now if there are indirect calls
+    if (hasIndirectCall && m_SimdMode != SIMDMode::SIMD8)
+    {
+        return false;
+    }
+
     // If the current kernel is deleted from the shader map, skip this function.
     m_FGA = getAnalysisIfAvailable<GenXFunctionGroupAnalysis>();
     if (!setCurrentShader(&F))
@@ -394,9 +402,24 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         m_roundingMode = m_encoder->getEncoderRoundingMode(
             static_cast<Float_RoundingMode>(ctx->getModuleMetaData()->compOpt.FloatRoundingMode));
         m_currShader->PreCompile();
-        if (hasStackCall)
+        if (hasStackCall || hasIndirectCall)
         {
             m_currShader->InitKernelStack(ptr64bits);
+
+            if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+            {
+                Module* pModule = F.getParent();
+                for (auto &F : pModule->getFunctionList())
+                {
+                    // Creates a mapping of the function symbol to a register.
+                    // Any user function used by the kernel, including function declarations,
+                    // should have a register allocated to store it's physical address
+                    if (F.getNumUses() > 0 && F.hasFnAttribute("AsFunctionPointer"))
+                    {
+                        m_currShader->CreateFuncSymbolToRegisterMap(&F);
+                    }
+                }
+            }
         }
         m_currShader->AddPrologue();
     }
@@ -428,7 +451,6 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         IF_DEBUG_INFO(m_pDebugEmitter = IDebugEmitter::Create();)
             IF_DEBUG_INFO(m_pDebugEmitter->Initialize(m_currShader, DebugInfoData::hasDebugInfo(m_currShader));)
     }
-
 
     if (DebugInfoData::hasDebugInfo(m_currShader))
     {
@@ -647,8 +669,13 @@ bool EmitPass::runOnFunction(llvm::Function &F)
         m_encoder->Compile();
         // if we are doing stack-call, do the following:
         // - Hard-code a large scratch-space for visa
-        if (m_FGA && m_FGA->getGroup(&F)->hasStackCall())
+        if ((m_FGA && m_FGA->getGroup(&F)->hasStackCall()) || hasIndirectCall)
         {
+            if (m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills == 0)
+            {
+                // Don't retry if we didn't spill
+                ctx->m_retryManager.Disable();
+            }
             m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills =
                 MAX(m_currShader->ProgramOutput()->m_scratchSpaceUsedBySpills, 32 * 1024);
         }
@@ -8229,10 +8256,9 @@ void EmitPass::emitStackAlloca(GenIntrinsicInst* GII)
 void EmitPass::emitCall(llvm::CallInst* inst)
 {
     llvm::Function* F = inst->getCalledFunction();
-    assert(F && "indirect call not supported");
-    assert(!F->empty() && "unexpanded builtin?");
+    if (F) assert(!F->empty() && "unexpanded builtin?");
 
-    if (m_FGA && m_FGA->useStackCall(F))
+    if (!F || (m_FGA && m_FGA->useStackCall(F)))
     {
         emitStackCall(inst);
         return;
@@ -8366,25 +8392,50 @@ uint EmitPass::stackCallArgumentAlignment(CVariable *argv)
 void EmitPass::emitStackCall(llvm::CallInst* inst)
 {
     llvm::Function* F = inst->getCalledFunction();
-    assert(F && "indirect call not supported");
-    assert(!F->empty() && "unexpanded builtin?");
+    if (F) assert(!F->empty() && "unexpanded builtin?");
 
     CVariable *ArgBlkVar = m_currShader->GetARGV();
-    uint32_t i = 0;
     uint32_t offsetA = 0;  // visa argument offset
     uint32_t offsetS = 0;  // visa stack offset
     SmallVector<std::tuple<CVariable*, uint32_t, uint32_t, uint32_t>, 8> owordWrites;
-    for (auto &Arg : F->args())
+    for (uint32_t i = 0; i < inst->getNumArgOperands(); i++)
     {
-        // Skip unused arguments if any.
-        if (Arg.use_empty())
+        CVariable *ArgCV = nullptr;
+        CVariable *Src = nullptr;
+        Type* argType = nullptr;
+
+        if (F)
         {
-            ++i;
-            continue;
+            assert(inst->getNumArgOperands() == F->arg_size());
+            auto Arg = F->arg_begin();
+            std::advance(Arg, i);
+
+            // For indirect calls we can't skip args since we won't know at compile time if it will be used
+            if (!F->hasFnAttribute("AsFunctionPointer"))
+            {
+                // Skip unused arguments if any.
+                if (Arg->use_empty())
+                {
+                    continue;
+                }
+            }
+            ArgCV = m_currShader->getOrCreateArgumentSymbol(&*Arg, true);
+            Src = GetSymbol(inst->getArgOperand(i));
+            argType = Arg->getType();
+        }
+        else if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+        {
+            // Indirect function call
+            Value* operand = inst->getArgOperand(i);
+            argType = operand->getType();
+            Src = GetSymbol(operand);
+            ArgCV = m_currShader->getOrCreateArgSymbolForIndirectCall(inst, i);
+        }
+        else
+        {
+            assert(0 && "Indirect Call not supported");
         }
 
-        CVariable *ArgCV = m_currShader->getOrCreateArgumentSymbol(&Arg, true);
-        CVariable *Src = GetSymbol(inst->getArgOperand(i++));
         if (Src->GetType() == ISA_TYPE_BOOL)
         {
             assert(ArgCV->GetType() == ISA_TYPE_BOOL);
@@ -8399,9 +8450,10 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
         }
         else
         {
-            emitCopyAll(ArgCV, Src, Arg.getType());
+            emitCopyAll(ArgCV, Src, argType);
             Src = ArgCV;
         }
+
         // adjust offset for alignment
         uint align = stackCallArgumentAlignment(Src);
         offsetA = int_cast<unsigned>(llvm::alignTo(offsetA, align));
@@ -8422,7 +8474,7 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             }
             else
             {
-                emitCopyAll(Dst, Src, Arg.getType());
+                emitCopyAll(Dst, Src, argType);
             }
             offsetA += Src->GetSize();
         }
@@ -8534,9 +8586,23 @@ void EmitPass::emitStackCall(llvm::CallInst* inst)
             retOnStack = true;
         }
     }
+    unsigned char argSizeInGRF = (offsetA + SIZE_GRF - 1)/SIZE_GRF;
     unsigned char retSizeInGRF = retOnStack ? 0 : (retSize + SIZE_GRF - 1) / SIZE_GRF;
-    m_encoder->StackCall(nullptr, F, (offsetA + SIZE_GRF - 1) / SIZE_GRF, retSizeInGRF);
-    m_encoder->Push();
+
+    if (F)
+    {
+        m_encoder->StackCall(nullptr, F, argSizeInGRF, retSizeInGRF);
+        m_encoder->Push();
+    }
+    else if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+    {
+        CVariable* funcAddr = GetSymbol(inst->getCalledValue());
+        CVariable* truncAddr = m_currShader->GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true);
+        m_encoder->Cast(truncAddr, funcAddr);
+        m_encoder->Push();
+        m_encoder->IndirectStackCall(nullptr, truncAddr, argSizeInGRF, retSizeInGRF);
+        m_encoder->Push();
+    }
 
     // Emit the return value if used.
     if (!inst->use_empty())
@@ -8684,11 +8750,15 @@ void EmitPass::emitStackFuncEntry(Function *F, bool ptr64bits)
     SmallVector<std::tuple<CVariable*, uint32_t, uint32_t, uint32_t>, 8> owordReads;
     for (auto &Arg : F->args())
     {
-        // Skip unused arguments if any.
-        if (Arg.use_empty())
+        // For indirect calls we can't skip args since we won't know at compile time if it will be used
+        if (!F->hasFnAttribute("AsFunctionPointer"))
         {
-            ++i;
-            continue;
+            // Skip unused arguments if any.
+            if (Arg.use_empty())
+            {
+                ++i;
+                continue;
+            }
         }
 
         CVariable *Dst = m_currShader->getOrCreateArgumentSymbol(&Arg, true);

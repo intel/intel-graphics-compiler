@@ -641,6 +641,7 @@ namespace IGC
         /// Module level flag. This flag is false either there is an indirect call
         /// in the module or the kernel sizes are small even with complete inlining.
         bool m_enableSubroutine = false;
+        bool m_enableFunctionPointer = false;
 
         llvm::AssemblyAnnotationWriter* annotater = nullptr;
 

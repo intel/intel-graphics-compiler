@@ -222,6 +222,7 @@ public:
     void SubroutineCall(CVariable *flag, llvm::Function *F);
     void SubroutineRet(CVariable *flag);
     void StackCall(CVariable *flag, llvm::Function *F, unsigned char argSize, unsigned char retSize);
+    void IndirectStackCall(CVariable* flag, CVariable* funcPtr, unsigned char argSize, unsigned char retSize);
     void StackRet(CVariable *flag);
     void Loc(unsigned int line);
     void File(std::string& s);
@@ -392,6 +393,8 @@ public:
     void BeginStackFunction(llvm::Function *F);
 
     void DestroyVISABuilder();
+
+    void AddFunctionSymbol(llvm::Function* F, CVariable* fvar);
 
 private:
     // helper functions

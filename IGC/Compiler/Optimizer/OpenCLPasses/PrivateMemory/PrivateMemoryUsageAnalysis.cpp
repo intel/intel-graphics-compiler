@@ -134,6 +134,16 @@ bool PrivateMemoryUsageAnalysis::runOnFunction(Function &F)
     return true;
 }
 
+void PrivateMemoryUsageAnalysis::visitCallInst(llvm::CallInst &CI)
+{
+    Function* calledFunc = CI.getCalledFunction();
+    if (!calledFunc || calledFunc->hasFnAttribute("visaStackCall"))
+    {
+        // If a called function is indirect or uses stack call, we need private memory for the parent
+        m_hasPrivateMem = true;
+    }
+}
+
 void PrivateMemoryUsageAnalysis::visitAllocaInst(llvm::AllocaInst &AI)
 {
     assert (AI.getType()->getAddressSpace() == ADDRESS_SPACE_PRIVATE && "Allocaitons are expected to be in private address space");

@@ -119,6 +119,8 @@ namespace IGC
         //  @brief  replace old CallInst with new CallInst
         void replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ctx, llvm::Function* old_func, llvm::Function* new_func);
 
+        void FixIndirectCalls(llvm::Module &M);
+
         /// @brief  Metadata API obejct.
         IGC::IGCMD::MetaDataUtils *m_pMdUtils;
 

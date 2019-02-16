@@ -99,6 +99,16 @@ static bool ExistUndefinedReferencesInModule(Module &module, std::string &errorM
                 !funcName.startswith("__igcbuiltin_") &&
                 !funcName.startswith("__translate_sampler_initializer"))
             {
+                if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+                {
+                    // Allow function declarations for calling externally linked functions
+                    if(F.getLinkage() == GlobalValue::ExternalLinkage)
+                    {
+                        F.addFnAttr("visaStackCall");
+                        F.addFnAttr("AsFunctionPointer");
+                        continue;
+                    }
+                }
                 strStream << msg << funcName << "()'\n";
                 foundUndef = true;
             }

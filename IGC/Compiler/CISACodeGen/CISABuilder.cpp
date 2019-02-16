@@ -302,6 +302,17 @@ void CEncoder::StackCall(CVariable* flag, llvm::Function *F, unsigned char argSi
     V(vKernel->AppendVISACFFunctionCallInst(predOpnd, emask, execSize, (unsigned short)funcId, argSize, retSize));
 }
 
+void CEncoder::IndirectStackCall(CVariable* flag, CVariable* funcPtr, unsigned char argSize, unsigned char retSize)
+{
+    m_encoderState.m_flag.var = flag;
+    VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
+    // control flow instructions cannot be broken down into lower SIMD
+    Common_VISA_EMask_Ctrl emask = m_encoderState.m_noMask ? vISA_EMASK_M1_NM : vISA_EMASK_M1;
+    Common_ISA_Exec_Size execSize = visaExecSize(m_program->m_dispatchSize);
+    VISA_VectorOpnd* funcAddrOpnd = GetSourceOperandNoModifier(funcPtr);
+    V(vKernel->AppendVISACFIndirectFuncCallInst(predOpnd, emask, execSize, funcAddrOpnd, argSize, retSize));
+}
+
 void CEncoder::SubroutineRet(CVariable* flag)
 {
     m_encoderState.m_flag.var = flag;
@@ -3380,6 +3391,14 @@ void CEncoder::BeginStackFunction(llvm::Function *F)
     VISA_LabelOpnd *visaLabel = nullptr;
     V(vKernel->CreateVISALabelVar(visaLabel, F->getName().data(), LABEL_SUBROUTINE));
     V(vKernel->AppendVISACFLabelInst(visaLabel));
+}
+
+void CEncoder::AddFunctionSymbol(llvm::Function* F, CVariable* fvar)
+{
+    SModifier mod;
+    mod.init();
+    VISA_VectorOpnd* visaFuncAddr = GetDestinationOperand(fvar, mod);
+    V(vKernel->AppendVISACFSymbolInst(F->getName(), visaFuncAddr));
 }
 
 void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )

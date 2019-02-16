@@ -600,7 +600,7 @@ unsigned int CodeGenContext::getRegisterPointerSizeInBits(unsigned int AS) const
 
 bool CodeGenContext::enableFunctionCall() const
 {
-    if(m_enableSubroutine)
+    if(m_enableSubroutine || m_enableFunctionPointer)
         return true;
 
     int FCtrol = IGC_GET_FLAG_VALUE(FunctionControl);
@@ -619,6 +619,7 @@ CodeGenContext::~CodeGenContext()
 void CodeGenContext::clear()
 {
     m_enableSubroutine = false;
+    m_enableFunctionPointer = false;
 
     delete modMD;
     delete m_pMdUtils;

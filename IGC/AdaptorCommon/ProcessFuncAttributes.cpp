@@ -277,12 +277,9 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         bool keepAlwaysInline = containsSLM;
         if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
         {
-            // OCL2.0 allows Objective C's blocks which introduce users other
-            // than calls. Keep AlwaysInline attribute if there is any use other
-            // than call. This is missing feature that igc cannot handle
-            // indirect calls yet. Also AddImplicitArgs cannot handle load/store
-            // with function pointers.
-            if (!keepAlwaysInline)
+            // keep inline if function pointers not enabled and there are uses
+            // for function pointers other than call instructions
+            if (IGC_IS_FLAG_DISABLED(EnableFunctionPointer) && !keepAlwaysInline)
             {
                 for (auto U : F->users())
                 {
@@ -339,17 +336,45 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
         {
             if (!keepAlwaysInline)
             {
-                if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_SUBROUTINE ||
-                    IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL)
+                bool forceSubroutine = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_SUBROUTINE;
+                bool forceStackCall = IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL;
+
+                if (forceSubroutine || forceStackCall)
                 {
                     // add the following line in order to stress-test 
                     // subroutine call or stack call
                     F->removeFnAttr(llvm::Attribute::AlwaysInline);
                     F->addFnAttr(llvm::Attribute::NoInline);
-                    if (IGC_GET_FLAG_VALUE(FunctionControl) == FLAG_FCALL_FORCE_STACKCALL)
+                    if (forceStackCall)
                     {
                         F->addFnAttr("visaStackCall");
                     }
+                }
+            }
+
+            if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+            {
+                // Check if the function can be indirectly called either from
+                // externally or as a function pointer
+                bool isIndirect = (F->getLinkage() == GlobalValue::ExternalLinkage);
+                if (!isIndirect)
+                {
+                    for (auto u = F->user_begin(), e = F->user_end(); u != e; u++)
+                    {
+                        CallInst* call = dyn_cast<CallInst>(*u);
+                        if (!call || call->getCalledValue() != F)
+                        {
+                            isIndirect = true;
+                        }
+                    }
+                }
+                if (isIndirect)
+                {
+                    IGC::CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+                    ctx->m_enableFunctionPointer = true;
+                    ctx->m_enableSubroutine = false;
+                    F->addFnAttr("AsFunctionPointer");
+                    F->addFnAttr("visaStackCall");
                 }
             }
         }

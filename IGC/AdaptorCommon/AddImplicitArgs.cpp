@@ -80,8 +80,8 @@ bool AddImplicitArgs::runOnModule(Module &M)
     // Create new functions with implicit args
     for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
     {
-        // Only handle functions defined in this module
         Function* pFunc = &(*I);
+        // Only handle functions defined in this module
         if (pFunc->isDeclaration()) continue;
         // skip non-entry functions
         if (m_pMdUtils->findFunctionsInfoItem(pFunc) == m_pMdUtils->end_FunctionsInfo()) continue;
@@ -95,8 +95,25 @@ bool AddImplicitArgs::runOnModule(Module &M)
             ImplicitArgs::addBufferOffsetArgs(*pFunc, m_pMdUtils, ctx->getModuleMetaData());
         }
 
-        // Create the new function body and insert it into the module
         ImplicitArgs implicitArgs(*pFunc, m_pMdUtils);
+
+        // If enabling indirect call, only R0, PayloadHeader and PrivateBase are allowed!
+        if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+        {
+            if (pFunc->hasFnAttribute("AsFunctionPointer"))
+            {
+                if (implicitArgs.size() != 3 ||
+                !implicitArgs.isImplicitArgExist(ImplicitArg::ArgType::R0) ||
+                !implicitArgs.isImplicitArgExist(ImplicitArg::ArgType::PAYLOAD_HEADER) ||
+                !implicitArgs.isImplicitArgExist(ImplicitArg::ArgType::PRIVATE_BASE))
+                {
+                    assert(0 && "Implicit Arg not supported for indirect calls!");
+                    continue;
+                }
+            }
+        }
+
+        // Create the new function body and insert it into the module
         FunctionType *pNewFTy = getNewFuncType(pFunc, &implicitArgs);
         Function* pNewFunc = Function::Create(pNewFTy, pFunc->getLinkage());
         pNewFunc->copyAttributesFrom(pFunc);
@@ -164,6 +181,11 @@ bool AddImplicitArgs::runOnModule(Module &M)
         // Now, after changing funciton signature,
         // and validate there are no calls to the old function we can erase it.
         pFunc->eraseFromParent();
+    }
+
+    if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+    {
+        FixIndirectCalls(M);
     }
 
     return true;
@@ -330,17 +352,32 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
     FunctionInfoMetaDataHandle subFuncInfo = m_pMdUtils->getFunctionsInfoItem(old_func);
 
     std::vector<Instruction*> list_delete;
-    for (auto U = old_func->user_begin(), UE = old_func->user_end(); U != UE; ++U)
+    std::vector<Value*> functionUserList(old_func->user_begin(), old_func->user_end());
+    for (auto U : functionUserList)
     {
-        std::vector<Value*> new_args;
-        CallInst *cInst = dyn_cast<CallInst>(*U);
-        auto BC = dyn_cast<BitCastInst>(*U);
+        CallInst *cInst = dyn_cast<CallInst>(U);
+        auto BC = dyn_cast<BitCastInst>(U);
         if (BC && BC->hasOneUse())
             cInst = dyn_cast<CallInst>(BC->user_back());
 
+        if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+        {
+            if (!cInst || cInst->getCalledValue() != old_func)
+            {
+                // Support indirect function pointer usages
+                if (Instruction* userInst = dyn_cast<Instruction>(U))
+                {
+                    IRBuilder<> builder(userInst);
+                    Value* fncast = builder.CreateBitCast(new_func, old_func->getType());
+                    userInst->replaceUsesOfWith(old_func, fncast);
+                    continue;
+                }
+            }
+        }
+
         if (!cInst)
         {
-            //assert(0 && " Not supported");
+            assert(0 && "Unknown function usage");
             getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->EmitError(" undefined reference to `jmp()' ");
             return;
         }
@@ -349,6 +386,8 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
         {
             return;
         }
+
+        std::vector<Value*> new_args;
         Function *parent_func = cInst->getParent()->getParent();
         size_t numArgOperands = cInst->getNumArgOperands();
 
@@ -445,6 +484,62 @@ void AddImplicitArgs::replaceAllUsesWithNewOCLBuiltinFunction(CodeGenContext* ct
         inst->setDebugLoc(cInst->getDebugLoc());
         cInst->replaceAllUsesWith(inst);
         list_delete.push_back(cInst);
+    }
+
+    for (auto i : list_delete)
+    {
+        i->eraseFromParent();
+    }
+}
+
+void AddImplicitArgs::FixIndirectCalls(Module& M)
+{
+    // Handle indirect call instructions by inserting implicit args
+    std::vector<Instruction*> list_delete;
+    for (auto &F : M)
+    {
+        for (auto &BB : F)
+        {
+            for (auto &II : BB)
+            {
+                if (CallInst* call = dyn_cast<CallInst>(&II))
+                {
+                    Function* calledFunc = call->getCalledFunction();
+
+                    bool externalCall = calledFunc &&
+                    calledFunc->isDeclaration() &&
+                    (calledFunc->getLinkage() == GlobalValue::ExternalLinkage) &&
+                    calledFunc->hasFnAttribute("AsFunctionPointer");
+
+                    // Only handled indirect calls and external function calls
+                    if (calledFunc && !externalCall) continue;
+
+                    SmallVector<Value*, 8> args;
+                    SmallVector<Type*, 8> argTys;
+                    for (unsigned i = 0; i < call->getNumArgOperands(); i++)
+                    {
+                        args.push_back(call->getArgOperand(i));
+                    }
+
+                    Function* pFunc = call->getParent()->getParent();
+                    ImplicitArgs implicitArgs(*pFunc, m_pMdUtils);
+                    args.push_back(implicitArgs.getImplicitArg(*pFunc, ImplicitArg::ArgType::R0));
+                    args.push_back(implicitArgs.getImplicitArg(*pFunc, ImplicitArg::ArgType::PAYLOAD_HEADER));
+                    args.push_back(implicitArgs.getImplicitArg(*pFunc, ImplicitArg::ArgType::PRIVATE_BASE));
+
+                    for (auto arg : args) argTys.push_back(arg->getType());
+
+                    IRBuilder<> builder(call);
+                    Value* funcPtr = call->getCalledValue();
+                    PointerType* funcTy = PointerType::get(FunctionType::get(call->getType(), argTys, false), 0);
+                    funcPtr = builder.CreateBitCast(funcPtr, funcTy);
+                    Value* newCall = builder.CreateCall(funcPtr, args);
+
+                    call->replaceAllUsesWith(newCall);
+                    list_delete.push_back(call);
+                }
+            }
+        }
     }
 
     for (auto i : list_delete)

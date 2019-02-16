@@ -1131,6 +1131,11 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I)
     {
         return;
     }
+    else if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) && !I.getCalledFunction())
+    {
+        // Match indirect call
+        match = MatchSingleInstruction(I);
+    }
 
     assert(match && "no match for this call");
 }
@@ -2505,6 +2510,15 @@ bool CodeGenPatternMatch::MatchSingleInstruction(llvm::Instruction& I)
     for(uint i =0; i<numSources;i++)
     {
         MarkAsSource(I.getOperand(i));
+    }
+
+    if (CallInst* callinst = dyn_cast<CallInst>(&I))
+    {
+        // Mark the function pointer in indirect calls as a source
+        if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) && !callinst->getCalledFunction())
+        {
+            MarkAsSource(callinst->getCalledValue());
+        }
     }
     AddPattern(pattern);
     return true;   
