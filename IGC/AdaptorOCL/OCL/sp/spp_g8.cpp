@@ -54,11 +54,11 @@ CGen8OpenCLProgram::~CGen8OpenCLProgram()
         delete data.kernelDebugData;
     }
 
-    for (auto p : m_ShaderProgramList)
+    for (auto p : m_ShaderProgramMap)
     {
-        delete p;
+        delete p.second;
     }
-    m_ShaderProgramList.clear();
+    m_ShaderProgramMap.clear();
 
     delete m_pSystemThreadKernelOutput;
     m_pSystemThreadKernelOutput = nullptr;
@@ -138,6 +138,71 @@ RETVAL CGen8OpenCLProgram::GetProgramDebugData(Util::BinaryStream& programDebugD
     return retValue;
 }
 
+bool CGen8OpenCLProgram::KernelOrdering::parseNum(
+    const std::string &S, size_t *Out) const
+{
+    // We could perhaps just do a string sort of the id
+    // but this would allow for 0-padding if such a thing
+    // is desirable.
+    *Out = 0;
+    for (auto &C : S)
+    {
+        if (C < '0' || C > '9')
+            return false;
+        *Out *= 10;
+        *Out += static_cast<size_t>(C - '0');
+    }
+    return (S.size() != 0);
+}
+
+bool CGen8OpenCLProgram::KernelOrdering::operator()(
+    const std::string &lhs, const std::string &rhs) const
+{
+    // Here, we enforce a kernel ordering in the final binary
+    // such that all non-dispatch kernels are placed first
+    // alphabetically and all the dispatch kernels will come
+    // after ordered by their unique dispatch ids.
+
+    const std::string Dispatch = "_dispatch_";
+    size_t lhsPos = lhs.rfind(Dispatch);
+    size_t rhsPos = rhs.rfind(Dispatch);
+    if (lhsPos == std::string::npos && rhsPos == std::string::npos)
+        // Bail out here as this will be hit for the vast majority
+        // of kernels.
+        return lhs < rhs;
+
+    size_t offset = Dispatch.size();
+    size_t lhsNum, rhsNum;
+    // Check to see if these are actually dispatch kernels.
+    // A user kernel could have "_dispatch_" in the name but not
+    // a number so check for that.  A user kernel could of course
+    // have a "_dispatch_X" suffix and Neo would interpret that
+    // as a dispatch kernel so that should probably be noted
+    // as reserved in some way (a bit of a corner case).
+    bool lhsKernDispatch =
+        (lhsPos != std::string::npos) &&
+        parseNum(lhs.substr(lhsPos + offset), &lhsNum);
+    bool rhsKernDispatch =
+        (rhsPos != std::string::npos) &&
+        parseNum(rhs.substr(rhsPos + offset), &rhsNum);
+
+    if (!lhsKernDispatch && !rhsKernDispatch)
+        return lhs < rhs;
+    if (!lhsKernDispatch)
+        return true;
+    if (!rhsKernDispatch)
+        return false;
+
+    if (lhsNum == rhsNum)
+        // Proper dispatch kernels should be unique, but if we find a user one
+        // then just sort by name as usual.
+        return lhs < rhs;
+
+    // Finally, if both are actually dispatch kernels then
+    // just sort them by id.
+    return lhsNum < rhsNum;
+}
+
 void CGen8OpenCLProgram::CreateKernelBinaries()
 {
     auto isValidShader = [&](IGC::COpenCLKernel* shader)->bool
@@ -145,11 +210,11 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
         return (shader && shader->ProgramOutput()->m_programSize > 0);
     };
 
-    for (auto pKernel : m_ShaderProgramList)
+    for (auto pKernel : m_ShaderProgramMap)
     {
-        IGC::COpenCLKernel* simd8Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD8));
-        IGC::COpenCLKernel* simd16Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD16));
-        IGC::COpenCLKernel* simd32Shader = static_cast<IGC::COpenCLKernel*>(pKernel->GetShader(SIMDMode::SIMD32));
+        IGC::COpenCLKernel* simd8Shader = static_cast<IGC::COpenCLKernel*>(pKernel.second->GetShader(SIMDMode::SIMD8));
+        IGC::COpenCLKernel* simd16Shader = static_cast<IGC::COpenCLKernel*>(pKernel.second->GetShader(SIMDMode::SIMD16));
+        IGC::COpenCLKernel* simd32Shader = static_cast<IGC::COpenCLKernel*>(pKernel.second->GetShader(SIMDMode::SIMD32));
 
         // Determine how many simd modes we have per kernel
         std::vector<IGC::COpenCLKernel*> kernelVec;

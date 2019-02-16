@@ -26,6 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+#include <map>
+
 #include "../util/BinaryStream.h"
 #include "usc.h"
 #include "sp_g8.h"
@@ -47,6 +49,16 @@ struct KernelData
 
 class CGen8OpenCLProgram : DisallowCopy
 {
+private:
+    // Enforce kernel ordering.  Currently only necessary to order
+    // device execution related dispatch kernels as required by the runtime (Neo).
+    class KernelOrdering
+    {
+    public:
+        bool operator()(const std::string &lhs, const std::string &rhs) const;
+    private:
+        bool parseNum(const std::string &S, size_t *Out) const;
+    };
 public:
     CGen8OpenCLProgram(PLATFORM platform, IGC::OpenCLProgramContext &context);
 
@@ -63,7 +75,11 @@ public:
     void CreateProgramScopePatchStream(const IGC::SOpenCLProgramInfo& programInfo);
 
     // Used to track the kernel info from CodeGen
-    std::vector<IGC::CShaderProgram*> m_ShaderProgramList;
+    // std::map is used, so that the programs are sorted according to KernelOrdering.
+    // This makes a difference in case of device enqueue functionality:
+    // TransformBlocks pass creates _dispatch_0, _dispatch_1 etc. child kernels,
+    // which need to be passed to runtime in order of their unique dispatch ids.
+    std::map<std::string, IGC::CShaderProgram*, KernelOrdering> m_ShaderProgramMap;
     USC::SSystemThreadKernelOutput* m_pSystemThreadKernelOutput = nullptr;
 
     // Used to store per-kernel binary streams and kernelInfo

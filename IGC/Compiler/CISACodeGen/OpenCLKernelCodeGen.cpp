@@ -1875,11 +1875,8 @@ void GatherDataForDriver(OpenCLProgramContext* ctx, COpenCLKernel* pShader, CSha
         fullDebugInfo)
     {
         // Save the shader program to the state processor to be handled later
-        if (ctx->m_programOutput.m_ShaderProgramList.size() == 0 ||
-            ctx->m_programOutput.m_ShaderProgramList.back() != pKernel)
-        {
-            ctx->m_programOutput.m_ShaderProgramList.push_back(pKernel);
-        }
+        ctx->m_programOutput.m_ShaderProgramMap[pFunc->getName()] = pKernel;
+
         COMPILER_SHADER_STATS_PRINT(pKernel->m_shaderStats, ShaderType::OPENCL_SHADER, ctx->hash, pFunc->getName());
         COMPILER_SHADER_STATS_SUM(ctx->m_sumShaderStats, pKernel->m_shaderStats, ShaderType::OPENCL_SHADER);
         COMPILER_SHADER_STATS_DEL(pKernel->m_shaderStats);
