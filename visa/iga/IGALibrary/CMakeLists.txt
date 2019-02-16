@@ -329,6 +329,10 @@ if(ANDROID AND MEDIA_IGA)
 endif(ANDROID AND MEDIA_IGA)
 # target_link_libraries(IGA PRIVATE GEDLibrary)
 
+  set_target_properties(IGA_DLL PROPERTIES
+                        VERSION "${IGC_API_MAJOR_VERSION}.${IGC_API_MINOR_VERSION}.${IGC_API_PATCH_VERSION}"
+                        SOVERSION "${IGC_API_MAJOR_VERSION}")
+
   if(UNIX)
     INSTALL(TARGETS IGA_DLL
         RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/.   COMPONENT igc-core

@@ -30,8 +30,8 @@
   #cmakedefine IGC_LIBRARY_NAME     "${IGC_LIBRARY_NAME}32.dll"
   #cmakedefine FCL_LIBRARY_NAME     "${FCL_LIBRARY_NAME}32.dll"
 #else
-  #cmakedefine IGC_LIBRARY_NAME     "lib${IGC_LIBRARY_NAME}.so"
-  #cmakedefine FCL_LIBRARY_NAME     "lib${FCL_LIBRARY_NAME}.so"
+  #cmakedefine IGC_LIBRARY_NAME     "lib${IGC_LIBRARY_NAME}.so.${IGC_API_MAJOR_VERSION}"
+  #cmakedefine FCL_LIBRARY_NAME     "lib${FCL_LIBRARY_NAME}.so.${IGC_API_MAJOR_VERSION}"
 #endif
 
 #endif /* IGC_OPENCL_H */

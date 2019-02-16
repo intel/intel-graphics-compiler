@@ -53,6 +53,11 @@ endif()
 
 
 
+# Increment IGC_API_MAJOR_VERSION if there is ABI Change.
+set(IGC_API_MAJOR_VERSION 1)
+set(IGC_API_MINOR_VERSION 0)
+set(IGC_API_PATCH_VERSION 0)
+
 # ======================================================================================================
 # ================================================ UTILS ===============================================
 # ======================================================================================================
@@ -3613,6 +3618,9 @@ else()
   igc_arch_get_cpu(_cpuSuffix)
 endif()
 set_target_properties("${IGC_BUILD__PROJ__igc_dll}" PROPERTIES OUTPUT_NAME "${IGC_LIBRARY_NAME}${_cpuSuffix}")
+set_target_properties("${IGC_BUILD__PROJ__igc_dll}" PROPERTIES
+                      VERSION "${IGC_API_MAJOR_VERSION}.${IGC_API_MINOR_VERSION}.${IGC_API_PATCH_VERSION}"
+                      SOVERSION "${IGC_API_MAJOR_VERSION}")
 unset(_cpuSuffix)
 
 #FCL
@@ -3622,6 +3630,9 @@ else()
   igc_arch_get_cpu(_cpuSuffix)
 endif()
 set_target_properties("${IGC_BUILD__PROJ__fcl_dll}" PROPERTIES OUTPUT_NAME "${FCL_LIBRARY_NAME}${_cpuSuffix}")
+set_target_properties("${IGC_BUILD__PROJ__fcl_dll}" PROPERTIES
+                      VERSION "${IGC_API_MAJOR_VERSION}.${IGC_API_MINOR_VERSION}.${IGC_API_PATCH_VERSION}"
+                      SOVERSION "${IGC_API_MAJOR_VERSION}")
 unset(_cpuSuffix)
 
 # Injecting external vISA project.
