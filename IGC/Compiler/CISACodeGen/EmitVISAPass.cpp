@@ -13888,7 +13888,7 @@ ResourceDescriptor EmitPass::GetResourceVariable(Value* resourcePtr)
                 CVariable* newResource = m_currShader->GetNewVariable(
                     resource.m_resource->GetNumberElement(),
                     ISA_TYPE_UD,
-                    resource.m_resource->GetAlign(),
+                    resource.m_resource->IsUniform() ? EALIGN_DWORD : EALIGN_GRF,
                     resource.m_resource->IsUniform());
                 m_encoder->Cast(newResource, resource.m_resource);
                 resource.m_resource = newResource;
