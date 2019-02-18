@@ -739,20 +739,24 @@ public:
       bool isDefinition = (SPIRVWord)flags & SPIRVDebug::FlagIsDefinition;
       bool isOptimized = (SPIRVWord)flags & SPIRVDebug::FlagIsOptimized;
       bool isLocal = (SPIRVWord)flags & SPIRVDebug::FlagIsLocal;
+      auto funcSPIRVId = sp.getSPIRVFunction();
 
       SmallVector<llvm::Metadata *, 8> Elts;
       DINodeArray TParams = Builder.getOrCreateArray(Elts);
       llvm::DITemplateParameterArray TParamsArray = TParams.get();
+      DISubprogram* diSP = nullptr;
       if ((isa<DICompositeType>(scope) || isa<DINamespace>(scope)) && !isDefinition)
       {
-          return addMDNode(inst, Builder.createMethod(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition,
-              0, 0, 0, nullptr, flags, isOptimized, TParamsArray));
+          diSP = Builder.createMethod(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition,
+              0, 0, 0, nullptr, flags, isOptimized, TParamsArray);
       }
       else
       {
-          return addMDNode(inst, Builder.createFunction(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition, 
-              sp.getScopeLine(), flags, isOptimized, TParamsArray));
+          diSP = Builder.createFunction(scope, name, linkageName, file, sp.getLine(), spType, isLocal, isDefinition, 
+              sp.getScopeLine(), flags, isOptimized, TParamsArray);
       }
+      FuncIDToDISP[funcSPIRVId] = diSP;
+      return addMDNode(inst, diSP);
   }
 
   DIScope* createLexicalBlock(SPIRVExtInst* inst)
@@ -984,6 +988,14 @@ public:
       return node;
   }
 
+  DISubprogram* getDISP(SPIRVId id)
+  {
+      auto it = FuncIDToDISP.find(id);
+      if (it != FuncIDToDISP.end())
+          return (*it).second;
+      return nullptr;
+  }
+
 private:
   SPIRVModule *BM;
   Module *M;
@@ -995,6 +1007,7 @@ private:
   std::unordered_map<std::string, DIFile*> FileMap;
   std::unordered_map<Function *, DISubprogram*> FuncMap;
   std::unordered_map<SPIRVInstruction*, MDNode*> MDMap;
+  std::unordered_map<SPIRVId, DISubprogram*> FuncIDToDISP;
 
   DICompileUnit* getCompileUnit() { return cu; }
 
@@ -3261,6 +3274,12 @@ SPIRVToLLVM::translate() {
 
   for (unsigned I = 0, E = BM->getNumFunctions(); I != E; ++I) {
     transFunction(BM->getFunction(I));
+  }
+  for(auto& funcs : FuncMap)
+  {
+      auto diSP = getDbgTran().getDISP(funcs.first->getId());
+      if (diSP)
+          funcs.second->setSubprogram(diSP);
   }
   if (!transKernelMetadata())
     return false;
