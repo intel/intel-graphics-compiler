@@ -116,6 +116,9 @@ private:
     std::vector<VISAModule*> toFree;
 
     unsigned int lastGenOff = 0;
+
+    void writeProgramHeaderTable(bool is64Bit, void* pBuffer, unsigned int size);
+    void setElfType(bool is64Bit, void* pBuffer);
 };
 
 } // namespace IGC
