@@ -31,10 +31,17 @@
 
 # =============================================== Tools ================================================
 
-# In new Clang versions VME types are built-in. Keep this flag until all OS's update Clang version
-set(VME_TYPES_DEFINED FALSE)
-if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+# In new Clang versions VME types are built-in. Keep this flag until all OS's update Clang version to 8
+if(NOT DEFINED VME_TYPES_DEFINED)
+  set(VME_TYPES_DEFINED FALSE)
+  if(CMAKE_SYSTEM_NAME STREQUAL Linux)
     set(VME_TYPES_DEFINED TRUE)
+  endif()
+endif()
+
+set(CLANG_EXE_VERSION_GE_7 FALSE)
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+  set(CLANG_EXE_VERSION_GE_7 TRUE)
 endif()
 
 set(CCLANG_BUILD_INTREE_LLVM FALSE)
@@ -157,6 +164,7 @@ endif()
   )
 
   set_property(TARGET UnzipClang PROPERTY PROJECT_LABEL UnzipClang)
+  set(CL_OPTIONS "")
 
   add_custom_target(GetClang)
   add_library(common_clang_dll UNKNOWN IMPORTED GLOBAL)
@@ -170,25 +178,13 @@ endif()
     set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
   else()
     # Do not use precompiled common clang.
-    message(STATUS "Precompiled common clang bundle ${_clang7zLocation} does not exist. Try to compile from sources.")
-    # if not specified from outside
-    # try to use common clang component from one of fixed locations
-    if(NOT IGC_CCLANG_HOME_DIR)
-      set(IGC_CCLANG_HOME_DIR ${IGC_BUILD__GFX_DEV_SRC_DIR}/external/common_clang)
-      if(NOT EXISTS ${IGC_CCLANG_HOME_DIR})
-        set(IGC_CCLANG_HOME_DIR ${IGC_BUILD__GFX_DEV_SRC_DIR}/../common_clang)
-      endif(NOT EXISTS ${IGC_CCLANG_HOME_DIR})
-      if(EXISTS ${CCLANG_SRC})
-        set(IGC_CCLANG_HOME_DIR ${CCLANG_SRC})
-		message(STATUS "Setup common clang source path from buildplan argument")
-      endif(EXISTS ${CCLANG_SRC})
-    endif(NOT IGC_CCLANG_HOME_DIR)
-    get_filename_component(IGC_CCLANG_HOME_DIR "${IGC_CCLANG_HOME_DIR}" ABSOLUTE)
+    message(STATUS "Precompiled common clang bundle ${_clang7zLocation} does not exist. Try to compile from sources or use system common clang.")
+
     # Set build directory
     set(IGC_CCLANG_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/clang_build)
-    if(EXISTS ${IGC_CCLANG_HOME_DIR} OR ${CCLANG_BUILD_INTREE_LLVM})
+    if(${CCLANG_BUILD_INTREE_LLVM})
+      message("Common clang build-in-tree")
       set(CCLANG_INSTALL_ARTIFACTS_DIR ${IGC_TARGET__TOOLS_CLANG_DIR})
-      message(STATUS "Trigger common clang compilation from ${IGC_CCLANG_HOME_DIR} to ${CCLANG_INSTALL_ARTIFACTS_DIR}")
 
       if(NOT CCLANG_OCL_HEADERS_DIR)
         if (EXISTS "${IGC_BUILD__GFX_DEV_SRC_DIR}/third_party/opencl_headers")
@@ -197,48 +193,59 @@ endif()
           get_filename_component(CCLANG_OCL_HEADERS_DIR "${IGC_BUILD__GFX_DEV_SRC_DIR}/../opencl_headers" ABSOLUTE)
         endif()
       endif(NOT CCLANG_OCL_HEADERS_DIR)
-      if(${CCLANG_BUILD_INTREE_LLVM})
 
-	  message("Common clang build-in-tree")
-	  
-       set(clang_filename "clang${CMAKE_EXECUTABLE_SUFFIX}")
-       add_custom_command(
-         OUTPUT "${IGC_TARGET__TOOLS_CLANG_DIR}/${clang_filename}"
-         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:clang>" "${IGC_TARGET__TOOLS_CLANG_DIR}/${clang_filename}"
-         DEPENDS clang
-         )
+      set(clang_filename "clang${CMAKE_EXECUTABLE_SUFFIX}")
+      add_custom_command(
+       OUTPUT "${IGC_TARGET__TOOLS_CLANG_DIR}/${clang_filename}"
+       COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:clang>" "${IGC_TARGET__TOOLS_CLANG_DIR}/${clang_filename}"
+       DEPENDS clang
+       )
 
-       add_custom_command(
-          OUTPUT "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}"
-          COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${COMMON_CLANG_LIBRARY_NAME}>" "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}"
-          DEPENDS ${COMMON_CLANG_LIBRARY_NAME}
-          )
+      add_custom_command(
+        OUTPUT "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}"
+        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${COMMON_CLANG_LIBRARY_NAME}>" "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}"
+        DEPENDS ${COMMON_CLANG_LIBRARY_NAME}
+        )
 
-       set(cclang_header_filename "opencl-c.h")
-       add_custom_command(
-          OUTPUT "${IGC_TARGET__TOOLS_CLANG_DIR}/${cclang_header_filename}"
-          COMMAND ${CMAKE_COMMAND} -E copy "${CLANG_SOURCE_DIR}/lib/Headers/${cclang_header_filename}" "${IGC_TARGET__TOOLS_CLANG_DIR}/${cclang_header_filename}"
-          DEPENDS cl_headers
-          )
+      set(cclang_header_filename "opencl-c.h")
+      add_custom_command(
+        OUTPUT "${IGC_TARGET__TOOLS_CLANG_DIR}/${cclang_header_filename}"
+        COMMAND ${CMAKE_COMMAND} -E copy "${CLANG_SOURCE_DIR}/lib/Headers/${cclang_header_filename}" "${IGC_TARGET__TOOLS_CLANG_DIR}/${cclang_header_filename}"
+        DEPENDS cl_headers
+        )
 
-       add_custom_target(copy_cclang_files ALL
-         DEPENDS ${IGC_TARGET__TOOLS_CLANG_DIR}/${clang_filename} ${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME} ${IGC_TARGET__TOOLS_CLANG_DIR}/${cclang_header_filename}
-		 )
+      add_custom_target(copy_cclang_files ALL
+       DEPENDS ${IGC_TARGET__TOOLS_CLANG_DIR}/${clang_filename} ${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME} ${IGC_TARGET__TOOLS_CLANG_DIR}/${cclang_header_filename}
+      )
 
-       add_dependencies(GetClang copy_cclang_files)
-	   
-	   set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" ${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME})
-      else()
-       add_subdirectory(${IGC_CCLANG_HOME_DIR} ${IGC_CCLANG_BUILD_DIR})
-       add_subdirectory(${IGC_CCLANG_BUILD_DIR})
-	   
-	   add_subdirectory(${IGC_CCLANG_HOME_DIR} ${IGC_CCLANG_BUILD_DIR})
-       add_dependencies(GetClang "${CCLANG_LIB_NAME}")
-	   
-	   set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" "${IGC_CCLANG_BUILD_DIR}/install/lib/${COMMON_CLANG_LIB_FULL_NAME}")
-      endif()
+      add_dependencies(GetClang copy_cclang_files)
+
+      set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" ${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME})
+
     else()
-      message(FATAL_ERROR "Can not compile common clang: unknown location of common clang sources")
+      find_library(SYSTEM_COMMON_CLANG ${COMMON_CLANG_LIBRARY_NAME})
+      if(SYSTEM_COMMON_CLANG)
+        message(STATUS "[IGC] Using system common_clang: ${SYSTEM_COMMON_CLANG}")
+        set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" "${SYSTEM_COMMON_CLANG}")
+        find_program(CLANG_GE7 clang-${LLVM_VERSION_MAJOR})
+        if(CLANG_GE7)
+          message(STATUS "[IGC] Found clang-${LLVM_VERSION_MAJOR} executable: ${CLANG_GE7}")
+          foreach(configName ${CMAKE_CONFIGURATION_TYPES} ${CMAKE_BUILD_TYPE} "Release")
+            string(TOUPPER "${configName}" upperConfigName)
+            set(locPropName "IMPORTED_LOCATION_${upperConfigName}")
+            set_property(TARGET IGC_TARGET__TOOLS_CLANG PROPERTY "${locPropName}" "${CLANG_GE7}")
+            unset(locPropName)
+          endforeach()
+          set(CL_OPTIONS "-finclude-default-header")
+          if(LLVM_VERSION_MAJOR VERSION_EQUAL 7)
+            message(WARNING "[IGC] clang-7 should be patched with VME patch (https://reviews.llvm.org/D51484). Assuming that it is. If not, please add -DVME_TYPES_DEFINED=FALSE.")
+          endif()
+        else(CLANG_GE7)
+          message(FATAL_ERROR "[IGC] Couldn't find clang-${LLVM_VERSION_MAJOR} executable, please install it.")
+        endif(CLANG_GE7)
+      else(SYSTEM_COMMON_CLANG)
+        message(FATAL_ERROR "Can not compile common clang. IGC is being built with system LLVM and expects common clang to be installed in the system. See https://github.com/intel/opencl-clang for instructions.")
+      endif(SYSTEM_COMMON_CLANG)
     endif()
   endif()
   add_dependencies(common_clang_dll GetClang)
@@ -862,13 +869,19 @@ endfunction()
 # ======================================================================================================
 
 # ======================================== Precompiled headers =========================================
+if(NOT IGC_BUILD__BIF_OCL_PCH_SRC AND NOT SYSTEM_COMMON_CLANG)
+  set(IGC_BUILD__BIF_OCL_PCH_SRC "${IGC_TARGET__TOOLS_CLANG_DIR}/opencl-c.h")
 
-set(IGC_BUILD__BIF_OCL_PCH_SRC "${IGC_TARGET__TOOLS_CLANG_DIR}/opencl-c.h")
-if(NOT ${CCLANG_BUILD_INTREE_LLVM})
-add_custom_command(
-    OUTPUT ${IGC_BUILD__BIF_OCL_PCH_SRC}
-    DEPENDS GetClang
-)
+  if(NOT ${CCLANG_BUILD_INTREE_LLVM})
+    add_custom_command(
+      OUTPUT ${IGC_BUILD__BIF_OCL_PCH_SRC}
+      DEPENDS GetClang
+    )
+  endif()
+  set(IGC_BUILD__BIF_OCL_INCLUDES ${IGC_BUILD__BIF_OCL_PCH_SRC})
+  set(PCH_OPTIONS "-include ${IGC_BUILD__BIF_OCL_PCH_SRC}")
+else()
+  set(PCH_OPTIONS ${CL_OPTIONS})
 endif()
 
 set(IGC_BUILD__BIF_RS_PCH_SRC "${IGC_OPTION__BIF_SRC_RS_DIR}/rs_pch.h")
@@ -880,14 +893,14 @@ igc_bif_build_pch(
     TRIPLE  spir
     HEADERS "${IGC_BUILD__BIF_RS_PCH_SRC}"
     DEFINES "__32bit__=1" "cl_khr_fp64"
-    OPTIONS -include ${IGC_BUILD__BIF_OCL_PCH_SRC}
+    OPTIONS ${PCH_OPTIONS}
   )
   
 igc_bif_build_pch(
     OUTPUT  "${IGC_BUILD__BIF_RS_PCH64}"
     TRIPLE  spir64
     HEADERS "${IGC_BUILD__BIF_RS_PCH_SRC}"
-    OPTIONS -include ${IGC_BUILD__BIF_OCL_PCH_SRC}
+    OPTIONS ${PCH_OPTIONS}
   )
 
 # ======================================================================================================
@@ -914,12 +927,13 @@ endfunction()
 #     %LLVM_LINK_EXE% .\IBiF_Impl_int.bc .\IGCBiF_Impl_ll.bc -o .\OCLBiFImpl.bc
 
 
-file(GLOB_RECURSE _PRE_RELEASE_CL 	"${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PreRelease/*.cl")
+file(GLOB_RECURSE _PRE_RELEASE_CL "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PreRelease/*.cl")
 
 set(_concatScript   "${IGC_SOURCE_DIR}/BiFModule/concat.py")
-set(IGC_BUILD__BIF_OCL_FORCE_INC  "${IGC_BUILD__BIF_DIR}/opencl_cth.h")
+set(IGC_BUILD__BIF_OCL_FORCE_INC "${IGC_BUILD__BIF_DIR}/opencl_cth.h")
 set(IGC_BUILD__BIF_OCL_SHARED_INC  "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/opencl_cth_released.h")
 set(IGC_BUILD__BIF_OCL_SHARED_INC_PRE_RELEASE    "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PreRelease/opencl_cth_pre_release.h")
+set(IGC_BUILD__BIF_OCL_INCLUDES ${IGC_BUILD__BIF_OCL_INCLUDES} ${IGC_BUILD__BIF_OCL_FORCE_INC})
 
 
 
@@ -955,7 +969,9 @@ set(FLAG "")
 if(${VME_TYPES_DEFINED})
     list(APPEND FLAG "__VME_TYPES_DEFINED__")
 endif(${VME_TYPES_DEFINED})
-
+if(${CLANG_EXE_VERSION_GE_7})
+    list(APPEND FLAG "__CLANG7__")
+endif()
 
 igc_bif_find_cl_files(IGC_BUILD__BIF_OCL_COMMON_DEPENDS ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS} "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation")
 
@@ -965,92 +981,94 @@ igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
     TRIPLE               spir64
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/IBiF_Impl.cl"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
     INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-    OPTIONS CL           -cl-std=CL2.0
+    OPTIONS CL           ${CL_OPTIONS} -cl-std=CL2.0
   )
 
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
     TRIPLE               spir64
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/IBiF_Impl.cl"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC}
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
     INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_SPIRV_COMMON_INC_DIRS}
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-    OPTIONS CL           -cl-std=CL2.0
+    OPTIONS CL           ${CL_OPTIONS} -cl-std=CL2.0
   )
   if ( NOT "${_PRE_RELEASE_CL}" STREQUAL "" )
    igc_bif_build_bc(
       OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_PreRelease_int.bc"
       TRIPLE               spir64
       SOURCES              ${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PreRelease/IBIF_PreRelease_Impl.cl
-      FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+      FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
       INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
       DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} "cl_intel_device_side_avc_vme_enable" ${FLAG}
       DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-      OPTIONS CL           -cl-std=CL2.0
+      OPTIONS CL           ${CL_OPTIONS} -cl-std=CL2.0
      )
  endif()
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_spirv_size_t_32.bc"
     TRIPLE               spir
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/pointersize.cl"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC}  ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
     INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
     DEFINES              "__32bit__=1" "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-    OPTIONS CL           -cl-std=CL2.0
+    OPTIONS CL           ${CL_OPTIONS} -cl-std=CL2.0
   )
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IBiF_spirv_size_t_64.bc"
     TRIPLE               spir64
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation/pointersize.cl"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
     INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-    OPTIONS CL           -cl-std=CL2.0
+    OPTIONS CL           ${CL_OPTIONS} -cl-std=CL2.0
   )
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IGCsize_t_32_int.bc"
     TRIPLE               spir
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PointerSize/IBiF_size_t.cl"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC}  ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
     INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
     DEFINES              "__32bit__=1" "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-    OPTIONS CL           -cl-std=CL2.0
+    OPTIONS CL           ${CL_OPTIONS} -cl-std=CL2.0
   )
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IGCsize_t_64_int.bc"
     TRIPLE               spir64
     SOURCES              "${IGC_OPTION__BIF_SRC_OCL_DIR}/Languages/OpenCL/PointerSize/IBiF_size_t.cl"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
     INCLUDE_DIRECTORIES  ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS}
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=200" "__IGC_BUILD__" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
-    OPTIONS CL           -cl-std=CL2.0
+    OPTIONS CL           ${CL_OPTIONS} -cl-std=CL2.0
   )
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IGCsize_t_32.bc"
     TRIPLE               spir
     SOURCES              "${IGC_BUILD__BIF_DIR}/IGCsize_t_32_int.bc"
                          "${IGC_BUILD__BIF_DIR}/IBiF_spirv_size_t_32.bc"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE         ${IGC_BUILD__BIF_OCL_INCLUDES}
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=120" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
+    OPTIONS CL           ${CL_OPTIONS}
   )
 igc_bif_build_bc(
     OUTPUT               "${IGC_BUILD__BIF_DIR}/IGCsize_t_64.bc"
     TRIPLE               spir64
     SOURCES              "${IGC_BUILD__BIF_DIR}/IGCsize_t_64_int.bc"
                          "${IGC_BUILD__BIF_DIR}/IBiF_spirv_size_t_64.bc"
-    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
+    FORCE_INCLUDE         ${IGC_BUILD__BIF_OCL_INCLUDES}
     DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=120" ${KHR_DEFINES} ${FLAG}
     DEPENDS              ${IGC_BUILD__BIF_OCL_COMMON_DEPENDS}
+    OPTIONS CL           ${CL_OPTIONS}
   )
 
 if ("${FLAG}" STREQUAL "")
@@ -1064,26 +1082,28 @@ endif()
 # the info, we need to make sure all the dependencies are handled. Like for example if any
 # file uses svml files, we need to prototype the headers and during linking it gets resolved.
   
-  if ("${_PRE_RELEASE_CL}" STREQUAL "" AND ( NOT "${_MATH_SRC_BC}" STREQUAL "" ) )
-	igc_bif_build_bc(
-		OUTPUT               "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc"
-		TRIPLE               spir64
-		SOURCES              "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
-                             "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
-							 "${IGC_BUILD__BIF_DIR}/IBiF_Math_Src_spirv.bc"
-		FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
-		DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=120" ${KHR_DEFINES}
-	)
+if ("${_PRE_RELEASE_CL}" STREQUAL "" AND ( NOT "${_MATH_SRC_BC}" STREQUAL "" ) )
+  igc_bif_build_bc(
+    OUTPUT               "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc"
+    TRIPLE               spir64
+    SOURCES              "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
+                         "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
+                         "${IGC_BUILD__BIF_DIR}/IBiF_Math_Src_spirv.bc"
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
+    DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=120" ${KHR_DEFINES}
+    OPTIONS CL           ${CL_OPTIONS}
+  )
 else()
-	igc_bif_build_bc(
-		OUTPUT               "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc"
-		TRIPLE               spir64
-		SOURCES              "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
-                             "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
-						     "${IGC_BUILD__BIF_DIR}/IBiF_PreRelease_int.bc"
-		FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_PCH_SRC} ${IGC_BUILD__BIF_OCL_FORCE_INC}
-		DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=120" ${KHR_DEFINES}
-	)
+  igc_bif_build_bc(
+    OUTPUT               "${IGC_BUILD__BIF_DIR}/OCLBiFImpl.bc"
+    TRIPLE               spir64
+    SOURCES              "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int.bc"
+                         "${IGC_BUILD__BIF_DIR}/IBiF_Impl_int_spirv.bc"
+                         "${IGC_BUILD__BIF_DIR}/IBiF_PreRelease_int.bc"
+    FORCE_INCLUDE        ${IGC_BUILD__BIF_OCL_INCLUDES}
+    DEFINES              "__EXECUTION_MODEL_DEBUG=1" "__OPENCL_C_VERSION__=120" ${KHR_DEFINES}
+    OPTIONS CL           ${CL_OPTIONS}
+  )
 endif()
 
 # =========================================== Custom targets ============================================
