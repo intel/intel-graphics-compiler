@@ -1475,7 +1475,7 @@ public:
         return srcs[3];
     }
 
-    G4_SendMsgDescriptor *getMsgDesc() const
+    G4_SendMsgDescriptor *getMsgDesc() const override
     {
         return msgDesc;
     }
@@ -1533,7 +1533,7 @@ public:
 
     bool isDirectSplittableSend();
 
-    void computeRightBound(G4_Operand* opnd);
+    void computeRightBound(G4_Operand* opnd) override;
 
     void emit_send(std::ostream& output, bool symbol_dst, bool *symbol_srcs);
     void emit_send(std::ostream& output, bool dotStyle = false);
