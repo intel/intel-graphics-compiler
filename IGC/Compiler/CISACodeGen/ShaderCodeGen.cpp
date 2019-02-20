@@ -893,6 +893,8 @@ void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &kernels
             const SIMDMode leastSIMDMode = getLeastSIMDAllowed(ctx->getModuleMetaData()->csInfo.maxWorkGroupSize, GetHwThreadsPerWG(ctx->platform));
             leastSIMD = numLanes(leastSIMDMode);
         }
+        if (ctx->getModuleMetaData()->csInfo.forcedSIMDSize)
+            assert((ctx->getModuleMetaData()->csInfo.forcedSIMDSize >= leastSIMD) && "Incorrect SIMD forced");
         if (leastSIMD <= 8)
             AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
         if (leastSIMD <= 16)
