@@ -49,6 +49,7 @@ if(MSVC)
     set_target_properties(${IGC_BUILD__PROJ__GenISAIntrinsics} PROPERTIES VS_PLATFORM_TOOLSET WindowsApplicationForDrivers10.0)
     set_target_properties(${IGC_BUILD__PROJ__GenISAIntrinsics} PROPERTIES VS_GLOBAL_DriverTargetPlatform Universal)
     set_target_properties(${IGC_BUILD__PROJ__GenISAIntrinsics} PROPERTIES VS_TARGET_PLATFORM_VERSION "")
+    windows_libs_props_universal(${IGC_BUILD__PROJ__GenISAIntrinsics})
 endif()
 
 

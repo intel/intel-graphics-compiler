@@ -3536,16 +3536,17 @@ set_property(TARGET "${IGC_BUILD__PROJ__igc_dll}" PROPERTY PROJECT_LABEL "${IGC_
 set_property(TARGET "${IGC_BUILD__PROJ__fcl_dll}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__fcl_dll}")
 
 #Set Universal properties if this is universal build
-if(IGC_OPTION__UNIVERSAL_DRIVER)
+if(MSVC AND IGC_OPTION__UNIVERSAL_DRIVER)
     bs_set_wdk(${IGC_BUILD__PROJ__igc_dll})
     set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_PLATFORM_TOOLSET WindowsApplicationForDrivers10.0)
     set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_GLOBAL_DriverTargetPlatform Universal)
     set_target_properties(${IGC_BUILD__PROJ__igc_dll} PROPERTIES VS_TARGET_PLATFORM_VERSION "")
-
+    windows_libs_props_universal(${IGC_BUILD__PROJ__igc_dll})
     bs_set_wdk(${IGC_BUILD__PROJ__fcl_dll})
     set_target_properties(${IGC_BUILD__PROJ__fcl_dll} PROPERTIES VS_PLATFORM_TOOLSET WindowsApplicationForDrivers10.0)
     set_target_properties(${IGC_BUILD__PROJ__fcl_dll} PROPERTIES VS_GLOBAL_DriverTargetPlatform Universal)
     set_target_properties(${IGC_BUILD__PROJ__fcl_dll} PROPERTIES VS_TARGET_PLATFORM_VERSION "")
+    windows_libs_props_universal(${IGC_BUILD__PROJ__fcl_dll})
 endif()
 
 if(IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
@@ -3557,7 +3558,10 @@ if(IGC_OPTION__INCLUDE_IGC_COMPILER_TOOLS)
       ${IGC_BUILD__SRC__IGC__igc_lib}
       ${IGC_BUILD__HDR__IGC__igc_lib}
     )
-  bs_set_wdk(${IGC_BUILD__PROJ__igc_lib})
+  if(MSVC)
+    bs_set_wdk(${IGC_BUILD__PROJ__igc_lib})
+    windows_libs_props_universal(${IGC_BUILD__PROJ__igc_lib})
+  endif()
   set_property(TARGET "${IGC_BUILD__PROJ__igc_lib}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__igc_lib}")
   set_property(TARGET "${IGC_BUILD__PROJ__igc_lib}" PROPERTY EXCLUDE_FROM_ALL YES)
   set(IGC_BUILD__MAIN_IGC_LIB_SUFFIXES
@@ -3575,10 +3579,13 @@ if(IGC_OPTION__USCLAUNCHER_TOOL)
       ${IGC_BUILD__SRC__IGC__igc_lib}
       ${IGC_BUILD__HDR__IGC__igc_lib}
     )
-  bs_set_wdk(${IGC_BUILD__PROJ__igc_lib})
+  if(MSVC)
+    bs_set_wdk(${IGC_BUILD__PROJ__igc_lib})
+    windows_libs_props_universal(${IGC_BUILD__PROJ__igc_lib})
+  endif()
+
   set_property(TARGET "${IGC_BUILD__PROJ__igc_lib}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__igc_lib}")
   set_property(TARGET "${IGC_BUILD__PROJ__igc_lib}" PROPERTY EXCLUDE_FROM_ALL YES)
-
   set(IGC_BUILD__MAIN_IGC_LIB_SUFFIXES
       ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES}
       "__igc_lib"
