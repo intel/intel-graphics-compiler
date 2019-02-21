@@ -172,6 +172,7 @@ DECLARE_IGC_REGKEY(bool, EnableTrivialEmulateSinCos,   false, "Enable Emulation 
 DECLARE_IGC_REGKEY(DWORD, ld2dmsInstsClubbingThreshold, 3, "Do not club more than these ld2dms insts into the new BB during MCSOpt")
 DECLARE_IGC_REGKEY(DWORD, ForcePerThreadPrivateMemorySize, 0, "Useful for ensuring a certain amount of private memory when doing a shader override.")
 DECLARE_IGC_REGKEY(DWORD, RetryManagerFirstStateId, 0, "For debugging purposes, it can be useful to start on a particular id rather than id 0.")
+DECLARE_IGC_REGKEY(bool, DisableSendSrcDstOverlapWA, false, "Disable Send Source/destination overlap WA which is enabled for GEN10/GEN11 and whenever Wddm2Svm is set in WATable")
 
 DECLARE_IGC_GROUP("Shader dumping")
 DECLARE_IGC_REGKEY(bool, EnableCosDump, false, "Enable cos dump")

@@ -5264,13 +5264,9 @@ void CEncoder::SetVISAWaTable(WA_TABLE const& waTable)
         m_WaTable.WaDisableSIMD16On3SrcInstr = waTable.WaDisableSIMD16On3SrcInstr;
     }
 
-    if (m_program->m_Platform->supportFtrWddm2Svm() ||
-        m_program->m_Platform->GetPlatformFamily() == IGFX_GEN10_CORE ||
-        m_program->m_Platform->GetPlatformFamily() == IGFX_GEN11_CORE)
-    {
-        // no send src/dst overlap when page fault is enabled
-        m_WaTable.WaDisableSendSrcDstOverlap = true;
-    }
+    // no send src/dst overlap when page fault is enabled
+    m_WaTable.WaDisableSendSrcDstOverlap = m_program->m_Platform->WaDisableSendSrcDstOverlap();
+
     m_WaTable.WaNoSimd16TernarySrc0Imm = waTable.WaNoSimd16TernarySrc0Imm;
     m_WaTable.Wa_1406306137 = waTable.Wa_1406306137;
     m_WaTable.Wa_2201674230 = waTable.Wa_2201674230;
