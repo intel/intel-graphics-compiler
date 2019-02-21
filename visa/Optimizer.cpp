@@ -983,17 +983,9 @@ void Optimizer::accSubPostSchedule()
         return;
     }
 
-    // clean existing def use
-    kernel.fg.globalOpndHT.clearHashTable();
-    for (auto bb : kernel.fg.BBs)
-    {
-        for (auto inst : *bb)
-        {
-            inst->clearDef();
-            inst->clearUse();
-        }
-    }
+    kernel.fg.resetLocalDataFlowData();
     kernel.fg.localDataFlowAnalysis();
+
     HWConformity hwConf(builder, kernel, mem);
     for (auto bb : kernel.fg.BBs)
     {

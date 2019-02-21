@@ -588,3 +588,17 @@ void FlowGraph::localDataFlowAnalysis()
         }
     }
 }
+
+// Reset existing def-use
+void FlowGraph::resetLocalDataFlowData()
+{
+    globalOpndHT.clearHashTable();
+    for (auto bb : BBs)
+    {
+        for (auto inst : *bb)
+        {
+            inst->clearDef();
+            inst->clearUse();
+        }
+    }
+}

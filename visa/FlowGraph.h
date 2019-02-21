@@ -947,7 +947,10 @@ public:
 
     void constructFlowGraph(INST_LIST& instlist);
     bool matchBranch(int &sn, INST_LIST& instlist, INST_LIST_ITER &it);
+
     void localDataFlowAnalysis();
+    void resetLocalDataFlowData();
+
     unsigned getNumBB() const      {return numBBId;}
     G4_BB* getEntryBB()        {return entryBB;}
     void setEntryBB(G4_BB *entry) {entryBB = entry;}
