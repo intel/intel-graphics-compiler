@@ -25,8 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 
-#if defined( _INTERNAL ) || defined( _DEBUG )
-    #define COMPILER_STATS_ENABLE 0
+#if defined( _DEBUG )
+    #define COMPILER_STATS_ENABLE 1
 #endif
 
 #include <unordered_map>
