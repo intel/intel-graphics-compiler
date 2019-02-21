@@ -2098,7 +2098,8 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
             bool hasSIMD16 = simd16Shader && simd16Shader->ProgramOutput()->m_programSize > 0;
             if(!hasSIMD16 || (m_Context->m_retryManager.GetLastSpillSize()))
             {
-                compileThisSIMD = false; //Don't compile SIMD32 since SIMD16 had spilled
+                if(EP.m_canAbortOnSpill)
+                    compileThisSIMD = false; //Don't compile SIMD32 since SIMD16 had spilled
             }
         }
         if(!compileThisSIMD)

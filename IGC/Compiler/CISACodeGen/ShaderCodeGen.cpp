@@ -896,10 +896,20 @@ void CodeGen(OpenCLProgramContext *ctx, CShaderProgram::KernelShaderMap &kernels
         if (ctx->getModuleMetaData()->csInfo.forcedSIMDSize)
             assert((ctx->getModuleMetaData()->csInfo.forcedSIMDSize >= leastSIMD) && "Incorrect SIMD forced");
         if (leastSIMD <= 8)
+        {
             AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD8, false);
-        if (leastSIMD <= 16)
             AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 16));
-        AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+        }
+        else if (leastSIMD <= 16)
+        {
+            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD16, false);
+            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, (ctx->getModuleMetaData()->csInfo.forcedSIMDSize != 32));
+        }
+        else
+        {
+            AddCodeGenPasses(*ctx, kernels, Passes, SIMDMode::SIMD32, false);
+        }
     }
     else
     {
