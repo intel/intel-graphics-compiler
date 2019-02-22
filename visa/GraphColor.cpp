@@ -9793,7 +9793,7 @@ int GlobalRA::coloringRegAlloc()
     (preScratchAccess->isSpill && !preScratchAccess->fillInUse) \
 
 #define IS_USE_KILL_CANDIDATE(preScratchAccess) \
-    (!(preScratchAccess->regKilled || preScratchAccess->regPartialKilled)) \
+    (!(preScratchAccess->regKilled || preScratchAccess->regPartialKilled || preScratchAccess->scratchDefined)) \
 
 #define IS_GRF_RANGE_OVERLAP(s1, e1, sa) \
     (e1 >= sa->linearizedStart && sa->linearizedEnd >= s1)
@@ -10323,7 +10323,7 @@ void FlagSpillCleanup::regUseFlag(SCRATCH_PTR_LIST*  scratchTraceList,
 void FlagSpillCleanup::regUseScratch(SCRATCH_PTR_LIST*  scratchTraceList,
     G4_INST*           inst,
     G4_Operand*        opnd,
-    int                opndIndex)
+    Gen4_Operand_Number opndNum)
 {
     G4_Declare *topdcl = NULL;
     topdcl = opnd->getTopDcl();
@@ -10338,7 +10338,14 @@ void FlagSpillCleanup::regUseScratch(SCRATCH_PTR_LIST*  scratchTraceList,
         SCRATCH_ACCESS * scratchAccess = *it;
         if (topdcl == scratchAccess->scratchDcl)
         {
-            scratchAccess->removeable = false;
+            if (opndNum == Opnd_dst)
+            {
+                scratchAccess->scratchDefined = true;
+            }
+            else
+            {
+                scratchAccess->removeable = false;
+            }
         }
 
         it = kt;
@@ -10373,6 +10380,7 @@ void FlagSpillCleanup::initializeScratchAccess(SCRATCH_ACCESS *scratchAccess, IN
     scratchAccess->removeable = true;
     scratchAccess->instKilled = false;
     scratchAccess->evicted = false;
+    scratchAccess->scratchDefined = false;
 
     scratchAccess->preScratchAccess = NULL;
     scratchAccess->prePreScratchAccess = NULL;
@@ -10546,6 +10554,20 @@ void FlagSpillCleanup::flagDefine(SCRATCH_PTR_LIST& scratchTraceList,
 
 void FlagSpillCleanup::scratchUse(SCRATCH_PTR_LIST& scratchTraceList, G4_INST* inst)
 {
+    G4_DstRegRegion* dst = inst->getDst();
+
+    if (dst)
+    {
+        G4_Declare* topdcl = NULL;
+        topdcl = GetTopDclFromRegRegion(dst);
+
+        if (topdcl && topdcl->getRegFile() == G4_GRF)
+        {
+            //Flag scratch variable is redefined
+            regUseScratch(&scratchTraceList, inst, dst, Opnd_dst);
+        }
+    }
+
     for (unsigned i = 0; i < G4_MAX_SRCS; i++)
     {
         G4_Operand* src = inst->getSrc(i);
@@ -10564,7 +10586,7 @@ void FlagSpillCleanup::scratchUse(SCRATCH_PTR_LIST& scratchTraceList, G4_INST* i
                 continue;
             }
 
-            regUseScratch(&scratchTraceList, inst, src, i);
+            regUseScratch(&scratchTraceList, inst, src, Opnd_src0);
         }
     }
 }

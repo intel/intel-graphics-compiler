@@ -101,7 +101,7 @@ DEF_VISA_OPTION(vISA_AbortOnSpill,          ET_BOOL, "-abortonspill",    UNUSED,
 DEF_VISA_OPTION(vISA_VerifyRA,              ET_BOOL, "-verifyra",        UNUSED, false)
 DEF_VISA_OPTION(vISA_LocalBankConflictReduction, ET_BOOL, "-nolocalBCR",   UNUSED, true)
 DEF_VISA_OPTION(vISA_FailSafeRA,            ET_BOOL, "-nofailsafera",    UNUSED, true)
-DEF_VISA_OPTION(vISA_FlagSpillCodeCleanup,  ET_BOOL, NULLSTR,            UNUSED, true)
+DEF_VISA_OPTION(vISA_FlagSpillCodeCleanup,  ET_BOOL, "-disableFlagSpillClean",            UNUSED, true)
 DEF_VISA_OPTION(vISA_GRFSpillCodeCleanup,   ET_BOOL, NULLSTR,            UNUSED, true)
 DEF_VISA_OPTION(vISA_SpillSpaceCompression, ET_BOOL, NULLSTR,            UNUSED, true)
 DEF_VISA_OPTION(vISA_ConsiderLoopInfoInRA,  ET_BOOL, "-noloopra",        UNUSED, true)

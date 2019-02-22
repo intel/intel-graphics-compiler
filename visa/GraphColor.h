@@ -1374,6 +1374,7 @@ namespace vISA
         bool     removeable;
         bool     instKilled;
         bool     evicted;
+        bool     scratchDefined;
 
         unsigned int   maskFlag;
 
@@ -1411,7 +1412,7 @@ namespace vISA
         void regDefineFlag(SCRATCH_PTR_LIST* scratchTraceList, G4_INST* inst, G4_Operand* opnd);
         bool regUseAnalysis(SCRATCH_ACCESS* scratchAccess, unsigned int linearizedStart, unsigned int linearizedEnd);
         void regUseFlag(SCRATCH_PTR_LIST* scratchTraceList, G4_INST* inst, G4_Operand* opnd, int opndIndex);
-        void regUseScratch(SCRATCH_PTR_LIST * scratchTraceList, G4_INST * inst, G4_Operand * opnd, int opndIndex);
+        void regUseScratch(SCRATCH_PTR_LIST * scratchTraceList, G4_INST * inst, G4_Operand * opnd, Gen4_Operand_Number opndIndex);
         void initializeScratchAccess(SCRATCH_ACCESS *scratchAccess, INST_LIST_ITER inst_it);
         bool initializeFlagScratchAccess(SCRATCH_PTR_VEC* scratchAccessList, SCRATCH_ACCESS*& scratchAccess, INST_LIST_ITER inst_it);
         void freeScratchAccess(SCRATCH_PTR_VEC *scratchAccessList);
