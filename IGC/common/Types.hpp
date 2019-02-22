@@ -102,7 +102,14 @@ enum class SIMDMode : unsigned char
     BEGIN = 0
 };
 
-
+enum class SIMDStatus : unsigned char
+{
+    SIMD_BEGIN = 0,
+    SIMD_PASS,
+    SIMD_FUNC_FAIL,
+    SIMD_PERF_FAIL,
+    SIMD_END
+};
 
 inline uint16_t numLanes(SIMDMode width)
 {

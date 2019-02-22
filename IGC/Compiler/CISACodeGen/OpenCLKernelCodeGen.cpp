@@ -2037,81 +2037,34 @@ bool COpenCLKernel::CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Funct
             (simdMode == SIMDMode::SIMD16 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 16) ||
             (simdMode == SIMDMode::SIMD32 && m_Context->getModuleMetaData()->csInfo.forcedSIMDSize == 32))
         {
-            m_Context->setDefaultSIMDMode(simdMode);
             return true;
         }
         return false;
     }
 
-    // Code reaching here means - nothing is forced. 
-    bool compileThisSIMD = CompileThisSIMD(simdMode, EP, F);    
-    SIMDMode origSIMDMode = m_Context->getDefaultSIMDMode();
-
-    //if compilation SIMD mode is true then we are guaranteed to compile this mode.
-    //Hence set the default compile SIMD mode to the new SIMD configuration
-    //Note: This mode is now the default, if compileThisSIMD is false, then we 
-    //will try to compile it if multiple simd mode is enabled but we will not set 
-    //it as a default mode. That is why this check has to happen immediately and 
-    //cannot be moved.
-    if (compileThisSIMD)
-    {
-        if (simdMode > origSIMDMode)
-            m_Context->setDefaultSIMDMode(simdMode);
-    }
-
-    //Even if compile SIMD mode fails we want to check if multiple SIMD mode is enabled
-    if (!compileThisSIMD)
-    {
-        //if even SIMD8 fails, then we compile that. So our defaultShader will be SIMD8
-        if (simdMode == SIMDMode::SIMD8 && m_Context->getDefaultSIMDMode() == SIMDMode::BEGIN)
-            m_Context->setDefaultSIMDMode(simdMode);
-
-        if(m_Context->m_DriverInfo.sendMultipleSIMDModes()) 
-        {
-            compileThisSIMD = true; //in this case continue to compile unless below condition is observed
-        }
-    }
+    SIMDStatus simdStatus = checkSIMDCompileConds(simdMode, EP, F);
     
-    //check if we want to proceed further based on whether any existing shader has spilled
-    //we also want to make sure there is another retry that will be attempted
-    //Note for this check to work the order must he ascending. Because in descending
-    //order that is simd32 -> simd16--> simd8 we still have chance that one of the lower
-    //simd modes will compile.
-    if (compileThisSIMD && m_Context->m_DriverInfo.sendMultipleSIMDModes()) 
+    // Func and Perf checks pass, compile this SIMD
+    if (simdStatus == SIMDStatus::SIMD_PASS)
+        return true;
+
+    // Functional failure, skip compiling this SIMD 
+    if (simdStatus == SIMDStatus::SIMD_FUNC_FAIL)
+        return false;
+
+    assert(simdStatus == SIMDStatus::SIMD_PERF_FAIL);
+    //not profitable
+    if (m_Context->m_DriverInfo.sendMultipleSIMDModes()) 
     {
-        //Here are the assumptions
-        //1. if m_Context->m_DriverInfo.sendMultipleSIMDModes() is true that means the order is always ascending.
-        //   This will be cleaned up as a separate interface in CodeGen for compute path.
-        //2. origSIMDMode will always have a valid value 8, 16 or 32
-        //3. For SIMD8 VISA always returns a shader, and if it has spill GetLastSpillSize will be set
-        //4. For SIM16 if ForceOCLSIMDWidth is set to 16  then VISA will compile without abort, hence
-        //   we need to evaluate LastSpillSize
-        if(origSIMDMode == SIMDMode::SIMD8 && m_Context->m_retryManager.GetLastSpillSize())
-        {
-           //If SIMD8 compiled and spilled, then don't compile 16 and 32
-           if ((simdMode == SIMDMode::SIMD32) || (simdMode == SIMDMode::SIMD16))
-           {
-               compileThisSIMD = false;
-           }
-        }
-        else if(simdMode == SIMDMode::SIMD32) 
-        {
-            //Compile SIMD32 iff SIMD16 compiled, and it compiled without spill
-            auto simd16Shader = m_parent->GetShader(SIMDMode::SIMD16);
-            bool hasSIMD16 = simd16Shader && simd16Shader->ProgramOutput()->m_programSize > 0;
-            if(!hasSIMD16 || (m_Context->m_retryManager.GetLastSpillSize()))
-            {
-                if(EP.m_canAbortOnSpill)
-                    compileThisSIMD = false; //Don't compile SIMD32 since SIMD16 had spilled
-            }
-        }
-        if(!compileThisSIMD)
-            m_Context->setDefaultSIMDMode(origSIMDMode);
+        if (EP.m_canAbortOnSpill)
+            return false; //not the first functionally correct SIMD, exit
+        else
+            return true; //is the first functionally correct SIMD, compile
     }
-    return compileThisSIMD;
+    return simdStatus == SIMDStatus::SIMD_PASS;
 }
 
-bool COpenCLKernel::CompileThisSIMD(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)
+SIMDStatus COpenCLKernel::checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP, llvm::Function &F)
 {
     CShader* simd8Program = m_parent->GetShader(SIMDMode::SIMD8);
     CShader* simd16Program = m_parent->GetShader(SIMDMode::SIMD16);
@@ -2125,13 +2078,13 @@ bool COpenCLKernel::CompileThisSIMD(SIMDMode simdMode, EmitPass &EP, llvm::Funct
         
     {
         if(!(pCtx->m_DriverInfo.sendMultipleSIMDModes() && (pCtx->getModuleMetaData()->csInfo.forcedSIMDSize == 0)))
-            return false;
+            return SIMDStatus::SIMD_FUNC_FAIL;
     }
 
     // Scratch space allocated per-thread needs to be less than 2 MB.
     if (m_ScratchSpaceSize > pCtx->m_DriverInfo.maxPerThreadScratchSpace())
     {
-      return false;
+        return SIMDStatus::SIMD_FUNC_FAIL;
     }
 
     // Next we check if there is a required sub group size specified
@@ -2161,20 +2114,20 @@ bool COpenCLKernel::CompileThisSIMD(SIMDMode simdMode, EmitPass &EP, llvm::Funct
             case 8:
                 if (simdMode == SIMDMode::SIMD16 || simdMode == SIMDMode::SIMD32)
                 {
-                    return false;
+                    return SIMDStatus::SIMD_FUNC_FAIL;
                 }
                 break;
             case 16:
                 if (simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD32)
                 {
-                    return false;
+                    return SIMDStatus::SIMD_FUNC_FAIL;
                 }
                 EP.m_canAbortOnSpill = false;
                 break;
             case 32:
                 if (simdMode == SIMDMode::SIMD8 || simdMode == SIMDMode::SIMD16)
                 {
-                    return false;
+                    return SIMDStatus::SIMD_FUNC_FAIL;
                 }
                 EP.m_canAbortOnSpill = false;
                 break;
@@ -2191,15 +2144,16 @@ bool COpenCLKernel::CompileThisSIMD(SIMDMode simdMode, EmitPass &EP, llvm::Funct
         if ((simdMode == SIMDMode::SIMD32 && IGC_IS_FLAG_DISABLED(EnableOCLSIMD32)) ||
             (simdMode == SIMDMode::SIMD16 && IGC_IS_FLAG_DISABLED(EnableOCLSIMD16)))
         {
-            return false;
+            return SIMDStatus::SIMD_FUNC_FAIL;
         }
 
         // Check if we force code generation for the current SIMD size.
         // Note that for SIMD8, we always force it!
+        //ATTN: This check is redundant!
         if (numLanes(simdMode) == pCtx->getModuleMetaData()->csInfo.forcedSIMDSize ||
             simdMode == SIMDMode::SIMD8)
         {
-            return true;
+            return SIMDStatus::SIMD_PASS;
         }
 
         if (groupSize != 0 && groupSize <= 16)
@@ -2207,7 +2161,7 @@ bool COpenCLKernel::CompileThisSIMD(SIMDMode simdMode, EmitPass &EP, llvm::Funct
             if (simdMode == SIMDMode::SIMD32 ||
                 (groupSize <= 8 && simdMode != SIMDMode::SIMD8))
             {
-                return false;
+                return SIMDStatus::SIMD_FUNC_FAIL;
             }
         }
 
@@ -2222,7 +2176,7 @@ bool COpenCLKernel::CompileThisSIMD(SIMDMode simdMode, EmitPass &EP, llvm::Funct
 
                 if (hasFullDebugInfo)
                 {
-                    return false;
+                    return SIMDStatus::SIMD_FUNC_FAIL;
                 }
             }
 
@@ -2230,7 +2184,7 @@ bool COpenCLKernel::CompileThisSIMD(SIMDMode simdMode, EmitPass &EP, llvm::Funct
             Simd32ProfitabilityAnalysis &PA = EP.getAnalysis<Simd32ProfitabilityAnalysis>();
             if (!PA.isSimd16Profitable())
             {
-                return false;
+                return SIMDStatus::SIMD_PERF_FAIL;
             }
         }
         if (simdMode == SIMDMode::SIMD32)
@@ -2243,19 +2197,19 @@ bool COpenCLKernel::CompileThisSIMD(SIMDMode simdMode, EmitPass &EP, llvm::Funct
 
                 if (hasFullDebugInfo)
                 {
-                    return false;
+                    return SIMDStatus::SIMD_FUNC_FAIL;
                 }
             }
             // bail out of SIMD32 if it's not profitable.
             Simd32ProfitabilityAnalysis &PA = EP.getAnalysis<Simd32ProfitabilityAnalysis>();
             if (!PA.isSimd32Profitable())
             {
-                return false;
+                return SIMDStatus::SIMD_PERF_FAIL;
             }
         }
     }
 
-    return true;
+    return SIMDStatus::SIMD_PASS;
 }
 
 }

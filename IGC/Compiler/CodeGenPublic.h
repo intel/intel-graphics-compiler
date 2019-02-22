@@ -1021,11 +1021,8 @@ namespace IGC
         bool isSPIRV() const;
         void setAsSPIRV();
         float getProfilingTimerResolution();
-        SIMDMode getDefaultSIMDMode();
-        void setDefaultSIMDMode(SIMDMode simd);
         uint32_t getNumGRFPerThread() const;
     private:
-        SIMDMode defaultSIMDMode = SIMDMode::BEGIN;
         llvm::DenseMap<llvm::Function*, std::string> m_hashes_per_kernel;
     };
 

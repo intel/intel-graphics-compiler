@@ -502,16 +502,6 @@ float OpenCLProgramContext::getProfilingTimerResolution()
     return m_ProfilingTimerResolution;
 }
 
-SIMDMode OpenCLProgramContext::getDefaultSIMDMode()
-{
-    return defaultSIMDMode;
-}
-
-void OpenCLProgramContext::setDefaultSIMDMode(SIMDMode simd)
-{
-    defaultSIMDMode = simd;
-}
-
 uint32_t OpenCLProgramContext::getNumGRFPerThread() const
 {
     return CodeGenContext::getNumGRFPerThread();

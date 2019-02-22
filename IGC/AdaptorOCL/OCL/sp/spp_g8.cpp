@@ -155,31 +155,12 @@ void CGen8OpenCLProgram::CreateKernelBinaries()
         std::vector<IGC::COpenCLKernel*> kernelVec;
         if (m_pContext->m_DriverInfo.sendMultipleSIMDModes() && (m_pContext->getModuleMetaData()->csInfo.forcedSIMDSize == 0))
         {
-            SIMDMode defaultSIMD = m_pContext->getDefaultSIMDMode();
-            switch (defaultSIMD)
-            {
-                case SIMDMode::SIMD32:
-                    if (isValidShader(simd32Shader))
-                        kernelVec.push_back(simd32Shader);
-                    break;
-                case SIMDMode::SIMD16:
-                    if (isValidShader(simd16Shader))
-                        kernelVec.push_back(simd16Shader);
-                    break;
-                case SIMDMode::SIMD8:
-                    if (isValidShader(simd8Shader))
-                        kernelVec.push_back(simd8Shader);
-                    break;
-                default:
-                    assert(0 && "SIMD must be 32/16/8");
-            }
-
-            // Push remaining simd modes
-            if (defaultSIMD != SIMDMode::SIMD32 && isValidShader(simd32Shader))
+            // For multiple SIMD modes, send SIMD modes in descending order
+            if (isValidShader(simd32Shader))
                 kernelVec.push_back(simd32Shader);
-            if (defaultSIMD != SIMDMode::SIMD16 && isValidShader(simd16Shader))
+            if (isValidShader(simd16Shader))
                 kernelVec.push_back(simd16Shader);
-            if (defaultSIMD != SIMDMode::SIMD8 && isValidShader(simd8Shader))
+            if (isValidShader(simd8Shader))
                 kernelVec.push_back(simd8Shader);
         }
         else

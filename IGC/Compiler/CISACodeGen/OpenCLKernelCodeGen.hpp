@@ -49,7 +49,7 @@ public:
 
     bool        hasReadWriteImage(llvm::Function &F);
     bool        CompileSIMDSize(SIMDMode simdMode, EmitPass &EP, llvm::Function &F);
-    bool        CompileThisSIMD(SIMDMode simdMode, EmitPass &EP, llvm::Function &F);
+    SIMDStatus  checkSIMDCompileConds(SIMDMode simdMode, EmitPass &EP, llvm::Function &F);
 
     void        FillKernel();
 
