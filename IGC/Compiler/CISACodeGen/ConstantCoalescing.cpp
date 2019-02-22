@@ -988,6 +988,10 @@ Value *ConstantCoalescing::SimpleBaseOffset( Value *elt_idxv, uint &offset )
     {
         elt_idxv = reducedOffset->getOperand(0);
     }
+    if(SExtInst* reducedOffset = dyn_cast<SExtInst>(elt_idxv))
+    {
+        elt_idxv = reducedOffset->getOperand(0);
+    }
     Instruction* expr = dyn_cast<Instruction>(elt_idxv);
     if( !expr )
     {
