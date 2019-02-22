@@ -8719,7 +8719,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
         }
         else
         {
-            newDcl = builder.createTempVar(execSize, dstType, Either, Any, "Merged");
+            newDcl = builder.createTempVar(execSize, dstType, Either, Eight_Word, "Merged");
         }
         for (int i = 0; i < size; ++i)
         {
@@ -8756,7 +8756,7 @@ bool BUNDLE_INFO::doMerge(IR_Builder& builder,
             }
             else
             {
-                newDcl = builder.createTempVar(execSize, srcType, Either, Any, "Merged");
+                newDcl = builder.createTempVar(execSize, srcType, Either, Eight_Word, "Merged");
             }
             for (int j = 0; j < size; ++j)
             {
