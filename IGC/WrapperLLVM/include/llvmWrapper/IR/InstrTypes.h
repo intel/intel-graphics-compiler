@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IGCLLVM_IR_INSTRTYPES_H
 
 #include <llvm/IR/InstrTypes.h>
-#if LLVM_VERSION_MAJOR == 8
+#if LLVM_VERSION_MAJOR >= 8
 #include <llvm/IR/PatternMatch.h>
 #endif
 
@@ -37,7 +37,7 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR <= 7
     using llvm::TerminatorInst;
 	using llvm::BinaryOperator;
-#elif LLVM_VERSION_MAJOR == 8
+#elif LLVM_VERSION_MAJOR >= 8
     using TerminatorInst = llvm::Instruction;
 	
 	class BinaryOperator : public llvm::BinaryOperator

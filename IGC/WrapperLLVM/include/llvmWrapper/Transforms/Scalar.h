@@ -41,7 +41,7 @@ namespace IGCLLVM
     }
 #elif LLVM_VERSION_MAJOR == 7
     using llvm::createLoopUnrollPass;
-#elif LLVM_VERSION_MAJOR == 8
+#elif LLVM_VERSION_MAJOR >= 8
     inline static llvm::Pass* createLoopUnrollPass(
         int OptLevel = 2, int Threshold = -1, int Count = -1,
         int AllowPartial = -1, int Runtime = -1,

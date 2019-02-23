@@ -1,5 +1,13 @@
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
+set(ver ${LLVM_VERSION_MAJOR})
+if(LLVM_VERSION_MAJOR VERSION_GREATER 7)
+  # We can reuse llvm8 specific files building against llvm>=8 till
+  # incompatibility will be identified and we will create another llvmX to
+  # customization handle that.
+  set(ver 8)
+endif()
+
 set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/AddImplicitArgs.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorCommon/customApi.cpp"
@@ -18,8 +26,8 @@ set(IGC_BUILD__SRC__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/gtpin_igc_ocl.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/util/BinaryStream.cpp"
 
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/Upgrader/llvm${LLVM_VERSION_MAJOR}/Upgrader.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/Upgrader/llvm${LLVM_VERSION_MAJOR}/BitcodeReader.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/Upgrader/llvm${ver}/Upgrader.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/Upgrader/llvm${ver}/BitcodeReader.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/UnifyIROCL.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.cpp"
   )
@@ -83,7 +91,7 @@ set(IGC_BUILD__HDR__DriverInterface
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/spp_g8.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/sp/gtpin_igc_ocl.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/OCL/util/BinaryStream.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/Upgrader/llvm${LLVM_VERSION_MAJOR}/Upgrader.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/Upgrader/llvm${ver}/Upgrader.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/../AdaptorOCL/MoveStaticAllocas.h"
 
     "${IGC_BUILD__COMMON_COMPILER_DIR}/API/ErrorCode.h"

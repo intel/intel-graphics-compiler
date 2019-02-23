@@ -43,7 +43,7 @@ namespace IGCLLVM
             return llvm::MemoryLocation::getForArgument(
 #if LLVM_VERSION_MAJOR <= 7
             llvm::ImmutableCallSite(I), ArgIdx, *TLI
-#elif LLVM_VERSION_MAJOR == 8
+#elif LLVM_VERSION_MAJOR >= 8
             llvm::cast<llvm::CallInst>(I), ArgIdx, TLI
 #endif
             );

@@ -80,7 +80,7 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR == 7
                 Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, isDefinition,
                 ScopeLine, Flags, isOptimized, TParams, Decl, ThrownTypes);
-#elif LLVM_VERSION_MAJOR == 8
+#elif LLVM_VERSION_MAJOR >= 8
                 Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, Flags, 
                 llvm::DISubprogram::SPFlagDefinition, TParams, Decl, ThrownTypes);
 #endif
@@ -99,7 +99,7 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR == 7
                 Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, isDefinition,
                 Virtuality, VTableIndex, ThisAdjustment, VTableHolder, Flags, isOptimized, TParams, ThrownTypes);
-#elif LLVM_VERSION_MAJOR == 8
+#elif LLVM_VERSION_MAJOR >= 8
                 Scope, Name, LinkageName, File, LineNo, Ty, Virtuality, ThisAdjustment,
                 VTableHolder, Flags, llvm::DISubprogram::SPFlagDefinition, TParams, ThrownTypes);
 #endif
@@ -118,7 +118,7 @@ namespace IGCLLVM
 #if LLVM_VERSION_MAJOR == 7
                 Scope, Name, LinkageName, File, LineNo, Ty, isLocalToUnit, isDefinition,
                 ScopeLine, Flags, isOptimized, TParams, Decl, ThrownTypes);
-#elif LLVM_VERSION_MAJOR == 8
+#elif LLVM_VERSION_MAJOR >= 8
                 Scope, Name, LinkageName, File, LineNo, Ty, ScopeLine,
                 Flags, llvm::DISubprogram::SPFlagDefinition, TParams, Decl, ThrownTypes);
 #endif
