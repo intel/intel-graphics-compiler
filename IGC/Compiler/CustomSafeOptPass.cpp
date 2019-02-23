@@ -871,25 +871,177 @@ void GenSpecificPattern::visitSDiv(llvm::BinaryOperator& I)
     }
 }
 
+/*
+Optimizes bit reversing pattern:
+
+%and = shl i32 %0, 1
+%shl = and i32 %and, 0xAAAAAAAA
+%and2 = lshr i32 %0, 1
+%shr = and i32 %and2, 0x55555555
+%or = or i32 %shl, %shr
+%and3 = shl i32 %or, 2
+%shl4 = and i32 %and3, 0xCCCCCCCC
+%and5 = lshr i32 %or, 2
+%shr6 = and i32 %and5, 0x33333333
+%or7 = or i32 %shl4, %shr6
+%and8 = shl i32 %or7, 4
+%shl9 = and i32 %and8, 0xF0F0F0F0
+%and10 = lshr i32 %or7, 4
+%shr11 = and i32 %and10, 0x0F0F0F0F
+%or12 = or i32 %shl9, %shr11
+%and13 = shl i32 %or12, 8
+%shl14 = and i32 %and13, 0xFF00FF00
+%and15 = lshr i32 %or12, 8
+%shr16 = and i32 %and15, 0x00FF00FF
+%or17 = or i32 %shl14, %shr16
+%shl19 = shl i32 %or17, 16
+%shr21 = lshr i32 %or17, 16
+%or22 = or i32 %shl19, %shr21
+
+into:
+
+%or22 = call i32 @llvm.genx.GenISA.bfrev.i32(i32 %0)
+
+And similarly for patterns reversing 16 and 64 bit type values.
+*/
+template <typename MaskType>
+void GenSpecificPattern::matchReverse(BinaryOperator &I)
+{
+    using namespace llvm::PatternMatch;
+    assert(I.getType()->isIntegerTy());
+    Value *nextOrShl, *nextOrShr;
+    uint64_t currentShiftShl = 0, currentShiftShr = 0;
+    uint64_t currentMaskShl = 0, currentMaskShr = 0;
+    auto patternBfrevFirst =
+        m_Or(
+            m_Shl(m_Value(nextOrShl), m_ConstantInt(currentShiftShl)),
+            m_LShr(m_Value(nextOrShr), m_ConstantInt(currentShiftShr)));
+
+    auto patternBfrev =
+        m_Or(
+            m_And(
+                m_Shl(m_Value(nextOrShl), m_ConstantInt(currentShiftShl)),
+                m_ConstantInt(currentMaskShl)),
+            m_And(
+                m_LShr(m_Value(nextOrShr), m_ConstantInt(currentShiftShr)),
+                m_ConstantInt(currentMaskShr)));
+
+    unsigned int bitWidth = std::numeric_limits<MaskType>::digits;
+    assert(bitWidth == 16 || bitWidth == 32 || bitWidth == 64);
+
+    unsigned int currentShift = bitWidth / 2;
+    // First mask is a value with all upper half bits present.
+    MaskType mask = std::numeric_limits<MaskType>::max() << currentShift;
+
+    bool isBfrevMatchFound = false;
+    nextOrShl = &I;
+    if (match(nextOrShl, patternBfrevFirst) &&
+        nextOrShl == nextOrShr &&
+        currentShiftShl == currentShift &&
+        currentShiftShr == currentShift)
+    {
+        // NextOrShl is assigned to next one by match().
+        currentShift /= 2;
+        // Constructing next mask to match.
+        mask ^= mask >> currentShift;
+    }
+
+    while (currentShift > 0)
+    {
+        if (match(nextOrShl, patternBfrev) &&
+            nextOrShl == nextOrShr &&
+            currentShiftShl == currentShift &&
+            currentShiftShr == currentShift &&
+            currentMaskShl == mask &&
+            currentMaskShr == (MaskType)~mask)
+        {
+            // NextOrShl is assigned to next one by match().
+            if (currentShift == 1)
+            {
+                isBfrevMatchFound = true;
+                break;
+            }
+
+            currentShift /= 2;
+            // Constructing next mask to match.
+            mask ^= mask >> currentShift;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    if (isBfrevMatchFound)
+    {
+        llvm::IRBuilder<> builder(&I);
+        Function *bfrevFunc = GenISAIntrinsic::getDeclaration(
+            I.getParent()->getParent()->getParent(), GenISAIntrinsic::GenISA_bfrev, builder.getInt32Ty());
+        if (bitWidth == 16)
+        {
+            Value* zext = builder.CreateZExt(nextOrShl, builder.getInt32Ty());
+            Value* bfrev = builder.CreateCall(bfrevFunc, zext);
+            Value* lshr = builder.CreateLShr(bfrev, 16);
+            Value* trunc = builder.CreateTrunc(lshr, I.getType());
+            I.replaceAllUsesWith(trunc);
+        }
+        else if (bitWidth == 32)
+        {
+            Value* bfrev = builder.CreateCall(bfrevFunc, nextOrShl);
+            I.replaceAllUsesWith(bfrev);
+        }
+        else
+        { // bitWidth == 64
+            Value* int32Source = builder.CreateBitCast(nextOrShl, llvm::VectorType::get(builder.getInt32Ty(), 2));
+            Value* extractElement0 = builder.CreateExtractElement(int32Source, builder.getInt32(0));
+            Value* extractElement1 = builder.CreateExtractElement(int32Source, builder.getInt32(1));
+            Value* bfrevLow = builder.CreateCall(bfrevFunc, extractElement0);
+            Value* bfrevHigh = builder.CreateCall(bfrevFunc, extractElement1);
+            Value* bfrev64Result = llvm::UndefValue::get(int32Source->getType());
+            bfrev64Result = builder.CreateInsertElement(bfrev64Result, bfrevHigh, builder.getInt32(0));
+            bfrev64Result = builder.CreateInsertElement(bfrev64Result, bfrevLow, builder.getInt32(1));
+            Value* bfrevBitcast = builder.CreateBitCast(bfrev64Result, I.getType());
+            I.replaceAllUsesWith(bfrevBitcast);
+        }
+    }
+}
+
 void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
 {
-    /*
-    llvm changes ADD to OR when possible, and this optimization changes it back and allow 2 ADDs to merge.
-    This can avoid scattered read for constant buffer when the index is calculated by shl + or + add.
-
-    ex:
-    from
-        %22 = shl i32 %14, 2
-        %23 = or i32 %22, 3
-        %24 = add i32 %23, 16
-    to
-        %22 = shl i32 %14, 2
-        %23 = add i32 %22, 19
-    */
-
     if (I.getOpcode() == Instruction::Or)
     {
         using namespace llvm::PatternMatch;
+
+        if (I.getType()->isIntegerTy())
+        {
+            unsigned int bitWidth = cast<IntegerType>(I.getType())->getBitWidth();
+            switch (bitWidth)
+            {
+            case 16:
+                matchReverse<unsigned short>(I);
+                break;
+            case 32:
+                matchReverse<unsigned int>(I);
+                break;
+            case 64:
+                matchReverse<unsigned long long>(I);
+                break;
+            }
+        }
+
+        /*
+        llvm changes ADD to OR when possible, and this optimization changes it back and allow 2 ADDs to merge.
+        This can avoid scattered read for constant buffer when the index is calculated by shl + or + add.
+
+        ex:
+        from
+        %22 = shl i32 %14, 2
+        %23 = or i32 %22, 3
+        %24 = add i32 %23, 16
+        to
+        %22 = shl i32 %14, 2
+        %23 = add i32 %22, 19
+        */
         Value *AndOp1, *EltOp1;
         auto pattern1 = m_Or(
             m_And(m_Value(AndOp1), m_SpecificInt(0xFFFFFFFF)),

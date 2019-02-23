@@ -127,6 +127,8 @@ namespace IGC
         void visitIntToPtr(llvm::IntToPtrInst& I);
         void visitSDiv(llvm::BinaryOperator& I);
         void visitTruncInst(llvm::TruncInst &I);
+
+        template <typename MaskType> void matchReverse(llvm::BinaryOperator &I);
     };
 
     class IGCConstProp : public llvm::FunctionPass
