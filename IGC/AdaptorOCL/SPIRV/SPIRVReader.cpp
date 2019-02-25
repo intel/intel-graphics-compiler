@@ -815,6 +815,14 @@ public:
       if (!inst)
           return nullptr;
 
+      if (inst->isString())
+      {
+          // Treat inst as a SPIRVInstruction instead of SPIRVExtInst
+          // This is a WA since SPIRV emitter emits OpString as
+          // scope of DebugFunction ext opcode.
+          return getDIFile(((SPIRVString*)inst)->getStr());
+      }
+
       if (inst->getExtOp() == OCLExtOpDbgKind::Scope)
       {
           OpDebugScope scope(inst);
@@ -844,10 +852,6 @@ public:
       else if (inst->getExtOp() == OCLExtOpDbgKind::TypeTemplate)
       {
           return (DIScope*)createTypeTemplate(inst);
-      }
-      else if(inst->isString())
-      {
-          return getDIFile(((SPIRVString*)inst)->getStr());
       }
       else
       {
@@ -3682,7 +3686,7 @@ Instruction* SPIRVToLLVM::transDebugInfo(SPIRVExtInst* BC, BasicBlock* BB)
     case OCLExtOpDbgKind::DbgVal:
     {
         OpDebugValue dbgValue(BC);
-        auto lvar = dbgValue.getVar();
+        auto lvar = dbgValue.getValueVar();
         SPIRVValue* spirvVal = static_cast<SPIRVValue*>(BM->getEntry(lvar));
         SPIRVToLLVMValueMap::iterator Loc = ValueMap.find(spirvVal);
         if (Loc != ValueMap.end())
