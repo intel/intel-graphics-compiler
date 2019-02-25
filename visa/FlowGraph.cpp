@@ -2832,7 +2832,8 @@ void FlowGraph::insertJoinToBB(G4_BB* bb, uint8_t execSize, G4_Label* jip)
         }
         else
         {
-            G4_INST* jInst = builder->createInternalCFInst(NULL, G4_join, execSize, jip, NULL, InstOpt_NoOpt);
+            G4_INST* jInst = builder->createInternalCFInst(NULL, G4_join, execSize, jip, NULL, InstOpt_NoOpt,
+                secondInst->getLineNo(), secondInst->getCISAOff(), secondInst->getSrcFilename());
             bb->insert(iter, jInst);
         }
     }

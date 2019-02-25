@@ -622,6 +622,9 @@ namespace IGC
 
         DbgDecoder* getDecodedDbg() { return decodedDbg; }
         void setDecodedDbg(DbgDecoder* d) { decodedDbg = d; }
+
+    private:
+        void encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::SmallVectorImpl<InsnRange>* Ranges);
     };
 } // namespace IGC
 

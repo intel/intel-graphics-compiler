@@ -352,18 +352,25 @@ DIE *DwarfDebug::constructLexicalScopeDIE(CompileUnit *TheCU, LexicalScope *Scop
 
     if (m_pModule->isDirectElfInput)
     {
-        // This makes sense only for full debug info.
-        // Resolve VISA index to Gen IP here.
-        auto start = Ranges.front().first;
-        auto end = Ranges.back().second;
-        InsnRange RI(start, end);
-        auto GenISARanges = m_pModule->getGenISARange(RI);
-
-        if (GenISARanges.size() > 0)
+        if (IGC_IS_FLAG_ENABLED(EmitDebugRanges))
         {
-            // Emit loc/high_pc
-            TheCU->addUInt(ScopeDIE, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, GenISARanges.front().first);
-            TheCU->addUInt(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, GenISARanges.back().second);
+            encodeRange(TheCU, ScopeDIE, &Ranges);
+        }
+        else
+        {
+            // This makes sense only for full debug info.
+            // Resolve VISA index to Gen IP here.
+            auto start = Ranges.front().first;
+            auto end = Ranges.back().second;
+            InsnRange RI(start, end);
+            auto GenISARanges = m_pModule->getGenISARange(RI);
+
+            if (GenISARanges.size() > 0)
+            {
+                // Emit loc/high_pc
+                TheCU->addUInt(ScopeDIE, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, GenISARanges.front().first);
+                TheCU->addUInt(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, GenISARanges.back().second);
+            }
         }
         return ScopeDIE;
     }
@@ -385,6 +392,58 @@ DIE *DwarfDebug::constructLexicalScopeDIE(CompileUnit *TheCU, LexicalScope *Scop
     DebugRangeSymbols.push_back(NULL);
     DebugRangeSymbols.push_back(NULL);
     return ScopeDIE;
+}
+
+void DwarfDebug::encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::SmallVectorImpl<InsnRange>* Ranges)
+{
+    // This makes sense only for full debug info.
+    // Resolve VISA index to Gen IP here.
+    if (Ranges->size() == 0)
+        return;
+
+    bool needDebugRange = true;
+    if (Ranges->size() == 1)
+    {
+        auto start = Ranges->front().first;
+        auto end = Ranges->back().second;
+        InsnRange RI(start, end);
+        auto GenISARanges = m_pModule->getGenISARange(RI);
+
+        if (GenISARanges.size() == 1)
+        {
+            // Emit loc/high_pc
+            TheCU->addUInt(ScopeDIE, dwarf::DW_AT_low_pc, dwarf::DW_FORM_addr, GenISARanges.front().first);
+            TheCU->addUInt(ScopeDIE, dwarf::DW_AT_high_pc, dwarf::DW_FORM_addr, GenISARanges.back().second);
+            needDebugRange = false;
+        }
+    }
+
+    if (needDebugRange || Ranges->size() > 1)
+    {
+        bool rangeAdded = false;
+        for (SmallVectorImpl<InsnRange>::const_iterator RI = Ranges->begin(),
+            RE = Ranges->end(); RI != RE; ++RI)
+        {
+            auto&& GenISARanges = m_pModule->getGenISARange(*RI);
+            for (auto& item : GenISARanges)
+            {
+                if (!rangeAdded)
+                {
+                    TheCU->addUInt(ScopeDIE, dwarf::DW_AT_ranges, dwarf::DW_FORM_sec_offset,
+                        GenISADebugRangeSymbols.size() * Asm->GetPointerSize());
+                    rangeAdded = true;
+                }
+                GenISADebugRangeSymbols.push_back(item.first);
+                GenISADebugRangeSymbols.push_back(item.second);
+            }
+        }
+        if (rangeAdded)
+        {
+            // Terminate the range list.
+            GenISADebugRangeSymbols.push_back(0);
+            GenISADebugRangeSymbols.push_back(0);
+        }
+    }
 }
 
 // This scope represents inlined body of a function. Construct DIE to
@@ -441,21 +500,28 @@ DIE *DwarfDebug::constructInlinedScopeDIE(CompileUnit *TheCU, LexicalScope *Scop
         // .debug_range section has not been laid out yet. Emit offset in
         // .debug_range as a uint, size 4, for now. emitDIE will handle
         // DW_AT_ranges appropriately.
-        TheCU->addUInt(ScopeDIE, dwarf::DW_AT_ranges, dwarf::DW_FORM_sec_offset,
-            GenISADebugRangeSymbols.size() * Asm->GetPointerSize());
-        for (SmallVectorImpl<InsnRange>::const_iterator RI = Ranges.begin(),
-            RE = Ranges.end(); RI != RE; ++RI)
+        if (IGC_IS_FLAG_ENABLED(EmitDebugRanges))
         {
-            auto&& GenISARanges = m_pModule->getGenISARange(*RI);
-            for (auto& item : GenISARanges)
-            {
-                GenISADebugRangeSymbols.push_back(item.first);
-                GenISADebugRangeSymbols.push_back(item.second);
-            }
+            encodeRange(TheCU, ScopeDIE, &Ranges);
         }
-        // Terminate the range list.
-        GenISADebugRangeSymbols.push_back(0);
-        GenISADebugRangeSymbols.push_back(0);
+        else
+        {
+            TheCU->addUInt(ScopeDIE, dwarf::DW_AT_ranges, dwarf::DW_FORM_sec_offset,
+                GenISADebugRangeSymbols.size() * Asm->GetPointerSize());
+            for (SmallVectorImpl<InsnRange>::const_iterator RI = Ranges.begin(),
+                RE = Ranges.end(); RI != RE; ++RI)
+            {
+                auto&& GenISARanges = m_pModule->getGenISARange(*RI);
+                for (auto& item : GenISARanges)
+                {
+                    GenISADebugRangeSymbols.push_back(item.first);
+                    GenISADebugRangeSymbols.push_back(item.second);
+                }
+            }
+            // Terminate the range list.
+            GenISADebugRangeSymbols.push_back(0);
+            GenISADebugRangeSymbols.push_back(0);
+        }
 
 	    return ScopeDIE;
     }
