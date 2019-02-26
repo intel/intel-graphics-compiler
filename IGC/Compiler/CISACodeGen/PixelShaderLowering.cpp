@@ -254,14 +254,11 @@ bool PixelShaderLowering::runOnFunction(llvm::Function &F)
     // this also means the render target blending is disabled
     SkipSrc0Alpha = m_modMD->psInfo.SkipSrc0Alpha || IGC_IS_FLAG_ENABLED(ForceDisableSrc0Alpha);
 
-    // Check whether the coarse pixel shader is present. Dual source blending cannot be used with CPS.
-    bool isCoarsePixelShader = (m_module->getNamedMetadata("coarse_phase") != nullptr);
-
     // Check whether metadata indicates that dual source blending should be disabled
     bool dualSourceBlendingDisabled =
         IGC_IS_FLAG_ENABLED(DisableDualBlendSource) ||
-        m_modMD->psInfo.DualSourceBlendingDisabled || 
-        isCoarsePixelShader;
+        m_modMD->psInfo.DualSourceBlendingDisabled;
+
     m_dualSrcBlendEnabled = !dualSourceBlendingDisabled;
 
     m_isPerSample = false;
