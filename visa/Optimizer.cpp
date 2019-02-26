@@ -7995,26 +7995,48 @@ public:
     {
     }
 
-    // some platforms require a memory fence before the end of thread 
+    // some platform/shaders require a memory fence before the end of thread 
     void Optimizer::insertFenceBeforeEOT()
     {
-        if (!builder.needFenceBeforeEOT())
+        if (!builder.needFenceBeforeEOT() || !builder.getOption(vISA_clearHDCWritesBeforeEOT))
         {
             return;
         }
-        // ToDo: check if the kernel has any global writes at all
+        
+        bool hasUAVWrites = false;
+        for (auto bb : kernel.fg.BBs)
+        {
+            for (auto inst : *bb)
+            {
+                if (inst->isSend())
+                {
+                    auto msgDesc = inst->asSendInst()->getMsgDesc();
+                    if (msgDesc->isDataPortWrite() && msgDesc->isHDC())
+                    {
+                        hasUAVWrites = true;
+                        break;
+                    }
+                }
+            }
+            if (hasUAVWrites)
+            {
+                break;
+            }
+        }
+
+        if (!hasUAVWrites)
+        {
+            return;
+        }
+
         for (auto bb : kernel.fg.BBs)
         {
             if (bb->isLastInstEOT())
             {
-                G4_INST* eotInst = bb->back();
-                if (eotInst->getMsgDesc()->getFuncId() == SFID_SPAWNER)
-                {
-                    auto iter = std::prev(bb->end());
-                    auto fenceInst = builder.createFenceInstruction(0, true, true, false);
-                    bb->insert(iter, fenceInst);
-                    builder.instList.clear();
-                }
+                auto iter = std::prev(bb->end());
+                auto fenceInst = builder.createFenceInstruction(0, true, true, false);
+                bb->insert(iter, fenceInst);
+                builder.instList.clear();
             }
         }
     }

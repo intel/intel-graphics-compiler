@@ -3509,6 +3509,11 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
         vbuilder->SetOption(vISA_clearScratchWritesBeforeEOT, true);
     }
 
+    if (context->type == ShaderType::PIXEL_SHADER)
+    {
+        vbuilder->SetOption(vISA_clearHDCWritesBeforeEOT, true);
+    }
+
     // Disable multi-threaded latencies in the vISA scheduler when not in 3D
     if (context->type == ShaderType::OPENCL_SHADER)
     {
