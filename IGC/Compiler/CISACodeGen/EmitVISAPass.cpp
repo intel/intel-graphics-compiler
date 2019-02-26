@@ -6997,6 +6997,9 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_simdBlockRead:
         emitSimdBlockRead(inst);
         break;
+    case GenISAIntrinsic::GenISA_simdBlockReadBindless:
+        emitSimdBlockRead(inst, inst->getOperand(1));
+        break;
     case GenISAIntrinsic::GenISA_simdBlockWrite:
         emitSimdBlockWrite(inst);
         break;

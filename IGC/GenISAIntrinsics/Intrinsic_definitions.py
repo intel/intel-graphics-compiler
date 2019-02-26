@@ -193,6 +193,7 @@ Imported_Intrinsics = \
     "GenISA_simdSize": ["int",[],"NoMem"],
     "GenISA_simdShuffleDown": ["anyint",[0,0,"int"],"Convergent,NoMem"],
     "GenISA_simdBlockRead": ["anyvector",["anyptr"],"ReadMem"],
+    "GenISA_simdBlockReadBindless": ["anyvector",["anyptr", "int"],"ReadMem"],
     "GenISA_simdBlockWrite": ["void",["anyptr","anyvector"],"None"],
     "GenISA_MediaBlockRead": ["anyint",["int","int","int","int","int","int"],"None"],
     "GenISA_MediaBlockWrite": ["void",["int","int","int","int","int","int","anyint"],"None"],

@@ -117,6 +117,7 @@ Value* GetBufferOperand(Instruction* inst)
             case GenISAIntrinsic::GenISA_floatatomicraw:
             case GenISAIntrinsic::GenISA_icmpxchgatomicraw:
             case GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
+            case GenISAIntrinsic::GenISA_simdBlockRead: 
                 pBuffer = intr->getOperand(0);
                 break;
             case GenISAIntrinsic::GenISA_intatomicrawA64:
@@ -750,11 +751,17 @@ void PromoteResourceToDirectAS::GetAccessInstToSrcPointerMap(Instruction* inst, 
         return;
     }
 
+    //We only support loadInst, StoreInst and GenISA_simdBlockRead intrinsic
     if (!isa<LoadInst>(inst) && !isa<StoreInst>(inst))
     {
-        // Do we need to support other instructions besides load/store?
-        return;
-    }
+        if (GenIntrinsicInst* GInst = dyn_cast<GenIntrinsicInst>(inst))
+        {
+            if (GInst->getIntrinsicID() != GenISAIntrinsic::GenISA_simdBlockRead)
+                return;
+        }
+        else
+            return;
+    }       
 
     Value* srcPtr = IGC::TracePointerSource(resourcePtr);
 
@@ -819,6 +826,18 @@ void PromoteResourceToDirectAS::PromoteStatelessToBindlessBuffers(Function& F)
         {
             IGC::CreateStoreRawIntrinsic(store, cast<Instruction>(basePointer), bufferOffset);
             store->eraseFromParent();
+        }
+        else if (GenIntrinsicInst* pIntr = dyn_cast<GenIntrinsicInst>(accessInst))
+        {
+            if (pIntr->getIntrinsicID() == GenISAIntrinsic::GenISA_simdBlockRead)
+            {
+                Function* newBlockReadFunc = GenISAIntrinsic::getDeclaration(F.getParent(),
+                    GenISAIntrinsic::GenISA_simdBlockReadBindless,
+                    { accessInst->getType(),basePointer->getType(),Type::getInt32Ty(accessInst->getContext()) });
+                Instruction* newBlockRead = CallInst::Create(newBlockReadFunc, { basePointer, bufferOffset }, "", accessInst);
+                accessInst->replaceAllUsesWith(newBlockRead);
+                accessInst->eraseFromParent();
+            }
         }
     }
 }
