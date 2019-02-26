@@ -55,12 +55,14 @@ struct SModifier
     uint8_t subVar;
     uint8_t region[3];
     e_modifier mod;
+    e_instance instance;
     bool specialRegion;
     void init()
     {
         mod = EMOD_NONE;
         subVar = 0;
         subReg = 0;
+        instance = EINSTANCE_UNSPECIFIED;
         specialRegion = false;
     }
 };
@@ -92,7 +94,7 @@ class URBChannelMask
 public:
     explicit URBChannelMask(unsigned int bitmask) : m_bitmask(bitmask) {}
 
-    /// Returns the size of bitmask, 
+    /// Returns the size of bitmask,
     /// defined as the position of the most significant bit with value 1.
     /// E.g. size(10001) == 5, size(1) == 1 , size(1111) = 4
     size_t size() const;
@@ -132,7 +134,7 @@ public:
     SEncoderState CopyEncoderState();
     void SetEncoderState(SEncoderState &newState);
 
-    void SetKernelStackPointer64();  
+    void SetKernelStackPointer64();
     void SetStackFunctionArgSize(uint size);  // size in GRFs
     void SetStackFunctionRetSize(uint size);  // size in GRFs
 
@@ -161,9 +163,9 @@ public:
     void Send(CVariable* dst, CVariable* src, uint exDesc, CVariable* messDescriptor, bool isSendc = false);
     void Send(CVariable* dst, CVariable* src, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc = false);
     void Sends(CVariable* dst, CVariable* src0, CVariable* src1, uint ffid, CVariable* exDesc, CVariable* messDescriptor, bool isSendc = false);
-    void RenderTargetWrite(CVariable* var[], 
+    void RenderTargetWrite(CVariable* var[],
                                  bool isUndefined[],
-                                 bool lastRenderTarget,  
+                                 bool lastRenderTarget,
                                  bool perSample,
                                  bool coarseMode,
                                  bool headerMaskFromCe0,
@@ -186,10 +188,10 @@ public:
 
     void AddrAdd(CVariable* dst, CVariable* src0, CVariable* src1);
     void Barrier(e_barrierKind BarrierKind);
-    void Fence(bool CommitEnable, 
-                bool L3_Flush_RW_Data, 
-                bool L3_Flush_Constant_Data, 
-                bool L3_Flush_Texture_Data, 
+    void Fence(bool CommitEnable,
+                bool L3_Flush_RW_Data,
+                bool L3_Flush_Constant_Data,
+                bool L3_Flush_Texture_Data,
                 bool L3_Flush_Instructions,
                 bool Global_Mem_Fence,
                 bool L1_Flush,
@@ -328,7 +330,7 @@ public:
     void SetPredicate(CVariable* flag);
     void SetInversePredicate(bool inv);
     void SetPredicateMode(e_predMode mode);
-    void SetSrcRegion(uint srcNum, uint vStride, uint width, uint hStride);
+    void SetSrcRegion(uint srcNum, uint vStride, uint width, uint hStride, e_instance instance = EINSTANCE_UNSPECIFIED);
     void SetDstRegion(uint hStride);
     inline void SetNoMask();
     inline void SetMask(e_mask mask);
@@ -345,7 +347,7 @@ public:
     void Init();
     void Push();
 
-    void SetFloatDenormMode(VISAKernel* vKernel, Float_DenormMode mode16, 
+    void SetFloatDenormMode(VISAKernel* vKernel, Float_DenormMode mode16,
                             Float_DenormMode mode32, Float_DenormMode mode64);
     void SetVectorMask(bool vMask);
     // RM bits in CR0.0.
@@ -376,17 +378,17 @@ public:
     static uint GetCISADataTypeSize(VISA_Type type);
     static e_alignment GetCISADataTypeAlignment(VISA_Type type);
     static VISASampler3DSubOpCode ConvertSubOpcode(EOPCODE subOpcode, bool zeroLOD);
-    
+
     // Wrappers for (potentially) common queries on types
     static bool IsIntegerType(VISA_Type type);
     static bool IsFloatType(VISA_Type type);
 
     void SetVISAWaTable(WA_TABLE const& waTable);
 
-    /// \brief Initialize per function states and starts vISA emission 
+    /// \brief Initialize per function states and starts vISA emission
     /// as a vISA subroutine
     void BeginSubroutine(llvm::Function *F);
-    /// \brief Initialize per function states and starts vISA emission 
+    /// \brief Initialize per function states and starts vISA emission
     /// as a vISA stack-call function
     void BeginStackFunction(llvm::Function *F);
 
@@ -416,30 +418,31 @@ private:
     void GetRowAndColOffset(CVariable* var, unsigned int subVar, unsigned int subreg, unsigned char& rowOff, unsigned char& colOff);
 
     VISA_GenVar* GetVISAVariable(CVariable* var);
+    VISA_GenVar* GetVISAVariable(CVariable* var, e_instance instance);
     Common_VISA_EMask_Ctrl ConvertMaskToVisaType(e_mask mask, bool noMask);
 
     // Generic encoding functions
     void MinMax(CISA_MIN_MAX_SUB_OPCODE subopcode, CVariable* dst, CVariable* src0, CVariable* src1);
     void DataMov(ISA_Opcode opcode, CVariable* dst, CVariable* src);
     void LogicOp(
-        ISA_Opcode opcode, 
-        CVariable* dst, 
-        CVariable* src0, 
-        CVariable* src1 = nullptr, 
+        ISA_Opcode opcode,
+        CVariable* dst,
+        CVariable* src0,
+        CVariable* src1 = nullptr,
         CVariable* src2 = nullptr,
         CVariable* src3 = nullptr);
     void Arithmetic(
-        ISA_Opcode opcode, 
-        CVariable* dst, 
-        CVariable* src0 = nullptr, 
-        CVariable* src1 = nullptr, 
+        ISA_Opcode opcode,
+        CVariable* dst,
+        CVariable* src0 = nullptr,
+        CVariable* src1 = nullptr,
         CVariable* src2 = nullptr);
     void CarryBorrowArith(ISA_Opcode opcode, CVariable* dst, CVariable* src0, CVariable*src1);
     void ScatterGather(
-        ISA_Opcode opcode, 
-        CVariable* srcdst, 
-        CVariable* bufId, 
-        CVariable* offset, 
+        ISA_Opcode opcode,
+        CVariable* srcdst,
+        CVariable* bufId,
+        CVariable* offset,
         CVariable* gOffset,
         e_predefSurface surface,
         int elementSize);
@@ -499,7 +502,7 @@ protected:
     VISAKernel*   vKernel;
     VISAKernel*   vMainKernel;
     VISABuilder* vbuilder;
-    
+
     bool m_enableVISAdump;
     std::vector<VISA_LabelOpnd*> labelMap;
 
@@ -572,7 +575,7 @@ inline void CEncoder::Add(CVariable* dst, CVariable* src0, CVariable* src1)
 {
     Arithmetic(ISA_ADD, dst, src0, src1);
 }
-    
+
 inline void CEncoder::Shl(CVariable* dst, CVariable* src0, CVariable* src1)
 {
     LogicOp(ISA_SHL, dst, src0, src1);
@@ -728,7 +731,7 @@ inline void CEncoder::UAddC(CVariable* dst, CVariable* src0, CVariable* src1)
 inline void CEncoder::USubB(CVariable* dst, CVariable* src0, CVariable* src1)
 {
     CarryBorrowArith(ISA_SUBB, dst, src0, src1);
-} 
+}
 
 inline void CEncoder::LoadMS(EOPCODE subOpcode, uint writeMask, CVariable* offset,
     const ResourceDescriptor& resource, uint numSources, CVariable* dst,

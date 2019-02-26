@@ -183,6 +183,13 @@ enum e_barrierKind : unsigned char
     EBARRIER_WAIT
 };
 
+enum e_instance : unsigned char
+{
+    EINSTANCE_UNSPECIFIED,
+    EINSTANCE_FIRST_HALF,
+    EINSTANCE_SECOND_HALF
+};
+
 class CVariable;
 
 struct ResourceDescriptor

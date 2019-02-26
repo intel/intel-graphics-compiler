@@ -60,9 +60,10 @@ struct SSource
     int SIMDOffset;
     unsigned char region[3];
     bool region_set;
+    e_instance instance;
     bool fromConstantPool;
 
-    SSource() : value(nullptr), type(VISA_Type::ISA_TYPE_NUM), mod(EMOD_NONE), elementOffset(0), SIMDOffset(0), region_set(false), fromConstantPool(false)
+    SSource() : value(nullptr), type(VISA_Type::ISA_TYPE_NUM), mod(EMOD_NONE), elementOffset(0), SIMDOffset(0), region_set(false), instance(EINSTANCE_UNSPECIFIED), fromConstantPool(false)
     {
     }
 };
@@ -124,7 +125,7 @@ private:
     CodeGenPatternMatch& operator =(CodeGenPatternMatch&) = delete;
 
 public:
-    
+
     CodeGenPatternMatch();
 
     ~CodeGenPatternMatch();
@@ -200,12 +201,12 @@ public:
     bool MatchSatModifier(llvm::Instruction& I);
     bool MatchPredicate(llvm::SelectInst& I);
     bool MatchSelectModifier(llvm::SelectInst& I);
-    bool MatchPow(llvm::IntrinsicInst& I); 
+    bool MatchPow(llvm::IntrinsicInst& I);
     bool MatchCondModifier(llvm::CmpInst& I);
     bool MatchBoolOp(llvm::BinaryOperator& I);
     bool MatchRotate(llvm::Instruction& I);
     bool MatchLogicAlu(llvm::BinaryOperator& I);
-    bool MatchRsqrt(llvm::BinaryOperator& I); 
+    bool MatchRsqrt(llvm::BinaryOperator& I);
     bool MatchLoadStorePointer(llvm::Instruction& I, llvm::Value& ptrVal);
     bool MatchBlockReadWritePointer(llvm::GenIntrinsicInst& I);
     bool MatchGradient(llvm::GenIntrinsicInst& I);
@@ -297,7 +298,7 @@ private:
     llvm::LoopInfo *LI;
     const llvm::DataLayout *m_DL;
     WIAnalysis*           m_WI;
-    LiveVars*             m_LivenessInfo;  
+    LiveVars*             m_LivenessInfo;
     PositionDepAnalysis*  m_PosDep;
     llvm::BumpPtrAllocator m_allocator;
     // The set of boolean values stored as predicates of a single element.

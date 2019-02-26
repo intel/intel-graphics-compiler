@@ -3474,6 +3474,7 @@ bool CodeGenPatternMatch::GetRegionModifier(SSource& sourceMod, llvm::Value*& so
                     sourceMod.region[0] = 0;
                     sourceMod.region[1] = 1;
                     sourceMod.region[2] = 0;
+                    sourceMod.instance = EINSTANCE_FIRST_HALF;
                     source = intrin->getOperand(0);
                     found = true;
                     BitcastSearch(sourceMod, source, true);

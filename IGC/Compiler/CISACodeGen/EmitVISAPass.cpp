@@ -1549,7 +1549,7 @@ void EmitPass::SetSourceModifiers(unsigned int sourceIndex, const SSource& sourc
 
     if (source.region_set)
     {
-        m_encoder->SetSrcRegion(sourceIndex, source.region[0], source.region[1], source.region[2]);
+        m_encoder->SetSrcRegion(sourceIndex, source.region[0], source.region[1], source.region[2], source.instance);
     }
 }
 

@@ -606,11 +606,12 @@ void CEncoder::SetDstModifier(const DstModifier& modifier)
     }
 }
 
-void CEncoder::SetSrcRegion(uint srcNum, uint vStride, uint width, uint hStride)
+void CEncoder::SetSrcRegion(uint srcNum, uint vStride, uint width, uint hStride, e_instance instance)
 {
     m_encoderState.m_srcOperand[srcNum].region[0] = int_cast<uint8_t>(vStride);
     m_encoderState.m_srcOperand[srcNum].region[1] = int_cast<uint8_t>(width);
     m_encoderState.m_srcOperand[srcNum].region[2] = int_cast<uint8_t>(hStride);
+    m_encoderState.m_srcOperand[srcNum].instance = instance;
     m_encoderState.m_srcOperand[srcNum].specialRegion = true;
 }
 
@@ -728,7 +729,7 @@ VISA_VectorOpnd* CEncoder::GetSourceOperand(CVariable* var, const SModifier& mod
             GetRowAndColOffset(var, mod.subVar, mod.subReg, rowOffset, colOffset);
             V(vKernel->CreateVISASrcOperand(
                 operand,
-                GetVISAVariable(var),
+                GetVISAVariable(var, mod.instance),
                 ConvertModifierToVisaType(mod.mod),
                 vStride,
                 width,
@@ -4022,6 +4023,25 @@ VISA_GenVar* CEncoder::GetVISAVariable(CVariable* var)
         }
     }
     return var->visaGenVariable[0];
+}
+
+VISA_GenVar* CEncoder::GetVISAVariable(CVariable* var, e_instance instance)
+{
+    VISA_GenVar* result = GetVISAVariable(var);
+
+    if (instance != EINSTANCE_UNSPECIFIED &&
+        var->GetNumberInstance() == 2)
+    {
+        if (instance == EINSTANCE_FIRST_HALF)
+        {
+            result = var->visaGenVariable[0];
+        }
+        else
+        {
+            result = var->visaGenVariable[1];
+        }
+    }
+    return result;
 }
 
 void CEncoder::GetVISAPredefinedVar(CVariable* pVar, PreDefined_Vars var)
