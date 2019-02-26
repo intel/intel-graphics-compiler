@@ -1046,11 +1046,22 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
             }
         }
 
+        std::string argBaseType = "";
+        std::string argAccessQualItem = "";
+        
+        if (it != moduleMD->FuncMD.end())
+        {
+            if (it->second.m_OpenCLArgBaseTypes.size() > (unsigned)i)
+                argBaseType = it->second.m_OpenCLArgBaseTypes[i];
+            if (it->second.m_OpenCLArgAccessQualifiers.size() > (unsigned)i)
+                argAccessQualItem = it->second.m_OpenCLArgAccessQualifiers[i];
+        }
+
         KernelArg kernelArg = KernelArg(
-            &(*funcArg), 
-            DL, 
-            funcInfoMD->getOpenCLArgBaseTypesItem(i), 
-            funcInfoMD->getOpenCLArgAccessQualifiersItem(i), 
+            &(*funcArg),
+            DL,
+            argBaseType,
+            argAccessQualItem,
             location_index, 
             location_count, 
             needAllocation,

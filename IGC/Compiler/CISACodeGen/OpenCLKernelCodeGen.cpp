@@ -331,17 +331,23 @@ void COpenCLKernel::CreateKernelArgInfo()
 {
     FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(entry);
 
-    uint count = funcInfoMD->size_OpenCLArgAccessQualifiers();
-
+    uint count = 0;
+    if (m_Context->getModuleMetaData()->FuncMD.find(entry) != m_Context->getModuleMetaData()->FuncMD.end())
+    {
+        FunctionMetaData* funcMD = &m_Context->getModuleMetaData()->FuncMD[entry];
+        count = funcMD->m_OpenCLArgAccessQualifiers.size();
+    }
+    
     for (uint i = 0; i < count; ++i)
     {
         iOpenCL::KernelArgumentInfoAnnotation* kernelArgInfo = new iOpenCL::KernelArgumentInfoAnnotation();
-        
+        FunctionMetaData* funcMD = &m_Context->getModuleMetaData()->FuncMD[entry];
+
         // Format the strings the way the OpenCL runtime expects them
         
         // The access qualifier is expected to have a "__" prefix, 
         // or an upper-case "NONE" if there is no qualifier
-        kernelArgInfo->AccessQualifier = funcInfoMD->getOpenCLArgAccessQualifiersItem(i);
+        kernelArgInfo->AccessQualifier = funcMD->m_OpenCLArgAccessQualifiers[i];
         if (kernelArgInfo->AccessQualifier == "none" || kernelArgInfo->AccessQualifier == "")
         {
             kernelArgInfo->AccessQualifier = "NONE";
@@ -352,7 +358,7 @@ void COpenCLKernel::CreateKernelArgInfo()
         }
 
         // The address space is expected to have a __ prefix
-        switch (funcInfoMD->getOpenCLArgAddressSpacesItem(i))
+        switch(funcMD->m_OpenCLArgAddressSpaces[i])
         {
         case ADDRESS_SPACE_CONSTANT:
             kernelArgInfo->AddressQualifier = "__constant";
@@ -373,13 +379,13 @@ void COpenCLKernel::CreateKernelArgInfo()
 
         // ArgNames is not guaranteed to be present if -cl-kernel-arg-info
         // is not passed in.
-        if (funcInfoMD->isOpenCLArgNamesHasValue())
+        if(funcMD->m_OpenCLArgNames.size() > i)
         {
-            kernelArgInfo->ArgumentName = funcInfoMD->getOpenCLArgNamesItem(i);
+            kernelArgInfo->ArgumentName = funcMD->m_OpenCLArgNames[i];
         }
 
         // The type name is expected to also have the type size, appended after a ";"
-        kernelArgInfo->TypeName = funcInfoMD->getOpenCLArgTypesItem(i) + ";";
+        kernelArgInfo->TypeName = funcMD->m_OpenCLArgTypes[i] + ";";
 
         // Unfortunately, unlike SPIR, legacy OCL uses an ABI that has byval pointers.
         // So, if the parameter is a byval pointer, look at the contained type
@@ -397,7 +403,7 @@ void COpenCLKernel::CreateKernelArgInfo()
         }
 
         // If there are no type qualifiers, "NONE" is expected
-        kernelArgInfo->TypeQualifier = funcInfoMD->getOpenCLArgTypeQualifiersItem(i);
+        kernelArgInfo->TypeQualifier = funcMD->m_OpenCLArgTypeQualifiers[i];
         if (kernelArgInfo->TypeQualifier == "")
         {
             kernelArgInfo->TypeQualifier = "NONE";

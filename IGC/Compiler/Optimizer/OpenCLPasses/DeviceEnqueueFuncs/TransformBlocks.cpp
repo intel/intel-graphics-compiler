@@ -153,20 +153,22 @@ namespace //Anonymous
     class MetadataBuilder
     {
         IGC::IGCMD::MetaDataUtils* _pMdUtils;
+        IGC::ModuleMetaData* modMD;
         DataContext& _dataContext;
 
     public:
-        MetadataBuilder(IGC::IGCMD::MetaDataUtils* pMdUtils, DataContext& dataContext)
-            : _pMdUtils(pMdUtils), _dataContext(dataContext) {}
+        MetadataBuilder(IGC::IGCMD::MetaDataUtils* pMdUtils, DataContext& dataContext, IGC::ModuleMetaData* moduleMD)
+            : modMD(moduleMD), _pMdUtils(pMdUtils), _dataContext(dataContext) {}
 
         /// Return function metadata if function is kernel
-        IGC::IGCMD::FunctionInfoMetaDataHandle getKernelMetadata(const llvm::Function* func)
+        IGC::FunctionMetaData* getKernelMetadata(const llvm::Function* func)
         {
 			if (isEntryFunc(_pMdUtils, func))
 			{
-				return _pMdUtils->getFunctionsInfoItem(const_cast<llvm::Function*>(func));
+                if (modMD->FuncMD.find(const_cast<llvm::Function*>(func)) != modMD->FuncMD.end())
+                    return &modMD->FuncMD[const_cast<llvm::Function*>(func)];
 			}
-            return IGC::IGCMD::FunctionInfoMetaDataHandle(nullptr);
+            return nullptr;
         }
 
         bool eraseKernelMetadata(llvm::Function* func, IGC::ModuleMetaData* modMD) {
@@ -185,21 +187,22 @@ namespace //Anonymous
         }
 
         /// Return kernel argument type name from metadata
-        IGC::IGCMD::FunctionInfoMetaData::OpenCLArgBaseTypesList::item_type getKernelArgTypeName(const llvm::Function* func, unsigned argNum)
+        std::string getKernelArgTypeName(const llvm::Function* func, unsigned argNum)
         {
-            auto funcInfoMD = getOrEmitKernelMetadata(func);
-            assert((funcInfoMD.get() != nullptr) && "cannot get or emit for kernel metadata");
-
-            return funcInfoMD->getOpenCLArgBaseTypesItem(argNum);
+            auto funcInfoMD = getOrEmitKernelMetadata(const_cast<llvm::Function*>(func));
+            assert((funcInfoMD != nullptr) && "cannot get or emit for kernel metadata");
+            assert(funcInfoMD->m_OpenCLArgBaseTypes.size() > (unsigned) argNum);
+            return funcInfoMD->m_OpenCLArgBaseTypes[argNum];
         }
 
         /// Return function metadata if function is kernel, emit new kernel metadata if not.
-        IGC::IGCMD::FunctionInfoMetaDataHandle getOrEmitKernelMetadata(const llvm::Function* func)
+        FunctionMetaData* getOrEmitKernelMetadata(const llvm::Function* func)
         {
             auto kernelMD = getKernelMetadata(func);
-            if (kernelMD.get() == nullptr)
+            if (kernelMD == nullptr)
             {
-                return EmitKernelMetadata(func);
+                EmitKernelMetadata(const_cast<llvm::Function*>(func));
+                kernelMD = getKernelMetadata(func);
             }
             return kernelMD;
         }
@@ -223,7 +226,7 @@ namespace //Anonymous
         //  Function responsible for emitting special meta data for block dispatcher functions         //
         //  this will be part of stadard meta data layout and will be consumed by the Target           //
         /////////////////////////////////////////////////////////////////////////////////////////////////
-        IGC::IGCMD::FunctionInfoMetaDataHandle EmitKernelMetadata(const llvm::Function* kernelFunc);
+        void EmitKernelMetadata(const llvm::Function* kernelFunc);
     };
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1193,10 +1196,10 @@ namespace //Anonymous
 
     public:
 
-        DataContext(IGC::IGCMD::MetaDataUtils* pMdUtils)
+        DataContext(IGC::ModuleMetaData* modMD, IGC::IGCMD::MetaDataUtils* pMdUtils)
             : _blocksNum(0)
             , _kindQuery(*this)
-            , _MDBuilder(pMdUtils, *this)
+            , _MDBuilder(pMdUtils, *this, modMD)
         {}
 
         const KindQuery& getKindQuery() { return _kindQuery; }
@@ -1289,7 +1292,7 @@ namespace //Anonymous
             auto modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
 
             // dataContext "owns" all created objects in internal "database"
-            DataContext dataContext(pMdUtils);
+            DataContext dataContext(modMD, pMdUtils);
 
             // Inline functions which have device exec calls up to kernel or block_invoke level
             // to properly resolve parent argument number for the following case:
@@ -1608,7 +1611,7 @@ namespace //Anonymous
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // MetadataBuilder implementation
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    IGC::IGCMD::FunctionInfoMetaDataHandle MetadataBuilder::EmitKernelMetadata(const llvm::Function* kernelFunc)
+    void MetadataBuilder::EmitKernelMetadata(const llvm::Function* kernelFunc)
     {
         // Helper structure for pretty printing types
         struct TypeNameHelper {
@@ -1670,10 +1673,12 @@ namespace //Anonymous
         //link dispatchMd to dispatch kernel
         IGC::IGCMD::FunctionInfoMetaDataHandle dispatchMd = _pMdUtils->getOrInsertFunctionsInfoItem(const_cast<llvm::Function*>(kernelFunc));
 
-
-
+        auto funcMD = &modMD->FuncMD[const_cast<llvm::Function*>(kernelFunc)];//insert if not present 
+                                                                                  
         //set function type for dispatch
         dispatchMd->setType(IGC::IGCMD::FunctionTypeEnum::EntryFunctionType);
+
+        funcMD->functionType = IGC::FunctionTypeMD::KernelFunction;
 
         for (auto& arg : kernelFunc->args())
         {
@@ -1699,16 +1704,16 @@ namespace //Anonymous
                 TypeNameHelper::Print(argType, os);
             }
 
-            dispatchMd->addOpenCLArgAddressSpacesItem(addrSpace);     // !"kernel_arg_addr_space"
-            dispatchMd->addOpenCLArgAccessQualifiersItem(accessQual); // !"kernel_arg_access_qual"
-            dispatchMd->addOpenCLArgTypesItem(typeName);              // !"kernel_arg_type"
-            dispatchMd->addOpenCLArgTypeQualifiersItem("");           // !"kernel_arg_type_qual"
-            dispatchMd->addOpenCLArgBaseTypesItem(typeName);          // !"kernel_arg_base_type"
-            dispatchMd->addOpenCLArgNamesItem(arg.getName());         // !"kernel_arg_name"
+            funcMD->m_OpenCLArgAddressSpaces.push_back(addrSpace);
+            funcMD->m_OpenCLArgAccessQualifiers.push_back(accessQual);
+            funcMD->m_OpenCLArgTypes.push_back(typeName);
+            funcMD->m_OpenCLArgTypeQualifiers.push_back("");
+            funcMD->m_OpenCLArgBaseTypes.push_back(typeName);
+            funcMD->m_OpenCLArgNames.push_back(arg.getName());
         }
-        //save changes
         _pMdUtils->save(kernelFunc->getContext());
-        return dispatchMd;
+
+        return;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1770,7 +1775,7 @@ namespace //Anonymous
 
     bool KindQuery::isKernel(const llvm::Function* func) const
     {
-        return _dataContext.getMetaDataBuilder().getKernelMetadata(func).get() != nullptr;
+        return _dataContext.getMetaDataBuilder().getKernelMetadata(func) != nullptr;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////

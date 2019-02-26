@@ -75,6 +75,7 @@ namespace IGC
         bool isEmulationArg = 0;
     };
 
+
     //to hold metadata of every function
     struct FunctionMetaData
     {
@@ -93,6 +94,16 @@ namespace IGC
         bool groupIDPresent = false;
         int privateMemoryPerWI = 0;
         bool globalIDPresent = false;
+
+
+        std::vector<int32_t> m_OpenCLArgAddressSpaces;
+        std::vector<std::string> m_OpenCLArgAccessQualifiers;
+        std::vector<std::string> m_OpenCLArgTypes;
+        std::vector<std::string> m_OpenCLArgBaseTypes;
+        std::vector<std::string> m_OpenCLArgTypeQualifiers;
+        std::vector<std::string> m_OpenCLArgNames;
+
+
     };
 
     // isCloned member is added to mark whether a function is clone

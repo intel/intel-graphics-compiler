@@ -92,7 +92,7 @@ bool AddImplicitArgs::runOnModule(Module &M)
             (ctx->getModuleMetaData()->compOpt.HasBufferOffsetArg ||
              IGC_IS_FLAG_ENABLED(EnableSupportBufferOffset)))
         {
-            ImplicitArgs::addBufferOffsetArgs(*pFunc, m_pMdUtils);
+            ImplicitArgs::addBufferOffsetArgs(*pFunc, m_pMdUtils, ctx->getModuleMetaData());
         }
 
         // Create the new function body and insert it into the module

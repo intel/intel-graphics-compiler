@@ -1901,12 +1901,6 @@ FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode* pNode, bool hasId
     m_LocalOffsets(getLocalOffsetsNode(pNode), true),        
     m_ResourceAlloc(ResourceAllocMetaData::get(getResourceAllocNode(pNode), true)),        
     m_OpenCLVectorTypeHint(VectorTypeHintMetaData::get(getOpenCLVectorTypeHintNode(pNode), true)),        
-    m_OpenCLArgAddressSpaces(getOpenCLArgAddressSpacesNode(pNode), true),                
-    m_OpenCLArgAccessQualifiers(getOpenCLArgAccessQualifiersNode(pNode), true),        
-    m_OpenCLArgTypes(getOpenCLArgTypesNode(pNode), true),        
-    m_OpenCLArgBaseTypes(getOpenCLArgBaseTypesNode(pNode), true),        
-    m_OpenCLArgTypeQualifiers(getOpenCLArgTypeQualifiersNode(pNode), true),        
-    m_OpenCLArgNames(getOpenCLArgNamesNode(pNode), true),
     m_pNode(pNode)
 {}
 
@@ -1921,13 +1915,7 @@ FunctionInfoMetaData::FunctionInfoMetaData():    m_Type("function_type"),
     m_SubGroupSize(SubGroupSizeMetaDataHandle::ObjectType::get("sub_group_size")),        
     m_LocalOffsets("local_offsets"),        
     m_ResourceAlloc(ResourceAllocMetaDataHandle::ObjectType::get("resource_alloc")),        
-    m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),        
-    m_OpenCLArgAddressSpaces("opencl_kernel_arg_addr_space"),        
-    m_OpenCLArgAccessQualifiers("opencl_kernel_arg_access_qual"),        
-    m_OpenCLArgTypes("opencl_kernel_arg_type"),        
-    m_OpenCLArgBaseTypes("opencl_kernel_arg_base_type"),        
-    m_OpenCLArgTypeQualifiers("opencl_kernel_arg_type_qual"),        
-    m_OpenCLArgNames("opencl_kernel_arg_name"),
+    m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),
     m_pNode(NULL)
 {}
 
@@ -1943,13 +1931,7 @@ FunctionInfoMetaData::FunctionInfoMetaData(const char* name):
     m_SubGroupSize(SubGroupSizeMetaDataHandle::ObjectType::get("sub_group_size")),        
     m_LocalOffsets("local_offsets"),        
     m_ResourceAlloc(ResourceAllocMetaDataHandle::ObjectType::get("resource_alloc")),        
-    m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),        
-    m_OpenCLArgAddressSpaces("opencl_kernel_arg_addr_space"),        
-    m_OpenCLArgAccessQualifiers("opencl_kernel_arg_access_qual"),        
-    m_OpenCLArgTypes("opencl_kernel_arg_type"),        
-    m_OpenCLArgBaseTypes("opencl_kernel_arg_base_type"),        
-    m_OpenCLArgTypeQualifiers("opencl_kernel_arg_type_qual"),        
-    m_OpenCLArgNames("opencl_kernel_arg_name"),
+    m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),
     m_pNode(NULL)
 {}
 
@@ -2005,41 +1987,7 @@ bool FunctionInfoMetaData::hasValue() const
     {
         return true;
     }
-        
-    
-    if (m_OpenCLArgAddressSpaces.hasValue())
-    {
-        return true;
-    }
 
-    if (m_OpenCLArgAccessQualifiers.hasValue())
-    {
-        return true;
-    }
-        
-    
-    if (m_OpenCLArgTypes.hasValue())
-    {
-        return true;
-    }
-        
-    
-    if (m_OpenCLArgBaseTypes.hasValue())
-    {
-        return true;
-    }
-        
-    
-    if (m_OpenCLArgTypeQualifiers.hasValue())
-    {
-        return true;
-    }
-        
-    
-    if (m_OpenCLArgNames.hasValue())
-    {
-        return true;
-    }
     return NULL != m_pNode || dirty();
 }
 
@@ -2083,30 +2031,6 @@ bool FunctionInfoMetaData::dirty() const
     {
         return true;
     }        
-    if( m_OpenCLArgAddressSpaces.dirty() )
-    {
-        return true;
-    }              
-    if( m_OpenCLArgAccessQualifiers.dirty() )
-    {
-        return true;
-    }        
-    if( m_OpenCLArgTypes.dirty() )
-    {
-        return true;
-    }        
-    if( m_OpenCLArgBaseTypes.dirty() )
-    {
-        return true;
-    }        
-    if( m_OpenCLArgTypeQualifiers.dirty() )
-    {
-        return true;
-    }        
-    if( m_OpenCLArgNames.dirty() )
-    {
-        return true;
-    }
     return false;
 }
 
@@ -2123,12 +2047,6 @@ void FunctionInfoMetaData::discardChanges()
     m_LocalOffsets.discardChanges();        
     m_ResourceAlloc.discardChanges();        
     m_OpenCLVectorTypeHint.discardChanges();        
-    m_OpenCLArgAddressSpaces.discardChanges();        
-    m_OpenCLArgAccessQualifiers.discardChanges();        
-    m_OpenCLArgTypes.discardChanges();        
-    m_OpenCLArgBaseTypes.discardChanges();        
-    m_OpenCLArgTypeQualifiers.discardChanges();        
-    m_OpenCLArgNames.discardChanges();
 }
 
 ///
@@ -2183,37 +2101,6 @@ llvm::Metadata* FunctionInfoMetaData::generateNode(llvm::LLVMContext& context) c
     {
         args.push_back(m_OpenCLVectorTypeHint.generateNode(context));
     }
-
-    if (isOpenCLArgAddressSpacesHasValue())
-    {
-        args.push_back(m_OpenCLArgAddressSpaces.generateNode(context));
-    }
-        
-    if (isOpenCLArgAccessQualifiersHasValue())
-    {
-        args.push_back( m_OpenCLArgAccessQualifiers.generateNode(context));
-    }
-        
-    if (isOpenCLArgTypesHasValue())
-    {
-        args.push_back( m_OpenCLArgTypes.generateNode(context));
-    }
-        
-    if (isOpenCLArgBaseTypesHasValue())
-    {
-        args.push_back( m_OpenCLArgBaseTypes.generateNode(context));
-    }
-        
-    if (isOpenCLArgTypeQualifiersHasValue())
-    {
-        args.push_back( m_OpenCLArgTypeQualifiers.generateNode(context));
-    }
-        
-    if (isOpenCLArgNamesHasValue())
-    {
-        args.push_back( m_OpenCLArgNames.generateNode(context));
-    }
-
     return llvm::MDNode::get(context, args);
 }
 
@@ -2245,13 +2132,7 @@ void FunctionInfoMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode)
     m_SubGroupSize.save(context, llvm::cast<llvm::MDNode>(getSubGroupSizeNode(pNode)));        
     m_LocalOffsets.save(context, llvm::cast<llvm::MDNode>(getLocalOffsetsNode(pNode)));        
     m_ResourceAlloc.save(context, llvm::cast<llvm::MDNode>(getResourceAllocNode(pNode)));        
-    m_OpenCLVectorTypeHint.save(context, llvm::cast<llvm::MDNode>(getOpenCLVectorTypeHintNode(pNode)));        
-    m_OpenCLArgAddressSpaces.save(context, llvm::cast<llvm::MDNode>(getOpenCLArgAddressSpacesNode(pNode)));        
-    m_OpenCLArgAccessQualifiers.save(context, llvm::cast<llvm::MDNode>(getOpenCLArgAccessQualifiersNode(pNode)));        
-    m_OpenCLArgTypes.save(context, llvm::cast<llvm::MDNode>(getOpenCLArgTypesNode(pNode)));        
-    m_OpenCLArgBaseTypes.save(context, llvm::cast<llvm::MDNode>(getOpenCLArgBaseTypesNode(pNode)));        
-    m_OpenCLArgTypeQualifiers.save(context, llvm::cast<llvm::MDNode>(getOpenCLArgTypeQualifiersNode(pNode)));        
-    m_OpenCLArgNames.save(context, llvm::cast<llvm::MDNode>(getOpenCLArgNamesNode(pNode)));
+    m_OpenCLVectorTypeHint.save(context, llvm::cast<llvm::MDNode>(getOpenCLVectorTypeHintNode(pNode)));
 }
 
 llvm::Metadata* FunctionInfoMetaData::getTypeNode( const llvm::MDNode* pParentNode) const
@@ -2427,114 +2308,6 @@ llvm::MDNode* FunctionInfoMetaData::getOpenCLVectorTypeHintNode( const llvm::MDN
     for(NodeIterator i = NodeIterator(pParentNode, 0+offset), e = NodeIterator(pParentNode); i != e; ++i )
     {
         if( isNamedNode(i.get(), "opencl_vec_type_hint") )
-        {
-            return llvm::dyn_cast<llvm::MDNode>(i.get());
-        }
-    }
-    return NULL;
-}
-    
-llvm::MDNode* FunctionInfoMetaData::getOpenCLArgAddressSpacesNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    for(NodeIterator i = NodeIterator(pParentNode, 0+offset), e = NodeIterator(pParentNode); i != e; ++i )
-    {
-        if( isNamedNode(i.get(), "opencl_kernel_arg_addr_space") )
-        {
-            return llvm::dyn_cast<llvm::MDNode>(i.get());
-        }
-    }
-    return NULL;
-}
-    
-llvm::MDNode* FunctionInfoMetaData::getOpenCLArgAccessQualifiersNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    for(NodeIterator i = NodeIterator(pParentNode, 0+offset), e = NodeIterator(pParentNode); i != e; ++i )
-    {
-        if( isNamedNode(i.get(), "opencl_kernel_arg_access_qual") )
-        {
-            return llvm::dyn_cast<llvm::MDNode>(i.get());
-        }
-    }
-    return NULL;
-}
-    
-llvm::MDNode* FunctionInfoMetaData::getOpenCLArgTypesNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    for(NodeIterator i = NodeIterator(pParentNode, 0+offset), e = NodeIterator(pParentNode); i != e; ++i )
-    {
-        if( isNamedNode(i.get(), "opencl_kernel_arg_type") )
-        {
-            return llvm::dyn_cast<llvm::MDNode>(i.get());
-        }
-    }
-    return NULL;
-}
-    
-llvm::MDNode* FunctionInfoMetaData::getOpenCLArgBaseTypesNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    for(NodeIterator i = NodeIterator(pParentNode, 0+offset), e = NodeIterator(pParentNode); i != e; ++i )
-    {
-        if( isNamedNode(i.get(), "opencl_kernel_arg_base_type") )
-        {
-            return llvm::dyn_cast<llvm::MDNode>(i.get());
-        }
-    }
-    return NULL;
-}
-    
-llvm::MDNode* FunctionInfoMetaData::getOpenCLArgTypeQualifiersNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    for(NodeIterator i = NodeIterator(pParentNode, 0+offset), e = NodeIterator(pParentNode); i != e; ++i )
-    {
-        if( isNamedNode(i.get(), "opencl_kernel_arg_type_qual") )
-        {
-            return llvm::dyn_cast<llvm::MDNode>(i.get());
-        }
-    }
-    return NULL;
-}
-    
-llvm::MDNode* FunctionInfoMetaData::getOpenCLArgNamesNode(const llvm::MDNode* pParentNode) const
-{
-    if (!pParentNode)
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    for (NodeIterator i = NodeIterator(pParentNode, 0 + offset), e = NodeIterator(pParentNode); i != e; ++i)
-    {
-        if (isNamedNode(i.get(), "opencl_kernel_arg_name"))
         {
             return llvm::dyn_cast<llvm::MDNode>(i.get());
         }

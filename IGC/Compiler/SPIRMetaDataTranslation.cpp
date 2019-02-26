@@ -228,9 +228,10 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         {
             SPIRMD::KernelMetaData::ArgAddressSpacesList::const_iterator i = spirKernel->begin_ArgAddressSpaces();
             SPIRMD::KernelMetaData::ArgAddressSpacesList::const_iterator e = spirKernel->end_ArgAddressSpaces();
+            
             for (; i != e; ++i)
             {
-                fHandle->addOpenCLArgAddressSpacesItem(*i);
+                funcMD.m_OpenCLArgAddressSpaces.push_back(*i);
             }
         }
 
@@ -241,7 +242,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
             SPIRMD::KernelMetaData::ArgAccessQualifiersList::const_iterator e = spirKernel->end_ArgAccessQualifiers();
             for (; i != e; ++i)
             {
-                fHandle->addOpenCLArgAccessQualifiersItem(*i);
+                funcMD.m_OpenCLArgAccessQualifiers.push_back(*i);
             }
         }
 
@@ -252,7 +253,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
             SPIRMD::KernelMetaData::ArgTypesList::const_iterator e = spirKernel->end_ArgTypes();
             for (; i != e; ++i)
             {
-                fHandle->addOpenCLArgTypesItem(*i);
+                funcMD.m_OpenCLArgTypes.push_back(*i);
             }
         }
 
@@ -263,7 +264,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
             SPIRMD::KernelMetaData::ArgBaseTypesList::const_iterator e = spirKernel->end_ArgBaseTypes();
             for (; i != e; ++i)
             {
-                fHandle->addOpenCLArgBaseTypesItem(*i);
+                funcMD.m_OpenCLArgBaseTypes.push_back(*i);
             }
         }
 
@@ -274,7 +275,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
             SPIRMD::KernelMetaData::ArgTypeQualifiersList::const_iterator e = spirKernel->end_ArgTypeQualifiers();
             for (; i != e; ++i)
             {
-                fHandle->addOpenCLArgTypeQualifiersItem(*i);
+                funcMD.m_OpenCLArgTypeQualifiers.push_back(*i);
             }
         }
 
@@ -285,7 +286,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
             SPIRMD::KernelMetaData::ArgNamesList::const_iterator e = spirKernel->end_ArgNames();
             for (; i != e; ++i)
             {
-                fHandle->addOpenCLArgNamesItem(*i);
+                funcMD.m_OpenCLArgNames.push_back(*i);
             }
         }
 

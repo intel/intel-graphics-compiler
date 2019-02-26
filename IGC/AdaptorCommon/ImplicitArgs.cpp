@@ -384,11 +384,15 @@ void ImplicitArgs::addNumberedArgs(llvm::Function& F, ImplicitArg::ArgMap& argMa
 
 // Add one implicit argument for each pointer argument to global or constant buffer. 
 // Note that F is the original input function (ie, without implicit arguments).
-void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* pMdUtils)
+void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* pMdUtils, IGC::ModuleMetaData *modMD)
 {
     ImplicitArg::ArgMap OffsetArgs;
     FunctionInfoMetaDataHandle funcInfoMD =
         pMdUtils->getFunctionsInfoItem(const_cast<Function*>(&F));
+    
+    assert(modMD->FuncMD.find(&F) != modMD->FuncMD.end());
+    
+    FunctionMetaData* funcMD = &modMD->FuncMD.find(&F)->second;
     for (auto& Arg : F.args() )
     {
         Value* AV = &Arg;
@@ -401,11 +405,16 @@ void ImplicitArgs::addBufferOffsetArgs(llvm::Function& F, IGCMD::MetaDataUtils* 
         }
 
         int argNo = Arg.getArgNo();
+        
+        std::string argbaseType = "";
+        if (funcMD->m_OpenCLArgBaseTypes.size() > (unsigned)argNo)
+            argbaseType = funcMD->m_OpenCLArgBaseTypes[argNo];
+
         // Do not generate implicit arg for any image arguments
         KernelArg::ArgType ImgArgType;
         if (KernelArg::isImage(
-            &Arg, funcInfoMD->getOpenCLArgBaseTypesItem(argNo), ImgArgType) ||
-            KernelArg::isSampler(&Arg, funcInfoMD->getOpenCLArgBaseTypesItem(argNo)))
+            &Arg, argbaseType, ImgArgType) ||
+            KernelArg::isSampler(&Arg, argbaseType))
         {
             continue;
         }

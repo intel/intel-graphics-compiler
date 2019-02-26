@@ -449,16 +449,20 @@ bool ProcessBuiltinMetaData::runOnModule(Module& M)
 void ProcessBuiltinMetaData::updateBuiltinFunctionMetaData(llvm::Function* pFunc)
 {
     IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
+
+    IGC::ModuleMetaData* modMD = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData();
+    FunctionMetaData *funcMD = &modMD->FuncMD[pFunc]; //okay to insert if not present
     fHandle->setType(IGC::IGCMD::FunctionTypeEnum::OtherFunctionType);
+    funcMD->functionType = IGC::FunctionTypeMD::UserFunction;
     for (auto arg = pFunc->arg_begin(); arg != pFunc->arg_end(); ++arg)
     {
         std::string typeStr;
         llvm::raw_string_ostream x(typeStr);
         arg->getType()->print(x);
 
-        fHandle->addOpenCLArgNamesItem(arg->getName());
-        fHandle->addOpenCLArgAccessQualifiersItem("none");
-        fHandle->addOpenCLArgBaseTypesItem(x.str());
+        funcMD->m_OpenCLArgNames.push_back(arg->getName());
+        funcMD->m_OpenCLArgAccessQualifiers.push_back("none");
+        funcMD->m_OpenCLArgBaseTypes.push_back(x.str());
     }
     m_pMdUtil->setFunctionsInfoItem(pFunc, fHandle);
 }
