@@ -6,6 +6,7 @@
 
 if(WIN32)
 cmake_minimum_required(VERSION 3.1)
+cmake_policy(SET CMP0043 OLD)
 else()
 cmake_minimum_required(VERSION 2.8)
 endif(WIN32)

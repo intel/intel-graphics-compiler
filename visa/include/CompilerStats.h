@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 
-#if defined( _DEBUG )
+#if defined( _INTERNAL) || defined( _DEBUG )
     #define COMPILER_STATS_ENABLE 1
 #endif
 
