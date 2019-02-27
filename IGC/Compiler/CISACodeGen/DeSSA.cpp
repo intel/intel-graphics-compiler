@@ -386,7 +386,6 @@ void DeSSA::MapUnionRegs(MapVector<Value*, Node*> &Map, Value* Val1, Value* Val2
 
 void DeSSA::isolateReg(Value* Val) {
   Node *Node = RegNodeMap[Val];
-  splitNode(Node);
   Node->parent.setInt(Node->parent.getInt() | Node::kRegisterIsolatedFlag);
 }
 
@@ -413,7 +412,6 @@ Value* DeSSA::getPHIRoot(Instruction *PHI) const {
 void DeSSA::isolatePHI(Instruction *PHI) {
   assert(isa<PHINode>(PHI));
   Node *Node = RegNodeMap[PHI];
-  splitNode(Node);
   Node->parent.setInt(Node->parent.getInt() | Node::kPHIIsolatedFlag);
 }
 
@@ -422,40 +420,6 @@ bool DeSSA::isPHIIsolated(Instruction *PHI) const {
   assert (RI != RegNodeMap.end());
   Node *DestNode = RI->second;
   return ((DestNode->parent.getInt() & Node::kPHIIsolatedFlag) > 0 ? true : false);
-}
-
-// Split node ND from its existing congurent class, and the
-// node ND itself becomes a new single-value congruent class.
-void DeSSA::splitNode(Node* ND)
-{
-    Node* N = ND->next;
-    if (N == ND) {
-        // ND is already in a single-value congruent class
-        return;
-    }
-
-    // Remove ND from the congruent class
-    Node* P = ND->prev;
-    N->prev = P;
-    P->next = N;
-
-    // Make ND a new single-value congruent class
-    ND->parent.setPointer(ND);
-    ND->next = ND;
-    ND->prev = ND;
-    ND->rank = 0;
-
-    // Doing the path compression for the rooted tree of
-    // the existing congruent class after ND is removed
-    // from the congruent class.
-    P->parent.setPointer(P);  // P is the new parent
-    P->rank = (P == N) ? 0 : 1;
-    while (N != P)
-    {
-        N->parent.setPointer(P);
-        N->rank = 0;
-        N = N->next;
-    }
 }
 
 /// SplitInterferencesForBasicBlock - traverses a basic block, splitting any
