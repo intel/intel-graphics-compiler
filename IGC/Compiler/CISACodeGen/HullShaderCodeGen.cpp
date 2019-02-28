@@ -254,7 +254,7 @@ OctEltUnit CHullShader::GetURBAllocationSize() const
 
 OctEltUnit CHullShader::GetPatchConstantURBSize() const
 {
-    return std::max((OctEltUnit((m_properties.m_pMaxPatchConstantSignatureDeclarations + 1) / 2)), OctEltUnit(1));
+    return OctEltUnit((m_properties.m_pMaxPatchConstantSignatureDeclarations + 1) / 2);
 }
 
 OctEltUnit CHullShader::GetVertexURBEntryReadLength() const
