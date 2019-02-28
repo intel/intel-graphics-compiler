@@ -70,7 +70,7 @@ namespace IGC
             llvm::GenIntrinsicInst *pCall,
             unsigned imageIdx,
             const IGCMD::MetaDataUtils* pMdUtils,
-            const IGC::ModuleMetaData* modMD,
+            const IGC::ModuleMetaData* m_modMD,
             const llvm::Value* pCoord);
     };
 

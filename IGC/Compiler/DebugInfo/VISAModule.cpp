@@ -467,9 +467,9 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
                 const std::string typeStr = modMD->FuncMD[const_cast<Function*>(m_pEntryFunc)].m_OpenCLArgBaseTypes[pArgument->getArgNo()];
                 KernelArg::ArgType argType = KernelArg::calcArgType(pArgument, typeStr);
                 FunctionMetaData *funcMD = &modMD->FuncMD[const_cast<Function*>(m_pEntryFunc)];
-                ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
-                assert(resourceAlloc->argAllocMDList.size() == IGCLLVM::GetFuncArgSize(m_pEntryFunc) && "Invalid ArgAllocMDList");
-                ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[pArgument->getArgNo()];
+                ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+                assert(resAllocMD->argAllocMDList.size() == IGCLLVM::GetFuncArgSize(m_pEntryFunc) && "Invalid ArgAllocMDList");
+                ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[pArgument->getArgNo()];
                 unsigned int index = argAlloc->indexType;
 
                 switch (argType)

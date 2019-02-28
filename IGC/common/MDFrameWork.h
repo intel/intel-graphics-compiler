@@ -43,12 +43,32 @@ namespace IGC
         int indexType = -1;
     };
 
+    struct InlineSamplersMD
+    {
+        int m_Value = 0;
+        int addressMode = 0;
+        int index = 0;
+        int TCXAddressMode = 0;
+        int TCYAddressMode = 0;
+        int TCZAddressMode = 0;
+        int MagFilterType = 0;
+        int MinFilterType = 0;
+        int MipFilterType = 0;
+        int CompareFunc = 0;
+        int NormalizedCoords = 0;
+        float BorderColorR = 0.0f;
+        float BorderColorG = 0.0f;
+        float BorderColorB = 0.0f;
+        float BorderColorA = 0.0f;
+    };
+
     struct ResourceAllocMD
     {
-        int uavsNumType = 0; //unused
-        int srvsNumType = 0; //unused
-        int samplersNumType = 0; //unused
+        int uavsNumType = 0;
+        int srvsNumType = 0;
+        int samplersNumType = 0;
         std::vector<ArgAllocMD> argAllocMDList;
+        std::vector<InlineSamplersMD> inlineSamplersMD;
     };
 
     struct ComputeShaderSecondCompileInputInfoMD
@@ -82,7 +102,7 @@ namespace IGC
         WorkGroupWalkOrderMD workGroupWalkOrder;
         std::vector<FuncArgMD> funcArgs;
         FunctionTypeMD functionType = UnknownFunction;
-        ResourceAllocMD resourceAlloc;
+        ResourceAllocMD resAllocMD;
         std::vector<unsigned> maxByteOffsets;
         bool IsInitializer = false;
         bool IsFinalizer = false;

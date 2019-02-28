@@ -311,9 +311,9 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
                 if (modMD->FuncMD.find(function) != modMD->FuncMD.end()) 
                 {
                     FunctionMetaData *funcMD = &modMD->FuncMD[function];
-                    ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
-                    ArgAllocMD *argInfo = &resourceAlloc->argAllocMDList[argPtr->getArgNo()];
-                    assert((size_t) argPtr->getArgNo() < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds Error");
+                    ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+                    ArgAllocMD *argInfo = &resAllocMD->argAllocMDList[argPtr->getArgNo()];
+                    assert((size_t) argPtr->getArgNo() < resAllocMD->argAllocMDList.size() && "ArgAllocMD List Out of Bounds Error");
 
                     if (argInfo->type == IGCMD::ResourceTypeEnum::BindlessUAVResourceType)
                     {
@@ -791,9 +791,9 @@ void PromoteResourceToDirectAS::PromoteStatelessToBindlessBuffers(Function& F)
             if (modMD->FuncMD.find(&F) != modMD->FuncMD.end())
             {
                 FunctionMetaData *funcMD = &modMD->FuncMD[&F];
-                ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
-                ArgAllocMD *argInfo = &resourceAlloc->argAllocMDList[srcPtr->getArgNo()];
-                assert((size_t) srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
+                ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+                ArgAllocMD *argInfo = &resAllocMD->argAllocMDList[srcPtr->getArgNo()];
+                assert((size_t) srcPtr->getArgNo() < resAllocMD->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
                 if (argInfo->type == IGCMD::ResourceTypeEnum::UAVResourceType)
                 {
                     // Update metadata to show bindless resource type

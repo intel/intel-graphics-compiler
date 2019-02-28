@@ -56,17 +56,14 @@ BuiltinsConverter::BuiltinsConverter(void) : FunctionPass(ID)
 
 bool BuiltinsConverter::fillIndexMap(Function &F)
 {
-    MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    ResourceAllocMetaDataHandle resourceAllocInfo = pMdUtils->getFunctionsInfoItem(&F)->getResourceAlloc();
-    assert(resourceAllocInfo->hasValue() && "Resource Allocation Information not present");
     ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
+    FunctionMetaData *funcMD = &modMD->FuncMD[&F];
+    ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
     for (Function::arg_iterator arg = F.arg_begin(), e = F.arg_end(); arg != e; ++arg)
     {
         int argNo = (*arg).getArgNo();
-        FunctionMetaData *funcMD = &modMD->FuncMD[&F];
-        ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
-        assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
-        ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[argNo];
+        assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+        ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[argNo];
         if (argAlloc->type == OtherResourceType)
         {
             // Other resource type has no valid index and is not needed in the map.
@@ -81,7 +78,7 @@ bool BuiltinsConverter::fillIndexMap(Function &F)
     // The sampler arguments have already been allocated indices by the ResourceAllocator.
     // So, the first sampler we can allocate here may not be 0, but is the number of
     // already allocated indices.
-    m_nextSampler = resourceAllocInfo->getSamplersNum();
+    m_nextSampler = resAllocMD->samplersNumType;
 
     return true;
 }

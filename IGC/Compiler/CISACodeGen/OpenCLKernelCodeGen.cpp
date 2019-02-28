@@ -246,9 +246,9 @@ SOpenCLKernelInfo::SResourceInfo COpenCLKernel::getResourceInfo(int argNo)
     CodeGenContext *pCtx = GetContext();
     ModuleMetaData* modMD = pCtx->getModuleMetaData();
     FunctionMetaData *funcMD = &modMD->FuncMD[entry];
-    ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
-    assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMD List Out of Bounds");
-    ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[argNo];
+    ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+    assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMD List Out of Bounds");
+    ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[argNo];
 
     SOpenCLKernelInfo::SResourceInfo resInfo;
     ResourceTypeEnum type = (ResourceTypeEnum) argAlloc->type;
@@ -275,55 +275,48 @@ ResourceExtensionTypeEnum COpenCLKernel::getExtensionInfo(int argNo)
     CodeGenContext *pCtx = GetContext();
     ModuleMetaData* modMD = pCtx->getModuleMetaData();
     FunctionMetaData *funcMD = &modMD->FuncMD[entry];
-    ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
-    assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMD List Out of Bounds");
-    ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[argNo];
+    ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+    assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMD List Out of Bounds");
+    ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[argNo];
     return (ResourceExtensionTypeEnum) argAlloc->extensionType;
 }
 
 void COpenCLKernel::CreateInlineSamplerAnnotations()
 {
-    FunctionInfoMetaDataHandle funcInfoMD = m_pMdUtils->getFunctionsInfoItem(entry);
-    ResourceAllocMetaDataHandle resAllocMD = funcInfoMD->getResourceAlloc();
-    if (!resAllocMD->hasValue())
+    if (m_Context->getModuleMetaData()->FuncMD.find(entry) != m_Context->getModuleMetaData()->FuncMD.end())
     {
-        return;
-    }
+        FunctionMetaData funcMD = m_Context->getModuleMetaData()->FuncMD.find(entry)->second;
 
-    for (auto i = resAllocMD->begin_InlineSamplers(), e = resAllocMD->end_InlineSamplers(); i != e; ++i)
-    {
-        InlineSamplerMetaDataHandle inlineSamplerMD = *i;
-        iOpenCL::SamplerInputAnnotation* samplerInput = new iOpenCL::SamplerInputAnnotation();
-        
-        samplerInput->AnnotationSize              = sizeof(samplerInput);
-        samplerInput->SamplerType                 = iOpenCL::SAMPLER_OBJECT_TEXTURE;
-        samplerInput->SamplerTableIndex           = inlineSamplerMD->getIndex();
-        
-        samplerInput->TCXAddressMode = iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE(inlineSamplerMD->getTCXAddressMode());
-        samplerInput->TCYAddressMode = iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE(inlineSamplerMD->getTCYAddressMode());
-        samplerInput->TCZAddressMode = iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE(inlineSamplerMD->getTCZAddressMode());
-        samplerInput->NormalizedCoords = inlineSamplerMD->getNormalizedCoords() != 0 ? true : false;
-        samplerInput->MagFilterType = iOpenCL::SAMPLER_MAPFILTER_TYPE(inlineSamplerMD->getMagFilterType());
-        samplerInput->MinFilterType = iOpenCL::SAMPLER_MAPFILTER_TYPE(inlineSamplerMD->getMinFilterType());
-        samplerInput->MipFilterType = iOpenCL::SAMPLER_MIPFILTER_TYPE(inlineSamplerMD->getMipFilterType());
+        ResourceAllocMD resAllocMD = funcMD.resAllocMD;
 
-        samplerInput->CompareFunc = iOpenCL::SAMPLER_COMPARE_FUNC_TYPE(inlineSamplerMD->getCompareFunc());
-
-        samplerInput->BorderColorR = inlineSamplerMD->getBorderColorR();
-        samplerInput->BorderColorG = inlineSamplerMD->getBorderColorG();
-        samplerInput->BorderColorB = inlineSamplerMD->getBorderColorB();
-        samplerInput->BorderColorA = inlineSamplerMD->getBorderColorA();
-
-        m_kernelInfo.m_samplerInput.push_back(samplerInput);
-    }
-
-    {
-        auto *MD = m_Context->getModuleMetaData();
-        auto   I = MD->FuncMD.find(entry);
-        if (I != MD->FuncMD.end())
+        for (auto i = resAllocMD.inlineSamplersMD.begin(), e = resAllocMD.inlineSamplersMD.end(); i != e; ++i)
         {
-            m_kernelInfo.m_HasInlineVmeSamplers = I->second.hasInlineVmeSamplers;
+            InlineSamplersMD inlineSamplerMD = *i;
+            iOpenCL::SamplerInputAnnotation* samplerInput = new iOpenCL::SamplerInputAnnotation();
+
+            samplerInput->AnnotationSize = sizeof(samplerInput);
+            samplerInput->SamplerType = iOpenCL::SAMPLER_OBJECT_TEXTURE;
+            samplerInput->SamplerTableIndex = inlineSamplerMD.index;
+
+            samplerInput->TCXAddressMode = iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE(inlineSamplerMD.TCXAddressMode);
+            samplerInput->TCYAddressMode = iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE(inlineSamplerMD.TCYAddressMode);
+            samplerInput->TCZAddressMode = iOpenCL::SAMPLER_TEXTURE_ADDRESS_MODE(inlineSamplerMD.TCZAddressMode);
+            samplerInput->NormalizedCoords = inlineSamplerMD.NormalizedCoords != 0 ? true : false;
+            
+            samplerInput->MagFilterType = iOpenCL::SAMPLER_MAPFILTER_TYPE(inlineSamplerMD.MagFilterType);
+            samplerInput->MinFilterType = iOpenCL::SAMPLER_MAPFILTER_TYPE(inlineSamplerMD.MinFilterType);
+            samplerInput->MipFilterType = iOpenCL::SAMPLER_MIPFILTER_TYPE(inlineSamplerMD.MipFilterType);
+            samplerInput->CompareFunc = iOpenCL::SAMPLER_COMPARE_FUNC_TYPE(inlineSamplerMD.CompareFunc);
+
+            samplerInput->BorderColorR = inlineSamplerMD.BorderColorR;
+            samplerInput->BorderColorG = inlineSamplerMD.BorderColorG;
+            samplerInput->BorderColorB = inlineSamplerMD.BorderColorB;
+            samplerInput->BorderColorA = inlineSamplerMD.BorderColorA;
+
+            m_kernelInfo.m_samplerInput.push_back(samplerInput);
         }
+
+        m_kernelInfo.m_HasInlineVmeSamplers = funcMD.hasInlineVmeSamplers;
     }
 }
 
@@ -719,9 +712,9 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
             CodeGenContext *pCtx = GetContext();
             ModuleMetaData* modMD = pCtx->getModuleMetaData();
             FunctionMetaData *funcMD = &modMD->FuncMD[entry];
-            ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
-            assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
-            ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[argNo];
+            ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+            assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+            ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[argNo];
     
             iOpenCL::PointerArgumentAnnotation *ptrAnnotation = new iOpenCL::PointerArgumentAnnotation();
 
@@ -1676,11 +1669,13 @@ void COpenCLKernel::FillKernel()
 
 void COpenCLKernel::RecomputeBTLayout()
 {
-    ResourceAllocMetaDataHandle resourceAlloc = m_pMdUtils->getFunctionsInfoItem(entry)->getResourceAlloc();
-    assert(resourceAlloc->hasValue() && "Resource Allocation information not present");
+    CodeGenContext *pCtx = GetContext();
+    ModuleMetaData* modMD = pCtx->getModuleMetaData();
+    FunctionMetaData *funcMD = &modMD->FuncMD[entry];
+    ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
     // Get the number of UAVs and Resources from MD.
-    int numUAVs = resourceAlloc->getUAVsNum();
-    int numResources = resourceAlloc->getSRVsNum();
+    int numUAVs = resAllocMD->uavsNumType;
+    int numResources = resAllocMD->srvsNumType;
 
     // Now, update the layout information
     USC::SShaderStageBTLayout* layout = ((COCLBTILayout *)m_pBtiLayout)->getModifiableLayout();

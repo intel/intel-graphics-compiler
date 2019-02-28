@@ -208,9 +208,9 @@ void SubGroupFuncsResolution::BTIHelper( llvm::CallInst &CI )
     {
         int argNo = ( *arg ).getArgNo();
         FunctionMetaData *funcMD = &modMD->FuncMD[F];
-        ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
-        assert((size_t) argNo < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
-        ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[argNo];
+        ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+        assert((size_t) argNo < resAllocMD->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
+        ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[argNo];
         m_argIndexMap[ &(*arg) ] = CImagesBI::ParamInfo(
             argAlloc->indexType,
             (ResourceTypeEnum) argAlloc->type,

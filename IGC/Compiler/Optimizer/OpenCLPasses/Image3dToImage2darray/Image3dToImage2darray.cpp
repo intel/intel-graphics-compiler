@@ -50,7 +50,7 @@ IGC_INITIALIZE_PASS_END(Image3dToImage2darray, PASS_FLAG, PASS_DESCRIPTION, PASS
 char Image3dToImage2darray::ID = 0;
 
 Image3dToImage2darray::Image3dToImage2darray() :
-    FunctionPass(ID), m_Changed(false), m_MetadataUtils(nullptr)
+    FunctionPass(ID), m_Changed(false), m_MetadataUtils(nullptr), m_modMD(nullptr)
 {
     initializeImage3dToImage2darrayPass(*PassRegistry::getPassRegistry());
 }

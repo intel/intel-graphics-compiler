@@ -1019,10 +1019,10 @@ KernelArgs::KernelArgs(const Function& F, const DataLayout* DL, MetaDataUtils* p
         {
             // Check for bindless images which require allocation
             FunctionMetaData *funcMD = &moduleMD->FuncMD[const_cast<llvm::Function*>(&F)];
-            ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
-            if (resourceAlloc->argAllocMDList.size() > funcArg->getArgNo())
+            ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+            if (resAllocMD->argAllocMDList.size() > funcArg->getArgNo())
             {
-                ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[funcArg->getArgNo()];
+                ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[funcArg->getArgNo()];
                 if (argAlloc->type == ResourceTypeEnum::BindlessUAVResourceType ||
                     argAlloc->type == ResourceTypeEnum::BindlessSamplerResourceType)
                 {

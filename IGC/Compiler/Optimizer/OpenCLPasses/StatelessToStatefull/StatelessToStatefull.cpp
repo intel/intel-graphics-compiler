@@ -426,9 +426,9 @@ void StatelessToStatefull::visitCallInst(CallInst &I)
 			{		
                 ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
                 FunctionMetaData *funcMD = &modMD->FuncMD[F];
-                ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
-                assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
-                ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[baseArgNumber];
+                ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+                assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+                ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[baseArgNumber];
 				
                 Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
                 unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV, 0);
@@ -485,9 +485,9 @@ void StatelessToStatefull::visitLoadInst(LoadInst &I)
     {
         ModuleMetaData* modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
         FunctionMetaData *funcMD = &modMD->FuncMD[F];
-        ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
-        assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
-        ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[baseArgNumber];
+        ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+        assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+        ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[baseArgNumber];
 
         Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
 
@@ -536,9 +536,9 @@ void StatelessToStatefull::visitStoreInst(StoreInst &I)
         {
             ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
             FunctionMetaData *funcMD = &modMD->FuncMD[F];
-            ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
-            assert(resourceAlloc->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
-            ArgAllocMD *argAlloc = &resourceAlloc->argAllocMDList[baseArgNumber];
+            ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
+            assert(resAllocMD->argAllocMDList.size() > 0 && "ArgAllocMDList is empty.");
+            ArgAllocMD *argAlloc = &resAllocMD->argAllocMDList[baseArgNumber];
             Constant* resourceNumber = ConstantInt::get(int32Ty, argAlloc->indexType);
 
             unsigned addrSpace = EncodeAS4GFXResource(*resourceNumber, BufferType::UAV, 0);

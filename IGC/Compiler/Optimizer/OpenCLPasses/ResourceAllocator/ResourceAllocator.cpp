@@ -100,7 +100,7 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
     if (modMD->FuncMD.find(&F) == modMD->FuncMD.end())
         assert("Function was not found.");
     FunctionMetaData *funcMD = &modMD->FuncMD[&F];
-    ResourceAllocMD *resourceAlloc = &funcMD->resourceAlloc;
+    ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
 
     // Go over all of the kernel args.
     // For each kernel arg, if it represents an explicit image or buffer argument, 
@@ -304,15 +304,14 @@ bool ResourceAllocator::runOnFunction(llvm::Function &F)
     
     // Param allocations must be inserted to the Metadata Utils in order.
     MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-    auto funcResourceAllocInfo = pMdUtils->getFunctionsInfoItem(&F)->getResourceAlloc();
     for( auto i : paramAllocations )
     {
-        resourceAlloc->argAllocMDList.push_back(i);
+        resAllocMD->argAllocMDList.push_back(i);
     }
 
-    funcResourceAllocInfo->setUAVsNum(numUAVs);
-    funcResourceAllocInfo->setSRVsNum(numResources);
-    funcResourceAllocInfo->setSamplersNum(numSamplers);
+    resAllocMD->uavsNumType = numUAVs;
+    resAllocMD->srvsNumType = numResources;
+    resAllocMD->samplersNumType = numSamplers;
 
     pMdUtils->save(F.getContext());
     
