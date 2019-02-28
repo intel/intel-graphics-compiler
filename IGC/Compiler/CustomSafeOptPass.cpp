@@ -1337,25 +1337,16 @@ void GenSpecificPattern::visitTruncInst(llvm::TruncInst &I)
 {
     using namespace llvm::PatternMatch;
     Value *LHS;
-    ConstantInt *CI;
-    if (match(&I, m_Trunc(m_LShr(m_Value(LHS), m_ConstantInt(CI))))) 
+    if (match(&I, m_Trunc(m_LShr(m_Value(LHS), m_SpecificInt(32)))) &&
+        I.getType()->isIntegerTy(32) &&
+        LHS->getType()->isIntegerTy(64))
     {
-        auto shift_val = (unsigned)CI->getZExtValue();
-        auto lshr_size = LHS->getType()->getIntegerBitWidth();
-        auto trunc_size = I.getType()->getIntegerBitWidth();
-        bool isDivisible = (lshr_size % trunc_size) == 0 && (shift_val % trunc_size) == 0;
-        if (isDivisible)
-        {
-            llvm::IRBuilder<> builder(&I);
-            // Setup the vector with the right size
-            auto numElts = lshr_size / trunc_size;
-            auto extractNum = shift_val / trunc_size;
-            VectorType* vec2 = VectorType::get(builder.getIntNTy(trunc_size), numElts);
-            Value* new_Val = builder.CreateBitCast(LHS, vec2);
-            new_Val = builder.CreateExtractElement(new_Val, builder.getInt32(extractNum));
-            I.replaceAllUsesWith(new_Val);
-            I.eraseFromParent();
-        }
+        llvm::IRBuilder<> builder(&I);
+        VectorType* vec2 = VectorType::get(builder.getInt32Ty(), 2);
+        Value* new_Val = builder.CreateBitCast(LHS, vec2);
+        new_Val = builder.CreateExtractElement(new_Val, builder.getInt32(1));
+        I.replaceAllUsesWith(new_Val);
+        I.eraseFromParent();
     }
 }
 
