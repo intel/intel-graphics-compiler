@@ -87,7 +87,8 @@ public:
     InstSchema(SPIRVISCH_Default),
     SrcLang(SpvSourceLanguageOpenCL_C),
     SrcLangVer(12),
-    MemoryModel(SPIRVMemoryModelKind::MemoryModelOpenCL){
+    MemoryModel(SPIRVMemoryModelKind::MemoryModelOpenCL),
+    SCMap(nullptr) {
     AddrModel = sizeof(size_t) == 32 ? AddressingModelPhysical32 : AddressingModelPhysical64;
   };
   virtual ~SPIRVModuleImpl();
@@ -116,6 +117,17 @@ public:
   const std::string &getCompileFlag() const { return CompileFlag;}
   std::string &getCompileFlag() { return CompileFlag;}
   void setCompileFlag(const std::string &options) { CompileFlag = options; }
+  bool isSpecConstant(SPIRVWord spec_id) const {
+    if(SCMap)
+      return SCMap->find(spec_id) != SCMap->end();
+    else
+      return false;
+  }
+  uint64_t getSpecConstant(SPIRVWord spec_id) {
+    spirv_assert(isSpecConstant(spec_id) && "Specialization constant was not specialized!");
+    return SCMap->at(spec_id);
+  }
+  void setSpecConstantMap(SPIRVSpecConstantMap *specConstants) { SCMap = specConstants; }
   std::set<std::string> &getExtension() { return SPIRVExt;}
   SPIRVFunction *getFunction(unsigned I) const { return FuncVec[I];}
   SPIRVVariable *getVariable(unsigned I) const { return VariableVec[I];}
@@ -245,6 +257,25 @@ public:
       return globalVars;
   }
 
+  virtual std::vector<SPIRVValue*> parseSpecConstants()
+  {
+      std::vector<SPIRVValue*> specConstants;
+
+      for (auto& item : IdEntryMap)
+      {
+          Op opcode = item.second->getOpCode();
+          if (opcode == spv::Op::OpSpecConstant ||
+              opcode == spv::Op::OpSpecConstantTrue ||
+              opcode == spv::Op::OpSpecConstantFalse)
+          {
+              auto specConstant = static_cast<SPIRVValue*>(item.second);
+              specConstants.push_back(specConstant);
+          }
+      }
+
+      return specConstants;
+  }
+
   // I/O functions
   friend std::istream & operator>>(std::istream &I, SPIRVModule& M);
 
@@ -296,6 +327,7 @@ private:
   SPIRVExecModelIdVecMap EntryPointVec;
   SPIRVStringMap StrMap;
   SPIRVCapSet CapSet;
+  SPIRVSpecConstantMap *SCMap;
   std::map<unsigned, SPIRVTypeInt*> IntTypeMap;
   std::map<unsigned, SPIRVConstant*> LiteralMap;
 

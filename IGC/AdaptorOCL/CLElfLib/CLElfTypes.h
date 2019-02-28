@@ -146,6 +146,8 @@ enum E_SH_TYPE
     SH_TYPE_OPENCL_DEV_DEBUG        = 0xff000008, // Device debug
     SH_TYPE_SPIRV                   = 0xff000009, // SPIRV
     SH_TYPE_NON_COHERENT_DEV_BINARY = 0xff00000a, // Non-coherent Device binary
+    SH_TYPE_SPIRV_SC_IDS            = 0xff00000b, // Specialization Constants IDs
+    SH_TYPE_SPIRV_SC_VALUES         = 0xff00000c  // Specialization Constants values
 };
 
 // E_SH_FLAG - List of section header flags.

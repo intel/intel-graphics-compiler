@@ -65,6 +65,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorOCL/SPIRV/SPIRVconsum.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "AdaptorOCL/SPIRV/SPIRV-Tools/include/spirv-tools/libspirv.h"
+#include "AdaptorOCL/SPIRV/libSPIRV/SPIRVModule.h"
+#include "AdaptorOCL/SPIRV/libSPIRV/SPIRVValue.h"
 #endif
 
 #include "common/LLVMWarningsPush.hpp"
@@ -294,6 +296,19 @@ bool CIGCTranslationBlock::Translate(
     return false;
 }
 
+std::unordered_map<uint32_t, uint64_t> UnpackSpecConstants(
+    const uint32_t* pSpecConstantsIds,
+    const uint64_t* pSpecConstantsValues,
+    uint32_t size)
+{
+    std::unordered_map<uint32_t, uint64_t> outSpecConstantsMap;
+    for (uint32_t i = 0; i < size; i++)
+    {
+        outSpecConstantsMap[pSpecConstantsIds[i]] = pSpecConstantsValues[i];
+    }
+    return outSpecConstantsMap;
+}
+
 bool ProcessElfInput(
   STB_TranslateInputArgs &InputArgs,
   STB_TranslateOutputArgs &OutputArgs,
@@ -320,12 +335,25 @@ bool ProcessElfInput(
         const CLElfLib::SElf64SectionHeader* pSectionHeader = pElfReader->GetSectionHeader(i);
         assert(pSectionHeader != NULL);
 
+        char* pData = NULL;
+        size_t dataSize = 0;
+
+        if (pSectionHeader->Type == CLElfLib::SH_TYPE_SPIRV_SC_IDS)
+        {
+            pElfReader->GetSectionData(i, pData, dataSize);
+            InputArgs.pSpecConstantsIds = reinterpret_cast<const uint32_t*>(pData);
+        }
+
+        if (pSectionHeader->Type == CLElfLib::SH_TYPE_SPIRV_SC_VALUES)
+        {
+            pElfReader->GetSectionData(i, pData, dataSize);
+            InputArgs.pSpecConstantsValues = reinterpret_cast<const uint64_t*>(pData);
+        }
+
         if ((pSectionHeader->Type == CLElfLib::SH_TYPE_OPENCL_LLVM_BINARY)  ||
             (pSectionHeader->Type == CLElfLib::SH_TYPE_OPENCL_LLVM_ARCHIVE) ||
             (pSectionHeader->Type == CLElfLib::SH_TYPE_SPIRV))
         {
-          char* pData = NULL;
-          size_t dataSize = 0;
           pElfReader->GetSectionData(i, pData, dataSize);
 
           // Create input module from the buffer
@@ -344,7 +372,11 @@ bool ProcessElfInput(
               if(InputArgs.OptionsSize > 0){
                   options = llvm::StringRef(InputArgs.pOptions, InputArgs.OptionsSize - 1);
               }
-              bool success = spv::ReadSPIRV(*Context.getLLVMContext(), IS, pKernelModule, options, stringErrMsg);
+              std::unordered_map<uint32_t, uint64_t> specIDToSpecValueMap = UnpackSpecConstants(
+                                                                                  InputArgs.pSpecConstantsIds,
+                                                                                  InputArgs.pSpecConstantsValues,
+                                                                                  InputArgs.SpecConstantsSize);
+              bool success = spv::ReadSPIRV(*Context.getLLVMContext(), IS, pKernelModule, options, stringErrMsg, &specIDToSpecValueMap);
 #else
               std::string stringErrMsg{ "SPIRV consumption not enabled for the TARGET." };
               bool success = false;
@@ -546,7 +578,11 @@ bool ParseInput(
         if(pInputArgs->OptionsSize > 0){
             options = llvm::StringRef(pInputArgs->pOptions, pInputArgs->OptionsSize);
         }
-        bool success = spv::ReadSPIRV(oclContext, IS, pKernelModule, options, stringErrMsg);
+        std::unordered_map<uint32_t, uint64_t> specIDToSpecValueMap = UnpackSpecConstants(
+                                                                            pInputArgs->pSpecConstantsIds,
+                                                                            pInputArgs->pSpecConstantsValues,
+                                                                            pInputArgs->SpecConstantsSize);
+        bool success = spv::ReadSPIRV(oclContext, IS, pKernelModule, options, stringErrMsg, &specIDToSpecValueMap);
 #else
         std::string stringErrMsg{"SPIRV consumption not enabled for the TARGET."};
         bool success = false;
@@ -575,6 +611,42 @@ bool ParseInput(
         
     return true;
 }
+
+#if defined(IGC_SPIRV_ENABLED)
+bool ReadSpecConstantsFromSPIRV(std::istream &IS, std::vector<std::pair<uint32_t, uint32_t>> &OutSCInfo)
+{
+    using namespace spv;
+
+    std::unique_ptr<SPIRVModule> BM(SPIRVModule::createSPIRVModule());
+    IS >> *BM;
+
+    auto SPV = BM->parseSpecConstants();
+
+    for (auto& SC : SPV)
+    {
+        SPIRVType *type = SC->getType();
+        uint32_t spec_size = type->getBitWidth() / 8;
+
+        if (SC->hasDecorate(DecorationSpecId))
+        {
+            SPIRVWord spec_id = *SC->getDecorate(DecorationSpecId).begin();
+            Op OP = SC->getOpCode();
+            if (OP == OpSpecConstant ||
+                OP == OpSpecConstantFalse ||
+                OP == OpSpecConstantTrue)
+            {
+                OutSCInfo.push_back(std::make_pair(spec_id, spec_size));
+            }
+            else
+            {
+                assert("Wrong instruction opcode, shouldn't be here!");
+                return false;
+            }
+        }
+    }
+    return true;
+}
+#endif
 
 // Dump shader (binary or text), to default directory.
 // Create directory if it doesn't exist.

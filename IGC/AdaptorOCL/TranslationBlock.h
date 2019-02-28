@@ -176,29 +176,35 @@ Description:
 \******************************************************************************/
 struct STB_TranslateInputArgs
 {
-    char*       pInput;              // data to be translated
-    uint32_t    InputSize;           // size of data to be translated
-    const char* pOptions;            // list of build/compile options
-    uint32_t    OptionsSize;         // size of options list
-    const char* pInternalOptions;    // list of build/compile options
-    uint32_t    InternalOptionsSize; // size of options list
-    void*       pTracingOptions;     // instrumentation options
-    uint32_t    TracingOptionsCount; // number of instrumentation options
-    void*       GTPinInput;          // input structure for GTPin requests
-    bool        CompileTimeStatisticsEnable;
+    char*           pInput;               // data to be translated
+    uint32_t        InputSize;            // size of data to be translated
+    const char*     pOptions;             // list of build/compile options
+    uint32_t        OptionsSize;          // size of options list
+    const char*     pInternalOptions;     // list of build/compile options
+    uint32_t        InternalOptionsSize;  // size of options list
+    void*           pTracingOptions;      // instrumentation options
+    uint32_t        TracingOptionsCount;  // number of instrumentation options
+    void*           GTPinInput;           // input structure for GTPin requests
+    bool            CompileTimeStatisticsEnable;
+    const uint32_t* pSpecConstantsIds;    // user-defined spec constants ids
+    const uint64_t* pSpecConstantsValues; // spec constants values to be translated
+    uint32_t        SpecConstantsSize;    // number of specialization constants
 
     STB_TranslateInputArgs()
     {
-        pInput              = NULL;
-        InputSize           = 0;
-        pOptions            = NULL;
-        OptionsSize         = 0;
-        pInternalOptions    = NULL;
-        InternalOptionsSize = 0;
-        pTracingOptions     = NULL;
-        TracingOptionsCount = 0;
-        GTPinInput          = NULL;
+        pInput                = NULL;
+        InputSize             = 0;
+        pOptions              = NULL;
+        OptionsSize           = 0;
+        pInternalOptions      = NULL;
+        InternalOptionsSize   = 0;
+        pTracingOptions       = NULL;
+        TracingOptionsCount   = 0;
+        GTPinInput            = NULL;
         CompileTimeStatisticsEnable = false;
+        pSpecConstantsIds     = NULL;
+        pSpecConstantsValues  = NULL;
+        SpecConstantsSize     = 0;
     }
 };
 

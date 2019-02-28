@@ -40,12 +40,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "llvm/IR/Module.h"
 
+#include <unordered_map>
+
 namespace spv{
 // Loads SPIRV from istream and translate to LLVM module.
 // Returns true if succeeds.
 bool ReadSPIRV(llvm::LLVMContext &C, std::istream &IS, llvm::Module *&M,
     llvm::StringRef options,
-    std::string &ErrMsg);
+    std::string &ErrMsg,
+    std::unordered_map<uint32_t, uint64_t> *specConstants);
 
 }
 #endif

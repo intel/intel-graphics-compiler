@@ -78,7 +78,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace spv{
 
 class SPIRVBasicBlock;
-class SPIRVConstant;
 class SPIRVEntry;
 class SPIRVFunction;
 class SPIRVInstruction;
@@ -109,6 +108,11 @@ class SPIRVInstTemplateBase;
 
 typedef SPIRVBasicBlock SPIRVLabel;
 struct SPIRVTypeImageDescriptor;
+
+template <Op OP> class SPIRVConstantBase;
+typedef SPIRVConstantBase<OpConstant> SPIRVConstant;
+
+typedef std::unordered_map<uint32_t, uint64_t> SPIRVSpecConstantMap;
 
 class SPIRVModule
 {
@@ -141,6 +145,9 @@ public:
   virtual SPIRVExtInstSetKind getBuiltinSet(SPIRVId) const = 0;
   virtual std::string &getCompileFlag() = 0;
   virtual void setCompileFlag(const std::string &options) = 0;
+  virtual bool isSpecConstant(SPIRVWord) const = 0;
+  virtual uint64_t getSpecConstant(SPIRVWord) = 0;
+  virtual void setSpecConstantMap(SPIRVSpecConstantMap *) = 0;
   virtual const std::string &getCompileFlag() const = 0;
   virtual SPIRVFunction *getEntryPoint(SPIRVExecutionModelKind, unsigned) const = 0;
   virtual std::set<std::string> &getExtension() = 0;
@@ -214,6 +221,7 @@ public:
   
   virtual SPIRVExtInst* getCompilationUnit() const = 0;
   virtual std::vector<SPIRVExtInst*> getGlobalVars() = 0;
+  virtual std::vector<SPIRVValue*> parseSpecConstants() = 0;
 
   // I/O functions
   friend std::istream & operator>>(std::istream &I, SPIRVModule& M);

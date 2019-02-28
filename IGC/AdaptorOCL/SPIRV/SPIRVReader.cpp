@@ -76,6 +76,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "libSPIRV/SPIRVFunction.h"
 #include "libSPIRV/SPIRVInstruction.h"
+#include "libSPIRV/SPIRVModule.h"
 #include "SPIRVInternal.h"
 #include "common/MDFrameWork.h"
 #include "../../AdaptorCommon/TypesLegalizationPass.hpp"
@@ -2102,15 +2103,22 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
 
   // Translation of non-instruction values
   switch(OC) {
+  case OpSpecConstant:
   case OpConstant: {
     SPIRVConstant *BConst = static_cast<SPIRVConstant *>(BV);
     SPIRVType *BT = BV->getType();
     Type *LT = transType(BT);
+    uint64_t V = BConst->getZExtIntValue();
+    if(BV->hasDecorate(DecorationSpecId)) {
+      spirv_assert(OC == OpSpecConstant && "Only SpecConstants can be specialized!");
+      SPIRVWord specid = *BV->getDecorate(DecorationSpecId).begin();
+      V = BM->getSpecConstant(specid);
+    }
     switch(BT->getOpCode()) {
     case OpTypeBool:
     case OpTypeInt:
-      return mapValue(BV, ConstantInt::get(LT, BConst->getZExtIntValue(),
-          static_cast<SPIRVTypeInt*>(BT)->isSigned()));
+      return mapValue(BV, ConstantInt::get(LT, V,
+        static_cast<SPIRVTypeInt*>(BT)->isSigned()));
     case OpTypeFloat: {
       const llvm::fltSemantics *FS = nullptr;
       switch (BT->getFloatBitWidth()) {
@@ -2127,7 +2135,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
         spirv_assert (0 && "invalid float type");
       }
       return mapValue(BV, ConstantFP::get(*Context, APFloat(*FS,
-          APInt(BT->getFloatBitWidth(), BConst->getZExtIntValue()))));
+          APInt(BT->getFloatBitWidth(), V))));
     }
     default:
       llvm_unreachable("Not implemented");
@@ -2136,9 +2144,29 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
   }
   break;
 
+  case OpSpecConstantTrue:
+    if (BV->hasDecorate(DecorationSpecId)) {
+      SPIRVWord specid = *BV->getDecorate(DecorationSpecId).begin();
+      if(BM->getSpecConstant(specid))
+        return mapValue(BV, ConstantInt::getTrue(*Context));
+      else
+        return mapValue(BV, ConstantInt::getFalse(*Context));
+    }
+  // intentional fall-through: if decoration was not specified, treat this
+  // as a OpConstantTrue (default spec constant value)
   case OpConstantTrue:
     return mapValue(BV, ConstantInt::getTrue(*Context));
-
+  
+  case OpSpecConstantFalse:
+    if (BV->hasDecorate(DecorationSpecId)) {
+      SPIRVWord specid = *BV->getDecorate(DecorationSpecId).begin();
+      if (BM->getSpecConstant(specid))
+        return mapValue(BV, ConstantInt::getTrue(*Context));
+      else
+        return mapValue(BV, ConstantInt::getFalse(*Context));
+    }
+  // intentional fall-through: if decoration was not specified, treat this
+  // as a OpConstantFalse (default spec constant value)
   case OpConstantFalse:
     return mapValue(BV, ConstantInt::getFalse(*Context));
 
@@ -2149,6 +2177,7 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     return mapValue(BV, ConstantAggregateZero::get(LT));
   }
 
+  case OpSpecConstantComposite:
   case OpConstantComposite: {
     auto BCC = static_cast<SPIRVConstantComposite*>(BV);
     std::vector<Constant *> CV;
@@ -2348,6 +2377,13 @@ SPIRVToLLVM::transValueWithoutDecoration(SPIRVValue *BV, Function *F,
     // do nothing
     break;
   }
+
+  // During translation of OpSpecConstantOp we create an instruction
+  // corresponding to the Opcode operand and then translate this instruction.
+  // For such instruction BB and F should be nullptr, because it is a constant
+  // expression declared out of scope of any basic block or function.
+  // All other values require valid BB pointer.
+  assert(((isSpecConstantOpAllowedOp(OC) && !F && !BB) || BB) && "Invalid BB");
 
   // Creation of place holder
   if (CreatePlaceHolder) {
@@ -3846,10 +3882,11 @@ static void dumpSPIRVBC(const char* fname, const char* data, unsigned int size)
 
 bool ReadSPIRV(LLVMContext &C, std::istream &IS, Module *&M,
     StringRef options,
-    std::string &ErrMsg) {
-
+    std::string &ErrMsg,
+    std::unordered_map<uint32_t, uint64_t> *specConstants) {
   std::unique_ptr<SPIRVModule> BM( SPIRVModule::createSPIRVModule() );
   BM->setCompileFlag( options );
+  BM->setSpecConstantMap(specConstants);
   IS >> *BM;
   BM->resolveUnknownStructFields();
   M = new Module( "",C );

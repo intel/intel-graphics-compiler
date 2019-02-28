@@ -65,6 +65,10 @@ bool TranslateBuild(
   const IGC::CPlatform &platform,
   float profilingTimerResolution);
 
+bool ReadSpecConstantsFromSPIRV(
+    std::istream &IS,
+    std::vector<std::pair<uint32_t, uint32_t>> &OutSCInfo);
+
 }
 
 bool enableSrcLine(void*);
@@ -109,14 +113,49 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
         return false;
     }
 
+    bool GetSpecConstantsInfo(CIF::Builtins::BufferSimple *src,
+                              CIF::Builtins::BufferSimple *outSpecConstantsIds,
+                              CIF::Builtins::BufferSimple *outSpecConstantsSizes)
+    {
+        bool success = false;
+        const char* pInput = src->GetMemory<char>();
+        uint32_t inputSize = static_cast<uint32_t>(src->GetSizeRaw());
+
+        if(this->inType == CodeType::spirV){
+            llvm::StringRef strInput = llvm::StringRef(pInput, inputSize);
+            std::istringstream IS(strInput);
+
+            // vector of pairs [spec_id, spec_size]
+            std::vector<std::pair<uint32_t, uint32_t>> SCInfo;
+            success = TC::ReadSpecConstantsFromSPIRV(IS, SCInfo);
+
+            outSpecConstantsIds->Resize(sizeof(uint32_t) * SCInfo.size());
+            outSpecConstantsSizes->Resize(sizeof(uint32_t) * SCInfo.size());
+
+            uint32_t* specConstantsIds = outSpecConstantsIds->GetMemoryWriteable<uint32_t>();
+            uint32_t* specConstantsSizes = outSpecConstantsSizes->GetMemoryWriteable<uint32_t>();
+
+            for(uint32_t i = 0; i < SCInfo.size(); ++i){
+                specConstantsIds[i] = SCInfo.at(i).first;
+                specConstantsSizes[i] = SCInfo.at(i).second;
+            }
+        }
+        else{
+            success = false;
+        }
+
+        return success;
+    }
+
     OclTranslationOutputBase *Translate(CIF::Version_t outVersion, 
-                                        CIF::Builtins::BufferSimple *src, 
+                                        CIF::Builtins::BufferSimple *src,
+                                        CIF::Builtins::BufferSimple *specConstantsIds,
+                                        CIF::Builtins::BufferSimple *specConstantsValues,
                                         CIF::Builtins::BufferSimple *options,
                                         CIF::Builtins::BufferSimple *internalOptions,
                                         CIF::Builtins::BufferSimple *tracingOptions,
                                         uint32_t tracingOptionsCount,
-                                        void *gtPinInput
-                                        ) const{
+                                        void *gtPinInput) const{
         // Create interface for return data
         auto outputInterface = CIF::RAII::UPtr(CIF::InterfaceCreator<OclTranslationOutput>::CreateInterfaceVer(outVersion, this->outType));
         if(outputInterface == nullptr){
@@ -149,6 +188,11 @@ CIF_DECLARE_INTERFACE_PIMPL(IgcOclTranslationCtx) : CIF::PimplBase
             inputArgs.pTracingOptions = tracingOptions->GetMemoryRawWriteable();
         }
         inputArgs.TracingOptionsCount = tracingOptionsCount;
+        if(specConstantsIds != nullptr && specConstantsValues != nullptr){
+            inputArgs.pSpecConstantsIds = specConstantsIds->GetMemory<uint32_t>();
+            inputArgs.SpecConstantsSize = static_cast<uint32_t>(specConstantsIds->GetSizeRaw() / sizeof(uint32_t));
+            inputArgs.pSpecConstantsValues = specConstantsValues->GetMemory<uint64_t>();
+        }
         inputArgs.GTPinInput = gtPinInput;
      
         IGC::CPlatform igcPlatform = this->globalState.GetIgcCPlatform();
