@@ -25,10 +25,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
+#include "common/MDFrameWork.h"
 
+using namespace IGC;
 using namespace IGC::IGCMD;
 
-void IGCMetaDataHelper::addFunction(MetaDataUtils &mdUtils, llvm::Function *pFunc, FunctionTypeEnum type)
+void IGCMetaDataHelper::addFunction(MetaDataUtils &mdUtils, llvm::Function *pFunc, FunctionTypeMD type)
 {
     auto finfo = FunctionInfoMetaDataHandle(FunctionInfoMetaData::get());
     finfo->setType(type);

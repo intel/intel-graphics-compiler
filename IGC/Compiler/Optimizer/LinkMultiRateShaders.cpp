@@ -27,7 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
-#include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 #include "LLVM3DBuilder/MetadataBuilder.h"
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>

@@ -33,7 +33,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/WIFuncs/WIFuncsAnalysis.hpp"
 #include "Compiler/DebugInfo/DebugInfoUtils.hpp"
 #include "Compiler/IGCPassSupport.h"
-#include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 
 using namespace llvm;
 using namespace IGC;

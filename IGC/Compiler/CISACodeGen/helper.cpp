@@ -1302,7 +1302,7 @@ Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM)
     for (auto i = pM->begin_FunctionsInfo(), e = pM->end_FunctionsInfo(); i != e; ++i)
     {
         IGCMD::FunctionInfoMetaDataHandle Info = i->second;
-        if (Info->getType() != IGCMD::FunctionTypeEnum::EntryFunctionType)
+        if (Info->getType() != FunctionTypeMD::KernelFunction)
         {
             continue;
         }

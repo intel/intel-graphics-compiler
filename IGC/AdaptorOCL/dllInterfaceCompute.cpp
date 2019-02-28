@@ -44,10 +44,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "AdaptorOCL/DriverInfoOCL.hpp"
 
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
-#include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
-
-
-
 #include "common/debug/Dump.hpp"
 #include "common/debug/Debug.hpp"
 #include "common/igc_regkeys.hpp"

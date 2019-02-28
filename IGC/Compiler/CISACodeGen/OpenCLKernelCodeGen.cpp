@@ -720,7 +720,7 @@ void COpenCLKernel::CreateAnnotations(KernelArg* kernelArg, uint payloadPosition
     
             iOpenCL::PointerArgumentAnnotation *ptrAnnotation = new iOpenCL::PointerArgumentAnnotation();
 
-			if (argAlloc->type == IGCMD::ResourceTypeEnum::BindlessUAVResourceType)
+			if (argAlloc->type == ResourceTypeEnum::BindlessUAVResourceType)
 			{
 				ptrAnnotation->IsStateless = false;
 				ptrAnnotation->IsBindlessAccess = true;

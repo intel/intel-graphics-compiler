@@ -1676,7 +1676,7 @@ namespace //Anonymous
         auto funcMD = &modMD->FuncMD[const_cast<llvm::Function*>(kernelFunc)];//insert if not present 
                                                                                   
         //set function type for dispatch
-        dispatchMd->setType(IGC::IGCMD::FunctionTypeEnum::EntryFunctionType);
+        dispatchMd->setType(FunctionTypeMD::KernelFunction);
 
         funcMD->functionType = IGC::FunctionTypeMD::KernelFunction;
 

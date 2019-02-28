@@ -114,24 +114,24 @@ namespace IGC
         sizeof(VA_FUNCTION_STRINGS) / sizeof(*VA_FUNCTION_STRINGS) == NUM_VA_FUNCTIONS,
         "VA_FUNCTION_STRINGS array needs to be in sync with VA_FUNCTIONS enum, fix me!");
 
-    const IGCMD::ResourceExtensionTypeEnum VA_FUNCTION_SAMPLER_TYPES[] =
+    const ResourceExtensionTypeEnum VA_FUNCTION_SAMPLER_TYPES[] =
     {
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeErode,
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeDilate,
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeMinMaxFilter,
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeMinMaxFilter,
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeConvolve,
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeMinMax,
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeCentroid,
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeBoolCentroid,
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeBoolSum,
+        ResourceExtensionTypeEnum::MediaSamplerTypeErode,
+        ResourceExtensionTypeEnum::MediaSamplerTypeDilate,
+        ResourceExtensionTypeEnum::MediaSamplerTypeMinMaxFilter,
+        ResourceExtensionTypeEnum::MediaSamplerTypeMinMaxFilter,
+        ResourceExtensionTypeEnum::MediaSamplerTypeConvolve,
+        ResourceExtensionTypeEnum::MediaSamplerTypeMinMax,
+        ResourceExtensionTypeEnum::MediaSamplerTypeCentroid,
+        ResourceExtensionTypeEnum::MediaSamplerTypeBoolCentroid,
+        ResourceExtensionTypeEnum::MediaSamplerTypeBoolSum,
         // SKL+ functions:
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeConvolve,
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeConvolve,
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeLbp,
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeLbp,
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeFloodFill,
-        IGCMD::ResourceExtensionTypeEnum::MediaSamplerTypeCorrelation,
+        ResourceExtensionTypeEnum::MediaSamplerTypeConvolve,
+        ResourceExtensionTypeEnum::MediaSamplerTypeConvolve,
+        ResourceExtensionTypeEnum::MediaSamplerTypeLbp,
+        ResourceExtensionTypeEnum::MediaSamplerTypeLbp,
+        ResourceExtensionTypeEnum::MediaSamplerTypeFloodFill,
+        ResourceExtensionTypeEnum::MediaSamplerTypeCorrelation,
     };
     static_assert(
         sizeof(VA_FUNCTION_SAMPLER_TYPES) / sizeof(*VA_FUNCTION_SAMPLER_TYPES) == NUM_VA_FUNCTIONS,
@@ -139,7 +139,7 @@ namespace IGC
 
     ExtensionArgAnalysis::ExtensionArgAnalysis() : FunctionPass(ID)
     {
-        m_extensionType = IGCMD::ResourceExtensionTypeEnum::NonExtensionType;
+        m_extensionType = ResourceExtensionTypeEnum::NonExtensionType;
 
         initializeExtensionArgAnalysisPass(*PassRegistry::getPassRegistry());
     }
@@ -153,7 +153,7 @@ namespace IGC
             return;
         }
 
-        auto SetExtension = [&](int argIndex, IGCMD::ResourceExtensionTypeEnum expected, SmallPtrSet<Argument*, 3> &Args)
+        auto SetExtension = [&](int argIndex, ResourceExtensionTypeEnum expected, SmallPtrSet<Argument*, 3> &Args)
         {
             if (auto *pArg = dyn_cast<Argument>(CImagesBI::CImagesUtils::traceImageOrSamplerArgument(&CI, argIndex))) {
                 if (m_ExtensionMap.count(pArg) != 0)
@@ -200,20 +200,20 @@ namespace IGC
 
         if (name.startswith("__builtin_IB_media_block_") || name == "__builtin_IB_media_block_rectangle_read")
         {
-            SetExtension(0, IGCMD::ResourceExtensionTypeEnum::MediaResourceBlockType, m_MediaBlockArgs);
+            SetExtension(0, ResourceExtensionTypeEnum::MediaResourceBlockType, m_MediaBlockArgs);
         }
         else if (name == "__builtin_IB_vme_send_fbr" ||
             name == "__builtin_IB_vme_send_ime")
         {
-            SetExtension(3, IGCMD::ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
-            SetExtension(4, IGCMD::ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
+            SetExtension(3, ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
+            SetExtension(4, ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
             CheckandSetSIMD16();
         }
         else if (name == "__builtin_IB_vme_send_sic")
         {
-            SetExtension(3, IGCMD::ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
-            SetExtension(4, IGCMD::ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
-            SetExtension(5, IGCMD::ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
+            SetExtension(3, ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
+            SetExtension(4, ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
+            SetExtension(5, ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
             CheckandSetSIMD16();
         }
         else if (name.startswith("__builtin_IB_vme_send_ime_new") ||
@@ -221,11 +221,11 @@ namespace IGC
             name == "__builtin_IB_vme_send_fbr_new")
         {
             // Handle image args.
-            SetExtension(1, IGCMD::ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
-            SetExtension(2, IGCMD::ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
-            SetExtension(3, IGCMD::ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
+            SetExtension(1, ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
+            SetExtension(2, ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
+            SetExtension(3, ResourceExtensionTypeEnum::MediaResourceType, m_MediaArgs);
             // Handle sampler arg.
-            SetExtension(4, IGCMD::ResourceExtensionTypeEnum::MediaSamplerType, m_MediaSamplerArgs);
+            SetExtension(4, ResourceExtensionTypeEnum::MediaSamplerType, m_MediaSamplerArgs);
             CheckandSetSIMD16();
         }
 
@@ -236,7 +236,7 @@ namespace IGC
         m_ExtensionMap.clear();
         m_MediaArgs.clear();
         m_MediaBlockArgs.clear();
-        m_extensionType = IGCMD::ResourceExtensionTypeEnum::NonExtensionType;
+        m_extensionType = ResourceExtensionTypeEnum::NonExtensionType;
         m_vaArgs.clear();
         m_MediaSamplerArgs.clear();
         visit(F);
@@ -252,7 +252,7 @@ namespace IGC
             m_MediaSamplerArgs.insert(&(*arg));
         }
 
-        m_extensionType = IGCMD::ResourceExtensionTypeEnum::NonExtensionType;
+        m_extensionType = ResourceExtensionTypeEnum::NonExtensionType;
 
         for (int func = VA_FUNCTION_ERODE; func < NUM_VA_FUNCTIONS; ++func)
         {

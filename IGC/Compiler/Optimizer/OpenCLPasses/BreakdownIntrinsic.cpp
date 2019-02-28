@@ -28,7 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
-#include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/Module.h>

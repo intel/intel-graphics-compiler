@@ -494,12 +494,12 @@ VISAVariableLocation VISAModule::GetVariableLocation(const llvm::Instruction* pI
                     // Found write image
                     switch (argAlloc->type)
                     {
-                    case IGC::IGCMD::UAVResourceType:
+                    case UAVResourceType:
                         // Found write image
                         index = m_pShader->m_pBtiLayout->GetUavIndex(index);
                         assert(index < TEXTURE_REGISTER_NUM && "Bad texture index");
                         return VISAVariableLocation(TEXTURE_REGISTER_BEGIN + index);
-                    case IGC::IGCMD::SRVResourceType:
+                    case SRVResourceType:
                         // Found read image
                         index = m_pShader->m_pBtiLayout->GetTextureIndex(index);
                         assert(index < TEXTURE_REGISTER_NUM && "Bad texture index");

@@ -26,7 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "ProcessFuncAttributes.h"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
-#include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
@@ -474,11 +473,10 @@ bool ProcessBuiltinMetaData::runOnModule(Module& M)
 void ProcessBuiltinMetaData::updateBuiltinFunctionMetaData(llvm::Function* pFunc)
 {
     IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
-
     IGC::ModuleMetaData* modMD = getAnalysis<CodeGenContextWrapper>().getCodeGenContext()->getModuleMetaData();
     FunctionMetaData *funcMD = &modMD->FuncMD[pFunc]; //okay to insert if not present
-    fHandle->setType(IGC::IGCMD::FunctionTypeEnum::OtherFunctionType);
     funcMD->functionType = IGC::FunctionTypeMD::UserFunction;
+    fHandle->setType(FunctionTypeMD::UserFunction);
     for (auto arg = pFunc->arg_begin(); arg != pFunc->arg_end(); ++arg)
     {
         std::string typeStr;

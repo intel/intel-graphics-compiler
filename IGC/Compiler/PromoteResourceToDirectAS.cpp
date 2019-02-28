@@ -315,13 +315,13 @@ void PromoteResourceToDirectAS::PromoteSamplerTextureToDirectAS(GenIntrinsicInst
                     ArgAllocMD *argInfo = &resAllocMD->argAllocMDList[argPtr->getArgNo()];
                     assert((size_t) argPtr->getArgNo() < resAllocMD->argAllocMDList.size() && "ArgAllocMD List Out of Bounds Error");
 
-                    if (argInfo->type == IGCMD::ResourceTypeEnum::BindlessUAVResourceType)
+                    if (argInfo->type == ResourceTypeEnum::BindlessUAVResourceType)
                     {
                         bufID = (unsigned)argInfo->indexType;
                         bufTy = BufferType::UAV;
                         canPromote = true;
                     }
-                    else if (argInfo->type == IGCMD::ResourceTypeEnum::BindlessSamplerResourceType)
+                    else if (argInfo->type == ResourceTypeEnum::BindlessSamplerResourceType)
                     {
                         bufID = (unsigned)argInfo->indexType;
                         bufTy = BufferType::SAMPLER;
@@ -791,13 +791,13 @@ void PromoteResourceToDirectAS::PromoteStatelessToBindlessBuffers(Function& F)
             if (modMD->FuncMD.find(&F) != modMD->FuncMD.end())
             {
                 FunctionMetaData *funcMD = &modMD->FuncMD[&F];
-                ResourceAllocMD *resAllocMD = &funcMD->resAllocMD;
-                ArgAllocMD *argInfo = &resAllocMD->argAllocMDList[srcPtr->getArgNo()];
-                assert((size_t) srcPtr->getArgNo() < resAllocMD->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
-                if (argInfo->type == IGCMD::ResourceTypeEnum::UAVResourceType)
+                ResourceAllocMD *resourceAlloc = &funcMD->resAllocMD;
+                ArgAllocMD *argInfo = &resourceAlloc->argAllocMDList[srcPtr->getArgNo()];
+                assert((size_t) srcPtr->getArgNo() < resourceAlloc->argAllocMDList.size() && "ArgAllocMD List Out of Bounds");
+                if (argInfo->type == ResourceTypeEnum::UAVResourceType)
                 {
                     // Update metadata to show bindless resource type
-                    argInfo->type = IGCMD::ResourceTypeEnum::BindlessUAVResourceType;
+                    argInfo->type = ResourceTypeEnum::BindlessUAVResourceType;
                 }
             }
         }

@@ -26,7 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "AddCopyIntrinsic.hpp"
 #include "Compiler/MetaDataApi/IGCMetaDataHelper.h"
-#include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"

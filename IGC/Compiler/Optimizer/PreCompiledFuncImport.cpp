@@ -1372,7 +1372,7 @@ bool PreCompiledFuncImport::usePrivateMemory(Function *F)
 void PreCompiledFuncImport::addMDFuncEntryForEmulationFunc(Function *F)
 {
     FunctionInfoMetaDataHandle FH = FunctionInfoMetaDataHandle(FunctionInfoMetaData::get());
-	FH->setType(FunctionTypeEnum::OtherFunctionType);
+	FH->setType(FunctionTypeMD::UserFunction);
 	for (auto arg = F->arg_begin(); arg != F->arg_end(); ++arg)
 	{
 		ArgInfoMetaDataHandle AH = ArgInfoMetaDataHandle(ArgInfoMetaData::get());

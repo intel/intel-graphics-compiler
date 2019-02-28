@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/PixelShaderCodeGen.hpp"
 
 #include "Compiler/CISACodeGen/messageEncoding.hpp"
-#include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 #include "common/allocator.h"
 #include <iStdLib/utility.h>
 #include "common/secure_mem.h"

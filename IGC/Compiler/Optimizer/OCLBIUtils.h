@@ -27,8 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/CodeGenPublic.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
-#include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
-
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/ADT/StringRef.h>
 #include "common/LLVMWarningsPop.hpp"
@@ -119,19 +117,19 @@ namespace IGC
         llvm::IntegerType* m_pIntType;
     };
 
-    static inline BufferType ResourceTypeMap(IGC::IGCMD::ResourceTypeEnum type)
+    static inline BufferType ResourceTypeMap(ResourceTypeEnum type)
     {
         switch (type)
         {
-            case IGC::IGCMD::UAVResourceType:
-            case IGC::IGCMD::BindlessUAVResourceType:
+            case IGC::UAVResourceType:
+            case IGC::BindlessUAVResourceType:
                 return UAV;
-            case IGC::IGCMD::SRVResourceType:
+            case IGC::SRVResourceType:
                 return RESOURCE;
-            case IGC::IGCMD::SamplerResourceType:
-            case IGC::IGCMD::BindlessSamplerResourceType:
+            case IGC::SamplerResourceType:
+            case IGC::BindlessSamplerResourceType:
                 return SAMPLER;
-            case IGC::IGCMD::OtherResourceType:
+            case IGC::OtherResourceType:
                 return BUFFER_TYPE_UNKNOWN;
             default:
                 assert(0 && "unknown type!");
@@ -161,14 +159,14 @@ namespace IGC
 
         struct ParamInfo
         {
-            ParamInfo(int i, IGC::IGCMD::ResourceTypeEnum t, IGC::IGCMD::ResourceExtensionTypeEnum extension) :
+            ParamInfo(int i, ResourceTypeEnum t, ResourceExtensionTypeEnum extension) :
                 index(i), type(ResourceTypeMap(t)), extension(extension) {}
             ParamInfo() :
-                index(0), type(BUFFER_TYPE_UNKNOWN), extension(IGC::IGCMD::NonExtensionType){}
+                index(0), type(BUFFER_TYPE_UNKNOWN), extension(NonExtensionType){}
 
             int index;
             BufferType type;
-            IGC::IGCMD::ResourceExtensionTypeEnum extension;
+            ResourceExtensionTypeEnum extension;
         };
 
         typedef std::map<llvm::Value*, ParamInfo> ParamMap;

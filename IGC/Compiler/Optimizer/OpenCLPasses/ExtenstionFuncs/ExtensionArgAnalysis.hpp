@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
-#include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 #include "Compiler/MetaDataUtilsWrapper.h"
 
 
@@ -93,7 +92,7 @@ namespace IGC
             return (m_vaArgs.count(const_cast<llvm::Argument*>(arg)) > 0) ? true : false;
         }
 
-        IGCMD::ResourceExtensionTypeEnum GetExtensionSamplerType( )
+        ResourceExtensionTypeEnum GetExtensionSamplerType( )
         {
             return m_extensionType;
         }
@@ -101,7 +100,7 @@ namespace IGC
         void visitCallInst(llvm::CallInst &CI);
     private:
 
-        llvm::DenseMap<llvm::Argument*, IGCMD::ResourceExtensionTypeEnum> m_ExtensionMap;
+        llvm::DenseMap<llvm::Argument*, ResourceExtensionTypeEnum> m_ExtensionMap;
 
 
         /// @brief  Contains the VME image and sampler arguments of the function
@@ -109,7 +108,7 @@ namespace IGC
         llvm::SmallPtrSet<llvm::Argument*, 3> m_MediaSamplerArgs;
         llvm::SmallPtrSet<llvm::Argument*, 3> m_MediaBlockArgs;
         llvm::SmallPtrSet<llvm::Argument*, 2> m_vaArgs;
-        IGCMD::ResourceExtensionTypeEnum m_extensionType;
+        ResourceExtensionTypeEnum m_extensionType;
     };
 
 } // namespace IGC

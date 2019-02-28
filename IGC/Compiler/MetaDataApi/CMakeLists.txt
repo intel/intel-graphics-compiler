@@ -39,7 +39,6 @@ set(IGC_BUILD__SRC__Compiler_MetaDataApi
   )
 
 set(IGC_BUILD__HDR__MetaDataApi
-    "${CMAKE_CURRENT_SOURCE_DIR}/IGCMetaDataDefs.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/IGCMetaDataHelper.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/MapList.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/MetaDataApi.h"

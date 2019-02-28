@@ -25,7 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 #pragma once
 #include "Compiler/CISACodeGen/ShaderCodeGen.hpp"
-#include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 
 namespace IGC
 {
@@ -104,7 +103,7 @@ protected:
     SOpenCLKernelInfo::SResourceInfo getResourceInfo(int argNo);
 
     // Load from MD and return the resource extension information for argument number argNo
-    IGC::IGCMD::ResourceExtensionTypeEnum getExtensionInfo(int argNo);
+    ResourceExtensionTypeEnum getExtensionInfo(int argNo);
 
     // Resolve the binding table index for resource resInfo (using the BTL)
     unsigned int getBTI(SOpenCLKernelInfo::SResourceInfo& resInfo);

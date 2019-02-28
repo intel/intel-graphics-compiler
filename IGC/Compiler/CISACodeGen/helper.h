@@ -46,7 +46,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 #include "Compiler/CodeGenPublicEnums.h"
 #include "Compiler/CISACodeGen/Platform.hpp"
-#include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 #include "Compiler/MetaDataApi/MetaDataApi.h"
 #include "common/MDFrameWork.h"
 #include "common/Types.hpp"
@@ -187,9 +186,9 @@ bool isA64Ptr(llvm::PointerType *PT, CodeGenContext* pContext);
 
 /// Return true if F is an entry function of a kernel or a shader.
 ///    A entry function must have an entry in FunctionInfoMetaData
-///       with type EntryFunctionType;
+///       with type KernelFunction;
 ///    A non-entry function may have an entry, if so, that entry in
-///       FunctionInfoMetaData must have type OtherFunctionType.
+///       FunctionInfoMetaData must have type UserFunction.
 inline bool isEntryFunc(const IGCMD::MetaDataUtils *pM, const llvm::Function *CF)
 {
 	llvm::Function *F = const_cast<llvm::Function*>(CF);
@@ -199,7 +198,7 @@ inline bool isEntryFunc(const IGCMD::MetaDataUtils *pM, const llvm::Function *CF
 
 	IGCMD::FunctionInfoMetaDataHandle Info = pM->getFunctionsInfoItem(F);
 	assert(Info->isTypeHasValue() && "FunctionInfoMetaData missing type!");
-	return Info->getType() == IGCMD::FunctionTypeEnum::EntryFunctionType;
+	return Info->getType() == FunctionTypeMD::KernelFunction;
 }
 
 // Return a unique entry function.

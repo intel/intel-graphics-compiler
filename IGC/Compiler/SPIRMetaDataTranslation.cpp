@@ -26,7 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Compiler/SPIRMetaDataTranslation.h"
 #include "Compiler/MetaDataApi/SpirMetaDataApi.h"
-#include "Compiler/MetaDataApi/IGCMetaDataDefs.h"
 #include "Compiler/IGCPassSupport.h"
 #include "Compiler/CodeGenPublic.h"
 
@@ -165,7 +164,7 @@ bool SPIRMetaDataTranslation::runOnModule(Module& M)
         IGCMD::FunctionInfoMetaDataHandle fHandle = IGCMD::FunctionInfoMetaDataHandle(IGCMD::FunctionInfoMetaData::get());
         IGC::FunctionMetaData funcMD;
         SPIRMD::KernelMetaDataHandle spirKernel = *ki;
-        fHandle->setType(IGCMD::FunctionTypeEnum::EntryFunctionType); 
+        fHandle->setType(FunctionTypeMD::KernelFunction); 
 
         // Handling Thread Group Size
         SPIRMD::WorkGroupDimensionsMetaDataHandle reqdWorkGroupSize = spirKernel->getRequiredWorkGroupSize();
