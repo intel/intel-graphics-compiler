@@ -2723,8 +2723,8 @@ TARGET_PLATFORM GetVISAPlatform(const CPlatform* platform)
         return GENX_CNL;
     case IGFX_GEN11_CORE:
         if (platform->getPlatformInfo().eProductFamily == IGFX_ICELAKE_LP ||
-            platform->getPlatformInfo().eProductFamily == IGFX_LAKEFIELD ||
-            platform->getPlatformInfo().eProductFamily == IGFX_JASPERLAKE)
+            platform->getPlatformInfo().eProductFamily == IGFX_LAKEFIELD
+           )
         {
             return GENX_ICLLP;
         }

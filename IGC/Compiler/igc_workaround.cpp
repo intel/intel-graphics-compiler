@@ -69,9 +69,6 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE* pSkuFeatureTable, CPlatform* platform
     case IGFX_GEMINILAKE:
         InitGlkWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
         break;
-    case IGFX_GLENVIEW:
-        InitGlvWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-        break;
     case IGFX_ICELAKE:
         InitIclHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
         break;
@@ -80,9 +77,6 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE* pSkuFeatureTable, CPlatform* platform
         break;
     case IGFX_LAKEFIELD:
         InitLkfHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
-        break;
-    case IGFX_JASPERLAKE:
-        InitJslHwWaTable(&waTable, pSkuFeatureTable, &stWaInitParam);
         break;
     default:
         assert(false);

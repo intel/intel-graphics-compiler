@@ -274,16 +274,13 @@ public:
 
     //all the platforms which do not support 64 bit operations (int64 and double)
     bool hasNo64BitInst() const {
-        return m_platformInfo.eProductFamily == IGFX_GLENVIEW ||
-            m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
-            m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
-            m_platformInfo.eProductFamily == IGFX_JASPERLAKE;
+        return m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
+            m_platformInfo.eProductFamily == IGFX_LAKEFIELD;
     }
 
     //all the platforms which have correctly rounded macros (INVM, RSQRTM, MADM)
     bool hasCorrectlyRoundedMacros() const {
-        return m_platformInfo.eProductFamily != IGFX_GLENVIEW &&
-            m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
+        return m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
             m_platformInfo.eProductFamily != IGFX_LAKEFIELD;
     }
 
@@ -295,19 +292,15 @@ public:
     bool need64BitEmulation() const {
         return (m_platformInfo.eProductFamily == IGFX_GEMINILAKE ||
             m_platformInfo.eProductFamily == IGFX_BROXTON ||
-            m_platformInfo.eProductFamily == IGFX_GLENVIEW ||
             m_platformInfo.eProductFamily == IGFX_ICELAKE_LP ||
-            m_platformInfo.eProductFamily == IGFX_LAKEFIELD ||
-            m_platformInfo.eProductFamily == IGFX_JASPERLAKE);
+            m_platformInfo.eProductFamily == IGFX_LAKEFIELD);
     }
 
     //all the platforms which do not support 64 bit float operations
     bool supportFP64() const {
         return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN7_CORE &&
-            m_platformInfo.eProductFamily != IGFX_GLENVIEW &&
             m_platformInfo.eProductFamily != IGFX_ICELAKE_LP &&
-            m_platformInfo.eProductFamily != IGFX_LAKEFIELD &&
-            m_platformInfo.eProductFamily != IGFX_JASPERLAKE);
+            m_platformInfo.eProductFamily != IGFX_LAKEFIELD);
     }
     bool has8DWA64ScatteredMessage() const { return true; }
     bool useOnlyEightPatchDispatchHS() const { return false; }

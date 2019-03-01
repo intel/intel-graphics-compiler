@@ -215,10 +215,6 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
                 /*Special SIP for 2x6 from HW team with 64KB offset*/
                 SIPIndex = GEN9_BXT_SIP_CSR;
             }
-            else if (platform.getPlatformInfo().eProductFamily == IGFX_GLENVIEW)
-            {
-                SIPIndex = GEN9_GLV_SIP_CSR;
-            }
             else
             {
                 SIPIndex = GEN9_SIP_CSR;
