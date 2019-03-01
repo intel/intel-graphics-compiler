@@ -81,6 +81,12 @@ namespace IGC
         int numChannelsUsed = 0;
     };
 
+    struct LocalOffsetMD
+    {
+        int m_Offset;
+        llvm::GlobalVariable* m_Var;
+    };
+
     struct WorkGroupWalkOrderMD
     {
     int dim0 = 0;
@@ -99,6 +105,7 @@ namespace IGC
     //to hold metadata of every function
     struct FunctionMetaData
     {
+        std::vector<LocalOffsetMD> localOffsets;
         WorkGroupWalkOrderMD workGroupWalkOrder;
         std::vector<FuncArgMD> funcArgs;
         FunctionTypeMD functionType = UnknownFunction;

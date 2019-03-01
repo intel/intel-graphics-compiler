@@ -275,13 +275,19 @@ bool GenIRLowering::runOnFunction(Function &F) {
 
   // Replace SLM PtrToInt by the assigned immed offset
   // Later optimization (InstCombine) can fold away some address computation
-  for (auto LOI = FII->second->begin_LocalOffsets(),
-      LOE = FII->second->end_LocalOffsets();
-      LOI != LOE; ++LOI) {
-      IGCMD::LocalOffsetMetaDataHandle LH = *LOI;
+
+  FunctionMetaData* funcMD = &modMD->FuncMD[&F];
+
+  for (auto localOffetsItr = funcMD->localOffsets.begin(), localOffsetsEnd = funcMD->localOffsets.end();
+      localOffetsItr != localOffsetsEnd;
+      ++localOffetsItr)
+  {
+      LocalOffsetMD localOffset = *localOffetsItr;
+
       // look up the value-to-offset mapping
-      Value *V = LH->getVar();
-      unsigned Offset = LH->getOffset();
+      Value *V = localOffset.m_Var;
+      unsigned Offset = localOffset.m_Offset;
+
       // Skip non-pointer values.
       if (!V->getType()->isPointerTy())
           continue;

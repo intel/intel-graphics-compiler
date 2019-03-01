@@ -36,9 +36,6 @@ namespace IGC { namespace IGCMD
 //typedefs and forward declarations                   
 class ArgInfoMetaData;
 typedef MetaObjectHandle<ArgInfoMetaData> ArgInfoMetaDataHandle; 
-                    
-class LocalOffsetMetaData;
-typedef MetaObjectHandle<LocalOffsetMetaData> LocalOffsetMetaDataHandle; 
             
 class SubGroupSizeMetaData;
 typedef MetaObjectHandle<SubGroupSizeMetaData> SubGroupSizeMetaDataHandle; 
@@ -60,9 +57,6 @@ typedef MetaObjectHandle<FunctionInfoMetaData> FunctionInfoMetaDataHandle;
                                 
 typedef MetaDataList<ArgInfoMetaDataHandle> ArgInfoListMetaDataList;
 typedef MetaObjectHandle<ArgInfoListMetaDataList> ArgInfoListMetaDataListHandle; 
-                                
-typedef MetaDataList<LocalOffsetMetaDataHandle> LocalOffsetsMetaDataList;
-typedef MetaObjectHandle<LocalOffsetsMetaDataList> LocalOffsetsMetaDataListHandle; 
                                 
 typedef MetaDataList<PointerProgramBinaryInfoMetaDataHandle> PointerProgramBinaryInfosMetaDataList;
 typedef MetaObjectHandle<PointerProgramBinaryInfosMetaDataList> PointerProgramBinaryInfosMetaDataListHandle; 
@@ -241,127 +235,6 @@ private:
     NamedMetaDataValue<int32_t> m_StructArgOffset;        
     NamedMetaDataValue<bool> m_ImgAccessFloatCoords;        
     NamedMetaDataValue<bool> m_ImgAccessIntCoords;
-    // parent node
-    const llvm::MDNode* m_pNode;
-};
-                    
-///
-// Read/Write the LocalOffset structure from/to LLVM metadata
-//
-class LocalOffsetMetaData:public IMetaDataObject
-{
-public:
-    typedef LocalOffsetMetaData _Myt;
-    typedef IMetaDataObject _Mybase;
-    // typedefs for data member types
-    typedef MetaDataValue<llvm::GlobalVariable>::value_type VarType;        
-    typedef MetaDataValue<int32_t>::value_type OffsetType;
-
-public:
-    ///
-    // Factory method - creates the LocalOffsetMetaData from the given metadata node
-    //
-    static _Myt* get(const llvm::MDNode* pNode, bool hasId = false)
-    {
-        return new _Myt(pNode, hasId);
-    }
-
-    ///
-    // Factory method - create the default empty LocalOffsetMetaData object
-    static _Myt* get()
-    {
-        return new _Myt();
-    }
-
-    ///
-    // Factory method - create the default empty named LocalOffsetMetaData object
-    static _Myt* get(const char* name)
-    {
-        return new _Myt(name);
-    }
-
-    ///
-    // Ctor - loads the LocalOffsetMetaData from the given metadata node
-    //
-    LocalOffsetMetaData(const llvm::MDNode* pNode, bool hasId);
-
-    ///
-    // Default Ctor - creates the empty, not named LocalOffsetMetaData object
-    //
-    LocalOffsetMetaData();
-
-    ///
-    // Ctor - creates the empty, named LocalOffsetMetaData object
-    //
-    LocalOffsetMetaData(const char* name);
-
-    /// Var related methods
-    VarType getVar() const
-    {
-        return m_Var.get();
-    }
-    void setVar( const VarType& val)
-    {
-        m_Var.set(val);
-    }
-    bool isVarHasValue() const
-    {
-        return m_Var.hasValue();
-    }
-        
-    
-    /// Offset related methods
-    OffsetType getOffset() const
-    {
-        return m_Offset.get();
-    }
-    void setOffset( const OffsetType& val)
-    {
-        m_Offset.set(val);
-    }
-    bool isOffsetHasValue() const
-    {
-        return m_Offset.hasValue();
-    }
-
-    ///
-    // Returns true if any of the LocalOffsetMetaData`s members has changed
-    bool dirty() const;
-
-    ///
-    // Returns true if the structure was loaded from the metadata or was changed
-    bool hasValue() const;
-
-    ///
-    // Discards the changes done to the LocalOffsetMetaData instance
-    void discardChanges();
-
-    ///
-    // Generates the new MDNode hierarchy for the given structure
-    llvm::Metadata* generateNode(llvm::LLVMContext& context) const;
-
-    ///
-    // Saves the structure changes to the given MDNode
-    void save(llvm::LLVMContext& context, llvm::MDNode* pNode) const;
-
-private:
-    ///
-    // Returns true if the given MDNode could be saved to without replacement
-    bool compatibleWith( const llvm::MDNode* pNode) const
-    {
-        return false;
-    }
-
-private:
-    typedef MetaDataIterator<llvm::MDNode> NodeIterator;
-
-    llvm::Metadata* getVarNode( const llvm::MDNode* pParentNode) const;    
-    llvm::Metadata* getOffsetNode( const llvm::MDNode* pParentNode) const;
-
-private:
-    // data members
-    MetaDataValue<llvm::GlobalVariable> m_Var;        
-    MetaDataValue<int32_t> m_Offset;
     // parent node
     const llvm::MDNode* m_pNode;
 };
@@ -1019,9 +892,6 @@ public:
     typedef NamedMetaDataValue<int32_t>::value_type TypeType;        
     typedef MetaDataList<ArgInfoMetaDataHandle> ArgInfoListList;        
     typedef MetaDataList<ArgInfoMetaDataHandle> ImplicitArgInfoListList;        
-        
-    typedef MetaDataList<LocalOffsetMetaDataHandle> LocalOffsetsList;        
-        
     typedef NamedMetaDataValue<int32_t>::value_type PrivateMemoryPerWIType;        
         
 	typedef NamedMetaDataValue<int32_t>::value_type NeedBindlessHandleType;
@@ -1223,65 +1093,6 @@ public:
         return m_SubGroupSize;
     }
 
-    /// LocalOffsets related methods
-    LocalOffsetsList::iterator begin_LocalOffsets()
-    {
-        return m_LocalOffsets.begin();
-    }
-
-    LocalOffsetsList::iterator end_LocalOffsets()
-    {
-        return m_LocalOffsets.end();
-    }
-    LocalOffsetsList::const_iterator begin_LocalOffsets() const
-    {
-        return m_LocalOffsets.begin();
-    }
-
-    LocalOffsetsList::const_iterator end_LocalOffsets() const
-    {
-        return m_LocalOffsets.end();
-    }
-
-    size_t size_LocalOffsets()  const
-    {
-        return m_LocalOffsets.size();
-    }
-
-    bool empty_LocalOffsets()  const
-    {
-        return m_LocalOffsets.empty();
-    }
-
-    bool isLocalOffsetsHasValue() const
-    {
-        return m_LocalOffsets.hasValue();
-    }
-    
-    LocalOffsetsList::item_type getLocalOffsetsItem( size_t index ) const
-    {
-        return m_LocalOffsets.getItem(index);
-    }
-    void clearLocalOffsets()
-    {
-        m_LocalOffsets.clear();
-    }
-
-    void setLocalOffsetsItem( size_t index, const LocalOffsetsList::item_type& item  )
-    {
-        return m_LocalOffsets.setItem(index, item);
-    }
-
-    void addLocalOffsetsItem(const LocalOffsetsList::item_type& val)
-    {
-        m_LocalOffsets.push_back(val);
-    }
-
-    LocalOffsetsList::iterator eraseLocalOffsetsItem(LocalOffsetsList::iterator i)
-    {
-        return m_LocalOffsets.erase(i);
-    }
-   
     /// OpenCLVectorTypeHint related methods
     
     VectorTypeHintMetaDataHandle getOpenCLVectorTypeHint()
@@ -1328,7 +1139,6 @@ private:
     llvm::MDNode* getSubGroupSizeNode( const llvm::MDNode* pParentNode) const;    
 	llvm::MDNode* getWorkgroupWalkOrderNode(const llvm::MDNode* pParentNode) const;
     llvm::Metadata* getLocalSizeNode( const llvm::MDNode* pParentNode) const;    
-    llvm::MDNode* getLocalOffsetsNode( const llvm::MDNode* pParentNode) const;    
     llvm::MDNode* getOpenCLVectorTypeHintNode( const llvm::MDNode* pParentNode) const;    
 
 private:
@@ -1339,7 +1149,7 @@ private:
     ThreadGroupSizeMetaDataHandle m_ThreadGroupSize;        
     ThreadGroupSizeMetaDataHandle m_ThreadGroupSizeHint;        
     SubGroupSizeMetaDataHandle m_SubGroupSize;        
-    MetaDataList<LocalOffsetMetaDataHandle> m_LocalOffsets;              
+
     VectorTypeHintMetaDataHandle m_OpenCLVectorTypeHint;        
     // parent node
     const llvm::MDNode* m_pNode;

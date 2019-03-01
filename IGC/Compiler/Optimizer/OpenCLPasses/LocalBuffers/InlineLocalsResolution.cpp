@@ -112,7 +112,7 @@ static bool useAsPointerOnly(Value *V) {
 bool InlineLocalsResolution::runOnModule(Module &M)
 {
     MetaDataUtils *pMdUtils = getAnalysis<MetaDataUtilsWrapper>().getMetaDataUtils();
-
+    ModuleMetaData *modMD = getAnalysis<MetaDataUtilsWrapper>().getModuleMetaData();
     // Compute the offset of each inline local in the kernel,
     // and their total size.
     std::map<Function*, unsigned int> sizeMap;
@@ -178,10 +178,11 @@ bool InlineLocalsResolution::runOnModule(Module &M)
                 auto NewPtr = ConstantExpr::getBitCast(ExtSLM, arg->getType());
                 arg->replaceAllUsesWith(NewPtr);
                 // Update MD.
-                LocalOffsetMetaDataHandle lo = LocalOffsetMetaDataHandle(LocalOffsetMetaData::get());
-                lo->setVar(ExtSLM);
-                lo->setOffset(Offset);
-                pMdUtils->getFunctionsInfoItem(pFunc)->addLocalOffsetsItem(lo);
+                LocalOffsetMD localOffset;
+                localOffset.m_Var = ExtSLM;
+                localOffset.m_Offset = Offset;
+                modMD->FuncMD[pFunc].localOffsets.push_back(localOffset);
+
                 IGC::appendToUsed(M, ExtSLM);
                 IsFirstSLMArgument = false;
             } else {
@@ -449,13 +450,14 @@ void InlineLocalsResolution::computeOffsetList(Module& M, std::map<Function*, un
         // And now the offsets.
         for (auto offsetIter = offsetMap[iter->first].begin(), offsetEnd = offsetMap[iter->first].end(); offsetIter != offsetEnd; ++offsetIter)
         {
-            LocalOffsetMetaDataHandle lo = LocalOffsetMetaDataHandle(LocalOffsetMetaData::get());
             unsigned Offset = offsetIter->second;
             if (!useAsPointerOnly(offsetIter->first))
                 Offset |= VALID_LOCAL_HIGH_BITS;
-            lo->setVar(offsetIter->first);
-            lo->setOffset(Offset);
-            pMdUtils->getFunctionsInfoItem(iter->first)->addLocalOffsetsItem(lo);
+            
+            LocalOffsetMD localOffset;
+            localOffset.m_Var = offsetIter->first;
+            localOffset.m_Offset = Offset;
+            modMD->FuncMD[iter->first].localOffsets.push_back(localOffset);
         }
     }
     pMdUtils->save(M.getContext());

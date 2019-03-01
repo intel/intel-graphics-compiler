@@ -227,16 +227,18 @@ void COpenCLKernel::PreCompile()
 
     RecomputeBTLayout();
 
+    ModuleMetaData* modMD = m_Context->getModuleMetaData();
+    auto funcIter = modMD->FuncMD.find(entry);
+    
     // Initialize the table of offsets for GlobalVariables representing locals
-    auto funcIter = m_pMdUtils->findFunctionsInfoItem(entry);
-    if (funcIter != m_pMdUtils->end_FunctionsInfo())
+    if (funcIter != modMD->FuncMD.end())
     {
-        auto loIter = funcIter->second->begin_LocalOffsets();
-        auto loEnd = funcIter->second->end_LocalOffsets();
+        auto loIter = funcIter->second.localOffsets.begin();
+        auto loEnd = funcIter->second.localOffsets.end();
         for (; loIter != loEnd; ++loIter)
         {
-            LocalOffsetMetaDataHandle loHandle = *loIter;
-            m_localOffsetsMap[loHandle->getVar()] = loHandle->getOffset();
+            LocalOffsetMD loHandle = *loIter;
+            m_localOffsetsMap[loHandle.m_Var] = loHandle.m_Offset;
         }
     }
 }

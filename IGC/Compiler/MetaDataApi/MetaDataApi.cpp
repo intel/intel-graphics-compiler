@@ -285,134 +285,6 @@ llvm::Metadata* ArgInfoMetaData::getImgAccessIntCoordsNode( const llvm::MDNode* 
 }
 
 ///
-// Ctor - loads the LocalOffsetMetaData from the given metadata node
-//
-LocalOffsetMetaData::LocalOffsetMetaData(const llvm::MDNode* pNode, bool hasId):
-    _Mybase(pNode, hasId),
-    m_Var(getVarNode(pNode)),        
-    m_Offset(getOffsetNode(pNode)),
-    m_pNode(pNode)
-{}
-
-///
-// Default Ctor - creates the empty, not named LocalOffsetMetaData object
-//
-LocalOffsetMetaData::LocalOffsetMetaData():    
-    m_pNode(NULL)
-{}
-
-///
-// Ctor - creates the empty, named LocalOffsetMetaData object
-//
-LocalOffsetMetaData::LocalOffsetMetaData(const char* name):
-    _Mybase(name),    
-    m_pNode(NULL)
-{}
-
-bool LocalOffsetMetaData::hasValue() const
-{
-    if (m_Var.hasValue())
-    {
-        return true;
-    }
-        
-    
-    if (m_Offset.hasValue())
-    {
-        return true;
-    }
-    return NULL != m_pNode || dirty();
-}
-
-///
-// Returns true if any of the LocalOffsetMetaData`s members has changed
-bool LocalOffsetMetaData::dirty() const
-{
-    if( m_Var.dirty() )
-    {
-        return true;
-    }        
-    if( m_Offset.dirty() )
-    {
-        return true;
-    }
-    return false;
-}
-
-///
-// Discards the changes done to the LocalOffsetMetaData instance
-void LocalOffsetMetaData::discardChanges()
-{
-    m_Var.discardChanges();        
-    m_Offset.discardChanges();
-}
-
-///
-// Generates the new MDNode hierarchy for the given structure
-llvm::Metadata* LocalOffsetMetaData::generateNode(llvm::LLVMContext& context) const
-{
-    llvm::SmallVector<llvm::Metadata*, 5> args;
-
-    llvm::Metadata* pIDNode = _Mybase::generateNode(context);
-    if( NULL != pIDNode )
-    {
-        args.push_back(pIDNode);
-    }
-
-    args.push_back( m_Var.generateNode(context));        
-    args.push_back( m_Offset.generateNode(context));
-
-    return llvm::MDNode::get(context, args);
-}
-
-///
-// Saves the structure changes to the given MDNode
-void LocalOffsetMetaData::save(llvm::LLVMContext& context, llvm::MDNode* pNode) const
-{
-    assert( pNode && "The target node should be valid pointer");
-
-    // we assume that underlying metadata node has not changed under our foot
-    if( pNode == m_pNode && !dirty() )
-    {
-        return;
-    }
-#if 0
-    // check that we could save the new information to the given node without regenerating it
-    if( !compatibleWith(pNode) )
-    {
-        pNode->replaceAllUsesWith(generateNode(context));
-        return;
-    }
-#endif
-
-    m_Var.save(context, llvm::cast<llvm::MDNode>(getVarNode(pNode)));        
-    m_Offset.save(context, llvm::cast<llvm::MDNode>(getOffsetNode(pNode)));
-}
-
-llvm::Metadata* LocalOffsetMetaData::getVarNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    return pParentNode->getOperand(0 + offset).get();
-}
-    
-llvm::Metadata* LocalOffsetMetaData::getOffsetNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    return pParentNode->getOperand(1 + offset).get();
-}
-
-
-///
 // Ctor - loads the ArgDependencyInfoMetaData from the given metadata node
 //
 ArgDependencyInfoMetaData::ArgDependencyInfoMetaData(const llvm::MDNode* pNode, bool hasId):
@@ -1112,7 +984,6 @@ FunctionInfoMetaData::FunctionInfoMetaData(const llvm::MDNode* pNode, bool hasId
     m_ThreadGroupSize(ThreadGroupSizeMetaData::get(getThreadGroupSizeNode(pNode), true)),        
     m_ThreadGroupSizeHint(ThreadGroupSizeMetaData::get(getThreadGroupSizeHintNode(pNode), true)),        
     m_SubGroupSize(SubGroupSizeMetaData::get(getSubGroupSizeNode(pNode), true)),        
-    m_LocalOffsets(getLocalOffsetsNode(pNode), true),             
     m_OpenCLVectorTypeHint(VectorTypeHintMetaData::get(getOpenCLVectorTypeHintNode(pNode), true)),        
     m_pNode(pNode)
 {}
@@ -1127,6 +998,7 @@ FunctionInfoMetaData::FunctionInfoMetaData():    m_Type("function_type"),
     m_ThreadGroupSizeHint(ThreadGroupSizeMetaDataHandle::ObjectType::get("thread_group_size_hint")),        
     m_SubGroupSize(SubGroupSizeMetaDataHandle::ObjectType::get("sub_group_size")),               
     m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),
+
     m_pNode(NULL)
 {}
 
@@ -1140,7 +1012,7 @@ FunctionInfoMetaData::FunctionInfoMetaData(const char* name):
     m_ThreadGroupSize(ThreadGroupSizeMetaDataHandle::ObjectType::get("thread_group_size")),        
     m_ThreadGroupSizeHint(ThreadGroupSizeMetaDataHandle::ObjectType::get("thread_group_size_hint")),        
     m_SubGroupSize(SubGroupSizeMetaDataHandle::ObjectType::get("sub_group_size")),        
-    m_LocalOffsets("local_offsets"),         
+
     m_OpenCLVectorTypeHint(VectorTypeHintMetaDataHandle::ObjectType::get("opencl_vec_type_hint")),      
     m_pNode(NULL)
 {}
@@ -1180,13 +1052,9 @@ bool FunctionInfoMetaData::hasValue() const
     if (m_SubGroupSize->hasValue())
     {
         return true;
-    }
 
-    if (m_LocalOffsets.hasValue())
-    {
-        return true;
-    }
-    
+    }  
+   
 
     if (m_OpenCLVectorTypeHint->hasValue())
     {
@@ -1223,11 +1091,7 @@ bool FunctionInfoMetaData::dirty() const
     if( m_SubGroupSize.dirty() )
     {
         return true;
-    }                       
-    if( m_LocalOffsets.dirty() )
-    {
-        return true;
-    }                      
+    }     
     if( m_OpenCLVectorTypeHint.dirty() )
     {
         return true;
@@ -1245,7 +1109,6 @@ void FunctionInfoMetaData::discardChanges()
     m_ThreadGroupSize.discardChanges();        
     m_ThreadGroupSizeHint.discardChanges();        
     m_SubGroupSize.discardChanges();        
-    m_LocalOffsets.discardChanges();          
     m_OpenCLVectorTypeHint.discardChanges();        
 }
 
@@ -1285,11 +1148,6 @@ llvm::Metadata* FunctionInfoMetaData::generateNode(llvm::LLVMContext& context) c
     if (m_SubGroupSize->hasValue())
     {
         args.push_back(m_SubGroupSize.generateNode(context));
-    }
-
-    if (isLocalOffsetsHasValue())
-    {
-        args.push_back(m_LocalOffsets.generateNode(context));
     }
 
     if (m_OpenCLVectorTypeHint->hasValue())
@@ -1453,25 +1311,7 @@ llvm::Metadata* FunctionInfoMetaData::getLocalSizeNode( const llvm::MDNode* pPar
     }
     return NULL;
 }
-    
-llvm::MDNode* FunctionInfoMetaData::getLocalOffsetsNode( const llvm::MDNode* pParentNode) const
-{
-    if( !pParentNode )
-    {
-        return NULL;
-    }
-
-    unsigned int offset = _Mybase::getStartIndex();
-    for(NodeIterator i = NodeIterator(pParentNode, 0+offset), e = NodeIterator(pParentNode); i != e; ++i )
-    {
-        if( isNamedNode(i.get(), "local_offsets") )
-        {
-            return llvm::dyn_cast<llvm::MDNode>(i.get());
-        }
-    }
-    return NULL;
-}
-    
+   
 llvm::MDNode* FunctionInfoMetaData::getOpenCLVectorTypeHintNode( const llvm::MDNode* pParentNode) const
 {
     if( !pParentNode )
