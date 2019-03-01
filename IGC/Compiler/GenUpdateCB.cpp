@@ -34,6 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/Support/MemoryBuffer.h>
 #include "common/LLVMWarningsPop.hpp"
 
+#include "common/debug/Dump.hpp"
 #include "Compiler/GenUpdateCB.h"
 #include "Compiler/CISACodeGen/helper.h"
 #include "GenISAIntrinsics/GenIntrinsics.h"
@@ -53,6 +54,34 @@ using namespace IGC;
 // Register pass to igc-opt
 IGC_INITIALIZE_PASS_BEGIN(GenUpdateCB, "GenUpdateCB", "GenUpdateCB", false, false)
 IGC_INITIALIZE_PASS_END(GenUpdateCB, "GenUpdateCB", "GenUpdateCB", false, false)
+
+static bool isResInfo(GenIntrinsicInst* inst, unsigned &texId, unsigned &lod, bool& isUAV)
+{
+    if (inst)
+    {
+        assert(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_resinfoptr);
+
+        ConstantInt* vlod = dyn_cast<ConstantInt>(inst->getOperand(1));
+        if (!vlod)
+            return false;
+
+        Value* texOp = inst->getOperand(0);
+        BufferType bufType;
+        unsigned as = texOp->getType()->getPointerAddressSpace();
+        unsigned bufIdx;
+        bool directIndexing;
+
+        bufType = DecodeAS4GFXResource(as, directIndexing, bufIdx);
+        if (!directIndexing || bufType != RESOURCE || bufType != UAV)
+            return false;
+
+        texId = bufIdx;
+        lod = (unsigned)vlod->getZExtValue();
+        isUAV = (bufType == UAV);
+        return true;
+    }
+    return false;
+}
 
 bool GenUpdateCB::isConstantBufferLoad(LoadInst* inst, unsigned &bufId)
 {
@@ -167,13 +196,27 @@ void GenUpdateCB::InsertInstTree(Instruction *inst, Instruction *pos)
         return;
     }
 
-    unsigned bufId = 0;
+    unsigned bufId = 0, texId = 0, lod = 0;
+    bool isUAV = false;
     if (isConstantBufferLoad(dyn_cast<LoadInst>(inst), bufId))
     {
         Instruction *Clone = inst->clone();
         vmap[inst] = Clone;
         Clone->insertBefore(pos);
         m_ConstantBufferUsageMask |= (1 << bufId);
+        return;
+    } else
+    if (isResInfo(dyn_cast<GenIntrinsicInst>(inst), texId, lod, isUAV))
+    {
+        CallInst* cloneInst = cast<CallInst>(inst->clone());
+        vmap[inst] = cloneInst;
+        cloneInst->insertBefore(pos);
+
+        llvm::Function* pfunc = nullptr;
+        pfunc = GenISAIntrinsic::getDeclaration(m_ConstantBufferReplaceShaderPatterns,
+            GenISAIntrinsic::GenISA_resinfoptr,
+            inst->getOperand(0)->getType());
+        cloneInst->setCalledFunction(pfunc);
         return;
     }
 
@@ -307,7 +350,6 @@ bool GenUpdateCB::runOnFunction(Function &F)
     // travel through instructions and mark the ones that are calculated with CB or imm
     DominatorTree &dom_tree = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
-
     bool hasChange = true;
     while (hasChange)
     {
@@ -320,6 +362,8 @@ bool GenUpdateCB::runOnFunction(Function &F)
             {
                 Instruction *inst = llvm::dyn_cast<Instruction>(&(*BI++));
                 unsigned bufId = 0;
+                unsigned texId = 0, lod = 0;
+                bool isUAV = false;
 
                 if (m_CbUpdateMap.count(inst) != 0)
                 {
@@ -327,25 +371,43 @@ bool GenUpdateCB::runOnFunction(Function &F)
                 }
                 else if (isConstantBufferLoad(dyn_cast<LoadInst>(inst), bufId))
                 {
-                    m_CbUpdateMap.insert(inst);
+                    m_CbUpdateMap[inst] = FLAG_LOAD;
                 }
-                else
+                else if (IGC_IS_FLAG_ENABLED(EnableGenUpdateCBResInfo) &&
+                         isResInfo(dyn_cast<GenIntrinsicInst>(inst,
+                            GenISAIntrinsic::GenISA_resinfoptr), texId, lod, isUAV))
+                {
+                    unsigned nelems = inst->getType()->getVectorNumElements();
+                    SmallVector< SmallVector<ExtractElementInst*, 1>, 4> extracts(nelems);
+                    if (VectorUsedByConstExtractOnly(inst, extracts))
+                    {
+                        m_CbUpdateMap[inst] = FLAG_RESINFO;
+                        for (unsigned i = 0; i < nelems; i++)
+                        {
+                            for (auto II : extracts[i]) {
+                                m_CbUpdateMap[II] = FLAG_RESINFO;
+                            }
+                        }
+                    }
+                }
+                else if (updateCbAllowedInst(inst))
                 {
                     bool foundNewInst = 0;
+                    unsigned flag = 0;
                     for (uint i = 0; i < inst->getNumOperands(); i++)
                     {
                         if (dyn_cast<Constant>(inst->getOperand(i)))
                         {
                             ;
                         }
-                        else if (!updateCbAllowedInst(inst) ||
-                            m_CbUpdateMap.count(inst->getOperand(i)) == 0)
+                        else if (m_CbUpdateMap.count(inst->getOperand(i)) == 0)
                         {
                             foundNewInst = 0;
                             break;
                         }
                         else
                         {
+                            flag |= m_CbUpdateMap[inst->getOperand(i)];
                             foundNewInst = 1;
                         }
                     }
@@ -354,12 +416,25 @@ bool GenUpdateCB::runOnFunction(Function &F)
                     {
                         hasChange = true;
                         foundCases = true;
-                        m_CbUpdateMap.insert(inst);
+                        m_CbUpdateMap[inst] = flag;
                     }
                 }
             }
         }
     }
+
+    // check whether given instruction are used outside of m_CbUpdateMap
+    auto instUsed = [&](Instruction* inst) {
+        for (auto nextInst = inst->user_begin();
+            nextInst != inst->user_end(); nextInst++)
+        {
+            if (m_CbUpdateMap.count(*nextInst) == 0)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
 
     // look for cases to create mini-shader
     uint counter = 0;
@@ -375,24 +450,34 @@ bool GenUpdateCB::runOnFunction(Function &F)
                 break;
             }
 
-            Instruction *inst = llvm::dyn_cast<Instruction>(*iter);
+            Instruction *inst = llvm::dyn_cast<Instruction>(iter->first);
+            unsigned flag = iter->second;
             unsigned bufId = 0;
+            unsigned texId = 0, lod = 0;
+            bool isUAV = false;
             bool lastInstUsed = false;
 
-            // !allSrcConstantOrImm() check skips the simple cases so it doesn't get triggered too many times.
-            if (!isConstantBufferLoad(dyn_cast<LoadInst>(inst), bufId) &&
+            if (isConstantBufferLoad(dyn_cast<LoadInst>(inst), bufId) ||
+                isResInfo(dyn_cast<GenIntrinsicInst>(inst), texId, lod, isUAV))
+            {
+                // skip root values
+                continue;
+            }
+
+            if (flag == FLAG_LOAD &&
                 !allSrcConstantOrImm(inst) &&
                 inst->getType()->getScalarSizeInBits() == 32 &&
                 inst->getType()->isFloatTy()) // last check needs to be removed to enable integer cases
             {
-                for (auto nextInst = inst->user_begin(); nextInst != inst->user_end(); nextInst++)
-                {
-                    if (m_CbUpdateMap.count(*nextInst) == 0)
-                    {
-                        lastInstUsed = true;
-                        break;
-                    }
-                }
+                // for const buffer load, !allSrcConstantOrImm() check skips
+                // the simple cases so it doesn't get triggered too many times.
+                lastInstUsed = instUsed(inst);
+            }
+            else
+            if ((flag & FLAG_RESINFO) != 0)
+            {
+                // always pickup resinfo results
+                lastInstUsed = instUsed(inst);
             }
 
             if (lastInstUsed)
@@ -434,6 +519,10 @@ bool GenUpdateCB::runOnFunction(Function &F)
             llvm::SmallVector<char, 4> bitcodeSV;
             llvm::raw_svector_ostream bitcodeSS(bitcodeSV);
             IGCLLVM::WriteBitcodeToFile(m_ConstantBufferReplaceShaderPatterns, bitcodeSS);
+
+            IGC::Debug::DumpName name = IGC::Debug::GetLLDumpName(m_ctx, "gencb");
+            IGC::Debug::DumpLLVMIRText(m_ConstantBufferReplaceShaderPatterns,
+                IGC::Debug::Dump(name, IGC::Debug::DumpType::PASS_IR_TEXT));
 
             size_t bufferSize = bitcodeSS.str().size();
             void* CBPatterns = aligned_malloc(bufferSize, 16);
@@ -517,11 +606,10 @@ namespace IGC
         return un.u;
     }
 
-    void ConstantFolder(
-        char*       bitcode,
-        uint        bitcodeSize,
-        void*       CBptr[15],
-        uint*       pNewCB)
+    void FoldDerivedConstant(
+        char* bitcode, uint bitcodeSize,
+        void* CBptr[15], std::function<void(uint[4], uint, uint, bool)> getResInfoCB,
+        uint* pNewCB)
     {
         // load module from memory
         llvm::Module* M = NULL;
@@ -555,7 +643,14 @@ namespace IGC
         }
 
         // start constant folding
+        struct ResInfoResult {
+            unsigned info[4];
+            ResInfoResult() { info[0] = info[1] = info[2] = info[3] = 0; }
+            ResInfoResult(unsigned res[4]) { memcpy(info, res, sizeof(info)); }
+        };
         DenseMap<Value*, uint> CalculatedValue;
+        DenseMap<Value*, ResInfoResult> resInfo;
+
         int newCBIndex = 0;
         BasicBlock *BB = &M->getFunctionList().begin()->getEntryBlock();
         for (auto II = BB->begin(), IE = BB->end(); II != IE; ++II)
@@ -575,6 +670,23 @@ namespace IGC
 
                 CalculatedValue[ld] = ld->getType()->isFloatTy() ?
                     ftou_ftz(utof(bits)) : bits;
+            }
+            else if (GenIntrinsicInst* intrin = dyn_cast<GenIntrinsicInst>(inst,
+                GenISAIntrinsic::GenISA_resinfoptr))
+            {
+                unsigned texId, lod;
+                bool isUAV;
+                unsigned res[4];
+                isResInfo(intrin, texId, lod, isUAV);
+                getResInfoCB(res, texId, lod, isUAV);
+                ResInfoResult r(res);
+                resInfo[intrin] = r;
+            }
+            else if (ExtractElementInst* extract = dyn_cast<ExtractElementInst>(inst))
+            {
+                unsigned idx = (unsigned)cast<ConstantInt>(extract->getIndexOperand())->getZExtValue();
+                unsigned val = resInfo[extract->getVectorOperand()].info[idx];
+                CalculatedValue[extract] = val;
             }
             else if (StoreInst *store = dyn_cast<StoreInst>(inst))
             {

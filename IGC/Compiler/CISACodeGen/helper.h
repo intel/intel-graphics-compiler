@@ -234,11 +234,11 @@ inline bool DoesRTWriteSrc0AlphaBelongToHomogeneousPart(
     return !rtWrite->hasMask() && RTWriteHasSource0Alpha(rtWrite, md);
 }
 
-inline bool LoadUsedByConstExtractOnly(
-    llvm::LoadInst* ld,
+inline bool VectorUsedByConstExtractOnly(
+    llvm::Value* val,
     llvm::SmallVector< llvm::SmallVector<llvm::ExtractElementInst*, 1>, 4>& extracts)
 {
-    for (auto UI = ld->user_begin(), UE = ld->user_end(); UI != UE; ++UI)
+    for (auto UI = val->user_begin(), UE = val->user_end(); UI != UE; ++UI)
     {
         llvm::ExtractElementInst* ei =
             llvm::dyn_cast<llvm::ExtractElementInst>(*UI);
@@ -259,6 +259,13 @@ inline bool LoadUsedByConstExtractOnly(
         }
     }
     return true;
+}
+
+inline bool LoadUsedByConstExtractOnly(
+    llvm::LoadInst* ld,
+    llvm::SmallVector< llvm::SmallVector<llvm::ExtractElementInst*, 1>, 4>& extracts)
+{
+    return VectorUsedByConstExtractOnly(ld, extracts);
 }
 
 

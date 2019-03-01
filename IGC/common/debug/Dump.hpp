@@ -60,8 +60,6 @@ namespace IGC
 class CShader;
 namespace Debug
 {
-/// return the name of the file to dump
-std::string GetDumpName(CShader* pProgram, const char* ext);
 
 /*************************************************************************************************\
  *  Generic
@@ -110,7 +108,13 @@ private:
 };
 
 /// return the name of the file to dump
+std::string GetDumpName(CShader* pProgram, const char* ext);
+
+/// return the name of the file to dump
 DumpName GetDumpNameObj(CShader* pProgram, const char* ext);
+
+/// return the name of the file to dump for llvm IR
+DumpName GetLLDumpName(IGC::CodeGenContext* pContext, const char* dumpName);
 
 class Dump
 {

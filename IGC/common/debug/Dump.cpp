@@ -670,5 +670,17 @@ DumpName GetDumpNameObj(IGC::CShader* pProgram, const char* ext)
     return dumpName;
 }
 
+DumpName GetLLDumpName(IGC::CodeGenContext* pContext, const char* dumpName)
+{
+    auto name =
+        DumpName(GetShaderOutputName())
+            .Hash(pContext->hash)
+            .Type(pContext->type)
+            .Pass(dumpName)
+            .Retry(pContext->m_retryManager.GetRetryId())
+            .Extension("ll");
+    return name;
+}
+
 } // namespace Debug
 } // namespace IGC
