@@ -497,6 +497,139 @@ public:
     }
 };
 
+class StoreRawIntrinsic : public GenIntrinsicInst {
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst *I) {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        if (ID == GenISAIntrinsic::GenISA_storeraw_indexed ||
+            ID == GenISAIntrinsic::GenISA_storerawvector_indexed)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    static inline bool classof(const Value *V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+    inline Value* getOffsetValue() const
+    {
+        return getOperand(1);
+    }
+    inline Value* getResourceValue() const {
+        return getOperand(0);
+    }
+
+    inline void setOffsetValue(Value* V) {
+        setOperand(1, V);
+    }
+};
+
+class AtomicRawIntrinsic : public GenIntrinsicInst {
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst *I) {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        if (ID == GenISAIntrinsic::GenISA_intatomicraw ||
+            ID == GenISAIntrinsic::GenISA_intatomicrawA64 ||
+            ID == GenISAIntrinsic::GenISA_floatatomicraw ||
+            ID == GenISAIntrinsic::GenISA_floatatomicrawA64 ||
+            ID == GenISAIntrinsic::GenISA_icmpxchgatomicraw ||
+            ID == GenISAIntrinsic::GenISA_icmpxchgatomicrawA64 ||
+            ID == GenISAIntrinsic::GenISA_fcmpxchgatomicraw ||
+            ID == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    static inline bool classof(const Value *V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+
+    inline Value* getResourceValue() const {
+        return getOperand(0);
+    }
+};
+
+class AtomicStructuredIntrinsic : public GenIntrinsicInst {
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst *I) {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        if (ID == GenISAIntrinsic::GenISA_dwordatomicstructured ||
+            ID == GenISAIntrinsic::GenISA_floatatomicstructured ||
+            ID == GenISAIntrinsic::GenISA_cmpxchgatomicstructured ||
+            ID == GenISAIntrinsic::GenISA_fcmpxchgatomicstructured)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    static inline bool classof(const Value *V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+
+    inline Value* getResourceValue() const {
+        return getOperand(0);
+    }
+
+    inline Value* getArrayIdx() const {
+        return getOperand(1);
+    }
+
+    inline void setOffsetValue(Value* V) {
+        setOperand(1, V);
+    }
+};
+
+class AtomicTypedIntrinsic : public GenIntrinsicInst {
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst *I) {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        if (ID == GenISAIntrinsic::GenISA_intatomictyped ||
+            ID == GenISAIntrinsic::GenISA_icmpxchgatomictyped )
+        {
+            return true;
+        }
+        return false;
+    }
+
+    static inline bool classof(const Value *V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+
+    inline Value* getResourceValue() const {
+        return getOperand(0);
+    }
+};
+
+class AtomicCounterIntrinsic : public GenIntrinsicInst {
+public:
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst *I) {
+        GenISAIntrinsic::ID ID = I->getIntrinsicID();
+        if (ID == GenISAIntrinsic::GenISA_atomiccounterinc ||
+            ID == GenISAIntrinsic::GenISA_atomiccounterpredec)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    static inline bool classof(const Value *V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+
+    inline Value* getResourceValue() const {
+        return getOperand(0);
+    }
+};
+
 class SGVIntrinsic : public GenIntrinsicInst {
 public:
     // Methods for support type inquiry through isa, cast, and dyn_cast:

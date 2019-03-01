@@ -607,8 +607,13 @@ void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value* oldPt
             break;
         case llvm::GenISAIntrinsic::GenISA_intatomicraw:
         case llvm::GenISAIntrinsic::GenISA_icmpxchgatomicraw:
-        case GenISAIntrinsic::GenISA_intatomicrawA64:
-        case GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
+        case llvm::GenISAIntrinsic::GenISA_intatomicrawA64:
+        case llvm::GenISAIntrinsic::GenISA_icmpxchgatomicrawA64:
+        case llvm::GenISAIntrinsic::GenISA_floatatomicraw:
+        case llvm::GenISAIntrinsic::GenISA_floatatomicrawA64:
+        case llvm::GenISAIntrinsic::GenISA_fcmpxchgatomicraw:
+        case llvm::GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64:
+
             overloadedTys.push_back(pIntr->getType());
             overloadedTys.push_back(newPtr->getType());
             if(id == GenISAIntrinsic::GenISA_intatomicrawA64)
@@ -623,6 +628,44 @@ void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value* oldPt
                 args[1] = CastInst::CreatePointerCast(args[1], Type::getInt32Ty(pModule->getContext()), "", pIntr);
                 id = GenISAIntrinsic::GenISA_icmpxchgatomicraw;
             }
+            else if (id == GenISAIntrinsic::GenISA_floatatomicrawA64)
+            {
+                args[0] = args[1];
+                args[1] = CastInst::CreatePointerCast(args[1], Type::getFloatTy(pModule->getContext()), "", pIntr);
+                id = GenISAIntrinsic::GenISA_floatatomicraw;
+            }
+            else if (id == GenISAIntrinsic::GenISA_fcmpxchgatomicrawA64)
+            {
+                args[0] = args[1];
+                args[1] = CastInst::CreatePointerCast(args[1], Type::getFloatTy(pModule->getContext()), "", pIntr);
+                id = GenISAIntrinsic::GenISA_fcmpxchgatomicraw;
+            }
+            break;
+        case llvm::GenISAIntrinsic::GenISA_dwordatomicstructured:
+        case llvm::GenISAIntrinsic::GenISA_floatatomicstructured:
+        case llvm::GenISAIntrinsic::GenISA_cmpxchgatomicstructured:
+        case llvm::GenISAIntrinsic::GenISA_fcmpxchgatomicstructured:
+            overloadedTys.push_back(pIntr->getType());
+            overloadedTys.push_back(args[0]->getType());
+            break;
+        case GenISAIntrinsic::GenISA_intatomictyped:
+        case GenISAIntrinsic::GenISA_icmpxchgatomictyped:
+            overloadedTys.push_back(newPtr->getType());
+            break;
+        case GenISAIntrinsic::GenISA_atomiccounterinc:
+        case GenISAIntrinsic::GenISA_atomiccounterpredec:
+            overloadedTys.push_back(pIntr->getType());
+            overloadedTys.push_back(args[0]->getType());
+            break;
+        //case llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed:
+        case llvm::GenISAIntrinsic::GenISA_ldraw_indexed:
+            overloadedTys.push_back(pCalledFunc->getReturnType());
+            overloadedTys.push_back(newPtr->getType());
+            break;
+        case llvm::GenISAIntrinsic::GenISA_storeraw_indexed:
+            overloadedTys.push_back(newPtr->getType());
+            overloadedTys.push_back(args[2]->getType());
+            
             break;
         default:
             assert(0 && "Unknown intrinsic encountered while changing pointer types");
