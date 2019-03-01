@@ -51,6 +51,25 @@ public:
     // undef variable
     CVariable(VISA_Type type);
 
+    // Copy Ctor
+    CVariable(const CVariable& V)
+    {
+        m_immediateValue = V.m_immediateValue;
+        m_alias = nullptr;
+        m_nbElement = V.m_nbElement;
+        m_aliasOffset = 0;
+        m_numberOfInstance = V.m_numberOfInstance;
+        m_type = V.m_type;
+        m_varType = V.m_varType;
+        m_align = V.m_align;
+        m_uniform = V.m_uniform;
+        m_isImmediate = V.m_isImmediate;
+        m_subspanUse = V.m_subspanUse;
+        m_uniformVector = V.m_uniformVector;
+        m_undef = V.m_undef;
+        m_isUnpacked = V.m_isUnpacked;
+    }
+
     e_alignment GetAlign() const
     {
         assert(!m_isImmediate && "Calling GetAlign() on an immediate returns undefined result");

@@ -727,8 +727,9 @@ CVariable* CShader::GetNewVariable(uint16_t nbElement, VISA_Type type, e_alignme
 
 CVariable*  CShader::GetNewVariable(const CVariable* from)
 {
-    return GetNewVariable(from->GetNumberElement(), from->GetType(),
-                          from->GetAlign(), from->IsUniform());
+    CVariable* var = new (Allocator) CVariable(*from);
+    encoder.CreateVISAVar(var);
+    return var;
 }
 
 CVariable* CShader::GetNewAddressVariable(uint16_t nbElement, VISA_Type type, bool isUniform, bool isVectorUniform)
