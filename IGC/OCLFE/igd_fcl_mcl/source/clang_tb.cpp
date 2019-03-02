@@ -853,11 +853,18 @@ namespace TC
   AreVMETypesDefined
 
   Description:
-  Returns true if Clang used on current OS has VME types defined.
+  Returns true if CommonClang used on current OS has VME types defined.
 
   \*****************************************************************************/
   bool AreVMETypesDefined() 
   {
+#ifdef VME_TYPES_DEFINED
+#if VME_TYPES_DEFINED
+    return true;
+#else
+    return false;
+#endif
+#endif
     return true;
   }
 
