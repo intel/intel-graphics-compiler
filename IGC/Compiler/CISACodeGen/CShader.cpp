@@ -2406,6 +2406,11 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
 
 CVariable* CShader::GetPhiTemp(llvm::PHINode* node)
 {
+    if (IGC_IS_FLAG_ENABLED(DisablePHIDstCopy))
+    {
+        return GetSymbol(node);
+    }
+
     CVariable* var = NULL;
     auto it = phiMapping.find(node);
     // find the mapping, return

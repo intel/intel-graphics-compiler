@@ -484,8 +484,11 @@ bool EmitPass::runOnFunction(llvm::Function &F)
             m_encoder->Push();
             IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
         }
-        // insert moves at the top of the block
-        MovPhiDestination(block.bb);
+
+        if (IGC_IS_FLAG_DISABLED(DisablePHIDstCopy)) {
+            // insert moves at the top of the block
+            MovPhiDestination(block.bb);
+        }
 
         // remove cached per lane offset variables if any.
         PerLaneOffsetVars.clear();
@@ -1009,7 +1012,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                         }
                         dstVTyMap.insert(std::pair<CVariable*, unsigned int>(dst, numElt));
 
-                        if (m_deSSA->isPHIIsolated(PN))
+                        if (IGC_IS_FLAG_DISABLED(DisablePHIDstCopy) && m_deSSA->isPHIIsolated(PN))
                             emitList.push_back(std::pair<CVariable*, CVariable*>(src, dst));
                         else
                             phiSrcDstList.push_back(std::pair<CVariable*, CVariable*>(src, dst));
@@ -1019,7 +1022,16 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
         }
     }
 
-    // find a good order for src-side phi-moves
+    // Find a good order for src-side phi-moves.
+    //
+    // PHI copies are parallel copy. Here, need to serialize those copies
+    // in a way that the dst will not be overwritten by a previous copy.
+    //     For example,
+    //        (phi_1, phi_2) = (a, phi_1)
+    //     ==>
+    //        phi_2 = phi_1
+    //        phi_1 = a
+    // If there is a cycle, have to insert a temp copy to break the cycle (see below)
     while (!phiSrcDstList.empty())
     {
         // search should not get into a deadlock, i.e should be able to find one to emit every iteration,
@@ -1037,9 +1049,37 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                 break;
             }
         }
-        assert(It != Et);
-        emitList.push_back(std::pair<CVariable*, CVariable*>(It->first, It->second));
-        phiSrcDstList.erase(It);
+        if (IGC_IS_FLAG_ENABLED(DisablePHIDstCopy) && It == Et)
+        {
+            // Found cyclic phi-move dependency. Pick the first one (anyone
+            // should be good) and create a temp to break the dependence cycle.
+            // For example,
+            //    (phi_1, phi_2) = (phi_2, phi_1)
+            //  ==>
+            //    t = phi_1
+            //    phi_1 = phi_2
+            //    phi_2 = t
+            CVariable* D1 = phiSrcDstList[0].second;
+            CVariable* T = m_currShader->GetNewVariable(D1);
+            dstVTyMap[T] = dstVTyMap[D1];
+            emitList.push_back(std::pair<CVariable*, CVariable*>(D1, T));
+
+            // Replace with T all src that is equal to D1
+            for (int i=0, sz = (int)phiSrcDstList.size(); i < sz; ++i)
+            {
+                std::pair<CVariable*, CVariable*>& SrcDstPair = phiSrcDstList[i];
+                if (SrcDstPair.first == D1) {
+                    CVariable* dst = SrcDstPair.second;
+                    phiSrcDstList[i] = std::pair<CVariable*, CVariable*>(T, dst);
+                }
+            }
+        }
+        else
+        {
+            assert(It != Et);
+            emitList.push_back(std::pair<CVariable*, CVariable*>(It->first, It->second));
+            phiSrcDstList.erase(It);
+        }
     }
     // emit the src-side phi-moves
     for (unsigned i = 0, e = int_cast<unsigned>(emitList.size()); i != e; ++i)
