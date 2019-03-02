@@ -40,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/ADT/SmallSet.h>
+#include <llvm/ADT/DenseSet.h>
 #include "common/LLVMWarningsPop.hpp"
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
@@ -323,6 +324,8 @@ inline float GetThreadOccupancyPerSubslice(SIMDMode simdMode, unsigned threadGro
 // Duplicate of the LLVM function in llvm/Transforms/Utils/ModuleUtils.h
 // Global can now be any pointer type that uses addrspace
 void appendToUsed(llvm::Module &M, llvm::ArrayRef<llvm::GlobalValue *> Values);
+
+bool safeScheduleUp(llvm::BasicBlock *BB, llvm::Value *V, llvm::Instruction *&InsertPos, llvm::DenseSet<llvm::Instruction *> Scheduled);
 
 inline unsigned GetHwThreadsPerWG(const IGC::CPlatform& platform)
 {

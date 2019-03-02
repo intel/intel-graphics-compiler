@@ -2339,7 +2339,8 @@ class EarlyOutPatterns : public FunctionPass
 public:
     static char ID;
 
-    EarlyOutPatterns() : FunctionPass(ID)
+    EarlyOutPatterns() : FunctionPass(ID),
+        m_ctx(nullptr)
     {
     }
     virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const
@@ -2348,15 +2349,16 @@ public:
     }
 
     virtual bool runOnFunction(Function &F);
+    virtual bool processBlock(BasicBlock* BB);
 
     virtual llvm::StringRef getPassName() const
     {
         return "EarlyOutPatterns";
     }
 private:
-    static bool processBlock(BasicBlock* BB);
     static bool canOptimizeSampleInst(SmallVector<Instruction*, 4> &Channels, GenIntrinsicInst *GII);
     static bool canOptimizeDotProduct(SmallVector<Instruction*, 4> &Values, Instruction *I);
+    static bool canOptimizeNdotL(SmallVector<Instruction*, 4> &Values, FCmpInst *FC);
     static bool DotProductMatch(const Instruction *I);
     static bool DotProductSourceMatch(const Instruction *I);
     static BasicBlock* tryFoldAndSplit(
@@ -2389,6 +2391,7 @@ private:
         Instruction *Root,
         ArrayRef<Instruction*> Values,
         const DenseSet<const Value*> &FoldedVals);
+    CodeGenContext *m_ctx;
 };
 
 char EarlyOutPatterns::ID = 0;
@@ -2400,9 +2403,9 @@ FunctionPass* IGC::CreateEarlyOutPatternsPass()
 
 bool EarlyOutPatterns::runOnFunction(Function &F)
 {
-    auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+    m_ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
     if (IGC_IS_FLAG_ENABLED(DisableEarlyOutPatterns) ||
-        pCtx->m_DriverInfo.WaNOSNotResolved())
+        m_ctx->m_DriverInfo.WaNOSNotResolved())
     {
         return false;
     }
@@ -2500,6 +2503,13 @@ bool EarlyOutPatterns::FoldsToZero(const Instruction* inst, const Value* use, co
             return true;
         default:
             return false;
+        }
+    }
+    else if (auto* inst = dyn_cast<Instruction>(use))
+    {
+        if (inst->getOpcode() == Instruction::SExt)
+        {
+            return true;
         }
     }
 
@@ -2732,7 +2742,6 @@ bool EarlyOutPatterns::DotProductMatch(const Instruction *I)
     Value *Z2 = nullptr;
 
     // dp3
-
     return match(I,
         m_FAdd(
             m_FMul(m_Value(Z1), m_Value(Z2)),
@@ -2748,6 +2757,113 @@ bool EarlyOutPatterns::DotProductSourceMatch(const Instruction *I)
         return DotProductMatch(Src);
 
     return false;
+}
+
+
+bool EarlyOutPatterns::canOptimizeNdotL(SmallVector<Instruction*, 4> &Values, FCmpInst *FC)
+{
+    // this function checks the lighting pattern -
+    //     in short, the shader has a dot(N, L), multiply it with color, and max with 0.
+    // if so, we might benefit from checking the dot(N, L) > 0 before calculating the color
+
+    // LLVM example:
+    // %319 = from dp3 
+    // %res_s231 = fcmp fast ogt float %319, 0.000000e+00    -> function input parameter FC
+    // %selResi32_s232 = sext i1 %res_s231 to i32
+    // %res_s246 = and i32 % 339, %selResi32_s232
+    // % res_s247 = and i32 % 340, %selResi32_s232
+    // % res_s248 = and i32 % 341, %selResi32_s232
+    // % 342 = bitcast i32 %res_s246 to float
+    // % 343 = bitcast i32 %res_s247 to float
+    // % 344 = bitcast i32 %res_s248 to float
+    // % res_s249 = fmul fast float %res_s224, % 342
+    // % res_s250 = fmul fast float %res_s225, % 343
+    // % res_s251 = fmul fast float %res_s226, % 344
+    // % 345 = call fast float @llvm.maxnum.f32(float %res_s249, float 0.000000e+00)
+    // % 346 = call fast float @llvm.maxnum.f32(float %res_s250, float 0.000000e+00)
+    // % 347 = call fast float @llvm.maxnum.f32(float %res_s251, float 0.000000e+00)
+
+    // ========================================================================================
+
+    // check if FC is comparing with 0
+    // %res_s231 = fcmp fast ogt float %319, 0.000000e+00, !dbg !278
+    ConstantFP* src1 = dyn_cast<ConstantFP>(FC->getOperand(1));
+    if (FC->getPredicate() != FCmpInst::FCMP_OGT || !FC->hasOneUse() || !src1 || !src1->isZero())
+    {
+        return false;
+    }
+
+    // check if FC is from a dp3
+    Instruction *src0 = dyn_cast<Instruction>(FC->getOperand(0));
+    if(!src0 || !DotProductMatch(src0))
+    {
+        return false;
+    }
+
+    // check if FC is followed by and+mul+max
+
+    // sext is needed between "fcmp" and "and".
+    // also the result should have 3 uses - x,y,z component of the light ray.
+    Instruction *sextInst = dyn_cast<Instruction>(*FC->user_begin());
+    if (!sextInst || sextInst->getOpcode() != Instruction::SExt || !sextInst->hasNUses(3))
+    {
+        return false;
+    }
+
+    for (auto iter = sextInst->user_begin(); iter != sextInst->user_end(); iter++)
+    {
+        //  %res_s246 = and i32 %339, %selResi32_s232
+        BinaryOperator* andInst = dyn_cast<BinaryOperator>(*iter);
+        if (!andInst || andInst->getOpcode() != BinaryOperator::And || !andInst->hasOneUse())
+        {
+            return false;
+        }
+
+        // % 342 = bitcast i32 %res_s246 to float
+        BitCastInst *bitCastInst = dyn_cast<BitCastInst>(*andInst->user_begin());
+        if (!bitCastInst || !bitCastInst->hasOneUse())
+        {
+            return false;
+        }
+
+        Instruction* tempInst = dyn_cast<Instruction>(*bitCastInst->user_begin());
+        while (tempInst && tempInst->hasOneUse())
+        {
+            // % 345 = call fast float @llvm.maxnum.f32(float %res_s249, float 0.000000e+00)
+            CallInst* CI = dyn_cast<CallInst>(tempInst);
+            if (CI && GetOpCode(CI) == llvm_max)
+            {
+                ConstantFP* maxSrc1 = dyn_cast<ConstantFP>(CI->getOperand(1));
+                if (maxSrc1 && maxSrc1->isZero())
+                {
+                    // found max with 0. do the optimization
+                    break;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else if (tempInst->getOpcode() == BinaryOperator::FMul)
+            {
+                // if it is a fmul, keep going down to see if we can find a max
+                tempInst = dyn_cast<Instruction>(*tempInst->user_begin());
+                continue;
+            }
+
+            // not max, not mul, skip the optimization
+            return false;
+        }
+    }
+
+    // find all instructions contribute to FC and safely move them up to skip as many instructions as possible after early out
+    DenseSet<llvm::Instruction *> Scheduled;
+    Scheduled.clear();
+    BasicBlock *BB = FC->getParent();
+    Instruction *InsertPos = &*BB->getFirstInsertionPt();
+    safeScheduleUp(BB, cast<Value>(FC), InsertPos, Scheduled);
+
+    return true;
 }
 
 bool EarlyOutPatterns::canOptimizeSampleInst(SmallVector<Instruction*, 4> &Channels, GenIntrinsicInst *GII)
@@ -2817,15 +2933,27 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
 {
     bool Changed = false;
     bool BBSplit = true;
+    bool SamplePatternEnable = 0;
+    bool DPMaxPatternEnable = 0;
+    bool DPFSatPatternEnable = 0;
+    bool NdotLPatternEnable = 0;
 
     // Each pattern below is given a bit to toggle on/off
     // to isolate the performance for each individual pattern.
-    const bool SamplePatternEnable =
-        (IGC_GET_FLAG_VALUE(EarlyOutPatternSelect) & 0x1) != 0;
-    const bool DPMaxPatternEnable =
-        (IGC_GET_FLAG_VALUE(EarlyOutPatternSelect) & 0x2) != 0;
-    const bool DPFSatPatternEnable =
-        (IGC_GET_FLAG_VALUE(EarlyOutPatternSelect) & 0x4) != 0;
+    if (m_ctx->type == ShaderType::COMPUTE_SHADER)
+    {
+        SamplePatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & 0x1) != 0;
+        DPMaxPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & 0x2) != 0;
+        DPFSatPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & 0x4) != 0;
+        NdotLPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectCS) & 0x8) != 0;
+    }
+    else if (m_ctx->type == ShaderType::PIXEL_SHADER)
+    {
+        SamplePatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x1) != 0;
+        DPMaxPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x2) != 0;
+        DPFSatPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x4) != 0;
+        NdotLPatternEnable = (IGC_GET_FLAG_VALUE(EarlyOutPatternSelectPS) & 0x8) != 0;
+    }
 
     while (BBSplit)
     {
@@ -2870,6 +2998,12 @@ bool EarlyOutPatterns::processBlock(BasicBlock* BB)
                 default:
                     break;
                 }
+            }
+            
+            else if (auto *FC = dyn_cast<FCmpInst>(&II))
+            {
+                OptCandidate = NdotLPatternEnable &&
+                    canOptimizeNdotL(Values, FC) && canOptimizeDotProduct(Values, &II);
             }
 
             if (OptCandidate)

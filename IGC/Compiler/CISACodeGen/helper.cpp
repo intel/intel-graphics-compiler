@@ -1441,4 +1441,47 @@ void appendToUsed(llvm::Module &M, ArrayRef<GlobalValue *> Values)
     GV->setSection("llvm.metadata");
 }
 
+bool safeScheduleUp(llvm::BasicBlock *BB, llvm::Value *V, llvm::Instruction *&InsertPos, llvm::DenseSet<llvm::Instruction *> Scheduled)
+{
+    llvm::Instruction *I = llvm::dyn_cast<llvm::Instruction>(V);
+    if (!I)
+        return false;
+
+    // Skip value defined in other BBs.
+    if (I->getParent() != BB)
+        return false;
+
+    // Skip phi-node as they are eventually defined in other BBs.
+    if (llvm::isa<llvm::PHINode>(I))
+        return false;
+
+    // Don't re-schedule instruction again.
+    if (Scheduled.count(I)) {
+        if (InsertPos && !isInstPrecede(I, InsertPos))
+            InsertPos = I;
+        return false;
+    }
+
+    bool Changed = false;
+
+    // Try to schedule all its operands first.
+    for (auto OI = I->op_begin(), OE = I->op_end(); OI != OE; ++OI)
+        Changed |= safeScheduleUp(BB, OI->get(), InsertPos, Scheduled);
+
+    // Mark this instruction `visited`.
+    Scheduled.insert(I);
+
+    // Skip if the instruction is already defined before insertion position.
+    if (InsertPos && isInstPrecede(I, InsertPos))
+        return Changed;
+
+    // Schedule itself.
+    if (InsertPos) {
+        I->removeFromParent();
+        I->insertAfter(InsertPos);
+    }
+
+    InsertPos = I;
+    return true;
+}
 } // namespace IGC

@@ -1340,6 +1340,10 @@ void OptimizeIR(CodeGenContext* pContext)
             mpm.add(llvm::createDeadCodeEliminationPass());
             mpm.add(llvm::createEarlyCSEPass());
 
+            if (pContext->type == ShaderType::COMPUTE_SHADER)
+            {
+                mpm.add(CreateEarlyOutPatternsPass());
+            }
             if(pContext->type == ShaderType::PIXEL_SHADER)
             {
                 // insert early output in case sampleC returns 0
@@ -1360,9 +1364,12 @@ void OptimizeIR(CodeGenContext* pContext)
                 mpm.add(createIGCIndirectICBPropagaionPass());
             }
 
-            if(pContext->type == ShaderType::PIXEL_SHADER)
+            if(pContext->type == ShaderType::PIXEL_SHADER || pContext->type == ShaderType::COMPUTE_SHADER)
             {
                 mpm.add(CreateEarlyOutPatternsPass());
+            }
+            if(pContext->type == ShaderType::PIXEL_SHADER)
+            {
                 mpm.add(createBlendToDiscardPass());
             }
 
