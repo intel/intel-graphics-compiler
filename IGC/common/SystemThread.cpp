@@ -282,8 +282,8 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             {
                 SIPIndex = GEN11_HP_SIP_CSR;
             }
-            if ((platform.getPlatformInfo().eProductFamily == IGFX_LAKEFIELD) ||
-                (platform.getPlatformInfo().eProductFamily == IGFX_JASPERLAKE))
+            if ((platform.getPlatformInfo().eProductFamily == IGFX_LAKEFIELD)
+            )
             {
                 SIPIndex = GEN11_LKF_SIP_CSR;
             }
