@@ -3280,6 +3280,15 @@ if(TARGET LLVMCore)
     # Link with static libraries if we are builing the sources: 
     set(IGC_BUILD__LLVM_LIBS_TO_LINK ${IGC_BUILD__LLVM_STATIC_LIBS_TO_LINK})
 else()
+
+   #set that name of the main output file as a target name
+    if(NOT DEFINED COMMON_CLANG_LIBRARY_NAME 
+      AND UNIX
+    )
+        set(COMMON_CLANG_LIBRARY_NAME opencl_clang)
+    endif()
+
+    
     message(STATUS "[IGC] LLVM targets are not defined. Searching for LLVM.")
     if(NOT IGC_PREFERRED_LLVM_VERSION)
         set(IGC_PREFERRED_LLVM_VERSION "7.0.0")

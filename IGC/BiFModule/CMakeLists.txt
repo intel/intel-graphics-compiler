@@ -131,11 +131,13 @@ endif()
 
   get_property(_clang7zLocation TARGET CLANG_7Z PROPERTY IMPORTED_LOCATION_RELEASE)  
   
-  if(NOT DEFINED COMMON_CLANG_LIBRARY_NAME)
-    if(EXISTS ${_clang7zLocation})
+  if(NOT DEFINED COMMON_CLANG_LIBRARY_NAME AND
+    EXISTS ${_clang7zLocation}
+  )
+    if(WIN32)
       set(COMMON_CLANG_LIBRARY_NAME common_clang${_cpuSuffix})
     else()
-      set(COMMON_CLANG_LIBRARY_NAME common_clang)
+      set(COMMON_CLANG_LIBRARY_NAME opencl_clang)
     endif()
   endif()
 
