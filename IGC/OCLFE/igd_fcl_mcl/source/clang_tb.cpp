@@ -45,6 +45,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <iomanip>
 
+#include "3d/common/iStdLib/File.h"
+
 #if defined( _DEBUG ) || defined( _INTERNAL )
 #define IGC_DEBUG_VARIABLES
 #endif
@@ -296,7 +298,6 @@ namespace FCL
 		}
         else if (FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir))
         {
-            // no mkdir if custom dir defined
             std::string dumpPath = "c:\\Intel\\IGC\\";        // default if something goes wrong
             char custom_dir[256];
             FCLReadIGCRegistry("DumpToCustomDir", custom_dir, sizeof(custom_dir));
@@ -305,13 +306,11 @@ namespace FCL
                 dumpPath = custom_dir;
             }
 
-            if (dumpPath.back() != '\\')
-            {
-                dumpPath += '\\';
-            }
+            char pathBuf[256];
+            iSTD::CreateAppOutputDir(pathBuf, 256, dumpPath.c_str(), false, false, false);
 
-            IGCBaseFolder = dumpPath;
-    }
+            IGCBaseFolder = pathBuf;
+        }
 #elif defined __linux__
 		IGCBaseFolder = "/tmp/IntelIGC/";
 #endif
@@ -366,8 +365,9 @@ namespace FCL
 		}
         else if (FCL_IGC_IS_FLAG_ENABLED(DumpToCustomDir))
         {
-            // Do not add procID, if custom dump directory defined:
-            g_shaderOutputFolder = GetBaseIGCOutputFolder();
+            char pathBuf[256];
+            iSTD::CreateAppOutputDir(pathBuf, 256, GetBaseIGCOutputFolder(), false, true, !FCL_IGC_IS_FLAG_ENABLED(ShaderDumpPidDisable));
+            g_shaderOutputFolder = pathBuf;
         }
 #elif defined __linux__
 		if (!FCL_IGC_IS_FLAG_ENABLED(DumpToCurrentDir) && g_shaderOutputFolder == "")

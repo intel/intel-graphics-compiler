@@ -437,7 +437,6 @@ namespace IGC
             }
             else if (IGC_IS_FLAG_ENABLED(DumpToCustomDir))
             {
-                // no mkdir if custom dir defined
                 std::string dumpPath = "c:\\Intel\\IGC\\";        // default if something goes wrong
                 const char* custom_dir = IGC_GET_REGKEYSTRING(DumpToCustomDir);
                 if (custom_dir != nullptr && strlen(custom_dir) > 0)
@@ -445,12 +444,10 @@ namespace IGC
                     dumpPath = custom_dir;
                 }
 
-                if (dumpPath.back() != '\\')
-                {
-                    dumpPath += '\\';
-                }
+                char pathBuf[256];
+                iSTD::CreateAppOutputDir(pathBuf, 256, dumpPath.c_str(), false, false, false);
 
-                IGCBaseFolder = dumpPath;
+                IGCBaseFolder = pathBuf;
             }
 #elif defined ANDROID
 
@@ -528,8 +525,9 @@ namespace IGC
             }
             else if (IGC_IS_FLAG_ENABLED(DumpToCustomDir))
             {
-                // Do not add procID, if custom dump directory defined:
-                g_shaderOutputFolder = GetBaseIGCOutputFolder();
+                char pathBuf[256];
+                iSTD::CreateAppOutputDir(pathBuf, 256, GetBaseIGCOutputFolder(), false, true, !IGC_IS_FLAG_ENABLED(ShaderDumpPidDisable));
+                g_shaderOutputFolder = pathBuf;
             }
 #elif defined ANDROID
 
