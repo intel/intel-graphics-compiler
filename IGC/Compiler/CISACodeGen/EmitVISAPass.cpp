@@ -1080,6 +1080,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
         {
             // Found cyclic phi-move dependency. Pick the first one (anyone
             // should be good) and create a temp to break the dependence cycle.
+            // (Note that there is no self-cycle.)
             // For example,
             //    (phi_1, phi_2) = (phi_2, phi_1)
             //  ==>
@@ -1091,8 +1092,8 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
             dstVTyMap[T] = dstVTyMap[D1];
             emitList.push_back(std::pair<CVariable*, CVariable*>(D1, T));
 
-            // Replace with T all src that is equal to D1
-            for (int i=0, sz = (int)phiSrcDstList.size(); i < sz; ++i)
+            // Replace with T all src that is equal to D1 (start from i=1)
+            for (int i=1, sz = (int)phiSrcDstList.size(); i < sz; ++i)
             {
                 std::pair<CVariable*, CVariable*>& SrcDstPair = phiSrcDstList[i];
                 if (SrcDstPair.first == D1) {
@@ -1100,13 +1101,15 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                     phiSrcDstList[i] = std::pair<CVariable*, CVariable*>(T, dst);
                 }
             }
+
+            // After the temp copy of the 1st entry's dst is inserted,
+            // the entry becomes the one to be added into emitList.
+            It = phiSrcDstList.begin();
         }
-        else
-        {
-            assert(It != Et);
-            emitList.push_back(std::pair<CVariable*, CVariable*>(It->first, It->second));
-            phiSrcDstList.erase(It);
-        }
+        assert(It != Et);
+        emitList.push_back(std::pair<CVariable*, CVariable*>(It->first, It->second));
+        phiSrcDstList.erase(It);
+
     }
     // emit the src-side phi-moves
     for (unsigned i = 0, e = int_cast<unsigned>(emitList.size()); i != e; ++i)
