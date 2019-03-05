@@ -593,6 +593,31 @@ namespace IGC
             return &DISPToFunction;
         }
 
+        bool isStmtExists(unsigned int line, llvm::DILocation* inlinedAt, bool add)
+        {
+            auto it = isStmtSet.find(line);
+            if (it == isStmtSet.end())
+            {
+                if (add)
+                {
+                    std::vector<llvm::DILocation*> v = { inlinedAt };
+                    isStmtSet.insert(std::make_pair(line, v));
+                }
+                return false;
+            }
+
+            for (auto& iat : (*it).second)
+            {
+                if (iat == inlinedAt)
+                    return true;
+            }
+
+            if (add)
+                (*it).second.push_back(inlinedAt);
+
+            return false;
+        }
+
         unsigned int lowPc = 0, highPc = 0;
 
         DbgDecoder* getDecodedDbg() { return decodedDbg; }

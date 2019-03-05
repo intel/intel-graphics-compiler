@@ -42,6 +42,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "llvm/IR/Module.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/MC/MCDwarf.h"
+#if LLVM_VERSION_MAJOR == 4
+#include "llvm/Support/ELF.h"
+#elif LLVM_VERSION_MAJOR >= 7
+#include "llvm/BinaryFormat/ELF.h"
+#endif
 #include "common/LLVMWarningsPop.hpp"
 
 #include "Compiler/DebugInfo/DebugInfoUtils.hpp"
@@ -173,7 +179,7 @@ void DebugEmitter::Initialize(CShader* pShader, bool debugEnabled)
     }
 
     std::string dataLayout = m_pVISAModule->GetDataLayout();
-    m_pStreamEmitter = new StreamEmitter(m_outStream, dataLayout, m_pVISAModule->GetTargetTriple());
+    m_pStreamEmitter = new StreamEmitter(m_outStream, dataLayout, m_pVISAModule->GetTargetTriple(), m_pVISAModule->isDirectElfInput);
     m_pDwarfDebug = new DwarfDebug(m_pStreamEmitter, m_pVISAModule);
 }
 
@@ -238,7 +244,7 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
         }
 
         void* genxISA = m_pVISAModule->m_pShader->ProgramOutput()->m_programBin;
-        unsigned int prevSrcLine = 0;
+        DebugLoc prevSrcLoc = DebugLoc();
         unsigned int pc = prevLastGenOff;
         for (auto item : GenISAToVISAIndex)
         {
@@ -281,12 +287,17 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
                     auto scope = loc->getScope();
 
                     auto src = m_pDwarfDebug->getOrCreateSourceID(scope->getFilename(), scope->getDirectory(), m_pStreamEmitter->GetDwarfCompileUnitID());
-                    if (loc.getLine() != prevSrcLine)
+                    if (loc != prevSrcLoc)
                     {
-                        m_pStreamEmitter->EmitDwarfLocDirective(src, loc.getLine(), loc.getCol(), 1, 0, 0, scope->getFilename());
+                        unsigned int Flags = 0;
+                        if (!m_pDwarfDebug->isStmtExists(loc.getLine(), loc.getInlinedAt(), true))
+                        {
+                            Flags |= DWARF2_FLAG_IS_STMT;
+                        }
+                        m_pStreamEmitter->EmitDwarfLocDirective(src, loc.getLine(), loc.getCol(), Flags, 0, 0, scope->getFilename());
                     }
 
-                    prevSrcLine = loc.getLine();
+                    prevSrcLoc = loc;
                 }
             }
         }
@@ -342,11 +353,81 @@ void DebugEmitter::Finalize(void *&pBuffer, unsigned int &size, bool finalize)
         m_pStreamEmitter->Finalize();
 
         size = m_outStream.str().size();
-        pBuffer = (char*)malloc(size * sizeof(char));
+
+        // Add program header table to satisfy latest gdb
+        unsigned int is64Bit = (GetVISAModule()->GetModule()->getDataLayout().getPointerSize() == 8);
+        unsigned int phtSize = sizeof(llvm::ELF::Elf32_Phdr);
+        if (is64Bit)
+            phtSize = sizeof(llvm::ELF::Elf64_Phdr);
+        
+        pBuffer = (char*)malloc((size + phtSize) * sizeof(char));
         memcpy_s(pBuffer, size * sizeof(char), m_outStream.str().data(), size);
+
+        writeProgramHeaderTable(is64Bit, pBuffer, size);
+        if (m_pVISAModule->isDirectElfInput)
+            setElfType(is64Bit, pBuffer);
+
+        size += phtSize;
 
         // Reset all members and prepare for next beginModule() call.
         Reset();
+    }
+}
+
+void DebugEmitter::setElfType(bool is64Bit, void* pBuffer)
+{
+    // Set 1-step elf's e_type to ET_EXEC
+    if (!pBuffer)
+        return;
+
+    if (is64Bit)
+    {
+        void* etypeOff = ((char*)pBuffer) + (offsetof(llvm::ELF::Elf64_Ehdr, e_type));
+        *((llvm::ELF::Elf64_Half*)etypeOff) = llvm::ELF::ET_EXEC;
+    }
+    else
+    {
+        void* etypeOff = ((char*)pBuffer) + (offsetof(llvm::ELF::Elf32_Ehdr, e_type));
+        *((llvm::ELF::Elf32_Half*)etypeOff) = llvm::ELF::ET_EXEC;
+    }
+}
+
+void DebugEmitter::writeProgramHeaderTable(bool is64Bit, void* pBuffer, unsigned int size)
+{
+    // Write program header table at end of elf
+    if (is64Bit)
+    {
+        llvm::ELF::Elf64_Phdr hdr;
+        hdr.p_type = llvm::ELF::PT_LOAD;
+        hdr.p_flags = 0;
+        hdr.p_offset = 0;
+        hdr.p_vaddr = 0;
+        hdr.p_paddr = 0;
+        hdr.p_filesz = size;
+        hdr.p_memsz = size;
+        hdr.p_align = 4;
+        void* phOffAddr = ((char*)pBuffer) + (offsetof(llvm::ELF::Elf64_Ehdr, e_phoff));
+        *(llvm::ELF::Elf64_Off*)(phOffAddr) = size;
+        ((char*)pBuffer)[offsetof(llvm::ELF::Elf64_Ehdr, e_phentsize)] = sizeof(llvm::ELF::Elf64_Phdr);
+        ((char*)pBuffer)[offsetof(llvm::ELF::Elf64_Ehdr, e_phnum)] = 1;
+        memcpy_s((char*)pBuffer + size, sizeof(llvm::ELF::Elf64_Phdr), &hdr, sizeof(hdr));
+    }
+    else
+    {
+        llvm::ELF::Elf32_Phdr hdr;
+        hdr.p_type = llvm::ELF::PT_LOAD;
+        hdr.p_offset = 0;
+        hdr.p_vaddr = 0;
+        hdr.p_paddr = 0;
+        hdr.p_filesz = size;
+        hdr.p_memsz = size;
+        hdr.p_flags = 0;
+        hdr.p_align = 4;
+        void* phOffAddr = ((char*)pBuffer) + (offsetof(llvm::ELF::Elf32_Ehdr, e_phoff));
+        *(llvm::ELF::Elf32_Off*)(phOffAddr) = size;
+        ((char*)pBuffer)[offsetof(llvm::ELF::Elf32_Ehdr, e_phentsize)] = sizeof(llvm::ELF::Elf32_Phdr);
+        ((char*)pBuffer)[offsetof(llvm::ELF::Elf32_Ehdr, e_phnum)] = 1;
+        memcpy_s((char*)pBuffer + size, sizeof(llvm::ELF::Elf32_Phdr), &hdr, sizeof(hdr));
     }
 }
 

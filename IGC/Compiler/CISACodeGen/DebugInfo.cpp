@@ -135,6 +135,13 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
             EmitDebugInfo(finalize);
         }
 
+        // set VISA dbg info to nullptr to indicate 1-step debug is enabled
+        if (isOneStepElf)
+        {
+            currShader->ProgramOutput()->m_debugDataGenISASize = 0;
+            currShader->ProgramOutput()->m_debugDataGenISA = nullptr;
+        }
+
         if (finalize)
         {
             IDebugEmitter::Release(m_pDebugEmitter);
@@ -142,16 +149,6 @@ bool DebugInfoPass::runOnModule(llvm::Module& M)
             // destroy VISA builder
             auto encoder = &(m_currShader->GetEncoder());
             encoder->DestroyVISABuilder();
-
-            // set VISA dbg info to nullptr to indicate 1-step debug is enabled
-            if (isOneStepElf)
-            {
-                for (auto& sp : units)
-                {
-                    sp->ProgramOutput()->m_debugDataGenISASize = 0;
-                    sp->ProgramOutput()->m_debugDataGenISA = nullptr;
-                }
-            }
         }
     }
 

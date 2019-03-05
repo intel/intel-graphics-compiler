@@ -65,7 +65,8 @@ public:
     /// @param raw_ostream instance of raw_ostream to emit all bitcode into.
     /// @param dataLayout data layout string.
     /// @param targetTriple target triple string.
-    StreamEmitter(llvm::raw_pwrite_stream&, const std::string& dataLayout, const std::string& targetTriple);
+    /// @param isDirectElf set to true when using 1-step elf
+    StreamEmitter(llvm::raw_pwrite_stream&, const std::string& dataLayout, const std::string& targetTriple, bool isDirectElf);
 
     /// @brief Destructor.
     ~StreamEmitter();

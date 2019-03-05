@@ -487,7 +487,7 @@ class VISAMCCodeEmitter : public MCCodeEmitter
 
 } // namespace IGC
 
-StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& dataLayout, const std::string& targetTriple) :
+StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& dataLayout, const std::string& targetTriple, bool isDirectElf) :
     m_targetTriple(targetTriple), m_setCounter(0)
 {
 #if LLVM_VERSION_MAJOR == 4
@@ -534,8 +534,15 @@ StreamEmitter::StreamEmitter(raw_pwrite_stream& outStream, const std::string& da
 
 	bool is64Bit = GetPointerSize() == 8;
 	uint8_t osABI = MCELFObjectTargetWriter::getOSABI(triple.getOS());
-	uint16_t eMachine = is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
-	bool hasRelocationAddend = eMachine != ELF::EM_386;
+    // Earlier eMachine was set to ELF::EM_X86_64 or ELF::EM_386
+    // This creates a problem for gdb so it is now set to 182
+    // which is an encoding reserved for Intel. It is not part of
+    // the enum so its value in inlined.
+#define EM_INTEL_GEN 182
+    uint16_t eMachine =
+        isDirectElf ? EM_INTEL_GEN :
+        is64Bit ? ELF::EM_X86_64 : ELF::EM_386;
+	bool hasRelocationAddend = is64Bit;
 	std::unique_ptr<MCAsmBackend> pAsmBackend
 		= llvm::make_unique<VISAAsmBackend>(GetTargetTriple(), is64Bit);
 	std::unique_ptr<MCELFObjectTargetWriter> pTargetObjectWriter
