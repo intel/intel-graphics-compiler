@@ -2852,14 +2852,8 @@ bool CodeGenPatternMatch::MatchBoolOp(llvm::BinaryOperator& I)
         {
             if(CmpInst* cmp = llvm::dyn_cast<CmpInst>(I.getOperand(i)))
             {
-                if(isa<ExtractElementInst>(cmp->getOperand(0)) || isa<ExtractElementInst>(cmp->getOperand(1)))
-                {
-                    // don't extend liveness of values coming from extract Element as they have large liveranges
-                    continue;
-                }
                 // only beneficial if the other operand only have one use
-                Instruction* otherSource = dyn_cast<Instruction>(I.getOperand(1 - i));
-                if(otherSource && otherSource->hasOneUse() && otherSource->getParent() == I.getParent())
+                if(I.getOperand(1 - i)->hasOneUse())
                 {
                     BoolOpPattern *pattern = new (m_allocator) BoolOpPattern();
                     pattern->boolOp = &I;
