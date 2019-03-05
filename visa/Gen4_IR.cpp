@@ -7673,7 +7673,7 @@ bool G4_INST::canSrcBeAcc(int srcId) const
     {
         return false;
     }
-    else if (getDst()->getType() == builder.getMixModeType() && src->getType() == Type_F &&
+    else if (getDst()->getType() == Type_HF && src->getType() == Type_F &&
         dstEltSize == 2)
     {
         // no acc for mix mode inst with packed HF dst
