@@ -575,6 +575,7 @@ DeSSA::SplitInterferencesForBasicBlock(
 
       // check live-out interference
       Value *RootV = getRegRoot(PHI);
+#if 0
       for (unsigned i = 0; !RootV && i < PHI->getNumOperands(); i++) {
         Value* SrcVal = PHI->getOperand(i);
         if (!isa<Constant>(SrcVal)) {
@@ -584,6 +585,7 @@ DeSSA::SplitInterferencesForBasicBlock(
           }
         }
       }
+#endif
       if (!RootV)
         continue;
 
