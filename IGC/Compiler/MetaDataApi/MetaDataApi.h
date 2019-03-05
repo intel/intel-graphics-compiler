@@ -39,9 +39,6 @@ typedef MetaObjectHandle<ArgInfoMetaData> ArgInfoMetaDataHandle;
             
 class SubGroupSizeMetaData;
 typedef MetaObjectHandle<SubGroupSizeMetaData> SubGroupSizeMetaDataHandle; 
-
-class WorkgroupWalkOrderMetaData;
-typedef MetaObjectHandle<WorkgroupWalkOrderMetaData> WorkgroupWalkOrderMetaDataHandle;
             
 class VectorTypeHintMetaData;
 typedef MetaObjectHandle<VectorTypeHintMetaData> VectorTypeHintMetaDataHandle; 
