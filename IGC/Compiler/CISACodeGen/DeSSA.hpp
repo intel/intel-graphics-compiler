@@ -144,7 +144,7 @@ class DeSSA : public llvm::FunctionPass {
     struct Node {
       enum Flags {
         kRegisterIsolatedFlag = 1,
-        kPHIIsolatedFlag = 2
+        kPHIIsolatedFlag = 1
       };
       Node(llvm::Value *v, e_alignment align)
           : next(this), prev(this), value(v)
