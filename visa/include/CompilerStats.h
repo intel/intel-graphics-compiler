@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     #define COMPILER_STATS_ENABLE 1
 #endif
 
+#include <cassert>
 #include <unordered_map>
 #include <map>
 #include <sstream>
