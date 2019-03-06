@@ -1106,10 +1106,12 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
             // the entry becomes the one to be added into emitList.
             It = phiSrcDstList.begin();
         }
-        assert(It != Et);
-        emitList.push_back(std::pair<CVariable*, CVariable*>(It->first, It->second));
-        phiSrcDstList.erase(It);
-
+        else
+        {
+            assert(It != Et);
+            emitList.push_back(std::pair<CVariable*, CVariable*>(It->first, It->second));
+            phiSrcDstList.erase(It);
+        }
     }
     // emit the src-side phi-moves
     for (unsigned i = 0, e = int_cast<unsigned>(emitList.size()); i != e; ++i)
