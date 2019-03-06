@@ -790,23 +790,36 @@ typedef struct
     const char* str;
 } CISA_PreDefined_Var_Info;
 
-typedef enum
-{
-    SFID_NULL       =  0,
-    SFID_SAMPLER    =  2,
-    SFID_GATEWAY    =  3,
-    SFID_DP_DC2     =  4,
-    SFID_DP_WRITE   =  5, //DATAPORT WRITE
-    SFID_URB        =  6, //URB
-    SFID_SPAWNER    =  7, //THREAD SPAWNER
-    SFID_VME        =  8, //VIDEO MOTION ESTIMATION
-    SFID_DP_CC      =  9, //CONSTANT CACHE DATAPORT
-    SFID_DP_DC      = 10, //DATA CACHE DATAPORT
-    SFID_DP_PI      = 11, //PIXEL INTERPOLATOR
-    SFID_DP_DC1     = 12, //DATA CACHE DATAPORT1
-    SFID_CRE        = 13, //CHECK & REFINEMENT ENGINE
-    SFID_NUM        = 14
-} CISA_SHARED_FUNCTION_ID;
+namespace vISA
+{ 
+    enum class SFID 
+    {
+        NULL_SFID       =  0,
+        SAMPLER    =  2,
+        GATEWAY    =  3,
+        DP_DC2     =  4,
+        DP_WRITE   =  5, //DATAPORT WRITE
+        URB        =  6, //URB
+        SPAWNER    =  7, //THREAD SPAWNER
+        VME        =  8, //VIDEO MOTION ESTIMATION
+        DP_CC      =  9, //CONSTANT CACHE DATAPORT
+        DP_DC      = 10, //DATA CACHE DATAPORT
+        DP_PI      = 11, //PIXEL INTERPOLATOR
+        DP_DC1     = 12, //DATA CACHE DATAPORT1
+        CRE        = 13, //CHECK & REFINEMENT ENGINE
+        NUM        = 14
+    };
+
+    inline int SFIDtoInt(SFID id)
+    {
+        return static_cast<int>(id);
+    };
+
+    inline SFID intToSFID(int id)
+    {
+        return static_cast<SFID>(id);
+    };
+};
 
 typedef enum
 {

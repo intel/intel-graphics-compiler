@@ -127,7 +127,7 @@ namespace vISA
 
                 if (samplerHeaderMov &&
                     inst->isSplitSend() &&
-                    inst->getMsgDesc()->getFuncId() == CISA_SHARED_FUNCTION_ID::SFID_SAMPLER &&
+                    inst->getMsgDesc()->getFuncId() == SFID::SAMPLER &&
                     inst->getMsgDesc()->isHeaderPresent())
                 {
                     MUST_BE_TRUE(samplerHeaderMov->getExecSize() == 1, "Unexpected sampler header");
@@ -170,7 +170,7 @@ namespace vISA
             auto inst = (*instIt);
 
             if (inst->isSplitSend() &&
-                inst->getMsgDesc()->getFuncId() == CISA_SHARED_FUNCTION_ID::SFID_SAMPLER)
+                inst->getMsgDesc()->getFuncId() == SFID::SAMPLER)
             {
                 auto samplerHeaderInstIt = samplerHeaderMap.find(inst);
 
@@ -325,7 +325,7 @@ namespace vISA
                 auto inst = (*instIt);
 
                 if (inst->isSplitSend() &&
-                    inst->getMsgDesc()->getFuncId() == CISA_SHARED_FUNCTION_ID::SFID_SAMPLER &&
+                    inst->getMsgDesc()->getFuncId() == SFID::SAMPLER &&
                     inst->getMsgDesc()->isHeaderPresent())
                 {
                     toErase = bb->end();
@@ -645,7 +645,7 @@ namespace vISA
 
                 // Run separate checks for sampler
                 if (uniqueDefInst->isSplitSend() &&
-                    uniqueDefInst->getMsgDesc()->getFuncId() == CISA_SHARED_FUNCTION_ID::SFID_SAMPLER &&
+                    uniqueDefInst->getMsgDesc()->getFuncId() == SFID::SAMPLER &&
                     uniqueDefInst->getSrc(2)->isImm() &&
                     uniqueDefInst->getSrc(3)->isImm())
                 {
@@ -792,7 +792,7 @@ namespace vISA
 
         auto dstInst = uniqueDef->first;
         auto dst = dstInst->getDst();
-        bool isSampler = dstInst->isSplitSend() && dstInst->getMsgDesc()->getFuncId() == CISA_SHARED_FUNCTION_ID::SFID_SAMPLER;
+        bool isSampler = dstInst->isSplitSend() && dstInst->getMsgDesc()->getFuncId() == SFID::SAMPLER;
 
         for (unsigned int i = 0; i < G4_MAX_SRCS; i++)
         {
@@ -961,7 +961,7 @@ namespace vISA
             for (auto inst : *bb)
             {
                 if (inst->isSplitSend() &&
-                    inst->getMsgDesc()->getFuncId() == CISA_SHARED_FUNCTION_ID::SFID_SAMPLER)
+                    inst->getMsgDesc()->getFuncId() == SFID::SAMPLER)
                 {
                     numSampler++;
                 }

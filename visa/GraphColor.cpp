@@ -2634,12 +2634,12 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
         curEMBit = NOMASK_BYTE;
     }
 
-    CISA_SHARED_FUNCTION_ID funcID = msgDesc->getFuncId();
+    SFID funcID = msgDesc->getFuncId();
     unsigned subFuncID = msgDesc->getMessageType();
 
     switch (funcID)
     {
-    case SFID_DP_DC1:
+    case SFID::DP_DC1:
         switch (subFuncID)
         {
         case DC1_A64_SCATTERED_READ:   //a64 scattered read: svm_gather
@@ -2703,7 +2703,7 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
         default: return false;
         }
         break;
-    case SFID_DP_DC2:
+    case SFID::DP_DC2:
         switch (subFuncID)
         {
         case DC2_UNTYPED_SURFACE_READ:   //gather 4 scaled
@@ -2742,7 +2742,7 @@ bool Augmentation::updateDstMaskForScatter(G4_INST* inst, unsigned char* mask)
         default: return false;
         }
         break;
-    case SFID_DP_DC:
+    case SFID::DP_DC:
         switch (subFuncID)
         {
         case DC_DWORD_SCATTERED_READ:   //dword scattered read: gather(dword), handled as block read write
@@ -6538,7 +6538,7 @@ void GraphColor::saveRegs(
         auto sendSrc2 = builder.createSrcRegRegion(Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0,
             builder.rgnpool.createRegion(8, 8, 1), Type_UD);
         G4_Imm* descImm = gra.createMsgDesc(owordSize, true, true);
-        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID_DP_DC, false, messageLength);
+        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::DP_DC, false, messageLength);
         auto msgDesc = builder.createSendMsgDesc((uint32_t)descImm->getInt(), extDesc, false, true, 
             getScratchSurface());
         auto sendInst = builder.Create_SplitSend_Inst(nullptr, postDst, sendSrc1, sendSrc2, execSize, msgDesc, 

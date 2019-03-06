@@ -37,7 +37,7 @@ uint16_t LatencyTable::getLatencyLegacy(G4_INST* Inst) const
 {
     if (Inst->isSend()) {
         G4_SendMsgDescriptor* MsgDesc = Inst->getMsgDesc();
-        return LegacyFFLatency[MsgDesc->getFuncId()];
+        return LegacyFFLatency[SFIDtoInt(MsgDesc->getFuncId())];
     } else if (Inst->isMath()) {
         if (Inst->asMathInst()->getMathCtrl() == MATH_FDIV ||
             Inst->asMathInst()->getMathCtrl() == MATH_POW)

@@ -53,10 +53,10 @@ static DepType DoMemoryInterfereSend(G4_InstSend *send1, G4_InstSend *send2, ret
     if (target == VISA_3D || target == VISA_CS)
     {
         // for 3D and compute we can do more precise dependency checks due to API restrictions
-        CISA_SHARED_FUNCTION_ID funcId1 = send1->getMsgDesc()->getFuncId();
-        CISA_SHARED_FUNCTION_ID funcId2 = send2->getMsgDesc()->getFuncId();
+        SFID funcId1 = send1->getMsgDesc()->getFuncId();
+        SFID funcId2 = send2->getMsgDesc()->getFuncId();
 
-        if (funcId1 == SFID_SAMPLER || funcId2 == SFID_SAMPLER)
+        if (funcId1 == SFID::SAMPLER || funcId2 == SFID::SAMPLER)
         {
             // sampler acess will never have memory conflict
             return NODEP;

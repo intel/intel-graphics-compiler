@@ -1844,7 +1844,7 @@ G4_INST* IR_Builder::createFenceInstruction( uint8_t flushParam, bool commitEnab
     // commitEnable = true: msg length = 1, response length = 1, dst == src
     // commitEnable = false: msg length = 1, response length = 0, dst == null
     return Create_Send_Inst_For_CISA( nullptr, sendDstOpnd, sendSrcOpnd, 1, (commitEnable ? 1 : 0), 8,
-        desc, SFID_DP_DC, false, true, true, true, createImm(BTI, Type_UD), nullptr, InstOpt_WriteEnable, isSendc);
+        desc, SFID::DP_DC, false, true, true, true, createImm(BTI, Type_UD), nullptr, InstOpt_WriteEnable, isSendc);
 
 }
 
@@ -1879,7 +1879,7 @@ int IR_Builder::translateVISAWaitInst(G4_Operand* mask)
 
 void IR_Builder::generateBarrierSend()
 {
-    int exdesc = SFID_GATEWAY;
+    int exdesc = SFIDtoInt(SFID::GATEWAY);
     // 1 message length, 0 response length, no header, no ack
     int desc = (0x1 << 25) + 0x4;
 
@@ -1962,7 +1962,7 @@ int IR_Builder::translateVISASyncInst(ISA_Opcode opcode, unsigned int mask)
             G4_DstRegRegion* sendDstOpnd = Create_Dst_Opnd_From_Dcl( dstDcl, 1);
             G4_SrcRegRegion* sendMsgOpnd = Create_Src_Opnd_From_Dcl( dcl, getRegionStride1());
 
-            auto msgDesc = createSendMsgDesc(desc, SFID_SAMPLER, true, true);
+            auto msgDesc = createSendMsgDesc(desc, SFIDtoInt(SFID::SAMPLER), true, true);
             createSendInst( NULL, G4_send, 8, sendDstOpnd, sendMsgOpnd,
                 createImm(desc, Type_UD), 0, msgDesc, 0);
 
@@ -2726,7 +2726,7 @@ int IR_Builder::translateVISAOwordLoadInst(
         }
     }
 
-    CISA_SHARED_FUNCTION_ID tf_id =  SFID_DP_DC;
+    SFID tf_id =  SFID::DP_DC;
 
     unsigned send_exec_size = FIX_OWORD_SEND_EXEC_SIZE(num_oword);
     bool forceSplitSend = ForceSplitSend(*this, surface);
@@ -2848,7 +2848,7 @@ int IR_Builder::translateVISAOwordStoreInst(
         // message length = 1, response length = 0, header present = 1
         msgDesc += (1 << getSendMsgLengthBitOffset()) + (1 << getSendHeaderPresentBitOffset());
 
-        G4_SendMsgDescriptor* desc = createSendMsgDesc( msgDesc, 0, 1, SFID_DP_DC,
+        G4_SendMsgDescriptor* desc = createSendMsgDesc( msgDesc, 0, 1, SFID::DP_DC,
             false, extMsgLength, extFuncCtrl, false, true, surface);
 
         uint8_t sendSize = FIX_OWORD_SEND_EXEC_SIZE(num_oword);
@@ -2920,7 +2920,7 @@ int IR_Builder::translateVISAOwordStoreInst(
             0,
             send_size,
             funcCtrl,
-            SFID_DP_DC,
+            SFID::DP_DC,
             false,
             true,
             false,
@@ -3080,7 +3080,7 @@ int IR_Builder::translateVISAMediaLoadInst(
         (obj_size - 1) / GENX_GRF_REG_SIZ + 1,
         send_exec_size,
         temp,
-        SFID_DP_DC1,
+        SFID::DP_DC1,
         0,
         1,
         true,
@@ -3237,7 +3237,7 @@ int IR_Builder::translateVISAMediaStoreInst(
         unsigned extMsgLength = (obj_size - 1) / GENX_GRF_REG_SIZ + 1;
         uint16_t extFuncCtrl = 0;
 
-        G4_SendMsgDescriptor* desc = createSendMsgDesc( msgDesc, 0, 1, SFID_DP_DC1,
+        G4_SendMsgDescriptor* desc = createSendMsgDesc( msgDesc, 0, 1, SFID::DP_DC1,
             false, extMsgLength, extFuncCtrl, false, true, surface);
 
         G4_Operand* msgOpnd = NULL;
@@ -3312,7 +3312,7 @@ int IR_Builder::translateVISAMediaStoreInst(
             0,
             GENX_DATAPORT_IO_SZ,
             funcCtrl,
-            SFID_DP_DC1,
+            SFID::DP_DC1,
             0,
             1,
             false,
@@ -3517,7 +3517,7 @@ int IR_Builder::translateVISAGatherInst(
 
     G4_DstRegRegion* d = dstOpnd->asDstRegRegion();
 
-    CISA_SHARED_FUNCTION_ID tf_id = SFID_DP_DC;
+    SFID tf_id = SFID::DP_DC;
     unsigned temp = 0;
     // Set bit 9-8 for the message descriptor
     if (msgEltSize == GATHER_SCATTER_DWORD)
@@ -3788,7 +3788,7 @@ int IR_Builder::translateVISAScatterInst(
         0,
         numElt,
         temp,
-        SFID_DP_DC,
+        SFID::DP_DC,
         0,
         !headerLess,
         false,
@@ -3940,7 +3940,7 @@ int IR_Builder::translateVISAGather4Inst(
         temp += 1 << 12;
     }
 
-    CISA_SHARED_FUNCTION_ID tf_id = SFID_DP_DC1;
+    SFID tf_id = SFID::DP_DC1;
     temp += DC1_UNTYPED_SURFACE_READ << 14;
 
     // bits 11-8: channel mask
@@ -4152,7 +4152,7 @@ int IR_Builder::translateVISAScatter4Inst(
         temp += 1 << 12;
     }
 
-    CISA_SHARED_FUNCTION_ID tf_id = SFID_DP_DC1;
+    SFID tf_id = SFID::DP_DC1;
     temp += DC1_UNTYPED_SURFACE_WRITE << 14;
     // bits 11-8: channel mask
     temp += chMask.getHWEncoding() << 8;
@@ -4448,7 +4448,7 @@ int IR_Builder::translateVISADwordAtomicInst(
         SET_DATAPORT_MESSAGE_TYPE(msgDesc, DC1_UNTYPED_ATOMIC);
     }
 
-    CISA_SHARED_FUNCTION_ID tf_id = SFID_DP_DC1;
+    SFID tf_id = SFID::DP_DC1;
 
     int msgLength = mrf_size/GENX_DATAPORT_IO_SZ;
 
@@ -4595,7 +4595,7 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
     unsigned sizes[2] = {0, 0};
     preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
 
-    CISA_SHARED_FUNCTION_ID SFID = SFID_DP_DC1;
+    SFID sfid = SFID::DP_DC1;
     unsigned MD = 0;
     bool IsFloatOp = IsFloatAtomicOps(atomicOp);
 
@@ -4624,7 +4624,7 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
             msgs[0], sizes[0],
             resLen,
             instExSize,
-            MD, SFID,
+            MD, sfid,
             false, useHeader,
             true, false,
             surface, NULL,
@@ -4634,7 +4634,7 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
             msgs[0], sizes[0], msgs[1], sizes[1],
             resLen,
             instExSize,
-            MD, 0, SFID,
+            MD, 0, sfid,
             false, useHeader,
             true, false,
             surface, NULL,
@@ -4803,7 +4803,7 @@ int IR_Builder::translateTransposeVISALoadInst(
         Transpose_Read_Block_size[blockWidth],
         send_exec_size,
         temp,
-        SFID_DP_DC1,
+        SFID::DP_DC1,
         0,
         1,
         true,
@@ -5017,14 +5017,14 @@ int IR_Builder::translateVISAGather4TypedInst(G4_Predicate           *pred,
 
     //bit 8-11: RGBA channel enable
     unsigned msgDesc = chMask.getHWEncoding() << 8;
-    CISA_SHARED_FUNCTION_ID sfId;
+    SFID sfId;
 
     // DC1
     // bit14-17: 0101 (read), 1101 (write)
     msgDesc |= DC1_TYPED_SURFACE_READ << 14;
     // bit12-13: 01 (use low 8 slot)
     msgDesc |= MDC_SG3_SG8L << 12;
-    sfId = SFID_DP_DC1;
+    sfId = SFID::DP_DC1;
 
 	bool forceSplitSend = ForceSplitSend(*this, surface);
 	if (msgs[1] == 0 && !forceSplitSend) {
@@ -5115,14 +5115,14 @@ int IR_Builder::translateVISAScatter4TypedInst(G4_Predicate           *pred,
 
     //bit 8-11: RGBA channel enable
     unsigned msgDesc = 0;
-    CISA_SHARED_FUNCTION_ID sfId;
+    SFID sfId;
 
     // DC1
     // bit14-17: 0101 (read), 1101 (write)
     msgDesc |= DC1_TYPED_SURFACE_WRITE << 14;
     // bit12-13: 01 (use low 8 slot)
     msgDesc |= MDC_SG3_SG8L << 12;
-    sfId = SFID_DP_DC1;
+    sfId = SFID::DP_DC1;
 
     msgDesc |= chMask.getHWEncoding() << 8;
 
@@ -5244,7 +5244,7 @@ int IR_Builder::translateVISATypedAtomicInst(
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
         Create_Send_Inst_For_CISA(pred, dst,
             msgs[0], sizes[0], dstLength, exSize,
-            msgDesc, SFID_DP_DC1,
+            msgDesc, SFID::DP_DC1,
             false, false,
             true, true,
             surface, NULL,
@@ -5255,7 +5255,7 @@ int IR_Builder::translateVISATypedAtomicInst(
         Create_SplitSend_Inst_For_CISA(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             dstLength, exSize,
-            msgDesc, 0, SFID_DP_DC1,
+            msgDesc, 0, SFID::DP_DC1,
             false, false,
             true, true,
             surface, NULL,
@@ -5388,7 +5388,7 @@ int IR_Builder::translateVISASLMUntypedScaledInst(
 	unsigned sizes[2] = { 0, 0 };
 	preparePayload(msgs, sizes, exSize, true, sources, len);
 
-	CISA_SHARED_FUNCTION_ID SFID = SFID_DP_DC2;
+	SFID sfid = SFID::DP_DC2;
 
 	unsigned MD = 0;
 	// Leave sidebind scale offset 0 as it is not used now.
@@ -5404,7 +5404,7 @@ int IR_Builder::translateVISASLMUntypedScaledInst(
 		chMask.getNumEnabledChannels() : 0;
 
 	uint32_t exFuncCtrl = 0;
-	G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(MD, resLen, sizes[0], SFID,
+	G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(MD, resLen, sizes[0], sfid,
 		false, sizes[1], (uint16_t)exFuncCtrl, isRead, !isRead);
 
 	applySideBandOffset(sideBand, sendMsgDesc);
@@ -5508,7 +5508,7 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
     unsigned sizes[2] = {0, 0};
     preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
 
-    CISA_SHARED_FUNCTION_ID SFID = SFID_DP_DC1;
+    SFID sfid = SFID::DP_DC1;
 
     unsigned MD = 0;
     // Leave sidebind scale offset 0 as it is not used now.
@@ -5526,7 +5526,7 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
             msgs[0], sizes[0],
             resLen,
             exSize,
-            MD, SFID,
+            MD, sfid,
             false, useHeader,
             true, false,
             surface, NULL,
@@ -5536,7 +5536,7 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
             msgs[0], sizes[0], msgs[1], sizes[1],
             resLen,
             exSize,
-            MD, 0, SFID,
+            MD, 0, sfid,
             false, useHeader,
             true, false,
             surface, NULL,
@@ -5609,7 +5609,7 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
     unsigned sizes[2] = {0, 0};
     preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
 
-    CISA_SHARED_FUNCTION_ID SFID = SFID_DP_DC1;
+    SFID sfid = SFID::DP_DC1;
 
     unsigned MD = 0;
     // Leave sidebind scale offset 0 as it is not used now.
@@ -5625,7 +5625,7 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
             msgs[0], sizes[0],
             0,
             exSize,
-            MD, SFID,
+            MD, sfid,
             false, useHeader,
             false, true,
             surface, NULL,
@@ -5635,7 +5635,7 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
             msgs[0], sizes[0], msgs[1], sizes[1],
             0,
             exSize,
-            MD, 0, SFID,
+            MD, 0, sfid,
             false, useHeader,
             false, true,
             surface, NULL,
@@ -5743,7 +5743,7 @@ int IR_Builder::translateVISASLMByteScaledInst(bool isRead,
 	unsigned sizes[2] = { 0, 0 };
 	preparePayload(msgs, sizes, exSize, true, sources, len);
 
-	CISA_SHARED_FUNCTION_ID SFID = SFID_DP_DC2;
+	SFID sfid = SFID::DP_DC2;
 
 	unsigned MD = 0;
 	// Leave sidebind scale offset 0 as it is not used now.
@@ -5756,7 +5756,7 @@ int IR_Builder::translateVISASLMByteScaledInst(bool isRead,
 	G4_DstRegRegion *dst = isRead ? srcOrDst->asDstRegRegion() : createNullDst(Type_UD);
 	unsigned resLen = isRead ? (exSize / GENX_DATAPORT_IO_SZ) * numBatch : 0;
 
-	G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(MD, resLen, sizes[0], SFID,
+	G4_SendMsgDescriptor *sendMsgDesc = createSendMsgDesc(MD, resLen, sizes[0], sfid,
 		false, sizes[1], exFuncCtrl, isRead, !isRead);
 
 	applySideBandOffset(sideBand, sendMsgDesc);
@@ -5872,7 +5872,7 @@ int IR_Builder::translateByteGatherInst(G4_Predicate *pred,
     unsigned sizes[2] = {0, 0};
     preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
 
-    CISA_SHARED_FUNCTION_ID SFID = SFID_DP_DC;
+    SFID sfid = SFID::DP_DC;
 
     unsigned MD = 0;
     MD |= DC_BYTE_SCATTERED_READ << 14;
@@ -5887,7 +5887,7 @@ int IR_Builder::translateByteGatherInst(G4_Predicate *pred,
             msgs[0], sizes[0],
             resLen,
             instExSize,
-            MD, SFID,
+            MD, sfid,
             false, useHeader,
             true, false,
             surface, NULL,
@@ -5898,7 +5898,7 @@ int IR_Builder::translateByteGatherInst(G4_Predicate *pred,
             msgs[0], sizes[0], msgs[1], sizes[1],
             resLen,
             instExSize,
-            MD, 0, SFID,
+            MD, 0, sfid,
             false, useHeader,
             true, false,
             surface, NULL,
@@ -5992,7 +5992,7 @@ int IR_Builder::translateByteScatterInst(G4_Predicate *pred,
     unsigned sizes[2] = {0, 0};
     preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
 
-    CISA_SHARED_FUNCTION_ID SFID = SFID_DP_DC;
+    SFID sfid = SFID::DP_DC;
 
     unsigned MD = 0;
     // Leave sidebind scale offset 0 as it is not used now.
@@ -6008,7 +6008,7 @@ int IR_Builder::translateByteScatterInst(G4_Predicate *pred,
             msgs[0], sizes[0],
             0,
             instExSize,
-            MD, SFID,
+            MD, sfid,
             false, useHeader,
             false, true,
             surface, NULL,
@@ -6018,7 +6018,7 @@ int IR_Builder::translateByteScatterInst(G4_Predicate *pred,
             msgs[0], sizes[0], msgs[1], sizes[1],
             0,
             instExSize,
-            MD, 0, SFID,
+            MD, 0, sfid,
             false, useHeader,
             false, true,
             surface, NULL,
@@ -6276,7 +6276,7 @@ int IR_Builder::translateVISAVmeImeInst(
         regs2rcv,
         GENX_DATAPORT_IO_SZ,
         temp,
-        SFID_VME,
+        SFID::VME,
         0,
         true,
         true,
@@ -6347,7 +6347,7 @@ int IR_Builder::translateVISAVmeSicInst(
         regs2rcv,
         GENX_DATAPORT_IO_SZ,
         temp,
-        SFID_CRE,
+        SFID::CRE,
         0,
         true,
         true,
@@ -6472,7 +6472,7 @@ int IR_Builder::translateVISAVmeFbrInst(
         regs2rcv,
         GENX_DATAPORT_IO_SZ,
         temp,
-        SFID_CRE,
+        SFID::CRE,
         0,
         true,  //head_present?
         true,
@@ -6531,7 +6531,7 @@ int IR_Builder::translateVISAVmeIdmInst(
         regs2rcv,
         GENX_DATAPORT_IO_SZ,
         temp,
-        SFID_VME,
+        SFID::VME,
         0,
         true,
         true,
@@ -6635,7 +6635,7 @@ int IR_Builder::translateVISARawSendsInst(G4_Predicate *predOpnd, Common_ISA_Exe
 
 		if (exDescVal == 0)
 		{
-			exDescVal = G4_SendMsgDescriptor::createExtDesc((CISA_SHARED_FUNCTION_ID)ffid, false, numSrc1);
+			exDescVal = G4_SendMsgDescriptor::createExtDesc(intToSFID(ffid), false, numSrc1);
 		}
     }
 
@@ -6798,7 +6798,7 @@ int IR_Builder::translateVISASamplerVAGenericInst(
     if(reg_receive < 1)
         reg_receive = 1;
     Create_Send_Inst_For_CISA(NULL, post_dst, payload, 2, reg_receive, 8,
-        msg_descriptor, SFID_SAMPLER, 0, 1, true, false, surface, sampler, InstOpt_WriteEnable, false);
+        msg_descriptor, SFID::SAMPLER, 0, 1, true, false, surface, sampler, InstOpt_WriteEnable, false);
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -7027,7 +7027,7 @@ int IR_Builder::translateVISAAvsInst(
             obj_size/GENX_GRF_REG_SIZ,
             16,
             temp,
-            SFID_SAMPLER,
+            SFID::SAMPLER,
             0,
             1,
             true,
@@ -7342,7 +7342,7 @@ int IR_Builder::translateVISASamplerInst(
         ((simdMode == 8)?32:(numEnabledChannels*16))*G4_Type_Table[Type_F].byteSize/GENX_GRF_REG_SIZ,
         simdMode,
         temp,
-        SFID_SAMPLER,
+        SFID::SAMPLER,
         0,
         1,
         true,
@@ -7752,7 +7752,7 @@ int IR_Builder::translateVISAVaSklPlusGeneralInst(
     /// 18:17 SIMD Mode (SIMD32/64 = 3)  |  16:12 Message Type (sampler8x8 = 01011 = 0xB)
     unsigned msg_descriptor = (0x3 << 17) + (0xB  << 12);
     Create_Send_Inst_For_CISA(NULL, post_dst, payload, reg_to_send, reg_to_receive, 8,
-        msg_descriptor, SFID_SAMPLER, 0, 1, true, false, surface, sampler, 0, false);
+        msg_descriptor, SFID::SAMPLER, 0, 1, true, false, surface, sampler, 0, false);
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
@@ -7849,7 +7849,7 @@ int IR_Builder::translateVISASamplerNormInst(
         32*numEnabledChannels*G4_Type_Table[Type_UW].byteSize/GENX_GRF_REG_SIZ,
         32,
         temp,
-        SFID_SAMPLER,
+        SFID::SAMPLER,
         0,
         1,
         true,
@@ -7978,12 +7978,12 @@ int IR_Builder::translateVISASampleInfoInst(
     {
         Create_SplitSend_Inst_For_CISA(NULL, dst, m0, numRows,
             createNullSrc(Type_UD), 0, retSize,
-            execSize, fc, 0, SFID_SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false);
+            execSize, fc, 0, SFID::SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false);
     }
     else
     {
         Create_Send_Inst_For_CISA(NULL, dst, m0, numRows, retSize,
-            execSize, fc, SFID_SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false);
+            execSize, fc, SFID::SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false);
     }
 
     return CM_SUCCESS;
@@ -8107,13 +8107,13 @@ int IR_Builder::translateVISAResInfoInst(
             src1Size = 0;
         }
         Create_SplitSend_Inst_For_CISA(NULL, dst, m0, src0Size, m1, src1Size, returnLength,
-            execSize, fc, 0, SFID_SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false);
+            execSize, fc, 0, SFID::SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false);
     }
     else
     {
         G4_SrcRegRegion *m = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
         Create_Send_Inst_For_CISA( NULL, dst, m, numRows, returnLength,
-            execSize, fc, SFID_SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false );
+            execSize, fc, SFID::SAMPLER, false, useHeader, true, false, surface, NULL, instOpt, false );
     }
 
     return CM_SUCCESS;
@@ -8303,11 +8303,11 @@ int IR_Builder::translateVISAURBWrite3DInst(
         }
 
         Create_SplitSend_Inst_For_CISA(pred, createNullDst(Type_UD), m0, 1, m1, numRows, 0,
-            execSize, fc, 0, SFID_URB, false, useHeader, false, true, NULL, NULL, instOpt, false);
+            execSize, fc, 0, SFID::URB, false, useHeader, false, true, NULL, NULL, instOpt, false);
     } else {
         G4_SrcRegRegion *m = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
         Create_Send_Inst_For_CISA( pred, createNullDst( Type_UD ), m, numRows, 0,
-            execSize, fc, SFID_URB, false, useHeader, false, true, nullptr, nullptr, instOpt, false );
+            execSize, fc, SFID::URB, false, useHeader, false, true, nullptr, nullptr, instOpt, false );
     }
     return CM_SUCCESS;
 }
@@ -8917,7 +8917,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         if (useHeader)
         {
             m0 = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
-            msgDesc = createSendMsgDesc(fc, 0, RT_HEADER_SIZE, SFID_DP_WRITE, false, numRows,
+            msgDesc = createSendMsgDesc(fc, 0, RT_HEADER_SIZE, SFID::DP_WRITE, false, numRows,
                 0, false, true, surface);
             msgDesc->setHeaderPresent(useHeader);
         }
@@ -8926,7 +8926,7 @@ int IR_Builder::translateVISARTWrite3DInst(
             if (!isRTIdxNonzero && !cntrls.s0aPresent)
             {
                 // direct imm is a-ok
-                msgDesc = createSendMsgDesc(fc, 0, numRows, SFID_DP_WRITE, false, 0,
+                msgDesc = createSendMsgDesc(fc, 0, numRows, SFID::DP_WRITE, false, 0,
                         0, false, true, surface);
             }
             else
@@ -8985,7 +8985,7 @@ int IR_Builder::translateVISARTWrite3DInst(
         if (useHeader)
             m = Create_Src_Opnd_From_Dcl(msg, getRegionStride1());
          Create_Send_Inst_For_CISA( pred, createNullDst( Type_UD ), m, numRows, 0,
-            execSize, fc, SFID_DP_WRITE, false, useHeader, false, true, surface, NULL, instOpt, true );
+            execSize, fc, SFID::DP_WRITE, false, useHeader, false, true, surface, NULL, instOpt, true );
     }
     return CM_SUCCESS;
 
@@ -9243,7 +9243,7 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
 
     uint32_t fc = createSamplerMsgDesc(actualop, execSize, isHalfReturn, halfInput);
     uint32_t desc = G4_SendMsgDescriptor::createDesc(fc, useHeader, numRows, responseLength);
-    uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID_SAMPLER);
+    uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::SAMPLER);
 
     if (cpsEnable)
     {
@@ -9715,7 +9715,7 @@ int IR_Builder::translateVISASampler3DInst(
 	if (msgs[1] == 0 && !forceSplitSend)
     {
         ASSERT_USER(sizes[1] == 0, "Expect the 2nd part of the payload has zero size!");
-        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID_SAMPLER);
+        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::SAMPLER);
         if (cpsEnable)
         {
             extDesc |= (1 << CPS_LOD_COMPENSATION_ENABLE);
@@ -9727,7 +9727,7 @@ int IR_Builder::translateVISASampler3DInst(
     }
     else
     {
-        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID_SAMPLER, false, sizes[1]);
+        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::SAMPLER, false, sizes[1]);
         if (cpsEnable)
         {
             extDesc |= (1 << CPS_LOD_COMPENSATION_ENABLE);
@@ -9840,7 +9840,7 @@ int IR_Builder::translateVISALoad3DInst(
         Create_Send_Inst_For_CISA(pred_opnd, dst,
             msgs[0], sizes[0],
             responseLength,
-            execSize, fc, SFID_SAMPLER,
+            execSize, fc, SFID::SAMPLER,
             false, useHeader,
             true, false, surface, NULL,
             instOpt, false);
@@ -9850,7 +9850,7 @@ int IR_Builder::translateVISALoad3DInst(
         Create_SplitSend_Inst_For_CISA(pred_opnd, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             responseLength,
-            execSize, fc, 0, SFID_SAMPLER,
+            execSize, fc, 0, SFID::SAMPLER,
             false, useHeader,
             true, false,
             surface, NULL,
@@ -9967,7 +9967,7 @@ int IR_Builder::translateVISAGather3dInst(
     {
         Create_Send_Inst_For_CISA(pred, dst, msgs[0], sizes[0],
             responseLength,
-            execSize, fc, SFID_SAMPLER,
+            execSize, fc, SFID::SAMPLER,
             false, useHeader,
             true, false,
             surface, samplerIdx,
@@ -9978,7 +9978,7 @@ int IR_Builder::translateVISAGather3dInst(
         Create_SplitSend_Inst_For_CISA(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             responseLength,
-            execSize, fc, 0, SFID_SAMPLER,
+            execSize, fc, 0, SFID::SAMPLER,
             false, useHeader,
             true, false,
             surface, samplerIdx,
@@ -10051,7 +10051,7 @@ int IR_Builder::translateVISASVMBlockReadInst(
     dst->setType(Type_UD);
 
     Create_Send_Inst_For_CISA(NULL, dst, src, 1, rspLength, sendExecSize, desc,
-        SFID_DP_DC1, false, true, true, false, NULL, NULL, InstOpt_WriteEnable, false);
+        SFID::DP_DC1, false, true, true, false, NULL, NULL, InstOpt_WriteEnable, false);
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -10155,7 +10155,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
         Create_Send_Inst_For_CISA(NULL, sendDst,
             msgs[0], sizes[0],
             0, sendExecSize,
-            desc, SFID_DP_DC1,
+            desc, SFID::DP_DC1,
             false, true,
             false, true,
             NULL, NULL,
@@ -10167,7 +10167,7 @@ int IR_Builder::translateVISASVMBlockWriteInst(
             msgs[0], sizes[0],
             msgs[1], sizes[1],
             0, sendExecSize,
-            desc, 0, SFID_DP_DC1,
+            desc, 0, SFID::DP_DC1,
             false, true,
             false, true,
             NULL, NULL,
@@ -10250,7 +10250,7 @@ int IR_Builder::translateVISASVMScatterReadInst(
     desc |= DC1_A64_SCATTERED_READ << 14;
 
     Create_Send_Inst_For_CISA( pred, dst, addresses, messageLength, responseLength, instExSize, desc,
-        SFID_DP_DC1, false, false, true, false, NULL, NULL, instOpt, false );
+        SFID::DP_DC1, false, false, true, false, NULL, NULL, instOpt, false );
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     stopTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
@@ -10327,7 +10327,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
         Create_Send_Inst_For_CISA(pred, dst,
             msgs[0], sizes[0],
             0, instExSize,
-            desc, SFID_DP_DC1,
+            desc, SFID::DP_DC1,
             false, false,
             false, true,
             NULL, NULL,
@@ -10338,7 +10338,7 @@ int IR_Builder::translateVISASVMScatterWriteInst(
             msgs[0], sizes[0],
             msgs[1], sizes[1],
             0, instExSize,
-            desc, 0, SFID_DP_DC1,
+            desc, 0, SFID::DP_DC1,
             false, false,
             false, true,
             NULL, NULL,
@@ -10464,7 +10464,7 @@ int IR_Builder::translateVISASVMAtomicInst(
         Create_Send_Inst_For_CISA(pred, dst,
             msgs[0], sizes[0], dstLength,
             instExSize,
-            msgDesc, SFID_DP_DC1,
+            msgDesc, SFID::DP_DC1,
             false, false,
             true, true,
             NULL, NULL,
@@ -10476,7 +10476,7 @@ int IR_Builder::translateVISASVMAtomicInst(
             msgs[1], sizes[1],
             dstLength,
             instExSize,
-            msgDesc, 0, SFID_DP_DC1,
+            msgDesc, 0, SFID::DP_DC1,
             false, false,
             true, true,
             NULL, NULL,
@@ -10529,7 +10529,7 @@ int IR_Builder::translateSVMGather4Inst(Common_ISA_Exec_Size    execSize,
     unsigned sizes[2] = {0, 0};
     preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
 
-    CISA_SHARED_FUNCTION_ID SFID = SFID_DP_DC1;
+    SFID sfid = SFID::DP_DC1;
 
     unsigned FC = 0;
     // Leave sidebind scaled offset 0 as it is not used now.
@@ -10546,7 +10546,7 @@ int IR_Builder::translateSVMGather4Inst(Common_ISA_Exec_Size    execSize,
             msgs[0], sizes[0],
             resLen,
             exSize,
-            FC, SFID,
+            FC, sfid,
             false, false,
             true, false,
             NULL, NULL,
@@ -10557,7 +10557,7 @@ int IR_Builder::translateSVMGather4Inst(Common_ISA_Exec_Size    execSize,
             msgs[0], sizes[0], msgs[1], sizes[1],
             resLen,
             exSize,
-            FC, 0, SFID,
+            FC, 0, sfid,
             false, false,
             true, false,
             NULL, NULL,
@@ -10614,7 +10614,7 @@ int IR_Builder::translateSVMScatter4Inst(Common_ISA_Exec_Size   execSize,
     unsigned sizes[2] = {0, 0};
     preparePayload(msgs, sizes, exSize, useSplitSend, sources, len);
 
-    CISA_SHARED_FUNCTION_ID SFID = SFID_DP_DC1;
+    SFID sfid = SFID::DP_DC1;
 
     unsigned FC = 0;
     // Leave sidebind scaled offset 0 as it is not used now.
@@ -10630,7 +10630,7 @@ int IR_Builder::translateSVMScatter4Inst(Common_ISA_Exec_Size   execSize,
             msgs[0], sizes[0],
             0,
             exSize,
-            FC, SFID,
+            FC, sfid,
             false, false,
             false, true,
             NULL, NULL,
@@ -10641,7 +10641,7 @@ int IR_Builder::translateSVMScatter4Inst(Common_ISA_Exec_Size   execSize,
             msgs[0], sizes[0], msgs[1], sizes[1],
             0,
             exSize,
-            FC, 0, SFID,
+            FC, 0, sfid,
             false, false,
             false, true,
             NULL, NULL,

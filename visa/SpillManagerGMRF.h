@@ -654,7 +654,7 @@ private:
         G4_DstRegRegion * postDst,
         G4_SrcRegRegion * payload,
         G4_Imm *		  desc,
-        CISA_SHARED_FUNCTION_ID funcID,
+        SFID funcID,
         bool              isWrite,
         unsigned          option
         );

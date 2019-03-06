@@ -48,7 +48,7 @@ G4_SrcRegRegion* CoalesceSpillFills::generateCoalescedSpill(unsigned int scratch
     uint32_t spillMsgDesc = computeSpillMsgDesc(payloadSize, scratchOffset);
 
     G4_SendMsgDescriptor* msgDesc = kernel.fg.builder->createSendMsgDesc(spillMsgDesc & 0x000FFFFFu,
-        0, 1, SFID_DP_DC, false, payloadSize, 0, false, true,
+        0, 1, SFID::DP_DC, false, payloadSize, 0, false, true,
         sample->getBti(), sample->getSti());
 
     G4_Imm* msgDescImm = kernel.fg.builder->createImm(msgDesc->getDesc(), Type_UD);

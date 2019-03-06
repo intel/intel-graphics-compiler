@@ -1114,7 +1114,7 @@ void FlowGraph::handleExit(G4_BB* firstSubroutineBB)
                                 G4_SrcRegRegion* sendMsgOpnd = builder->Create_Src_Opnd_From_Dcl(
                                     builder->getBuiltinR0(),
                                     builder->getRegionStride1());
-                                auto msgDesc = builder->createSendMsgDesc(desc, SFID_SAMPLER, true, true);
+                                auto msgDesc = builder->createSendMsgDesc(desc, SFIDtoInt(SFID::SAMPLER), true, true);
                                 G4_INST* samplerFlushInst = builder->createSendInst(nullptr, G4_send,
                                     8, builder->createNullDst(Type_UD), sendMsgOpnd,
                                     builder->createImm(desc, Type_UD),
@@ -4062,7 +4062,7 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     }
     instList.push_back(movInst);
 
-    int exdesc = (0x1 << 5) + SFID_SPAWNER;
+    int exdesc = (0x1 << 5) + SFIDtoInt(SFID::SPAWNER);
     // response len = 0, msg len = 1
     int desc = (0x1 << 25) + (0x1 << 4);
 

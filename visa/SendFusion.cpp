@@ -159,10 +159,10 @@ uint32_t SendFusion::getFuncCtrlWithSimd16(G4_SendMsgDescriptor* Desc)
 {
 
     uint32_t FC = Desc->getFuncCtrl();
-    uint32_t funcID = Desc->getFuncId();
+    auto funcID = Desc->getFuncId();
     uint32_t msgType = Desc->getMessageType();
     bool unsupported = false;
-    if (funcID == SFID_DP_DC)
+    if (funcID == SFID::DP_DC)
     {
         switch (msgType)
         {
@@ -179,7 +179,7 @@ uint32_t SendFusion::getFuncCtrlWithSimd16(G4_SendMsgDescriptor* Desc)
             break;
         }
     }
-    else if (funcID == SFID_DP_DC1)
+    else if (funcID == SFID::DP_DC1)
     {
         switch (msgType)
         {
@@ -198,7 +198,7 @@ uint32_t SendFusion::getFuncCtrlWithSimd16(G4_SendMsgDescriptor* Desc)
             break;
         }
     }
-    else if (funcID == SFID_DP_DC2)
+    else if (funcID == SFID::DP_DC2)
     {
         switch (msgType)
         {
@@ -228,8 +228,8 @@ uint32_t SendFusion::getFuncCtrlWithSimd16(G4_SendMsgDescriptor* Desc)
 
 bool SendFusion::isAtomicCandidate(G4_SendMsgDescriptor* msgDesc)
 {
-    uint32_t funcID = msgDesc->getFuncId();
-    if (funcID != SFID_DP_DC1) {
+    auto funcID = msgDesc->getFuncId();
+    if (funcID != SFID::DP_DC1) {
         return false;
     }
 
@@ -445,9 +445,9 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
         return true;
     }
 
-    uint32_t funcID = msgDesc->getFuncId();
+    auto funcID = msgDesc->getFuncId();
     uint32_t msgType = msgDesc->getMessageType();
-    if (funcID == SFID_DP_DC)
+    if (funcID == SFID::DP_DC)
     {
         switch(msgType)
         {
@@ -458,7 +458,7 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
             return true;
         }
     }
-    else if (funcID == SFID_DP_DC1)
+    else if (funcID == SFID::DP_DC1)
     {
         switch (msgType)
         {
@@ -467,7 +467,7 @@ bool SendFusion::simplifyAndCheckCandidate(INST_LIST_ITER Iter)
             return true;
         }
     }
-    else if (funcID == SFID_DP_DC2)
+    else if (funcID == SFID::DP_DC2)
     {
         switch (msgType)
         {

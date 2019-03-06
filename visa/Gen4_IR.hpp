@@ -298,7 +298,7 @@ public:
 
     void *operator new(size_t sz, Mem_Manager &m) { return m.alloc(sz); }
 
-    static uint32_t createExtDesc(CISA_SHARED_FUNCTION_ID funcID,
+    static uint32_t createExtDesc(SFID funcID,
                                     bool isEot = false)
     {
         return createExtDesc(funcID, isEot, 0, 0);
@@ -308,7 +308,7 @@ public:
     {
         ExtDescData data;
         data.value = 0;
-        data.layout.funcID = SFID_DP_WRITE;
+        data.layout.funcID = SFIDtoInt(SFID::DP_WRITE);
         data.layout.RTIndex = RTIndex;
         data.layout.src0Alpha = src0Alpha;
         data.layout.eot = isEOT;
@@ -316,14 +316,14 @@ public:
         return data.value;
     }
 
-    static uint32_t createExtDesc(CISA_SHARED_FUNCTION_ID funcID,
+    static uint32_t createExtDesc(SFID funcID,
         bool isEot,
         unsigned extMsgLen,
         unsigned extFCtrl = 0)
     {
         ExtDescData data;
         data.value = 0;
-        data.layout.funcID = funcID;
+        data.layout.funcID = SFIDtoInt(funcID);
         data.layout.eot = isEot;
         data.layout.extMsgLength = extMsgLen;
         data.layout.extFuncCtrl = extFCtrl;
@@ -341,15 +341,15 @@ public:
         return data.value;
     }
 
-    static CISA_SHARED_FUNCTION_ID getFuncId(uint32_t extDesc)
+    static SFID getFuncId(uint32_t extDesc)
     {
         ExtDescData data;
         data.value = extDesc;
-        return static_cast<CISA_SHARED_FUNCTION_ID>(data.layout.funcID);
+        return intToSFID(data.layout.funcID);
     }
-    CISA_SHARED_FUNCTION_ID getFuncId() const
+    SFID getFuncId() const
     {
-        return static_cast<CISA_SHARED_FUNCTION_ID>(extDesc.layout.funcID);
+        return intToSFID(extDesc.layout.funcID);
     }
 
     static uint32_t getFuncCtrl(uint32_t msgDesc)
@@ -385,44 +385,44 @@ public:
     bool isScratchRW() const
     {
         // scratch msg: DC0, bit 18 = 1
-        return extDesc.layout.funcID == SFID_DP_DC && ((getFuncCtrl() & 0x40000u) != 0);
+        return getFuncId() == SFID::DP_DC && ((getFuncCtrl() & 0x40000u) != 0);
     }
     bool isDataPortOperation() const
     {
-        auto funcID = extDesc.layout.funcID;
-        return funcID == SFID_SAMPLER || funcID == SFID_DP_WRITE ||
-            funcID == SFID_DP_CC || funcID == SFID_DP_DC ||
-            funcID == SFID_DP_DC1;
+        auto funcID = getFuncId();
+        return funcID == SFID::SAMPLER || funcID == SFID::DP_WRITE ||
+            funcID == SFID::DP_CC || funcID == SFID::DP_DC ||
+            funcID == SFID::DP_DC1;
     }
     bool isDataPortRead() const { return readMsg; }
     bool isDataPortWrite() const { return writeMsg; }
     bool isSampler() const
     {
-        return getFuncId() == SFID_SAMPLER;
+        return getFuncId() == SFID::SAMPLER;
     }
     bool isHDC() const
     {
-        auto funcID = extDesc.layout.funcID;
-        return funcID == SFID_DP_DC || funcID == SFID_DP_DC1 || funcID == SFID_DP_DC2;
+        auto funcID = getFuncId();
+        return funcID == SFID::DP_DC || funcID == SFID::DP_DC1 || funcID == SFID::DP_DC2;
     }
 
     bool isThreadMessage() const
     {
-        auto funcID = extDesc.layout.funcID;
-        return funcID == SFID_GATEWAY || funcID == SFID_SPAWNER;
+        auto funcID = getFuncId();
+        return funcID == SFID::GATEWAY || funcID == SFID::SPAWNER;
     }
 
     bool conflictsWithWait() const
     {
-        auto funcID = extDesc.layout.funcID;
-        return isDataPortOperation() || funcID == SFID_GATEWAY ||
-            funcID == SFID_SPAWNER || funcID == SFID_URB || funcID == SFID_NUM;
+        auto funcID = getFuncId();
+        return isDataPortOperation() || funcID == SFID::GATEWAY ||
+            funcID == SFID::SPAWNER || funcID == SFID::URB;
     }
 
     bool isIntAtomicMessage() const
     {
-        auto funcID = extDesc.layout.funcID;
-        if (funcID != SFID_DP_DC1)
+        auto funcID = getFuncId();
+        if (funcID != SFID::DP_DC1)
             return false;
 
         uint16_t msgType = getMessageType();
@@ -440,8 +440,8 @@ public:
 
     bool isFloatAtomicMessage() const
     {
-        auto funcID = extDesc.layout.funcID;
-        if (funcID != SFID_DP_DC1)
+        auto funcID = getFuncId();
+        if (funcID != SFID::DP_DC1)
             return false;
 
         uint16_t msgType = getMessageType();
@@ -476,9 +476,9 @@ public:
 
     bool isBarrierMsg() const
     {
-        auto funcID = extDesc.layout.funcID;
+        auto funcID = getFuncId();
         uint32_t funcCtrl = getFuncCtrl();
-        return funcID == SFID_GATEWAY && (funcCtrl & 0xFF) == 0x4;
+        return funcID == SFID::GATEWAY && (funcCtrl & 0xFF) == 0x4;
     }
 
     bool isSLMMessage() const;
@@ -563,10 +563,10 @@ public:
     bool isOwordLoad() const
     {
         uint32_t funcCtrl = getFuncCtrl();
-        auto funcID = extDesc.layout.funcID;
+        auto funcID = getFuncId();
         uint16_t msgType = ( funcCtrl >> IVB_MSG_TYPE_OFFSET ) & 0xF;
         //SFID = data cache, bit 14-17= 0 or 1
-        return funcID == SFID_DP_DC && ( msgType == 0 || msgType == 1);
+        return funcID == SFID::DP_DC && ( msgType == 0 || msgType == 1);
     }
 
     static bool isReadOnlyMessage(uint32_t msgDesc, uint32_t exDesc);
@@ -1499,8 +1499,8 @@ public:
     bool canBeEOT()
     {
         bool canEOT = msgDesc->ResponseLength() == 0 &&
-            (msgDesc->getFuncId() != SFID_NULL &&
-                msgDesc->getFuncId() != SFID_SAMPLER);
+            (msgDesc->getFuncId() != SFID::NULL_SFID &&
+                msgDesc->getFuncId() != SFID::SAMPLER);
 
         return canEOT;
     }
@@ -1508,17 +1508,17 @@ public:
     bool isFence() const
     {
         G4_SendMsgDescriptor *MD = getMsgDesc();
-        CISA_SHARED_FUNCTION_ID SFID = MD->getFuncId();
+        SFID sfid = MD->getFuncId();
         unsigned FC = MD->getFuncCtrl();
 
         // Memory Fence
-        if (SFID == SFID_DP_DC && ((FC >> 14) & 0x1F) == DC_MEMORY_FENCE) 
+        if (sfid == SFID::DP_DC && ((FC >> 14) & 0x1F) == DC_MEMORY_FENCE) 
         {
             return true;
         }
 
         // Sampler cache flush
-        if (SFID == SFID_SAMPLER && ((FC >> 12) & 0x1F) == 0x1F) 
+        if (sfid == SFID::SAMPLER && ((FC >> 12) & 0x1F) == 0x1F) 
         {
             return true;
         }

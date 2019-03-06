@@ -2482,13 +2482,13 @@ SpillManagerGMRF::createSendInst(
     G4_DstRegRegion *	  postDst,
     G4_SrcRegRegion *	  payload,
     G4_Imm *		  desc,
-    CISA_SHARED_FUNCTION_ID funcID,
+    SFID funcID,
     bool              isWrite,
     unsigned          option
 )
 {
     G4_INST* sendInst;
-    G4_Imm *exDesc = builder_->createImm(funcID, Type_UD);
+    G4_Imm *exDesc = builder_->createImm(SFIDtoInt(funcID), Type_UD);
     auto msgDesc = builder_->createSendMsgDesc((uint32_t)desc->getInt(), (uint32_t)exDesc->getInt(), !isWrite, isWrite);
     sendInst = builder_->createSendInst(
         NULL, G4_send, execSize, postDst,
@@ -2775,7 +2775,7 @@ SpillManagerGMRF::createSpillSendInstr (
         unsigned extMsgLength = height;
         uint16_t extFuncCtrl = 0;
         // both scratch and block read use DC
-        CISA_SHARED_FUNCTION_ID funcID = SFID_DP_DC;
+        SFID funcID = SFID::DP_DC;
 
         G4_SendMsgDescriptor* desc = builder_->createSendMsgDesc( messageDescImm->getInt() & 0x0007FFFFu, 0, 1, funcID, false, extMsgLength, extFuncCtrl, false, true);
         RegionDesc* region = builder_->getRegionStride1();
@@ -2789,7 +2789,7 @@ SpillManagerGMRF::createSpillSendInstr (
     {
         G4_SrcRegRegion * payload = builder_->createSrcRegRegion(Mod_src_undef, Direct,
             mRangeDcl->getRegVar(), 0, 0, builder_->getRegionStride1(), Type_UD);
-        sendInst = createSendInst ((unsigned char) execSize, postDst, payload, messageDescImm, SFID_DP_DC, true, InstOpt_WriteEnable);
+        sendInst = createSendInst ((unsigned char) execSize, postDst, payload, messageDescImm, SFID::DP_DC, true, InstOpt_WriteEnable);
     }
 
     return sendInst;
@@ -2826,7 +2826,7 @@ SpillManagerGMRF::createSpillSendInstr (
         unsigned extMsgLength = spillRangeDcl->getNumRows();
         uint16_t extFuncCtrl = 0;
         // both scratch and block read use DC
-        CISA_SHARED_FUNCTION_ID funcID = SFID_DP_DC;
+        SFID funcID = SFID::DP_DC;
 
         G4_SendMsgDescriptor* desc = builder_->createSendMsgDesc( messageDescImm->getInt() & 0x0007FFFFu, 0, 1, funcID, false, extMsgLength, extFuncCtrl, false, true);
         RegionDesc* region = builder_->getRegionStride1();
@@ -2840,7 +2840,7 @@ SpillManagerGMRF::createSpillSendInstr (
     {
         G4_SrcRegRegion * payload = builder_->createSrcRegRegion(Mod_src_undef, Direct,
             mRangeDcl->getRegVar(), 0, 0, builder_->getRegionStride1(), Type_UD);
-	    sendInst = createSendInst ((unsigned char) execSize, postDst, payload, messageDescImm, SFID_DP_DC, true, option);
+	    sendInst = createSendInst ((unsigned char) execSize, postDst, payload, messageDescImm, SFID::DP_DC, true, option);
     }
 
     return sendInst;
@@ -2859,7 +2859,7 @@ void SpillManagerGMRF::createSpill(
     bool doSLMSpill = getSpillOffset(varOffset);
     G4_Imm * messageDescImm = createSpillSendMsgDesc(doSLMSpill, size, varOffset);
 
-    CISA_SHARED_FUNCTION_ID funcID = SFID_DP_DC;
+    SFID funcID = SFID::DP_DC;
     G4_Declare* sendSrc0 = nullptr;
     int esize = size > 1 || oldExecSize > 8 ? 16 : 8;
     if (spillMask & InstOpt_WriteEnable)
@@ -2890,7 +2890,7 @@ void SpillManagerGMRF::createSpill(
             // esize is dependent on number of GRFs we spill. This should match the oldExecSize 
             // if pre-fill is not required
             esize = size == 1 ? 8 : 16;
-            funcID = SFID_DP_DC1;
+            funcID = SFID::DP_DC1;
             sendSrc0 = createSLMSpillAddr(size, varOffset);
         }
     }
@@ -3144,7 +3144,7 @@ SpillManagerGMRF::createFillSendInstr (
 	G4_DstRegRegion* dstOpnd = builder_->createDstRegRegion(Direct, fillRangeDcl->getRegVar(), 0, 0, 1, Type_UD);
 	builder_->createInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
 
-	return createSendInst ((unsigned char) execSize, postDst, payload, messageDescImm, SFID_DP_DC, false, InstOpt_WriteEnable);
+	return createSendInst ((unsigned char) execSize, postDst, payload, messageDescImm, SFID::DP_DC, false, InstOpt_WriteEnable);
 }
 
 // Create the send instruction to perform the fill of the filled region's
@@ -3186,7 +3186,7 @@ SpillManagerGMRF::createFillSendInstr (
 	G4_DstRegRegion* dstOpnd = builder_->createDstRegRegion(Direct, fillRangeDcl->getRegVar(), 0, 0, 1, Type_UD);
 	builder_->createInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
 
-	return createSendInst ((unsigned char) execSize, postDst, payload, messageDescImm, SFID_DP_DC, false, InstOpt_WriteEnable);
+	return createSendInst ((unsigned char) execSize, postDst, payload, messageDescImm, SFID::DP_DC, false, InstOpt_WriteEnable);
 }
 
 /// compute the 8/16 addresses for SLM spill/fill if untyped message is used
@@ -3239,7 +3239,7 @@ void SpillManagerGMRF::createFill(
     G4_Imm * messageDescImm =
         createFillSendMsgDesc(doSLMFill, size, varOffset);
 
-    CISA_SHARED_FUNCTION_ID funcID = SFID_DP_DC;
+    SFID funcID = SFID::DP_DC;
 
     G4_Declare* sendSrc = nullptr;
     int esize = 16;
@@ -3264,7 +3264,7 @@ void SpillManagerGMRF::createFill(
         esize = size == 1 ? 8 : 16;
         sendSrc = createSLMSpillAddr(size, varOffset);
 
-        funcID = SFID_DP_DC1;
+        funcID = SFID::DP_DC1;
     }
     else
     {

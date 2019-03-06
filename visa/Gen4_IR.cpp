@@ -307,9 +307,9 @@ const char* G4_SendMsgDescriptor::getDescType()
 
     switch (msgDesc->getFuncId())
     {
-    case SFID_SAMPLER: return "sampler"; break;
-    case SFID_GATEWAY: return "gateway"; break;
-    case SFID_DP_DC2:
+    case SFID::SAMPLER: return "sampler"; break;
+    case SFID::GATEWAY: return "gateway"; break;
+    case SFID::DP_DC2:
         switch (bits)
         {
         case DC2_UNTYPED_SURFACE_READ:
@@ -331,7 +331,7 @@ const char* G4_SendMsgDescriptor::getDescType()
         default:
             return "unrecognized message";
         }
-    case SFID_DP_WRITE:
+    case SFID::DP_WRITE:
         switch (bits)
         {
         case 0xc: return "render target write"; break;
@@ -339,10 +339,10 @@ const char* G4_SendMsgDescriptor::getDescType()
         default: return "reserved encoding used!";
         }
         break;
-    case SFID_URB: return "urb"; break;
-    case SFID_SPAWNER: return "thread spawner"; break;
-    case SFID_VME: return "vme"; break;
-    case SFID_DP_CC:
+    case SFID::URB: return "urb"; break;
+    case SFID::SPAWNER: return "thread spawner"; break;
+    case SFID::VME: return "vme"; break;
+    case SFID::DP_CC:
         switch (bits)
         {
         case 0x0: return "oword block read"; break;
@@ -352,7 +352,7 @@ const char* G4_SendMsgDescriptor::getDescType()
         default: return "reserved encoding used!";
             break;
         }
-    case SFID_DP_DC:
+    case SFID::DP_DC:
         category = (msgDesc->getFuncCtrl() >> 18) & 0x1;
         if (category == 0)
         {
@@ -385,8 +385,8 @@ const char* G4_SendMsgDescriptor::getDescType()
                 return "scratch write";
         }
         break;
-    case SFID_DP_PI: return "dp_pi"; break;
-    case SFID_DP_DC1:
+    case SFID::DP_PI: return "dp_pi"; break;
+    case SFID::DP_DC1:
         switch (bits)
         {
         case 0x0: return "transpose read"; break;
@@ -415,7 +415,7 @@ const char* G4_SendMsgDescriptor::getDescType()
         default: return "reserved encoding used!";
         }
         break;
-    case SFID_CRE: return "cre"; break;
+    case SFID::CRE: return "cre"; break;
     default: return "--";
     }
     return NULL;
@@ -423,7 +423,7 @@ const char* G4_SendMsgDescriptor::getDescType()
 
 bool G4_SendMsgDescriptor::isSLMMessage() const
 {
-    if (getFuncId() == SFID_DP_DC2)
+    if (getFuncId() == SFID::DP_DC2)
     {
         uint32_t msgType = getMessageType();
         if ((msgType == DC2_UNTYPED_SURFACE_WRITE || msgType == DC2_BYTE_SCATTERED_WRITE) &&
@@ -433,9 +433,9 @@ bool G4_SendMsgDescriptor::isSLMMessage() const
         }
     }
 
-    if (getFuncId() == SFID_DP_DC2 ||
-        getFuncId() == SFID_DP_DC1 ||
-        getFuncId() == SFID_DP_DC)
+    if (getFuncId() == SFID::DP_DC2 ||
+        getFuncId() == SFID::DP_DC1 ||
+        getFuncId() == SFID::DP_DC)
     {
         if ((getDesc() & 0xFF) == 0xFE)
         {
@@ -454,13 +454,13 @@ bool G4_SendMsgDescriptor::isSLMMessage() const
 bool G4_SendMsgDescriptor::isReadOnlyMessage(uint32_t msgDesc,
                                              uint32_t extDesc)
 {
-    CISA_SHARED_FUNCTION_ID funcID = G4_SendMsgDescriptor::getFuncId(extDesc);
+    SFID funcID = G4_SendMsgDescriptor::getFuncId(extDesc);
     unsigned subFuncID = G4_SendMsgDescriptor::getMessageType(msgDesc);
 
     switch (funcID) {
     default:
         break;
-    case SFID_DP_DC:
+    case SFID::DP_DC:
         switch (subFuncID) {
         case DC_OWORD_BLOCK_READ:
         case DC_UNALIGNED_OWORD_BLOCK_READ:
@@ -470,7 +470,7 @@ bool G4_SendMsgDescriptor::isReadOnlyMessage(uint32_t msgDesc,
         default:
             return false;
         }
-    case SFID_DP_DC1:
+    case SFID::DP_DC1:
         switch (subFuncID) {
         case DC1_UNTYPED_SURFACE_READ:
         case DC1_MEDIA_BLOCK_READ:
@@ -482,7 +482,7 @@ bool G4_SendMsgDescriptor::isReadOnlyMessage(uint32_t msgDesc,
         default:
             return false;
         }
-    case SFID_DP_DC2:
+    case SFID::DP_DC2:
         switch (subFuncID) {
         case DC2_UNTYPED_SURFACE_READ:
         case DC2_A64_SCATTERED_READ:
@@ -492,7 +492,7 @@ bool G4_SendMsgDescriptor::isReadOnlyMessage(uint32_t msgDesc,
         default:
             return false;
         }
-    case SFID_SAMPLER:
+    case SFID::SAMPLER:
         return true;
     }
 
@@ -3099,12 +3099,12 @@ bool G4_InstSend::isDirectSplittableSend()
 {
 
     unsigned short elemSize = dst->getElemSize();
-    CISA_SHARED_FUNCTION_ID funcID = msgDesc->getFuncId();
+    SFID funcID = msgDesc->getFuncId();
     unsigned subFuncID = msgDesc->getMessageType();
 
     switch (funcID)
     {
-    case SFID_DP_DC1:
+    case SFID::DP_DC1:
         switch (subFuncID)
         {
         case DC1_A64_SCATTERED_READ:   //emask need be vertically cut.
@@ -3125,7 +3125,7 @@ bool G4_InstSend::isDirectSplittableSend()
 
         default: return false;
         }
-    case SFID_DP_DC2:
+    case SFID::DP_DC2:
         switch (subFuncID)
         {
         case DC2_UNTYPED_SURFACE_READ:   //gather 4 scaled :  emask can be reused if the per-channel data is larger than 1 GRF
@@ -3145,7 +3145,7 @@ bool G4_InstSend::isDirectSplittableSend()
 
         default: return false;
         }
-    case SFID_DP_DC:
+    case SFID::DP_DC:
         switch (subFuncID)
         {
         case DC_DWORD_SCATTERED_READ:   //dword scattered read: emask need be vertically cut according to splitting
@@ -3156,7 +3156,7 @@ bool G4_InstSend::isDirectSplittableSend()
             return true;
         default: return false;
         }
-    case SFID_SAMPLER:
+    case SFID::SAMPLER:
         return true;
     default: return false;
     }

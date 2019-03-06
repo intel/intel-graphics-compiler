@@ -5628,7 +5628,7 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
          */
         G4_SendMsgDescriptor *desc = sendInst->getMsgDesc();
         uint32_t descVal = desc->getDesc();
-        if ((desc->getFuncId() == SFID_GATEWAY) &&
+        if ((desc->getFuncId() == SFID::GATEWAY) &&
             (descVal == (0x1 << 25) + 0x4) && // 0x2000004
             (sendInst->def_size() == 1))
         {
@@ -7094,28 +7094,29 @@ private:
         }
 
         // Cover instructions that read this bucket
-        void coverReadIDs(CISA_SHARED_FUNCTION_ID SFID = SFID_NULL) {
+        void coverReadIDs(SFID sfid = SFID::NULL_SFID) {
             // Go through all the instructions that read this instruction.
             // Notify the instruction that one of its registers is covered
             for (InstrDescr *ID : IDSet) {
                 assert(ID->instr->isSend());
                 // Only sends with the same SFID can be covered
-                if (SFID == SFID_NULL
-                    || ID->instr->getMsgDesc()->getFuncId() == SFID) {
+                if (sfid == SFID::NULL_SFID
+                    || ID->instr->getMsgDesc()->getFuncId() == sfid) 
+                {
                     ID->coverR(this);
                 }
             }
         }
 
         // Cover instructions that write this bucket
-        void coverWrittenIDs(CISA_SHARED_FUNCTION_ID SFID = SFID_NULL) {
+        void coverWrittenIDs(SFID sfid = SFID::NULL_SFID) {
             // Go through all the instructions that read this instruction.
             // Notify the instruction that one of its registers is covered
             for (InstrDescr *ID : IDSet) {
                 assert(ID->instr->isSend());
                 // Only sends with the same SFID can be covered
-                if (SFID == SFID_NULL
-                    || ID->instr->getMsgDesc()->getFuncId() == SFID) {
+                if (sfid == SFID::NULL_SFID
+                    || ID->instr->getMsgDesc()->getFuncId() == sfid) {
                     ID->coverW(this);
                 }
             }
@@ -7368,10 +7369,11 @@ public:
 
     // Cover the instructions that read the values read by instrBuckets
     void coverInstrReadingBucketsReadBy(const BucketDescrBox &instrBuckets,
-                                        CISA_SHARED_FUNCTION_ID SFID) {
+                                        SFID sfid) 
+    {
         for (const auto &BD : instrBuckets.BDVec) {
             if (BD.type == READ) {
-                bucketVec[BD.bucketIdx].coverReadIDs(SFID);
+                bucketVec[BD.bucketIdx].coverReadIDs(sfid);
             }
         }
     }
@@ -7750,7 +7752,7 @@ public:
         {
             uint16_t extFuncCtrl = 0;
             // both scratch and block read use DC
-            CISA_SHARED_FUNCTION_ID funcID = SFID_DP_DC;
+            SFID funcID = SFID::DP_DC;
 
             uint32_t headerPresent = 0x80000;
             uint32_t msgDescImm = headerPresent;
@@ -8077,7 +8079,7 @@ public:
         desc.layout.resLen = 1;
         desc.layout.msgLen = 1;
 
-        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID_DP_DC);
+        uint32_t extDesc = G4_SendMsgDescriptor::createExtDesc(SFID::DP_DC);
 
         for (auto bb : kernel.fg.BBs)
         {

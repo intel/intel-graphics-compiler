@@ -1034,7 +1034,7 @@ union DescData {
 // leading URB write should have cache-aligned global offset
 static bool isLeadingURBWrite(G4_INST* inst)
 {
-    if (inst->isSend() && inst->getMsgDesc()->getFuncId() == SFID_URB)
+    if (inst->isSend() && inst->getMsgDesc()->getFuncId() == SFID::URB)
     {
         DescData desc;
         desc.value = inst->getMsgDesc()->getDesc();
@@ -1116,7 +1116,7 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
         }
         else if (leadingURB)
         {
-            if (inst->isSend() && inst->getMsgDesc()->getFuncId() == SFID_URB)
+            if (inst->isSend() && inst->getMsgDesc()->getFuncId() == SFID::URB)
             { 
                 if (canFuseURB(inst, (*leadingURB->getInstructions()).front()))
                 {
@@ -1165,7 +1165,7 @@ void DDD::pairTypedWriteOrURBWriteNodes(G4_BB *bb) {
             assert(firstNode->getInstructions()->size() == 1);
             firstNode->addPairInstr(*secondNode->getInstructions()->begin());
             if (!kernel->fg.builder->getOption(vISA_NoAtomicSend) && 
-                firstInstr->isSend() && firstInstr->getMsgDesc()->getFuncId() == SFID_URB)
+                firstInstr->isSend() && firstInstr->getMsgDesc()->getFuncId() == SFID::URB)
             {
                 firstInstr->setOptionOn(InstOpt_Atomic);
             }
