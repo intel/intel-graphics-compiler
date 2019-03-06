@@ -3827,12 +3827,11 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
             //swap src0 and src1 as src0 supports imm
             inst->setSrc(src1, 0);
             inst->setSrc(src0, 1);
-        } else if (builder.noSrc2Regioning() &&
-                   src0->isSrcRegRegion() && src1->isSrcRegRegion() &&
-                   !src0->asSrcRegRegion()->isScalar() &&
+        } else if (!isGoodAlign1TernarySrc(inst, 0, true) &&
+                   src1->isSrcRegRegion() &&
                    src1->asSrcRegRegion()->isScalar()) {
-            // Swap src0 and src1 if src1 is scalar but src0 is not when src2
-            // regioning support is quite limited.
+            // Swap src0 and src1 if src1 is scalar but src0 is not a good Align1TernarySrc
+            // when src2 regioning support is quite limited.
             inst->setSrc(src1, 0);
             inst->setSrc(src0, 1);
         }

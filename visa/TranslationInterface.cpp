@@ -4268,6 +4268,7 @@ int IR_Builder::translateVISADwordAtomicInst(
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
 
+
     surface = lowerSurface255To253(surface, *this);
 
     unsigned op = Get_Atomic_Op(atomicOp);
@@ -4528,6 +4529,7 @@ int IR_Builder::translateVISADwordAtomicInst(VISAAtomicOps atomicOp,
 
     ASSERT_USER(!IsFloatAtomicOps(atomicOp) || hasFloatAtomics(),
                 "Float atomic operations are only supported on SKL+ devices!");
+
 
     surface = lowerSurface255To253(surface, *this);
 
@@ -10395,6 +10397,7 @@ int IR_Builder::translateVISASVMAtomicInst(
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_IR_CONSTRUCTION)
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
+
 
     Common_ISA_Exec_Size instExecSize = execSize;
     if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 || execSize == EXEC_SIZE_4)
