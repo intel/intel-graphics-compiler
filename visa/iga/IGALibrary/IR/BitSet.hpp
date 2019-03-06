@@ -66,6 +66,9 @@ public:
     // len: range length in bits
     inline bool intersects(const BitSet<N,I> &rhs, size_t off, size_t len) const;
 
+    // if the given rhs is completely the same as itself
+    bool equal(const BitSet<N, I> &rhs) const;
+
     // THERE EXISTS WORD w such that ((w & mask) == eq)
     // bool testAnyEq(size_t off, size_t len, const I &mask, const I &eq) const;
     // FOR ALL ...
@@ -179,6 +182,19 @@ inline bool BitSet<N, I>::intersects(
         off += aligned_len;
     }
     return false;
+}
+
+template <size_t N, typename I>
+inline bool BitSet<N, I>::equal(const BitSet<N, I> &rhs) const {
+    bool result = true;
+    for (size_t i = 0; i < N / BITS_PER_WORD; i++) {
+        result = (words[i] == rhs.words[i]) ? true : false;
+        if (!result)
+            break;
+    }
+    // padding will remain 0 since both padding are 0's
+    // 0 & 0 is 0 so no need special handling on padding
+    return result;
 }
 
 template <size_t N, typename I>

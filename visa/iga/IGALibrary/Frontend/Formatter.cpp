@@ -1578,8 +1578,8 @@ void Formatter::EmitSendDescriptorInfoGED(
         switch (getScratchSpaceGRFsSize(desc)) {
         case 0: ss << "1grf"; break;
         case 1: ss << "2grfs"; break;
-        case 2: ss << "4grfs"; break;
-        case 3: ss << "8grfs"; break;
+        case 2: ss << "?grfs"; break;
+        case 3: ss << "4grfs"; break;
         }
         uint32_t off = getScratchSpaceAddressOffset(desc);
         ss << " from 0x" << std::hex << off << ")";
@@ -1728,8 +1728,8 @@ void Formatter::EmitSendDescriptorInfo(
         switch (getBitField(desc, 12, 2)) {
         case 0: ss << "1grf"; break;
         case 1: ss << "2grfs"; break;
-        case 2: ss << "4grfs"; break;
-        case 3: ss << "8grfs"; break;
+        case 2: ss << "?grfs"; break;
+        case 3: ss << "4grfs"; break;
         }
         uint32_t off = getBitField(desc, 0, 12);
         ss << " from 0x" << std::hex << off << ")";
