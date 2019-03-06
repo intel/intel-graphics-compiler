@@ -136,21 +136,23 @@ extern "C"
 
 /*!
  * Get the string representation for the given GED_RETURN_VALUE enumerator.
+ * If the value is not valid, return an empty string
  *
- * @param[in]       ReturnValue    The given GED_RETURN_VALUE enumerator.
+ * @param[in]       returnValue    The given GED_RETURN_VALUE enumerator.
  *
  * @return      The requested string.
  */
-extern const char* GED_CALLCONV GED_GetReturnValueString(GED_RETURN_VALUE ReturnValue);
+extern const char* GED_CALLCONV GED_GetReturnValueString(GED_RETURN_VALUE returnValue);
 
 /*!
  * Get the padding of the GED_RETURN_VALUE enum's string representation in order for it to be aligned column-wise.
+ * If the value is not valid, return an empty string
  *
- * @param[in]       ReturnValue    The given GED_RETURN_VALUE enumerator.
+ * @param[in]       returnValue    The given GED_RETURN_VALUE enumerator.
  *
  * @return      The requested pad.
  */
-extern const char* GED_CALLCONV GED_GetReturnValuePad(GED_RETURN_VALUE ReturnValue);
+extern const char* GED_CALLCONV GED_GetReturnValuePad(GED_RETURN_VALUE returnValue);
 
 /*!
  * Initialize an empty ged_ins_t object and set its opcode. Can be called to initialize a newly allocated object or to clear an

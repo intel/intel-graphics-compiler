@@ -54,19 +54,31 @@ extern const char* gedVersion;
 
 
 # if defined(GED_DEBUG)
+#   ifndef GED_VALIDATE
+#     define GED_VALIDATE
+#   endif
+#   define GEDASSERT(cond) assert(cond)
+# else
+#   if defined(GED_VALIDATE)
+#     define GEDASSERT(cond) { if (0 == (cond)) { cerr << "GED ASSERTION: " #cond << endl << \
+                               "file " << __FILE__ << ", line " << __LINE__ << endl << flush; exit(1); } }
+#   else
+#     define GEDASSERT(cond)
+#   endif
+# endif
+
+# if defined(GED_VALIDATE)
 #  define COMMA ,
 #  define GEDFORASSERT(expr) expr
-#  define GEDASSERT(cond) assert(cond);
-#  define GEDASSERTM(cond, msg) { if (0 == (cond)) { cerr << msg << endl << flush; assert(cond); } }
+#  define GEDASSERTM(cond, msg) { if (0 == (cond)) { cerr << msg << endl << flush; GEDASSERT(cond); } }
 #  define GEDERRORC(code, msg) { cerr << "GED ERROR: " << __FILE__ << "::" << __FUNCTION__ << endl << msg << endl << flush; \
-                                 assert(0); }
-# else // not defined GED_DEBUG
+                                 GEDASSERT(0); }
+# else // not defined GED_VALIDATE
 #  define COMMA
 #  define GEDFORASSERT(expr)
-#  define GEDASSERT(cond)
 #  define GEDASSERTM(cond, msg)
 #  define GEDERRORC(code, msg) { cerr << "GED ERROR: " << msg << endl; GEDVERSION(cerr); cerr.flush(); exit(code); }
-# endif // not defined GED_DEBUG
+# endif // end of not defined GED_VALIDATE
 
 
 # if defined(GED_IGNORE_WARNINGS)

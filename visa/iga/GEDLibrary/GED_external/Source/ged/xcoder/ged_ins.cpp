@@ -144,13 +144,13 @@ GED_RETURN_VALUE GEDIns::Init(const /* GED_MODEL */ uint8_t modelId, /* GED_OPCO
     _opcode = invalidOpcode;
     _decodingTable = NULL;
     ret = SetOpcode(opcode);
-#if defined(GED_DEBUG)
+#if defined(GED_VALIDATE)
     if (GED_RETURN_VALUE_OPCODE_NOT_SUPPORTED != ret)
     {
         GEDASSERT(invalidOpcode != _opcode);
         GEDASSERT(NULL != _decodingTable);
     }
-#endif // GED_DEBUG
+#endif // GED_VALIDATE
     return ret;
 }
 
@@ -199,10 +199,10 @@ GED_RETURN_VALUE GEDIns::Decode(const /* GED_MODEL */ uint8_t modelId, const uns
         // and set the instruction's compact form as encoded.
         ApplyCompactEncodingMasks(_compactBytes); // enforce the per-instruction encoding restrictions for the compact format
 
-#if defined (GED_DEBUG)
+#if defined (GED_VALIDATE)
         // TODO: Save the current instruction bytes, then call BuildNativeInsFromCompact again and compare the two
         //       to prevent field/padding conflicts in the XMLs.
-#endif // GED_DEBUG
+#endif // GED_VALIDATE
     }
     else
     {
@@ -915,7 +915,7 @@ void GEDIns::EmitMappingCyclicDependencyError(const set<uint32_t>& unMapped, con
     {
         depErrorStr += ", " + DecStr(*it);
     }
-#if defined(GED_DEBUG)
+#if defined(GED_VALIDATE)
     stringstream strm;
     strm << setfill('0') << hex;
     for (int i = GED_NUM_OF_NATIVE_INS_DWORDS - 1; i >= 0; --i)
@@ -923,7 +923,7 @@ void GEDIns::EmitMappingCyclicDependencyError(const set<uint32_t>& unMapped, con
         strm << setw(8) << ((uint32_t*)validBits)[i];
     }
     depErrorStr += "\nValidBits: 0x" + strm.str();
-#endif // GED_DEBUG
+#endif // GED_VALIDATE
     // TODO: This should use GED logs instead of emitting an error. Also, consider changing the function name.
     GEDERROR("Unable to map remaining unmapped fields, probably due to an implicit dependency cycle: " + depErrorStr);
 }

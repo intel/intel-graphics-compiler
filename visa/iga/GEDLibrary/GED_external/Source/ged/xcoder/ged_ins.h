@@ -690,14 +690,14 @@ uint64_t GEDIns::GetRawQuadField(const /* GED_INS_FIELD */ uint32_t field, GED_R
 
 void GEDIns::SignExtend(int32_t& val, const ged_ins_field_entry_t* dataEntry) const
 {
-#if defined(GED_DEBUG)
+#if defined(GED_VALIDATE)
     if (NULL != dataEntry->_restrictions)
     {
         // Make sure this isn't a variable field since variable fields must use unsigned getters. The variable-field modifier must be
         // first in the restrictions table if it exists.
         GEDASSERT(GED_FIELD_RESTRICTIONS_TYPE_FIELD_TYPE != dataEntry->_restrictions[0]->_restrictionType);
     }
-#endif // GED_DEBUG
+#endif // GED_VALIDATE
     const uint8_t highBit = dataEntry->_bitSize - 1;
     if (GEDRestrictionsHandler::IsNegative(val, highBit))
     {
@@ -708,14 +708,14 @@ void GEDIns::SignExtend(int32_t& val, const ged_ins_field_entry_t* dataEntry) co
 
 void GEDIns::SignExtend(int64_t& val, const ged_ins_field_entry_t* dataEntry) const
 {
-#if defined(GED_DEBUG)
+#if defined(GED_VALIDATE)
     if (NULL != dataEntry->_restrictions)
     {
         // Make sure this isn't a variable field since variable fields must use unsigned getters. The variable-field modifier must be
         // first in the restrictions table if it exists.
         GEDASSERT(GED_FIELD_RESTRICTIONS_TYPE_FIELD_TYPE != dataEntry->_restrictions[0]->_restrictionType);
     }
-#endif // GED_DEBUG
+#endif // GED_VALIDATE
     const uint8_t highBit = dataEntry->_bitSize - 1;
     if (GEDRestrictionsHandler::IsNegative(val, highBit))
     {

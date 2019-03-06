@@ -100,13 +100,19 @@ const char* GED_GetModelVersionString(GED_MODEL model)
         return ModelsArray[rawModel].modelVersion;
     return "";
 }
-const char* GED_GetReturnValueString(GED_RETURN_VALUE ReturnValue)
+const char* GED_GetReturnValueString(GED_RETURN_VALUE returnValue)
 {
-    return gedReturnValueStrings[ReturnValue];
+    unsigned int rawReturnValue = static_cast<unsigned int>(returnValue);
+    if (rawReturnValue < GED_RETURN_VALUE_SIZE)
+        return gedReturnValueStrings[returnValue];
+    return "";
 }
-const char* GED_GetReturnValuePad(GED_RETURN_VALUE ReturnValue)
+const char* GED_GetReturnValuePad(GED_RETURN_VALUE returnValue)
 {
-    return gedReturnValuePadding[ReturnValue];
+    unsigned int rawReturnValue = static_cast<unsigned int>(returnValue);
+    if (rawReturnValue < GED_RETURN_VALUE_SIZE)
+        return gedReturnValuePadding[returnValue];
+    return "";
 }
 GED_RETURN_VALUE GED_InitEmptyIns(const GED_MODEL modelId, ged_ins_t* ins, GED_OPCODE opcode)
 {
