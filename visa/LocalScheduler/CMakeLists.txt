@@ -48,7 +48,7 @@ if(WIN32)
   add_definitions(-D_HAS_EXCEPTIONS=0)
 endif()
 
-add_library(LocalScheduler ${LocalScheduler_SOURCES} ${LocalScheduler_HEADERS})
+add_library(LocalScheduler STATIC ${LocalScheduler_SOURCES} ${LocalScheduler_HEADERS})
 
 if(IGC_BUILD AND MSVC)
 #set up standard defines from the common WDK path.
