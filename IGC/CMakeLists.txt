@@ -58,6 +58,10 @@ set(IGC_API_MAJOR_VERSION 1)
 set(IGC_API_MINOR_VERSION 0)
 set(IGC_API_PATCH_VERSION 0)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+
+
 # ======================================================================================================
 # ================================================ UTILS ===============================================
 # ======================================================================================================
@@ -2900,7 +2904,7 @@ endif()
 if(ANDROID AND _igc_compiler_is_clang)
   set(_igc_cxx_standard "-std=gnu++14")
 else()
-  set(_igc_cxx_standard "-std=c++11")
+  set(_igc_cxx_standard "-std=c++14")
 endif()
 
 if(_igc_compiler_is_gnu_or_clang)

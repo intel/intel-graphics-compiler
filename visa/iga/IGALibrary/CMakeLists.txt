@@ -2,7 +2,7 @@
 ##############################################
 # IGA dynamic and static library generation
 
-set (CMAKE_CXX_STANDARD 11)
+set (CMAKE_CXX_STANDARD 14)
 
 # add GED libraries and includes
 if (CMAKE_SIZEOF_VOID_P EQUAL 4)
