@@ -146,9 +146,9 @@ class DeSSA : public llvm::FunctionPass {
         kRegisterIsolatedFlag = 1,
         kPHIIsolatedFlag = 1
       };
-      Node(llvm::Value *v, e_alignment align)
+      Node(llvm::Value *v, int c, e_alignment align)
           : next(this), prev(this), value(v)
-          , rank(0), alignment(align)
+          , rank(0), alignment(align), color(c)
       {
         parent.setPointer(this);
       }
@@ -163,6 +163,11 @@ class DeSSA : public llvm::FunctionPass {
       llvm::Value *value;
       unsigned rank;
       e_alignment alignment;
+
+      // Unique one for each node. Used to represent the color
+      // (in another word, id or label) of a congruent class.
+      // Start from 1
+      int color;
     };
 
     /// Add a register in a new congruence class containing only itself.
@@ -186,6 +191,9 @@ class DeSSA : public llvm::FunctionPass {
     /// all of its operands (before they were isolated if they were).
     llvm::Value* getOrigRoot(llvm::Instruction*) const;
 
+    // Return color (>0) if V is in a congruent class; return 0 otherwise.
+    int getRootColor(llvm::Value* V);
+
     // Isolate a register.
     void isolateReg(llvm::Value*);
 
@@ -204,11 +212,11 @@ class DeSSA : public llvm::FunctionPass {
     /// of the dominator tree.
     void SplitInterferencesForBasicBlock(
       llvm::BasicBlock*,
-      llvm::DenseMap<llvm::Value*, llvm::Value*> &CurrentDominatingParent,
+      llvm::DenseMap<int, llvm::Value*> &CurrentDominatingParent,
       llvm::DenseMap<llvm::Value*, llvm::Value*> &ImmediateDominatingParent);
 
     void SplitInterferencesForArgument(
-      llvm::DenseMap<llvm::Value*, llvm::Value*> &CurrentDominatingParent,
+      llvm::DenseMap<int, llvm::Value*> &CurrentDominatingParent,
       llvm::DenseMap<llvm::Value*, llvm::Value*> &ImmediateDominatingParent);
 
     void SplitInterferencesForAlignment();
@@ -221,6 +229,10 @@ class DeSSA : public llvm::FunctionPass {
     const llvm::DataLayout *DL;
 
     llvm::BumpPtrAllocator Allocator;
+    // Color (label) assigned to each congruent class
+    // start from 1. Make sure each Node has a different
+    // color number.
+    int CurrColor;
 
 public:
     LiveVars *getLiveVars() const { return LV; }
