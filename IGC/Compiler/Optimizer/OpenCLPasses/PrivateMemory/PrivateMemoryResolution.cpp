@@ -411,8 +411,7 @@ bool PrivateMemoryResolution::safeToUseScratchSpace(llvm::Module &M) const
          KernelArgs kernelArgs(F, DL, m_pMdUtils, &modMD);
          for (auto arg : kernelArgs) {
            const KernelArg::ArgType argTy = arg.getArgType();
-           if ((argTy == KernelArg::ArgType::PTR_DEVICE_QUEUE)
-             || (argTy == KernelArg::ArgType::STRUCT))
+           if (argTy == KernelArg::ArgType::PTR_DEVICE_QUEUE)
            {
              return false;
            }
