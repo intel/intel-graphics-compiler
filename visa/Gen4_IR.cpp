@@ -6653,12 +6653,6 @@ void G4_INST::computeRightBound(G4_Operand* opnd)
 
 			done = true;
 		}
-		else if( done == false && op == G4_pseudo_caller_save_flag )
-		{
-			opnd->setRightBound(opnd->getBase()->asRegVar()->getDeclare()->getNumberFlagElements() - 1);
-
-			done = true;
-        }
 
 		if( done == false )
 		{

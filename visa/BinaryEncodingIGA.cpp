@@ -370,18 +370,6 @@ iga::Op BinaryEncodingIGA::getIGAOp(G4_opcode op, G4_INST *inst) const
     case G4_pseudo_sada2:
         igaOp = iga::Op::SADA2;
         break;
-    case G4_pseudo_caller_save_a0:
-        ASSERT_USER(false, "G4_pseudo_caller_save_a0 not GEN ISA OPCODE.");
-        break;
-    case G4_pseudo_caller_restore_a0:
-        ASSERT_USER(false, "G4_pseudo_caller_restore_a0 not GEN ISA OPCODE.");
-        break;
-    case G4_pseudo_caller_save_flag:
-        ASSERT_USER(false, "G4_pseudo_caller_save_flag not GEN ISA OPCODE.");
-        break;
-    case G4_pseudo_caller_restore_flag:
-        ASSERT_USER(false, "G4_pseudo_caller_restore_flag not GEN ISA OPCODE.");
-        break;
     case G4_pseudo_kill:
         ASSERT_USER(false, "G4_pseudo_kill not GEN ISA OPCODE.");
         break;

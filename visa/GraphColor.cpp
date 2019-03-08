@@ -2128,43 +2128,51 @@ void Interference::buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* ins
 }
 
 
-void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live, G4_Declare* arg, G4_Declare* ret)
+void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
 {
     DebugInfoState state(kernel.fg.mem);
     unsigned refCount = GlobalRA::getRefCount(kernel.getOption(vISA_ConsiderLoopInfoInRA) ?
         bb->getNestLevel() : 0);
 
-    for (std::list<G4_INST*>::reverse_iterator i = bb->rbegin();
-        i != bb->rend();
-        i++)
+    for (auto i = bb->rbegin(); i != bb->rend(); i++)
     {
         G4_INST* inst = (*i);
 
-        //
-        // process dst reg var
-        //
         G4_DstRegRegion* dst = inst->getDst();
-
-        if (dst != NULL)
+        if (dst)
         {
             buildInterferenceForDst(bb, live, inst, i, dst);
         }
 
-        if (inst->opcode() == G4_pseudo_fcall &&
-            liveAnalysis->livenessClass(G4_GRF))
+        if (inst->opcode() == G4_pseudo_fcall)
         {
-            G4_FCALL* fcall = kernel.fg.builder->getFcallInfo(bb->back());
-            MUST_BE_TRUE(fcall != NULL, "fcall info not found");
-            uint16_t retSize = fcall->getRetSize();
-            uint16_t argSize = fcall->getArgSize();
-            if (ret != NULL && retSize > 0 && ret->getRegVar() != NULL)
+            if (liveAnalysis->livenessClass(G4_GRF))
             {
-                buildInterferenceForFcall(bb, live, inst, i, ret->getRegVar());
+                G4_FCALL* fcall = kernel.fg.builder->getFcallInfo(bb->back());
+                G4_Declare* arg = kernel.fg.builder->getStackCallArg();
+                G4_Declare* ret = kernel.fg.builder->getStackCallRet();
+                MUST_BE_TRUE(fcall != NULL, "fcall info not found");
+                uint16_t retSize = fcall->getRetSize();
+                uint16_t argSize = fcall->getArgSize();
+                if (ret && retSize > 0 && ret->getRegVar())
+                {
+                    buildInterferenceForFcall(bb, live, inst, i, ret->getRegVar());
+                }
+                if (arg && argSize > 0 && arg->getRegVar())
+                {
+                    auto id = arg->getRegVar()->getId();
+                    updateLiveness(live, id, true);
+                }
             }
-            if (arg != NULL && argSize > 0 && arg->getRegVar() != NULL)
+            else if (liveAnalysis->livenessClass(G4_ADDRESS))
             {
-                auto id = arg->getRegVar()->getId();
-                updateLiveness(live, id, true);
+                // assume callee will use A0
+                buildInterferenceWithLive(live, inst->asCFInst()->getAssocPseudoA0Save()->getId());
+            }
+            else if (liveAnalysis->livenessClass(G4_FLAG))
+            {
+                // assume callee will use both F0 and F1
+                buildInterferenceWithLive(live, inst->asCFInst()->getAssocPseudoFlagSave()->getId());
             }
         }
 
@@ -2345,9 +2353,6 @@ void Interference::computeInterference()
     //
     BitSet live(maxId, false);
 
-    G4_Declare* arg = kernel.fg.builder->getStackCallArg();
-    G4_Declare* ret = kernel.fg.builder->getStackCallRet();
-
     for (BB_LIST_ITER it = kernel.fg.BBs.begin(); it != kernel.fg.BBs.end(); it++)
     {
         //
@@ -2362,7 +2367,7 @@ void Interference::computeInterference()
         // traverse inst in the reverse order
         //
 
-        buildInterferenceWithinBB((*it), live, arg, ret);
+        buildInterferenceWithinBB((*it), live);
     }
 
     if (kernel.fg.getHasStackCalls() == true)
@@ -5007,8 +5012,8 @@ void Interference::dumpInterference() const
 GraphColor::GraphColor(LivenessAnalysis& live, unsigned totalGRF, bool hybrid, bool forceSpill_) :
     gra(live.gra), isHybrid(hybrid), totalGRFRegCount(totalGRF), numVar(live.getNumSelectedVar()), numSplitStartID(live.getNumSplitStartID()), numSplitVar(live.getNumSplitVar()),
     intf(&live, lrs, live.getNumSelectedVar(), live.getNumSplitStartID(), live.getNumSplitVar(), gra), regPool(gra.regPool),
-    builder(gra.builder), lrs(NULL), requireCallerSaveRestoreCode(false), requireCalleeSaveRestoreCode(false),
-    requireA0CallerSaveRestoreCode(false), requireFlagCallerSaveRestoreCode(false), forceSpill(forceSpill_), mem(GRAPH_COLOR_MEM_SIZE),
+    builder(gra.builder), lrs(NULL), 
+    forceSpill(forceSpill_), mem(GRAPH_COLOR_MEM_SIZE),
     liveAnalysis(live), kernel(gra.kernel)
 {
     oddTotalDegree = 1;
@@ -5724,51 +5729,23 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
             //
             if (failed_alloc)
             {
-                G4_Declare* dcl = lrVar->getDeclare();
                 //
                 // for GRF register assignment, if we are performing round-robin (1st pass) then abort on spill
                 //
                 if ((heuristic == ROUND_ROBIN || doBankConflict) &&
-                    ((lr->getRegKind() == G4_GRF) ||
-                    (lr->getRegKind() == G4_FLAG)))
+                    (lr->getRegKind() == G4_GRF || lr->getRegKind() == G4_FLAG))
                 {
                     return false;
                 }
-                //
-                // if the pseudo VCA_SAVE variable gets spilled then it means that we require
-                // caller save/restore code.
-                //
-                else if (kernel.fg.isPseudoVCADcl(dcl))
+                else if (kernel.fg.isPseudoVCADcl(dcl) || kernel.fg.isPseudoVCEDcl(dcl) || 
+                    kernel.fg.isPseudoA0Dcl(dcl) || kernel.fg.isPseudoFlagDcl(dcl))
                 {
-                    requireCallerSaveRestoreCode = true;
+                    // these pseudo dcls are not (and cannot be) spilled, but instead save/restore code will
+                    // be inserted in stack call prolog/epilog
                 }
-                //
-                // if the pseudo VCE_SAVE variable gets spilled then it means that we require
-                // callee save/restore code.
-                //
-                else if (kernel.fg.isPseudoVCEDcl(dcl))
-                {
-                    requireCalleeSaveRestoreCode = true;
-                }
-                //
-                // pseudo A0 save/restore node spills
-                //
-                else if (kernel.fg.isPseudoA0Dcl(dcl))
-                {
-                    requireA0CallerSaveRestoreCode = true;
-                }
-                //
-                // pseudo flag save/restore node spills
-                //
-                else if (kernel.fg.isPseudoFlagDcl(dcl))
-                {
-                    requireFlagCallerSaveRestoreCode = true;
-                }
-                //
-                // for first-fit register assignment track spilled live ranges
-                //
                 else
                 {
+                    // for first-fit register assignment track spilled live ranges
                     spilledLRs.push_back(lr);
                 }
             }
@@ -6983,7 +6960,6 @@ void GraphColor::addCallerSaveRestoreCode()
                     ((*it));
                 }
 
-                MUST_BE_TRUE(requireCallerSaveRestoreCode, ERROR_REGALLOC);
                 saveActiveRegs(callerSaveRegs, 0, builder.kernel.fg.callerSaveAreaOffset,
                     (*it), insertSaveIt);
 
@@ -7110,7 +7086,6 @@ void GraphColor::addCalleeSaveRestoreCode()
             builder.kernel.getKernelDebugInfo()->setOldInstList
             (builder.kernel.fg.getEntryBB());
         }
-        MUST_BE_TRUE(requireCalleeSaveRestoreCode, ERROR_REGALLOC);
         saveActiveRegs(calleeSaveRegs, callerSaveNumGRF, builder.kernel.fg.calleeSaveAreaOffset,
             builder.kernel.fg.getEntryBB(), insertSaveIt);
 
@@ -7455,79 +7430,47 @@ void GraphColor::addA0SaveRestoreCode()
     uint8_t numA0Elements = (uint8_t)getNumAddrRegisters();
 
     int count = 0;
-    for (BB_LIST_ITER it = builder.kernel.fg.BBs.begin();
-        it != builder.kernel.fg.BBs.end();
-        it++)
+    for (auto bb : builder.kernel.fg.BBs)
     {
-        G4_BB* bb = (*it);
-
         if (bb->isEndWithFCall())
         {
             G4_BB* succ = bb->Succs.front();
             G4_RegVar* assocPseudoA0 = bb->back()->asCFInst()->getAssocPseudoA0Save();
 
-            if (assocPseudoA0->getPhyReg() == NULL)
+            if (!assocPseudoA0->getPhyReg())
             {
-                // Insert save/restore code because the pseudo node did not get
-                // an allocation
+                // Insert save/restore code because the pseudo node did not get an allocation
                 char* name = builder.getNameString(builder.mem, 20, builder.getIsKernel() ? "SA0_k%d_%d" : "SA0_f%d_%d", builder.getCUnitId(), count++);
                 G4_Declare* savedDcl = builder.createDeclareNoLookup(name, G4_GRF, numA0Elements, 1, Type_UW);
 
                 {
                     //
-                    // mov (16) TMP_GRF<1>:uw a0.0<16;16,1>:uw
+                    // (W) mov (16) TMP_GRF<1>:uw a0.0<16;16,1>:uw
                     //
                     G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, savedDcl->getRegVar(), 0, 0, 1, Type_UW);
-                    RegionDesc* rDesc = builder.rgnpool.createRegion(numA0Elements, numA0Elements, 1);
+                    RegionDesc* rDesc = builder.getRegionStride1();
                     G4_Operand* src = builder.createSrcRegRegion(
                         Mod_src_undef, Direct, regPool.getAddrReg(), 0, 0, rDesc, Type_UW);
-                    G4_INST* saveInst = builder.createInternalInst(NULL, G4_mov, NULL, false, numA0Elements,
-                        dst, src, NULL, 0);
-                    INST_LIST_ITER insertIt = bb->end();
-                    --insertIt;
-                    MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_fcall, ERROR_REGALLOC);
-                    for (--insertIt; (*insertIt)->opcode() == G4_pseudo_caller_save_a0; --insertIt);
+                    G4_INST* saveInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false, numA0Elements,
+                        dst, src, nullptr, InstOpt_WriteEnable);
+                    INST_LIST_ITER insertIt = std::prev(bb->end());
                     bb->insert(insertIt, saveInst);
                 }
 
                 {
                     //
-                    // mov (16) a0.0<1>:uw TMP_GRF<16;16,1>:uw
+                    // (W) mov (16) a0.0<1>:uw TMP_GRF<16;16,1>:uw
                     //
                     G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, regPool.getAddrReg(), 0, 0, 1, Type_UW);
-                    RegionDesc* rDesc = builder.rgnpool.createRegion(numA0Elements, numA0Elements, 1);
+                    RegionDesc* rDesc = builder.getRegionStride1();
                     G4_Operand* src = builder.createSrcRegRegion(
                         Mod_src_undef, Direct, savedDcl->getRegVar(), 0, 0, rDesc, Type_UW);
-                    G4_INST* restoreInst = builder.createInternalInst(NULL, G4_mov, NULL, false, numA0Elements,
-                        dst, src, NULL, 0);
-                    INST_LIST_ITER insertIt = succ->begin();
-                    while ((*insertIt)->opcode() != G4_pseudo_caller_restore_a0)
-                    {
-                        ++insertIt;
-                    }
+                    G4_INST* restoreInst = builder.createInternalInst(nullptr, G4_mov, nullptr, false, numA0Elements,
+                        dst, src, nullptr, InstOpt_WriteEnable);
+                    auto insertIt = std::find_if(succ->begin(), succ->end(), [](G4_INST* inst) { return !inst->isLabel(); });
                     succ->insert(insertIt, restoreInst);
                 }
             }
-
-            //Remove pseudo ops
-            {
-                INST_LIST_ITER insertIt = bb->end();
-                --insertIt;
-                MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_fcall, ERROR_REGALLOC);
-                for (--insertIt; (*insertIt)->opcode() != G4_pseudo_caller_save_a0; --insertIt)
-                    ; // empty body
-                MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_caller_save_a0, "Could not find pseudo caller save a0");
-                bb->erase(insertIt);
-            }
-
-            {
-                INST_LIST_ITER insertIt = succ->begin();
-                for (; (*insertIt)->opcode() != G4_pseudo_caller_restore_a0; ++insertIt)
-                    ; // empty body
-                MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_caller_restore_a0, "Could not find pseudo caller restore a0");
-                succ->erase(insertIt);
-            }
-
         }
     }
 
@@ -7545,113 +7488,64 @@ void GraphColor::addFlagSaveRestoreCode()
     G4_Declare* tmpFlag1 = builder.createTempFlag(2);
     tmpFlag1->getRegVar()->setPhyReg(regPool.getF1Reg(), 0);
 
-    for (BB_LIST_ITER it = builder.kernel.fg.BBs.begin();
-        it != builder.kernel.fg.BBs.end();
-        it++)
+    for (auto bb : builder.kernel.fg.BBs)
     {
-        G4_BB* bb = (*it);
-
         if (bb->isEndWithFCall())
         {
             G4_BB* succ = bb->Succs.front();
             G4_RegVar* assocPseudoFlag = bb->back()->asCFInst()->getAssocPseudoFlagSave();
 
-            if (assocPseudoFlag->getPhyReg() == NULL)
+            if (!assocPseudoFlag->getPhyReg())
             {
-                // Insert save/restore code because the pseudo node did not get
-                // an allocation
+                // Insert save/restore code because the pseudo node did not get an allocation
                 char* name = builder.getNameString(builder.mem, 32, builder.getIsKernel() ? "SFLAG_k%d_%d" : "SFLAG_f%d_%d", builder.getCUnitId(), count++);
-
-                G4_Declare* savedDcl1 = builder.createDeclareNoLookup(name, G4_GRF, 1, 1, Type_UD);
-
+                G4_Declare* savedDcl1 = builder.createDeclareNoLookup(name, G4_GRF, 2, 1, Type_UD);
                 {
                     //
-                    // mov (1) TMP_GRF<1>:ud f0.0:ud
+                    // (W) mov (1) TMP_GRF.0<1>:ud f0.0:ud
+                    // (W) mov (1) TMP_GRF.1<1>:ud f1.0:ud 
                     //
-                    G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, savedDcl1->getRegVar(), 0, 0, 1, Type_UD);
-                    G4_Operand* src = builder.createSrcRegRegion(Mod_src_undef, Direct, tmpFlag0->getRegVar(), 0, 0,
-                        builder.getRegionScalar(), Type_UD);
-                    G4_INST* saveInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
-                        dst, src, NULL, InstOpt_WriteEnable);
-                    INST_LIST_ITER insertIt = bb->end();
-                    --insertIt;
-                    MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_fcall, ERROR_REGALLOC);
-                    for (--insertIt; (*insertIt)->opcode() == G4_pseudo_caller_save_flag; --insertIt);
-                    bb->insert(insertIt, saveInst);
-                }
-
-                {
-                    //
-                    // mov (1) f0.0:ud TMP_GRF<0;1,0>:ud
-                    //
-                    G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, tmpFlag0->getRegVar(), 0, 0, 1, Type_UD);
-                    RegionDesc* rDesc = builder.getRegionScalar();
-                    G4_Operand* src = builder.createSrcRegRegion(
-                        Mod_src_undef, Direct, savedDcl1->getRegVar(), 0, 0, rDesc, Type_UD);
-                    G4_INST* restoreInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
-                        dst, src, NULL, InstOpt_WriteEnable);
-                    INST_LIST_ITER insertIt = succ->begin();
-                    for (; (*insertIt)->opcode() != G4_pseudo_caller_restore_flag; ++insertIt);
-                    succ->insert(insertIt, restoreInst);
-                }
-
-                {
-                    char* name2 = builder.getNameString(builder.mem, 32, builder.getIsKernel() ? "SFLAG_k%d_%d" : "SFLAG_f%d_%d", builder.getCUnitId(), count++);
-                    G4_Declare* savedDcl2 = builder.createDeclareNoLookup(name2, G4_GRF, 1, 1, Type_UD);
-
+                    auto createFlagSaveInst = [&](bool isF0)
                     {
-                        //
-                        // mov (1) TMP_GRF<1>:ud f1:ud
-                        //
-                        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, savedDcl2->getRegVar(), 0, 0, 1, Type_UD);
-                        G4_Operand* src = builder.createSrcRegRegion(Mod_src_undef, Direct, tmpFlag1->getRegVar(), 0, 0,
+                        int index = isF0 ? 0 : 1;
+                        auto flagDcl = isF0 ? tmpFlag0 : tmpFlag1;
+                        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, savedDcl1->getRegVar(), 0, index, 1, Type_UD);
+                        G4_Operand* src = builder.createSrcRegRegion(Mod_src_undef, Direct, flagDcl->getRegVar(), 0, 0,
                             builder.getRegionScalar(), Type_UD);
-                        G4_INST* saveInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
-                            dst, src, NULL, InstOpt_WriteEnable);
-                        INST_LIST_ITER insertIt = bb->end();
-                        --insertIt;
-                        MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_fcall, ERROR_REGALLOC);
-                        for (--insertIt; (*insertIt)->opcode() == G4_pseudo_caller_save_flag; --insertIt);
-                        bb->insert(insertIt, saveInst);
-                    }
+                        return builder.createInternalInst(nullptr, G4_mov, nullptr, false, 1,
+                            dst, src, nullptr, InstOpt_WriteEnable);
+                    };
 
+                    auto iter = std::prev(bb->end());
+                    auto saveInst = createFlagSaveInst(true);
+                    bb->insert(iter, saveInst);
+                    saveInst = createFlagSaveInst(false);
+                    bb->insert(iter, saveInst);
+                }
+
+                {
+                    //
+                    // mov (1) f0.0:ud TMP_GRF.0<0;1,0>:ud
+                    // mov (1) f1.0:ud TMP_GRF.1<0;1,0>:ud
+                    //
+                    auto createRestoreFlagInst = [&](bool isF0)
                     {
-                        //
-                        // mov (1) f1:ud TMP_GRF<0;1,0>:ud
-                        //
-                        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, tmpFlag1->getRegVar(), 0, 0, 1, Type_UD);
+                        int index = isF0 ? 0 : 1;
+                        auto flagDcl = isF0 ? tmpFlag0 : tmpFlag1;
+                        G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, flagDcl->getRegVar(), 0, 0, 1, Type_UD);
                         RegionDesc* rDesc = builder.getRegionScalar();
                         G4_Operand* src = builder.createSrcRegRegion(
-                            Mod_src_undef, Direct, savedDcl2->getRegVar(), 0, 0, rDesc, Type_UD);
-                        G4_INST* restoreInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
-                            dst, src, NULL, InstOpt_WriteEnable);
-                        INST_LIST_ITER insertIt = succ->begin();
-                        for (; (*insertIt)->opcode() != G4_pseudo_caller_restore_flag; ++insertIt);
-                        succ->insert(insertIt, restoreInst);
-                    }
+                            Mod_src_undef, Direct, savedDcl1->getRegVar(), 0, index, rDesc, Type_UD);
+                        return builder.createInternalInst(nullptr, G4_mov, nullptr, false, 1,
+                            dst, src, nullptr, InstOpt_WriteEnable);
+                    };
+                    auto insertIt = std::find_if(succ->begin(), succ->end(), [](G4_INST* inst) { return !inst->isLabel(); });
+                    auto restoreInst = createRestoreFlagInst(true);
+                    succ->insert(insertIt, restoreInst);
+                    restoreInst = createRestoreFlagInst(false);
+                    succ->insert(insertIt, restoreInst);
                 }
-
             }
-
-            //Remove pseudo ops
-            {
-                INST_LIST_ITER insertIt = bb->end();
-                --insertIt;
-                MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_fcall, ERROR_REGALLOC);
-                for (--insertIt; (*insertIt)->opcode() != G4_pseudo_caller_save_flag; --insertIt)
-                    ; // empty body
-                MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_caller_save_flag, "Could not find pseudo caller save flag");
-                bb->erase(insertIt);
-            }
-
-            {
-                INST_LIST_ITER insertIt = succ->begin();
-                for (; (*insertIt)->opcode() != G4_pseudo_caller_restore_flag; ++insertIt)
-                    ; // empty body
-                MUST_BE_TRUE((*insertIt)->opcode() == G4_pseudo_caller_restore_flag, "Could not find pseudo caller restore flag");
-                succ->erase(insertIt);
-            }
-
         }
     }
 
@@ -7703,65 +7597,11 @@ void GraphColor::addSaveRestoreCode(unsigned localSpillAreaOwordSize)
 void GlobalRA::addCallerSavePseudoCode()
 {
     std::vector<G4_Declare*>::iterator pseudoVCADclIt = builder.kernel.fg.pseudoVCADclList.begin();
-    std::vector<G4_Declare*>::iterator pseudoA0DclIt = builder.kernel.fg.pseudoA0DclList.begin();
-    std::vector<G4_Declare*>::iterator pseudoFlagDclIt = builder.kernel.fg.pseudoFlagDclList.begin();
     unsigned int retID = 0;
 
     for (BB_LIST_ITER it = builder.kernel.fg.BBs.begin(); it != builder.kernel.fg.BBs.end(); it++)
     {
         G4_BB* bb = *it;
-
-        if (bb->isEndWithFCall())
-        {
-            // a0 caller save/restore
-            G4_Declare* pseudoA0Dcl = *pseudoA0DclIt;
-            pseudoA0DclIt++;
-            G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, pseudoA0Dcl->getRegVar(), 0, 0, 1, Type_UW);
-            G4_INST* saveInst = builder.createInternalInst(
-                NULL, G4_pseudo_caller_save_a0, NULL, false, 1,
-                dst, NULL, NULL, InstOpt_WriteEnable);
-            INST_LIST_ITER callBBIt = bb->end();
-            bb->insert(--callBBIt, saveInst);
-
-            ASSERT_USER(bb->Succs.size() == 1, "fcall basic block cannot have more than 1 successor node");
-
-            G4_BB* retBB = bb->Succs.front();
-            RegionDesc* rd = builder.getRegionScalar();
-            G4_Operand* src = builder.createSrcRegRegion(Mod_src_undef, Direct, pseudoA0Dcl->getRegVar(), 0, 0, rd, Type_UW);
-            INST_LIST_ITER retBBIt = retBB->begin();
-            for (; retBBIt != retBB->end() && (*retBBIt)->isLabel(); ++retBBIt);
-            G4_INST* restoreInst =
-                builder.createInternalInst(
-                    NULL, G4_pseudo_caller_restore_a0, NULL, false, 1,
-                    NULL, src, NULL, InstOpt_WriteEnable);
-            retBB->insert(retBBIt, restoreInst);
-        }
-
-        if (bb->isEndWithFCall())
-        {
-            // Flag caller save/restore
-            G4_Declare* pseudoFlagDcl = *pseudoFlagDclIt;
-            pseudoFlagDclIt++;
-            G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, pseudoFlagDcl->getRegVar(), 0, 0, 1, Type_UW);
-            G4_INST* saveInst = builder.createInternalInst(
-                NULL, G4_pseudo_caller_save_flag, NULL, false, 1,
-                dst, NULL, NULL, InstOpt_WriteEnable);
-            INST_LIST_ITER callBBIt = bb->end();
-            bb->insert(--callBBIt, saveInst);
-
-            ASSERT_USER(bb->Succs.size() == 1, "fcall basic block cannot have more than 1 successor node");
-
-            G4_BB* retBB = bb->Succs.front();
-            RegionDesc* rd = builder.getRegionScalar();
-            G4_Operand* src = builder.createSrcRegRegion(Mod_src_undef, Direct, pseudoFlagDcl->getRegVar(), 0, 0, rd, Type_UW);
-            INST_LIST_ITER retBBIt = retBB->begin();
-            for (; retBBIt != retBB->end() && (*retBBIt)->isLabel(); ++retBBIt);
-            G4_INST* restoreInst =
-                builder.createInternalInst(
-                    NULL, G4_pseudo_caller_restore_flag, NULL, false, 1,
-                    NULL, src, NULL, InstOpt_WriteEnable);
-            retBB->insert(retBBIt, restoreInst);
-        }
 
         if (bb->isEndWithFCall())
         {
@@ -9298,8 +9138,20 @@ int GlobalRA::coloringRegAlloc()
     }
 
     bool hasStackCall = kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc();
+
+    // this needs to be called before addr/flag RA since it changes their alignment as well
+    fixAlignment();
+
+    startTimer(TIMER_ADDR_FLAG_RA);
+    addrRegAlloc();
+
+    flagRegAlloc();
+    stopTimer(TIMER_ADDR_FLAG_RA);
+
     //
     // If the graph has stack calls, then add the caller-save/callee-save pseudo declares and code.
+    // This currently must be done after flag/addr RA due to the assumption about the location 
+    // of the pseudo save/restore instructions
     //
     if (hasStackCall)
     {
@@ -9313,15 +9165,6 @@ int GlobalRA::coloringRegAlloc()
             addStoreRestoreForFP();
         }
     }
-
-    // this needs to be called before addr/flag RA since it changes their alignment as well
-    fixAlignment();
-
-    startTimer(TIMER_ADDR_FLAG_RA);
-    addrRegAlloc();
-
-    flagRegAlloc();
-    stopTimer(TIMER_ADDR_FLAG_RA);
 
     BankConflictPass bc(*this);
     bool doBankConflictReduction = false;

@@ -493,7 +493,7 @@ namespace vISA
 
         void addCalleeSaveBias(BitSet& live);
         void buildInterferenceAtBBExit(G4_BB* bb, BitSet& live);
-        void buildInterferenceWithinBB(G4_BB* bb, BitSet& live, G4_Declare* arg, G4_Declare* ret);
+        void buildInterferenceWithinBB(G4_BB* bb, BitSet& live);
         void buildInterferenceForDst(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, G4_DstRegRegion* dst);
         void buildInterferenceForFcall(G4_BB* bb, BitSet& live, G4_INST* inst, std::list<G4_INST*>::reverse_iterator i, G4_VarBase* regVar);
 
@@ -531,10 +531,6 @@ namespace vISA
         LiveRange** lrs;
         bool isHybrid;
         LIVERANGE_LIST spilledLRs;
-        bool requireCallerSaveRestoreCode;
-        bool requireCalleeSaveRestoreCode;
-        bool requireA0CallerSaveRestoreCode;
-        bool requireFlagCallerSaveRestoreCode;
         bool forceSpill;
         vISA::Mem_Manager mem;
         const Options *m_options;
