@@ -1875,6 +1875,10 @@ if(NOT DEFINED PATCH_VERSION)
   set(PATCH_VERSION 0)
 endif()
 
+if(NOT DEFINED PROJECT_VERSION)
+  set(PROJECT_VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION})
+endif()
+
 # IGC project available configuration types:
 # One standard configuration + "ReleaseInternal" custom configurations.
 set(IGC_CMAKE_CONFIGURATION_TYPES
@@ -3521,7 +3525,8 @@ add_library("${IGC_BUILD__PROJ__igc_dll}" SHARED
     ${IGC_BUILD__HDR__IGC__igc_dll}
     ${IGC_BUILD__RES__IGC__igc_dll}
   )
-  
+set_target_properties("${IGC_BUILD__PROJ__igc_dll}" PROPERTIES SOVERSION ${PROJECT_VERSION})
+
 #FCL
   add_library("${IGC_BUILD__PROJ__fcl_dll}" SHARED
     ${IGC_BUILD__SRC__IGC__fcl_dll}
@@ -3801,6 +3806,7 @@ if(_targetIsStatic)
       )
     # Link line for shared / dynamic library requires only library project (all static libs are linked inside).
     set_property(TARGET "${IGC_BUILD__PROJ__fcl_dll}" PROPERTY LINK_INTERFACE_LIBRARIES "")
+    set_target_properties("${IGC_BUILD__PROJ__fcl_dll}" PROPERTIES SOVERSION ${PROJECT_VERSION})
     set("IGC_BUILD__LINK_LINE__fcl_dll"
         "${IGC_BUILD__PROJ__fcl_dll}"
       )
@@ -3876,13 +3882,14 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/igc.opencl.h.in ${IGC_BUIL
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/igc-opencl.pc.in ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc-opencl.pc @ONLY)
 
 if(UNIX)
-  install(TARGETS ${IGC_BUILD__PROJ__igc_dll} DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib COMPONENT igc-core)
-  install(TARGETS ${IGC_BUILD__PROJ__fcl_dll} DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib COMPONENT igc-opencl)
-  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_shared DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/include/igc COMPONENT igc-opencl-devel)
-  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_interface DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/include/igc COMPONENT igc-opencl-devel)
-  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/cif DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/include/igc COMPONENT igc-opencl-devel)
-  install(FILES ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc-opencl.pc DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib/pkgconfig COMPONENT igc-opencl-devel)
-  install(FILES ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc.opencl.h DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/include/igc COMPONENT igc-opencl-devel)
+  include(GNUInstallDirs)
+  install(TARGETS ${IGC_BUILD__PROJ__igc_dll} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT igc-core)
+  install(TARGETS ${IGC_BUILD__PROJ__fcl_dll} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT igc-opencl)
+  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_shared DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
+  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_interface DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
+  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/cif DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
+  install(FILES ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc-opencl.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig COMPONENT igc-opencl-devel)
+  install(FILES ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc.opencl.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/igc COMPONENT igc-opencl-devel)
 elseif (WIN32)
   install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
           RUNTIME DESTINATION Release/lh64          CONFIGURATIONS Release)

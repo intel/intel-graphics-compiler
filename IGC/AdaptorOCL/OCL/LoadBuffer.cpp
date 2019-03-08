@@ -56,6 +56,7 @@ MemoryBuffer *llvm::LoadBufferFromResource(const char *pResName,
     symbol = dlsym(module, size_name);
     if (!symbol)
     {
+        printf("failed trying to load symbol %s \n", size_name);
         return NULL;
     }
     size = *(uint32_t *)symbol;
@@ -63,6 +64,7 @@ MemoryBuffer *llvm::LoadBufferFromResource(const char *pResName,
     symbol = dlsym(module, name);
     if (!symbol)
     {
+        printf("failed trying to load symbol %s \n", name);
         return NULL;
     }
 

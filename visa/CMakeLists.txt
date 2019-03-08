@@ -341,6 +341,8 @@ if (UNIX OR WIN32)
   source_group("Header Files" FILES ${GenX_IR_EXE_HEADERS} )
   source_group("Lex Yacc Files" FILES ${GenX_IR_EXE_lex_yacc} )
   target_link_libraries(GenX_IR_Exe LocalScheduler IGA_SLIB IGA_ENC_LIB)
+  set_target_properties(GenX_IR_Exe PROPERTIES SOVERSION ${PROJECT_VERSION})
+  
   if (ANDROID AND MEDIA_IGA)
      target_link_libraries(GenX_IR_Exe c++_static)
   endif(ANDROID AND MEDIA_IGA)
