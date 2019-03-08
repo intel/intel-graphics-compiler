@@ -794,7 +794,7 @@ namespace vISA
 { 
     enum class SFID 
     {
-        NULL_SFID       =  0,
+        NULL_SFID  =  0,
         SAMPLER    =  2,
         GATEWAY    =  3,
         DP_DC2     =  4,
@@ -807,7 +807,6 @@ namespace vISA
         DP_PI      = 11, //PIXEL INTERPOLATOR
         DP_DC1     = 12, //DATA CACHE DATAPORT1
         CRE        = 13, //CHECK & REFINEMENT ENGINE
-        NUM        = 14
     };
 
     inline int SFIDtoInt(SFID id)

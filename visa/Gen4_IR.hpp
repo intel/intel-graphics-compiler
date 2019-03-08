@@ -387,13 +387,7 @@ public:
         // scratch msg: DC0, bit 18 = 1
         return getFuncId() == SFID::DP_DC && ((getFuncCtrl() & 0x40000u) != 0);
     }
-    bool isDataPortOperation() const
-    {
-        auto funcID = getFuncId();
-        return funcID == SFID::SAMPLER || funcID == SFID::DP_WRITE ||
-            funcID == SFID::DP_CC || funcID == SFID::DP_DC ||
-            funcID == SFID::DP_DC1;
-    }
+
     bool isDataPortRead() const { return readMsg; }
     bool isDataPortWrite() const { return writeMsg; }
     bool isSampler() const
@@ -410,13 +404,6 @@ public:
     {
         auto funcID = getFuncId();
         return funcID == SFID::GATEWAY || funcID == SFID::SPAWNER;
-    }
-
-    bool conflictsWithWait() const
-    {
-        auto funcID = getFuncId();
-        return isDataPortOperation() || funcID == SFID::GATEWAY ||
-            funcID == SFID::SPAWNER || funcID == SFID::URB;
     }
 
     bool isIntAtomicMessage() const
