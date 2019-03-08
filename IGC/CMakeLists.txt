@@ -3541,6 +3541,7 @@ target_include_directories(${IGC_BUILD__PROJ__igc_dll} INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ocl_igc_shared/executable_format"
   "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/cif"
   "${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/"
+  "${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/"
 )
 
 #IGC_DLL
@@ -3880,16 +3881,16 @@ endif()
 # cpack to create deb package
 ########################################################################
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/igc.opencl.h.in ${IGC_BUILD__IGC_BIN_DIR}/igc.opencl.h)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/igc-opencl.pc.in ${IGC_BUILD__IGC_BIN_DIR}/igc-opencl.pc @ONLY)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/igc.opencl.h.in ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc.opencl.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/igc-opencl.pc.in ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc-opencl.pc @ONLY)
 
 if(UNIX)
   install(TARGETS ${IGC_BUILD__PROJ__igc_dll} DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib COMPONENT igc-core)
   install(TARGETS ${IGC_BUILD__PROJ__fcl_dll} DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib COMPONENT igc-opencl)
   install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/ DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/include/igc COMPONENT igc-opencl-devel
       FILES_MATCHING PATTERN "*.h" PATTERN "CLElfLib" EXCLUDE)
-  install(FILES ${IGC_BUILD__IGC_BIN_DIR}/igc-opencl.pc DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib/pkgconfig COMPONENT igc-opencl-devel)
-  install(FILES ${IGC_BUILD__IGC_BIN_DIR}/igc.opencl.h DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/include/igc COMPONENT igc-opencl-devel)
+  install(FILES ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc-opencl.pc DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib/pkgconfig COMPONENT igc-opencl-devel)
+  install(FILES ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc.opencl.h DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/include/igc COMPONENT igc-opencl-devel)
 elseif (WIN32)
   install(TARGETS ${IGC_BUILD__PROJ__igc_dll}
           RUNTIME DESTINATION Release/lh64          CONFIGURATIONS Release)
