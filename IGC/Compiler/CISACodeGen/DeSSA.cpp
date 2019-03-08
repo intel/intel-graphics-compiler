@@ -310,8 +310,10 @@ bool DeSSA::runOnFunction(Function &MF) {
               CurrentDominatingParent,
               ImmediateDominatingParent);
       }
-      SplitInterferencesForAlignment(CurrentDominatingParent);
   }
+
+  // Handle values that have specific alignment requirement.
+  SplitInterferencesForAlignment();
   return false;
 }
 
@@ -637,53 +639,65 @@ DeSSA::SplitInterferencesForArgument(
   }
 }
 
-void
-DeSSA::SplitInterferencesForAlignment(
-    DenseMap<Value*, Value*> &CurrentDominatingParent) {
-  for (auto I = CurrentDominatingParent.begin(),
-            E = CurrentDominatingParent.end(); I != E; ++I) {
-    auto RI = RegNodeMap.find(I->first);
-    if (RI == RegNodeMap.end())
-      continue;
+void DeSSA::SplitInterferencesForAlignment()
+{
+    for (auto I = RegNodeMap.begin(), E = RegNodeMap.end(); I != E; ++I)
+    {
+        // Find a root Node
+        Node *rootNode = I->second;
+        if (rootNode->parent.getPointer() != rootNode) {
+            continue;
+        }
 
-    e_alignment Align = EALIGN_AUTO;
-    // Find the most restrictive alignment, i.e. GRF aligned ones.
-    Node *TheNode = RI->second;
-    Node *LI = TheNode;
-    do {
-      // Skip isolated reg.
-      if (LI->parent.getInt() & Node::kRegisterIsolatedFlag) {
-        LI = LI->next;
-        continue;
-      }
+        e_alignment Align = EALIGN_AUTO;
+        // Find the most restrictive alignment, i.e. GRF aligned ones.
+        Node *N = rootNode;
+        Node *Curr;
+        do {
+            Curr = N;
+            N = Curr->next;
 
-      if (LI->alignment == EALIGN_GRF) {
-        Align = EALIGN_GRF;
-        break;
-      }
+            // Skip isolated reg.
+            if (Curr->parent.getInt() &
+                (Node::kRegisterIsolatedFlag | Node::kPHIIsolatedFlag)) {
+                continue;
+            }
 
-      LI = LI->next;
-    } while (LI != TheNode);
+            if (Curr->alignment == EALIGN_GRF) {
+                Align = EALIGN_GRF;
+                break;
+            }
+        } while (N != rootNode);
 
-    // Isolate mismatching alignment.
-    LI = TheNode;
-    do {
-      // Skip isolated reg.
-      if (LI->parent.getInt() & Node::kRegisterIsolatedFlag) {
-        LI = LI->next;
-        continue;
-      }
+        if (Align != EALIGN_GRF)
+            continue;
 
-      if (Align == EALIGN_GRF &&
-          (LI->alignment != EALIGN_AUTO && LI->alignment != EALIGN_GRF)) {
-        isolateReg(LI->value);
-      }
-      LI = LI->next;
-    } while (LI != TheNode);
+        // Isolate any mis-aligned value.
+        // Start with Curr node as it cannot be isolated
+        // (rootNode could be isolated), therefore, it remains
+        // in the linked list and can be used to test stop looping.
+        Node* Head = Curr;
+        N = Head;
+        do {
+            Curr = N;
+            N = N->next;
 
-    // Update root's alignment.
-    TheNode->alignment = Align;
-  }
+            // Skip isolated reg.
+            if (Curr->parent.getInt() &
+                (Node::kRegisterIsolatedFlag | Node::kPHIIsolatedFlag)) {
+                continue;
+            }
+
+            if (Curr->alignment != EALIGN_AUTO && Curr->alignment != EALIGN_GRF)
+            {
+                assert(Curr != Head && "Head Node cannot be isolated, something wrong!");
+                isolateReg(Curr->value);
+            }
+        } while (N != Head);
+
+        // Update root's alignment.
+        Head->getLeader()->alignment = Align;
+    }
 }
 
 Value*

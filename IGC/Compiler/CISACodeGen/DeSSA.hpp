@@ -211,8 +211,7 @@ class DeSSA : public llvm::FunctionPass {
       llvm::DenseMap<llvm::Value*, llvm::Value*> &CurrentDominatingParent,
       llvm::DenseMap<llvm::Value*, llvm::Value*> &ImmediateDominatingParent);
 
-    void SplitInterferencesForAlignment(
-      llvm::DenseMap<llvm::Value*, llvm::Value*> &CurrentDominatingParent);
+    void SplitInterferencesForAlignment();
 
     llvm::DominatorTree *DT;
     LiveVars *LV;
