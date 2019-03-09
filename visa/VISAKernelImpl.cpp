@@ -209,6 +209,76 @@ int VISAKernelImpl::compileTillOptimize()
     return optimizer.optimization();
 }
 
+void VISAKernelImpl::expandIndirectCallWithRegTarget()
+{
+    // check every fcall
+    for (BB_LIST_ITER it = m_kernel->fg.BBs.begin();
+        it != m_kernel->fg.BBs.end();
+        it++)
+    {
+        G4_BB* bb = (*it);
+        // At this point G4_pseudo_fcall may be converted to G4_call,
+        // check all call
+        if (bb->back()->isFCall() || bb->back()->isCall())
+        {
+            G4_INST* fcall = bb->back();
+            if (fcall->getSrc(0)->isGreg()) {
+                // at this point the call function src0 has the target_address
+                // and the call dst is the reserved register for ret, we can use
+                // the subregister after 2 as add's dst
+                // r1.0-r1.7 is reserved in GlobalRA::setABIForStackCallFunctionCalls
+                //
+                // expand call
+                // From:
+                //       call r1.0 call_target
+                // To:
+                //       add  r1.2  -IP   call_target
+                //       add  r1.2  r1.2  32
+                //       call r1.0  r1.2
+
+                // calculate the reserved register's num from fcall's dst register
+                assert(fcall->getDst()->isGreg());
+                uint32_t reg_num = fcall->getDst()->getLinearizedStart() / GENX_GRF_REG_SIZ;
+                // hardcoded add's dst subregister to 2
+                G4_Declare* add_dst_decl =
+                    m_builder->createHardwiredDeclare(1, fcall->getDst()->getType(), reg_num, 2);
+
+                // create the first add instruction
+                G4_INST* add_inst = m_builder->createInternalInst(
+                    nullptr, G4_add, nullptr, false, 1,
+                    m_builder->Create_Dst_Opnd_From_Dcl(add_dst_decl, 1),
+                    m_builder->createSrcRegRegion(
+                        Mod_Minus, Direct, m_phyRegPool->getIpReg(), 0, 0,
+                        m_builder->getRegionScalar(), Type_UD),
+                    fcall->getSrc(0), InstOpt_WriteEnable);
+
+                // create the second add to add the ip to 32, to get the call's ip
+                G4_INST* add_inst2 = m_builder->createInternalInst(
+                    nullptr, G4_add, nullptr, false, 1,
+                    m_builder->Create_Dst_Opnd_From_Dcl(add_dst_decl, 1),
+                    m_builder->Create_Src_Opnd_From_Dcl(
+                        add_dst_decl, m_builder->getRegionScalar()),
+                    m_builder->createImm(32, add_inst->getSrc(0)->getType()),
+                    InstOpt_WriteEnable);
+
+                // then update fcall's src0 to add's dst
+                fcall->setSrc(m_builder->Create_Src_Opnd_From_Dcl(
+                    add_inst->getDst()->getTopDcl(), m_builder->getRegionScalar()), 0);
+
+                // then insert the add right before the call
+                INST_LIST_ITER insert_point = bb->end();
+                --insert_point;
+                bb->getInstList().insert(insert_point, add_inst);
+                bb->getInstList().insert(insert_point, add_inst2);
+
+                // Set the CISAOff to be the same as call
+                add_inst->setCISAOff(fcall->getCISAOff());
+                add_inst2->setCISAOff(fcall->getCISAOff());
+            }
+        }
+    }
+}
+
 void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
 {
     void* binary = NULL;
@@ -221,6 +291,14 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
         // to the kernel before UUID mov.
         uint64_t kernelID = m_kernel->fg.insertDummyUUIDMov();
         m_kernel->setKernelID(kernelID);
+    }
+
+    if (m_kernel->hasIndirectCall())
+    {
+        // If the indirect call has regiser src0, the register must be a
+        // ip-based address of the call target. Insert a add before call to
+        // calculate the relative offset from call to the target
+        expandIndirectCallWithRegTarget();
     }
 
 

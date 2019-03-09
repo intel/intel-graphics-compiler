@@ -884,6 +884,14 @@ private:
     int predefinedVarRegAssignment();
     int calculateTotalInputSize();
     int compileTillOptimize();
+    // expandIndirectCallWithRegTarget:
+    // The indirect call with src0 is a register, the register must be a
+    // ip-based address of the call target. We need to insert the add before call to
+    // calculate the relative offset from call to the target
+    // ** Note that the ret IP r1.0 is reserved by convention at
+    // GlobalRA::setABIForStackCallFunctionCalls, the entire r1.0 is reserved, while
+    // for call dst it'll use only r1.0-r1.1, so here we take r1.2 as add's dst
+    void expandIndirectCallWithRegTarget();
     void getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize);
     CisaFramework::CisaInst* AppendVISASvmGeneralScatterInst(VISA_PredOpnd* pred,
         Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size execSize, unsigned char blockSize,

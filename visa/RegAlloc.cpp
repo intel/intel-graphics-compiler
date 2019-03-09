@@ -410,7 +410,7 @@ LivenessAnalysis::LivenessAnalysis(
 	                {
 	                    numSplitStartID = numVarId;
 	                }
-	                
+
 	                if (declSplitDcl->getSplitVarStartID() == 0)
 	                {
                         declSplitDcl->setSplitVarStartID(numVarId);
@@ -681,7 +681,7 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
                 continue;
 
             auto dstTopDcl = dst->getTopDcl();
-            
+
             if (dstTopDcl)
             {
                 auto it = largeDefs.find(dstTopDcl);
@@ -720,7 +720,7 @@ void LivenessAnalysis::detectNeverDefinedVarRows()
             continue;
 
         BitSet* undefinedRows = new (m) BitSet(it.first->getByteSize(), false);
-        
+
         for (unsigned int i = 0; i < numRows; i++)
         {
             if (!it.second->isSet(i))
@@ -773,7 +773,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
     {
         G4_Declare *decl = vars[i]->getDeclare();
         if (((decl->isInput() == true &&
-             !(fg.builder->getFCPatchInfo() && 
+             !(fg.builder->getFCPatchInfo() &&
                fg.builder->getFCPatchInfo()->getFCComposableKernel() &&
                !decl->isLiveIn())) &&
              !(fg.builder->isPreDefArg(decl) &&
@@ -910,7 +910,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
     }
 
     // IPA is currently very slow for large number of call sites, so disable it to save compile time
-	if (performIPA() && fg.getNumCalls() < 1024) 
+	if (performIPA() && fg.getNumCalls() < 1024)
     {
 
 		//
@@ -1364,7 +1364,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
             std::cerr << "\n";
         };
 
-        auto printSetDiff = [&idToDecl, this](const std::vector<BitSet>& set1, 
+        auto printSetDiff = [&idToDecl, this](const std::vector<BitSet>& set1,
             const std::vector<BitSet>& set2)
         {
             for (int i = 0, size = (int) set1.size(); i < size; ++i)
@@ -1415,7 +1415,7 @@ void LivenessAnalysis::computeLiveness(bool computePseudoKill)
 
 //
 // compute the maydef set for every subroutine
-// This includes recursively all the variables that are defined by the 
+// This includes recursively all the variables that are defined by the
 // subroutine, but does not include defs in the caller
 // This means this must be called before we do fix-point on def_in/def_out
 // and destroy their original values
@@ -1448,7 +1448,7 @@ void LivenessAnalysis::maydefAnalysis()
 // Use analysis for this subroutine only
 // use_out[call-BB] = use_in[ret-BB]
 // use_out[exit-BB] should be initialized by the caller
-// 
+//
 void LivenessAnalysis::useAnalysis(FuncInfo* subroutine)
 {
     bool changed = false;
@@ -1496,9 +1496,9 @@ void LivenessAnalysis::useAnalysis(FuncInfo* subroutine)
 
 //
 // Use analysis for this subroutine only, considering both arg/retval of its callees
-// use_out[call-BB] = (use_in[ret-BB] | arg[callee]) - retval[callee] 
-// 
-void LivenessAnalysis::useAnalysisWithArgRetVal(FuncInfo* subroutine, 
+// use_out[call-BB] = (use_in[ret-BB] | arg[callee]) - retval[callee]
+//
+void LivenessAnalysis::useAnalysisWithArgRetVal(FuncInfo* subroutine,
     const std::vector<BitSet>& args, const std::vector<BitSet>& retVal)
 {
     bool changed = false;
@@ -1595,7 +1595,7 @@ void LivenessAnalysis::defAnalysis(FuncInfo* subroutine)
             }
             def_out[bbid] |= def_in[bbid];
         }
-    } while (changed); 
+    } while (changed);
 }
 
 void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& kernelOutput)
@@ -1630,8 +1630,8 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
     };
 
     // top-down traversal to compute retval for each subroutine
-    // retval[s] = live_out[s] - live_in[s], 
-    // where live_out[s] is the union of the live-in of the ret BB at each call site (hence top-down traversal). 
+    // retval[s] = live_out[s] - live_in[s],
+    // where live_out[s] is the union of the live-in of the ret BB at each call site (hence top-down traversal).
     // this is not entirely accurate since we may have pass-through retVals
     // (e.g., A call B call C, C's retVal is pass-through in B and used in A, which
     //  means it won't be killed in B if we do top-down)
@@ -1645,7 +1645,7 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
         {
             retVal[subroutine->getId()] = use_out[subroutine->getExitBB()->getId()];
             retVal[subroutine->getId()] -= use_in[subroutine->getInitBB()->getId()];
-        } 
+        }
         for (auto&& bb : subroutine->getBBList())
         {
             if (bb->getBBType() & G4_BB_CALL_TYPE)
@@ -1661,11 +1661,11 @@ void LivenessAnalysis::hierarchicalIPA(const BitSet& kernelInput, const BitSet& 
 
     // bottom-up traversal to compute arg for each subroutine
     // arg[s] = live-in[s], except retval of its callees are excluded as by definition they will not be live-in
-    // The live-out of each subroutine is initialized to null so that 
+    // The live-out of each subroutine is initialized to null so that
     // args are limited to variables actually used in this subroutine (and its callees)
     clearLiveSets();
     initKernelLiveOut();
-    for (auto FI = fg.sortedFuncTable.begin(), FE = fg.sortedFuncTable.end(); 
+    for (auto FI = fg.sortedFuncTable.begin(), FE = fg.sortedFuncTable.end();
         FI != FE; ++FI)
     {
         auto subroutine = *FI;
@@ -1916,7 +1916,7 @@ void LivenessAnalysis::footprintDst( G4_BB* bb,
         unsigned int lb, rb, bitvec;
         lb = opnd->getLeftBound();
         rb = opnd->getRightBound();
-		if (lb % G4_GRF_REG_NBYTES == 0 && 
+		if (lb % G4_GRF_REG_NBYTES == 0 &&
 			(rb + 1) % G4_GRF_REG_NBYTES == 0)
 		{
 			unsigned idx = lb / G4_GRF_REG_NBYTES;
@@ -1969,7 +1969,7 @@ void LivenessAnalysis::footprintSrc( G4_INST* i,
     unsigned int lb, rb, bitvec;
     lb = opnd->getLeftBound();
 	rb = opnd->getRightBound();
-	if (lb % G4_GRF_REG_NBYTES == 0 && 
+	if (lb % G4_GRF_REG_NBYTES == 0 &&
 		(rb + 1) % G4_GRF_REG_NBYTES == 0)
 	{
 		unsigned idx = lb / G4_GRF_REG_NBYTES;
@@ -3318,7 +3318,7 @@ void GlobalRA::markGraphBlockLocalVars(bool doLocalRA)
         }
     }
     std::cout << "\n";
-#endif    
+#endif
 }
 
 //
@@ -3341,10 +3341,14 @@ void GlobalRA::setABIForStackCallFunctionCalls()
 		if( bb->isEndWithFCall() )
 		{
             char* n = kernel.fg.builder->getNameString(kernel.fg.mem, 25,
-                kernel.fg.builder->getIsKernel() ? "FCALL_RET_LOC_k_%d" : "FCALL_RET_LOC_f%d_%d", 
+                kernel.fg.builder->getIsKernel() ? "FCALL_RET_LOC_k_%d" : "FCALL_RET_LOC_f%d_%d",
                 kernel.fg.builder->getCUnitId(), call_id++);
 
 			G4_INST* fcall = bb->back();
+            // Set call dst to r1.0, here reserve 8 dwords in r1.0 for the use of call dst
+            // The call dst requires only 2 dword, so in VISAKernelImpl::expandIndirectCallWithRegTarget
+            // we take r1.2, r1.3 as the tmp register for calculating the call target offset, if required.
+            // That function assumes r1.0 is reserved here and r1.2, r1.3 won't be used
 			G4_Declare* r1_dst = kernel.fg.builder->createDeclareNoLookup(n, G4_GRF, 8, 1, Type_UD);
 			r1_dst->getRegVar()->setPhyReg(regPool.getGreg(1), 0);
             G4_DstRegRegion* dstRgn = kernel.fg.builder->createDstRegRegion(Direct, r1_dst->getRegVar(), 0, 0, 1, Type_UD);
@@ -3949,7 +3953,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
     }
 }
 
-static void recordRAStats(IR_Builder& builder, 
+static void recordRAStats(IR_Builder& builder,
                           G4_Kernel& kernel,
                           int RAStatus)
 {
@@ -4078,7 +4082,7 @@ int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 	}
 
     //FIXME: here is a temp WA
-    if (kernel.fg.funcInfoTable.size() > 0 && 
+    if (kernel.fg.funcInfoTable.size() > 0 &&
         kernel.fg.builder->getOptions()->getTarget() == VISA_3D)
     {
         kernel.getOptions()->setOption(vISAOptions::vISA_LocalRA, false);
