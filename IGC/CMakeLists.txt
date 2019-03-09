@@ -3433,10 +3433,6 @@ endif()
 
 
 
-if(IGC_BUILD__SPIRV_ENABLED OR IGC_BUILD__VULKAN_FRONTEND_ENABLED)
-#if(IGC_BUILD__SPIRV_ENABLED)
-  add_subdirectory(AdaptorOCL/SPIRV/SPIRV-Tools)
-endif()
 
 if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
   add_subdirectory(VulkanFrontend)
@@ -3697,11 +3693,6 @@ foreach(_libBuildSuffix ${IGC_BUILD__MAIN_IGC_LIB_SUFFIXES})
       "${IGC_BUILD__PROJ__AdaptorOGL}"
   )
 
-  if(IGC_BUILD__SPIRV_ENABLED OR IGC_BUILD__VULKAN_FRONTEND_ENABLED)
-    list(APPEND _targetLinkLine
-      "${IGC_BUILD__PROJ__SPIRV-Tools}"
-    )
-  endif()
     
   if(IGC_BUILD__VULKAN_FRONTEND_ENABLED)
     list(APPEND _targetLinkLine
