@@ -1609,8 +1609,16 @@ bool CodeGenPatternMatch::MatchFMA( llvm::IntrinsicInst& I )
     FMAPattern *pattern = new (m_allocator)FMAPattern();
     for (int i = 0; i < 3; i++)
     {
-        AddToConstantPool(I.getParent(), I.getOperand(i));
-        pattern->sources[i] = GetSource(I.getOperand(i), true, false);
+        llvm::Value* V = I.getOperand(i);
+        pattern->sources[i] = GetSource(V, true, false);
+        if (isa<Constant>(V) &&
+            (!m_Platform.support16BitImmSrcForMad() ||
+                V->getType()->getTypeID() != llvm::Type::HalfTyID || i == 1))
+        {
+            //CNL+ mad instruction allows 16 bit immediate for src0 and src2
+            AddToConstantPool(I.getParent(), V);
+            pattern->sources[i].fromConstantPool = true;
+        }
     }
     AddPattern(pattern);
 
@@ -1706,13 +1714,13 @@ bool CodeGenPatternMatch::MatchMad( llvm::BinaryOperator& I )
     {
         MadPattern *pattern = new (m_allocator) MadPattern();
         for(int i=0; i<3; i++)
-        {
-            //CNL+ mad instruction allows 16 bit immediate for src0 and src2
+        {           
             pattern->sources[i] = GetSource(sources[i], src_mod[i], false);
-            if (!m_Platform.support16BitImmSrcForMad() || 
-                (sources[i]->getType()->getTypeID() != llvm::Type::HalfTyID) ||
-                i == 1)
+            if (isa<Constant>(sources[i]) && 
+                (!m_Platform.support16BitImmSrcForMad() ||
+                (sources[i]->getType()->getTypeID() != llvm::Type::HalfTyID) || i == 1))
             {
+                //CNL+ mad instruction allows 16 bit immediate for src0 and src2
                 AddToConstantPool(I.getParent(), sources[i]);
                 pattern->sources[i].fromConstantPool = true;
             }
