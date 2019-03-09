@@ -386,6 +386,7 @@ public:
         instList.clear();
     }
 
+    FlowGraph& getParent() const { return *parent; }
     void    addToBBList(int key, G4_BB* b){BBlist[key] = b;}
     void    clearBBList(){BBlist.clear();}
     bool    existsInBBList(int key){ return BBlist.find(key) != BBlist.end();}

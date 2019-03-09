@@ -176,14 +176,6 @@ enum class PlatformGen
 // return the platform generation that can be used for comparison
 PlatformGen getPlatformGeneration(TARGET_PLATFORM platform);
 
-// The encoding of gen platform defined in vISA spec:
-// 3 BDW
-// 4 CHV
-// 5 SKL
-// 6 BXT
-// 7 CNL
-// 8 ICL
-// 10 ICLLP
 // Not linearized for backward compatibility.
 extern "C" int getGenxPlatformEncoding();
 

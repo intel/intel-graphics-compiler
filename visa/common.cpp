@@ -144,7 +144,7 @@ PlatformGen getPlatformGeneration(TARGET_PLATFORM platform)
 // Note that encoding is not linearized.
 int getGenxPlatformEncoding()
 {
-    static const int Encoding[] = {3, 4, 5, 6, 7, 8, 10, 11, 12};
+    static const int Encoding[] = {3, 4, 5, 6, 7, 8, 10, 11, 12, 13};
     TARGET_PLATFORM platform = getGenxPlatform();
     if (platform != GENX_NONE && platform != ALL)
         return Encoding[platform];
