@@ -248,8 +248,6 @@ enum
 	WORD_BUSY = 1,
 };
 
-#define REG_UNAVAILABLE 0xffff0000
-
 namespace vISA
 {
 class PhyRegsLocalRA
@@ -263,7 +261,7 @@ private:
 	// entire grf busy/available
     std::vector<uint32_t> regBusyVector;
     std::vector<int32_t> regLastUse;
-
+    std::vector<bool> grfAvialable;
     int lastUseSum1;
     int lastUseSum2;
     int bank1AvailableRegNum;
@@ -275,18 +273,20 @@ private:
     bool r1Forbidden;
 
 public:
-	PhyRegsLocalRA(uint32_t nregs) : numRegs(nregs)
-	{
-		uint32_t grfFree = 0;
+    PhyRegsLocalRA(uint32_t nregs) : numRegs(nregs)
+    {
+        uint32_t grfFree = 0;
 
         regBusyVector.resize(numRegs);
         regLastUse.resize(numRegs);
+        grfAvialable.resize(numRegs);
 
-		for( int i = 0; i < (int) nregs; i++ )
-		{
-			regBusyVector[i] = grfFree;
+        for( int i = 0; i < (int) nregs; i++ )
+        {
+            regBusyVector[i] = grfFree;
             regLastUse[i] = 0;
-		}
+            grfAvialable[i] = true;
+        }
 
 		lastUseSum1 = 0;
 		lastUseSum2 = 0;
@@ -339,7 +339,7 @@ public:
 
 	// Available/unavailable is different from busy/free
 	// Unavailable GRFs are not available for allocation
-	void setGRFUnavailable( int which ) { regBusyVector[which] = REG_UNAVAILABLE; }
+	void setGRFUnavailable( int which ) { grfAvialable[which] = false; }
     bool isGRFAvailable(int which) const
     {
        
@@ -366,7 +366,7 @@ public:
         else
         {
             MUST_BE_TRUE(which < (int) numRegs, "invalid GRF");
-            return (!((regBusyVector[which] & REG_UNAVAILABLE) == REG_UNAVAILABLE));
+            return (grfAvialable[which] == true);
         }
     }
     
