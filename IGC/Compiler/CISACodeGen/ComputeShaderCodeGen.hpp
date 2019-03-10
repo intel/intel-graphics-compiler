@@ -43,7 +43,7 @@ public:
     void        FillProgram(SComputeShaderKernelProgram* pKernelProgram);
     void        PreCompile() override;
     void        ExtractGlobalVariables() override;
-    void        CreateThreadPayloadData(void* & pThreadPayload, uint& curbeTotalDataLength, uint& curbeReadLength);
+    void        CreateThreadPayloadData(void* & pThreadPayload, uint& threadPayloadSize);
     uint        GetNumberOfId();
     void        ParseShaderSpecificOpcode(llvm::Instruction* inst) override;
 

@@ -6670,21 +6670,18 @@ void EmitPass::emitCSSGV(GenIntrinsicInst* inst)
     }
     case THREAD_ID_IN_GROUP_X:
     {
-        assert(inst->getType() == Type::getInt16Ty(inst->getContext()) && "only 16bit ThreadID is supported now.");
         pThreadIdInGroup = csProgram->CreateThreadIDinGroup(0);
         m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
         break;
     }
     case THREAD_ID_IN_GROUP_Y:
     {
-        assert(inst->getType() == Type::getInt16Ty(inst->getContext()) && "only 16bit ThreadID is supported now.");
         pThreadIdInGroup = csProgram->CreateThreadIDinGroup(1);
         m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
         break;
     }
     case THREAD_ID_IN_GROUP_Z:
     {
-        assert(inst->getType() == Type::getInt16Ty(inst->getContext()) && "only 16bit ThreadID is supported now.");
         pThreadIdInGroup = csProgram->CreateThreadIDinGroup(2);
         m_currShader->CopyVariable(m_destination, pThreadIdInGroup);
         break;
