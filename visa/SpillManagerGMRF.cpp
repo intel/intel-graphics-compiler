@@ -42,6 +42,10 @@ using namespace vISA;
 // Configurations
 
 #define ADDRESS_SENSITIVE_SPILLS_IMPLEMENTED
+#define REG_DWORD_SIZE (getGRFSize() / 4)
+#define REG_BYTE_SIZE (getGRFSize())
+#define SCRATCH_SPACE_ADDRESS_UNIT 5
+
 //#define DISABLE_SPILL_MEMORY_COMPRESSION
 //#define VERIFY_SPILL_ASSIGNMENTS
 
@@ -65,8 +69,6 @@ static const unsigned OWORD_PAYLOAD_HEADER_MIN_HEIGHT		= 1;
 static const unsigned DWORD_PAYLOAD_HEADER_MIN_HEIGHT		= 2;
 static const unsigned OWORD_PAYLOAD_HEADER_MAX_HEIGHT		= 1;
 static const unsigned DWORD_PAYLOAD_HEADER_MAX_HEIGHT		= 3;
-static const unsigned REG_DWORD_SIZE						= 8;
-static const unsigned REG_BYTE_SIZE							= 32;
 static const unsigned SCALAR_EXEC_SIZE						= 1;
 static const unsigned DEF_HORIZ_STRIDE						= 1;
 static const unsigned REG_ORIGIN							= 0;
@@ -113,7 +115,7 @@ extern unsigned int getStackCallRegSize(bool reserveStackCallRegs);
 // following the original declare's alignment
 static void setNewDclAlignment(G4_Declare* newDcl, G4_Align origAlign)
 {
-    newDcl->setSubRegAlign(Sixteen_Word);
+    newDcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN);
     if (origAlign != Either)
     {
         newDcl->setAlign(origAlign);
@@ -1465,7 +1467,7 @@ SpillManagerGMRF::createTemporaryRangeDeclare (
 		getSegmentByteSize (spilledRegion, execSize):
 		getRegionByteSize (spilledRegion, execSize);
 
-	assert (byteSize <= 2 * REG_BYTE_SIZE);
+	assert (byteSize <= 2u * REG_BYTE_SIZE);
 	assert (byteSize % spilledRegion->getElemSize () == 0);
 
 	G4_Type type = spilledRegion->getType ();
@@ -1524,7 +1526,7 @@ SpillManagerGMRF::createSpillRangeDstRegion (
 			(regionDisp - segmentDisp) % spilledRegion->getElemSize () == 0);
 		assert (subRegOff * spilledRegion->getElemSize () +
 				getRegionByteSize (spilledRegion, execSize) <=
-				2 * REG_BYTE_SIZE);
+				2u * REG_BYTE_SIZE);
 
 		if(useScratchMsg_ )
 		{
@@ -1599,7 +1601,7 @@ SpillManagerGMRF::createFillRangeSrcRegion (
 			(regionDisp - segmentDisp) % filledRegion->getElemSize () == 0);
 		assert (subRegOff * filledRegion->getElemSize () +
 				getRegionByteSize (filledRegion, execSize) <=
-				2 * REG_BYTE_SIZE);
+				2u * REG_BYTE_SIZE);
 
         return builder_->createSrcRegRegion(
 			filledRegion->getModifier (), Direct, fillRangeRegVar, REG_ORIGIN,
@@ -2213,7 +2215,7 @@ SpillManagerGMRF::createSpillSendMsgDesc (
 		message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
         int offset = getDisp(base);
         getSpillOffset(offset);
-		message |= (offset >> 5) + regOff;
+		message |= (offset >> SCRATCH_SPACE_ADDRESS_UNIT) + regOff;
 		execSize = 16;
 	}
 	else
@@ -2287,7 +2289,7 @@ SpillManagerGMRF::createSpillSendMsgDesc (
 		message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
         int offset = getRegionDisp(spilledRangeRegion);
         getSpillOffset(offset);
-		message |= offset >> 5; 
+        message |= offset >> SCRATCH_SPACE_ADDRESS_UNIT; 
         if (numGRFs > 1)
         {
             execSize = 16;
@@ -2419,7 +2421,7 @@ SpillManagerGMRF::createSpillSendMsgDesc(
         unsigned blocksize_encoding = getScratchBlocksizeEncoding(numGRFs);
 
         message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
-        message |= (offset >> 5); // displacement
+        message |= (offset >> SCRATCH_SPACE_ADDRESS_UNIT); // displacement
     }
     else
     {
@@ -2941,7 +2943,7 @@ SpillManagerGMRF::createFillSendMsgDesc (
 
         int offset = getDisp(base);
         getSpillOffset(offset);
-		message |= ((offset >> 5) + regOff);
+		message |= ((offset >> SCRATCH_SPACE_ADDRESS_UNIT) + regOff);
 
 		execSize = 16;
 	}
@@ -3009,7 +3011,7 @@ SpillManagerGMRF::createFillSendMsgDesc (
 		message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
         int offset = getRegionDisp(filledRangeRegion);
         getSpillOffset(offset);
-        message |= offset >> 5;
+        message |= offset >> SCRATCH_SPACE_ADDRESS_UNIT;
 
 		execSize = 16;
 	}
@@ -3092,7 +3094,7 @@ G4_Imm* SpillManagerGMRF::createFillSendMsgDesc(
         unsigned blocksize_encoding = getScratchBlocksizeEncoding(responseLength);
 
         message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
-        message |= (offset >> 5);
+        message |= (offset >> SCRATCH_SPACE_ADDRESS_UNIT);
     }
     else
     {
@@ -3531,7 +3533,7 @@ SpillManagerGMRF::insertSpillRangeCode (
                     regVar = getRegVar(srcRegion);
                 }
 
-                if (srcDcl->getSubRegAlign() == Sixteen_Word &&
+                if (srcDcl->getSubRegAlign() == SUB_ALIGNMENT_GRFALIGN &&
                     lb %  REG_BYTE_SIZE == 0 &&
                     (rb + 1) % REG_BYTE_SIZE == 0 &&
                     (rb - lb + 1) == spillRangeDcl->getByteSize() &&
@@ -3652,7 +3654,7 @@ SpillManagerGMRF::insertFillGRFRangeCode (
             unsigned int lb = dstRegion->getLeftBound();
             unsigned int rb = dstRegion->getRightBound();
 
-            if (dstDcl->getSubRegAlign() == Sixteen_Word &&
+            if (dstDcl->getSubRegAlign() == SUB_ALIGNMENT_GRFALIGN  &&
                 lb %  REG_BYTE_SIZE == 0 &&
                 (rb + 1) % REG_BYTE_SIZE == 0 &&
                 (rb - lb + 1) == fillRangeDcl->getByteSize())
@@ -4559,7 +4561,7 @@ uint32_t computeSpillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfU
     message |= (blocksize_encoding << SCRATCH_MSG_DESC_BLOCK_SIZE);
     int offset = getDisp(base);
     getSpillOffset(offset);
-    message |= (offset >> 5) + regOff;
+    message |= (offset >> SCRATCH_SPACE_ADDRESS_UNIT) + regOff;
     execSize = 16;
     */
 
@@ -4594,7 +4596,7 @@ uint32_t computeFillMsgDesc(unsigned int payloadSize, unsigned int offsetInGrfUn
 
         int offset = getDisp(base);
         getSpillOffset(offset);
-		message |= ((offset >> 5) + regOff);
+		message |= ((offset >> SCRATCH_SPACE_ADDRESS_UNIT) + regOff);
 
 		execSize = 16;
 */

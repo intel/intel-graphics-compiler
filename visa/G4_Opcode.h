@@ -419,4 +419,6 @@ inline bool isLowPrecisionFloatTy(G4_Type ty)
 {
     return ty == Type_HF;
 }
+
+#define SUB_ALIGNMENT_GRFALIGN (Sixteen_Word)
 #endif  // _G4_OPCODE_H_
