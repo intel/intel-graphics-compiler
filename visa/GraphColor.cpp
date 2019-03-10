@@ -2539,7 +2539,7 @@ void GlobalRA::updateSubRegAlignment(unsigned char regFile, G4_SubReg_Align subA
             else if (!areAllDefsNoMask(topdcl) &&
                 getAugmentationMask(topdcl) != AugmentationMasks::NonDefault)
             {
-                dcl->setSubRegAlign(Sixteen_Word);
+                dcl->setSubRegAlign(subAlign);
             }
         }
     }
@@ -2841,7 +2841,7 @@ void Augmentation::updateDstMask(G4_INST* inst, bool checkCmodOnly)
                 elemSize = 1;
             }
 
-            startByte = (row * 32) + (subReg * elemSize);
+            startByte = (row * getGRFSize()) + (subReg * elemSize);
 
             if (dst->isFlag())
             {
@@ -4706,7 +4706,7 @@ void Augmentation::augmentIntfGraph()
 #endif
                 gra.updateAlignment(G4_GRF, Even);
             }
-            gra.updateSubRegAlignment(G4_GRF, Sixteen_Word);
+            gra.updateSubRegAlignment(G4_GRF, SUB_ALIGNMENT_GRFALIGN);
         }
 
         // Clear information calculated in this iteration of RA so
@@ -6115,7 +6115,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
             //
             if (dcl->getNumRows() > 1)
             {
-                lrs[i]->getVar()->setSubRegAlignment(Sixteen_Word);
+                lrs[i]->getVar()->setSubRegAlignment(SUB_ALIGNMENT_GRFALIGN);
             }
             //
             // single-row
@@ -6512,7 +6512,7 @@ void GraphColor::saveRegs(
             0, 0, builder.rgnpool.createRegion(8, 8, 1), Type_UD);
         unsigned messageLength = owordSize / 2;
         G4_Declare *msgDcl = builder.createTempVar(messageLength * GENX_DATAPORT_IO_SZ,
-            Type_UD, Either, Sixteen_Word, StackCallStr);
+            Type_UD, Either, SUB_ALIGNMENT_GRFALIGN, StackCallStr);
         msgDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
         auto sendSrc2 = builder.createSrcRegRegion(Mod_src_undef, Direct, msgDcl->getRegVar(), 0, 0,
             builder.rgnpool.createRegion(8, 8, 1), Type_UD);
@@ -6637,7 +6637,7 @@ void GraphColor::restoreRegs(
 
             unsigned responseLength = ROUND(owordSize, 2) / 2;
             G4_Declare *dstDcl = builder.createTempVar(responseLength * GENX_DATAPORT_IO_SZ,
-                Type_UD, Either, Sixteen_Word, GraphColor::StackCallStr);
+                Type_UD, Either, SUB_ALIGNMENT_GRFALIGN, GraphColor::StackCallStr);
             dstDcl->getRegVar()->setPhyReg(regPool.getGreg(startReg), 0);
             G4_DstRegRegion* postDst = builder.createDstRegRegion(Direct, dstDcl->getRegVar(), 0, 0, 1, (execSize > 8) ? Type_UW : Type_UD);
             G4_SrcRegRegion* payload = builder.Create_Src_Opnd_From_Dcl(scratchRegDcl, builder.getRegionStride1());
@@ -7013,7 +7013,7 @@ void GraphColor::addCallerSaveRestoreCode()
             {
                 std::ofstream optreport;
                 getOptReportStream(optreport, m_options);
-                optreport << "Caller save size: " << callerSaveRegCount * 32 <<
+                optreport << "Caller save size: " << callerSaveRegCount * getGRFSize() <<
                     " bytes for fcall at cisa id " <<
                     (*it)->back()->getCISAOff() << std::endl;
                 closeOptReportStream(optreport);
@@ -7143,7 +7143,7 @@ void GraphColor::addCalleeSaveRestoreCode()
     {
         std::ofstream optreport;
         getOptReportStream(optreport, m_options);
-        optreport << "Callee save size: " << calleeSaveRegCount * 32 <<
+        optreport << "Callee save size: " << calleeSaveRegCount * getGRFSize() <<
             " bytes" << std::endl;
         closeOptReportStream(optreport);
     }
@@ -10987,7 +10987,6 @@ void GraphColor::dumpRegisterPressure()
     }
 }
 
-
 // FIXME: is any of this necessary? If they are they should be moved to HWConformity, is the concern
 // that new variables created by lvn/spill/remat may not honor alignment requirements?
 void GlobalRA::fixAlignment()
@@ -11001,13 +11000,14 @@ void GlobalRA::fixAlignment()
             {
                 G4_RegVar* var = dst->getBase()->asRegVar();
                 // dst register on sendin must be whole register aligned.
+                // NOTE THAT: The assumption is that the previous pass will set only SUB_ALIGNMENT_HALFGRFALIGN or whole GRF align
                 if (inst->isSend() && dst->getRegAccess() == Direct) {
                     if (!var->isPhyRegAssigned() &&
                         (var->getDeclare()->getSubRegAlign() == Any ||
-                            var->getDeclare()->getSubRegAlign() == Even_Word ||
-                            var->getDeclare()->getSubRegAlign() == Eight_Word))
+                         var->getDeclare()->getSubRegAlign() == Even_Word ||
+                         var->getDeclare()->getSubRegAlign() == SUB_ALIGNMENT_HALFGRFALIGN))
                     {
-                        var->setSubRegAlignment(Sixteen_Word);
+                        var->setSubRegAlignment(SUB_ALIGNMENT_GRFALIGN);
                     }
                 }
 
@@ -11025,13 +11025,13 @@ void GlobalRA::fixAlignment()
                     if (inst->isAccSrcInst())
                     {
                         if (var->getDeclare()->getRegFile() != G4_ADDRESS)
-                            var->setSubRegAlignment(Sixteen_Word);
+                            var->setSubRegAlignment(SUB_ALIGNMENT_GRFALIGN);
                         else
-                            var->setSubRegAlignment(Eight_Word);
+                            var->setSubRegAlignment(SUB_ALIGNMENT_HALFGRFALIGN);
                     }
-                    else if (var->getSubRegAlignment() != Sixteen_Word)
+                    else if (var->getSubRegAlignment() != SUB_ALIGNMENT_GRFALIGN)
                     {
-                        if (inst->opcode() == G4_movi)
+                        if (inst->opcode() == G4_movi)  //FIXME: restriction for movi, what about 64 bytes GRF
                         {
                             G4_Type dstType = dst->getType();
                             switch (G4_Type_Table[dstType].byteSize)
@@ -11079,7 +11079,8 @@ void GlobalRA::fixAlignment()
 
                         G4_SubReg_Align dstSubAlign = var->getSubRegAlignment();
                         if (dstSubAlign != Eight_Word &&
-                            dstSubAlign != Sixteen_Word)
+                            dstSubAlign != Sixteen_Word
+                            )
                         {
                             for (unsigned j = 0; j < G4_MAX_SRCS; j++)
                             {

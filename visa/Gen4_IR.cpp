@@ -828,6 +828,7 @@ G4_Type G4_INST::getExecType2() const
 uint16_t G4_INST::getMaskOffset()
 {
     unsigned maskOption = (this->getOption() & InstOpt_QuarterMasks);
+
     switch(maskOption)
     {
     case InstOpt_NoOpt:

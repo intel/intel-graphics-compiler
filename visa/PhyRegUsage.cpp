@@ -98,7 +98,7 @@ void PhyRegUsage::markBusyForDclSplit(G4_RegFileKind kind,
     for (unsigned i = start_GRF; i < end_GRF; i++)
     {
         availableGregs[i] = false;
-        availableSubRegs[i] = 0xffff0000; //Is this right?
+        availableSubRegs[i] = 0xffff0000;
     }
 
     if (end_sub_GRF)
@@ -244,7 +244,7 @@ int PhyRegUsage::findContiguousWords(
     int step = getStepAccordingSubAlign(subAlign);
     int startWord = 0;
 
-    for (int i = startWord; i + numWords <= 16; i += step)
+    for (int i = startWord; i + numWords <= (int)G4_GRF_REG_SIZE; i += step)
     {
         uint32_t bitMask = getSubregBitMask(i, numWords);
         if ((bitMask & words) == bitMask)

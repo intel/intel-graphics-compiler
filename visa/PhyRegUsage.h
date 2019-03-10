@@ -215,31 +215,31 @@ public:
 	void markBusyGRF(unsigned regNum,
 				  unsigned regOff,
 				  unsigned nunits,
-				  unsigned numRows)
-	{
-		MUST_BE_TRUE(numRows > 0 && nunits > 0, ERROR_INTERNAL_ARGUMENT);
+        unsigned numRows)
+    {
+        MUST_BE_TRUE(numRows > 0 && nunits > 0, ERROR_INTERNAL_ARGUMENT);
 
-		MUST_BE_TRUE(regNum + numRows <= maxGRFCanBeUsed,
-			ERROR_UNKNOWN);
+        MUST_BE_TRUE(regNum + numRows <= maxGRFCanBeUsed,
+            ERROR_UNKNOWN);
 
-		//
-		// sub reg allocation (allocation unit is word)
-		//
-		if (numRows == 1 && regOff + nunits < G4_GRF_REG_SIZE)
-		{
-			availableGregs[regNum] = false;
-			auto subregMask = getSubregBitMask(regOff, nunits);
-			availableSubRegs[regNum] &= ~subregMask;
-		}
-		else // allocate whole registers
-		{
-			for (unsigned i = 0; i < numRows; i++)
-			{
-				availableGregs[regNum + i] = false;
-				availableSubRegs[regNum + i] = 0xffff0000;
-			}
-		}
-	}
+        //
+        // sub reg allocation (allocation unit is word)
+        //
+        if (numRows == 1 && regOff + nunits < G4_GRF_REG_SIZE)
+        {
+            availableGregs[regNum] = false;
+            auto subregMask = getSubregBitMask(regOff, nunits);
+            availableSubRegs[regNum] &= ~subregMask;
+        }
+        else // allocate whole registers
+        {
+            for (unsigned i = 0; i < numRows; i++)
+            {
+                availableGregs[regNum + i] = false;
+                availableSubRegs[regNum + i] = 0xffff0000;
+            }
+        }
+    }
 
 	void markBusyAddress(unsigned regNum,
 				  unsigned regOff,
@@ -288,7 +288,9 @@ public:
     {
         MUST_BE_TRUE(num > 0 && start+num <= G4_GRF_REG_SIZE, "illegal number of words");
         uint32_t mask = ((1 << num) - 1) << start;
-        MUST_BE_TRUE(mask <= 0xFFFFFFFF, "illegal subreg mask");
+
+        MUST_BE_TRUE(mask <= 0xFFFF, "illegal subreg mask");
+
         return (uint32_t) mask;
     }
 
