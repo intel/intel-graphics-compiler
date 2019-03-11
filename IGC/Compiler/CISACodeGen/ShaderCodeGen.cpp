@@ -1325,10 +1325,7 @@ void OptimizeIR(CodeGenContext* pContext)
             // Use CFGSimplification to do clean-up. Needs to be invoked before lowerSwitch.
             mpm.add(llvm::createCFGSimplificationPass());
 
-            // run instruction combining to clean up the code after CFG optimizations
-            mpm.add(createIGCInstructionCombiningPass());
-
-            if (IGC_IS_FLAG_DISABLED(DisableFlattenSmallSwitch))
+            if(IGC_IS_FLAG_DISABLED(DisableFlattenSmallSwitch))
             {
                 mpm.add(createFlattenSmallSwitchPass());
             }
@@ -1336,6 +1333,9 @@ void OptimizeIR(CodeGenContext* pContext)
             mpm.add(llvm::createLowerSwitchPass());
             // After lowering 'switch', run jump threading to remove redundant jumps.
             mpm.add(llvm::createJumpThreadingPass());
+
+            // run instruction combining to clean up the code after CFG optimizations
+            mpm.add(createIGCInstructionCombiningPass());
 
             mpm.add(llvm::createDeadCodeEliminationPass());
             mpm.add(llvm::createEarlyCSEPass());
