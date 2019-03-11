@@ -161,13 +161,10 @@ void MergeURBWrites::FillWriteList(BasicBlock &BB)
     for(auto iit = BB.begin(); iit != BB.end(); ++iit, ++instCounter)
     {
         auto intrinsic = dyn_cast<GenIntrinsicInst>(iit);
-        // if we have URBRead instructions in the same basic block, Merge the exisiting URB Write Instructions
-        // and clear the writeList. This way we can start merging instructions after the read
         if (intrinsic == nullptr) continue;
 
         GenISAIntrinsic::ID IID = intrinsic->getIntrinsicID();
-        if ((IID == GenISAIntrinsic::GenISA_URBRead) ||
-            (IID == GenISAIntrinsic::GenISA_HSURBPatchHeaderRead) ||
+        if ((IID == GenISAIntrinsic::GenISA_HSURBPatchHeaderRead) ||
             (IID == GenISAIntrinsic::GenISA_DCL_HSOutputCntrlPtInputVec) ||
             (IID == GenISAIntrinsic::GenISA_DCL_HSPatchConstInputVec) ||
             (IID == GenISAIntrinsic::GenISA_threadgroupbarrier))
