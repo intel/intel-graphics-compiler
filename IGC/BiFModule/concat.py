@@ -46,9 +46,9 @@ import os
 import sys
 
 def Usage () :
-  print r'Usage: concat.py -new <outfile> <f0> <f1> ...'
-  print r'  To concatenate files in order into a new file <outfile>.'
-  print r'  Input files are <f0> <f1>, and they are at least two.'
+  print (r'Usage: concat.py -new <outfile> <f0> <f1> ...')
+  print (r'  To concatenate files in order into a new file <outfile>.')
+  print (r'  Input files are <f0> <f1>, and they are at least two.')
 
 if len(sys.argv) < 5 :
   Usage()
