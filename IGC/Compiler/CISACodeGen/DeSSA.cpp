@@ -112,27 +112,40 @@ DeSSA::DeSSA() : FunctionPass( ID )
 void DeSSA::print(raw_ostream &OS, const Module* ) const
 {
     Banner(OS, "Phi-Var Isolations");
+    DenseMap<Node*, int> LeaderVisited;
     for (auto I = RegNodeMap.begin(),
         E = RegNodeMap.end(); I != E; ++I) {
-        Value *VL = I->first;
-        Value *RootV = getRegRoot(VL);
-        if (RootV) {
-            VL->print(IGC::Debug::ods());
-            OS << " : ";
-            RootV->print(IGC::Debug::ods());
+        Node* N = I->second;
+        // We don't want to change behavior of DeSSA by invoking
+        // dumping/printing functions. Thus, don't use getLeader()
+        // as it has side-effect (doing path halving).
+        Node* Leader = N->parent.getPointer();
+        while (Leader != Leader->parent.getPointer()) {
+            Leader = Leader->parent.getPointer();
         }
-        else {
+        if (LeaderVisited.count(Leader)) {
+            continue;
+        }
+        LeaderVisited[Leader] = 1;
+        Value *VL;
+        if (isIsolated(N)) {
+            VL = N->value;
             OS << "Var isolated : ";
             VL->print(IGC::Debug::ods());
-        }
-        PHINode *PHI = dyn_cast<PHINode>(VL);
-        if (PHI) {
-            if (isPHIIsolated(PHI)) {
-                OS << "\nPHI isolated : ";
+            OS << "\n";
+        } else {
+            OS << "Leader : ";
+            Leader->value->print(IGC::Debug::ods());
+            OS << "\n";
+            N = Leader->next;
+            while (N != Leader) {
+                VL = N->value;
+                OS << "    ";
                 VL->print(IGC::Debug::ods());
+                OS << "\n";
+                N = N->next;
             }
         }
-        OS << "\n";
     }
 }
 
@@ -288,7 +301,7 @@ bool DeSSA::runOnFunction(Function &MF)
       // isolate complex type that IGC does not handle
       if (PHI->getType()->isStructTy() ||
           PHI->getType()->isArrayTy()) {
-        isolatePHI(PHI);
+        isolateReg(PHI);
       }
     }
   }
@@ -345,7 +358,7 @@ Value* DeSSA::getRegRoot(Value* Val, e_alignment *pAlign) const {
   if (RI == RegNodeMap.end())
     return 0;
   Node *TheNode = RI->second;
-  if (TheNode->parent.getInt() & Node::kRegisterIsolatedFlag)
+  if (isIsolated(TheNode))
     return 0x0;
   Node *TheLeader = TheNode->getLeader();
   if (pAlign)
@@ -359,8 +372,7 @@ int DeSSA::getRootColor(Value* V)
     if (RI == RegNodeMap.end())
         return 0;
     Node *TheNode = RI->second;
-    if (TheNode->parent.getInt() &
-        (Node::kRegisterIsolatedFlag | Node::kPHIIsolatedFlag))
+    if (isIsolated(TheNode))
         return 0;
     Node *TheLeader = TheNode->getLeader();
     return TheLeader->color;
@@ -403,7 +415,6 @@ void DeSSA::MapUnionRegs(MapVector<Value*, Node*> &Map, Value* Val1, Value* Val2
 void DeSSA::isolateReg(Value* Val) {
   Node *Node = RegNodeMap[Val];
   splitNode(Node);
-  Node->parent.setInt(Node->parent.getInt() | Node::kRegisterIsolatedFlag);
 }
 
 Value* DeSSA::getOrigRoot(Instruction *PHI) const {
@@ -419,9 +430,7 @@ Value* DeSSA::getPHIRoot(Instruction *PHI) const {
   auto RI = RegNodeMap.find(PHI);
   assert (RI != RegNodeMap.end());
   Node *DestNode = RI->second;
-  if (DestNode->parent.getInt() & Node::kPHIIsolatedFlag)
-    return 0x0;
-  if (DestNode->parent.getInt() & Node::kRegisterIsolatedFlag)
+  if (isIsolated(DestNode))
     return 0x0;
   return DestNode->getLeader()->value;
 }
@@ -435,9 +444,11 @@ void DeSSA::isolatePHI(Instruction *PHI) {
 
 bool DeSSA::isPHIIsolated(Instruction *PHI) const {
   auto RI = RegNodeMap.find(PHI);
-  assert (RI != RegNodeMap.end());
+  if (RI == RegNodeMap.end()) {
+      return true;
+  }
   Node *DestNode = RI->second;
-  return ((DestNode->parent.getInt() & Node::kPHIIsolatedFlag) > 0 ? true : false);
+  return isIsolated(DestNode);
 }
 
 // Split node ND from its existing congurent class, and the
@@ -632,7 +643,7 @@ DeSSA::SplitInterferencesForBasicBlock(
       // could possibly be improved, e.g. we could isolate the PHI with the
       // fewest operands.
       if (CurrentPHI.first && CurrentPHI.second != PredValue) {
-        isolatePHI(PHI);
+        isolateReg(PHI);
         continue;
       }
       else {
@@ -722,8 +733,7 @@ void DeSSA::SplitInterferencesForAlignment()
             N = Curr->next;
 
             // Skip isolated reg.
-            if (Curr->parent.getInt() &
-                (Node::kRegisterIsolatedFlag | Node::kPHIIsolatedFlag)) {
+            if (isIsolated(Curr)) {
                 continue;
             }
 
@@ -747,8 +757,7 @@ void DeSSA::SplitInterferencesForAlignment()
             N = N->next;
 
             // Skip isolated reg.
-            if (Curr->parent.getInt() &
-                (Node::kRegisterIsolatedFlag | Node::kPHIIsolatedFlag)) {
+            if (isIsolated(Curr)) {
                 continue;
             }
 
@@ -867,8 +876,7 @@ void DeSSA::getAllValuesInCongruentClass(
 		Node* First = RI->second;
 		Node* N = First->next;
 		do {
-			if (N->parent.getInt() &
-				(Node::kPHIIsolatedFlag | Node::kRegisterIsolatedFlag)) {
+			if (isIsolated(N)) {
                 N = N->next;
 				continue;
 			}

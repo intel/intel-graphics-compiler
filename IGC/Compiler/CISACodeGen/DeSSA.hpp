@@ -200,6 +200,9 @@ class DeSSA : public llvm::FunctionPass {
     /// Isolate a PHI.
     void isolatePHI(llvm::Instruction*);
 
+    /// Is it isolated (single-valued congruent class)
+    bool isIsolated(Node* N) const { return (N == N->next); }
+
     // Split node from its existing congurent class, and
     // node itself becomes a new single-value congruent class
     void splitNode(Node* ND);
