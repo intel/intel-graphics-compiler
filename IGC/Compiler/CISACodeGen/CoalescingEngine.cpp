@@ -727,14 +727,6 @@ void CoalescingEngine::PrepareInsertionSlot(
             }
             NewParent = ImmediateDominatingParent[NewParent];
         }
-
-        //it might turn out, that rootNode does not dominate 'inst'
-        //since it is in another branch of DT
-        //do not forget to delete it as well
-        if (getRegRoot(RootNode->value)) {
-            isolateReg(RootNode->value);
-        }
-
     } else {
         //Evict dominating parent from CC.
         Value* NewParent = GetActualDominatingParent(RootNode->value, inst);
