@@ -137,7 +137,7 @@ endif()
     if(WIN32)
       set(COMMON_CLANG_LIBRARY_NAME common_clang${_cpuSuffix})
     else()
-      set(COMMON_CLANG_LIBRARY_NAME opencl_clang)
+       set(COMMON_CLANG_LIBRARY_NAME common_clang)
     endif()
   endif()
 
