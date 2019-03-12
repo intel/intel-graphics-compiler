@@ -369,8 +369,10 @@ G4_SubReg_Align Get_G4_SubRegAlign_From_Size( uint16_t size )
         // identifying.
     case 16:
         return Eight_Word;
-    default:
+    case 32:
         return Sixteen_Word;
+    default:
+        return SUB_ALIGNMENT_GRFALIGN;
     }
 }
 

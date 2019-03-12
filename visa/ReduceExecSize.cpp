@@ -1566,7 +1566,7 @@ void HWConformity::moveSrcToGRF( INST_LIST_ITER it, uint32_t srcNum, uint16_t nu
         inst->setSrc( newSrc, srcNum );
     }
 
-    G4_Declare* dcl = builder.createTempVar( dclSize, src->getType(), Either, Sixteen_Word );
+    G4_Declare* dcl = builder.createTempVar( dclSize, src->getType(), Either, SUB_ALIGNMENT_GRFALIGN );
     G4_DstRegRegion *dstRegion = builder.createDstRegRegion(
                         Direct,
                         dcl->getRegVar(),

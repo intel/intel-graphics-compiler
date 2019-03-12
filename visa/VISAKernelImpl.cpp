@@ -182,8 +182,8 @@ static void setDeclAlignment(G4_Declare* dcl, VISA_Align align)
     case ALIGN_DWORD: dcl->setAlign(Either); dcl->setSubRegAlign(Even_Word); break;//dword aligned;
     case ALIGN_QWORD: dcl->setAlign(Either); dcl->setSubRegAlign(Four_Word); break;//8 byte aligned;
     case ALIGN_OWORD: dcl->setAlign(Either); dcl->setSubRegAlign(Eight_Word); break;//oword aligned;
-    case ALIGN_GRF: dcl->setAlign(Either); dcl->setSubRegAlign(Sixteen_Word); break;//grf aligned;
-    case ALIGN_2_GRF: dcl->setAlign(Even); dcl->setSubRegAlign(Sixteen_Word); break; //2 grf aligned;
+    case ALIGN_GRF: dcl->setAlign(Either); dcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN); break;//grf aligned;
+    case ALIGN_2_GRF: dcl->setAlign(Even); dcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN); break; //2 grf aligned;
     default: assert(false && "Incorrect vISA alignment"); break;
     }
 }
@@ -815,7 +815,7 @@ int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, i
         }
 
         // force subalign to be GRF if total size is larger than or equal to GRF
-        if (info->dcl->getSubRegAlign() != Sixteen_Word)
+        if (info->dcl->getSubRegAlign() != SUB_ALIGNMENT_GRFALIGN)
         {
             setDeclAlignment(info->dcl, varAlign);
         }

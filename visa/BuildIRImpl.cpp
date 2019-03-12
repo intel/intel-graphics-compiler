@@ -1629,7 +1629,8 @@ bool IR_Builder::isOpndAligned( G4_Operand *opnd, unsigned short &offset, int al
                         // component wise and may need to consider checking
                         // the accumulated result.
                         if ((AliasOffset % align_byte) != 0 ||
-                            (Dcl && Dcl->getSubRegAlign() != Sixteen_Word &&
+                            (Dcl && Dcl->getSubRegAlign() != SUB_ALIGNMENT_GRFALIGN &&
+                             Dcl->getSubRegAlign() != Sixteen_Word &&
                              Dcl->getSubRegAlign() != Eight_Word) ||
                             AE->getOffset() % align_byte != 0) {
                             isAligned = false;

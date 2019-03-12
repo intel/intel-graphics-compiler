@@ -3041,7 +3041,7 @@ int IR_Builder::translateVISAMediaLoadInst(
 
         original_dst = dstOpnd;
         new_dcl = createTempVar( GENX_GRF_REG_SIZ/G4_Type_Table[Type_UD].byteSize,
-            Type_UD, Either, Sixteen_Word );
+            Type_UD, Either, SUB_ALIGNMENT_GRFALIGN );
         G4_DstRegRegion tmp_dst( Direct,
             new_dcl->getRegVar(),
             0,
@@ -3094,7 +3094,7 @@ int IR_Builder::translateVISAMediaLoadInst(
     {
         G4_Declare *new_dcl2 = createTempVar(
             GENX_GRF_REG_SIZ/G4_Type_Table[original_dst->getType()].byteSize,
-            original_dst->getType(), Either, Sixteen_Word );
+            original_dst->getType(), Either, SUB_ALIGNMENT_GRFALIGN );
 
         new_dcl2->setAliasDeclare( new_dcl, 0 );
 
@@ -3408,7 +3408,7 @@ int IR_Builder::translateVISAGatherInst(
         // From SKL, SLM messages forbid message header. Recalculate offset by
         // adding global offset and force headerLess.
         G4_Declare *dcl = Create_MRF_Dcl(numElt, eltOffOpnd->getType());
-        dcl->setSubRegAlign(Sixteen_Word);
+        dcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN);
         G4_DstRegRegion *newEltOffOpnd = Create_Dst_Opnd_From_Dcl(dcl, 1);
         createInst(NULL, G4_add, NULL, false, numElt, newEltOffOpnd, eltOffOpnd, gOffOpnd, instOpt);
         eltOffOpnd = Create_Src_Opnd_From_Dcl(dcl, numElt == 1 ? getRegionScalar() : getRegionStride1());
@@ -3424,7 +3424,7 @@ int IR_Builder::translateVISAGatherInst(
 
     G4_Declare *header = 0;
     G4_Declare *offset = Create_MRF_Dcl(numElt, Type_UD);
-    offset->setSubRegAlign(Sixteen_Word);
+    offset->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN);
 
     if (useSplitSend)
     {
@@ -3885,7 +3885,7 @@ int IR_Builder::translateVISAGather4Inst(
     // shl (esize) offset<1>:ud elt_off<8;8,1>:ud 2:uw
     G4_DstRegRegion* dst1_opnd = createDstRegRegion(Direct, offset->getRegVar(), 0, 0, 1, offset->getElemType());
 
-    G4_Declare *tmp_dcl = createTempVar( numElt, Type_UD, Either, Sixteen_Word );
+    G4_Declare *tmp_dcl = createTempVar( numElt, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN );
     G4_DstRegRegion dst3( Direct, tmp_dcl->getRegVar(), 0, 0, 1, tmp_dcl->getElemType() );
     G4_DstRegRegion* dst3_opnd = createDstRegRegion( dst3 );
 
@@ -4106,7 +4106,7 @@ int IR_Builder::translateVISAScatter4Inst(
 
     G4_DstRegRegion* dst1_opnd = createDstRegRegion(Direct, offset->getRegVar(), 0, 0, 1, offset->getElemType());
 
-    G4_Declare *tmp_dcl = createTempVar( numElt, Type_UD, Either, Sixteen_Word );
+    G4_Declare *tmp_dcl = createTempVar( numElt, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN );
     G4_DstRegRegion dst3( Direct, tmp_dcl->getRegVar(), 0, 0, 1, tmp_dcl->getElemType() );
     G4_DstRegRegion* dst3_opnd = createDstRegRegion( dst3 );
 
@@ -6124,7 +6124,7 @@ int IR_Builder::translateVISALogicInst(ISA_Opcode opcode, G4_Predicate *predOpnd
         // split into
         // bfi1 tmp src0 src1
         // bfi2 dst tmp src2 src3
-        G4_Declare* tmpDcl = createTempVar( exsize, g4Srcs[0]->getType(), Either, Sixteen_Word);
+        G4_Declare* tmpDcl = createTempVar( exsize, g4Srcs[0]->getType(), Either, SUB_ALIGNMENT_GRFALIGN);
         G4_DstRegRegion* tmpDst = Create_Dst_Opnd_From_Dcl( tmpDcl, 1);
         createInst(
             predOpnd,
@@ -9189,7 +9189,7 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
     uint8_t execSize = 8;
     uint16_t numElts = numRows * GENX_GRF_REG_SIZ/G4_Type_Table[Type_F].byteSize;
     G4_Declare* payloadF = builder->Create_MRF_Dcl( numElts, Type_F );
-    G4_Declare* payloadUD = builder->createTempVar( numElts, Type_UD, Either, Sixteen_Word );
+    G4_Declare* payloadUD = builder->createTempVar( numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN );
     payloadUD->setAliasDeclare( payloadF, 0 );
     G4_SrcRegRegion* srcToUse = builder->createSrcRegRegion(Mod_src_undef, Direct, payloadUD->getRegVar(), 0, 0, builder->getRegionStride1(), Type_UD);
 
@@ -9319,15 +9319,15 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
         if(pixelNullMaskEnable)
         {
             unsigned int numElts = tempDstDcl->getNumElems() * tempDstDcl->getNumRows();
-            tempDstUD = builder->createTempVar(numElts, Type_UD, Either, Sixteen_Word);
+            tempDstUD = builder->createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
             tempDstUD->setAliasDeclare(tempDstDcl, 0);
 
             numElts = tempDstDcl2->getNumElems() * tempDstDcl2->getNumRows();
-            tempDst2UD = builder->createTempVar(numElts, Type_UD, Either, Sixteen_Word);
+            tempDst2UD = builder->createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
             tempDst2UD->setAliasDeclare(tempDstDcl2, 0);
 
             numElts = originalDstDcl->getNumElems() * originalDstDcl->getNumRows();
-            origDstUD = builder->createTempVar(numElts, Type_UD, Either, Sixteen_Word);
+            origDstUD = builder->createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
             origDstUD->setAliasDeclare(originalDstDcl, 0);
         }
 
@@ -9348,7 +9348,7 @@ static int splitSampleInst(VISASampler3DSubOpCode actualop,
         /**************** SECOND HALF OF THE SEND *********************/
         // re-create payload declare so the two sends may be issued independently
         G4_Declare* payloadF = builder->Create_MRF_Dcl(numElts, Type_F);
-        G4_Declare* payloadUD = builder->createTempVar(numElts, Type_UD, Either, Sixteen_Word);
+        G4_Declare* payloadUD = builder->createTempVar(numElts, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
         payloadUD->setAliasDeclare(payloadF, 0);
 
         // even though we only use lower half of the GRF, we have to allocate full GRF

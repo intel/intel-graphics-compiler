@@ -294,7 +294,7 @@ public:
         {
             if (nElems * nRows * G4_Type_Table[ty].byteSize >= G4_GRF_REG_NBYTES)
             {
-                dcl->setSubRegAlign(Sixteen_Word);
+                dcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN);
             }
             else
             {
@@ -821,7 +821,7 @@ public:
 
         if (m_options->getOption(vISA_enablePreemption))
         {
-            G4_Declare *R0CopyDcl = createTempVar(8, Type_UD, Either, Sixteen_Word);
+            G4_Declare *R0CopyDcl = createTempVar(8, Type_UD, Either, SUB_ALIGNMENT_GRFALIGN);
             builtinR0 = R0CopyDcl;
         }
 

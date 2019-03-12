@@ -82,7 +82,7 @@ G4_DstRegRegion* CoalesceSpillFills::generateCoalescedFill(unsigned int scratchO
     char* dclName = kernel.fg.builder->getNameString(kernel.fg.mem, 32,
         "COAL_FILL_%d", kernel.Declares.size());
     auto fillDcl = kernel.fg.builder->createDeclareNoLookup(dclName, G4_GRF,
-        8, (unsigned short)dclSize, Type_UD, DeclareType::CoalescedFill);
+        NUM_DWORDS_PER_GRF, (unsigned short)dclSize, Type_UD, DeclareType::CoalescedFill);
 
     fillDcl->setAlign(alignment);
     fillDcl->setDoNotSpill();
@@ -167,7 +167,7 @@ G4_Declare* CoalesceSpillFills::createCoalescedSpillDcl(unsigned int payloadSize
     dclName = kernel.fg.builder->getNameString(kernel.fg.mem, 32,
         "COAL_SPILL_%d", kernel.Declares.size());
     spillDcl = kernel.fg.builder->createDeclareNoLookup(dclName, G4_GRF,
-        8, (unsigned short)payloadSize, Type_UD, DeclareType::CoalescedSpill);
+        NUM_DWORDS_PER_GRF, (unsigned short)payloadSize, Type_UD, DeclareType::CoalescedSpill);
 
     spillDcl->setDoNotSpill();
 
@@ -1382,7 +1382,7 @@ void CoalesceSpillFills::fixSendsSrcOverlap()
                     char* dclName = kernel.fg.builder->getNameString(kernel.fg.mem, 32,
                         "COPY_%d", kernel.Declares.size());
                     G4_Declare* copyDcl = kernel.fg.builder->createDeclareNoLookup(dclName, G4_GRF,
-                        8, src1->getTopDcl()->getNumRows(),
+                        NUM_DWORDS_PER_GRF, src1->getTopDcl()->getNumRows(),
                         Type_UD);
 
                     unsigned int elems = copyDcl->getNumElems();

@@ -75,21 +75,21 @@ G4_Align HWConformity::getDclAlignment( int opndBytes, G4_INST *inst, bool isSca
     subAlign = Get_G4_SubRegAlign_From_Size( (uint16_t) opndBytes );
     bool hasAccSrc = inst->hasACCSrc();
 
-    if( hasAccSrc && subAlign < Sixteen_Word )
+    if( hasAccSrc && subAlign < SUB_ALIGNMENT_GRFALIGN )
     {
-        subAlign = Sixteen_Word;
+        subAlign = SUB_ALIGNMENT_GRFALIGN;
     }
 
     if (!isScalar)
     {
-        // certain instructions have additional alignment requirements for non-scalar sources
+        // certain instructions have additional alignment requirements for non-scalar sources, FIXME: what about 64 bytes?
         if (!builder.hasAlign1Ternary() && inst->getNumSrc() == 3 && !inst->isSend() && subAlign < Eight_Word)
         {
             subAlign = Eight_Word;
         }
-        if (inst->isMath())
+        if (inst->isMath())  //FIXME: need confirm, used to be SUB_ALIGNMENT_GRFALIGN
         {
-            subAlign = Sixteen_Word;
+            subAlign = SUB_ALIGNMENT_GRFALIGN;
         }
     }
 
@@ -1178,7 +1178,7 @@ void HWConformity::fixAlign13SrcInst(INST_LIST_ITER iter, G4_BB* bb)
         G4_DstRegRegion* dst = inst->getDst();
         if (!isGoodAlign1TernaryDst(inst))
         {
-            auto alignment = builder.noSrc2Regioning() ? Sixteen_Word : Four_Word;
+            auto alignment = builder.noSrc2Regioning() ? SUB_ALIGNMENT_GRFALIGN : Four_Word;
             G4_DstRegRegion* tmpDst = insertMovAfter(iter, dst, dst->getType(), bb, alignment);
             inst->setDest(tmpDst);
         }
@@ -1853,7 +1853,7 @@ bool HWConformity::fixAcc(INST_LIST_ITER iter, G4_BB* bb)
     {
         if (!builder.isOpndAligned(dst, GENX_GRF_REG_SIZ))
         {
-            inst->setDest(insertMovAfter(iter, dst, dst->getType(), bb, Sixteen_Word));
+            inst->setDest(insertMovAfter(iter, dst, dst->getType(), bb, SUB_ALIGNMENT_GRFALIGN));
             changed = true;
         }
     }
@@ -2486,7 +2486,7 @@ bool HWConformity::fixMULInst( INST_LIST_ITER &i, G4_BB *bb )
             exec_size,
             tmp_type,
             Either,
-            Sixteen_Word);
+            SUB_ALIGNMENT_GRFALIGN);
 
         G4_DstRegRegion *tmp_dst_opnd = builder.createDstRegRegion(
             Direct,
@@ -2941,7 +2941,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
 
                     int numDwords = rightBound / G4_Type_Table[Type_UD].byteSize;
                     numDwords = Round_Up_Pow2(numDwords);
-                    G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), Either, Sixteen_Word);
+                    G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), Either, SUB_ALIGNMENT_GRFALIGN);
                     // new source's region varies depending on whether it's VxH or 1x1
                     RegionDesc* newRegion = region->isRegionWH() ? builder.getRegionStride1() : region;
                     copyDwordsIndirect(tmpSrc, srcAsRegion, numDwords, bb, iter);
@@ -2954,7 +2954,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                     // use the good ol' insertMovBefore
                     G4_Operand* tmpSrc = insertMovBefore(iter, i, src->getType(), bb);
                     G4_Declare* tmpSrcDcl = tmpSrc->getTopDcl();
-                    tmpSrcDcl->setSubRegAlign(Sixteen_Word);
+                    tmpSrcDcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN);
                     inst->setSrc(tmpSrc, i);
                 }
             }
@@ -2992,7 +2992,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                     }
                     MUST_BE_TRUE(multFactor != 8, "does not support 64b operation with byte source");
                     G4_Declare* tmp = builder.createTempVar(exSize * multFactor,
-                        tmpType, Either, Sixteen_Word);
+                        tmpType, Either, SUB_ALIGNMENT_GRFALIGN);
                     G4_DstRegRegion* tmpDst = builder.Create_Dst_Opnd_From_Dcl(tmp, multFactor);
                     G4_INST* movInst = builder.createInternalInst(NULL, G4_mov, NULL, false,
                         inst->getExecSize(), tmpDst, src, NULL, inst->getOption());
@@ -3032,7 +3032,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                         // add (2) ... r10.0<4;2,2>:q
                         int numDwords = (src->getRightBound() - src->getLeftBound() + 1) / G4_Type_Table[Type_UD].byteSize;
                         numDwords = Round_Up_Pow2(numDwords);
-                        G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), Either, Sixteen_Word);
+                        G4_Declare* tmpSrc = builder.createTempVar(numDwords / 2, src->getType(), Either, SUB_ALIGNMENT_GRFALIGN);
                         copyDwords(tmpSrc, 0, src->getTopDcl(), src->getLeftBound(), numDwords, bb, iter);
                         G4_SrcRegRegion* tmpSrcOpnd = builder.createSrcRegRegion(srcAsRegion->getModifier(),
                             Direct, tmpSrc->getRegVar(), 0, 0, srcAsRegion->getRegion(), tmpSrc->getElemType());
@@ -3043,7 +3043,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                         // use the good ol' insertMovBefore
                         G4_Operand* tmpSrc = insertMovBefore(iter, i, src->getType(), bb);
                         G4_Declare* tmpSrcDcl = tmpSrc->getTopDcl();
-                        tmpSrcDcl->setSubRegAlign(Sixteen_Word);
+                        tmpSrcDcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN);
                         inst->setSrc(tmpSrc, i);
                     }
                 }
@@ -3127,7 +3127,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                     // mov (8) r1.4<1>:ud r3.0<1;1,0>:ud {NoMask}
                     int numDwords = (dst->getRightBound() - dst->getLeftBound() + 1) / G4_Type_Table[Type_UD].byteSize;
                     numDwords = Round_Up_Pow2(numDwords);
-                    G4_Declare* tmpDst = builder.createTempVar(numDwords / 2, dst->getType(), Either, Sixteen_Word);
+                    G4_Declare* tmpDst = builder.createTempVar(numDwords / 2, dst->getType(), Either, SUB_ALIGNMENT_GRFALIGN);
                     if (numDwords > execSize * 2)
                     {
                         // dst is not packed, need a move to pre-load the dst value into tmp
@@ -3143,7 +3143,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
                     // use the good ol' insertMoveAfter
                     G4_DstRegRegion* tmpDst = insertMovAfter(iter, dst, dst->getType(), bb);
                     G4_Declare* tmpDstDcl = tmpDst->getTopDcl();
-                    tmpDstDcl->setSubRegAlign(Sixteen_Word);
+                    tmpDstDcl->setSubRegAlign(SUB_ALIGNMENT_GRFALIGN);
                     inst->setDest(tmpDst);
                     if (G4_Type_Table[dst->getType()].byteSize == 8)
                     {
@@ -3800,7 +3800,7 @@ bool HWConformity::generateAlign1Mad(G4_BB* bb, INST_LIST_ITER iter)
     {
         if (mustDoMad)
         {
-            auto alignment = builder.noSrc2Regioning() ? Sixteen_Word : Four_Word;
+            auto alignment = builder.noSrc2Regioning() ? SUB_ALIGNMENT_GRFALIGN : Four_Word;
             inst->setDest(insertMovAfter(iter, inst->getDst(), inst->getDst()->getType(), bb, alignment));
         }
         else
@@ -3948,7 +3948,7 @@ bool HWConformity::generateFPMad(G4_BB* bb, INST_LIST_ITER iter)
                     // MAD DF does not support .r, so we have to broadcast the value
                     // '.r' on MAD HF on BDW is not a replication of that
                     // scalar element but a pair of half.
-                    auto align = type == Type_HF ? Sixteen_Word : Eight_Word;
+                    auto align = type == Type_HF ? SUB_ALIGNMENT_GRFALIGN : Eight_Word;
                     broadcast(bb, iter, k, align);
                 }
 				// No need to insert mov for replicated DF src with <2;2,0> region,
@@ -5092,7 +5092,7 @@ bool HWConformity::convertMAD2MAC( INST_LIST_ITER iter, std::vector<G4_INST*> &m
         {
             // ToDo: store the iter in madInst?
             auto instIter = std::find(bb->begin(), bb->end(), curInst);
-            auto newDst = insertMovAfter(instIter, curInst->getDst(), curInst->getDst()->getType(), bb, Sixteen_Word);
+            auto newDst = insertMovAfter(instIter, curInst->getDst(), curInst->getDst()->getType(), bb, SUB_ALIGNMENT_GRFALIGN);
             curInst->setDest(newDst);
         }
         uint32_t dstByteStride = curInst->getDst()->getExecTypeSize();
@@ -5493,7 +5493,7 @@ void HWConformity::fixSADA2Inst( BB_LIST_ITER it )
             if( inst->getExecSize() * G4_Type_Table[dst->getType()].byteSize > GENX_GRF_REG_SIZ )
             {
                 // align to GRF
-                sad2TmpSubAlign = Sixteen_Word;
+                sad2TmpSubAlign = SUB_ALIGNMENT_GRFALIGN;
             }
             // create a new temp variable as sad2's destination
             G4_Declare* sad2Tmp = builder.createTempVar( inst->getExecSize(), dst->getType(),
@@ -5607,7 +5607,7 @@ void HWConformity::fixSendInst(BB_LIST_ITER it)
         uint16_t offset = 0;
         if (!builder.isOpndAligned(inst->getDst(), offset, GENX_GRF_REG_SIZ))
         {
-            inst->setDest(insertMovAfter(i, inst->getDst(), inst->getDst()->getType(), bb, Sixteen_Word));
+            inst->setDest(insertMovAfter(i, inst->getDst(), inst->getDst()->getType(), bb, SUB_ALIGNMENT_GRFALIGN));
         }
 
         G4_Operand *src0 = inst->getSrc(0);
@@ -5628,7 +5628,7 @@ void HWConformity::fixSendInst(BB_LIST_ITER it)
         {
             uint16_t rows = inst->getMsgDesc()->MessageLength();
             G4_Type type = src0->getType();
-            G4_Declare* dcl = builder.createTempVar(rows * 8, type, Either, Sixteen_Word);
+            G4_Declare* dcl = builder.createTempVar(rows * 8, type, Either, SUB_ALIGNMENT_GRFALIGN);
 
             MUST_BE_TRUE(G4_Type_Table[type].byteSize == 4, "Invalid src0 opnd type for send.");
 
@@ -5658,7 +5658,7 @@ void HWConformity::fixSendInst(BB_LIST_ITER it)
             // src1 may be null because some messages (e.g., CPS) require split send
             if (!builder.isOpndAligned(inst->getSrc(1), GENX_GRF_REG_SIZ))
             {
-                inst->setSrc(insertMovBefore(i, 1, inst->getSrc(1)->getType(), bb, Sixteen_Word), 1);
+                inst->setSrc(insertMovBefore(i, 1, inst->getSrc(1)->getType(), bb, SUB_ALIGNMENT_GRFALIGN), 1);
             }
             G4_Operand *src1 = inst->getSrc(1);
             G4_Declare *src1TopDcl = src1->getTopDcl();
@@ -5667,7 +5667,7 @@ void HWConformity::fixSendInst(BB_LIST_ITER it)
             {
                 uint16_t rows = inst->getMsgDesc()->extMessageLength();
                 G4_Type type = src1->getType();
-                G4_Declare* dcl = builder.createTempVar(rows * 8, type, Either, Sixteen_Word);
+                G4_Declare* dcl = builder.createTempVar(rows * 8, type, Either, SUB_ALIGNMENT_GRFALIGN);
 
                 MUST_BE_TRUE(G4_Type_Table[type].byteSize == 4, "Invalid src1 opnd type for send.");
 
@@ -7005,7 +7005,7 @@ bool HWConformity::fixPlaneInst(INST_LIST_ITER it, G4_BB* bb)
         {
             // src0 needs a temp
             G4_Declare* tmpDcl = builder.createTempVar(4, Type_F,
-                Either, Sixteen_Word);
+                Either, SUB_ALIGNMENT_GRFALIGN);
 
             // Before:
             // pln (16) dst, (mod)src0, src1
@@ -7486,12 +7486,12 @@ void HWConformity::fixSrc2(INST_LIST_ITER it, G4_BB* bb, bool swapSrc0and2)
                 srcTy = Type_F;
             }
         }
-        inst->setSrc(insertMovBefore(it, srcPos, srcTy, bb, Sixteen_Word), srcPos);
+        inst->setSrc(insertMovBefore(it, srcPos, srcTy, bb, SUB_ALIGNMENT_GRFALIGN), srcPos);
 
         // Check if dst stride aligns with src2.
         if (dstEltSz != G4_Type_Table[srcTy].byteSize)
         {
-            inst->setDest(insertMovAfter(it, inst->getDst(), inst->getDst()->getType(), bb, Sixteen_Word));
+            inst->setDest(insertMovAfter(it, inst->getDst(), inst->getDst()->getType(), bb, SUB_ALIGNMENT_GRFALIGN));
         }
     }
 }
