@@ -422,6 +422,12 @@ public:
     }
 
     const SCompilerHwCaps& GetCaps(){return m_caps;}
+
+    bool WaClampLowerCosineValue() const
+    {
+        return m_WaTable.WaPreventCosineOverShoot != 0;
+    }
+
 };
 
 }//namespace IGC

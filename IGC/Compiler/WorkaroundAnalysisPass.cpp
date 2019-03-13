@@ -258,7 +258,6 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
         }
     }
 
-
     if (const GenIntrinsicInst* intr = dyn_cast<GenIntrinsicInst>(&I))
     {
         switch (intr->getIntrinsicID())
@@ -359,6 +358,21 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
             break;
         }
     }
+    if (pCodeGenCtx->platform.WaClampLowerCosineValue())
+    {
+        IntrinsicInst *IIns = dyn_cast<IntrinsicInst>(&I);
+        if (IIns && IIns->getIntrinsicID() == Intrinsic::cos)
+        {
+            m_builder->SetInsertPoint(IIns->getNextNode());
+            llvm::Value* operand = IIns;
+            llvm::ConstantFP* float_N1 = cast<ConstantFP>(ConstantFP::get(m_builder->getFloatTy(), -1.0));
+            Value* cmpInst = m_builder->CreateFCmpOLE(operand, float_N1);
+            Value* sel = m_builder->CreateSelect(cmpInst, float_N1, operand);
+            (&I)->replaceAllUsesWith(sel);
+            I.eraseFromParent();
+        }
+    }
+
 }
 
 void WorkaroundAnalysis::ldmsOffsetWorkaournd(LdMSIntrinsic* ldms)
