@@ -86,12 +86,12 @@ extern const char* printAsmName(const kernel_format_t* header)
     return "";
 }
 
-static const char* getVarName(int id, const common_isa_header& isaHeader, const kernel_format_t& header)
+static const char* getVarName(int id, const kernel_format_t& header)
 {
-    int numPredefined = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
+    int numPredefined = Get_CISA_PreDefined_Var_Count();
     if (id < numPredefined)
     {
-        return getPredefinedVarString(mapExternalToInternalPreDefVar(id, isaHeader.major_version, isaHeader.minor_version));
+        return getPredefinedVarString(mapExternalToInternalPreDefVar(id));
     }
     else
     {
@@ -139,12 +139,10 @@ string printGlobalDeclName(const common_isa_header& isaHeader, const kernel_form
     return sstr.str();
 }
 
-static string printSurfaceName(const common_isa_header& isaHeader, uint32_t declID)
+static string printSurfaceName(uint32_t declID)
 {
 	stringstream sstr;
-	uint8_t major_version = isaHeader.major_version;
-	uint8_t minor_version = isaHeader.minor_version;
-	unsigned numPreDefinedSurf = Get_CISA_PreDefined_Surf_Count(major_version, minor_version);
+	unsigned numPreDefinedSurf = Get_CISA_PreDefined_Surf_Count();
 	if (declID < numPreDefinedSurf)
 	{
 		sstr << vISAPreDefSurf[declID].name;
@@ -157,22 +155,20 @@ static string printSurfaceName(const common_isa_header& isaHeader, uint32_t decl
 	return sstr.str();
 }
 
-string printVariableDeclName(const common_isa_header& isaHeader, const kernel_format_t* header, unsigned declID, Options *options, Common_ISA_State_Opnd_Class operand_prefix_kind = NOT_A_STATE_OPND)
+string printVariableDeclName(const kernel_format_t* header, unsigned declID, Options *options, Common_ISA_State_Opnd_Class operand_prefix_kind = NOT_A_STATE_OPND)
 {
     MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
     stringstream sstr;
 
-    uint8_t major_version = isaHeader.major_version;
-    uint8_t minor_version = isaHeader.minor_version;
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(major_version, minor_version);
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
     if (options->getOption(vISA_DumpIsaVarNames))
     {
-        sstr << getVarName(declID, isaHeader, *header);
+        sstr << getVarName(declID, *header);
     }
     else
     {
         switch (operand_prefix_kind)
-        {   case STATE_OPND_SURFACE : sstr << printSurfaceName(isaHeader, declID); break;
+        {   case STATE_OPND_SURFACE : sstr << printSurfaceName(declID); break;
             case STATE_OPND_SAMPLER : sstr << "S"   << declID; break;
             case STATE_OPND_VME     : sstr << "VME" << declID; break;
             default                 :
@@ -282,7 +278,7 @@ static string printRegion(uint16_t region)
     return sstr.str();
 }
 
-string printVectorOperand(const common_isa_header& isaHeader, const kernel_format_t* header,
+string printVectorOperand(const kernel_format_t* header,
     const vector_opnd& opnd, Options *opt, bool showRegion)
 {
     stringstream sstr;
@@ -300,7 +296,7 @@ string printVectorOperand(const common_isa_header& isaHeader, const kernel_forma
     {
         case OPERAND_GENERAL:
         {
-            sstr << Common_ISA_Get_Modifier_Name(modifier) << printVariableDeclName(isaHeader, header, opnd.getOperandIndex(), opt, NOT_A_STATE_OPND);
+            sstr << Common_ISA_Get_Modifier_Name(modifier) << printVariableDeclName(header, opnd.getOperandIndex(), opt, NOT_A_STATE_OPND);
 
             if ((!g_shortRegionPrint)                      ||
                 (!(opnd.opnd_val.gen_opnd.row_offset == 0 &&
@@ -343,7 +339,7 @@ string printVectorOperand(const common_isa_header& isaHeader, const kernel_forma
         }
         case OPERAND_ADDRESSOF:
         {
-            sstr << "&" << printVariableDeclName(isaHeader, header, opnd.getOperandIndex(), opt, NOT_A_STATE_OPND)
+            sstr << "&" << printVariableDeclName(header, opnd.getOperandIndex(), opt, NOT_A_STATE_OPND)
                  << (((short)opnd.opnd_val.addressof_opnd.addr_offset >= 0) ? "+" : "")
                  << (((short)opnd.opnd_val.addressof_opnd.addr_offset));
             break;
@@ -364,7 +360,7 @@ string printVectorOperand(const common_isa_header& isaHeader, const kernel_forma
         }
         case OPERAND_STATE:
         {
-            sstr << printVariableDeclName(isaHeader, header, opnd.getOperandIndex(), opt, (Common_ISA_State_Opnd_Class)opnd.opnd_val.state_opnd.opnd_class)
+            sstr << printVariableDeclName(header, opnd.getOperandIndex(), opt, (Common_ISA_State_Opnd_Class)opnd.opnd_val.state_opnd.opnd_class)
                  << "(" << (unsigned)opnd.opnd_val.state_opnd.offset << ")";
             break;
         }
@@ -374,15 +370,15 @@ string printVectorOperand(const common_isa_header& isaHeader, const kernel_forma
     return sstr.str();
 }
 
-string printRawOperand(const common_isa_header& isaHeader, const kernel_format_t* header, const raw_opnd& opnd, Options *opt)
+string printRawOperand(const kernel_format_t* header, const raw_opnd& opnd, Options *opt)
 {
     MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
     stringstream sstr;
-    sstr << " " << printVariableDeclName(isaHeader, header, opnd.index, opt, NOT_A_STATE_OPND) << "." << opnd.offset;
+    sstr << " " << printVariableDeclName(header, opnd.index, opt, NOT_A_STATE_OPND) << "." << opnd.offset;
     return sstr.str();
 }
 
-static string printOperand(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, unsigned i, Options *opt)
+static string printOperand(const kernel_format_t* header, const CISA_INST* inst, unsigned i, Options *opt)
 {
     MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
     MUST_BE_TRUE(inst  , "Argument Exception: argument inst   is NULL.");
@@ -391,8 +387,8 @@ static string printOperand(const common_isa_header& isaHeader, const kernel_form
     switch (getOperandType(inst, i))
     {
         case CISA_OPND_OTHER  : sstr << (getPrimitiveOperand<unsigned>             (inst, i)); break;
-        case CISA_OPND_VECTOR : sstr << printVectorOperand(isaHeader, header, getVectorOperand(inst, i), opt, true); break;
-        case CISA_OPND_RAW    : sstr << printRawOperand   (isaHeader, header, getRawOperand   (inst, i), opt); break;
+        case CISA_OPND_VECTOR : sstr << printVectorOperand(header, getVectorOperand(inst, i), opt, true); break;
+        case CISA_OPND_RAW    : sstr << printRawOperand   (header, getRawOperand   (inst, i), opt); break;
         default               : MUST_BE_TRUE(false, "Invalid operand type.");
     }
     return sstr.str();
@@ -419,7 +415,7 @@ static string printAttribute(const attribute_info_t* attr, const kernel_format_t
     return sstr.str();
 }
 
-extern string printPredicateDecl(const common_isa_header& isaHeader, const kernel_format_t* header, unsigned declID)
+extern string printPredicateDecl(const kernel_format_t* header, unsigned declID)
 {
     MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
     stringstream sstr;
@@ -462,9 +458,6 @@ extern string printAddressDecl(const common_isa_header& isaHeader, const kernel_
 // declID is in the range of [0..#user-var], pre-defnied are not included
 extern string printVariableDecl(const common_isa_header& isaHeader, const kernel_format_t* header, unsigned declID, bool isKernel, unsigned int funcId, Options *options)
 {
-    uint8_t major_version = isaHeader.major_version;
-    uint8_t minor_version = isaHeader.minor_version;
-
     MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
     stringstream sstr;
 
@@ -472,8 +465,8 @@ extern string printVariableDecl(const common_isa_header& isaHeader, const kernel
     VISA_Type  isa_type = (VISA_Type)  ((var->bit_properties     ) & 0xF);
     VISA_Align align    = (VISA_Align) ((var->bit_properties >> 4) & 0x7);
 
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(major_version, minor_version);
-    sstr << ".decl " << printVariableDeclName(isaHeader, header, declID+numPreDefinedVars, options)
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
+    sstr << ".decl " << printVariableDeclName(header, declID+numPreDefinedVars, options)
          << " v_type=G"
          << " type=" << CISATypeTable[isa_type].typeName
          << " num_elts=" << var->num_elements;
@@ -486,13 +479,14 @@ extern string printVariableDecl(const common_isa_header& isaHeader, const kernel
         sstr << " alias=<";
         if (options->getOption(vISA_DumpIsaVarNames))
         {
-            sstr << (var->alias_scope_specifier ? printGlobalDeclName(isaHeader, header, var->alias_index, isKernel, funcId, options) : printVariableDeclName(isaHeader, header, var->alias_index, options));
+            sstr << (var->alias_scope_specifier ? printGlobalDeclName(isaHeader, header, var->alias_index, isKernel, funcId, options) : 
+                printVariableDeclName(header, var->alias_index, options));
         }
         else
         {
             if(options->getOption(vISA_easyIsaasm))
             {
-                sstr << printVariableDeclName(isaHeader, header, var->alias_index, options);
+                sstr << printVariableDeclName(header, var->alias_index, options);
             }
             else
             {
@@ -537,7 +531,7 @@ typedef enum {
     CISA_DEF_EMASK
 } Common_ISA_EMask_Ctrl_3_0;
 
-string printExecutionSize(uint8_t opcode, uint8_t execSize, const common_isa_header& isaHeader, uint8_t subOp = 0)
+string printExecutionSize(uint8_t opcode, uint8_t execSize, uint8_t subOp = 0)
 {
     stringstream sstr;
 
@@ -557,19 +551,12 @@ string printExecutionSize(uint8_t opcode, uint8_t execSize, const common_isa_hea
 }
 
 // execution size is formatted differently for scatter/gather/scatter4/gather4/scatter4_typed/gather4_typed
-static string printExecutionSizeForScatterGather(uint8_t sizeAndMask, const common_isa_header& isaHeader)
+static string printExecutionSizeForScatterGather(uint8_t sizeAndMask)
 {
     stringstream sstr;
     sstr << "(";
     Common_VISA_EMask_Ctrl emask = (Common_VISA_EMask_Ctrl)((sizeAndMask >> 0x4) & 0xF);
-    if (isaHeader.major_version == 3 && isaHeader.minor_version == 0)
-    {
-        sstr << emask_str_3_0[emask] << ", ";
-    }
-    else
-    {
-        sstr << emask_str[emask] << ", ";
-    }
+    sstr << emask_str[emask] << ", ";
 
     unsigned execSize = 0;
     switch (sizeAndMask & 0x3)
@@ -636,7 +623,7 @@ static void printAtomicSubOpc(stringstream &sstr, uint8_t value)
     }
 }
 
-static string printInstructionSVM(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, Options *opt)
+static string printInstructionSVM(const kernel_format_t* header, const CISA_INST* inst, Options *opt)
 {
     unsigned i = 0;
     stringstream sstr;
@@ -666,7 +653,7 @@ static string printInstructionSVM(const common_isa_header& isaHeader, const kern
              uint8_t num_blocks = getPrimitiveOperand<uint8_t>(inst, i++);
              sstr << "." << Get_Common_ISA_SVM_Block_Size((Common_ISA_SVM_Block_Type)block_size);
              sstr << "." << Get_Common_ISA_SVM_Block_Num((Common_ISA_SVM_Block_Num)num_blocks);
-             sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader, subOpcode);
+             sstr << " " << printExecutionSize(inst->opcode, inst->execsize, subOpcode);
              break;
         }
         case SVM_ATOMIC:
@@ -675,18 +662,18 @@ static string printInstructionSVM(const common_isa_header& isaHeader, const kern
             /// TODO: Need platform information for this to work.
 
             printAtomicSubOpc(sstr, getPrimitiveOperand<uint8_t>(inst, i++));
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader, subOpcode);
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, subOpcode);
             /// element offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
             /// DWORD_ATOMIC is weird and has the text version
             /// putting the dst operand before the src operands.
             stringstream sstr1;
             /// src0
-            sstr1 << printOperand(isaHeader, header, inst, i++, opt);
+            sstr1 << printOperand(header, inst, i++, opt);
             /// src1
-            sstr1 << printOperand(isaHeader, header, inst, i++, opt);
+            sstr1 << printOperand(header, inst, i++, opt);
             /// message operand (src or dst)
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
             sstr << sstr1.str();
             break;
         }
@@ -698,10 +685,10 @@ static string printInstructionSVM(const common_isa_header& isaHeader, const kern
             // scale is ignored (MBZ)
             (void) getPrimitiveOperand<uint16_t>(inst, i++);
             sstr << "." << channel_mask_str[chMask];
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader, subOpcode);
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, subOpcode);
+            sstr << printOperand(header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
             break;
         }
         default:
@@ -709,12 +696,12 @@ static string printInstructionSVM(const common_isa_header& isaHeader, const kern
     }
 
     for (; i < inst->opnd_count; i++)
-        sstr << printOperand(isaHeader, header, inst, i, opt);
+        sstr << printOperand(header, inst, i, opt);
 
     return sstr.str();
 }
 
-static string printInstructionCommon(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, Options *opt)
+static string printInstructionCommon(const kernel_format_t* header, const CISA_INST* inst, Options *opt)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
@@ -756,7 +743,7 @@ static string printInstructionCommon(const common_isa_header& isaHeader, const k
             sstr << (saturate ? ".sat" : "");
         }
 
-        sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader);
+        sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
 
         if (opcode == ISA_GOTO)
         {
@@ -773,7 +760,7 @@ static string printInstructionCommon(const common_isa_header& isaHeader, const k
 
                 if(curOpnd.getOperandClass() == OPERAND_ADDRESS)
                 {
-                    sstr << printVectorOperand(isaHeader, header, curOpnd, opt, true);
+                    sstr << printVectorOperand(header, curOpnd, opt, true);
                 }
                 else
                 {
@@ -783,36 +770,36 @@ static string printInstructionCommon(const common_isa_header& isaHeader, const k
 
                     if(curOpnd.getOperandClass() == OPERAND_GENERAL)
                     {
-                        uint32_t numPredefined = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
-                        VISA_Type type = opnd_index < numPredefined ? getPredefinedVarType(mapExternalToInternalPreDefVar(opnd_index, isaHeader.major_version, isaHeader.minor_version)) :
+                        uint32_t numPredefined = Get_CISA_PreDefined_Var_Count();
+                        VISA_Type type = opnd_index < numPredefined ? getPredefinedVarType(mapExternalToInternalPreDefVar(opnd_index)) :
                             header->variables[opnd_index - numPredefined].getType();
                         int offset = curOpnd.opnd_val.gen_opnd.col_offset *
                                      CISATypeTable[type].typeSize +
                                      curOpnd.opnd_val.gen_opnd.row_offset * G4_GRF_REG_NBYTES;
-                        sstr << "&" << printVariableDeclName(isaHeader, header, opnd_index, opt) << "+"
+                        sstr << "&" << printVariableDeclName( header, opnd_index, opt) << "+"
                              << offset;
                     }
                     else if (curOpnd.getOperandClass() == OPERAND_STATE)
                     {
                         auto OpClass = curOpnd.getStateOpClass();
-                        sstr << "&" << printVariableDeclName(isaHeader, header, opnd_index, opt, OpClass) << "+"
+                        sstr << "&" << printVariableDeclName(header, opnd_index, opt, OpClass) << "+"
                              << curOpnd.opnd_val.state_opnd.offset *
                                 CISATypeTable[ISA_TYPE_D].typeSize;
                     }
                     else
                     {
                         /// TODO: Should we just assert here? Is this allowed?
-                        sstr << printOperand(isaHeader, header, inst, i, opt);
+                        sstr << printOperand(header, inst, i, opt);
                     }
                 }
             }
             else
             {
-                sstr << printOperand(isaHeader, header, inst, i, opt);
+                sstr << printOperand(header, inst, i, opt);
             }
         }
     }
-    else if (ISA_Inst_Sync == ISA_Inst_Table[opcode].type)
+    else
     {
         if (opcode == ISA_FENCE)
         {
@@ -842,7 +829,7 @@ static string printInstructionCommon(const common_isa_header& isaHeader, const k
         }
         else if (opcode == ISA_WAIT)
         {
-            sstr << printOperand(isaHeader, header, inst, 0, opt);
+            sstr << printOperand(header, inst, 0, opt);
         }
         else if (opcode == ISA_SBARRIER)
         {
@@ -854,7 +841,7 @@ static string printInstructionCommon(const common_isa_header& isaHeader, const k
     return sstr.str();
 }
 
-static string printInstructionControlFlow(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, Options *opt)
+static string printInstructionControlFlow(const kernel_format_t* header, const CISA_INST* inst, Options *opt)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     unsigned i = 0;
@@ -886,7 +873,7 @@ static string printInstructionControlFlow(const common_isa_header& isaHeader, co
                  break;
             }
             default:
-                 break; // Prevent gcc warning
+                 break;
         }
 
         sstr << ":";
@@ -896,7 +883,7 @@ static string printInstructionControlFlow(const common_isa_header& isaHeader, co
         sstr << printPredicate(inst->opcode, inst->pred)
              << ISA_Inst_Table[opcode].str
              << " "
-             << printExecutionSize(inst->opcode, inst->execsize, isaHeader);
+             << printExecutionSize(inst->opcode, inst->execsize);
 
         switch (opcode)
         {
@@ -931,7 +918,7 @@ static string printInstructionControlFlow(const common_isa_header& isaHeader, co
             }
             case ISA_IFCALL:
             {
-                sstr << printOperand(isaHeader, header, inst, i++, opt);
+                sstr << printOperand(header, inst, i++, opt);
                 /// arg size
                 sstr << " " << getPrimitiveOperand<unsigned>(inst, i++);
                 /// return size
@@ -943,7 +930,7 @@ static string printInstructionControlFlow(const common_isa_header& isaHeader, co
                 /// symbol name in string
                 sstr << header->strings[getPrimitiveOperand<uint16_t>(inst, i++)];
                 /// dst
-                sstr << printOperand(isaHeader, header, inst, i++, opt);
+                sstr << printOperand(header, inst, i++, opt);
                 break;
             }
             case ISA_SWITCHJMP:
@@ -951,7 +938,7 @@ static string printInstructionControlFlow(const common_isa_header& isaHeader, co
                 /// skip num_labels
                 i++;
                 /// index
-                sstr << printOperand(isaHeader, header, inst, i++, opt);
+                sstr << printOperand(header, inst, i++, opt);
                 sstr << " (";
                 for (bool first = true; i < inst->opnd_count; i++)
                 {
@@ -971,7 +958,7 @@ static string printInstructionControlFlow(const common_isa_header& isaHeader, co
     return sstr.str();
 }
 
-static string printInstructionMisc(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, Options *opt)
+static string printInstructionMisc(const kernel_format_t* header, const CISA_INST* inst, Options *opt)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     unsigned i = 0;
@@ -1008,7 +995,7 @@ static string printInstructionMisc(const common_isa_header& isaHeader, const ker
 
             sstr << printPredicate(inst->opcode, inst->pred)
                  << opstring.c_str()
-                 << printExecutionSize(inst->opcode, inst->execsize, isaHeader)
+                 << printExecutionSize(inst->opcode, inst->execsize)
                  << " "
                  << "0x" << std::hex << (uint32_t)exMsgDesc << std::dec
                  << " "
@@ -1018,13 +1005,13 @@ static string printInstructionMisc(const common_isa_header& isaHeader, const ker
                  << " ";
 
             /// desc
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// src
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             break;
         }
@@ -1039,36 +1026,34 @@ static string printInstructionMisc(const common_isa_header& isaHeader, const ker
 
             sstr << printPredicate(inst->opcode, inst->pred)
                  << opstring.c_str();
-            if (getVersionAsInt(isaHeader.major_version, isaHeader.minor_version) >
-            	getVersionAsInt(3, 5))
-            {
-                 uint8_t ffid    = getPrimitiveOperand<uint8_t>(inst, i++);
-                 sstr << (unsigned)ffid
-                 << ".";
-            }
+
+            uint8_t ffid = getPrimitiveOperand<uint8_t>(inst, i++);
+            sstr << (unsigned)ffid
+                << ".";
+
             sstr << (unsigned)numSrc0
                  << "."
                  << (unsigned)numSrc1
                  << "."
                  << (unsigned)numDst
                  << " "
-                 << printExecutionSize(inst->opcode, inst->execsize, isaHeader)
+                 << printExecutionSize(inst->opcode, inst->execsize)
                  << " ";
 
             /// exMsgDesc: could be imm or vector
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// desc
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// src0
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// src1
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             break;
         }
@@ -1079,10 +1064,10 @@ static string printInstructionMisc(const common_isa_header& isaHeader, const ker
              stringstream sstr1;
 
              /// uni input
-             sstr1 << printOperand(isaHeader, header, inst, i++, opt);
+             sstr1 << printOperand(header, inst, i++, opt);
 
              /// fbr input
-             sstr1 << printOperand(isaHeader, header, inst, i++, opt);
+             sstr1 << printOperand(header, inst, i++, opt);
 
              uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
@@ -1096,18 +1081,18 @@ static string printInstructionMisc(const common_isa_header& isaHeader, const ker
              sstr << ISA_Inst_Table[opcode].str << " (";
 
              /// FBRMbMode
-             sstr << printOperand(isaHeader, header, inst, i++, opt); sstr << ",";
+             sstr << printOperand(header, inst, i++, opt); sstr << ",";
 
              /// FBRSubMbShape
-             sstr << printOperand(isaHeader, header, inst, i++, opt); sstr << ",";
+             sstr << printOperand(header, inst, i++, opt); sstr << ",";
 
              /// FBRSubPredMode
-             sstr << printOperand(isaHeader, header, inst, i++, opt);
+             sstr << printOperand(header, inst, i++, opt);
 
              sstr << ")";
 
              /// vme output
-             sstr2 << printOperand(isaHeader, header, inst, i++, opt);
+             sstr2 << printOperand(header, inst, i++, opt);
 
              sstr << sstr2.str();
 
@@ -1126,26 +1111,26 @@ static string printInstructionMisc(const common_isa_header& isaHeader, const ker
              stringstream sstr1;
 
              /// uni imput
-             sstr1 << printOperand(isaHeader, header, inst, i++, opt);
+             sstr1 << printOperand(header, inst, i++, opt);
 
              /// ime input
-             sstr1 << printOperand(isaHeader, header, inst, i++, opt);
+             sstr1 << printOperand(header, inst, i++, opt);
 
              uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
              sstr << " T" << (unsigned)surface << " " << sstr1.str();
 
              /// ref0
-             sstr << printOperand(isaHeader, header, inst, i++, opt);
+             sstr << printOperand(header, inst, i++, opt);
 
              /// ref1
-             sstr << printOperand(isaHeader, header, inst, i++, opt);
+             sstr << printOperand(header, inst, i++, opt);
 
              /// cost center
-             sstr << printOperand(isaHeader, header, inst, i++, opt);
+             sstr << printOperand(header, inst, i++, opt);
 
              /// vme output
-             sstr << printOperand(isaHeader, header, inst, i++, opt);
+             sstr << printOperand(header, inst, i++, opt);
 
              break;
         }
@@ -1156,10 +1141,10 @@ static string printInstructionMisc(const common_isa_header& isaHeader, const ker
              stringstream sstr1;
 
              /// uni input
-             sstr1 << printOperand(isaHeader, header, inst, i++, opt);
+             sstr1 << printOperand(header, inst, i++, opt);
 
              /// sic input
-             sstr1 << printOperand(isaHeader, header, inst, i++, opt);
+             sstr1 << printOperand(header, inst, i++, opt);
 
              uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
@@ -1170,7 +1155,7 @@ static string printInstructionMisc(const common_isa_header& isaHeader, const ker
                   << sstr1.str();
 
              /// vme output
-             sstr << printOperand(isaHeader, header, inst, i++, opt);
+             sstr << printOperand(header, inst, i++, opt);
 
              break;
         }
@@ -1181,10 +1166,10 @@ static string printInstructionMisc(const common_isa_header& isaHeader, const ker
              stringstream sstr1;
 
              /// uni input
-             sstr1 << printOperand(isaHeader, header, inst, i++, opt);
+             sstr1 << printOperand(header, inst, i++, opt);
 
              /// sic input
-             sstr1 << printOperand(isaHeader, header, inst, i++, opt);
+             sstr1 << printOperand(header, inst, i++, opt);
 
              uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
 
@@ -1195,7 +1180,7 @@ static string printInstructionMisc(const common_isa_header& isaHeader, const ker
                   << sstr1.str();
 
              /// vme output
-             sstr << printOperand(isaHeader, header, inst, i++, opt);
+             sstr << printOperand(header, inst, i++, opt);
 
              break;
         }
@@ -1204,27 +1189,27 @@ static string printInstructionMisc(const common_isa_header& isaHeader, const ker
 
             sstr << ISA_Inst_Table[opcode].str;
 
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader);
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
 
             // num out
-            sstr << " " << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << " " << printOperand(header, inst, i++, opt);
 
             // channel mask
             // FIXME: change the order of channel mask and global offset in vISA binary
-            std::string channelMask = printOperand(isaHeader, header, inst, i++, opt);
+            std::string channelMask = printOperand(header, inst, i++, opt);
 
             // global offset
-            sstr << " " << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << " " << printOperand(header, inst, i++, opt);
             sstr << channelMask;
 
             // urb handle
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             // per slot offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             // vertex data
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             break;
         }
@@ -1252,7 +1237,7 @@ static string printInstructionMisc(const common_isa_header& isaHeader, const ker
             if(type == OPERAND_GENERAL)
             {
                 // General variable
-                sstr << printVariableDeclName(isaHeader, header, varId, opt, NOT_A_STATE_OPND);
+                sstr << printVariableDeclName(header, varId, opt, NOT_A_STATE_OPND);
             }
             else if(type == OPERAND_ADDRESS)
             {
@@ -1290,7 +1275,7 @@ getSubOpcodeByte(const CISA_INST* inst, unsigned i)
     return VISA3DSamplerOp::extractSamplerOp(val);
 }
 
-static string printInstructionSampler(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, Options *opt)
+static string printInstructionSampler(const kernel_format_t* header, const CISA_INST* inst, Options *opt)
 {
     stringstream sstr;
 
@@ -1341,16 +1326,16 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                  << (unsigned)surface;
 
             /// u offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// v offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// r offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             break;
         }
@@ -1384,25 +1369,25 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
             if( channels & 0x4) sstr << "B";
             if( channels & 0x8) sstr << "A";
 
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader) << " ";
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
 
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             // sampler
-            sstr << " S" << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << " S" << printOperand(header, inst, i++, opt);
 
             // surface
-            sstr << " T" << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << " T" << printOperand(header, inst, i++, opt);
 
             // dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             // skip the param count
             i++;
 
             while (i < inst->opnd_count)
             {
-                sstr << printOperand(isaHeader, header, inst, i++, opt);
+                sstr << printOperand(header, inst, i++, opt);
             }
 
             break;
@@ -1425,22 +1410,22 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
             if( channels & 0x4) sstr << "B";
             if( channels & 0x8) sstr << "A";
 
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader) << " ";
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
 
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             // surface
-            sstr << " T" << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << " T" << printOperand(header, inst, i++, opt);
 
             // dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             // skip the param count
             i++;
 
             while (i < inst->opnd_count)
             {
-                sstr << printOperand(isaHeader, header, inst, i++, opt);
+                sstr << printOperand(header, inst, i++, opt);
             }
 
             break;
@@ -1479,25 +1464,25 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                 sstr << "illegal";
             }
 
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader);
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
 
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             // sampler
-            sstr << " S" << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << " S" << printOperand(header, inst, i++, opt);
 
             // surface
-            sstr << " T" << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << " T" << printOperand(header, inst, i++, opt);
 
             // dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             // skip the param count
             i++;
 
             while (i < inst->opnd_count)
             {
-                sstr << printOperand(isaHeader, header, inst, i++, opt);
+                sstr << printOperand(header, inst, i++, opt);
             }
 
             break;
@@ -1506,7 +1491,7 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
         {
             VISASampler3DSubOpCode subop = (VISASampler3DSubOpCode)getPrimitiveOperand<uint8_t>(inst, i++);
             sstr << SAMPLE_OP_3D_NAME[subop];
-			sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader) << " ";
+			sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
 
             if (subop == VISA_3D_RESINFO)
             {
@@ -1516,16 +1501,16 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
 				sstr << chMask.getString();
             }
             // surface
-            sstr << " T" << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << " T" << printOperand(header, inst, i++, opt);
 
             if (subop == VISA_3D_RESINFO)
             {
                 // lod
-                sstr << printOperand(isaHeader, header, inst, i++, opt);
+                sstr << printOperand(header, inst, i++, opt);
             }
 
             // dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             break;
         }
@@ -1545,19 +1530,19 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                  << (unsigned)surface;
 
             /// u offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// v offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// deltaU
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// deltaV
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             break;
         }
@@ -1576,25 +1561,25 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                  << (unsigned)sampler;
 
             /// u offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// v offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// delta u
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// delta v
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// u2d
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// groupID
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// verticalBlockNumber
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             uint8_t cntrl = ((getPrimitiveOperand<uint8_t>(inst, i++)) & 0xF);
 
@@ -1602,7 +1587,7 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                  << avs_control_str[cntrl];
 
             /// v2d
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             uint8_t execMode  =       (getPrimitiveOperand<uint8_t>(inst, i++) & 0xF);
 
@@ -1610,10 +1595,10 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                  << avs_exec_mode[execMode];
 
             // eifbypass
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             break;
         }
@@ -1632,10 +1617,10 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                           << " T" << (unsigned)surface;
 
                      /// u offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// v offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// mmf mode
                      if (getVectorOperand(inst, i).getOperandClass() == OPERAND_IMMEDIATE)
@@ -1645,12 +1630,12 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                      }
                      else
                      {
-                        sstr << printOperand(isaHeader, header, inst, i++, opt);
+                        sstr << printOperand(header, inst, i++, opt);
                         /// User "CM_VAR_ENABLE" instead ???
                      }
 
                      /// dst
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      break;
                 }
@@ -1666,10 +1651,10 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                           << " S" << (unsigned)sampler;
 
                      /// u offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// v offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      uint8_t cntrl    = ((getPrimitiveOperand<uint8_t>(inst, i++)) & 0xF);
                      uint8_t execMode = ((getPrimitiveOperand<uint8_t>(inst, i++)) & 0xF);
@@ -1680,10 +1665,10 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                           << mmf_exec_mode   [ execMode ];
 
                      /// mmf mode
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// dst
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      break;
                 }
@@ -1698,20 +1683,20 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                           << " T" << (unsigned)surface;
 
                      /// u offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// v offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// v size
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// h size
                      if (subOpcode == BoolCentroid_FOPCODE)
-                        sstr << printOperand(isaHeader, header, inst, i++, opt);
+                        sstr << printOperand(header, inst, i++, opt);
 
                      /// dst
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      break;
                 }
@@ -1729,10 +1714,10 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                           << " S" << (unsigned)sampler;
 
                      /// u offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// v offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      uint8_t execMode   =  getPrimitiveOperand<uint8_t>(inst, i  ) & 0x3;
                      uint8_t regionSize = (getPrimitiveOperand<uint8_t>(inst, i++) & 0xC) >> 0x2;
@@ -1746,7 +1731,7 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                          sstr << " " << (regionSize & 0x1 ? "31x31" : "15x15");
 
                      /// dst
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      break;
                 }
@@ -1771,16 +1756,16 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                           << " T" << (unsigned)surface;
 
                      /// u offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// v offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// disparity
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// dst
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      break;
                 }
@@ -1798,10 +1783,10 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                           << " S" << (unsigned)sampler;
 
                      /// u offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// v offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      uint8_t mode = ((getPrimitiveOperand<uint8_t>(inst, i++)) & 0xF);
 
@@ -1814,10 +1799,10 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
 
                      /// offsets
                      if (subOpcode == VA_OP_CODE_1PIXEL_CONVOLVE)
-                         sstr << printOperand(isaHeader, header, inst, i++, opt);
+                         sstr << printOperand(header, inst, i++, opt);
 
                      /// dst
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      break;
                 }
@@ -1831,17 +1816,17 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                           << " T" << (unsigned)surface;
 
                      /// u offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// v offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      uint8_t mode = ((getPrimitiveOperand<uint8_t>(inst, i++)) & 0xF);
 
                      sstr << " " << lbp_creation_mode[(int)mode];
 
                      /// dst
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      break;
                 }
@@ -1855,19 +1840,19 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                           << " " << (is8Connect & 0x1 ? "8_connect" : "4_connect");
 
                      /// pixel mask h direction
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// pixel mask v left direction
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// pixel mask v right direction
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// loop count
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// dst
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      break;
                 }
@@ -1881,31 +1866,31 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                           << " T" << (unsigned)surface;
 
                      /// u offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// v offset
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// vertical origin
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// horizontal origin
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// x direction size
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// y direction size
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// x direction search size
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// y direction search size
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      /// dst
-                     sstr << printOperand(isaHeader, header, inst, i++, opt);
+                     sstr << printOperand(header, inst, i++, opt);
 
                      break;
                 }
@@ -1941,10 +1926,10 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
 
 
                         /// u offset
-                        sstr << printOperand(isaHeader, header, inst, i++, opt);
+                        sstr << printOperand(header, inst, i++, opt);
 
                         /// v offset
-                        sstr << printOperand(isaHeader, header, inst, i++, opt);
+                        sstr << printOperand(header, inst, i++, opt);
 
 
                         if (subOpcode == ISA_HDC_CONV ||
@@ -1991,13 +1976,13 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                         if (subOpcode == ISA_HDC_LBPCORRELATION)
                         {
                             /// disparity
-                            sstr << printOperand(isaHeader, header, inst, i++, opt);
+                            sstr << printOperand(header, inst, i++, opt);
                         }
 
                         if (subOpcode == ISA_HDC_1PIXELCONV)
                         {
                             /// offsets
-                            sstr << printOperand(isaHeader, header, inst, i++, opt);
+                            sstr << printOperand(header, inst, i++, opt);
                         }
 
                         /// dst surface
@@ -2006,10 +1991,10 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
                         sstr << " T" << (unsigned)dst_surface;
 
                         /// x offset
-                        sstr << printOperand(isaHeader, header, inst, i++, opt);
+                        sstr << printOperand(header, inst, i++, opt);
 
                         /// y offset
-                        sstr << printOperand(isaHeader, header, inst, i++, opt);
+                        sstr << printOperand(header, inst, i++, opt);
                         break;
                 }
                 default:
@@ -2024,10 +2009,10 @@ static string printInstructionSampler(const common_isa_header& isaHeader, const 
     return sstr.str();
 }
 
-static string printSurfaceIndex(const common_isa_header & isaHeader, uint8_t surface)
+static string printSurfaceIndex(uint8_t surface)
 {
 	stringstream sstr;
-    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
     if (surface < numPreDefinedSurfs)
     {
 		sstr << " " << vISAPreDefSurf[surface].name;
@@ -2039,7 +2024,7 @@ static string printSurfaceIndex(const common_isa_header & isaHeader, uint8_t sur
 	return sstr.str();
 }
 
-static string printInstructionDataport(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, Options *opt)
+static string printInstructionDataport(const kernel_format_t* header, const CISA_INST* inst, Options *opt)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     unsigned i = 0;
@@ -2116,13 +2101,13 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
                 sstr << " " << (unsigned)plane;
 
             /// x offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// y offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// message operand (src or dst)
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             break;
         }
@@ -2143,13 +2128,13 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
             sstr << " (" << num_oword << ")";
 
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << printSurfaceIndex(isaHeader, surface);
+            sstr <<printSurfaceIndex(surface);
 
             /// offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// message operand (src or dst)
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             break;
         }
@@ -2193,7 +2178,7 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
             sstr << "." << (unsigned)elt_size;
 
             // execution size
-            sstr << " " << printExecutionSizeForScatterGather(num_elts, isaHeader);
+            sstr << " " << printExecutionSizeForScatterGather(num_elts);
 
             // modifier
             if (ISA_GATHER == opcode && modifier & 0x1)
@@ -2203,16 +2188,16 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
 
             //surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << printSurfaceIndex(isaHeader, surface);
+            sstr <<printSurfaceIndex(surface);
 
             /// global offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// element offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// message operand (src or dst)
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             break;
         }
@@ -2236,7 +2221,7 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
             sstr << "." << channel_mask_slm_str[ch_mask];
 
             // num_elts
-            sstr << " " << printExecutionSizeForScatterGather(num_elts, isaHeader);
+            sstr << " " << printExecutionSizeForScatterGather(num_elts);
 
             // modifier
             if (ISA_GATHER4 == opcode && modifier & 0x1)
@@ -2246,16 +2231,16 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
 
             //surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << printSurfaceIndex(isaHeader, surface);
+            sstr <<printSurfaceIndex(surface);
 
             /// global offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// element offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// message operand (src or dst)
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             break;
         }
@@ -2270,29 +2255,29 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
             sstr << "." << CISAAtomicOpNames[op];
 
             num_elts = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << " " << printExecutionSizeForScatterGather(num_elts, isaHeader);
+            sstr << " " << printExecutionSizeForScatterGather(num_elts);
 
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << printSurfaceIndex(isaHeader, surface);
+            sstr <<printSurfaceIndex(surface);
 
             /// global offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// element offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// DWORD_ATOMIC is wierd and has the text version
             /// putting the dst operand before the src operands.
             stringstream sstr1;
 
             /// src0
-            sstr1 << printOperand(isaHeader, header, inst, i++, opt);
+            sstr1 << printOperand(header, inst, i++, opt);
 
             /// src1
-            sstr1 << printOperand(isaHeader, header, inst, i++, opt);
+            sstr1 << printOperand(header, inst, i++, opt);
 
             /// message operand (src or dst)
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             sstr << sstr1.str();
 
@@ -2305,25 +2290,25 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
                     getPrimitiveOperand<uint8_t>(inst, i++));
             sstr << "." << chMask.getString();
 
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader);
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
 
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << printSurfaceIndex(isaHeader, surface);
+            sstr <<printSurfaceIndex(surface);
 
             /// u offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// v offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// r offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// lod
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// message operand (src or dst)
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             break;
         }
@@ -2337,20 +2322,20 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
             // ignore scale which must be 0
             (void) getPrimitiveOperand<uint8_t>(inst, i++);
 
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader);
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
 
             /// surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << printSurfaceIndex(isaHeader, surface);
+            sstr <<printSurfaceIndex(surface);
 
             /// global offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// offsets
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// src/dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
             break;
         }
         case ISA_GATHER_SCALED:
@@ -2366,20 +2351,20 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
 
             sstr << "." << Get_Common_ISA_SVM_Block_Num(numBlocks);
 
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader);
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
 
             /// surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << printSurfaceIndex(isaHeader, surface);
+            sstr <<printSurfaceIndex(surface);
 
             /// global offset
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// offsets
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// src/dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
             break;
         }
         case ISA_3D_RT_WRITE:
@@ -2403,69 +2388,69 @@ static string printInstructionDataport(const common_isa_header& isaHeader, const
                 if (mode & (0x1 << 0x11)) sstr << "<SI>";
             }
 
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader) << " ";
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize) << " ";
 
             // surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << printSurfaceIndex(isaHeader, surface);
+            sstr <<printSurfaceIndex(surface);
 
             while (i < inst->opnd_count)
             {
-                sstr << printOperand(isaHeader, header, inst, i++, opt);
+                sstr << printOperand(header, inst, i++, opt);
             }
 
             break;
         }
         case ISA_DWORD_ATOMIC: {
             printAtomicSubOpc(sstr, getPrimitiveOperand<uint8_t>(inst, i++));
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader);
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
 
             /// surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << printSurfaceIndex(isaHeader, surface);
+            sstr <<printSurfaceIndex(surface);
 
             /// offsets
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// src0
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// src1
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
             break;
         }
         case ISA_3D_TYPED_ATOMIC:
         {
             printAtomicSubOpc(sstr, getPrimitiveOperand<uint8_t>(inst, i++));
-            sstr << " " << printExecutionSize(inst->opcode, inst->execsize, isaHeader);
+            sstr << " " << printExecutionSize(inst->opcode, inst->execsize);
 
             /// surface
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << printSurfaceIndex(isaHeader, surface);
+            sstr << printSurfaceIndex(surface);
 
             /// u
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// v
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// r
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// lod
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// src0
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// src1
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
 
             /// dst
-            sstr << printOperand(isaHeader, header, inst, i++, opt);
+            sstr << printOperand(header, inst, i++, opt);
             break;
         }
 
@@ -2554,7 +2539,7 @@ extern string printKernelHeader(const common_isa_header& isaHeader, const kernel
     for (unsigned i = 0; i < header->predicate_count; i++)
     {
         // P0 is reserved; starting from P1 if there is predicate decl
-        sstr << endl << printPredicateDecl(isaHeader, header, i);
+        sstr << endl << printPredicateDecl(header, i);
     }
 
     // sampler
@@ -2570,7 +2555,7 @@ extern string printKernelHeader(const common_isa_header& isaHeader, const kernel
         }
     }
 
-    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count(major_version, minor_version);
+    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
     for (unsigned i = 0; i < header->surface_count; i++)
     {
         sstr << endl << ".decl T" << i+numPreDefinedSurfs << " v_type=T";
@@ -2619,7 +2604,7 @@ extern string printKernelHeader(const common_isa_header& isaHeader, const kernel
 
         if (options->getOption(vISA_DumpIsaVarNames) && INPUT_GENERAL == input->getInputClass())
         {
-            sstr << getVarName(input->index, isaHeader, *header);
+            sstr << getVarName(input->index, *header);
         }
         else
         {
@@ -2673,7 +2658,7 @@ extern string printKernelHeader(const common_isa_header& isaHeader, const kernel
     return sstr.str();
 }
 
-extern string printInstruction(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* instruction, Options *opt)
+extern string printInstruction(const kernel_format_t* header, const CISA_INST* instruction, Options *opt)
 {
     stringstream sstr;
 
@@ -2693,12 +2678,12 @@ extern string printInstruction(const common_isa_header& isaHeader, const kernel_
             case ISA_Inst_Logic:
             case ISA_Inst_Compare:
             case ISA_Inst_Address:
-            case ISA_Inst_SIMD_Flow: sstr << printInstructionCommon      (isaHeader, header, instruction, opt); break;
-            case ISA_Inst_SVM:       sstr << printInstructionSVM         (isaHeader, header, instruction, opt); break;
-            case ISA_Inst_Flow:      sstr << printInstructionControlFlow (isaHeader, header, instruction, opt); break;
-            case ISA_Inst_Misc:      sstr << printInstructionMisc        (isaHeader, header, instruction, opt); break;
-            case ISA_Inst_Sampler:   sstr << printInstructionSampler     (isaHeader, header, instruction, opt); break;
-            case ISA_Inst_Data_Port: sstr << printInstructionDataport    (isaHeader, header, instruction, opt); break;
+            case ISA_Inst_SIMD_Flow: sstr << printInstructionCommon      (header, instruction, opt); break;
+            case ISA_Inst_SVM:       sstr << printInstructionSVM         (header, instruction, opt); break;
+            case ISA_Inst_Flow:      sstr << printInstructionControlFlow (header, instruction, opt); break;
+            case ISA_Inst_Misc:      sstr << printInstructionMisc        (header, instruction, opt); break;
+            case ISA_Inst_Sampler:   sstr << printInstructionSampler     (header, instruction, opt); break;
+            case ISA_Inst_Data_Port: sstr << printInstructionDataport    (header, instruction, opt); break;
             default:
             {
                 sstr << "Illegal or unimplemented CISA instruction (opcode, type): ("
@@ -2744,7 +2729,7 @@ static string printRoutine(const common_isa_header& isaHeader, const kernel_form
         {
             if (((ISA_Opcode)inst->opcode) != ISA_LABEL)
                 sstr << "    ";
-            sstr << printInstruction(isaHeader, header, inst, options) << endl;
+            sstr << printInstruction(header, inst, options) << endl;
         }
     }
 

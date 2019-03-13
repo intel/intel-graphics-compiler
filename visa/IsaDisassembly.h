@@ -37,7 +37,7 @@ extern std::string printKernelHeader(const common_isa_header& isaHeader, const k
 ///
 /// - Takes an isa header, a kernel/function header, and isa instruction and returns a string contraining the instruction's isaasm.
 ///
-extern std::string printInstruction(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* instruction, Options *opt);
+extern std::string printInstruction(const kernel_format_t* header, const CISA_INST* instruction, Options *opt);
 
 ///
 /// - Takes a isa header, a kernel header, and a instruction lists and returns a string contraining the kernel's entire isaasm.
@@ -50,7 +50,7 @@ extern std::string printKernel(const common_isa_header& isaHeader, const kernel_
 extern std::string printFunction(const common_isa_header& isaHeader, const function_format_t* header, std::list<CISA_INST*>& instructions, int funcionId, Options *opt);
 
 /// Exposing these declare print functions for use by verifier diagnostics code or for disassembly output.
-extern std::string printPredicateDecl(const common_isa_header& isaHeader, const kernel_format_t* header, unsigned declID);
+extern std::string printPredicateDecl(const kernel_format_t* header, unsigned declID);
 extern std::string printVariableDecl (const common_isa_header& isaHeader, const kernel_format_t* header, unsigned declID, bool isKernel, unsigned int funcId, Options *options);
 extern std::string printAddressDecl  (const common_isa_header& isaHeader, const kernel_format_t* header, unsigned declID);
 extern const char* printAsmName(const kernel_format_t* header);

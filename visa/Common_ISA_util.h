@@ -95,7 +95,7 @@ inline uint32_t getVersionAsInt(uint32_t major, uint32_t minor)
 	return major * 100 + minor;
 }
 
-inline unsigned int Get_CISA_PreDefined_Var_Count( unsigned char major_v, unsigned char minor_v )
+inline unsigned int Get_CISA_PreDefined_Var_Count()
 {
     return COMMON_ISA_NUM_PREDEFINED_VAR_VER_3;
 }
@@ -104,17 +104,10 @@ extern const char* createStringCopy(const char* name, vISA::Mem_Manager &m_mem);
 
 extern std::string sanitizeString(std::string& str);
 
-inline unsigned int Get_CISA_PreDefined_Surf_Count( unsigned char major_v, unsigned char minor_v )
+inline unsigned int Get_CISA_PreDefined_Surf_Count()
 {
-	uint32_t version = getVersionAsInt(major_v, minor_v);
-    if (version <= 300)
-	{
-        return COMMON_ISA_NUM_PREDEFINED_SURF_VER_2_1;
-    }
-	else
-	{
-        return COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1;
-    }
+    return COMMON_ISA_NUM_PREDEFINED_SURF_VER_3_1;
+
 }
 
 inline unsigned

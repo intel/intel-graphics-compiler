@@ -141,7 +141,7 @@ static string diagDumpInstructionOperandDecls(const common_isa_header& isaHeader
 {
     stringstream sstr;
 
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
 
     for (unsigned i = 0; i < inst->opnd_count; i++)
     {
@@ -157,7 +157,7 @@ static string diagDumpInstructionOperandDecls(const common_isa_header& isaHeader
                 case OPERAND_GENERAL   : sstr << printVariableDecl  (isaHeader, header, index-numPreDefinedVars, true, 0, options); break;
                 case OPERAND_ADDRESS   :
                 case OPERAND_INDIRECT  : sstr << printAddressDecl   (isaHeader, header, index); break;
-                case OPERAND_PREDICATE : sstr << printPredicateDecl (isaHeader, header, index); break;
+                case OPERAND_PREDICATE : sstr << printPredicateDecl (header, index); break;
                 case OPERAND_ADDRESSOF : sstr << "ADDRESSOF Operand decl... are those even allowed>" << endl; break;
                 case OPERAND_IMMEDIATE : sstr << "Immediate operand: " << getPrimitiveOperand<unsigned>(inst, i) << endl; break;
                 default                : sstr << "Operand type: " << opnd.getOperandClass() << " unable to print." << endl; break;
@@ -200,7 +200,7 @@ static string createIsaError(const common_isa_header& isaHeader, const kernel_fo
         sstr << setw(33) << "Diagnostics: " << endl;
         sstr << setw(33) << " Instruction variables' decls: ";
         sstr << diagDumpInstructionOperandDecls(isaHeader, header, inst, opt) << endl;
-        sstr << setw(33) << " Violating Instruction: "  << printInstruction(isaHeader, header, inst, opt) << endl;
+        sstr << setw(33) << " Violating Instruction: "  << printInstruction(header, inst, opt) << endl;
     }
 
     sstr << "\\----------------------------------------------------------------------------------------------------------------------/\n";
@@ -209,7 +209,7 @@ static string createIsaError(const common_isa_header& isaHeader, const kernel_fo
 
 static void verifyPredicateDecl(const common_isa_header& isaHeader, const kernel_format_t* header, unsigned declID, ERROR_LIST, Options *options)
 {
-    string declError = string(" Error in predicate variable decl: ") + printPredicateDecl(isaHeader, header, declID);
+    string declError = string(" Error in predicate variable decl: ") + printPredicateDecl(header, declID);
 
     REPORT_HEADER(options,header->predicates[declID].name_index < header->string_count, "P%d's name index(%d) is not valid: %s", declID, header->predicates[declID].name_index, declError.c_str());
 
@@ -257,7 +257,7 @@ static void verifyVariableDecl(const common_isa_header& isaHeader, const kernel_
     var_info_t*      var      = &header->variables[declID];
     VISA_Align align    = (VISA_Align)((var->bit_properties >> 4) & 0x7);
 
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
 
     REPORT_HEADER(options, var->name_index < header->string_count,
                   "V%d's name index(%d) is not valid: %s",
@@ -401,7 +401,7 @@ static void verifyRegion(const common_isa_header& isaHeader, const kernel_format
 
     unsigned dstIndex = getDstIndex(inst);
 
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
 
     uint16_t region     = 0;
     uint8_t  row_offset = 0;
@@ -574,7 +574,7 @@ static void verifyRegion(const common_isa_header& isaHeader, const kernel_format
                             i << " * " << v_stride_val <<") + (" << j <<" * " << h_stride_val << ")) * " << VN_size <<
                             ") <= " << VN_size << " * " << num_elements << std::endl;
                         std::cout << "Violating Instruction: "
-                            << printInstruction(isaHeader, header, inst, options)
+                            << printInstruction(header, inst, options)
                             << endl;
                     }
 
@@ -631,7 +631,7 @@ static void verifyRawOperandType(const common_isa_header& isaHeader,
                                  ERROR_LIST,
                                  Options *options)
 {
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
     uint32_t variable_count    = header->variable_count;
 
     uint32_t opnd_index  = opnd.index;
@@ -650,7 +650,7 @@ static VISA_Type getRawOperandType(const common_isa_header& isaHeader,
     const CISA_INST* inst,
     const raw_opnd& opnd)
 {
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
     uint32_t variable_count = header->variable_count;
 
     uint32_t opnd_index = opnd.index;
@@ -667,7 +667,7 @@ static VISA_Type getRawOperandType(const common_isa_header& isaHeader,
 
 static void verifyRawOperand(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, unsigned i, ERROR_LIST, Options *options)
 {
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
     uint32_t variable_count    = header->variable_count;
 
     const raw_opnd& opnd = getRawOperand(inst, i);
@@ -734,7 +734,7 @@ static void verifyRawOperand(const common_isa_header& isaHeader, const kernel_fo
 
 static bool isReadWritePreDefinedVar(const common_isa_header& isaHeader, uint32_t index, uint32_t byteOffset)
 {
-    PreDefinedVarsInternal internalIndex = mapExternalToInternalPreDefVar(index, isaHeader.major_version, isaHeader.minor_version);
+    PreDefinedVarsInternal internalIndex = mapExternalToInternalPreDefVar(index);
     if (internalIndex == PreDefinedVarsInternal::ARG ||   internalIndex == PreDefinedVarsInternal::RET || internalIndex == PreDefinedVarsInternal::FE_SP ||
         internalIndex == PreDefinedVarsInternal::FE_FP || internalIndex == PreDefinedVarsInternal::CR0 || internalIndex == PreDefinedVarsInternal::DBG ||
         internalIndex == PreDefinedVarsInternal::VAR_NULL)
@@ -759,7 +759,7 @@ static bool isReadWritePreDefinedVar(const common_isa_header& isaHeader, uint32_
 
 static void verifyVectorOperand(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, unsigned i, ERROR_LIST, Options *options)
 {
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
 
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
@@ -841,7 +841,7 @@ static void verifyVectorOperand(const common_isa_header& isaHeader, const kernel
             {
                 uint32_t byteOffset = opnd.opnd_val.gen_opnd.row_offset * COMMON_ISA_GRF_REG_SIZE +
                     opnd.opnd_val.gen_opnd.col_offset *
-                    Get_Common_ISA_Type_Size(getPredefinedVarType(mapExternalToInternalPreDefVar(operand_index, isaHeader.major_version, isaHeader.minor_version)));
+                    Get_Common_ISA_Type_Size(getPredefinedVarType(mapExternalToInternalPreDefVar(operand_index)));
                 REPORT_INSTRUCTION(options, isReadWritePreDefinedVar(isaHeader, operand_index, byteOffset), "Not allowed to write to a read only variable");
             }
         }
@@ -1042,7 +1042,7 @@ static void verifyInstructionControlFlow(const common_isa_header& isaHeader, con
 static void verifyInstructionMisc(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     unsigned i = 0;
-    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
 
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     switch (opcode)
@@ -1662,7 +1662,7 @@ static void verifyInstructionAddress(const common_isa_header& isaHeader, const k
         {
             if (operand_class == OPERAND_GENERAL)
             {
-                uint32_t numPredefinedVars = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
+                uint32_t numPredefinedVars = Get_CISA_PreDefined_Var_Count();
                 uint32_t varIndex = getVectorOperand(inst, i).opnd_val.gen_opnd.index;
                 REPORT_INSTRUCTION(options, varIndex >= numPredefinedVars, "Can not take the address of a pre-defined variable");
             }
@@ -1670,7 +1670,7 @@ static void verifyInstructionAddress(const common_isa_header& isaHeader, const k
             {
                 if (getVectorOperand(inst, i).getStateOpClass() == STATE_OPND_SURFACE)
                 {
-                    uint32_t numPredefinedSurfs = Get_CISA_PreDefined_Surf_Count(isaHeader.major_version, isaHeader.minor_version);
+                    uint32_t numPredefinedSurfs = Get_CISA_PreDefined_Surf_Count();
                     uint32_t surfIndex = getVectorOperand(inst, i).opnd_val.state_opnd.index;
                     REPORT_INSTRUCTION(options, surfIndex >= numPredefinedSurfs, "Can not take the address of a pre-defined surface");
                 }
@@ -1691,7 +1691,7 @@ static void verifyInstructionAddress(const common_isa_header& isaHeader, const k
 static void verifyInstructionSampler(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
-    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
     unsigned i = 0;
 
     switch (opcode)
@@ -2451,7 +2451,7 @@ static bool isFType(VISA_Type T)
 static void verifyInstructionDataport(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
-    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
 
     unsigned i = 0;
 
@@ -2920,8 +2920,8 @@ static void verifyKernelAttributes(const common_isa_header& isaHeader, const ker
 extern void verifyKernelHeader(const common_isa_header& isaHeader, const kernel_format_t* header, ERROR_LIST, Options *options)
 {
     /// Verify variable decls.
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
-    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
+    unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
     for (unsigned i = 0; i < header->variable_count; i++)
     {
         verifyVariableDecl(isaHeader, header, i, error_list, options);
@@ -2953,7 +2953,7 @@ extern void verifyKernelHeader(const common_isa_header& isaHeader, const kernel_
     }
 
     /// Verify surface.
-    unsigned int numPredSurf = Get_CISA_PreDefined_Surf_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned int numPredSurf = Get_CISA_PreDefined_Surf_Count();
     for (unsigned i = numPredSurf; i < header->surface_count; i++)
     {
         REPORT_HEADER(options,header->surfaces[i].name_index < header->string_count, "T%d's name index(%d) is not valid", i, header->surfaces[i].name_index);

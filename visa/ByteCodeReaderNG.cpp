@@ -292,7 +292,7 @@ static VISA_RawOpnd* readRawOperandNG(unsigned& bytePos, const char* buf, Routin
     VISAKernelImpl* kernelBuilderImpl = ((VISAKernelImpl*)container.kernelBuilder);
 
 
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(majorVersion, minorVersion);
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
     VISA_GenVar* decl = NULL;
     VISA_RawOpnd* opnd = NULL;
 
@@ -388,7 +388,7 @@ static VISA_VectorOpnd* readVectorOperandNG(unsigned& bytePos, const char* buf, 
             uint16_t width    = Get_Common_ISA_Region_Value((Common_ISA_Region_Val)((region >> 4 ) & 0xF));
             uint16_t h_stride = Get_Common_ISA_Region_Value((Common_ISA_Region_Val)((region >> 8 ) & 0xF));
 
-            unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(majorVersion, minorVersion);
+            unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
 
             VISA_Modifier     mod = modifier;
             VISA_VectorOpnd* opnd = NULL;
@@ -2257,7 +2257,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
     readVarBytes(majorVersion, minorVersion, header.name_index, bytePos, buf);
 
     /// read general variables
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(majorVersion, minorVersion);
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
     readVarBytes(majorVersion, minorVersion, header.variable_count, bytePos, buf);
     header.variables = (var_info_t*)mem.alloc(sizeof(var_info_t) * (header.variable_count + numPreDefinedVars));
     container.generalVarDecls = (VISA_GenVar**)mem.alloc(sizeof(VISA_GenVar*) * (header.variable_count + numPreDefinedVars));
@@ -2489,7 +2489,7 @@ static void readRoutineNG(unsigned& bytePos, const char* buf, vISA::Mem_Manager&
 
     // read surface variables
     READ_CISA_FIELD(header.surface_count, uint8_t, bytePos, buf);
-    unsigned num_pred_surf = Get_CISA_PreDefined_Surf_Count(majorVersion, minorVersion);
+    unsigned num_pred_surf = Get_CISA_PreDefined_Surf_Count();
     header.surface_count += (uint8_t) num_pred_surf;
     header.surface_attrs = (bool*)mem.alloc(sizeof(bool) * header.surface_count);
     memset(header.surface_attrs, 0, sizeof(bool) * header.surface_count);

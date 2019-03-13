@@ -70,7 +70,7 @@ typedef struct
     const char* str;
 } PreDefinedVarInfo;
 
-extern PreDefinedVarsInternal mapExternalToInternalPreDefVar(int id, uint32_t majorVersion, uint32_t minorVersion);
+extern PreDefinedVarsInternal mapExternalToInternalPreDefVar(int id);
 
 extern VISA_Type getPredefinedVarType(PreDefinedVarsInternal id);
 extern const char * getPredefinedVarString(PreDefinedVarsInternal id);

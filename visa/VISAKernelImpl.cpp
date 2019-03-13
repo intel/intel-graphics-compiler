@@ -508,7 +508,7 @@ int VISAKernelImpl::InitializeKernel(const char *kernel_name)
 {
 
     int status = CM_SUCCESS;
-    m_num_pred_vars = Get_CISA_PreDefined_Var_Count(m_major_version, m_minor_version);
+    m_num_pred_vars = Get_CISA_PreDefined_Var_Count();
     setName(kernel_name);
     if( IS_GEN_BOTH_PATH && m_isKernel)
     {
@@ -559,7 +559,7 @@ int VISAKernelImpl::CISABuildPreDefinedDecls()
     for( unsigned int i = 0; i < m_num_pred_vars; i++ )
     {
 
-        auto predefId = mapExternalToInternalPreDefVar(i, m_major_version, m_minor_version);
+        auto predefId = mapExternalToInternalPreDefVar(i);
         CISA_GEN_VAR* decl = (CISA_GEN_VAR *)m_mem.alloc(sizeof(CISA_GEN_VAR));
         decl->type = GENERAL_VAR;
         decl->index = m_var_info_count++;
@@ -597,7 +597,7 @@ int VISAKernelImpl::CISABuildPreDefinedDecls()
     }
 
     //SLM T0/Global Vars
-    for(int i = 0; i < (int) Get_CISA_PreDefined_Surf_Count(m_major_version, m_minor_version); i++)
+    for(int i = 0; i < (int) Get_CISA_PreDefined_Surf_Count(); i++)
     {
         //string_pool_lookup_and_insert(name, SURFACE_VAR, ISA_TYPE_ADDR);
         VISA_SurfaceVar* decl = (VISA_SurfaceVar *)m_mem.alloc(sizeof(CISA_GEN_VAR));
@@ -803,9 +803,9 @@ int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, i
                 info->dcl->setAliasDeclare(aliasDcl->dcl, aliasOffset);
 
                 // check if parent declare is one of the predefined
-                if (parentDecl->index < Get_CISA_PreDefined_Var_Count(m_major_version, m_minor_version))
+                if (parentDecl->index < Get_CISA_PreDefined_Var_Count())
                 {
-                    m_builder->preDefVars.setHasPredefined(mapExternalToInternalPreDefVar(parentDecl->index, m_major_version, m_minor_version), true);
+                    m_builder->preDefVars.setHasPredefined(mapExternalToInternalPreDefVar(parentDecl->index), true);
                 }
             }
         }
@@ -1939,7 +1939,7 @@ int VISAKernelImpl::CreateVISASrcOperand(VISA_VectorOpnd *& cisa_opnd, VISA_GenV
     cisa_opnd = (VISA_VectorOpnd *)getOpndFromPool();
     if(IS_GEN_BOTH_PATH)
     {
-        if( cisa_decl->index < Get_CISA_PreDefined_Var_Count(m_major_version, m_minor_version) )
+        if( cisa_decl->index < Get_CISA_PreDefined_Var_Count() )
         {
             cisa_opnd->g4opnd = CommonISABuildPreDefinedSrc(cisa_decl->index, vStride, width, hStride, rowOffset, colOffset, mod);
         }
@@ -2160,7 +2160,7 @@ int VISAKernelImpl::CreateVISAStateOperand(VISA_VectorOpnd *&cisa_opnd, CISA_GEN
         {
             // pre-defined surface
             if( opndClass == STATE_OPND_SURFACE &&
-                decl->index < Get_CISA_PreDefined_Surf_Count( m_major_version, m_minor_version ) )
+                decl->index < Get_CISA_PreDefined_Surf_Count() )
             {
                 int64_t immVal = Get_PreDefined_Surf_Index(decl->index);
 				if (immVal == PREDEF_SURF_252)
@@ -2377,7 +2377,7 @@ int VISAKernelImpl::CreateStateInstUseFastPath(VISA_StateOpndHandle *&cisa_opnd,
     case SURFACE_VAR:
     {
         uint16_t surf_id = (uint16_t)decl->index;
-        if (surf_id >= Get_CISA_PreDefined_Surf_Count(m_major_version, m_minor_version))
+        if (surf_id >= Get_CISA_PreDefined_Surf_Count())
         {
             cisa_opnd->g4opnd = m_builder->createSrcRegRegion(Mod_src_undef, Direct, dcl->getRegVar(), 0, 0,
                 m_builder->getRegionScalar(), Type_UD);
@@ -7735,11 +7735,11 @@ void VISAKernelImpl::finalizeKernel()
     DEBUG_PRINT_SIZE("size after samplers: ", SIZE_VALUE);
 
     /*****SURFACES******/
-    unsigned int adjSurfaceCount = m_surface_count - Get_CISA_PreDefined_Surf_Count(m_major_version, m_minor_version);
+    unsigned int adjSurfaceCount = m_surface_count - Get_CISA_PreDefined_Surf_Count();
     m_cisa_kernel.surface_count = (uint8_t) adjSurfaceCount;
     m_cisa_kernel.surfaces = (state_info_t * ) m_mem.alloc(sizeof(state_info_t) * adjSurfaceCount);
 
-    for(unsigned int i = 0, j = Get_CISA_PreDefined_Surf_Count(m_major_version, m_minor_version); i < adjSurfaceCount; i++, j++)
+    for(unsigned int i = 0, j = Get_CISA_PreDefined_Surf_Count(); i < adjSurfaceCount; i++, j++)
     {
         state_info_t * temp = &m_surface_info_list.at(j)->stateVar;
         m_cisa_kernel.surfaces[i] = *temp;
@@ -8192,7 +8192,7 @@ G4_Operand* VISAKernelImpl::CommonISABuildPreDefinedSrc(int index, uint16_t vStr
 {
     RegionDesc *rd = m_builder->createRegionDesc( vStride, width, hStride );
     G4_Operand* tmpsrc = NULL;
-    PreDefinedVarsInternal internalIndex = mapExternalToInternalPreDefVar(index, m_major_version, m_minor_version);
+    PreDefinedVarsInternal internalIndex = mapExternalToInternalPreDefVar(index);
     switch (internalIndex)
     {
     case PreDefinedVarsInternal::X:

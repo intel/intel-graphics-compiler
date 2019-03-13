@@ -657,7 +657,7 @@ void CisaBinary::isaDumpVerify(
             {
                 CisaFramework::CisaInst * cisa_inst = *inst_iter;
                 CISA_INST * inst = cisa_inst->getCISAInst();
-                sstr << printInstruction(m_header, header, inst, kTemp->getOptions()) << endl;
+                sstr << printInstruction(header, inst, kTemp->getOptions()) << endl;
             }
 
             writeIsaAsmFile(asmName.str(), sstr.str());

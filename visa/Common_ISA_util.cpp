@@ -1434,14 +1434,14 @@ VISA_Modifier Get_Common_ISA_SrcMod_From_G4_Mod(G4_SrcModifier mod )
 
 VISA_Type getVectorOperandType(const common_isa_header& isaHeader, const kernel_format_t* header, const vector_opnd& opnd)
 {
-    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count(isaHeader.major_version, isaHeader.minor_version);
+    unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
     switch (opnd.getOperandClass())
     {
         case OPERAND_GENERAL:
             if (opnd.opnd_val.gen_opnd.index < numPreDefinedVars)
             {
                 // One of the pre-defined variables
-                return getPredefinedVarType(mapExternalToInternalPreDefVar(opnd.getOperandIndex(), isaHeader.major_version, isaHeader.minor_version));
+                return getPredefinedVarType(mapExternalToInternalPreDefVar(opnd.getOperandIndex()));
             }
             else
             {
