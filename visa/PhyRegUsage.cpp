@@ -60,7 +60,7 @@ PhyRegUsage::PhyRegUsage(PhyRegUsageParms& p) :
     if (regFile == G4_GRF)
     {
         memset(availableGregs, true, sizeof(bool)* totalGRFNum);
-        memset(availableSubRegs, 0xff, sizeof(uint16_t)*totalGRFNum);
+        memset(availableSubRegs, 0xff, sizeof(uint32_t)*totalGRFNum);
         if (weakEdgeUsage)
         {
             memset(weakEdgeUsage, 0, sizeof(uint8_t)* totalGRFNum);
@@ -106,12 +106,12 @@ void PhyRegUsage::markBusyForDclSplit(G4_RegFileKind kind,
         availableGregs[end_GRF] = false;
         if (start_GRF == end_GRF)
         {
-            uint16_t subregMask = getSubregBitMask(start_sub_GRF, nunits);
+            auto subregMask = getSubregBitMask(start_sub_GRF, nunits);
             availableSubRegs[end_GRF] &= ~subregMask;
         }
         else
         {
-            uint16_t subregMask = getSubregBitMask(0, end_sub_GRF);
+            auto subregMask = getSubregBitMask(0, end_sub_GRF);
             availableSubRegs[end_GRF] &= ~subregMask;
         }
     }
@@ -157,7 +157,7 @@ void PhyRegUsage::freeGRFSubReg(unsigned regNum,
     //
 
     int startWord = regOff*G4_Type_Table[ty].byteSize / G4_WSIZE;
-    uint16_t subregMask = getSubregBitMask(startWord, nwords);
+    auto subregMask = getSubregBitMask(startWord, nwords);
     availableSubRegs[regNum] |= subregMask;
 
     //
@@ -231,7 +231,7 @@ static int getStepAccordingSubAlign(G4_SubReg_Align subAlign)
 // returns the starting word index if we find enough free contiguous words satisfying alignment,
 // -1 otherwise
 int PhyRegUsage::findContiguousWords(
-    uint16_t words,
+    uint32_t words,
     G4_SubReg_Align subAlign,
     int numWords) const
 {
@@ -246,7 +246,7 @@ int PhyRegUsage::findContiguousWords(
 
     for (int i = startWord; i + numWords <= 16; i += step)
     {
-        uint16_t bitMask = getSubregBitMask(i, numWords);
+        uint32_t bitMask = getSubregBitMask(i, numWords);
         if ((bitMask & words) == bitMask)
         {
             return i;
@@ -765,7 +765,7 @@ void PhyRegUsage::findGRFSubRegFromRegs(int startReg,
             continue;
         }
 
-        if (fromPartialOccupiedReg && availableSubRegs[idx] == 0xFFFF)
+        if (fromPartialOccupiedReg && availableSubRegs[idx] == 0xFFFFFFFF)
         {
             // favor partially allocated GRF first
             idx += step;
@@ -1438,7 +1438,7 @@ void LiveRange::dump()
 
 PhyRegUsageParms::PhyRegUsageParms(GlobalRA& g, LiveRange* l[], G4_RegFileKind r, unsigned int m, unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,
     unsigned int& bank1_s, unsigned int& bank1_e, unsigned int& bank2_s, unsigned int& bank2_e, bool doBC, bool* avaGReg,
-    uint16_t* avaSubReg, bool* avaAddrs, bool* avaFlags, uint8_t* weakEdges) : gra(g), startARFReg(startARF), startFlagReg(startFlag),
+    uint32_t* avaSubReg, bool* avaAddrs, bool* avaFlags, uint8_t* weakEdges) : gra(g), startARFReg(startARF), startFlagReg(startFlag),
     startGRFReg(startGRF), bank1_start(bank1_s), bank1_end(bank1_e), bank2_start(bank2_s), bank2_end(bank2_e)
 {
     doBankConflict = doBC;

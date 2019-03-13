@@ -54,7 +54,7 @@ public:
     unsigned int& bank2_end;
     bool doBankConflict;
     bool* availableGregs;
-    uint16_t* availableSubRegs;
+    uint32_t* availableSubRegs;
     bool* availableAddrs;
     bool* availableFlags;
     uint8_t* weakEdgeUsage;
@@ -63,7 +63,7 @@ public:
 
     PhyRegUsageParms(GlobalRA& g, LiveRange* l[], G4_RegFileKind r, unsigned int m, unsigned int& startARF, unsigned int& startFlag, unsigned int& startGRF,
         unsigned int& bank1_s, unsigned int& bank1_e, unsigned int& bank2_s, unsigned int& bank2_e, bool doBC, bool* avaGReg,
-        uint16_t* avaSubReg, bool* avaAddrs, bool* avaFlags, uint8_t* weakEdges);
+        uint32_t* avaSubReg, bool* avaAddrs, bool* avaFlags, uint8_t* weakEdges);
 };
 
 //
@@ -77,7 +77,7 @@ class PhyRegUsage
     LiveRange** lrs;
 	unsigned maxGRFCanBeUsed;
 	bool *availableGregs;         	// true if the reg is available for allocation
-	uint16_t *availableSubRegs;     // each entry is a 16-bit value of the words that are free in a GRF
+	uint32_t *availableSubRegs;     // each entry is a 16-bit value of the words that are free in a GRF
 	bool *availableAddrs;		                // true if the reg is available for allocation
     bool *availableFlags;
     uint8_t* weakEdgeUsage;
@@ -228,7 +228,7 @@ public:
 		if (numRows == 1 && regOff + nunits < G4_GRF_REG_SIZE)
 		{
 			availableGregs[regNum] = false;
-			uint16_t subregMask = getSubregBitMask(regOff, nunits);
+			auto subregMask = getSubregBitMask(regOff, nunits);
 			availableSubRegs[regNum] &= ~subregMask;
 		}
 		else // allocate whole registers
@@ -284,12 +284,12 @@ public:
 
     void updateRegUsage(LiveRange* lr);
 
-    uint16_t getSubregBitMask(uint32_t start, uint32_t num) const
+    uint32_t getSubregBitMask(uint32_t start, uint32_t num) const
     {
-        MUST_BE_TRUE(num > 0 && start+num <= 16, "illegal number of words");
+        MUST_BE_TRUE(num > 0 && start+num <= G4_GRF_REG_SIZE, "illegal number of words");
         uint32_t mask = ((1 << num) - 1) << start;
-        MUST_BE_TRUE(mask <= 0xFFFF, "illegal subreg mask");
-        return (uint16_t) mask;
+        MUST_BE_TRUE(mask <= 0xFFFFFFFF, "illegal subreg mask");
+        return (uint32_t) mask;
     }
 
     void emit(std::ostream& output)
@@ -326,7 +326,7 @@ private:
 								 bool oneGRFBankDivision);
 
     // find contiguous free words in a registers
-    int findContiguousWords(uint16_t words, G4_SubReg_Align alignment, int numWord) const;
+    int findContiguousWords(uint32_t words, G4_SubReg_Align alignment, int numWord) const;
     bool findContiguousGRF(bool availRegs[], const bool forbidden[], unsigned occupiedBundles, G4_Align align, unsigned numRegNeeded, unsigned maxRegs, unsigned & startPos, unsigned & idx, bool isCalleeSaveBias, bool isEOTSrc);
 };
 }

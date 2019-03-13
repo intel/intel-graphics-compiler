@@ -386,13 +386,13 @@ void CShader::AddPatchConstantSetup(uint index, CVariable* var)
 void CShader::AllocateInput(CVariable* var, uint offset, uint instance)
 {
     // the input offset must respect the variable alignment
-    assert(offset % alignmentSize[var->GetAlign()] == 0);
+    assert(offset % as[var->GetAlign()] == 0);
     encoder.DeclareInput(var, offset, instance);
 }
 
 void CShader::AllocateOutput(CVariable* var, uint offset, uint instance)
 {
-    assert(offset % alignmentSize[var->GetAlign()] == 0);
+    assert(offset % as[var->GetAlign()] == 0);
     encoder.DeclareInput(var, offset, instance);
     encoder.MarkAsOutput(var);
 }

@@ -225,7 +225,7 @@ void G4Verifier::verifySend(G4_INST* inst)
         if (inst->isEOT() && kernel.fg.builder->hasEOTGRFBinding())
         {
             auto checkEOTSrc = [](G4_SrcRegRegion* src) {
-                const int EOTStart = 112 * GENX_GRF_REG_SIZ;
+                const unsigned int EOTStart = 112 * GENX_GRF_REG_SIZ;
                 if (src->isNullReg())
                 {
                     return true;
@@ -440,7 +440,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                 newRgn.setRightBound(topdcl->getByteSize() - 1);
             }
 
-            if ((opnd->getRightBound() - opnd->getLeftBound()) > (2 * G4_GRF_REG_NBYTES) &&
+            if ((opnd->getRightBound() - opnd->getLeftBound()) > (2u * G4_GRF_REG_NBYTES) &&
                 (inst->isPseudoUse() == false))
             {
                 if (!(inst->opcode() == G4_pln && inst->getSrc(1) == opnd))
@@ -536,7 +536,7 @@ void G4Verifier::verifyOpnd(G4_Operand* opnd, G4_INST* inst)
                 newRgn.setRightBound(topdcl->getByteSize() - 1);
             }
 
-            if ((opnd->getRightBound() - opnd->getLeftBound()) > (2 * G4_GRF_REG_NBYTES) &&
+            if ((opnd->getRightBound() - opnd->getLeftBound()) > (2u * G4_GRF_REG_NBYTES) &&
                 (inst->isPseudoKill() == false))
             {
                 DEBUG_VERBOSE("Difference between left/right bound is greater than 2 GRF for dst region. Single non-send opnd cannot span 2 GRFs. lb = " <<

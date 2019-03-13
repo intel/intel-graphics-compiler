@@ -71,6 +71,7 @@ enum e_alignment : unsigned char
     EALIGN_AUTO
 };
 
+
 static const unsigned int alignmentSize[] = 
 {
     1,
@@ -80,6 +81,15 @@ static const unsigned int alignmentSize[] =
     16,
     32,
     64
+};
+
+class calignmentSize
+{
+public:
+    unsigned int operator[](unsigned int idx)
+    {
+        return alignmentSize[idx];
+    }
 };
 
 // XMACRO defining the CISA opCode

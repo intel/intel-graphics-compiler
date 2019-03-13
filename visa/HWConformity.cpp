@@ -242,7 +242,7 @@ void HWConformity::broadcast(
      uint32_t instMask = inst->getMaskOption();
 
      // avoid simd16 Qword moves
-     MUST_BE_TRUE(execSize * G4_Type_Table[type].byteSize <= 2 * GENX_GRF_REG_SIZ,
+     MUST_BE_TRUE(execSize * G4_Type_Table[type].byteSize <= 2u * GENX_GRF_REG_SIZ,
          "move can't exceed 2 GRFs");
 
      G4_Declare* dcl = builder.createTempVar( execSize, type, Either, align );
@@ -5577,14 +5577,14 @@ void HWConformity::fixSendInst(BB_LIST_ITER it)
             G4_Declare* src0Dcl = inst->getSrc(0)->getTopDcl();
             // ToDo: check if dst/src1 may also exhibit such size mismatch
             bool sizeMismatch = inst->getMsgDesc()->MessageLength() == 2 &&
-                (src0Dcl && src0Dcl->getRootDeclare()->getByteSize() < 2 * GENX_GRF_REG_SIZ);
+                (src0Dcl && src0Dcl->getRootDeclare()->getByteSize() < 2u * GENX_GRF_REG_SIZ);
             auto doEvenAlign = [](G4_Declare* dcl)
             {               
                 if (dcl)
                 {
                     dcl = dcl->getRootDeclare();
                     // variables >= 2 GRF don't need even alignment since they can't possibly overlap
-                    if (dcl->getByteSize() < 2 * GENX_GRF_REG_SIZ)
+                    if (dcl->getByteSize() < 2u * GENX_GRF_REG_SIZ)
                     {
                         dcl->setAlign(G4_Align::Even);
                     }

@@ -536,7 +536,7 @@ static void verifyRegion(const common_isa_header& isaHeader, const kernel_format
                     (exec_sz - 1) * h_stride_val * VN_size + VN_size - 1;
             }
 
-            REPORT_INSTRUCTION(options,(COMMON_ISA_GRF_REG_SIZE * 2) > last_region_elt_byte,
+            REPORT_INSTRUCTION(options,(COMMON_ISA_GRF_REG_SIZE * 2u) > last_region_elt_byte,
                 "CISA operand region access out of 2 GRF boundary (within %d bytes): %d",
                 (COMMON_ISA_GRF_REG_SIZE * 2),
                 last_region_elt_byte);

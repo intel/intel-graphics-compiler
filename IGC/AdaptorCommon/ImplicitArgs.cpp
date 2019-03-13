@@ -183,7 +183,8 @@ IGC::e_alignment ImplicitArg::getAlignType(const DataLayout& DL) const
 
 size_t ImplicitArg::getAlignment(const DataLayout& DL) const
 {
-    return IGC::alignmentSize[getAlignType(DL)];
+    calignmentSize as;
+    return as[getAlignType(DL)];
 }
 
 WIAnalysis::WIDependancy ImplicitArg::getDependency() const {

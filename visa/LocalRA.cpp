@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 #include <tuple>
 #include "DebugInfo.h"
+#include "common.h"
 
 using namespace std;
 using namespace vISA;

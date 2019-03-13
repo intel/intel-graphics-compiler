@@ -5584,7 +5584,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
     }
 
     bool* availableGregs = (bool *)mem.alloc(sizeof(bool)* totalGRFNum);
-    uint16_t* availableSubRegs = (uint16_t *)mem.alloc(sizeof(uint16_t)* totalGRFNum);
+    uint32_t* availableSubRegs = (uint32_t *)mem.alloc(sizeof(uint32_t)* totalGRFNum);
     bool* availableAddrs = (bool *)mem.alloc(sizeof(bool)* getNumAddrRegisters());
     bool* availableFlags = (bool *)mem.alloc(sizeof(bool)* getNumFlagRegisters());
     uint8_t* weakEdgeUsage = (uint8_t*)mem.alloc(sizeof(uint8_t)*totalGRFNum);
@@ -8458,7 +8458,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
         SPLIT_DECL_OPERANDS_ITER succIt = it;
         succIt++;
         G4_Declare * topDcl = (*it).first->getDeclare();
-        if (topDcl->getByteSize() <= G4_GRF_REG_NBYTES * 2)
+        if (topDcl->getByteSize() <= G4_GRF_REG_NBYTES * 2u)
         {
             splitDcls.erase(it);
             it = succIt;
@@ -8993,7 +8993,7 @@ void GlobalRA::assignRegForAliasDcl()
                 if (CurrentRegVar->getDeclare()->useGRF())
                 {
                     // if the tempoffset is one grf
-                    if (tempoffset < G4_GRF_REG_SIZE * 2)
+                    if (tempoffset < G4_GRF_REG_SIZE * 2u)
                     {
                         CurrentRegVar->setPhyReg(AliasRegVar->getPhyReg(), tempoffset / CurrentRegVar->getDeclare()->getElemSize());
                     }

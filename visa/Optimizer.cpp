@@ -2343,7 +2343,7 @@ void Optimizer::doSimplification(G4_INST *inst)
                     // Immeidates in 'uv' ensures each element is a
                     // byte-offset within half-GRF.
                     G4_SubReg_Align SubAlign = Sixteen_Word;
-                    if (SrcSizeInBytes <= G4_GRF_REG_NBYTES/2)
+                    if (SrcSizeInBytes <= G4_GRF_REG_NBYTES/2u)
                         SubAlign = Eight_Word;
                     inst->setOpcode(G4_movi);
                     if (Dcl->getAlign() == Either &&
@@ -10604,7 +10604,7 @@ void Optimizer::split4GRFVars()
                 {
                     uint32_t lb = opnd->getLeftBound();
                     uint32_t rb = opnd->getRightBound();
-                    return (lb < 2 * GENX_GRF_REG_SIZ) && (rb >= 2 * GENX_GRF_REG_SIZ);
+                    return (lb < 2u * GENX_GRF_REG_SIZ) && (rb >= 2u * GENX_GRF_REG_SIZ);
                 };
                 // check and remove decls with operands that cross 2GRF boundary
                 if (inst->getDst())
@@ -10663,7 +10663,7 @@ void Optimizer::split4GRFVars()
                 G4_Declare* dstRootDcl = dst->getTopDcl()->getRootDeclare();
                 if (DclMap.count(dstRootDcl))
                 {
-                    bool isLow = dst->getLeftBound() < 2 * GENX_GRF_REG_SIZ;
+                    bool isLow = dst->getLeftBound() < 2u * GENX_GRF_REG_SIZ;
                     auto NewDcl = DclMap[dstRootDcl]->getDcl(builder, dst->getType(), isLow);
                     auto NewDst = builder.createDstRegRegion(Direct, NewDcl->getRegVar(), 
                         dst->getRegOff() - (isLow ? 0 : 2), dst->getSubRegOff(), 
@@ -10682,7 +10682,7 @@ void Optimizer::split4GRFVars()
                     G4_Declare* srcRootDcl = src->getTopDcl()->getRootDeclare();
                     if (DclMap.count(srcRootDcl))
                     {
-                        bool isLow = src->getLeftBound() < 2 * GENX_GRF_REG_SIZ;
+                        bool isLow = src->getLeftBound() < 2u * GENX_GRF_REG_SIZ;
                         auto NewSrcDcl = DclMap[srcRootDcl]->getDcl(builder, src->getType(), isLow);
                         auto NewSrc = builder.createSrcRegRegion(
                             srcRegion->getModifier(), src->getRegAccess(),

@@ -282,10 +282,11 @@ namespace IGC
         
         offset = payloadEnd;
         // create output registers for coarse phase
+        calignmentSize as;
         for (auto it = m_CoarseOutput.begin(), ie = m_CoarseOutput.end(); it != ie; ++it)
         {
             CVariable* output = it->second;
-            offset = iSTD::Align(offset, alignmentSize[output->GetAlign()]);
+            offset = iSTD::Align(offset, as[output->GetAlign()]);
             AllocateOutput(output, offset);
             if (m_Signature)
             {
@@ -295,7 +296,7 @@ namespace IGC
         }
         if (m_CoarseoMask)
         {
-            offset = iSTD::Align(offset, alignmentSize[m_CoarseoMask->GetAlign()]);
+            offset = iSTD::Align(offset, as[m_CoarseoMask->GetAlign()]);
             AllocateOutput(m_CoarseoMask, offset);
             if (m_Signature)
             {

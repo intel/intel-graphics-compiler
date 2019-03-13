@@ -132,6 +132,13 @@ PlatformGen getPlatformGeneration(TARGET_PLATFORM platform)
     }
 }
 
+unsigned char getGRFSize()
+{
+    unsigned int size = 32;
+
+
+    return size;
+}
 
 // The encoding of gen platform defined in vISA spec:
 // 3 BDW

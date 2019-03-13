@@ -59,6 +59,13 @@ using namespace llvm;
 namespace IGC
 {
 
+unsigned int getGRFSize()
+{
+    unsigned int byteSize = 32;
+
+    return byteSize;
+}
+
 Common_ISA_Exec_Size getExecSize(SIMDMode width)
 {
     switch(width)
@@ -3414,6 +3421,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
 
     vbuilder = nullptr;
     TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
+
 
     bool KernelDebugEnable = false;
     bool ForceNonCoherentStatelessBti = false;

@@ -36,8 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define UNDEFINED_SHORT 0x8000    
 #define UNDEFINED_EXEC_SIZE 0xFF
 
-#define G4_GRF_REG_SIZE 16  // 16 W/UW (16-bit) 256 bits
-#define G4_GRF_REG_NBYTES 32 // 32 B/UB (8-bit) 256 bits
 #define G4_BSIZE 1            // 1 byte 8 bits
 #define G4_WSIZE 2            // 2 bytes 16 bits
 #define G4_DSIZE 4            // 4 bytes 32 bits
@@ -60,8 +58,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // added defs for CISA inst translation
 
 #define GENX_GEN8P_MAX_WIDTH      64  // # 
-#define GENX_MRF_REG_SIZ          32  // # of bytes in a MRF register
-#define GENX_GRF_REG_SIZ          32  // # of bytes in a GRF register
 
 #define GENX_DATAPORT_IO_SZ       8   // # of dwords in read/write control area
 #define GENX_SAMPLER_IO_SZ        8   // # of control dwords for Sampling Engine unit

@@ -91,7 +91,7 @@ class G4_Declare;
 #define COMMON_ISA_MAX_MEDIA_BLOCK_WIDTH 32
 #define COMMON_ISA_MAX_MEDIA_BLOCK_HEIGHT 64
 
-#define  COMMON_ISA_GRF_REG_SIZE 32 /// # of bytes in a CISA GRF register
+#define  COMMON_ISA_GRF_REG_SIZE (getGRFSize()) /// # of bytes in a CISA GRF register
 
 #define COMMON_ISA_MAX_ADDRREG_WIDTH   8
 #define COMMON_ISA_MAX_FILENAME_LENGTH   255

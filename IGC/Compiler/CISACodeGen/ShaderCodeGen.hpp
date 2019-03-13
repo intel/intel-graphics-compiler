@@ -366,6 +366,7 @@ public:
     bool GetHasConstantStatelessAccess() const { return m_HasConstantStatelessMemoryAccess; }
     void SetHasGlobalAtomics() { m_HasGlobalAtomics = true; }
     bool GetHasGlobalAtomics() const { return m_HasGlobalAtomics; }
+    calignmentSize as;
 
 private:
     // Return DefInst's CVariable if it could be reused for UseInst, and return

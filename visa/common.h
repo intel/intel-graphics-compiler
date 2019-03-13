@@ -173,6 +173,8 @@ enum class PlatformGen
     GEN11 = 11,
 };
 
+unsigned char getGRFSize();
+
 // return the platform generation that can be used for comparison
 PlatformGen getPlatformGeneration(TARGET_PLATFORM platform);
 
@@ -202,5 +204,12 @@ extern "C" const char * GetSteppingString( void );
 #define ERROR_DATA_RANGE( x )           "ERROR: Out of boundary or invalid data value in " << x << "!"
 #define ERROR_INVALID_G4INST            "ERROR: Invalid Gen4 instruction!"
 // end of Error Message
+
+#define G4_GRF_REG_SIZE    (getGRFSize() / 2u)
+#define G4_GRF_REG_NBYTES  getGRFSize()
+#define GENX_MRF_REG_SIZ   getGRFSize()
+#define GENX_GRF_REG_SIZ   getGRFSize()
+#define NUM_WORDS_PER_GRF  (getGRFSize() / 2)
+#define NUM_DWORDS_PER_GRF (getGRFSize() / 4u)
 
 #endif //_COMMON_H_
