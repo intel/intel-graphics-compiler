@@ -8062,6 +8062,34 @@ int VISAKernelImpl::GetGenReloc(BasicRelocEntry*& relocs, unsigned int& numReloc
     return CM_SUCCESS;
 }
 
+int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries)
+{
+    G4_Kernel::RelocationTableTy& reloc_table = m_kernel->getRelocationTable();
+    numEntries = reloc_table.size();
+    byteSize = sizeof(IGC::GenRelocEntry) * numEntries;
+
+    if (reloc_table.empty())
+        return CM_SUCCESS;
+
+    // allocate the buffer for relocation table
+    buffer = allocCodeBlock(byteSize);
+
+    if (buffer == NULL || buffer == nullptr)
+        return CM_FAILURE;
+
+    IGC::GenRelocEntry* buffer_p = (IGC::GenRelocEntry*)buffer;
+    for (auto reloc : reloc_table)
+    {
+        buffer_p->r_type = reloc.getType();
+        buffer_p->r_offset = (uint32_t)reloc.getInst()->getGenOffset();
+        assert(reloc.getSymbolName().size() <= IGC::MAX_SYMBOL_NAME_LENGTH);
+        std::strcpy(buffer_p->r_symbol, reloc.getSymbolName().c_str());
+        ++buffer_p;
+    }
+
+    return CM_SUCCESS;
+}
+
 int VISAKernelImpl::GetGenxDebugInfo(void *&buffer, unsigned int &size, void*& mapGenISAOffsetToVISAIndex, unsigned int& mapNumElems)
 {
     unsigned int i = 0;
@@ -8573,6 +8601,14 @@ int VISAKernelImpl::getDeclarationID(VISA_LabelVar *decl)
 int VISAKernelImpl::getDeclarationID(VISA_FileVar *decl)
 {
     return decl->index;
+}
+
+int64_t VISAKernelImpl::getGenOffset()
+{
+    assert(m_kernel->fg.BBs.begin() != m_kernel->fg.BBs.end());
+    assert((*m_kernel->fg.BBs.begin())->begin() != (*m_kernel->fg.BBs.begin())->end());
+    // the offset of the first gen inst in this kernel/function
+    return (*(*m_kernel->fg.BBs.begin())->begin())->getGenOffset();
 }
 
 void VISAKernelImpl::computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functions)

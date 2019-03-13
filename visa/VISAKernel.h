@@ -665,6 +665,8 @@ public:
     CM_BUILDER_API int GetErrorMessage(const char *&errorMsg);
     CM_BUILDER_API virtual int GetGenxDebugInfo(void *&buffer, unsigned int &size, void*&, unsigned int&);
     CM_BUILDER_API int GetGenReloc(BasicRelocEntry*& relocs, unsigned int& numRelocs);
+    /// GetGenRelocEntryBuffer -- allocate and return a buffer of all GenRelocEntry that are created by vISA
+    CM_BUILDER_API int GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries);
     CM_BUILDER_API int GetGTPinBuffer(void*& buffer, unsigned int& size);
     CM_BUILDER_API int SetGTPinInit(void* buffer);
     CM_BUILDER_API int GetFreeGRFInfo(void*& buffer, unsigned int& size);
@@ -694,6 +696,9 @@ public:
 
     ///Gets declaration id VISA_FileVar
     CM_BUILDER_API int getDeclarationID(VISA_FileVar *decl);
+
+    ///Gets gen binary offset
+    CM_BUILDER_API int64_t getGenOffset();
 
     /********** MISC APIs END *************************/
     int CreateVISAPredicateSrcOperand(VISA_VectorOpnd *& opnd, VISA_PredVar *decl, unsigned int size);

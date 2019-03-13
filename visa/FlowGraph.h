@@ -41,6 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Gen4_IR.hpp"
 
 #include "include/gtpin_IGC_interface.h"
+#include "inc/common/RelocationInfo.h"
 
 namespace vISA
 {
@@ -1187,15 +1188,11 @@ private:
     gtpin::igc::igc_init_t* gtpin_init = nullptr;
 };
 
-enum class RelocationType
-{
-    R_SYM_ADDR  // patched value is the address of a symbol
-};
-
 class RelocationEntry
 {
     G4_INST* inst;             // instruction to be relocated
     int opndPos;               // operand to be relocated. This should be a RelocImm
+    typedef IGC::GenRelocType RelocationType;
     RelocationType relocType;
     std::string symName;       // the symbol name that it's address to be resolved
 
@@ -1284,8 +1281,13 @@ class G4_Kernel
 
     bool m_hasIndirectCall = false;
 
+public:
+    typedef std::vector<RelocationEntry> RelocationTableTy;
+
+private:
     // stores all relocations to be performed after binary encoding
-    std::vector<RelocationEntry> relocationTable;
+    RelocationTableTy relocationTable;
+
 
     // id -> function map for all functions (transitively) called by this kernel
     // this differs from the "callees" in IR_Builder as the one in builder only contain
@@ -1467,6 +1469,16 @@ public:
     void addRelocation(RelocationEntry& entry)
     {
         relocationTable.push_back(entry);
+    }
+
+    RelocationTableTy& getRelocationTable()
+    {
+        return relocationTable;
+    }
+
+    const RelocationTableTy& getRelocationTable() const
+    {
+        return relocationTable;
     }
 
     void doRelocation(void* binary, uint32_t binarySize);

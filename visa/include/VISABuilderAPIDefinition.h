@@ -766,6 +766,9 @@ public:
     /// can patch required immediate offsets at indicated offsets.
     CM_BUILDER_API virtual int GetGenReloc(BasicRelocEntry *&buffer, unsigned int &size) = 0;
 
+    /// GetGenRelocEntryBuffer -- allocate and return a buffer of all GenRelocEntry that are created by vISA
+    CM_BUILDER_API virtual int GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize, unsigned int &numEntries) = 0;
+
     /// SetGTPinInit -- pass igc_init_t struct instance
     /// VISA decodes this struct and enables options accordingly
     CM_BUILDER_API virtual int SetGTPinInit(void* buffer) = 0;
@@ -820,6 +823,9 @@ public:
     /// GetFunctionId -- Get function id for a stack call function VISAFunction instance.
     /// This id is used by API client for invoking correct stack function using fcall.
     CM_BUILDER_API virtual int GetFunctionId(unsigned int& id) = 0;
+
+    /// getGenOffset -- Get gen binary offset of this function
+    CM_BUILDER_API virtual int64_t getGenOffset() = 0;
 };
 
 typedef enum
