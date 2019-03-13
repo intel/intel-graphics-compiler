@@ -533,10 +533,8 @@ void  CShader::CreateConstantBufferOutput(SKernelProgram *pKernelProgram)
 
 void CShader::CreateFuncSymbolToRegisterMap(llvm::Function* pFunc)
 {
+    // Functions with uses in this module requires relocation
     CVariable* funcAddr = GetSymbol(pFunc);
-    //CVariable* funcAddr32bit = GetNewVariable(1, ISA_TYPE_UD, EALIGN_GRF, true);
-    //encoder.Cast(funcAddr32bit, funcAddr);
-    //encoder.Push();
     encoder.AddFunctionSymbol(pFunc, funcAddr);
     encoder.Push();
 }
@@ -2232,7 +2230,8 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
     if (Constant *C = llvm::dyn_cast<llvm::Constant>(value))
     {
         // Function Pointer
-        if (isa<GlobalValue>(value) &&
+        if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) &&
+            isa<GlobalValue>(value) &&
             value->getType()->isPointerTy() &&
             value->getType()->getPointerElementType()->isFunctionTy())
         {

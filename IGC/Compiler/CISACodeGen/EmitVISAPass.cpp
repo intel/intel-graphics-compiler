@@ -414,7 +414,7 @@ bool EmitPass::runOnFunction(llvm::Function &F)
                     // Creates a mapping of the function symbol to a register.
                     // Any user function used by the kernel, including function declarations,
                     // should have a register allocated to store it's physical address
-                    if (F.getNumUses() > 0 && F.hasFnAttribute("AsFunctionPointer"))
+                    if (F.hasFnAttribute("AsFunctionPointer") && F.getNumUses() > 0)
                     {
                         m_currShader->CreateFuncSymbolToRegisterMap(&F);
                     }

@@ -489,6 +489,9 @@ private:
     // save compile time by avoiding retry if the amount of spill is (very) small
     bool AvoidRetryOnSmallSpill() const;
 
+    void CreateFunctionSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
+    void CreateFunctionRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
+
 protected:
     // encoder states
     SEncoderState m_encoderState;

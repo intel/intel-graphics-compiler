@@ -540,6 +540,18 @@ struct SPatchGtpinFreeGRFInfo :
 // Update CURRENT_ICBE_VERSION when modifying the patch list
 static_assert(sizeof(SPatchGtpinFreeGRFInfo) == (4 + sizeof(SPatchItemHeader)), "The size of SPatchGtpinFreeGRFInfo is not what is expected");
 
+/*****************************************************************************\
+ STRUCT: SPatchFunctionTableInfo
+ \*****************************************************************************/
+struct SPatchFunctionTableInfo :
+    SPatchItemHeader
+{
+    uint32_t   NumEntries;
+};
+
+// Update CURRENT_ICBE_VERSION when modifying the patch list
+static_assert(sizeof(SPatchFunctionTableInfo) == (4 + sizeof(SPatchItemHeader)), "The size of SPatchFunctionTableInfo is not what is expected");
+
 
 } // namespace
 #pragma pack( pop )

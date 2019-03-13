@@ -1414,29 +1414,62 @@ void DebugPatchList(
             break;
 
         case iOpenCL::PATCH_TOKEN_GTPIN_FREE_GRF_INFO:
-        {
-            const iOpenCL::SPatchGtpinFreeGRFInfo* pPatchItem =
-                (const iOpenCL::SPatchGtpinFreeGRFInfo*)pHeader;
+            {
+                const iOpenCL::SPatchGtpinFreeGRFInfo* pPatchItem =
+                    (const iOpenCL::SPatchGtpinFreeGRFInfo*)pHeader;
 
-            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                "PATCH_TOKEN_GTPIN_FREE_GRF_INFO (%08X) (size = %d)\n",
-                pPatchItem->Token,
-                pPatchItem->Size);
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "PATCH_TOKEN_GTPIN_FREE_GRF_INFO (%08X) (size = %d)\n",
+                    pPatchItem->Token,
+                    pPatchItem->Size);
 
-            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                "\tBufferSize = %d\n",
-                pPatchItem->BufferSize);
-        }
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                    "\tBufferSize = %d\n",
+                    pPatchItem->BufferSize);
+            }
+            break;
         case iOpenCL::PATCH_TOKEN_GTPIN_INFO:
-        {
-            const iOpenCL::SPatchItemHeader* pPatchItem = pHeader;
-            
-            ICBE_DPF_STR(output, GFXDBG_HARDWARE,
-                         "PATCH_TOKEN_GTPIN_INFO (%08X) (size = %d)\n",
-                         pPatchItem->Token,
-                         pPatchItem->Size);
-        }
-        break;
+            {
+                const iOpenCL::SPatchItemHeader* pPatchItem = pHeader;
+
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                             "PATCH_TOKEN_GTPIN_INFO (%08X) (size = %d)\n",
+                             pPatchItem->Token,
+                             pPatchItem->Size);
+            }
+            break;
+        case iOpenCL::PATCH_TOKEN_FUNCTION_SYMBOL_TABLE:
+            {
+                const iOpenCL::SPatchFunctionTableInfo* pPatchItem =
+                    (const iOpenCL::SPatchFunctionTableInfo*)pHeader;
+
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                             "PATCH_TOKEN_FUNCTION_SYMBOL_TABLE (%08X) (size = %d)\n",
+                             pPatchItem->Token,
+                             pPatchItem->Size);
+
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                             "\tNumEntries = %d\n",
+                             pPatchItem->NumEntries);
+
+            }
+            break;
+        case iOpenCL::PATCH_TOKEN_FUNCTION_RELOCATION_TABLE:
+            {
+                const iOpenCL::SPatchFunctionTableInfo* pPatchItem =
+                    (const iOpenCL::SPatchFunctionTableInfo*)pHeader;
+
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                             "PATCH_TOKEN_FUNCTION_RELOCATION_TABLE (%08X) (size = %d)\n",
+                             pPatchItem->Token,
+                             pPatchItem->Size);
+
+                ICBE_DPF_STR(output, GFXDBG_HARDWARE,
+                             "\tNumEntries = %d\n",
+                             pPatchItem->NumEntries);
+
+            }
+            break;
 
         default:
             {

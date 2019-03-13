@@ -102,6 +102,12 @@ namespace IGC
         unsigned int    m_InstructionCount;
         void*           m_gtpinBuffer;              // Will be populated by VISA only when special switch is passed by gtpin
         unsigned int    m_gtpinBufferSize;
+        void*           m_funcSymbolTable;
+        unsigned int    m_funcSymbolTableSize;
+        unsigned int    m_funcSymbolTableEntries;
+        void*           m_funcRelocationTable;
+        unsigned int    m_funcRelocationTableSize;
+        unsigned int    m_funcRelocationTableEntries;
 
         void Destroy()
         {

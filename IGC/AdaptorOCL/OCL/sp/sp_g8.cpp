@@ -2104,6 +2104,98 @@ RETVAL CGen8OpenCLStateProcessor::CreatePatchList(
         }
     }
 
+    // Patch for function symbol table
+    if (retValue.Success)
+    {
+        iOpenCL::SPatchFunctionTableInfo patch;
+        memset(&patch, 0, sizeof(patch));
+
+        patch.Token = PATCH_TOKEN_FUNCTION_SYMBOL_TABLE;
+        uint32_t size = 0;
+        uint32_t entries = 0;
+        void* buffer = nullptr;
+        const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
+        if (annotations.m_executionEnivronment.CompiledSIMDSize == 8)
+        {
+            buffer = program->simd8.m_funcSymbolTable;
+            size = program->simd8.m_funcSymbolTableSize;
+            entries = program->simd8.m_funcSymbolTableEntries;
+        }
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 16)
+        {
+            buffer = program->simd16.m_funcSymbolTable;
+            size = program->simd16.m_funcSymbolTableSize;
+            entries = program->simd16.m_funcSymbolTableEntries;
+        }
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32)
+        {
+            buffer = program->simd32.m_funcSymbolTable;
+            size = program->simd32.m_funcSymbolTableSize;
+            entries = program->simd32.m_funcSymbolTableEntries;
+        }
+
+        if (size > 0)
+        {
+            patch.Size = sizeof(patch) + size;
+            patch.NumEntries = entries;
+
+            retValue = AddPatchItem(patch, membuf);
+
+            if (!membuf.Write((const char*)buffer, size))
+            {
+                retValue.Success = false;
+                return retValue;
+            }
+            free(buffer);
+        }
+    }
+
+    // Patch for function relocation table
+    if (retValue.Success)
+    {
+        iOpenCL::SPatchFunctionTableInfo patch;
+        memset(&patch, 0, sizeof(patch));
+
+        patch.Token = PATCH_TOKEN_FUNCTION_RELOCATION_TABLE;
+        uint32_t size = 0;
+        uint32_t entries = 0;
+        void* buffer = nullptr;
+        const IGC::SKernelProgram* program = &(annotations.m_kernelProgram);
+        if (annotations.m_executionEnivronment.CompiledSIMDSize == 8)
+        {
+            buffer = program->simd8.m_funcRelocationTable;
+            size = program->simd8.m_funcRelocationTableSize;
+            entries = program->simd8.m_funcRelocationTableEntries;
+        }
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 16)
+        {
+            buffer = program->simd16.m_funcRelocationTable;
+            size = program->simd16.m_funcRelocationTableSize;
+            entries = program->simd16.m_funcRelocationTableEntries;
+        }
+        else if (annotations.m_executionEnivronment.CompiledSIMDSize == 32)
+        {
+            buffer = program->simd32.m_funcRelocationTable;
+            size = program->simd32.m_funcRelocationTableSize;
+            entries = program->simd32.m_funcRelocationTableEntries;
+        }
+
+        if (size > 0)
+        {
+            patch.Size = sizeof(patch) + size;
+            patch.NumEntries = entries;
+
+            retValue = AddPatchItem(patch, membuf);
+
+            if (!membuf.Write((const char*)buffer, size))
+            {
+                retValue.Success = false;
+                return retValue;
+            }
+            freeBlock(buffer);
+        }
+    }
+
     return retValue;
 }
 
