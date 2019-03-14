@@ -329,6 +329,8 @@ _SPIRV_OP(ModuleProcessed, 330)
 //Ballot extension
 _SPIRV_OP(SubgroupBallotKHR, 4421)
 _SPIRV_OP(SubgroupFirstInvocationKHR, 4422)
+// Shader clock extension
+_SPIRV_OP(ReadClockKHR, 5055)
 _SPIRV_OP(Forward, 1024) // Internal only
 _SPIRV_OP(SubgroupShuffleINTEL, 5571)
 _SPIRV_OP(SubgroupShuffleDownINTEL, 5572)

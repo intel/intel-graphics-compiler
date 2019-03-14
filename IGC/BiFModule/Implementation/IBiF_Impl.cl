@@ -109,3 +109,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IGCBiF_Math_64bitDiv.cl"
 #endif
 
+//*****************************************************************************/
+// Read Clock Extension Opcodes
+//*****************************************************************************/
+#include "clock.cl"
+

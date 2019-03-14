@@ -406,6 +406,8 @@ _SPIRV_OP(OpGenericCastToPtrExplicit)
 // Ballot extension
 _SPIRV_OP(OpSubgroupBallotKHR)
 _SPIRV_OP(OpSubgroupFirstInvocationKHR)
+// Shader clock extension
+_SPIRV_OP(OpReadClockKHR)
 #undef _SPIRV_OP
 
 #define _SPIRV_OP(x, y) add(Op##y, #x);

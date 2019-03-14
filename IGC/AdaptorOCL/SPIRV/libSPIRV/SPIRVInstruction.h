@@ -1726,6 +1726,7 @@ _SPIRV_OP(LifetimeStart, false, 3)
 _SPIRV_OP(LifetimeStop, false, 3)
 _SPIRV_OP(SelectionMerge, false, 3)
 _SPIRV_OP(VectorTimesScalar, true, 5)
+_SPIRV_OP(ReadClockKHR, true, 4)
 #undef _SPIRV_OP
 
 class SPIRVBallotInstBase : public SPIRVInstTemplateBase
