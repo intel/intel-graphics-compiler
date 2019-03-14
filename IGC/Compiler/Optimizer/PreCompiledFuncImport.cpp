@@ -402,7 +402,10 @@ bool PreCompiledFuncImport::runOnModule(Module &M)
                 //    llvm::getLazyBitcodeModule(MemoryBufferRef(BitRef.str(), ""), M.getContext());
                 llvm::Expected<std::unique_ptr<llvm::Module>> ModuleOrErr =
                     llvm::parseBitcodeFile(MemoryBufferRef(BitRef.str(), ""), M.getContext());
-                assert(ModuleOrErr && "llvm getLazyBitcodeModule - FAILED to parse bitcode");
+                if (llvm::Error EC = ModuleOrErr.takeError())
+                {
+                    assert(0 && "llvm getLazyBitcodeModule - FAILED to parse bitcode");
+                }
                 std::unique_ptr<llvm::Module> m_pBuiltinModule = std::move(*ModuleOrErr);
                 assert(m_pBuiltinModule && "llvm version mismatch - could not load llvm module");
 
