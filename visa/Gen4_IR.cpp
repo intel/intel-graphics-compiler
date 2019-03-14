@@ -7658,7 +7658,7 @@ bool G4_INST::canSrcBeAcc(int srcId) const
     // dst must be GRF-aligned
     if ((getDst()->getLinearizedStart() % GENX_GRF_REG_SIZ) != 0)
     {
-        return false;
+            return false;
     }
 
     // check that src0 and dst have the same type/alignment
