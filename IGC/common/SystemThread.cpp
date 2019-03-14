@@ -51,7 +51,7 @@ bool CSystemThread::CreateSystemThreadKernel(
     bool success = true;
 
     // Check if the System Thread mode in the correct range.
-    if( !( ( mode & SYSTEM_THREAD_MODE_DEBUG ) || 
+    if( !( ( mode & SYSTEM_THREAD_MODE_DEBUG ) ||
            ( mode & SYSTEM_THREAD_MODE_DEBUG_LOCAL ) ||
            ( mode & SYSTEM_THREAD_MODE_CSR ) ) )
     {
@@ -66,12 +66,12 @@ bool CSystemThread::CreateSystemThreadKernel(
             new CGenSystemInstructionKernelProgram(mode);
         success = pKernelProgram ? true : false;
         ASSERT( success );
-        
+
         // Allocate memory for SSystemThreadKernelOutput.
         if( success )
         {
             ASSERT( pSystemThreadKernelOutput == nullptr );
-            pSystemThreadKernelOutput = new SSystemThreadKernelOutput; 
+            pSystemThreadKernelOutput = new SSystemThreadKernelOutput;
 
             success = ( pSystemThreadKernelOutput != nullptr );
             ASSERT( success );
@@ -79,9 +79,9 @@ bool CSystemThread::CreateSystemThreadKernel(
             if( success )
             {
                 memset(
-                    pSystemThreadKernelOutput, 
-                    0 , 
-                    sizeof( SSystemThreadKernelOutput ) ); 
+                    pSystemThreadKernelOutput,
+                    0 ,
+                    sizeof( SSystemThreadKernelOutput ) );
             }
         }
 
@@ -99,7 +99,7 @@ bool CSystemThread::CreateSystemThreadKernel(
         if (mode & (SYSTEM_THREAD_MODE_DEBUG | SYSTEM_THREAD_MODE_DEBUG_LOCAL))
         pSystemThreadKernelOutput->m_SystemThreadResourceSize = Caps.KernelHwCaps.CsrSizeInMb * 2 * sizeof(MEGABYTE);
 
-        pSystemThreadKernelOutput->m_pKernelProgram = 
+        pSystemThreadKernelOutput->m_pKernelProgram =
             IGC::aligned_malloc( pSystemThreadKernelOutput->m_KernelProgramSize, DQWORD_SIZE );
 
         success = ( pSystemThreadKernelOutput->m_pKernelProgram != nullptr );
@@ -107,13 +107,13 @@ bool CSystemThread::CreateSystemThreadKernel(
         if( success )
         {
             void* pStartAddress = pKernelProgram->GetLinearAddress();
- 
+
             if( !pStartAddress )
             {
                 ASSERT( 0 );
                 success = false;
             }
- 
+
             if( success )
             {
                 memcpy_s(
@@ -131,14 +131,14 @@ bool CSystemThread::CreateSystemThreadKernel(
         pKernelProgram->Delete( pKernelProgram );
         delete pKernelProgram;
     }
-    return success;   
+    return success;
 }
 
 
 void CSystemThread::DeleteSystemThreadKernel(
     USC::SSystemThreadKernelOutput* &pSystemThreadKernelOutput )
 {
-    if (pSystemThreadKernelOutput->m_pKernelProgram && 
+    if (pSystemThreadKernelOutput->m_pKernelProgram &&
         (pSystemThreadKernelOutput->m_KernelProgramSize > 0) )
     {
         IGC::aligned_free(pSystemThreadKernelOutput->m_pKernelProgram);
@@ -184,12 +184,12 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
     const IGC::CPlatform &platform,
     const SYSTEM_THREAD_MODE mode,
     const bool bindlessMode)
-{ 
+{
     llvm::MemoryBuffer* pBuffer = nullptr;
     unsigned char SIPIndex = 0;
     std::map< unsigned char, std::pair<void*, unsigned int> > SIPKernelInfo;
     populateSIPKernelInfo(SIPKernelInfo);
-    
+
     switch( platform.getPlatformInfo().eRenderCoreFamily )
     {
     case IGFX_GEN9_CORE:
@@ -211,7 +211,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
         {
             if ((platform.getPlatformInfo().eProductFamily == IGFX_BROXTON) ||
                 (platform.getPlatformInfo().eProductFamily == IGFX_GEMINILAKE))
-            { 
+            {
                 /*Special SIP for 2x6 from HW team with 64KB offset*/
                 SIPIndex = GEN9_BXT_SIP_CSR;
             }
@@ -229,7 +229,7 @@ CGenSystemInstructionKernelProgram* CGenSystemInstructionKernelProgram::Create(
             SIPIndex = GEN9_SIP_CSR_DEBUG_LOCAL;
         }
         break;
-    }        
+    }
     case IGFX_GEN10_CORE:
     {
         if (bindlessMode)

@@ -44,7 +44,7 @@ struct HW_STATUS
     SKU_FEATURE_TABLE& SkuTable;
     HW_STATUS(SKU_FEATURE_TABLE* pSkuTable) : SkuTable(*pSkuTable)
     {
-        
+
     }
 };
 

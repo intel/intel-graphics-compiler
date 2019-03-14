@@ -321,7 +321,7 @@ public:
         llvm::Value* srcAddressR,
         llvm::Value* src0,
         llvm::Value* src1);
-    
+
     llvm::Value* Create_StatelessAtomic(
         llvm::Value* ptr,
         llvm::Value* data,
@@ -369,8 +369,8 @@ public:
 
     llvm::Value* Create_SyncThreadGroup();
     llvm::Value* Create_MemoryFence(
-        bool commit, 
-        bool flushRWDataCache, 
+        bool commit,
+        bool flushRWDataCache,
         bool flushConstantCache,
         bool flushTextureCache,
         bool flushInstructionCache,
@@ -543,7 +543,7 @@ public:
         llvm::Value* int32_sampler,
         llvm::Value* int32_offsetU,
         llvm::Value* int32_offsetV,
-        llvm::Value* int32_offsetW, 
+        llvm::Value* int32_offsetW,
         bool feedback_enabled = false,
         llvm::Type* returnType = nullptr);
 
@@ -753,7 +753,7 @@ public:
 
     llvm::Value* CreateSetStream(llvm::Value* StreamId, llvm::Value* emitCount);
     llvm::Value* CreateEndPrimitive(llvm::Value* emitCount);
-    
+
     llvm::Value* CreateControlPointId();
     llvm::Value* CreatePrimitiveID();
     llvm::Value* CreateInstanceID();

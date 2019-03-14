@@ -87,7 +87,7 @@ void SetWorkaroundTable(SKU_FEATURE_TABLE* pSkuFeatureTable, CPlatform* platform
     platform->SetSkuTable(*pSkuFeatureTable);
 }
 
-// Function to workaround some API send us the usc SKU structure, convert it to the common 
+// Function to workaround some API send us the usc SKU structure, convert it to the common
 // sku feature structure used by all the driver to not depend on USC structure
 void ConvertSkuTable(const SUscSkuFeatureTable* pUSCSkuFeatureTable, SKU_FEATURE_TABLE& SkuFeatureTable)
 {

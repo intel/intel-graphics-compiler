@@ -407,7 +407,7 @@ public:
 
     bool alignBindlessSampler() const
     {
-        return IGC_IS_FLAG_ENABLED(Use16ByteBindlessSampler) && 
+        return IGC_IS_FLAG_ENABLED(Use16ByteBindlessSampler) &&
             (m_platformInfo.eProductFamily == IGFX_SKYLAKE ||
                 m_platformInfo.eProductFamily == IGFX_KABYLAKE ||
                 m_platformInfo.eProductFamily == IGFX_COFFEELAKE);
