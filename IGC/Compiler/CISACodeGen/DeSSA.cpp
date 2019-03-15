@@ -414,7 +414,7 @@ void DeSSA::MapUnionRegs(MapVector<Value*, Node*> &Map, Value* Val1, Value* Val2
 
 void DeSSA::isolateReg(Value* Val) {
   Node *Node = RegNodeMap[Val];
-  splitNode(Node);
+  Node->parent.setInt(Node->parent.getInt() | Node::kPHIIsolatedFlag);
 }
 
 Value* DeSSA::getOrigRoot(Instruction *PHI) const {
@@ -438,7 +438,6 @@ Value* DeSSA::getPHIRoot(Instruction *PHI) const {
 void DeSSA::isolatePHI(Instruction *PHI) {
   assert(isa<PHINode>(PHI));
   Node *Node = RegNodeMap[PHI];
-  splitNode(Node);
   Node->parent.setInt(Node->parent.getInt() | Node::kPHIIsolatedFlag);
 }
 
@@ -451,53 +450,6 @@ bool DeSSA::isPHIIsolated(Instruction *PHI) const {
   return isIsolated(DestNode);
 }
 
-// Split node ND from its existing congurent class, and the
-// node ND itself becomes a new single-value congruent class.
-void DeSSA::splitNode(Node* ND)
-{
-    Node* N = ND->next;
-    if (N == ND) {
-        // ND is already in a single-value congruent class
-        return;
-    }
-
-    Node* Leader = ND->getLeader();
-
-    // Remove ND from the congruent class
-    Node* P = ND->prev;
-    N->prev = P;
-    P->next = N;
-
-    // ND : a new single-value congruent class
-    ND->parent.setPointer(ND);
-    ND->next = ND;
-    ND->prev = ND;
-    ND->rank = 0;
-
-    // If leader is removed, need to have a new leader. Here,
-    // we do path compression with ND's prev as a new leader.
-    if (Leader == ND) {
-        // isolate the leader. swap ND's color with P's so that the
-        // original congruent class still have the original color
-        // (this is important as Dom traversal assumes that the color
-        // of any congruent class remains unchanged).
-        int t = P->color;
-        P->color = ND->color;
-        ND->color = t;
-
-        // Doing the path compression for the rooted tree of
-        // the existing congruent class after ND (leader) is
-        // removed from the congruent class. P is the new leader.
-        P->parent.setPointer(P);
-        P->rank = (P == N) ? 0 : 1;
-        while (N != P)
-        {
-            N->parent.setPointer(P);
-            N->rank = 0;
-            N = N->next;
-        }
-    }
-}
 
 /// SplitInterferencesForBasicBlock - traverses a basic block, splitting any
 /// interferences found between registers in the same congruence class. It

@@ -203,10 +203,6 @@ class DeSSA : public llvm::FunctionPass {
     /// Is it isolated (single-valued congruent class)
     bool isIsolated(Node* N) const { return (N == N->next); }
 
-    // Split node from its existing congurent class, and
-    // node itself becomes a new single-value congruent class
-    void splitNode(Node* ND);
-
     /// Traverses a basic block, splitting any interferences found between
     /// registers in the same congruence class. It takes two DenseMaps as
     /// arguments that it also updates: CurrentDominatingParent, which maps
