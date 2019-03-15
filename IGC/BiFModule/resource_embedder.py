@@ -76,7 +76,7 @@ try:
 
 
     try:
-        outFile = open(sys.argv[2], 'wb')
+        outFile = open(sys.argv[2], 'w')
     except EnvironmentError as ex:
         sys.stderr.write('ERROR: Cannot create/open output file "{0}".\n       {1}.\n'.format(sys.argv[2], ex.strerror))
         exit(1)
@@ -103,6 +103,9 @@ try:
 
 except Exception as ex:
     sys.stderr.write('ERROR: Unknown error.\n       {0}.\n'.format(repr(ex)))
+    for openedFile in openedFiles:
+        openedFile.close()
+    exit(1)
 finally:
     for openedFile in openedFiles:
         openedFile.close()
