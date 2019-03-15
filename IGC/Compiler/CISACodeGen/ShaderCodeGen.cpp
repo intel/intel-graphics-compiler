@@ -217,6 +217,19 @@ inline void AddAnalysisPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     mpm.add(new PushAnalysis());
     mpm.add(CreateSampleCmpToDiscardPass());
 
+    bool needDPEmu = (IGC_IS_FLAG_ENABLED(ForceDPEmulation) ||
+        (ctx.m_DriverInfo.NeedFP64() && !ctx.platform.supportFP64()));
+    // When needDPEmu is true, enable Emu64Ops as well for now until
+    // DPEmu is able to get rid of all 64bit integer ops fully.
+    if((needDPEmu && IGC_IS_FLAG_ENABLED(DPEmuNeedI64Emu)) ||
+        (ctx.m_DriverInfo.Enable64BitEmu() &&
+        (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
+            (IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform) &&
+                ctx.platform.need64BitEmulation())))) {
+        mpm.add(new BreakConstantExpr());
+        mpm.add(createEmu64OpsPass());
+    }
+
     if (!isOptDisabled)
     {
         mpm.add(llvm::createDeadCodeEliminationPass());
@@ -580,17 +593,6 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     {
         mpm.add(createBreakCriticalEdgesPass());
         mpm.add(new ConstantCoalescing());
-    }
-
-    // When needDPEmu is true, enable Emu64Ops as well for now until
-    // DPEmu is able to get rid of all 64bit integer ops fully.
-    if ((needDPEmu && IGC_IS_FLAG_ENABLED(DPEmuNeedI64Emu)) ||
-        (ctx.m_DriverInfo.Enable64BitEmu() &&
-         (IGC_GET_FLAG_VALUE(Enable64BitEmulation) ||
-          (IGC_GET_FLAG_VALUE(Enable64BitEmulationOnSelectedPlatform) &&
-           ctx.platform.need64BitEmulation())))) {
-        mpm.add(new BreakConstantExpr());
-        mpm.add(createEmu64OpsPass());
     }
 
     mpm.add(IGCLLVM::createInstSimplifyLegacyPass());
