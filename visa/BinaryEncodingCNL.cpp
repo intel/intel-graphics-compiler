@@ -136,7 +136,7 @@ static inline int GetOperandSrcHDLImmType(G4_Type srcType)
     int type = G9HDL::SRCIMMTYPE_UD;
     if (getGenxPlatform() == GENX_CNL)
     {
-        switch (srcType) { 
+        switch (srcType) {
         case Type_UD: type = G9HDL::SRCIMMTYPE_UD; break;
         case Type_D:  type = G9HDL::SRCIMMTYPE_D;  break;
         case Type_UW: type = G9HDL::SRCIMMTYPE_UW; break;
@@ -154,7 +154,7 @@ static inline int GetOperandSrcHDLImmType(G4_Type srcType)
     }
     else
     {
-        switch (srcType) { 
+        switch (srcType) {
         case Type_UD: type = G11HDL::SRCIMMTYPE_UD; break;
         case Type_D:  type = G11HDL::SRCIMMTYPE_D;  break;
         case Type_UW: type = G11HDL::SRCIMMTYPE_UW; break;
@@ -864,7 +864,7 @@ inline void BinaryEncodingCNL::EncodeOneSrcInst(G4_INST* inst, G9HDL::EU_INSTRUC
     else
     {
 		SrcBuilder<G9HDL::EU_INSTRUCTION_SOURCES_REG,0>::EncodeEuInstructionSourcesReg(
-			inst, src0, oneSrc. GetRegsource() //by reference 
+			inst, src0, oneSrc. GetRegsource() //by reference
 			);
     }
 
@@ -2237,13 +2237,13 @@ BinaryEncodingCNL::Status BinaryEncodingCNL::DoAllEncodingCALL(G4_INST* inst)
         }
     }
     else
-    { 
+    {
         //Needed for correctness
         oneSrc.SetSrc1Regfile(G9HDL::REGFILE_IMM);
         oneSrc.SetSrc1Srctype(GetOperandSrcHDLImmType(Type_D));
     }
 
-   
+
 
 
 	bin->DWords[0] = oneSrc.GetDWORD(0);
@@ -2483,7 +2483,7 @@ void BinaryEncodingCNL::DoAll()
         BDWCompactSubRegTable.AddIndex1(IVBCompactSubRegTable[i] & 0x1F, i);
         BDWCompactSubRegTable.AddIndex2(IVBCompactSubRegTable[i] & 0x3FF, i);
         if (getGenxPlatform() > GENX_CNL)
-        {  
+        {
             BDWCompactDataTypeTableStr.AddIndex(ICLCompactDataTypeTable[i], i);
         }
         else
@@ -2538,6 +2538,8 @@ void BinaryEncodingCNL::DoAll()
                 if (doCompaction())
                 {
                     inst->getBinInst()->SetMustCompactFlag(false);
+                    inst->getBinInst()->SetDontCompactFlag(inst->isNoCompactedInst());
+
                     /**
                      * handling switch/case for gen6: jump table should not be compacted
                      */

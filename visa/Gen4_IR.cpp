@@ -79,6 +79,7 @@ G4_InstOptInfo InstOptInfo[] =
     {InstOpt_EOT, "EOT"},
     {InstOpt_AccWrCtrl, "AccWrEn"},
     {InstOpt_Compacted, "Compacted"},
+    {InstOpt_NoCompact, "NoCompact" },
     {InstOpt_NoSrcDepSet, "NoSrcDepSet"},
     {InstOpt_NoPreempt, "NoPreempt"},
     {InstOpt_END, "END"}
@@ -510,7 +511,7 @@ G4_INST::G4_INST(const IR_Builder& irb,
     G4_Operand* s0,
     G4_Operand* s1,
     unsigned int opt) :
-    op(o), dst(d), predicate(prd), mod(m), option(opt), 
+    op(o), dst(d), predicate(prd), mod(m), option(opt),
     local_id(0),
     srcCISAoff(-1),
     sat(s),
@@ -553,7 +554,7 @@ G4_INST::G4_INST(const IR_Builder& irb,
     G4_Operand* s1,
     G4_Operand* s2,
     unsigned int opt) :
-    op(o), dst(d), predicate(prd), mod(m), option(opt), 
+    op(o), dst(d), predicate(prd), mod(m), option(opt),
     local_id(0),
     srcCISAoff(-1),
     sat(s),
@@ -1951,7 +1952,7 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
 
     // FIXME: to add specific checks for other instructions.
     G4_opcode useInst_op = useInst->opcode();
-    
+
     if (useInst_op == G4_madm ||
         (useInst->isMath() && (useInst->asMathInst()->getMathCtrl() == MATH_INVM || useInst->asMathInst()->getMathCtrl() == MATH_RSQRTM)))
     {

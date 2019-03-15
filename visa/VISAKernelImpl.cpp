@@ -261,6 +261,10 @@ void VISAKernelImpl::expandIndirectCallWithRegTarget()
                     m_builder->createImm(32, add_inst->getSrc(0)->getType()),
                     InstOpt_WriteEnable);
 
+                // Set no compated to make sure the ip calculation is correct
+                add_inst->setNoCompacted();
+                add_inst2->setNoCompacted();
+
                 // then update fcall's src0 to add's dst
                 fcall->setSrc(m_builder->Create_Src_Opnd_From_Dcl(
                     add_inst->getDst()->getTopDcl(), m_builder->getRegionScalar()), 0);

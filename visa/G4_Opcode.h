@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define G4_DEFAULT_GRF_NUM  128
 
 #define UNDEFINED_VAL   0xFFFFFFFF
-#define UNDEFINED_SHORT 0x8000    
+#define UNDEFINED_SHORT 0x8000
 #define UNDEFINED_EXEC_SIZE 0xFF
 
 #define G4_BSIZE 1            // 1 byte 8 bits
@@ -65,7 +65,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define G4_MAX_ADDR_IMM        511
 #define G4_MIN_ADDR_IMM        -512
 
-#define IVB_MSG_TYPE_OFFSET    14 
+#define IVB_MSG_TYPE_OFFSET    14
 #define MSG_BLOCK_SIZE_OFFSET   8
 #define MSG_BLOCK_NUMBER_OFFSET 10
 #define MAX_SEND_RESP_LEN    8
@@ -80,7 +80,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define STRINGIFY(X) #X,
 
 /*
- * For Gen6, only the following instructions can have 
+ * For Gen6, only the following instructions can have
  * interger sources and float destination:
  * MOV, ADD, MUL, MAC, MAD, LINE
  */
@@ -147,16 +147,16 @@ enum G4_Align
     Odd = 3,             // old align
     Even2GRF = 4,        // 2GRF even align 1100
     Odd2GRF = 5,          // 2GRF old align, 0011
-    Align_NUM = 6        // Num of alignment    
+    Align_NUM = 6        // Num of alignment
 };
 
 // To support sub register alignment
 enum G4_SubReg_Align
 {
-    Any = 1,                
-    Even_Word = 2,            
+    Any = 1,
+    Even_Word = 2,
     Four_Word = 4,
-    Eight_Word = 8,            
+    Eight_Word = 8,
     Sixteen_Word = 16,        // one register align
 };
 
@@ -167,7 +167,7 @@ enum G4_SrcModifier
     Mod_Abs,            // (abs), absolute value
     Mod_Minus_Abs,        // -(abs)
     Mod_Not,            // invert (for BDW logic instruction)
-    Mod_src_undef        // undefined        
+    Mod_src_undef        // undefined
 };
 
 enum G4_CondModifier
@@ -192,7 +192,7 @@ enum G4_PredState
     PredState_Minus,    // -
     PredState_undef     // undefined
 };
-    
+
 enum G4_RegAccess {
     Direct,
     IndirGRF,
@@ -202,32 +202,32 @@ enum G4_RegAccess {
 // register and Imm data type
 // Note: Check G4_Type_ByteFootprint if this is modified
 //
-enum G4_Type 
+enum G4_Type
 {
-    Type_UD = 0,// unsigned double word integer 
+    Type_UD = 0,// unsigned double word integer
     Type_D,        // signed double word integer
-    Type_UW,    // unsigned word integer    
-    Type_W,        // signed word integer        
+    Type_UW,    // unsigned word integer
+    Type_W,        // signed word integer
     Type_UB,    // unsigned byte integer
-    Type_B,        // signed byte integer        
-    Type_F,        // signed single precision    
-    Type_VF,    // 32-bit restricted Vector Float    
+    Type_B,        // signed byte integer
+    Type_F,        // signed single precision
+    Type_VF,    // 32-bit restricted Vector Float
     Type_V,     // 32-bit halfbyte integer Vector
     Type_DF,
     Type_BOOL,
     Type_UV,
     Type_Q,     // 64-bit signed integer
-    Type_UQ,    // 64-bit unsigned integer 
+    Type_UQ,    // 64-bit unsigned integer
     Type_HF,    // half float
     Type_NF,    // native float (only used by plane macro)
     Type_UNDEF
 };
 
-typedef struct 
+typedef struct
 {
     G4_Type type;
     unsigned int bitSize;
-    unsigned int byteSize;    
+    unsigned int byteSize;
     unsigned short footprint; // bit pattern that corresponds to type's byte usage
     const char* str; //constant string representation of the type
 } G4_Type_Info;
@@ -248,50 +248,51 @@ enum G4_InstType
     InstTypeReserved        // reserved (unused)
 };
 
-enum G4_RegFileKind 
+enum G4_RegFileKind
 {
     G4_UndefinedRF = 0x0,
     G4_GRF        = 0x1,            // general register file
     G4_ADDRESS = 0x2,            // architectural register file
-    G4_INPUT    = 0x4,            // input payload register 
+    G4_INPUT    = 0x4,            // input payload register
     G4_FLAG        = 0x20,
 };
 
-// 
+//
 // multiple options can coexist so we define one bit for each option
 //
 
 enum G4_InstOption
 {
-    InstOpt_NoOpt        = 0x0,
-    InstOpt_Align16        = 0x00000002,
+    InstOpt_NoOpt       = 0x0,
+    InstOpt_Align16     = 0x00000002,
     InstOpt_M0          = 0x00100000,
     InstOpt_M4          = 0x00200000,
     InstOpt_M8          = 0x00400000,
-    InstOpt_M12          = 0x00800000,
-    InstOpt_M16          = 0x01000000,
-    InstOpt_M20          = 0x02000000,
-    InstOpt_M24          = 0x04000000,
-    InstOpt_M28          = 0x08000000,
-    InstOpt_Switch        = 0x00000010,
-    InstOpt_Atomic        = 0x00000020,
-    InstOpt_NoDDChk        = 0x00000040,
-    InstOpt_NoDDClr        = 0x00000080,
-    InstOpt_WriteEnable    = 0x00000100,
-    
-    InstOpt_BreakPoint    = 0x00000200,
-    InstOpt_EOT            = 0x00000400,
-    InstOpt_AccWrCtrl   = 0x00000800,
-    InstOpt_Compacted = 0x00002000,
-    InstOpt_NoSrcDepSet = 0x00004000,
-    InstOpt_NoPreempt = 0x00008000,
+    InstOpt_M12         = 0x00800000,
+    InstOpt_M16         = 0x01000000,
+    InstOpt_M20         = 0x02000000,
+    InstOpt_M24         = 0x04000000,
+    InstOpt_M28         = 0x08000000,
+    InstOpt_Switch      = 0x00000010,
+    InstOpt_Atomic      = 0x00000020,
+    InstOpt_NoDDChk     = 0x00000040,
+    InstOpt_NoDDClr     = 0x00000080,
+    InstOpt_WriteEnable = 0x00000100,
 
-    InstOpt_END            = 0xFFFFFFFF
+    InstOpt_BreakPoint  = 0x00000200,
+    InstOpt_EOT         = 0x00000400,
+    InstOpt_AccWrCtrl   = 0x00000800,
+    InstOpt_Compacted   = 0x00002000,
+    InstOpt_NoCompact   = 0x00001000,
+    InstOpt_NoSrcDepSet = 0x00004000,
+    InstOpt_NoPreempt   = 0x00008000,
+
+    InstOpt_END         = 0xFFFFFFFF
 };
 
 
 #define InstOpt_QuarterMasks \
-    (InstOpt_M0 | InstOpt_M4 | InstOpt_M8 | InstOpt_M12 | InstOpt_M16 | InstOpt_M20 | InstOpt_M24 | InstOpt_M28) 
+    (InstOpt_M0 | InstOpt_M4 | InstOpt_M8 | InstOpt_M12 | InstOpt_M16 | InstOpt_M20 | InstOpt_M24 | InstOpt_M28)
 #define InstOpt_Masks (InstOpt_QuarterMasks | InstOpt_WriteEnable)
 
 typedef struct _G4_InstOptInfo
@@ -389,7 +390,7 @@ enum G4_ArchRegKind {
     AREG_F1,          // flag register
     AREG_TM0,         // timestamp register
     AREG_TDR0,        // TDR register
-    AREG_SP,          // SP register  
+    AREG_SP,          // SP register
     AREG_LAST
 };
 

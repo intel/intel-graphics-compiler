@@ -374,6 +374,10 @@ private:
                 options.add(iga::InstOpt::NOSRCDEPSET);
             }
         }
+        if (inst->isNoCompactedInst())
+        {
+            options.add(iga::InstOpt::NOCOMPACT);
+        }
 
         return options;
     }

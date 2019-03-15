@@ -395,19 +395,19 @@ inline uint32_t GetOperandSrcType(G4_Operand *src)
             type = regType;
             break;
         case Type_DF:
-            type = SRC_TYPE_DF;  
+            type = SRC_TYPE_DF;
             break;
         case Type_F:
-            type = SRC_TYPE_F;   
+            type = SRC_TYPE_F;
             break;
         case Type_UQ:
-            type = SRC_TYPE_UQ;  
+            type = SRC_TYPE_UQ;
             break;
         case Type_Q:
-            type = SRC_TYPE_Q;   
+            type = SRC_TYPE_Q;
             break;
         case Type_HF:
-            type = SRC_TYPE_HF;   
+            type = SRC_TYPE_HF;
             break;
         default:
             type = SRC_TYPE_UNDEF;
@@ -419,7 +419,7 @@ inline uint32_t GetOperandSrcType(G4_Operand *src)
 inline uint32_t GetOperandSrcImmType(G4_Operand *src)
 {
     uint32_t type;
-    switch (src->getType()) {  
+    switch (src->getType()) {
         case Type_UD:
         case Type_D:
         case Type_UW:
@@ -427,25 +427,25 @@ inline uint32_t GetOperandSrcImmType(G4_Operand *src)
             type = src->getType();
             break;
         case Type_UV:
-            type = SRC_IMM_TYPE_UV;  
+            type = SRC_IMM_TYPE_UV;
             break;
         case Type_VF:
-            type = SRC_IMM_TYPE_VF;  
+            type = SRC_IMM_TYPE_VF;
             break;
         case Type_V:
-            type = SRC_IMM_TYPE_V;   
+            type = SRC_IMM_TYPE_V;
             break;
         case Type_F:
-            type = SRC_IMM_TYPE_F;   
+            type = SRC_IMM_TYPE_F;
             break;
         case Type_UQ:
-            type = SRC_IMM_TYPE_UQ;  
+            type = SRC_IMM_TYPE_UQ;
             break;
         case Type_Q:
-            type = SRC_IMM_TYPE_Q;   
+            type = SRC_IMM_TYPE_Q;
             break;
         case Type_DF:
-            type = SRC_IMM_TYPE_DF;  
+            type = SRC_IMM_TYPE_DF;
             break;
         case Type_HF:
             type = SRC_IMM_TYPE_HF;
@@ -616,20 +616,20 @@ inline void SetOperandDstType(BinInst *mybin, G4_DstRegRegion *dst)
         case Type_UW:
         case Type_W:
         case Type_UB:
-        case Type_B:  
+        case Type_B:
             SetDstType(mybin, regType);
             break;
         case Type_DF:
-            SetDstType(mybin, DST_TYPE_DF);  
+            SetDstType(mybin, DST_TYPE_DF);
             break;
         case Type_F:
-            SetDstType(mybin, DST_TYPE_F);  
+            SetDstType(mybin, DST_TYPE_F);
             break;
        case Type_UQ:
-            SetDstType(mybin, DST_TYPE_UQ); 
+            SetDstType(mybin, DST_TYPE_UQ);
             break;
         case Type_Q:
-            SetDstType(mybin, DST_TYPE_Q);  
+            SetDstType(mybin, DST_TYPE_Q);
             break;
         case Type_HF:
             SetDstType(mybin, DST_TYPE_HF);
@@ -2911,7 +2911,9 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
 
                 if (doCompaction())
                 {
+                    // do not compact the instruction that mark as NoCompact
                     inst->getBinInst()->SetMustCompactFlag(false);
+                    inst->getBinInst()->SetDontCompactFlag(inst->isNoCompactedInst());
 
                     /**
                      * handling switch/case for gen6: jump table should not be compacted
@@ -3190,7 +3192,7 @@ bool BinaryEncoding::EncodeConditionalBranches(G4_INST *inst,
     }
 
     if ( op == G4_call && inst->getSrc(0))
-    { 
+    {
 
         if (inst->getSrc(0)->isLabel())
         {

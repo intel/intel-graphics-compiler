@@ -689,7 +689,7 @@ protected:
     // during optimization, an inst may become redundant and be marked dead
     unsigned short dead : 1;
     unsigned short evenlySplitInst : 1;
-    unsigned char    execSize; 
+    unsigned char    execSize;
 
     BinInst *bin;
 
@@ -701,7 +701,7 @@ protected:
 
 
 public:
-    G4_INST(const IR_Builder& builder, 
+    G4_INST(const IR_Builder& builder,
         G4_Predicate* prd,
         G4_opcode o,
         G4_CondMod* m,
@@ -822,7 +822,7 @@ public:
         MUST_BE_TRUE(isIntrinsic(), ERROR_UNKNOWN);
         return (G4_InstIntrinsic*) this;
     }
-    
+
     G4_InstSend* asSendInst()
     {
         if (!isSend())
@@ -864,19 +864,19 @@ public:
         if (location != nullptr)
             location->setLineNo(i);
     }
-    int getLineNo() { 
+    int getLineNo() {
         if (location == nullptr)
             return 0;
-        return location->getLineNo(); 
+        return location->getLineNo();
     }
     void setSrcFilename(char* filename) {
         if (location != nullptr)
             location->setSrcFilename(filename);
     }
-    char* getSrcFilename() { 
+    char* getSrcFilename() {
         if (location == nullptr)
             return nullptr;
-        return location->getSrcFilename(); 
+        return location->getSrcFilename();
     }
     void setDest(G4_DstRegRegion* opnd);
     void setExecSize(unsigned char s);
@@ -971,8 +971,10 @@ public:
         return isAccDstInst() || implAccDst != NULL;
     }
 
-    void setCompacted() { option = option | InstOpt_Compacted; }
-    bool isCompactedInst() { return (option & InstOpt_Compacted)  ? true : false; }
+    void setCompacted()      { option = option | InstOpt_Compacted; }
+    void setNoCompacted()    { option = option | InstOpt_NoCompact; }
+    bool isCompactedInst()   { return (option & InstOpt_Compacted) ? true : false; }
+    bool isNoCompactedInst() { return (option & InstOpt_NoCompact) ? true : false; }
 
     void setLocalId(int32_t lid)  { local_id = lid; }
     int32_t getLocalId() const { return local_id; }
@@ -1251,8 +1253,8 @@ class G4_InstCF : public G4_INST
     //           dst contains the ret IP and call mask.
     // -- ret, fret: src0 contains the ret IP and call mask
     // Note that for call/ret the retIP variable is not created till RA
-    G4_Label*       jip; // GT JIP. 
-    G4_Label*         uip; // GT UIP. 
+    G4_Label*       jip; // GT JIP.
+    G4_Label*         uip; // GT UIP.
     // list of labels that this instruction could jump to.  Only used for switch jmps
     std::list<G4_Label*> indirectJmpTarget;
 
@@ -1367,7 +1369,7 @@ public:
     }
 
     // for direct call, this is null till after the compilation units are stitched together
-    // for indirect call, this is src0 
+    // for indirect call, this is src0
     G4_Operand* getCalleeAddress() const
     {
         if (op == G4_pseudo_fcall)
@@ -1413,9 +1415,9 @@ public:
 };
 
 class G4_InstSend : public G4_INST
-{   
+{
     G4_SendMsgDescriptor* msgDesc;
-    
+
 public:
 
     // send (one source)
@@ -1424,7 +1426,7 @@ public:
     G4_InstSend(
         const IR_Builder& builder,
         G4_Predicate* prd,
-        G4_opcode o,    
+        G4_opcode o,
         unsigned char size,
         G4_DstRegRegion* dst,
         G4_SrcRegRegion* payload,
@@ -1499,13 +1501,13 @@ public:
         unsigned FC = MD->getFuncCtrl();
 
         // Memory Fence
-        if (sfid == SFID::DP_DC && ((FC >> 14) & 0x1F) == DC_MEMORY_FENCE) 
+        if (sfid == SFID::DP_DC && ((FC >> 14) & 0x1F) == DC_MEMORY_FENCE)
         {
             return true;
         }
 
         // Sampler cache flush
-        if (sfid == SFID::SAMPLER && ((FC >> 12) & 0x1F) == 0x1F) 
+        if (sfid == SFID::SAMPLER && ((FC >> 12) & 0x1F) == 0x1F)
         {
             return true;
         }
@@ -1876,24 +1878,24 @@ class G4_Declare
     uint16_t refInSend : 1;
 
     unsigned int   decl_id;     // global decl id for this builder
- 
+
     uint32_t numElements;
     unsigned int numFlagElements;
- 
+
     // byte offset of this declare from the base declare.  For top-level declares this value is 0
     int offsetFromBase;
 
     // if set to nonzero, indicates the declare is only used by subroutine "scopeID".
     // it is used to prevent a subroutin-local declare from escaping its subroutine when doing liveness
-    unsigned scopeID; 
-                        
+    unsigned scopeID;
+
     // For GRFs, store byte offset of allocated GRF
     unsigned int GRFBaseOffset;
 
     // fields that are only ever referenced by RA and spill code
     // ToDo: they should be moved out of G4_Declare and stored as maps in RA/spill
     G4_Declare*     spillDCL;  // if an addr/flag var is spilled, SpillDCL is the location (GRF) holding spilled value
-    
+
     G4_Declare* addrTakenSpillFillDcl; // dcl to use for address taken spill/fill temp
 
     // this should only be called by builder
@@ -2301,19 +2303,19 @@ public:
         return reinterpret_cast<G4_AddrExp*>(this);
     }
 
-    G4_DstRegRegion* asDstRegRegion() 
-    { 
+    G4_DstRegRegion* asDstRegRegion()
+    {
 #ifdef _DEBUG
         if (!isDstRegRegion())
         {
             return nullptr;
         }
 #endif
-        return reinterpret_cast<G4_DstRegRegion*>(this); 
+        return reinterpret_cast<G4_DstRegRegion*>(this);
     }
 
-    G4_SrcRegRegion* asSrcRegRegion() 
-    { 
+    G4_SrcRegRegion* asSrcRegRegion()
+    {
 #ifdef _DEBUG
         if (!isSrcRegRegion())
         {
@@ -3545,7 +3547,7 @@ class G4_CondMod final : public G4_Operand
         {
             top_dcl = getBase()->asRegVar()->getDeclare();
 
-            if (getBase()->asRegVar()->getPhyReg()) 
+            if (getBase()->asRegVar()->getPhyReg())
             {
                 left_bound = off * 16;
                 MUST_BE_TRUE(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
@@ -3572,11 +3574,11 @@ public:
         MUST_BE_TRUE(getBase()->isAreg(), ERROR_INTERNAL_ARGUMENT);
         MUST_BE_TRUE(getBase()->asRegVar()->getPhyReg(), "getRegOff is called for non-PhyReg");
 
-        if (getBase()->asRegVar()->getPhyReg()->asAreg()->getArchRegType() == AREG_F0) 
+        if (getBase()->asRegVar()->getPhyReg()->asAreg()->getArchRegType() == AREG_F0)
         {
             return 0;
         }
-        else 
+        else
         {
             return 1;
         }
