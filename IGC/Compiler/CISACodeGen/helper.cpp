@@ -249,7 +249,7 @@ llvm::StoreInst* cloneStore(llvm::StoreInst *Orig, llvm::Value *Val, llvm::Value
 // Create a ldraw from a load instruction
 Value* CreateLoadRawIntrinsic(LoadInst *inst, Instruction* bufPtr, Value *offsetVal)
 {
-	Module* module = inst->getParent()->getParent()->getParent();
+    Module* module = inst->getParent()->getParent()->getParent();
     Function* func = nullptr;
     IRBuilder<> builder(inst);
 
@@ -258,56 +258,56 @@ Value* CreateLoadRawIntrinsic(LoadInst *inst, Instruction* bufPtr, Value *offset
     tys[1] = bufPtr->getType();
     func = GenISAIntrinsic::getDeclaration(module, inst->getType()->isVectorTy() ? llvm::GenISAIntrinsic::GenISA_ldrawvector_indexed : llvm::GenISAIntrinsic::GenISA_ldraw_indexed, tys);
 
-	unsigned alignment = (inst->getType()->getScalarSizeInBits() / 8);
-	if (inst->getAlignment() > 0)
-	{
-		alignment = inst->getAlignment();
-	}
+    unsigned alignment = (inst->getType()->getScalarSizeInBits() / 8);
+    if (inst->getAlignment() > 0)
+    {
+        alignment = inst->getAlignment();
+    }
 
-	Value* attr[] =
-	{
-		bufPtr,
-		offsetVal,
-		builder.getInt32(alignment)
-	};
-	Value* ld = builder.CreateCall(func, attr);
-	assert(ld->getType() == inst->getType());
-	return ld;
+    Value* attr[] =
+    {
+        bufPtr,
+        offsetVal,
+        builder.getInt32(alignment)
+    };
+    Value* ld = builder.CreateCall(func, attr);
+    assert(ld->getType() == inst->getType());
+    return ld;
 }
 
 // Creates a storeraw from a store instruction
 Value* CreateStoreRawIntrinsic(StoreInst *inst, Instruction* bufPtr, Value* offsetVal)
 {
-	Module* module = inst->getParent()->getParent()->getParent();
-	Function* func = nullptr;
-	IRBuilder<> builder(inst);
-	Value *storeVal = inst->getValueOperand();
-	if (storeVal->getType()->isVectorTy())
-	{
-		llvm::Type* tys[2];
-		tys[0] = bufPtr->getType();
-		tys[1] = inst->getValueOperand()->getType();
-		func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_storerawvector_indexed, tys);
-	}
-	else
-	{
-		llvm::Type* dataType = storeVal->getType();
-		assert(dataType->getPrimitiveSizeInBits() == 16 || dataType->getPrimitiveSizeInBits() == 32);
+    Module* module = inst->getParent()->getParent()->getParent();
+    Function* func = nullptr;
+    IRBuilder<> builder(inst);
+    Value *storeVal = inst->getValueOperand();
+    if (storeVal->getType()->isVectorTy())
+    {
+        llvm::Type* tys[2];
+        tys[0] = bufPtr->getType();
+        tys[1] = inst->getValueOperand()->getType();
+        func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_storerawvector_indexed, tys);
+    }
+    else
+    {
+        llvm::Type* dataType = storeVal->getType();
+        assert(dataType->getPrimitiveSizeInBits() == 16 || dataType->getPrimitiveSizeInBits() == 32);
 
-		llvm::Type* types[2] = {
-			bufPtr->getType(),
-			storeVal->getType() };
+        llvm::Type* types[2] = {
+            bufPtr->getType(),
+            storeVal->getType() };
 
-		func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_storeraw_indexed, types);
-	}
-	Value* attr[] =
-	{
-		bufPtr,
-		offsetVal,
-		storeVal
-	};
-	Value* st = builder.CreateCall(func, attr);
-	return st;
+        func = GenISAIntrinsic::getDeclaration(module, llvm::GenISAIntrinsic::GenISA_storeraw_indexed, types);
+    }
+    Value* attr[] =
+    {
+        bufPtr,
+        offsetVal,
+        storeVal
+    };
+    Value* st = builder.CreateCall(func, attr);
+    return st;
 }
 
 ///
@@ -363,34 +363,34 @@ Value* TracePointerSource(Value* resourcePtr, bool hasBranching, bool fillList,
             if (visitedPHIs.count(inst) != 0)
             { 
                 // stop if we've seen this phi node before
-				return baseValue;
+                return baseValue;
             }
             visitedPHIs.insert(inst);
             for(unsigned int i = 0; i < inst->getNumIncomingValues(); ++i)
             {
                 // All phi paths must be trace-able and trace back to the same source
                 Value* phiVal = inst->getIncomingValue(i);
-				std::vector<Value*> splitList;
+                std::vector<Value*> splitList;
                 Value* phiSrcPtr = TracePointerSource(phiVal, true, fillList, splitList, visitedPHIs);
                 if (phiSrcPtr == nullptr)
                 {
-					// Incoming value not trace-able, bail out.
+                    // Incoming value not trace-able, bail out.
                     return nullptr;
                 }
-				else if (isa<PHINode>(phiSrcPtr) && phiSrcPtr == baseValue)
-				{
-					// Found a loop in one of the phi paths. We can still trace as long as all the other paths match
-					continue;
-				}
-				else if (srcPtr == nullptr)
-				{
-					// Found a path to the source pointer. We only save the instructions used in this path
-					srcPtr = phiSrcPtr;
-					instList.insert(instList.end(), splitList.begin(), splitList.end());
-				}
+                else if (isa<PHINode>(phiSrcPtr) && phiSrcPtr == baseValue)
+                {
+                    // Found a loop in one of the phi paths. We can still trace as long as all the other paths match
+                    continue;
+                }
+                else if (srcPtr == nullptr)
+                {
+                    // Found a path to the source pointer. We only save the instructions used in this path
+                    srcPtr = phiSrcPtr;
+                    instList.insert(instList.end(), splitList.begin(), splitList.end());
+                }
                 else if (srcPtr != phiSrcPtr)
                 {
-					// The source pointers have diverged. Bail out.
+                    // The source pointers have diverged. Bail out.
                     return nullptr;
                 }
             }
@@ -482,7 +482,7 @@ static BufferAccessType getDefaultAccessType(BufferType bufTy)
 bool GetResourcePointerInfo(Value* srcPtr, unsigned &resID, IGC::BufferType &resTy, BufferAccessType& accessTy)
 {
     accessTy = BufferAccessType::ACCESS_READWRITE;
-	if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(srcPtr))
+    if (GenIntrinsicInst* inst = dyn_cast<GenIntrinsicInst>(srcPtr))
     {
         // For bindless pointers with encoded metadata
         if(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_RuntimeValue)
@@ -505,16 +505,16 @@ bool GetResourcePointerInfo(Value* srcPtr, unsigned &resID, IGC::BufferType &res
                 }
             }
         }
-		// For GetBufferPtr instructions with buffer info in the operands
+        // For GetBufferPtr instructions with buffer info in the operands
         else if(inst->getIntrinsicID() == GenISAIntrinsic::GenISA_GetBufferPtr)
-		{
+        {
             Value *bufIdV = inst->getOperand(0);
             Value *bufTyV = inst->getOperand(1);
             if (isa<ConstantInt>(bufIdV) && isa<ConstantInt>(bufTyV))
             {
                 resID = (unsigned)(cast<ConstantInt>(bufIdV)->getZExtValue());
                 resTy = (IGC::BufferType)(cast<ConstantInt>(bufTyV)->getZExtValue());
-				accessTy = getDefaultAccessType(resTy);
+                accessTy = getDefaultAccessType(resTy);
                 return true;
             }
         }
@@ -1298,27 +1298,27 @@ bool DSDualPatchEnabled(class CodeGenContext* ctx)
 
 Function* getUniqueEntryFunc(const IGCMD::MetaDataUtils *pM)
 {
-	Function *entryFunc = nullptr;
-	for (auto i = pM->begin_FunctionsInfo(), e = pM->end_FunctionsInfo(); i != e; ++i)
-	{
-		IGCMD::FunctionInfoMetaDataHandle Info = i->second;
-		if (Info->getType() != IGCMD::FunctionTypeEnum::EntryFunctionType)
-		{
-			continue;
-		}
+    Function *entryFunc = nullptr;
+    for (auto i = pM->begin_FunctionsInfo(), e = pM->end_FunctionsInfo(); i != e; ++i)
+    {
+        IGCMD::FunctionInfoMetaDataHandle Info = i->second;
+        if (Info->getType() != IGCMD::FunctionTypeEnum::EntryFunctionType)
+        {
+            continue;
+        }
 
-		const Function *F = i->first;
-		if (!entryFunc)
-		{
-			entryFunc = const_cast<Function*>(F);
-		}
-		else
-		{
-			assert(false && "Not a single entry func!");
-		}
-	}
-	assert(entryFunc && "No entry func!");
-	return entryFunc;
+        const Function *F = i->first;
+        if (!entryFunc)
+        {
+            entryFunc = const_cast<Function*>(F);
+        }
+        else
+        {
+            assert(false && "Not a single entry func!");
+        }
+    }
+    assert(entryFunc && "No entry func!");
+    return entryFunc;
 }
 
 // If true, the codegen will likely not emit instruction for this instruction.
@@ -1378,30 +1378,30 @@ bool isNoOpInst(Instruction* I, CodeGenContext* Ctx)
 //
 //
 bool valueIsPositive(
-	Value* V,
-	const DataLayout *DL,
-	llvm::AssumptionCache *AC,
-	llvm::Instruction *CxtI)
+    Value* V,
+    const DataLayout *DL,
+    llvm::AssumptionCache *AC,
+    llvm::Instruction *CxtI)
 {
 #if LLVM_VERSION_MAJOR == 4
-	bool isKnownNegative = false;
-	bool isKnownPositive = false;
-	llvm::ComputeSignBit(
-		V,
-		isKnownPositive,
-		isKnownNegative,
-		*DL,
-		0,
-		AC,
-		CxtI);
-	return isKnownPositive;
+    bool isKnownNegative = false;
+    bool isKnownPositive = false;
+    llvm::ComputeSignBit(
+        V,
+        isKnownPositive,
+        isKnownNegative,
+        *DL,
+        0,
+        AC,
+        CxtI);
+    return isKnownPositive;
 #elif LLVM_VERSION_MAJOR >= 7
-	return computeKnownBits(
-		V,
-		*DL,
-		0,
-		AC,
-		CxtI).isNonNegative();
+    return computeKnownBits(
+        V,
+        *DL,
+        0,
+        AC,
+        CxtI).isNonNegative();
 #endif
 }
 
@@ -1453,6 +1453,10 @@ bool safeScheduleUp(llvm::BasicBlock *BB, llvm::Value *V, llvm::Instruction *&In
 
     // Skip phi-node as they are eventually defined in other BBs.
     if (llvm::isa<llvm::PHINode>(I))
+        return false;
+    
+    // Skip for side effect instructions
+    if (I->mayHaveSideEffects())
         return false;
 
     // Don't re-schedule instruction again.
