@@ -228,8 +228,7 @@ bool VectorProcess::reLayoutLoadStore(Instruction* Inst)
     {
         Ty = LI->getType();
     }
-    else
-    if (SI)
+    else if (SI)
     {
         Ty = SI->getOperand(0)->getType();
     }

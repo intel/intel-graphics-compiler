@@ -10281,9 +10281,9 @@ void EmitPass::emitPreOrPostFixOpScalar(
         if (isPrefix)
         {
             // For case where we need the prefix shift the source by 1 lane
-            
+
             if (i == 0)
-            { 
+            {
                 // (W) mov (1) result[0] identity
                 m_encoder->Copy(result[i], pIdentityValue);
             }

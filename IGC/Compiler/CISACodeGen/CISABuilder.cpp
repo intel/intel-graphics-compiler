@@ -3515,7 +3515,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
     {
         vbuilder->SetOption(vISA_DumpCompilerStats, true);
     }
- 
+
     if (context->type == ShaderType::OPENCL_SHADER && context->m_floatDenormMode32 == FLOAT_DENORM_RETAIN &&
         context->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
     {
@@ -4799,7 +4799,8 @@ void CEncoder::Gather4ScaledNd(CVariable *dst,
         ISA_GATHER4_SCALED,
         predOpnd,
         GetAluEMask(dst),
-        visaExecSize(m_encoderState.m_simdSize),
+        visaExecSize(offset->IsUniform() ? lanesToSIMDMode(offset->GetNumberElement()) :
+            m_encoderState.m_simdSize),
         ConvertChannelMaskToVisaType(BIT(nd) - 1),
         surfaceOpnd,
         globalOffsetOpnd,
@@ -4811,14 +4812,26 @@ void CEncoder::Gather4Scaled(CVariable *dst,
                        const ResourceDescriptor& resource,
                        CVariable *offset) {
     unsigned nd = dst->GetSize();
-    switch (m_encoderState.m_simdSize) {
-    default: assert(false && "Unknown SIMD size!"); return;
-    case SIMDMode::SIMD8:
-        nd = nd / (SIZE_GRF * 1);
-        break;
-    case SIMDMode::SIMD16:
-        nd = nd / (SIZE_GRF * 2);
-        break;
+    if (dst->IsUniform())
+    {
+        if (nd > SIZE_GRF)
+        {
+            assert(false && "Unknown DstSize!");
+            return;
+        }
+        nd = 1;
+    }
+    else
+    {
+        switch (m_encoderState.m_simdSize) {
+        default: assert(false && "Unknown SIMD size!"); return;
+        case SIMDMode::SIMD8:
+            nd = nd / (SIZE_GRF * 1);
+            break;
+        case SIMDMode::SIMD16:
+            nd = nd / (SIZE_GRF * 2);
+            break;
+        }
     }
     Gather4ScaledNd(dst, resource, offset, nd);
 }
@@ -4827,14 +4840,26 @@ void CEncoder::Scatter4Scaled(CVariable *src,
                         const ResourceDescriptor& resource,
                         CVariable *offset) {
     unsigned nd = src->GetSize();
-    switch (m_encoderState.m_simdSize) {
-    default: assert(false && "Unknown SIMD size!"); return;
-    case SIMDMode::SIMD8:
-        nd = nd / (SIZE_GRF * 1);
-        break;
-    case SIMDMode::SIMD16:
-        nd = nd / (SIZE_GRF * 2);
-        break;
+    if (src->IsUniform())
+    {
+        if (nd > SIZE_GRF)
+        {
+            assert(false && "Unknown SrcSize!");
+            return;
+        }
+        nd = 1;
+    }
+    else
+    {
+        switch (m_encoderState.m_simdSize) {
+        default: assert(false && "Unknown SIMD size!"); return;
+        case SIMDMode::SIMD8:
+            nd = nd / (SIZE_GRF * 1);
+            break;
+        case SIMDMode::SIMD16:
+            nd = nd / (SIZE_GRF * 2);
+            break;
+        }
     }
 
     VISA_StateOpndHandle* surfaceOpnd = GetVISASurfaceOpnd(resource);
@@ -4850,7 +4875,8 @@ void CEncoder::Scatter4Scaled(CVariable *src,
         ISA_SCATTER4_SCALED,
         predOpnd,
         GetAluEMask(src),
-        visaExecSize(m_encoderState.m_simdSize),
+        visaExecSize(offset->IsUniform() ? lanesToSIMDMode(offset->GetNumberElement()) :
+            m_encoderState.m_simdSize),
         ConvertChannelMaskToVisaType(BIT(nd) - 1),
         surfaceOpnd,
         globalOffsetOpnd,
@@ -5332,7 +5358,5 @@ void CEncoder::Lifetime(VISAVarLifetime StartOrEnd, CVariable* dst)
     VISA_VectorOpnd* srcOpnd = GetSourceOperand(dst, noMod);
     V(vKernel->AppendVISALifetime(StartOrEnd, srcOpnd));
 }
-
-
 
 }

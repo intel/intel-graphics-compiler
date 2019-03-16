@@ -112,40 +112,27 @@ DeSSA::DeSSA() : FunctionPass( ID )
 void DeSSA::print(raw_ostream &OS, const Module* ) const
 {
     Banner(OS, "Phi-Var Isolations");
-    DenseMap<Node*, int> LeaderVisited;
     for (auto I = RegNodeMap.begin(),
         E = RegNodeMap.end(); I != E; ++I) {
-        Node* N = I->second;
-        // We don't want to change behavior of DeSSA by invoking
-        // dumping/printing functions. Thus, don't use getLeader()
-        // as it has side-effect (doing path halving).
-        Node* Leader = N->parent.getPointer();
-        while (Leader != Leader->parent.getPointer()) {
-            Leader = Leader->parent.getPointer();
+        Value *VL = I->first;
+        Value *RootV = getRegRoot(VL);
+        if (RootV) {
+            VL->print(IGC::Debug::ods());
+            OS << " : ";
+            RootV->print(IGC::Debug::ods());
         }
-        if (LeaderVisited.count(Leader)) {
-            continue;
-        }
-        LeaderVisited[Leader] = 1;
-        Value *VL;
-        if (isIsolated(N)) {
-            VL = N->value;
+        else {
             OS << "Var isolated : ";
             VL->print(IGC::Debug::ods());
-            OS << "\n";
-        } else {
-            OS << "Leader : ";
-            Leader->value->print(IGC::Debug::ods());
-            OS << "\n";
-            N = Leader->next;
-            while (N != Leader) {
-                VL = N->value;
-                OS << "    ";
+        }
+        PHINode *PHI = dyn_cast<PHINode>(VL);
+        if (PHI) {
+            if (isPHIIsolated(PHI)) {
+                OS << "\nPHI isolated : ";
                 VL->print(IGC::Debug::ods());
-                OS << "\n";
-                N = N->next;
             }
         }
+        OS << "\n";
     }
 }
 
@@ -161,7 +148,7 @@ bool DeSSA::runOnFunction(Function &MF)
   {
     return false;
   }
-  auto pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+  CTX = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   WIA = &getAnalysis<WIAnalysis>();
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
@@ -255,7 +242,7 @@ bool DeSSA::runOnFunction(Function &MF)
         break;
       }
 
-      e_alignment DefAlign = GetPreferredAlignment(PHI, WIA, pCtx);
+      e_alignment DefAlign = GetPreferredAlignment(PHI, WIA, CTX);
       assert(PHI == getInsEltRoot(PHI));
       addReg(PHI, DefAlign);
       PHISrcDefs[&(*I)].push_back(PHI);
@@ -273,7 +260,7 @@ bool DeSSA::runOnFunction(Function &MF)
             PHILoopPreHeaderSrcs.count(OrigSrcVal) > 0 &&
             PHILoopPreHeaderSrcs[OrigSrcVal] >= PHI_SRC_USE_THRESHOLD);
         // add src to the union
-        e_alignment SrcAlign = GetPreferredAlignment(OrigSrcVal, WIA, pCtx);
+        e_alignment SrcAlign = GetPreferredAlignment(OrigSrcVal, WIA, CTX);
         Value *SrcVal = getInsEltRoot(OrigSrcVal);
 
         Instruction *DefMI = dyn_cast<Instruction>(SrcVal);
@@ -301,7 +288,7 @@ bool DeSSA::runOnFunction(Function &MF)
       // isolate complex type that IGC does not handle
       if (PHI->getType()->isStructTy() ||
           PHI->getType()->isArrayTy()) {
-        isolateReg(PHI);
+        isolatePHI(PHI);
       }
     }
   }
@@ -358,7 +345,7 @@ Value* DeSSA::getRegRoot(Value* Val, e_alignment *pAlign) const {
   if (RI == RegNodeMap.end())
     return 0;
   Node *TheNode = RI->second;
-  if (isIsolated(TheNode))
+  if (TheNode->parent.getInt() & Node::kRegisterIsolatedFlag)
     return 0x0;
   Node *TheLeader = TheNode->getLeader();
   if (pAlign)
@@ -372,7 +359,8 @@ int DeSSA::getRootColor(Value* V)
     if (RI == RegNodeMap.end())
         return 0;
     Node *TheNode = RI->second;
-    if (isIsolated(TheNode))
+    if (TheNode->parent.getInt() &
+        (Node::kRegisterIsolatedFlag | Node::kPHIIsolatedFlag))
         return 0;
     Node *TheLeader = TheNode->getLeader();
     return TheLeader->color;
@@ -414,7 +402,7 @@ void DeSSA::MapUnionRegs(MapVector<Value*, Node*> &Map, Value* Val1, Value* Val2
 
 void DeSSA::isolateReg(Value* Val) {
   Node *Node = RegNodeMap[Val];
-  Node->parent.setInt(Node->parent.getInt() | Node::kPHIIsolatedFlag);
+  Node->parent.setInt(Node->parent.getInt() | Node::kRegisterIsolatedFlag);
 }
 
 Value* DeSSA::getOrigRoot(Instruction *PHI) const {
@@ -430,7 +418,9 @@ Value* DeSSA::getPHIRoot(Instruction *PHI) const {
   auto RI = RegNodeMap.find(PHI);
   assert (RI != RegNodeMap.end());
   Node *DestNode = RI->second;
-  if (isIsolated(DestNode))
+  if (DestNode->parent.getInt() & Node::kPHIIsolatedFlag)
+    return 0x0;
+  if (DestNode->parent.getInt() & Node::kRegisterIsolatedFlag)
     return 0x0;
   return DestNode->getLeader()->value;
 }
@@ -443,13 +433,10 @@ void DeSSA::isolatePHI(Instruction *PHI) {
 
 bool DeSSA::isPHIIsolated(Instruction *PHI) const {
   auto RI = RegNodeMap.find(PHI);
-  if (RI == RegNodeMap.end()) {
-      return true;
-  }
+  assert (RI != RegNodeMap.end());
   Node *DestNode = RI->second;
-  return isIsolated(DestNode);
+  return ((DestNode->parent.getInt() & Node::kPHIIsolatedFlag) > 0 ? true : false);
 }
-
 
 /// SplitInterferencesForBasicBlock - traverses a basic block, splitting any
 /// interferences found between registers in the same congruence class. It
@@ -524,7 +511,7 @@ DeSSA::SplitInterferencesForBasicBlock(
     // Pop registers from the stack represented by ImmediateDominatingParent
     // until we find a parent that dominates the current instruction.
     while (NewParent) {
-      if (getRegRoot(NewParent)) {
+      if (getRootColor(NewParent)) {
         // we have added the another condition because the domination-test
         // does not work between two phi-node. See the following comments
         // from the DT::dominates:
@@ -574,8 +561,24 @@ DeSSA::SplitInterferencesForBasicBlock(
       if (!PHI) {
         break;
       }
+
       // skip phi-isolated
-      if (isPHIIsolated(PHI)) {
+      int RootC = getRootColor(PHI);
+      // check live-out interference
+      if (IGC_IS_FLAG_ENABLED(EnableDeSSAWA) && !RootC)
+      {
+          // [todo] delete this code
+          if (CTX->type == ShaderType::COMPUTE_SHADER)
+          {
+              for (unsigned i = 0; !RootC && i < PHI->getNumOperands(); i++) {
+                  Value* SrcVal = PHI->getOperand(i);
+                  if (!isa<Constant>(SrcVal)) {
+                      RootC = getRootColor(SrcVal);
+                  }
+              }
+          }
+      }
+      if (!RootC) {
         continue;
       }
       // Find the index of the PHI operand that corresponds to this basic block.
@@ -588,14 +591,14 @@ DeSSA::SplitInterferencesForBasicBlock(
       Value* PredValue = PHI->getOperand(PredIndex);
       PredValue = getInsEltRoot(PredValue);
       // check potential cyclic phi-move dependency
-      Value *OrigRootV = getOrigRoot(PHI);
-      std::pair<Instruction*, Value*> &CurrentPHI = CurrentPHIForColor[OrigRootV];
+      //Value *OrigRootV = getOrigRoot(PHI);
+      std::pair<Instruction*, Value*> &CurrentPHI = CurrentPHIForColor[RootC];
       // If two PHIs have the same operand from every shared predecessor, then
       // they don't actually interfere. Otherwise, isolate the current PHI. This
       // could possibly be improved, e.g. we could isolate the PHI with the
       // fewest operands.
       if (CurrentPHI.first && CurrentPHI.second != PredValue) {
-        isolateReg(PHI);
+        isolatePHI(PHI);
         continue;
       }
       else {
@@ -603,26 +606,25 @@ DeSSA::SplitInterferencesForBasicBlock(
       }
 
       // check live-out interference
-      int RootC = getRootColor(PHI);
 #if 0
+      Value *RootV = getRegRoot(PHI);
       for (unsigned i = 0; !RootV && i < PHI->getNumOperands(); i++) {
-        Value* SrcVal = PHI->getOperand(i);
-        if (!isa<Constant>(SrcVal)) {
-          Value *SrcRootV = getRegRoot(SrcVal);
-          if (SrcRootV && SrcRootV == OrigRootV) {
-            RootV = SrcRootV;
+          Value* SrcVal = PHI->getOperand(i);
+          if (!isa<Constant>(SrcVal)) {
+              Value *SrcRootV = getRegRoot(SrcVal);
+              if (SrcRootV && SrcRootV == OrigRootV) {
+                  RootV = SrcRootV;
+                  printf("JGU_DEBUG: enter this code!\n");
+              }
           }
-        }
       }
 #endif
-      if (!RootC)
-        continue;
 
       // Pop registers from the stack represented by ImmediateDominatingParent
       // until we find a parent that dominates the current instruction.
       Value *NewParent = CurrentDominatingParent[RootC];
       while (NewParent) {
-        if (getRegRoot(NewParent)) {
+        if (getRootColor(NewParent)) {
           if (isa<Argument>(NewParent)) {
             break;
           } else if (DT->dominates(cast<Instruction>(NewParent)->getParent(), MBB)) {
@@ -685,7 +687,8 @@ void DeSSA::SplitInterferencesForAlignment()
             N = Curr->next;
 
             // Skip isolated reg.
-            if (isIsolated(Curr)) {
+            if (Curr->parent.getInt() &
+                (Node::kRegisterIsolatedFlag | Node::kPHIIsolatedFlag)) {
                 continue;
             }
 
@@ -709,7 +712,8 @@ void DeSSA::SplitInterferencesForAlignment()
             N = N->next;
 
             // Skip isolated reg.
-            if (isIsolated(Curr)) {
+            if (Curr->parent.getInt() &
+                (Node::kRegisterIsolatedFlag | Node::kPHIIsolatedFlag)) {
                 continue;
             }
 
@@ -828,7 +832,8 @@ void DeSSA::getAllValuesInCongruentClass(
 		Node* First = RI->second;
 		Node* N = First->next;
 		do {
-			if (isIsolated(N)) {
+			if (N->parent.getInt() &
+				(Node::kPHIIsolatedFlag | Node::kRegisterIsolatedFlag)) {
                 N = N->next;
 				continue;
 			}

@@ -5465,10 +5465,19 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
 
-    ASSERT_USER(execSize == EXEC_SIZE_8 || execSize == EXEC_SIZE_16,
-                "Only support SIMD8 or SIMD16!");
+    ASSERT_USER(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
+        execSize == EXEC_SIZE_4 || execSize == EXEC_SIZE_8 ||
+        execSize == EXEC_SIZE_16,
+        "Only support SIMD1, SIMD2, SIMD4, SIMD8 or SIMD16!");
+
+    Common_ISA_Exec_Size instExecSize = execSize;
+    if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
+        execSize == EXEC_SIZE_4) {
+        execSize = EXEC_SIZE_8;
+    }
 
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
+    unsigned instExSize = Get_Common_ISA_Exec_Size(instExecSize);
     unsigned instOpt = Get_Gen4_Emask(eMask, exSize);
 
     bool useSplitSend = useSends();
@@ -5479,7 +5488,7 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0) {
         G4_Declare *dcl = Create_MRF_Dcl(exSize, offsets->getType());
         G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
-        createInst(pred, G4_add, 0, false, exSize, tmp, offsets, globalOffset, instOpt);
+        createInst(pred, G4_add, 0, false, instExSize, tmp, offsets, globalOffset, instOpt);
         offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     }
 
@@ -5525,7 +5534,7 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
         Create_Send_Inst_For_CISA(pred, dst,
             msgs[0], sizes[0],
             resLen,
-            exSize,
+            instExSize,
             MD, sfid,
             false, useHeader,
             true, false,
@@ -5535,7 +5544,7 @@ int IR_Builder::translateGather4Inst(G4_Predicate           *pred,
         Create_SplitSend_Inst_For_CISA(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             resLen,
-            exSize,
+            instExSize,
             MD, 0, sfid,
             false, useHeader,
             true, false,
@@ -5561,10 +5570,19 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
     startTimer(TIMER_VISA_BUILDER_IR_CONSTRUCTION);
 #endif
 
-    ASSERT_USER(execSize == EXEC_SIZE_8 || execSize == EXEC_SIZE_16,
-                "Only support SIMD8 or SIMD16!");
+    ASSERT_USER(execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
+        execSize == EXEC_SIZE_4 || execSize == EXEC_SIZE_8 ||
+        execSize == EXEC_SIZE_16,
+        "Only support SIMD1, SIMD2, SIMD4, SIMD8 or SIMD16!");
+
+    Common_ISA_Exec_Size instExecSize = execSize;
+    if (execSize == EXEC_SIZE_1 || execSize == EXEC_SIZE_2 ||
+        execSize == EXEC_SIZE_4) {
+        execSize = EXEC_SIZE_8;
+    }
 
     unsigned exSize = Get_Common_ISA_Exec_Size(execSize);
+    unsigned instExSize = Get_Common_ISA_Exec_Size(instExecSize);
     unsigned instOpt = Get_Gen4_Emask(eMask, exSize);
 
     bool useSplitSend = useSends();
@@ -5575,7 +5593,7 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
     if (!globalOffset->isImm() || globalOffset->asImm()->getImm() != 0) {
         G4_Declare *dcl = Create_MRF_Dcl(exSize, offsets->getType());
         G4_DstRegRegion *tmp = Create_Dst_Opnd_From_Dcl(dcl, 1);
-        createInst(pred, G4_add, 0, false, exSize, tmp, offsets, globalOffset, instOpt);
+        createInst(pred, G4_add, 0, false, instExSize, tmp, offsets, globalOffset, instOpt);
         offsets = Create_Src_Opnd_From_Dcl(dcl, getRegionStride1());
     }
 
@@ -5624,7 +5642,7 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
         Create_Send_Inst_For_CISA(pred, dst,
             msgs[0], sizes[0],
             0,
-            exSize,
+            instExSize,
             MD, sfid,
             false, useHeader,
             false, true,
@@ -5634,7 +5652,7 @@ int IR_Builder::translateScatter4Inst(G4_Predicate           *pred,
         Create_SplitSend_Inst_For_CISA(pred, dst,
             msgs[0], sizes[0], msgs[1], sizes[1],
             0,
-            exSize,
+            instExSize,
             MD, 0, sfid,
             false, useHeader,
             false, true,
