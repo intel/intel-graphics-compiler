@@ -4358,6 +4358,18 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_countbits(
 }
 
 template<bool preserveNames, typename T, typename Inserter>
+inline llvm::Value*
+LLVM3DBuilder<preserveNames, T, Inserter>::create_waveInverseBallot(
+    llvm::Value* src)
+{
+    llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
+    llvm::Function* pFunc = llvm::GenISAIntrinsic::getDeclaration(
+        module,
+        llvm::GenISAIntrinsic::GenISA_WaveInverseBallot);
+    return this->CreateCall(pFunc, src);
+}
+
+template<bool preserveNames, typename T, typename Inserter>
 inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_waveBallot(llvm::Value* src)
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
@@ -4390,14 +4402,19 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_waveAll(ll
 }
 
 template<bool preserveNames, typename T, typename Inserter>
-inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_wavePrefix(llvm::Value* src, llvm::Value* type, bool inclusive)
+inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_wavePrefix(
+    llvm::Value* src, llvm::Value* type, bool inclusive, llvm::Value *Mask)
 {
+    // If a nullptr is passed in for 'Mask' (as is the default), just include
+    // all lanes.
+    Mask = Mask ? Mask : this->getInt1(true);
+
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
     llvm::Function* pFunc = llvm::GenISAIntrinsic::getDeclaration(
         module,
         llvm::GenISAIntrinsic::GenISA_WavePrefix,
         src->getType());
-    return this->CreateCall3(pFunc, src, type, this->getInt1(inclusive));
+    return this->CreateCall4(pFunc, src, type, this->getInt1(inclusive), Mask);
 }
 
 template<bool preserveNames, typename T, typename Inserter>

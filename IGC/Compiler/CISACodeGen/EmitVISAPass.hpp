@@ -259,6 +259,7 @@ public:
         bool negateSrc,
         CVariable* src,
         CVariable* result[2],
+        CVariable* Flag = nullptr,
         bool isPrefix = false,
         bool isQuad = false);
 
@@ -269,7 +270,8 @@ public:
         bool negateSrc,
         CVariable* src,
         CVariable* result[2],
-        bool isPrefix = false);
+        CVariable* Flag,
+        bool isPrefix);
 
     bool IsUniformAtomic(llvm::Instruction* pInst);
     void emitAtomicRaw(llvm::GenIntrinsicInst* pInst);
@@ -360,8 +362,10 @@ public:
 
     // CrossLane Instructions
     void emitWaveBallot(llvm::GenIntrinsicInst* inst);
+    void emitWaveInverseBallot(llvm::GenIntrinsicInst* inst);
     void emitWaveShuffleIndex(llvm::GenIntrinsicInst* inst);
-    void emitWavePrefix(llvm::GenIntrinsicInst* inst, bool isQuad = false);
+    void emitWavePrefix(llvm::WavePrefixIntrinsic* I);
+    void emitQuadPrefix(llvm::QuadPrefixIntrinsic* I);
     void emitWaveAll(llvm::GenIntrinsicInst* inst);
 
     // Those three "vector" version shall be combined with
@@ -500,6 +504,9 @@ private:
     void emitGetMessagePhaseType(llvm::GenIntrinsicInst* inst, VISA_Type type, uint32_t width);
     void emitSetMessagePhaseType(llvm::GenIntrinsicInst* inst, VISA_Type type);
     void emitSetMessagePhaseType_legacy(llvm::GenIntrinsicInst* inst, VISA_Type type);
+
+    void emitScan(llvm::Value *Src, IGC::WaveOps Op,
+        bool isInclusiveScan, llvm::Value *Mask, bool isQuad);
 
     // Cached per lane offset variables. This is a per basic block data
     // structure. For each entry, the first item is the scalar type size in

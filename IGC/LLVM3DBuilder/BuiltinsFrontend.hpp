@@ -766,9 +766,12 @@ public:
     llvm::Value* create_runtime(llvm::Value* offset);
     llvm::Value* create_countbits(llvm::Value* src);
     llvm::Value* create_waveBallot(llvm::Value* src);
+    llvm::Value* create_waveInverseBallot(llvm::Value* src);
     llvm::Value* create_waveshuffleIndex(llvm::Value* src, llvm::Value* index);
     llvm::Value* create_waveAll(llvm::Value* src, llvm::Value* type);
-    llvm::Value* create_wavePrefix(llvm::Value* src, llvm::Value* type, bool inclusive = false);
+    llvm::Value* create_wavePrefix(
+        llvm::Value* src, llvm::Value* type, bool inclusive,
+        llvm::Value *Mask = nullptr);
     llvm::Value* create_waveMatch(llvm::Instruction *inst, llvm::Value *src);
     llvm::Value* create_quadPrefix(llvm::Value* src, llvm::Value* type, bool inclusive = false);
     llvm::Value* get32BitLaneID();

@@ -96,7 +96,7 @@ public:
         return isa<CallInst>(V) && classof(cast<CallInst>(V));
     }
 
-    uint64_t getImm64Operand(unsigned idx) {
+    uint64_t getImm64Operand(unsigned idx) const {
         assert(isa<ConstantInt>(getOperand(idx)));
         return valueToImm64(getOperand(idx));
     }
@@ -528,6 +528,51 @@ public:
                 llvm::cast<llvm::ConstantInt>(getOperand(0))->getZExtValue());
         }
         return usage;
+    }
+};
+
+class WavePrefixIntrinsic : public GenIntrinsicInst
+{
+public:
+    Value  *getSrc() const { return getOperand(0); }
+    IGC::WaveOps getOpKind() const
+    {
+        return static_cast<IGC::WaveOps>(getImm64Operand(1));
+    }
+    bool isInclusiveScan() const
+    {
+        return getImm64Operand(2) != 0;
+    }
+    Value *getMask() const { return getOperand(3); }
+
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst *I) {
+        return I->getIntrinsicID() == GenISAIntrinsic::GenISA_WavePrefix;
+    }
+    static inline bool classof(const Value *V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
+    }
+};
+
+class QuadPrefixIntrinsic : public GenIntrinsicInst
+{
+public:
+    Value  *getSrc() const { return getOperand(0); }
+    IGC::WaveOps getOpKind() const
+    {
+        return static_cast<IGC::WaveOps>(getImm64Operand(1));
+    }
+    bool isInclusiveScan() const
+    {
+        return getImm64Operand(2) != 0;
+    }
+
+    // Methods for support type inquiry through isa, cast, and dyn_cast:
+    static inline bool classof(const GenIntrinsicInst *I) {
+        return I->getIntrinsicID() == GenISAIntrinsic::GenISA_QuadPrefix;
+    }
+    static inline bool classof(const Value *V) {
+        return isa<GenIntrinsicInst>(V) && classof(cast<GenIntrinsicInst>(V));
     }
 };
 

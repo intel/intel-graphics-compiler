@@ -463,7 +463,7 @@ void SubGroupFuncsResolution::subGroupScan(WaveOps op, CallInst &CI)
     IRBuilder<> IRB(&CI);
     Value* arg = CI.getArgOperand(0);
     Value* opVal = IRB.getInt8((uint8_t)op);
-    Value* args[3] = { arg, opVal, IRB.getInt1(false) };
+    Value* args[] = { arg, opVal, IRB.getInt1(false), IRB.getInt1(true) };
     Function* waveScan = GenISAIntrinsic::getDeclaration(CI.getCalledFunction()->getParent(),
         GenISAIntrinsic::GenISA_WavePrefix,
         arg->getType());

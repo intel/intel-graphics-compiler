@@ -1238,6 +1238,7 @@ GenISA_WavePrefix,,"// Description: Accumulate and keep the intermediate results
 ,anyint,
 ,0,
 ,char,specify the type: sum / Prod / Min/ Max
+,bool,a mask that specifies a subset of lanes to participate in the computation.
 GenISA_setMessagePhaseV,,
 ,anyvector,new message phase result
 ,0,cur message phase

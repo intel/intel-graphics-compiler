@@ -265,9 +265,18 @@ Imported_Intrinsics = \
     "GenISA_pair_to_ptr": ["anyptr",["int","int"],"NoMem"],
     "GenISA_ptr_to_pair": [["int","int"],["anyptr"],"NoMem"],
     "GenISA_WaveBallot": ["int",["bool"],"Convergent,InaccessibleMemOnly"],
+    # Arg 0  - Mask value
+    # Return - assigns each lane the value of its corresponding bit.
+    "GenISA_WaveInverseBallot": ["bool",["int"],"Convergent,InaccessibleMemOnly"],
     "GenISA_WaveShuffleIndex": ["anyint",[0,"int"],"Convergent,NoMem"],
     "GenISA_WaveAll": ["anyint",[0,"char"],"Convergent,InaccessibleMemOnly"],
-    "GenISA_WavePrefix": ["anyint",[0,"char","bool"],"Convergent,InaccessibleMemOnly"],
+    # Arg 0  - Src value
+    # Arg 1  - Operation type
+    # Arg 2  - Is the operation inclusive (1) or exclusive (0)?
+    # Arg 3  - a mask that specifies a subset of lanes to participate
+    #          in the computation.
+    # Return - The computed prefix/postfix result
+    "GenISA_WavePrefix": ["anyint",[0,"char","bool","bool"],"Convergent,InaccessibleMemOnly"],
     "GenISA_QuadPrefix": ["anyint",[0,"char","bool"],"Convergent,InaccessibleMemOnly"],
     "GenISA_InitDiscardMask": ["bool",[],"None"],
     "GenISA_UpdateDiscardMask": ["bool",["bool","bool"],"None"],

@@ -7435,14 +7435,17 @@ void EmitPass::EmitGenIntrinsicMessage(llvm::GenIntrinsicInst* inst)
     case GenISAIntrinsic::GenISA_WaveBallot:
         emitWaveBallot(inst);
         break;
+    case GenISAIntrinsic::GenISA_WaveInverseBallot:
+        emitWaveInverseBallot(inst);
+        break;
     case GenISAIntrinsic::GenISA_WaveShuffleIndex:
         emitSimdShuffle(inst);
         break;
     case GenISAIntrinsic::GenISA_WavePrefix:
-        emitWavePrefix(inst);
+        emitWavePrefix(cast<WavePrefixIntrinsic>(inst));
         break;
     case GenISAIntrinsic::GenISA_QuadPrefix:
-        emitWavePrefix(inst, true);
+        emitQuadPrefix(cast<QuadPrefixIntrinsic>(inst));
         break;
     case GenISAIntrinsic::GenISA_WaveAll:
         emitWaveAll(inst);
@@ -9981,16 +9984,21 @@ void EmitPass::emitReductionAll(
     m_encoder->Push();
 }
 
-void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type type, bool negateSrc, CVariable* pSrc, CVariable* pSrcsArr[2], bool isPrefix, bool isQuad)
+void EmitPass::emitPreOrPostFixOp(
+    e_opcode op, uint64_t identityValue, VISA_Type type, bool negateSrc,
+    CVariable* pSrc, CVariable* pSrcsArr[2], CVariable *Flag,
+    bool isPrefix, bool isQuad)
 {
-    // This is to handle cases when not all lanes are enabled. In that case we fill the lanes with 0.
-
     if (m_currShader->m_Platform->doScalar64bScan() && CEncoder::GetCISADataTypeSize(type) == 8 && !isQuad)
     {
-        emitPreOrPostFixOpScalar(op, identityValue, type, negateSrc, pSrc, pSrcsArr, isPrefix);
+        emitPreOrPostFixOpScalar(
+            op, identityValue, type, negateSrc,
+            pSrc, pSrcsArr, Flag,
+            isPrefix);
         return;
     }
 
+    // This is to handle cases when not all lanes are enabled. In that case we fill the lanes with 0.
     bool isSimd32 = (m_currShader->m_dispatchSize == SIMDMode::SIMD32);
     int counter = 1;
     if (isSimd32)
@@ -10004,18 +10012,20 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
             IGC::EALIGN_GRF,
             false);
 
-        // Set the GRF to 0 with no mask. This will set all the registers to 0
+        // Set the GRF to <identity> with no mask. This will set all the registers to <identity>
         CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
         m_encoder->SetNoMask();
         m_encoder->Copy(pSrcCopy, pIdentityValue);
         m_encoder->Push();
 
-        // Now copy the src with a mask so the disabled lanes still keep their 0
+        // Now copy the src with a mask so the disabled lanes still keep their <identity>
         if (negateSrc)
         {
             m_encoder->SetSrcModifier(0, EMOD_NEG);
         }
         m_encoder->SetSecondHalf(i == 1);
+        if (Flag)
+            m_encoder->SetPredicate(Flag);
         m_encoder->Copy(pSrcCopy, pSrc);
         m_encoder->Push();
 
@@ -10063,8 +10073,9 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
     {
         /*
         Copy the adjacent elements.
-        for example: r10 be the register
-        ____      ____      ____      ____
+        for example: let r10 be the register
+        Assume we are performing addition for this example
+           ____      ____      ____      ____
         __|____|____|____|____|____|____|____|_
         |  7 |  6 |  5 |  4 |  9 |  5 |  3 |  2 |
         ---------------------------------------
@@ -10095,10 +10106,10 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
         }
 
         /*
-        ____                  ____
-        _______|____|________________|____|______           ___________________________________________
+                ____                  ____
+        _______|____|________________|____|______            ___________________________________________
         |  13 |  6 |  9 |  4 |  14 |  5 |  5 |  2 |    ==>  |  13 |  15 |  9 |  4 |  14 |  10 |  5 |  2 |
-        -----------------------------------------           -------------------------------------------
+         -----------------------------------------           -------------------------------------------
         */
         // Now we have a weird copy happening. This will be done by SIMD 2 instructions.
 
@@ -10127,7 +10138,7 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
         }
 
         /*
-        ___________           ___________
+           ___________           ___________
         __|___________|_________|___________|______         ___________________________________________
         |  13 |  15 |  9 |  4 |  14 |  10 |  5 |  2 |  ==>  |  22 |  15 |  9 |  4 |  19 |  10 |  5 |  2 |
         -------------------------------------------         -------------------------------------------
@@ -10164,21 +10175,21 @@ void EmitPass::emitPreOrPostFixOp(e_opcode op, uint64_t identityValue, VISA_Type
         }
 
         /*
-        ____
+                           ____
         __________________|____|_________________         ____________________________________________
         | 22 |  15 |  9 |  4 | 19 |  10 |  5 |  2 |  ==>  |  22 |  15 |  9 |  23 |  19 |  10 |  5 |  2 |
         -----------------------------------------         --------------------------------------------
-        _________
+                      _________
         _____________|_________|_________________         _____________________________________________
         | 22 |  15 |  9 |  4 | 19 |  10 |  5 |  2 |  ==>  |  22 |  15 |  28 |  23 |  19 |  10 |  5 |  2 |
         -----------------------------------------         ---------------------------------------------
 
-        ______________
+                 ______________
         ________|______________|_________________         _____________________________________________
         | 22 |  15 |  9 |  4 | 19 |  10 |  5 |  2 |  ==>  |  22 |  34 |  28 |  23 |  19 |  10 |  5 |  2 |
         -----------------------------------------         ---------------------------------------------
 
-        ____________________
+           ____________________
         __|____________________|_________________         _____________________________________________
         | 22 |  15 |  9 |  4 | 19 |  10 |  5 |  2 |  ==>  |  41 |  34 |  28 |  23 |  19 |  10 |  5 |  2 |
         -----------------------------------------         ---------------------------------------------
@@ -10239,6 +10250,7 @@ void EmitPass::emitPreOrPostFixOpScalar(
     bool negateSrc,
     CVariable* src,
     CVariable* result[2],
+    CVariable* Flag,
     bool isPrefix)
 {
     // This is to handle cases when not all lanes are enabled. In that case we fill the lanes with 0.
@@ -10259,19 +10271,21 @@ void EmitPass::emitPreOrPostFixOpScalar(
             IGC::EALIGN_GRF,
             false);
 
-        // Set the GRF to 0 with no mask. This will set all the registers to 0
+        // Set the GRF to <identity> with no mask. This will set all the registers to <identity>
         CVariable* pIdentityValue = m_currShader->ImmToVariable(identityValue, type);
         m_encoder->SetSecondHalf(i == 1);
         m_encoder->SetNoMask();
         m_encoder->Copy(pSrcCopy[i], pIdentityValue);
         m_encoder->Push();
 
-        // Now copy the src with a mask so the disabled lanes still keep their 0
+        // Now copy the src with a mask so the disabled lanes still keep their <identity>
         if (negateSrc)
         {
             m_encoder->SetSrcModifier(0, EMOD_NEG);
         }
         m_encoder->SetSecondHalf(i == 1);
+        if (Flag)
+            m_encoder->SetPredicate(Flag);
         m_encoder->Copy(pSrcCopy[i], src);
         m_encoder->Push();
 
@@ -14326,6 +14340,33 @@ void EmitPass::emitWaveBallot(llvm::GenIntrinsicInst* inst)
     }
 }
 
+void EmitPass::emitWaveInverseBallot(llvm::GenIntrinsicInst* inst)
+{
+    CVariable *Mask = GetSymbol(inst->getOperand(0));
+
+    if (Mask->IsUniform())
+    {
+        if (m_encoder->IsSecondHalf())
+            return;
+
+        m_encoder->SetP(m_destination, Mask);
+        return;
+    }
+
+    // The uniform case should by far be the most common.  Otherwise,
+    // fall back and compute:
+    //
+    // (val & (1 << id)) != 0
+    CVariable *Temp = m_currShader->GetNewVariable(
+        numLanes(m_currShader->m_SIMDSize), ISA_TYPE_UD, EALIGN_GRF);
+
+    m_currShader->GetSimdOffsetBase(Temp);
+    m_encoder->Shl(Temp, m_currShader->ImmToVariable(1, ISA_TYPE_UD), Temp);
+    m_encoder->And(Temp, Mask, Temp);
+    m_encoder->Cmp(EPREDICATE_NE,
+        m_destination, Temp, m_currShader->ImmToVariable(0, ISA_TYPE_UD));
+}
+
 static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcode& opcode, VISA_Type& type)
 {
     auto getISAType = [](Type* ty, bool isSigned = true)
@@ -14468,17 +14509,49 @@ static void GetReductionOp(WaveOps op, Type* opndTy, uint64_t& identity, e_opcod
     }
 }
 
-void EmitPass::emitWavePrefix(llvm::GenIntrinsicInst* inst, bool isQuad)
+void EmitPass::emitWavePrefix(WavePrefixIntrinsic* I)
 {
-    WaveOps op = static_cast<WaveOps>(cast<llvm::ConstantInt>(inst->getOperand(1))->getZExtValue());
-    bool isInclusiveScan = cast<llvm::ConstantInt>(inst->getOperand(2))->getZExtValue() != 0;
+    Value *Mask = I->getMask();
+    if (auto *CI = dyn_cast<ConstantInt>(Mask))
+    {
+        // If the mask is all set, then we just pass a null
+        // mask to emitScan() indicating we don't want to
+        // emit any predication.
+        if (CI->isAllOnesValue())
+            Mask = nullptr;
+    }
+    emitScan(
+        I->getSrc(), I->getOpKind(), I->isInclusiveScan(), Mask, false);
+}
+
+void EmitPass::emitQuadPrefix(QuadPrefixIntrinsic* I)
+{
+    emitScan(
+        I->getSrc(), I->getOpKind(), I->isInclusiveScan(), nullptr, true);
+}
+
+void EmitPass::emitScan(
+    Value *Src, IGC::WaveOps Op,
+    bool isInclusiveScan, Value *Mask, bool isQuad)
+{
     VISA_Type type;
     e_opcode opCode;
     uint64_t identity = 0;
-    GetReductionOp(op, inst->getOperand(0)->getType(), identity, opCode, type);
-    CVariable* src = GetSymbol(inst->getOperand(0));
+    GetReductionOp(Op, Src->getType(), identity, opCode, type);
+    CVariable* src = GetSymbol(Src);
     CVariable *dst[2] = { nullptr, nullptr };
-    emitPreOrPostFixOp(opCode, identity, type, false, src, dst, !isInclusiveScan, isQuad);
+    CVariable *Flag = Mask ? GetSymbol(Mask) : nullptr;
+
+    emitPreOrPostFixOp(
+        opCode, identity, type,
+        false, src, dst, Flag,
+        !isInclusiveScan, isQuad);
+
+    // Now that we've computed the result in temporary registers,
+    // make sure we only write the results to lanes participating in the
+    // scan as specified by 'mask'.
+    if (Flag)
+        m_encoder->SetPredicate(Flag);
     m_encoder->Copy(m_destination, dst[0]);
     if (m_currShader->m_dispatchSize == SIMDMode::SIMD32)
     {
