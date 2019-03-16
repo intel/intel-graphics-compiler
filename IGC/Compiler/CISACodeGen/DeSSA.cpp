@@ -324,6 +324,7 @@ void DeSSA::MapAddReg(MapVector<Value*, Node*> &Map, Value *Val, e_alignment Ali
   Map[Val] = new (Allocator) Node(Val, ++CurrColor, Align);
 }
 
+// Using Path Halving in union-find
 DeSSA::Node*
 DeSSA::Node::getLeader() {
   Node *N = this;
@@ -333,7 +334,7 @@ DeSSA::Node::getLeader() {
   while (Parent != Grandparent) {
     N->parent.setPointer(Grandparent);
     N = Grandparent;
-    Parent = Parent->parent.getPointer();
+    Parent = N->parent.getPointer();
     Grandparent = Parent->parent.getPointer();
   }
 
@@ -402,6 +403,7 @@ void DeSSA::MapUnionRegs(MapVector<Value*, Node*> &Map, Value* Val1, Value* Val2
 
 void DeSSA::isolateReg(Value* Val) {
   Node *Node = RegNodeMap[Val];
+  splitNode(Node);
   Node->parent.setInt(Node->parent.getInt() | Node::kRegisterIsolatedFlag);
 }
 
@@ -428,6 +430,7 @@ Value* DeSSA::getPHIRoot(Instruction *PHI) const {
 void DeSSA::isolatePHI(Instruction *PHI) {
   assert(isa<PHINode>(PHI));
   Node *Node = RegNodeMap[PHI];
+  splitNode(Node);
   Node->parent.setInt(Node->parent.getInt() | Node::kPHIIsolatedFlag);
 }
 
@@ -436,6 +439,58 @@ bool DeSSA::isPHIIsolated(Instruction *PHI) const {
   assert (RI != RegNodeMap.end());
   Node *DestNode = RI->second;
   return ((DestNode->parent.getInt() & Node::kPHIIsolatedFlag) > 0 ? true : false);
+}
+
+// Split node ND from its existing congurent class, and the
+// node ND itself becomes a new single-value congruent class.
+void DeSSA::splitNode(Node* ND)
+{
+    Node* N = ND->next;
+    if (N == ND) {
+        // ND is already in a single-value congruent class
+        return;
+    }
+
+    Node* Leader = ND->getLeader();
+
+    // Remove ND from the congruent class
+    Node* P = ND->prev;
+    N->prev = P;
+    P->next = N;
+
+    // ND : a new single-value congruent class
+    ND->parent.setPointer(ND);
+    ND->next = ND;
+    ND->prev = ND;
+    ND->rank = 0;
+
+    // If leader is removed, need to have a new leader. 
+    if (Leader == ND) {
+        // P will be the new leader. Also swap ND's color with P's
+        // so that the original congruent class still have the original
+        // color (this is important as Dom traversal assumes that the
+        // color of any congruent class remains unchanged).
+        int t = P->color;
+        P->color = ND->color;
+        ND->color = t;
+
+        // New leader
+        Leader = P;
+    }
+
+    // If ND is a leaf node, no need to set parent. As we don't
+    // know if it has any children. A path compression is done
+    // always to set "Leader' as the new leader, so that all nodes
+    // within a same congruent class remains in the same rooted tree.
+    N = Leader->next;
+    Leader->parent.setPointer(Leader);
+    Leader->rank = (Leader == N) ? 0 : 1;
+    while (N != Leader)
+    {
+        N->parent.setPointer(Leader);
+        N->rank = 0;
+        N = N->next;
+    }
 }
 
 /// SplitInterferencesForBasicBlock - traverses a basic block, splitting any
