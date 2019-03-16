@@ -73,10 +73,6 @@ if (IGC_BUILD)
 
 endif (IGC_BUILD)
 
-# Common library used by the shared libraries in this file (a sub directory of this directory hence
-# invoked from here)
-add_subdirectory(LocalScheduler)
-
 if(BS_USE_OSDM_BUILD_SYSTEM)
   include(${BUILD_SYS_INC}/utils.cmake)
   # Locate bison and flex using common bs macro
@@ -159,6 +155,19 @@ include_directories(${Jitter_inc_dirs})
 # (due to the fact that they are .c files rather than .cpp)
 set_source_files_properties( CISA.tab.c lex.CISA.c PROPERTIES LANGUAGE CXX )
 
+  set(LocalScheduler_SOURCES
+    LocalScheduler/Dependencies_G4IR.cpp
+    LocalScheduler/G4_Sched.cpp
+    LocalScheduler/LatencyTable.cpp
+    LocalScheduler/LocalScheduler_G4IR.cpp
+    )
+
+  set(LocalScheduler_HEADERS
+    LocalScheduler/Dependencies_G4IR.h
+    LocalScheduler/LatencyTable.h
+    LocalScheduler/LocalScheduler_G4IR.h
+    )
+
 # Set up some common source files used in all the projects so they only need to be defined once
 set(GenX_Common_Sources_External
   BinaryCISAEmission.cpp
@@ -196,6 +205,7 @@ set(GenX_Common_Sources_External
   SpillCleanup.cpp
   Rematerialization.cpp
   RPE.cpp
+  ${LocalScheduler_SOURCES}
 )
 
 set(GenX_Common_Sources
@@ -275,6 +285,7 @@ set(GenX_Common_Headers
   Metadata.h
   RPE.h
   include/gtpin_IGC_interface.h
+  ${LocalScheduler_HEADERS}
 )
 set(GenX_CISA_dis_Common_Headers
   common.h
@@ -340,7 +351,7 @@ if (UNIX OR WIN32)
   source_group("Utility Files" FILES ${GenX_IR_EXE_UTILITY} )
   source_group("Header Files" FILES ${GenX_IR_EXE_HEADERS} )
   source_group("Lex Yacc Files" FILES ${GenX_IR_EXE_lex_yacc} )
-  target_link_libraries(GenX_IR_Exe LocalScheduler IGA_SLIB IGA_ENC_LIB)
+  target_link_libraries(GenX_IR_Exe IGA_SLIB IGA_ENC_LIB)
   if (ANDROID AND MEDIA_IGA)
      target_link_libraries(GenX_IR_Exe c++_static)
   endif(ANDROID AND MEDIA_IGA)
@@ -405,7 +416,7 @@ endif (NOT IGC_BUILD)
 # ###############################################################
 # GenX_IR (dll)
 # ###############################################################
-link_directories(${libGenX_IR_BINARY_DIR}/LocalScheduler)
+
 set(GenX_IR_DLL_SOURCES
   ${GenX_Common_Sources}
   ${GenX_CISA_dis_Common_Sources}
@@ -449,10 +460,10 @@ if (IGC_BUILD)
     )
   set_target_properties( GenX_IR PROPERTIES OUTPUT_NAME "igfxcmjit${TARGET_MODIFIER}")
   if(WIN32)
-    target_link_libraries(GenX_IR LocalScheduler ${GCC_SECURE_LINK_FLAGS} IGA_ENC_LIB IGA_SLIB)
+    target_link_libraries(GenX_IR ${GCC_SECURE_LINK_FLAGS} IGA_ENC_LIB IGA_SLIB)
     add_dependencies(GenX_IR IGA_DLL)
   else()
-    target_link_libraries(GenX_IR LocalScheduler ${GCC_SECURE_LINK_FLAGS} IGA_ENC_LIB IGA_SLIB)
+    target_link_libraries(GenX_IR ${GCC_SECURE_LINK_FLAGS} IGA_ENC_LIB IGA_SLIB)
     add_dependencies(GenX_IR IGA_DLL)
   endif(WIN32)
 endif (IGC_BUILD)

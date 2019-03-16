@@ -3421,8 +3421,6 @@ set(IGC_BUILD__PROJ_LABEL__igc_lib        "${IGC_BUILD__PROJ__igc_lib}")
 
 set(IGC_BUILD__PROJ_LABEL__GenX_IR        "${IGC_BUILD__PROJ_NAME_PREFIX}vISA")
 
-set(IGC_BUILD__PROJ_LABEL__LocalScheduler "${IGC_BUILD__PROJ_NAME_PREFIX}LocalScheduler")
-
 add_subdirectory(common)
 igc_sg_define(IGC__common)
 igc_sg_define(IGC__Common_CLElfLib)
@@ -3637,11 +3635,10 @@ unset(_cpuSuffix)
 
 # Injecting external vISA project.
 add_subdirectory("${IGC_BUILD__VISA_DIR}" visa)
-set_property(TARGET "GenX_IR" "LocalScheduler" APPEND PROPERTY COMPILE_DEFINITIONS
+set_property(TARGET "GenX_IR" APPEND PROPERTY COMPILE_DEFINITIONS
     ${IGC_BUID__VISA_COMPILE_DEFINITIONS}
   )
-set_property(TARGET "GenX_IR"        PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__GenX_IR}")
-set_property(TARGET "LocalScheduler" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__LocalScheduler}")
+set_property(TARGET "GenX_IR" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__GenX_IR}")
 
 
 # =================================== Link targets and dependencies ====================================
