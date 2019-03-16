@@ -1695,7 +1695,7 @@ void HWConformity::insertMovAfter( INST_LIST_ITER& it, uint16_t stride, G4_BB* b
 
     G4_Declare* dcl = builder.createTempVar( execSize * stride, dstType, align, subAlign );
 
-    RegionDesc* region = builder.createRegionDesc(execSize * stride, execSize, stride );
+    RegionDesc* region = builder.createRegionDesc(stride, 1, 0 );
     G4_SrcRegRegion *srcRegion = builder.Create_Src_Opnd_From_Dcl( dcl, region);
     G4_DstRegRegion *tmpDstOpnd = builder.Create_Dst_Opnd_From_Dcl( dcl, stride );
 
