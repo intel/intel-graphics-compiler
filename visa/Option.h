@@ -71,6 +71,7 @@ struct VISAOptionsEntry {
     EntryValue val;
     EntryType getType(void) const { return type; }
     virtual void dump(void) const { std::cerr << "BASE"; }
+    virtual ~VISAOptionsEntry() {}
 };
 
 struct VISAOptionsEntryBool : VISAOptionsEntry {
