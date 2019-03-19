@@ -332,10 +332,10 @@ void FindInterestingConstants::copyInterestingConstants(ContextT* pShaderCtx)
 
 bool FindInterestingConstants::doFinalization(llvm::Module &M)
 {
-    CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-
     if (m_InterestingConstants.size() != 0)
     {
+        CodeGenContext* ctx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+
         if (ctx->type == ShaderType::PIXEL_SHADER)
         {
             PixelShaderContext* pShaderCtx = static_cast <PixelShaderContext*>(ctx);
