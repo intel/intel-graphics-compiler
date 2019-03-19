@@ -1430,17 +1430,22 @@ void Formatter::EmitSendDescriptorInfoGED(
         ss << "h";
     }
 
-    if (os.isSendsFamily()) {
-        if (has_ged_inst) {
-            uint32_t exLength = GED_GetExMsgLength(&gedInst, &getRetVal);
-            if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
-                // in the case that we're able to construct ged inst, the
-                // ex_dess must be imm
-                exLength = getSplitSendMsgLength(ex_desc.imm);
-            }
-            ss << "+" << exLength;
+    // emit src1 length
+    uint32_t src1_len = 0;
+    bool has_src1_len = false;
+    if (os.isSendsFamily() && has_ged_inst) {
+        src1_len = GED_GetExMsgLength(&gedInst, &getRetVal);
+        if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
+            // in the case that we're able to construct ged inst, the
+            // ex_desc must be imm
+            src1_len = getSplitSendMsgLength(ex_desc.imm);
         }
+        has_src1_len = true;
     }
+    if (has_src1_len)
+        ss << "+" << src1_len;
+    else
+        ss << "+?";
 
     uint32_t respLength = GED_GetResponseLength(desc, gedP, &getRetVal);
     if (getRetVal != GED_RETURN_VALUE_SUCCESS) {
@@ -1578,8 +1583,8 @@ void Formatter::EmitSendDescriptorInfoGED(
         switch (getScratchSpaceGRFsSize(desc)) {
         case 0: ss << "1grf"; break;
         case 1: ss << "2grfs"; break;
-        case 2: ss << "?grfs"; break;
-        case 3: ss << "4grfs"; break;
+        case 2: ss << "4grfs"; break;
+        case 3: ss << "8grfs"; break;
         }
         uint32_t off = getScratchSpaceAddressOffset(desc);
         ss << " from 0x" << std::hex << off << ")";
@@ -1603,8 +1608,6 @@ void Formatter::EmitSendDescriptorInfoGED(
                 ss << "#" << surf;
         }
     }
-
-
     return;
 }
 
@@ -1728,8 +1731,8 @@ void Formatter::EmitSendDescriptorInfo(
         switch (getBitField(desc, 12, 2)) {
         case 0: ss << "1grf"; break;
         case 1: ss << "2grfs"; break;
-        case 2: ss << "?grfs"; break;
-        case 3: ss << "4grfs"; break;
+        case 2: ss << "4grfs"; break;
+        case 3: ss << "8grfs"; break;
         }
         uint32_t off = getBitField(desc, 0, 12);
         ss << " from 0x" << std::hex << off << ")";

@@ -12,6 +12,9 @@ include (BuildFunctions.cmake)
 
 set (CMAKE_CXX_STANDARD 11)
 
+# do static build for IGA standalone build
+set(LINK_AS_STATIC_LIB TRUE)
+
 
 set(GED_BRANCH GED_external)
 add_subdirectory(GEDLibrary/${GED_BRANCH})
