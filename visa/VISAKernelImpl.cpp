@@ -305,6 +305,13 @@ void* VISAKernelImpl::compilePostOptimize(unsigned int& binarySize)
         expandIndirectCallWithRegTarget();
     }
 
+    // remove SW fences at this point
+    // ToDo: remove all intrinsics?
+    for (auto bb : m_kernel->fg.BBs)
+    {
+        bb->removeIntrinsics(Intrinsic::MemFence);
+    }
+
 
     m_kernel->evalAddrExp();
 

@@ -496,6 +496,11 @@ public:
 
     // reset this BB's instruction's local id so they are [0,..#BBInst-1]
     void resetLocalId();
+
+    void removeIntrinsics(Intrinsic intrinId)
+    {
+        instList.remove_if([=](G4_INST* inst) { return inst->isIntrinsic() && inst->asIntrinsicInst()->getIntrinsicId() == intrinId;});
+    }
 };
 }
 

@@ -276,15 +276,10 @@ static void verifyVariableDecl(const common_isa_header& isaHeader, const kernel_
             break; // Prevent gcc warning
     }
 
-    int varSize = var->num_elements * CISATypeTable[var->getType()].typeSize;
-
     REPORT_HEADER(options, var->num_elements != 0 && var->num_elements <= 4096,
                   "V%d's number of elements(%d) is out of range: %s",
                   declID + numPreDefinedVars, var->num_elements,
                   declError.c_str());
-    REPORT_HEADER(options, varSize < COMMON_ISA_MAX_VARIABLE_SIZE,
-                  "V%d's size(%d) exceeds the maximum allowed limit (4K): %s",
-                  declID + numPreDefinedVars, varSize, declError.c_str());
     REPORT_HEADER(options, !(var->alias_index == 0 && var->alias_offset != 0),
                   "V%d's alias offset must be zero when it is not aliased: %s",
                   declID + numPreDefinedVars, declError.c_str());
