@@ -3280,7 +3280,7 @@ else()
     if(NOT DEFINED COMMON_CLANG_LIBRARY_NAME 
       AND UNIX
     )
-        set(COMMON_CLANG_LIBRARY_NAME opencl_clang)
+        set(COMMON_CLANG_LIBRARY_NAME common_clang)
     endif()
 
     
