@@ -5272,32 +5272,25 @@ bool GlobalRA::areAllDefsNoMask(G4_Declare* dcl)
 {
     bool retval = true;
     auto maskUsed = getMask(dcl);
-    if (maskUsed != NULL)
+    if (maskUsed != NULL &&
+        getAugmentationMask(dcl) != AugmentationMasks::NonDefault)
     {
-        if (maskUsed == (unsigned char*)allDefsNoMask)
+        auto byteSize = dcl->getByteSize();
+        for (unsigned int i = 0; i < byteSize; i++)
         {
-            retval = true;
-        }
-        else if (maskUsed == (unsigned char*)allDefsNotNoMask)
-        {
-            retval = false;
-        }
-        else
-        {
-            auto byteSize = dcl->getByteSize();
-            for (unsigned int i = 0; i < byteSize; i++)
+            if (maskUsed[i] != NOMASK_BYTE)
             {
-                if (maskUsed[i] != NOMASK_BYTE)
-                {
-                    retval = false;
-                    break;
-                }
+                retval = false;
+                break;
             }
         }
     }
     else
     {
-        retval = false;
+        if (getAugmentationMask(dcl) == AugmentationMasks::NonDefault)
+            retval = true;
+        else
+            retval = false;
     }
     return retval;
 }

@@ -3263,9 +3263,11 @@ void Augmentation::markNonDefaultDstRgn(G4_INST* inst, G4_Operand* opnd)
             // has some special checks.
             if (inst->isSend())
             {
+                if (gra.getAugmentationMask(dcl) == AugmentationMasks::NonDefault)
+                {
+                    return;
+                }
                 updateDstMask(inst, false);
-                G4_Declare* dcl = dst->getBase()->asRegVar()->getDeclare();
-                dcl = dcl->getRootDeclare();
                 if (isDefaultMaskDcl(dcl, kernel.getSimdSize(), AugmentationMasks::Default16Bit))
                 {
                     gra.setAugmentationMask(dcl, AugmentationMasks::Default16Bit);
@@ -9114,6 +9116,14 @@ bool GlobalRA::hybridRA(bool doBankConflictReduction, bool highInternalConflict,
     return true;
 }
 
+bool canDoLRA(G4_Kernel& kernel)
+{
+    bool ret = true;
+
+
+    return ret;
+}
+
 //
 // graph coloring entry point.  returns nonzero if RA fails
 //
@@ -9170,7 +9180,7 @@ int GlobalRA::coloringRegAlloc()
     bool doBankConflictReduction = false;
     bool highInternalConflict = false;
 
-    if (builder.getOption(vISA_LocalRA) && !isReRAPass())
+    if (builder.getOption(vISA_LocalRA) && !isReRAPass() && canDoLRA(kernel))
     {
         startTimer(TIMER_LOCAL_RA);
         bool doLocalRR = builder.getOption(vISA_LocalRARoundRobin);
@@ -9536,6 +9546,7 @@ int GlobalRA::coloringRegAlloc()
                     computePhyReg();
                     verifyAugmentation->verify();
                 }
+
 
                 break; // done
             }

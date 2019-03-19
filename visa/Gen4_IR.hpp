@@ -147,9 +147,6 @@ void resetRightBound(vISA::G4_Operand* opnd);
 #pragma warning (disable: 4996)
 #endif
 
-extern const char* allDefsNoMask;
-extern const char* allDefsNotNoMask;
-
 namespace vISA
 {
 // forward declaration

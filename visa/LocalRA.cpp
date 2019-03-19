@@ -51,9 +51,6 @@ extern unsigned int getStackCallRegSize(bool reserveStackCallRegs);
 extern void getForbiddenGRFs(vector<unsigned int>& regNum, const Options *opt, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned reservedRegNum);
 extern void getCallerSaveGRF(vector<unsigned int>& regNum, G4_Kernel* kernel);
 
-const char* allDefsNoMask = "ALL DEFS NO MASK";
-const char* allDefsNotNoMask = "ALL DEFS NOT NO MASK";
-
 LocalRA::LocalRA(G4_Kernel& k, bool& h, BankConflictPass& b, GlobalRA& g) :
     kernel(k), builder(*k.fg.builder), highInternalConflict(h),
     mem(k.fg.builder->mem), bc(b), gra(g)
@@ -1181,14 +1178,10 @@ void LocalRA::markReferencesInOpnd(G4_Operand* opnd, bool isEOT, INST_LIST_ITER 
             {
                 if (opnd->getInst()->isWriteEnableInst() == false)
                 {
-                    gra.setMask(topdcl, (unsigned char*)allDefsNotNoMask);
                 }
                 else
                 {
-                    if (gra.getMask(topdcl) == NULL)
-                    {
-                        gra.setMask(topdcl, (unsigned char*)allDefsNoMask);
-                    }
+                    gra.setAugmentationMask(topdcl, AugmentationMasks::NonDefault);
                 }
             }
         }
