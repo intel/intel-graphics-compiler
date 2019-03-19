@@ -34,6 +34,10 @@ set(LINK_DLL_IGA 1)
 endif(IGC_BUILD)
 
 
+# Set up build flags to use dynamic multi-threaded runtime (/MD) or
+# to use static multi-threaded runtime (/MT)
+option(LINK_AS_STATIC_LIB "link with /MT or /MD" ON)
+
 
 ################################################################################
 # IGA Related
@@ -125,10 +129,6 @@ BISON_TARGET(CISAParser CISA.y ${CMAKE_CURRENT_BINARY_DIR}/CISA.tab.c COMPILE_FL
 FLEX_TARGET(CISAScanner CISA.l ${CMAKE_CURRENT_BINARY_DIR}/lex.CISA.c COMPILE_FLAGS "-PCISA ${WIN_FLEX_FLAG}")
 ADD_FLEX_BISON_DEPENDENCY(CISAScanner CISAParser)
 
-# Set up windows mobile build flags to use dynamic multi-threaded runtime (/MD)
-# Set up windows(other) build flags to use static multi-threaded runtime (/MT)
-
-
 # Set up include paths used by all the libraries in this file
 # There is a windows specific include path for GNUTools support that is inside the repository. The
 # equivalent support is already included for Linux and Android so is not required for those platforms
@@ -137,7 +137,11 @@ if (WIN32)
   set(Jitter_inc_dirs ${Jitter_inc_dirs} ${GNUTOOLS_DIR}/include)
 endif (WIN32)
 
-win_static_runtime()
+if (LINK_AS_STATIC_LIB)
+  win_static_runtime()
+else (LINK_AS_STATIC_LIB)
+  win_dynamic_runtime()
+endif (LINK_AS_STATIC_LIB)
 
 # Some Android specific paths primarily to enable support for STL
 if(ANDROID AND MEDIA_IGA)

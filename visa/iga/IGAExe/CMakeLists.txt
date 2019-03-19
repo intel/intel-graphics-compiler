@@ -1,10 +1,10 @@
 project(IGA_EXE)
-# Set up windows mobile build flags to use dynamic multi-threaded runtime (/MD)
-# Set up windows(other) build flags to use static multi-threaded runtime (/MT)
-#
-# This mimicks vISA/MDF configurations
-win_static_runtime()
 
+if (LINK_AS_STATIC_LIB)
+  win_static_runtime()
+else (LINK_AS_STATIC_LIB)
+  win_dynamic_runtime()
+endif (LINK_AS_STATIC_LIB)
 
 set(IGA_EXE_CPP
   ${CMAKE_CURRENT_SOURCE_DIR}/assemble.cpp
