@@ -1103,82 +1103,77 @@ Value *ConstantCoalescing::SimpleBaseOffset( Value *elt_idxv, uint &offset )
 
 bool ConstantCoalescing::DecomposePtrExp(Value *ptr_val, Value*& buf_idxv, Value*& elt_idxv, uint &offset)
 {
-    if (isa<Argument>(ptr_val))
-    {
-        buf_idxv = ptr_val;
-        elt_idxv = nullptr;
-        offset = 0;
-        return true;
-    }
-    IntToPtrInst *i2p = dyn_cast<IntToPtrInst>(ptr_val);
-    if (!i2p)
-        return false;
-    // get the int-type address computation
-    Instruction *expr = dyn_cast<Instruction>(i2p->getOperand(0));
-    if (!expr || !expr->getType()->isIntegerTy())
-    {
-        return false;
-    }
-    // look for the buf_idxv from a ptr2int
-    if (isa<PtrToIntInst>(expr))
-    {
-        buf_idxv = expr;
-        elt_idxv = nullptr;
-        offset = 0;
-        return true;
-    }
-    if (expr->getOpcode() == Instruction::Add)
-    {
-        Value *src0 = expr->getOperand(0);
-        Value *src1 = expr->getOperand(1);
-        if (isa<PtrToIntInst>(src0))
-        {
-            buf_idxv = src0;
-            ConstantInt *elt_idx = dyn_cast<ConstantInt>(src1);
-            if (elt_idx)
-            {   // direct access
-                offset = (uint)elt_idx->getZExtValue();
-                elt_idxv = nullptr;
-            }
-            else
-            {
-                elt_idxv = SimpleBaseOffset(src1, offset);
-            }
-            return true;
-        }
-        else if (isa<PtrToIntInst>(src1))
-        {
-            buf_idxv = src1;
-            ConstantInt *elt_idx = dyn_cast<ConstantInt>(src0);
-            if (elt_idx)
-            {   // direct access
-                offset = (uint)elt_idx->getZExtValue();
-                elt_idxv = nullptr;
-            }
-            else
-            {
-                elt_idxv = SimpleBaseOffset(src0, offset);
-            }
-            return true;
-        }
-        else if (ConstantInt *elt_idx = dyn_cast<ConstantInt>(src1))
-        {
-            offset = (uint)elt_idx->getZExtValue();
-            elt_idxv = nullptr;
-            buf_idxv = src0;
-            return true;
-        }
-        else if (ConstantInt *elt_idx = dyn_cast<ConstantInt>(src0))
-        {
-            offset = (uint)elt_idx->getZExtValue();
-            elt_idxv = nullptr;
-            buf_idxv = src1;
-            return true;
-        }
-    }
-    buf_idxv = expr;
+    buf_idxv = ptr_val;
     elt_idxv = nullptr;
     offset = 0;
+
+    if (IntToPtrInst *i2p = dyn_cast<IntToPtrInst>(ptr_val))
+    {
+        // get the int-type address computation
+        Instruction *expr = dyn_cast<Instruction>(i2p->getOperand(0));
+        if (!expr || !expr->getType()->isIntegerTy())
+        {
+            return false;
+        }
+        // look for the buf_idxv from a ptr2int
+        if (isa<PtrToIntInst>(expr))
+        {
+            buf_idxv = expr;
+            elt_idxv = nullptr;
+            offset = 0;
+            return true;
+        }
+        if (expr->getOpcode() == Instruction::Add)
+        {
+            Value *src0 = expr->getOperand(0);
+            Value *src1 = expr->getOperand(1);
+            if (isa<PtrToIntInst>(src0))
+            {
+                buf_idxv = src0;
+                ConstantInt *elt_idx = dyn_cast<ConstantInt>(src1);
+                if (elt_idx)
+                {   // direct access
+                    offset = (uint)elt_idx->getZExtValue();
+                    elt_idxv = nullptr;
+                }
+                else
+                {
+                    elt_idxv = SimpleBaseOffset(src1, offset);
+                }
+                return true;
+            }
+            else if (isa<PtrToIntInst>(src1))
+            {
+                buf_idxv = src1;
+                ConstantInt *elt_idx = dyn_cast<ConstantInt>(src0);
+                if (elt_idx)
+                {   // direct access
+                    offset = (uint)elt_idx->getZExtValue();
+                    elt_idxv = nullptr;
+                }
+                else
+                {
+                    elt_idxv = SimpleBaseOffset(src0, offset);
+                }
+                return true;
+            }
+            else if (ConstantInt *elt_idx = dyn_cast<ConstantInt>(src1))
+            {
+                offset = (uint)elt_idx->getZExtValue();
+                elt_idxv = nullptr;
+                buf_idxv = src0;
+                return true;
+            }
+            else if (ConstantInt *elt_idx = dyn_cast<ConstantInt>(src0))
+            {
+                offset = (uint)elt_idx->getZExtValue();
+                elt_idxv = nullptr;
+                buf_idxv = src1;
+                return true;
+            }
+        }
+        buf_idxv = expr;
+    }
     return true;
 }
 
