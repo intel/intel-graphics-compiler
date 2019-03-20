@@ -7669,7 +7669,8 @@ bool G4_INST::canSrcBeAcc(int srcId) const
         return false;
     }
 
-    if (opcode() == G4_mad && srcId == 0)
+    if (opcode() == G4_mad && srcId == 0 &&
+    	 !builder.canMadHaveSrc0Acc())
     {
         // mac's implicit acc gets its region from dst, so we have to check src and
         // dst have the same type
