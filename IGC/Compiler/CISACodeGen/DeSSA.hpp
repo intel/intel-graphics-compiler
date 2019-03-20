@@ -110,7 +110,11 @@ class DeSSA : public llvm::FunctionPass {
     /// return 0 if reg is isolated, and not in any insert-element union
     llvm::Value* getRootValue(llvm::Value*, e_alignment *pAlign = 0) const;
 
-    bool isIsolated(llvm::Value*) const;
+    /// Get the union-root of the PHI dst-value. The root of a PHI-dst is 0 if 
+    /// the PHI has been isolated, or the phi-dst has been reg-isolated
+    llvm::Value* getPHIRoot(llvm::Instruction*) const;
+
+    bool isPHIIsolated(llvm::Instruction*) const;
 
     bool isUniform(llvm::Value *v) const {
       return (WIA->whichDepend(v) == WIAnalysis::UNIFORM);
@@ -138,15 +142,20 @@ class DeSSA : public llvm::FunctionPass {
     /// congruence class may no longer logically be a member, due to being
     /// isolated.
     struct Node {
+      enum Flags {
+        kRegisterIsolatedFlag = 1,
+        kPHIIsolatedFlag = 1
+      };
       Node(llvm::Value *v, int c, e_alignment align)
-          : parent(this), next(this), prev(this), value(v)
+          : next(this), prev(this), value(v)
           , rank(0), alignment(align), color(c)
       {
+        parent.setPointer(this);
       }
 
       Node *getLeader();
 
-      Node* parent;
+      llvm::PointerIntPair<Node*, 2> parent;
 	  // double-linked circular list. All values are in the same congruent class
 	  // except those that have been isolated.
       Node *next;
@@ -188,8 +197,8 @@ class DeSSA : public llvm::FunctionPass {
     // Isolate a register.
     void isolateReg(llvm::Value*);
 
-    /// Is it isolated (single-valued congruent class)
-    bool isIsolated(Node* N) const { return (N == N->next); }
+    /// Isolate a PHI.
+    void isolatePHI(llvm::Instruction*);
 
     // Split node from its existing congurent class, and
     // node itself becomes a new single-value congruent class
