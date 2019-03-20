@@ -3023,6 +3023,10 @@ if(_igc_compiler_is_clang)
     )
 endif()
 
+
+
+
+
 # ================================== Compiler preprocessor definitions =================================
 
 # ?  CL_NUMBER                < env:CL_NUMBER if env:CL_NUMBER != ''
@@ -3540,6 +3544,8 @@ set_property(TARGET "${IGC_BUILD__PROJ__igc_dll}" PROPERTY PROJECT_LABEL "${IGC_
 #FCL
 #igc_target_flag_property_add_once_config_var("${IGC_BUILD__PROJ__fcl_dll}" LINK_FLAGS IGC_BUILD__EXPORT_SYMBOLS_LINK_FLAGS)
 set_property(TARGET "${IGC_BUILD__PROJ__fcl_dll}" PROPERTY PROJECT_LABEL "${IGC_BUILD__PROJ_LABEL__fcl_dll}")
+
+
 
 #Set Universal properties if this is universal build
 if(MSVC AND IGC_OPTION__UNIVERSAL_DRIVER)

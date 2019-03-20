@@ -359,6 +359,7 @@ void WorkaroundAnalysis::visitCallInst(llvm::CallInst &I)
             break;
         }
     }
+
 }
 
 void WorkaroundAnalysis::ldmsOffsetWorkaournd(LdMSIntrinsic* ldms)
