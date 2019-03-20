@@ -1218,6 +1218,99 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
 {
     /*
     from
+        %7 = fcmp olt float %5, %6
+        %8 = select i1 %7, float 1.000000e+00, float 0.000000e+00
+        %9 = bitcast float %8 to i32
+        %10 = icmp eq i32 %9, 0
+        %.01 = select i1 %10, float %4, float %11
+        br i1 %10, label %endif, label %then
+    to
+        %7 = fcmp olt float %5, %6
+        %.01 = select i1 %7, float %11, float %4
+        br i1 %7, label %then, label %endif
+    */
+    {
+        bool swapNodesFromSel = false;
+        bool isSelWithConstants = false;
+        ConstantFP *Cfp1 = dyn_cast<ConstantFP>(I.getOperand(1));
+        ConstantFP *Cfp2 = dyn_cast<ConstantFP>(I.getOperand(2));
+        if (Cfp1 && Cfp1->getValueAPF().isFiniteNonZero() &&
+            Cfp2 && Cfp2->isZero())
+        {
+            isSelWithConstants = true;
+        }
+        if (Cfp1 && Cfp1->isZero() &&
+            Cfp2 && Cfp2->getValueAPF().isFiniteNonZero())
+        {
+            isSelWithConstants = true;
+            swapNodesFromSel = true;
+        }
+        if (isSelWithConstants &&
+            dyn_cast<FCmpInst>(I.getOperand(0)))
+        {
+            for (auto bitCastI : I.users())
+            {
+                if (BitCastInst* bitcastInst = dyn_cast<BitCastInst>(bitCastI))
+                {
+                    for (auto cmpI : bitcastInst->users())
+                    {
+                        ICmpInst* iCmpInst = dyn_cast<ICmpInst>(cmpI);
+                        if (iCmpInst &&
+                            iCmpInst->isEquality())
+                        {
+                            ConstantInt *icmpC = dyn_cast<ConstantInt>(iCmpInst->getOperand(1));
+                            if (!icmpC || !icmpC->isZero())
+                            {
+                                continue;
+                            }
+
+                            bool swapNodes = swapNodesFromSel;
+                            if (iCmpInst->getPredicate() == CmpInst::Predicate::ICMP_EQ)
+                            {
+                                swapNodes = (swapNodes != true);
+                            }
+
+                            SmallVector<Instruction*, 4> matchedBrSelInsts;
+                            for (auto brOrSelI : iCmpInst->users())
+                            {
+                                BranchInst* brInst = dyn_cast<BranchInst>(brOrSelI);
+                                if (brInst &&
+                                    brInst->isConditional())
+                                {
+                                    //match
+                                    matchedBrSelInsts.push_back(brInst);
+                                    if (swapNodes)
+                                    {
+                                        brInst->swapSuccessors();
+                                    }
+                                }
+
+                                if (SelectInst* selInst = dyn_cast<SelectInst>(brOrSelI))
+                                {
+                                    //match
+                                    matchedBrSelInsts.push_back(selInst);
+                                    if (swapNodes)
+                                    {
+                                        Value* selTrue = selInst->getTrueValue();
+                                        Value* selFalse = selInst->getFalseValue();
+                                        selInst->setTrueValue(selFalse);
+                                        selInst->setFalseValue(selTrue);
+                                        selInst->swapProfMetadata();
+                                    }
+                                }
+                            }
+                            for (Instruction* inst : matchedBrSelInsts)
+                            {
+                                inst->setOperand(0, I.getOperand(0));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    /*
+    from
         %res_s42 = icmp eq i32 %src1_s41, 0
         %src1_s81 = select i1 %res_s42, i32 15, i32 0
     to
