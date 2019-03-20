@@ -112,7 +112,6 @@ public:
         CoalescingEngine::CCTuple* ccTuple,
         VISA_Type baseType = ISA_TYPE_UD);
     CVariable*  GetSymbol(llvm::Value* value, bool fromConstantPool = false);
-    CVariable*  GetPhiTemp(llvm::PHINode* node);
     void        AddSetup(uint index, CVariable* var);
     void        AddPatchConstantSetup(uint index, CVariable* var);
     CVariable*  GetNewVariable(uint16_t nbElement, VISA_Type type, e_alignment align, bool uniform = false, uint16_t numberInstance = 1);
@@ -404,8 +403,6 @@ protected:
     llvm::DenseMap<llvm::Value *, CVariable*> globalSymbolMapping;
 
     llvm::DenseMap<llvm::Value*, CVariable*> symbolMapping;
-    // for phi destruction, we need another mapping from each phi to a temp
-    llvm::DenseMap<llvm::PHINode*, CVariable*> phiMapping;
     // we also need another mapping from a congruent class to a temp
     // because root-value may be isolated, so it may not belong to that class
     llvm::DenseMap<llvm::Value*, CVariable*> rootMapping;

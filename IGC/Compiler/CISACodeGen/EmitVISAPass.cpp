@@ -507,11 +507,6 @@ bool EmitPass::runOnFunction(llvm::Function &F)
             IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndEncodingMark();)
         }
 
-        if (IGC_IS_FLAG_DISABLED(DisablePHIDstCopy)) {
-            // insert moves at the top of the block
-            MovPhiDestination(block.bb);
-        }
-
         // remove cached per lane offset variables if any.
         PerLaneOffsetVars.clear();
 
@@ -760,43 +755,6 @@ EmitPass::emitInSlice(SBasicBlock& block, SBasicBlock::reverse_iterator I)
     return sliceEnd;
 }
 
-/// Insert moves at the beginning of the basic block to replace the phi nodes
-void EmitPass::MovPhiDestination(llvm::BasicBlock* bb)
-{
-    for (BasicBlock::iterator BBI = bb->begin(), BBE = bb->end(); BBI != BBE; ++BBI)
-    {
-        PHINode *PHI = dyn_cast<PHINode>(BBI);
-        if (!PHI)
-        {
-            break;
-        }
-        if (PHI->use_empty())
-        {
-            continue;
-        }
-        IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->BeginInstruction(PHI);)
-            // insert a move from phi-temp to phi-dst
-            CVariable* dst = m_currShader->GetSymbol(PHI);
-        CVariable* src = m_currShader->GetPhiTemp(PHI);
-        if (dst != src) {
-            for (uint instance = 0; instance < dst->GetNumberInstance(); instance++)
-            {
-                m_encoder->SetSecondHalf(instance == 1 ? true : false);
-                if (VectorType *vTy = dyn_cast<VectorType>(PHI->getType()))
-                {
-                    emitVectorCopy(dst, src, int_cast<unsigned>(vTy->getNumElements()));
-                }
-                else
-                {
-                    m_encoder->Copy(dst, src);
-                    m_encoder->Push();
-                }
-            }
-        }
-        IF_DEBUG_INFO_IF(m_pDebugEmitter, m_pDebugEmitter->EndInstruction(PHI);)
-    }
-}
-
 /// Insert moves at the end of the basic block to replace the phi node of the successors
 // This is a special case that we want to relocate the phi-mov's
 // unconditionally. Two functions, isCandidateIfStmt() and
@@ -844,7 +802,7 @@ bool EmitPass::canRelocatePhiMov(
             break;
         }
 
-        CVariable* dst = m_currShader->GetPhiTemp(PN);
+        CVariable* dst = m_currShader->GetSymbol(PN);
         for (uint i = 0, e = PN->getNumOperands(); i != e; ++i)
         {
             Value *V = PN->getOperand(i);
@@ -1028,7 +986,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
             {
                 if (PN->getIncomingBlock(i) == bb)
                 {
-                    CVariable* dst = m_currShader->GetPhiTemp(PN);
+                    CVariable* dst = m_currShader->GetSymbol(PN);
                     CVariable* src = m_currShader->GetSymbol(PN->getOperand(i));
                     if (dst != src)
                     {
@@ -1038,11 +996,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                             numElt = int_cast<int>(vTy->getNumElements());
                         }
                         dstVTyMap.insert(std::pair<CVariable*, unsigned int>(dst, numElt));
-
-                        if (IGC_IS_FLAG_DISABLED(DisablePHIDstCopy) && m_deSSA->isIsolated(PN))
-                            emitList.push_back(std::pair<CVariable*, CVariable*>(src, dst));
-                        else
-                            phiSrcDstList.push_back(std::pair<CVariable*, CVariable*>(src, dst));
+                        phiSrcDstList.push_back(std::pair<CVariable*, CVariable*>(src, dst));
                     }
                 }
             }
@@ -1076,7 +1030,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                 break;
             }
         }
-        if (IGC_IS_FLAG_ENABLED(DisablePHIDstCopy) && It == Et)
+        if (It == Et)
         {
             // Found cyclic phi-move dependency. Pick the first one (anyone
             // should be good) and create a temp to break the dependence cycle.

@@ -390,7 +390,6 @@ public:
     void emitStateRegID(uint64_t and_imm, uint64_t shr_imm);
     void emitThreadPause(llvm::GenIntrinsicInst* inst);
 
-    void MovPhiDestination(llvm::BasicBlock* bb);
     void MovPhiSources(llvm::BasicBlock* bb);
 
     void InitConstant(llvm::BasicBlock *BB);

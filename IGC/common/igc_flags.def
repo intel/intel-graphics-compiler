@@ -144,8 +144,6 @@ DECLARE_IGC_REGKEY(bool, EnableLogicalAndToBranch, true,
     "Enable convert logical AND to conditional branch")
 DECLARE_IGC_REGKEY(bool, DisableMovingInstanceIDIndexOfVS,  false,   "Disable moving index of InstanceID in VS to last location.")
 DECLARE_IGC_REGKEY(bool, EnableSplitUnalignedVector,    true,    "Enable Splitting of unaligned vectors for loads and stores")
-DECLARE_IGC_REGKEY(bool, DisablePHIDstCopy,             true,    "[tmp]Generate phi moves on src-side of phi only.")
-
 
 DECLARE_IGC_GROUP("Shader debugging")
 DECLARE_IGC_REGKEY(bool, ShaderDebugHashCodeInKernel,   false, "Append hash code to the binary")
