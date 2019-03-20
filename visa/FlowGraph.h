@@ -278,8 +278,8 @@ class G4_BB
     // indicate the nest level of the loop
     unsigned char loopNestLevel;
 
-	// indicates the scoping info in call graph
-	unsigned scopeID;
+    // indicates the scoping info in call graph
+    unsigned scopeID;
 
     // if the block is under simd flow control
     bool inSimdFlow;
@@ -310,20 +310,20 @@ public:
     INST_LIST::reverse_iterator rbegin() { return instList.rbegin(); }
     INST_LIST::reverse_iterator rend() { return instList.rend(); }
     INST_LIST& getInstList() { return instList; }
-    INST_LIST_ITER insert(INST_LIST::const_iterator iter, G4_INST* inst)
+    INST_LIST_ITER insert(INST_LIST::iterator iter, G4_INST* inst)
     {
         return instList.insert(iter, inst);
     }
     template <class InputIt>
-    INST_LIST_ITER insert(INST_LIST::const_iterator iter, InputIt first, InputIt last)
+    INST_LIST_ITER insert(INST_LIST::iterator iter, InputIt first, InputIt last)
     {
         return instList.insert(iter, first, last);
     }
-    INST_LIST_ITER erase(INST_LIST::const_iterator iter)
+    INST_LIST_ITER erase(INST_LIST::iterator iter)
     {
         return instList.erase(iter);
     }
-    INST_LIST_ITER erase(INST_LIST::const_iterator first, INST_LIST::const_iterator last)
+    INST_LIST_ITER erase(INST_LIST::iterator first, INST_LIST::iterator last)
     {
         return instList.erase(first, last);
     }
@@ -337,29 +337,29 @@ public:
     bool empty() const { return instList.empty(); }
     G4_INST* front() { return instList.front(); }
     G4_INST* back() { return instList.back(); }
-    void splice(INST_LIST::const_iterator pos, INST_LIST& other)
+    void splice(INST_LIST::iterator pos, INST_LIST& other)
     {
         instList.splice(pos, other);
     }
-    void splice(INST_LIST::const_iterator pos, G4_BB* otherBB)
+    void splice(INST_LIST::iterator pos, G4_BB* otherBB)
     {
         instList.splice(pos, otherBB->getInstList());
     }
-    void splice(INST_LIST::const_iterator pos, INST_LIST& other, INST_LIST::const_iterator it)
+    void splice(INST_LIST::iterator pos, INST_LIST& other, INST_LIST::iterator it)
     {
         instList.splice(pos, other, it);
     }
-    void splice(INST_LIST::const_iterator pos, G4_BB* otherBB, INST_LIST::const_iterator it)
+    void splice(INST_LIST::iterator pos, G4_BB* otherBB, INST_LIST::iterator it)
     {
         instList.splice(pos, otherBB->getInstList(), it);
     }
-    void splice(INST_LIST::const_iterator pos, INST_LIST& other,
-        INST_LIST::const_iterator first, INST_LIST::const_iterator last)
+    void splice(INST_LIST::iterator pos, INST_LIST& other,
+        INST_LIST::iterator first, INST_LIST::iterator last)
     {
         instList.splice(pos, other, first, last);
     }
-    void splice(INST_LIST::const_iterator pos, G4_BB* otherBB,
-        INST_LIST::const_iterator first, INST_LIST::const_iterator last)
+    void splice(INST_LIST::iterator pos, G4_BB* otherBB,
+        INST_LIST::iterator first, INST_LIST::iterator last)
     {
         instList.splice(pos, otherBB->getInstList(), first, last);
     }
@@ -435,8 +435,8 @@ public:
     void     resetNestLevel()                 { loopNestLevel = 0; }
     void     setInSimdFlow(bool val)          {inSimdFlow = val;}
     bool     isInSimdFlow()                   {return inSimdFlow;}
-	unsigned getScopeID()                     { return scopeID; }
-	void setScopeID(unsigned id)              { scopeID = id; }
+    unsigned getScopeID() { return scopeID; }
+    void setScopeID(unsigned id) { scopeID = id; }
 
     G4_BB* getPhysicalPred() const     { return physicalPred; }
     G4_BB* getPhysicalSucc() const     { return physicalSucc; }
@@ -489,7 +489,7 @@ public:
         return firstInst;
     }
 
-	void addEOTSend(G4_INST* lastInst = NULL);
+    void addEOTSend(G4_INST* lastInst = NULL);
 
     /// Dump instructions into the standard error.
     void dump(bool printCFG) const;
@@ -706,10 +706,10 @@ public:
 
     std::vector<FuncInfo*> funcInfoTable;       // the vector of function info nodes. entry function is not included.
 
-	std::vector<FuncInfo*> sortedFuncTable;     // subroutines in reverse topographical order (leaf at top)
+    std::vector<FuncInfo*> sortedFuncTable;     // subroutines in reverse topographical order (leaf at top)
                                                 // kernelInfo is the last element with invalid func id
 
-	FuncInfo* kernelInfo;                       // the call info for the kernel function
+    FuncInfo* kernelInfo;                       // the call info for the kernel function
 
     IR_Builder *builder;                        // needed to create new instructions (mainly labels)
     GlobalOpndHashTable globalOpndHT;
@@ -718,10 +718,10 @@ public:
     G4_Declare *            stackPtrDcl;
     G4_Declare *            scratchRegDcl;
     // ToDo: change to set if we have a lot of stack call sites
-	std::vector<G4_Declare *> pseudoVCADclList;
+    std::vector<G4_Declare *> pseudoVCADclList;
     G4_Declare *            pseudoVCEDcl;
-	std::vector<G4_Declare*> pseudoA0DclList;
-	std::vector<G4_Declare*> pseudoFlagDclList;
+    std::vector<G4_Declare*> pseudoA0DclList;
+    std::vector<G4_Declare*> pseudoFlagDclList;
 
     unsigned                    callerSaveAreaOffset;
     unsigned                    calleeSaveAreaOffset;
@@ -1011,12 +1011,12 @@ public:
 
     void findNaturalLoops();
 
-	void traverseFunc(FuncInfo* func, unsigned int *ptr);
-	void topologicalSortCallGraph();
-	void findDominators(std::map<FuncInfo*, std::set<FuncInfo*>>& domMap);
-	unsigned int resolveVarScope(G4_Declare* dcl, FuncInfo* func);
-	void markVarScope(std::vector<G4_BB*>& BBList, FuncInfo* func);
-	void markScope();
+    void traverseFunc(FuncInfo* func, unsigned int *ptr);
+    void topologicalSortCallGraph();
+    void findDominators(std::map<FuncInfo*, std::set<FuncInfo*>>& domMap);
+    unsigned int resolveVarScope(G4_Declare* dcl, FuncInfo* func);
+    void markVarScope(std::vector<G4_BB*>& BBList, FuncInfo* func);
+    void markScope();
 
     void addSIMDEdges();
 
@@ -1080,28 +1080,28 @@ private:
 };
 
 }
-#define RA_TYPE(DO) \
-	DO(TRIVIAL_BC_RA) \
-	DO(TRIVIAL_RA) \
-	DO(LOCAL_ROUND_ROBIN_BC_RA) \
-	DO(LOCAL_ROUND_ROBIN_RA) \
-	DO(LOCAL_FIRST_FIT_BC_RA) \
-	DO(LOCAL_FIRST_FIT_RA) \
-	DO(HYBRID_BC_RA) \
-	DO(HYBRID_RA) \
-	DO(GRAPH_COLORING_RR_BC_RA) \
-	DO(GRAPH_COLORING_FF_BC_RA) \
-	DO(GRAPH_COLORING_RR_RA) \
-	DO(GRAPH_COLORING_FF_RA) \
-	DO(GRAPH_COLORING_SPILL_RR_BC_RA) \
-	DO(GRAPH_COLORING_SPILL_FF_BC_RA) \
-	DO(GRAPH_COLORING_SPILL_RR_RA) \
-	DO(GRAPH_COLORING_SPILL_FF_RA) \
-	DO(UNKNOWN_RA)
+#define RA_TYPE(DO)                                                            \
+  DO(TRIVIAL_BC_RA)                                                            \
+  DO(TRIVIAL_RA)                                                               \
+  DO(LOCAL_ROUND_ROBIN_BC_RA)                                                  \
+  DO(LOCAL_ROUND_ROBIN_RA)                                                     \
+  DO(LOCAL_FIRST_FIT_BC_RA)                                                    \
+  DO(LOCAL_FIRST_FIT_RA)                                                       \
+  DO(HYBRID_BC_RA)                                                             \
+  DO(HYBRID_RA)                                                                \
+  DO(GRAPH_COLORING_RR_BC_RA)                                                  \
+  DO(GRAPH_COLORING_FF_BC_RA)                                                  \
+  DO(GRAPH_COLORING_RR_RA)                                                     \
+  DO(GRAPH_COLORING_FF_RA)                                                     \
+  DO(GRAPH_COLORING_SPILL_RR_BC_RA)                                            \
+  DO(GRAPH_COLORING_SPILL_FF_BC_RA)                                            \
+  DO(GRAPH_COLORING_SPILL_RR_RA)                                               \
+  DO(GRAPH_COLORING_SPILL_FF_RA)                                               \
+  DO(UNKNOWN_RA)
 
 enum RA_Type
 {
-	RA_TYPE(MAKE_ENUM)
+  RA_TYPE(MAKE_ENUM)
 };
 
 namespace vISA
@@ -1253,7 +1253,7 @@ class G4_Kernel
     bool hasAddrTaken;
     Options *m_options;
 
-	RA_Type RAType;
+    RA_Type RAType;
     KernelDebugInfo* kernelDbgInfo;
     void dumpDotFileInternal(const char* appendix);
     void dumpPassInternal(const char *appendix);
@@ -1421,16 +1421,15 @@ public:
     /// Dump this kernel into the standard error.
     void dump() const;
 
-	void setRAType(RA_Type type) { RAType = type; }
-	RA_Type getRAType() { return RAType; }
+    void setRAType(RA_Type type) { RAType = type; }
+    RA_Type getRAType() { return RAType; }
 
     void setKernelDebugInfo(KernelDebugInfo* k) { kernelDbgInfo = k; }
     KernelDebugInfo* getKernelDebugInfo();
 
     bool hasGTPinInit()
     {
-        return gtPinInfo &&
-            gtPinInfo->getGTPinInit();
+        return gtPinInfo && gtPinInfo->getGTPinInit();
     }
 
     gtPinData* getGTPinData()
