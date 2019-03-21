@@ -68,8 +68,8 @@ static bool isResInfo(GenIntrinsicInst* inst, unsigned &texId, unsigned &lod, bo
         Value* texOp = inst->getOperand(0);
         BufferType bufType;
         unsigned as = texOp->getType()->getPointerAddressSpace();
-        unsigned bufIdx;
-        bool directIndexing;
+        unsigned bufIdx = 0; //default
+        bool directIndexing = false; //default
 
         bufType = DecodeAS4GFXResource(as, directIndexing, bufIdx);
         if (!directIndexing || bufType != RESOURCE || bufType != UAV)
