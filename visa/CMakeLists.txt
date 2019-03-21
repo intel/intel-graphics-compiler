@@ -376,7 +376,7 @@ if (UNIX OR WIN32)
   endif()
   
   if(UNIX)
-    install(TARGETS GenX_IR_Exe DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/bin COMPONENT igc-media)
+    install(TARGETS GenX_IR_Exe RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR} COMPONENT igc-media)
   endif(UNIX)
 
   # Copy executable

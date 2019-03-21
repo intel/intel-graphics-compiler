@@ -239,7 +239,6 @@ endif()
 # DISABLE_ENCODER_EXCEPTIONS: Disabling exceptions for encoder only project.
 # So it can be used in vISA BE, which is used in IGC. (IGC doesn't permit C++
 # exceptions to be used
-#
 # Alex: seems like this is the way to do it so it works in various
 # linux, android builds.
 target_compile_definitions(IGA_ENC_LIB PUBLIC DISABLE_ENCODER_EXCEPTIONS)
@@ -334,9 +333,7 @@ endif(ANDROID AND MEDIA_IGA)
 
   if(UNIX)
     INSTALL(TARGETS IGA_DLL
-        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/.   COMPONENT igc-core
-        LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib COMPONENT igc-core
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/.   COMPONENT igc-core
+        LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-core
     )
   elseif(WIN32)
     install(TARGETS IGA_DLL RUNTIME
