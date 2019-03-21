@@ -8083,7 +8083,7 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize
         buffer_p->r_type = reloc.getType();
         buffer_p->r_offset = (uint32_t)reloc.getInst()->getGenOffset();
         assert(reloc.getSymbolName().size() <= IGC::MAX_SYMBOL_NAME_LENGTH);
-        std::strcpy(buffer_p->r_symbol, reloc.getSymbolName().c_str());
+        strcpy_s(buffer_p->r_symbol, IGC::MAX_SYMBOL_NAME_LENGTH, reloc.getSymbolName().c_str());
         ++buffer_p;
     }
 

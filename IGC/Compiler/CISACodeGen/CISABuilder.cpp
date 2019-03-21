@@ -4248,7 +4248,7 @@ void CEncoder::CreateFunctionSymbolTable(void*& buffer, unsigned& bufferSize, un
         for (auto pFunc : funcsToExport)
         {
             assert(pFunc->getName().size() <= IGC::MAX_SYMBOL_NAME_LENGTH);
-            strcpy(entry_ptr->s_name, pFunc->getName().str().c_str());
+            strcpy_s(entry_ptr->s_name, IGC::MAX_SYMBOL_NAME_LENGTH, pFunc->getName().str().c_str());
 
             if (pFunc->isDeclaration())
             {
