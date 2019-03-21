@@ -4436,6 +4436,8 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_waveMatch(
     auto *EndBlock = BodyBlock->splitBasicBlock(
         inst->getNextNode(), "wavematch-end");
 
+    // Make sure that we set the insert point again as we've just invalidated
+    // it with the splitBasicBlock() calls above.
     this->SetInsertPoint(inst);
 
     // Now generate the code for a single iteration of the code
@@ -4459,6 +4461,44 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_waveMatch(
     this->SetInsertPoint(&*EndBlock->getFirstInsertionPt());
 
     return Mask;
+}
+
+template<bool preserveNames, typename T, typename Inserter>
+inline llvm::Value*
+LLVM3DBuilder<preserveNames, T, Inserter>::create_waveMultiPrefix(
+    llvm::Instruction *I,
+    llvm::Value *Val,
+    llvm::Value *Mask,
+    IGC::WaveOps OpKind)
+{
+    // This implementation is similar create_waveMatch() in that we loop
+    // until all subsets of lanes are processed.
+    auto *PreHeader = I->getParent();
+    auto *BodyBlock = PreHeader->splitBasicBlock(I, "multiprefix-body");
+    auto *EndBlock = BodyBlock->splitBasicBlock(
+        I->getNextNode(), "multiprefix-end");
+
+    // Make sure that we set the insert point again as we've just invalidated
+    // it with the splitBasicBlock() calls above.
+    this->SetInsertPoint(I);
+
+    // Now generate the code for a single iteration of the code
+    auto *FirstValue = this->readFirstLane(Mask);
+    auto *ParticipatingLanes = this->create_waveInverseBallot(FirstValue);
+
+    auto *WavePrefix = this->create_wavePrefix(
+        Val, this->getInt8((uint8_t)OpKind), false, ParticipatingLanes);
+
+    // Replace the current terminator to either exit the loop
+    // or branch back for another iteration.
+    auto *Br = BodyBlock->getTerminator();
+    this->SetInsertPoint(Br);
+    this->CreateCondBr(ParticipatingLanes, EndBlock, BodyBlock);
+    Br->eraseFromParent();
+
+    this->SetInsertPoint(&*EndBlock->getFirstInsertionPt());
+
+    return WavePrefix;
 }
 
 template<bool preserveNames, typename T, typename Inserter>

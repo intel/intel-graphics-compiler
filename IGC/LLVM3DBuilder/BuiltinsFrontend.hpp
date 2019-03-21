@@ -773,6 +773,11 @@ public:
         llvm::Value* src, llvm::Value* type, bool inclusive,
         llvm::Value *Mask = nullptr);
     llvm::Value* create_waveMatch(llvm::Instruction *inst, llvm::Value *src);
+    llvm::Value* create_waveMultiPrefix(
+        llvm::Instruction *I,
+        llvm::Value *Val,
+        llvm::Value *Mask,
+        IGC::WaveOps OpKind);
     llvm::Value* create_quadPrefix(llvm::Value* src, llvm::Value* type, bool inclusive = false);
     llvm::Value* get32BitLaneID();
     llvm::Value* getSimdSize();
