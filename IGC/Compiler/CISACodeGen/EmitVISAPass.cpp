@@ -1039,7 +1039,7 @@ void EmitPass::MovPhiSources(llvm::BasicBlock* aBB)
                         }
                         dstVTyMap.insert(std::pair<CVariable*, unsigned int>(dst, numElt));
 
-                        if (IGC_IS_FLAG_DISABLED(DisablePHIDstCopy) && m_deSSA->isPHIIsolated(PN))
+                        if (IGC_IS_FLAG_DISABLED(DisablePHIDstCopy) && m_deSSA->isIsolated(PN))
                             emitList.push_back(std::pair<CVariable*, CVariable*>(src, dst));
                         else
                             phiSrcDstList.push_back(std::pair<CVariable*, CVariable*>(src, dst));

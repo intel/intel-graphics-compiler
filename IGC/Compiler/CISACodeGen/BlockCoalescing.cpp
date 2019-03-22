@@ -121,7 +121,7 @@ bool BlockCoalescing::runOnFunction(Function& F)
             {
                 break;
             }
-            if(deSSA->isPHIIsolated(phi))
+            if(deSSA->isIsolated(phi))
             {
                 m_emptyBlocks.erase(bb);
                 for(pred_iterator PI = pred_begin(bb), PE = pred_end(bb); PI != PE; PI++)

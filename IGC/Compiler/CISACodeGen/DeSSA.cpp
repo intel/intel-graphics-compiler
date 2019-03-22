@@ -112,27 +112,40 @@ DeSSA::DeSSA() : FunctionPass( ID )
 void DeSSA::print(raw_ostream &OS, const Module* ) const
 {
     Banner(OS, "Phi-Var Isolations");
+    DenseMap<Node*, int> LeaderVisited;
     for (auto I = RegNodeMap.begin(),
         E = RegNodeMap.end(); I != E; ++I) {
-        Value *VL = I->first;
-        Value *RootV = getRegRoot(VL);
-        if (RootV) {
-            VL->print(IGC::Debug::ods());
-            OS << " : ";
-            RootV->print(IGC::Debug::ods());
+        Node* N = I->second;
+        // We don't want to change behavior of DeSSA by invoking
+        // dumping/printing functions. Thus, don't use getLeader()
+        // as it has side-effect (doing path halving).
+        Node* Leader = N->parent;
+        while (Leader != Leader->parent) {
+            Leader = Leader->parent;
         }
-        else {
+        if (LeaderVisited.count(Leader)) {
+            continue;
+        }
+        LeaderVisited[Leader] = 1;
+        Value *VL;
+        if (isIsolated(N)) {
+            VL = N->value;
             OS << "Var isolated : ";
             VL->print(IGC::Debug::ods());
-        }
-        PHINode *PHI = dyn_cast<PHINode>(VL);
-        if (PHI) {
-            if (isPHIIsolated(PHI)) {
-                OS << "\nPHI isolated : ";
+            OS << "\n";
+        } else {
+            OS << "Leader : ";
+            Leader->value->print(IGC::Debug::ods());
+            OS << "\n";
+            N = Leader->next;
+            while (N != Leader) {
+                VL = N->value;
+                OS << "    ";
                 VL->print(IGC::Debug::ods());
+                OS << "\n";
+                N = N->next;
             }
         }
-        OS << "\n";
     }
 }
 
@@ -288,7 +301,7 @@ bool DeSSA::runOnFunction(Function &MF)
       // isolate complex type that IGC does not handle
       if (PHI->getType()->isStructTy() ||
           PHI->getType()->isArrayTy()) {
-        isolatePHI(PHI);
+        isolateReg(PHI);
       }
     }
   }
@@ -328,14 +341,14 @@ void DeSSA::MapAddReg(MapVector<Value*, Node*> &Map, Value *Val, e_alignment Ali
 DeSSA::Node*
 DeSSA::Node::getLeader() {
   Node *N = this;
-  Node *Parent = parent.getPointer();
-  Node *Grandparent = Parent->parent.getPointer();
+  Node *Parent = parent;
+  Node *Grandparent = Parent->parent;
 
   while (Parent != Grandparent) {
-    N->parent.setPointer(Grandparent);
+    N->parent = Grandparent;
     N = Grandparent;
-    Parent = N->parent.getPointer();
-    Grandparent = Parent->parent.getPointer();
+    Parent = N->parent;
+    Grandparent = Parent->parent;
   }
 
   return Parent;
@@ -344,10 +357,10 @@ DeSSA::Node::getLeader() {
 Value* DeSSA::getRegRoot(Value* Val, e_alignment *pAlign) const {
   auto RI = RegNodeMap.find(Val);
   if (RI == RegNodeMap.end())
-    return 0;
+    return nullptr;
   Node *TheNode = RI->second;
-  if (TheNode->parent.getInt() & Node::kRegisterIsolatedFlag)
-    return 0x0;
+  if (isIsolated(TheNode))
+    return nullptr;
   Node *TheLeader = TheNode->getLeader();
   if (pAlign)
     *pAlign = TheLeader->alignment;
@@ -360,8 +373,7 @@ int DeSSA::getRootColor(Value* V)
     if (RI == RegNodeMap.end())
         return 0;
     Node *TheNode = RI->second;
-    if (TheNode->parent.getInt() &
-        (Node::kRegisterIsolatedFlag | Node::kPHIIsolatedFlag))
+    if (isIsolated(TheNode))
         return 0;
     Node *TheLeader = TheNode->getLeader();
     return TheLeader->color;
@@ -376,15 +388,15 @@ void DeSSA::MapUnionRegs(MapVector<Value*, Node*> &Map, Value* Val1, Value* Val2
   if (Node1->rank > Node2->rank) {
     NewLeader = Node1->getLeader();
     Leadee = Node2;
-    Node2->parent.setPointer(NewLeader);
+    Node2->parent = NewLeader;
   } else if (Node1->rank < Node2->rank) {
     NewLeader = Node2->getLeader();
     Leadee = Node1;
-    Node1->parent.setPointer(NewLeader);
+    Node1->parent = NewLeader;
   } else if (Node1 != Node2) {
     NewLeader = Node1->getLeader();
     Leadee = Node2;
-    Node2->parent.setPointer(NewLeader);
+    Node2->parent = NewLeader;
     Node1->rank++;
   }
 
@@ -404,7 +416,6 @@ void DeSSA::MapUnionRegs(MapVector<Value*, Node*> &Map, Value* Val1, Value* Val2
 void DeSSA::isolateReg(Value* Val) {
   Node *Node = RegNodeMap[Val];
   splitNode(Node);
-  Node->parent.setInt(Node->parent.getInt() | Node::kRegisterIsolatedFlag);
 }
 
 Value* DeSSA::getOrigRoot(Instruction *PHI) const {
@@ -415,30 +426,13 @@ Value* DeSSA::getOrigRoot(Instruction *PHI) const {
     return DestNode->getLeader()->value;
 }
 
-Value* DeSSA::getPHIRoot(Instruction *PHI) const {
-  assert(dyn_cast<PHINode>(PHI));
-  auto RI = RegNodeMap.find(PHI);
-  assert (RI != RegNodeMap.end());
+bool DeSSA::isIsolated(Value *V) const {
+  auto RI = RegNodeMap.find(V);
+  if (RI == RegNodeMap.end()) {
+      return true;
+  }
   Node *DestNode = RI->second;
-  if (DestNode->parent.getInt() & Node::kPHIIsolatedFlag)
-    return 0x0;
-  if (DestNode->parent.getInt() & Node::kRegisterIsolatedFlag)
-    return 0x0;
-  return DestNode->getLeader()->value;
-}
-
-void DeSSA::isolatePHI(Instruction *PHI) {
-  assert(isa<PHINode>(PHI));
-  Node *Node = RegNodeMap[PHI];
-  splitNode(Node);
-  Node->parent.setInt(Node->parent.getInt() | Node::kPHIIsolatedFlag);
-}
-
-bool DeSSA::isPHIIsolated(Instruction *PHI) const {
-  auto RI = RegNodeMap.find(PHI);
-  assert (RI != RegNodeMap.end());
-  Node *DestNode = RI->second;
-  return ((DestNode->parent.getInt() & Node::kPHIIsolatedFlag) > 0 ? true : false);
+  return isIsolated(DestNode);
 }
 
 // Split node ND from its existing congurent class, and the
@@ -459,7 +453,7 @@ void DeSSA::splitNode(Node* ND)
     P->next = N;
 
     // ND : a new single-value congruent class
-    ND->parent.setPointer(ND);
+    ND->parent = ND;
     ND->next = ND;
     ND->prev = ND;
     ND->rank = 0;
@@ -483,11 +477,11 @@ void DeSSA::splitNode(Node* ND)
     // always to set "Leader' as the new leader, so that all nodes
     // within a same congruent class remains in the same rooted tree.
     N = Leader->next;
-    Leader->parent.setPointer(Leader);
+    Leader->parent = Leader;
     Leader->rank = (Leader == N) ? 0 : 1;
     while (N != Leader)
     {
-        N->parent.setPointer(Leader);
+        N->parent = Leader;
         N->rank = 0;
         N = N->next;
     }
@@ -653,7 +647,7 @@ DeSSA::SplitInterferencesForBasicBlock(
       // could possibly be improved, e.g. we could isolate the PHI with the
       // fewest operands.
       if (CurrentPHI.first && CurrentPHI.second != PredValue) {
-        isolatePHI(PHI);
+        isolateReg(PHI);
         continue;
       }
       else {
@@ -729,7 +723,7 @@ void DeSSA::SplitInterferencesForAlignment()
     {
         // Find a root Node
         Node *rootNode = I->second;
-        if (rootNode->parent.getPointer() != rootNode) {
+        if (rootNode->parent != rootNode) {
             continue;
         }
 
@@ -740,13 +734,6 @@ void DeSSA::SplitInterferencesForAlignment()
         do {
             Curr = N;
             N = Curr->next;
-
-            // Skip isolated reg.
-            if (Curr->parent.getInt() &
-                (Node::kRegisterIsolatedFlag | Node::kPHIIsolatedFlag)) {
-                continue;
-            }
-
             if (Curr->alignment == EALIGN_GRF) {
                 Align = EALIGN_GRF;
                 break;
@@ -765,13 +752,6 @@ void DeSSA::SplitInterferencesForAlignment()
         do {
             Curr = N;
             N = N->next;
-
-            // Skip isolated reg.
-            if (Curr->parent.getInt() &
-                (Node::kRegisterIsolatedFlag | Node::kPHIIsolatedFlag)) {
-                continue;
-            }
-
             if (Curr->alignment != EALIGN_AUTO && Curr->alignment != EALIGN_GRF)
             {
                 assert(Curr != Head && "Head Node cannot be isolated, something wrong!");
@@ -887,11 +867,6 @@ void DeSSA::getAllValuesInCongruentClass(
 		Node* First = RI->second;
 		Node* N = First->next;
 		do {
-			if (N->parent.getInt() &
-				(Node::kPHIIsolatedFlag | Node::kRegisterIsolatedFlag)) {
-                N = N->next;
-				continue;
-			}
 			if (rootV != N->value) {
 				// No duplicate Value in ValsInCC
 				ValsInCC.push_back(N->value);
