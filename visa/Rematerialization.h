@@ -211,9 +211,13 @@ namespace vISA
         Rematerialization(G4_Kernel& k, LivenessAnalysis& l, GraphColor& c, RPE& r) :
             kernel(k), liveness(l), coloring(c), doms(k.fg), rpe(r)
         {
-            unsigned int numGRFs = k.getOptions()->getuInt32Option(vISA_TotalGRFNum);
-            rematLoopRegPressure = numGRFs - (128 - cRematLoopRegPressure128GRF);
-            rematRegPressure = numGRFs - (128 - cRematRegPressure128GRF);
+            unsigned numGRFs = k.getNumRegTotal();
+            auto scale = [=](unsigned threshold) -> unsigned {
+                float ratio = 1.0f - (128 - threshold) / 128.0f;
+                return static_cast<unsigned>(numGRFs * ratio);
+            };
+            rematLoopRegPressure = scale(cRematLoopRegPressure128GRF);
+            rematRegPressure = scale(cRematRegPressure128GRF);
 
             rematCandidates.resize(l.getNumSelectedVar(), false);
 

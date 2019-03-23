@@ -731,7 +731,7 @@ DDD::DDD(Mem_Manager& m, G4_BB* bb, const LatencyTable& lt, G4_Kernel* k)
     Node* lastBarrier = nullptr;
     HWthreadsPerEU = getBuilder()->getHWThreadNumberPerEU();
     useMTLatencies = getBuilder()->useMultiThreadLatency();
-    totalGRFNum = getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    totalGRFNum = kernel->getNumRegTotal();
     bool BTIIsRestrict = getOptions()->getOption(vISA_ReorderDPSendToDifferentBti);
 
     GRF_BUCKET = 0;

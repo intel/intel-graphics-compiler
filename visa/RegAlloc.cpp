@@ -3409,7 +3409,7 @@ void GlobalRA::verifyRA(LivenessAnalysis & liveAnalysis)
             }
         }
 
-        int numGRF = kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+        int numGRF = kernel.getNumRegTotal();
         // Verify Live-in
         std::map<uint32_t, G4_Declare*> LiveInRegMap;
         std::map<uint32_t, G4_Declare*>::iterator LiveInRegMapIt;
@@ -4000,26 +4000,15 @@ static void recordRAStats(IR_Builder& builder,
 
 int regAlloc(IR_Builder& builder, PhyRegPool& regPool, G4_Kernel& kernel)
 {
-	//
-	// if no .reg_count_total, set 128 as the default value
-	//
-	if(kernel.getNumRegTotal() == UNDEFINED_VAL)
-	{
-        kernel.setNumRegTotal(builder.getOptions()->getuInt32Option(vISA_TotalGRFNum));
-	}
-
-	if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
-	{
-	    if (builder.getOptions()->getuInt32Option(vISA_TotalGRFNum) < G4_DEFAULT_GRF_NUM)
-	    {
+    if (kernel.fg.getHasStackCalls() || kernel.fg.getIsStackCallFunc())
+    {
+        if (kernel.getNumRegTotal() < G4_DEFAULT_GRF_NUM)
+        {
             MUST_BE_TRUE(false, "total GRF number <128, cannot handle stack call!");
-	    }
-	}
-
+        }
+    }
 
     kernel.fg.reassignBlockIDs();
-    //kernel.fg.markSimdBlocks();
-    //kernel.fg.findBackEdges();
 
     if (kernel.getOptions()->getTarget() == VISA_3D)
     {

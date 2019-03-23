@@ -7399,7 +7399,7 @@ public:
     }
 
     NSDS(const Options *options, G4_BB *bb) {
-        int totalGRFNum = options->getuInt32Option(vISA_TotalGRFNum);
+        int totalGRFNum = bb->getKernel().getNumRegTotal();
         int TOTAL_BUCKETS = 0;
         GRF_BUCKET = TOTAL_BUCKETS;
         TOTAL_BUCKETS += totalGRFNum;
@@ -7676,7 +7676,7 @@ public:
 
     void Optimizer::countGRFUsage()
     {
-        unsigned int maxGRFNum = builder.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+        unsigned int maxGRFNum = kernel.getNumRegTotal();
         int count = 0;
         bool *GRFUse = (bool *) builder.mem.alloc(sizeof(bool) * maxGRFNum);
         for (unsigned int i = 0; i < maxGRFNum; ++i)

@@ -232,10 +232,13 @@ void G4Verifier::verifySend(G4_INST* inst)
                 }
                 return src->getLinearizedStart() >= EOTStart;
             };
-            MUST_BE_TRUE(checkEOTSrc(src0), "src0 for EOT send is not in r112-r127");
-            if (src1 != nullptr)
+            if (kernel.getNumRegTotal() >= 128)
             {
-                MUST_BE_TRUE(checkEOTSrc(src1), "src1 for EOT sends is not in r112-r127");
+                MUST_BE_TRUE(checkEOTSrc(src0), "src0 for EOT send is not in r112-r127");
+                if (src1 != nullptr)
+                {
+                    MUST_BE_TRUE(checkEOTSrc(src1), "src1 for EOT sends is not in r112-r127");
+                }
             }
         }
 

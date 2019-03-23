@@ -472,9 +472,9 @@ private:
 
 } // namespace
 
-static unsigned getRPReductionThreshold(Options *m_options, G4_Kernel &kernel)
+static unsigned getRPReductionThreshold(G4_Kernel &kernel)
 {
-    unsigned NumGrfs = m_options->getuInt32Option(vISA_TotalGRFNum);
+    unsigned NumGrfs = kernel.getNumRegTotal();
     float Ratio = NumGrfs / 128.0f;
 
     // For SIMD32 kernels, use a higher threshold for rp reduction,
@@ -486,11 +486,11 @@ static unsigned getRPReductionThreshold(Options *m_options, G4_Kernel &kernel)
     return unsigned(PRESSURE_REDUCTION_THRESHOLD * Ratio);
 }
 
-static unsigned getLatencyHidingThreshold(Options *m_options)
+static unsigned getLatencyHidingThreshold(G4_Kernel &kernel)
 {
-    unsigned NumGrfs = m_options->getuInt32Option(vISA_TotalGRFNum);
+    unsigned NumGrfs = kernel.getNumRegTotal();
     float Ratio = NumGrfs / 128.0f;
-    unsigned RPThreshold = m_options->getuInt32Option(vISA_preRA_ScheduleRPThreshold);
+    unsigned RPThreshold = kernel.getOptions()->getuInt32Option(vISA_preRA_ScheduleRPThreshold);
     if (RPThreshold > 0)
     {
         return unsigned(RPThreshold * Ratio);
@@ -517,7 +517,7 @@ bool preRA_Scheduler::run()
             return false;
     }
 
-    unsigned Threshold = getRPReductionThreshold(m_options, kernel);
+    unsigned Threshold = getRPReductionThreshold(kernel);
     unsigned SchedCtrl = m_options->getuInt32Option(vISA_preRA_ScheduleCtrl);
 
     LatencyTable LT(kernel.fg.builder);
@@ -563,7 +563,7 @@ bool preRA_Scheduler::run()
             if (!config.UseLatency)
                 return false;
 
-            if (MaxPressure >= getLatencyHidingThreshold(m_options))
+            if (MaxPressure >= getLatencyHidingThreshold(kernel))
                 return false;
 
             // simple ROI check.
@@ -1279,7 +1279,7 @@ void LatencyQueue::init()
         // and starts a new group.
         //
         std::vector<unsigned> Segments;
-        unsigned Threshold = getLatencyHidingThreshold(ddd.getOptions());
+        unsigned Threshold = getLatencyHidingThreshold(ddd.getKernel());
         mergeSegments(RPtrace, Max, Min, Segments, Threshold);
 
         // Iterate segments and assign a group id to each insstruction.
@@ -1518,7 +1518,7 @@ bool BB_Scheduler::commitIfBeneficial(unsigned& MaxRPE, bool IsTopDown)
 
     rp.recompute(getBB());
     unsigned NewRPE = rp.getPressure(getBB());
-    unsigned LatencyPressureThreshold = getLatencyHidingThreshold(kernel.getOptions());
+    unsigned LatencyPressureThreshold = getLatencyHidingThreshold(kernel);
     if (config.UseLatency && IsTopDown) {
         // For hiding latency.
         if (NewRPE <= LatencyPressureThreshold) {

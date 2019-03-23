@@ -2183,16 +2183,14 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
                 markInterferenceForSend(bb, inst, dst);
             }
 
+            // FIXME: revisit this restriction.
             //r127 must not be used for return address when there is a src and dest overlap in send instruction.
             if (kernel.fg.builder->needsToReserveR127() && liveAnalysis->livenessClass(G4_GRF) && !inst->isSplitSend())
             {
                 if (dst->getBase()->isRegAllocPartaker() && !dst->getBase()->asRegVar()->isPhyRegAssigned())
                 {
                     int dstId = dst->getBase()->asRegVar()->getId();
-                    if (kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum) == 128)
-                    {
-                        lrs[dstId]->markForbidden(127, 1);
-                    }
+                    lrs[dstId]->markForbidden(kernel.getNumRegTotal() - 1, 1);
                 }
             }
         }
@@ -2250,7 +2248,7 @@ void Interference::buildInterferenceWithinBB(G4_BB* bb, BitSet& live)
                         lrs[id]->setEOTSrc();
                         if (builder.hasEOTGRFBinding())
                         {
-                            lrs[id]->markForbidden(0, kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum) - 16);
+                            lrs[id]->markForbidden(0, kernel.getNumRegTotal() - 16);
                         }
                     }
 
@@ -5563,7 +5561,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
     unsigned bank2_end = totalGRFRegCount - 1;
     unsigned bank1_start = 0;
     unsigned bank2_start = totalGRFRegCount - 1;
-    unsigned int totalGRFNum = getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    unsigned int totalGRFNum = kernel.getNumRegTotal();
     bool oneGRFBankDivision = gra.kernel.fg.builder->oneGRFBankDivision();
     bool allocFromBanks = liveAnalysis.livenessClass(G4_GRF) && builder.lowHighBundle() &&
         !builder.getOptions()->getuInt32Option(vISA_ReservedGRFNum) &&
@@ -6039,7 +6037,7 @@ bool GraphColor::regAlloc(bool doBankConflictReduction,
     {
         gra.determineSpillRegSize(spillRegSize, indrSpillRegSize);
         reserveSpillSize = spillRegSize + indrSpillRegSize;
-        MUST_BE_TRUE(reserveSpillSize < getOptions()->getuInt32Option(vISA_TotalGRFNum), "Invalid reserveSpillSize in fail-safe RA!");
+        MUST_BE_TRUE(reserveSpillSize < kernel.getNumCalleeSaveRegs(), "Invalid reserveSpillSize in fail-safe RA!");
         totalGRFRegCount -= reserveSpillSize;
     }
 
@@ -10851,7 +10849,7 @@ void FlagSpillCleanup::spillFillCodeCleanFlag(IR_Builder&        builder,
 // this is needed for HRA, and the fake declares will be removed at the end of HRA
 void GlobalRA::insertPhyRegDecls()
 {
-    int numGRF = kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    int numGRF = kernel.getNumRegTotal();
     std::vector<bool> grfUsed;
     grfUsed.resize(numGRF, false);
     GRFDclsForHRA.resize(numGRF);

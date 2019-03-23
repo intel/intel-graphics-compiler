@@ -124,65 +124,75 @@ static void setNewDclAlignment(G4_Declare* newDcl, G4_Align origAlign)
 
 // Constructor
 
-SpillManagerGMRF::SpillManagerGMRF (
-	GlobalRA&                        g,
-	unsigned						 spillAreaOffset,
-	unsigned                         varIdCount,
-	const LivenessAnalysis *         lvInfo,
-	LiveRange **                     lrInfo,
-	Interference *                   intf,
-	std::vector<EDGE> &              prevIntfEdges,
-	LR_LIST &                        spilledLRs,
-	unsigned                         iterationNo,
-    bool                             failSafeSpill,
-    unsigned                         spillRegSize,
-	unsigned                         indrSpillRegSize,
-	bool					         enableSpillSpaceCompression,
-    bool                             useScratchMsg
-) : builder_ (g.kernel.fg.builder), varIdCount_ (varIdCount), latestImplicitVarIdCount_ (0),
-    lvInfo_ (lvInfo), lrInfo_ (lrInfo), prevIntfEdges_ (prevIntfEdges), spilledLRs_ (spilledLRs), 
-	nextSpillOffset_ (spillAreaOffset), iterationNo_ (iterationNo), failSafeSpill_ (failSafeSpill), 
-	doSpillSpaceCompression(enableSpillSpaceCompression), useScratchMsg_(useScratchMsg), bbId_(UINT_MAX), inSIMDCFContext_(false), mem_(1024),
-    spillIntf_(intf), numGRFSpill(0), numGRFFill(0), numGRFMove(0), gra(g)
+SpillManagerGMRF::SpillManagerGMRF(
+    GlobalRA& g,
+    unsigned spillAreaOffset,
+    unsigned varIdCount,
+    const LivenessAnalysis* lvInfo,
+    LiveRange** lrInfo,
+    Interference* intf,
+    std::vector<EDGE>& prevIntfEdges,
+    LR_LIST& spilledLRs,
+    unsigned iterationNo,
+    bool failSafeSpill,
+    unsigned spillRegSize,
+    unsigned indrSpillRegSize,
+    bool enableSpillSpaceCompression,
+    bool useScratchMsg)
+    : builder_(g.kernel.fg.builder)
+    , varIdCount_(varIdCount)
+    , latestImplicitVarIdCount_(0)
+    , lvInfo_(lvInfo)
+    , lrInfo_(lrInfo)
+    , prevIntfEdges_(prevIntfEdges)
+    , spilledLRs_(spilledLRs)
+    , nextSpillOffset_(spillAreaOffset)
+    , iterationNo_(iterationNo)
+    , failSafeSpill_(failSafeSpill)
+    , doSpillSpaceCompression(enableSpillSpaceCompression)
+    , useScratchMsg_(useScratchMsg)
+    , bbId_(UINT_MAX)
+    , inSIMDCFContext_(false)
+    , mem_(1024)
+    , spillIntf_(intf)
+    , numGRFSpill(0)
+    , numGRFFill(0)
+    , numGRFMove(0)
+    , gra(g)
 {
-	const unsigned size = sizeof (unsigned) * varIdCount;
-	spillRangeCount_ = (unsigned *) allocMem (size);
-	memset (spillRangeCount_, 0, size);
-	fillRangeCount_ = (unsigned *) allocMem (size);
-	memset (fillRangeCount_, 0, size);
-	tmpRangeCount_ = (unsigned *) allocMem (size);
-	memset (tmpRangeCount_, 0, size);
-	msgSpillRangeCount_ = (unsigned *) allocMem (size);
-	memset (msgSpillRangeCount_, 0, size);
-	msgFillRangeCount_ = (unsigned *) allocMem (size);
-	memset (msgFillRangeCount_, 0, size);
-	spillAreaOffset_ = spillAreaOffset;
-	if (enableSpillSpaceCompression)
-    {
-	    computeSpillIntf ();
-	}
-	builder_->instList.clear();
-    spillRegStart_ = builder_->getOptions()->getuInt32Option(vISA_TotalGRFNum);
-	indrSpillRegStart_ = spillRegStart_;
+    const unsigned size = sizeof(unsigned) * varIdCount;
+    spillRangeCount_ = (unsigned*)allocMem(size);
+    memset(spillRangeCount_, 0, size);
+    fillRangeCount_ = (unsigned*)allocMem(size);
+    memset(fillRangeCount_, 0, size);
+    tmpRangeCount_ = (unsigned*)allocMem(size);
+    memset(tmpRangeCount_, 0, size);
+    msgSpillRangeCount_ = (unsigned*)allocMem(size);
+    memset(msgSpillRangeCount_, 0, size);
+    msgFillRangeCount_ = (unsigned*)allocMem(size);
+    memset(msgFillRangeCount_, 0, size);
+    spillAreaOffset_ = spillAreaOffset;
+    if (enableSpillSpaceCompression) {
+        computeSpillIntf();
+    }
+    builder_->instList.clear();
+    spillRegStart_ = g.kernel.getNumRegTotal();
+    indrSpillRegStart_ = spillRegStart_;
     spillRegOffset_ = spillRegStart_;
-    if(failSafeSpill)
-    {
+    if (failSafeSpill) {
         unsigned int stackCallRegSize = getStackCallRegSize(builder_->kernel.fg.getHasStackCalls() || builder_->kernel.fg.getIsStackCallFunc());
-		indrSpillRegStart_ -= (stackCallRegSize + indrSpillRegSize);
-		spillRegStart_ = indrSpillRegStart_ - spillRegSize;
+        indrSpillRegStart_ -= (stackCallRegSize + indrSpillRegSize);
+        spillRegStart_ = indrSpillRegStart_ - spillRegSize;
     }
     curInst = NULL;
 
     globalScratchOffset = builder_->getOptions()->getuInt32Option(vISA_SpillMemOffset);
-    if (builder_->getIsKernel())
-    {
+    if (builder_->getIsKernel()) {
         // reserve space for file scope variables
         globalScratchOffset += (builder_->kernel.fg.fileScopeSaveAreaSize * 16);
     }
-    if (canDoSLMSpill())
-    {
-        if (!builder_->hasBlockedSLMMessage() && !builder_->getBuiltinSLMSpillAddr())
-        {
+    if (canDoSLMSpill()) {
+        if (!builder_->hasBlockedSLMMessage() && !builder_->getBuiltinSLMSpillAddr()) {
             builder_->initBuiltinSLMSpillAddr(maxSLMScratchSize);
         }
     }
@@ -1435,7 +1445,7 @@ SpillManagerGMRF::createMRFFillRangeDeclare (
         if (sendInst->isEOT() && builder_->hasEOTGRFBinding())
         {
             // make sure eot src is in last 16 GRF
-            uint32_t eotStart = builder_->getOptions()->getuInt32Option(vISA_TotalGRFNum) - 16;
+            uint32_t eotStart = gra.kernel.getNumRegTotal() - 16;
             if (spillRegOffset_ < eotStart)
             {
                 spillRegOffset_ = eotStart;
@@ -4141,7 +4151,7 @@ SpillManagerGMRF::insertSpillFillCode (
                 ((*lt)->getVar()->isRegVarTransient() ||
                  (*lt)->getVar()->isRegVarTmp()))
             {
-                (*lt)->getVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegStart_ > (builder_->getOptions()->getuInt32Option(vISA_TotalGRFNum) - 16) ? spillRegStart_ : (builder_->getOptions()->getuInt32Option(vISA_TotalGRFNum) - 16)), 0);
+                (*lt)->getVar()->setPhyReg(builder_->phyregpool.getGreg(spillRegStart_ > (kernel->getNumRegTotal() - 16) ? spillRegStart_ : (kernel->getNumRegTotal() - 16)), 0);
                 continue;
             }
             else if (lvInfo_->isAddressSensitive((*lt)->getVar()->getId())) {

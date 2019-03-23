@@ -388,6 +388,7 @@ public:
     }
 
     FlowGraph& getParent() const { return *parent; }
+    G4_Kernel& getKernel() const;
     void    addToBBList(int key, G4_BB* b){BBlist[key] = b;}
     void    clearBBList(){BBlist.clear();}
     bool    existsInBBList(int key){ return BBlist.find(key) != BBlist.end();}
@@ -1315,7 +1316,17 @@ public:
             major < COMMON_ISA_MAJOR_VER ||
                 (major == COMMON_ISA_MAJOR_VER && minor <= COMMON_ISA_MINOR_VER),
             "CISA version not supported by this JIT-compiler");
-        numRegTotal = UNDEFINED_VAL;
+        unsigned totalGRFs = options->getuInt32Option(vISA_TotalGRFNum);
+        unsigned Val = options->getuInt32Option(vISA_GRFNumToUse);
+        if (Val > 0)
+        {
+            numRegTotal = std::min(Val, totalGRFs);
+        }
+        else
+        {
+            numRegTotal = totalGRFs;
+        }
+
         name = NULL;
         simdSize = 0;
         hasAddrTaken = false;
@@ -1330,7 +1341,6 @@ public:
             gtPinInfo = nullptr;
         }
 
-        unsigned int totalGRFs = options->getuInt32Option(vISA_TotalGRFNum);
         callerSaveLastGRF = ((totalGRFs - 8) / 2) - 1;
     }
 
@@ -1396,11 +1406,12 @@ public:
     void setHasAddrTaken(bool val) { hasAddrTaken = val; }
     bool getHasAddrTaken() { return hasAddrTaken;  }
 
-    void setNumRegTotal(unsigned num)     {numRegTotal = num;}
-    void setName(const char* n)                  {name = n;}
-    const char*    getName()                      {return name;}
-    const char*    getOrigCMName()              {return name + 2;}
-    unsigned getNumRegTotal()             {return numRegTotal;}
+    void setNumRegTotal(unsigned num) { numRegTotal = num; }
+    unsigned getNumRegTotal() const { return numRegTotal; }
+
+    void setName(const char* n) { name = n; }
+    const char* getName() { return name; }
+    const char* getOrigCMName() { return name + 2; }
     void emit_asm(std::ostream& output, bool beforeRegAlloc, void * binary, uint32_t binarySize);
     void emit_dep(std::ostream& output);
 
@@ -1498,6 +1509,11 @@ public:
     G4_INST* getFirstNonLabelInst() const;
 
 };
+
+inline G4_Kernel& G4_BB::getKernel() const
+{
+    return *getParent().getKernel();
+}
 
 class SCCAnalysis
 {

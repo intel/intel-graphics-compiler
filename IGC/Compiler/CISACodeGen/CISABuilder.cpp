@@ -3770,6 +3770,10 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
     {
         vbuilder->SetOption(vISA_ReservedGRFNum, IGC_GET_FLAG_VALUE(ReservedRegisterNum));
     }
+    if (IGC_GET_FLAG_VALUE(GRFNumToUse) > 0)
+    {
+        vbuilder->SetOption(vISA_GRFNumToUse, IGC_GET_FLAG_VALUE(GRFNumToUse));
+    }
 
     vbuilder->SetOption(vISA_TotalGRFNum, context->getNumGRFPerThread());
 

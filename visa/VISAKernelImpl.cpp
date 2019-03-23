@@ -126,28 +126,21 @@ int VISAKernelImpl::calculateTotalInputSize()
 int VISAKernelImpl::compileFastPath()
 {
     int status = CM_SUCCESS;
-
-    if(getIsKernel())
+    if (getIsKernel())
     {
         status = calculateTotalInputSize();
     }
 
-    if(status != CM_SUCCESS)
+    if (status != CM_SUCCESS)
     {
         return status;
     }
 
-    G4_Kernel& kernel = *m_kernel;
     IR_Builder& builder = *m_builder;
-
     builder.predefinedVarRegAssignment((uint8_t)m_inputSize);
     builder.expandPredefinedVars();
     builder.resizePredefinedStackVars();
-
-    kernel.setNumRegTotal(builder.getOptions()->getuInt32Option(vISA_TotalGRFNum));
-
     status = compileTillOptimize();
-
     return status;
 }
 
@@ -468,11 +461,11 @@ int VISAKernelImpl::InitializeFastPath()
     m_globalMem = new vISA::Mem_Manager(4096);
 
     void *frpPnt = m_mem.alloc(sizeof(PhyRegPool));
-    m_phyRegPool = new(frpPnt)PhyRegPool(*m_globalMem, getOptions()->getuInt32Option(vISA_TotalGRFNum));
 
-    m_kernel = new (m_mem)
-        G4_Kernel(m_instListNodeAllocator, *m_kernelMem, m_options, m_major_version, m_minor_version);
+    m_kernel = new (m_mem) G4_Kernel(m_instListNodeAllocator, *m_kernelMem, m_options, m_major_version, m_minor_version);
     m_kernel->setName(m_name.c_str());
+    m_phyRegPool = new (frpPnt) PhyRegPool(*m_globalMem, m_kernel->getNumRegTotal());
+
     if (getOptions()->getOption(vISA_GenerateDebugInfo))
     {
         m_kernel->getKernelDebugInfo()->setVISAKernel(this);

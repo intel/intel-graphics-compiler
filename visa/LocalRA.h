@@ -445,33 +445,32 @@ public:
     PhyRegsLocalRA * getAvaialableRegs() { return &availableRegs; }
 };
 
-class LinearScan
-{
+class LinearScan {
 private:
     GlobalRA& gra;
     IR_Builder& builder;
-	Mem_Manager& mem;
-	PhyRegsManager& pregManager;
+    Mem_Manager& mem;
+    PhyRegsManager& pregManager;
     PhyRegsLocalRA& initPregs;
-	std::vector<LocalLiveRange*>& liveIntervals;
+    std::vector<LocalLiveRange*>& liveIntervals;
     std::list<InputLiveRange*, std_arena_based_allocator<InputLiveRange*>>& inputIntervals;
-	std::list<LocalLiveRange*> active;
-	PhyRegSummary* summary;
+    std::list<LocalLiveRange*> active;
+    PhyRegSummary* summary;
 
-	void expireRanges( unsigned int );
-    void expireInputRanges( unsigned int, unsigned int, unsigned int );
-	void expireAllActive();
-    bool allocateRegsFromBanks( LocalLiveRange* );
+    void expireRanges(unsigned int);
+    void expireInputRanges(unsigned int, unsigned int, unsigned int);
+    void expireAllActive();
+    bool allocateRegsFromBanks(LocalLiveRange*);
     bool allocateRegs(LocalLiveRange*, G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap);
-	void freeAllocedRegs( LocalLiveRange*, bool);
-	void updateActiveList( LocalLiveRange* );
-	void updateBitset( LocalLiveRange* );
+    void freeAllocedRegs(LocalLiveRange*, bool);
+    void updateActiveList(LocalLiveRange*);
+    void updateBitset(LocalLiveRange*);
 
-	BitSet pregs;
-	unsigned int simdSize;
+    BitSet pregs;
+    unsigned int simdSize;
 
     unsigned int globalLRSize;
-    unsigned int *startGRFReg;
+    unsigned int* startGRFReg;
     unsigned int numRegLRA;
 
     unsigned int bank1StartGRFReg;
@@ -487,61 +486,13 @@ private:
     bool doSplitLLR;
 
 public:
-	LinearScan(GlobalRA& g, IR_Builder& pBuilder, std::vector<LocalLiveRange*>& localLiveIntervals, 
-        std::list<InputLiveRange*, std_arena_based_allocator<InputLiveRange*>>& inputLivelIntervals, PhyRegsManager& pregMgr, PhyRegsLocalRA& pregs,
-        Mem_Manager& memmgr, PhyRegSummary* s, unsigned int numReg, unsigned int glrs, 
-        bool roundRobin, bool bankConflict, bool internalConflict, bool splitLLR, unsigned int simdS)
-        : builder(pBuilder), mem(memmgr), pregManager(pregMgr), initPregs(pregs), 
-        liveIntervals(localLiveIntervals), inputIntervals(inputLivelIntervals), summary(s), 
-        pregs(pBuilder.getOptions()->getuInt32Option(vISA_TotalGRFNum) * NUM_WORDS_PER_GRF, false), simdSize(simdS),
-        globalLRSize(glrs), numRegLRA(numReg), useRoundRobin(roundRobin), doBankConflict(bankConflict), highInternalConflict(internalConflict), doSplitLLR(splitLLR),
-        gra(g)
-	{
+    LinearScan(GlobalRA& g, std::vector<LocalLiveRange*>& localLiveIntervals,
+        std::list<InputLiveRange*, std_arena_based_allocator<InputLiveRange*>>& inputLivelIntervals,
+        PhyRegsManager& pregMgr, PhyRegsLocalRA& pregs, Mem_Manager& memmgr, PhyRegSummary* s,
+        unsigned int numReg, unsigned int glrs, bool roundRobin, bool bankConflict,
+        bool internalConflict, bool splitLLR, unsigned int simdS);
 
-        //register number boundaries
-        bank1_start = 0;
-        bank1_end = SECOND_HALF_BANK_START_GRF - globalLRSize / 2 - 1;
-        if (useRoundRobin)
-        {//From middle to back
-	        bank2_start = SECOND_HALF_BANK_START_GRF + (globalLRSize + 1) / 2;
-	        bank2_end = numRegLRA - 1;
-        }
-        else
-        { //From back to middle
-	        bank2_start = numRegLRA - 1;
-	        bank2_end = SECOND_HALF_BANK_START_GRF + (globalLRSize + 1) / 2;
-        }
-
-        //register number pointers
-        bank1StartGRFReg = bank1_start;
-        bank2StartGRFReg = bank2_start;
-
-        //register pointer
-        startGRFReg = &bank1StartGRFReg;
-
-        int bank1AvailableRegNum = 0;
-        for (int i = 0; i < SECOND_HALF_BANK_START_GRF; i++)
-        {
-            if (pregManager.getAvaialableRegs()->isGRFAvailable(i) && !pregManager.getAvaialableRegs()->isGRFBusy(i))
-	            {
-    	            bank1AvailableRegNum++;
-	            }
-        }
-        pregManager.getAvaialableRegs()->setBank1AvailableRegNum(bank1AvailableRegNum);
-
-        int bank2AvailableRegNum = 0;
-        for (unsigned int i = SECOND_HALF_BANK_START_GRF; i < numRegLRA; i++)
-        {
-            if (pregManager.getAvaialableRegs()->isGRFAvailable(i) && !pregManager.getAvaialableRegs()->isGRFBusy(i))
-	        {
-	            bank2AvailableRegNum++;
-	        }
-        }
-        pregManager.getAvaialableRegs()->setBank2AvailableRegNum(bank2AvailableRegNum);
-	}
-
-    void run(G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap );
-
+    void run(G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap);
 };
 
 class PhyRegSummary

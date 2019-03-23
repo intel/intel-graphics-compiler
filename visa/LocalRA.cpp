@@ -48,7 +48,7 @@ using namespace vISA;
 #define GET_BUNDLE(r, o)  (((r + o) % 64) / 4)
 
 extern unsigned int getStackCallRegSize(bool reserveStackCallRegs);
-extern void getForbiddenGRFs(vector<unsigned int>& regNum, const Options *opt, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned reservedRegNum);
+extern void getForbiddenGRFs(vector<unsigned int>& regNum, G4_Kernel& kernel, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned reservedRegNum);
 extern void getCallerSaveGRF(vector<unsigned int>& regNum, G4_Kernel* kernel);
 
 LocalRA::LocalRA(G4_Kernel& k, bool& h, BankConflictPass& b, GlobalRA& g) :
@@ -174,7 +174,7 @@ void LocalRA::preLocalRAAnalysis()
     unsigned int   numRowsEOT = 0;
     bool lifetimeOpFound = false;
 
-    int numGRF = kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    int numGRF = kernel.getNumRegTotal();
 
     // Mark references made to decls to sieve local from global ranges
     markReferences(numRowsEOT, lifetimeOpFound);
@@ -205,13 +205,14 @@ void LocalRA::preLocalRAAnalysis()
     if (isStackCall || reservedGRFNum || builder.getOption(vISA_Debug))
     {
         vector<unsigned int> forbiddenRegs;
-        getForbiddenGRFs(forbiddenRegs, builder.getOptions(), stackCallRegSize, 0, reservedGRFNum);
+        getForbiddenGRFs(forbiddenRegs, kernel, stackCallRegSize, 0, reservedGRFNum);
         for (unsigned int i = 0; i < forbiddenRegs.size(); i++)
         {
             unsigned int regNum = forbiddenRegs[i];
             pregs->setGRFUnavailable(regNum);
         }
 
+        // FIXME: this will break if # of GRF is not 128.
         if (isStackCall)
         {
             // Set r60 to r99 as unavailable for local RA since these registers are callee saved
@@ -361,7 +362,7 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doBankConflictReduction, bool 
     printInputLiveIntervals();
 #endif
 
-    int totalGRFNum = builder.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    int totalGRFNum = kernel.getNumRegTotal();
     for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin(); bb_it != kernel.fg.BBs.end(); ++bb_it)
     {
         PhyRegsManager pregManager(localPregs, doBankConflictReduction);
@@ -392,7 +393,10 @@ bool LocalRA::localRAPass(bool doRoundRobin, bool doBankConflictReduction, bool 
         printLocalLiveIntervals(curBB, liveIntervals);
 #endif
 
-        LinearScan ra(gra, builder, liveIntervals, inputIntervals, pregManager, localPregs, mem, summary, numRegLRA, globalLRSize, doRoundRobin, doBankConflictReduction, highInternalConflict, doSplitLLR, kernel.getSimdSize());
+        LinearScan ra(gra, liveIntervals, inputIntervals, pregManager,
+                      localPregs, mem, summary, numRegLRA, globalLRSize,
+                      doRoundRobin, doBankConflictReduction,
+                      highInternalConflict, doSplitLLR, kernel.getSimdSize());
         ra.run(curBB, builder, LLRUseMap);
 
 #ifdef DEBUG_VERBOSE_ON
@@ -464,7 +468,7 @@ bool LocalRA::localRA(bool& doRoundRobin, bool& doBankConflict)
         std::cout << "--local RA--\n";
     }
 
-    int numGRF = kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    int numGRF = kernel.getNumRegTotal();
     PhyRegsLocalRA phyRegs(numGRF);
     pregs = &phyRegs;
 
@@ -1307,7 +1311,7 @@ void LocalRA::calculateInputIntervals()
 {
     setLexicalID();
 
-    int numGRF = kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    int numGRF = kernel.getNumRegTotal();
     std::vector<uint32_t> inputRegLastRef;
     inputRegLastRef.resize(numGRF * G4_GRF_REG_SIZE, UINT_MAX);
 
@@ -2407,6 +2411,63 @@ void PhyRegsManager::freeRegs(int regnum, int subregnum, int numwords, int instI
 
 // ********* LinearScan class implementation *********
 
+LinearScan::LinearScan(GlobalRA& g, std::vector<LocalLiveRange*>& localLiveIntervals,
+    std::list<InputLiveRange*, std_arena_based_allocator<InputLiveRange*>>& inputLivelIntervals,
+    PhyRegsManager& pregMgr, PhyRegsLocalRA& pregs, Mem_Manager& memmgr, PhyRegSummary* s,
+    unsigned int numReg, unsigned int glrs, bool roundRobin, bool bankConflict,
+    bool internalConflict, bool splitLLR, unsigned int simdS)
+    : gra(g)
+    , builder(g.builder)
+    , mem(memmgr)
+    , pregManager(pregMgr)
+    , initPregs(pregs)
+    , liveIntervals(localLiveIntervals)
+    , inputIntervals(inputLivelIntervals)
+    , summary(s)
+    , pregs(g.kernel.getNumRegTotal() * NUM_WORDS_PER_GRF, false)
+    , simdSize(simdS)
+    , globalLRSize(glrs)
+    , numRegLRA(numReg)
+    , useRoundRobin(roundRobin)
+    , doBankConflict(bankConflict)
+    , highInternalConflict(internalConflict)
+    , doSplitLLR(splitLLR)
+{
+    //register number boundaries
+    bank1_start = 0;
+    bank1_end = SECOND_HALF_BANK_START_GRF - globalLRSize / 2 - 1;
+    if (useRoundRobin) { //From middle to back
+        bank2_start = SECOND_HALF_BANK_START_GRF + (globalLRSize + 1) / 2;
+        bank2_end = numRegLRA - 1;
+    } else { //From back to middle
+        bank2_start = numRegLRA - 1;
+        bank2_end = SECOND_HALF_BANK_START_GRF + (globalLRSize + 1) / 2;
+    }
+
+    //register number pointers
+    bank1StartGRFReg = bank1_start;
+    bank2StartGRFReg = bank2_start;
+
+    //register pointer
+    startGRFReg = &bank1StartGRFReg;
+
+    int bank1AvailableRegNum = 0;
+    for (int i = 0; i < SECOND_HALF_BANK_START_GRF; i++) {
+        if (pregManager.getAvaialableRegs()->isGRFAvailable(i) && !pregManager.getAvaialableRegs()->isGRFBusy(i)) {
+            bank1AvailableRegNum++;
+        }
+    }
+    pregManager.getAvaialableRegs()->setBank1AvailableRegNum(bank1AvailableRegNum);
+
+    int bank2AvailableRegNum = 0;
+    for (unsigned int i = SECOND_HALF_BANK_START_GRF; i < numRegLRA; i++) {
+        if (pregManager.getAvaialableRegs()->isGRFAvailable(i) && !pregManager.getAvaialableRegs()->isGRFBusy(i)) {
+            bank2AvailableRegNum++;
+        }
+    }
+    pregManager.getAvaialableRegs()->setBank2AvailableRegNum(bank2AvailableRegNum);
+}
+
 // Linear scan implementation
 void LinearScan::run(G4_BB* bb, IR_Builder& builder, LLR_USE_MAP& LLRUseMap)
 {
@@ -3055,7 +3116,7 @@ bool LinearScan::allocateRegsFromBanks(LocalLiveRange* lr)
                 if (*startGRFReg < SECOND_HALF_BANK_START_GRF)
                 {
                     *startGRFReg += bank2_start;
-                    if (*startGRFReg >= builder.getOptions()->getuInt32Option(vISA_TotalGRFNum))
+                    if (*startGRFReg >= gra.kernel.getNumRegTotal())
                     {
                         *startGRFReg = bank2_start;
                         return false;

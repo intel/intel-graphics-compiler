@@ -106,9 +106,13 @@ namespace vISA
             SpillManagerGMRF& s, unsigned int iterationNo, RPE& r) :
             kernel(k), liveness(l), graphColor(g), spill(s), rpe(r)
         {
-            unsigned int numGRFs = k.getOptions()->getuInt32Option(vISA_TotalGRFNum);
-            fillWindowSizeThreshold = numGRFs - (128 - cFillWindowThreshold128GRF);
-            spillWindowSizeThreshold = numGRFs - (128 - cSpillWindowThreshold128GRF);
+            unsigned int numGRFs = k.getNumRegTotal();
+            auto scale = [=](unsigned threshold) -> unsigned {
+                float ratio = 1.0f - (128 - threshold) / 128.0f;
+                return static_cast<unsigned>(numGRFs * ratio);
+            };
+            fillWindowSizeThreshold = scale(cFillWindowThreshold128GRF);
+            spillWindowSizeThreshold = scale(cSpillWindowThreshold128GRF);
 
             iterationNo = iterNo;
 

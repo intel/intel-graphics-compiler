@@ -1222,7 +1222,7 @@ unsigned LiveRange::getForbiddenVectorSize()
     {
     case G4_GRF:
     case G4_INPUT:
-        return gra.kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+        return gra.kernel.getNumRegTotal();
     case G4_ADDRESS:
         return getNumAddrRegisters();
     case G4_FLAG:
@@ -1259,24 +1259,24 @@ unsigned int getStackCallRegSize(bool reserveStackCallRegs)
     }
 }
 
-void getForbiddenGRFs(vector<unsigned int>& regNum, const Options *opt, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned rerservedRegNum)
+void getForbiddenGRFs(vector<unsigned int>& regNum, G4_Kernel &kernel, unsigned stackCallRegSize, unsigned reserveSpillSize, unsigned rerservedRegNum)
 {
     // Push forbidden register numbers to vector regNum
     //
     // r0 - Forbidden when platform is not 3d
     // rMax, rMax-1, rMax-2 - Forbidden in presence of stack call sites
-    unsigned totalGRFNum = opt->getuInt32Option(vISA_TotalGRFNum);
+    unsigned totalGRFNum = kernel.getNumRegTotal();
 
-    if (opt->getTarget() != VISA_3D ||
-        opt->getOption(vISA_enablePreemption) ||
-		reserveSpillSize > 0 ||
+    if (kernel.getOptions()->getTarget() != VISA_3D ||
+        kernel.getOption(vISA_enablePreemption) ||
+        reserveSpillSize > 0 ||
         stackCallRegSize > 0 ||
-        opt->getOption(vISA_ReserveR0))
+        kernel.getOption(vISA_ReserveR0))
     {
         regNum.push_back(0);
     }
 
-    if (opt->getOption(vISA_enablePreemption))
+    if (kernel.getOption(vISA_enablePreemption))
     {
         // r1 is reserved for SIP kernel
         regNum.push_back(1);
@@ -1342,7 +1342,7 @@ void LiveRange::allocForbidden(Mem_Manager& mem, bool reserveStackCallRegs, unsi
     {
         vector<unsigned int> forbiddenGRFs;
         unsigned int stackCallRegSize = getStackCallRegSize(reserveStackCallRegs);
-        getForbiddenGRFs(forbiddenGRFs, gra.kernel.getOptions(), stackCallRegSize, reserveSpillSize, rerservedRegNum);
+        getForbiddenGRFs(forbiddenGRFs, gra.kernel, stackCallRegSize, reserveSpillSize, rerservedRegNum);
 
         for (unsigned int i = 0; i < forbiddenGRFs.size(); i++)
         {
@@ -1449,6 +1449,6 @@ PhyRegUsageParms::PhyRegUsageParms(GlobalRA& g, LiveRange* l[], G4_RegFileKind r
     weakEdgeUsage = weakEdges;
     maxGRFCanBeUsed = m;
     rFile = r;
-    totalGRF = gra.kernel.getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    totalGRF = gra.kernel.getNumRegTotal();
     lrs = l;
 }

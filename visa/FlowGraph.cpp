@@ -5615,14 +5615,14 @@ unsigned int G4_Kernel::calleeSaveStart()
 unsigned int G4_Kernel::getStackCallStartReg()
 {
     // Last 3 GRFs to be used as scratch
-    unsigned int totalGRFs = getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    unsigned int totalGRFs = getNumRegTotal();
     unsigned int startReg = totalGRFs - getNumScratchRegs();
     return startReg;
 }
 
 unsigned int G4_Kernel::getNumCalleeSaveRegs()
 {
-    unsigned int totalGRFs = getOptions()->getuInt32Option(vISA_TotalGRFNum);
+    unsigned int totalGRFs = getNumRegTotal();
     return totalGRFs - calleeSaveStart() - getNumScratchRegs();
 }
 
