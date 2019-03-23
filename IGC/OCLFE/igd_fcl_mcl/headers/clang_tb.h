@@ -64,34 +64,20 @@ namespace TC
     { TB_DATA_FORMAT_ELF,       TB_DATA_FORMAT_LLVM_ARCHIVE }
   };
 
+#ifdef _WIN32
+#ifdef COMMON_CLANG_LIB_FULL_NAME
   struct CCModuleStruct {
     typedef decltype(Compile) *PFcnCCCompile;
 
     void* pModule = nullptr;
     PFcnCCCompile pCompile = nullptr;
-    const char *pModuleName = nullptr;
 
-    CCModuleStruct()
-    {
-#ifdef COMMON_CLANG_LIBRARY_NAME
-#define TO_STRING(name) #name
-#define CCLANG_NAME(cclang) TO_STRING(cclang)
-
-#if defined(_WIN32) || defined(_WIN64)
-#define CCLANG_WIN(clang_name) clang_name ".dll"
-      pModuleName = CCLANG_WIN(CCLANG_NAME(COMMON_CLANG_LIBRARY_NAME));
-#else
-#define CCLANG_UNIX(clang_name) "lib" clang_name ".so"
-      pModuleName = CCLANG_UNIX(CCLANG_NAME(COMMON_CLANG_LIBRARY_NAME));
-#endif
-
-#else
-      assert(0 && "Common clang name not defined");
-#endif
-    }
+    const char *pModuleName = COMMON_CLANG_LIB_FULL_NAME;
   };
-
-
+#else
+#   error "Common clang name not defined"
+#endif
+#endif
 
   /***************************************************************************\
 
@@ -106,7 +92,9 @@ namespace TC
   {
     TB_DATA_FORMAT m_InputFormat;
     TB_DATA_FORMAT m_OutputFormat;
+#ifdef _WIN32
     CCModuleStruct m_CCModule;
+#endif
 
     
   public:

@@ -3088,19 +3088,6 @@ set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
     )
 endif()
 
-if(NOT DEFINED COMMON_CLANG_LIBRARY_NAME)
-    set(COMMON_CLANG_LIBRARY_NAME opencl-clang)
-endif()
-
-if(WIN32)
-    igc_arch_get_cpu(_cpuSuffix)
-    set(COMMON_CLANG_LIBRARY_NAME common_clang${_cpuSuffix})
-endif()
-
-set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
-     COMMON_CLANG_LIBRARY_NAME=${COMMON_CLANG_LIBRARY_NAME}
-    )
-
 
 #SPIRV consumption flag
 if(IGC_BUILD__SPIRV_ENABLED)
@@ -3344,6 +3331,27 @@ else()
        endif()
      endif()
 endif()
+
+if(NOT DEFINED COMMON_CLANG_LIBRARY_NAME)
+    set(COMMON_CLANG_LIBRARY_NAME opencl-clang)
+endif()
+
+if(WIN32)
+    igc_arch_get_cpu(_cpuSuffix)
+    set(COMMON_CLANG_LIBRARY_NAME common_clang${_cpuSuffix})
+    set(COMMON_CLANG_LIB_FULL_NAME "${COMMON_CLANG_LIBRARY_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+
+    message(STATUS "OpenCL Clang library name to load: ${COMMON_CLANG_LIB_FULL_NAME}")
+
+    set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
+          COMMON_CLANG_LIB_FULL_NAME=\"${COMMON_CLANG_LIB_FULL_NAME}\"
+        )
+elseif(UNIX)
+    set(COMMON_CLANG_LIB_FULL_NAME "lib${COMMON_CLANG_LIBRARY_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}.${LLVM_VERSION_MAJOR}")
+else()
+    set(COMMON_CLANG_LIB_FULL_NAME "lib${COMMON_CLANG_LIBRARY_NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+endif()
+
 
 # ==================================== WrapperLLVM package =============================================
 
@@ -3811,8 +3819,15 @@ if(_targetIsStatic)
         ${_targetLinkLine}
       )
   else()
+    if (UNIX)
+        set(COMMON_CLANG common_clang_dll)
+    else()
+        set(COMMON_CLANG "")
+    endif()
+
     target_link_libraries("${IGC_BUILD__PROJ__fcl_dll}"
         ${_targetLinkLine}
+        ${COMMON_CLANG}
       )
     # Link line for shared / dynamic library requires only library project (all static libs are linked inside).
     set_property(TARGET "${IGC_BUILD__PROJ__fcl_dll}" PROPERTY LINK_INTERFACE_LIBRARIES "")

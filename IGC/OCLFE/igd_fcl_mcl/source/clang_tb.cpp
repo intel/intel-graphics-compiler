@@ -571,13 +571,13 @@ namespace TC
 		{
 			success = pTranslationBlock->Initialize(pCreateArgs);
 
+#ifdef _WIN32
 			if (true == success)
 			{
-				// Load the Common Clang library
-				CCModuleStruct &CCModule = pTranslationBlock->m_CCModule;
-#ifdef _WIN32
 				// Both Win32 and Win64
 				// load dependency only on RS
+				// Load the Common Clang library
+				CCModuleStruct &CCModule = pTranslationBlock->m_CCModule;
 				if (GetWinVer() >= OS_WIN_RS)
 				{
 					CCModule.pModule = LoadDependency(CCModule.pModuleName);
@@ -595,29 +595,8 @@ namespace TC
 				{
 					success = false;
 				}
-#else
-				// Both 32 and 64 bit for non-Windows OS
-				// Avoid sumbol conflicts if some LLVM is already loaded in the project.
-				// CCModule will use its own symbols in preference to global symbols with the same name 
-				// contained in libraries that have already been loaded
-				CCModule.pModule = dlopen(CCModule.pModuleName, RTLD_NOW | RTLD_DEEPBIND);
-        if (NULL == CCModule.pModule)
-        {
-          std::string pathToOpenclClang = "/usr/local/lib/";
-          pathToOpenclClang += CCModule.pModuleName;
-          CCModule.pModule = dlopen(pathToOpenclClang.c_str(), RTLD_NOW | RTLD_DEEPBIND);
-        }
-				if (NULL != CCModule.pModule)
-				{
-					CCModule.pCompile = (CCModuleStruct::PFcnCCCompile)dlsym(CCModule.pModule, "Compile");
-					success = CCModule.pCompile != NULL;
-				}
-				else
-				{
-					success = false;
-				}
-#endif
 			}
+#endif
 
 			if (!success)
 			{
@@ -647,12 +626,12 @@ namespace TC
 	void CClangTranslationBlock::Delete(
 		CClangTranslationBlock* &pTranslationBlock)
 	{
-		// Unload the Common Clang library
 #ifdef _WIN32
-		// Both Win32 and Win64
-		FreeLibrary((HMODULE)pTranslationBlock->m_CCModule.pModule);
-#else
-		dlclose(pTranslationBlock->m_CCModule.pModule);
+		// Unload the Common Clang library
+		if (pTranslationBlock->m_CCModule.pModule) {
+			// Both Win32 and Win64
+			FreeLibrary((HMODULE)pTranslationBlock->m_CCModule.pModule);
+		}
 #endif
 
 		delete pTranslationBlock;
@@ -1422,7 +1401,12 @@ namespace TC
 		optionsEx += " -D__IMAGE_SUPPORT__ -D__ENDIAN_LITTLE__";
 
 		IOCLFEBinaryResult *pResultPtr = NULL;
-		int res = m_CCModule.pCompile(pInputArgs->pszProgramSource,
+#ifdef _WIN32
+		int res = m_CCModule.pCompile(
+#else
+		int res = Compile(
+#endif
+			pInputArgs->pszProgramSource,
 			(const char**)pInputArgs->inputHeaders.data(),
 			(unsigned int)pInputArgs->inputHeaders.size(),
 			(const char**)pInputArgs->inputHeadersNames.data(),
@@ -1432,7 +1416,6 @@ namespace TC
 			optionsEx.c_str(),
 			pInputArgs->oclVersion.c_str(),
 			&pResultPtr);
-
 		if (0 != BuildOptionsAreValid(options.c_str(), exceptString)) res = -43;
 
 		Utils::FillOutputArgs(pResultPtr, pOutputArgs, exceptString);
