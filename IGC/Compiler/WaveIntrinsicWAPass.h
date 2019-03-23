@@ -33,5 +33,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace IGC
 {
     llvm::ModulePass* createWaveIntrinsicWAPass();
-    bool unsafeToHoist(llvm::GenISAIntrinsic::ID id);
+    bool unsafeToHoist(const llvm::CallInst *CI);
+    llvm::CallInst* setUnsafeToHoistAttr(llvm::CallInst *CI);
 }

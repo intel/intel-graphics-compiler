@@ -30,19 +30,54 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/BasicBlock.h>
 #include "llvm/IR/InlineAsm.h"
+#include "llvm/IR/InstIterator.h"
 #include "common/LLVMWarningsPop.hpp"
 
 #include "GenISAIntrinsics/GenIntrinsics.h"
 #include "GenISAIntrinsics/GenIntrinsicInst.h"
 
+using namespace llvm;
+
 namespace IGC
 {
-    bool unsafeToHoist(llvm::GenISAIntrinsic::ID id)
+    bool unsafeToHoist(const CallInst *CI)
     {
-        return id == llvm::GenISAIntrinsic::GenISA_WaveBallot ||
-            id == llvm::GenISAIntrinsic::GenISA_WaveAll ||
-            id == llvm::GenISAIntrinsic::GenISA_WavePrefix ||
-            id == llvm::GenISAIntrinsic::GenISA_QuadPrefix;
+        return CI->isConvergent() &&
+#if LLVM_VERSION_MAJOR >= 7
+            CI->onlyAccessesInaccessibleMemory();
+#else
+            CI->hasFnAttr(Attribute::InaccessibleMemOnly);
+#endif
+    }
+
+    // We currently use the combination of 'convergent' and 
+    // 'inaccessiblememonly' to prevent code motion of
+    // wave intrinsics.  Removing 'readnone' from a callsite
+    // is not sufficient to stop LICM from looking back up to the
+    // function definition for the attribute.  We can short circuit that
+    // by creating an operand bundle.  The name "nohoist" is not
+    // significant; anything will do.
+    CallInst* setUnsafeToHoistAttr(CallInst *CI)
+    {
+        CI->setConvergent();
+#if LLVM_VERSION_MAJOR >= 7
+        CI->setOnlyAccessesInaccessibleMemory();
+        CI->removeAttribute(AttributeList::FunctionIndex, Attribute::ReadNone);
+#else
+        CI->addAttribute(
+            AttributeSet::FunctionIndex, Attribute::InaccessibleMemOnly);
+        CI->removeAttribute(AttributeSet::FunctionIndex, Attribute::ReadNone);
+#endif
+        OperandBundleDef OpDef("nohoist", None);
+
+        // An operand bundle cannot be appended onto a call after creation.
+        // clone the instruction but add our operandbundle on as well.
+        SmallVector<OperandBundleDef, 1> OpBundles;
+        CI->getOperandBundlesAsDefs(OpBundles);
+        OpBundles.push_back(OpDef);
+        CallInst *NewCall = CallInst::Create(CI, OpBundles, CI);
+        CI->replaceAllUsesWith(NewCall);
+        return NewCall;
     }
 
     class WaveIntrinsicWAPass : public llvm::ModulePass
@@ -71,22 +106,19 @@ namespace IGC
         uint32_t counter = 0;
         for (llvm::Function& F : M)
         {
-            for (llvm::BasicBlock& BB : F)
+            for (auto &I : instructions(F))
             {
-                for (llvm::Instruction& inst : BB)
+                if (auto *CI = dyn_cast<CallInst>(&I))
                 {
-                    if (llvm::GenIntrinsicInst* genIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(&inst))
+                    if (unsafeToHoist(CI))
                     {
-                        if (unsafeToHoist(genIntrinsic->getIntrinsicID()))
-                        {
-                            changed = true;
-                            llvm::FunctionType* voidFuncType = llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), false);
-                            std::string asmText = "; " + std::to_string(counter++);
-                            llvm::CallInst::Create(llvm::InlineAsm::get(voidFuncType, asmText, "", true), "", &inst);
-                            asmText = "; " + std::to_string(counter++);
-                            auto asmAfterIntrinsic = llvm::CallInst::Create(llvm::InlineAsm::get(voidFuncType, asmText, "", true));
-                            asmAfterIntrinsic->insertAfter(&inst);
-                        }
+                        changed = true;
+                        llvm::FunctionType* voidFuncType = llvm::FunctionType::get(llvm::Type::getVoidTy(ctx), false);
+                        std::string asmText = "; " + std::to_string(counter++);
+                        llvm::CallInst::Create(llvm::InlineAsm::get(voidFuncType, asmText, "", true), "", &I);
+                        asmText = "; " + std::to_string(counter++);
+                        auto asmAfterIntrinsic = llvm::CallInst::Create(llvm::InlineAsm::get(voidFuncType, asmText, "", true));
+                        asmAfterIntrinsic->insertAfter(&I);
                     }
                 }
             }

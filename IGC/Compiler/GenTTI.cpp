@@ -386,12 +386,10 @@ void GenIntrinsicsTTIImpl::getUnrollingPreferences(Loop *L,
 
 bool GenIntrinsicsTTIImpl::isProfitableToHoist(Instruction *I)
 {
-    if (llvm::GenIntrinsicInst* pIntrinsic = llvm::dyn_cast<llvm::GenIntrinsicInst>(I))
+    if (auto *CI = dyn_cast<CallInst>(I))
     {
-        if (unsafeToHoist(pIntrinsic->getIntrinsicID()))
-        {
+        if (unsafeToHoist(CI))
             return false;
-        }
     }
     return BaseT::isProfitableToHoist(I);
 }

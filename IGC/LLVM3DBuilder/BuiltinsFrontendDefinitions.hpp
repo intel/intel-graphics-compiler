@@ -25,11 +25,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #include "common/debug/DebugMacros.hpp" // VALUE_NAME() definition.
+#include "Compiler/WaveIntrinsicWAPass.h"
 
 #include "common/LLVMWarningsPush.hpp"
-
 #include "llvmWrapper/AsmParser/Parser.h"
-
 #include "common/LLVMWarningsPop.hpp"
 
 
@@ -4347,7 +4346,7 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_uavSeriali
 }
 
 template<bool preserveNames, typename T, typename Inserter>
-inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_countbits(llvm::Value* src)
+inline llvm::CallInst* LLVM3DBuilder<preserveNames, T, Inserter>::create_countbits(llvm::Value* src)
 {
     llvm::Module* module = this->GetInsertBlock()->getParent()->getParent();
     llvm::Function* pFunc = llvm::Intrinsic::getDeclaration(
@@ -4415,6 +4414,29 @@ inline llvm::Value* LLVM3DBuilder<preserveNames, T, Inserter>::create_wavePrefix
         llvm::GenISAIntrinsic::GenISA_WavePrefix,
         src->getType());
     return this->CreateCall4(pFunc, src, type, this->getInt1(inclusive), Mask);
+}
+
+template<bool preserveNames, typename T, typename Inserter>
+inline llvm::Value*
+LLVM3DBuilder<preserveNames, T, Inserter>::create_wavePrefixBitCount(
+    llvm::Value* src, llvm::Value *Mask)
+{
+    //bits = ballot(bBit);
+    //laneMaskLT = (1 << WaveGetLaneIndex()) - 1;
+    //prefixBitCount = countbits(bits & laneMaskLT);
+    llvm::Value* ballot = this->create_waveBallot(src);
+    if (Mask)
+        ballot = this->CreateAnd(ballot, Mask);
+    llvm::Value* shlLaneId = this->CreateShl(
+        this->getInt32(1), this->get32BitLaneID());
+    llvm::Value* laneMask = this->CreateSub(shlLaneId, this->getInt32(1));
+    llvm::Value *mask = this->CreateAnd(ballot, laneMask);
+
+    // update llvm.ctpop so it won't be hoisted/sunk out of the loop.
+    auto *PopCnt = this->create_countbits(mask);
+    auto *NoHoistPopCnt = setUnsafeToHoistAttr(PopCnt);
+    PopCnt->eraseFromParent();
+    return NoHoistPopCnt;
 }
 
 template<bool preserveNames, typename T, typename Inserter>
@@ -4499,6 +4521,41 @@ LLVM3DBuilder<preserveNames, T, Inserter>::create_waveMultiPrefix(
     this->SetInsertPoint(&*EndBlock->getFirstInsertionPt());
 
     return WavePrefix;
+}
+
+template<bool preserveNames, typename T, typename Inserter>
+inline llvm::Value*
+LLVM3DBuilder<preserveNames, T, Inserter>::create_waveMultiPrefixBitCount(
+    llvm::Instruction *I,
+    llvm::Value *Val,
+    llvm::Value *Mask)
+{
+    // Similar structure to waveMatch and waveMultiPrefix
+    auto *PreHeader = I->getParent();
+    auto *BodyBlock = PreHeader->splitBasicBlock(I, "multiprefixbitcount-body");
+    auto *EndBlock = BodyBlock->splitBasicBlock(
+        I->getNextNode(), "multiprefixbitcount-end");
+
+    // Make sure that we set the insert point again as we've just invalidated
+    // it with the splitBasicBlock() calls above.
+    this->SetInsertPoint(I);
+
+    // Now generate the code for a single iteration of the code
+    auto *FirstValue = this->readFirstLane(Mask);
+
+    auto *Count = this->create_wavePrefixBitCount(Val, FirstValue);
+
+    // Replace the current terminator to either exit the loop
+    // or branch back for another iteration.
+    auto *Br = BodyBlock->getTerminator();
+    this->SetInsertPoint(Br);
+    auto *ParticipatingLanes = this->create_waveInverseBallot(FirstValue);
+    this->CreateCondBr(ParticipatingLanes, EndBlock, BodyBlock);
+    Br->eraseFromParent();
+
+    this->SetInsertPoint(&*EndBlock->getFirstInsertionPt());
+
+    return Count;
 }
 
 template<bool preserveNames, typename T, typename Inserter>
