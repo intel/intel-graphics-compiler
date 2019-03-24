@@ -564,10 +564,6 @@ void IfConverter::fullConvert(IfConvertible &IC) {
         } else {
             if (op == G4_else)
                 continue;
-            // For fullConvert, whole if-then-endif/if-then-else-endif is
-            // gone, so no goto should be moved into head.
-            if (op == G4_goto)
-                continue;
         }
         /* Predicate instructions if it's not goto-style or it's not
          * neither goto nor its flag clearing instruction */
@@ -595,10 +591,6 @@ void IfConverter::fullConvert(IfConvertible &IC) {
             if (op == G4_label)
                 continue;
             if (op == G4_join)
-                continue;
-            // For fullConvert, whole if-then-endif/if-then-else-endif is
-            // gone, so no goto should be moved into head.
-            if (op == G4_goto)
                 continue;
             /* Predicate instructions if it's not goto-style or it's not
              * neither goto nor its flag clearing instruction */
