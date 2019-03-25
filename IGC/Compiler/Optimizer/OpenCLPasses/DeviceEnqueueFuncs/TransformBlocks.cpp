@@ -1307,13 +1307,12 @@ namespace //Anonymous
 
             // Run mem2reg pass to make the processing simpler
             bool isOptDisabled = modMD->compOpt.OptDisable;
-            if (!isOptDisabled)
+            if (!isOptDisabled || IGC_IS_FLAG_ENABLED(AllowMem2Reg))
             {
                 legacy::PassManager PM;
                 PM.add(createPromoteMemoryToRegisterPass());
                 changed = PM.run(M) || changed;
             }
-
 
             // calls to blocks (not enqueues) are implemented as indirect calls
             // these calls should be resolved now because indirect calls are not

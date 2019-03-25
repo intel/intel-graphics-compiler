@@ -449,6 +449,11 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
         }
         mpm.add(createPromoteMemoryToRegisterPass());
     }
+    else
+    {
+        if(IGC_IS_FLAG_ENABLED(AllowMem2Reg))
+            mpm.add(createPromoteMemoryToRegisterPass());
+    }
     if(ctx.m_instrTypes.hasLoop)
     {
         // need to run loop simplify to canonicalize loop and merge latches

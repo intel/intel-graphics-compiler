@@ -61,6 +61,7 @@ DECLARE_IGC_REGKEY(bool, EnableAtomicFusion,            false, "To enable/disabl
 DECLARE_IGC_REGKEY(bool, Use16ByteBindlessSampler,      false, "True if 16-byte aligned bindless sampler state is used")
 
 DECLARE_IGC_GROUP("IGC Optimization")
+DECLARE_IGC_REGKEY(bool, AllowMem2Reg,                  false, "Setting this to true makes IGC run mem2reg even when optimizations are disabled")
 DECLARE_IGC_REGKEY(bool, DisableIGCOptimizations,       false, "Setting this to 1/true adds a compiler switch to disables all the above IGC optimizations")
 DECLARE_IGC_REGKEY(bool, DisableLLVMGenericOptimizations, false, "Disable LLVM generic optimization passes")
 DECLARE_IGC_REGKEY(bool, DisableCodeSinking,            false, "Setting this to 1/true adds a compiler switch to disable code-sinking")
