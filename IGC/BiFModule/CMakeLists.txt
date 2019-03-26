@@ -33,21 +33,12 @@
 
 # In new Clang versions VME types are built-in. Keep this flag until all OS's update Clang version to 8
 if(NOT DEFINED VME_TYPES_DEFINED)
-  set(VME_TYPES_DEFINED FALSE)
-  if(CMAKE_SYSTEM_NAME STREQUAL Linux)
-    set(VME_TYPES_DEFINED TRUE)
-  endif()
-endif()
-
-set(CLANG_EXE_VERSION_GE_7 FALSE)
-if(CMAKE_SYSTEM_NAME STREQUAL Linux)
-  set(CLANG_EXE_VERSION_GE_7 TRUE)
+  set(VME_TYPES_DEFINED TRUE)
 endif()
 
 set(CCLANG_BUILD_INTREE_LLVM FALSE)
 if(EXISTS ${LLVM_SOURCE_DIR}/projects/opencl-clang)
   set(CCLANG_BUILD_INTREE_LLVM TRUE)
-  set(VME_TYPES_DEFINED TRUE)
   set(CLANG_SOURCE_DIR ${LLVM_SOURCE_DIR}/tools/clang)
 endif()
 
@@ -971,9 +962,6 @@ set(FLAG "")
 if(${VME_TYPES_DEFINED})
     list(APPEND FLAG "__VME_TYPES_DEFINED__")
 endif(${VME_TYPES_DEFINED})
-if(${CLANG_EXE_VERSION_GE_7})
-    list(APPEND FLAG "__CLANG7__")
-endif()
 
 igc_bif_find_cl_files(IGC_BUILD__BIF_OCL_COMMON_DEPENDS ${IGC_BUILD__BIF_OCL_COMMON_INC_DIRS} "${IGC_OPTION__BIF_SRC_OCL_DIR}/Implementation")
 

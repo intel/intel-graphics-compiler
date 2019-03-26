@@ -401,13 +401,6 @@ ndrange_t __attribute__((overloadable)) ndrange_3D(const size_t[3]);
 ndrange_t __attribute__((overloadable)) ndrange_3D(const size_t[3], const size_t[3]);
 ndrange_t __attribute__((overloadable)) ndrange_3D(const size_t[3], const size_t[3], const size_t[3]);
 
-#ifndef __CLANG7__ // Clang 7.0+
-#if defined(cl_khr_subgroups)
-uint __attribute__((overloadable)) get_kernel_sub_group_count_for_ndrange(const ndrange_t range, void(^block)(void));
-uint __attribute__((overloadable)) get_kernel_max_sub_group_size_for_ndrange(const ndrange_t range, void(^block)(void));
-#endif
-#endif // !__VME_TYPES_DEFINED__
-
 void __attribute__((overloadable)) retain_event(clk_event_t);
 
 void __attribute__((overloadable)) release_event(clk_event_t);

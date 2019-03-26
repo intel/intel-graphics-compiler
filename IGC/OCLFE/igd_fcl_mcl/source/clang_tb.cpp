@@ -1365,12 +1365,6 @@ namespace TC
 			break;
 		case TB_DATA_FORMAT_SPIR_V:
 			optionsEx += " -emit-spirv";
-
-			// There's no way to get Clang version from the DLL, 
-			// so in the transition period we must rely on the fact that
-			// we will emit spirv as intermediate only with Clang5.0 (and later). 
-			// TODO: Remove this and related code in cth after all platforms switch to 8.0 from 7.0.
-			optionsEx += " -D__CLANG7__";
 			break;
 		default:
 			break;
