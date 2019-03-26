@@ -202,6 +202,110 @@ int VISAKernelImpl::compileTillOptimize()
     return optimizer.optimization();
 }
 
+G4_Declare* VISAKernelImpl::createInstsForCallTargetOffset(InstListType& insts, G4_INST* fcall)
+{
+    // create instruction sequence:
+    //       add  r1.2  -IP   call_target
+    //       add  r1.2  r1.2  32
+
+    // calculate the reserved register's num from fcall's dst register
+    assert(fcall->getDst()->isGreg());
+    uint32_t reg_num = fcall->getDst()->getLinearizedStart() / GENX_GRF_REG_SIZ;
+    // hardcoded add's dst subregister to 2
+    G4_Declare* add_dst_decl =
+        m_builder->createHardwiredDeclare(1, fcall->getDst()->getType(), reg_num, 2);
+
+    // create the first add instruction
+    G4_INST* add_inst = m_builder->createInternalInst(
+        nullptr, G4_add, nullptr, false, 1,
+        m_builder->Create_Dst_Opnd_From_Dcl(add_dst_decl, 1),
+        m_builder->createSrcRegRegion(
+            Mod_Minus, Direct, m_phyRegPool->getIpReg(), 0, 0,
+            m_builder->getRegionScalar(), Type_UD),
+        fcall->getSrc(0), InstOpt_WriteEnable | InstOpt_NoCompact);
+
+    // create the second add to add the ip to 32, to get the call's ip
+    G4_INST* add_inst2 = m_builder->createInternalInst(
+        nullptr, G4_add, nullptr, false, 1,
+        m_builder->Create_Dst_Opnd_From_Dcl(add_dst_decl, 1),
+        m_builder->Create_Src_Opnd_From_Dcl(
+            add_dst_decl, m_builder->getRegionScalar()),
+        m_builder->createImm(32, add_inst->getSrc(0)->getType()),
+        InstOpt_WriteEnable | InstOpt_NoCompact);
+
+    insts.push_back(add_inst);
+    insts.push_back(add_inst2);
+
+    return add_dst_decl;
+}
+
+void VISAKernelImpl::createInstsForRetIP(InstListType& insts, G4_INST* fcall)
+{
+    // SKL workaround for indirect call
+    // create instruction sequence:
+    //       mov  f0.0   0
+    //       mov  r1.1   0
+    //       cmp  f0.0   r1.1  0
+    //       mov  r1.1   f0.0        // save the exec mask to r1.1
+    //       add  r1.0   IP   64     // save the return IP to r1.0
+    //
+    // This piece of code must be inserted before add instructions
+    // created in createInstsForCallTargetOffset and the jmpi:
+    //      add  r1.2  -IP   call_target
+    //      add  r1.2  r1.2  32
+    //      jmpi r1.2
+    //
+    // so that the return IP in r1.0 will be correct. r1.0 is the
+    // IP of the instruction right after jmpi
+
+    // mov  f0.0   0
+    insts.push_back(m_builder->createInternalInst(
+        nullptr, G4_mov, nullptr, false, 1,
+        m_builder->createDstRegRegion(Direct, m_phyRegPool->getF0Reg(), 0, 0, 1, Type_UD),
+        m_builder->createImm(0, Type_UD), nullptr, InstOpt_WriteEnable));
+
+    // calculate the reserved register's num from fcall's dst register (shoud be r1)
+    assert(fcall->getDst()->isGreg());
+    uint32_t reg_num = fcall->getDst()->getLinearizedStart() / GENX_GRF_REG_SIZ;
+    G4_Declare* r1_1_decl =
+        m_builder->createHardwiredDeclare(1, fcall->getDst()->getType(), reg_num, 1);
+
+    // mov  r1.1   0
+    insts.push_back(m_builder->createInternalInst(
+        nullptr, G4_mov, nullptr, false, 1,
+        m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
+        m_builder->createImm(0, Type_UD),
+        nullptr, InstOpt_WriteEnable));
+
+    // cmp  f0.0   r1.1  0
+    insts.push_back(m_builder->createInternalInst(
+        nullptr, G4_cmp, nullptr, false, m_kernel->getSimdSize(),
+        m_builder->createDstRegRegion(Direct, m_phyRegPool->getF0Reg(), 0, 0, 1, Type_UD),
+        m_builder->Create_Src_Opnd_From_Dcl(r1_1_decl, m_builder->getRegionScalar()),
+        m_builder->createImm(0, Type_UD), InstOpt_NoOpt));
+
+    // mov  r1.1   f0.0
+    insts.push_back(m_builder->createInternalInst(
+        nullptr, G4_mov, nullptr, false, 1,
+        m_builder->Create_Dst_Opnd_From_Dcl(r1_1_decl, 1),
+        m_builder->createSrcRegRegion(
+            Mod_src_undef, Direct, m_phyRegPool->getF0Reg(), 0, 0,
+            m_builder->getRegionScalar(), Type_UD),
+        nullptr, InstOpt_WriteEnable));
+
+    // add  r1.0   IP   64
+    G4_Declare* r1_0_decl =
+        m_builder->createHardwiredDeclare(1, fcall->getDst()->getType(), reg_num, 0);
+    insts.push_back(m_builder->createInternalInst(
+        nullptr, G4_add, nullptr, false, 1,
+        m_builder->Create_Dst_Opnd_From_Dcl(r1_0_decl, 1),
+        m_builder->createSrcRegRegion(
+            Mod_src_undef, Direct, m_phyRegPool->getIpReg(), 0, 0,
+            m_builder->getRegionScalar(), Type_UD),
+        m_builder->createImm(64, Type_UD),
+        InstOpt_WriteEnable | InstOpt_NoCompact));
+}
+
 void VISAKernelImpl::expandIndirectCallWithRegTarget()
 {
     // check every fcall
@@ -229,48 +333,55 @@ void VISAKernelImpl::expandIndirectCallWithRegTarget()
                 //       add  r1.2  r1.2  32
                 //       call r1.0  r1.2
 
-                // calculate the reserved register's num from fcall's dst register
-                assert(fcall->getDst()->isGreg());
-                uint32_t reg_num = fcall->getDst()->getLinearizedStart() / GENX_GRF_REG_SIZ;
-                // hardcoded add's dst subregister to 2
-                G4_Declare* add_dst_decl =
-                    m_builder->createHardwiredDeclare(1, fcall->getDst()->getType(), reg_num, 2);
+                // For SKL workaround, expand call
+                // From:
+                //       call r1.0 call_target
+                // To:
+                //       mov  f0.0   0
+                //       mov  r1.1   0
+                //       cmp  f0.0   r1.1  0
+                //       mov  r1.1   f0.0
+                //       add  r1.0   IP   64
+                //       add  r1.2   -IP    call_target
+                //       add  r1.2   r1.2   32
+                //       jmpi r1.2
 
-                // create the first add instruction
-                G4_INST* add_inst = m_builder->createInternalInst(
-                    nullptr, G4_add, nullptr, false, 1,
-                    m_builder->Create_Dst_Opnd_From_Dcl(add_dst_decl, 1),
-                    m_builder->createSrcRegRegion(
-                        Mod_Minus, Direct, m_phyRegPool->getIpReg(), 0, 0,
-                        m_builder->getRegionScalar(), Type_UD),
-                    fcall->getSrc(0), InstOpt_WriteEnable);
+                InstListType expanded_insts;
 
-                // create the second add to add the ip to 32, to get the call's ip
-                G4_INST* add_inst2 = m_builder->createInternalInst(
-                    nullptr, G4_add, nullptr, false, 1,
-                    m_builder->Create_Dst_Opnd_From_Dcl(add_dst_decl, 1),
-                    m_builder->Create_Src_Opnd_From_Dcl(
-                        add_dst_decl, m_builder->getRegionScalar()),
-                    m_builder->createImm(32, add_inst->getSrc(0)->getType()),
-                    InstOpt_WriteEnable);
+                // create instructions to store return ip and exec mask, for SKL WA
+                if (getGenxPlatform() == GENX_SKL) {
+                    createInstsForRetIP(expanded_insts, fcall);
+                }
 
-                // Set no compated to make sure the ip calculation is correct
-                add_inst->setNoCompacted();
-                add_inst2->setNoCompacted();
+                // create instructions to calculate jump target offset
+                G4_Declare* jmp_target_decl = createInstsForCallTargetOffset(expanded_insts, fcall);
 
-                // then update fcall's src0 to add's dst
-                fcall->setSrc(m_builder->Create_Src_Opnd_From_Dcl(
-                    add_inst->getDst()->getTopDcl(), m_builder->getRegionScalar()), 0);
+                // update jump target (call's src0)
+                G4_SrcRegRegion* jump_target = m_builder->Create_Src_Opnd_From_Dcl(
+                    jmp_target_decl, m_builder->getRegionScalar());
+                fcall->setSrc(jump_target, 0);
+                fcall->setNoCompacted();
 
-                // then insert the add right before the call
+                if (getGenxPlatform() == GENX_SKL) {
+                    // create jmpi
+                    G4_INST* jmpi = m_builder->createInternalInst(
+                        nullptr, G4_jmpi, nullptr, false, 1, nullptr, fcall->getSrc(0),
+                        nullptr, InstOpt_WriteEnable | InstOpt_NoCompact);
+                    // jmpi's src must be signed int
+                    jmpi->getSrc(0)->asSrcRegRegion()->setType(Type_D);
+
+                    // remove call and insert jmpi to instlist
+                    bb->getInstList().erase(--bb->end());
+                    bb->getInstList().push_back(jmpi);
+                }
+
+                // then insert the expaneded instructions right before the call
                 INST_LIST_ITER insert_point = bb->end();
                 --insert_point;
-                bb->getInstList().insert(insert_point, add_inst);
-                bb->getInstList().insert(insert_point, add_inst2);
-
-                // Set the CISAOff to be the same as call
-                add_inst->setCISAOff(fcall->getCISAOff());
-                add_inst2->setCISAOff(fcall->getCISAOff());
+                for (auto inst_to_add : expanded_insts) {
+                    bb->getInstList().insert(insert_point, inst_to_add);
+                    inst_to_add->setCISAOff(fcall->getCISAOff());
+                }
             }
         }
     }

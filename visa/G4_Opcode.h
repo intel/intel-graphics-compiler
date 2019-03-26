@@ -57,7 +57,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IS_TYPE_FLOAT_ALL(type)     (type == Type_F ||type == Type_DF || type == Type_HF || type == Type_NF)
 // added defs for CISA inst translation
 
-#define GENX_GEN8P_MAX_WIDTH      64  // # 
+#define GENX_GEN8P_MAX_WIDTH      64  // #
 
 #define GENX_DATAPORT_IO_SZ       8   // # of dwords in read/write control area
 #define GENX_SAMPLER_IO_SZ        8   // # of control dwords for Sampling Engine unit
@@ -282,8 +282,8 @@ enum G4_InstOption
     InstOpt_BreakPoint  = 0x00000200,
     InstOpt_EOT         = 0x00000400,
     InstOpt_AccWrCtrl   = 0x00000800,
-    InstOpt_Compacted   = 0x00002000,
     InstOpt_NoCompact   = 0x00001000,
+    InstOpt_Compacted   = 0x00002000,
     InstOpt_NoSrcDepSet = 0x00004000,
     InstOpt_NoPreempt   = 0x00008000,
 

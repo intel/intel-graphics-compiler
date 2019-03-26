@@ -37,6 +37,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //forward declaration
 namespace vISA
 {
+class G4_Declare;
+class G4_Inst;
 class G4_Kernel;
 class IR_Builder;
 class DebugInfoFormat;
@@ -884,7 +886,13 @@ private:
     // ** Note that the ret IP r1.0 is reserved by convention at
     // GlobalRA::setABIForStackCallFunctionCalls, the entire r1.0 is reserved, while
     // for call dst it'll use only r1.0-r1.1, so here we take r1.2 as add's dst
+    typedef std::vector<vISA::G4_INST*> InstListType;
     void expandIndirectCallWithRegTarget();
+    // create the instructions to calculate the jump target offset, return the G4_decl for the
+    // jump target register
+    vISA::G4_Declare* createInstsForCallTargetOffset(InstListType& insts, vISA::G4_INST* fcall);
+    void createInstsForRetIP(InstListType& insts, vISA::G4_INST* fcall);
+
     void getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize);
     CisaFramework::CisaInst* AppendVISASvmGeneralScatterInst(VISA_PredOpnd* pred,
         Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size execSize, unsigned char blockSize,
