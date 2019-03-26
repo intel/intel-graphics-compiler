@@ -548,6 +548,9 @@ void IfConverter::fullConvert(IfConvertible &IC) {
                 "Convertible if is not started with 'if' or 'goto'!");
     bool isGoto = (op == G4_goto);
 
+    // Skip tail merging if tail has other incoming edge(s).
+    bool doTailMerging = (tail->Preds.size() == 2);
+
     // forward goto's behavior is platform dependent
     bool needReversePredicateForGoto = (isGoto && fg.builder->gotoJumpOnTrue());
     // Merge predicated 'if' into header.
@@ -557,12 +560,19 @@ void IfConverter::fullConvert(IfConvertible &IC) {
         if (op == G4_label)
             continue;
         if (isGoto && s1) {
+            // Have both s0 and s1, goto in s0 can be
+            // removed always.
             if (op == G4_goto)
                 continue;
             if (isFlagClearingFollowedByGoto(I, s0))
                 continue;
         } else {
             if (op == G4_else)
+                continue;
+            // If there is a goto, its target must be tail.
+            // If merging is done, we must remove goto as its
+            // target is gone.
+            if (doTailMerging && op == G4_goto)
                 continue;
         }
         /* Predicate instructions if it's not goto-style or it's not
@@ -592,6 +602,11 @@ void IfConverter::fullConvert(IfConvertible &IC) {
                 continue;
             if (op == G4_join)
                 continue;
+            // If there is a goto, its target must be tail.
+            // If merging is done, we must remove goto as its
+            // target is gone.
+            if (doTailMerging && op == G4_goto)
+                continue;
             /* Predicate instructions if it's not goto-style or it's not
              * neither goto nor its flag clearing instruction */
             if (!isGoto ||
@@ -613,8 +628,7 @@ void IfConverter::fullConvert(IfConvertible &IC) {
     // Remove 'if' instruction in head.
     head->erase(pos);
 
-    // Skip tail merging if tail has other incoming edge(s).
-    if (tail->Preds.size() != 2)
+    if (!doTailMerging)
         return;
 
     // Remove 'label' and 'endif'/'join' instructions in tail.
