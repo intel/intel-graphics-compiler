@@ -1373,7 +1373,7 @@ unsigned LatencyQueue::calculatePriority(preNode* N)
         Priority = std::max(Priority, SuccPriority + Latency);
     }
 
-    return Priority;
+    return std::max(1U, Priority);
 }
 
 preNode* LatencyQueue::select()
