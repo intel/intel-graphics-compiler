@@ -2511,7 +2511,7 @@ CVariable* CShader::GetPhiTemp(llvm::PHINode* node)
     }
     // 1) simple de-ssa, always return a new temp
     // 2) Or, phi is isolated, return a new temp
-    if (!m_deSSA || m_deSSA->isIsolated(node))
+    if (!m_deSSA || m_deSSA->isPHIIsolated(node))
     {
         var = GetNewVector(node);
     }
