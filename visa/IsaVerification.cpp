@@ -2457,7 +2457,6 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
     {
         case ISA_MEDIA_ST:
         case ISA_MEDIA_LD:
-        case ISA_TRANSPOSE_LD:
         {
              uint8_t plane        = 0;
              uint8_t block_width  = 0;
@@ -2477,7 +2476,7 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
              }
 
              surface = getPrimitiveOperand<uint8_t>(inst, i++);
-             REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for MEDIA_LD/MEDIA_ST/TRANSPOSE_LD");
+             REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for MEDIA_LD/MEDIA_ST");
              REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->surface_count,
                  "CISA dataport instruction uses an undeclared surface.");
 
@@ -2498,16 +2497,6 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
 
                  REPORT_INSTRUCTION(options,1 <= block_height && block_height <= COMMON_ISA_MAX_MEDIA_BLOCK_HEIGHT,
                          "MEDIA_LD/MEDIA_ST block height must be in the range [1, 64]: %d",
-                         block_height);
-             }
-             else if (ISA_TRANSPOSE_LD == opcode)
-             {
-                 REPORT_INSTRUCTION(options,block_width <= 3,
-                         "TRANSPOSE_LD block width must be in the range [0, 3]: %d",
-                         block_width);
-
-                 REPORT_INSTRUCTION(options,block_height <= 3,
-                         "TRANSPOSE_LD block height must be in the range [0, 3]: %d",
                          block_height);
              }
 
@@ -2534,10 +2523,6 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
                                     "MEDIA_ST only supports objects that fit into a single dataport "
                                     "transaction where block width <= 64 bytes and size <= 256 bytes. "
                                     "Block width: %d. Block height: %d", block_width, block_height);
-             }
-             else if (ISA_TRANSPOSE_LD == opcode)
-             {
-                 /// Information lost from CISA emission, can't verify here.
              }
 
              Common_ISA_Operand_Class operand_class_xoff = getVectorOperand(inst, i++).getOperandClass();
@@ -2580,113 +2565,11 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
 
              break;
         }
-        case ISA_SCATTER_ATOMIC:
-        {
-             uint8_t op       = 0;
-             uint8_t num_elts = 0;
-
-             op = getPrimitiveOperand<uint8_t>(inst, i++);
-             switch (op & 0xf)
-             {
-                 case 0x0: break;
-                 case 0x1: break;
-                 case 0x2: break;
-                 case 0x3: break;
-                 case 0x4: break;
-                 case 0x5: break;
-                 case 0x6: break;
-                 case 0x7: break;
-                 case 0x8: break;
-                 case 0x9: break;
-                 case 0xA: break;
-                 case 0xB: break;
-                 case 0xC: break;
-                 default: REPORT_INSTRUCTION(options,false, "Invalid SCATTER ATOMIC sub op.");
-             }
-
-             num_elts = getPrimitiveOperand<uint8_t>(inst, i++);
-             num_elts = num_elts & 0x3;
-             if      (num_elts == 0) num_elts =  8;
-             else if (num_elts == 1) num_elts = 16;
-             else REPORT_INSTRUCTION(options,false, "Illegal number of elements used in ISA_DWORD_ATOMIC inst.");
-
-             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-             // numPreDefinedSurfs in 3.0: 6; SetColorCount: T2; WhiteBlanace: T7;
-             REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->surface_count,
-                 "CISA dataport instruction uses an undeclared surface.");
-
-             Common_ISA_Operand_Class operand_class_goff = getVectorOperand(inst, i++).getOperandClass();
-             REPORT_INSTRUCTION(options,operand_class_goff != OPERAND_ADDRESS && operand_class_goff != OPERAND_PREDICATE,
-                               "global_offset of Common ISA gather/scatter instrution should not be address or predicate operand.");
-             const raw_opnd& elementOffset = getRawOperand(inst, i++);
-             verifyRawOperandType(isaHeader, header, inst, elementOffset, isUDType, error_list, options);
-
-             // Check remaining raw operands.
-             VISAAtomicOps opKind = static_cast<VISAAtomicOps>(op);
-             auto typeFn = [](VISA_Type type) { return type == ISA_TYPE_UD || type == ISA_TYPE_D; };
-
-             // Check src0:
-             //
-             // - for INC and DEC operations, src0 must be V0 (the null variable);
-             // - for IMIN and IMAX it must have type D;
-             // - for all other operations, it must have type UD.
-             const raw_opnd& src0 = getRawOperand(inst, i++);
-             if (opKind == ATOMIC_INC || opKind == ATOMIC_DEC) {
-                 REPORT_INSTRUCTION(options,src0.index == 0,
-                                    "src0 in ISA_DWORD_ATOMIC inst must be "
-                                    "V0 for IMIN or IMAX.");
-             } else {
-                verifyRawOperandType(isaHeader, header, inst, src0, typeFn, error_list, options);
-             }
-             // Check src1:
-             //
-             // - for CMPXCHG operation, it must have type UD;
-             // - for all other operations, it must be V0 (the null variable).
-             //
-             const raw_opnd& src1 = getRawOperand(inst, i++);
-             if (opKind == ATOMIC_CMPXCHG) {
-                verifyRawOperandType(isaHeader, header, inst, src1, typeFn, error_list, options);
-             } else {
-                REPORT_INSTRUCTION(options,src1.index == 0,
-                                   "src1 in ISA_DWORD_ATOMIC inst must be "
-                                   "V0 for non CMPXCHG operations.");
-             }
-             // Check dst:
-             //
-             // - for IMIN and IMAX, it must have type D;
-             // - for all other operations, it must have type UD.
-             //
-             const raw_opnd& dst = getRawOperand(inst, i++);
-             verifyRawOperandType(isaHeader, header, inst, dst, typeFn, error_list, options);
-
-             break;
-        }
         case ISA_GATHER:
         case ISA_SCATTER:
-        case ISA_GATHER4:
-        case ISA_SCATTER4:
         {
-             uint8_t ch_mask  = 0;
              uint8_t elt_size = 0;
              uint8_t num_elts = 0;
-
-             if (ISA_SCATTER4 == opcode || ISA_GATHER4 == opcode)
-             {
-                 ch_mask = getPrimitiveOperand<uint8_t>(inst, i++);
-                 ch_mask = ch_mask & 0xF;
-
-                 if (ISA_SCATTER4 == opcode)
-                 {
-                     ChannelMask chMask = ChannelMask::createFromBinary(opcode, ch_mask);
-
-                     REPORT_INSTRUCTION(options,chMask == ChannelMask::RGBA ||
-                                        chMask == ChannelMask::RGB  ||
-                                        chMask == ChannelMask::RG   ||
-                                        chMask == ChannelMask::R,
-                                        "Incorrect channel mask for CISA scatter4 instruction.");
-                 }
-             }
-
              if (ISA_SCATTER == opcode || ISA_GATHER == opcode)
              {
                  elt_size = getPrimitiveOperand<uint8_t>(inst, i++);
@@ -2708,7 +2591,7 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
                  }
              }
 
-             if (ISA_GATHER4  == opcode || ISA_GATHER  == opcode)
+             if (ISA_GATHER  == opcode)
                  getPrimitiveOperand<uint8_t>(inst, i++);
 
              num_elts = getPrimitiveOperand<uint8_t>(inst, i++);

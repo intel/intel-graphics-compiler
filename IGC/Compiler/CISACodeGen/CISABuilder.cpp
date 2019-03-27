@@ -2948,54 +2948,6 @@ void CEncoder::ScatterGather(ISA_Opcode opcode, CVariable* srcdst, CVariable* bu
         dstVar));
 }
 
-void CEncoder::ScatterGather4(ISA_Opcode opcode, CVariable* srcdst, CVariable* bufId, CVariable* offset, CVariable* gOffset, e_predefSurface surface)
-{
-    VISA_VectorOpnd* globalOffsetOpnd = nullptr;
-    if(gOffset)
-    {
-        globalOffsetOpnd = GetUniformSource(gOffset);
-    }
-    else
-    {
-        int value = 0;
-        V(vKernel->CreateVISAImmediate(globalOffsetOpnd, &value ,ISA_TYPE_UD));
-    }
-    VISA_RawOpnd* elementOffset = GetRawSource(offset);
-    VISA_StateOpndHandle* surfOpnd = GetVISASurfaceOpnd(surface, bufId);
-
-    VISA_RawOpnd* dstVar;
-    Common_VISA_EMask_Ctrl visaMask;
-    if(opcode == ISA_GATHER4)
-    {
-        dstVar = GetRawDestination(srcdst);
-        visaMask = GetAluEMask(srcdst);
-    }
-    else
-    {
-        dstVar = GetRawSource(srcdst);
-        visaMask = ConvertMaskToVisaType(m_encoderState.m_mask, m_encoderState.m_noMask);
-    }
-    uint nd = srcdst->GetSize();
-    if (m_encoderState.m_simdSize == SIMDMode::SIMD8)
-        nd = nd / SIZE_GRF;
-    else if (m_encoderState.m_simdSize == SIMDMode::SIMD16)
-        nd = nd / (SIZE_GRF * 2);
-    else
-        assert(0);
-
-    uint mask = BIT(nd)-1;
-
-    V(vKernel->AppendVISASurfAccessGather4Scatter4Inst(
-        opcode,
-        ConvertChannelMaskToVisaType(mask),
-        visaMask,
-        getExecSize(m_encoderState.m_simdSize),
-        surfOpnd,
-        globalOffsetOpnd,
-        elementOffset,
-        dstVar));
-}
-
 void CEncoder::GenericAlu(e_opcode opcode, CVariable* dst, CVariable* src0, CVariable* src1, CVariable* src2)
 {
     ISA_Opcode visaOpcode = ConvertOpcode[opcode];

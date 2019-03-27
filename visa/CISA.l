@@ -269,8 +269,8 @@ media_ld|media_st {
 			   return MEDIA_OP;
            }
 
-gather|scatter|gather4|scatter4 {
-			   TRACE("\n** gather/scatter/gather4/scatter4 INST ");
+gather|scatter {
+			   TRACE("\n** gather/scatter INST ");
 			   CISAlval.opcode = str2opcode(yytext);
 			   return SCATTER_OP;
            }

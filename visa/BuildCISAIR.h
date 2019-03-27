@@ -422,17 +422,6 @@ public:
 											     VISA_opnd *raw_dst_src, //dst/src
 											     int line_no);
 
-    bool CISA_create_scatter4_instruction(ISA_Opcode opcode,
-                                                 ChannelMask ch_mask,
-   										         bool mod,
-                                                 Common_VISA_EMask_Ctrl emask,
-											     int elemNum,
-											     char *surf_name,
-											     VISA_opnd *g_off_opnd, //global_offset
-											     VISA_opnd *offset_raw, //element_offset
-											     VISA_opnd *raw_dst_src, //dst/src
-											     int line_no);
-
     bool CISA_create_scatter4_typed_instruction(ISA_Opcode opcode,
                                                         VISA_opnd *pred,
                                                         ChannelMask ch_mask,
@@ -480,19 +469,6 @@ public:
 											   VISA_opnd *dst,
 											   VISA_opnd *src0,
                                                int line_no);
-
-    bool CISA_create_atomic_instruction (ISA_Opcode opcode,
-        VISAAtomicOps sub_op,
-        bool is16Bit,
-        Common_VISA_EMask_Ctrl emask,
-        unsigned execSize,
-        char *surface_name,
-        VISA_opnd *g_off,
-        VISA_opnd *elem_opnd,
-        VISA_opnd *dst,
-        VISA_opnd *src0,
-        VISA_opnd *src1,
-        int line_no);
 
     bool CISA_create_dword_atomic_instruction(VISA_opnd *pred,
                                               VISAAtomicOps subOpc,

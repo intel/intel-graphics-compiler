@@ -2053,7 +2053,6 @@ static string printInstructionDataport(const kernel_format_t* header, const CISA
     {
         case ISA_MEDIA_ST:
         case ISA_MEDIA_LD:
-        case ISA_TRANSPOSE_LD:
         {
             uint8_t plane        = 0;
             uint8_t block_width  = 0;
@@ -2074,31 +2073,16 @@ static string printInstructionDataport(const kernel_format_t* header, const CISA
             if (opcode == ISA_MEDIA_LD) sstr << "." << media_ld_mod_str[modifier];
             if (opcode == ISA_MEDIA_ST) sstr << "." << media_st_mod_str[modifier];
 
-            if (opcode != ISA_TRANSPOSE_LD)
-            {
-                sstr << " (";
-                block_width = getPrimitiveOperand<uint8_t>(inst, i++);
-                sstr << (unsigned)block_width;
-                sstr << ",";
-                block_height = getPrimitiveOperand<uint8_t>(inst, i++);
-                sstr << (unsigned)block_height;
-                sstr << ")";
-            }
-            else
-            {
-                sstr << " (";
-                block_width = Transpose_Read_Block_size[getPrimitiveOperand<uint8_t>(inst, i++)];
-                sstr << (unsigned)block_width;
-                sstr << ",";
-                block_height = Transpose_Read_Block_size[getPrimitiveOperand<uint8_t>(inst, i++)];
-                sstr << (unsigned)block_height;
-                sstr << ")";
-            }
+            sstr << " (";
+            block_width = getPrimitiveOperand<uint8_t>(inst, i++);
+            sstr << (unsigned)block_width;
+            sstr << ",";
+            block_height = getPrimitiveOperand<uint8_t>(inst, i++);
+            sstr << (unsigned)block_height;
+            sstr << ")";
 
             sstr << " T" << (unsigned)surface;
-
-            if (opcode != ISA_TRANSPOSE_LD)
-                sstr << " " << (unsigned)plane;
+            sstr << " " << (unsigned)plane;
 
             /// x offset
             sstr << printOperand(header, inst, i++, opt);
@@ -2198,88 +2182,6 @@ static string printInstructionDataport(const kernel_format_t* header, const CISA
 
             /// message operand (src or dst)
             sstr << printOperand(header, inst, i++, opt);
-
-            break;
-        }
-        case ISA_GATHER4:
-        case ISA_SCATTER4:
-        {
-            uint8_t ch_mask  = 0;
-            uint8_t num_elts = 0;
-
-            ch_mask = getPrimitiveOperand<uint8_t>(inst, i++);
-            ch_mask = ch_mask & 0xF;
-
-            if (ISA_GATHER4 == opcode)
-            {
-                modifier = getPrimitiveOperand<uint8_t>(inst, i++);
-            }
-
-            num_elts = getPrimitiveOperand<uint8_t>(inst, i++);
-
-            // channel mask
-            sstr << "." << channel_mask_slm_str[ch_mask];
-
-            // num_elts
-            sstr << " " << printExecutionSizeForScatterGather(num_elts);
-
-            // modifier
-            if (ISA_GATHER4 == opcode && modifier & 0x1)
-            {
-                sstr << ".mod";
-            }
-
-            //surface
-            surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr <<printSurfaceIndex(surface);
-
-            /// global offset
-            sstr << printOperand(header, inst, i++, opt);
-
-            /// element offset
-            sstr << printOperand(header, inst, i++, opt);
-
-            /// message operand (src or dst)
-            sstr << printOperand(header, inst, i++, opt);
-
-            break;
-        }
-        case ISA_SCATTER_ATOMIC:
-        {
-            uint8_t num_elts = 0;
-
-            VISAAtomicOps op
-                = static_cast<VISAAtomicOps>(getPrimitiveOperand<uint8_t>(inst, i++));
-
-            /// TODO: Need platform information for this to work.
-            sstr << "." << CISAAtomicOpNames[op];
-
-            num_elts = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr << " " << printExecutionSizeForScatterGather(num_elts);
-
-            surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            sstr <<printSurfaceIndex(surface);
-
-            /// global offset
-            sstr << printOperand(header, inst, i++, opt);
-
-            /// element offset
-            sstr << printOperand(header, inst, i++, opt);
-
-            /// DWORD_ATOMIC is wierd and has the text version
-            /// putting the dst operand before the src operands.
-            stringstream sstr1;
-
-            /// src0
-            sstr1 << printOperand(header, inst, i++, opt);
-
-            /// src1
-            sstr1 << printOperand(header, inst, i++, opt);
-
-            /// message operand (src or dst)
-            sstr << printOperand(header, inst, i++, opt);
-
-            sstr << sstr1.str();
 
             break;
         }

@@ -96,11 +96,11 @@ struct ISA_Inst_Info ISA_Inst_Table[ISA_OPCODE_ENUM_SIZE] =
     { ISA_MEDIA_ST,           ISA_Inst_Data_Port,  "media_st",            6, 0 },
     { ISA_GATHER,             ISA_Inst_Data_Port,  "gather",              4, 1 },
     { ISA_SCATTER,            ISA_Inst_Data_Port,  "scatter",             5, 0 },
-    { ISA_SCATTER_ATOMIC,     ISA_Inst_Data_Port,  "untyped_atomic",      6, 1 },
+    { ISA_RESERVED_3B,        ISA_Inst_Reserved,   "reserved3b",          0, 0 },
     { ISA_OWORD_LD_UNALIGNED, ISA_Inst_Data_Port,  "oword_ld_unaligned",  2, 1 },
-    { ISA_GATHER4,            ISA_Inst_Data_Port,  "gather4",             4, 1 },
-    { ISA_SCATTER4,           ISA_Inst_Data_Port,  "scatter4",            5, 0 },
-    { ISA_TRANSPOSE_LD,       ISA_Inst_Data_Port,  "read_transpose",      5, 1 },
+    { ISA_RESERVED_3D,        ISA_Inst_Reserved,   "reserved3d",          0, 0 },
+    { ISA_RESERVED_3E,        ISA_Inst_Reserved,   "reserved3e",          0, 0 },
+    { ISA_RESERVED_3F,        ISA_Inst_Reserved,   "reserved3f",          0, 0 },
     { ISA_SAMPLE,             ISA_Inst_Sampler,    "sample",              5, 1 },
     { ISA_SAMPLE_UNORM,       ISA_Inst_Sampler,    "sample_unorm",        6, 1 },
     { ISA_LOAD,               ISA_Inst_Sampler,    "load",                4, 1 },
@@ -825,16 +825,8 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 59
-    { ALL, ISA_SCATTER_ATOMIC, ISA_Inst_Data_Port, "untyped_atomic", 8, 0,
+    { ALL, ISA_RESERVED_3B, ISA_Inst_Reserved, "reserved_3B", 8, 0,
     {
-        {OPND_ATOMIC_SUBOP, ISA_TYPE_UB, 0},
-        {OPND_ELEM_NUM, ISA_TYPE_UB, ELEM_NUM_8_16},
-        {OPND_SURFACE, ISA_TYPE_UB, 0},
-        {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION},
-        {OPND_RAW,  ISA_TYPE_UD, GRF_ALIGNED},
-        {OPND_RAW,  ISA_TYPE_UD | ISA_TYPE_D, GRF_ALIGNED},
-        {OPND_RAW,  ISA_TYPE_UD | ISA_TYPE_D, GRF_ALIGNED},
-        {OPND_RAW,  ISA_TYPE_UD | ISA_TYPE_D, GRF_ALIGNED},
     },
 
     },
@@ -852,43 +844,21 @@ VISA_INST_Desc CISA_INST_table[ISA_NUM_OPCODE] =
     },
 
     /// 61
-    { ALL, ISA_GATHER4, ISA_Inst_Data_Port, "gather4", 7, 0,
+    { ALL, ISA_RESERVED_3D, ISA_Inst_Reserved, "reserved_3D", 0, 0,
     {
-        {OPND_CHANNEL_SIMD_MODE, ISA_TYPE_UB, 0},
-        {OPND_IS_MODIFIED, ISA_TYPE_UB, 0},
-        {OPND_ELEM_NUM, ISA_TYPE_UB, 0},
-        {OPND_SURFACE, ISA_TYPE_UB, 0},
-        {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UD, SCALAR_REGION},
-        {OPND_RAW,  ISA_TYPE_UD, GRF_ALIGNED},
-        {OPND_RAW,  ISA_TYPE_UD | ISA_TYPE_D | ISA_TYPE_F, GRF_ALIGNED},
     },
-
     },
 
     /// 62
-    { ALL, ISA_SCATTER4, ISA_Inst_Data_Port, "scatter4", 6, 0,
+    { ALL, ISA_RESERVED_3E, ISA_Inst_Reserved, "reserved_3E", 0, 0,
     {
-        {OPND_CHANNEL_SIMD_MODE, ISA_TYPE_UB, 0},
-        {OPND_ELEM_NUM, ISA_TYPE_UB, 0},
-        {OPND_SURFACE, ISA_TYPE_UB, 0},
-        {OPND_VECTOR_SRC_G_I_IMM, ISA_TYPE_UD, SCALAR_REGION},
-        {OPND_RAW,  ISA_TYPE_UD, GRF_ALIGNED},
-        {OPND_RAW,  ISA_TYPE_UD | ISA_TYPE_D | ISA_TYPE_F, GRF_ALIGNED},
     },
-
     },
 
     /// 63
-    { ALL, ISA_TRANSPOSE_LD, ISA_Inst_Data_Port, "transpose_ld", 6, 0,
+    { ALL, ISA_RESERVED_3F, ISA_Inst_Reserved, "reserved_3F", 0, 0,
     {
-        {OPND_SURFACE, ISA_TYPE_UB, 0},
-        {OPND_BLOCK_WIDTH, ISA_TYPE_UB, VALUE_1_32},
-        {OPND_BLOCK_HEIGHT, ISA_TYPE_UB, VALUE_1_64},
-        {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION},
-        {OPND_VECTOR_SRC_G_I_IMM_AO, ISA_TYPE_UD, SCALAR_REGION},
-        {OPND_RAW, 0, GRF_ALIGNED |SIZE_GE_WIDTH_M_HIEGH},
     },
-
     },
 
     /// 64

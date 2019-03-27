@@ -360,14 +360,6 @@ public:
     CM_BUILDER_API virtual int AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned char labelCount, VISA_LabelOpnd **labels) = 0;
 
     /// AppendVISASurfAccessDWordAtomicInst -- append a dword atomic write instruction to this kernel
-    /// globalOffset and elementOffset are both in unit of dword
-    CM_BUILDER_API virtual int AppendVISASurfAccessDwordAtomicInst(
-        VISAAtomicOps subOp, bool is16Bit, Common_VISA_EMask_Ctrl emask,
-        Common_ISA_Exec_Size executionSize, VISA_StateOpndHandle *surface,
-        VISA_VectorOpnd *globalOffset, VISA_RawOpnd *elementOffset,
-        VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_RawOpnd *dst) = 0;
-
-    /// AppendVISASurfAccessDWordAtomicInst -- append a dword atomic write instruction to this kernel
     /// NOTE: offsets are both in unit of BYTE!
     CM_BUILDER_API virtual int AppendVISASurfAccessDwordAtomicInst(
         VISA_PredOpnd *pred, VISAAtomicOps subOpc, bool is16Bit,
@@ -380,11 +372,6 @@ public:
     /// globalOffset and elementOffset are both in unit of element size
     CM_BUILDER_API virtual int AppendVISASurfAccessGatherScatterInst(ISA_Opcode opcode, Common_VISA_EMask_Ctrl emask, GATHER_SCATTER_ELEMENT_SIZE elementSize,
                                                       Common_ISA_Exec_Size executionSize, VISA_StateOpndHandle *surface, VISA_VectorOpnd *globalOffset, VISA_RawOpnd *elementOffset, VISA_RawOpnd *srcDst) = 0;
-
-    /// AppendVISASurfAccessGather4Scatter4Inst -- append a dword gather4/scatter4 instruction to this kernel
-    /// globalOffset and elementOffset are both in unit of dwords
-    CM_BUILDER_API virtual int AppendVISASurfAccessGather4Scatter4Inst(ISA_Opcode opcode, VISAChannelMask chMask, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize,
-                                                        VISA_StateOpndHandle *surface, VISA_VectorOpnd *globalOffset, VISA_RawOpnd *elementOffset, VISA_RawOpnd *srcDst) = 0;
 
     /// AppendVISASurfAccessGather4Scatter4TypedInst -- append a typed dword gather4/scatter4 instruction to this kernel
     /// uOffset, vOffset, and rOffset are all in unit of pixels.
@@ -497,9 +484,6 @@ public:
                                                                VISA_VectorOpnd          *address,
                                                                VISA_RawOpnd             *offsets,
                                                                VISA_RawOpnd             *src) = 0;
-
-    CM_BUILDER_API virtual int AppendVISASurfAccessTransposeLoadInst(VISA_StateOpndHandle *surface, unsigned char blockWidth, unsigned char blockHeight,
-                                                      VISA_VectorOpnd *xOffset, VISA_VectorOpnd *yOffset, VISA_RawOpnd *dst) = 0;
 
     CM_BUILDER_API virtual int AppendVISASILoad(VISA_StateOpndHandle *surface, VISAChannelMask channel, bool isSIMD16,
         VISA_RawOpnd *uOffset, VISA_RawOpnd *vOffset, VISA_RawOpnd *rOffset, VISA_RawOpnd *dst) = 0;

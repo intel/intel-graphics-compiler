@@ -1852,37 +1852,6 @@ bool CISA_IR_Builder::CISA_create_scatter_instruction(ISA_Opcode opcode,
     return true;
 }
 
-bool CISA_IR_Builder::CISA_create_scatter4_instruction(ISA_Opcode opcode,
-                                                       ChannelMask ch_mask,
-                                                       bool mod,
-                                                       Common_VISA_EMask_Ctrl emask,
-                                                       int elemNum,
-                                                       char *surf_name,
-                                                       VISA_opnd *global_offset, //global_offset
-                                                       VISA_opnd *element_offset, //element_offset
-                                                       VISA_opnd *raw_dst_src, //dst/src
-                                                       int line_no)
-{
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surf_name);
-    MUST_BE_TRUE1(surfaceVar != NULL, line_no, "Surface was not found");
-
-    VISA_StateOpndHandle * surface = NULL;
-
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
-
-    Common_ISA_Exec_Size executionSize = EXEC_SIZE_16;
-    if(elemNum == 16)
-    {
-        executionSize = EXEC_SIZE_16;
-    }
-    else if(elemNum == 8)
-    {
-        executionSize = EXEC_SIZE_8;
-    }
-    m_kernel->AppendVISASurfAccessGather4Scatter4Inst(opcode, ch_mask.getAPI(), emask, executionSize, surface, (VISA_VectorOpnd *)global_offset, (VISA_RawOpnd *)element_offset, (VISA_RawOpnd *)raw_dst_src);
-    return true;
-}
-
 bool CISA_IR_Builder::CISA_create_scatter4_typed_instruction(ISA_Opcode opcode,
                                                              VISA_opnd *pred,
                                                              ChannelMask ch_mask,
@@ -2038,47 +2007,6 @@ bool CISA_IR_Builder::CISA_create_invtri_inst(VISA_opnd *pred,
     size += emask << 4;
     inst->createCisaInstruction(opcode, size, 0 , pred_id,opnd, num_operands, inst_desc);
     m_kernel->addInstructionToEnd(inst);
-
-    return true;
-}
-
-bool CISA_IR_Builder::CISA_create_atomic_instruction (ISA_Opcode opcode,
-                                                      VISAAtomicOps sub_op,
-                                                      bool is16Bit,
-                                                      Common_VISA_EMask_Ctrl emask,
-                                                      unsigned execSize,
-                                                      char *surface_name,
-                                                      VISA_opnd *g_off,
-                                                      VISA_opnd *elem_opnd,
-                                                      VISA_opnd *dst,
-                                                      VISA_opnd *src0,
-                                                      VISA_opnd *src1,
-                                                      int line_no)
-{
-
-    VISA_SurfaceVar *surfaceVar = (VISA_SurfaceVar*)m_kernel->getDeclFromName(surface_name);
-    MUST_BE_TRUE1(surfaceVar != NULL, line_no, "Surface was not found");
-
-    VISA_StateOpndHandle * surface = NULL;
-
-    m_kernel->CreateVISAStateOperandHandle(surface, surfaceVar);
-
-    Common_ISA_Exec_Size executionSize = EXEC_SIZE_8;
-
-    MUST_BE_TRUE1(execSize == 8 || execSize == 16, line_no, "Unsupported number of elements for atomic instruction.");
-    if (execSize == 8)
-    {
-        executionSize = EXEC_SIZE_8;
-    }
-    else if (execSize == 16)
-    {
-        executionSize = EXEC_SIZE_16;
-    }
-
-    m_kernel->AppendVISASurfAccessDwordAtomicInst(
-        sub_op, is16Bit, emask, executionSize, surface,
-        (VISA_VectorOpnd *)g_off, (VISA_RawOpnd *)elem_opnd,
-        (VISA_RawOpnd *)src0, (VISA_RawOpnd *)src1, (VISA_RawOpnd *)dst);
 
     return true;
 }

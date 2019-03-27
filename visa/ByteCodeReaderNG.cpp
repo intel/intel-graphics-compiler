@@ -828,7 +828,6 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
     {
     case ISA_MEDIA_ST:
     case ISA_MEDIA_LD:
-    case ISA_TRANSPOSE_LD:
         {
             uint8_t      modifier = (ISA_MEDIA_LD == opcode || ISA_MEDIA_ST == opcode) ? readPrimitiveOperandNG<uint8_t>(bytePos, buf) : 0;
             uint8_t       surface = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
@@ -842,10 +841,7 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
             VISA_StateOpndHandle* surfaceHnd = NULL;
             kernelBuilder->CreateVISAStateOperandHandle(surfaceHnd, container.surfaceVarDecls[surface]);
 
-            if (ISA_MEDIA_LD == opcode || ISA_MEDIA_ST == opcode)
-                kernelBuilder->AppendVISASurfAccessMediaLoadStoreInst(opcode, (MEDIA_LD_mod)modifier, surfaceHnd, width, height, (VISA_VectorOpnd*)xoffset, (VISA_VectorOpnd*)yoffset, msg, (CISA_PLANE_ID)plane);
-            else
-                kernelBuilder->AppendVISASurfAccessTransposeLoadInst(surfaceHnd, width, height, (VISA_VectorOpnd*)xoffset, (VISA_VectorOpnd*)yoffset, msg);
+            kernelBuilder->AppendVISASurfAccessMediaLoadStoreInst(opcode, (MEDIA_LD_mod)modifier, surfaceHnd, width, height, (VISA_VectorOpnd*)xoffset, (VISA_VectorOpnd*)yoffset, msg, (CISA_PLANE_ID)plane);
             break;
         }
     case ISA_OWORD_ST:
@@ -869,12 +865,9 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
         }
     case ISA_GATHER:
     case ISA_SCATTER:
-    case ISA_GATHER4:
-    case ISA_SCATTER4:
         {
-            uint8_t ch_mask  = (ISA_SCATTER4 == opcode || ISA_GATHER4 == opcode) ? readPrimitiveOperandNG<uint8_t>(bytePos, buf) : 0;
             uint8_t elt_size = (ISA_SCATTER  == opcode || ISA_GATHER  == opcode) ? readPrimitiveOperandNG<uint8_t>(bytePos, buf) : 0;
-            if (ISA_GATHER4 == opcode || ISA_GATHER == opcode)
+            if (ISA_GATHER == opcode)
             {
                 readPrimitiveOperandNG<uint8_t>(bytePos, buf);
             } // modifier
@@ -909,42 +902,7 @@ static void readInstructionDataportNG(unsigned& bytePos, const char* buf, ISA_Op
 
             emask = transformMask(container, num_elts >> 4);
 
-            if (ISA_SCATTER4 == opcode || ISA_GATHER4 == opcode)
-                kernelBuilderImpl->AppendVISASurfAccessGather4Scatter4Inst(opcode, ChannelMask::createAPIFromBinary(opcode, ch_mask), emask, esize, surfaceHnd, globalOffset, elementOffset, msg);
-            else
-                kernelBuilderImpl->AppendVISASurfAccessGatherScatterInst(opcode, emask, (GATHER_SCATTER_ELEMENT_SIZE)(elt_size & 0x3), esize, surfaceHnd, globalOffset, elementOffset, msg);
-            break;
-        }
-    case ISA_SCATTER_ATOMIC:
-        {
-            Common_VISA_EMask_Ctrl emask = vISA_EMASK_M1;
-            VISAAtomicOps op =
-                static_cast<VISAAtomicOps>(
-                    readPrimitiveOperandNG<uint8_t>(bytePos, buf));
-            uint8_t num_elts = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-            uint8_t  surface = readPrimitiveOperandNG<uint8_t>(bytePos, buf);
-
-            VISA_VectorOpnd*  globalOffset = readVectorOperandNG(bytePos, buf, container, false);
-            VISA_RawOpnd*    elementOffset =    readRawOperandNG(bytePos, buf, container);
-            VISA_RawOpnd*             src0 =    readRawOperandNG(bytePos, buf, container);
-            VISA_RawOpnd*             src1 =    readRawOperandNG(bytePos, buf, container);
-            VISA_RawOpnd*              dst =    readRawOperandNG(bytePos, buf, container);
-
-            emask = transformMask(container, (num_elts >> 4) & 0xF);
-            num_elts = num_elts & 0x3;
-
-            if      (num_elts == 0) num_elts =  8;
-            else if (num_elts == 1) num_elts = 16;
-            else
-                MUST_BE_TRUE(false, "Unsupported number of elements for ISA_DWORD_ATOMIC, must be 8 or 16.");
-
-            Common_ISA_Exec_Size esize = Get_Common_ISA_Exec_Size_From_Raw_Size(num_elts);
-
-            VISA_StateOpndHandle* surfaceHnd = NULL;
-            kernelBuilderImpl->CreateVISAStateOperandHandle(surfaceHnd, container.surfaceVarDecls[surface]);
-            kernelBuilderImpl->AppendVISASurfAccessDwordAtomicInst(
-                op, /*is16Bit*/ false, emask, esize, surfaceHnd, globalOffset,
-                elementOffset, src0, src1, dst);
+            kernelBuilderImpl->AppendVISASurfAccessGatherScatterInst(opcode, emask, (GATHER_SCATTER_ELEMENT_SIZE)(elt_size & 0x3), esize, surfaceHnd, globalOffset, elementOffset, msg);
             break;
         }
     case ISA_GATHER4_TYPED:

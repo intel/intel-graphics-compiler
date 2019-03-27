@@ -878,7 +878,6 @@ CISAInst: LogicInstruction
         | Scatter4ScaledInstruction
         | SynchronizationInstruction
         | BranchInstruction
-        | UntypedAtomicInstruction
         | DwordAtomicInstruction
         | TypedAtomicInstruction
         | SampleInstruction
@@ -1061,12 +1060,6 @@ ScatterInstruction : SCATTER_OP ElemNum ExecSize OwordModifier VAR VecSrcOperand
          {
              pCisaBuilder->CISA_create_scatter_instruction($1, (int) $2, $3.emask, $3.exec_size, $4, $5, $6.cisa_gen_opnd, $7.cisa_gen_opnd, $8.cisa_gen_opnd, CISAlineno);
         };
-         //  1           2               3           4         5          6                  7          8
-		| SCATTER_OP SAMPLER_CHANNEL ExecSize  OwordModifier  VAR  VecSrcOperand_G_I_IMM RawOperand RawOperand
-         {
-             pCisaBuilder->CISA_create_scatter4_instruction($1, ChannelMask::createFromAPI($2), (int)$4, $3.emask, (int)$3.exec_size, $5, $6.cisa_gen_opnd, $7.cisa_gen_opnd, $8.cisa_gen_opnd, CISAlineno);
-        };
-
                 //              1             2                 3            4       5         6           7             8           9            10
 ScatterTypedInstruction :  Predicate   SCATTER_TYPED_OP  SAMPLER_CHANNEL  ExecSize  VAR    RawOperand   RawOperand   RawOperand  RawOperand    RawOperand
         {
@@ -1097,12 +1090,6 @@ SynchronizationInstruction: BARRIER_OP
             {
                 pCisaBuilder->CISA_create_sbarrier_instruction(false);
             };
-
-//                         1         2             3           4        5   6                     7          8          9          10
-UntypedAtomicInstruction : ATOMIC_OP ATOMIC_SUB_OP IS_ATOMIC16 ExecSize VAR VecSrcOperand_G_I_IMM RawOperand RawOperand RawOperand RawOperand
-           {
-              pCisaBuilder->CISA_create_atomic_instruction(ISA_SCATTER_ATOMIC, $2, $3, $4.emask, $4.exec_size, $5, $6.cisa_gen_opnd, $7.cisa_gen_opnd, $8.cisa_gen_opnd, $9.cisa_gen_opnd, $10.cisa_gen_opnd, CISAlineno);
-           };
 
 //                      1         2               3             4           5        6   7          8          9          10
 DwordAtomicInstruction: Predicate DWORD_ATOMIC_OP ATOMIC_SUB_OP IS_ATOMIC16 ExecSize VAR RawOperand RawOperand RawOperand RawOperand

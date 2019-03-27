@@ -383,12 +383,6 @@ public:
     CM_BUILDER_API int AppendVISACFSwitchJMPInst(VISA_VectorOpnd *index, unsigned char labelCount, VISA_LabelOpnd **labels);
 
     CM_BUILDER_API int AppendVISASurfAccessDwordAtomicInst(
-        VISAAtomicOps subOp, bool is16Bit, Common_VISA_EMask_Ctrl emask,
-        Common_ISA_Exec_Size executionSize, VISA_StateOpndHandle *surface,
-        VISA_VectorOpnd *globalOffset, VISA_RawOpnd *elementOffset,
-        VISA_RawOpnd *src0, VISA_RawOpnd *src1, VISA_RawOpnd *dst);
-
-    CM_BUILDER_API int AppendVISASurfAccessDwordAtomicInst(
         VISA_PredOpnd *pred, VISAAtomicOps subOpc, bool is16Bit,
         Common_VISA_EMask_Ctrl eMask, Common_ISA_Exec_Size execSize,
         VISA_StateOpndHandle *surface, VISA_RawOpnd *offsets,
@@ -396,9 +390,6 @@ public:
 
     CM_BUILDER_API int AppendVISASurfAccessGatherScatterInst(ISA_Opcode opcode, Common_VISA_EMask_Ctrl emask, GATHER_SCATTER_ELEMENT_SIZE elementSize,
         Common_ISA_Exec_Size executionSize, VISA_StateOpndHandle *surface, VISA_VectorOpnd *globalOffset, VISA_RawOpnd *elementOffset, VISA_RawOpnd *srcDst);
-
-    CM_BUILDER_API int AppendVISASurfAccessGather4Scatter4Inst(ISA_Opcode opcode, VISAChannelMask chMask, Common_VISA_EMask_Ctrl emask, Common_ISA_Exec_Size executionSize,
-        VISA_StateOpndHandle *surface, VISA_VectorOpnd *globalOffset, VISA_RawOpnd *elementOffset, VISA_RawOpnd *srcDst);
 
     CM_BUILDER_API int AppendVISASurfAccessGather4Scatter4TypedInst(ISA_Opcode opcode,
         VISA_PredOpnd *pred,
@@ -474,9 +465,6 @@ public:
         VISA_VectorOpnd          *address,
         VISA_RawOpnd             *offsets,
         VISA_RawOpnd             *src);
-
-    CM_BUILDER_API int AppendVISASurfAccessTransposeLoadInst(VISA_StateOpndHandle *surface, unsigned char blockWidth, unsigned char blockHeight,
-        VISA_VectorOpnd *xOffset, VISA_VectorOpnd *yOffset, VISA_RawOpnd *dst);
 
     CM_BUILDER_API int AppendVISASILoad(VISA_StateOpndHandle *surface, VISAChannelMask channel, bool isSIMD16,
         VISA_RawOpnd *uOffset, VISA_RawOpnd *vOffset, VISA_RawOpnd *rOffset, VISA_RawOpnd *dst);

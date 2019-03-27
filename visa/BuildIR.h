@@ -1990,18 +1990,6 @@ public:
                         G4_SrcRegRegion* eltOffOpnd,
                         G4_SrcRegRegion* srcOpnd );
 
-    int translateVISADwordAtomicInst(
-                        VISAAtomicOps op,
-                        bool is16Bit,
-                        Common_VISA_EMask_Ctrl emask,
-                        Common_ISA_Exec_Size executionSize,
-                        G4_Operand* surface,
-                        G4_Operand* gOffOpnd,
-                        G4_SrcRegRegion* eltOffOpnd,
-                        G4_SrcRegRegion* src0Opnd,
-                        G4_SrcRegRegion* src1Opnd,
-                        G4_DstRegRegion* dstOpnd);
-
     int translateVISADwordAtomicInst(VISAAtomicOps subOpc,
                                      bool is16Bit,
                                      G4_Predicate *pred,
@@ -2027,14 +2015,6 @@ public:
         G4_SrcRegRegion *src0,
         G4_SrcRegRegion *src1,
         G4_DstRegRegion *dst);
-
-    int translateTransposeVISALoadInst(
-                        G4_Operand* surface,
-                        unsigned blockWidth,
-                        unsigned blockHeight,
-                        G4_Operand* xOffOpnd,
-                        G4_Operand* yOffOpnd,
-                        G4_DstRegRegion* dstOpnd );
 
     int translateVISAGather4TypedInst(G4_Predicate           *pred,
                                       Common_VISA_EMask_Ctrl emask,

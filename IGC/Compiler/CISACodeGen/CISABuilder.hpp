@@ -268,11 +268,9 @@ public:
     inline void LoadMS(EOPCODE subOpcode, uint writeMask, CVariable* offset, const ResourceDescriptor& resource, uint numSources, CVariable* dst, llvm::SmallVector<CVariable*, 4>& payload, bool feedbackEnable);
     inline void SetP(CVariable*  dst, CVariable* src);
     inline void Gather(CVariable* dst, CVariable* bufidx, CVariable* offset, CVariable* gOffset, e_predefSurface surface, int elementSize);
-    inline void Gather4(CVariable* dst, CVariable* bufidx, CVariable* offset, e_predefSurface surface);
     inline void TypedRead4(const ResourceDescriptor& resource, CVariable* pU, CVariable* pV, CVariable* pR, CVariable* pLOD, CVariable* pDst, uint writeMask);
     inline void TypedWrite4(const ResourceDescriptor& resource, CVariable* pU, CVariable* pV, CVariable* pR, CVariable* pLOD, CVariable* pSrc);
     inline void Scatter(CVariable* val, CVariable* bufidx, CVariable* offset, CVariable* gOffset, e_predefSurface surface, int elementSize);
-    inline void Scatter4(CVariable* val, CVariable* bufIdx, CVariable* offset, CVariable* gOffset, e_predefSurface surface);
     inline void IShr( CVariable* dst, CVariable* src0, CVariable* src1 );
     inline void Min(CVariable* dst, CVariable* src0, CVariable* src1);
     inline void Max(CVariable* dst, CVariable* src0, CVariable* src1);
@@ -445,13 +443,6 @@ private:
         CVariable* gOffset,
         e_predefSurface surface,
         int elementSize);
-    void ScatterGather4(
-        ISA_Opcode opcode,
-        CVariable* srcdst,
-        CVariable* bufId,
-        CVariable* offset,
-        CVariable* gOffset,
-        e_predefSurface surface);
     void TypedReadWrite(
         ISA_Opcode opcode,
         const ResourceDescriptor& resource,
@@ -751,11 +742,6 @@ inline void CEncoder::Gather(CVariable* dst, CVariable* bufId, CVariable* offset
     ScatterGather(ISA_GATHER, dst, bufId, offset, gOffset, surface, elementSize);
 }
 
-inline void CEncoder::Gather4(CVariable* dst, CVariable* bufId, CVariable* offset, e_predefSurface surface)
-{
-    ScatterGather4(ISA_GATHER4, dst, bufId, offset, nullptr, surface);
-}
-
 inline void CEncoder::TypedRead4(const ResourceDescriptor& resource, CVariable* pU, CVariable* pV,
     CVariable* pR, CVariable* pLOD, CVariable* pDst, uint writeMask)
 {
@@ -771,11 +757,6 @@ inline void CEncoder::TypedWrite4(const ResourceDescriptor& resource, CVariable*
 inline void CEncoder::Scatter(CVariable* val, CVariable* bufidx, CVariable* offset, CVariable* gOffset, e_predefSurface surface, int elementSize)
 {
     ScatterGather(ISA_SCATTER, val, bufidx, offset, gOffset, surface, elementSize);
-}
-
-inline void CEncoder::Scatter4(CVariable* val, CVariable* bufIdx, CVariable* offset, CVariable* gOffset, e_predefSurface surface)
-{
-    ScatterGather4(ISA_SCATTER4, val, bufIdx, offset, gOffset, surface);
 }
 
 inline void CEncoder::SendC(CVariable* dst, CVariable* src, uint exDesc, CVariable* messDescriptor)

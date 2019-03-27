@@ -202,8 +202,6 @@ typedef enum {
     NUM_REGION = 0x8
 } Common_ISA_Region_Val;
 
-extern uint8_t Transpose_Read_Block_size[4];
-
 extern const char* Rel_op_str[ISA_CMP_UNDEF + 1];
 
 extern const char* media_ld_mod_str[MEDIA_LD_Mod_NUM];
@@ -884,13 +882,6 @@ private:
   /// needReverseMaskForBinary - Channel mask needs reverse during vISA binary
   /// encoding.
   static bool needReverseMaskForBinary(ISA_Opcode opc) {
-    switch (opc) {
-    default:
-      break;
-    case ISA_GATHER4:
-    case ISA_SCATTER4:
-      return true;
-    }
     return false;
   }
 
