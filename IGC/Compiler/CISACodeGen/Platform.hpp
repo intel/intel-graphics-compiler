@@ -239,10 +239,7 @@ public:
         // HS HW barriers work correctly since ICL platform.
         return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE);
     }
-    bool applyTEFactorsPadding() const
-    {
-        return m_platformInfo.eRenderCoreFamily >= IGFX_GEN11_CORE;
-    }
+
     bool enableVertexReorderingPhase2() const
     {
         return (m_platformInfo.eRenderCoreFamily >= IGFX_GEN10_CORE);
