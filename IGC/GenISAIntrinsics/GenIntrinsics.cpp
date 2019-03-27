@@ -554,7 +554,7 @@ void GenISAIntrinsic::getIntrinsicInfoTableEntries(GenISAIntrinsic::ID id,
 
   // Okay, decode the table into the output vector of IITDescriptors.
   DecodeIITType(NextElt, IITEntries, T, Tys);
-  while (NextElt != IITEntries.size() && IITEntries[NextElt] != 0)
+  while (NextElt < IITEntries.size() && IITEntries[NextElt] != 0)
     DecodeIITType(NextElt, IITEntries, T, Tys);
 }
 

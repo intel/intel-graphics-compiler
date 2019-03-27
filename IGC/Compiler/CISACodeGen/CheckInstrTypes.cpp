@@ -81,6 +81,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasBarrier = false;
     instrList->hasDiscard = false;
     instrList->mayHaveIndirectOperands = false;
+    instrList->hasUniformAssumptions = false;
     instrList->numSample = 0;
     instrList->numBB = 0;
     instrList->numLoopInsts = 0;
@@ -204,6 +205,9 @@ void CheckInstrTypes::visitCallInst(CallInst &C)
             break;
         case GenISAIntrinsic::GenISA_threadgroupbarrier:
             g_InstrTypes->hasBarrier = true;
+            break;
+        case GenISAIntrinsic::GenISA_is_uniform:
+            g_InstrTypes->hasUniformAssumptions = true;
             break;
         default:
             break;

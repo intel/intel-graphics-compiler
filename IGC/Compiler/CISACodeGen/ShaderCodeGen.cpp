@@ -64,6 +64,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/Simd32Profitability.hpp"
 #include "Compiler/CISACodeGen/SimplifyConstant.h"
 #include "Compiler/CISACodeGen/TypeDemote.h"
+#include "Compiler/CISACodeGen/UniformAssumptions.hpp"
 #include "Compiler/Optimizer/LinkMultiRateShaders.hpp"
 #include "Compiler/CISACodeGen/MergeURBWrites.hpp"
 #include "Compiler/CISACodeGen/VectorProcess.hpp"
@@ -548,6 +549,10 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     if (!isOptDisabled)
     {
         mpm.add(createGenStrengthReductionPass());
+    }
+
+    if (ctx.m_instrTypes.hasUniformAssumptions) {
+        mpm.add(new UniformAssumptions());
     }
 
     // TODO: move to use instruction flags

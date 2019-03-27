@@ -159,6 +159,7 @@ namespace IGC
         bool hasBarrier;        //<! true if module has thread group barrier
         bool hasDiscard;
         bool mayHaveIndirectOperands;  //<! true if code may have indirect operands like r5[a0].
+        bool hasUniformAssumptions;
 		unsigned int numSample;
 		unsigned int numBB;
 		unsigned int numLoopInsts;
