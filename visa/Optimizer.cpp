@@ -113,23 +113,23 @@ static int getSrcSubReg( G4_Operand *src )
     return srcSubReg;
 }
 
-static void mergeBitVec( unsigned bitVec[2], G4_Operand* opnd,
+static void mergeBitVec( uint64_t bitVec[2], G4_Operand* opnd,
                         unsigned left_bound, unsigned right_bound )
 {
-    unsigned opndBitVecL = opnd->getBitVecL(), opndBitVecH = opnd->getBitVecH();
+    uint64_t opndBitVecL = opnd->getBitVecL(), opndBitVecH = opnd->getBitVecH();
     unsigned left_bound2 = opnd->getLeftBound(), right_bound2 = opnd->getRightBound();
     if( right_bound < left_bound2 || right_bound2 < left_bound ){
         return;
     }
     short dist = left_bound2 - left_bound;
     if( dist > 0 ){
-        if( dist >= 32 ){
-            unsigned lbit = opndBitVecL << (dist - 32);
+        if( dist >= (short)getGRFSize() ){
+            uint64_t lbit = opndBitVecL << (dist - getGRFSize());
             opndBitVecH |= lbit;
             opndBitVecL = 0;
         }
         else{
-            unsigned lbit = opndBitVecL >> (32 - dist);
+            uint64_t lbit = opndBitVecL >> (getGRFSize() - dist);
             opndBitVecH <<= dist;
             opndBitVecH |= lbit;
             opndBitVecL <<= dist;
@@ -1124,7 +1124,6 @@ int Optimizer::optimization()
 
     // perform register allocation
     runPass(PI_regAlloc);
-
     if (RAFail)
     {
         return CM_SPILL;
@@ -1884,9 +1883,10 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
     }
 
     G4_Operand *src = inst->getSrc(0);
+
     unsigned srcLB = src->getLeftBound();
     unsigned srcRB = src->getRightBound();
-    unsigned bitVec[2] = {0, 0};
+    uint64_t bitVec[2] = {0, 0};
 
     // Now check each definition of src(0)
     for (auto I = inst->def_begin(), E = inst->def_end(); I != E; ++I)
@@ -1938,6 +1938,7 @@ static bool canHoist(FlowGraph &fg, G4_BB *bb, INST_LIST_RITER revIter)
 
         // Check if this def-touched region is covered by the source region.
         mergeBitVec(bitVec, I->first->getDst(), srcLB, srcRB);
+
         if ((bitVec[0] & (~src->getBitVecL())) ||
             (bitVec[1] & (~src->getBitVecH())))
         {
@@ -2342,12 +2343,12 @@ void Optimizer::doSimplification(G4_INST *inst)
                     Op1->isImm() && Op1->getType() == Type_UV) {
                     // Immeidates in 'uv' ensures each element is a
                     // byte-offset within half-GRF.
-                    G4_SubReg_Align SubAlign = Sixteen_Word;
+                    G4_SubReg_Align SubAlign = SUB_ALIGNMENT_GRFALIGN;
                     if (SrcSizeInBytes <= G4_GRF_REG_NBYTES/2u)
-                        SubAlign = Eight_Word;
+                        SubAlign = (G4_SubReg_Align)(NUM_WORDS_PER_GRF/2);
                     inst->setOpcode(G4_movi);
                     if (Dcl->getAlign() == Either &&
-                        Dcl->getSubRegAlign() != Sixteen_Word) {
+                        Dcl->getSubRegAlign() != SUB_ALIGNMENT_GRFALIGN) {
                         Dcl->setSubRegAlign(SubAlign);
                     }
                     RegionDesc *rd = builder.createRegionDesc(8, 8, 1);
@@ -10461,8 +10462,8 @@ void Optimizer::splitVariables()
             if (Iter == DclMap.end())
             {
                 unsigned NElts = Dcl->getTotalElems();
-                auto DclLow = builder.createTempVar(NElts / 2, Ty, Either, Sixteen_Word, "Lo");
-                auto DclHi = builder.createTempVar(NElts / 2, Ty, Either, Sixteen_Word, "Hi");
+                auto DclLow = builder.createTempVar(NElts / 2, Ty, Either, SUB_ALIGNMENT_GRFALIGN, "Lo");
+                auto DclHi = builder.createTempVar(NElts / 2, Ty, Either, SUB_ALIGNMENT_GRFALIGN, "Hi");
                 DclMap[Dcl] = new DclMapInfo(DclLow, DclHi);
             }
             bool IsLow = LBound == LoLBound;
@@ -10642,9 +10643,9 @@ void Optimizer::split4GRFVars()
         G4_Type Ty = splitDcl->getElemType();
         unsigned NElts = splitDcl->getTotalElems();
         std::string varName(splitDcl->getName());
-        auto DclLow = builder.createTempVar(NElts / 2, Ty, Either, Sixteen_Word, 
+        auto DclLow = builder.createTempVar(NElts / 2, Ty, Either, SUB_ALIGNMENT_GRFALIGN, 
             (varName + "Lo").c_str(), false);
-        auto DclHi = builder.createTempVar(NElts / 2, Ty, Either, Sixteen_Word,
+        auto DclHi = builder.createTempVar(NElts / 2, Ty, Either, SUB_ALIGNMENT_GRFALIGN,
             (varName + "Hi").c_str(), false);
         DclMap[splitDcl] = new DclMapInfo(DclLow, DclHi);
         //std::cerr << "split " << splitDcl->getName() << " into (" <<

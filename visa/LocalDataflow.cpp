@@ -17,38 +17,72 @@ void getOpndFootprint(G4_Operand* opnd, BitSet& footprint)
     unsigned N = NUM_BITS_PER_ELT;
     unsigned lb = opnd->getLeftBound();
     unsigned rb = opnd->getRightBound();
-    if (lb % N == 0 && rb - lb + 1 <= 64) {
+    unsigned folder = getGRFSize() / NUM_BITS_PER_ELT;
+    if (lb % N == 0 && rb - lb + 1 <= (unsigned)getGRFSize() * 2) {
         unsigned idx = lb / N;
-        footprint.setElt(idx, opnd->getBitVecL());
-        if (rb - lb + 1 > 32)
-            footprint.setElt(idx + 1, opnd->getBitVecH());
+        uint64_t vecL = opnd->getBitVecL();
+        for (unsigned i = 0; i < folder; i++)
+        {
+            footprint.setElt(idx, (unsigned)vecL);
+            idx++;
+            vecL = vecL >> NUM_BITS_PER_ELT;
+        }
+
+        if (rb - lb + 1 > getGRFSize())
+        {
+            uint64_t vecH = opnd->getBitVecH();
+            for (unsigned i = 0; i < folder; i++)
+            {
+                footprint.setElt(idx, (unsigned)vecH);
+                idx++;
+                vecH = vecH >> NUM_BITS_PER_ELT;
+            }
+        }
     } else if (lb % N == 0 && (rb + 1) % N == 0) {
         unsigned idx = lb / N;
         unsigned endIdx = rb / N;
-        unsigned bitvec = opnd->getBitVecL();
-        footprint.setElt(idx, bitvec);
-
-        idx++;
-        if (idx <= endIdx) {
-            bitvec = opnd->getBitVecH();
-            footprint.setElt(idx, bitvec);
+        uint64_t bitvec = opnd->getBitVecL();
+        for (unsigned i = 0; i < folder; i++)
+        {
+            footprint.setElt(idx, (unsigned)bitvec);
+            idx++;
+            bitvec = bitvec >> NUM_BITS_PER_ELT;
         }
 
-        idx++;
+        if (idx <= endIdx) {
+            bitvec = opnd->getBitVecH();
+            for (unsigned i = 0; i < folder; i++)
+            {
+                footprint.setElt(idx, (unsigned)bitvec);
+                idx++;
+                bitvec = bitvec >> NUM_BITS_PER_ELT;
+            }
+        }
+
         while (idx <= endIdx) {
             footprint.setElt(idx, 0xFFFFFFFF);
             idx++;
         }
     } else {
-        uint64_t mask = opnd->getBitVecL() + (uint64_t(opnd->getBitVecH()) << 32);
-        unsigned j = lb;
-        for (unsigned i = 0; i <= std::min(rb, 63U); ++i) {
-            if (mask & ((uint64_t)1 << i))
+            uint64_t mask0 = opnd->getBitVecL();
+            uint64_t mask1 = opnd->getBitVecH();
+            unsigned j = lb;
+            for (unsigned i = 0; i <= std::min(rb, getGRFSize() - 1u); ++i) {
+                if (mask0 & ((uint64_t)1 << i))
+                    footprint.set(j, true);
+                j++;
+            }
+            if (rb >= getGRFSize())
+            {
+                for (unsigned i = 0; i <= std::min(rb - getGRFSize(), getGRFSize() - 1u); ++i) {
+                    if (mask1 & ((uint64_t)1 << i))
+                        footprint.set(j, true);
+                    j++;
+                }
+            }
+
+            while (j++ <= rb)
                 footprint.set(j, true);
-            j++;
-        }
-        while (j++ <= rb)
-            footprint.set(j, true);
     }
 }
 
@@ -61,36 +95,70 @@ void combineFootprint(G4_Operand* DefOpnd, BitSet& footprint)
     unsigned N = NUM_BITS_PER_ELT;
     unsigned lb = DefOpnd->getLeftBound();
     unsigned rb = DefOpnd->getRightBound();
-    if (lb % N == 0 && rb - lb + 1 <= 64) {
+    unsigned folder = getGRFSize() / NUM_BITS_PER_ELT;
+
+    if (lb % N == 0 && ((rb - lb + 1) <= (unsigned)getGRFSize() * 2)) {
         unsigned idx = lb / N;
-        footprint.resetElt(idx, DefOpnd->getBitVecL());
-        if (rb - lb + 1 > 32)
-            footprint.resetElt(idx + 1, DefOpnd->getBitVecH());
+        uint64_t vecL = DefOpnd->getBitVecL();
+        for (unsigned i = 0; i < folder; i++)
+        {
+            footprint.resetElt(idx, (unsigned)vecL);
+            idx++;
+            vecL = vecL >> NUM_BITS_PER_ELT;
+        }
+
+        if (rb - lb + 1 > getGRFSize())
+        {
+            uint64_t vecH = DefOpnd->getBitVecH();
+            for (unsigned i = 0; i < folder; i++)
+            {
+                footprint.resetElt(idx, (unsigned)vecH);
+                idx++;
+                vecH = vecH >> NUM_BITS_PER_ELT;
+            }
+        }
     } else if (lb % N == 0 && (rb + 1) % N == 0) {
         unsigned idx = lb / N;
         unsigned endIdx = rb / N;
-        unsigned bitvec = DefOpnd->getBitVecL();
-        footprint.resetElt(idx, bitvec);
-
-        idx++;
-        if (idx <= endIdx) {
-            bitvec = DefOpnd->getBitVecH();
-            footprint.resetElt(idx, bitvec);
+        uint64_t bitvec = DefOpnd->getBitVecL();
+        for (unsigned i = 0; i < folder; i++)
+        {
+            footprint.resetElt(idx, (unsigned)bitvec);
+            idx++;
+            bitvec = bitvec >> NUM_BITS_PER_ELT;
         }
 
-        idx++;
+        if (idx <= endIdx) {
+            bitvec = DefOpnd->getBitVecH();
+            for (unsigned i = 0; i < folder; i++)
+            {
+                footprint.resetElt(idx, (unsigned)bitvec);
+                idx++;
+                bitvec = bitvec >> NUM_BITS_PER_ELT;
+            }
+        }
         while (idx <= endIdx) {
             footprint.resetElt(idx, 0xFFFFFFFF);
             idx++;
         }
     } else {
-        uint64_t mask = DefOpnd->getBitVecL() + (uint64_t(DefOpnd->getBitVecH()) << 32);
+        uint64_t mask0 = DefOpnd->getBitVecL();
+        uint64_t mask1 = DefOpnd->getBitVecH();
         unsigned j = lb;
-        for (unsigned i = 0; i <= std::min(rb, 63U); ++i) {
-            if (mask & ((uint64_t)1 << i))
+        for (unsigned i = 0; i <= std::min(rb, getGRFSize() - 1u); ++i) {
+            if (mask0 & ((uint64_t)1 << i))
                 footprint.set(j, false);
             j++;
         }
+        if (rb >= getGRFSize())
+        {
+            for (unsigned i = 0; i <= std::min(rb - getGRFSize(), getGRFSize() - 1u); ++i) {
+                if (mask1 & ((uint64_t)1 << i))
+                    footprint.set(j, false);
+                j++;
+            }
+        }
+
         while (j++ <= rb)
             footprint.set(j, false);
     }

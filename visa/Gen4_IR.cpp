@@ -3637,6 +3637,7 @@ G4_SrcRegRegion::G4_SrcRegRegion(G4_SrcRegRegion &rgn)
     bitVec[0] = rgn.bitVec[0];
     bitVec[1] = rgn.bitVec[1];
     bitVec[2] = rgn.bitVec[2];
+
     top_dcl = rgn.top_dcl;
     left_bound = rgn.left_bound;
     right_bound = rgn.right_bound;
@@ -4459,13 +4460,46 @@ G4_DstRegRegion::G4_DstRegRegion(G4_DstRegRegion &rgn, G4_VarBase *new_base)
     rightBoundSet = false;
 }
 
+void G4_DstRegRegion::setDstBitVec( uint8_t exec_size )
+{
+    // byte level footprint computing bit vectors.
+    uint64_t footprint0 = 0;
+    uint64_t footprint1 = 0;
+
+    unsigned short type_size = (unsigned short)G4_Type_Table[type].byteSize;
+    unsigned short s_size = horzStride * type_size;
+
+    // General cases.
+    unsigned short bit_seq = G4_Type_Table[type].footprint;
+    for (uint8_t i = 0; i < exec_size; ++i)
+    {
+        int eltOffset = i * s_size;
+        if (eltOffset >= getGRFSize())
+        {
+            footprint1 |= ((uint64_t)bit_seq) << (eltOffset - getGRFSize());
+        }
+        else if (eltOffset + G4_Type_Table[type].byteSize < getGRFSize())
+        {
+            footprint0 |= ((uint64_t)bit_seq) << eltOffset;
+        }
+        else
+        {
+            footprint0 |= ((uint64_t)bit_seq) << eltOffset;  // 4 + 31  -->   1 BIT MASKED
+            footprint1 |= ((uint64_t)bit_seq) >> (getGRFSize() - eltOffset);   // 32 - 31 = 1, keep 3
+        }
+    }
+
+    bitVec[0] = footprint0;
+    bitVec[1] = footprint1;
+
+    return;
+}
+
 unsigned G4_DstRegRegion::computeRightBound( uint8_t exec_size )
 {
-
     bitVec[0] = 0;
     bitVec[1] = 0;
 
-    unsigned short startPoint = 0;
     if( base->isFlag() ){
         unsigned int totalBits = 0;
 		if (G4_Inst_Table[inst->opcode()].instType != InstTypePseudoLogic)
@@ -4488,7 +4522,6 @@ unsigned G4_DstRegRegion::computeRightBound( uint8_t exec_size )
             */
             left_bound = inst->getMaskOffset();
             totalBits = exec_size;
-            startPoint = (unsigned short)left_bound;
         }
 
         right_bound = left_bound + totalBits - 1;
@@ -4505,46 +4538,12 @@ unsigned G4_DstRegRegion::computeRightBound( uint8_t exec_size )
 
         if (acc == Direct)
         {
-            // byte level footprint computing bit vectors.
-            uint64_t footprint = 0;
+            setDstBitVec(exec_size);
+
             unsigned short type_size = (unsigned short)G4_Type_Table[type].byteSize;
             unsigned short s_size = horzStride * type_size;
-
-            // A common case: V<1>:d or V<1>:f
-            if (horzStride == 1 && type_size == 4)
-            {
-                MUST_BE_TRUE(exec_size <= 16, "execeding two grfs?");
-                // Some footprints for common dst regions with dw type.
-                uint64_t footprints[] = {
-                    ((uint64_t)1 <<  4) - 1, // size = 1
-                    ((uint64_t)1 <<  8) - 1, // size = 2
-                    ((uint64_t)1 << 16) - 1, // size = 4
-                    ((uint64_t)1 << 32) - 1, // size = 8
-                    ULLONG_MAX               // size = 16
-                };
-
-                unsigned index = (exec_size ==  1) ? 0 :
-                                 (exec_size ==  8) ? 3 :
-                                 (exec_size == 16) ? 4 :
-                                 (exec_size ==  4) ? 2 : 1;
-                footprint = footprints[index];
-            }
-            else
-            {
-                // General cases.
-                unsigned short bit_seq = G4_Type_Table[type].footprint;
-                for (uint8_t i = 0; i < exec_size; ++i)
-                {
-                    int eltOffset = i * s_size;
-                    footprint |= ((uint64_t)bit_seq) << eltOffset;
-                }
-            }
-
             unsigned totalBytes = (exec_size - 1) * s_size + type_size;
             right_bound = left_bound + totalBytes - 1;
-
-            bitVec[0] = (uint32_t)footprint;
-            bitVec[1] = (uint32_t)(footprint >> 32);
         }
         else
         {
@@ -4662,8 +4661,8 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
     uint32_t myRightBound = regRegion->getRightBound();
 
     {
-        unsigned opndBitVecL = opnd->getBitVecL(), opndBitVecH = opnd->getBitVecH();
-        uint32_t myBitVecL = regRegion->getBitVecL(), myBitVecH = regRegion->getBitVecH();
+        uint64_t opndBitVecL = opnd->getBitVecL(), opndBitVecH = opnd->getBitVecH();
+        uint64_t myBitVecL = regRegion->getBitVecL(), myBitVecH = regRegion->getBitVecH();
         if (myRightBound < left_bound2 || right_bound2 < myLeftBound)
         {
             return Rel_disjoint;
@@ -4677,8 +4676,8 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
         else
         {
             // First consider if any operand is from a send.
-            uint32_t myBitVecS = regRegion->getBitVecS();
-            uint32_t opndBitVecS = opnd->getBitVecS();
+            uint64_t myBitVecS = regRegion->getBitVecS();
+            uint64_t opndBitVecS = opnd->getBitVecS();
             if (opndBitVecS > 0 || myBitVecS > 0)
             {
                 if (myBitVecS > 0 && opndBitVecS == 0)
@@ -4716,19 +4715,19 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
 
             // Now both operands are within two GRFs, comparing their L/H vectors.
             int dist = left_bound2 - myLeftBound;
-            unsigned new_bitVecL = myBitVecL, new_bitVecH = myBitVecH;
+            uint64_t new_bitVecL = myBitVecL, new_bitVecH = myBitVecH;
             if (dist > 0 && dist < (2 * GENX_GRF_REG_SIZ))
             {
                 if (dist >= GENX_GRF_REG_SIZ)
                 {
-                    unsigned lbit = new_bitVecH >> (dist - GENX_GRF_REG_SIZ);
+                    uint64_t lbit = new_bitVecH >> (dist - GENX_GRF_REG_SIZ);
                     new_bitVecL = lbit;
                     new_bitVecH = 0;
                 }
                 else
                 {
                     new_bitVecL >>= dist;
-                    unsigned lbit = new_bitVecH << (GENX_GRF_REG_SIZ - dist);
+                    uint64_t lbit = new_bitVecH << (GENX_GRF_REG_SIZ - dist);
                     new_bitVecL |= lbit;
                     new_bitVecH >>= dist;
                 }
@@ -4738,19 +4737,19 @@ static G4_CmpRelation compareRegRegionToOperand(G4_Operand* regRegion, G4_Operan
                 dist = abs(dist);
                 if (dist >= GENX_GRF_REG_SIZ)
                 {
-                    unsigned lbit = opndBitVecH >> (dist - GENX_GRF_REG_SIZ);
+                    uint64_t lbit = opndBitVecH >> (dist - GENX_GRF_REG_SIZ);
                     opndBitVecL = lbit;
                     opndBitVecH = 0;
                 }
                 else
                 {
                     opndBitVecL >>= dist;
-                    unsigned lbit = opndBitVecH << (GENX_GRF_REG_SIZ - dist);
+                    uint64_t lbit = opndBitVecH << (GENX_GRF_REG_SIZ - dist);
                     opndBitVecL |= lbit;
                     opndBitVecH >>= dist;
                 }
             }
-            unsigned commonL = new_bitVecL & opndBitVecL, commonH = new_bitVecH & opndBitVecH;
+            uint64_t commonL = new_bitVecL & opndBitVecL, commonH = new_bitVecH & opndBitVecH;
 
             if (myLeftBound <= left_bound2 &&
                 myRightBound >= right_bound2 &&
@@ -4928,7 +4927,7 @@ bool G4_DstRegRegion::checkGRFAlign()
                     return false;
                 }
 
-                if( aliasdcl->getSubRegAlign() >= Sixteen_Word ||
+                if( aliasdcl->getSubRegAlign() >= SUB_ALIGNMENT_GRFALIGN ||
                     aliasdcl->getNumRows() * aliasdcl->getElemSize() * aliasdcl->getElemSize() >= G4_GRF_REG_NBYTES ){
                         return true;
                 }
@@ -4991,7 +4990,7 @@ static bool regionHasFixedSubreg(G4_Operand* opnd, uint32_t& offset)
     G4_Declare *rootDcl = base->asRegVar()->getDeclare()->getRootDeclare(subregByte);
     subregByte += subRegOff * G4_Type_Table[opnd->getType()].byteSize;
 
-    if (rootDcl->getSubRegAlign() < Sixteen_Word)
+    if (rootDcl->getSubRegAlign() < SUB_ALIGNMENT_GRFALIGN)
     {
         return false;
     }
@@ -5740,7 +5739,7 @@ void G4_Predicate::splitPred( )
     uint16_t shiftLen = range >> 2;
     right_bound = getLeftBound() + shiftLen - 1;
 
-    bitVec[0] = getBitVecL() >> shiftLen;
+    bitVec[0] = ((uint32_t)getBitVecL()) >> shiftLen;
 }
 void
 G4_CondMod::emit(std::ostream& output, bool symbolreg)
@@ -5809,7 +5808,7 @@ void G4_CondMod::splitCondMod( )
     uint16_t shiftLen = range >> 2;
     right_bound = getLeftBound() + shiftLen - 1;
 
-    bitVec[0] = getBitVecL() >> shiftLen;
+    bitVec[0] = ((uint32_t)getBitVecL()) >> shiftLen;
 }
 bool G4_Imm::isEqualTo(G4_Imm& imm1) const
 {
@@ -6136,20 +6135,85 @@ void G4_SrcRegRegion::computeLeftBound()
     }
 }
 
+void G4_SrcRegRegion::setSrcBitVec(uint8_t exec_size)
+{
+    unsigned short bit_seq = G4_Type_Table[type].footprint;
+    unsigned short typeSize = (unsigned short)G4_Type_Table[type].byteSize;
+
+    uint64_t footPrint0 = 0;
+    uint64_t footPrint1 = 0;
+
+    MUST_BE_TRUE(exec_size >= desc->width, "exec size must be >= width");
+    if (desc->isScalar())
+    {
+        footPrint0 = bit_seq;
+    }
+    else if (desc->isContiguous(exec_size))
+    {
+        int totalBytes = exec_size * typeSize;
+        MUST_BE_TRUE(totalBytes <= 2 * getGRFSize(), "total bits exceeds 2 GRFs");
+        if (totalBytes == getGRFSize() * 2)
+        {
+            footPrint0 = ULLONG_MAX;
+            footPrint1 = ULLONG_MAX;
+        }
+        else
+        {
+            if (totalBytes <= getGRFSize())
+            {
+                footPrint0 = (1ULL << totalBytes) - 1;
+            }
+            else
+            {
+                footPrint0 = ULLONG_MAX;
+                footPrint1 = (1ULL << (totalBytes - getGRFSize())) - 1;
+            }
+        }
+    }
+    else
+    {
+        for (int i = 0, numRows = exec_size / desc->width; i < numRows; ++i)
+        {
+            for (int j = 0; j < desc->width; ++j)
+            {
+                int eltOffset = i * desc->vertStride * typeSize + j * desc->horzStride * typeSize;
+
+                if (eltOffset >= getGRFSize())
+                {
+                    footPrint1 |= ((uint64_t)bit_seq) << (eltOffset - getGRFSize());
+                }
+                else if (eltOffset + G4_Type_Table[type].byteSize < getGRFSize())
+                {
+                    footPrint0 |= ((uint64_t)bit_seq) << eltOffset;
+                }
+                else
+                {
+                    footPrint0 |= ((uint64_t)bit_seq) << eltOffset;
+                    footPrint1 |= ((uint64_t)bit_seq) >> (getGRFSize() - eltOffset);
+                }
+            }
+        }
+    }
+
+    bitVec[0] = footPrint0;
+    bitVec[1] = footPrint1;
+
+    return;
+}
+
 unsigned G4_SrcRegRegion::computeRightBound( uint8_t exec_size )
 {
-    bitVec[0] = 0;
-    bitVec[1] = 0;
     unsigned short hs = desc->isScalar() ? 1 : desc->horzStride;
     unsigned short vs = desc->isScalar() ? 0 : desc->vertStride;
     rightBoundSet = true;
     unsigned short typeSize = (unsigned short) G4_Type_Table[type].byteSize;
 
-    unsigned short startPoint = 0;
+    bitVec[0] = 0;
+    bitVec[1] = 0;
     if (base->isFlag())
     {
         unsigned int totalBits = 0;
-        if( G4_Inst_Table[inst->opcode()].instType != InstTypePseudoLogic )
+        if(G4_Inst_Table[inst->opcode()].instType != InstTypePseudoLogic)
         {
 			// mov (1) ... fx.1<0;1,0>:uw
             left_bound = subRegOff * 16;
@@ -6169,13 +6233,6 @@ unsigned G4_SrcRegRegion::computeRightBound( uint8_t exec_size )
             */
             left_bound = inst->getMaskOffset();
             totalBits = exec_size;
-            /*
-                Compare operand uses not only LB/RB, but also bitVec to determine equivalency.
-                If bit vetors don't match it might conclude that is not entirely killed in the BB
-                and marks it as global.
-                Which then can prevent logic optimizations from kicking in.
-            */
-            startPoint = (unsigned short)left_bound;
         }
 
         right_bound = left_bound + totalBits - 1;
@@ -6185,71 +6242,36 @@ unsigned G4_SrcRegRegion::computeRightBound( uint8_t exec_size )
 	else
 	{
         if (acc == Direct)
-		{
-            unsigned short bit_seq = G4_Type_Table[type].footprint;
+        {
+            setSrcBitVec(exec_size);
 
-            uint64_t footPrint = 0;
-
-            MUST_BE_TRUE(exec_size >= desc->width, "exec size must be >= width");
             if (desc->isScalar())
             {
-                footPrint = bit_seq;
-            }
-            else if (desc->isContiguous(exec_size))
-            {
-                int totalBits = exec_size * typeSize;
-                MUST_BE_TRUE(totalBits <= 64, "total bits exceeds 2 GRFs");
-                if (totalBits == 64)
-                {
-                    footPrint = ULLONG_MAX;
-                }
-                else
-                {
-                    footPrint = (1ULL << totalBits) - 1;
-                }
+                right_bound = left_bound + typeSize - 1;
             }
             else
             {
-                for (int i = 0, numRows = exec_size / desc->width; i < numRows; ++i)
+                int num_rows = exec_size / desc->width;
+                if (num_rows > 0)
                 {
-                    for (int j = 0; j < desc->width; ++j)
-                    {
-                        int eltOffset = i * desc->vertStride * typeSize + j * desc->horzStride * typeSize;
-                        footPrint |= ((uint64_t) bit_seq) << eltOffset;
-                    }
+                    right_bound =
+                        left_bound +
+                        (num_rows - 1) * vs * typeSize +
+                        hs * (desc->width - 1) * typeSize +
+                        typeSize - 1;
+                }
+                else
+                {
+                    // this fix applies to inplicit acc src
+                    // usually when we compute new rb after inst splitting,
+                    // the region is still the old one.
+                    // exec_size may be smaller than width
+                    right_bound =
+                        left_bound +
+                        hs * (exec_size - 1) * typeSize +
+                        typeSize - 1;
                 }
             }
-
-            bitVec[0] = (uint32_t) footPrint;
-            bitVec[1] = (uint32_t) (footPrint >> 32);
-
-			if (desc->isScalar())
-			{
-				right_bound = left_bound + typeSize - 1;
-			}
-			else
-			{
-				int num_rows = exec_size / desc->width;
-				if (num_rows > 0)
-				{
-					right_bound =
-						left_bound +
-						(num_rows - 1) * vs * typeSize +
-						hs * (desc->width - 1) * typeSize +
-						typeSize - 1;
-				}
-				else
-				{
-					// this fix applies to inplicit acc src
-					// usually when we compute new rb after inst splitting,
-					// the region is still the old one.
-					// exec_size may be smaller than width
-					right_bound =
-						left_bound +
-						hs * (exec_size - 1) * typeSize +
-						typeSize - 1;
-				}
-			}
         }
         else
         {
@@ -6472,7 +6494,7 @@ bool G4_SrcRegRegion::checkGRFAlign(){
                     return false;
                 }
 
-                if( aliasdcl->getSubRegAlign() >= Sixteen_Word ||
+                if( aliasdcl->getSubRegAlign() >= SUB_ALIGNMENT_GRFALIGN ||
                     aliasdcl->getNumRows() * aliasdcl->getElemSize() * aliasdcl->getElemSize() >= G4_GRF_REG_NBYTES ){
                         return true;
                 }

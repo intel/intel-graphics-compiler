@@ -2205,9 +2205,14 @@ protected:
     // fields used to compare operands
     G4_Declare *top_dcl;
     G4_VarBase *base;
-    unsigned int bitVec[3];  // Bit 0 - 31: 32-bit mask for the first GRF at byte granularity (for flags, at bit granularity)
-                             // Bit 32 - 63: 32-bit mask for the second GRF at byte granularity (for flags, at bit granularity)
-                             // Bit 64 - 95: 32-bit mask for the rest at GRF granularity - used for send operands.  bit64 represents the 3rd GRF
+    uint64_t bitVec[3];  // Bit 0 - 31: 32-bit mask for the first GRF at byte granularity (for flags, at bit granularity)
+                             // Bit 64 - 95: 32-bit mask for the second GRF at byte granularity (for flags, at bit granularity)
+                             // Bit 128 - 159: 32-bit mask for the rest at GRF granularity - used for send operands.  bit64 represents the 3rd GRF
+
+                             // For 64 bytes GRF
+                             // Bit 0 - 63: 64-bit mask for the first GRF at  word granularity
+                             // Bit 64 - 127: 64-bit mask for the second GRF at word granularity (for flags, at bit granularity)
+                             // Bit 128 - 195: 64-bit mask for the rest at GRF granularity - used for send operands.  bit64 represents the 3rd GRF
 
     bool rightBoundSet;
     unsigned byteOffset;
@@ -2388,7 +2393,18 @@ public:
         return right_bound;
     }
     bool isRightBoundSet() const { return rightBoundSet; }
-    unsigned getBitVecL()
+    uint64_t getBitVecL()
+    {
+        if (isRightBoundSet() == false && !isNullReg())
+        {
+            // computeRightBound also computes bitVec
+            inst->computeRightBound(this);
+        }
+        
+
+        return bitVec[0];
+    }
+    uint64_t getBitVecH()
     {
         if (isRightBoundSet() == false && !isNullReg())
         {
@@ -2396,33 +2412,37 @@ public:
             inst->computeRightBound(this);
         }
 
-        return bitVec[0];
-    }
-    unsigned getBitVecH()
-    {
-        if (isRightBoundSet() == false && !isNullReg())
-        {
-            // computeRightBound also computes bitVec
-            inst->computeRightBound(this);
-        }
+
         return bitVec[1];
     }
-    unsigned getBitVecS()
+    uint64_t getBitVecS()
     {
         if (isRightBoundSet() == false && !isNullReg())
         {
             // computeRightBound also computes bitVec
             inst->computeRightBound(this);
         }
+
+
         return bitVec[2];
     }
     /*
         For operands that do use it, it is computed during left bound compuation.
     */
     unsigned getByteOffset() const { return byteOffset; }
-    void setBitVecL( unsigned int bvl ) { bitVec[0] = bvl; }
-    void setBitVecH( unsigned int bvh ) { bitVec[1] = bvh; }
-    void setBitVecS( unsigned int bvs ) { bitVec[2] = bvs; }
+    void setBitVecL(uint64_t bvl )
+    { 
+        bitVec[0] = bvl;
+    }
+    void setBitVecH(uint64_t bvh )
+    {
+        bitVec[1] = bvh;
+    }
+    void setBitVecS(uint64_t bvs )
+    {
+        bitVec[2] = bvs;
+    }
+
     virtual unsigned computeRightBound( uint8_t exec_size ) { return left_bound; }
     void setRightBound(unsigned val)
     {
@@ -3043,6 +3063,7 @@ namespace vISA
         }
 
         void computeLeftBound();
+        void setSrcBitVec(uint8_t exec_size);
         short getRegOff()                   { return regOff; }
         short getSubRegOff()               { return subRegOff; }
         void  setSubRegOff(short off)
@@ -3342,6 +3363,7 @@ public:
 
         horzStride = hs;
     }
+    void setDstBitVec(uint8_t exec_size);
     unsigned computeRightBound(uint8_t exec_size);
     G4_CmpRelation compareOperand(G4_Operand *opnd);
     bool isNativeType();
