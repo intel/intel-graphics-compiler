@@ -175,7 +175,9 @@ namespace IGC
 
         bool runOnFunction(llvm::Function &F) override;
 
-		llvm::StringRef getPassName() const override { return "RegisterEstimator"; }
+        void releaseMemory() override { clear(); }
+
+        llvm::StringRef getPassName() const override { return "RegisterEstimator"; }
 
         void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
         {
