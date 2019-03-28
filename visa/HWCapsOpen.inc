@@ -329,7 +329,12 @@
         return getOption(vISA_WAWSubregHazardAvoidance);
     }
 
-    bool doNotRewriteRegion() const
+    bool newTernaryStride() const
+    {
+        return false;
+    }
+
+    bool doNotRewriteContiguousRegion() const
     {
         return false;
     }

@@ -7168,6 +7168,14 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
 
     bool isAlign1Ternary = builder.hasAlign1Ternary() && inst->getNumSrc() == 3;
 
+    if (builder.doNotRewriteContiguousRegion())
+    {
+        // 2-src and 3-src src0/1: normalize region to <1;1,0>
+        // 3-src src2: normalize region to <2;2,1> since it only supports horz stride
+        setRegion(isAlign1Ternary && opNum == 2 ? builder.createRegionDesc(2, 2, 1) : builder.getRegionStride1(), true);
+        return;
+    }
+
     if (inst->getNumSrc() < 3)
     {
         // do <16;16,1> for HF/W if possible
@@ -7206,7 +7214,7 @@ void G4_SrcRegRegion::rewriteContiguousRegion(IR_Builder& builder, uint16_t opNu
 
     unsigned short w = (unsigned short)getWidth(subRegOffset, eltSize);
 
-    if (builder.doNotRewriteRegion() && isAlign1Ternary && (w == 2 || w == 0) && opNum != 2)
+    if (builder.newTernaryStride() && isAlign1Ternary && (w == 2 || w == 0) && opNum != 2)
     {
         setRegion(builder.getRegionStride1(), true);
         return;
