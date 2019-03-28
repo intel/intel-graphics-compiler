@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/Optimizer/OpenCLPasses/StatelessToStatefull/StatelessToStatefull.hpp"
 
 #include "common/Stats.hpp"
+#include "common/secure_string.h"
 
 #include "common/LLVMWarningsPush.hpp"
 
@@ -604,19 +605,19 @@ void StatelessToStatefull::setPointerSizeTo32bit(int32_t AddrSpace, Module* M)
     char data[64];
     if (DL.isDefault())
     {
-        sprintf(data, "p%d:32:32:32", AddrSpace);
+        sprintf_s(data, sizeof(data), "p%d:32:32:32", AddrSpace);
     }
     else
     {
         // this is a new addrspace, it should not be in the 
         // existing DataLayout, but if it exists, just return.
         // We don't want to change any existing one!
-        sprintf(data, "p%d:", AddrSpace);
+        sprintf_s(data, sizeof(data), "p%d:", AddrSpace);
         if (StrDL.find(data) != std::string::npos)
         {
             return;
         }
-        sprintf(data, "-p%d:32:32:32", AddrSpace);
+        sprintf_s(data, sizeof(data), "-p%d:32:32:32", AddrSpace);
     }
 
     std::string newStrDL = StrDL + data;
