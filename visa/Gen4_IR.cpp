@@ -1833,6 +1833,11 @@ G4_Type G4_INST::getPropType(Gen4_Operand_Number opndNum, MovType MT, G4_INST *m
     return Type_UNDEF;
 }
 
+static bool isLegalImmType(G4_Type type)
+{
+    return true;
+}
+
 // cases that we do not propagate
 // 0. use inst does not support the type of the operand being propagated
 // 1. use inst is align16 instruction
@@ -1841,7 +1846,6 @@ G4_Type G4_INST::getPropType(Gen4_Operand_Number opndNum, MovType MT, G4_INST *m
 // 4. byte src to if/while instructions
 // 5. src with modifier to logic inst on BDW
 // 6. When useinst is lifetime.end
-
 bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovType MT, bool inSimdFlow)
 {
     G4_Operand *src = srcs[0];
@@ -2020,8 +2024,10 @@ bool G4_INST::canPropagateTo(G4_INST *useInst, Gen4_Operand_Number opndNum, MovT
     // Type to be used after propagation. Use srcType by default.
     G4_Type propType = useInst->getPropType(opndNum, MT, this);
 
-    if (propType == Type_UNDEF)
+    if (propType == Type_UNDEF || (src->isImm() && !isLegalImmType(propType)))
+    {
         return false;
+    }
 
     // Don't propagate unsupported propType.
     if (!useInst->isLegalType(propType, opndNum))
