@@ -38,7 +38,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/shaderOverride.hpp"
 #include "common/CompilerStatsUtils.hpp"
 #include "inc/common/sku_wa.h"
-#include "inc/common/RelocationInfo.h"
 #include <iStdLib/utility.h>
 
 #if !defined(_WIN32)
@@ -4195,20 +4194,20 @@ void CEncoder::CreateFunctionSymbolTable(void*& buffer, unsigned& bufferSize, un
 
         // Allocate buffer to store symbol table entries
         tableEntries = funcsToExport.size();
-        bufferSize = sizeof(IGC::GenSymEntry) * tableEntries;
+        bufferSize = sizeof(vISA::GenSymEntry) * tableEntries;
         buffer = (void*) malloc(bufferSize);
         assert(buffer && "Function Symbol Table not allocated");
-        IGC::GenSymEntry* entry_ptr = (IGC::GenSymEntry*) buffer;
+        vISA::GenSymEntry* entry_ptr = (vISA::GenSymEntry*) buffer;
 
         for (auto pFunc : funcsToExport)
         {
-            assert(pFunc->getName().size() <= IGC::MAX_SYMBOL_NAME_LENGTH);
-            strcpy_s(entry_ptr->s_name, IGC::MAX_SYMBOL_NAME_LENGTH, pFunc->getName().str().c_str());
+            assert(pFunc->getName().size() <= vISA::MAX_SYMBOL_NAME_LENGTH);
+            strcpy_s(entry_ptr->s_name, vISA::MAX_SYMBOL_NAME_LENGTH, pFunc->getName().str().c_str());
 
             if (pFunc->isDeclaration())
             {
                 // If the function is only declared, set as undefined type
-                entry_ptr->s_type = IGC::GenSymType::S_UNDEF;
+                entry_ptr->s_type = vISA::GenSymType::S_UNDEF;
                 entry_ptr->s_offset = 0;
             }
             else
@@ -4218,7 +4217,7 @@ void CEncoder::CreateFunctionSymbolTable(void*& buffer, unsigned& bufferSize, un
 
                 // Query vISA for the function's byte offset within the compiled module
                 VISAFunction* visaFunc = Iter->second;
-                entry_ptr->s_type = IGC::GenSymType::S_FUNC;
+                entry_ptr->s_type = vISA::GenSymType::S_FUNC;
                 entry_ptr->s_offset = (uint32_t) visaFunc->getGenOffset();
             }
             entry_ptr++;
@@ -4235,7 +4234,7 @@ void CEncoder::CreateFunctionRelocationTable(void*& buffer, unsigned& bufferSize
     {
         // vISA will directly return the buffer with GenRelocEntry layout
         V(vMainKernel->GetGenRelocEntryBuffer(buffer, bufferSize, tableEntries));
-        assert(sizeof(IGC::GenRelocEntry) * tableEntries == bufferSize);
+        assert(sizeof(vISA::GenRelocEntry) * tableEntries == bufferSize);
     }
 }
 

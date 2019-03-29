@@ -7975,7 +7975,7 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize
 {
     G4_Kernel::RelocationTableTy& reloc_table = m_kernel->getRelocationTable();
     numEntries = reloc_table.size();
-    byteSize = sizeof(IGC::GenRelocEntry) * numEntries;
+    byteSize = sizeof(GenRelocEntry) * numEntries;
 
     if (reloc_table.empty())
         return CM_SUCCESS;
@@ -7986,13 +7986,13 @@ int VISAKernelImpl::GetGenRelocEntryBuffer(void *&buffer, unsigned int &byteSize
     if (buffer == NULL || buffer == nullptr)
         return CM_FAILURE;
 
-    IGC::GenRelocEntry* buffer_p = (IGC::GenRelocEntry*)buffer;
+    GenRelocEntry* buffer_p = (GenRelocEntry*)buffer;
     for (auto reloc : reloc_table)
     {
         buffer_p->r_type = reloc.getType();
         buffer_p->r_offset = (uint32_t)reloc.getInst()->getGenOffset();
-        assert(reloc.getSymbolName().size() <= IGC::MAX_SYMBOL_NAME_LENGTH);
-        strcpy_s(buffer_p->r_symbol, IGC::MAX_SYMBOL_NAME_LENGTH, reloc.getSymbolName().c_str());
+        assert(reloc.getSymbolName().size() <= MAX_SYMBOL_NAME_LENGTH);
+        strcpy_s(buffer_p->r_symbol, MAX_SYMBOL_NAME_LENGTH, reloc.getSymbolName().c_str());
         ++buffer_p;
     }
 

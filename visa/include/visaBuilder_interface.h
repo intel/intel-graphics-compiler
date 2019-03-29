@@ -46,13 +46,14 @@ struct VISA_StateOpndHandle;
 #include "visa_igc_common_header.h"
 #include "VISABuilderAPIDefinition.h"
 #include "visa_wa.h"
+#include "RelocationInfo.h"
 
 extern "C" CM_BUILDER_API int CreateVISABuilder(VISABuilder* &builder, vISABuilderMode mode, CM_VISA_BUILDER_OPTION builderOption, TARGET_PLATFORM platform, int numArgs, const char* flags[], PVISA_WA_TABLE pWaTable);
 extern "C" CM_BUILDER_API int DestroyVISABuilder(VISABuilder *&builder);
 
 /**
  *
- *  Interface for CMRT to free the kernel binary allocated 
+ *  Interface for CMRT to free the kernel binary allocated
  *  by the Jitter
  */
 extern "C" CM_BUILDER_API void freeBlock(void* ptr);

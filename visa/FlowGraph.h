@@ -41,7 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Gen4_IR.hpp"
 
 #include "include/gtpin_IGC_interface.h"
-#include "inc/common/RelocationInfo.h"
+#include "RelocationInfo.h"
 
 namespace vISA
 {
@@ -1193,7 +1193,7 @@ class RelocationEntry
 {
     G4_INST* inst;             // instruction to be relocated
     int opndPos;               // operand to be relocated. This should be a RelocImm
-    typedef IGC::GenRelocType RelocationType;
+    typedef GenRelocType RelocationType;
     RelocationType relocType;
     std::string symName;       // the symbol name that it's address to be resolved
 

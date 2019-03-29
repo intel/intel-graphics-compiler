@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef RELOCATION_INFO_H
 #define RELOCATION_INFO_H
 
-namespace IGC {
+namespace vISA {
 
 static const uint32_t MAX_SYMBOL_NAME_LENGTH = 256;
 
