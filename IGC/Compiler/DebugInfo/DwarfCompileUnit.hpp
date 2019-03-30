@@ -363,6 +363,7 @@ private:
     }
 
     // Added for 1-step elf
+    void buildLocation(const llvm::Instruction*, IGC::DbgVariable&, IGC::DIE*);
     void buildPointer(DbgVariable&, DIE*, VISAVariableLocation*);
     void buildSampler(DbgVariable&, DIE*, VISAVariableLocation*);
     void buildSLM(DbgVariable&, DIE*, VISAVariableLocation*);

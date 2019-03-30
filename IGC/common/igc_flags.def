@@ -323,6 +323,7 @@ DECLARE_IGC_REGKEY(DWORD, MemOptWindowSize,   150,  "Change the size of the wind
 DECLARE_IGC_REGKEY(bool, ForceNoFP64bRegioning, false, "force regioning rules for FP and 64b FPU instructions")
 DECLARE_IGC_REGKEY(bool, EnableOneStepElf, true, "Enable generation of direct elf mapping src->Gen ISA")
 DECLARE_IGC_REGKEY(bool, EmitDebugRanges, false, "Emit .debug_ranges section when instructions in a block are non-consecutive")
+DECLARE_IGC_REGKEY(bool, EmitDebugLoc, false, "Enable generation of .debug_loc section")
 
 DECLARE_IGC_GROUP("Generating precompiled headers")
 DECLARE_IGC_REGKEY(bool, ApplyConservativeRastWAHeader, true,

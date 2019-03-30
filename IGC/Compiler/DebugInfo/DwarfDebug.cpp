@@ -1132,9 +1132,42 @@ bool DwarfDebug::addCurrentFnArgument(const Function *MF, DbgVariable *Var, Lexi
     return true;
 }
 
+template<typename T>
+void write(std::vector<unsigned char>& vec, T data)
+{
+    unsigned char* base = (unsigned char*)&data;
+    for (unsigned int i = 0; i != sizeof(T); i++)
+        vec.push_back(*(base + i));
+}
+
+void write(std::vector<unsigned char>& vec, const unsigned char* data, uint8_t N)
+{
+    for (unsigned int i = 0; i != N; i++)
+        vec.push_back(*(data + i));
+}
+
+
 // Find variables for each lexical scope.
 void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNode *, 16> &Processed)
 {
+    // Store pairs of <MDNode*, DILocation*> as we encounter them.
+    // This allows us to emit 1 entry per function.
+    std::vector<std::tuple<MDNode*, DILocation*, DbgVariable*>> addedEntries;
+    std::map<llvm::DIScope*, std::vector<llvm::Instruction*>> instsInScope;
+
+    auto isAdded = [&addedEntries](MDNode* md, DILocation* iat)
+    {
+        for (auto item : addedEntries)
+        {
+            if (std::get<0>(item) == md && std::get<1>(item) == iat)
+                return std::get<2>(item);
+        }
+        return (DbgVariable*)nullptr;
+    };
+
+    unsigned int offset = 0;
+    unsigned int pointerSize = getPointerSize((llvm::Module&)*MF->getParent());
+    unsigned char bufLEB128[64];
     for (SmallVectorImpl<const MDNode*>::const_iterator UVI = UserVariables.begin(),
         UVE = UserVariables.end(); UVI != UVE; ++UVI)
     {
@@ -1154,9 +1187,11 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
         // longer part of variable metadata node. This causes auto variable nodes of all inlined functions
         // to collapse in to a single metadata node. Following loop iterates over all dbg.declare instances
         // for inlined functions and creates new DbgVariable instances for each.
-        for (auto H : History)
+        for (auto HI = History.begin(), HE = History.end(); HI != HE; HI++)
         {
+            auto H = (*HI);
             DIVariable* DV = cast<DIVariable>(const_cast<MDNode*>(Var));
+
             LexicalScope *Scope = NULL;
             if (DV->getTag() == dwarf::DW_TAG_formal_parameter &&
                 DV->getScope() &&
@@ -1179,23 +1214,214 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
                 continue;
 
             Processed.insert(DV);
-            const Instruction *pInst = H;// History.front();
+            const Instruction *pInst = H; // History.front();
+
             assert(m_pModule->IsDebugValue(pInst) && "History must begin with debug value");
             DbgVariable *AbsVar = findAbstractVariable(DV, pInst->getDebugLoc());
-            DbgVariable *RegVar = new DbgVariable(cast<DILocalVariable>(DV),
-                AbsVar != nullptr ? AbsVar->getLocation() : nullptr, AbsVar);
+            DbgVariable *RegVar = nullptr;
 
-            if (!addCurrentFnArgument(MF, RegVar, Scope))
+            auto prevRegVar = isAdded(DV, pInst->getDebugLoc().getInlinedAt());
+
+            if (!prevRegVar)
             {
-                addScopeVariable(Scope, RegVar);
+                RegVar = new DbgVariable(cast<DILocalVariable>(DV),
+                    AbsVar != nullptr ? AbsVar->getLocation() : nullptr, AbsVar);
+
+                if (!addCurrentFnArgument(MF, RegVar, Scope))
+                {
+                    addScopeVariable(Scope, RegVar);
+                }
+                addedEntries.push_back(std::make_tuple(DV, pInst->getDebugLoc().getInlinedAt(), RegVar));
+
+                RegVar->setDbgInst(pInst);
             }
+            else
+                RegVar = prevRegVar;
+
             if (AbsVar)
             {
                 AbsVar->setDbgInst(pInst);
             }
 
-            RegVar->setDbgInst(pInst);
+            if (!m_pModule->isDirectElfInput || IGC_IS_FLAG_DISABLED(EmitDebugLoc))
+                continue;
+
+            // assume that VISA preserves location thoughout its lifetime
+            auto Loc = m_pModule->GetVariableLocation(pInst);
+
+            if (Loc.IsSampler() || Loc.IsSLM() ||
+                Loc.HasSurface())
+            {
+                // Assume location of these types doesnt change
+                // throughout program. Revisit this if required.
+                continue;
+            }
+
+            auto start = (*HI);
+            auto end = start;
+            
+            if (HI + 1 != HE)
+                end = HI[1];
+            else
+            {
+                // Find loc of last instruction in current function (same IAT)
+                auto lastIATit = SameIATInsts.find(start->getDebugLoc().getInlinedAt());
+                if (lastIATit != SameIATInsts.end())
+                    end = (*lastIATit).second.back();
+            }
+
+            IGC::InsnRange InsnRange(start, end);
+            auto GenISARange = m_pModule->getGenISARange(InsnRange);
+
+            if ((History.size() == 1 && GenISARange.size() == 1) ||
+                GenISARange.size() == 0)
+            {
+                // Emit location within the DIE
+                continue;
+            }
+            else
+            {
+                // Emit location to debug_loc
+                RegVar->setDotDebugLocOffset(offset);
+            }
+
+            for (auto range : GenISARange)
+            {
+                DotDebugLocEntry dotLoc(range.first, range.second, pInst, DV);
+                dotLoc.setOffset(offset);
+                
+                if (Loc.IsImmediate())
+                {
+                    const Constant* pConstVal = Loc.GetImmediate();
+                    if (const ConstantInt* pConstInt = dyn_cast<ConstantInt>(pConstVal))
+                    {
+                        auto op = llvm::dwarf::DW_OP_implicit_value;
+                        // Always emit an 8-byte value
+                        const unsigned int lebSize = 8;
+                        uint64_t rangeStart = range.first;
+                        uint64_t rangeEnd = range.second;
+                        write(dotLoc.loc, (unsigned char*)&rangeStart, pointerSize);
+                        write(dotLoc.loc, (unsigned char*)&rangeEnd, pointerSize);
+                        write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + sizeof(const unsigned char) + lebSize));
+                        write(dotLoc.loc, (uint8_t)op);
+                        write(dotLoc.loc, (const unsigned char*)&lebSize, 1);
+                        if (isUnsignedDIType(this, RegVar->getType()))
+                        {
+                            uint64_t constValue = pConstInt->getZExtValue();
+                            write(dotLoc.loc, (unsigned char*)&constValue, lebSize);
+                        }
+                        else
+                        {
+                            int64_t constValue = pConstInt->getSExtValue();
+                            write(dotLoc.loc, (unsigned char*)&constValue, lebSize);
+                        }
+                    }
+                }
+                else if (Loc.IsRegister())
+                {
+                    DbgDecoder::VarInfo varInfo;
+                    auto regNum = Loc.GetRegister();
+                    m_pModule->getVarInfo("V", regNum, varInfo);
+
+                    //for (auto genIsaRange : varInfo.lrs)
+                    if(varInfo.lrs.size() > 0)
+                    {
+                        // Assume that VISA vars are marked with Output
+                        // atttribute. This also guarantees same storage
+                        // location for all sub-sets of varInfo.lrs.
+                        uint64_t startRange = range.first; //varInfo.lrs.front().start;
+                        uint64_t endRange = range.second;  //varInfo.lrs.back().end;
+                        
+                        write(dotLoc.loc, (unsigned char*)&startRange, pointerSize);
+                        write(dotLoc.loc, (unsigned char*)&endRange, pointerSize);
+
+                        if (varInfo.isGRF())
+                        {
+                            bool hasSubReg = varInfo.getGRF().subRegNum != 0;
+                            unsigned int subRegSize = 0, offsetLEB128Size = 0, sizeLEB128Size = 0;
+                            if (hasSubReg)
+                            {
+                                unsigned int subReg = varInfo.getGRF().subRegNum;
+                                auto offsetInBits = subReg * 8;
+                                auto sizeInBits = (SIZE_GRF * 8) - offsetInBits;
+                                offsetLEB128Size = encodeULEB128(offsetInBits, bufLEB128);
+                                sizeLEB128Size = encodeULEB128(sizeInBits, bufLEB128);
+
+                                subRegSize = sizeof(uint8_t) + offsetLEB128Size + sizeLEB128Size;
+                            }
+
+                            regNum = varInfo.getGRF().regNum;
+                            unsigned int op = llvm::dwarf::DW_OP_breg0;
+                            if (Loc.IsInMemory())
+                            {
+                                // use bregx
+                            }
+                            else
+                            {
+                                // use regx
+                                op = llvm::dwarf::DW_OP_reg0;
+                            }
+                            if (regNum <= 31)
+                            {
+                                op += regNum;
+                                write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + subRegSize));
+                                write(dotLoc.loc, (uint8_t)op);
+                            }
+                            else
+                            {
+                                op = op == llvm::dwarf::DW_OP_breg0 ? llvm::dwarf::DW_OP_bregx : llvm::dwarf::DW_OP_regx;
+                                if (op == llvm::dwarf::DW_OP_bregx)
+                                {
+                                    auto lebsize = encodeULEB128(regNum, bufLEB128);
+                                    auto lebsize1 = 1; // immediate 0
+                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsize + lebsize1 + subRegSize));
+                                    write(dotLoc.loc, (uint8_t)op);
+                                    write(dotLoc.loc, bufLEB128, lebsize);
+                                    write(dotLoc.loc, (uint8_t)0);
+                                }
+                                else
+                                {
+                                    auto lebsize = encodeULEB128(regNum, bufLEB128);
+                                    write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + lebsize + subRegSize));
+                                    write(dotLoc.loc, (uint8_t)op);
+                                    write(dotLoc.loc, bufLEB128, lebsize);
+                                }
+                            }
+
+                            if (hasSubReg) 
+                            {
+                                unsigned int subReg = varInfo.getGRF().subRegNum;
+                                auto offsetInBits = subReg * 8;
+                                auto sizeInBits = (SIZE_GRF*8) - offsetInBits;
+
+                                write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_bit_piece);
+                                encodeULEB128(offsetInBits, bufLEB128);
+                                write(dotLoc.loc, (unsigned char*)bufLEB128, offsetLEB128Size);
+                                encodeULEB128(sizeInBits, bufLEB128);
+                                write(dotLoc.loc, (unsigned char*)bufLEB128, sizeLEB128Size);
+                            }
+                        }
+                        else if (varInfo.isSpill())
+                        {
+                            Address addr;
+                            addr.Set(Address::Space::eScratch, 0, varInfo.getSpillOffset().memoryOffset);
+
+                            unsigned int op = llvm::dwarf::DW_OP_const8u;
+                            write(dotLoc.loc, (uint16_t)(sizeof(uint8_t) + sizeof(uint64_t) + sizeof(uint8_t)));
+                            write(dotLoc.loc, (uint8_t)op);
+                            write(dotLoc.loc, addr.GetAddress());
+                            op = llvm::dwarf::DW_OP_deref;
+                            write(dotLoc.loc, (uint8_t)op);
+                        }
+                    }
+                }
+                offset += dotLoc.loc.size();
+                TempDotDebugLocEntries.push_back(dotLoc);
+            }
+            TempDotDebugLocEntries.push_back(DotDebugLocEntry());
+            offset += pointerSize * 2;
         }
+        
 #if 0
             // Simplify ranges that are fully coalesced.
             if (History.size() <= 1 || (History.size() == 2 && pInst->isIdenticalTo(History.back())))
@@ -1266,6 +1492,56 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
             addScopeVariable(Scope, new DbgVariable(DV, NULL, nullptr));
         }
     }
+}
+
+unsigned int DwarfDebug::CopyDebugLoc(unsigned int o)
+{
+    // TempDotLocEntries has all entries discovered in collectVariableInfo.
+    // But some of those entries may not get emitted. This function
+    // is invoked when writing out DIE. At this time, it can be decided
+    // whether debug_range for a variable will be emitted to debug_ranges.
+    // If yes, it is copied over to DotDebugLocEntries and new offset is
+    // returned.
+    unsigned int offset = 0, index = 0;
+    bool found = false, done = false;
+    unsigned int pointerSize = getPointerSize(*const_cast<llvm::Module*>(m_pModule->GetModule()));
+
+    // Compute offset in DotDebugLocEntries
+    for (auto& item : DotDebugLocEntries)
+    {
+        if (item.isEmpty())
+            offset += pointerSize * 2;
+        else
+            offset += item.loc.size();
+    }
+
+    while(!done)
+    {
+        if (!found && 
+            TempDotDebugLocEntries[index].getOffset() == o)
+        {
+            found = true;
+        }
+        else if(!found)
+        {
+            index++;
+            continue;
+        }
+
+        if (found)
+        {
+            // Append data to DotLocEntries
+            DotDebugLocEntries.push_back(TempDotDebugLocEntries[index]);
+
+            if (TempDotDebugLocEntries[index].isEmpty())
+            {
+                done = true;
+            }
+        }
+        index++;
+    }
+    
+    return offset;
 }
 
 // Process beginning of an instruction.
@@ -1453,9 +1729,18 @@ void DwarfDebug::beginFunction(const Function *MF, IGC::VISAModule* v)
     // Assumes in correct section after the entry point.
     Asm->EmitLabel(FunctionBeginSym);
 
+    llvm::MDNode* prevIAT = nullptr;
+
     for (auto II = m_pModule->begin(), IE = m_pModule->end(); II != IE; ++II)
     {
         const Instruction *MI = *II;
+
+        if (MI->getDebugLoc() &&
+            MI->getDebugLoc().getScope() != prevIAT)
+        {
+            SameIATInsts[MI->getDebugLoc().getInlinedAt()].push_back(MI);
+            prevIAT = MI->getDebugLoc().getInlinedAt();
+        }
 
         if (m_pModule->IsDebugValue(MI))
         {
@@ -2006,6 +2291,29 @@ void DwarfDebug::emitDebugLoc()
     if (DotDebugLocEntries.empty())
         return;
 
+#if 1
+    Asm->SwitchSection(Asm->GetDwarfLocSection());
+    unsigned int size = Asm->GetPointerSize();
+
+    for (SmallVectorImpl<DotDebugLocEntry>::iterator
+        I = DotDebugLocEntries.begin(), E = DotDebugLocEntries.end();
+        I != E; ++I)
+    {
+        DotDebugLocEntry &Entry = *I;
+        if (Entry.isEmpty())
+        {
+            Asm->EmitIntValue(0, size);
+            Asm->EmitIntValue(0, size);
+        }
+        else
+        {
+            for (unsigned int byte = 0; byte != Entry.loc.size(); byte++)
+            {
+                Asm->EmitIntValue(Entry.loc[byte], 1);
+            }
+        }
+    }
+#else
     for (SmallVectorImpl<DotDebugLocEntry>::iterator
            I = DotDebugLocEntries.begin(), E = DotDebugLocEntries.end();
          I != E; ++I)
@@ -2082,6 +2390,7 @@ void DwarfDebug::emitDebugLoc()
             Asm->EmitLabel(end);
         }
     }
+#endif
 }
 
 // Emit visible names into a debug ranges section.

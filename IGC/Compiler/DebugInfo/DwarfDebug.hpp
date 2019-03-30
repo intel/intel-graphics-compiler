@@ -64,6 +64,8 @@ namespace llvm
     class MCSection;
 }
 
+bool isUnsignedDIType(IGC::DwarfDebug *DD, llvm::DIType* Ty);
+
 namespace IGC
 {
     class VISAMachineModuleInfo;
@@ -84,8 +86,13 @@ namespace IGC
     class DotDebugLocEntry
     {
         // Begin and end symbols for the address range that this location is valid.
-        const llvm::MCSymbol *Begin;
-        const llvm::MCSymbol *End;
+        const llvm::MCSymbol *Begin = nullptr;
+        const llvm::MCSymbol *End = nullptr;
+
+        // start/end %ip
+        const uint64_t start = 0;
+        const uint64_t end = 0;
+        uint32_t offset = 0;
 
         // The location in the machine frame.
         const llvm::Instruction* m_pDbgInst;
@@ -100,10 +107,12 @@ namespace IGC
         DotDebugLocEntry() : Begin(0), End(0), m_pDbgInst(nullptr), Variable(nullptr), Merged(false) { }
         DotDebugLocEntry(const llvm::MCSymbol *B, const llvm::MCSymbol *E, const llvm::Instruction* pDbgInst, const llvm::MDNode *V)
             : Begin(B), End(E), m_pDbgInst(pDbgInst), Variable(V), Merged(false) { }
+        DotDebugLocEntry(const uint64_t s, const uint64_t e, const llvm::Instruction* pDbgInst, const llvm::MDNode* V)
+            : start(s), end(e), m_pDbgInst(pDbgInst), Variable(V) {}
 
         /// \brief Empty entries are also used as a trigger to emit temp label. Such
         /// labels are referenced is used to find debug_loc offset for a given DIE.
-        bool isEmpty() { return Begin == 0 && End == 0; }
+        bool isEmpty() { return start == 0 && end == 0; }
         bool isMerged() { return Merged; }
         void Merge(DotDebugLocEntry *Next)
         {
@@ -118,6 +127,14 @@ namespace IGC
         const llvm::MCSymbol *getBeginSym() const { return Begin; }
         const llvm::MCSymbol *getEndSym() const { return End; }
         const llvm::Instruction* getDbgInst() const { return m_pDbgInst; }
+        uint64_t getStart() const { return start; }
+        uint64_t getEnd() const { return end; }
+
+        std::vector<unsigned char> loc;
+
+        uint32_t getOffset() { return offset; }
+        void setOffset(uint32_t o) { offset = o; }
+
     };
 
     //===----------------------------------------------------------------------===//
@@ -278,6 +295,7 @@ namespace IGC
 
         // Collection of DotDebugLocEntry.
         llvm::SmallVector<DotDebugLocEntry, 4> DotDebugLocEntries;
+        llvm::SmallVector<DotDebugLocEntry, 4> TempDotDebugLocEntries;
 
         // Collection of subprogram DIEs that are marked (at the end of the module)
         // as DW_AT_inline.
@@ -587,6 +605,7 @@ namespace IGC
 
         DbgDecoder* decodedDbg = nullptr;
 
+        std::map<llvm::MDNode*, std::vector<const llvm::Instruction*>> SameIATInsts;
     public:
         std::map<llvm::DISubprogram*, const llvm::Function*>* getDISPToFunction()
         {
@@ -622,6 +641,7 @@ namespace IGC
 
         DbgDecoder* getDecodedDbg() { return decodedDbg; }
         void setDecodedDbg(DbgDecoder* d) { decodedDbg = d; }
+        unsigned int CopyDebugLoc(unsigned int offset);
 
     private:
         void encodeRange(CompileUnit* TheCU, DIE* ScopeDIE, const llvm::SmallVectorImpl<InsnRange>* Ranges);

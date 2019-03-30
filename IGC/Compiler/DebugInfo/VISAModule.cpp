@@ -776,8 +776,9 @@ std::vector<std::pair<unsigned int, unsigned int>> VISAModule::getGenISARange(co
         // Iterate to next BB if required.
         if (start->getNextNode())
             return start->getNextNode();
-        else
+        else if(start->getParent()->getNextNode())
             return &(start->getParent()->getNextNode()->front());
+        return (const llvm::Instruction*)nullptr;
     };
 
     while (1)

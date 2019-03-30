@@ -452,7 +452,7 @@ static bool isTypeSigned(DwarfDebug *DD, DIType* Ty, int *SizeInBits)
 }
 
 /// Return true if type encoding is unsigned.
-static bool isUnsignedDIType(DwarfDebug *DD, DIType* Ty)
+bool isUnsignedDIType(DwarfDebug *DD, DIType* Ty)
 {
     DIDerivedType* DTy = dyn_cast_or_null<DIDerivedType>(Ty);
     if (DTy)
@@ -1417,9 +1417,18 @@ DIE *CompileUnit::constructVariableDIE(DbgVariable &DV, bool isScopeAbstract)
     unsigned Offset = DV.getDotDebugLocOffset();
     if (Offset != ~0U)
     {
-        addLabel(VariableDie, dwarf::DW_AT_location,
-            DD->getDwarfVersion() >= 4 ? dwarf::DW_FORM_sec_offset : dwarf::DW_FORM_data4,
-            Asm->GetTempSymbol("debug_loc", Offset));
+        if (m_pModule->isDirectElfInput)
+        {
+            // Copy over references ranges to DotLocDebugEntries
+            Offset = DD->CopyDebugLoc(Offset);
+            addUInt(VariableDie, dwarf::DW_AT_location, dwarf::DW_FORM_sec_offset, Offset);
+        }
+        else
+        {
+            addLabel(VariableDie, dwarf::DW_AT_location,
+                DD->getDwarfVersion() >= 4 ? dwarf::DW_FORM_sec_offset : dwarf::DW_FORM_data4,
+                Asm->GetTempSymbol("debug_loc", Offset));
+        }
         DV.setDIE(VariableDie);
         return VariableDie;
     }
@@ -1432,6 +1441,13 @@ DIE *CompileUnit::constructVariableDIE(DbgVariable &DV, bool isScopeAbstract)
         return VariableDie;
     }
 
+    buildLocation(pDbgInst, DV, VariableDie);
+
+    return VariableDie;
+}
+
+void CompileUnit::buildLocation(const llvm::Instruction* pDbgInst, DbgVariable& DV, IGC::DIE* VariableDie)
+{
     VISAVariableLocation Loc = m_pModule->GetVariableLocation(pDbgInst);
 
     // Variable can be immdeiate or in a location (but not both)
@@ -1453,7 +1469,7 @@ DIE *CompileUnit::constructVariableDIE(DbgVariable &DV, bool isScopeAbstract)
             addConstantData(VariableDie, rawData.data(), rawData.size());
         }
         DV.setDIE(VariableDie);
-        return VariableDie;
+        return;
     }
 
     bool addDecoration = false;
@@ -1565,8 +1581,6 @@ DIE *CompileUnit::constructVariableDIE(DbgVariable &DV, bool isScopeAbstract)
             addString(VariableDie, dwarf::DW_AT_description, "global");
         }
     }
-
-    return VariableDie;
 }
 
 void CompileUnit::buildPointer(DbgVariable& var, DIE* die, VISAVariableLocation* loc)
