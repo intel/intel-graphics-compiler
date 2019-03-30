@@ -1140,7 +1140,8 @@ void OptimizeIR(CodeGenContext* pContext)
         //enable this only when Pooled EU is not supported
         if (IGC_IS_FLAG_ENABLED(EnableThreadCombiningOpt) &&
             (pContext->type == ShaderType::COMPUTE_SHADER)&&
-            !pContext->platform.supportPooledEU())
+            !pContext->platform.supportPooledEU() &&
+            pContext->platform.supportsThreadCombining())
         {
             initializePostDominatorTreeWrapperPassPass(*PassRegistry::getPassRegistry());
             mpm.add(new ThreadCombining());
