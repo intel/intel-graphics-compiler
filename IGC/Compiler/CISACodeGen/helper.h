@@ -346,20 +346,23 @@ inline unsigned GetHwThreadsPerWG(const IGC::CPlatform& platform)
 
 inline SIMDMode getLeastSIMDAllowed(unsigned int threadGroupSize, unsigned int hwThreadPerWorkgroup)
 {
+    if (hwThreadPerWorkgroup == 0)
+    {
+        hwThreadPerWorkgroup = 42; //On GT1 HW, there are 7 threads/EU and 6 EU/subslice, 42 is the minimum threads/workgroup any HW can support 
+    }
     if ((threadGroupSize <= hwThreadPerWorkgroup * 8) &&
         threadGroupSize <= 512)
     {
         return SIMDMode::SIMD8;
     }
+    else if (threadGroupSize <= hwThreadPerWorkgroup * 16)
+    {
+        return SIMDMode::SIMD16;
+    }
     else
-        if (threadGroupSize <= hwThreadPerWorkgroup * 16)
-        {
-            return SIMDMode::SIMD16;
-        }
-        else
-        {
-            return SIMDMode::SIMD32;
-        }
+    {
+        return SIMDMode::SIMD32;
+    }
 }
 
 unsigned int getGRFSize();
