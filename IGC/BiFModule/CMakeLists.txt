@@ -165,6 +165,7 @@ endif()
   if(EXISTS ${_clang7zLocation} AND NOT ${CCLANG_BUILD_INTREE_LLVM})
     # Use precompiled common clang bundle.
     message(STATUS "Use precompiled common clang from ${_clang7zLocation}")
+    set(SYSTEM_COMMON_CLANG OFF)
 
     add_dependencies(GetClang UnzipClang)
 
@@ -177,6 +178,7 @@ endif()
     set(IGC_CCLANG_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/clang_build)
     if(${CCLANG_BUILD_INTREE_LLVM})
       message("Common clang build-in-tree")
+      set(SYSTEM_COMMON_CLANG OFF)
       set(CCLANG_INSTALL_ARTIFACTS_DIR ${IGC_TARGET__TOOLS_CLANG_DIR})
 
       if(NOT CCLANG_OCL_HEADERS_DIR)
@@ -243,8 +245,8 @@ endif()
   endif()
   add_dependencies(common_clang_dll GetClang)
 
-  if(UNIX)
-    install(FILES $<TARGET_FILE:common_clang_dll> DESTINATION ${IGC_INSTALL_TIME_ROOT_DIR}/lib COMPONENT igc-opencl)
+  if(UNIX AND NOT SYSTEM_COMMON_CLANG)
+    install(FILES $<TARGET_FILE:common_clang_dll> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
   endif(UNIX)
 
 # End Clang section

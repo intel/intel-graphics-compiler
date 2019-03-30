@@ -47,6 +47,9 @@ endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+# Default languages: C, C++.
+project(IGC)
+
 if(UNIX)
   include(GNUInstallDirs)
 endif()
@@ -1874,9 +1877,6 @@ endfunction()
 # ======================================================================================================
 # ==================================== BUILD CONFIGURATIONS (part 1) ===================================
 # ======================================================================================================
-
-# Default languages: C, C++.
-project(IGC)
 
 # IGC project available configuration types:
 # One standard configuration + "ReleaseInternal" custom configurations.
