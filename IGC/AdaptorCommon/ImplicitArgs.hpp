@@ -322,7 +322,7 @@ namespace IGC
     private:
 
         /// @brief  All possible implicit arguments
-        static const ImplicitArg IMPLICIT_ARGS[ImplicitArg::NUM_IMPLICIT_ARGS];
+        std::vector<ImplicitArg> IMPLICIT_ARGS;
 
         /// @brief Maps operand numbers in the implicit argument metadata
         ///        nodes to implicit argument types.

@@ -756,13 +756,13 @@ public:
                 }
                 case PreDefinedVarsInternal::ARG:
                 {
-                    dcl = createDeclareNoLookup(name, G4_INPUT, 8, 32, Type_UD);
+                    dcl = createDeclareNoLookup(name, G4_INPUT, NUM_DWORDS_PER_GRF, 32, Type_UD);
                     dcl->getRegVar()->setPhyReg(phyregpool.getGreg(28), 0);
                     break;
                 }
                 case PreDefinedVarsInternal::RET:
                 {
-                    dcl = createDeclareNoLookup(name, G4_GRF, 8, 12, Type_UD);
+                    dcl = createDeclareNoLookup(name, G4_GRF, NUM_DWORDS_PER_GRF, 12, Type_UD);
                     dcl->getRegVar()->setPhyReg(phyregpool.getGreg(16), 0);
                     dcl->setLiveOut();
                     break;
@@ -845,7 +845,7 @@ public:
         builtinT252 = createDeclareNoLookup(vISAPreDefSurf[PREDEFINED_SURFACE_T252].name, G4_GRF, 1, 1, Type_UD);
         builtinBindlessSampler = createDeclareNoLookup("B_S", G4_GRF, 1, 1, Type_UD);
 
-        builtinSamplerHeader = createDeclareNoLookup("samplerHeader", G4_GRF, 8, 1, Type_UD);
+        builtinSamplerHeader = createDeclareNoLookup("samplerHeader", G4_GRF, NUM_DWORDS_PER_GRF, 1, Type_UD);
 
         builtinSLMSpillAddr = nullptr;
         builtinImmVector4 = nullptr;

@@ -4051,11 +4051,11 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     // mov (8) r1.0<1>:ud r0.0<8;8,1>:ud {NoMask}
     // send (8) null r1 0x27 desc
     IR_Builder* builder = parent->builder;
-    G4_Declare *dcl = builder->Create_MRF_Dcl(8, Type_UD);
+    G4_Declare *dcl = builder->Create_MRF_Dcl(NUM_DWORDS_PER_GRF, Type_UD);
     G4_DstRegRegion* movDst = builder->Create_Dst_Opnd_From_Dcl(dcl, 1);
     G4_SrcRegRegion* r0Src = builder->Create_Src_Opnd_From_Dcl(
         builder->getBuiltinR0(), builder->getRegionStride1());
-    G4_INST *movInst = builder->createInternalInst(NULL, G4_mov, NULL, false, 8,
+    G4_INST *movInst = builder->createInternalInst(NULL, G4_mov, NULL, false, NUM_DWORDS_PER_GRF,
         movDst, r0Src, NULL, InstOpt_WriteEnable, 0, lastInst ? lastInst->getCISAOff() : -1, 0);
     if (lastInst)
     {
@@ -4141,7 +4141,7 @@ void G4_BB::emitInstructionInfo(std::ostream& output, INST_LIST_ITER &it)
             auto isNotSpace = [](int ch) { return !std::isspace(ch); };
             curLine.erase(curLine.begin(), std::find_if(curLine.begin(), curLine.end(), isNotSpace));
             curLine.erase(std::find_if(curLine.rbegin(), curLine.rend(), isNotSpace).base(), curLine.end());
-            output << curLine;
+            output << curLine << "\n";
         }
     }
 
