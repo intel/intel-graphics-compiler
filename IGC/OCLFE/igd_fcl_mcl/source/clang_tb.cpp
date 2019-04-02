@@ -601,20 +601,12 @@ namespace TC
 				// CCModule will use its own symbols in preference to global symbols with the same name 
 				// contained in libraries that have already been loaded
 				CCModule.pModule = dlopen(CCModule.pModuleName, RTLD_NOW | RTLD_DEEPBIND);
-				if (NULL == CCModule.pModule)
-				{
-					// Try to load with old name. See header file for explanation.
-					CCModule.pModule = dlopen(CCModule.pModuleOldName, RTLD_NOW);
-				}
-				if (NULL == CCModule.pModule)
-				{
-					CCModule.pModule = dlopen("/usr/local/lib/libopencl_clang.so", RTLD_NOW | RTLD_DEEPBIND);
-					if (NULL == CCModule.pModule)
-					{
-						// Try to load with old name. See header file for explanation.
-						CCModule.pModule = dlopen("/usr/local/lib/libcommon_clang.so", RTLD_NOW);
-					}
-				}
+        if (NULL == CCModule.pModule)
+        {
+          std::string pathToOpenclClang = "/usr/local/lib/";
+          pathToOpenclClang += CCModule.pModuleName;
+          CCModule.pModule = dlopen(pathToOpenclClang.c_str(), RTLD_NOW | RTLD_DEEPBIND);
+        }
 				if (NULL != CCModule.pModule)
 				{
 					CCModule.pCompile = (CCModuleStruct::PFcnCCCompile)dlsym(CCModule.pModule, "Compile");
