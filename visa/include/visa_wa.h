@@ -195,7 +195,7 @@ typedef struct _VISA_WA_TABLE
     VISA_WA_BUG_TYPE_HANG)
 
 	VISA_WA_DECLARE(
-    WaSplitSIMD16WithSrc1Src2BundleConflictSrc0Scalar,
+    Wa_1606931601,
     "Split simd16 to two simd8 if src0 is scalar and src1 and src2 have bundle conflict.",
     VISA_WA_BUG_TYPE_UNKNOWN)
 	
@@ -233,7 +233,7 @@ typedef struct _VISA_WA_TABLE
         VISA_WA_INIT(Wa_1406306137)
         VISA_WA_INIT(Wa_2201674230)
         VISA_WA_INIT(Wa_1406950495)
-        VISA_WA_INIT(WaSplitSIMD16WithSrc1Src2BundleConflictSrc0Scalar)
+        VISA_WA_INIT(Wa_1606931601)
         VISA_WA_INIT(WaSwapForSrc1Replicate)
     }
 } VISA_WA_TABLE, *PVISA_WA_TABLE;
