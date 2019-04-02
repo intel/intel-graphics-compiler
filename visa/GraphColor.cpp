@@ -2569,7 +2569,7 @@ void GlobalRA::updateAlignment(unsigned char regFile, G4_Align align)
                 topdclAugMask != AugmentationMasks::Default64Bit)
             {
                 if (topdcl->getElemSize() >= 4 &&
-                    topdcl->getNumRows() > 1 &&
+                    topdcl->getByteSize() >= GENX_GRF_REG_SIZ &&
                     !(kernel.fg.builder->getOption(vISA_enablePreemption) &&
                         dcl == kernel.fg.builder->getBuiltinR0()))
                 {
