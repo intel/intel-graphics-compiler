@@ -976,7 +976,7 @@ bool CodeSinking::hoistCongruentPhi(PHINode* phi)
             if (apply)
             {
                 auto compareFunc = [](const InstPair& a, const InstPair& b) {
-                    return (a.first == b.first) ? false : isInstPrecede(a.first, b.first);
+                    return isInstPrecede(a.first, b.first);
                 };
                 std::sort(instMap.begin(), instMap.end(), compareFunc);
 
