@@ -100,6 +100,8 @@ class DeSSA : public llvm::FunctionPass {
       PHISrcArgs.clear();
       RegNodeMap.clear();
       InsEltMap.clear();
+      PrefCCMap.clear();
+      AliasMap.clear();
     }
 
     virtual llvm::StringRef getPassName() const  override {
@@ -144,6 +146,7 @@ class DeSSA : public llvm::FunctionPass {
       {
       }
 
+      /// Find leader (representative of a congruent class) by path halving
       Node *getLeader();
 
       Node* parent;
@@ -161,28 +164,13 @@ class DeSSA : public llvm::FunctionPass {
       int color;
     };
 
-    /// Add a register in a new congruence class containing only itself.
-    void MapAddReg(llvm::MapVector<llvm::Value*, Node*> &map, llvm::Value *Val, e_alignment Align);
-    /// Join the congruence classes of two registers. This function is biased
-    /// towards the left argument, i.e. after
-    ///
-    /// addReg(r2);
-    /// unionRegs(r1, r2);
-    ///
-    /// the leader of the unioned congruence class is the same as the leader of
-    /// r1's congruence class prior to the union. This is actually relied upon
-    /// in the copy insertion code.
-    void MapUnionRegs(llvm::MapVector<llvm::Value*, Node*> &map, llvm::Value *, llvm::Value *);
-
     /// Get the union-root of a register. The root is 0 if the register has been
     /// isolated.
     llvm::Value* getRegRoot(llvm::Value*, e_alignment *pAlign = 0) const;
 
-    /// Get the union-root of a PHI. it is the original root of its destination and
-    /// all of its operands (before they were isolated if they were).
-    llvm::Value* getOrigRoot(llvm::Instruction*) const;
-
     // Return color (>0) if V is in a congruent class; return 0 otherwise.
+    // (This is needed during traversal of algo. The color is used as the
+    // reprentative of a congruent class that remains unchanged during traversal.)
     int getRootColor(llvm::Value* V);
 
     // Isolate a register.
@@ -252,16 +240,56 @@ public:
     //           with a single-node in phi-union. When being isolated, they are isolated together
     llvm::MapVector<llvm::Value*, llvm::Value*> InsEltMap;
 
-	void addReg(llvm::Value* Val, e_alignment Align) {
-		MapAddReg(RegNodeMap, Val, Align);
-	}
+    // Preferred Congruent Class Map
+    //     Assume value v0, v1, v2 are preferred to be in the same congurent class, and
+    //     assume v0 is the root (anyone could be the root), this map will be something like:
+    //         PrefCCMap[v0] = v0  // map-key == map-value: map-value is the root
+    //         PrefCCMap[v1] = v0
+    //         PrefCCMap[v2] = v0
+    // The purpose of this map is that during value isolation (main algo), if one of the preferred
+    // value is isolated, all values in the preferred CC shall be isolated as well. In another word,
+    // the preferred values will be guaranteed to stay in the same congurent class after dessa
+    // on phi's.
+    llvm::MapVector<llvm::Value*, llvm::Value*> PrefCCMap;
+
+    // Value Alias map
+    //   This is used for maitaining aliases among values. It maps a value, called 'aliaser',
+    //   to its 'aliasee' (denoted as alias(aliaer, aliasee). This map has the following
+    //   properties:
+    //       1. No alias chain, that is, the map does not have both alias(v0, v1) and
+    //          alias(v1, v2) with v0 != V1 != v2.
+    //
+    //          Note that for each aliasee, say V,  alias(V, V) is in map for convenience to
+    //          indicate V is aliasee and to help setup aliasing entry of the map.
+    //       2. The aliasee's liveness info has been updated to be the union of all its aliasers.
+    //          In this way, only aliasee will be used in DeSSA node.
+    //
+    // The DeSSA/Coalescing procedure:
+    //   1. Follow Dominance tree to set up alias map. While setting up alias map,
+    //      update liveness for aliasee.
+    //   2. Make sure InsEltMap only use aliasee
+    //   3. Make sure DeSSA node only use aliasee.
+    llvm::MapVector<llvm::Value*, llvm::Value*> AliasMap;
+
+    /// If there is no node for Val, create a new one.
+    void addReg(llvm::Value* Val, e_alignment Align);
+
+    /// union-by-rank:
+    ///   Join the congruence classes of two registers by attaching
+    ///   a shorter tree to a taller tree. If they have the same height,
+    ///   attaching Val2 to Val1. Note that unionRegs() expects that
+    ///   nodes for Val1 and Val2 have been created already.
 	void unionRegs(llvm::Value* Val1, llvm::Value* Val2) {
-		MapUnionRegs(RegNodeMap, Val1, Val2);
+        unionRegs(RegNodeMap[Val1], RegNodeMap[Val2]);
 	}
 
     llvm::Value* getInsEltRoot(llvm::Value* Val) const;
+    llvm::Value* getAliasee(llvm::Value* V) const;
+    bool isAliasee(llvm::Value* V) const { return (V == getAliasee(V)); }
+    bool isAlias(llvm::Value* V) const;
+    bool interfere(llvm::Value* V0, llvm::Value* V1);
 
-    private:
+private:
     void CoalesceInsertElementsForBasicBlock(llvm::BasicBlock *blk);
 
     void InsEltMapAddValue(llvm::Value *Val) {
@@ -272,6 +300,30 @@ public:
     void InsEltMapUnionValue(llvm::Value *SrcVal, llvm::Value *DefVal) {
         assert(InsEltMap.find(SrcVal) != InsEltMap.end());
         InsEltMap[DefVal] = InsEltMap[SrcVal];
+    }
+
+    void unionRegs(Node* N1, Node* N2);
+    void CoalesceAliasInstForBasicBlock(llvm::BasicBlock *Blk);
+    int checkInsertElementAlias(
+        llvm::InsertElementInst* IEI,
+        llvm::SmallVector<llvm::Value*, 16>& AllIEIs);
+    void AddAlias(llvm::Value *Val) {
+        if (AliasMap.find(Val) == AliasMap.end()) {
+            AliasMap[Val] = Val;
+        }
+    }
+    void PrefCCMapAddValue(llvm::Value *Val) {
+        if (PrefCCMap.find(Val) == PrefCCMap.end()) {
+            PrefCCMap[Val] = Val;
+        }
+    }
+
+    // Return its root if V is in a preferred CC; nullptr otherwise.
+    llvm::Value* getPrefCCRoot(llvm::Value* V) {
+        if (PrefCCMap.find(V) != PrefCCMap.end()) {
+            return PrefCCMap[V];
+        }
+        return nullptr;
     }
   };
 

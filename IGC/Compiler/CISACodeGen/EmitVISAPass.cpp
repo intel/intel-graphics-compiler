@@ -8124,6 +8124,11 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
         return;
     }
 
+    if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias) && m_deSSA->isAlias(inst))
+    {
+        return;
+    }
+
     switch (inst->getOpcode())
     {
     case Instruction::Ret:

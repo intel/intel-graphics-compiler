@@ -2281,6 +2281,24 @@ CVariable* CShader::GetSymbol(llvm::Value *value, bool fromConstantPool)
         return it->second;
     }
 
+    if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias) && m_deSSA->isAlias(value))
+    {
+        // Generate CVariable alias.
+        // Value and its aliasee must be of the same size.
+        Value* Aliasee = m_deSSA->getAliasee(value);
+        CVariable *Base = GetSymbol(Aliasee);
+        if (Aliasee == value) {
+            return Base;
+        }
+        Type *Ty = value->getType();
+        VectorType* VTy = dyn_cast<VectorType>(Ty);
+        Type *BTy = VTy ? VTy->getElementType() : Ty;
+        VISA_Type visaTy = GetType(BTy);
+        CVariable* AliasVar = GetNewAlias(Base, visaTy, 0, Base->GetNumberElement());
+        symbolMapping.insert(std::pair<llvm::Value*, CVariable*>(value, AliasVar));
+        return AliasVar;
+    }
+
     if (IGC_IS_FLAG_ENABLED(EnableVariableAlias))
     {
         if (m_VRA->m_ValueAliasMap.count(value))
