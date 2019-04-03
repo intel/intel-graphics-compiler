@@ -1277,17 +1277,32 @@ void GenSpecificPattern::visitSelectInst(SelectInst &I)
 
                 if( !skipOpt )
                 {
-                    // temporary disable the case where cmp is used in multiple sel, and not all of them have src2=0
-                    // we should remove this if we can allow both flag and grf dst for the cmp to be used.
                     for(auto selI = cmpInst->user_begin(), E = cmpInst->user_end(); selI!=E; ++selI)
                     {
                         if(llvm::SelectInst* selInst = llvm::dyn_cast<llvm::SelectInst>(*selI))
                         {
-                            ConstantFP *C = dyn_cast<ConstantFP>( selInst->getOperand(2) );
-                            if( !(C && C->isZero()) )
+                            // temporary disable the case where cmp is used in multiple sel, and not all of them have src2=0
+                            // we should remove this if we can allow both flag and grf dst for the cmp to be used.
+                            ConstantFP *C2 = dyn_cast<ConstantFP>( selInst->getOperand(2) );
+                            if( !(C2 && C2->isZero()) )
                             {
                                 skipOpt = true;
                                 break;
+                            }
+
+                            // if it is cmp-sel(1.0 / 0.0)-mul, we could better patten match it later in codeGen.
+                            ConstantFP *C1 = dyn_cast<ConstantFP>(selInst->getOperand(1));
+                            if (C1 && C2 && selInst->hasOneUse())
+                            {
+                                if ((C2->isZero() && C1->isExactlyValue(1.f)) || (C1->isZero() && C2->isExactlyValue(1.f)))
+                                {
+                                    Instruction *mulInst = dyn_cast<Instruction>(*selInst->user_begin());
+                                    if (mulInst && mulInst->getOpcode() == Instruction::FMul)
+                                    {
+                                        skipOpt = true;
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }
