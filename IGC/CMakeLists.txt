@@ -3095,7 +3095,7 @@ endif()
 
 if(WIN32)
     igc_arch_get_cpu(_cpuSuffix)
-    set(COMMON_CLANG_LIBRARY_NAME ${COMMON_CLANG_LIBRARY_NAME}${_cpuSuffix})
+    set(COMMON_CLANG_LIBRARY_NAME common_clang${_cpuSuffix})
 endif()
 
 set_property(DIRECTORY APPEND PROPERTY COMPILE_DEFINITIONS
