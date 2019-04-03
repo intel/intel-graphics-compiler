@@ -161,24 +161,31 @@ static bool containsOpaque(llvm::Type *T)
     return false;
 }
 
-static bool hasSLMUsage(llvm::Module &M)
+// __builtin_spirv related OpGroup call implementations contain both
+// workgroup and subgroup code in them that is switched on based on the
+// 'Execution' and 'Operation' parameters and these will almost always
+// be compile time literals.  Let's inline these functions so we have a chance
+// at optimizing away the branches that contain workgroup code that will cause
+// SLM allocations when we're really doing a subgroup calls.
+static DenseSet<Function*> collectMemPoolUsage(const Module &M)
 {
-    for (auto &G : M.getGlobalList())
+    const char *BUILTIN_MEMPOOL = "__builtin_IB_AllocLocalMemPool";
+    auto *MemPool = M.getFunction(BUILTIN_MEMPOOL);
+
+    DenseSet<Function*> FuncsToInline;
+
+    if (!MemPool)
+        return FuncsToInline;
+
+    for (auto *U : MemPool->users())
     {
-        if (!G.use_empty() &&
-            G.getType()->getAddressSpace() == ADDRESS_SPACE_LOCAL)
+        if (auto *CI = dyn_cast<CallInst>(U))
         {
-            return true;
+            FuncsToInline.insert(CI->getFunction());
         }
     }
 
-    const char *BUILTIN_MEMPOOL = "__builtin_IB_AllocLocalMemPool";
-    if (auto F = M.getFunction(BUILTIN_MEMPOOL))
-    {
-        return !F->use_empty();
-    }
-
-    return false;
+    return FuncsToInline;
 }
 
 bool ProcessFuncAttributes::runOnModule(Module& M)
@@ -186,7 +193,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
     MetaDataUtilsWrapper &mduw = getAnalysis<MetaDataUtilsWrapper>();
     MetaDataUtils *pMdUtils = mduw.getMetaDataUtils();
     ModuleMetaData *modMD = mduw.getModuleMetaData();
-    bool containsSLM = false; // hasSLMUsage(M);
+    auto MemPoolFuncs = collectMemPoolUsage(M);
 
     std::set<llvm::Function *> fastMathFunct;
     GlobalVariable *gv_fastMath = M.getGlobalVariable("__FastRelaxedMath", true);
@@ -273,7 +280,7 @@ bool ProcessFuncAttributes::runOnModule(Module& M)
 
         // The following subroutine check is added to disable two-phase-inlining
         // when we do not enable subroutines.
-        bool keepAlwaysInline = containsSLM;
+        bool keepAlwaysInline = (MemPoolFuncs.count(F) != 0);
         if (IGC_GET_FLAG_VALUE(FunctionControl) != FLAG_FCALL_FORCE_INLINE)
         {
             // keep inline if function pointers not enabled and there are uses
