@@ -2278,9 +2278,7 @@ void FlowGraph::removeRedundMov()
         while (curr_iter != bb->end())
         {
             G4_INST* inst = (*curr_iter);
-            if (inst->opcode() == G4_mov &&
-                inst->getCondMod() == NULL &&
-                inst->getSaturate() == false)
+            if (inst->isRawMov())
             {
                 G4_Operand *src = inst->getSrc(0);
                 G4_DstRegRegion *dst = inst->getDst();
@@ -2291,21 +2289,10 @@ void FlowGraph::removeRedundMov()
                     if (!dst->isIndirect() &&
                         !srcRgn->isIndirect() &&
                         dst->isGreg() &&
-                        src->isGreg() &&
-                        srcRgn->getModifier() == Mod_src_undef &&
-                        dst->getType() == src->getType())
+                        src->isGreg())
                     {
-                        G4_RegVar* dstBase = (G4_RegVar*)dst->getBase();
-                        G4_RegVar* srcBase = (G4_RegVar*)srcRgn->getBase();
-
-                        int dstSubReg, dstReg, srcSubReg, srcReg;
-
-                        dstSubReg = dst->getSubRegOff() + dstBase->getPhyRegOff();
-                        srcSubReg = srcRgn->getSubRegOff() + srcBase->getPhyRegOff();
-                        dstReg = dst->getRegOff() + dstBase->getPhyReg()->asGreg()->getRegNum();
-                        srcReg = srcRgn->getRegOff() + srcBase->getPhyReg()->asGreg()->getRegNum();
-
-                        if (dstReg == srcReg && dstSubReg == srcSubReg)
+                        if (dst->getLinearizedStart() == srcRgn->getLinearizedStart() &&
+                            dst->getLinearizedEnd() == srcRgn->getLinearizedEnd())
                         {
                             uint16_t stride = 0;
                             RegionDesc *rd = srcRgn->getRegion();
