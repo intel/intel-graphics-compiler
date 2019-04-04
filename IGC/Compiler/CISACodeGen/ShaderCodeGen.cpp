@@ -180,7 +180,9 @@ using namespace IGC::Debug;
 namespace IGC
 {
 const int LOOP_ROTATION_HEADER_INST_THRESHOLD = 32;
-
+const int LOOP_NUM_THRESHOLD  = 2000;
+const int LOOP_INST_THRESHOLD = 65000;
+const int INST_THRESHOLD = 80000;
 
 inline void AddURBWriteRelatedPass(CodeGenContext &ctx, IGCPassManager& mpm)
 {
@@ -1040,6 +1042,17 @@ void unify_opt_PreProcess(CodeGenContext* pContext)
 
 }
 
+bool extensiveShader(CodeGenContext* pContext)
+{
+    return (pContext->type == ShaderType::OPENCL_SHADER &&
+        pContext->m_instrTypes.numInsts > INST_THRESHOLD &&
+        pContext->m_instrTypes.numLoopInsts > LOOP_INST_THRESHOLD &&
+        pContext->m_instrTypes.numOfLoop > LOOP_NUM_THRESHOLD &&
+        pContext->m_instrTypes.numBB == 0 &&
+        pContext->m_instrTypes.numSample == 0 &&
+        pContext->m_instrTypes.hasSubroutines);
+}
+
 // All functions are marked with AlwaysInline attribute. Remove them for
 // non-kernels, but keep for kernels when subroutine is enabled.
 //
@@ -1274,9 +1287,12 @@ void OptimizeIR(CodeGenContext* pContext)
                     mpm.add(IGCLLVM::createLoopUnrollPass());
                 }
 
-                if(pContext->m_instrTypes.hasNonPrimitiveAlloca)
+                if(!extensiveShader(pContext))
                 {
-                    mpm.add(createSROAPass());
+                    if(pContext->m_instrTypes.hasNonPrimitiveAlloca)
+                    {
+                        mpm.add(createSROAPass());
+                    }
                 }
             }
 
@@ -1301,7 +1317,8 @@ void OptimizeIR(CodeGenContext* pContext)
             mpm.add(llvm::createSCCPPass());
 
             mpm.add(llvm::createDeadCodeEliminationPass());
-            mpm.add(llvm::createAggressiveDCEPass());
+            if (!extensiveShader(pContext))
+                mpm.add(llvm::createAggressiveDCEPass());
 
             mpm.add(new BreakConstantExpr());
             mpm.add(new IGCConstProp(!pContext->m_DriverInfo.SupportsPreciseMath(), IGC_IS_FLAG_ENABLED(EnableSimplifyGEP)));
@@ -1313,7 +1330,7 @@ void OptimizeIR(CodeGenContext* pContext)
 
             mpm.add(new GenUpdateCB());
 
-            if(!pContext->m_instrTypes.hasAtomics)
+            if(!pContext->m_instrTypes.hasAtomics && !extensiveShader(pContext))
             {
                 // jump threading currently causes the atomic_flag test from c11 conformance to fail.  Right now,
                 // only do jump threading if we don't have atomics as using atomics as locks seems to be the most common
