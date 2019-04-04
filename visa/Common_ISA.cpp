@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Common_ISA.h"
 #include "Mem_Manager.h"
-#include "cm_portability.h"
+#include "VISADefines.h"
 
 #define ALLOC_ASSERT(X)      \
     if (X == NULL) return 1; \

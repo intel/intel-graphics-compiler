@@ -68,6 +68,7 @@ static const struct RegInfo REGISTER_SPECIFICATIONS[] = {
         0x2, 2,
         4,
         8, (32,32,32,32,32,32,32,32)),
+
     IGA_REGISTER_SPEC_UNIFORM(
         RegName::ARF_F, "f", "Flag Register",
         0x3, 0,

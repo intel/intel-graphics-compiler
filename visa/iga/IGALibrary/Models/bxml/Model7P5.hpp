@@ -82,8 +82,8 @@ namespace iga {
             "\n"
             "Register source operands can use source modifiers:\n"
             "\n"
-            "[Pre-DevBDW]: Any source modifier is numeric, optionally changing a source value s to -s, abs(s), or -abs(s) before the AND operation. \n"
-            "[DevBDW+]: Any source modifier is logical, optionally changing a source value s to ~s (inverting all source bits). This capability allows expressions like a AND (NOT b) to be calculated with one instruction. \n"
+            "[Pre-DevBDW]: Any source modifier is numeric, optionally changing a source value s to -s, abs(s), or -abs(s) before the AND operation.\n"
+            "[DevBDW+]: Any source modifier is logical, optionally changing a source value s to ~s (inverting all source bits). This capability allows expressions like a AND (NOT b) to be calculated with one instruction.\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"
             "\n"
             "\n"
@@ -607,8 +607,7 @@ namespace iga {
             "The difference between calla and call is that calla uses JIP as the IP value rather than adding it to the IP value.\n"
             "\n"
             "\n"
-            "Format:\n"
-            "[(pred)] calla (exec_size) dst JIP\n",
+            "Format: [(pred)] calla (exec_size) dst JIP\n",
             OpSpec::Format::JUMP_UNARY_CALL_REGIMM, {
                 // D,UD <-
                 {TYPE(Type::D)|TYPE(Type::UD),ENUM_BITSET_EMPTY_VALUE}
@@ -1498,17 +1497,17 @@ namespace iga {
             "\n"
             "\n"
             "\n"
-            "The source register is calculated by adding the register portion of the first index register with the \n"
+            "The source register is calculated by adding the register portion of the first index register with the\n"
             "register portion of the address immediate, a0.0[11:5] + addr_imm[9:5]\n"
             "\n"
             "\n"
             "\n"
-            "For byte movi, byte0 of the destination is selected by (a0.0[4:0]), byte1 is selected by (a0.1[4:0]), ..., \n"
+            "For byte movi, byte0 of the destination is selected by (a0.0[4:0]), byte1 is selected by (a0.1[4:0]), ...,\n"
             "and byte7 is selected by (a0.7[4:0]). The rest of the bytes are undefined.\n"
             "\n"
             "\n"
             "\n"
-            "For word movi, byte0 of the destination is selected by (a0.0[4:1] & 0), byte1 is selected by (a0.0[4:1] \n"
+            "For word movi, byte0 of the destination is selected by (a0.0[4:1] & 0), byte1 is selected by (a0.0[4:1]\n"
             "& 1), byte2 is selected by (a0.1[4:1] & 0), byte3 is selected by (a0.1[4:1] & 1), ..., and byte15\n"
             "is selected by (a0.7[4:1] & 1). The rest of the bytes are undefined.\n"
             "\n"
@@ -1852,7 +1851,7 @@ namespace iga {
             "<dest> signals whether there is a response to the message request. It can be either a null register, a direct-addressed GRF register or a register-indirect GRF register. Otherwise, hardware behavior is undefined.\n"
             "If <dest> is null, there is no response to the request. Meanwhile, the Response Length field in <desc> must be 0. Certain types of message requests, such as memory write (store) through the Data Port, do not want response data from the function unit. If so, the posted destination operand can be null.\n"
             "If <dest> is a GRF register, the register number is forwarded to the shared function. In this case, the target function unit must send one or more response message phases back to the requesting thread. The number of response message phases must match the Response Length field in <desc>, which of course cannot be zero. For some cases, it could be an empty return message. An empty return message is defined as a single phase message with all channel enables turned off.\n"
-            "The subregister number, horizontal stride, destination mask and type fields of <dest> are always valid and are used in part to generate on the WrEn. This is true even if <dest> is a null register (this is an exception for null as for most cases these fields are ignored by hardware). \n"
+            "The subregister number, horizontal stride, destination mask and type fields of <dest> are always valid and are used in part to generate on the WrEn. This is true even if <dest> is a null register (this is an exception for null as for most cases these fields are ignored by hardware).\n"
             "The 16-bit channel enables of the message sideband are formed based on the WrEn. Interpretation of the channel enable sideband signals is subject to the target external function. In general for a \'send\' instruction with return messages, they are used as the destination dword write mask for the GRF registers starting at <dest>. For a message that has multiple return phases, the same set of channel enable signals applies to all the return phases.\n"
             "Thread managed memory coherency: A special usage of using non-null <dest> is to support write-commit signaling for memory write service by the Data Port Write unit. If <post_dest> is not null for a memory write request, the Data Port along with the Data Cache or Render Cache will wait until all the posted writes for the request have reached the coherent domain before sending back to the requesting thread an empty message to <dest> register. A memory write reaching the coherent domain, also referred to as reaching the global observable state, means that subsequent read to the same memory location, no matter which thread issues the read, must return the data of the write.\n"
             "The destination dependency control, {NoDDClr}, can be used in this instruction. This allows software to control the destination dependencies for multiple \'read\'-type messages similar to that for multiple instructions using EU execution pipeline. As send does not check register dependencies for the post destination, {NoDDChk} should not be used for this instruction.\n",
@@ -1906,7 +1905,19 @@ namespace iga {
         /* Op::429 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::430 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::431 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::432 */ {Op::SHL, "shl", "shl", 0x9, "Shift Left",
+        /* Op::432 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::433 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::434 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::435 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::436 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::437 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::438 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::439 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::440 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::441 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::442 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::443 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::444 */ {Op::SHL, "shl", "shl", 0x9, "Shift Left",
             "Perform component-wise logical left shift of the bits in src0 by the shift count indicated in src1, storing the results in dst, inserting zero bits in the number of LSBs indicated by the shift count.\n"
             "\n"
             "Hardware detects overflow properly and uses it to perform any saturation operation on the result, as long as the shifted result is within 33 bits. Otherwise, the result is undefined.\n"
@@ -1929,7 +1940,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::433 */ {Op::SHR, "shr", "shr", 0x8, "Shift Right",
+        /* Op::445 */ {Op::SHR, "shr", "shr", 0x8, "Shift Right",
             "Perform component-wise logical right shift with zero insertion of the bits in src0 by the shift count indicated in src1, storing the results in dst. Insert zero bits in the number of MSBs indicated by the shift count.\n"
             "\n"
             "src0 and dst can have different types and can be signed or unsigned.\n"
@@ -1954,8 +1965,8 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::434 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::435 */ {Op::SUBB, "subb", "subb", 0x4f, "Integer Subtraction with Borrow",
+        /* Op::446 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::447 */ {Op::SUBB, "subb", "subb", 0x4f, "Integer Subtraction with Borrow",
             "The subb instruction performs component-wise subtraction of src0 and src1 and stores the results in dst, it also stores the borrow into acc.\n"
             "\n"
             "If the operation produces a borrow (src0 < src1), write 0x00000001 to acc, else write 0x00000000 to acc.\n"
@@ -1973,13 +1984,13 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::436 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::437 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::438 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::439 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::440 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::441 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::442 */ {Op::WAIT, "wait", "wait", 0x30, "Wait Notification",
+        /* Op::448 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::449 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::450 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::451 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::452 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::453 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::454 */ {Op::WAIT, "wait", "wait", 0x30, "Wait Notification",
             "The wait instruction evaluates the value of the notification count register nreg. If nreg is zero, thread execution is suspended and the thread is put in \'wait_for_notification\' state. If nreg is not zero (i.e., one or more notifications have been received), nreg is decremented by one and the thread continues executing on the next instruction. If a thread is in the \'wait_for_notification\' state, when a notification arrives, the notification count register is incremented by one. As the notification count register becomes nonzero, the thread wakes up to continue execution and at the same time the notification register is decremented by one. If only one notification arrived, the notification register value becomes zero. However, during the above mentioned time period, it is possible that more notifications may arrive, making the notification register nonzero again.\n"
             "\n"
             "When multiple notifications are received, software must use wait instructions to decrement notification count registers for each notification.\n"
@@ -1999,7 +2010,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::443 */ {Op::WHILE, "while", "while", 0x27, "While",
+        /* Op::455 */ {Op::WHILE, "while", "while", 0x27, "While",
             "The while instruction marks the end of a do-while block. The instruction first evaluates the loop termination condition for each channel based on the current channel enables and the predication flags specified in the instruction. If any channel has not terminated, a branch is taken to a destination address specified in the instruction, and the loop continues for those channels. Otherwise, execution continues to the next instruction.ld point to the first instruction with the do label of the do-while block of code. It should be a negative number for the backward referencing.\n"
             "\n"
             "If SPF is ON, none of the PcIP are updated.\n"
@@ -2017,7 +2028,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::444 */ {Op::XOR, "xor", "xor", 0x7, "Logic Xor",
+        /* Op::456 */ {Op::XOR, "xor", "xor", 0x7, "Logic Xor",
             "The xor instruction performs component-wise logic XOR operation between src0 and src1 and stores the results in dst.\n"
             "\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"

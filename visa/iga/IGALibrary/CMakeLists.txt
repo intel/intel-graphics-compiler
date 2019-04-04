@@ -327,14 +327,21 @@ if(ANDROID AND MEDIA_IGA)
 endif(ANDROID AND MEDIA_IGA)
 # target_link_libraries(IGA PRIVATE GEDLibrary)
 
-  set_target_properties(IGA_DLL PROPERTIES
-                        VERSION "${IGC_API_MAJOR_VERSION}.${IGC_API_MINOR_VERSION}.${IGC_API_PATCH_VERSION}"
-                        SOVERSION "${IGC_API_MAJOR_VERSION}")
-
+  if(IGC_BUILD)
+    set_target_properties(IGA_DLL PROPERTIES
+                          VERSION "${IGC_API_MAJOR_VERSION}.${IGC_API_MINOR_VERSION}.${IGC_API_PATCH_VERSION}"
+                          SOVERSION "${IGC_API_MAJOR_VERSION}")
+  endif()
+ 
   if(UNIX)
+    if (CMAKE_INSTALL_FULL_LIBDIR)
+        set(IGA_LIB_PATH ${CMAKE_INSTALL_FULL_LIBDIR})
+    else()
+        set(IGA_LIB_PATH ${CMAKE_INSTALL_PREFIX}/lib)
+    endif()
     INSTALL(TARGETS IGA_DLL
-        LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-core
-    )
+        LIBRARY DESTINATION ${IGA_LIB_PATH} COMPONENT igc-core)
+    unset(IGA_LIB_PATH)
   elseif(WIN32)
     install(TARGETS IGA_DLL RUNTIME
             DESTINATION Release/lh64              CONFIGURATIONS Release)

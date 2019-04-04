@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "JitterDataStruct.h"
 #include "VISAKernel.h"
 #include "BuildCISAIR.h"
-#include "cm_portability.h"
+#include "VISADefines.h"
 #include "visa_wa.h"
 
 

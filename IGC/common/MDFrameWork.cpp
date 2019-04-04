@@ -349,3 +349,4 @@ void IGC::serialize(const IGC::ModuleMetaData &moduleMD, Module* module)
     auto node = CreateNode(moduleMD, module, "ModuleMD");
     LLVMMetadata->addOperand(node);
 }
+

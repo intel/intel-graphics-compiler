@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if defined(_WIN32)
 #include <windows.h>
 #endif
-#include "cm_portability.h"
+#include "VISADefines.h"
 
 #if !defined(_WIN32)
 typedef unsigned char BYTE;

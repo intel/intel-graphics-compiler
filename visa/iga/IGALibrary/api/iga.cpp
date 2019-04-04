@@ -82,15 +82,15 @@ struct PlatformEntry {
 };
 
 static const PlatformEntry ALL_PLATFORMS[] {
-    {IGA_GEN7,iga::Platform::GEN7,"7"},
-    {IGA_GEN7p5,iga::Platform::GEN7P5,"7p5"},
-    {IGA_GEN8,iga::Platform::GEN8,"8"},
-    {IGA_GEN8lp,iga::Platform::GEN8LP,"8lp"},
-    {IGA_GEN9,iga::Platform::GEN9,"9"},
-    {IGA_GEN9lp,iga::Platform::GEN9LP,"9lp"},
-    {IGA_GEN9p5,iga::Platform::GEN9P5,"9p5"},
-    {IGA_GEN10,iga::Platform::GEN10,"10"},
-    {IGA_GEN11,iga::Platform::GEN11,"11"},
+    {IGA_GEN7,   iga::Platform::GEN7,   "7"   },
+    {IGA_GEN7p5, iga::Platform::GEN7P5, "7p5" },
+    {IGA_GEN8,   iga::Platform::GEN8,   "8"   },
+    {IGA_GEN8lp, iga::Platform::GEN8LP, "8lp" },
+    {IGA_GEN9,   iga::Platform::GEN9,   "9"   },
+    {IGA_GEN9lp, iga::Platform::GEN9LP, "9lp" },
+    {IGA_GEN9p5, iga::Platform::GEN9P5, "9p5" },
+    {IGA_GEN10,  iga::Platform::GEN10,  "10"  },
+    {IGA_GEN11,  iga::Platform::GEN11,  "11"  },
 };
 
 // conversion to an internal platform

@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "iga_main.hpp"
 #include "opts.hpp"
 
+#include <cctype>
 #include <iomanip>
 #include <sstream>
 #include <tuple>
@@ -120,15 +121,17 @@ extern "C" int iga_main(int argc, const char **argv)
     cmdline.defineOpt(
         "p",
         "platform",
-        "DEVICE",
+        "PLATFORM",
         "specifies the platform (e.g. \"GEN9\")",
         platformExtendedDescription.c_str(),
         opts::OptAttrs::ALLOW_UNSET,
         [&] (const char *cinp, const opts::ErrorHandler &err, Opts &baseOpts) {
-            if (strstr(cinp,"GEN") == cinp) // GEN9 -> 9
-              cinp += 3;
-            std::string inp = cinp;
-            std::transform(inp.begin(), inp.end(), inp.begin(), ::toupper);
+            std::string inp;
+            while (*cinp) {
+                inp += std::toupper(*cinp++);
+            }
+            if (inp.substr(0,3) == "GEN")
+              inp = inp.substr(3); // GEN9 -> 9
 
             // try IGA-preferred names first
             iga_gen_t p = IGA_GEN_INVALID;
@@ -149,17 +152,21 @@ extern "C" int iga_main(int argc, const char **argv)
             // fall back on code names and other names
             if (inp == "IVB" || inp == "7") {
                 p = IGA_GEN7;
-            } else if (inp == "HSW" || inp == "7.5" || inp == "7P5") {
+            } else if (inp == "HSW" || inp == "7P5" || inp == "7.5") {
                 p = IGA_GEN7p5;
             } else if (inp == "BDW" || inp == "8") {
                 p = IGA_GEN8;
-            } else if (inp == "CHV" || inp == "8LP" || inp == "8.1" || inp == "8P1") {
+            } else if (inp == "CHV" ||
+                inp == "8LP" || inp == "8P1" || inp == "8.1")
+            {
                 p = IGA_GEN8lp;
             } else if (inp == "SKL" || inp == "9") {
                 p = IGA_GEN9;
-            } else if (inp == "BXT" ||  inp == "9LP" ||inp == "9.1" || inp == "9P1") {
+            } else if (inp == "BXT" ||
+                inp == "9LP" || inp == "9P1" || inp == "9.1")
+            {
                 p = IGA_GEN9lp;
-            } else if (inp == "KBL" || inp == "9.5" || inp == "9P5") {
+            } else if (inp == "KBL" || inp == "9P5" || inp == "9.5") {
                 p = IGA_GEN9p5;
             } else if (inp == "CNL" || inp == "10") {
                 p = IGA_GEN10;
@@ -418,24 +425,25 @@ extern "C" int iga_main(int argc, const char **argv)
     cmdline.parse(argc, argv, baseOpts);
 
     // override various options not set
-    auto optsForFile = [&] (const std::string &inpFile) {
-        // get the file extension (e.g. foo.krn9)
-        Opts os         = baseOpts;
-        inferPlatformAndMode(inpFile, os);
-        if (os.mode == Opts::Mode::AUTO) {
-            fatalExitWithMessage(
-                "%s: cannot infer mode based on file extension"
-                " (use -d or -a to set mode)",
-                inpFile.c_str());
-        }
-        if (os.platform == IGA_GEN_INVALID) {
-            fatalExitWithMessage(
-                "%s: cannot infer project based on file extension"
-                " (use -p=...)",
-                inpFile.c_str());
-        }
-        return os;
-    };
+    auto optsForFile =
+        [&] (const std::string &inpFile) {
+            // get the file extension (e.g. foo.krn9)
+            Opts os         = baseOpts;
+            inferPlatformAndMode(inpFile, os);
+            if (os.mode == Opts::Mode::AUTO) {
+                fatalExitWithMessage(
+                    "%s: cannot infer mode based on file extension"
+                    " (use -d or -a to set mode)",
+                    inpFile.c_str());
+            }
+            if (os.platform == IGA_GEN_INVALID) {
+                fatalExitWithMessage(
+                    "%s: cannot infer project based on file extension"
+                    " (use -p=...)",
+                    inpFile.c_str());
+            }
+            return os;
+        };
 
     // one of the files has an error
     bool hasError = false;

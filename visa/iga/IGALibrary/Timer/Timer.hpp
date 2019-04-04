@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 //#define TIME_BUILDER
-//#include "cm_portability.h"
+//#include "VISADefines.h"
 
 // Timer library for the compiler
 // To collect compile time information, do the following:

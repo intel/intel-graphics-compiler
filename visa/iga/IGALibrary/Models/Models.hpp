@@ -264,9 +264,9 @@ namespace iga
         const char          *ext;  // e.g. "9p5"
         const char          *name; // e.g. "KBL"
 
-        const OpSpec        *const opsArray; // the table of supported ops
-        const OpSpec        *opsByCode[128];
-        bool                 opsByCodeValid;
+        // the table of supported ops for this model indexed by iga::Op
+        const OpSpec         *const opsArray;
+
         /*
          * Enables iteration of all valid ops in the table in a for all loop
          * E.g. one would write:
@@ -275,7 +275,7 @@ namespace iga
          *      IGA_ASSERT(os->isValid(),"all ops walked will be valid");
          *   }
          */
-        OpSpecTableWalker ops() const { return OpSpecTableWalker(opsArray); }
+        OpSpecTableWalker ops() const {return OpSpecTableWalker(opsArray);}
 
         const OpSpec&        lookupOpSpec(Op op) const;
         const OpSpec&        lookupOpSpecByCode(unsigned opcode) const;

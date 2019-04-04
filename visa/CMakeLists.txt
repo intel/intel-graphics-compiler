@@ -259,7 +259,7 @@ set(GenX_Common_Headers
   IGfxHwEuIsaCNL.h
   BuildCISAIR.h
   BuildIR.h
-  cm_portability.h
+  include/VISADefines.h
   Common_GEN.h
   DebugInfo.h
   FlowGraph.h
@@ -275,7 +275,7 @@ set(GenX_Common_Headers
   Optimizer.h
   PhyRegUsage.h
   RegAlloc.h
-  RT_Jitter_Interface.h
+  include/RT_Jitter_Interface.h
   SpillCode.h
   SpillManagerGMRF.h
   include/visa_igc_common_header.h

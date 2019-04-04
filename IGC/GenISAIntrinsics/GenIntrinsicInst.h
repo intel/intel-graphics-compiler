@@ -709,6 +709,7 @@ public:
     }
 };
 
+
 template <class X, class Y>
 inline bool isa(const Y &Val, GenISAIntrinsic::ID id)
 {

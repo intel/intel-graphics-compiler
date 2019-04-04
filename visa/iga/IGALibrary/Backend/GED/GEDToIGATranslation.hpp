@@ -546,12 +546,8 @@ namespace iga
 
             switch (cntrl)
             {
-            case GED_MASK_CTRL_Normal:
-                mCtrl = MaskCtrl::NORMAL;
-                break;
-            case GED_MASK_CTRL_NoMask:
-                mCtrl = MaskCtrl::NOMASK;
-                break;
+            case GED_MASK_CTRL_Normal:  mCtrl = MaskCtrl::NORMAL; break;
+            case GED_MASK_CTRL_NoMask:  mCtrl = MaskCtrl::NOMASK; break;
             case GED_MASK_CTRL_INVALID:
             default:
                 mCtrl = MaskCtrl::NORMAL;
@@ -594,7 +590,6 @@ namespace iga
             case GED_SFID_DP_DC2:     return SFID::DC2; // SKL+
             case GED_SFID_DP_RC:      return SFID::RC;
             case GED_SFID_URB:        return SFID::URB;
-            case GED_SFID_SPAWNER:    return SFID::TS;
             case GED_SFID_VME:        return SFID::VME;
             case GED_SFID_DP_DCRO:    return SFID::DCRO;
             case GED_SFID_DP_DC0:     return SFID::DC0;

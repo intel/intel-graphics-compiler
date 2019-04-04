@@ -115,17 +115,17 @@ namespace iga
         SEL          = FIRST_OP + 400,
         SEND         = FIRST_OP + 401,
         SENDC        = FIRST_OP + 402,
-        SENDS        = FIRST_OP + 416,
-        SENDSC       = FIRST_OP + 417,
-        SHL          = FIRST_OP + 431,
-        SHR          = FIRST_OP + 432,
-        SMOV         = FIRST_OP + 433,
-        SUBB         = FIRST_OP + 434,
-        WAIT         = FIRST_OP + 441,
-        WHILE        = FIRST_OP + 442,
-        XOR          = FIRST_OP + 443,
+        SENDS        = FIRST_OP + 422,
+        SENDSC       = FIRST_OP + 423,
+        SHL          = FIRST_OP + 443,
+        SHR          = FIRST_OP + 444,
+        SMOV         = FIRST_OP + 445,
+        SUBB         = FIRST_OP + 446,
+        WAIT         = FIRST_OP + 453,
+        WHILE        = FIRST_OP + 454,
+        XOR          = FIRST_OP + 455,
 
-        LAST_OP   = FIRST_OP + 443,
+        LAST_OP   = FIRST_OP + 455,
         TOTAL_OPS = LAST_OP
     };
 }

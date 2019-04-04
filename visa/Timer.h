@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MEASURE_COMPILATION_TIME
 #endif
 
-#include "cm_portability.h"
+#include "VISADefines.h"
 
 // Timer library for the compiler
 // To collect compile time information, do the following:

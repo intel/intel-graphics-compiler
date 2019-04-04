@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <unordered_set>
 
-#include "cm_portability.h"
+#include "VISADefines.h"
 
 #include "Gen4_IR.hpp"
 

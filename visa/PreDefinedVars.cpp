@@ -1,5 +1,5 @@
 #include "visa_igc_common_header.h"
-#include "cm_portability.h"
+#include "VISADefines.h"
 #include "PreDefinedVars.h"
 #include "common.h"
 

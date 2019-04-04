@@ -2714,23 +2714,7 @@ public:
     static bool isInTypeRange(int64_t imm, G4_Type ty);
 
 };
-}
 
-typedef struct BasicRelocEntry
-{
-    uint64_t relocOffset;
-    uint64_t info;
-    int64_t addend;
-} BasicRelocEntry;
-
-typedef struct SuperRelocEntry
-{
-    BasicRelocEntry input;
-    unsigned int nativeOffset;
-} SuperRelocEntry;
-
-namespace vISA
-{
 class G4_Reloc_Imm : public G4_Imm
 {
 private:

@@ -26,20 +26,32 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #ifndef _CM_JITTERDATASTRUCT_
 #define _CM_JITTERDATASTRUCT_
-// Make JIT_INFO available in offline compile too, 
-// so we don't have to have annoying #ifdef DLL_MODE
+
+#include <stdint.h>
+
 typedef struct _CM_PROFILE_INFO {
-	int kind;
-	int index;
-	int value;
+    int kind;
+    int index;
+    int value;
 } CM_PROFILE_INFO;
 
 typedef struct _CM_BB_INFO {
-	int id;
-	unsigned staticCycle;
-	unsigned sendStallCycle;
-	unsigned char loopNestLevel;
+    int id;
+    unsigned staticCycle;
+    unsigned sendStallCycle;
+    unsigned char loopNestLevel;
 } CM_BB_INFO;
+
+typedef struct BasicRelocEntry {
+    uint64_t relocOffset;
+    uint64_t info;
+    int64_t addend;
+} BasicRelocEntry;
+
+typedef struct SuperRelocEntry {
+    BasicRelocEntry input;
+    unsigned int nativeOffset;
+} SuperRelocEntry;
 
 typedef struct _CM_JIT_INFO {
     // Common part
@@ -63,9 +75,9 @@ typedef struct _CM_JIT_INFO {
 
     // whether kernel uses a barrier
     bool usesBarrier;
-    
+
     unsigned BBNum;
-    CM_BB_INFO *BBInfo;
+    CM_BB_INFO* BBInfo;
 
     // number of spill/fill, weighted by loop
     unsigned int numGRFSpillFill;
@@ -75,5 +87,4 @@ typedef struct _CM_JIT_INFO {
     unsigned char numBytesScratchGtpin;
 } FINALIZER_INFO;
 
-#define MAX_ERROR_MSG_LEN               511
-#endif
+#endif // _CM_JITTERDATASTRUCT_

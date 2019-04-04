@@ -62,7 +62,6 @@ static const GED_RETURN_VALUE constructPartialGEDSendInstruction(
 iga::SFID iga::getSFID(
     Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc)
 {
-
     GED_MODEL gedP = IGAToGEDTranslation::lowerPlatform(p);
     GED_OPCODE gedOp = GED_OPCODE_INVALID;
     if (os.isSendFamily()) {
@@ -91,7 +90,6 @@ iga::SFID iga::getSFID(
 iga::SFMessageType iga::getMessageType(
     Platform p, const OpSpec &os, uint32_t exDesc, uint32_t desc)
 {
-
     int sfid = static_cast<int>(getSFID(p, os, exDesc, desc));
     GED_SFID gedSFID = IGAToGEDTranslation::lowerSendTFID(sfid, p);
 

@@ -30,6 +30,7 @@ namespace IGC
         NumberOfFunctionType,
     };
 
+
     enum ResourceTypeEnum
     {
         OtherResourceType,
@@ -162,8 +163,6 @@ namespace IGC
         std::vector<std::string> m_OpenCLArgBaseTypes;
         std::vector<std::string> m_OpenCLArgTypeQualifiers;
         std::vector<std::string> m_OpenCLArgNames;
-
-
     };
 
     // isCloned member is added to mark whether a function is clone
@@ -346,4 +345,5 @@ namespace IGC
     };
     void serialize(const IGC::ModuleMetaData &moduleMD, llvm::Module* module);
     void deserialize(IGC::ModuleMetaData &deserializedMD, const llvm::Module* module);
+
 }

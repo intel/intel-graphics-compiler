@@ -72,7 +72,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MAX_SEND_MESG_LEN    15
 #define ADDR_REG_TYPE        Type_UW
 
-#include "cm_portability.h"
+#include "VISADefines.h"
 
 
 // ToDo: move them to common.h?

@@ -65,6 +65,11 @@ void parseWrapper(const char *fileName, int argc, const char *argv[], Options &o
 // default size of the kernel mem manager in bytes
 #define KERNEL_MEM_SIZE    (4*1024*1024)
 
+#define JIT_SUCCESS                     0
+#define JIT_INVALID_INPUT               1
+#define JIT_CISA_ERROR                  3
+#define JIT_INVALID_PLATFORM            5
+
 // create a parser interface for lex and yacc.
 // Note that for thread safety this should only be used in CISA.y
 _THREAD CISA_IR_Builder * pCisaBuilder = NULL;
@@ -185,7 +190,6 @@ void parse(const char *fileName, std::string testName, int argc, const char *arg
 }
 #endif
 
-#ifdef DLL_MODE
 int JITCompileAllOptions(const char* kernelName,
     const void* kernelIsa,
     unsigned int kernelIsaSize,
@@ -357,7 +361,7 @@ DLL_EXPORT void getJITVersion(unsigned int& majorV, unsigned int& minorV )
     minorV = COMMON_ISA_MINOR_VER;
 }
 
-#else
+#ifndef  DLL_MODE
 
 /// Returns true if a string ends with an expected suffix.
 static bool endsWith(const std::string &str, const std::string &suf)

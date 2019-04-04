@@ -45,6 +45,8 @@ if [ "$UNAME_VALUE" == "Linux" ]; then
 	PLATFORM_NAME="Linux"
 elif echo "$UNAME_VALUE" | grep "CYGWIN" 1>/dev/null 2>/dev/null; then
 	PLATFORM_NAME="Cygwin"
+elif [ "$UNAME_VALUE" == "Darwin" ]; then
+    PLATFORM_NAME="Darwin"
 else
 	error_message "Cannot infer PLATFORM from uname value: $UNAME_VALUE"
 	exit 1

@@ -1015,6 +1015,7 @@ bool CEncoder::NeedSplitting(CVariable *var, const SModifier &mod,
             }
             assert(false && "Unhandled special source region on QWORD type!");
         }
+
         numParts = std::max(numParts, 2U);
         return true;
     }

@@ -10,39 +10,40 @@ namespace iga
     enum class MathFC
     {
         INVALID = 0,
-        INV    =  1,
-        LOG    =  2,
-        EXP    =  3,
-        SQT    =  4,
-        RSQT   =  5,
-        SIN    =  6,
-        COS    =  7,
-        FDIV   =  9,
-        POW    = 10,
-        IDIV   = 11,
-        IQOT   = 12,
-        IREM   = 13,
-        INVM   = 14,
-        RSQTM  = 15,
+        INV    =   1,
+        LOG    =   2,
+        EXP    =   3,
+        SQT    =   4,
+        RSQT   =   5,
+        SIN    =   6,
+        COS    =   7,
+        FDIV   =   9,
+        POW    =  10,
+        IDIV   =  11,
+        IQOT   =  12,
+        IREM   =  13,
+        INVM   =  14,
+        RSQTM  =  15,
     };
+
 
     enum class SFID
     {
         INVALID = -1,
-        NULL_  =  0,
-        SMPL   =  2,
-        GTWY   =  3,
-        DC2    =  4,
-        RC     =  5,
-        URB    =  6,
-        TS     =  7,
-        VME    =  8,
-        DCRO   =  9,
-        DC0    = 10,
-        PIXI   = 11,
-        DC1    = 12,
-        CRE    = 13,
+        NULL_  =   0,
+        SMPL   =   2,
+        GTWY   =   3,
+        DC2    =   4,
+        RC     =   5,
+        URB    =   6,
+        VME    =   8,
+        DCRO   =   9,
+        DC0    =  10,
+        PIXI   =  11,
+        DC1    =  12,
+        CRE    =  13,
     };
+
 
 
 }

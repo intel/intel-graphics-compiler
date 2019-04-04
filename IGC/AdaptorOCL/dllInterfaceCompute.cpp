@@ -56,6 +56,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "AdaptorOCL/OCL/sp/gtpin_igc_ocl.h"
 #include "AdaptorOCL/igcmc.h"
+#include "RT_Jitter_Interface.h"
 
 #include <iStdLib/MemCopy.h>
 
@@ -760,136 +761,11 @@ spv_result_t DisassembleSPIRV(
 }
 #endif
 
-// Convert an opaque pointer to a function pointer.
-template <typename func_ptr_type>
-inline func_ptr_type getFunctionType(void* ptr)
-{
-    intptr_t val = reinterpret_cast<intptr_t>(ptr);
-    return reinterpret_cast<func_ptr_type>(val);
-}
-
-// Generate compile options.
-static std::string getCommandLine(const STB_TranslateInputArgs* pInputArgs,
-                                  TB_DATA_FORMAT inputDataFormatTemp,
-                                  const IGC::CPlatform& IGCPlatform)
-{
-    std::string cmd;
-
-    // Set the input file type.
-    if (inputDataFormatTemp == TB_DATA_FORMAT::TB_DATA_FORMAT_SPIR_V)
-        cmd.append(" -filetype=spv");
-    else
-        llvm_unreachable("not implemented yet");
-
-    // Set the HW platform
-    switch (IGCPlatform.GetPlatformFamily()) {
-    default:
-        llvm_unreachable("not implemented yet");
-        break;
-    case GFXCORE_FAMILY::IGFX_GEN9_CORE:
-        cmd.append(" -platform=GEN9");
-        break;
-    case GFXCORE_FAMILY::IGFX_GEN10_CORE:
-        cmd.append(" -platform=GEN10");
-        break;
-    case GFXCORE_FAMILY::IGFX_GEN10LP_CORE:
-        cmd.append(" -platform=GEN10LP");
-        break;
-    }
-    return move(cmd);
-}
-
-#if defined(_WIN64)
-#define CMC_LIBRARY_NAME     "igcmc64.dll"
-#elif defined(_WIN32)
-#define CMC_LIBRARY_NAME     "igcmc32.dll"
-#else
-#define CMC_LIBRARY_NAME     "libigcmc.so"
-#endif
-
-// Utility class to load and compile a CMC program.
-struct CMCLibraryLoader {
-    using compileFnTy = std::add_pointer<decltype(cmc_load_and_compile)>::type;
-    using getErrorFnTy = std::add_pointer<decltype(cmc_get_error_string)>::type;
-    using freeJitInfoFnTy = std::add_pointer<decltype(cmc_free_jit_info)>::type;
-
-    using DL = llvm::sys::DynamicLibrary;
-    DL Dylib;
-    std::string ErrMsg;
-
-    compileFnTy compileFn = nullptr;
-    getErrorFnTy getErrorFn = nullptr;
-    freeJitInfoFnTy freeJitInfoFn = nullptr;
-
-    CMCLibraryLoader()
-    {
-        Dylib = DL::getPermanentLibrary(CMC_LIBRARY_NAME, &ErrMsg);
-        if (Dylib.isValid()) {
-            compileFn = getFunctionType<compileFnTy>(Dylib.getAddressOfSymbol("cmc_load_and_compile"));
-            getErrorFn = getFunctionType<getErrorFnTy>(Dylib.getAddressOfSymbol("cmc_get_error_string"));
-            freeJitInfoFn = getFunctionType<freeJitInfoFnTy>(Dylib.getAddressOfSymbol("cmc_free_jit_info"));
-        }
-    }
-
-    bool isValid()
-    {
-        if (!Dylib.isValid())
-            return false;
-
-        if (!compileFn) {
-            ErrMsg = "cannot load symbol cmc_load_and_compile";
-            return false;
-        }
-        if (!getErrorFn) {
-            ErrMsg = "cannot load symbol cmc_get_error_string";
-            return false;
-        }
-        if (!freeJitInfoFn) {
-            ErrMsg = "cannot load symbol cmc_free_jit_info";
-            return false;
-        }
-        return true;
-    }
-};
-
-// When an internal otion "-cmc" is present, compile the input as a CM program.
 static bool TranslateBuildCM(const STB_TranslateInputArgs* pInputArgs,
-                             STB_TranslateOutputArgs* pOutputArgs,
-                             TB_DATA_FORMAT inputDataFormatTemp,
-                             const IGC::CPlatform& IGCPlatform,
-                             float profilingTimerResolution)
-{
-    CMCLibraryLoader Loader;
-    if (!Loader.isValid()) {
-        SetErrorMessage(Loader.ErrMsg, *pOutputArgs);
-        return false;
-    }
-
-    cmc_jit_info* output = nullptr;
-    const std::string cmd = getCommandLine(pInputArgs, inputDataFormatTemp, IGCPlatform);
-    cmc_error_t status = Loader.compileFn(pInputArgs->pInput, pInputArgs->InputSize, cmd.c_str(), &output);
-    if (status == cmc_error_t::CMC_SUCCESS) {
-        // TODO: We need to refactor binary packing code.
-        // Right now, the output is just Gen ASM, which should
-        // be replaced by an ELF binary file with patch tokens.
-        if (output) {
-            size_t ByteSize = output->binary_size;
-            char* Bin = new char[ByteSize];
-            memcpy_s(Bin, ByteSize, (char*)output->binary, ByteSize);
-            pOutputArgs->OutputSize = ByteSize;
-            pOutputArgs->pOutput = Bin;
-
-            // Free the resource allocated in the dll side.
-            Loader.freeJitInfoFn(output);
-        }
-        return true;
-    }
-
-    // Set the error message.
-    const char* Err = Loader.getErrorFn(status);
-    SetErrorMessage(Err, *pOutputArgs);
-    return false;
-}
+    STB_TranslateOutputArgs* pOutputArgs,
+    TB_DATA_FORMAT inputDataFormatTemp,
+    const IGC::CPlatform& IGCPlatform,
+    float profilingTimerResolution);
 
 bool TranslateBuild(
     const STB_TranslateInputArgs* pInputArgs,
@@ -1333,6 +1209,136 @@ TRANSLATION_BLOCK_API void Delete(
     CIGCTranslationBlock::Delete(pIGCTranslationBlock);
 }
 
+// CMC compilation implementation.
+// Convert an opaque pointer to a function pointer.
+template <typename func_ptr_type>
+inline func_ptr_type getFunctionType(void* ptr)
+{
+    intptr_t val = reinterpret_cast<intptr_t>(ptr);
+    return reinterpret_cast<func_ptr_type>(val);
 }
 
+// Generate compile options.
+static std::string getCommandLine(const STB_TranslateInputArgs* pInputArgs,
+    TB_DATA_FORMAT inputDataFormatTemp,
+    const IGC::CPlatform& IGCPlatform)
+{
+    std::string cmd;
 
+    // Set the input file type.
+    if (inputDataFormatTemp == TB_DATA_FORMAT::TB_DATA_FORMAT_SPIR_V)
+        cmd.append(" -filetype=spv");
+    else
+        llvm_unreachable("not implemented yet");
+
+    // Set the HW platform
+    switch (IGCPlatform.GetPlatformFamily()) {
+    default:
+        llvm_unreachable("not implemented yet");
+        break;
+    case GFXCORE_FAMILY::IGFX_GEN9_CORE:
+        cmd.append(" -platform=GEN9");
+        break;
+    case GFXCORE_FAMILY::IGFX_GEN10_CORE:
+        cmd.append(" -platform=GEN10");
+        break;
+    case GFXCORE_FAMILY::IGFX_GEN10LP_CORE:
+        cmd.append(" -platform=GEN10LP");
+        break;
+    }
+    return move(cmd);
+}
+
+#if defined(_WIN64)
+#define CMC_LIBRARY_NAME "igcmc64.dll"
+#elif defined(_WIN32)
+#define CMC_LIBRARY_NAME "igcmc32.dll"
+#else
+#define CMC_LIBRARY_NAME "libigcmc.so"
+#endif
+
+// Utility class to load and compile a CMC program.
+struct CMCLibraryLoader {
+    using compileFnTy = std::add_pointer<decltype(cmc_load_and_compile)>::type;
+    using getErrorFnTy = std::add_pointer<decltype(cmc_get_error_string)>::type;
+    using freeJitInfoFnTy = std::add_pointer<decltype(cmc_free_jit_info)>::type;
+
+    using DL = llvm::sys::DynamicLibrary;
+    DL Dylib;
+    std::string ErrMsg;
+
+    compileFnTy compileFn = nullptr;
+    getErrorFnTy getErrorFn = nullptr;
+    freeJitInfoFnTy freeJitInfoFn = nullptr;
+
+    CMCLibraryLoader()
+    {
+        Dylib = DL::getPermanentLibrary(CMC_LIBRARY_NAME, &ErrMsg);
+        if (Dylib.isValid()) {
+            compileFn = getFunctionType<compileFnTy>(Dylib.getAddressOfSymbol("cmc_load_and_compile"));
+            getErrorFn = getFunctionType<getErrorFnTy>(Dylib.getAddressOfSymbol("cmc_get_error_string"));
+            freeJitInfoFn = getFunctionType<freeJitInfoFnTy>(Dylib.getAddressOfSymbol("cmc_free_jit_info"));
+        }
+    }
+
+    bool isValid()
+    {
+        if (!Dylib.isValid())
+            return false;
+
+        if (!compileFn) {
+            ErrMsg = "cannot load symbol cmc_load_and_compile";
+            return false;
+        }
+        if (!getErrorFn) {
+            ErrMsg = "cannot load symbol cmc_get_error_string";
+            return false;
+        }
+        if (!freeJitInfoFn) {
+            ErrMsg = "cannot load symbol cmc_free_jit_info";
+            return false;
+        }
+        return true;
+    }
+};
+
+// When an internal otion "-cmc" is present, compile the input as a CM program.
+static bool TranslateBuildCM(const STB_TranslateInputArgs* pInputArgs,
+    STB_TranslateOutputArgs* pOutputArgs,
+    TB_DATA_FORMAT inputDataFormatTemp,
+    const IGC::CPlatform& IGCPlatform,
+    float profilingTimerResolution)
+{
+    CMCLibraryLoader Loader;
+    if (!Loader.isValid()) {
+        SetErrorMessage(Loader.ErrMsg, *pOutputArgs);
+        return false;
+    }
+
+    cmc_jit_info* output = nullptr;
+    const std::string cmd = getCommandLine(pInputArgs, inputDataFormatTemp, IGCPlatform);
+    cmc_error_t status = Loader.compileFn(pInputArgs->pInput, pInputArgs->InputSize, cmd.c_str(), &output);
+    if (status == cmc_error_t::CMC_SUCCESS) {
+        // TODO: We need to refactor binary packing code.
+        // Right now, the output is just Gen ASM, which should
+        // be replaced by an ELF binary file with patch tokens.
+        if (output) {
+            size_t ByteSize = output->binary_size;
+            char* Bin = new char[ByteSize];
+            memcpy_s(Bin, ByteSize, (char*)output->binary, ByteSize);
+            pOutputArgs->OutputSize = ByteSize;
+            pOutputArgs->pOutput = Bin;
+
+            // Free the resource allocated in the dll side.
+            Loader.freeJitInfoFn(output);
+        }
+        return true;
+    }
+
+    // Set the error message.
+    const char* Err = Loader.getErrorFn(status);
+    SetErrorMessage(Err, *pOutputArgs);
+    return false;
+}
+
+} // namespace TC

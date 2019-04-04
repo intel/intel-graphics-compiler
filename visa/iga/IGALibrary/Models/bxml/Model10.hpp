@@ -96,8 +96,8 @@ namespace iga {
             "\n"
             "Register source operands can use source modifiers:\n"
             "\n"
-            "[Pre-DevBDW]: Any source modifier is numeric, optionally changing a source value s to -s, abs(s), or -abs(s) before the AND operation. \n"
-            "[DevBDW+]: Any source modifier is logical, optionally changing a source value s to ~s (inverting all source bits). This capability allows expressions like a AND (NOT b) to be calculated with one instruction. \n"
+            "[Pre-DevBDW]: Any source modifier is numeric, optionally changing a source value s to -s, abs(s), or -abs(s) before the AND operation.\n"
+            "[DevBDW+]: Any source modifier is logical, optionally changing a source value s to ~s (inverting all source bits). This capability allows expressions like a AND (NOT b) to be calculated with one instruction.\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"
             "\n"
             "\n"
@@ -634,8 +634,7 @@ namespace iga {
             "The difference between calla and call is that calla uses JIP as the IP value rather than adding it to the IP value.\n"
             "\n"
             "\n"
-            "Format:\n"
-            "[(pred)] calla (exec_size) dst JIP\n",
+            "Format: [(pred)] calla (exec_size) dst JIP\n",
             OpSpec::Format::JUMP_UNARY_CALL_REGIMM, {
                 // D,UD <-
                 {TYPE(Type::D)|TYPE(Type::UD),ENUM_BITSET_EMPTY_VALUE}
@@ -940,6 +939,9 @@ namespace iga {
             "\n"
             "Format:\n"
             "else (exec_size) JIP  UIP  branch_ctrl\n"
+            "\n"
+            "\n"
+            "An else instruction must not be followed by any instruction requiring register indirect access on source operands\n"
             "\n"
             "\n"
             "If all channels are redirected (by else or before else), relative jump is performed to the location specified by <JIP> + 1.\n",
@@ -1255,7 +1257,7 @@ namespace iga {
             "\n"
             "mul (8) acc0:d r2.0<8;8,1>:d r3.0<16;8,2>:uw\n"
             "mach (8) r5.0<1>:d r2.0<8;8,1>:d r3.0<8;8,1>:d\n"
-            "mov (8) r6.0<1>:d acc0:d // Low 32 bits. \n"
+            "mov (8) r6.0<1>:d acc0:d // Low 32 bits.\n"
             "\n"
             "\n"
             "\n"
@@ -1265,7 +1267,7 @@ namespace iga {
             "mov (8) r3.0<1>:d -r3<8;8,1>:d\n"
             "mul (8) acc0:d r2.0<8;8,1>:d r3.0<16;8,2>:uw\n"
             "mach (8) r5.0<1>:d r2.0<8;8,1>:d r3.0<8;8,1>:d // High 32 bits\n"
-            "mov (8) r6.0<1>:d acc0:d // Low 32 bits. \n"
+            "mov (8) r6.0<1>:d acc0:d // Low 32 bits.\n"
             "\n"
             "\n"
             "\n"
@@ -1714,17 +1716,17 @@ namespace iga {
             "\n"
             "\n"
             "\n"
-            "The source register is calculated by adding the register portion of the first index register with the \n"
+            "The source register is calculated by adding the register portion of the first index register with the\n"
             "register portion of the address immediate, a0.0[11:5] + addr_imm[9:5]\n"
             "\n"
             "\n"
             "\n"
-            "For byte movi, byte0 of the destination is selected by (a0.0[4:0]), byte1 is selected by (a0.1[4:0]), ..., \n"
+            "For byte movi, byte0 of the destination is selected by (a0.0[4:0]), byte1 is selected by (a0.1[4:0]), ...,\n"
             "and byte7 is selected by (a0.7[4:0]). The rest of the bytes are undefined.\n"
             "\n"
             "\n"
             "\n"
-            "For word movi, byte0 of the destination is selected by (a0.0[4:1] & 0), byte1 is selected by (a0.0[4:1] \n"
+            "For word movi, byte0 of the destination is selected by (a0.0[4:1] & 0), byte1 is selected by (a0.0[4:1]\n"
             "& 1), byte2 is selected by (a0.1[4:1] & 0), byte3 is selected by (a0.1[4:1] & 1), ..., and byte15\n"
             "is selected by (a0.7[4:1] & 1). The rest of the bytes are undefined.\n"
             "\n"
@@ -2140,9 +2142,21 @@ namespace iga {
         /* Op::414 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::415 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::416 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::417 */ {Op::SENDS, "sends", "sends", 0x33, "Split Send Message",
+        /* Op::417 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::418 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::419 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::420 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::421 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::422 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::423 */ {Op::SENDS, "sends", "sends", 0x33, "Split Send Message",
             "The sends instruction performs data communication between a thread and external function units, including shared functions (Sampler, Data Port Read, Data Port Write, URB, and Message Gateway) and some fixed functions (e.g. Thread Spawner, who also have an unique Shared Function ID). The sends instruction adds an entry to the EU\'s message request queue. The request message is stored in a block of contiguous GRF registers. The response message, if present, will be returned to a block of contiguous GRF registers. The return GRF writes may be in any order depending on the external function units. <src0> and <src1> are the lead GRF registers for the first and second block of the request respectively. <dest> is the lead GRF register for response. The message descriptor field <desc> contains the Message Length (the number of consecutive GRF registers corresponding to src0) and the Response Length (the number of consecutive GRF registers). It also contains the header present bit, and the function control signals. The extend message descriptor field <ex_desc> contains the target function ID, the Extended Message Length (the number of consecutive GRF registers corresponding to src1) and the extended function control signals. WrEn is forwarded to the target function in the message sideband.\n"
             "The sends instruction is the only way to terminate a thread. When the EOT (End of Thread) bit of <ex_desc> is set, it indicates the end of thread to the EU, the Thread Dispatcher and, in most cases, the parent fixed function.\n"
+            "\n"
+            "\n"
+            "Message descriptor field <desc> can be a 32-bit immediate, imm32, or a 32-bit scalar register, <reg32a>. GEN restricts that the 32-bit scalar register <reg32a> must be the leading dword of the address register. It should be in the form of a0.0<0;1,0>:ud. When <desc> is a register operand, only the lower 31 bits of <reg32a> are used.\n"
+            "\n"
+            "\n"
+            "Extended Message descriptor field <ex_desc> can be a 32-bit immediate, imm32 only. The bits3:0 of the <ex_desc> specifies the SFID for the message.The EOT field always comes from bit127 of the instruction word, which is the bit5 of <ex_desc>. A thread must terminate with a sends instruction with EOT turned on. The bits9:6 of <ex_desc> specify the extended message length and bits31:16 specify the 16bit extended function control. Interpretation of the extended function control signals is subject to the target external function.</ex_desc></ex_desc></ex_desc></ex_desc>\n"
             "\n"
             "\n"
             "Extended Message descriptor field <ex_desc> can be a 32-bit immediate, imm32 or a 32bit scalar register, <reg32a>. The bits3:0 of the <ex_desc> specifies the SFID for the message.The EOT field always comes from bit127 of the instruction word, which is the bit5 of <ex_desc>. A thread must terminate with a sends instruction with EOT turned on. The bits9:6 of <ex_desc> specify the extended message length and bits31:12 specify the 20bit extended function control. Interpretation of the extended function control signals is subject to the target external function. The scalar register <reg32a> is selected when SelReg32ExDesc is set, ExDesc.RegNum[3:0] provides the addressing for reg32a for extended message descriptor. This selects one of the index sub registers. Subregisters selected are always aligned to dword. This implies, the even index subregisters must be used.</reg32a></ex_desc></ex_desc></ex_desc></reg32a></ex_desc>\n"
@@ -2202,7 +2216,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::418 */ {Op::SENDSC, "sendsc", "sendsc", 0x34, "Conditional Split Send Message",
+        /* Op::424 */ {Op::SENDSC, "sendsc", "sendsc", 0x34, "Conditional Split Send Message",
             "The sendsc instruction has the same behavior as the sends instruction except the following.\n"
             "sendsc first checks the dependent threads inside the Thread Dependency Register. There are up to 8 dependent threads in the TDR register. The sendsc instruction executes only when all the dependent threads in the TDR register are retired.\n"
             "\n"
@@ -2219,12 +2233,6 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::419 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::420 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::421 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::422 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::423 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::424 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::425 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::426 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::427 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
@@ -2232,7 +2240,19 @@ namespace iga {
         /* Op::429 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::430 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
         /* Op::431 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::432 */ {Op::SHL, "shl", "shl", 0x9, "Shift Left",
+        /* Op::432 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::433 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::434 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::435 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::436 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::437 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::438 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::439 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::440 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::441 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::442 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::443 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::444 */ {Op::SHL, "shl", "shl", 0x9, "Shift Left",
             "Perform component-wise logical left shift of the bits in src0 by the shift count indicated in src1, storing the results in dst, inserting zero bits in the number of LSBs indicated by the shift count.\n"
             "\n"
             "Hardware detects overflow properly and uses it to perform any saturation operation on the result, as long as the shifted result is within 33 bits. Otherwise, the result is undefined.\n"
@@ -2263,7 +2283,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::433 */ {Op::SHR, "shr", "shr", 0x8, "Shift Right",
+        /* Op::445 */ {Op::SHR, "shr", "shr", 0x8, "Shift Right",
             "Perform component-wise logical right shift with zero insertion of the bits in src0 by the shift count indicated in src1, storing the results in dst. Insert zero bits in the number of MSBs indicated by the shift count.\n"
             "\n"
             "src0 and dst can have different types and can be signed or unsigned.\n"
@@ -2296,7 +2316,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::434 */ {Op::SMOV, "smov", "smov", 0xa, "Scattered Move",
+        /* Op::446 */ {Op::SMOV, "smov", "smov", 0xa, "Scattered Move",
             "The smov instruction moves the components in src0 into dst.\n"
             "\n"
             "For each enabled channel, copy src0 to dst. The immediate is used to selectively enable channels without using flags.\n"
@@ -2330,7 +2350,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::435 */ {Op::SUBB, "subb", "subb", 0x4f, "Integer Subtraction with Borrow",
+        /* Op::447 */ {Op::SUBB, "subb", "subb", 0x4f, "Integer Subtraction with Borrow",
             "The subb instruction performs component-wise subtraction of src0 and src1 and stores the results in dst, it also stores the borrow into acc.\n"
             "\n"
             "If the operation produces a borrow (src0 < src1), write 0x00000001 to acc, else write 0x00000000 to acc.\n"
@@ -2348,13 +2368,13 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::436 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::437 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::438 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::439 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::440 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::441 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
-        /* Op::442 */ {Op::WAIT, "wait", "wait", 0x30, "Wait Notification",
+        /* Op::448 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::449 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::450 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::451 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::452 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::453 */ {Op::INVALID, nullptr, nullptr, 0x0, nullptr, nullptr, OpSpec::Format::INVALID, {}, OpSpec::Attr::NONE, Op::INVALID, Op::INVALID, 0, -1, {{nullptr,0,0},{nullptr,0,0}}},
+        /* Op::454 */ {Op::WAIT, "wait", "wait", 0x30, "Wait Notification",
             "The wait instruction evaluates the value of the notification count register nreg. If nreg is zero, thread execution is suspended and the thread is put in \'wait_for_notification\' state. If nreg is not zero (i.e., one or more notifications have been received), nreg is decremented by one and the thread continues executing on the next instruction. If a thread is in the \'wait_for_notification\' state, when a notification arrives, the notification count register is incremented by one. As the notification count register becomes nonzero, the thread wakes up to continue execution and at the same time the notification register is decremented by one. If only one notification arrived, the notification register value becomes zero. However, during the above mentioned time period, it is possible that more notifications may arrive, making the notification register nonzero again.\n"
             "\n"
             "When multiple notifications are received, software must use wait instructions to decrement notification count registers for each notification.\n"
@@ -2374,7 +2394,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::443 */ {Op::WHILE, "while", "while", 0x27, "While",
+        /* Op::455 */ {Op::WHILE, "while", "while", 0x27, "While",
             "The while instruction marks the end of a do-while block. The instruction first evaluates the loop termination condition for each channel based on the current channel enables and the predication flags specified in the instruction. If any channel has not terminated, a branch is taken to a destination address specified in the instruction, and the loop continues for those channels. Otherwise, execution continues to the next instruction.ld point to the first instruction with the do label of the do-while block of code. It should be a negative number for the backward referencing.\n"
             "\n"
             "If SPF is ON, none of the PcIP are updated.\n"
@@ -2389,7 +2409,7 @@ namespace iga {
             0 /*subopsLength */,
             -1 /* functionControlValue = N/A */,
             {{nullptr,0,0},{nullptr,0,0}} /* functionControlFields */},
-        /* Op::444 */ {Op::XOR, "xor", "xor", 0x7, "Logic Xor",
+        /* Op::456 */ {Op::XOR, "xor", "xor", 0x7, "Logic Xor",
             "The xor instruction performs component-wise logic XOR operation between src0 and src1 and stores the results in dst.\n"
             "\n"
             "This operation does not produce sign or overflow conditions. Only the .e/.z or .ne/.nz conditional modifiers should be used.\n"

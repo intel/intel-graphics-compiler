@@ -560,14 +560,14 @@ namespace iga
             GED_CHANNEL_OFFSET gedCtrl = GED_CHANNEL_OFFSET_INVALID;
             switch (ectrl)
             {
-            case iga::ChannelOffset::M0: gedCtrl = GED_CHANNEL_OFFSET_M0; break;
-            case iga::ChannelOffset::M4: gedCtrl = GED_CHANNEL_OFFSET_M4; break;
-            case iga::ChannelOffset::M8: gedCtrl = GED_CHANNEL_OFFSET_M8; break;
-            case iga::ChannelOffset::M12: gedCtrl = GED_CHANNEL_OFFSET_M12; break;
-            case iga::ChannelOffset::M16: gedCtrl = GED_CHANNEL_OFFSET_M16; break;
-            case iga::ChannelOffset::M20: gedCtrl = GED_CHANNEL_OFFSET_M20; break;
-            case iga::ChannelOffset::M24: gedCtrl = GED_CHANNEL_OFFSET_M24; break;
-            case iga::ChannelOffset::M28: gedCtrl = GED_CHANNEL_OFFSET_M28; break;
+            case ChannelOffset::M0: gedCtrl = GED_CHANNEL_OFFSET_M0; break;
+            case ChannelOffset::M4: gedCtrl = GED_CHANNEL_OFFSET_M4; break;
+            case ChannelOffset::M8: gedCtrl = GED_CHANNEL_OFFSET_M8; break;
+            case ChannelOffset::M12: gedCtrl = GED_CHANNEL_OFFSET_M12; break;
+            case ChannelOffset::M16: gedCtrl = GED_CHANNEL_OFFSET_M16; break;
+            case ChannelOffset::M20: gedCtrl = GED_CHANNEL_OFFSET_M20; break;
+            case ChannelOffset::M24: gedCtrl = GED_CHANNEL_OFFSET_M24; break;
+            case ChannelOffset::M28: gedCtrl = GED_CHANNEL_OFFSET_M28; break;
             default: break;
             }
             return gedCtrl;

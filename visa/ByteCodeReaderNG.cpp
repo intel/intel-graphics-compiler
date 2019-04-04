@@ -54,7 +54,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common_ISA.h"
 #include "Common_ISA_framework.h"
 #include "Common_ISA_util.h"
-#include "cm_portability.h"
+#include "VISADefines.h"
 #include "IsaDisassembly.h"
 
 #include "VISAKernel.h"

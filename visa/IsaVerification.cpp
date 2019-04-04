@@ -35,7 +35,7 @@ using namespace std;
 #include "Common_ISA.h"
 #include "Common_ISA_util.h"
 
-#include "cm_portability.h"
+#include "VISADefines.h"
 #include "IsaVerification.h"
 
 #include "IsaDisassembly.h"

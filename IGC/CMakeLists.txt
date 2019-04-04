@@ -3300,7 +3300,6 @@ if(TARGET LLVMCore)
     set(IGC_BUILD__LLVM_LIBS_TO_LINK ${IGC_BUILD__LLVM_STATIC_LIBS_TO_LINK})
 else()
 
-
     message(STATUS "[IGC] LLVM targets are not defined. Searching for LLVM.")
     if(NOT IGC_PREFERRED_LLVM_VERSION)
         set(IGC_PREFERRED_LLVM_VERSION "7.0.0")

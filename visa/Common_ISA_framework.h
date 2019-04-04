@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 #include <fstream>
 
-#include "cm_portability.h"
+#include "VISADefines.h"
 #include "Common_ISA.h"
 #include "visa_igc_common_header.h"
 #include "IsaDescription.h"

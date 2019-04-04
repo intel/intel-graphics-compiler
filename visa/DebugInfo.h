@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DEBUG_INFO_H
 #define DEBUG_INFO_H
 #include <string>
-#include "cm_portability.h"
+#include "VISADefines.h"
 #include "FlowGraph.h"
 #include "Common_BinaryEncoding.h"
 #include "RegAlloc.h"

@@ -25,41 +25,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ======================= end_copyright_notice ==================================*/
 
 #pragma once
-#include "cm_portability.h"
+#include "VISADefines.h"
 #include "JitterDataStruct.h"
 
-
-#ifdef DLL_MODE
-
 /**
-    API between CMRT and Jitter
-    Three functions are currently exported:
+    API between CMRT and Jitter:
     JITCompile
     JITCompileWithRelocation
     freeBlock
     getJITVersion
-*/  
-
-#define JIT_SUCCESS                     0
-#define JIT_INVALID_INPUT               1
-#define JIT_INTERNAL_ERROR              2
-#define JIT_CISA_ERROR                  3
-#define JIT_KERNEL_NOT_FOUND            4
-#define JIT_INVALID_PLATFORM            5
-#define JIT_UNSUPPORTED_CISA_VERSION    6
-#define JIT_OUT_OF_MEMORY_ERROR         7
-
-#define  CM_JIT_PROF_INFO_SIZE 4096
-#define  CM_PROFILE_KIND_DUAL_2D_SURFACE_STATES    0
+*/
 
 /**
  *
  *  JIT compile a kernel
  *  kernelName:     name of the kernel, must be < 255 chars.
  *  kernelIsa:      common ISA binary of the kernel supplied by CMRT.
- *  kernelIsaSize:  size of the CISA binary in bytes. 
- *  genBinary:      pointer to the Gen binary returned by the jitter.  This is 
- *                  allocated by the jitter, and the runtime should free it when 
+ *  kernelIsaSize:  size of the CISA binary in bytes.
+ *  genBinary:      pointer to the Gen binary returned by the jitter.  This is
+ *                  allocated by the jitter, and the runtime should free it when
  *                  it's done by calling the freeBlock() function.
  *  genBinarySize:  size in bytes of the Gen binary returned by the jitter.
  *  platform:       platform for the Gen binary.  Currently supported values are
@@ -69,26 +53,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *                  and it should support any CISA file below that version
  *  minorVersion:   minor version of the CISA binary
  *  numArgs:        number of arguments for this JIT compilation.
- *  args:           list of arguments to the Jitter.  The complete list of options can be found 
- *                  in Option.cpp
+ *  args:           list of arguments to the Jitter.  The complete list of options
+*                   can be found in Option.cpp
  *  errorMsg:       If JIT compiling fails, the error message will be returned via
  *                  this parameter.  This buffer is allocated by the runtime.
  *  jitInfo:        A structure containing auxiliary information about the JIT
- *                  compilation that the jitter can pass back to the runtime.  
- *                  
+ *                  compilation that the jitter can pass back to the runtime.
  */
-DLL_EXPORT int JITCompile( const char* kernelName, 
-                                      const void* kernelIsa, 
-                                      unsigned int kernelIsaSize,
-                                      void* &genBinary,
-                                      unsigned int& genBinarySize,
-                                      const char* platform,
-                                      int majorVersion,
-                                      int minorVersion,
-                                      int numArgs,
-                                      const char* args[],
-                                      char* errorMsg,
-                                      FINALIZER_INFO* jitInfo);
+DLL_EXPORT int JITCompile(const char* kernelName,
+                          const void* kernelIsa,
+                          unsigned int kernelIsaSize,
+                          void* &genBinary,
+                          unsigned int& genBinarySize,
+                          const char* platform,
+                          int majorVersion,
+                          int minorVersion,
+                          int numArgs,
+                          const char* args[],
+                          char* errorMsg,
+                          FINALIZER_INFO* jitInfo);
 
 /**
   * In addition to JITCompile, following API adds support for relocation of immediate operands.
@@ -101,31 +84,30 @@ DLL_EXPORT int JITCompile( const char* kernelName,
   *                        due to optimizations - loop unrolling (which JIT doesnt do today),
   *                        DCE. For most purposes though, number of input and output relocs
   *                        have a 1:1 correspondence.
-  * outputRelocs:          Actual relocation data computed post compilation of VISA to Gen 
+  * outputRelocs:          Actual relocation data computed post compilation of VISA to Gen
   *                        binary.
   */
 
 DLL_EXPORT int JITCompileWithRelocation(const char* kernelName,
-                                      const void* kernelIsa,
-                                      unsigned int kernelIsaSize,
-                                      void* &genBinary,
-                                      unsigned int& genBinarySize,
-                                      const char* platform,
-                                      int majorVersion,
-                                      int minorVersion,
-                                      int numArgs,
-                                      const char* args[],
-                                      char* errorMsg,
-                                      FINALIZER_INFO* jitInfo,
-                                      const unsigned int numInputRelocEntries,
-                                      const BasicRelocEntry* inputRelocs,
-                                      unsigned int& numOutputRelocs,
-                                      BasicRelocEntry*& outputRelocs);
+                                        const void* kernelIsa,
+                                        unsigned int kernelIsaSize,
+                                        void* &genBinary,
+                                        unsigned int& genBinarySize,
+                                        const char* platform,
+                                        int majorVersion,
+                                        int minorVersion,
+                                        int numArgs,
+                                        const char* args[],
+                                        char* errorMsg,
+                                        FINALIZER_INFO* jitInfo,
+                                        const unsigned int numInputRelocEntries,
+                                        const BasicRelocEntry* inputRelocs,
+                                        unsigned int& numOutputRelocs,
+                                        BasicRelocEntry*& outputRelocs);
 
 /**
  *
- *  Interface for CMRT to free the kernel binary allocated 
- *  by the Jitter
+ *  Interface for CMRT to free the kernel binary allocated by the Jitter
  */
 DLL_EXPORT void freeBlock(void* ptr);
 
@@ -134,7 +116,6 @@ DLL_EXPORT void freeBlock(void* ptr);
  *  Returns the CISA version #(<major_version>.<minor_version>) for this jitter.
  *  a jitter will support all vISA objects whose major version is the same as the jiter
  *  and whose minor version is <= jitter's minor version.
- *  
+ *
  */
 DLL_EXPORT void getJITVersion(unsigned int& majorV, unsigned int& minorV);
-#endif

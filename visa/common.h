@@ -30,14 +30,97 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cassert>
 #include <iostream>
 
-#include "cm_portability.h"
+#include "VISADefines.h"
 
-#if 0
-// used for debugging memory leaks, only works for debug build
-#define _CRTDBG_MAP_ALLOC
-#include <stdlib.h>
-#include <crtdbg.h>
+// FIXME: the following _s functions are copied from secure_mem.h and secure_string.h,
+// because I don't have access the gfxdev files in CMRT environment. They should be removed
+// when CMRT is checked into the driver.
+#ifndef _WIN32
+#include <cstring>
+#include <errno.h>
+
+using std::memcpy;
+using std::strncpy;
+
+typedef int errno_t;
+static errno_t memcpy_s(void* dst, size_t numberOfElements, const void* src, size_t count)
+{
+    if ((dst == NULL) || (src == NULL)) {
+        return EINVAL;
+    }
+    if (numberOfElements < count) {
+        return ERANGE;
+    }
+    memcpy(dst, src, count);
+    return 0;
+}
+
+static inline int
+strcpy_s(char* strDestination, size_t numberOfElements, const char* strSource)
+{
+    strncpy(strDestination, strSource, numberOfElements);
+    strDestination[numberOfElements - 1] = '\0';
+    return 0;
+}
+
+static inline int
+strncpy_s(char* strDestination, size_t numberOfElements, const char* strSource, size_t count)
+{
+    if (numberOfElements - 1 > count) {
+        strncpy(strDestination, strSource, count);
+        strDestination[count] = '\0';
+    } else {
+        strncpy(strDestination, strSource, numberOfElements - 1);
+        strDestination[numberOfElements - 1] = '\0';
+    }
+    return 0;
+}
 #endif
+
+/* stdio.h portability code end */
+
+/* stdint.h portability code start */
+#ifndef _WIN32
+// FIXME: do all of our configs support inttypes.h?
+#include <stdint.h>
+#else
+#include <inttypes.h>
+#endif /* _WIN32 */
+/* stdint.h portability code end */
+
+/* Windows types for non-Windows start */
+#if !defined(_WIN32) && !defined(_WIN64)
+#define SUCCEED 1
+#define ERROR 0
+
+typedef char CHAR;
+typedef int INT;
+typedef short SHORT;
+typedef long LONG;
+typedef long long LONGLONG;
+
+typedef uint32_t UINT32;
+typedef uint32_t DWORD;
+typedef uint16_t WORD;
+
+typedef double DOUBLE;
+typedef float FLOAT;
+
+union LARGE_INTEGER {
+    struct dummy {
+        DWORD LowPart;
+        LONG HighPart;
+    };
+
+    struct u {
+        DWORD LowPart;
+        LONG HighPart;
+    };
+
+    LONGLONG QuadPart;
+};
+
+#endif /* Windows types for non-Windows end */
 
 //Common code for exception handling, debug messages, platform checks, etc.
 

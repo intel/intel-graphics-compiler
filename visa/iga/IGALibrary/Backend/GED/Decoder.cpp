@@ -257,8 +257,7 @@ void DecoderBase::decodeInstructions(
                 auto os = m_model.lookupOpSpec(op);
                 std::stringstream ss;
                 if (os.format == OpSpec::GROUP) {
-                    ss << std::hex <<
-                        "unsupported pseudo op (sub function of " <<
+                    ss << "unsupported pseudo op (sub function of " <<
                         os.mnemonic << ")";
                 } else {
                     ss << std::hex << "0x" << (unsigned)op <<

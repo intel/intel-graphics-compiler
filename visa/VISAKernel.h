@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "CompilerStats.h"
 
+#define MAX_ERROR_MSG_LEN            511
 #define vISA_NUMBER_OF_OPNDS_IN_POOL 47
 
 //forward declaration
