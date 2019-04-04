@@ -1882,7 +1882,6 @@ endfunction()
 # One standard configuration + "ReleaseInternal" custom configurations.
 set(IGC_CMAKE_CONFIGURATION_TYPES
   "Debug"
-  "ReleaseInternal"
   "Release"
 )
 set(IGC_CMAKE_CONFIGURATION_TYPES ${IGC_CMAKE_CONFIGURATION_TYPES} CACHE STRING "IGC available build configurations." FORCE)
