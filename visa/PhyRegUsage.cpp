@@ -74,7 +74,7 @@ PhyRegUsage::PhyRegUsage(PhyRegUsageParms& p) :
     }
     else if (regFile == G4_FLAG)
     {
-        auto numFlags = getNumFlagRegisters();
+        auto numFlags = builder.getNumFlagRegisters();
         for (unsigned i = 0; i < numFlags; i++)
             availableFlags[i] = true;
     }
@@ -204,7 +204,7 @@ void PhyRegUsage::freeRegs(LiveRange* varBasis)
     {
         MUST_BE_TRUE(varBasis->getPhyReg()->isFlag(), ERROR_UNKNOWN);
         freeContiguous(availableFlags, varBasis->getPhyRegOff(),
-            numAllocUnit(decl->getNumElems(), decl->getElemType()), getNumFlagRegisters());
+            numAllocUnit(decl->getNumElems(), decl->getElemType()), builder.getNumFlagRegisters());
     }
     else // not yet handled
         MUST_BE_TRUE(false, ERROR_UNKNOWN);
@@ -1191,17 +1191,10 @@ bool PhyRegUsage::assignRegs(bool  highInternalConflict,
         // if the number of reg needed is more than 1, then we go ahead
         //
         unsigned regNeeded = numAllocUnit(decl->getNumElems(), decl->getElemType());
-        if (findContiguousAddrFlag(availableFlags, forbidden, subAlign, regNeeded, getNumFlagRegisters(), startFLAGReg, i))
+        if (findContiguousAddrFlag(availableFlags, forbidden, subAlign, regNeeded, builder.getNumFlagRegisters(), startFLAGReg, i))
         {
             // subregoffset should consider the declare data type
-            if (i >= 2)
-            {
-                varBasis->setPhyReg(regPool.getF1Reg(), i - 2);
-            }
-            else
-            {
-                varBasis->setPhyReg(regPool.getF0Reg(), i);
-            }
+            varBasis->setPhyReg(regPool.getFlagAreg(i / 2), i & 1);
             return true;
         }
         return false;
@@ -1226,7 +1219,7 @@ unsigned LiveRange::getForbiddenVectorSize()
     case G4_ADDRESS:
         return getNumAddrRegisters();
     case G4_FLAG:
-        return getNumFlagRegisters();
+        return gra.builder.getNumFlagRegisters();
     default:
         assert(false && "illegal reg file");
         return 0;

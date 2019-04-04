@@ -467,4 +467,10 @@
         return getOptions()->getOption(vISA_useMultiThreadedLatencies);
     }
 
+    // each flag register is 16-bit
+    uint32_t getNumFlagRegisters(void) 
+    { 
+        return 4;
+    }
+
     // end HW capabilities

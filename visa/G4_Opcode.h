@@ -410,7 +410,6 @@ enum G4_AccRegSel
 
 // global functions
 inline unsigned int getNumAddrRegisters(void) { return 16; }
-inline unsigned int getNumFlagRegisters(void) { return 4; }
 extern short Operand_Type_Rank(G4_Type type);
 uint8_t roundDownPow2(uint8_t n);
 bool isPow2(uint8_t n);

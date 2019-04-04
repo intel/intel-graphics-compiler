@@ -5399,7 +5399,7 @@ void GraphColor::determineColorOrdering()
     else if (liveAnalysis.livenessClass(G4_ADDRESS))
         numColor = getNumAddrRegisters();
     else if (liveAnalysis.livenessClass(G4_FLAG))
-        numColor = getNumFlagRegisters();
+        numColor = builder.getNumFlagRegisters();
 
     unsigned numUnassignedVar = liveAnalysis.getNumUnassignedVar();
 
@@ -5525,10 +5525,10 @@ void PhyRegUsage::updateRegUsage(LiveRange* lr)
     }
     else if (pr->isFlag())
     {
+        auto flagWordOffset = lr->getPhyReg()->asAreg()->getFlagNum() * 2;
         markBusyFlag(0,
             PhyRegUsage::offsetAllocUnit(
-            lr->getPhyReg()->asAreg()->getArchRegType() == AREG_F0 ?
-                lr->getPhyRegOff() : (2 + lr->getPhyRegOff()),
+                flagWordOffset + lr->getPhyRegOff(),
                 dcl->getElemType()),
             PhyRegUsage::numAllocUnit(dcl->getNumElems(), dcl->getElemType()),
             dcl->getNumRows());
@@ -5586,7 +5586,7 @@ bool GraphColor::assignColors(ColorHeuristic colorHeuristicGRF, bool doBankConfl
     bool* availableGregs = (bool *)mem.alloc(sizeof(bool)* totalGRFNum);
     uint32_t* availableSubRegs = (uint32_t *)mem.alloc(sizeof(uint32_t)* totalGRFNum);
     bool* availableAddrs = (bool *)mem.alloc(sizeof(bool)* getNumAddrRegisters());
-    bool* availableFlags = (bool *)mem.alloc(sizeof(bool)* getNumFlagRegisters());
+    bool* availableFlags = (bool *)mem.alloc(sizeof(bool)* builder.getNumFlagRegisters());
     uint8_t* weakEdgeUsage = (uint8_t*)mem.alloc(sizeof(uint8_t)*totalGRFNum);
     G4_RegFileKind rFile = G4_GRF;
     if (liveAnalysis.livenessClass(G4_FLAG))
@@ -7483,10 +7483,17 @@ void GraphColor::addA0SaveRestoreCode()
 void GraphColor::addFlagSaveRestoreCode()
 {
     int count = 0;
-    G4_Declare* tmpFlag0 = builder.createTempFlag(2);
-    tmpFlag0->getRegVar()->setPhyReg(regPool.getF0Reg(), 0);
-    G4_Declare* tmpFlag1 = builder.createTempFlag(2);
-    tmpFlag1->getRegVar()->setPhyReg(regPool.getF1Reg(), 0);
+    int num32BitFlags = builder.getNumFlagRegisters() / 2;
+
+    // each 32-bit flag gets a declare
+    // ToDo: should we use flag ARF directly here?
+    std::vector<G4_Declare*> tmpFlags;
+    for (int i = 0; i < num32BitFlags; ++i)
+    {
+        G4_Declare* tmpFlag = builder.createTempFlag(2);
+        tmpFlag->getRegVar()->setPhyReg(regPool.getFlagAreg(i), 0);
+        tmpFlags.push_back(tmpFlag);
+    }
 
     for (auto bb : builder.kernel.fg.BBs)
     {
@@ -7499,16 +7506,15 @@ void GraphColor::addFlagSaveRestoreCode()
             {
                 // Insert save/restore code because the pseudo node did not get an allocation
                 char* name = builder.getNameString(builder.mem, 32, builder.getIsKernel() ? "SFLAG_k%d_%d" : "SFLAG_f%d_%d", builder.getCUnitId(), count++);
-                G4_Declare* savedDcl1 = builder.createDeclareNoLookup(name, G4_GRF, 2, 1, Type_UD);
+                G4_Declare* savedDcl1 = builder.createDeclareNoLookup(name, G4_GRF, num32BitFlags, 1, Type_UD);
                 {
                     //
                     // (W) mov (1) TMP_GRF.0<1>:ud f0.0:ud
                     // (W) mov (1) TMP_GRF.1<1>:ud f1.0:ud 
                     //
-                    auto createFlagSaveInst = [&](bool isF0)
+                    auto createFlagSaveInst = [&](int index)
                     {
-                        int index = isF0 ? 0 : 1;
-                        auto flagDcl = isF0 ? tmpFlag0 : tmpFlag1;
+                        auto flagDcl = tmpFlags[index];
                         G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, savedDcl1->getRegVar(), 0, index, 1, Type_UD);
                         G4_Operand* src = builder.createSrcRegRegion(Mod_src_undef, Direct, flagDcl->getRegVar(), 0, 0,
                             builder.getRegionScalar(), Type_UD);
@@ -7517,10 +7523,11 @@ void GraphColor::addFlagSaveRestoreCode()
                     };
 
                     auto iter = std::prev(bb->end());
-                    auto saveInst = createFlagSaveInst(true);
-                    bb->insert(iter, saveInst);
-                    saveInst = createFlagSaveInst(false);
-                    bb->insert(iter, saveInst);
+                    for (int i = 0; i < num32BitFlags; ++i)
+                    {
+                        auto saveInst = createFlagSaveInst(i);
+                        bb->insert(iter, saveInst);
+                    }
                 }
 
                 {
@@ -7528,10 +7535,9 @@ void GraphColor::addFlagSaveRestoreCode()
                     // mov (1) f0.0:ud TMP_GRF.0<0;1,0>:ud
                     // mov (1) f1.0:ud TMP_GRF.1<0;1,0>:ud
                     //
-                    auto createRestoreFlagInst = [&](bool isF0)
+                    auto createRestoreFlagInst = [&](int index)
                     {
-                        int index = isF0 ? 0 : 1;
-                        auto flagDcl = isF0 ? tmpFlag0 : tmpFlag1;
+                        auto flagDcl = tmpFlags[index];
                         G4_DstRegRegion* dst = builder.createDstRegRegion(Direct, flagDcl->getRegVar(), 0, 0, 1, Type_UD);
                         RegionDesc* rDesc = builder.getRegionScalar();
                         G4_Operand* src = builder.createSrcRegRegion(
@@ -7540,10 +7546,11 @@ void GraphColor::addFlagSaveRestoreCode()
                             dst, src, nullptr, InstOpt_WriteEnable);
                     };
                     auto insertIt = std::find_if(succ->begin(), succ->end(), [](G4_INST* inst) { return !inst->isLabel(); });
-                    auto restoreInst = createRestoreFlagInst(true);
-                    succ->insert(insertIt, restoreInst);
-                    restoreInst = createRestoreFlagInst(false);
-                    succ->insert(insertIt, restoreInst);
+                    for (int i = 0; i < num32BitFlags; ++i)
+                    {
+                        auto restoreInst = createRestoreFlagInst(i);
+                        succ->insert(insertIt, restoreInst);
+                    }
                 }
             }
         }
@@ -9676,17 +9683,9 @@ void  FlagSpillCleanup::FlagLineraizedStartAndEnd(G4_Declare*  topdcl,
     unsigned int& linearizedEnd)
 {
     G4_Areg* areg = topdcl->getRegVar()->getPhyReg()->asAreg();
-    if (areg->getArchRegType() == AREG_F0)
-    {
-        linearizedStart = 0;
-    }
-    else
-    {
-        linearizedStart = 4; //In size of byte, one flag regsiter is 32 bits.
-    }
+    linearizedStart = areg->getFlagNum() * 4;
     linearizedStart += topdcl->getRegVar()->getPhyRegOff() * topdcl->getElemSize();
     linearizedEnd = linearizedStart + topdcl->getByteSize();
-
     return;
 }
 

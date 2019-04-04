@@ -45,7 +45,7 @@ G4_Declare* SpillManager::createNewSpillLocDeclare(G4_Declare* dcl)
     if (dcl->getRegFile() == G4_FLAG)
     {
         MUST_BE_TRUE(dcl->getElemType() == Type_UW || dcl->getElemType() == Type_W, "flag reg's type should be UW");
-        MUST_BE_TRUE(dcl->getNumElems() <= getNumFlagRegisters(), "Flag reg Spill size exceeds limit");
+        MUST_BE_TRUE(dcl->getNumElems() <= builder.getNumFlagRegisters(), "Flag reg Spill size exceeds limit");
     }
     else
     {
@@ -100,7 +100,6 @@ G4_Declare* SpillManager::createNewTempFlagDeclare(G4_Declare* dcl)
 	char* name = builder.getNameString(builder.mem, 32, "Temp_FSPILL_%d", tempDclId++);
 
     assert(dcl->getRegFile() == G4_FLAG && "dcl should be a flag");
-    MUST_BE_TRUE(dcl->getNumElems() <= getNumFlagRegisters(), "Temp_FLAG exceeds limit");
     G4_Declare* sp = builder.createFlag(dcl->getNumberFlagElements(), name);
 	gra.setBBId(sp, bbId);
     sp->setSubRegAlign(dcl->getSubRegAlign());

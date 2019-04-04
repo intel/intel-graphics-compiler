@@ -2581,9 +2581,18 @@ public:
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
     void emit(std::ostream& output, bool symbolreg=false);
 
-    bool isNullReg() const { return getArchRegType() == AREG_NULL;    }
-    bool isFlag() const    { return getArchRegType() == AREG_F0      ||
-                               getArchRegType() == AREG_F1;      }
+    bool isNullReg() const { return getArchRegType() == AREG_NULL; }
+    bool isFlag() const    
+    { 
+        switch (getArchRegType())
+        {
+            case AREG_F0:
+            case AREG_F1:
+                return true;
+            default:
+                return false;
+        }
+    }
     bool isIpReg() const   { return getArchRegType() == AREG_IP;      }
     bool isA0() const      { return getArchRegType() == AREG_A0;      }
     bool isNReg() const    { return getArchRegType() == AREG_N0      ||
@@ -2604,6 +2613,12 @@ public:
     {
         unsigned short rNum = UNDEFINED_SHORT;
         valid = true;
+
+        if (isFlag())
+        {
+            return getFlagNum();
+        }
+
         switch (getArchRegType()) {
         case AREG_NULL:
         case AREG_A0:
@@ -2615,7 +2630,6 @@ public:
         case AREG_CR0:
         case AREG_TM0:
         case AREG_N0:
-        case AREG_F0:
         case AREG_IP:
         case AREG_TDR0:
         case AREG_SP:
@@ -2623,7 +2637,6 @@ public:
             break;
         case AREG_ACC1:
         case AREG_N1:
-        case AREG_F1:
             rNum = 1;
             break;
         default:
@@ -2642,6 +2655,20 @@ public:
             valid = true;
         }
         return rIndNum;
+    }
+
+    int getFlagNum() const
+    {
+        switch (getArchRegType())
+        {
+        case AREG_F0:
+            return 0;
+        case AREG_F1:
+            return 1;
+        default:
+            assert(false && "should only be called on flag ARF");
+            return -1;
+        }
     }
 };
 
@@ -3426,23 +3453,20 @@ class G4_Predicate final : public G4_Operand
           control(ctrl), align16Control(PRED_ALIGN16_DEFAULT)
     {
         top_dcl = getBase()->asRegVar()->getDeclare();
-
+        MUST_BE_TRUE(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
         if (getBase()->asRegVar()->getPhyReg())
         {
             left_bound = srOff * 16;
-            MUST_BE_TRUE(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
+
             byteOffset = srOff * 2;
 
-            if (getBase()->asRegVar()->getPhyReg()->asAreg()->getArchRegType() == AREG_F1)
-            {
-                left_bound += 32;
-                byteOffset += 4;
-            }
+            auto flagNum = getBase()->asRegVar()->getPhyReg()->asAreg()->getFlagNum();
+            left_bound += flagNum * 32;
+            byteOffset += flagNum * 4;
         }
         else
         {
             left_bound = 0;
-            MUST_BE_TRUE(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
             byteOffset = 0;
         }
     }
@@ -3456,15 +3480,7 @@ public:
     unsigned short getRegOff()
     {
         MUST_BE_TRUE(getBase()->isAreg(), ERROR_INTERNAL_ARGUMENT);
-
-        if (getBase()->asRegVar()->getPhyReg()->asAreg()->getArchRegType() == AREG_F0)
-        {
-            return 0;
-        }
-        else
-        {
-            return 1;
-        }
+        return getBase()->asRegVar()->getPhyReg()->asAreg()->getFlagNum();
     }
 
     G4_PredState   getState()     { return state; }
@@ -3549,20 +3565,19 @@ class G4_CondMod final : public G4_Operand
         if (flag != nullptr)
         {
             top_dcl = getBase()->asRegVar()->getDeclare();
-
+            MUST_BE_TRUE(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
             if (getBase()->asRegVar()->getPhyReg())
             {
                 left_bound = off * 16;
-                MUST_BE_TRUE(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
                 byteOffset = off * 2;
-                if (flag->asAreg()->getArchRegType() == AREG_F1) {
-                    left_bound += 32;
-                    byteOffset += 4;
-                }
+
+                auto flagNum = getBase()->asRegVar()->getPhyReg()->asAreg()->getFlagNum();
+                left_bound += flagNum * 32;
+                byteOffset += flagNum * 4;
             }
-            else {
+            else 
+            {
                 left_bound = 0;
-                MUST_BE_TRUE(flag->isFlag(), ERROR_INTERNAL_ARGUMENT);
                 byteOffset = 0;
             }
         }
@@ -3573,18 +3588,11 @@ public:
     G4_CondMod(G4_CondMod &cMod);
     void *operator new(size_t sz, Mem_Manager& m) {return m.alloc(sz);}
     G4_CondModifier getMod() { return mod; }
-    unsigned short getRegOff() {
+    unsigned short getRegOff() const
+    {
         MUST_BE_TRUE(getBase()->isAreg(), ERROR_INTERNAL_ARGUMENT);
         MUST_BE_TRUE(getBase()->asRegVar()->getPhyReg(), "getRegOff is called for non-PhyReg");
-
-        if (getBase()->asRegVar()->getPhyReg()->asAreg()->getArchRegType() == AREG_F0)
-        {
-            return 0;
-        }
-        else
-        {
-            return 1;
-        }
+        return getBase()->asRegVar()->getPhyReg()->asAreg()->getFlagNum();
     }
     unsigned short getSubRegOff() { return subRegOff; }
     bool sameCondMod(G4_CondMod& prd);
@@ -3972,6 +3980,21 @@ public:
     G4_Areg* getF1Reg() { return ARF_Table[AREG_F1]; }
     G4_Areg* getTDRReg() { return ARF_Table[AREG_TDR0]; }
     G4_Areg* getSPReg() { return ARF_Table[AREG_SP]; }
+
+    // map int to flag areg
+    G4_Areg* getFlagAreg(int flagNum)
+    {
+        switch (flagNum)
+        {
+            case 0: 
+                return getF0Reg();
+            case 1:
+                return getF1Reg();
+            default:
+                assert(false && "unexpected flag register value");
+                return nullptr;
+        }
+    }
 };
 
 inline int G4_INST::getNumSrc() const

@@ -257,8 +257,6 @@ public:
 		unsigned nunits,
 		unsigned numRows)
 	{
-		MUST_BE_TRUE(regNum == 0 && regOff + nunits <= getNumFlagRegisters(),
-			ERROR_UNKNOWN);
 		for (unsigned i = regOff; i < regOff + nunits; i++)
 			availableFlags[i] = false;
 	}

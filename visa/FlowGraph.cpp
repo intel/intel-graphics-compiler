@@ -3385,7 +3385,7 @@ void FlowGraph::addSaveRestorePseudoDeclares(IR_Builder& builder)
     for (auto callSite : callSites)
     {
         char *name = builder.getNameString(mem, 64, builder.getIsKernel() ? "k%d_SFLAG_%d" : "f%d_SFLAG_%d", builder.getCUnitId(), j);
-        G4_Declare* saveFLAG = builder.createDeclareNoLookup(name, G4_FLAG, (unsigned short)getNumFlagRegisters(), 1, Type_UW);
+        G4_Declare* saveFLAG = builder.createDeclareNoLookup(name, G4_FLAG, (uint16_t)builder.getNumFlagRegisters(), 1, Type_UW);
         pseudoFlagDclList.push_back(saveFLAG);
         callSite->asCFInst()->setAssocPseudoFlagSave(saveFLAG->getRegVar());
         j++;

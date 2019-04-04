@@ -7955,9 +7955,11 @@ public:
         }
 
         //Initializaing Flag register
+        int num32BitFlags = builder.getNumFlagRegisters() / 2;
+        for (int i = 0; i < num32BitFlags; ++i)
         {
             G4_Declare* tmpFlagDcl = builder.createTempFlag(2);
-            tmpFlagDcl->getRegVar()->setPhyReg(builder.phyregpool.getF0Reg(), 0);
+            tmpFlagDcl->getRegVar()->setPhyReg(builder.phyregpool.getFlagAreg(i), 0);
             G4_DstRegRegion *tempPredVar = builder.createDstRegRegion(Direct, tmpFlagDcl->getRegVar(), 0, 0, 1, Type_UD);
             G4_INST *predInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
                 tempPredVar, builder.createImm(0, Type_UW), NULL,
@@ -7965,29 +7967,6 @@ public:
             bb = kernel.fg.getEntryBB();
             bb->insert(iter, predInst);
         }
-
-        {
-            G4_Declare* tmpFlagDcl = builder.createTempFlag(2);
-            tmpFlagDcl->getRegVar()->setPhyReg(builder.phyregpool.getF1Reg(), 0);
-            G4_DstRegRegion *tempPredVar = builder.createDstRegRegion(Direct, tmpFlagDcl->getRegVar(), 0, 0, 1, Type_UD);
-            G4_INST *predInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 1,
-                tempPredVar, builder.createImm(0, Type_UW), NULL,
-                InstOpt_WriteEnable, 0, 0, 0);
-            bb = kernel.fg.getEntryBB();
-            bb->insert(iter, predInst);
-        }
-
-        {
-            G4_Declare* tmpAddrDcl = builder.createDeclareNoLookup("initAddr_temp", G4_ADDRESS, 8, 1, Type_UW);
-            tmpAddrDcl->getRegVar()->setPhyReg(builder.phyregpool.getAddrReg(), 0);
-            G4_DstRegRegion *tempAddrVar = builder.createDstRegRegion(Direct, tmpAddrDcl->getRegVar(), 0, 0, 1, Type_UW);
-            G4_INST *addrInst = builder.createInternalInst(NULL, G4_mov, NULL, false, 8,
-                tempAddrVar, builder.createImm(0, Type_UW), NULL,
-                InstOpt_WriteEnable, 0, 0, 0);
-            bb = kernel.fg.getEntryBB();
-            bb->insert(iter, addrInst);
-        }
-
     }
 
     void Optimizer::loadThreadPayload()

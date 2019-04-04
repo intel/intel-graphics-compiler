@@ -4383,7 +4383,7 @@ void G4_DstRegRegion::computeLeftBound()
         }
     }
 
-    if (base != NULL && base->isFlag())
+    if (base && base->isFlag())
     {
         if( base->isRegVar() )
 		{
@@ -4391,10 +4391,7 @@ void G4_DstRegRegion::computeLeftBound()
 			{
 				left_bound = base->asRegVar()->getPhyRegOff() * 16;   // the bound of flag register is in unit of BIT
 				left_bound += subRegOff * 16;
-				if (base->asRegVar()->getPhyReg()->asAreg()->getArchRegType() == AREG_F1)
-				{
-					left_bound += 32;
-				}
+                left_bound += base->asRegVar()->getPhyReg()->asAreg()->getFlagNum() * 32;
 			}
 			else
 			{
@@ -4404,9 +4401,7 @@ void G4_DstRegRegion::computeLeftBound()
 		else
 		{
             left_bound = subRegOff * 16;
-            if( base->asAreg()->getArchRegType() == AREG_F1 ){
-                left_bound += 32;
-            }
+            left_bound += base->asAreg()->getFlagNum() * 32;
         }
 
         byteOffset = left_bound / 8;
@@ -6064,10 +6059,7 @@ void G4_SrcRegRegion::computeLeftBound()
             {
                 left_bound = base->asRegVar()->getPhyRegOff() * 16;   // the bound of flag register is in unit of BIT
 				left_bound += subRegOff * 16;
-                if (base->asRegVar()->getPhyReg()->asAreg()->getArchRegType() == AREG_F1 )
-                {
-                    left_bound += 32;
-                }
+                left_bound += base->asRegVar()->getPhyReg()->asAreg()->getFlagNum() * 32;
             }
             else
             {
@@ -6077,10 +6069,7 @@ void G4_SrcRegRegion::computeLeftBound()
         else
         {
             left_bound = subRegOff * 16;
-            if (base->asAreg()->getArchRegType() == AREG_F1 )
-            {
-                left_bound += 32;
-            }
+            left_bound += base->asAreg()->getFlagNum() * 32;
         }
 
         right_bound = 0;
