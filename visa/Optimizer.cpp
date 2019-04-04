@@ -3173,10 +3173,8 @@ void Optimizer::cselPeepHoleOpt()
         return;
     }
     BB_LIST_ITER ib, bend(fg.BBs.end());
-    G4_Operand *cmpDst = NULL;
     G4_SrcRegRegion *cmpSrc0 = NULL;
     G4_Operand *cmpSrc1 = NULL;
-    G4_Predicate *predCmp = NULL;
     for(ib = fg.BBs.begin(); ib != bend; ++ib)
     {
         G4_BB* bb = (*ib);
@@ -3200,18 +3198,16 @@ void Optimizer::cselPeepHoleOpt()
             ++nextIter;
             G4_INST *inst = *ii;
             G4_opcode op = inst->opcode();
-            cmpDst = inst->getDst();
-            bool nullDst = inst->hasNULLDst();
-            predCmp = inst->getPredicate();
+            bool hasGRFDst = inst->getDst() && !inst->hasNULLDst();
             /*
             csel doesn't have the same symantics for destination
             as cmp instruction
             */
-            if((op != G4_cmp)           ||
-                (cmpDst && !nullDst)    ||
-                predCmp != NULL         ||
-                inst->isDead())
+            if (op != G4_cmp || hasGRFDst || inst->getPredicate() ||
+                inst->isDead() || !inst->getSrc(0)->isSrcRegRegion())
+            {
                 continue;
+            }
 
             cmpSrc0 = inst->getSrc(0)->asSrcRegRegion();
             cmpSrc1 = inst->getSrc(1);
