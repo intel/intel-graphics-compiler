@@ -139,6 +139,7 @@ llvm::Value* CreateLoadRawIntrinsic(llvm::LoadInst *inst, llvm::Instruction* buf
 llvm::Value* CreateStoreRawIntrinsic(llvm::StoreInst *inst, llvm::Instruction* bufPtr, llvm::Value* offsetVal);
 
 void getTextureAndSamplerOperands(llvm::GenIntrinsicInst *pIntr, llvm::Value*& pTextureValue, llvm::Value*& pSamplerValue);
+void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value* oldPtr, llvm::Value* newPtr, bool isExtendedForBindlessPromotion);
 void ChangePtrTypeInIntrinsic(llvm::GenIntrinsicInst *&pIntr, llvm::Value* oldPtr, llvm::Value* newPtr);
 
 llvm::Value* TracePointerSource(llvm::Value* resourcePtr);
