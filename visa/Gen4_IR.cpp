@@ -1670,6 +1670,14 @@ bool G4_INST::isLegalType(G4_Type type, Gen4_Operand_Number opndNum) const
         return type == Type_B || type == Type_UB;
     case G4_subb:
         return type == Type_UD;
+    case G4_mov:
+        // Avoid mov r7.0<1>:hf  0x76543210:v
+        if (IS_VINTTYPE(type) &&
+            (IS_FTYPE(dst->getType()) || IS_HFTYPE(dst->getType())))
+        {
+            return false;
+        }
+        return true;
     }
 }
 
