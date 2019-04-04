@@ -1671,7 +1671,7 @@ void CEncoder::AddPair(CVariable *Lo, CVariable *Hi, CVariable *L0, CVariable *H
     if (H1->GetType() != ISA_TYPE_UD && H1->GetType() != ISA_TYPE_UV) H1 = m_program->BitCast(H1, ISA_TYPE_UD);
 
     Common_ISA_Exec_Size ExecSize = GetAluExecSize(Lo);
-    assert(ExecSize == EXEC_SIZE_16 || ExecSize == EXEC_SIZE_8 ||
+    assert(ExecSize == EXEC_SIZE_32 || ExecSize == EXEC_SIZE_16 || ExecSize == EXEC_SIZE_8 ||
            ExecSize == EXEC_SIZE_4 || ExecSize == EXEC_SIZE_2 ||
            ExecSize == EXEC_SIZE_1);
 
@@ -1758,7 +1758,7 @@ void CEncoder::SubPair(CVariable *Lo, CVariable *Hi, CVariable *L0, CVariable *H
     assert(m_encoderState.m_dstOperand.mod == EMOD_NONE && "subPair doesn't support saturate");
 
     Common_ISA_Exec_Size ExecSize = GetAluExecSize(Lo);
-    assert(ExecSize == EXEC_SIZE_16 || ExecSize == EXEC_SIZE_8 || ExecSize == EXEC_SIZE_1);
+    assert(ExecSize == EXEC_SIZE_32 || ExecSize == EXEC_SIZE_16 || ExecSize == EXEC_SIZE_8 || ExecSize == EXEC_SIZE_1);
 
     if (Hi == nullptr) {
         // When Hi part is ignored, reduce 64-bit subtraction into 32-bit.
