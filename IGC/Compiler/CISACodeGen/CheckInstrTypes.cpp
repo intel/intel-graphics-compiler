@@ -64,6 +64,7 @@ CheckInstrTypes::CheckInstrTypes(IGC::SInstrTypes* instrList) : FunctionPass(ID)
     instrList->hasLoadStore = false;
     instrList->hasCall = false;
     instrList->hasIndirectCall = false;
+    instrList->hasInlineAsm = false;
     instrList->hasIndirectBranch = false;
     instrList->hasFunctionAddressTaken = false;
     instrList->hasSel = false;
@@ -148,6 +149,7 @@ void CheckInstrTypes::visitCallInst(CallInst &C)
     {
         if (C.isInlineAsm())
         {
+            g_InstrTypes->hasInlineAsm = true;
             return;
         }
         // calls to 'blocks' have a null Function object

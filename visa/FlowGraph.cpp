@@ -5399,7 +5399,10 @@ FlowGraph::~FlowGraph()
     {
         funcInfo->~FuncInfo();
     }
-    kernelInfo->~FuncInfo();
+    if (kernelInfo)
+    {
+        kernelInfo->~FuncInfo();
+    }
     for (auto summary : localRASummaries)
     {
         summary->~PhyRegSummary();

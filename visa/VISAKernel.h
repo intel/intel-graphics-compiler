@@ -46,14 +46,19 @@ class DebugInfoFormat;
 class BinaryEncoding;
 class BinaryEncodingBase;
 }
+class CISA_IR_Builder;
+
 // Class hierarchy is as follows:
 // VISAKernel -> Abstract class that declares virtual functions to build a kernel object
 // VISAFunction : VISAKernel -> Abstract class that declares function specific APIs
 // VISAKernelImpl : VISAFunction -> Implementation for all APIs in VISAKernel and VISAFunction
 class VISAKernelImpl : public VISAFunction
 {
+    friend class VISAKernel_format_provider;
+
 public:
-    VISAKernelImpl(CM_VISA_BUILDER_OPTION buildOption, Options *option) : m_mem(4096), m_options(option)
+    VISAKernelImpl(CISA_IR_Builder* cisaBuilder, CM_VISA_BUILDER_OPTION buildOption, Options *option)
+        : m_CISABuilder(cisaBuilder), m_mem(4096), m_options(option)
     {
         //CisaBinary* module = NULL;
         mBuildOption = buildOption;
@@ -226,6 +231,7 @@ public:
     int patchLastInst(VISA_LabelOpnd *label);
     vISA::G4_Kernel* getKernel() { return m_kernel; }
     vISA::IR_Builder* getIRBuilder() { return m_builder; }
+    CISA_IR_Builder* getCISABuilder() { return m_CISABuilder; }
 
     int getVISAOffset() const;
 
@@ -691,6 +697,13 @@ public:
     ///Gets gen binary offset
     CM_BUILDER_API int64_t getGenOffset();
 
+    //Gets the VISA string format for the variable
+    CM_BUILDER_API std::string getVarName(VISA_GenVar* decl);
+    CM_BUILDER_API std::string getVarName(VISA_PredVar* decl);
+    CM_BUILDER_API std::string getVarName(VISA_AddrVar* decl);
+    CM_BUILDER_API std::string getVarName(VISA_SurfaceVar* decl);
+    CM_BUILDER_API std::string getVarName(VISA_SamplerVar* decl);
+
     /********** MISC APIs END *************************/
     int CreateVISAPredicateSrcOperand(VISA_VectorOpnd *& opnd, VISA_PredVar *decl, unsigned int size);
 
@@ -866,6 +879,8 @@ public:
 
     Options * getOptions() { return m_options; }
 
+    bool IsAsmWriterMode() { return m_options->getOption(vISA_IsaAssembly); }
+
     void computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functions);
     void computeAndEmitGenRelocs();
     void computeAllRelocs(unsigned int& numRelocs, BasicRelocEntry*& output);
@@ -1016,6 +1031,7 @@ private:
 
     CM_VISA_BUILDER_OPTION mBuildOption;
     vISA::G4_Kernel* m_kernel;
+    CISA_IR_Builder* m_CISABuilder;
     vISA::IR_Builder* m_builder;
     vISA::Mem_Manager *m_globalMem;
     vISA::Mem_Manager *m_kernelMem;
@@ -1040,6 +1056,7 @@ private:
     std::vector< std::pair<unsigned int, unsigned int> > funcRelocTable;
 
     int m_vISAInstCount;
+    print_decl_index_t m_printDeclIndex;
 
     bool mIsFCCallableKernel;
     bool mIsFCCallerKernel;
@@ -1052,4 +1069,81 @@ private:
 
     bool getIntKernelAttributeValue(const char* attrName, int& value);
 };
+
+class VISAKernel_format_provider : public print_format_provider_t
+{
+protected:
+    const VISAKernelImpl* m_kernel;
+
+public:
+    VISAKernel_format_provider(const VISAKernelImpl* kernel)
+        : m_kernel(kernel) { }
+
+    uint32_t getNameIndex() const
+    { return m_kernel->m_cisa_kernel.name_index; }
+
+    unsigned char getReturnType() const
+    { return m_kernel->m_return_type; }
+
+    const char* getString(uint32_t str_id) const
+    { return m_kernel->m_string_pool[str_id].c_str(); }
+
+    uint32_t getStringCount() const
+    { return m_kernel->m_string_pool.size(); }
+
+    const label_info_t* getLabel(uint16_t label_id) const
+    { return m_kernel->m_label_info_list[label_id]; }
+    unsigned short getLabelCount() const
+    { return m_kernel->m_label_count; }
+
+    const var_info_t* getVar(unsigned var_id) const
+    { return &m_kernel->m_var_info_list[var_id + m_kernel->m_num_pred_vars]->genVar; }
+    uint32_t getVarCount() const
+    { return m_kernel->m_var_info_count - m_kernel->m_num_pred_vars; }
+
+    const attribute_info_t* getAttr(unsigned id) const
+    {
+        auto it = m_kernel->m_attribute_info_list.begin();
+        std::advance(it, id);
+        return *it;
+    }
+    unsigned getAttrCount() const
+    { return m_kernel->m_attribute_count; }
+
+    const addr_info_t* getAddr(unsigned id) const
+    { return &m_kernel->m_addr_info_list[id]->addrVar; }
+    unsigned short getAddrCount() const
+    { return m_kernel->m_addr_info_count; }
+
+    const pred_info_t* getPred(unsigned id) const
+    { return &m_kernel->m_pred_info_list[id]->predVar; }
+    unsigned short getPredCount() const
+    { return m_kernel->m_pred_info_count; }
+
+    const state_info_t* getSurface(unsigned id) const
+    {
+        return &m_kernel->m_surface_info_list[id + Get_CISA_PreDefined_Surf_Count()]->stateVar;
+    }
+    unsigned char getSurfaceCount() const
+    {
+        return m_kernel->m_surface_count -
+            Get_CISA_PreDefined_Surf_Count();
+    }
+
+    const state_info_t* getSampler(unsigned id) const
+    { return &m_kernel->m_sampler_info_list[id]->stateVar; }
+    unsigned char getSamplerCount() const
+    { return m_kernel->m_sampler_count; }
+
+    const state_info_t* getVME(unsigned id) const
+    { return &m_kernel->m_vme_info_list[id]->stateVar; }
+    unsigned char getVMECount() const
+    { return m_kernel->m_vme_count; }
+
+    const input_info_t* getInput(unsigned id) const
+    { return m_kernel->m_input_info_list[id]; }
+    uint32_t getInputCount() const
+    { return m_kernel->m_input_count; }
+};
+
 #endif //VISA_KERNEL_H

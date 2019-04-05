@@ -7473,6 +7473,76 @@ void EmitPass::EmitIntrinsicMessage(llvm::IntrinsicInst* inst)
     }
 }
 
+// Parse the inlined asm string to generate VISA operands
+// Example: "mul (M1, 16) $0(0, 0)<1> $1(0, 0)<1;1,0> $2(0, 0)<1;1,0>", "=r,r,r"(float %6, float %7)
+void EmitPass::EmitInlineAsm(llvm::CallInst* inst)
+{
+    std::stringstream &str = m_encoder->GetVISABuilder()->GetAsmTextStream();
+    str << "    ";
+
+    InlineAsm* IA = cast<InlineAsm>(inst->getCalledValue());
+    const char* asmStr = IA->getAsmString().c_str();
+    const char* lastEmitted = asmStr;
+    smallvector<CVariable*, 8> opnds;
+    opnds.push_back(m_destination);
+    for (unsigned i = 0; i < inst->getNumArgOperands(); i++)
+    {
+        CVariable* cv = GetSymbol(inst->getArgOperand(i));
+        opnds.push_back(cv);
+    }
+
+    while (*lastEmitted)
+    {
+        switch (*lastEmitted)
+        {
+        default:
+        {
+            const char* literalEnd = lastEmitted + 1;
+            while (*literalEnd && *literalEnd != '{' && *literalEnd != '|' &&
+                *literalEnd != '}' && *literalEnd != '$' && *literalEnd != '\n')
+            {
+                ++literalEnd;
+            }
+            str.write(lastEmitted, literalEnd - lastEmitted);
+            lastEmitted = literalEnd;
+            break;
+        }
+        case '\n':
+        {
+            ++lastEmitted;
+            str << '\n';
+            break;
+        }
+        case '$':
+        {
+            ++lastEmitted;
+            const char* idStart = lastEmitted;
+            const char* idEnd = idStart;
+            while (*idEnd >= '0' && *idEnd <= '9')
+                ++idEnd;
+
+            unsigned val;
+            if (StringRef(idStart, idEnd - idStart).getAsInteger(10, val))
+            {
+                assert(0 && "Invalid operand format");
+                return;
+            }
+            lastEmitted = idEnd;
+
+            if (val >= opnds.size())
+            {
+                assert(0 && "Invalid operand index");
+                return;
+            }
+
+            str << m_encoder->GetVariableName(opnds[val]);
+            break;
+        }
+        }
+    }
+    str << "    /// inlined ASM" << endl;
+}
+
 CVariable *EmitPass::Mul(CVariable *Src0, CVariable *Src1, const CVariable *DstPrototype)
 {
     bool IsSrc0Imm = Src0->IsImmediate();
@@ -8144,6 +8214,10 @@ void EmitPass::EmitNoModifier(llvm::Instruction* inst)
         else if (IntrinsicInst* I = dyn_cast<IntrinsicInst>(inst))
         {
             EmitIntrinsicMessage(I);
+        }
+        else if (cast<CallInst>(inst)->isInlineAsm())
+        {
+            EmitInlineAsm(cast<CallInst>(inst));
         }
         else
         {

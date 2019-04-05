@@ -791,6 +791,14 @@ public:
 
     ///Gets visa instruction counter value
     CM_BUILDER_API virtual unsigned getvIsaInstCount() = 0;
+
+    //Gets the VISA string format for the variable
+    CM_BUILDER_API virtual std::string getVarName(VISA_GenVar* decl) = 0;
+    CM_BUILDER_API virtual std::string getVarName(VISA_PredVar* decl) = 0;
+    CM_BUILDER_API virtual std::string getVarName(VISA_AddrVar* decl) = 0;
+    CM_BUILDER_API virtual std::string getVarName(VISA_SurfaceVar* decl) = 0;
+    CM_BUILDER_API virtual std::string getVarName(VISA_SamplerVar* decl) = 0;
+
 };
 
 class VISAFunction : public VISAKernel
@@ -835,5 +843,12 @@ public:
     CM_BUILDER_API virtual void SetOption(vISAOptions option, bool val) = 0;
     CM_BUILDER_API virtual void SetOption(vISAOptions option, uint32_t val) = 0;
     CM_BUILDER_API virtual void SetOption(vISAOptions option, const char *val) = 0;
+
+    // For inline asm code generation
+    CM_BUILDER_API virtual int ParseVISAText(const std::string& visaHeader, const std::string& visaText, const std::string& visaTextFile) = 0;
+    CM_BUILDER_API virtual int WriteVISAHeader() = 0;
+    CM_BUILDER_API virtual std::stringstream& GetAsmTextStream() = 0;
+    CM_BUILDER_API virtual std::stringstream& GetAsmTextHeaderStream() = 0;
+    CM_BUILDER_API virtual VISAKernel* GetKernel() = 0;
 };
 #endif

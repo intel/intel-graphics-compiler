@@ -137,7 +137,7 @@ static int getDstIndex(const CISA_INST* inst)
 }
 
 // diagDumpInstructionOperandDecls() is used to generate the error report
-static string diagDumpInstructionOperandDecls(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, Options *options)
+static string diagDumpInstructionOperandDecls(const common_isa_header& isaHeader, const print_format_provider_t* header, const CISA_INST* inst, Options *options)
 {
     stringstream sstr;
 
@@ -150,7 +150,7 @@ static string diagDumpInstructionOperandDecls(const common_isa_header& isaHeader
             const vector_opnd& opnd = getVectorOperand(inst, i);
             uint32_t index = opnd.getOperandIndex();
 
-            if (numPreDefinedVars <= index && index < header->variable_count)
+            if (numPreDefinedVars <= index && index < header->getVarCount())
             switch (opnd.getOperandClass())
             {
                 case OPERAND_STATE     :
@@ -166,7 +166,7 @@ static string diagDumpInstructionOperandDecls(const common_isa_header& isaHeader
         else if (inst->opnd_array[i]->opnd_type == CISA_OPND_RAW)
         {
             uint32_t index = getRawOperand(inst, i).index;
-            if ( numPreDefinedVars <= index && index < header->variable_count + numPreDefinedVars )
+            if ( numPreDefinedVars <= index && index < header->getVarCount() + numPreDefinedVars )
                 sstr << printVariableDecl(isaHeader, header, index-numPreDefinedVars, true, 0, options);
         }
         else if (inst->opnd_array[i]->opnd_type == CISA_OPND_OTHER) // new loader only
@@ -185,14 +185,14 @@ static string diagDumpInstructionOperandDecls(const common_isa_header& isaHeader
     return sstr.str();
 }
 
-static string createIsaError(const common_isa_header& isaHeader, const kernel_format_t* header, string msg, Options *opt, const CISA_INST* inst = NULL)
+static string createIsaError(const common_isa_header& isaHeader, const print_format_provider_t* header, string msg, Options *opt, const CISA_INST* inst = NULL)
 {
     stringstream sstr;
     if (!inst)
     sstr << "\n/-------------------------------------------!!!KERNEL HEADER ERRORS FOUND!!!-------------------------------------------\\\n";
     else
     sstr << "\n/--------------------------------------------!!!INSTRUCTION ERROR FOUND!!!---------------------------------------------\\\n";
-    sstr << setw(33) << "Error in CISA routine with name: " << (char*)header->strings[header->name_index] << endl;
+    sstr << setw(33) << "Error in CISA routine with name: " << (char*)header->getString(header->getNameIndex()) << endl;
     sstr << setw(33) << "Error Message: " << msg << endl;
 
     if (NULL != inst)
@@ -207,13 +207,13 @@ static string createIsaError(const common_isa_header& isaHeader, const kernel_fo
     return sstr.str();
 }
 
-static void verifyPredicateDecl(const common_isa_header& isaHeader, const kernel_format_t* header, unsigned declID, ERROR_LIST, Options *options)
+static void verifyPredicateDecl(const common_isa_header& isaHeader, const print_format_provider_t* header, unsigned declID, ERROR_LIST, Options *options)
 {
     string declError = string(" Error in predicate variable decl: ") + printPredicateDecl(header, declID);
 
-    REPORT_HEADER(options,header->predicates[declID].name_index < header->string_count, "P%d's name index(%d) is not valid: %s", declID, header->predicates[declID].name_index, declError.c_str());
+    REPORT_HEADER(options,header->getPred(declID)->name_index < header->getStringCount(), "P%d's name index(%d) is not valid: %s", declID, header->getPred(declID)->name_index, declError.c_str());
 
-    switch (header->predicates[declID].num_elements)
+    switch (header->getPred(declID)->num_elements)
     {
         case 1:
         case 2:
@@ -223,20 +223,20 @@ static void verifyPredicateDecl(const common_isa_header& isaHeader, const kernel
         case 32:
             break;
         default:
-            REPORT_HEADER(options,false, "P%d's number of elements(%d) is not valid: %s", declID, header->predicates[declID].num_elements, declError.c_str());
+            REPORT_HEADER(options,false, "P%d's number of elements(%d) is not valid: %s", declID, header->getPred(declID)->num_elements, declError.c_str());
     }
 }
 
-static void verifyAddressDecl(const common_isa_header& isaHeader, const kernel_format_t* header, unsigned declID, ERROR_LIST, Options *options)
+static void verifyAddressDecl(const common_isa_header& isaHeader, const print_format_provider_t* header, unsigned declID, ERROR_LIST, Options *options)
 {
     string declError = string(" Error in address variable decl: ") + printAddressDecl(isaHeader, header, declID);
 
-    REPORT_HEADER(options,header->addresses[declID].name_index < header->string_count, "A%d's name index(%d) is not valid: %s", declID, header->addresses[declID].name_index, declError.c_str());
-    REPORT_HEADER(options,header->addresses[declID].num_elements <= 16, "Max possible address registers are 16 on BDW+: %s", declError.c_str());
+    REPORT_HEADER(options,header->getAddr(declID)->name_index < header->getStringCount(), "A%d's name index(%d) is not valid: %s", declID, header->getAddr(declID)->name_index, declError.c_str());
+    REPORT_HEADER(options,header->getAddr(declID)->num_elements <= 16, "Max possible address registers are 16 on BDW+: %s", declError.c_str());
 
     /// TODO: Fix/Reenable this verification check.
     #if 0
-    switch (header->addresses[declID].num_elements)
+    switch (header->getAddr(declID)->num_elements)
     {
         case 1:
         case 2:
@@ -245,21 +245,21 @@ static void verifyAddressDecl(const common_isa_header& isaHeader, const kernel_f
         case 16:
             break;
         default:
-            REPORT_HEADER(options,false, "A%d's number of elements(%d) is not valid.", declID, header->addresses[declID].num_elements);
+            REPORT_HEADER(options,false, "A%d's number of elements(%d) is not valid.", declID, header->getAddr(declID)->num_elements);
     }
     #endif
 }
 
-static void verifyVariableDecl(const common_isa_header& isaHeader, const kernel_format_t* header, unsigned declID, ERROR_LIST, Options *options)
+static void verifyVariableDecl(const common_isa_header& isaHeader, const print_format_provider_t* header, unsigned declID, ERROR_LIST, Options *options)
 {
     string declError = string(" Error in CISA variable decl: ") + printVariableDecl(isaHeader, header, declID, true, 0, options);
 
-    var_info_t*      var      = &header->variables[declID];
+    const var_info_t*      var      = header->getVar(declID);
     VISA_Align align    = (VISA_Align)((var->bit_properties >> 4) & 0x7);
 
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
 
-    REPORT_HEADER(options, var->name_index < header->string_count,
+    REPORT_HEADER(options, var->name_index < header->getStringCount(),
                   "V%d's name index(%d) is not valid: %s",
                   declID + numPreDefinedVars, var->name_index,
                   declError.c_str());
@@ -286,7 +286,7 @@ static void verifyVariableDecl(const common_isa_header& isaHeader, const kernel_
 
     if (var->alias_index >= numPreDefinedVars)
     {
-        var_info_t* currAliasVar = &header->variables[var->alias_index-numPreDefinedVars];
+        const var_info_t* currAliasVar = header->getVar(var->alias_index-numPreDefinedVars);
         unsigned totalOffset = var->alias_offset;
 
         set<uint32_t> visitedAliasIndices;
@@ -301,17 +301,17 @@ static void verifyVariableDecl(const common_isa_header& isaHeader, const kernel_
 
             visitedAliasIndices.insert(currAliasVar->alias_index);
 
-            REPORT_HEADER(options,currAliasVar->alias_index < header->variable_count + numPreDefinedVars,
+            REPORT_HEADER(options,currAliasVar->alias_index < header->getVarCount() + numPreDefinedVars,
                               "Aliased variable aliases to an invalid alias index. "
                               "Variable count: %d. invalid index: %d. %s",
-                              header->variable_count + numPreDefinedVars,
+                              header->getVarCount() + numPreDefinedVars,
                               currAliasVar->alias_index, declError.c_str());
 
             totalOffset += currAliasVar->alias_offset;
-            currAliasVar = &header->variables[currAliasVar->alias_index-numPreDefinedVars];
+            currAliasVar = header->getVar(currAliasVar->alias_index-numPreDefinedVars);
         }
 
-        if (currAliasVar->alias_index < header->variable_count + numPreDefinedVars)
+        if (currAliasVar->alias_index < header->getVarCount() + numPreDefinedVars)
         {
             REPORT_HEADER(options,totalOffset < (currAliasVar->num_elements * (unsigned)CISATypeTable[currAliasVar->getType()].typeSize),
                               "Variable decl's alias offset exceeds the bounds of the aliased variable decl allocation size: %s", declError.c_str());
@@ -340,11 +340,11 @@ static void verifyVariableDecl(const common_isa_header& isaHeader, const kernel_
 
     REPORT_HEADER(options, !(var->alias_index != 0 &&
                              var->alias_index >=
-                                 header->variable_count + numPreDefinedVars),
+                                 header->getVarCount() + numPreDefinedVars),
                   "V%d's alias index must point to a valid CISA variable index "
                   "between 0 and %d. Currently points to invalid index V%d: %s",
                   declID + numPreDefinedVars,
-                  header->variable_count + numPreDefinedVars - 1,
+                  header->getVarCount() + numPreDefinedVars - 1,
                   var->alias_index, declError.c_str());
 
     if( var->alias_scope_specifier == 1 && var->alias_index >= isaHeader.num_filescope_variables )
@@ -363,7 +363,7 @@ static void verifyVariableDecl(const common_isa_header& isaHeader, const kernel_
 }
 
 // get the start byte offset from the top level declare
-static unsigned int getStartByteOffset(const kernel_format_t* header, var_info_t* var, unsigned int numPredefinedVars)
+static unsigned int getStartByteOffset(const print_format_provider_t* header, const var_info_t* var, unsigned int numPredefinedVars)
 {
     unsigned int offset = 0;
     while (var->alias_index != 0)
@@ -376,13 +376,13 @@ static unsigned int getStartByteOffset(const kernel_format_t* header, var_info_t
         }
         else
         {
-            var = &header->variables[var->alias_index-numPredefinedVars];
+            var = header->getVar(var->alias_index-numPredefinedVars);
         }
     }
     return offset;
 }
 
-static void verifyRegion(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, unsigned i, ERROR_LIST, Options *options)
+static void verifyRegion(const common_isa_header& isaHeader, const print_format_provider_t* header, const CISA_INST* inst, unsigned i, ERROR_LIST, Options *options)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     /// Dataport instructions must be verified separately
@@ -510,7 +510,7 @@ static void verifyRegion(const common_isa_header& isaHeader, const kernel_format
     if (operand_index >= numPreDefinedVars)
         if (operand_class == OPERAND_GENERAL)
         {
-            var_info_t*      var      = &header->variables[vect.getOperandIndex()-numPreDefinedVars];
+            const var_info_t*      var      = header->getVar(vect.getOperandIndex()-numPreDefinedVars);
             VISA_Type  isa_type = getVectorOperandType(isaHeader, header, vect);
             unsigned         VN_size  = CISATypeTable[isa_type].typeSize;
 
@@ -619,7 +619,7 @@ static bool isDWordType(VISA_Type type)
 // verify if this raw operand has the correct type as determined by typeFunc (false means illegal type)
 // Many vISA messages require the raw operand to have certain types
 static void verifyRawOperandType(const common_isa_header& isaHeader,
-                                 const kernel_format_t* header,
+                                 const print_format_provider_t* header,
                                  const CISA_INST* inst,
                                  const raw_opnd& opnd,
                                  bool (*typeFunc)(VISA_Type),
@@ -627,43 +627,44 @@ static void verifyRawOperandType(const common_isa_header& isaHeader,
                                  Options *options)
 {
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
-    uint32_t variable_count    = header->variable_count;
+    uint32_t variable_count    = header->getVarCount();
 
     uint32_t opnd_index  = opnd.index;
 
     if (opnd_index < variable_count + numPreDefinedVars &&
         numPreDefinedVars <= opnd_index)
     {
-        var_info_t* currVar = &header->variables[opnd_index-numPreDefinedVars];
+        const var_info_t* currVar = header->getVar(opnd_index-numPreDefinedVars);
         REPORT_INSTRUCTION(options,typeFunc(currVar->getType()), "Raw Operand %s has incorrect type %s",
             opnd.toString().c_str(), CISATypeTable[currVar->getType()].typeName);
     }
 }
 
 static VISA_Type getRawOperandType(const common_isa_header& isaHeader,
-    const kernel_format_t* header,
+    const print_format_provider_t* header,
     const CISA_INST* inst,
     const raw_opnd& opnd)
 {
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
-    uint32_t variable_count = header->variable_count;
+    uint32_t variable_count = header->getVarCount();
 
     uint32_t opnd_index = opnd.index;
 
     if (opnd_index < variable_count + numPreDefinedVars &&
         numPreDefinedVars <= opnd_index)
     {
-        var_info_t* currVar = &header->variables[opnd_index - numPreDefinedVars];
+        const var_info_t* currVar = header->getVar(opnd_index - numPreDefinedVars);
         return currVar->getType();
     }
     
     return ISA_TYPE_NUM;
 }
 
-static void verifyRawOperand(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, unsigned i, ERROR_LIST, Options *options)
+static void verifyRawOperand(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, unsigned i, ERROR_LIST, Options *options)
 {
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
-    uint32_t variable_count    = header->variable_count;
+    uint32_t variable_count    = header->getVarCount();
 
     const raw_opnd& opnd = getRawOperand(inst, i);
 
@@ -678,7 +679,7 @@ static void verifyRawOperand(const common_isa_header& isaHeader, const kernel_fo
 
     if (opnd_index < variable_count )
     {
-        var_info_t* currVar = &header->variables[opnd_index];
+        const var_info_t* currVar = header->getVar(opnd_index);
         unsigned totalOffset = opnd_offset;
 
         set<uint32_t> visitedAliasIndices;
@@ -704,7 +705,7 @@ static void verifyRawOperand(const common_isa_header& isaHeader, const kernel_fo
             {
                 break; // // allow alias index to be predefined variables
             }
-            currVar = &header->variables[currVar->alias_index-numPreDefinedVars];
+            currVar = header->getVar(currVar->alias_index-numPreDefinedVars);
         }
 
         if (currVar->getSize() >= GENX_GRF_REG_SIZ && totalOffset % GENX_GRF_REG_SIZ != 0)
@@ -752,7 +753,8 @@ static bool isReadWritePreDefinedVar(const common_isa_header& isaHeader, uint32_
     }
 }
 
-static void verifyVectorOperand(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, unsigned i, ERROR_LIST, Options *options)
+static void verifyVectorOperand(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, unsigned i, ERROR_LIST, Options *options)
 {
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
 
@@ -805,14 +807,15 @@ static void verifyVectorOperand(const common_isa_header& isaHeader, const kernel
     if (operand_class == OPERAND_IMMEDIATE)
     {
         /// Do checks for immediate operands here
-        REPORT_INSTRUCTION(options,getVectorOperandType(isaHeader, header, opnd) != ISA_TYPE_BOOL, "Boolean types for immediate (constant literals) operands are disallowed.");
+        REPORT_INSTRUCTION(options,getVectorOperandType(isaHeader, header, opnd) != ISA_TYPE_BOOL,
+            "Boolean types for immediate (constant literals) operands are disallowed.");
     }
 
     if (operand_class == OPERAND_GENERAL)
     {
-        REPORT_INSTRUCTION(options,operand_index < header->variable_count + numPreDefinedVars, "Variable V%d is not declaired in CISA symtab.", operand_index);
+        REPORT_INSTRUCTION(options,operand_index < header->getVarCount() + numPreDefinedVars, "Variable V%d is not declaired in CISA symtab.", operand_index);
 
-        if (operand_index < header->variable_count + numPreDefinedVars &&
+        if (operand_index < header->getVarCount() + numPreDefinedVars &&
             numPreDefinedVars <= operand_index)
         {
             //var_info_t* var = &header->variables[operand_index-numPreDefinedVars];
@@ -845,7 +848,8 @@ static void verifyVectorOperand(const common_isa_header& isaHeader, const kernel
     // ToDo: add bounds check for pre-defined variables
 }
 
-static void verifyOperand(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, unsigned i, ERROR_LIST, Options *options)
+static void verifyOperand(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, unsigned i, ERROR_LIST, Options *options)
 {
     MUST_BE_TRUE(header, "Argument Exception: argument header is NULL.");
     MUST_BE_TRUE(inst  , "Argument Exception: argument inst   is NULL.");
@@ -859,11 +863,13 @@ static void verifyOperand(const common_isa_header& isaHeader, const kernel_forma
     }
 }
 
-static void verifyInstructionSVM(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST)
+static void verifyInstructionSVM(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST)
 {
 }
 
-static void verifyInstructionMove(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
+static void verifyInstructionMove(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
@@ -975,7 +981,8 @@ static void verifyInstructionMove(const common_isa_header& isaHeader, const kern
     }
 }
 
-static void verifyInstructionSync(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
+static void verifyInstructionSync(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     switch (opcode)
@@ -989,7 +996,8 @@ static void verifyInstructionSync(const common_isa_header& isaHeader, const kern
     }
 }
 
-static void verifyInstructionControlFlow(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
+static void verifyInstructionControlFlow(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
@@ -1034,7 +1042,8 @@ static void verifyInstructionControlFlow(const common_isa_header& isaHeader, con
     }
 }
 
-static void verifyInstructionMisc(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
+static void verifyInstructionMisc(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     unsigned i = 0;
     unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
@@ -1062,7 +1071,7 @@ static void verifyInstructionMisc(const common_isa_header& isaHeader, const kern
             i++; /// ime input
 
             uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            REPORT_INSTRUCTION(options,(unsigned)surface < numPreDefinedSurfs + header->surface_count,
+            REPORT_INSTRUCTION(options,(unsigned)surface < numPreDefinedSurfs + header->getSurfaceCount(),
                 "CISA ISA_VME_IME uses undeclared surface.");
 
             break;
@@ -1073,7 +1082,7 @@ static void verifyInstructionMisc(const common_isa_header& isaHeader, const kern
              i++; /// sic input
 
              uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
-             REPORT_INSTRUCTION(options,(unsigned)surface < numPreDefinedSurfs + header->surface_count,
+             REPORT_INSTRUCTION(options,(unsigned)surface < numPreDefinedSurfs + header->getSurfaceCount(),
                  "CISA ISA_VME_SIC uses undeclared surface.");
 
              break;
@@ -1084,7 +1093,7 @@ static void verifyInstructionMisc(const common_isa_header& isaHeader, const kern
              getRawOperand(inst, i++);  // const raw_opnd& FBRInput
 
              uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
-             REPORT_INSTRUCTION(options,(unsigned)surface < numPreDefinedSurfs + header->surface_count,
+             REPORT_INSTRUCTION(options,(unsigned)surface < numPreDefinedSurfs + header->getSurfaceCount(),
                  "CISA ISA_VME_FBR uses undeclared surface.");
 
              Common_ISA_Operand_Class operand_class_FBRMbMode = getVectorOperand(inst, i++).getOperandClass();
@@ -1210,7 +1219,7 @@ static void verifyInstructionMisc(const common_isa_header& isaHeader, const kern
 /// its value fits into an expected type. Returns false, otherwise.
 ///
 static bool checkImmediateIntegerOpnd(const common_isa_header& isaHeader,
-                                      const kernel_format_t* header,
+                                      const print_format_provider_t* header,
                                       const vector_opnd& opnd,
                                       VISA_Type expected_type)
 {
@@ -1297,7 +1306,8 @@ static bool checkImmediateIntegerOpnd(const common_isa_header& isaHeader,
     return false;
 }
 
-static void verifyInstructionArith(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
+static void verifyInstructionArith(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
@@ -1528,7 +1538,8 @@ static void verifyInstructionArith(const common_isa_header& isaHeader, const ker
     }
 }
 
-static void verifyInstructionLogic(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
+static void verifyInstructionLogic(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
@@ -1603,7 +1614,8 @@ static void verifyInstructionLogic(const common_isa_header& isaHeader, const ker
     }
 }
 
-static void verifyInstructionCompare(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
+static void verifyInstructionCompare(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     ///     opnd0              opnd1  opnd2 opnd3
     /// cmp.rel_op (exec_size) dst    src1  src2
@@ -1635,7 +1647,8 @@ static void verifyInstructionCompare(const common_isa_header& isaHeader, const k
     }
 }
 
-static void verifyInstructionAddress(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
+static void verifyInstructionAddress(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     ASSERT_USER(ISA_ADDR_ADD == opcode, "Illegal opcode for address instruction.");
@@ -1683,7 +1696,8 @@ static void verifyInstructionAddress(const common_isa_header& isaHeader, const k
     }
 }
 
-static void verifyInstructionSampler(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
+static void verifyInstructionSampler(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
@@ -1697,11 +1711,11 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
             REPORT_INSTRUCTION(options,channel, "CISA SAMPLER ISA_SAMPLE_UNORM instruction only accepts non-zero channel masks.");
 
             uint8_t sampler = getPrimitiveOperand<uint8_t>(inst, i++);
-            REPORT_INSTRUCTION(options,sampler < header->sampler_count, "CISA SAMPLER ISA_SAMPLE_UNORM instruction uses undeclared sampler.");
+            REPORT_INSTRUCTION(options,sampler < header->getSamplerCount(), "CISA SAMPLER ISA_SAMPLE_UNORM instruction uses undeclared sampler.");
 
             uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
             REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for the SAMPLER instruction ISA_SAMPLE_UNORM.");
-            REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs< header->surface_count,
+            REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs< header->getSurfaceCount(),
                 "CISA SAMPLER instruction ISA_SAMPLE_UNORM uses undefined surface.");
 
             Common_ISA_Operand_Class operand_class_uoff = getVectorOperand(inst, i++).getOperandClass();
@@ -1745,12 +1759,12 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
             if (opcode == ISA_SAMPLE)
             {
                 uint8_t sampler = getPrimitiveOperand<uint8_t>(inst, i++);
-                REPORT_INSTRUCTION(options,sampler < header->sampler_count, "CISA SAMPLER SAMPLE/LOAD instruction uses undeclared sampler.");
+                REPORT_INSTRUCTION(options,sampler < header->getSamplerCount(), "CISA SAMPLER SAMPLE/LOAD instruction uses undeclared sampler.");
             }
 
             uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
             REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for the SAMPLER instruction ISA_SAMPLE/ISA_LOAD.");
-            REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs < header->surface_count,
+            REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs < header->getSurfaceCount(),
                 "CISA SAMPLER instruction ISA_SAMPLE/ISA_LOAD uses undefined surface.");
 
             uint8_t channel = mod & 0xF;
@@ -1834,11 +1848,11 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
             REPORT_INSTRUCTION(options,channel, "CISA SAMPLER AVS instruction only accepts non-zero channel masks.");
 
             uint8_t sampler = getPrimitiveOperand<uint8_t>(inst, i++);
-            REPORT_INSTRUCTION(options,sampler < header->sampler_count, "CISA VA MINMAXFILTER instruction uses undeclared sampler.");
+            REPORT_INSTRUCTION(options,sampler < header->getSamplerCount(), "CISA VA MINMAXFILTER instruction uses undeclared sampler.");
 
             uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
             REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for the SAMPLER AVS instruction.");
-            REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->surface_count,
+            REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->getSurfaceCount(),
                 "CISA VA instruction MINMAX uses undefined surface.");
 
             Common_ISA_Operand_Class operand_class_uoff = getVectorOperand(inst, i++).getOperandClass();
@@ -1941,7 +1955,7 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
                  {
                      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
                      REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for VA instructions.");
-                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs< header->surface_count,
+                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs< header->getSurfaceCount(),
                          "CISA VA instruction MINMAX uses undefined surface.");
 
                      Common_ISA_Operand_Class operand_class_uoff = getVectorOperand(inst, i++).getOperandClass();
@@ -1973,11 +1987,11 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
                  case MINMAXFILTER_FOPCODE:
                  {
                      uint8_t sampler = getPrimitiveOperand<uint8_t>(inst, i++);
-                     REPORT_INSTRUCTION(options,sampler < header->sampler_count, "CISA VA MINMAXFILTER instruction uses undeclared sampler.");
+                     REPORT_INSTRUCTION(options,sampler < header->getSamplerCount(), "CISA VA MINMAXFILTER instruction uses undeclared sampler.");
 
                      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
                      REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for VA instructions.");
-                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs< header->surface_count,
+                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs< header->getSurfaceCount(),
                          "CISA VA instruction MINMAXFILTER uses undefined surface.");
 
                      Common_ISA_Operand_Class operand_class_uoff = getVectorOperand(inst, i++).getOperandClass();
@@ -2014,7 +2028,7 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
                  {
                      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
                      REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for VA instructions.");
-                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs< header->surface_count,
+                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs< header->getSurfaceCount(),
                          "CISA VA VA CENTROID/BOOLCENTROID instruction MINMAX uses undefined surface.");
 
                      Common_ISA_Operand_Class operand_class_uoff = getVectorOperand(inst, i++).getOperandClass();
@@ -2058,11 +2072,11 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
                  case ERODE_FOPCODE:
                  {
                      uint8_t sampler = getPrimitiveOperand<uint8_t>(inst, i++);
-                     REPORT_INSTRUCTION(options,sampler < header->sampler_count, "CISA VA CONVOLVE/ERODE/DILATE instruction uses undeclared sampler.");
+                     REPORT_INSTRUCTION(options,sampler < header->getSamplerCount(), "CISA VA CONVOLVE/ERODE/DILATE instruction uses undeclared sampler.");
 
                      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
                      REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for VA instructions.");
-                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs < header->surface_count,
+                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs < header->getSurfaceCount(),
                          "CISA VA CONVOLVE/ERODE/DILATE instruction MINMAX uses undefined surface.");
 
                      Common_ISA_Operand_Class operand_class_uoff = getVectorOperand(inst, i++).getOperandClass();
@@ -2100,7 +2114,7 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
                 {
                      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
                      REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for VA++ instructions.");
-                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs < header->surface_count,
+                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs < header->getSurfaceCount(),
                          "CISA VA++ instruction LBP Correlation uses undefined surface.");
 
                      Common_ISA_Operand_Class operand_class_uoff = getVectorOperand(inst, i++).getOperandClass();
@@ -2134,11 +2148,11 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
                 case VA_OP_CODE_1D_CONVOLVE_HORIZONTAL:
                 {
                      uint8_t sampler = getPrimitiveOperand<uint8_t>(inst, i++);
-                     REPORT_INSTRUCTION(options,sampler < header->sampler_count, "CISA VA++ instruction uses undeclared sampler.");
+                     REPORT_INSTRUCTION(options,sampler < header->getSamplerCount(), "CISA VA++ instruction uses undeclared sampler.");
 
                      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
                      REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for VA++ instructions.");
-                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs < header->surface_count,
+                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs < header->getSurfaceCount(),
                          "CISA VA++ instruction uses undefined surface.");
 
                      Common_ISA_Operand_Class operand_class_uoff = getVectorOperand(inst, i++).getOperandClass();
@@ -2173,7 +2187,7 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
                 {
                      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
                      REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for VA++ instructions.");
-                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs < header->surface_count,
+                     REPORT_INSTRUCTION(options,surface-numPreDefinedSurfs < header->getSurfaceCount(),
                          "CISA LBP Creation VA++ instruction uses undefined surface.");
 
                      Common_ISA_Operand_Class operand_class_uoff = getVectorOperand(inst, i++).getOperandClass();
@@ -2238,7 +2252,7 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
                 {
                      uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
                      REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for VA++ instructions.");
-                     REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->surface_count,
+                     REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->getSurfaceCount(),
                          "CISA VA++ instruction uses undefined surface.");
 
                      Common_ISA_Operand_Class operand_class_uoff = getVectorOperand(inst, i++).getOperandClass();
@@ -2317,13 +2331,13 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
                         {
                             /// sampler
                             uint8_t sampler = getPrimitiveOperand<uint8_t>(inst, i++);
-                            REPORT_INSTRUCTION(options,sampler < header->sampler_count, "CISA VA++ instruction uses undeclared sampler.");
+                            REPORT_INSTRUCTION(options,sampler < header->getSamplerCount(), "CISA VA++ instruction uses undeclared sampler.");
                         }
 
                         //input surface
                         uint8_t surface = getPrimitiveOperand<uint8_t>(inst, i++);
                         REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for VA++ instructions.");
-                        REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->surface_count,
+                        REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->getSurfaceCount(),
                             "CISA VA++ instruction uses undefined surface.");
 
                         //u_offset
@@ -2382,7 +2396,7 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
                         /// dst surface
                         uint8_t dstsurface = getPrimitiveOperand<uint8_t>(inst, i++);
                         REPORT_INSTRUCTION(options,0 != dstsurface, "Surface T0 (the SLM surface) is not allowed for VA++ instructions.");
-                        REPORT_INSTRUCTION(options,dstsurface < numPreDefinedSurfs + header->surface_count,
+                        REPORT_INSTRUCTION(options,dstsurface < numPreDefinedSurfs + header->getSurfaceCount(),
                             "CISA VA++ instruction uses undefined destination surface.");
 
                         /// x offset
@@ -2412,7 +2426,8 @@ static void verifyInstructionSampler(const common_isa_header& isaHeader, const k
     }
 }
 
-static void verifyInstructionSIMDFlow(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
+static void verifyInstructionSIMDFlow(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     switch (opcode)
@@ -2443,7 +2458,8 @@ static bool isFType(VISA_Type T)
     return ISA_TYPE_F == T;
 }
 
-static void verifyInstructionDataport(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
+static void verifyInstructionDataport(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
     unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
@@ -2477,7 +2493,7 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
 
              surface = getPrimitiveOperand<uint8_t>(inst, i++);
              REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for MEDIA_LD/MEDIA_ST");
-             REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->surface_count,
+             REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->getSurfaceCount(),
                  "CISA dataport instruction uses an undeclared surface.");
 
              if (ISA_MEDIA_LD == opcode || ISA_MEDIA_ST == opcode)
@@ -2556,7 +2572,7 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
              {
                  REPORT_INSTRUCTION(options, 0 != surface, "Surface T0 (the SLM surface) is not allowed for OWORD_LD*/OWORD_ST");
              }
-             REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->surface_count,
+             REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->getSurfaceCount(),
                  "CISA dataport instruction uses an undeclared surface.");
 
              Common_ISA_Operand_Class operand_class = getVectorOperand(inst, i++).getOperandClass();
@@ -2602,7 +2618,7 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
 
              surface = getPrimitiveOperand<uint8_t>(inst, i++);
              //SLM uses surface0 as seen in nbody_SLM: gather
-             REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->surface_count,
+             REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->getSurfaceCount(),
                 "CISA dataport instruction uses an undeclared surface.");
 
              Common_ISA_Operand_Class operand_class_goff = getVectorOperand(inst, i++).getOperandClass();
@@ -2633,7 +2649,7 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
 
                 surface = getPrimitiveOperand<uint8_t>(inst, i++);
                 REPORT_INSTRUCTION(options, (0 != surface && 5 != surface), "Surface T0/T5 (the SLM surface) is not allowed for TYPED SCATTTER4/GATHER4");
-                REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->surface_count,
+                REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->getSurfaceCount(),
                     "CISA dataport TYPED SCATTTER4/GATHER4 instruction uses an undeclared surface.");
             }
             else
@@ -2656,7 +2672,7 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
 
                  surface = getPrimitiveOperand<uint8_t>(inst, i++);
                  REPORT_INSTRUCTION(options,0 != surface, "Surface T0 (the SLM surface) is not allowed for TYPED SCATTTER4/GATHER4");
-                 REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->surface_count,
+                 REPORT_INSTRUCTION(options,surface < numPreDefinedSurfs + header->getSurfaceCount(),
                      "CISA dataport TYPED SCATTTER4/GATHER4 instruction uses an undeclared surface.");
             }
 
@@ -2699,7 +2715,7 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
                 break;
             }
             surface = getPrimitiveOperand<uint8_t>(inst, i++);
-            REPORT_INSTRUCTION(options, surface < numPreDefinedSurfs + header->surface_count,
+            REPORT_INSTRUCTION(options, surface < numPreDefinedSurfs + header->getSurfaceCount(),
                                "CISA dataport instruction uses an undeclared surface.");
 
             const raw_opnd& offsets = getRawOperand(inst, i++);
@@ -2778,14 +2794,14 @@ static void verifyInstructionDataport(const common_isa_header& isaHeader, const 
     }
 }
 
-static void verifyKernelAttributes(const common_isa_header& isaHeader, const kernel_format_t* header, ERROR_LIST, Options* options)
+static void verifyKernelAttributes(const common_isa_header& isaHeader, const print_format_provider_t* header, ERROR_LIST, Options* options)
 {
     /// Verify SLMSize, if present, shows up only once
     unsigned int numSLMSize = 0;
-    for (unsigned int i = 0; i < header->attribute_count; i++)
+    for (unsigned int i = 0; i < header->getAttrCount(); i++)
     {
-        auto& attr = header->attributes[i];
-        const char* attrName = header->strings[attr.nameIndex];
+        auto attr = header->getAttr(i);
+        const char* attrName = header->getString(attr->nameIndex);
         if (strcmp(attrName, "SLMSize") == 0)
         {
             numSLMSize++;
@@ -2795,66 +2811,72 @@ static void verifyKernelAttributes(const common_isa_header& isaHeader, const ker
     REPORT_HEADER(options, numSLMSize <= 1, "More than 1 kernel attribute defined SLMSize");
 }
 
-extern void verifyKernelHeader(const common_isa_header& isaHeader, const kernel_format_t* header, ERROR_LIST, Options *options)
+extern void verifyKernelHeader(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, ERROR_LIST, Options *options)
 {
     /// Verify variable decls.
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
     unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
-    for (unsigned i = 0; i < header->variable_count; i++)
+    for (unsigned i = 0; i < header->getVarCount(); i++)
     {
         verifyVariableDecl(isaHeader, header, i, error_list, options);
     }
 
     /// Verify address decls.
-    for (unsigned i = 0; i < header->address_count; i++)
+    for (unsigned i = 0; i < header->getAddrCount(); i++)
     {
         verifyAddressDecl(isaHeader, header, i, error_list, options);
     }
 
     /// Verify predicate decls.
-    for (unsigned i = 0; i < header->predicate_count; i++)
+    for (unsigned i = 0; i < header->getPredCount(); i++)
     {
         verifyPredicateDecl(isaHeader, header, i, error_list, options);
     }
 
     /// Verify labels.
-    for (unsigned i = 0; i < header->label_count; i++)
+    for (unsigned i = 0; i < header->getLabelCount(); i++)
     {
-        REPORT_HEADER(options,header->labels[i].name_index < header->string_count, "label%d's name index(%d) is not valid", i, header->labels[i].name_index);
+        REPORT_HEADER(options,header->getLabel(i)->name_index < header->getStringCount(),
+            "label%d's name index(%d) is not valid", i, header->getLabel(i)->name_index);
     }
 
     /// Verify sampler.
-    for (unsigned i = 0; i < header->sampler_count; i++)
+    for (unsigned i = 0; i < header->getSamplerCount(); i++)
     {
-        REPORT_HEADER(options,header->samplers[i].name_index < header->string_count, "S%d's name index(%d) is not valid", i, header->samplers[i].name_index);
-        REPORT_HEADER(options,header->samplers[i].num_elements <= COMMON_ISA_MAX_SAMPLER_SIZE, "S%d's number of elements(%d) is not vaild", i, header->samplers[i].num_elements);
+        REPORT_HEADER(options,header->getSampler(i)->name_index < header->getStringCount(),
+            "S%d's name index(%d) is not valid", i, header->getSampler(i)->name_index);
+        REPORT_HEADER(options,header->getSampler(i)->num_elements <= COMMON_ISA_MAX_SAMPLER_SIZE,
+            "S%d's number of elements(%d) is not vaild", i, header->getSampler(i)->num_elements);
     }
 
     /// Verify surface.
     unsigned int numPredSurf = Get_CISA_PreDefined_Surf_Count();
-    for (unsigned i = numPredSurf; i < header->surface_count; i++)
+    for (unsigned i = numPredSurf; i < header->getSurfaceCount(); i++)
     {
-        REPORT_HEADER(options,header->surfaces[i].name_index < header->string_count, "T%d's name index(%d) is not valid", i, header->surfaces[i].name_index);
-        REPORT_HEADER(options,header->surfaces[i].num_elements <= COMMON_ISA_MAX_SURFACE_SIZE, "T%d's number of elements(%d) is not valid", i, header->surfaces[i].num_elements);
+        REPORT_HEADER(options,header->getSurface(i)->name_index < header->getStringCount(),
+            "T%d's name index(%d) is not valid", i, header->getSurface(i)->name_index);
+        REPORT_HEADER(options,header->getSurface(i)->num_elements <= COMMON_ISA_MAX_SURFACE_SIZE,
+            "T%d's number of elements(%d) is not valid", i, header->getSurface(i)->num_elements);
     }
 
     /// Verify vme.
-    for (unsigned i = 0; i < header->vme_count; i++)
+    for (unsigned i = 0; i < header->getVMECount(); i++)
     {
-        REPORT_HEADER(options,header->vmes[i].name_index < header->string_count, "Vme's name index(%d) is not valid", header->vmes[i].name_index);
-        REPORT_HEADER(options,header->vmes[i].num_elements == 1, "Vme%d's number of elements must be one", i);
+        REPORT_HEADER(options,header->getVME(i)->name_index < header->getStringCount(), "Vme's name index(%d) is not valid", header->getVME(i)->name_index);
+        REPORT_HEADER(options,header->getVME(i)->num_elements == 1, "Vme%d's number of elements must be one", i);
     }
 
     // Verify inputs.
     // v3.3+, kernel may have explicit arguments followed by implicit ones.
     // This information is only used by the CM runtime, not by Finalizer.
-    unsigned implicitIndex = header->input_count;
+    unsigned implicitIndex = header->getInputCount();
     uint32_t versionNum = getVersionAsInt(isaHeader.major_version, isaHeader.minor_version);
     if (versionNum >= getVersionAsInt(3, 3))
     {
-        for (unsigned i = 0; i < header->input_count; i++)
+        for (unsigned i = 0; i < header->getInputCount(); i++)
         {
-            if (header->inputs[i].getImplicitKind() != 0)
+            if (header->getInput(i)->getImplicitKind() != 0)
             {
                 implicitIndex = i;
                 break;
@@ -2862,48 +2884,49 @@ extern void verifyKernelHeader(const common_isa_header& isaHeader, const kernel_
         }
     }
 
-    for (unsigned i = 0; i < header->input_count; i++)
+    for (unsigned i = 0; i < header->getInputCount(); i++)
     {
         if (i >= implicitIndex)
         {
             REPORT_HEADER(
-                options, header->inputs[i].getImplicitKind() != 0,
+                options, header->getInput(i)->getImplicitKind() != 0,
                 "Explicit input %d must not follow an implicit input %d", i,
                 implicitIndex);
         }
-        switch (header->inputs[i].getInputClass())
+        switch (header->getInput(i)->getInputClass())
         {
             case INPUT_GENERAL:
-                 if (header->inputs[i].index < numPreDefinedVars)
+                 if (header->getInput(i)->index < numPreDefinedVars)
                  {
-                     REPORT_HEADER(options,false, "Input %d points to an invalid variable(%d)", i, header->inputs[i].index);
+                     REPORT_HEADER(options,false, "Input %d points to an invalid variable(%d)", i, header->getInput(i)->index);
                  }
                  else
                  {
-                     int varId   = header->inputs[i].index - numPreDefinedVars;
-                     int varSize = header->variables[varId].num_elements * CISATypeTable[header->variables[varId].getType()].typeSize;
-                     REPORT_HEADER(options,varSize == header->inputs[i].size,
-                         "Input %d's size(%d) does not agree with its variable (V%d)'s", i, header->inputs[i].size, varId + numPreDefinedVars);
+                     int varId   = header->getInput(i)->index - numPreDefinedVars;
+                     int varSize = header->getVar(varId)->num_elements * CISATypeTable[header->getVar(varId)->getType()].typeSize;
+                     REPORT_HEADER(options,varSize == header->getInput(i)->size,
+                         "Input %d's size(%d) does not agree with its variable (V%d)'s", i, header->getInput(i)->size, varId + numPreDefinedVars);
                  }
                  break;
             case INPUT_SAMPLER:
-                 REPORT_HEADER(options,header->inputs[i].index < header->sampler_count, "Input%d points to an invalid sampler index(%d)", i, header->inputs[i].index);
+                 REPORT_HEADER(options,header->getInput(i)->index < header->getSamplerCount(),
+                     "Input%d points to an invalid sampler index(%d)", i, header->getInput(i)->index);
                  break;
             case INPUT_SURFACE:
-                 if (header->inputs[i].index-numPredSurf >= header->surface_count || header->inputs[i].index < numPredSurf)
+                 if (header->getInput(i)->index-numPredSurf >= header->getSurfaceCount() || header->getInput(i)->index < numPredSurf)
                  {
-                     REPORT_HEADER(options,false, "Input%d points to an invalid/predefined surface index(%d)", i, header->inputs[i].index);
+                     REPORT_HEADER(options,false, "Input%d points to an invalid/predefined surface index(%d)", i, header->getInput(i)->index);
                  }
                  else
                  {
                      int surfaceSize;
-                     surfaceSize = header->surfaces[header->inputs[i].index-numPreDefinedSurfs].num_elements * CISATypeTable[ISA_TYPE_UD].typeSize;
+                     surfaceSize = header->getSurface(header->getInput(i)->index-numPreDefinedSurfs)->num_elements * CISATypeTable[ISA_TYPE_UD].typeSize;
 
-                     REPORT_HEADER(options,surfaceSize == header->inputs[i].size, "Input%d's size(%d) does not agree with its surface's", i, header->inputs[i].size);
+                     REPORT_HEADER(options,surfaceSize == header->getInput(i)->size, "Input%d's size(%d) does not agree with its surface's", i, header->getInput(i)->size);
                  }
                  break;
             default:
-                 REPORT_HEADER(options,false, "Input%d has invalid operand class(%d)", i, header->inputs[i].getInputClass());
+                 REPORT_HEADER(options,false, "Input%d has invalid operand class(%d)", i, header->getInput(i)->getInputClass());
         }
         /// TODO: Consider adding offset checks here.
     }
@@ -2911,7 +2934,8 @@ extern void verifyKernelHeader(const common_isa_header& isaHeader, const kernel_
     verifyKernelAttributes(isaHeader, header, error_list, options);
 }
 
-extern void verifyInstruction(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
+extern void verifyInstruction(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST, Options *options)
 {
     ISA_Opcode opcode = (ISA_Opcode)inst->opcode;
 
@@ -2939,7 +2963,7 @@ extern void verifyInstruction(const common_isa_header& isaHeader, const kernel_f
     if (hasPredicate(opcode))
     {
         uint16_t predicateNum = inst->pred & 0xfff;
-        REPORT_INSTRUCTION(options,predicateNum < header->predicate_count + COMMON_ISA_NUM_PREDEFINED_PRED, "CISA instruction uses an illegal predicate value.");
+        REPORT_INSTRUCTION(options,predicateNum < header->getPredCount() + COMMON_ISA_NUM_PREDEFINED_PRED, "CISA instruction uses an illegal predicate value.");
     }
 
     switch (ISA_Inst_Table[opcode].type)
@@ -2964,7 +2988,8 @@ extern void verifyInstruction(const common_isa_header& isaHeader, const kernel_f
     }
 }
 
-extern void verifyRoutine(const common_isa_header& isaHeader, const kernel_format_t* header, list<CISA_INST*>& instructions, ERROR_LIST, KERROR_LIST, Options *options)
+extern void verifyRoutine(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, list<CISA_INST*>& instructions, ERROR_LIST, KERROR_LIST, Options *options)
 {
     verifyKernelHeader(isaHeader, header, kerror_list, options);
 

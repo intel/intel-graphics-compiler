@@ -39,6 +39,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/CompilerStatsUtils.hpp"
 #include "inc/common/sku_wa.h"
 #include <iStdLib/utility.h>
+#include <iostream>
+#include <fstream>
 
 #if !defined(_WIN32)
 #   define _strdup strdup
@@ -303,6 +305,7 @@ CEncoder::CEncoder()
 {
     m_program = nullptr;
     vbuilder = nullptr;
+    vAsmTextBuilder = nullptr;
 }
 
 CEncoder::~CEncoder()
@@ -3397,44 +3400,55 @@ void CEncoder::AddFunctionSymbol(llvm::Function* F, CVariable* fvar)
     V(vKernel->AppendVISACFSymbolInst(F->getName(), visaFuncAddr));
 }
 
-void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
+void CEncoder::SaveOption(vISAOptions option, bool val)
 {
-    m_aliasesMap.clear();
-    m_encoderState.m_SubSpanDestination = false;
+    OptionValue entry;
+    entry.type = OpType::ET_BOOL;
+    entry.vBool = val;
+    m_visaUserOptions.push_back(std::make_pair(option, entry));
+}
+void CEncoder::SaveOption(vISAOptions option, uint32_t val)
+{
+    OptionValue entry;
+    entry.type = OpType::ET_INT32;
+    entry.vInt32 = val;
+    m_visaUserOptions.push_back(std::make_pair(option, entry));
+}
+void CEncoder::SaveOption(vISAOptions option, const char* val)
+{
+    OptionValue entry;
+    entry.type = OpType::ET_CSTR;
+    entry.vCstr = val;
+    m_visaUserOptions.push_back(std::make_pair(option, entry));
+}
+void CEncoder::SetBuilderOptions(VISABuilder* pbuilder)
+{
+    for (auto OP : m_visaUserOptions)
+    {
+        switch (OP.second.type)
+        {
+        case OpType::ET_BOOL:
+            pbuilder->SetOption(OP.first, OP.second.vBool);
+            break;
+        case OpType::ET_INT32:
+            pbuilder->SetOption(OP.first, OP.second.vInt32);
+            break;
+        case OpType::ET_CSTR:
+            pbuilder->SetOption(OP.first, OP.second.vCstr);
+            break;
+        default:
+            assert(0 && "Undefined user option type");
+            break;
+        }
+    }
+}
+
+void CEncoder::InitBuildParams(llvm::SmallVector<const char*, 10> &params)
+{
     CodeGenContext* context = m_program->GetContext();
-    m_encoderState.m_secondHalf = false;
-    m_enableVISAdump = false;
-    labelMap.clear();
-    labelMap.resize(m_program->entry->size(), nullptr);
-    labelCounter = 0;
-
-    vbuilder = nullptr;
-    TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
-
-    bool KernelDebugEnable = false;
-    bool ForceNonCoherentStatelessBti = false;
-    auto gtpin_init = context->gtpin_init;
-    if (context->type == ShaderType::OPENCL_SHADER)
-    {
-        auto ClContext = static_cast<OpenCLProgramContext*>(context);
-        KernelDebugEnable = ClContext->m_InternalOptions.KernelDebugEnable;
-        ForceNonCoherentStatelessBti = ClContext->m_ShouldUseNonCoherentStatelessBTI;
-    }
-
-    bool EnableBarrierInstCounterBits = false;
-    if (context->type == ShaderType::HULL_SHADER)
-    {
-        EnableBarrierInstCounterBits = true;
-    }
-    bool preserveR0 = false;
-    if(context->type == ShaderType::PIXEL_SHADER)
-    {
-        preserveR0 = !static_cast<CPixelShader*>(m_program)->IsLastPhase();
-    }
     bool isOptDisabled = context->getModuleMetaData()->compOpt.OptDisable;
 
     // create vbuilder->Compile() params
-    llvm::SmallVector<const char*, 10> params;
     if (IGC_IS_FLAG_ENABLED(EnableVISADotAll))
     {
         params.push_back("-dotAll");
@@ -3484,49 +3498,66 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
         sprintf_s(High, sizeof(High), "%d", (DWORD)(AssemblyHash >> 32));
         params.push_back(High);
     }
+}
+void CEncoder::InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall)
+{
+    CodeGenContext* context = m_program->GetContext();
+    bool KernelDebugEnable = false;
+    bool ForceNonCoherentStatelessBti = false;
+    if (context->type == ShaderType::OPENCL_SHADER)
+    {
+        auto ClContext = static_cast<OpenCLProgramContext*>(context);
+        KernelDebugEnable = ClContext->m_InternalOptions.KernelDebugEnable;
+        ForceNonCoherentStatelessBti = ClContext->m_ShouldUseNonCoherentStatelessBTI;
+    }
 
-    SetVISAWaTable(m_program->m_Platform->getWATable());
-
-    bool enableVISADump = IGC_IS_FLAG_ENABLED(EnableVISASlowpath) || IGC_IS_FLAG_ENABLED(ShaderDumpEnable);
-    V(CreateVISABuilder(vbuilder, vISA_3D, enableVISADump ? CM_CISA_BUILDER_BOTH : CM_CISA_BUILDER_GEN,
-        VISAPlatform, params.size(), params.data(), &m_WaTable));
+    bool EnableBarrierInstCounterBits = false;
+    if (context->type == ShaderType::HULL_SHADER)
+    {
+        EnableBarrierInstCounterBits = true;
+    }
+    bool preserveR0 = false;
+    if (context->type == ShaderType::PIXEL_SHADER)
+    {
+        preserveR0 = !static_cast<CPixelShader*>(m_program)->IsLastPhase();
+    }
+    bool isOptDisabled = context->getModuleMetaData()->compOpt.OptDisable;
 
     // Set up options. This must be done before creating any variable/instructions
     // since some of the options affect IR building.
-
     if (IGC_IS_FLAG_ENABLED(ForceNoFP64bRegioning))
     {
-        vbuilder->SetOption(vISA_forceNoFP64bRegioning, true);
+        SaveOption(vISA_forceNoFP64bRegioning, true);
     }
 
     if (IGC_IS_FLAG_ENABLED(DumpCompilerStats))
     {
-        vbuilder->SetOption(vISA_DumpCompilerStats, true);
+        SaveOption(vISA_DumpCompilerStats, true);
     }
 
     if (context->type == ShaderType::OPENCL_SHADER && context->m_floatDenormMode32 == FLOAT_DENORM_RETAIN &&
         context->m_floatDenormMode64 == FLOAT_DENORM_RETAIN)
     {
-        vbuilder->SetOption(vISA_hasRNEandDenorm, true);
+        SaveOption(vISA_hasRNEandDenorm, true);
     }
 
     // need to fold ret into the previous RTWrite/URBWrite/etc
     if (context->type != ShaderType::OPENCL_SHADER && context->type != ShaderType::COMPUTE_SHADER)
     {
         {
-            vbuilder->SetOption(vISA_foldEOTtoPrevSend, true);
+            SaveOption(vISA_foldEOTtoPrevSend, true);
         }
     }
 
     if (m_program->m_DriverInfo->clearScratchWriteBeforeEOT() &&
         (context->type == ShaderType::PIXEL_SHADER || context->type == ShaderType::OPENCL_SHADER))
     {
-        vbuilder->SetOption(vISA_clearScratchWritesBeforeEOT, true);
+        SaveOption(vISA_clearScratchWritesBeforeEOT, true);
     }
 
     if (context->type == ShaderType::PIXEL_SHADER)
     {
-        vbuilder->SetOption(vISA_clearHDCWritesBeforeEOT, true);
+        SaveOption(vISA_clearHDCWritesBeforeEOT, true);
     }
 
     // Disable multi-threaded latencies in the vISA scheduler when not in 3D
@@ -3535,14 +3566,14 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
         if (m_program->m_Platform->singleThreadBasedInstScheduling())
 
         {
-            vbuilder->SetOption(vISA_useMultiThreadedLatencies, false);
+            SaveOption(vISA_useMultiThreadedLatencies, false);
         }
     }
 
     auto enableScheduler = [=]() {
         // Check if preRA scheduler is disabled from input.
         if (isOptDisabled)
-           return false;
+            return false;
         if (context->type == ShaderType::OPENCL_SHADER) {
             auto ClContext = static_cast<OpenCLProgramContext*>(context);
             if (!ClContext->m_InternalOptions.IntelEnablePreRAScheduling)
@@ -3563,189 +3594,189 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
 
     if (enableScheduler())
     {
-        vbuilder->SetOption(vISA_preRA_Schedule, true);
+        SaveOption(vISA_preRA_Schedule, true);
         if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedCtrl))
         {
-            vbuilder->SetOption(vISA_preRA_ScheduleCtrl, Val);
+            SaveOption(vISA_preRA_ScheduleCtrl, Val);
         }
         else
         {
             uint32_t V = m_program->m_DriverInfo->getVISAPreRASchedulerCtrl();
-            vbuilder->SetOption(vISA_preRA_ScheduleCtrl, V);
+            SaveOption(vISA_preRA_ScheduleCtrl, V);
         }
 
         if (uint32_t Val = IGC_GET_FLAG_VALUE(VISAPreSchedRPThreshold))
         {
-            vbuilder->SetOption(vISA_preRA_ScheduleRPThreshold, Val);
+            SaveOption(vISA_preRA_ScheduleRPThreshold, Val);
         }
     }
     else
     {
-        vbuilder->SetOption(vISA_preRA_Schedule, false);
+        SaveOption(vISA_preRA_Schedule, false);
     }
 
     if (IGC_IS_FLAG_ENABLED(FastSpill))
     {
-        vbuilder->SetOption(vISA_FastSpill, true);
+        SaveOption(vISA_FastSpill, true);
     }
 
-    vbuilder->SetOption(vISA_NoVerifyvISA, true);
+    SaveOption(vISA_NoVerifyvISA, true);
 
     if (context->m_instrTypes.hasDebugInfo)
     {
-        vbuilder->SetOption(vISA_GenerateDebugInfo, true);
+        SaveOption(vISA_GenerateDebugInfo, true);
     }
 
     if (canAbortOnSpill)
     {
-        vbuilder->SetOption(vISA_AbortOnSpill, true);
+        SaveOption(vISA_AbortOnSpill, true);
         if (AvoidRetryOnSmallSpill())
         {
             // 2 means #spill/fill is roughly 1% of #inst
             // ToDo: tune the threshold
-            vbuilder->SetOption(vISA_AbortOnSpillThreshold, 2u);
+            SaveOption(vISA_AbortOnSpillThreshold, 2u);
         }
     }
 
-    if(context->m_retryManager.GetLastSpillSize() > 0)
+    if (context->m_retryManager.GetLastSpillSize() > 0)
     {
-        if(context->m_retryManager.GetLastSpillSize() > g_cScratchSpaceMsglimit)
+        if (context->m_retryManager.GetLastSpillSize() > g_cScratchSpaceMsglimit)
         {
-            vbuilder->SetOption(vISA_UseScratchMsgForSpills, false);
+            SaveOption(vISA_UseScratchMsgForSpills, false);
         }
     }
 
     if ((context->type == ShaderType::OPENCL_SHADER || context->type == ShaderType::COMPUTE_SHADER) &&
         VISAPlatform >= GENX_SKL && IGC_IS_FLAG_ENABLED(EnablePreemption) && !hasStackCall)
     {
-        vbuilder->SetOption(vISA_enablePreemption, true);
+        SaveOption(vISA_enablePreemption, true);
     }
 
     if (m_program->m_ScratchSpaceSize > 0)
     {
-        vbuilder->SetOption(vISA_SpillMemOffset, m_program->m_ScratchSpaceSize);
+        SaveOption(vISA_SpillMemOffset, m_program->m_ScratchSpaceSize);
     }
 
     if (IGC_IS_FLAG_ENABLED(forceGlobalRA))
     {
-        vbuilder->SetOption(vISA_LocalRA, false);
-        vbuilder->SetOption(vISA_LocalBankConflictReduction, false);
+        SaveOption(vISA_LocalRA, false);
+        SaveOption(vISA_LocalBankConflictReduction, false);
     }
 
     if (IGC_IS_FLAG_ENABLED(disableVarSplit))
     {
-        vbuilder->SetOption(vISA_LocalDeclareSplitInGlobalRA, false);
+        SaveOption(vISA_LocalDeclareSplitInGlobalRA, false);
     }
 
     if (IGC_IS_FLAG_ENABLED(disableRemat))
     {
-        vbuilder->SetOption(vISA_NoRemat, true);
+        SaveOption(vISA_NoRemat, true);
     }
 
     if (ForceNonCoherentStatelessBti || IGC_IS_FLAG_ENABLED(ForceNonCoherentStatelessBTI))
     {
-        vbuilder->SetOption(vISA_noncoherentStateless, true);
+        SaveOption(vISA_noncoherentStateless, true);
     }
 
     if (IGC_IS_FLAG_ENABLED(DisableIfCvt))
     {
-        vbuilder->SetOption(vISA_ifCvt, false);
+        SaveOption(vISA_ifCvt, false);
     }
 
     if (IGC_IS_FLAG_DISABLED(EnableVISAStructurizer) ||
         m_program->m_Platform->getWATable().Wa_1407528679 != 0)
     {
-        vbuilder->SetOption(vISA_EnableStructurizer, false);
+        SaveOption(vISA_EnableStructurizer, false);
     }
     else if (IGC_GET_FLAG_VALUE(EnableVISAStructurizer) == FLAG_SCF_UCFOnly)
     {
-        vbuilder->SetOption(vISA_StructurizeCF, false);
+        SaveOption(vISA_StructurizeCF, false);
     }
 
     if (IGC_IS_FLAG_DISABLED(EnableVISAJmpi))
     {
-        vbuilder->SetOption(vISA_EnableScalarJmp, false);
+        SaveOption(vISA_EnableScalarJmp, false);
     }
 
     if (IGC_IS_FLAG_ENABLED(DisableCSEL))
     {
-        vbuilder->SetOption(vISA_enableCSEL, false);
+        SaveOption(vISA_enableCSEL, false);
     }
     if (IGC_IS_FLAG_ENABLED(DisableFlagOpt))
     {
-        vbuilder->SetOption(vISA_LocalFlagOpt, false);
+        SaveOption(vISA_LocalFlagOpt, false);
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableVISAOutput))
     {
-        vbuilder->SetOption(vISA_outputToFile, true);
+        SaveOption(vISA_outputToFile, true);
         m_enableVISAdump = true;
     }
     if (IGC_IS_FLAG_ENABLED(EnableVISABinary))
     {
-        vbuilder->SetOption(vISA_GenerateBinary, true);
+        SaveOption(vISA_GenerateBinary, true);
         m_enableVISAdump = true;
     }
     if (IGC_IS_FLAG_ENABLED(EnableVISADumpCommonISA))
     {
-        vbuilder->SetOption(vISA_DumpvISA, true);
-        vbuilder->SetOption(vISA_GenerateISAASM, true);
+        SaveOption(vISA_DumpvISA, true);
+        SaveOption(vISA_GenerateISAASM, true);
         m_enableVISAdump = true;
     }
     if (IGC_IS_FLAG_ENABLED(EnableVISANoSchedule))
     {
-        vbuilder->SetOption(vISA_LocalScheduling, false);
+        SaveOption(vISA_LocalScheduling, false);
     }
     if (IGC_IS_FLAG_ENABLED(EnableVISANoBXMLEncoder))
     {
-        vbuilder->SetOption(vISA_BXMLEncoder, false);
+        SaveOption(vISA_BXMLEncoder, false);
     }
     if (IGC_IS_FLAG_ENABLED(DisableMixMode))
     {
-        vbuilder->SetOption(vISA_DisableMixMode, true);
+        SaveOption(vISA_DisableMixMode, true);
     }
     if (IGC_IS_FLAG_ENABLED(ForceMixMode))
     {
-        vbuilder->SetOption(vISA_ForceMixMode, true);
+        SaveOption(vISA_ForceMixMode, true);
     }
     if (IGC_IS_FLAG_ENABLED(DisableHFMath))
     {
-        vbuilder->SetOption(vISA_DisableHFMath, true);
+        SaveOption(vISA_DisableHFMath, true);
     }
 
     if (IGC_IS_FLAG_ENABLED(disableIGASyntax))
     {
-        vbuilder->SetOption(vISA_dumpNewSyntax, false);
+        SaveOption(vISA_dumpNewSyntax, false);
     }
     if (IGC_IS_FLAG_ENABLED(disableCompaction))
     {
-        vbuilder->SetOption(vISA_Compaction, false);
+        SaveOption(vISA_Compaction, false);
     }
 
     // In Vulkan and OGL buffer variable memory reads and writes within
     // a single shader invocation must be processed in order.
     if (m_program->m_DriverInfo->DisableDpSendReordering())
     {
-        vbuilder->SetOption(vISA_ReorderDPSendToDifferentBti, false);
+        SaveOption(vISA_ReorderDPSendToDifferentBti, false);
     }
 
     if (m_program->m_DriverInfo->UseALTMode())
     {
-        vbuilder->SetOption(vISA_ChangeMoveType, false);
+        SaveOption(vISA_ChangeMoveType, false);
     }
 
     if (IGC_IS_FLAG_ENABLED(DisableSendS))
     {
-        vbuilder->SetOption(vISA_UseSends, false);
+        SaveOption(vISA_UseSends, false);
     }
     if (m_program->m_DriverInfo->AllowUnsafeHalf())
     {
-        vbuilder->SetOption(vISA_enableUnsafeCP_DF, true);
+        SaveOption(vISA_enableUnsafeCP_DF, true);
     }
 
     if (IGC_GET_FLAG_VALUE(UnifiedSendCycle) != 0)
     {
-        vbuilder->SetOption(vISA_UnifiedSendCycle, IGC_GET_FLAG_VALUE(UnifiedSendCycle));
+        SaveOption(vISA_UnifiedSendCycle, IGC_GET_FLAG_VALUE(UnifiedSendCycle));
     }
 
     if (IGC_GET_FLAG_VALUE(ReservedRegisterNum) != 0 && (IGC_GET_FLAG_VALUE(TotalGRFNum) != 0))
@@ -3755,14 +3786,14 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
 
     if (IGC_GET_FLAG_VALUE(ReservedRegisterNum) != 0)
     {
-        vbuilder->SetOption(vISA_ReservedGRFNum, IGC_GET_FLAG_VALUE(ReservedRegisterNum));
+        SaveOption(vISA_ReservedGRFNum, IGC_GET_FLAG_VALUE(ReservedRegisterNum));
     }
     if (IGC_GET_FLAG_VALUE(GRFNumToUse) > 0)
     {
-        vbuilder->SetOption(vISA_GRFNumToUse, IGC_GET_FLAG_VALUE(GRFNumToUse));
+        SaveOption(vISA_GRFNumToUse, IGC_GET_FLAG_VALUE(GRFNumToUse));
     }
 
-    vbuilder->SetOption(vISA_TotalGRFNum, context->getNumGRFPerThread());
+    SaveOption(vISA_TotalGRFNum, context->getNumGRFPerThread());
 
     if (IGC_IS_FLAG_ENABLED(SystemThreadEnable))
     {
@@ -3771,95 +3802,95 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
         */
         if (IGC_GET_FLAG_VALUE(ShaderDebugHashCode) == (DWORD)context->hash.getAsmHash())
         {
-            vbuilder->SetOption(vISA_setStartBreakPoint, true);
+            SaveOption(vISA_setStartBreakPoint, true);
         }
     }
     else if (KernelDebugEnable)
     {
-        vbuilder->SetOption(vISA_AddKernelID, true);
-        vbuilder->SetOption(vISA_setStartBreakPoint, true);
+        SaveOption(vISA_AddKernelID, true);
+        SaveOption(vISA_setStartBreakPoint, true);
     }
 
     if (EnableBarrierInstCounterBits)
     {
-        vbuilder->SetOption(VISA_EnableBarrierInstCounterBits, true);
+        SaveOption(VISA_EnableBarrierInstCounterBits, true);
     }
     if (preserveR0)
     {
-        vbuilder->SetOption(vISA_ReserveR0, true);
+        SaveOption(vISA_ReserveR0, true);
     }
     if (IGC_IS_FLAG_ENABLED(InitializeRegistersEnable))
     {
-        vbuilder->SetOption(vISA_InitPayload, true);
+        SaveOption(vISA_InitPayload, true);
     }
     if (IGC_IS_FLAG_ENABLED(DumpPayloadToScratch))
     {
-        vbuilder->SetOption(vISA_dumpPayload, true);
+        SaveOption(vISA_dumpPayload, true);
     }
     if (IGC_IS_FLAG_ENABLED(ExpandPlane))
     {
-        vbuilder->SetOption(vISA_expandPlane, true);
+        SaveOption(vISA_expandPlane, true);
     }
     if (IGC_IS_FLAG_ENABLED(EnableBCR))
     {
-        vbuilder->SetOption(vISA_enableBCR, true);
+        SaveOption(vISA_enableBCR, true);
     }
     if (IGC_IS_FLAG_ENABLED(forceSamplerHeader))
     {
-        vbuilder->SetOption(vISA_forceSamplerHeader, true);
+        SaveOption(vISA_forceSamplerHeader, true);
     }
     if (IGC_IS_FLAG_ENABLED(EnableIGAEncoder))
     {
-        vbuilder->SetOption(vISA_IGAEncoder, true);
+        SaveOption(vISA_IGAEncoder, true);
     }
     else
     {
-        vbuilder->SetOption(vISA_IGAEncoder, false);
+        SaveOption(vISA_IGAEncoder, false);
     }
 
 
     if (IGC_IS_FLAG_ENABLED(EnableAccSub))
     {
-        vbuilder->SetOption(vISA_accSubstitution, true);
+        SaveOption(vISA_accSubstitution, true);
         uint32_t numAcc = IGC_GET_FLAG_VALUE(NumGeneralAcc);
         assert(numAcc >= 0 && numAcc <= 8 && "number of general acc should be [1-8] if set");
         if (numAcc > 0)
         {
-            vbuilder->SetOption(vISA_numGeneralAcc, numAcc);
+            SaveOption(vISA_numGeneralAcc, numAcc);
         }
 
         if (IGC_IS_FLAG_ENABLED(EnableAccSubDF))
         {
-            vbuilder->SetOption(vISA_accSubDF, true);
+            SaveOption(vISA_accSubDF, true);
         }
         if (IGC_IS_FLAG_ENABLED(EnableAccSubMadm))
         {
-            vbuilder->SetOption(vISA_accSubMadm, true);
+            SaveOption(vISA_accSubMadm, true);
         }
     }
     else
     {
-        vbuilder->SetOption(vISA_accSubstitution, false);
+        SaveOption(vISA_accSubstitution, false);
     }
 
     if (IGC_IS_FLAG_ENABLED(EnableNoDD))
     {
-        vbuilder->SetOption(vISA_EnableNoDD, true);
+        SaveOption(vISA_EnableNoDD, true);
     }
 
     if (IGC_IS_FLAG_ENABLED(GlobalSendVarSplit))
     {
-        vbuilder->SetOption(vISA_GlobalSendVarSplit, true);
+        SaveOption(vISA_GlobalSendVarSplit, true);
     }
 
     if (IGC_IS_FLAG_ENABLED(FuseTypedWrite))
     {
-        vbuilder->SetOption(vISA_FuseTypedWrites, true);
+        SaveOption(vISA_FuseTypedWrites, true);
     }
 
-    if(IGC_IS_FLAG_ENABLED(ShaderDumpEnable) && IGC_IS_FLAG_ENABLED(InterleaveSourceShader))
+    if (IGC_IS_FLAG_ENABLED(ShaderDumpEnable) && IGC_IS_FLAG_ENABLED(InterleaveSourceShader))
     {
-        vbuilder->SetOption(vISA_EmitLocation, true);
+        SaveOption(vISA_EmitLocation, true);
     }
 
     // Enable SendFusion for SIMD8
@@ -3870,20 +3901,20 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
         m_program->GetContext()->platform.supportSplitSend() &&
         m_program->m_dispatchSize == SIMDMode::SIMD8 &&
         (IGC_GET_FLAG_VALUE(EnableSendFusion) == FLAG_LEVEL_2 ||   // 2: force send fusion
-         context->m_DriverInfo.AllowSendFusion()))
+            context->m_DriverInfo.AllowSendFusion()))
     {
-        vbuilder->SetOption(vISA_EnableSendFusion, true);
+        SaveOption(vISA_EnableSendFusion, true);
         if (IGC_IS_FLAG_ENABLED(EnableAtomicFusion) &&
             context->type == ShaderType::OPENCL_SHADER)
         {
-            vbuilder->SetOption(vISA_EnableAtomicFusion, true);
+            SaveOption(vISA_EnableAtomicFusion, true);
         }
     }
 
     if (context->getModuleMetaData()->compOpt.FastRelaxedMath ||
         context->getModuleMetaData()->compOpt.UnsafeMathOptimizations)
     {
-        vbuilder->SetOption(vISA_unsafeMath, true);
+        SaveOption(vISA_unsafeMath, true);
     }
 
     // With statelessToStatefull on, it is possible that two different BTI messages
@@ -3892,13 +3923,50 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
     if (IGC_IS_FLAG_ENABLED(EnableStatelessToStatefull) &&
         context->type == ShaderType::OPENCL_SHADER)
     {
-        vbuilder->SetOption(vISA_ReorderDPSendToDifferentBti, false);
+        SaveOption(vISA_ReorderDPSendToDifferentBti, false);
     }
 
     if (m_program->m_Platform->alignBindlessSampler())
     {
-        vbuilder->SetOption(vISA_alignBindlessSampler, true);
+        SaveOption(vISA_alignBindlessSampler, true);
     }
+}
+
+void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
+{
+    m_aliasesMap.clear();
+    m_encoderState.m_SubSpanDestination = false;
+    CodeGenContext* context = m_program->GetContext();
+    m_encoderState.m_secondHalf = false;
+    m_enableVISAdump = false;
+    labelMap.clear();
+    labelMap.resize(m_program->entry->size(), nullptr);
+    labelCounter = 0;
+    m_hasInlineAsm = IGC_IS_FLAG_ENABLED(EnableInlineAsmSupport) && context->m_instrTypes.hasInlineAsm;
+
+    vbuilder = nullptr;
+    vAsmTextBuilder = nullptr;
+    TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
+
+
+    SetVISAWaTable(m_program->m_Platform->getWATable());
+
+    llvm::SmallVector<const char*, 10> params;
+    if (!m_hasInlineAsm)
+    {
+        // Asm text writer mode doesnt need dump params
+        InitBuildParams(params);
+    }
+
+    bool enableVISADump = IGC_IS_FLAG_ENABLED(EnableVISASlowpath) || IGC_IS_FLAG_ENABLED(ShaderDumpEnable);
+    auto builderMode = m_hasInlineAsm ? vISA_3DWRITER : vISA_3D;
+    auto builderOpt = (enableVISADump || m_hasInlineAsm) ? CM_CISA_BUILDER_BOTH : CM_CISA_BUILDER_GEN;
+    V(CreateVISABuilder(vbuilder, builderMode, builderOpt, VISAPlatform, params.size(), params.data(), &m_WaTable));
+
+    InitVISABuilderOptions(VISAPlatform, canAbortOnSpill, hasStackCall);
+
+    // Pass all build options to builder
+    SetBuilderOptions(vbuilder);
 
     vKernel = nullptr;
 
@@ -3955,13 +4023,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
             V(vbuilder->AddKernel(vKernel, kernelName));
         }
 
-        std::string asmName = IGC::Debug::GetDumpName(m_program, "asm");
-        std::replace_if(asmName.begin(), asmName.end(),
-            [](const char& c) {return c == '>' || c == '<'; }, '_');
-        if (asmName.length() >= MAX_VISA_STRING_LENGTH)
-        {
-            asmName.resize(MAX_VISA_STRING_LENGTH);
-        }
+        std::string asmName = GetDumpFileName("asm");
         V(vKernel->AddKernelAttribute("AsmName", asmName.length(), asmName.c_str()));
     }
     else
@@ -3972,6 +4034,7 @@ void CEncoder::InitEncoder( bool canAbortOnSpill, bool hasStackCall )
 
     vMainKernel = vKernel;
 
+    auto gtpin_init = context->gtpin_init;
     if (gtpin_init)
     {
         vKernel->SetGTPinInit(gtpin_init);
@@ -4321,30 +4384,41 @@ void CEncoder::Compile()
 
     COMPILER_TIME_START(m_program->GetContext(), TIME_CG_vISACompile);
 
-    //Compile to generate the V-ISA binary
-    //TARGET_PLATFORM VISAPlatform = GetVISAPlatform(m_Platform);
     int vIsaCompile = 0;
-    if( m_enableVISAdump )
+    VISAKernel* pMainKernel = nullptr;
+
+    // Compile generated VISA text string for inlineAsm
+    if (m_hasInlineAsm)
     {
-        std::string isaName = IGC::Debug::GetDumpName(m_program, "isa");
-        std::replace_if(isaName.begin(), isaName.end(),
-            [](const char& c) {return c == '>' || c == '<'; }, '_');
-        // vISA does not support string of length >= 255. Truncate if this exceeds
-        // the limit. Note that vISA may append an extension, so relax it to a
-        // random number 240 here.
-        const int MAX_VISA_STRING_LENGTH = 240;
-        if (isaName.length() >= MAX_VISA_STRING_LENGTH)
-        {
-            isaName.resize(MAX_VISA_STRING_LENGTH);
-        }
-        vIsaCompile = vbuilder->Compile(const_cast<char*>(isaName.c_str()));
+        // Finalize the text builder by writing the header
+        V(vbuilder->WriteVISAHeader());
+
+        llvm::SmallVector<const char*, 10> params;
+        InitBuildParams(params);
+
+        // Create a new builder for parsing the visaasm
+        TARGET_PLATFORM VISAPlatform = GetVISAPlatform(&(context->platform));
+        auto builderMode = m_enableVISAdump ? CM_CISA_BUILDER_BOTH : CM_CISA_BUILDER_GEN;
+        V(CreateVISABuilder(vAsmTextBuilder, vISA_PARSER, builderMode, VISAPlatform, params.size(), params.data(), &m_WaTable));
+        // Use the same build options as before
+        SetBuilderOptions(vAsmTextBuilder);
+
+        // Parse the generated VISA text
+        std::string parseTextFile = m_enableVISAdump ? GetDumpFileName("inlineasm") : "";
+        V(vAsmTextBuilder->ParseVISAText(vbuilder->GetAsmTextHeaderStream().str(), vbuilder->GetAsmTextStream().str(), parseTextFile));
+
+        pMainKernel = vAsmTextBuilder->GetKernel();
+        vIsaCompile = vAsmTextBuilder->Compile(m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
     }
+    //Compile to generate the V-ISA binary
     else
     {
-        vIsaCompile = vbuilder->Compile("");
+        pMainKernel = vMainKernel;
+        vIsaCompile = vbuilder->Compile(m_enableVISAdump ? GetDumpFileName("isa").c_str() : "");
     }
+
     FINALIZER_INFO *jitInfo;
-    vMainKernel->GetJitInfo(jitInfo);
+    pMainKernel->GetJitInfo(jitInfo);
     if(jitInfo->isSpill)
     {
         context->m_retryManager.SetSpillSize(jitInfo->numGRFSpillFill);
@@ -4367,7 +4441,7 @@ void CEncoder::Compile()
     if (IGC_IS_FLAG_ENABLED(DumpCompilerStats))
     {
         CompilerStats CompilerStats;
-        vMainKernel->GetCompilerStats(CompilerStats);
+        pMainKernel->GetCompilerStats(CompilerStats);
         CompilerStatsUtils::RecordCodeGenCompilerStats(context, m_program->m_dispatchSize, CompilerStats, jitInfo);
     }
 
@@ -4449,7 +4523,7 @@ void CEncoder::Compile()
     int size = 0, binSize = 0;
     bool binOverride = false;
 
-    V(vMainKernel->GetGenxBinary(genxbin, binSize));
+    V(pMainKernel->GetGenxBinary(genxbin, binSize));
     if (IGC_IS_FLAG_ENABLED(ShaderOverride))
     {
             Debug::DumpName name = IGC::Debug::GetDumpNameObj(m_program, "asm");
@@ -4492,7 +4566,7 @@ void CEncoder::Compile()
         void* genxdbgInfo = nullptr;
         void* VISAMap = nullptr;
         unsigned int numElems = 0;
-        V(vMainKernel->GetGenxDebugInfo(genxdbgInfo, dbgSize, VISAMap, numElems));
+        V(pMainKernel->GetGenxDebugInfo(genxdbgInfo, dbgSize, VISAMap, numElems));
         if (m_enableVISAdump)
         {
             std::string debugFileNameStr = IGC::Debug::GetDumpName(m_program, "dbg");
@@ -4531,7 +4605,7 @@ void CEncoder::Compile()
     pOutput->m_debugDataGenISASize = dbgSize;
     pOutput->m_InstructionCount = jitInfo->numAsmCount;
 
-    vMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
+    pMainKernel->GetGTPinBuffer(pOutput->m_gtpinBuffer, pOutput->m_gtpinBufferSize);
 
     CreateFunctionSymbolTable(pOutput->m_funcSymbolTable,
                               pOutput->m_funcSymbolTableSize,
@@ -4554,6 +4628,11 @@ void CEncoder::Compile()
 
 void CEncoder::DestroyVISABuilder()
 {
+    if (vAsmTextBuilder != nullptr)
+    {
+        V(::DestroyVISABuilder(vAsmTextBuilder));
+        vAsmTextBuilder = nullptr;
+    }
     V(::DestroyVISABuilder(vbuilder));
     vbuilder = nullptr;
 }
@@ -5472,6 +5551,43 @@ void CEncoder::Lifetime(VISAVarLifetime StartOrEnd, CVariable* dst)
     noMod.init();
     VISA_VectorOpnd* srcOpnd = GetSourceOperand(dst, noMod);
     V(vKernel->AppendVISALifetime(StartOrEnd, srcOpnd));
+}
+
+
+std::string CEncoder::GetVariableName(CVariable* var)
+{
+    switch (var->GetVarType())
+    {
+    case EVARTYPE_GENERAL:
+        return vKernel->getVarName(GetVISAVariable(var));
+    case EVARTYPE_PREDICATE:
+        return vKernel->getVarName(var->visaPredVariable);
+    case EVARTYPE_ADDRESS:
+        return vKernel->getVarName(var->visaAddrVariable);
+    case EVARTYPE_SURFACE:
+        return vKernel->getVarName(var->visaSurfVariable);
+    case EVARTYPE_SAMPLER:
+        return vKernel->getVarName(var->visaSamplerVariable);
+    default:
+        assert(false && "Unknown var type");
+        return "";
+    }
+}
+
+std::string CEncoder::GetDumpFileName(std::string extension)
+{
+    std::string filename = IGC::Debug::GetDumpName(m_program, extension.c_str());
+    std::replace_if(filename.begin(), filename.end(),
+        [](const char& c) {return c == '>' || c == '<'; }, '_');
+    // vISA does not support string of length >= 255. Truncate if this exceeds
+    // the limit. Note that vISA may append an extension, so relax it to a
+    // random number 240 here.
+    const int MAX_VISA_STRING_LENGTH = 240;
+    if (filename.length() >= MAX_VISA_STRING_LENGTH)
+    {
+        filename.resize(MAX_VISA_STRING_LENGTH);
+    }
+    return filename;
 }
 
 }

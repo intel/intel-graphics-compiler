@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BinaryCISAEmission.h"
 #include "Timer.h"
 #include "BinaryEncoding.h"
+#include "IsaDisassembly.h"
 
 #include "Gen4_IR.hpp"
 #include "FlowGraph.h"
@@ -303,8 +304,10 @@ int CISA_IR_Builder::CreateBuilder(
         return CM_FAILURE;
     }
 
-    builder->m_options.setTarget((mode == vISA_3D) ? VISA_3D : VISA_CM);
+    auto targetMode = (mode == vISA_3D || mode == vISA_3DWRITER) ? VISA_3D : VISA_CM;
+    builder->m_options.setTarget(targetMode);
     builder->m_options.setOptionInternally(vISA_isParseMode, (mode == vISA_PARSER));
+    builder->m_options.setOptionInternally(vISA_IsaAssembly, (mode == vISA_3DWRITER));
 
     if (mode == vISA_PARSER)
     {
@@ -363,6 +366,12 @@ bool CISA_IR_Builder::CISA_IR_initialization(char *kernel_name,
     return true;
 }
 
+VISAKernel* CISA_IR_Builder::GetKernel()
+{
+    VISAKernel* kernel = static_cast<VISAKernel *>(m_kernel);
+    return kernel;
+}
+
 int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
 {
 
@@ -373,13 +382,13 @@ int CISA_IR_Builder::AddKernel(VISAKernel *& kernel, const char* kernelName)
     }
     m_executionSatarted = true;
 
-    VISAKernelImpl * kerneltemp = new (m_mem) VISAKernelImpl(mBuildOption, &m_options);
+    VISAKernelImpl * kerneltemp = new (m_mem) VISAKernelImpl(this, mBuildOption, &m_options);
     kernel = static_cast<VISAKernel *>(kerneltemp);
     m_kernel = kerneltemp;
     //m_kernel->setName(kernelName);
     m_kernel->setIsKernel(true);
     m_kernels.push_back(kerneltemp);
-    m_kernel->setVersion((unsigned char)this->m_majorVersion, (unsigned char)this->m_minorVersion);
+    m_kernel->setVersion((unsigned char)this->m_header.major_version, (unsigned char)this->m_header.minor_version);
     m_kernel->setPWaTable(m_pWaTable);
     m_kernel->InitializeKernel(kernelName);
     m_kernel->SetGTPinInit(getGtpinInit());
@@ -704,6 +713,83 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& com
 }
 
 
+int CISA_IR_Builder::WriteVISAHeader()
+{
+    if (m_options.getOption(vISA_IsaAssembly))
+    {
+        unsigned funcId = 0;
+        if (!m_kernel->getIsKernel())
+        {
+            m_kernel->GetFunctionId(funcId);
+        }
+
+        VISAKernel_format_provider fmt(m_kernel);
+        m_ssIsaAsmHeader << printKernelHeader(this->m_header, &fmt, m_kernel->getIsKernel(), funcId, &this->m_options) << endl;
+        return CM_SUCCESS;
+    }
+    return CM_FAILURE;
+}
+
+extern int CISAparse();
+int CISA_IR_Builder::ParseVISAText(const std::string& visaHeader, const std::string& visaText, const std::string& visaTextFile)
+{
+#if defined(__linux__) || defined(_WIN64) || defined(_WIN32)
+    if (m_options.getOption(vISA_GenerateISAASM) && !visaTextFile.empty())
+    {
+        CISAin = fopen(visaTextFile.c_str(), "wb+");
+    }
+    else
+    {
+        // Create a temp file in memory for parsing
+        CISAin = std::tmpfile();
+    }
+
+    if (CISAin == NULL)
+    {
+        assert(0 && "Cannot open file for visa parsing");
+        return CM_FAILURE;
+    }
+    // Write the header
+    if (std::fputs(visaHeader.c_str(), CISAin) == EOF)
+    {
+        assert(0 && "Failed to write visa text to file");
+        return CM_FAILURE;
+    }
+    // Write the declarations and instructions
+    if (std::fputs(visaText.c_str(), CISAin) == EOF)
+    {
+        assert(0 && "Failed to write visa text to file");
+        return CM_FAILURE;
+    }
+    std::rewind(CISAin);
+
+    // Direct output of parser to null
+#if defined(_WIN64) || defined(_WIN32)
+    CISAout = fopen("nul", "w");
+#else
+    CISAout = fopen("/dev/null", "w");
+#endif
+
+    int fail = CISAparse();
+
+    if (CISAout)
+    {
+        fclose(CISAout);
+    }
+    fclose(CISAin);
+    if (fail)
+    {
+        assert(0 && "Parsing generated visa text failed");
+        return CM_FAILURE;
+    }
+
+    return CM_SUCCESS;
+#else
+    assert(0 && "Asm parsing not supported on this platform");
+    return CM_FAILURE;
+#endif
+}
+
 // default size of the kernel mem manager in bytes
 #define KERNEL_MEM_SIZE    (4*1024*1024)
 int CISA_IR_Builder::Compile( const char* nameInput)
@@ -716,6 +802,11 @@ int CISA_IR_Builder::Compile( const char* nameInput)
 
     if (IS_VISA_BOTH_PATH)
     {
+        if (m_options.getOption(vISA_IsaAssembly))
+        {
+            assert(0 && "Should not be calling Compile() in asm text writter mode!");
+            return CM_FAILURE;
+        }
 
         std::list< VISAKernelImpl *>::iterator iter = m_kernels.begin();
         std::list< VISAKernelImpl *>::iterator end = m_kernels.end();
@@ -726,8 +817,8 @@ int CISA_IR_Builder::Compile( const char* nameInput)
             m_options.setOptionInternally(vISA_NumGenBinariesWillBePatched, (uint32_t) 1);
         }
         m_cisaBinary->initCisaBinary(m_kernel_count, m_function_count);
-        m_cisaBinary->setMajorVersion((unsigned char)this->m_majorVersion);
-        m_cisaBinary->setMinorVersion((unsigned char)this->m_minorVersion);
+        m_cisaBinary->setMajorVersion((unsigned char)this->m_header.major_version);
+        m_cisaBinary->setMinorVersion((unsigned char)this->m_header.minor_version);
         m_cisaBinary->setMagicNumber(COMMON_ISA_MAGIC_NUM);
 
         int status = CM_SUCCESS;
@@ -746,9 +837,7 @@ int CISA_IR_Builder::Compile( const char* nameInput)
         }
 
         // We call the verifier and dumper directly.
-        if (!m_options.getOption(vISA_IsaAssembly) &&
-            (m_options.getOption(vISA_GenerateISAASM) ||
-             !m_options.getOption(vISA_NoVerifyvISA)))
+        if (m_options.getOption(vISA_GenerateISAASM) || !m_options.getOption(vISA_NoVerifyvISA))
         {
             m_cisaBinary->isaDumpVerify(m_kernels, &m_options);
         }
@@ -1113,8 +1202,6 @@ unsigned int NativeRelocs::getNativeOffset(unsigned int cisaOffset)
     return INVALID_GEN_OFFSET;
 }
 
-// skip all vISA parser functions in DLL mode
-#ifndef DLL_MODE
 bool CISA_IR_Builder::CISA_addr_variable_decl(char *var_name, unsigned int var_elements, VISA_Type data_type, attr_gen_struct scope, int line_no)
 {
 
@@ -3015,5 +3102,3 @@ bool CISA_IR_Builder::CISA_create_func_decl(char * name,
     return true;
 }
 
-
-#endif // !defined(DLL_MODE)

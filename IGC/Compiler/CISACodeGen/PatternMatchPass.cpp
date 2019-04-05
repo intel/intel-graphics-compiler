@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common/igc_regkeys.hpp"
 
 #include "common/LLVMWarningsPush.hpp"
+#include <llvm/IR/InlineAsm.h>
 #include <llvm/IR/Dominators.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instruction.h>
@@ -1126,14 +1127,24 @@ void CodeGenPatternMatch::visitCallInst(CallInst &I)
             match = MatchSingleInstruction(I);
         }
     }
-    else if(I.isInlineAsm())
+    else if (!I.getCalledFunction())
     {
-        return;
-    }
-    else if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer) && !I.getCalledFunction())
-    {
-        // Match indirect call
-        match = MatchSingleInstruction(I);
+        // Match inline asm or indirect call
+        if (I.isInlineAsm())
+        {
+            if (IGC_IS_FLAG_ENABLED(EnableInlineAsmSupport))
+            {
+                match = MatchSingleInstruction(I);
+            }
+            else
+            {
+                return;
+            }
+        }
+        else if (IGC_IS_FLAG_ENABLED(EnableFunctionPointer))
+        {
+            match = MatchSingleInstruction(I);
+        }
     }
 
     assert(match && "no match for this call");

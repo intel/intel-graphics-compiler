@@ -461,6 +461,9 @@ if (IGC_BUILD)
        ${GenX_IR_DLL_SOURCES} 
        ${GenX_IR_DLL_UTILITY} 
        ${GenX_IR_DLL_HEADERS}
+       ${BISON_CISAParser_OUTPUTS}
+       ${FLEX_CISAScanner_OUTPUTS}
+       ${GenX_IR_EXE_lex_yacc}
     )
   set_target_properties( GenX_IR PROPERTIES OUTPUT_NAME "igfxcmjit${TARGET_MODIFIER}")
   if(WIN32)

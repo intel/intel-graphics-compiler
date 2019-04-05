@@ -652,12 +652,13 @@ void CisaBinary::isaDumpVerify(
             if (ILFile.isaasmListFile && m_options->getOption(vISA_GenIsaAsmList))
                 fputs(string(asmName.str() + "\n").c_str(), ILFile.isaasmListFile);
 
-            sstr << printKernelHeader(m_header, header, kTemp->getIsKernel(), funcId, options);
+            kernel_format_provider fh(header);
+            sstr << printKernelHeader(m_header, &fh, kTemp->getIsKernel(), funcId, options);
             for(; inst_iter != inst_iter_end; inst_iter++)
             {
                 CisaFramework::CisaInst * cisa_inst = *inst_iter;
                 CISA_INST * inst = cisa_inst->getCISAInst();
-                sstr << printInstruction(header, inst, kTemp->getOptions()) << endl;
+                sstr << printInstruction(&fh, inst, kTemp->getOptions()) << endl;
             }
 
             writeIsaAsmFile(asmName.str(), sstr.str());
@@ -667,14 +668,16 @@ void CisaBinary::isaDumpVerify(
         {
             std::list<std::string> kerror_list;
             std::list<std::string> error_list;
-            verifyKernelHeader(m_header, header, kerrors, m_options);
+            kernel_format_provider kf(header);
+
+            verifyKernelHeader(m_header, &kf, kerrors, m_options);
 
             inst_iter = kTemp->getInstructionListBegin();
             for(; inst_iter != inst_iter_end; inst_iter++)
             {
                 CisaFramework::CisaInst * cisa_inst = *inst_iter;
                 CISA_INST * inst = cisa_inst->getCISAInst();
-                verifyInstruction(m_header, header, inst, errors, options);
+                verifyInstruction(m_header, &kf, inst, errors, options);
             }
 
             if ( (errors.size() + kerrors.size() /* total errors*/) > 0)

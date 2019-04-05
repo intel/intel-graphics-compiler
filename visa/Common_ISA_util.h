@@ -130,7 +130,7 @@ getSendHeaderPresentBitOffset ()
     return SEND_GT_MSG_HEADER_PRESENT_BIT_OFFSET;
 }
 
-VISA_Type getVectorOperandType(const common_isa_header& isaHeader, const kernel_format_t* header, const vector_opnd& opnd);
+VISA_Type getVectorOperandType(const common_isa_header& isaHeader, const print_format_provider_t* header, const vector_opnd& opnd);
 
 template <typename T> T getPrimitiveOperand(const CISA_INST* inst, unsigned i)
 {

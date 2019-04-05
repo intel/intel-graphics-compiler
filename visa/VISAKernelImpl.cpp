@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Timer.h"
 #include "FlowGraph.h"
 #include "BuildIR.h"
+#include "BuildCISAIR.h"
 #include "Optimizer.h"
 #include "BinaryEncoding.h"
 #include "BinaryEncodingCNL.h"
@@ -43,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "DebugInfo.h"
 #include "iga/IGALibrary/IR/Instruction.hpp"
 #include "BinaryEncodingIGA.h"
+#include "IsaDisassembly.h"
 
 #if defined( _DEBUG ) && ( defined( _WIN32 ) || defined( _WIN64 ) )
 #include <windows.h>
@@ -814,6 +816,42 @@ void VISAKernelImpl::setDefaultVariableName(Common_ISA_Var_Class Ty, const char 
     }
 }
 
+std::string VISAKernelImpl::getVarName(VISA_GenVar* decl)
+{
+    int index = getDeclarationID(decl);
+    stringstream ss;
+    ss << "V" << index;
+    return ss.str();
+}
+std::string VISAKernelImpl::getVarName(VISA_PredVar* decl)
+{
+    int index = getDeclarationID(decl) + COMMON_ISA_NUM_PREDEFINED_PRED;
+    stringstream ss;
+    ss << "P" << index;
+    return ss.str();
+}
+std::string VISAKernelImpl::getVarName(VISA_AddrVar* decl)
+{
+    int index = getDeclarationID(decl);
+    stringstream ss;
+    ss << "A" << index;
+    return ss.str();
+}
+std::string VISAKernelImpl::getVarName(VISA_SurfaceVar* decl)
+{
+    int index = getDeclarationID(decl);
+    stringstream ss;
+    ss << "T" << index;
+    return ss.str();
+}
+std::string VISAKernelImpl::getVarName(VISA_SamplerVar* decl)
+{
+    int index = getDeclarationID(decl);
+    stringstream ss;
+    ss << "S" << index;
+    return ss.str();
+}
+
 int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, int numberElements, VISA_Type dataType,
                                      VISA_Align varAlign, VISA_FileVar *parentDecl, int aliasOffset)
 {
@@ -934,12 +972,24 @@ int VISAKernelImpl::CreateVISAGenVar(VISA_GenVar *& decl, const char *varName, i
         }
         info->name_index = -1;
     }
-    if (IS_VISA_BOTH_PATH || m_options->getOption(vISA_GenerateDebugInfo))
+
+    if (IS_VISA_BOTH_PATH || m_options->getOption(vISA_GenerateDebugInfo) || IsAsmWriterMode())
     {
         info->name_index = addStringPool(std::string(varName));
         addVarInfoToList(decl);
-    }
 
+        // Write asm variable decl to stream
+        if (IsAsmWriterMode())
+        {
+            unsigned funcId = 0;
+            if (!this->getIsKernel())
+            {
+                this->GetFunctionId(funcId);
+            }
+            VISAKernel_format_provider fmt(this);
+            m_CISABuilder->m_ssIsaAsm << printVariableDecl(m_CISABuilder->m_header, &fmt, m_printDeclIndex.var_index++, getIsKernel(), funcId, getOptions()) << endl;
+        }
+    }
     decl->index = m_var_info_count++;
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
@@ -957,9 +1007,9 @@ int VISAKernelImpl::CreateVISAAddrVar(VISA_AddrVar *& decl, const char *varName,
     ////memset(decl, 0, sizeof(VISA_AddrVar));
     decl->type = ADDRESS_VAR;
 
-    if(m_options->getOption(vISA_isParseMode) && !this->setNameIndexMap(std::string(varName), decl))
+    if (m_options->getOption(vISA_isParseMode) && !this->setNameIndexMap(std::string(varName), decl))
     {
-        CmAssert( 0 );
+        CmAssert(0);
         return CM_FAILURE;
     }
 
@@ -967,14 +1017,14 @@ int VISAKernelImpl::CreateVISAAddrVar(VISA_AddrVar *& decl, const char *varName,
     setDefaultVariableName(decl->type, varName);
 
     decl->index = m_addr_info_count++;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         addr->dcl = m_builder->createDeclareNoLookup(
             createStringCopy(varName, m_mem),
             G4_ADDRESS,
             (uint16_t)numberElements,
             1,
-            Type_UW );
+            Type_UW);
         addr->name_index = -1;
     }
 
@@ -982,10 +1032,16 @@ int VISAKernelImpl::CreateVISAAddrVar(VISA_AddrVar *& decl, const char *varName,
     addr->attribute_count = 0;
     addr->attributes = NULL;
 
-    if (IS_VISA_BOTH_PATH || m_options->getOption(vISA_GenerateDebugInfo))
+    if (IS_VISA_BOTH_PATH || m_options->getOption(vISA_GenerateDebugInfo) || IsAsmWriterMode())
     {
         addr->name_index = this->addStringPool(std::string(varName));
         this->addAddrToList(decl);
+
+        if (IsAsmWriterMode())
+        {
+            VISAKernel_format_provider fmt(this);
+            m_CISABuilder->m_ssIsaAsm << printAddressDecl(m_CISABuilder->m_header, &fmt, m_printDeclIndex.addr_index++) << endl;
+        }
     }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
@@ -1005,11 +1061,11 @@ int VISAKernelImpl::CreateVISAPredVar(VISA_PredVar *& decl, const char* varName,
     ////memset(decl, 0, sizeof(VISA_PredVar));
     decl->type = PREDICATE_VAR;
 
-    MUST_BE_TRUE( numberElements <= MAX_VISA_PRED_SIZE, "number of flags must be <= 32");
+    MUST_BE_TRUE(numberElements <= MAX_VISA_PRED_SIZE, "number of flags must be <= 32");
 
-    if(m_options->getOption(vISA_isParseMode) && !this->setNameIndexMap(std::string(varName), decl))
+    if (m_options->getOption(vISA_isParseMode) && !this->setNameIndexMap(std::string(varName), decl))
     {
-        CmAssert( 0 );
+        CmAssert(0);
         return CM_FAILURE;
     }
     setDefaultVariableName(decl->type, varName);
@@ -1018,12 +1074,12 @@ int VISAKernelImpl::CreateVISAPredVar(VISA_PredVar *& decl, const char* varName,
 
     decl->index = COMMON_ISA_NUM_PREDEFINED_PRED + this->m_pred_info_count++;
     pred->attribute_count = 0;
-    if(IS_GEN_BOTH_PATH)
+    if (IS_GEN_BOTH_PATH)
     {
         pred->dcl = m_builder->createFlag(numberElements, createStringCopy(varName, m_mem));
         pred->name_index = -1;
     }
-    if(IS_VISA_BOTH_PATH || m_options->getOption(vISA_GenerateDebugInfo))
+    if (IS_VISA_BOTH_PATH || m_options->getOption(vISA_GenerateDebugInfo) || IsAsmWriterMode())
     {
         pred->name_index = addStringPool(std::string(varName));
         this->addPredToList(decl);
@@ -1031,6 +1087,12 @@ int VISAKernelImpl::CreateVISAPredVar(VISA_PredVar *& decl, const char* varName,
     pred->num_elements = numberElements;
     pred->attribute_count = 0;
     pred->attributes = NULL;
+
+    if (IsAsmWriterMode())
+    {
+        VISAKernel_format_provider fmt(this);
+        m_CISABuilder->m_ssIsaAsm << printPredicateDecl(&fmt, m_printDeclIndex.pred_index++) << endl;
+    }
 
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUILDER_CREATE_VAR);
@@ -1082,17 +1144,32 @@ int VISAKernelImpl::CreateStateVar(CISA_GEN_VAR *&decl, Common_ISA_Var_Class typ
         return CM_FAILURE;
     }
 
-    if(IS_VISA_BOTH_PATH || m_options->getOption(vISA_GenerateDebugInfo))
+    if(IS_VISA_BOTH_PATH || m_options->getOption(vISA_GenerateDebugInfo) || IsAsmWriterMode())
     {
         state->name_index = addStringPool(std::string(varName));
         switch( type )
         {
         case SAMPLER_VAR:
+        {
             addSampler(decl);
+            if (IsAsmWriterMode())
+            {
+                VISAKernel_format_provider fmt(this);
+                m_CISABuilder->m_ssIsaAsm << printSamplerDecl(&fmt, m_printDeclIndex.sampler_index++) << endl;
+            }
             break;
+        }
         case SURFACE_VAR:
+        {
             addSurface(decl);
+            if (IsAsmWriterMode())
+            {
+                VISAKernel_format_provider fmt(this);
+                unsigned numPreDefinedSurfs = Get_CISA_PreDefined_Surf_Count();
+                m_CISABuilder->m_ssIsaAsm << printSurfaceDecl(&fmt, m_printDeclIndex.surface_index++, numPreDefinedSurfs) << endl;
+            }
             break;
+        }
         default:
             CmAssert(0);
             return CM_FAILURE;
@@ -1618,7 +1695,7 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl,
         //used in asm generation
         m_builder->addInputArg(input);
     }
-    if (IS_VISA_BOTH_PATH)
+    if (IS_VISA_BOTH_PATH || IsAsmWriterMode())
     {
 
         if((input->kind & 0x3) == INPUT_UNKNOWN) {
@@ -1629,8 +1706,16 @@ int VISAKernelImpl::CreateVISAInputVar(CISA_GEN_VAR *decl,
             m_input_info_list.push_back(input);
             m_input_count++;
             this->m_input_info_size += Get_Size_Input_Info(input);
+
+            if (IsAsmWriterMode())
+            {
+                // Print input var
+                VISAKernel_format_provider fmt(this);
+                m_CISABuilder->m_ssIsaAsm << printFuncInput(&fmt, m_printDeclIndex.input_index++, getIsKernel(), getOptions()) << endl;
+            }
         }
     }
+
 #if defined(MEASURE_COMPILATION_TIME) && defined(TIME_BUILDER)
     stopTimer(TIMER_VISA_BUIDLER_CREATE_VAR);
 #endif
@@ -7466,7 +7551,13 @@ void VISAKernelImpl::addInstructionToEnd(CisaInst * inst)
     cisaInst->id = this->getvIsaInstCount();
     this->m_instruction_size += inst->getSize();
     DEBUG_PRINT_SIZE_INSTRUCTION("size after instruction added: ", inst->m_inst_desc->opcode, SIZE_VALUE_INST);
-    return;
+
+    if (IsAsmWriterMode())
+    {
+        // Print instructions
+        VISAKernel_format_provider fmt(this);
+        m_CISABuilder->m_ssIsaAsm << printInstruction(&fmt, inst->getCISAInst(), getOptions()) << endl;
+    }
 }
 
 int VISAKernelImpl::addLabel(label_info_t * lbl, char * label_name)
@@ -7547,6 +7638,7 @@ void VISAKernelImpl::finalizeKernel()
         VISATarget target = m_options->getTarget();
         AddKernelAttribute("Target", 1, &target);
     }
+
     patchLabels();
     m_cisa_kernel.string_count = (uint32_t)m_string_pool.size();
     m_cisa_kernel.strings = (const char **) m_mem.alloc(m_cisa_kernel.string_count * sizeof(char *));

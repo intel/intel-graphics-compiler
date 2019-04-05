@@ -142,6 +142,7 @@ namespace IGC
         bool hasLoadStore;
         bool hasCall;
         bool hasIndirectCall;
+        bool hasInlineAsm;
         bool hasIndirectBranch;
         bool hasFunctionAddressTaken;
         bool hasSel;

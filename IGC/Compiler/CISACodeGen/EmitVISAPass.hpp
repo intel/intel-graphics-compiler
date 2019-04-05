@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/InlineAsm.h>
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "common/LLVMWarningsPop.hpp"
 #include "Compiler/IGCPassSupport.h"
@@ -126,7 +127,8 @@ public:
     void EmitSubPair(llvm::GenIntrinsicInst *GII, const SSource Sources[4], const DstModifier &DstMod);
     void EmitMulPair(llvm::GenIntrinsicInst *GII, const SSource Sources[4], const DstModifier &DstMod);
     void EmitPtrToPair(llvm::GenIntrinsicInst *GII, const SSource Sources[1], const DstModifier &DstMod);
-    
+    void EmitInlineAsm(llvm::CallInst* inst);
+
     void emitPairToPtr(llvm::GenIntrinsicInst *GII);
 
     void emitMulAdd16(llvm::Instruction* I, const SSource source[2], const DstModifier &dstMod);

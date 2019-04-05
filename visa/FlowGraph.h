@@ -862,7 +862,7 @@ public:
     FlowGraph(INST_LIST_NODE_ALLOCATOR& alloc, G4_Kernel* kernel, Mem_Manager& m) : entryBB(NULL), traversalNum(0), numBBId(0), reducible(true),
       doIPA(false), hasStackCalls(false), isStackCallFunc(false), autoLabelId(0),
       pKernel(kernel), mem(m), instListAlloc(alloc),
-      builder(NULL), globalOpndHT(m), framePtrDcl(NULL), stackPtrDcl(NULL),
+      builder(NULL), kernelInfo(NULL), globalOpndHT(m), framePtrDcl(NULL), stackPtrDcl(NULL),
       scratchRegDcl(NULL), pseudoVCEDcl(NULL) {}
 
     ~FlowGraph();

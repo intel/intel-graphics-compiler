@@ -30,7 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "visa_wa.h"
 
-
 namespace IGC
 {
 class CShader;
@@ -131,6 +130,8 @@ class CEncoder
 {
 public:
     void InitEncoder( bool canAbortOnSpill, bool hasStackCall);
+    void InitBuildParams(llvm::SmallVector<const char*, 10> &params);
+    void InitVISABuilderOptions(TARGET_PLATFORM VISAPlatform, bool canAbortOnSpill, bool hasStackCall);
     SEncoderState CopyEncoderState();
     void SetEncoderState(SEncoderState &newState);
 
@@ -344,6 +345,7 @@ public:
     void Wait();
 
     VISAKernel* GetVISAKernel() { return vKernel; }
+    VISABuilder* GetVISABuilder() { return vbuilder; }
     void Init();
     void Push();
 
@@ -395,6 +397,9 @@ public:
     void DestroyVISABuilder();
 
     void AddFunctionSymbol(llvm::Function* F, CVariable* fvar);
+
+    std::string GetVariableName(CVariable* var);
+    std::string GetDumpFileName(std::string extension);
 
 private:
     // helper functions
@@ -501,6 +506,11 @@ private:
 
     uint32_t getNumChannels(CVariable* var) const;
 
+    void SaveOption(vISAOptions option, bool val);
+    void SaveOption(vISAOptions option, uint32_t val);
+    void SaveOption(vISAOptions option, const char* val);
+    void SetBuilderOptions(VISABuilder* pbuilder);
+
 protected:
     // encoder states
     SEncoderState m_encoderState;
@@ -508,6 +518,22 @@ protected:
     llvm::DenseMap<SAlias, CVariable*, SAliasMapInfo> m_aliasesMap;
 
     VISA_WA_TABLE m_WaTable;
+
+    enum OpType
+    {
+        ET_BOOL,
+        ET_INT32,
+        ET_CSTR
+    };
+    struct OptionValue
+    {
+        OpType type;
+        bool vBool;
+        uint32_t vInt32;
+        const char* vCstr;
+    };
+    // List of vISA user options
+    std::vector<std::pair<vISAOptions, OptionValue>> m_visaUserOptions;
 
     // Typically IGC just use ones vKernel for every vISA::compile call,
     // in those cases, vKernel and vMainKernel should be the same.
@@ -517,8 +543,10 @@ protected:
     VISAKernel*   vKernel;
     VISAKernel*   vMainKernel;
     VISABuilder* vbuilder;
+    VISABuilder* vAsmTextBuilder;
 
     bool m_enableVISAdump;
+    bool m_hasInlineAsm;
     std::vector<VISA_LabelOpnd*> labelMap;
 
     /// Per kernel label counter

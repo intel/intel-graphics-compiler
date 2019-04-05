@@ -36,11 +36,9 @@ class CisaBinary;
 class VISAKernelImpl;
 class VISAFunction;
 
-#ifndef DLL_MODE
 extern FILE *CISAin;
 extern FILE *CISAout;
 extern int CISAdebug;
-#endif
 
 #include "VISABuilderAPIDefinition.h"
 #include "visa_wa.h"
@@ -72,12 +70,17 @@ public:
 
     CISA_IR_Builder(CM_VISA_BUILDER_OPTION buildOption, int majorVersion, int minorVersion, PVISA_WA_TABLE pWaTable) : m_mem(4096)
     {
+        memset(&m_header, 0, sizeof(m_header));
+
         mBuildOption = buildOption;
         m_executionSatarted = false;
         m_kernel_count = 0;
         m_function_count = 0;
-        m_majorVersion = majorVersion;
-        m_minorVersion = minorVersion;
+
+        m_header.major_version = majorVersion;
+        m_header.minor_version = minorVersion;
+        m_header.magic_number = COMMON_ISA_MAGIC_NUM;
+
         m_cisaBinary = new (m_mem) CisaFramework::CisaBinary(&m_options);
         m_currentKernel = NULL;
         m_pWaTable = pWaTable;
@@ -101,9 +104,10 @@ public:
         return true;
     }
 
-    void closeCISAParsingFile() {fclose(CISAin);}
+    void closeCISAParsingFile() { fclose(CISAin); }
 
     #endif
+
     /**************START VISA BUILDER API*****************************/
 
     static int CreateBuilder(CISA_IR_Builder *&builder,
@@ -125,9 +129,17 @@ public:
     CM_BUILDER_API void SetOption(vISAOptions option, uint32_t val) { m_options.setOption(option, val); }
     CM_BUILDER_API void SetOption(vISAOptions option, const char *val) { m_options.setOption(option, val); }
 
+    // Used for inline asm code generation
+    CM_BUILDER_API virtual int ParseVISAText(const std::string& visaHeader, const std::string& visaText, const std::string& visaTextFile);
+    CM_BUILDER_API virtual int WriteVISAHeader();
+    CM_BUILDER_API std::stringstream& GetAsmTextStream() { return m_ssIsaAsm; }
+    CM_BUILDER_API std::stringstream& GetAsmTextHeaderStream() { return m_ssIsaAsmHeader; }
+    CM_BUILDER_API virtual VISAKernel* GetKernel();
+
     /**************END VISA BUILDER API*************************/
 
     string_pool_entry** branch_targets;
+    common_isa_header m_header;
 
     VISAKernelImpl *m_kernel;
     CisaFramework::CisaBinary *m_cisaBinary;
@@ -135,8 +147,8 @@ public:
 
     void CISA_IR_setVersion(unsigned char major_ver, unsigned char minor_ver)
     {
-        m_majorVersion = major_ver;
-        m_minorVersion = minor_ver;
+        m_header.major_version = major_ver;
+        m_header.minor_version = minor_ver;
     }
 
     Common_ISA_Input_Class get_input_class(Common_ISA_Var_Class var_class);
@@ -754,6 +766,8 @@ public:
     void setTestName(std::string name) { testName = name; }
 
     Options m_options;
+    std::stringstream m_ssIsaAsm;
+    std::stringstream m_ssIsaAsmHeader;
 
     void setupNativeRelocs(unsigned int, const BasicRelocEntry*);
     NativeRelocs* getNativeRelocs(bool createIfNULL = true)
@@ -778,8 +792,6 @@ private:
 
     unsigned int m_kernel_count;
     unsigned int m_function_count;
-    int m_majorVersion;
-    int m_minorVersion;
 
     std::list<VISAKernelImpl *> m_kernels;
     //keeps track of functions for stitching purposes, after compilation.
@@ -803,4 +815,5 @@ private:
     void* gtpin_init = nullptr;
 };
 extern _THREAD CISA_IR_Builder * pCisaBuilder;
+
 #endif

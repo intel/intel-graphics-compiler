@@ -373,7 +373,7 @@ typedef struct {
     {
        return kind >> 3;
     }
-    std::string getImplicitKindString()
+    std::string getImplicitKindString() const
     {
         uint32_t kind = getImplicitKind();
         std::string kindString = ".implicit_";
@@ -526,6 +526,118 @@ typedef struct {
     bool*                 surface_attrs;
 } kernel_format_t;
 typedef kernel_format_t function_format_t;
+
+class print_format_provider_t {
+public:
+    virtual uint32_t getNameIndex() const = 0;
+    virtual unsigned char getReturnType() const = 0;
+
+    virtual const char* getString(uint32_t str_id) const = 0;
+    virtual uint32_t getStringCount() const = 0;
+
+    virtual const label_info_t* getLabel(uint16_t label_id) const = 0;
+    virtual unsigned short getLabelCount() const = 0;
+
+    virtual const var_info_t* getVar(unsigned var_id) const = 0;
+    virtual uint32_t getVarCount() const = 0;
+
+    virtual const attribute_info_t* getAttr(unsigned id) const = 0;
+    virtual unsigned getAttrCount() const = 0;
+
+    virtual const addr_info_t* getAddr(unsigned id) const = 0;
+    virtual unsigned short getAddrCount() const = 0;
+
+    virtual const pred_info_t* getPred(unsigned id) const = 0;
+    virtual unsigned short getPredCount() const = 0;
+
+    virtual const state_info_t* getSurface(unsigned id) const = 0;
+    virtual unsigned char getSurfaceCount() const = 0;
+
+    virtual const state_info_t* getSampler(unsigned id) const = 0;
+    virtual unsigned char getSamplerCount() const = 0;
+
+    virtual const state_info_t* getVME(unsigned id) const = 0;
+    virtual unsigned char getVMECount() const = 0;
+
+    virtual const input_info_t* getInput(unsigned id) const = 0;
+    virtual uint32_t getInputCount() const = 0;
+
+};
+
+class kernel_format_provider : public print_format_provider_t
+{
+protected:
+    const kernel_format_t* m_header;
+
+public:
+    kernel_format_provider(const kernel_format_t* header) : m_header(header) { }
+
+    uint32_t getNameIndex() const
+    { return m_header->name_index; }
+
+    unsigned char getReturnType() const
+    { return m_header->return_type; }
+
+    const char* getString(uint32_t str_id) const
+    { return m_header->strings[str_id]; }
+    uint32_t getStringCount() const
+    { return m_header->string_count; }
+
+    const label_info_t* getLabel(uint16_t label_id) const
+    { return &m_header->labels[label_id]; }
+    unsigned short getLabelCount() const
+    { return m_header->label_count; }
+
+    const var_info_t* getVar(unsigned var_id) const
+    { return &m_header->variables[var_id]; }
+    uint32_t getVarCount() const
+    { return m_header->variable_count; }
+
+    const attribute_info_t* getAttr(unsigned id) const
+    { return &m_header->attributes[id]; }
+    unsigned getAttrCount() const
+    { return m_header->attribute_count; }
+
+    const addr_info_t* getAddr(unsigned id) const
+    { return &m_header->addresses[id]; }
+    unsigned short getAddrCount() const
+    { return m_header->address_count; }
+
+    const pred_info_t* getPred(unsigned id) const
+    { return &m_header->predicates[id]; }
+    unsigned short getPredCount() const
+    { return m_header->predicate_count; }
+
+    const state_info_t* getSurface(unsigned id) const
+    { return &m_header->surfaces[id]; }
+    unsigned char getSurfaceCount() const
+    { return m_header->surface_count; }
+
+    const state_info_t* getSampler(unsigned id) const
+    { return &m_header->samplers[id]; }
+    unsigned char getSamplerCount() const
+    { return m_header->sampler_count; }
+
+    const state_info_t* getVME(unsigned id) const
+    { return &m_header->vmes[id]; }
+    unsigned char getVMECount() const
+    { return m_header->vme_count; }
+
+    const input_info_t* getInput(unsigned id) const
+    { return &m_header->inputs[id]; }
+    uint32_t getInputCount() const
+    { return m_header->input_count; }
+};
+
+struct print_decl_index_t {
+    unsigned var_index = 0;
+    unsigned addr_index = 0;
+    unsigned pred_index = 0;
+    unsigned sampler_index = 0;
+    unsigned surface_index = 0;
+    unsigned vme_index = 0;
+    unsigned input_index = 0;
+};
 
 typedef struct {
     unsigned char tag;

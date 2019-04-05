@@ -1433,7 +1433,7 @@ VISA_Modifier Get_Common_ISA_SrcMod_From_G4_Mod(G4_SrcModifier mod )
 }
 
 
-VISA_Type getVectorOperandType(const common_isa_header& isaHeader, const kernel_format_t* header, const vector_opnd& opnd)
+VISA_Type getVectorOperandType(const common_isa_header& isaHeader, const print_format_provider_t* header, const vector_opnd& opnd)
 {
     unsigned numPreDefinedVars = Get_CISA_PreDefined_Var_Count();
     switch (opnd.getOperandClass())
@@ -1446,7 +1446,7 @@ VISA_Type getVectorOperandType(const common_isa_header& isaHeader, const kernel_
             }
             else
             {
-                const var_info_t& var = header->variables[opnd.getOperandIndex()-numPreDefinedVars];
+                const var_info_t& var = *header->getVar(opnd.getOperandIndex()-numPreDefinedVars);
                 return var.getType();
             }
         case OPERAND_ADDRESS:

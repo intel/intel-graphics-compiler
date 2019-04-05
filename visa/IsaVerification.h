@@ -35,11 +35,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define KERROR_LIST std::list<std::string>& kerror_list
 #define ERROR_LIST std::list<std::string>& error_list
 
-extern void verifyKernelHeader(const common_isa_header& isaHeader, const kernel_format_t* header, ERROR_LIST, Options *options);
+extern void verifyKernelHeader(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, ERROR_LIST, Options *options);
 
-extern void verifyRoutine(const common_isa_header& isaHeader, const kernel_format_t* header, std::list<CISA_INST*>& instructions, ERROR_LIST, KERROR_LIST, Options *options);
+extern void verifyRoutine(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, std::list<CISA_INST*>& instructions, ERROR_LIST, KERROR_LIST, Options *options);
 
-extern void verifyInstruction(const common_isa_header& isaHeader, const kernel_format_t* header, const CISA_INST* inst, ERROR_LIST, Options *options);
+extern void verifyInstruction(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, const CISA_INST* inst, ERROR_LIST, Options *options);
 
 extern void writeReport(const char* filename, ERROR_LIST, KERROR_LIST);
 

@@ -33,16 +33,23 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include "Common_ISA.h"
 
-extern std::string printKernelHeader(const common_isa_header& isaHeader, const kernel_format_t* header, bool isKernel, int funcionId, Options *opt);
+extern const char* getGenVarName(int id, const print_format_provider_t& header);
+
+/// - Print out kernel scope header
+extern std::string printKernelHeader(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, bool isKernel, int funcionId, Options *opt);
+
 ///
 /// - Takes an isa header, a kernel/function header, and isa instruction and returns a string contraining the instruction's isaasm.
 ///
-extern std::string printInstruction(const kernel_format_t* header, const CISA_INST* instruction, Options *opt);
+extern std::string printInstruction(const print_format_provider_t* header,
+    const CISA_INST* instruction, Options *opt);
 
 ///
 /// - Takes a isa header, a kernel header, and a instruction lists and returns a string contraining the kernel's entire isaasm.
 ///
-extern std::string printKernel(const common_isa_header& isaHeader, const kernel_format_t* header, std::list<CISA_INST*>& instructions, Options *opt);
+extern std::string printKernel(const common_isa_header& isaHeader,
+    const print_format_provider_t* header, std::list<CISA_INST*>& instructions, Options *opt);
 
 ///
 /// - Similar to printKernel() but for CISA 3.0+ functions. It requires the function ID to be passed in as an argument as well.
@@ -50,8 +57,15 @@ extern std::string printKernel(const common_isa_header& isaHeader, const kernel_
 extern std::string printFunction(const common_isa_header& isaHeader, const function_format_t* header, std::list<CISA_INST*>& instructions, int funcionId, Options *opt);
 
 /// Exposing these declare print functions for use by verifier diagnostics code or for disassembly output.
-extern std::string printPredicateDecl(const kernel_format_t* header, unsigned declID);
-extern std::string printVariableDecl (const common_isa_header& isaHeader, const kernel_format_t* header, unsigned declID, bool isKernel, unsigned int funcId, Options *options);
-extern std::string printAddressDecl  (const common_isa_header& isaHeader, const kernel_format_t* header, unsigned declID);
-extern const char* printAsmName(const kernel_format_t* header);
+extern std::string printPredicateDecl(const print_format_provider_t* header, unsigned declID);
+extern std::string printVariableDecl (const common_isa_header& isaHeader,
+    const print_format_provider_t* header, unsigned declID, bool isKernel, unsigned int funcId, Options *options);
+extern std::string printAddressDecl  (const common_isa_header& isaHeader,
+    const print_format_provider_t* header, unsigned declID);
+extern std::string printSamplerDecl(const print_format_provider_t* header, unsigned declID);
+extern std::string printSurfaceDecl(const print_format_provider_t* header, unsigned declID, unsigned numPredefinedSurfaces);
+extern std::string printVMEDecl(const print_format_provider_t* header, unsigned declID);
+extern std::string printFuncInput(const print_format_provider_t* header, unsigned declID, bool isKernel, Options* options);
+extern const char* printAsmName(const print_format_provider_t* header);
+extern std::string printAttribute(const attribute_info_t* attr, const print_format_provider_t* kernel, bool isKernelAttr = false);
 

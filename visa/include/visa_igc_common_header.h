@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 typedef enum
 {
     vISA_3D,
+    vISA_3DWRITER,
     vISA_MEDIA,
     vISA_PARSER
 } vISABuilderMode;
