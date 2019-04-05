@@ -968,11 +968,22 @@ DeSSA::CoalesceInsertElementsForBasicBlock(BasicBlock *Blk)
 
 Value* DeSSA::getRootValue(Value* Val, e_alignment *pAlign) const
 {
-    auto RI = InsEltMap.find(Val);
-    if (RI != InsEltMap.end()) {
-        Value *InsEltRoot = RI->second;
-        Value *PhiRootVal = getRegRoot(InsEltRoot, pAlign);
-        return (PhiRootVal ? PhiRootVal : InsEltRoot);
+    if (IGC_IS_FLAG_ENABLED(EnableDeSSAAlias))
+    {
+        auto AI = AliasMap.find(Val);
+        if (AI != AliasMap.end()) {
+            Value *Aliasee = AI->second;
+            Value *PhiRootVal = getRegRoot(Aliasee, pAlign);
+            return (PhiRootVal ? PhiRootVal : Aliasee);
+        }
+    }
+    else {
+        auto RI = InsEltMap.find(Val);
+        if (RI != InsEltMap.end()) {
+            Value *InsEltRoot = RI->second;
+            Value *PhiRootVal = getRegRoot(InsEltRoot, pAlign);
+            return (PhiRootVal ? PhiRootVal : InsEltRoot);
+        }
     }
     return getRegRoot(Val, pAlign);
 }
