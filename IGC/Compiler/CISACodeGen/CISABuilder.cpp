@@ -4541,7 +4541,11 @@ void CEncoder::Copy(CVariable* dst, CVariable* src)
 void CEncoder::BoolToInt(CVariable* dst, CVariable* src)
 {
     assert(src->GetType() == ISA_TYPE_BOOL);
-    assert((dst->GetType() == ISA_TYPE_UD) || (dst->GetType() == ISA_TYPE_D));
+
+    VISA_Type dstType = dst->GetType();
+    assert((dstType == ISA_TYPE_UD) || (dstType == ISA_TYPE_D) ||
+           (dstType == ISA_TYPE_UB) ||(dstType == ISA_TYPE_B) ||
+           (dstType == ISA_TYPE_UW) || (dstType == ISA_TYPE_W));
 
     // undef value are not copied
     if(!src->IsUndef() || IGC_IS_FLAG_ENABLED(InitializeUndefValueEnable)) {
