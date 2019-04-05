@@ -284,7 +284,7 @@ inline bool isInstPrecede(
     assert(inst->getParent() == pos->getParent());
     if (inst == pos)
     {
-        return false;
+        return true;
     }
 
     auto II = inst->getParent()->begin();
