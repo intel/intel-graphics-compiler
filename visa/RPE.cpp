@@ -161,7 +161,7 @@ namespace vISA
         // for each. For scalar variables, add them up separately.
         regPressure = 0;
         unsigned int numScalars = 0;
-        for (unsigned int i = 0; i < live.getSize(); i++)
+        for (unsigned int i = 0, size = live.getSize(); i < size; i++)
         {
             if (live.isSet(i))
             {

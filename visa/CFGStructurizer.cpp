@@ -1159,7 +1159,7 @@ G4_INST* CFGStructurizer::getJmpiInst(G4_BB *bb)
 
 void CFGStructurizer::fini()
 {
-    for (uint32_t i = 0; i< topANodes.size(); ++i)
+    for (uint32_t i = 0, size = topANodes.size(); i< size; ++i)
     {
         deletePST((ANodeHG*)topANodes[i]);
     }
@@ -2169,7 +2169,7 @@ void CFGStructurizer::ANStack_reconstruct(ANodeHG *& node, ANodeBB *ndbb)
 
     // Merging from ANStackIx to the top of ANStack is needed to make
     // sure the order of children is correct.
-    for (uint32_t i = newNode->ANStackIx + 1; i < ANStack.size(); ++i)
+    for (uint32_t i = newNode->ANStackIx + 1, size = ANStack.size(); i < size; ++i)
     {
         ANodeHG *nd = (ANodeHG *)ANStack[i];
         getNewRange(end, exit, nd->getEndBB(), nd->getExitBB());
@@ -3656,7 +3656,7 @@ void CFGStructurizer::run()
     // Now, convert ANodes
     if (topANodes.size() > 0)
     {
-        for (uint32_t i = 0; i < topANodes.size(); ++i)
+        for (uint32_t i = 0, size = topANodes.size(); i < size; ++i)
         {
             (void)convertPST(topANodes[i], nullptr);
         }

@@ -204,7 +204,7 @@ bool LVN::canReplaceUses(INST_LIST_ITER inst_it, UseList& uses, G4_INST* lvnInst
     unsigned int hs = def->getHorzStride();
 
     bool canReplace = true;
-    for (auto use_it = uses.begin(); use_it != uses.end(); use_it++)
+    for (auto use_it = uses.begin(), uend = uses.end(); use_it != uend; use_it++)
     {
         G4_INST* useInst = (*use_it).first;
         Gen4_Operand_Number opndNum = (*use_it).second;
@@ -624,8 +624,8 @@ void LVN::removeVirtualVarRedefs(G4_DstRegRegion* dst)
 
     if (it != lvnTable.end())
     {
-        for (auto second = it->second.begin();
-            second != it->second.end();
+        for (auto second = it->second.begin(), end = it->second.end();
+            second != end;
             )
         {
             auto potentialRedef = (*second);

@@ -547,7 +547,7 @@ void KernelDebugInfo::computeMissingVISAIds()
         }
     }
 
-    for (unsigned int i = 0; i < seenVISAIds.size(); i++)
+    for (unsigned int i = 0, size = seenVISAIds.size(); i < size; i++)
     {
         if (!seenVISAIds[i])
         {
@@ -627,7 +627,7 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
     unsigned int maxVISAIndex = 0;
     uint64_t maxGenIsaOffset = 0;
     // Now traverse CFG, create pair of CISA byte offset, gen binary offset and push to vector
-    for (BB_LIST_ITER bb_it = kernel->fg.BBs.begin(); bb_it != kernel->fg.BBs.end(); bb_it++)
+    for (BB_LIST_ITER bb_it = kernel->fg.BBs.begin(), bbEnd = kernel->fg.BBs.end(); bb_it != bbEnd; bb_it++)
     {
         G4_BB* bb = (*bb_it);
 
@@ -658,8 +658,8 @@ void KernelDebugInfo::generateByteOffsetMapping(std::list<G4_BB*>& stackCallEntr
             break;
         }
 
-        for(INST_LIST_ITER inst_it = bb->begin();
-            inst_it != bb->end();
+        for (INST_LIST_ITER inst_it = bb->begin(), bbEnd = bb->end();
+            inst_it != bbEnd;
             inst_it++)
         {
             G4_INST* inst = (*inst_it);
@@ -954,7 +954,7 @@ unsigned int populateMapDclName(VISAKernelImpl* kernel, std::map<G4_Declare*, st
 uint32_t KernelDebugInfo::getVarIndex(G4_Declare* dcl)
 {
     uint32_t retval = 0xffffffff;
-    for (uint32_t i = 0; i < varsMap.size(); i++)
+    for (uint32_t i = 0, size = varsMap.size(); i < size; i++)
     {
         if (dcl == varsMap[i]->dcl)
         {

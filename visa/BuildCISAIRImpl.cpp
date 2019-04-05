@@ -443,12 +443,8 @@ void saveFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
     // the IR can be reused for another kernel rather than
     // recompiling.
     // kernel points to a stackcall function.
-    for( BB_LIST_ITER bb_it = kernel->fg.BBs.begin();
-        bb_it != kernel->fg.BBs.end();
-        bb_it++ )
+    for (auto curBB : kernel->fg.BBs)
     {
-        G4_BB* curBB = (*bb_it);
-
         if( curBB->size() > 0 && curBB->isEndWithFCall() )
         {
             // Save state for this fcall
@@ -542,8 +538,8 @@ void restoreFCallState(G4_Kernel* kernel, savedFCallStates& savedFCallState)
 
 G4_Kernel* Get_Resolved_Compilation_Unit( common_isa_header header, std::list<G4_Kernel*> compilation_units, int idx )
 {
-    for( std::list<G4_Kernel*>::iterator k = compilation_units.begin();
-        k != compilation_units.end(); k++ )
+    for( std::list<G4_Kernel*>::iterator k = compilation_units.begin(), c_end = compilation_units.end();
+        k != c_end; k++ )
     {
         if( (*k)->fg.builder->getCUnitId() == (header.num_kernels + idx) && (*k)->fg.builder->getIsKernel() == false )
         {
@@ -696,7 +692,7 @@ void Stitch_Compiled_Units( common_isa_header header, std::list<G4_Kernel*>& com
     }
 
     // Append declarations and color attributes from all callees to kernel
-    for (auto it = callee_index.begin(); it != callee_index.end(); ++it )
+    for (auto it = callee_index.begin(), ciEnd = callee_index.end(); it != ciEnd; ++it)
     {
         G4_Kernel* callee = Get_Resolved_Compilation_Unit( header, compilation_units, (*it) );
 
@@ -839,8 +835,8 @@ int CISA_IR_Builder::Compile( const char* nameInput)
 
         savedFCallStates savedFCallState;
 
-        for(std::list<VISAKernelImpl*>::iterator kernel_it = kernels.begin();
-            kernel_it != kernels.end();
+        for(std::list<VISAKernelImpl*>::iterator kernel_it = kernels.begin(), kend = kernels.end();
+            kernel_it != kend;
             kernel_it++)
         {
             VISAKernelImpl* kernel = (*kernel_it);
@@ -848,8 +844,8 @@ int CISA_IR_Builder::Compile( const char* nameInput)
             saveFCallState(kernel->getKernel(), savedFCallState);
         }
 
-        for( std::list<VISAKernelImpl*>::iterator func_it = functions.begin();
-            func_it != functions.end();
+        for( std::list<VISAKernelImpl*>::iterator func_it = functions.begin(), fend = functions.end();
+            func_it != fend;
             func_it++ )
         {
             VISAKernelImpl* function = (*func_it);
@@ -1041,8 +1037,8 @@ int CISA_IR_Builder::CreateVISAFileVar(VISA_FileVar *& decl, char *varName, unsi
     if( IS_GEN_BOTH_PATH )
     {
         // Append file var to all kernel/function objects in CISA_IR_Builder
-        for( std::list<VISAKernelImpl*>::iterator it = m_kernels.begin();
-            it != m_kernels.end();
+        for( std::list<VISAKernelImpl*>::iterator it = m_kernels.begin(), kend = m_kernels.end();
+            it != kend;
             it++ )
         {
             VISAKernelImpl* kernel = (*it);
