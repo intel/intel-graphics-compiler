@@ -565,6 +565,11 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     mpm.add(new BreakConstantExpr());
     mpm.add(new Legalization(preserveNan));
 
+    if (IGC_IS_FLAG_DISABLED(DisableBranchSwaping))
+    {
+        mpm.add(createNanHandlingPass());
+    }
+
     // Scalarizer in codegen to handle the vector instructions
     mpm.add(new ScalarizerCodeGen());
 

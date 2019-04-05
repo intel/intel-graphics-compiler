@@ -63,6 +63,7 @@ void initializeGreedyLiveRangeReductionPass(llvm::PassRegistry&);
 void initializeIGCIndirectICBPropagaionPass(llvm::PassRegistry&);
 void initializeGenUpdateCBPass(llvm::PassRegistry&);
 void initializeGenStrengthReductionPass(llvm::PassRegistry&);
+void initializeNanHandlingPass(llvm::PassRegistry&);
 void initializeFlattenSmallSwitchPass(llvm::PassRegistry&);
 void initializeGenXFunctionGroupAnalysisPass(llvm::PassRegistry&);
 void initializeGenXCodeGenModulePass(llvm::PassRegistry&);

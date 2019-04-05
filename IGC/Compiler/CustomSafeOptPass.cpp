@@ -2446,6 +2446,257 @@ IGC_INITIALIZE_PASS_END(IGCIndirectICBPropagaion, "IGCIndirectICBPropagaion",
     "IGCIndirectICBPropagaion", false, false)
 
 namespace {
+    class NanHandling : public FunctionPass, public llvm::InstVisitor<NanHandling>
+    {
+    public:
+        static char ID;
+        NanHandling() : FunctionPass(ID)
+        {
+            initializeNanHandlingPass(*PassRegistry::getPassRegistry());
+        }
+
+        void getAnalysisUsage(llvm::AnalysisUsage& AU) const
+        {
+            AU.setPreservesCFG();
+            AU.addRequired<LoopInfoWrapperPass>();
+        }
+
+        virtual llvm::StringRef getPassName() const { return "NAN handling"; }
+        virtual bool runOnFunction(llvm::Function &F);
+        void visitBranchInst(llvm::BranchInst &I);
+        void loopNanCases(Function &F);
+
+    private:
+        int longestPathInstCount(llvm::BasicBlock *BB, int &depth);
+        void swapBranch(llvm::Instruction *inst, llvm::BranchInst &BI);
+        SmallVector<llvm::BranchInst*, 10> visitedInst;
+    };
+} // namespace
+
+char NanHandling::ID = 0;
+FunctionPass *IGC::createNanHandlingPass() { return new NanHandling(); }
+
+bool NanHandling::runOnFunction(Function &F)
+{
+    loopNanCases(F);
+    visit(F);
+    return true;
+}
+
+void NanHandling::loopNanCases(Function &F)
+{
+    // take care of loop cases
+    visitedInst.clear();
+    llvm::LoopInfo *LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    if (LI && !LI->empty())
+    {
+        for (LoopInfo::iterator I = LI->begin(), E = LI->end(); I != E; ++I)
+        {
+            Loop *loop = *I;
+            BranchInst* br = cast<BranchInst>(loop->getLoopLatch()->getTerminator());
+            BasicBlock* header = loop->getHeader();
+            if (br && br->isConditional() && header)
+            {
+                visitedInst.push_back(br);
+                if (FCmpInst *brCmpInst = dyn_cast<FCmpInst>(br->getCondition()))
+                {
+                    FPMathOperator *FPO = dyn_cast<FPMathOperator>(brCmpInst);
+                    if (!FPO || !FPO->isFast() || !brCmpInst->isOrdered(brCmpInst->getPredicate()))
+                    {
+                        continue;
+                    }
+                    if (br->getSuccessor(1) == header)
+                    {
+                        swapBranch(brCmpInst, *br);
+                    }
+                }
+                else if (BinaryOperator *andOrInst = dyn_cast<BinaryOperator>(br->getCondition()))
+                {
+                    if (andOrInst->getOpcode() != BinaryOperator::And &&
+                        andOrInst->getOpcode() != BinaryOperator::Or)
+                    {
+                        continue;
+                    }
+
+                    FCmpInst *brCmpInst0 = dyn_cast<FCmpInst>(andOrInst->getOperand(0));
+                    FCmpInst *brCmpInst1 = dyn_cast<FCmpInst>(andOrInst->getOperand(1));
+                    if (!brCmpInst0 || !brCmpInst0->isOrdered(brCmpInst0->getPredicate()) ||
+                        !brCmpInst1 || !brCmpInst1->isOrdered(brCmpInst1->getPredicate()))
+                    {
+                        continue;
+                    }
+                    FPMathOperator *FPO0 = dyn_cast<FPMathOperator>(brCmpInst0);
+                    FPMathOperator *FPO1 = dyn_cast<FPMathOperator>(brCmpInst1);
+                    if (!FPO0 || !FPO0->isFast() || !FPO1 || !FPO1->isFast())
+                    {
+                        continue;
+                    }
+                    if (br->getSuccessor(1) == header)
+                    {
+                        swapBranch(andOrInst, *br);
+                    }
+                }
+            }
+        }
+    }
+}
+
+int NanHandling::longestPathInstCount(llvm::BasicBlock *BB, int &depth)
+{
+#define MAX_SEARCH_DEPTH 10
+
+    depth++;
+    if (!BB || depth>MAX_SEARCH_DEPTH)
+        return 0;
+
+    int sumSuccInstCount = 0;
+    for (succ_iterator SI = succ_begin(BB), E = succ_end(BB); SI != E; ++SI)
+    {
+        sumSuccInstCount += longestPathInstCount(*SI, depth);
+    }
+    return (int)(BB->getInstList().size()) + sumSuccInstCount;
+}
+
+CmpInst::Predicate orderedInvert(CmpInst::Predicate pred)
+{
+    switch (pred)
+    {
+    case CmpInst::FCMP_OEQ: return CmpInst::FCMP_ONE;
+    case CmpInst::FCMP_ONE: return CmpInst::FCMP_OEQ;
+    case CmpInst::FCMP_OGT: return CmpInst::FCMP_OLE;
+    case CmpInst::FCMP_OLT: return CmpInst::FCMP_OGE;
+    case CmpInst::FCMP_OGE: return CmpInst::FCMP_OLT;
+    case CmpInst::FCMP_OLE: return CmpInst::FCMP_OGT;
+    default:
+        assert(0 && "wrong predicate");
+        break;
+    }
+    return pred;
+}
+
+void NanHandling::swapBranch(llvm::Instruction *inst, llvm::BranchInst &BI)
+{
+
+    if (FCmpInst *brCondition = dyn_cast<FCmpInst>(inst))
+    {
+        if (inst->hasOneUse())
+        {
+            brCondition->setPredicate(orderedInvert(brCondition->getPredicate()));
+            BI.swapSuccessors();
+        }
+    }
+    else if (BinaryOperator *brCondition = dyn_cast<BinaryOperator>(inst))
+    {
+        FCmpInst *src0 = dyn_cast<FCmpInst>(inst->getOperand(0));
+        FCmpInst *src1 = dyn_cast<FCmpInst>(inst->getOperand(1));
+
+        if (!src0 || !src1 ||
+            src0->isUnordered(src0->getPredicate()) ||
+            src1->isUnordered(src1->getPredicate()))
+        {
+            // shouldn't come into this function at all
+            assert(0);
+        }
+
+        if (!src0->hasOneUse() || !src1->hasOneUse())
+        {
+            return;
+        }
+
+        IRBuilder<> builder(inst);
+        if (inst->getOpcode() == BinaryOperator::And)
+        {
+            Value *newInst = builder.CreateOr(src0, src1);
+            inst->replaceAllUsesWith(newInst);
+        }
+        else if (inst->getOpcode() == BinaryOperator::Or)
+        {
+            Value *newInst = builder.CreateAnd(src0, src1);
+            inst->replaceAllUsesWith(newInst);
+        }
+        else
+        {
+            // opcode not expected
+            assert(0);
+            return;
+        }
+        src0->setPredicate(orderedInvert(src0->getPredicate()));
+        src1->setPredicate(orderedInvert(src1->getPredicate()));
+        inst->eraseFromParent();
+        BI.swapSuccessors();
+    }
+    else
+    {
+        // inst not expected
+        assert(0);
+    }
+}
+
+void NanHandling::visitBranchInst(llvm::BranchInst &I)
+{
+    if (!I.isConditional())
+        return;
+
+    // if this branch is part of a loop, it is taken care of already in loopNanCases
+    for (auto iter = visitedInst.begin(); iter != visitedInst.end(); iter++)
+    {
+        if (&I == *iter)
+            return;
+    }
+
+    Instruction * cmpCondition = nullptr;
+
+    // if the branching is based on a cmp instruction
+    if (FCmpInst *brCmpInst = dyn_cast<FCmpInst>(I.getCondition()))
+    {
+        FPMathOperator *FPO = dyn_cast<FPMathOperator>(brCmpInst);
+        if (!FPO || !FPO->isFast() || !brCmpInst->isOrdered(brCmpInst->getPredicate()))
+            return;
+
+        cmpCondition = brCmpInst;
+    }
+    // if the branching is based on a and/or from multiple conditions.
+    else if (BinaryOperator *andOrInst = dyn_cast<BinaryOperator>(I.getCondition()))
+    {
+        if (andOrInst->getOpcode() != BinaryOperator::And && andOrInst->getOpcode() != BinaryOperator::Or)
+            return;
+        
+        FCmpInst *src0 = dyn_cast<FCmpInst>(andOrInst->getOperand(0));
+        FCmpInst *src1 = dyn_cast<FCmpInst>(andOrInst->getOperand(1));
+
+        if (!src0 || !src1 ||
+            src0->isUnordered(src0->getPredicate()) ||
+            src1->isUnordered(src1->getPredicate()))
+            return;
+
+        cmpCondition = andOrInst;
+    }
+    else
+    {
+        return;
+    }
+
+    if (!cmpCondition->hasOneUse())
+        return;
+
+    // Calculate the maximum instruction count when going down one branch.
+    // Make the false case (including NaN) goes to the shorter path.
+    int depth = 0;
+    int trueBranchSize = longestPathInstCount(I.getSuccessor(0), depth);
+    depth = 0;
+    int falseBranchSize = longestPathInstCount(I.getSuccessor(1), depth);
+
+    if (falseBranchSize - trueBranchSize > (int)(IGC_GET_FLAG_VALUE(SetBranchSwapThreshold)))
+    {
+        // swap the condition and the successor blocks
+        swapBranch(cmpCondition, I);
+        return;
+    }
+}
+IGC_INITIALIZE_PASS_BEGIN(NanHandling, "NanHandling", "NanHandling", false, false)
+IGC_INITIALIZE_PASS_END(NanHandling, "NanHandling", "NanHandling", false, false)
+
+namespace {
 
 class GenStrengthReduction : public FunctionPass
 {

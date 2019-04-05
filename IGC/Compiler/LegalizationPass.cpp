@@ -1119,6 +1119,7 @@ void Legalization::visitFCmpInstUndorderedFlushNan(FCmpInst & FC)
                 FC.getOperand(1),
                 "",
                 &FC);
+        cast<Instruction>(result)->setFastMathFlags(FC.getFastMathFlags());
         break;
     case CmpInst::FCMP_UEQ:
         result = FCmpInst::Create(
@@ -1128,6 +1129,7 @@ void Legalization::visitFCmpInstUndorderedFlushNan(FCmpInst & FC)
                 FC.getOperand(1),
                 "",
                 &FC);
+        cast<Instruction>(result)->setFastMathFlags(FC.getFastMathFlags());
         break;
     case CmpInst::FCMP_UGE: 
     case CmpInst::FCMP_UGT:
@@ -1140,6 +1142,7 @@ void Legalization::visitFCmpInstUndorderedFlushNan(FCmpInst & FC)
                 FC.getOperand(1),
                 "",
                 &FC);
+        cast<Instruction>(result)->setFastMathFlags(FC.getFastMathFlags());
         break;
     default:
         break;
