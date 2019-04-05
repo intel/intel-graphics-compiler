@@ -1,7 +1,7 @@
 prefix=@IGC_INSTALL_TIME_ROOT_DIR@
 exec_prefix=${prefix}
-includedir=${prefix}/include/igc
-libdir=${exec_prefix}/lib
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@/igc
+libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
 
 Name: igc-opencl
 Description: Intel(R) Graphics Compiler for OpenCL(TM)
