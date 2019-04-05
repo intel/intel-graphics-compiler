@@ -403,12 +403,17 @@ void DDD::getBucketsForOperand(G4_INST* inst, Gen4_Operand_Number opnd_num,
             int baseBucket = GRF_BUCKET;
             int endingBucket = baseBucket + opnd->getLinearizedEnd() / divisor;
             MUST_BE_TRUE(endingBucket >= startingBucket, "Ending bucket less than starting bucket");
+            Mask mask = getMaskForOp(opnd, opnd_num, inst->getExecSize());
             int numBuckets = endingBucket - startingBucket + 1;
             for (int j = startingBucket;
                 j < (startingBucket + numBuckets); j++) {
-                Mask mask = getMaskForOp(opnd, opnd_num, inst->getExecSize());
                 BDvec.push_back(BucketDescr(j, mask, opnd_num));
             }
+            // If this operand is a non-trivial special ACC operand, add
+            // it to the other ARF bucket for tacking extra dependencies.
+            G4_AccRegSel Acc = opnd->getAccRegSel();
+            if (Acc != G4_AccRegSel::ACC_UNDEFINED && Acc != G4_AccRegSel::NOACC)
+                BDvec.push_back(BucketDescr(OTHER_ARF_BUCKET, mask, opnd_num));
         } else {
             Mask mask = getMaskForOp(opnd, opnd_num, inst->getExecSize());
             BDvec.push_back(BucketDescr(startingBucket, mask, opnd_num));

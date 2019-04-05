@@ -2719,8 +2719,7 @@ void LivenessAnalysis::computeGenKillandPseudoKill(G4_BB* bb,
             {
                 iterToInsert--;
             } while ((*iterToInsert)->isPseudoKill());
-            G4_DstRegRegion* dstOpnd = fg.builder->createDstRegRegion(Direct, pseudoKill.first->getRegVar(), 0, 0, 1, Type_UD);
-            G4_INST* killInst = fg.builder->createInternalInst(NULL, G4_pseudo_kill, NULL, false, 1, dstOpnd, NULL, NULL, 0);
+            G4_INST* killInst = fg.builder->createPseudoKill(pseudoKill.first);
             bb->insert(iterToInsert, killInst);
         }
     }
