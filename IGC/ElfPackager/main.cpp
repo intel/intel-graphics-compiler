@@ -105,7 +105,7 @@ void CreateElfSection(CLElfLib::CElfWriter* pWriter, CLElfLib::SSectionNode sect
 std::unique_ptr<Module> LocalCloneModule(
 	const Module *M, ValueToValueMapTy &VMap,
     std::vector<GlobalValue*> &ExtractValues,
-    std::map<const llvm::Function*, std::set<const llvm::GlobalVariable*>> &FuncMap) {
+    std::map<const llvm::Function*, std::set<StringRef>> &FuncMap) {
 	// First off, we need to create the new module.
 	std::unique_ptr<Module> New =
 		llvm::make_unique<Module>(M->getModuleIdentifier(), M->getContext());
@@ -177,7 +177,7 @@ std::unique_ptr<Module> LocalCloneModule(
         auto funcGlobalSet = FuncMap[&*I];
         for (auto &global_Iterator : funcGlobalSet)
         {
-            mapGlobal(global_Iterator);
+            mapGlobal(M->getNamedGlobal(global_Iterator));
         }
 
 
@@ -301,7 +301,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    std::map<const llvm::Function*, std::set<const llvm::GlobalVariable*>> FuncToGlobalsMap;
+    std::map<const llvm::Function*, std::set<StringRef>> FuncToGlobalsMap;
 
 	for (auto &iterator3 : GlobalList)
 	{
@@ -309,7 +309,7 @@ int main(int argc, char *argv[])
         {
             if (auto inst = dyn_cast<Instruction>(U))
             {
-                FuncToGlobalsMap[inst->getParent()->getParent()].insert(&iterator3);
+                FuncToGlobalsMap[inst->getParent()->getParent()].insert(iterator3.getName());
                 return;
             }
             else if (auto inst = dyn_cast<GlobalValue>(U))
