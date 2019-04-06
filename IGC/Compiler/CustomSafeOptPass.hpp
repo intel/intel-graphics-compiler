@@ -31,7 +31,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <llvm/IR/InstVisitor.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/LoopPass.h>
+#include <llvm/IR/Instructions.h>
 #include "common/LLVMWarningsPop.hpp"
+
 
 namespace llvm
 {
@@ -97,6 +99,40 @@ namespace IGC
     private:
         bool psHasSideEffect;
     };
+#if LLVM_VERSION_MAJOR >= 7 
+    class TrivialLocalMemoryOpsElimination : public llvm::FunctionPass, public llvm::InstVisitor<TrivialLocalMemoryOpsElimination>
+    {
+    public:
+        static char ID;
+
+        TrivialLocalMemoryOpsElimination();
+
+        ~TrivialLocalMemoryOpsElimination() {}
+
+        virtual bool runOnFunction(llvm::Function &F) override;
+
+        virtual llvm::StringRef getPassName() const override
+        {
+            return "TrivialLocalMemoryOpsElimination";
+        }
+
+        void visitLoadInst(llvm::LoadInst &I);
+        void visitStoreInst(llvm::StoreInst &I);
+        void visitCallInst(llvm::CallInst &I);
+        bool isLocalBarrier(llvm::CallInst &I);
+        void findNextThreadGroupBarrierInst(llvm::Instruction &I);
+        void anyCallInstUseLocalMemory(llvm::CallInst &I);
+
+    private:
+        llvm::SmallVector<llvm::LoadInst*, 16> m_LocalLoadsToRemove;
+        llvm::SmallVector<llvm::StoreInst*, 16> m_LocalStoresToRemove;
+        llvm::SmallVector<llvm::CallInst*, 16> m_LocalFencesBariersToRemove;
+
+        bool abortPass = false;
+        const std::vector<bool> m_argumentsOfLocalMemoryBarrier{ true, false, false, false, false, false, true };
+    };
+
+#endif
 
     class GenSpecificPattern : public llvm::FunctionPass, public llvm::InstVisitor<GenSpecificPattern>
     {
@@ -180,5 +216,7 @@ namespace IGC
     llvm::FunctionPass *createBlendToDiscardPass();
     llvm::FunctionPass *createMarkReadOnlyLoadPass();
     llvm::FunctionPass *createLogicalAndToBranchPass();
+ 
+
 
 } // namespace IGC
