@@ -521,10 +521,14 @@ int32_t kv_get_destination_register(const kv_t *kv, int32_t pc)
         return -1;
     }
     const Operand &dst = inst->getDestination();
-    if (dst.getKind() != Operand::Kind::DIRECT) {
-        return -1;
+    if (dst.getKind() == Operand::Kind::DIRECT) {
+        return dst.getDirRegRef().regNum;
     }
-    return dst.getDirRegRef().regNum;
+
+    if (dst.getKind() == Operand::Kind::INDIRECT) {
+        return dst.getIndAddrReg().regNum;
+    }
+    return -1;
 }
 
 int32_t kv_get_destination_sub_register(const kv_t *kv, int32_t pc)
@@ -542,10 +546,15 @@ int32_t kv_get_destination_sub_register(const kv_t *kv, int32_t pc)
         return -1;
     }
     const Operand &dst = inst->getDestination();
-    if (dst.getKind() != Operand::Kind::DIRECT) {
-        return -1;
+    if (dst.getKind() == Operand::Kind::DIRECT) {
+        return dst.getDirRegRef().subRegNum;
     }
-    return dst.getDirRegRef().subRegNum;
+
+    if (dst.getKind() == Operand::Kind::INDIRECT) {
+        return dst.getIndAddrReg().subRegNum;
+    }
+
+    return -1;
 }
 
 uint32_t kv_get_destination_data_type(const kv_t *kv, int32_t pc)
@@ -594,10 +603,15 @@ int32_t kv_get_source_register(const kv_t *kv, int32_t pc, uint32_t sourceNumber
         return -1;
     }
     const auto &src = inst->getSource((size_t)sourceNumber);
-    if (src.getKind() != Operand::Kind::DIRECT) {
-        return -1;
+    if (src.getKind() == Operand::Kind::DIRECT) {
+        return (int32_t)src.getDirRegRef().regNum;
     }
-    return (int32_t)src.getDirRegRef().regNum;
+
+    if (src.getKind() == Operand::Kind::INDIRECT) {
+        return (int32_t)src.getIndAddrReg().regNum;
+    }
+
+    return -1;
 }
 
 int32_t kv_get_source_sub_register(const kv_t *kv, int32_t pc, uint32_t sourceNumber)
@@ -612,10 +626,14 @@ int32_t kv_get_source_sub_register(const kv_t *kv, int32_t pc, uint32_t sourceNu
         return -1;
     }
     const auto &src = inst->getSource((size_t)sourceNumber);
-    if (src.getKind() != Operand::Kind::DIRECT) {
-        return -1;
+    if (src.getKind() == Operand::Kind::DIRECT) {
+        return (int32_t)src.getDirRegRef().subRegNum;
     }
-    return (int32_t)src.getDirRegRef().subRegNum;
+
+    if (src.getKind() == Operand::Kind::INDIRECT) {
+        return (int32_t)src.getIndAddrReg().subRegNum;
+    }
+    return -1;
 }
 
 uint32_t kv_get_source_data_type(const kv_t *kv, int32_t pc, uint32_t sourceNumber)
