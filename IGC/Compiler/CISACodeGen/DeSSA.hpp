@@ -285,9 +285,10 @@ public:
 
     llvm::Value* getInsEltRoot(llvm::Value* Val) const;
     llvm::Value* getAliasee(llvm::Value* V) const;
-    bool isAliasee(llvm::Value* V) const { return (V == getAliasee(V)); }
-    bool isAlias(llvm::Value* V) const;
+    bool isAliasee(llvm::Value* V) const;
+    bool isAliaser(llvm::Value* V) const;
     bool interfere(llvm::Value* V0, llvm::Value* V1);
+    bool alignInterfere(e_alignment a1, e_alignment a2);
 
 private:
     void CoalesceInsertElementsForBasicBlock(llvm::BasicBlock *blk);
@@ -304,9 +305,6 @@ private:
 
     void unionRegs(Node* N1, Node* N2);
     void CoalesceAliasInstForBasicBlock(llvm::BasicBlock *Blk);
-    int checkInsertElementAlias(
-        llvm::InsertElementInst* IEI,
-        llvm::SmallVector<llvm::Value*, 16>& AllIEIs);
     void AddAlias(llvm::Value *Val) {
         if (AliasMap.find(Val) == AliasMap.end()) {
             AliasMap[Val] = Val;
@@ -324,6 +322,16 @@ private:
             return PrefCCMap[V];
         }
         return nullptr;
+    }
+
+    // If V is an inst and it is not needed (by patternmatch),
+    // return false; otherwise, return true;
+    bool isNeededIfInst(llvm::Value *V) {
+        if (llvm::Instruction* I = llvm::dyn_cast<llvm::Instruction>(V))
+        {
+            return CG->NeedInstruction(*I);
+        }
+        return true;
     }
   };
 
