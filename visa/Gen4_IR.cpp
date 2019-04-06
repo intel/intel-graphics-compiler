@@ -3464,11 +3464,6 @@ G4_INST::emit_options(std::ostream& output)
         tmpOption |= InstOpt_EOT;
     }
 
-    // must set AccWrCtrl explicitly in GT+
-    if( isAccWrCtrlInst() || (isFlowControl() && asCFInst()->isBackward()) ) {
-        tmpOption |= InstOpt_AccWrCtrl;
-    }
-
     //emit mask option
     output << "{";
     switch (getMaskOffset())
@@ -4409,9 +4404,9 @@ void G4_DstRegRegion::computeLeftBound()
     else if ( base != NULL && base->isAccReg())
     {
         left_bound = subRegOff * G4_Type_Table[type].byteSize;
-        if( base->asAreg()->getArchRegType() == AREG_ACC1 || regOff == 1 )
+        if (base->asAreg()->getArchRegType() == AREG_ACC1 || regOff == 1)
         {
-            left_bound += 32;  // TODO: size of ACC is assumed to be 32 BYTEs.
+            left_bound += getGRFSize();
         }
         byteOffset = left_bound;
     } else if( top_dcl ){

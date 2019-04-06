@@ -473,4 +473,10 @@
         return 4;
     }
 
+    bool encodeAccWrEn() const
+    {
+        return true;
+    }
+
+
     // end HW capabilities

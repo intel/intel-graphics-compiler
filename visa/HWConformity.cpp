@@ -5406,12 +5406,10 @@ void HWConformity::fixSADA2Inst( BB_LIST_ITER it )
 
             // make sure there are no instructions between the sada2's new location
             // and the src2-defining instruction that updates acc
-            for( INST_LIST_ITER iter = newSada2Iter; *iter != src2Dst; --iter )
+            for (auto iter = newSada2Iter; *iter != src2Dst; --iter)
             {
                 G4_INST* aInst = *iter;
-                if( aInst->isAccDstInst() || aInst->isAccWrCtrlInst() ||
-                    ( aInst->opcode() == G4_mulh &&
-                    IS_DTYPE(aInst->getSrc(0)->getType()) && IS_DTYPE(aInst->getSrc(1)->getType()) ) )
+                if (aInst->hasACCOpnd())
                 {
                     canDoSada2 = false;
                     break;

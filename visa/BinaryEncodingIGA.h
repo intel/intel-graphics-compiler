@@ -331,56 +331,7 @@ private:
             return iga::ImmVal::UNDEF;
         }
     }
-    iga::InstOptSet getIGAInstOptSet(G4_INST* inst) const
-    {
-        iga::InstOptSet options;
-
-        if (inst->isAccWrCtrlInst())
-        {
-            options.add(iga::InstOpt::ACCWREN);
-        }
-        if (inst->isAtomicInst())
-        {
-            options.add(iga::InstOpt::ATOMIC);
-        }
-        if (inst->isBreakPointInst())
-        {
-            options.add(iga::InstOpt::BREAKPOINT);
-        }
-        if (inst->isNoDDChkInst())
-        {
-            options.add(iga::InstOpt::NODDCHK);
-        }
-        if (inst->isNoDDClrInst())
-        {
-            options.add(iga::InstOpt::NODDCLR);
-        }
-        if (inst->isNoPreemptInst())
-        {
-            options.add(iga::InstOpt::NOPREEMPT);
-        }
-        if (inst->isYieldInst())
-        {
-            options.add(iga::InstOpt::SWITCH);
-        }
-        if (inst->isSend())
-        {
-            if (inst->isEOT())
-            {
-                options.add(iga::InstOpt::EOT);
-            }
-            if (inst->isNoSrcDepSet())
-            {
-                options.add(iga::InstOpt::NOSRCDEPSET);
-            }
-        }
-        if (inst->isNoCompactedInst())
-        {
-            options.add(iga::InstOpt::NOCOMPACT);
-        }
-
-        return options;
-    }
+    iga::InstOptSet getIGAInstOptSet(G4_INST* inst) const;
 
     iga::SendDescArg getIGASendDescArg(G4_INST* sendInst) const;
     iga::SendDescArg getIGASendExDescArg(G4_INST* sendInst) const;
