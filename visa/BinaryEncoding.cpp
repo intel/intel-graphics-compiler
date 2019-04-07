@@ -2953,7 +2953,7 @@ inline BinaryEncoding::Status BinaryEncoding::ProduceBinaryInstructions()
     SetInstCounts((uint32_t)globalHalfInstNum);
 
     EncodingHelper::dumpOptReport(globalInstNum, numCompactedInst, numCompacted3SrcInst, kernel);
-    for (auto x = offsetVector.begin(), vEnd = offsetVector.end(); x != vEnd; x++)
+    for (auto x = offsetVector.begin(); x != offsetVector.end(); x++)
     {
         // calculate offsets again since labels for forward jumps/calls
         // are available now

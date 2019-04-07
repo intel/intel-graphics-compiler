@@ -8603,7 +8603,7 @@ void VISAKernelImpl::computeAllRelocs(unsigned int& numRelocs, BasicRelocEntry*&
             numRelocs = 0;
             return;
         }
-        for (unsigned int idx = 0; idx < numRelocs; idx++)
+        for (unsigned int idx = 0; idx < relocs.size(); idx++)
         {
             output[idx].relocOffset = relocs[idx].relocOffset;
             output[idx].info = relocs[idx].info;

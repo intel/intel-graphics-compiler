@@ -2881,7 +2881,7 @@ void HWConformity::fix64bInst( INST_LIST_ITER iter, G4_BB* bb )
     {
         uses64BitType = true;
     }
-    for (int i = 0, size = G4_Inst_Table[inst->opcode()].n_srcs; !uses64BitType && i < size; i++)
+    for (int i = 0; !uses64BitType && i < G4_Inst_Table[inst->opcode()].n_srcs; i++)
     {
         G4_Operand* src = inst->getSrc(i);
         if (src != NULL && G4_Type_Table[src->getType()].byteSize == 8)
@@ -5336,7 +5336,7 @@ void HWConformity::fixSADA2Inst( BB_LIST_ITER it )
                 }
                 else
                 {
-                    for (auto defIter = inst->def_begin(), end = inst->def_end(); defIter != end; ++defIter)
+                    for (auto defIter = inst->def_begin(); defIter != inst->def_end(); ++defIter)
                     {
                         if((*defIter).second == Opnd_src2 )
                         {
@@ -5457,7 +5457,7 @@ void HWConformity::fixSADA2Inst( BB_LIST_ITER it )
 
             // maintain def-use
 
-            for (auto tmpIter = src2Dst->use_begin(), end = src2Dst->use_end(); tmpIter != end; ++tmpIter)
+            for (auto tmpIter = src2Dst->use_begin(); tmpIter != src2Dst->use_end(); ++tmpIter)
             {
                 if( (*tmpIter).first == inst && (*tmpIter).second == Opnd_src2 )
                 {
@@ -5466,7 +5466,7 @@ void HWConformity::fixSADA2Inst( BB_LIST_ITER it )
                 }
             }
 
-            for (auto tmpIter = inst->def_begin(), end = inst->def_end(); tmpIter != end; ++tmpIter)
+            for (auto tmpIter = inst->def_begin(); tmpIter != inst->def_end(); ++tmpIter)
             {
                 if( (*tmpIter).first == src2Dst && (*tmpIter).second == Opnd_src2 )
                 {
@@ -5557,7 +5557,7 @@ void HWConformity::fixSendInst(BB_LIST_ITER it)
 {
     G4_BB* bb = *it;
 
-    for (INST_LIST_ITER i = bb->begin(), end = bb->end(); i != end; i++)
+    for (INST_LIST_ITER i = bb->begin(); i != bb->end(); i++)
     {
 
         G4_INST *inst = *i;
@@ -6064,7 +6064,7 @@ void HWConformity::chkHWConformity()
 {
     fixDataLayout();
 
-    for (BB_LIST_ITER it = kernel.fg.BBs.begin(), end = kernel.fg.BBs.end(); it != end; it++)
+    for (BB_LIST_ITER it = kernel.fg.BBs.begin(); it != kernel.fg.BBs.end();it++)
     {
 #ifdef _DEBUG
         verifyG4Kernel(kernel, Optimizer::PI_HWConformityChk, false);
@@ -6134,7 +6134,7 @@ bool HWConformity::hasBadRegion( G4_INST *inst )
     if( inst->getImplAccDst() || inst->getImplAccSrc() )
         return false;
     bool badRegion = false;
-    for( unsigned int srcNum = 0, n_srcs = G4_Inst_Table[inst->opcode()].n_srcs; srcNum < n_srcs; srcNum++ )
+    for( unsigned int srcNum = 0; srcNum < G4_Inst_Table[inst->opcode()].n_srcs; srcNum++ )
     {
         if( !(inst->getSrc(srcNum)->isSrcRegRegion()) )
         {
@@ -6264,7 +6264,7 @@ bool HWConformity::splitInstListForByteDst( INST_LIST_ITER it, G4_BB *bb, uint16
         G4_INST *defInst = NULL;
 
         // FIXME: should be currInst->defInstList.begin()?
-        for (auto def_iter = inst->def_begin(), end = inst->def_end(); def_iter != end; def_iter++)
+        for (auto def_iter = inst->def_begin(); def_iter != inst->def_end(); def_iter++)
         {
             if( (*def_iter).second == Opnd_pred )
             {
@@ -6400,7 +6400,7 @@ G4_INST* HWConformity::splitInstWithByteDst( G4_INST *expand_op )
         expand_sec_half_op->setDest( expand_op->getDst() );
     }
 
-    for( int k = 0, n_srcs = G4_Inst_Table[expand_op->opcode()].n_srcs; k < n_srcs; k++ )
+    for( int k = 0; k < G4_Inst_Table[expand_op->opcode()].n_srcs; k++ )
     {
         G4_Operand *expand_src = expand_op->getSrc(k);
 
@@ -7117,7 +7117,7 @@ void HWConformity::fixImm64 ( INST_LIST_ITER i,
                               G4_BB* bb )
 {
     G4_INST *inst = *i;
-    for( int j = 0, n_srcs = G4_Inst_Table[inst->opcode()].n_srcs; j < n_srcs; j++ )
+    for( int j = 0; j < G4_Inst_Table[inst->opcode()].n_srcs; j++ )
     {
         G4_Operand *src = inst->getSrc(j);
         if( !src                                    ||
@@ -7206,7 +7206,7 @@ G4_INST* HWConformity::checkSrcDefInst( G4_INST *inst,
         MUST_BE_TRUE( def_inst->opcode() == G4_mov, "def inst must be a mov instruction" );
 
         G4_INST* def_inst1 = NULL;
-        for (auto def_it1 = inst->def_begin(), end = inst->def_end(); def_it1 != end; def_it1++ )
+        for (auto def_it1 = inst->def_begin(); def_it1 != inst->def_end(); def_it1++ )
         {
             if((*def_it1).second == srcNum + 1 )
             {
@@ -7217,7 +7217,7 @@ G4_INST* HWConformity::checkSrcDefInst( G4_INST *inst,
         if( def_inst1 != NULL )
         {
             G4_INST* def_inst2 = NULL;
-            for (auto def_it2 = def_inst->def_begin(), end2 = def_inst->def_end(); def_it2 != end2; def_it2++ )
+            for (auto def_it2 = def_inst->def_begin(); def_it2 != def_inst->def_end(); def_it2++ )
             {
                 if((*def_it2).second == Opnd_src0 )
                 {

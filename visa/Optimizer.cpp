@@ -57,8 +57,11 @@ void Optimizer::LVN()
     Mem_Manager mem(1024);
     PointsToAnalysis p(kernel.Declares, kernel.fg.getNumBB());
     p.doPointsToAnalysis(kernel.fg);
-    for (auto bb : kernel.fg.BBs)
+    for(BB_LIST_ITER bb_it = kernel.fg.BBs.begin();
+        bb_it != kernel.fg.BBs.end();
+        bb_it++)
     {
+        G4_BB* bb = (*bb_it);
         ::LVN lvn(fg, bb, mem, *fg.builder, p);
 
         lvn.doLVN();
@@ -187,9 +190,10 @@ void Optimizer::insertFallThroughJump()
 //
 void Optimizer::chkRegBoundary()
 {
-    for (auto bb : fg.BBs)
+    for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end();it++)
     {
-        for (INST_LIST_ITER i = bb->begin(), end = bb->end(); i != end; i++)
+        G4_BB* bb = *it;
+        for (INST_LIST_ITER i = bb->begin(); i != bb->end(); i++)
         {
             G4_INST *inst = *i;
             if (!chkOpndBoundary(inst, inst->getDst())) {
@@ -255,8 +259,12 @@ void Optimizer::countBankConflicts()
     unsigned int numLocals = 0, numGlobals = 0;
     bool isSKLPlus = ( getGenxPlatform() >= GENX_SKL ? true : false );
 
-    for (auto curBB : kernel.fg.BBs)
+    for(BB_LIST_ITER bb_it = kernel.fg.BBs.begin();
+        bb_it != kernel.fg.BBs.end();
+        bb_it++)
     {
+        G4_BB* curBB = (*bb_it);
+
         for(INST_LIST_ITER inst_it = curBB->begin();
             inst_it != curBB->end();
             inst_it++)
@@ -4074,7 +4082,7 @@ bool Optimizer::foldPseudoNot(G4_BB* bb, INST_LIST_ITER& iter)
     // unfortunately, def-use chain is not always properly maintained, so we have to skip opt
     // even if we can't find a use
     bool canFold = notInst->use_size() > 0;
-    for (auto uses = notInst->use_begin(), end = notInst->use_end(); uses != end; ++uses)
+    for (auto uses = notInst->use_begin(); uses != notInst->use_end(); ++uses)
     {
         auto&& use = *uses;
         G4_INST* useInst = use.first;
@@ -4103,7 +4111,7 @@ bool Optimizer::foldPseudoNot(G4_BB* bb, INST_LIST_ITER& iter)
             assert(notInst->getExecSize() == 16);
             origUse->setSubRegOff(1);
         }
-        for (auto uses = notInst->use_begin(), uend = notInst->use_end(); uses != uend; ++uses)
+        for (auto uses = notInst->use_begin(); uses != notInst->use_end(); ++uses)
         {
             auto use = *uses;
             G4_INST* useInst = use.first;
@@ -5528,8 +5536,8 @@ bool Optimizer::foldPseudoAndOr(G4_BB* bb, INST_LIST_ITER& ii)
         {
             return false;
         }
-        
-        for(USE_EDGE_LIST_ITER iter = inst->use_begin(), iend = inst->use_end(); iter != iend; ++iter )
+        USE_EDGE_LIST_ITER iter;
+        for( iter = inst->use_begin(); iter != inst->use_end(); ++iter )
         {
             if ((*iter).first->isSend())
             {

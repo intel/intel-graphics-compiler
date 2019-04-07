@@ -6966,7 +6966,7 @@ bool G4_INST::canSupportSaturate() const
     {
     case G4_mul:
     {
-        for (int i = 0, numSrc = getNumSrc(); i < numSrc; ++i)
+        for (int i = 0; i < getNumSrc(); ++i)
         {
             if (IS_DTYPE(getSrc(i)->getType()))
             {
@@ -7012,7 +7012,7 @@ bool G4_INST::canSupportCondMod() const
 	{
 		// can't support conditional modifiers if source is DW and dst is not QW
 		bool dwordSrc = false;
-        for (int i = 0, numSrc = getNumSrc(); i < numSrc; ++i)
+		for (int i = 0; i < getNumSrc(); ++i)
 		{
 			if (IS_DTYPE(getSrc(i)->getType()))
 			{

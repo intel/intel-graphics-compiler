@@ -636,7 +636,7 @@ public:
     bool isOpndGlobal( G4_Operand *def );
     void clearHashTable()
     {
-        for (auto iter = globalOperands.begin(), end = globalOperands.end(); iter != end; ++iter)
+        for (auto iter = globalOperands.begin(); iter != globalOperands.end(); ++iter)
         {
             iter->second->~HashNode();
         }

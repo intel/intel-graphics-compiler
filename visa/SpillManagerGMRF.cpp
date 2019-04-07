@@ -552,7 +552,7 @@ SpillManagerGMRF::calculateSpillDisp (
     unsigned regVarLocDisp = 0;
 	unsigned regVarSize = getByteSize (regVar);
 
-	for (LocList::iterator curLoc = locList.begin (), end = locList.end(); curLoc != end;
+	for (LocList::iterator curLoc = locList.begin (); curLoc != locList.end ();
 		++curLoc) {
 		unsigned curLocDisp = (*curLoc)->getDisp ();
 		if (regVarLocDisp < curLocDisp &&
@@ -3775,8 +3775,8 @@ bool SpillManagerGMRF::handleAddrTakenSpills( G4_Kernel * kernel, PointsToAnalys
 	bool success = true;
     unsigned int numAddrTakenSpills = 0;
 
-	for (LR_LIST::const_iterator lt = spilledLRs_.begin (), end = spilledLRs_.end();
-		lt != end; ++lt)
+	for (LR_LIST::const_iterator lt = spilledLRs_.begin ();
+		lt != spilledLRs_.end (); ++lt)
 	{
 		LiveRange* lr = (*lt);
 
@@ -4014,8 +4014,12 @@ void SpillManagerGMRF::insertAddrTakenSpillAndFillCode( G4_Kernel* kernel, G4_BB
 // Insert any spill/fills for address taken
 void SpillManagerGMRF::insertAddrTakenSpillFill( G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis )
 {
-	for( auto bb : kernel->fg.BBs)
+	for( BB_LIST_ITER bb_it = kernel->fg.BBs.begin();
+		bb_it != kernel->fg.BBs.end();
+		bb_it++ )
 	{
+		G4_BB* bb = (*bb_it);
+
 		for( INST_LIST_ITER inst_it = bb->begin();
 			inst_it != bb->end();
 			inst_it++ )
@@ -4052,8 +4056,12 @@ void SpillManagerGMRF::insertAddrTakenSpillFill( G4_Kernel* kernel, PointsToAnal
 // the original regvar that is spilled.
 void SpillManagerGMRF::prunePointsTo( G4_Kernel* kernel, PointsToAnalysis& pointsToAnalysis )
 {
-	for( auto bb : kernel->fg.BBs)
+	for( BB_LIST_ITER bb_it = kernel->fg.BBs.begin();
+	bb_it != kernel->fg.BBs.end();
+	bb_it++ )
 	{
+		G4_BB* bb = (*bb_it);
+
 		for( INST_LIST_ITER inst_it = bb->begin();
 			inst_it != bb->end();
 			inst_it++ )
@@ -4393,7 +4401,7 @@ SpillManagerGMRF::fixSpillFillCode (
 
     unsigned statelessSurfaceIndex = 0xFF;
 
-	for( BB_LIST_ITER it = fg.BBs.begin(), bbend = fg.BBs.end(); it != bbend; it++ )
+	for( BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end(); it++ )
 	{
 		INST_LIST::iterator jt = (*it)->begin ();
 

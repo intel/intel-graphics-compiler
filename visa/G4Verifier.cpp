@@ -741,8 +741,8 @@ void verifyLifetimeConsistency(G4_BB* bb)
     // in BB
     bool unassignedFound = false;
 
-    for (INST_LIST_ITER it = bb->begin(), end = bb->end();
-        it != end;
+    for (INST_LIST_ITER it = bb->begin();
+        it != bb->end();
         it++)
     {
         G4_INST* curInst = (*it);
@@ -785,8 +785,8 @@ void verifyLifetimeConsistency(G4_BB* bb)
         // First populate all pseudo_kills and lifetime.end instructions
         // in BB's inst list. Later run second loop to check whether
         // lifetime rules are flouted.
-        for (INST_LIST_ITER it = bb->begin(), end = bb->end();
-            it != end;
+        for (INST_LIST_ITER it = bb->begin();
+            it != bb->end();
             it++, instId++)
         {
             G4_INST* curInst = (*it);
@@ -807,8 +807,8 @@ void verifyLifetimeConsistency(G4_BB* bb)
         }
 
         instId = 0;
-        for (INST_LIST_ITER it = bb->begin(), end = bb->end();
-            it != end;
+        for (INST_LIST_ITER it = bb->begin();
+            it != bb->end();
             it++, instId++)
         {
             G4_INST* curInst = (*it);
