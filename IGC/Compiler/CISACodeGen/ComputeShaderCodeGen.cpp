@@ -125,27 +125,31 @@ void CComputeShader::ParseShaderSpecificOpcode(llvm::Instruction* inst)
     }    
 }
 
-void CComputeShader::CreateThreadPayloadData(void* & pThreadPayload, uint& threadPayloadSize)
+void CComputeShader::CreateThreadPayloadData(void* & pThreadPayload, uint& curbeTotalDataLength, uint& curbeReadLength)
 {
+    typedef uint16_t ThreadPayloadEntry;
+
     // Find the max thread group dimension
     const OctEltUnit SIZE_OF_DQWORD = OctEltUnit(2);
+    const OctEltUnit SIZE_OF_OWORD = OctEltUnit(1);
     uint numberOfId = GetNumberOfId();
     uint dimX = numLanes(m_dispatchSize);
-    uint dimY = (iSTD::Align(m_threadGroupSize, dimX)/dimX) * numberOfId;
+    // dimX must align to alignment_X bytes (one GRF)
+    uint alignment_X = EltUnit(SIZE_OF_OWORD).Count() * sizeof(DWORD);
+    uint dimX_aligned = iSTD::Align(dimX * sizeof(ThreadPayloadEntry), alignment_X) / sizeof(ThreadPayloadEntry);
+    uint dimY = (iSTD::Align(m_threadGroupSize, dimX) / dimX) * numberOfId;
+    curbeReadLength = dimX_aligned * numberOfId * sizeof(ThreadPayloadEntry) / alignment_X;
 
-    typedef uint ThreadPayloadEntry;
-
-    uint alignedVal = EltUnit(SIZE_OF_DQWORD).Count() * sizeof(DWORD); // Oct Element is 8 DWORDS
-
+    uint alignedVal = EltUnit(SIZE_OF_DQWORD).Count() * sizeof(ThreadPayloadEntry); // Oct Element is 8 Entries
     // m_NOSBufferSize is the additional space for cross-thread constant data (constants set by driver).
-    threadPayloadSize = iSTD::Align( dimX * dimY * sizeof( ThreadPayloadEntry ) + m_NOSBufferSize, alignedVal );
+    curbeTotalDataLength = iSTD::Align(dimX_aligned * dimY * sizeof(ThreadPayloadEntry) + m_NOSBufferSize, alignedVal);
 
     assert(pThreadPayload == nullptr && "Thread payload should be a null variable");
 
-    unsigned threadPayloadEntries = threadPayloadSize / sizeof(ThreadPayloadEntry);
+    unsigned threadPayloadEntries = curbeTotalDataLength / sizeof(ThreadPayloadEntry);
 
-    ThreadPayloadEntry* pThreadPayloadMem = 
-        (ThreadPayloadEntry*)IGC::aligned_malloc(threadPayloadEntries* sizeof(ThreadPayloadEntry), 16);
+    ThreadPayloadEntry* pThreadPayloadMem =
+        (ThreadPayloadEntry*)IGC::aligned_malloc(threadPayloadEntries * sizeof(ThreadPayloadEntry), 16);
     std::fill(pThreadPayloadMem, pThreadPayloadMem + threadPayloadEntries, 0);
 
     pThreadPayload = pThreadPayloadMem;
@@ -169,17 +173,17 @@ void CComputeShader::CreateThreadPayloadData(void* & pThreadPayload, uint& threa
             uint lane = 0;
             if(m_pThread_ID_in_Group_X)
             {
-                pThreadPayloadMem[(y + lane) * dimX + x] = currThreadX;
+                pThreadPayloadMem[(y + lane) * dimX_aligned + x] = currThreadX;
                 lane++;
             }
             if(m_pThread_ID_in_Group_Y)
             {
-                pThreadPayloadMem[(y + lane) * dimX + x] = currThreadY;
+                pThreadPayloadMem[(y + lane) * dimX_aligned + x] = currThreadY;
                 lane++;
             }
             if(m_pThread_ID_in_Group_Z)
             {
-                pThreadPayloadMem[(y + lane) * dimX + x] = currThreadZ;
+                pThreadPayloadMem[(y + lane) * dimX_aligned + x] = currThreadZ;
                 lane++;
             }
 
@@ -259,19 +263,19 @@ CVariable* CComputeShader::CreateThreadIDinGroup(uint channelNum)
     case 0:
         if(m_pThread_ID_in_Group_X == nullptr)
         {
-            m_pThread_ID_in_Group_X = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF, false, m_numberInstance);
+            m_pThread_ID_in_Group_X = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_W, EALIGN_GRF, false, m_numberInstance);
         }
         return m_pThread_ID_in_Group_X;
     case 1:
         if(m_pThread_ID_in_Group_Y == nullptr)
         {
-            m_pThread_ID_in_Group_Y = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF, false, m_numberInstance);
+            m_pThread_ID_in_Group_Y = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_W, EALIGN_GRF, false, m_numberInstance);
         }
         return m_pThread_ID_in_Group_Y;
     case 2:
         if(m_pThread_ID_in_Group_Z == nullptr)
         {
-            m_pThread_ID_in_Group_Z = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_D, EALIGN_GRF, false, m_numberInstance);
+            m_pThread_ID_in_Group_Z = GetNewVariable(numLanes(m_SIMDSize), ISA_TYPE_W, EALIGN_GRF, false, m_numberInstance);
         }
         return m_pThread_ID_in_Group_Z;
     default:
@@ -335,6 +339,7 @@ void CComputeShader::AllocatePayload()
         {
             AllocateInput(m_pThread_ID_in_Group_X, offset, i);
             offset += m_pThread_ID_in_Group_X->GetSize();
+            offset = iSTD::Round(offset, alignmentSize[m_pThread_ID_in_Group_X->GetAlign()]);
         }
     }
 
@@ -344,6 +349,7 @@ void CComputeShader::AllocatePayload()
         {
             AllocateInput(m_pThread_ID_in_Group_Y, offset, i);
             offset += m_pThread_ID_in_Group_Y->GetSize();
+            offset = iSTD::Round(offset, alignmentSize[m_pThread_ID_in_Group_Y->GetAlign()]);
         }
     }
 
@@ -353,6 +359,7 @@ void CComputeShader::AllocatePayload()
         {
             AllocateInput(m_pThread_ID_in_Group_Z, offset, i);
             offset += m_pThread_ID_in_Group_Z->GetSize();
+            offset = iSTD::Round(offset, alignmentSize[m_pThread_ID_in_Group_Z->GetAlign()]);
         }
     }
 
@@ -465,8 +472,6 @@ void CComputeShader::FillProgram(SComputeShaderKernelProgram* pKernelProgram)
     pKernelProgram->FloatingPointMode = USC::GFX3DSTATE_FLOATING_POINT_IEEE_754;
     pKernelProgram->SingleProgramFlow = USC::GFX3DSTATE_PROGRAM_FLOW_MULTIPLE;
     pKernelProgram->CurbeReadOffset   = 0;
-    pKernelProgram->CurbeReadLength = GetNumberOfId() * (numLanes(m_dispatchSize) / numLanes(SIMDMode::SIMD8));
-
     pKernelProgram->PhysicalThreadsInGroup = static_cast<int>(
         std::ceil((static_cast<float>(m_threadGroupSize) / 
                    static_cast<float>((numLanes(m_dispatchSize))))));
@@ -486,7 +491,8 @@ void CComputeShader::FillProgram(SComputeShaderKernelProgram* pKernelProgram)
     pKernelProgram->ThreadPayloadData = nullptr;
     CreateThreadPayloadData(
         pKernelProgram->ThreadPayloadData,
-        pKernelProgram->CurbeTotalDataLength);
+        pKernelProgram->CurbeTotalDataLength,
+        pKernelProgram->CurbeReadLength);
 
     pKernelProgram->ThreadGroupSize = m_threadGroupSize;
 
