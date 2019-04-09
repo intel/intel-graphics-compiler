@@ -8514,10 +8514,20 @@ int VISAKernelImpl::getDeclarationID(VISA_FileVar *decl)
 
 int64_t VISAKernelImpl::getGenOffset()
 {
-    assert(m_kernel->fg.BBs.begin() != m_kernel->fg.BBs.end());
-    assert((*m_kernel->fg.BBs.begin())->begin() != (*m_kernel->fg.BBs.begin())->end());
+    assert(false == m_kernel->fg.BBs.empty());
+    auto &entryBB = *(*m_kernel->fg.BBs.begin());
+
     // the offset of the first gen inst in this kernel/function
-    return (*(*m_kernel->fg.BBs.begin())->begin())->getGenOffset();
+    assert(false == entryBB.empty());
+    auto inst = entryBB.begin();
+    while((UNDEFINED_GEN_OFFSET == (*inst)->getGenOffset()) && (entryBB.end() != inst)){
+        assert((*inst)->isLabel());
+        ++inst;
+    }
+    assert(inst != entryBB.end());
+
+    auto entryPointOffset = (*inst)->getGenOffset();
+    return entryPointOffset;
 }
 
 void VISAKernelImpl::computeAndEmitDebugInfo(std::list<VISAKernelImpl*>& functions)
