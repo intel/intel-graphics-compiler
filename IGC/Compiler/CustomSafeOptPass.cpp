@@ -1180,12 +1180,36 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
 
 void GenSpecificPattern::visitCmpInst(CmpInst &I)
 {
-    CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
-    if (pCtx->m_DriverInfo.IgnoreNan())
+    using namespace llvm::PatternMatch;
+    CmpInst::Predicate Pred;
+    Value *Val1;
+    uint64_t const_int1 = 0, const_int2 = 0;
+    auto cmp_pattern = m_Cmp(Pred,
+        m_And(m_Value(Val1), m_ConstantInt(const_int1)), m_ConstantInt(const_int2));
+
+    if (match(&I, cmp_pattern) &&
+        (const_int1 << 32) == 0 &&
+        (const_int2 << 32) == 0 &&
+        Val1->getType()->isIntegerTy(64))
     {
-        if (I.getPredicate() == CmpInst::FCMP_ORD)
+        llvm::IRBuilder<> builder(&I);
+        VectorType* vec2 = VectorType::get(builder.getInt32Ty(), 2);
+        Value* BC = builder.CreateBitCast(Val1, vec2);
+        Value* EE = builder.CreateExtractElement(BC, builder.getInt32(1));
+        Value* AI = builder.CreateAnd(EE, builder.getInt32(const_int1 >> 32));
+        Value* new_Val = builder.CreateICmp(Pred, AI, builder.getInt32(const_int2 >> 32));
+        I.replaceAllUsesWith(new_Val);
+        I.eraseFromParent();
+    }
+    else 
+    {
+        CodeGenContext* pCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
+        if (pCtx->m_DriverInfo.IgnoreNan())
         {
-            I.replaceAllUsesWith(ConstantInt::getTrue(I.getType()));
+            if (I.getPredicate() == CmpInst::FCMP_ORD)
+            {
+                I.replaceAllUsesWith(ConstantInt::getTrue(I.getType()));
+            }
         }
     }
 }
