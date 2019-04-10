@@ -909,7 +909,7 @@ void GenSpecificPattern::matchReverse(BinaryOperator &I)
 {
     using namespace llvm::PatternMatch;
     assert(I.getType()->isIntegerTy());
-    Value *nextOrShl, *nextOrShr;
+    Value *nextOrShl = nullptr, *nextOrShr = nullptr;
     uint64_t currentShiftShl = 0, currentShiftShr = 0;
     uint64_t currentMaskShl = 0, currentMaskShr = 0;
     auto patternBfrevFirst =
@@ -1042,13 +1042,13 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
         %22 = shl i32 %14, 2
         %23 = add i32 %22, 19
         */
-        Value *AndOp1, *EltOp1;
+        Value *AndOp1 = nullptr, *EltOp1 = nullptr;
         auto pattern1 = m_Or(
             m_And(m_Value(AndOp1), m_SpecificInt(0xFFFFFFFF)),
             m_Shl(m_Value(EltOp1), m_SpecificInt(32)));
 
     #if LLVM_VERSION_MAJOR >= 7
-        Value *AndOp2, *EltOp2, *VecOp;
+        Value *AndOp2 = nullptr, *EltOp2 = nullptr, *VecOp = nullptr;
         auto pattern2 = m_Or(
             m_And(m_Value(AndOp2), m_SpecificInt(0xFFFFFFFF)),
             m_BitCast(m_InsertElement(m_Value(VecOp),m_Value(EltOp2),m_SpecificInt(1))));
@@ -1527,7 +1527,7 @@ void GenSpecificPattern::visitIntToPtr(llvm::IntToPtrInst& I)
 void GenSpecificPattern::visitTruncInst(llvm::TruncInst &I) 
 {
     using namespace llvm::PatternMatch;
-    Value *LHS;
+    Value *LHS = nullptr;
     if (match(&I, m_Trunc(m_LShr(m_Value(LHS), m_SpecificInt(32)))) &&
         I.getType()->isIntegerTy(32) &&
         LHS->getType()->isIntegerTy(64))
