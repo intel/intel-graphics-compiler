@@ -229,29 +229,6 @@ QuadEltUnit CVertexShader::GetFinalGlobalOffet(QuadEltUnit globalOffset)
     return globalOffset; 
 }
 
-QuadEltUnit CVertexShader::GetURBOffset(ShaderOutputType outputType, uint attrIdx)
-{
-    switch(outputType)
-    {
-    case SHADER_OUTPUT_TYPE_POSITION:
-        return QuadEltUnit(1);
-    case SHADER_OUTPUT_TYPE_CLIPDISTANCE_LO:
-        return QuadEltUnit(2);
-    case  SHADER_OUTPUT_TYPE_CLIPDISTANCE_HI:
-        return QuadEltUnit(3);
-    case SHADER_OUTPUT_TYPE_DEFAULT:
-        return QuadEltUnit(attrIdx) + OctEltUnit(m_properties.m_hasClipDistance ? 2 : 1);
-    case SHADER_OUTPUT_TYPE_POINTWIDTH:
-    case SHADER_OUTPUT_TYPE_RENDER_TARGET_ARRAY_INDEX:
-    case SHADER_OUTPUT_TYPE_VIEWPORT_ARRAY_INDEX:
-        return QuadEltUnit(0) ;
-    default:
-        assert(!"unknown VS output type");
-        break;
-    }
-    return QuadEltUnit(0);
-}
-
 /// Returns VS URB allocation size.
 /// This is the size of VS URB entry consisting of the header data and attribute data.
 OctEltUnit CVertexShader::GetURBAllocationSize() const

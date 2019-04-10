@@ -53,9 +53,6 @@ public:
     /// Fills in the kernel program structure with data determined during compilation.
     void        FillProgram(SVertexShaderKernelProgram* pKernelProgram);
 
-    
-    /// Returns the offset within Vertex URB entry specific to given output type.
-    QuadEltUnit GetURBOffset(ShaderOutputType outputType, uint attrIdx);
 private:
 
     /// Returns the size of output Vertex URB Entry.

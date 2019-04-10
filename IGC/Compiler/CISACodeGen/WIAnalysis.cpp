@@ -1030,6 +1030,8 @@ WIAnalysis::WIDependancy WIAnalysis::calculate_dep(const CallInst* inst)
       SGVUsage usage = (SGVUsage) cast<ConstantInt>(inst->getOperand(0))->getZExtValue();
       if((usage != VFACE 
           )&&
+          usage != ACTUAL_COARSE_SIZE_X &&
+          usage != ACTUAL_COARSE_SIZE_Y &&
           usage != THREAD_GROUP_ID_X &&
           usage != THREAD_GROUP_ID_Y &&
           usage != THREAD_GROUP_ID_Z

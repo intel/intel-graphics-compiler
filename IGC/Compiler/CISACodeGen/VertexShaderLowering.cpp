@@ -431,15 +431,12 @@ unsigned int VertexShaderLowering::GetURBOffset(ShaderOutputType type, Value* at
         }
     case SHADER_OUTPUT_TYPE_POINTWIDTH:
         return 0;
-        break;
     case SHADER_OUTPUT_TYPE_VIEWPORT_ARRAY_INDEX:
         m_vsPropsPass->DeclareVPAI();
         return 0;
-        break;
     case SHADER_OUTPUT_TYPE_RENDER_TARGET_ARRAY_INDEX:
         m_vsPropsPass->DeclareRTAI();
         return 0;
-        break;
     default:
         assert(!"unknown VS output type");
         break;
