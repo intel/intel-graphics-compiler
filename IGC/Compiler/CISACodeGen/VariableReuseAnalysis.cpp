@@ -656,7 +656,8 @@ void VariableReuseAnalysis::visitCallInst(CallInst& I)
 
 void VariableReuseAnalysis::visitCastInst(CastInst& I)
 {
-    if (IGC_GET_FLAG_VALUE(EnableVATemp) < 1)
+    if (IGC_GET_FLAG_VALUE(EnableVATemp) < 1 ||
+        IGC_GET_FLAG_VALUE(EnableDeSSAAlias) > 1)
         return;
 
     if (!canBeAlias(&I)) {
