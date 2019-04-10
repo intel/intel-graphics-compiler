@@ -490,7 +490,7 @@ namespace iga
         case RegName::GRF_R:
         case RegName::ARF_ACC:
         case RegName::ARF_A:
-            if (val > 32) {
+            if (val > 64) {
                 encodingError(f, "subregister out of bounds");
             }
             break;

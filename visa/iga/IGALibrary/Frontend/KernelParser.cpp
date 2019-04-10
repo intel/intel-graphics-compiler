@@ -1836,7 +1836,7 @@ private:
         // ensure the subregister is not out of bounds
         if (dty != Type::INVALID) {
             int typeSize = TypeSizeInBits(dty)/8;
-            if (!ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize)) {
+            if (!ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize, m_model.getGRFByteSize())) {
                 Warning(subregLoc, "subregister out of bounds for data type");
             } else if (typeSize < ri.accGran) {
                 Warning(regnameLoc, "access granularity too small for data type");
@@ -2172,7 +2172,7 @@ private:
             // ensure the subregister is not out of bounds
             int typeSize = TypeSizeInBits(sty)/8;
             if (ri.isRegNumberValid(regNum) &&
-                !ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize))
+                !ri.isSubRegByteOffsetValid(regNum, subregNum * typeSize, m_model.getGRFByteSize()))
             {
                 // don't add an extra error if the parent register is
                 // already out of bounds
@@ -2898,7 +2898,7 @@ private:
         }
     }
 
-    // FlagRegRef = ('f0'|'f1') ('.' ('0'|'1'))?
+    // FlagRegRef = ('f0'|'f1'|'f2'|'f3') ('.' ('0'|'1'))?
     void ParseFlagRegRef(RegRef &freg) {
         // TODO: use RegInfo for "f"
         if (!LookingAt(IDENT)) {
@@ -2908,8 +2908,12 @@ private:
             freg.regNum = 0;
         } else if (ConsumeIdentEq("f1")) {
             freg.regNum = 1;
+        } else if (ConsumeIdentEq("f2")) {
+            freg.regNum = 2;
+        } else if (ConsumeIdentEq("f3")) {
+            freg.regNum = 3;
         } else {
-            Fail("expected flag register");
+            Fail("Unexpected flag register number");
         }
         if(LookingAtSeq(DOT,INTLIT10)) { // e.g. .1
             // protects predication's use in short predication code

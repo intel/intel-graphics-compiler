@@ -491,6 +491,7 @@ void DecoderBase::decodeBasicDestinationAlign16(Instruction *inst)
         }
 
         GED_DECODE_RAW(int32_t, addrImm, DstAddrImm);
+
         GED_DECODE_RAW(uint32_t, subRegNum, DstAddrSubRegNum);
         RegRef a0 = {0, (uint8_t)subRegNum};
         inst->setInidirectDestination(
@@ -723,7 +724,7 @@ void DecoderBase::decodeTernaryDestinationAlign16(Instruction *inst)
 
         GED_DECODE_RAW(uint32_t, subRegNumBytes, DstSubRegNum);
         uint8_t subRegNumber = type == Type::INVALID ?
-            0 : BytesOffsetToSubReg((uint8_t)subRegNumBytes, regName, type);
+            0 : binNumToSubRegNum((uint8_t)subRegNumBytes, regName, type, true);
         regRef.subRegNum = (uint8_t)(subRegNumber + subregOffAlign16Elems);
         inst->setDirectDestination(
             dstMod,
@@ -779,7 +780,7 @@ void DecoderBase::decodeTernarySourceAlign16(Instruction *inst)
             type);
     } else {
         int subReg = type == Type::INVALID ?
-            0 : BytesOffsetToSubReg(decodeSrcSubRegNum<S>(), RegName::GRF_R, type);
+            0 : binNumToSubRegNum(decodeSrcSubRegNum<S>(), RegName::GRF_R, type, true);
         RegRef reg = {
             (uint8_t)regNum,
             (uint8_t)subReg
@@ -1333,11 +1334,14 @@ Predication DecoderBase::decodePredication()
     Predication pred = {PredCtrl::NONE, false};
     GED_DECODE_RAW(GED_PRED_CTRL, pc, PredCtrl);
     pred.function = GEDToIGATranslation::translate(pc);
-    GED_DECODE_RAW(GED_PRED_INV, pi, PredInv);
-    pred.inverse = (pi == GED_PRED_INV_Invert);
     return pred;
 }
 
+void DecoderBase::decodePredInv(Predication& pred)
+{
+    GED_DECODE_RAW(GED_PRED_INV, pi, PredInv);
+    pred.inverse = (pi == GED_PRED_INV_Invert);
+}
 
 MaskCtrl DecoderBase::decodeMaskCtrl()
 {
@@ -1357,10 +1361,13 @@ FlagRegInfo DecoderBase::decodeFlagRegInfo(bool imm64Src0Overlaps) {
     if (m_opSpec->supportsFlagModifier() && !imm64Src0Overlaps) {
         GED_DECODE_RAW(GED_COND_MODIFIER, condMod, CondModifier);
         fri.modifier = GEDToIGATranslation::translate(condMod);
-    } else if (m_opSpec-> isMathSubFunc() && m_opSpec->isMacro()) {
+    } else if (m_opSpec->isMathSubFunc() && m_opSpec->isMacro()) {
         // math.inv and math.rsqrtm both implicitly support EO
         fri.modifier = FlagModifier::EO;
     }
+
+    if (m_opSpec->supportsPredication())
+        decodePredInv(fri.pred);
 
     if (fri.pred.function != PredCtrl::NONE ||
         fri.modifier != FlagModifier::NONE)
@@ -1487,7 +1494,8 @@ void DecoderBase::decodeDstDirSubRegNum(DirRegOpInfo& dri)
 
         GED_DECODE_RAW(uint32_t, subRegNum, DstSubRegNum);
         dri.regRef.subRegNum =
-            BytesOffsetToSubReg((uint8_t)subRegNum, dri.regName, scalingType);
+            binNumToSubRegNum((uint8_t)subRegNum, dri.regName, scalingType,
+                m_opSpec->isBranching() || m_opSpec->isTernary());
     }
 }
 
@@ -1625,11 +1633,12 @@ void DecoderBase::decodeSourceBasicAlign1(Instruction *inst, SourceIndex toSrcIx
             }
         } else if (addrMode == GED_ADDR_MODE_Indirect) {
             RegRef a0 = {0, (uint8_t)decodeSrcAddrSubRegNum<S>()};
+            int16_t addr_imm = decodeSrcAddrImm<S>();
             inst->setInidirectSource(
                 toSrcIx,
                 srcMod,
                 a0,
-                decodeSrcAddrImm<S>(),
+                addr_imm,
                 decRgn,
                 decodeSrcType<S>());
         } else { // == GED_ADDR_MODE_INVALID
@@ -1810,10 +1819,16 @@ DecoderBase::decodeTernarySrcImmVal(Type t)
     return val;
 }
 
+uint32_t DecoderBase::binNumToSubRegNum(
+    uint32_t binNum, RegName regName, Type type, bool isTernaryOrBranch)
+{
+    return BytesOffsetToSubReg(binNum, regName, type);
+}
+
 void DecoderBase::decodeOptions(Instruction *inst)
 {
     const OpSpec &os = inst->getOpSpec();
-    if (os.supportsAccWrEn()) {
+    if (os.supportsAccWrEn(m_model.platform)) {
         // * GED doesn't allow AccWrEn on send's
         // * BrnchCtrl overlaps AccWrEn, so anything using that is out
         GED_ACC_WR_CTRL accWrEn = GED_ACC_WR_CTRL_Normal;

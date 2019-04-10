@@ -80,8 +80,8 @@ namespace iga
                     // otherwise: one of several registers
                     (reg >= 0 && reg < numRegs);
         }
-        bool isSubRegByteOffsetValid(int regNum, int subregByte) const {
-            int regBytes = regName == RegName::GRF_R ? 32 :
+        bool isSubRegByteOffsetValid(int regNum, int subregByte, int grfSize) const {
+            int regBytes = regName == RegName::GRF_R ? grfSize :
                 numBytesPerReg[regNum];
             return subregByte < regBytes;
         }
@@ -165,6 +165,7 @@ namespace iga
         }
     }
 
+    // helper function to translate byte offset to subReg Num
     static uint8_t BytesOffsetToSubReg(
         uint32_t offset, RegName regName, Type type)
     {
@@ -174,6 +175,8 @@ namespace iga
         auto tsh = TypeSizeShiftsOffsetToSubreg(type);
         return (uint8_t)((offset << std::get<0>(tsh)) >> std::get<1>(tsh));
     }
+
+    // helper functions to translate subReg number to Offset in binary
     static uint32_t SubRegToBytesOffset(
         int subRegNum, RegName regName, Type type)
     {
@@ -185,6 +188,20 @@ namespace iga
         return (subRegNum << std::get<1>(tsh)) >> std::get<0>(tsh);
     }
 
+    static uint8_t WordsOffsetToSubReg(
+        uint32_t offset, RegName regName, Type type)
+    {
+        return BytesOffsetToSubReg(offset * 2, regName, type);
+    }
+
+    // reutrn if the given subreg num is Word aligned or not and
+    // the corresponding word offset
+    static std::pair<bool, uint32_t> SubRegToWordsOffset(
+        int subRegNum, RegName regName, Type type)
+    {
+        uint32_t byteoff = SubRegToBytesOffset(subRegNum, regName, type);
+        return std::make_pair((byteoff % 2 == 0), byteoff / 2);
+    }
 
     // enables abstract iteration of all OpSpecs in the Model
     // see Model::ops()
@@ -336,6 +353,11 @@ namespace iga
         bool supportsAlign16MacroOnly() const { return platform == Platform::GEN10; }
         bool supportsAlign16Ternary() const { return platform < Platform::GEN10; }
         bool supportsAlign16MacroInst() const { return platform <= Platform::GEN10; }
+
+        uint32_t getGRFByteSize() const
+        {
+            return 32;
+        }
     }; // class model
 } // namespace iga::*
 

@@ -79,6 +79,7 @@ namespace iga
         GED_ACCESS_MODE    decodeAccessMode();
         MaskCtrl           decodeMaskCtrl();
         Predication        decodePredication();
+        void               decodePredInv(Predication& pred);
         FlagRegInfo        decodeFlagRegInfo(bool imm64Src0Overlap = false); // pred, cond, ...
         ExecSize           decodeExecSize();
         ChannelOffset      decodeChannelOffset();
@@ -284,8 +285,9 @@ namespace iga
                 scalingType = m_opSpec->isBranching() ? Type::D : Type::UB;
             }
 
-            dri.regRef.subRegNum = BytesOffsetToSubReg(
-                dri.regRef.subRegNum, dri.regName, scalingType);
+            dri.regRef.subRegNum = binNumToSubRegNum(
+                dri.regRef.subRegNum, dri.regName,
+                scalingType, m_opSpec->isBranching() || m_opSpec->isTernary());
 
             return dri;
         }
@@ -308,6 +310,10 @@ namespace iga
 
 
         void decodeOptions(Instruction *inst);
+
+        // Translate Sub register from binary encoding number to asm number
+        uint32_t binNumToSubRegNum(
+            uint32_t binNum, RegName regName, Type type, bool isTernaryOrBranch);
 
     protected:
         GED_MODEL                     m_gedModel;

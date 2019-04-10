@@ -93,7 +93,8 @@ namespace iga
         template <SourceIndex S> void encodeSrcType(Type t);
         template <SourceIndex S> void encodeSrcAddrMode(GED_ADDR_MODE x);
         template <SourceIndex S> void encodeSrcModifier(SrcModifier x);
-        template <SourceIndex S> void encodeSrcSubRegNum(uint32_t subReg);
+        template <SourceIndex S> void encodeSrcSubRegNum(
+            std::pair<bool, uint32_t> subReg, bool isTernaryOrBranch);
 
         template <SourceIndex S> void encodeSrcMathMacroReg(MathMacroExt a);
 
@@ -194,6 +195,12 @@ namespace iga
 
         void applyGedWorkarounds(const Kernel &k, size_t bitsLen);
         void encodeOptions(const Instruction& inst);
+
+        // Translate from subRegNum to num represented in binary encoding.
+        // Return std::pair<bool, uint32_t> the bool denotes if the given sub reg num is
+        // aligned to binary offset representation
+        std::pair<bool, uint32_t> subRegNumToBinNum(int subRegNum, RegName regName, Type type);
+        void encodeDstSubRegNum(std::pair<bool, uint32_t> subReg, bool isTernaryOrBranch);
 
         //////////////////////////////////////////////////////////////////////
         // platform specific queries *but sometimes need the instruction too)
@@ -342,13 +349,14 @@ namespace iga
         }
     }
 
-    template <SourceIndex S> void EncoderBase::encodeSrcSubRegNum(uint32_t subReg) {
+    template <SourceIndex S> void EncoderBase::encodeSrcSubRegNum(
+        std::pair<bool, uint32_t> subReg, bool isTernaryOrBranch) {
         if (S == SourceIndex::SRC0) {
-            GED_ENCODE(Src0SubRegNum, subReg);
+            GED_ENCODE(Src0SubRegNum, subReg.second);
         } else if (S == SourceIndex::SRC1) {
-            GED_ENCODE(Src1SubRegNum, subReg);
+            GED_ENCODE(Src1SubRegNum, subReg.second);
         } else {
-            GED_ENCODE(Src2SubRegNum, subReg);
+            GED_ENCODE(Src2SubRegNum, subReg.second);
         }
     }
 

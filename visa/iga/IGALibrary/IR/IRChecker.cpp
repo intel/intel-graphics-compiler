@@ -277,10 +277,10 @@ struct SemanticChecker : LOCChecker {
         int srcSubReg = src.getDirRegRef().subRegNum;
         // int dstSubReg = dst.getDirRegRef().subRegNum;
 
-        //
         // Restriction 1.1: Where n is the largest element size in bytes for
         // any source or destination operand type, ExecSize * n must be <= 64.
-        if (execSize * srcTypeSz > 64) {
+        int restric_size = 64;
+        if (execSize * srcTypeSz > restric_size) {
             warning(
                 "register regioning restriction warning: "
                 "ExecSize * sizeof(Type) exceeds 64 bytes\n"
@@ -383,7 +383,7 @@ struct SemanticChecker : LOCChecker {
         //                                                   ^ bad
         if (src.getDirRegName() == RegName::GRF_R) {
             // int slotsInReg = 32/srcTypeSz/srcRgnH;
-            if (srcSubReg + (srcRgnW - 1) * srcRgnH >= 32/srcTypeSz) {
+            if (srcSubReg + (srcRgnW - 1) * srcRgnH >= restric_size / 2 /srcTypeSz) {
                 // the last element is >= the maximum number of elements of
                 // this type size
                 warning(

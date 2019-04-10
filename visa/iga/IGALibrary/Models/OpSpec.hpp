@@ -574,7 +574,7 @@ namespace iga
         bool supportsQtrCtrl() const {
             return op != Op::JMPI;
         }
-        bool supportsAccWrEn() const {
+        bool supportsAccWrEn(Platform pltf) const {
             return
                 !supportsBranchCtrl() &&
                 !isSendOrSendsFamily() &&
