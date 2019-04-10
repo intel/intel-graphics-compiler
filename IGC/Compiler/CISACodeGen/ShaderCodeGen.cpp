@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Compiler/CISACodeGen/PixelShaderLowering.hpp"
 #include "Compiler/CISACodeGen/VertexShaderLowering.hpp"
 #include "Compiler/CISACodeGen/HullShaderLowering.hpp"
+#include "Compiler/CISACodeGen/HullShaderClearTessFactors.hpp"
 #include "Compiler/CISACodeGen/DomainShaderLowering.hpp"
 
 #include "Compiler/CISACodeGen/AdvCodeMotion.h"
@@ -196,6 +197,11 @@ inline void AddURBWriteRelatedPass(CodeGenContext &ctx, IGCPassManager& mpm)
         if (IGC_IS_FLAG_DISABLED(DisableURBWriteMerge))
         {
             mpm.add(createMergeURBWritesPass());
+
+            if (IGC_IS_FLAG_ENABLED(EnableTEFactorsClear) && (ctx.type == ShaderType::HULL_SHADER))
+            {
+                mpm.add(createClearTessFactorsPass());
+            }
         }
         if (IGC_IS_FLAG_DISABLED(DisableCodeHoisting))
         {

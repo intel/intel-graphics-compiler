@@ -320,6 +320,7 @@ DECLARE_IGC_REGKEY(bool, FastSpill, false, "fast spill code gen. This may produc
 DECLARE_IGC_REGKEY(bool, EnableGSURBEntryPadding, true,  "Enable padding of GS URB Entry by adding extra portions of Control Data Header.")
 DECLARE_IGC_REGKEY(bool, EnableGSVtxCountMsgHalfCLSize, true,  "Enable the Vertex Count msg of half CL size, instead of 1DW size.")
 DECLARE_IGC_REGKEY(bool, EnableTEFactorsPadding, true,  "Enable padding of the TE factors.")
+DECLARE_IGC_REGKEY(bool, EnableTEFactorsClear, true,  "Enable clearing of tessellation factors.")
 DECLARE_IGC_REGKEY(bool, EnableSubroutineForEmulation,  true,  "Enable subroutine call support when emulation(double) is on. Heuristic decides which use subroutine calls.")
 DECLARE_IGC_REGKEY(bool, ForceSubroutineForEmulation,   false,  "Force subroutine call for all emulation functions if emulation(double) is on.")
 DECLARE_IGC_REGKEY(int, ByPassAllocaSizeHeuristic,   0,  "Force some Alloca to pass the pressure heuristic until the given size")
