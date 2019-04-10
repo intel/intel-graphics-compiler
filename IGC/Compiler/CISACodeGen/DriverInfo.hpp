@@ -86,7 +86,10 @@ public:
     
     /// We can safely ignore Nan
     virtual bool IgnoreNan() const { return false; }
-    
+
+    // Allow branch swapping for better Nan perf
+    virtual bool BranchSwapping() const { return false; }
+
     /// Allow propagation up-converstion of half if it can generate better code
     virtual bool AllowUnsafeHalf() const { return true; }
 

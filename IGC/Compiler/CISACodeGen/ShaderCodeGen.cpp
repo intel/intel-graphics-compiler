@@ -565,7 +565,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
     mpm.add(new BreakConstantExpr());
     mpm.add(new Legalization(preserveNan));
 
-    if (IGC_IS_FLAG_DISABLED(DisableBranchSwaping))
+    if (IGC_IS_FLAG_DISABLED(DisableBranchSwaping) && ctx.m_DriverInfo.BranchSwapping())
     {
         mpm.add(createNanHandlingPass());
     }
