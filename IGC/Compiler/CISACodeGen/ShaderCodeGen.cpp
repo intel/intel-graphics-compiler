@@ -419,10 +419,7 @@ inline void AddLegalizationPasses(CodeGenContext &ctx, IGCPassManager& mpm)
         }
     }
 
-    if (ctx.m_DriverInfo.HasMemoryIntrinsics())
-    {
-      mpm.add(new ReplaceUnsupportedIntrinsics());
-    }
+    mpm.add(new ReplaceUnsupportedIntrinsics());
 
     // Promotes indirect resource access to direct
     mpm.add(new PromoteResourceToDirectAS());

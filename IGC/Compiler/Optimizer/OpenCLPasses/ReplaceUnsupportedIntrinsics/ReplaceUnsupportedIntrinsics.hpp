@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "common/LLVMWarningsPush.hpp"
 #include <llvm/Pass.h>
+#include <llvm/IR/InstVisitor.h>
 #include "common/LLVMWarningsPop.hpp"
 
 namespace llvm
@@ -47,7 +48,7 @@ namespace IGC
 {
     /// ReplaceIntrinsics pass lowers calls to unsupported intrinsics functions.
     // Two llvm instrinsics are replaced llvm.memcpy and llvm.memset. Both appear in SPIR spec.
-    class ReplaceUnsupportedIntrinsics : public llvm::ModulePass
+    class ReplaceUnsupportedIntrinsics : public llvm::FunctionPass, public llvm::InstVisitor<ReplaceUnsupportedIntrinsics>
     {
     public:
         static char ID;
@@ -61,32 +62,18 @@ namespace IGC
             return "ReplaceUnsupportedIntrinsics";
         }
 
-        virtual bool runOnModule(llvm::Module &M) override;
+        virtual bool runOnFunction(llvm::Function &F) override;
 
         virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const override
         {
         }
 
+        void visitIntrinsicInst(llvm::IntrinsicInst& I);
+
     private:
-        void groupI8Stream(
-            llvm::LLVMContext& C, uint32_t NumI8, uint32_t Align,
-            uint32_t& NumI32, llvm::Type** Vecs, uint32_t& L);
+    
+        std::vector<llvm::IntrinsicInst*> m_instsToReplace;
 
-        llvm::Value *replicateScalar(
-            llvm::Value *ScalarVal, llvm::Type* Ty,
-            llvm::Instruction *InsertBefore);
-
-        void replaceMemcpy(llvm::MemCpyInst* MC);
-        void replaceMemset(llvm::MemSetInst* MS);
-        void replaceMemMove(llvm::MemMoveInst* MM);
-        void replaceExpect(llvm::IntrinsicInst* EX);
-
-        // Get the largest of power-of-2 value that is <= C
-        // AND that can divide C.
-        uint32_t getLargestPowerOfTwo(uint32_t C) {
-            // If C == 0 (shouldn't happen), return a big one.
-            return (C == 0) ? 4096 : (C & (~C + 1));
-        }
     };
 
 } // namespace IGC

@@ -97,6 +97,10 @@ IGC_IR_LLVM_INTRINSIC(assume)
 IGC_IR_LLVM_INTRINSIC(bswap)
 IGC_IR_LLVM_INTRINSIC(maxnum)
 IGC_IR_LLVM_INTRINSIC(minnum)
+#if LLVM_VERSION_MAJOR >= 8
+IGC_IR_LLVM_INTRINSIC(fshl)
+IGC_IR_LLVM_INTRINSIC(fshr)
+#endif
 
 // LLVM instructions allowed in IGC IR
 //------------------------------------
