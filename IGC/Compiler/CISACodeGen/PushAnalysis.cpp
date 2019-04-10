@@ -626,8 +626,8 @@ unsigned int PushAnalysis::AllocatePushedConstant(
     }
 	if(cbIdxFound)
     {
-		unsigned int newStartOffset = iSTD::RoundDown(std::min(offset, pushInfo.simplePushInfoArr[piIndex].offset), SIZE_GRF);
-		unsigned int newEndOffset = iSTD::Round(std::max(offset + size, pushInfo.simplePushInfoArr[piIndex].offset + pushInfo.simplePushInfoArr[piIndex].size), SIZE_GRF);
+		unsigned int newStartOffset = iSTD::RoundDown(std::min(offset, pushInfo.simplePushInfoArr[piIndex].offset), getGRFSize());
+		unsigned int newEndOffset = iSTD::Round(std::max(offset + size, pushInfo.simplePushInfoArr[piIndex].offset + pushInfo.simplePushInfoArr[piIndex].size), getGRFSize());
         unsigned int newSize = newEndOffset - newStartOffset;
         
 		if (newSize - pushInfo.simplePushInfoArr[piIndex].size <= maxSizeAllowed)
@@ -647,8 +647,8 @@ unsigned int PushAnalysis::AllocatePushedConstant(
         maxSizeAllowed > 0 && 
         pushInfo.simplePushBufferUsed < maxNumberOfPushedBuffers)
     {
-        unsigned int newStartOffset = iSTD::RoundDown(offset, SIZE_GRF);
-        unsigned int newEndOffset = iSTD::Round(offset + size, SIZE_GRF);
+        unsigned int newStartOffset = iSTD::RoundDown(offset, getGRFSize());
+        unsigned int newEndOffset = iSTD::Round(offset + size, getGRFSize());
         unsigned int newSize = newEndOffset - newStartOffset;
 
         if(newSize <= maxSizeAllowed)
@@ -745,7 +745,7 @@ void PushAnalysis::PromoteLoadToSimplePush(Instruction* load, SimplePushInfo& in
 void PushAnalysis::BlockPushConstants()
 {
     // push up to 31 GRF
-    static const unsigned int cthreshold = m_pullConstantHeuristics->getPushConstantThreshold(m_pFunction) * SIZE_GRF;
+    static const unsigned int cthreshold = m_pullConstantHeuristics->getPushConstantThreshold(m_pFunction) * getGRFSize();
     unsigned int sizePushed = 0;
     m_entryBB = &m_pFunction->getEntryBlock();
 

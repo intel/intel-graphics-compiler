@@ -297,18 +297,18 @@ void CGeometryShader::AllocatePayload()
     // as to what it contains.
     //R0 is allocated as a predefined variable. Increase offset for R0
     assert(m_R0);
-    offset += SIZE_GRF;
+    offset += getGRFSize();
 
     // allocate input for URB return handles
     assert(m_pURBWriteHandleReg);
     AllocateInput(m_pURBWriteHandleReg, offset);
-    offset += SIZE_GRF;
+    offset += getGRFSize();
 
     // allocate input for primitiveID register if present
     if (m_pPrimitiveID != nullptr)
     {
         AllocateInput(m_pPrimitiveID, offset);
-        offset += SIZE_GRF;
+        offset += getGRFSize();
     }
 
     // allocate input for input vertex handles for pull model if required
@@ -317,20 +317,20 @@ void CGeometryShader::AllocatePayload()
         AllocateInput(m_pURBReadHandlesReg, offset);
         // the variable has the size equal to the number of vertices in the input primitive
         offset += m_pURBReadHandlesReg->GetSize();
-        offset = iSTD::Align(offset, SIZE_GRF);
+        offset = iSTD::Align(offset, getGRFSize());
     }
-    assert(offset % SIZE_GRF == 0);
-    ProgramOutput()->m_startReg = offset / SIZE_GRF;
+    assert(offset % getGRFSize() == 0);
+    ProgramOutput()->m_startReg = offset / getGRFSize();
 
     // allocate space for NOS constants and pushed constants
     AllocateConstants3DShader(offset);;
 
-    assert(offset % SIZE_GRF == 0);
+    assert(offset % getGRFSize() == 0);
 
     // when instancing mode is on, there is only one set of inputs and it's 
     // laid out like in constant buffers, i.e. one attribute takes four subregisters
     // of one GRF register.
-    const uint varSize = m_properties.Input().HasInstancing() ? SIZE_DWORD : SIZE_GRF;
+    const uint varSize = m_properties.Input().HasInstancing() ? SIZE_DWORD : getGRFSize();
     for (uint i = 0; i < setup.size(); ++i)
     {
         if (setup[i])
@@ -356,7 +356,7 @@ void CGeometryShader::FillProgram(SGeometryShaderKernelProgram* pKernelProgram)
     CreateConstantBufferOutput(pKernelProgram);
 
     pKernelProgram->ConstantBufferLoaded = m_constantBufferLoaded;
-    pKernelProgram->NOSBufferSize = m_NOSBufferSize/SIZE_GRF; // in 256 bits
+    pKernelProgram->NOSBufferSize = m_NOSBufferSize/getGRFSize(); // in 256 bits
 
     pKernelProgram->MaxNumberOfThreads = m_Platform->getMaxGeometryShaderThreads();
     pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;

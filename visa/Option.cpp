@@ -281,15 +281,6 @@ bool Options::parseOptions(int argc, const char* argv[])
 		m_vISAOptions.setBool(vISA_DisableSpillCoalescing, true);
 	}
 
-    // check conflict options
-#ifdef CM_EXTERNAL_RELEASE
-    if (getGenxPlatform() > GENX_SKL) {
-        COUT_ERROR << "Invalid platform option: only BDW and SKL are "
-                      "supported in this release." << std::endl;
-        return false;
-    }
-#endif
-
     #if (defined(_DEBUG) || defined(_INTERNAL))
     // Dump all vISA options
     if (m_vISAOptions.getBool(vISA_dumpVISAOptionsAll)) {

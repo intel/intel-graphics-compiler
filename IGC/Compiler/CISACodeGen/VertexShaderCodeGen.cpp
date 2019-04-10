@@ -68,19 +68,19 @@ void CVertexShader::AllocatePayload()
 
     //R0 is always allocated as a predefined variable. Increase offset for R0
     assert(m_R0);
-    offset += SIZE_GRF;
+    offset += getGRFSize();
 
     assert(m_R1);
     AllocateInput(m_R1,offset);
-    offset += SIZE_GRF;
+    offset += getGRFSize();
 
-    assert(offset % SIZE_GRF == 0);
-    ProgramOutput()->m_startReg = offset / SIZE_GRF;
+    assert(offset % getGRFSize() == 0);
+    ProgramOutput()->m_startReg = offset / getGRFSize();
 
     // allocate space for NOS constants and pushed constants
     AllocateConstants3DShader(offset);
 
-    assert(offset % SIZE_GRF == 0);
+    assert(offset % getGRFSize() == 0);
     // TODO: handle packed vertex attribute even if we pull
     bool packedInput = m_Platform->hasPackedVertexAttr() && !isInputsPulled;
     if(!packedInput)
@@ -102,7 +102,7 @@ void CVertexShader::AllocatePayload()
         }
         if(m_ElementComponentEnableMask[i / 4] & BIT(i % 4))
         {
-            offset += SIZE_GRF;
+            offset += getGRFSize();
         }
     }
 }
@@ -116,7 +116,7 @@ void CVertexShader::PackVFInput(unsigned int index, unsigned int& offset)
         {
             // enable the full element and push the offset to consider the elements skipped
             m_ElementComponentEnableMask[index / 4] = 0xF; 
-            offset += (index % 4)* SIZE_GRF;
+            offset += (index % 4)* getGRFSize();
         }
     }
     else
@@ -167,7 +167,7 @@ void CVertexShader::FillProgram(SVertexShaderKernelProgram* pKernelProgram)
     pKernelProgram->hasInstanceID                    = m_properties.m_HasInstanceID;
     pKernelProgram->instanceIdLocation               = m_properties.m_IID;
 	pKernelProgram->vertexFetchSGVExtendedParameters = m_properties.m_VertexFetchSGVExtendedParameters;
-    pKernelProgram->NOSBufferSize                    = m_NOSBufferSize / SIZE_GRF; // in 256 bits
+    pKernelProgram->NOSBufferSize                    = m_NOSBufferSize / getGRFSize(); // in 256 bits
     pKernelProgram->DeclaresVPAIndex                 = m_properties.m_hasVPAI;
     pKernelProgram->DeclaresRTAIndex                 = m_properties.m_hasRTAI;
     pKernelProgram->HasClipCullAsOutput              = m_properties.m_hasClipDistance;

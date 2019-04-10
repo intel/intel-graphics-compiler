@@ -550,6 +550,8 @@ private:
     bool ignoreRoundingMode(llvm::Instruction* inst) const;
 
     CVariable *UnpackOrBroadcastIfUniform(CVariable *pVar);
+
+    int getGRFSize() const { return m_currShader->getGRFSize(); }
 };
 
 } // namespace IGC

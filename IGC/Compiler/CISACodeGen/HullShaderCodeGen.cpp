@@ -105,7 +105,7 @@ void CHullShader::PreCompile()
 
     if(m_HasPrimitiveIDInstruction)
     {
-        m_R2 = GetNewVariable((SIZE_GRF>>2), ISA_TYPE_D, EALIGN_GRF, false, 1);
+        m_R2 = GetNewVariable((getGRFSize()>>2), ISA_TYPE_D, EALIGN_GRF, false, 1);
     }
 }
 
@@ -132,7 +132,7 @@ void CHullShader::AddPrologue()
         break;
     case EIGHT_PATCH_DISPATCH_MODE:
         // URB handles are in R1
-        m_R1 = GetNewVariable((SIZE_GRF>>2), ISA_TYPE_D, EALIGN_GRF, false, 1);
+        m_R1 = GetNewVariable((getGRFSize()>>2), ISA_TYPE_D, EALIGN_GRF, false, 1);
         m_pURBWriteHandleReg = m_R1;
 
         // calculate the number of URB read Handles GRF
@@ -166,17 +166,17 @@ void CHullShader::AllocateEightPatchPayload()
 
     //R0 is always allocated as a predefined variable. Increase offset for R0
     assert(m_R0);
-    offset += SIZE_GRF;
+    offset += getGRFSize();
 
     assert(m_R1);
     AllocateInput(m_R1,offset);
-    offset += SIZE_GRF;
+    offset += getGRFSize();
 
     if(m_HasPrimitiveIDInstruction)
     {
         assert(m_R2);
         AllocateInput(m_R2,offset);
-        offset += SIZE_GRF;
+        offset += getGRFSize();
     }
 
     // if m_pURBReadHandlesReg != nullptr, then we need to allocate ( (m_pOutputControlPointCount - 1)/8 + 1 ) registers for input handles
@@ -187,16 +187,16 @@ void CHullShader::AllocateEightPatchPayload()
             AllocateInput(m_pURBReadHandlesReg, offset);
         }
         // the variable has the size equal to (m_pInputControlPointCount % 8)
-        offset += (m_properties.m_pInputControlPointCount)* SIZE_GRF;
+        offset += (m_properties.m_pInputControlPointCount)* getGRFSize();
     }
 
-    assert(offset % SIZE_GRF == 0);
-    ProgramOutput()->m_startReg = offset / SIZE_GRF;
+    assert(offset % getGRFSize() == 0);
+    ProgramOutput()->m_startReg = offset / getGRFSize();
     
     // allocate space for NOS constants and pushed constants
     AllocateConstants3DShader(offset);;
 
-    assert(offset % SIZE_GRF == 0);
+    assert(offset % getGRFSize() == 0);
 
     // Allocate space for vertex element data
     for (uint i = 0; i < setup.size(); ++i)
@@ -205,7 +205,7 @@ void CHullShader::AllocateEightPatchPayload()
         {
             AllocateInput(setup[i], offset);
         }
-        offset += SIZE_GRF;
+        offset += getGRFSize();
     }
 }
 
@@ -215,7 +215,7 @@ void CHullShader::AllocateSinglePatchPayload()
 
     //R0 is always allocated as a predefined variable. Increase offset for R0
     assert(m_R0); 
-    offset += SIZE_GRF;
+    offset += getGRFSize();
 
     // if m_pURBReadHandlesReg != nullptr, then we need to allocate ( (m_pOutputControlPointCount - 1)/8 + 1 ) registers for input handles
     if(NeedVertexHandle())
@@ -225,16 +225,16 @@ void CHullShader::AllocateSinglePatchPayload()
             AllocateInput(m_pURBReadHandlesReg, offset);
         }
         // the variable has the size equal to (m_pInputControlPointCount % 8)
-        offset += ((m_properties.m_pInputControlPointCount - 1) / 8 + 1) * SIZE_GRF;
+        offset += ((m_properties.m_pInputControlPointCount - 1) / 8 + 1) * getGRFSize();
     }
 
-    assert(offset % SIZE_GRF == 0);
-    ProgramOutput()->m_startReg = offset / SIZE_GRF;
+    assert(offset % getGRFSize() == 0);
+    ProgramOutput()->m_startReg = offset / getGRFSize();
 
     // allocate space for NOS constants and pushed constants
     AllocateConstants3DShader(offset);
 
-    assert(offset % SIZE_GRF == 0);
+    assert(offset % getGRFSize() == 0);
 
     // Allocate space for vertex element data
     for (uint i = 0; i < setup.size(); ++i)
@@ -278,7 +278,7 @@ void CHullShader::FillProgram(SHullShaderKernelProgram* pKernelProgram)
     CreateConstantBufferOutput(pKernelProgram);
 
     pKernelProgram->ConstantBufferLoaded           = m_constantBufferLoaded;
-    pKernelProgram->NOSBufferSize = m_NOSBufferSize/SIZE_GRF; // in 256 bits
+    pKernelProgram->NOSBufferSize = m_NOSBufferSize/getGRFSize(); // in 256 bits
 
     pKernelProgram->MaxNumberOfThreads               = m_Platform->getMaxHullShaderThreads();
     pKernelProgram->IncludeVertexHandles             = NeedVertexHandle();
@@ -316,7 +316,7 @@ CVariable* CHullShader::GetURBInputHandle(CVariable* pVertexIndex)
     {
         uint64_t vertexIndex = pVertexIndex->GetImmediateValue();
         CVariable* pSelectedHandles = GetNewAlias(GetURBReadHandlesReg(), ISA_TYPE_UD,
-            (m_properties.m_pShaderDispatchMode == EIGHT_PATCH_DISPATCH_MODE) ? ((uint16_t)vertexIndex * SIZE_GRF) : ((uint16_t)vertexIndex * SIZE_DWORD),
+            (m_properties.m_pShaderDispatchMode == EIGHT_PATCH_DISPATCH_MODE) ? ((uint16_t)vertexIndex * getGRFSize()) : ((uint16_t)vertexIndex * SIZE_DWORD),
             (m_properties.m_pShaderDispatchMode == EIGHT_PATCH_DISPATCH_MODE) ? numLanes(m_SIMDSize) : 1);
         return pSelectedHandles;
     }

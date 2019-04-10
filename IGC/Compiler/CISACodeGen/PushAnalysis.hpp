@@ -129,6 +129,8 @@ class PushAnalysis : public llvm::ModulePass
         uint32_t vsUrbReadIndexForInstanceIdSGV);
     void processRuntimeValue(llvm::GenIntrinsicInst* intrinsic);
 
+    int getGRFSize() const { return m_context->platform.getGRFSize(); }
+
 public:
     static char ID;
     PushAnalysis();

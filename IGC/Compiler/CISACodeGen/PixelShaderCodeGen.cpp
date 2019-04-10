@@ -129,13 +129,13 @@ namespace IGC
         uint offset = 0;
         //R0 is always allocated as a predefined variable. Increase offset for R0
         assert(m_R0);
-        offset += SIZE_GRF;
+        offset += getGRFSize();
 
         assert(m_R1);
         for (uint i = 0; i < m_R1->GetNumberInstance(); i++)
         {
             AllocateInput(m_R1, offset, i);
-            offset += SIZE_GRF;
+            offset += getGRFSize();
         }
 
         for (uint i = 0; i < m_numberInstance; i++)
@@ -210,7 +210,7 @@ namespace IGC
                 {
                     AllocateInput(m_pCPSRequestedSizeY, offset + SIZE_OWORD, i);
                 }
-                offset += SIZE_GRF;
+                offset += getGRFSize();
             }
             if (m_ZDelta || m_WDelta)
             {
@@ -226,7 +226,7 @@ namespace IGC
                 {
                     GetDispatchSignature().ZWDelta = offset;
                 }
-                offset += SIZE_GRF;
+                offset += getGRFSize();
             }
             if (m_SampleOffsetX || m_SampleOffsetY)
             {
@@ -242,18 +242,18 @@ namespace IGC
                 {
                     GetDispatchSignature().pixelOffset = offset;
                 }
-                offset += SIZE_GRF;
+                offset += getGRFSize();
             }
         }
 
-        assert(offset%SIZE_GRF == 0);
+        assert(offset%getGRFSize() == 0);
         // need to return the starting grf for constant to client
-        ProgramOutput()->m_startReg = offset / SIZE_GRF;
+        ProgramOutput()->m_startReg = offset / getGRFSize();
 
         // allocate space for NOS constants and pushed constants
         AllocateConstants3DShader(offset);
 
-        assert(offset%SIZE_GRF == 0);
+        assert(offset%getGRFSize() == 0);
         unsigned int payloadEnd = offset;
         //Allocate size for values coming from VS
         for (uint i = 0; i < setup.size(); i++)
@@ -766,7 +766,7 @@ namespace IGC
         pKernelProgram->renderTargetMask = m_RenderTargetMask;
         pKernelProgram->constantInterpolationEnableMask = m_ConstantInterpolationMask;
         pKernelProgram->hasEvalSampler = m_HasEvalSampler;
-        pKernelProgram->NOSBufferSize = m_NOSBufferSize / SIZE_GRF; // in 256 bits
+        pKernelProgram->NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
         pKernelProgram->isMessageTargetDataCacheDataPort = isMessageTargetDataCacheDataPort;
 
         CreateGatherMap();
@@ -811,7 +811,7 @@ namespace IGC
     void CPixelShader::PreCompile()
     {
         CreateImplicitArgs();
-        m_R1 = GetNewVariable((SIZE_GRF >> 2), ISA_TYPE_D, EALIGN_GRF, false, m_numberInstance);
+        m_R1 = GetNewVariable((getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF, false, m_numberInstance);
         CodeGenContext *ctx = GetContext();
 
         // make sure the return block is properly set
@@ -946,8 +946,8 @@ namespace IGC
         }
         uint messageDescriptor = PIPullPixelPayload(
             m_SIMDSize == SIMDMode::SIMD8 ? EU_PI_MESSAGE_SIMD8 : EU_PI_MESSAGE_SIMD16,
-            m_PixelPhasePayload->GetSize() / SIZE_GRF,
-            payload->GetSize() / SIZE_GRF,
+            m_PixelPhasePayload->GetSize() / getGRFSize(),
+            payload->GetSize() / getGRFSize(),
             false,
             false,
             false,
@@ -993,9 +993,9 @@ namespace IGC
         if (m_phase == PSPHASE_PIXEL)
         {
             uint responseLength = 2;
-            m_PixelPhasePayload = GetNewVariable(responseLength*(SIZE_GRF >> 2), ISA_TYPE_D, EALIGN_GRF);
+            m_PixelPhasePayload = GetNewVariable(responseLength*(getGRFSize() >> 2), ISA_TYPE_D, EALIGN_GRF);
             m_PixelPhaseCounter = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_UW, 0, 1);
-            m_CoarseParentIndex = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_UW, SIZE_GRF, numLanes(m_SIMDSize));
+            m_CoarseParentIndex = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_UW, getGRFSize(), numLanes(m_SIMDSize));
             m_R1 = GetNewAlias(m_PixelPhasePayload, ISA_TYPE_D, 0, 8);
             encoder.SetNoMask();
             encoder.SetSimdSize(SIMDMode::SIMD1);

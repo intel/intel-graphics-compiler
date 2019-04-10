@@ -197,38 +197,38 @@ void CDomainShader::AllocatePayload()
 
     //R0 is always allocated as a predefined variable. Increase offset for R0
     assert(m_R0);
-    offset += SIZE_GRF;
+    offset += getGRFSize();
         
     if(m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH)
     {
         if (!m_Platform->DSPrimitiveIDPayloadPhaseCanBeSkipped() || m_hasPrimitiveIdInput)
         {
             AllocateInput(m_pPatchPrimitiveId, offset);
-            offset += SIZE_GRF;
+            offset += getGRFSize();
         }
     }
 
     AllocateInput(GetSymbol(m_properties.m_UArg), offset );
-    offset += SIZE_GRF;
+    offset += getGRFSize();
 
     AllocateInput(GetSymbol(m_properties.m_VArg), offset);
-    offset += SIZE_GRF;        
+    offset += getGRFSize();        
 
     AllocateInput(GetSymbol(m_properties.m_WArg), offset);
-    offset += SIZE_GRF;
+    offset += getGRFSize();
 
     // allocate input for URB return handles
     assert(m_pURBWriteHandleReg);
     AllocateInput(m_pURBWriteHandleReg, offset);
-    offset += SIZE_GRF;
+    offset += getGRFSize();
 
-    assert(offset % SIZE_GRF == 0);
-    ProgramOutput()->m_startReg = offset / SIZE_GRF;
+    assert(offset % getGRFSize() == 0);
+    ProgramOutput()->m_startReg = offset / getGRFSize();
 
     // allocate space for NOS constants and pushed constants
     AllocateConstants3DShader(offset);
 
-    assert(offset % SIZE_GRF == 0);
+    assert(offset % getGRFSize() == 0);
     // Allocate space for vertex element data
     for (uint i = 0; i < setup.size(); ++i)
     {
@@ -237,9 +237,9 @@ void CDomainShader::AllocatePayload()
             AllocateInput(setup[i], offset);
         }
 
-        offset += (m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH) ? SIZE_GRF : SIZE_DWORD;
+        offset += (m_ShaderDispatchMode == ShaderDispatchMode::DUAL_PATCH) ? getGRFSize() : SIZE_DWORD;
     }
-    offset = iSTD::Align(offset, SIZE_GRF);
+    offset = iSTD::Align(offset, getGRFSize());
 }
 
 CVariable* CDomainShader::GetURBOutputHandle()
@@ -271,7 +271,7 @@ void CDomainShader::FillProgram(SDomainShaderKernelProgram* pKernelProgram)
     CreateGatherMap();
     CreateConstantBufferOutput(pKernelProgram);
 
-    pKernelProgram->NOSBufferSize = m_NOSBufferSize/SIZE_GRF; // in 256 bits
+    pKernelProgram->NOSBufferSize = m_NOSBufferSize/getGRFSize(); // in 256 bits
     pKernelProgram->hasControlFlow = m_numBlocks > 1 ? true : false;
 
     pKernelProgram->MaxNumberOfThreads               = m_Platform->getMaxDomainShaderThreads();

@@ -367,6 +367,8 @@ public:
     bool GetHasGlobalAtomics() const { return m_HasGlobalAtomics; }
     calignmentSize as;
 
+    uint32_t getGRFSize() const { return m_Platform->getGRFSize(); }
+
 private:
     // Return DefInst's CVariable if it could be reused for UseInst, and return
     // nullptr otherwise.

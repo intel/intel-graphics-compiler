@@ -318,7 +318,7 @@ void CComputeShader::AllocatePayload()
     assert(GetR0());
     
     // We use predefined variables so offset has to be added for R0.
-    offset += SIZE_GRF;
+    offset += getGRFSize();
    
     bool bZeroIDs = !GetNumberOfId();
     // for indirect threads data payload hardware doesn't allow empty per thread buffer 
@@ -497,7 +497,7 @@ void CComputeShader::FillProgram(SComputeShaderKernelProgram* pKernelProgram)
 
     pKernelProgram->DispatchAlongY = m_dispatchAlongY;
 
-    pKernelProgram->NOSBufferSize = m_NOSBufferSize / SIZE_GRF; // in 256 bits
+    pKernelProgram->NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
 
     pKernelProgram->isMessageTargetDataCacheDataPort = isMessageTargetDataCacheDataPort;
 

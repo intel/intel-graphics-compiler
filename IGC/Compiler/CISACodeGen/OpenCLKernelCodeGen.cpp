@@ -1489,11 +1489,11 @@ void COpenCLKernel::AllocatePayload()
                 // Note that this is done AFTER we align on the base alignment,
                 // because of edge cases where aligning on the base alignment
                 // is what causes the "overflow".
-                unsigned int startGRF = offset / SIZE_GRF;
-                unsigned int endGRF = (offset + arg.getAllocateSize() - 1) / SIZE_GRF;
+                unsigned int startGRF = offset / getGRFSize();
+                unsigned int endGRF = (offset + arg.getAllocateSize() - 1) / getGRFSize();
                 if (startGRF != endGRF)
                 {
-                    offset = iSTD::Align(offset, SIZE_GRF);
+                    offset = iSTD::Align(offset, getGRFSize());
                 }
 
                 // And now actually tell vISA we need this space.
@@ -1536,7 +1536,7 @@ void COpenCLKernel::AllocatePayload()
     {    
         if (loadThreadPayload)
         {
-            uint perThreadInputSize = SIZE_GRF * 3 * m_numberInstance;
+            uint perThreadInputSize = (SIZE_WORD * 16) * 3 * m_numberInstance;
             encoder.GetVISAKernel()->AddKernelAttribute("perThreadInputSize", sizeof(uint16_t), &perThreadInputSize);
         }
     }
@@ -1544,7 +1544,7 @@ void COpenCLKernel::AllocatePayload()
     m_kernelInfo.m_threadPayload.OffsetToSkipPerThreadDataLoad = 0;
     m_kernelInfo.m_threadPayload.PassInlineData = false;
     
-    m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, SIZE_GRF);
+    m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, getGRFSize());
 
     CreateInlineSamplerAnnotations();
 
@@ -1597,8 +1597,8 @@ void COpenCLKernel::FillKernel()
     m_kernelInfo.m_executionEnivronment.PerThreadSpillFillSize = ProgramOutput()->m_scratchSpaceUsedBySpills;
     m_kernelInfo.m_executionEnivronment.PerThreadScratchSpace = ProgramOutput()->m_scratchSpaceUsedByShader;
     m_kernelInfo.m_executionEnivronment.PerThreadScratchUseGtpin = ProgramOutput()->m_scratchSpaceUsedByGtpin;
-    m_kernelInfo.m_kernelProgram.NOSBufferSize = m_NOSBufferSize / SIZE_GRF; // in 256 bits
-    m_kernelInfo.m_kernelProgram.ConstantBufferLength = m_ConstantBufferLength / SIZE_GRF; // in 256 bits
+    m_kernelInfo.m_kernelProgram.NOSBufferSize = m_NOSBufferSize / getGRFSize(); // in 256 bits
+    m_kernelInfo.m_kernelProgram.ConstantBufferLength = m_ConstantBufferLength / getGRFSize(); // in 256 bits
     m_kernelInfo.m_kernelProgram.MaxNumberOfThreads = m_Platform->getMaxGPGPUShaderThreads();
 
     m_kernelInfo.m_executionEnivronment.SumFixedTGSMSizes = getSumFixedTGSMSizes(entry);

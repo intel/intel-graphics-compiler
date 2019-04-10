@@ -71,7 +71,6 @@ enum e_alignment : unsigned char
     EALIGN_AUTO
 };
 
-
 static const unsigned int alignmentSize[] = 
 {
     1,

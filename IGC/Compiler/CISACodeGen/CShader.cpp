@@ -226,10 +226,10 @@ void CShader::AddEpilogue(llvm::ReturnInst* ret)
 CVariable* CShader::CreateSP(bool ptr64bits)
 {
     // create argument-value register, limited to 12 GRF
-    m_ARGV = GetNewVariable(SIZE_GRF * 3, ISA_TYPE_D, EALIGN_GRF, false, 1);
+    m_ARGV = GetNewVariable(getGRFSize() * 3, ISA_TYPE_D, EALIGN_GRF, false, 1);
     encoder.GetVISAPredefinedVar(m_ARGV, PREDEFINED_ARG);
     // create return-value register, limited to 4 GRF
-    m_RETV = GetNewVariable(SIZE_GRF, ISA_TYPE_D, EALIGN_GRF, false, 1);
+    m_RETV = GetNewVariable(getGRFSize(), ISA_TYPE_D, EALIGN_GRF, false, 1);
     encoder.GetVISAPredefinedVar(m_RETV, PREDEFINED_RET);
     // create stack-pointer register
     if (ptr64bits) {
@@ -318,7 +318,7 @@ void CShader::RestoreSP()
 void CShader::CreateImplicitArgs()
 {
     m_numBlocks = entry->size();
-    m_R0 = GetNewVariable(SIZE_GRF >> 2, ISA_TYPE_D, EALIGN_GRF, false, 1);
+    m_R0 = GetNewVariable(getGRFSize() >> 2, ISA_TYPE_D, EALIGN_GRF, false, 1);
     encoder.GetVISAPredefinedVar(m_R0, PREDEFINED_R0);
 
     // create variables for implicit args
@@ -422,7 +422,7 @@ void CShader::AllocateConstants(uint& offset)
         m_ConstantBufferLength += var->GetSize();
     }
 
-    m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, SIZE_GRF);
+    m_ConstantBufferLength = iSTD::Align(m_ConstantBufferLength, getGRFSize());
     offset += m_ConstantBufferLength;
 }
 
@@ -450,7 +450,7 @@ void CShader::AllocateNOSConstants(uint& offset)
         maxConstantPushed = std::max(maxConstantPushed, I->first + 1);
     }
     maxConstantPushed = iSTD::Max(maxConstantPushed, static_cast<uint>(m_ModuleMetadata->MinNOSPushConstantSize));
-    m_NOSBufferSize = iSTD::Align(maxConstantPushed * SIZE_DWORD, SIZE_GRF);
+    m_NOSBufferSize = iSTD::Align(maxConstantPushed * SIZE_DWORD, getGRFSize());
     offset += m_NOSBufferSize;
 }
 
@@ -503,7 +503,7 @@ void  CShader::CreateConstantBufferOutput(SKernelProgram *pKernelProgram)
                                               sizeof(USC::SConstantGatherEntry),
                  &gatherMap[0],
                  gatherMap.size() * sizeof(USC::SConstantGatherEntry));
-        pKernelProgram->ConstantBufferLength = m_ConstantBufferLength / SIZE_GRF; // in number of GRF bits
+        pKernelProgram->ConstantBufferLength = m_ConstantBufferLength / getGRFSize(); // in number of GRF bits
     }
 
     if (m_cbSlot != -1)
@@ -1037,7 +1037,7 @@ CShader::CreatePayload(uint regCount, uint idxOffset, CVariable*& payload,
 {
     for(uint i = 0; i < regCount ; ++i)
     {
-        uint subVarIdx = ((numLanes(m_SIMDSize) / (SIZE_GRF >> 2)) >> hfFactor) * i + idxOffset;
+        uint subVarIdx = ((numLanes(m_SIMDSize) / (getGRFSize() >> 2)) >> hfFactor) * i + idxOffset;
         CopyVariable(payload, GetSymbol(inst->getOperand(i + paramOffset)), subVarIdx);
     }
 }

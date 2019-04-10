@@ -1343,7 +1343,7 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
                             {
                                 unsigned int subReg = varInfo.getGRF().subRegNum;
                                 auto offsetInBits = subReg * 8;
-                                auto sizeInBits = (SIZE_GRF * 8) - offsetInBits;
+                                auto sizeInBits = (m_pModule->m_pShader->getGRFSize() * 8) - offsetInBits;
                                 offsetLEB128Size = encodeULEB128(offsetInBits, bufLEB128);
                                 sizeLEB128Size = encodeULEB128(sizeInBits, bufLEB128);
 
@@ -1392,7 +1392,7 @@ void DwarfDebug::collectVariableInfo(const Function *MF, SmallPtrSet<const MDNod
                             {
                                 unsigned int subReg = varInfo.getGRF().subRegNum;
                                 auto offsetInBits = subReg * 8;
-                                auto sizeInBits = (SIZE_GRF*8) - offsetInBits;
+                                auto sizeInBits = (m_pModule->m_pShader->getGRFSize()*8) - offsetInBits;
 
                                 write(dotLoc.loc, (uint8_t)llvm::dwarf::DW_OP_bit_piece);
                                 encodeULEB128(offsetInBits, bufLEB128);

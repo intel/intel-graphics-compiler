@@ -58,13 +58,6 @@ using namespace llvm;
 namespace IGC
 {
 
-unsigned int getGRFSize()
-{
-    unsigned int byteSize = 32;
-
-    return byteSize;
-}
-
 Common_ISA_Exec_Size getExecSize(SIMDMode width)
 {
     switch(width)
@@ -209,10 +202,11 @@ visaBlockNum(unsigned numElems) {
     return static_cast<Common_ISA_SVM_Block_Num>(~0U);
 }
 
-static unsigned
-GetRawOpndSplitOffset(Common_ISA_Exec_Size fromExecSize,
-                      Common_ISA_Exec_Size toExecSize,
-                      unsigned thePart, CVariable *var) {
+unsigned
+CEncoder::GetRawOpndSplitOffset(Common_ISA_Exec_Size fromExecSize,
+    Common_ISA_Exec_Size toExecSize,
+    unsigned thePart, CVariable *var) const
+{
     if (!var || var->IsUniform())
         return 0;
 
@@ -226,9 +220,9 @@ GetRawOpndSplitOffset(Common_ISA_Exec_Size fromExecSize,
 
     switch (elemSize) {
     case 4:
-        return thePart * SIZE_GRF * 1;
+        return thePart * getGRFSize() * 1;
     case 8:
-        return thePart * SIZE_GRF * 2;
+        return thePart * getGRFSize() * 2;
     }
 
     assert(false && "Unknown data type to split!");
@@ -277,6 +271,8 @@ CEncoder::CEncoder()
 CEncoder::~CEncoder()
 {
 }
+
+uint32_t CEncoder::getGRFSize() const { return m_program->getGRFSize(); }
 
 void CEncoder::SetProgram(CShader* program)
 {
@@ -429,8 +425,7 @@ void CEncoder::Cmp(e_predicate p, CVariable* dst, CVariable* src0, CVariable* sr
     // that is, if the execution size is 16 and the comparison type
     // is QW.
     bool bNeedSplitting = false;
-    if (flagDst &&
-        (GetAluExecSize(dst) == EXEC_SIZE_16) &&
+    if (flagDst && needsSplitting(GetAluExecSize(dst)) &&
         (src0->GetElemSize() > 4 || src1->GetElemSize() > 4))
     {
         bNeedSplitting = true;
@@ -1003,7 +998,8 @@ bool CEncoder::NeedSplitting(CVariable *var, const SModifier &mod,
         return false;
     // If the data type has more than 4 bytes, i.e. 32 bits, it already crosses
     // 2+ GRFs by itself. There's no need to check further.
-    if (elemSize > 4) {
+    if (elemSize > 4) 
+    {
         assert(elemSize == 8 && "Only QWORD is supported so far!");
         assert((isSource || !mod.specialRegion) &&
                "It's expected that there's no special region associated with "
@@ -1193,7 +1189,7 @@ void CEncoder::SplitMDP16To8(CVariable* MDP, uint32_t MDPOfst, uint32_t NumBlks,
 
     if (eltBytes > 0)
     {
-        const uint32_t GRFElts = SIZE_GRF / eltBytes;
+        uint32_t GRFElts = getGRFSize() / eltBytes;
 
         if (GRFElts > 0)
         {
@@ -1243,7 +1239,7 @@ void CEncoder::MergeMDP8To16(CVariable* V0, CVariable* V1, uint32_t NumBlks, CVa
     if (eltBytes > 0)
     {
         // Number of elements per GRF
-        const uint32_t GRFElts = SIZE_GRF / eltBytes;
+        const uint32_t GRFElts = getGRFSize() / eltBytes;
 
         if (GRFElts > 0)
         {
@@ -1675,7 +1671,8 @@ void CEncoder::AddPair(CVariable *Lo, CVariable *Hi, CVariable *L0, CVariable *H
            ExecSize == EXEC_SIZE_4 || ExecSize == EXEC_SIZE_2 ||
            ExecSize == EXEC_SIZE_1);
 
-    if (ExecSize == EXEC_SIZE_16) {
+    if (needsSplitting(ExecSize))
+    {
         // Have to split it because `acc0` has only 8 elements for 32-bit
         // integer types.
         unsigned NumParts = 2;
@@ -1780,7 +1777,8 @@ void CEncoder::SubPair(CVariable *Lo, CVariable *Hi, CVariable *L0, CVariable *H
     if (L1->GetType() != ISA_TYPE_UD && L1->GetType() != ISA_TYPE_UV) L1 = m_program->BitCast(L1, ISA_TYPE_UD);
     if (H1->GetType() != ISA_TYPE_UD && H1->GetType() != ISA_TYPE_UV) H1 = m_program->BitCast(H1, ISA_TYPE_UD);
 
-    if (ExecSize == EXEC_SIZE_16) {
+    if (needsSplitting(ExecSize))
+    {
         // Have to split it because `acc0` has only 8 elements for 32-bit
         // integer types.
         unsigned NumParts = 2;
@@ -2023,7 +2021,7 @@ VISA_RawOpnd* CEncoder::GetRawDestination(CVariable* var, unsigned offset)
     {
         V(vKernel->CreateVISARawOperand(
             dstOpnd, GetVISAVariable(var),
-            m_encoderState.m_dstOperand.subVar*SIZE_GRF + offset + var->GetAliasOffset()));
+            m_encoderState.m_dstOperand.subVar*getGRFSize() + offset + var->GetAliasOffset()));
     }
     else
     {
@@ -2039,8 +2037,8 @@ void CEncoder::Send(CVariable* dst, CVariable* src, uint exDesc, CVariable* mess
         m_encoderState.m_simdSize = m_encoderState.m_uniformSIMDSize;
     }
     unsigned char sendc = isSendc ? 1 : 0;
-    unsigned char srcSize = src->GetSize()/SIZE_GRF;
-    unsigned char dstSize = dst ? dst->GetSize()/SIZE_GRF : 0;
+    unsigned char srcSize = src->GetSize()/getGRFSize();
+    unsigned char dstSize = dst ? dst->GetSize()/getGRFSize() : 0;
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
     VISA_RawOpnd *srcOpnd0    = GetRawSource(src);
     VISA_RawOpnd *dstOpnd     = GetRawDestination(dst);
@@ -2076,9 +2074,9 @@ void CEncoder::Sends(CVariable* dst, CVariable* src0, CVariable* src1, uint ffid
         m_encoderState.m_simdSize = m_encoderState.m_uniformSIMDSize;
     }
     unsigned char sendc = isSendc ? 1 : 0;
-    unsigned char src0Size = src0->GetSize()/SIZE_GRF;
-    unsigned char src1Size = src1 ? src1->GetSize() / SIZE_GRF : 0;
-    unsigned char dstSize = dst ? dst->GetSize()/SIZE_GRF : 0;
+    unsigned char src0Size = src0->GetSize()/getGRFSize();
+    unsigned char src1Size = src1 ? src1->GetSize() / getGRFSize() : 0;
+    unsigned char dstSize = dst ? dst->GetSize()/getGRFSize() : 0;
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
     VISA_RawOpnd *srcOpnd0 = GetRawSource(src0);
     VISA_RawOpnd *srcOpnd1 = GetRawSource(src1);
@@ -2875,10 +2873,10 @@ void CEncoder::TypedReadWrite(
     VISA_StateOpndHandle* pSurfStateOpndHandle = GetVISASurfaceOpnd(resource);
 
     // TODO unify the way we calculate offset for raw sources, maybe we shouldn't use offset at all
-    VISA_RawOpnd* pUOffset = GetRawSource(pU, m_encoderState.m_srcOperand[0].subVar*SIZE_GRF);
-    VISA_RawOpnd* pVOffset = GetRawSource(pV, m_encoderState.m_srcOperand[1].subVar*SIZE_GRF);
-    VISA_RawOpnd* pROffset = GetRawSource(pR, m_encoderState.m_srcOperand[2].subVar*SIZE_GRF);
-    VISA_RawOpnd* pLODOffset = GetRawSource(pLOD, m_encoderState.m_srcOperand[3].subVar*SIZE_GRF);
+    VISA_RawOpnd* pUOffset = GetRawSource(pU, m_encoderState.m_srcOperand[0].subVar*getGRFSize());
+    VISA_RawOpnd* pVOffset = GetRawSource(pV, m_encoderState.m_srcOperand[1].subVar*getGRFSize());
+    VISA_RawOpnd* pROffset = GetRawSource(pR, m_encoderState.m_srcOperand[2].subVar*getGRFSize());
+    VISA_RawOpnd* pLODOffset = GetRawSource(pLOD, m_encoderState.m_srcOperand[3].subVar*getGRFSize());
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
     assert(m_encoderState.m_dstOperand.subVar == 0);
 
@@ -4621,7 +4619,7 @@ void CEncoder::GatherA64(CVariable *dst,
                     addressOpnd, dstOpnd));
             }
 
-            uint32_t dstOfstBytes = dst->GetAliasOffset() + m_encoderState.m_dstOperand.subVar * SIZE_GRF;
+            uint32_t dstOfstBytes = dst->GetAliasOffset() + m_encoderState.m_dstOperand.subVar * getGRFSize();
             MergeMDP8To16(V0, V1, numElems, dst, dstOfstBytes);
         }
         return;
@@ -4863,60 +4861,43 @@ void CEncoder::Gather4ScaledNd(CVariable *dst,
         addressOpnd, dstOpnd));
 }
 
-
-void CEncoder::Gather4Scaled(CVariable *dst,
-                       const ResourceDescriptor& resource,
-                       CVariable *offset) {
-    unsigned nd = dst->GetSize();
-    if (dst->IsUniform())
+uint32_t CEncoder::getNumChannels(CVariable* var) const
+{
+    unsigned nd = var->GetSize();
+    if (var->IsUniform())
     {
-        if (nd > SIZE_GRF)
+        if (nd > getGRFSize())
         {
-            assert(false && "Unknown DstSize!");
-            return;
+            assert(false && "Unknown Variable Size!");
         }
-        nd = 1;
+        return 1;
     }
     else
     {
-        switch (m_encoderState.m_simdSize) {
-        default: assert(false && "Unknown SIMD size!"); return;
+        switch (m_encoderState.m_simdSize)
+        {
+        default: assert(false && "Unknown SIMD size!"); return 1;
         case SIMDMode::SIMD8:
-            nd = nd / (SIZE_GRF * 1);
-            break;
+            return nd / (8 * SIZE_DWORD);
         case SIMDMode::SIMD16:
-            nd = nd / (SIZE_GRF * 2);
-            break;
+            return nd / (16 * SIZE_DWORD);
         }
     }
+    return 1;
+}
+
+void CEncoder::Gather4Scaled(CVariable *dst,
+                       const ResourceDescriptor& resource,
+                       CVariable *offset) 
+{
+    unsigned nd = getNumChannels(dst);
     Gather4ScaledNd(dst, resource, offset, nd);
 }
 
 void CEncoder::Scatter4Scaled(CVariable *src,
                         const ResourceDescriptor& resource,
                         CVariable *offset) {
-    unsigned nd = src->GetSize();
-    if (src->IsUniform())
-    {
-        if (nd > SIZE_GRF)
-        {
-            assert(false && "Unknown SrcSize!");
-            return;
-        }
-        nd = 1;
-    }
-    else
-    {
-        switch (m_encoderState.m_simdSize) {
-        default: assert(false && "Unknown SIMD size!"); return;
-        case SIMDMode::SIMD8:
-            nd = nd / (SIZE_GRF * 1);
-            break;
-        case SIMDMode::SIMD16:
-            nd = nd / (SIZE_GRF * 2);
-            break;
-        }
-    }
+    unsigned nd = getNumChannels(src);
 
     VISA_StateOpndHandle* surfaceOpnd = GetVISASurfaceOpnd(resource);
     VISA_PredOpnd* predOpnd = GetFlagOperand(m_encoderState.m_flag);
@@ -4942,15 +4923,15 @@ void CEncoder::Scatter4Scaled(CVariable *src,
 void CEncoder::Gather4A64(CVariable *dst, CVariable *offset) {
     assert(dst->GetElemSize() == 4 && "Gather4 must have 4-byte element");
 
-    uint32_t dstOfstBytes = m_encoderState.m_dstOperand.subVar * SIZE_GRF + dst->GetAliasOffset();
+    uint32_t dstOfstBytes = m_encoderState.m_dstOperand.subVar * getGRFSize() + dst->GetAliasOffset();
     unsigned nd = dst->GetSize();
     switch (m_encoderState.m_simdSize) {
     default: assert(false && "Unknown SIMD size!"); return;
     case SIMDMode::SIMD8:
-        nd = nd / (SIZE_GRF * 1);
+        nd = nd / (8 * SIZE_DWORD);
         break;
     case SIMDMode::SIMD16:
-        nd = nd / (SIZE_GRF * 2);
+        nd = nd / (16 * SIZE_DWORD);
         break;
     }
 
@@ -5037,10 +5018,10 @@ void CEncoder::Scatter4A64(CVariable *src, CVariable *offset) {
     switch (m_encoderState.m_simdSize) {
     default: assert(false && "Unknown SIMD size!"); return;
     case SIMDMode::SIMD8:
-        nd = nd / (SIZE_GRF * 1);
+        nd = nd / (8 * SIZE_DWORD);
         break;
     case SIMDMode::SIMD16:
-        nd = nd / (SIZE_GRF * 2);
+        nd = nd / (16 * SIZE_DWORD);
         break;
     }
 
@@ -5390,11 +5371,11 @@ void CEncoder::SetVISAWaTable(WA_TABLE const& waTable)
 void CEncoder::GetRowAndColOffset(CVariable* var, unsigned int subVar, unsigned int subReg, unsigned char& rowOff, unsigned char& colOff)
 {
     unsigned int varTypeSize = GetCISADataTypeSize(var->GetType());
-    unsigned int offset = var->GetAliasOffset() + subVar * SIZE_GRF + subReg * varTypeSize;
-    assert((offset%SIZE_GRF) % varTypeSize == 0 && "offset has to be aligned on element size");
-    rowOff = int_cast<unsigned char>(offset / SIZE_GRF);
+    unsigned int offset = var->GetAliasOffset() + subVar * getGRFSize() + subReg * varTypeSize;
+    assert((offset%getGRFSize()) % varTypeSize == 0 && "offset has to be aligned on element size");
+    rowOff = int_cast<unsigned char>(offset / getGRFSize());
     assert(varTypeSize != 0);
-    colOff = int_cast<unsigned char>((offset%SIZE_GRF) / varTypeSize);
+    colOff = int_cast<unsigned char>((offset%getGRFSize()) / varTypeSize);
 }
 
 void CEncoder::Loc(unsigned int line)

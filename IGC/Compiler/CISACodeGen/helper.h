@@ -55,7 +55,6 @@ typedef unsigned int uint;
 #define SIZE_WORD   2
 #define SIZE_DWORD  4
 #define SIZE_OWORD 16
-#define SIZE_GRF   (IGC::getGRFSize())
 
 enum ADDRESS_SPACE : unsigned int;
 
@@ -365,7 +364,5 @@ inline SIMDMode getLeastSIMDAllowed(unsigned int threadGroupSize, unsigned int h
         return SIMDMode::SIMD32;
     }
 }
-
-unsigned int getGRFSize();
 
 } // namespace IGC

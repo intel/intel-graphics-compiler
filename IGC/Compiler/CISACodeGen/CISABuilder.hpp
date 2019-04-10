@@ -486,6 +486,19 @@ private:
     void CreateFunctionSymbolTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
     void CreateFunctionRelocationTable(void*& buffer, unsigned& bufferSize, unsigned& tableEntries);
 
+    uint32_t getGRFSize() const;
+
+    bool needsSplitting(Common_ISA_Exec_Size ExecSize) const
+    {
+        return ExecSize == EXEC_SIZE_16;
+    }
+
+    unsigned GetRawOpndSplitOffset(Common_ISA_Exec_Size fromExecSize,
+            Common_ISA_Exec_Size toExecSize,
+            unsigned thePart, CVariable *var) const;
+
+    uint32_t getNumChannels(CVariable* var) const;
+
 protected:
     // encoder states
     SEncoderState m_encoderState;

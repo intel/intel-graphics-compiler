@@ -327,6 +327,12 @@ public:
     {
         return IGC_IS_FLAG_ENABLED(EnableOCLScratchPrivateMemory);
     }
+
+    uint32_t getGRFSize() const
+    {
+        return 32;
+    }
+
     // ***** Below go accessor methods for testing WA data from WA_TABLE *****
 
     bool WaDoNotPushConstantsForAllPulledGSTopologies() const
