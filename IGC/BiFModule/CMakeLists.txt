@@ -144,16 +144,16 @@ endif()
   set(CL_OPTIONS "")
 
   add_custom_target(GetClang)
-  add_library(common_clang_dll SHARED IMPORTED GLOBAL)
 
   if(EXISTS ${_clang7zLocation} AND NOT ${CCLANG_BUILD_INTREE_LLVM})
     # Use precompiled common clang bundle.
     message(STATUS "Use precompiled common clang from ${_clang7zLocation}")
     set(SYSTEM_COMMON_CLANG OFF)
 
-    add_dependencies(GetClang UnzipClang)
-
+    add_library(common_clang_dll SHARED IMPORTED GLOBAL)
     set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" "${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME}")
+    add_dependencies(common_clang_dll GetClang)
+    add_dependencies(GetClang UnzipClang)
   else()
     # Do not use precompiled common clang.
     message(STATUS "Precompiled common clang bundle ${_clang7zLocation} does not exist. Try to compile from sources or use system common clang.")
@@ -164,23 +164,21 @@ endif()
       message("Common clang build-in-tree")
       set(SYSTEM_COMMON_CLANG OFF)
 
+      add_library(common_clang_dll ALIAS ${COMMON_CLANG_LIBRARY_NAME})
+
       add_custom_target(copy_cclang_files ALL
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${IGC_TARGET__TOOLS_CLANG_DIR}"
-        COMMAND ${CMAKE_COMMAND} -E copy "${CLANG_SOURCE_DIR}/lib/Headers/opencl-c.h" "${IGC_TARGET__TOOLS_CLANG_DIR}/"
-        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:clang>" "${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}"
-        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_LINKER_FILE:${COMMON_CLANG_LIBRARY_NAME}>" "${IGC_TARGET__TOOLS_CLANG_DIR}/"
-        COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_SONAME_FILE:${COMMON_CLANG_LIBRARY_NAME}>" "${IGC_TARGET__TOOLS_CLANG_DIR}/"
-        DEPENDS clang cl_headers ${COMMON_CLANG_LIBRARY_NAME}
-      )
+         COMMAND ${CMAKE_COMMAND} -E make_directory "${IGC_TARGET__TOOLS_CLANG_DIR}"
+         COMMAND ${CMAKE_COMMAND} -E copy "${CLANG_SOURCE_DIR}/lib/Headers/opencl-c.h" "${IGC_TARGET__TOOLS_CLANG_DIR}/"
+         COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:clang>" "${IGC_TARGET__TOOLS_CLANG_DIR}/clang${CMAKE_EXECUTABLE_SUFFIX}"
+         DEPENDS clang cl_headers ${COMMON_CLANG_LIBRARY_NAME}
+       )
 
       add_dependencies(GetClang copy_cclang_files)
-
-      set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" ${IGC_TARGET__TOOLS_CLANG_DIR}/${COMMON_CLANG_LIB_FULL_NAME})
-
     else()
       find_library(SYSTEM_COMMON_CLANG ${COMMON_CLANG_LIBRARY_NAME})
       if(SYSTEM_COMMON_CLANG)
         message(STATUS "[IGC] Using system common_clang: ${SYSTEM_COMMON_CLANG}")
+        add_library(common_clang_dll SHARED IMPORTED GLOBAL)
         set_property(TARGET common_clang_dll PROPERTY "IMPORTED_LOCATION" "${SYSTEM_COMMON_CLANG}")
         find_program(CLANG_GE7 clang-${LLVM_VERSION_MAJOR})
         if(CLANG_GE7)
@@ -203,9 +201,10 @@ endif()
       endif(SYSTEM_COMMON_CLANG)
     endif()
   endif()
-  add_dependencies(common_clang_dll GetClang)
 
   if(UNIX AND NOT SYSTEM_COMMON_CLANG)
+    install(FILES $<TARGET_FILE:common_clang_dll> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
+    install(FILES $<TARGET_LINKER_FILE:common_clang_dll> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
     install(FILES $<TARGET_SONAME_FILE:common_clang_dll> DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR} COMPONENT igc-opencl)
   endif()
 
