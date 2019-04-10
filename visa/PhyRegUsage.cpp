@@ -210,22 +210,9 @@ void PhyRegUsage::freeRegs(LiveRange* varBasis)
         MUST_BE_TRUE(false, ERROR_UNKNOWN);
 }
 
-static int getStepAccordingSubAlign(G4_SubReg_Align subAlign)
+static int getSubAlignInWords(G4_SubReg_Align subAlign)
 {
-    switch(subAlign)
-    {
-        case Even_Word:
-        	return 2;
-        case Four_Word:
-        	return 4;
-        case Eight_Word:
-        	return 8;
-        case Sixteen_Word:
-         	return 16;
-        default:
-        	return 1;
-    }
-    return 1;
+    return static_cast<int>(subAlign);
 }
 
 // returns the starting word index if we find enough free contiguous words satisfying alignment,
@@ -241,7 +228,7 @@ int PhyRegUsage::findContiguousWords(
         return -1;
     }
 
-    int step = getStepAccordingSubAlign(subAlign);
+    int step = getSubAlignInWords(subAlign);
     int startWord = 0;
 
     for (int i = startWord; i + numWords <= (int)G4_GRF_REG_SIZE; i += step)

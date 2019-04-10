@@ -486,7 +486,7 @@ void LVN::transferAlign(G4_Declare* toDcl, G4_Declare* fromDcl)
 
     G4_SubReg_Align align1 = toDcl->getSubRegAlign();
     G4_SubReg_Align align2 = fromDcl->getSubRegAlign();
-    G4_SubReg_Align ret = align1;
+
 
     // Compute most constrained sub-reg alignment and assign that
     // to lvnDst dcl since it will replace curDst based operands.
@@ -495,36 +495,7 @@ void LVN::transferAlign(G4_Declare* toDcl, G4_Declare* fromDcl)
         return;
     }
 
-    switch (align1)
-    {
-    case Any:
-        ret = align2;
-        break;
-    case Even_Word:
-        if (align2 != Any)
-        {
-            ret = align2;
-        }
-        break;
-    case Four_Word:
-        if (align2 == Eight_Word || align2 == Sixteen_Word)
-        {
-            ret = align2;
-        }
-        break;
-    case Eight_Word:
-        if (align2 == Sixteen_Word)
-        {
-            ret = align2;
-        }
-        break;
-    case Sixteen_Word:
-        break;
-    default:
-        MUST_BE_TRUE(false, "Unimplemented sub-reg align condition hit");
-        break;
-    }
-
+    G4_SubReg_Align ret = std::max(align1, align2);
     toDcl->setSubRegAlign(ret);
 }
 

@@ -157,7 +157,8 @@ enum G4_SubReg_Align
     Even_Word = 2,
     Four_Word = 4,
     Eight_Word = 8,
-    Sixteen_Word = 16,        // one register align
+    Sixteen_Word = 16,        
+    ThirtyTwo_Word = 32,     
 };
 
 

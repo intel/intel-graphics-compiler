@@ -11075,16 +11075,12 @@ void GlobalRA::fixAlignment()
                         }
 
                         G4_SubReg_Align dstSubAlign = var->getSubRegAlignment();
-                        if (dstSubAlign != Eight_Word &&
-                            dstSubAlign != Sixteen_Word
-                            )
+                        if (dstSubAlign == Any)
                         {
                             for (unsigned j = 0; j < G4_MAX_SRCS; j++)
                             {
                                 G4_Operand* src = inst->getSrc(j);
-                                if (src == NULL) continue;
-
-                                if (G4_Type_Table[src->getType()].byteSize == G4_DSIZE)
+                                if (src && G4_Type_Table[src->getType()].byteSize == G4_DSIZE)
                                 {
                                     var->setSubRegAlignment(Even_Word);
                                     break;
