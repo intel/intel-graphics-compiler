@@ -4050,7 +4050,9 @@ void G4_BB::addEOTSend(G4_INST* lastInst)
     }
     instList.push_back(movInst);
 
-    int exdesc = (0x1 << 5) + SFIDtoInt(SFID::SPAWNER);
+    auto EOT_SFID = builder->getEOTSFID();
+
+    int exdesc = (0x1 << 5) + SFIDtoInt(EOT_SFID);
     // response len = 0, msg len = 1
     int desc = (0x1 << 25) + (0x1 << 4);
 

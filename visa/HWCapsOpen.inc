@@ -478,5 +478,9 @@
         return true;
     }
 
+    SFID getEOTSFID() const
+    {
+        return SFID::SPAWNER;
+    }
 
     // end HW capabilities
