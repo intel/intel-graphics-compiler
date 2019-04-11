@@ -1181,8 +1181,8 @@ void GenSpecificPattern::visitBinaryOperator(BinaryOperator &I)
 void GenSpecificPattern::visitCmpInst(CmpInst &I)
 {
     using namespace llvm::PatternMatch;
-    CmpInst::Predicate Pred;
-    Value *Val1;
+    CmpInst::Predicate Pred = CmpInst::Predicate::BAD_ICMP_PREDICATE;
+    Value* Val1 = nullptr;
     uint64_t const_int1 = 0, const_int2 = 0;
     auto cmp_pattern = m_Cmp(Pred,
         m_And(m_Value(Val1), m_ConstantInt(const_int1)), m_ConstantInt(const_int2));
