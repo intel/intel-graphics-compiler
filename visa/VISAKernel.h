@@ -891,8 +891,8 @@ private:
     void expandIndirectCallWithRegTarget();
     // create the instructions to calculate the jump target offset, return the G4_decl for the
     // jump target register
-    vISA::G4_Declare* createInstsForCallTargetOffset(InstListType& insts, vISA::G4_INST* fcall);
-    void createInstsForRetIP(InstListType& insts, vISA::G4_INST* fcall);
+    void createInstsForCallTargetOffset(InstListType& insts, vISA::G4_INST* fcall);
+    void createInstForJmpiSequence(InstListType& insts, vISA::G4_INST* fcall);
 
     void getHeightWidth(G4_Type type, unsigned int numberElements, unsigned short &dclWidth, unsigned short &dclHeight, int &totalByteSize);
     CisaFramework::CisaInst* AppendVISASvmGeneralScatterInst(VISA_PredOpnd* pred,

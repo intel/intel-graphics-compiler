@@ -202,11 +202,11 @@ int VISAKernelImpl::compileTillOptimize()
     return optimizer.optimization();
 }
 
-G4_Declare* VISAKernelImpl::createInstsForCallTargetOffset(InstListType& insts, G4_INST* fcall)
+void VISAKernelImpl::createInstsForCallTargetOffset(InstListType& insts, G4_INST* fcall)
 {
     // create instruction sequence:
     //       add  r1.2  -IP   call_target
-    //       add  r1.2  r1.2  32
+    //       add  r1.2  r1.2  -32
 
     // calculate the reserved register's num from fcall's dst register
     assert(fcall->getDst()->isGreg());
@@ -224,39 +224,31 @@ G4_Declare* VISAKernelImpl::createInstsForCallTargetOffset(InstListType& insts, 
             m_builder->getRegionScalar(), Type_UD),
         fcall->getSrc(0), InstOpt_WriteEnable | InstOpt_NoCompact);
 
-    // create the second add to add the ip to 32, to get the call's ip
+    // create the second add to add the -ip to -32, to get the call's ip
+    // call offset is relative to pre-increment IP
     G4_INST* add_inst2 = m_builder->createInternalInst(
         nullptr, G4_add, nullptr, false, 1,
         m_builder->Create_Dst_Opnd_From_Dcl(add_dst_decl, 1),
         m_builder->Create_Src_Opnd_From_Dcl(
             add_dst_decl, m_builder->getRegionScalar()),
-        m_builder->createImm(32, add_inst->getSrc(0)->getType()),
+        m_builder->createImm(-32, Type_D),
         InstOpt_WriteEnable | InstOpt_NoCompact);
 
     insts.push_back(add_inst);
     insts.push_back(add_inst2);
 
-    return add_dst_decl;
+    // update call target to add's dst(call's src0)
+    G4_SrcRegRegion* jump_target = m_builder->Create_Src_Opnd_From_Dcl(
+        add_dst_decl, m_builder->getRegionScalar());
+    fcall->setSrc(jump_target, 0);
+    fcall->setNoCompacted();
 }
 
-void VISAKernelImpl::createInstsForRetIP(InstListType& insts, G4_INST* fcall)
+void VISAKernelImpl::createInstForJmpiSequence(InstListType& insts, G4_INST* fcall)
 {
     // SKL workaround for indirect call
-    // create instruction sequence:
-    //       mov  f0.0   0
-    //       mov  r1.1   0
-    //       cmp  f0.0   r1.1  0
-    //       mov  r1.1   f0.0        // save the exec mask to r1.1
-    //       add  r1.0   IP   64     // save the return IP to r1.0
-    //
-    // This piece of code must be inserted before add instructions
-    // created in createInstsForCallTargetOffset and the jmpi:
-    //      add  r1.2  -IP   call_target
-    //      add  r1.2  r1.2  32
-    //      jmpi r1.2
-    //
-    // so that the return IP in r1.0 will be correct. r1.0 is the
-    // IP of the instruction right after jmpi
+    // r1.0 is the return IP (the instruction right after jmpi)
+    // r1.1 it the return mask
 
     // mov  f0.0   0
     insts.push_back(m_builder->createInternalInst(
@@ -304,6 +296,36 @@ void VISAKernelImpl::createInstsForRetIP(InstListType& insts, G4_INST* fcall)
             m_builder->getRegionScalar(), Type_UD),
         m_builder->createImm(64, Type_UD),
         InstOpt_WriteEnable | InstOpt_NoCompact));
+
+    // add  r1.2 - IP   call_target
+    G4_Declare* r1_2_decl =
+        m_builder->createHardwiredDeclare(1, fcall->getDst()->getType(), reg_num, 2);
+    insts.push_back(m_builder->createInternalInst(
+        nullptr, G4_add, nullptr, false, 1,
+        m_builder->Create_Dst_Opnd_From_Dcl(r1_2_decl, 1),
+        m_builder->createSrcRegRegion(
+            Mod_Minus, Direct, m_phyRegPool->getIpReg(), 0, 0,
+            m_builder->getRegionScalar(), Type_UD),
+        fcall->getSrc(0), InstOpt_WriteEnable | InstOpt_NoCompact));
+
+    // add  r1.2  r1.2  -48
+    // jmpi offset is relative to post-increment IP on SKL
+    insts.push_back(m_builder->createInternalInst(
+        nullptr, G4_add, nullptr, false, 1,
+        m_builder->Create_Dst_Opnd_From_Dcl(r1_2_decl, 1),
+        m_builder->Create_Src_Opnd_From_Dcl(
+            r1_2_decl, m_builder->getRegionScalar()),
+        m_builder->createImm(-48, Type_D),
+        InstOpt_WriteEnable | InstOpt_NoCompact));
+
+    // jmpi r1.2
+    // update jump target (src0) to add's dst
+    G4_SrcRegRegion* jump_target = m_builder->Create_Src_Opnd_From_Dcl(
+        r1_2_decl, m_builder->getRegionScalar());
+    jump_target->setType(Type_D);
+    insts.push_back(m_builder->createInternalInst(
+        nullptr, G4_jmpi, nullptr, false, 1, nullptr, jump_target,
+        nullptr, InstOpt_WriteEnable | InstOpt_NoCompact));
 }
 
 void VISAKernelImpl::expandIndirectCallWithRegTarget()
@@ -330,7 +352,7 @@ void VISAKernelImpl::expandIndirectCallWithRegTarget()
                 //       call r1.0 call_target
                 // To:
                 //       add  r1.2  -IP   call_target
-                //       add  r1.2  r1.2  32
+                //       add  r1.2  r1.2  -32
                 //       call r1.0  r1.2
 
                 // For SKL workaround, expand call
@@ -339,41 +361,18 @@ void VISAKernelImpl::expandIndirectCallWithRegTarget()
                 // To:
                 //       mov  f0.0   0
                 //       mov  r1.1   0
-                //       cmp  f0.0   r1.1  0
+                //       cmp  f0.0   r1.1   0
                 //       mov  r1.1   f0.0
-                //       add  r1.0   IP   64
+                //       add  r1.0   IP     64
                 //       add  r1.2   -IP    call_target
-                //       add  r1.2   r1.2   32
+                //       add  r1.2   r1.2   -48
                 //       jmpi r1.2
 
                 InstListType expanded_insts;
-
-                // create instructions to store return ip and exec mask, for SKL WA
-                if (getGenxPlatform() == GENX_SKL) {
-                    createInstsForRetIP(expanded_insts, fcall);
-                }
-
-                // create instructions to calculate jump target offset
-                G4_Declare* jmp_target_decl = createInstsForCallTargetOffset(expanded_insts, fcall);
-
-                // update jump target (call's src0)
-                G4_SrcRegRegion* jump_target = m_builder->Create_Src_Opnd_From_Dcl(
-                    jmp_target_decl, m_builder->getRegionScalar());
-                fcall->setSrc(jump_target, 0);
-                fcall->setNoCompacted();
-
-                if (getGenxPlatform() == GENX_SKL) {
-                    // create jmpi
-                    G4_INST* jmpi = m_builder->createInternalInst(
-                        nullptr, G4_jmpi, nullptr, false, 1, nullptr, fcall->getSrc(0),
-                        nullptr, InstOpt_WriteEnable | InstOpt_NoCompact);
-                    // jmpi's src must be signed int
-                    jmpi->getSrc(0)->asSrcRegRegion()->setType(Type_D);
-
-                    // remove call and insert jmpi to instlist
-                    bb->getInstList().erase(--bb->end());
-                    bb->getInstList().push_back(jmpi);
-                }
+                if (getGenxPlatform() == GENX_SKL)
+                    createInstForJmpiSequence(expanded_insts, fcall);
+                else
+                    createInstsForCallTargetOffset(expanded_insts, fcall);
 
                 // then insert the expaneded instructions right before the call
                 INST_LIST_ITER insert_point = bb->end();
@@ -382,6 +381,9 @@ void VISAKernelImpl::expandIndirectCallWithRegTarget()
                     bb->getInstList().insert(insert_point, inst_to_add);
                     inst_to_add->setCISAOff(fcall->getCISAOff());
                 }
+                // remove call from the instlist for SKL WA
+                if (getGenxPlatform() == GENX_SKL)
+                    bb->getInstList().erase(--bb->end());
             }
         }
     }
