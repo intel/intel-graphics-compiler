@@ -3902,6 +3902,10 @@ endif()
 # cpack to create deb package
 ########################################################################
 
+set(IGC_PC_PACKAGE_RELEASE "")
+if(DEFINED IGC_PACKAGE_RELEASE)
+  set(IGC_PC_PACKAGE_RELEASE "-${IGC_PACKAGE_RELEASE}")
+endif()
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/igc.opencl.h.in ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc.opencl.h)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/AdaptorOCL/igc-opencl.pc.in ${IGC_BUILD__IGC_BIN_DIR}/AdaptorOCL/igc-opencl.pc @ONLY)
 
