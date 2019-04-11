@@ -951,8 +951,8 @@ void BankConflictPass::setupBankConflictsForBB(G4_BB* bb,
         GRFRatio = ((float)(numRegLRA - SECOND_HALF_BANK_START_GRF)) / SECOND_HALF_BANK_START_GRF;
     }
 
-    for (std::list<G4_INST*>::reverse_iterator i = bb->rbegin();
-        i != bb->rend();
+    for (std::list<G4_INST*>::reverse_iterator i = bb->rbegin(), rend = bb->rend();
+        i != rend;
         i++)
     {
         G4_INST* inst = (*i);
@@ -1026,26 +1026,19 @@ bool BankConflictPass::setupBankConflictsForKernel(G4_Kernel& kernel, bool doLoc
     unsigned int instNumInKernel = 0;
     unsigned int sendInstNumInKernel = 0;
 
-    for (BB_LIST_ITER it = kernel.fg.BBs.begin();
-        it != kernel.fg.BBs.end();
-        it++)
+    for (auto curBB : kernel.fg.BBs)
     {
-        G4_BB* curBB = (*it);
-
         orderedBBs.push_back(curBB);
     }
     orderedBBs.sort(compareBBLoopLevel);
 
-    for (BB_LIST_ITER it = orderedBBs.begin();
-        it != orderedBBs.end();
-        it++)
+    for (auto bb : orderedBBs)
     {
         unsigned int instNum = 0;
         unsigned int sendInstNum = 0;
         unsigned int threeSourceInstNum = 0;
         unsigned int conflicts = 0;
 
-        G4_BB* bb = (*it);
         unsigned int loopNestLevel = 0;
 
         setupBankConflictsForBB(bb, threeSourceInstNum, sendInstNum,
@@ -2378,13 +2371,13 @@ void Interference::computeInterference()
         // any file scope variable is present in this function,
         // intf among them will not get modeled thus making them
         // non-interfering. This is incorrect.
-        for (auto var1_it = liveAnalysis->fileScopeVars.begin();
-            var1_it != liveAnalysis->fileScopeVars.end();
+        for (auto var1_it = liveAnalysis->fileScopeVars.begin(), end = liveAnalysis->fileScopeVars.end();
+            var1_it != end;
             var1_it++)
         {
             G4_RegVar* var1 = (*var1_it);
-            for (auto var2_it = var1_it;
-                var2_it != liveAnalysis->fileScopeVars.end();
+            for (auto var2_it = var1_it, end2 = liveAnalysis->fileScopeVars.end();
+                var2_it != end2;
                 var2_it++)
             {
                 G4_RegVar* var2 = (*var2_it);
@@ -2520,12 +2513,8 @@ void Interference::generateSparseIntfGraph()
 void GlobalRA::updateSubRegAlignment(unsigned char regFile, G4_SubReg_Align subAlign)
 {
     // Update alignment of all GRF declares to sub-align
-    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-        dcl_it != kernel.Declares.end();
-        dcl_it++)
+    for (auto dcl : kernel.Declares)
     {
-        G4_Declare* dcl = (*dcl_it);
-
         if (dcl->getRegFile() & regFile && !dcl->getIsPartialDcl())
         {
             G4_Declare* topdcl = dcl->getRootDeclare();
@@ -2553,12 +2542,8 @@ void GlobalRA::updateSubRegAlignment(unsigned char regFile, G4_SubReg_Align subA
 void GlobalRA::updateAlignment(unsigned char regFile, G4_Align align)
 {
     // Update alignment of all GRF declares to align
-    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-        dcl_it != kernel.Declares.end();
-        dcl_it++)
+    for (auto dcl : kernel.Declares)
     {
-        G4_Declare* dcl = (*dcl_it);
-
         if (dcl->getRegFile() & regFile)
         {
             G4_Declare* topdcl = dcl->getRootDeclare();
@@ -3385,12 +3370,8 @@ bool Augmentation::markNonDefaultMaskDef()
     // Update whether each dcl is default/not
     AugmentationMasks prevAugMask = AugmentationMasks::Undetermined;
 
-    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-        dcl_it != kernel.Declares.end();
-        dcl_it++)
+    for (auto dcl : kernel.Declares)
     {
-        G4_Declare* dcl = (*dcl_it);
-
         if (liveAnalysis.livenessClass(dcl->getRegFile()))
         {
             if (gra.getAugmentationMask(dcl) == AugmentationMasks::Undetermined)
@@ -4101,8 +4082,8 @@ void Augmentation::clearIntervalInfo()
 {
     // Clear out calculated information so that subsequent RA
     // iterations dont have stale information
-    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-        dcl_it != kernel.Declares.end();
+    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin(), end = kernel.Declares.end();
+        dcl_it != end;
         dcl_it++)
     {
         gra.setStartInterval(*dcl_it, nullptr);
@@ -4484,8 +4465,7 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare* newDcl, bool isCall)
                 }
                 else
                 {
-                    std::vector<G4_Declare*> v;
-                    v.push_back(newDcl);
+                    std::vector<G4_Declare*> v(1, newDcl);
                     intf.compatibleSparseIntf.insert(
                         std::make_pair(defaultDcl, v));
                 }
@@ -4497,8 +4477,7 @@ void Augmentation::buildSIMDIntfDcl(G4_Declare* newDcl, bool isCall)
                 }
                 else
                 {
-                    std::vector<G4_Declare*> v;
-                    v.push_back(defaultDcl);
+                    std::vector<G4_Declare*> v(1, defaultDcl);
                     intf.compatibleSparseIntf.insert(
                         std::make_pair(newDcl, v));
                 }
@@ -4558,8 +4537,8 @@ void Augmentation::buildInterferenceIncompatibleMask()
     // with non-default mask and other for default mask
     unsigned int oldStartIdx = 0;
 
-    for (auto dcl_it = sortedIntervals.begin();
-        dcl_it != sortedIntervals.end();
+    for (auto dcl_it = sortedIntervals.begin(), end = sortedIntervals.end();
+        dcl_it != end;
         dcl_it++)
     {
         G4_Declare* newDcl = (*dcl_it);
@@ -4731,8 +4710,8 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
     DEBUG_VERBOSE("BB" << bb->getId() << std::endl);
 #endif
 
-    for (INST_LIST_RITER rit = bb->rbegin();
-        rit != bb->rend();
+    for (INST_LIST_RITER rit = bb->rbegin(), rend = bb->rend();
+        rit != rend;
         rit++)
     {
         bool update = false;
@@ -4925,8 +4904,8 @@ void Interference::buildInterferenceWithLocalRA(G4_BB* bb)
                 // currently live-ranges. There is no need to iterate over all
                 // busy GRFs. Instead only those GRFs that have got busy in this iteration
                 // can be considered for incremental updates.
-                for (std::vector<int>::iterator it = curUpdate.begin();
-                    it != curUpdate.end();
+                for (std::vector<int>::iterator it = curUpdate.begin(), end = curUpdate.end();
+                    it != end;
                     it++)
                 {
                     int k = (*it);
@@ -5865,12 +5844,10 @@ bool GlobalRA::shouldPreloadDst(
 void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpillRegSize)
 {
     // Iterate over all BBs
-    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin(); bb_it != kernel.fg.BBs.end(); ++bb_it)
+    for (auto curBB : kernel.fg.BBs)
     {
-        G4_BB* curBB = (*bb_it);
-
         // Iterate over all insts
-        for (INST_LIST_ITER inst_it = curBB->begin(); inst_it != curBB->end(); ++inst_it)
+        for (INST_LIST_ITER inst_it = curBB->begin(), iend = curBB->end(); inst_it != iend; ++inst_it)
         {
             unsigned currentSpillRegSize = 0;
             unsigned currentIndrSpillRegSize = 0;
@@ -5968,7 +5945,7 @@ void GlobalRA::determineSpillRegSize(unsigned& spillRegSize, unsigned& indrSpill
                 unsigned srcFillRegSize = 0;
                 unsigned indirSrcFillRegSize = 0;
                 // Scan srcs
-                for (int i = 0; i < G4_Inst_Table[curInst->opcode()].n_srcs; i++)
+                for (int i = 0, srcNum = G4_Inst_Table[curInst->opcode()].n_srcs; i < srcNum; i++)
                 {
                     G4_Operand* src = curInst->getSrc(i);
 
@@ -6315,7 +6292,7 @@ void GraphColor::pruneActiveSpillAddrLocs(G4_DstRegRegion* dstRegion, unsigned e
         unsigned startId = spillLocReg->getLocId() + dstRegion->getSubRegOff();
         unsigned endId = startId + exec_size * dstRegion->getHorzStride();
 
-        for (unsigned i = 0; i < getNumAddrRegisters(); i += dstRegion->getHorzStride())
+        for (unsigned i = 0, horzStride = dstRegion->getHorzStride(); i < getNumAddrRegisters(); i += horzStride)
         {
             if (spAddrRegSig[i] >= startId && spAddrRegSig[i] < endId)
             {
@@ -7821,8 +7798,8 @@ void GlobalRA::detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& ke
         optreport << "(Use -nolocalra switch for accurate results of uses without reaching defs)" << std::endl;
     }
 
-    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin();
-        bb_it != kernel.fg.BBs.end();
+    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin(), end = kernel.fg.BBs.end();
+        bb_it != end;
         bb_it++)
     {
         G4_BB* bb = (*bb_it);
@@ -7830,8 +7807,8 @@ void GlobalRA::detectUndefinedUses(LivenessAnalysis& liveAnalysis, G4_Kernel& ke
         std::set<G4_Declare*>::iterator defs_it;
         G4_Declare* referencedDcl = NULL;
 
-        for (INST_LIST_ITER inst_it = bb->begin();
-            inst_it != bb->end();
+        for (INST_LIST_ITER inst_it = bb->begin(), iend = bb->end();
+            inst_it != iend;
             inst_it++)
         {
             G4_INST* inst = (*inst_it);
@@ -7897,14 +7874,10 @@ void GlobalRA::detectNeverDefinedUses()
     std::map<G4_Declare*, bool> vars;
     std::map<G4_Declare*, bool>::iterator map_it;
 
-    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin();
-        bb_it != kernel.fg.BBs.end();
-        bb_it++)
+    for (auto bb : kernel.fg.BBs)
     {
-        G4_BB* bb = (*bb_it);
-
-        for (INST_LIST_ITER inst_it = bb->begin();
-            inst_it != bb->end();
+        for (INST_LIST_ITER inst_it = bb->begin(), iend = bb->end();
+            inst_it != iend;
             inst_it++)
         {
             G4_INST* inst = (*inst_it);
@@ -8001,12 +7974,8 @@ void GlobalRA::detectNeverDefinedUses()
     getOptReportStream(optreport, kernel.getOptions());
     optreport << std::endl << "=== Variables used but never defined ===" << std::endl << std::endl;
 
-    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-        dcl_it != kernel.Declares.end();
-        dcl_it++)
+    for (auto dcl : kernel.Declares)
     {
-        G4_Declare* dcl = (*dcl_it);
-
         while (dcl->getAliasDeclare() != NULL)
         {
             dcl = dcl->getAliasDeclare();
@@ -8240,7 +8209,7 @@ void VarSplit::insertMovesToTemp(IR_Builder& builder, G4_Declare* oldDcl, G4_Ope
     INST_LIST_ITER iter = instIter;
     iter++;
 
-    for (size_t i = 0; i < splitDclList.size(); i++)
+    for (size_t i = 0, size = splitDclList.size(); i < size; i++)
     {
         G4_Declare * subDcl = splitDclList[i];
         unsigned leftBound = gra.getSubOffset(subDcl);
@@ -8282,7 +8251,7 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
         newDcl->setSubRegAlign(oldDcl->getSubRegAlign());
         unsigned newLeftBound = 0;
 
-        for (size_t i = 0; i < splitDclList.size(); i++)
+        for (size_t i = 0, size = splitDclList.size(); i < size; i++)
         {
             G4_Declare * subDcl = splitDclList[i];
             unsigned leftBound = gra.getSubOffset(subDcl);
@@ -8320,7 +8289,7 @@ void VarSplit::insertMovesFromTemp(G4_Kernel& kernel, G4_Declare* oldDcl, int in
     }
     else
     {
-        for (size_t i = 0; i < splitDclList.size(); i++)
+        for (size_t i = 0, size = splitDclList.size(); i < size; i++)
         {
             G4_Declare * subDcl = splitDclList[i];
             unsigned leftBound = gra.getSubOffset(subDcl);
@@ -8375,11 +8344,9 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
     SPLIT_DECL_OPERANDS splitDcls;
     unsigned int instIndex = 0;
     int splitSize = kernel.getSimdSize() == 8 ? 1 : 2;
-    for (BB_LIST_ITER it = kernel.fg.BBs.begin(); it != kernel.fg.BBs.end(); ++it)
+    for (auto bb : kernel.fg.BBs)
     {
-        G4_BB *bb = (*it);
-
-        for (INST_LIST_ITER it = bb->begin(); it != bb->end(); ++it, ++instIndex)
+        for (INST_LIST_ITER it = bb->begin(), iend = bb->end(); it != iend; ++it, ++instIndex)
         {
             G4_INST* inst = (*it);
             G4_DstRegRegion* dst = inst->getDst();
@@ -8417,7 +8384,7 @@ void VarSplit::globalSplit(IR_Builder& builder, G4_Kernel &kernel)
     instIndex = 0;
     for (auto bb : kernel.fg.BBs)
     {
-        for (INST_LIST_ITER it = bb->begin(); it != bb->end(); ++it, ++instIndex)
+        for (INST_LIST_ITER it = bb->begin(), end = bb->end(); it != end; ++it, ++instIndex)
         {
 
             G4_INST* inst = (*it);
@@ -8564,7 +8531,7 @@ void VarSplit::localSplit(IR_Builder& builder,
     //
     // Iterate instruction in BB from back to front
     //
-    for (INST_LIST::reverse_iterator rit = bb->rbegin(); rit != bb->rend(); ++rit)
+    for (INST_LIST::reverse_iterator rit = bb->rbegin(), rend = bb->rend(); rit != rend; ++rit)
     {
         G4_INST* i = (*rit);
         G4_DstRegRegion* dst = i->getDst();
@@ -8981,7 +8948,7 @@ void GlobalRA::assignRegForAliasDcl()
     //
     // assign Reg for Alias DCL
     //
-    for (DECLARE_LIST_ITER di = kernel.Declares.begin(); di != kernel.Declares.end(); ++di)
+    for (DECLARE_LIST_ITER di = kernel.Declares.begin(), end = kernel.Declares.end(); di != end; ++di)
     {
         G4_RegVar * AliasRegVar;
         G4_RegVar * CurrentRegVar;
@@ -10791,10 +10758,8 @@ void FlagSpillCleanup::spillFillCodeCleanFlag(IR_Builder&        builder,
 //#ifdef _DEBUG
     int candidate_size = 0;
 //#endif
-    for (BB_LIST_ITER it = fg.BBs.begin(); it != fg.BBs.end(); it++)
+    for (auto bb : fg.BBs)
     {
-        G4_BB* bb = (*it);
-
         INST_LIST_ITER inst_it = bb->begin();
 
         scratchTraceList.clear();
@@ -10919,7 +10884,7 @@ void GlobalRA::computePhyReg()
                 }
             }
 
-            for (unsigned j = 0; j < G4_Inst_Table[inst->opcode()].n_srcs; j++)
+            for (unsigned j = 0, size = G4_Inst_Table[inst->opcode()].n_srcs; j < size; j++)
             {
                 G4_Operand *curr_src = inst->getSrc(j);
                 if (!curr_src || curr_src->isImm() || (inst->opcode() == G4_math && j == 1 && curr_src->isNullReg()) || curr_src->isLabel())
@@ -11436,7 +11401,7 @@ bool VerifyAugmentation::isClobbered(LiveRange* lr, std::string& msg)
             continue;
 
         // lr is active in current bb
-        for (auto instIt = bb->begin(); instIt != bb->end(); instIt++)
+        for (auto instIt = bb->begin(), end = bb->end(); instIt != end; instIt++)
         {
             auto inst = (*instIt);
             if (inst->isPseudoKill())
@@ -11688,7 +11653,7 @@ bool GlobalRA::isSubRetLocConflict(G4_BB *bb, std::vector<unsigned> &usedLoc, un
         //
         usedLoc[stackTop] = curSubRetLoc;
         unsigned afterCallId = bb->BBAfterCall()->getId();
-        for (std::list<G4_BB*>::iterator it = bb->Succs.begin(); it != bb->Succs.end(); it++)
+        for (std::list<G4_BB*>::iterator it = bb->Succs.begin(), end = bb->Succs.end(); it != end; it++)
         {
             if ((*it)->getId() == afterCallId)
             {

@@ -165,8 +165,8 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST* inst)
 	G4_DstRegRegion* dst = inst->getDst();
 	dst->setWriteMask(ChannelEnable_XYZW);
 
-	// convert sources to align16
-	for (int k = 0; k < inst->getNumSrc(); k++)
+	// convert sources to align16	
+    for (int k = 0, numSrc = inst->getNumSrc(); k < numSrc; k++)
 	{
 		ASSERT_USER(inst->getSrc(k)->isSrcRegRegion(), "Unexpected src to be converted to ALIGN16!");
 		G4_SrcRegRegion* src = inst->getSrc(k)->asSrcRegRegion();
@@ -232,7 +232,7 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST* inst)
 	// for double/half inst, we have to additionally fix the source as it doesn't support the .r swizzle
 	if (isDoubleInst)
 	{
-		for (int i = 0; i < inst->getNumSrc(); ++i)
+        for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
 		{
 			MUST_BE_TRUE(inst->getSrc(i)->isSrcRegRegion(), "source must have a region");
 			G4_SrcRegRegion* src = inst->getSrc(i)->asSrcRegRegion();
@@ -254,7 +254,7 @@ void BinaryEncodingBase::FixAlign16Inst(G4_INST* inst)
 void BinaryEncodingBase::FixMathInst(G4_INST* inst)
 {
 	MUST_BE_TRUE(inst->isMath(), "Expect math instruction");
-	for (int i = 0; i < inst->getNumSrc(); ++i)
+    for (int i = 0, numSrc = inst->getNumSrc(); i < numSrc; ++i)
 	{
 		G4_Operand* src = inst->getSrc(i);
 		if (src && src->isSrcRegRegion())

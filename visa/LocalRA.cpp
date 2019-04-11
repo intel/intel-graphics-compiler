@@ -206,7 +206,7 @@ void LocalRA::preLocalRAAnalysis()
     {
         vector<unsigned int> forbiddenRegs;
         getForbiddenGRFs(forbiddenRegs, kernel, stackCallRegSize, 0, reservedGRFNum);
-        for (unsigned int i = 0; i < forbiddenRegs.size(); i++)
+        for (unsigned int i = 0, size = forbiddenRegs.size(); i < size; i++)
         {
             unsigned int regNum = forbiddenRegs[i];
             pregs->setGRFUnavailable(regNum);
@@ -219,7 +219,7 @@ void LocalRA::preLocalRAAnalysis()
             // Local RA will use only caller save registers for allocation.
             vector<unsigned int> callerSaveRegs;
             getCallerSaveGRF(callerSaveRegs, &kernel);
-            for (unsigned int i = 0; i < callerSaveRegs.size(); i++)
+            for (unsigned int i = 0, size = callerSaveRegs.size(); i < size; i++)
             {
                 unsigned int regNum = callerSaveRegs[i];
                 pregs->setGRFUnavailable(regNum);
@@ -583,17 +583,15 @@ void LocalRA::resetMasks()
 
 void LocalRA::blockOutputPhyRegs()
 {
-    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-        dcl_it != kernel.Declares.end();
-        dcl_it++)
+    for (auto dcl : kernel.Declares)
     {
-        if ((*dcl_it)->isOutput() &&
-            (*dcl_it)->isInput())
+        if (dcl->isOutput() &&
+            dcl->isInput())
         {
             // The live-range may never be referenced in the CFG so we need
             // this special pass to block physical registers corresponding
             // to those declares. This may be true for FC.
-            pregs->markPhyRegs(*dcl_it);
+            pregs->markPhyRegs(dcl);
         }
     }
 }
@@ -951,12 +949,8 @@ void GlobalRA::removeUnreferencedDcls()
 bool LocalRA::unassignedRangeFound()
 {
     bool unassignedRangeFound = false;
-    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-        dcl_it != kernel.Declares.end();
-        dcl_it++)
+    for (auto dcl : kernel.Declares)
     {
-        G4_Declare* dcl = (*dcl_it);
-
         if (dcl->getAliasDeclare() == NULL &&
             dcl->getRegFile() == G4_GRF &&
             dcl->getRegVar()->isPhyRegAssigned() == false)
@@ -986,11 +980,9 @@ void LocalRA::localRAOptReport()
 {
     unsigned int totalRanges = 0, localRanges = 0;
 
-    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-        dcl_it != kernel.Declares.end();
-        dcl_it++)
+    for (auto dcl : kernel.Declares)
     {
-        auto dcl_it_lr = gra.getLocalLR(*dcl_it);
+        auto dcl_it_lr = gra.getLocalLR(dcl);
         if (dcl_it_lr &&
             dcl_it_lr->isLiveRangeLocal() &&
             dcl_it_lr->isGRFRegAssigned())
@@ -998,9 +990,9 @@ void LocalRA::localRAOptReport()
             localRanges++;
         }
 
-        if (((*dcl_it)->getRegFile() == G4_GRF ||
-            (*dcl_it)->getRegFile() == G4_INPUT) &&
-            (*dcl_it)->getAliasDeclare() == NULL)
+        if ((dcl->getRegFile() == G4_GRF ||
+            dcl->getRegFile() == G4_INPUT) &&
+            dcl->getAliasDeclare() == NULL)
         {
             totalRanges++;
         }
@@ -1248,14 +1240,10 @@ void LocalRA::markReferencesInInst(INST_LIST_ITER inst_it)
 void LocalRA::setLexicalID()
 {
     unsigned int id = 0;
-    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin();
-        bb_it != kernel.fg.BBs.end();
-        bb_it++)
+    for (auto bb : kernel.fg.BBs)
     {
-        G4_BB* bb = (*bb_it);
-
-        for (INST_LIST_ITER inst_it = bb->begin();
-            inst_it != bb->end();
+        for (INST_LIST_ITER inst_it = bb->begin(), iend = bb->end();
+            inst_it != iend;
             inst_it++)
         {
             G4_INST* curInst = (*inst_it);
@@ -1267,19 +1255,19 @@ void LocalRA::setLexicalID()
 void LocalRA::markReferences(unsigned int& numRowsEOT,
     bool& lifetimeOpFound)
 {
-
-    setLexicalID();
-
+    unsigned int id = 0;
     // Iterate over all BBs
-    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin(); bb_it != kernel.fg.BBs.end(); ++bb_it)
+    for (BB_LIST_ITER bb_it = kernel.fg.BBs.begin(), bb_end = kernel.fg.BBs.end(); bb_it != bb_end; ++bb_it)
     {
         curBB = (*bb_it);
 
-
         // Iterate over all insts
-        for (INST_LIST_ITER inst_it = curBB->begin(); inst_it != curBB->end(); ++inst_it)
+        for (INST_LIST_ITER inst_it = curBB->begin(), inst_end = curBB->end(); inst_it != inst_end; ++inst_it)
         {
             G4_INST* curInst = (*inst_it);
+
+            // set lexical ID
+            curInst->setLexicalId(id++);
 
             if (curInst->opcode() == G4_pseudo_kill ||
                 curInst->opcode() == G4_pseudo_lifetime_end)
@@ -1724,11 +1712,8 @@ bool LocalRA::countLiveIntervals()
 {
     int globalRows = 0;
     uint32_t localRows = 0;
-    for (DECLARE_LIST_ITER dcl_it = kernel.Declares.begin();
-        dcl_it != kernel.Declares.end();
-        dcl_it++)
+    for (auto curDcl : kernel.Declares)
     {
-        G4_Declare* curDcl = (*dcl_it);
         LocalLiveRange* curDclLR = nullptr;
 
         if (curDcl->getAliasDeclare() == NULL &&
@@ -1736,14 +1721,13 @@ bool LocalRA::countLiveIntervals()
             (curDclLR = gra.getLocalLR(curDcl)) &&
             curDclLR->isGRFRegAssigned() == false)
         {
-            G4_Declare* dcl = (*dcl_it);
             if (curDclLR->isLiveRangeGlobal())
             {
-                globalRows += dcl->getNumRows();
+                globalRows += curDcl->getNumRows();
             }
             else if (curDclLR->isLiveRangeLocal())
             {
-                localRows += dcl->getNumRows();
+                localRows += curDcl->getNumRows();
             }
         }
     }

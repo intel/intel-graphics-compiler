@@ -2578,7 +2578,7 @@ void BinaryEncodingCNL::DoAll()
 	SetInstCounts((uint32_t)globalHalfInstNum);
 
     EncodingHelper::dumpOptReport(globalInstNum, numCompactedInst, numCompacted3SrcInst, kernel);
-    for (auto x = offsetVector.begin(); x != offsetVector.end(); x++)
+    for (auto x = offsetVector.begin(), vEnd = offsetVector.end(); x != vEnd; x++)
     {
         if (!EncodeConditionalBranches(x->inst, x->offset))
         {
