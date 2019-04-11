@@ -177,7 +177,6 @@ namespace IGC
         bool isStateless = false;
 	};
 
-
     struct SKernelProgram
     {
         SProgramOutput simd8;
@@ -208,7 +207,6 @@ namespace IGC
 
         // Interesting constants for dynamic constant folding
         std::vector<USC::ConstantAddrValue> m_pInterestingConstants;
-
     };
 
     struct SPixelShaderKernelProgram : SKernelProgram

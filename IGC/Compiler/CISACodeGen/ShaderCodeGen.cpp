@@ -950,6 +950,13 @@ void destroyShaderMap(CShaderProgram::KernelShaderMap &shaders)
 }
 
 template<typename ContextType>
+void FillProgram(ContextType *ctx, CShaderProgram *shaderProgram)
+{
+    shaderProgram->FillProgram(&ctx->programOutput);
+}
+
+
+template<typename ContextType>
 void CodeGenCommon(ContextType* ctx)
 {
     CShaderProgram::KernelShaderMap shaders;
@@ -962,12 +969,10 @@ void CodeGenCommon(ContextType* ctx)
     DIPass.run(*(ctx->getModule()));
 
     // gather data to send back to the driver
-    for(auto it = shaders.begin(), ie = shaders.end(); it != ie; ++it)
+    for(auto &kv : shaders)
     {
-        CShaderProgram* shaderProgram = it->second;
-        {
-            shaderProgram->FillProgram(&(ctx->programOutput));
-        }
+        CShaderProgram* shaderProgram = kv.second;
+        FillProgram(ctx, shaderProgram);
     }
 
 
