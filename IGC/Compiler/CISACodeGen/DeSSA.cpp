@@ -1174,8 +1174,8 @@ void DeSSA::CoalesceAliasInstForBasicBlock(BasicBlock *Blk)
         }
         if (CastInst* CastI = dyn_cast<CastInst>(I))
         {
-            Value* D = I;
-            Value* S = I->getOperand(0);
+            Value* D = CastI;
+            Value* S = CastI->getOperand(0);
             if (!isa<Constant>(S) &&
                 isNeededIfInst(S) &&
                 WIA->whichDepend(D) == WIA->whichDepend(S) &&

@@ -250,7 +250,7 @@ public:
     // value is isolated, all values in the preferred CC shall be isolated as well. In another word,
     // the preferred values will be guaranteed to stay in the same congurent class after dessa
     // on phi's.
-    llvm::MapVector<llvm::Value*, llvm::Value*> PrefCCMap;
+    llvm::DenseMap<llvm::Value*, llvm::Value*> PrefCCMap;
 
     // Value Alias map
     //   This is used for maitaining aliases among values. It maps a value, called 'aliaser',
@@ -269,7 +269,7 @@ public:
     //      update liveness for aliasee.
     //   2. Make sure InsEltMap only use aliasee
     //   3. Make sure DeSSA node only use aliasee.
-    llvm::MapVector<llvm::Value*, llvm::Value*> AliasMap;
+    llvm::DenseMap<llvm::Value*, llvm::Value*> AliasMap;
 
     /// If there is no node for Val, create a new one.
     void addReg(llvm::Value* Val, e_alignment Align);
