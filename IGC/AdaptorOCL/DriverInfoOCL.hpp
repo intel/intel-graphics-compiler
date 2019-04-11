@@ -64,6 +64,9 @@ namespace TC
         bool Enable64BitEmu() const override { return true; }
 
         bool NeedIEEESPDiv() const override { return true; }
+
+        // Not needed as OCL doesn't go through emitStore3DInner
+        bool splitUnalignedVectors() const override { return false; }
     };
 
     // In case some cpas are specific to NEO

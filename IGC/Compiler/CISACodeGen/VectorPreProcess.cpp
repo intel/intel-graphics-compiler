@@ -337,14 +337,17 @@ namespace
           , m_C(nullptr)
           , m_WorkList()
           , m_Temps()
+          , m_CGCtx(nullptr)
         {
             initializeVectorPreProcessPass(*PassRegistry::getPassRegistry());
         }
 
-        virtual bool runOnFunction(Function &F);
-        virtual void getAnalysisUsage(AnalysisUsage &AU) const
+        StringRef getPassName() const override { return "VectorPreProcess"; }
+        bool runOnFunction(Function &F) override;
+        void getAnalysisUsage(AnalysisUsage &AU) const override
         {
             AU.setPreservesCFG();
+            AU.addRequired<CodeGenContextWrapper>();
         }
 
     private:
@@ -381,6 +384,7 @@ namespace
         InstWorkVector m_WorkList;
         ValVector m_Temps;
         InstWorkVector m_Vector3List; // used for keep all 3-element vectors.
+        IGC::CodeGenContext* m_CGCtx;
     };
 }
 
@@ -611,7 +615,8 @@ bool VectorPreProcess::splitStore(AbstractStoreInst& ASI, V2SMap& vecToSubVec)
         {
             ASI.setAlignment(std::max(getKnownAlignment(ASI.getPointerOperand(), *m_DL), alignment));
         }
-        const uint32_t splitSize = ASI.getAlignment() < 4 ? 4 : (isStoreInst ? VP_SPLIT_SIZE : VP_RAW_SPLIT_SIZE);
+        bool needsDWordSplit = (!isStoreInst || m_CGCtx->m_DriverInfo.splitUnalignedVectors()) && ASI.getAlignment() < 4;
+        const uint32_t splitSize = needsDWordSplit ? 4 : (isStoreInst ? VP_SPLIT_SIZE : VP_RAW_SPLIT_SIZE);
         createSplitVectorTypes(ETy, nelts, splitSize, tys, tycnts, len);
     }
     else
@@ -757,7 +762,7 @@ bool VectorPreProcess::splitLoad(AbstractLoadInst& ALI, V2SMap& vecToSubVec)
         {
             ALI.setAlignment(std::max(getKnownAlignment(ALI.getPointerOperand(), *m_DL), alignment));
         }
-        splitSize = ALI.getAlignment() < 4 ? 4 : (isLdRaw ? VP_RAW_SPLIT_SIZE : VP_SPLIT_SIZE);
+        splitSize = isLdRaw ? (ALI.getAlignment() < 4 ? 4 : VP_RAW_SPLIT_SIZE) : VP_SPLIT_SIZE;
     }
 
     createSplitVectorTypes(ETy, nelts, splitSize, tys, tycnts, len);
@@ -1365,6 +1370,7 @@ bool VectorPreProcess::runOnFunction(Function& F)
     bool changed = false;
     m_DL = &F.getParent()->getDataLayout();
     m_C  = &F.getContext();
+    m_CGCtx = getAnalysis<CodeGenContextWrapper>().getCodeGenContext();
 
     for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I)
     {
